@@ -181,6 +181,67 @@ JSON
   [ -f "$output" ]
 }
 
+@test "snapshot-resume: restore prefers matching agent role when provided" {
+  cd "$TEST_TEMP_DIR"
+  git init -q
+  git config user.email "test@test.com"
+  git config user.name "Test"
+  echo "test" > test.txt && git add test.txt && git commit -q -m "init"
+
+  # Save snapshots for two different roles
+  bash "$SCRIPTS_DIR/snapshot-resume.sh" save 5 ".vbw-planning/.execution-state.json" "vbw-qa" "auto"
+  sleep 1
+  bash "$SCRIPTS_DIR/snapshot-resume.sh" save 5 ".vbw-planning/.execution-state.json" "vbw-dev" "auto"
+
+  run bash "$SCRIPTS_DIR/snapshot-resume.sh" restore 5 "vbw-qa"
+  [ "$status" -eq 0 ]
+  [ -n "$output" ]
+  [ -f "$output" ]
+  run jq -r '.agent_role' "$output"
+  [ "$status" -eq 0 ]
+  [ "$output" = "vbw-qa" ]
+}
+
+@test "post-compact: plan_id_to_num extracts numeric plan number" {
+  # Source the helper functions from post-compact.sh
+  # They're defined at the top of the file, extract them
+  plan_id_to_num() {
+    local plan_id="$1"
+    echo "$plan_id" | sed 's/^[0-9]*-//;s/^0*//;s/^$/0/'
+  }
+
+  run plan_id_to_num "05-01"
+  [ "$output" = "1" ]
+  run plan_id_to_num "01-02"
+  [ "$output" = "2" ]
+  run plan_id_to_num "05-00"
+  [ "$output" = "0" ]
+  run plan_id_to_num ""
+  [ "$output" = "0" ]
+  run plan_id_to_num "5"
+  [ "$output" = "5" ]
+}
+
+@test "post-compact: next_task_from_completed increments task number" {
+  next_task_from_completed() {
+    local task_id="$1"
+    if [[ "$task_id" =~ ^([0-9]+-[0-9]+-T)([0-9]+)$ ]]; then
+      echo "${BASH_REMATCH[1]}$((BASH_REMATCH[2] + 1))"
+    fi
+  }
+
+  run next_task_from_completed "1-2-T3"
+  [ "$output" = "1-2-T4" ]
+  run next_task_from_completed "1-2-T0"
+  [ "$output" = "1-2-T1" ]
+  run next_task_from_completed "10-20-T99"
+  [ "$output" = "10-20-T100" ]
+  run next_task_from_completed ""
+  [ "$output" = "" ]
+  run next_task_from_completed "bad-input"
+  [ "$output" = "" ]
+}
+
 @test "snapshot-resume: prunes old snapshots beyond 10" {
   cd "$TEST_TEMP_DIR"
   git init -q

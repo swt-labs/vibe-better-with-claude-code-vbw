@@ -106,6 +106,35 @@ teardown() {
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null
 }
 
+@test "post-compact: restores role-matched snapshot and infers pending plan" {
+  cd "$TEST_TEMP_DIR"
+  jq '.v3_snapshot_resume = true' .vbw-planning/config.json > .vbw-planning/config.json.tmp && \
+    mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+
+  cat > .vbw-planning/.execution-state.json <<'STATE'
+{"phase":1,"status":"running"}
+STATE
+
+  mkdir -p .vbw-planning/.snapshots .vbw-planning/.events
+  cat > .vbw-planning/.snapshots/1-20260101T000000.json <<'SNAP1'
+{"snapshot_ts":"20260101T000000","phase":1,"agent_role":"vbw-qa","execution_state":{"status":"running","plans":[{"id":"01-02","status":"pending"}]},"recent_commits":[]}
+SNAP1
+  cat > .vbw-planning/.snapshots/1-20260101T000001.json <<'SNAP2'
+{"snapshot_ts":"20260101T000001","phase":1,"agent_role":"vbw-dev","execution_state":{"status":"running","plans":[{"id":"01-01","status":"complete"},{"id":"01-02","status":"pending"}]},"recent_commits":[]}
+SNAP2
+
+  # Task 1 completed, task 2 started and not completed yet
+  cat > .vbw-planning/.events/event-log.jsonl <<'EVENTS'
+{"event":"task_completed_confirmed","phase":1,"plan":2,"data":{"task_id":"1-2-T1"}}
+{"event":"task_started","phase":1,"plan":2,"data":{"task_id":"1-2-T2"}}
+EVENTS
+
+  run bash -c 'echo "{\"agent_name\":\"vbw-dev\"}" | bash "$1"' _ "$SCRIPTS_DIR/post-compact.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("plan=01-02")' >/dev/null
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("In-progress task before compact: 1-2-T2.")' >/dev/null
+}
+
 # --- hook-wrapper.sh exit code passthrough ---
 
 @test "hook-wrapper: passes through exit 2 for PreToolUse block" {

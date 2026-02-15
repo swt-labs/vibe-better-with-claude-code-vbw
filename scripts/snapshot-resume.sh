@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -u
 
-# snapshot-resume.sh <save|restore> <phase> [execution-state-path]
+# snapshot-resume.sh save <phase> [execution-state-path] [agent-role] [trigger]
+# snapshot-resume.sh restore <phase> [preferred-role]
 # Save: snapshot execution state + git context for crash recovery.
 # Restore: find latest snapshot for a phase.
 # Snapshots: .vbw-planning/.snapshots/{phase}-{timestamp}.json
@@ -13,7 +14,6 @@ fi
 
 ACTION="$1"
 PHASE="$2"
-STATE_PATH="${3:-.vbw-planning/.execution-state.json}"
 
 PLANNING_DIR=".vbw-planning"
 CONFIG_PATH="${PLANNING_DIR}/config.json"
@@ -27,6 +27,7 @@ fi
 
 case "$ACTION" in
   save)
+    STATE_PATH="${3:-.vbw-planning/.execution-state.json}"
     mkdir -p "$SNAPSHOTS_DIR" 2>/dev/null || exit 0
     [ ! -f "$STATE_PATH" ] && exit 0
 
@@ -75,10 +76,31 @@ case "$ACTION" in
   restore)
     [ ! -d "$SNAPSHOTS_DIR" ] && exit 0
 
-    # Find latest snapshot for this phase
+    # Optional role filter: restore latest snapshot from this role when available.
+    PREFERRED_ROLE="${3:-}"
+    LATEST_NAME=""
+
     # zsh compat: use ls dir | grep to avoid bare glob expansion errors
     # shellcheck disable=SC2010
-    LATEST_NAME=$(ls -1t "${SNAPSHOTS_DIR}/" 2>/dev/null | grep "^${PHASE}-.*\.json$" | head -1)
+    SNAPSHOT_NAMES=$(ls -1t "${SNAPSHOTS_DIR}/" 2>/dev/null | grep "^${PHASE}-.*\.json$")
+
+    if [ -n "$PREFERRED_ROLE" ] && [ "$PREFERRED_ROLE" != "unknown" ] && command -v jq &>/dev/null; then
+      while IFS= read -r candidate; do
+        [ -z "$candidate" ] && continue
+        candidate_path="${SNAPSHOTS_DIR}/${candidate}"
+        [ ! -f "$candidate_path" ] && continue
+        role=$(jq -r '.agent_role // ""' "$candidate_path" 2>/dev/null || echo "")
+        if [ "$role" = "$PREFERRED_ROLE" ]; then
+          LATEST_NAME="$candidate"
+          break
+        fi
+      done <<< "$SNAPSHOT_NAMES"
+    fi
+
+    if [ -z "$LATEST_NAME" ]; then
+      LATEST_NAME=$(echo "$SNAPSHOT_NAMES" | head -1)
+    fi
+
     if [ -n "$LATEST_NAME" ] && [ -f "${SNAPSHOTS_DIR}/${LATEST_NAME}" ]; then
       echo "${SNAPSHOTS_DIR}/${LATEST_NAME}"
     fi

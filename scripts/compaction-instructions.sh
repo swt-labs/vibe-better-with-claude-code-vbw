@@ -48,7 +48,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f ".vbw-planning/.execution-state.json" ] && [ -f "$SCRIPT_DIR/snapshot-resume.sh" ]; then
   SNAP_PHASE=$(jq -r '.phase // ""' ".vbw-planning/.execution-state.json" 2>/dev/null)
   if [ -n "$SNAP_PHASE" ]; then
-    bash "$SCRIPT_DIR/snapshot-resume.sh" save "$SNAP_PHASE" 2>/dev/null || true
+    bash "$SCRIPT_DIR/snapshot-resume.sh" save "$SNAP_PHASE" ".vbw-planning/.execution-state.json" "$AGENT_NAME" "$MATCHER" 2>/dev/null || true
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%d %H:%M:%S")
     echo "[$TIMESTAMP] Snapshot saved: phase=$SNAP_PHASE agent=$AGENT_NAME" >> ".vbw-planning/.hook-errors.log" 2>/dev/null || true
   fi

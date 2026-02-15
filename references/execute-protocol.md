@@ -28,7 +28,7 @@ Set completed plans (with SUMMARY.md) to `"complete"`, others to `"pending"`.
 
 9. **V3 Snapshot Resume (REQ-18):** If `v3_snapshot_resume=true` in config:
    - On crash recovery (execution-state.json exists with `"status": "running"`): attempt restore:
-     `SNAPSHOT=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/snapshot-resume.sh restore {phase} 2>/dev/null || echo "")`
+     `SNAPSHOT=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/snapshot-resume.sh restore {phase} {preferred-role} 2>/dev/null || echo "")`
    - If snapshot found, log: `✓ Snapshot found: ${SNAPSHOT}` — use snapshot's `recent_commits` to cross-reference git log for more reliable resume-from detection.
 
 10. **V3 Schema Validation (REQ-17):** If `v3_schema_validation=true` in config:
@@ -248,8 +248,8 @@ Hooks handle continuous verification: PostToolUse validates SUMMARY.md, TaskComp
 
 **V3 Snapshot — per-plan checkpoint (REQ-18):** If `v3_snapshot_resume=true` in config:
 - After each plan completes (SUMMARY.md verified):
-  `bash ${CLAUDE_PLUGIN_ROOT}/scripts/snapshot-resume.sh save {phase} 2>/dev/null || true`
-- This captures execution state + recent git context for crash recovery.
+  `bash ${CLAUDE_PLUGIN_ROOT}/scripts/snapshot-resume.sh save {phase} .vbw-planning/.execution-state.json {agent-role} {trigger} 2>/dev/null || true`
+- This captures execution state + recent git context for crash recovery. The optional `{agent-role}` and `{trigger}` arguments add metadata to the snapshot for role-filtered restore.
 
 **V3 Metrics instrumentation (REQ-09):** If `v3_metrics=true` in config:
 - At phase start: `bash ${CLAUDE_PLUGIN_ROOT}/scripts/collect-metrics.sh execute_phase_start {phase} plan_count={N} effort={effort}`
