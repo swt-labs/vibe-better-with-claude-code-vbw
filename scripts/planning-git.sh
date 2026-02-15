@@ -47,7 +47,7 @@ ensure_transient_ignore() {
 .vbw-session
 .active-agent
 .active-agent-count
-.active-agent-count.lock
+.active-agent-count.lock/
 .agent-pids
 
 # Metrics & cost tracking
@@ -70,6 +70,14 @@ ensure_transient_ignore() {
 .compaction-marker
 .session-log.jsonl
 .session-log.jsonl.tmp
+.notification-log.jsonl
+.watchdog-pid
+.watchdog.log
+.claude-md-migrated
+.tmux-mode-patched
+
+# Baselines
+.baselines/
 
 # Codebase mapping
 codebase/
