@@ -37,10 +37,42 @@ ensure_transient_ignore() {
   cat > "$ignore_file" <<'EOF'
 # VBW transient runtime artifacts
 .execution-state.json
+.execution-state.json.tmp
 .context-*.md
 .contracts/
 .locks/
 .token-state/
+
+# Session & agent tracking
+.vbw-session
+.active-agent
+.active-agent-count
+.active-agent-count.lock
+.agent-pids
+
+# Metrics & cost tracking
+.metrics/
+.cost-ledger.json
+
+# Caching
+.cache/
+
+# Artifacts & events (v2/v3 feature-gated)
+.artifacts/
+.events/
+.event-log.jsonl
+
+# Snapshots & recovery
+.snapshots/
+
+# Logging & markers
+.hook-errors.log
+.compaction-marker
+.session-log.jsonl
+.session-log.jsonl.tmp
+
+# Codebase mapping
+codebase/
 EOF
 }
 
