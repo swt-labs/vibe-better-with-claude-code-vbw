@@ -70,45 +70,46 @@ EOF
   run bash "$SCRIPTS_DIR/planning-git.sh" sync-ignore .vbw-planning/config.json
   [ "$status" -eq 0 ]
 
-  # Session & agent tracking
-  run grep -q '^\.vbw-session$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-  run grep -q '^\.agent-pids$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-  run grep -q '^\.active-agent$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-  run grep -q '^\.active-agent-count$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-  run grep -q '^\.active-agent-count\.lock$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
+  expected_entries=(
+    '.execution-state.json'
+    '.execution-state.json.tmp'
+    '.context-*.md'
+    '.contracts/'
+    '.locks/'
+    '.token-state/'
+    '.vbw-session'
+    '.active-agent'
+    '.active-agent-count'
+    '.active-agent-count.lock/'
+    '.agent-pids'
+    '.metrics/'
+    '.cost-ledger.json'
+    '.cache/'
+    '.artifacts/'
+    '.events/'
+    '.event-log.jsonl'
+    '.snapshots/'
+    '.hook-errors.log'
+    '.compaction-marker'
+    '.session-log.jsonl'
+    '.session-log.jsonl.tmp'
+    '.notification-log.jsonl'
+    '.watchdog-pid'
+    '.watchdog.log'
+    '.claude-md-migrated'
+    '.tmux-mode-patched'
+    '.baselines/'
+    'codebase/'
+  )
 
-  # Metrics & cost
-  run grep -q '^\.metrics/$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-  run grep -q '^\.cost-ledger\.json$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
+  for entry in "${expected_entries[@]}"; do
+    run grep -Fqx "$entry" .vbw-planning/.gitignore
+    [ "$status" -eq 0 ]
+  done
 
-  # Cache, artifacts, events, snapshots
-  run grep -q '^\.cache/$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-  run grep -q '^\.artifacts/$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-  run grep -q '^\.events/$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-  run grep -q '^\.snapshots/$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-
-  # Logging & markers
-  run grep -q '^\.hook-errors\.log$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-  run grep -q '^\.compaction-marker$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-  run grep -q '^\.session-log\.jsonl$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
-
-  # Codebase mapping
-  run grep -q '^codebase/$' .vbw-planning/.gitignore
-  [ "$status" -eq 0 ]
+  actual_entries="$(grep -Ev '^(#|$)' .vbw-planning/.gitignore | sort)"
+  expected_entries_sorted="$(printf '%s\n' "${expected_entries[@]}" | sort)"
+  [ "$actual_entries" = "$expected_entries_sorted" ]
 }
 
 @test "commit-boundary excludes transient files from commit" {
@@ -129,21 +130,46 @@ EOF
   echo "12345" > .vbw-planning/.agent-pids
   echo "session-abc" > .vbw-planning/.vbw-session
   echo "lead" > .vbw-planning/.active-agent
+  echo "migrated" > .vbw-planning/.claude-md-migrated
+  echo "patched" > .vbw-planning/.tmux-mode-patched
+  echo "99999" > .vbw-planning/.watchdog-pid
+  echo "watchdog started" > .vbw-planning/.watchdog.log
+  echo '{"type":"info"}' > .vbw-planning/.notification-log.jsonl
+  echo '{"status":"running"}' > .vbw-planning/.execution-state.json.tmp
   mkdir -p .vbw-planning/.metrics
   echo '{}' > .vbw-planning/.metrics/run-metrics.jsonl
+  mkdir -p .vbw-planning/.baselines
+  echo '{"baseline":1}' > .vbw-planning/.baselines/token-baseline.json
+  mkdir -p .vbw-planning/.active-agent-count.lock
+  echo 'stale' > .vbw-planning/.active-agent-count.lock/stale.lock
 
   run bash "$SCRIPTS_DIR/planning-git.sh" commit-boundary "phase complete" .vbw-planning/config.json
   [ "$status" -eq 0 ]
 
   # STATE.md should be committed
-  run git show HEAD -- .vbw-planning/STATE.md
+  run git cat-file -e 'HEAD:.vbw-planning/STATE.md'
   [ "$status" -eq 0 ]
 
   # Transient files should NOT be committed
-  run git show HEAD -- .vbw-planning/.agent-pids
-  [ "$output" = "" ] || [[ "$output" != *"12345"* ]]
-  run git show HEAD -- .vbw-planning/.vbw-session
-  [ "$output" = "" ] || [[ "$output" != *"session-abc"* ]]
+  transient_paths=(
+    '.agent-pids'
+    '.vbw-session'
+    '.active-agent'
+    '.claude-md-migrated'
+    '.tmux-mode-patched'
+    '.watchdog-pid'
+    '.watchdog.log'
+    '.notification-log.jsonl'
+    '.execution-state.json.tmp'
+    '.metrics/run-metrics.jsonl'
+    '.baselines/token-baseline.json'
+    '.active-agent-count.lock/stale.lock'
+  )
+
+  for path in "${transient_paths[@]}"; do
+    run git cat-file -e "HEAD:.vbw-planning/$path"
+    [ "$status" -ne 0 ]
+  done
 }
 
 @test "commit-boundary creates planning artifacts commit in commit mode" {
