@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # suggest-next.sh — Context-aware Next Up suggestions (ADP-03)
 #
-# Usage: suggest-next.sh <command> [result]
+# Usage: suggest-next.sh <command> [result] [phase-number]
 #   command: the VBW command that just ran (implement, qa, plan, execute, fix, etc.)
 #   result:  optional outcome (pass, fail, partial, complete, skipped)
+#   phase-number: optional phase hint for phase-scoped suggestions (used by verify)
 #
 # Output: Formatted ➜ Next Up block with 2-3 contextual suggestions.
 # Called by commands during their output step.
@@ -21,6 +22,7 @@ set -eo pipefail
 
 CMD="${1:-}"
 RESULT="${2:-}"
+TARGET_PHASE_ARG="${3:-}"
 PLANNING_DIR=".vbw-planning"
 
 # --- State detection ---
@@ -43,6 +45,10 @@ failing_plan_ids=""
 map_staleness=-1
 cfg_autonomy="standard"
 has_uat=false
+uat_major_or_higher=false
+verify_target_phase=""
+verify_target_phase_dir=""
+verify_target_uat=""
 
 if [ -d "$PLANNING_DIR" ]; then
 
@@ -75,14 +81,17 @@ if [ -d "$PLANNING_DIR" ]; then
 
   # Scan phases
   if [ -d "$PHASES_DIR" ]; then
-    for dir in "$PHASES_DIR"/*/; do
+    # Sort phase dirs numerically (prevents 100 sorting before 11)
+    # Fallback: extract numeric prefix from basename for systems without sort -V
+    phase_dirs_sorted=$(ls -d "$PHASES_DIR"/*/ 2>/dev/null | (sort -V 2>/dev/null || awk -F/ '{n=$(NF-1); gsub(/[^0-9].*/,"",n); print (n+0)"\t"$0}' | sort -n | cut -f2-))
+    for dir in $phase_dirs_sorted; do
       [ -d "$dir" ] || continue
       phase_count=$((phase_count + 1))
       phase_num=$(basename "$dir" | sed 's/[^0-9].*//')
       phase_slug=$(basename "$dir" | sed 's/^[0-9]*-//')
 
-      plans=$(find "$dir" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
-      summaries=$(find "$dir" -maxdepth 1 -name '*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+      plans=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+      summaries=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
 
       if [ "$plans" -eq 0 ] && [ -z "$next_unplanned" ]; then
         next_unplanned="$phase_num"
@@ -179,6 +188,78 @@ fi
 
 # Use explicit result if provided, fall back to detected QA result
 effective_result="${RESULT:-$last_qa_result}"
+
+# Verify issues_found routing: inspect target UAT severities to choose fix vs re-plan guidance.
+# - major/critical (or unknown severity shape): route to discuss+plan
+# - minor-only: route to quick fix
+if [ "$CMD" = "verify" ] && [ "$effective_result" = "issues_found" ] && [ -d "${PHASES_DIR:-}" ]; then
+  verify_target_phase="$TARGET_PHASE_ARG"
+
+  # Normalize explicit arg: strip leading zeros for comparison (user may pass "3" for phase "03")
+  if [ -n "$verify_target_phase" ]; then
+    verify_target_phase=$(echo "$verify_target_phase" | sed 's/^0*//')
+    [ -z "$verify_target_phase" ] && verify_target_phase="0"
+  fi
+
+  if [ -n "$verify_target_phase" ]; then
+    # Explicit phase arg — find the matching directory
+    for dir in "$PHASES_DIR"/*/; do
+      [ -d "$dir" ] || continue
+      pn=$(basename "$dir" | sed 's/[^0-9].*//' | sed 's/^0*//')
+      [ -z "$pn" ] && pn="0"
+      if [ "$pn" = "$verify_target_phase" ]; then
+        verify_target_phase_dir="$dir"
+        break
+      fi
+    done
+  else
+    # No phase arg — find the first phase with UAT issues (numeric order, matching phase-detect.sh)
+    for dir in $(ls -d "$PHASES_DIR"/*/ 2>/dev/null | (sort -V 2>/dev/null || awk -F/ '{n=$(NF-1); gsub(/[^0-9].*/,"",n); print (n+0)"\t"$0}' | sort -n | cut -f2-)); do
+      [ -d "$dir" ] || continue
+      # Guard: skip phases without execution artifacts (matching phase-detect.sh)
+      _plans=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+      _summaries=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+      if [ "$_plans" -eq 0 ] || [ "$_summaries" -lt "$_plans" ]; then
+        continue
+      fi
+      _uat=$(ls -1 "$dir"[0-9]*-UAT.md 2>/dev/null | sort | tail -1 || true)
+      if [ -f "$_uat" ]; then
+        _us=$(grep -m1 '^status:' "$_uat" 2>/dev/null | sed 's/status:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
+        if [ "$_us" = "issues_found" ]; then
+          verify_target_phase_dir="$dir"
+          verify_target_phase=$(basename "$dir" | sed 's/[^0-9].*//' | sed 's/^0*//')
+          [ -z "$verify_target_phase" ] && verify_target_phase="0"
+          break
+        fi
+      fi
+    done
+    # No fallback — if no phase has issues_found, leave verify_target_phase empty
+    # so the output section can show generic guidance instead of false remediation.
+  fi
+
+  if [ -n "$verify_target_phase_dir" ]; then
+    verify_target_uat=$(ls -1 "$verify_target_phase_dir"/[0-9]*-UAT.md 2>/dev/null | sort | tail -1 || true)
+  fi
+
+  if [ -f "$verify_target_uat" ]; then
+    uat_critical=$(grep -Eci 'severity:\**[[:space:]]*\**[[:space:]]*critical' "$verify_target_uat" || true)
+    uat_major=$(grep -Eci 'severity:\**[[:space:]]*\**[[:space:]]*major' "$verify_target_uat" || true)
+    uat_minor=$(grep -Eci 'severity:\**[[:space:]]*\**[[:space:]]*minor' "$verify_target_uat" || true)
+    tagged_severities=$((uat_critical + uat_major + uat_minor))
+
+    # Brownfield-safe default: older UAT formats may omit severity lines.
+    if [ "$uat_critical" -gt 0 ] || [ "$uat_major" -gt 0 ] || [ "$tagged_severities" -eq 0 ]; then
+      uat_major_or_higher=true
+    fi
+  else
+    # If UAT file isn't locatable but a target was identified, choose safer escalation.
+    # If no target was identified at all (no-arg scan found nothing), leave uat_major_or_higher=false
+    # so the output shows generic fix guidance rather than false remediation.
+    if [ -n "$verify_target_phase_dir" ]; then
+      uat_major_or_higher=true
+    fi
+  fi
+fi
 
 # Format phase name for display (replace hyphens with spaces)
 fmt_phase_name() {
@@ -330,8 +411,17 @@ case "$CMD" in
         fi
         ;;
       issues_found)
-        suggest "/vbw:fix -- Fix the issues found during UAT"
-        suggest "/vbw:verify --resume -- Continue testing after fix"
+        if [ "$uat_major_or_higher" = true ]; then
+          if [ -n "$verify_target_phase" ]; then
+            suggest "/vbw:vibe -- Continue UAT remediation for Phase $verify_target_phase"
+          else
+            suggest "/vbw:vibe -- Continue UAT remediation from the latest report"
+          fi
+          suggest "/vbw:verify --resume -- Continue testing after changes"
+        else
+          suggest "/vbw:fix -- Fix the issues found during UAT"
+          suggest "/vbw:verify --resume -- Continue testing after fix"
+        fi
         ;;
       *)
         suggest "/vbw:vibe -- Continue building"

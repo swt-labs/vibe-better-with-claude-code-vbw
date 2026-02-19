@@ -27,6 +27,9 @@ else
   echo "next_phase_state=no_phases"
   echo "next_phase_plans=0"
   echo "next_phase_summaries=0"
+  echo "uat_issues_phase=none"
+  echo "uat_issues_slug=none"
+  echo "uat_issues_major_or_higher=false"
   echo "config_effort=balanced"
   echo "config_autonomy=standard"
   echo "config_auto_commit=true"
@@ -80,10 +83,14 @@ NEXT_PHASE_SLUG="none"
 NEXT_PHASE_STATE="no_phases"
 NEXT_PHASE_PLANS=0
 NEXT_PHASE_SUMMARIES=0
+UAT_ISSUES_PHASE="none"
+UAT_ISSUES_SLUG="none"
+UAT_ISSUES_MAJOR_OR_HIGHER=false
 
 if [ -d "$PHASES_DIR" ]; then
-  # Collect phase directories in sorted order
-  PHASE_DIRS=$(ls -d "$PHASES_DIR"/*/ 2>/dev/null | sort)
+  # Collect phase directories in numeric order (prevents 100 sorting before 11)
+  # Fallback: extract numeric prefix from basename for systems without sort -V
+  PHASE_DIRS=$(ls -d "$PHASES_DIR"/*/ 2>/dev/null | (sort -V 2>/dev/null || awk -F/ '{n=$(NF-1); gsub(/[^0-9].*/,"",n); print (n+0)"\t"$0}' | sort -n | cut -f2-))
 
   for DIR in $PHASE_DIRS; do
     PHASE_COUNT=$((PHASE_COUNT + 1))
@@ -92,44 +99,88 @@ if [ -d "$PHASES_DIR" ]; then
   if [ "$PHASE_COUNT" -eq 0 ]; then
     NEXT_PHASE_STATE="no_phases"
   else
-    ALL_DONE=true
+    # Priority override: unresolved UAT issues should route first for no-arg /vbw:vibe.
+    # Guard: only consider phases that have at least one PLAN and one SUMMARY (i.e., executed).
     for DIR in $PHASE_DIRS; do
       DIRNAME=$(basename "$DIR")
-      # Extract numeric prefix (e.g., "01" from "01-context-diet")
       NUM=$(echo "$DIRNAME" | sed 's/^\([0-9]*\).*/\1/')
 
-      # Count PLAN and SUMMARY files
-      P_COUNT=$(ls "$DIR"*-PLAN.md 2>/dev/null | wc -l | tr -d ' ')
-      S_COUNT=$(ls "$DIR"*-SUMMARY.md 2>/dev/null | wc -l | tr -d ' ')
-
-      if [ "$P_COUNT" -eq 0 ]; then
-        # Needs plan and execute
-        if [ "$NEXT_PHASE" = "none" ]; then
-          NEXT_PHASE="$NUM"
-          NEXT_PHASE_SLUG="$DIRNAME"
-          NEXT_PHASE_STATE="needs_plan_and_execute"
-          NEXT_PHASE_PLANS="$P_COUNT"
-          NEXT_PHASE_SUMMARIES="$S_COUNT"
-        fi
-        ALL_DONE=false
-        break
-      elif [ "$S_COUNT" -lt "$P_COUNT" ]; then
-        # Has plans but not all have summaries — needs execute
-        if [ "$NEXT_PHASE" = "none" ]; then
-          NEXT_PHASE="$NUM"
-          NEXT_PHASE_SLUG="$DIRNAME"
-          NEXT_PHASE_STATE="needs_execute"
-          NEXT_PHASE_PLANS="$P_COUNT"
-          NEXT_PHASE_SUMMARIES="$S_COUNT"
-        fi
-        ALL_DONE=false
-        break
+      # Skip phases without execution artifacts — a UAT file in a never-executed phase is orphaned/stale.
+      # Also skip mid-execution phases (SUMMARY < PLAN) — UAT from a prior run is stale until re-execution completes.
+      DIR_PLANS=$(ls "$DIR"[0-9]*-PLAN.md 2>/dev/null | wc -l | tr -d ' ')
+      DIR_SUMMARIES=$(ls "$DIR"[0-9]*-SUMMARY.md 2>/dev/null | wc -l | tr -d ' ')
+      if [ "$DIR_PLANS" -eq 0 ] || [ "$DIR_SUMMARIES" -lt "$DIR_PLANS" ]; then
+        continue
       fi
-      # This phase is complete, continue scanning
+
+      UAT_FILE=$(ls "$DIR"[0-9]*-UAT.md 2>/dev/null | sort | tail -1 || true)
+      if [ -f "$UAT_FILE" ]; then
+        UAT_STATUS=$(grep -m1 '^status:' "$UAT_FILE" 2>/dev/null | sed 's/status:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
+        if [ "$UAT_STATUS" = "issues_found" ]; then
+          UAT_ISSUES_PHASE="$NUM"
+          UAT_ISSUES_SLUG="$DIRNAME"
+
+          UAT_CRITICAL=$(grep -Eci 'severity:\**[[:space:]]*\**[[:space:]]*critical' "$UAT_FILE" || true)
+          UAT_MAJOR=$(grep -Eci 'severity:\**[[:space:]]*\**[[:space:]]*major' "$UAT_FILE" || true)
+          UAT_MINOR=$(grep -Eci 'severity:\**[[:space:]]*\**[[:space:]]*minor' "$UAT_FILE" || true)
+          UAT_TAGGED=$((UAT_CRITICAL + UAT_MAJOR + UAT_MINOR))
+
+          # Brownfield-safe: if severity is absent, treat as major+ to avoid accidental quick-fix routing.
+          if [ "$UAT_CRITICAL" -gt 0 ] || [ "$UAT_MAJOR" -gt 0 ] || [ "$UAT_TAGGED" -eq 0 ]; then
+            UAT_ISSUES_MAJOR_OR_HIGHER=true
+          fi
+          break
+        fi
+      fi
     done
 
-    if [ "$ALL_DONE" = true ] && [ "$NEXT_PHASE" = "none" ]; then
-      NEXT_PHASE_STATE="all_done"
+    if [ "$UAT_ISSUES_PHASE" != "none" ]; then
+      TARGET_DIR="$PHASES_DIR/$UAT_ISSUES_SLUG/"
+      NEXT_PHASE="$UAT_ISSUES_PHASE"
+      NEXT_PHASE_SLUG="$UAT_ISSUES_SLUG"
+      NEXT_PHASE_STATE="needs_uat_remediation"
+      NEXT_PHASE_PLANS=$(ls "$TARGET_DIR"[0-9]*-PLAN.md 2>/dev/null | wc -l | tr -d ' ')
+      NEXT_PHASE_SUMMARIES=$(ls "$TARGET_DIR"[0-9]*-SUMMARY.md 2>/dev/null | wc -l | tr -d ' ')
+    else
+      ALL_DONE=true
+      for DIR in $PHASE_DIRS; do
+        DIRNAME=$(basename "$DIR")
+        # Extract numeric prefix (e.g., "01" from "01-context-diet")
+        NUM=$(echo "$DIRNAME" | sed 's/^\([0-9]*\).*/\1/')
+
+        # Count PLAN and SUMMARY files
+        P_COUNT=$(ls "$DIR"[0-9]*-PLAN.md 2>/dev/null | wc -l | tr -d ' ')
+        S_COUNT=$(ls "$DIR"[0-9]*-SUMMARY.md 2>/dev/null | wc -l | tr -d ' ')
+
+        if [ "$P_COUNT" -eq 0 ]; then
+          # Needs plan and execute
+          if [ "$NEXT_PHASE" = "none" ]; then
+            NEXT_PHASE="$NUM"
+            NEXT_PHASE_SLUG="$DIRNAME"
+            NEXT_PHASE_STATE="needs_plan_and_execute"
+            NEXT_PHASE_PLANS="$P_COUNT"
+            NEXT_PHASE_SUMMARIES="$S_COUNT"
+          fi
+          ALL_DONE=false
+          break
+        elif [ "$S_COUNT" -lt "$P_COUNT" ]; then
+          # Has plans but not all have summaries — needs execute
+          if [ "$NEXT_PHASE" = "none" ]; then
+            NEXT_PHASE="$NUM"
+            NEXT_PHASE_SLUG="$DIRNAME"
+            NEXT_PHASE_STATE="needs_execute"
+            NEXT_PHASE_PLANS="$P_COUNT"
+            NEXT_PHASE_SUMMARIES="$S_COUNT"
+          fi
+          ALL_DONE=false
+          break
+        fi
+        # This phase is complete, continue scanning
+      done
+
+      if [ "$ALL_DONE" = true ] && [ "$NEXT_PHASE" = "none" ]; then
+        NEXT_PHASE_STATE="all_done"
+      fi
     fi
   fi
 fi
@@ -140,6 +191,9 @@ echo "next_phase_slug=$NEXT_PHASE_SLUG"
 echo "next_phase_state=$NEXT_PHASE_STATE"
 echo "next_phase_plans=$NEXT_PHASE_PLANS"
 echo "next_phase_summaries=$NEXT_PHASE_SUMMARIES"
+echo "uat_issues_phase=$UAT_ISSUES_PHASE"
+echo "uat_issues_slug=$UAT_ISSUES_SLUG"
+echo "uat_issues_major_or_higher=$UAT_ISSUES_MAJOR_OR_HIGHER"
 
 # --- Config values ---
 CONFIG_FILE="$PLANNING_DIR/config.json"

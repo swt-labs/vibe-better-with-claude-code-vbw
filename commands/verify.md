@@ -107,7 +107,7 @@ Record: description, inferred severity.
 
 Display:
 ```
-Issue recorded (severity: {level}). Suggest /vbw:fix after UAT.
+Issue recorded (severity: {level}). Final next-step routing shown at UAT summary.
 ```
 
 ### 7. After each response: persist immediately
@@ -144,6 +144,10 @@ Issue recorded (severity: {level}). Suggest /vbw:fix after UAT.
 ```
 This is **display-only**. Do NOT edit STATE.md, do NOT add todos, do NOT invoke /vbw:todo, and do NOT enter an interactive loop. The user decides whether to track these. If no discovered issues: omit the section entirely. After displaying discovered issues, STOP. Do not take further action.
 
-- If issues found: `Suggest /vbw:fix to address recorded issues.`
+- If issues found:
+  - Any issue severity is `critical` or `major`:
+    - `Suggest /vbw:vibe to continue UAT remediation directly from {phase}-UAT.md`
+  - All issues are `minor`:
+    - `Suggest /vbw:fix to address recorded issues.`
 
-Run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/suggest-next.sh verify {result}` and display.
+Run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/suggest-next.sh verify {result} {phase}` and display.

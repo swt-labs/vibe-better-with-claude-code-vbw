@@ -2,6 +2,25 @@
 
 All notable changes to VBW will be documented in this file.
 
+## [1.21.31] - 2026-02-19
+
+### Added
+
+- **`skills`** -- Installation scope selection step (project vs global) when installing skills. (PR #91 by @Aperrix)
+- **`discovered-issues`** -- Pre-existing test failures surfaced as "Discovered Issues" across `/vbw:fix`, `/vbw:debug`, `/vbw:qa`, and `/vbw:verify` instead of being silently dropped. New DEVN-05 deviation code for dev agent. (PR #99 by @dpearson2699)
+- **`debugger-report`** -- New `debugger_report` schema type replacing incorrectly-shaped `blocker_report` usage by the Debugger agent. Role Authorization Matrix updated. (PR #99 by @dpearson2699)
+- **`state-persistence`** -- Root STATE.md content (todos, key decisions, project-level notes) now persists across milestone shipping. New `migrate-orphaned-state.sh` and `persist-state-after-ship.sh` scripts. (PR #103 by @dpearson2699)
+
+### Changed
+
+- **`bootstrap`** -- Codebase mapping bootstrap across all agents now uses META.md gating and "whichever exist" qualification to avoid wasted tool calls. Compaction re-reads codebase files. (PR #99 by @dpearson2699)
+- **`bootstrap`** -- Key Decisions section removed from CLAUDE.md template. Existing decision rows migrated to STATE.md. Deprecated section handling added. (PR #93 by @dpearson2699)
+
+### Fixed
+
+- **`help`** -- CLAUDE_CONFIG_DIR fallback added to backtick expansion in help.md for non-standard config paths. (PR #101 by @halindrome)
+- **`hooks`** -- Circuit breaker added to `task-verify.sh` preventing infinite loop when failed verification re-triggers itself. Expanded stop words in session-stop.sh. (PR #95 by @dpearson2699)
+
 ## [1.21.30] - 2026-02-17
 
 ### Added

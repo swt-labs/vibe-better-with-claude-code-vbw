@@ -87,4 +87,61 @@ if [ "$FAIL" -gt 0 ]; then
 fi
 
 echo "All plugin root resolution checks passed."
+echo ""
+
+# --- Phase 2: Verify !` backtick expansions have CLAUDE_CONFIG_DIR fallback ---
+echo "=== Backtick Expansion Fallback Verification ==="
+echo "(Ensures !-backtick CLAUDE_PLUGIN_ROOT refs include :-fallback for non-standard CLAUDE_CONFIG_DIR)"
+
+PASS2=0
+FAIL2=0
+
+for file in "$COMMANDS_DIR"/*.md; do
+  base="$(basename "$file" .md)"
+
+  # Extract lines that are !` backtick expansions referencing CLAUDE_PLUGIN_ROOT
+  # These execute at load time in the shell — env var must be set OR have fallback
+  backtick_lines=$(grep -n 'CLAUDE_PLUGIN_ROOT' "$file" \
+    | grep '!`[^`]*CLAUDE_PLUGIN_ROOT' || true)
+
+  [ -z "$backtick_lines" ] && continue
+
+  # For each matching line, check it uses the :- fallback pattern
+  has_bare=0
+  while IFS= read -r match; do
+    # Skip if empty
+    [ -z "$match" ] && continue
+    # Check for :- fallback (CLAUDE_PLUGIN_ROOT:-$(...))
+    if echo "$match" | grep -q 'CLAUDE_PLUGIN_ROOT:-'; then
+      : # has fallback, safe
+    else
+      has_bare=1
+      lineno="${match%%:*}"
+      echo "  BARE  $base:$lineno — missing :-fallback in !-backtick expansion"
+    fi
+  done <<< "$backtick_lines"
+
+  if [ "$has_bare" -eq 0 ]; then
+    echo "PASS  $base: all !-backtick CLAUDE_PLUGIN_ROOT refs have :-fallback"
+    PASS2=$((PASS2 + 1))
+  else
+    fail "$base: has !-backtick CLAUDE_PLUGIN_ROOT without :-fallback (breaks non-standard CLAUDE_CONFIG_DIR)"
+    FAIL2=$((FAIL2 + 1))
+  fi
+done
+
+if [ "$PASS2" -eq 0 ] && [ "$FAIL2" -eq 0 ]; then
+  echo "(no !-backtick CLAUDE_PLUGIN_ROOT expansions found — nothing to check)"
+fi
+
+echo ""
+echo "==============================="
+echo "TOTAL: $PASS2 PASS, $FAIL2 FAIL"
+echo "==============================="
+
+if [ "$FAIL2" -gt 0 ]; then
+  exit 1
+fi
+
+echo "All backtick fallback checks passed."
 exit 0

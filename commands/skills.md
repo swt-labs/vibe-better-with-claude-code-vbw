@@ -53,9 +53,17 @@ Run `npx skills find "<query>"`. Display results with `(registry)` tag. If npx u
 
 Combine curated + registry, deduplicate, rank (curated first). AskUserQuestion multiSelect, max 4 options + "Skip". If >4: show top 4, suggest --search for more.
 
+### Step 5b: Choose installation scope
+
+AskUserQuestion (single select) — "Where should these skills be installed?":
+- **Project (Recommended)** — "Installed to `./.claude/skills/`, scoped to this project only."
+- **Global** — "Installed to `~/.agents/skills/`, available in all projects."
+
+Store the choice as SCOPE. If "Skip" was selected in Step 5: skip this step.
+
 ### Step 6: Install selected
 
-`npx skills add <skill> -g -y` per selection. Display ✓ or ✗ per skill. "➜ Skills take effect immediately — no restart needed."
+`npx skills add <skill> -y` (project scope) or `npx skills add <skill> -g -y` (global scope) per selection, based on SCOPE from Step 5b. Display ✓ or ✗ per skill. "➜ Skills take effect immediately — no restart needed."
 
 ## Output Format
 
