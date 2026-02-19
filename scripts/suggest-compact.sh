@@ -34,11 +34,12 @@ if [ -z "$PLUGIN_ROOT" ] || [ ! -d "$PLUGIN_ROOT" ]; then
   PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fi
 
-# Read autonomy and effort from config
+# Read autonomy and effort from config (no eval — safe against injection)
 AUTONOMY="standard"
 EFFORT="balanced"
 if [ -f "$PLANNING_DIR/config.json" ] && command -v jq &>/dev/null; then
-  eval "$(jq -r '"AUTONOMY=\(.autonomy // "standard")", "EFFORT=\(.effort // "balanced")"' "$PLANNING_DIR/config.json" 2>/dev/null)" || true
+  AUTONOMY=$(jq -r '.autonomy // "standard"' "$PLANNING_DIR/config.json" 2>/dev/null) || AUTONOMY="standard"
+  EFFORT=$(jq -r '.effort // "balanced"' "$PLANNING_DIR/config.json" 2>/dev/null) || EFFORT="balanced"
 fi
 
 # --- Dynamic token cost calculation ---
