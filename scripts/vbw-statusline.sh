@@ -127,6 +127,11 @@ NOW=$(date +%s)
 CTX_USED=$((IN_TOK + CACHE_W + CACHE_R))
 CTX_USED_FMT=$(fmt_tok "$CTX_USED")
 CTX_SIZE_FMT=$(fmt_tok "$CTX_SIZE")
+
+# Cache context usage for pre-flight guard (suggest-compact.sh)
+if [ -d ".vbw-planning" ]; then
+  printf '%s\n' "${PCT}|${CTX_SIZE}" > .vbw-planning/.context-usage 2>/dev/null || true
+fi
 IN_TOK_FMT=$(fmt_tok "$IN_TOK")
 OUT_TOK_FMT=$(fmt_tok "$OUT_TOK")
 CACHE_W_FMT=$(fmt_tok "$CACHE_W")

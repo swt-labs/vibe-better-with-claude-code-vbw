@@ -29,6 +29,8 @@ Phase state:
 !`bash ${CLAUDE_PLUGIN_ROOT:-$(ls -1d "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/* 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)}/scripts/phase-detect.sh 2>/dev/null || echo "phase_detect_error=true"`
 ```
 
+!`bash ${CLAUDE_PLUGIN_ROOT:-$(ls -1d "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/* 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)}/scripts/suggest-compact.sh qa 2>/dev/null`
+
 ## Guard
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
 - **Auto-detect phase** (no explicit number): Phase detection is pre-computed in Context above. Use `next_phase` and `next_phase_slug` for the target phase. To find the first phase needing QA: scan phase dirs for first with `*-SUMMARY.md` but no `*-VERIFICATION.md` (phase-detect.sh provides the base phase state; QA-specific detection requires this additional check). Found: announce "Auto-detected Phase {N} ({slug})". All verified: STOP "All phases verified. Specify: `/vbw:qa N`"
