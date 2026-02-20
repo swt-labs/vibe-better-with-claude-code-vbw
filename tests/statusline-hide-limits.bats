@@ -128,10 +128,11 @@ JSON
   [ -n "$l3" ]
 }
 
-# --- statusline_collapse_agent_in_tmux: true inside tmux with running exec collapses to 1 line ---
+# --- statusline_collapse_agent_in_tmux: collapses in worktrees, not in main repo ---
 
-@test "statusline_collapse_agent_in_tmux true in tmux with running exec: single line with Model/Context/Tokens" {
-  local repo="$TEST_TEMP_DIR/repo-collapse-agent-tmux"
+@test "statusline_collapse_agent_in_tmux: collapses to single line in git worktree" {
+  local repo="$TEST_TEMP_DIR/repo-collapse-main"
+  local worktree="$TEST_TEMP_DIR/repo-collapse-wt"
   mkdir -p "$repo/.vbw-planning"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
@@ -141,18 +142,9 @@ JSON
   "statusline_collapse_agent_in_tmux": true
 }
 JSON
-  cat > "$repo/.vbw-planning/.execution-state.json" <<'JSON'
-{
-  "status": "running",
-  "wave": 1,
-  "total_waves": 1,
-  "plans": [
-    {"title": "test-plan", "status": "running"}
-  ]
-}
-JSON
+  git -C "$repo" worktree add "$worktree" -b "test-collapse-wt" -q
 
-  cd "$repo"
+  cd "$worktree"
   export TMUX="mock"
   local output
   output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
@@ -162,16 +154,16 @@ JSON
   local l1 l2
   l1=$(echo "$output" | sed -n '1p')
   l2=$(echo "$output" | sed -n '2p')
-  # Single collapsed line: must contain all three fields
+  # Single collapsed line with all three fields
   echo "$l1" | grep -q "Model:"
   echo "$l1" | grep -q "Context:"
   echo "$l1" | grep -q "Tokens:"
-  # L2 must be empty (no second line)
+  # L2 must be empty (only one line rendered)
   [ -z "$l2" ]
 }
 
-@test "statusline_collapse_agent_in_tmux true but no running exec: full output" {
-  local repo="$TEST_TEMP_DIR/repo-collapse-no-exec"
+@test "statusline_collapse_agent_in_tmux: no collapse in main repo (orchestrator pane)" {
+  local repo="$TEST_TEMP_DIR/repo-collapse-orchestrator"
   mkdir -p "$repo/.vbw-planning"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
@@ -191,7 +183,7 @@ JSON
 
   local l2
   l2=$(echo "$output" | sed -n '2p')
-  # L2 present means full 4-line output was rendered
+  # Full 4-line output: L2 must be present
   [ -n "$l2" ]
 }
 

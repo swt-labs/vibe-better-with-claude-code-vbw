@@ -210,8 +210,6 @@ if [ -O "$FAST_CF" ]; then
                   AGENT_N HIDE_AGENT_TMUX COLLAPSE_AGENT_TMUX < "$FAST_CF"
 fi
 
-_ORIG_EXEC_STATUS="$EXEC_STATUS"
-
 AGENT_LINE=""
 
 # --- Slow cache (60s TTL): usage limits + update check ---
@@ -500,9 +498,22 @@ else
 fi
 
 # --- Agent pane collapse: single line with Model/Context/Tokens ---
-if [ "$COLLAPSE_AGENT_TMUX" = "true" ] && [ -n "${TMUX:-}" ] && [ "$_ORIG_EXEC_STATUS" = "running" ]; then
-  printf '%b\n' "Model: ${D}${MODEL}${X} ${D}│${X} Context: ${BC}${PCT}%${X} ${CTX_USED_FMT}/${CTX_SIZE_FMT} ${D}│${X} Tokens: ${IN_TOK_FMT}"
-  exit 0
+# Agent panes run in git worktrees; orchestrator runs in the main repo.
+# Detect via: git-dir != git-common-dir (true only in worktrees).
+# .vbw-planning/ is absent in worktrees, so re-read the flag from the main
+# repo root (dirname of --git-common-dir) rather than relying on the fast cache.
+if [ -n "${TMUX:-}" ]; then
+  _GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+  _GIT_COMMON=$(git rev-parse --git-common-dir 2>/dev/null)
+  if [ -n "$_GIT_DIR" ] && [ -n "$_GIT_COMMON" ] && [ "$_GIT_DIR" != "$_GIT_COMMON" ]; then
+    _MAIN_ROOT=$(dirname "$_GIT_COMMON")
+    _COLLAPSE_WT=$(jq -r '.statusline_collapse_agent_in_tmux // false' \
+      "$_MAIN_ROOT/.vbw-planning/config.json" 2>/dev/null)
+    if [ "$_COLLAPSE_WT" = "true" ]; then
+      printf '%b\n' "Model: ${D}${MODEL}${X} ${D}│${X} Context: ${BC}${PCT}%${X} ${CTX_USED_FMT}/${CTX_SIZE_FMT} ${D}│${X} Tokens: ${IN_TOK_FMT}"
+      exit 0
+    fi
+  fi
 fi
 
 printf '%b\n' "$L1"
