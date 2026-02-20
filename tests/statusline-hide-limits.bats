@@ -128,6 +128,73 @@ JSON
   [ -n "$l3" ]
 }
 
+# --- statusline_collapse_agent_in_tmux: true inside tmux with running exec collapses to 1 line ---
+
+@test "statusline_collapse_agent_in_tmux true in tmux with running exec: single line with Model/Context/Tokens" {
+  local repo="$TEST_TEMP_DIR/repo-collapse-agent-tmux"
+  mkdir -p "$repo/.vbw-planning"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{
+  "effort": "balanced",
+  "statusline_collapse_agent_in_tmux": true
+}
+JSON
+  cat > "$repo/.vbw-planning/.execution-state.json" <<'JSON'
+{
+  "status": "running",
+  "wave": 1,
+  "total_waves": 1,
+  "plans": [
+    {"title": "test-plan", "status": "running"}
+  ]
+}
+JSON
+
+  cd "$repo"
+  export TMUX="mock"
+  local output
+  output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  unset TMUX
+  cd "$PROJECT_ROOT"
+
+  local l1 l2
+  l1=$(echo "$output" | sed -n '1p')
+  l2=$(echo "$output" | sed -n '2p')
+  # Single collapsed line: must contain all three fields
+  echo "$l1" | grep -q "Model:"
+  echo "$l1" | grep -q "Context:"
+  echo "$l1" | grep -q "Tokens:"
+  # L2 must be empty (no second line)
+  [ -z "$l2" ]
+}
+
+@test "statusline_collapse_agent_in_tmux true but no running exec: full output" {
+  local repo="$TEST_TEMP_DIR/repo-collapse-no-exec"
+  mkdir -p "$repo/.vbw-planning"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{
+  "effort": "balanced",
+  "statusline_collapse_agent_in_tmux": true
+}
+JSON
+
+  cd "$repo"
+  export TMUX="mock"
+  local output
+  output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  unset TMUX
+  cd "$PROJECT_ROOT"
+
+  local l2
+  l2=$(echo "$output" | sed -n '2p')
+  # L2 present means full 4-line output was rendered
+  [ -n "$l2" ]
+}
+
 # --- statusline_hide_agent_in_tmux: true inside tmux suppresses Build: in L1 ---
 
 @test "statusline_hide_agent_in_tmux true in tmux: L1 does not contain Build:" {
