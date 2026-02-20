@@ -6,6 +6,11 @@ on:
   push:
     branches: [main]
 
+# Paths that contain plugin logic — QA review is only required for PRs touching these.
+# Docs-only or config-only changes skip the QA round commit requirement automatically.
+env:
+  QA_PATHS: agents/ commands/ config/ hooks/ references/ scripts/ templates/ testing/ tests/
+
 jobs:
   lint:
     name: Lint
@@ -51,3 +56,52 @@ jobs:
 
       - name: Verify command contracts
         run: bash testing/verify-commands-contract.sh
+
+  qa-review-check:
+    name: QA Review Evidence
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if QA-relevant files changed
+        id: check-paths
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get files changed in this PR
+          changed=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename')
+
+          # Check if any changed file is under a QA-relevant path
+          qa_relevant=false
+          for path in $QA_PATHS; do
+            if echo "$changed" | grep -q "^${path}"; then
+              qa_relevant=true
+              break
+            fi
+          done
+
+          echo "qa_relevant=$qa_relevant" >> "$GITHUB_OUTPUT"
+          if [ "$qa_relevant" = "false" ]; then
+            echo "No QA-relevant paths changed — skipping QA round check"
+          fi
+
+      - name: Check for QA round commits
+        if: steps.check-paths.outputs.qa_relevant == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get first line of each commit message (avoids double-counting from multi-line bodies)
+          commits=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits" --paginate --jq '.[].commit.message | split("\n")[0]')
+
+          # Count commits matching: fix(something): address QA round N
+          qa_count=$(echo "$commits" | grep -ciE '^fix\(.*\): address QA round [0-9]+' || true)
+
+          echo "Found $qa_count QA round commit(s)"
+
+          if [ "$qa_count" -lt 2 ]; then
+            echo "::error::PR requires at least 2 QA round commits (fix(scope): address QA round N). Found $qa_count. See CONTRIBUTING.md for the QA review process."
+            exit 1
+          fi
+
+          echo "QA review evidence verified ($qa_count rounds)"
