@@ -62,7 +62,11 @@ create_test_config() {
   "monorepo_routing": true,
   "rolling_summary": false,
   "require_phase_discussion": false,
-  "auto_uat": false
+  "auto_uat": false,
+  "statusline_hide_limits": false,
+  "statusline_hide_limits_for_api_key": false,
+  "statusline_hide_agent_in_tmux": false,
+  "statusline_collapse_agent_in_tmux": false
 }
 CONF
 }
