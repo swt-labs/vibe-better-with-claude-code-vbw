@@ -22,7 +22,10 @@ Summary of the approach. Mention affected commands, agents, hooks, or scripts.
 
 Paste each QA round's report as a separate comment on this PR. Each round should have a corresponding fix commit (e.g., `fix(scope): address QA round 1`). Reviewers will verify the commit history matches the reported rounds.
 
+QA must be run on a top-tier model: **Claude Opus 4.6**, **GPT-5.3 Codex high/xhigh**, or **Gemini 3.1 Pro**.
+
 - **Rounds completed:** (number)
+- **Model used:** (e.g., Claude Opus 4.6)
 - **Fix commits:** (list commit SHAs or titles)
 
 ## Notes

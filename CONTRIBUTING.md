@@ -103,7 +103,7 @@ Less good candidates:
 5. Test your changes against at least one real project (not the VBW repo itself).
 6. **Run QA review before marking ready.** Repeat this cycle at least 2–4 times:
 
-   **Step A — Run the QA prompt.** Open a **new** Claude Code (or other AI) session and paste the prompt below (fill in the placeholders):
+   **Step A — Run the QA prompt.** Open a **new** Claude Code (or other AI) session using a top-tier model — **Claude Opus 4.6**, **GPT-5.3 Codex high/xhigh**, or **Gemini 3.1 Pro**. Smaller models (Haiku, Sonnet, etc.) don't produce thorough enough reviews. Paste the prompt below (fill in the placeholders):
 
    ````text
    You are a read-only QA reviewer. Do NOT modify files, make commits, or push fixes — report only.
@@ -119,6 +119,7 @@ Less good candidates:
    Do NOT prescribe what to test upfront. Discover what matters by reading the code.
 
    Report format (use a markdown code block):
+   - Model used: (e.g., Claude Opus 4.6, GPT-5.3 Codex (high or xhigh), Gemini 3.1 Pro)
    - What was tested
    - Expected vs actual
    - Severity (critical / major / minor)
