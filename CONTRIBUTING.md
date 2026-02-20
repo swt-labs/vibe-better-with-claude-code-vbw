@@ -37,14 +37,14 @@ claude --plugin-dir .
 
 # From any other project (the typical case — testing VBW against a real codebase)
 cd ~/repos/my-other-project
-claude --plugin-dir <path-to-vbw-clone>
+claude --plugin-dir "<path-to-vbw-clone>"
 ```
 
 All `/vbw:*` commands will load from your local copy. Restart Claude Code to pick up changes after editing VBW files.
 
 > **Important:** `--plugin-dir` loads whatever is on disk in your VBW clone, which means whatever branch is currently checked out. Make sure you're on the branch with your changes before launching Claude Code — if you're on `main`, you'll be testing the unchanged version.
 
-> **Known limitation:** Plugin hooks resolve scripts from the marketplace cache (`~/.claude/plugins/cache/...`), not from `--plugin-dir`. In local dev mode the cache is empty, so **all hooks are no-ops** — security filters, QA gates, commit validation, session-start migration, etc. will not run. Commands and agents load correctly; only hooks are affected. Keep this in mind when testing hook-dependent features.
+> **Known limitation:** Plugin hooks (the 20 event handlers in `hooks.json`) resolve scripts from the marketplace cache (`~/.claude/plugins/cache/...`), not from `--plugin-dir`. In local dev mode the cache is empty, so **all plugin hooks are no-ops** — security filters, QA gates, commit validation, session-start migration, etc. will not run. Commands and agents load correctly; only plugin hooks are affected. Keep this in mind when testing hook-dependent features. (The git pre-push hook is a separate mechanism — see [Version Management](#version-management).)
 
 ## Project Structure
 
@@ -85,7 +85,7 @@ Less good candidates:
 ## Making Changes
 
 1. **Fork the repo** and create a feature branch from `main` (e.g., `fix/hook-path` or `feat/new-command`). **Never commit directly to `main`** — `main` has branch protection and direct pushes will be rejected.
-2. **Test locally** with `claude --plugin-dir <path-to-vbw-clone>` against a real project before submitting.
+2. **Test locally** with `claude --plugin-dir "<path-to-vbw-clone>"` against a real project before submitting.
    - Run automated checks: `bash testing/run-all.sh` (validates script conventions, command frontmatter, init workflow, and bootstrap)
 3. **Keep commits atomic** -- one logical change per commit.
 4. **Match the existing tone** in command descriptions and user-facing text. VBW is direct, dry, and self-aware. It doesn't use corporate language or unnecessary enthusiasm.
@@ -99,7 +99,7 @@ Less good candidates:
 1. Open an issue first for non-trivial changes so we can discuss the approach.
 2. Reference the issue in your PR.
 3. Describe what changed and why. Include before/after if relevant.
-4. Ensure `claude --plugin-dir <path-to-vbw-clone>` loads without errors.
+4. Ensure `claude --plugin-dir "<path-to-vbw-clone>"` loads without errors.
 5. Test your changes against at least one real project (not the VBW repo itself).
 6. **Run QA review before marking ready.** Repeat this cycle at least 2–4 times:
 
@@ -186,7 +186,7 @@ git push
 
 The hook only blocks pushes if the 4 version files have mismatched values. Use `git push --no-verify` to bypass in rare cases.
 
-The pre-push hook is auto-installed by `/vbw:init` and on session start when running VBW via `--plugin-dir`. No manual installation needed.
+The pre-push hook is auto-installed by `/vbw:init` when running the marketplace version. In local dev mode (via `--plugin-dir`), plugin hooks are no-ops so auto-install won't trigger — run `bash scripts/install-hooks.sh` manually to install the git pre-push hook.
 
 ## Reporting Bugs
 
