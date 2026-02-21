@@ -78,6 +78,7 @@ Think of it as project management for the post-dignity era of software developme
 - [Features](#features)
 - [Installation](#installation)
 - [How It Works](#how-it-works)
+- [Execution Model](#execution-model)
 - [Quick Tutorial](#quick-tutorial)
 - [Commands](#commands)
 - [The Agents](#the-agents)
@@ -118,7 +119,7 @@ Agent Teams are [experimental with known limitations](https://code.claude.com/do
 
 - **File conflicts.** Plans decompose work into tasks with explicit file ownership. Dev teammates operate on disjoint file sets by design, enforced at runtime by the `file-guard.sh` hook that blocks writes to files not declared in the active plan.
 
-- **Worktree isolation (on by default).** Each Dev agent gets its own git worktree — physical filesystem isolation, not just file-list enforcement. Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. Enabled by default; set `worktree_isolation` to `"off"` in config to disable.
+- **Worktree isolation.** Each Dev agent gets its own git worktree — physical filesystem isolation, not just file-list enforcement. Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. Off by default; set `worktree_isolation` to `"on"` in config to enable. See [Execution Model](#execution-model) for how this interacts with parallel plans and lease locks.
 
 Agent Teams ship with seven known limitations. VBW addresses all of them. The eighth... that you're using AI to write software doesn't need a fix. It needs an intervention.
 
@@ -132,7 +133,7 @@ VBW integrates with [Skills.sh](https://skills.sh), the open-source skill regist
 
 ### Real-time statusline that knows more about your project than you do
 
-<img src="assets/statusline.png" alt="VBW statusline example" width="100%" />
+![VBW statusline example](assets/statusline.png)
 
 Five or six lines of pure situational awareness, rendered after every response. Phase progress, plan completion, effort profile, QA status... everything a senior engineer would track on a whiteboard, except the whiteboard has been replaced by a terminal and the senior engineer has been replaced by you.
 
@@ -260,6 +261,135 @@ VBW operates on a simple loop that will feel familiar to anyone who's ever shipp
 
 ---
 
+## Execution Model
+
+Understanding how VBW executes work — phases, plans, tasks, agents, and the concurrency controls that keep them from stepping on each other.
+
+### Phases, Plans, and Tasks
+
+VBW breaks your project into a hierarchy:
+
+```text
+Milestone (your project goal)
+ └── Phase 1 (a logical chunk of work, e.g. "Authentication")
+     ├── Plan 01 (a group of related tasks, e.g. "User model & migration")
+     │   ├── Task 1: Create user model
+     │   ├── Task 2: Add validation
+     │   ├── Task 3: Write tests
+     │   └── Task 4: Update API routes
+     ├── Plan 02 (another group, e.g. "Login flow")
+     │   ├── Task 1: Build login endpoint
+     │   ├── Task 2: Add JWT handling
+     │   └── Task 3: Write integration tests
+     └── Plan 03 (e.g. "Password reset")
+         ├── Task 1: Reset token generation
+         └── Task 2: Email template
+ └── Phase 2 ...
+ └── Phase 3 ...
+```
+
+- **Phases** execute one at a time, sequentially. Phase 2 doesn't start until Phase 1 is done.
+- **Plans** within a phase can potentially run in parallel (see below).
+- **Tasks** within a plan always execute sequentially — one task, one commit, in order.
+
+### How Agents Execute Work
+
+When you run `/vbw:vibe` and it enters Execute mode, the **Lead** agent orchestrates everything. It never writes code itself — it spawns **Dev** teammates and assigns each one a plan.
+
+```text
+ Lead (orchestrator)
+  ├── spawns Dev-01 → assigned Plan 01 (tasks 1-4, sequential)
+  ├── spawns Dev-02 → assigned Plan 02 (tasks 1-3, sequential)
+  └── spawns Dev-03 → assigned Plan 03 (tasks 1-2, sequential)
+```
+
+Each Dev agent reads its assigned PLAN.md and works through the tasks in order: implement → verify → commit → next task. One atomic commit per task. When all tasks are done, the Dev writes a SUMMARY.md and reports completion.
+
+**Whether plans actually run in parallel depends on their dependencies.** Each plan can declare `depends_on` in its YAML frontmatter — if Plan 02 depends on Plan 01, Dev-02 waits until Dev-01 finishes. Plans with no dependencies start immediately. In practice, the Architect often chains plans sequentially (Plan 01 → 02 → 03), which means they execute one at a time even though the mechanism supports parallelism.
+
+After all Devs finish, the Lead runs QA (if not skipped), then shuts down the team.
+
+### Concurrency: When Do File Conflicts Happen?
+
+File conflicts can only happen when two Dev agents work simultaneously on overlapping files. This requires:
+
+1. Two or more plans in the same phase with **no** `depends_on` between them
+2. Those plans happen to modify the **same files**
+
+If your plans are chained via `depends_on` (the common case), there's no concurrency and no conflict risk. Concurrency controls only matter when the Architect designs independent plans that run in parallel.
+
+VBW provides two independent mechanisms to handle this, plus a structural prevention:
+
+### `prefer_teams` — Team Creation
+
+This setting controls when VBW creates an Agent Team (multiple color-coded Dev agents) vs using a single agent:
+
+| Value | Behavior |
+| :--- | :--- |
+| `always` | Creates a team for every phase, even with 1 plan. Maximum agent visibility. |
+| `auto` | Creates a team only when 2+ plans exist. Single plan = single agent, lower overhead. Default. Smart routing may further downgrade simple plans to turbo (no team). `when_parallel` is an alias for `auto`. |
+
+This setting determines whether parallel execution is even possible. With a single agent (1 plan, no team), there's no concurrency by definition.
+
+### `worktree_isolation` — Filesystem Isolation
+
+When enabled, each Dev agent gets its own **git worktree** — a physically separate copy of your repo on a dedicated branch. Agents literally work in different directories, so they can't overwrite each other's files.
+
+**How it works:**
+
+1. **Before execution:** For each plan, VBW creates a worktree at `.vbw-worktrees/{phase}-{plan}` on branch `vbw/{phase}-{plan}`:
+   ```text
+   .vbw-worktrees/
+     01-01/  →  branch vbw/01-01  (Dev-01 works here)
+     01-02/  →  branch vbw/01-02  (Dev-02 works here)
+     01-03/  →  branch vbw/01-03  (Dev-03 works here)
+   ```
+
+2. **During execution:** Each Dev agent is instructed to work exclusively in its assigned worktree directory. All file edits and commits happen on the worktree's branch, completely isolated.
+
+3. **After execution (merging):** Once all Devs finish and the team shuts down, the Lead merges each worktree branch back into the main branch using `git merge --no-ff`:
+   - **Clean merge:** The worktree is removed and the branch is deleted. Done.
+   - **Merge conflict:** The merge is aborted, the worktree is left in place, and VBW tells you to resolve it manually: `⚠ Worktree merge conflict for plan 02. Resolve conflicts in .vbw-worktrees/01-02/`.
+
+**When do merge conflicts occur?** Only when two parallel Dev agents edited the same file on different branches. The first merge succeeds; the second hits a conflict because the file was changed on both branches. The Architect is designed to minimize this by assigning disjoint file sets to each plan, but it's not guaranteed.
+
+| Setting | Default | Values |
+| :--- | :--- | :--- |
+| `worktree_isolation` | `off` | `on` / `off` |
+
+### `lease_locks` — File-Level Locking
+
+A lighter-weight alternative to worktrees. Instead of filesystem isolation, lease locks track which files each task has claimed. If two tasks try to claim the same file, the second one is blocked.
+
+**How it works:**
+
+1. **Before each task:** `control-plane.sh` calls `lease-lock.sh acquire` with the task's file list. A lock file is written to `.vbw-planning/.locks/{task-id}.lock` containing the claimed files and a TTL (default 300 seconds).
+
+2. **Conflict detection:** If another task already holds a lock on an overlapping file, the acquisition fails and the task is blocked. Expired locks (past TTL) are cleaned up automatically.
+
+3. **After each task:** The lock is released. The next task can claim those files.
+
+Lease locks operate within a single shared working directory — there are no separate branches or merge steps. They prevent concurrent file access but don't provide the branch-level isolation that worktrees offer.
+
+| Setting | Default | Values |
+| :--- | :--- | :--- |
+| `lease_locks` | `true` | `true` / `false` |
+
+### Which Should You Use?
+
+Worktree isolation and lease locks solve the same problem — preventing file conflicts during parallel plan execution — through different mechanisms. They're alternatives, not layers.
+
+| Scenario | Recommendation |
+| :--- | :--- |
+| Plans always chained via `depends_on` (sequential) | Neither needed — no concurrency, no conflicts. Lease locks are on by default but add negligible overhead. |
+| Parallel plans, want strongest isolation | `worktree_isolation: "on"` — separate directories and branches |
+| Parallel plans, want lightweight protection | `lease_locks: true` (default) — file-level claims, no branch overhead |
+| Both enabled | Works (no conflict), but redundant — worktrees already prevent the problem lease locks detect |
+
+Lease locks are enabled by default because they add negligible overhead (one small JSON file per task) while providing a safety net for the cases where plans run in parallel. Worktree isolation is off by default because it adds git worktree complexity — enable it if you're running `effort: "thorough"` with complex phases where the Architect creates genuinely independent plans.
+
+---
+
 ## Quick Tutorial
 
 You only need to remember two commands. Seriously. VBW auto-detects where your project is and does the right thing. No decision trees, no memorizing workflows. Just init, then vibe until it's done.
@@ -332,7 +462,7 @@ Closed your terminal? Switched branches? Came back after a weekend of pretending
 > `/clear` bypasses all of this. It destroys your entire context — every file read, every decision made, every task in progress — and drops you into a blank session with no memory of what just happened. Auto-compaction is surgical; `/clear` is a sledgehammer.
 >
 > **If you accidentally `/clear`**, run `/vbw:resume` immediately. It restores project context from ground truth files in `.vbw-planning/` — state, roadmap, plans, summaries — and tells you exactly where to pick up.
-
+>
 > **For advanced users:** The [full command reference](#commands) below has 24 commands for granular control — `/vbw:vibe` with flags for explicit mode selection (`--plan`, `--execute`, `--discuss`, `--assumptions`), `/vbw:discuss` for standalone phase discussions, `/vbw:qa` for on-demand verification, `/vbw:debug` for systematic bug investigation, and more. But you never *need* the flags. `/vbw:vibe` with no arguments handles the entire lifecycle on its own.
 
 ---
@@ -543,8 +673,6 @@ Autonomy interacts with effort profiles. At `cautious`, plan approval expands to
 
 ### Commits, push, and planning artifacts
 
-<a id="planning--git"></a>
-
 VBW generates 15+ files in `.vbw-planning/` during bootstrap, planning, execution, and QA — but by default none of them are committed. The Dev agent only commits source code files listed in each task's `Files:` section.
 
 | Setting | Type | Default | Values |
@@ -587,7 +715,7 @@ Controls whether VBW pushes commits automatically, and when.
 
 | Setting | Type | Default | Values |
 | :--- | :--- | :--- | :--- |
-| `prefer_teams` | string | `always` | `always` / `when_parallel` / `auto` |
+| `prefer_teams` | string | `auto` | `always` / `auto` |
 | `max_tasks_per_plan` | number | `5` | `1`–`7` |
 | `context_compiler` | boolean | `true` | `true` / `false` |
 | `plain_summary` | boolean | `true` | `true` / `false` |
@@ -595,7 +723,7 @@ Controls whether VBW pushes commits automatically, and when.
 | `qa_skip_agents` | array | `["docs"]` | Array of agent role names |
 | `require_phase_discussion` | boolean | `false` | `true` / `false` |
 
-- **`prefer_teams`** — Controls when VBW creates Agent Teams (multiple color-coded agents working together) vs spawning a single subagent. `always` creates teams for every operation — maximum agent visibility but higher token cost. `when_parallel` (and `auto`, which behaves identically) creates teams only when parallelism adds value: 2+ plans in execute, Scout needed in planning, ambiguous bugs in debug. Use `always` unless you're optimizing for token cost.
+- **`prefer_teams`** — Controls when VBW creates Agent Teams (multiple color-coded agents working together) vs spawning a single subagent. See [Execution Model](#execution-model) for details on how this interacts with parallel plan execution, worktree isolation, and lease locks. `auto` (default) creates teams only when parallelism adds value: 2+ plans in execute, Scout needed in planning, ambiguous bugs in debug. `always` creates teams for every operation — maximum agent visibility but higher token cost. `when_parallel` is accepted as an alias for `auto`.
 - **`max_tasks_per_plan`** — Maximum number of tasks the Lead agent should include in a single plan. Communicated to agents via session context. Lower values (2–3) produce more focused, easier-to-verify plans. Higher values (5–7) reduce planning overhead but increase blast radius per plan. Not enforced by a hard gate — it's an advisory constraint.
 - **`context_compiler`** — When `true`, runs `compile-context.sh` to produce role-specific `.context-{role}.md` files so each agent gets curated context (Lead gets requirements, Dev gets phase goal + conventions, QA gets verification targets). When `false`, agents read project files directly without curation. Leave this on unless you're debugging context issues.
 - **`plain_summary`** — When `true`, appends 2–4 plain-English sentences after QA completes in Execute mode, summarizing what happened in the phase without jargon. When `false`, output shows only the structured QA result.
@@ -617,8 +745,6 @@ Controls whether VBW pushes commits automatically, and when.
 
 ### Model routing and cost
 
-<a id="cost-optimization"></a>
-
 VBW spawns specialized agents for planning, development, and verification. Model profiles let you control which Claude model each agent uses, trading cost for quality based on your needs.
 
 | Setting | Type | Default | Values |
@@ -633,7 +759,49 @@ VBW spawns specialized agents for planning, development, and verification. Model
 - **`active_profile`** — Bundles effort, autonomy, and verification tier into a switchable preset. `default` (balanced/standard/standard), `prototype` (fast/confident/quick), `production` (thorough/cautious/deep), `yolo` (turbo/pure-vibe/skip). Set automatically to `custom` when individual settings drift from their profile. Manage with `/vbw:profile`.
 - **`custom_profiles`** — Stores user-created profile presets (name → effort/autonomy/verification_tier). Create, list, switch, and delete via `/vbw:profile`.
 
-#### Three preset profiles
+### Safety
+
+| Setting | Type | Default | Values |
+| :--- | :--- | :--- | :--- |
+| `bash_guard` | boolean | `true` | `true` / `false` |
+
+- **`bash_guard`** — When `true`, a PreToolUse hook blocks known destructive Bash commands (database drops, migration resets, volume wipes) before they execute. Covers 40+ patterns across all major frameworks and databases. Override per-command with `VBW_ALLOW_DESTRUCTIVE=1` env var, or disable entirely with `false`. Project-specific patterns can be added to `.vbw-planning/destructive-commands.local.txt`.
+
+### Cross-phase context
+
+| Setting | Type | Default | Values |
+| :--- | :--- | :--- | :--- |
+| `rolling_summary` | boolean | `false` | `true` / `false` |
+| `event_recovery` | boolean | `true` | `true` / `false` |
+
+- **`rolling_summary`** — When `true` and the project is past Phase 1, VBW compiles a condensed digest of all completed prior phases (what was built, files modified, deviations, commit hashes) into `ROLLING-CONTEXT.md`. This digest is injected into agent context via the context compiler, so Phase 3's Dev and Lead agents have awareness of what Phases 1–2 decided, built, and deviated from — without re-reading every prior SUMMARY.md. Adds ~50KB to agent context per phase. Useful for multi-phase projects where cross-phase continuity matters; unnecessary for single-phase work.
+- **`event_recovery`** — When `true`, enables event-sourced state recovery as a fallback during crash recovery. If `.execution-state.json` is stale or missing after a crash, VBW can reconstruct phase/plan status from the event log (`event-log.jsonl`) and SUMMARY.md files.
+
+### Display
+
+| Setting | Type | Default | Values |
+| :--- | :--- | :--- | :--- |
+| `visual_format` | string | `unicode` | `unicode` / `ascii` |
+| `branch_per_milestone` | boolean | `false` | `true` / `false` |
+
+- **`visual_format`** — Intended to switch between Unicode symbols (✓ ✗ ◆ ○ ⚡ ➜, box-drawing characters) and ASCII equivalents. Currently declared but not yet wired into agent output — agents always use Unicode.
+- **`branch_per_milestone`** — Intended to auto-create a git branch per milestone during Bootstrap. Currently declared but not yet implemented — has no runtime effect.
+
+---
+
+## Feature Flags (Graduated)
+
+All V2 and V3 feature flags have graduated to always-on behavior as of v1.31.0. They are no longer configurable and have been removed from `config/defaults.json`.
+
+Previously, these flags controlled staged rollout of runtime features (delta context, contract enforcement, lease locks, validation gates, role isolation, token budgets, etc.). All gated behavior is now unconditionally active.
+
+Brownfield configs may still contain these keys — they are ignored at runtime and cleaned up automatically by `migrate-config.sh`.
+
+## Cost Optimization
+
+VBW spawns specialized agents for planning, development, and verification. Model profiles let you control which Claude model each agent uses, trading cost for quality based on your needs.
+
+### Three Preset Profiles
 
 | Profile | Use Case | Lead | Dev | QA | Scout | Est. Cost/Phase |
 | :--- | :--- | :--- | :--- | :--- | :--- | ---: |
@@ -725,43 +893,6 @@ Switch both at once with work profiles:
 ```
 
 See **[Model Profiles Reference](references/model-profiles.md)** for preset definitions, cost breakdown, and implementation details.
-
-### Safety
-
-| Setting | Type | Default | Values |
-| :--- | :--- | :--- | :--- |
-| `bash_guard` | boolean | `true` | `true` / `false` |
-
-- **`bash_guard`** — When `true`, a PreToolUse hook blocks known destructive Bash commands (database drops, migration resets, volume wipes) before they execute. Covers 40+ patterns across all major frameworks and databases. Override per-command with `VBW_ALLOW_DESTRUCTIVE=1` env var, or disable entirely with `false`. Project-specific patterns can be added to `.vbw-planning/destructive-commands.local.txt`.
-
-### Display
-
-| Setting | Type | Default | Values |
-| :--- | :--- | :--- | :--- |
-| `visual_format` | string | `unicode` | `unicode` / `ascii` |
-| `branch_per_milestone` | boolean | `false` | `true` / `false` |
-
-- **`visual_format`** — Intended to switch between Unicode symbols (✓ ✗ ◆ ○ ⚡ ➜, box-drawing characters) and ASCII equivalents. Currently declared but not yet wired into agent output — agents always use Unicode.
-- **`branch_per_milestone`** — Intended to auto-create a git branch per milestone during Bootstrap. Currently declared but not yet implemented — has no runtime effect.
-
-### Feature flags
-
-These flags control optional runtime features introduced during staged rollout. Most default to `true` (on). They can be toggled with `/vbw:config <key> <value>`.
-
-| Flag | Default | What It Controls |
-| :--- | :--- | :--- |
-| `token_budgets` | `true` | Character-budget enforcement for context truncation. When `false`, passes all content unmodified. |
-| `two_phase_completion` | `true` | Two-phase validation and artifact registry checks on task completion. |
-| `metrics` | `true` | Session metrics collection to `.metrics/run-metrics.jsonl`. |
-| `smart_routing` | `true` | Effort-based agent routing — skips Scout/Architect at lower effort levels. When `false`, always includes all agents. |
-| `validation_gates` | `true` | Graduated — exists only for migration tracking. No runtime effect. |
-| `snapshot_resume` | `true` | Phase snapshot resumption logic for recovering interrupted builds. |
-| `lease_locks` | `false` | Distributed lock acquisition for concurrent agent coordination. |
-| `event_recovery` | `false` | State recovery from event log after crashes or interruptions. |
-| `monorepo_routing` | `true` | Monorepo scope detection — routes agents to the correct package directory. |
-| `rolling_summary` | `false` | Cross-phase context continuity. When `true` and phase > 1, injects prior phase's rolling context into the current agent's context window. |
-
-Brownfield configs from older versions may contain additional keys — these are cleaned up automatically by `migrate-config.sh`.
 
 ---
 
