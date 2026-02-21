@@ -324,3 +324,84 @@ EOF
   echo "$output" | grep -q "uat_issues_phase=11"
   echo "$output" | grep -q "next_phase=11"
 }
+
+# --- require_phase_discussion tests ---
+
+@test "outputs config_require_phase_discussion=false by default" {
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "config_require_phase_discussion=false"
+}
+
+@test "outputs config_require_phase_discussion=true when set in config" {
+  local tmp
+  tmp=$(mktemp)
+  jq '.require_phase_discussion = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "config_require_phase_discussion=true"
+}
+
+@test "needs_discussion state when require_phase_discussion=true and phase lacks CONTEXT.md" {
+  local tmp
+  tmp=$(mktemp)
+  jq '.require_phase_discussion = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+  mkdir -p .vbw-planning/phases/01-test/
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_discussion"
+  echo "$output" | grep -q "next_phase=01"
+}
+
+@test "needs_plan_and_execute when require_phase_discussion=true but CONTEXT.md exists" {
+  local tmp
+  tmp=$(mktemp)
+  jq '.require_phase_discussion = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+  mkdir -p .vbw-planning/phases/01-test/
+  touch .vbw-planning/phases/01-test/01-CONTEXT.md
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+}
+
+@test "needs_plan_and_execute when require_phase_discussion=false even without CONTEXT.md" {
+  mkdir -p .vbw-planning/phases/01-test/
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+}
+
+@test "needs_discussion only applies to unplanned phases" {
+  local tmp
+  tmp=$(mktemp)
+  jq '.require_phase_discussion = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+  mkdir -p .vbw-planning/phases/01-test/
+  # Phase has a plan already — discussion should not be required
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_execute"
+}
+
+@test "needs_discussion targets first undiscussed phase in multi-phase project" {
+  local tmp
+  tmp=$(mktemp)
+  jq '.require_phase_discussion = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+  mkdir -p .vbw-planning/phases/01-first/
+  mkdir -p .vbw-planning/phases/02-second/
+  # Phase 1 is fully done
+  touch .vbw-planning/phases/01-first/01-CONTEXT.md
+  touch .vbw-planning/phases/01-first/01-01-PLAN.md
+  touch .vbw-planning/phases/01-first/01-01-SUMMARY.md
+  # Phase 2 has no context
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_discussion"
+  echo "$output" | grep -q "next_phase=02"
+  echo "$output" | grep -q "next_phase_slug=02-second"
+}

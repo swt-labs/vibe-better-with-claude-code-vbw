@@ -71,6 +71,7 @@ else
   echo "config_prefer_teams=always"
   echo "config_max_tasks_per_plan=5"
   echo "config_context_compiler=true"
+  echo "config_require_phase_discussion=false"
   echo "has_codebase_map=false"
   echo "brownfield=false"
   echo "execution_state=none"
@@ -124,6 +125,14 @@ if [ -d "$PLANNING_DIR/milestones" ]; then
 fi
 echo "has_shipped_milestones=$HAS_SHIPPED_MILESTONES"
 echo "needs_milestone_rename=$NEEDS_MILESTONE_RENAME"
+
+# --- Early config read: require_phase_discussion (needed before phase scanning) ---
+CFG_REQUIRE_PHASE_DISCUSSION="false"
+CONFIG_FILE_EARLY="$PLANNING_DIR/config.json"
+if [ "$JQ_AVAILABLE" = true ] && [ -f "$CONFIG_FILE_EARLY" ]; then
+  _rpd=$(jq -r 'if .require_phase_discussion == null then false else .require_phase_discussion end' "$CONFIG_FILE_EARLY" 2>/dev/null) || true
+  [ -n "${_rpd:-}" ] && CFG_REQUIRE_PHASE_DISCUSSION="$_rpd"
+fi
 
 # --- Phase scanning ---
 PHASE_COUNT=0
@@ -205,6 +214,22 @@ if [ -d "$PHASES_DIR" ]; then
         S_COUNT=$(ls "$DIR"[0-9]*-SUMMARY.md 2>/dev/null | wc -l | tr -d ' ')
 
         if [ "$P_COUNT" -eq 0 ]; then
+          # Check if discussion is required before planning
+          if [ "$CFG_REQUIRE_PHASE_DISCUSSION" = true ]; then
+            # Check for CONTEXT.md (any file matching *-CONTEXT.md or *CONTEXT.md)
+            C_COUNT=$(ls "$DIR"*CONTEXT.md 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$C_COUNT" -eq 0 ]; then
+              if [ "$NEXT_PHASE" = "none" ]; then
+                NEXT_PHASE="$NUM"
+                NEXT_PHASE_SLUG="$DIRNAME"
+                NEXT_PHASE_STATE="needs_discussion"
+                NEXT_PHASE_PLANS="$P_COUNT"
+                NEXT_PHASE_SUMMARIES="$S_COUNT"
+              fi
+              ALL_DONE=false
+              break
+            fi
+          fi
           # Needs plan and execute
           if [ "$NEXT_PHASE" = "none" ]; then
             NEXT_PHASE="$NUM"
@@ -371,6 +396,7 @@ if [ "$JQ_AVAILABLE" = true ] && [ -f "$CONFIG_FILE" ]; then
     "CFG_PREFER_TEAMS=\(.prefer_teams // "always")",
     "CFG_MAX_TASKS=\(.max_tasks_per_plan // 5)",
     "CFG_CONTEXT_COMPILER=\(if .context_compiler == null then true else .context_compiler end)",
+    "CFG_REQUIRE_PHASE_DISCUSSION=\(if .require_phase_discussion == null then false else .require_phase_discussion end)",
     "CFG_COMPACTION=\(.compaction_threshold // 130000)"
   ' "$CONFIG_FILE" 2>/dev/null)" || true
 fi
@@ -384,6 +410,7 @@ echo "config_verification_tier=$CFG_VERIFICATION_TIER"
 echo "config_prefer_teams=$CFG_PREFER_TEAMS"
 echo "config_max_tasks_per_plan=$CFG_MAX_TASKS"
 echo "config_context_compiler=$CFG_CONTEXT_COMPILER"
+echo "config_require_phase_discussion=$CFG_REQUIRE_PHASE_DISCUSSION"
 echo "config_compaction_threshold=$CFG_COMPACTION"
 
 # --- Codebase map status ---

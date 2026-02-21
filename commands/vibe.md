@@ -79,9 +79,10 @@ If no $ARGUMENTS, evaluate phase-detect.sh output. First match determines mode:
 | 3 | `phase_count=0` | Scope | "Project defined but no phases. Scope the work?" |
 | 4 | `next_phase_state=needs_uat_remediation` | UAT Remediation | "Phase {N} has unresolved UAT issues. Continue with remediation now?" |
 | 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
-| 6 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {N} needs planning and execution. Start?" |
-| 7 | `next_phase_state=needs_execute` | Execute | "Phase {N} is planned. Execute it?" |
-| 8 | `next_phase_state=all_done` | Archive | "All phases complete. Run audit and archive?" |
+| 6 | `next_phase_state=needs_discussion` | Discuss | "Phase {N} needs discussion before planning. Start discussion?" |
+| 7 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {N} needs planning and execution. Start?" |
+| 8 | `next_phase_state=needs_execute` | Execute | "Phase {N} is planned. Execute it?" |
+| 9 | `next_phase_state=all_done` | Archive | "All phases complete. Run audit and archive?" |
 
 **all_done + natural language:** If $ARGUMENTS describe new work (bug, feature, task) and state is `all_done`, route to Add Phase mode instead of Archive. Add Phase handles codebase context loading and research internally — do NOT spawn an Explore agent or do ad-hoc research before entering the mode.
 

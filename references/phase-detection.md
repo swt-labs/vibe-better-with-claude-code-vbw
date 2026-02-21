@@ -27,6 +27,16 @@ All directory scanning below uses this path.
 4. If found: use that phase
 5. If all phases have plans: report "All phases are planned. Specify a phase to re-plan: `/vbw:vibe --plan N`" and STOP
 
+### Discussion Gate (`require_phase_discussion` config)
+
+When `require_phase_discussion=true` in config, the lifecycle command (`/vbw:vibe`) adds a discussion step before planning:
+
+**Algorithm:**
+1. During the dual-condition scan (same as Lifecycle Command below), before checking for `needs_plan_and_execute`:
+2. If a phase has NO `*-PLAN.md` files AND NO `*-CONTEXT.md` files, it returns `needs_discussion` instead of `needs_plan_and_execute`
+3. If `*-CONTEXT.md` exists (discussion already happened), it falls through to normal `needs_plan_and_execute`
+4. When `require_phase_discussion=false` (default): this check is skipped entirely
+
 ### Build Command (`/vbw:vibe --execute`)
 
 **Goal:** Find the next phase that is planned but not yet built.

@@ -62,6 +62,8 @@ milestone_uat_issues=false
 milestone_uat_phase="none"
 milestone_uat_slug="none"
 milestone_uat_count=0
+cfg_require_phase_discussion=false
+next_undiscussed=""
 
 read_status_field() {
   local file="$1"
@@ -93,6 +95,9 @@ if [ -d "$PLANNING_DIR" ]; then
     [ -n "${_pd_milestone_phase:-}" ] && milestone_uat_phase="$_pd_milestone_phase"
     [ -n "${_pd_milestone_slug:-}" ] && milestone_uat_slug="$_pd_milestone_slug"
     [ -n "${_pd_milestone_count:-}" ] && milestone_uat_count="$_pd_milestone_count"
+
+    _pd_require_discuss=$(echo "$_pd_out" | grep -m1 '^config_require_phase_discussion=' | sed 's/^[^=]*=//' || true)
+    [ -n "${_pd_require_discuss:-}" ] && cfg_require_phase_discussion="$_pd_require_discuss"
   fi
 
   # Root-canonical phases directory (no ACTIVE indirection)
@@ -141,6 +146,13 @@ if [ -d "$PLANNING_DIR" ]; then
       summaries=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
 
       if [ "$plans" -eq 0 ] && [ -z "$next_unplanned" ]; then
+        # Track first undiscussed phase (for require_phase_discussion suggestions)
+        if [ "$cfg_require_phase_discussion" = "true" ] && [ -z "$next_undiscussed" ]; then
+          context_files=$(find "$dir" -maxdepth 1 ! -name '.*' -name '*CONTEXT.md' 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$context_files" -eq 0 ]; then
+            next_undiscussed="$phase_num"
+          fi
+        fi
         next_unplanned="$phase_num"
         active_phase_dir="$dir"
         active_phase_num="$phase_num"
@@ -388,6 +400,10 @@ case "$CMD" in
           fi
         elif [ -n "$next_unbuilt" ] || [ -n "$next_unplanned" ]; then
           target="${next_unbuilt:-$next_unplanned}"
+          # If next phase needs discussion, suggest discuss first
+          if [ -n "$next_undiscussed" ] && [ "$next_undiscussed" = "$target" ]; then
+            suggest "/vbw:discuss $target -- Discuss phase before planning"
+          fi
           if [ -n "$active_phase_name" ] && [ "$target" != "$active_phase_num" ]; then
             for dir in "$PHASES_DIR"/*/; do
               [ -d "$dir" ] || continue
@@ -436,6 +452,9 @@ case "$CMD" in
           fi
         else
           target="${next_unbuilt:-$next_unplanned}"
+          if [ -n "$next_undiscussed" ] && [ -n "$target" ] && [ "$next_undiscussed" = "$target" ]; then
+            suggest "/vbw:discuss $target -- Discuss phase before planning"
+          fi
           if [ -n "$target" ]; then
             for dir in "$PHASES_DIR"/*/; do
               [ -d "$dir" ] || continue
