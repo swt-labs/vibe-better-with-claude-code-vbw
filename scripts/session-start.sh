@@ -469,7 +469,6 @@ fi
 
 # --- Root-canonical paths (no ACTIVE indirection) ---
 MILESTONE_DIR="$PLANNING_DIR"
-PHASES_DIR="$PLANNING_DIR/phases"
 
 # --- Shipped milestones detection ---
 has_shipped="false"
