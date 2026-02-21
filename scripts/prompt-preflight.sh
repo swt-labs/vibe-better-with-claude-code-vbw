@@ -119,7 +119,11 @@ if is_archive_vibe_prompt "$PROMPT"; then
   if [ -f "$PLANNING_DIR/STATE.md" ]; then
     INCOMPLETE=$(grep -c "status:.*incomplete\|status:.*in.progress\|status:.*pending" "$PLANNING_DIR/STATE.md" 2>/dev/null || echo 0)
     if [ "$INCOMPLETE" -gt 0 ]; then
-      WARNING="$INCOMPLETE incomplete phase(s). Review STATE.md before shipping."
+      if [ -n "$WARNING" ]; then
+        WARNING="$WARNING $INCOMPLETE incomplete phase(s). Review STATE.md before shipping."
+      else
+        WARNING="$INCOMPLETE incomplete phase(s). Review STATE.md before shipping."
+      fi
     fi
   fi
 fi

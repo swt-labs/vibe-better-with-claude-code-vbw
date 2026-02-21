@@ -122,6 +122,11 @@ if [ -d "$PLANNING_DIR" ]; then
       SN_PHASE_DIRS+=("${_sn_dir%/}/")
     done < <(list_child_dirs_sorted "$PHASES_DIR")
 
+    last_phase_dir=""
+    last_phase_num=""
+    last_phase_name=""
+    last_phase_plans=0
+
     if [ ${#SN_PHASE_DIRS[@]} -gt 0 ]; then
     for dir in "${SN_PHASE_DIRS[@]}"; do
       [ -d "$dir" ] || continue
