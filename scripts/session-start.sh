@@ -338,22 +338,53 @@ if [ -f "$SETTINGS_FILE" ]; then
   rm -f "$PLANNING_DIR/.tmux-mode-patched" 2>/dev/null || true
 fi
 
-# --- Clean old cache versions (keep only latest) ---
+# --- Local dev bridge: populate cache for template resolution ---
+# When loaded via --plugin-dir (local dev mode), CLAUDE_PLUGIN_ROOT is set but
+# the marketplace cache is empty. Template-level backtick expansions resolve the
+# plugin root via the cache glob, which fails without a cache entry. Bridge the
+# gap by symlinking CLAUDE_PLUGIN_ROOT into the cache directory. This enables
+# the same resolution path as marketplace installs.
 CACHE_DIR="$CLAUDE_DIR/plugins/cache/vbw-marketplace/vbw"
+MKT_DIR="$CLAUDE_DIR/plugins/marketplaces/vbw-marketplace"
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT" ]; then
+  if ! ls -d "$CACHE_DIR"/*/ >/dev/null 2>&1; then
+    mkdir -p "$CACHE_DIR"
+    ln -sfn "$CLAUDE_PLUGIN_ROOT" "$CACHE_DIR/local"
+  fi
+else
+  # Not in local dev mode — remove stale local symlink to prevent prod sessions
+  # from silently resolving scripts from a developer's repo checkout.
+  if [ -L "$CACHE_DIR/local" ]; then
+    rm -f "$CACHE_DIR/local"
+  fi
+  # If cache is empty in prod mode but marketplace checkout exists, seed a
+  # low-priority fallback cache entry so resolution paths stay functional.
+  # Name it 0.0.0-* so any real semver cache wins when present.
+  if ! ls -d "$CACHE_DIR"/*/ >/dev/null 2>&1 && [ -d "$MKT_DIR/.claude-plugin" ]; then
+    mkdir -p "$CACHE_DIR"
+    ln -sfn "$MKT_DIR" "$CACHE_DIR/0.0.0-marketplace"
+  fi
+fi
+
+# --- Clean old cache versions (keep only latest) ---
 VBW_CLEANUP_LOCK="/tmp/vbw-cache-cleanup-lock"
 if [ -d "$CACHE_DIR" ] && mkdir "$VBW_CLEANUP_LOCK" 2>/dev/null; then
   VERSIONS=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V)
   COUNT=$(echo "$VERSIONS" | wc -l | tr -d ' ')
   if [ "$COUNT" -gt 1 ]; then
-    echo "$VERSIONS" | head -n $((COUNT - 1)) | while IFS= read -r dir; do rm -rf "$dir"; done
+    echo "$VERSIONS" | head -n $((COUNT - 1)) | while IFS= read -r dir; do
+      [ -L "${dir%/}" ] && continue  # Skip local dev symlinks
+      rm -rf "$dir"
+    done
   fi
   rmdir "$VBW_CLEANUP_LOCK" 2>/dev/null
 fi
 
 # --- Cache integrity check (nuke if critical files missing) ---
+# Skip integrity check for local dev symlinks — the live repo is always current.
 if [ -d "$CACHE_DIR" ]; then
   LATEST_CACHE=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
-  if [ -n "$LATEST_CACHE" ]; then
+  if [ -n "$LATEST_CACHE" ] && [ ! -L "${LATEST_CACHE%/}" ]; then
     INTEGRITY_OK=true
     for f in commands/init.md .claude-plugin/plugin.json VERSION config/defaults.json; do
       if [ ! -f "$LATEST_CACHE$f" ]; then
@@ -369,30 +400,35 @@ if [ -d "$CACHE_DIR" ]; then
 fi
 
 # --- Auto-sync stale marketplace checkout ---
-MKT_DIR="$CLAUDE_DIR/plugins/marketplaces/vbw-marketplace"
+_CACHE_LATEST=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
 if [ -d "$MKT_DIR/.git" ] && [ -d "$CACHE_DIR" ]; then
-  MKT_VER=$(jq -r '.version // "0"' "$MKT_DIR/.claude-plugin/plugin.json" 2>/dev/null)
-  CACHE_VER=$(jq -r '.version // "0"' "$(ls -d "$CACHE_DIR"/*/.claude-plugin/plugin.json 2>/dev/null | sort -V | tail -1)" 2>/dev/null)
-  if [ "$MKT_VER" != "$CACHE_VER" ] && [ -n "$CACHE_VER" ] && [ "$CACHE_VER" != "0" ]; then
-    (cd "$MKT_DIR" && git fetch origin --quiet 2>/dev/null && \
-      if git diff --quiet 2>/dev/null; then
-        git merge --ff-only origin/main --quiet 2>/dev/null
-      else
-        echo "VBW: marketplace checkout has local modifications — skipping reset" >&2
-      fi) &
+  # Skip version-driven sync when latest cache entry is a local dev symlink —
+  # local repo version differences should not drive marketplace checkout behavior.
+  if [ -n "$_CACHE_LATEST" ] && [ ! -L "${_CACHE_LATEST%/}" ]; then
+    MKT_VER=$(jq -r '.version // "0"' "$MKT_DIR/.claude-plugin/plugin.json" 2>/dev/null)
+    CACHE_VER=$(jq -r '.version // "0"' "${_CACHE_LATEST}.claude-plugin/plugin.json" 2>/dev/null)
+    if [ "$MKT_VER" != "$CACHE_VER" ] && [ -n "$CACHE_VER" ] && [ "$CACHE_VER" != "0" ]; then
+      (cd "$MKT_DIR" && git fetch origin --quiet 2>/dev/null && \
+        if git diff --quiet 2>/dev/null; then
+          git merge --ff-only origin/main --quiet 2>/dev/null
+        else
+          echo "VBW: marketplace checkout has local modifications — skipping reset" >&2
+        fi) &
+    fi
   fi
   # Content staleness: compare command counts
   if [ -d "$MKT_DIR/commands" ] && [ -d "$CACHE_DIR" ]; then
-    LATEST_VER=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
-    if [ -n "$LATEST_VER" ] && [ -d "${LATEST_VER}commands" ]; then
+    if [ -n "$_CACHE_LATEST" ] && [ -d "${_CACHE_LATEST}commands" ] && [ ! -L "${_CACHE_LATEST%/}" ]; then
+      # Skip staleness check for local dev symlinks — command counts differ during development.
       # zsh compat: bare globs error before ls runs in zsh (nomatch). Use ls dir | grep.
       # shellcheck disable=SC2010
       MKT_CMD_COUNT=$(ls -1 "$MKT_DIR/commands/" 2>/dev/null | grep '\.md$' | wc -l | tr -d ' ')
       # shellcheck disable=SC2010
-      CACHE_CMD_COUNT=$(ls -1 "${LATEST_VER}commands/" 2>/dev/null | grep '\.md$' | wc -l | tr -d ' ')
+      CACHE_CMD_COUNT=$(ls -1 "${_CACHE_LATEST}commands/" 2>/dev/null | grep '\.md$' | wc -l | tr -d ' ')
       if [ "${MKT_CMD_COUNT:-0}" -ne "${CACHE_CMD_COUNT:-0}" ]; then
         echo "VBW cache stale — marketplace has ${MKT_CMD_COUNT} commands, cache has ${CACHE_CMD_COUNT}" >&2
         rm -rf "$CACHE_DIR"
+        _CACHE_LATEST=""
       fi
     fi
   fi
@@ -400,7 +436,7 @@ fi
 
 # --- Sync global commands mirror for vbw: prefix in autocomplete ---
 VBW_GLOBAL_CMD="$CLAUDE_DIR/commands/vbw"
-CACHED_VER=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
+CACHED_VER="$_CACHE_LATEST"
 if [ -n "$CACHED_VER" ] && [ -d "${CACHED_VER}commands" ]; then
   mkdir -p "$VBW_GLOBAL_CMD"
   # Remove stale commands not in cache, then copy fresh
