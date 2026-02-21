@@ -90,6 +90,8 @@ If no $ARGUMENTS, evaluate phase-detect.sh output. First match determines mode:
 
 **Milestone UAT recovery:** When `milestone_uat_issues=true` and active phases are empty, the latest shipped milestone has unresolved UAT issues. Present the user with options: (a) create remediation phases to fix the UAT issues, or (b) start fresh with new work (ignoring the stale UAT). Use `milestone_uat_count` to determine how many phases are affected. When `milestone_uat_count` > 1, parse `milestone_uat_phase_dirs` (pipe-separated) to read all UAT reports and display a consolidated issue summary. Use `milestone_uat_major_or_higher` to determine severity context.
 
+**Remediation + require_phase_discussion:** Remediation phases created by `create-remediation-phase.sh` include a pre-seeded CONTEXT.md (populated from the source UAT report). This satisfies the `require_phase_discussion` gate — these phases route directly to Plan mode, not Discuss. The Next Up hint annotates this as "(discussion pre-seeded from UAT)" so the user understands why discussion was skipped.
+
 ### Confirmation Gate
 
 Every mode triggers confirmation via AskUserQuestion before executing, with contextual options (recommended action + alternatives).
