@@ -75,8 +75,17 @@ EOF
       _first_with_plan="$_pd_num"
     fi
 
-    _plan_count=$(ls -1 "$_pd" 2>/dev/null | grep '\-PLAN\.md$' | wc -l | tr -d ' ')
-    _summary_count=$(ls -1 "$_pd" 2>/dev/null | grep '\-SUMMARY\.md$' | wc -l | tr -d ' ')
+    _plan_count=0
+    for _plan_file in "$_pd"*-PLAN.md; do
+      [ -f "$_plan_file" ] || continue
+      _plan_count=$((_plan_count + 1))
+    done
+
+    _summary_count=0
+    for _summary_file in "$_pd"*-SUMMARY.md; do
+      [ -f "$_summary_file" ] || continue
+      _summary_count=$((_summary_count + 1))
+    done
 
     if [ "${_summary_count:-0}" -lt "${_plan_count:-0}" ] 2>/dev/null; then
       if [ -z "$_first_incomplete" ] || [ "$_pd_num" -lt "$_first_incomplete" ] 2>/dev/null; then
