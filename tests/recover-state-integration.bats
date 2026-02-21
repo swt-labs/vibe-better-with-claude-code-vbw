@@ -319,6 +319,85 @@ EXEC
   [ "$recovered_phase" = "1" ]
 }
 
+# --- QA Round 2 edge-case tests ---
+
+@test "recover-state: event log matches single-digit plan numbers (leading-zero strip)" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.event_recovery = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+
+  # Plan 01-03 with no SUMMARY.md — must rely on event log
+  echo "title: Third Task" > .vbw-planning/phases/01-setup/01-03-PLAN.md
+
+  # Event log uses bare integer (plan:3, not plan:03) — matches log-event.sh format
+  mkdir -p .vbw-planning/.events
+  echo '{"event":"plan_end","phase":1,"plan":3,"data":{"status":"complete"}}' > .vbw-planning/.events/event-log.jsonl
+
+  run bash "$SCRIPTS_DIR/recover-state.sh" 1 ".vbw-planning/phases"
+  [ "$status" -eq 0 ]
+
+  # Plan 01-03 should be detected as complete via the event log
+  plan_status=$(echo "$output" | jq -r '.plans[] | select(.id == "01-03") | .status')
+  [ "$plan_status" = "complete" ]
+}
+
+@test "recover-state: non-numeric wave defaults to 1 instead of dropping plan" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.event_recovery = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+
+  # Plan with non-numeric wave value
+  cat > .vbw-planning/phases/01-setup/01-01-PLAN.md <<'PLAN'
+title: Build UI
+wave: alpha
+PLAN
+
+  run bash "$SCRIPTS_DIR/recover-state.sh" 1 ".vbw-planning/phases"
+  [ "$status" -eq 0 ]
+
+  # Plan should still be present (not dropped) with wave defaulted to 1
+  plan_count=$(echo "$output" | jq '.plans | length')
+  [ "$plan_count" -eq 1 ]
+  plan_wave=$(echo "$output" | jq '.plans[0].wave')
+  [ "$plan_wave" -eq 1 ]
+}
+
+@test "session-start: skips recovery when event log is whitespace-only" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.event_recovery = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+
+  # Event log with only newlines (passes -s but has no real content)
+  mkdir -p .vbw-planning/.events
+  printf '\n\n\n' > .vbw-planning/.events/event-log.jsonl
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+
+  # No execution state should have been created
+  [ ! -f .vbw-planning/.execution-state.json ]
+}
+
+@test "session-start: handles missing .events directory gracefully" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.event_recovery = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+
+  # No .events directory at all (brownfield pre-events project)
+  # Ensure it doesn't exist
+  rm -rf .vbw-planning/.events
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+
+  # Recovery should be skipped — no execution state created
+  [ ! -f .vbw-planning/.execution-state.json ]
+}
+
 @test "session-start: auto-recovery skips reconcile block" {
   cd "$TEST_TEMP_DIR"
   local tmp

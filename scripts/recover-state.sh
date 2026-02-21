@@ -61,7 +61,9 @@ for plan_file in "$PHASE_DIR"/*-PLAN.md; do
 
   # Check event log for plan_end events
   if [ -f "$EVENTS_FILE" ] && [ "$PLAN_STATUS" = "pending" ]; then
-    PLAN_NUM=$(echo "$PLAN_ID" | sed 's/^[0-9]*-//')
+    # Strip leading zeros — log-event.sh writes bare integers ("plan":1 not "plan":01)
+    PLAN_NUM=$(echo "$PLAN_ID" | sed 's/^[0-9]*-//' | sed 's/^0*//')
+    [ -z "$PLAN_NUM" ] && PLAN_NUM="0"
     EVENT_STATUS=$(grep "\"plan_end\"" "$EVENTS_FILE" 2>/dev/null | \
       grep "\"phase\":${PHASE}" 2>/dev/null | \
       grep "\"plan\":${PLAN_NUM}" 2>/dev/null | \
@@ -69,6 +71,11 @@ for plan_file in "$PHASE_DIR"/*-PLAN.md; do
     [ "$EVENT_STATUS" = "complete" ] && PLAN_STATUS="complete"
     [ "$EVENT_STATUS" = "failed" ] && PLAN_STATUS="failed"
   fi
+
+  # Validate wave is numeric; default to 1 if empty or non-numeric
+  case "${PLAN_WAVE:-1}" in
+    ''|*[!0-9]*) PLAN_WAVE=1 ;;
+  esac
 
   PLANS_JSON=$(echo "$PLANS_JSON" | jq \
     --arg id "$PLAN_ID" \

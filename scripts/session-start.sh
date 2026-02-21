@@ -316,8 +316,9 @@ if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ]; then
   _er_flag=$(jq -r 'if .event_recovery != null then .event_recovery elif .v3_event_recovery != null then .v3_event_recovery else false end' "$PLANNING_DIR/config.json" 2>/dev/null || echo "false")
   _events_file="$PLANNING_DIR/.events/event-log.jsonl"
 
-  # Fix QA#3: require non-empty event log (-s), not just existence (-f)
-  if [ "$_er_flag" = "true" ] && [ -s "$_events_file" ]; then
+  # Fix QA#3: require non-empty event log — -s plus grep for actual content
+  # (a file with only whitespace/newlines passes -s but has no events)
+  if [ "$_er_flag" = "true" ] && [ -s "$_events_file" ] && grep -q '[^[:space:]]' "$_events_file" 2>/dev/null; then
     _exec_state="$PLANNING_DIR/.execution-state.json"
     _needs_recovery=false
 
@@ -381,7 +382,7 @@ if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ]; then
           _recovered_phase=$(echo "$_recovered" | jq -r '.phase // 0' 2>/dev/null || echo 0)
           _recovered_plan_count=$(echo "$_recovered" | jq -r '.plans | length // 0' 2>/dev/null || echo 0)
           if [ "$_recovered_phase" = "$_phase_num" ] && [ "${_recovered_plan_count:-0}" -gt 0 ] 2>/dev/null; then
-            echo "$_recovered" > "$PLANNING_DIR/.execution-state.json"
+            echo "$_recovered" > "$PLANNING_DIR/.execution-state.json.tmp" && mv "$PLANNING_DIR/.execution-state.json.tmp" "$PLANNING_DIR/.execution-state.json"
             _auto_recovered=true
           fi
         fi
