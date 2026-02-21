@@ -153,15 +153,23 @@ if [ -d "$PLANNING_DIR" ]; then
       if [ "$plans" -eq 0 ] && [ -z "$next_unplanned" ]; then
         # Track first undiscussed phase (for require_phase_discussion suggestions)
         if [ "$cfg_require_phase_discussion" = "true" ] && [ -z "$next_undiscussed" ]; then
-          context_files=$(ls "$dir"[0-9]*-CONTEXT.md 2>/dev/null | wc -l | tr -d ' ')
+          context_files=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | wc -l | tr -d ' ')
           if [ "$context_files" -eq 0 ]; then
             next_undiscussed="$phase_num"
           elif [ -z "$next_preseeded" ]; then
-            # Only flag as pre-seeded if CONTEXT.md has pre_seeded: true frontmatter
-            # (written by create-remediation-phase.sh). User-discussed CONTEXT.md
-            # files from the discussion engine do not have this field.
-            ctx_file=$(ls "$dir"[0-9]*-CONTEXT.md 2>/dev/null | head -1)
-            if [ -n "$ctx_file" ] && grep -q '^pre_seeded: true' "$ctx_file" 2>/dev/null; then
+            # Only flag as pre-seeded if CONTEXT.md has pre_seeded: true
+            # in its YAML frontmatter (between --- delimiters).
+            # Written by create-remediation-phase.sh; user-discussed
+            # CONTEXT.md files from the discussion engine lack this field.
+            # Tolerates: pre_seeded: true, pre_seeded:true, pre_seeded: "true"
+            ctx_file=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | head -1)
+            if [ -n "$ctx_file" ] && awk '
+              BEGIN { in_fm=0; found=0 }
+              NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+              in_fm && /^---[[:space:]]*$/ { exit }
+              in_fm && /^pre_seeded[[:space:]]*:[[:space:]]*"?true"?[[:space:]]*$/ { found=1; exit }
+              END { exit !found }
+            ' "$ctx_file" 2>/dev/null; then
               next_preseeded="$phase_num"
             fi
           fi
