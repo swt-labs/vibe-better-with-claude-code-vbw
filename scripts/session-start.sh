@@ -225,22 +225,39 @@ if [ -f "$SETTINGS_FILE" ]; then
   rm -f "$PLANNING_DIR/.tmux-mode-patched" 2>/dev/null || true
 fi
 
-# --- Clean old cache versions (keep only latest) ---
+# --- Local dev bridge: populate cache for template resolution ---
+# When loaded via --plugin-dir (local dev mode), CLAUDE_PLUGIN_ROOT is set but
+# the marketplace cache is empty. Template-level backtick expansions resolve the
+# plugin root via the cache glob, which fails without a cache entry. Bridge the
+# gap by symlinking CLAUDE_PLUGIN_ROOT into the cache directory. This enables
+# the same resolution path as marketplace installs.
 CACHE_DIR="$CLAUDE_DIR/plugins/cache/vbw-marketplace/vbw"
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT" ]; then
+  if ! ls -d "$CACHE_DIR"/*/ >/dev/null 2>&1; then
+    mkdir -p "$CACHE_DIR"
+    ln -sfn "$CLAUDE_PLUGIN_ROOT" "$CACHE_DIR/local"
+  fi
+fi
+
+# --- Clean old cache versions (keep only latest) ---
 VBW_CLEANUP_LOCK="/tmp/vbw-cache-cleanup-lock"
 if [ -d "$CACHE_DIR" ] && mkdir "$VBW_CLEANUP_LOCK" 2>/dev/null; then
   VERSIONS=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V)
   COUNT=$(echo "$VERSIONS" | wc -l | tr -d ' ')
   if [ "$COUNT" -gt 1 ]; then
-    echo "$VERSIONS" | head -n $((COUNT - 1)) | while IFS= read -r dir; do rm -rf "$dir"; done
+    echo "$VERSIONS" | head -n $((COUNT - 1)) | while IFS= read -r dir; do
+      [ -L "${dir%/}" ] && continue  # Skip local dev symlinks
+      rm -rf "$dir"
+    done
   fi
   rmdir "$VBW_CLEANUP_LOCK" 2>/dev/null
 fi
 
 # --- Cache integrity check (nuke if critical files missing) ---
+# Skip integrity check for local dev symlinks — the live repo is always current.
 if [ -d "$CACHE_DIR" ]; then
   LATEST_CACHE=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
-  if [ -n "$LATEST_CACHE" ]; then
+  if [ -n "$LATEST_CACHE" ] && [ ! -L "${LATEST_CACHE%/}" ]; then
     INTEGRITY_OK=true
     for f in commands/init.md .claude-plugin/plugin.json VERSION config/defaults.json; do
       if [ ! -f "$LATEST_CACHE$f" ]; then
