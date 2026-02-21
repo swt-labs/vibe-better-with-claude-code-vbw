@@ -107,6 +107,23 @@ EOF
   ! echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("start next milestone")' >/dev/null
 }
 
+@test "session-start: prod mode removes stale local symlink and seeds marketplace fallback when cache empty" {
+  cd "$TEST_TEMP_DIR"
+  local claude_dir="$TEST_TEMP_DIR/.claude"
+  local cache_dir="$claude_dir/plugins/cache/vbw-marketplace/vbw"
+  local mkt_dir="$claude_dir/plugins/marketplaces/vbw-marketplace"
+
+  mkdir -p "$cache_dir" "$mkt_dir/.claude-plugin" "$TEST_TEMP_DIR/stale-plugin"
+  ln -s "$TEST_TEMP_DIR/stale-plugin" "$cache_dir/local"
+
+  run bash -c "cd '$TEST_TEMP_DIR' && export CLAUDE_CONFIG_DIR='$claude_dir'; unset CLAUDE_PLUGIN_ROOT; bash '$SCRIPTS_DIR/session-start.sh'"
+  [ "$status" -eq 0 ]
+
+  [ ! -L "$cache_dir/local" ]
+  [ -L "$cache_dir/0.0.0-marketplace" ]
+  [ "$(readlink "$cache_dir/0.0.0-marketplace")" = "$mkt_dir" ]
+}
+
 @test "session-start: runs normally when compaction marker is stale (>60s)" {
   cd "$TEST_TEMP_DIR"
   # Write a timestamp 120 seconds in the past

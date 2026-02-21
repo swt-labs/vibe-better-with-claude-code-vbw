@@ -232,6 +232,7 @@ fi
 # gap by symlinking CLAUDE_PLUGIN_ROOT into the cache directory. This enables
 # the same resolution path as marketplace installs.
 CACHE_DIR="$CLAUDE_DIR/plugins/cache/vbw-marketplace/vbw"
+MKT_DIR="$CLAUDE_DIR/plugins/marketplaces/vbw-marketplace"
 if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT" ]; then
   if ! ls -d "$CACHE_DIR"/*/ >/dev/null 2>&1; then
     mkdir -p "$CACHE_DIR"
@@ -240,16 +241,15 @@ if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT" ]; then
 else
   # Not in local dev mode — remove stale local symlink to prevent prod sessions
   # from silently resolving scripts from a developer's repo checkout.
-  # Only remove if real cache entries exist, to avoid leaving an empty cache.
   if [ -L "$CACHE_DIR/local" ]; then
-    _real_cache=false
-    for _d in "$CACHE_DIR"/*/; do
-      [ -L "${_d%/}" ] && continue
-      [ -d "$_d" ] && _real_cache=true && break
-    done
-    if [ "$_real_cache" = true ]; then
-      rm -f "$CACHE_DIR/local"
-    fi
+    rm -f "$CACHE_DIR/local"
+  fi
+  # If cache is empty in prod mode but marketplace checkout exists, seed a
+  # low-priority fallback cache entry so resolution paths stay functional.
+  # Name it 0.0.0-* so any real semver cache wins when present.
+  if ! ls -d "$CACHE_DIR"/*/ >/dev/null 2>&1 && [ -d "$MKT_DIR/.claude-plugin" ]; then
+    mkdir -p "$CACHE_DIR"
+    ln -sfn "$MKT_DIR" "$CACHE_DIR/0.0.0-marketplace"
   fi
 fi
 
@@ -287,14 +287,13 @@ if [ -d "$CACHE_DIR" ]; then
 fi
 
 # --- Auto-sync stale marketplace checkout ---
-MKT_DIR="$CLAUDE_DIR/plugins/marketplaces/vbw-marketplace"
+_CACHE_LATEST=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
 if [ -d "$MKT_DIR/.git" ] && [ -d "$CACHE_DIR" ]; then
-  _SYNC_LATEST=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
   # Skip version-driven sync when latest cache entry is a local dev symlink —
   # local repo version differences should not drive marketplace checkout behavior.
-  if [ -n "$_SYNC_LATEST" ] && [ ! -L "${_SYNC_LATEST%/}" ]; then
+  if [ -n "$_CACHE_LATEST" ] && [ ! -L "${_CACHE_LATEST%/}" ]; then
     MKT_VER=$(jq -r '.version // "0"' "$MKT_DIR/.claude-plugin/plugin.json" 2>/dev/null)
-    CACHE_VER=$(jq -r '.version // "0"' "${_SYNC_LATEST}.claude-plugin/plugin.json" 2>/dev/null)
+    CACHE_VER=$(jq -r '.version // "0"' "${_CACHE_LATEST}.claude-plugin/plugin.json" 2>/dev/null)
     if [ "$MKT_VER" != "$CACHE_VER" ] && [ -n "$CACHE_VER" ] && [ "$CACHE_VER" != "0" ]; then
       (cd "$MKT_DIR" && git fetch origin --quiet 2>/dev/null && \
         if git diff --quiet 2>/dev/null; then
@@ -306,17 +305,17 @@ if [ -d "$MKT_DIR/.git" ] && [ -d "$CACHE_DIR" ]; then
   fi
   # Content staleness: compare command counts
   if [ -d "$MKT_DIR/commands" ] && [ -d "$CACHE_DIR" ]; then
-    LATEST_VER=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
-    if [ -n "$LATEST_VER" ] && [ -d "${LATEST_VER}commands" ] && [ ! -L "${LATEST_VER%/}" ]; then
+    if [ -n "$_CACHE_LATEST" ] && [ -d "${_CACHE_LATEST}commands" ] && [ ! -L "${_CACHE_LATEST%/}" ]; then
       # Skip staleness check for local dev symlinks — command counts differ during development.
       # zsh compat: bare globs error before ls runs in zsh (nomatch). Use ls dir | grep.
       # shellcheck disable=SC2010
       MKT_CMD_COUNT=$(ls -1 "$MKT_DIR/commands/" 2>/dev/null | grep '\.md$' | wc -l | tr -d ' ')
       # shellcheck disable=SC2010
-      CACHE_CMD_COUNT=$(ls -1 "${LATEST_VER}commands/" 2>/dev/null | grep '\.md$' | wc -l | tr -d ' ')
+      CACHE_CMD_COUNT=$(ls -1 "${_CACHE_LATEST}commands/" 2>/dev/null | grep '\.md$' | wc -l | tr -d ' ')
       if [ "${MKT_CMD_COUNT:-0}" -ne "${CACHE_CMD_COUNT:-0}" ]; then
         echo "VBW cache stale — marketplace has ${MKT_CMD_COUNT} commands, cache has ${CACHE_CMD_COUNT}" >&2
         rm -rf "$CACHE_DIR"
+        _CACHE_LATEST=""
       fi
     fi
   fi
@@ -324,7 +323,7 @@ fi
 
 # --- Sync global commands mirror for vbw: prefix in autocomplete ---
 VBW_GLOBAL_CMD="$CLAUDE_DIR/commands/vbw"
-CACHED_VER=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
+CACHED_VER="$_CACHE_LATEST"
 if [ -n "$CACHED_VER" ] && [ -d "${CACHED_VER}commands" ]; then
   mkdir -p "$VBW_GLOBAL_CMD"
   # Remove stale commands not in cache, then copy fresh
