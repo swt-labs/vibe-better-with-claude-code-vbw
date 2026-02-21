@@ -10,7 +10,8 @@
 #   uat-remediation-state.sh reset   <phase-dir>             → removes state file
 #   uat-remediation-state.sh init    <phase-dir> <severity>  → initializes for severity
 #
-# Stages (major/critical path): discuss → plan → execute → done
+# Stages (major/critical path): plan → execute → done
+#   (discuss is skipped — the UAT report serves as the scoping document)
 # Stages (minor-only path):     fix → done
 #
 # The state file is {phase-dir}/.uat-remediation-stage and contains a single word.
@@ -28,8 +29,8 @@ fi
 
 STATE_FILE="$PHASE_DIR/.uat-remediation-stage"
 
-# Major/critical chain order
-MAJOR_STAGES=("discuss" "plan" "execute" "done")
+# Major/critical chain order (UAT report serves as discussion — no separate discuss step)
+MAJOR_STAGES=("plan" "execute" "done")
 # Minor-only chain order
 MINOR_STAGES=("fix" "done")
 
@@ -47,7 +48,7 @@ next_stage() {
 
   # Determine which chain we're on based on current stage
   case "$current" in
-    discuss|plan|execute) stages=("${MAJOR_STAGES[@]}") ;;
+    plan|execute) stages=("${MAJOR_STAGES[@]}") ;;
     fix)                  stages=("${MINOR_STAGES[@]}") ;;
     done)                 echo "done"; return 0 ;;
     *)                    echo "done"; return 0 ;;
@@ -95,9 +96,9 @@ case "$CMD" in
       exit 1
     fi
     case "$SEVERITY_ARG" in
-      major|critical) echo "discuss" > "$STATE_FILE"; echo "discuss" ;;
+      major|critical) echo "plan" > "$STATE_FILE"; echo "plan" ;;
       minor)          echo "fix" > "$STATE_FILE"; echo "fix" ;;
-      *)              echo "discuss" > "$STATE_FILE"; echo "discuss" ;;
+      *)              echo "plan" > "$STATE_FILE"; echo "plan" ;;
     esac
     ;;
 

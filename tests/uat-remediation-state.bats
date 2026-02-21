@@ -18,12 +18,12 @@ teardown() {
   [ "$output" = "none" ]
 }
 
-@test "init major creates discuss stage" {
+@test "init major creates plan stage" {
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" init "$PHASE_DIR" "major"
   [ "$status" -eq 0 ]
-  [ "$output" = "discuss" ]
+  [ "$output" = "plan" ]
   [ -f "$PHASE_DIR/.uat-remediation-stage" ]
-  [ "$(cat "$PHASE_DIR/.uat-remediation-stage")" = "discuss" ]
+  [ "$(cat "$PHASE_DIR/.uat-remediation-stage")" = "plan" ]
 }
 
 @test "init minor creates fix stage" {
@@ -33,17 +33,14 @@ teardown() {
   [ "$(cat "$PHASE_DIR/.uat-remediation-stage")" = "fix" ]
 }
 
-@test "init unknown severity defaults to discuss" {
+@test "init unknown severity defaults to plan" {
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" init "$PHASE_DIR" "unknown"
   [ "$status" -eq 0 ]
-  [ "$output" = "discuss" ]
+  [ "$output" = "plan" ]
 }
 
-@test "advance major chain: discuss -> plan -> execute -> done" {
+@test "advance major chain: plan -> execute -> done" {
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" init "$PHASE_DIR" "major" >/dev/null
-
-  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR"
-  [ "$output" = "plan" ]
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR"
   [ "$output" = "execute" ]
@@ -71,7 +68,7 @@ teardown() {
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get "$PHASE_DIR"
-  [ "$output" = "plan" ]
+  [ "$output" = "execute" ]
 }
 
 @test "reset removes state file" {

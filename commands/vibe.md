@@ -90,7 +90,7 @@ If no $ARGUMENTS, evaluate phase-detect.sh output. First match determines mode:
 
 **Milestone UAT recovery:** When `milestone_uat_issues=true` and active phases are empty, the latest shipped milestone has unresolved UAT issues. Present the user with options: (a) create remediation phases to fix the UAT issues, or (b) start fresh with new work (ignoring the stale UAT). Use `milestone_uat_count` to determine how many phases are affected. When `milestone_uat_count` > 1, parse `milestone_uat_phase_dirs` (pipe-separated) to read all UAT reports and display a consolidated issue summary. Use `milestone_uat_major_or_higher` to determine severity context.
 
-**Remediation + require_phase_discussion:** Remediation phases created by `create-remediation-phase.sh` include a pre-seeded CONTEXT.md (populated from the source UAT report). This satisfies the `require_phase_discussion` gate — these phases route directly to Plan mode, not Discuss. The Next Up hint annotates this as "(discussion pre-seeded from UAT)" so the user understands why discussion was skipped.
+**Remediation + require_phase_discussion:** Both in-phase UAT remediation and milestone-level remediation phases skip the discussion step. In-phase remediation uses the UAT report as the scoping document (plan → execute chain). Milestone remediation phases created by `create-remediation-phase.sh` include a pre-seeded CONTEXT.md (populated from the source UAT report) that satisfies the `require_phase_discussion` gate. The Next Up hint annotates milestone remediation as "(discussion pre-seeded from UAT)" so the user understands why discussion was skipped.
 
 ### Confirmation Gate
 
@@ -233,12 +233,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - If `STAGE=done`: UAT remediation already completed for this phase. Display "Remediation already completed. Run `/vbw:verify --resume` to re-test." STOP.
    - Otherwise: resume at the persisted stage (handles compaction recovery).
 5. **Execute the current stage** based on `STAGE`:
-   - `discuss`: Route into Discuss mode for the same phase, using UAT issues as the discussion agenda. Capture/merge decisions into `{phase}-CONTEXT.md` (create if missing), with explicit references to each UAT issue (`Pxx-Ty`). After discuss completes, advance:
-     ```bash
-     bash ${CLAUDE_PLUGIN_ROOT}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
-     ```
-     Then continue to the next stage (`plan`).
-   - `plan`: Route into Plan mode for the same phase, with UAT issues + discuss decisions as required planning inputs. After planning completes, advance:
+   - `plan`: Route into Plan mode for the same phase, with UAT issues as required planning inputs (the UAT report serves as the scoping document — no separate discussion needed). After planning completes, advance:
      ```bash
      bash ${CLAUDE_PLUGIN_ROOT}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
@@ -252,7 +247,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
      bash ${CLAUDE_PLUGIN_ROOT}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
      Suggest `/vbw:verify --resume`.
-6. Present a remediation summary with: phase, issue count, severity mix, current stage, and chosen path (`discuss -> plan -> execute` or quick-fix).
+6. Present a remediation summary with: phase, issue count, severity mix, current stage, and chosen path (`plan -> execute` or quick-fix).
 
 ### Mode: Milestone UAT Recovery
 
