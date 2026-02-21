@@ -264,12 +264,14 @@ EOF
   echo "$output" | grep -q "has_shipped_milestones=false"
 }
 
-@test "outputs needs_milestone_rename=true when milestones/default/ exists" {
+@test "auto-renames milestones/default during phase-detect" {
   mkdir -p .vbw-planning/milestones/default
+  mkdir -p .vbw-planning/milestones/default/phases/01-legacy-phase
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "needs_milestone_rename=true"
+  echo "$output" | grep -q "needs_milestone_rename=false"
+  [ ! -d .vbw-planning/milestones/default ]
 }
 
 @test "outputs needs_milestone_rename=false when no milestones/default/" {
@@ -475,4 +477,113 @@ EOF
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+}
+
+# --- SOURCE-UAT exclusion tests ---
+
+@test "SOURCE-UAT.md is not treated as a UAT report in active phase scan" {
+  mkdir -p .vbw-planning/phases/01-remediate-test/
+  touch .vbw-planning/phases/01-remediate-test/01-CONTEXT.md
+  touch .vbw-planning/phases/01-remediate-test/01-01-PLAN.md
+  touch .vbw-planning/phases/01-remediate-test/01-01-SUMMARY.md
+  # SOURCE-UAT is a reference copy — should NOT trigger remediation
+  cat > .vbw-planning/phases/01-remediate-test/01-SOURCE-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "uat_issues_phase=none"
+  echo "$output" | grep -q "next_phase_state=all_done"
+}
+
+@test "SOURCE-UAT.md ignored while real UAT.md in later phase is detected" {
+  # Phase 01: completed remediation with SOURCE-UAT (should be ignored)
+  mkdir -p .vbw-planning/phases/01-remediate-first/
+  touch .vbw-planning/phases/01-remediate-first/01-01-PLAN.md
+  touch .vbw-planning/phases/01-remediate-first/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-remediate-first/01-SOURCE-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  # Phase 02: has real UAT issues
+  mkdir -p .vbw-planning/phases/02-executed/
+  touch .vbw-planning/phases/02-executed/02-01-PLAN.md
+  touch .vbw-planning/phases/02-executed/02-01-SUMMARY.md
+  cat > .vbw-planning/phases/02-executed/02-UAT.md <<'EOF'
+---
+phase: 02
+status: issues_found
+---
+- Severity: critical
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "uat_issues_phase=02"
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+}
+
+@test "completed remediation phases with SOURCE-UAT do not block unplanned phase" {
+  # Phase 01: unplanned (needs work)
+  mkdir -p .vbw-planning/phases/01-remediate-unresolved/
+  touch .vbw-planning/phases/01-remediate-unresolved/01-CONTEXT.md
+  cat > .vbw-planning/phases/01-remediate-unresolved/01-SOURCE-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: critical
+EOF
+
+  # Phase 02: completed remediation with SOURCE-UAT only
+  mkdir -p .vbw-planning/phases/02-remediate-done/
+  touch .vbw-planning/phases/02-remediate-done/02-01-PLAN.md
+  touch .vbw-planning/phases/02-remediate-done/02-01-SUMMARY.md
+  cat > .vbw-planning/phases/02-remediate-done/02-SOURCE-UAT.md <<'EOF'
+---
+phase: 02
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Phase 02 SOURCE-UAT should NOT trigger remediation
+  echo "$output" | grep -q "uat_issues_phase=none"
+  # Phase 01 has no plans — should route to needs_plan_and_execute
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+}
+
+@test "SOURCE-UAT.md in milestone phases is excluded from milestone UAT scan" {
+  mkdir -p .vbw-planning/phases/01-done/
+  touch .vbw-planning/phases/01-done/01-01-PLAN.md
+  touch .vbw-planning/phases/01-done/01-01-SUMMARY.md
+
+  mkdir -p .vbw-planning/milestones/v1/phases/01-shipped/
+  echo "# Shipped" > .vbw-planning/milestones/v1/SHIPPED.md
+  touch .vbw-planning/milestones/v1/phases/01-shipped/01-01-PLAN.md
+  touch .vbw-planning/milestones/v1/phases/01-shipped/01-01-SUMMARY.md
+  # Only SOURCE-UAT — should NOT trigger milestone recovery
+  cat > .vbw-planning/milestones/v1/phases/01-shipped/01-SOURCE-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=false"
 }

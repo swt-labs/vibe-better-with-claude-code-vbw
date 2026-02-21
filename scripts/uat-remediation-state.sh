@@ -27,6 +27,17 @@ if [ -z "$CMD" ] || [ -z "$PHASE_DIR" ]; then
   exit 1
 fi
 
+# Milestone path guard: refuse to init/advance remediation in archived milestones.
+# Archived milestones are read-only; remediation must happen in active phases.
+case "$PHASE_DIR" in
+  */.vbw-planning/milestones/*|.vbw-planning/milestones/*)
+    echo "Error: refusing to operate on archived milestone path: $PHASE_DIR" >&2
+    echo "Remediation must target active phases in .vbw-planning/phases/" >&2
+    echo "Use create-remediation-phase.sh to create active remediation phases from milestone UAT." >&2
+    exit 1
+    ;;
+esac
+
 STATE_FILE="$PHASE_DIR/.uat-remediation-stage"
 
 # Major/critical chain order (UAT report serves as discussion — no separate discuss step)
@@ -109,7 +120,7 @@ case "$CMD" in
     # Appends UAT issues to the existing CONTEXT (preserving original
     # discussion context) and adds pre_seeded: true to frontmatter.
     context_file=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | sort | head -1)
-    uat_file=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-UAT.md' 2>/dev/null | sort | tail -1)
+    uat_file=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-UAT.md' ! -name '*SOURCE-UAT.md' 2>/dev/null | sort | tail -1)
 
     if [ -n "$uat_file" ] && [ -f "$uat_file" ]; then
       uat_content=$(cat "$uat_file")

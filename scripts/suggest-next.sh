@@ -309,7 +309,7 @@ if [ "$CMD" = "verify" ] && [ "$effective_result" = "issues_found" ] && [ -d "${
       if [ "$_plans" -eq 0 ] || [ "$_summaries" -lt "$_plans" ]; then
         continue
       fi
-      _uat=$(ls -1 "$dir"[0-9]*-UAT.md 2>/dev/null | sort | tail -1 || true)
+      _uat=$(ls -1 "$dir"[0-9]*-UAT.md 2>/dev/null | grep -v 'SOURCE-UAT\.md$' | sort | tail -1 || true)
       if [ -f "$_uat" ]; then
         _us=$(read_status_field "$_uat")
         if [ "$_us" = "issues_found" ]; then
@@ -325,7 +325,7 @@ if [ "$CMD" = "verify" ] && [ "$effective_result" = "issues_found" ] && [ -d "${
   fi
 
   if [ -n "$verify_target_phase_dir" ]; then
-    verify_target_uat=$(ls -1 "$verify_target_phase_dir"/[0-9]*-UAT.md 2>/dev/null | sort | tail -1 || true)
+    verify_target_uat=$(ls -1 "$verify_target_phase_dir"/[0-9]*-UAT.md 2>/dev/null | grep -v 'SOURCE-UAT\.md$' | sort | tail -1 || true)
   fi
 
   if [ -f "$verify_target_uat" ]; then

@@ -78,6 +78,15 @@ else
   exit 0
 fi
 
+# --- Rename legacy milestones/default (brownfield hardening) ---
+# SessionStart normally performs this migration, but hooks can be unavailable
+# in some local-dev setups. Running it here keeps command routing grounded in
+# canonical milestone slugs even when SessionStart didn't run.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -d "$PLANNING_DIR/milestones/default" ] && [ -f "$SCRIPT_DIR/rename-default-milestone.sh" ]; then
+  bash "$SCRIPT_DIR/rename-default-milestone.sh" "$PLANNING_DIR" 2>/dev/null || true
+fi
+
 # --- Project existence ---
 PROJECT_EXISTS=false
 if [ -f "$PLANNING_DIR/PROJECT.md" ]; then
@@ -186,7 +195,7 @@ if [ -d "$PHASES_DIR" ]; then
         continue
       fi
 
-      UAT_FILE=$(ls "$DIR"[0-9]*-UAT.md 2>/dev/null | sort | tail -1 || true)
+      UAT_FILE=$(ls "$DIR"[0-9]*-UAT.md 2>/dev/null | grep -v 'SOURCE-UAT\.md$' | sort | tail -1 || true)
       if [ -f "$UAT_FILE" ]; then
         UAT_STATUS=$(extract_status_value "$UAT_FILE")
         if [ "$UAT_STATUS" = "issues_found" ]; then
@@ -346,7 +355,7 @@ if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] ||
         continue
       fi
 
-      _ms_uat=$(ls "$_ms_phase_dir"[0-9]*-UAT.md 2>/dev/null | sort | tail -1 || true)
+      _ms_uat=$(ls "$_ms_phase_dir"[0-9]*-UAT.md 2>/dev/null | grep -v 'SOURCE-UAT\.md$' | sort | tail -1 || true)
       if [ -f "$_ms_uat" ]; then
         _ms_uat_status=$(extract_status_value "$_ms_uat")
         if [ "$_ms_uat_status" = "issues_found" ]; then
