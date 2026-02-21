@@ -52,7 +52,7 @@ NEXT_PHASE_PADDED=$(printf "%02d" "$NEXT_PHASE")
 SOURCE_PHASE_SLUG=$(basename "$MILESTONE_PHASE_DIR" | sed 's/^[0-9]*-//')
 SOURCE_MILESTONE_SLUG=$(basename "$(dirname "$(dirname "$MILESTONE_PHASE_DIR")")")
 RAW_SLUG="remediate-${SOURCE_MILESTONE_SLUG}-${SOURCE_PHASE_SLUG}"
-PHASE_SLUG=$(echo "$RAW_SLUG" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g')
+PHASE_SLUG=$(echo "$RAW_SLUG" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g' | head -c 60 | sed 's/-$//')
 
 TARGET_PHASE_DIR="$PHASES_DIR/${NEXT_PHASE_PADDED}-${PHASE_SLUG}"
 mkdir -p "$TARGET_PHASE_DIR"
@@ -78,6 +78,10 @@ if [[ -n "$SOURCE_UAT" && -f "$SOURCE_UAT" ]]; then
 else
   SOURCE_UAT_OUT="none"
 fi
+
+# Mark the source milestone phase as remediated so phase-detect.sh
+# won't trigger repeated milestone UAT recovery for the same issues.
+echo "${TARGET_PHASE_DIR}" > "$MILESTONE_PHASE_DIR/.remediated"
 
 echo "phase=${NEXT_PHASE_PADDED}"
 echo "phase_dir=${TARGET_PHASE_DIR}"

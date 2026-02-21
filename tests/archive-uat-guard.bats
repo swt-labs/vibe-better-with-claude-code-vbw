@@ -423,7 +423,7 @@ EOF
   [ "$status" -eq 0 ]
   # Count output keys — must emit all 33 keys even with empty milestones dir
   key_count=$(echo "$output" | grep -c '=')
-  [ "$key_count" -ge 33 ]
+  [ "$key_count" -ge 35 ]
   echo "$output" | grep -q "milestone_uat_issues=false"
   echo "$output" | grep -q "config_effort="
   echo "$output" | grep -q "brownfield="
@@ -438,7 +438,7 @@ EOF
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
   key_count=$(echo "$output" | grep -c '=')
-  [ "$key_count" -ge 33 ]
+  [ "$key_count" -ge 35 ]
   echo "$output" | grep -q "milestone_uat_issues=false"
   echo "$output" | grep -q "config_effort="
   echo "$output" | grep -q "execution_state="
@@ -451,7 +451,7 @@ EOF
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
   key_count=$(echo "$output" | grep -c '=')
-  [ "$key_count" -ge 33 ]
+  [ "$key_count" -ge 35 ]
   echo "$output" | grep -q "phase_count=0"
   echo "$output" | grep -q "next_phase_state=no_phases"
   echo "$output" | grep -q "config_effort="
@@ -464,4 +464,111 @@ EOF
 
   run bash "$SCRIPTS_DIR/archive-uat-guard.sh"
   [ "$status" -eq 0 ]
+}
+
+# --- Multi-phase milestone UAT and .remediated marker ---
+
+@test "phase-detect reports all milestone phases with UAT issues" {
+  mkdir -p .vbw-planning/phases
+  mkdir -p .vbw-planning/milestones/01-foundation/phases/05-migration
+  mkdir -p .vbw-planning/milestones/01-foundation/phases/07-detail
+  mkdir -p .vbw-planning/milestones/01-foundation/phases/08-warnings
+  echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
+
+  # Phase 05 — issues_found
+  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-PLAN.md
+  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
+  cat > .vbw-planning/milestones/01-foundation/phases/05-migration/05-UAT.md <<'EOF'
+---
+status: issues_found
+---
+  - Severity: critical
+EOF
+
+  # Phase 07 — issues_found
+  touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-PLAN.md
+  touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-SUMMARY.md
+  cat > .vbw-planning/milestones/01-foundation/phases/07-detail/07-UAT.md <<'EOF'
+---
+status: issues_found
+---
+  - Severity: major
+EOF
+
+  # Phase 08 — issues_found
+  touch .vbw-planning/milestones/01-foundation/phases/08-warnings/08-01-PLAN.md
+  touch .vbw-planning/milestones/01-foundation/phases/08-warnings/08-01-SUMMARY.md
+  cat > .vbw-planning/milestones/01-foundation/phases/08-warnings/08-UAT.md <<'EOF'
+---
+status: issues_found
+---
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=true"
+  echo "$output" | grep -q "milestone_uat_count=3"
+  # Primary phase is the first match (05)
+  echo "$output" | grep -q "milestone_uat_phase=05"
+  # All three phase dirs in pipe-separated list
+  echo "$output" | grep -q "milestone_uat_phase_dirs=.*05-migration.*|.*07-detail.*|.*08-warnings"
+}
+
+@test "phase-detect skips milestone phases with .remediated marker" {
+  mkdir -p .vbw-planning/phases
+  mkdir -p .vbw-planning/milestones/01-foundation/phases/05-migration
+  mkdir -p .vbw-planning/milestones/01-foundation/phases/07-detail
+  echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
+
+  # Phase 05 — remediated
+  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-PLAN.md
+  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
+  cat > .vbw-planning/milestones/01-foundation/phases/05-migration/05-UAT.md <<'EOF'
+---
+status: issues_found
+---
+  - Severity: critical
+EOF
+  echo "phases/01-remediate-migration" > .vbw-planning/milestones/01-foundation/phases/05-migration/.remediated
+
+  # Phase 07 — still unresolved
+  touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-PLAN.md
+  touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-SUMMARY.md
+  cat > .vbw-planning/milestones/01-foundation/phases/07-detail/07-UAT.md <<'EOF'
+---
+status: issues_found
+---
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=true"
+  echo "$output" | grep -q "milestone_uat_count=1"
+  echo "$output" | grep -q "milestone_uat_phase=07"
+  # Only phase 07 in the list, not 05
+  phase_dirs=$(echo "$output" | grep '^milestone_uat_phase_dirs=' | sed 's/^[^=]*//')
+  [[ "$phase_dirs" != *"05-migration"* ]]
+}
+
+@test "phase-detect reports no milestone UAT when all phases remediated" {
+  mkdir -p .vbw-planning/phases
+  mkdir -p .vbw-planning/milestones/01-foundation/phases/05-migration
+  echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
+
+  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-PLAN.md
+  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
+  cat > .vbw-planning/milestones/01-foundation/phases/05-migration/05-UAT.md <<'EOF'
+---
+status: issues_found
+---
+  - Severity: critical
+EOF
+  echo "phases/01-remediate-migration" > .vbw-planning/milestones/01-foundation/phases/05-migration/.remediated
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=false"
+  echo "$output" | grep -q "milestone_uat_count=0"
 }

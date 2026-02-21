@@ -260,6 +260,8 @@ MILESTONE_UAT_PHASE="none"
 MILESTONE_UAT_SLUG="none"
 MILESTONE_UAT_MAJOR_OR_HIGHER=false
 MILESTONE_UAT_PHASE_DIR="none"
+MILESTONE_UAT_COUNT=0
+MILESTONE_UAT_PHASE_DIRS=""
 
 if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] || [ "$NEXT_PHASE_STATE" = "no_phases" ]; } && [ "$HAS_SHIPPED_MILESTONES" = true ] && [ ${#MILESTONE_SCAN_DIRS[@]} -gt 0 ]; then
   for _ms_dir in "${MILESTONE_SCAN_DIRS[@]}"; do
@@ -273,9 +275,9 @@ if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] ||
       MS_PHASE_DIRS+=("${_ms_phase_dir%/}/")
     done < <(list_child_dirs_sorted "${_ms_dir}phases")
 
-    _ms_issue_found=false
+    _ms_issue_count=0
     _ms_issue_phase="none"
-    _ms_issue_phase_dir="none"
+    _ms_issue_phase_dirs=""
     _ms_issue_major_or_higher=false
 
     if [ ${#MS_PHASE_DIRS[@]} -gt 0 ]; then
@@ -283,6 +285,9 @@ if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] ||
       [ -d "$_ms_phase_dir" ] || continue
       _ms_dirname=$(basename "$_ms_phase_dir")
       _ms_num=$(echo "$_ms_dirname" | sed 's/^\([0-9]*\).*/\1/')
+
+      # Skip phases already remediated (marker written by create-remediation-phase.sh)
+      [ -f "${_ms_phase_dir}.remediated" ] && continue
 
       # Skip phases without execution artifacts
       _ms_plans=$(ls "$_ms_phase_dir"[0-9]*-PLAN.md 2>/dev/null | wc -l | tr -d ' ')
@@ -295,9 +300,12 @@ if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] ||
       if [ -f "$_ms_uat" ]; then
         _ms_uat_status=$(extract_status_value "$_ms_uat")
         if [ "$_ms_uat_status" = "issues_found" ]; then
-          _ms_issue_found=true
-          _ms_issue_phase="$_ms_num"
-          _ms_issue_phase_dir="${_ms_phase_dir%/}"
+          _ms_issue_count=$((_ms_issue_count + 1))
+          # First match becomes the primary (for backward compat)
+          if [ "$_ms_issue_phase" = "none" ]; then
+            _ms_issue_phase="$_ms_num"
+          fi
+          _ms_issue_phase_dirs="${_ms_issue_phase_dirs:+${_ms_issue_phase_dirs}|}${_ms_phase_dir%/}"
 
           _ms_critical=$(grep -Eci 'severity:\**[[:space:]]*\**[[:space:]]*critical' "$_ms_uat" || true)
           _ms_major=$(grep -Eci 'severity:\**[[:space:]]*\**[[:space:]]*major' "$_ms_uat" || true)
@@ -307,19 +315,21 @@ if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] ||
           if [ "$_ms_critical" -gt 0 ] || [ "$_ms_major" -gt 0 ] || [ "$_ms_tagged" -eq 0 ]; then
             _ms_issue_major_or_higher=true
           fi
-          break
         fi
       fi
     done
     fi  # end MS_PHASE_DIRS length check
 
-    if [ "$_ms_issue_found" = true ]; then
+    if [ "$_ms_issue_count" -gt 0 ]; then
       # Keep scanning: last match wins, so we surface the latest milestone with issues.
       MILESTONE_UAT_ISSUES=true
       MILESTONE_UAT_PHASE="$_ms_issue_phase"
       MILESTONE_UAT_SLUG="$MS_SLUG"
-      MILESTONE_UAT_PHASE_DIR="$_ms_issue_phase_dir"
+      # Primary phase dir = first match (for backward compat with single-phase consumers)
+      MILESTONE_UAT_PHASE_DIR=$(echo "$_ms_issue_phase_dirs" | cut -d'|' -f1)
       MILESTONE_UAT_MAJOR_OR_HIGHER="$_ms_issue_major_or_higher"
+      MILESTONE_UAT_COUNT="$_ms_issue_count"
+      MILESTONE_UAT_PHASE_DIRS="$_ms_issue_phase_dirs"
     fi
   done
 fi
@@ -329,6 +339,8 @@ echo "milestone_uat_phase=$MILESTONE_UAT_PHASE"
 echo "milestone_uat_slug=$MILESTONE_UAT_SLUG"
 echo "milestone_uat_major_or_higher=$MILESTONE_UAT_MAJOR_OR_HIGHER"
 echo "milestone_uat_phase_dir=$MILESTONE_UAT_PHASE_DIR"
+echo "milestone_uat_count=$MILESTONE_UAT_COUNT"
+echo "milestone_uat_phase_dirs=$MILESTONE_UAT_PHASE_DIRS"
 
 # --- Config values ---
 CONFIG_FILE="$PLANNING_DIR/config.json"

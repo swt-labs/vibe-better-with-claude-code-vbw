@@ -78,7 +78,7 @@ If no $ARGUMENTS, evaluate phase-detect.sh output. First match determines mode:
 | 2 | `project_exists=false` | Bootstrap | "No project defined. Set one up?" |
 | 3 | `phase_count=0` | Scope | "Project defined but no phases. Scope the work?" |
 | 4 | `next_phase_state=needs_uat_remediation` | UAT Remediation | "Phase {N} has unresolved UAT issues. Continue with remediation now?" |
-| 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in Phase {N}. Unarchive and remediate?" |
+| 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
 | 6 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {N} needs planning and execution. Start?" |
 | 7 | `next_phase_state=needs_execute` | Execute | "Phase {N} is planned. Execute it?" |
 | 8 | `next_phase_state=all_done` | Archive | "All phases complete. Run audit and archive?" |
@@ -87,7 +87,7 @@ If no $ARGUMENTS, evaluate phase-detect.sh output. First match determines mode:
 
 **UAT remediation default:** When `next_phase_state=needs_uat_remediation`, plain `/vbw:vibe` must read that phase's UAT report and continue remediation directly. Do NOT require the user to manually specify `--discuss` or `--plan`.
 
-**Milestone UAT recovery:** When `milestone_uat_issues=true` and active phases are empty, the latest shipped milestone has unresolved UAT issues. Present the user with options: (a) create a new targeted milestone to remediate the UAT issues, or (b) start fresh with new work (ignoring the stale UAT). Read the milestone's UAT report (`milestone_uat_phase_dir` from phase-detect.sh) and display the issue summary. Use `milestone_uat_major_or_higher` to determine severity context.
+**Milestone UAT recovery:** When `milestone_uat_issues=true` and active phases are empty, the latest shipped milestone has unresolved UAT issues. Present the user with options: (a) create remediation phases to fix the UAT issues, or (b) start fresh with new work (ignoring the stale UAT). Use `milestone_uat_count` to determine how many phases are affected. When `milestone_uat_count` > 1, parse `milestone_uat_phase_dirs` (pipe-separated) to read all UAT reports and display a consolidated issue summary. Use `milestone_uat_major_or_higher` to determine severity context.
 
 ### Confirmation Gate
 
@@ -258,16 +258,23 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 This mode handles the case where a milestone was archived before UAT issues were resolved (e.g., due to a missing audit gate in older versions).
 
 **Steps:**
-1. Read the milestone's UAT report from the path in `milestone_uat_phase_dir`. Extract all issues with description and severity.
-2. Display the unresolved issues to the user with milestone context (milestone slug, phase number, severity mix).
+1. Read UAT reports from the milestone. If `milestone_uat_count` > 1, `milestone_uat_phase_dirs` contains all affected phase dirs (pipe-separated). Parse them:
+   ```bash
+   IFS='|' read -ra UAT_DIRS <<< "$milestone_uat_phase_dirs"
+   ```
+   Read each UAT report. If `milestone_uat_count` = 1, use `milestone_uat_phase_dir` directly. Extract all issues with description and severity from every affected phase.
+2. Display the unresolved issues to the user with milestone context (milestone slug, affected phase count, severity mix).
 3. Present options via AskUserQuestion:
-   - **"Create a remediation milestone"** (recommended for major/critical): Scope a new milestone with a single phase targeting the UAT issues. Auto-populate the phase goal from the UAT issue descriptions. Route to Scope mode with pre-filled phase data.
+   - **"Create a remediation milestone"** (recommended for major/critical): Create one remediation phase per affected milestone phase. Auto-populate each phase goal from the UAT issue descriptions. Route to Plan mode for the first created phase.
    - **"Start fresh with new work"**: Acknowledge the stale UAT issues and proceed as if all_done. The user can define new work via `/vbw:vibe` with arguments.
-4. If the user chooses remediation: create the new phase via script (not manual orchestration):
-  ```bash
-  bash ${CLAUDE_PLUGIN_ROOT}/scripts/create-remediation-phase.sh .vbw-planning "{milestone_uat_phase_dir}"
-  ```
-  Then route to Plan mode for the created phase.
+4. If the user chooses remediation: create remediation phases via script — one per affected milestone phase:
+   ```bash
+   IFS='|' read -ra UAT_DIRS <<< "$milestone_uat_phase_dirs"
+   for dir in "${UAT_DIRS[@]}"; do
+     bash ${CLAUDE_PLUGIN_ROOT}/scripts/create-remediation-phase.sh .vbw-planning "$dir"
+   done
+   ```
+   The script also writes a `.remediated` marker in each source milestone phase dir to prevent re-triggering on future sessions. After creating all phases, write a ROADMAP.md and update STATE.md reflecting the remediation phases, then route to Plan mode for the first phase.
 
 ### Mode: Plan
 
