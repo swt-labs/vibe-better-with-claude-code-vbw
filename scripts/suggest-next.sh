@@ -61,6 +61,7 @@ verify_target_uat=""
 milestone_uat_issues=false
 milestone_uat_phase="none"
 milestone_uat_slug="none"
+milestone_uat_count=0
 
 read_status_field() {
   local file="$1"
@@ -86,10 +87,12 @@ if [ -d "$PLANNING_DIR" ]; then
     _pd_milestone_uat=$(echo "$_pd_out" | grep -m1 '^milestone_uat_issues=' | sed 's/^[^=]*=//' || true)
     _pd_milestone_phase=$(echo "$_pd_out" | grep -m1 '^milestone_uat_phase=' | sed 's/^[^=]*=//' || true)
     _pd_milestone_slug=$(echo "$_pd_out" | grep -m1 '^milestone_uat_slug=' | sed 's/^[^=]*=//' || true)
+    _pd_milestone_count=$(echo "$_pd_out" | grep -m1 '^milestone_uat_count=' | sed 's/^[^=]*=//' || true)
 
     [ -n "${_pd_milestone_uat:-}" ] && milestone_uat_issues="$_pd_milestone_uat"
     [ -n "${_pd_milestone_phase:-}" ] && milestone_uat_phase="$_pd_milestone_phase"
     [ -n "${_pd_milestone_slug:-}" ] && milestone_uat_slug="$_pd_milestone_slug"
+    [ -n "${_pd_milestone_count:-}" ] && milestone_uat_count="$_pd_milestone_count"
   fi
 
   # Root-canonical phases directory (no ACTIVE indirection)
@@ -326,7 +329,9 @@ suggest() {
 
 suggest_milestone_recovery() {
   if [ "$milestone_uat_issues" = true ]; then
-    if [ "$milestone_uat_slug" != "none" ] && [ "$milestone_uat_phase" != "none" ]; then
+    if [ "$milestone_uat_slug" != "none" ] && [ "${milestone_uat_count:-0}" -gt 1 ] 2>/dev/null; then
+      suggest "/vbw:vibe -- Milestone UAT recovery pending (${milestone_uat_slug}, ${milestone_uat_count} phase(s))"
+    elif [ "$milestone_uat_slug" != "none" ] && [ "$milestone_uat_phase" != "none" ]; then
       suggest "/vbw:vibe -- Milestone UAT recovery pending (${milestone_uat_slug}, Phase ${milestone_uat_phase})"
     else
       suggest "/vbw:vibe -- Milestone UAT recovery pending"

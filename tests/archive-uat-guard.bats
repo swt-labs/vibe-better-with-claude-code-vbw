@@ -454,6 +454,8 @@ EOF
   [ "$key_count" -ge 35 ]
   echo "$output" | grep -q "phase_count=0"
   echo "$output" | grep -q "next_phase_state=no_phases"
+  echo "$output" | grep -q "milestone_uat_count=0"
+  echo "$output" | grep -q '^milestone_uat_phase_dirs='
   echo "$output" | grep -q "config_effort="
 }
 
@@ -571,4 +573,47 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=false"
   echo "$output" | grep -q "milestone_uat_count=0"
+}
+
+@test "mark-milestone-remediated acknowledges archived UAT and clears archive block loop" {
+  echo "# Project" > .vbw-planning/PROJECT.md
+  mkdir -p .vbw-planning/phases
+  mkdir -p .vbw-planning/milestones/01-foundation/phases/05-migration
+  mkdir -p .vbw-planning/milestones/01-foundation/phases/07-detail
+  echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
+
+  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-PLAN.md
+  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
+  cat > .vbw-planning/milestones/01-foundation/phases/05-migration/05-UAT.md <<'EOF'
+---
+status: issues_found
+---
+Severity: major
+EOF
+
+  touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-PLAN.md
+  touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-SUMMARY.md
+  cat > .vbw-planning/milestones/01-foundation/phases/07-detail/07-UAT.md <<'EOF'
+---
+status: issues_found
+---
+Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=true"
+  phase_dirs=$(echo "$output" | grep '^milestone_uat_phase_dirs=' | sed 's/^[^=]*=//')
+  [ -n "$phase_dirs" ]
+
+  run bash "$SCRIPTS_DIR/mark-milestone-remediated.sh" .vbw-planning "$phase_dirs"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q '^marked_count=2$'
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=false"
+
+  run bash "$SCRIPTS_DIR/archive-uat-guard.sh"
+  [ "$status" -eq 0 ]
 }

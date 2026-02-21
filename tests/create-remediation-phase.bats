@@ -93,3 +93,29 @@ EOF
   # Marker contains the target remediation phase dir
   grep -q 'phases/01-remediate' .vbw-planning/milestones/01-arch/phases/03-api/.remediated
 }
+
+@test "create-remediation-phase is idempotent for already-remediated source phase" {
+  mkdir -p .vbw-planning/milestones/01-arch/phases/03-api
+
+  cat > .vbw-planning/milestones/01-arch/phases/03-api/03-UAT.md <<'EOF'
+---
+status: issues_found
+---
+EOF
+
+  run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
+    .vbw-planning \
+    .vbw-planning/milestones/01-arch/phases/03-api
+  [ "$status" -eq 0 ]
+  first_phase_dir=$(echo "$output" | grep '^phase_dir=' | sed 's/^phase_dir=//')
+
+  run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
+    .vbw-planning \
+    .vbw-planning/milestones/01-arch/phases/03-api
+  [ "$status" -eq 0 ]
+  second_phase_dir=$(echo "$output" | grep '^phase_dir=' | sed 's/^phase_dir=//')
+
+  [ "$first_phase_dir" = "$second_phase_dir" ]
+  # Ensure no second remediation phase directory was created.
+  [ "$(find .vbw-planning/phases -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" -eq 1 ]
+}

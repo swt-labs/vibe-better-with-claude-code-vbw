@@ -60,6 +60,8 @@ else
   echo "milestone_uat_slug=none"
   echo "milestone_uat_major_or_higher=false"
   echo "milestone_uat_phase_dir=none"
+  echo "milestone_uat_count=0"
+  echo "milestone_uat_phase_dirs="
   echo "config_effort=balanced"
   echo "config_autonomy=standard"
   echo "config_auto_commit=true"

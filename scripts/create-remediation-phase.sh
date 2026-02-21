@@ -29,6 +29,26 @@ if [[ ! -d "$MILESTONE_PHASE_DIR" ]]; then
   exit 1
 fi
 
+# Idempotency: if this milestone phase already maps to a previously created
+# remediation phase dir, return that mapping instead of creating duplicates.
+EXISTING_MARKER_FILE="$MILESTONE_PHASE_DIR/.remediated"
+if [[ -f "$EXISTING_MARKER_FILE" ]]; then
+  EXISTING_TARGET_DIR=$(head -n1 "$EXISTING_MARKER_FILE" 2>/dev/null || true)
+  if [[ -n "$EXISTING_TARGET_DIR" && -d "$EXISTING_TARGET_DIR" ]]; then
+    EXISTING_PHASE=$(basename "$EXISTING_TARGET_DIR" | sed 's/-.*//')
+    EXISTING_SOURCE_UAT=$(ls -1 "$EXISTING_TARGET_DIR"/[0-9]*-SOURCE-UAT.md 2>/dev/null | sort | tail -1 || true)
+    if [[ -n "$EXISTING_SOURCE_UAT" && -f "$EXISTING_SOURCE_UAT" ]]; then
+      EXISTING_SOURCE_UAT_OUT="$EXISTING_SOURCE_UAT"
+    else
+      EXISTING_SOURCE_UAT_OUT="none"
+    fi
+    echo "phase=${EXISTING_PHASE}"
+    echo "phase_dir=${EXISTING_TARGET_DIR}"
+    echo "source_uat=${EXISTING_SOURCE_UAT_OUT}"
+    exit 0
+  fi
+fi
+
 PHASES_DIR="$PLANNING_DIR/phases"
 mkdir -p "$PHASES_DIR"
 
@@ -52,7 +72,17 @@ NEXT_PHASE_PADDED=$(printf "%02d" "$NEXT_PHASE")
 SOURCE_PHASE_SLUG=$(basename "$MILESTONE_PHASE_DIR" | sed 's/^[0-9]*-//')
 SOURCE_MILESTONE_SLUG=$(basename "$(dirname "$(dirname "$MILESTONE_PHASE_DIR")")")
 RAW_SLUG="remediate-${SOURCE_MILESTONE_SLUG}-${SOURCE_PHASE_SLUG}"
-PHASE_SLUG=$(echo "$RAW_SLUG" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g' | head -c 60 | sed 's/-$//')
+PHASE_SLUG=$(echo "$RAW_SLUG" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g')
+
+if [ ${#PHASE_SLUG} -gt 60 ]; then
+  PHASE_SLUG_TRUNC=$(printf '%s' "$PHASE_SLUG" | cut -c1-60 | sed 's/-$//')
+  PHASE_SLUG_WORD_SAFE=$(printf '%s' "$PHASE_SLUG_TRUNC" | sed 's/-[^-]*$//')
+  if [[ -n "$PHASE_SLUG_WORD_SAFE" && "$PHASE_SLUG_WORD_SAFE" != "$PHASE_SLUG_TRUNC" ]]; then
+    PHASE_SLUG="$PHASE_SLUG_WORD_SAFE"
+  else
+    PHASE_SLUG="$PHASE_SLUG_TRUNC"
+  fi
+fi
 
 TARGET_PHASE_DIR="$PHASES_DIR/${NEXT_PHASE_PADDED}-${PHASE_SLUG}"
 mkdir -p "$TARGET_PHASE_DIR"

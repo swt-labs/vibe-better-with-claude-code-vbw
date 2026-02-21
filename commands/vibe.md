@@ -266,7 +266,7 @@ This mode handles the case where a milestone was archived before UAT issues were
 2. Display the unresolved issues to the user with milestone context (milestone slug, affected phase count, severity mix).
 3. Present options via AskUserQuestion:
    - **"Create a remediation milestone"** (recommended for major/critical): Create one remediation phase per affected milestone phase. Auto-populate each phase goal from the UAT issue descriptions. Route to Plan mode for the first created phase.
-   - **"Start fresh with new work"**: Acknowledge the stale UAT issues and proceed as if all_done. The user can define new work via `/vbw:vibe` with arguments.
+   - **"Start fresh with new work"**: Acknowledge the stale UAT issues, mark them as acknowledged (`.remediated`) so they don't re-trigger archive blocking, then proceed as if all_done. The user can define new work via `/vbw:vibe` with arguments.
 4. If the user chooses remediation: create remediation phases via script — one per affected milestone phase:
    ```bash
    IFS='|' read -ra UAT_DIRS <<< "$milestone_uat_phase_dirs"
@@ -275,6 +275,15 @@ This mode handles the case where a milestone was archived before UAT issues were
    done
    ```
    The script also writes a `.remediated` marker in each source milestone phase dir to prevent re-triggering on future sessions. After creating all phases, write a ROADMAP.md and update STATE.md reflecting the remediation phases, then route to Plan mode for the first phase.
+5. If the user chooses start-fresh: persist acknowledgement markers for all affected archived phases before continuing:
+   ```bash
+   TARGET_PHASE_DIRS="$milestone_uat_phase_dirs"
+   if [ -z "$TARGET_PHASE_DIRS" ] && [ "$milestone_uat_phase_dir" != "none" ]; then
+     TARGET_PHASE_DIRS="$milestone_uat_phase_dir"
+   fi
+   bash ${CLAUDE_PLUGIN_ROOT}/scripts/mark-milestone-remediated.sh .vbw-planning "$TARGET_PHASE_DIRS"
+   ```
+   Then continue to normal all_done/new-work routing.
 
 ### Mode: Plan
 
