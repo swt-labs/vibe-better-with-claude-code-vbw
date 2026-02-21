@@ -406,6 +406,37 @@ EOF
   echo "$output" | grep -q "next_phase_slug=02-second"
 }
 
+@test "milestone UAT recovery takes priority over needs_discussion when all active phases done" {
+  local tmp
+  tmp=$(mktemp)
+  jq '.require_phase_discussion = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+  # All active phases complete
+  mkdir -p .vbw-planning/phases/01-done/
+  touch .vbw-planning/phases/01-done/01-CONTEXT.md
+  touch .vbw-planning/phases/01-done/01-01-PLAN.md
+  touch .vbw-planning/phases/01-done/01-01-SUMMARY.md
+  # Shipped milestone with UAT issues
+  mkdir -p .vbw-planning/milestones/v1/phases/01-shipped/
+  echo "# Shipped" > .vbw-planning/milestones/v1/SHIPPED.md
+  touch .vbw-planning/milestones/v1/phases/01-shipped/01-01-PLAN.md
+  touch .vbw-planning/milestones/v1/phases/01-shipped/01-01-SUMMARY.md
+  cat > .vbw-planning/milestones/v1/phases/01-shipped/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Active phases all_done (not needs_discussion — all are planned)
+  echo "$output" | grep -q "next_phase_state=all_done"
+  # Milestone UAT recovery detected
+  echo "$output" | grep -q "milestone_uat_issues=true"
+  echo "$output" | grep -q "milestone_uat_slug=v1"
+}
+
 # --- non-canonical directory handling ---
 
 @test "non-canonical phase dir without numeric prefix is skipped" {
@@ -414,7 +445,7 @@ EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "phase_count=2"
+  echo "$output" | grep -q "phase_count=1"
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "next_phase_slug=01-real"
   echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"

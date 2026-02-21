@@ -154,7 +154,15 @@ if [ -d "$PHASES_DIR" ]; then
     PHASE_DIRS+=("${_phase_dir%/}/")
   done < <(list_child_dirs_sorted "$PHASES_DIR")
 
-  PHASE_COUNT=${#PHASE_DIRS[@]}
+  # Count only canonical (numeric-prefixed) directories
+  PHASE_COUNT=0
+  for _dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
+    _bname=$(basename "$_dir")
+    _num=$(echo "$_bname" | sed 's/^\([0-9]*\).*/\1/')
+    if [ -n "$_num" ] && echo "$_num" | grep -qE '^[0-9]+$'; then
+      PHASE_COUNT=$((PHASE_COUNT + 1))
+    fi
+  done
 
   if [ "$PHASE_COUNT" -eq 0 ]; then
     NEXT_PHASE_STATE="no_phases"
@@ -411,7 +419,6 @@ if [ "$JQ_AVAILABLE" = true ] && [ -f "$CONFIG_FILE" ]; then
     "CFG_PREFER_TEAMS=\(.prefer_teams // "always")",
     "CFG_MAX_TASKS=\(.max_tasks_per_plan // 5)",
     "CFG_CONTEXT_COMPILER=\(if .context_compiler == null then true else .context_compiler end)",
-    "CFG_REQUIRE_PHASE_DISCUSSION=\(if .require_phase_discussion == null then false else .require_phase_discussion end)",
     "CFG_COMPACTION=\(.compaction_threshold // 130000)"
   ' "$CONFIG_FILE" 2>/dev/null)" || true
 fi
