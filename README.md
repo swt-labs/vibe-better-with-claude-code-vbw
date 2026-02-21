@@ -363,9 +363,8 @@ This setting controls when VBW creates an Agent Team (multiple color-coded Dev a
 
 | Value | Behavior |
 | :--- | :--- |
-| `always` | Creates a team for every phase, even with 1 plan. Maximum agent visibility. Default. |
-| `when_parallel` | Creates a team only when 2+ plans exist. Single plan = single agent, lower overhead. |
-| `auto` | Same as `when_parallel`. Smart routing may further downgrade simple plans to turbo (no team). |
+| `always` | Creates a team for every phase, even with 1 plan. Maximum agent visibility. |
+| `auto` | Creates a team only when 2+ plans exist. Single plan = single agent, lower overhead. Default. Smart routing may further downgrade simple plans to turbo (no team). `when_parallel` is an alias for `auto`. |
 
 This setting determines whether parallel execution is even possible. With a single agent (1 plan, no team), there's no concurrency by definition.
 
@@ -411,7 +410,7 @@ Lease locks operate within a single shared working directory — there are no se
 
 | Setting | Default | Values |
 | :--- | :--- | :--- |
-| `lease_locks` | `false` | `true` / `false` |
+| `lease_locks` | `true` | `true` / `false` |
 
 ### Which Should You Use?
 
@@ -419,12 +418,12 @@ Worktree isolation and lease locks solve the same problem — preventing file co
 
 | Scenario | Recommendation |
 | :--- | :--- |
-| Plans always chained via `depends_on` (sequential) | Neither needed — no concurrency, no conflicts |
+| Plans always chained via `depends_on` (sequential) | Neither needed — no concurrency, no conflicts. Lease locks are on by default but add negligible overhead. |
 | Parallel plans, want strongest isolation | `worktree_isolation: "on"` — separate directories and branches |
-| Parallel plans, want lightweight protection | `lease_locks: true` — file-level claims, no branch overhead |
+| Parallel plans, want lightweight protection | `lease_locks: true` (default) — file-level claims, no branch overhead |
 | Both enabled | Works (no conflict), but redundant — worktrees already prevent the problem lease locks detect |
 
-For most users, the default (`worktree_isolation: "off"`, `lease_locks: false`) is fine because plans typically have sequential dependencies. If you're running `effort: "thorough"` with complex phases where the Architect creates genuinely independent plans, enable `worktree_isolation: "on"` for the strongest protection.
+Lease locks are enabled by default because they add negligible overhead (one small JSON file per task) while providing a safety net for the cases where plans run in parallel. Worktree isolation is off by default because it adds git worktree complexity — enable it if you're running `effort: "thorough"` with complex phases where the Architect creates genuinely independent plans.
 
 <br>
 
@@ -801,12 +800,12 @@ Every setting below lives in `.vbw-planning/config.json` and can be changed with
 
 | Setting | Type | Default | Values |
 | :--- | :--- | :--- | :--- |
-| `prefer_teams` | string | `always` | `always` / `when_parallel` / `auto` |
+| `prefer_teams` | string | `auto` | `always` / `auto` |
 | `max_tasks_per_plan` | number | `5` | `1`–`7` |
 | `context_compiler` | boolean | `true` | `true` / `false` |
 | `plain_summary` | boolean | `true` | `true` / `false` |
 
-- **`prefer_teams`** — Controls when VBW creates Agent Teams (multiple color-coded agents working together) vs spawning a single subagent. See [Execution Model](#execution-model) for details on how this interacts with parallel plan execution, worktree isolation, and lease locks. `always` creates teams for every operation — maximum agent visibility but higher token cost. `when_parallel` (and `auto`, which behaves identically) creates teams only when parallelism adds value: 2+ plans in execute, Scout needed in planning, ambiguous bugs in debug. Use `always` unless you're optimizing for token cost.
+- **`prefer_teams`** — Controls when VBW creates Agent Teams (multiple color-coded agents working together) vs spawning a single subagent. See [Execution Model](#execution-model) for details on how this interacts with parallel plan execution, worktree isolation, and lease locks. `auto` (default) creates teams only when parallelism adds value: 2+ plans in execute, Scout needed in planning, ambiguous bugs in debug. `always` creates teams for every operation — maximum agent visibility but higher token cost. `when_parallel` is accepted as an alias for `auto`.
 - **`max_tasks_per_plan`** — Maximum number of tasks the Lead agent should include in a single plan. Communicated to agents via session context. Lower values (2–3) produce more focused, easier-to-verify plans. Higher values (5–7) reduce planning overhead but increase blast radius per plan. Not enforced by a hard gate — it's an advisory constraint.
 - **`context_compiler`** — When `true`, runs `compile-context.sh` to produce role-specific `.context-{role}.md` files so each agent gets curated context (Lead gets requirements, Dev gets phase goal + conventions, QA gets verification targets). When `false`, agents read project files directly without curation. Leave this on unless you're debugging context issues.
 - **`plain_summary`** — When `true`, appends 2–4 plain-English sentences after QA completes in Execute mode, summarizing what happened in the phase without jargon. When `false`, output shows only the structured QA result.
@@ -844,6 +843,16 @@ Every setting below lives in `.vbw-planning/config.json` and can be changed with
 | `bash_guard` | boolean | `true` | `true` / `false` |
 
 - **`bash_guard`** — When `true`, a PreToolUse hook blocks known destructive Bash commands (database drops, migration resets, volume wipes) before they execute. Covers 40+ patterns across all major frameworks and databases. Override per-command with `VBW_ALLOW_DESTRUCTIVE=1` env var, or disable entirely with `false`. Project-specific patterns can be added to `.vbw-planning/destructive-commands.local.txt`.
+
+### Cross-phase context
+
+| Setting | Type | Default | Values |
+| :--- | :--- | :--- | :--- |
+| `rolling_summary` | boolean | `false` | `true` / `false` |
+| `event_recovery` | boolean | `true` | `true` / `false` |
+
+- **`rolling_summary`** — When `true` and the project is past Phase 1, VBW compiles a condensed digest of all completed prior phases (what was built, files modified, deviations, commit hashes) into `ROLLING-CONTEXT.md`. This digest is injected into agent context via the context compiler, so Phase 3's Dev and Lead agents have awareness of what Phases 1–2 decided, built, and deviated from — without re-reading every prior SUMMARY.md. Adds ~50KB to agent context per phase. Useful for multi-phase projects where cross-phase continuity matters; unnecessary for single-phase work.
+- **`event_recovery`** — When `true`, enables event-sourced state recovery as a fallback during crash recovery. If `.execution-state.json` is stale or missing after a crash, VBW can reconstruct phase/plan status from the event log (`event-log.jsonl`) and SUMMARY.md files.
 
 ### Display
 

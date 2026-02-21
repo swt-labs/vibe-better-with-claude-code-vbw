@@ -11,7 +11,7 @@
   "context_compiler": true,
   "visual_format": "unicode",
   "max_tasks_per_plan": 5,
-  "prefer_teams": "always",
+  "prefer_teams": "auto",
   "branch_per_milestone": false,
   "plain_summary": true,
   "active_profile": "default",
@@ -34,8 +34,8 @@
   "smart_routing": true,
   "validation_gates": true,
   "snapshot_resume": true,
-  "lease_locks": false,
-  "event_recovery": false,
+  "lease_locks": true,
+  "event_recovery": true,
   "monorepo_routing": true,
   "rolling_summary": false
 }
