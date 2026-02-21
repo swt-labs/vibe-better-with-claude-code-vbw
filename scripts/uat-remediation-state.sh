@@ -27,6 +27,17 @@ if [ -z "$CMD" ] || [ -z "$PHASE_DIR" ]; then
   exit 1
 fi
 
+# Milestone path guard: refuse to init/advance remediation in archived milestones.
+# Archived milestones are read-only; remediation must happen in active phases.
+case "$PHASE_DIR" in
+  */milestones/*)
+    echo "Error: refusing to operate on archived milestone path: $PHASE_DIR" >&2
+    echo "Remediation must target active phases in .vbw-planning/phases/" >&2
+    echo "Use create-remediation-phase.sh to create active remediation phases from milestone UAT." >&2
+    exit 1
+    ;;
+esac
+
 STATE_FILE="$PHASE_DIR/.uat-remediation-stage"
 
 # Major/critical chain order (UAT report serves as discussion — no separate discuss step)

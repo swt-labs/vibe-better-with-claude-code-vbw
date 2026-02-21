@@ -72,6 +72,10 @@ ALWAYS confirm interpreted intent via AskUserQuestion before executing.
 
 If no $ARGUMENTS, evaluate phase-detect.sh output. First match determines mode:
 
+**Phase-detect error guard (NON-NEGOTIABLE):** If the output contains `phase_detect_error=true`, display:
+"⚠ Phase detection failed. Run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/phase-detect.sh` manually to debug."
+STOP. Do NOT manually scan for project state or improvise routing — incorrect routing can corrupt archived milestones.
+
 | Priority | Condition | Mode | Confirmation |
 |---|---|---|---|
 | 1 | `planning_dir_exists=false` | Init redirect | (redirect, no confirmation) |
@@ -219,6 +223,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 
 **Steps:**
 1. Resolve target phase from pre-computed state (`next_phase`, `next_phase_slug`) when `next_phase_state=needs_uat_remediation`. Set `PHASE_DIR` to the resolved phase directory path.
+   **Milestone path guard (NON-NEGOTIABLE):** If `PHASE_DIR` contains `milestones/` (e.g., `.vbw-planning/milestones/*/phases/`), STOP — this is an archived milestone. UAT Remediation operates only on active phases in `.vbw-planning/phases/`. Display: "⚠ UAT issues found in archived milestone, not active phases. Routing to Milestone UAT Recovery." Then route to Milestone UAT Recovery mode instead.
 2. Read latest `{phase}-UAT.md` in the target phase directory. Extract all issues (`Pxx-Ty` entries) with description and severity.
 3. Treat the UAT report as source-of-truth scope. Do NOT ask the user to restate issues already recorded in UAT.
 4. **Read or initialize remediation stage:**
@@ -287,6 +292,7 @@ This mode handles the case where a milestone was archived before UAT issues were
 
 **Guard:** Initialized, roadmap exists, phase exists.
 **Phase auto-detection:** First phase without PLAN.md. All planned: STOP "All phases planned. Specify phase: `/vbw:vibe --plan N`"
+**Milestone path guard:** If `{phases_dir}` contains `milestones/`, STOP "Cannot plan inside archived milestones." Archived milestones are read-only.
 
 **Steps:**
 1. **Parse args:** Phase number (optional, auto-detected), --effort (optional, falls back to config).
@@ -372,6 +378,7 @@ This mode delegates entirely to the protocol file. Before reading:
    - Not initialized: STOP "Run /vbw:init first."
    - No PLAN.md in phase dir: STOP "Phase {N} has no plans. Run `/vbw:vibe --plan {N}` first."
    - All plans have SUMMARY.md: cautious/standard -> WARN + confirm; confident/pure-vibe -> warn + auto-continue.
+   - **Milestone path guard:** If `{phases_dir}` contains `milestones/`, STOP "Cannot execute inside archived milestones." This prevents writing artifacts into shipped milestone directories.
 3. **Compile context:** If `config_context_compiler=true`, run:
    - `bash ${CLAUDE_PLUGIN_ROOT}/scripts/compile-context.sh {phase} dev {phases_dir} {plan_path}`
    - `bash ${CLAUDE_PLUGIN_ROOT}/scripts/compile-context.sh {phase} qa {phases_dir}`

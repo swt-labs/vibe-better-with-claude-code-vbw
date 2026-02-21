@@ -19,6 +19,12 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null) || 
 
 # Exempt planning artifacts — these are always allowed
 case "$FILE_PATH" in
+  *.vbw-planning/milestones/*)
+    # Milestone directories are read-only after archival.
+    # Block writes to prevent execution from corrupting archived milestones.
+    echo "Blocked: writes to archived milestones are not allowed ($FILE_PATH)" >&2
+    exit 2
+    ;;
   *.vbw-planning/*|*SUMMARY.md|*VERIFICATION.md|*STATE.md|*CLAUDE.md|*.execution-state.json)
     exit 0
     ;;
