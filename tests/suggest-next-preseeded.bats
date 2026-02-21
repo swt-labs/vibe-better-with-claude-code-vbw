@@ -223,3 +223,35 @@ EOF
   [[ "$output" != *"discussion pre-seeded from UAT"* ]]
   [[ "$output" != *"Discuss phase before planning"* ]]
 }
+
+# --- multiple CONTEXT.md files ---
+
+@test "suggest-next detects pre_seeded from second CONTEXT.md when multiple exist" {
+  cd "$TEST_TEMP_DIR"
+  local p2="$TEST_TEMP_DIR/.vbw-planning/phases/02-remediate"
+  mkdir -p "$p2"
+
+  # First CONTEXT.md does NOT have pre_seeded
+  cat > "$p2/02-CONTEXT.md" <<'EOF'
+---
+phase: 02
+title: User discussion
+---
+# Context
+EOF
+
+  # Second CONTEXT.md DOES have pre_seeded: true
+  cat > "$p2/02-02-CONTEXT.md" <<'EOF'
+---
+phase: 02
+title: UAT remediation
+pre_seeded: true
+---
+# Context
+EOF
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"discussion pre-seeded from UAT"* ]]
+}

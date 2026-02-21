@@ -165,6 +165,13 @@ seed_remediation_roadmap_and_state() {
 
   phase_count=$(jq 'length' "$phases_json" 2>/dev/null || echo 0)
   if [ "$phase_count" -gt 0 ]; then
+    # Preserve existing progress rows from ROADMAP.md (avoid clobbering
+    # progress when re-entering idempotently or adding new phases).
+    existing_progress=""
+    if [ -f "$roadmap_file" ]; then
+      existing_progress=$(grep -E '^\|[[:space:]]*[0-9]+[[:space:]]*\|' "$roadmap_file" 2>/dev/null || true)
+    fi
+
     {
       echo "# UAT Remediation Roadmap"
       echo ""
@@ -177,7 +184,12 @@ seed_remediation_roadmap_and_state() {
       echo "|-------|--------|-------|-------|---------|"
       for i in $(seq 0 $((phase_count - 1))); do
         phase_num=$((i + 1))
-        echo "| ${phase_num} | Pending | 0 | 0 | 0 |"
+        preserved=$(echo "$existing_progress" | grep -E "^\|[[:space:]]*${phase_num}[[:space:]]*\|" | head -1 || true)
+        if [ -n "$preserved" ]; then
+          echo "$preserved"
+        else
+          echo "| ${phase_num} | Pending | 0 | 0 | 0 |"
+        fi
       done
       echo ""
       echo "---"
@@ -229,7 +241,31 @@ seed_remediation_roadmap_and_state() {
     } > "$roadmap_file"
 
     project_name=$(extract_project_name)
-    bash "$SCRIPT_DIR/bootstrap/bootstrap-state.sh" "$state_file" "$project_name" "UAT Remediation" "$phase_count"
+
+    # Preserve existing STATE.md phase statuses when the remediation milestone
+    # is already seeded (avoid resetting progress on re-entry or phase addition).
+    if [ -f "$state_file" ] && grep -q '^\*\*Milestone:\*\* UAT Remediation$' "$state_file" 2>/dev/null; then
+      existing_phase_lines=$(grep -cE '^\- \*\*Phase [0-9]+:\*\*' "$state_file" 2>/dev/null || echo 0)
+      if [ "$phase_count" -gt "$existing_phase_lines" ]; then
+        # Append new phase entries after the last existing "- **Phase N:**" line
+        awk -v start="$((existing_phase_lines + 1))" -v end="$phase_count" '
+          /^- \*\*Phase [0-9]+:\*\*/ { last_phase_line = NR }
+          { lines[NR] = $0; count = NR }
+          END {
+            for (i = 1; i <= count; i++) {
+              print lines[i]
+              if (i == last_phase_line) {
+                for (p = start; p <= end; p++) {
+                  print "- **Phase " p ":** Pending"
+                }
+              }
+            }
+          }
+        ' "$state_file" > "${state_file}.tmp" && mv "${state_file}.tmp" "$state_file"
+      fi
+    else
+      bash "$SCRIPT_DIR/bootstrap/bootstrap-state.sh" "$state_file" "$project_name" "UAT Remediation" "$phase_count"
+    fi
   fi
 
   rm -f "$phases_json"
