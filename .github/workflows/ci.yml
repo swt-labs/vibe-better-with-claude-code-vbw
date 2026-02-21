@@ -17,15 +17,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install ShellCheck
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+
       - name: ShellCheck
-        uses: ludeeus/action-shellcheck@2.0.0
-        with:
-          scandir: scripts
-          additional_files: hooks
-          severity: warning
+        run: |
+          failed=0
+          while IFS= read -r -d '' file; do
+            if ! shellcheck -S warning "$file"; then
+              failed=1
+            fi
+          done < <(find scripts hooks -type f -name "*.sh" -print0)
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::ShellCheck found issues in one or more files (see above)"
+            exit 1
+          fi
 
       - name: Shell syntax check
-        run: find scripts testing -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
+        run: |
+          failed=0
+          while IFS= read -r -d '' file; do
+            if ! bash -n "$file"; then
+              echo "::error file=$file::Syntax error in $file"
+              failed=1
+            fi
+          done < <(find scripts testing -type f -name "*.sh" -print0)
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
 
   test:
     name: Test
