@@ -119,3 +119,56 @@ EOF
   # Ensure no second remediation phase directory was created.
   [ "$(find .vbw-planning/phases -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" -eq 1 ]
 }
+
+@test "create-remediation-phase writes UAT content verbatim without shell expansion" {
+  mkdir -p .vbw-planning/milestones/01-arch/phases/03-api
+
+  # UAT content with shell metacharacters that must NOT be expanded
+  cat > .vbw-planning/milestones/01-arch/phases/03-api/03-UAT.md <<'TESTEOF'
+---
+status: issues_found
+---
+## Issue 1
+The `$HOME` variable and `$(whoami)` command in the code snippet:
+```bash
+echo $PATH
+result=$(ls -la)
+```
+User $USER saw errors with backtick `command` syntax.
+TESTEOF
+
+  run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
+    .vbw-planning \
+    .vbw-planning/milestones/01-arch/phases/03-api
+
+  [ "$status" -eq 0 ]
+  ctx_file=".vbw-planning/phases/01-remediate-01-arch-api/01-CONTEXT.md"
+  [ -f "$ctx_file" ]
+
+  # Verify shell metacharacters were preserved verbatim
+  grep -qF '$(whoami)' "$ctx_file"
+  grep -qF '$HOME' "$ctx_file"
+  grep -qF '$PATH' "$ctx_file"
+  grep -qF '$(ls -la)' "$ctx_file"
+  grep -qF '$USER' "$ctx_file"
+}
+
+@test "create-remediation-phase CONTEXT.md has pre_seeded frontmatter" {
+  mkdir -p .vbw-planning/milestones/01-arch/phases/03-api
+
+  cat > .vbw-planning/milestones/01-arch/phases/03-api/03-UAT.md <<'EOF'
+---
+status: issues_found
+---
+Minor issue found.
+EOF
+
+  run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
+    .vbw-planning \
+    .vbw-planning/milestones/01-arch/phases/03-api
+
+  [ "$status" -eq 0 ]
+  ctx_file=".vbw-planning/phases/01-remediate-01-arch-api/01-CONTEXT.md"
+  [ -f "$ctx_file" ]
+  grep -q '^pre_seeded: true' "$ctx_file"
+}

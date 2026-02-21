@@ -76,9 +76,9 @@ If no $ARGUMENTS, evaluate phase-detect.sh output. First match determines mode:
 |---|---|---|---|
 | 1 | `planning_dir_exists=false` | Init redirect | (redirect, no confirmation) |
 | 2 | `project_exists=false` | Bootstrap | "No project defined. Set one up?" |
-| 3 | `phase_count=0` | Scope | "Project defined but no phases. Scope the work?" |
-| 4 | `next_phase_state=needs_uat_remediation` | UAT Remediation | "Phase {N} has unresolved UAT issues. Continue with remediation now?" |
-| 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
+| 3 | `next_phase_state=needs_uat_remediation` | UAT Remediation | "Phase {N} has unresolved UAT issues. Continue with remediation now?" |
+| 4 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
+| 5 | `phase_count=0` | Scope | "Project defined but no phases. Scope the work?" |
 | 6 | `next_phase_state=needs_discussion` | Discuss | "Phase {N} needs discussion before planning. Start discussion?" |
 | 7 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {N} needs planning and execution. Start?" |
 | 8 | `next_phase_state=needs_execute` | Execute | "Phase {N} is planned. Execute it?" |
@@ -89,6 +89,8 @@ If no $ARGUMENTS, evaluate phase-detect.sh output. First match determines mode:
 **UAT remediation default:** When `next_phase_state=needs_uat_remediation`, plain `/vbw:vibe` must read that phase's UAT report and continue remediation directly. Do NOT require the user to manually specify `--discuss` or `--plan`.
 
 **Milestone UAT recovery:** When `milestone_uat_issues=true` and active phases are empty, the latest shipped milestone has unresolved UAT issues. Present the user with options: (a) create remediation phases to fix the UAT issues, or (b) start fresh with new work (ignoring the stale UAT). Use `milestone_uat_count` to determine how many phases are affected. When `milestone_uat_count` > 1, parse `milestone_uat_phase_dirs` (pipe-separated) to read all UAT reports and display a consolidated issue summary. Use `milestone_uat_major_or_higher` to determine severity context.
+
+**Remediation + require_phase_discussion:** Remediation phases created by `create-remediation-phase.sh` include a pre-seeded CONTEXT.md (populated from the source UAT report). This satisfies the `require_phase_discussion` gate — these phases route directly to Plan mode, not Discuss. The Next Up hint annotates this as "(discussion pre-seeded from UAT)" so the user understands why discussion was skipped.
 
 ### Confirmation Gate
 

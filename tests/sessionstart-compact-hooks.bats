@@ -59,6 +59,20 @@ teardown() {
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Next: /vbw:vibe (needs scoping).")' >/dev/null
 }
 
+@test "session-start: needs_discussion state suggests discussion before planning" {
+  cd "$TEST_TEMP_DIR"
+  # Enable require_phase_discussion
+  local tmp
+  tmp=$(mktemp)
+  jq '.require_phase_discussion = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+  # Phase exists but has no CONTEXT.md
+  mkdir -p .vbw-planning/phases/01-setup
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("needs discussion")' >/dev/null
+}
+
 @test "session-start: no phases with shipped milestones suggests new milestone" {
   cd "$TEST_TEMP_DIR"
   rm -rf .vbw-planning/phases

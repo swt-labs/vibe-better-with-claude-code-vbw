@@ -154,7 +154,15 @@ if [ -d "$PHASES_DIR" ]; then
     PHASE_DIRS+=("${_phase_dir%/}/")
   done < <(list_child_dirs_sorted "$PHASES_DIR")
 
-  PHASE_COUNT=${#PHASE_DIRS[@]}
+  # Count only canonical (numeric-prefixed) directories
+  PHASE_COUNT=0
+  for _dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
+    _bname=$(basename "$_dir")
+    _num=$(echo "$_bname" | sed 's/^\([0-9]*\).*/\1/')
+    if [ -n "$_num" ] && echo "$_num" | grep -qE '^[0-9]+$'; then
+      PHASE_COUNT=$((PHASE_COUNT + 1))
+    fi
+  done
 
   if [ "$PHASE_COUNT" -eq 0 ]; then
     NEXT_PHASE_STATE="no_phases"
@@ -164,6 +172,11 @@ if [ -d "$PHASES_DIR" ]; then
     for DIR in "${PHASE_DIRS[@]}"; do
       DIRNAME=$(basename "$DIR")
       NUM=$(echo "$DIRNAME" | sed 's/^\([0-9]*\).*/\1/')
+
+      # Skip non-canonical dirs whose basename doesn't start with digits
+      if [ -z "$NUM" ] || ! echo "$NUM" | grep -qE '^[0-9]+$'; then
+        continue
+      fi
 
       # Skip phases without execution artifacts — a UAT file in a never-executed phase is orphaned/stale.
       # Also skip mid-execution phases (SUMMARY < PLAN) — UAT from a prior run is stale until re-execution completes.
@@ -209,6 +222,11 @@ if [ -d "$PHASES_DIR" ]; then
         # Extract numeric prefix (e.g., "01" from "01-context-diet")
         NUM=$(echo "$DIRNAME" | sed 's/^\([0-9]*\).*/\1/')
 
+        # Skip non-canonical dirs whose basename doesn't start with digits
+        if [ -z "$NUM" ] || ! echo "$NUM" | grep -qE '^[0-9]+$'; then
+          continue
+        fi
+
         # Count PLAN and SUMMARY files
         P_COUNT=$(ls "$DIR"[0-9]*-PLAN.md 2>/dev/null | wc -l | tr -d ' ')
         S_COUNT=$(ls "$DIR"[0-9]*-SUMMARY.md 2>/dev/null | wc -l | tr -d ' ')
@@ -216,8 +234,8 @@ if [ -d "$PHASES_DIR" ]; then
         if [ "$P_COUNT" -eq 0 ]; then
           # Check if discussion is required before planning
           if [ "$CFG_REQUIRE_PHASE_DISCUSSION" = true ]; then
-            # Check for CONTEXT.md (any file matching *-CONTEXT.md or *CONTEXT.md)
-            C_COUNT=$(ls "$DIR"*CONTEXT.md 2>/dev/null | wc -l | tr -d ' ')
+            # Check for CONTEXT.md (canonical phase-prefixed pattern only)
+            C_COUNT=$(ls "$DIR"[0-9]*-CONTEXT.md 2>/dev/null | wc -l | tr -d ' ')
             if [ "$C_COUNT" -eq 0 ]; then
               if [ "$NEXT_PHASE" = "none" ]; then
                 NEXT_PHASE="$NUM"
@@ -313,6 +331,11 @@ if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] ||
       _ms_dirname=$(basename "$_ms_phase_dir")
       _ms_num=$(echo "$_ms_dirname" | sed 's/^\([0-9]*\).*/\1/')
 
+      # Skip non-canonical dirs whose basename doesn't start with digits
+      if [ -z "$_ms_num" ] || ! echo "$_ms_num" | grep -qE '^[0-9]+$'; then
+        continue
+      fi
+
       # Skip phases already remediated (marker written by create-remediation-phase.sh)
       [ -f "${_ms_phase_dir}.remediated" ] && continue
 
@@ -396,7 +419,6 @@ if [ "$JQ_AVAILABLE" = true ] && [ -f "$CONFIG_FILE" ]; then
     "CFG_PREFER_TEAMS=\(.prefer_teams // "always")",
     "CFG_MAX_TASKS=\(.max_tasks_per_plan // 5)",
     "CFG_CONTEXT_COMPILER=\(if .context_compiler == null then true else .context_compiler end)",
-    "CFG_REQUIRE_PHASE_DISCUSSION=\(if .require_phase_discussion == null then false else .require_phase_discussion end)",
     "CFG_COMPACTION=\(.compaction_threshold // 130000)"
   ' "$CONFIG_FILE" 2>/dev/null)" || true
 fi

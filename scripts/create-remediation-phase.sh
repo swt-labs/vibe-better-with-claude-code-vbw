@@ -89,18 +89,54 @@ mkdir -p "$TARGET_PHASE_DIR"
 
 SOURCE_UAT=$(ls -1 "$MILESTONE_PHASE_DIR"/[0-9]*-UAT.md 2>/dev/null | sort | tail -1 || true)
 
-cat > "$TARGET_PHASE_DIR/${NEXT_PHASE_PADDED}-CONTEXT.md" <<EOF
+# Extract UAT issues content to inline into CONTEXT.md as pre-seeded discussion
+UAT_CONTENT=""
+if [[ -n "$SOURCE_UAT" && -f "$SOURCE_UAT" ]]; then
+  UAT_CONTENT=$(cat "$SOURCE_UAT")
+fi
+
+SOURCE_PHASE_BASENAME=$(basename "$MILESTONE_PHASE_DIR")
+
+CONTEXT_FILE="$TARGET_PHASE_DIR/${NEXT_PHASE_PADDED}-CONTEXT.md"
+
+cat > "$CONTEXT_FILE" <<CTXEOF
 ---
 phase: ${NEXT_PHASE_PADDED}
 title: Milestone UAT remediation
 source_milestone: ${SOURCE_MILESTONE_SLUG}
-source_phase: $(basename "$MILESTONE_PHASE_DIR")
+source_phase: ${SOURCE_PHASE_BASENAME}
+pre_seeded: true
 ---
 
-This phase remediates unresolved UAT issues from archived milestone \`${SOURCE_MILESTONE_SLUG}\` (phase \`$(basename "$MILESTONE_PHASE_DIR")\`).
+# Phase ${NEXT_PHASE_PADDED}: UAT Remediation — Context
 
-Use the attached source UAT report to drive plan creation and execution.
-EOF
+## User Vision
+
+Fix unresolved UAT issues from archived milestone \`${SOURCE_MILESTONE_SLUG}\` (phase \`${SOURCE_PHASE_BASENAME}\`).
+
+## Essential Features
+
+All issues identified in the source UAT report must be resolved.
+
+## Boundaries
+
+Only address the issues listed below. Do not refactor or add features beyond what is needed to fix these issues.
+
+## Acceptance Criteria
+
+All UAT issues below are resolved and verified.
+
+## Source UAT Report
+
+CTXEOF
+
+# Append UAT content verbatim — do not use unquoted heredoc to avoid
+# shell expansion of $, backticks, or $() inside UAT report content.
+if [ -n "$UAT_CONTENT" ]; then
+  printf '%s\n' "$UAT_CONTENT" >> "$CONTEXT_FILE"
+else
+  printf '%s\n' 'No UAT report found in source phase.' >> "$CONTEXT_FILE"
+fi
 
 if [[ -n "$SOURCE_UAT" && -f "$SOURCE_UAT" ]]; then
   cp "$SOURCE_UAT" "$TARGET_PHASE_DIR/${NEXT_PHASE_PADDED}-SOURCE-UAT.md"
