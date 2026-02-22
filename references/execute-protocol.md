@@ -474,9 +474,8 @@ When `worktree_isolation="off"`: skip this block silently.
 
 **Planning artifact boundary commit (conditional):**
 ```bash
-PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:-}/scripts/planning-git.sh"
-[ -f "$PG_SCRIPT" ] || PG_SCRIPT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/marketplaces/vbw-marketplace/scripts/planning-git.sh"
-[ -f "$PG_SCRIPT" ] || PG_SCRIPT="$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw" -mindepth 2 -maxdepth 2 -type f -path '*/scripts/planning-git.sh' 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+[ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
 if [ -f "$PG_SCRIPT" ]; then
   bash "$PG_SCRIPT" commit-boundary "complete phase {N}" .vbw-planning/config.json
 else
@@ -489,9 +488,8 @@ fi
 
 **After-phase push (conditional):**
 ```bash
-PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:-}/scripts/planning-git.sh"
-[ -f "$PG_SCRIPT" ] || PG_SCRIPT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/marketplaces/vbw-marketplace/scripts/planning-git.sh"
-[ -f "$PG_SCRIPT" ] || PG_SCRIPT="$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw" -mindepth 2 -maxdepth 2 -type f -path '*/scripts/planning-git.sh' 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+[ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
 if [ -f "$PG_SCRIPT" ]; then
   bash "$PG_SCRIPT" push-after-phase .vbw-planning/config.json
 else
