@@ -198,6 +198,14 @@ Structured verification results.
     "failures": [
       {"check": "Link integrity", "expected": "All resolve", "actual": "broken ref", "evidence": "line 42"}
     ],
+    "checks_detail": [
+      {"id": "MH-01", "category": "must_have", "description": "Feature exists", "status": "PASS", "evidence": "File found at src/feature.js"},
+      {"id": "MH-02", "category": "must_have", "description": "Tests pass", "status": "FAIL", "evidence": "2 failures in test suite"},
+      {"id": "ART-01", "category": "artifact", "description": "README.md", "status": "PASS", "exists": true, "contains": "## Setup section"},
+      {"id": "KL-01", "category": "key_link", "description": "Config references module", "status": "WARN", "from": "config.js", "to": "module.js", "via": "import pattern"},
+      {"id": "CC-01", "category": "convention", "description": "kebab-case naming", "status": "PASS", "file": "src/my-module.js", "detail": "follows pattern"},
+      {"id": "RM-01", "category": "requirement", "description": "REQ-01 implemented", "status": "PASS", "plan_ref": "PLAN.md §3", "evidence": "function at line 42"}
+    ],
     "body": "## Must-Have Checks\n...",
     "recommendations": ["Fix broken cross-reference before shipping"],
     "pre_existing_issues": [
@@ -206,6 +214,22 @@ Structured verification results.
   }
 }
 ```
+
+### `checks_detail` Per-Category Fields
+
+All items share: `id`, `category`, `description`, `status`, `evidence`. Category-specific optional fields enable richer VERIFICATION.md output:
+
+| Category | Optional Fields | Fallback |
+|---|---|---|
+| `must_have` | _(none)_ | 5-col: Truth/Condition, Status, Evidence |
+| `artifact` | `exists` (bool), `contains` (string) | 5-col when absent |
+| `key_link` | `from`, `to`, `via` (strings) | 5-col when absent |
+| `anti_pattern` | _(none)_ | 5-col: Pattern, Status, Evidence |
+| `convention` | `file`, `detail` (strings) | 5-col when absent |
+| `requirement` | `plan_ref` (string) | 5-col when absent |
+| `skill_augmented` | _(none)_ | 5-col: Skill Check, Status, Evidence |
+
+When category-specific fields are present, `write-verification.sh` emits a 6-column table. When absent, falls back to uniform 5-column format.
 
 ## `approval_request` (Dev/Lead -> Lead/Architect)
 

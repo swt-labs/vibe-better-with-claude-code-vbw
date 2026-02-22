@@ -201,8 +201,16 @@ case "$GATE_TYPE" in
     PHASE_DIR=$(ls -d "${PHASES_DIR}/${PHASE}-"* 2>/dev/null | head -1)
     [ -z "$PHASE_DIR" ] && { emit_result "pass" "phase dir not found"; exit 0; }
 
-    VERIFICATION_FILE="${PHASE_DIR}/VERIFICATION.md"
-    if [ ! -f "$VERIFICATION_FILE" ]; then
+    # Find phase-prefixed VERIFICATION.md (NN-VERIFICATION.md or NN-VERIFICATION-waveN.md)
+    VERIFICATION_FILE=""
+    for vf in "$PHASE_DIR"/*-VERIFICATION*.md; do
+      [ -f "$vf" ] && VERIFICATION_FILE="$vf" && break
+    done
+    # Brownfield fallback: non-prefixed VERIFICATION.md
+    if [ -z "$VERIFICATION_FILE" ] && [ -f "$PHASE_DIR/VERIFICATION.md" ]; then
+      VERIFICATION_FILE="$PHASE_DIR/VERIFICATION.md"
+    fi
+    if [ -z "$VERIFICATION_FILE" ]; then
       # No verification file — check config for verification_tier
       TIER=$(jq -r '.verification_tier // "standard"' "$CONFIG_PATH" 2>/dev/null || echo "standard")
       if [ "$TIER" = "quick" ] || [ "$TIER" = "skip" ]; then
