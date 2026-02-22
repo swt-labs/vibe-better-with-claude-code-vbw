@@ -17,6 +17,9 @@ set -euo pipefail
 #   - @${CLAUDE_PLUGIN_ROOT}/...         (file inclusion at load time)
 #   - Plugin root: ...                   (preamble resolve+write line)
 #   - printf.*vbw-plugin-root            (write to temp file)
+#   - Runtime resolver guard line in execute-protocol.md:
+#       if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "${CLAUDE_PLUGIN_ROOT}" ]
+#       VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"
 #
 # Unsafe (must not exist):
 #   - bare ${CLAUDE_PLUGIN_ROOT} in model-executed text (resolves to empty in bash)
@@ -60,6 +63,9 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md; do
     | grep -v '!`[^`]*CLAUDE_PLUGIN_ROOT' \
     | grep -v '@${CLAUDE_PLUGIN_ROOT}' \
     | grep -v 'Plugin root:' \
+    | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -d "${CLAUDE_PLUGIN_ROOT}" \]' \
+    | grep -v 'VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"' \
+    | grep -v 'checked CLAUDE_PLUGIN_ROOT' \
     | grep -vc '`!`echo .*CLAUDE_PLUGIN_ROOT' || true)
 
   if [ "$unsafe_count" -eq 0 ]; then
@@ -71,6 +77,9 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md; do
       | grep -v '!`[^`]*CLAUDE_PLUGIN_ROOT' \
       | grep -v '@${CLAUDE_PLUGIN_ROOT}' \
       | grep -v 'Plugin root:' \
+      | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -d "${CLAUDE_PLUGIN_ROOT}" \]' \
+      | grep -v 'VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"' \
+      | grep -v 'checked CLAUDE_PLUGIN_ROOT' \
       | grep -v '`!`echo .*CLAUDE_PLUGIN_ROOT' \
       | while IFS= read -r line; do echo "      $line"; done
   fi
@@ -142,4 +151,45 @@ if [ "$FAIL2" -gt 0 ]; then
 fi
 
 echo "All preamble fallback checks passed."
+
+# --- Phase 3: Runtime resolver safety for execute protocol ---
+echo ""
+echo "=== Runtime Resolver Safety Verification ==="
+
+EXECUTE_PROTOCOL="$REFERENCES_DIR/execute-protocol.md"
+PHASE_DETECTION="$REFERENCES_DIR/phase-detection.md"
+
+if grep -q '\$(cat /tmp/.vbw-plugin-root)' "$EXECUTE_PROTOCOL" "$PHASE_DETECTION"; then
+  fail "runtime docs contain direct \$(cat /tmp/.vbw-plugin-root) execution path"
+  grep -n '\$(cat /tmp/.vbw-plugin-root)' "$EXECUTE_PROTOCOL" "$PHASE_DETECTION" | while IFS= read -r line; do echo "      $line"; done
+else
+  pass "runtime docs avoid direct \$(cat /tmp/.vbw-plugin-root) execution path"
+fi
+
+for needle in \
+  'if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "${CLAUDE_PLUGIN_ROOT}" ]; then' \
+  'elif [ -d "${VBW_CACHE_ROOT}/local" ]; then' \
+  "grep -E '^[0-9]+(\\.[0-9]+)*$'" \
+  'sort -t. -k1,1n -k2,2n -k3,3n' \
+  'FALLBACK_DIR=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '\''{print $NF}'\'' | sort | tail -1)' \
+  'if [ -z "$VBW_PLUGIN_ROOT" ] || [ ! -d "$VBW_PLUGIN_ROOT" ]; then' \
+  'exit 1'
+do
+  if grep -Fq "$needle" "$EXECUTE_PROTOCOL"; then
+    pass "execute-protocol contains resolver policy: $needle"
+  else
+    fail "execute-protocol missing resolver policy: $needle"
+  fi
+done
+
+echo ""
+echo "==============================="
+echo "TOTAL: $PASS PASS, $FAIL FAIL"
+echo "==============================="
+
+if [ "$FAIL" -gt 0 ]; then
+  exit 1
+fi
+
+echo "All runtime resolver safety checks passed."
 exit 0
