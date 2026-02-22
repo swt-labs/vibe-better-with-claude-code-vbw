@@ -309,84 +309,11 @@ Each Dev agent reads its assigned PLAN.md and works through the tasks in order: 
 
 After all Devs finish, the Lead runs QA (if not skipped), then shuts down the team.
 
-### Concurrency: When Do File Conflicts Happen?
+### Concurrency and File Conflicts
 
-File conflicts can only happen when two Dev agents work simultaneously on overlapping files. This requires:
+File conflicts can only happen when two Dev agents work simultaneously on overlapping files — which requires two or more plans in the same phase with no `depends_on` between them that happen to modify the same files. If your plans are chained via `depends_on` (the common case), there's no concurrency and no conflict risk.
 
-1. Two or more plans in the same phase with **no** `depends_on` between them
-2. Those plans happen to modify the **same files**
-
-If your plans are chained via `depends_on` (the common case), there's no concurrency and no conflict risk. Concurrency controls only matter when the Architect designs independent plans that run in parallel.
-
-VBW provides two independent mechanisms to handle this, plus a structural prevention:
-
-### `prefer_teams` — Team Creation
-
-This setting controls when VBW creates an Agent Team (multiple color-coded Dev agents) vs using a single agent:
-
-| Value | Behavior |
-| :--- | :--- |
-| `always` | Creates a team for every phase, even with 1 plan. Maximum agent visibility. |
-| `auto` | Creates a team only when 2+ plans exist. Single plan = single agent, lower overhead. Default. Smart routing may further downgrade simple plans to turbo (no team). `when_parallel` is an alias for `auto`. |
-
-This setting determines whether parallel execution is even possible. With a single agent (1 plan, no team), there's no concurrency by definition.
-
-### `worktree_isolation` — Filesystem Isolation
-
-When enabled, each Dev agent gets its own **git worktree** — a physically separate copy of your repo on a dedicated branch. Agents literally work in different directories, so they can't overwrite each other's files.
-
-**How it works:**
-
-1. **Before execution:** For each plan, VBW creates a worktree at `.vbw-worktrees/{phase}-{plan}` on branch `vbw/{phase}-{plan}`:
-   ```text
-   .vbw-worktrees/
-     01-01/  →  branch vbw/01-01  (Dev-01 works here)
-     01-02/  →  branch vbw/01-02  (Dev-02 works here)
-     01-03/  →  branch vbw/01-03  (Dev-03 works here)
-   ```
-
-2. **During execution:** Each Dev agent is instructed to work exclusively in its assigned worktree directory. All file edits and commits happen on the worktree's branch, completely isolated.
-
-3. **After execution (merging):** Once all Devs finish and the team shuts down, the Lead merges each worktree branch back into the main branch using `git merge --no-ff`:
-   - **Clean merge:** The worktree is removed and the branch is deleted. Done.
-   - **Merge conflict:** The merge is aborted, the worktree is left in place, and VBW tells you to resolve it manually: `⚠ Worktree merge conflict for plan 02. Resolve conflicts in .vbw-worktrees/01-02/`.
-
-**When do merge conflicts occur?** Only when two parallel Dev agents edited the same file on different branches. The first merge succeeds; the second hits a conflict because the file was changed on both branches. The Architect is designed to minimize this by assigning disjoint file sets to each plan, but it's not guaranteed.
-
-| Setting | Default | Values |
-| :--- | :--- | :--- |
-| `worktree_isolation` | `off` | `on` / `off` |
-
-### `lease_locks` — File-Level Locking
-
-A lighter-weight alternative to worktrees. Instead of filesystem isolation, lease locks track which files each task has claimed. If two tasks try to claim the same file, the second one is blocked.
-
-**How it works:**
-
-1. **Before each task:** `control-plane.sh` calls `lease-lock.sh acquire` with the task's file list. A lock file is written to `.vbw-planning/.locks/{task-id}.lock` containing the claimed files and a TTL (default 300 seconds).
-
-2. **Conflict detection:** If another task already holds a lock on an overlapping file, the acquisition fails and the task is blocked. Expired locks (past TTL) are cleaned up automatically.
-
-3. **After each task:** The lock is released. The next task can claim those files.
-
-Lease locks operate within a single shared working directory — there are no separate branches or merge steps. They prevent concurrent file access but don't provide the branch-level isolation that worktrees offer.
-
-| Setting | Default | Values |
-| :--- | :--- | :--- |
-| `lease_locks` | `true` | `true` / `false` |
-
-### Which Should You Use?
-
-Worktree isolation and lease locks solve the same problem — preventing file conflicts during parallel plan execution — through different mechanisms. They're alternatives, not layers.
-
-| Scenario | Recommendation |
-| :--- | :--- |
-| Plans always chained via `depends_on` (sequential) | Neither needed — no concurrency, no conflicts. Lease locks are on by default but add negligible overhead. |
-| Parallel plans, want strongest isolation | `worktree_isolation: "on"` — separate directories and branches |
-| Parallel plans, want lightweight protection | `lease_locks: true` (default) — file-level claims, no branch overhead |
-| Both enabled | Works (no conflict), but redundant — worktrees already prevent the problem lease locks detect |
-
-Lease locks are enabled by default because they add negligible overhead (one small JSON file per task) while providing a safety net for the cases where plans run in parallel. Worktree isolation is off by default because it adds git worktree complexity — enable it if you're running `effort: "thorough"` with complex phases where the Architect creates genuinely independent plans.
+VBW provides three mechanisms to handle this: team creation (`prefer_teams`), filesystem isolation (`worktree_isolation`), and file-level locking (`lease_locks`). See [Concurrency controls](#concurrency-controls) in Configuration for full details on each mechanism and when to use them.
 
 ---
 
@@ -625,7 +552,7 @@ Quick reference for every key in `config/defaults.json`, in order. Click the sec
 | `context_compiler` | `true` | [Agent behavior](#agent-behavior) |
 | `visual_format` | `"unicode"` | [Display](#display) |
 | `max_tasks_per_plan` | `5` | [Agent behavior](#agent-behavior) |
-| `prefer_teams` | `"auto"` | [Agent behavior](#agent-behavior) |
+| `prefer_teams` | `"auto"` | [Concurrency controls](#concurrency-controls) |
 | `branch_per_milestone` | `false` | [Display](#display) |
 | `plain_summary` | `true` | [Agent behavior](#agent-behavior) |
 | `active_profile` | `"default"` | [Model routing and cost](#model-routing-and-cost) |
@@ -634,14 +561,14 @@ Quick reference for every key in `config/defaults.json`, in order. Click the sec
 | `model_overrides` | `{}` | [Model routing and cost](#model-routing-and-cost) |
 | `agent_max_turns` | `{...}` | [Agent turn limits](#agent-turn-limits) |
 | `qa_skip_agents` | `["docs"]` | [Agent behavior](#agent-behavior) |
-| `worktree_isolation` | `"off"` | [Agent behavior](#agent-behavior) |
+| `worktree_isolation` | `"off"` | [Concurrency controls](#concurrency-controls) |
 | `token_budgets` | `true` | [Runtime features](#runtime-features) |
 | `two_phase_completion` | `true` | [Runtime features](#runtime-features) |
 | `metrics` | `true` | [Runtime features](#runtime-features) |
 | `smart_routing` | `true` | [Runtime features](#runtime-features) |
 | `validation_gates` | `true` | [Runtime features](#runtime-features) |
 | `snapshot_resume` | `true` | [Runtime features](#runtime-features) |
-| `lease_locks` | `true` | [Runtime features](#runtime-features) |
+| `lease_locks` | `true` | [Concurrency controls](#concurrency-controls) |
 | `event_recovery` | `true` | [Cross-phase context](#cross-phase-context) |
 | `monorepo_routing` | `true` | [Runtime features](#runtime-features) |
 | `rolling_summary` | `false` | [Cross-phase context](#cross-phase-context) |
@@ -758,21 +685,95 @@ Controls whether VBW pushes commits automatically, and when.
 
 | Setting | Type | Default | Values |
 | :--- | :--- | :--- | :--- |
-| `prefer_teams` | string | `auto` | `always` / `auto` |
 | `max_tasks_per_plan` | number | `5` | `1`–`7` |
 | `context_compiler` | boolean | `true` | `true` / `false` |
 | `plain_summary` | boolean | `true` | `true` / `false` |
-| `worktree_isolation` | string | `off` | `off` / `on` |
 | `qa_skip_agents` | array | `["docs"]` | Array of agent role names |
 | `require_phase_discussion` | boolean | `false` | `true` / `false` |
 
-- **`prefer_teams`** — Controls when VBW creates Agent Teams (multiple color-coded agents working together) vs spawning a single subagent. See [Execution Model](#execution-model) for details on how this interacts with parallel plan execution, worktree isolation, and lease locks. `auto` (default) creates teams only when parallelism adds value: 2+ plans in execute, Scout needed in planning, ambiguous bugs in debug. `always` creates teams for every operation — maximum agent visibility but higher token cost. `when_parallel` is accepted as an alias for `auto`.
 - **`max_tasks_per_plan`** — Maximum number of tasks the Lead agent should include in a single plan. Communicated to agents via session context. Lower values (2–3) produce more focused, easier-to-verify plans. Higher values (5–7) reduce planning overhead but increase blast radius per plan. Not enforced by a hard gate — it's an advisory constraint.
 - **`context_compiler`** — When `true`, runs `compile-context.sh` to produce role-specific `.context-{role}.md` files so each agent gets curated context (Lead gets requirements, Dev gets phase goal + conventions, QA gets verification targets). When `false`, agents read project files directly without curation. Leave this on unless you're debugging context issues.
 - **`plain_summary`** — When `true`, appends 2–4 plain-English sentences after QA completes in Execute mode, summarizing what happened in the phase without jargon. When `false`, output shows only the structured QA result.
-- **`worktree_isolation`** — When `on`, each Dev agent gets its own git worktree — physical filesystem isolation, not just file-list enforcement. Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. When `off`, Dev agents share the main working directory with `file-guard.sh` enforcing plan file boundaries. Default `off` for backward compatibility.
 - **`qa_skip_agents`** — Array of agent role names that are exempt from QA verification gates. Valid names: `scout`, `architect`, `lead`, `dev`, `qa`, `debugger`, `docs`. By default, `["docs"]` — the Docs agent can complete tasks without triggering QA checks.
 - **`require_phase_discussion`** — When `true`, phases without a `CONTEXT.md` are routed through the discussion engine before planning. Prevents planning until phase context is explicitly discussed and decisions are captured. When `false`, phases proceed directly to planning. Useful for teams that want to ensure design decisions are explored before implementation.
+
+### Concurrency controls
+
+These three settings control how VBW handles parallel plan execution — whether agents run in parallel at all, and how file conflicts are prevented when they do. See [Execution Model](#execution-model) for context on when concurrency occurs.
+
+#### `prefer_teams` — Team Creation
+
+Controls when VBW creates an Agent Team (multiple color-coded Dev agents) vs using a single agent:
+
+| Setting | Type | Default | Values |
+| :--- | :--- | :--- | :--- |
+| `prefer_teams` | string | `auto` | `always` / `auto` |
+
+| Value | Behavior |
+| :--- | :--- |
+| `always` | Creates a team for every phase, even with 1 plan. Maximum agent visibility. |
+| `auto` | Creates a team only when 2+ plans exist. Single plan = single agent, lower overhead. Default. Smart routing may further downgrade simple plans to turbo (no team). `when_parallel` is an alias for `auto`. |
+
+This setting determines whether parallel execution is even possible. With a single agent (1 plan, no team), there's no concurrency by definition. `auto` also creates teams when parallelism adds value beyond just execute: Scout needed in planning, or ambiguous bugs in debug.
+
+#### `worktree_isolation` — Filesystem Isolation
+
+When enabled, each Dev agent gets its own **git worktree** — a physically separate copy of your repo on a dedicated branch. Agents literally work in different directories, so they can't overwrite each other's files.
+
+| Setting | Type | Default | Values |
+| :--- | :--- | :--- | :--- |
+| `worktree_isolation` | string | `off` | `off` / `on` |
+
+**How it works:**
+
+1. **Before execution:** For each plan, VBW creates a worktree at `.vbw-worktrees/{phase}-{plan}` on branch `vbw/{phase}-{plan}`:
+   ```text
+   .vbw-worktrees/
+     01-01/  →  branch vbw/01-01  (Dev-01 works here)
+     01-02/  →  branch vbw/01-02  (Dev-02 works here)
+     01-03/  →  branch vbw/01-03  (Dev-03 works here)
+   ```
+
+2. **During execution:** Each Dev agent is instructed to work exclusively in its assigned worktree directory. All file edits and commits happen on the worktree's branch, completely isolated.
+
+3. **After execution (merging):** Once all Devs finish and the team shuts down, the Lead merges each worktree branch back into the main branch using `git merge --no-ff`:
+   - **Clean merge:** The worktree is removed and the branch is deleted. Done.
+   - **Merge conflict:** The merge is aborted, the worktree is left in place, and VBW tells you to resolve it manually: `⚠ Worktree merge conflict for plan 02. Resolve conflicts in .vbw-worktrees/01-02/`.
+
+**When do merge conflicts occur?** Only when two parallel Dev agents edited the same file on different branches. The first merge succeeds; the second hits a conflict because the file was changed on both branches. The Architect is designed to minimize this by assigning disjoint file sets to each plan, but it's not guaranteed.
+
+Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. Default `off` for backward compatibility.
+
+#### `lease_locks` — File-Level Locking
+
+A lighter-weight alternative to worktrees. Instead of filesystem isolation, lease locks track which files each task has claimed. If two tasks try to claim the same file, the second one is blocked.
+
+| Setting | Type | Default | Values |
+| :--- | :--- | :--- | :--- |
+| `lease_locks` | boolean | `true` | `true` / `false` |
+
+**How it works:**
+
+1. **Before each task:** `control-plane.sh` calls `lease-lock.sh acquire` with the task's file list. A lock file is written to `.vbw-planning/.locks/{task-id}.lock` containing the claimed files and a TTL (default 300 seconds).
+
+2. **Conflict detection:** If another task already holds a lock on an overlapping file, the acquisition fails and the task is blocked. Expired locks (past TTL) are cleaned up automatically.
+
+3. **After each task:** The lock is released. The next task can claim those files.
+
+Lease locks operate within a single shared working directory — there are no separate branches or merge steps. They prevent concurrent file access but don't provide the branch-level isolation that worktrees offer.
+
+#### Which should you use?
+
+Worktree isolation and lease locks solve the same problem — preventing file conflicts during parallel plan execution — through different mechanisms. They're alternatives, not layers.
+
+| Scenario | Recommendation |
+| :--- | :--- |
+| Plans always chained via `depends_on` (sequential) | Neither needed — no concurrency, no conflicts. Lease locks are on by default but add negligible overhead. |
+| Parallel plans, want strongest isolation | `worktree_isolation: "on"` — separate directories and branches |
+| Parallel plans, want lightweight protection | `lease_locks: true` (default) — file-level claims, no branch overhead |
+| Both enabled | Works (no conflict), but redundant — worktrees already prevent the problem lease locks detect |
+
+Lease locks are enabled by default because they add negligible overhead (one small JSON file per task) while providing a safety net for the cases where plans run in parallel. Worktree isolation is off by default because it adds git worktree complexity — enable it if you're running `effort: "thorough"` with complex phases where the Architect creates genuinely independent plans.
 
 ### Skills and discovery
 
@@ -822,7 +823,7 @@ VBW spawns specialized agents for planning, development, and verification. Model
 
 ### Runtime features
 
-These flags control optional runtime subsystems — execution integrity, observability, concurrency, and crash recovery. All default to `true`. Disable any flag to skip that subsystem entirely (scripts exit 0 immediately when their flag is `false`).
+These flags control optional runtime subsystems — execution integrity, observability, and crash recovery. All default to `true`. Disable any flag to skip that subsystem entirely (scripts exit 0 immediately when their flag is `false`).
 
 | Setting | Type | Default | Values |
 | :--- | :--- | :--- | :--- |
@@ -832,7 +833,6 @@ These flags control optional runtime subsystems — execution integrity, observa
 | `smart_routing` | boolean | `true` | `true` / `false` |
 | `validation_gates` | boolean | `true` | `true` / `false` |
 | `snapshot_resume` | boolean | `true` | `true` / `false` |
-| `lease_locks` | boolean | `true` | `true` / `false` |
 | `monorepo_routing` | boolean | `true` | `true` / `false` |
 
 - **`token_budgets`** — When `true`, enforces per-role character budgets on context passed to agents (defined in `config/token-budgets.json`). The control plane truncates compiled context to the role's `max_chars` limit before injection, preventing context window overflows. When `false`, context passes through untruncated.
@@ -841,7 +841,6 @@ These flags control optional runtime subsystems — execution integrity, observa
 - **`smart_routing`** — When `true`, the execute protocol skips unnecessary agents based on effort level: Scout is skipped for turbo/fast (no research needed), Architect is skipped for non-thorough effort (architecture review only at thorough). Reduces token spend on simpler phases. When `false`, all agents are always included.
 - **`validation_gates`** — When `true`, the execute protocol runs per-plan risk assessment (`assess-plan-risk.sh`) and resolves a dynamic gate policy (`resolve-gate-policy.sh`) that overrides static effort-based tables for QA tier, plan approval, and teammate communication level. When `false`, static effort-based tables are used (see [Execution Model](#execution-model)).
 - **`snapshot_resume`** — When `true`, VBW saves execution state snapshots to `.vbw-planning/.snapshots/` at key lifecycle points (phase start, compaction, agent completion). On crash recovery, `/vbw:resume` can restore from the latest snapshot. Max 10 snapshots per phase, oldest pruned automatically. When `false`, no snapshots are saved.
-- **`lease_locks`** — When `true`, the control plane tracks which files each task has claimed in `.vbw-planning/.locks/`. If two concurrent tasks claim overlapping files, the second is blocked until the first releases. Locks expire after a TTL (default 300s). When `false`, no file-level locking occurs. See [Execution Model](#execution-model) for details.
 - **`monorepo_routing`** — When `true`, VBW detects monorepo structure (sub-packages with `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`) and maps plan file paths to relevant package roots. This scoping is used by `/vbw:map` for per-package analysis and by the context compiler to limit agent context to relevant packages. When `false`, the entire repo is treated as a single project.
 
 ### Display
