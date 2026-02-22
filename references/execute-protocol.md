@@ -416,13 +416,45 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
 **UAT execution:**
 
 1. Check if `{phase-dir}/{phase}-UAT.md` already exists with `status: complete`. If so: "○ UAT already complete" and proceed to Step 5.
-2. Generate test scenarios from completed SUMMARY.md files (same logic as `commands/verify.md`).
-3. Run CHECKPOINT loop inline (same protocol as `commands/verify.md` Steps 4-8).
+2. Generate test scenarios from completed SUMMARY.md files:
+   - Read each SUMMARY.md: extract what was built, files modified, must_haves
+   - Generate 1-3 test scenarios per plan requiring HUMAN verification
+   - Minimum 1 test per plan. Test IDs: `P{plan}-T{N}`
+   - Write initial `{phase}-UAT.md` in phase dir with all tests (Result fields empty)
+3. **CHECKPOINT loop — present ONE test at a time, wait for user response:**
+
+   **This is a conversational loop. Do NOT present all tests at once. Do NOT end the session after presenting a test. Do NOT proceed to Step 5 until all tests are complete.**
+
+   For the FIRST test without a result, display:
+   ```
+   ┌─ CHECKPOINT {N}/{total} ──────────────────────┐
+   │  Plan: {plan-id} -- {plan-title}               │
+   │                                                │
+   │  {scenario description}                        │
+   │                                                │
+   │  Expected: {expected result}                   │
+   │                                                │
+   │  → Type "pass" or describe what's wrong        │
+   └────────────────────────────────────────────────┘
+   ```
+
+   **STOP HERE.** Wait for the user's plain text response. Do NOT use AskUserQuestion. Do NOT continue to the next test or to Step 5.
+
+   **After the user responds:**
+   - **Pass words** (pass, passed, yes, y, good, ok, okay, works, correct, confirmed, lgtm, looks good): record pass
+   - **Skip words** (skip, skipped, next, n/a, na, later, defer): record skip
+   - **Anything else**: treat as issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major)
+   - Update `{phase}-UAT.md` immediately (persist to disk)
+   - Display progress: `✓ {completed}/{total} tests`
+   - If more tests remain: present the NEXT test using the same CHECKPOINT format, then **STOP and wait again**
+   - If all tests done: go to step 4
+
 4. After all tests complete:
+   - Update UAT.md frontmatter (status, completed date, final counts)
    - If no issues: proceed to Step 5
    - If issues found: display issue summary, suggest `/vbw:fix`, STOP (do not proceed to Step 5)
 
-Note: "Run inline" means the execute-protocol agent runs the verify protocol directly, not by invoking /vbw:verify as a command. The protocol is the same; the entry point differs.
+Note: "Run inline" means the execute-protocol orchestrator runs the CHECKPOINT loop directly in the main conversation, not by invoking /vbw:verify as a command. The orchestrator must wait for user input at each checkpoint — this is NOT a subagent operation.
 
 ### Step 5: Update state and present summary
 
