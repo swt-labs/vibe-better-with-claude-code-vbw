@@ -321,13 +321,18 @@ fi
 # A phase is "unverified" if it has at least one SUMMARY.md but no UAT.md
 # (excluding SOURCE-UAT.md which are verbatim copies from milestone remediation).
 HAS_UNVERIFIED_PHASES=false
-if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ ${#PHASE_DIRS[@]:-0} -gt 0 ]; then
+if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   for _uv_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
     [ -d "$_uv_dir" ] || continue
-    _uv_scount=$(ls "$_uv_dir"[0-9]*-SUMMARY.md 2>/dev/null | wc -l | tr -d ' ')
-    [ "$_uv_scount" -gt 0 ] || continue
-    _uv_uat_files=$(ls "$_uv_dir"[0-9]*-UAT.md 2>/dev/null | grep -v 'SOURCE-UAT\.md$' || true)
-    if [ -z "$_uv_uat_files" ]; then
+    _uv_has_summary=false
+    for _uv_s in "$_uv_dir"[0-9]*-SUMMARY.md; do
+      [ -e "$_uv_s" ] || continue
+      _uv_has_summary=true
+      break
+    done
+    [ "$_uv_has_summary" = true ] || continue
+    _uv_uat=$(latest_non_source_uat "$_uv_dir")
+    if [ -z "$_uv_uat" ] || [ ! -f "$_uv_uat" ]; then
       HAS_UNVERIFIED_PHASES=true
       break
     fi
@@ -350,10 +355,15 @@ echo "uat_issues_major_or_higher=$UAT_ISSUES_MAJOR_OR_HIGHER"
 # phases. This handles the case where create-remediation-phase.sh wasn't used
 # (or ran before. .remediated markers existed), so .remediated files are missing.
 REMEDIATED_MS_PATHS=""
-if [ -d "$PHASES_DIR" ] && [ ${#PHASE_DIRS[@]:-0} -gt 0 ]; then
+if [ -d "$PHASES_DIR" ] && [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   for _rx_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
     [ -d "$_rx_dir" ] || continue
-    _rx_ctx=$(ls "$_rx_dir"[0-9]*-CONTEXT.md 2>/dev/null | sort | head -1 || true)
+    _rx_ctx=""
+    for _rx_f in "$_rx_dir"[0-9]*-CONTEXT.md; do
+      [ -e "$_rx_f" ] || continue
+      _rx_ctx="$_rx_f"
+      break
+    done
     [ -f "$_rx_ctx" ] || continue
     _rx_src_ms=$(awk '/^source_milestone:/{gsub(/^source_milestone:[[:space:]]*/,""); gsub(/[[:space:]]*$/,""); print; exit}' "$_rx_ctx" 2>/dev/null || true)
     _rx_src_ph=$(awk '/^source_phase:/{gsub(/^source_phase:[[:space:]]*/,""); gsub(/[[:space:]]*$/,""); print; exit}' "$_rx_ctx" 2>/dev/null || true)
