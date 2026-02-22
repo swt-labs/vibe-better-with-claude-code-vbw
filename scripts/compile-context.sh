@@ -19,6 +19,16 @@ PHASES_DIR="${3:-.vbw-planning/phases}"
 PLANNING_DIR=".vbw-planning"
 PLAN_PATH="${4:-}"
 
+# Milestone path guard: refuse to compile context for archived milestone directories.
+# Execution must happen in active phases (.vbw-planning/phases/), not archived milestones.
+case "$PHASES_DIR" in
+  */.vbw-planning/milestones/*|.vbw-planning/milestones/*)
+    echo "Error: refusing to compile context for archived milestone path: $PHASES_DIR" >&2
+    echo "Execution must target active phases in .vbw-planning/phases/" >&2
+    exit 1
+    ;;
+esac
+
 # --- Update context index entry (REQ-04) ---
 # Writes/updates an entry in .vbw-planning/.cache/context-index.json
 # Fail-silent: index is a non-critical debugging/introspection tool

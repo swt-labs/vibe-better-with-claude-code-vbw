@@ -9,6 +9,9 @@ STATUSLINE="$SCRIPTS_DIR/vbw-statusline.sh"
 setup() {
   setup_temp_dir
   export ORIG_UID=$(id -u)
+  export TEST_CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/claude-config"
+  export CLAUDE_CONFIG_DIR="$TEST_CLAUDE_CONFIG_DIR"
+  mkdir -p "$TEST_CLAUDE_CONFIG_DIR/plugins/cache/vbw-marketplace/vbw"
   # Ensure git identity is available (CI runners may not have global config)
   export GIT_AUTHOR_NAME="test"
   export GIT_AUTHOR_EMAIL="test@test.local"
@@ -20,6 +23,7 @@ setup() {
 
 teardown() {
   rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+  unset CLAUDE_CONFIG_DIR TEST_CLAUDE_CONFIG_DIR
   teardown_temp_dir
 }
 
@@ -183,12 +187,64 @@ teardown() {
   [ "$before" -gt 0 ]
 
   # Nuke caches
-  bash "$SCRIPTS_DIR/cache-nuke.sh" >/dev/null 2>&1
+  run bash "$SCRIPTS_DIR/cache-nuke.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.wiped | has("plugin_cache") and has("temp_caches") and has("versions_removed")' >/dev/null
 
-  # All caches for this user should be gone
   local after
   after=$(ls /tmp/vbw-*-"${uid}"-* 2>/dev/null | wc -l | tr -d ' ')
   [ "$after" -eq 0 ]
+}
+
+@test "cache-nuke.sh succeeds with empty plugin cache glob under pipefail" {
+  local claude_dir="$TEST_TEMP_DIR/claude-empty-cache"
+  mkdir -p "$claude_dir/plugins/cache/vbw-marketplace/vbw"
+
+  run env CLAUDE_CONFIG_DIR="$claude_dir" bash "$SCRIPTS_DIR/cache-nuke.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.wiped.versions_removed == 0' >/dev/null
+  echo "$output" | jq -e '.wiped | has("plugin_cache") and has("temp_caches") and has("versions_removed")' >/dev/null
+}
+
+@test "cache-nuke.sh returns JSON summary on no-op run" {
+  local claude_dir="$TEST_TEMP_DIR/claude-noop"
+  mkdir -p "$claude_dir"
+
+  run env CLAUDE_CONFIG_DIR="$claude_dir" bash "$SCRIPTS_DIR/cache-nuke.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.wiped.plugin_cache == false' >/dev/null
+  echo "$output" | jq -e '.wiped.temp_caches == false' >/dev/null
+  echo "$output" | jq -e '.wiped.versions_removed == 0' >/dev/null
+}
+
+@test "cache-nuke.sh --keep-latest keeps newest real version when local symlink exists" {
+  local claude_dir="$TEST_TEMP_DIR/claude-keep-latest"
+  local cache_dir="$claude_dir/plugins/cache/vbw-marketplace/vbw"
+  mkdir -p "$cache_dir/1.29.0" "$cache_dir/1.30.0" "$TEST_TEMP_DIR/local-plugin"
+  ln -s "$TEST_TEMP_DIR/local-plugin" "$cache_dir/local"
+
+  run env CLAUDE_CONFIG_DIR="$claude_dir" bash "$SCRIPTS_DIR/cache-nuke.sh" --keep-latest
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.wiped.plugin_cache == true' >/dev/null
+  echo "$output" | jq -e '.wiped.versions_removed == 1' >/dev/null
+
+  [ ! -d "$cache_dir/1.29.0" ]
+  [ -d "$cache_dir/1.30.0" ]
+  [ -L "$cache_dir/local" ]
+}
+
+@test "cache-nuke.sh always returns JSON summary even when delete fails" {
+  local claude_dir="$TEST_TEMP_DIR/claude-delete-fail"
+  local cache_dir="$claude_dir/plugins/cache/vbw-marketplace/vbw"
+  mkdir -p "$cache_dir/1.29.0" "$cache_dir/1.30.0"
+
+  # Make parent non-writable so keep-latest deletion attempt fails.
+  chmod 500 "$cache_dir"
+  run env CLAUDE_CONFIG_DIR="$claude_dir" bash "$SCRIPTS_DIR/cache-nuke.sh" --keep-latest
+  chmod 700 "$cache_dir"
+
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.wiped | has("plugin_cache") and has("temp_caches") and has("versions_removed")' >/dev/null
 }
 
 # --- Non-git directory handling ---

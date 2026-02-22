@@ -19,6 +19,15 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null) || 
 
 # Exempt planning artifacts — these are always allowed
 case "$FILE_PATH" in
+  *.vbw-planning/milestones/*/phases/*)
+    # Archived milestone phase artifacts are read-only after archival.
+    # Block writes to prevent execution from corrupting archived plans/summaries.
+    # All other milestone root files are allowed (fall through to the
+    # general .vbw-planning/* exemption below) because Archive mode
+    # writes SHIPPED.md and moves STATE.md/ROADMAP.md during archival.
+    echo "Blocked: writes to archived milestone phases are not allowed ($FILE_PATH)" >&2
+    exit 2
+    ;;
   *.vbw-planning/*|*SUMMARY.md|*VERIFICATION.md|*STATE.md|*CLAUDE.md|*.execution-state.json)
     exit 0
     ;;

@@ -72,6 +72,10 @@ ALWAYS confirm interpreted intent via AskUserQuestion before executing.
 
 If no $ARGUMENTS, evaluate phase-detect.sh output. First match determines mode:
 
+**Phase-detect error guard (NON-NEGOTIABLE):** If the output contains `phase_detect_error=true`, display:
+"⚠ Phase detection failed. Run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/phase-detect.sh` manually to debug."
+STOP. Do NOT manually scan for project state or improvise routing — incorrect routing can corrupt archived milestones.
+
 | Priority | Condition | Mode | Confirmation |
 |---|---|---|---|
 | 1 | `planning_dir_exists=false` | Init redirect | (redirect, no confirmation) |
@@ -90,7 +94,7 @@ If no $ARGUMENTS, evaluate phase-detect.sh output. First match determines mode:
 
 **Milestone UAT recovery:** When `milestone_uat_issues=true` and active phases are empty, the latest shipped milestone has unresolved UAT issues. Present the user with options: (a) create remediation phases to fix the UAT issues, or (b) start fresh with new work (ignoring the stale UAT). Use `milestone_uat_count` to determine how many phases are affected. When `milestone_uat_count` > 1, parse `milestone_uat_phase_dirs` (pipe-separated) to read all UAT reports and display a consolidated issue summary. Use `milestone_uat_major_or_higher` to determine severity context.
 
-**Remediation + require_phase_discussion:** Remediation phases created by `create-remediation-phase.sh` include a pre-seeded CONTEXT.md (populated from the source UAT report). This satisfies the `require_phase_discussion` gate — these phases route directly to Plan mode, not Discuss. The Next Up hint annotates this as "(discussion pre-seeded from UAT)" so the user understands why discussion was skipped.
+**Remediation + require_phase_discussion:** Both in-phase UAT remediation and milestone-level remediation phases skip the discussion step via pre-seeded CONTEXT.md. When `uat-remediation-state.sh init` runs for in-phase remediation, it appends the UAT report to the existing CONTEXT.md and adds `pre_seeded: true` to its frontmatter — preserving the original discussion context while satisfying the `require_phase_discussion` gate. Milestone remediation phases created by `create-remediation-phase.sh` generate a fresh CONTEXT.md with `pre_seeded: true` (populated from the source UAT report). Both paths use the same `pre_seeded` mechanism so `suggest-next.sh` handles them uniformly.
 
 ### Confirmation Gate
 
@@ -173,7 +177,13 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
   Script handles: new file generation (heading + core value + VBW sections), existing file preservation (replaces only VBW-managed sections: Active Context, VBW Rules, Installed Skills, Project Conventions, Commands, Plugin Isolation; preserves all other content). Omit the fourth argument if no existing CLAUDE.md. Max 200 lines.
 - **B7: Planning commit boundary (conditional)** -- Run:
    ```bash
-   bash ${CLAUDE_PLUGIN_ROOT}/scripts/planning-git.sh commit-boundary "bootstrap project files" .vbw-planning/config.json
+   PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+   [ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "bootstrap project files" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
    ```
    Behavior: `planning_tracking=commit` commits `.vbw-planning/` + `CLAUDE.md` if changed. Other modes no-op.
 - **B8: Transition** -- Display "Bootstrap complete. Transitioning to scoping..." Re-evaluate state, route to next match.
@@ -219,6 +229,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 
 **Steps:**
 1. Resolve target phase from pre-computed state (`next_phase`, `next_phase_slug`) when `next_phase_state=needs_uat_remediation`. Set `PHASE_DIR` to the resolved phase directory path.
+   **Milestone path guard (NON-NEGOTIABLE):** If `PHASE_DIR` contains `.vbw-planning/milestones/` (e.g., `.vbw-planning/milestones/*/phases/`), STOP — this is an archived milestone. UAT Remediation operates only on active phases in `.vbw-planning/phases/`. Display: "⚠ UAT issues found in archived milestone, not active phases. Routing to Milestone UAT Recovery." Then route to Milestone UAT Recovery mode instead.
 2. Read latest `{phase}-UAT.md` in the target phase directory. Extract all issues (`Pxx-Ty` entries) with description and severity.
 3. Treat the UAT report as source-of-truth scope. Do NOT ask the user to restate issues already recorded in UAT.
 4. **Read or initialize remediation stage:**
@@ -233,12 +244,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - If `STAGE=done`: UAT remediation already completed for this phase. Display "Remediation already completed. Run `/vbw:verify --resume` to re-test." STOP.
    - Otherwise: resume at the persisted stage (handles compaction recovery).
 5. **Execute the current stage** based on `STAGE`:
-   - `discuss`: Route into Discuss mode for the same phase, using UAT issues as the discussion agenda. Capture/merge decisions into `{phase}-CONTEXT.md` (create if missing), with explicit references to each UAT issue (`Pxx-Ty`). After discuss completes, advance:
-     ```bash
-     bash ${CLAUDE_PLUGIN_ROOT}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
-     ```
-     Then continue to the next stage (`plan`).
-   - `plan`: Route into Plan mode for the same phase, with UAT issues + discuss decisions as required planning inputs. After planning completes, advance:
+   - `plan`: Route into Plan mode for the same phase, with UAT issues as required planning inputs (the UAT report serves as the scoping document — no separate discussion needed). After planning completes, advance:
      ```bash
      bash ${CLAUDE_PLUGIN_ROOT}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
@@ -252,7 +258,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
      bash ${CLAUDE_PLUGIN_ROOT}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
      Suggest `/vbw:verify --resume`.
-6. Present a remediation summary with: phase, issue count, severity mix, current stage, and chosen path (`discuss -> plan -> execute` or quick-fix).
+6. Present a remediation summary with: phase, issue count, severity mix, current stage, and chosen path (`plan -> execute` or quick-fix).
 
 ### Mode: Milestone UAT Recovery
 
@@ -292,6 +298,7 @@ This mode handles the case where a milestone was archived before UAT issues were
 
 **Guard:** Initialized, roadmap exists, phase exists.
 **Phase auto-detection:** First phase without PLAN.md. All planned: STOP "All phases planned. Specify phase: `/vbw:vibe --plan N`"
+**Milestone path guard:** If `{phases_dir}` contains `.vbw-planning/milestones/`, STOP "Cannot plan inside archived milestones." Archived milestones are read-only.
 
 **Steps:**
 1. **Parse args:** Phase number (optional, auto-detected), --effort (optional, falls back to config).
@@ -361,7 +368,13 @@ This mode handles the case where a milestone was archived before UAT issues were
    ```
 9. **Planning commit boundary (conditional):**
    ```bash
-   bash ${CLAUDE_PLUGIN_ROOT}/scripts/planning-git.sh commit-boundary "plan phase {N}" .vbw-planning/config.json
+   PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+   [ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "plan phase {N}" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
    ```
    Behavior: `planning_tracking=commit` commits planning artifacts if changed. `auto_push=always` pushes when upstream exists.
 10. **Pre-chain verification:** Before auto-chaining or presenting results, confirm the planning team was fully shut down (step 6 HARD GATE completed). If you skipped the gate or are unsure after compaction, send `shutdown_request` to any teammates that may still be active and call TeamDelete before continuing. NEVER enter Execute mode with a prior planning team still alive.
@@ -377,6 +390,7 @@ This mode delegates entirely to the protocol file. Before reading:
    - Not initialized: STOP "Run /vbw:init first."
    - No PLAN.md in phase dir: STOP "Phase {N} has no plans. Run `/vbw:vibe --plan {N}` first."
    - All plans have SUMMARY.md: cautious/standard -> WARN + confirm; confident/pure-vibe -> warn + auto-continue.
+   - **Milestone path guard:** If `{phases_dir}` contains `.vbw-planning/milestones/`, STOP "Cannot execute inside archived milestones." This prevents writing artifacts into shipped milestone directories.
 3. **Compile context:** If `config_context_compiler=true`, run:
    - `bash ${CLAUDE_PLUGIN_ROOT}/scripts/compile-context.sh {phase} dev {phases_dir} {plan_path}`
    - `bash ${CLAUDE_PLUGIN_ROOT}/scripts/compile-context.sh {phase} qa {phases_dir}`
@@ -473,7 +487,11 @@ Run 7-point audit matrix:
 FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
 
 **Steps:**
-1. Derive milestone slug from ROADMAP.md phase names (kebab-case, max 60 chars). Override with --tag if provided.
+1. **Derive milestone slug (deterministic — do NOT invent a slug):**
+   ```bash
+   MILESTONE_SLUG=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/derive-milestone-slug.sh .vbw-planning)
+   ```
+   This reads ROADMAP.md phase names and outputs a numbered kebab-case slug (e.g., `01-setup-api-layer`). Override with `--tag` if provided. **Never use a hardcoded slug like "default" — always use the script output.**
 2. Parse args: --tag=vN.N.N (custom tag), --no-tag (skip), --force (skip non-UAT audit).
 3. Compute summary: from ROADMAP (phases), SUMMARY.md files (tasks/commits/deviations), REQUIREMENTS.md (satisfied count).
 4. **Rolling summary (conditional):** If `rolling_summary=true` in config:
@@ -492,7 +510,13 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
    This extracts project-level sections (Todos, Decisions, Skills, Blockers, Codebase Profile) from the archived STATE.md and writes a fresh root STATE.md. Milestone-specific sections (Current Phase, Activity Log, Phase Status) stay in the archive only. Fail-open: if the script fails, warn but continue.
 6. Planning commit boundary (conditional):
    ```bash
-   bash ${CLAUDE_PLUGIN_ROOT}/scripts/planning-git.sh commit-boundary "archive milestone {SLUG}" .vbw-planning/config.json
+   PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+   [ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "archive milestone {SLUG}" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
    ```
    Run this BEFORE branch merge/tag so shipped planning state is committed.
 7. Git branch merge: if `milestone/{SLUG}` branch exists, merge --no-ff. Conflict -> abort, warn. No branch -> skip.
