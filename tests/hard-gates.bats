@@ -132,6 +132,40 @@ create_tampered_contract() {
   echo "$output" | jq -e '.result == "fail"'
 }
 
+@test "gate: verification_threshold prefers final verification over wave file (final FAIL)" {
+  cd "$TEST_TEMP_DIR"
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION-wave1.md" << 'EOF'
+## Summary
+Result: PASS
+EOF
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" << 'EOF'
+## Summary
+Result: FAIL
+EOF
+
+  run bash "$SCRIPTS_DIR/hard-gate.sh" verification_threshold 01 1 1 ".vbw-planning/.contracts/nonexistent.json"
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.result == "fail"'
+  [[ "$output" == *"verification failed"* ]]
+}
+
+@test "gate: verification_threshold prefers final verification over wave file (final PASS)" {
+  cd "$TEST_TEMP_DIR"
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION-wave1.md" << 'EOF'
+## Summary
+Result: FAIL
+EOF
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" << 'EOF'
+## Summary
+Result: PASS
+EOF
+
+  run bash "$SCRIPTS_DIR/hard-gate.sh" verification_threshold 01 1 1 ".vbw-planning/.contracts/nonexistent.json"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.result == "pass"'
+  [[ "$output" == *"verification passed"* ]]
+}
+
 
 @test "gate: JSON output format correct" {
   create_valid_contract

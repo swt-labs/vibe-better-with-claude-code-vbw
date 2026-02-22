@@ -18,15 +18,15 @@ teardown() {
 
 @test "write-verification: produces correct frontmatter from checks_detail" {
   cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
-{"payload":{"tier":"standard","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Test","status":"PASS","evidence":"ok"}]}}
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Test","status":"PASS","evidence":"ok"}]}}
 JSON
   run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
   [ "$status" -eq 0 ]
   grep -q '^tier: standard' "$TEST_TEMP_DIR/out.md"
   grep -q '^result: PASS' "$TEST_TEMP_DIR/out.md"
-  grep -q '^passed: 2' "$TEST_TEMP_DIR/out.md"
+  grep -q '^passed: 1' "$TEST_TEMP_DIR/out.md"
   grep -q '^failed: 0' "$TEST_TEMP_DIR/out.md"
-  grep -q '^total: 2' "$TEST_TEMP_DIR/out.md"
+  grep -q '^total: 1' "$TEST_TEMP_DIR/out.md"
   grep -q '^date: ' "$TEST_TEMP_DIR/out.md"
 }
 
@@ -104,14 +104,14 @@ JSON
 
 @test "write-verification: generates Summary section" {
   cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
-{"payload":{"tier":"standard","result":"PARTIAL","checks":{"passed":8,"failed":2,"total":10},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","description":"B","status":"FAIL","evidence":"missing"}]}}
+{"payload":{"tier":"standard","result":"PARTIAL","checks":{"passed":1,"failed":1,"total":2},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","description":"B","status":"FAIL","evidence":"missing"}]}}
 JSON
   run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
   [ "$status" -eq 0 ]
   grep -q '## Summary' "$TEST_TEMP_DIR/out.md"
   grep -q 'Tier.*standard' "$TEST_TEMP_DIR/out.md"
   grep -q 'Result.*PARTIAL' "$TEST_TEMP_DIR/out.md"
-  grep -q 'Passed.*8/10' "$TEST_TEMP_DIR/out.md"
+  grep -q 'Passed.*1/2' "$TEST_TEMP_DIR/out.md"
   grep -q 'Failed.*MH-02' "$TEST_TEMP_DIR/out.md"
 }
 
@@ -265,7 +265,7 @@ EOF
 
 @test "write-verification: frontmatter fields in canonical order" {
   cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
-{"payload":{"tier":"deep","result":"PARTIAL","checks":{"passed":8,"failed":2,"total":10},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"}]}}
+{"payload":{"tier":"deep","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"}]}}
 JSON
   bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
   # Extract frontmatter field names in order
@@ -325,6 +325,16 @@ JSON
   [[ "$output" == *"must have id and status"* ]]
 }
 
+@test "write-verification: rejects mismatched checks counters versus checks_detail" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":2,"failed":1,"total":2},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","description":"B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"checks counters must match checks_detail"* ]]
+  [ ! -f "$TEST_TEMP_DIR/out.md" ]
+}
+
 @test "write-verification: escapes pipe characters in description and evidence" {
   cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
 {"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A | B","status":"PASS","evidence":"path|line"}]}}
@@ -344,7 +354,7 @@ JSON
 
 @test "write-verification: routes unknown category to Other Checks section" {
   cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
-{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"X-01","category":"mystery","description":"Mystery check","status":"FAIL","evidence":"hmm"}]}}
+{"payload":{"tier":"standard","result":"FAIL","checks":{"passed":0,"failed":1,"total":1},"checks_detail":[{"id":"X-01","category":"mystery","description":"Mystery check","status":"FAIL","evidence":"hmm"}]}}
 JSON
   run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
   [ "$status" -eq 0 ]

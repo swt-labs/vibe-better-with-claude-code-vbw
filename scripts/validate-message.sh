@@ -143,6 +143,7 @@ if [ "$MSG_TYPE" = "qa_verdict" ]; then
     if [ "$DETAIL_TYPE" != "array" ] && [ "$DETAIL_TYPE" != "null" ]; then
       add_error "qa_verdict checks_detail must be an array or null"
     elif [ "$DETAIL_TYPE" = "array" ]; then
+      DETAIL_COUNT=$(echo "$MSG" | jq -r '.payload.checks_detail | length' 2>/dev/null || echo "0")
       INVALID_DETAIL_COUNT=$(echo "$MSG" | jq '[.payload.checks_detail[] | select(
         (.id | type != "string") or
         (.status | type != "string") or
@@ -151,6 +152,29 @@ if [ "$MSG_TYPE" = "qa_verdict" ]; then
       )] | length' 2>/dev/null || echo "1")
       if [ "${INVALID_DETAIL_COUNT:-0}" -gt 0 ] 2>/dev/null; then
         add_error "qa_verdict checks_detail entries require non-empty string id and status in PASS|FAIL|WARN"
+      elif [ "${DETAIL_COUNT:-0}" -gt 0 ] 2>/dev/null; then
+        COUNTER_MISMATCHES=$(echo "$MSG" | jq -r '
+          .payload as $p
+          | ($p.checks_detail // []) as $d
+          | [
+              if (($p.checks.failed // null) != ($d | map(select(.status == "FAIL")) | length))
+              then "qa_verdict checks.failed does not match checks_detail FAIL count"
+              else empty end,
+              if (($p.checks.passed // null) != ($d | map(select(.status == "PASS")) | length))
+              then "qa_verdict checks.passed does not match checks_detail PASS count"
+              else empty end,
+              if (($p.checks.total // null) != ($d | length))
+              then "qa_verdict checks.total does not match checks_detail entry count"
+              else empty end
+            ]
+          | .[]
+        ' 2>/dev/null)
+        if [ -n "$COUNTER_MISMATCHES" ]; then
+          while IFS= read -r mismatch; do
+            [ -z "$mismatch" ] && continue
+            add_error "$mismatch"
+          done <<< "$COUNTER_MISMATCHES"
+        fi
       fi
     fi
   fi

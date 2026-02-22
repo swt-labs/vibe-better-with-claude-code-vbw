@@ -99,6 +99,15 @@ if [[ "$has_checks_detail" == "true" ]]; then
         )
     ]
   ')
+
+    # Enforce counter/detail consistency when detail rows are present
+    detail_passed=$(echo "$payload" | jq -r '[.checks_detail[] | select(.status == "PASS")] | length')
+    detail_failed=$(echo "$payload" | jq -r '[.checks_detail[] | select(.status == "FAIL")] | length')
+    detail_total=$(echo "$payload" | jq -r '.checks_detail | length')
+    if [[ "$checks_passed" != "$detail_passed" || "$checks_failed" != "$detail_failed" || "$checks_total" != "$detail_total" ]]; then
+      echo "Error: checks counters must match checks_detail statuses/counts (checks.passed=${checks_passed}, checks.failed=${checks_failed}, checks.total=${checks_total}; detail PASS=${detail_passed}, FAIL=${detail_failed}, TOTAL=${detail_total})" >&2
+      exit 1
+    fi
 fi
 
 # Write to temp file first, then move atomically to prevent partial writes

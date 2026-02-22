@@ -118,6 +118,14 @@ MSG
   echo "$output" | jq -e '.valid == true'
 }
 
+@test "validate-message: qa_verdict rejects checks/detail counter mismatch" {
+  cd "$TEST_TEMP_DIR"
+  MSG='{"id":"q2b","type":"qa_verdict","phase":1,"task":"1-1-T1","author_role":"qa","timestamp":"2026-01-01","schema_version":"2.0","confidence":"high","payload":{"tier":"standard","result":"PASS","checks":{"passed":2,"failed":1,"total":2},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Feature A","status":"PASS","evidence":"ok"},{"id":"ART-01","category":"artifact","description":"README","status":"PASS","evidence":"found"}]}}'
+  run bash "$SCRIPTS_DIR/validate-message.sh" "$MSG"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"checks.failed"* ]]
+}
+
 @test "validate-message: qa_verdict rejects checks_detail with non-string status" {
   cd "$TEST_TEMP_DIR"
   MSG='{"id":"q3","type":"qa_verdict","phase":1,"task":"1-1-T1","author_role":"qa","timestamp":"2026-01-01","schema_version":"2.0","confidence":"high","payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Feature A","status":false,"evidence":"ok"}]}}'
