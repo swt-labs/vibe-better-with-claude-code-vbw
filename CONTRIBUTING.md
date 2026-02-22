@@ -60,7 +60,7 @@ ls ~/.claude/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh
 
 **Why this is needed:** VBW command templates contain fenced code blocks that execute at template-processing time to resolve the plugin root path. Claude Code's template processor runs `!` backtick expressions inside fenced code blocks via bash, but `CLAUDE_PLUGIN_ROOT` is only available as a template-engine variable (for `@${CLAUDE_PLUGIN_ROOT}/...` file inclusions) — it is **not** passed as a shell environment variable. So the resolution falls through to a glob of `~/.claude/plugins/cache/vbw-marketplace/vbw/*/`. The symlink ensures that glob finds your local clone.
 
-**What fails without it:** The `Plugin root:` preamble in every command resolves to an empty string. All downstream `cat /tmp/.vbw-plugin-root` references fail with `No such file or directory`, breaking script calls for phase detection, context compilation, model resolution, git operations, and more. Commands will load (the text appears), but any runtime bash call to a VBW script will break.
+**What fails without it:** The `Plugin root:` preamble in every command resolves to an empty string. The preamble creates a per-session symlink at `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}` pointing to the resolved root. All downstream script callsites construct this same symlink path deterministically — no shared temp file is involved. Without a valid cache entry, the symlink target is empty and all script calls fail.
 
 ### Launching Claude Code
 
@@ -100,7 +100,7 @@ Key conventions:
 - **Commands** live in `commands/*.md`. Use explicit prefixed names in frontmatter (e.g., `name: vbw:init`) so commands show as `/vbw:*`.
 - **Agents** in `agents/` use YAML frontmatter for tool permissions enforced by the platform.
 - **Hooks** in `hooks/hooks.json` self-resolve scripts via `ls | sort -V | tail -1` against the plugin cache.
-- **Plugin root resolution:** `CLAUDE_PLUGIN_ROOT` is a template-engine variable only — it works for `@${CLAUDE_PLUGIN_ROOT}/...` file inclusions but is **not** available as a shell env var inside `!` backtick fenced blocks. Runtime script paths resolve via a cache glob fallback (`~/.claude/plugins/cache/vbw-marketplace/vbw/*/`). See [Setting up the plugin cache symlink](#setting-up-the-plugin-cache-symlink-required) for local dev setup.
+- **Plugin root resolution:** `CLAUDE_PLUGIN_ROOT` is a template-engine variable only — it works for `@${CLAUDE_PLUGIN_ROOT}/...` file inclusions but is **not** available as a shell env var inside `!` backtick fenced blocks. Each command's preamble resolves the plugin root via a priority cascade (env var → `local` symlink → versioned cache → fallback) and creates a per-session symlink at `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`. Reader callsites construct this path deterministically — no shared mutable temp file is used. See [Setting up the plugin cache symlink](#setting-up-the-plugin-cache-symlink-required) for local dev setup.
 
 ## What to Contribute
 
