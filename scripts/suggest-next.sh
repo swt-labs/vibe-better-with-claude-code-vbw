@@ -82,6 +82,30 @@ read_status_field() {
   ' "$file" 2>/dev/null || true
 }
 
+latest_non_source_uat() {
+  local dir="$1"
+  local f
+  local latest=""
+
+  case "$dir" in
+    */) ;;
+    *) dir="$dir/" ;;
+  esac
+
+  for f in "${dir}"[0-9]*-UAT.md; do
+    [ -e "$f" ] || continue
+    case "$f" in
+      *SOURCE-UAT.md) continue ;;
+    esac
+    latest="$f"
+  done
+
+  if [ -n "$latest" ]; then
+    printf '%s\n' "$latest"
+  fi
+  return 0
+}
+
 if [ -d "$PLANNING_DIR" ]; then
 
   # Canonical post-archive UAT recovery state from phase-detect.sh
@@ -309,7 +333,7 @@ if [ "$CMD" = "verify" ] && [ "$effective_result" = "issues_found" ] && [ -d "${
       if [ "$_plans" -eq 0 ] || [ "$_summaries" -lt "$_plans" ]; then
         continue
       fi
-      _uat=$(ls -1 "$dir"[0-9]*-UAT.md 2>/dev/null | grep -v 'SOURCE-UAT\.md$' | sort | tail -1 || true)
+      _uat=$(latest_non_source_uat "$dir")
       if [ -f "$_uat" ]; then
         _us=$(read_status_field "$_uat")
         if [ "$_us" = "issues_found" ]; then
@@ -325,7 +349,7 @@ if [ "$CMD" = "verify" ] && [ "$effective_result" = "issues_found" ] && [ -d "${
   fi
 
   if [ -n "$verify_target_phase_dir" ]; then
-    verify_target_uat=$(ls -1 "$verify_target_phase_dir"/[0-9]*-UAT.md 2>/dev/null | grep -v 'SOURCE-UAT\.md$' | sort | tail -1 || true)
+    verify_target_uat=$(latest_non_source_uat "$verify_target_phase_dir")
   fi
 
   if [ -f "$verify_target_uat" ]; then

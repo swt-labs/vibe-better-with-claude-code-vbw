@@ -30,6 +30,30 @@ extract_status_value() {
   ' "$file" 2>/dev/null || true
 }
 
+latest_non_source_uat() {
+  local dir="$1"
+  local f
+  local latest=""
+
+  case "$dir" in
+    */) ;;
+    *) dir="$dir/" ;;
+  esac
+
+  for f in "${dir}"[0-9]*-UAT.md; do
+    [ -e "$f" ] || continue
+    case "$f" in
+      *SOURCE-UAT.md) continue ;;
+    esac
+    latest="$f"
+  done
+
+  if [ -n "$latest" ]; then
+    printf '%s\n' "$latest"
+  fi
+  return 0
+}
+
 # --- jq availability ---
 JQ_AVAILABLE=false
 if command -v jq &>/dev/null; then
@@ -195,7 +219,7 @@ if [ -d "$PHASES_DIR" ]; then
         continue
       fi
 
-      UAT_FILE=$(ls "$DIR"[0-9]*-UAT.md 2>/dev/null | grep -v 'SOURCE-UAT\.md$' | sort | tail -1 || true)
+      UAT_FILE=$(latest_non_source_uat "$DIR")
       if [ -f "$UAT_FILE" ]; then
         UAT_STATUS=$(extract_status_value "$UAT_FILE")
         if [ "$UAT_STATUS" = "issues_found" ]; then
@@ -355,7 +379,7 @@ if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] ||
         continue
       fi
 
-      _ms_uat=$(ls "$_ms_phase_dir"[0-9]*-UAT.md 2>/dev/null | grep -v 'SOURCE-UAT\.md$' | sort | tail -1 || true)
+      _ms_uat=$(latest_non_source_uat "$_ms_phase_dir")
       if [ -f "$_ms_uat" ]; then
         _ms_uat_status=$(extract_status_value "$_ms_uat")
         if [ "$_ms_uat_status" = "issues_found" ]; then
