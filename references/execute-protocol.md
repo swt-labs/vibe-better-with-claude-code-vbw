@@ -387,15 +387,15 @@ Display: `◆ Spawning QA agent (${QA_MODEL})...`
 
 **Per-wave QA (Thorough/Balanced, QA_TIMING=per-wave):** After each wave completes, spawn QA concurrently with next wave's Dev work. QA receives only completed wave's PLAN.md + SUMMARY.md + "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." After final wave, spawn integration QA covering all plans + cross-plan integration. Persist by piping the `qa_verdict` JSON through `write-verification.sh`:
 ```bash
-echo "$QA_VERDICT_JSON" | bash "$(cat /tmp/.vbw-plugin-root)/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION-wave{W}.md"
+echo "$QA_VERDICT_JSON" | bash "${CLAUDE_PLUGIN_ROOT}/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION-wave{W}.md"
 # For integration QA:
-echo "$QA_VERDICT_JSON" | bash "$(cat /tmp/.vbw-plugin-root)/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION.md"
+echo "$QA_VERDICT_JSON" | bash "${CLAUDE_PLUGIN_ROOT}/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION.md"
 ```
 If `write-verification.sh` fails or is missing, fall back to manual file writing (frontmatter + body).
 
 **Post-build QA (Fast, QA_TIMING=post-build):** Spawn QA after ALL plans complete. Include in task description: "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." Persist by piping the `qa_verdict` JSON through `write-verification.sh`:
 ```bash
-echo "$QA_VERDICT_JSON" | bash "$(cat /tmp/.vbw-plugin-root)/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION.md"
+echo "$QA_VERDICT_JSON" | bash "${CLAUDE_PLUGIN_ROOT}/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION.md"
 ```
 If `write-verification.sh` fails or is missing, fall back to manual file writing (frontmatter + body).
 

@@ -132,9 +132,9 @@ if [[ "$has_checks_detail" == "true" ]]; then
     esac
   }
 
-  # Helper: escape pipe characters for markdown table cells
+  # Helper: escape pipe characters and newlines for markdown table cells
   escape_pipes() {
-    printf '%s' "$1" | sed 's/|/\&#124;/g'
+    printf '%s' "$1" | tr '\n' ' ' | sed 's/|/\&#124;/g'
   }
 
   # Helper: emit a table for a given category
@@ -209,7 +209,12 @@ if [[ "$has_checks_detail" == "true" ]]; then
       echo ""
       echo "| Test | File | Error |"
       echo "|------|------|-------|"
-      echo "$pre_existing" | jq -r '.[] | "| \(.test // "-") | \(.file // "-") | \(.error // "-") |"'
+      while IFS= read -r pe_row; do
+        pe_test=$(escape_pipes "$(echo "$pe_row" | jq -r '.test // "-"')")
+        pe_file=$(escape_pipes "$(echo "$pe_row" | jq -r '.file // "-"')")
+        pe_error=$(escape_pipes "$(echo "$pe_row" | jq -r '.error // "-"')")
+        echo "| $pe_test | $pe_file | $pe_error |"
+      done < <(echo "$pre_existing" | jq -c '.[]')
       echo ""
     } >> "$tmp_output"
   fi

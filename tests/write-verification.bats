@@ -348,6 +348,54 @@ JSON
   grep -q '## Other Checks' "$TEST_TEMP_DIR/out.md"
 }
 
+@test "write-verification: newlines in description/evidence are replaced with spaces" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"line1\nline2","status":"PASS","evidence":"err\nmore"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  local row
+  row=$(grep 'MH-01' "$TEST_TEMP_DIR/out.md")
+  # No literal newlines inside the row — description and evidence on same line
+  local line_count
+  line_count=$(echo "$row" | wc -l | tr -d ' ')
+  [ "$line_count" -eq 1 ]
+  # Originals collapsed to spaces
+  [[ "$row" == *"line1 line2"* ]]
+  [[ "$row" == *"err more"* ]]
+}
+
+@test "write-verification: pre_existing_issues pipes are escaped" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"}],"pre_existing_issues":[{"test":"a|b","file":"c|d","error":"e|f"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '## Pre-existing Issues' "$TEST_TEMP_DIR/out.md"
+  # Pipe chars in data should be escaped
+  local pe_row
+  pe_row=$(grep '&#124;' "$TEST_TEMP_DIR/out.md" | grep -v 'MH-01')
+  [ -n "$pe_row" ]
+  # Row should have exactly 4 pipe delimiters (3-col table)
+  local pipe_count
+  pipe_count=$(echo "$pe_row" | tr -cd '|' | wc -c | tr -d ' ')
+  [ "$pipe_count" -eq 4 ]
+}
+
+@test "write-verification: pre_existing_issues newlines are stripped" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"}],"pre_existing_issues":[{"test":"mytest","file":"foo.js","error":"line1\nline2"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  local pe_row
+  pe_row=$(grep 'mytest' "$TEST_TEMP_DIR/out.md")
+  local line_count
+  line_count=$(echo "$pe_row" | wc -l | tr -d ' ')
+  [ "$line_count" -eq 1 ]
+  [[ "$pe_row" == *"line1 line2"* ]]
+}
+
 @test "write-verification: explicit jq-missing error message" {
   # Create a wrapper that shadows jq to simulate it not being found
   mkdir -p "$TEST_TEMP_DIR/fake-bin"

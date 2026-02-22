@@ -16,37 +16,37 @@ date: {YYYY-MM-DD}
 
 ## Artifact Checks
 
-| # | ID | Artifact | Exists | Contains | Status |
-|---|-----|----------|--------|----------|--------|
-| 1 | ART-01 | {file-path} | {yes/no} | {required-content} | {PASS/FAIL/WARN} |
+| # | ID | Artifact | Status | Evidence |
+|---|-----|----------|--------|----------|
+| 1 | ART-01 | {file-path} | {PASS/FAIL/WARN} | {exists, contains required-content} |
 
 ## Key Link Checks
 
-| # | ID | From | To | Via | Status |
-|---|-----|------|----|-----|--------|
-| 1 | KL-01 | {source} | {target} | {mechanism} | {PASS/FAIL/WARN} |
+| # | ID | Link | Status | Evidence |
+|---|-----|------|--------|----------|
+| 1 | KL-01 | {source → target} | {PASS/FAIL/WARN} | {mechanism} |
 
 ## Anti-Pattern Scan
 
-| # | ID | Pattern | Found | Location | Severity |
-|---|-----|---------|-------|----------|----------|
-| 1 | AP-01 | {pattern} | {yes/no} | {file:line} | {WARN/FAIL} |
+| # | ID | Pattern | Status | Evidence |
+|---|-----|---------|--------|----------|
+| 1 | AP-01 | {pattern} | {PASS/FAIL/WARN} | {location or "not found"} |
 
 _Include for standard+ tier. Omit if no anti-patterns checked._
 
 ## Convention Compliance
 
-| # | ID | Convention | File | Status | Detail |
-|---|-----|------------|------|--------|--------|
-| 1 | CC-01 | {convention} | {file} | {PASS/FAIL/WARN} | {detail} |
+| # | ID | Convention | Status | Evidence |
+|---|-----|------------|--------|----------|
+| 1 | CC-01 | {convention} | {PASS/FAIL/WARN} | {file, detail} |
 
 _Include for standard+ tier when CONVENTIONS.md exists. Omit otherwise._
 
 ## Requirement Mapping
 
-| # | ID | Requirement | Plan Ref | Artifact Evidence | Status |
-|---|-----|-------------|----------|-------------------|--------|
-| 1 | RM-01 | {requirement} | {plan-ref} | {evidence} | {PASS/FAIL/WARN} |
+| # | ID | Requirement | Status | Evidence |
+|---|-----|-------------|--------|----------|
+| 1 | RM-01 | {requirement} | {PASS/FAIL/WARN} | {plan-ref, artifact evidence} |
 
 _Include for deep tier only. Omit otherwise._
 
