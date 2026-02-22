@@ -573,6 +573,7 @@ Quick reference for every key in `config/defaults.json`, in order. Click the sec
 | `monorepo_routing` | `true` | [Runtime features](#runtime-features) |
 | `rolling_summary` | `false` | [Cross-phase context](#cross-phase-context) |
 | `require_phase_discussion` | `false` | [Agent behavior](#agent-behavior) |
+| `auto_uat` | `false` | [Autonomy levels](#autonomy-levels) |
 | `bash_guard` | `true`* | [Safety](#safety) |
 
 *`bash_guard` is not in `defaults.json` — it's read directly from project config with a default of `true` when absent.
@@ -640,6 +641,13 @@ Autonomy interacts with effort profiles. At `cautious`, plan approval expands to
 | "Already complete" warning | Confirm | Confirm | Skip | Skip |
 | Plan approval (Thorough) | Required | Required | Off | Off |
 | Plan approval (Balanced) | Required | Off | Off | Off |
+| UAT after QA | Run | Run | Skip | Skip |
+
+**`auto_uat`** — When `true`, VBW automatically runs UAT verification after QA passes during the `/vbw:vibe` execution flow, regardless of autonomy level. Normally, UAT only runs at `cautious` and `standard` autonomy. With `auto_uat` enabled, UAT runs inline at every level, including `confident` and `pure-vibe`. When running standalone `/vbw:qa`, the "Next Up" block will suggest `/vbw:verify` instead.
+
+```text
+/vbw:config auto_uat true
+```
 
 ### Commits, push, and planning artifacts
 

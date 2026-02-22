@@ -65,6 +65,7 @@ milestone_uat_count=0
 cfg_require_phase_discussion=false
 next_undiscussed=""
 next_preseeded=""
+cfg_auto_uat=false
 
 read_status_field() {
   local file="$1"
@@ -120,6 +121,8 @@ if [ -d "$PLANNING_DIR" ]; then
     [ -n "$e" ] && [ "$e" != "null" ] && effort="$e"
     a=$(jq -r '.autonomy // "standard"' "$PLANNING_DIR/config.json" 2>/dev/null)
     [ -n "$a" ] && [ "$a" != "null" ] && cfg_autonomy="$a"
+    au=$(jq -r '.auto_uat // "false"' "$PLANNING_DIR/config.json" 2>/dev/null)
+    [ "$au" = "true" ] && cfg_auto_uat=true
   fi
 
   # Scan phases
@@ -402,8 +405,8 @@ case "$CMD" in
         fi
         ;;
       *)
-        # Suggest UAT for cautious/standard autonomy when no UAT exists
-        if [ "$has_uat" = false ] && { [ "$cfg_autonomy" = "cautious" ] || [ "$cfg_autonomy" = "standard" ]; }; then
+        # Suggest UAT for cautious/standard autonomy when no UAT exists, or always when auto_uat=true
+        if [ "$has_uat" = false ] && { [ "$cfg_auto_uat" = true ] || [ "$cfg_autonomy" = "cautious" ] || [ "$cfg_autonomy" = "standard" ]; }; then
           suggest "/vbw:verify -- Walk through changes before continuing"
         fi
         if [ "$all_done" = true ]; then
@@ -466,8 +469,8 @@ case "$CMD" in
   qa)
     case "$effective_result" in
       pass)
-        # Suggest UAT for cautious/standard autonomy when no UAT exists
-        if [ "$has_uat" = false ] && { [ "$cfg_autonomy" = "cautious" ] || [ "$cfg_autonomy" = "standard" ]; }; then
+        # Suggest UAT for cautious/standard autonomy when no UAT exists, or always when auto_uat=true
+        if [ "$has_uat" = false ] && { [ "$cfg_auto_uat" = true ] || [ "$cfg_autonomy" = "cautious" ] || [ "$cfg_autonomy" = "standard" ]; }; then
           suggest "/vbw:verify -- Walk through changes manually"
         fi
         if [ "$all_done" = true ]; then

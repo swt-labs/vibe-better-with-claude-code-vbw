@@ -61,7 +61,8 @@ create_test_config() {
   "event_recovery": false,
   "monorepo_routing": true,
   "rolling_summary": false,
-  "require_phase_discussion": false
+  "require_phase_discussion": false,
+  "auto_uat": false
 }
 CONF
 }
