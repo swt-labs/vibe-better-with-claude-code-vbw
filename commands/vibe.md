@@ -177,7 +177,13 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
   Script handles: new file generation (heading + core value + VBW sections), existing file preservation (replaces only VBW-managed sections: Active Context, VBW Rules, Installed Skills, Project Conventions, Commands, Plugin Isolation; preserves all other content). Omit the fourth argument if no existing CLAUDE.md. Max 200 lines.
 - **B7: Planning commit boundary (conditional)** -- Run:
    ```bash
-   bash ${CLAUDE_PLUGIN_ROOT}/scripts/planning-git.sh commit-boundary "bootstrap project files" .vbw-planning/config.json
+   PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+   [ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "bootstrap project files" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
    ```
    Behavior: `planning_tracking=commit` commits `.vbw-planning/` + `CLAUDE.md` if changed. Other modes no-op.
 - **B8: Transition** -- Display "Bootstrap complete. Transitioning to scoping..." Re-evaluate state, route to next match.
@@ -362,7 +368,13 @@ This mode handles the case where a milestone was archived before UAT issues were
    ```
 9. **Planning commit boundary (conditional):**
    ```bash
-   bash ${CLAUDE_PLUGIN_ROOT}/scripts/planning-git.sh commit-boundary "plan phase {N}" .vbw-planning/config.json
+   PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+   [ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "plan phase {N}" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
    ```
    Behavior: `planning_tracking=commit` commits planning artifacts if changed. `auto_push=always` pushes when upstream exists.
 10. **Pre-chain verification:** Before auto-chaining or presenting results, confirm the planning team was fully shut down (step 6 HARD GATE completed). If you skipped the gate or are unsure after compaction, send `shutdown_request` to any teammates that may still be active and call TeamDelete before continuing. NEVER enter Execute mode with a prior planning team still alive.
@@ -498,7 +510,13 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
    This extracts project-level sections (Todos, Decisions, Skills, Blockers, Codebase Profile) from the archived STATE.md and writes a fresh root STATE.md. Milestone-specific sections (Current Phase, Activity Log, Phase Status) stay in the archive only. Fail-open: if the script fails, warn but continue.
 6. Planning commit boundary (conditional):
    ```bash
-   bash ${CLAUDE_PLUGIN_ROOT}/scripts/planning-git.sh commit-boundary "archive milestone {SLUG}" .vbw-planning/config.json
+   PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+   [ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "archive milestone {SLUG}" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
    ```
    Run this BEFORE branch merge/tag so shipped planning state is committed.
 7. Git branch merge: if `milestone/{SLUG}` branch exists, merge --no-ff. Conflict -> abort, warn. No branch -> skip.

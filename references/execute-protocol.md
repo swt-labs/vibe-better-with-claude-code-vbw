@@ -474,7 +474,13 @@ When `worktree_isolation="off"`: skip this block silently.
 
 **Planning artifact boundary commit (conditional):**
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/planning-git.sh commit-boundary "complete phase {N}" .vbw-planning/config.json
+PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+[ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
+if [ -f "$PG_SCRIPT" ]; then
+  bash "$PG_SCRIPT" commit-boundary "complete phase {N}" .vbw-planning/config.json
+else
+  echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+fi
 ```
 - `planning_tracking=commit`: commits `.vbw-planning/` + `CLAUDE.md` when changed
 - `planning_tracking=manual|ignore`: no-op
@@ -482,7 +488,13 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/planning-git.sh commit-boundary "complete pha
 
 **After-phase push (conditional):**
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/planning-git.sh push-after-phase .vbw-planning/config.json
+PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+[ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
+if [ -f "$PG_SCRIPT" ]; then
+  bash "$PG_SCRIPT" push-after-phase .vbw-planning/config.json
+else
+  echo "VBW: planning-git.sh unavailable; skipping planning git push-after-phase" >&2
+fi
 ```
 - `auto_push=after_phase`: pushes once after phase completion (if upstream exists)
 - other modes: no-op

@@ -156,7 +156,13 @@ jq '.planning_tracking = "'"$PLANNING_TRACKING"'" | .auto_push = "'"$AUTO_PUSH"'
 Then align git ignore behavior with config:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/planning-git.sh sync-ignore .vbw-planning/config.json
+PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+[ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
+if [ -f "$PG_SCRIPT" ]; then
+  bash "$PG_SCRIPT" sync-ignore .vbw-planning/config.json
+else
+  echo "VBW: planning-git.sh unavailable; skipping .gitignore sync" >&2
+fi
 ```
 
 ### Step 1.5: Install git hooks
@@ -462,7 +468,13 @@ If SKIP_INFERENCE=false (confirmed/corrected inference data):
 **7h. Planning commit boundary (conditional):**
 - Run:
   ```bash
-  bash ${CLAUDE_PLUGIN_ROOT}/scripts/planning-git.sh commit-boundary "bootstrap project files" .vbw-planning/config.json
+  PG_SCRIPT="$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/scripts/planning-git.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)"
+  [ ! -f "$PG_SCRIPT" ] && PG_SCRIPT="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/planning-git.sh}"
+  if [ -f "$PG_SCRIPT" ]; then
+    bash "$PG_SCRIPT" commit-boundary "bootstrap project files" .vbw-planning/config.json
+  else
+    echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+  fi
   ```
 - Behavior:
   - `planning_tracking=commit`: stages `.vbw-planning/` + `CLAUDE.md` and commits if there are changes
