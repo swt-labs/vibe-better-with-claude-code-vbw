@@ -403,9 +403,15 @@ Display: `◆ Spawning QA agent (${QA_MODEL})...`
 | confident | OFF |
 | pure-vibe | OFF |
 
-Read autonomy from config: `jq -r '.autonomy // "standard"' .vbw-planning/config.json`
+**Override:** If `auto_uat` is `true` in config, UAT is always active regardless of autonomy level.
 
-If autonomy is confident or pure-vibe: display "○ UAT verification skipped (autonomy: {level})" and proceed to Step 5.
+Read autonomy and auto_uat from config:
+```bash
+AUTONOMY=$(jq -r '.autonomy // "standard"' .vbw-planning/config.json)
+AUTO_UAT=$(jq -r '.auto_uat // false' .vbw-planning/config.json)
+```
+
+If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○ UAT verification skipped (autonomy: {level})" and proceed to Step 5.
 
 **UAT execution (cautious + standard):**
 

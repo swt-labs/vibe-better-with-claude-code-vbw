@@ -40,7 +40,7 @@ teardown() {
   managed_flags=$(jq -r '.stages[].flags[]' "$CONFIG_DIR/rollout-stages.json" | sort -u)
   # Flags that are boolean but intentionally NOT rollout-managed
   # (they have no phased rollout — they're always user-configurable)
-  local unmanaged_allowlist="auto_commit auto_install_skills branch_per_milestone context_compiler discovery_questions plain_summary require_phase_discussion skill_suggestions worktree_isolation"
+  local unmanaged_allowlist="auto_commit auto_install_skills auto_uat branch_per_milestone context_compiler discovery_questions plain_summary require_phase_discussion skill_suggestions worktree_isolation"
   for flag in $boolean_flags; do
     echo "$managed_flags" | grep -qx "$flag" && continue
     echo "$unmanaged_allowlist" | tr ' ' '\n' | grep -qx "$flag" && continue

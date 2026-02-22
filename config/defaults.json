@@ -38,5 +38,6 @@
   "event_recovery": true,
   "monorepo_routing": true,
   "rolling_summary": false,
-  "require_phase_discussion": false
+  "require_phase_discussion": false,
+  "auto_uat": false
 }
