@@ -534,15 +534,30 @@ fi
 
 # --- Determine next action ---
 NEXT_ACTION=""
+
+# Use phase-detect.sh as the canonical source for phase and milestone UAT routing.
+PHASE_DETECT_OUT=$(bash "$SCRIPT_DIR/phase-detect.sh" 2>/dev/null || true)
+PD_NEXT_PHASE_STATE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^next_phase_state=' | sed 's/^[^=]*=//' || true)
+PD_NEXT_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^next_phase=' | sed 's/^[^=]*=//' || true)
+PD_UAT_ISSUES_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^uat_issues_phase=' | sed 's/^[^=]*=//' || true)
+PD_MILESTONE_UAT_ISSUES=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_issues=' | sed 's/^[^=]*=//' || true)
+PD_MILESTONE_UAT_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_phase=' | sed 's/^[^=]*=//' || true)
+PD_MILESTONE_UAT_SLUG=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_slug=' | sed 's/^[^=]*=//' || true)
+PD_HAS_SHIPPED=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^has_shipped_milestones=' | sed 's/^[^=]*=//' || true)
+
+PD_NEXT_PHASE_STATE=${PD_NEXT_PHASE_STATE:-unknown}
+PD_NEXT_PHASE=${PD_NEXT_PHASE:-none}
+PD_UAT_ISSUES_PHASE=${PD_UAT_ISSUES_PHASE:-none}
+PD_MILESTONE_UAT_ISSUES=${PD_MILESTONE_UAT_ISSUES:-false}
+PD_MILESTONE_UAT_PHASE=${PD_MILESTONE_UAT_PHASE:-none}
+PD_MILESTONE_UAT_SLUG=${PD_MILESTONE_UAT_SLUG:-none}
+PD_HAS_SHIPPED=${PD_HAS_SHIPPED:-$has_shipped}
+
+# Keep shipped indicator aligned with phase-detect brownfield fallback semantics.
+has_shipped="$PD_HAS_SHIPPED"
+
 if [ ! -f "$PLANNING_DIR/PROJECT.md" ]; then
   NEXT_ACTION="/vbw:init"
-elif [ ! -d "$PHASES_DIR" ] || [ -z "$(ls -d "$PHASES_DIR"/*/ 2>/dev/null)" ]; then
-  # No root phases — check if milestones were shipped (post-archive state)
-  if [ "$has_shipped" = "true" ]; then
-    NEXT_ACTION="/vbw:vibe (all milestones shipped, start next milestone)"
-  else
-    NEXT_ACTION="/vbw:vibe (needs scoping)"
-  fi
 else
   # Check execution state for interrupted builds
   EXEC_STATE="$PLANNING_DIR/.execution-state.json"
@@ -561,32 +576,31 @@ else
   if [ "$exec_running" = true ]; then
     NEXT_ACTION="/vbw:vibe (build interrupted, will resume)"
   else
-    # Find next phase needing work
-    all_done=true
-    for pdir in $(ls -d "$PHASES_DIR"/*/ 2>/dev/null | sort); do
-      pname=$(basename "$pdir")
-      # zsh compat: use ls dir | grep to avoid bare glob expansion errors
-      # shellcheck disable=SC2010
-      plan_count=$(ls -1 "$pdir" 2>/dev/null | grep '\-PLAN\.md$' | wc -l | tr -d ' ')
-      # shellcheck disable=SC2010
-      summary_count=$(ls -1 "$pdir" 2>/dev/null | grep '\-SUMMARY\.md$' | wc -l | tr -d ' ')
-      if [ "${plan_count:-0}" -eq 0 ]; then
-        # Phase has no plans yet — needs planning
-        pnum=$(echo "$pname" | sed 's/-.*//')
-        NEXT_ACTION="/vbw:vibe (Phase $pnum needs planning)"
-        all_done=false
-        break
-      elif [ "${summary_count:-0}" -lt "${plan_count:-0}" ]; then
-        # Phase has plans but not all executed
-        pnum=$(echo "$pname" | sed 's/-.*//')
-        NEXT_ACTION="/vbw:vibe (Phase $pnum planned, needs execution)"
-        all_done=false
-        break
-      fi
-    done
-    if [ "$all_done" = true ]; then
-      NEXT_ACTION="/vbw:vibe --archive"
-    fi
+    case "$PD_NEXT_PHASE_STATE" in
+      needs_uat_remediation)
+        NEXT_ACTION="/vbw:vibe (Phase ${PD_UAT_ISSUES_PHASE:-$PD_NEXT_PHASE} has unresolved UAT issues, continue remediation)"
+        ;;
+      needs_plan_and_execute)
+        NEXT_ACTION="/vbw:vibe (Phase ${PD_NEXT_PHASE} needs planning)"
+        ;;
+      needs_execute)
+        NEXT_ACTION="/vbw:vibe (Phase ${PD_NEXT_PHASE} planned, needs execution)"
+        ;;
+      all_done|no_phases)
+        if [ "$PD_MILESTONE_UAT_ISSUES" = "true" ]; then
+          NEXT_ACTION="/vbw:vibe (milestone UAT recovery: ${PD_MILESTONE_UAT_SLUG} Phase ${PD_MILESTONE_UAT_PHASE})"
+        elif [ "$PD_HAS_SHIPPED" = "true" ] && [ "$PD_NEXT_PHASE_STATE" = "no_phases" ]; then
+          NEXT_ACTION="/vbw:vibe (all milestones shipped, start next milestone)"
+        elif [ "$PD_NEXT_PHASE_STATE" = "all_done" ]; then
+          NEXT_ACTION="/vbw:vibe --archive"
+        else
+          NEXT_ACTION="/vbw:vibe (needs scoping)"
+        fi
+        ;;
+      *)
+        NEXT_ACTION="/vbw:vibe (needs scoping)"
+        ;;
+    esac
   fi
 fi
 

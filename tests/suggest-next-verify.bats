@@ -131,6 +131,43 @@ EOF
   [[ "$output" != *"/vbw:fix"* ]]
 }
 
+@test "suggest-next verify issues_found handles Status key with trailing spaces" {
+  cd "$TEST_TEMP_DIR"
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/09-status-drift"
+  mkdir -p "$phase_dir"
+  cat > "$phase_dir/09-01-PLAN.md" <<'EOF'
+---
+phase: 09
+plan: 09-01
+title: Sample plan
+---
+EOF
+  cat > "$phase_dir/09-01-SUMMARY.md" <<'EOF'
+---
+status: complete
+deviations: 0
+---
+Done.
+EOF
+  cat > "$phase_dir/09-UAT.md" <<'EOF'
+---
+phase: 09
+Status: issues_found   
+---
+
+## Tests
+
+- Result: issue
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" verify issues_found 09
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:vibe -- Continue UAT remediation for Phase 9"* ]]
+  [[ "$output" != *"/vbw:fix -- Fix the issues found during UAT"* ]]
+}
+
 @test "suggest-next verify issues_found detects bare-text minor severity" {
   cd "$TEST_TEMP_DIR"
   local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/07-bare-fmt"
@@ -299,4 +336,52 @@ EOF
   [[ "$output" != *"Phase 2"* ]]
   # Should show generic fix guidance
   [[ "$output" == *"/vbw:fix"* ]]
+}
+
+@test "suggest-next vibe all-done prefers milestone recovery over archive when archived UAT unresolved" {
+  cd "$TEST_TEMP_DIR"
+
+  # Active work is complete
+  local active_dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-core"
+  mkdir -p "$active_dir"
+  printf -- '---\nphase: 01\nplan: 01-01\n---\n' > "${active_dir}/01-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\n' > "${active_dir}/01-01-SUMMARY.md"
+
+  # Archived milestone still has unresolved UAT
+  local ms_dir="$TEST_TEMP_DIR/.vbw-planning/milestones/01-foundation/phases/08-cost-basis"
+  mkdir -p "$ms_dir"
+  printf '# SHIPPED\n' > "$TEST_TEMP_DIR/.vbw-planning/milestones/01-foundation/SHIPPED.md"
+  printf -- '---\nphase: 08\nplan: 08-01\n---\n' > "${ms_dir}/08-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\n' > "${ms_dir}/08-01-SUMMARY.md"
+  printf -- '---\nphase: 08\nstatus: issues_found\n---\nSeverity: major\n' > "${ms_dir}/08-UAT.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Milestone UAT recovery pending"* ]]
+  [[ "$output" != *"/vbw:vibe --archive"* ]]
+}
+
+@test "suggest-next milestone recovery includes affected phase count when multiple phases unresolved" {
+  cd "$TEST_TEMP_DIR"
+
+  local active_dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-core"
+  mkdir -p "$active_dir"
+  printf -- '---\nphase: 01\nplan: 01-01\n---\n' > "${active_dir}/01-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\n' > "${active_dir}/01-01-SUMMARY.md"
+
+  for p in 08 09; do
+    local ms_dir="$TEST_TEMP_DIR/.vbw-planning/milestones/01-foundation/phases/${p}-phase"
+    mkdir -p "$ms_dir"
+    printf '# SHIPPED\n' > "$TEST_TEMP_DIR/.vbw-planning/milestones/01-foundation/SHIPPED.md"
+    printf -- '---\nphase: %s\nplan: %s-01\n---\n' "$p" "$p" > "${ms_dir}/${p}-01-PLAN.md"
+    printf -- '---\nstatus: complete\ndeviations: 0\n---\n' > "${ms_dir}/${p}-01-SUMMARY.md"
+    printf -- '---\nphase: %s\nstatus: issues_found\n---\nSeverity: major\n' "$p" > "${ms_dir}/${p}-UAT.md"
+  done
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Milestone UAT recovery pending (01-foundation, 2 phase(s))"* ]]
+  [[ "$output" != *"/vbw:vibe --archive"* ]]
 }

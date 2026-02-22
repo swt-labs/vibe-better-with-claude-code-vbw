@@ -50,6 +50,23 @@ is_expanded_vbw_prompt() {
   [ -n "$frontmatter" ] && printf '%s\n' "$frontmatter" | grep -qiE '^[[:space:]]*name:[[:space:]]*vbw:'
 }
 
+is_archive_vibe_prompt() {
+  local prompt="$1"
+
+  # Raw slash command shape
+  if printf '%s\n' "$prompt" | grep -qiE '/vbw:vibe[^[:cntrl:]]*--archive'; then
+    return 0
+  fi
+
+  # Expanded command shape (frontmatter name: vbw:*)
+  # If this expanded prompt includes --archive, treat it as an archive intent.
+  if is_expanded_vbw_prompt "$prompt" && printf '%s\n' "$prompt" | grep -qi -- '--archive'; then
+    return 0
+  fi
+
+  return 1
+}
+
 # GSD Isolation: create .vbw-session marker on VBW command invocation.
 # Detection covers raw slash commands (/vbw:*) and expanded command content
 # (YAML frontmatter with "name: vbw:").
@@ -66,6 +83,7 @@ if [ -f "$PLANNING_DIR/.gsd-isolation" ]; then
 fi
 
 WARNING=""
+BLOCK_MSG=""
 
 # Check: /vbw:vibe --execute when no PLAN.md exists
 if echo "$PROMPT" | grep -q '/vbw:vibe.*--execute'; then
@@ -84,13 +102,40 @@ if echo "$PROMPT" | grep -q '/vbw:vibe.*--execute'; then
 fi
 
 # Check: /vbw:vibe --archive with incomplete phases
-if echo "$PROMPT" | grep -q '/vbw:vibe.*--archive'; then
+if is_archive_vibe_prompt "$PROMPT"; then
+  # Hard gate: unresolved UAT (active or milestone) blocks archive requests,
+  # including bypass attempts like --skip-audit / --force.
+  GUARD_SCRIPT="$(dirname "$0")/archive-uat-guard.sh"
+  if [ -f "$GUARD_SCRIPT" ]; then
+    GUARD_OUTPUT=$(bash "$GUARD_SCRIPT" 2>/dev/null)
+    GUARD_RC=$?
+    if [ "$GUARD_RC" -eq 2 ]; then
+      BLOCK_MSG="${GUARD_OUTPUT:-Archive blocked: unresolved UAT issues must be remediated before archiving.}"
+    fi
+  else
+    WARNING="UAT guard script not found; archive safety check skipped."
+  fi
+
   if [ -f "$PLANNING_DIR/STATE.md" ]; then
     INCOMPLETE=$(grep -c "status:.*incomplete\|status:.*in.progress\|status:.*pending" "$PLANNING_DIR/STATE.md" 2>/dev/null || echo 0)
     if [ "$INCOMPLETE" -gt 0 ]; then
-      WARNING="$INCOMPLETE incomplete phase(s). Review STATE.md before shipping."
+      if [ -n "$WARNING" ]; then
+        WARNING="$WARNING $INCOMPLETE incomplete phase(s). Review STATE.md before shipping."
+      else
+        WARNING="$INCOMPLETE incomplete phase(s). Review STATE.md before shipping."
+      fi
     fi
   fi
+fi
+
+if [ -n "$BLOCK_MSG" ]; then
+  jq -n --arg msg "$BLOCK_MSG" '{
+    "hookSpecificOutput": {
+      "hookEventName": "UserPromptSubmit",
+      "additionalContext": ("VBW pre-flight block: " + $msg)
+    }
+  }'
+  exit 2
 fi
 
 if [ -n "$WARNING" ]; then

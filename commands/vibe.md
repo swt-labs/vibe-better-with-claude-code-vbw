@@ -47,7 +47,7 @@ Check $ARGUMENTS for flags. If any mode flag is present, go directly to that mod
 Behavior modifiers (combinable with mode flags):
 - `--effort <level>`: thorough|balanced|fast|turbo (overrides config)
 - `--skip-qa`: skip post-build QA
-- `--skip-audit`: skip pre-archive audit
+- `--skip-audit`: skip non-UAT pre-archive audit checks (hard UAT gate still enforced)
 - `--yolo`: skip all confirmation gates, auto-loop remaining phases
 - `--plan=NN`: execute single plan (bypasses wave grouping)
 - Bare integer `N`: targets phase N (works with any mode flag)
@@ -78,13 +78,16 @@ If no $ARGUMENTS, evaluate phase-detect.sh output. First match determines mode:
 | 2 | `project_exists=false` | Bootstrap | "No project defined. Set one up?" |
 | 3 | `phase_count=0` | Scope | "Project defined but no phases. Scope the work?" |
 | 4 | `next_phase_state=needs_uat_remediation` | UAT Remediation | "Phase {N} has unresolved UAT issues. Continue with remediation now?" |
-| 5 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {N} needs planning and execution. Start?" |
-| 6 | `next_phase_state=needs_execute` | Execute | "Phase {N} is planned. Execute it?" |
-| 7 | `next_phase_state=all_done` | Archive | "All phases complete. Run audit and archive?" |
+| 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
+| 6 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {N} needs planning and execution. Start?" |
+| 7 | `next_phase_state=needs_execute` | Execute | "Phase {N} is planned. Execute it?" |
+| 8 | `next_phase_state=all_done` | Archive | "All phases complete. Run audit and archive?" |
 
 **all_done + natural language:** If $ARGUMENTS describe new work (bug, feature, task) and state is `all_done`, route to Add Phase mode instead of Archive. Add Phase handles codebase context loading and research internally — do NOT spawn an Explore agent or do ad-hoc research before entering the mode.
 
 **UAT remediation default:** When `next_phase_state=needs_uat_remediation`, plain `/vbw:vibe` must read that phase's UAT report and continue remediation directly. Do NOT require the user to manually specify `--discuss` or `--plan`.
+
+**Milestone UAT recovery:** When `milestone_uat_issues=true` and active phases are empty, the latest shipped milestone has unresolved UAT issues. Present the user with options: (a) create remediation phases to fix the UAT issues, or (b) start fresh with new work (ignoring the stale UAT). Use `milestone_uat_count` to determine how many phases are affected. When `milestone_uat_count` > 1, parse `milestone_uat_phase_dirs` (pipe-separated) to read all UAT reports and display a consolidated issue summary. Use `milestone_uat_major_or_higher` to determine severity context.
 
 ### Confirmation Gate
 
@@ -248,6 +251,40 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
      Suggest `/vbw:verify --resume`.
 6. Present a remediation summary with: phase, issue count, severity mix, current stage, and chosen path (`discuss -> plan -> execute` or quick-fix).
 
+### Mode: Milestone UAT Recovery
+
+**Guard:** `milestone_uat_issues=true` from phase-detect.sh. Active phases dir is empty/all_done but the latest shipped milestone has unresolved UAT issues.
+
+This mode handles the case where a milestone was archived before UAT issues were resolved (e.g., due to a missing audit gate in older versions).
+
+**Steps:**
+1. Read UAT reports from the milestone. If `milestone_uat_count` > 1, `milestone_uat_phase_dirs` contains all affected phase dirs (pipe-separated). Parse them:
+   ```bash
+   IFS='|' read -ra UAT_DIRS <<< "$milestone_uat_phase_dirs"
+   ```
+   Read each UAT report. If `milestone_uat_count` = 1, use `milestone_uat_phase_dir` directly. Extract all issues with description and severity from every affected phase.
+2. Display the unresolved issues to the user with milestone context (milestone slug, affected phase count, severity mix).
+3. Present options via AskUserQuestion:
+   - **"Create a remediation milestone"** (recommended for major/critical): Create one remediation phase per affected milestone phase. Auto-populate each phase goal from the UAT issue descriptions. Route to Plan mode for the first created phase.
+   - **"Start fresh with new work"**: Acknowledge the stale UAT issues, mark them as acknowledged (`.remediated`) so they don't re-trigger archive blocking, then proceed as if all_done. The user can define new work via `/vbw:vibe` with arguments.
+4. If the user chooses remediation: create remediation phases via script — one per affected milestone phase:
+   ```bash
+   IFS='|' read -ra UAT_DIRS <<< "$milestone_uat_phase_dirs"
+   for dir in "${UAT_DIRS[@]}"; do
+     bash ${CLAUDE_PLUGIN_ROOT}/scripts/create-remediation-phase.sh .vbw-planning "$dir"
+   done
+   ```
+   The script also writes a `.remediated` marker in each source milestone phase dir to prevent re-triggering on future sessions. After creating all phases, write a ROADMAP.md and update STATE.md reflecting the remediation phases, then route to Plan mode for the first phase.
+5. If the user chooses start-fresh: persist acknowledgement markers for all affected archived phases before continuing:
+   ```bash
+   TARGET_PHASE_DIRS="$milestone_uat_phase_dirs"
+   if [ -z "$TARGET_PHASE_DIRS" ] && [ "$milestone_uat_phase_dir" != "none" ]; then
+     TARGET_PHASE_DIRS="$milestone_uat_phase_dir"
+   fi
+   bash ${CLAUDE_PLUGIN_ROOT}/scripts/mark-milestone-remediated.sh .vbw-planning "$TARGET_PHASE_DIRS"
+   ```
+   Then continue to normal all_done/new-work routing.
+
 ### Mode: Plan
 
 **Guard:** Initialized, roadmap exists, phase exists.
@@ -261,7 +298,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - **If missing:** Spawn Scout agent to research the phase goal, requirements, and relevant codebase patterns. Scout returns structured findings with sections: `## Findings`, `## Relevant Patterns`, `## Risks`, `## Recommendations`. The **orchestrator** (not Scout) writes the returned findings to `{phase-dir}/{phase}-RESEARCH.md`. Scout has `disallowedTools: Write` (platform-enforced) and cannot write files. Resolve Scout model:
      ```bash
      SCOUT_MODEL=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/resolve-agent-model.sh scout .vbw-planning/config.json ${CLAUDE_PLUGIN_ROOT}/config/model-profiles.json)
-   SCOUT_MAX_TURNS=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}")
+     SCOUT_MAX_TURNS=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}")
      ```
    Pass `model: "${SCOUT_MODEL}"` and `maxTurns: ${SCOUT_MAX_TURNS}` to the Task tool.
    - **If exists:** Include it in Lead's context for incremental refresh. Lead may update RESEARCH.md if new information emerges.
@@ -312,7 +349,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    MODEL_PROFILE=$(jq -r '.model_profile // "quality"' .vbw-planning/config.json)
    ```
    Display Phase Banner with plan list, effort level, and model profile:
-   ```
+    ```text
    Phase {N}: {name}
    Plans: {N}
      {plan}: {title} (wave {W}, {N} tasks)
@@ -414,19 +451,27 @@ Completed ([x] in roadmap): STOP "Cannot remove completed Phase {N}."
 No roadmap: STOP "No milestones configured. Run `/vbw:vibe` to bootstrap."
 No work (no SUMMARY.md files): STOP "Nothing to ship."
 
+**Hard UAT gate (always, non-bypassable):**
+Before any audit/bypass handling, run:
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/archive-uat-guard.sh
+```
+If exit code is 2: STOP. Unresolved UAT (active or milestone) blocks archive regardless of `--skip-audit` or `--force`.
+
 **Pre-gate audit (unless --skip-audit or --force):**
-Run 6-point audit matrix:
+Run 7-point audit matrix:
 1. Roadmap completeness: every phase has real goal (not TBD/empty)
 2. Phase planning: every phase has >= 1 PLAN.md
 3. Plan execution: every PLAN.md has SUMMARY.md
 4. Execution status: every SUMMARY.md has `status: complete`
 5. Verification: VERIFICATION.md files exist + PASS. Missing=WARN, failed=FAIL
-6. Requirements coverage: req IDs in roadmap exist in REQUIREMENTS.md
+6. UAT status: any `*-UAT.md` with `status: issues_found` = FAIL. Unresolved UAT issues must be remediated before archiving.
+7. Requirements coverage: req IDs in roadmap exist in REQUIREMENTS.md
 FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
 
 **Steps:**
 1. Derive milestone slug from ROADMAP.md phase names (kebab-case, max 60 chars). Override with --tag if provided.
-2. Parse args: --tag=vN.N.N (custom tag), --no-tag (skip), --force (skip audit).
+2. Parse args: --tag=vN.N.N (custom tag), --no-tag (skip), --force (skip non-UAT audit).
 3. Compute summary: from ROADMAP (phases), SUMMARY.md files (tasks/commits/deviations), REQUIREMENTS.md (satisfied count).
 4. **Rolling summary (conditional):** If `rolling_summary=true` in config:
    ```bash

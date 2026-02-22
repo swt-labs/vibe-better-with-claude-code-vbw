@@ -24,6 +24,15 @@ CMD="${1:-}"
 RESULT="${2:-}"
 TARGET_PHASE_ARG="${3:-}"
 PLANNING_DIR=".vbw-planning"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+list_child_dirs_sorted() {
+  local parent="$1"
+  [ -d "$parent" ] || return 0
+
+  find "$parent" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null |
+    (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
+}
 
 # --- State detection ---
 has_project=false
@@ -49,8 +58,42 @@ uat_major_or_higher=false
 verify_target_phase=""
 verify_target_phase_dir=""
 verify_target_uat=""
+milestone_uat_issues=false
+milestone_uat_phase="none"
+milestone_uat_slug="none"
+milestone_uat_count=0
+
+read_status_field() {
+  local file="$1"
+  awk '
+    {
+      line = $0
+      if (tolower(line) ~ /^[[:space:]]*status[[:space:]]*:/) {
+        value = line
+        sub(/^[^:]*:[[:space:]]*/, "", value)
+        gsub(/[[:space:]]+$/, "", value)
+        print tolower(value)
+        exit
+      }
+    }
+  ' "$file" 2>/dev/null || true
+}
 
 if [ -d "$PLANNING_DIR" ]; then
+
+  # Canonical post-archive UAT recovery state from phase-detect.sh
+  _pd_out=$(bash "$SCRIPT_DIR/phase-detect.sh" 2>/dev/null || true)
+  if [ -n "$_pd_out" ]; then
+    _pd_milestone_uat=$(echo "$_pd_out" | grep -m1 '^milestone_uat_issues=' | sed 's/^[^=]*=//' || true)
+    _pd_milestone_phase=$(echo "$_pd_out" | grep -m1 '^milestone_uat_phase=' | sed 's/^[^=]*=//' || true)
+    _pd_milestone_slug=$(echo "$_pd_out" | grep -m1 '^milestone_uat_slug=' | sed 's/^[^=]*=//' || true)
+    _pd_milestone_count=$(echo "$_pd_out" | grep -m1 '^milestone_uat_count=' | sed 's/^[^=]*=//' || true)
+
+    [ -n "${_pd_milestone_uat:-}" ] && milestone_uat_issues="$_pd_milestone_uat"
+    [ -n "${_pd_milestone_phase:-}" ] && milestone_uat_phase="$_pd_milestone_phase"
+    [ -n "${_pd_milestone_slug:-}" ] && milestone_uat_slug="$_pd_milestone_slug"
+    [ -n "${_pd_milestone_count:-}" ] && milestone_uat_count="$_pd_milestone_count"
+  fi
 
   # Root-canonical phases directory (no ACTIVE indirection)
   PHASES_DIR="$PLANNING_DIR/phases"
@@ -76,9 +119,19 @@ if [ -d "$PLANNING_DIR" ]; then
   # Scan phases
   if [ -d "$PHASES_DIR" ]; then
     # Sort phase dirs numerically (prevents 100 sorting before 11)
-    # Fallback: extract numeric prefix from basename for systems without sort -V
-    phase_dirs_sorted=$(ls -d "$PHASES_DIR"/*/ 2>/dev/null | (sort -V 2>/dev/null || awk -F/ '{n=$(NF-1); gsub(/[^0-9].*/,"",n); print (n+0)"\t"$0}' | sort -n | cut -f2-))
-    for dir in $phase_dirs_sorted; do
+    SN_PHASE_DIRS=()
+    while IFS= read -r _sn_dir; do
+      [ -n "$_sn_dir" ] || continue
+      SN_PHASE_DIRS+=("${_sn_dir%/}/")
+    done < <(list_child_dirs_sorted "$PHASES_DIR")
+
+    last_phase_dir=""
+    last_phase_num=""
+    last_phase_name=""
+    last_phase_plans=0
+
+    if [ ${#SN_PHASE_DIRS[@]} -gt 0 ]; then
+    for dir in "${SN_PHASE_DIRS[@]}"; do
       [ -d "$dir" ] || continue
       phase_count=$((phase_count + 1))
       phase_num=$(basename "$dir" | sed 's/[^0-9].*//')
@@ -107,6 +160,7 @@ if [ -d "$PLANNING_DIR" ]; then
       last_phase_name="$phase_slug"
       last_phase_plans="$plans"
     done
+    fi  # end SN_PHASE_DIRS length check
 
     # If no unplanned/unbuilt, use the last phase (most recently completed)
     if [ -z "$active_phase_dir" ] && [ -n "$last_phase_dir" ]; then
@@ -143,7 +197,7 @@ if [ -d "$PLANNING_DIR" ]; then
           *) deviation_count=$((deviation_count + 1)) ;;  # non-empty, non-numeric = at least 1
         esac
         # Check for failed/partial status
-        s=$(grep -m1 '^status:' "$sf" 2>/dev/null | sed 's/status:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
+        s=$(read_status_field "$sf")
         if [ "$s" = "failed" ] || [ "$s" = "partial" ]; then
           plan_id=$(basename "$sf" | sed 's/-SUMMARY.md//')
           failing_plan_ids="${failing_plan_ids:+$failing_plan_ids }$plan_id"
@@ -153,7 +207,7 @@ if [ -d "$PLANNING_DIR" ]; then
       # Check for completed UAT in active phase
       for uf in "$active_phase_dir"/*-UAT.md; do
         [ -f "$uf" ] || continue
-        us=$(grep -m1 '^status:' "$uf" 2>/dev/null | sed 's/status:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
+        us=$(read_status_field "$uf")
         if [ "$us" = "complete" ]; then
           has_uat=true
         fi
@@ -208,7 +262,13 @@ if [ "$CMD" = "verify" ] && [ "$effective_result" = "issues_found" ] && [ -d "${
     done
   else
     # No phase arg — find the first phase with UAT issues (numeric order, matching phase-detect.sh)
-    for dir in $(ls -d "$PHASES_DIR"/*/ 2>/dev/null | (sort -V 2>/dev/null || awk -F/ '{n=$(NF-1); gsub(/[^0-9].*/,"",n); print (n+0)"\t"$0}' | sort -n | cut -f2-)); do
+    SN_VERIFY_DIRS=()
+    while IFS= read -r _sv_dir; do
+      [ -n "$_sv_dir" ] || continue
+      SN_VERIFY_DIRS+=("${_sv_dir%/}/")
+    done < <(list_child_dirs_sorted "$PHASES_DIR")
+
+    for dir in ${SN_VERIFY_DIRS[@]+"${SN_VERIFY_DIRS[@]}"}; do
       [ -d "$dir" ] || continue
       # Guard: skip phases without execution artifacts (matching phase-detect.sh)
       _plans=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
@@ -218,7 +278,7 @@ if [ "$CMD" = "verify" ] && [ "$effective_result" = "issues_found" ] && [ -d "${
       fi
       _uat=$(ls -1 "$dir"[0-9]*-UAT.md 2>/dev/null | sort | tail -1 || true)
       if [ -f "$_uat" ]; then
-        _us=$(grep -m1 '^status:' "$_uat" 2>/dev/null | sed 's/status:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
+        _us=$(read_status_field "$_uat")
         if [ "$_us" = "issues_found" ]; then
           verify_target_phase_dir="$dir"
           verify_target_phase=$(basename "$dir" | sed 's/[^0-9].*//' | sed 's/^0*//')
@@ -267,6 +327,20 @@ suggest() {
   echo "  $1"
 }
 
+suggest_milestone_recovery() {
+  if [ "$milestone_uat_issues" = true ]; then
+    if [ "$milestone_uat_slug" != "none" ] && [ "${milestone_uat_count:-0}" -gt 1 ] 2>/dev/null; then
+      suggest "/vbw:vibe -- Milestone UAT recovery pending (${milestone_uat_slug}, ${milestone_uat_count} phase(s))"
+    elif [ "$milestone_uat_slug" != "none" ] && [ "$milestone_uat_phase" != "none" ]; then
+      suggest "/vbw:vibe -- Milestone UAT recovery pending (${milestone_uat_slug}, Phase ${milestone_uat_phase})"
+    else
+      suggest "/vbw:vibe -- Milestone UAT recovery pending"
+    fi
+    return 0
+  fi
+  return 1
+}
+
 case "$CMD" in
   init)
     suggest "/vbw:vibe -- Define your project and start building"
@@ -300,11 +374,17 @@ case "$CMD" in
           suggest "/vbw:verify -- Walk through changes before continuing"
         fi
         if [ "$all_done" = true ]; then
-          if [ "$deviation_count" -eq 0 ]; then
-            suggest "/vbw:vibe --archive -- All phases complete, zero deviations"
+          if ! suggest_milestone_recovery; then
+            if [ "$deviation_count" -eq 0 ]; then
+              suggest "/vbw:vibe --archive -- All phases complete, zero deviations"
+            else
+              suggest "/vbw:vibe --archive -- Archive completed work ($deviation_count deviation(s) logged)"
+              suggest "/vbw:qa -- Review before archiving"
+            fi
+          elif [ "$deviation_count" -gt 0 ]; then
+            suggest "/vbw:qa -- Review remediation scope before resuming new work"
           else
-            suggest "/vbw:vibe --archive -- Archive completed work ($deviation_count deviation(s) logged)"
-            suggest "/vbw:qa -- Review before archiving"
+            :
           fi
         elif [ -n "$next_unbuilt" ] || [ -n "$next_unplanned" ]; then
           target="${next_unbuilt:-$next_unplanned}"
@@ -345,10 +425,14 @@ case "$CMD" in
           suggest "/vbw:verify -- Walk through changes manually"
         fi
         if [ "$all_done" = true ]; then
-          if [ "$deviation_count" -eq 0 ]; then
-            suggest "/vbw:vibe --archive -- All phases complete, zero deviations"
+          if ! suggest_milestone_recovery; then
+            if [ "$deviation_count" -eq 0 ]; then
+              suggest "/vbw:vibe --archive -- All phases complete, zero deviations"
+            else
+              suggest "/vbw:vibe --archive -- Archive completed work ($deviation_count deviation(s) logged)"
+            fi
           else
-            suggest "/vbw:vibe --archive -- Archive completed work ($deviation_count deviation(s) logged)"
+            :
           fi
         else
           target="${next_unbuilt:-$next_unplanned}"
@@ -399,7 +483,9 @@ case "$CMD" in
     case "$effective_result" in
       pass)
         if [ "$all_done" = true ]; then
-          suggest "/vbw:vibe --archive -- All verified, ready to ship"
+          if ! suggest_milestone_recovery; then
+            suggest "/vbw:vibe --archive -- All verified, ready to ship"
+          fi
         else
           suggest "/vbw:vibe -- Continue to next phase"
         fi
@@ -442,10 +528,14 @@ case "$CMD" in
 
   status)
     if [ "$all_done" = true ]; then
-      if [ "$deviation_count" -eq 0 ]; then
-        suggest "/vbw:vibe --archive -- All phases complete, zero deviations"
+      if ! suggest_milestone_recovery; then
+        if [ "$deviation_count" -eq 0 ]; then
+          suggest "/vbw:vibe --archive -- All phases complete, zero deviations"
+        else
+          suggest "/vbw:vibe --archive -- Archive completed work"
+        fi
       else
-        suggest "/vbw:vibe --archive -- Archive completed work"
+        :
       fi
     elif [ -n "$next_unbuilt" ] || [ -n "$next_unplanned" ]; then
       target="${next_unbuilt:-$next_unplanned}"

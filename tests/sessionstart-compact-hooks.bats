@@ -71,6 +71,28 @@ teardown() {
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Next: /vbw:vibe (all milestones shipped, start next milestone).")' >/dev/null
 }
 
+@test "session-start: unresolved archived milestone UAT suggests recovery, not new milestone" {
+  cd "$TEST_TEMP_DIR"
+  rm -rf .vbw-planning/phases
+  mkdir -p .vbw-planning/milestones/01-foundation/phases/08-cost-basis
+  echo "# SHIPPED" > .vbw-planning/milestones/01-foundation/SHIPPED.md
+  touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-PLAN.md
+  touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
+  cat > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-UAT.md <<'EOF'
+---
+phase: 08
+status: issues_found
+---
+Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Shipped milestones: true.")' >/dev/null
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("milestone UAT recovery")' >/dev/null
+  ! echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("start next milestone")' >/dev/null
+}
+
 @test "session-start: runs normally when compaction marker is stale (>60s)" {
   cd "$TEST_TEMP_DIR"
   # Write a timestamp 120 seconds in the past
