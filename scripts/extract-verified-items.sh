@@ -61,7 +61,7 @@ for vf in "${verif_files[@]}"; do
 
   # Try deterministic table format: look for any known section heading with ID column
   deterministic=false
-  if grep -qE '^## (Must-Have Checks|Artifact Checks|Key Link Checks|Anti-Pattern Scan|Convention Compliance|Requirement Mapping|Other Checks)' "$vf" 2>/dev/null; then
+  if grep -qE '^## (Must-Have Checks|Artifact Checks|Key Link Checks|Anti-Pattern Scan|Convention Compliance|Requirement Mapping|Skill-Augmented Checks|Other Checks)' "$vf" 2>/dev/null; then
     # Check if the table has the deterministic format (ID column)
     if grep -q '| # | ID |' "$vf" 2>/dev/null; then
       deterministic=true
@@ -80,6 +80,7 @@ for vf in "${verif_files[@]}"; do
         "## Anti-Pattern Scan"*) current_section="anti_pattern" ;;
         "## Convention Compliance"*) current_section="convention" ;;
         "## Requirement Mapping"*) current_section="requirement" ;;
+        "## Skill-Augmented Checks"*) current_section="skill_augmented" ;;
         "## Other Checks"*) current_section="other" ;;
         "## Pre-existing"*|"## Summary"*) current_section="" ;;
         "| "*)

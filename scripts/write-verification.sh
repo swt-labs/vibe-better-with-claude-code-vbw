@@ -84,6 +84,12 @@ if [[ "$has_checks_detail" == "true" ]]; then
     echo "Error: checks_detail entries must have id and status fields" >&2
     exit 1
   fi
+  # Normalize empty strings to null so // "-" catches both null and "" (QA R4 F1)
+  payload=$(echo "$payload" | jq '
+    .checks_detail |= [.[] | with_entries(
+      if .value == "" then .value = null else . end
+    )]
+  ')
 fi
 
 # Write to temp file first, then move atomically to prevent partial writes
@@ -108,7 +114,7 @@ if [[ "$has_checks_detail" == "true" ]]; then
   # Deterministic output from checks_detail
 
   # Known categories in canonical order (Bash 3.2 compatible — no associative arrays)
-  KNOWN_CATEGORIES="must_have artifact key_link anti_pattern convention requirement"
+  KNOWN_CATEGORIES="must_have artifact key_link anti_pattern convention requirement skill_augmented"
 
   # Helper: get heading and column name for a known category
   category_heading() {
@@ -119,6 +125,7 @@ if [[ "$has_checks_detail" == "true" ]]; then
       anti_pattern) echo "Anti-Pattern Scan" ;;
       convention)   echo "Convention Compliance" ;;
       requirement)  echo "Requirement Mapping" ;;
+      skill_augmented) echo "Skill-Augmented Checks" ;;
     esac
   }
   category_col() {
@@ -129,6 +136,7 @@ if [[ "$has_checks_detail" == "true" ]]; then
       anti_pattern) echo "Pattern" ;;
       convention)   echo "Convention" ;;
       requirement)  echo "Requirement" ;;
+      skill_augmented) echo "Check" ;;
     esac
   }
 
@@ -159,13 +167,13 @@ if [[ "$has_checks_detail" == "true" ]]; then
     local use_rich="false"
     case "$category" in
       artifact)
-        if echo "$items" | jq -e 'any(has("exists"))' &>/dev/null; then use_rich="true"; fi ;;
+        if echo "$items" | jq -e 'any(.exists != null)' &>/dev/null; then use_rich="true"; fi ;;
       key_link)
-        if echo "$items" | jq -e 'any(has("from"))' &>/dev/null; then use_rich="true"; fi ;;
+        if echo "$items" | jq -e 'any(.from != null)' &>/dev/null; then use_rich="true"; fi ;;
       requirement)
-        if echo "$items" | jq -e 'any(has("plan_ref"))' &>/dev/null; then use_rich="true"; fi ;;
+        if echo "$items" | jq -e 'any(.plan_ref != null)' &>/dev/null; then use_rich="true"; fi ;;
       convention)
-        if echo "$items" | jq -e 'any(has("file"))' &>/dev/null; then use_rich="true"; fi ;;
+        if echo "$items" | jq -e 'any(.file != null)' &>/dev/null; then use_rich="true"; fi ;;
     esac
 
     if [[ "$use_rich" == "true" ]]; then
