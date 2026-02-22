@@ -123,22 +123,29 @@ date: {YYYY-MM-DD}
 
 ### Structure
 
-All check tables use a uniform 5-column format: `# | ID | {Category Column} | Status | Evidence`.
+Check tables use **5-column** or **6-column** format depending on category-specific fields.
+
+**5-column** (must_have, anti_pattern, or fallback): `# | ID | {col} | Status | Evidence`
+**6-column** (when category-specific fields present):
+- Artifact: `# | ID | Artifact | Exists | Contains | Status`
+- Key Link: `# | ID | From | To | Via | Status`
+- Requirement: `# | ID | Requirement | Plan Ref | Evidence | Status`
+- Convention: `# | ID | Convention | File | Status | Detail`
 
 ```markdown
 # Verification: Phase {N}
 ## Must-Have Checks
 | # | ID | Truth/Condition | Status | Evidence |
 ## Artifact Checks
-| # | ID | Artifact | Status | Evidence |
+| # | ID | Artifact | Exists | Contains | Status |
 ## Key Link Checks
-| # | ID | Link | Status | Evidence |
+| # | ID | From | To | Via | Status |
 ## Anti-Pattern Scan (standard+)
 | # | ID | Pattern | Status | Evidence |
 ## Requirement Mapping (deep only)
-| # | ID | Requirement | Status | Evidence |
+| # | ID | Requirement | Plan Ref | Evidence | Status |
 ## Convention Compliance (standard+, if CONVENTIONS.md)
-| # | ID | Convention | Status | Evidence |
+| # | ID | Convention | File | Status | Detail |
 ## Skill-Augmented Checks (if quality skills)
 | # | ID | Skill Check | Status | Evidence |
 ## Summary

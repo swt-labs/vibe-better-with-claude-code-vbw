@@ -36,6 +36,13 @@
       "allowed_roles": ["qa"],
       "payload_required": ["tier", "result", "checks"],
       "payload_optional": ["failures", "body", "recommendations", "pre_existing_issues", "checks_detail"],
+      "checks_detail_category_fields": {
+        "common": ["id", "category", "description", "status", "evidence"],
+        "artifact": ["exists", "contains"],
+        "key_link": ["from", "to", "via"],
+        "convention": ["file", "detail"],
+        "requirement": ["plan_ref"]
+      },
       "description": "Verification results from QA agent"
     },
     "approval_request": {

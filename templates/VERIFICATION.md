@@ -16,15 +16,19 @@ date: {YYYY-MM-DD}
 
 ## Artifact Checks
 
-| # | ID | Artifact | Status | Evidence |
-|---|-----|----------|--------|----------|
-| 1 | ART-01 | {file-path} | {PASS/FAIL/WARN} | {exists, contains required-content} |
+| # | ID | Artifact | Exists | Contains | Status |
+|---|-----|----------|--------|----------|--------|
+| 1 | ART-01 | {file-path} | {Yes/No} | {expected-content} | {PASS/FAIL/WARN} |
+
+_Falls back to 5-col (# \| ID \| Artifact \| Status \| Evidence) when category fields absent._
 
 ## Key Link Checks
 
-| # | ID | Link | Status | Evidence |
-|---|-----|------|--------|----------|
-| 1 | KL-01 | {source → target} | {PASS/FAIL/WARN} | {mechanism} |
+| # | ID | From | To | Via | Status |
+|---|-----|------|-----|-----|--------|
+| 1 | KL-01 | {source-file} | {target-file} | {match-pattern} | {PASS/FAIL/WARN} |
+
+_Falls back to 5-col (# \| ID \| Link \| Status \| Evidence) when category fields absent._
 
 ## Anti-Pattern Scan
 
@@ -36,17 +40,21 @@ _Include for standard+ tier. Omit if no anti-patterns checked._
 
 ## Convention Compliance
 
-| # | ID | Convention | Status | Evidence |
-|---|-----|------------|--------|----------|
-| 1 | CC-01 | {convention} | {PASS/FAIL/WARN} | {file, detail} |
+| # | ID | Convention | File | Status | Detail |
+|---|-----|------------|------|--------|--------|
+| 1 | CC-01 | {convention} | {file-checked} | {PASS/FAIL/WARN} | {detail} |
+
+_Falls back to 5-col (# \| ID \| Convention \| Status \| Evidence) when category fields absent._
 
 _Include for standard+ tier when CONVENTIONS.md exists. Omit otherwise._
 
 ## Requirement Mapping
 
-| # | ID | Requirement | Status | Evidence |
-|---|-----|-------------|--------|----------|
-| 1 | RM-01 | {requirement} | {PASS/FAIL/WARN} | {plan-ref, artifact evidence} |
+| # | ID | Requirement | Plan Ref | Evidence | Status |
+|---|-----|-------------|----------|----------|--------|
+| 1 | RM-01 | {requirement} | {plan-ref} | {artifact evidence} | {PASS/FAIL/WARN} |
+
+_Falls back to 5-col (# \| ID \| Requirement \| Status \| Evidence) when category fields absent._
 
 _Include for deep tier only. Omit otherwise._
 

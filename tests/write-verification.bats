@@ -461,3 +461,171 @@ JSON
   [ "$status" -eq 0 ]
   [[ "$output" == *"PASS X-01: Custom check"* ]]
 }
+
+# =============================================================================
+# write-verification.sh: per-category 6-column rich tables
+# =============================================================================
+
+@test "write-verification: artifact section uses 6-col when exists field present" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"ART-01","category":"artifact","description":"README.md","status":"PASS","exists":true,"contains":"## Setup"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '| # | ID | Artifact | Exists | Contains | Status |' "$TEST_TEMP_DIR/out.md"
+  local row
+  row=$(grep 'ART-01' "$TEST_TEMP_DIR/out.md")
+  [[ "$row" == *"README.md"* ]]
+  [[ "$row" == *"Yes"* ]]
+  [[ "$row" == *"## Setup"* ]]
+  # 6-col row has 7 pipe delimiters
+  local pipe_count
+  pipe_count=$(echo "$row" | tr -cd '|' | wc -c | tr -d ' ')
+  [ "$pipe_count" -eq 7 ]
+}
+
+@test "write-verification: artifact exists=false renders No" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"FAIL","checks":{"passed":0,"failed":1,"total":1},"checks_detail":[{"id":"ART-01","category":"artifact","description":"CHANGELOG.md","status":"FAIL","exists":false,"contains":"## v1.0"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  local row
+  row=$(grep 'ART-01' "$TEST_TEMP_DIR/out.md")
+  [[ "$row" == *"No"* ]]
+  [[ "$row" == *"FAIL"* ]]
+}
+
+@test "write-verification: key_link section uses 6-col when from field present" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"KL-01","category":"key_link","description":"Config refs module","status":"PASS","from":"config.js","to":"module.js","via":"import statement"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '| # | ID | From | To | Via | Status |' "$TEST_TEMP_DIR/out.md"
+  local row
+  row=$(grep 'KL-01' "$TEST_TEMP_DIR/out.md")
+  [[ "$row" == *"config.js"* ]]
+  [[ "$row" == *"module.js"* ]]
+  [[ "$row" == *"import statement"* ]]
+  local pipe_count
+  pipe_count=$(echo "$row" | tr -cd '|' | wc -c | tr -d ' ')
+  [ "$pipe_count" -eq 7 ]
+}
+
+@test "write-verification: requirement section uses 6-col when plan_ref present" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"deep","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"RM-01","category":"requirement","description":"REQ-01 implemented","status":"PASS","plan_ref":"PLAN.md T3","evidence":"function exists at line 42"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '| # | ID | Requirement | Plan Ref | Evidence | Status |' "$TEST_TEMP_DIR/out.md"
+  local row
+  row=$(grep 'RM-01' "$TEST_TEMP_DIR/out.md")
+  [[ "$row" == *"REQ-01 implemented"* ]]
+  [[ "$row" == *"PLAN.md T3"* ]]
+  [[ "$row" == *"function exists at line 42"* ]]
+  local pipe_count
+  pipe_count=$(echo "$row" | tr -cd '|' | wc -c | tr -d ' ')
+  [ "$pipe_count" -eq 7 ]
+}
+
+@test "write-verification: convention section uses 6-col when file field present" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"CC-01","category":"convention","description":"kebab-case naming","status":"PASS","file":"src/my-module.js","detail":"follows pattern"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '| # | ID | Convention | File | Status | Detail |' "$TEST_TEMP_DIR/out.md"
+  local row
+  row=$(grep 'CC-01' "$TEST_TEMP_DIR/out.md")
+  [[ "$row" == *"kebab-case naming"* ]]
+  [[ "$row" == *"src/my-module.js"* ]]
+  [[ "$row" == *"follows pattern"* ]]
+  local pipe_count
+  pipe_count=$(echo "$row" | tr -cd '|' | wc -c | tr -d ' ')
+  [ "$pipe_count" -eq 7 ]
+}
+
+@test "write-verification: key_link falls back to 5-col without from field" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"KL-01","category":"key_link","description":"Config refs module","status":"PASS","evidence":"import found"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  # Should use 5-col header with Link column
+  grep -q '| # | ID | Link | Status | Evidence |' "$TEST_TEMP_DIR/out.md"
+  local row
+  row=$(grep 'KL-01' "$TEST_TEMP_DIR/out.md")
+  local pipe_count
+  pipe_count=$(echo "$row" | tr -cd '|' | wc -c | tr -d ' ')
+  [ "$pipe_count" -eq 6 ]
+}
+
+@test "write-verification: convention falls back to 5-col without file field" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"CC-01","category":"convention","description":"Naming OK","status":"PASS","evidence":"follows pattern"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '| # | ID | Convention | Status | Evidence |' "$TEST_TEMP_DIR/out.md"
+  local row
+  row=$(grep 'CC-01' "$TEST_TEMP_DIR/out.md")
+  local pipe_count
+  pipe_count=$(echo "$row" | tr -cd '|' | wc -c | tr -d ' ')
+  [ "$pipe_count" -eq 6 ]
+}
+
+# =============================================================================
+# extract-verified-items.sh: 6-column table parsing
+# =============================================================================
+
+@test "extract-verified-items: parses 6-col key_link table" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"KL-01","category":"key_link","description":"Config refs module","status":"PASS","from":"config.js","to":"module.js","via":"import"}]}}
+JSON
+  bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/01-VERIFICATION.md" < "$TEST_TEMP_DIR/input.json"
+  run bash "$SCRIPTS_DIR/extract-verified-items.sh" "$pdir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PASS KL-01: config.js"* ]]
+}
+
+@test "extract-verified-items: parses 6-col artifact table" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"ART-01","category":"artifact","description":"README.md","status":"PASS","exists":true,"contains":"Setup section"}]}}
+JSON
+  bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/01-VERIFICATION.md" < "$TEST_TEMP_DIR/input.json"
+  run bash "$SCRIPTS_DIR/extract-verified-items.sh" "$pdir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PASS ART-01: README.md"* ]]
+}
+
+@test "extract-verified-items: parses 6-col convention table (status at col 6)" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"FAIL","checks":{"passed":0,"failed":1,"total":1},"checks_detail":[{"id":"CC-01","category":"convention","description":"kebab-case","status":"FAIL","file":"src/BadName.js","detail":"uppercase not allowed"}]}}
+JSON
+  bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/01-VERIFICATION.md" < "$TEST_TEMP_DIR/input.json"
+  run bash "$SCRIPTS_DIR/extract-verified-items.sh" "$pdir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"FAIL CC-01: kebab-case"* ]]
+}
+
+@test "extract-verified-items: parses mixed 5-col and 6-col sections" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PARTIAL","checks":{"passed":2,"failed":1,"total":3},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Feature A","status":"PASS","evidence":"ok"},{"id":"KL-01","category":"key_link","description":"Link check","status":"PASS","from":"a.js","to":"b.js","via":"import"},{"id":"ART-01","category":"artifact","description":"README.md","status":"FAIL","exists":false,"contains":"Setup"}]}}
+JSON
+  bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/01-VERIFICATION.md" < "$TEST_TEMP_DIR/input.json"
+  run bash "$SCRIPTS_DIR/extract-verified-items.sh" "$pdir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PASS MH-01: Feature A"* ]]
+  [[ "$output" == *"PASS KL-01: a.js"* ]]
+  [[ "$output" == *"FAIL ART-01: README.md"* ]]
+}

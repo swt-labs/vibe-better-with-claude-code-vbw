@@ -88,12 +88,22 @@ for vf in "${verif_files[@]}"; do
             continue
           fi
           if [[ -n "$current_section" ]]; then
-            # Parse: | N | ID | Description | Status | Evidence |
             # Handle escaped pipes (&#124;) by temporarily replacing them
             safe_line=$(echo "$line" | sed 's/\&#124;/__PIPE__/g')
             check_id=$(echo "$safe_line" | awk -F'|' '{gsub(/^ +| +$/, "", $3); print $3}')
             description=$(echo "$safe_line" | awk -F'|' '{gsub(/^ +| +$/, "", $4); print $4}' | sed 's/__PIPE__/|/g')
-            status=$(echo "$safe_line" | awk -F'|' '{gsub(/^ +| +$/, "", $5); print $5}')
+            # Status column position: 5-col tables (6 pipes) → $5; 6-col tables (7 pipes) → per-section
+            col_count=$(echo "$safe_line" | tr -cd '|' | wc -c | tr -d ' ')
+            if [[ "$col_count" -eq 7 ]]; then
+              case "$current_section" in
+                convention)
+                  status=$(echo "$safe_line" | awk -F'|' '{gsub(/^ +| +$/, "", $6); print $6}') ;;
+                *)
+                  status=$(echo "$safe_line" | awk -F'|' '{gsub(/^ +| +$/, "", $7); print $7}') ;;
+              esac
+            else
+              status=$(echo "$safe_line" | awk -F'|' '{gsub(/^ +| +$/, "", $5); print $5}')
+            fi
             if [[ -n "$check_id" && -n "$status" ]]; then
               echo "  $status $check_id: $description"
             fi

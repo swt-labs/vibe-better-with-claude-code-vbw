@@ -154,20 +154,84 @@ if [[ "$has_checks_detail" == "true" ]]; then
 
     echo "## $heading"
     echo ""
-    echo "| # | ID | $col_name | Status | Evidence |"
-    echo "|---|-----|$(printf '%0.s-' $(seq 1 ${#col_name}))--|--------|----------|"
 
-    # Emit rows with pipe escaping
-    local i=0
-    while IFS= read -r row; do
-      i=$((i + 1))
-      local rid rdesc rstatus revidence
-      rid=$(echo "$row" | jq -r '.id // "-"')
-      rdesc=$(escape_pipes "$(echo "$row" | jq -r '.description // "-"')")
-      rstatus=$(echo "$row" | jq -r '.status // "-"')
-      revidence=$(escape_pipes "$(echo "$row" | jq -r '.evidence // "-"')")
-      echo "| $i | $rid | $rdesc | $rstatus | $revidence |"
-    done < <(echo "$items" | jq -c '.[]')
+    # Detect category-specific fields for rich 6-column layout
+    local use_rich="false"
+    case "$category" in
+      artifact)
+        if echo "$items" | jq -e 'any(has("exists"))' &>/dev/null; then use_rich="true"; fi ;;
+      key_link)
+        if echo "$items" | jq -e 'any(has("from"))' &>/dev/null; then use_rich="true"; fi ;;
+      requirement)
+        if echo "$items" | jq -e 'any(has("plan_ref"))' &>/dev/null; then use_rich="true"; fi ;;
+      convention)
+        if echo "$items" | jq -e 'any(has("file"))' &>/dev/null; then use_rich="true"; fi ;;
+    esac
+
+    if [[ "$use_rich" == "true" ]]; then
+      # Category-specific 6-column layout
+      case "$category" in
+        artifact)
+          echo "| # | ID | Artifact | Exists | Contains | Status |"
+          echo "|---|-----|----------|--------|----------|--------|" ;;
+        key_link)
+          echo "| # | ID | From | To | Via | Status |"
+          echo "|---|-----|------|-----|-----|--------|" ;;
+        requirement)
+          echo "| # | ID | Requirement | Plan Ref | Evidence | Status |"
+          echo "|---|-----|-------------|----------|----------|--------|" ;;
+        convention)
+          echo "| # | ID | Convention | File | Status | Detail |"
+          echo "|---|-----|------------|------|--------|--------|" ;;
+      esac
+      local i=0
+      while IFS= read -r row; do
+        i=$((i + 1))
+        local rid rstatus
+        rid=$(echo "$row" | jq -r '.id // "-"')
+        rstatus=$(echo "$row" | jq -r '.status // "-"')
+        case "$category" in
+          artifact)
+            local rartifact rexists rcontains
+            rartifact=$(escape_pipes "$(echo "$row" | jq -r '.description // "-"')")
+            rexists=$(echo "$row" | jq -r 'if .exists == true then "Yes" elif .exists == false then "No" else "-" end')
+            rcontains=$(escape_pipes "$(echo "$row" | jq -r '.contains // "-"')")
+            echo "| $i | $rid | $rartifact | $rexists | $rcontains | $rstatus |" ;;
+          key_link)
+            local rfrom rto rvia
+            rfrom=$(escape_pipes "$(echo "$row" | jq -r '.from // "-"')")
+            rto=$(escape_pipes "$(echo "$row" | jq -r '.to // "-"')")
+            rvia=$(escape_pipes "$(echo "$row" | jq -r '.via // "-"')")
+            echo "| $i | $rid | $rfrom | $rto | $rvia | $rstatus |" ;;
+          requirement)
+            local rreq rplanref revidence
+            rreq=$(escape_pipes "$(echo "$row" | jq -r '.description // "-"')")
+            rplanref=$(escape_pipes "$(echo "$row" | jq -r '.plan_ref // "-"')")
+            revidence=$(escape_pipes "$(echo "$row" | jq -r '.evidence // "-"')")
+            echo "| $i | $rid | $rreq | $rplanref | $revidence | $rstatus |" ;;
+          convention)
+            local rconv rfile rdetail
+            rconv=$(escape_pipes "$(echo "$row" | jq -r '.description // "-"')")
+            rfile=$(escape_pipes "$(echo "$row" | jq -r '.file // "-"')")
+            rdetail=$(escape_pipes "$(echo "$row" | jq -r '.detail // .evidence // "-"')")
+            echo "| $i | $rid | $rconv | $rfile | $rstatus | $rdetail |" ;;
+        esac
+      done < <(echo "$items" | jq -c '.[]')
+    else
+      # Uniform 5-column layout (must_have, anti_pattern, or fallback)
+      echo "| # | ID | $col_name | Status | Evidence |"
+      echo "|---|-----|$(printf '%0.s-' $(seq 1 ${#col_name}))--|--------|----------|"
+      local i=0
+      while IFS= read -r row; do
+        i=$((i + 1))
+        local rid rdesc rstatus revidence
+        rid=$(echo "$row" | jq -r '.id // "-"')
+        rdesc=$(escape_pipes "$(echo "$row" | jq -r '.description // "-"')")
+        rstatus=$(echo "$row" | jq -r '.status // "-"')
+        revidence=$(escape_pipes "$(echo "$row" | jq -r '.evidence // "-"')")
+        echo "| $i | $rid | $rdesc | $rstatus | $revidence |"
+      done < <(echo "$items" | jq -c '.[]')
+    fi
 
     echo ""
   }
