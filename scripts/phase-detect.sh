@@ -41,7 +41,7 @@ latest_non_source_uat() {
   esac
 
   for f in "${dir}"[0-9]*-UAT.md; do
-    [ -e "$f" ] || continue
+    [ -f "$f" ] || continue
     case "$f" in
       *SOURCE-UAT.md) continue ;;
     esac
