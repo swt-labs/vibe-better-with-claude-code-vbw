@@ -255,7 +255,7 @@ EOF
   [ "$status" -eq 0 ]
 
   # Simulate progress by editing ROADMAP.md progress row
-  sed -i '' 's/| 1 | Pending | 0 | 0 | 0 |/| 1 | In Progress | 2 | 5 | 3 |/' .vbw-planning/ROADMAP.md
+  sed -i.bak 's/| 1 | Pending | 0 | 0 | 0 |/| 1 | In Progress | 2 | 5 | 3 |/' .vbw-planning/ROADMAP.md && rm -f .vbw-planning/ROADMAP.md.bak
 
   # Re-entry (idempotent): should preserve progress
   run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
@@ -296,9 +296,9 @@ EOF
   [ "$status" -eq 0 ]
 
   # Simulate progress on phase 1
-  sed -i '' 's/| 1 | Pending | 0 | 0 | 0 |/| 1 | Complete | 3 | 8 | 5 |/' .vbw-planning/ROADMAP.md
+  sed -i.bak 's/| 1 | Pending | 0 | 0 | 0 |/| 1 | Complete | 3 | 8 | 5 |/' .vbw-planning/ROADMAP.md && rm -f .vbw-planning/ROADMAP.md.bak
   # Simulate state progress
-  sed -i '' 's/Phase 1:\*\* Pending planning/Phase 1:** Complete/' .vbw-planning/STATE.md
+  sed -i.bak 's/Phase 1:\*\* Pending planning/Phase 1:** Complete/' .vbw-planning/STATE.md && rm -f .vbw-planning/STATE.md.bak
 
   # Create phase 2 — should NOT clobber phase 1 progress
   run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
@@ -332,7 +332,7 @@ EOF
   [ "$status" -eq 0 ]
 
   # Simulate brownfield formatting variance: leading spaces + zero-padded phase id
-  sed -i '' 's/| 1 | Pending | 0 | 0 | 0 |/  | 01 | In Progress | 2 | 5 | 3 |/' .vbw-planning/ROADMAP.md
+  sed -i.bak 's/| 1 | Pending | 0 | 0 | 0 |/  | 01 | In Progress | 2 | 5 | 3 |/' .vbw-planning/ROADMAP.md && rm -f .vbw-planning/ROADMAP.md.bak
 
   run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
     .vbw-planning \

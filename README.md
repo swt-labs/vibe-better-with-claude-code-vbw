@@ -607,6 +607,49 @@ Here's when each one shows up to work:
 
 Every setting lives in `.vbw-planning/config.json` and can be changed with `/vbw:config <key> <value>`. Settings are created during `/vbw:init` and backfilled automatically when new ones are added in plugin updates.
 
+### All defaults
+
+Quick reference for every key in `config/defaults.json`, in order. Click the section link for full details.
+
+| Key | Default | Section |
+| :--- | :--- | :--- |
+| `effort` | `"balanced"` | [Effort profiles](#effort-profiles) |
+| `autonomy` | `"standard"` | [Autonomy levels](#autonomy-levels) |
+| `auto_commit` | `true` | [Commits, push, and planning artifacts](#commits-push-and-planning-artifacts) |
+| `planning_tracking` | `"manual"` | [Commits, push, and planning artifacts](#commits-push-and-planning-artifacts) |
+| `auto_push` | `"never"` | [Commits, push, and planning artifacts](#commits-push-and-planning-artifacts) |
+| `verification_tier` | `"standard"` | [Effort profiles](#effort-profiles) |
+| `skill_suggestions` | `true` | [Skills and discovery](#skills-and-discovery) |
+| `auto_install_skills` | `false` | [Skills and discovery](#skills-and-discovery) |
+| `discovery_questions` | `true` | [Skills and discovery](#skills-and-discovery) |
+| `context_compiler` | `true` | [Agent behavior](#agent-behavior) |
+| `visual_format` | `"unicode"` | [Display](#display) |
+| `max_tasks_per_plan` | `5` | [Agent behavior](#agent-behavior) |
+| `prefer_teams` | `"auto"` | [Agent behavior](#agent-behavior) |
+| `branch_per_milestone` | `false` | [Display](#display) |
+| `plain_summary` | `true` | [Agent behavior](#agent-behavior) |
+| `active_profile` | `"default"` | [Model routing and cost](#model-routing-and-cost) |
+| `custom_profiles` | `{}` | [Model routing and cost](#model-routing-and-cost) |
+| `model_profile` | `"quality"` | [Model routing and cost](#model-routing-and-cost) |
+| `model_overrides` | `{}` | [Model routing and cost](#model-routing-and-cost) |
+| `agent_max_turns` | `{...}` | [Agent turn limits](#agent-turn-limits) |
+| `qa_skip_agents` | `["docs"]` | [Agent behavior](#agent-behavior) |
+| `worktree_isolation` | `"off"` | [Agent behavior](#agent-behavior) |
+| `token_budgets` | `true` | [Runtime features](#runtime-features) |
+| `two_phase_completion` | `true` | [Runtime features](#runtime-features) |
+| `metrics` | `true` | [Runtime features](#runtime-features) |
+| `smart_routing` | `true` | [Runtime features](#runtime-features) |
+| `validation_gates` | `true` | [Runtime features](#runtime-features) |
+| `snapshot_resume` | `true` | [Runtime features](#runtime-features) |
+| `lease_locks` | `true` | [Runtime features](#runtime-features) |
+| `event_recovery` | `true` | [Cross-phase context](#cross-phase-context) |
+| `monorepo_routing` | `true` | [Runtime features](#runtime-features) |
+| `rolling_summary` | `false` | [Cross-phase context](#cross-phase-context) |
+| `require_phase_discussion` | `false` | [Agent behavior](#agent-behavior) |
+| `bash_guard` | `true`* | [Safety](#safety) |
+
+*`bash_guard` is not in `defaults.json` — it's read directly from project config with a default of `true` when absent.
+
 ### Effort profiles
 
 Not every task deserves the same level of scrutiny. Most of yours don't. Four effort profiles control how much your agents think before they act.
@@ -777,6 +820,30 @@ VBW spawns specialized agents for planning, development, and verification. Model
 - **`rolling_summary`** — When `true` and the project is past Phase 1, VBW compiles a condensed digest of all completed prior phases (what was built, files modified, deviations, commit hashes) into `ROLLING-CONTEXT.md`. This digest is injected into agent context via the context compiler, so Phase 3's Dev and Lead agents have awareness of what Phases 1–2 decided, built, and deviated from — without re-reading every prior SUMMARY.md. Adds ~50KB to agent context per phase. Useful for multi-phase projects where cross-phase continuity matters; unnecessary for single-phase work.
 - **`event_recovery`** — When `true`, enables automatic event-sourced state recovery on session start. If `.execution-state.json` is stale (older than `event-log.jsonl`) or missing after a crash, VBW automatically calls `recover-state.sh` to reconstruct phase/plan status from the event log and SUMMARY.md files.
 
+### Runtime features
+
+These flags control optional runtime subsystems — execution integrity, observability, concurrency, and crash recovery. All default to `true`. Disable any flag to skip that subsystem entirely (scripts exit 0 immediately when their flag is `false`).
+
+| Setting | Type | Default | Values |
+| :--- | :--- | :--- | :--- |
+| `token_budgets` | boolean | `true` | `true` / `false` |
+| `two_phase_completion` | boolean | `true` | `true` / `false` |
+| `metrics` | boolean | `true` | `true` / `false` |
+| `smart_routing` | boolean | `true` | `true` / `false` |
+| `validation_gates` | boolean | `true` | `true` / `false` |
+| `snapshot_resume` | boolean | `true` | `true` / `false` |
+| `lease_locks` | boolean | `true` | `true` / `false` |
+| `monorepo_routing` | boolean | `true` | `true` / `false` |
+
+- **`token_budgets`** — When `true`, enforces per-role character budgets on context passed to agents (defined in `config/token-budgets.json`). The control plane truncates compiled context to the role's `max_chars` limit before injection, preventing context window overflows. When `false`, context passes through untruncated.
+- **`two_phase_completion`** — When `true`, after each task commit the Dev agent runs a two-phase verification: the artifact registry tracks all files written during the task, then `two-phase-complete.sh` confirms the task's contract was fulfilled before marking it complete. Rejected tasks trigger auto-repair. When `false`, tasks complete immediately after commit.
+- **`metrics`** — When `true`, VBW appends JSON events to `.vbw-planning/.metrics/run-metrics.jsonl` for cache hits/misses, context compilation, task/plan/phase execution timing, and gate policy decisions. Viewable with `/vbw:status --metrics`. When `false`, no metrics are collected.
+- **`smart_routing`** — When `true`, the execute protocol skips unnecessary agents based on effort level: Scout is skipped for turbo/fast (no research needed), Architect is skipped for non-thorough effort (architecture review only at thorough). Reduces token spend on simpler phases. When `false`, all agents are always included.
+- **`validation_gates`** — When `true`, the execute protocol runs per-plan risk assessment (`assess-plan-risk.sh`) and resolves a dynamic gate policy (`resolve-gate-policy.sh`) that overrides static effort-based tables for QA tier, plan approval, and teammate communication level. When `false`, static effort-based tables are used (see [Execution Model](#execution-model)).
+- **`snapshot_resume`** — When `true`, VBW saves execution state snapshots to `.vbw-planning/.snapshots/` at key lifecycle points (phase start, compaction, agent completion). On crash recovery, `/vbw:resume` can restore from the latest snapshot. Max 10 snapshots per phase, oldest pruned automatically. When `false`, no snapshots are saved.
+- **`lease_locks`** — When `true`, the control plane tracks which files each task has claimed in `.vbw-planning/.locks/`. If two concurrent tasks claim overlapping files, the second is blocked until the first releases. Locks expire after a TTL (default 300s). When `false`, no file-level locking occurs. See [Execution Model](#execution-model) for details.
+- **`monorepo_routing`** — When `true`, VBW detects monorepo structure (sub-packages with `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`) and maps plan file paths to relevant package roots. This scoping is used by `/vbw:map` for per-package analysis and by the context compiler to limit agent context to relevant packages. When `false`, the entire repo is treated as a single project.
+
 ### Display
 
 | Setting | Type | Default | Values |
@@ -787,15 +854,17 @@ VBW spawns specialized agents for planning, development, and verification. Model
 - **`visual_format`** — Intended to switch between Unicode symbols (✓ ✗ ◆ ○ ⚡ ➜, box-drawing characters) and ASCII equivalents. Currently declared but not yet wired into agent output — agents always use Unicode.
 - **`branch_per_milestone`** — Intended to auto-create a git branch per milestone during Bootstrap. Currently declared but not yet implemented — has no runtime effect.
 
----
+### Staged rollout
 
-## Feature Flags (Graduated)
+Runtime feature flags are organized into 3 rollout stages based on project maturity (completed phase count). New projects start with Stage 1 flags enabled; higher stages unlock automatically as you complete phases, or manually via `rollout-stage.sh advance`.
 
-All V2 and V3 feature flags have graduated to always-on behavior as of v1.31.0. They are no longer configurable and have been removed from `config/defaults.json`.
+| Stage | Label | Threshold | Flags |
+| :--- | :--- | :--- | :--- |
+| 1 | Observability | 0 phases | `metrics`, `token_budgets`, `two_phase_completion`, `rolling_summary` |
+| 2 | Optimization | 2 phases | *(no rollout-managed flags — graduated)* |
+| 3 | Full | 5 phases | `validation_gates`, `smart_routing`, `snapshot_resume`, `event_recovery`, `monorepo_routing`, `lease_locks` |
 
-Previously, these flags controlled staged rollout of runtime features (delta context, contract enforcement, lease locks, validation gates, role isolation, token budgets, etc.). All gated behavior is now unconditionally active.
-
-Brownfield configs may still contain these keys — they are ignored at runtime and cleaned up automatically by `migrate-config.sh`.
+All flags default to `true` in `config/defaults.json` regardless of stage. The rollout system is opt-in (`auto_advance: false` by default) — it tracks eligibility but doesn't auto-enable flags unless you run `advance`. Brownfield configs with legacy `v2_`/`v3_` prefixed flag names are migrated automatically by `migrate-config.sh`.
 
 ## Cost Optimization
 
