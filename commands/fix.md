@@ -15,7 +15,7 @@ Working directory:
 ```
 Plugin root:
 ```
-!`VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"; R=""; if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "${CLAUDE_PLUGIN_ROOT}" ]; then R="${CLAUDE_PLUGIN_ROOT}"; elif [ -d "${VBW_CACHE_ROOT}/local" ]; then R="${VBW_CACHE_ROOT}/local"; else V=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1); [ -n "$V" ] && R="${VBW_CACHE_ROOT}/${V}"; if [ -z "$R" ]; then L=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1); [ -n "$L" ] && R="${VBW_CACHE_ROOT}/${L}"; fi; fi; if [ -z "$R" ] || [ ! -d "$R" ]; then echo "VBW: plugin root resolution failed" >&2; exit 1; fi; SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; rm -f "$LINK"; ln -s "$R" "$LINK" 2>/dev/null || { echo "VBW: plugin root link failed" >&2; exit 1; }; printf '%s' "$LINK" > /tmp/.vbw-plugin-root; echo "$LINK"`
+!`VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"; R=""; if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "${CLAUDE_PLUGIN_ROOT}" ]; then R="${CLAUDE_PLUGIN_ROOT}"; elif [ -d "${VBW_CACHE_ROOT}/local" ]; then R="${VBW_CACHE_ROOT}/local"; else V=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1); [ -n "$V" ] && R="${VBW_CACHE_ROOT}/${V}"; if [ -z "$R" ]; then L=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1); [ -n "$L" ] && R="${VBW_CACHE_ROOT}/${L}"; fi; fi; if [ -z "$R" ] || [ ! -d "$R" ]; then echo "VBW: plugin root resolution failed" >&2; exit 1; fi; SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; rm -f "$LINK"; ln -s "$R" "$LINK" 2>/dev/null || { echo "VBW: plugin root link failed" >&2; exit 1; }; echo "$LINK"`
 ```
 Config: Pre-injected by SessionStart hook.
 
@@ -30,8 +30,8 @@ Config: Pre-injected by SessionStart hook.
 
 3. **Spawn Dev:** Resolve model first:
     ```bash
-    DEV_MODEL=$(bash `!`cat /tmp/.vbw-plugin-root`/scripts/resolve-agent-model.sh dev .vbw-planning/config.json `!`cat /tmp/.vbw-plugin-root`/config/model-profiles.json)
-    DEV_MAX_TURNS=$(bash `!`cat /tmp/.vbw-plugin-root`/scripts/resolve-agent-max-turns.sh dev .vbw-planning/config.json turbo)
+    DEV_MODEL=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh dev .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
+    DEV_MAX_TURNS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh dev .vbw-planning/config.json turbo)
     ```
 
     Spawn vbw-dev as subagent via Task tool with `model: "${DEV_MODEL}"` and
@@ -56,7 +56,7 @@ Config: Pre-injected by SessionStart hook.
       Files: {changed files}
     ```
 
-    Run `bash `!`cat /tmp/.vbw-plugin-root`/scripts/suggest-next.sh fix` and display.
+    Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-next.sh fix` and display.
 
     Committed, with discovered issues (Dev reported pre-existing failures):
 
@@ -79,7 +79,7 @@ Config: Pre-injected by SessionStart hook.
     invoke /vbw:todo, and do NOT enter an interactive loop. The user decides
     whether to track these. If no discovered issues: omit the section entirely.
     After displaying discovered issues, STOP. Do not take further action.
-    Run `bash `!`cat /tmp/.vbw-plugin-root`/scripts/suggest-next.sh fix` and display.
+    Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-next.sh fix` and display.
 
     Dev stopped:
 
@@ -88,4 +88,4 @@ Config: Pre-injected by SessionStart hook.
       {reason from Dev agent}
     ```
 
-    Run `bash `!`cat /tmp/.vbw-plugin-root`/scripts/suggest-next.sh debug` and display.
+    Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-next.sh debug` and display.

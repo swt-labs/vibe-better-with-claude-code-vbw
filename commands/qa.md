@@ -15,7 +15,7 @@ Working directory:
 ```
 Plugin root:
 ```
-!`VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"; R=""; if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "${CLAUDE_PLUGIN_ROOT}" ]; then R="${CLAUDE_PLUGIN_ROOT}"; elif [ -d "${VBW_CACHE_ROOT}/local" ]; then R="${VBW_CACHE_ROOT}/local"; else V=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1); [ -n "$V" ] && R="${VBW_CACHE_ROOT}/${V}"; if [ -z "$R" ]; then L=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1); [ -n "$L" ] && R="${VBW_CACHE_ROOT}/${L}"; fi; fi; if [ -z "$R" ] || [ ! -d "$R" ]; then echo "VBW: plugin root resolution failed" >&2; exit 1; fi; SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; rm -f "$LINK"; ln -s "$R" "$LINK" 2>/dev/null || { echo "VBW: plugin root link failed" >&2; exit 1; }; printf '%s' "$LINK" > /tmp/.vbw-plugin-root; echo "$LINK"`
+!`VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"; R=""; if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "${CLAUDE_PLUGIN_ROOT}" ]; then R="${CLAUDE_PLUGIN_ROOT}"; elif [ -d "${VBW_CACHE_ROOT}/local" ]; then R="${VBW_CACHE_ROOT}/local"; else V=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1); [ -n "$V" ] && R="${VBW_CACHE_ROOT}/${V}"; if [ -z "$R" ]; then L=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1); [ -n "$L" ] && R="${VBW_CACHE_ROOT}/${L}"; fi; fi; if [ -z "$R" ] || [ ! -d "$R" ]; then echo "VBW: plugin root resolution failed" >&2; exit 1; fi; SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; rm -f "$LINK"; ln -s "$R" "$LINK" 2>/dev/null || { echo "VBW: plugin root link failed" >&2; exit 1; }; echo "$LINK"`
 ```
 
 Current state:
@@ -32,11 +32,11 @@ Phase directories:
 
 Phase state:
 ```text
-!`bash `!`cat /tmp/.vbw-plugin-root`/scripts/phase-detect.sh 2>/dev/null || echo "phase_detect_error=true"`
+!`bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/phase-detect.sh 2>/dev/null || echo "phase_detect_error=true"`
 ```
 
 ```text
-!`bash `!`cat /tmp/.vbw-plugin-root`/scripts/suggest-compact.sh qa 2>/dev/null || true`
+!`bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-compact.sh qa 2>/dev/null || true`
 ```
 
 ## Guard
@@ -52,7 +52,7 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
   Keep effort profile as `QA_EFFORT_PROFILE` (thorough|balanced|fast|turbo).
   Effort mapping: turbo=skip (exit "QA skipped in turbo mode"), fast=quick,
   balanced=standard, thorough=deep.
-  Read ``!`cat /tmp/.vbw-plugin-root`/references/effort-profile-{profile}.md`.
+  Read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/effort-profile-{profile}.md`.
   Context overrides: >15 requirements or last phase before ship → Deep.
 
 2. **Resolve phase:** Use `.vbw-planning/phases/` for phase directories.
@@ -61,9 +61,9 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
     - Resolve QA model:
 
         ```bash
-        QA_MODEL=$(bash `!`cat /tmp/.vbw-plugin-root`/scripts/resolve-agent-model.sh qa .vbw-planning/config.json `!`cat /tmp/.vbw-plugin-root`/config/model-profiles.json)
+        QA_MODEL=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh qa .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
         if [ $? -ne 0 ]; then echo "$QA_MODEL" >&2; exit 1; fi
-        QA_MAX_TURNS=$(bash `!`cat /tmp/.vbw-plugin-root`/scripts/resolve-agent-max-turns.sh qa .vbw-planning/config.json "$QA_EFFORT_PROFILE")
+        QA_MAX_TURNS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh qa .vbw-planning/config.json "$QA_EFFORT_PROFILE")
         if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
         ```
 
@@ -77,8 +77,8 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         Summaries: {paths to SUMMARY.md files}
         Phase success criteria: {section from ROADMAP.md}
         If `.vbw-planning/codebase/META.md` exists, read CONVENTIONS.md, TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying.
-        Verification protocol: `!`cat /tmp/.vbw-plugin-root`/references/verification-protocol.md
-        Return findings using the qa_verdict schema (see `!`cat /tmp/.vbw-plugin-root`/references/handoff-schemas.md).
+        Verification protocol: `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/verification-protocol.md
+        Return findings using the qa_verdict schema (see `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/handoff-schemas.md).
         If tests reveal pre-existing failures unrelated to this phase, list them in your response under a "Pre-existing Issues" heading and include them in the qa_verdict payload's pre_existing_issues array.
         ```
 
@@ -89,7 +89,7 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
   Fallback: extract from markdown.
   Pipe the `qa_verdict` JSON through the deterministic writer:
   ```bash
-  echo "$QA_VERDICT_JSON" | bash `!`cat /tmp/.vbw-plugin-root`/scripts/write-verification.sh "{phase-dir}/{phase}-VERIFICATION.md"
+  echo "$QA_VERDICT_JSON" | bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/write-verification.sh "{phase-dir}/{phase}-VERIFICATION.md"
   ```
   If the script fails (exit 1) or `write-verification.sh` is missing, fall back to manual file writing:
   write `{phase-dir}/{phase}-VERIFICATION.md` with frontmatter (phase, tier,
@@ -121,6 +121,6 @@ This is **display-only**. Do NOT edit STATE.md, do NOT add todos, do NOT invoke 
 
 Run:
 ```text
-bash `!`cat /tmp/.vbw-plugin-root`/scripts/suggest-next.sh qa {result}
+bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-next.sh qa {result}
 ```
 Then display the output.
