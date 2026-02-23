@@ -135,3 +135,54 @@ EOF
   # Should NOT suggest verify since UAT already exists and completed
   [[ "$output" != *"/vbw:verify"* ]]
 }
+
+# --- phase-detect auto_uat + has_unverified_phases tests ---
+
+@test "phase-detect outputs config_auto_uat=true when set" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"config_auto_uat=true"* ]]
+}
+
+@test "phase-detect outputs config_auto_uat=false when not set" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.auto_uat = false' "$TEST_TEMP_DIR/.vbw-planning/config.json" > "$tmp" && mv "$tmp" "$TEST_TEMP_DIR/.vbw-planning/config.json"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"config_auto_uat=false"* ]]
+}
+
+@test "phase-detect has_unverified_phases=true when phase has SUMMARY but no UAT" {
+  cd "$TEST_TEMP_DIR"
+  # setup() already creates 01-setup with SUMMARY but no UAT
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"next_phase_state=all_done"* ]]
+  [[ "$output" == *"has_unverified_phases=true"* ]]
+}
+
+@test "phase-detect has_unverified_phases=false when all phases have UAT" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: passed\n---\nAll good.\n' > "$dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"next_phase_state=all_done"* ]]
+  [[ "$output" == *"has_unverified_phases=false"* ]]
+}
+
+@test "phase-detect has_unverified_phases ignores SOURCE-UAT files" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  # Only a SOURCE-UAT file exists (not a real UAT)
+  printf -- '---\nstatus: issues_found\n---\nIssues.\n' > "$dir/01-SOURCE-UAT.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"has_unverified_phases=true"* ]]
+}

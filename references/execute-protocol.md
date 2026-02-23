@@ -385,9 +385,19 @@ If compilation fails, proceed without it.
 
 Display: `◆ Spawning QA agent (${QA_MODEL})...`
 
-**Per-wave QA (Thorough/Balanced, QA_TIMING=per-wave):** After each wave completes, spawn QA concurrently with next wave's Dev work. QA receives only completed wave's PLAN.md + SUMMARY.md + "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." After final wave, spawn integration QA covering all plans + cross-plan integration. Persist to `{phase-dir}/{phase}-VERIFICATION-wave{W}.md` and `{phase}-VERIFICATION.md`.
+**Per-wave QA (Thorough/Balanced, QA_TIMING=per-wave):** After each wave completes, spawn QA concurrently with next wave's Dev work. QA receives only completed wave's PLAN.md + SUMMARY.md + "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." After final wave, spawn integration QA covering all plans + cross-plan integration. Persist by piping the `qa_verdict` JSON through `write-verification.sh`:
+```bash
+echo "$QA_VERDICT_JSON" | bash "${CLAUDE_PLUGIN_ROOT}/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION-wave{W}.md"
+# For integration QA:
+echo "$QA_VERDICT_JSON" | bash "${CLAUDE_PLUGIN_ROOT}/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION.md"
+```
+If `write-verification.sh` fails or is missing, fall back to manual file writing (frontmatter + body).
 
-**Post-build QA (Fast, QA_TIMING=post-build):** Spawn QA after ALL plans complete. Include in task description: "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." Persist to `{phase-dir}/{phase}-VERIFICATION.md`.
+**Post-build QA (Fast, QA_TIMING=post-build):** Spawn QA after ALL plans complete. Include in task description: "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." Persist by piping the `qa_verdict` JSON through `write-verification.sh`:
+```bash
+echo "$QA_VERDICT_JSON" | bash "${CLAUDE_PLUGIN_ROOT}/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION.md"
+```
+If `write-verification.sh` fails or is missing, fall back to manual file writing (frontmatter + body).
 
 **CRITICAL:** Pass `model: "${QA_MODEL}"` and `maxTurns: ${QA_MAX_TURNS}` parameters to the Task tool invocation when spawning QA agents.
 **CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "qa"` (or `name: "qa-wave{W}"` for per-wave QA) parameters to each QA Task tool invocation.
@@ -416,13 +426,45 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
 **UAT execution:**
 
 1. Check if `{phase-dir}/{phase}-UAT.md` already exists with `status: complete`. If so: "○ UAT already complete" and proceed to Step 5.
-2. Generate test scenarios from completed SUMMARY.md files (same logic as `commands/verify.md`).
-3. Run CHECKPOINT loop inline (same protocol as `commands/verify.md` Steps 4-8).
+2. Generate test scenarios from completed SUMMARY.md files:
+   - Read each SUMMARY.md: extract what was built, files modified, must_haves
+   - Generate 1-3 test scenarios per plan requiring HUMAN verification
+   - Minimum 1 test per plan. Test IDs: `P{plan}-T{N}`
+   - Write initial `{phase}-UAT.md` in phase dir with all tests (Result fields empty)
+3. **CHECKPOINT loop — present ONE test at a time, wait for user response:**
+
+   **This is a conversational loop. Do NOT present all tests at once. Do NOT end the session after presenting a test. Do NOT proceed to Step 5 until all tests are complete.**
+
+   For the FIRST test without a result, display:
+   ```
+   ┌─ CHECKPOINT {N}/{total} ──────────────────────┐
+   │  Plan: {plan-id} -- {plan-title}               │
+   │                                                │
+   │  {scenario description}                        │
+   │                                                │
+   │  Expected: {expected result}                   │
+   │                                                │
+   │  → Type "pass" or describe what's wrong        │
+   └────────────────────────────────────────────────┘
+   ```
+
+   **STOP HERE.** Wait for the user's plain text response. Do NOT use AskUserQuestion. Do NOT continue to the next test or to Step 5.
+
+   **After the user responds:**
+   - **Pass words** (pass, passed, yes, y, good, ok, okay, works, correct, confirmed, lgtm, looks good): record pass
+   - **Skip words** (skip, skipped, next, n/a, na, later, defer): record skip
+   - **Anything else**: treat as issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major)
+   - Update `{phase}-UAT.md` immediately (persist to disk)
+   - Display progress: `✓ {completed}/{total} tests`
+   - If more tests remain: present the NEXT test using the same CHECKPOINT format, then **STOP and wait again**
+   - If all tests done: go to step 4
+
 4. After all tests complete:
+   - Update UAT.md frontmatter (status, completed date, final counts)
    - If no issues: proceed to Step 5
    - If issues found: display issue summary, suggest `/vbw:fix`, STOP (do not proceed to Step 5)
 
-Note: "Run inline" means the execute-protocol agent runs the verify protocol directly, not by invoking /vbw:verify as a command. The protocol is the same; the entry point differs.
+Note: "Run inline" means the execute-protocol orchestrator runs the CHECKPOINT loop directly in the main conversation, not by invoking /vbw:verify as a command. The orchestrator must wait for user input at each checkpoint — this is NOT a subagent operation.
 
 ### Step 5: Update state and present summary
 

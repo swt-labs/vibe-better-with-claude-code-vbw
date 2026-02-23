@@ -3,7 +3,7 @@ name: vbw:verify
 category: monitoring
 description: Run human acceptance testing on completed phase work. Presents CHECKPOINT prompts one at a time.
 argument-hint: "[phase-number] [--resume]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 ---
 
 # VBW Verify: $ARGUMENTS
@@ -68,9 +68,11 @@ Write the initial `{phase}-UAT.md` in the phase directory using the `templates/U
 - Populate YAML frontmatter: phase, plan_count, status=in_progress, started=today, total_tests
 - Write all test entries with Result fields empty
 
-### 4. CHECKPOINT loop (one test at a time)
+### 4. CHECKPOINT loop (one test at a time — conversational, blocking)
 
-For each test without a result, display a CHECKPOINT block:
+**This is a conversational loop. Present ONE test, then STOP and wait for the user to respond. Do NOT present multiple tests at once. Do NOT skip ahead. Do NOT end the session after presenting a test.**
+
+For the FIRST test without a result, display a CHECKPOINT block followed by AskUserQuestion:
 
 ```
 ┌─ CHECKPOINT {N}/{total} ──────────────────────┐
@@ -82,17 +84,30 @@ For each test without a result, display a CHECKPOINT block:
 └────────────────────────────────────────────────┘
 ```
 
-Wait for the user's response via natural conversation (do NOT use AskUserQuestion).
+Then immediately use AskUserQuestion:
 
-### 5. Response mapping (string matching, not LLM)
+```yaml
+question: "Result for checkpoint {N}/{total}?"
+header: "UAT"
+multiSelect: false
+options:
+  - label: "Pass"
+    description: "Behavior matches expected result"
+```
 
-Map the user's response using case-insensitive, trimmed string matching:
+The tool automatically provides a freeform "Other" option for the user to describe issues.
 
-**Pass words:** pass, passed, yes, y, good, ok, okay, works, correct, confirmed, lgtm, looks good
+After response: process (Step 5), persist (Step 7), then present the NEXT test. Repeat until all tests are done, then go to Step 8.
 
-**Skip words:** skip, skipped, next, n/a, na, later, defer
+### 5. Response mapping
 
-**Anything else:** treat the entire response text as an issue description.
+Map the AskUserQuestion response:
+
+**"Pass" selected:** Record as passed.
+
+**Freeform text (via "Other"):** Apply case-insensitive, trimmed string matching:
+- **Skip words:** skip, skipped, next, n/a, na, later, defer → record as skipped
+- **Anything else:** treat the entire response text as an issue description.
 
 ### 6. Issue handling (when response = issue)
 

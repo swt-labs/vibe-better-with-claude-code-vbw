@@ -35,7 +35,17 @@
     "qa_verdict": {
       "allowed_roles": ["qa"],
       "payload_required": ["tier", "result", "checks"],
-      "payload_optional": ["failures", "body", "recommendations", "pre_existing_issues"],
+      "payload_optional": ["failures", "body", "recommendations", "pre_existing_issues", "checks_detail"],
+      "checks_detail_common_required": ["id", "category", "description", "status", "evidence"],
+      "checks_detail_status_enum": ["PASS", "FAIL", "WARN"],
+      "checks_detail_known_categories": ["must_have", "artifact", "key_link", "anti_pattern", "convention", "requirement", "skill_augmented"],
+      "checks_detail_category_fields": {
+        "common": ["id", "category", "description", "status", "evidence"],
+        "artifact": ["exists", "contains"],
+        "key_link": ["from", "to", "via"],
+        "convention": ["file", "detail"],
+        "requirement": ["plan_ref"]
+      },
       "description": "Verification results from QA agent"
     },
     "approval_request": {

@@ -201,8 +201,42 @@ case "$GATE_TYPE" in
     PHASE_DIR=$(ls -d "${PHASES_DIR}/${PHASE}-"* 2>/dev/null | head -1)
     [ -z "$PHASE_DIR" ] && { emit_result "pass" "phase dir not found"; exit 0; }
 
-    VERIFICATION_FILE="${PHASE_DIR}/VERIFICATION.md"
-    if [ ! -f "$VERIFICATION_FILE" ]; then
+    # Prefer final phase verification artifact over wave files.
+    # Selection order:
+    # 1) <phasePrefix>-VERIFICATION.md (authoritative final)
+    # 2) Latest <phasePrefix>-VERIFICATION-waveN.md
+    # 3) Brownfield fallback: VERIFICATION.md
+    # 4) Legacy fallback: first *-VERIFICATION*.md
+    VERIFICATION_FILE=""
+    PHASE_BASENAME=$(basename "$PHASE_DIR")
+    PHASE_PREFIX="${PHASE_BASENAME%%-*}"
+
+    # 1) Final deterministic phase verification file
+    if [ -f "$PHASE_DIR/${PHASE_PREFIX}-VERIFICATION.md" ]; then
+      VERIFICATION_FILE="$PHASE_DIR/${PHASE_PREFIX}-VERIFICATION.md"
+    fi
+
+    # 2) Latest wave verification (if final file absent)
+    if [ -z "$VERIFICATION_FILE" ]; then
+      WAVE_FILES=$(ls -1 "$PHASE_DIR/${PHASE_PREFIX}-VERIFICATION-wave"*.md 2>/dev/null | (sort -V 2>/dev/null || sort))
+      if [ -n "$WAVE_FILES" ]; then
+        VERIFICATION_FILE=$(printf '%s\n' "$WAVE_FILES" | tail -1)
+      fi
+    fi
+
+    # 3) Brownfield fallback: non-prefixed VERIFICATION.md
+    if [ -z "$VERIFICATION_FILE" ] && [ -f "$PHASE_DIR/VERIFICATION.md" ]; then
+      VERIFICATION_FILE="$PHASE_DIR/VERIFICATION.md"
+    fi
+
+    # 4) Legacy fallback: any prefixed verification artifact
+    if [ -z "$VERIFICATION_FILE" ]; then
+      for vf in "$PHASE_DIR"/*-VERIFICATION*.md; do
+        [ -f "$vf" ] && VERIFICATION_FILE="$vf" && break
+      done
+    fi
+
+    if [ -z "$VERIFICATION_FILE" ]; then
       # No verification file — check config for verification_tier
       TIER=$(jq -r '.verification_tier // "standard"' "$CONFIG_PATH" 2>/dev/null || echo "standard")
       if [ "$TIER" = "quick" ] || [ "$TIER" = "skip" ]; then

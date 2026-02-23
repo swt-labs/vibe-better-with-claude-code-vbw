@@ -587,3 +587,63 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=false"
 }
+
+# --- Brownfield milestone cross-reference tests ---
+
+@test "milestone UAT skipped when active remediation phase references it" {
+  # Active remediation phase with CONTEXT referencing the milestone phase
+  mkdir -p .vbw-planning/phases/01-remediate-v1-setup/
+  touch .vbw-planning/phases/01-remediate-v1-setup/01-01-PLAN.md
+  touch .vbw-planning/phases/01-remediate-v1-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-remediate-v1-setup/01-CONTEXT.md <<'EOF'
+---
+phase: 01
+source_milestone: v1
+source_phase: 01-setup
+pre_seeded: true
+---
+EOF
+
+  # Shipped milestone with UAT issues
+  mkdir -p .vbw-planning/milestones/v1/phases/01-setup/
+  echo "# Shipped" > .vbw-planning/milestones/v1/SHIPPED.md
+  touch .vbw-planning/milestones/v1/phases/01-setup/01-01-PLAN.md
+  touch .vbw-planning/milestones/v1/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/milestones/v1/phases/01-setup/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=all_done"
+  echo "$output" | grep -q "milestone_uat_issues=false"
+}
+
+@test "milestone UAT detected when no active remediation references it" {
+  # Active phase complete but NOT a remediation (no source_milestone in CONTEXT)
+  mkdir -p .vbw-planning/phases/01-feature/
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  touch .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+
+  # Shipped milestone with UAT issues — no active remediation covers it
+  mkdir -p .vbw-planning/milestones/v1/phases/01-setup/
+  echo "# Shipped" > .vbw-planning/milestones/v1/SHIPPED.md
+  touch .vbw-planning/milestones/v1/phases/01-setup/01-01-PLAN.md
+  touch .vbw-planning/milestones/v1/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/milestones/v1/phases/01-setup/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=true"
+  echo "$output" | grep -q "milestone_uat_slug=v1"
+}

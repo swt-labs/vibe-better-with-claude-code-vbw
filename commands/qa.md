@@ -79,9 +79,13 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
 4. **Persist:**
   Parse QA output as JSON (`qa_verdict` schema).
   Fallback: extract from markdown.
-  Write `{phase-dir}/{phase}-VERIFICATION.md` with frontmatter: phase, tier,
-  result (PASS|FAIL|PARTIAL), passed, failed, total, date.
-  Body: QA output.
+  Pipe the `qa_verdict` JSON through the deterministic writer:
+  ```bash
+  echo "$QA_VERDICT_JSON" | bash "${CLAUDE_PLUGIN_ROOT}/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION.md"
+  ```
+  If the script fails (exit 1) or `write-verification.sh` is missing, fall back to manual file writing:
+  write `{phase-dir}/{phase}-VERIFICATION.md` with frontmatter (phase, tier,
+  result, passed, failed, total, date) and QA body as content.
 
 5. **Present:** Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
     ```text

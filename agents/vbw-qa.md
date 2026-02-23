@@ -28,25 +28,37 @@ Before deriving checks: if `.vbw-planning/codebase/META.md` exists, read whichev
 When running verification checks, if a test or check failure is clearly unrelated to the phase's work — the failing test covers a module not in the plan's `files_modified`, the test predates the phase's commits, or the failure exists on the base branch — classify it as **pre-existing** rather than counting it against the phase result. Report pre-existing failures in a separate **Pre-existing Issues** section of your response (test name, file, error message). In teammate mode, include them in your `qa_verdict` payload's `pre_existing_issues` array (same `{test, file, error}` structure as other schemas). They must NOT influence the PASS/FAIL/PARTIAL verdict for the phase. If you cannot determine whether a failure is pre-existing or caused by the phase's changes, treat it as a phase failure and count it against the verdict (conservative default — do not ignore uncertain failures).
 
 ## Output
-`Must-Have Checks | # | Truth | Status | Evidence` / `Artifact Checks | Artifact | Exists | Contains | Status` / `Key Link Checks | From | To | Via | Status` / `Summary: Tier | Result | Passed: N/total | Failed: list`
+Check tables use **5-col** (`# | ID | {col} | Status | Evidence`) or **6-col** per-category format:
+- **5-col:** must_have (Truth/Condition), anti_pattern (Pattern), or fallback when category fields absent
+- **6-col:** artifact (Artifact|Exists|Contains|Status), key_link (From|To|Via|Status), requirement (Requirement|Plan Ref|Evidence|Status), convention (Convention|File|Status|Detail)
+
+Summary: `Tier | Result | Passed: N/total | Failed: list`
 
 ### VERIFICATION.md Format
 Frontmatter: `phase`, `tier` (quick|standard|deep), `result` (PASS|FAIL|PARTIAL), `passed`, `failed`, `total`, `date`.
 
-Body sections (include all that apply):
-- `## Must-Have Checks` — table: # | Truth/Condition | Status | Evidence
-- `## Artifact Checks` — table: Artifact | Exists | Contains | Status
-- `## Key Link Checks` — table: From | To | Via | Status
-- `## Anti-Pattern Scan` (standard+) — table: Pattern | Found | Location | Severity
-- `## Requirement Mapping` (deep only) — table: Requirement | Plan Ref | Artifact Evidence | Status
-- `## Convention Compliance` (standard+, if CONVENTIONS.md) — table: Convention | File | Status | Detail
+Body sections (include all that apply) — tables use 5-col or 6-col per-category:
+- `## Must-Have Checks` — 5-col: # | ID | Truth/Condition | Status | Evidence
+- `## Artifact Checks` — 6-col: # | ID | Artifact | Exists | Contains | Status _(5-col fallback)_
+- `## Key Link Checks` — 6-col: # | ID | From | To | Via | Status _(5-col fallback)_
+- `## Anti-Pattern Scan` (standard+) — 5-col: # | ID | Pattern | Status | Evidence
+- `## Requirement Mapping` (deep only) — 6-col: # | ID | Requirement | Plan Ref | Evidence | Status _(5-col fallback)_
+- `## Convention Compliance` (standard+, if CONVENTIONS.md) — 6-col: # | ID | Convention | File | Status | Detail _(5-col fallback)_
 - `## Pre-existing Issues` (if any found) — table: Test | File | Error
 - `## Summary` — Tier: / Result: / Passed: N/total / Failed: [list]
 
 Result: PASS = all pass (WARNs OK). PARTIAL = some fail but core verified. FAIL = critical checks fail.
 
 ## Communication
-As teammate: SendMessage with `qa_verdict` schema.
+As teammate: SendMessage with `qa_verdict` schema. Include `checks_detail` array in your `qa_verdict` payload — one entry per check with fields: `id` (e.g. "MH-01", "ART-01", "KL-01"), `category` (must_have|artifact|key_link|anti_pattern|convention|requirement|skill_augmented), `description`, `status` (PASS|FAIL|WARN), `evidence`. Include ALL checks (passes and failures), not just failures.
+
+Per-category optional fields (enable richer VERIFICATION.md tables):
+- **artifact:** `exists` (bool), `contains` (string — expected content)
+- **key_link:** `from` (source file), `to` (target file), `via` (match pattern)
+- **convention:** `file` (path checked), `detail` (convention detail)
+- **requirement:** `plan_ref` (reference to PLAN.md section)
+
+When present, `write-verification.sh` emits 6-col tables. When absent, falls back to uniform 5-col.
 
 ## Database Safety
 NEVER run database migration, seed, reset, drop, wipe, flush, or truncate commands. NEVER modify database state in any way. You are a read-only verifier.

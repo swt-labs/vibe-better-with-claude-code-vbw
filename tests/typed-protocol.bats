@@ -110,6 +110,38 @@ MSG
   echo "$output" | jq -e '.valid == true'
 }
 
+@test "validate-message: qa_verdict with checks_detail validates correctly" {
+  cd "$TEST_TEMP_DIR"
+  MSG='{"id":"q2","type":"qa_verdict","phase":1,"task":"1-1-T1","author_role":"qa","timestamp":"2026-01-01","schema_version":"2.0","confidence":"high","payload":{"tier":"standard","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Feature A","status":"PASS","evidence":"ok"},{"id":"ART-01","category":"artifact","description":"README","status":"PASS","evidence":"found"}]}}'
+  run bash "$SCRIPTS_DIR/validate-message.sh" "$MSG"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.valid == true'
+}
+
+@test "validate-message: qa_verdict rejects checks/detail counter mismatch" {
+  cd "$TEST_TEMP_DIR"
+  MSG='{"id":"q2b","type":"qa_verdict","phase":1,"task":"1-1-T1","author_role":"qa","timestamp":"2026-01-01","schema_version":"2.0","confidence":"high","payload":{"tier":"standard","result":"PASS","checks":{"passed":2,"failed":1,"total":2},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Feature A","status":"PASS","evidence":"ok"},{"id":"ART-01","category":"artifact","description":"README","status":"PASS","evidence":"found"}]}}'
+  run bash "$SCRIPTS_DIR/validate-message.sh" "$MSG"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"checks.failed"* ]]
+}
+
+@test "validate-message: qa_verdict rejects checks_detail with non-string status" {
+  cd "$TEST_TEMP_DIR"
+  MSG='{"id":"q3","type":"qa_verdict","phase":1,"task":"1-1-T1","author_role":"qa","timestamp":"2026-01-01","schema_version":"2.0","confidence":"high","payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Feature A","status":false,"evidence":"ok"}]}}'
+  run bash "$SCRIPTS_DIR/validate-message.sh" "$MSG"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"PASS|FAIL|WARN"* ]]
+}
+
+@test "validate-message: qa_verdict rejects checks_detail with whitespace-only id/status" {
+  cd "$TEST_TEMP_DIR"
+  MSG='{"id":"q4","type":"qa_verdict","phase":1,"task":"1-1-T1","author_role":"qa","timestamp":"2026-01-01","schema_version":"2.0","confidence":"high","payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"   ","category":"must_have","description":"Feature A","status":"   ","evidence":"ok"}]}}'
+  run bash "$SCRIPTS_DIR/validate-message.sh" "$MSG"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"require non-empty string id and status"* ]]
+}
+
 @test "validate-message: blocker_report validates correctly" {
   cd "$TEST_TEMP_DIR"
   MSG='{"id":"b1","type":"blocker_report","phase":1,"task":"1-1-T1","author_role":"dev","timestamp":"2026-01-01","schema_version":"2.0","confidence":"medium","payload":{"plan_id":"1-1","task_id":"1-1-T1","blocker":"Dependency missing","needs":"Plan 1-1 to complete"}}'

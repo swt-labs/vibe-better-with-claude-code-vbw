@@ -123,22 +123,31 @@ date: {YYYY-MM-DD}
 
 ### Structure
 
+Check tables use **5-column** or **6-column** format depending on category-specific fields.
+
+**5-column** (must_have, anti_pattern, or fallback): `# | ID | {col} | Status | Evidence`
+**6-column** (when category-specific fields present):
+- Artifact: `# | ID | Artifact | Exists | Contains | Status`
+- Key Link: `# | ID | From | To | Via | Status`
+- Requirement: `# | ID | Requirement | Plan Ref | Evidence | Status`
+- Convention: `# | ID | Convention | File | Status | Detail`
+
 ```markdown
 # Verification: Phase {N}
 ## Must-Have Checks
-| # | Truth/Condition | Status | Evidence |
+| # | ID | Truth/Condition | Status | Evidence |
 ## Artifact Checks
-| Artifact | Exists | Contains | Status |
+| # | ID | Artifact | Exists | Contains | Status |
 ## Key Link Checks
-| From | To | Via | Status |
+| # | ID | From | To | Via | Status |
 ## Anti-Pattern Scan (standard+)
-| Pattern | Found | Location | Severity |
+| # | ID | Pattern | Status | Evidence |
 ## Requirement Mapping (deep only)
-| Requirement | Plan Ref | Artifact Evidence | Status |
+| # | ID | Requirement | Plan Ref | Evidence | Status |
 ## Convention Compliance (standard+, if CONVENTIONS.md)
-| Convention | File | Status | Detail |
+| # | ID | Convention | File | Status | Detail |
 ## Skill-Augmented Checks (if quality skills)
-| Skill | Check | Status | Evidence |
+| # | ID | Skill Check | Status | Evidence |
 ## Summary
 Tier: / Result: / Passed: N/total / Failed: [list]
 ```
