@@ -45,10 +45,10 @@ _guard_pattern() {
   printf 'while [ ! -L "$L" ] && [ $i -lt 20 ]'
 }
 
-@test "vibe.md has 1 guarded symlink template expression" {
+@test "vibe.md has 2 guarded symlink template expressions" {
   local count
   count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/vibe.md")
-  [ "$count" -eq 1 ]
+  [ "$count" -eq 2 ]
 }
 
 @test "qa.md has 1 guarded symlink template expression" {
@@ -87,10 +87,10 @@ _guard_pattern() {
   [ "${count:-0}" -eq 0 ]
 }
 
-@test "total guarded symlink template expressions across commands is 6" {
+@test "total guarded symlink template expressions across commands is 7" {
   local count
   count=$(grep -rcF "$(_guard_pattern)" "$PROJECT_ROOT/commands/" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
-  [ "$count" -eq 6 ]
+  [ "$count" -eq 7 ]
 }
 
 @test "guarded expressions use symlink path variable not direct path" {
@@ -101,8 +101,10 @@ _guard_pattern() {
 
 # ── Atomic phase-detect via preamble temp file ──────────────────────────────
 # Phase-detect.sh runs atomically inside the preamble (same !` backtick) to
-# avoid race conditions between separate template expressions. The phase-detect
-# backtick just reads the temp file written by the preamble.
+# avoid race conditions between separate template expressions.
+#
+# Most commands read the preamble output from a temp file. vibe.md now reads
+# phase-detect live (guarded) to avoid stale/shared temp-file collisions.
 
 _atomic_pd_preamble_pattern() {
   printf 'phase-detect.sh" > "/tmp/.vbw-phase-detect-'
@@ -122,10 +124,24 @@ _atomic_pd_cat_pattern() {
 
 @test "commands with phase-detect use cat for temp file read" {
   for cmd in resume vibe discuss qa verify; do
-    local count
-    count=$(grep -cF "$(_atomic_pd_cat_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
-    [ "$count" -eq 1 ] || { echo "FAIL: ${cmd}.md missing cat for phase-detect temp file"; return 1; }
+    if [ "$cmd" = "vibe" ]; then
+      grep -qF 'cat "$P"' "$PROJECT_ROOT/commands/${cmd}.md" || { echo "FAIL: ${cmd}.md missing cat for phase-detect temp file"; return 1; }
+    else
+      local count
+      count=$(grep -cF "$(_atomic_pd_cat_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
+      [ "$count" -eq 1 ] || { echo "FAIL: ${cmd}.md missing cat for phase-detect temp file"; return 1; }
+    fi
   done
+}
+
+@test "vibe.md reads phase-detect live with temp-file fallback" {
+  local cat_count
+  cat_count=$(grep -cF 'cat "$P"' "$PROJECT_ROOT/commands/vibe.md" || true)
+  [ "${cat_count:-0}" -ge 1 ] || { echo "FAIL: vibe.md missing phase-detect temp-file fallback"; return 1; }
+
+  local live_count
+  live_count=$(grep -cF 'bash "$L/scripts/phase-detect.sh"' "$PROJECT_ROOT/commands/vibe.md")
+  [ "$live_count" -ge 1 ] || { echo "FAIL: vibe.md missing live phase-detect read"; return 1; }
 }
 
 # ── UAT protocol safeguards ─────────────────────────────────────────────────

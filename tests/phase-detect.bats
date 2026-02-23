@@ -725,3 +725,147 @@ EOF
   echo "$output" | grep -q "uat_issues_phases=$"
   echo "$output" | grep -q "uat_issues_count=0"
 }
+
+# --- Mid-remediation priority tests (issue #145) ---
+
+@test "mid-remediation phase takes priority over later phase UAT issues" {
+  # Phase 02: mid-remediation — original plan done, remediation plan created but not executed
+  mkdir -p .vbw-planning/phases/02-feature/
+  touch .vbw-planning/phases/02-feature/02-01-PLAN.md
+  touch .vbw-planning/phases/02-feature/02-01-SUMMARY.md
+  touch .vbw-planning/phases/02-feature/02-02-PLAN.md
+  # No 02-02-SUMMARY.md — remediation plan not yet executed
+  echo "execute" > .vbw-planning/phases/02-feature/.uat-remediation-stage
+  cat > .vbw-planning/phases/02-feature/02-UAT.md <<'EOF'
+---
+phase: 02
+status: issues_found
+---
+- Severity: major
+EOF
+
+  # Phase 03: fully complete but has UAT issues
+  mkdir -p .vbw-planning/phases/03-polish/
+  touch .vbw-planning/phases/03-polish/03-01-PLAN.md
+  touch .vbw-planning/phases/03-polish/03-01-SUMMARY.md
+  cat > .vbw-planning/phases/03-polish/03-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Phase 02 mid-remediation should take priority over Phase 03 UAT
+  echo "$output" | grep -q "next_phase=02"
+  echo "$output" | grep -q "next_phase_state=needs_execute"
+  echo "$output" | grep -q "next_phase_plans=2"
+  echo "$output" | grep -q "next_phase_summaries=1"
+}
+
+@test "earlier unplanned phase takes priority over later phase UAT issues" {
+  # Phase 01: no plans at all — needs planning
+  mkdir -p .vbw-planning/phases/01-setup/
+
+  # Phase 02: fully complete with UAT issues
+  mkdir -p .vbw-planning/phases/02-feature/
+  touch .vbw-planning/phases/02-feature/02-01-PLAN.md
+  touch .vbw-planning/phases/02-feature/02-01-SUMMARY.md
+  cat > .vbw-planning/phases/02-feature/02-UAT.md <<'EOF'
+---
+phase: 02
+status: issues_found
+---
+- Severity: critical
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Phase 01 unplanned should take priority over Phase 02 UAT
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+}
+
+@test "mid-execution phase without remediation marker takes priority over later UAT" {
+  # Phase 02: mid-execution (no .uat-remediation-stage, just incomplete plans)
+  mkdir -p .vbw-planning/phases/02-feature/
+  touch .vbw-planning/phases/02-feature/02-01-PLAN.md
+  touch .vbw-planning/phases/02-feature/02-01-SUMMARY.md
+  touch .vbw-planning/phases/02-feature/02-02-PLAN.md
+  # No 02-02-SUMMARY.md — task 2 not yet executed
+
+  # Phase 03: fully complete with UAT issues
+  mkdir -p .vbw-planning/phases/03-polish/
+  touch .vbw-planning/phases/03-polish/03-01-PLAN.md
+  touch .vbw-planning/phases/03-polish/03-01-SUMMARY.md
+  cat > .vbw-planning/phases/03-polish/03-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Phase 02 mid-execution should take priority over Phase 03 UAT
+  echo "$output" | grep -q "next_phase=02"
+  echo "$output" | grep -q "next_phase_state=needs_execute"
+  echo "$output" | grep -q "next_phase_plans=2"
+  echo "$output" | grep -q "next_phase_summaries=1"
+}
+
+@test "earlier undiscussed phase with require_phase_discussion routes to needs_discussion over later UAT" {
+  # Enable discussion requirement
+  echo '{"require_phase_discussion": true}' > .vbw-planning/config.json
+
+  # Phase 01: no plans, no CONTEXT — needs discussion first
+  mkdir -p .vbw-planning/phases/01-setup/
+
+  # Phase 02: fully complete with UAT issues
+  mkdir -p .vbw-planning/phases/02-feature/
+  touch .vbw-planning/phases/02-feature/02-01-PLAN.md
+  touch .vbw-planning/phases/02-feature/02-01-SUMMARY.md
+  cat > .vbw-planning/phases/02-feature/02-UAT.md <<'EOF'
+---
+phase: 02
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Phase 01 should route to needs_discussion, not needs_plan_and_execute
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_discussion"
+}
+
+@test "earlier discussed phase (CONTEXT exists, no PLAN) routes to needs_plan_and_execute over later UAT" {
+  # Enable discussion requirement
+  echo '{"require_phase_discussion": true}' > .vbw-planning/config.json
+
+  # Phase 01: has CONTEXT (discussed) but no PLAN — needs planning
+  mkdir -p .vbw-planning/phases/01-setup/
+  touch .vbw-planning/phases/01-setup/01-CONTEXT.md
+
+  # Phase 02: fully complete with UAT issues
+  mkdir -p .vbw-planning/phases/02-feature/
+  touch .vbw-planning/phases/02-feature/02-01-PLAN.md
+  touch .vbw-planning/phases/02-feature/02-01-SUMMARY.md
+  cat > .vbw-planning/phases/02-feature/02-UAT.md <<'EOF'
+---
+phase: 02
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Discussion done (CONTEXT exists) — should route to needs_plan_and_execute
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+}

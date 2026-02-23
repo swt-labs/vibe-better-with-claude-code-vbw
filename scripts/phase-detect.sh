@@ -253,12 +253,62 @@ if [ -d "$PHASES_DIR" ]; then
     done
 
     if [ "$UAT_ISSUES_PHASE" != "none" ]; then
-      TARGET_DIR="$PHASES_DIR/$UAT_ISSUES_SLUG/"
-      NEXT_PHASE="$UAT_ISSUES_PHASE"
-      NEXT_PHASE_SLUG="$UAT_ISSUES_SLUG"
-      NEXT_PHASE_STATE="needs_uat_remediation"
-      NEXT_PHASE_PLANS=$(find "$TARGET_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
-      NEXT_PHASE_SUMMARIES=$(find "$TARGET_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+      # Before routing to UAT remediation, check if any earlier phase has
+      # pending work (incomplete execution or unplanned). Mid-execution phases
+      # are skipped by the UAT scan (SUMMARIES < PLANS), so they become
+      # invisible when a later phase has UAT issues. Fix: scan for the first
+      # incomplete phase before the UAT issues phase and route there instead.
+      _EARLIER_INCOMPLETE=false
+      for _ei_dir in "${PHASE_DIRS[@]}"; do
+        _ei_name=$(basename "$_ei_dir")
+        _ei_num=$(echo "$_ei_name" | sed 's/^\([0-9]*\).*/\1/')
+        [ -n "$_ei_num" ] && echo "$_ei_num" | grep -qE '^[0-9]+$' || continue
+        # Stop once we reach or pass the UAT issues phase
+        if [ "$_ei_num" -ge "$UAT_ISSUES_PHASE" ] 2>/dev/null; then
+          break
+        fi
+        _ei_plans=$(find "$_ei_dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+        _ei_summaries=$(find "$_ei_dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$_ei_plans" -eq 0 ]; then
+          # Mirror the discussion gate from the normal scan
+          if [ "$CFG_REQUIRE_PHASE_DISCUSSION" = true ]; then
+            _ei_contexts=$(find "$_ei_dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$_ei_contexts" -eq 0 ]; then
+              NEXT_PHASE="$_ei_num"
+              NEXT_PHASE_SLUG="$_ei_name"
+              NEXT_PHASE_STATE="needs_discussion"
+              NEXT_PHASE_PLANS="$_ei_plans"
+              NEXT_PHASE_SUMMARIES="$_ei_summaries"
+              _EARLIER_INCOMPLETE=true
+              break
+            fi
+          fi
+          NEXT_PHASE="$_ei_num"
+          NEXT_PHASE_SLUG="$_ei_name"
+          NEXT_PHASE_STATE="needs_plan_and_execute"
+          NEXT_PHASE_PLANS="$_ei_plans"
+          NEXT_PHASE_SUMMARIES="$_ei_summaries"
+          _EARLIER_INCOMPLETE=true
+          break
+        elif [ "$_ei_summaries" -lt "$_ei_plans" ]; then
+          NEXT_PHASE="$_ei_num"
+          NEXT_PHASE_SLUG="$_ei_name"
+          NEXT_PHASE_STATE="needs_execute"
+          NEXT_PHASE_PLANS="$_ei_plans"
+          NEXT_PHASE_SUMMARIES="$_ei_summaries"
+          _EARLIER_INCOMPLETE=true
+          break
+        fi
+      done
+
+      if [ "$_EARLIER_INCOMPLETE" = false ]; then
+        TARGET_DIR="$PHASES_DIR/$UAT_ISSUES_SLUG/"
+        NEXT_PHASE="$UAT_ISSUES_PHASE"
+        NEXT_PHASE_SLUG="$UAT_ISSUES_SLUG"
+        NEXT_PHASE_STATE="needs_uat_remediation"
+        NEXT_PHASE_PLANS=$(find "$TARGET_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+        NEXT_PHASE_SUMMARIES=$(find "$TARGET_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+      fi
     else
       ALL_DONE=true
       if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
