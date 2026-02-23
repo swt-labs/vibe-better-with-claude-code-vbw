@@ -171,7 +171,8 @@ teardown() {
   touch "/tmp/vbw-0.0.0-${uid}-ok"
 
   # Run statusline — should clean up old format
-  echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
+  # Tolerate non-zero exit (e.g. SIGINT from bats runner); we only need the cleanup side-effect
+  echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1 || true
 
   # Old caches should be gone (cleaned by the -ok check or glob cleanup)
   [ ! -f "/tmp/vbw-0.0.0-${uid}-fast" ]
