@@ -64,9 +64,9 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" verify issues_found 08
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:vibe -- Continue UAT remediation for Phase 8"* ]]
-  [[ "$output" == *"/vbw:verify --resume -- Continue testing after changes"* ]]
-  [[ "$output" != *"/vbw:fix -- Fix the issues found during UAT"* ]]
+  [[ "$output" == *"/vbw:vibe -- Remediate UAT issues for Phase 8"* ]]
+  [[ "$output" != *"/vbw:verify --resume"* ]]
+  [[ "$output" != *"/vbw:fix -- Fix minor issues found during UAT"* ]]
 }
 
 @test "suggest-next verify issues_found keeps quick-fix path for minor-only issues" {
@@ -76,9 +76,9 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" verify issues_found 03
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:fix -- Fix the issues found during UAT"* ]]
-  [[ "$output" == *"/vbw:verify --resume -- Continue testing after fix"* ]]
-  [[ "$output" != *"/vbw:vibe -- Continue UAT remediation for Phase 3"* ]]
+  [[ "$output" == *"/vbw:fix -- Fix minor issues found during UAT"* ]]
+  [[ "$output" != *"/vbw:verify --resume"* ]]
+  [[ "$output" != *"/vbw:vibe -- Remediate UAT issues for Phase 3"* ]]
 }
 
 @test "suggest-next verify issues_found defaults to escalation when severity is absent" {
@@ -88,7 +88,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" verify issues_found 05
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:vibe -- Continue UAT remediation for Phase 5"* ]]
+  [[ "$output" == *"/vbw:vibe -- Remediate UAT issues for Phase 5"* ]]
 }
 
 @test "suggest-next verify issues_found detects bold-markdown severity format" {
@@ -127,7 +127,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" verify issues_found 06
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:vibe -- Continue UAT remediation for Phase 6"* ]]
+  [[ "$output" == *"/vbw:vibe -- Remediate UAT issues for Phase 6"* ]]
   [[ "$output" != *"/vbw:fix"* ]]
 }
 
@@ -164,8 +164,8 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" verify issues_found 09
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:vibe -- Continue UAT remediation for Phase 9"* ]]
-  [[ "$output" != *"/vbw:fix -- Fix the issues found during UAT"* ]]
+  [[ "$output" == *"/vbw:vibe -- Remediate UAT issues for Phase 9"* ]]
+  [[ "$output" != *"/vbw:fix -- Fix minor issues found during UAT"* ]]
 }
 
 @test "suggest-next verify issues_found detects bare-text minor severity" {
@@ -204,8 +204,8 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" verify issues_found 07
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:fix -- Fix the issues found during UAT"* ]]
-  [[ "$output" != *"/vbw:vibe -- Continue UAT remediation"* ]]
+  [[ "$output" == *"/vbw:fix -- Fix minor issues found during UAT"* ]]
+  [[ "$output" != *"/vbw:vibe -- Remediate UAT issues"* ]]
 }
 
 @test "suggest-next verify issues_found handles unpadded phase number" {
@@ -216,8 +216,8 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" verify issues_found 3
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:fix -- Fix the issues found during UAT"* ]]
-  [[ "$output" != *"/vbw:vibe -- Continue UAT remediation"* ]]
+  [[ "$output" == *"/vbw:fix -- Fix minor issues found during UAT"* ]]
+  [[ "$output" != *"/vbw:vibe -- Remediate UAT issues"* ]]
 }
 
 @test "suggest-next verify issues_found unpadded phase escalates major correctly" {
@@ -228,7 +228,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" verify issues_found 8
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:vibe -- Continue UAT remediation"* ]]
+  [[ "$output" == *"/vbw:vibe -- Remediate UAT issues"* ]]
   [[ "$output" != *"/vbw:fix"* ]]
 }
 
@@ -242,7 +242,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" verify issues_found
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:vibe -- Continue UAT remediation for Phase 11"* ]]
+  [[ "$output" == *"/vbw:vibe -- Remediate UAT issues for Phase 11"* ]]
 }
 
 @test "suggest-next verify issues_found no-arg with all-complete UATs shows fix not remediation" {
@@ -311,7 +311,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # 1 canonical plan, 1 summary → execution guard passes → remediation triggered
-  [[ "$output" == *"/vbw:vibe -- Continue UAT remediation for Phase 3"* ]]
+  [[ "$output" == *"/vbw:vibe -- Remediate UAT issues for Phase 3"* ]]
 }
 
 @test "suggest-next verify issues_found no-arg skips orphan UAT without execution artifacts" {

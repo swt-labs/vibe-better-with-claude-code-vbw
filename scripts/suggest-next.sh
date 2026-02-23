@@ -578,14 +578,12 @@ case "$CMD" in
       issues_found)
         if [ "$uat_major_or_higher" = true ]; then
           if [ -n "$verify_target_phase" ]; then
-            suggest "/vbw:vibe -- Continue UAT remediation for Phase $verify_target_phase"
+            suggest "/vbw:vibe -- Remediate UAT issues for Phase $verify_target_phase"
           else
-            suggest "/vbw:vibe -- Continue UAT remediation from the latest report"
+            suggest "/vbw:vibe -- Remediate UAT issues from the latest report"
           fi
-          suggest "/vbw:verify --resume -- Continue testing after changes"
         else
-          suggest "/vbw:fix -- Fix the issues found during UAT"
-          suggest "/vbw:verify --resume -- Continue testing after fix"
+          suggest "/vbw:fix -- Fix minor issues found during UAT"
         fi
         ;;
       *)
