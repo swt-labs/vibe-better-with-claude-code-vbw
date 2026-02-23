@@ -53,7 +53,7 @@ Stage: `git add {file}` only.
 ## VBW Brand Essentials
 
 Follow brand guidelines at `references/vbw-brand-essentials.md`:
-- Use Unicode box-drawing (╔═╗║╚═╝) for banners, not ASCII
+- Use horizontal bars (━━━━━━━━) for banners, not box-drawing or ASCII
 - Status symbols: ◆ running, ✓ complete, ✗ failed, ○ skipped
 - No emoji in formal documentation (README, API docs)
 - Consistent terminology: "milestone" not "project", "phase" not "stage"

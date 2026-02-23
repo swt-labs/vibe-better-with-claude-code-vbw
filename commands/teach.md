@@ -11,8 +11,11 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 
 ## Context
 
-Working directory: `!`pwd``
-Plugin root: `!`echo ${CLAUDE_PLUGIN_ROOT:-$(bash -c 'ls -1d "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/* 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1')}``
+Working directory:
+```
+!`pwd`
+```
+Plugin root: `${CLAUDE_PLUGIN_ROOT}`
 Conventions:
 ```
 !`cat .vbw-planning/conventions.json 2>/dev/null || echo "No conventions found"`
