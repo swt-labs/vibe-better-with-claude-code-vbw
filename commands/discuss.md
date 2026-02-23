@@ -22,10 +22,10 @@ Plugin root:
 
 Phase state:
 ```
-!`bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/phase-detect.sh 2>/dev/null || echo "phase_detect_error=true"`
+!`bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh 2>/dev/null || echo "phase_detect_error=true"`
 ```
 
-!`bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-compact.sh discuss 2>/dev/null || true`
+!`bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-compact.sh discuss 2>/dev/null || true`
 
 ## Guards
 

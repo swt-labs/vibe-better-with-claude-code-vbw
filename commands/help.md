@@ -23,7 +23,7 @@ Plugin root:
 Run the help output script and display the result exactly as-is (pre-formatted terminal output):
 
 ```
-!`bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/help-output.sh`
+!`bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/help-output.sh`
 ```
 
 Display the output above verbatim. Do not reformat, summarize, or add commentary. The script dynamically reads all command files and generates grouped output.
