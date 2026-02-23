@@ -239,6 +239,25 @@ do
   fi
 done
 
+# Check 8: All command preambles use pwd -P for canonical symlink resolution
+for file in "$COMMANDS_DIR"/*.md; do
+  base="$(basename "$file" .md)"
+  if grep -q 'LINK="/tmp/.vbw-plugin-root-link-' "$file"; then
+    if grep -q 'cd "$R" 2>/dev/null && pwd -P' "$file"; then
+      pass "$base: uses canonical pwd -P resolution"
+    else
+      fail "$base: missing canonical pwd -P resolution in preamble"
+    fi
+  fi
+done
+
+# Check 9: execute-protocol.md uses canonical pwd -P resolution
+if grep -q 'cd "$VBW_PLUGIN_ROOT" 2>/dev/null && pwd -P' "$EXECUTE_PROTOCOL"; then
+  pass "execute-protocol uses canonical pwd -P resolution"
+else
+  fail "execute-protocol missing canonical pwd -P resolution"
+fi
+
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"

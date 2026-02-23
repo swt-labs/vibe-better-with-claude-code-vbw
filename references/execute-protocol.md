@@ -34,6 +34,9 @@ if [ -z "$VBW_PLUGIN_ROOT" ] || [ ! -d "$VBW_PLUGIN_ROOT" ]; then
   echo "VBW: plugin root resolution failed (checked CLAUDE_PLUGIN_ROOT, cache local/, versioned dirs, process tree)." >&2
   exit 1
 fi
+
+# Canonicalize to real path — survives cache symlink deletion mid-session
+VBW_PLUGIN_ROOT=$(cd "$VBW_PLUGIN_ROOT" 2>/dev/null && pwd -P) || true
 ```
 
 All runtime script invocations below assume `VBW_PLUGIN_ROOT` is set.
