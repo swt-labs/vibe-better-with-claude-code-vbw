@@ -35,55 +35,62 @@ load test_helper
   [ "$status" -eq 1 ]
 }
 
-# ── Direct path template expressions exist where expected ───────────────────
-# These tests verify the flattened single-level expressions are present.
-# NOTE: Backtick chars in grep patterns break bats-core <= 1.10.0 preprocessor.
-# Use printf to build patterns without literal backticks in the source.
+# ── Guarded symlink template expressions exist where expected ────────────────
+# Dependent template expressions must include a spin-wait guard that waits for
+# the session-specific symlink to be created by the preamble expression.
+# Pattern: L="/tmp/..."; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; ...
 
-_symlink_pattern() {
-  printf '!%cbash /tmp/.vbw-plugin-root-link-' '`'
+_guard_pattern() {
+  # No backticks needed — this substring is inside the template expression
+  printf 'while [ ! -L "$L" ] && [ $i -lt 20 ]'
 }
 
-@test "vibe.md has 2 direct symlink template expressions" {
+@test "vibe.md has 2 guarded symlink template expressions" {
   local count
-  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/vibe.md")
+  count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/vibe.md")
   [ "$count" -eq 2 ]
 }
 
-@test "qa.md has 2 direct symlink template expressions" {
+@test "qa.md has 2 guarded symlink template expressions" {
   local count
-  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/qa.md")
+  count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/qa.md")
   [ "$count" -eq 2 ]
 }
 
-@test "verify.md has 2 direct symlink template expressions" {
+@test "verify.md has 2 guarded symlink template expressions" {
   local count
-  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/verify.md")
+  count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/verify.md")
   [ "$count" -eq 2 ]
 }
 
-@test "discuss.md has 2 direct symlink template expressions" {
+@test "discuss.md has 2 guarded symlink template expressions" {
   local count
-  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/discuss.md")
+  count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/discuss.md")
   [ "$count" -eq 2 ]
 }
 
-@test "help.md has 1 direct symlink template expression" {
+@test "help.md has 1 guarded symlink template expression" {
   local count
-  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/help.md")
+  count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/help.md")
   [ "$count" -eq 1 ]
 }
 
-@test "skills.md has 1 direct symlink template expression" {
+@test "skills.md has 1 guarded symlink template expression" {
   local count
-  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/skills.md")
+  count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/skills.md")
   [ "$count" -eq 1 ]
 }
 
-@test "total direct symlink template expressions across commands is 10" {
+@test "total guarded symlink template expressions across commands is 10" {
   local count
-  count=$(grep -rcF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
+  count=$(grep -rcF "$(_guard_pattern)" "$PROJECT_ROOT/commands/" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
   [ "$count" -eq 10 ]
+}
+
+@test "guarded expressions use symlink path variable not direct path" {
+  # All guarded expressions should reference scripts via $L variable, not direct path
+  run bash -c "grep -F '$(_guard_pattern)' \"$PROJECT_ROOT/commands/\"*.md | grep -v 'bash \"\$L/scripts/'"
+  [ "$status" -eq 1 ]
 }
 
 # ── UAT protocol safeguards ─────────────────────────────────────────────────

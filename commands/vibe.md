@@ -22,7 +22,7 @@ Plugin root:
 
 Pre-computed state (via phase-detect.sh):
 ```
-!`bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh 2>/dev/null || echo "phase_detect_error=true"`
+!`L="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}"; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; bash "$L/scripts/phase-detect.sh" 2>/dev/null || echo "phase_detect_error=true"`
 ```
 
 Config:
@@ -30,7 +30,7 @@ Config:
 !`cat .vbw-planning/config.json 2>/dev/null || echo "No config found"`
 ```
 
-!`bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-compact.sh execute 2>/dev/null || true`
+!`L="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}"; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; bash "$L/scripts/suggest-compact.sh" execute 2>/dev/null || true`
 
 ## Input Parsing
 

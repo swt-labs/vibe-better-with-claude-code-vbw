@@ -21,7 +21,7 @@ Plugin root:
 ```
 Stack detection:
 ```
-!`bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/detect-stack.sh "$(pwd)" 2>/dev/null || echo '{"error":"detect-stack.sh failed"}'`
+!`L="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}"; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; bash "$L/scripts/detect-stack.sh" "$(pwd)" 2>/dev/null || echo '{"error":"detect-stack.sh failed"}'`
 ```
 
 ## Guard
