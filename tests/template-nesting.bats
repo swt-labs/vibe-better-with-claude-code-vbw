@@ -37,46 +37,52 @@ load test_helper
 
 # ── Direct path template expressions exist where expected ───────────────────
 # These tests verify the flattened single-level expressions are present.
+# NOTE: Backtick chars in grep patterns break bats-core <= 1.10.0 preprocessor.
+# Use printf to build patterns without literal backticks in the source.
+
+_symlink_pattern() {
+  printf '!%cbash /tmp/.vbw-plugin-root-link-' '`'
+}
 
 @test "vibe.md has 2 direct symlink template expressions" {
   local count
-  count=$(grep -c '!\`bash /tmp/.vbw-plugin-root-link-' "$PROJECT_ROOT/commands/vibe.md")
+  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/vibe.md")
   [ "$count" -eq 2 ]
 }
 
 @test "qa.md has 2 direct symlink template expressions" {
   local count
-  count=$(grep -c '!\`bash /tmp/.vbw-plugin-root-link-' "$PROJECT_ROOT/commands/qa.md")
+  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/qa.md")
   [ "$count" -eq 2 ]
 }
 
 @test "verify.md has 2 direct symlink template expressions" {
   local count
-  count=$(grep -c '!\`bash /tmp/.vbw-plugin-root-link-' "$PROJECT_ROOT/commands/verify.md")
+  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/verify.md")
   [ "$count" -eq 2 ]
 }
 
 @test "discuss.md has 2 direct symlink template expressions" {
   local count
-  count=$(grep -c '!\`bash /tmp/.vbw-plugin-root-link-' "$PROJECT_ROOT/commands/discuss.md")
+  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/discuss.md")
   [ "$count" -eq 2 ]
 }
 
 @test "help.md has 1 direct symlink template expression" {
   local count
-  count=$(grep -c '!\`bash /tmp/.vbw-plugin-root-link-' "$PROJECT_ROOT/commands/help.md")
+  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/help.md")
   [ "$count" -eq 1 ]
 }
 
 @test "skills.md has 1 direct symlink template expression" {
   local count
-  count=$(grep -c '!\`bash /tmp/.vbw-plugin-root-link-' "$PROJECT_ROOT/commands/skills.md")
+  count=$(grep -cF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/skills.md")
   [ "$count" -eq 1 ]
 }
 
 @test "total direct symlink template expressions across commands is 10" {
   local count
-  count=$(grep -rc '!\`bash /tmp/.vbw-plugin-root-link-' "$PROJECT_ROOT/commands/" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
+  count=$(grep -rcF "$(_symlink_pattern)" "$PROJECT_ROOT/commands/" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
   [ "$count" -eq 10 ]
 }
 
