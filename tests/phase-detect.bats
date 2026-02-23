@@ -842,3 +842,30 @@ EOF
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "next_phase_state=needs_discussion"
 }
+
+@test "earlier discussed phase (CONTEXT exists, no PLAN) routes to needs_plan_and_execute over later UAT" {
+  # Enable discussion requirement
+  echo '{"require_phase_discussion": true}' > .vbw-planning/config.json
+
+  # Phase 01: has CONTEXT (discussed) but no PLAN — needs planning
+  mkdir -p .vbw-planning/phases/01-setup/
+  touch .vbw-planning/phases/01-setup/01-CONTEXT.md
+
+  # Phase 02: fully complete with UAT issues
+  mkdir -p .vbw-planning/phases/02-feature/
+  touch .vbw-planning/phases/02-feature/02-01-PLAN.md
+  touch .vbw-planning/phases/02-feature/02-01-SUMMARY.md
+  cat > .vbw-planning/phases/02-feature/02-UAT.md <<'EOF'
+---
+phase: 02
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Discussion done (CONTEXT exists) — should route to needs_plan_and_execute
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+}
