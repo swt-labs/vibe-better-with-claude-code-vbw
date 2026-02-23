@@ -11,7 +11,10 @@ allowed-tools: Read, Write
 
 ## Context
 
-Working directory: `!`pwd``
+Working directory:
+```
+!`pwd`
+```
 
 ## Guard
 

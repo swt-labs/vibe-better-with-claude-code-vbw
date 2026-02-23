@@ -10,7 +10,10 @@ allowed-tools: Read, Bash, Glob, Grep
 
 ## Context
 
-Working directory: `!`pwd``
+Working directory:
+```
+!`pwd`
+```
 Version: `!`cat VERSION 2>/dev/null || echo "none"``
 
 ## Checks

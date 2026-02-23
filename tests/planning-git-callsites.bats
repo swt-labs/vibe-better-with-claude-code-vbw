@@ -7,18 +7,23 @@ load test_helper
   [ "$status" -eq 1 ]
 }
 
-@test "planning-git callsites use ls glob for cache lookup (DXP-01 pattern)" {
-  local count
-  count=$(grep -R -c 'ls -1.*plugins/cache/vbw-marketplace/vbw.*planning-git.sh' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
-  [[ "$count" =~ ^[0-9]+$ ]]
-  [ "$count" -ge 8 ]
+@test "planning-git callsites do not use cache ls-glob resolver pattern" {
+  run bash -c "grep -R -n 'ls -1.*plugins/cache/vbw-marketplace/vbw.*planning-git.sh' \"$PROJECT_ROOT/commands\" \"$PROJECT_ROOT/references\" 2>/dev/null"
+  [ "$status" -eq 1 ]
 }
 
-@test "planning-git callsites use CLAUDE_PLUGIN_ROOT colon-plus fallback" {
+@test "planning-git callsites use deterministic echo path where expected" {
   local count
-  count=$(grep -R -c 'CLAUDE_PLUGIN_ROOT:+' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
+  count=$(grep -R -c 'echo /tmp/.vbw-plugin-root-link-.*planning-git' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
   [[ "$count" =~ ^[0-9]+$ ]]
-  [ "$count" -ge 8 ]
+  [ "$count" -ge 6 ]
+}
+
+@test "planning-git callsites support VBW_PLUGIN_ROOT fallback" {
+  local count
+  count=$(grep -R -c 'VBW_PLUGIN_ROOT.*/scripts/planning-git.sh' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
+  [[ "$count" =~ ^[0-9]+$ ]]
+  [ "$count" -ge 2 ]
 }
 
 @test "planning-git callsites do not use find with mindepth" {
@@ -31,26 +36,20 @@ load test_helper
   [ "$status" -eq 1 ]
 }
 
-@test "planning-git resolver checks cache before PLUGIN_ROOT in all blocks" {
-  # Checks ALL resolver pairs per file, not just the first (F2 fix)
-  local files=("$PROJECT_ROOT/commands/config.md" "$PROJECT_ROOT/commands/init.md" "$PROJECT_ROOT/commands/vibe.md" "$PROJECT_ROOT/references/execute-protocol.md")
-  for f in "${files[@]}"; do
-    local cache_lines plugin_lines cache_count plugin_count
-    cache_lines=$(grep -n 'ls -1.*plugins/cache/vbw-marketplace.*planning-git' "$f" | cut -d: -f1)
-    plugin_lines=$(grep -n 'CLAUDE_PLUGIN_ROOT:+' "$f" | cut -d: -f1)
-    cache_count=$(echo "$cache_lines" | wc -l | tr -d ' ')
-    plugin_count=$(echo "$plugin_lines" | wc -l | tr -d ' ')
-    [ "$cache_count" = "$plugin_count" ] || { echo "Unequal pair count in $f: cache=$cache_count plugin=$plugin_count"; false; }
-    local i=0
-    while IFS= read -r cl; do
-      i=$((i+1))
-      local pl
-      pl=$(echo "$plugin_lines" | sed -n "${i}p")
-      [ -n "$cl" ] || { echo "Missing cache line $i in $f"; false; }
-      [ -n "$pl" ] || { echo "Missing plugin line $i in $f"; false; }
-      [ "$cl" -lt "$pl" ] || { echo "Wrong order pair $i in $f: cache=$cl plugin=$pl"; false; }
-    done <<< "$cache_lines"
-  done
+@test "planning-git callsites use deterministic pre-resolved root path counts" {
+  local c
+
+  c=$(grep -c 'PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/config.md")
+  [ "$c" -eq 1 ]
+
+  c=$(grep -c 'PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/init.md")
+  [ "$c" -eq 2 ]
+
+  c=$(grep -c 'PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/vibe.md")
+  [ "$c" -eq 3 ]
+
+  c=$(grep -c 'PG_SCRIPT="${VBW_PLUGIN_ROOT}/scripts/planning-git.sh"' "$PROJECT_ROOT/references/execute-protocol.md")
+  [ "$c" -eq 2 ]
 }
 
 @test "planning-git callsites reject CLAUDE_PLUGIN_ROOT assignment form" {
@@ -59,20 +58,62 @@ load test_helper
   [ "$status" -eq 1 ]
 }
 
-@test "planning-git cache and fallback counts match" {
-  # Ensures no additive bad-form callsites — cache ls count must equal fallback count (F4)
-  local cache_count fallback_count
-  cache_count=$(grep -R -c 'ls -1.*plugins/cache/vbw-marketplace/vbw.*planning-git.sh' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
-  fallback_count=$(grep -R -c 'CLAUDE_PLUGIN_ROOT:+' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
-  [ "$cache_count" = "$fallback_count" ] || { echo "Mismatched: cache=$cache_count fallback=$fallback_count"; false; }
+@test "planning-git callsite count is exact" {
+  local fallback_count
+  fallback_count=$(grep -R -cE 'PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-\$\{CLAUDE_SESSION_ID:-default\}`/scripts/planning-git.sh"|PG_SCRIPT="\$\{VBW_PLUGIN_ROOT\}/scripts/planning-git.sh"' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
+  [ "$fallback_count" -eq 8 ] || { echo "Unexpected planning-git callsite count: $fallback_count"; false; }
 }
 
-@test "planning-git ls callsites suppress stderr" {
-  # Every ls glob line must include 2>/dev/null (F5)
-  local files=("$PROJECT_ROOT/commands/config.md" "$PROJECT_ROOT/commands/init.md" "$PROJECT_ROOT/commands/vibe.md" "$PROJECT_ROOT/references/execute-protocol.md")
-  for f in "${files[@]}"; do
-    while IFS= read -r line; do
-      echo "$line" | grep -q '2>/dev/null' || { echo "Missing 2>/dev/null in $f: $line"; false; }
-    done < <(grep 'ls -1.*plugins/cache/vbw-marketplace.*planning-git' "$f")
+@test "planning-git callsites do not use sort -V fallback resolver" {
+  run bash -c "grep -R -n 'sort -V 2>/dev/null \\\|\\\| sort -t\\.' \"$PROJECT_ROOT/commands\" \"$PROJECT_ROOT/references\" 2>/dev/null"
+  [ "$status" -eq 1 ]
+}
+
+@test "plugin-root callsites avoid runtime command substitution" {
+  run bash -c "grep -R -n '\\\$\\(cat /tmp/.vbw-plugin-root\\)' \"$PROJECT_ROOT/commands\" \"$PROJECT_ROOT/references\" 2>/dev/null"
+  [ "$status" -eq 1 ]
+}
+
+@test "no legacy cat /tmp/.vbw-plugin-root readers in commands" {
+  run bash -c "grep -R -n 'cat /tmp/.vbw-plugin-root' \"$PROJECT_ROOT/commands\" 2>/dev/null | grep -v 'vbw-plugin-root-link-'"
+  [ "$status" -eq 1 ]
+}
+
+@test "no legacy temp file writes in commands" {
+  run bash -c "grep -R -n 'printf.*> /tmp/.vbw-plugin-root' \"$PROJECT_ROOT/commands\" 2>/dev/null"
+  [ "$status" -eq 1 ]
+}
+
+@test "all commands with readers have a preamble" {
+  for file in "$PROJECT_ROOT/commands"/*.md; do
+    local reader_count
+    reader_count=$(grep -c 'echo /tmp/.vbw-plugin-root-link-' "$file" 2>/dev/null || true)
+    if [ "$reader_count" -gt 0 ]; then
+      grep -q 'LINK="/tmp/.vbw-plugin-root-link-' "$file" || { echo "$(basename "$file"): $reader_count readers but no preamble"; return 1; }
+    fi
   done
+}
+
+@test "preamble and readers use same session key expansion" {
+  for file in "$PROJECT_ROOT/commands"/*.md; do
+    local reader_count
+    reader_count=$(grep -c 'echo /tmp/.vbw-plugin-root-link-' "$file" 2>/dev/null || true)
+    [ "$reader_count" -gt 0 ] || continue
+    # Preamble must derive session key from CLAUDE_SESSION_ID:-default
+    # It may use either direct LINK="/tmp/...-${CLAUDE_SESSION_ID:-default}" or
+    # indirect SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; LINK="/tmp/...-${SESSION_KEY}"
+    grep -q 'CLAUDE_SESSION_ID:-default' "$file" || \
+      { echo "$(basename "$file"): preamble missing CLAUDE_SESSION_ID:-default fallback"; return 1; }
+    # Every reader must also use ${CLAUDE_SESSION_ID:-default}
+    local mismatched
+    mismatched=$(grep 'echo /tmp/.vbw-plugin-root-link-' "$file" | grep -v '\${CLAUDE_SESSION_ID:-default}' || true)
+    [ -z "$mismatched" ] || { echo "$(basename "$file"): reader with mismatched session key: $mismatched"; return 1; }
+  done
+}
+
+@test "plugin-root resolver emits canonical link path" {
+  local count
+  count=$(grep -R -c 'LINK="/tmp/.vbw-plugin-root-link-' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
+  [[ "$count" =~ ^[0-9]+$ ]]
+  [ "$count" -ge 1 ]
 }

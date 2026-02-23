@@ -18,16 +18,51 @@ git clone https://github.com/yidakee/vibe-better-with-claude-code-vbw.git
 
 ### Loading your local VBW
 
-If you have VBW installed from the marketplace, uninstall it and clear the caches first so the marketplace version doesn't conflict with your local copy:
+If you have VBW installed from the marketplace, uninstall it first so the marketplace version doesn't conflict with your local copy:
 
 ```bash
 # Inside a Claude Code session
 /plugin uninstall vbw@vbw-marketplace
 
-# Then back in your regular terminal
-rm -rf ~/.claude/plugins/cache/vbw-marketplace
+# Then back in your regular terminal — clear the command cache only
 rm -rf ~/.claude/commands/vbw
 ```
+
+> **Do NOT `rm -rf ~/.claude/plugins/cache/vbw-marketplace`** — you need the cache directory structure for the symlink in the next step.
+
+### Setting up the plugin cache symlink (required)
+
+VBW commands reference scripts at runtime via a cache glob path (`~/.claude/plugins/cache/vbw-marketplace/vbw/*/scripts/...`). The `--plugin-dir` flag only affects command and agent loading — it does **not** set the `CLAUDE_PLUGIN_ROOT` environment variable in bash subprocesses. Without a cache entry to glob, all runtime script references will fail.
+
+The fix is a symlink from the cache directory to your local clone:
+
+```bash
+# Create the cache directory structure (safe even if it already exists)
+mkdir -p ~/.claude/plugins/cache/vbw-marketplace/vbw
+
+# Remove any existing versioned cache entries (from a previous marketplace install)
+rm -rf ~/.claude/plugins/cache/vbw-marketplace/vbw/*/
+
+# Create symlink — replace the path with your actual clone location
+ln -s /absolute/path/to/vibe-better-with-claude-code-vbw \
+  ~/.claude/plugins/cache/vbw-marketplace/vbw/local
+```
+
+Verify it worked:
+
+```bash
+ls -la ~/.claude/plugins/cache/vbw-marketplace/vbw/
+# Should show: local -> /absolute/path/to/vibe-better-with-claude-code-vbw
+
+# Quick sanity check — this should print a path to your clone
+ls ~/.claude/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh
+```
+
+**Why this is needed:** VBW command templates contain fenced code blocks that execute at template-processing time to resolve the plugin root path. Claude Code's template processor runs `!` backtick expressions inside fenced code blocks via bash, but `CLAUDE_PLUGIN_ROOT` is only available as a template-engine variable (for `@${CLAUDE_PLUGIN_ROOT}/...` file inclusions) — it is **not** passed as a shell environment variable. So the resolution falls through to a glob of `~/.claude/plugins/cache/vbw-marketplace/vbw/*/`. The symlink ensures that glob finds your local clone.
+
+**What fails without it:** The `Plugin root:` preamble in every command resolves to an empty string. The preamble creates a per-session symlink at `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}` pointing to the resolved root. All downstream script callsites construct this same symlink path deterministically — no shared temp file is involved. Without a valid cache entry, the symlink target is empty and all script calls fail.
+
+### Launching Claude Code
 
 Use `--plugin-dir` with the **absolute path** to your cloned VBW repo. This works from any directory — you don't need to be inside the VBW repo.
 
@@ -37,14 +72,14 @@ claude --plugin-dir .
 
 # From any other project (the typical case — testing VBW against a real codebase)
 cd ~/repos/my-other-project
-claude --plugin-dir "<path-to-vbw-clone>"
+claude --plugin-dir /absolute/path/to/vibe-better-with-claude-code-vbw
 ```
 
 All `/vbw:*` commands will load from your local copy. Restart Claude Code to pick up changes after editing VBW files.
 
 > **Important:** `--plugin-dir` loads whatever is on disk in your VBW clone, which means whatever branch is currently checked out. Make sure you're on the branch with your changes before launching Claude Code — if you're on `main`, you'll be testing the unchanged version.
 
-> **Known limitation:** Plugin hooks (the 21 event handlers in `hooks.json`) resolve scripts from the marketplace cache (`~/.claude/plugins/cache/...`), not from `--plugin-dir`. In local dev mode the cache is empty, so **all plugin hooks are no-ops** — security filters, QA gates, commit validation, session-start migration, etc. will not run. Commands and agents load correctly; only plugin hooks are affected. Keep this in mind when testing hook-dependent features. (The git pre-push hook is a separate mechanism — see [Version Management](#version-management).)
+> **Known limitation:** Plugin hooks (the 21 event handlers in `hooks.json`) resolve scripts from the marketplace cache via the symlink. This means hooks will run (unlike before the symlink existed), but they execute from your local clone — changes to hook scripts take effect immediately without a cache refresh. The git pre-push hook is a separate mechanism — see [Version Management](#version-management).
 
 ## Project Structure
 
@@ -64,7 +99,8 @@ Key conventions:
 
 - **Commands** live in `commands/*.md`. Use explicit prefixed names in frontmatter (e.g., `name: vbw:init`) so commands show as `/vbw:*`.
 - **Agents** in `agents/` use YAML frontmatter for tool permissions enforced by the platform.
-- **Hooks** in `hooks/hooks.json` self-resolve scripts via `ls | sort -V | tail -1` against the plugin cache (they do not use `CLAUDE_PLUGIN_ROOT`).
+- **Hooks** in `hooks/hooks.json` self-resolve scripts via `ls | sort -V | tail -1` against the plugin cache.
+- **Plugin root resolution:** `CLAUDE_PLUGIN_ROOT` is a template-engine variable only — it works for `@${CLAUDE_PLUGIN_ROOT}/...` file inclusions but is **not** available as a shell env var inside `!` backtick fenced blocks. Each command's preamble resolves the plugin root via a priority cascade (env var → `local` symlink → versioned cache → fallback) and creates a per-session symlink at `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`. Reader callsites construct this path deterministically — no shared mutable temp file is used. See [Setting up the plugin cache symlink](#setting-up-the-plugin-cache-symlink-required) for local dev setup.
 
 ## What to Contribute
 
@@ -136,9 +172,12 @@ Less good candidates:
 
 ### Switching back to marketplace VBW
 
-When you're done testing your local changes, re-install the marketplace version:
+When you're done testing your local changes, remove the symlink and re-install the marketplace version:
 
 ```bash
+# Remove the local dev symlink
+rm ~/.claude/plugins/cache/vbw-marketplace/vbw/local
+
 # Start Claude Code normally (without --plugin-dir)
 claude
 ```
@@ -193,13 +232,19 @@ git push
 
 The hook only blocks pushes if the 4 version files have mismatched values. Use `git push --no-verify` to bypass in rare cases.
 
-The pre-push hook is auto-installed by `/vbw:init` when running the marketplace version. In local dev mode (via `--plugin-dir`), plugin hooks are no-ops so auto-install won't trigger. You can still verify version consistency manually:
+The pre-push hook is auto-installed by `/vbw:init` when running the marketplace version. In local dev mode (via `--plugin-dir`), you can install it manually:
+
+```bash
+bash scripts/install-hooks.sh
+```
+
+To verify version consistency without the hook:
 
 ```bash
 bash scripts/bump-version.sh --verify
 ```
 
-> **Note:** The git pre-push hook installed by `scripts/install-hooks.sh` delegates to the marketplace cache, which is empty in local dev mode. The hook will silently pass without checking. Use the manual `--verify` command above before pushing if you've touched version files.
+> **Note:** The git pre-push hook installed by `scripts/install-hooks.sh` delegates to the marketplace cache. With the [symlink](#setting-up-the-plugin-cache-symlink-required) in place, the hook will run your local copy's version check. Without the symlink, the hook silently passes. Use the manual `--verify` command above before pushing if you haven't set up the symlink.
 
 ## Reporting Bugs
 

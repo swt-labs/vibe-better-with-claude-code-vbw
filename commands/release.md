@@ -11,7 +11,10 @@ allowed-tools: Read, Edit, Bash, Glob, Grep
 
 ## Context
 
-Working directory: `!`pwd``
+Working directory:
+```
+!`pwd`
+```
 Version: `!`cat VERSION 2>/dev/null || echo "No VERSION file"``
 Git status:
 ```
