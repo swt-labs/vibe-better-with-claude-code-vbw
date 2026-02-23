@@ -151,7 +151,7 @@ echo "=== Phase-Detect Usage Verification ==="
 # Without this, the LLM may read from archived milestone directories and present
 # stale data. Commands that read STATE.md/ROADMAP.md should also scope reads to
 # top-level .vbw-planning/ only (not milestones/).
-PHASE_DETECT_REQUIRED_COMMANDS="resume"
+PHASE_DETECT_REQUIRED_COMMANDS="resume vibe discuss qa verify"
 for pd_cmd in $PHASE_DETECT_REQUIRED_COMMANDS; do
   pd_file="$COMMANDS_DIR/${pd_cmd}.md"
   if [ ! -f "$pd_file" ]; then
