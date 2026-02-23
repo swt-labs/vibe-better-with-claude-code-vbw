@@ -2,6 +2,53 @@
 
 All notable changes to VBW will be documented in this file.
 
+## [1.31.0] - 2026-02-23
+
+### Added
+
+- **`auto-uat`** -- Auto UAT detection and routing for unverified phases. New `auto_uat` config flag runs `/vbw:verify` inline after QA instead of only suggesting it. Config controls whether UAT runs inline or is merely suggested. (PR #135)
+- **`require-phase-discussion`** -- New `require_phase_discussion` config flag gates plan execution behind a mandatory discussion step per phase. Undiscussed phases route to `needs_discussion` instead of jumping to `needs_plan_and_execute`. (PR #123)
+- **`deterministic-verification`** -- Deterministic VERIFICATION.md generation via `write-verification.sh`. Per-category 6-col verification tables derived from §4–§7 semantics. Replaces ad-hoc QA agent output with structured, reproducible verification artifacts. (PR #138)
+- **`remediation`** -- Seeding of ROADMAP.md and STATE.md for remediation phases. Pre-seed CONTEXT.md with UAT report for in-phase remediation. Pre-seeded discussion annotations in Next Up hints. Skip discuss step for in-phase UAT remediation.
+- **`config`** -- Multi-location `CLAUDE_CONFIG_DIR` fallback across all scripts and commands. Removes hardcoded `$HOME/.claude` assumptions. (PR #116 by @halindrome)
+- **`context`** -- Pre-flight context guard to prevent mid-workflow compaction from disrupting agent execution.
+- **`brand`** -- Horizontal bars format for LLM-generated output, replacing box-drawing characters.
+- **`suggest-next`** -- Annotate pre-seeded discussion in Next Up hints for remediation phases.
+
+### Changed
+
+- **`docs`** -- Source-validated GSD comparison document added. Consolidated 6 config sections into unified Configuration section in README. Execution Model section added. Contributing guide rewritten with QA review process and local dev setup. Default settings reference and runtime feature flags details added. (PRs #133, #125, #119)
+- **`verify`** -- Added "Skip" option for checkpoint testing. CHECKPOINT loop now blocking with explicit wait-for-input via AskUserQuestion. Clarified UAT test requirements and banned automated checks. Updated code blocks to specify language for formatting clarity.
+- **`suggest-compact`** -- Replaced `eval jq` with safe direct assignment. Dynamic token cost calculated from actual file sizes instead of hardcoded estimates.
+- **`suggest-next`** -- Removed misleading `--resume` from verify `issues_found` output.
+- **`execute-protocol`** -- Enhanced user interaction for first test results with CHECKPOINT and AskUserQuestion.
+- **`commands`** -- Replaced shared temp file with deterministic symlink path. Updated inline script execution syntax for clarity. Used fenced code blocks for template processor execution. Removed dead `CLAUDE_PLUGIN_ROOT` fallback in `!` expressions.
+- **`codeowners`** -- Added dpearson2699 as code owner.
+- **`ci`** -- Improved ShellCheck and shell syntax check steps. Removed branch restriction for pull requests.
+
+### Fixed
+
+- **`phase-detect`** -- Prioritize earlier incomplete phases over later UAT issues (fixes #145). Add `require_phase_discussion` gate to earlier-incomplete scan. Collect all phases with UAT issues. Exclude SOURCE-UAT from UAT globs and cross-reference remediation phases. Implement `latest_non_source_uat` function for UAT file retrieval. Replace `ls`-pipe patterns with glob for-loops. Use `find` for file counting instead of `ls|wc -l`. Exclude SOURCE-UAT.md from UAT scanning globs. (PRs #146, #142)
+- **`archive`** -- Detect unresolved UAT in shipped milestones, block archive on UAT issues. Deterministic milestone slug derivation via script. (PR #121)
+- **`plugin-root`** -- Replace model-executed `CLAUDE_PLUGIN_ROOT` with inline load-time resolution. Content validation and process-tree fallback for `--plugin-dir`. Hardened resolver policy and runtime callsites. Replace `ls` glob with `find` for zsh compatibility. Use temp file for deterministic plugin root resolution. Added preamble for plugin root resolution in skills. (PR #137)
+- **`symlink`** -- Canonicalize symlink target via `pwd -P` to survive cache deletion. Spin-wait guard for symlink race condition. (PR #144)
+- **`hooks`** -- Add quad-resolution fallback for local dev mode (`--plugin-dir`).
+- **`uat`** -- Flow discovered issues into remediation pipeline. Enhanced UAT issue detection and remediation suggestions. Make CHECKPOINT loop blocking with explicit wait-for-input. Multiple QA rounds: pad normalization, orphan guard, mid-execution guard, numeric sort, `sort -V` portability. (PR #142)
+- **`vibe`** -- Read phase-detect live to avoid stale routing state. Fallback to preamble phase-detect on transient live-read failures. Avoid shared default session key collisions. Standardize deterministic session-key fallback. Run phase-detect.sh atomically in preamble.
+- **`resume`** -- Use phase-detect.sh for deterministic state detection instead of inline logic.
+- **`recovery`** -- Automatic state recovery wired into session-start via `recover-state.sh`. 5 rounds of QA hardening.
+- **`remediation`** -- Pre-seed CONTEXT.md with UAT report for in-phase remediation. Skip discuss step for in-phase UAT remediation. Update sed commands to create backup files during ROADMAP.md and STATE.md edits. Seed ROADMAP.md and STATE.md for remediation phases.
+- **`guards`** -- Narrow milestone path guards to prevent false positives. Harden milestone path guards in bash scripts.
+- **`routing`** -- Harden milestone path guards in bash scripts to prevent cross-milestone pollution.
+- **`cache`** -- Handle empty plugin cache globs under pipefail. Bridge local dev plugin root into marketplace cache. 5 rounds of QA hardening on cache operations.
+- **`cache-nuke`** -- Handle empty plugin cache globs under `pipefail`.
+- **`config`** -- Remove dir-existence check from `resolve-claude-dir.sh`. Fix bare `HOME/.claude` references in scripts. Auto-UAT runs UAT inline, not just suggests.
+- **`session-start`** -- Bridge local dev plugin root into marketplace cache. Remove unused `PHASES_DIR` assignment.
+- **`verify`** -- Add trailing newline to CHECKPOINT expected line. Use bash builtins for cross-platform portability. Enhance user interaction by adding AskUserQuestion for checkpoint responses.
+- **`lint`** -- Resolve SC2034 warnings in `extract-verified-items.sh`.
+- **`tests`** -- Hardened for BATS 1.10 compatibility — avoid backtick escaping incompatible with bats 1.10. Harden stale cache test against SIGINT from bats runner. Plugin root resolver safety and callsite checks. 6 rounds of QA on test suite. Regression tests for deterministic path pattern.
+- **`docs`** -- Update defaults for lease locks and event recovery settings. Fix all markdown lint errors in README. Remove `.markdownlint.json` configuration file. Update plugin root resolution documentation.
+
 ## [1.30.1] - 2026-02-20
 
 ### Added
