@@ -471,7 +471,8 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
 
    **This is a conversational loop. Do NOT present all tests at once. Do NOT end the session after presenting a test. Do NOT proceed to Step 5 until all tests are complete.**
 
-   For the FIRST test without a result, display:
+   For the FIRST test without a result, display a CHECKPOINT followed by AskUserQuestion:
+
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    CHECKPOINT {N}/{total} — {plan-id}: {plan-title}
@@ -479,20 +480,39 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
 
    {scenario description}
 
-   Expected: {expected result}
+   **Expected:** {expected result}
 
-   → Type "pass" or describe what's wrong
    ```
 
-   **STOP HERE.** Wait for the user's plain text response. Do NOT use AskUserQuestion. Do NOT continue to the next test or to Step 5.
+   Then immediately use AskUserQuestion:
+
+   ```yaml
+   question: "Result for checkpoint {N}/{total}?"
+   header: "UAT"
+   multiSelect: false
+   options:
+     - label: "Pass"
+       description: "Behavior matches expected result"
+     - label: "Skip"
+       description: "Cannot test right now — skip this checkpoint"
+   ```
+
+   The tool automatically provides a freeform "Other" option for the user to describe issues.
+
+   **STOP HERE.** Wait for the AskUserQuestion response. Do NOT continue to the next test or to Step 5.
 
    **After the user responds:**
-   - **Pass words** (pass, passed, yes, y, good, ok, okay, works, correct, confirmed, lgtm, looks good): record pass
-   - **Skip words** (skip, skipped, next, n/a, na, later, defer): record skip
-   - **Anything else**: treat as issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major)
+
+   Map the AskUserQuestion response:
+
+   - **"Pass" selected:** record pass
+   - **"Skip" selected:** record skip
+   - **Freeform text (via "Other"):** Apply case-insensitive, trimmed string matching:
+     - **Skip words** (skip, skipped, next, n/a, na, later, defer): record skip
+     - **Anything else**: treat the entire response text as an issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major)
    - Update `{phase}-UAT.md` immediately (persist to disk)
    - Display progress: `✓ {completed}/{total} tests`
-   - If more tests remain: present the NEXT test using the same CHECKPOINT format, then **STOP and wait again**
+   - If more tests remain: present the NEXT test using the same CHECKPOINT format with AskUserQuestion, then **STOP and wait again**
    - If all tests done: go to step 4
 
 4. After all tests complete:
