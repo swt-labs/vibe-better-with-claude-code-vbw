@@ -103,3 +103,42 @@ _guard_pattern() {
 @test "verify.md lists automated test tools as excluded from UAT" {
   grep -q 'xcodebuild test, pytest, bats, jest' "$PROJECT_ROOT/commands/verify.md"
 }
+
+# ── Content validation in plugin root resolution ────────────────────────────
+# The preamble must validate directories have scripts (hook-wrapper.sh) before
+# accepting them, to guard against empty stub directories from --plugin-dir mode.
+
+_content_validation_pattern() {
+  printf 'scripts/hook-wrapper.sh'
+}
+
+@test "all 6 preamble commands use content validation for local/ check" {
+  for cmd in vibe verify discuss help qa skills; do
+    local count
+    count=$(grep -c "$(_content_validation_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
+    [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing content validation"; return 1; }
+  done
+}
+
+@test "preamble does NOT use bare [ -d ] for local/ acceptance" {
+  # The old pattern [ -d "${VBW_CACHE_ROOT}/local" ] accepts empty stubs
+  for cmd in vibe verify discuss help qa skills; do
+    run bash -c "grep 'elif \\[ -d.*VBW_CACHE_ROOT.*local' \"$PROJECT_ROOT/commands/${cmd}.md\" 2>/dev/null"
+    [ "$status" -eq 1 ] || { echo "FAIL: ${cmd}.md still has bare [ -d ] local/ check"; return 1; }
+  done
+}
+
+# ── Process-tree fallback for --plugin-dir mode ─────────────────────────────
+# When cache resolution fails, the preamble falls back to detecting the plugin
+# directory from the process tree (ps axww).
+
+_process_tree_pattern() {
+  printf 'ps axww -o args='
+}
+
+@test "all 6 preamble commands have process-tree fallback" {
+  for cmd in vibe verify discuss help qa skills; do
+    grep -q "$(_process_tree_pattern)" "$PROJECT_ROOT/commands/${cmd}.md" || \
+      { echo "FAIL: ${cmd}.md missing process-tree fallback"; return 1; }
+  done
+}

@@ -20,7 +20,7 @@ set -euo pipefail
 #   - @${CLAUDE_PLUGIN_ROOT}/...         (file inclusion at load time)
 #   - Plugin root: ...                   (preamble resolve+write line)
 #   - Runtime resolver guard line in execute-protocol.md:
-#       if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "${CLAUDE_PLUGIN_ROOT}" ]
+#       if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]
 #       VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"
 #
 # Unsafe (must not exist):
@@ -67,7 +67,7 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md; do
     | grep -v '!`[^`]*CLAUDE_PLUGIN_ROOT' \
     | grep -v '@${CLAUDE_PLUGIN_ROOT}' \
     | grep -v 'Plugin root:' \
-    | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -d "${CLAUDE_PLUGIN_ROOT}" \]' \
+    | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -[df] "${CLAUDE_PLUGIN_ROOT}' \
     | grep -v 'VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"' \
     | grep -v 'checked CLAUDE_PLUGIN_ROOT' \
     | grep -vc '`!`echo .*CLAUDE_PLUGIN_ROOT' || true)
@@ -81,7 +81,7 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md; do
       | grep -v '!`[^`]*CLAUDE_PLUGIN_ROOT' \
       | grep -v '@${CLAUDE_PLUGIN_ROOT}' \
       | grep -v 'Plugin root:' \
-      | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -d "${CLAUDE_PLUGIN_ROOT}" \]' \
+      | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -[df] "${CLAUDE_PLUGIN_ROOT}' \
       | grep -v 'VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"' \
       | grep -v 'checked CLAUDE_PLUGIN_ROOT' \
       | grep -v '`!`echo .*CLAUDE_PLUGIN_ROOT' \
@@ -223,12 +223,11 @@ fi
 
 # Check 7: execute-protocol.md resolver policy checks
 for needle in \
-  'if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "${CLAUDE_PLUGIN_ROOT}" ]; then' \
-  'elif [ -d "${VBW_CACHE_ROOT}/local" ]; then' \
+  'if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then' \
+  '[ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]' \
   "grep -E '^[0-9]+(\\.[0-9]+)*$'" \
   'sort -t. -k1,1n -k2,2n -k3,3n' \
-  'FALLBACK_DIR=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '\''{print $NF}'\'' | sort | tail -1)' \
-  'if [ -z "$VBW_PLUGIN_ROOT" ] || [ ! -d "$VBW_PLUGIN_ROOT" ]; then' \
+  'FALLBACK_DIR=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '\''{print $NF}'\'' | sort | tail -1)' \  'ps axww -o args=' \  'if [ -z "$VBW_PLUGIN_ROOT" ] || [ ! -d "$VBW_PLUGIN_ROOT" ]; then' \
   'exit 1'
 do
   if grep -Fq "$needle" "$EXECUTE_PROTOCOL"; then

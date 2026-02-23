@@ -10,22 +10,28 @@ Resolve and validate `VBW_PLUGIN_ROOT` once before running script commands below
 VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"
 VBW_PLUGIN_ROOT=""
 
-if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "${CLAUDE_PLUGIN_ROOT}" ]; then
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then
   VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"
-elif [ -d "${VBW_CACHE_ROOT}/local" ]; then
+fi
+if [ -z "$VBW_PLUGIN_ROOT" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then
   VBW_PLUGIN_ROOT="${VBW_CACHE_ROOT}/local"
-else
+fi
+if [ -z "$VBW_PLUGIN_ROOT" ]; then
   VERSION_DIR=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
-  if [ -n "$VERSION_DIR" ]; then
+  if [ -n "$VERSION_DIR" ] && [ -f "${VBW_CACHE_ROOT}/${VERSION_DIR}/scripts/hook-wrapper.sh" ]; then
     VBW_PLUGIN_ROOT="${VBW_CACHE_ROOT}/${VERSION_DIR}"
   else
     FALLBACK_DIR=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1)
-    [ -n "$FALLBACK_DIR" ] && VBW_PLUGIN_ROOT="${VBW_CACHE_ROOT}/${FALLBACK_DIR}"
+    [ -n "$FALLBACK_DIR" ] && [ -f "${VBW_CACHE_ROOT}/${FALLBACK_DIR}/scripts/hook-wrapper.sh" ] && VBW_PLUGIN_ROOT="${VBW_CACHE_ROOT}/${FALLBACK_DIR}"
   fi
+fi
+if [ -z "$VBW_PLUGIN_ROOT" ]; then
+  PLUGIN_DIR_PATH=$(ps axww -o args= 2>/dev/null | grep -v grep | sed -n 's/.*--plugin-dir  *\([^ ]*\).*/\1/p' | head -1)
+  [ -n "$PLUGIN_DIR_PATH" ] && [ -f "$PLUGIN_DIR_PATH/scripts/hook-wrapper.sh" ] && VBW_PLUGIN_ROOT="$PLUGIN_DIR_PATH"
 fi
 
 if [ -z "$VBW_PLUGIN_ROOT" ] || [ ! -d "$VBW_PLUGIN_ROOT" ]; then
-  echo "VBW: plugin root resolution failed (checked CLAUDE_PLUGIN_ROOT, cache local/, versioned dirs)." >&2
+  echo "VBW: plugin root resolution failed (checked CLAUDE_PLUGIN_ROOT, cache local/, versioned dirs, process tree)." >&2
   exit 1
 fi
 ```
