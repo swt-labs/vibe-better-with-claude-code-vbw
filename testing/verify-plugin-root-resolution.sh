@@ -227,7 +227,7 @@ for needle in \
   '[ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]' \
   "grep -E '^[0-9]+(\\.[0-9]+)*$'" \
   'sort -t. -k1,1n -k2,2n -k3,3n' \
-  'FALLBACK_DIR=$(ls -1d "${VBW_CACHE_ROOT}"/* 2>/dev/null | awk -F/ '\''{print $NF}'\'' | sort | tail -1)' \
+  'FALLBACK_DIR=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '\''{print $NF}'\'' | sort | tail -1)' \
   'ps axww -o args=' \
   'if [ -z "$VBW_PLUGIN_ROOT" ] || [ ! -d "$VBW_PLUGIN_ROOT" ]; then' \
   'exit 1'
