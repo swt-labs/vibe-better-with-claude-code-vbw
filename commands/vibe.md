@@ -186,7 +186,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
   Script handles: new file generation (heading + core value + VBW sections), existing file preservation (replaces only VBW-managed sections: Active Context, VBW Rules, Installed Skills, Project Conventions, Commands, Plugin Isolation; preserves all other content). Omit the fourth argument if no existing CLAUDE.md. Max 200 lines.
 - **B7: Planning commit boundary (conditional)** -- Run:
    ```bash
-  PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"
+  PG_SCRIPT="`!`SESSION_BASE="${CLAUDE_SESSION_ID:-}"; [ -z "$SESSION_BASE" ] && SESSION_BASE=$(pwd); echo /tmp/.vbw-plugin-root-link-$(printf '%s' "$SESSION_BASE" | shasum | awk '{print $1}' | cut -c1-16)`/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
      bash "$PG_SCRIPT" commit-boundary "bootstrap project files" .vbw-planning/config.json
    else
@@ -376,7 +376,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    ```
 9. **Planning commit boundary (conditional):**
    ```bash
-  PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"
+  PG_SCRIPT="`!`SESSION_BASE="${CLAUDE_SESSION_ID:-}"; [ -z "$SESSION_BASE" ] && SESSION_BASE=$(pwd); echo /tmp/.vbw-plugin-root-link-$(printf '%s' "$SESSION_BASE" | shasum | awk '{print $1}' | cut -c1-16)`/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
      bash "$PG_SCRIPT" commit-boundary "plan phase {N}" .vbw-planning/config.json
    else
@@ -517,7 +517,7 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
    This extracts project-level sections (Todos, Decisions, Skills, Blockers, Codebase Profile) from the archived STATE.md and writes a fresh root STATE.md. Milestone-specific sections (Current Phase, Activity Log, Phase Status) stay in the archive only. Fail-open: if the script fails, warn but continue.
 6. Planning commit boundary (conditional):
    ```bash
-  PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"
+  PG_SCRIPT="`!`SESSION_BASE="${CLAUDE_SESSION_ID:-}"; [ -z "$SESSION_BASE" ] && SESSION_BASE=$(pwd); echo /tmp/.vbw-plugin-root-link-$(printf '%s' "$SESSION_BASE" | shasum | awk '{print $1}' | cut -c1-16)`/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
      bash "$PG_SCRIPT" commit-boundary "archive milestone {SLUG}" .vbw-planning/config.json
    else
