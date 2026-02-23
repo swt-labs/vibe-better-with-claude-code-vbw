@@ -75,6 +75,12 @@ TARGET=$(ls -1 "$CACHE"/*/scripts/"$SCRIPT" 2>/dev/null \
 if [ -z "$TARGET" ] || [ ! -f "$TARGET" ]; then
   TARGET="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/$SCRIPT}"
 fi
+
+# Fallback: sibling script — if we're running, the target is next to us
+if [ -z "$TARGET" ] || [ ! -f "$TARGET" ]; then
+  _SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+  [ -f "$_SELF_DIR/$SCRIPT" ] && TARGET="$_SELF_DIR/$SCRIPT"
+fi
 [ -z "$TARGET" ] || [ ! -f "$TARGET" ] && exit 0
 
 [ "$VBW_DEBUG" = "1" ] && echo "[VBW DEBUG] hook-wrapper: $SCRIPT → $TARGET" >&2

@@ -8,7 +8,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" validate-summary.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" validate-summary.sh; exit 0'",
             "timeout": 15
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" validate-frontmatter.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" validate-frontmatter.sh; exit 0'",
             "timeout": 5
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" validate-commit.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" validate-commit.sh; exit 0'",
             "timeout": 10
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" skill-hook-dispatch.sh PostToolUse; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" skill-hook-dispatch.sh PostToolUse; exit 0'",
             "timeout": 10
           }
         ]
@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" state-updater.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" state-updater.sh; exit 0'",
             "timeout": 5
           }
         ]
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" bash-guard.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" bash-guard.sh; exit 0'",
             "timeout": 5
           }
         ]
@@ -70,7 +70,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" security-filter.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" security-filter.sh; exit 0'",
             "timeout": 5
           }
         ]
@@ -80,7 +80,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" skill-hook-dispatch.sh PreToolUse; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" skill-hook-dispatch.sh PreToolUse; exit 0'",
             "timeout": 10
           }
         ]
@@ -90,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" file-guard.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" file-guard.sh; exit 0'",
             "timeout": 5
           }
         ]
@@ -102,12 +102,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" agent-start.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" agent-start.sh; exit 0'",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" agent-health.sh start; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" agent-health.sh start; exit 0'",
             "timeout": 3
           }
         ]
@@ -119,7 +119,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" validate-summary.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" validate-summary.sh; exit 0'",
             "timeout": 15
           }
         ]
@@ -129,12 +129,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" agent-stop.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" agent-stop.sh; exit 0'",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" agent-health.sh stop; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" agent-health.sh stop; exit 0'",
             "timeout": 3
           }
         ]
@@ -146,12 +146,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" qa-gate.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" qa-gate.sh; exit 0'",
             "timeout": 30
           },
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" agent-health.sh idle; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" agent-health.sh idle; exit 0'",
             "timeout": 5
           }
         ]
@@ -163,12 +163,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" task-verify.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" task-verify.sh; exit 0'",
             "timeout": 15
           },
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" blocker-notify.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" blocker-notify.sh; exit 0'",
             "timeout": 5
           }
         ]
@@ -179,7 +179,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" session-start.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" session-start.sh; exit 0'",
             "timeout": 10
           }
         ]
@@ -188,7 +188,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" map-staleness.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" map-staleness.sh; exit 0'",
             "timeout": 5
           }
         ]
@@ -198,7 +198,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" post-compact.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" post-compact.sh; exit 0'",
             "timeout": 5
           }
         ]
@@ -209,7 +209,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" compaction-instructions.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" compaction-instructions.sh; exit 0'",
             "timeout": 10
           }
         ]
@@ -220,12 +220,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" session-stop.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" session-stop.sh; exit 0'",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" agent-health.sh cleanup; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" agent-health.sh cleanup; exit 0'",
             "timeout": 3
           }
         ]
@@ -236,7 +236,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" prompt-preflight.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" prompt-preflight.sh; exit 0'",
             "timeout": 3
           }
         ]
@@ -247,7 +247,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ -f \"$w\" ] && exec bash \"$w\" notification-log.sh; exit 0'",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" notification-log.sh; exit 0'",
             "timeout": 3
           }
         ]
