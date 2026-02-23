@@ -123,11 +123,12 @@ Map the AskUserQuestion response:
 
 **"Pass" selected:** Record as passed. **However**, if the user's response also mentions a separate bug/issue (e.g., "Pass, but I noticed X is broken"), record the test as passed AND capture the separate observation as a discovered issue (see Step 6a).
 
-**"Skip" selected:** Record as skipped.
+**"Skip" selected:** Record as skipped. **However**, if the user's response also mentions a separate bug/issue (e.g., "Skip, but the sidebar is broken"), record the test as skipped AND capture the observation as a discovered issue (see Step 6a).
 
-**Freeform text (via "Other"):** Apply case-insensitive, trimmed matching in this order:
-- **Skip words:** skip, skipped, next, n/a, na, later, defer → record as skipped
-- **Pass-intent with observation:** If the text starts with or contains a pass-intent word (pass, passed, looks good, works, correct, confirmed, yes, good, fine, ok) AND also contains additional text describing a bug, issue, or observation after a separator (but, however, also, although, though, comma, semicolon, period, dash), then: record the test as **passed** AND capture the observation text as a discovered issue (see Step 6a). Example: "pass, but I noticed the stats section still shows for positions with no covered calls" → test passes, discovered issue created.
+**Freeform text (via "Other"):** Apply case-insensitive, trimmed matching in this order. Match pass/skip-intent as **whole words only** (e.g., "pass" matches but "passport" does not; "works" matches but "worksmanship" does not):
+- **Skip-intent with observation:** If the text starts with or contains a skip-intent word (skip, skipped, next, n/a, na, later, defer) as a whole word AND also contains additional text describing a bug, issue, or observation after a separator (but, however, also, although, though, comma, semicolon, period, dash), then: record the test as **skipped** AND capture the observation text as a discovered issue (see Step 6a). Example: "skip, but the sidebar is completely broken" → test skipped, discovered issue created.
+- **Skip-intent only:** If the text is just a skip-intent word with no issue observation → record as skipped.
+- **Pass-intent with observation:** If the text starts with or contains a pass-intent word (pass, passed, looks good, works, correct, confirmed, yes, good, fine, ok) as a whole word AND also contains additional text describing a bug, issue, or observation after a separator (but, however, also, although, though, comma, semicolon, period, dash), then: record the test as **passed** AND capture the observation text as a discovered issue (see Step 6a). Example: "pass, but I noticed the stats section still shows for positions with no covered calls" → test passes, discovered issue created.
 - **Pass-intent only:** If the text is just a pass-intent word with no issue observation → record as passed.
 - **Anything else:** treat the entire response text as an issue description (go to Step 6).
 
@@ -153,7 +154,7 @@ Issue recorded (severity: {level}). Final next-step routing shown at UAT summary
 
 When a user passes or skips a test but also mentions a separate bug, issue, or observation unrelated to the test's expected behavior, capture it as a **discovered issue**.
 
-Assign a discovered-issue ID: `D{N}` (D01, D02, ...) — sequential across the UAT session.
+Assign a discovered-issue ID: `D{N}` (D01, D02, ...) — sequential across the UAT session. **On resumed sessions:** scan existing `D{N}` entries in the UAT.md to find the highest existing number, then continue from max+1 (e.g., if D01 and D02 exist, the next discovered issue is D03).
 
 Infer severity using the same keyword table from Step 6. Infer category from context:
 - If the user identifies a specific view/screen/component: use that as the description prefix

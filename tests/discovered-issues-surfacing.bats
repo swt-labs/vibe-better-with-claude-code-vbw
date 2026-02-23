@@ -575,8 +575,28 @@ load test_helper
   grep -qi 'pass-intent.*observation\|pass-intent with observation' "$PROJECT_ROOT/commands/verify.md"
 }
 
-@test "verify command freeform lists pass-intent words" {
-  grep -qi 'pass, passed, looks good, works' "$PROJECT_ROOT/commands/verify.md"
+@test "verify command freeform lists all pass-intent words" {
+  # Validate every pass-intent word is listed
+  for word in pass passed 'looks good' works correct confirmed yes good fine ok; do
+    grep -qi "$word" "$PROJECT_ROOT/commands/verify.md" || { echo "Missing pass-intent word: $word"; return 1; }
+  done
+}
+
+@test "verify command freeform handles skip-intent with observation" {
+  grep -qi 'skip-intent.*observation\|skip-intent with observation' "$PROJECT_ROOT/commands/verify.md"
+}
+
+@test "verify command freeform specifies whole-word matching" {
+  grep -qi 'whole word' "$PROJECT_ROOT/commands/verify.md"
+}
+
+@test "verify command skip button-selected captures observations" {
+  # Step 5 skip path should mention discovered issue / Step 6a
+  sed -n '/\*\*"Skip" selected:\*\*/,/\*\*Freeform/p' "$PROJECT_ROOT/commands/verify.md" | grep -qi 'discovered issue\|Step 6a\|observation'
+}
+
+@test "verify command D{N} resume scans existing entries" {
+  grep -qi 'scan existing.*D{N}\|highest existing number\|max+1' "$PROJECT_ROOT/commands/verify.md"
 }
 
 @test "dev agent DEVN-05 has priority rule for overlapping uncertainty" {
