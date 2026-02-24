@@ -499,7 +499,9 @@ case "$CMD" in
            { { [ "$has_uat" = false ] && [ "$active_phase_plans" -gt 0 ] && { [ "$cfg_auto_uat" = true ] || [ "$cfg_autonomy" = "cautious" ] || [ "$cfg_autonomy" = "standard" ]; }; } \
              || { [ "$cfg_auto_uat" = true ] && [ "$has_unverified_phases" = true ]; }; }; then
           if [ -n "$first_unverified_phase" ]; then
-            suggest "/vbw:verify $first_unverified_phase -- Walk through changes before continuing"
+            _uv_label="$first_unverified_phase"
+            [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
+            suggest "/vbw:verify $first_unverified_phase -- Walk through $_uv_label changes before continuing"
           else
             suggest "/vbw:verify -- Walk through changes before continuing"
           fi
@@ -580,7 +582,9 @@ case "$CMD" in
            { { [ "$has_uat" = false ] && [ "$active_phase_plans" -gt 0 ] && { [ "$cfg_auto_uat" = true ] || [ "$cfg_autonomy" = "cautious" ] || [ "$cfg_autonomy" = "standard" ]; }; } \
              || { [ "$cfg_auto_uat" = true ] && [ "$has_unverified_phases" = true ]; }; }; then
           if [ -n "$first_unverified_phase" ]; then
-            suggest "/vbw:verify $first_unverified_phase -- Walk through changes manually"
+            _uv_label="$first_unverified_phase"
+            [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
+            suggest "/vbw:verify $first_unverified_phase -- Walk through $_uv_label changes manually"
           else
             suggest "/vbw:verify -- Walk through changes manually"
           fi
@@ -724,7 +728,9 @@ case "$CMD" in
       fi
     elif [ "$cfg_auto_uat" = true ] && [ "$has_unverified_phases" = true ]; then
       if [ -n "$first_unverified_phase" ]; then
-        suggest "/vbw:verify $first_unverified_phase -- Verify completed phases before continuing"
+        _uv_label="$first_unverified_phase"
+        [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
+        suggest "/vbw:verify $first_unverified_phase -- Verify $_uv_label before continuing"
       else
         suggest "/vbw:verify -- Verify completed phases before continuing"
       fi
@@ -786,7 +792,9 @@ case "$CMD" in
       fi
     elif [ "$cfg_auto_uat" = true ] && [ "$has_unverified_phases" = true ]; then
       if [ -n "$first_unverified_phase" ]; then
-        suggest "/vbw:verify $first_unverified_phase -- Verify completed phases before continuing"
+        _uv_label="$first_unverified_phase"
+        [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
+        suggest "/vbw:verify $first_unverified_phase -- Verify $_uv_label before continuing"
       else
         suggest "/vbw:verify -- Verify completed phases before continuing"
       fi
