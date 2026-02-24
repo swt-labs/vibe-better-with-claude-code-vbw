@@ -186,3 +186,77 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"has_unverified_phases=true"* ]]
 }
+
+# --- Mid-milestone auto_uat tests (issue #148) ---
+
+@test "phase-detect has_unverified_phases=true mid-milestone when completed phase lacks UAT" {
+  cd "$TEST_TEMP_DIR"
+  # Phase 01 is fully built (from setup) with no UAT
+  # Phase 02 still needs work (unplanned)
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Phase state is NOT all_done (phase 02 needs work)
+  [[ "$output" == *"next_phase_state=needs_plan_and_execute"* ]]
+  # But unverified phases should still be detected
+  [[ "$output" == *"has_unverified_phases=true"* ]]
+}
+
+@test "phase-detect has_unverified_phases=false mid-milestone when completed phase has UAT" {
+  cd "$TEST_TEMP_DIR"
+  # Phase 01 is fully built with UAT
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: passed\n---\nAll good.\n' > "$dir/01-UAT.md"
+  # Phase 02 still needs work
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"next_phase_state=needs_plan_and_execute"* ]]
+  [[ "$output" == *"has_unverified_phases=false"* ]]
+}
+
+@test "phase-detect skips partially-built phase in unverified scan" {
+  cd "$TEST_TEMP_DIR"
+  # Phase 01 has 2 plans but only 1 summary (partially built)
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nplan: 01-02\ntitle: More Setup\n---\n' > "$dir/01-02-PLAN.md"
+  # 01-01 has a SUMMARY from setup(), 01-02 does not
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Phase 01 is partially built, should NOT be flagged as unverified
+  [[ "$output" == *"has_unverified_phases=false"* ]]
+}
+
+@test "suggest-next execute with auto_uat=true mid-milestone suppresses continue" {
+  cd "$TEST_TEMP_DIR"
+  # Phase 01 completed with no UAT, Phase 02 needs work
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
+
+  [ "$status" -eq 0 ]
+  # Should suggest verify
+  [[ "$output" == *"/vbw:verify"* ]]
+  # Should NOT suggest continuing to next phase when auto_uat wants verify first
+  [[ "$output" != *"Continue to"* ]]
+  [[ "$output" != *"next phase"* ]]
+}
+
+@test "suggest-next execute with auto_uat=false mid-milestone suggests both verify and continue" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.auto_uat = false' "$TEST_TEMP_DIR/.vbw-planning/config.json" > "$tmp" && mv "$tmp" "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  # Phase 01 completed with no UAT, Phase 02 needs work
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
+
+  [ "$status" -eq 0 ]
+  # Should suggest both verify AND continue (auto_uat is off, user chooses)
+  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe"* ]]
+}

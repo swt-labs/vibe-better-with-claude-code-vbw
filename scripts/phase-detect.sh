@@ -378,19 +378,19 @@ if [ -d "$PHASES_DIR" ]; then
 fi
 
 # --- Unverified phases detection (for auto_uat routing) ---
-# A phase is "unverified" if it has at least one SUMMARY.md but no UAT.md
-# (excluding SOURCE-UAT.md which are verbatim copies from milestone remediation).
+# A phase is "unverified" if it is fully built (summaries >= plans, plans > 0)
+# but has no UAT.md (excluding SOURCE-UAT.md which are verbatim copies from
+# milestone remediation). Scan runs regardless of NEXT_PHASE_STATE so auto_uat
+# can trigger mid-milestone (not only at all_done).
 HAS_UNVERIFIED_PHASES=false
-if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ ${#PHASE_DIRS[@]} -gt 0 ]; then
+if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   for _uv_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
     [ -d "$_uv_dir" ] || continue
-    _uv_has_summary=false
-    for _uv_s in "$_uv_dir"[0-9]*-SUMMARY.md; do
-      [ -f "$_uv_s" ] || continue
-      _uv_has_summary=true
-      break
-    done
-    [ "$_uv_has_summary" = true ] || continue
+    # Count plans and summaries to confirm phase is fully built
+    _uv_plans=$(find "$_uv_dir" -maxdepth 1 -name '[0-9]*-PLAN.md' ! -name '.*' 2>/dev/null | wc -l | tr -d ' ')
+    [ "$_uv_plans" -gt 0 ] || continue
+    _uv_sums=$(find "$_uv_dir" -maxdepth 1 -name '[0-9]*-SUMMARY.md' ! -name '.*' 2>/dev/null | wc -l | tr -d ' ')
+    [ "$_uv_sums" -ge "$_uv_plans" ] || continue
     _uv_uat=$(latest_non_source_uat "$_uv_dir")
     if [ -z "$_uv_uat" ]; then
       HAS_UNVERIFIED_PHASES=true

@@ -70,6 +70,7 @@ cfg_require_phase_discussion=false
 next_undiscussed=""
 next_preseeded=""
 cfg_auto_uat=false
+has_unverified_phases=false
 
 read_status_field() {
   local file="$1"
@@ -128,6 +129,10 @@ if [ -d "$PLANNING_DIR" ]; then
 
     _pd_require_discuss=$(echo "$_pd_out" | grep -m1 '^config_require_phase_discussion=' | sed 's/^[^=]*=//' || true)
     [ -n "${_pd_require_discuss:-}" ] && cfg_require_phase_discussion="$_pd_require_discuss"
+
+    # Unverified phases (for mid-milestone auto_uat suppression)
+    _pd_has_unverified=$(echo "$_pd_out" | grep -m1 '^has_unverified_phases=' | sed 's/^[^=]*=//' || true)
+    [ "${_pd_has_unverified:-}" = "true" ] && has_unverified_phases=true
 
     # Current-phase UAT issues (distinct from archived milestone UAT)
     _pd_uat_phase=$(echo "$_pd_out" | grep -m1 '^uat_issues_phase=' | sed 's/^[^=]*=//' || true)
@@ -475,7 +480,7 @@ case "$CMD" in
           else
             suggest "/vbw:fix -- Fix minor UAT issues in $current_uat_issues_label"
           fi
-        elif [ -n "$next_unbuilt" ] || [ -n "$next_unplanned" ]; then
+        elif { [ -n "$next_unbuilt" ] || [ -n "$next_unplanned" ]; } && ! { [ "$cfg_auto_uat" = true ] && [ "$has_unverified_phases" = true ]; }; then
           target="${next_unbuilt:-$next_unplanned}"
           # If next phase needs discussion, suggest discuss (suppress continue)
           if [ -n "$next_undiscussed" ] && [ "$next_undiscussed" = "$target" ]; then
