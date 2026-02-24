@@ -564,3 +564,201 @@ EOF
   # Should parse deviations correctly despite CRLF (AWK gsub strips trailing whitespace)
   [[ "$output" == *"2 deviation(s)"* ]]
 }
+
+# --- Remediation re-verification lifecycle tests ---
+
+@test "phase-detect outputs needs_reverification when remediation stage=done" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  # UAT with issues_found triggers remediation path
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+  # Remediation is complete
+  printf 'done' > "$dir/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"next_phase_state=needs_reverification"* ]]
+}
+
+@test "phase-detect outputs needs_uat_remediation when stage != done" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+  # Remediation in progress
+  printf 'execute' > "$dir/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"next_phase_state=needs_uat_remediation"* ]]
+}
+
+@test "phase-detect outputs needs_uat_remediation when no stage file" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+  # No .uat-remediation-stage file
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"next_phase_state=needs_uat_remediation"* ]]
+}
+
+@test "phase-detect outputs first_unverified_phase and slug" {
+  cd "$TEST_TEMP_DIR"
+  # Phase 01 from setup() has SUMMARY but no UAT → unverified
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"first_unverified_phase=01"* ]]
+  [[ "$output" == *"first_unverified_slug=01-setup"* ]]
+}
+
+@test "phase-detect first_unverified_phase skips verified phases" {
+  cd "$TEST_TEMP_DIR"
+  # Phase 01 verified
+  local dir1="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: passed\n---\nAll good.\n' > "$dir1/01-UAT.md"
+  # Phase 02 fully built but unverified
+  local dir2="$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+  mkdir -p "$dir2"
+  printf -- '---\nphase: 02\nplan: 02-01\ntitle: Polish\n---\n' > "$dir2/02-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\nDone.\n' > "$dir2/02-01-SUMMARY.md"
+  printf -- '---\nphase: 02\nresult: pass\n---\nOK.\n' > "$dir2/02-VERIFICATION.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"first_unverified_phase=02"* ]]
+  [[ "$output" == *"first_unverified_slug=02-polish"* ]]
+}
+
+@test "phase-detect first_unverified_phase empty when all verified" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: passed\n---\nAll good.\n' > "$dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"first_unverified_phase="* ]]
+  # Should NOT have a value
+  local fup
+  fup=$(echo "$output" | grep '^first_unverified_phase=' | head -1 | cut -d= -f2)
+  [ -z "$fup" ]
+}
+
+# --- prepare-reverification.sh tests ---
+
+@test "prepare-reverification archives UAT to round file" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\nIssues.\n' > "$dir/01-UAT.md"
+  printf 'done' > "$dir/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$dir"
+  [ "$status" -eq 0 ]
+  # Original UAT should be gone
+  [ ! -f "$dir/01-UAT.md" ]
+  # Round file should exist
+  [ -f "$dir/01-UAT-round-01.md" ]
+  # Remediation stage should be removed
+  [ ! -f "$dir/.uat-remediation-stage" ]
+  # Output should confirm
+  [[ "$output" == *"archived=01-UAT.md"* ]]
+  [[ "$output" == *"round_file=01-UAT-round-01.md"* ]]
+  [[ "$output" == *"phase=01"* ]]
+}
+
+@test "prepare-reverification increments round number" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\nIssues.\n' > "$dir/01-UAT.md"
+  printf 'done' > "$dir/.uat-remediation-stage"
+  # Pre-existing round files
+  printf 'round 1\n' > "$dir/01-UAT-round-01.md"
+  printf 'round 2\n' > "$dir/01-UAT-round-02.md"
+
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$dir"
+  [ "$status" -eq 0 ]
+  [ -f "$dir/01-UAT-round-03.md" ]
+  [[ "$output" == *"round_file=01-UAT-round-03.md"* ]]
+}
+
+@test "prepare-reverification fails when no UAT exists" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  # Remove any UAT files (setup doesn't create one, but be explicit)
+  rm -f "$dir"/[0-9]*-UAT.md
+
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$dir"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"no UAT.md found"* ]]
+}
+
+@test "prepare-reverification fails when UAT status is not issues_found" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: passed\n---\nAll good.\n' > "$dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$dir"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"not 'issues_found'"* ]]
+}
+
+@test "prepare-reverification fails when phase dir does not exist" {
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "/nonexistent/path"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"does not exist"* ]]
+}
+
+# --- suggest-next needs_reverification routing tests ---
+
+@test "suggest-next execute suggests re-verify when needs_reverification" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+  printf 'done' > "$dir/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
+
+  [ "$status" -eq 0 ]
+  # Should suggest re-verification
+  [[ "$output" == *"Re-verify"* ]] || [[ "$output" == *"re-verify"* ]] || [[ "$output" == *"/vbw:verify"* ]]
+}
+
+@test "suggest-next qa pass suggests re-verify when needs_reverification" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+  printf 'done' > "$dir/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Re-verify"* ]] || [[ "$output" == *"re-verify"* ]] || [[ "$output" == *"/vbw:verify"* ]]
+}
+
+@test "suggest-next verify suggestions include phase number when first_unverified_phase set" {
+  cd "$TEST_TEMP_DIR"
+  # Phase 01 unverified (from setup), phase 02 needs work
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
+
+  [ "$status" -eq 0 ]
+  # Should include phase number in verify suggestion
+  [[ "$output" == *"/vbw:verify"* ]]
+  # The phase number 01 should appear near the verify suggestion
+  [[ "$output" == *"01"* ]]
+}
+
+# --- verify.md auto-detect fallback regression ---
+
+@test "phase-detect auto-detect still works without reverification state" {
+  cd "$TEST_TEMP_DIR"
+  # Plain setup: phase 01 built, no UAT, no remediation
+  # first_unverified_phase should be populated from scan
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"first_unverified_phase=01"* ]]
+  [[ "$output" == *"has_unverified_phases=true"* ]]
+  # No reverification state
+  [[ "$output" != *"needs_reverification"* ]]
+}
