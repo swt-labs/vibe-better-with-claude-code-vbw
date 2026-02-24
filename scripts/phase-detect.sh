@@ -17,15 +17,15 @@ list_child_dirs_sorted() {
 extract_status_value() {
   local file="$1"
   awk '
-    {
-      line = $0
-      if (tolower(line) ~ /^[[:space:]]*status[[:space:]]*:/) {
-        value = line
-        sub(/^[^:]*:[[:space:]]*/, "", value)
-        gsub(/[[:space:]]+$/, "", value)
-        print tolower(value)
-        exit
-      }
+    BEGIN { in_fm = 0 }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && tolower($0) ~ /^[[:space:]]*status[[:space:]]*:/ {
+      value = $0
+      sub(/^[^:]*:[[:space:]]*/, "", value)
+      gsub(/[[:space:]]+$/, "", value)
+      print tolower(value)
+      exit
     }
   ' "$file" 2>/dev/null || true
 }

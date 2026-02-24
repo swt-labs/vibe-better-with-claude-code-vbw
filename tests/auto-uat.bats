@@ -365,3 +365,152 @@ EOF
   # Should NOT suggest verify since UAT already exists and passed
   [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
 }
+
+# --- QA round 3: frontmatter-scoped status parsing (finding #1) ---
+
+@test "phase-detect ignores body-only status: passed without frontmatter" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  # UAT file with NO frontmatter — status: passed appears in body only
+  printf 'UAT notes\nstatus: passed\nNo frontmatter above.\n' > "$dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Without frontmatter, status should not be recognized → phase is unverified
+  [[ "$output" == *"has_unverified_phases=true"* ]]
+}
+
+@test "phase-detect reads status from frontmatter correctly" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  # UAT file WITH proper frontmatter
+  printf -- '---\nphase: 01\nstatus: passed\n---\nAll good.\n' > "$dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"has_unverified_phases=false"* ]]
+}
+
+@test "suggest-next ignores body-only status: passed in UAT without frontmatter" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  # UAT file with NO frontmatter — status line in body
+  printf 'UAT notes\nstatus: passed\nNo frontmatter above.\n' > "$dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
+
+  [ "$status" -eq 0 ]
+  # has_uat should be false (no frontmatter status) → verify should be suggested
+  [[ "$output" == *"/vbw:verify"* ]]
+}
+
+# --- QA round 3: cross-phase verify contradiction (finding #2) ---
+
+@test "suggest-next qa pass no verify when prior phase verified and next unplanned" {
+  cd "$TEST_TEMP_DIR"
+  # Phase 01 complete + passed UAT, Phase 02 unplanned
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: passed\n---\nAll good.\n' > "$dir/01-UAT.md"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
+
+  [ "$status" -eq 0 ]
+  # has_unverified_phases=false, active phase is unplanned (plans=0)
+  # Should NOT suggest verify — nothing to verify
+  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  # Should suggest continue to next phase
+  [[ "$output" == *"/vbw:vibe"* ]]
+}
+
+@test "suggest-next execute no verify when prior phase verified and next unplanned" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: passed\n---\nAll good.\n' > "$dir/01-UAT.md"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
+
+  [ "$status" -eq 0 ]
+  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [[ "$output" == *"/vbw:vibe"* ]]
+}
+
+# --- QA round 3: dual suggestion suppression in remediation (finding #3) ---
+
+@test "suggest-next qa pass no verify when issues_found remediation active" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
+
+  [ "$status" -eq 0 ]
+  # Should NOT suggest verify when remediation is active
+  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  # Should suggest remediation
+  [[ "$output" == *"/vbw:vibe"* ]] || [[ "$output" == *"/vbw:fix"* ]]
+}
+
+@test "suggest-next execute no verify when issues_found remediation active" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
+
+  [ "$status" -eq 0 ]
+  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [[ "$output" == *"/vbw:vibe"* ]] || [[ "$output" == *"/vbw:fix"* ]]
+}
+
+# --- QA round 3: status/resume auto-UAT alignment (finding #4) ---
+
+@test "suggest-next status with auto_uat=true suggests verify when unverified phases exist" {
+  cd "$TEST_TEMP_DIR"
+  # Phase 01 completed with no UAT → unverified, Phase 02 needs work
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" status
+
+  [ "$status" -eq 0 ]
+  # Should suggest verify instead of continue
+  [[ "$output" == *"/vbw:verify"* ]]
+  [ "$(grep -cF 'Continue' <<< "$output")" -eq 0 ]
+}
+
+@test "suggest-next resume with auto_uat=true suggests verify when unverified phases exist" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" resume
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:verify"* ]]
+}
+
+@test "suggest-next status with auto_uat=false suggests continue normally" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.auto_uat = false' "$TEST_TEMP_DIR/.vbw-planning/config.json" > "$tmp" && mv "$tmp" "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" status
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:vibe"* ]]
+}
+
+@test "suggest-next resume with auto_uat=false suggests continue normally" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.auto_uat = false' "$TEST_TEMP_DIR/.vbw-planning/config.json" > "$tmp" && mv "$tmp" "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" resume
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:vibe"* ]]
+}

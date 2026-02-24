@@ -75,15 +75,15 @@ has_unverified_phases=false
 read_status_field() {
   local file="$1"
   awk '
-    {
-      line = $0
-      if (tolower(line) ~ /^[[:space:]]*status[[:space:]]*:/) {
-        value = line
-        sub(/^[^:]*:[[:space:]]*/, "", value)
-        gsub(/[[:space:]]+$/, "", value)
-        print tolower(value)
-        exit
-      }
+    BEGIN { in_fm = 0 }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && tolower($0) ~ /^[[:space:]]*status[[:space:]]*:/ {
+      value = $0
+      sub(/^[^:]*:[[:space:]]*/, "", value)
+      gsub(/[[:space:]]+$/, "", value)
+      print tolower(value)
+      exit
     }
   ' "$file" 2>/dev/null || true
 }
@@ -458,10 +458,12 @@ case "$CMD" in
         ;;
       *)
         # Suggest UAT verification when:
-        # 1. Active phase has no UAT AND (auto_uat or cautious/standard autonomy)
+        # 1. Active phase is fully built (plans>0), has no UAT, no known issues, AND (auto_uat or cautious/standard)
         # 2. auto_uat=true AND some completed phase is unverified (cross-phase)
-        if { [ "$has_uat" = false ] && { [ "$cfg_auto_uat" = true ] || [ "$cfg_autonomy" = "cautious" ] || [ "$cfg_autonomy" = "standard" ]; }; } \
-           || { [ "$cfg_auto_uat" = true ] && [ "$has_unverified_phases" = true ]; }; then
+        # Skip when current phase already has UAT issues (remediation takes priority)
+        if [ -z "$current_uat_issues_phase" ] && \
+           { { [ "$has_uat" = false ] && [ "$active_phase_plans" -gt 0 ] && { [ "$cfg_auto_uat" = true ] || [ "$cfg_autonomy" = "cautious" ] || [ "$cfg_autonomy" = "standard" ]; }; } \
+             || { [ "$cfg_auto_uat" = true ] && [ "$has_unverified_phases" = true ]; }; }; then
           suggest "/vbw:verify -- Walk through changes before continuing"
         fi
         if [ "$all_done" = true ]; then
@@ -531,10 +533,12 @@ case "$CMD" in
     case "$effective_result" in
       pass)
         # Suggest UAT verification when:
-        # 1. Active phase has no UAT AND (auto_uat or cautious/standard autonomy)
+        # 1. Active phase is fully built (plans>0), has no UAT, no known issues, AND (auto_uat or cautious/standard)
         # 2. auto_uat=true AND some completed phase is unverified (cross-phase)
-        if { [ "$has_uat" = false ] && { [ "$cfg_auto_uat" = true ] || [ "$cfg_autonomy" = "cautious" ] || [ "$cfg_autonomy" = "standard" ]; }; } \
-           || { [ "$cfg_auto_uat" = true ] && [ "$has_unverified_phases" = true ]; }; then
+        # Skip when current phase already has UAT issues (remediation takes priority)
+        if [ -z "$current_uat_issues_phase" ] && \
+           { { [ "$has_uat" = false ] && [ "$active_phase_plans" -gt 0 ] && { [ "$cfg_auto_uat" = true ] || [ "$cfg_autonomy" = "cautious" ] || [ "$cfg_autonomy" = "standard" ]; }; } \
+             || { [ "$cfg_auto_uat" = true ] && [ "$has_unverified_phases" = true ]; }; }; then
           suggest "/vbw:verify -- Walk through changes manually"
         fi
         if [ "$all_done" = true ]; then
@@ -672,6 +676,8 @@ case "$CMD" in
       else
         suggest "/vbw:fix -- Fix minor UAT issues in $current_uat_issues_label"
       fi
+    elif [ "$cfg_auto_uat" = true ] && [ "$has_unverified_phases" = true ]; then
+      suggest "/vbw:verify -- Verify completed phases before continuing"
     elif [ -n "$next_unbuilt" ] || [ -n "$next_unplanned" ]; then
       target="${next_unbuilt:-$next_unplanned}"
       # If next phase needs discussion, suggest discuss (suppress continue)
@@ -728,6 +734,8 @@ case "$CMD" in
           suggest "/vbw:vibe --archive -- Archive completed work ($deviation_count deviation(s) logged)"
         fi
       fi
+    elif [ "$cfg_auto_uat" = true ] && [ "$has_unverified_phases" = true ]; then
+      suggest "/vbw:verify -- Verify completed phases before continuing"
     elif [ -n "$next_unbuilt" ] || [ -n "$next_unplanned" ]; then
       target="${next_unbuilt:-$next_unplanned}"
       if [ -n "$next_undiscussed" ] && [ "$next_undiscussed" = "$target" ]; then
