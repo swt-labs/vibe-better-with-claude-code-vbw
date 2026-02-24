@@ -258,7 +258,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - If `STAGE=done`: UAT remediation already completed for this phase. Display "Remediation already completed. Run `/vbw:verify --resume` to re-test." STOP.
    - Otherwise: resume at the persisted stage (handles compaction recovery).
 5. **Execute the current stage** based on `STAGE`:
-   - `plan`: Route into Plan mode for the same phase, with UAT issues as required planning inputs (the UAT report serves as the scoping document — no separate discussion needed). After planning completes, advance:
+   - `plan`: Execute **Plan mode steps 1-11 above** for the same phase. The UAT report serves as the scoping document — no separate discussion is needed (CONTEXT.md is already pre-seeded with UAT data by `init`). **Scout context (CRITICAL):** When Plan mode step 3 spawns Scout, include the UAT issue list (IDs, descriptions, severity) in Scout's task prompt so Scout knows what problems to investigate in the codebase. Without this, Scout searches blind. After planning completes, advance:
      ```bash
      bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
