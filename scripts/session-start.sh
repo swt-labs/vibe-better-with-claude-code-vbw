@@ -13,6 +13,24 @@ PLANNING_DIR=".vbw-planning"
 . "$(dirname "$0")/resolve-claude-dir.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# --- Capture session_id from hook stdin JSON ---
+# Claude Code passes a JSON object on stdin to SessionStart hooks containing
+# session_id. Since CLAUDE_SESSION_ID was removed from the env (upstream
+# regression anthropics/claude-code#24371), we extract it here and inject it
+# via CLAUDE_ENV_FILE so command templates get per-session isolation.
+# Stdin is ephemeral — must be consumed before any other read.
+HOOK_INPUT=$(cat 2>/dev/null) || HOOK_INPUT=""
+_VBW_SESSION_ID=""
+if [ -n "$HOOK_INPUT" ]; then
+  _VBW_SESSION_ID=$(printf '%s' "$HOOK_INPUT" | jq -r '.session_id // empty' 2>/dev/null) || _VBW_SESSION_ID=""
+fi
+if [ -n "$_VBW_SESSION_ID" ] && [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+  # Only write if not already present in the env file
+  if ! grep -q "^export CLAUDE_SESSION_ID=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
+    printf 'export CLAUDE_SESSION_ID="%s"\n' "$_VBW_SESSION_ID" >> "$CLAUDE_ENV_FILE"
+  fi
+fi
+
 find_phase_dir_by_num() {
   _planning_dir="$1"
   _phase_num="$2"
