@@ -3,6 +3,9 @@ set -u
 # PostToolUse: Auto-update STATE.md, ROADMAP.md + .execution-state.json on PLAN/SUMMARY writes
 # Non-blocking, fail-open (always exit 0)
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/uat-utils.sh"
+
 planning_root_from_phase_dir() {
   local phase_dir="$1"
   local phases_dir root
@@ -46,36 +49,15 @@ slug_to_name() {
   echo "$1" | sed 's/^[0-9]*-//' | tr '-' ' ' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1'
 }
 
-# Find the latest non-SOURCE UAT file in a phase directory
-latest_non_source_uat() {
-  local dir="$1"
-  local f latest=""
-  case "$dir" in */) ;; *) dir="$dir/" ;; esac
-  for f in "${dir}"[0-9]*-UAT.md; do
-    [ -e "$f" ] || continue
-    case "$f" in *SOURCE-UAT.md) continue ;; esac
-    latest="$f"
-  done
-  [ -n "$latest" ] && printf '%s\n' "$latest"
-  return 0
-}
-
 # Check if a phase has unresolved UAT issues
+# Uses shared extract_status_value() + latest_non_source_uat() from uat-utils.sh
 phase_has_uat_issues() {
   local phase_dir="$1"
-  local uat_file
+  local uat_file status_val
   uat_file=$(latest_non_source_uat "$phase_dir")
   [ -f "$uat_file" ] || return 1
-  awk '
-    { line = $0 }
-    tolower(line) ~ /^[[:space:]]*status[[:space:]]*:/ {
-      value = line
-      sub(/^[^:]*:[[:space:]]*/, "", value)
-      gsub(/[[:space:]]+$/, "", value)
-      if (tolower(value) == "issues_found") exit 0
-      else exit 1
-    }
-  ' "$uat_file" 2>/dev/null
+  status_val=$(extract_status_value "$uat_file")
+  [ "$status_val" = "issues_found" ]
 }
 
 update_roadmap() {

@@ -30,6 +30,7 @@ if [[ ! -d "$MILESTONE_PHASE_DIR" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/uat-utils.sh"
 
 list_child_dirs_sorted() {
   local parent="$1"
@@ -385,7 +386,7 @@ fi
 TARGET_PHASE_DIR="$PHASES_DIR/${NEXT_PHASE_PADDED}-${PHASE_SLUG}"
 mkdir -p "$TARGET_PHASE_DIR"
 
-SOURCE_UAT=$(ls -1 "$MILESTONE_PHASE_DIR"/[0-9]*-UAT.md 2>/dev/null | sort | tail -1 || true)
+SOURCE_UAT=$(latest_non_source_uat "$MILESTONE_PHASE_DIR")
 
 # Extract UAT issues content to inline into CONTEXT.md as pre-seeded discussion
 UAT_CONTENT=""

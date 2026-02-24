@@ -188,7 +188,7 @@ case "$MODE" in
     if [ -n "$PHASE_DIR" ] && [ -d "$PHASE_DIR" ]; then
       VARIABLE_BYTES=$((VARIABLE_BYTES + $(sum_glob "$PHASE_DIR" "*-PLAN.md")))
       VARIABLE_BYTES=$((VARIABLE_BYTES + $(sum_glob "$PHASE_DIR" "*-SUMMARY.md")))
-      VARIABLE_BYTES=$((VARIABLE_BYTES + $(sum_glob "$PHASE_DIR" "*-UAT.md")))
+      VARIABLE_BYTES=$((VARIABLE_BYTES + $(sum_glob "$PHASE_DIR" "*-UAT.md") - $(sum_glob "$PHASE_DIR" "*-SOURCE-UAT.md")))
     fi
     ;;
 

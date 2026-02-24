@@ -381,3 +381,58 @@ EOF
   [[ "$output" != *"integer expression expected"* ]]
   grep -q '^- \*\*Phase 1:\*\* Pending$' .vbw-planning/STATE.md
 }
+
+@test "create-remediation-phase prefers canonical UAT over SOURCE-UAT" {
+  mkdir -p .vbw-planning/phases/01-foundation
+  mkdir -p .vbw-planning/milestones/02-archive/phases/05-api
+
+  # SOURCE-UAT (copy from earlier remediation) — should be skipped
+  cat > .vbw-planning/milestones/02-archive/phases/05-api/05-SOURCE-UAT.md <<'EOF'
+---
+phase: 05
+status: issues_found
+---
+Old stale issues
+EOF
+
+  # Canonical UAT — should be selected
+  cat > .vbw-planning/milestones/02-archive/phases/05-api/05-UAT.md <<'EOF'
+---
+phase: 05
+status: issues_found
+---
+Real issues here
+EOF
+
+  run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
+    .vbw-planning \
+    .vbw-planning/milestones/02-archive/phases/05-api
+
+  [ "$status" -eq 0 ]
+  # SOURCE-UAT copy in target should contain content from canonical UAT, not SOURCE-UAT
+  grep -q 'Real issues here' .vbw-planning/phases/02-*/02-SOURCE-UAT.md
+  ! grep -q 'Old stale issues' .vbw-planning/phases/02-*/02-SOURCE-UAT.md
+}
+
+@test "create-remediation-phase skips SOURCE-UAT-only dir gracefully" {
+  mkdir -p .vbw-planning/phases/01-foundation
+  mkdir -p .vbw-planning/milestones/02-archive/phases/05-api
+
+  # Only a SOURCE-UAT exists — no canonical
+  cat > .vbw-planning/milestones/02-archive/phases/05-api/05-SOURCE-UAT.md <<'EOF'
+---
+phase: 05
+status: issues_found
+---
+Old stale issues
+EOF
+
+  run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
+    .vbw-planning \
+    .vbw-planning/milestones/02-archive/phases/05-api
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q '^source_uat=none$'
+  # CONTEXT.md should note no UAT report found
+  grep -q 'No UAT report found' .vbw-planning/phases/02-*/02-CONTEXT.md
+}

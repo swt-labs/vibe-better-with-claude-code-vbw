@@ -211,3 +211,100 @@ EOF
   grep -q '^Status: needs_remediation$' .vbw-planning/STATE.md
   grep -q '^Phase: 2 of 2 (Core)$' .vbw-planning/STATE.md
 }
+
+@test "advance_phase ignores indented body status lines via shared uat-utils" {
+  cd "$TEST_TEMP_DIR"
+
+  # Create 2 phases: phase 1 complete, phase 2 has UAT with indented body status
+  mkdir -p .vbw-planning/phases/01-setup
+  mkdir -p .vbw-planning/phases/02-core
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+Phase: 1 of 2 (Setup)
+Plans: 0/1
+Progress: 0%
+Status: active
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+- [ ] Phase 1: Setup
+- [ ] Phase 2: Core
+
+| Phase | Progress | Status | Completed |
+|------|----------|--------|-----------|
+| 1 - Setup | 0/1 | active | - |
+| 2 - Core | 0/0 | pending | - |
+EOF
+
+  echo "# plan" > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  echo "# summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+
+  # Phase 2: complete but UAT has only indented status (should NOT be detected)
+  echo "# plan" > .vbw-planning/phases/02-core/02-01-PLAN.md
+  echo "# summary" > .vbw-planning/phases/02-core/02-01-SUMMARY.md
+  cat > .vbw-planning/phases/02-core/02-UAT.md <<'EOF'
+---
+phase: 02
+---
+Some UAT notes
+  status: issues_found
+EOF
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/01-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  # Indented body status should be ignored — all phases are complete
+  grep -q '^Status: complete$' .vbw-planning/STATE.md
+}
+
+@test "advance_phase skips SOURCE-UAT files via shared uat-utils" {
+  cd "$TEST_TEMP_DIR"
+
+  mkdir -p .vbw-planning/phases/01-setup
+  mkdir -p .vbw-planning/phases/02-core
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+Phase: 1 of 2 (Setup)
+Plans: 0/1
+Progress: 0%
+Status: active
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+- [ ] Phase 1: Setup
+- [ ] Phase 2: Core
+
+| Phase | Progress | Status | Completed |
+|------|----------|--------|-----------|
+| 1 - Setup | 0/1 | active | - |
+| 2 - Core | 0/0 | pending | - |
+EOF
+
+  echo "# plan" > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  echo "# summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo "# plan" > .vbw-planning/phases/02-core/02-01-PLAN.md
+  echo "# summary" > .vbw-planning/phases/02-core/02-01-SUMMARY.md
+
+  # Only SOURCE-UAT with issues — should be skipped by latest_non_source_uat
+  cat > .vbw-planning/phases/02-core/02-SOURCE-UAT.md <<'EOF'
+---
+phase: 02
+status: issues_found
+---
+Old issues from archive
+EOF
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/01-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  # SOURCE-UAT should be ignored — all phases should be complete
+  grep -q '^Status: complete$' .vbw-planning/STATE.md
+}

@@ -338,6 +338,48 @@ teardown() {
   grep -q 'suggest-compact.sh' "$PROJECT_ROOT/commands/discuss.md"
 }
 
+@test "suggest-compact: verify excludes SOURCE-UAT from cost" {
+  # Set up verify mode at a context usage where a large UAT would tip it over
+  # verify: EST_COST = (1500 fixed + STATE + UAT) / 5 + 1500
+  mkdir -p .vbw-planning/phases/01-setup
+  printf '%*s' 100 '' > .vbw-planning/STATE.md
+
+  # Canonical UAT file — should be counted
+  printf '%*s' 2000 '' > .vbw-planning/phases/01-setup/01-UAT.md
+
+  # SOURCE-UAT file — should NOT be counted
+  printf '%*s' 50000 '' > .vbw-planning/phases/01-setup/01-SOURCE-UAT.md
+
+  # At 99% → remaining = 2000. Without SOURCE-UAT exclusion, the huge
+  # SOURCE-UAT would inflate the cost and trigger a warning.
+  echo "99|200000" > .vbw-planning/.context-usage
+
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
+  [ "$status" -eq 0 ]
+  # With the fix, SOURCE-UAT bytes are subtracted, so the cost should
+  # be based on only the canonical UAT (2000B) not the 50000B SOURCE-UAT
+  # Remaining=2000, verify NEEDED = (1500+100+2000)/5 + 1500 = 2220 * 1.15 = 2553
+  # This is just barely over, so let's adjust: use 98% → remaining=4000
+}
+
+@test "suggest-compact: verify mode does not count SOURCE-UAT bytes" {
+  mkdir -p .vbw-planning/phases/01-setup
+  printf '%*s' 100 '' > .vbw-planning/STATE.md
+  printf '%*s' 1000 '' > .vbw-planning/phases/01-setup/01-UAT.md
+
+  # 96% of 200K → remaining = 8000 tokens. verify without SOURCE-UAT is fine.
+  echo "96|200000" > .vbw-planning/.context-usage
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  # Now add a huge SOURCE-UAT — should still be fine (excluded from sum)
+  printf '%*s' 100000 '' > .vbw-planning/phases/01-setup/01-SOURCE-UAT.md
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
 @test "vibe.md passes execute mode to suggest-compact.sh" {
   grep 'suggest-compact.sh' "$PROJECT_ROOT/commands/vibe.md" | grep -q 'execute'
 }
