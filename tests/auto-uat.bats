@@ -338,3 +338,30 @@ EOF
   # Should suggest continue (auto_uat off, no suppression)
   [[ "$output" == *"/vbw:vibe"* ]]
 }
+
+# --- QA round 2: has_uat with 'passed' status (finding #6) ---
+
+@test "suggest-next qa pass with auto_uat=true skips verify when UAT has passed status" {
+  cd "$TEST_TEMP_DIR"
+  # Add UAT file with status: passed (not just complete)
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: passed\n---\nAll passed.\n' > "$dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
+
+  [ "$status" -eq 0 ]
+  # Should NOT suggest verify since UAT already exists and passed
+  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+}
+
+@test "suggest-next execute with auto_uat=true skips verify when UAT has passed status" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: passed\n---\nAll passed.\n' > "$dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
+
+  [ "$status" -eq 0 ]
+  # Should NOT suggest verify since UAT already exists and passed
+  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+}

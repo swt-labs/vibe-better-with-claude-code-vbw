@@ -296,7 +296,7 @@ if [ -d "$PLANNING_DIR" ]; then
       for uf in "$active_phase_dir"/*-UAT.md; do
         [ -f "$uf" ] || continue
         us=$(read_status_field "$uf")
-        if [ "$us" = "complete" ]; then
+        if [ "$us" = "complete" ] || [ "$us" = "passed" ]; then
           has_uat=true
         fi
       done

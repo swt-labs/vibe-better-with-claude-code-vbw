@@ -90,7 +90,7 @@ STOP. Do NOT manually scan for project state or improvise routing — incorrect 
 | 4 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
 | 5 | `phase_count=0` | Scope | "Project defined but no phases. Scope the work?" |
 | 6 | `next_phase_state=needs_discussion` | Discuss | "Phase {N} needs discussion before planning. Start discussion?" |
-| 7 | `config_auto_uat=true` AND `has_unverified_phases=true` | Verify | (no confirmation — auto_uat intent, mid-milestone) |
+| 7 | `config_auto_uat=true` AND `has_unverified_phases=true` AND `next_phase_state` != `all_done` | Verify | (no confirmation — auto_uat intent, mid-milestone) |
 | 8 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {N} needs planning and execution. Start?" |
 | 9 | `next_phase_state=needs_execute` | Execute | "Phase {N} is planned. Execute it?" |
 | 10 | `next_phase_state=all_done` AND `config_auto_uat=true` AND `has_unverified_phases=true` | Verify | (no confirmation — auto_uat intent) |
