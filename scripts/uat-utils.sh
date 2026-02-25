@@ -38,14 +38,18 @@ extract_status_value() {
     }
   ' "$file" 2>/dev/null || true)
   # Fallback: scan body for unindented status: line (brownfield/manual UATs)
+  # Only accept known status values to avoid matching prose like "Status: The system works"
   if [ -z "$result" ]; then
     result=$(awk '
       tolower($0) ~ /^status[[:space:]]*:/ {
         value = $0
         sub(/^[^:]*:[[:space:]]*/, "", value)
         gsub(/[[:space:]]+$/, "", value)
-        print tolower(value)
-        exit
+        v = tolower(value)
+        if (v == "issues_found" || v == "complete" || v == "passed" || v == "in_progress" || v == "pending") {
+          print v
+          exit
+        }
       }
     ' "$file" 2>/dev/null || true)
   fi
@@ -55,12 +59,13 @@ extract_status_value() {
 # latest_non_source_uat — Find the latest [0-9]*-UAT.md file in a directory,
 # excluding SOURCE-UAT.md files (verbatim copies from milestone remediation).
 #
-# Relies on glob expansion order: the last match in numeric-prefix order is
-# returned. Returns empty string (and exit 0) if no matching file exists.
+# Compares numeric prefixes to handle both zero-padded (01, 02) and unpadded
+# (1, 2, 10) numbering correctly. Returns empty string (and exit 0) if no
+# matching file exists.
 latest_non_source_uat() {
   local dir="$1"
-  local f
   local latest=""
+  local latest_num=-1
 
   case "$dir" in
     */) ;;
@@ -69,10 +74,16 @@ latest_non_source_uat() {
 
   for f in "${dir}"[0-9]*-UAT.md; do
     [ -f "$f" ] || continue
-    case "$f" in
-      *SOURCE-UAT.md) continue ;;
-    esac
-    latest="$f"
+    case "$f" in *SOURCE-UAT.md) continue ;; esac
+    # Extract numeric prefix from basename (e.g., "01" from "01-UAT.md")
+    local bname num
+    bname=$(basename "$f")
+    num=$(echo "$bname" | sed 's/^\([0-9]*\).*/\1/' | sed 's/^0*//')
+    num=${num:-0}
+    if [ "$num" -gt "$latest_num" ] 2>/dev/null; then
+      latest_num=$num
+      latest="$f"
+    fi
   done
 
   if [ -n "$latest" ]; then

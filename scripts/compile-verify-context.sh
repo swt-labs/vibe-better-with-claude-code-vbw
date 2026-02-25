@@ -38,8 +38,8 @@ while IFS= read -r plan_file; do
   PLAN_COUNT=$((PLAN_COUNT + 1))
 
   # Extract plan number and title from frontmatter
-  PLAN_ID=$(awk '/^---$/{n++; next} n==1 && /^plan:/{print $2; exit}' "$plan_file" 2>/dev/null) || PLAN_ID=""
-  TITLE=$(awk '/^---$/{n++; next} n==1 && /^title:/{sub(/^title: */, ""); print; exit}' "$plan_file" 2>/dev/null) || TITLE=""
+  PLAN_ID=$(awk '/^---$/{n++; next} n==1 && /^plan:/{v=$2; gsub(/^["'"'"']|["'"'"']$/, "", v); print v; exit}' "$plan_file" 2>/dev/null) || PLAN_ID=""
+  TITLE=$(awk '/^---$/{n++; next} n==1 && /^title:/{sub(/^title: */, ""); gsub(/^["'"'"']|["'"'"']$/, ""); print; exit}' "$plan_file" 2>/dev/null) || TITLE=""
 
   # Extract must_haves from frontmatter (reuse pattern from generate-contract.sh)
   MUST_HAVES=$(awk '

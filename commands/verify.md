@@ -40,12 +40,12 @@ Phase state:
 
 Pre-computed verify context (PLAN/SUMMARY aggregation):
 ```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; PD=""; if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; [ -z "$PD" ] && [ -f "$P" ] && PD=$(cat "$P"); SLUG=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2); FU_SLUG=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2); TARGET="${FU_SLUG:-$SLUG}"; PDIR=".vbw-planning/phases/$TARGET"; if [ -n "$TARGET" ] && [ -d "$PDIR" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then bash "$L/scripts/compile-verify-context.sh" "$PDIR" 2>/dev/null || echo "verify_context_error=true"; else echo "verify_context=unavailable"; fi`
+!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; SLUG=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2); FU_SLUG=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2); TARGET="${FU_SLUG:-$SLUG}"; PDIR=".vbw-planning/phases/$TARGET"; if [ -n "$TARGET" ] && [ -d "$PDIR" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then echo "verify_target_slug=$TARGET"; bash "$L/scripts/compile-verify-context.sh" "$PDIR" 2>/dev/null || echo "verify_context_error=true"; else echo "verify_context=unavailable"; fi`
 ```
 
 Pre-computed UAT resume metadata:
 ```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; PD=""; if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; [ -z "$PD" ] && [ -f "$P" ] && PD=$(cat "$P"); SLUG=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2); FU_SLUG=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2); TARGET="${FU_SLUG:-$SLUG}"; PDIR=".vbw-planning/phases/$TARGET"; if [ -n "$TARGET" ] && [ -d "$PDIR" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=error"; else echo "uat_resume=unavailable"; fi`
+!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; SLUG=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2); FU_SLUG=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2); TARGET="${FU_SLUG:-$SLUG}"; PDIR=".vbw-planning/phases/$TARGET"; if [ -n "$TARGET" ] && [ -d "$PDIR" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then echo "uat_resume_target_slug=$TARGET"; bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=error"; else echo "uat_resume=unavailable"; fi`
 ```
 
 ## Guard
@@ -65,6 +65,7 @@ Pre-computed UAT resume metadata:
 - Parse explicit phase number from $ARGUMENTS, or use auto-detected phase
 - Use `.vbw-planning/phases/` for phase directories
 - Use pre-computed verify context from the "Pre-computed verify context" block above — it contains per-plan titles, must_haves, what was built, files modified, and status. Do NOT read individual `*-SUMMARY.md` or `*-PLAN.md` files.
+- **If user specified an explicit phase number** that differs from `verify_target_slug`, ignore the pre-computed context (it was generated for the auto-detected phase). Read PLAN/SUMMARY files from the user-specified phase directory instead.
 
 ### 2. Handle re-verification state
 

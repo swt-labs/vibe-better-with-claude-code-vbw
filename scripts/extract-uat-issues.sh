@@ -85,6 +85,10 @@ awk '
     sub(/^[[:space:]]*- Description:[[:space:]]*/, "", desc)
     gsub(/[[:space:]]+$/, "", desc)
     description = desc
+    if (severity != "") {
+      printf "%s|%s|%s\n", id, severity, description
+      has_issue = 0; description = ""; severity = ""
+    }
     next
   }
   has_issue && /^[[:space:]]*- Severity:/ {
@@ -92,11 +96,10 @@ awk '
     sub(/^[[:space:]]*- Severity:[[:space:]]*/, "", sev)
     gsub(/[[:space:]]+$/, "", sev)
     severity = sev
-    # We have all three fields — emit
-    printf "%s|%s|%s\n", id, severity, description
-    has_issue = 0
-    description = ""
-    severity = ""
+    if (description != "") {
+      printf "%s|%s|%s\n", id, severity, description
+      has_issue = 0; description = ""; severity = ""
+    }
     next
   }
   /^### / {

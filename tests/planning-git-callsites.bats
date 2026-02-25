@@ -12,9 +12,9 @@ load test_helper
   [ "$status" -eq 1 ]
 }
 
-@test "planning-git callsites use deterministic echo path where expected" {
+@test "planning-git callsites use deterministic root path where expected" {
   local count
-  count=$(grep -R -c 'echo /tmp/.vbw-plugin-root-link-.*planning-git' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
+  count=$(grep -R -cE 'echo /tmp/.vbw-plugin-root-link-.*planning-git|PG_SCRIPT="/tmp/.vbw-plugin-root-link-.*planning-git' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
   [[ "$count" =~ ^[0-9]+$ ]]
   [ "$count" -ge 6 ]
 }
@@ -45,9 +45,9 @@ load test_helper
   c=$(grep -c 'PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/init.md")
   [ "$c" -eq 2 ]
 
-  c=$(grep -c 'PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/vibe.md")
+  c=$(grep -c 'PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/vibe.md")
   [ "$c" -eq 3 ]
-  c=$(grep -c 'PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/verify.md")
+  c=$(grep -c 'PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/verify.md")
   [ "$c" -eq 1 ]
   c=$(grep -c 'PG_SCRIPT="${VBW_PLUGIN_ROOT}/scripts/planning-git.sh"' "$PROJECT_ROOT/references/execute-protocol.md")
   [ "$c" -eq 2 ]
@@ -61,7 +61,7 @@ load test_helper
 
 @test "planning-git callsite count is exact" {
   local fallback_count
-  fallback_count=$(grep -R -cE 'PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-\$\{CLAUDE_SESSION_ID:-default\}`/scripts/planning-git.sh"|PG_SCRIPT="\$\{VBW_PLUGIN_ROOT\}/scripts/planning-git.sh"' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
+  fallback_count=$(grep -R -cE 'PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-\$\{CLAUDE_SESSION_ID:-default\}`/scripts/planning-git.sh"|PG_SCRIPT="/tmp/.vbw-plugin-root-link-\$\{CLAUDE_SESSION_ID:-default\}/scripts/planning-git.sh"|PG_SCRIPT="\$\{VBW_PLUGIN_ROOT\}/scripts/planning-git.sh"' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
   [ "$fallback_count" -eq 9 ] || { echo "Unexpected planning-git callsite count: $fallback_count"; false; }
 }
 

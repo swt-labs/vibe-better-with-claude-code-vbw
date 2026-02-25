@@ -32,8 +32,8 @@ update_state_md() {
   [ -f "$state_md" ] || return 0
 
   local plan_count summary_count pct
-  plan_count=$(ls -1 "$phase_dir"/*-PLAN.md 2>/dev/null | wc -l | tr -d ' ')
-  summary_count=$(ls -1 "$phase_dir"/*-SUMMARY.md 2>/dev/null | wc -l | tr -d ' ')
+  plan_count=$(find "$phase_dir" -maxdepth 1 -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+  summary_count=$(find "$phase_dir" -maxdepth 1 -name '[0-9]*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
 
   if [ "$plan_count" -gt 0 ]; then
     pct=$(( (summary_count * 100) / plan_count ))
@@ -76,8 +76,8 @@ update_roadmap() {
   phase_num=$(echo "$dirname" | sed 's/^\([0-9]*\).*/\1/' | sed 's/^0*//')
   [ -z "$phase_num" ] && return 0
 
-  plan_count=$(ls -1 "$phase_dir"/*-PLAN.md 2>/dev/null | wc -l | tr -d ' ')
-  summary_count=$(ls -1 "$phase_dir"/*-SUMMARY.md 2>/dev/null | wc -l | tr -d ' ')
+  plan_count=$(find "$phase_dir" -maxdepth 1 -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+  summary_count=$(find "$phase_dir" -maxdepth 1 -name '[0-9]*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
 
   [ "$plan_count" -eq 0 ] && return 0
 
