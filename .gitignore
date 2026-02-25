@@ -17,7 +17,7 @@ node_modules/
 .env.*.local
 
 # Claude Code local settings
-.claude/settings.local.json
+.claude
 
 # GitHub Copilot instructions
 .github/copilot-instructions.md
