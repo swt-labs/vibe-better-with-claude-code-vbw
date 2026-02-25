@@ -135,14 +135,29 @@ case "$CMD" in
       uat_content=$(cat "$uat_file")
 
       if [ -n "$context_file" ] && [ -f "$context_file" ]; then
-        # Existing CONTEXT.md — check if already pre-seeded (idempotency)
-        if ! awk '
+        # Check if already pre-seeded from a previous remediation turn
+        _already_seeded=false
+        if awk '
           BEGIN { in_fm=0; found=0 }
           NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
           in_fm && /^---[[:space:]]*$/ { exit }
           in_fm && /^pre_seeded[[:space:]]*:[[:space:]]*"?true"?[[:space:]]*$/ { found=1; exit }
           END { exit !found }
         ' "$context_file" 2>/dev/null; then
+          _already_seeded=true
+        fi
+
+        if [ "$_already_seeded" = true ]; then
+          # Already pre-seeded — replace old UAT content with current UAT.
+          # Truncate at "## UAT Remediation Issues" and re-append.
+          awk '/^## UAT Remediation Issues[[:space:]]*$/ { exit } { print }' \
+            "$context_file" > "${context_file}.tmp" && mv "${context_file}.tmp" "$context_file"
+          {
+            echo "## UAT Remediation Issues"
+            echo ""
+            printf '%s\n' "$uat_content"
+          } >> "$context_file"
+        else
           # Not yet pre-seeded — update frontmatter and append UAT content
           if head -1 "$context_file" | grep -q '^---[[:space:]]*$'; then
             # Has frontmatter — insert pre_seeded: true before closing ---

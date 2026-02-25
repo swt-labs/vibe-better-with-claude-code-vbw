@@ -184,9 +184,58 @@ EOF
 
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" init "$PHASE_DIR" "major" >/dev/null
 
-  # Second init should not re-append
+  # Second init with same UAT should not duplicate
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" init "$PHASE_DIR" "major" >/dev/null
 
+  count=$(grep -c "## UAT Remediation Issues" "$PHASE_DIR/01-CONTEXT.md")
+  [ "$count" -eq 1 ]
+  # Content still present
+  grep -q "Issue X" "$PHASE_DIR/01-CONTEXT.md"
+}
+
+@test "init replaces stale UAT content on subsequent remediation turn" {
+  # Simulate first remediation turn: CONTEXT gets pre-seeded with round-01 UAT
+  cat > "$PHASE_DIR/01-CONTEXT.md" <<'EOF'
+---
+phase: 01
+title: Milestone UAT remediation
+source_milestone: test-milestone
+pre_seeded: true
+---
+
+This phase remediates unresolved UAT issues.
+
+---
+
+## UAT Remediation Issues
+
+# Round 1 UAT
+- Old issue from round 1
+EOF
+
+  # New UAT after re-verification (round 2) — different content
+  cat > "$PHASE_DIR/01-UAT.md" <<'EOF'
+# Round 2 UAT
+- New issue A from round 2
+- New issue B from round 2
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
+
+  # Old UAT content should be gone
+  ! grep -q "Old issue from round 1" "$PHASE_DIR/01-CONTEXT.md"
+  ! grep -q "Round 1 UAT" "$PHASE_DIR/01-CONTEXT.md"
+
+  # New UAT content should be present
+  grep -q "New issue A from round 2" "$PHASE_DIR/01-CONTEXT.md"
+  grep -q "New issue B from round 2" "$PHASE_DIR/01-CONTEXT.md"
+
+  # Original preamble preserved
+  grep -q "This phase remediates unresolved UAT issues" "$PHASE_DIR/01-CONTEXT.md"
+  grep -q "pre_seeded: true" "$PHASE_DIR/01-CONTEXT.md"
+
+  # Only one UAT section
   count=$(grep -c "## UAT Remediation Issues" "$PHASE_DIR/01-CONTEXT.md")
   [ "$count" -eq 1 ]
 }
