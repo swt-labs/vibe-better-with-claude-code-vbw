@@ -48,7 +48,8 @@ fail() {
 
 echo "=== Plugin Root Inline Resolution Verification ==="
 
-for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md; do
+for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; do
+  [ -f "$file" ] || continue
   base="$(basename "$file" .md)"
 
   # Skip files with no CLAUDE_PLUGIN_ROOT references at all
@@ -108,7 +109,8 @@ echo "(Ensures preamble !-backtick CLAUDE_PLUGIN_ROOT refs include :-fallback fo
 PASS2=0
 FAIL2=0
 
-for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md; do
+for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; do
+  [ -f "$file" ] || continue
   base="$(basename "$file" .md)"
 
   # Only check preamble !` backtick expressions (those using ${CLAUDE_PLUGIN_ROOT} with braces).

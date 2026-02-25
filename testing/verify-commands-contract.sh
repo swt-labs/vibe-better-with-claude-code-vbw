@@ -103,7 +103,8 @@ echo "=== Milestone Context Verification ==="
 # 1. The ACTIVE milestone shell interpolation in their Context section, OR
 # 2. Bash in allowed-tools (so the agent can read ACTIVE at runtime)
 # Without either, the agent has no way to discover the active milestone slug.
-for file in "$COMMANDS_DIR"/*.md; do
+for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
+  [ -f "$file" ] || continue
   base="$(basename "$file" .md)"
 
   # Extract body after frontmatter, excluding Context section (which contains the fix itself)
