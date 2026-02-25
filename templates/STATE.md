@@ -5,7 +5,7 @@
 ## Current Phase
 Phase: {current} of {total} ({phase-name})
 Plans: {done}/{total}
-Progress: {N}%
+Progress: {NN}%
 Status: {ready|active|needs_remediation|complete}
 
 ## Key Decisions

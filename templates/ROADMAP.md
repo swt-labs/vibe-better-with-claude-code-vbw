@@ -21,5 +21,5 @@
 ## Progress
 | Phase | Done | Status | Date |
 |-------|------|--------|------|
-| 1 - {name} | {0}/{N} | {pending/active/complete} | {date} |
-| 2 - {name} | {0}/{N} | {pending/active/complete} | {date} |
+| 1 - {name} | {0}/{NN} | {pending/active/complete} | {date} |
+| 2 - {name} | {0}/{NN} | {pending/active/complete} | {date} |

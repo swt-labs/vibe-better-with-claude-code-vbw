@@ -97,7 +97,7 @@ VBW Doctor v{version}
  14. Stale markers        {PASS|WARN} {markers}
  15. Watchdog status      {PASS|WARN}
 
-Result: {N}/15 passed, {W} warnings, {F} failures
+Result: {NN}/15 passed, {W} warnings, {F} failures
 ```
 
 Use checkmark for PASS, warning triangle for WARN, X for FAIL.

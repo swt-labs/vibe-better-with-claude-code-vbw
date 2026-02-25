@@ -62,7 +62,7 @@ Config: Pre-injected by SessionStart hook.
 
     De-duplicate by test name and file (keep first error message when the same
     test+file pair has different messages). Cap the list at 20 entries; if more
-    exist, show the first 20 and append `... and {N} more`.
+    exist, show the first 20 and append `... and {NN} more`.
 
     ```text
     ✓ Fix applied

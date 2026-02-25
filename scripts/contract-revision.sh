@@ -3,7 +3,7 @@ set -u
 
 # contract-revision.sh <old-contract-path> <plan-path>
 # Detects scope changes and creates contract revisions.
-# Archives old contract as {phase}-{plan}.rev{N}.json, generates new contract,
+# Archives old contract as {phase}-{plan}.rev{NN}.json, generates new contract,
 # logs contract_revision event via log-event.sh.
 # v2_hard_contracts graduated — always enabled.
 

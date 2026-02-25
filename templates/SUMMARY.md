@@ -4,8 +4,8 @@ plan: {plan-number}
 title: {plan-title}
 status: {complete|partial|failed}
 completed: {YYYY-MM-DD}
-tasks_completed: {N}
-tasks_total: {N}
+tasks_completed: {NN}
+tasks_total: {NN}
 commit_hashes:
   - {hash}
 deviations:

@@ -107,7 +107,7 @@ ALLOWED_PATHS=$(grep -oE '\*\*Files:\*\* .+' "$PLAN_PATH" 2>/dev/null | \
 # Count tasks from ### Task N: headings
 TASK_COUNT=$(grep -c '^### Task [0-9]' "$PLAN_PATH" 2>/dev/null) || TASK_COUNT=0
 
-# Extract task IDs: {phase}-{plan}-T{N}
+# Extract task IDs: {phase}-{plan}-T{NN}
 TASK_IDS=""
 for i in $(seq 1 "$TASK_COUNT"); do
   if [ -n "$TASK_IDS" ]; then

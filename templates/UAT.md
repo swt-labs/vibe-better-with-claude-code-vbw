@@ -1,20 +1,20 @@
 ---
 phase: {phase-id}
-plan_count: {N}
+plan_count: {NN}
 status: {in_progress|complete|issues_found}
 started: {YYYY-MM-DD}
 completed: {YYYY-MM-DD}
-total_tests: {N}
-passed: {N}
-skipped: {N}
-issues: {N}
+total_tests: {NN}
+passed: {NN}
+skipped: {NN}
+issues: {NN}
 ---
 
 {one-line-summary}
 
 ## Tests
 
-### P{plan}-T{N}: {test-title}
+### P{plan}-T{NN}: {test-title}
 
 - **Plan:** {plan-id} -- {plan-title}
 - **Scenario:** {what to do}
@@ -24,7 +24,7 @@ issues: {N}
   - Description: {issue-description}
   - Severity: {critical|major|minor}
 
-### D{N}: {discovered-issue-title}
+### D{NN}: {discovered-issue-title}
 
 - **Plan:** (discovered during {test-id})
 - **Scenario:** User observation during UAT
@@ -36,7 +36,7 @@ issues: {N}
 
 ## Summary
 
-- Passed: {N}
-- Skipped: {N}
-- Issues: {N}
-- Total: {N}
+- Passed: {NN}
+- Skipped: {NN}
+- Issues: {NN}
+- Total: {NN}

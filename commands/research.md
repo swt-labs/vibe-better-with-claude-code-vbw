@@ -53,8 +53,8 @@ Return structured findings.
 5. **Persist:** Ask "Save findings? (y/n)". If yes: write to .vbw-planning/phases/{phase-dir}/RESEARCH.md or .vbw-planning/RESEARCH.md.
 ```
 ➜ Next Up
-  /vbw:vibe --plan {N} -- Plan using research findings
-  /vbw:vibe --discuss {N} -- Discuss phase approach
+  /vbw:vibe --plan {NN} -- Plan using research findings
+  /vbw:vibe --discuss {NN} -- Discuss phase approach
 ```
 
 ## Output Format
