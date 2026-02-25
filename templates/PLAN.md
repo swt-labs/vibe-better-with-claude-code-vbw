@@ -46,5 +46,5 @@ must_haves:
 - {criterion}
 </success_criteria>
 <output>
-{path-to-summary-file}
+{plan-number}-SUMMARY.md
 </output>

@@ -101,14 +101,14 @@ STOP. Do NOT manually scan for project state or improvise routing — incorrect 
 |---|---|---|---|
 | 1 | `planning_dir_exists=false` | Init redirect | (redirect, no confirmation) |
 | 2 | `project_exists=false` | Bootstrap | "No project defined. Set one up?" |
-| 3 | `next_phase_state=needs_uat_remediation` | UAT Remediation | auto_uat=true: no confirmation. auto_uat=false: "Phase {N} has unresolved UAT issues. Continue with remediation now?" |
-| 4 | `next_phase_state=needs_reverification` | Re-verify | auto_uat=true: no confirmation. auto_uat=false: "Phase {N} remediation complete. Run re-verification?" |
+| 3 | `next_phase_state=needs_uat_remediation` | UAT Remediation | auto_uat=true: no confirmation. auto_uat=false: "Phase {NN} has unresolved UAT issues. Continue with remediation now?" |
+| 4 | `next_phase_state=needs_reverification` | Re-verify | auto_uat=true: no confirmation. auto_uat=false: "Phase {NN} remediation complete. Run re-verification?" |
 | 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
 | 6 | `phase_count=0` | Scope | "Project defined but no phases. Scope the work?" |
 | 7 | `config_auto_uat=true` AND `has_unverified_phases=true` AND `next_phase_state` != `all_done` | Verify | (no confirmation — auto_uat intent, mid-milestone) |
-| 8 | `next_phase_state=needs_discussion` | Discuss | "Phase {N} needs discussion before planning. Start discussion?" |
-| 9 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {N} needs planning and execution. Start?" |
-| 10 | `next_phase_state=needs_execute` | Execute | "Phase {N} is planned. Execute it?" |
+| 8 | `next_phase_state=needs_discussion` | Discuss | "Phase {NN} needs discussion before planning. Start discussion?" |
+| 9 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {NN} needs planning and execution. Start?" |
+| 10 | `next_phase_state=needs_execute` | Execute | "Phase {NN} is planned. Execute it?" |
 | 11 | `next_phase_state=all_done` AND `config_auto_uat=true` AND `has_unverified_phases=true` | Verify | (no confirmation — auto_uat intent) |
 | 12 | `next_phase_state=all_done` | Archive | "All phases complete. Run audit and archive?" |
 
@@ -227,7 +227,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 3. Decompose into 3-5 phases (name, goal, success criteria). Each independently plannable. Map REQ-IDs.
 4. Write ROADMAP.md. Create `.vbw-planning/phases/{NN}-{slug}/` dirs.
 5. Update STATE.md: Phase 1, status "Pending planning". Do NOT write next-action suggestions (e.g. "Run /vbw:vibe --plan 1") into the Todos section — those are ephemeral display output from suggest-next.sh, not persistent state.
-6. Display "Scoping complete. {N} phases created." STOP -- do not auto-continue to planning.
+6. Display "Scoping complete. {NN} phases created." STOP -- do not auto-continue to planning.
 
 ### Mode: Discuss
 
@@ -248,7 +248,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 1. Load context: ROADMAP.md, REQUIREMENTS.md, PROJECT.md, STATE.md, CONTEXT.md (if exists), codebase signals.
 2. Generate 5-10 assumptions by impact: scope (included/excluded), technical (implied approaches), ordering (sequencing), dependency (prior phases), user preference (defaults without stated preference).
 3. Gather feedback per assumption: "Confirm, correct, or expand?" Confirm=proceed, Correct=user provides answer, Expand=user adds nuance.
-4. Present grouped by status (confirmed/corrected/expanded). This mode does NOT write files. For persistence: "Run `/vbw:vibe --discuss {N}` to capture as CONTEXT.md." Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh vibe`.
+4. Present grouped by status (confirmed/corrected/expanded). This mode does NOT write files. For persistence: "Run `/vbw:vibe --discuss {NN}` to capture as CONTEXT.md." Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh vibe`.
 
 ### Mode: UAT Remediation
 
@@ -330,7 +330,7 @@ This mode handles the case where a milestone was archived before UAT issues were
 
 **Steps:**
 1. **Parse args:** Phase number (optional, auto-detected), --effort (optional, falls back to config).
-2. **Phase context:** If `{phase-dir}/{phase}-CONTEXT.md` exists, include it in Lead agent context. If not, proceed without — users who want context run `/vbw:discuss N` first.
+2. **Phase context:** If `{phase-dir}/{phase}-CONTEXT.md` exists, include it in Lead agent context. If not, proceed without — users who want context run `/vbw:discuss {NN}` first.
 3. **Research persistence (REQ-08, graduated):** If effort != turbo:
    - Check for `{phase-dir}/{phase}-RESEARCH.md`.
    - **If missing:** Spawn Scout agent to research the phase goal, requirements, and relevant codebase patterns. Scout returns structured findings with sections: `## Findings`, `## Relevant Patterns`, `## Risks`, `## Recommendations`. The **orchestrator** (not Scout) writes the returned findings to `{phase-dir}/{phase}-RESEARCH.md`. Scout has `disallowedTools: Write` (platform-enforced) and cannot write files. Resolve Scout model:
@@ -343,7 +343,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    - **On failure:** Log warning, continue planning without research. Do not block.
    - If effort=turbo: skip entirely.
 4. **Context compilation:** If `config_context_compiler=true`, run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} lead {phases_dir}`. Include `.context-lead.md` in Lead agent context if produced.
-5. **Turbo shortcut:** If effort=turbo, skip Lead. Read phase reqs from ROADMAP.md, create single lightweight PLAN.md inline.
+5. **Turbo shortcut:** If effort=turbo, skip Lead. Read phase reqs from ROADMAP.md, create single lightweight plan as `{NN}-PLAN.md` in the phase directory.
 6. **Other efforts:**
    - Resolve Lead model:
      ```bash
@@ -364,7 +364,7 @@ This mode handles the case where a milestone was archived before UAT issues were
      - `prefer_teams='auto'`: Same as when_parallel (Lead-only is low-risk)
 
      When team should be created (based on prefer_teams):
-     - Create team via TeamCreate: `team_name="vbw-plan-{NN}"`, `description="Planning Phase {N}: {phase-name}"`
+     - Create team via TeamCreate: `team_name="vbw-plan-{NN}"`, `description="Planning Phase {NN}: {phase-name}"`
      - Spawn Scout (if spawned in step 3) with `team_name: "vbw-plan-{NN}"`, `name: "scout"` parameters on the Task tool invocation.
      - Spawn Lead with `team_name: "vbw-plan-{NN}"`, `name: "lead"` parameters on the Task tool invocation.
      - **HARD GATE — Shutdown before proceeding (NON-NEGOTIABLE):** After all team agents complete their work, you MUST shut down the team BEFORE validating output, presenting results, auto-chaining to Execute, or asking the user anything. This gate CANNOT be skipped, deferred, or optimized away — even after compaction. Lingering agents burn API credits silently.
@@ -381,41 +381,56 @@ This mode handles the case where a milestone was archived before UAT issues were
    - **CRITICAL:** Add `model: "${LEAD_MODEL}"` and `maxTurns: ${LEAD_MAX_TURNS}` parameters to the Task tool invocation.
    - **CRITICAL:** Include in the Lead prompt: "Plans will be executed by a team of parallel Dev agents — one agent per plan. Maximize wave 1 plans (no deps) so agents start simultaneously. Ensure same-wave plans modify disjoint file sets to avoid merge conflicts."
    - Display `◆ Spawning Lead agent...` -> `✓ Lead agent complete`.
-7. **Validate output:** Verify PLAN.md has valid frontmatter (phase, plan, title, wave, depends_on, must_haves) and tasks. Check wave deps acyclic.
-8. **Present:** Update STATE.md (phase position, plan count, status=Planned). Resolve model profile:
+7. **Normalize plan filenames:**
+    ```bash
+    NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
+    if [ -f "$NORM_SCRIPT" ]; then
+      bash "$NORM_SCRIPT" "{phase_dir}"
+    fi
+    ```
+    This catches any misnamed files written by Lead (e.g., turbo mode or models that bypass the PreToolUse block).
+8. **Validate output:** Verify PLAN.md has valid frontmatter (phase, plan, title, wave, depends_on, must_haves) and tasks. Check wave deps acyclic.
+9. **Present:** Update STATE.md (phase position, plan count, status=Planned). Resolve model profile:
    ```bash
    MODEL_PROFILE=$(jq -r '.model_profile // "quality"' .vbw-planning/config.json)
    ```
    Display Phase Banner with plan list, effort level, and model profile:
     ```text
-   Phase {N}: {name}
-   Plans: {N}
-     {plan}: {title} (wave {W}, {N} tasks)
+   Phase {NN}: {name}
+   Plans: {NN}
+     {plan}: {title} (wave {W}, {NN} tasks)
    Effort: {effort}
    Model Profile: {profile}
    ```
-9. **Planning commit boundary (conditional):**
+10. **Planning commit boundary (conditional):**
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "plan phase {N}" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "plan phase {NN}" .vbw-planning/config.json
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi
    ```
    Behavior: `planning_tracking=commit` commits planning artifacts if changed. `auto_push=always` pushes when upstream exists.
-10. **Pre-chain verification:** Before auto-chaining or presenting results, confirm the planning team was fully shut down (step 6 HARD GATE completed). If you skipped the gate or are unsure after compaction, send `shutdown_request` to any teammates that may still be active and call TeamDelete before continuing. NEVER enter Execute mode with a prior planning team still alive.
-11. **Cautious gate (autonomy=cautious only):** STOP after planning. Ask "Plans ready. Execute Phase {N}?" Other levels: auto-chain.
+11. **Pre-chain verification:** Before auto-chaining or presenting results, confirm the planning team was fully shut down (step 6 HARD GATE completed). If you skipped the gate or are unsure after compaction, send `shutdown_request` to any teammates that may still be active and call TeamDelete before continuing. NEVER enter Execute mode with a prior planning team still alive.
+12. **Cautious gate (autonomy=cautious only):** STOP after planning. Ask "Plans ready. Execute Phase {NN}?" Other levels: auto-chain.
 
 ### Mode: Execute
 
 Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/references/execute-protocol.md` and follow its instructions.
 
 This mode delegates entirely to the protocol file. Before reading:
+0. **Pre-normalize filenames:**
+    ```bash
+    NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
+    if [ -f "$NORM_SCRIPT" ]; then
+      bash "$NORM_SCRIPT" "{phase_dir}"
+    fi
+    ```
 1. **Parse arguments:** Phase number (auto-detect if omitted), --effort, --skip-qa, --plan=NN.
 2. **Run execute guards:**
    - Not initialized: STOP "Run /vbw:init first."
-   - No PLAN.md in phase dir: STOP "Phase {N} has no plans. Run `/vbw:vibe --plan {N}` first."
+   - No PLAN.md in phase dir: STOP "Phase {NN} has no plans. Run `/vbw:vibe --plan {NN}` first."
    - All plans have SUMMARY.md: cautious/standard -> WARN + confirm; confident/pure-vibe -> warn + auto-continue.
    - **Milestone path guard:** If `{phases_dir}` contains `.vbw-planning/milestones/`, STOP "Cannot execute inside archived milestones." This prevents writing artifacts into shipped milestone directories.
 3. **Compile context:** If `config_context_compiler=true`, run:
@@ -428,8 +443,8 @@ Then Read the protocol file and execute Steps 2-5 as written.
 ### Mode: Verify
 
 **Guard:** Initialized, phase has `*-SUMMARY.md` files.
-No SUMMARY.md: STOP "Phase {N} has no completed plans. Run /vbw:vibe first."
-**Phase auto-detection:** First phase with `*-SUMMARY.md` but no canonical `*-UAT.md` (exclude `*-SOURCE-UAT.md` copies). All verified: STOP "All phases have UAT results. Specify: `/vbw:verify N`"
+No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
+**Phase auto-detection:** First phase with `*-SUMMARY.md` but no canonical `*-UAT.md` (exclude `*-SOURCE-UAT.md` copies). All verified: STOP "All phases have UAT results. Specify: `/vbw:verify {NN}`"
 
 **Steps:**
 1. Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/commands/verify.md` protocol.
@@ -477,9 +492,9 @@ Inserting before completed phase: WARN + confirm.
 
 **Guard:** Initialized. Requires phase number.
 Missing number: STOP "Usage: `/vbw:vibe --remove <phase-number>`"
-Not found: STOP "Phase {N} not found."
-Has work (PLAN.md or SUMMARY.md): STOP "Phase {N} has artifacts. Remove plans first."
-Completed ([x] in roadmap): STOP "Cannot remove completed Phase {N}."
+Not found: STOP "Phase {NN} not found."
+Has work (PLAN.md or SUMMARY.md): STOP "Phase {NN} has artifacts. Remove plans first."
+Completed ([x] in roadmap): STOP "Cannot remove completed Phase {NN}."
 
 **Steps:**
 1. Parse args: extract phase number, validate, look up name/slug.

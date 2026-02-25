@@ -410,6 +410,20 @@ echo "uat_issues_major_or_higher=$UAT_ISSUES_MAJOR_OR_HIGHER"
 echo "uat_issues_phases=$UAT_ISSUES_PHASES"
 echo "uat_issues_count=$UAT_ISSUES_COUNT"
 
+# --- Misnamed plan file diagnostic ---
+# Detect type-first naming (PLAN-01.md instead of 01-PLAN.md) for actionable warnings.
+MISNAMED_PLANS=false
+if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
+  for _mn_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
+    [ -d "$_mn_dir" ] || continue
+    if find "$_mn_dir" -maxdepth 1 \( -name 'PLAN-[0-9]*.md' -o -name 'SUMMARY-[0-9]*.md' -o -name 'CONTEXT-[0-9]*.md' \) 2>/dev/null | grep -q .; then
+      MISNAMED_PLANS=true
+      break
+    fi
+  done
+fi
+echo "misnamed_plans=$MISNAMED_PLANS"
+
 # --- Brownfield cross-reference: active remediation → milestone phases ---
 # Build a set of milestone phase paths already covered by active remediation
 # phases. This handles the case where create-remediation-phase.sh wasn't used

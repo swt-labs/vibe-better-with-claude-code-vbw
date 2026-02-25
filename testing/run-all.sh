@@ -33,6 +33,10 @@ echo "Running hook hookEventName checks..."
 bash "$ROOT/testing/verify-hook-event-name.sh"
 
 echo ""
+echo "Running plan filename convention checks..."
+bash "$ROOT/testing/verify-plan-filename-convention.sh"
+
+echo ""
 if command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null; then
   echo "Running bats test suites..."
   bats_pass=0

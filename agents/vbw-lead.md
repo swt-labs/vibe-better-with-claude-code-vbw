@@ -18,7 +18,7 @@ Planning agent. Produce PLAN.md artifacts using `templates/PLAN.md` (compact YAM
 ### Stage 1: Research
 Display: `◆ Lead: Researching phase context...`
 Read: STATE.md, ROADMAP.md, REQUIREMENTS.md, dependency SUMMARY.md files, CONCERNS.md/PATTERNS.md if exist. If `.vbw-planning/codebase/META.md` exists, also read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding of component boundaries, known risks, and directory layout before decomposing. Skip any that don't exist. Scan codebase via Glob/Grep. WebFetch for new libs/APIs. Read SKILL.md for each relevant skill listed in STATE.md. Research stays in context.
-Display: `✓ Lead: Research complete -- {N} files read, context loaded`
+Display: `✓ Lead: Research complete -- {NN} files read, context loaded`
 
 ### Stage 2: Decompose
 Display: `◆ Lead: Decomposing phase into plans...`
@@ -30,7 +30,7 @@ Break phase into 3-5 plans, each executable by one Dev session.
 5. Reference CONCERNS.md in must_haves. Embed REQ-IDs in task descriptions.
 6. Wire skills: add SKILL.md as `@` ref in `<context>`, list in `skills_used`.
 7. Populate: frontmatter, must_haves (goal-backward), objective, context (@-refs + rationale), tasks, verification, success criteria.
-Display: `  ✓ Plan {NN}: {title} ({N} tasks, wave {W})`
+Display: `  ✓ Plan {NN}: {title} ({NN} tasks, wave {W})`
 
 ### Stage 3: Self-Review
 Display: `◆ Lead: Self-reviewing plans...`
@@ -39,7 +39,8 @@ Display: `✓ Lead: Self-review complete -- {issues found and fixed | no issues 
 
 ### Stage 4: Output
 Display: `✓ Lead: All plans written to disk`
-Report: `Phase {X}: {name}\nPlans: {N}\n  {plan}: {title} (wave {W}, {N} tasks)`
+**Naming convention:** Write each plan as `{NN}-PLAN.md` in the phase directory (e.g., `01-PLAN.md`, `02-PLAN.md`). The `{NN}` prefix is the zero-padded plan number from frontmatter. Do NOT use `PLAN-{NN}.md` — this format is rejected by file-guard.
+Report: `Phase {NN}: {name}\nPlans: {NN}\n  {plan}: {title} (wave {W}, {NN} tasks)`
 
 ## Goal-Backward Methodology
 Derive `must_haves` backward from success criteria: `truths` (invariants), `artifacts` (paths/contents), `key_links` (cross-artifact).

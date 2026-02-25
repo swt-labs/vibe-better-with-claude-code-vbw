@@ -17,6 +17,16 @@ INPUT=$(cat 2>/dev/null) || exit 0
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null) || exit 0
 [ -z "$FILE_PATH" ] && exit 0
 
+# Block misnamed plan/summary/context files in phase dirs (type-first format)
+# Must precede the .vbw-planning/* exemption which exits 0 for all planning artifacts.
+case "$FILE_PATH" in
+  *.vbw-planning/phases/*/PLAN-[0-9]*.md|*.vbw-planning/phases/*/SUMMARY-[0-9]*.md|*.vbw-planning/phases/*/CONTEXT-[0-9]*.md)
+    _BASENAME_CHECK=$(basename "$FILE_PATH" 2>/dev/null) || _BASENAME_CHECK="$FILE_PATH"
+    echo "Blocked: wrong naming convention. Use {NN}-PLAN.md (e.g., 01-PLAN.md), not PLAN-{NN}.md ($_BASENAME_CHECK)" >&2
+    exit 2
+    ;;
+esac
+
 # Exempt planning artifacts — these are always allowed
 case "$FILE_PATH" in
   *.vbw-planning/milestones/*/phases/*)
