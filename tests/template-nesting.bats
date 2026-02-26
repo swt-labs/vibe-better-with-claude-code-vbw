@@ -132,6 +132,24 @@ _stamp_file_pattern() {
   printf '/tmp/.vbw-phase-detect-stamp-'
 }
 
+setup() {
+  TMP_TEST_DIRS=()
+}
+
+_new_tmp_test_dir() {
+  local d
+  d=$(mktemp -d)
+  TMP_TEST_DIRS+=("$d")
+  printf '%s' "$d"
+}
+
+teardown() {
+  local d
+  for d in "${TMP_TEST_DIRS[@]}"; do
+    [ -n "$d" ] && rm -rf "$d"
+  done
+}
+
 _conditional_wait_pattern() {
   printf 'if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do'
 }
@@ -223,8 +241,7 @@ _simulate_phase_detect_reader() {
 
 @test "reader bypasses error cache when live script is available" {
   local td root link cache stamp out
-  td=$(mktemp -d)
-  trap 'rm -rf "$td"' EXIT
+  td=$(_new_tmp_test_dir)
 
   root="$td/root"
   link="$td/link"
@@ -249,8 +266,7 @@ EOF
 
 @test "reader refreshes stale cache older than stamp" {
   local td root link cache stamp out
-  td=$(mktemp -d)
-  trap 'rm -rf "$td"' EXIT
+  td=$(_new_tmp_test_dir)
 
   root="$td/root"
   link="$td/link"
@@ -265,8 +281,9 @@ EOF
   chmod +x "$root/scripts/phase-detect.sh"
 
   echo "next_phase_state=stale_cache" > "$cache"
-  sleep 1
   : > "$stamp"
+  touch -t 202402020101 "$cache"
+  touch -t 202402020102 "$stamp"
   ln -s "$root" "$link"
 
   out=$(_simulate_phase_detect_reader "$link" "$cache" "$stamp")
@@ -276,8 +293,7 @@ EOF
 
 @test "reader skips wait when cache is valid and symlink is absent" {
   local td cache stamp out slept
-  td=$(mktemp -d)
-  trap 'rm -rf "$td"' EXIT
+  td=$(_new_tmp_test_dir)
 
   cache="$td/pd.txt"
   stamp="$td/stamp.txt"
@@ -295,8 +311,7 @@ EOF
 
 @test "reader treats whitespace-only output as error" {
   local td root link cache stamp out
-  td=$(mktemp -d)
-  trap 'rm -rf "$td"' EXIT
+  td=$(_new_tmp_test_dir)
 
   root="$td/root"
   link="$td/link"
