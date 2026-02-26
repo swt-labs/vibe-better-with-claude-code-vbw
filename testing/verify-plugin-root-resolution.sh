@@ -22,6 +22,8 @@ set -euo pipefail
 #   - Runtime resolver guard line in execute-protocol.md:
 #       if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]
 #       VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"
+#   - ${CLAUDE_PLUGIN_ROOT:+...}          (conditional-if-set expansion — safe, only expands when set)
+#   - (CLAUDE_PLUGIN_ROOT ...)            (literal text mention in diagnostic output, not a var ref)
 #
 # Unsafe (must not exist):
 #   - bare ${CLAUDE_PLUGIN_ROOT} in model-executed text (resolves to empty in bash)
@@ -63,7 +65,8 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; d
 
   # Count lines with CLAUDE_PLUGIN_ROOT that are NOT in any safe context.
   # Safe contexts: !` backtick expressions, @ file references, Plugin root: preamble,
-  # and inline `!`echo $CLAUDE_PLUGIN_ROOT` resolution patterns.
+  # inline `!`echo $CLAUDE_PLUGIN_ROOT` resolution patterns, :+ conditional expansion
+  # (only expands when var is set), and literal text mentions (no $ prefix).
   unsafe_count=$(grep 'CLAUDE_PLUGIN_ROOT' "$file" \
     | grep -v '!`[^`]*CLAUDE_PLUGIN_ROOT' \
     | grep -v '@${CLAUDE_PLUGIN_ROOT}' \
@@ -71,6 +74,8 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; d
     | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -[df] "${CLAUDE_PLUGIN_ROOT}' \
     | grep -v 'VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"' \
     | grep -v 'checked CLAUDE_PLUGIN_ROOT' \
+    | grep -v 'CLAUDE_PLUGIN_ROOT:+' \
+    | grep -v '(CLAUDE_PLUGIN_ROOT ' \
     | grep -vc '`!`echo .*CLAUDE_PLUGIN_ROOT' || true)
 
   if [ "$unsafe_count" -eq 0 ]; then
@@ -85,6 +90,8 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; d
       | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -[df] "${CLAUDE_PLUGIN_ROOT}' \
       | grep -v 'VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"' \
       | grep -v 'checked CLAUDE_PLUGIN_ROOT' \
+      | grep -v 'CLAUDE_PLUGIN_ROOT:+' \
+      | grep -v '(CLAUDE_PLUGIN_ROOT ' \
       | grep -v '`!`echo .*CLAUDE_PLUGIN_ROOT' \
       | while IFS= read -r line; do echo "      $line"; done
   fi
