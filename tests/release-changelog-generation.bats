@@ -44,6 +44,14 @@ extract_audit1() {
   echo "$guard5" | grep -qi 'dry-run.*NOT write\|dry-run.*do NOT'
 }
 
+@test "guard 5 dry-run skips to Guard 7 (not Guard 6)" {
+  local guard5
+  guard5=$(extract_guard "No CHANGELOG.md")
+  # Dry-run path should skip to Guard 7, not chain to Guard 6
+  echo "$guard5" | grep -qi 'Skip to Guard 7\|Guard 7'
+  ! echo "$guard5" | grep -qi 'Continue to Guard 6'
+}
+
 # --- Guard 6: Missing [Unreleased] ---
 
 @test "guard 6 auto-creates [Unreleased] section when missing" {
@@ -77,6 +85,18 @@ extract_audit1() {
   local guard6
   guard6=$(extract_guard "No \[Unreleased\]")
   echo "$guard6" | grep -qi 'skip-audit.*NOT create\|skip-audit.*do NOT'
+}
+
+@test "guard 6 --skip-audit takes precedence over --dry-run" {
+  local guard6
+  guard6=$(extract_guard "No \[Unreleased\]")
+  # skip-audit branch must appear before dry-run-only branch
+  local skip_line dry_line
+  skip_line=$(echo "$guard6" | grep -n -i '^\s*- If.*--skip-audit' | head -1 | cut -d: -f1)
+  dry_line=$(echo "$guard6" | grep -n -i '^\s*- If.*--dry-run.*without' | head -1 | cut -d: -f1)
+  [ -n "$skip_line" ]
+  [ -n "$dry_line" ]
+  [ "$skip_line" -lt "$dry_line" ]
 }
 
 @test "guard 6 preserves content between header and first version" {
@@ -114,11 +134,18 @@ extract_audit1() {
   echo "$audit1" | grep -qi 'fallback.*empty\|fallback.*omit'
 }
 
+@test "audit 1 documents rebase merge limitation for commit correlation" {
+  local audit1
+  audit1=$(extract_audit1)
+  echo "$audit1" | grep -qi 'rebase'
+}
+
 @test "audit 1 correlates commits to PRs via commit messages" {
   local audit1
   audit1=$(extract_audit1)
-  # Must use commit message pattern matching, not per-PR API calls
-  echo "$audit1" | grep -qi 'commit message\|#N\|Merge pull request'
+  # Must mention both concrete patterns for commit-message correlation
+  echo "$audit1" | grep -q '(#N)'
+  echo "$audit1" | grep -q 'Merge pull request #N'
   # Must NOT require per-PR gh pr view calls
   ! echo "$audit1" | grep -qi 'gh pr view.*--json commits'
 }
@@ -176,6 +203,8 @@ extract_audit1() {
 @test "audit 5 auto-inserts when [Unreleased] was auto-created" {
   local audit5
   audit5=$(extract_audit5)
+  # Must reference both Guard 5 and Guard 6 as auto-creation sources
+  echo "$audit5" | grep -qi 'Guard 5\|Guard 6'
   echo "$audit5" | grep -qi 'auto-created.*insert\|auto-created.*automatic\|auto-created.*without.*confirmation'
 }
 
