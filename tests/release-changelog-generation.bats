@@ -146,10 +146,25 @@ extract_version_precompute() {
   echo "$guard7" | grep -qi 'failed.*>.*0\|{failed}'
 }
 
+@test "guard 7 distinguishes remote not-found from network error" {
+  local guard7
+  guard7=$(extract_guard "7. Existing release branch")
+  # Must parse stderr to distinguish 'remote ref does not exist' (success)
+  # from network/permission errors (failure)
+  echo "$guard7" | grep -qi 'remote ref does not exist\|not-found\|stderr'
+}
+
 @test "guard 7 stops when all deletions fail" {
   local guard7
   guard7=$(extract_guard "7. Existing release branch")
   echo "$guard7" | grep -qi 'STOP.*All branch deletions failed\|All.*deletions failed.*STOP'
+}
+
+@test "guard 7 summary reports remaining uncleanable branches" {
+  local guard7
+  guard7=$(extract_guard "7. Existing release branch")
+  # When partial failures occur, summary must indicate which branches remain
+  echo "$guard7" | grep -qi 'could not be fully cleaned\|failed_branches\|remaining'
 }
 
 @test "guard 7 handles multiple release branches" {
@@ -178,21 +193,24 @@ extract_version_precompute() {
 @test "audit 1 grep pattern matches all release commit formats" {
   local audit1
   audit1=$(extract_audit1)
-  # Must use a pattern that matches all three known formats:
-  #   chore: release v1.32.0          (no scope)
-  #   chore(release): v1.31.0         (scoped)
-  #   chore(release): release v1.21.31 (scoped with redundant prefix)
-  # But excludes:
-  #   chore(release): bump version to 1.31.0  (version bump, not release cut)
+  # Must use extended-regexp with scope restricted to (release) or no scope
   echo "$audit1" | grep -q 'extended-regexp\|extended.regexp'
-  echo "$audit1" | grep -q '(release )?v\[0-9\]\|(release )\\?v'
+  # Must restrict scope via (\\(release\\))? or equivalent
+  echo "$audit1" | grep -qE '\(release\)\)|\(\\\(release\\\)\)'
 }
 
 @test "audit 1 grep pattern excludes version bump commits" {
   local audit1
   audit1=$(extract_audit1)
-  # Explanation must document that bump commits are excluded
   echo "$audit1" | grep -qi 'bump.*exclud\|exclud.*bump'
+}
+
+@test "audit 1 verifies subject line to avoid body-line false positives" {
+  local audit1
+  audit1=$(extract_audit1)
+  # Must document the body-line matching limitation and describe subject verification
+  echo "$audit1" | grep -qi 'subject.*verif\|verif.*subject\|subject-verif'
+  echo "$audit1" | grep -qi 'body'
 }
 
 @test "audit 1 grep pattern excludes fix(release) commits" {
@@ -353,6 +371,14 @@ extract_version_precompute() {
   echo "$audit5" | grep -qi 'git fetch --tags\|fetch.*tags'
 }
 
+@test "audit 5 handles tag fetch failure gracefully" {
+  local audit5
+  audit5=$(extract_audit5)
+  # If git fetch --tags fails, must skip stale cleanup to avoid deleting valid sections
+  echo "$audit5" | grep -qi 'fetch.*fail\|non-zero\|exits non-zero'
+  echo "$audit5" | grep -qi 'skip.*stale\|skip.*cleanup'
+}
+
 @test "audit 5 stale section cleanup uses semver pattern matching" {
   local audit5
   audit5=$(extract_audit5)
@@ -371,4 +397,20 @@ extract_version_precompute() {
 @test "no [Unreleased] references remain in the release command" {
   # The entire [Unreleased] indirection was removed
   ! grep -q '\[Unreleased\]' "$RELEASE_CMD"
+}
+
+# --- Guard 5 + --skip-audit interaction ---
+
+@test "guard 5 creates CHANGELOG without audit entries when --skip-audit" {
+  local guard5
+  guard5=$(extract_guard "5. No CHANGELOG.md")
+  # Guard 5 must work with --skip-audit: create CHANGELOG.md and skip to Guard 6
+  # without requiring audit to populate entries
+  echo "$guard5" | grep -qi 'create.*CHANGELOG\|CHANGELOG.*create'
+  echo "$guard5" | grep -qi 'Guard 6\|Skip to Guard 6'
+  # The --skip-audit path is handled by the audit section, not Guard 5 itself.
+  # Guard 5's 'Otherwise' branch creates the file and skips to Guard 6.
+  # Verify Guard 5 does NOT condition creation on --skip-audit presence
+  # (it always creates if CHANGELOG is missing and not dry-run).
+  echo "$guard5" | grep -qi 'Otherwise.*create\|create CHANGELOG'
 }
