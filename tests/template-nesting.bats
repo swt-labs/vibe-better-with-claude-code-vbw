@@ -171,8 +171,8 @@ _simulate_phase_detect_reader() {
 
     S_M=0
     P_M=0
-    [ -f "$S" ] && S_M=$(stat -f %m "$S" 2>/dev/null || stat -c %Y "$S" 2>/dev/null || echo 0)
-    [ -f "$P" ] && P_M=$(stat -f %m "$P" 2>/dev/null || stat -c %Y "$P" 2>/dev/null || echo 0)
+    [ -f "$S" ] && S_M=$(stat -c %Y "$S" 2>/dev/null || stat -f %m "$S" 2>/dev/null || echo 0)
+    [ -f "$P" ] && P_M=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo 0)
 
     if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && { [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ "$P_M" -lt "$S_M" ]; }; then
       PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
