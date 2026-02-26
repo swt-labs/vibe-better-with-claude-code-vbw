@@ -29,12 +29,12 @@ Git status:
 3. **Not on main:** If current branch is not `main` → STOP: "Must be on main to prepare a release. Currently on `{branch}`."
 4. **Dirty tree:** If `git status --porcelain` shows uncommitted changes (excluding .claude/ and CLAUDE.md), WARN + confirm: "Uncommitted changes detected. They will NOT be in the release commit. Continue?"
 5. **No CHANGELOG.md:** If CHANGELOG.md does not exist:
-   - If `--dry-run`: display "ℹ Would create CHANGELOG.md with [Unreleased] section" but do NOT write. Skip to Guard 7 (Guards 6 is implicitly satisfied since the scaffold includes [Unreleased]; audit will also be dry-run and will not write).
+   - If `--dry-run`: display "ℹ Would create CHANGELOG.md with [Unreleased] section" but do NOT write. Skip to Guard 7 (Guard 6 is implicitly satisfied since the scaffold includes [Unreleased]; audit will also be dry-run and will not write, if not skipped via `--skip-audit`).
    - Otherwise: create it with `# Changelog\n\nAll notable changes to VBW will be documented in this file.\n\n## [Unreleased]\n`. Display: "ℹ Created CHANGELOG.md with [Unreleased] section." Skip to Guard 7 (Guard 6 is satisfied since [Unreleased] was just created).
 6. **No [Unreleased]:** If CHANGELOG.md exists but lacks `## [Unreleased]`:
    - If `--skip-audit` (with or without `--dry-run`): do NOT create the section (nothing will populate it). Display: "○ Skipped [Unreleased] creation (audit skipped)." Skip to Guard 7. (`--skip-audit` takes precedence over `--dry-run` here because there is no audit to dry-run.)
-   - If `--dry-run` (without `--skip-audit`): display "ℹ Would create [Unreleased] section" but do NOT write. Continue to audit (which will also be dry-run).
-   - Otherwise: insert `## [Unreleased]` on a new blank line directly above the first `## [x.y.z]` entry (preserving any content between `# Changelog` and the first version entry). If no version entries exist, insert after the last non-empty line following the `# Changelog` header. Display: "ℹ Created [Unreleased] section — audit will populate it from commits." Continue to audit.
+   - If `--dry-run` (without `--skip-audit`): display "ℹ Would create [Unreleased] section" but do NOT write. Continue to Guard 7 (then audit, which will also be dry-run).
+   - Otherwise: insert `## [Unreleased]` on a new blank line directly above the first `## [x.y.z]` entry (preserving any content between `# Changelog` and the first version entry). If no version entries exist, insert after the last non-empty line following the `# Changelog` header. Display: "ℹ Created [Unreleased] section — audit will populate it from commits." Continue to Guard 7 (then audit).
 7. **Version sync:** `bash scripts/bump-version.sh --verify`. Out of sync → WARN but proceed (bump fixes it).
 8. **Existing release branch:** Check local first (`git branch --list 'release/v*'`) and remote second (`git ls-remote --heads origin 'refs/heads/release/v*'`).
    - If remote check exits non-zero (auth/network/repo failure) → STOP: "Could not verify remote release branches (`origin` unreachable or unauthorized). Fix remote access and retry."
@@ -48,11 +48,12 @@ Skip if `--skip-audit`.
 - Find last release commit: `git log --oneline --grep="chore: release" -1`, extract hash (fallback: root commit). Capture its date via `git log -1 --format=%Y-%m-%d {hash}` (fallback: empty string, which omits the `merged:>=` filter).
 - List merged PRs since that date: `gh pr list --state merged --base main --search "merged:>={date}" --json number,title,labels,body --limit 200`. If `gh` is not available or the command fails (auth error, network error), display "⚠ gh CLI unavailable — using commit-only mode" and skip PR collection. All changelog entries will come from the commit fallback.
 - If the PR count equals the `--limit` cap, display: "⚠ PR list may be truncated at 200. Older PRs could be missing — verify changelog completeness manually."
-- List all commits since: `git log {hash}..HEAD --oneline`. These are used for the commit fallback.
-- **Commit-to-PR correlation:** Scan commit messages for PR references (patterns: `(#N)`, `Merge pull request #N`). Commits whose message references any collected PR number are "covered" and excluded from the commit fallback. Only uncovered commits generate fallback entries. This avoids per-PR API calls and works reliably with both merge and squash strategies since GitHub appends `(#N)` to squash commit subjects. **Note:** Rebase merges do not append PR numbers to commit subjects, so rebase-merged commits will appear as "uncovered" and generate commit fallback entries (potential duplication with their PR entry). This is acceptable for VBW since the repository uses squash/merge strategy; if rebase merges are introduced, review the commit fallback output for duplicates.
+- List first-parent commits since: `git log --first-parent {hash}..HEAD --oneline`. Using `--first-parent` excludes individual branch commits that were brought in by merge commits, preventing duplicate fallback entries for regular-merge PRs. These are used for the commit fallback.
+- **Commit-to-PR correlation:** Scan commit messages for PR references (patterns: `(#N)`, `Merge pull request #N`). Commits whose message references any collected PR number are "covered" and excluded from the commit fallback. Only uncovered commits generate fallback entries. This avoids per-PR API calls and works reliably with merge (merge commits contain `Merge pull request #N`), squash (GitHub appends `(#N)` to squash commit subjects), and mixed strategies. **Note:** Rebase merges do not append PR numbers to commit subjects, so rebase-merged commits will appear as "uncovered" and generate commit fallback entries (potential duplication with their PR entry). This is acceptable for VBW since the repository uses merge/squash strategy; if rebase merges are introduced, review the commit fallback output for duplicates.
 
 **Audit 2: Check changelog completeness.**
-- Extract [Unreleased] content.
+- If CHANGELOG.md does not exist (Guard 5 dry-run path), treat all entries as undocumented and skip extraction.
+- Otherwise, extract [Unreleased] content.
 - For each merged PR, check if its number (`#N`) or title keywords appear in [Unreleased]. Classify as documented or undocumented.
 - For direct-push commits (not in any merged PR), check similarly.
 

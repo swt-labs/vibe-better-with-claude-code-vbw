@@ -8,10 +8,18 @@
 REPO_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
 RELEASE_CMD="$REPO_ROOT/internal/release.md"
 
-# Helper: extract guard section by keyword (simple text match)
+# Helper: extract guard section by number (anchored to guard number prefix)
 extract_guard() {
   local keyword="$1"
-  awk -v kw="$keyword" 'index($0, kw){found=1; print; next} found && /^[0-9]+\./{found=0} found{print}' "$RELEASE_CMD"
+  local num
+  num=$(echo "$keyword" | grep -oE '^[0-9]+')
+  if [ -n "$num" ]; then
+    # Anchor to guard number prefix for precise extraction
+    awk -v n="$num" '$0 ~ "^"n"\\. \\*\\*"{found=1; print; next} found && /^[0-9]+\./{found=0} found{print}' "$RELEASE_CMD"
+  else
+    # Fallback to keyword match (used when keyword has no leading number)
+    awk -v kw="$keyword" 'index($0, kw){found=1; print; next} found && /^[0-9]+\./{found=0} found{print}' "$RELEASE_CMD"
+  fi
 }
 
 # Helper: extract audit 5 section
@@ -32,7 +40,7 @@ extract_audit1() {
 
 @test "guard 5 creates CHANGELOG.md when missing" {
   local guard5
-  guard5=$(extract_guard "No CHANGELOG.md")
+  guard5=$(extract_guard "5. No CHANGELOG.md")
   [ -n "$guard5" ]
   echo "$guard5" | grep -qi 'create.*CHANGELOG\|CHANGELOG.*create'
   echo "$guard5" | grep -qi '\[Unreleased\]'
@@ -40,23 +48,30 @@ extract_audit1() {
 
 @test "guard 5 respects --dry-run by not writing" {
   local guard5
-  guard5=$(extract_guard "No CHANGELOG.md")
+  guard5=$(extract_guard "5. No CHANGELOG.md")
   echo "$guard5" | grep -qi 'dry-run.*NOT write\|dry-run.*do NOT'
 }
 
 @test "guard 5 dry-run skips to Guard 7 (not Guard 6)" {
   local guard5
-  guard5=$(extract_guard "No CHANGELOG.md")
+  guard5=$(extract_guard "5. No CHANGELOG.md")
   # Dry-run path should skip to Guard 7, not chain to Guard 6
   echo "$guard5" | grep -qi 'Skip to Guard 7\|Guard 7'
   ! echo "$guard5" | grep -qi 'Continue to Guard 6'
+}
+
+@test "guard 5 non-dry-run skips to Guard 7" {
+  local guard5
+  guard5=$(extract_guard "5. No CHANGELOG.md")
+  # Non-dry-run path also skips to Guard 7 (Guard 6 is satisfied)
+  echo "$guard5" | grep -qi 'Skip to Guard 7'
 }
 
 # --- Guard 6: Missing [Unreleased] ---
 
 @test "guard 6 auto-creates [Unreleased] section when missing" {
   local guard6
-  guard6=$(extract_guard "No \[Unreleased\]")
+  guard6=$(extract_guard "6. No [Unreleased]")
   [ -n "$guard6" ]
   echo "$guard6" | grep -qi 'insert\|create'
   ! echo "$guard6" | grep -qi 'WARN.*confirm'
@@ -65,31 +80,31 @@ extract_audit1() {
 
 @test "guard 6 inserts [Unreleased] above first version entry" {
   local guard6
-  guard6=$(extract_guard "No \[Unreleased\]")
+  guard6=$(extract_guard "6. No [Unreleased]")
   echo "$guard6" | grep -qi 'above.*first.*\[x\.y\.z\]\|above.*latest\|above.*version'
 }
 
 @test "guard 6 signals that audit will populate the section" {
   local guard6
-  guard6=$(extract_guard "No \[Unreleased\]")
+  guard6=$(extract_guard "6. No [Unreleased]")
   echo "$guard6" | grep -qi 'audit.*populate\|audit.*generate\|audit.*insert'
 }
 
 @test "guard 6 respects --dry-run by not writing" {
   local guard6
-  guard6=$(extract_guard "No \[Unreleased\]")
+  guard6=$(extract_guard "6. No [Unreleased]")
   echo "$guard6" | grep -qi 'dry-run.*NOT write\|dry-run.*do NOT'
 }
 
 @test "guard 6 skips creation when --skip-audit" {
   local guard6
-  guard6=$(extract_guard "No \[Unreleased\]")
+  guard6=$(extract_guard "6. No [Unreleased]")
   echo "$guard6" | grep -qi 'skip-audit.*NOT create\|skip-audit.*do NOT'
 }
 
 @test "guard 6 --skip-audit takes precedence over --dry-run" {
   local guard6
-  guard6=$(extract_guard "No \[Unreleased\]")
+  guard6=$(extract_guard "6. No [Unreleased]")
   # skip-audit branch must appear before dry-run-only branch
   local skip_line dry_line
   skip_line=$(echo "$guard6" | grep -n -i '^\s*- If.*--skip-audit' | head -1 | cut -d: -f1)
@@ -101,8 +116,15 @@ extract_audit1() {
 
 @test "guard 6 preserves content between header and first version" {
   local guard6
-  guard6=$(extract_guard "No \[Unreleased\]")
+  guard6=$(extract_guard "6. No [Unreleased]")
   echo "$guard6" | grep -qi 'preserv'
+}
+
+@test "guard 6 branches continue to Guard 7" {
+  local guard6
+  guard6=$(extract_guard "6. No [Unreleased]")
+  # All branches should reference Guard 7 (not jump directly to audit)
+  echo "$guard6" | grep -qi 'Guard 7'
 }
 
 # --- Audit 1: Change collection ---
@@ -113,6 +135,12 @@ extract_audit1() {
   [ -n "$audit1" ]
   echo "$audit1" | grep -q 'gh pr list.*merged'
   echo "$audit1" | grep -q 'git log'
+}
+
+@test "audit 1 uses --first-parent to exclude branch commits" {
+  local audit1
+  audit1=$(extract_audit1)
+  echo "$audit1" | grep -q '\-\-first-parent'
 }
 
 @test "audit 1 handles gh CLI unavailability gracefully" {
@@ -157,6 +185,12 @@ extract_audit1() {
   audit2=$(awk '/\*\*Audit 2/{found=1; print; next} found && /^\*\*Audit [3-9]/{found=0} found{print}' "$RELEASE_CMD")
   [ -n "$audit2" ]
   echo "$audit2" | grep -qi 'PR\|merged'
+}
+
+@test "audit 2 handles non-existent CHANGELOG.md" {
+  local audit2
+  audit2=$(awk '/\*\*Audit 2/{found=1; print; next} found && /^\*\*Audit [3-9]/{found=0} found{print}' "$RELEASE_CMD")
+  echo "$audit2" | grep -qi 'does not exist\|undocumented\|skip extraction'
 }
 
 # --- Audit 5: Remediation ---
