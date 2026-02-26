@@ -26,12 +26,18 @@ if [ -z "$VBW_PLUGIN_ROOT" ]; then
   fi
 fi
 if [ -z "$VBW_PLUGIN_ROOT" ]; then
-  PLUGIN_DIR_PATH=$(ps axww -o args= 2>/dev/null | grep -v grep | sed -n 's/.*--plugin-dir  *\([^ ]*\).*/\1/p' | head -1)
+  for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
+    [ -f "$f" ] && VBW_PLUGIN_ROOT="${f%/scripts/hook-wrapper.sh}" && break
+  done
+fi
+if [ -z "$VBW_PLUGIN_ROOT" ]; then
+  PLUGIN_DIR_PATH=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)
+  PLUGIN_DIR_PATH="${PLUGIN_DIR_PATH#--plugin-dir }"
   [ -n "$PLUGIN_DIR_PATH" ] && [ -f "$PLUGIN_DIR_PATH/scripts/hook-wrapper.sh" ] && VBW_PLUGIN_ROOT="$PLUGIN_DIR_PATH"
 fi
 
 if [ -z "$VBW_PLUGIN_ROOT" ] || [ ! -d "$VBW_PLUGIN_ROOT" ]; then
-  echo "VBW: plugin root resolution failed (checked CLAUDE_PLUGIN_ROOT, cache local/, versioned dirs, process tree)." >&2
+  echo "VBW: plugin root resolution failed (checked CLAUDE_PLUGIN_ROOT, cache local/, versioned dirs, symlink fallback, process tree)." >&2
   exit 1
 fi
 
