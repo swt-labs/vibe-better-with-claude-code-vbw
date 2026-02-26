@@ -120,6 +120,49 @@ _atomic_pd_temp_read_pattern() {
   printf '[ -f "$P" ] && PD=$(cat "$P")'
 }
 
+_error_cache_bypass_pattern() {
+  printf '[ "$PD" = "phase_detect_error=true" ]'
+}
+
+_stale_cache_mtime_pattern() {
+  printf '[ "$P_M" -lt "$S_M" ]'
+}
+
+_conditional_wait_pattern() {
+  printf 'if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do'
+}
+
+_simulate_phase_detect_reader() {
+  local L="$1"
+  local P="$2"
+  local PD=""
+
+  [ -f "$P" ] && PD=$(cat "$P")
+
+  if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then
+    i=0
+    while [ ! -L "$L" ] && [ $i -lt 20 ]; do
+      sleep 0.1
+      i=$((i+1))
+    done
+
+    S_M=0
+    P_M=0
+    [ -L "$L" ] && S_M=$(stat -f %m "$L" 2>/dev/null || stat -c %Y "$L" 2>/dev/null || echo 0)
+    [ -f "$P" ] && P_M=$(stat -f %m "$P" 2>/dev/null || stat -c %Y "$P" 2>/dev/null || echo 0)
+
+    if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && { [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ "$P_M" -lt "$S_M" ]; }; then
+      PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+    fi
+  fi
+
+  if [ -n "$PD" ] && [ "$PD" != "phase_detect_error=true" ]; then
+    printf '%s' "$PD"
+  else
+    echo "phase_detect_error=true"
+  fi
+}
+
 @test "commands with phase-detect run it atomically in preamble" {
   for cmd in resume status vibe discuss qa verify; do
     local count
@@ -134,6 +177,97 @@ _atomic_pd_temp_read_pattern() {
     count=$(grep -cF "$(_atomic_pd_temp_read_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
     [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing guarded phase-detect temp-file read"; return 1; }
   done
+}
+
+@test "commands with phase-detect treat error cache as cache miss" {
+  for cmd in resume status vibe discuss qa verify; do
+    local count
+    count=$(grep -cF "$(_error_cache_bypass_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
+    [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing error-cache bypass"; return 1; }
+  done
+}
+
+@test "commands with phase-detect refresh stale cache via mtime guard" {
+  for cmd in resume status vibe discuss qa verify; do
+    local count
+    count=$(grep -cF "$(_stale_cache_mtime_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
+    [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing stale-cache mtime guard"; return 1; }
+  done
+}
+
+@test "commands with phase-detect wait conditionally (not always)" {
+  for cmd in resume status vibe discuss qa verify; do
+    local count
+    count=$(grep -cF "$(_conditional_wait_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
+    [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing conditional wait guard"; return 1; }
+  done
+}
+
+@test "reader bypasses error cache when live script is available" {
+  local td root link cache out
+  td=$(mktemp -d)
+  trap 'rm -rf "$td"' EXIT
+
+  root="$td/root"
+  link="$td/link"
+  cache="$td/pd.txt"
+  mkdir -p "$root/scripts"
+
+  cat > "$root/scripts/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "next_phase_state=fresh_live"
+EOF
+  chmod +x "$root/scripts/phase-detect.sh"
+
+  ln -s "$root" "$link"
+  echo "phase_detect_error=true" > "$cache"
+
+  out=$(_simulate_phase_detect_reader "$link" "$cache")
+  [[ "$out" == *"next_phase_state=fresh_live"* ]]
+  [[ "$out" != *"phase_detect_error=true"* ]]
+}
+
+@test "reader refreshes stale cache older than symlink" {
+  local td root link cache out
+  td=$(mktemp -d)
+  trap 'rm -rf "$td"' EXIT
+
+  root="$td/root"
+  link="$td/link"
+  cache="$td/pd.txt"
+  mkdir -p "$root/scripts"
+
+  cat > "$root/scripts/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "next_phase_state=fresh_live"
+EOF
+  chmod +x "$root/scripts/phase-detect.sh"
+
+  echo "next_phase_state=stale_cache" > "$cache"
+  sleep 1
+  ln -s "$root" "$link"
+
+  out=$(_simulate_phase_detect_reader "$link" "$cache")
+  [[ "$out" == *"next_phase_state=fresh_live"* ]]
+  [[ "$out" != *"next_phase_state=stale_cache"* ]]
+}
+
+@test "reader skips wait when cache is valid and symlink is absent" {
+  local td cache out slept
+  td=$(mktemp -d)
+  trap 'rm -rf "$td"' EXIT
+
+  cache="$td/pd.txt"
+  echo "next_phase_state=cached_ok" > "$cache"
+  slept=0
+
+  sleep() { slept=1; }
+
+  _simulate_phase_detect_reader "$td/no-link" "$cache" > "$td/out.txt"
+  out=$(cat "$td/out.txt")
+
+  [ "$slept" -eq 0 ]
+  [[ "$out" == *"next_phase_state=cached_ok"* ]]
 }
 
 @test "vibe.md reads phase-detect live with temp-file fallback" {
