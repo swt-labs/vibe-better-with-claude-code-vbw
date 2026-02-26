@@ -29,15 +29,10 @@ Git status:
 3. **Not on main:** If current branch is not `main` → STOP: "Must be on main to prepare a release. Currently on `{branch}`."
 4. **Dirty tree:** If `git status --porcelain` shows uncommitted changes (excluding .claude/ and CLAUDE.md), WARN + confirm: "Uncommitted changes detected. They will NOT be in the release commit. Continue?"
 5. **No CHANGELOG.md:** If CHANGELOG.md does not exist:
-   - If `--dry-run` (with or without `--skip-audit`): display "ℹ Would create CHANGELOG.md with [Unreleased] section" but do NOT write. Skip to Guard 7 (Guard 6 is not triggered because its condition requires CHANGELOG.md to exist; audit is skipped if `--skip-audit`, otherwise runs as dry-run with no writes).
-   - If `--skip-audit` (without `--dry-run`): create CHANGELOG.md with `# Changelog\n\nAll notable changes to VBW will be documented in this file.\n\n## [Unreleased]\n`. Display: "ℹ Created CHANGELOG.md with [Unreleased] section. ⚠ Audit skipped — [Unreleased] section is empty. Consider re-running without --skip-audit to populate it." Skip to Guard 7.
-   - Otherwise: create it with `# Changelog\n\nAll notable changes to VBW will be documented in this file.\n\n## [Unreleased]\n`. Display: "ℹ Created CHANGELOG.md with [Unreleased] section." Skip to Guard 7 (Guard 6 is satisfied since [Unreleased] was just created).
-6. **No [Unreleased]:** If CHANGELOG.md exists but lacks `## [Unreleased]`:
-   - If `--skip-audit` (with or without `--dry-run`): do NOT create the section (nothing will populate it). Display: "○ Skipped [Unreleased] creation (audit skipped)." Skip to Guard 7. (`--skip-audit` takes precedence over `--dry-run` here because there is no audit to dry-run.)
-   - If `--dry-run` (without `--skip-audit`): display "ℹ Would create [Unreleased] section" but do NOT write. Continue to Guard 7.
-   - Otherwise: insert `## [Unreleased]` on a new blank line directly above the first `## [x.y.z]` entry (preserving any content between `# Changelog` and the first version entry). If no version entries exist, insert after the last non-empty line following the `# Changelog` header. Display: "ℹ Created [Unreleased] section — audit will populate it from commits." Continue to Guard 7.
-7. **Version sync:** `bash scripts/bump-version.sh --verify`. Out of sync → WARN but proceed (bump fixes it).
-8. **Existing release branch:** Check local first (`git branch --list 'release/v*'`) and remote second (`git ls-remote --heads origin 'refs/heads/release/v*'`).
+   - If `--dry-run` (with or without `--skip-audit`): display "ℹ Would create CHANGELOG.md" but do NOT write. Skip to Guard 6.
+   - Otherwise: create CHANGELOG.md with `# Changelog\n\nAll notable changes to VBW will be documented in this file.\n`. Display: "ℹ Created CHANGELOG.md." Skip to Guard 6.
+6. **Version sync:** `bash scripts/bump-version.sh --verify`. Out of sync → WARN but proceed (bump fixes it).
+7. **Existing release branch:** Check local first (`git branch --list 'release/v*'`) and remote second (`git ls-remote --heads origin 'refs/heads/release/v*'`).
    - If remote check exits non-zero (auth/network/repo failure) → STOP: "Could not verify remote release branches (`origin` unreachable or unauthorized). Fix remote access and retry."
    - If local or remote checks return matches → STOP: "Release branch already exists (local or remote). Run `/vbw:release --finalize` after merging, or delete the stale branch."
 
@@ -45,8 +40,15 @@ Git status:
 
 Skip if `--skip-audit`.
 
+### Version Pre-computation
+
+Compute `{new-version}` before the audit so changelog entries use the final version header directly:
+- Read `VERSION` to get the current version.
+- Apply the bump level: `--major` increments major and resets minor.patch to 0, `--minor` increments minor and resets patch to 0, default (no flag) increments patch.
+- Store `{new-version}` and `{release-date}` (today's date, `YYYY-MM-DD`) for use in audit remediation.
+
 **Audit 1: Collect changes since last release.**
-- Find last release commit: `git log --oneline --grep="chore: release" -1`, extract hash (fallback: root commit). Capture its date via `git log -1 --format=%Y-%m-%d {hash}` (fallback: empty string, which omits the `merged:>=` filter).
+- Find last release commit: `git log --oneline --grep="^chore.*release" -1`, extract hash (fallback: root commit). This pattern matches both `chore: release v{x}` (no scope) and `chore(release): v{x}` (scoped) while excluding `fix(release):` commits. Capture its date via `git log -1 --format=%Y-%m-%d {hash}` (fallback: empty string, which omits the `merged:>=` filter).
 - List merged PRs since that date: `gh pr list --state merged --base main --search "merged:>={date}" --json number,title,labels,body --limit 200`. If `gh` is not available or the command fails (auth error, network error), display "⚠ gh CLI unavailable — using commit-only mode" and skip PR collection. All changelog entries will come from the commit fallback.
 - If the PR count equals the `--limit` cap, display: "⚠ PR list may be truncated at 200. Older PRs could be missing — verify changelog completeness manually."
 - List first-parent commits since: `git log --first-parent {hash}..HEAD --oneline`. Using `--first-parent` excludes individual branch commits that were brought in by merge commits, preventing duplicate fallback entries for regular-merge PRs. These are used for the commit fallback.
@@ -54,8 +56,8 @@ Skip if `--skip-audit`.
 
 **Audit 2: Check changelog completeness.**
 - If CHANGELOG.md does not exist (Guard 5 dry-run path), treat all entries as undocumented and skip extraction.
-- Otherwise, extract [Unreleased] content.
-- For each merged PR, check if its number (`#N`) or title keywords appear in [Unreleased]. Classify as documented or undocumented.
+- Otherwise, check if a `## [{new-version}]` section already exists (from a previous aborted run). If so, extract its content for completeness checking. If not, all entries are undocumented.
+- For each merged PR, check if its number (`#N`) or title keywords appear in the extracted section. Classify as documented or undocumented.
 - For direct-push commits (not in any merged PR), check similarly.
 
 **Audit 3:** README staleness: compare command count (`ls commands/*.md | wc -l`), hook count, and modified-command table coverage against README.
@@ -66,7 +68,7 @@ Skip if `--skip-audit`.
 - **Dry-run gate:** If `--dry-run`, show all generated entries below but do NOT write any files. Display "○ Dry run — no changes written." after showing suggestions. Skip insertion.
 - **Changelog — PR-centric generation (primary):** For each undocumented merged PR, generate an entry from the PR title and body. Classify by PR title prefix or labels: `feat`→Added, `fix`→Fixed, `refactor`/`perf`/`chore`→Changed, `docs`→Changed, `test`→Changed. If the PR title has no recognized prefix and no classifying labels, default to `Changed`. Extract scope from the PR title prefix `{type}({scope}):` or from the primary area of the PR. Read the PR body/diff summary to write a concise description of what changed and why. Format: `- **\`{scope}\`** -- {description}. (PR #{number})`. Group entries under `### Added`, `### Changed`, `### Fixed` sub-headers matching the existing changelog style.
 - **Changelog — commit fallback:** For commits not covered by any merged PR (uncovered commits from Audit 1 correlation), generate entries by commit prefix (feat→Added, fix→Fixed, refactor/perf→Changed, no prefix→Changed). Format: `- **\`{scope}\`** -- {description}`.
-- **Insertion (non-dry-run only):** Show generated entries for review. If `[Unreleased]` was auto-created by Guard 5 or Guard 6 (empty section), insert entries automatically without confirmation since the section needs content. If `[Unreleased]` already had content, insert on user confirmation only.
+- **Insertion (non-dry-run only):** Show generated entries for review. Create a `## [{new-version}] - {release-date}` section header and insert it with the generated entries directly above the first existing `## [x.y.z]` entry. If no version entries exist, insert after the last non-empty line following the `# Changelog` header. If a `## [{new-version}]` section already exists (from a previous aborted run), merge new entries into it on user confirmation only.
 - **README:** Show specific corrections, apply on confirmation.
 README corrections require explicit user confirmation.
 
@@ -99,29 +101,24 @@ Create and switch to release branch: `git checkout -b release/v{new-version}`
 --major/--minor: read VERSION, compute new version, write to all 4 files (VERSION, .claude-plugin/plugin.json, .claude-plugin/marketplace.json, marketplace.json).
 Neither flag: `bash scripts/bump-version.sh`. Capture new version.
 
-### Step 4: Update CHANGELOG header
-
-If [Unreleased] exists: replace with `## [{new-version}] - {YYYY-MM-DD}`. Display ✓.
-No [Unreleased]: display ○.
-
-### Step 5: Verify version sync
+### Step 4: Verify version sync
 
 `bash scripts/bump-version.sh --verify`. Fail → STOP: "Version sync failed after bump."
 
-### Step 6: Commit
+### Step 5: Commit
 
 Stage individually (only if modified): VERSION, .claude-plugin/plugin.json, .claude-plugin/marketplace.json, marketplace.json, CHANGELOG.md (if changed), README.md (if changed). Commit: `chore: release v{new-version}`
 
-### Step 7: Push release branch
+### Step 6: Push release branch
 
 --no-push: "○ Push skipped. Run `git push -u origin release/v{new-version}` when ready."
 Otherwise: `git push -u origin release/v{new-version}`. Display ✓.
 
-### Step 8: Open draft PR
+### Step 7: Open draft PR
 
 --no-push: skip. Otherwise: `gh pr create --base main --head release/v{new-version} --title "chore: release v{new-version}" --body "Release v{new-version}\n\nBumps version across all 4 files. Updates CHANGELOG.\n\nAfter merging, run \`/vbw:release --finalize\` to tag and create the GitHub release." --draft`. If gh unavailable/fails: "⚠ PR creation failed — create manually."
 
-### Step 9: Present summary
+### Step 8: Present summary
 
 Display task-level box with: version old→new, audit result, changelog status, commit hash, release branch name, push status, draft PR status, next step.
 

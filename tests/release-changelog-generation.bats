@@ -1,9 +1,10 @@
 #!/usr/bin/env bats
 
-# Tests that internal/release.md auto-creates [Unreleased] section and populates
-# it from merged PRs (primary) and commits (fallback) when missing.
+# Tests that internal/release.md generates changelog entries directly under a
+# versioned section header (no [Unreleased] indirection) and uses a robust grep
+# pattern to find the last release commit.
 #
-# Fixes #169
+# Fixes #169, #172
 
 REPO_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
 RELEASE_CMD="$REPO_ROOT/internal/release.md"
@@ -42,6 +43,11 @@ extract_audit1() {
   awk '/\*\*Audit 1/{found=1; print; next} found && /^\*\*Audit [2-9]/{found=0} found{print}' "$RELEASE_CMD"
 }
 
+# Helper: extract version pre-computation section
+extract_version_precompute() {
+  awk '/^### Version Pre-computation/{found=1; print; next} found && /^(### |## )/{found=0} found{print}' "$RELEASE_CMD"
+}
+
 @test "release command file exists" {
   [ -f "$RELEASE_CMD" ]
 }
@@ -65,7 +71,13 @@ extract_audit1() {
   guard5=$(extract_guard "5. No CHANGELOG.md")
   [ -n "$guard5" ]
   echo "$guard5" | grep -qi 'create.*CHANGELOG\|CHANGELOG.*create'
-  echo "$guard5" | grep -qi '\[Unreleased\]'
+}
+
+@test "guard 5 does NOT create [Unreleased] section" {
+  local guard5
+  guard5=$(extract_guard "5. No CHANGELOG.md")
+  # [Unreleased] indirection was removed — entries go directly under versioned header
+  ! echo "$guard5" | grep -qi '\[Unreleased\]'
 }
 
 @test "guard 5 respects --dry-run by not writing" {
@@ -74,86 +86,31 @@ extract_audit1() {
   echo "$guard5" | grep -qi 'dry-run.*NOT write\|dry-run.*do NOT'
 }
 
-@test "guard 5 dry-run skips to Guard 7 (not Guard 6)" {
+@test "guard 5 skips to Guard 6 (version sync)" {
   local guard5
   guard5=$(extract_guard "5. No CHANGELOG.md")
-  # Dry-run path should skip to Guard 7, not chain to Guard 6
-  echo "$guard5" | grep -qi 'Skip to Guard 7\|Guard 7'
-  ! echo "$guard5" | grep -qi 'Continue to Guard 6'
+  echo "$guard5" | grep -qi 'Guard 6'
 }
 
-@test "guard 5 non-dry-run skips to Guard 7" {
-  local guard5
-  guard5=$(extract_guard "5. No CHANGELOG.md")
-  # Non-dry-run path also skips to Guard 7 (Guard 6 is satisfied)
-  echo "$guard5" | grep -qi 'Skip to Guard 7'
+# --- Guard 6 (was [Unreleased]) removed ---
+
+@test "no guard for [Unreleased] section exists" {
+  # Guard 6 was the old [Unreleased] guard — it should not exist in the file
+  ! grep -q 'No \[Unreleased\]' "$RELEASE_CMD"
 }
 
-@test "guard 5 warns about empty section when --skip-audit" {
-  local guard5
-  guard5=$(extract_guard "5. No CHANGELOG.md")
-  echo "$guard5" | grep -qi 'skip-audit'
-  echo "$guard5" | grep -qi 'empty\|re-running without'
-}
-
-# --- Guard 6: Missing [Unreleased] ---
-
-@test "guard 6 auto-creates [Unreleased] section when missing" {
+@test "guard 6 is now version sync" {
   local guard6
-  guard6=$(extract_guard "6. No [Unreleased]")
+  guard6=$(extract_guard "6. Version sync")
   [ -n "$guard6" ]
-  echo "$guard6" | grep -qi 'insert\|create'
-  ! echo "$guard6" | grep -qi 'WARN.*confirm'
-  ! echo "$guard6" | grep -qi 'only bump versions'
+  echo "$guard6" | grep -qi 'bump-version\|sync'
 }
 
-@test "guard 6 inserts [Unreleased] above first version entry" {
-  local guard6
-  guard6=$(extract_guard "6. No [Unreleased]")
-  echo "$guard6" | grep -qi 'above.*first.*\[x\.y\.z\]\|above.*latest\|above.*version'
-}
-
-@test "guard 6 signals that audit will populate the section" {
-  local guard6
-  guard6=$(extract_guard "6. No [Unreleased]")
-  echo "$guard6" | grep -qi 'audit.*populate\|audit.*generate\|audit.*insert'
-}
-
-@test "guard 6 respects --dry-run by not writing" {
-  local guard6
-  guard6=$(extract_guard "6. No [Unreleased]")
-  echo "$guard6" | grep -qi 'dry-run.*NOT write\|dry-run.*do NOT'
-}
-
-@test "guard 6 skips creation when --skip-audit" {
-  local guard6
-  guard6=$(extract_guard "6. No [Unreleased]")
-  echo "$guard6" | grep -qi 'skip-audit.*NOT create\|skip-audit.*do NOT'
-}
-
-@test "guard 6 --skip-audit takes precedence over --dry-run" {
-  local guard6
-  guard6=$(extract_guard "6. No [Unreleased]")
-  # skip-audit branch must appear before dry-run-only branch
-  local skip_line dry_line
-  skip_line=$(echo "$guard6" | grep -n -i '^\s*- If.*--skip-audit' | head -1 | cut -d: -f1)
-  dry_line=$(echo "$guard6" | grep -n -i '^\s*- If.*--dry-run.*without' | head -1 | cut -d: -f1)
-  [ -n "$skip_line" ]
-  [ -n "$dry_line" ]
-  [ "$skip_line" -lt "$dry_line" ]
-}
-
-@test "guard 6 preserves content between header and first version" {
-  local guard6
-  guard6=$(extract_guard "6. No [Unreleased]")
-  echo "$guard6" | grep -qi 'preserv'
-}
-
-@test "guard 6 branches continue to Guard 7" {
-  local guard6
-  guard6=$(extract_guard "6. No [Unreleased]")
-  # All branches should reference Guard 7 (not jump directly to audit)
-  echo "$guard6" | grep -qi 'Guard 7'
+@test "guard 7 is now existing release branch" {
+  local guard7
+  guard7=$(extract_guard "7. Existing release branch")
+  [ -n "$guard7" ]
+  echo "$guard7" | grep -qi 'release.*branch\|branch.*already'
 }
 
 # --- Audit 1: Change collection ---
@@ -164,6 +121,23 @@ extract_audit1() {
   [ -n "$audit1" ]
   echo "$audit1" | grep -q 'gh pr list.*merged'
   echo "$audit1" | grep -q 'git log'
+}
+
+@test "audit 1 grep pattern matches both commit formats" {
+  local audit1
+  audit1=$(extract_audit1)
+  # Must use a pattern that matches both:
+  #   chore: release v1.32.0    (no scope)
+  #   chore(release): v1.31.0   (scoped)
+  # The old pattern "chore: release" missed the scoped format
+  echo "$audit1" | grep -q '\^chore.*release'
+}
+
+@test "audit 1 grep pattern excludes fix(release) commits" {
+  local audit1
+  audit1=$(extract_audit1)
+  # Pattern must be anchored to ^chore to exclude fix(release): commits
+  echo "$audit1" | grep -q '\^chore'
 }
 
 @test "audit 1 uses --first-parent to exclude branch commits" {
@@ -222,6 +196,30 @@ extract_audit1() {
   echo "$audit2" | grep -qi 'does not exist\|undocumented\|skip extraction'
 }
 
+@test "audit 2 checks versioned section instead of [Unreleased]" {
+  local audit2
+  audit2=$(awk '/\*\*Audit 2/{found=1; print; next} found && /^\*\*Audit [3-9]/{found=0} found{print}' "$RELEASE_CMD")
+  # Should reference the versioned section header, not [Unreleased]
+  echo "$audit2" | grep -qi '{new-version}'
+  ! echo "$audit2" | grep -q '\[Unreleased\]'
+}
+
+# --- Version pre-computation ---
+
+@test "version pre-computation happens before audit" {
+  local precompute
+  precompute=$(extract_version_precompute)
+  [ -n "$precompute" ]
+  echo "$precompute" | grep -qi 'VERSION\|bump'
+  # Must appear before Audit 1 in the file
+  local precompute_line audit1_line
+  precompute_line=$(grep -n 'Version Pre-computation' "$RELEASE_CMD" | head -1 | cut -d: -f1)
+  audit1_line=$(grep -n '\*\*Audit 1' "$RELEASE_CMD" | head -1 | cut -d: -f1)
+  [ -n "$precompute_line" ]
+  [ -n "$audit1_line" ]
+  [ "$precompute_line" -lt "$audit1_line" ]
+}
+
 # --- Audit 5: Remediation ---
 
 @test "audit 5 has dry-run gate before any writes" {
@@ -263,12 +261,12 @@ extract_audit1() {
   echo "$audit5" | grep -qi 'default.*Changed\|no.*prefix.*Changed\|no recognized.*Changed'
 }
 
-@test "audit 5 auto-inserts when [Unreleased] was auto-created" {
+@test "audit 5 inserts under versioned header directly" {
   local audit5
   audit5=$(extract_audit5)
-  # Must reference both Guard 5 and Guard 6 as auto-creation sources
-  echo "$audit5" | grep -qi 'Guard 5\|Guard 6'
-  echo "$audit5" | grep -qi 'auto-created.*insert\|auto-created.*automatic\|auto-created.*without.*confirmation'
+  # Entries go under ## [{new-version}] not [Unreleased]
+  echo "$audit5" | grep -qi '{new-version}'
+  ! echo "$audit5" | grep -q '\[Unreleased\]'
 }
 
 @test "audit 5 groups entries under conventional sub-headers" {
@@ -279,12 +277,15 @@ extract_audit1() {
   echo "$audit5" | grep -q 'Fixed'
 }
 
-# --- Step 4: Header rename ---
+# --- Step 4: Removed (was header rename) ---
 
-@test "step 4 still renames [Unreleased] to version header" {
-  local step4
-  step4=$(awk '/^### Step 4: Update CHANGELOG header/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
-  [ -n "$step4" ]
-  echo "$step4" | grep -q '\[Unreleased\]'
-  echo "$step4" | grep -q '\[{new-version}\]'
+@test "no Step 4 header rename exists (eliminated with [Unreleased])" {
+  # Step 4 was "Update CHANGELOG header" which renamed [Unreleased] to version.
+  # Since [Unreleased] is eliminated, this step no longer exists.
+  ! grep -q 'Update CHANGELOG header' "$RELEASE_CMD"
+}
+
+@test "no [Unreleased] references remain in the release command" {
+  # The entire [Unreleased] indirection was removed
+  ! grep -q '\[Unreleased\]' "$RELEASE_CMD"
 }

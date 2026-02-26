@@ -30,20 +30,20 @@ RELEASE_CMD="$REPO_ROOT/internal/release.md"
 }
 
 @test "release command opens a draft PR" {
-  # Step 8 must contain gh pr create --draft
-  local step8
-  step8=$(awk '/^### Step 8: Open draft PR/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
-  [ -n "$step8" ]
-  echo "$step8" | grep -qi 'draft'
-  echo "$step8" | grep -qi 'pr.*create\|gh.*pr'
+  # Step 7 must contain gh pr create --draft
+  local step7
+  step7=$(awk '/^### Step 7: Open draft PR/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step7" ]
+  echo "$step7" | grep -qi 'draft'
+  echo "$step7" | grep -qi 'pr.*create\|gh.*pr'
 }
 
 @test "release command does NOT push directly to current branch in prepare mode" {
-  # Step 7 should NOT contain a bare 'git push' that pushes to the current branch.
+  # Step 6 should NOT contain a bare 'git push' that pushes to the current branch.
   # It should push the release branch, not main.
   # Extract the push step content (between "Push release branch" and next heading)
   local push_section
-  push_section=$(awk '/^### Step 7: Push release branch/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
+  push_section=$(awk '/^### Step 6: Push release branch/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
   # The prepare-mode push must reference the release branch and explicit origin target
   echo "$push_section" | grep -q 'git push -u origin release/v{new-version}'
   echo "$push_section" | grep -qi 'release/'
