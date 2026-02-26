@@ -28,7 +28,7 @@ Git status:
 2. **--finalize mode:** If `--finalize` is present **and any prepare-only flags are also present** (`--dry-run`, `--no-push`, `--major`, `--minor`, `--skip-audit`) → reject the mixed flags and STOP (hard error): "Incompatible flags: `{flags}` are prepare-only and cannot be combined with `--finalize`. Re-run with only `--finalize`." Do **not** continue to finalize when this guard fails.
 3. **Not on main:** If current branch is not `main` → STOP: "Must be on main to prepare a release. Currently on `{branch}`."
 4. **Dirty tree:** If `git status --porcelain` shows uncommitted changes (excluding .claude/ and CLAUDE.md), WARN + confirm: "Uncommitted changes detected. They will NOT be in the release commit. Continue?"
-5. **No [Unreleased]:** If CHANGELOG.md lacks `## [Unreleased]`, WARN + confirm: "No [Unreleased] section. Release commit will only bump versions. Continue?"
+5. **No [Unreleased]:** If CHANGELOG.md lacks `## [Unreleased]`, automatically insert `## [Unreleased]` on a new line directly above the first `## [x.y.z]` entry (or at the top of the file after the `# Changelog` header if no version entries exist). Display: "ℹ Created [Unreleased] section — audit will populate it from commits." Then continue to the audit, which will generate and insert entries under it.
 6. **Version sync:** `bash scripts/bump-version.sh --verify`. Out of sync → WARN but proceed (bump fixes it).
 7. **Existing release branch:** Check local first (`git branch --list 'release/v*'`) and remote second (`git ls-remote --heads origin 'refs/heads/release/v*'`).
    - If remote check exits non-zero (auth/network/repo failure) → STOP: "Could not verify remote release branches (`origin` unreachable or unauthorized). Fix remote access and retry."
@@ -47,7 +47,7 @@ Skip if `--skip-audit`.
 **Audit 4:** Display branded audit report: commit count, changelog coverage, undocumented commits (⚠), README staleness (⚠ or ✓).
 
 **Audit 5: Remediation** (if issues found):
-- **Changelog:** Generate entries by commit prefix (feat→Added, fix→Fixed, refactor/perf→Changed, other→Changed). Format: `- **\`{scope}\`** -- {description}`. Show for review, insert under [Unreleased] on confirmation.
+- **Changelog:** Generate entries by commit prefix (feat→Added, fix→Fixed, refactor/perf→Changed, other→Changed). Format: `- **\`{scope}\`** -- {description}`. Group entries under `### Added`, `### Changed`, `### Fixed` sub-headers matching the existing changelog style. Show for review. If `[Unreleased]` was auto-created by Guard 5 (empty section), insert entries automatically without confirmation since the section needs content. If `[Unreleased]` already had content, insert on user confirmation only.
 - **README:** Show specific corrections, apply on confirmation.
 - **Dry-run:** Show suggestions only, no writes: "○ Dry run -- no changes written."
 Both require explicit user confirmation.
