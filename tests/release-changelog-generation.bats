@@ -46,6 +46,18 @@ extract_audit1() {
   [ -f "$RELEASE_CMD" ]
 }
 
+# --- extract_guard helper ---
+
+@test "extract_guard keyword-fallback path works with done flag" {
+  # Exercise the non-numeric fallback branch of extract_guard
+  local result
+  result=$(extract_guard "Dirty tree")
+  [ -n "$result" ]
+  echo "$result" | grep -qi 'uncommitted'
+  # Should NOT contain finalize guard content (done flag prevents re-entry)
+  ! echo "$result" | grep -qi 'Tag already exists\|Locate merged release'
+}
+
 # --- Guard 5: Missing CHANGELOG.md ---
 
 @test "guard 5 creates CHANGELOG.md when missing" {
