@@ -61,12 +61,17 @@ Pre-computed UAT resume metadata:
   fi
   ```
   Display: "⚠ Renamed misnamed plan files to `{NN}-PLAN.md` convention."
-- No SUMMARY.md in phase dir: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
-- **Auto-detect phase** (no explicit number): Phase detection is pre-computed in Context above. Use `next_phase` and `next_phase_slug` for the target phase.
+  Then re-run phase-detect.sh to refresh state (filenames changed):
+  ```bash
+  bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh" > "/tmp/.vbw-phase-detect-${CLAUDE_SESSION_ID:-default}.txt"
+  ```
+  Use the refreshed phase-detect output for all subsequent guard checks and steps. Also regenerate pre-computed verify context and UAT resume metadata for the target phase after auto-detection (Step 1).
+- **Auto-detect phase** (no explicit number): Phase detection is pre-computed in Context above (or refreshed by normalization above). Use `next_phase` and `next_phase_slug` for the target phase.
   - If `next_phase_state=needs_reverification`: use `next_phase` directly — this is the phase that just completed remediation and needs re-verification.
   - If `first_unverified_phase` is set: use that phase directly — this is the first fully-built phase without a terminal UAT.
   - Fallback: scan phase dirs for first with `*-SUMMARY.md` but no canonical `*-UAT.md` (exclude `*-SOURCE-UAT.md` copies).
   - Found: announce "Auto-detected Phase {NN} ({slug})". All verified: STOP "All phases have UAT results. Specify: `/vbw:verify {NN}`"
+- No SUMMARY.md in target phase dir: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 
 ## Steps
 
@@ -74,7 +79,14 @@ Pre-computed UAT resume metadata:
 
 - Parse explicit phase number from $ARGUMENTS, or use auto-detected phase
 - Use `.vbw-planning/phases/` for phase directories
-- Use pre-computed verify context from the "Pre-computed verify context" block above — it contains per-plan titles, must_haves, what was built, files modified, and status. Do NOT read individual `*-SUMMARY.md` or `*-PLAN.md` files.
+- **If normalization was performed (Guard above):** re-run compile-verify-context.sh and extract-uat-resume.sh for the resolved target phase dir, since pre-computed blocks used stale filenames:
+  ```bash
+  PDIR=".vbw-planning/phases/{target-slug}"
+  bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh" "$PDIR"
+  bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/extract-uat-resume.sh" "$PDIR"
+  ```
+  Use the refreshed output in place of the pre-computed blocks from Context.
+- Use pre-computed verify context from the "Pre-computed verify context" block above (or refreshed output if normalization ran) — it contains per-plan titles, must_haves, what was built, files modified, and status. Do NOT read individual `*-SUMMARY.md` or `*-PLAN.md` files.
 - **If user specified an explicit phase number** that differs from `verify_target_slug`, ignore the pre-computed context (it was generated for the auto-detected phase). Read PLAN/SUMMARY files from the user-specified phase directory instead.
 
 ### 2. Handle re-verification state

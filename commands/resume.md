@@ -28,8 +28,23 @@ Pre-computed state (via phase-detect.sh):
 ## Guard
 
 1. **Not initialized** (no .vbw-planning/ dir): STOP "Run /vbw:init first."
-2. **No roadmap:** `.vbw-planning/ROADMAP.md` missing → STOP: "No roadmap found. Run /vbw:vibe."
-3. **Phase-detect error:** If output contains `phase_detect_error=true`, display: "⚠ Phase detection failed. Run phase-detect.sh manually to debug." and STOP.
+2. **Brownfield normalization:** If Pre-computed state (from Context above) contains `misnamed_plans=true`, normalize all phase directories before proceeding:
+   ```bash
+   NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
+   if [ -f "$NORM_SCRIPT" ]; then
+     for pdir in .vbw-planning/phases/*/; do
+       [ -d "$pdir" ] && bash "$NORM_SCRIPT" "$pdir"
+     done
+   fi
+   ```
+   Display: "⚠ Renamed misnamed plan files to `{NN}-PLAN.md` convention."
+   Then re-run phase-detect.sh to refresh state:
+   ```bash
+   bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh" > "/tmp/.vbw-phase-detect-${CLAUDE_SESSION_ID:-default}.txt"
+   ```
+   Use the refreshed phase-detect output for all subsequent steps.
+3. **No roadmap:** `.vbw-planning/ROADMAP.md` missing → STOP: "No roadmap found. Run /vbw:vibe."
+4. **Phase-detect error:** If output contains `phase_detect_error=true`, display: "⚠ Phase detection failed. Run phase-detect.sh manually to debug." and STOP.
 
 ## Steps
 

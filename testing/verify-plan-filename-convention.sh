@@ -517,6 +517,70 @@ else
   fail "end-to-end lowercase — before: $(echo "$OUTPUT_BEFORE" | grep misnamed), after: $(echo "$OUTPUT_AFTER" | grep misnamed)"
 fi
 
+# --- Command-level normalization guard contract tests ---
+echo ""
+echo "Command normalization guard contracts:"
+
+# Test 43: qa.md contains normalization guard
+if grep -q 'normalize-plan-filenames.sh' "$SCRIPT_DIR/commands/qa.md" && grep -q 'misnamed_plans=true' "$SCRIPT_DIR/commands/qa.md"; then
+  pass "qa.md contains normalization guard"
+else
+  fail "qa.md missing normalization guard"
+fi
+
+# Test 44: verify.md contains normalization guard
+if grep -q 'normalize-plan-filenames.sh' "$SCRIPT_DIR/commands/verify.md" && grep -q 'misnamed_plans=true' "$SCRIPT_DIR/commands/verify.md"; then
+  pass "verify.md contains normalization guard"
+else
+  fail "verify.md missing normalization guard"
+fi
+
+# Test 45: vibe.md contains normalization guard
+if grep -q 'normalize-plan-filenames.sh' "$SCRIPT_DIR/commands/vibe.md" && grep -q 'misnamed_plans=true' "$SCRIPT_DIR/commands/vibe.md"; then
+  pass "vibe.md contains normalization guard"
+else
+  fail "vibe.md missing normalization guard"
+fi
+
+# Test 46: status.md contains normalization guard
+if grep -q 'normalize-plan-filenames.sh' "$SCRIPT_DIR/commands/status.md" && grep -q 'misnamed_plans=true' "$SCRIPT_DIR/commands/status.md"; then
+  pass "status.md contains normalization guard"
+else
+  fail "status.md missing normalization guard"
+fi
+
+# Test 47: resume.md contains normalization guard
+if grep -q 'normalize-plan-filenames.sh' "$SCRIPT_DIR/commands/resume.md" && grep -q 'misnamed_plans=true' "$SCRIPT_DIR/commands/resume.md"; then
+  pass "resume.md contains normalization guard"
+else
+  fail "resume.md missing normalization guard"
+fi
+
+# Test 48: verify.md refreshes phase-detect after normalization
+NORM_LINE=$(grep -n 'normalize-plan-filenames' "$SCRIPT_DIR/commands/verify.md" | head -1 | cut -d: -f1)
+REFRESH_LINE=$(grep -n 're-run phase-detect' "$SCRIPT_DIR/commands/verify.md" | head -1 | cut -d: -f1)
+if [ -n "$NORM_LINE" ] && [ -n "$REFRESH_LINE" ] && [ "$REFRESH_LINE" -gt "$NORM_LINE" ]; then
+  pass "verify.md refreshes phase-detect after normalization"
+else
+  fail "verify.md missing post-normalization phase-detect refresh"
+fi
+
+# Test 49: verify.md has post-normalization verify context regeneration
+if grep -q 'compile-verify-context' "$SCRIPT_DIR/commands/verify.md" && grep -B5 -A5 'compile-verify-context' "$SCRIPT_DIR/commands/verify.md" | grep -qi 'normalization\|stale'; then
+  pass "verify.md has post-normalization verify context regeneration"
+else
+  fail "verify.md missing post-normalization verify context refresh"
+fi
+
+# Test 50: verify.md auto-detect phase precedes SUMMARY check
+AUTO_LINE=$(grep -n 'Auto-detect phase' "$SCRIPT_DIR/commands/verify.md" | head -1 | cut -d: -f1)
+SUMMARY_LINE=$(grep -n 'No SUMMARY.md' "$SCRIPT_DIR/commands/verify.md" | head -1 | cut -d: -f1)
+if [ -n "$AUTO_LINE" ] && [ -n "$SUMMARY_LINE" ] && [ "$AUTO_LINE" -lt "$SUMMARY_LINE" ]; then
+  pass "verify.md auto-detect phase precedes SUMMARY check"
+else
+  fail "verify.md SUMMARY check should come after auto-detect phase"
+fi
+
 echo ""
 echo "==============================="
 echo "Plan filename convention: $PASS passed, $FAIL failed"
