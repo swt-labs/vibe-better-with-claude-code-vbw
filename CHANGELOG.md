@@ -2,6 +2,26 @@
 
 All notable changes to VBW will be documented in this file.
 
+## [1.32.0] - 2026-02-26
+
+### Added
+
+- **`plugin`** -- Excluded `/vbw:release` from marketplace installs. Release command moved to `internal/` so only maintainers can access it. Consumer mirror sync auto-cleans stale copies. (PR #161)
+
+### Changed
+
+- **`gitignore`** -- Updated `.gitignore` to ignore entire `.claude` directory instead of only `.claude/settings.local.json`. (PR #158)
+
+### Fixed
+
+- **`release`** -- Auto-create `[Unreleased]` section in CHANGELOG.md during release prep when missing. Audit remediation auto-inserts entries into empty sections without confirmation. (PR #170)
+- **`release`** -- Two-phase prepare/finalize workflow for branch protection. Prepare creates a release branch and draft PR; finalize tags and creates GitHub release after merge. (PR #163)
+- **`commands`** -- Added symlink glob fallback and robust `grep -oE` pattern to all 19 command preambles for plugin root resolution, aligning with hooks.json resolution chain. (PR #168)
+- **`commands`** -- Added phase-detect fallback to prevent race condition in template blocks. Replaced vulnerable two-block producer-consumer pattern with guarded-reader across 6 commands. (PR #165)
+- **`commands`** -- Reverted session-key SHA1 derivation and injected `session_id` from SessionStart hook stdin. Fixes preamble/body symlink path mismatch. (PR #154)
+- **`planning`** -- Three-layer defense for deterministic plan filename convention (`{NN}-PLAN.md`). PreToolUse hard block, post-Lead normalization script, and prompt clarification. (PR #164)
+- **`auto-uat`** -- Fixed mid-milestone UAT trigger and added remediation re-verification lifecycle. Unverified phases now detected regardless of `all_done` state. (PR #149)
+
 ## [1.31.0] - 2026-02-23
 
 ### Added
