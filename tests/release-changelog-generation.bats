@@ -584,22 +584,22 @@ extract_version_precompute() {
   echo "$audit5" | grep -qi 'stdout\|output.*empty'
 }
 
-@test "finalize guard 5 tag check warns about exit code pitfall" {
+@test "finalize guard 6 tag check warns about exit code pitfall" {
   local finalize_guard
   finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
   [ -n "$finalize_guard" ]
-  # Narrow extraction: target Guard 5 specifically ("Tag already exists")
-  local guard5_content
-  guard5_content=$(echo "$finalize_guard" | awk '/^5\. \*\*Tag already exists/{found=1; print; next} found && /^[0-9]+\./{found=0} found && /^###/{found=0} found{print}')
-  if [ -z "$guard5_content" ]; then
-    # No fallback — if the Guard 5 anchor drifts (renumbered/reworded),
+  # Narrow extraction: target Guard 6 specifically ("Tag already exists")
+  local guard6_content
+  guard6_content=$(echo "$finalize_guard" | awk '/^6\. \*\*Tag already exists/{found=1; print; next} found && /^[0-9]+\./{found=0} found && /^###/{found=0} found{print}')
+  if [ -z "$guard6_content" ]; then
+    # No fallback — if the Guard 6 anchor drifts (renumbered/reworded),
     # fail explicitly so the test is updated, rather than broadening scope.
-    fail "Guard 5 anchor '5. **Tag already exists' not found in Finalize Guard section — update test if guard was renumbered/reworded"
+    fail "Guard 6 anchor '6. **Tag already exists' not found in Finalize Guard section — update test if guard was renumbered/reworded"
   fi
   # Must explicitly warn that git tag -l always exits 0
-  echo "$guard5_content" | grep -qi 'always exits 0\|exit code'
+  echo "$guard6_content" | grep -qi 'always exits 0\|exit code'
   # Must instruct to check stdout content
-  echo "$guard5_content" | grep -qi 'stdout\|non-empty\|outputs a match'
+  echo "$guard6_content" | grep -qi 'stdout\|non-empty\|outputs a match'
 }
 
 @test "finalize step 2 ls-remote tag check warns about exit code pitfall" {
@@ -734,4 +734,71 @@ extract_version_precompute() {
   [ -n "$guard7" ]
   # Must mention/warn about multiple pending branches with divergent versions
   echo "$guard7" | grep -qi 'multiple.*branch\|divergent\|more than one\|several.*release'
+}
+
+# --- Issue #180: Release UX improvements ---
+
+@test "prepare step 8 returns to main after release branch push" {
+  local step8
+  step8=$(awk '/^### Step 8.*[Rr]eturn/{found=1; print; next} found && /^### /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step8" ]
+  # Must checkout main
+  echo "$step8" | grep -qi 'git checkout main'
+  # Must handle checkout failure gracefully
+  echo "$step8" | grep -qi 'fail\|non-fatal\|could not.*switch'
+}
+
+@test "prepare summary step is renumbered to step 9" {
+  # After inserting Step 8 (return to main), the summary must be Step 9
+  grep -q '^### Step 9.*[Ss]ummary' "$RELEASE_CMD"
+}
+
+@test "finalize guard 4 auto-merges release PR" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Guard 4 must mention merging the PR
+  echo "$finalize_guard" | grep -qi 'gh pr merge'
+  # Must mark draft PR as ready
+  echo "$finalize_guard" | grep -qi 'gh pr ready'
+  # Must wait for checks
+  echo "$finalize_guard" | grep -qi 'gh pr checks.*--watch\|poll.*status.*check'
+  # Must pull after merge
+  echo "$finalize_guard" | grep -qi 'git pull.*main'
+}
+
+@test "finalize guard 4 handles already-merged PR gracefully" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Must handle case where no open PR is found (already merged)
+  echo "$finalize_guard" | grep -qi 'no open.*PR.*found\|already merged'
+}
+
+@test "finalize step 3 uses awk not sed for changelog extraction" {
+  local step3
+  step3=$(awk '/^### Finalize Step 3/{found=1; print; next} found && /^### /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step3" ]
+  # Must use awk
+  echo "$step3" | grep -qi 'awk'
+  # Must explicitly prohibit sed
+  echo "$step3" | grep -qi 'NOT.*sed\|[Nn]ever.*sed'
+}
+
+@test "finalize step 4 notes branch may already be deleted by PR merge" {
+  local step4
+  step4=$(awk '/^### Finalize Step 4/{found=1; print; next} found && /^### /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step4" ]
+  # Must mention that gh pr merge --delete-branch may have already cleaned up
+  echo "$step4" | grep -qi 'delete-branch\|already deleted\|PR merge'
+}
+
+@test "prepare summary directs user to run finalize not merge manually" {
+  local step9
+  step9=$(awk '/^### Step 9/{found=1; print; next} found && /^---/{found=0} found && /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step9" ]
+  # Must tell user to run --finalize (which now handles merge)
+  echo "$step9" | grep -qi '/vbw:release --finalize'
+  # Must NOT tell user to merge the PR manually first
+  ! echo "$step9" | grep -qi 'merge the PR.*then run\|first merge'
 }
