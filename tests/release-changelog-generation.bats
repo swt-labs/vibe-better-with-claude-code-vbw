@@ -470,7 +470,10 @@ extract_version_precompute() {
   guard7=$(extract_guard "7. Existing release branch")
   # Must list multiple not-found patterns for cross-version/transport robustness
   echo "$guard7" | grep -qi 'remote ref does not exist'
-  echo "$guard7" | grep -qi 'not found'
+  echo "$guard7" | grep -qi 'does not exist'
+  echo "$guard7" | grep -qi 'unable to delete'
+  # Must NOT use bare 'not found' (over-broad — catches repo-level errors)
+  echo "$guard7" | grep -qi 'do not match bare\|too broad'
   # Must describe conservative fallback for unknown messages
   echo "$guard7" | grep -qi 'conservative\|false failure'
 }
@@ -490,4 +493,66 @@ extract_version_precompute() {
   echo "$step4" | grep -qi 'Could not delete\|delete manually'
   # Must be non-fatal (release is already tagged)
   echo "$step4" | grep -qi 'non-fatal\|continue'
+}
+
+# --- Bug #174: Date format and tag check ---
+
+@test "audit 1 date extraction uses git format placeholder, not strftime" {
+  local audit1
+  audit1=$(extract_audit1)
+  # Must NOT use --format=%Y-%m-%d (strftime specifiers, not git format)
+  # %Y is literal in git, %m is left/right mark, %d is ref decoration
+  ! echo "$audit1" | grep -q 'format=%Y-%m-%d'
+  ! echo "$audit1" | grep -q "format='%Y-%m-%d'"
+  # Must use a valid git date format: %cd with --date=short (spec-documented approach)
+  echo "$audit1" | grep -qE '%cd.*--date=short'
+}
+
+@test "audit 5 stale section tag check warns about exit code pitfall" {
+  local audit5
+  audit5=$(extract_audit5)
+  # Must explicitly warn that git tag -l always exits 0
+  echo "$audit5" | grep -qi 'always exits 0\|exit code'
+  # Must instruct to check stdout content
+  echo "$audit5" | grep -qi 'stdout\|output.*empty'
+}
+
+@test "finalize guard 5 tag check warns about exit code pitfall" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Narrow extraction: target Guard 5 specifically ("Tag already exists")
+  local guard5_content
+  guard5_content=$(echo "$finalize_guard" | awk '/^5\. \*\*Tag already exists/{found=1; print; next} found && /^[0-9]+\./{found=0} found && /^###/{found=0} found{print}')
+  if [ -z "$guard5_content" ]; then
+    # No fallback — if the Guard 5 anchor drifts (renumbered/reworded),
+    # fail explicitly so the test is updated, rather than broadening scope.
+    fail "Guard 5 anchor '5. **Tag already exists' not found in Finalize Guard section — update test if guard was renumbered/reworded"
+  fi
+  # Must explicitly warn that git tag -l always exits 0
+  echo "$guard5_content" | grep -qi 'always exits 0\|exit code'
+  # Must instruct to check stdout content
+  echo "$guard5_content" | grep -qi 'stdout\|non-empty\|outputs a match'
+}
+
+@test "finalize step 2 ls-remote tag check warns about exit code pitfall" {
+  local step2
+  step2=$(awk '/^### Finalize Step 2/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step2" ]
+  # Must mention git ls-remote --tags
+  echo "$step2" | grep -qi 'git ls-remote.*tags'
+  # Intent: spec must convey that ls-remote exit code alone does not indicate match/no-match
+  echo "$step2" | grep -qi 'always exits 0\|exit.code\|zero regardless\|succeeds regardless\|not the exit'
+  # Intent: spec must direct the reader to check command output, not just exit status
+  echo "$step2" | grep -qi 'stdout\|non-empty\|output.*empty\|check.*output\|produces.*output'
+}
+
+@test "guard 7 clarifies stdout-vs-exit-code for branch list checks" {
+  local guard7
+  guard7=$(extract_guard "7. Existing release branch")
+  [ -n "$guard7" ]
+  # Intent: spec must convey that branch --list exit code is not a reliable match indicator
+  echo "$guard7" | grep -qi 'branch --list.*always exits 0\|branch --list.*stdout\|branch --list.*exit.code\|branch --list.*non-empty\|branch --list.*check.*output'
+  # Intent: spec must convey that ls-remote exit code is not a reliable match indicator
+  echo "$guard7" | grep -qi 'ls-remote.*always exits 0\|ls-remote.*stdout\|ls-remote.*exit.code\|ls-remote.*non-empty\|ls-remote.*reachable'
 }
