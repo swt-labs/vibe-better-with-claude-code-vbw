@@ -152,6 +152,9 @@ extract_version_precompute() {
   # Must parse stderr to distinguish 'remote ref does not exist' (success)
   # from network/permission errors (failure)
   echo "$guard7" | grep -qi 'remote ref does not exist\|not-found\|stderr'
+  # Must list multiple known not-found message patterns for cross-version robustness
+  echo "$guard7" | grep -qi 'does not exist'
+  echo "$guard7" | grep -qi 'not found'
 }
 
 @test "guard 7 stops when all deletions fail" {
@@ -197,6 +200,8 @@ extract_version_precompute() {
   echo "$audit1" | grep -q 'extended-regexp\|extended.regexp'
   # Must restrict scope via (\\(release\\))? or equivalent
   echo "$audit1" | grep -qE '\(release\)\)|\(\\\(release\\\)\)'
+  # Must support breaking-change marker via !?
+  echo "$audit1" | grep -q '!?'
 }
 
 @test "audit 1 grep pattern excludes version bump commits" {
@@ -211,6 +216,8 @@ extract_version_precompute() {
   # Must document the body-line matching limitation and describe subject verification
   echo "$audit1" | grep -qi 'subject.*verif\|verif.*subject\|subject-verif'
   echo "$audit1" | grep -qi 'body'
+  # Must specify the split-on-first-space parsing procedure
+  echo "$audit1" | grep -qi 'split.*first space\|separate.*hash.*subject'
 }
 
 @test "audit 1 grep pattern excludes fix(release) commits" {
@@ -413,4 +420,74 @@ extract_version_precompute() {
   # Verify Guard 5 does NOT condition creation on --skip-audit presence
   # (it always creates if CHANGELOG is missing and not dry-run).
   echo "$guard5" | grep -qi 'Otherwise.*create\|create CHANGELOG'
+}
+
+# --- Runtime behavior: candidate list not truncated (Finding 1) ---
+
+@test "audit 1 does not truncate candidate list with head" {
+  local audit1
+  audit1=$(extract_audit1)
+  # The git log command must NOT be piped through head
+  # (truncation could drop the true release commit behind body-line false positives)
+  ! echo "$audit1" | grep -q 'head -[0-9]'
+  # Must explicitly state no truncation
+  echo "$audit1" | grep -qi 'no truncation\|not truncated'
+}
+
+@test "audit 1 falls back to root commit when no subject matches" {
+  local audit1
+  audit1=$(extract_audit1)
+  # Must specify root commit fallback via git rev-list --max-parents=0
+  echo "$audit1" | grep -qi 'root commit\|rev-list.*max-parents=0'
+}
+
+# --- Runtime behavior: subject parsing precision (Finding 2) ---
+
+@test "audit 1 specifies exact subject extraction from %H %s format" {
+  local audit1
+  audit1=$(extract_audit1)
+  # Must specify split on first space to separate hash from subject
+  echo "$audit1" | grep -qi 'split.*first space\|separate.*hash.*subject'
+  # Must specify testing subject against the regex
+  echo "$audit1" | grep -qi 'test.*subject.*regex\|subject.*against.*regex\|subject matches'
+}
+
+# --- Runtime behavior: breaking-change marker (Finding 3) ---
+
+@test "audit 1 grep pattern supports breaking-change marker" {
+  local audit1
+  audit1=$(extract_audit1)
+  # Pattern must include !? to handle chore(release)!: v1.33.0
+  echo "$audit1" | grep -q '!?'
+  # Must mention breaking-change in the explanation
+  echo "$audit1" | grep -qi 'breaking.change'
+}
+
+# --- Runtime behavior: remote deletion classification (Finding 4) ---
+
+@test "guard 7 lists multiple known not-found stderr patterns" {
+  local guard7
+  guard7=$(extract_guard "7. Existing release branch")
+  # Must list multiple not-found patterns for cross-version/transport robustness
+  echo "$guard7" | grep -qi 'remote ref does not exist'
+  echo "$guard7" | grep -qi 'not found'
+  # Must describe conservative fallback for unknown messages
+  echo "$guard7" | grep -qi 'conservative\|false failure'
+}
+
+# --- Runtime behavior: finalize step 4 visibility (Finding 5) ---
+
+@test "finalize step 4 reports remote deletion failure instead of suppressing" {
+  local step4
+  step4=$(awk '/^### Finalize Step 4/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step4" ]
+  # Must NOT use || true for remote deletion (old behavior)
+  local remote_line
+  remote_line=$(echo "$step4" | grep -i 'push origin --delete')
+  [ -n "$remote_line" ]
+  ! echo "$remote_line" | grep -q '|| true'
+  # Must display a warning on failure
+  echo "$step4" | grep -qi 'Could not delete\|delete manually'
+  # Must be non-fatal (release is already tagged)
+  echo "$step4" | grep -qi 'non-fatal\|continue'
 }

@@ -164,3 +164,27 @@ RELEASE_CMD="$REPO_ROOT/internal/release.md"
   count=$(grep -c '^## Output Format$' "$RELEASE_CMD")
   [ "$count" -eq 1 ]
 }
+
+# --- Finalize Step 4: cleanup visibility (Finding 5) ---
+
+@test "finalize step 4 does not suppress remote deletion errors silently" {
+  local step4
+  step4=$(awk '/^### Finalize Step 4/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step4" ]
+  # Remote deletion must not use blanket || true suppression
+  ! echo "$step4" | grep -q 'push origin --delete.*|| true'
+  # Must warn on failure instead
+  echo "$step4" | grep -qi 'warn\|Could not delete\|delete manually'
+}
+
+@test "finalize step 4 classifies remote not-found as success" {
+  local step4
+  step4=$(awk '/^### Finalize Step 4/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
+  echo "$step4" | grep -qi 'not-found\|not found\|does not exist\|already gone'
+}
+
+@test "finalize step 4 continues on cleanup failure (non-fatal)" {
+  local step4
+  step4=$(awk '/^### Finalize Step 4/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
+  echo "$step4" | grep -qi 'non-fatal\|continue.*Step 5\|continue.*regardless'
+}
