@@ -28,7 +28,9 @@ Git status:
 2. **--finalize mode:** If `--finalize` is present **and any prepare-only flags are also present** (`--dry-run`, `--no-push`, `--major`, `--minor`, `--skip-audit`) → reject the mixed flags and STOP (hard error): "Incompatible flags: `{flags}` are prepare-only and cannot be combined with `--finalize`. Re-run with only `--finalize`." Do **not** continue to finalize when this guard fails.
 3. **Not on main:** If current branch is not `main` → STOP: "Must be on main to prepare a release. Currently on `{branch}`."
 4. **Dirty tree:** If `git status --porcelain` shows uncommitted changes (excluding .claude/ and CLAUDE.md), WARN + confirm: "Uncommitted changes detected. They will NOT be in the release commit. Continue?"
-5. **No CHANGELOG.md:** If CHANGELOG.md does not exist, create it with `# Changelog\n\nAll notable changes to VBW will be documented in this file.\n\n## [Unreleased]\n`. Display: "ℹ Created CHANGELOG.md with [Unreleased] section." Skip to Guard 6.
+5. **No CHANGELOG.md:** If CHANGELOG.md does not exist:
+   - If `--dry-run`: display "ℹ Would create CHANGELOG.md with [Unreleased] section" but do NOT write. Continue to Guard 6 (which will also be dry-run).
+   - Otherwise: create it with `# Changelog\n\nAll notable changes to VBW will be documented in this file.\n\n## [Unreleased]\n`. Display: "ℹ Created CHANGELOG.md with [Unreleased] section." Skip to Guard 7 (Guard 6 is satisfied since [Unreleased] was just created).
 6. **No [Unreleased]:** If CHANGELOG.md exists but lacks `## [Unreleased]`:
    - If `--dry-run`: display "ℹ Would create [Unreleased] section" but do NOT write. Continue to audit (which will also be dry-run).
    - If `--skip-audit`: do NOT create the section (nothing will populate it). Display: "○ Skipped [Unreleased] creation (audit skipped)." Skip to Guard 7.
@@ -47,7 +49,7 @@ Skip if `--skip-audit`.
 - List merged PRs since that date: `gh pr list --state merged --base main --search "merged:>={date}" --json number,title,labels,body --limit 200`. If `gh` is not available or the command fails (auth error, network error), display "⚠ gh CLI unavailable — using commit-only mode" and skip PR collection. All changelog entries will come from the commit fallback.
 - If the PR count equals the `--limit` cap, display: "⚠ PR list may be truncated at 200. Older PRs could be missing — verify changelog completeness manually."
 - List all commits since: `git log {hash}..HEAD --oneline`. These are used for the commit fallback.
-- **Commit-to-PR correlation:** For each commit, check if its SHA appears in any collected PR (by matching commit SHAs from `gh pr view {number} --json commits`). Commits whose SHA appears in at least one PR are "covered" and excluded from the commit fallback. Only uncovered commits generate fallback entries.
+- **Commit-to-PR correlation:** Scan commit messages for PR references (patterns: `(#N)`, `Merge pull request #N`). Commits whose message references any collected PR number are "covered" and excluded from the commit fallback. Only uncovered commits generate fallback entries. This avoids per-PR API calls and works reliably with both merge and squash strategies since GitHub appends `(#N)` to squash commit subjects.
 
 **Audit 2: Check changelog completeness.**
 - Extract [Unreleased] content.

@@ -38,6 +38,12 @@ extract_audit1() {
   echo "$guard5" | grep -qi '\[Unreleased\]'
 }
 
+@test "guard 5 respects --dry-run by not writing" {
+  local guard5
+  guard5=$(extract_guard "No CHANGELOG.md")
+  echo "$guard5" | grep -qi 'dry-run.*NOT write\|dry-run.*do NOT'
+}
+
 # --- Guard 6: Missing [Unreleased] ---
 
 @test "guard 6 auto-creates [Unreleased] section when missing" {
@@ -108,10 +114,13 @@ extract_audit1() {
   echo "$audit1" | grep -qi 'fallback.*empty\|fallback.*omit'
 }
 
-@test "audit 1 correlates commits to PRs for deduplication" {
+@test "audit 1 correlates commits to PRs via commit messages" {
   local audit1
   audit1=$(extract_audit1)
-  echo "$audit1" | grep -qi 'correlat\|covered.*excluded\|commit.*PR'
+  # Must use commit message pattern matching, not per-PR API calls
+  echo "$audit1" | grep -qi 'commit message\|#N\|Merge pull request'
+  # Must NOT require per-PR gh pr view calls
+  ! echo "$audit1" | grep -qi 'gh pr view.*--json commits'
 }
 
 # --- Audit 2: Completeness ---
