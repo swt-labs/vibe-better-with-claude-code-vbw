@@ -51,6 +51,16 @@ Pre-computed UAT resume metadata:
 ## Guard
 
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+- **Brownfield normalization:** If Phase state (from Context above) contains `misnamed_plans=true`, normalize all phase directories before proceeding:
+  ```bash
+  NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
+  if [ -f "$NORM_SCRIPT" ]; then
+    for pdir in .vbw-planning/phases/*/; do
+      [ -d "$pdir" ] && bash "$NORM_SCRIPT" "$pdir"
+    done
+  fi
+  ```
+  Display: "⚠ Renamed misnamed plan files to `{NN}-PLAN.md` convention."
 - No SUMMARY.md in phase dir: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 - **Auto-detect phase** (no explicit number): Phase detection is pre-computed in Context above. Use `next_phase` and `next_phase_slug` for the target phase.
   - If `next_phase_state=needs_reverification`: use `next_phase` directly — this is the phase that just completed remediation and needs re-verification.
