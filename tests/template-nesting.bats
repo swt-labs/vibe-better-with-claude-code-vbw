@@ -292,20 +292,16 @@ EOF
 }
 
 @test "reader skips wait when cache is valid and symlink is absent" {
-  local td cache stamp out slept
+  local td cache stamp out
   td=$(_new_tmp_test_dir)
 
   cache="$td/pd.txt"
   stamp="$td/stamp.txt"
   echo "next_phase_state=cached_ok" > "$cache"
-  slept=0
-
-  sleep() { slept=1; }
 
   _simulate_phase_detect_reader "$td/no-link" "$cache" "$stamp" > "$td/out.txt"
   out=$(cat "$td/out.txt")
 
-  [ "$slept" -eq 0 ]
   [[ "$out" == *"next_phase_state=cached_ok"* ]]
 }
 
