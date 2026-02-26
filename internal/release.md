@@ -36,7 +36,7 @@ Git status:
    - **Local:** `git branch --list 'release/v*'` — note: `git branch --list` always exits 0 regardless of matches; check that stdout is non-empty to detect existing branches.
    - **Remote:** `git ls-remote --heads origin 'refs/heads/release/v*'` — note: `git ls-remote` always exits 0 when the remote is reachable, even with no matches; check stdout content for matches. A non-zero exit code indicates auth/network failure (see below).
    - If remote check exits non-zero (auth/network/repo failure) → STOP: "Could not verify remote release branches (`origin` unreachable or unauthorized). Fix remote access and retry."
-   - If local or remote checks produce non-empty stdout (indicating matching branches exist) → **auto-cleanup** all stale release branches before proceeding. Collect all matching branch names (local + remote, deduplicated). Initialize counters: `{cleaned}=0`, `{failed}=0`. For each `release/v{version}` branch:
+   - If local or remote checks produce non-empty stdout (indicating matching branches exist) → **extract pending versions, then auto-cleanup** all stale release branches before proceeding. Collect all matching branch names (local + remote, deduplicated). Extract the version from each branch name (e.g., `release/v1.32.0` → `1.32.0`) and capture the highest pending version as `{pending-version}` using semver comparison (compare major, then minor, then patch numerically). If no valid semver is found, set `{pending-version}` to empty. Initialize counters: `{cleaned}=0`, `{failed}=0`. For each `release/v{version}` branch:
      - Find associated open PR: `gh pr list --state open --head release/v{version} --json number,state --limit 1`. If `gh` is unavailable or the command exits non-zero (auth/network/API failure), skip PR lookup and display: "⚠ gh CLI unavailable or failed — deleting branch; check for orphaned PRs manually."
      - Display: "⚠ Cleaning up stale release branch `release/v{version}` (PR #{N}, {state})" (or without PR info if `gh` unavailable/failed).
      - Delete local branch: `git branch -D release/v{version}`. If the branch doesn't exist locally, skip silently. If deletion fails for another reason (non-zero exit), increment `{failed}` and display: "⚠ Failed to delete local branch `release/v{version}`."
@@ -54,7 +54,8 @@ Skip if `--skip-audit`.
 
 Compute `{new-version}` before the audit so changelog entries use the final version header directly:
 - Read `VERSION` to get the current version.
-- Apply the bump level: `--major` increments major and resets minor.patch to 0, `--minor` increments minor and resets patch to 0, default (no flag) increments patch.
+- **Pending release awareness:** If Guard 7 captured a `{pending-version}` from stale release branches, use the higher of `VERSION` and `{pending-version}` as the bump base (compare major, then minor, then patch numerically). This ensures that if a previous release was prepared but not finalized (e.g., a pending `release/v1.32.0` when VERSION is `1.31.0`), the next bump increments from `1.32.0` rather than from `1.31.0`. If no pending version exists, use `VERSION` as before.
+- Apply the bump level to the chosen base: `--major` increments major and resets minor.patch to 0, `--minor` increments minor and resets patch to 0, default (no flag) increments patch.
 - Store `{new-version}` and `{release-date}` (today's date, `YYYY-MM-DD`) for use in audit remediation.
 
 **Audit 1: Collect changes since last release.**

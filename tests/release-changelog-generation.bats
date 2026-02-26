@@ -556,3 +556,29 @@ extract_version_precompute() {
   # Intent: spec must convey that ls-remote exit code is not a reliable match indicator
   echo "$guard7" | grep -qi 'ls-remote.*always exits 0\|ls-remote.*stdout\|ls-remote.*exit.code\|ls-remote.*non-empty\|ls-remote.*reachable'
 }
+
+# --- Issue #176: Pending release version awareness ---
+
+@test "guard 7 extracts versions from release branches before cleanup" {
+  local guard7
+  guard7=$(extract_guard "7. **Existing release branch")
+  [ -n "$guard7" ]
+  # Must extract version numbers from branch names before deleting
+  echo "$guard7" | grep -qi 'extract.*version\|capture.*version\|pending.*version\|highest.*version'
+}
+
+@test "version pre-computation considers pending release branch versions" {
+  local precompute
+  precompute=$(extract_version_precompute)
+  [ -n "$precompute" ]
+  # Must mention pending/stale release versions as an input to bump base
+  echo "$precompute" | grep -qi 'pending.*version\|release.*branch\|highest\|higher'
+}
+
+@test "version pre-computation uses higher of VERSION file vs pending release" {
+  local precompute
+  precompute=$(extract_version_precompute)
+  [ -n "$precompute" ]
+  # Must explicitly say to use the higher/highest of VERSION vs pending
+  echo "$precompute" | grep -qi 'higher of\|highest.*version\|whichever is greater\|maximum of'
+}
