@@ -492,7 +492,7 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
 
    ```
 
-   **Rendering rules:** Banner rule lines are 34 characters. Plan title is on a separate line; truncate to 30 chars if needed (append `…`). Trailing blank line after scenario text buffers against AskUserQuestion clipping. Question field must stay under 70 characters.
+    **Rendering rules:** Banner rule lines are 34 characters. Plan title is on a separate line; truncate to 30 chars if needed (append `…`). CHECKPOINT body contains scenario text only (do **not** render a literal `Expected:` line in the body; if scenario extraction accidentally includes `Expected:` content, strip it before rendering). Trailing blank line after scenario text buffers against AskUserQuestion clipping. Question field must stay under 70 characters.
 
    Then immediately use AskUserQuestion:
 

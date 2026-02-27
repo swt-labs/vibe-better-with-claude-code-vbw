@@ -64,6 +64,15 @@ load test_helper
   grep -q 'question:.*{test-id}:' "$PROJECT_ROOT/commands/verify.md"
 }
 
+@test "checkpoint body does not render literal Expected line" {
+  run bash -c "grep -A6 'CHECKPOINT {NN}/{total}' '$PROJECT_ROOT/commands/verify.md' | grep 'Expected:'"
+  [ "$status" -eq 1 ]
+}
+
+@test "verify.md documents stripping embedded Expected text from scenario body" {
+  grep -q 'strip everything from `Expected:` onward' "$PROJECT_ROOT/commands/verify.md"
+}
+
 # ── UAT summary banner format ──────────────────────────────────────────────
 # The session-complete summary banner must match the same short format.
 
@@ -109,6 +118,15 @@ load test_helper
 @test "execute-protocol.md does not use old Expected question prefix" {
   run bash -c "grep 'question:.*Expected:' '$PROJECT_ROOT/references/execute-protocol.md'"
   [ "$status" -eq 1 ]
+}
+
+@test "execute-protocol.md checkpoint body does not render literal Expected line" {
+  run bash -c "grep -A6 'CHECKPOINT {NN}/{total}' '$PROJECT_ROOT/references/execute-protocol.md' | grep 'Expected:'"
+  [ "$status" -eq 1 ]
+}
+
+@test "execute-protocol.md documents stripping embedded Expected text" {
+  grep -q 'strip it before rendering' "$PROJECT_ROOT/references/execute-protocol.md"
 }
 
 @test "brand-essentials.md uses 34-char checkpoint rule lines" {
