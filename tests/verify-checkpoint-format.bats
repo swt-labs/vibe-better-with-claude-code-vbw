@@ -86,6 +86,12 @@ load test_helper
   [ "$status" -eq 0 ]
 }
 
+@test "UAT summary old combined-line format is absent" {
+  # Ensure old "Phase ... UAT Complete" single-line pattern cannot reappear
+  run bash -c "grep -E 'Phase.*UAT Complete' '$PROJECT_ROOT/commands/verify.md'"
+  [ "$status" -eq 1 ]
+}
+
 # ── Cross-file consistency ──────────────────────────────────────────────────
 # execute-protocol.md and vbw-brand-essentials.md must use the same short format.
 
@@ -96,7 +102,7 @@ load test_helper
 }
 
 @test "execute-protocol.md has no wide rule lines" {
-  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/references/execute-protocol.md'"
+  run bash -c "grep -E '━{35,}' '$PROJECT_ROOT/references/execute-protocol.md'"
   [ "$status" -eq 1 ]
 }
 
@@ -112,7 +118,7 @@ load test_helper
 }
 
 @test "brand-essentials.md has no wide rule lines" {
-  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/references/vbw-brand-essentials.md'"
+  run bash -c "grep -E '━{35,}' '$PROJECT_ROOT/references/vbw-brand-essentials.md'"
   [ "$status" -eq 1 ]
 }
 
@@ -177,7 +183,7 @@ load test_helper
 }
 
 @test "debug.md has no wide rule lines" {
-  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/commands/debug.md'"
+  run bash -c "grep -E '━{35,}' '$PROJECT_ROOT/commands/debug.md'"
   [ "$status" -eq 1 ]
 }
 
@@ -188,7 +194,7 @@ load test_helper
 }
 
 @test "qa.md has no wide rule lines" {
-  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/commands/qa.md'"
+  run bash -c "grep -E '━{35,}' '$PROJECT_ROOT/commands/qa.md'"
   [ "$status" -eq 1 ]
 }
 
@@ -199,7 +205,7 @@ load test_helper
 }
 
 @test "status.md has no wide rule lines" {
-  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/commands/status.md'"
+  run bash -c "grep -E '━{35,}' '$PROJECT_ROOT/commands/status.md'"
   [ "$status" -eq 1 ]
 }
 
@@ -210,6 +216,6 @@ load test_helper
 }
 
 @test "init.md has no wide rule lines" {
-  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/commands/init.md'"
+  run bash -c "grep -E '━{35,}' '$PROJECT_ROOT/commands/init.md'"
   [ "$status" -eq 1 ]
 }
