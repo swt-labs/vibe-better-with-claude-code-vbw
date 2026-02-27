@@ -87,10 +87,10 @@ Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
 
 **Header:**
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{project-name}
-{progress-bar} {percent}%
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  {project-name}
+  {progress-bar} {percent}%
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 **Multi-milestone** (if multiple):

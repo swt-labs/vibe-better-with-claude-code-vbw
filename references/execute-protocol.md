@@ -484,8 +484,8 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
 
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   CHECKPOINT {NN}/{total}
-   {plan-id}: {plan-title}
+     CHECKPOINT {NN}/{total}
+     {plan-id}: {plan-title}
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
    {scenario description}
@@ -614,8 +614,8 @@ fi
 Display per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
 ```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Phase {NN}: {name}
-Built
+  Phase {NN}: {name}
+  Built
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Plan Results:

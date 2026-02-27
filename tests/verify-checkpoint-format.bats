@@ -93,7 +93,7 @@ load test_helper
 @test "execute-protocol.md uses 34-char checkpoint rule lines" {
   run bash -c "grep -c '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$' '$PROJECT_ROOT/references/execute-protocol.md'"
   [ "$status" -eq 0 ]
-  [ "$output" -ge 2 ]
+  [ "$output" -eq 4 ]
 }
 
 @test "execute-protocol.md has no wide rule lines" {
@@ -121,5 +121,64 @@ load test_helper
   # Old: "CHECKPOINT 1/3 — 01-01: Core Feature" on one line
   # New: counter and plan title on separate lines
   run bash -c "grep 'CHECKPOINT.*01-01' '$PROJECT_ROOT/references/vbw-brand-essentials.md'"
+  [ "$status" -eq 1 ]
+}
+
+# ── execute-protocol.md 2-space indent ──────────────────────────────────────
+
+@test "execute-protocol.md CHECKPOINT has 2-space indented content" {
+  # Content lines inside CHECKPOINT banner must have 2-space indent
+  grep -q '  CHECKPOINT {NN}/{total}' "$PROJECT_ROOT/references/execute-protocol.md"
+  grep -q '  {plan-id}: {plan-title}' "$PROJECT_ROOT/references/execute-protocol.md"
+}
+
+@test "execute-protocol.md Phase Built has 2-space indented content" {
+  grep -q '  Phase {NN}: {name}' "$PROJECT_ROOT/references/execute-protocol.md"
+  grep -q '  Built' "$PROJECT_ROOT/references/execute-protocol.md"
+}
+
+# ── Other command files: 34-char rule lines ─────────────────────────────────
+
+@test "debug.md uses 34-char rule lines" {
+  run bash -c "grep -c '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$' '$PROJECT_ROOT/commands/debug.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" -eq 2 ]
+}
+
+@test "debug.md has no wide rule lines" {
+  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/commands/debug.md'"
+  [ "$status" -eq 1 ]
+}
+
+@test "qa.md uses 34-char rule lines" {
+  run bash -c "grep -c '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$' '$PROJECT_ROOT/commands/qa.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" -eq 2 ]
+}
+
+@test "qa.md has no wide rule lines" {
+  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/commands/qa.md'"
+  [ "$status" -eq 1 ]
+}
+
+@test "status.md uses 34-char rule lines" {
+  run bash -c "grep -c '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$' '$PROJECT_ROOT/commands/status.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" -eq 2 ]
+}
+
+@test "status.md has no wide rule lines" {
+  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/commands/status.md'"
+  [ "$status" -eq 1 ]
+}
+
+@test "init.md uses 34-char rule lines" {
+  run bash -c "grep -c '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$' '$PROJECT_ROOT/commands/init.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" -eq 2 ]
+}
+
+@test "init.md has no wide rule lines" {
+  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/commands/init.md'"
   [ "$status" -eq 1 ]
 }
