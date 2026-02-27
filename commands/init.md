@@ -493,9 +493,9 @@ If SKIP_INFERENCE=false (confirmed/corrected inference data):
 Display a banner per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md with the title "VBW Initialization Complete".
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  VBW Initialization Complete
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VBW Initialization Complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 **File checklist:** Display all created/updated files:

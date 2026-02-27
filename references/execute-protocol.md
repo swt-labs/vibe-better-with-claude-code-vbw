@@ -483,21 +483,17 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
    For the FIRST test without a result, display a CHECKPOINT followed by AskUserQuestion:
 
    ```text
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     CHECKPOINT {NN}/{total}
-     {plan-id}: {plan-title}
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CHECKPOINT {NN}/{total} — {plan-id}: {plan-title}
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
    {scenario description}
-
    ```
-
-   **Rendering rules:** Banner rule lines are 34 characters. Plan title is on a separate line; truncate to 30 chars if needed (append `…`). Trailing blank line after scenario text buffers against AskUserQuestion clipping. Question field must stay under 70 characters.
 
    Then immediately use AskUserQuestion:
 
    ```yaml
-   question: "{test-id}: {short expected result}"
+   question: "Expected: {expected result}"
    header: "UAT"
    multiSelect: false
    options:
@@ -613,10 +609,9 @@ fi
 
 Display per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
 ```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Phase {NN}: {name}
-  Built
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phase {NN}: {name} -- Built
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Plan Results:
     ✓ Plan 01: {title}  /  ✗ Plan 03: {title} (failed)
