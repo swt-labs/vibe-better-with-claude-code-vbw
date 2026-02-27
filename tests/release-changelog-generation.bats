@@ -571,6 +571,39 @@ extract_version_precompute() {
   echo "$step4" | grep -qi 'non-fatal\|continue'
 }
 
+@test "finalize step 4 handles ls-remote failure gracefully" {
+  local step4
+  step4=$(awk '/^### Finalize Step 4/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step4" ]
+  # Must check ls-remote exit code (not just stdout)
+  echo "$step4" | grep -qi 'exit.*non-zero\|exits non-zero\|exit code'
+  # Must NOT treat failed ls-remote as "branch already gone"
+  echo "$step4" | grep -qi 'do not treat.*empty.*stdout\|not treat.*empty.*branch already gone\|not.*treat.*failed.*already gone'
+  # Must fall through to attempt deletion on ls-remote failure
+  echo "$step4" | grep -qi 'fall.*through\|attempt.*deletion\|attempting deletion'
+}
+
+@test "finalize step 4 handles TOCTOU race on deletion" {
+  local step4
+  step4=$(awk '/^### Finalize Step 4/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step4" ]
+  # Must handle the race where branch disappears between ls-remote and push
+  echo "$step4" | grep -qi 'TOCTOU\|race'
+  # Must check stderr for 'remote ref does not exist' on deletion failure
+  echo "$step4" | grep -qi 'remote ref does not exist'
+  # Must treat that specific stderr as success (already gone)
+  echo "$step4" | grep -qi 'treat as success\|already cleaned up'
+}
+
+@test "finalize step 4 notes why approach differs from guard 7" {
+  local step4
+  step4=$(awk '/^### Finalize Step 4/{found=1; next} /^###/{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step4" ]
+  # Must explain why Step 4 uses pre-check while Guard 7 uses stderr classification
+  echo "$step4" | grep -qi 'Guard 7\|guard 7'
+  echo "$step4" | grep -qi 'different.*strategy\|different.*deletion\|different.*approach\|pre-check'
+}
+
 # --- Bug #174: Date format and tag check ---
 
 @test "audit 1 date extraction uses git format placeholder, not strftime" {
