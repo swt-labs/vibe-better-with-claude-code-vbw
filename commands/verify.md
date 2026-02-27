@@ -149,7 +149,7 @@ For the FIRST test without a result, display a CHECKPOINT followed by AskUserQue
 
 **Rendering rules (work around Claude Code TUI wrapping/clipping bugs):**
 - The banner rule lines (`━`) are exactly 34 characters — short enough to never trigger wrapping in standard or narrow terminals.
-- The plan title line inside the banner is separate from the counter line. If `{plan-id}: {plan-title}` exceeds 60 characters, truncate `{plan-title}` to fit (append `…`).
+- The plan title line inside the banner is separate from the counter line. If `{plan-id}: {plan-title}` exceeds 30 characters, truncate `{plan-title}` to fit (append `…`). This keeps content within the 34-char rule width (accounting for the 2-space indent).
 - The scenario description must end with a trailing blank line (shown above). This blank line acts as a buffer so the AskUserQuestion interactive prompt does not clip/overwrite the last visible line of the scenario text — a known Claude Code TUI rendering issue.
 - The `question` field in AskUserQuestion must stay under 70 characters. If `{expected result}` is longer, summarize it.
 
