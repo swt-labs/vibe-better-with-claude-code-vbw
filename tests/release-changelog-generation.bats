@@ -802,3 +802,47 @@ extract_version_precompute() {
   # Must NOT tell user to merge the PR manually first
   ! echo "$step9" | grep -qi 'merge the PR.*then run\|first merge'
 }
+
+@test "finalize guard 4 stops when gh CLI is unavailable" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Must mention gh unavailable/fails as a STOP condition
+  echo "$finalize_guard" | grep -qi 'gh.*unavailable\|gh CLI unavailable'
+  echo "$finalize_guard" | grep -qi 'STOP\|stop'
+}
+
+@test "finalize guard 4 handles gh pr ready failure" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Must specify failure handling for gh pr ready
+  echo "$finalize_guard" | grep -qi 'gh pr ready.*fail\|pr ready.*STOP\|ready.*fail.*STOP'
+}
+
+@test "finalize guard 4 PR list uses sufficient limit" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Limit must be at least 50 to avoid missing release PR among many open PRs
+  local limit
+  limit=$(echo "$finalize_guard" | grep -oE -- '--limit [0-9]+' | head -1 | grep -oE '[0-9]+')
+  [ -n "$limit" ]
+  [ "$limit" -ge 50 ]
+}
+
+@test "finalize guard 4 documents checks timeout behavior" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Must mention timeout/hang risk for gh pr checks --watch
+  echo "$finalize_guard" | grep -qi 'timeout\|block indefinitely\|hang\|Ctrl+C'
+}
+
+@test "prepare step 9 summary conditions on --no-push" {
+  local step9
+  step9=$(awk '/^### Step 9/{found=1; print; next} found && /^---/{found=0} found && /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step9" ]
+  # Must have conditional text for --no-push path
+  echo "$step9" | grep -qi 'no-push'
+}

@@ -146,7 +146,8 @@ This is a convenience step — finalize requires being on `main`, and leaving th
 
 Display task-level box with: version old→new, audit result, changelog status, commit hash, release branch name, push status, draft PR status, next step.
 
-Include: "Next: run `/vbw:release --finalize` to merge the PR, tag, and create the GitHub release."
+- If `--no-push` was used: Include: "Next: push the release branch (`git push -u origin release/v{new-version}`), then run `/vbw:release --finalize` to merge the PR, tag, and create the GitHub release."
+- Otherwise: Include: "Next: run `/vbw:release --finalize` to merge the PR, tag, and create the GitHub release."
 
 ---
 
@@ -160,21 +161,20 @@ Merges the release PR, tags the release commit, and creates the GitHub release. 
 2. **Dirty tree:** If `git status --porcelain` shows uncommitted changes → STOP: "Working tree is dirty. Commit or stash changes before finalizing."
 3. **Pull latest:** `git pull origin main` to ensure the latest state is local.
 4. **Merge release PR (if not yet merged):** Find any open release PR:
-   - Find the PR: `gh pr list --state open --json number,headRefName,state,isDraft --limit 10` and filter results for entries where `headRefName` starts with `release/v`. Extract `{version}` from the matching branch name (strip `release/v` prefix) and `{number}` from the PR. If multiple release PRs are found, use the one with the highest semver version.
+   - Find the PR: `gh pr list --state open --json number,headRefName,state,isDraft --limit 100` and filter results for entries where `headRefName` starts with `release/v`. Extract `{version}` from the matching branch name (strip `release/v` prefix) and `{number}` from the PR. If multiple release PRs are found, use the one with the highest semver version. The `--limit 100` ensures the release PR is found even in repos with many open PRs (dependabot, stacked PRs, etc.).
    - If no open release PR is found: Read VERSION to get `{version}` — the PR was already merged (or merged manually). Continue to Guard 5.
    - If an open release PR is found:
-     - **Mark ready:** If the PR is a draft, convert it: `gh pr ready {number}`. Display: "✓ PR #{number} marked ready for review."
-     - **Wait for checks:** Poll status checks: `gh pr checks {number} --watch --interval 10`. This blocks until all required checks complete or fail. If any check fails → STOP: "Status checks failed on PR #{number}. Fix the failures and re-run --finalize."
+     - **Mark ready:** If the PR is a draft, convert it: `gh pr ready {number}`. If `gh pr ready` fails (permissions, network) → STOP: "Could not mark PR #{number} as ready for review. Check permissions and re-run --finalize." Display on success: "✓ PR #{number} marked ready for review."
+     - **Wait for checks:** Poll status checks: `gh pr checks {number} --watch --interval 10`. This blocks until all required checks complete or fail. If any check fails → STOP: "Status checks failed on PR #{number}. Fix the failures and re-run --finalize." **Timeout note:** `gh pr checks --watch` has no native timeout. If a check is stuck (queued runner, GitHub outage), this will block indefinitely. The user can Ctrl+C to abort and re-run `--finalize` later. If the repo has no required status checks, `--watch` returns immediately (success).
      - **Merge:** `gh pr merge {number} --merge --delete-branch`. This merges the PR and deletes the remote release branch. Display: "✓ PR #{number} merged into main."
      - **Pull the merge commit:** `git pull origin main` to bring the merge commit local.
-   - If no open PR is found, the PR was already merged (or merged manually). Continue.
    - If `gh` is unavailable or the command fails → STOP: "gh CLI unavailable or failed. Merge PR manually, then re-run --finalize."
-5. **Locate merged release artifact on main:** Re-read VERSION to get `{version}` (in case pull updated it).
+5. **Locate merged release artifact on main:** Pull latest to close any race where the PR was merged between Guard 3 and Guard 4: `git pull origin main`. Then re-read VERSION to get `{version}`.
    - **Primary path (merge commit):** Search first-parent `main` history for merge commits referencing `release/v{version}`: `git log main --first-parent --grep="Merge pull request .*release/v{version}" --format="%H"`.
      - Exactly one match → store as `{release_sha}`.
      - More than one match → STOP: "Multiple merge commits found for release/v{version}. Resolve manually before finalizing."
    - **Fallback path (squash/rebase):** If no merge-commit match, search first-parent `main` history for commit subject prefix `chore: release v{version}`: `git log main --first-parent --grep="^chore: release v{version}" --format="%H"`.
-     - Zero matches → STOP: "Release commit for v{version} not found on main. Was the PR merged?"
+     - Zero matches → STOP: "Release commit for v{version} not found on main. Was the PR merged? (Or, if committed directly to main, does the commit message match `chore: release v{version}`?)"
      - More than one match → STOP: "Multiple release commits match v{version} on main. Resolve ambiguity manually before finalizing."
      - Exactly one match → store as `{release_sha}`.
 
