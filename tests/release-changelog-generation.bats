@@ -856,11 +856,12 @@ extract_version_precompute() {
 }
 
 @test "finalize guard 5 git pull failure is handled" {
-  local finalize_guard
-  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
-  [ -n "$finalize_guard" ]
-  # Guard 5 pull must have failure handling since VERSION depends on it
-  echo "$finalize_guard" | grep -qi 'pull.*fail.*STOP\|Could not pull.*STOP\|pull fail'
+  local guard5
+  # Extract only Guard 5 content (item 5 in the numbered list)
+  guard5=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD" | awk '/^5\./{g5=1} g5 && /^[0-9]+\./ && !/^5\./{g5=0} g5{print}')
+  [ -n "$guard5" ]
+  # Guard 5 pull must have its own failure handling since VERSION depends on it
+  echo "$guard5" | grep -qi 'pull.*fail.*STOP\|Could not pull.*STOP\|pull fail'
 }
 
 @test "finalize guard 4 pull-after-merge failure is handled" {
@@ -904,4 +905,37 @@ extract_version_precompute() {
   [ -n "$finalize_guard" ]
   # Must document merge queue limitation
   echo "$finalize_guard" | grep -qi 'merge queue'
+}
+
+@test "finalize guard 3 git pull failure is handled" {
+  local guard3
+  # Extract only Guard 3 content (item 3 in the numbered list)
+  guard3=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD" | awk '/^3\./{g3=1} g3 && /^[0-9]+\./ && !/^3\./{g3=0} g3{print}')
+  [ -n "$guard3" ]
+  # Guard 3 pull must have its own STOP on failure
+  echo "$guard3" | grep -qi 'pull.*fail.*STOP\|Could not pull.*STOP\|fail.*STOP'
+}
+
+@test "finalize guard 4 no-PR path validates PR was merged" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # When no open release PR is found, must check for merged PR (not just assume merged)
+  echo "$finalize_guard" | grep -qi 'merged.*release.*PR\|pr list.*merged\|state merged'
+}
+
+@test "finalize guard 4 no-PR path STOPs when release PR never existed" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Must STOP if no open AND no merged release PR is found
+  echo "$finalize_guard" | grep -qi 'no.*open.*merged.*STOP\|No open or merged.*STOP\|no.*merged.*release.*STOP'
+}
+
+@test "finalize merge queue has STOP gate" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Merge queue path must have an explicit STOP, not just documentation
+  echo "$finalize_guard" | grep -qi 'merge queue.*STOP\|queue.*detected.*STOP\|queue.*enqueued.*STOP'
 }
