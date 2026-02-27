@@ -132,7 +132,7 @@ Otherwise: `git push -u origin release/v{new-version}`. Display ✓.
 
 ### Step 7: Open draft PR
 
---no-push: skip. Otherwise: `gh pr create --base main --head release/v{new-version} --title "chore: release v{new-version}" --body "Release v{new-version}\n\nBumps version across all 4 files. Updates CHANGELOG.\n\nAfter merging, run \`/vbw:release --finalize\` to tag and create the GitHub release." --draft`. If gh unavailable/fails: "⚠ PR creation failed — create manually."
+--no-push: skip. Otherwise: `gh pr create --base main --head release/v{new-version} --title "chore: release v{new-version}" --body "Release v{new-version}\n\nBumps version across all 4 files. Updates CHANGELOG.\n\nAfter merging, run \`/vbw-release\` to tag and create the GitHub release." --draft`. If gh unavailable/fails: "⚠ PR creation failed — create manually."
 
 ### Step 8: Return to main
 
@@ -146,8 +146,8 @@ This is a convenience step — finalize requires being on `main`, and leaving th
 
 Display task-level box with: version old→new, audit result, changelog status, commit hash, release branch name, push status, draft PR status, next step.
 
-- If `--no-push` was used: Include: "Next: push the release branch (`git push -u origin release/v{new-version}`), create a draft PR (`gh pr create --base main --head release/v{new-version} --title 'chore: release v{new-version}' --draft`), then run `/vbw:release --finalize` to merge the PR, tag, and create the GitHub release."
-- Otherwise: Include: "Next: run `/vbw:release --finalize` to merge the PR, tag, and create the GitHub release."
+- If `--no-push` was used: Include: "Next: push the release branch (`git push -u origin release/v{new-version}`), create a draft PR (`gh pr create --base main --head release/v{new-version} --title 'chore: release v{new-version}' --draft`), then run `/vbw-release` to merge the PR, tag, and create the GitHub release."
+- Otherwise: Include: "Next: run `/vbw-release` to merge the PR, tag, and create the GitHub release."
 
 ---
 

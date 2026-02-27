@@ -835,12 +835,12 @@ extract_version_precompute() {
   echo "$step4" | grep -qi 'delete-branch\|already deleted\|PR merge'
 }
 
-@test "prepare summary directs user to run finalize not merge manually" {
+@test "prepare summary directs user to run /vbw-release not merge manually" {
   local step9
   step9=$(awk '/^### Step 9/{found=1; print; next} found && /^---/{found=0} found && /^## /{found=0} found{print}' "$RELEASE_CMD")
   [ -n "$step9" ]
-  # Must tell user to run --finalize (which now handles merge)
-  echo "$step9" | grep -qi '/vbw:release --finalize'
+  # Must tell user to run /vbw-release (which now handles merge)
+  echo "$step9" | grep -qi '/vbw-release'
   # Must NOT tell user to merge the PR manually first
   ! echo "$step9" | grep -qi 'merge the PR.*then run\|first merge'
 }
