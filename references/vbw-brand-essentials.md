@@ -29,7 +29,7 @@ Scenario description here.
 
 ```
 
-Rule lines are exactly 34 characters — short enough to avoid wrapping in narrow terminals. Counter and plan title are on separate lines. A trailing blank line buffers against AskUserQuestion clipping the last visible line.
+Rule lines are exactly 34 characters — short enough to avoid wrapping in narrow terminals. Content lines between rule pairs use a 2-space indent. Counter and plan title are on separate lines. A trailing blank line buffers against AskUserQuestion clipping the last visible line.
 
 ## Box Drawing (script-generated output only)
 

@@ -15,9 +15,8 @@ load test_helper
   [ "$output" -eq 4 ]
 }
 
-@test "checkpoint banner does not exceed 62-char rule" {
-  # Ensure no 62-char rule lines remain (old format)
-  run bash -c "grep -E '━{50,}' '$PROJECT_ROOT/commands/verify.md'"
+@test "checkpoint banner has no rule lines wider than 34" {
+  run bash -c "grep -E '━{35,}' '$PROJECT_ROOT/commands/verify.md'"
   [ "$status" -eq 1 ]
 }
 
@@ -75,8 +74,8 @@ load test_helper
   [ "$output" -eq 2 ]
 }
 
-@test "UAT summary banner does not use old wide rule" {
-  run bash -c "sed -n '/Session complete/,\$p' '$PROJECT_ROOT/commands/verify.md' | grep -E '━{50,}'"
+@test "UAT summary banner has no rule lines wider than 34" {
+  run bash -c "sed -n '/Session complete/,\$p' '$PROJECT_ROOT/commands/verify.md' | grep -E '━{35,}'"
   [ "$status" -eq 1 ]
 }
 
@@ -124,7 +123,18 @@ load test_helper
   [ "$status" -eq 1 ]
 }
 
-# ── execute-protocol.md 2-space indent ──────────────────────────────────────
+# ── 2-space content indent ──────────────────────────────────────────────────
+# Content lines between rule pairs must use a 2-space indent.
+
+@test "verify.md CHECKPOINT has 2-space indented content" {
+  grep -q '  CHECKPOINT {NN}/{total}' "$PROJECT_ROOT/commands/verify.md"
+  grep -q '  {plan-id}: {plan-title}' "$PROJECT_ROOT/commands/verify.md"
+}
+
+@test "verify.md UAT summary has 2-space indented content" {
+  grep -q '  Phase {NN}: {name}' "$PROJECT_ROOT/commands/verify.md"
+  grep -q '  UAT Complete' "$PROJECT_ROOT/commands/verify.md"
+}
 
 @test "execute-protocol.md CHECKPOINT has 2-space indented content" {
   # Content lines inside CHECKPOINT banner must have 2-space indent
@@ -135,6 +145,27 @@ load test_helper
 @test "execute-protocol.md Phase Built has 2-space indented content" {
   grep -q '  Phase {NN}: {name}' "$PROJECT_ROOT/references/execute-protocol.md"
   grep -q '  Built' "$PROJECT_ROOT/references/execute-protocol.md"
+}
+
+@test "brand-essentials.md has 2-space indented content" {
+  grep -q '  CHECKPOINT 1/3' "$PROJECT_ROOT/references/vbw-brand-essentials.md"
+  grep -q '  01-01: Core Feature' "$PROJECT_ROOT/references/vbw-brand-essentials.md"
+}
+
+@test "debug.md has 2-space indented content" {
+  grep -q '  Bug Investigation Complete' "$PROJECT_ROOT/commands/debug.md"
+}
+
+@test "qa.md has 2-space indented content" {
+  grep -q '  Phase {NN}: {name} -- Verified' "$PROJECT_ROOT/commands/qa.md"
+}
+
+@test "status.md has 2-space indented content" {
+  grep -q '  {project-name}' "$PROJECT_ROOT/commands/status.md"
+}
+
+@test "init.md has 2-space indented content" {
+  grep -q '  VBW Initialization Complete' "$PROJECT_ROOT/commands/init.md"
 }
 
 # ── Other command files: 34-char rule lines ─────────────────────────────────
