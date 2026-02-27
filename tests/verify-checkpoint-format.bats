@@ -12,7 +12,7 @@ load test_helper
   # The banner uses ━ (U+2501) rule characters — exactly 34 of them
   run bash -c "grep -c '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$' '$PROJECT_ROOT/commands/verify.md'"
   [ "$status" -eq 0 ]
-  [ "$output" -ge 2 ]
+  [ "$output" -eq 4 ]
 }
 
 @test "checkpoint banner does not exceed 62-char rule" {
@@ -52,7 +52,7 @@ load test_helper
 }
 
 @test "checkpoint banner includes plan-title truncation rule" {
-  grep -q 'exceeds 60 characters' "$PROJECT_ROOT/commands/verify.md"
+  grep -q 'exceeds 30 characters' "$PROJECT_ROOT/commands/verify.md"
 }
 
 @test "question field uses test-id prefix instead of Expected prefix" {
@@ -63,4 +63,63 @@ load test_helper
 
 @test "question field uses test-id prefix pattern" {
   grep -q 'question:.*{test-id}:' "$PROJECT_ROOT/commands/verify.md"
+}
+
+# ── UAT summary banner format ──────────────────────────────────────────────
+# The session-complete summary banner must match the same short format.
+
+@test "UAT summary banner uses 34-char rule lines" {
+  # The summary section ("Phase {NN}: {name} / UAT Complete") must also use short rules
+  run bash -c "sed -n '/Session complete/,\$p' '$PROJECT_ROOT/commands/verify.md' | grep -c '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$'"
+  [ "$status" -eq 0 ]
+  [ "$output" -eq 2 ]
+}
+
+@test "UAT summary banner does not use old wide rule" {
+  run bash -c "sed -n '/Session complete/,\$p' '$PROJECT_ROOT/commands/verify.md' | grep -E '━{50,}'"
+  [ "$status" -eq 1 ]
+}
+
+@test "UAT summary splits phase name and completion status onto separate lines" {
+  # Old: "Phase {NN}: {name} — UAT Complete" on one line
+  # New: "Phase {NN}: {name}" and "UAT Complete" on separate lines
+  run bash -c "grep 'UAT Complete' '$PROJECT_ROOT/commands/verify.md' | grep -v 'Phase'"
+  [ "$status" -eq 0 ]
+}
+
+# ── Cross-file consistency ──────────────────────────────────────────────────
+# execute-protocol.md and vbw-brand-essentials.md must use the same short format.
+
+@test "execute-protocol.md uses 34-char checkpoint rule lines" {
+  run bash -c "grep -c '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$' '$PROJECT_ROOT/references/execute-protocol.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" -ge 2 ]
+}
+
+@test "execute-protocol.md has no wide rule lines" {
+  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/references/execute-protocol.md'"
+  [ "$status" -eq 1 ]
+}
+
+@test "execute-protocol.md does not use old Expected question prefix" {
+  run bash -c "grep 'question:.*Expected:' '$PROJECT_ROOT/references/execute-protocol.md'"
+  [ "$status" -eq 1 ]
+}
+
+@test "brand-essentials.md uses 34-char checkpoint rule lines" {
+  run bash -c "grep -c '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$' '$PROJECT_ROOT/references/vbw-brand-essentials.md'"
+  [ "$status" -eq 0 ]
+  [ "$output" -ge 2 ]
+}
+
+@test "brand-essentials.md has no wide rule lines" {
+  run bash -c "grep -E '━{40,}' '$PROJECT_ROOT/references/vbw-brand-essentials.md'"
+  [ "$status" -eq 1 ]
+}
+
+@test "brand-essentials.md splits counter and plan title" {
+  # Old: "CHECKPOINT 1/3 — 01-01: Core Feature" on one line
+  # New: counter and plan title on separate lines
+  run bash -c "grep 'CHECKPOINT.*01-01' '$PROJECT_ROOT/references/vbw-brand-essentials.md'"
+  [ "$status" -eq 1 ]
 }
