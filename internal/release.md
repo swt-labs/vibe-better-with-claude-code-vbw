@@ -146,7 +146,7 @@ This is a convenience step — finalize requires being on `main`, and leaving th
 
 Display task-level box with: version old→new, audit result, changelog status, commit hash, release branch name, push status, draft PR status, next step.
 
-- If `--no-push` was used: Include: "Next: push the release branch (`git push -u origin release/v{new-version}`), then run `/vbw:release --finalize` to merge the PR, tag, and create the GitHub release."
+- If `--no-push` was used: Include: "Next: push the release branch (`git push -u origin release/v{new-version}`), create a draft PR (`gh pr create --base main --head release/v{new-version} --title 'chore: release v{new-version}' --draft`), then run `/vbw:release --finalize` to merge the PR, tag, and create the GitHub release."
 - Otherwise: Include: "Next: run `/vbw:release --finalize` to merge the PR, tag, and create the GitHub release."
 
 ---
@@ -164,12 +164,14 @@ Merges the release PR, tags the release commit, and creates the GitHub release. 
    - Find the PR: `gh pr list --state open --json number,headRefName,state,isDraft --limit 100` and filter results for entries where `headRefName` starts with `release/v`. Extract `{version}` from the matching branch name (strip `release/v` prefix) and `{number}` from the PR. If multiple release PRs are found, use the one with the highest semver version. The `--limit 100` ensures the release PR is found even in repos with many open PRs (dependabot, stacked PRs, etc.).
    - If no open release PR is found: Read VERSION to get `{version}` — the PR was already merged (or merged manually). Continue to Guard 5.
    - If an open release PR is found:
-     - **Mark ready:** If the PR is a draft, convert it: `gh pr ready {number}`. If `gh pr ready` fails (permissions, network) → STOP: "Could not mark PR #{number} as ready for review. Check permissions and re-run --finalize." Display on success: "✓ PR #{number} marked ready for review."
+     - **Mark ready:** If `isDraft` is true, convert it: `gh pr ready {number}`. If `gh pr ready` fails (permissions, network) → STOP: "Could not mark PR #{number} as ready for review. Check permissions and re-run --finalize." Display on success: "✓ PR #{number} marked ready for review." If `isDraft` is false, skip (already ready).
      - **Wait for checks:** Poll status checks: `gh pr checks {number} --watch --interval 10`. This blocks until all required checks complete or fail. If any check fails → STOP: "Status checks failed on PR #{number}. Fix the failures and re-run --finalize." **Timeout note:** `gh pr checks --watch` has no native timeout. If a check is stuck (queued runner, GitHub outage), this will block indefinitely. The user can Ctrl+C to abort and re-run `--finalize` later. If the repo has no required status checks, `--watch` returns immediately (success).
-     - **Merge:** `gh pr merge {number} --merge --delete-branch`. This merges the PR and deletes the remote release branch. Display: "✓ PR #{number} merged into main."
-     - **Pull the merge commit:** `git pull origin main` to bring the merge commit local.
-   - If `gh` is unavailable or the command fails → STOP: "gh CLI unavailable or failed. Merge PR manually, then re-run --finalize."
-5. **Locate merged release artifact on main:** Pull latest to close any race where the PR was merged between Guard 3 and Guard 4: `git pull origin main`. Then re-read VERSION to get `{version}`.
+     - **Merge:** `gh pr merge {number} --merge --delete-branch`. This merges the PR and deletes the remote release branch. Display: "✓ PR #{number} merged into main." If `gh pr merge` fails → STOP: "Could not merge PR #{number}. Check for merge conflicts, required reviews, or branch protection rules, then re-run --finalize."
+     - **Pull the merge commit:** `git pull origin main` to bring the merge commit local. If the pull fails (network, rebase conflict) → STOP: "Could not pull merge commit from main. Check network/auth and re-run --finalize."
+   - **Merge queue note:** `gh pr merge` is synchronous for standard merge strategies and returns after the merge commit exists on `main`. However, if the repo uses a GitHub merge queue, `gh pr merge` enqueues the PR and returns success before the actual merge happens. A subsequent `git pull` may not find the merge commit yet. VBW does not currently support merge queue repos.
+   - If `gh` is unavailable or the command fails (and no more specific STOP was triggered above) → STOP: "gh CLI unavailable or failed. Merge PR manually, then re-run --finalize."
+   - If the PR count equals the `--limit` cap (100), display: "⚠ Open PR list may be truncated. If the release PR exists but was not found, merge it manually and re-run --finalize."
+5. **Locate merged release artifact on main:** Pull latest to close any race where the PR was merged between Guard 3 and Guard 4: `git pull origin main`. If the pull fails (network, auth, rebase conflict) → STOP: "Could not pull latest main. Check network/auth and re-run --finalize." Then re-read VERSION to get `{version}`.
    - **Primary path (merge commit):** Search first-parent `main` history for merge commits referencing `release/v{version}`: `git log main --first-parent --grep="Merge pull request .*release/v{version}" --format="%H"`.
      - Exactly one match → store as `{release_sha}`.
      - More than one match → STOP: "Multiple merge commits found for release/v{version}. Resolve manually before finalizing."

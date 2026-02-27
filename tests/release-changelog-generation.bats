@@ -817,7 +817,7 @@ extract_version_precompute() {
   finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
   [ -n "$finalize_guard" ]
   # Must specify failure handling for gh pr ready
-  echo "$finalize_guard" | grep -qi 'gh pr ready.*fail\|pr ready.*STOP\|ready.*fail.*STOP'
+  echo "$finalize_guard" | grep -qi 'gh pr ready.*fail\|pr ready.*STOP'
 }
 
 @test "finalize guard 4 PR list uses sufficient limit" {
@@ -845,4 +845,63 @@ extract_version_precompute() {
   [ -n "$step9" ]
   # Must have conditional text for --no-push path
   echo "$step9" | grep -qi 'no-push'
+}
+
+@test "finalize guard 4 gh pr merge has specific failure handling" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Must have merge-specific failure handling (not just the generic gh unavailable catch)
+  echo "$finalize_guard" | grep -qi 'gh pr merge.*fail\|merge fail.*STOP\|Could not merge PR'
+}
+
+@test "finalize guard 5 git pull failure is handled" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Guard 5 pull must have failure handling since VERSION depends on it
+  echo "$finalize_guard" | grep -qi 'pull.*fail.*STOP\|Could not pull.*STOP\|pull fail'
+}
+
+@test "finalize guard 4 pull-after-merge failure is handled" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # The git pull after gh pr merge must have failure handling
+  echo "$finalize_guard" | grep -qi 'pull.*merge commit.*fail\|pull fail.*STOP\|Could not pull merge commit'
+}
+
+@test "prepare step 9 --no-push mentions creating PR" {
+  local step9
+  step9=$(awk '/^### Step 9/{found=1; print; next} found && /^---/{found=0} found && /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$step9" ]
+  # --no-push path must tell user to create the PR (since Step 7 is skipped)
+  local no_push_line
+  no_push_line=$(echo "$step9" | grep -i 'no-push')
+  [ -n "$no_push_line" ]
+  echo "$no_push_line" | grep -qi 'pr create\|create.*PR\|create a.*PR\|draft PR'
+}
+
+@test "finalize guard 4 documents limit truncation risk" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Must warn about truncation if PR count hits the limit
+  echo "$finalize_guard" | grep -qi 'truncat'
+}
+
+@test "finalize guard 4 explicit isDraft conditional for gh pr ready" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Must explicitly condition on isDraft (not implied)
+  echo "$finalize_guard" | grep -qi 'isDraft.*true\|isDraft.*false\|isDraft is true\|isDraft is false'
+}
+
+@test "finalize guard 4 mentions merge queue limitation" {
+  local finalize_guard
+  finalize_guard=$(awk '/^### Finalize Guard/{found=1; next} /^###/{found=0} /^## /{found=0} found{print}' "$RELEASE_CMD")
+  [ -n "$finalize_guard" ]
+  # Must document merge queue limitation
+  echo "$finalize_guard" | grep -qi 'merge queue'
 }
