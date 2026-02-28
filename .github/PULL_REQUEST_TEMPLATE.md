@@ -1,10 +1,17 @@
+## Linked Issue
+
+<!-- REQUIRED: Every PR must reference a tracking issue. CI will fail without one. -->
+<!-- Use a closing keyword: Fixes #N, Closes #N, or Resolves #N -->
+
+Fixes #
+
 ## What
 
 Brief description of the change.
 
 ## Why
 
-What problem does this solve? Link to issue if applicable.
+What problem does this solve?
 
 ## How
 

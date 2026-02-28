@@ -132,12 +132,11 @@ Less good candidates:
 
 ## Pull Request Process
 
-1. Open an issue first for non-trivial changes so we can discuss the approach.
-2. Reference the issue in your PR.
-3. Describe what changed and why. Include before/after if relevant.
-4. Ensure `claude --plugin-dir "<path-to-vbw-clone>"` loads without errors.
-5. Test your changes against at least one real project (not the VBW repo itself).
-6. **Run QA review before marking ready.** Repeat this cycle at least 3 times (or until the latest report contains no confirmed critical/major issues):
+1. **Every PR must link a tracking issue.** Open an issue first (bug report or feature request), then reference it in the PR body with `Fixes #N`, `Closes #N`, or `Resolves #N`. CI will fail if no linked issue is found.
+2. Describe what changed and why. Include before/after if relevant.
+3. Ensure `claude --plugin-dir "<path-to-vbw-clone>"` loads without errors.
+4. Test your changes against at least one real project (not the VBW repo itself).
+5. **Run QA review before marking ready.** Repeat this cycle at least 3 times (or until the latest report contains no confirmed critical/major issues):
 
    > **Docs-only or trivial PRs:** The QA round requirement only applies when the PR touches plugin logic paths (`agents/`, `commands/`, `config/`, `hooks/`, `references/`, `scripts/`, `templates/`, `testing/`, `tests/`). PRs that only change docs, CI config, or repo metadata skip the check automatically.
 
