@@ -237,7 +237,7 @@ If `setting=planning_tracking`, after writing config run:
 
 This keeps root `.gitignore` and `.vbw-planning/.gitignore` aligned with the selected tracking mode.
 
-### Skill-hook wiring: `skill_hook <skill> <event> <matcher>`
+### Skill-hook wiring: `skill_hook <skill> <event> <tools>`
 
 - `config skill_hook lint-fix PostToolUse Write|Edit`
 - `config skill_hook test-runner PostToolUse Bash`
@@ -245,7 +245,7 @@ This keeps root `.gitignore` and `.vbw-planning/.gitignore` aligned with the sel
 
 Stored in config.json `skill_hooks`:
 ```json
-{"skill_hooks": {"lint-fix": {"event": "PostToolUse", "matcher": "Write|Edit"}}}
+{"skill_hooks": {"lint-fix": {"event": "PostToolUse", "tools": "Write|Edit"}}}
 ```
 
 ### Model profile switching: `model_profile <profile>`

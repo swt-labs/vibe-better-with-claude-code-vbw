@@ -289,6 +289,7 @@ case "$ROLE" in
         fi
       fi
       # --- Skill bundling (REQ-12) ---
+      # Resolves SKILL.md from global ($CLAUDE_DIR/skills/) then project-local (./.claude/skills/)
       if [ -n "$PLAN_PATH" ] && [ -f "$PLAN_PATH" ]; then
         SKILLS=$(sed -n '/^---$/,/^---$/p' "$PLAN_PATH" | grep 'skills_used:' | sed 's/skills_used: *\[//' | sed 's/\]//' | tr ',' '\n' | sed 's/^ *//;s/ *$//;s/^"//;s/"$//' | grep -v '^$' || true)
         if [ -n "$SKILLS" ]; then
@@ -296,8 +297,13 @@ case "$ROLE" in
           echo "### Skills Reference"
           echo ""
           while IFS= read -r skill; do
-            SKILL_FILE="$CLAUDE_DIR/skills/${skill}/SKILL.md"
-            if [ -f "$SKILL_FILE" ]; then
+            SKILL_FILE=""
+            if [ -f "$CLAUDE_DIR/skills/${skill}/SKILL.md" ]; then
+              SKILL_FILE="$CLAUDE_DIR/skills/${skill}/SKILL.md"
+            elif [ -f "./.claude/skills/${skill}/SKILL.md" ]; then
+              SKILL_FILE="./.claude/skills/${skill}/SKILL.md"
+            fi
+            if [ -n "$SKILL_FILE" ]; then
               echo "#### ${skill}"
               cat "$SKILL_FILE"
               echo ""
@@ -385,6 +391,39 @@ case "$ROLE" in
           echo "### Conventions to Check"
           echo "$CONVENTIONS"
         fi
+      fi
+      # --- Skill bundling for QA (verify skill compliance) ---
+      # QA needs skill rules to derive skill-augmented checks (SA-##).
+      # Scans all plan files in the phase to collect the union of skills_used.
+      QA_SKILLS=""
+      for plan_file in "$PHASE_DIR"/*-PLAN.md; do
+        [ -f "$plan_file" ] || continue
+        PLAN_SKILLS=$(sed -n '/^---$/,/^---$/p' "$plan_file" | grep 'skills_used:' | sed 's/skills_used: *\[//' | sed 's/\]//' | tr ',' '\n' | sed 's/^ *//;s/ *$//;s/^"//;s/"$//' | grep -v '^$' || true)
+        if [ -n "$PLAN_SKILLS" ]; then
+          QA_SKILLS="${QA_SKILLS}${QA_SKILLS:+
+}${PLAN_SKILLS}"
+        fi
+      done
+      # De-duplicate
+      QA_SKILLS=$(echo "$QA_SKILLS" | sort -u | grep -v '^$' || true)
+      if [ -n "$QA_SKILLS" ]; then
+        echo ""
+        echo "### Skills to Verify"
+        echo "The following skills were active during this phase. Derive skill-augmented checks (SA-##) from their rules."
+        echo ""
+        while IFS= read -r skill; do
+          SKILL_FILE=""
+          if [ -f "$CLAUDE_DIR/skills/${skill}/SKILL.md" ]; then
+            SKILL_FILE="$CLAUDE_DIR/skills/${skill}/SKILL.md"
+          elif [ -f "./.claude/skills/${skill}/SKILL.md" ]; then
+            SKILL_FILE="./.claude/skills/${skill}/SKILL.md"
+          fi
+          if [ -n "$SKILL_FILE" ]; then
+            echo "#### ${skill}"
+            cat "$SKILL_FILE"
+            echo ""
+          fi
+        done <<< "$QA_SKILLS"
       fi
       # --- Codebase mapping hint (issue #79) ---
       emit_codebase_mapping_hint TESTING CONCERNS ARCHITECTURE
