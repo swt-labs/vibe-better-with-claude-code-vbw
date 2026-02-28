@@ -1,0 +1,53 @@
+# Separate workflow for linked-issue enforcement.
+# Split from ci.yml so that PR body edits (the `edited` event) only re-run this
+# lightweight check — not the full lint/test/QA matrix. Avoids the classic branch
+# protection issue where skipped required checks block merges.
+name: Linked Issue
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+
+jobs:
+  linked-issue-check:
+    name: Linked Issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for linked issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Method 1: Check PR body for issue references
+          # Matches: Fixes #N, Closes #N, Resolves #N (with optional owner/repo prefix)
+          # Also matches standalone #N references and full GitHub issue URLs
+          body_has_ref=false
+
+          if printf '%s\n' "$PR_BODY" | grep -qiE '(fix(es|ed)?|close[sd]?|resolve[sd]?)\s+([a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+)?#[0-9]+'; then
+            body_has_ref=true
+            echo "Found closing keyword issue reference in PR body"
+          elif printf '%s\n' "$PR_BODY" | grep -qE 'https://github\.com/[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+/issues/[0-9]+'; then
+            body_has_ref=true
+            echo "Found full GitHub issue URL in PR body"
+          elif printf '%s\n' "$PR_BODY" | grep -qE '#[1-9][0-9]*'; then
+            body_has_ref=true
+            echo "Found issue reference (#N) in PR body"
+          fi
+
+          # Method 2: Check GitHub timeline for sidebar-linked issues
+          sidebar_linked=false
+          if timeline=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/timeline" --paginate --jq '[.[] | select(.event == "connected")] | length' 2>/dev/null); then
+            if [ "${timeline:-0}" -gt 0 ]; then
+              sidebar_linked=true
+              echo "Found sidebar-linked issue via GitHub timeline"
+            fi
+          else
+            echo "Warning: could not query timeline API — skipping sidebar-link check"
+          fi
+
+          if [ "$body_has_ref" = "true" ] || [ "$sidebar_linked" = "true" ]; then
+            echo "Linked issue check passed"
+          else
+            echo "::error::PR must reference a tracking issue. Add 'Fixes #N', 'Closes #N', or 'Resolves #N' to the PR body, or link an issue via the GitHub sidebar. See CONTRIBUTING.md."
+            exit 1
+          fi
