@@ -2,7 +2,6 @@ name: CI
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
@@ -14,7 +13,6 @@ env:
 jobs:
   lint:
     name: Lint
-    if: github.event.action != 'edited'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +48,6 @@ jobs:
 
   test:
     name: Test
-    if: github.event.action != 'edited'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -79,46 +76,9 @@ jobs:
       - name: Verify command contracts
         run: bash testing/verify-commands-contract.sh
 
-  linked-issue-check:
-    name: Linked Issue
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check for linked issue
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: |
-          # Method 1: Check PR body for issue references
-          # Matches: Fixes #N, Closes #N, Resolves #N (with optional owner/repo prefix)
-          # Also matches standalone #N references
-          body_has_ref=false
-          if echo "$PR_BODY" | grep -qiE '(fix(es|ed)?|close[sd]?|resolve[sd]?)\s+([a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+)?#[0-9]+'; then
-            body_has_ref=true
-            echo "Found closing keyword issue reference in PR body"
-          elif echo "$PR_BODY" | grep -qE '#[0-9]+'; then
-            body_has_ref=true
-            echo "Found issue reference (#N) in PR body"
-          fi
-
-          # Method 2: Check GitHub timeline for sidebar-linked issues
-          sidebar_linked=false
-          timeline=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/timeline" --paginate --jq '[.[] | select(.event == "cross-referenced" or .event == "connected")] | length')
-          if [ "${timeline:-0}" -gt 0 ]; then
-            sidebar_linked=true
-            echo "Found sidebar-linked issue via GitHub timeline"
-          fi
-
-          if [ "$body_has_ref" = "true" ] || [ "$sidebar_linked" = "true" ]; then
-            echo "Linked issue check passed"
-          else
-            echo "::error::PR must reference a tracking issue. Add 'Fixes #N', 'Closes #N', or 'Resolves #N' to the PR body, or link an issue via the GitHub sidebar. See CONTRIBUTING.md."
-            exit 1
-          fi
-
   qa-review-check:
     name: QA Review Evidence
-    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

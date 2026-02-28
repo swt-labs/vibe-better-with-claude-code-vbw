@@ -1,0 +1,108 @@
+# Separate workflow for linked-issue enforcement.
+# Split from ci.yml so that PR body edits (the `edited` event) only re-run this
+# lightweight check — not the full lint/test/QA matrix. Avoids the classic branch
+# protection issue where skipped required checks block merges.
+name: Linked Issue
+
+on:
+  pull_request:
+    types: [opened, synchronize, edited, reopened]
+
+permissions:
+  issues: read
+  pull-requests: read
+
+jobs:
+  linked-issue-check:
+    name: Linked Issue Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for linked issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Strip HTML comments so refs inside <!-- ... --> are not matched
+          CLEAN_BODY=$(printf '%s\n' "$PR_BODY" | sed 's/<!--.*-->//g' | sed '/<!--/,/-->/d')
+
+          # Helper: check if a number is an issue (not a PR) via GitHub API
+          is_issue() {
+            local num="$1"
+            local json
+            if json=$(gh api "repos/${{ github.repository }}/issues/$num" --jq 'has("pull_request")' 2>/dev/null); then
+              # has("pull_request") returns true for PRs, false for issues
+              [ "$json" = "false" ]
+            else
+              return 1
+            fi
+          }
+
+          # Method 1: Collect all candidate #N numbers from PR body
+          # Closing keywords (Fixes/Closes/Resolves #N)
+          kw_raw=$(printf '%s\n' "$CLEAN_BODY" | grep -ioE '(fix(es|ed)?|close[sd]?|resolve[sd]?)\s+([a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+)?#[1-9][0-9]*\b' | sort -u)
+          kw_nums=$(printf '%s\n' "$kw_raw" | grep -oE '#[1-9][0-9]*' | sort -u)
+
+          # Full GitHub issue URLs (only /issues/ paths, not /pull/)
+          url_raw=$(printf '%s\n' "$CLEAN_BODY" | grep -oE 'https://github\.com/[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+/issues/[1-9][0-9]*\b' | sort -u)
+          url_nums=$(printf '%s\n' "$url_raw" | grep -oE '[0-9]+$' | sed 's/^/#/' | sort -u)
+
+          # Bare #N references (cap at 5 digits to avoid hex color false positives)
+          bare_nums=$(printf '%s\n' "$CLEAN_BODY" | grep -oE '(^|[^#&a-zA-Z0-9])#[1-9][0-9]{0,4}\b' | grep -oE '#[1-9][0-9]{0,4}' | sort -u)
+
+          # Deduplicate all candidate numbers
+          all_nums=$(printf '%s\n' $kw_nums $url_nums $bare_nums | sort -u | grep -E '^#[0-9]+$' || true)
+
+          # Verify each candidate is an actual issue (not a PR)
+          body_has_ref=false
+          body_detail=""
+          body_prs=""
+          for ref in $all_nums; do
+            num="${ref#\#}"
+            if is_issue "$num"; then
+              body_has_ref=true
+              body_detail="${body_detail:+$body_detail }$ref"
+            else
+              body_prs="${body_prs:+$body_prs }$ref"
+            fi
+          done
+
+          # Method 2: Check GitHub timeline for sidebar-linked issues
+          # Subtract disconnected events so unlinking an issue is respected
+          sidebar_linked=false
+          sidebar_detail=""
+          if timeline_json=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/timeline" --paginate --jq '
+            [.[] | select(.event == "connected") | .source.issue.number // empty] as $conn |
+            [.[] | select(.event == "disconnected") | .source.issue.number // empty] as $disc |
+            [$conn[] | select(. as $n | $disc | index($n) | not)] | unique | .[]' 2>/dev/null); then
+            if [ -n "$timeline_json" ]; then
+              # Verify sidebar-linked numbers are issues too
+              for num in $timeline_json; do
+                if is_issue "$num"; then
+                  sidebar_linked=true
+                  sidebar_detail="${sidebar_detail:+$sidebar_detail }#$num"
+                fi
+              done
+            fi
+          else
+            echo "Warning: could not query timeline API — sidebar-link detection unavailable."
+          fi
+
+          if [ "$body_has_ref" = "true" ] || [ "$sidebar_linked" = "true" ]; then
+            echo "Linked issue check passed"
+            if [ -n "$body_detail" ]; then
+              echo "  Issues: $body_detail"
+            fi
+            if [ -n "$body_prs" ]; then
+              echo "  PRs (skipped): $body_prs"
+            fi
+            if [ -n "$sidebar_detail" ]; then
+              echo "  Sidebar: $sidebar_detail"
+            fi
+          else
+            detail=""
+            if [ -n "$body_prs" ]; then
+              detail=" Found PR references ($body_prs) but no issue references."
+            fi
+            echo "::error::PR must reference a tracking issue (not a PR).$detail Accepted formats: 'Fixes #N' / 'Closes #N' / 'Resolves #N', a full GitHub issue URL, a bare '#N' reference, or a sidebar-linked issue. See CONTRIBUTING.md."
+            exit 1
+          fi

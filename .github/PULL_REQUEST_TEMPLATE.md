@@ -1,7 +1,7 @@
 ## Linked Issue
 
 <!-- REQUIRED: Every PR must reference a tracking issue. CI will fail without one. -->
-<!-- Use a closing keyword: Fixes #N, Closes #N, or Resolves #N -->
+<!-- Accepted: Fixes/Closes/Resolves #N, full GitHub issue URL, bare #N, or sidebar link -->
 
 Fixes #
 

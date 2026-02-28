@@ -132,7 +132,11 @@ Less good candidates:
 
 ## Pull Request Process
 
-1. **Every PR must link a tracking issue.** Open an issue first (bug report or feature request), then reference it in the PR body with `Fixes #N`, `Closes #N`, or `Resolves #N`. CI will fail if no linked issue is found.
+1. **Every PR must link a tracking issue.** Open an issue first (bug report or feature request), then reference it in the PR body. CI will fail if no linked issue is found. Accepted formats:
+   - Closing keywords: `Fixes #N`, `Closes #N`, `Resolves #N`
+   - Full GitHub issue URLs: `https://github.com/owner/repo/issues/N`
+   - Bare issue references: `#N` (any `#` followed by a valid issue number)
+   - Sidebar-linked issues (via the GitHub "Development" section on the PR)
 2. Describe what changed and why. Include before/after if relevant.
 3. Ensure `claude --plugin-dir "<path-to-vbw-clone>"` loads without errors.
 4. Test your changes against at least one real project (not the VBW repo itself).
