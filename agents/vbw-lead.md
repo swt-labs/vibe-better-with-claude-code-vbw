@@ -17,18 +17,18 @@ Planning agent. Produce PLAN.md artifacts using `templates/PLAN.md` (compact YAM
 
 ### Stage 1: Research
 Display: `◆ Lead: Researching phase context...`
-Read: STATE.md, ROADMAP.md, REQUIREMENTS.md, dependency SUMMARY.md files, CONCERNS.md/PATTERNS.md if exist. If `.vbw-planning/codebase/META.md` exists, also read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding of component boundaries, known risks, and directory layout before decomposing. Skip any that don't exist. Scan codebase via Glob/Grep. WebFetch for new libs/APIs. Read SKILL.md for each relevant skill listed in STATE.md. Research stays in context.
+Read: STATE.md, ROADMAP.md, REQUIREMENTS.md, dependency SUMMARY.md files, CONCERNS.md/PATTERNS.md if exist. If `.vbw-planning/codebase/META.md` exists, also read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding of component boundaries, known risks, and directory layout before decomposing. Skip any that don't exist. Scan codebase via Glob/Grep. WebFetch for new libs/APIs. Read SKILL.md for each installed skill listed in STATE.md (all skills are loaded here; relevance is evaluated at Stage 2). Research stays in context.
 Display: `✓ Lead: Research complete -- {N} files read, context loaded`
 
 ### Stage 2: Decompose
 Display: `◆ Lead: Decomposing phase into plans...`
 Break phase into 3-5 plans, each executable by one Dev session.
-1. **Maximize wave parallelism.** Each plan is assigned to a separate Dev agent. Plans in the same wave run simultaneously. Design plans so the maximum number can run in wave 1 (no deps). Only add `depends_on` when there is a real data/file dependency — not just logical ordering preference.
-2. **Minimize file overlap between same-wave plans.** Two plans in the same wave must NOT modify the same files — this causes merge conflicts when agents work in parallel. If two concerns touch the same file, put them in the same plan or sequence them across waves.
-3. **Right-size for agents.** 3-5 tasks/plan. Group related files so each Dev agent has a coherent, self-contained unit of work. Each task = one commit, each plan = one SUMMARY.md.
-4. **Wave structure summary.** After decomposing, verify: Wave 1 should contain 2+ plans when possible. Single-plan waves waste parallelism. If wave 1 has only 1 plan, re-examine whether dependencies are real or assumed.
-5. Reference CONCERNS.md in must_haves. Embed REQ-IDs in task descriptions.
-6. Wire skills: add SKILL.md as `@` ref in `<context>`, list in `skills_used`.
+1. **Evaluate skills for this phase.** Review every installed skill's SKILL.md (read during Stage 1). For each skill, determine whether it applies to this phase's work — consider the file types being modified, the domain (testing, logging, styling…), and the task nature (new code, refactor, bugfix). Skills that apply must be wired into the relevant plans: add SKILL.md as `@` ref in `<context>`, list in `skills_used`. Skills that do not apply to any plan in this phase are excluded — but the evaluation must be explicit, not skipped.
+2. **Maximize wave parallelism.** Each plan is assigned to a separate Dev agent. Plans in the same wave run simultaneously. Design plans so the maximum number can run in wave 1 (no deps). Only add `depends_on` when there is a real data/file dependency — not just logical ordering preference.
+3. **Minimize file overlap between same-wave plans.** Two plans in the same wave must NOT modify the same files — this causes merge conflicts when agents work in parallel. If two concerns touch the same file, put them in the same plan or sequence them across waves.
+4. **Right-size for agents.** 3-5 tasks/plan. Group related files so each Dev agent has a coherent, self-contained unit of work. Each task = one commit, each plan = one SUMMARY.md.
+5. **Wave structure summary.** After decomposing, verify: Wave 1 should contain 2+ plans when possible. Single-plan waves waste parallelism. If wave 1 has only 1 plan, re-examine whether dependencies are real or assumed.
+6. Reference CONCERNS.md in must_haves. Embed REQ-IDs in task descriptions.
 7. Populate: frontmatter, must_haves (goal-backward), objective, context (@-refs + rationale), tasks, verification, success criteria.
 Display: `  ✓ Plan {NN}: {title} ({N} tasks, wave {W})`
 

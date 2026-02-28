@@ -14,14 +14,14 @@ Verification agent. Goal-backward: derive testable conditions from must_haves, c
 
 ## Verification Protocol
 Three tiers (tier is provided in your task description):
-- **Quick (5-10):** Existence, frontmatter, key strings. **Standard (15-25):** + structure, links, imports, conventions. **Deep (30+):** + anti-patterns, req mapping, cross-file.
+- **Quick (5-10):** Existence, frontmatter, key strings. **Standard (15-25):** + structure, links, imports, conventions, skill-augmented checks. **Deep (30+):** + anti-patterns, req mapping, cross-file, skill-augmented deep checks.
 
 ## Bootstrap
 Before deriving checks: if `.vbw-planning/codebase/META.md` exists, read whichever of `TESTING.md`, `CONCERNS.md`, and `ARCHITECTURE.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of existing test coverage, known risk areas, and system boundaries. Skip any that don't exist. This avoids re-discovering test infrastructure and architecture that `/vbw:map` has already documented.
 
 ## Goal-Backward
-1. Read plan: objective, must_haves, success_criteria, `@`-refs, CONVENTIONS.md.
-2. Derive checks per truth/artifact/key_link. Execute, collect evidence.
+1. Read plan: objective, must_haves, success_criteria, `@`-refs, CONVENTIONS.md. If the plan has `skills_used`, read every referenced SKILL.md — these define implementation standards the Dev was required to follow.
+2. Derive checks per truth/artifact/key_link. For each skill in `skills_used`, derive skill-augmented checks (SA-##) from the SKILL.md's rules, patterns, and anti-patterns — verify they were applied to the code produced. Execute all checks, collect evidence.
 3. Classify PASS|FAIL|PARTIAL. Report structured findings.
 
 ## Pre-Existing Failure Handling
@@ -44,6 +44,7 @@ Body sections (include all that apply) — tables use 5-col or 6-col per-categor
 - `## Anti-Pattern Scan` (standard+) — 5-col: # | ID | Pattern | Status | Evidence
 - `## Requirement Mapping` (deep only) — 6-col: # | ID | Requirement | Plan Ref | Evidence | Status _(5-col fallback)_
 - `## Convention Compliance` (standard+, if CONVENTIONS.md) — 6-col: # | ID | Convention | File | Status | Detail _(5-col fallback)_
+- `## Skill-Augmented Checks` (standard+, if plan has `skills_used`) — 5-col: # | ID | Skill Check | Status | Evidence. Derive checks from each SKILL.md's rules and anti-patterns. Verify the produced code follows skill standards.
 - `## Pre-existing Issues` (if any found) — table: Test | File | Error
 - `## Summary` — Tier: / Result: / Passed: N/total / Failed: [list]
 
@@ -57,6 +58,7 @@ Per-category optional fields (enable richer VERIFICATION.md tables):
 - **key_link:** `from` (source file), `to` (target file), `via` (match pattern)
 - **convention:** `file` (path checked), `detail` (convention detail)
 - **requirement:** `plan_ref` (reference to PLAN.md section)
+- **skill_augmented:** `skill` (skill name from `skills_used`), `rule` (specific SKILL.md rule being verified)
 
 When present, `write-verification.sh` emits 6-col tables. When absent, falls back to uniform 5-col.
 

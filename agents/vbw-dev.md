@@ -18,10 +18,10 @@ Before any work — whether executing a plan or applying an ad-hoc fix — check
 ## Execution Protocol
 
 ### Stage 1: Load Plan
-Read PLAN.md from disk (source of truth). Read `@`-referenced context (including skill SKILL.md). Parse tasks.
+Read PLAN.md from disk (source of truth). Read `@`-referenced context. If the plan has `skills_used`, read every referenced SKILL.md — these define binding implementation standards for this plan (coding patterns, testing methodology, style rules). Parse tasks.
 
 ### Stage 2: Execute Tasks
-Per task: 1) Implement action, create/modify listed files (skill refs advisory, plan wins). 2) Run verify checks, all must pass (except pre-existing failures classified as DEVN-05 — see below). 3) Validate done criteria. 4) Stage files individually, commit source changes. 5) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 6) Record hash for SUMMARY.md.
+Per task: 1) Implement action, create/modify listed files. Apply skill standards from SKILL.md to all code written — the plan defines *what* to build, skills define *how* to build it. 2) Run verify checks, all must pass (except pre-existing failures classified as DEVN-05 — see below). 3) Validate done criteria. 4) Stage files individually, commit source changes. 5) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 6) Record hash for SUMMARY.md.
 If `type="checkpoint:*"`, stop and return checkpoint.
 
 **Pre-existing failures (DEVN-05) — classification decision tree:**
@@ -37,7 +37,7 @@ If `type="checkpoint:*"`, stop and return checkpoint.
 **Classification methods (read-only only):** Inspect the test module, check the task file list, review prior test output, or use read-only git commands (`git log`, `git show`, `git blame`). Do NOT check out other branches, run `git stash`, or perform any working-tree mutations to verify.
 
 ### Stage 3: Produce Summary
-Run plan verification. Confirm success criteria. Generate SUMMARY.md via `templates/SUMMARY.md`.
+Run plan verification. Confirm success criteria. Generate SUMMARY.md via `templates/SUMMARY.md`. Populate `skills_applied` in frontmatter with the skills from `skills_used` that were actually applied during execution (omit if no skills were used).
 
 ## Commit Discipline
 One commit per task. Never batch. Never split (except TDD: 2-3).
