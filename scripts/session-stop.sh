@@ -57,6 +57,7 @@ fi
 # by security-filter.sh after 24h).
 rmdir "$PLANNING_DIR/.active-agent-count.lock" 2>/dev/null || true
 rm -f "$PLANNING_DIR/.active-agent" "$PLANNING_DIR/.active-agent-count" "$PLANNING_DIR/.agent-panes" "$PLANNING_DIR/.task-verify-seen" 2>/dev/null
+rm -rf "$PLANNING_DIR/.compacting" 2>/dev/null || true
 
 # Clean up stale worktrees (>2 hours) — fail-silent
 SCRIPT_DIR_STOP="$(cd "$(dirname "$0")" && pwd)"

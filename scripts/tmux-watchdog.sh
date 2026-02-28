@@ -41,7 +41,7 @@ log() {
 
 log "Watchdog started for session: $SESSION (PID=$$)"
 
-COMPACTION_TIMEOUT=300  # 5 minutes
+COMPACTION_TIMEOUT="${VBW_COMPACTION_TIMEOUT:-300}"  # 5 minutes, overridable via env
 
 # --- Compaction timeout check ---
 # Scans .compacting/*.json for agents stuck longer than COMPACTION_TIMEOUT.
@@ -75,16 +75,35 @@ check_compaction_timeouts() {
 
     age=$((now - started_at))
     if [ "$age" -gt "$COMPACTION_TIMEOUT" ]; then
+      # Resolve pane_id from live tmux state if marker has empty pane_id
+      if [ -z "$pane_id" ]; then
+        local _pane_list _walk_pid _resolved
+        _pane_list=$(tmux list-panes -a -F '#{pane_pid} #{pane_id}' 2>/dev/null) || _pane_list=""
+        if [ -n "$_pane_list" ]; then
+          _walk_pid="$pid"
+          while [ -n "$_walk_pid" ] && [ "$_walk_pid" != "0" ] && [ "$_walk_pid" != "1" ]; do
+            _resolved=$(echo "$_pane_list" | awk -v p="$_walk_pid" '$1 == p { print $2; exit }')
+            if [ -n "$_resolved" ]; then
+              pane_id="$_resolved"
+              break
+            fi
+            _walk_pid=$(ps -o ppid= -p "$_walk_pid" 2>/dev/null | tr -d ' ')
+          done
+        fi
+      fi
+
       log "COMPACTION TIMEOUT: agent=$agent_name pid=$pid pane=$pane_id age=${age}s (limit=${COMPACTION_TIMEOUT}s)"
 
-      # Kill agent process: SIGTERM then SIGKILL
-      log "Sending SIGTERM to stuck agent PID $pid"
-      kill -TERM "$pid" 2>/dev/null || true
-      sleep 2
-      if kill -0 "$pid" 2>/dev/null; then
-        log "Agent PID $pid survived SIGTERM, sending SIGKILL"
-        kill -KILL "$pid" 2>/dev/null || true
-      fi
+      # Kill agent process and pane in background to avoid blocking the poll loop
+      (
+        log "Sending SIGTERM to stuck agent PID $pid"
+        kill -TERM "$pid" 2>/dev/null || true
+        sleep 2
+        if kill -0 "$pid" 2>/dev/null; then
+          log "Agent PID $pid survived SIGTERM, sending SIGKILL"
+          kill -KILL "$pid" 2>/dev/null || true
+        fi
+      ) &
 
       # Kill tmux pane
       if [ -n "$pane_id" ]; then
