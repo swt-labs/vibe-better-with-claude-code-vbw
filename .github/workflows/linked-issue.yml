@@ -14,7 +14,6 @@ permissions:
 
 jobs:
   linked-issue-check:
-    name: Linked Issue
     runs-on: ubuntu-latest
     steps:
       - name: Check for linked issue
