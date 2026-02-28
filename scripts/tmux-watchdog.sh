@@ -41,8 +41,10 @@ log() {
 
 log "Watchdog started for session: $SESSION (PID=$$)"
 
-# Clean stale compaction markers from previous (possibly crashed) sessions
-rm -rf "$PLANNING_DIR/.compacting" 2>/dev/null || true
+# Clean stale compaction markers from previous (possibly crashed) sessions.
+# Remove files only (not directory) to avoid TOCTOU race with concurrent PreCompact mkdir -p.
+mkdir -p "$PLANNING_DIR/.compacting" 2>/dev/null || true
+rm -f "$PLANNING_DIR/.compacting"/*.json 2>/dev/null || true
 
 # Validate timeout: must be a positive integer, fallback to 300
 COMPACTION_TIMEOUT="${VBW_COMPACTION_TIMEOUT:-300}"
