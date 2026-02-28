@@ -5,9 +5,10 @@ set -u
 # Generates a contract sidecar JSON from PLAN.md metadata.
 # Output: .vbw-planning/.contracts/{phase}-{plan}.json
 #
-# Full contract (v2_hard_contracts, graduated): 11 fields + contract_hash
+# Full contract (v2_hard_contracts, graduated): 12 fields + contract_hash
 #   task_id, phase_id, plan_id, objective, allowed_paths, forbidden_paths,
-#   depends_on, must_haves, verification_checks, max_token_budget, timeout_seconds,
+#   depends_on, must_haves, verification_checks, skills_used,
+#   max_token_budget, timeout_seconds,
 #   contract_hash (SHA-256 of serialized contract excluding hash)
 #
 # Hard stop behavior delegated to validate-contract.sh.
@@ -95,6 +96,18 @@ FORBIDDEN_PATHS=$(awk '
   in_front && in_fp && /^[^[:space:]]/ { exit }
 ' "$PLAN_PATH" 2>/dev/null) || true
 
+# Extract skills_used from frontmatter (informational — enables downstream skill tracking)
+SKILLS_USED=$(awk '
+  BEGIN { in_front=0 }
+  /^---$/ { if (in_front==0) { in_front=1; next } else { exit } }
+  in_front && /^skills_used:/ {
+    sub(/^skills_used: *\[/, ""); sub(/\].*$/, "")
+    gsub(/ /, ""); gsub(/,/, "\n"); gsub(/"/, "")
+    print
+    exit
+  }
+' "$PLAN_PATH" 2>/dev/null) || true
+
 # Extract file paths from **Files:** lines in task descriptions
 ALLOWED_PATHS=$(grep -oE '\*\*Files:\*\* .+' "$PLAN_PATH" 2>/dev/null | \
   sed 's/\*\*Files:\*\* //' | \
@@ -155,6 +168,11 @@ CONTRACT_FILE="${CONTRACT_DIR}/${PHASE}-${PLAN}.json"
     TID_JSON=$(echo "$TASK_IDS" | jq -R '.' | jq -s '.' 2>/dev/null) || TID_JSON="[]"
   fi
 
+  SU_JSON="[]"
+  if [ -n "$SKILLS_USED" ]; then
+    SU_JSON=$(echo "$SKILLS_USED" | grep -v '^$' | jq -R '.' | jq -s '.' 2>/dev/null) || SU_JSON="[]"
+  fi
+
   # Token budget from config or default
   TOKEN_BUDGET=$(jq -r '.max_token_budget // 50000' "$CONFIG_PATH" 2>/dev/null || echo 50000)
   TIMEOUT=$(jq -r '.task_timeout_seconds // 600' "$CONFIG_PATH" 2>/dev/null || echo 600)
@@ -175,6 +193,7 @@ CONTRACT_FILE="${CONTRACT_DIR}/${PHASE}-${PLAN}.json"
     --argjson verification_checks "$VC_JSON" \
     --argjson max_token_budget "$TOKEN_BUDGET" \
     --argjson timeout_seconds "$TIMEOUT" \
+    --argjson skills_used "$SU_JSON" \
     '{
       phase_id: $phase_id,
       plan_id: $plan_id,
@@ -188,6 +207,7 @@ CONTRACT_FILE="${CONTRACT_DIR}/${PHASE}-${PLAN}.json"
       depends_on: $depends_on,
       must_haves: $must_haves,
       verification_checks: $verification_checks,
+      skills_used: $skills_used,
       max_token_budget: $max_token_budget,
       timeout_seconds: $timeout_seconds
     }' 2>/dev/null) || exit 0

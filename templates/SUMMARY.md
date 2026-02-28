@@ -8,6 +8,8 @@ tasks_completed: {N}
 tasks_total: {N}
 commit_hashes:
   - {hash}
+skills_applied:
+  - {skill-name}
 deviations:
   - "{deviation-description}"
 ---

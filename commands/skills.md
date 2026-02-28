@@ -72,6 +72,15 @@ Store the choice as SCOPE. If "Skip" was selected in Step 5: skip this step.
 
 `npx skills add <skill> -y` (project scope) or `npx skills add <skill> -g -y` (global scope) per selection, based on SCOPE from Step 5b. Display ✓ or ✗ per skill. "➜ Skills take effect immediately — no restart needed."
 
+### Step 7: Update skill registry
+
+After successful installs, update project tracking files so agents discover new skills:
+
+1. **STATE.md** — If `.vbw-planning/STATE.md` exists, update the `### Skills` section's `**Installed:**` line with the current list of all installed skills (re-run detect-stack.sh to get the full list from `installed.global[]` + `installed.project[]`).
+2. **CLAUDE.md** — If `CLAUDE.md` exists and contains `## Installed Skills`, update that section with the current installed skill names (one per line, prefixed with `- `). Replace the placeholder `_(Run /vbw:skills to list)_` if present.
+
+Skip this step if no skills were installed (user selected "Skip" in Step 5).
+
 ## Output Format
 
 Follow @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md — single-line box, ✓ installed, ○ suggested, ✗ failed, ⚠ warning, no ANSI.

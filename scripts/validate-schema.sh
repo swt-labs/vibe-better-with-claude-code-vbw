@@ -70,8 +70,26 @@ done
 
 if [ -n "$MISSING" ]; then
   echo "invalid: missing ${MISSING}"
-else
-  echo "valid"
+  exit 0
 fi
 
+# Advisory: warn if plan has no skills_used but skills are installed
+if [ "$SCHEMA_TYPE" = "plan" ]; then
+  if ! echo "$FRONTMATTER" | grep -q "^skills_used:"; then
+    # shellcheck source=resolve-claude-dir.sh
+    . "$(dirname "$0")/resolve-claude-dir.sh" 2>/dev/null || true
+    HAS_SKILLS=false
+    if [ -n "${CLAUDE_DIR:-}" ] && [ -d "$CLAUDE_DIR/skills" ] && [ -n "$(ls -A "$CLAUDE_DIR/skills" 2>/dev/null)" ]; then
+      HAS_SKILLS=true
+    elif [ -d "./.claude/skills" ] && [ -n "$(ls -A "./.claude/skills" 2>/dev/null)" ]; then
+      HAS_SKILLS=true
+    fi
+    if [ "$HAS_SKILLS" = "true" ]; then
+      echo "valid (warning: skills_used not set but skills are installed — were skills evaluated?)"
+      exit 0
+    fi
+  fi
+fi
+
+echo "valid"
 exit 0
