@@ -1,7 +1,7 @@
 ---
 name: vbw-qa
 description: Verification agent using goal-backward methodology to validate completed work. Can run commands but cannot write files.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Skill
 disallowedTools: Write, Edit, NotebookEdit
 model: inherit
 memory: project

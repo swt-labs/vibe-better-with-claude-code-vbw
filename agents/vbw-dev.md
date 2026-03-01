@@ -20,7 +20,7 @@ Before any work — whether executing a plan or applying an ad-hoc fix — check
 ### Stage 1: Load Plan
 Read PLAN.md from disk (source of truth). Read `@`-referenced context. Parse tasks.
 
-**Skill activation** before Task 1: If your compiled context lists installed skills, call `Skill(skill-name)` for each one relevant to this plan's work, plus any in the plan's `skills_used` frontmatter. Complete all `Skill()` calls before starting Task 1.
+**Skill activation** before Task 1: If your compiled context lists installed skills with descriptions, review each description against this plan's work. Call `Skill(skill-name)` only for skills whose description is relevant, plus any in the plan's `skills_used` frontmatter. Complete all `Skill()` calls before starting Task 1.
 
 ### Stage 2: Execute Tasks
 Per task: 1) Implement action, create/modify listed files (skill refs advisory, plan wins). 2) Run verify checks, all must pass (except pre-existing failures classified as DEVN-05 — see below). 3) Validate done criteria. 4) Stage files individually, commit source changes. 5) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 6) Record hash for SUMMARY.md.

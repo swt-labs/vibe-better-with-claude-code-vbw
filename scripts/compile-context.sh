@@ -206,6 +206,30 @@ emit_codebase_mapping_hint() {
   fi
 }
 
+# --- Skill evaluation helper (issue #191, Fix 2: Forced Skill Evaluation) ---
+# Calls evaluate-skills.sh to get name+description pairs from STATE.md + SKILL.md,
+# then emits a markdown table for the agent to make informed Skill() decisions.
+# Usage: emit_skill_directive "role-specific preamble text"
+emit_skill_directive() {
+  local preamble="$1"
+  local skill_output
+  skill_output=$(bash "${SCRIPT_DIR}/evaluate-skills.sh" "$PLANNING_DIR" "${PROJECT_DIR:-.}" 2>/dev/null || true)
+  if [ -z "$skill_output" ]; then
+    return
+  fi
+  echo ""
+  echo "### Installed Skills"
+  echo ""
+  echo "$preamble"
+  echo ""
+  echo "| Skill | Description |"
+  echo "|-------|-------------|"
+  while IFS=$'\t' read -r name desc; do
+    [ -z "$name" ] && continue
+    echo "| \`$name\` | $desc |"
+  done <<< "$skill_output"
+}
+
 # --- Role-specific output ---
 case "$ROLE" in
   lead)
@@ -255,6 +279,8 @@ case "$ROLE" in
       fi
       # --- Codebase mapping hint (issue #80) ---
       emit_codebase_mapping_hint ARCHITECTURE CONCERNS STRUCTURE
+      # --- Installed skills directive (issue #191) ---
+      emit_skill_directive "Review each skill's description. Call \`Skill(skill-name)\` for skills relevant to this phase. Wire relevant skills into each plan's \`skills_used\`."
       # --- V3: Include RESEARCH.md if present ---
       RESEARCH_FILE=$(find "$PHASE_DIR" -maxdepth 1 -name "*-RESEARCH.md" -print -quit 2>/dev/null || true)
       if [ -n "$RESEARCH_FILE" ] && [ -f "$RESEARCH_FILE" ]; then
@@ -286,21 +312,8 @@ case "$ROLE" in
         fi
       fi
       # --- Installed skills directive (REQ-12, issue #191) ---
-      # Emit skill names only (not full SKILL.md content). Dev agent calls Skill()
-      # natively for on-demand loading with progressive disclosure.
-      if [ -f "$PLANNING_DIR/STATE.md" ]; then
-        INSTALLED_SKILLS=$(sed -n '/^### Skills$/,/^### \|^## /p' "$PLANNING_DIR/STATE.md" | grep '^- ' | sed 's/^- //' | grep -v '^$' || true)
-        if [ -n "$INSTALLED_SKILLS" ]; then
-          echo ""
-          echo "### Installed Skills"
-          echo ""
-          echo "The following skills are installed. Evaluate each for relevance to this plan and call \`Skill(skill-name)\` for relevant ones before starting implementation."
-          echo ""
-          while IFS= read -r skill_line; do
-            echo "- ${skill_line}"
-          done <<< "$INSTALLED_SKILLS"
-        fi
-      fi
+      # Forced skill evaluation: name+description table via evaluate-skills.sh
+      emit_skill_directive "Review each skill's description against this plan's work. Call \`Skill(skill-name)\` for relevant ones before starting Task 1."
       # --- Codebase mapping hint (issue #78) ---
       emit_codebase_mapping_hint CONVENTIONS PATTERNS STRUCTURE DEPENDENCIES
       # --- V3: Delta context (REQ-06) ---
@@ -384,6 +397,8 @@ case "$ROLE" in
       fi
       # --- Codebase mapping hint (issue #79) ---
       emit_codebase_mapping_hint TESTING CONCERNS ARCHITECTURE
+      # --- Installed skills directive (issue #191) ---
+      emit_skill_directive "Review each skill's description. Call \`Skill(skill-name)\` for skills relevant to verifying this phase's work."
     } > "${PHASE_DIR}/.context-qa.md"
     ;;
 
@@ -435,6 +450,8 @@ case "$ROLE" in
           done
         fi
       fi
+      # --- Installed skills directive (issue #191) ---
+      emit_skill_directive "Review each skill's description. Call \`Skill(skill-name)\` for skills relevant to this research."
     } > "${PHASE_DIR}/.context-scout.md"
     ;;
 
@@ -514,6 +531,8 @@ case "$ROLE" in
           done
         fi
       fi
+      # --- Installed skills directive (issue #191) ---
+      emit_skill_directive "Review each skill's description. Call \`Skill(skill-name)\` for skills relevant to debugging this issue."
     } > "${PHASE_DIR}/.context-debugger.md"
     ;;
 
@@ -556,6 +575,8 @@ case "$ROLE" in
         echo "### Research Findings"
         cat "$RESEARCH_FILE"
       fi
+      # --- Installed skills directive (issue #191) ---
+      emit_skill_directive "Review each skill's description. Call \`Skill(skill-name)\` for skills relevant to this architecture work."
     } > "${PHASE_DIR}/.context-architect.md"
     ;;
 
