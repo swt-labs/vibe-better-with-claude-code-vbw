@@ -2,6 +2,12 @@
 set -u
 # skill-evaluation-gate.sh — SubagentStart hook for mandatory skill evaluation
 #
+# SUPPLEMENTARY PATH: This hook fires for non-team subagent spawns (e.g.,
+# /vbw:fix direct Agent tool calls). For agent team teammates, the primary
+# skill evaluation gate is skill-eval-prompt-gate.sh (UserPromptSubmit hook),
+# since SubagentStart does NOT fire for teammates (separate sessions).
+# See: github.com/anthropics/claude-code/issues/24175, #27755
+#
 # Injects a MANDATORY SKILL EVALUATION SEQUENCE into subagent additionalContext
 # at spawn-time (high attention position). This forces agents to commit YES/NO
 # per skill in writing before coding (~95% activation reliability).

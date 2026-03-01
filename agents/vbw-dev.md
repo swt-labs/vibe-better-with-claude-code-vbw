@@ -20,7 +20,7 @@ Before any work — whether executing a plan or applying an ad-hoc fix — check
 ### Stage 1: Load Plan
 Read PLAN.md from disk (source of truth). Read `@`-referenced context. Parse tasks.
 
-**Skill activation** before Task 1: Follow the MANDATORY SKILL EVALUATION SEQUENCE from your injected context — EVALUATE each skill, ACTIVATE relevant ones via Skill(skill-name), then IMPLEMENT. Also activate any in the plan's `skills_used` frontmatter. If no sequence was injected, read STATE.md's Skills section and evaluate each installed skill yourself.
+**Skill activation** before Task 1: Complete the skill evaluation protocol. For each available skill (shown in your system context), write YES or NO for relevance to your current task. Call Skill(skill-name) for each YES skill and any listed in the plan's `skills_used` frontmatter. Only then begin implementation. Skipping skill evaluation is a protocol violation.
 
 ### Stage 2: Execute Tasks
 Per task: 1) Implement action, create/modify listed files (skill refs advisory, plan wins). 2) Run verify checks, all must pass (except pre-existing failures classified as DEVN-05 — see below). 3) Validate done criteria. 4) Stage files individually, commit source changes. 5) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 6) Record hash for SUMMARY.md.
