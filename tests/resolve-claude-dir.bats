@@ -151,8 +151,8 @@ teardown() {
   ! grep -q 'resolve-claude-dir.sh' "$SCRIPTS_DIR/compile-context.sh"
 }
 
-@test "compile-context.sh reads skill names from STATE.md (not CLAUDE_DIR)" {
-  grep -q 'Installed Skills' "$SCRIPTS_DIR/compile-context.sh"
+@test "skill-evaluation-gate.sh reads skill names via evaluate-skills.sh (not CLAUDE_DIR)" {
+  grep -q 'evaluate-skills.sh' "$SCRIPTS_DIR/skill-evaluation-gate.sh"
 }
 
 # --- skill-hook-dispatch.sh tests ---
