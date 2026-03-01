@@ -5,11 +5,13 @@ set -euo pipefail
 #
 # Checks:
 # - evaluate-skills.sh exists and is executable
-# - vbw-dev.md has description-based skill activation cue
-# - vbw-lead.md has Skill in tools and description-based cue
+# - skill-evaluation-gate.sh exists, calls evaluate-skills.sh, contains MANDATORY sequence
+# - hooks.json has skill-evaluation-gate.sh entry in SubagentStart
+# - vbw-dev.md has MANDATORY SKILL EVALUATION SEQUENCE reference
+# - vbw-lead.md has MANDATORY SKILL EVALUATION SEQUENCE reference + completeness gate
 # - All agents with explicit tools: allowlists include Skill
-# - compile-context.sh uses evaluate-skills.sh and emits table for all roles
-# - execute-protocol.md documents forced evaluation
+# - compile-context.sh no longer has emit_skill_directive
+# - execute-protocol.md documents hook-based evaluation
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -62,20 +64,70 @@ else
   fail "evaluate-skills.sh: missing description extraction"
 fi
 
+# --- skill-evaluation-gate.sh checks ---
+
+GATE_SCRIPT="$ROOT/scripts/skill-evaluation-gate.sh"
+
+if [ -f "$GATE_SCRIPT" ]; then
+  pass "skill-evaluation-gate.sh: exists"
+else
+  fail "skill-evaluation-gate.sh: missing"
+fi
+
+if [ -x "$GATE_SCRIPT" ]; then
+  pass "skill-evaluation-gate.sh: is executable"
+else
+  fail "skill-evaluation-gate.sh: not executable"
+fi
+
+if grep -q 'evaluate-skills.sh' "$GATE_SCRIPT"; then
+  pass "skill-evaluation-gate.sh: calls evaluate-skills.sh"
+else
+  fail "skill-evaluation-gate.sh: missing evaluate-skills.sh call"
+fi
+
+if grep -q 'MANDATORY SKILL EVALUATION SEQUENCE' "$GATE_SCRIPT"; then
+  pass "skill-evaluation-gate.sh: contains MANDATORY SKILL EVALUATION SEQUENCE"
+else
+  fail "skill-evaluation-gate.sh: missing MANDATORY SKILL EVALUATION SEQUENCE"
+fi
+
+if grep -q 'hookSpecificOutput' "$GATE_SCRIPT"; then
+  pass "skill-evaluation-gate.sh: outputs hookSpecificOutput JSON"
+else
+  fail "skill-evaluation-gate.sh: missing hookSpecificOutput output"
+fi
+
+if grep -q 'additionalContext' "$GATE_SCRIPT"; then
+  pass "skill-evaluation-gate.sh: outputs additionalContext"
+else
+  fail "skill-evaluation-gate.sh: missing additionalContext output"
+fi
+
+# --- hooks.json check ---
+
+HOOKS_FILE="$ROOT/hooks/hooks.json"
+
+if grep -q 'skill-evaluation-gate.sh' "$HOOKS_FILE"; then
+  pass "hooks.json: has skill-evaluation-gate.sh entry"
+else
+  fail "hooks.json: missing skill-evaluation-gate.sh entry"
+fi
+
 # --- vbw-dev.md checks ---
 
 DEV_AGENT="$ROOT/agents/vbw-dev.md"
 
-if grep -q 'Skill activation' "$DEV_AGENT"; then
-  pass "vbw-dev.md: has skill activation cue"
+if grep -q 'MANDATORY SKILL EVALUATION SEQUENCE' "$DEV_AGENT"; then
+  pass "vbw-dev.md: references MANDATORY SKILL EVALUATION SEQUENCE"
 else
-  fail "vbw-dev.md: missing skill activation cue"
+  fail "vbw-dev.md: missing MANDATORY SKILL EVALUATION SEQUENCE reference"
 fi
 
-if grep -q 'description' "$DEV_AGENT" && grep -q 'Skill(skill-name)' "$DEV_AGENT"; then
-  pass "vbw-dev.md: references description-based Skill() evaluation"
+if grep -q 'Skill(skill-name)' "$DEV_AGENT"; then
+  pass "vbw-dev.md: references Skill() activation"
 else
-  fail "vbw-dev.md: missing description-based Skill() evaluation"
+  fail "vbw-dev.md: missing Skill() reference"
 fi
 
 if grep -q 'skills_used' "$DEV_AGENT"; then
@@ -95,10 +147,10 @@ else
   fail "vbw-lead.md: Skill NOT in tools allowlist"
 fi
 
-if grep -q 'description' "$LEAD_AGENT" && grep -q 'Skill(skill-name)' "$LEAD_AGENT"; then
-  pass "vbw-lead.md: Stage 1 references description-based Skill() evaluation"
+if grep -q 'MANDATORY SKILL EVALUATION SEQUENCE' "$LEAD_AGENT"; then
+  pass "vbw-lead.md: references MANDATORY SKILL EVALUATION SEQUENCE"
 else
-  fail "vbw-lead.md: Stage 1 missing description-based Skill() evaluation"
+  fail "vbw-lead.md: missing MANDATORY SKILL EVALUATION SEQUENCE reference"
 fi
 
 if grep -q 'Skill completeness check' "$LEAD_AGENT"; then
@@ -119,70 +171,30 @@ for agent_file in vbw-qa.md vbw-scout.md vbw-debugger.md vbw-architect.md vbw-do
   fi
 done
 
-# --- compile-context.sh checks ---
+# --- Negative check: compile-context.sh no longer has emit_skill_directive ---
 
 COMPILER="$ROOT/scripts/compile-context.sh"
 
-if grep -q 'evaluate-skills.sh' "$COMPILER"; then
-  pass "compile-context.sh: calls evaluate-skills.sh"
-else
-  fail "compile-context.sh: missing evaluate-skills.sh call"
-fi
-
 if grep -q 'emit_skill_directive' "$COMPILER"; then
-  pass "compile-context.sh: has emit_skill_directive function"
+  fail "compile-context.sh: still has emit_skill_directive (should be removed)"
 else
-  fail "compile-context.sh: missing emit_skill_directive function"
+  pass "compile-context.sh: emit_skill_directive removed"
 fi
-
-if grep -q '### Installed Skills' "$COMPILER"; then
-  pass "compile-context.sh: emits '### Installed Skills' header"
-else
-  fail "compile-context.sh: missing '### Installed Skills' header"
-fi
-
-if grep -q '| Skill | Description |' "$COMPILER"; then
-  pass "compile-context.sh: emits skill table with descriptions"
-else
-  fail "compile-context.sh: missing skill table format"
-fi
-
-if grep -q 'cat "$SKILL_FILE"' "$COMPILER"; then
-  fail "compile-context.sh: still has old text bundling (cat SKILL_FILE)"
-else
-  pass "compile-context.sh: old text bundling removed"
-fi
-
-# Check skill directive wired to all 6 roles
-for role in dev lead qa scout debugger architect; do
-  if grep -A5 "context-${role}.md" "$COMPILER" | grep -q 'emit_skill_directive' 2>/dev/null || \
-     grep -B50 "context-${role}.md" "$COMPILER" | grep -q 'emit_skill_directive' 2>/dev/null; then
-    pass "compile-context.sh: skill directive wired to ${role} role"
-  else
-    fail "compile-context.sh: skill directive NOT wired to ${role} role"
-  fi
-done
 
 # --- execute-protocol.md checks ---
 
 PROTOCOL="$ROOT/references/execute-protocol.md"
 
-if grep -q 'evaluate-skills.sh' "$PROTOCOL"; then
-  pass "execute-protocol.md: documents evaluate-skills.sh"
+if grep -q 'skill-evaluation-gate.sh' "$PROTOCOL"; then
+  pass "execute-protocol.md: documents skill-evaluation-gate.sh hook"
 else
-  fail "execute-protocol.md: missing evaluate-skills.sh documentation"
+  fail "execute-protocol.md: missing skill-evaluation-gate.sh documentation"
 fi
 
-if grep -q 'description' "$PROTOCOL" && grep -q 'Skill(skill-name)' "$PROTOCOL"; then
-  pass "execute-protocol.md: documents description-based Skill() activation"
+if grep -q 'SubagentStart' "$PROTOCOL" && grep -q 'additionalContext' "$PROTOCOL"; then
+  pass "execute-protocol.md: documents hook-based additionalContext injection"
 else
-  fail "execute-protocol.md: missing description-based activation documentation"
-fi
-
-if grep -q 'bundles referenced SKILL.md content' "$PROTOCOL"; then
-  fail "execute-protocol.md: still has old text bundling documentation"
-else
-  pass "execute-protocol.md: old text bundling documentation removed"
+  fail "execute-protocol.md: missing hook-based injection documentation"
 fi
 
 echo ""
