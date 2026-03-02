@@ -5,7 +5,7 @@ load test_helper
 # Test suite for VBW hook bash patterns against CC 2.1.47 stricter classifier
 # REQ-10: Audit bash permission patterns against CC 2.1.47's stricter classifier
 #
-# All 20 hook handlers in hooks.json use a common quad-resolution pattern:
+# All 21 hook handlers in hooks.json use a common quad-resolution pattern:
 # 1. Version-sorted plugin cache resolution: ls -1 | sort -V | tail -1
 # 2. Fallback to CLAUDE_PLUGIN_ROOT
 # 3. Fallback to per-session symlink (/tmp/.vbw-plugin-root-link-*)
@@ -48,7 +48,7 @@ setup() {
   # Count unique bash commands in hooks.json
   HOOK_COUNT=$(grep -c '"command":' "$PROJECT_ROOT/hooks/hooks.json")
 
-  # We should have 26 total hook entries (20 unique scripts, some duplicated across events)
+  # We should have 26 total hook entries (21 unique scripts, some duplicated across events)
   [ "$HOOK_COUNT" -eq 26 ]
 }
 
@@ -76,7 +76,7 @@ setup() {
   [ "$EXIT_COUNT" -eq 26 ]
 }
 
-# Unique hook script invocations (22 total)
+# Unique hook script invocations (25 total)
 @test "documented scripts: validate-summary.sh appears 2x" {
   COUNT=$(grep -c 'validate-summary.sh' "$PROJECT_ROOT/hooks/hooks.json")
   [ "$COUNT" -eq 2 ]
@@ -325,7 +325,7 @@ setup() {
   grep -q 'skill-hook-dispatch.sh PreToolUse' "$PROJECT_ROOT/hooks/hooks.json"
 }
 
-@test "script invocation: all 20 unique scripts are invoked correctly" {
+@test "script invocation: all 21 unique scripts are invoked correctly" {
   # Verify all documented scripts appear in hooks.json with correct invocation
 
   SCRIPTS=(
@@ -534,7 +534,7 @@ setup() {
 }
 
 @test "integration: hook scripts are present (cache or local)" {
-  # Verify all 19 unique hook scripts exist in cache, CLAUDE_PLUGIN_ROOT, or local
+  # Verify all 21 unique hook scripts exist in cache, CLAUDE_PLUGIN_ROOT, or local
 
   CACHE=$(ls -d "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/ 2>/dev/null \
     | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)

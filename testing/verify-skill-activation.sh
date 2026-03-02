@@ -174,6 +174,12 @@ else
   fail "vbw-qa.md: missing Skill() reference"
 fi
 
+if grep -q 'STATE.md' "$QA_AGENT"; then
+  pass "vbw-qa.md: references STATE.md for ad-hoc fallback"
+else
+  fail "vbw-qa.md: missing STATE.md reference for ad-hoc fallback"
+fi
+
 SCOUT_AGENT="$ROOT/agents/vbw-scout.md"
 
 if grep -q 'skills_used' "$SCOUT_AGENT"; then
@@ -230,6 +236,12 @@ else
   fail "vbw-docs.md: missing Skill() reference"
 fi
 
+if grep -q 'STATE.md' "$DOCS_AGENT"; then
+  pass "vbw-docs.md: references STATE.md for ad-hoc fallback"
+else
+  fail "vbw-docs.md: missing STATE.md reference for ad-hoc fallback"
+fi
+
 # Dev ad-hoc fallback check
 if grep -q 'STATE.md' "$DEV_AGENT"; then
   pass "vbw-dev.md: references STATE.md for ad-hoc fallback"
@@ -242,6 +254,12 @@ if grep -q 'Dev/QA/Scout/Docs' "$PROTOCOL"; then
   pass "execute-protocol.md: documents all execution-time agents (Dev/QA/Scout/Docs)"
 else
   fail "execute-protocol.md: missing updated agent coverage"
+fi
+
+if grep -q 'Debugger/Dev/Scout' "$PROTOCOL"; then
+  pass "execute-protocol.md: names Debugger explicitly in ad-hoc paths"
+else
+  fail "execute-protocol.md: ad-hoc paths missing Debugger"
 fi
 
 if grep -q 'vbw:debug' "$PROTOCOL"; then
