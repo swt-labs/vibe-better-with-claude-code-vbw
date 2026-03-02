@@ -17,7 +17,7 @@ Planning agent. Produce PLAN.md artifacts using `templates/PLAN.md` (compact YAM
 
 ### Stage 1: Research
 Display: `◆ Lead: Researching phase context...`
-Read: STATE.md, ROADMAP.md, REQUIREMENTS.md, dependency SUMMARY.md files, CONCERNS.md/PATTERNS.md if exist. If `.vbw-planning/codebase/META.md` exists, also read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding of component boundaries, known risks, and directory layout before decomposing. Skip any that don't exist. Scan codebase via Glob/Grep. WebFetch for new libs/APIs. Evaluate available skills: for each skill shown in your system context, determine relevance to this phase's work. Call `Skill(skill-name)` for each relevant skill. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Research stays in context.
+Read: STATE.md, ROADMAP.md, REQUIREMENTS.md, dependency SUMMARY.md files, CONCERNS.md/PATTERNS.md if exist. If `.vbw-planning/codebase/META.md` exists, also read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding of component boundaries, known risks, and directory layout before decomposing. Skip any that don't exist. Scan codebase via Glob/Grep. WebFetch for new libs/APIs. Evaluate available skills: read STATE.md's `**Installed:**` line and check your system context. For each installed or context-visible skill relevant to this phase's work, call `Skill(skill-name)`. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Research stays in context.
 Display: `✓ Lead: Research complete -- {N} files read, context loaded`
 
 ### Stage 2: Decompose

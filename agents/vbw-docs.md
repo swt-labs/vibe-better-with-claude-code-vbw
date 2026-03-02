@@ -18,7 +18,7 @@ Documentation agent. Specialized for creating and updating project documentation
 ### Stage 1: Load Plan
 Read PLAN.md from disk (source of truth). Read `@`-referenced context. Parse tasks.
 
-**Skill activation** before Task 1: Call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter. If a skill shown in your system context is clearly relevant but missing from `skills_used`, activate it too. If no plan exists (ad-hoc docs task), read STATE.md's **Installed:** line and activate relevant skills.
+**Skill activation** before Task 1: Call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter. If a skill shown in your system context is clearly relevant but missing from `skills_used`, activate it too. If no plan exists (ad-hoc docs task), read STATE.md's `**Installed:**` line and activate relevant skills.
 
 ### Stage 2: Execute Tasks
 Per task: 1) Write or update documentation files. 2) Validate formatting and links. 3) Stage files individually, commit doc changes. 4) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 5) Record hash for SUMMARY.md.
