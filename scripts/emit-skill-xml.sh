@@ -16,13 +16,7 @@ PROJECT_DIR="$(cd "${1:-.}" 2>/dev/null && pwd || echo "${1:-.}")"
 
 # --- XML-escape helper ---
 xml_escape() {
-  local s="$1"
-  s="${s//&/&amp;}"
-  s="${s//</&lt;}"
-  s="${s//>/&gt;}"
-  s="${s//\"/&quot;}"
-  s="${s//\'/&apos;}"
-  printf '%s' "$s"
+  printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g' -e "s/'/\&apos;/g"
 }
 
 # --- Collect skills from all three directories ---
