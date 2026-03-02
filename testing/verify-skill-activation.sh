@@ -158,6 +158,98 @@ else
   fail "execute-protocol.md: still has three-layer documentation"
 fi
 
+# --- Agent activation instruction checks ---
+
+QA_AGENT="$ROOT/agents/vbw-qa.md"
+
+if grep -q 'skills_used' "$QA_AGENT"; then
+  pass "vbw-qa.md: references skills_used for plan-driven activation"
+else
+  fail "vbw-qa.md: missing skills_used reference"
+fi
+
+if grep -q 'Skill(skill-name)' "$QA_AGENT"; then
+  pass "vbw-qa.md: references Skill() activation"
+else
+  fail "vbw-qa.md: missing Skill() reference"
+fi
+
+SCOUT_AGENT="$ROOT/agents/vbw-scout.md"
+
+if grep -q 'skills_used' "$SCOUT_AGENT"; then
+  pass "vbw-scout.md: references skills_used for plan-driven path"
+else
+  fail "vbw-scout.md: missing skills_used reference"
+fi
+
+if grep -q 'STATE.md' "$SCOUT_AGENT"; then
+  pass "vbw-scout.md: references STATE.md for ad-hoc path"
+else
+  fail "vbw-scout.md: missing STATE.md reference for ad-hoc path"
+fi
+
+DEBUGGER_AGENT="$ROOT/agents/vbw-debugger.md"
+
+if grep -q 'Installed' "$DEBUGGER_AGENT"; then
+  pass "vbw-debugger.md: references Installed line for ad-hoc activation"
+else
+  fail "vbw-debugger.md: missing Installed reference"
+fi
+
+if grep -q 'Skill(skill-name)' "$DEBUGGER_AGENT"; then
+  pass "vbw-debugger.md: references Skill() activation"
+else
+  fail "vbw-debugger.md: missing Skill() reference"
+fi
+
+ARCHITECT_AGENT="$ROOT/agents/vbw-architect.md"
+
+if grep -q 'Installed' "$ARCHITECT_AGENT"; then
+  pass "vbw-architect.md: references Installed line for ad-hoc activation"
+else
+  fail "vbw-architect.md: missing Installed reference"
+fi
+
+if grep -q 'Skill(skill-name)' "$ARCHITECT_AGENT"; then
+  pass "vbw-architect.md: references Skill() activation"
+else
+  fail "vbw-architect.md: missing Skill() reference"
+fi
+
+DOCS_AGENT="$ROOT/agents/vbw-docs.md"
+
+if grep -q 'skills_used' "$DOCS_AGENT"; then
+  pass "vbw-docs.md: references skills_used for plan-driven activation"
+else
+  fail "vbw-docs.md: missing skills_used reference"
+fi
+
+if grep -q 'Skill(skill-name)' "$DOCS_AGENT"; then
+  pass "vbw-docs.md: references Skill() activation"
+else
+  fail "vbw-docs.md: missing Skill() reference"
+fi
+
+# Dev ad-hoc fallback check
+if grep -q 'STATE.md' "$DEV_AGENT"; then
+  pass "vbw-dev.md: references STATE.md for ad-hoc fallback"
+else
+  fail "vbw-dev.md: missing STATE.md reference for ad-hoc fallback"
+fi
+
+# Protocol updated role coverage checks
+if grep -q 'Dev/QA/Scout/Docs' "$PROTOCOL"; then
+  pass "execute-protocol.md: documents all execution-time agents (Dev/QA/Scout/Docs)"
+else
+  fail "execute-protocol.md: missing updated agent coverage"
+fi
+
+if grep -q 'vbw:debug' "$PROTOCOL"; then
+  pass "execute-protocol.md: documents /vbw:debug ad-hoc path"
+else
+  fail "execute-protocol.md: missing /vbw:debug documentation"
+fi
+
 # --- Deleted scripts should not exist ---
 
 if [ ! -f "$ROOT/scripts/skill-eval-prompt-gate.sh" ]; then

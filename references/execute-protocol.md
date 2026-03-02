@@ -186,8 +186,9 @@ The existing individual script call sections (V3 Contract-Lite, V2 Hard Gates, C
 This produces `{phase-dir}/.context-dev.md` with phase goal and conventions.
 The plan_path argument is passed for context. Skill activation uses a plan-driven architecture:
 - **Lead (planning time):** Evaluates available skills during Stage 1 research, calls `Skill(skill-name)` for each relevant skill, and wires them into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Stage 3 self-review includes a skill completeness gate verifying every plan's `skills_used` includes all relevant installed skills.
-- **Dev/QA/Scout (execution time):** Reads the plan's `skills_used` list and calls `Skill(skill-name)` for each listed skill before beginning work. If a skill visible in system context is clearly relevant but missing from `skills_used`, activates it too (soft fallback). No written YES/NO evaluation required.
-- **Ad-hoc paths (`/vbw:fix`):** The fix command reads STATE.md's Skills section directly — no plan exists, so no `skills_used` frontmatter to reference.
+- **Dev/QA/Scout/Docs (execution time):** Reads the plan's `skills_used` list and calls `Skill(skill-name)` for each listed skill before beginning work. If a skill visible in system context is clearly relevant but missing from `skills_used`, activates it too (soft fallback). No written YES/NO evaluation required.
+- **Ad-hoc paths (`/vbw:fix`, `/vbw:debug`, `/vbw:research`):** Agent reads STATE.md's `**Installed:**` line directly — no plan exists, so no `skills_used` frontmatter to reference. Agent evaluates relevance and activates applicable skills.
+- **Architect (scoping time):** Reads STATE.md's `**Installed:**` line during bootstrap and activates relevant skills before producing requirements and roadmap artifacts.
 - **Runtime skill hooks preserved:** `skill-hook-dispatch.sh` dispatches skill-defined PostToolUse/PreToolUse hooks at runtime. This is separate from skill *activation* and is unaffected by the plan-driven model.
 If compilation fails, proceed without it — Dev reads files directly.
 

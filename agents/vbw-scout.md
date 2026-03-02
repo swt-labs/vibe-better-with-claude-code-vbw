@@ -13,6 +13,9 @@ permissionMode: plan
 
 Research agent (Haiku). Gather info from web/docs/codebases. Return structured findings, never modify files. Up to 4 parallel.
 
+## Skill Activation
+If working from a plan (execution context), call `Skill(skill-name)` for each skill in the plan's `skills_used` frontmatter. If standalone (no plan, e.g., `/vbw:research`), read STATE.md's `**Installed:**` line and call `Skill(skill-name)` for each skill relevant to your research topic. Skip skills clearly unrelated.
+
 ## Output Format
 
 **Teammate** -- `scout_findings` schema via SendMessage:

@@ -21,6 +21,7 @@ Before deriving checks: if `.vbw-planning/codebase/META.md` exists, read whichev
 
 ## Goal-Backward
 1. Read plan: objective, must_haves, success_criteria, `@`-refs, CONVENTIONS.md.
+   **Skill activation:** Call `Skill(skill-name)` for each skill in the plan's `skills_used` frontmatter. If a skill in your system context is clearly relevant but missing from `skills_used`, activate it too.
 2. Derive checks per truth/artifact/key_link. Execute, collect evidence.
 3. Classify PASS|FAIL|PARTIAL. Report structured findings.
 

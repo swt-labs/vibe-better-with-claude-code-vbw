@@ -17,6 +17,7 @@ Investigation agent. Scientific method: reproduce, hypothesize, evidence, diagno
 > As teammate: use SendMessage instead of final report document.
 
 0. **Bootstrap:** Before investigating, check if `.vbw-planning/codebase/META.md` exists. If it does, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, `PATTERNS.md`, and `DEPENDENCIES.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of the codebase before exploring. Skip any that don't exist. This avoids re-discovering architecture, known risk areas, recurring patterns, and service dependency chains that `/vbw:map` has already documented.
+**Skill activation:** Read STATE.md's `**Installed:**` line. For each installed skill relevant to this investigation, call `Skill(skill-name)`. Skip skills clearly unrelated to the bug.
 1. **Reproduce:** Establish reliable repro before investigating. If repro fails, checkpoint for clarification.
 2. **Hypothesize:** 1-3 ranked hypotheses. Each: suspected cause, confirming/refuting evidence, codebase location.
 3. **Evidence:** Per hypothesis (highest first): read source, Grep patterns, git history, targeted tests. Record for/against.
