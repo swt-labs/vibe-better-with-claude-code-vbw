@@ -161,3 +161,98 @@ YAML
   [[ "$output" == *"<description>"* ]]
   [[ "$output" == *"<location>"* ]]
 }
+
+# --- Test 10: Third scan directory ($HOME/.agents/skills) ---
+
+@test "emit-skill-xml: discovers skills in agents ecosystem dir" {
+  create_skill "$HOME/.agents/skills" "agents-skill" "Agents Ecosystem Skill" "From agents dir"
+
+  run bash "$SCRIPTS_DIR/emit-skill-xml.sh" "$TEST_TEMP_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"<name>Agents Ecosystem Skill</name>"* ]]
+  [[ "$output" == *"<description>From agents dir</description>"* ]]
+}
+
+# --- Test 11: Dedup across all three dirs, project wins over agents ---
+
+@test "emit-skill-xml: dedup across all three dirs, project wins" {
+  create_skill "$TEST_TEMP_DIR/.claude/skills" "shared-skill" "Project Version" "From project"
+  create_skill "$CLAUDE_CONFIG_DIR/skills" "shared-skill" "Global Version" "From global"
+  create_skill "$HOME/.agents/skills" "shared-skill" "Agents Version" "From agents"
+
+  run bash "$SCRIPTS_DIR/emit-skill-xml.sh" "$TEST_TEMP_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"<name>Project Version</name>"* ]]
+  [[ "$output" != *"Global Version"* ]]
+  [[ "$output" != *"Agents Version"* ]]
+}
+
+# --- Test 12: CRLF line endings in SKILL.md don't corrupt values ---
+
+@test "emit-skill-xml: CRLF line endings handled correctly" {
+  local skill_dir="$CLAUDE_CONFIG_DIR/skills/crlf-skill"
+  mkdir -p "$skill_dir"
+  # Write SKILL.md with Windows line endings (\r\n)
+  printf -- '---\r\nname: crlf-test\r\ndescription: Has CRLF endings\r\n---\r\n' > "$skill_dir/SKILL.md"
+
+  run bash "$SCRIPTS_DIR/emit-skill-xml.sh" "$TEST_TEMP_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"<name>crlf-test</name>"* ]]
+  [[ "$output" == *"<description>Has CRLF endings</description>"* ]]
+  # Ensure no \r leaked into output
+  [[ "$output" != *$'\r'* ]]
+}
+
+# --- Test 13: Frontmatter boundary enforced (body content ignored) ---
+
+@test "emit-skill-xml: body content with name:/description: is ignored" {
+  local skill_dir="$CLAUDE_CONFIG_DIR/skills/body-leak"
+  mkdir -p "$skill_dir"
+  cat > "$skill_dir/SKILL.md" <<'YAML'
+---
+name: real-name
+description: real-description
+---
+
+name: leaked-body-name
+description: leaked-body-description
+YAML
+
+  run bash "$SCRIPTS_DIR/emit-skill-xml.sh" "$TEST_TEMP_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"<name>real-name</name>"* ]]
+  [[ "$output" == *"<description>real-description</description>"* ]]
+  [[ "$output" != *"leaked-body-name"* ]]
+  [[ "$output" != *"leaked-body-description"* ]]
+}
+
+# --- Test 14: Multiline YAML description is joined ---
+
+@test "emit-skill-xml: multiline description joined into one line" {
+  local skill_dir="$CLAUDE_CONFIG_DIR/skills/multiline-desc"
+  mkdir -p "$skill_dir"
+  cat > "$skill_dir/SKILL.md" <<'YAML'
+---
+name: multi-skill
+description: First line of desc
+  continued on second line
+  and third line
+---
+YAML
+
+  run bash "$SCRIPTS_DIR/emit-skill-xml.sh" "$TEST_TEMP_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"<name>multi-skill</name>"* ]]
+  [[ "$output" == *"First line of desc continued on second line and third line"* ]]
+}
+
+# --- Test 15: Location uses absolute paths ---
+
+@test "emit-skill-xml: location contains absolute path" {
+  create_skill "$CLAUDE_CONFIG_DIR/skills" "abs-path-skill" "Abs Path" "Tests absolute"
+
+  run bash "$SCRIPTS_DIR/emit-skill-xml.sh" "$TEST_TEMP_DIR"
+  [ "$status" -eq 0 ]
+  # Location should start with / (absolute path)
+  [[ "$output" == *"<location>/"* ]]
+}

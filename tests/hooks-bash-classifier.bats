@@ -76,7 +76,7 @@ setup() {
   [ "$EXIT_COUNT" -eq 26 ]
 }
 
-# Unique hook script invocations (25 total)
+# Unique hook script invocations (21 total)
 @test "documented scripts: validate-summary.sh appears 2x" {
   COUNT=$(grep -c 'validate-summary.sh' "$PROJECT_ROOT/hooks/hooks.json")
   [ "$COUNT" -eq 2 ]
@@ -278,7 +278,7 @@ setup() {
   ERROR_SUPPRESS=$(grep -c '2>/dev/null' "$PROJECT_ROOT/hooks/hooks.json")
 
   # At least one per hook (may be more due to multiple redirects)
-  [ "$ERROR_SUPPRESS" -ge 24 ]
+  [ "$ERROR_SUPPRESS" -ge 26 ]
 }
 
 # Task 3: Test individual hook script invocations

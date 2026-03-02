@@ -9,7 +9,8 @@
 
 set -eo pipefail
 
-PROJECT_DIR="${1:-.}"
+# Resolve project dir to absolute path so skill locations aren't relative
+PROJECT_DIR="$(cd "${1:-.}" 2>/dev/null && pwd || echo "${1:-.}")"
 # shellcheck source=resolve-claude-dir.sh
 . "$(dirname "$0")/resolve-claude-dir.sh"
 
@@ -19,6 +20,8 @@ xml_escape() {
   s="${s//&/&amp;}"
   s="${s//</&lt;}"
   s="${s//>/&gt;}"
+  s="${s//\"/&quot;}"
+  s="${s//\'/&apos;}"
   printf '%s' "$s"
 }
 
@@ -28,12 +31,16 @@ _SEEN_NAMES=""
 SKILL_ENTRIES=""
 
 _is_seen() {
-  case ",$_SEEN_NAMES," in *",$1,"*) return 0 ;; esac
+  # Use newline delimiter to avoid false matches on folder names containing commas
+  # Wrap in newlines for exact line matching (prevents substring false positives)
+  local NL=$'\n'
+  case "${NL}${_SEEN_NAMES}${NL}" in *"${NL}${1}${NL}"*) return 0 ;; esac
   return 1
 }
 
 _mark_seen() {
-  _SEEN_NAMES="${_SEEN_NAMES:+$_SEEN_NAMES,}$1"
+  _SEEN_NAMES="${_SEEN_NAMES:+${_SEEN_NAMES}
+}$1"
 }
 
 scan_skill_dir() {
@@ -55,12 +62,29 @@ scan_skill_dir() {
 
     # Read first 30 lines for YAML frontmatter
     local head_content
-    head_content=$(head -30 "$skill_md" 2>/dev/null || true)
+    head_content=$(head -30 "$skill_md" 2>/dev/null | tr -d '\r' || true)
 
-    # Extract name and description from YAML frontmatter
+    # Extract name and description from within YAML frontmatter fences only
     local name="" description=""
-    name=$(printf '%s\n' "$head_content" | sed -n 's/^name:[[:space:]]*//p' | head -1)
-    description=$(printf '%s\n' "$head_content" | sed -n 's/^description:[[:space:]]*//p' | head -1)
+    local frontmatter
+    frontmatter=$(printf '%s\n' "$head_content" | awk '/^---$/{if(n++) exit; next} n{print}')
+
+    name=$(printf '%s\n' "$frontmatter" | sed -n 's/^name:[[:space:]]*//p' | head -1)
+    # Handle multiline YAML descriptions (indented continuation lines)
+    local in_desc=false desc_lines=""
+    while IFS= read -r _line; do
+      if [ "$in_desc" = true ]; then
+        case "$_line" in
+          \ *|$'\t'*) desc_lines="${desc_lines} $(printf '%s' "$_line" | sed 's/^[[:space:]]*//')" ;;
+          *) break ;;
+        esac
+      else
+        case "$_line" in
+          description:*) in_desc=true; desc_lines=$(printf '%s' "$_line" | sed 's/^description:[[:space:]]*//') ;;
+        esac
+      fi
+    done <<< "$frontmatter"
+    description="$desc_lines"
 
     # Strip surrounding quotes if present
     name=$(printf '%s' "$name" | sed 's/^["'\'']\(.*\)["'\''"]$/\1/')

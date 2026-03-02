@@ -732,7 +732,7 @@ if [ ! -d "$PLANNING_DIR" ]; then
   jq -n --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg skills "${_PRE_SKILL_XML:-}" '{
     "hookSpecificOutput": {
       "hookEventName": "SessionStart",
-      "additionalContext": ($welcome + "No .vbw-planning/ directory found. Run /vbw:init to set up the project." + $update + $skills)
+      "additionalContext": ($welcome + "No .vbw-planning/ directory found. Run /vbw:init to set up the project." + $update + (if $skills != "" then "\n" + $skills else "" end))
     }
   }'
   exit 0
@@ -894,7 +894,7 @@ fi
 jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" --arg skills "${SKILL_XML:-}" '{
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": ($welcome + $ctx + $update + $flags + $skills)
+    "additionalContext": ($welcome + $ctx + $update + $flags + (if $skills != "" then "\n" + $skills else "" end))
   }
 }'
 
