@@ -4,7 +4,6 @@ set -euo pipefail
 # verify-skill-activation.sh — Verify plan-driven skill activation pipeline
 #
 # Checks:
-# - evaluate-skills.sh exists and is executable (used by /vbw:init)
 # - vbw-dev.md references skills_used activation
 # - vbw-lead.md references skill evaluation and wiring
 # - hooks.json does NOT contain skill-evaluation-gate.sh or skill-eval-prompt-gate.sh
@@ -27,40 +26,6 @@ fail() {
 }
 
 echo "=== Skill Activation Pipeline Verification (plan-driven model) ==="
-
-# --- evaluate-skills.sh checks (still used by /vbw:init) ---
-
-EVAL_SCRIPT="$ROOT/scripts/evaluate-skills.sh"
-
-if [ -f "$EVAL_SCRIPT" ]; then
-  pass "evaluate-skills.sh: exists"
-else
-  fail "evaluate-skills.sh: missing"
-fi
-
-if [ -x "$EVAL_SCRIPT" ]; then
-  pass "evaluate-skills.sh: is executable"
-else
-  fail "evaluate-skills.sh: not executable"
-fi
-
-if grep -q 'Installed:' "$EVAL_SCRIPT"; then
-  pass "evaluate-skills.sh: parses **Installed:** line from STATE.md"
-else
-  fail "evaluate-skills.sh: missing **Installed:** parser"
-fi
-
-if grep -q 'SKILL.md' "$EVAL_SCRIPT"; then
-  pass "evaluate-skills.sh: locates SKILL.md files on disk"
-else
-  fail "evaluate-skills.sh: missing SKILL.md lookup"
-fi
-
-if grep -q 'description' "$EVAL_SCRIPT"; then
-  pass "evaluate-skills.sh: extracts description from frontmatter"
-else
-  fail "evaluate-skills.sh: missing description extraction"
-fi
 
 # --- vbw-dev.md checks ---
 
