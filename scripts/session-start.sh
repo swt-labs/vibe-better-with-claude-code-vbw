@@ -724,10 +724,15 @@ fi
 # --- Project state ---
 
 if [ ! -d "$PLANNING_DIR" ]; then
-  jq -n --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" '{
+  # Skill metadata XML even before init (skills may be installed globally)
+  _PRE_SKILL_XML=""
+  if [ -f "$SCRIPT_DIR/emit-skill-xml.sh" ]; then
+    _PRE_SKILL_XML=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" 2>/dev/null || true)
+  fi
+  jq -n --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg skills "${_PRE_SKILL_XML:-}" '{
     "hookSpecificOutput": {
       "hookEventName": "SessionStart",
-      "additionalContext": ($welcome + "No .vbw-planning/ directory found. Run /vbw:init to set up the project." + $update)
+      "additionalContext": ($welcome + "No .vbw-planning/ directory found. Run /vbw:init to set up the project." + $update + $skills)
     }
   }'
   exit 0
@@ -880,10 +885,16 @@ CTX="$CTX Progress: ${progress_pct}%."
 CTX="$CTX Config: effort=${config_effort}, autonomy=${config_autonomy}, auto_commit=${config_auto_commit}, planning_tracking=${config_planning_tracking}, auto_push=${config_auto_push}, verification=${config_verification}, prefer_teams=${config_prefer_teams}, max_tasks=${config_max_tasks}."
 CTX="$CTX Next: ${NEXT_ACTION}."
 
-jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" '{
+# --- Skill metadata XML (available_skills) ---
+SKILL_XML=""
+if [ -f "$SCRIPT_DIR/emit-skill-xml.sh" ]; then
+  SKILL_XML=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" 2>/dev/null || true)
+fi
+
+jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" --arg skills "${SKILL_XML:-}" '{
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": ($welcome + $ctx + $update + $flags)
+    "additionalContext": ($welcome + $ctx + $update + $flags + $skills)
   }
 }'
 
