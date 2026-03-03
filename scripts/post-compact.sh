@@ -158,7 +158,8 @@ ORCH_RESUME=""
 if [ -z "$ROLE" ] || [ "$ROLE" = "unknown" ]; then
   VIBE_CMD_PATH="$SCRIPT_DIR/../commands/vibe.md"
   if [ -f "$VIBE_CMD_PATH" ]; then
-    VIBE_CMD_PATH=$(cd "$(dirname "$VIBE_CMD_PATH")" && echo "$(pwd)/$(basename "$VIBE_CMD_PATH")")
+    VIBE_CANONICAL=$(cd "$(dirname "$VIBE_CMD_PATH")" && echo "$(pwd)/$(basename "$VIBE_CMD_PATH")") || VIBE_CANONICAL=""
+    [ -n "$VIBE_CANONICAL" ] && VIBE_CMD_PATH="$VIBE_CANONICAL"
   fi
 
   ACTIVE_MODE=""
@@ -169,7 +170,7 @@ if [ -z "$ROLE" ] || [ "$ROLE" = "unknown" ]; then
     EXEC_PHASE=$(jq -r '.phase // ""' ".vbw-planning/.execution-state.json" 2>/dev/null)
     case "$EXEC_STATUS" in
       running)  ACTIVE_MODE="Execute" ;;
-      complete) ACTIVE_MODE=""; EXEC_PHASE="" ;; # clear both, fall through to phase-detect
+      *)        ACTIVE_MODE=""; EXEC_PHASE="" ;; # clear both, fall through to phase-detect
     esac
   fi
 
@@ -180,7 +181,6 @@ if [ -z "$ROLE" ] || [ "$ROLE" = "unknown" ]; then
       PD_STATE=$(echo "$PD_OUT" | grep -m1 '^next_phase_state=' | sed 's/^[^=]*=//')
       PD_PHASE=$(echo "$PD_OUT" | grep -m1 '^next_phase=' | sed 's/^[^=]*=//')
       PD_PROJECT=$(echo "$PD_OUT" | grep -m1 '^project_exists=' | sed 's/^[^=]*=//')
-      PD_PHASE_COUNT=$(echo "$PD_OUT" | grep -m1 '^phase_count=' | sed 's/^[^=]*=//')
       PD_MS_UAT=$(echo "$PD_OUT" | grep -m1 '^milestone_uat_issues=' | sed 's/^[^=]*=//')
       PD_AUTONOMY=$(echo "$PD_OUT" | grep -m1 '^config_autonomy=' | sed 's/^[^=]*=//')
       case "$PD_STATE" in
