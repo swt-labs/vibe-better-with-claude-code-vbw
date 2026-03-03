@@ -24,6 +24,7 @@ load test_helper
 # - file-guard.sh (PreToolUse Write|Edit)
 # - agent-start.sh (SubagentStart)
 # - agent-health.sh start (SubagentStart)
+# - inject-subagent-skills.sh (SubagentStart)
 # - agent-stop.sh (SubagentStop)
 # - agent-health.sh stop (SubagentStop)
 # - qa-gate.sh (TeammateIdle)
@@ -48,8 +49,8 @@ setup() {
   # Count unique bash commands in hooks.json
   HOOK_COUNT=$(grep -c '"command":' "$PROJECT_ROOT/hooks/hooks.json")
 
-  # We should have 26 total hook entries (21 unique scripts, some duplicated across events)
-  [ "$HOOK_COUNT" -eq 26 ]
+  # We should have 27 total hook entries (22 unique scripts, some duplicated across events)
+  [ "$HOOK_COUNT" -eq 27 ]
 }
 
 @test "all hooks use quad-resolution pattern" {
@@ -57,7 +58,7 @@ setup() {
   PATTERN_COUNT=$(grep -c 'sort -V' "$PROJECT_ROOT/hooks/hooks.json")
 
   # Should match total hook count
-  [ "$PATTERN_COUNT" -eq 26 ]
+  [ "$PATTERN_COUNT" -eq 27 ]
 }
 
 @test "all hooks have CLAUDE_PLUGIN_ROOT fallback" {
@@ -65,7 +66,7 @@ setup() {
   FALLBACK_COUNT=$(grep -c 'CLAUDE_PLUGIN_ROOT:+' "$PROJECT_ROOT/hooks/hooks.json")
 
   # Should match total hook count
-  [ "$FALLBACK_COUNT" -eq 26 ]
+  [ "$FALLBACK_COUNT" -eq 27 ]
 }
 
 @test "all hooks exit 0 for graceful degradation" {
@@ -73,7 +74,7 @@ setup() {
   EXIT_COUNT=$(grep -c 'exit 0' "$PROJECT_ROOT/hooks/hooks.json")
 
   # Should match total hook count
-  [ "$EXIT_COUNT" -eq 26 ]
+  [ "$EXIT_COUNT" -eq 27 ]
 }
 
 # Unique hook script invocations (21 total)
@@ -233,7 +234,7 @@ setup() {
   BASH_C_COUNT=$(grep -c 'bash -c' "$PROJECT_ROOT/hooks/hooks.json")
 
   # Should match total hook count (26)
-  [ "$BASH_C_COUNT" -eq 26 ]
+  [ "$BASH_C_COUNT" -eq 27 ]
 }
 
 @test "hook resolution: variable substitution uses safe patterns" {
@@ -250,13 +251,13 @@ setup() {
 @test "hook resolution: per-session symlink fallback present" {
   # All hooks should have /tmp/.vbw-plugin-root-link-* fallback for local dev
   SYMLINK_COUNT=$(grep -c 'vbw-plugin-root-link-' "$PROJECT_ROOT/hooks/hooks.json")
-  [ "$SYMLINK_COUNT" -eq 26 ]
+  [ "$SYMLINK_COUNT" -eq 27 ]
 }
 
 @test "hook resolution: ps process-tree fallback present" {
   # All hooks should have ps-based --plugin-dir sniffing for local dev
   PS_COUNT=$(grep -c 'ps axww' "$PROJECT_ROOT/hooks/hooks.json")
-  [ "$PS_COUNT" -eq 26 ]
+  [ "$PS_COUNT" -eq 27 ]
 }
 
 @test "hook-wrapper: sibling script fallback via dirname" {
@@ -270,7 +271,7 @@ setup() {
   EXEC_COUNT=$(grep -c 'exec bash' "$PROJECT_ROOT/hooks/hooks.json")
 
   # Should match total hook count (26)
-  [ "$EXEC_COUNT" -eq 26 ]
+  [ "$EXEC_COUNT" -eq 27 ]
 }
 
 @test "hook resolution: error suppression with 2>/dev/null" {
@@ -325,7 +326,7 @@ setup() {
   grep -q 'skill-hook-dispatch.sh PreToolUse' "$PROJECT_ROOT/hooks/hooks.json"
 }
 
-@test "script invocation: all 21 unique scripts are invoked correctly" {
+@test "script invocation: all 22 unique scripts are invoked correctly" {
   # Verify all documented scripts appear in hooks.json with correct invocation
 
   SCRIPTS=(
@@ -340,6 +341,7 @@ setup() {
     "agent-start.sh"
     "agent-stop.sh"
     "agent-health.sh"
+    "inject-subagent-skills.sh"
     "qa-gate.sh"
     "task-verify.sh"
     "blocker-notify.sh"

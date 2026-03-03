@@ -4,13 +4,27 @@
 # Scans three skill directories (global, project, agents ecosystem), reads SKILL.md
 # frontmatter, and outputs structured XML for session context injection.
 #
-# Usage: bash emit-skill-xml.sh [project-dir]
+# Usage: bash emit-skill-xml.sh [--compact] [--filter-plugins] [project-dir]
+#   --compact         Truncate descriptions to 120 chars (for size-constrained contexts)
+#   --filter-plugins  Exclude VBW and GSD skills (for subagent injection)
 # Output: <available_skills> XML block, or empty string if no skills found.
 
 set -eo pipefail
 
+# --- Parse flags ---
+COMPACT=false
+FILTER_PLUGINS=false
+PROJECT_ARG=""
+for arg in "$@"; do
+  case "$arg" in
+    --compact) COMPACT=true ;;
+    --filter-plugins) FILTER_PLUGINS=true ;;
+    *) PROJECT_ARG="$arg" ;;
+  esac
+done
+
 # Resolve project dir to absolute path so skill locations aren't relative
-PROJECT_DIR="$(cd "${1:-.}" 2>/dev/null && pwd || echo "${1:-.}")"
+PROJECT_DIR="$(cd "${PROJECT_ARG:-.}" 2>/dev/null && pwd || echo "${PROJECT_ARG:-.}")"
 # shellcheck source=resolve-claude-dir.sh
 . "$(dirname "$0")/resolve-claude-dir.sh"
 
@@ -23,6 +37,7 @@ xml_escape() {
 # Dedup by folder name using a delimited string (bash 3.2 compat, no declare -A)
 _SEEN_NAMES=""
 SKILL_ENTRIES=""
+SKILL_NAMES_LIST=""
 
 _is_seen() {
   # Use newline delimiter to avoid false matches on folder names containing commas
@@ -35,6 +50,28 @@ _is_seen() {
 _mark_seen() {
   _SEEN_NAMES="${_SEEN_NAMES:+${_SEEN_NAMES}
 }$1"
+}
+
+# --- Plugin filter: skip VBW and GSD skills ---
+_is_plugin_skill() {
+  local folder="$1"
+  local name="$2"
+  local lower_folder lower_name
+
+  lower_folder=$(printf '%s' "$folder" | tr '[:upper:]' '[:lower:]')
+  lower_name=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')
+
+  # Skip if folder name starts with vbw- or gsd-
+  case "$lower_folder" in
+    vbw-*|gsd-*) return 0 ;;
+  esac
+
+  # Skip if skill name starts with vbw: or gsd:
+  case "$lower_name" in
+    vbw:*|gsd:*) return 0 ;;
+  esac
+
+  return 1
 }
 
 scan_skill_dir() {
@@ -87,6 +124,19 @@ scan_skill_dir() {
     # Fallbacks
     [ -z "$name" ] && name="$folder_name"
     [ -z "$description" ] && description="No description available"
+
+    # Filter VBW/GSD skills when --filter-plugins is set
+    if [ "$FILTER_PLUGINS" = true ] && _is_plugin_skill "$folder_name" "$name"; then
+      continue
+    fi
+
+    # Truncate description if --compact
+    if [ "$COMPACT" = true ] && [ "${#description}" -gt 120 ]; then
+      description="${description:0:117}..."
+    fi
+
+    # Collect skill names for name-only output
+    SKILL_NAMES_LIST="${SKILL_NAMES_LIST:+${SKILL_NAMES_LIST}, }${name}"
 
     # XML-escape values
     local esc_name esc_desc esc_loc

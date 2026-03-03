@@ -5,7 +5,6 @@ tools: Read, Glob, Grep, Write, Bash, WebFetch, Skill, Task(vbw-dev)
 disallowedTools: Edit
 model: inherit
 memory: project
-maxTurns: 50
 permissionMode: acceptEdits
 ---
 

@@ -5,7 +5,6 @@ tools: Read, Grep, Glob, Bash, Write, Edit, Skill
 disallowedTools: Task
 model: inherit
 memory: local
-maxTurns: 20
 permissionMode: acceptEdits
 ---
 

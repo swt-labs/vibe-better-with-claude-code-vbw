@@ -3,7 +3,6 @@ name: vbw-dev
 description: Execution agent with full tool access for implementing plan tasks with atomic commits per task.
 model: inherit
 memory: project
-maxTurns: 75
 permissionMode: acceptEdits
 disallowedTools: Task
 ---

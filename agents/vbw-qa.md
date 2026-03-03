@@ -5,7 +5,6 @@ tools: Read, Grep, Glob, Bash, Skill
 disallowedTools: Write, Edit, NotebookEdit
 model: inherit
 memory: project
-maxTurns: 25
 permissionMode: plan
 ---
 

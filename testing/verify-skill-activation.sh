@@ -320,6 +320,104 @@ else
   fail "emit-skill-xml.sh: not executable"
 fi
 
+# --- emit-skill-xml.sh supports --filter-plugins flag ---
+
+if grep -q '\-\-filter-plugins' "$ROOT/scripts/emit-skill-xml.sh"; then
+  pass "emit-skill-xml.sh: supports --filter-plugins flag"
+else
+  fail "emit-skill-xml.sh: missing --filter-plugins flag support"
+fi
+
+# --- emit-skill-xml.sh supports --compact flag ---
+
+if grep -q '\-\-compact' "$ROOT/scripts/emit-skill-xml.sh"; then
+  pass "emit-skill-xml.sh: supports --compact flag"
+else
+  fail "emit-skill-xml.sh: missing --compact flag support"
+fi
+
+# --- emit-skill-xml.sh filters VBW/GSD skills ---
+
+if grep -q 'vbw-\*|gsd-\*' "$ROOT/scripts/emit-skill-xml.sh" || grep -q '_is_plugin_skill' "$ROOT/scripts/emit-skill-xml.sh"; then
+  pass "emit-skill-xml.sh: has VBW/GSD skill filtering"
+else
+  fail "emit-skill-xml.sh: missing VBW/GSD skill filtering"
+fi
+
+# --- inject-subagent-skills.sh contract checks ---
+
+if [ -f "$ROOT/scripts/inject-subagent-skills.sh" ]; then
+  pass "inject-subagent-skills.sh: exists"
+else
+  fail "inject-subagent-skills.sh: missing"
+fi
+
+if grep -q 'SKILL ACTIVATION' "$ROOT/scripts/inject-subagent-skills.sh"; then
+  pass "inject-subagent-skills.sh: has evaluation instruction"
+else
+  fail "inject-subagent-skills.sh: missing evaluation instruction"
+fi
+
+if grep -q 'filter-plugins' "$ROOT/scripts/inject-subagent-skills.sh"; then
+  pass "inject-subagent-skills.sh: calls emit-skill-xml.sh with --filter-plugins"
+else
+  fail "inject-subagent-skills.sh: not filtering plugins in subagent injection"
+fi
+
+if grep -q 'SubagentStart' "$ROOT/scripts/inject-subagent-skills.sh"; then
+  pass "inject-subagent-skills.sh: outputs SubagentStart hookEventName"
+else
+  fail "inject-subagent-skills.sh: missing SubagentStart hookEventName"
+fi
+
+# --- hooks.json registers inject-subagent-skills.sh in SubagentStart ---
+
+if grep -q 'inject-subagent-skills.sh' "$HOOKS_FILE"; then
+  pass "hooks.json: inject-subagent-skills.sh registered in SubagentStart"
+else
+  fail "hooks.json: inject-subagent-skills.sh NOT registered in SubagentStart"
+fi
+
+# --- session-start.sh uses compact skill names (not full XML) ---
+
+if grep -q 'Installed skills:' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start.sh: uses compact skill name list"
+else
+  fail "session-start.sh: not using compact skill name list"
+fi
+
+if grep -q 'filter-plugins' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start.sh: filters plugins in skill name extraction"
+else
+  fail "session-start.sh: not filtering plugins in session-start"
+fi
+
+# --- session-start.sh has GSD co-installation warning ---
+
+if grep -q 'GSD_WARNING' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start.sh: has GSD co-installation warning"
+else
+  fail "session-start.sh: missing GSD co-installation warning"
+fi
+
+if grep -q 'gsd:\*' "$ROOT/scripts/session-start.sh" || grep -q '/gsd:' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start.sh: GSD warning references /gsd:* commands"
+else
+  fail "session-start.sh: GSD warning missing /gsd:* reference"
+fi
+
+# --- Agent YAML: no maxTurns in frontmatter ---
+
+for agent_file in vbw-dev.md vbw-qa.md vbw-docs.md vbw-lead.md vbw-scout.md vbw-architect.md vbw-debugger.md; do
+  AGENT_PATH="$ROOT/agents/$agent_file"
+  FRONTMATTER=$(sed -n '/^---$/,/^---$/p' "$AGENT_PATH")
+  if echo "$FRONTMATTER" | grep -q '^maxTurns:'; then
+    fail "$agent_file: maxTurns still in YAML frontmatter (should be removed)"
+  else
+    pass "$agent_file: no maxTurns in YAML frontmatter"
+  fi
+done
+
 # --- session-start.sh calls emit-skill-xml.sh ---
 
 if grep -q 'emit-skill-xml.sh' "$ROOT/scripts/session-start.sh"; then

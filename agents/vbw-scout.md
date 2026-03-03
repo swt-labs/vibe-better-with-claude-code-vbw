@@ -5,7 +5,6 @@ tools: Read, Grep, Glob, WebSearch, WebFetch, Skill
 disallowedTools: Write, Edit, NotebookEdit, Bash
 model: inherit
 memory: local
-maxTurns: 15
 permissionMode: plan
 ---
 

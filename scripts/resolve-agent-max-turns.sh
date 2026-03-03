@@ -8,7 +8,7 @@
 # config-path: path to .vbw-planning/config.json (optional/fail-open)
 # effort: thorough|balanced|fast|turbo (also accepts high|medium|low)
 #
-# Returns: stdout = integer maxTurns (0 disables maxTurns), exit 0
+# Returns: stdout = integer maxTurns (0 = omit maxTurns from Task tool for unlimited turns), exit 0
 # Errors: invalid agent/usage -> exit 1
 
 set -euo pipefail

@@ -724,15 +724,20 @@ fi
 # --- Project state ---
 
 if [ ! -d "$PLANNING_DIR" ]; then
-  # Skill metadata XML even before init (skills may be installed globally)
-  _PRE_SKILL_XML=""
+  # Compact skill name list even before init (skills may be installed globally)
+  _PRE_SKILL_NAMES=""
   if [ -f "$SCRIPT_DIR/emit-skill-xml.sh" ]; then
-    _PRE_SKILL_XML=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" 2>/dev/null || true)
+    # Source emit-skill-xml.sh logic to collect names without full XML
+    _PRE_SKILL_NAMES=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" --filter-plugins 2>/dev/null | sed -n 's/.*<name>\([^<]*\)<\/name>.*/\1/p' | paste -sd ', ' - || true)
   fi
-  jq -n --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg skills "${_PRE_SKILL_XML:-}" '{
+  _PRE_SKILL_CTX=""
+  if [ -n "$_PRE_SKILL_NAMES" ]; then
+    _PRE_SKILL_CTX=" Installed skills: ${_PRE_SKILL_NAMES}."
+  fi
+  jq -n --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg skills "${_PRE_SKILL_CTX:-}" '{
     "hookSpecificOutput": {
       "hookEventName": "SessionStart",
-      "additionalContext": ($welcome + "No .vbw-planning/ directory found. Run /vbw:init to set up the project." + $update + (if $skills != "" then "\n" + $skills else "" end))
+      "additionalContext": ($welcome + "No .vbw-planning/ directory found. Run /vbw:init to set up the project." + $update + $skills)
     }
   }'
   exit 0
@@ -885,16 +890,26 @@ CTX="$CTX Progress: ${progress_pct}%."
 CTX="$CTX Config: effort=${config_effort}, autonomy=${config_autonomy}, auto_commit=${config_auto_commit}, planning_tracking=${config_planning_tracking}, auto_push=${config_auto_push}, verification=${config_verification}, prefer_teams=${config_prefer_teams}, max_tasks=${config_max_tasks}."
 CTX="$CTX Next: ${NEXT_ACTION}."
 
-# --- Skill metadata XML (available_skills) ---
-SKILL_XML=""
-if [ -f "$SCRIPT_DIR/emit-skill-xml.sh" ]; then
-  SKILL_XML=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" 2>/dev/null || true)
+# --- GSD co-installation warning ---
+GSD_WARNING=""
+if [ -d "${CLAUDE_DIR}/commands/gsd" ] || [ -d ".planning" ]; then
+  GSD_WARNING=" WARNING: GSD plugin detected alongside VBW. Do NOT invoke any /gsd:* or Skill('gsd:*') commands during VBW workflows — they operate on .planning/ (wrong directory) and will corrupt your session state. Only use /vbw:* commands."
 fi
 
-jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" --arg skills "${SKILL_XML:-}" '{
+# --- Compact skill name list (names only, no XML — full XML injected via SubagentStart hook) ---
+SKILL_NAMES=""
+if [ -f "$SCRIPT_DIR/emit-skill-xml.sh" ]; then
+  SKILL_NAMES=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" --filter-plugins 2>/dev/null | sed -n 's/.*<name>\([^<]*\)<\/name>.*/\1/p' | paste -sd ', ' - || true)
+fi
+SKILL_CTX=""
+if [ -n "$SKILL_NAMES" ]; then
+  SKILL_CTX=" Installed skills: ${SKILL_NAMES}."
+fi
+
+jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" --arg gsd "${GSD_WARNING:-}" --arg skills "${SKILL_CTX:-}" '{
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": ($welcome + $ctx + $update + $flags + (if $skills != "" then "\n" + $skills else "" end))
+    "additionalContext": ($welcome + $ctx + $update + $flags + $gsd + $skills)
   }
 }'
 

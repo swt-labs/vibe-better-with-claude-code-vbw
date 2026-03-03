@@ -238,7 +238,7 @@ activeForm: "Executing {NN-MM}"
 
 Display: `◆ Spawning Dev teammate (${DEV_MODEL})...`
 
-**CRITICAL:** Pass `model: "${DEV_MODEL}"` and `maxTurns: ${DEV_MAX_TURNS}` parameters to the Task tool invocation when spawning Dev teammates.
+**CRITICAL:** Pass `model: "${DEV_MODEL}"` to the Task tool invocation when spawning Dev teammates. If `DEV_MAX_TURNS` is a positive integer, also pass `maxTurns: ${DEV_MAX_TURNS}`. If `DEV_MAX_TURNS` is 0, do NOT include maxTurns (omitting it = unlimited).
 **CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"` parameters to each Task tool invocation. This enables colored agent labels and status bar entries.
 
 Wire dependencies via TaskUpdate: read `depends_on` from each plan's frontmatter, add `addBlockedBy: [task IDs of dependency plans]`. Plans with empty depends_on start immediately.
@@ -450,7 +450,7 @@ echo "$QA_VERDICT_JSON" | bash "${VBW_PLUGIN_ROOT}/scripts/write-verification.sh
 ```
 If `write-verification.sh` fails or is missing, fall back to manual file writing (frontmatter + body).
 
-**CRITICAL:** Pass `model: "${QA_MODEL}"` and `maxTurns: ${QA_MAX_TURNS}` parameters to the Task tool invocation when spawning QA agents.
+**CRITICAL:** Pass `model: "${QA_MODEL}"` to the Task tool invocation when spawning QA agents. If `QA_MAX_TURNS` is a positive integer, also pass `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is 0, do NOT include maxTurns (omitting it = unlimited).
 **CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "qa"` (or `name: "qa-wave{W}"` for per-wave QA) parameters to each QA Task tool invocation.
 
 ### Step 4.5: Human acceptance testing (UAT)
