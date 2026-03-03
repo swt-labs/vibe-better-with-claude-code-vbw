@@ -50,10 +50,7 @@ is_explicit_vbw_agent() {
 }
 
 # --- Guard: only fire for VBW agents ---
-ROLE=""
-if ROLE=$(normalize_agent_role "$AGENT_TYPE"); then
-  :
-else
+if ! normalize_agent_role "$AGENT_TYPE" >/dev/null; then
   exit 0
 fi
 
