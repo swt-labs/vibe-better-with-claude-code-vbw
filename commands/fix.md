@@ -1,6 +1,7 @@
 ---
 name: vbw:fix
 category: supporting
+disable-model-invocation: true
 description: Apply a quick fix or small change with commit discipline. Turbo mode -- no planning ceremony.
 argument-hint: "<description of what to fix or change>"
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch

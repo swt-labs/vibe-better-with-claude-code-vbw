@@ -45,7 +45,7 @@ case "$AGENT_NAME" in
     PRIORITIES="Preserve reproduction steps, hypotheses, evidence gathered, diagnosis. After compaction, if .vbw-planning/codebase/META.md exists, re-read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/"
     ;;
   *)
-    PRIORITIES="Preserve active command being executed, user's original request, current phase/plan context, file modification paths, any pending user decisions. Discard: tool output details, reference file contents (re-read from disk), previous command results"
+    PRIORITIES="Preserve active command being executed (which mode: Bootstrap/Scope/Discuss/Plan/Execute/Verify/Archive/UAT Remediation), user's original request, current phase/plan context, file modification paths, any pending user decisions. After compaction: do NOT call Skill('vbw:vibe') or any Skill('vbw:*') — the disable-model-invocation flag will block it. Instead, re-read the vibe command file from disk and resume at the correct mode section. Discard: tool output details, reference file contents (re-read from disk), previous command results"
     ;;
 esac
 

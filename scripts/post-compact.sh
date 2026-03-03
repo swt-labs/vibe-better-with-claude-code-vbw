@@ -149,10 +149,56 @@ if [ -n "$ROLE" ] && [ "$ROLE" != "unknown" ]; then
   TASK_HINT=" If you are a teammate, call TaskGet for your assigned task ID to restore your current objective."
 fi
 
-jq -n --arg role "${ROLE:-unknown}" --arg files "$FILES" --arg snap "${SNAPSHOT_CONTEXT:-}" --arg taskhint "${TASK_HINT:-}" --arg worktree "${WORKTREE_CONTEXT:-}" '{
+# --- Orchestrator resume hint (non-agent sessions only) ---
+# When the orchestrator (ROLE="" or "unknown") compacts mid-command, it loses
+# the vibe.md instructions and may try Skill('vbw:vibe') which is blocked by
+# disable-model-invocation. Detect active mode from disk state and emit a
+# targeted resume instruction with the exact file path and mode section.
+ORCH_RESUME=""
+if [ -z "$ROLE" ] || [ "$ROLE" = "unknown" ]; then
+  VIBE_CMD_PATH="$SCRIPT_DIR/../commands/vibe.md"
+  if [ -f "$VIBE_CMD_PATH" ]; then
+    VIBE_CMD_PATH=$(cd "$(dirname "$VIBE_CMD_PATH")" && echo "$(pwd)/$(basename "$VIBE_CMD_PATH")")
+  fi
+
+  ACTIVE_MODE=""
+  # Detect from execution state first (most specific)
+  if [ -f ".vbw-planning/.execution-state.json" ] && command -v jq &>/dev/null; then
+    EXEC_STATUS=$(jq -r '.status // ""' ".vbw-planning/.execution-state.json" 2>/dev/null)
+    EXEC_PHASE=$(jq -r '.phase // ""' ".vbw-planning/.execution-state.json" 2>/dev/null)
+    case "$EXEC_STATUS" in
+      running)  ACTIVE_MODE="Execute" ;;
+      complete) ACTIVE_MODE="" ;; # execution done, fall through to phase-detect
+    esac
+  fi
+
+  # Fall back to phase-detect for non-execution modes
+  if [ -z "$ACTIVE_MODE" ] && [ -f "$SCRIPT_DIR/phase-detect.sh" ]; then
+    PD_OUT=$(bash "$SCRIPT_DIR/phase-detect.sh" 2>/dev/null) || PD_OUT=""
+    if [ -n "$PD_OUT" ]; then
+      PD_STATE=$(echo "$PD_OUT" | grep -m1 '^next_phase_state=' | sed 's/^[^=]*=//')
+      PD_PHASE=$(echo "$PD_OUT" | grep -m1 '^next_phase=' | sed 's/^[^=]*=//')
+      case "$PD_STATE" in
+        needs_uat_remediation)   ACTIVE_MODE="UAT Remediation" ;;
+        needs_reverification)    ACTIVE_MODE="Verify" ;;
+        needs_discussion)        ACTIVE_MODE="Discuss" ;;
+        needs_plan_and_execute)  ACTIVE_MODE="Plan" ;;
+        needs_execute)           ACTIVE_MODE="Execute" ;;
+        all_done)                ACTIVE_MODE="Archive" ;;
+      esac
+      : "${EXEC_PHASE:=$PD_PHASE}"
+    fi
+  fi
+
+  if [ -n "$ACTIVE_MODE" ]; then
+    ORCH_RESUME=" ORCHESTRATOR RESUME: You were executing /vbw:vibe ${ACTIVE_MODE} mode${EXEC_PHASE:+ for Phase ${EXEC_PHASE}}. Do NOT call Skill('vbw:vibe') or any Skill('vbw:*') — it will fail (disable-model-invocation). Instead, use the Read tool to re-read ${VIBE_CMD_PATH} and jump directly to the '### Mode: ${ACTIVE_MODE}' section. Resume from where you left off using your compacted summary context."
+  fi
+fi
+
+jq -n --arg role "${ROLE:-unknown}" --arg files "$FILES" --arg snap "${SNAPSHOT_CONTEXT:-}" --arg taskhint "${TASK_HINT:-}" --arg worktree "${WORKTREE_CONTEXT:-}" --arg orchresume "${ORCH_RESUME:-}" '{
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": ("Context was compacted. Agent role: " + $role + ". Re-read these key files from disk: " + $files + $snap + $taskhint + $worktree)
+    "additionalContext": ("Context was compacted. Agent role: " + $role + ". Re-read these key files from disk: " + $files + $snap + $taskhint + $worktree + $orchresume)
   }
 }'
 
