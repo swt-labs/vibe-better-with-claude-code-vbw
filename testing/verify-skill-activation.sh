@@ -451,6 +451,95 @@ else
   fail "execute-protocol.md: missing <available_skills> reference"
 fi
 
+# --- Functional test: inject-subagent-skills.sh with VBW agent ---
+
+_INJECT_SCRIPT="$ROOT/scripts/inject-subagent-skills.sh"
+if [ -f "$_INJECT_SCRIPT" ]; then
+  # Set up minimal VBW context
+  _INJECT_TMP=$(mktemp -d)
+  mkdir -p "$_INJECT_TMP/.vbw-planning"
+  touch "$_INJECT_TMP/.vbw-planning/.vbw-session"
+
+  # Test: VBW agent produces hookSpecificOutput JSON
+  _INJECT_OUT=$(cd "$_INJECT_TMP" && echo '{"agent_type":"vbw-dev"}' | CLAUDE_PLUGIN_ROOT="$ROOT" bash "$_INJECT_SCRIPT" 2>/dev/null || true)
+  if echo "$_INJECT_OUT" | grep -q '"hookEventName"'; then
+    pass "inject-subagent-skills.sh: VBW agent produces hookSpecificOutput JSON"
+  else
+    fail "inject-subagent-skills.sh: VBW agent did not produce hookSpecificOutput JSON"
+  fi
+
+  if echo "$_INJECT_OUT" | grep -q 'SKILL ACTIVATION'; then
+    pass "inject-subagent-skills.sh: output contains evaluation instruction"
+  else
+    fail "inject-subagent-skills.sh: output missing evaluation instruction"
+  fi
+
+  # Test: non-VBW agent produces no output
+  _INJECT_OUT_NON=$(cd "$_INJECT_TMP" && echo '{"agent_type":"gsd-planner"}' | CLAUDE_PLUGIN_ROOT="$ROOT" bash "$_INJECT_SCRIPT" 2>/dev/null || true)
+  if [ -z "$_INJECT_OUT_NON" ]; then
+    pass "inject-subagent-skills.sh: non-VBW agent produces empty output"
+  else
+    fail "inject-subagent-skills.sh: non-VBW agent should produce empty output"
+  fi
+
+  # Test: bare "dev" without VBW context markers exits silently
+  _INJECT_TMP2=$(mktemp -d)
+  mkdir -p "$_INJECT_TMP2/.vbw-planning"
+  # No .vbw-session, .active-agent, or .active-agent-count
+  _INJECT_OUT_BARE=$(cd "$_INJECT_TMP2" && echo '{"agent_type":"dev"}' | CLAUDE_PLUGIN_ROOT="$ROOT" bash "$_INJECT_SCRIPT" 2>/dev/null || true)
+  if [ -z "$_INJECT_OUT_BARE" ]; then
+    pass "inject-subagent-skills.sh: bare 'dev' without VBW context exits silently"
+  else
+    fail "inject-subagent-skills.sh: bare 'dev' without VBW context should exit silently"
+  fi
+
+  rm -rf "$_INJECT_TMP" "$_INJECT_TMP2"
+else
+  fail "inject-subagent-skills.sh: script not found"
+fi
+
+# --- normalize_agent_role consistency: agent-start.sh and inject-subagent-skills.sh ---
+
+_AGENT_START="$ROOT/scripts/agent-start.sh"
+_INJECT_SCRIPT="$ROOT/scripts/inject-subagent-skills.sh"
+
+# Extract role patterns from both scripts and compare
+_ROLES_AGENT_START=$(sed -n '/normalize_agent_role/,/^}/p' "$_AGENT_START" | grep "printf '" | sed "s/.*printf '\\([^']*\\)'.*/\\1/" | sort)
+_ROLES_INJECT=$(sed -n '/normalize_agent_role/,/^}/p' "$_INJECT_SCRIPT" | grep "printf '" | sed "s/.*printf '\\([^']*\\)'.*/\\1/" | sort)
+
+if [ "$_ROLES_AGENT_START" = "$_ROLES_INJECT" ]; then
+  pass "normalize_agent_role: agent-start.sh and inject-subagent-skills.sh handle same roles"
+else
+  fail "normalize_agent_role: role mismatch between agent-start.sh and inject-subagent-skills.sh"
+fi
+
+# Verify all 7 roles are present in agent-start.sh
+for _role in architect debugger dev docs lead qa scout; do
+  if echo "$_ROLES_AGENT_START" | grep -q "^${_role}$"; then
+    pass "agent-start.sh: normalize handles '$_role' role"
+  else
+    fail "agent-start.sh: normalize missing '$_role' role"
+  fi
+done
+
+# --- maxTurns conditional omission: all commands that spawn agents ---
+
+# Every command that references maxTurns: ${...} must also have "omit" or "do NOT include"
+_MAX_TURNS_COMMANDS=$(grep -rl 'maxTurns.*\${' "$ROOT/commands/" "$ROOT/references/" 2>/dev/null || true)
+_MT_FAIL=0
+for _cmd_file in $_MAX_TURNS_COMMANDS; do
+  _cmd_name=$(basename "$_cmd_file")
+  if grep -q 'omit\|do NOT include maxTurns' "$_cmd_file"; then
+    pass "$_cmd_name: maxTurns has conditional omission logic"
+  else
+    fail "$_cmd_name: maxTurns passed unconditionally (missing zero check)"
+    _MT_FAIL=1
+  fi
+done
+if [ -z "$_MAX_TURNS_COMMANDS" ]; then
+  pass "maxTurns: no commands reference maxTurns (nothing to check)"
+fi
+
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"
