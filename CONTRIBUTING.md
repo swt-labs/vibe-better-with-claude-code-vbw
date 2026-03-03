@@ -8,6 +8,18 @@ Thanks for considering a contribution. VBW is a Claude Code plugin, so the conve
 - Agent Teams enabled
 - Familiarity with the [Claude Code plugin system](https://code.claude.com/docs/en/plugins)
 
+## Testing pre-release versions
+
+If you just want to **test** upcoming changes without a full local dev setup, use the next channel:
+
+```text
+/vbw:update --next
+```
+
+This pulls the latest `next` branch from GitHub and installs it as your active VBW version. No symlinks, no `--plugin-dir`, no clone needed — just `git` on your system. Switch back anytime with `/vbw:update --stable`.
+
+Use the full local development setup below only if you need to **edit** VBW files.
+
 ## Local Development
 
 Clone the repo:

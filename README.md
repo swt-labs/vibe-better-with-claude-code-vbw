@@ -161,6 +161,24 @@ To update later, inside Claude Code:
 /vbw:update
 ```
 
+### Pre-release channel
+
+Want to test upcoming features before they ship? Switch to the **next** channel:
+
+```text
+/vbw:update --next
+```
+
+This pulls the latest pre-release version directly from GitHub's `next` branch. Requires `git`. Your channel preference persists across sessions — subsequent `/vbw:update` calls will keep updating from `next`.
+
+To switch back to the stable marketplace version:
+
+```text
+/vbw:update --stable
+```
+
+Use `--check` to see your current version and channel without changing anything.
+
 ### Running VBW
 
 **Option A: Supervised mode** (recommended for the cautious)
