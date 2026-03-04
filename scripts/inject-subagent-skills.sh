@@ -79,31 +79,6 @@ EVAL_INSTRUCTION="SKILL ACTIVATION: Evaluate which of the skills below are relev
 CONTEXT="${EVAL_INSTRUCTION}
 ${SKILL_XML}"
 
-# --- Resolve debug_logging flag from config.json (env var override for backward compat) ---
-HOOK_DEBUG="${VBW_DEBUG:-0}"
-if [ "$HOOK_DEBUG" != "1" ] && [ -f "$PLANNING_DIR/config.json" ] && command -v jq &>/dev/null; then
-  HOOK_DEBUG=$(jq -r '.debug_logging // false' "$PLANNING_DIR/config.json" 2>/dev/null || echo "false")
-  # Normalize: true → 1, anything else → 0
-  case "$HOOK_DEBUG" in true|1) HOOK_DEBUG=1 ;; *) HOOK_DEBUG=0 ;; esac
-fi
-
-# --- Debug logging: deterministic proof of injection ---
-if [ "$HOOK_DEBUG" = "1" ] && [ -d "$PLANNING_DIR" ]; then
-  DEBUG_LOG="$PLANNING_DIR/.hook-debug.log"
-  TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%s")
-  ROLE=$(normalize_agent_role "$AGENT_TYPE" 2>/dev/null || echo "unknown")
-  SKILL_COUNT=$(echo "$SKILL_XML" | grep -c '<skill>' 2>/dev/null || echo "0")
-  SKILL_NAMES=$(echo "$SKILL_XML" | grep '<name>' | sed 's/.*<name>\(.*\)<\/name>.*/\1/' | paste -sd ',' - 2>/dev/null || echo "")
-  PAYLOAD_B64=$(echo -n "$CONTEXT" | base64 2>/dev/null | tr -d '\n' || echo "encode-failed")
-  echo "${TIMESTAMP} SubagentStart agent_type=${AGENT_TYPE} role=${ROLE} skills_count=${SKILL_COUNT} skills=${SKILL_NAMES}" >> "$DEBUG_LOG" 2>/dev/null || true
-  echo "${TIMESTAMP} payload_base64=${PAYLOAD_B64}" >> "$DEBUG_LOG" 2>/dev/null || true
-  # Trim to last 100 entries
-  if [ -f "$DEBUG_LOG" ]; then
-    LC=$(wc -l < "$DEBUG_LOG" 2>/dev/null | tr -d ' ')
-    [ "${LC:-0}" -gt 100 ] && { tail -50 "$DEBUG_LOG" > "${DEBUG_LOG}.tmp" && mv "${DEBUG_LOG}.tmp" "$DEBUG_LOG"; } 2>/dev/null
-  fi
-fi
-
 # --- Output via hookSpecificOutput ---
 jq -n --arg ctx "$CONTEXT" '{
   "hookSpecificOutput": {

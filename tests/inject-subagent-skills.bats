@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for SubagentStart skill injection diagnostics in inject-subagent-skills.sh
+# Tests for debug logging in hook-wrapper.sh and inject-subagent-skills.sh
 
 load test_helper
 
@@ -21,6 +21,7 @@ teardown() {
   unset CLAUDE_CONFIG_DIR 2>/dev/null || true
   [ -n "$ORIG_CLAUDE_CONFIG_DIR" ] && export CLAUDE_CONFIG_DIR="$ORIG_CLAUDE_CONFIG_DIR"
   unset VBW_DEBUG 2>/dev/null || true
+  unset CLAUDE_PLUGIN_ROOT 2>/dev/null || true
   teardown_temp_dir
 }
 
@@ -38,99 +39,112 @@ create_skill() {
   } > "$base_dir/$skill_name/SKILL.md"
 }
 
-@test "inject-subagent-skills: debug log written when VBW_DEBUG=1" {
+# --- inject-subagent-skills.sh functional tests ---
+
+@test "inject-subagent-skills: VBW agent produces hookSpecificOutput JSON" {
   create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
   cd "$TEST_TEMP_DIR"
-  echo '{"agent_type":"vbw-dev"}' | VBW_DEBUG=1 bash "$SCRIPTS_DIR/inject-subagent-skills.sh"
-  [ -f "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log" ]
-  grep -q "SubagentStart" "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log"
-}
-
-@test "inject-subagent-skills: debug log contains agent_type and role" {
-  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
-  cd "$TEST_TEMP_DIR"
-  echo '{"agent_type":"vbw-dev"}' | VBW_DEBUG=1 bash "$SCRIPTS_DIR/inject-subagent-skills.sh"
-  grep -q "agent_type=vbw-dev" "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log"
-  grep -q "role=dev" "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log"
-}
-
-@test "inject-subagent-skills: debug log contains skills_count" {
-  create_skill "$TEST_TEMP_DIR/.claude/skills" "skill-a" "skill-a" "First skill"
-  create_skill "$TEST_TEMP_DIR/.claude/skills" "skill-b" "skill-b" "Second skill"
-  cd "$TEST_TEMP_DIR"
-  echo '{"agent_type":"vbw-scout"}' | VBW_DEBUG=1 bash "$SCRIPTS_DIR/inject-subagent-skills.sh"
-  grep -q "skills_count=2" "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log"
-}
-
-@test "inject-subagent-skills: debug log contains skill names" {
-  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
-  cd "$TEST_TEMP_DIR"
-  echo '{"agent_type":"vbw-qa"}' | VBW_DEBUG=1 bash "$SCRIPTS_DIR/inject-subagent-skills.sh"
-  grep -q "skills=test-skill" "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log"
-}
-
-@test "inject-subagent-skills: debug log contains decodable base64 payload" {
-  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
-  cd "$TEST_TEMP_DIR"
-  echo '{"agent_type":"vbw-qa"}' | VBW_DEBUG=1 bash "$SCRIPTS_DIR/inject-subagent-skills.sh"
-  # Extract base64 payload and decode it
-  B64=$(grep 'payload_base64=' "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log" | sed 's/.*payload_base64=//')
-  [ -n "$B64" ]
-  DECODED=$(echo "$B64" | base64 -d 2>/dev/null)
-  echo "$DECODED" | grep -q "SKILL ACTIVATION"
-  echo "$DECODED" | grep -q "<available_skills>"
-  echo "$DECODED" | grep -q "test-skill"
-}
-
-@test "inject-subagent-skills: no debug log when VBW_DEBUG unset" {
-  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
-  cd "$TEST_TEMP_DIR"
-  echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh"
-  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log" ]
-}
-
-@test "inject-subagent-skills: no debug log when VBW_DEBUG=0" {
-  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
-  cd "$TEST_TEMP_DIR"
-  echo '{"agent_type":"vbw-dev"}' | VBW_DEBUG=0 bash "$SCRIPTS_DIR/inject-subagent-skills.sh"
-  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log" ]
-}
-
-@test "inject-subagent-skills: still outputs hookSpecificOutput JSON" {
-  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
-  cd "$TEST_TEMP_DIR"
-  OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | VBW_DEBUG=1 bash "$SCRIPTS_DIR/inject-subagent-skills.sh")
+  OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh")
   echo "$OUTPUT" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null
 }
 
-@test "inject-subagent-skills: debug log timestamp is ISO format" {
+@test "inject-subagent-skills: output contains SKILL ACTIVATION instruction" {
   create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
   cd "$TEST_TEMP_DIR"
-  echo '{"agent_type":"vbw-dev"}' | VBW_DEBUG=1 bash "$SCRIPTS_DIR/inject-subagent-skills.sh"
-  grep -qE "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z" "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log"
+  OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh")
+  echo "$OUTPUT" | jq -r '.hookSpecificOutput.additionalContext' | grep -q "SKILL ACTIVATION"
 }
 
-@test "inject-subagent-skills: debug log written when config.json debug_logging=true" {
+@test "inject-subagent-skills: output contains available_skills XML" {
   create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
+  cd "$TEST_TEMP_DIR"
+  OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh")
+  echo "$OUTPUT" | jq -r '.hookSpecificOutput.additionalContext' | grep -q "<available_skills>"
+}
+
+@test "inject-subagent-skills: no output for non-VBW agent" {
+  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
+  cd "$TEST_TEMP_DIR"
+  OUTPUT=$(echo '{"agent_type":"gsd-planner"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh" || true)
+  [ -z "$OUTPUT" ]
+}
+
+@test "inject-subagent-skills: no output when no skills installed" {
+  cd "$TEST_TEMP_DIR"
+  OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh" || true)
+  [ -z "$OUTPUT" ]
+}
+
+# --- hook-wrapper.sh debug logging tests ---
+
+@test "hook-wrapper: debug log written when config.json debug_logging=true" {
   echo '{"debug_logging": true}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  # Create a trivial hook script that produces output
+  mkdir -p "$TEST_TEMP_DIR/scripts"
+  echo '#!/bin/bash
+echo "test-output"' > "$TEST_TEMP_DIR/scripts/test-hook.sh"
+  chmod +x "$TEST_TEMP_DIR/scripts/test-hook.sh"
   cd "$TEST_TEMP_DIR"
-  echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh"
+  CLAUDE_PLUGIN_ROOT="$TEST_TEMP_DIR" bash "$SCRIPTS_DIR/hook-wrapper.sh" test-hook.sh
   [ -f "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log" ]
-  grep -q "SubagentStart" "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log"
+  grep -q "hook=test-hook.sh" "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log"
 }
 
-@test "inject-subagent-skills: no debug log when config.json debug_logging=false" {
-  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
-  echo '{"debug_logging": false}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+@test "hook-wrapper: debug log contains base64 encoded output" {
+  echo '{"debug_logging": true}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  mkdir -p "$TEST_TEMP_DIR/scripts"
+  echo '#!/bin/bash
+echo "hello-from-hook"' > "$TEST_TEMP_DIR/scripts/test-hook.sh"
+  chmod +x "$TEST_TEMP_DIR/scripts/test-hook.sh"
   cd "$TEST_TEMP_DIR"
-  echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh"
+  CLAUDE_PLUGIN_ROOT="$TEST_TEMP_DIR" bash "$SCRIPTS_DIR/hook-wrapper.sh" test-hook.sh
+  # Extract base64 and decode
+  B64=$(grep 'output_base64=' "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log" | sed 's/.*output_base64=//')
+  [ -n "$B64" ]
+  DECODED=$(echo "$B64" | base64 -d 2>/dev/null)
+  echo "$DECODED" | grep -q "hello-from-hook"
+}
+
+@test "hook-wrapper: no debug log when debug_logging=false" {
+  echo '{"debug_logging": false}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  mkdir -p "$TEST_TEMP_DIR/scripts"
+  echo '#!/bin/bash
+echo "test"' > "$TEST_TEMP_DIR/scripts/test-hook.sh"
+  chmod +x "$TEST_TEMP_DIR/scripts/test-hook.sh"
+  cd "$TEST_TEMP_DIR"
+  CLAUDE_PLUGIN_ROOT="$TEST_TEMP_DIR" bash "$SCRIPTS_DIR/hook-wrapper.sh" test-hook.sh
   [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log" ]
 }
 
-@test "inject-subagent-skills: VBW_DEBUG=1 env var overrides config.json debug_logging=false" {
-  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
-  echo '{"debug_logging": false}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+@test "hook-wrapper: VBW_DEBUG=1 env var enables debug log" {
   cd "$TEST_TEMP_DIR"
-  echo '{"agent_type":"vbw-dev"}' | VBW_DEBUG=1 bash "$SCRIPTS_DIR/inject-subagent-skills.sh"
+  mkdir -p "$TEST_TEMP_DIR/scripts"
+  echo '#!/bin/bash
+echo "debug-test"' > "$TEST_TEMP_DIR/scripts/test-hook.sh"
+  chmod +x "$TEST_TEMP_DIR/scripts/test-hook.sh"
+  VBW_DEBUG=1 CLAUDE_PLUGIN_ROOT="$TEST_TEMP_DIR" bash "$SCRIPTS_DIR/hook-wrapper.sh" test-hook.sh
   [ -f "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log" ]
+}
+
+@test "hook-wrapper: hook stdout still passes through when debug enabled" {
+  echo '{"debug_logging": true}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  mkdir -p "$TEST_TEMP_DIR/scripts"
+  echo '#!/bin/bash
+echo "passthrough-test"' > "$TEST_TEMP_DIR/scripts/test-hook.sh"
+  chmod +x "$TEST_TEMP_DIR/scripts/test-hook.sh"
+  cd "$TEST_TEMP_DIR"
+  OUTPUT=$(CLAUDE_PLUGIN_ROOT="$TEST_TEMP_DIR" bash "$SCRIPTS_DIR/hook-wrapper.sh" test-hook.sh)
+  echo "$OUTPUT" | grep -q "passthrough-test"
+}
+
+@test "hook-wrapper: silent hooks produce no output_base64 line" {
+  echo '{"debug_logging": true}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  mkdir -p "$TEST_TEMP_DIR/scripts"
+  echo '#!/bin/bash
+exit 0' > "$TEST_TEMP_DIR/scripts/silent-hook.sh"
+  chmod +x "$TEST_TEMP_DIR/scripts/silent-hook.sh"
+  cd "$TEST_TEMP_DIR"
+  CLAUDE_PLUGIN_ROOT="$TEST_TEMP_DIR" bash "$SCRIPTS_DIR/hook-wrapper.sh" silent-hook.sh
+  grep -q "hook=silent-hook.sh exit=0" "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log"
+  ! grep -q "output_base64=" "$TEST_TEMP_DIR/.vbw-planning/.hook-debug.log"
 }
