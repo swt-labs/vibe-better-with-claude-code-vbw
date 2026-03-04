@@ -32,6 +32,15 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Alias for backward compat within this script
 read_status_field() { extract_status_value "$@"; }
 
+# Source shared summary-status helpers for status-aware SUMMARY detection
+if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "$SCRIPT_DIR/summary-utils.sh"
+else
+  # Safe default: report zero completions when helpers unavailable
+  count_complete_summaries() { echo "0"; }
+fi
+
 list_child_dirs_sorted() {
   local parent="$1"
   [ -d "$parent" ] || return 0
@@ -203,7 +212,7 @@ if [ -d "$PLANNING_DIR" ]; then
       phase_slug=$(basename "$dir" | sed 's/^[0-9]*-//')
 
       plans=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
-      summaries=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+      summaries=$(count_complete_summaries "$dir")
 
       if [ "$plans" -eq 0 ] && [ -z "$next_unplanned" ]; then
         # Track first undiscussed phase (for require_phase_discussion suggestions)
@@ -363,7 +372,7 @@ if [ "$CMD" = "verify" ] && [ "$effective_result" = "issues_found" ] && [ -d "${
       [ -d "$dir" ] || continue
       # Guard: skip phases without execution artifacts (matching phase-detect.sh)
       _plans=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
-      _summaries=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+      _summaries=$(count_complete_summaries "$dir")
       if [ "$_plans" -eq 0 ] || [ "$_summaries" -lt "$_plans" ]; then
         continue
       fi

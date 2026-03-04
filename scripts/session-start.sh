@@ -13,6 +13,15 @@ PLANNING_DIR=".vbw-planning"
 . "$(dirname "$0")/resolve-claude-dir.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Source shared summary-status helpers for status-aware SUMMARY detection
+if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "$SCRIPT_DIR/summary-utils.sh"
+else
+  # Safe default: report zero completions when helpers unavailable
+  count_complete_summaries() { echo "0"; }
+fi
+
 # --- Capture session_id from hook stdin JSON ---
 # Claude Code passes a JSON object on stdin to SessionStart hooks containing
 # session_id. Since CLAUDE_SESSION_ID was removed from the env (upstream
@@ -115,11 +124,7 @@ EOF
       _plan_count=$((_plan_count + 1))
     done
 
-    _summary_count=0
-    for _summary_file in "$_pd"*-SUMMARY.md; do
-      [ -f "$_summary_file" ] || continue
-      _summary_count=$((_summary_count + 1))
-    done
+    _summary_count=$(count_complete_summaries "$_pd")
 
     if [ "${_summary_count:-0}" -lt "${_plan_count:-0}" ] 2>/dev/null; then
       if [ -z "$_first_incomplete" ] || [ "$_pd_num" -lt "$_first_incomplete" ] 2>/dev/null; then
@@ -582,7 +587,14 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
       PLAN_COUNT=$(jq -r '.plans | length' "$EXEC_STATE" 2>/dev/null)
       # zsh compat: use ls dir | grep to avoid bare glob expansion errors
       # shellcheck disable=SC2010
-      SUMMARY_COUNT=$(ls -1 "$PHASE_DIR" 2>/dev/null | grep '\-SUMMARY\.md$' | wc -l | tr -d ' ')
+      SUMMARY_COUNT=0
+      for _ss_sf in "$PHASE_DIR"/*-SUMMARY.md; do
+        [ -f "$_ss_sf" ] || continue
+        _ss_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_ss_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+        case "$_ss_st" in
+          complete|completed) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)) ;;
+        esac
+      done
       if [ "${SUMMARY_COUNT:-0}" -ge "${PLAN_COUNT:-1}" ] && [ "${PLAN_COUNT:-0}" -gt 0 ]; then
         # All plans have SUMMARY.md — build finished after crash
         _exec_tmp="${EXEC_STATE}.tmp.$$"

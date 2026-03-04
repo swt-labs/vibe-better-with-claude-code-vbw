@@ -68,7 +68,12 @@ teardown() {
 
   # Create a completed plan (has SUMMARY.md)
   echo "title: Build UI" > .vbw-planning/phases/01-setup/01-01-PLAN.md
-  echo "# Summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
 
   run bash "$SCRIPTS_DIR/recover-state.sh" 1 ".vbw-planning/phases"
   [ "$status" -eq 0 ]
@@ -112,7 +117,12 @@ STATE
   echo '{"event":"plan_end","phase":1,"plan":1,"data":{"status":"complete"}}' > .vbw-planning/.events/event-log.jsonl
 
   # Create SUMMARY.md to confirm completion
-  echo "# Summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
 
   run bash "$SCRIPTS_DIR/session-start.sh"
   [ "$status" -eq 0 ]
@@ -133,7 +143,12 @@ STATE
   mkdir -p .vbw-planning/.events
   sleep 1
   echo '{"event":"plan_end","phase":1,"plan":1,"data":{"status":"complete"}}' > .vbw-planning/.events/event-log.jsonl
-  echo "# Summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
 
   run bash "$SCRIPTS_DIR/session-start.sh"
   [ "$status" -eq 0 ]
@@ -152,7 +167,12 @@ STATE
   # No execution state file, but event log exists
   mkdir -p .vbw-planning/.events
   echo '{"event":"plan_end","phase":1,"plan":1,"data":{"status":"complete"}}' > .vbw-planning/.events/event-log.jsonl
-  echo "# Summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
 
   run bash "$SCRIPTS_DIR/session-start.sh"
   [ "$status" -eq 0 ]
@@ -186,7 +206,12 @@ STATE
   # Create event log first
   mkdir -p .vbw-planning/.events
   echo '{"event":"plan_end","phase":1,"plan":1,"data":{"status":"complete"}}' > .vbw-planning/.events/event-log.jsonl
-  echo "# Summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
 
   # Create execution state AFTER event log (newer)
   sleep 1
@@ -243,7 +268,12 @@ EXEC
   mkdir -p .vbw-planning/.events
   sleep 1
   echo '{"event":"plan_end","phase":1,"plan":1,"data":{"status":"complete"}}' > .vbw-planning/.events/event-log.jsonl
-  echo "# Summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
 
   run bash "$SCRIPTS_DIR/session-start.sh"
   [ "$status" -eq 0 ]
@@ -268,7 +298,12 @@ STATE
   # No existing execution state — force dir-based detection
   mkdir -p .vbw-planning/.events
   echo '{"event":"plan_end","phase":1,"plan":1,"data":{"status":"complete"}}' > .vbw-planning/.events/event-log.jsonl
-  echo "# Summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
 
   run bash "$SCRIPTS_DIR/session-start.sh"
   [ "$status" -eq 0 ]
@@ -398,7 +433,12 @@ EVENTS
   jq '.event_recovery = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
 
   echo "title: Build UI" > .vbw-planning/phases/01-setup/01-01-PLAN.md
-  echo "# Summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
   mkdir -p .vbw-planning/.events
   echo '{"event":"plan_end","phase":1,"plan":1,"data":{"status":"failed"}}' > .vbw-planning/.events/event-log.jsonl
 
@@ -479,7 +519,12 @@ STATE
   mkdir -p .vbw-planning/.events
   sleep 1
   echo '{"event":"plan_end","phase":1,"plan":1,"data":{"status":"complete"}}' > .vbw-planning/.events/event-log.jsonl
-  echo "# Summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
 
   run bash "$SCRIPTS_DIR/session-start.sh"
   [ "$status" -eq 0 ]

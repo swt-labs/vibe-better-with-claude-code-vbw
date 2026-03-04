@@ -55,6 +55,21 @@ case "$FILE_PATH" in
     echo "Blocked: writes to archived milestone phases are not allowed ($FILE_PATH)" >&2
     exit 2
     ;;
+  *.vbw-planning/*-SUMMARY.md)
+    # Block SUMMARY.md writes with non-terminal status values (prevent stub SUMMARYs)
+    _FG_SUM_STATUS=$(echo "$INPUT" | jq -r '.tool_input.content // ""' 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
+    if [ -n "$_FG_SUM_STATUS" ]; then
+      case "$_FG_SUM_STATUS" in
+        complete|completed|partial|failed) ;;  # terminal — allow
+        *)
+          echo "Blocked: SUMMARY.md status '${_FG_SUM_STATUS}' is not terminal (must be complete|partial|failed)" >&2
+          exit 2
+          ;;
+      esac
+    fi
+    # If status can't be parsed (e.g. Edit tool without full content), fail-open
+    exit 0
+    ;;
   *.vbw-planning/*|*SUMMARY.md|*VERIFICATION.md|*STATE.md|*CLAUDE.md|*.execution-state.json)
     exit 0
     ;;
@@ -76,6 +91,17 @@ find_project_root() {
 PROJECT_ROOT=$(find_project_root) || exit 0
 PHASES_DIR="$PROJECT_ROOT/.vbw-planning/phases"
 [ ! -d "$PHASES_DIR" ] && exit 0
+
+# Source shared summary-status helpers (fail-open: inline fallback if lib unavailable)
+_FG_STATUS_LIB="${CLAUDE_PLUGIN_ROOT:-}/scripts/summary-utils.sh"
+if [ -f "$_FG_STATUS_LIB" ]; then
+  # shellcheck source=summary-utils.sh
+  source "$_FG_STATUS_LIB"
+  is_plan_finalized() { is_summary_terminal "$1"; }
+else
+  # Safe default: treat plans as not finalized when helpers unavailable
+  is_plan_finalized() { return 1; }
+fi
 
 # Normalize path helper
 normalize_path() {
@@ -149,12 +175,13 @@ fi
 if true; then
   CONTRACT_DIR="$PROJECT_ROOT/.vbw-planning/.contracts"
   if [ -d "$CONTRACT_DIR" ]; then
-    # Find active contract: match the first plan without a SUMMARY
+    # Find active contract: match the first plan without a finalized SUMMARY
+    # A plan is active if its SUMMARY doesn't exist or has a non-terminal status.
     # zsh compat: if no PLAN files exist, glob literal fails -f test and is skipped
     for PLAN_FILE in "$PHASES_DIR"/*/*-PLAN.md; do
       [ ! -f "$PLAN_FILE" ] && continue
       SUMMARY_FILE="${PLAN_FILE%-PLAN.md}-SUMMARY.md"
-      if [ ! -f "$SUMMARY_FILE" ]; then
+      if ! is_plan_finalized "$SUMMARY_FILE"; then
         # Extract phase and plan numbers from filename
         BASENAME=$(basename "$PLAN_FILE")
         PHASE_NUM=$(echo "$BASENAME" | sed 's/^\([0-9]*\)-.*/\1/')
@@ -299,11 +326,12 @@ fi
 
 # --- Original file-guard: check files_modified from active plan ---
 ACTIVE_PLAN=""
+# A plan is active if its SUMMARY doesn't exist or has a non-terminal status.
 # zsh compat: if no PLAN files exist, glob literal fails -f test and is skipped
 for PLAN_FILE in "$PHASES_DIR"/*/*-PLAN.md; do
   [ ! -f "$PLAN_FILE" ] && continue
   SUMMARY_FILE="${PLAN_FILE%-PLAN.md}-SUMMARY.md"
-  if [ ! -f "$SUMMARY_FILE" ]; then
+  if ! is_plan_finalized "$SUMMARY_FILE"; then
     ACTIVE_PLAN="$PLAN_FILE"
     break
   fi

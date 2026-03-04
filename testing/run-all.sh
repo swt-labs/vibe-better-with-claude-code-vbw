@@ -45,6 +45,14 @@ echo "Running delegation guard checks..."
 bash "$ROOT/testing/verify-delegation-guard.sh"
 
 echo ""
+echo "Running summary status contract checks..."
+bash "$ROOT/testing/verify-summary-status-contract.sh"
+
+echo ""
+echo "Running summary-utils contract checks..."
+bash "$ROOT/testing/verify-summary-utils-contract.sh"
+
+echo ""
 if command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null; then
   echo "Running bats test suites..."
   bats_pass=0

@@ -50,7 +50,7 @@ All runtime script invocations below assume `VBW_PLUGIN_ROOT` is set.
 ### Step 2: Load plans and detect resume state
 
 1. Glob `*-PLAN.md` in phase dir. Read each plan's YAML frontmatter.
-2. Check existing SUMMARY.md files (complete plans).
+2. Check existing SUMMARY.md files — a plan is complete only if its SUMMARY has `status: complete|partial` (use `is_summary_complete` from `scripts/summary-utils.sh`). A SUMMARY with `status: pending` or no status field is NOT complete.
 3. `git log --oneline -20` for committed tasks (crash recovery).
 4. Build remaining plans list. If `--plan=NN`, filter to that plan.
 4b. **Worktree isolation (REQ-WORKTREE):** If `worktree_isolation` is not `"off"` in config:
@@ -84,7 +84,7 @@ All runtime script invocations below assume `VBW_PLUGIN_ROOT` is set.
   "plans": [{"id": "NN-MM", "title": "...", "wave": W, "status": "pending|complete"}]
 }
 ```
-Set completed plans (with SUMMARY.md) to `"complete"`, others to `"pending"`.
+Set completed plans (with SUMMARY.md whose `status` is `complete` or `completed`) to `"complete"`, others to `"pending"`. A SUMMARY.md with a non-terminal status (e.g., `pending`) does NOT count as complete.
 
 7b. **Export correlation_id:** Set `VBW_CORRELATION_ID={CORRELATION_ID}` in the execution environment
     so log-event.sh can fall back to it if .execution-state.json is temporarily unavailable.
@@ -401,12 +401,15 @@ RESULT=$(bash "${VBW_PLUGIN_ROOT}/scripts/two-phase-complete.sh" {task_id} {phas
 
 When a Dev teammate reports plan completion (task marked completed):
 1. **Check:** Verify `{phase_dir}/{plan_id}-SUMMARY.md` exists and contains commit hashes, task statuses, and files modified.
-2. **If missing or incomplete:** Send the Dev a message: "Write {plan_id}-SUMMARY.md using the template at templates/SUMMARY.md. Include commit hashes, tasks completed, files modified, and any deviations." Wait for confirmation before proceeding.
-3. **If Dev is unavailable:** Write it yourself from `git log --oneline` and the PLAN.md.
-4. **Schema Validation — SUMMARY.md (REQ-17, graduated, always-on):**
+2. **Status validation:** Verify SUMMARY.md frontmatter `status` is one of `complete|partial|failed`. Never accept `pending`, `draft`, or other non-terminal values. The `file-guard.sh` PreToolUse hook blocks SUMMARY writes with non-terminal status values.
+3. **If missing or incomplete:** Send the Dev a message: "Write {plan_id}-SUMMARY.md using the template at templates/SUMMARY.md. Include commit hashes, tasks completed, files modified, and any deviations." Wait for confirmation before proceeding.
+4. **If Dev is unavailable:** Write it yourself from `git log --oneline` and the PLAN.md.
+5. **Schema Validation — SUMMARY.md (REQ-17, graduated, always-on):**
   - Validate SUMMARY.md frontmatter: `VALID=$(bash "${VBW_PLUGIN_ROOT}/scripts/validate-schema.sh" summary {summary_path} 2>/dev/null || echo "valid")`
    - If `invalid`: log warning `⚠ Summary {plan_id} schema: ${VALID}` — advisory only.
-5. **Only after SUMMARY.md is verified:** Update plan status to `"complete"` in .execution-state.json and proceed.
+6. **Only after SUMMARY.md is verified with terminal status:** Update plan status to `"complete"` in .execution-state.json and proceed.
+
+**SUMMARY.md timing rule:** A SUMMARY.md represents completed execution. Never create a SUMMARY.md as a placeholder or stub before execution begins. Do not write SUMMARY.md with `status: pending` or any non-terminal status.
 
 ### Step 4: Post-build QA (optional)
 

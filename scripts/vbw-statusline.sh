@@ -30,6 +30,16 @@ fi
 
 # --- Helpers ---
 
+# Source shared summary-status helpers for status-aware SUMMARY detection
+_SL_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$_SL_SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "$_SL_SCRIPT_DIR/summary-utils.sh"
+else
+  # Safe default: report zero completions when helpers unavailable
+  count_complete_summaries() { echo "0"; }
+fi
+
 cache_fresh() {
   local cf="$1" ttl="$2"
   [ ! -f "$cf" ] && return 1
@@ -175,10 +185,14 @@ if ! cache_fresh "$FAST_CF" 5; then
   fi
   if [ -d ".vbw-planning/phases" ]; then
     PT=$(find .vbw-planning/phases -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
-    PD=$(find .vbw-planning/phases -name '*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+    PD=0
+    for _sl_pdir in .vbw-planning/phases/*/; do
+      [ -d "$_sl_pdir" ] || continue
+      PD=$((PD + $(count_complete_summaries "$_sl_pdir")))
+    done
     if [ -n "$PH" ] && [ "$PH" != "0" ]; then
       PDIR=$(find .vbw-planning/phases -maxdepth 1 -type d -name "$(printf '%02d' "$PH")-*" 2>/dev/null | head -1)
-      [ -n "$PDIR" ] && PPD=$(find "$PDIR" -name '*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+      [ -n "$PDIR" ] && PPD=$(count_complete_summaries "$PDIR")
       [ -n "$PDIR" ] && [ -n "$(find "$PDIR" -name '*VERIFICATION.md' 2>/dev/null | head -1)" ] && QA="pass"
     fi
   fi

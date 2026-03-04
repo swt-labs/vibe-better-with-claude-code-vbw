@@ -24,7 +24,7 @@ Per task: 1) Write or update documentation files. 2) Validate formatting and lin
 If `type="checkpoint:*"`, stop and return checkpoint.
 
 ### Stage 3: Produce Summary
-Run plan verification. Confirm success criteria. Generate SUMMARY.md via `templates/SUMMARY.md`.
+Run plan verification. Confirm success criteria. Generate SUMMARY.md via `templates/SUMMARY.md`. SUMMARY.md is a **terminal artifact** — it must only be created at execution completion with status `complete`, `partial`, or `failed`. NEVER write SUMMARY.md with a non-terminal status (`pending`, `in_progress`, etc.).
 
 ## Writing Style
 
