@@ -226,6 +226,20 @@ emit_codebase_mapping_hint() {
   fi
 }
 
+# --- Skill context helper (compaction-safe) ---
+# Emits an "Available Skills" section using emit-skill-xml.sh --compact --filter-plugins.
+# This survives compaction because agents re-read .context-{role}.md from disk.
+emit_skills_section() {
+  local skill_xml
+  skill_xml=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" --compact --filter-plugins 2>/dev/null || true)
+  if [ -n "$skill_xml" ]; then
+    echo ""
+    echo "### Available Skills"
+    echo "Call Skill(name) to load full instructions for any relevant skill."
+    echo "$skill_xml"
+  fi
+}
+
 # --- Role-specific output ---
 case "$ROLE" in
   lead)
@@ -275,6 +289,8 @@ case "$ROLE" in
       fi
       # --- Codebase mapping hint (issue #80) ---
       emit_codebase_mapping_hint ARCHITECTURE CONCERNS STRUCTURE
+      # --- Compaction-safe skill context ---
+      emit_skills_section
       # --- V3: Include RESEARCH.md if present (per-plan preferred) ---
       RESEARCH_FILE=$(resolve_research_file "$PHASE_DIR" "$PLAN_PATH")
       if [ -n "$RESEARCH_FILE" ] && [ -f "$RESEARCH_FILE" ]; then
@@ -307,6 +323,8 @@ case "$ROLE" in
       fi
       # --- Codebase mapping hint (issue #78) ---
       emit_codebase_mapping_hint CONVENTIONS PATTERNS STRUCTURE DEPENDENCIES
+      # --- Compaction-safe skill context ---
+      emit_skills_section
       # --- V3: Delta context (REQ-06) ---
       if [ "$V3_DELTA_ENABLED" = "true" ] && [ -f "${SCRIPT_DIR}/delta-files.sh" ]; then
         DELTA_FILES=$(bash "${SCRIPT_DIR}/delta-files.sh" "$PHASE_DIR" "$PLAN_PATH" 2>/dev/null || true)
@@ -388,6 +406,8 @@ case "$ROLE" in
       fi
       # --- Codebase mapping hint (issue #79) ---
       emit_codebase_mapping_hint TESTING CONCERNS ARCHITECTURE
+      # --- Compaction-safe skill context ---
+      emit_skills_section
     } > "${PHASE_DIR}/.context-qa.md"
     ;;
 
@@ -421,6 +441,8 @@ case "$ROLE" in
           echo "$CONVENTIONS"
         fi
       fi
+      # --- Compaction-safe skill context ---
+      emit_skills_section
       # --- V3: Include RESEARCH.md if present (per-plan preferred) ---
       RESEARCH_FILE=$(resolve_research_file "$PHASE_DIR" "$PLAN_PATH")
       if [ -n "$RESEARCH_FILE" ] && [ -f "$RESEARCH_FILE" ]; then
@@ -479,6 +501,8 @@ case "$ROLE" in
       fi
       # --- Codebase mapping hint (issue #75) ---
       emit_codebase_mapping_hint ARCHITECTURE CONCERNS PATTERNS DEPENDENCIES
+      # --- Compaction-safe skill context ---
+      emit_skills_section
       # --- V3: Include RESEARCH.md if present (per-plan preferred) ---
       RESEARCH_FILE=$(resolve_research_file "$PHASE_DIR" "$PLAN_PATH")
       if [ -n "$RESEARCH_FILE" ] && [ -f "$RESEARCH_FILE" ]; then
@@ -553,6 +577,8 @@ case "$ROLE" in
       fi
       # --- Codebase mapping hint (issue #81) ---
       emit_codebase_mapping_hint ARCHITECTURE STACK
+      # --- Compaction-safe skill context ---
+      emit_skills_section
       # --- V3: Include RESEARCH.md if present (per-plan preferred) ---
       RESEARCH_FILE=$(resolve_research_file "$PHASE_DIR" "$PLAN_PATH")
       if [ -n "$RESEARCH_FILE" ] && [ -f "$RESEARCH_FILE" ]; then
