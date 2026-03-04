@@ -185,7 +185,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
     1. Extract domain from user's project description (the $NAME or $DESCRIPTION from B1)
    2. Resolve Scout model via `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json` and Scout max turns via `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "$(jq -r '.effort // \"balanced\"' .vbw-planning/config.json 2>/dev/null)"`
     3. Spawn Scout agent via Task tool with prompt: "Research the {domain} domain. Return your findings as structured markdown with four sections: ## Table Stakes (features every {domain} app has), ## Common Pitfalls (what projects get wrong), ## Architecture Patterns (how similar apps are structured), ## Competitor Landscape (existing products). Use WebSearch. Be concise (2-3 bullets per section). Do NOT attempt to write files — return findings in your response."
-   4. Set `model: "${SCOUT_MODEL}"` and `timeout: 120000` in Task tool invocation. If `SCOUT_MAX_TURNS` is a positive integer, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is 0, do NOT include maxTurns (omitting it = unlimited).
+   4. Set `model: "${SCOUT_MODEL}"` and `timeout: 120000` in Task tool invocation. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
     5. On success: Write Scout's returned findings to `.vbw-planning/domain-research.md`. Extract brief summary (3-5 lines max). Display to user: "◆ Domain Research: {brief summary}\n\n✓ Research complete. Now let's explore your specific needs..."
     6. On failure: Log warning "⚠ Domain research timed out, proceeding with general questions". Set RESEARCH_AVAILABLE=false, continue.
   - **B2.2: Discussion Engine** -- Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/references/discussion-engine.md` and follow its protocol.
@@ -350,7 +350,7 @@ This mode handles the case where a milestone was archived before UAT issues were
      SCOUT_MODEL=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json)
      SCOUT_MAX_TURNS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}")
      ```
-   Pass `model: "${SCOUT_MODEL}"` to the Task tool. If `SCOUT_MAX_TURNS` is a positive integer, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is 0, do NOT include maxTurns (omitting it = unlimited).
+   Pass `model: "${SCOUT_MODEL}"` to the Task tool. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
    - **If exists:** Include it in Lead's context for incremental refresh. Lead may update RESEARCH.md if new information emerges.
    - **On failure:** Log warning, continue planning without research. Do not block.
    - If effort=turbo: skip entirely.
@@ -390,7 +390,7 @@ This mode handles the case where a milestone was archived before UAT issues were
      When team should NOT be created (Lead-only with when_parallel/auto):
      - Spawn vbw-lead as subagent via Task tool without team (single agent, no team overhead).
    - Spawn vbw-lead as subagent via Task tool with compiled context (or full file list as fallback).
-   - **CRITICAL:** Add `model: "${LEAD_MODEL}"` to the Task tool invocation. If `LEAD_MAX_TURNS` is a positive integer, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is 0, do NOT include maxTurns (omitting it = unlimited).
+   - **CRITICAL:** Add `model: "${LEAD_MODEL}"` to the Task tool invocation. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
    - **CRITICAL:** Include in the Lead prompt: "Plans will be executed by a team of parallel Dev agents — one agent per plan. Maximize wave 1 plans (no deps) so agents start simultaneously. Ensure same-wave plans modify disjoint file sets to avoid merge conflicts."
    - Display `◆ Spawning Lead agent...` -> `✓ Lead agent complete`.
 7. **Normalize plan filenames:**

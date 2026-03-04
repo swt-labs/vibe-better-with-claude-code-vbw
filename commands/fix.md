@@ -36,8 +36,8 @@ Config: Pre-injected by SessionStart hook.
     ```
 
     Spawn vbw-dev as subagent via Task tool with `model: "${DEV_MODEL}"`.
-    If `DEV_MAX_TURNS` is a positive integer, also pass `maxTurns: ${DEV_MAX_TURNS}`.
-    If `DEV_MAX_TURNS` is 0, do NOT include maxTurns (omitting it = unlimited):
+    If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`.
+    If `DEV_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited):
 
     ```text
     Quick fix (Turbo mode). Effort: low.

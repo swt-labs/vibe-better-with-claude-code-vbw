@@ -540,6 +540,16 @@ if [ -z "$_MAX_TURNS_COMMANDS" ]; then
   pass "maxTurns: no commands reference maxTurns (nothing to check)"
 fi
 
+# Negative check: no file should use the old "is 0" / "is a positive integer" phrasing
+for _cmd_file in $_MAX_TURNS_COMMANDS; do
+  _cmd_name=$(basename "$_cmd_file")
+  if grep -q 'MAX_TURNS.*is 0' "$_cmd_file" || grep -q 'MAX_TURNS.*is a positive integer' "$_cmd_file"; then
+    fail "$_cmd_name: uses old 'is 0'/'is a positive integer' phrasing (should use non-empty/empty)"
+  else
+    pass "$_cmd_name: uses non-empty/empty phrasing for maxTurns"
+  fi
+done
+
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"

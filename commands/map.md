@@ -83,7 +83,7 @@ Scout A (Tech + Architecture): analyze tech stack, deps, architecture, structure
 Scout B (Quality + Concerns): analyze quality, conventions, testing, debt, risks. Send 2 scout_findings messages (domain: "quality" with CONVENTIONS.md+TESTING.md, domain: "concerns" with CONCERNS.md). Mode: {MAPPING_MODE}. Schema ref: ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/handoff-schemas.md`
 
 **Scout model (effort-gated):** Fast/Turbo: `Model: haiku`. Thorough/Balanced: inherit session model.
-**Scout turn budget (effort-gated):** Resolve with `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}"`. If `SCOUT_MAX_TURNS` is a positive integer, pass `maxTurns: ${SCOUT_MAX_TURNS}` to each Scout TaskCreate. If `SCOUT_MAX_TURNS` is 0, do NOT include maxTurns (omitting it = unlimited).
+**Scout turn budget (effort-gated):** Resolve with `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}"`. If `SCOUT_MAX_TURNS` is non-empty, pass `maxTurns: ${SCOUT_MAX_TURNS}` to each Scout TaskCreate. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 Wait for all findings. Proceed to Step 3.5.
 
 ---
@@ -94,7 +94,7 @@ Wait for all findings. Proceed to Step 3.5.
 - Scout 3 (Quality): CONVENTIONS.md + TESTING.md
 - Scout 4 (Concerns): CONCERNS.md
 
-Security: PreToolUse hook handles enforcement. **Scout model:** same as duo. **Scout turn budget:** same as duo (pass `maxTurns: ${SCOUT_MAX_TURNS}` when positive, omit when 0).
+Security: PreToolUse hook handles enforcement. **Scout model:** same as duo. **Scout turn budget:** same as duo (pass `maxTurns: ${SCOUT_MAX_TURNS}` when non-empty, omit when empty).
 
 **Scout communication (effort-gated):**
 

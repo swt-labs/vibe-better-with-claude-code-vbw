@@ -43,13 +43,13 @@ Current project:
     if [ $? -ne 0 ]; then echo "$SCOUT_MAX_TURNS" >&2; exit 1; fi
      ```
    - Display: `◆ Spawning Scout (${SCOUT_MODEL})...`
-  - Spawn vbw-scout as subagent(s) via Task tool. **Add `model: "${SCOUT_MODEL}"` to the Task tool invocation. If `SCOUT_MAX_TURNS` is a positive integer, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is 0, do NOT include maxTurns (omitting it = unlimited).**
+  - Spawn vbw-scout as subagent(s) via Task tool. **Add `model: "${SCOUT_MODEL}"` to the Task tool invocation. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
 ```
 Research: {topic or sub-topic}.
 Project context: {tech stack, constraints from PROJECT.md if relevant}.
 Return structured findings.
 ```
-  - Parallel: up to 4 simultaneous Tasks, each with same `model: "${SCOUT_MODEL}"` and the same maxTurns conditional (pass when positive, omit when 0).
+  - Parallel: up to 4 simultaneous Tasks, each with same `model: "${SCOUT_MODEL}"` and the same maxTurns conditional (pass when non-empty, omit when empty).
 4. **Synthesize:** Single: present directly. Parallel: merge, note contradictions, rank by confidence.
 5. **Persist:** Ask "Save findings? (y/n)". If yes: write to .vbw-planning/phases/{phase-dir}/RESEARCH.md or .vbw-planning/RESEARCH.md.
 ```
