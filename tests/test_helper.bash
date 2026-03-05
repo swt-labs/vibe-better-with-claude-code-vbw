@@ -63,7 +63,8 @@ create_test_config() {
   "rolling_summary": false,
   "require_phase_discussion": false,
   "auto_uat": false,
-  "debug_logging": false
+  "debug_logging": false,
+  "subagent_skill_xml_mode": "names_only"
 }
 CONF
 }

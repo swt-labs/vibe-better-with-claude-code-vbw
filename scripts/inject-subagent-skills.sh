@@ -62,22 +62,58 @@ if ! is_explicit_vbw_agent "$AGENT_TYPE" \
   exit 0
 fi
 
-# --- Generate filtered skill XML ---
+# --- Resolve skill injection mode from config ---
+# Values:
+#   off        - no skill injection
+#   names_only - inject compact skill-name list with activation instruction
+#   full       - inject full <available_skills> XML with activation instruction
+SKILL_XML_MODE="names_only"
+if [ -f "$PLANNING_DIR/config.json" ] && command -v jq >/dev/null 2>&1; then
+  _MODE_VAL=$(jq -r '.subagent_skill_xml_mode // "names_only"' "$PLANNING_DIR/config.json" 2>/dev/null || echo "names_only")
+  case "$_MODE_VAL" in
+    off|names_only|full) SKILL_XML_MODE="$_MODE_VAL" ;;
+    *) SKILL_XML_MODE="names_only" ;;
+  esac
+fi
+
+# Explicit off: skip injection completely
+if [ "$SKILL_XML_MODE" = "off" ]; then
+  exit 0
+fi
+
+# --- Generate filtered skill data based on mode ---
 SKILL_XML=""
+SKILL_NAMES=""
 if [ -f "$SCRIPT_DIR/emit-skill-xml.sh" ]; then
-  SKILL_XML=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" --filter-plugins 2>/dev/null || true)
+  case "$SKILL_XML_MODE" in
+    full)
+      SKILL_XML=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" --filter-plugins 2>/dev/null || true)
+      ;;
+    names_only)
+      SKILL_NAMES=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" --compact --filter-plugins 2>/dev/null | sed -n 's/.*<name>\([^<]*\)<\/name>.*/\1/p' | paste -sd ', ' - || true)
+      ;;
+  esac
 fi
 
 # No third-party skills installed — nothing to inject
-if [ -z "$SKILL_XML" ]; then
+if [ "$SKILL_XML_MODE" = "full" ] && [ -z "$SKILL_XML" ]; then
+  exit 0
+fi
+if [ "$SKILL_XML_MODE" = "names_only" ] && [ -z "$SKILL_NAMES" ]; then
   exit 0
 fi
 
 # --- Build additionalContext with evaluation instruction ---
-EVAL_INSTRUCTION="SKILL ACTIVATION: Evaluate which of the skills below are relevant to your current task. For each relevant skill, call Skill(name) to load its full instructions before proceeding."
+EVAL_INSTRUCTION="SKILL ACTIVATION: Evaluate which of the available skills are relevant to your current task. For each relevant skill, call Skill(name) to load its full instructions before proceeding."
 
-CONTEXT="${EVAL_INSTRUCTION}
+CONTEXT=""
+if [ "$SKILL_XML_MODE" = "full" ]; then
+  CONTEXT="${EVAL_INSTRUCTION}
 ${SKILL_XML}"
+else
+  CONTEXT="${EVAL_INSTRUCTION}
+Available skills: ${SKILL_NAMES}."
+fi
 
 # --- Output via hookSpecificOutput ---
 jq -n --arg ctx "$CONTEXT" '{

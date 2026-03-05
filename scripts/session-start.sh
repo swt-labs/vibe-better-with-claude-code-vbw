@@ -187,7 +187,7 @@ fi
 
 # Auto-migrate config if .vbw-planning exists.
 # Version marker retained here for backwards test compatibility.
-EXPECTED_FLAG_COUNT=35
+EXPECTED_FLAG_COUNT=36
 if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ]; then
   if ! bash "$SCRIPT_DIR/migrate-config.sh" "$PLANNING_DIR/config.json" >/dev/null 2>&1; then
     echo "WARNING: Config migration failed (jq error). Config may be missing flags (expected=$EXPECTED_FLAG_COUNT)." >&2

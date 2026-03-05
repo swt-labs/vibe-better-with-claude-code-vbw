@@ -376,6 +376,7 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | auto_uat | boolean | true/false | false |
 | rolling_summary | boolean | true/false | false |
 | debug_logging | boolean | true/false | false |
+| subagent_skill_xml_mode | string | off/names_only/full | names_only |
 
 ### agent_max_turns
 

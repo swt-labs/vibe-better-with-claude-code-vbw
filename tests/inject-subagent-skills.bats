@@ -43,6 +43,7 @@ create_skill() {
 
 @test "inject-subagent-skills: VBW agent produces hookSpecificOutput JSON" {
   create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
+  echo '{"subagent_skill_xml_mode":"names_only"}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
   cd "$TEST_TEMP_DIR"
   OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh")
   echo "$OUTPUT" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null
@@ -50,16 +51,46 @@ create_skill() {
 
 @test "inject-subagent-skills: output contains SKILL ACTIVATION instruction" {
   create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
+  echo '{"subagent_skill_xml_mode":"names_only"}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
   cd "$TEST_TEMP_DIR"
   OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh")
   echo "$OUTPUT" | jq -r '.hookSpecificOutput.additionalContext' | grep -q "SKILL ACTIVATION"
 }
 
-@test "inject-subagent-skills: output contains available_skills XML" {
+@test "inject-subagent-skills: names_only mode emits compact skill names" {
   create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
+  echo '{"subagent_skill_xml_mode":"names_only"}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  cd "$TEST_TEMP_DIR"
+  OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh")
+  CTX=$(echo "$OUTPUT" | jq -r '.hookSpecificOutput.additionalContext')
+  echo "$CTX" | grep -q "Available skills: test-skill"
+  ! echo "$CTX" | grep -q "<available_skills>"
+}
+
+@test "inject-subagent-skills: full mode emits available_skills XML" {
+  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
+  echo '{"subagent_skill_xml_mode":"full"}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
   cd "$TEST_TEMP_DIR"
   OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh")
   echo "$OUTPUT" | jq -r '.hookSpecificOutput.additionalContext' | grep -q "<available_skills>"
+}
+
+@test "inject-subagent-skills: off mode emits no output" {
+  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
+  echo '{"subagent_skill_xml_mode":"off"}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  cd "$TEST_TEMP_DIR"
+  OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh" || true)
+  [ -z "$OUTPUT" ]
+}
+
+@test "inject-subagent-skills: invalid mode falls back to names_only" {
+  create_skill "$TEST_TEMP_DIR/.claude/skills" "test-skill" "test-skill" "A test skill"
+  echo '{"subagent_skill_xml_mode":"garbage"}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  cd "$TEST_TEMP_DIR"
+  OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh")
+  CTX=$(echo "$OUTPUT" | jq -r '.hookSpecificOutput.additionalContext')
+  echo "$CTX" | grep -q "Available skills: test-skill"
+  ! echo "$CTX" | grep -q "<available_skills>"
 }
 
 @test "inject-subagent-skills: no output for non-VBW agent" {
@@ -70,6 +101,7 @@ create_skill() {
 }
 
 @test "inject-subagent-skills: no output when no skills installed" {
+  echo '{"subagent_skill_xml_mode":"full"}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
   cd "$TEST_TEMP_DIR"
   OUTPUT=$(echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/inject-subagent-skills.sh" || true)
   [ -z "$OUTPUT" ]
