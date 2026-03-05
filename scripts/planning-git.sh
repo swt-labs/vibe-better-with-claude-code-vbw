@@ -44,6 +44,7 @@ ensure_transient_ignore() {
 .token-state/
 
 # Session & agent tracking
+.vbw-context
 .vbw-session
 .active-agent
 .active-agent-count

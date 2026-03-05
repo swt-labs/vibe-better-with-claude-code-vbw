@@ -210,6 +210,13 @@ fi
 
 AGENT_LINE=""
 
+# Badge color: cyan+bold when VBW context active in session, dim otherwise
+if [ -f ".vbw-planning/.vbw-context" ]; then
+  VC="${C}${B}"
+else
+  VC="${D}"
+fi
+
 # --- Slow cache (60s TTL): usage limits + update check ---
 SLOW_CF="${_CACHE}-slow"
 
@@ -425,20 +432,20 @@ CTX_BAR=""; [ "$FL" -gt 0 ] && CTX_BAR=$(printf "%${FL}s" | sed 's/ /▓/g')
 
 if [ "$EXEC_STATUS" = "running" ] && [ "${EXEC_TOTAL:-0}" -gt 0 ] 2>/dev/null; then
   EXEC_PCT=$((EXEC_DONE * 100 / EXEC_TOTAL))
-  L1="${C}${B}[VBW]${X} Build: $(progress_bar "$EXEC_PCT" 8) ${EXEC_DONE}/${EXEC_TOTAL} plans"
+  L1="${VC}[VBW]${X} Build: $(progress_bar "$EXEC_PCT" 8) ${EXEC_DONE}/${EXEC_TOTAL} plans"
   [ "${EXEC_TWAVES:-0}" -gt 1 ] 2>/dev/null && L1="$L1 ${D}│${X} Wave ${EXEC_WAVE}/${EXEC_TWAVES}"
   [ -n "$EXEC_CURRENT" ] && L1="$L1 ${D}│${X} ${C}◆${X} ${EXEC_CURRENT}"
 elif [ "$EXEC_STATUS" = "complete" ]; then
   rm -f .vbw-planning/.execution-state.json "$FAST_CF" 2>/dev/null
   EXEC_STATUS=""
-  L1="${C}${B}[VBW]${X}"
+  L1="${VC}[VBW]${X}"
   [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
   [ "$PT" -gt 0 ] 2>/dev/null && L1="$L1 ${D}│${X} Plans: ${PD}/${PT} (${PPD} this phase)"
   L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
   if [ "$QA" = "pass" ]; then L1="$L1 ${D}│${X} ${G}QA: pass${X}"
   else L1="$L1 ${D}│${X} ${D}QA: --${X}"; fi
 elif [ -d ".vbw-planning" ]; then
-  L1="${C}${B}[VBW]${X}"
+  L1="${VC}[VBW]${X}"
   [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
   [ "$PT" -gt 0 ] 2>/dev/null && L1="$L1 ${D}│${X} Plans: ${PD}/${PT} (${PPD} this phase)"
   L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
@@ -448,7 +455,7 @@ elif [ -d ".vbw-planning" ]; then
     L1="$L1 ${D}│${X} ${D}QA: --${X}"
   fi
 else
-  L1="${C}${B}[VBW]${X} ${D}no project${X}"
+  L1="${VC}[VBW]${X} ${D}no project${X}"
 fi
 if [ -n "$BR" ] || [ -n "$GH_LINK" ] || [ -n "$REPO_LABEL" ]; then
   if [ -n "$GH_LINK" ]; then

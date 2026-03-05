@@ -67,6 +67,12 @@ is_archive_vibe_prompt() {
   return 1
 }
 
+# VBW context marker: signal statusline that VBW context is active in this session.
+# Created on any VBW command; cleared by session-start.sh at next session start.
+if echo "$PROMPT" | grep -qi '^/vbw:' || is_expanded_vbw_prompt "$PROMPT"; then
+  echo "1" > "$PLANNING_DIR/.vbw-context" 2>/dev/null || true
+fi
+
 # GSD Isolation: create .vbw-session marker on VBW command invocation.
 # Detection covers raw slash commands (/vbw:*) and expanded command content
 # (YAML frontmatter with "name: vbw:").
