@@ -19,7 +19,7 @@ Summary of the approach. Mention affected commands, agents, hooks, or scripts.
 
 ## Testing
 
-- [ ] Loaded plugin locally with `claude --plugin-dir "<path-to-vbw-clone>"`
+- [ ] Loaded plugin locally (`claude-vbw` or `claude --plugin-dir "<path-to-vbw-clone>"`)
 - [ ] Tested affected commands against a real project (not the VBW repo)
 - [ ] No errors on plugin load
 - [ ] Existing commands still work
