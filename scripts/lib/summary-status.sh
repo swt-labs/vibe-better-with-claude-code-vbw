@@ -13,9 +13,6 @@
 [ -n "${_VBW_SUMMARY_STATUS_LOADED:-}" ] && return 0
 _VBW_SUMMARY_STATUS_LOADED=1
 
-# Canonical valid statuses
-VBW_SUMMARY_VALID_STATUSES="complete partial failed"
-
 # Returns 0 if status is a valid terminal status, 1 otherwise
 is_valid_summary_status() {
   local status="$1"
