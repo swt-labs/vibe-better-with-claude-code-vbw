@@ -230,19 +230,12 @@ If greenfield: write `{"conventions": []}`. Display: `○ Conventions — none y
 
 **3d. Unified skill prompt:** Combine curated (from 2b) + registry (from 3c) results into single AskUserQuestion multiSelect. Tag `(curated)` or `(registry)`. Max 4 options + "Skip". Install selected: `npx skills add <skill> -g -y`.
 
-**3e.** Write Skills section to STATE.md (SKIL-05 capability map). Protocol:
-  1. **Discovery (SKIL-01):** Scan `CLAUDE_DIR/skills/` (global), `.claude/skills/` (project), `.claude/mcp.json` (mcp). Record name, scope, path per skill.
-  2. **Stack detection (SKIL-02):** Read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/stack-mappings.json`. For each category, match `detect` patterns via Glob/file content. Collect `recommended_skills[]`.
-  3. **find-skills bootstrap (SKIL-06):** Check `CLAUDE_DIR/skills/find-skills/` or `~/.agents/skills/find-skills/`. If missing + `skill_suggestions=true`: offer install (`npx skills add vercel-labs/skills --skill find-skills -g -y`).
-  4. **Suggestions (SKIL-03/04):** Compare recommended vs installed. Tag each `(curated)` or `(registry)`. If `auto_install_skills=true`: auto-install. Else: display with install commands.
-  5. **Write STATE.md section:** Format: `### Skills` / `**Installed:** {list or "None detected"}` / `**Suggested:** {list or "None"}` / `**Stack detected:** {comma-separated}` / `**Registry available:** yes/no`
-
 ### Step 3.5: Generate bootstrap CLAUDE.md
 
 VBW needs its rules and state sections in a CLAUDE.md file. /vbw:vibe regenerates later with project content.
 
 **Brownfield handling:** Read root `CLAUDE.md` via the Read tool.
-- **Exists:** The user already has a CLAUDE.md. Do NOT overwrite it. Instead, append VBW sections (`## VBW Rules`, `## State`, `## Installed Skills`, `## Project Conventions`, `## Commands`, and optionally `## Plugin Isolation`) to the END of the existing file, separated by a `---` line. Preserve all existing content verbatim. Display `✓ CLAUDE.md (VBW sections appended to existing)`.
+- **Exists:** The user already has a CLAUDE.md. Do NOT overwrite it. Instead, append VBW sections (`## VBW Rules`, `## State`, `## Project Conventions`, `## Commands`, and optionally `## Plugin Isolation`) to the END of the existing file, separated by a `---` line. Preserve all existing content verbatim. Display `✓ CLAUDE.md (VBW sections appended to existing)`.
 - **Does not exist:** Write a new `CLAUDE.md` at project root with the full template below. Display `✓ CLAUDE.md (created)`.
 
 Template for NEW files — write verbatim, substituting `{...}` placeholders:
@@ -259,8 +252,6 @@ This project uses VBW (Vibe Better with Claude Code) for structured development.
 ## State
 - Planning directory: `.vbw-planning/`
 - Project not yet defined — run /vbw:vibe to set up project identity and roadmap.
-## Installed Skills
-{list from STATE.md Skills section, or "None"}
 ## Project Conventions
 {If conventions.json has entries: "These conventions are enforced during planning and verified during QA." + bulleted list of rules}
 {If none: "None yet. Run /vbw:teach to add project conventions."}
@@ -283,8 +274,6 @@ Sections to append when **existing** CLAUDE.md found (same content, no `# VBW-Ma
 {same rules as above}
 ## State
 {same state as above}
-## Installed Skills
-{same}
 ## Project Conventions
 {same}
 ## Commands

@@ -72,16 +72,6 @@ Store the choice as SCOPE. If "Skip" was selected in Step 5: skip this step.
 
 `npx skills add <skill> -y` (project scope) or `npx skills add <skill> -g -y` (global scope) per selection, based on SCOPE from Step 5b. Display ✓ or ✗ per skill. "➜ Skills take effect immediately — no restart needed."
 
-### Step 7: Sync skill state
-
-After installation, update persisted skill inventory in STATE.md and CLAUDE.md:
-
-```bash
-bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/sync-skill-state.sh "$(pwd)"
-```
-
-Display `✓ Skill state updated` on success. Failure is non-blocking.
-
 ## Output Format
 
 Follow @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md — single-line box, ✓ installed, ○ suggested, ✗ failed, ⚠ warning, no ANSI.

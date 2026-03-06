@@ -16,7 +16,6 @@ set -euo pipefail
 VBW_SECTIONS=(
   "## Active Context"
   "## VBW Rules"
-  "## Installed Skills"
   "## Project Conventions"
   "## Commands"
   "## Plugin Isolation"
@@ -26,6 +25,7 @@ VBW_SECTIONS=(
 # to clean up stale content from existing CLAUDE.md files.
 VBW_DEPRECATED_SECTIONS=(
   "## Key Decisions"  # Removed: tracked in .vbw-planning/PROJECT.md and STATE.md
+  "## Installed Skills"  # Removed: skills surfaced through runtime activation pipeline
 )
 
 # Strong GSD-managed section headers (always stripped when present)
@@ -98,10 +98,6 @@ generate_vbw_sections() {
 - **Plan before building.** Use /vbw:vibe for all lifecycle actions. Plans are the source of truth.
 - **Do not fabricate content.** Only use what the user explicitly states in project-defining flows.
 - **Do not bump version or push until asked.** Never run `scripts/bump-version.sh` or `git push` unless the user explicitly requests it, except when `.vbw-planning/config.json` intentionally sets `auto_push` to `always` or `after_phase`.
-
-## Installed Skills
-
-_(Run /vbw:skills to list)_
 
 ## Project Conventions
 

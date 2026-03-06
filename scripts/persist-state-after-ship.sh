@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # persist-state-after-ship.sh — Extract project-level sections from archived
-# STATE.md and write a fresh root STATE.md so todos, decisions, skills, blockers,
+# STATE.md and write a fresh root STATE.md so todos, decisions, blockers,
 # and codebase profile survive across milestone boundaries.
 #
 # Usage: persist-state-after-ship.sh ARCHIVED_STATE_PATH OUTPUT_PATH PROJECT_NAME
@@ -13,7 +13,7 @@ set -euo pipefail
 # Log) are excluded — they belong in the archive.
 #
 # Project-level sections (preserved):
-#   ## Decisions (including ### Skills subsection)
+#   ## Decisions
 #   ## Todos
 #   ## Blockers
 #   ## Codebase Profile
@@ -60,7 +60,7 @@ extract_section() {
 
 # Decisions section may use "## Decisions" (template) or "## Key Decisions"
 # (bootstrap-state.sh). Case-insensitive. Merges all matching occurrences.
-extract_decisions_with_skills() {
+extract_decisions() {
   local file="$1"
   awk '
     { low = tolower($0) }
@@ -81,9 +81,9 @@ generate_root_state() {
   echo "**Project:** ${PROJECT_NAME}"
   echo ""
 
-  # Decisions (+ Skills subsection)
+  # Decisions
   local decisions
-  decisions=$(extract_decisions_with_skills "$ARCHIVED_PATH")
+  decisions=$(extract_decisions "$ARCHIVED_PATH")
   if section_has_body "$decisions"; then
     echo "$decisions"
     echo ""

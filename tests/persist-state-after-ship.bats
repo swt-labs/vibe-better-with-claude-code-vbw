@@ -145,7 +145,7 @@ EOF
   grep -q "Primary languages: Swift" .vbw-planning/STATE.md
 }
 
-@test "preserves Skills subsection under Decisions" {
+@test "preserves subsections under Decisions" {
   cd "$TEST_TEMP_DIR"
   create_state_with_skills ".vbw-planning/STATE.md"
 

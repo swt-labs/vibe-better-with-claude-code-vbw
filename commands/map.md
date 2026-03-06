@@ -124,16 +124,6 @@ Write META.md: mapped_at, git_hash, file_count, document list, mode, monorepo fl
 
 Display per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md: Phase Banner (Codebase Mapped, Mode, Tier), ✓ per document, Key Findings (◆), Next Up block.
 
-### Step 6: Sync skill state
-
-After mapping, refresh the persisted skill inventory in STATE.md and CLAUDE.md:
-
-```bash
-bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/sync-skill-state.sh "$(pwd)"
-```
-
-Display `✓ Skill state synced` on success. On failure (exit 1): display `⚠ Skill sync skipped` and continue — non-blocking.
-
 ## Output Format
 
 Follow @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md — Phase Banner (double-line box), File Checklist (✓), ◆ for findings, ⚠ for warnings, Next Up Block, no ANSI.
