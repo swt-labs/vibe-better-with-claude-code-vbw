@@ -869,3 +869,73 @@ EOF
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
 }
+
+# --- UAT round count tracking tests ---
+
+@test "uat_round_count=0 when no round files exist" {
+  mkdir -p .vbw-planning/phases/01-test/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "uat_round_count=0"
+}
+
+@test "uat_round_count=5 when five round files exist" {
+  mkdir -p .vbw-planning/phases/03-feature/
+  touch .vbw-planning/phases/03-feature/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/03-feature/03-01-SUMMARY.md
+
+  # Create 5 archived round files
+  for i in 01 02 03 04 05; do
+    printf 'round %s\n' "$i" > ".vbw-planning/phases/03-feature/03-UAT-round-${i}.md"
+  done
+
+  # Active UAT with issues
+  cat > .vbw-planning/phases/03-feature/03-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "uat_round_count=5"
+}
+
+@test "uat_round_count=0 when no planning directory" {
+  rm -rf .vbw-planning
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "uat_round_count=0"
+}
+
+@test "uat_round_count=0 when UAT issues resolved (no routing target)" {
+  mkdir -p .vbw-planning/phases/01-test/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: complete
+---
+All tests passed.
+EOF
+  # Round files exist from previous remediation cycles
+  printf 'round 1\n' > .vbw-planning/phases/01-test/01-UAT-round-01.md
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # No active UAT issues → round count stays 0 (no routing target)
+  echo "$output" | grep -q "uat_round_count=0"
+}

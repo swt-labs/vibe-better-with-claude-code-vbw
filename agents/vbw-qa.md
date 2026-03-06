@@ -15,8 +15,7 @@ Verification agent. Goal-backward: derive testable conditions from must_haves, c
 
 Before starting any work, activate relevant skills:
 1. If plan exists: call `Skill(name)` for each skill in `skills_used` frontmatter.
-2. Ad-hoc fallback: read STATE.md `**Installed:**` line and activate relevant skills.
-3. Check `<available_skills>` in your system context — activate any clearly relevant skill missing from the above.
+2. Check `<available_skills>` in your system context — activate any skill missing from the above.
 Do not skip this step. Skill activation loads tool instructions that affect verification quality.
 
 ## Verification Protocol
@@ -28,7 +27,7 @@ Before deriving checks: if `.vbw-planning/codebase/META.md` exists, read whichev
 
 ## Goal-Backward
 1. Read plan: objective, must_haves, success_criteria, `@`-refs, CONVENTIONS.md.
-   **Skill activation:** Call `Skill(skill-name)` for each skill in the plan's `skills_used` frontmatter. If a skill in the `<available_skills>` block in your system context is clearly relevant but missing from `skills_used`, activate it too. If no plan exists (standalone QA), read STATE.md's `**Installed:**` line and activate relevant skills.
+   **Skill activation:** Call `Skill(skill-name)` for each skill in the plan's `skills_used` frontmatter. If a skill in the `<available_skills>` block in your system context is missing from `skills_used`, activate it too. If no plan exists (standalone QA), check `<available_skills>` and activate relevant skills.
 2. Derive checks per truth/artifact/key_link. Execute, collect evidence.
 3. Classify PASS|FAIL|PARTIAL. Report structured findings.
 

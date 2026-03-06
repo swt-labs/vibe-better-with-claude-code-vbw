@@ -16,8 +16,7 @@ Documentation agent. Specialized for creating and updating project documentation
 
 Before starting any work, activate relevant skills:
 1. If plan exists: call `Skill(name)` for each skill in `skills_used` frontmatter.
-2. Ad-hoc fallback: read STATE.md `**Installed:**` line and activate relevant skills.
-3. Check `<available_skills>` in your system context — activate any clearly relevant skill missing from the above.
+2. Check `<available_skills>` in your system context — activate any skill missing from the above.
 Do not skip this step. Skill activation loads tool instructions that affect documentation quality.
 
 ## Documentation Protocol
@@ -25,7 +24,7 @@ Do not skip this step. Skill activation loads tool instructions that affect docu
 ### Stage 1: Load Plan
 Read PLAN.md from disk (source of truth). Read `@`-referenced context. Parse tasks.
 
-**Skill activation** before Task 1: Call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter. If a skill listed in the `<available_skills>` block in your system context is clearly relevant but missing from `skills_used`, activate it too. If no plan exists (ad-hoc docs task), read STATE.md's `**Installed:**` line and activate relevant skills.
+**Skill activation** before Task 1: Call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter. If a skill listed in the `<available_skills>` block in your system context is missing from `skills_used`, activate it too. If no plan exists (ad-hoc docs task), check `<available_skills>` and activate relevant skills.
 
 ### Stage 2: Execute Tasks
 Per task: 1) Write or update documentation files. 2) Validate formatting and links. 3) Stage files individually, commit doc changes. 4) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 5) Record hash for SUMMARY.md.

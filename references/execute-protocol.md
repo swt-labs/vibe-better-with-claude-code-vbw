@@ -188,11 +188,11 @@ The existing individual script call sections (V3 Contract-Lite, V2 Hard Gates, C
 `bash "${VBW_PLUGIN_ROOT}/scripts/compile-context.sh" {phase} dev {phases_dir} {plan_path}`
 This produces `{phase-dir}/.context-dev.md` with phase goal and conventions.
 The plan_path argument is passed for context. **Per-plan research:** When loading context for a specific plan `{NN}-{MM}-PLAN.md`, also check for `{phase-dir}/{NN}-{MM}-RESEARCH.md`. If it exists, include it in the Dev task prompt alongside the compiled context. Fall back to `{phase-dir}/{NN}-RESEARCH.md` (legacy single-file format) if no per-plan research exists. Skill activation uses a plan-driven architecture:
-- **Session context injection (SessionStart):** `emit-skill-xml.sh` generates `<available_skills>` XML (name, description, SKILL.md location) for installed skills. Appended to `additionalContext`. Agents reference this for skill awareness. Fallback: STATE.md `**Installed:**` line when XML is absent.
-- **Lead (planning time):** Evaluates available skills during Stage 1 research — checks the `<available_skills>` block in system context and STATE.md's `**Installed:**` line as fallback. Calls `Skill(skill-name)` for each relevant skill, and wires them into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Stage 3 self-review includes a skill completeness gate verifying every plan's `skills_used` includes all relevant installed skills.
-- **Dev/QA/Scout/Docs (execution time):** Reads the plan's `skills_used` list and calls `Skill(skill-name)` for each listed skill before beginning work. If a skill listed in the `<available_skills>` block is clearly relevant but missing from `skills_used`, activates it too (soft fallback). No written YES/NO evaluation required.
-- **Ad-hoc paths (`/vbw:fix`, `/vbw:debug`, `/vbw:research`):** Debugger/Dev/Scout checks the `<available_skills>` block and reads STATE.md's `**Installed:**` line directly — no plan exists, so no `skills_used` frontmatter to reference. Agent evaluates relevance and activates applicable skills.
-- **Architect (scoping time):** Checks the `<available_skills>` block in system context, with STATE.md's `**Installed:**` line as fallback. Activates relevant skills before producing requirements and roadmap artifacts.
+- **Session context injection (SessionStart):** `emit-skill-xml.sh` generates `<available_skills>` XML (name, description, SKILL.md location) for installed skills. Appended to `additionalContext`. Agents reference this for skill awareness.
+- **Lead (planning time):** Evaluates available skills during Stage 1 research — checks the `<available_skills>` block in system context. Calls `Skill(skill-name)` for each selected skill, and wires them into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Stage 3 self-review includes a skill completeness gate verifying every plan's `skills_used` includes all selected installed skills.
+- **Dev/QA/Scout/Docs (execution time):** Reads the plan's `skills_used` list and calls `Skill(skill-name)` for each listed skill before beginning work. If a skill listed in the `<available_skills>` block is missing from `skills_used`, activates it too (soft fallback). No written YES/NO evaluation required.
+- **Ad-hoc paths (`/vbw:fix`, `/vbw:debug`, `/vbw:research`):** Debugger/Dev/Scout checks the `<available_skills>` block in system context — no plan exists, so no `skills_used` frontmatter to reference. Agent activates selected skills.
+- **Architect (scoping time):** Checks the `<available_skills>` block in system context. Activates selected skills before producing requirements and roadmap artifacts.
 - **Runtime skill hooks preserved:** `skill-hook-dispatch.sh` dispatches skill-defined PostToolUse/PreToolUse hooks at runtime. This is separate from skill *activation* and is unaffected by the plan-driven model.
 If compilation fails, proceed without it — Dev reads files directly.
 
@@ -224,11 +224,7 @@ QA_MAX_TURNS=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-agent-max-turns.sh" qa .
 if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
 ```
 
-**Skill prompt line (Layer 2 activation):** Resolve a compact skill activation line for spawn prompts:
-```bash
-SKILL_PROMPT_LINE=$(bash "${VBW_PLUGIN_ROOT}/scripts/emit-skill-prompt-line.sh" .vbw-planning 2>/dev/null || echo "")
-```
-If non-empty, include `${SKILL_PROMPT_LINE}` in the task description of every spawned Dev and QA agent. If empty, omit the line (no skills installed).
+**Orchestrator skill evaluation (Layer 2):** Before composing task descriptions for Dev, QA, or Scout agents, select skills from installed skills visible in your system context (use both skill names and descriptions). Generated subagent prompts MUST begin with `<skill_activation>` and list explicit `Call Skill('{skill-name}')` lines for each selected skill, followed by `Do not skip any listed skill.` Use direct imperative language only. If no skills are installed, this is a no-op.
 
 For each uncompleted plan, TaskCreate:
 ```yaml
@@ -239,7 +235,7 @@ description: |
   {If worktree_isolation enabled and WTARGET non-empty: "Worktree targeting: {WTARGET}"}
   Model: ${DEV_MODEL}
   Phase context: {phase-dir}/.context-dev.md (if compiled)
-  {If SKILL_PROMPT_LINE non-empty: "${SKILL_PROMPT_LINE}"}
+  <skill_activation>{For each selected skill for this plan's tasks: "Call Skill('{skill-name}')."} Do not skip any listed skill.</skill_activation>
   If `.vbw-planning/codebase/META.md` exists, read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before executing.
   {If resuming: "Resume from Task {NN}. Tasks 1-{NN-1} already committed."}
   {If autonomous: false: "This plan has checkpoints -- pause for user input."}
@@ -248,7 +244,7 @@ activeForm: "Executing {NN-MM}"
 
 Display: `◆ Spawning Dev teammate (${DEV_MODEL})...`
 
-**CRITICAL:** Pass `model: "${DEV_MODEL}"` to the Task tool invocation when spawning Dev teammates. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If `DEV_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
+**CRITICAL:** Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"` in the Task tool invocation when spawning Dev teammates. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If `DEV_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 **CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"` parameters to each Task tool invocation. This enables colored agent labels and status bar entries.
 
 Wire dependencies via TaskUpdate: read `depends_on` from each plan's frontmatter, add `addBlockedBy: [task IDs of dependency plans]`. Plans with empty depends_on start immediately.
@@ -449,7 +445,7 @@ If compilation fails, proceed without it.
 
 Display: `◆ Spawning QA agent (${QA_MODEL})...`
 
-**Per-wave QA (Thorough/Balanced, QA_TIMING=per-wave):** After each wave completes, spawn QA concurrently with next wave's Dev work. QA receives only completed wave's PLAN.md + SUMMARY.md + "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. {If SKILL_PROMPT_LINE non-empty: ${SKILL_PROMPT_LINE}} Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." After final wave, spawn integration QA covering all plans + cross-plan integration. Persist by piping the `qa_verdict` JSON through `write-verification.sh`:
+**Per-wave QA (Thorough/Balanced, QA_TIMING=per-wave):** After each wave completes, spawn QA concurrently with next wave's Dev work. QA receives only completed wave's PLAN.md + SUMMARY.md + "<skill_activation>{For each selected skill for verification: \"Call Skill('{skill-name}').\"} Do not skip any listed skill.</skill_activation> Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." After final wave, spawn integration QA covering all plans + cross-plan integration. Persist by piping the `qa_verdict` JSON through `write-verification.sh`:
 ```bash
 echo "$QA_VERDICT_JSON" | bash "${VBW_PLUGIN_ROOT}/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION-wave{W}.md"
 # For integration QA:
@@ -457,13 +453,13 @@ echo "$QA_VERDICT_JSON" | bash "${VBW_PLUGIN_ROOT}/scripts/write-verification.sh
 ```
 If `write-verification.sh` fails or is missing, fall back to manual file writing (frontmatter + body).
 
-**Post-build QA (Fast, QA_TIMING=post-build):** Spawn QA after ALL plans complete. Include in task description: "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. {If SKILL_PROMPT_LINE non-empty: ${SKILL_PROMPT_LINE}} Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." Persist by piping the `qa_verdict` JSON through `write-verification.sh`:
+**Post-build QA (Fast, QA_TIMING=post-build):** Spawn QA after ALL plans complete. Include in task description: "<skill_activation>{For each selected skill for verification: \"Call Skill('{skill-name}').\"} Do not skip any listed skill.</skill_activation> Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." Persist by piping the `qa_verdict` JSON through `write-verification.sh`:
 ```bash
 echo "$QA_VERDICT_JSON" | bash "${VBW_PLUGIN_ROOT}/scripts/write-verification.sh" "{phase-dir}/{phase}-VERIFICATION.md"
 ```
 If `write-verification.sh` fails or is missing, fall back to manual file writing (frontmatter + body).
 
-**CRITICAL:** Pass `model: "${QA_MODEL}"` to the Task tool invocation when spawning QA agents. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
+**CRITICAL:** Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation when spawning QA agents. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 **CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "qa"` (or `name: "qa-wave{W}"` for per-wave QA) parameters to each QA Task tool invocation.
 
 ### Step 4.5: Human acceptance testing (UAT)

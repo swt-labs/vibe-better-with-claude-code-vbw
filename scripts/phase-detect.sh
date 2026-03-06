@@ -46,6 +46,7 @@ else
   echo "uat_issues_major_or_higher=false"
   echo "uat_issues_phases="
   echo "uat_issues_count=0"
+  echo "uat_round_count=0"
   echo "has_shipped_milestones=false"
   echo "needs_milestone_rename=false"
   echo "milestone_uat_issues=false"
@@ -152,6 +153,7 @@ UAT_ISSUES_SLUG="none"
 UAT_ISSUES_MAJOR_OR_HIGHER=false
 UAT_ISSUES_PHASES=""
 UAT_ISSUES_COUNT=0
+UAT_ROUND_COUNT=0
 
 if [ -d "$PHASES_DIR" ]; then
   # Collect phase directories in numeric order (prevents 100 sorting before 11)
@@ -274,6 +276,8 @@ if [ -d "$PHASES_DIR" ]; then
         TARGET_DIR="$PHASES_DIR/$UAT_ISSUES_SLUG/"
         NEXT_PHASE="$UAT_ISSUES_PHASE"
         NEXT_PHASE_SLUG="$UAT_ISSUES_SLUG"
+        # Compute UAT round count for display
+        UAT_ROUND_COUNT=$(count_uat_rounds "$TARGET_DIR" "$UAT_ISSUES_PHASE")
         # Check if remediation is complete (stage=done) → needs re-verification
         _rem_stage="none"
         if [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
@@ -411,6 +415,7 @@ echo "uat_issues_slug=$UAT_ISSUES_SLUG"
 echo "uat_issues_major_or_higher=$UAT_ISSUES_MAJOR_OR_HIGHER"
 echo "uat_issues_phases=$UAT_ISSUES_PHASES"
 echo "uat_issues_count=$UAT_ISSUES_COUNT"
+echo "uat_round_count=$UAT_ROUND_COUNT"
 
 # --- Misnamed plan file diagnostic ---
 # Detect type-first naming (PLAN-01.md instead of 01-PLAN.md) for actionable warnings.

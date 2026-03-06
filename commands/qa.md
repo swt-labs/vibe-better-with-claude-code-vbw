@@ -84,7 +84,7 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         ```
 
     - Display: `◆ Spawning QA agent (${QA_MODEL})...`
-    - Spawn vbw-qa as subagent via Task tool. **Add `model: "${QA_MODEL}"` to
+    - Spawn vbw-qa as subagent via Task tool. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in
       the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass
       `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
 

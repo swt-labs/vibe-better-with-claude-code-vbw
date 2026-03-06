@@ -938,12 +938,9 @@ fi
 SKILL_CTX=""
 if [ -n "$SKILL_NAMES" ]; then
   SKILL_CTX=" Installed skills: ${SKILL_NAMES}."
-  # Write normalized skill names for Layer 2 spawn prompt injection (emit-skill-prompt-line.sh)
-  printf '%s' "$SKILL_NAMES" > "$PLANNING_DIR/.skill-names" 2>/dev/null || true
-else
-  # No skills: remove stale file so emit-skill-prompt-line.sh emits nothing
-  rm -f "$PLANNING_DIR/.skill-names" 2>/dev/null || true
 fi
+# Brownfield cleanup: remove stale .skill-names from older versions
+rm -f "$PLANNING_DIR/.skill-names" 2>/dev/null || true
 
 jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" --arg gsd "${GSD_WARNING:-}" --arg skills "${SKILL_CTX:-}" '{
   "hookSpecificOutput": {

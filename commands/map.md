@@ -76,7 +76,7 @@ Display ✓ per domain. After all 7 docs written, skip Step 3.5, go to Step 4.
 
 ---
 
-**Step 3-duo:** Create Agent Team with 2 Scouts via TaskCreate:
+**Step 3-duo:** Create Agent Team with 2 Scouts via TaskCreate. **Set `subagent_type: "vbw:vbw-scout"` on each Scout TaskCreate.**
 
 Scout A (Tech + Architecture): analyze tech stack, deps, architecture, structure. Send 2 scout_findings messages (domain: "tech-stack" with STACK.md+DEPENDENCIES.md, domain: "architecture" with ARCHITECTURE.md+STRUCTURE.md). Mode: {MAPPING_MODE}. Schema ref: ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/handoff-schemas.md`
 
@@ -88,7 +88,7 @@ Wait for all findings. Proceed to Step 3.5.
 
 ---
 
-**Step 3-quad:** Create Agent Team with 4 Scouts via TaskCreate. Each sends scout_findings with their domain. Schema ref: ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/handoff-schemas.md`
+**Step 3-quad:** Create Agent Team with 4 Scouts via TaskCreate. **Set `subagent_type: "vbw:vbw-scout"` on each Scout TaskCreate.** Each sends scout_findings with their domain. Schema ref: ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/handoff-schemas.md`
 - Scout 1 (Tech Stack): STACK.md + DEPENDENCIES.md
 - Scout 2 (Architecture): ARCHITECTURE.md + STRUCTURE.md
 - Scout 3 (Quality): CONVENTIONS.md + TESTING.md

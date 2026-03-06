@@ -49,7 +49,7 @@ else
   fail "vbw-dev.md: still has 'protocol violation' enforcement language"
 fi
 
-if grep -q 'clearly relevant but missing' "$DEV_AGENT"; then
+if grep -q 'missing from `skills_used`' "$DEV_AGENT"; then
   pass "vbw-dev.md: has soft fallback for missing skills"
 else
   fail "vbw-dev.md: missing soft fallback language"
@@ -174,10 +174,10 @@ else
   fail "vbw-qa.md: missing Skill() reference"
 fi
 
-if grep -q 'STATE.md' "$QA_AGENT"; then
-  pass "vbw-qa.md: references STATE.md for ad-hoc fallback"
+if grep -q 'available_skills' "$QA_AGENT"; then
+  pass "vbw-qa.md: references available_skills for ad-hoc fallback"
 else
-  fail "vbw-qa.md: missing STATE.md reference for ad-hoc fallback"
+  fail "vbw-qa.md: missing available_skills reference for ad-hoc fallback"
 fi
 
 SCOUT_AGENT="$ROOT/agents/vbw-scout.md"
@@ -188,18 +188,18 @@ else
   fail "vbw-scout.md: missing skills_used reference"
 fi
 
-if grep -q 'STATE.md' "$SCOUT_AGENT"; then
-  pass "vbw-scout.md: references STATE.md for ad-hoc path"
+if grep -q 'available_skills' "$SCOUT_AGENT"; then
+  pass "vbw-scout.md: references available_skills for ad-hoc path"
 else
-  fail "vbw-scout.md: missing STATE.md reference for ad-hoc path"
+  fail "vbw-scout.md: missing available_skills reference for ad-hoc path"
 fi
 
 DEBUGGER_AGENT="$ROOT/agents/vbw-debugger.md"
 
-if grep -q 'Installed' "$DEBUGGER_AGENT"; then
-  pass "vbw-debugger.md: references Installed line for ad-hoc activation"
+if grep -q 'available_skills' "$DEBUGGER_AGENT"; then
+  pass "vbw-debugger.md: references available_skills for ad-hoc activation"
 else
-  fail "vbw-debugger.md: missing Installed reference"
+  fail "vbw-debugger.md: missing available_skills reference"
 fi
 
 if grep -q 'Skill(skill-name)' "$DEBUGGER_AGENT"; then
@@ -210,10 +210,10 @@ fi
 
 ARCHITECT_AGENT="$ROOT/agents/vbw-architect.md"
 
-if grep -q 'Installed' "$ARCHITECT_AGENT"; then
-  pass "vbw-architect.md: references Installed line for ad-hoc activation"
+if grep -q 'available_skills' "$ARCHITECT_AGENT"; then
+  pass "vbw-architect.md: references available_skills for ad-hoc activation"
 else
-  fail "vbw-architect.md: missing Installed reference"
+  fail "vbw-architect.md: missing available_skills reference"
 fi
 
 if grep -q 'Skill(skill-name)' "$ARCHITECT_AGENT"; then
@@ -236,17 +236,17 @@ else
   fail "vbw-docs.md: missing Skill() reference"
 fi
 
-if grep -q 'STATE.md' "$DOCS_AGENT"; then
-  pass "vbw-docs.md: references STATE.md for ad-hoc fallback"
+if grep -q 'available_skills' "$DOCS_AGENT"; then
+  pass "vbw-docs.md: references available_skills for ad-hoc fallback"
 else
-  fail "vbw-docs.md: missing STATE.md reference for ad-hoc fallback"
+  fail "vbw-docs.md: missing available_skills reference for ad-hoc fallback"
 fi
 
 # Dev ad-hoc fallback check
-if grep -q 'STATE.md' "$DEV_AGENT"; then
-  pass "vbw-dev.md: references STATE.md for ad-hoc fallback"
+if grep -q 'available_skills' "$DEV_AGENT"; then
+  pass "vbw-dev.md: references available_skills for ad-hoc fallback"
 else
-  fail "vbw-dev.md: missing STATE.md reference for ad-hoc fallback"
+  fail "vbw-dev.md: missing available_skills reference for ad-hoc fallback"
 fi
 
 # Protocol updated role coverage checks
@@ -555,36 +555,105 @@ for agent_file in vbw-lead.md vbw-dev.md vbw-qa.md vbw-scout.md vbw-debugger.md 
   fi
 done
 
-# Layer 2: Spawn prompt injection
-if [ -f "$ROOT/scripts/emit-skill-prompt-line.sh" ]; then
-  pass "emit-skill-prompt-line.sh: exists"
+# Layer 2: Orchestrator-driven skill evaluation (replaced SKILL_PROMPT_LINE)
+if [ ! -f "$ROOT/scripts/emit-skill-prompt-line.sh" ]; then
+  pass "emit-skill-prompt-line.sh: deleted (replaced by orchestrator evaluation)"
 else
-  fail "emit-skill-prompt-line.sh: missing"
+  fail "emit-skill-prompt-line.sh: still exists (should be deleted)"
 fi
 
-if grep -q 'SKILL_PROMPT_LINE' "$PROTOCOL"; then
-  pass "execute-protocol.md: references SKILL_PROMPT_LINE"
+# Negative: SKILL_PROMPT_LINE should NOT appear in any command/reference
+VIBE_CMD="$ROOT/commands/vibe.md"
+RESEARCH_CMD="$ROOT/commands/research.md"
+if ! grep -q 'SKILL_PROMPT_LINE' "$PROTOCOL"; then
+  pass "execute-protocol.md: no SKILL_PROMPT_LINE references (removed)"
 else
-  fail "execute-protocol.md: missing SKILL_PROMPT_LINE reference"
+  fail "execute-protocol.md: still references SKILL_PROMPT_LINE"
 fi
 
-if grep -q 'emit-skill-prompt-line.sh' "$PROTOCOL"; then
-  pass "execute-protocol.md: calls emit-skill-prompt-line.sh"
+if ! grep -q 'SKILL_PROMPT_LINE' "$VIBE_CMD"; then
+  pass "vibe.md: no SKILL_PROMPT_LINE references (removed)"
 else
-  fail "execute-protocol.md: missing emit-skill-prompt-line.sh call"
+  fail "vibe.md: still references SKILL_PROMPT_LINE"
 fi
 
-# Layer 2 infrastructure: session-start writes .skill-names
-if grep -q '\.skill-names' "$ROOT/scripts/session-start.sh"; then
-  pass "session-start.sh: writes .skill-names for Layer 2"
+if ! grep -q 'SKILL_PROMPT_LINE' "$RESEARCH_CMD"; then
+  pass "research.md: no SKILL_PROMPT_LINE references (removed)"
 else
-  fail "session-start.sh: missing .skill-names write"
+  fail "research.md: still references SKILL_PROMPT_LINE"
 fi
 
-if grep -q '\.skill-names' "$ROOT/scripts/planning-git.sh"; then
-  pass "planning-git.sh: ignores .skill-names in transient gitignore"
+# Positive: orchestrator skill evaluation instruction in spawn templates
+if grep -q 'select skills from installed skills visible in your system context' "$PROTOCOL"; then
+  pass "execute-protocol.md: has orchestrator skill selection instruction"
 else
-  fail "planning-git.sh: missing .skill-names in transient gitignore"
+  fail "execute-protocol.md: missing orchestrator skill selection instruction"
+fi
+
+if grep -q 'select skills from installed skills visible in your system context' "$VIBE_CMD"; then
+  pass "vibe.md: has orchestrator skill selection instruction"
+else
+  fail "vibe.md: missing orchestrator skill selection instruction"
+fi
+
+if grep -q 'select skills from installed skills visible in your system context' "$RESEARCH_CMD"; then
+  pass "research.md: has orchestrator skill selection instruction"
+else
+  fail "research.md: missing orchestrator skill selection instruction"
+fi
+
+# Prompt-quality: XML skill_activation + mandatory language + no conditional phrasing
+if grep -q '<skill_activation>' "$PROTOCOL" && grep -q '<skill_activation>' "$VIBE_CMD" && grep -q '<skill_activation>' "$RESEARCH_CMD"; then
+  pass "skill activation prompts: use <skill_activation> XML block in all templates"
+else
+  fail "skill activation prompts: missing <skill_activation> XML block in one or more templates"
+fi
+
+if grep -q 'Do not skip any listed skill' "$PROTOCOL" && grep -q 'Do not skip any listed skill' "$VIBE_CMD" && grep -q 'Do not skip any listed skill' "$RESEARCH_CMD"; then
+  pass "skill activation prompts: enforce non-optional execution"
+else
+  fail "skill activation prompts: missing non-optional execution wording"
+fi
+
+# Front-loading: skill activation must be placed first in prompts
+if grep -q 'MUST start with.*<skill_activation>' "$VIBE_CMD" && grep -q 'MUST begin with.*<skill_activation>' "$PROTOCOL"; then
+  pass "skill activation prompts: front-loading requirement documented"
+else
+  fail "skill activation prompts: missing front-loading requirement (MUST start/begin with)"
+fi
+
+if ! (grep -Ei 'skill_activation|Skill\(' "$PROTOCOL" "$VIBE_CMD" "$RESEARCH_CMD" | grep -qiE 'if you need|if relevant|clearly relevant'); then
+  pass "skill activation prompts: no weak conditional phrasing in skill-instruction lines"
+else
+  fail "skill activation prompts: weak conditional phrasing present in skill-instruction lines"
+fi
+
+# Agent system prompts: no 'clearly relevant' in any agent file
+if ! grep -rq 'clearly relevant' "$ROOT/agents/"; then
+  pass "agent prompts: no 'clearly relevant' conditional phrasing"
+else
+  fail "agent prompts: 'clearly relevant' still present — use direct imperative language"
+fi
+
+# Negative: no STATE.md Installed fallback in agent skill activation sections
+if ! grep -rq 'STATE.md.*Installed\|Installed.*STATE.md' "$ROOT/agents/"; then
+  pass "agent prompts: no STATE.md Installed fallback (removed — skills surfaced via available_skills)"
+else
+  fail "agent prompts: STATE.md Installed fallback still present in agents"
+fi
+
+# Negative: .skill-names should NOT be in planning-git transient gitignore
+if ! grep -q '\.skill-names' "$ROOT/scripts/planning-git.sh"; then
+  pass "planning-git.sh: no .skill-names in transient gitignore (removed)"
+else
+  fail "planning-git.sh: still has .skill-names in transient gitignore"
+fi
+
+# Brownfield: session-start.sh should clean up stale .skill-names
+if grep -q 'rm.*\.skill-names' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start.sh: has brownfield .skill-names cleanup"
+else
+  fail "session-start.sh: missing brownfield .skill-names cleanup"
 fi
 
 # Layer 3: SubagentStart hook (preserved)
@@ -612,6 +681,31 @@ for _cmd_file in $_MAX_TURNS_COMMANDS; do
     fail "$_cmd_name: uses old 'is 0'/'is a positive integer' phrasing (should use non-empty/empty)"
   else
     pass "$_cmd_name: uses non-empty/empty phrasing for maxTurns"
+  fi
+done
+
+# --- Subagent type specification: all spawn points must specify subagent_type ---
+
+echo ""
+echo "=== Subagent Type Verification ==="
+
+# Count subagent_type occurrences across commands and references
+_SAT_TOTAL=$(grep -r 'subagent_type.*vbw:' "$ROOT/commands/" "$ROOT/references/" 2>/dev/null | wc -l | tr -d ' ')
+
+if [ "$_SAT_TOTAL" -ge 16 ]; then
+  pass "subagent_type: ${_SAT_TOTAL} spawn points specify subagent_type (>= 16 expected)"
+else
+  fail "subagent_type: only ${_SAT_TOTAL} spawn points specify subagent_type (>= 16 expected)"
+fi
+
+# Each role that spawns agents must have subagent_type for that role
+for _role_check in "vbw-scout:commands/vibe.md" "vbw-scout:commands/research.md" "vbw-scout:commands/map.md" "vbw-dev:commands/fix.md" "vbw-dev:references/execute-protocol.md" "vbw-debugger:commands/debug.md" "vbw-qa:commands/qa.md" "vbw-qa:references/execute-protocol.md" "vbw-lead:commands/vibe.md"; do
+  _sat_role="${_role_check%%:*}"
+  _sat_file="${_role_check#*:}"
+  if grep -q "subagent_type.*${_sat_role}" "$ROOT/$_sat_file"; then
+    pass "$_sat_file: specifies subagent_type for $_sat_role"
+  else
+    fail "$_sat_file: missing subagent_type for $_sat_role"
   fi
 done
 

@@ -16,15 +16,14 @@ Planning agent. Produce PLAN.md artifacts using `templates/PLAN.md` (compact YAM
 
 Before starting any work, activate relevant skills:
 1. If plan exists: call `Skill(name)` for each skill in `skills_used` frontmatter.
-2. Ad-hoc fallback: read STATE.md `**Installed:**` line and activate relevant skills.
-3. Check `<available_skills>` in your system context — activate any clearly relevant skill missing from the above.
-Do not skip this step. Skill activation loads tool instructions that affect implementation quality.
+2. Check `<available_skills>` in your system context — activate any skill missing from the above.
+Do not skip this step. Skill activation loads tool instructions that affect planning quality.
 
 ## Planning Protocol
 
 ### Stage 1: Research
 Display: `◆ Lead: Researching phase context...`
-Read: STATE.md, ROADMAP.md, REQUIREMENTS.md, dependency SUMMARY.md files, CONCERNS.md/PATTERNS.md if exist. If `.vbw-planning/codebase/META.md` exists, also read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding of component boundaries, known risks, and directory layout before decomposing. Skip any that don't exist. Scan codebase via Glob/Grep. WebFetch for new libs/APIs. Evaluate available skills: check the `<available_skills>` block in your system context and read STATE.md's `**Installed:**` line as fallback. For each installed or context-visible skill relevant to this phase's work, call `Skill(skill-name)`. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Research stays in context.
+Read: STATE.md, ROADMAP.md, REQUIREMENTS.md, dependency SUMMARY.md files, CONCERNS.md/PATTERNS.md if exist. If `.vbw-planning/codebase/META.md` exists, also read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding of component boundaries, known risks, and directory layout before decomposing. Skip any that don't exist. Scan codebase via Glob/Grep. WebFetch for new libs/APIs. Evaluate available skills: check the `<available_skills>` block in your system context. For each context-visible skill relevant to this phase's work, call `Skill(skill-name)`. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Research stays in context.
 Display: `✓ Lead: Research complete -- {N} files read, context loaded`
 
 ### Stage 2: Decompose
@@ -43,7 +42,7 @@ Display: `  ✓ Plan {NN}: {title} ({N} tasks, wave {W})`
 Display: `◆ Lead: Self-reviewing plans...`
 Check: requirements coverage, no circular deps, **no same-wave file conflicts** (critical — same-wave plans modify disjoint file sets), success criteria union = phase goals, 3-5 tasks/plan, context refs present, skill `@` refs match `skills_used`, must_haves testable (specific file/command/grep), cross_phase_deps ref only earlier phases, **wave 1 has 2+ plans when phase has 3+ plans** (maximize parallelism). Fix inline. Standalone review: skip to here.
 
-**Skill completeness check:** Verify each plan's `skills_used` includes all relevant installed skills from STATE.md. If a relevant skill is missing from any plan's `skills_used`, add it now.
+**Skill completeness check:** Verify each plan's `skills_used` includes all relevant skills from `<available_skills>`. If a relevant skill is missing from any plan's `skills_used`, add it now.
 Display: `✓ Lead: Self-review complete -- {issues found and fixed | no issues found}`
 
 ### Stage 4: Output

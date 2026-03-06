@@ -81,6 +81,7 @@ current_uat_issues_phase=""
 current_uat_issues_slug=""
 current_uat_issues_label=""
 current_uat_major_or_higher=false
+current_uat_round_count=0
 cfg_require_phase_discussion=false
 next_undiscussed=""
 next_preseeded=""
@@ -147,19 +148,26 @@ if [ -d "$PLANNING_DIR" ]; then
     _pd_uat_phase=$(echo "$_pd_out" | grep -m1 '^uat_issues_phase=' | sed 's/^[^=]*=//' || true)
     _pd_uat_slug=$(echo "$_pd_out" | grep -m1 '^uat_issues_slug=' | sed 's/^[^=]*=//' || true)
     _pd_uat_major=$(echo "$_pd_out" | grep -m1 '^uat_issues_major_or_higher=' | sed 's/^[^=]*=//' || true)
+    _pd_uat_round_count=$(echo "$_pd_out" | grep -m1 '^uat_round_count=' | sed 's/^[^=]*=//' || true)
     if [ -n "${_pd_uat_phase:-}" ] && [ "$_pd_uat_phase" != "none" ]; then
       current_uat_issues_phase="$_pd_uat_phase"
       current_uat_issues_slug="${_pd_uat_slug:-}"
       [ "${_pd_uat_major:-}" = "true" ] && current_uat_major_or_higher=true
+      [ -n "${_pd_uat_round_count:-}" ] && current_uat_round_count="$_pd_uat_round_count"
     fi
 
     # Build human-readable phase label: "Phase N (slug-name)" or just "Phase N"
+    # Append "— Round Y" when archived round files exist (Y = count + 1)
     if [ -n "$current_uat_issues_phase" ] && [ -n "$current_uat_issues_slug" ]; then
       current_uat_issues_label="Phase $current_uat_issues_phase ($current_uat_issues_slug)"
     elif [ -n "$current_uat_issues_phase" ]; then
       current_uat_issues_label="Phase $current_uat_issues_phase"
     else
       current_uat_issues_label=""
+    fi
+    if [ -n "$current_uat_issues_label" ] && [ "$current_uat_round_count" -gt 0 ] 2>/dev/null; then
+      _display_round=$((current_uat_round_count + 1))
+      current_uat_issues_label="$current_uat_issues_label — Round $_display_round"
     fi
   fi
 

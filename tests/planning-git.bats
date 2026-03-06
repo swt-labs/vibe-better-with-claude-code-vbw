@@ -90,7 +90,6 @@ EOF
     '.events/'
     '.event-log.jsonl'
     '.snapshots/'
-    '.skill-names'
     '.hook-errors.log'
     '.hook-debug.log'
     '.compaction-marker'
