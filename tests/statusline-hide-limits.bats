@@ -88,14 +88,15 @@ JSON
 JSON
 
   cd "$repo"
-  # Isolate credential discovery: point CLAUDE_CONFIG_DIR to the empty test repo
-  # so the script cannot find credentials.json in $HOME/.claude or $HOME/.config/claude-code.
-  # This ensures FETCH_OK="noauth" (no OAuth token found) regardless of the developer's env.
+  # Isolate credential discovery: block env-var override and system Keychain lookup so
+  # FETCH_OK="noauth" is guaranteed regardless of the developer's system credentials.
   export CLAUDE_CONFIG_DIR="$repo"
+  export VBW_SKIP_KEYCHAIN=1
   unset VBW_OAUTH_TOKEN 2>/dev/null || true
   local output
   output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
   unset CLAUDE_CONFIG_DIR
+  unset VBW_SKIP_KEYCHAIN
   cd "$PROJECT_ROOT"
 
   local l3
@@ -228,4 +229,91 @@ JSON
   l1=$(echo "$output" | sed -n '1p')
   # L1 should NOT contain "Build:" — it should fall through to standard VBW state
   ! echo "$l1" | grep -q "Build:"
+}
+
+# --- Edge case: both hide_limits flags true simultaneously ---
+
+@test "both statusline_hide_limits and statusline_hide_limits_for_api_key true: L3 is blank" {
+  local repo="$TEST_TEMP_DIR/repo-hide-both"
+  mkdir -p "$repo/.vbw-planning"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{
+  "effort": "balanced",
+  "statusline_hide_limits": true,
+  "statusline_hide_limits_for_api_key": true
+}
+JSON
+
+  cd "$repo"
+  local output
+  output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  cd "$PROJECT_ROOT"
+
+  local l3
+  l3=$(echo "$output" | sed -n '3p')
+  [ -z "$l3" ]
+}
+
+# --- Negative: statusline_hide_agent_in_tmux true but NOT in tmux (no effect) ---
+
+@test "statusline_hide_agent_in_tmux true outside tmux: L1 still contains Build:" {
+  local repo="$TEST_TEMP_DIR/repo-hide-agent-no-tmux"
+  mkdir -p "$repo/.vbw-planning"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{
+  "effort": "balanced",
+  "statusline_hide_agent_in_tmux": true
+}
+JSON
+  cat > "$repo/.vbw-planning/.execution-state.json" <<'JSON'
+{
+  "status": "running",
+  "wave": 1,
+  "total_waves": 1,
+  "plans": [{"title": "test-plan", "status": "running"}]
+}
+JSON
+
+  cd "$repo"
+  unset TMUX 2>/dev/null || true
+  local output
+  output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  cd "$PROJECT_ROOT"
+
+  local l1
+  l1=$(echo "$output" | sed -n '1p')
+  # Outside tmux, hide_agent_in_tmux has no effect — Build: should be present
+  echo "$l1" | grep -q "Build:"
+}
+
+# --- Negative: statusline_collapse_agent_in_tmux true but NOT in tmux (no collapse) ---
+
+@test "statusline_collapse_agent_in_tmux true outside tmux: full multi-line output" {
+  local repo="$TEST_TEMP_DIR/repo-collapse-no-tmux"
+  local worktree="$TEST_TEMP_DIR/repo-collapse-no-tmux-wt"
+  mkdir -p "$repo/.vbw-planning"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{
+  "effort": "balanced",
+  "statusline_collapse_agent_in_tmux": true
+}
+JSON
+  git -C "$repo" worktree add "$worktree" -b "test-no-tmux-wt" -q
+
+  cd "$worktree"
+  unset TMUX 2>/dev/null || true
+  local output
+  output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  cd "$PROJECT_ROOT"
+
+  local l2
+  l2=$(echo "$output" | sed -n '2p')
+  # Without TMUX, no collapse — L2 must be present
+  [ -n "$l2" ]
 }

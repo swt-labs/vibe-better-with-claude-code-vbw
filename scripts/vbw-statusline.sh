@@ -224,8 +224,8 @@ if ! cache_fresh "$SLOW_CF" 60; then
     OAUTH_TOKEN="$VBW_OAUTH_TOKEN"
   fi
 
-  # Priority 2: system credential store
-  if [ -z "$OAUTH_TOKEN" ]; then
+  # Priority 2: system credential store (skip if VBW_SKIP_KEYCHAIN=1, e.g. in tests)
+  if [ -z "$OAUTH_TOKEN" ] && [ "${VBW_SKIP_KEYCHAIN:-0}" != "1" ]; then
     if [ "$_OS" = "Darwin" ]; then
       CRED_JSON=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
       if [ -n "$CRED_JSON" ]; then
@@ -249,8 +249,15 @@ if ! cache_fresh "$SLOW_CF" 60; then
 
   # Priority 3: credentials file (check both with and without leading dot,
   # across all common Claude config locations)
+  # When VBW_SKIP_KEYCHAIN=1 (e.g. in tests), only check the explicitly-set
+  # CLAUDE_CONFIG_DIR — skip hardcoded fallback paths that may hold real credentials.
   if [ -z "$OAUTH_TOKEN" ]; then
-    for _cdir in "${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude"; do
+    if [ "${VBW_SKIP_KEYCHAIN:-0}" = "1" ]; then
+      _p3_dirs=("${CLAUDE_CONFIG_DIR:-}")
+    else
+      _p3_dirs=("${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude")
+    fi
+    for _cdir in "${_p3_dirs[@]}"; do
       [ -z "$_cdir" ] && continue
       for _cred in "$_cdir/.credentials.json" "$_cdir/credentials.json"; do
         if [ -f "$_cred" ]; then

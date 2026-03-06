@@ -380,6 +380,18 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | statusline_hide_agent_in_tmux | boolean | true/false | false |
 | statusline_collapse_agent_in_tmux | boolean | true/false | false |
 
+### Statusline switches
+
+Four flags control what the VBW statusline shows:
+
+- **`statusline_hide_limits`** — Suppress the Limits line (L3) unconditionally. Use this if you never want to see token limit information in the statusline.
+
+- **`statusline_hide_limits_for_api_key`** — Suppress the Limits line only when authenticated via an API key (not via Claude.ai OAuth). Useful when you find the usage display redundant in API-key sessions. Has no effect when `statusline_hide_limits` is also `true` (the broader flag takes precedence).
+
+- **`statusline_hide_agent_in_tmux`** — Suppress the Build/agent progress line (L1) while inside a tmux session. Has no effect outside tmux or when no build is running. Use this to reduce statusline noise in tmux-based workflows.
+
+- **`statusline_collapse_agent_in_tmux`** — Collapse the full 4-line statusline into a single summary line in agent/worktree panes (not the orchestrator). Only applies inside tmux, only when running in a git worktree. Has no effect outside tmux or in the main repo pane.
+
 ### agent_max_turns
 
 Controls how many turns each agent gets before the Task tool stops. Values are scaled by the current effort level (thorough = 1.5×, balanced = 1×, fast = 0.8×, turbo = 0.6×).
