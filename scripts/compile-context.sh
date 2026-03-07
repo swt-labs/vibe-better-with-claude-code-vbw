@@ -142,11 +142,6 @@ elif [ "$V3_CACHE_ENABLED" = "true" ]; then
   echo "V3 fallback: cache-context.sh not found, skipping cache" >&2
 fi
 
-# --- Codebase mapping hint helper ---
-# Usage: emit_codebase_mapping_hint <priority_files...>
-# Emits a "Codebase Map Available" section listing available mapping docs
-# and guidance to read priority files first. Only emits if META.md exists
-# and at least one of the scanned files exists.
 # --- MuninnDB cross-phase memory hint ---
 # Emits a hint for agents to use muninn_activate for cross-phase memory.
 emit_muninn_memory_hint() {
@@ -156,6 +151,10 @@ emit_muninn_memory_hint() {
 }
 
 # --- Codebase mapping hint helper ---
+# Usage: emit_codebase_mapping_hint <priority_files...>
+# Emits a "Codebase Map Available" section listing available mapping docs
+# and guidance to read priority files first. Only emits if META.md exists
+# and at least one of the scanned files exists.
 emit_codebase_mapping_hint() {
   local priority_files=("$@")
   if [ ! -f "$PLANNING_DIR/codebase/META.md" ]; then

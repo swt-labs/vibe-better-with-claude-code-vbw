@@ -88,6 +88,7 @@ PASS if alive or not in tmux. WARN if dead watchdog in tmux.
   - WARN if vault missing: "Vault '{name}' not found. Re-run /vbw:init."
   - WARN if REST API unreachable: "REST API not responding on port 8475"
   - PASS if vault exists.
+
 ## Output Format
 
 ```
