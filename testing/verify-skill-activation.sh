@@ -555,9 +555,63 @@ for agent_file in vbw-lead.md vbw-dev.md vbw-qa.md vbw-scout.md vbw-debugger.md 
   fi
 done
 
-# Layer 2: Orchestrator-driven skill evaluation (replaced SKILL_PROMPT_LINE)
+# Layer 2: Script-driven skill activation (generate-skill-activation.sh)
+if [ -f "$ROOT/scripts/generate-skill-activation.sh" ]; then
+  pass "generate-skill-activation.sh: exists"
+else
+  fail "generate-skill-activation.sh: missing"
+fi
+
+if [ -x "$ROOT/scripts/generate-skill-activation.sh" ]; then
+  pass "generate-skill-activation.sh: is executable"
+else
+  fail "generate-skill-activation.sh: not executable"
+fi
+
+# generate-skill-activation.sh calls emit-skill-xml.sh for available skills
+if grep -q 'emit-skill-xml.sh' "$ROOT/scripts/generate-skill-activation.sh"; then
+  pass "generate-skill-activation.sh: calls emit-skill-xml.sh for available skills"
+else
+  fail "generate-skill-activation.sh: missing emit-skill-xml.sh call"
+fi
+
+# generate-skill-activation.sh supports --phase-dir for sidecar file
+if grep -q '\-\-phase-dir' "$ROOT/scripts/generate-skill-activation.sh"; then
+  pass "generate-skill-activation.sh: supports --phase-dir flag"
+else
+  fail "generate-skill-activation.sh: missing --phase-dir support"
+fi
+
+# generate-skill-activation.sh reads skills_used from plan frontmatter
+if grep -q 'skills_used' "$ROOT/scripts/generate-skill-activation.sh"; then
+  pass "generate-skill-activation.sh: reads skills_used from plan frontmatter"
+else
+  fail "generate-skill-activation.sh: missing skills_used reading"
+fi
+
+# compile-context.sh calls generate-skill-activation.sh
+if grep -q 'generate-skill-activation.sh' "$COMPILER"; then
+  pass "compile-context.sh: calls generate-skill-activation.sh"
+else
+  fail "compile-context.sh: missing generate-skill-activation.sh call"
+fi
+
+# compile-context.sh emits Mandatory Skill Activation section
+if grep -q 'Mandatory Skill Activation' "$COMPILER"; then
+  pass "compile-context.sh: emits Mandatory Skill Activation section"
+else
+  fail "compile-context.sh: missing Mandatory Skill Activation section"
+fi
+
+# execute-protocol.md references .skill-activation-block.txt sidecar
+if grep -q 'skill-activation-block.txt' "$PROTOCOL"; then
+  pass "execute-protocol.md: references .skill-activation-block.txt sidecar"
+else
+  fail "execute-protocol.md: missing .skill-activation-block.txt reference"
+fi
+
 if [ ! -f "$ROOT/scripts/emit-skill-prompt-line.sh" ]; then
-  pass "emit-skill-prompt-line.sh: deleted (replaced by orchestrator evaluation)"
+  pass "emit-skill-prompt-line.sh: deleted (replaced by generate-skill-activation.sh)"
 else
   fail "emit-skill-prompt-line.sh: still exists (should be deleted)"
 fi
@@ -583,43 +637,62 @@ else
   fail "research.md: still references SKILL_PROMPT_LINE"
 fi
 
-# Positive: orchestrator skill evaluation instruction in spawn templates
-if grep -q 'select skills from installed skills visible in your system context' "$PROTOCOL"; then
-  pass "execute-protocol.md: has orchestrator skill selection instruction"
+# Positive: script-driven skill activation block in spawn templates
+if grep -q 'generate-skill-activation.sh' "$PROTOCOL"; then
+  pass "execute-protocol.md: references generate-skill-activation.sh"
 else
-  fail "execute-protocol.md: missing orchestrator skill selection instruction"
+  fail "execute-protocol.md: missing generate-skill-activation.sh reference"
 fi
 
-if grep -q 'select skills from installed skills visible in your system context' "$VIBE_CMD"; then
-  pass "vibe.md: has orchestrator skill selection instruction"
+if grep -q 'generate-skill-activation.sh' "$VIBE_CMD"; then
+  pass "vibe.md: references generate-skill-activation.sh"
 else
-  fail "vibe.md: missing orchestrator skill selection instruction"
+  fail "vibe.md: missing generate-skill-activation.sh reference"
 fi
 
-if grep -q 'select skills from installed skills visible in your system context' "$RESEARCH_CMD"; then
-  pass "research.md: has orchestrator skill selection instruction"
+if grep -q 'generate-skill-activation.sh' "$RESEARCH_CMD"; then
+  pass "research.md: references generate-skill-activation.sh"
 else
-  fail "research.md: missing orchestrator skill selection instruction"
+  fail "research.md: missing generate-skill-activation.sh reference"
 fi
 
-# Prompt-quality: XML skill_activation + mandatory language + no conditional phrasing
-if grep -q '<skill_activation>' "$PROTOCOL" && grep -q '<skill_activation>' "$VIBE_CMD" && grep -q '<skill_activation>' "$RESEARCH_CMD"; then
-  pass "skill activation prompts: use <skill_activation> XML block in all templates"
+# Negative: old LLM-composed skill selection instruction removed
+if ! grep -q 'select skills from installed skills visible in your system context' "$PROTOCOL"; then
+  pass "execute-protocol.md: old LLM-composed skill selection removed"
 else
-  fail "skill activation prompts: missing <skill_activation> XML block in one or more templates"
+  fail "execute-protocol.md: still has old LLM-composed skill selection instruction"
 fi
 
-if grep -q 'Do not skip any listed skill' "$PROTOCOL" && grep -q 'Do not skip any listed skill' "$VIBE_CMD" && grep -q 'Do not skip any listed skill' "$RESEARCH_CMD"; then
-  pass "skill activation prompts: enforce non-optional execution"
+if ! grep -q 'select skills from installed skills visible in your system context' "$VIBE_CMD"; then
+  pass "vibe.md: old LLM-composed skill selection removed"
 else
-  fail "skill activation prompts: missing non-optional execution wording"
+  fail "vibe.md: still has old LLM-composed skill selection instruction"
 fi
 
-# Front-loading: skill activation must be placed first in prompts
-if grep -q 'MUST start with.*<skill_activation>' "$VIBE_CMD" && grep -q 'MUST begin with.*<skill_activation>' "$PROTOCOL"; then
-  pass "skill activation prompts: front-loading requirement documented"
+if ! grep -q 'select skills from installed skills visible in your system context' "$RESEARCH_CMD"; then
+  pass "research.md: old LLM-composed skill selection removed"
 else
-  fail "skill activation prompts: missing front-loading requirement (MUST start/begin with)"
+  fail "research.md: still has old LLM-composed skill selection instruction"
+fi
+
+# Positive: SKILL_BLOCK variable used in templates
+if grep -q 'SKILL_BLOCK' "$PROTOCOL" && grep -q 'SKILL_BLOCK' "$VIBE_CMD" && grep -q 'SKILL_BLOCK' "$RESEARCH_CMD"; then
+  pass "skill activation: SKILL_BLOCK variable referenced in all templates"
+else
+  fail "skill activation: SKILL_BLOCK variable missing in one or more templates"
+fi
+
+# Front-loading: verbatim SKILL_BLOCK must be first in prompts
+if grep -q 'MUST start with the verbatim' "$VIBE_CMD"; then
+  pass "vibe.md: front-loading requirement for SKILL_BLOCK documented"
+else
+  fail "vibe.md: missing front-loading requirement for SKILL_BLOCK"
+fi
+
+if grep -q 'do NOT compose skill activation yourself' "$VIBE_CMD" && grep -q 'Do NOT attempt to compose skill activation yourself' "$PROTOCOL"; then
+  pass "skill activation prompts: anti-LLM-composition directive present"
+else
+  fail "skill activation prompts: missing anti-LLM-composition directive"
 fi
 
 if ! (grep -Ei 'skill_activation|Skill\(' "$PROTOCOL" "$VIBE_CMD" "$RESEARCH_CMD" | grep -qiE 'if you need|if relevant|clearly relevant'); then

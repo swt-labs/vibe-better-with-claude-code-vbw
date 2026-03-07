@@ -57,13 +57,16 @@ Research: {topic or sub-topic}.
 Project context: {tech stack, constraints from PROJECT.md if relevant}.
 </task_context>
 
+<output_path>{resolved save path}</output_path>
+
 <output_format>
-Return structured findings.
+Write your complete findings to the output_path file.
 </output_format>
 ```
+  - If save path is unknown yet (user hasn't confirmed), omit `<output_path>` — Scout returns findings in response, and the orchestrator writes them after user confirms a path.
   - Parallel: up to 4 simultaneous Tasks, each with `subagent_type: "vbw:vbw-scout"`, same `model: "${SCOUT_MODEL}"` and the same maxTurns conditional (pass when non-empty, omit when empty).
 4. **Synthesize:** Single: present directly. Parallel: merge, note contradictions, rank by confidence.
-5. **Persist:** Ask "Save findings? (y/n)". If yes: write to .vbw-planning/phases/{phase-dir}/RESEARCH.md or .vbw-planning/RESEARCH.md.
+5. **Persist:** Ask "Save findings? (y/n)". If yes, ask for save path (default: `.vbw-planning/phases/{phase-dir}/RESEARCH.md` or `.vbw-planning/RESEARCH.md`). If Scout already wrote the file (output_path was included in prompt), confirm it exists. If Scout returned findings in response (no output_path), write findings to the confirmed path.
 ```
 ➜ Next Up
   /vbw:vibe --plan {NN} -- Plan using research findings

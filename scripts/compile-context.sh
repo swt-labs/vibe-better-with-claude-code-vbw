@@ -227,9 +227,27 @@ emit_codebase_mapping_hint() {
 }
 
 # --- Skill context helper (compaction-safe) ---
-# Emits an "Available Skills" section using emit-skill-xml.sh --compact --filter-plugins.
+# Emits skill activation + available skills sections.
+# Also writes .skill-activation-block.txt sidecar for orchestrator TaskCreate injection.
 # This survives compaction because agents re-read .context-{role}.md from disk.
 emit_skills_section() {
+  # Generate mandatory skill activation block (also writes sidecar file)
+  local activation_args=()
+  if [ -n "$PHASE_DIR" ] && [ -d "$PHASE_DIR" ]; then
+    activation_args+=(--phase-dir "$PHASE_DIR")
+  fi
+  if [ -n "${PLAN_PATH:-}" ] && [ -f "$PLAN_PATH" ]; then
+    activation_args+=("$PLAN_PATH")
+  fi
+  local activation_block
+  activation_block=$(bash "$SCRIPT_DIR/generate-skill-activation.sh" "${activation_args[@]}" 2>/dev/null || true)
+  if [ -n "$activation_block" ]; then
+    echo ""
+    echo "### Mandatory Skill Activation"
+    echo "Include the following block verbatim in every subagent task description:"
+    echo "$activation_block"
+  fi
+
   local skill_xml
   skill_xml=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" --compact --filter-plugins 2>/dev/null || true)
   if [ -n "$skill_xml" ]; then
