@@ -127,7 +127,7 @@ done
 
 # Determine overall status
 TOTAL=$(echo "$PLANS_JSON" | jq 'length' 2>/dev/null) || TOTAL=0
-COMPLETE=$(echo "$PLANS_JSON" | jq '[.[] | select(.status == "complete")] | length' 2>/dev/null) || COMPLETE=0
+COMPLETE=$(echo "$PLANS_JSON" | jq '[.[] | select(.status == "complete" or .status == "partial")] | length' 2>/dev/null) || COMPLETE=0
 FAILED=$(echo "$PLANS_JSON" | jq '[.[] | select(.status == "failed")] | length' 2>/dev/null) || FAILED=0
 
 if [ "$COMPLETE" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then

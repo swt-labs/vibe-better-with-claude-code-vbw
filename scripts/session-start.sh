@@ -657,7 +657,7 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
       # Reconcile individual plan statuses against actual SUMMARY.md files.
       # After a reset/undo, .execution-state.json may have stale "complete"
       # entries for plans whose SUMMARY.md no longer exists on disk.
-      _json_done=$(jq -r '[.plans[]? | select(.status == "complete")] | length' "$EXEC_STATE" 2>/dev/null || echo 0)
+      _json_done=$(jq -r '[.plans[]? | select(.status == "complete" or .status == "partial")] | length' "$EXEC_STATE" 2>/dev/null || echo 0)
       if [ "${_json_done:-0}" -gt "${SUMMARY_COUNT:-0}" ] 2>/dev/null; then
         # Build JSON array of plan IDs that actually have completed SUMMARY.md
         _completed_json="[]"
@@ -675,7 +675,7 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
         _reconcile_tmp="${EXEC_STATE}.reconcile.$$"
         jq --argjson completed "$_completed_json" '
           .plans |= map(
-            if .status == "complete" and (.id as $pid | $completed | any(. == $pid) | not) then
+            if (.status == "complete" or .status == "partial") and (.id as $pid | $completed | any(. == $pid) | not) then
               .status = "pending"
             else .
             end

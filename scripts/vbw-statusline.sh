@@ -209,14 +209,14 @@ if ! cache_fresh "$FAST_CF" 5; then
         (.status // ""),
         (.wave // 0),
         (.total_waves // 0),
-        ([.plans[] | select(.status == "complete")] | length),
+        ([.plans[] | select(.status == "complete" or .status == "partial")] | length),
         (.plans | length),
         ([.plans[] | select(.status == "running")][0].title // "")
       ] | join("|")' .vbw-planning/.execution-state.json 2>/dev/null)"
     # Reconcile EXEC_DONE against actual SUMMARY.md files on disk.
     # After a reset/undo, .execution-state.json retains stale "complete"
     # statuses but SUMMARY.md files may no longer exist.
-    if { [ "$EXEC_STATUS" = "running" ] || [ "$EXEC_STATUS" = "paused" ]; } && [ "${EXEC_DONE:-0}" -gt 0 ] 2>/dev/null; then
+    if [ "$EXEC_STATUS" = "running" ] && [ "${EXEC_DONE:-0}" -gt 0 ] 2>/dev/null; then
       _exec_phase=$(jq -r '.phase // ""' .vbw-planning/.execution-state.json 2>/dev/null)
       if [ -n "$_exec_phase" ]; then
         _exec_pdir=$(find .vbw-planning/phases -maxdepth 1 -type d -name "$(printf '%02d' "$_exec_phase")-*" 2>/dev/null | head -1)

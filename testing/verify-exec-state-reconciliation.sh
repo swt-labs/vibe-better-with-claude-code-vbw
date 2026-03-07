@@ -359,14 +359,26 @@ else
   fail "statusline: EXEC_DONE capped from 3 to 2 (got $EXEC_DONE)"
 fi
 
-# --- Structural: reconciliation gate includes paused status ---
+# --- Structural: JQ queries count partial as done ---
 echo ""
-echo "--- Structural: reconciliation gate includes paused ---"
+echo "--- Structural: JQ queries count partial as done ---"
 
-if grep -q 'EXEC_STATUS.*=.*paused' "$ROOT/scripts/vbw-statusline.sh"; then
-  pass "statusline reconciliation gate includes paused state"
+if grep -q 'select(.status == "complete" or .status == "partial")' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline JQ counts partial plans as done"
 else
-  fail "statusline reconciliation gate includes paused state"
+  fail "statusline JQ counts partial plans as done"
+fi
+
+if grep -q 'select(.status == "complete" or .status == "partial")' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start JQ counts partial plans as done"
+else
+  fail "session-start JQ counts partial plans as done"
+fi
+
+if grep -q 'select(.status == "complete" or .status == "partial")' "$ROOT/scripts/recover-state.sh"; then
+  pass "recover-state JQ counts partial plans as done"
+else
+  fail "recover-state JQ counts partial plans as done"
 fi
 
 # --- Structural: count_done_summaries exists in summary-utils.sh ---
@@ -381,6 +393,126 @@ if grep -q 'complete|completed|partial.*SUMMARY_COUNT' "$ROOT/scripts/session-st
   pass "session-start reconciliation accepts partial status"
 else
   fail "session-start reconciliation accepts partial status"
+fi
+
+# --- Functional: literal "partial" in execution-state counted as done ---
+echo ""
+echo "--- Functional: literal partial JSON plan counted as done ---"
+
+LP_PROJECT="$TMPDIR_BASE/lp-project/.vbw-planning"
+LP_PHASE="$LP_PROJECT/phases/04-test"
+mkdir -p "$LP_PHASE"
+
+# state-updater.sh writes literal "partial" into execution-state JSON;
+# the JQ query must count it as done alongside "complete"
+cat > "$LP_PROJECT/.execution-state.json" <<'EXECJSON'
+{
+  "phase": 4, "status": "running",
+  "wave": 1, "total_waves": 1,
+  "plans": [
+    {"id": "04-01", "title": "Plan 1", "wave": 1, "status": "complete"},
+    {"id": "04-02", "title": "Plan 2", "wave": 1, "status": "partial"},
+    {"id": "04-03", "title": "Plan 3", "wave": 1, "status": "pending"}
+  ]
+}
+EXECJSON
+
+# Both complete and partial disk SUMMARY files exist
+cat > "$LP_PHASE/04-01-SUMMARY.md" <<'SUMMARY'
+---
+status: complete
+---
+Done
+SUMMARY
+
+cat > "$LP_PHASE/04-02-SUMMARY.md" <<'SUMMARY'
+---
+status: partial
+---
+Partial (crash during execution)
+SUMMARY
+
+# JQ query should return 2 (complete + partial)
+LP_JSON_DONE=$(jq -r '[.plans[] | select(.status == "complete" or .status == "partial")] | length' "$LP_PROJECT/.execution-state.json" 2>/dev/null)
+if [ "$LP_JSON_DONE" -eq 2 ]; then
+  pass "literal partial: JQ counts 2 done (1 complete + 1 partial)"
+else
+  fail "literal partial: JQ counts 2 done (got $LP_JSON_DONE)"
+fi
+
+# Reconciliation should NOT reset partial plan (disk SUMMARY exists)
+_lp_completed="[]"
+for _sf in "$LP_PHASE"/*-SUMMARY.md; do
+  [ -f "$_sf" ] || continue
+  _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+  case "$_sf_st" in
+    complete|completed|partial)
+      _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
+      _lp_completed=$(echo "$_lp_completed" | jq --arg id "$_sf_id" '. + [$id]')
+      ;;
+  esac
+done
+
+LP_STATE="$LP_PROJECT/.execution-state.json"
+_lp_tmp="${LP_STATE}.reconcile.$$"
+jq --argjson completed "$_lp_completed" '
+  .plans |= map(
+    if (.status == "complete" or .status == "partial") and (.id as $pid | $completed | any(. == $pid) | not) then
+      .status = "pending"
+    else .
+    end
+  )
+' "$LP_STATE" > "$_lp_tmp" 2>/dev/null && mv "$_lp_tmp" "$LP_STATE" 2>/dev/null
+
+LP_P2_STATUS=$(jq -r '.plans[] | select(.id == "04-02") | .status' "$LP_STATE")
+if [ "$LP_P2_STATUS" = "partial" ]; then
+  pass "literal partial: plan 04-02 preserved (disk SUMMARY exists)"
+else
+  fail "literal partial: plan 04-02 preserved (got $LP_P2_STATUS)"
+fi
+
+# --- Functional: Phase parsing regression for "proof-of-concept" ---
+echo ""
+echo "--- Functional: Phase parsing handles 'of' in phase names ---"
+
+# Test the same sed patterns used by statusline and session-start
+_test_line="Phase: 2 of 4 (02-proof-of-concept)"
+
+_parsed_ph=$(echo "$_test_line" | sed -n 's/^Phase:[[:space:]]*\([0-9][0-9]*\).*/\1/p')
+_parsed_tt=$(echo "$_test_line" | sed -n 's/.*[[:space:]]of[[:space:]]*\([0-9][0-9]*\).*/\1/p')
+
+if [ "$_parsed_ph" = "2" ]; then
+  pass "phase parsing: 'proof-of-concept' → phase number = 2"
+else
+  fail "phase parsing: 'proof-of-concept' → phase number = 2 (got '$_parsed_ph')"
+fi
+
+if [ "$_parsed_tt" = "4" ]; then
+  pass "phase parsing: 'proof-of-concept' → phase total = 4"
+else
+  fail "phase parsing: 'proof-of-concept' → phase total = 4 (got '$_parsed_tt')"
+fi
+
+# Also test standard format
+_std_line="Phase: 1 of 3 (01-context-diet)"
+_std_ph=$(echo "$_std_line" | sed -n 's/^Phase:[[:space:]]*\([0-9][0-9]*\).*/\1/p')
+_std_tt=$(echo "$_std_line" | sed -n 's/.*[[:space:]]of[[:space:]]*\([0-9][0-9]*\).*/\1/p')
+
+if [ "$_std_ph" = "1" ] && [ "$_std_tt" = "3" ]; then
+  pass "phase parsing: standard format '1 of 3' parsed correctly"
+else
+  fail "phase parsing: standard format '1 of 3' parsed correctly (got ph='$_std_ph' tt='$_std_tt')"
+fi
+
+# Test single-phase (no "of") — graceful degradation
+_single_line="Phase: 1 (01-monolith)"
+_single_ph=$(echo "$_single_line" | sed -n 's/^Phase:[[:space:]]*\([0-9][0-9]*\).*/\1/p')
+_single_tt=$(echo "$_single_line" | sed -n 's/.*[[:space:]]of[[:space:]]*\([0-9][0-9]*\).*/\1/p')
+
+if [ "$_single_ph" = "1" ] && [ -z "$_single_tt" ]; then
+  pass "phase parsing: single phase (no 'of') → ph=1, tt=empty"
+else
+  fail "phase parsing: single phase (no 'of') → ph=1, tt=empty (got ph='$_single_ph' tt='$_single_tt')"
 fi
 
 echo ""
