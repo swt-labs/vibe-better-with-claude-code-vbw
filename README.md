@@ -43,7 +43,7 @@ Every new capability is shell-only — 85 scripts run as bash subprocesses at ze
 | API: team (100 phases/mo) | ~$278/mo | ~$139/mo | **~$139/mo saved (~$1,668/yr)** |
 | Pro / Max subscription | baseline capacity | ~3x phases per cycle | **200% more work done** |
 
-*Budget profile ($0.70/phase) doubles API savings. Quality profile ($2.80/phase) matches stock cost but adds V2/V3 enforcement at zero premium. Based on [current API pricing](https://claude.com/pricing).*
+*Budget profile ($0.70/phase) doubles API savings. Quality profile ($2.80/phase) matches stock cost but adds enforcement at zero premium. Based on [current API pricing](https://claude.com/pricing).*
 
 ## Manifesto
 
@@ -564,9 +564,9 @@ Quick reference for every key in `config/defaults.json`, in order. Click the sec
 | `lease_locks` | `true` | [Concurrency controls](#concurrency-controls) |
 | `event_recovery` | `true` | [Cross-phase context](#cross-phase-context) |
 | `monorepo_routing` | `true` | [Runtime features](#runtime-features) |
-| `rolling_summary` | `false` | [Cross-phase context](#cross-phase-context) |
 | `require_phase_discussion` | `false` | [Agent behavior](#agent-behavior) |
 | `auto_uat` | `false` | [Autonomy levels](#autonomy-levels) |
+| `muninndb_vault` | `""` | [MuninnDB](#muninndb) |
 | `bash_guard` | `true`* | [Safety](#safety) |
 
 *`bash_guard` is not in `defaults.json` — it's read directly from project config with a default of `true` when absent.
@@ -816,10 +816,8 @@ VBW spawns specialized agents for planning, development, and verification. Model
 
 | Setting | Type | Default | Values |
 | :--- | :--- | :--- | :--- |
-| `rolling_summary` | boolean | `false` | `true` / `false` |
 | `event_recovery` | boolean | `true` | `true` / `false` |
 
-- **`rolling_summary`** — When `true` and the project is past Phase 1, VBW compiles a condensed digest of all completed prior phases (what was built, files modified, deviations, commit hashes) into `ROLLING-CONTEXT.md`. This digest is injected into agent context via the context compiler, so Phase 3's Dev and Lead agents have awareness of what Phases 1–2 decided, built, and deviated from — without re-reading every prior SUMMARY.md. Adds ~50KB to agent context per phase. Useful for multi-phase projects where cross-phase continuity matters; unnecessary for single-phase work.
 - **`event_recovery`** — When `true`, enables automatic event-sourced state recovery on session start. If `.execution-state.json` is stale (older than `event-log.jsonl`) or missing after a crash, VBW automatically calls `recover-state.sh` to reconstruct phase/plan status from the event log and SUMMARY.md files.
 
 ### Runtime features
@@ -860,7 +858,7 @@ Runtime feature flags are organized into 3 rollout stages based on project matur
 
 | Stage | Label | Threshold | Flags |
 | :--- | :--- | :--- | :--- |
-| 1 | Observability | 0 phases | `metrics`, `token_budgets`, `two_phase_completion`, `rolling_summary` |
+| 1 | Observability | 0 phases | `metrics`, `token_budgets`, `two_phase_completion` |
 | 2 | Optimization | 2 phases | *(no rollout-managed flags — graduated)* |
 | 3 | Full | 5 phases | `validation_gates`, `smart_routing`, `snapshot_resume`, `event_recovery`, `monorepo_routing`, `lease_locks` |
 

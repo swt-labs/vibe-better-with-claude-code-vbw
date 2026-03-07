@@ -127,6 +127,84 @@ See `docs/migration-gsd-to-vbw.md` for full field descriptions and usage example
      - Set GSD_IMPORTED=true flag for later steps
      - Proceed to Step 1
 
+### Step 0.6: MuninnDB cognitive memory
+
+**Timing rationale:** MuninnDB setup happens after GSD import (Step 0.5) but before scaffold (Step 1) so that config.json can be seeded with vault state during scaffolding. MuninnDB is a core VBW dependency — it provides persistent cognitive memory for all agents.
+
+**Prerequisites check:** Verify `curl` and `jq` are available (jq already checked in Guard step 2):
+- `command -v curl` — if missing: STOP "VBW requires curl. Install: brew install curl (macOS) or apt install curl (Linux)"
+
+**Check:** Verify MuninnDB is installed and running via Bash:
+1. `command -v muninn` — binary installed?
+2. If binary found: `curl -sf --max-time 3 http://localhost:8750/health` — MCP server responding?
+
+- **Binary not found:** STOP. Display:
+  ```
+  ✗ MuninnDB is required for VBW.
+
+  MuninnDB is the cognitive memory engine that gives VBW agents persistent,
+  cross-session learning. Install it with:
+
+    bash scripts/muninn-setup.sh
+
+  Or manually:
+    curl -fsSL https://muninndb.com/install.sh | sh
+    muninn init
+    muninn start
+
+  Then re-run /vbw:init.
+  ```
+  Do NOT proceed. Init cannot continue without MuninnDB.
+
+- **Binary found, server not running:**
+  Display: "◆ MuninnDB installed but not running — starting..."
+  Run `muninn start` via Bash. Check exit code.
+  - If exit code != 0: STOP with error: "✗ MuninnDB failed to start (exit code {N}). Run `muninn status` for details, then re-run /vbw:init."
+  - If exit code == 0: verify with `curl -sf --max-time 5 http://localhost:8750/health`.
+    - If health check passes: display "✓ MuninnDB started"
+    - If health check fails: STOP with error: "✗ MuninnDB started but MCP server not responding on port 8750. Check `muninn status` and re-run /vbw:init."
+
+- **Binary found, server running:**
+  Display: "✓ MuninnDB — running"
+
+**Read API token** (needed for REST API calls):
+```bash
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+[ ! -d "$CLAUDE_DIR" ] && [ -d "$HOME/.config/claude-code" ] && CLAUDE_DIR="$HOME/.config/claude-code"
+MUNINN_TOKEN=$(jq -r '.mcpServers.muninn.env.MUNINN_API_TOKEN // empty' "$CLAUDE_DIR/mcp.json" 2>/dev/null)
+[ -z "$MUNINN_TOKEN" ] && MUNINN_TOKEN=$(jq -r '.mcpServers.muninn.env.MUNINN_API_TOKEN // empty' "$CLAUDE_DIR/mcp_servers.json" 2>/dev/null)
+```
+If MUNINN_TOKEN is empty, display "○ MuninnDB API token not found in mcp.json — run `muninn init` to configure MCP" and continue without auth headers (some MuninnDB installs don't require auth).
+
+**Vault setup:**
+1. Derive vault name from git remote or directory name via Bash:
+   ```bash
+   MUNINNDB_VAULT=$(basename "$(git remote get-url origin 2>/dev/null || pwd)" | sed 's/\.git$//' | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9_-')
+   ```
+   Validate: if MUNINNDB_VAULT is empty after sanitization, fallback to `MUNINNDB_VAULT="vbw-$(date +%s)"` and display "○ Could not derive vault name, using generated name".
+
+2. Build auth header for REST calls:
+   ```bash
+   AUTH_HEADER=""
+   [ -n "$MUNINN_TOKEN" ] && AUTH_HEADER="-H 'Authorization: Bearer $MUNINN_TOKEN'"
+   ```
+
+3. Check if vault exists: `curl -sf --max-time 3 http://localhost:8475/api/vaults $AUTH_HEADER | jq -r '.[].name'`
+   - If curl fails (REST API not responding on 8475): retry up to 3 times with 2s backoff.
+   - If all retries fail: STOP with error: "✗ MuninnDB REST API not responding on port 8475. MCP server is healthy but REST API is required for vault setup. Check `muninn status` and re-run /vbw:init."
+
+4. If vault name is not in the list, create it:
+   ```bash
+   curl -sf --max-time 5 -X POST http://localhost:8475/api/vaults $AUTH_HEADER -H 'Content-Type: application/json' -d "{\"name\": \"$MUNINNDB_VAULT\"}"
+   ```
+   - If creation fails: retry once after 2s. If second attempt fails: STOP with error: "✗ Vault creation failed after 2 attempts. Check MuninnDB logs with `muninn logs` and re-run /vbw:init."
+
+5. Display: "✓ Vault: {vault-name}"
+
+6. **Load vault guide:** Call `muninn_guide(vault: MUNINNDB_VAULT)` to retrieve vault-aware usage instructions. This tells agents how the vault is configured (memory types, decay settings, association rules). Display the guide summary if returned, otherwise continue silently.
+
+Store MUNINNDB_VAULT for later steps (used in Step 1 config persistence, Step 7e bootstrap-state.sh, Step 7f2 engram bootstrap).
+
 ### Step 1: Scaffold directory
 
 Read each template from ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/templates/` and write to .vbw-planning/:
@@ -157,6 +235,12 @@ Write selected values to `.vbw-planning/config.json`:
 
 ```bash
 jq '.planning_tracking = "'"$PLANNING_TRACKING"'" | .auto_push = "'"$AUTO_PUSH"'"' .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+```
+
+Persist MuninnDB vault:
+
+```bash
+jq '.muninndb_vault = "'"$MUNINNDB_VAULT"'"' .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
 ```
 
 Then align git ignore behavior with config:
@@ -457,7 +541,7 @@ If SKIP_INFERENCE=false (confirmed/corrected inference data):
 **7e. Generate STATE.md:**
 - Determine MILESTONE_NAME: use NAME or first milestone from GSD inference
 - Determine PHASE_COUNT from phases.json length
-- Run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/bootstrap/bootstrap-state.sh .vbw-planning/STATE.md "$NAME" "$MILESTONE_NAME" "$PHASE_COUNT"`
+- Run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/bootstrap/bootstrap-state.sh .vbw-planning/STATE.md "$NAME" "$MILESTONE_NAME" "$PHASE_COUNT" "$MUNINNDB_VAULT"`
 - Display: `✓ STATE.md`
 
 **7f. Generate/update CLAUDE.md:**
@@ -465,6 +549,32 @@ If SKIP_INFERENCE=false (confirmed/corrected inference data):
 - Run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/bootstrap/bootstrap-claude.sh CLAUDE.md "$NAME" "$DESCRIPTION" "CLAUDE.md"`
   - If CLAUDE.md does not exist yet, omit the last argument
 - Display: `✓ CLAUDE.md`
+
+**7f2. Bootstrap MuninnDB engrams:**
+
+Reuse MUNINN_TOKEN and AUTH_HEADER from Step 0.6 (already resolved). If MUNINN_TOKEN is empty:
+- Display: `○ MuninnDB: engram bootstrap skipped (no API token — run muninn init)`
+- Skip to Step 7g.
+
+Use REST API (port 8475) to store initial project context as engrams via Bash. For each engram, POST to `/api/engrams` with auth header. Count successes.
+
+```bash
+ENGRAM_COUNT=0
+# Project identity
+if curl -sf --max-time 5 -X POST http://localhost:8475/api/engrams $AUTH_HEADER \
+  -H 'Content-Type: application/json' \
+  -d "{\"vault\": \"$MUNINNDB_VAULT\", \"concept\": \"Project: $NAME\", \"content\": \"$DESCRIPTION\", \"tags\": [\"project\", \"identity\"], \"confidence\": 0.95}" >/dev/null 2>&1; then
+  ENGRAM_COUNT=$((ENGRAM_COUNT + 1))
+fi
+```
+
+- Project identity: `{"vault": "$MUNINNDB_VAULT", "concept": "Project: $NAME", "content": "$DESCRIPTION", "tags": ["project", "identity"], "confidence": 0.95}`
+- Stack info (if detected): `{"vault": "$MUNINNDB_VAULT", "concept": "Stack: $DETECTED_STACK", "content": "Detected technology stack for this project", "tags": ["stack"], "confidence": 0.9}`
+- Each convention from `.vbw-planning/conventions.json` (if exists and `jq '.conventions | length' > 0`): `{"vault": "$MUNINNDB_VAULT", "concept": "Convention: $RULE", "content": "$RULE_DETAIL", "tags": ["convention"], "confidence": 0.9}`
+
+Display: `✓ MuninnDB: {ENGRAM_COUNT} engrams bootstrapped`
+
+If ENGRAM_COUNT == 0, display `○ MuninnDB: engram bootstrap failed (REST API error at 8475)` and continue — do not block init.
 
 **7g. Cleanup temporary files:**
 - Remove `.vbw-planning/discovery.json`, `.vbw-planning/phases.json`, `.vbw-planning/inference.json`, `.vbw-planning/gsd-inference.json` (if they exist)
@@ -508,6 +618,7 @@ VBW Initialization Complete
 - If planning_tracking=commit and changes existed: `✓ Bootstrap planning artifacts committed`
 - If GSD_IMPORTED=true: `✓ GSD project archived`
 - If BROWNFIELD=true: `✓ Codebase mapped`
+- `✓ MuninnDB cognitive memory (vault: {vault-name})`
 
 **Next steps:**
 ```

@@ -76,6 +76,18 @@ PASS if 0. WARN if any, list which markers.
 If $TMUX is set, check if .vbw-planning/.watchdog-pid exists and process is alive via kill -0.
 PASS if alive or not in tmux. WARN if dead watchdog in tmux.
 
+### 16. MuninnDB health
+`command -v muninn 2>/dev/null && echo "FOUND" || echo "MISSING"`
+- FAIL if binary missing: "MuninnDB is required for VBW. Install: curl -fsSL https://muninndb.com/install.sh | sh"
+- If binary found: `curl -sf --max-time 3 http://localhost:8750/health && echo "HEALTHY" || echo "UNREACHABLE"`
+  - FAIL if unhealthy: "MuninnDB not running. Start with: muninn start"
+  - PASS if healthy: Show version from `muninn --version 2>/dev/null`
+- If project initialized and config has `muninndb_vault`:
+  Read API token from mcp.json (same resolution as init Step 0.6). Build auth header if token found.
+  Verify vault exists via `curl -sf --max-time 3 http://localhost:8475/api/vaults $AUTH_HEADER | jq -r '.[].name'` and check vault name is in list.
+  - WARN if vault missing: "Vault '{name}' not found. Re-run /vbw:init."
+  - WARN if REST API unreachable: "REST API not responding on port 8475"
+  - PASS if vault exists.
 ## Output Format
 
 ```
@@ -96,8 +108,9 @@ VBW Doctor v{version}
  13. Dangling PIDs        {PASS|WARN} {count}
  14. Stale markers        {PASS|WARN} {markers}
  15. Watchdog status      {PASS|WARN}
+ 16. MuninnDB health      {PASS|FAIL|WARN} {detail}
 
-Result: {N}/15 passed, {W} warnings, {F} failures
+Result: {N}/16 passed, {W} warnings, {F} failures
 ```
 
 Use checkmark for PASS, warning triangle for WARN, X for FAIL.

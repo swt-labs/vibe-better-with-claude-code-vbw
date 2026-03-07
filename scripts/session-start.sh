@@ -872,6 +872,21 @@ else
   fi
 fi
 
+# --- MuninnDB health check ---
+MUNINN_STATUS=""
+if [ -f "$PLANNING_DIR/config.json" ]; then
+  _muninn_vault=$(jq -r '.muninndb_vault // ""' "$PLANNING_DIR/config.json" 2>/dev/null)
+  if curl -sf --max-time 2 http://localhost:8750/health >/dev/null 2>&1; then
+    if [ -n "$_muninn_vault" ]; then
+      MUNINN_STATUS=" MuninnDB: active (vault: ${_muninn_vault})."
+    else
+      MUNINN_STATUS=" MuninnDB: active (vault not configured)."
+    fi
+  else
+    MUNINN_STATUS=" ⚠ MuninnDB: NOT RUNNING — agents will fail on memory calls. Start with: muninn start"
+  fi
+fi
+
 # --- Build additionalContext ---
 CTX="VBW project detected."
 CTX="$CTX Shipped milestones: ${has_shipped}."
@@ -879,6 +894,9 @@ CTX="$CTX Phase: ${phase_pos}/${phase_total} (${phase_name}) -- ${phase_status}.
 CTX="$CTX Progress: ${progress_pct}%."
 CTX="$CTX Config: effort=${config_effort}, autonomy=${config_autonomy}, auto_commit=${config_auto_commit}, planning_tracking=${config_planning_tracking}, auto_push=${config_auto_push}, verification=${config_verification}, prefer_teams=${config_prefer_teams}, max_tasks=${config_max_tasks}."
 CTX="$CTX Next: ${NEXT_ACTION}."
+if [ -n "$MUNINN_STATUS" ]; then
+  CTX="$CTX$MUNINN_STATUS"
+fi
 
 jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" '{
   "hookSpecificOutput": {
