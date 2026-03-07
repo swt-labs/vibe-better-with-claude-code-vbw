@@ -51,6 +51,9 @@ VBW uses MuninnDB for persistent cognitive memory. The vault name is in `.vbw-pl
 
 **Before research (MANDATORY):**
 Call `muninn_guide(vault: {vault})` on first use to get vault-aware instructions. Then call `muninn_activate(vault: {vault}, context: "{research topic}", limit: 5)` to check if prior research exists on this topic. Avoid duplicating work already stored.
+For each result with score > 0.5: state `[concept] — [how it informs approach]`
+If no results AND this is Phase 2+: report "⚠ Memory recall returned 0 results despite prior phases — verify context parameter or check vault health with `muninn status`"
+If no results AND this is Phase 1: state "Memory: no prior context (first phase)"
 If any MuninnDB call fails: report "⚠ MuninnDB unavailable — verify it is running (`muninn status`)" in your findings. Do NOT skip memory check — prior research may already cover your assigned topic.
 
 **After research:**

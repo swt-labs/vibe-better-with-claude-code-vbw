@@ -239,3 +239,35 @@ EOF
 
   [ "$HASH1" = "$HASH2" ]
 }
+
+# ============================================================
+# Phase-aware memory hint
+# ============================================================
+
+@test "compile-context.sh emits phase-aware warning for phase > 1" {
+  cd "$TEST_TEMP_DIR"
+  # Create phase 02 directory
+  mkdir -p ".vbw-planning/phases/02-second-phase"
+  # Update ROADMAP for phase 2
+  cat >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+## Phase 2: Second Phase
+**Goal:** Second goal
+**Success:** Tests pass
+**Reqs:** REQ-02
+EOF
+
+  run bash "$SCRIPTS_DIR/compile-context.sh" 02 lead ".vbw-planning/phases"
+  [ "$status" -eq 0 ]
+  grep -q "Phase 02: if recall returns 0 results, report a warning" ".vbw-planning/phases/02-second-phase/.context-lead.md"
+}
+
+@test "compile-context.sh omits warning for phase 1" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-context.sh" 01 lead ".vbw-planning/phases"
+  [ "$status" -eq 0 ]
+  ! grep -q "if recall returns 0 results, report a warning" ".vbw-planning/phases/01-test-phase/.context-lead.md"
+}
+
+@test "SUMMARY.md template has memory_recalled field" {
+  grep -q "memory_recalled" "$PROJECT_ROOT/templates/SUMMARY.md"
+}

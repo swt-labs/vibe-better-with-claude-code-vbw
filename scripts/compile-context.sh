@@ -145,9 +145,13 @@ fi
 # --- MuninnDB cross-phase memory hint ---
 # Emits a hint for agents to use muninn_activate for cross-phase memory.
 emit_muninn_memory_hint() {
+  local phase="${1:-1}"
   echo ""
   echo "### Cross-Phase Memory"
   echo "Call \`muninn_guide(vault from .vbw-planning/config.json muninndb_vault)\` on first use to get vault-aware instructions, then \`muninn_activate(vault, context: \"{phase goal}\")\` to recall prior decisions, patterns, and conventions."
+  if [ "${phase}" -gt 1 ] 2>/dev/null; then
+    echo "⚠ Phase ${phase}: if recall returns 0 results, report a warning — prior phase decisions should exist."
+  fi
 }
 
 # --- Codebase mapping hint helper ---
@@ -210,7 +214,7 @@ case "$ROLE" in
   lead)
     {
       echo "## Phase ${PHASE} Context (Compiled)"
-      emit_muninn_memory_hint
+      emit_muninn_memory_hint "$PHASE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -262,7 +266,7 @@ case "$ROLE" in
   dev)
     {
       echo "## Phase ${PHASE} Context"
-      emit_muninn_memory_hint
+      emit_muninn_memory_hint "$PHASE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -345,7 +349,7 @@ case "$ROLE" in
   qa)
     {
       echo "## Phase ${PHASE} Verification Context"
-      emit_muninn_memory_hint
+      emit_muninn_memory_hint "$PHASE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -375,7 +379,7 @@ case "$ROLE" in
   scout)
     {
       echo "## Phase ${PHASE} Research Context"
-      emit_muninn_memory_hint
+      emit_muninn_memory_hint "$PHASE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -421,7 +425,7 @@ case "$ROLE" in
   debugger)
     {
       echo "## Phase ${PHASE} Debug Context"
-      emit_muninn_memory_hint
+      emit_muninn_memory_hint "$PHASE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -483,7 +487,7 @@ case "$ROLE" in
   architect)
     {
       echo "## Phase ${PHASE} Architecture Context"
-      emit_muninn_memory_hint
+      emit_muninn_memory_hint "$PHASE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"

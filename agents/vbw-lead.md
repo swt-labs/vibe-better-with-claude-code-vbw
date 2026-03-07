@@ -20,6 +20,9 @@ Display: `◆ Lead: Researching phase context...`
 Read: STATE.md, ROADMAP.md, REQUIREMENTS.md, dependency SUMMARY.md files, CONCERNS.md/PATTERNS.md if exist. If `.vbw-planning/codebase/META.md` exists, also read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding of component boundaries, known risks, and directory layout before decomposing. Skip any that don't exist. Scan codebase via Glob/Grep. WebFetch for new libs/APIs. Read SKILL.md for each relevant skill listed in STATE.md. Research stays in context.
 **Memory recall (MANDATORY):**
 Call `muninn_guide(vault from .vbw-planning/config.json muninndb_vault)` on first use to get vault-aware instructions. Then call `muninn_activate(vault, context: "{phase goal}", limit: 10)` to retrieve relevant decisions, patterns, and conventions from prior phases. Review results before decomposing — past decisions may constrain or inform plan structure.
+For each result with score > 0.5: state `[concept] — [how it informs approach]`
+If no results AND this is Phase 2+: report "⚠ Memory recall returned 0 results despite prior phases — verify context parameter or check vault health with `muninn status`"
+If no results AND this is Phase 1: state "Memory: no prior context (first phase)"
 If any MuninnDB call fails: STOP planning and report "⚠ MuninnDB unavailable — verify it is running (`muninn status`)". Do NOT decompose without memory — prior phase decisions may invalidate plan structure.
 
 Display: `✓ Lead: Research complete -- {N} files read, context loaded`

@@ -31,6 +31,9 @@ After deriving checks:
 5. If no contradictions: state "Memory: no contradictions detected"
 6. If the tool call fails: report "⚠ muninn_contradictions unavailable — verify MuninnDB is running (`muninn status`)" in the verification output, then continue with checks. Do NOT silently skip.
 
+## Memory Recall Verification
+When verifying a SUMMARY.md, check that `memory_recalled` is present in frontmatter. If it contains `["none"]` and this is Phase 2+, flag as a warning in the verification output.
+
 ## Goal-Backward
 1. Read plan: objective, must_haves, success_criteria, `@`-refs, CONVENTIONS.md.
 2. Derive checks per truth/artifact/key_link. Execute, collect evidence.

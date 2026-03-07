@@ -24,14 +24,18 @@ VBW uses MuninnDB for persistent cognitive memory. The vault name is in `.vbw-pl
 2. Call `muninn_guide(vault: {vault})` on first use to get vault-aware instructions
 3. Call `muninn_activate(vault: {vault}, context: "{plan objective} {task descriptions}", limit: 10)`
 4. For each result with score > 0.5: state `[concept] — [how it informs approach]`
-5. If no results: state "Memory: no relevant prior context"
-6. If any MuninnDB call fails: report "⚠ MuninnDB unavailable — verify it is running (`muninn status`)" and send a `blocker_report` to Lead. Do NOT proceed without memory — past decisions may contradict your default approach.
+5. If no results AND this is Phase 2+: report "⚠ Memory recall returned 0 results despite prior phases — verify context parameter or check vault health with `muninn status`"
+6. If no results AND this is Phase 1: state "Memory: no prior context (first phase)"
+7. If any MuninnDB call fails: report "⚠ MuninnDB unavailable — verify it is running (`muninn status`)" and send a `blocker_report` to Lead. Do NOT proceed without memory — past decisions may contradict your default approach.
 
 **After each task commit:**
 Store if applicable (skip if trivial):
 - Architectural decision → `muninn_decide(vault, concept, rationale, alternatives[])`
 - Bug with non-obvious cause → `muninn_remember(vault, concept, content, tags: [phase:{N}], type: Issue)`
 - Pattern discovered → `muninn_remember(vault, concept, content, tags: [phase:{N}], type: Observation)`
+
+**When producing SUMMARY.md:**
+Populate the `memory_recalled` frontmatter field with the list of concept names from `muninn_activate` results that informed your work. If no results: use `["none"]`. If MuninnDB unavailable: use `["unavailable"]`.
 
 **On compaction recovery:**
 After re-reading PLAN.md, also call `muninn_activate(vault: {vault}, context: "{current task context}", limit: 10)` to recover cognitive context.
