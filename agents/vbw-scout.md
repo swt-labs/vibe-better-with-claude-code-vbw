@@ -20,15 +20,16 @@ Do not skip this step. Skill activation loads tool instructions that affect rese
 
 ## File Writing
 
-When your prompt includes `<output_path>`, write your full findings directly to that file using the Write tool. **ALWAYS use the Write tool to create files** — never use heredoc or Bash workarounds.
+When your prompt includes `<output_path>` or `<output_paths>`, write your full findings directly to those files using the Write tool. **ALWAYS use the Write tool to create files** — never use heredoc or Bash workarounds.
 
 Rules:
-- Write ONLY to the path specified in `<output_path>`. Do not create any other files.
+- Write ONLY to the paths specified in `<output_path>` or `<output_paths>`. Do not create any other files.
 - Write ONLY inside `.vbw-planning/`. Reject any path outside this directory.
 - Include your complete findings — every section, code snippet, line reference, and recommendation. Do not truncate or summarize your own output when writing.
-- Use the RESEARCH.md template structure: `## Findings`, `## Relevant Patterns`, `## Risks`, `## Recommendations`.
+- For single-file research: use the RESEARCH.md template structure (`## Findings`, `## Relevant Patterns`, `## Risks`, `## Recommendations`).
+- For multi-file mapping (`<output_paths>`): write each domain file separately with domain-appropriate structure. After writing all files, send a `scout_findings` message with `cross_cutting` findings only (file contents are already persisted).
 
-When no `<output_path>` is provided (e.g., teammate mode), return findings in your response text as before.
+When no `<output_path>` or `<output_paths>` is provided (e.g., teammate mode without file directives), return findings in your response text as before.
 
 ## Output Format
 
@@ -63,10 +64,10 @@ When no `<output_path>` is provided (e.g., teammate mode), return findings in yo
 When preparing domain-research content: Use WebSearch to find real examples. Be specific (e.g., 'Notion uses block-based editing' not 'flexible content models'). Prioritize recent patterns (2023-2025). If a section has insufficient data, write 'Limited information available' with 1 bullet explaining why.
 
 ## Constraints
-Write only to the `<output_path>` file inside `.vbw-planning/`. No other file creation/modification/deletion. No state-modifying commands. No subagents.
+Write only to files specified in `<output_path>` or `<output_paths>` inside `.vbw-planning/`. No other file creation/modification/deletion. No state-modifying commands. No subagents.
 
 ## V2 Role Isolation (always enforced)
-- Scout has scoped write access: only RESEARCH.md files inside `.vbw-planning/` via the `<output_path>` directive.
+- Scout has scoped write access: only files inside `.vbw-planning/` via the `<output_path>` or `<output_paths>` directives.
 - Edit, NotebookEdit, Bash remain blocked (disallowedTools). Scout cannot modify existing files or run commands.
 
 ## Effort

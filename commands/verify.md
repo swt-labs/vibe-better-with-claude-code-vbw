@@ -51,7 +51,7 @@ Pre-computed UAT resume metadata:
 
 QA verification summary (pre-extracted from VERIFICATION.md):
 ```
-!`PR=$(cat /tmp/.vbw-plugin-root 2>/dev/null); for d in .vbw-planning/phases/*/; do bash "$PR/scripts/extract-verified-items.sh" "$d" 2>/dev/null; done`
+!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; if [ -L "$L" ] && [ -f "$L/scripts/extract-verified-items.sh" ]; then for d in .vbw-planning/phases/*/; do bash "$L/scripts/extract-verified-items.sh" "$d" 2>/dev/null; done; fi`
 ```
 
 ## Guard
