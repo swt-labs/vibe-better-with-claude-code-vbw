@@ -75,6 +75,11 @@ if ! grep -q "## Files Modified" "$FILE_PATH"; then
   MISSING="${MISSING}Missing '## Files Modified'. "
 fi
 
+# memory_recalled field required in frontmatter (MuninnDB audit trail)
+if ! grep -q "memory_recalled" "$FILE_PATH"; then
+  MISSING="${MISSING}Missing 'memory_recalled' in frontmatter (required for MuninnDB audit). "
+fi
+
 if [ -n "$MISSING" ]; then
   jq -n --arg msg "$MISSING" '{
     "hookSpecificOutput": {

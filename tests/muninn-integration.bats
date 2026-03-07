@@ -310,3 +310,93 @@ EOF
   [ "$status" -eq 0 ]
   grep -q "vault not configured" ".vbw-planning/phases/01-test-phase/.context-lead.md"
 }
+
+# ============================================================
+# Hook: muninn-vault-gate.sh (SubagentStart)
+# ============================================================
+
+@test "muninn-vault-gate.sh passes when vault is configured" {
+  cd "$TEST_TEMP_DIR"
+  run bash -c 'echo "{\"agent_type\":\"vbw-lead\"}" | bash "'"$SCRIPTS_DIR"'/muninn-vault-gate.sh"'
+  [ "$status" -eq 0 ]
+}
+
+@test "muninn-vault-gate.sh blocks lead when vault is empty" {
+  cd "$TEST_TEMP_DIR"
+  jq '.muninndb_vault = ""' .vbw-planning/config.json > .vbw-planning/config.tmp \
+    && mv .vbw-planning/config.tmp .vbw-planning/config.json
+  run bash -c 'echo "{\"agent_type\":\"vbw-lead\"}" | bash "'"$SCRIPTS_DIR"'/muninn-vault-gate.sh"'
+  [ "$status" -eq 2 ]
+  echo "$output" | grep -q "vault not configured"
+}
+
+@test "muninn-vault-gate.sh blocks architect when vault is empty" {
+  cd "$TEST_TEMP_DIR"
+  jq '.muninndb_vault = ""' .vbw-planning/config.json > .vbw-planning/config.tmp \
+    && mv .vbw-planning/config.tmp .vbw-planning/config.json
+  run bash -c 'echo "{\"agent_type\":\"vbw-architect\"}" | bash "'"$SCRIPTS_DIR"'/muninn-vault-gate.sh"'
+  [ "$status" -eq 2 ]
+  echo "$output" | grep -q "vault not configured"
+}
+
+@test "muninn-vault-gate.sh advisory for dev when vault is empty" {
+  cd "$TEST_TEMP_DIR"
+  jq '.muninndb_vault = ""' .vbw-planning/config.json > .vbw-planning/config.tmp \
+    && mv .vbw-planning/config.tmp .vbw-planning/config.json
+  run bash -c 'echo "{\"agent_type\":\"vbw-dev\"}" | bash "'"$SCRIPTS_DIR"'/muninn-vault-gate.sh"'
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "vault not configured"
+}
+
+@test "muninn-vault-gate.sh registered in hooks.json" {
+  grep -q "muninn-vault-gate.sh" "$PROJECT_ROOT/hooks/hooks.json"
+}
+
+# ============================================================
+# Hook: validate-summary.sh — memory_recalled check
+# ============================================================
+
+@test "validate-summary.sh warns when memory_recalled is missing" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/phases/01-test-phase
+  cat > .vbw-planning/phases/01-test-phase/SUMMARY.md <<'EOF'
+---
+phase: 1
+plan: 1
+title: "Test Plan"
+status: complete
+---
+## What Was Built
+Test
+
+## Files Modified
+- test.sh
+EOF
+  run bash -c 'echo "{\"tool_input\":{\"file_path\":\"'"$TEST_TEMP_DIR"'/.vbw-planning/phases/01-test-phase/SUMMARY.md\"}}" | bash "'"$SCRIPTS_DIR"'/validate-summary.sh"'
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "memory_recalled"
+}
+
+@test "validate-summary.sh passes when memory_recalled is present" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/phases/01-test-phase
+  cat > .vbw-planning/phases/01-test-phase/SUMMARY.md <<'EOF'
+---
+phase: 1
+plan: 1
+title: "Test Plan"
+status: complete
+memory_recalled:
+  - "none"
+---
+## What Was Built
+Test
+
+## Files Modified
+- test.sh
+EOF
+  run bash -c 'echo "{\"tool_input\":{\"file_path\":\"'"$TEST_TEMP_DIR"'/.vbw-planning/phases/01-test-phase/SUMMARY.md\"}}" | bash "'"$SCRIPTS_DIR"'/validate-summary.sh"'
+  [ "$status" -eq 0 ]
+  # Should not contain memory_recalled warning
+  ! echo "$output" | grep -q "memory_recalled"
+}
