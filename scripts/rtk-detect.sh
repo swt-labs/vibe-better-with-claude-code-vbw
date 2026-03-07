@@ -7,13 +7,13 @@
 # Optional: set RTK_SKIP_GAINS=true before sourcing to skip the
 # rtk gain call (useful when only checking presence, not analytics).
 
-RTK_BINARY=false
-RTK_VERSION=""
-RTK_HOOK=false
-RTK_FULLY_ACTIVE=false
-RTK_GAIN_SAVED=0
-RTK_GAIN_PCT=0
-RTK_GAIN_HAS_DATA=false
+export RTK_BINARY=false
+export RTK_VERSION=""
+export RTK_HOOK=false
+export RTK_FULLY_ACTIVE=false
+export RTK_GAIN_SAVED=0
+export RTK_GAIN_PCT=0
+export RTK_GAIN_HAS_DATA=false
 
 # --- Binary check (~1ms) ---
 if command -v rtk &>/dev/null; then
@@ -26,6 +26,7 @@ fi
 if [ -z "${CLAUDE_DIR:-}" ]; then
   _rtk_detect_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   if [ -f "$_rtk_detect_dir/resolve-claude-dir.sh" ]; then
+    # shellcheck source=resolve-claude-dir.sh
     . "$_rtk_detect_dir/resolve-claude-dir.sh" 2>/dev/null || true
   fi
 fi

@@ -900,6 +900,7 @@ if [ -f "$_RTK_DETECT" ]; then
     _rtk_cache_age=$(( _rtk_now - _rtk_mt ))
   fi
   if [ "$_rtk_cache_age" -gt 60 ]; then
+    # shellcheck source=rtk-detect.sh
     . "$_RTK_DETECT" 2>/dev/null || true
     # Persist gains to cache via atomic write (tmp+mv)
     _rtk_tmp="${_RTK_CACHE}.$$"
