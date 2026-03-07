@@ -158,9 +158,7 @@ JSON
 @test "muninn-setup: --check exits cleanly when muninn not installed" {
   # Remove muninn from PATH so it's not found
   run env PATH="/usr/bin:/bin" bash "$SCRIPTS_DIR/muninn-setup.sh" --check
-  # Should exit non-zero (not fully operational) but not crash
-  [ "$status" -ne 0 ] || true
-  # Should mention binary not found
+  # Should mention binary not found (exit code may vary by platform)
   echo "$output" | grep -qi "not found\|not installed\|Binary"
 }
 

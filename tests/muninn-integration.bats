@@ -189,25 +189,19 @@ EOF
 # ============================================================
 
 @test "all agents reference MuninnDB tools" {
-  local agents_with_muninn=0
   for agent in vbw-lead vbw-dev vbw-qa vbw-scout vbw-debugger vbw-architect vbw-docs; do
     local agent_file="$PROJECT_ROOT/agents/${agent}.md"
-    if [ -f "$agent_file" ] && grep -q "muninn" "$agent_file"; then
-      agents_with_muninn=$((agents_with_muninn + 1))
-    fi
+    [ -f "$agent_file" ] || { echo "MISSING: $agent_file"; return 1; }
+    grep -q "muninn" "$agent_file" || { echo "NO muninn ref: $agent"; return 1; }
   done
-  [ "$agents_with_muninn" -eq 7 ]
 }
 
 @test "all agents reference muninn_guide" {
-  local agents_with_guide=0
   for agent in vbw-lead vbw-dev vbw-qa vbw-scout vbw-debugger vbw-architect vbw-docs; do
     local agent_file="$PROJECT_ROOT/agents/${agent}.md"
-    if [ -f "$agent_file" ] && grep -q "muninn_guide" "$agent_file"; then
-      agents_with_guide=$((agents_with_guide + 1))
-    fi
+    [ -f "$agent_file" ] || { echo "MISSING: $agent_file"; return 1; }
+    grep -q "muninn_guide" "$agent_file" || { echo "NO muninn_guide: $agent"; return 1; }
   done
-  [ "$agents_with_guide" -eq 7 ]
 }
 
 @test "compile-context.sh hint includes muninn_guide" {
