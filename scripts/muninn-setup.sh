@@ -37,14 +37,22 @@ dim()   { printf "${DIM}  %s${RESET}\n" "$*"; }
 # shellcheck source=resolve-claude-dir.sh
 . "$(dirname "$0")/resolve-claude-dir.sh"
 
+# --- Port defaults (read from config if available) ---
+_MUNINN_MCP_PORT=8750
+_MUNINN_REST_PORT=8475
+if [ -f ".vbw-planning/config.json" ] && command -v jq &>/dev/null; then
+  _MUNINN_MCP_PORT=$(jq -r '.muninndb_port_mcp // 8750' ".vbw-planning/config.json" 2>/dev/null) || _MUNINN_MCP_PORT=8750
+  _MUNINN_REST_PORT=$(jq -r '.muninndb_port_rest // 8475' ".vbw-planning/config.json" 2>/dev/null) || _MUNINN_REST_PORT=8475
+fi
+
 # --- Check if MuninnDB MCP server is healthy ---
 _health_ok() {
-  curl -sf --max-time 3 http://localhost:8750/health >/dev/null 2>&1
+  curl -sf --max-time 3 "http://localhost:${_MUNINN_MCP_PORT}/health" >/dev/null 2>&1
 }
 
 # --- Check if REST API is responding ---
 _rest_ok() {
-  curl -sf --max-time 3 http://localhost:8475/api/vaults >/dev/null 2>&1
+  curl -sf --max-time 3 "http://localhost:${_MUNINN_REST_PORT}/api/vaults" >/dev/null 2>&1
 }
 
 # --- Read API token from Claude Code MCP config ---
@@ -108,12 +116,12 @@ check_status() {
     version=$(muninn --version 2>/dev/null | head -1 || echo "unknown")
   fi
 
-  # MCP server (port 8750)
+  # MCP server (port ${_MUNINN_MCP_PORT})
   if _health_ok; then
     server=true
   fi
 
-  # REST API (port 8475)
+  # REST API (port ${_MUNINN_REST_PORT})
   if _rest_ok; then
     rest=true
   fi
@@ -142,17 +150,17 @@ check_status() {
 
   # MCP server
   if [ "$server" = true ]; then
-    ok "MCP server: running (port 8750)"
+    ok "MCP server: running (port ${_MUNINN_MCP_PORT})"
   else
     fail "MCP server: not running"
   fi
 
   # REST API
   if [ "$rest" = true ]; then
-    ok "REST API: responding (port 8475)"
+    ok "REST API: responding (port ${_MUNINN_REST_PORT})"
   else
     if [ "$server" = true ]; then
-      warn "REST API: not responding (port 8475)"
+      warn "REST API: not responding (port ${_MUNINN_REST_PORT})"
     else
       fail "REST API: not running"
     fi
@@ -171,7 +179,7 @@ check_status() {
     if [ "$rest" = true ]; then
       local -a curl_args=( curl -sf --max-time 3 )
       [ -n "$tok" ] && curl_args+=( -H "Authorization: Bearer $tok" )
-      if "${curl_args[@]}" http://localhost:8475/api/vaults 2>/dev/null | jq -e --arg v "$vault_name" '.[] | select(.name == $v)' >/dev/null 2>&1; then
+      if "${curl_args[@]}" http://localhost:${_MUNINN_REST_PORT}/api/vaults 2>/dev/null | jq -e --arg v "$vault_name" '.[] | select(.name == $v)' >/dev/null 2>&1; then
         ok "Vault: ${vault_name} (exists)"
       else
         warn "Vault: ${vault_name} (not found on server)"
@@ -307,7 +315,7 @@ start_server() {
     local retries=0
     while [ $retries -lt 10 ]; do
       if _health_ok; then
-        ok "MuninnDB server started (MCP on 8750, REST on 8475)"
+        ok "MuninnDB server started (MCP on ${_MUNINN_MCP_PORT}, REST on ${_MUNINN_REST_PORT})"
         return 0
       fi
       sleep 0.5
@@ -340,11 +348,11 @@ setup_vault() {
   [ -n "$tok" ] && curl_auth+=( -H "Authorization: Bearer $tok" )
 
   # Check if vault exists
-  if "${curl_auth[@]}" --max-time 3 http://localhost:8475/api/vaults 2>/dev/null | jq -e --arg v "$vault_name" '.[] | select(.name == $v)' >/dev/null 2>&1; then
+  if "${curl_auth[@]}" --max-time 3 http://localhost:${_MUNINN_REST_PORT}/api/vaults 2>/dev/null | jq -e --arg v "$vault_name" '.[] | select(.name == $v)' >/dev/null 2>&1; then
     ok "Vault '${vault_name}' already exists"
   else
     dim "Creating vault: ${vault_name}"
-    if "${curl_auth[@]}" --max-time 5 -X POST http://localhost:8475/api/vaults \
+    if "${curl_auth[@]}" --max-time 5 -X POST http://localhost:${_MUNINN_REST_PORT}/api/vaults \
       -H "Content-Type: application/json" \
       -d "{\"name\": \"$vault_name\"}" >/dev/null 2>&1; then
       ok "Vault '${vault_name}' created"
@@ -406,8 +414,8 @@ case "$MODE" in
     echo "  --help       Show this help"
     echo ""
     echo "Ports:"
-    echo "  8750   MCP server (Claude Code integration)"
-    echo "  8475   REST API (engram management)"
+    echo "  ${_MUNINN_MCP_PORT}   MCP server (Claude Code integration)"
+    echo "  ${_MUNINN_REST_PORT}   REST API (engram management)"
     echo "  8476   Web UI"
     echo ""
     exit 0

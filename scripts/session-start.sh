@@ -876,7 +876,8 @@ fi
 MUNINN_STATUS=""
 if [ -f "$PLANNING_DIR/config.json" ]; then
   _muninn_vault=$(jq -r '.muninndb_vault // ""' "$PLANNING_DIR/config.json" 2>/dev/null)
-  if curl -sf --max-time 2 http://localhost:8750/health >/dev/null 2>&1; then
+  _muninn_port=$(jq -r '.muninndb_port_mcp // 8750' "$PLANNING_DIR/config.json" 2>/dev/null)
+  if curl -sf --max-time 2 "http://localhost:${_muninn_port}/health" >/dev/null 2>&1; then
     if [ -n "$_muninn_vault" ]; then
       MUNINN_STATUS=" MuninnDB: active (vault: ${_muninn_vault})."
     else

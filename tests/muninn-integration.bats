@@ -525,6 +525,32 @@ EOF
 }
 
 @test "session-start.sh checks MuninnDB health" {
-  grep -q "8750" "$SCRIPTS_DIR/session-start.sh"
+  grep -q "muninn_port" "$SCRIPTS_DIR/session-start.sh"
   grep -q "MuninnDB" "$SCRIPTS_DIR/session-start.sh"
+}
+
+# ============================================================
+# P1-1: Centralised MuninnDB configuration
+# ============================================================
+
+@test "defaults.json has muninndb port config keys" {
+  run jq -e 'has("muninndb_port_mcp") and has("muninndb_port_rest")' "$CONFIG_DIR/defaults.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "muninn-setup.sh reads port from config" {
+  grep -q "_MUNINN_MCP_PORT" "$SCRIPTS_DIR/muninn-setup.sh"
+  grep -q "_MUNINN_REST_PORT" "$SCRIPTS_DIR/muninn-setup.sh"
+}
+
+@test "session-start.sh reads port from config" {
+  grep -q "muninndb_port_mcp" "$SCRIPTS_DIR/session-start.sh"
+}
+
+@test "muninn reference doc lists all config parameters" {
+  grep -q "MCP port" "$PROJECT_ROOT/references/muninn-types.md"
+  grep -q "REST port" "$PROJECT_ROOT/references/muninn-types.md"
+  grep -q "Recall limit" "$PROJECT_ROOT/references/muninn-types.md"
+  grep -q "Score threshold" "$PROJECT_ROOT/references/muninn-types.md"
 }

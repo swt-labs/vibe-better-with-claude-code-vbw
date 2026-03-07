@@ -62,7 +62,9 @@ create_test_config() {
   "monorepo_routing": true,
   "require_phase_discussion": false,
   "auto_uat": false,
-  "muninndb_vault": "test-vault"
+  "muninndb_vault": "test-vault",
+  "muninndb_port_mcp": 8750,
+  "muninndb_port_rest": 8475
 }
 CONF
 }
