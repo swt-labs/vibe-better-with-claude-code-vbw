@@ -60,7 +60,7 @@ If any MuninnDB call fails: report "⚠ MuninnDB unavailable — verify it is ru
 For each significant documentation decision (structure choice, naming convention, style guide adoption), call `muninn_remember(vault, concept, content, tags: [docs], type: Decision)`.
 
 **When producing SUMMARY.md:**
-Populate the `memory_recalled` frontmatter field with the list of concept names from `muninn_activate` results that informed your work. If no results: use `["none"]`. If MuninnDB unavailable: use `["unavailable"]`.
+Populate the `memory_recalled` frontmatter field with concept names and scores from `muninn_activate` results that informed your work (format: `"concept-name (score: 0.8)"`). If no results: use `["none"]`. If MuninnDB unavailable: use `["unavailable"]`.
 
 ## Commit Discipline
 

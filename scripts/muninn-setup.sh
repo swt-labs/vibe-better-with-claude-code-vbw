@@ -71,6 +71,33 @@ _derive_vault_name() {
   if [ -z "$name" ]; then
     name="vbw-$(date +%s)"
   fi
+  # Multi-project isolation: if another project already uses this vault name
+  # on the same MuninnDB instance, append a disambiguator based on the working
+  # directory hash to prevent cross-project memory pollution.
+  if _rest_ok 2>/dev/null; then
+    local tok
+    tok=$(_read_token)
+    local -a curl_auth=( curl -sf )
+    [ -n "$tok" ] && curl_auth+=( -H "Authorization: Bearer $tok" )
+    if "${curl_auth[@]}" --max-time 3 http://localhost:${_MUNINN_REST_PORT}/api/vaults 2>/dev/null | jq -e --arg v "$name" '.[] | select(.name == $v)' >/dev/null 2>&1; then
+      # Vault exists — check if it belongs to this project by comparing cwd
+      local cwd_hash
+      cwd_hash=$(printf '%s' "$(pwd)" | md5sum 2>/dev/null | cut -c1-6 || printf '%s' "$(pwd)" | md5 2>/dev/null | cut -c1-6 || echo "")
+      local config_dir="${PWD}/.vbw-planning/config.json"
+      if [ -f "$config_dir" ]; then
+        local existing_vault
+        existing_vault=$(jq -r '.muninndb_vault // ""' "$config_dir" 2>/dev/null || true)
+        if [ "$existing_vault" = "$name" ]; then
+          echo "$name"  # Same project, same vault
+          return
+        fi
+      fi
+      # Different project, same repo name — disambiguate
+      if [ -n "$cwd_hash" ]; then
+        name="${name}-${cwd_hash}"
+      fi
+    fi
+  fi
   echo "$name"
 }
 

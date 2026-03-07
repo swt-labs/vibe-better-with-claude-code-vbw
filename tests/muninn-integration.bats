@@ -610,3 +610,140 @@ EOF
   grep -q "Phase.*outcome" "$PROJECT_ROOT/references/execute-protocol.md"
   grep -q "muninn_remember.*outcome" "$PROJECT_ROOT/references/execute-protocol.md"
 }
+
+# ============================================================
+# P2-5: Scout post-research consolidation
+# ============================================================
+
+@test "lead agent consolidates scout engrams after research" {
+  grep -q "Scout engram consolidation" "$PROJECT_ROOT/agents/vbw-lead.md"
+  grep -q "muninn_consolidate" "$PROJECT_ROOT/agents/vbw-lead.md"
+}
+
+# ============================================================
+# P2-10: MuninnDB in /vbw:verify
+# ============================================================
+
+@test "verify command includes MuninnDB recall step" {
+  grep -q "muninn_activate" "$PROJECT_ROOT/commands/verify.md"
+  grep -q "muninn_guide" "$PROJECT_ROOT/commands/verify.md"
+}
+
+@test "verify command stores UAT issues in MuninnDB" {
+  grep -q "muninn_remember.*UAT" "$PROJECT_ROOT/commands/verify.md"
+}
+
+# ============================================================
+# P2-4: Engram lifecycle at ship-time
+# ============================================================
+
+@test "vibe archive tags engrams as archived" {
+  grep -q "archived" "$PROJECT_ROOT/commands/vibe.md"
+  grep -q "Engram archival" "$PROJECT_ROOT/commands/vibe.md"
+}
+
+# ============================================================
+# P2-3: memory_recalled enrichment
+# ============================================================
+
+@test "SUMMARY.md template includes score in memory_recalled" {
+  grep -q "score:" "$PROJECT_ROOT/templates/SUMMARY.md"
+}
+
+@test "lead agent includes memory_recalled in PLAN.md" {
+  grep -q "memory_recalled" "$PROJECT_ROOT/agents/vbw-lead.md"
+}
+
+@test "QA agent includes memory_recalled in VERIFICATION.md" {
+  grep -q "memory_recalled" "$PROJECT_ROOT/agents/vbw-qa.md"
+}
+
+# ============================================================
+# P2-11: Consolidation call tests
+# ============================================================
+
+@test "execute-protocol has phase-end consolidation with muninn_consolidate" {
+  grep -q "muninn_consolidate" "$PROJECT_ROOT/references/execute-protocol.md"
+}
+
+@test "vibe archive has milestone consolidation with muninn_consolidate" {
+  grep -q "muninn_consolidate" "$PROJECT_ROOT/commands/vibe.md"
+}
+
+@test "lead agent has scout consolidation with muninn_consolidate" {
+  grep -q "muninn_consolidate" "$PROJECT_ROOT/agents/vbw-lead.md"
+}
+
+# ============================================================
+# P2-12: Session-start health check tests
+# ============================================================
+
+@test "session-start.sh checks both MCP and REST ports" {
+  grep -q "muninndb_port_mcp" "$SCRIPTS_DIR/session-start.sh"
+  grep -q "muninndb_port_rest" "$SCRIPTS_DIR/session-start.sh"
+}
+
+@test "session-start.sh uses max-time 1 for health checks" {
+  grep -q "max-time 1" "$SCRIPTS_DIR/session-start.sh"
+}
+
+@test "session-start.sh verifies vault existence on server" {
+  grep -q "vault.*not found" "$SCRIPTS_DIR/session-start.sh"
+}
+
+# ============================================================
+# P2-13: Doctor check 16 tests
+# ============================================================
+
+@test "doctor.md check 16 reads ports from config" {
+  grep -q "muninndb_port_mcp" "$PROJECT_ROOT/commands/doctor.md"
+  grep -q "muninndb_port_rest" "$PROJECT_ROOT/commands/doctor.md"
+}
+
+@test "doctor.md check 16 checks both MCP and REST" {
+  grep -q "MCP" "$PROJECT_ROOT/commands/doctor.md"
+  grep -q "REST" "$PROJECT_ROOT/commands/doctor.md"
+}
+
+# ============================================================
+# P2-2: Memory observability metrics
+# ============================================================
+
+@test "collect-metrics.sh documents MuninnDB events" {
+  grep -q "muninn_recall" "$SCRIPTS_DIR/collect-metrics.sh"
+  grep -q "muninn_store" "$SCRIPTS_DIR/collect-metrics.sh"
+  grep -q "muninn_unavailable" "$SCRIPTS_DIR/collect-metrics.sh"
+}
+
+# ============================================================
+# P2-17: Vault isolation
+# ============================================================
+
+@test "muninn-setup.sh derives vault names with multi-project isolation" {
+  grep -q "Multi-project isolation" "$SCRIPTS_DIR/muninn-setup.sh"
+}
+
+# ============================================================
+# P2-14: Session-start latency
+# ============================================================
+
+@test "session-start.sh health check uses max-time 1 not 2" {
+  # Ensure no --max-time 2 remains in the MuninnDB health section
+  ! grep -A20 "MuninnDB health check" "$SCRIPTS_DIR/session-start.sh" | grep -q "max-time 2"
+}
+
+# ============================================================
+# P2-15: README MuninnDB section
+# ============================================================
+
+@test "README.md has MuninnDB section" {
+  grep -q "## MuninnDB" "$PROJECT_ROOT/README.md"
+}
+
+# ============================================================
+# P2-16: Troubleshooting guide
+# ============================================================
+
+@test "MuninnDB troubleshooting guide exists" {
+  [ -f "$PROJECT_ROOT/docs/muninndb-troubleshooting.md" ]
+}

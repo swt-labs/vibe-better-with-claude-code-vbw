@@ -553,6 +553,9 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
    2. From the results, collect IDs of engrams with score > 0.3.
    3. Call `muninn_consolidate(vault: {vault}, engram_ids: [{collected IDs}])` to merge related engrams into consolidated memories.
    This strengthens key learnings and reduces noise before the next milestone begins.
+   4. **Engram archival tagging:** After consolidation, tag milestone engrams as archived:
+      - Call `muninn_remember(vault: {vault}, concept: "Milestone shipped: {SLUG}", content: "{summary: phases, tasks, commits, key decisions}", tags: [milestone:{SLUG}, archived], type: Decision)`
+      - This creates a milestone-level bookmark. Individual engrams remain searchable but the archived tag signals they are from a completed milestone.
 5. Archive: `mkdir -p .vbw-planning/milestones/`. Move roadmap, state, phases to milestones/{SLUG}/. Write SHIPPED.md. Delete stale RESUME.md.
 5b. **Persist project-level state:** After archiving, run:
    ```bash

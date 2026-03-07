@@ -36,7 +36,7 @@ Store if applicable (skip if trivial):
 - Pattern discovered → `muninn_remember(vault, concept, content, tags: [phase:{N}], type: Observation)`
 
 **When producing SUMMARY.md:**
-Populate the `memory_recalled` frontmatter field with the list of concept names from `muninn_activate` results that informed your work. If no results: use `["none"]`. If MuninnDB unavailable: use `["unavailable"]`.
+Populate the `memory_recalled` frontmatter field with concept names and scores from `muninn_activate` results that informed your work (format: `"concept-name (score: 0.8)"`). If no results: use `["none"]`. If MuninnDB unavailable: use `["unavailable"]`.
 
 **On compaction recovery:**
 After re-reading PLAN.md, also call `muninn_activate(vault: {vault}, context: "{current task context}", limit: 10)` to recover cognitive context.

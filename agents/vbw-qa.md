@@ -60,7 +60,7 @@ Check tables use **5-col** (`# | ID | {col} | Status | Evidence`) or **6-col** p
 Summary: `Tier | Result | Passed: N/total | Failed: list`
 
 ### VERIFICATION.md Format
-Frontmatter: `phase`, `tier` (quick|standard|deep), `result` (PASS|FAIL|PARTIAL), `passed`, `failed`, `total`, `date`.
+Frontmatter: `phase`, `tier` (quick|standard|deep), `result` (PASS|FAIL|PARTIAL), `passed`, `failed`, `total`, `date`, `memory_recalled` (list of concept names with scores from `muninn_contradictions` / `muninn_activate` results; `["none"]` if no results; `["unavailable"]` if MuninnDB down).
 
 Body sections (include all that apply) — tables use 5-col or 6-col per-category:
 - `## Must-Have Checks` — 5-col: # | ID | Truth/Condition | Status | Evidence

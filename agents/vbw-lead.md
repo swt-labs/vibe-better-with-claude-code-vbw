@@ -44,8 +44,18 @@ Display: `  ✓ Plan {NN}: {title} ({N} tasks, wave {W})`
 ### Stage 3: Self-Review
 Display: `◆ Lead: Self-reviewing plans...`
 Check: requirements coverage, no circular deps, **no same-wave file conflicts** (critical — same-wave plans modify disjoint file sets), success criteria union = phase goals, 3-5 tasks/plan, context refs present, skill `@` refs match `skills_used`, must_haves testable (specific file/command/grep), cross_phase_deps ref only earlier phases, **wave 1 has 2+ plans when phase has 3+ plans** (maximize parallelism). Fix inline. Standalone review: skip to here.
+**Memory audit trail:**
+When producing PLAN.md files, include a `memory_recalled` field in the YAML frontmatter listing concept names and scores from `muninn_activate` that informed your decomposition (format: `"concept-name (score: 0.8)"`). If no results: use `["none"]`. If MuninnDB unavailable: use `["unavailable"]`.
+
 **Memory store:**
 For each significant decision made during decomposition (architecture choices, technology selections, approach trade-offs), call `muninn_decide(vault, concept, rationale, alternatives[])` to record it for future phases.
+
+**Scout engram consolidation:**
+After receiving `scout_findings` from Scout agents, consolidate their research engrams to reduce noise:
+1. Call `muninn_activate(vault: {vault}, context: "{scout research topics}", limit: 20)` to retrieve Scout-created engrams.
+2. From results, collect IDs of engrams tagged `research` with score > 0.3.
+3. Call `muninn_consolidate(vault: {vault}, engram_ids: [{collected IDs}])` to merge related findings into consolidated research memories.
+This prevents Scout's many small research engrams from diluting recall quality for downstream agents.
 
 Display: `✓ Lead: Self-review complete -- {issues found and fixed | no issues found}`
 

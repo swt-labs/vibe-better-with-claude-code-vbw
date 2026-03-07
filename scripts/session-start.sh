@@ -877,9 +877,27 @@ MUNINN_STATUS=""
 if [ -f "$PLANNING_DIR/config.json" ]; then
   _muninn_vault=$(jq -r '.muninndb_vault // ""' "$PLANNING_DIR/config.json" 2>/dev/null)
   _muninn_port=$(jq -r '.muninndb_port_mcp // 8750' "$PLANNING_DIR/config.json" 2>/dev/null)
-  if curl -sf --max-time 2 "http://localhost:${_muninn_port}/health" >/dev/null 2>&1; then
+  _muninn_rest_port=$(jq -r '.muninndb_port_rest // 8475' "$PLANNING_DIR/config.json" 2>/dev/null)
+  _mcp_ok=false
+  _rest_ok=false
+  if curl -sf --max-time 1 "http://localhost:${_muninn_port}/health" >/dev/null 2>&1; then
+    _mcp_ok=true
+  fi
+  if curl -sf --max-time 1 "http://localhost:${_muninn_rest_port}/api/vaults" >/dev/null 2>&1; then
+    _rest_ok=true
+  fi
+  if [ "$_mcp_ok" = true ]; then
     if [ -n "$_muninn_vault" ]; then
-      MUNINN_STATUS=" MuninnDB: active (vault: ${_muninn_vault})."
+      # Verify vault exists on server
+      if [ "$_rest_ok" = true ]; then
+        if curl -sf --max-time 1 "http://localhost:${_muninn_rest_port}/api/vaults" 2>/dev/null | jq -e --arg v "$_muninn_vault" '.[] | select(.name == $v)' >/dev/null 2>&1; then
+          MUNINN_STATUS=" MuninnDB: active (vault: ${_muninn_vault})."
+        else
+          MUNINN_STATUS=" ⚠ MuninnDB: running but vault '${_muninn_vault}' not found. Re-run /vbw:init or bash scripts/muninn-setup.sh --vault"
+        fi
+      else
+        MUNINN_STATUS=" MuninnDB: MCP active (vault: ${_muninn_vault}, REST API not responding on ${_muninn_rest_port})."
+      fi
     else
       MUNINN_STATUS=" MuninnDB: active (vault not configured)."
     fi

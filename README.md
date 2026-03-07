@@ -820,6 +820,46 @@ VBW spawns specialized agents for planning, development, and verification. Model
 
 - **`event_recovery`** — When `true`, enables automatic event-sourced state recovery on session start. If `.execution-state.json` is stale (older than `event-log.jsonl`) or missing after a crash, VBW automatically calls `recover-state.sh` to reconstruct phase/plan status from the event log and SUMMARY.md files.
 
+### MuninnDB
+
+| Setting | Type | Default | Values |
+| :--- | :--- | :--- | :--- |
+| `muninndb_vault` | string | `""` | vault name |
+| `muninndb_port_mcp` | integer | `8750` | MCP server port |
+| `muninndb_port_rest` | integer | `8475` | REST API port |
+
+VBW uses [MuninnDB](https://muninndb.com) as its persistent cognitive memory system. Agents store decisions, patterns, bugs, and conventions as semantic engrams that survive across phases and milestones.
+
+**Setup:** Run `bash scripts/muninn-setup.sh` for guided installation, or manually:
+
+```bash
+curl -fsSL https://muninndb.com/install.sh | sh
+muninn init    # Configure Claude Code MCP integration
+muninn start   # Start MuninnDB server
+```
+
+Then set the vault in your project config:
+
+```bash
+/vbw:config muninndb_vault my-project
+```
+
+**How agents use it:**
+
+- **Before work:** Agents call `muninn_activate` to recall prior decisions and patterns relevant to their task.
+- **After work:** Agents call `muninn_remember` or `muninn_decide` to store new insights for future phases.
+- **At phase end:** The orchestrator consolidates phase engrams via `muninn_consolidate`.
+- **At milestone ship:** Engrams are consolidated and tagged as archived.
+
+**Guardrails:**
+
+- Agents warn when vault is unconfigured. Lead and Architect are blocked from spawning without a vault (deterministic hook enforcement).
+- Phase 2+ agents warn when recall returns 0 results (suspicious — prior decisions should exist).
+- SUMMARY.md, PLAN.md, and VERIFICATION.md include `memory_recalled` fields for audit trail.
+- QA verifies `memory_recalled` is present and flags `["none"]` in Phase 2+ as a warning.
+
+**Health check:** VBW checks MuninnDB on session start (both MCP and REST ports). `/vbw:doctor` check 16 provides detailed status. See `docs/muninndb-troubleshooting.md` for common issues.
+
 ### Runtime features
 
 These flags control optional runtime subsystems — execution integrity, observability, and crash recovery. All default to `true`. Disable any flag to skip that subsystem entirely (scripts exit 0 immediately when their flag is `false`).

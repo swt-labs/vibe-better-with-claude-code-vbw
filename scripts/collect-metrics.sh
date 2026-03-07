@@ -4,8 +4,18 @@ set -u
 # collect-metrics.sh <event> <phase> [plan] [key=value ...]
 # Appends a JSON line to .vbw-planning/.metrics/run-metrics.jsonl
 # Events: cache_hit, cache_miss, compile_context, execute_task, execute_plan,
-#         execute_phase_start, execute_phase_complete
+#         execute_phase_start, execute_phase_complete,
+#         muninn_recall, muninn_recall_empty, muninn_store, muninn_unavailable,
+#         muninn_consolidate, muninn_contradictions
 # Exit 0 always — metrics must never block execution.
+#
+# MuninnDB memory events (agents call these via the orchestrator):
+#   muninn_recall        count=N           — successful recall with N results
+#   muninn_recall_empty  context="{ctx}"   — 0 results returned (potential gap)
+#   muninn_store         type=Decision     — engram stored
+#   muninn_unavailable   call=activate     — MuninnDB unreachable
+#   muninn_consolidate   count=N           — N engrams consolidated
+#   muninn_contradictions count=N          — N contradictions detected
 
 if [ $# -lt 2 ]; then
   echo "Usage: collect-metrics.sh <event> <phase> [plan] [key=value ...]" >&2

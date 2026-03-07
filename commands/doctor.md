@@ -79,14 +79,20 @@ PASS if alive or not in tmux. WARN if dead watchdog in tmux.
 ### 16. MuninnDB health
 `command -v muninn 2>/dev/null && echo "FOUND" || echo "MISSING"`
 - FAIL if binary missing: "MuninnDB is required for VBW. Install: curl -fsSL https://muninndb.com/install.sh | sh"
-- If binary found: `curl -sf --max-time 3 http://localhost:8750/health && echo "HEALTHY" || echo "UNREACHABLE"`
-  - FAIL if unhealthy: "MuninnDB not running. Start with: muninn start"
+- If binary found: read ports from config (`muninndb_port_mcp` default 8750, `muninndb_port_rest` default 8475):
+  ```bash
+  MCP_PORT=$(jq -r '.muninndb_port_mcp // 8750' .vbw-planning/config.json 2>/dev/null || echo 8750)
+  REST_PORT=$(jq -r '.muninndb_port_rest // 8475' .vbw-planning/config.json 2>/dev/null || echo 8475)
+  ```
+  - `curl -sf --max-time 1 http://localhost:${MCP_PORT}/health && echo "HEALTHY" || echo "UNREACHABLE"`
+  - FAIL if MCP unhealthy: "MuninnDB not running. Start with: muninn start"
   - PASS if healthy: Show version from `muninn --version 2>/dev/null`
+  - Also check REST: `curl -sf --max-time 1 http://localhost:${REST_PORT}/api/vaults`
+  - WARN if REST unreachable but MCP healthy: "REST API not responding on port ${REST_PORT}"
 - If project initialized and config has `muninndb_vault`:
   Read API token from mcp.json (same resolution as init Step 0.6). Build auth header if token found.
-  Verify vault exists via `curl -sf --max-time 3 http://localhost:8475/api/vaults $AUTH_HEADER | jq -r '.[].name'` and check vault name is in list.
+  Verify vault exists via `curl -sf --max-time 1 http://localhost:${REST_PORT}/api/vaults $AUTH_HEADER | jq -r '.[].name'` and check vault name is in list.
   - WARN if vault missing: "Vault '{name}' not found. Re-run /vbw:init."
-  - WARN if REST API unreachable: "REST API not responding on port 8475"
   - PASS if vault exists.
 
 ## Output Format

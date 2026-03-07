@@ -11,7 +11,7 @@ commit_hashes:
 deviations:
   - "{deviation-description}"
 memory_recalled:
-  - "{concept-name}"
+  - "{concept-name} (score: {N.N})"
 ---
 
 {one-line-substantive-summary}
