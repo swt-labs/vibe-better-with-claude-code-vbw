@@ -20,6 +20,7 @@ if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
 else
   # Safe default: report zero completions when helpers unavailable
   count_complete_summaries() { echo "0"; }
+  count_done_summaries() { echo "0"; }
 fi
 
 # --- Capture session_id from hook stdin JSON ---
@@ -649,7 +650,7 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
         [ -f "$_ss_sf" ] || continue
         _ss_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_ss_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
         case "$_ss_st" in
-          complete|completed) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)) ;;
+          complete|completed|partial) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)) ;;
         esac
       done
 
@@ -664,7 +665,7 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
           [ -f "$_sf" ] || continue
           _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
           case "$_sf_st" in
-            complete|completed)
+            complete|completed|partial)
               _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
               _completed_json=$(echo "$_completed_json" | jq --arg id "$_sf_id" '. + [$id]')
               ;;
@@ -875,8 +876,8 @@ if [ -f "$STATE_FILE" ]; then
   # Extract "Phase: N of M (name)" from "Phase: 1 of 3 (Context Diet)"
   phase_line=$(grep -m1 "^Phase:" "$STATE_FILE" 2>/dev/null || true)
   if [ -n "$phase_line" ]; then
-    phase_pos=$(echo "$phase_line" | sed 's/Phase: *\([0-9]*\).*/\1/')
-    phase_total=$(echo "$phase_line" | sed 's/.*of *\([0-9]*\).*/\1/')
+    phase_pos=$(echo "$phase_line" | sed -n 's/^Phase:[[:space:]]*\([0-9][0-9]*\).*/\1/p')
+    phase_total=$(echo "$phase_line" | sed -n 's/.*[[:space:]]of[[:space:]]*\([0-9][0-9]*\).*/\1/p')
     phase_name=$(echo "$phase_line" | sed -n 's/.*(\(.*\))/\1/p')
   fi
   # Extract status line

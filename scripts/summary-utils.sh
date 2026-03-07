@@ -46,6 +46,21 @@ count_complete_summaries() {
   echo "$count"
 }
 
+# count_done_summaries DIR
+# Returns count of SUMMARY.md files considered "done" for reconciliation:
+# complete, completed, or partial (matching recover-state.sh's promotion of partial→complete).
+count_done_summaries() {
+  local dir="$1"
+  local count=0
+  local f st
+  for f in "$dir"/*-SUMMARY.md; do
+    [ -f "$f" ] || continue
+    st=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
+    case "$st" in complete|completed|partial) count=$((count + 1)) ;; esac
+  done
+  echo "$count"
+}
+
 # count_terminal_summaries DIR
 # Returns count of SUMMARY.md files with any terminal status in DIR.
 count_terminal_summaries() {

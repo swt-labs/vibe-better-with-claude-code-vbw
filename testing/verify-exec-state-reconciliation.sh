@@ -42,7 +42,7 @@ else
 fi
 
 # Test 2: statusline reconciles EXEC_DONE after reading from JSON
-if grep -q '_actual_done.*count_complete_summaries' "$ROOT/scripts/vbw-statusline.sh"; then
+if grep -q '_actual_done.*count_done_summaries' "$ROOT/scripts/vbw-statusline.sh"; then
   pass "statusline computes actual SUMMARY count for reconciliation"
 else
   fail "statusline computes actual SUMMARY count for reconciliation"
@@ -212,6 +212,175 @@ if [ "$PLAN3_STATUS" = "pending" ]; then
   pass "reconciliation: plan 06-03 stays pending (was already pending)"
 else
   fail "reconciliation: plan 06-03 stays pending (got $PLAN3_STATUS)"
+fi
+
+# --- Functional: partial SUMMARY → reconciliation preserves "complete" in JSON ---
+echo ""
+echo "--- Functional: partial SUMMARY accepted by reconciliation ---"
+
+PARTIAL_PROJECT="$TMPDIR_BASE/partial-project/.vbw-planning"
+PARTIAL_PHASE="$PARTIAL_PROJECT/phases/03-build"
+mkdir -p "$PARTIAL_PHASE"
+
+cat > "$PARTIAL_PROJECT/.execution-state.json" <<'EXECJSON'
+{
+  "phase": 3, "phase_name": "03-build", "status": "running",
+  "wave": 1, "total_waves": 1,
+  "plans": [
+    {"id": "03-01", "title": "Plan 1", "wave": 1, "status": "complete"},
+    {"id": "03-02", "title": "Plan 2", "wave": 1, "status": "complete"},
+    {"id": "03-03", "title": "Plan 3", "wave": 1, "status": "pending"}
+  ]
+}
+EXECJSON
+
+# Plan 1: complete SUMMARY, Plan 2: partial SUMMARY (no SUMMARY for plan 3)
+cat > "$PARTIAL_PHASE/03-01-SUMMARY.md" <<'SUMMARY'
+---
+phase: 3
+plan: 01
+status: complete
+---
+# Plan 1 Summary
+SUMMARY
+
+cat > "$PARTIAL_PHASE/03-02-SUMMARY.md" <<'SUMMARY'
+---
+phase: 3
+plan: 02
+status: partial
+---
+# Plan 2 Summary (partial — crash during execution)
+SUMMARY
+
+# Reconciliation should count both complete and partial as "done"
+_completed_json="[]"
+for _sf in "$PARTIAL_PHASE"/*-SUMMARY.md; do
+  [ -f "$_sf" ] || continue
+  _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+  case "$_sf_st" in
+    complete|completed|partial)
+      _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
+      _completed_json=$(echo "$_completed_json" | jq --arg id "$_sf_id" '. + [$id]')
+      ;;
+  esac
+done
+
+EXEC_STATE="$PARTIAL_PROJECT/.execution-state.json"
+_reconcile_tmp="${EXEC_STATE}.reconcile.$$"
+jq --argjson completed "$_completed_json" '
+  .plans |= map(
+    if .status == "complete" and (.id as $pid | $completed | any(. == $pid) | not) then
+      .status = "pending"
+    else .
+    end
+  )
+' "$EXEC_STATE" > "$_reconcile_tmp" 2>/dev/null && mv "$_reconcile_tmp" "$EXEC_STATE" 2>/dev/null
+
+# Both plans should stay "complete" because both have SUMMARY.md (one complete, one partial)
+PARTIAL_DONE=$(jq '[.plans[] | select(.status == "complete")] | length' "$EXEC_STATE")
+if [ "$PARTIAL_DONE" -eq 2 ]; then
+  pass "partial: both plans preserved as complete (2 done)"
+else
+  fail "partial: both plans preserved as complete (got $PARTIAL_DONE)"
+fi
+
+PARTIAL_P2=$(jq -r '.plans[] | select(.id == "03-02") | .status' "$EXEC_STATE")
+if [ "$PARTIAL_P2" = "complete" ]; then
+  pass "partial: plan 03-02 with partial SUMMARY kept as complete"
+else
+  fail "partial: plan 03-02 with partial SUMMARY kept as complete (got $PARTIAL_P2)"
+fi
+
+# --- Functional: statusline reconciliation (count_done_summaries) ---
+echo ""
+echo "--- Functional: statusline reconciliation via count_done_summaries ---"
+
+# Source summary-utils.sh for count_done_summaries
+if [ -f "$ROOT/scripts/summary-utils.sh" ]; then
+  . "$ROOT/scripts/summary-utils.sh"
+fi
+
+SL_PROJECT="$TMPDIR_BASE/sl-project/.vbw-planning"
+SL_PHASE="$SL_PROJECT/phases/02-core"
+mkdir -p "$SL_PHASE"
+
+# 3 plans in JSON, 2 marked complete — but only 1 complete SUMMARY + 1 partial SUMMARY on disk
+cat > "$SL_PROJECT/.execution-state.json" <<'EXECJSON'
+{
+  "phase": 2, "status": "running",
+  "plans": [
+    {"id": "02-01", "status": "complete"},
+    {"id": "02-02", "status": "complete"},
+    {"id": "02-03", "status": "complete"}
+  ]
+}
+EXECJSON
+
+cat > "$SL_PHASE/02-01-SUMMARY.md" <<'SUMMARY'
+---
+status: complete
+---
+Done
+SUMMARY
+
+cat > "$SL_PHASE/02-02-SUMMARY.md" <<'SUMMARY'
+---
+status: partial
+---
+Partial
+SUMMARY
+
+# count_done_summaries should return 2 (complete + partial), not 3
+DONE_COUNT=$(count_done_summaries "$SL_PHASE")
+if [ "$DONE_COUNT" -eq 2 ]; then
+  pass "statusline: count_done_summaries returns 2 (1 complete + 1 partial)"
+else
+  fail "statusline: count_done_summaries returns 2 (got $DONE_COUNT)"
+fi
+
+# count_complete_summaries should return 1 (only strict complete)
+COMPLETE_COUNT=$(count_complete_summaries "$SL_PHASE")
+if [ "$COMPLETE_COUNT" -eq 1 ]; then
+  pass "statusline: count_complete_summaries returns 1 (only strict complete)"
+else
+  fail "statusline: count_complete_summaries returns 1 (got $COMPLETE_COUNT)"
+fi
+
+# Simulate the statusline reconciliation: EXEC_DONE=3 from JSON, _actual_done=2 from disk
+EXEC_DONE=3
+_actual_done="$DONE_COUNT"
+if [ "${_actual_done:-0}" -lt "${EXEC_DONE:-0}" ] 2>/dev/null; then
+  EXEC_DONE="$_actual_done"
+fi
+if [ "$EXEC_DONE" -eq 2 ]; then
+  pass "statusline: EXEC_DONE capped from 3 to 2 (missing plan 02-03)"
+else
+  fail "statusline: EXEC_DONE capped from 3 to 2 (got $EXEC_DONE)"
+fi
+
+# --- Structural: reconciliation gate includes paused status ---
+echo ""
+echo "--- Structural: reconciliation gate includes paused ---"
+
+if grep -q 'EXEC_STATUS.*=.*paused' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline reconciliation gate includes paused state"
+else
+  fail "statusline reconciliation gate includes paused state"
+fi
+
+# --- Structural: count_done_summaries exists in summary-utils.sh ---
+if grep -q 'count_done_summaries' "$ROOT/scripts/summary-utils.sh"; then
+  pass "summary-utils.sh exports count_done_summaries function"
+else
+  fail "summary-utils.sh exports count_done_summaries function"
+fi
+
+# --- Structural: session-start accepts partial in reconciliation ---
+if grep -q 'complete|completed|partial.*SUMMARY_COUNT' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start reconciliation accepts partial status"
+else
+  fail "session-start reconciliation accepts partial status"
 fi
 
 echo ""
