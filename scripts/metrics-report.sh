@@ -157,7 +157,7 @@ _rtk_pct="N/A"
 _rtk_claude_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 [ -d "$HOME/.config/claude-code" ] && [ -z "${CLAUDE_CONFIG_DIR:-}" ] && _rtk_claude_dir="$HOME/.config/claude-code"
 if command -v rtk &>/dev/null; then
-  if [ -f "$_rtk_claude_dir/hooks/rtk-rewrite.sh" ] || [ -f "$HOME/.claude/hooks/rtk-rewrite.sh" ]; then
+  if [ -f "$_rtk_claude_dir/hooks/rtk-rewrite.sh" ] || [ -f "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/rtk-rewrite.sh" ]; then
     if command -v jq &>/dev/null; then
       # RTK API: { "summary": { "total_saved": N, "avg_savings_pct": N, ... } }
       _rtk_gains=$(rtk gain --all --format json 2>/dev/null || echo "{}")
