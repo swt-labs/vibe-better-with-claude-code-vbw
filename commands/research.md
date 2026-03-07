@@ -43,14 +43,13 @@ Current project:
     if [ $? -ne 0 ]; then echo "$SCOUT_MAX_TURNS" >&2; exit 1; fi
      ```
    - Display: `◆ Spawning Scout (${SCOUT_MODEL})...`
-   - Before composing the Scout task description, select skills from installed skills visible in your system context (use both skill names and descriptions). The Scout prompt MUST start with `<skill_activation>{For each selected skill: "Call Skill({skill-name})"} Do not skip any listed skill.</skill_activation>`. Use direct imperative language only.
-  - Spawn vbw-scout as subagent(s) via Task tool. **Set `subagent_type: "vbw:vbw-scout"` and `model: "${SCOUT_MODEL}"` in the Task tool invocation. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
+   - Compute the skill activation block before composing the task description:
+     ```bash
+     SKILL_BLOCK=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/generate-skill-activation.sh 2>/dev/null || true)
+     ```
+  - Spawn vbw-scout as subagent(s) via Task tool. **Set `subagent_type: "vbw:vbw-scout"` and `model: "${SCOUT_MODEL}"` in the Task tool invocation. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).** The task description MUST start with the verbatim `${SKILL_BLOCK}` content as its FIRST line. Do NOT compose skill activation yourself — use the pre-computed block exactly as-is.
 ```
-<skill_activation>
-Call Skill('{selected-skill-1}').
-Call Skill('{selected-skill-2}').
-Do not skip any listed skill.
-</skill_activation>
+${SKILL_BLOCK}
 
 <task_context>
 Research: {topic or sub-topic}.
