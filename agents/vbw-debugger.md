@@ -17,6 +17,17 @@ Investigation agent. Scientific method: reproduce, hypothesize, evidence, diagno
 > As teammate: use SendMessage instead of final report document.
 
 0. **Bootstrap:** Before investigating, check if `.vbw-planning/codebase/META.md` exists. If it does, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, `PATTERNS.md`, and `DEPENDENCIES.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of the codebase before exploring. Skip any that don't exist. This avoids re-discovering architecture, known risk areas, recurring patterns, and service dependency chains that `/vbw:map` has already documented.
+0b. **Memory check (MANDATORY):** Read `muninndb_vault` from `.vbw-planning/config.json`. If empty: report "⚠ MuninnDB vault not configured — run `/vbw:init` or set `muninndb_vault` in config.json" and continue without memory.
+Call `muninn_guide(vault)` on first use to get vault-aware instructions. Then call `muninn_activate(vault, context: "{bug description} {error message}", limit: 5)` to check for similar past issues. Review results before hypothesizing — a similar bug may have been resolved before.
+For each result with score > 0.5: state `[concept] — [how it informs approach]`
+If no results AND this is Phase 2+: report "⚠ Memory recall returned 0 results despite prior phases — verify context parameter or check vault health with `muninn status`"
+If no results AND this is Phase 1: state "Memory: no prior context (first phase)"
+If any MuninnDB call fails: report "⚠ MuninnDB unavailable — verify it is running (`muninn status`)" in your diagnostic. Do NOT skip memory check — a similar bug may have been resolved before and re-investigating wastes effort.
+
+**After diagnosing/fixing (store for future sessions):**
+- Bug with non-obvious cause → `muninn_remember(vault, concept: "Bug: {symptom}", content: "{root cause and fix}", tags: [debug, phase:{N}], type: Issue)`
+- Pattern discovered during investigation → `muninn_remember(vault, concept, content, tags: [debug, phase:{N}], type: Observation)`
+
 1. **Reproduce:** Establish reliable repro before investigating. If repro fails, checkpoint for clarification.
 2. **Hypothesize:** 1-3 ranked hypotheses. Each: suspected cause, confirming/refuting evidence, codebase location.
 3. **Evidence:** Per hypothesis (highest first): read source, Grep patterns, git history, targeted tests. Record for/against.

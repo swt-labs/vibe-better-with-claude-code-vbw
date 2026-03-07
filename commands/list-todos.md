@@ -54,14 +54,14 @@ Plugin root:
      - "Back — Return to list"
 
 7. **Execute action:** Use the `section` and `state_path` values from the script output for edit operations.
-   - **/vbw:fix, /vbw:debug, /vbw:vibe, /vbw:research:** Remove the `line` value from the todo section in STATE.md. If no todos remain, replace with "None." Log to `## Recent Activity` with format `- {YYYY-MM-DD}: Picked up todo via /vbw:{command}: {text}`. Then display:
+   - **/vbw:fix, /vbw:debug, /vbw:vibe, /vbw:research:** Remove the `line` value from the todo section in STATE.md. If no todos remain, replace with "None." Then display:
      ```text
      ✓ Todo picked up.
 
      ➜ Run: /vbw:{command} {todo text}
      ```
      Do NOT execute the command. STOP after displaying the suggested command.
-   - **Remove:** Remove the `line` value from the todo section in STATE.md. If no todos remain, replace with "None." Log to `## Recent Activity` with format `- {YYYY-MM-DD}: Removed todo: {text}`. Confirm: "✓ Todo removed." Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-next.sh list-todos` and display.
+   - **Remove:** Remove the `line` value from the todo section in STATE.md. If no todos remain, replace with "None." Confirm: "✓ Todo removed." Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-next.sh list-todos` and display.
    - **Back:** Return to step 3.
 
 ## Output Format

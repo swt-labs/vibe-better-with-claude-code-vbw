@@ -98,6 +98,7 @@ generate_vbw_sections() {
 - **Plan before building.** Use /vbw:vibe for all lifecycle actions. Plans are the source of truth.
 - **Do not fabricate content.** Only use what the user explicitly states in project-defining flows.
 - **Do not bump version or push until asked.** Never run `scripts/bump-version.sh` or `git push` unless the user explicitly requests it, except when `.vbw-planning/config.json` intentionally sets `auto_push` to `always` or `after_phase`.
+- **MuninnDB is required.** All agents use MuninnDB for persistent cognitive memory. The vault name is in `.vbw-planning/config.json` field `muninndb_vault`. If `muninn_activate` is unavailable, check that MuninnDB is running (`muninn status`).
 
 ## Installed Skills
 

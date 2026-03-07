@@ -138,36 +138,3 @@ teardown() {
   grep -q "Test goal" ".vbw-planning/phases/02-test-phase/.context-lead.md"
 }
 
-@test "cache-context.sh: rolling summary fingerprint excluded when flag is false" {
-  # Default config has rolling_summary=false
-  # Create a ROLLING-CONTEXT.md and verify it doesn't affect the hash
-  echo "# Rolling Context" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$TEST_TEMP_DIR/.vbw-planning/config.json" \
-    "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
-  [ "$status" -eq 0 ]
-  HASH1=$(echo "$output" | cut -d' ' -f2)
-  echo "# Different Content" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$TEST_TEMP_DIR/.vbw-planning/config.json" \
-    "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
-  HASH2=$(echo "$output" | cut -d' ' -f2)
-  # Hash should be stable when flag is false (rolling context ignored)
-  [ "$HASH1" = "$HASH2" ]
-}
-
-@test "cache-context.sh: rolling summary fingerprint changes hash when flag is true" {
-  cd "$TEST_TEMP_DIR"
-  # Enable rolling_summary in config
-  jq '. + {"rolling_summary": true}' .vbw-planning/config.json > .vbw-planning/config.tmp \
-    && mv .vbw-planning/config.tmp .vbw-planning/config.json
-  echo "# Rolling Context v1" > .vbw-planning/ROLLING-CONTEXT.md
-  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
-    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
-  [ "$status" -eq 0 ]
-  HASH1=$(echo "$output" | cut -d' ' -f2)
-  echo "# Rolling Context v2 (changed)" > .vbw-planning/ROLLING-CONTEXT.md
-  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
-    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
-  HASH2=$(echo "$output" | cut -d' ' -f2)
-  # Hash must differ when rolling context content changes
-  [ "$HASH1" != "$HASH2" ]
-}

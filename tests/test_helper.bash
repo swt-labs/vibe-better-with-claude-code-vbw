@@ -60,9 +60,11 @@ create_test_config() {
   "lease_locks": false,
   "event_recovery": false,
   "monorepo_routing": true,
-  "rolling_summary": false,
   "require_phase_discussion": false,
-  "auto_uat": false
+  "auto_uat": false,
+  "muninndb_vault": "test-vault",
+  "muninndb_port_mcp": 8750,
+  "muninndb_port_rest": 8475
 }
 CONF
 }

@@ -40,9 +40,20 @@ Same gray area, two modes:
 - "Block submission, show connectivity state (pessimistic)"
 - "Let me explain..."
 
+## Step 1.5: Recall Prior Context (MuninnDB)
+
+Before generating gray areas, recall relevant prior decisions:
+1. Read `muninndb_vault` from `.vbw-planning/config.json`. If empty: skip memory recall, proceed to Step 2.
+2. Call `muninn_guide(vault: {vault})` on first use.
+3. Call `muninn_activate(vault: {vault}, context: "{phase goal} {project description}", limit: 10)`.
+4. For each result with score > 0.5: note it as prior context that may constrain or inform gray areas.
+5. If no results AND this is Phase 2+: report "⚠ Memory recall returned 0 results despite prior phases."
+
+Prior decisions surface constraints: a Phase 1 discussion that chose "optimistic offline sync" eliminates that gray area from Phase 3 — it's already decided.
+
 ## Step 2: Orient
 
-Read the phase goal from ROADMAP.md and **think** about what gray areas exist. No keyword matching. No predefined templates. Pure analysis.
+Read the phase goal from ROADMAP.md and **think** about what gray areas exist. No keyword matching. No predefined templates. Pure analysis. Factor in any prior decisions recalled in Step 1.5 — do not re-ask questions that are already settled.
 
 The engine asks itself:
 
@@ -113,6 +124,8 @@ Calibration: builder | architect
 ## Deferred Ideas
 [Out-of-scope ideas captured during discussion. Empty if none.]
 ```
+
+**Store decisions to MuninnDB:** For each decision captured (not "Open" items), call `muninn_decide(vault: {vault}, concept: "{gray area}: {decision}", rationale: "{why}", alternatives: ["{rejected options}"])`. This ensures downstream agents (Lead, Dev, Architect) can recall these decisions without re-reading CONTEXT.md.
 
 Also append to `discovery.json` using this schema:
 

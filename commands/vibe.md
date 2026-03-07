@@ -548,20 +548,21 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
    This reads ROADMAP.md phase names and outputs a numbered kebab-case slug (e.g., `01-setup-api-layer`). Override with `--tag` if provided. **Never use a hardcoded slug like "default" — always use the script output.**
 2. Parse args: --tag=vN.N.N (custom tag), --no-tag (skip), --force (skip non-UAT audit).
 3. Compute summary: from ROADMAP (phases), SUMMARY.md files (tasks/commits/deviations), REQUIREMENTS.md (satisfied count).
-4. **Rolling summary (conditional):** If `rolling_summary=true` in config:
-   ```bash
-   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-rolling-summary.sh \
-     .vbw-planning/phases .vbw-planning/ROLLING-CONTEXT.md 2>/dev/null || true
-   ```
-   Compiles final rolling context before artifacts move to milestones/. Fail-open.
-   When `rolling_summary=false`: skip.
+4. **MuninnDB milestone consolidation:** Read `muninndb_vault` from `.vbw-planning/config.json`.
+   1. Call `muninn_activate(vault: {vault}, context: "{milestone name} {milestone description} decisions patterns conventions", limit: 50)` to retrieve all engrams related to this milestone.
+   2. From the results, collect IDs of engrams with score > 0.3.
+   3. Call `muninn_consolidate(vault: {vault}, engram_ids: [{collected IDs}])` to merge related engrams into consolidated memories.
+   This strengthens key learnings and reduces noise before the next milestone begins.
+   4. **Engram archival tagging:** After consolidation, tag milestone engrams as archived:
+      - Call `muninn_remember(vault: {vault}, concept: "Milestone shipped: {SLUG}", content: "{summary: phases, tasks, commits, key decisions}", tags: [milestone:{SLUG}, archived], type: Decision)`
+      - This creates a milestone-level bookmark. Individual engrams remain searchable but the archived tag signals they are from a completed milestone.
 5. Archive: `mkdir -p .vbw-planning/milestones/`. Move roadmap, state, phases to milestones/{SLUG}/. Write SHIPPED.md. Delete stale RESUME.md.
 5b. **Persist project-level state:** After archiving, run:
    ```bash
    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/persist-state-after-ship.sh \
      .vbw-planning/milestones/{SLUG}/STATE.md .vbw-planning/STATE.md "{PROJECT_NAME}"
    ```
-   This extracts project-level sections (Todos, Decisions, Skills, Blockers, Codebase Profile) from the archived STATE.md and writes a fresh root STATE.md. Milestone-specific sections (Current Phase, Activity Log, Phase Status) stay in the archive only. Fail-open: if the script fails, warn but continue.
+   This extracts project-level sections (Todos, Decisions, Skills, Blockers, Codebase Profile, Memory) from the archived STATE.md and writes a fresh root STATE.md. Milestone-specific sections (Current Phase, Phase Status) stay in the archive only. Fail-open: if the script fails, warn but continue.
 6. Planning commit boundary (conditional):
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"

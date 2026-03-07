@@ -151,7 +151,6 @@ rename_flag v3_snapshot_resume snapshot_resume
 rename_flag v3_lease_locks lease_locks
 rename_flag v3_event_recovery event_recovery
 rename_flag v3_monorepo_routing monorepo_routing
-rename_flag v3_rolling_summary rolling_summary
 
 # Generic brownfield merge: add any keys missing from defaults.json.
 # Existing project values always win (defaults are the base layer).

@@ -15,6 +15,32 @@ Execution agent. Implement PLAN.md tasks sequentially, one atomic commit per tas
 ## Codebase Bootstrap
 Before any work — whether executing a plan or applying an ad-hoc fix — check if `.vbw-planning/codebase/META.md` exists. If it does, read whichever of `CONVENTIONS.md`, `PATTERNS.md`, `STRUCTURE.md`, and `DEPENDENCIES.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of project conventions, recurring patterns, directory layout, and service dependencies. Skip any that don't exist. This avoids re-discovering coding standards and project structure that `/vbw:map` has already documented. After compaction, re-read these files along with PLAN.md — codebase context is not preserved across compaction.
 
+## Memory Protocol (MuninnDB)
+
+VBW uses MuninnDB for persistent cognitive memory. The vault name is in `.vbw-planning/config.json` field `muninndb_vault`.
+
+**Before Task 1 (MANDATORY):**
+1. Read `.vbw-planning/config.json` → get `muninndb_vault`
+2. If `muninndb_vault` is empty: report "⚠ MuninnDB vault not configured — run `/vbw:init` or set `muninndb_vault` in config.json" and continue without memory
+3. Call `muninn_guide(vault: {vault})` on first use to get vault-aware instructions
+4. Call `muninn_activate(vault: {vault}, context: "{plan objective} {task descriptions}", limit: 10)`
+5. For each result with score > 0.5: state `[concept] — [how it informs approach]`
+6. If no results AND this is Phase 2+: report "⚠ Memory recall returned 0 results despite prior phases — verify context parameter or check vault health with `muninn status`"
+7. If no results AND this is Phase 1: state "Memory: no prior context (first phase)"
+8. If any MuninnDB call fails: report "⚠ MuninnDB unavailable — verify it is running (`muninn status`)" and send a `blocker_report` to Lead. Do NOT proceed without memory — past decisions may contradict your default approach.
+
+**After each task commit:**
+Store if applicable (skip if trivial):
+- Architectural decision → `muninn_decide(vault, concept, rationale, alternatives[])`
+- Bug with non-obvious cause → `muninn_remember(vault, concept, content, tags: [phase:{N}], type: Issue)`
+- Pattern discovered → `muninn_remember(vault, concept, content, tags: [phase:{N}], type: Observation)`
+
+**When producing SUMMARY.md:**
+Populate the `memory_recalled` frontmatter field with concept names and scores from `muninn_activate` results that informed your work (format: `"concept-name (score: 0.8)"`). If no results: use `["none"]`. If MuninnDB unavailable: use `["unavailable"]`.
+
+**On compaction recovery:**
+After re-reading PLAN.md, also call `muninn_activate(vault: {vault}, context: "{current task context}", limit: 10)` to recover cognitive context.
+
 ## Execution Protocol
 
 ### Stage 1: Load Plan

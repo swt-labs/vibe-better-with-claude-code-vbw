@@ -284,7 +284,7 @@ Use targeted `message` not `broadcast`. Reserve broadcast for critical blocking 
 - **On message receive** (from any teammate): validate before processing:
   `VALID=$(echo "$MESSAGE_JSON" | bash "${VBW_PLUGIN_ROOT}/scripts/validate-message.sh" 2>/dev/null || echo '{"valid":true}')`
   If `valid=false`: log rejection, send error back to sender with `errors` array. Do not process the message.
-- **On message send** (before sending): agents should construct messages using full V2 envelope (id, type, phase, task, author_role, timestamp, schema_version, payload, confidence). Reference `${VBW_PLUGIN_ROOT}/references/handoff-schemas.md` for schema details.
+- **On message send** (before sending): agents should construct messages using the full V2 envelope (id, type, phase, task, author_role, timestamp, schema_version, payload, confidence). Reference `${VBW_PLUGIN_ROOT}/references/handoff-schemas.md` for schema details.
 
 **Execution state updates:**
 - Task completion: update plan status in .execution-state.json (`"complete"` or `"failed"`)
@@ -559,15 +559,16 @@ When `worktree_isolation="off"`: skip this block silently.
 
 **Control Plane cleanup:** Lock and token state cleanup already handled by existing Lease Lock and Token Budget cleanup blocks.
 
-**Rolling Summary (REQ-03):** If `rolling_summary=true` in config:
-- After TeamDelete (team fully shut down), before phase_end event log:
-  ```bash
-  bash "${VBW_PLUGIN_ROOT}/scripts/compile-rolling-summary.sh" \
-    .vbw-planning/phases .vbw-planning/ROLLING-CONTEXT.md 2>/dev/null || true
-  ```
-  This compiles all completed SUMMARY.md files into a condensed digest for the next phase's agents.
-  Fail-open: if script errors, log warning and continue — never block phase completion.
-- When `rolling_summary=false` (default): skip this step silently.
+**MuninnDB Phase Outcome (MANDATORY):** At phase end, store a phase-level outcome engram before consolidation:
+- Call `muninn_remember(vault: {vault}, concept: "Phase {N} outcome: {one-line summary}", content: "{key deliverables, architectural changes, patterns established}", tags: [phase:{N}, outcome], type: Decision)`
+- This ensures downstream phases can recall what was delivered, even if individual task engrams are consolidated.
+
+**MuninnDB Consolidation (MANDATORY):** After storing the outcome, consolidate this phase's engrams:
+1. Read `muninndb_vault` from `.vbw-planning/config.json`.
+2. Call `muninn_activate(vault: {vault}, context: "phase {N} {phase goal}", limit: 50)` to retrieve phase-relevant engrams.
+3. From the results, collect IDs of engrams with score > 0.3.
+4. Call `muninn_consolidate(vault: {vault}, engram_ids: [{collected IDs}])` to merge related engrams into consolidated memories.
+If any call fails, display "⚠ MuninnDB consolidation failed — verify MuninnDB is running (`muninn status`)" and continue with phase completion. Do NOT silently skip consolidation.
 
 **Event Log — phase end (REQ-16, graduated, always-on):**
 - `bash "${VBW_PLUGIN_ROOT}/scripts/log-event.sh" phase_end {phase} plans_completed={N} total_tasks={N} 2>/dev/null || true`

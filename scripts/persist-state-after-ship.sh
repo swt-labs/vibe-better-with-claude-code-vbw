@@ -9,18 +9,18 @@ set -euo pipefail
 #
 # Called by Ship mode (vibe.md Step 5) AFTER moving STATE.md to the archive.
 # Reads the archived copy and writes a minimal root STATE.md with only
-# project-level sections. Milestone-specific sections (Current Phase, Activity
-# Log) are excluded — they belong in the archive.
+# project-level sections. Milestone-specific sections (Current Phase) are
+# excluded — they belong in the archive.
 #
 # Project-level sections (preserved):
 #   ## Decisions (including ### Skills subsection)
 #   ## Todos
 #   ## Blockers
 #   ## Codebase Profile
+#   ## Memory
 #
 # Milestone-level sections (excluded):
 #   ## Current Phase / ## Phase Status
-#   ## Activity Log / ## Recent Activity
 #
 # Exit codes:
 #   0 = success
@@ -122,6 +122,18 @@ generate_root_state() {
   codebase=$(extract_section "$ARCHIVED_PATH" "Codebase Profile")
   if section_has_body "$codebase"; then
     echo "$codebase"
+    echo ""
+  fi
+
+  # Memory (MuninnDB vault state — persists across milestones)
+  local memory
+  memory=$(extract_section "$ARCHIVED_PATH" "Memory")
+  if section_has_body "$memory"; then
+    echo "$memory"
+    echo ""
+  else
+    echo "## Memory"
+    echo "**Vault:** _(see config.json)_"
     echo ""
   fi
 }

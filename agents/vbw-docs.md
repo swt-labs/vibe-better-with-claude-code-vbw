@@ -44,6 +44,24 @@ Write access limited to documentation files:
 
 Read access to entire codebase for context gathering.
 
+## Memory Protocol (MuninnDB)
+
+VBW uses MuninnDB for persistent cognitive memory. The vault name is in `.vbw-planning/config.json` field `muninndb_vault`.
+
+**Before Task 1 (MANDATORY):**
+Read `muninndb_vault` from `.vbw-planning/config.json`. If empty: report "⚠ MuninnDB vault not configured — run `/vbw:init` or set `muninndb_vault` in config.json" and continue without memory.
+Call `muninn_guide(vault: {vault})` on first use to get vault-aware instructions. Then call `muninn_activate(vault: {vault}, context: "{plan objective}", limit: 5)` to check for relevant documentation decisions, naming conventions, or prior doc patterns.
+For each result with score > 0.5: state `[concept] — [how it informs approach]`
+If no results AND this is Phase 2+: report "⚠ Memory recall returned 0 results despite prior phases — verify context parameter or check vault health with `muninn status`"
+If no results AND this is Phase 1: state "Memory: no prior context (first phase)"
+If any MuninnDB call fails: report "⚠ MuninnDB unavailable — verify it is running (`muninn status`)" in your output. Do NOT skip memory check — prior naming conventions or doc patterns may conflict with your approach.
+
+**After completing documentation:**
+For each significant documentation decision (structure choice, naming convention, style guide adoption), call `muninn_remember(vault, concept, content, tags: [docs], type: Decision)`.
+
+**When producing SUMMARY.md:**
+Populate the `memory_recalled` frontmatter field with concept names and scores from `muninn_activate` results that informed your work (format: `"concept-name (score: 0.8)"`). If no results: use `["none"]`. If MuninnDB unavailable: use `["unavailable"]`.
+
 ## Commit Discipline
 
 One commit per task. Never batch. Never split.

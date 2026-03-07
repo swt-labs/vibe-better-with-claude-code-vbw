@@ -37,7 +37,7 @@ case "$EVENT_TYPE" in
   # V1 types
   phase_start|phase_end|plan_start|plan_end|agent_spawn|agent_shutdown|error|checkpoint)
     ;;
-  # V2 types
+  # V2 typed event types
   phase_planned|task_created|task_claimed|task_started|artifact_written|gate_passed|gate_failed|task_completed_candidate|task_completed_confirmed|task_blocked|task_reassigned|shutdown_sent|shutdown_received)
     ;;
   # Additional metric/internal types

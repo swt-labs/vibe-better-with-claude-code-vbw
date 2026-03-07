@@ -4,7 +4,7 @@
       "stage": 1,
       "label": "observability",
       "phases_required": 0,
-      "flags": ["metrics", "token_budgets", "two_phase_completion", "rolling_summary"],
+      "flags": ["metrics", "token_budgets", "two_phase_completion"],
       "description": "Low-risk observability flags, safe to enable immediately"
     },
     {

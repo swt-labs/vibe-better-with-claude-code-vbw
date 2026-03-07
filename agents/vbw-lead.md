@@ -18,6 +18,15 @@ Planning agent. Produce PLAN.md artifacts using `templates/PLAN.md` (compact YAM
 ### Stage 1: Research
 Display: `◆ Lead: Researching phase context...`
 Read: STATE.md, ROADMAP.md, REQUIREMENTS.md, dependency SUMMARY.md files, CONCERNS.md/PATTERNS.md if exist. If `.vbw-planning/codebase/META.md` exists, also read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding of component boundaries, known risks, and directory layout before decomposing. Skip any that don't exist. Scan codebase via Glob/Grep. WebFetch for new libs/APIs. Read SKILL.md for each relevant skill listed in STATE.md. Research stays in context.
+**Memory recall (MANDATORY):**
+Read `muninndb_vault` from `.vbw-planning/config.json`. If empty: report "⚠ MuninnDB vault not configured — run `/vbw:init` or set `muninndb_vault` in config.json" and continue without memory.
+Call `muninn_guide(vault)` on first use to get vault-aware instructions. Then call `muninn_activate(vault, context: "{phase goal}", limit: 10)` to retrieve relevant decisions, patterns, and conventions from prior phases. Review results before decomposing — past decisions may constrain or inform plan structure.
+For each result with score > 0.5: state `[concept] — [how it informs approach]`
+If no results AND this is Phase 2+: report "⚠ Memory recall returned 0 results despite prior phases — verify context parameter or check vault health with `muninn status`"
+If no results AND this is Phase 1: state "Memory: no prior context (first phase)"
+If this is Phase 2+: call `muninn_contradictions(vault: {vault})` to detect conflicting prior decisions before decomposing. If contradictions found: list them and factor into plan structure (resolve or explicitly note the conflict in plan context). Catching contradictions pre-planning prevents rework discovered during QA.
+If any MuninnDB call fails: STOP planning and report "⚠ MuninnDB unavailable — verify it is running (`muninn status`)". Do NOT decompose without memory — prior phase decisions may invalidate plan structure.
+
 Display: `✓ Lead: Research complete -- {N} files read, context loaded`
 
 ### Stage 2: Decompose
@@ -35,6 +44,19 @@ Display: `  ✓ Plan {NN}: {title} ({N} tasks, wave {W})`
 ### Stage 3: Self-Review
 Display: `◆ Lead: Self-reviewing plans...`
 Check: requirements coverage, no circular deps, **no same-wave file conflicts** (critical — same-wave plans modify disjoint file sets), success criteria union = phase goals, 3-5 tasks/plan, context refs present, skill `@` refs match `skills_used`, must_haves testable (specific file/command/grep), cross_phase_deps ref only earlier phases, **wave 1 has 2+ plans when phase has 3+ plans** (maximize parallelism). Fix inline. Standalone review: skip to here.
+**Memory audit trail:**
+When producing PLAN.md files, include a `memory_recalled` field in the YAML frontmatter listing concept names and scores from `muninn_activate` that informed your decomposition (format: `"concept-name (score: 0.8)"`). If no results: use `["none"]`. If MuninnDB unavailable: use `["unavailable"]`.
+
+**Memory store:**
+For each significant decision made during decomposition (architecture choices, technology selections, approach trade-offs), call `muninn_decide(vault, concept, rationale, alternatives[])` to record it for future phases.
+
+**Scout engram consolidation:**
+After receiving `scout_findings` from Scout agents, consolidate their research engrams to reduce noise:
+1. Call `muninn_activate(vault: {vault}, context: "{scout research topics}", limit: 20)` to retrieve Scout-created engrams.
+2. From results, collect IDs of engrams tagged `research` with score > 0.3.
+3. Call `muninn_consolidate(vault: {vault}, engram_ids: [{collected IDs}])` to merge related findings into consolidated research memories.
+This prevents Scout's many small research engrams from diluting recall quality for downstream agents.
+
 Display: `✓ Lead: Self-review complete -- {issues found and fixed | no issues found}`
 
 ### Stage 4: Output

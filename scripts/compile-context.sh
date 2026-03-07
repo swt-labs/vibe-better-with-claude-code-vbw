@@ -114,18 +114,6 @@ if [ -f "$CONFIG_PATH" ] && command -v jq &>/dev/null; then
   V3_METRICS_ENABLED=$(jq -r 'if .metrics != null then .metrics elif .v3_metrics != null then .v3_metrics else true end' "$CONFIG_PATH" 2>/dev/null || echo "true")
 fi
 
-ROLLING_SUMMARY=false
-if [ -f "$CONFIG_PATH" ] && command -v jq &>/dev/null; then
-  # Legacy fallback: honor v3_rolling_summary if unprefixed key missing (pre-migration brownfield)
-  ROLLING_SUMMARY=$(jq -r 'if .rolling_summary != null then .rolling_summary elif .v3_rolling_summary != null then .v3_rolling_summary else false end' "$CONFIG_PATH" 2>/dev/null || echo "false")
-fi
-
-ROLLING_CONTEXT_PATH="${PLANNING_DIR}/ROLLING-CONTEXT.md"
-ROLLING_CONTEXT_SECTION=""
-if [ "$ROLLING_SUMMARY" = "true" ] && [ "$PHASE_NUM" -gt 1 ] 2>/dev/null && [ -f "$ROLLING_CONTEXT_PATH" ]; then
-  ROLLING_CONTEXT_SECTION=$(cat "$ROLLING_CONTEXT_PATH" 2>/dev/null || true)
-fi
-
 # Record start time for metrics
 if [ "$V3_METRICS_ENABLED" = "true" ]; then
   START_TIME=$(date +%s 2>/dev/null || echo "0")
@@ -153,6 +141,49 @@ if [ "$V3_CACHE_ENABLED" = "true" ] && [ -f "${SCRIPT_DIR}/cache-context.sh" ]; 
 elif [ "$V3_CACHE_ENABLED" = "true" ]; then
   echo "V3 fallback: cache-context.sh not found, skipping cache" >&2
 fi
+
+# --- MuninnDB cross-phase memory hint ---
+# Emits a hint for agents to use muninn_activate for cross-phase memory.
+emit_muninn_memory_hint() {
+  local phase="${1:-1}"
+  local role="${2:-}"
+  # Check if vault is configured
+  local vault=""
+  if [ -f "$CONFIG_PATH" ] && command -v jq &>/dev/null; then
+    vault=$(jq -r '.muninndb_vault // ""' "$CONFIG_PATH" 2>/dev/null) || vault=""
+  fi
+  echo ""
+  echo "### Cross-Phase Memory"
+  if [ -z "$vault" ]; then
+    echo "⚠ MuninnDB vault not configured. Run \`/vbw:init\` or set \`muninndb_vault\` in config.json to enable cross-phase memory."
+    return
+  fi
+  echo "Call \`muninn_guide(vault from .vbw-planning/config.json muninndb_vault)\` on first use to get vault-aware instructions, then \`muninn_activate(vault, context: \"{phase goal}\")\` to recall prior decisions, patterns, and conventions."
+  # Role-specific guidance
+  case "$role" in
+    qa)
+      echo "Also call \`muninn_contradictions(vault)\` to detect conflicting prior decisions that may affect verification."
+      ;;
+    debugger)
+      echo "Use context: \"{bug description} {error symptoms}\" to find similar past issues and their resolutions."
+      ;;
+    scout)
+      echo "Use context: \"{research topic}\" to check for prior research that may already cover this domain."
+      ;;
+    lead)
+      echo "Review recalled decisions for constraints on plan structure. In Phase 2+, also call \`muninn_contradictions(vault)\` to catch conflicts pre-planning."
+      ;;
+    architect)
+      echo "Review recalled architectural decisions that may constrain this milestone's design. Also call \`muninn_contradictions(vault)\` to catch conflicts pre-scoping."
+      ;;
+    docs)
+      echo "Check for prior naming conventions and documentation patterns that should be followed."
+      ;;
+  esac
+  if [ "${phase}" -gt 1 ] 2>/dev/null; then
+    echo "⚠ Phase ${phase}: if recall returns 0 results, report a warning — prior phase decisions should exist."
+  fi
+}
 
 # --- Codebase mapping hint helper ---
 # Usage: emit_codebase_mapping_hint <priority_files...>
@@ -214,12 +245,7 @@ case "$ROLE" in
   lead)
     {
       echo "## Phase ${PHASE} Context (Compiled)"
-      if [ -n "$ROLLING_CONTEXT_SECTION" ]; then
-        echo ""
-        echo "### Prior Phase Context (Rolling Summary)"
-        echo "$ROLLING_CONTEXT_SECTION"
-        echo ""
-      fi
+      emit_muninn_memory_hint "$PHASE" "$ROLE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -271,12 +297,7 @@ case "$ROLE" in
   dev)
     {
       echo "## Phase ${PHASE} Context"
-      if [ -n "$ROLLING_CONTEXT_SECTION" ]; then
-        echo ""
-        echo "### Prior Phase Context (Rolling Summary)"
-        echo "$ROLLING_CONTEXT_SECTION"
-        echo ""
-      fi
+      emit_muninn_memory_hint "$PHASE" "$ROLE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -359,12 +380,7 @@ case "$ROLE" in
   qa)
     {
       echo "## Phase ${PHASE} Verification Context"
-      if [ -n "$ROLLING_CONTEXT_SECTION" ]; then
-        echo ""
-        echo "### Prior Phase Context (Rolling Summary)"
-        echo "$ROLLING_CONTEXT_SECTION"
-        echo ""
-      fi
+      emit_muninn_memory_hint "$PHASE" "$ROLE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -394,12 +410,7 @@ case "$ROLE" in
   scout)
     {
       echo "## Phase ${PHASE} Research Context"
-      if [ -n "$ROLLING_CONTEXT_SECTION" ]; then
-        echo ""
-        echo "### Prior Phase Context (Rolling Summary)"
-        echo "$ROLLING_CONTEXT_SECTION"
-        echo ""
-      fi
+      emit_muninn_memory_hint "$PHASE" "$ROLE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -445,30 +456,13 @@ case "$ROLE" in
   debugger)
     {
       echo "## Phase ${PHASE} Debug Context"
-      if [ -n "$ROLLING_CONTEXT_SECTION" ]; then
-        echo ""
-        echo "### Prior Phase Context (Rolling Summary)"
-        echo "$ROLLING_CONTEXT_SECTION"
-        echo ""
-      fi
+      emit_muninn_memory_hint "$PHASE" "$ROLE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
       echo ""
       echo "### Success Criteria"
       echo "$PHASE_SUCCESS"
-      echo ""
-      echo "### Recent Activity"
-      if [ -f "$PLANNING_DIR/STATE.md" ]; then
-        ACTIVITY=$(sed -n '/^## Activity/,/^## [A-Z]/p' "$PLANNING_DIR/STATE.md" 2>/dev/null | sed '$d' | tail -n +2) || true
-        if [ -n "$ACTIVITY" ]; then
-          echo "$ACTIVITY"
-        else
-          echo "None"
-        fi
-      else
-        echo "None"
-      fi
       if [ -f "$PLANNING_DIR/conventions.json" ] && command -v jq &>/dev/null; then
         CONVENTIONS=$(jq -r '.conventions[] | "- [\(.tag)] \(.rule)"' "$PLANNING_DIR/conventions.json" 2>/dev/null) || true
         if [ -n "$CONVENTIONS" ]; then
@@ -524,12 +518,7 @@ case "$ROLE" in
   architect)
     {
       echo "## Phase ${PHASE} Architecture Context"
-      if [ -n "$ROLLING_CONTEXT_SECTION" ]; then
-        echo ""
-        echo "### Prior Phase Context (Rolling Summary)"
-        echo "$ROLLING_CONTEXT_SECTION"
-        echo ""
-      fi
+      emit_muninn_memory_hint "$PHASE" "$ROLE"
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -563,8 +552,31 @@ case "$ROLE" in
     } > "${PHASE_DIR}/.context-architect.md"
     ;;
 
+  docs)
+    {
+      echo "## Phase ${PHASE} Documentation Context"
+      emit_muninn_memory_hint "$PHASE" "$ROLE"
+      echo ""
+      echo "### Goal"
+      echo "$PHASE_GOAL"
+      echo ""
+      echo "### Success Criteria"
+      echo "$PHASE_SUCCESS"
+      if [ -f "$PLANNING_DIR/conventions.json" ] && command -v jq &>/dev/null; then
+        CONVENTIONS=$(jq -r '.conventions[] | "- [\(.tag)] \(.rule)"' "$PLANNING_DIR/conventions.json" 2>/dev/null) || true
+        if [ -n "$CONVENTIONS" ]; then
+          echo ""
+          echo "### Conventions"
+          echo "$CONVENTIONS"
+        fi
+      fi
+      # --- Codebase mapping hint ---
+      emit_codebase_mapping_hint CONVENTIONS PATTERNS STRUCTURE
+    } > "${PHASE_DIR}/.context-docs.md"
+    ;;
+
   *)
-    echo "Unknown role: $ROLE. Valid roles: lead, dev, qa, scout, debugger, architect" >&2
+    echo "Unknown role: $ROLE. Valid roles: lead, dev, qa, scout, debugger, architect, docs" >&2
     exit 1
     ;;
 esac

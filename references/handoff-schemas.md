@@ -335,5 +335,5 @@ Old-format messages (without full envelope) are accepted when `v2_typed_protocol
 
 When receiving messages, agents should:
 1. Try to parse as V2 typed message (full envelope)
-2. Fall back to V1 format (simple type + payload)
+2. Fall back to V1 format (simple type + payload, no envelope fields)
 3. Fall back to plain markdown on parse failure

@@ -20,14 +20,14 @@ teardown() {
 
 @test "configurable flags present in defaults.json under unprefixed names" {
   # Restored flags should be in defaults.json under new unprefixed names
-  run jq -r 'has("token_budgets") and has("two_phase_completion") and has("metrics") and has("smart_routing") and has("validation_gates") and has("snapshot_resume") and has("lease_locks") and has("event_recovery") and has("monorepo_routing") and has("rolling_summary")' "$CONFIG_DIR/defaults.json"
+  run jq -r 'has("token_budgets") and has("two_phase_completion") and has("metrics") and has("smart_routing") and has("validation_gates") and has("snapshot_resume") and has("lease_locks") and has("event_recovery") and has("monorepo_routing")' "$CONFIG_DIR/defaults.json"
   [ "$status" -eq 0 ]
   [ "$output" = "true" ]
 }
 
 @test "old prefixed flag names absent from defaults.json" {
   # Old v2_/v3_ prefixed names should NOT be in defaults.json
-  run jq -r 'has("v2_token_budgets") or has("v2_two_phase_completion") or has("v3_metrics") or has("v3_smart_routing") or has("v3_validation_gates") or has("v3_snapshot_resume") or has("v3_lease_locks") or has("v3_event_recovery") or has("v3_monorepo_routing") or has("v3_rolling_summary")' "$CONFIG_DIR/defaults.json"
+  run jq -r 'has("v2_token_budgets") or has("v2_two_phase_completion") or has("v3_metrics") or has("v3_smart_routing") or has("v3_validation_gates") or has("v3_snapshot_resume") or has("v3_lease_locks") or has("v3_event_recovery") or has("v3_monorepo_routing")' "$CONFIG_DIR/defaults.json"
   [ "$status" -eq 0 ]
   [ "$output" = "false" ]
 }

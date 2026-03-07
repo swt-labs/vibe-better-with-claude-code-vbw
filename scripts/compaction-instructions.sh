@@ -18,10 +18,10 @@ MATCHER=$(echo "$INPUT" | jq -r '.matcher // "auto"')
 # VBW-specific compaction priorities per agent role
 case "$AGENT_NAME" in
   *scout*)
-    PRIORITIES="Preserve research findings, URLs, confidence assessments"
+    PRIORITIES="Preserve research findings, URLs, confidence assessments. Read muninndb_vault from .vbw-planning/config.json then call muninn_guide(vault) for vault-aware instructions, then muninn_activate(vault, context: your research topic) to check for prior research and avoid duplication"
     ;;
   *dev*)
-    PRIORITIES="Preserve commit hashes, file paths modified, deviation decisions, current task number. After compaction, if .vbw-planning/codebase/META.md exists, re-read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/"
+    PRIORITIES="Preserve commit hashes, file paths modified, deviation decisions, current task number. After compaction, if .vbw-planning/codebase/META.md exists, re-read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/. Read muninndb_vault from .vbw-planning/config.json then call muninn_guide(vault) for vault-aware instructions, then muninn_activate(vault, context: your current task context) to recover cognitive memory (decisions, patterns, conventions from prior phases)"
     # Inject worktree path if agent has a mapping
     AGENT_NAME_SHORT=$(echo "$AGENT_NAME" | sed 's/.*vbw-//')
     WORKTREE_MAP_FILE=".vbw-planning/.agent-worktrees/${AGENT_NAME_SHORT}.json"
@@ -33,19 +33,22 @@ case "$AGENT_NAME" in
     fi
     ;;
   *qa*)
-    PRIORITIES="Preserve pass/fail status, gap descriptions, verification results. After compaction, if .vbw-planning/codebase/META.md exists, re-read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from .vbw-planning/codebase/"
+    PRIORITIES="Preserve pass/fail status, gap descriptions, verification results. After compaction, if .vbw-planning/codebase/META.md exists, re-read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from .vbw-planning/codebase/. Read muninndb_vault from .vbw-planning/config.json then call muninn_guide(vault) for vault-aware instructions, then muninn_activate(vault, context: your verification context) to recover cognitive memory"
     ;;
   *lead*)
-    PRIORITIES="Preserve phase status, plan structure, coordination decisions. After compaction, if .vbw-planning/codebase/META.md exists, re-read ARCHITECTURE.md, CONCERNS.md, and STRUCTURE.md (whichever exist) from .vbw-planning/codebase/"
+    PRIORITIES="Preserve phase status, plan structure, coordination decisions. After compaction, if .vbw-planning/codebase/META.md exists, re-read ARCHITECTURE.md, CONCERNS.md, and STRUCTURE.md (whichever exist) from .vbw-planning/codebase/. Read muninndb_vault from .vbw-planning/config.json then call muninn_guide(vault) for vault-aware instructions, then muninn_activate(vault, context: your phase goal) to recover prior decisions and planning context"
     ;;
   *architect*)
-    PRIORITIES="Preserve requirement IDs, phase structure, success criteria, key decisions. After compaction, if .vbw-planning/codebase/META.md exists, re-read ARCHITECTURE.md and STACK.md (whichever exist) from .vbw-planning/codebase/"
+    PRIORITIES="Preserve requirement IDs, phase structure, success criteria, key decisions. After compaction, if .vbw-planning/codebase/META.md exists, re-read ARCHITECTURE.md and STACK.md (whichever exist) from .vbw-planning/codebase/. Read muninndb_vault from .vbw-planning/config.json then call muninn_guide(vault) for vault-aware instructions, then muninn_activate(vault, context: your scoping context) to recover prior architectural decisions"
     ;;
   *debugger*)
-    PRIORITIES="Preserve reproduction steps, hypotheses, evidence gathered, diagnosis. After compaction, if .vbw-planning/codebase/META.md exists, re-read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/"
+    PRIORITIES="Preserve reproduction steps, hypotheses, evidence gathered, diagnosis. After compaction, if .vbw-planning/codebase/META.md exists, re-read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/. Read muninndb_vault from .vbw-planning/config.json then call muninn_guide(vault) for vault-aware instructions, then muninn_activate(vault, context: your bug description) to check for similar past issues"
+    ;;
+  *docs*)
+    PRIORITIES="Preserve doc structure, naming conventions, style decisions. After compaction, if .vbw-planning/codebase/META.md exists, re-read CONVENTIONS.md, PATTERNS.md, and STRUCTURE.md (whichever exist) from .vbw-planning/codebase/. Read muninndb_vault from .vbw-planning/config.json then call muninn_guide(vault) for vault-aware instructions, then muninn_activate(vault, context: your documentation task context) to recover prior doc patterns and conventions"
     ;;
   *)
-    PRIORITIES="Preserve active command being executed, user's original request, current phase/plan context, file modification paths, any pending user decisions. Discard: tool output details, reference file contents (re-read from disk), previous command results"
+    PRIORITIES="Preserve active command being executed, user's original request, current phase/plan context, file modification paths, any pending user decisions. Discard: tool output details, reference file contents (re-read from disk), previous command results. Read muninndb_vault from .vbw-planning/config.json then call muninn_guide(vault) for vault-aware instructions, then muninn_activate(vault, context: your current task context) to recover cognitive memory"
     ;;
 esac
 

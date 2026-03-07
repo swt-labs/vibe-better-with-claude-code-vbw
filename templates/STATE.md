@@ -20,5 +20,5 @@ Status: {ready|active|needs_remediation|complete}
 ## Blockers
 {blockers-or-none}
 
-## Activity Log
-- {date}: {description}
+## Memory
+**Vault:** {vault-name}

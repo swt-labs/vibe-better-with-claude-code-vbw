@@ -19,6 +19,31 @@ Three tiers (tier is provided in your task description):
 ## Bootstrap
 Before deriving checks: if `.vbw-planning/codebase/META.md` exists, read whichever of `TESTING.md`, `CONCERNS.md`, and `ARCHITECTURE.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of existing test coverage, known risk areas, and system boundaries. Skip any that don't exist. This avoids re-discovering test infrastructure and architecture that `/vbw:map` has already documented.
 
+## Memory Audit (MuninnDB)
+
+VBW uses MuninnDB for persistent cognitive memory. The vault name is in `.vbw-planning/config.json` field `muninndb_vault`.
+
+After deriving checks:
+1. Read `.vbw-planning/config.json` → get `muninndb_vault`
+2. If `muninndb_vault` is empty: report "⚠ MuninnDB vault not configured — run `/vbw:init` or set `muninndb_vault` in config.json" and skip memory audit
+3. Call `muninn_guide(vault: {vault})` on first use to get vault-aware instructions
+3. Call `muninn_contradictions(vault: {vault})` to detect contradictory decisions that may affect verification
+4. If contradictions found: include them in the verification summary as potential risk areas
+5. If no contradictions: state "Memory: no contradictions detected"
+6. If the tool call fails: report "⚠ muninn_contradictions unavailable — verify MuninnDB is running (`muninn status`)" in the verification output, then continue with checks. Do NOT silently skip.
+
+## Memory Store (after verification)
+
+After completing verification, store useful findings for future QA runs:
+- Contradictions found and their resolution → `muninn_remember(vault, concept: "Contradiction: {description}", content: "{resolution}", tags: [qa, phase:{N}], type: Issue)`
+- Verification pattern that caught a non-obvious failure → `muninn_remember(vault, concept: "QA pattern: {check-id}", content: "{what it caught and why}", tags: [qa, phase:{N}], type: Observation)`
+- Pre-existing failures classified → `muninn_remember(vault, concept: "Pre-existing: {test}", content: "{error and classification rationale}", tags: [qa, pre-existing], type: Observation)`
+
+Do NOT store every passing check — only insights that would help a future QA run avoid redundant investigation or catch similar issues.
+
+## Memory Recall Verification
+When verifying a SUMMARY.md, check that `memory_recalled` is present in frontmatter. If it contains `["none"]` and this is Phase 2+, flag as a warning in the verification output.
+
 ## Goal-Backward
 1. Read plan: objective, must_haves, success_criteria, `@`-refs, CONVENTIONS.md.
 2. Derive checks per truth/artifact/key_link. Execute, collect evidence.
@@ -35,7 +60,7 @@ Check tables use **5-col** (`# | ID | {col} | Status | Evidence`) or **6-col** p
 Summary: `Tier | Result | Passed: N/total | Failed: list`
 
 ### VERIFICATION.md Format
-Frontmatter: `phase`, `tier` (quick|standard|deep), `result` (PASS|FAIL|PARTIAL), `passed`, `failed`, `total`, `date`.
+Frontmatter: `phase`, `tier` (quick|standard|deep), `result` (PASS|FAIL|PARTIAL), `passed`, `failed`, `total`, `date`, `memory_recalled` (list of concept names with scores from `muninn_contradictions` / `muninn_activate` results; `["none"]` if no results; `["unavailable"]` if MuninnDB down).
 
 Body sections (include all that apply) — tables use 5-col or 6-col per-category:
 - `## Must-Have Checks` — 5-col: # | ID | Truth/Condition | Status | Evidence

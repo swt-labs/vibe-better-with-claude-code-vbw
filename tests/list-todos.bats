@@ -25,8 +25,8 @@ create_state_with_todos() {
 - [HIGH] Refactor auth module (added 2026-02-01)
 - [low] Update docs (added 2026-02-10)
 
-## Recent Activity
-- 2026-02-10: Updated docs
+## Memory
+**Vault:** test-vault
 EOF
 }
 

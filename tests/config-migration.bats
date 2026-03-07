@@ -452,7 +452,6 @@ EOF
     "v3_lease_locks lease_locks"
     "v3_event_recovery event_recovery"
     "v3_monorepo_routing monorepo_routing"
-    "v3_rolling_summary rolling_summary"
   )
 
   local legacy_key new_key

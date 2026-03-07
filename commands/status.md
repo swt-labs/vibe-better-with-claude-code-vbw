@@ -122,4 +122,10 @@ Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
     Cache hit rate: {percent}%
 ```
 
+**MuninnDB:** Read `muninndb_vault` from `.vbw-planning/config.json`. Check health via `curl -sf --max-time 2 http://localhost:8750/health`.
+- Active + vault configured: `MuninnDB: ✓ active (vault: {vault-name})`
+- Active + vault empty: `MuninnDB: ✓ active (vault not configured)`
+- If health check fails: `MuninnDB: ✗ not running — start with: muninn start`
+- If --verbose: read API token from mcp.json (same as init Step 0.6), then `curl -sf --max-time 3 http://localhost:8475/api/vaults/{vault}/stats $AUTH_HEADER | jq '.engram_count'`. Display: `  Engrams: {count} | Vault: {vault-name}`
+
 **Next Up:** Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-next.sh status` and display.

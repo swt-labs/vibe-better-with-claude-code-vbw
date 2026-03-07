@@ -266,75 +266,6 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-# compile-context.sh — rolling_summary / v3_rolling_summary
-# ---------------------------------------------------------------------------
-
-@test "compile-context: unprefixed rolling_summary=true includes rolling context" {
-  echo '{"rolling_summary": true, "metrics": false}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
-  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-test"
-  echo "## Phase 2: Test" > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Goal:** G" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Reqs:** REQ-1" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Success:** S" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "- [REQ-1] demo" > "$TEST_TEMP_DIR/.vbw-planning/REQUIREMENTS.md"
-  echo "ROLLING_MARKER_PASS" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 02 dev .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  [ -f "$output" ]
-  grep -q "ROLLING_MARKER_PASS" "$output"
-}
-
-@test "compile-context: legacy v3_rolling_summary=true includes rolling context" {
-  echo '{"v3_rolling_summary": true, "metrics": false}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
-  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-test"
-  echo "## Phase 2: Test" > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Goal:** G" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Reqs:** REQ-1" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Success:** S" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "- [REQ-1] demo" > "$TEST_TEMP_DIR/.vbw-planning/REQUIREMENTS.md"
-  echo "ROLLING_MARKER_PASS" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 02 dev .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  [ -f "$output" ]
-  grep -q "ROLLING_MARKER_PASS" "$output"
-}
-
-@test "compile-context: unprefixed rolling_summary=false excludes rolling context" {
-  echo '{"rolling_summary": false, "metrics": false}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
-  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-test"
-  echo "## Phase 2: Test" > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Goal:** G" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Reqs:** REQ-1" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Success:** S" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "- [REQ-1] demo" > "$TEST_TEMP_DIR/.vbw-planning/REQUIREMENTS.md"
-  echo "ROLLING_MARKER_FAIL" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 02 dev .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  [ -f "$output" ]
-  ! grep -q "ROLLING_MARKER_FAIL" "$output"
-}
-
-@test "compile-context: unprefixed key wins over legacy key" {
-  # unprefixed=false (exclude), legacy=true — unprefixed wins → marker absent
-  echo '{"rolling_summary": false, "v3_rolling_summary": true, "metrics": false}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
-  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-test"
-  echo "## Phase 2: Test" > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Goal:** G" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Reqs:** REQ-1" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "**Success:** S" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
-  echo "- [REQ-1] demo" > "$TEST_TEMP_DIR/.vbw-planning/REQUIREMENTS.md"
-  echo "ROLLING_MARKER_CONFLICT" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 02 dev .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  [ -f "$output" ]
-  ! grep -q "ROLLING_MARKER_CONFLICT" "$output"
-}
-
-# ---------------------------------------------------------------------------
 # collect-metrics.sh — metrics / v3_metrics
 # ---------------------------------------------------------------------------
 
@@ -494,79 +425,6 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-# cache-context.sh — rolling_summary / v3_rolling_summary
-# ---------------------------------------------------------------------------
-
-@test "cache-context: rolling_summary=true includes rolling hash" {
-  echo '{"rolling_summary": true}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
-  echo "rolling content" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/cache-context.sh" 01 dev .vbw-planning/config.json
-  [ "$status" -eq 0 ]
-  # Capture the hash
-  local hash1
-  hash1=$(echo "$output" | awk '{print $2}')
-  # Change the rolling content
-  echo "different rolling content" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  run bash "$SCRIPTS_DIR/cache-context.sh" 01 dev .vbw-planning/config.json
-  [ "$status" -eq 0 ]
-  local hash2
-  hash2=$(echo "$output" | awk '{print $2}')
-  # Hashes should differ because rolling content changed
-  [ "$hash1" != "$hash2" ]
-}
-
-@test "cache-context: legacy v3_rolling_summary=true includes rolling hash" {
-  echo '{"v3_rolling_summary": true}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
-  echo "rolling content" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/cache-context.sh" 01 dev .vbw-planning/config.json
-  [ "$status" -eq 0 ]
-  local hash1
-  hash1=$(echo "$output" | awk '{print $2}')
-  echo "different rolling content" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  run bash "$SCRIPTS_DIR/cache-context.sh" 01 dev .vbw-planning/config.json
-  [ "$status" -eq 0 ]
-  local hash2
-  hash2=$(echo "$output" | awk '{print $2}')
-  [ "$hash1" != "$hash2" ]
-}
-
-@test "cache-context: rolling_summary=false ignores rolling changes" {
-  echo '{"rolling_summary": false}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
-  echo "rolling content" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/cache-context.sh" 01 dev .vbw-planning/config.json
-  [ "$status" -eq 0 ]
-  local hash1
-  hash1=$(echo "$output" | awk '{print $2}')
-  echo "different rolling content" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  run bash "$SCRIPTS_DIR/cache-context.sh" 01 dev .vbw-planning/config.json
-  [ "$status" -eq 0 ]
-  local hash2
-  hash2=$(echo "$output" | awk '{print $2}')
-  # Hashes should be the same because rolling content is ignored
-  [ "$hash1" = "$hash2" ]
-}
-
-@test "cache-context: unprefixed rolling_summary wins over legacy key" {
-  echo '{"rolling_summary": false, "v3_rolling_summary": true}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
-  echo "rolling content" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/cache-context.sh" 01 dev .vbw-planning/config.json
-  [ "$status" -eq 0 ]
-  local hash1
-  hash1=$(echo "$output" | awk '{print $2}')
-  echo "different rolling content" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
-  run bash "$SCRIPTS_DIR/cache-context.sh" 01 dev .vbw-planning/config.json
-  [ "$status" -eq 0 ]
-  local hash2
-  hash2=$(echo "$output" | awk '{print $2}')
-  # unprefixed=false wins → rolling changes should be ignored
-  [ "$hash1" = "$hash2" ]
-}
-
-# ---------------------------------------------------------------------------
 # control-plane.sh — token_budgets / v2_token_budgets
 # ---------------------------------------------------------------------------
 
@@ -609,7 +467,7 @@ EOF
 # ---------------------------------------------------------------------------
 
 @test "compile-context: legacy v3_metrics=true enables metrics in compiled context" {
-  echo '{"v3_metrics": true, "rolling_summary": false}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  echo '{"v3_metrics": true}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-test"
   echo "## Phase 2: Test" > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
   echo "**Goal:** G" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
@@ -625,7 +483,7 @@ EOF
 }
 
 @test "compile-context: unprefixed metrics key wins over legacy v3_metrics" {
-  echo '{"metrics": false, "v3_metrics": true, "rolling_summary": false}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  echo '{"metrics": false, "v3_metrics": true}' > "$TEST_TEMP_DIR/.vbw-planning/config.json"
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-test"
   echo "## Phase 2: Test" > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
   echo "**Goal:** G" >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
@@ -659,13 +517,11 @@ EOF
   check_fallback lease-lock.sh        lease_locks          v3_lease_locks
   check_fallback recover-state.sh     event_recovery       v3_event_recovery
   check_fallback snapshot-resume.sh   snapshot_resume      v3_snapshot_resume
-  check_fallback compile-context.sh   rolling_summary      v3_rolling_summary
   check_fallback compile-context.sh   metrics              v3_metrics
   check_fallback collect-metrics.sh   metrics              v3_metrics
   check_fallback two-phase-complete.sh two_phase_completion v2_two_phase_completion
   check_fallback artifact-registry.sh two_phase_completion  v2_two_phase_completion
   check_fallback route-monorepo.sh    monorepo_routing     v3_monorepo_routing
-  check_fallback cache-context.sh     rolling_summary      v3_rolling_summary
   check_fallback control-plane.sh     token_budgets        v2_token_budgets
   check_fallback rollout-stage.sh     token_budgets        v2_token_budgets
   check_fallback rollout-stage.sh     two_phase_completion v2_two_phase_completion
@@ -676,5 +532,4 @@ EOF
   check_fallback rollout-stage.sh     lease_locks          v3_lease_locks
   check_fallback rollout-stage.sh     event_recovery       v3_event_recovery
   check_fallback rollout-stage.sh     monorepo_routing     v3_monorepo_routing
-  check_fallback rollout-stage.sh     rolling_summary      v3_rolling_summary
 }

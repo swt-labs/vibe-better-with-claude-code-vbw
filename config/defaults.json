@@ -37,7 +37,9 @@
   "lease_locks": true,
   "event_recovery": true,
   "monorepo_routing": true,
-  "rolling_summary": false,
   "require_phase_discussion": false,
-  "auto_uat": false
+  "auto_uat": false,
+  "muninndb_vault": "",
+  "muninndb_port_mcp": 8750,
+  "muninndb_port_rest": 8475
 }

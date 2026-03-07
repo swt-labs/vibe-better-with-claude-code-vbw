@@ -26,7 +26,6 @@ legacy_flag_name() {
     lease_locks) echo "v3_lease_locks" ;;
     event_recovery) echo "v3_event_recovery" ;;
     monorepo_routing) echo "v3_monorepo_routing" ;;
-    rolling_summary) echo "v3_rolling_summary" ;;
     *) echo "" ;;
   esac
 }

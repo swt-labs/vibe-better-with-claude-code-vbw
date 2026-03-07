@@ -106,6 +106,13 @@ Pre-computed UAT resume metadata:
   - `uat_resume=<test-id> uat_completed=N uat_total=N`: resume at `<test-id>`. Display: `Resuming UAT session -- {completed}/{total} tests done`. Read the UAT.md once to load checkpoint text, then jump to the CHECKPOINT loop at the resume point.
 - Do NOT scan-parse the UAT file to find the resume point — the pre-computed metadata already identifies it.
 
+### 3b. MuninnDB recall (if vault configured)
+
+Read `muninndb_vault` from `.vbw-planning/config.json`. If non-empty:
+1. Call `muninn_guide(vault: {vault})` on first use.
+2. Call `muninn_activate(vault: {vault}, context: "{phase name} verification UAT", limit: 5)` to recall prior verification patterns or known issues.
+3. For each result with score > 0.5: note it as context for test generation (e.g., prior UAT issues that recurred, areas with known fragility).
+
 ### 4. Generate test scenarios from pre-computed verify context
 
 For each plan in the pre-computed verify context block:
@@ -255,6 +262,9 @@ Discovered issue D{NN} recorded (severity: {level}).
 ### 9. Session complete
 
 - Update `{phase}-UAT.md` frontmatter: status (complete or issues_found), completed date, final counts
+- **MuninnDB store:** If vault is configured and issues were found, store them for future recall:
+  - For each issue: `muninn_remember(vault, concept: "UAT issue: {short-title}", content: "{description} (severity: {level})", tags: [uat, phase:{N}], type: Issue)`
+  - For each discovered issue: `muninn_remember(vault, concept: "UAT discovered: {short-title}", content: "{observation}", tags: [uat, discovered, phase:{N}], type: Observation)`
 - Display summary:
 
 ```text

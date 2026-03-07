@@ -85,10 +85,6 @@ Phase: 1 of 1 (Test Phase)
 Status: executing
 Progress: 50%
 
-## Activity
-- Task 1 completed
-- Task 2 in progress
-
 ## Decisions
 - Decided to test all roles
 STATE
@@ -115,13 +111,13 @@ STATE
   grep -q "Requirements" ".vbw-planning/phases/01-test/.context-scout.md"
 }
 
-@test "compile-context.sh debugger context includes activity" {
+@test "compile-context.sh debugger context includes MuninnDB hint" {
   setup_compile_context
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/compile-context.sh" "01" "debugger" ".vbw-planning/phases"
   [ "$status" -eq 0 ]
   grep -q "Debug Context" ".vbw-planning/phases/01-test/.context-debugger.md"
-  grep -q "Recent Activity" ".vbw-planning/phases/01-test/.context-debugger.md"
+  grep -q "Cross-Phase Memory" ".vbw-planning/phases/01-test/.context-debugger.md"
 }
 
 @test "compile-context.sh architect context includes full requirements" {
