@@ -637,62 +637,40 @@ else
   fail "research.md: still references SKILL_PROMPT_LINE"
 fi
 
-# Positive: script-driven skill activation block in spawn templates
+# Positive: script-driven skill activation block in execute-protocol (team swarm spawns)
 if grep -q 'generate-skill-activation.sh' "$PROTOCOL"; then
   pass "execute-protocol.md: references generate-skill-activation.sh"
 else
   fail "execute-protocol.md: missing generate-skill-activation.sh reference"
 fi
 
-if grep -q 'generate-skill-activation.sh' "$VIBE_CMD"; then
-  pass "vibe.md: references generate-skill-activation.sh"
-else
-  fail "vibe.md: missing generate-skill-activation.sh reference"
-fi
-
-if grep -q 'generate-skill-activation.sh' "$RESEARCH_CMD"; then
-  pass "research.md: references generate-skill-activation.sh"
-else
-  fail "research.md: missing generate-skill-activation.sh reference"
-fi
-
-# Negative: old LLM-composed skill selection instruction removed
+# Negative: old LLM-composed skill selection removed from execute-protocol
+# (vibe.md and research.md correctly use orchestrator-composed skill_activation for Scout/Lead)
 if ! grep -q 'select skills from installed skills visible in your system context' "$PROTOCOL"; then
   pass "execute-protocol.md: old LLM-composed skill selection removed"
 else
   fail "execute-protocol.md: still has old LLM-composed skill selection instruction"
 fi
 
-if ! grep -q 'select skills from installed skills visible in your system context' "$VIBE_CMD"; then
-  pass "vibe.md: old LLM-composed skill selection removed"
+# Positive: SKILL_BLOCK variable used in execute-protocol (Dev/QA team spawns)
+if grep -q 'SKILL_BLOCK' "$PROTOCOL"; then
+  pass "execute-protocol.md: SKILL_BLOCK variable referenced for team spawns"
 else
-  fail "vibe.md: still has old LLM-composed skill selection instruction"
+  fail "execute-protocol.md: SKILL_BLOCK variable missing"
 fi
 
-if ! grep -q 'select skills from installed skills visible in your system context' "$RESEARCH_CMD"; then
-  pass "research.md: old LLM-composed skill selection removed"
+# Positive: orchestrator-composed skill_activation in Scout/Lead spawn templates
+if grep -q 'skill_activation' "$VIBE_CMD" && grep -q 'skill_activation' "$RESEARCH_CMD"; then
+  pass "vibe.md + research.md: orchestrator-composed skill_activation for Scout/Lead spawns"
 else
-  fail "research.md: still has old LLM-composed skill selection instruction"
+  fail "vibe.md or research.md: missing skill_activation in Scout/Lead spawn templates"
 fi
 
-# Positive: SKILL_BLOCK variable used in templates
-if grep -q 'SKILL_BLOCK' "$PROTOCOL" && grep -q 'SKILL_BLOCK' "$VIBE_CMD" && grep -q 'SKILL_BLOCK' "$RESEARCH_CMD"; then
-  pass "skill activation: SKILL_BLOCK variable referenced in all templates"
+# Anti-LLM-composition directive in execute-protocol (Dev/QA teams)
+if grep -q 'Do NOT attempt to compose skill activation yourself' "$PROTOCOL"; then
+  pass "execute-protocol.md: anti-LLM-composition directive present"
 else
-  fail "skill activation: SKILL_BLOCK variable missing in one or more templates"
-fi
-
-# Front-loading: verbatim SKILL_BLOCK must be first in prompts
-if grep -q 'MUST start with the verbatim' "$VIBE_CMD"; then
-  pass "vibe.md: front-loading requirement for SKILL_BLOCK documented"
-else
-  fail "vibe.md: missing front-loading requirement for SKILL_BLOCK"
-fi
-
-if grep -q 'do NOT compose skill activation yourself' "$VIBE_CMD" && grep -q 'Do NOT attempt to compose skill activation yourself' "$PROTOCOL"; then
-  pass "skill activation prompts: anti-LLM-composition directive present"
-else
-  fail "skill activation prompts: missing anti-LLM-composition directive"
+  fail "execute-protocol.md: missing anti-LLM-composition directive"
 fi
 
 if ! (grep -Ei 'skill_activation|Skill\(' "$PROTOCOL" "$VIBE_CMD" "$RESEARCH_CMD" | grep -qiE 'if you need|if relevant|clearly relevant'); then
