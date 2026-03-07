@@ -16,6 +16,7 @@ set -euo pipefail
 #   5. Verifies the full setup
 #
 # VBW principle: this script ASKS before doing anything. No silent installs.
+# In non-interactive environments, the script aborts rather than auto-approving.
 
 # --- Colors (if terminal supports them) ---
 if [ -t 1 ]; then
@@ -30,6 +31,24 @@ warn()  { printf "${YELLOW}  ⚠ %s${RESET}\n" "$*"; }
 fail()  { printf "${RED}  ✗ %s${RESET}\n" "$*"; }
 dim()   { printf "${DIM}  %s${RESET}\n" "$*"; }
 
+# --- Resolve Claude config directory ---
+_resolve_claude_dir() {
+  if [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
+    echo "$CLAUDE_CONFIG_DIR"
+  elif [ -d "$HOME/.config/claude-code" ]; then
+    echo "$HOME/.config/claude-code"
+  else
+    echo "$HOME/.claude"
+  fi
+}
+
+# --- Check for RTK hook in all known locations ---
+_hook_exists() {
+  local claude_dir
+  claude_dir=$(_resolve_claude_dir)
+  [ -f "$claude_dir/hooks/rtk-rewrite.sh" ] || [ -f "$HOME/.claude/hooks/rtk-rewrite.sh" ]
+}
+
 # --- Status check ---
 check_status() {
   local binary=false hook=false version=""
@@ -39,9 +58,7 @@ check_status() {
     version=$(rtk --version 2>/dev/null | head -1 | sed 's/^rtk //' || true)
   fi
 
-  # Check for Claude Code hook
-  local claude_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-  if [ -f "$claude_dir/hooks/rtk-rewrite.sh" ] || [ -f "$HOME/.claude/hooks/rtk-rewrite.sh" ]; then
+  if _hook_exists; then
     hook=true
   fi
 
@@ -62,12 +79,11 @@ check_status() {
   if [ "$binary" = true ] && [ "$hook" = true ]; then
     echo ""
     ok "RTK is fully active"
-    # Show gains if available
+    # Show gains if available (API: .summary.avg_savings_pct)
     if command -v jq &>/dev/null; then
-      local gains
+      local gains pct
       gains=$(rtk gain --all --format json 2>/dev/null || echo "{}")
-      local pct
-      pct=$(printf '%s' "$gains" | jq -r '.avg_savings_pct // 0' 2>/dev/null || echo "0")
+      pct=$(printf '%s' "$gains" | jq -r '.summary.avg_savings_pct // 0 | floor' 2>/dev/null || echo "0")
       if [ "$pct" != "0" ] && [ "$pct" != "null" ]; then
         dim "Average token savings: ${pct}%"
       else
@@ -171,9 +187,17 @@ setup_hook() {
 }
 
 # --- Prompt user for confirmation ---
+# Aborts in non-interactive environments instead of auto-approving.
 confirm() {
   local prompt="$1"
   local default="${2:-y}"
+
+  # Non-interactive guard: refuse to auto-approve
+  if ! { [ -t 0 ] || [ -e /dev/tty ]; }; then
+    fail "Non-interactive environment detected. Cannot prompt for confirmation."
+    dim "Run this script in an interactive terminal."
+    return 1
+  fi
 
   if [ "$default" = "y" ]; then
     printf "%s [Y/n] " "$prompt"
@@ -181,7 +205,10 @@ confirm() {
     printf "%s [y/N] " "$prompt"
   fi
 
-  read -r answer </dev/tty 2>/dev/null || answer="$default"
+  read -r answer </dev/tty 2>/dev/null || {
+    fail "Cannot read user input."
+    return 1
+  }
   answer="${answer:-$default}"
 
   case "$answer" in
@@ -213,10 +240,12 @@ case "$MODE" in
       fail "RTK binary not found. Run without --hook to install first."
       exit 1
     fi
-    setup_hook
-    echo ""
-    check_status
-    exit 0
+    if setup_hook; then
+      echo ""
+      check_status
+    else
+      exit 1
+    fi
     ;;
 
   install|*)
@@ -261,12 +290,11 @@ case "$MODE" in
     fi
 
     # Step 3: Setup Claude Code hook if needed
-    local_claude_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-    if [ ! -f "$local_claude_dir/hooks/rtk-rewrite.sh" ] && [ ! -f "$HOME/.claude/hooks/rtk-rewrite.sh" ]; then
+    if ! _hook_exists; then
       echo ""
       if confirm "Activate Claude Code hook (rtk init -g)?"; then
         echo ""
-        setup_hook
+        setup_hook || true
       else
         dim "Skipped hook setup"
         dim "Run 'rtk init -g' later to activate"

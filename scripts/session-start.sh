@@ -299,7 +299,7 @@ if [ ! -f "$VBW_MARKER" ]; then
   touch "$VBW_MARKER" 2>/dev/null
   _rtk_hint=""
   if ! command -v rtk &>/dev/null; then
-    _rtk_hint=" PRO TIP: Install RTK (Rust Token Killer) to compress tool outputs and save 60-90%% additional context tokens. Quick setup: bash scripts/rtk-setup.sh"
+    _rtk_hint=" PRO TIP: Install RTK (Rust Token Killer) to compress tool outputs and save 60-90% additional context tokens. See https://github.com/rtk-ai/rtk"
   fi
   WELCOME_MSG="FIRST RUN -- Display this welcome to the user verbatim: Welcome to VBW -- Vibe Better with Claude Code. You're not an engineer anymore. You're a prompt jockey with commit access. At least do it properly. Quick start: /vbw:vibe -- describe your project and VBW handles the rest. Type /vbw:help for the full story.${_rtk_hint} --- "
 fi
@@ -901,11 +901,25 @@ if [ -f "$_RTK_DETECT" ]; then
   fi
   if [ "$_rtk_cache_age" -gt 60 ]; then
     . "$_RTK_DETECT" 2>/dev/null || true
-    # Persist gains to cache for next invocation
-    echo "RTK_FULLY_ACTIVE=${RTK_FULLY_ACTIVE:-false} RTK_GAIN_HAS_DATA=${RTK_GAIN_HAS_DATA:-false} RTK_GAIN_PCT=${RTK_GAIN_PCT:-0} RTK_BINARY=${RTK_BINARY:-false} RTK_HOOK=${RTK_HOOK:-false}" > "$_RTK_CACHE" 2>/dev/null || true
+    # Persist gains to cache via atomic write (tmp+mv)
+    _rtk_tmp="${_RTK_CACHE}.$$"
+    printf '%s\n%s\n%s\n%s\n%s\n' \
+      "RTK_FULLY_ACTIVE=${RTK_FULLY_ACTIVE:-false}" \
+      "RTK_GAIN_HAS_DATA=${RTK_GAIN_HAS_DATA:-false}" \
+      "RTK_GAIN_PCT=${RTK_GAIN_PCT:-0}" \
+      "RTK_BINARY=${RTK_BINARY:-false}" \
+      "RTK_HOOK=${RTK_HOOK:-false}" > "$_rtk_tmp" 2>/dev/null && mv -f "$_rtk_tmp" "$_RTK_CACHE" 2>/dev/null || rm -f "$_rtk_tmp" 2>/dev/null
   else
-    # Read from cache
-    eval "$(cat "$_RTK_CACHE" 2>/dev/null || true)" 2>/dev/null || true
+    # Read from cache — safe line-by-line parsing (no eval)
+    while IFS='=' read -r _rk _rv; do
+      case "$_rk" in
+        RTK_FULLY_ACTIVE) RTK_FULLY_ACTIVE="$_rv" ;;
+        RTK_GAIN_HAS_DATA) RTK_GAIN_HAS_DATA="$_rv" ;;
+        RTK_GAIN_PCT) RTK_GAIN_PCT="$_rv" ;;
+        RTK_BINARY) RTK_BINARY="$_rv" ;;
+        RTK_HOOK) RTK_HOOK="$_rv" ;;
+      esac
+    done < "$_RTK_CACHE" 2>/dev/null || true
   fi
   if [ "${RTK_FULLY_ACTIVE:-false}" = true ]; then
     if [ "${RTK_GAIN_HAS_DATA:-false}" = true ]; then

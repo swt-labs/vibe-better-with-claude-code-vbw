@@ -14,7 +14,6 @@ RTK_FULLY_ACTIVE=false
 RTK_GAIN_SAVED=0
 RTK_GAIN_PCT=0
 RTK_GAIN_HAS_DATA=false
-RTK_GAIN_TOP=""
 
 # --- Binary check (~1ms) ---
 if command -v rtk &>/dev/null; then
@@ -31,7 +30,7 @@ if [ -z "${CLAUDE_DIR:-}" ]; then
   fi
 fi
 # RTK installs hook at CLAUDE_DIR/hooks/rtk-rewrite.sh
-# Also check $HOME/.claude as fallback (RTK may hardcode this path)
+# Also check $HOME/.claude as fallback (RTK hardcodes this path)
 if [ -f "${CLAUDE_DIR:-$HOME/.claude}/hooks/rtk-rewrite.sh" ] || \
    [ -f "$HOME/.claude/hooks/rtk-rewrite.sh" ]; then
   RTK_HOOK=true
@@ -42,16 +41,15 @@ if [ "$RTK_BINARY" = true ] && [ "$RTK_HOOK" = true ]; then
 fi
 
 # --- Gains (~30ms, only if fully active and not skipped) ---
+# RTK API: rtk gain --all --format json returns:
+#   { "summary": { "total_saved": N, "avg_savings_pct": N, ... }, "daily": [...], ... }
 if [ "$RTK_FULLY_ACTIVE" = true ] && [ "${RTK_SKIP_GAINS:-}" != true ] && command -v jq &>/dev/null; then
   _rtk_gains=$(rtk gain --all --format json 2>/dev/null || echo "{}")
   if [ -n "$_rtk_gains" ] && [ "$_rtk_gains" != "{}" ]; then
-    RTK_GAIN_SAVED=$(printf '%s' "$_rtk_gains" | jq -r '.total_saved // 0' 2>/dev/null || echo "0")
-    RTK_GAIN_PCT=$(printf '%s' "$_rtk_gains" | jq -r '.avg_savings_pct // 0' 2>/dev/null || echo "0")
+    RTK_GAIN_SAVED=$(printf '%s' "$_rtk_gains" | jq -r '.summary.total_saved // 0' 2>/dev/null || echo "0")
+    RTK_GAIN_PCT=$(printf '%s' "$_rtk_gains" | jq -r '.summary.avg_savings_pct // 0 | floor' 2>/dev/null || echo "0")
     if [ "${RTK_GAIN_SAVED:-0}" != "0" ] && [ "${RTK_GAIN_SAVED:-0}" != "null" ]; then
       RTK_GAIN_HAS_DATA=true
-      RTK_GAIN_TOP=$(printf '%s' "$_rtk_gains" \
-        | jq -r '(.commands // {}) | to_entries | sort_by(-.value.saved) | .[:3] | .[] | "      \(.key): \(.value.avg_savings_pct // 0)% savings"' \
-        2>/dev/null || true)
     fi
   fi
 fi

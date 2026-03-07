@@ -78,9 +78,9 @@ PASS if alive or not in tmux. WARN if dead watchdog in tmux.
 
 ### 16. RTK token compression
 `rtk --version 2>/dev/null || echo "MISSING"`
-- SKIP if binary missing: "Not installed (optional). Saves 60-90% context tokens. Run: bash scripts/rtk-setup.sh"
-- WARN if binary found but `~/.claude/hooks/rtk-rewrite.sh` missing: "Binary found, hook missing. Run: bash scripts/rtk-setup.sh --hook"
-- PASS if binary + hook present. Show version. If `rtk gain --all --format json 2>/dev/null` returns data, show avg savings %.
+- SKIP if binary missing: "Not installed (optional). Saves 60-90% context tokens. Install: https://github.com/rtk-ai/rtk"
+- WARN if binary found but `~/.claude/hooks/rtk-rewrite.sh` missing: "Binary found, hook missing. Run: rtk init -g"
+- PASS if binary + hook present. Show version. If `rtk gain --all --format json 2>/dev/null` returns data, parse `.summary.avg_savings_pct` and show avg savings %.
 
 ## Output Format
 

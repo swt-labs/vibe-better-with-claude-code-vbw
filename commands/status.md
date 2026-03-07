@@ -125,22 +125,20 @@ Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
 **Token Economy** (RTK integration): Detect RTK status via:
 ```bash
 _rtk_bin=$(command -v rtk &>/dev/null && echo true || echo false)
-_rtk_hook=$([ -f "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/rtk-rewrite.sh" ] || [ -f "$HOME/.claude/hooks/rtk-rewrite.sh" ] && echo true || echo false)
+_rtk_claude_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+[ -d "$HOME/.config/claude-code" ] && [ -z "${CLAUDE_CONFIG_DIR:-}" ] && _rtk_claude_dir="$HOME/.config/claude-code"
+_rtk_hook=$({ [ -f "$_rtk_claude_dir/hooks/rtk-rewrite.sh" ] || [ -f "$HOME/.claude/hooks/rtk-rewrite.sh" ]; } && echo true || echo false)
 _rtk_active=$([ "$_rtk_bin" = true ] && [ "$_rtk_hook" = true ] && echo true || echo false)
 ```
-If RTK fully active, read gains: `rtk gain --all --format json 2>/dev/null`
+If RTK fully active, read gains via `rtk gain --all --format json 2>/dev/null` and parse `.summary.avg_savings_pct` and `.summary.total_saved`.
 
 Display conditionally:
 - Active + data:
 ```
   Token Economy:
-    RTK compression: {N}% avg savings
-    Top commands:
-      {cmd1}: {pct}% savings
-      {cmd2}: {pct}% savings
-      {cmd3}: {pct}% savings
+    RTK compression: {N}% avg savings ({saved} tokens saved)
 ```
 - Active, no data: `  Token Economy: RTK active · no data yet`
-- Not installed: `  Token Economy: (Install RTK to save 60-90% on tool outputs: bash scripts/rtk-setup.sh)`
+- Not installed: `  Token Economy: (Install RTK to save 60-90% on tool outputs: https://github.com/rtk-ai/rtk)`
 
 **Next Up:** Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-next.sh status` and display.
