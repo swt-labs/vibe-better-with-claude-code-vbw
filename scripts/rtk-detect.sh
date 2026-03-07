@@ -30,10 +30,10 @@ if [ -z "${CLAUDE_DIR:-}" ]; then
     . "$_rtk_detect_dir/resolve-claude-dir.sh" 2>/dev/null || true
   fi
 fi
-# RTK installs hook at CLAUDE_DIR/hooks/rtk-rewrite.sh
-# Also check $HOME/.claude as fallback (RTK hardcodes this path)
-if [ -f "${CLAUDE_DIR:-$HOME/.claude}/hooks/rtk-rewrite.sh" ] || \
-   [ -f "$HOME/.claude/hooks/rtk-rewrite.sh" ]; then
+# RTK hook: CLAUDE_CONFIG_DIR resolved via CLAUDE_DIR, plus default fallback
+_rtk_claude_dir="${CLAUDE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}"
+if [ -f "$_rtk_claude_dir/hooks/rtk-rewrite.sh" ] || \
+   [ -f "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/rtk-rewrite.sh" ]; then
   RTK_HOOK=true
 fi
 

@@ -38,7 +38,7 @@ _resolve_claude_dir() {
   elif [ -d "$HOME/.config/claude-code" ]; then
     echo "$HOME/.config/claude-code"
   else
-    echo "$HOME/.claude"
+    echo "$HOME/.claude"  # default when CLAUDE_CONFIG_DIR unset
   fi
 }
 
@@ -46,7 +46,7 @@ _resolve_claude_dir() {
 _hook_exists() {
   local claude_dir
   claude_dir=$(_resolve_claude_dir)
-  [ -f "$claude_dir/hooks/rtk-rewrite.sh" ] || [ -f "$HOME/.claude/hooks/rtk-rewrite.sh" ]
+  [ -f "$claude_dir/hooks/rtk-rewrite.sh" ] || [ -f "$HOME/.claude/hooks/rtk-rewrite.sh" ]  # CLAUDE_CONFIG_DIR resolved via claude_dir
 }
 
 # --- Status check ---
