@@ -455,3 +455,76 @@ EOF
 @test "discussion-engine stores decisions via muninn_decide" {
   grep -q "muninn_decide" "$PROJECT_ROOT/references/discussion-engine.md"
 }
+
+# ============================================================
+# P1-6: MuninnDB failure mode tests
+# ============================================================
+
+@test "muninn-vault-gate.sh passes when no .vbw-planning dir" {
+  cd /tmp
+  run bash -c 'echo "{\"agent_type\":\"vbw-lead\"}" | bash "'"$SCRIPTS_DIR"'/muninn-vault-gate.sh"'
+  [ "$status" -eq 0 ]
+}
+
+@test "muninn-vault-gate.sh passes when config.json missing" {
+  cd "$TEST_TEMP_DIR"
+  rm -f .vbw-planning/config.json
+  run bash -c 'echo "{\"agent_type\":\"vbw-lead\"}" | bash "'"$SCRIPTS_DIR"'/muninn-vault-gate.sh"'
+  # No config = no vault check, pass through
+  [ "$status" -eq 0 ]
+}
+
+@test "muninn-vault-gate.sh handles missing muninndb_vault key" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"effort":"balanced"}' > .vbw-planning/config.json
+  run bash -c 'echo "{\"agent_type\":\"vbw-lead\"}" | bash "'"$SCRIPTS_DIR"'/muninn-vault-gate.sh"'
+  # Missing key = empty vault = block lead
+  [ "$status" -eq 2 ]
+}
+
+@test "compile-context.sh succeeds with empty vault in config" {
+  cd "$TEST_TEMP_DIR"
+  jq '.muninndb_vault = ""' .vbw-planning/config.json > .vbw-planning/config.tmp \
+    && mv .vbw-planning/config.tmp .vbw-planning/config.json
+  run bash "$SCRIPTS_DIR/compile-context.sh" 01 dev ".vbw-planning/phases"
+  [ "$status" -eq 0 ]
+  # Should still produce a context file with vault warning
+  [ -f ".vbw-planning/phases/01-test-phase/.context-dev.md" ]
+  grep -q "vault not configured" ".vbw-planning/phases/01-test-phase/.context-dev.md"
+}
+
+@test "compile-context.sh succeeds with missing config.json" {
+  cd "$TEST_TEMP_DIR"
+  rm -f .vbw-planning/config.json
+  run bash "$SCRIPTS_DIR/compile-context.sh" 01 dev ".vbw-planning/phases"
+  # compile-context.sh should still work without config (vault=empty)
+  [ "$status" -eq 0 ]
+  [ -f ".vbw-planning/phases/01-test-phase/.context-dev.md" ]
+}
+
+@test "validate-summary.sh ignores non-SUMMARY files" {
+  cd "$TEST_TEMP_DIR"
+  run bash -c 'echo "{\"tool_input\":{\"file_path\":\"some/random/file.md\"}}" | bash "'"$SCRIPTS_DIR"'/validate-summary.sh"'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "validate-summary.sh handles nonexistent SUMMARY.md gracefully" {
+  cd "$TEST_TEMP_DIR"
+  run bash -c 'echo "{\"tool_input\":{\"file_path\":\"'"$TEST_TEMP_DIR"'/.vbw-planning/phases/01-test-phase/SUMMARY.md\"}}" | bash "'"$SCRIPTS_DIR"'/validate-summary.sh"'
+  [ "$status" -eq 0 ]
+}
+
+@test "all agents specify failure behavior for MuninnDB" {
+  for agent in vbw-dev vbw-lead vbw-scout vbw-debugger vbw-architect vbw-docs vbw-qa; do
+    local agent_file="$PROJECT_ROOT/agents/${agent}.md"
+    grep -qE "(STOP|blocker_report|warn|Report)" "$agent_file" || {
+      echo "NO failure behavior: $agent"; return 1
+    }
+  done
+}
+
+@test "session-start.sh checks MuninnDB health" {
+  grep -q "8750" "$SCRIPTS_DIR/session-start.sh"
+  grep -q "MuninnDB" "$SCRIPTS_DIR/session-start.sh"
+}
