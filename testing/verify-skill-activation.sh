@@ -344,52 +344,32 @@ else
   fail "emit-skill-xml.sh: missing VBW/GSD skill filtering"
 fi
 
-# --- inject-subagent-skills.sh contract checks ---
+# --- inject-subagent-skills.sh removed (skill visibility is native to Claude Code) ---
 
-if [ -f "$ROOT/scripts/inject-subagent-skills.sh" ]; then
-  pass "inject-subagent-skills.sh: exists"
+if [ ! -f "$ROOT/scripts/inject-subagent-skills.sh" ]; then
+  pass "inject-subagent-skills.sh: deleted (additionalContext injection removed)"
 else
-  fail "inject-subagent-skills.sh: missing"
+  fail "inject-subagent-skills.sh: still exists (should be deleted)"
 fi
 
-if grep -q 'SKILL ACTIVATION' "$ROOT/scripts/inject-subagent-skills.sh"; then
-  pass "inject-subagent-skills.sh: has evaluation instruction"
+if ! grep -q 'inject-subagent-skills.sh' "$HOOKS_FILE"; then
+  pass "hooks.json: inject-subagent-skills.sh removed from SubagentStart"
 else
-  fail "inject-subagent-skills.sh: missing evaluation instruction"
+  fail "hooks.json: inject-subagent-skills.sh still present in SubagentStart"
 fi
 
-if grep -q 'filter-plugins' "$ROOT/scripts/inject-subagent-skills.sh"; then
-  pass "inject-subagent-skills.sh: calls emit-skill-xml.sh with --filter-plugins"
+# --- session-start.sh no longer injects skill names (native CC skill visibility) ---
+
+if ! grep -q 'emit-skill-xml.sh' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start.sh: no longer calls emit-skill-xml.sh (additionalContext injection removed)"
 else
-  fail "inject-subagent-skills.sh: not filtering plugins in subagent injection"
+  fail "session-start.sh: still calls emit-skill-xml.sh (should be removed)"
 fi
 
-if grep -q 'SubagentStart' "$ROOT/scripts/inject-subagent-skills.sh"; then
-  pass "inject-subagent-skills.sh: outputs SubagentStart hookEventName"
+if ! grep -q 'Installed skills:' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start.sh: no longer injects skill names into additionalContext"
 else
-  fail "inject-subagent-skills.sh: missing SubagentStart hookEventName"
-fi
-
-# --- hooks.json registers inject-subagent-skills.sh in SubagentStart ---
-
-if grep -q 'inject-subagent-skills.sh' "$HOOKS_FILE"; then
-  pass "hooks.json: inject-subagent-skills.sh registered in SubagentStart"
-else
-  fail "hooks.json: inject-subagent-skills.sh NOT registered in SubagentStart"
-fi
-
-# --- session-start.sh uses compact skill names (not full XML) ---
-
-if grep -q 'Installed skills:' "$ROOT/scripts/session-start.sh"; then
-  pass "session-start.sh: uses compact skill name list"
-else
-  fail "session-start.sh: not using compact skill name list"
-fi
-
-if grep -q 'filter-plugins' "$ROOT/scripts/session-start.sh"; then
-  pass "session-start.sh: filters plugins in skill name extraction"
-else
-  fail "session-start.sh: not filtering plugins in session-start"
+  fail "session-start.sh: still injects skill names into additionalContext"
 fi
 
 # --- session-start.sh has GSD co-installation warning ---
@@ -418,12 +398,12 @@ for agent_file in vbw-dev.md vbw-qa.md vbw-docs.md vbw-lead.md vbw-scout.md vbw-
   fi
 done
 
-# --- session-start.sh calls emit-skill-xml.sh ---
+# --- session-start.sh no longer calls emit-skill-xml.sh ---
 
-if grep -q 'emit-skill-xml.sh' "$ROOT/scripts/session-start.sh"; then
-  pass "session-start.sh: calls emit-skill-xml.sh"
+if ! grep -q 'emit-skill-xml.sh' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start.sh: emit-skill-xml.sh call removed"
 else
-  fail "session-start.sh: does not call emit-skill-xml.sh"
+  fail "session-start.sh: still calls emit-skill-xml.sh (should be removed)"
 fi
 
 # --- All 7 agents reference <available_skills> ---
@@ -451,67 +431,17 @@ else
   fail "execute-protocol.md: missing <available_skills> reference"
 fi
 
-# --- Functional test: inject-subagent-skills.sh with VBW agent ---
+# --- Functional test: inject-subagent-skills.sh removed ---
 
-_INJECT_SCRIPT="$ROOT/scripts/inject-subagent-skills.sh"
-if [ -f "$_INJECT_SCRIPT" ]; then
-  # Set up minimal VBW context
-  _INJECT_TMP=$(mktemp -d)
-  mkdir -p "$_INJECT_TMP/.vbw-planning"
-  touch "$_INJECT_TMP/.vbw-planning/.vbw-session"
+# inject-subagent-skills.sh has been deleted; skill visibility is native to Claude Code.
+# The functional tests for that script are no longer applicable.
 
-  # Test: VBW agent produces hookSpecificOutput JSON
-  _INJECT_OUT=$(cd "$_INJECT_TMP" && echo '{"agent_type":"vbw-dev"}' | CLAUDE_PLUGIN_ROOT="$ROOT" bash "$_INJECT_SCRIPT" 2>/dev/null || true)
-  if echo "$_INJECT_OUT" | grep -q '"hookEventName"'; then
-    pass "inject-subagent-skills.sh: VBW agent produces hookSpecificOutput JSON"
-  else
-    fail "inject-subagent-skills.sh: VBW agent did not produce hookSpecificOutput JSON"
-  fi
-
-  if echo "$_INJECT_OUT" | grep -q 'SKILL ACTIVATION'; then
-    pass "inject-subagent-skills.sh: output contains evaluation instruction"
-  else
-    fail "inject-subagent-skills.sh: output missing evaluation instruction"
-  fi
-
-  # Test: non-VBW agent produces no output
-  _INJECT_OUT_NON=$(cd "$_INJECT_TMP" && echo '{"agent_type":"gsd-planner"}' | CLAUDE_PLUGIN_ROOT="$ROOT" bash "$_INJECT_SCRIPT" 2>/dev/null || true)
-  if [ -z "$_INJECT_OUT_NON" ]; then
-    pass "inject-subagent-skills.sh: non-VBW agent produces empty output"
-  else
-    fail "inject-subagent-skills.sh: non-VBW agent should produce empty output"
-  fi
-
-  # Test: bare "dev" without VBW context markers exits silently
-  _INJECT_TMP2=$(mktemp -d)
-  mkdir -p "$_INJECT_TMP2/.vbw-planning"
-  # No .vbw-session, .active-agent, or .active-agent-count
-  _INJECT_OUT_BARE=$(cd "$_INJECT_TMP2" && echo '{"agent_type":"dev"}' | CLAUDE_PLUGIN_ROOT="$ROOT" bash "$_INJECT_SCRIPT" 2>/dev/null || true)
-  if [ -z "$_INJECT_OUT_BARE" ]; then
-    pass "inject-subagent-skills.sh: bare 'dev' without VBW context exits silently"
-  else
-    fail "inject-subagent-skills.sh: bare 'dev' without VBW context should exit silently"
-  fi
-
-  rm -rf "$_INJECT_TMP" "$_INJECT_TMP2"
-else
-  fail "inject-subagent-skills.sh: script not found"
-fi
-
-# --- normalize_agent_role consistency: agent-start.sh and inject-subagent-skills.sh ---
+# --- normalize_agent_role consistency: agent-start.sh role coverage ---
 
 _AGENT_START="$ROOT/scripts/agent-start.sh"
-_INJECT_SCRIPT="$ROOT/scripts/inject-subagent-skills.sh"
 
-# Extract role patterns from both scripts and compare
+# Extract role patterns from agent-start.sh
 _ROLES_AGENT_START=$(sed -n '/normalize_agent_role/,/^}/p' "$_AGENT_START" | grep "printf '" | sed "s/.*printf '\\([^']*\\)'.*/\\1/" | sort)
-_ROLES_INJECT=$(sed -n '/normalize_agent_role/,/^}/p' "$_INJECT_SCRIPT" | grep "printf '" | sed "s/.*printf '\\([^']*\\)'.*/\\1/" | sort)
-
-if [ "$_ROLES_AGENT_START" = "$_ROLES_INJECT" ]; then
-  pass "normalize_agent_role: agent-start.sh and inject-subagent-skills.sh handle same roles"
-else
-  fail "normalize_agent_role: role mismatch between agent-start.sh and inject-subagent-skills.sh"
-fi
 
 # Verify all 7 roles are present in agent-start.sh
 for _role in architect debugger dev docs lead qa scout; do
@@ -707,11 +637,11 @@ else
   fail "session-start.sh: missing brownfield .skill-names cleanup"
 fi
 
-# Layer 3: SubagentStart hook (preserved)
-if grep -q 'inject-subagent-skills.sh' "$HOOKS_FILE"; then
-  pass "hooks.json: inject-subagent-skills.sh registered (Layer 3)"
+# Layer 3: SubagentStart hook removed (skill visibility is native to Claude Code)
+if ! grep -q 'inject-subagent-skills.sh' "$HOOKS_FILE"; then
+  pass "hooks.json: inject-subagent-skills.sh removed (Layer 3 — native CC skill visibility)"
 else
-  fail "hooks.json: inject-subagent-skills.sh missing (Layer 3)"
+  fail "hooks.json: inject-subagent-skills.sh still present (should be removed)"
 fi
 
 # Compaction durability: compile-context.sh emits skills for all 6 compiled roles

@@ -1,7 +1,8 @@
 #!/usr/bin/env bats
 
-# Tests for compaction-safe skill context in compile-context.sh
-# Verifies emit_skills_section() injects ### Available Skills for all 6 roles
+# Tests for skill context in compile-context.sh
+# Verifies emit_skills_section() does NOT inject ### Available Skills (removed)
+# and only emits ### Mandatory Skill Activation when plan has skills_used
 
 load test_helper
 
@@ -40,91 +41,60 @@ Body content here.
 SKILL
 }
 
-@test "compile-context: skills section present for lead when skills installed" {
+# --- Helper: create a plan with skills_used frontmatter ---
+create_plan_with_skills() {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/PLAN.md" <<'EOF'
+---
+skills_used:
+  - test-skill
+---
+# Plan
+## Tasks
+- [ ] TASK-01: Do something
+EOF
+}
+
+@test "compile-context: no Available Skills section for any role" {
   create_test_skill "my-skill"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 01 lead .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  grep -q "### Available Skills" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-lead.md"
-  grep -q "my-skill" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-lead.md"
+  for role in lead dev qa scout debugger architect; do
+    cd "$TEST_TEMP_DIR"
+    run bash "$SCRIPTS_DIR/compile-context.sh" 01 "$role" .vbw-planning/phases
+    [ "$status" -eq 0 ]
+    ! grep -q "### Available Skills" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-${role}.md"
+  done
 }
 
-@test "compile-context: skills section present for dev when skills installed" {
-  create_test_skill "dev-skill"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 01 dev .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  grep -q "### Available Skills" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
-  grep -q "dev-skill" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
-}
-
-@test "compile-context: skills section present for qa when skills installed" {
-  create_test_skill "qa-skill"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 01 qa .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  grep -q "### Available Skills" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-qa.md"
-  grep -q "qa-skill" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-qa.md"
-}
-
-@test "compile-context: skills section present for scout when skills installed" {
-  create_test_skill "scout-skill"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 01 scout .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  grep -q "### Available Skills" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-scout.md"
-  grep -q "scout-skill" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-scout.md"
-}
-
-@test "compile-context: skills section present for debugger when skills installed" {
-  create_test_skill "debug-skill"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 01 debugger .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  grep -q "### Available Skills" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-debugger.md"
-  grep -q "debug-skill" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-debugger.md"
-}
-
-@test "compile-context: skills section present for architect when skills installed" {
-  create_test_skill "arch-skill"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 01 architect .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  grep -q "### Available Skills" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-architect.md"
-  grep -q "arch-skill" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-architect.md"
-}
-
-@test "compile-context: skills section absent when no skills installed" {
-  cd "$TEST_TEMP_DIR"
-  # Override HOME so emit-skill-xml.sh won't find real user skills
-  HOME="$TEST_TEMP_DIR" run bash "$SCRIPTS_DIR/compile-context.sh" 01 dev .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  ! grep -q "### Available Skills" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
-}
-
-@test "compile-context: skills section contains Skill() call instruction" {
-  create_test_skill "useful-skill"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 01 dev .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  grep -q "Skill(name)" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
-}
-
-@test "compile-context: VBW/GSD plugin skills filtered out" {
-  create_test_skill "vbw-internal"
-  create_test_skill "real-skill"
-  cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/compile-context.sh" 01 dev .vbw-planning/phases
-  [ "$status" -eq 0 ]
-  grep -q "real-skill" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
-  ! grep -q "vbw-internal" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
-}
-
-@test "compile-context: skills section uses XML format" {
+@test "compile-context: no available_skills XML tags in output" {
   create_test_skill "xml-test"
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/compile-context.sh" 01 dev .vbw-planning/phases
   [ "$status" -eq 0 ]
-  grep -q "<available_skills>" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
-  grep -q "</available_skills>" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
+  ! grep -q "<available_skills>" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
+  ! grep -q "</available_skills>" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
+}
+
+@test "compile-context: mandatory skill activation present when plan has skills_used" {
+  create_test_skill "test-skill"
+  create_plan_with_skills
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-context.sh" 01 dev .vbw-planning/phases
+  [ "$status" -eq 0 ]
+  grep -q "### Mandatory Skill Activation" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
+}
+
+@test "compile-context: no mandatory skill activation when plan has no skills_used" {
+  cd "$TEST_TEMP_DIR"
+  # Plan without skills_used frontmatter
+  cat > "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/PLAN.md" <<'EOF'
+---
+effort: balanced
+---
+# Plan
+## Tasks
+- [ ] TASK-01: Do something
+EOF
+  # Override HOME so emit-skill-xml.sh won't find real user skills
+  HOME="$TEST_TEMP_DIR" run bash "$SCRIPTS_DIR/compile-context.sh" 01 dev .vbw-planning/phases
+  [ "$status" -eq 0 ]
+  ! grep -q "### Mandatory Skill Activation" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-dev.md"
 }

@@ -187,7 +187,7 @@ fi
 
 # Auto-migrate config if .vbw-planning exists.
 # Version marker retained here for backwards test compatibility.
-EXPECTED_FLAG_COUNT=36
+EXPECTED_FLAG_COUNT=35
 if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ]; then
   if ! bash "$SCRIPT_DIR/migrate-config.sh" "$PLANNING_DIR/config.json" >/dev/null 2>&1; then
     echo "WARNING: Config migration failed (jq error). Config may be missing flags (expected=$EXPECTED_FLAG_COUNT)." >&2
@@ -823,20 +823,10 @@ fi
 # --- Project state ---
 
 if [ ! -d "$PLANNING_DIR" ]; then
-  # Compact skill name list even before init (skills may be installed globally)
-  _PRE_SKILL_NAMES=""
-  if [ -f "$SCRIPT_DIR/emit-skill-xml.sh" ]; then
-    # Source emit-skill-xml.sh logic to collect names without full XML
-    _PRE_SKILL_NAMES=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" --filter-plugins --compact 2>/dev/null | sed -n 's/.*<name>\([^<]*\)<\/name>.*/\1/p' | paste -sd ', ' - || true)
-  fi
-  _PRE_SKILL_CTX=""
-  if [ -n "$_PRE_SKILL_NAMES" ]; then
-    _PRE_SKILL_CTX=" Installed skills: ${_PRE_SKILL_NAMES}."
-  fi
-  jq -n --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg skills "${_PRE_SKILL_CTX:-}" '{
+  jq -n --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" '{
     "hookSpecificOutput": {
       "hookEventName": "SessionStart",
-      "additionalContext": ($welcome + "No .vbw-planning/ directory found. Run /vbw:init to set up the project." + $update + $skills)
+      "additionalContext": ($welcome + "No .vbw-planning/ directory found. Run /vbw:init to set up the project." + $update)
     }
   }'
   exit 0
@@ -995,22 +985,13 @@ if [ -d "${CLAUDE_DIR}/commands/gsd" ] || [ -d ".planning" ]; then
   GSD_WARNING=" WARNING: GSD plugin detected alongside VBW. Do NOT invoke any /gsd:* or Skill('gsd:*') commands during VBW workflows — they operate on .planning/ (wrong directory) and will corrupt your session state. Only use /vbw:* commands."
 fi
 
-# --- Compact skill name list (names only, no XML — full XML injected via SubagentStart hook) ---
-SKILL_NAMES=""
-if [ -f "$SCRIPT_DIR/emit-skill-xml.sh" ]; then
-  SKILL_NAMES=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" --filter-plugins --compact 2>/dev/null | sed -n 's/.*<name>\([^<]*\)<\/name>.*/\1/p' | paste -sd ', ' - || true)
-fi
-SKILL_CTX=""
-if [ -n "$SKILL_NAMES" ]; then
-  SKILL_CTX=" Installed skills: ${SKILL_NAMES}."
-fi
 # Brownfield cleanup: remove stale .skill-names from older versions
 rm -f "$PLANNING_DIR/.skill-names" 2>/dev/null || true
 
-jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" --arg gsd "${GSD_WARNING:-}" --arg skills "${SKILL_CTX:-}" '{
+jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" --arg gsd "${GSD_WARNING:-}" '{
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": ($welcome + $ctx + $update + $flags + $gsd + $skills)
+    "additionalContext": ($welcome + $ctx + $update + $flags + $gsd)
   }
 }'
 

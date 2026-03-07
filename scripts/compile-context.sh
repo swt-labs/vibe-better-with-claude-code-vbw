@@ -247,15 +247,6 @@ emit_skills_section() {
     echo "Include the following block verbatim in every subagent task description:"
     echo "$activation_block"
   fi
-
-  local skill_xml
-  skill_xml=$(bash "$SCRIPT_DIR/emit-skill-xml.sh" --compact --filter-plugins 2>/dev/null || true)
-  if [ -n "$skill_xml" ]; then
-    echo ""
-    echo "### Available Skills"
-    echo "Call Skill(name) to load full instructions for any relevant skill."
-    echo "$skill_xml"
-  fi
 }
 
 # --- Role-specific output ---
