@@ -9,7 +9,8 @@ set -euo pipefail
 #   bash scripts/dev-setup.sh --teardown   # revert to marketplace
 #   bash scripts/dev-setup.sh --status     # check current state
 #
-# Must be run from the root of the VBW clone.
+# Setup must be run from the root of the VBW clone.
+# --teardown and --status work from any directory.
 
 # ---------- constants ----------
 
@@ -34,10 +35,6 @@ check_clone_root() {
     err "  cd /path/to/vibe-better-with-claude-code-vbw && bash scripts/dev-setup.sh"
     exit 1
   fi
-}
-
-clone_dir() {
-  pwd -P
 }
 
 # ---------- status ----------
@@ -65,7 +62,7 @@ do_status() {
 
   # Glob check
   local glob_result
-  glob_result=$(ls "$CACHE_BASE"/*/scripts/hook-wrapper.sh 2>/dev/null || true)
+  glob_result=$(compgen -G "$CACHE_BASE/*/scripts/hook-wrapper.sh" || true)
   if [ -n "$glob_result" ]; then
     ok "Plugin root glob resolves: $glob_result"
   else
@@ -99,7 +96,7 @@ do_status() {
 
 do_setup() {
   local clone
-  clone=$(clone_dir)
+  clone=$(pwd -P)
 
   step "1/6  Checking prerequisites"
   check_clone_root
@@ -121,7 +118,9 @@ do_setup() {
   step "3/6  Setting up plugin cache symlink"
   mkdir -p "$CACHE_BASE"
 
-  # Remove existing versioned cache entries (from marketplace install)
+  # Remove any versioned directories from prior marketplace installs.
+  # Only targets direct children of the VBW-specific cache path, so this
+  # is safe — the new "local" symlink replaces them.
   while IFS= read -r entry; do
     [ -z "$entry" ] && continue
     rm -rf "$entry"
@@ -145,7 +144,7 @@ do_setup() {
 
   # Verify the glob resolves (like the old manual hook-wrapper.sh check)
   local glob_result
-  glob_result=$(ls "$CACHE_BASE"/*/scripts/hook-wrapper.sh 2>/dev/null || true)
+  glob_result=$(compgen -G "$CACHE_BASE/*/scripts/hook-wrapper.sh" || true)
   if [ -n "$glob_result" ]; then
     ok "Plugin root glob resolves: $glob_result"
   else
