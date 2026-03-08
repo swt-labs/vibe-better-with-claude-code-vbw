@@ -283,13 +283,22 @@ if [ -d "$PHASES_DIR" ]; then
         if [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
           _rem_stage=$(tr -d '[:space:]' < "${TARGET_DIR}.uat-remediation-stage")
         fi
+        # Pre-compute plan/summary counts (needed for state routing AND stale-stage reconciliation)
+        NEXT_PHASE_PLANS=$(find "$TARGET_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+        NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$TARGET_DIR")
+        # Reconcile stale remediation stage: if execution already completed
+        # (all plans have SUMMARY with status:complete) but the stage was never
+        # advanced (session crash/kill/compaction), auto-advance to "done" so the
+        # orchestrator routes to re-verification instead of re-execution.
+        if [ "$_rem_stage" = "execute" ] && [ "$NEXT_PHASE_PLANS" -gt 0 ] && [ "$NEXT_PHASE_SUMMARIES" -ge "$NEXT_PHASE_PLANS" ]; then
+          echo "done" > "${TARGET_DIR}.uat-remediation-stage"
+          _rem_stage="done"
+        fi
         if [ "$_rem_stage" = "done" ]; then
           NEXT_PHASE_STATE="needs_reverification"
         else
           NEXT_PHASE_STATE="needs_uat_remediation"
         fi
-        NEXT_PHASE_PLANS=$(find "$TARGET_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
-        NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$TARGET_DIR")
       fi
     else
       ALL_DONE=true

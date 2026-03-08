@@ -606,6 +606,69 @@ else
   fail "functional: partial SUMMARY → plan status preserved as 'partial' (got '$_prt_status')"
 fi
 
+# ───────────────────────────────────────────────────────────────────────
+# Test: phase-detect.sh reconciles stale remediation "execute" stage
+# when all plans have complete SUMMARY.md files (session crash recovery)
+# ───────────────────────────────────────────────────────────────────────
+_srd=$(mktemp -d)
+mkdir -p "$_srd/.vbw-planning/phases/01-test"
+echo '{}' > "$_srd/.vbw-planning/config.json"
+# Create a UAT file with issues_found status
+cat > "$_srd/.vbw-planning/phases/01-test/01-UAT.md" <<'SEOF'
+---
+status: issues_found
+---
+# UAT
+P01-T1|major|test issue
+SEOF
+# Create a plan + complete summary
+printf '%s\n' '---' 'phase: "01"' 'plan: "01"' 'title: Test' 'wave: 1' '---' > "$_srd/.vbw-planning/phases/01-test/01-01-PLAN.md"
+printf '%s\n' '---' 'status: complete' '---' 'Done' > "$_srd/.vbw-planning/phases/01-test/01-01-SUMMARY.md"
+# Set remediation stage to "execute" (simulating crash before advance)
+echo "execute" > "$_srd/.vbw-planning/phases/01-test/.uat-remediation-stage"
+# Run phase-detect
+_srd_out=$(cd "$_srd" && bash "$ROOT/scripts/phase-detect.sh" 2>/dev/null)
+_srd_state=$(echo "$_srd_out" | grep '^next_phase_state=' | head -1 | cut -d= -f2)
+_srd_stage=$(cat "$_srd/.vbw-planning/phases/01-test/.uat-remediation-stage" 2>/dev/null | tr -d '[:space:]')
+if [ "$_srd_state" = "needs_reverification" ] && [ "$_srd_stage" = "done" ]; then
+  pass "phase-detect: stale 'execute' stage auto-advanced to 'done' when all plans complete"
+else
+  fail "phase-detect: stale 'execute' stage auto-advanced to 'done' (got state='$_srd_state' stage='$_srd_stage')"
+fi
+rm -rf "$_srd"
+
+# Test: stage stays "execute" when plans are NOT all complete
+_srd2=$(mktemp -d)
+mkdir -p "$_srd2/.vbw-planning/phases/01-test"
+echo '{}' > "$_srd2/.vbw-planning/config.json"
+cat > "$_srd2/.vbw-planning/phases/01-test/01-UAT.md" <<'SEOF'
+---
+status: issues_found
+---
+# UAT
+P01-T1|major|test issue
+SEOF
+printf '%s\n' '---' 'phase: "01"' 'plan: "01"' 'title: Test' 'wave: 1' '---' > "$_srd2/.vbw-planning/phases/01-test/01-01-PLAN.md"
+printf '%s\n' '---' 'phase: "01"' 'plan: "02"' 'title: Test2' 'wave: 1' '---' > "$_srd2/.vbw-planning/phases/01-test/01-02-PLAN.md"
+# Only one summary (plan 02 still pending)
+printf '%s\n' '---' 'status: complete' '---' 'Done' > "$_srd2/.vbw-planning/phases/01-test/01-01-SUMMARY.md"
+echo "execute" > "$_srd2/.vbw-planning/phases/01-test/.uat-remediation-stage"
+_srd2_out=$(cd "$_srd2" && bash "$ROOT/scripts/phase-detect.sh" 2>/dev/null)
+_srd2_state=$(echo "$_srd2_out" | grep '^next_phase_state=' | head -1 | cut -d= -f2)
+_srd2_stage=$(cat "$_srd2/.vbw-planning/phases/01-test/.uat-remediation-stage" 2>/dev/null | tr -d '[:space:]')
+if [ "$_srd2_state" = "needs_uat_remediation" ] || [ "$_srd2_state" = "needs_execute" ]; then
+  # When plans are incomplete, phase-detect may route to needs_execute (skipping
+  # mid-execution UAT) or needs_uat_remediation. Either way, stage must stay "execute".
+  if [ "$_srd2_stage" = "execute" ]; then
+    pass "phase-detect: 'execute' stage preserved when plans are incomplete"
+  else
+    fail "phase-detect: 'execute' stage preserved when plans are incomplete (got state='$_srd2_state' stage='$_srd2_stage')"
+  fi
+else
+  fail "phase-detect: 'execute' stage preserved when plans are incomplete (got state='$_srd2_state' stage='$_srd2_stage')"
+fi
+rm -rf "$_srd2"
+
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"

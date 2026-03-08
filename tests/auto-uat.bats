@@ -584,8 +584,8 @@ EOF
   cd "$TEST_TEMP_DIR"
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
   printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
-  # Remediation in progress
-  printf 'execute' > "$dir/.uat-remediation-stage"
+  # Remediation in progress (plan stage — creating plans, not yet executing)
+  printf 'plan' > "$dir/.uat-remediation-stage"
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
