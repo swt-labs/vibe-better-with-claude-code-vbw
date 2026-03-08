@@ -162,7 +162,7 @@ FAST_CF="${_CACHE}-fast"
 
 if ! cache_fresh "$FAST_CF" 5; then
   PH=""; TT=""; EF="balanced"; MP="quality"; BR=""
-  PD=0; PT=0; PPD=0; PPT=0; QA="--"; GH_URL=""
+  PD=0; PT=0; PPD=0; PPT=0; QA="--"; QA_COLOR="D"; GH_URL=""
   if [ -f ".vbw-planning/STATE.md" ]; then
     # Parse "Phase: N of M (slug)" — extract N and M before parenthetical
     # to avoid picking up numbers from phase name slugs like "01-context-diet"
@@ -198,7 +198,27 @@ if ! cache_fresh "$FAST_CF" 5; then
       PDIR=$(find .vbw-planning/phases -maxdepth 1 -type d -name "$(printf '%02d' "$PH")-*" 2>/dev/null | head -1)
       [ -n "$PDIR" ] && PPD=$(count_complete_summaries "$PDIR")
       [ -n "$PDIR" ] && PPT=$(find "$PDIR" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
-      [ -n "$PDIR" ] && [ -n "$(find "$PDIR" -name '*VERIFICATION.md' 2>/dev/null | head -1)" ] && QA="pass"
+      # Lifecycle-aware QA/UAT indicator: UAT supersedes VERIFICATION.md
+      if [ -n "$PDIR" ]; then
+        _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
+        if [ -n "$_uat_file" ]; then
+          _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null)
+          case "$_uat_status" in
+            complete|passed) QA="UAT: pass"; QA_COLOR="G" ;;
+            issues_found)
+              _rem_stage="none"
+              [ -f "$PDIR/.uat-remediation-stage" ] && _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
+              case "$_rem_stage" in
+                done)    QA="UAT: re-verify"; QA_COLOR="Y" ;;
+                none)    QA="UAT: fail";      QA_COLOR="R" ;;
+                *)       QA="UAT: fixing";    QA_COLOR="Y" ;;
+              esac ;;
+            *) QA="UAT: ?"; QA_COLOR="Y" ;;
+          esac
+        elif [ -n "$(find "$PDIR" -name '*VERIFICATION.md' 2>/dev/null | head -1)" ]; then
+          QA="QA: pass"; QA_COLOR="G"
+        fi
+      fi
     fi
   fi
 
@@ -232,14 +252,14 @@ if ! cache_fresh "$FAST_CF" 5; then
 
   AGENT_DATA="0"
 
-  printf '%s\n' "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${EXEC_CURRENT:-}|${AGENT_DATA:-0}|${PPT:-0}" > "$FAST_CF" 2>/dev/null
+  printf '%s\n' "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${EXEC_CURRENT:-}|${AGENT_DATA:-0}|${PPT:-0}|${QA_COLOR:-D}" > "$FAST_CF" 2>/dev/null
 fi
 
 if [ -O "$FAST_CF" ]; then
   # shellcheck disable=SC2034
   IFS='|' read -r PH TT EF MP BR PD PT PPD QA GH_URL GIT_STAGED GIT_MODIFIED GIT_AHEAD \
                   EXEC_STATUS EXEC_WAVE EXEC_TWAVES EXEC_DONE EXEC_TOTAL EXEC_CURRENT \
-                  AGENT_N PPT < "$FAST_CF"
+                  AGENT_N PPT QA_COLOR < "$FAST_CF"
 fi
 
 AGENT_LINE=""
@@ -472,8 +492,8 @@ elif [ "$EXEC_STATUS" = "complete" ]; then
     [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null && L1="$L1 (${PPD}/${PPT} this phase)"
   fi
   L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
-  if [ "$QA" = "pass" ]; then L1="$L1 ${D}│${X} ${G}QA: pass${X}"
-  else L1="$L1 ${D}│${X} ${D}QA: --${X}"; fi
+  _qc="$D"; case "${QA_COLOR:-D}" in G) _qc="$G";; Y) _qc="$Y";; R) _qc="$R";; esac
+  L1="$L1 ${D}│${X} ${_qc}${QA}${X}"
 elif [ -d ".vbw-planning" ]; then
   L1="${C}${B}[VBW]${X}"
   [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
@@ -482,11 +502,8 @@ elif [ -d ".vbw-planning" ]; then
     [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null && L1="$L1 (${PPD}/${PPT} this phase)"
   fi
   L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
-  if [ "$QA" = "pass" ]; then
-    L1="$L1 ${D}│${X} ${G}QA: pass${X}"
-  else
-    L1="$L1 ${D}│${X} ${D}QA: --${X}"
-  fi
+  _qc="$D"; case "${QA_COLOR:-D}" in G) _qc="$G";; Y) _qc="$Y";; R) _qc="$R";; esac
+  L1="$L1 ${D}│${X} ${_qc}${QA}${X}"
 else
   L1="${C}${B}[VBW]${X} ${D}no project${X}"
 fi
