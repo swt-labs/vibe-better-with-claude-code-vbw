@@ -286,3 +286,58 @@ EOF
   # No CONTEXT emitted in output when no UAT file exists
   ! echo "$output" | grep -q "^---CONTEXT---$"
 }
+
+# --- get-or-init tests ---
+
+@test "get-or-init initializes when no state file exists" {
+  cat > "$PHASE_DIR/01-UAT.md" <<'EOF'
+# UAT Report
+- Issue found
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "research" ]
+  # State file was created
+  [ -f "$PHASE_DIR/.uat-remediation-stage" ]
+  [ "$(cat "$PHASE_DIR/.uat-remediation-stage")" = "research" ]
+  # CONTEXT emitted (same as init)
+  echo "$output" | grep -q "^---CONTEXT---$"
+  echo "$output" | grep -q "Issue found"
+}
+
+@test "get-or-init returns existing stage without side effects" {
+  echo "plan" > "$PHASE_DIR/.uat-remediation-stage"
+  cat > "$PHASE_DIR/01-UAT.md" <<'EOF'
+# UAT Report
+- Should not be emitted
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
+  [ "$output" = "plan" ]
+  # State file unchanged
+  [ "$(cat "$PHASE_DIR/.uat-remediation-stage")" = "plan" ]
+  # No CONTEXT emitted on resume
+  ! echo "$output" | grep -q "^---CONTEXT---$"
+}
+
+@test "get-or-init returns done when stage is done" {
+  echo "done" > "$PHASE_DIR/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
+  [ "$output" = "done" ]
+}
+
+@test "get-or-init minor initializes fix stage" {
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "minor"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "fix" ]
+  [ "$(cat "$PHASE_DIR/.uat-remediation-stage")" = "fix" ]
+}
+
+@test "get-or-init without severity exits with error" {
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR"
+  [ "$status" -eq 1 ]
+}
