@@ -65,7 +65,7 @@ issues: 1
   [ "$status" -eq 0 ]
   [[ "${lines[0]}" == *"uat_phase=03"* ]]
   [[ "${lines[0]}" == *"uat_issues_total=1"* ]]
-  [[ "${lines[1]}" == "P01-T2|major|Widget fails on edge case" ]]
+  [[ "${lines[1]}" == "P01-T2|major|Widget fails on edge case|1" ]]
 }
 
 @test "extract-uat-issues: multiple issues with mixed severity" {
@@ -109,9 +109,9 @@ issues: 3
 
   [ "$status" -eq 0 ]
   [[ "${lines[0]}" == *"uat_issues_total=3"* ]]
-  [[ "${lines[1]}" == "P01-T1|critical|First problem" ]]
-  [[ "${lines[2]}" == "P02-T2|minor|Second problem" ]]
-  [[ "${lines[3]}" == "D1|major|Found during testing" ]]
+  [[ "${lines[1]}" == "P01-T1|critical|First problem|1" ]]
+  [[ "${lines[2]}" == "P02-T2|minor|Second problem|1" ]]
+  [[ "${lines[3]}" == "D1|major|Found during testing|1" ]]
 }
 
 @test "extract-uat-issues: long description is preserved in full" {
@@ -140,7 +140,7 @@ issues: 1
   [ "$status" -eq 0 ]
   # Description must NOT be truncated — full 250 chars preserved
   [[ "${lines[1]}" != *"..."* ]]
-  [[ "${lines[1]}" == "P01-T1|major|${long_desc}" ]]
+  [[ "${lines[1]}" == "P01-T1|major|${long_desc}|1" ]]
 }
 
 @test "extract-uat-issues: no UAT file returns error marker" {
@@ -393,8 +393,8 @@ EOF
   [ "$status" -eq 0 ]
   [[ "${lines[0]}" == *"uat_phase=03"* ]]
   [[ "${lines[0]}" == *"uat_issues_total=2"* ]]
-  [[ "${lines[1]}" == "P01-T1|critical|Milestone issue one" ]]
-  [[ "${lines[2]}" == "P02-T1|minor|Milestone issue two" ]]
+  [[ "${lines[1]}" == "P01-T1|critical|Milestone issue one|1" ]]
+  [[ "${lines[2]}" == "P02-T1|minor|Milestone issue two|1" ]]
 }
 
 @test "extract-uat-issues: milestone path with no UAT file" {
@@ -431,4 +431,224 @@ EOF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"uat_extract_status=complete"* ]]
+}
+
+# ============= Recurrence tracking tests =============
+
+@test "extract-uat-issues: header includes uat_round=1 when no archived rounds" {
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+### P01-T1: Failing test
+
+- **Result:** issue
+- **Issue:**
+  - Description: First failure
+  - Severity: major'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_round=1"* ]]
+}
+
+@test "extract-uat-issues: issue line includes FAILED_IN_ROUNDS as 4th field" {
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+### P01-T1: Failing test
+
+- **Result:** issue
+- **Issue:**
+  - Description: First failure
+  - Severity: major'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # 4th field should be "1" (current round only, no prior rounds)
+  [[ "${lines[1]}" == "P01-T1|major|First failure|1" ]]
+}
+
+@test "extract-uat-issues: recurrence detected from archived round files" {
+  # Create archived round 1 with P01-T1 failing
+  cat > "$PHASE_DIR/03-UAT-round-1.md" <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+### P01-T1: Failing test
+
+- **Result:** issue
+- **Issue:**
+  - Description: Old failure
+  - Severity: major
+
+### P02-T1: Passing test
+
+- **Result:** pass
+EOF
+
+  # Current UAT has P01-T1 failing again
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+### P01-T1: Failing test
+
+- **Result:** issue
+- **Issue:**
+  - Description: Still failing
+  - Severity: major'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_round=2"* ]]
+  # P01-T1 failed in round 1 and current round 2
+  [[ "${lines[1]}" == "P01-T1|major|Still failing|1,2" ]]
+}
+
+@test "extract-uat-issues: multiple archived rounds with mixed recurrence" {
+  # Round 1: P01-T1 and P02-T1 fail
+  cat > "$PHASE_DIR/03-UAT-round-1.md" <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+### P01-T1: Test A
+
+- **Result:** issue
+- **Issue:**
+  - Description: Test A fails
+  - Severity: major
+
+### P02-T1: Test B
+
+- **Result:** issue
+- **Issue:**
+  - Description: Test B fails
+  - Severity: minor
+EOF
+
+  # Round 2: only P01-T1 fails (P02-T1 was fixed)
+  cat > "$PHASE_DIR/03-UAT-round-2.md" <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+### P01-T1: Test A
+
+- **Result:** issue
+- **Issue:**
+  - Description: Test A still fails
+  - Severity: major
+
+### P02-T1: Test B
+
+- **Result:** pass
+EOF
+
+  # Current round 3: P01-T1 fails again, new P03-T1 also fails
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 2
+---
+
+### P01-T1: Test A
+
+- **Result:** issue
+- **Issue:**
+  - Description: Test A persistent
+  - Severity: major
+
+### P03-T1: Test C
+
+- **Result:** issue
+- **Issue:**
+  - Description: New failure
+  - Severity: minor'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_round=3"* ]]
+  # P01-T1 failed in rounds 1, 2, and current round 3
+  [[ "${lines[1]}" == "P01-T1|major|Test A persistent|1,2,3" ]]
+  # P03-T1 is new — only current round 3
+  [[ "${lines[2]}" == "P03-T1|minor|New failure|3" ]]
+}
+
+@test "extract-uat-issues: zero-padded round filenames are handled" {
+  # Archived round with zero-padded filename
+  cat > "$PHASE_DIR/03-UAT-round-01.md" <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+### P01-T1: Test
+
+- **Result:** issue
+- **Issue:**
+  - Description: Fails
+  - Severity: major
+EOF
+
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+### P01-T1: Test
+
+- **Result:** issue
+- **Issue:**
+  - Description: Still fails
+  - Severity: major'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_round=2"* ]]
+  [[ "${lines[1]}" == "P01-T1|major|Still fails|1,2" ]]
+}
+
+@test "extract-uat-issues: discovered issues get FAILED_IN_ROUNDS field" {
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+### D1: Discovered issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: Found during testing
+  - Severity: minor'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[1]}" == "D1|minor|Found during testing|1" ]]
 }

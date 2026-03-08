@@ -7,6 +7,10 @@
 #                                   with body-level fallback for brownfield files.
 #   latest_non_source_uat <dir>   — Find the latest canonical UAT file in a phase
 #                                   directory, excluding SOURCE-UAT.md copies.
+#   count_uat_rounds <dir> <num>  — Count existing {num}-UAT-round-*.md files
+#                                   in a phase directory. Returns max round number.
+#   extract_round_issue_ids <file> — Extract test IDs with Result: issue from
+#                                    a UAT round file. One ID per line.
 
 # Guard: prevent accidental direct execution
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
@@ -92,4 +96,55 @@ latest_non_source_uat() {
     printf '%s\n' "$latest"
   fi
   return 0
+}
+
+# count_uat_rounds — Count archived UAT round files in a phase directory.
+#
+# Scans for {phase_num}-UAT-round-*.md files, extracts the numeric round
+# suffix from each, and prints the maximum round number found (0 if none).
+# This is the single source of truth for round semantics — display round
+# is count + 1 when active issues exist.
+count_uat_rounds() {
+  local dir="$1"
+  local phase_num="$2"
+  local max_round=0
+
+  case "$dir" in
+    */) ;;
+    *) dir="$dir/" ;;
+  esac
+
+  for rf in "${dir}${phase_num}"-UAT-round-*.md; do
+    [ -f "$rf" ] || continue
+    local round_num
+    round_num=$(basename "$rf" | sed "s/^${phase_num}-UAT-round-0*\\([0-9]*\\)\\.md$/\\1/")
+    if [ -n "$round_num" ] && echo "$round_num" | grep -qE '^[0-9]+$'; then
+      if [ "$round_num" -gt "$max_round" ] 2>/dev/null; then
+        max_round="$round_num"
+      fi
+    fi
+  done
+
+  printf '%d' "$max_round"
+}
+
+# extract_round_issue_ids — Extract test IDs that had Result: issue from a UAT file.
+#
+# Parses the same markdown structure as extract-uat-issues.sh's awk block.
+# Outputs one test ID per line (e.g., "P01-T1", "D1").
+extract_round_issue_ids() {
+  local file="$1"
+  [ -f "$file" ] || return 0
+  awk '
+    /^### [PD][0-9]/ {
+      id = $2
+      sub(/:$/, "", id)
+      has_issue = 0
+      next
+    }
+    /^- \*\*Result:\*\*[[:space:]]*issue/ {
+      print id
+      next
+    }
+  ' "$file"
 }

@@ -2,15 +2,16 @@
 # extract-uat-issues.sh — Extract compact issue summary from a UAT report.
 # Usage: extract-uat-issues.sh <phase-dir>
 #
-# Outputs one line per issue: ID|SEVERITY|DESCRIPTION
-# Plus a header line with phase and total count.
+# Outputs one line per issue: ID|SEVERITY|DESCRIPTION|FAILED_IN_ROUNDS
+# Plus a header line with phase, total count, and current round number.
 # Designed for template expansion injection — compact, deterministic output
 # that saves the LLM from reading the full UAT file.
 #
 # Example output:
-#   uat_phase=03 uat_issues_total=1 uat_file=03-UAT.md
-#   P01-T2|major|Data Quality share breakdown only shows on positions where transferred-in shares are the ONLY source
-#   D1|minor|Some discovered issue description
+#   uat_phase=03 uat_issues_total=2 uat_round=6 uat_file=03-UAT.md
+#   P01-T1|major|Phantom positions still showing|1,3,5,6
+#   P02-T1|critical|Data not syncing|6
+#   D1|minor|Some discovered issue description|6
 
 set -euo pipefail
 
@@ -114,12 +115,57 @@ awk '
     severity = ""
   }
 ' "$UAT_FILE" > /tmp/.vbw-uat-issues-$$.txt
-trap 'rm -f /tmp/.vbw-uat-issues-$$.txt' EXIT
+trap 'rm -f /tmp/.vbw-uat-issues-$$.txt /tmp/.vbw-uat-recurrence-$$.txt' EXIT
 
 ISSUE_COUNT=$(wc -l < /tmp/.vbw-uat-issues-$$.txt | tr -d ' ')
 
-# Header line
-echo "uat_phase=${PHASE_NUM} uat_issues_total=${ISSUE_COUNT} uat_file=$(basename "$UAT_FILE")"
+# Determine current round number from archived round files
+if type count_uat_rounds &>/dev/null; then
+  ARCHIVED_ROUNDS=$(count_uat_rounds "$PHASE_DIR" "$PHASE_NUM")
+else
+  ARCHIVED_ROUNDS=0
+fi
+CURRENT_ROUND=$((ARCHIVED_ROUNDS + 1))
 
-# Issue lines
-cat /tmp/.vbw-uat-issues-$$.txt
+# Build recurrence data from archived round files.
+# Produces lines: "ID ROUND_NUM" in a temp file (Bash 3.2 compatible — no associative arrays).
+: > /tmp/.vbw-uat-recurrence-$$.txt
+if [ "$ARCHIVED_ROUNDS" -gt 0 ] && type extract_round_issue_ids &>/dev/null; then
+  round_num=1
+  while [ "$round_num" -le "$ARCHIVED_ROUNDS" ]; do
+    # Try both zero-padded and unpadded filenames
+    round_file=""
+    for candidate in "$PHASE_DIR/${PHASE_NUM}-UAT-round-${round_num}.md" \
+                     "$PHASE_DIR/${PHASE_NUM}-UAT-round-$(printf '%02d' "$round_num").md"; do
+      if [ -f "$candidate" ]; then
+        round_file="$candidate"
+        break
+      fi
+    done
+    if [ -n "$round_file" ]; then
+      extract_round_issue_ids "$round_file" | while IFS= read -r rid; do
+        [ -z "$rid" ] && continue
+        echo "$rid $round_num"
+      done >> /tmp/.vbw-uat-recurrence-$$.txt
+    fi
+    round_num=$((round_num + 1))
+  done
+fi
+
+# Header line — includes uat_round for recurrence-aware remediation
+echo "uat_phase=${PHASE_NUM} uat_issues_total=${ISSUE_COUNT} uat_round=${CURRENT_ROUND} uat_file=$(basename "$UAT_FILE")"
+
+# Issue lines with FAILED_IN_ROUNDS (4th field)
+while IFS='|' read -r id severity desc; do
+  # Collect prior round numbers for this ID from recurrence file
+  prior_rounds=""
+  if [ -s /tmp/.vbw-uat-recurrence-$$.txt ]; then
+    prior_rounds=$(grep "^${id} " /tmp/.vbw-uat-recurrence-$$.txt | awk '{print $2}' | sort -n | tr '\n' ',' | sed 's/,$//' || true)
+  fi
+  if [ -n "$prior_rounds" ]; then
+    failed_rounds="${prior_rounds},${CURRENT_ROUND}"
+  else
+    failed_rounds="${CURRENT_ROUND}"
+  fi
+  echo "${id}|${severity}|${desc}|${failed_rounds}"
+done < /tmp/.vbw-uat-issues-$$.txt
