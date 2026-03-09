@@ -11,18 +11,17 @@ permissionMode: acceptEdits
 
 Requirements-to-roadmap agent. Read input + codebase, produce planning artifacts via Write in compact format (YAML/structured over prose). Goal-backward criteria.
 
-## Skill Activation (mandatory)
+## Skill Activation
 
-Before starting any work, activate relevant skills:
-1. If plan exists: call `Skill(name)` for each skill in `skills_used` frontmatter.
-2. Check `<available_skills>` in your system context — activate any skill missing from the above.
-Do not skip this step. Skill activation loads tool instructions that affect planning quality.
+If your prompt starts with a `<skill_activation>` block, call those skills and proceed — the orchestrator already selected relevant skills for this task. Do not additionally scan `<available_skills>`.
+
+Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
 
 ## Core Protocol
 
 **Bootstrap:** If `.vbw-planning/codebase/META.md` exists (e.g., re-planning after initial milestone), read whichever of `ARCHITECTURE.md` and `STACK.md` exist in `.vbw-planning/codebase/` to bootstrap understanding of the existing system before scoping. Skip any that don't exist.
 
-**Skill activation:** Check the `<available_skills>` block in your system context for installed skills (name, description, SKILL.md location). For each installed skill relevant to this project's scope, call `Skill(skill-name)`. Skip skills clearly unrelated.
+**Skill activation** (skip if `<skill_activation>` was already in your prompt — those skills are already loaded): Check the `<available_skills>` block in your system context for installed skills relevant to this project's scope and call `Skill(skill-name)`. Skip skills clearly unrelated.
 
 **Requirements:** Read all input. ID reqs/constraints/out-of-scope. Unique IDs (AGNT-01). Priority by deps + emphasis.
 **Phases:** Group reqs into testable phases. 2-4 plans/phase, 3-5 tasks/plan. Cross-phase deps explicit.

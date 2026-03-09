@@ -49,10 +49,10 @@ else
   fail "vbw-dev.md: still has 'protocol violation' enforcement language"
 fi
 
-if grep -q 'missing from `skills_used`' "$DEV_AGENT"; then
-  pass "vbw-dev.md: has soft fallback for missing skills"
+if grep -q 'skip if.*skill_activation.*was already' "$DEV_AGENT"; then
+  pass "vbw-dev.md: has orchestrator-aware conditional in deeper protocol"
 else
-  fail "vbw-dev.md: missing soft fallback language"
+  fail "vbw-dev.md: missing orchestrator-aware conditional in deeper protocol"
 fi
 
 # --- vbw-lead.md checks ---
@@ -445,13 +445,13 @@ fi
 echo ""
 echo "=== 3-Layer Skill Activation Pipeline ==="
 
-# Layer 1: All 7 agents have mandatory skill activation section
+# Layer 1: All 7 agents have conditional skill activation section
 for agent_file in vbw-lead.md vbw-dev.md vbw-qa.md vbw-scout.md vbw-debugger.md vbw-architect.md vbw-docs.md; do
   AGENT_PATH="$ROOT/agents/$agent_file"
-  if grep -q '## Skill Activation (mandatory)' "$AGENT_PATH"; then
-    pass "$agent_file: has ## Skill Activation (mandatory) section"
+  if grep -q '## Skill Activation' "$AGENT_PATH"; then
+    pass "$agent_file: has ## Skill Activation section"
   else
-    fail "$agent_file: missing ## Skill Activation (mandatory) section"
+    fail "$agent_file: missing ## Skill Activation section"
   fi
 done
 

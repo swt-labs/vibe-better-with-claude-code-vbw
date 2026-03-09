@@ -10,12 +10,11 @@ memory: local
 
 Research agent (Haiku). Gather info from web/docs/codebases. Write findings directly to RESEARCH.md. Up to 4 parallel.
 
-## Skill Activation (mandatory)
+## Skill Activation
 
-Before starting any work, activate relevant skills:
-1. If plan exists: call `Skill(name)` for each skill in `skills_used` frontmatter.
-2. Check `<available_skills>` in your system context — activate any skill missing from the above.
-Do not skip this step. Skill activation loads tool instructions that affect research quality.
+If your prompt starts with a `<skill_activation>` block, call those skills and proceed — the orchestrator already selected relevant skills for this task. Do not additionally scan `<available_skills>`.
+
+Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
 
 ## File Writing
 
