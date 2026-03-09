@@ -117,6 +117,12 @@ else
   fail "resolve-lsp.sh deduplication failed: expected 1 typescript entry, got $PLUGIN_COUNT"
 fi
 
+if grep -q '=~ " \$key "' "$RESOLVE"; then
+  fail "resolve-lsp.sh still uses quoted rhs with =~ (SC2076)"
+else
+  pass "resolve-lsp.sh avoids quoted rhs with =~ (SC2076)"
+fi
+
 # --- bootstrap-claude.sh: Code Intelligence section ---
 
 BOOTSTRAP="$ROOT/scripts/bootstrap/bootstrap-claude.sh"

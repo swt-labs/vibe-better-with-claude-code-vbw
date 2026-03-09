@@ -77,8 +77,8 @@ while IFS= read -r item; do
   # Check if key exists in servers
   has_server=$(echo "$SERVERS" | jq -r --arg k "$key" 'has($k)' 2>/dev/null || echo "false")
   if [[ "$has_server" == "true" ]]; then
-    # Deduplicate
-    if [[ ! " $RESOLVED_KEYS " =~ " $key " ]]; then
+    # Deduplicate via literal token membership (not regex)
+    if [[ " $RESOLVED_KEYS " != *" $key "* ]]; then
       RESOLVED_KEYS="$RESOLVED_KEYS $key"
     fi
   fi
