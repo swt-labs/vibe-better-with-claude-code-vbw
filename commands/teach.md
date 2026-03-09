@@ -4,7 +4,7 @@ category: supporting
 disable-model-invocation: true
 description: View, add, or manage project conventions. Shows what VBW already knows and warns about conflicts.
 argument-hint: "[\"convention text\" | remove <id> | refresh]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, LSP
 ---
 
 # VBW Teach $ARGUMENTS

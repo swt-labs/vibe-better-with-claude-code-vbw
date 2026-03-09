@@ -4,7 +4,7 @@ category: monitoring
 disable-model-invocation: true
 description: Display project progress dashboard with phase status, velocity metrics, and next action.
 argument-hint: [--verbose] [--metrics]
-allowed-tools: Read, Glob, Grep, Bash
+allowed-tools: Read, Glob, Grep, Bash, LSP
 ---
 
 # VBW Status $ARGUMENTS

@@ -4,7 +4,7 @@ category: supporting
 disable-model-invocation: true
 description: Investigate a bug using the Debugger agent's scientific method protocol.
 argument-hint: "<bug description or error message>"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, LSP
 ---
 
 # VBW Debug: $ARGUMENTS

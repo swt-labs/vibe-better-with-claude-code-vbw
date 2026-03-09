@@ -4,7 +4,7 @@ category: supporting
 disable-model-invocation: true
 description: Browse and install community skills from skills.sh based on your project's tech stack.
 argument-hint: [--search <query>] [--list] [--refresh]
-allowed-tools: Read, Bash, Glob, Grep, WebFetch
+allowed-tools: Read, Bash, Glob, Grep, WebFetch, LSP
 ---
 
 # VBW Skills $ARGUMENTS

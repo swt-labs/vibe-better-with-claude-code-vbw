@@ -4,7 +4,7 @@ category: monitoring
 disable-model-invocation: true
 description: Run human acceptance testing on completed phase work. Presents CHECKPOINT prompts one at a time.
 argument-hint: "[phase-number] [--resume]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, LSP
 ---
 
 # VBW Verify: $ARGUMENTS
