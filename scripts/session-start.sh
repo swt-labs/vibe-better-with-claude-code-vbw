@@ -186,6 +186,9 @@ if [ -f "$PLANNING_DIR/.compaction-marker" ]; then
   rm -f "$PLANNING_DIR/.compaction-marker" 2>/dev/null
 fi
 
+# Reset compaction loop counter at fresh session start
+rm -f "$PLANNING_DIR/.compaction-count" 2>/dev/null || true
+
 # Auto-migrate config if .vbw-planning exists.
 # Version marker retained here for backwards test compatibility.
 EXPECTED_FLAG_COUNT=35
