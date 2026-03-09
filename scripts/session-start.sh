@@ -405,7 +405,7 @@ SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 if [ -f "$SETTINGS_FILE" ]; then
   SL_CMD=$(jq -r '.statusLine.command // .statusLine // ""' "$SETTINGS_FILE" 2>/dev/null)
   if echo "$SL_CMD" | grep -q 'for f in' && echo "$SL_CMD" | grep -q 'vbw-statusline'; then
-    CORRECT_CMD="bash -c 'f=\$(ls -1 \"\${CLAUDE_CONFIG_DIR:-\$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/vbw-statusline.sh 2>/dev/null | sort -V | tail -1) && [ -f \"\$f\" ] && exec bash \"\$f\"'"
+    CORRECT_CMD="bash -c 'for _d in \"\${CLAUDE_CONFIG_DIR:-}\" \"\$HOME/.config/claude-code\" \"\$HOME/.claude\"; do [ -z \"\$_d\" ] && continue; f=\$(ls -1 \"\$_d\"/plugins/cache/vbw-marketplace/vbw/*/scripts/vbw-statusline.sh 2>/dev/null | sort -V | tail -1 || true); [ -f \"\$f\" ] && exec bash \"\$f\"; done'"
     cp "$SETTINGS_FILE" "${SETTINGS_FILE}.bak"
     if ! jq --arg cmd "$CORRECT_CMD" '.statusLine = {"type": "command", "command": $cmd}' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp"; then
       cp "${SETTINGS_FILE}.bak" "$SETTINGS_FILE"
@@ -438,22 +438,53 @@ if [ -f "$SETTINGS_FILE" ]; then
   rm -f "$PLANNING_DIR/.tmux-mode-patched" 2>/dev/null || true
 fi
 
-# --- Clean old cache versions (keep only latest) ---
+# --- Local dev bridge: populate cache for template resolution ---
+# When loaded via --plugin-dir (local dev mode), CLAUDE_PLUGIN_ROOT is set but
+# the marketplace cache is empty. Template-level backtick expansions resolve the
+# plugin root via the cache glob, which fails without a cache entry. Bridge the
+# gap by symlinking CLAUDE_PLUGIN_ROOT into the cache directory. This enables
+# the same resolution path as marketplace installs.
 CACHE_DIR="$CLAUDE_DIR/plugins/cache/vbw-marketplace/vbw"
+MKT_DIR="$CLAUDE_DIR/plugins/marketplaces/vbw-marketplace"
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT" ]; then
+  if ! ls -d "$CACHE_DIR"/*/ >/dev/null 2>&1; then
+    mkdir -p "$CACHE_DIR"
+    ln -sfn "$CLAUDE_PLUGIN_ROOT" "$CACHE_DIR/local"
+  fi
+else
+  # Not in local dev mode — remove stale local symlink to prevent prod sessions
+  # from silently resolving scripts from a developer's repo checkout.
+  if [ -L "$CACHE_DIR/local" ]; then
+    rm -f "$CACHE_DIR/local"
+  fi
+  # If cache is empty in prod mode but marketplace checkout exists, seed a
+  # low-priority fallback cache entry so resolution paths stay functional.
+  # Name it 0.0.0-* so any real semver cache wins when present.
+  if ! ls -d "$CACHE_DIR"/*/ >/dev/null 2>&1 && [ -d "$MKT_DIR/.claude-plugin" ]; then
+    mkdir -p "$CACHE_DIR"
+    ln -sfn "$MKT_DIR" "$CACHE_DIR/0.0.0-marketplace"
+  fi
+fi
+
+# --- Clean old cache versions (keep only latest) ---
 VBW_CLEANUP_LOCK="/tmp/vbw-cache-cleanup-lock"
 if [ -d "$CACHE_DIR" ] && mkdir "$VBW_CLEANUP_LOCK" 2>/dev/null; then
   VERSIONS=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V)
   COUNT=$(echo "$VERSIONS" | wc -l | tr -d ' ')
   if [ "$COUNT" -gt 1 ]; then
-    echo "$VERSIONS" | head -n $((COUNT - 1)) | while IFS= read -r dir; do rm -rf "$dir"; done
+    echo "$VERSIONS" | head -n $((COUNT - 1)) | while IFS= read -r dir; do
+      [ -L "${dir%/}" ] && continue  # Skip local dev symlinks
+      rm -rf "$dir"
+    done
   fi
   rmdir "$VBW_CLEANUP_LOCK" 2>/dev/null
 fi
 
 # --- Cache integrity check (nuke if critical files missing) ---
+# Skip integrity check for local dev symlinks — the live repo is always current.
 if [ -d "$CACHE_DIR" ]; then
   LATEST_CACHE=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
-  if [ -n "$LATEST_CACHE" ]; then
+  if [ -n "$LATEST_CACHE" ] && [ ! -L "${LATEST_CACHE%/}" ]; then
     INTEGRITY_OK=true
     for f in commands/init.md .claude-plugin/plugin.json VERSION config/defaults.json; do
       if [ ! -f "$LATEST_CACHE$f" ]; then
@@ -469,30 +500,35 @@ if [ -d "$CACHE_DIR" ]; then
 fi
 
 # --- Auto-sync stale marketplace checkout ---
-MKT_DIR="$CLAUDE_DIR/plugins/marketplaces/vbw-marketplace"
+_CACHE_LATEST=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
 if [ -d "$MKT_DIR/.git" ] && [ -d "$CACHE_DIR" ]; then
-  MKT_VER=$(jq -r '.version // "0"' "$MKT_DIR/.claude-plugin/plugin.json" 2>/dev/null)
-  CACHE_VER=$(jq -r '.version // "0"' "$(ls -d "$CACHE_DIR"/*/.claude-plugin/plugin.json 2>/dev/null | sort -V | tail -1)" 2>/dev/null)
-  if [ "$MKT_VER" != "$CACHE_VER" ] && [ -n "$CACHE_VER" ] && [ "$CACHE_VER" != "0" ]; then
-    (cd "$MKT_DIR" && git fetch origin --quiet 2>/dev/null && \
-      if git diff --quiet 2>/dev/null; then
-        git merge --ff-only origin/main --quiet 2>/dev/null
-      else
-        echo "VBW: marketplace checkout has local modifications — skipping reset" >&2
-      fi) &
+  # Skip version-driven sync when latest cache entry is a local dev symlink —
+  # local repo version differences should not drive marketplace checkout behavior.
+  if [ -n "$_CACHE_LATEST" ] && [ ! -L "${_CACHE_LATEST%/}" ]; then
+    MKT_VER=$(jq -r '.version // "0"' "$MKT_DIR/.claude-plugin/plugin.json" 2>/dev/null)
+    CACHE_VER=$(jq -r '.version // "0"' "${_CACHE_LATEST}.claude-plugin/plugin.json" 2>/dev/null)
+    if [ "$MKT_VER" != "$CACHE_VER" ] && [ -n "$CACHE_VER" ] && [ "$CACHE_VER" != "0" ]; then
+      (cd "$MKT_DIR" && git fetch origin --quiet 2>/dev/null && \
+        if git diff --quiet 2>/dev/null; then
+          git merge --ff-only origin/main --quiet 2>/dev/null
+        else
+          echo "VBW: marketplace checkout has local modifications — skipping reset" >&2
+        fi) &
+    fi
   fi
   # Content staleness: compare command counts
   if [ -d "$MKT_DIR/commands" ] && [ -d "$CACHE_DIR" ]; then
-    LATEST_VER=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
-    if [ -n "$LATEST_VER" ] && [ -d "${LATEST_VER}commands" ]; then
+    if [ -n "$_CACHE_LATEST" ] && [ -d "${_CACHE_LATEST}commands" ] && [ ! -L "${_CACHE_LATEST%/}" ]; then
+      # Skip staleness check for local dev symlinks — command counts differ during development.
       # zsh compat: bare globs error before ls runs in zsh (nomatch). Use ls dir | grep.
       # shellcheck disable=SC2010
       MKT_CMD_COUNT=$(ls -1 "$MKT_DIR/commands/" 2>/dev/null | grep '\.md$' | wc -l | tr -d ' ')
       # shellcheck disable=SC2010
-      CACHE_CMD_COUNT=$(ls -1 "${LATEST_VER}commands/" 2>/dev/null | grep '\.md$' | wc -l | tr -d ' ')
+      CACHE_CMD_COUNT=$(ls -1 "${_CACHE_LATEST}commands/" 2>/dev/null | grep '\.md$' | wc -l | tr -d ' ')
       if [ "${MKT_CMD_COUNT:-0}" -ne "${CACHE_CMD_COUNT:-0}" ]; then
         echo "VBW cache stale — marketplace has ${MKT_CMD_COUNT} commands, cache has ${CACHE_CMD_COUNT}" >&2
         rm -rf "$CACHE_DIR"
+        _CACHE_LATEST=""
       fi
     fi
   fi
@@ -500,7 +536,7 @@ fi
 
 # --- Sync global commands mirror for vbw: prefix in autocomplete ---
 VBW_GLOBAL_CMD="$CLAUDE_DIR/commands/vbw"
-CACHED_VER=$(ls -d "$CACHE_DIR"/*/ 2>/dev/null | sort -V | tail -1)
+CACHED_VER="$_CACHE_LATEST"
 if [ -n "$CACHED_VER" ] && [ -d "${CACHED_VER}commands" ]; then
   mkdir -p "$VBW_GLOBAL_CMD"
   # Remove stale commands not in cache, then copy fresh
@@ -520,9 +556,87 @@ if [ -n "$PROJECT_GIT_DIR" ] && [ ! -f "$PROJECT_GIT_DIR/.git/hooks/pre-push" ] 
   (bash "$SCRIPT_DIR/install-hooks.sh" 2>/dev/null) || true
 fi
 
+# --- Auto-recover stale execution state (event_recovery gate) ---
+# If event-log.jsonl is newer than .execution-state.json (or state is missing
+# while events exist), call recover-state.sh to rebuild the state file.
+# Gates on event_recovery config flag (recover-state.sh checks internally too).
+_auto_recovered=false
+if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ]; then
+  _er_flag=$(jq -r 'if .event_recovery != null then .event_recovery elif .v3_event_recovery != null then .v3_event_recovery else false end' "$PLANNING_DIR/config.json" 2>/dev/null || echo "false")
+  _events_file="$PLANNING_DIR/.events/event-log.jsonl"
+
+  # Fix QA#3: require non-empty event log — -s plus grep for actual content
+  # (a file with only whitespace/newlines passes -s but has no events)
+  if [ "$_er_flag" = "true" ] && [ -s "$_events_file" ] && grep -q '[^[:space:]]' "$_events_file" 2>/dev/null; then
+    _exec_state="$PLANNING_DIR/.execution-state.json"
+    _needs_recovery=false
+
+    if [ ! -f "$_exec_state" ]; then
+      # State missing but events exist — recover
+      _needs_recovery=true
+    else
+      # Compare mtimes: recover if event log is strictly newer
+      if [ "$(uname)" = "Darwin" ]; then
+        _mt_state=$(stat -f %m "$_exec_state" 2>/dev/null || echo 0)
+        _mt_events=$(stat -f %m "$_events_file" 2>/dev/null || echo 0)
+      else
+        _mt_state=$(stat -c %Y "$_exec_state" 2>/dev/null || echo 0)
+        _mt_events=$(stat -c %Y "$_events_file" 2>/dev/null || echo 0)
+      fi
+      if [ "$_mt_events" -gt "$_mt_state" ] 2>/dev/null; then
+        _needs_recovery=true
+      fi
+    fi
+
+    if [ "$_needs_recovery" = true ]; then
+      # Determine current phase from STATE.md
+      _phase_num=""
+      if [ -f "$PLANNING_DIR/STATE.md" ]; then
+        _phase_line=$(grep -m1 "^Phase:" "$PLANNING_DIR/STATE.md" 2>/dev/null || true)
+        _phase_num=$(echo "$_phase_line" | sed 's/Phase: *\([0-9]*\).*/\1/')
+      fi
+
+      # Fix QA#1: fallback to .execution-state.json phase, then artifact/event-based detection
+      if ! [ -n "$_phase_num" ] 2>/dev/null || ! [ "$_phase_num" -gt 0 ] 2>/dev/null; then
+        _phase_num=""
+        # Try existing execution state
+        if [ -f "$_exec_state" ]; then
+          _exec_phase=$(jq -r '.phase // ""' "$_exec_state" 2>/dev/null || true)
+          if [ -n "$_exec_phase" ] && [ "$_exec_phase" -gt 0 ] 2>/dev/null; then
+            _exec_phase_dir=$(find_phase_dir_by_num "$PLANNING_DIR" "$_exec_phase")
+            if phase_dir_has_plans "$_exec_phase_dir"; then
+              _phase_num="$_exec_phase"
+            fi
+          fi
+        fi
+        # Still empty? Choose from events/artifacts rather than max numeric phase.
+        if ! [ -n "$_phase_num" ] 2>/dev/null || ! [ "$_phase_num" -gt 0 ] 2>/dev/null; then
+          _phase_num=$(pick_recovery_phase "$PLANNING_DIR" "$_events_file")
+        fi
+      fi
+
+      if [ -n "$_phase_num" ] && [ "$_phase_num" -gt 0 ] 2>/dev/null; then
+        _recovered=$(bash "$SCRIPT_DIR/recover-state.sh" "$_phase_num" "$PLANNING_DIR/phases" 2>/dev/null)
+        # Only write if we got a non-empty, non-{} result
+        if [ -n "$_recovered" ] && [ "$_recovered" != "{}" ]; then
+          # Fix QA#2: validate recovered phase matches requested phase and has plans
+          _recovered_phase=$(echo "$_recovered" | jq -r '.phase // 0' 2>/dev/null || echo 0)
+          _recovered_plan_count=$(echo "$_recovered" | jq -r '.plans | length // 0' 2>/dev/null || echo 0)
+          if [ "$_recovered_phase" = "$_phase_num" ] && [ "${_recovered_plan_count:-0}" -gt 0 ] 2>/dev/null; then
+            if atomic_write_string "$PLANNING_DIR/.execution-state.json" "$_recovered"; then
+              _auto_recovered=true
+            fi
+          fi
+        fi
+      fi
+    fi
+  fi
+fi
+
 # --- Reconcile orphaned execution state ---
+# Fix QA#4: skip reconcile if auto-recovery already wrote state this session
 EXEC_STATE="$PLANNING_DIR/.execution-state.json"
-if [ -f "$EXEC_STATE" ]; then
+if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
   EXEC_STATUS=$(jq -r '.status // ""' "$EXEC_STATE" 2>/dev/null)
   if [ "$EXEC_STATUS" = "running" ]; then
     PHASE_NUM=$(jq -r '.phase // ""' "$EXEC_STATE" 2>/dev/null)
@@ -727,7 +841,6 @@ fi
 
 # --- Root-canonical paths (no ACTIVE indirection) ---
 MILESTONE_DIR="$PLANNING_DIR"
-PHASES_DIR="$PLANNING_DIR/phases"
 
 # --- Shipped milestones detection ---
 has_shipped="false"
@@ -792,15 +905,30 @@ fi
 
 # --- Determine next action ---
 NEXT_ACTION=""
+
+# Use phase-detect.sh as the canonical source for phase and milestone UAT routing.
+PHASE_DETECT_OUT=$(bash "$SCRIPT_DIR/phase-detect.sh" 2>/dev/null || true)
+PD_NEXT_PHASE_STATE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^next_phase_state=' | sed 's/^[^=]*=//' || true)
+PD_NEXT_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^next_phase=' | sed 's/^[^=]*=//' || true)
+PD_UAT_ISSUES_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^uat_issues_phase=' | sed 's/^[^=]*=//' || true)
+PD_MILESTONE_UAT_ISSUES=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_issues=' | sed 's/^[^=]*=//' || true)
+PD_MILESTONE_UAT_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_phase=' | sed 's/^[^=]*=//' || true)
+PD_MILESTONE_UAT_SLUG=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_slug=' | sed 's/^[^=]*=//' || true)
+PD_HAS_SHIPPED=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^has_shipped_milestones=' | sed 's/^[^=]*=//' || true)
+
+PD_NEXT_PHASE_STATE=${PD_NEXT_PHASE_STATE:-unknown}
+PD_NEXT_PHASE=${PD_NEXT_PHASE:-none}
+PD_UAT_ISSUES_PHASE=${PD_UAT_ISSUES_PHASE:-none}
+PD_MILESTONE_UAT_ISSUES=${PD_MILESTONE_UAT_ISSUES:-false}
+PD_MILESTONE_UAT_PHASE=${PD_MILESTONE_UAT_PHASE:-none}
+PD_MILESTONE_UAT_SLUG=${PD_MILESTONE_UAT_SLUG:-none}
+PD_HAS_SHIPPED=${PD_HAS_SHIPPED:-$has_shipped}
+
+# Keep shipped indicator aligned with phase-detect brownfield fallback semantics.
+has_shipped="$PD_HAS_SHIPPED"
+
 if [ ! -f "$PLANNING_DIR/PROJECT.md" ]; then
   NEXT_ACTION="/vbw:init"
-elif [ ! -d "$PHASES_DIR" ] || [ -z "$(ls -d "$PHASES_DIR"/*/ 2>/dev/null)" ]; then
-  # No root phases — check if milestones were shipped (post-archive state)
-  if [ "$has_shipped" = "true" ]; then
-    NEXT_ACTION="/vbw:vibe (all milestones shipped, start next milestone)"
-  else
-    NEXT_ACTION="/vbw:vibe (needs scoping)"
-  fi
 else
   # Check execution state for interrupted builds
   EXEC_STATE="$PLANNING_DIR/.execution-state.json"
@@ -819,32 +947,34 @@ else
   if [ "$exec_running" = true ]; then
     NEXT_ACTION="/vbw:vibe (build interrupted, will resume)"
   else
-    # Find next phase needing work
-    all_done=true
-    for pdir in $(ls -d "$PHASES_DIR"/*/ 2>/dev/null | sort); do
-      pname=$(basename "$pdir")
-      # zsh compat: use ls dir | grep to avoid bare glob expansion errors
-      # shellcheck disable=SC2010
-      plan_count=$(ls -1 "$pdir" 2>/dev/null | grep '\-PLAN\.md$' | wc -l | tr -d ' ')
-      # shellcheck disable=SC2010
-      summary_count=$(ls -1 "$pdir" 2>/dev/null | grep '\-SUMMARY\.md$' | wc -l | tr -d ' ')
-      if [ "${plan_count:-0}" -eq 0 ]; then
-        # Phase has no plans yet — needs planning
-        pnum=$(echo "$pname" | sed 's/-.*//')
-        NEXT_ACTION="/vbw:vibe (Phase $pnum needs planning)"
-        all_done=false
-        break
-      elif [ "${summary_count:-0}" -lt "${plan_count:-0}" ]; then
-        # Phase has plans but not all executed
-        pnum=$(echo "$pname" | sed 's/-.*//')
-        NEXT_ACTION="/vbw:vibe (Phase $pnum planned, needs execution)"
-        all_done=false
-        break
-      fi
-    done
-    if [ "$all_done" = true ]; then
-      NEXT_ACTION="/vbw:vibe --archive"
-    fi
+    case "$PD_NEXT_PHASE_STATE" in
+      needs_uat_remediation)
+        NEXT_ACTION="/vbw:vibe (Phase ${PD_UAT_ISSUES_PHASE:-$PD_NEXT_PHASE} has unresolved UAT issues, continue remediation)"
+        ;;
+      needs_discussion)
+        NEXT_ACTION="/vbw:vibe (Phase ${PD_NEXT_PHASE} needs discussion before planning)"
+        ;;
+      needs_plan_and_execute)
+        NEXT_ACTION="/vbw:vibe (Phase ${PD_NEXT_PHASE} needs planning)"
+        ;;
+      needs_execute)
+        NEXT_ACTION="/vbw:vibe (Phase ${PD_NEXT_PHASE} planned, needs execution)"
+        ;;
+      all_done|no_phases)
+        if [ "$PD_MILESTONE_UAT_ISSUES" = "true" ]; then
+          NEXT_ACTION="/vbw:vibe (milestone UAT recovery: ${PD_MILESTONE_UAT_SLUG} Phase ${PD_MILESTONE_UAT_PHASE})"
+        elif [ "$PD_HAS_SHIPPED" = "true" ] && [ "$PD_NEXT_PHASE_STATE" = "no_phases" ]; then
+          NEXT_ACTION="/vbw:vibe (all milestones shipped, start next milestone)"
+        elif [ "$PD_NEXT_PHASE_STATE" = "all_done" ]; then
+          NEXT_ACTION="/vbw:vibe --archive"
+        else
+          NEXT_ACTION="/vbw:vibe (needs scoping)"
+        fi
+        ;;
+      *)
+        NEXT_ACTION="/vbw:vibe (needs scoping)"
+        ;;
+    esac
   fi
 fi
 

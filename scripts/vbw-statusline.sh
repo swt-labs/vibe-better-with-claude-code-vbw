@@ -470,7 +470,7 @@ fi
 # --- Hide-limits suppression ---
 if [ "$HIDE_LIMITS" = "true" ]; then
   USAGE_LINE=""
-elif [ "$HIDE_LIMITS_API" = "true" ] && [ "$FETCH_OK" = "noauth" ] && [ "$AUTH_METHOD" != "claude.ai" ]; then
+elif [ "$HIDE_LIMITS_API" = "true" ] && [ "$FETCH_OK" != "ok" ] && [ "$AUTH_METHOD" != "claude.ai" ]; then
   USAGE_LINE=""
 fi
 
@@ -496,11 +496,12 @@ FL=$((PCT * 10 / 100)); EM=$((10 - FL))
 CTX_BAR=""; [ "$FL" -gt 0 ] && CTX_BAR=$(printf "%${FL}s" | sed 's/ /▓/g')
 [ "$EM" -gt 0 ] && CTX_BAR="${CTX_BAR}$(printf "%${EM}s" | sed 's/ /░/g')"
 
+_HIDE_EXEC_TMUX=false
 if [ "$HIDE_AGENT_TMUX" = "true" ] && [ -n "${TMUX:-}" ] && [ "$EXEC_STATUS" = "running" ]; then
-  EXEC_STATUS=""
+  _HIDE_EXEC_TMUX=true
 fi
 
-if [ "$EXEC_STATUS" = "running" ] && [ "${EXEC_TOTAL:-0}" -gt 0 ] 2>/dev/null; then
+if [ "$_HIDE_EXEC_TMUX" != "true" ] && [ "$EXEC_STATUS" = "running" ] && [ "${EXEC_TOTAL:-0}" -gt 0 ] 2>/dev/null; then
   EXEC_PCT=$((EXEC_DONE * 100 / EXEC_TOTAL))
   L1="${C}${B}[VBW]${X} Build: $(progress_bar "$EXEC_PCT" 8) ${EXEC_DONE}/${EXEC_TOTAL} plans"
   [ "${EXEC_TWAVES:-0}" -gt 1 ] 2>/dev/null && L1="$L1 ${D}│${X} Wave ${EXEC_WAVE}/${EXEC_TWAVES}"
