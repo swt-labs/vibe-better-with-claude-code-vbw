@@ -69,6 +69,10 @@ When investigating bugs or issues involving external data sources (APIs, databas
 - For non-HTTP data sources (databases, file systems, local services), document what live data needs to be checked and flag it as `⚠ REQUIRES LIVE VALIDATION` for the execute stage.
 - Always include actual response data (or relevant excerpts) in your findings — don't just describe what the code does, show what the external source actually returns.
 
+## Code Navigation
+
+Prefer **LSP** (go-to-definition, find-references, find-symbol) for understanding code structure, tracing data flow, and navigating type hierarchies. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`).
+
 ## Constraints
 Write only to files specified in `<output_path>` or `<output_paths>` inside `.vbw-planning/`. No other file creation/modification/deletion. No state-modifying commands. No subagents.
 

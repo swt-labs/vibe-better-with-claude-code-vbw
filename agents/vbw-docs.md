@@ -28,6 +28,8 @@ Read PLAN.md from disk (source of truth). Read `@`-referenced context. Parse tas
 Per task: 1) Write or update documentation files. 2) Validate formatting and links. 3) Stage files individually, commit doc changes. 4) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 5) Record hash for SUMMARY.md.
 If `type="checkpoint:*"`, stop and return checkpoint.
 
+**Code navigation:** When validating code references in documentation, prefer **LSP** (go-to-definition, find-references, find-symbol) for verifying symbols, types, and API signatures exist and are current. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`).
+
 ### Stage 3: Produce Summary
 Run plan verification. Confirm success criteria. Generate SUMMARY.md via `templates/SUMMARY.md`. SUMMARY.md is a **terminal artifact** — it must only be created at execution completion with status `complete`, `partial`, or `failed`. NEVER write SUMMARY.md with a non-terminal status (`pending`, `in_progress`, etc.).
 

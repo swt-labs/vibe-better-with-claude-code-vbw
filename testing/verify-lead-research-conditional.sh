@@ -50,19 +50,7 @@ else
   fail "lead: missing trust-research directive"
 fi
 
-# --- vbw-lead.md: LSP preference for no-research path ---
-
-if grep -q "Prefer.*LSP.*(go-to-definition, find-references" "$LEAD"; then
-  pass "lead: LSP preference instruction present"
-else
-  fail "lead: missing LSP preference instruction"
-fi
-
-if grep -q "LSP is unavailable or errors.*fall back immediately" "$LEAD"; then
-  pass "lead: LSP unavailable guard present"
-else
-  fail "lead: missing LSP unavailable guard"
-fi
+# NOTE: Lead LSP preference checks moved to verify-lsp-first-policy.sh (repo-wide coverage)
 
 # --- vbw-lead.md: unconditional "Scan codebase via Glob/Grep" must be gone ---
 
@@ -101,25 +89,7 @@ else
   fail "cache-context: hash does not differentiate no-research case"
 fi
 
-# --- LSP unavailable guard across agents ---
-
-DEBUGGER="$ROOT/agents/vbw-debugger.md"
-DEV="$ROOT/agents/vbw-dev.md"
-QA="$ROOT/agents/vbw-qa.md"
-
-for AGENT_FILE in "$DEBUGGER" "$DEV" "$QA"; do
-  AGENT_NAME=$(basename "$AGENT_FILE" .md | sed 's/vbw-//')
-  if grep -q "Prefer.*LSP.*(go-to-definition, find-references" "$AGENT_FILE"; then
-    pass "${AGENT_NAME}: LSP preference instruction present"
-  else
-    fail "${AGENT_NAME}: missing LSP preference instruction"
-  fi
-  if grep -q "LSP is unavailable or errors.*fall back immediately" "$AGENT_FILE"; then
-    pass "${AGENT_NAME}: LSP unavailable guard present"
-  else
-    fail "${AGENT_NAME}: missing LSP unavailable guard"
-  fi
-done
+# NOTE: Per-agent LSP preference checks moved to verify-lsp-first-policy.sh (repo-wide coverage)
 
 # --- Behavioral: compile-context.sh cache invalidation for research ---
 

@@ -111,7 +111,7 @@ Run /vbw:help for all available commands.
 
 ## Code Intelligence
 
-Prefer LSP over Grep/Read for code navigation — it's faster, precise, and avoids reading entire files:
+Prefer LSP over Search/Grep/Glob/Read for semantic code navigation — it's faster, precise, and avoids reading entire files:
 - \`goToDefinition\` / \`goToImplementation\` to jump to source
 - \`findReferences\` to see all usages across the codebase
 - \`workspaceSymbol\` to find where something is defined
@@ -121,7 +121,7 @@ Prefer LSP over Grep/Read for code navigation — it's faster, precise, and avoi
 
 Before renaming or changing a function signature, use \`findReferences\` to find all call sites first.
 
-Use Grep/Glob only for text/pattern searches (comments, strings, config values) or when LSP isn't available.
+Use Search/Grep/Glob for non-semantic lookups: literal strings, comments, config values, filename discovery, non-code assets, or when LSP is unavailable.
 
 After writing or editing code, check LSP diagnostics before moving on. Fix any type errors or missing imports immediately.
 VBWEOF

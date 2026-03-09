@@ -68,6 +68,9 @@ echo ""
 echo "Running LSP setup pipeline checks..."
 bash "$ROOT/testing/verify-lsp-setup.sh"
 echo ""
+echo "Running LSP-first policy checks..."
+bash "$ROOT/testing/verify-lsp-first-policy.sh"
+echo ""
 if command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null; then
   echo "Running bats test suites..."
   bats_pass=0

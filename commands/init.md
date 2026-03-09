@@ -292,14 +292,14 @@ This project uses VBW (Vibe Better with Claude Code) for structured development.
 Run /vbw:status for current progress.
 Run /vbw:help for all available commands.
 ## Code Intelligence
-Prefer LSP over Grep/Read for code navigation — it's faster, precise, and avoids reading entire files:
+Prefer LSP over Search/Grep/Glob/Read for semantic code navigation — it's faster, precise, and avoids reading entire files:
 - `goToDefinition` / `goToImplementation` to jump to source
 - `findReferences` to see all usages across the codebase
 - `workspaceSymbol` to find where something is defined
 - `hover` for type info without reading the file
 - `incomingCalls` / `outgoingCalls` for call hierarchy
 Before renaming or changing a function signature, use `findReferences` to find all call sites first.
-Use Grep/Glob only for text/pattern searches (comments, strings, config values) or when LSP isn't available.
+Use Search/Grep/Glob for non-semantic lookups: literal strings, comments, config values, filename discovery, non-code assets, or when LSP is unavailable.
 {ONLY if GSD_ISOLATION_ENABLED=true — include this section:}
 ## Plugin Isolation
 - GSD agents and commands MUST NOT read, write, glob, grep, or reference any files in `.vbw-planning/`

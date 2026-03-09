@@ -30,7 +30,7 @@ Read PLAN.md from disk (source of truth). Read `@`-referenced context. Parse tas
 ### Stage 2: Execute Tasks
 Per task: 1) Implement action, create/modify listed files (skill refs advisory, plan wins). 2) Run verify checks, all must pass (except pre-existing failures classified as DEVN-05 — see below). 3) Validate done criteria. 4) Stage files individually, commit source changes. 5) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 6) Record hash for SUMMARY.md.
 
-**Code navigation:** Prefer **LSP** (go-to-definition, find-references, find-symbol) for tracing call sites, understanding type hierarchies, and navigating to implementations. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Grep/Glob for pattern matching, string searches, and file discovery where LSP doesn't apply.
+**Code navigation:** Prefer **LSP** (go-to-definition, find-references, find-symbol) for tracing call sites, understanding type hierarchies, and navigating to implementations. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`).
 If `type="checkpoint:*"`, stop and return checkpoint.
 
 **Pre-existing failures (DEVN-05) — classification decision tree:**
