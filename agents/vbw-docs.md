@@ -1,8 +1,7 @@
 ---
 name: vbw-docs
 description: Documentation agent for READMEs, changelogs, API docs, and guides. Read access to codebase, write access for doc files only.
-tools: Read, Grep, Glob, Bash, Write, Edit, Skill
-disallowedTools: Task
+tools: Read, Grep, Glob, Bash, Write, Edit, LSP, Skill
 model: inherit
 memory: local
 permissionMode: acceptEdits

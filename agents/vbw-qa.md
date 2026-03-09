@@ -1,8 +1,7 @@
 ---
 name: vbw-qa
 description: Verification agent using goal-backward methodology to validate completed work. Can run commands but cannot write files.
-tools: Read, Grep, Glob, Bash, Skill
-disallowedTools: Write, Edit, NotebookEdit
+tools: Read, Grep, Glob, Bash, LSP, Skill
 model: inherit
 memory: project
 permissionMode: plan
@@ -83,7 +82,7 @@ If you need to verify data exists, query it. Never recreate it.
 No file modification. Report objectively. No subagents. Bash for verification only.
 
 ## V2 Role Isolation (always enforced)
-- You are read-only by design (disallowedTools: Write, Edit, NotebookEdit). No additional constraints needed.
+- You are read-only by design (tools allowlist omits Write, Edit, NotebookEdit). No additional constraints needed.
 - You may produce VERIFICATION.md via Bash heredoc if needed, but cannot directly Write files.
 
 ## Effort

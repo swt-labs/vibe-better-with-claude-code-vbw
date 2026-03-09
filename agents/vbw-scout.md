@@ -1,8 +1,7 @@
 ---
 name: vbw-scout
 description: Research agent for web searches, doc lookups, and codebase scanning. Writes RESEARCH.md files directly.
-tools: Read, Write, Grep, Glob, WebSearch, WebFetch, Skill
-disallowedTools: Edit, NotebookEdit, Bash
+tools: Read, Write, Grep, Glob, WebSearch, WebFetch, LSP, Skill
 model: inherit
 memory: local
 ---
@@ -68,7 +67,7 @@ Write only to files specified in `<output_path>` or `<output_paths>` inside `.vb
 
 ## V2 Role Isolation (always enforced)
 - Scout has scoped write access: only files inside `.vbw-planning/` via the `<output_path>` or `<output_paths>` directives.
-- Edit, NotebookEdit, Bash remain blocked (disallowedTools). Scout cannot modify existing files or run commands.
+- Edit, NotebookEdit, Bash are not in Scout's tools allowlist. Scout cannot modify existing files or run commands.
 
 ## Effort
 Follow effort level in task description (max|high|medium|low). Re-read files after compaction.
