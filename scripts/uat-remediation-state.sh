@@ -18,8 +18,10 @@
 #   - Both paths emit plan metadata after the stage line:
 #       next_plan=XX          — zero-padded next plan number (based on existing *-PLAN.md files)
 #       research_path=<path>  — path to existing per-plan or legacy RESEARCH.md (empty if none)
-#     This eliminates 2 Search/Glob tool calls the orchestrator would otherwise need to
-#     determine the plan number and check for existing research.
+#       plan_path=<path>      — path to existing PLAN.md for next_plan (empty if none)
+#     Stage-aware: for plan/execute stages, uses research-plan correlation to find
+#     the correct working plan number (handles session-death-before-advance).
+#     This eliminates Search/Glob tool calls the orchestrator would otherwise need.
 #   This eliminates the two-step get→init pattern that wastes a tool call and forces
 #   the LLM to reason about the intermediate "none" value.
 #
@@ -210,22 +212,51 @@ emit_init_context() {
 }
 
 emit_plan_metadata() {
-  # Compute next plan number from existing *-PLAN.md files in the phase dir.
-  # Also find existing research file (per-plan preferred, legacy fallback).
-  local phase_basename phase_prefix highest_mm next_mm research_path=""
+  # Compute next plan number from existing *-PLAN.md and *-RESEARCH.md files.
+  # Stage-aware: for plan/execute stages, uses research-plan correlation to find
+  # the current working plan number (handles session-death-before-advance edge case).
+  # Also reports existing research and plan file paths.
+  local stage="$1"
+  local phase_basename phase_prefix highest_plan_mm next_mm research_path="" plan_path=""
   phase_basename=$(basename "$PHASE_DIR")
   phase_prefix=$(echo "$phase_basename" | sed 's/-[^0-9].*//')
 
   # Find highest MM from {phase}-{MM}-PLAN.md files
-  highest_mm=$(find "$PHASE_DIR" -maxdepth 1 -name '*-PLAN.md' ! -name '.*' 2>/dev/null \
+  highest_plan_mm=$(find "$PHASE_DIR" -maxdepth 1 -name '*-PLAN.md' ! -name '.*' 2>/dev/null \
     | sed -n "s|.*/[0-9]*-\([0-9][0-9]\)-PLAN\.md$|\1|p" \
     | sort -n | tail -1)
 
-  if [ -n "$highest_mm" ]; then
-    # Strip leading zero for arithmetic, then re-pad
-    next_mm=$(printf '%02d' $(( 10#$highest_mm + 1 )))
+  if [ "$stage" = "plan" ] || [ "$stage" = "execute" ]; then
+    # For plan/execute: use research-plan correlation to find current working number.
+    # The research file was created with the correct MM during the research stage.
+    # If highest_research_mm >= highest_plan_mm, that's our current plan number
+    # (handles: plan written but stage not yet advanced to execute).
+    local highest_research_mm
+    highest_research_mm=$(find "$PHASE_DIR" -maxdepth 1 -name '*-RESEARCH.md' ! -name '.*' 2>/dev/null \
+      | sed -n "s|.*/[0-9]*-\([0-9][0-9]\)-RESEARCH\.md$|\1|p" \
+      | sort -n | tail -1)
+
+    if [ -n "$highest_research_mm" ]; then
+      local research_num=$((10#$highest_research_mm))
+      local plan_num=$((10#${highest_plan_mm:-0}))
+      if [ "$research_num" -ge "$plan_num" ]; then
+        next_mm=$(printf '%02d' "$research_num")
+      else
+        # Research behind plans (shouldn't happen, but safe fallback)
+        next_mm=$(printf '%02d' $(( plan_num + 1 )))
+      fi
+    elif [ -n "$highest_plan_mm" ]; then
+      next_mm=$(printf '%02d' $(( 10#$highest_plan_mm + 1 )))
+    else
+      next_mm="01"
+    fi
   else
-    next_mm="01"
+    # For research/fix/done stages: next plan is after highest existing plan
+    if [ -n "$highest_plan_mm" ]; then
+      next_mm=$(printf '%02d' $(( 10#$highest_plan_mm + 1 )))
+    else
+      next_mm="01"
+    fi
   fi
 
   # Check for existing research: per-plan first, then legacy
@@ -237,8 +268,15 @@ emit_plan_metadata() {
     research_path="$legacy_research"
   fi
 
+  # Check if plan already exists for computed next_plan
+  local plan_file="${PHASE_DIR}/${phase_prefix}-${next_mm}-PLAN.md"
+  if [ -f "$plan_file" ]; then
+    plan_path="$plan_file"
+  fi
+
   echo "next_plan=${next_mm}"
   echo "research_path=${research_path}"
+  echo "plan_path=${plan_path}"
 }
 
 case "$CMD" in
@@ -279,10 +317,11 @@ case "$CMD" in
     existing=$(get_stage)
     if [ "$existing" != "none" ]; then
       echo "$existing"
-      emit_plan_metadata
+      emit_plan_metadata "$existing"
     else
       do_init "$SEVERITY_ARG"
-      emit_plan_metadata
+      # Init always sets research or fix — read back for stage-aware metadata
+      emit_plan_metadata "$(cat "$STATE_FILE" | tr -d '[:space:]')"
       emit_init_context
     fi
     ;;

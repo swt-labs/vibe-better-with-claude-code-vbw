@@ -296,14 +296,15 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
      ```text
      next_plan=XX          — zero-padded next plan number (e.g., 15)
      research_path=<path>  — path to existing RESEARCH.md (empty if none)
+     plan_path=<path>      — path to existing PLAN.md (empty if none)
      ```
-     **Use these values directly** — do NOT glob `*-PLAN.md` or search for RESEARCH.md files. The script pre-computes both from the phase directory.
+     **Use these values directly** — do NOT glob `*-PLAN.md` or search for RESEARCH.md files. The script pre-computes all three from the phase directory (stage-aware: uses research-plan correlation for `plan`/`execute` stages to handle session-death-before-advance correctly).
    - If a stage was already persisted (resume after compaction/restart), the script returns the stage word + plan metadata with no side effects.
    - If no stage existed (first entry into remediation), the script initializes the stage file, pre-seeds CONTEXT.md, and returns the stage word + plan metadata + `---CONTEXT---` separator with the full pre-seeded CONTEXT.md content — **use this directly as your remediation context. Do NOT separately read UAT.md or CONTEXT.md files.**
    - If the returned stage is `done`: UAT remediation already completed for this phase. Display "Remediation already completed. Run `/vbw:verify --resume` to re-test." STOP.
 6. **Execute the current stage** based on `STAGE`:
    **File read prohibition:** Do NOT read `{phase}-UAT.md` or `{phase}-CONTEXT.md` — all UAT data is already available from step 2 (pre-computed issue lines) and step 5 (CONTEXT.md content emitted by `get-or-init`). Reading these files wastes tool calls.
-   **Plan metadata prohibition:** Do NOT glob `*-PLAN.md` or search for `*-RESEARCH.md` — use the pre-computed `next_plan` and `research_path` values from step 5.
+   **Plan metadata prohibition:** Do NOT glob `*-PLAN.md` or search for `*-RESEARCH.md` — use the pre-computed `next_plan`, `research_path`, and `plan_path` values from step 5.
    - `research`: If `research_path` from step 5 is non-empty, research already exists — skip to advancing the stage. Otherwise, spawn Scout (with `subagent_type: "vbw:vbw-scout"`) with the pre-computed UAT issue lines (`ID|SEVERITY|DESCRIPTION|FAILED_IN_ROUNDS` from step 2), **ordered by failure_count descending** (step 3), so Scout investigates the relevant code areas for each issue. Use `next_plan` from step 5 as `{MM}`. Pass `<output_path>{phase-dir}/{phase}-{MM}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file directly. Before composing the Scout task description, select skills from installed skills visible in your system context (use both skill names and descriptions). The Scout prompt MUST start with `<skill_activation>{For each selected skill: "Call Skill({skill-name})"} Do not skip any listed skill.</skill_activation>`. Use direct imperative language only.
      **Live data validation:** When any issue involves external data sources (APIs, databases, services), include in the Scout prompt: *"For issues involving external data sources, use WebFetch to query accessible HTTP endpoints and compare actual responses against what the code expects. For non-HTTP data sources, document what live data needs to be checked and flag it as ⚠ REQUIRES LIVE VALIDATION for the execute stage."*
      After Scout completes, confirm RESEARCH.md exists (read first line), then advance:
@@ -311,7 +312,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
      Then continue to the next stage (`plan`).
-   - `plan`: Execute **Plan mode steps 1-11 above** for the same phase, using `next_plan` from step 5 as `{MM}`. "No separate discussion" means skip Discuss assumption-gathering (step 2) — the UAT report serves as scope. For step 3 (research persistence), use `research_path` from step 5: if non-empty, include it in Lead's context (no re-run of Scout needed); if empty, skip research. **Pass the priority-ranked issue list (step 3) to Lead** with recurring-issue annotations. After planning completes, advance:
+   - `plan`: If `plan_path` from step 5 is non-empty, the plan was already written in a previous session — do NOT re-plan. Read the existing plan and advance directly to `execute`. Otherwise, execute **Plan mode steps 1-11 above** for the same phase, using `next_plan` from step 5 as `{MM}`. "No separate discussion" means skip Discuss assumption-gathering (step 2) — the UAT report serves as scope. For step 3 (research persistence), use `research_path` from step 5: if non-empty, include it in Lead's context (no re-run of Scout needed); if empty, skip research. **Pass the priority-ranked issue list (step 3) to Lead** with recurring-issue annotations. After planning completes, advance:
      ```bash
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
