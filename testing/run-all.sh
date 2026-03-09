@@ -74,6 +74,14 @@ echo ""
 echo "Running CLAUDE.md staleness checks..."
 bash "$ROOT/testing/verify-claude-md-staleness.sh"
 echo ""
+echo "Running dev recovery guidance checks..."
+bash "$ROOT/testing/verify-dev-recovery-guidance.sh"
+
+echo ""
+echo "Running live validation policy checks..."
+bash "$ROOT/testing/verify-live-validation-policy.sh"
+
+echo ""
 if command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null; then
   echo "Running bats test suites..."
   bats_pass=0
