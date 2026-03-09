@@ -106,14 +106,14 @@ if ! jq -e 'has("prefer_teams")' "$CONFIG_FILE" >/dev/null 2>&1; then
   fi
 fi
 
-
 # Strip graduated feature flags — core infrastructure flags are always-on.
 # These keys have no runtime effect but accumulate in brownfield configs.
 GRADUATED_KEYS='del(
   .v2_hard_contracts, .v2_hard_gates, .v2_typed_protocol, .v2_role_isolation,
   .v3_event_log, .v3_delta_context, .v3_context_cache,
   .v3_plan_research_persist, .v3_schema_validation,
-  .v3_contract_lite, .v3_lock_lite
+  .v3_contract_lite, .v3_lock_lite,
+  .subagent_skill_xml_mode
 )'
 if ! apply_update "$GRADUATED_KEYS"; then
   echo "ERROR: Config migration failed while removing graduated flags." >&2

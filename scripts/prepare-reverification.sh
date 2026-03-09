@@ -71,18 +71,8 @@ case "$PHASE_DIR" in
   *) PHASE_DIR="$PHASE_DIR/" ;;
 esac
 
-# Find next round sequence number
-MAX_ROUND=0
-for rf in "${PHASE_DIR}${PHASE_NUM}"-UAT-round-*.md; do
-  [ -f "$rf" ] || continue
-  # Extract round number from filename
-  round_num=$(basename "$rf" | sed "s/^${PHASE_NUM}-UAT-round-0*\([0-9]*\)\.md$/\1/")
-  if [ -n "$round_num" ] && echo "$round_num" | grep -qE '^[0-9]+$'; then
-    if [ "$round_num" -gt "$MAX_ROUND" ] 2>/dev/null; then
-      MAX_ROUND="$round_num"
-    fi
-  fi
-done
+# Find next round sequence number (via shared helper)
+MAX_ROUND=$(count_uat_rounds "$PHASE_DIR" "$PHASE_NUM")
 
 NEXT_ROUND=$((MAX_ROUND + 1))
 ROUND_PADDED=$(printf '%02d' "$NEXT_ROUND")

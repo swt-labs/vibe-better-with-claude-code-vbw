@@ -147,12 +147,8 @@ teardown() {
 
 # --- compile-context.sh tests ---
 
-@test "compile-context.sh sources resolve-claude-dir.sh" {
-  grep -q 'resolve-claude-dir.sh' "$SCRIPTS_DIR/compile-context.sh"
-}
-
-@test "compile-context.sh uses CLAUDE_DIR variable for skill paths" {
-  grep -q '$CLAUDE_DIR/skills' "$SCRIPTS_DIR/compile-context.sh"
+@test "compile-context.sh no longer sources resolve-claude-dir.sh (skills via STATE.md)" {
+  ! grep -q 'resolve-claude-dir.sh' "$SCRIPTS_DIR/compile-context.sh"
 }
 
 # --- skill-hook-dispatch.sh tests ---

@@ -99,14 +99,49 @@ else
   EVENT_ID="${TS}-${RANDOM}${RANDOM}"
 fi
 
-PLAN_FIELD=""
+# Build event JSON via jq for safety (handles hyphenated plan IDs, special chars)
+_JQ_ARGS=(
+  --arg ts "$TS"
+  --arg event_id "$EVENT_ID"
+  --arg correlation_id "$CORRELATION_ID"
+  --arg event "$EVENT_TYPE"
+)
+# Emit phase as number if purely numeric, otherwise as string
+case "$PHASE" in
+  *[!0-9]*) _JQ_ARGS+=(--arg phase "$PHASE") ;;
+  *)        _JQ_ARGS+=(--argjson phase "$PHASE") ;;
+esac
+_JQ_EXPR='{ts: $ts, event_id: $event_id, correlation_id: $correlation_id, event: $event, phase: $phase}'
+
 if [ -n "$PLAN" ]; then
-  PLAN_FIELD=",\"plan\":${PLAN}"
+  # Emit plan as number if purely numeric, otherwise as string (hyphenated IDs)
+  case "$PLAN" in
+    *[!0-9]*) _JQ_ARGS+=(--arg plan "$PLAN"); _JQ_EXPR="${_JQ_EXPR} + {plan: \$plan}" ;;
+    *)        _JQ_ARGS+=(--argjson plan "$PLAN"); _JQ_EXPR="${_JQ_EXPR} + {plan: \$plan}" ;;
+  esac
 fi
 
-DATA_FIELD=""
 if [ -n "$DATA_PAIRS" ]; then
-  DATA_FIELD=",\"data\":{${DATA_PAIRS}}"
+  # DATA_PAIRS is pre-formatted JSON object content from key=value args
+  _JQ_ARGS+=(--argjson data "{${DATA_PAIRS}}"); _JQ_EXPR="${_JQ_EXPR} + {data: \$data}"
 fi
 
-echo "{\"ts\":\"${TS}\",\"event_id\":\"${EVENT_ID}\",\"correlation_id\":\"${CORRELATION_ID}\",\"event\":\"${EVENT_TYPE}\",\"phase\":${PHASE}${PLAN_FIELD}${DATA_FIELD}}" >> "$EVENTS_FILE" 2>/dev/null || true
+if command -v jq &>/dev/null; then
+  jq -nc "${_JQ_ARGS[@]}" "$_JQ_EXPR" >> "$EVENTS_FILE" 2>/dev/null || true
+else
+  # Fallback: quote plan field as string for safety when jq unavailable
+  PLAN_FIELD=""
+  if [ -n "$PLAN" ]; then
+    PLAN_FIELD=",\"plan\":\"${PLAN}\""
+  fi
+  DATA_FIELD=""
+  if [ -n "$DATA_PAIRS" ]; then
+    DATA_FIELD=",\"data\":{${DATA_PAIRS}}"
+  fi
+  # Quote phase as string if non-numeric
+  case "$PHASE" in
+    *[!0-9]*) _PHASE_JSON="\"${PHASE}\"" ;;
+    *)        _PHASE_JSON="${PHASE}" ;;
+  esac
+  echo "{\"ts\":\"${TS}\",\"event_id\":\"${EVENT_ID}\",\"correlation_id\":\"${CORRELATION_ID}\",\"event\":\"${EVENT_TYPE}\",\"phase\":${_PHASE_JSON}${PLAN_FIELD}${DATA_FIELD}}" >> "$EVENTS_FILE" 2>/dev/null || true
+fi

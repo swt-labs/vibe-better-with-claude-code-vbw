@@ -237,7 +237,7 @@ If `setting=planning_tracking`, after writing config run:
 
 This keeps root `.gitignore` and `.vbw-planning/.gitignore` aligned with the selected tracking mode.
 
-### Skill-hook wiring: `skill_hook <skill> <event> <matcher>`
+### Skill-hook wiring: `skill_hook <skill> <event> <tools>`
 
 - `config skill_hook lint-fix PostToolUse Write|Edit`
 - `config skill_hook test-runner PostToolUse Bash`
@@ -245,7 +245,7 @@ This keeps root `.gitignore` and `.vbw-planning/.gitignore` aligned with the sel
 
 Stored in config.json `skill_hooks`:
 ```json
-{"skill_hooks": {"lint-fix": {"event": "PostToolUse", "matcher": "Write|Edit"}}}
+{"skill_hooks": {"lint-fix": {"event": "PostToolUse", "tools": "Write|Edit"}}}
 ```
 
 ### Model profile switching: `model_profile <profile>`
@@ -375,6 +375,8 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | require_phase_discussion | boolean | true/false | false |
 | auto_uat | boolean | true/false | false |
 | rolling_summary | boolean | true/false | false |
+| debug_logging | boolean | true/false | false |
+| subagent_skill_xml_mode | string | off/names_only/full | names_only |
 
 ### agent_max_turns
 

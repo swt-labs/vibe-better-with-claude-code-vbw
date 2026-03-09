@@ -8,8 +8,10 @@
 # config-path: path to .vbw-planning/config.json (optional/fail-open)
 # effort: thorough|balanced|fast|turbo (also accepts high|medium|low)
 #
-# Returns: stdout = integer maxTurns (0 disables maxTurns), exit 0
-# Errors: invalid agent/usage -> exit 1
+# Returns:
+#   stdout = positive integer  => pass maxTurns to Task tool
+#   stdout = empty string      => omit maxTurns from Task tool (unlimited)
+# Exit 0 on success, exit 1 on invalid agent/usage
 
 set -euo pipefail
 
@@ -94,7 +96,7 @@ normalize_turn_value() {
 
   case "$value" in
     false|FALSE|False)
-      echo 0
+      echo ""
       return 0
       ;;
   esac
@@ -109,7 +111,7 @@ normalize_turn_value() {
   fi
 
   if [ "$value" -le 0 ]; then
-    echo 0
+    echo ""
     return 0
   fi
 
@@ -160,27 +162,24 @@ if [ "$CONFIG_VALID" -eq 1 ]; then
 
   # Object mode: per-effort values (no multiplier applied)
   if [ "$CONFIGURED_TYPE" = "object" ]; then
-    RAW_VALUE=$(jq -r "(
-      .agent_max_turns.$AGENT.$EFFORT //
-      .agent_max_turns.$AGENT.$LEGACY_EFFORT //
-      .agent_max_turns.$AGENT.balanced //
-      .agent_max_turns.$AGENT.medium //
-      .max_turns.$AGENT.$EFFORT //
-      .max_turns.$AGENT.$LEGACY_EFFORT //
-      .max_turns.$AGENT.balanced //
-      .max_turns.$AGENT.medium //
-      empty
-    )" "$CONFIG_PATH" 2>/dev/null || echo "")
+    # Use has() checks instead of // chains because jq's // treats false as falsy
+    RAW_VALUE=$(jq -r --arg agent "$AGENT" --arg effort "$EFFORT" --arg legacy "$LEGACY_EFFORT" '
+      (.agent_max_turns[$agent] // .max_turns[$agent] // {}) as $obj |
+      if ($obj | has($effort)) then ($obj[$effort] | tostring)
+      elif ($obj | has($legacy)) then ($obj[$legacy] | tostring)
+      elif ($obj | has("balanced")) then ($obj["balanced"] | tostring)
+      elif ($obj | has("medium")) then ($obj["medium"] | tostring)
+      else empty
+      end
+    ' "$CONFIG_PATH" 2>/dev/null || echo "")
 
-    if EXPLICIT_VALUE=$(normalize_turn_value "$RAW_VALUE" 2>/dev/null); then
-      :
-    else
-      EXPLICIT_VALUE=""
-    fi
-
-    if [ -n "$EXPLICIT_VALUE" ]; then
-      echo "$EXPLICIT_VALUE"
-      exit 0
+    # Only process if jq returned a real value (not empty from `empty`)
+    if [ -n "$RAW_VALUE" ]; then
+      if EXPLICIT_VALUE=$(normalize_turn_value "$RAW_VALUE" 2>/dev/null); then
+        # normalize succeeded: positive int or empty (unlimited)
+        echo "$EXPLICIT_VALUE"
+        exit 0
+      fi
     fi
   fi
 
@@ -198,7 +197,12 @@ fi
 BASE=""
 if [ -n "$RAW_BASE" ]; then
   if BASE=$(normalize_turn_value "$RAW_BASE" 2>/dev/null); then
-    :
+    # normalize succeeded — BASE is empty (unlimited) or positive int
+    # RAW_BASE was non-empty but normalized to empty => explicit unlimited
+    if [ -z "$BASE" ]; then
+      echo ""
+      exit 0
+    fi
   else
     BASE=""
   fi
@@ -206,11 +210,6 @@ fi
 
 if [ -z "$BASE" ]; then
   BASE=$(default_base_turns "$AGENT")
-fi
-
-if [ "$BASE" -eq 0 ]; then
-  echo 0
-  exit 0
 fi
 
 read -r NUM DEN <<<"$(multiplier_for_effort "$EFFORT")"

@@ -1,0 +1,313 @@
+{
+  "_description": "Maps detected stack items to LSP language servers and Claude plugins. Three-tier priority: Tier 1 = official Anthropic plugins, Tier 2 = LSP spec page servers (Piebald-AI plugin if available, null otherwise), Tier 3 = Piebald-AI only (no entries — all Piebald languages are covered in Tier 2).",
+  "aliases": {
+    "react": "typescript",
+    "next": "typescript",
+    "svelte": "typescript",
+    "angular": "typescript",
+    "express": "typescript",
+    "nestjs": "typescript",
+    "remix": "typescript",
+    "nuxt": "typescript",
+    "astro": "typescript",
+    "solidjs": "typescript",
+    "deno": "typescript",
+    "bun": "typescript",
+    "fastapi": "python",
+    "django": "python",
+    "flask": "python",
+    "rails": "ruby",
+    "laravel": "php",
+    "spring": "java",
+    "gradle": "java",
+    "phoenix": "elixir",
+    "swiftui": "swift",
+    "ios": "swift",
+    "vapor": "swift",
+    "flutter": "dart",
+    "android": "kotlin",
+    "cpp": "c",
+    "cmake": "c",
+    "sbt": "scala",
+    "css": "html",
+    "sass": "html",
+    "less": "html",
+    "scss": "html",
+    "tex": "latex",
+    "hcl": "terraform",
+    "vue": "typescript"
+  },
+  "servers": {
+    "swift": {
+      "tier": 1,
+      "plugin": "swift-lsp",
+      "plugin_org": "anthropic-official",
+      "binary_check": "sourcekit-lsp --help >/dev/null 2>&1 || xcrun sourcekit-lsp --help >/dev/null 2>&1",
+      "install_cmd": null,
+      "install_url": "https://www.swift.org/install/",
+      "description": "Swift (SourceKit-LSP)"
+    },
+    "typescript": {
+      "tier": 1,
+      "plugin": "typescript-lsp",
+      "plugin_org": "anthropic-official",
+      "binary_check": "typescript-language-server --version",
+      "install_cmd": "npm install -g typescript-language-server typescript",
+      "description": "TypeScript/JavaScript (typescript-language-server)"
+    },
+    "python": {
+      "tier": 1,
+      "plugin": "pyright-lsp",
+      "plugin_org": "anthropic-official",
+      "binary_check": "pyright-langserver --version",
+      "install_cmd": "npm install -g pyright",
+      "description": "Python (Pyright)"
+    },
+    "go": {
+      "tier": 1,
+      "plugin": "gopls-lsp",
+      "plugin_org": "anthropic-official",
+      "binary_check": "gopls version",
+      "install_cmd": "go install golang.org/x/tools/gopls@latest",
+      "description": "Go (gopls)"
+    },
+    "rust": {
+      "tier": 1,
+      "plugin": "rust-analyzer-lsp",
+      "plugin_org": "anthropic-official",
+      "binary_check": "rust-analyzer --version",
+      "install_cmd": "rustup component add rust-analyzer",
+      "description": "Rust (rust-analyzer)"
+    },
+    "java": {
+      "tier": 1,
+      "plugin": "jdtls-lsp",
+      "plugin_org": "anthropic-official",
+      "binary_check": "jdtls --version",
+      "install_cmd": "brew install jdtls",
+      "description": "Java (Eclipse JDT.LS)"
+    },
+    "kotlin": {
+      "tier": 1,
+      "plugin": "kotlin-lsp",
+      "plugin_org": "anthropic-official",
+      "binary_check": "kotlin-language-server --version",
+      "install_cmd": "brew install JetBrains/utils/kotlin-language-server",
+      "description": "Kotlin (kotlin-language-server)"
+    },
+    "c": {
+      "tier": 1,
+      "plugin": "clangd-lsp",
+      "plugin_org": "anthropic-official",
+      "binary_check": "clangd --version",
+      "install_cmd": "brew install llvm",
+      "description": "C/C++ (clangd)"
+    },
+    "dotnet": {
+      "tier": 1,
+      "plugin": "csharp-lsp",
+      "plugin_org": "anthropic-official",
+      "binary_check": "csharp-ls --version",
+      "install_cmd": "dotnet tool install --global csharp-ls",
+      "description": "C#/.NET (csharp-ls)"
+    },
+    "lua": {
+      "tier": 1,
+      "plugin": "lua-lsp",
+      "plugin_org": "anthropic-official",
+      "binary_check": "lua-language-server --version",
+      "install_cmd": "brew install lua-language-server",
+      "description": "Lua (lua-language-server)"
+    },
+    "php": {
+      "tier": 1,
+      "plugin": "php-lsp",
+      "plugin_org": "anthropic-official",
+      "binary_check": "intelephense --version",
+      "install_cmd": "npm install -g intelephense",
+      "description": "PHP (Intelephense)"
+    },
+    "scala": {
+      "tier": 2,
+      "plugin": "metals",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "metals --version",
+      "install_cmd": "coursier bootstrap org.scalameta:metals_2.13:1.6.5 -o metals -f",
+      "description": "Scala (Metals)"
+    },
+    "ruby": {
+      "tier": 2,
+      "plugin": "ruby-lsp",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "ruby-lsp --version",
+      "install_cmd": "gem install ruby-lsp",
+      "description": "Ruby (ruby-lsp)"
+    },
+    "html": {
+      "tier": 2,
+      "plugin": "vscode-langservers",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "vscode-html-language-server --version",
+      "install_cmd": "npm install -g vscode-langservers-extracted",
+      "description": "HTML/CSS (vscode-langservers)"
+    },
+    "elixir": {
+      "tier": 2,
+      "plugin": "elixir-ls",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "elixir-ls --version",
+      "install_cmd": null,
+      "install_url": "https://github.com/elixir-lsp/elixir-ls",
+      "description": "Elixir (ElixirLS)"
+    },
+    "dart": {
+      "tier": 2,
+      "plugin": "dart",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "dart --version",
+      "install_cmd": "brew install dart",
+      "description": "Dart/Flutter"
+    },
+    "ocaml": {
+      "tier": 2,
+      "plugin": "ocaml-lsp",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "opam exec -- ocamllsp --version",
+      "install_cmd": "opam install ocaml-lsp-server",
+      "description": "OCaml (ocaml-lsp)"
+    },
+    "powershell": {
+      "tier": 2,
+      "plugin": "powershell-editor-services",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "pwsh --version",
+      "install_cmd": "Install-Module -Name PowerShellEditorServices -Scope CurrentUser",
+      "description": "PowerShell (PSES)"
+    },
+    "latex": {
+      "tier": 2,
+      "plugin": "texlab",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "texlab --version",
+      "install_cmd": "brew install texlab",
+      "description": "LaTeX (texlab)"
+    },
+    "julia": {
+      "tier": 2,
+      "plugin": "julia-lsp",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "julia --version",
+      "install_cmd": null,
+      "install_url": "https://github.com/julia-vscode/LanguageServer.jl",
+      "description": "Julia (LanguageServer.jl)"
+    },
+    "ada": {
+      "tier": 2,
+      "plugin": "ada-language-server",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "ada_language_server --version",
+      "install_cmd": "alr get ada_language_server",
+      "description": "Ada/SPARK"
+    },
+    "bsl": {
+      "tier": 2,
+      "plugin": "bsl-lsp",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "bsl-language-server --version",
+      "install_cmd": null,
+      "install_url": "https://github.com/1c-syntax/bsl-language-server",
+      "description": "BSL (1C:Enterprise)"
+    },
+    "solidity": {
+      "tier": 2,
+      "plugin": "solidity-language-server",
+      "plugin_org": "Piebald-AI/claude-code-lsps",
+      "binary_check": "solidity-language-server --version",
+      "install_cmd": "cargo install solidity-language-server",
+      "description": "Solidity"
+    },
+    "bash": {
+      "tier": 2,
+      "plugin": null,
+      "plugin_org": null,
+      "binary_check": "bash-language-server --version",
+      "install_cmd": "npm install -g bash-language-server",
+      "description": "Bash (bash-language-server)"
+    },
+    "haskell": {
+      "tier": 2,
+      "plugin": null,
+      "plugin_org": null,
+      "binary_check": "haskell-language-server-wrapper --version",
+      "install_cmd": "ghcup install hls",
+      "description": "Haskell (HLS)"
+    },
+    "clojure": {
+      "tier": 2,
+      "plugin": null,
+      "plugin_org": null,
+      "binary_check": "clojure-lsp --version",
+      "install_cmd": "brew install clojure-lsp/brew/clojure-lsp-native",
+      "description": "Clojure (clojure-lsp)"
+    },
+    "elm": {
+      "tier": 2,
+      "plugin": null,
+      "plugin_org": null,
+      "binary_check": "elm-language-server --version",
+      "install_cmd": "npm install -g @elm-tooling/elm-language-server",
+      "description": "Elm (elmLS)"
+    },
+    "erlang": {
+      "tier": 2,
+      "plugin": null,
+      "plugin_org": null,
+      "binary_check": "erlang_ls --version",
+      "install_cmd": null,
+      "install_url": "https://github.com/erlang-ls/erlang_ls",
+      "description": "Erlang (erlang_ls)"
+    },
+    "fsharp": {
+      "tier": 2,
+      "plugin": null,
+      "plugin_org": null,
+      "binary_check": "fsautocomplete --version",
+      "install_cmd": "dotnet tool install --global fsautocomplete",
+      "description": "F# (FsAutoComplete)"
+    },
+    "r": {
+      "tier": 2,
+      "plugin": null,
+      "plugin_org": null,
+      "binary_check": "R --version",
+      "install_cmd": null,
+      "install_url": "https://github.com/REditorSupport/languageserver",
+      "description": "R (languageserver)"
+    },
+    "zig": {
+      "tier": 2,
+      "plugin": null,
+      "plugin_org": null,
+      "binary_check": "zls --version",
+      "install_cmd": null,
+      "install_url": "https://github.com/zigtools/zls",
+      "description": "Zig (zls)"
+    },
+    "nix": {
+      "tier": 2,
+      "plugin": null,
+      "plugin_org": null,
+      "binary_check": "nil --version",
+      "install_cmd": "nix profile install nixpkgs#nil",
+      "description": "Nix (nil)"
+    },
+    "terraform": {
+      "tier": 2,
+      "plugin": null,
+      "plugin_org": null,
+      "binary_check": "terraform-ls --version",
+      "install_cmd": "brew install hashicorp/tap/terraform-ls",
+      "description": "Terraform (terraform-ls)"
+    }
+  }
+}

@@ -62,7 +62,8 @@ create_test_config() {
   "monorepo_routing": true,
   "rolling_summary": false,
   "require_phase_discussion": false,
-  "auto_uat": false
+  "auto_uat": false,
+  "debug_logging": false
 }
 CONF
 }

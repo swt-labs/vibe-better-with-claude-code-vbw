@@ -1,9 +1,10 @@
 ---
 name: vbw:qa
 category: monitoring
+disable-model-invocation: true
 description: Run deep verification on completed phase work using the QA agent.
 argument-hint: [phase-number] [--tier=quick|standard|deep] [--effort=thorough|balanced|fast|turbo]
-allowed-tools: Read, Write, Bash, Glob, Grep
+allowed-tools: Read, Write, Bash, Glob, Grep, LSP
 ---
 
 # VBW QA: $ARGUMENTS
@@ -83,8 +84,9 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         ```
 
     - Display: `◆ Spawning QA agent (${QA_MODEL})...`
-    - Spawn vbw-qa as subagent via Task tool. **Add `model: "${QA_MODEL}"` and
-      `maxTurns: ${QA_MAX_TURNS}` parameters.**
+    - Spawn vbw-qa as subagent via Task tool. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in
+      the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass
+      `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
 
         ```text
         Verify phase {NN}. Tier: {ACTIVE_TIER}.

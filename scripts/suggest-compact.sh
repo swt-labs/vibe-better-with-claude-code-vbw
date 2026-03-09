@@ -24,6 +24,16 @@ MODE="${1:-execute}"
 PLANNING_DIR=".vbw-planning"
 USAGE_FILE="$PLANNING_DIR/.context-usage"
 
+# Source shared summary-status helpers for status-aware SUMMARY detection
+_SC_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$_SC_SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "$_SC_SCRIPT_DIR/summary-utils.sh"
+else
+  # Safe default: report zero completions when helpers unavailable
+  count_complete_summaries() { echo "0"; }
+fi
+
 # Resolve plugin root (same pattern as command templates)
 # shellcheck source=resolve-claude-dir.sh
 . "$(dirname "$0")/resolve-claude-dir.sh" 2>/dev/null || true
@@ -104,7 +114,7 @@ detect_phase_dir() {
     last_dir="$d"
     local plans summaries
     plans=$(find "$d" -maxdepth 1 -name '*-PLAN.md' -type f 2>/dev/null | wc -l | tr -d ' ')
-    summaries=$(find "$d" -maxdepth 1 -name '*-SUMMARY.md' -type f 2>/dev/null | wc -l | tr -d ' ')
+    summaries=$(count_complete_summaries "$d")
     if [ "$plans" -gt 0 ] && [ "$summaries" -lt "$plans" ]; then
       echo "$d"
       return

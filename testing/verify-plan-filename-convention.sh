@@ -642,7 +642,7 @@ This is a test project.
 EOF
 echo "plan" > "$TDIR/.vbw-planning/phases/01-setup/PLAN-01.md"
 echo "plan2" > "$TDIR/.vbw-planning/phases/01-setup/PLAN-02.md"
-echo "summary" > "$TDIR/.vbw-planning/phases/01-setup/SUMMARY-01.md"
+printf '%s\n' '---' 'status: complete' '---' 'summary' > "$TDIR/.vbw-planning/phases/01-setup/SUMMARY-01.md"
 # Before normalization: misnamed, and plan/summary counts should track
 OUTPUT_BEFORE=$(cd "$TDIR" && bash "$SCRIPT_DIR/scripts/phase-detect.sh" 2>/dev/null)
 PLANS_BEFORE=$(echo "$OUTPUT_BEFORE" | grep '^next_phase_plans=' | cut -d= -f2)
@@ -669,7 +669,7 @@ This is a test project.
 EOF
 printf '%s\n' '# Roadmap' '' '## Phase 01: Setup' '- Status: complete' '' '## Phase 02: Implementation' '- Status: not started' > "$TDIR/.vbw-planning/ROADMAP.md"
 echo "plan" > "$TDIR/.vbw-planning/phases/01-setup/PLAN-01.md"
-echo "done" > "$TDIR/.vbw-planning/phases/01-setup/SUMMARY-01.md"
+printf '%s\n' '---' 'status: complete' '---' 'done' > "$TDIR/.vbw-planning/phases/01-setup/SUMMARY-01.md"
 # misnamed plans in phase 01, phase 02 empty
 OUTPUT_BEFORE=$(cd "$TDIR" && bash "$SCRIPT_DIR/scripts/phase-detect.sh" 2>/dev/null)
 MISNAMED_B=$(echo "$OUTPUT_BEFORE" | grep '^misnamed_plans=' | cut -d= -f2)

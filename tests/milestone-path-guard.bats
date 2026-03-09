@@ -60,7 +60,7 @@ EOF
   # First line is the stage word; subsequent lines may contain emitted CONTEXT
   local first_line
   first_line=$(echo "$output" | head -1)
-  [ "$first_line" = "plan" ]
+  [ "$first_line" = "research" ]
 }
 
 @test "uat-remediation-state error message suggests create-remediation-phase.sh" {
@@ -83,7 +83,7 @@ EOF
   # First line is the stage word; subsequent lines may contain emitted CONTEXT
   local first_line
   first_line=$(echo "$output" | head -1)
-  [ "$first_line" = "plan" ]
+  [ "$first_line" = "research" ]
   rm -rf "$MILESTONES_WORKSPACE"
 }
 

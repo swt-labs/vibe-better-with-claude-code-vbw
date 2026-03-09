@@ -39,6 +39,27 @@ if [[ "$ROLE" =~ ^(debugger|dev|qa|lead|architect)$ ]] && [ -d ".vbw-planning/co
   HASH_INPUT="${HASH_INPUT}:codebase=${MAP_SUM}"
 fi
 
+# Research file fingerprint (lead context changes when research appears/changes)
+if [ "$ROLE" = "lead" ]; then
+  # Derive phase directory from plan path or phase number
+  PHASE_DIR_CACHE=""
+  if [ -n "$PLAN_PATH" ] && [ -f "$PLAN_PATH" ]; then
+    PHASE_DIR_CACHE=$(dirname "$PLAN_PATH")
+  else
+    PADDED_PHASE=$(printf "%02d" "$PHASE" 2>/dev/null || echo "$PHASE")
+    PHASE_DIR_CACHE=$(find .vbw-planning/phases -maxdepth 1 -type d -name "${PADDED_PHASE}-*" 2>/dev/null | head -1)
+  fi
+  if [ -n "$PHASE_DIR_CACHE" ] && [ -d "$PHASE_DIR_CACHE" ]; then
+    RESEARCH_FILES=$(find "$PHASE_DIR_CACHE" -maxdepth 1 -name "*-RESEARCH.md" 2>/dev/null | sort)
+    if [ -n "$RESEARCH_FILES" ]; then
+      RESEARCH_SUM=$(cat $RESEARCH_FILES 2>/dev/null | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "noresearch")
+      HASH_INPUT="${HASH_INPUT}:research=${RESEARCH_SUM}"
+    else
+      HASH_INPUT="${HASH_INPUT}:research=none"
+    fi
+  fi
+fi
+
 # Rolling summary fingerprint
 ROLLING_PATH=".vbw-planning/ROLLING-CONTEXT.md"
 if command -v jq &>/dev/null && [ -f "$CONFIG_PATH" ]; then

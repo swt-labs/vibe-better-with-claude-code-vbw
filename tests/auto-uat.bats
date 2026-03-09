@@ -584,8 +584,8 @@ EOF
   cd "$TEST_TEMP_DIR"
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
   printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
-  # Remediation in progress
-  printf 'execute' > "$dir/.uat-remediation-stage"
+  # Remediation in progress (plan stage — creating plans, not yet executing)
+  printf 'plan' > "$dir/.uat-remediation-stage"
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
@@ -946,4 +946,31 @@ EOF
   [[ "$output" == *"has_unverified_phases=true"* ]]
   # The target phase should be 01-setup (reverification target), not 02-feature
   [[ "$output" == *"next_phase_slug=01-setup"* ]]
+}
+
+# --- Round archival consistency (phase-detect + prepare-reverification agree) ---
+
+@test "prepare-reverification and phase-detect agree on round count" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+
+  # Create 3 archived round files
+  printf 'round 1\n' > "$dir/01-UAT-round-01.md"
+  printf 'round 2\n' > "$dir/01-UAT-round-02.md"
+  printf 'round 3\n' > "$dir/01-UAT-round-03.md"
+
+  # Active UAT with issues + remediation done
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\nIssues.\n' > "$dir/01-UAT.md"
+  printf 'done' > "$dir/.uat-remediation-stage"
+
+  # phase-detect should report count=3
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"uat_round_count=3"* ]]
+
+  # prepare-reverification should create round-04 (3 + 1)
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$dir"
+  [ "$status" -eq 0 ]
+  [ -f "$dir/01-UAT-round-04.md" ]
+  [[ "$output" == *"round_file=01-UAT-round-04.md"* ]]
 }

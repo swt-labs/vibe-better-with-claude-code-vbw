@@ -149,10 +149,79 @@ if [ -n "$ROLE" ] && [ "$ROLE" != "unknown" ]; then
   TASK_HINT=" If you are a teammate, call TaskGet for your assigned task ID to restore your current objective."
 fi
 
-jq -n --arg role "${ROLE:-unknown}" --arg files "$FILES" --arg snap "${SNAPSHOT_CONTEXT:-}" --arg taskhint "${TASK_HINT:-}" --arg worktree "${WORKTREE_CONTEXT:-}" '{
+# --- Orchestrator resume hint (non-agent sessions only) ---
+# When the orchestrator (ROLE="" or "unknown") compacts mid-command, it loses
+# the vibe.md instructions and may try Skill('vbw:vibe') which is blocked by
+# disable-model-invocation. Detect active mode from disk state and emit a
+# targeted resume instruction with the exact file path and mode section.
+ORCH_RESUME=""
+if [ -z "$ROLE" ] || [ "$ROLE" = "unknown" ]; then
+  VIBE_CMD_PATH="$SCRIPT_DIR/../commands/vibe.md"
+  if [ -f "$VIBE_CMD_PATH" ]; then
+    VIBE_CANONICAL=$(cd "$(dirname "$VIBE_CMD_PATH")" && echo "$(pwd)/$(basename "$VIBE_CMD_PATH")") || VIBE_CANONICAL=""
+    [ -n "$VIBE_CANONICAL" ] && VIBE_CMD_PATH="$VIBE_CANONICAL"
+  fi
+
+  ACTIVE_MODE=""
+  PD_AUTONOMY=""
+  # Detect from execution state first (most specific)
+  if [ -f ".vbw-planning/.execution-state.json" ] && command -v jq &>/dev/null; then
+    EXEC_STATUS=$(jq -r '.status // ""' ".vbw-planning/.execution-state.json" 2>/dev/null)
+    EXEC_PHASE=$(jq -r '.phase // ""' ".vbw-planning/.execution-state.json" 2>/dev/null)
+    case "$EXEC_STATUS" in
+      running)  ACTIVE_MODE="Execute" ;;
+      *)        ACTIVE_MODE=""; EXEC_PHASE="" ;; # clear both, fall through to phase-detect
+    esac
+  fi
+
+  # Fall back to phase-detect for non-execution modes
+  if [ -z "$ACTIVE_MODE" ] && [ -f "$SCRIPT_DIR/phase-detect.sh" ]; then
+    PD_OUT=$(bash "$SCRIPT_DIR/phase-detect.sh" 2>/dev/null) || PD_OUT=""
+    if [ -n "$PD_OUT" ]; then
+      PD_STATE=$(echo "$PD_OUT" | grep -m1 '^next_phase_state=' | sed 's/^[^=]*=//')
+      PD_PHASE=$(echo "$PD_OUT" | grep -m1 '^next_phase=' | sed 's/^[^=]*=//')
+      PD_PROJECT=$(echo "$PD_OUT" | grep -m1 '^project_exists=' | sed 's/^[^=]*=//')
+      PD_MS_UAT=$(echo "$PD_OUT" | grep -m1 '^milestone_uat_issues=' | sed 's/^[^=]*=//')
+      PD_AUTONOMY=$(echo "$PD_OUT" | grep -m1 '^config_autonomy=' | sed 's/^[^=]*=//')
+      case "$PD_STATE" in
+        needs_uat_remediation)   ACTIVE_MODE="UAT Remediation" ;;
+        needs_reverification)    ACTIVE_MODE="Verify" ;;
+        needs_discussion)        ACTIVE_MODE="Discuss" ;;
+        needs_plan_and_execute)  ACTIVE_MODE="Plan" ;;
+        needs_execute)           ACTIVE_MODE="Execute" ;;
+        all_done)
+          if [ "$PD_MS_UAT" = "true" ]; then
+            ACTIVE_MODE="Milestone UAT Recovery"
+          else
+            ACTIVE_MODE="Archive"
+          fi
+          ;;
+        no_phases)
+          if [ "$PD_PROJECT" = "false" ]; then
+            ACTIVE_MODE="Bootstrap"
+          elif [ "$PD_MS_UAT" = "true" ]; then
+            ACTIVE_MODE="Milestone UAT Recovery"
+          else
+            ACTIVE_MODE="Scope"
+          fi
+          ;;
+      esac
+      : "${EXEC_PHASE:=$PD_PHASE}"
+    fi
+  fi
+
+  # Filter sentinel values from phase display
+  case "${EXEC_PHASE:-}" in none|"") EXEC_PHASE="" ;; esac
+
+  if [ -n "$ACTIVE_MODE" ] && [ -f "$VIBE_CMD_PATH" ]; then
+    ORCH_RESUME=" ORCHESTRATOR RESUME: You were executing /vbw:vibe ${ACTIVE_MODE} mode${EXEC_PHASE:+ for Phase ${EXEC_PHASE}}. Do NOT call Skill('vbw:vibe') or any Skill('vbw:*') — it will fail (disable-model-invocation). Instead, use the Read tool to re-read ${VIBE_CMD_PATH} and jump directly to the '### Mode: ${ACTIVE_MODE}' section. Resume from where you left off using your compacted summary context.${PD_AUTONOMY:+ Autonomy: ${PD_AUTONOMY}.}"
+  fi
+fi
+
+jq -n --arg role "${ROLE:-unknown}" --arg files "$FILES" --arg snap "${SNAPSHOT_CONTEXT:-}" --arg taskhint "${TASK_HINT:-}" --arg worktree "${WORKTREE_CONTEXT:-}" --arg orchresume "${ORCH_RESUME:-}" '{
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": ("Context was compacted. Agent role: " + $role + ". Re-read these key files from disk: " + $files + $snap + $taskhint + $worktree)
+    "additionalContext": ("Context was compacted. Agent role: " + $role + ". Re-read these key files from disk: " + $files + $snap + $taskhint + $worktree + $orchresume)
   }
 }'
 

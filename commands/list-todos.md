@@ -1,6 +1,7 @@
 ---
 name: vbw:list-todos
 category: supporting
+disable-model-invocation: true
 description: List pending todos from STATE.md and select one to act on.
 argument-hint: [priority filter]
 allowed-tools: Read, Edit, Bash, AskUserQuestion

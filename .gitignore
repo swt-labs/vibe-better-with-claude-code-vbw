@@ -19,8 +19,10 @@ node_modules/
 # Claude Code local settings
 .claude
 
-# GitHub Copilot instructions
+# Agents prompt instructions
 .github/copilot-instructions.md
+AGENTS.md
+CLAUDE.md
 
 # OS
 .DS_Store

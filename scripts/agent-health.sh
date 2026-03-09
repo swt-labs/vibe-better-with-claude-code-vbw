@@ -12,6 +12,37 @@ HEALTH_DIR=".vbw-planning/.agent-health"
 # shellcheck source=resolve-claude-dir.sh
 . "$(dirname "$0")/resolve-claude-dir.sh" 2>/dev/null || true
 
+# Derive a unique agent key from hook JSON.
+# Preference: name > task_id > agent_name > agent_type (role fallback).
+# Also extracts a normalized role for metadata.
+extract_agent_key_and_role() {
+  local input="$1"
+  local key="" role=""
+
+  # Extract unique key: prefer name (e.g. "dev-01"), then task_id, then agent_name
+  key=$(echo "$input" | jq -r '.name // ""' 2>/dev/null)
+  if [ -z "$key" ]; then
+    key=$(echo "$input" | jq -r '.task_id // ""' 2>/dev/null)
+  fi
+  if [ -z "$key" ]; then
+    key=$(echo "$input" | jq -r '.agent_name // ""' 2>/dev/null)
+  fi
+  if [ -z "$key" ]; then
+    key=$(echo "$input" | jq -r '.agent_type // ""' 2>/dev/null)
+  fi
+
+  # Normalize key: strip prefixes, lowercase
+  key=$(echo "$key" | sed -E 's/^@?vbw[:-]//i' | tr '[:upper:]' '[:lower:]')
+
+  # Extract role separately (for metadata/reporting)
+  role=$(echo "$input" | jq -r '.agent_type // .agent_name // .name // ""' 2>/dev/null)
+  role=$(echo "$role" | sed -E 's/^@?vbw[:-]//i' | tr '[:upper:]' '[:lower:]')
+  # Normalize to base role (strip numeric suffixes like dev-01 -> dev)
+  role=$(echo "$role" | sed -E 's/-[0-9]+$//')
+
+  echo "$key|$role"
+}
+
 orphan_recovery() {
   local role="$1"
   local pid="$2"
@@ -56,18 +87,19 @@ orphan_recovery() {
 }
 
 cmd_start() {
-  local input pid role now
+  local input pid key role key_role now
   input=$(cat)
 
-  # Extract PID and role from hook JSON
+  # Extract PID
   pid=$(echo "$input" | jq -r '.pid // ""' 2>/dev/null)
-  role=$(echo "$input" | jq -r '.agent_type // .agent_name // .name // ""' 2>/dev/null)
 
-  # Normalize role (strip prefixes like vbw:, @, etc.)
-  role=$(echo "$role" | sed -E 's/^@?vbw[:-]//i' | tr '[:upper:]' '[:lower:]')
+  # Extract unique key and normalized role
+  key_role=$(extract_agent_key_and_role "$input")
+  key="${key_role%%|*}"
+  role="${key_role##*|}"
 
-  # Skip if no role extracted
-  if [ -z "$role" ] || [ -z "$pid" ]; then
+  # Skip if no key or PID extracted
+  if [ -z "$key" ] || [ -z "$pid" ]; then
     exit 0
   fi
 
@@ -77,19 +109,21 @@ cmd_start() {
   # Generate ISO8601 timestamp
   now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-  # Write health file
+  # Write health file keyed by unique identity, not role
   jq -n \
     --arg pid "$pid" \
+    --arg key "$key" \
     --arg role "$role" \
     --arg ts "$now" \
     '{
       pid: $pid,
+      key: $key,
       role: $role,
       started_at: $ts,
       last_event_at: $ts,
       last_event: "start",
       idle_count: 0
-    }' > "$HEALTH_DIR/${role}.json"
+    }' > "$HEALTH_DIR/${key}.json"
 
   # Output hook response
   jq -n \
@@ -103,20 +137,39 @@ cmd_start() {
 }
 
 cmd_idle() {
-  local input role health_file pid idle_count now advisory
+  local input key role key_role health_file pid idle_count now advisory
   input=$(cat)
 
-  # Extract role from hook JSON
-  role=$(echo "$input" | jq -r '.agent_type // .agent_name // .name // ""' 2>/dev/null)
-  role=$(echo "$role" | sed -E 's/^@?vbw[:-]//i' | tr '[:upper:]' '[:lower:]')
+  # Extract unique key and normalized role
+  key_role=$(extract_agent_key_and_role "$input")
+  key="${key_role%%|*}"
+  role="${key_role##*|}"
 
-  if [ -z "$role" ]; then
+  if [ -z "$key" ]; then
     exit 0
   fi
 
-  health_file="$HEALTH_DIR/${role}.json"
+  health_file="$HEALTH_DIR/${key}.json"
+
+  # Bootstrap on idle if no health file exists (SubagentStart may not have fired)
   if [ ! -f "$health_file" ]; then
-    exit 0
+    mkdir -p "$HEALTH_DIR"
+    pid=$(echo "$input" | jq -r '.pid // ""' 2>/dev/null)
+    now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    jq -n \
+      --arg pid "$pid" \
+      --arg key "$key" \
+      --arg role "$role" \
+      --arg ts "$now" \
+      '{
+        pid: $pid,
+        key: $key,
+        role: $role,
+        started_at: $ts,
+        last_event_at: $ts,
+        last_event: "idle_bootstrap",
+        idle_count: 0
+      }' > "$health_file"
   fi
 
   # Load health data
@@ -151,7 +204,7 @@ cmd_idle() {
   # Check for stuck agent (idle_count >= 3)
   advisory=""
   if [ "$idle_count" -ge 3 ]; then
-    advisory="AGENT HEALTH: Agent $role appears stuck (idle_count=$idle_count)"
+    advisory="AGENT HEALTH: Agent $key (role=$role) appears stuck (idle_count=$idle_count). Same teammate has gone idle repeatedly — orchestrator should send one recovery nudge. If next idle repeats, consider terminating and respawning from last safe point, or stop and surface restart guidance to the user."
   fi
 
   # Output hook response
@@ -167,18 +220,19 @@ cmd_idle() {
 }
 
 cmd_stop() {
-  local input role health_file pid advisory
+  local input key role key_role health_file pid advisory
   input=$(cat)
 
-  # Extract role from hook JSON
-  role=$(echo "$input" | jq -r '.agent_type // .agent_name // .name // ""' 2>/dev/null)
-  role=$(echo "$role" | sed -E 's/^@?vbw[:-]//i' | tr '[:upper:]' '[:lower:]')
+  # Extract unique key and normalized role
+  key_role=$(extract_agent_key_and_role "$input")
+  key="${key_role%%|*}"
+  role="${key_role##*|}"
 
-  if [ -z "$role" ]; then
+  if [ -z "$key" ]; then
     exit 0
   fi
 
-  health_file="$HEALTH_DIR/${role}.json"
+  health_file="$HEALTH_DIR/${key}.json"
   advisory=""
 
   if [ -f "$health_file" ]; then
@@ -187,7 +241,7 @@ cmd_stop() {
 
     if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
       # PID is dead — call orphan recovery
-      advisory=$(orphan_recovery "$role" "$pid")
+      advisory=$(orphan_recovery "$key" "$pid")
     fi
 
     # Remove health file

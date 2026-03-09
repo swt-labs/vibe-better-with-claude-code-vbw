@@ -1,9 +1,10 @@
 ---
 name: vbw:research
 category: advanced
+disable-model-invocation: true
 description: Run standalone research by spawning Scout agent(s) for web searches and documentation lookups.
 argument-hint: <research-topic> [--parallel]
-allowed-tools: Read, Write, Bash, Glob, Grep, WebFetch
+allowed-tools: Read, Write, Bash, Glob, Grep, WebFetch, LSP
 ---
 
 # VBW Research: $ARGUMENTS
@@ -42,15 +43,29 @@ Current project:
     if [ $? -ne 0 ]; then echo "$SCOUT_MAX_TURNS" >&2; exit 1; fi
      ```
    - Display: `◆ Spawning Scout (${SCOUT_MODEL})...`
-  - Spawn vbw-scout as subagent(s) via Task tool. **Add `model: "${SCOUT_MODEL}"` and `maxTurns: ${SCOUT_MAX_TURNS}` parameters.**
+   - Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Scout prompt MUST start with a `<skill_activation>` block. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
+  - Spawn vbw-scout as subagent(s) via Task tool. **Set `subagent_type: "vbw:vbw-scout"` and `model: "${SCOUT_MODEL}"` in the Task tool invocation. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
 ```
+<skill_activation>
+Call Skill('{relevant-skill-1}').
+Call Skill('{relevant-skill-2}').
+</skill_activation>
+
+<task_context>
 Research: {topic or sub-topic}.
 Project context: {tech stack, constraints from PROJECT.md if relevant}.
-Return structured findings.
+</task_context>
+
+<output_path>{resolved save path}</output_path>
+
+<output_format>
+Write your complete findings to the output_path file.
+</output_format>
 ```
-  - Parallel: up to 4 simultaneous Tasks, each with same `model: "${SCOUT_MODEL}"` and `maxTurns: ${SCOUT_MAX_TURNS}`.
+  - If save path is unknown yet (user hasn't confirmed), omit `<output_path>` — Scout returns findings in response, and the orchestrator writes them after user confirms a path.
+  - Parallel: up to 4 simultaneous Tasks, each with `subagent_type: "vbw:vbw-scout"`, same `model: "${SCOUT_MODEL}"` and the same maxTurns conditional (pass when non-empty, omit when empty).
 4. **Synthesize:** Single: present directly. Parallel: merge, note contradictions, rank by confidence.
-5. **Persist:** Ask "Save findings? (y/n)". If yes: write to .vbw-planning/phases/{phase-dir}/RESEARCH.md or .vbw-planning/RESEARCH.md.
+5. **Persist:** Ask "Save findings? (y/n)". If yes, ask for save path (default: `.vbw-planning/phases/{phase-dir}/RESEARCH.md` or `.vbw-planning/RESEARCH.md`). If Scout already wrote the file (output_path was included in prompt), confirm it exists. If Scout returned findings in response (no output_path), write findings to the confirmed path.
 ```
 ➜ Next Up
   /vbw:vibe --plan {NN} -- Plan using research findings

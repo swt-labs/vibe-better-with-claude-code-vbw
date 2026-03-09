@@ -65,7 +65,7 @@ issues: 1
   [ "$status" -eq 0 ]
   [[ "${lines[0]}" == *"uat_phase=03"* ]]
   [[ "${lines[0]}" == *"uat_issues_total=1"* ]]
-  [[ "${lines[1]}" == "P01-T2|major|Widget fails on edge case" ]]
+  [[ "${lines[1]}" == "P01-T2|major|Widget fails on edge case|1" ]]
 }
 
 @test "extract-uat-issues: multiple issues with mixed severity" {
@@ -109,9 +109,9 @@ issues: 3
 
   [ "$status" -eq 0 ]
   [[ "${lines[0]}" == *"uat_issues_total=3"* ]]
-  [[ "${lines[1]}" == "P01-T1|critical|First problem" ]]
-  [[ "${lines[2]}" == "P02-T2|minor|Second problem" ]]
-  [[ "${lines[3]}" == "D1|major|Found during testing" ]]
+  [[ "${lines[1]}" == "P01-T1|critical|First problem|1" ]]
+  [[ "${lines[2]}" == "P02-T2|minor|Second problem|1" ]]
+  [[ "${lines[3]}" == "D1|major|Found during testing|1" ]]
 }
 
 @test "extract-uat-issues: long description is preserved in full" {
@@ -140,7 +140,7 @@ issues: 1
   [ "$status" -eq 0 ]
   # Description must NOT be truncated — full 250 chars preserved
   [[ "${lines[1]}" != *"..."* ]]
-  [[ "${lines[1]}" == "P01-T1|major|${long_desc}" ]]
+  [[ "${lines[1]}" == "P01-T1|major|${long_desc}|1" ]]
 }
 
 @test "extract-uat-issues: no UAT file returns error marker" {
@@ -245,6 +245,139 @@ issues: 0
   # status: issues_found but no actual issue blocks — script still works
   [ "$status" -eq 0 ]
   [[ "${lines[0]}" == *"uat_issues_total=0"* ]]
+}
+
+# ===========================================================================
+# Recurrence tracking (FAILED_IN_ROUNDS 4th field)
+# ===========================================================================
+
+# Helper: create an archived round file with given issue IDs
+create_round_file() {
+  local round_num="$1"
+  shift
+  local file="$PHASE_DIR/03-UAT-round-${round_num}.md"
+  {
+    printf '%s\n' '---' 'status: issues_found' '---' '' '## Tests'
+    for id in "$@"; do
+      printf '\n### %s: Test\n\n- **Result:** issue\n- **Issue:**\n  - Description: Failed in round %s\n  - Severity: major\n' "$id" "$round_num"
+    done
+  } > "$file"
+}
+
+@test "extract-uat-issues: header includes uat_round for first round (no archives)" {
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: Test
+
+- **Result:** issue
+- **Issue:**
+  - Description: First failure
+  - Severity: major'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_round=1"* ]]
+  # 4th field should be just "1" (current round only)
+  [[ "${lines[1]}" == "P01-T1|major|First failure|1" ]]
+}
+
+@test "extract-uat-issues: recurrence from archived rounds" {
+  # Create 2 archived rounds where P01-T1 failed in both
+  create_round_file 1 "P01-T1"
+  create_round_file 2 "P01-T1" "P02-T1"
+
+  # Current UAT (round 3) has P01-T1 failing again
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: Recurring test
+
+- **Result:** issue
+- **Issue:**
+  - Description: Still broken
+  - Severity: major'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_round=3"* ]]
+  # P01-T1 failed in rounds 1, 2, and current (3)
+  [[ "${lines[1]}" == "P01-T1|major|Still broken|1,2,3" ]]
+}
+
+@test "extract-uat-issues: mixed recurring and first-time failures" {
+  create_round_file 1 "P01-T1"
+
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 2
+---
+
+## Tests
+
+### P01-T1: Recurring
+
+- **Result:** issue
+- **Issue:**
+  - Description: Old problem
+  - Severity: major
+
+### P02-T1: New failure
+
+- **Result:** issue
+- **Issue:**
+  - Description: New problem
+  - Severity: minor'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_round=2"* ]]
+  # P01-T1 failed in round 1 and current (2)
+  [[ "${lines[1]}" == "P01-T1|major|Old problem|1,2" ]]
+  # P02-T1 is first-time (only current round)
+  [[ "${lines[2]}" == "P02-T1|minor|New problem|2" ]]
+}
+
+@test "extract-uat-issues: discovered issue D-prefix tracked across rounds" {
+  create_round_file 1 "D1"
+
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### D1: Discovered issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: Keeps happening
+  - Severity: major'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[1]}" == "D1|major|Keeps happening|1,2" ]]
 }
 
 # ===========================================================================
@@ -393,8 +526,8 @@ EOF
   [ "$status" -eq 0 ]
   [[ "${lines[0]}" == *"uat_phase=03"* ]]
   [[ "${lines[0]}" == *"uat_issues_total=2"* ]]
-  [[ "${lines[1]}" == "P01-T1|critical|Milestone issue one" ]]
-  [[ "${lines[2]}" == "P02-T1|minor|Milestone issue two" ]]
+  [[ "${lines[1]}" == "P01-T1|critical|Milestone issue one|1" ]]
+  [[ "${lines[2]}" == "P02-T1|minor|Milestone issue two|1" ]]
 }
 
 @test "extract-uat-issues: milestone path with no UAT file" {

@@ -91,7 +91,7 @@ teardown() {
   mkdir -p .vbw-planning/milestones/01-foundation/phases/08-cost-basis
   echo "# SHIPPED" > .vbw-planning/milestones/01-foundation/SHIPPED.md
   touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-UAT.md <<'EOF'
 ---
 phase: 08
@@ -370,4 +370,51 @@ MOCK
   INPUT='{"tool_name":"Read","tool_input":{"file_path":".env"}}'
   run bash -c "export HOME='$TEST_TEMP_DIR'; echo '$INPUT' | bash '$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/hook-wrapper.sh' security-filter.sh"
   [ "$status" -eq 2 ]
+}
+
+# --- session-start.sh brownfield SUMMARY warning ---
+
+@test "session-start: brownfield warning when SUMMARY lacks status frontmatter" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/phases/01-setup
+  # Create a bare SUMMARY (no YAML frontmatter — simulates old touch-created file)
+  touch .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("BROWNFIELD")' >/dev/null
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("1 SUMMARY.md file(s)")' >/dev/null
+}
+
+@test "session-start: no brownfield warning when all SUMMARYs have status: complete" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/phases/01-setup
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+  ! echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("BROWNFIELD")' >/dev/null
+}
+
+@test "session-start: brownfield warning counts only non-complete SUMMARYs" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/phases/01-setup
+  # One complete, one bare (no frontmatter), one with non-terminal status
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  touch .vbw-planning/phases/01-setup/01-02-SUMMARY.md
+  printf '%s\n' '---' 'status: pending' '---' 'WIP.' > .vbw-planning/phases/01-setup/01-03-SUMMARY.md
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("BROWNFIELD")' >/dev/null
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("2 SUMMARY.md file(s)")' >/dev/null
+}
+
+@test "session-start: no brownfield warning when no phases directory exists" {
+  cd "$TEST_TEMP_DIR"
+  rm -rf .vbw-planning/phases
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+  ! echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("BROWNFIELD")' >/dev/null
 }

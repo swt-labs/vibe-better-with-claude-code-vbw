@@ -49,7 +49,7 @@ check "greenfield creates output" test -f "$OUT"
 check "greenfield has project title" grep -q '^# Demo Project$' "$OUT"
 check "greenfield has core value" grep -q '^\*\*Core value:\*\* Demo core value$' "$OUT"
 check "greenfield has Active Context" grep -q '^## Active Context$' "$OUT"
-check "greenfield has Project Conventions" grep -q '^## Project Conventions$' "$OUT"
+check "greenfield has Code Intelligence" grep -q '^## Code Intelligence$' "$OUT"
 check "greenfield has Plugin Isolation" grep -q '^## Plugin Isolation$' "$OUT"
 check_absent "greenfield omits Key Decisions (tracked in .vbw-planning/)" grep -q '^## Key Decisions$' "$OUT"
 
@@ -114,6 +114,8 @@ EOF
 
 bash "$BOOTSTRAP" "$TMP_DIR/CLAUDE.md" "Demo Project" "Demo core value" "$TMP_DIR/existing.md"
 OUT="$TMP_DIR/CLAUDE.md"
+check "brownfield preserves custom title" grep -q '^# Legacy Project$' "$OUT"
+check "brownfield preserves custom core value" grep -q '^\*\*Core value:\*\* Legacy value$' "$OUT"
 check "brownfield preserves custom section" grep -q '^## Custom Notes$' "$OUT"
 check "brownfield preserves team section" grep -q '^## Team Notes$' "$OUT"
 check_absent "brownfield strips old managed VBW content" grep -q 'OLD MANAGED CONTENT SHOULD BE REPLACED' "$OUT"

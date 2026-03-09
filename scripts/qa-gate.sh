@@ -7,6 +7,16 @@ set -u
 # Only apply to VBW contexts
 [ ! -d ".vbw-planning" ] && exit 0
 
+# Source shared summary-status helpers
+_QG_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$_QG_SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "$_QG_SCRIPT_DIR/summary-utils.sh"
+else
+  # Safe default: treat no summaries as complete when helpers unavailable
+  count_complete_summaries() { echo "0"; }
+fi
+
 # Read stdin to consume task context
 cat >/dev/null 2>&1 || exit 0
 
@@ -20,7 +30,7 @@ SUMMARIES_TOTAL=0
 for phase_dir in .vbw-planning/phases/*/; do
   [ -d "$phase_dir" ] || continue
   PLANS=$(ls -1 "$phase_dir"*-PLAN.md 2>/dev/null | wc -l | tr -d ' ')
-  SUMMARIES=$(ls -1 "$phase_dir"*-SUMMARY.md 2>/dev/null | wc -l | tr -d ' ')
+  SUMMARIES=$(count_complete_summaries "$phase_dir")
   PLANS_TOTAL=$(( PLANS_TOTAL + PLANS ))
   SUMMARIES_TOTAL=$(( SUMMARIES_TOTAL + SUMMARIES ))
 done

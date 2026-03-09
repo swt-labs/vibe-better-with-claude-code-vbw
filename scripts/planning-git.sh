@@ -68,6 +68,7 @@ ensure_transient_ignore() {
 
 # Logging & markers
 .hook-errors.log
+.hook-debug.log
 .compaction-marker
 .session-log.jsonl
 .session-log.jsonl.tmp
@@ -76,6 +77,7 @@ ensure_transient_ignore() {
 .watchdog.log
 .claude-md-migrated
 .tmux-mode-patched
+.delegated-workflow.json
 
 # Baselines
 .baselines/
