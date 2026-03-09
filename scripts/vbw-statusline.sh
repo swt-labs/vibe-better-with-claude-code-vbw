@@ -489,7 +489,7 @@ elif [ "$EXEC_STATUS" = "complete" ]; then
   [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
   if [ "$PT" -gt 0 ] 2>/dev/null; then
     L1="$L1 ${D}│${X} Plans: ${PD}/${PT}"
-    [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null && L1="$L1 (${PPD}/${PPT} this phase)"
+    [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null && [ "$PD" -lt "$PT" ] 2>/dev/null && L1="$L1 (${PPD}/${PPT} this phase)"
   fi
   L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
   _qc="$D"; case "${QA_COLOR:-D}" in G) _qc="$G";; Y) _qc="$Y";; R) _qc="$R";; esac
@@ -499,7 +499,7 @@ elif [ -d ".vbw-planning" ]; then
   [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
   if [ "$PT" -gt 0 ] 2>/dev/null; then
     L1="$L1 ${D}│${X} Plans: ${PD}/${PT}"
-    [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null && L1="$L1 (${PPD}/${PPT} this phase)"
+    [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null && [ "$PD" -lt "$PT" ] 2>/dev/null && L1="$L1 (${PPD}/${PPT} this phase)"
   fi
   L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
   _qc="$D"; case "${QA_COLOR:-D}" in G) _qc="$G";; Y) _qc="$Y";; R) _qc="$R";; esac
