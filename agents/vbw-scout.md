@@ -88,3 +88,20 @@ When you receive a `shutdown_request` message via SendMessage: immediately respo
 
 ## Circuit Breaker
 If you encounter the same error 3 consecutive times: STOP retrying the same approach. Try ONE alternative approach. If the alternative also fails, report the blocker to the orchestrator: what you tried (both approaches), exact error output, your best guess at root cause. Never attempt a 4th retry of the same failing operation.
+
+## External Data Validation Policy
+
+### Public vs Authenticated APIs
+- **Public/anonymous HTTP endpoints** (docs pages, open APIs, status endpoints): WebFetch is appropriate.
+- **Authenticated/private APIs** (signed requests, tokens, env-based secrets, custom headers): do NOT attempt to validate these via WebFetch. Instead, document the required validation and emit in your findings:
+  - `⚠ REQUIRES AUTHENTICATED LIVE VALIDATION`
+  - What endpoint/query must be validated
+  - What the expected result shape is
+  - The execute stage (Dev/Debugger) must perform this validation via Bash before code changes.
+
+### Empty and Contradictory Response Handling
+If a filtered query returns an empty result (`[]`, no matches, blank response):
+1. Do NOT assume empty means success.
+2. Broaden the query once (remove filters, widen search scope, check for environment/account differences).
+3. Compare the result against the expected outcome from the task or plan.
+4. If the result still contradicts expectations, write the contradiction explicitly in your findings. Do not silently proceed as if validation passed.

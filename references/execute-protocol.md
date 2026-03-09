@@ -213,6 +213,21 @@ If compilation fails, proceed without it — Dev reads files directly.
 - **Cleanup:** At phase end, clean up token state: `rm -f .vbw-planning/.token-state/*.json 2>/dev/null || true`
 - Truncation uses tail strategy (keep most recent context).
 
+**Pre-code validation gate (mandatory when plan requires it):**
+If a plan task contains validation requirements such as "MUST be done before any code changes", "Expected: ...", or "If absent, stop and re-analyze", the validation result is a hard gate:
+
+1. **Execute the validation** using the tool appropriate to the data source:
+   - **Public/anonymous endpoints** (docs pages, open APIs, status endpoints): WebFetch is acceptable.
+   - **Authenticated/private APIs** (signed requests, tokens, env-based secrets, custom headers): use Bash helper scripts, curl wrappers, or repo helper commands. Do not route authenticated API validation through WebFetch.
+2. **Evaluate the result:**
+   - If the result matches the task's expected shape: gate passes, proceed with code changes.
+   - If the result contradicts expectations (wrong values, missing fields, empty when non-empty expected): gate fails.
+3. **On gate failure:**
+   - Run ONE broadened sanity-check query (remove filters, broaden search, confirm environment/account context).
+   - If the contradiction remains: send `blocker_report` immediately. Do NOT proceed to the next task or begin code changes.
+   - Empty filtered results (`[]`, no matches) are contradictory when the task expected specific data — do not treat empty as success unless the task explicitly defines empty as the expected outcome.
+4. **Operator fallback:** If automated respawn after a blocker is not possible, surface a message to the user: "Validation gate failed for task {N}. Restart `/vbw:vibe` from current plan state to retry."
+
 
 **Model resolution:** Resolve models for Dev and QA agents:
 ```bash
