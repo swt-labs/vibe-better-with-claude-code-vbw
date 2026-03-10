@@ -67,9 +67,10 @@ JSON
   output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
   cd "$PROJECT_ROOT"
 
-  local l3
-  l3=$(echo "$output" | sed -n '3p')
-  [ -z "$l3" ]
+  # L3 omitted entirely — output should be 3 lines (L1, L2, L4)
+  local line_count
+  line_count=$(echo "$output" | wc -l | tr -d ' ')
+  [ "$line_count" -eq 3 ]
 }
 
 # --- statusline_hide_limits_for_api_key: true with no OAuth (API key path) ---
@@ -92,16 +93,19 @@ JSON
   # FETCH_OK="noauth" is guaranteed regardless of the developer's system credentials.
   export CLAUDE_CONFIG_DIR="$repo"
   export VBW_SKIP_KEYCHAIN=1
+  export VBW_SKIP_AUTH_CLI=1
   unset VBW_OAUTH_TOKEN 2>/dev/null || true
   local output
   output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
   unset CLAUDE_CONFIG_DIR
   unset VBW_SKIP_KEYCHAIN
+  unset VBW_SKIP_AUTH_CLI
   cd "$PROJECT_ROOT"
 
-  local l3
-  l3=$(echo "$output" | sed -n '3p')
-  [ -z "$l3" ]
+  # L3 omitted entirely — output should be 3 lines (L1, L2, L4)
+  local line_count
+  line_count=$(echo "$output" | wc -l | tr -d ' ')
+  [ "$line_count" -eq 3 ]
 }
 
 # --- statusline_hide_limits_for_api_key: true with OAuth token (not suppressed) ---
@@ -251,9 +255,10 @@ JSON
   output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
   cd "$PROJECT_ROOT"
 
-  local l3
-  l3=$(echo "$output" | sed -n '3p')
-  [ -z "$l3" ]
+  # L3 omitted entirely — output should be 3 lines (L1, L2, L4)
+  local line_count
+  line_count=$(echo "$output" | wc -l | tr -d ' ')
+  [ "$line_count" -eq 3 ]
 }
 
 # --- Negative: statusline_hide_agent_in_tmux true but NOT in tmux (no effect) ---

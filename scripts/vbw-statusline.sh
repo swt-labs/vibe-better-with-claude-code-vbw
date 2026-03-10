@@ -254,7 +254,11 @@ if ! cache_fresh "$FAST_CF" 5; then
 
   AGENT_DATA="0"
 
-  printf '%s\n' "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${EXEC_CURRENT:-}|${AGENT_DATA:-0}|${PPT:-0}|${QA_COLOR:-D}|${HIDE_AGENT_TMUX:-false}|${COLLAPSE_AGENT_TMUX:-false}" > "$FAST_CF" 2>/dev/null
+  # Sanitize pipe characters in EXEC_CURRENT (user-defined plan title) to
+  # prevent field misalignment in the pipe-delimited fast cache.
+  _EXEC_CURRENT_SAFE="${EXEC_CURRENT//|/-}"
+
+  printf '%s\n' "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${_EXEC_CURRENT_SAFE:-}|${AGENT_DATA:-0}|${PPT:-0}|${QA_COLOR:-D}|${HIDE_AGENT_TMUX:-false}|${COLLAPSE_AGENT_TMUX:-false}" > "$FAST_CF" 2>/dev/null
 fi
 
 if [ -O "$FAST_CF" ]; then
@@ -265,6 +269,24 @@ if [ -O "$FAST_CF" ]; then
 fi
 
 AGENT_LINE=""
+
+# --- Early collapse exit: skip slow cache for collapsed worktree panes ---
+# In collapsed worktrees, the output only uses input-parsed values (MODEL, PCT,
+# CTX_USED_FMT, etc.), so we can skip OAuth/API/cost/update work entirely.
+if [ -n "${TMUX:-}" ]; then
+  _GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+  _GIT_COMMON=$(git rev-parse --git-common-dir 2>/dev/null)
+  if [ -n "$_GIT_DIR" ] && [ -n "$_GIT_COMMON" ] && [ "$_GIT_DIR" != "$_GIT_COMMON" ]; then
+    _MAIN_ROOT=$(dirname "$_GIT_COMMON")
+    _COLLAPSE_WT=$(jq -r '.statusline_collapse_agent_in_tmux // false' \
+      "$_MAIN_ROOT/.vbw-planning/config.json" 2>/dev/null)
+    if [ "$_COLLAPSE_WT" = "true" ]; then
+      [ "$PCT" -ge 90 ] && BC="$R" || { [ "$PCT" -ge 70 ] && BC="$Y" || BC="$G"; }
+      printf '%b\n' "Model: ${D}${MODEL}${X} ${D}│${X} Context: ${BC}${PCT}%${X} ${CTX_USED_FMT}/${CTX_SIZE_FMT} ${D}│${X} Tokens: ${IN_TOK_FMT}"
+      exit 0
+    fi
+  fi
+fi
 
 # --- Slow cache (60s TTL): usage limits + update check ---
 SLOW_CF="${_CACHE}-slow"
@@ -323,7 +345,8 @@ if ! cache_fresh "$SLOW_CF" 60; then
   fi
 
   # Priority 4: detect auth method via claude CLI (distinguishes OAuth vs API key)
-  if [ -z "$OAUTH_TOKEN" ]; then
+  # Skip if VBW_SKIP_AUTH_CLI=1 (e.g. in tests on dev machines with real auth)
+  if [ -z "$OAUTH_TOKEN" ] && [ "${VBW_SKIP_AUTH_CLI:-0}" != "1" ]; then
     AUTH_STATUS=$(CLAUDECODE="" claude auth status --json 2>/dev/null) || AUTH_STATUS=""
     if [ -n "$AUTH_STATUS" ]; then
       AUTH_METHOD=$(echo "$AUTH_STATUS" | jq -r '.authMethod // empty' 2>/dev/null)
@@ -470,7 +493,7 @@ fi
 # --- Hide-limits suppression ---
 if [ "$HIDE_LIMITS" = "true" ]; then
   USAGE_LINE=""
-elif [ "$HIDE_LIMITS_API" = "true" ] && [ "$FETCH_OK" != "ok" ] && [ "$AUTH_METHOD" != "claude.ai" ]; then
+elif [ "$HIDE_LIMITS_API" = "true" ] && [ "$FETCH_OK" = "noauth" ]; then
   USAGE_LINE=""
 fi
 
@@ -562,28 +585,9 @@ else
   L4="$L4 ${D}│${X} ${D}VBW ${_VER:-?}${X} ${D}│${X} ${D}CC ${VER}${X}"
 fi
 
-# --- Agent pane collapse: single line with Model/Context/Tokens ---
-# Agent panes run in git worktrees; orchestrator runs in the main repo.
-# Detect via: git-dir != git-common-dir (true only in worktrees).
-# .vbw-planning/ is absent in worktrees, so re-read the flag from the main
-# repo root (dirname of --git-common-dir) rather than relying on the fast cache.
-if [ -n "${TMUX:-}" ]; then
-  _GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
-  _GIT_COMMON=$(git rev-parse --git-common-dir 2>/dev/null)
-  if [ -n "$_GIT_DIR" ] && [ -n "$_GIT_COMMON" ] && [ "$_GIT_DIR" != "$_GIT_COMMON" ]; then
-    _MAIN_ROOT=$(dirname "$_GIT_COMMON")
-    _COLLAPSE_WT=$(jq -r '.statusline_collapse_agent_in_tmux // false' \
-      "$_MAIN_ROOT/.vbw-planning/config.json" 2>/dev/null)
-    if [ "$_COLLAPSE_WT" = "true" ]; then
-      printf '%b\n' "Model: ${D}${MODEL}${X} ${D}│${X} Context: ${BC}${PCT}%${X} ${CTX_USED_FMT}/${CTX_SIZE_FMT} ${D}│${X} Tokens: ${IN_TOK_FMT}"
-      exit 0
-    fi
-  fi
-fi
-
 printf '%b\n' "$L1"
 printf '%b\n' "$L2"
-printf '%b\n' "$L3"
+[ -n "$L3" ] && printf '%b\n' "$L3"
 printf '%b\n' "$L4"
 
 exit 0
