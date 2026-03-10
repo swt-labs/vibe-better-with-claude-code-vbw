@@ -30,6 +30,17 @@ fi
 
 # --- Helpers ---
 
+# Source shared summary-status helpers for status-aware SUMMARY detection
+_SL_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$_SL_SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "$_SL_SCRIPT_DIR/summary-utils.sh"
+else
+  # Safe default: report zero completions when helpers unavailable
+  count_complete_summaries() { echo "0"; }
+  count_done_summaries() { echo "0"; }
+fi
+
 cache_fresh() {
   local cf="$1" ttl="$2"
   [ ! -f "$cf" ] && return 1
@@ -151,10 +162,13 @@ FAST_CF="${_CACHE}-fast"
 
 if ! cache_fresh "$FAST_CF" 5; then
   PH=""; TT=""; EF="balanced"; MP="quality"; BR=""
-  PD=0; PT=0; PPD=0; QA="--"; GH_URL=""
+  PD=0; PT=0; PPD=0; PPT=0; QA="--"; QA_COLOR="D"; GH_URL=""
   if [ -f ".vbw-planning/STATE.md" ]; then
-    PH=$(grep -m1 "^Phase:" .vbw-planning/STATE.md | grep -oE '[0-9]+' | head -1)
-    TT=$(grep -m1 "^Phase:" .vbw-planning/STATE.md | grep -oE '[0-9]+' | tail -1)
+    # Parse "Phase: N of M (slug)" — extract N and M before parenthetical
+    # to avoid picking up numbers from phase name slugs like "01-context-diet"
+    _phase_line=$(grep -m1 "^Phase:" .vbw-planning/STATE.md 2>/dev/null)
+    PH=$(echo "$_phase_line" | sed -n 's/^Phase:[[:space:]]*\([0-9][0-9]*\).*/\1/p')
+    TT=$(echo "$_phase_line" | sed -n 's/.*[[:space:]]of[[:space:]]*\([0-9][0-9]*\).*/\1/p')
   fi
   if [ -f ".vbw-planning/config.json" ]; then
     # Auto-migrate: add model_profile if missing
@@ -164,6 +178,8 @@ if ! cache_fresh "$FAST_CF" 5; then
     fi
     EF=$(jq -r '.effort // "balanced"' .vbw-planning/config.json 2>/dev/null)
     MP=$(jq -r '.model_profile // "quality"' .vbw-planning/config.json 2>/dev/null)
+    HIDE_AGENT_TMUX=$(jq -r '.statusline_hide_agent_in_tmux // false' .vbw-planning/config.json 2>/dev/null)
+    COLLAPSE_AGENT_TMUX=$(jq -r '.statusline_collapse_agent_in_tmux // false' .vbw-planning/config.json 2>/dev/null)
   fi
   if git rev-parse --git-dir >/dev/null 2>&1; then
     BR=$(git branch --show-current 2>/dev/null)
@@ -175,11 +191,36 @@ if ! cache_fresh "$FAST_CF" 5; then
   fi
   if [ -d ".vbw-planning/phases" ]; then
     PT=$(find .vbw-planning/phases -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
-    PD=$(find .vbw-planning/phases -name '*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+    PD=0
+    for _sl_pdir in .vbw-planning/phases/*/; do
+      [ -d "$_sl_pdir" ] || continue
+      PD=$((PD + $(count_complete_summaries "$_sl_pdir")))
+    done
     if [ -n "$PH" ] && [ "$PH" != "0" ]; then
       PDIR=$(find .vbw-planning/phases -maxdepth 1 -type d -name "$(printf '%02d' "$PH")-*" 2>/dev/null | head -1)
-      [ -n "$PDIR" ] && PPD=$(find "$PDIR" -name '*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
-      [ -n "$PDIR" ] && [ -n "$(find "$PDIR" -name '*VERIFICATION.md' 2>/dev/null | head -1)" ] && QA="pass"
+      [ -n "$PDIR" ] && PPD=$(count_complete_summaries "$PDIR")
+      [ -n "$PDIR" ] && PPT=$(find "$PDIR" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+      # Lifecycle-aware QA/UAT indicator: UAT supersedes VERIFICATION.md
+      if [ -n "$PDIR" ]; then
+        _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
+        if [ -n "$_uat_file" ]; then
+          _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null)
+          case "$_uat_status" in
+            complete|passed) QA="UAT: pass"; QA_COLOR="G" ;;
+            issues_found)
+              _rem_stage="none"
+              [ -f "$PDIR/.uat-remediation-stage" ] && _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
+              case "$_rem_stage" in
+                done)    QA="UAT: re-verify"; QA_COLOR="Y" ;;
+                none)    QA="UAT: fail";      QA_COLOR="R" ;;
+                *)       QA="UAT: fixing";    QA_COLOR="Y" ;;
+              esac ;;
+            *) QA="UAT: ?"; QA_COLOR="Y" ;;
+          esac
+        elif [ -n "$(find "$PDIR" -name '*VERIFICATION.md' 2>/dev/null | head -1)" ]; then
+          QA="QA: pass"; QA_COLOR="G"
+        fi
+      fi
     fi
   fi
 
@@ -190,25 +231,71 @@ if ! cache_fresh "$FAST_CF" 5; then
         (.status // ""),
         (.wave // 0),
         (.total_waves // 0),
-        ([.plans[] | select(.status == "complete")] | length),
+        ([.plans[] | select(.status == "complete" or .status == "partial")] | length),
         (.plans | length),
         ([.plans[] | select(.status == "running")][0].title // "")
       ] | join("|")' .vbw-planning/.execution-state.json 2>/dev/null)"
+    # Reconcile EXEC_DONE against actual SUMMARY.md files on disk.
+    # After a reset/undo, .execution-state.json retains stale "complete"
+    # statuses but SUMMARY.md files may no longer exist.
+    if [ "$EXEC_STATUS" = "running" ] && [ "${EXEC_DONE:-0}" -gt 0 ] 2>/dev/null; then
+      _exec_phase=$(jq -r '.phase // ""' .vbw-planning/.execution-state.json 2>/dev/null)
+      if [ -n "$_exec_phase" ]; then
+        _exec_pdir=$(find .vbw-planning/phases -maxdepth 1 -type d -name "$(printf '%02d' "$_exec_phase")-*" 2>/dev/null | head -1)
+        if [ -n "$_exec_pdir" ] && [ -d "$_exec_pdir" ]; then
+          _actual_done=$(count_done_summaries "$_exec_pdir")
+          if [ "${_actual_done:-0}" -lt "${EXEC_DONE:-0}" ] 2>/dev/null; then
+            EXEC_DONE="$_actual_done"
+          fi
+        fi
+      fi
+    fi
   fi
 
   AGENT_DATA="0"
 
-  printf '%s\n' "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${EXEC_CURRENT:-}|${AGENT_DATA:-0}" > "$FAST_CF" 2>/dev/null
+  # Sanitize pipe characters in EXEC_CURRENT (user-defined plan title) to
+  # prevent field misalignment in the pipe-delimited fast cache.
+  _EXEC_CURRENT_SAFE="${EXEC_CURRENT//|/-}"
+
+  printf '%s\n' "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${_EXEC_CURRENT_SAFE:-}|${AGENT_DATA:-0}|${PPT:-0}|${QA_COLOR:-D}|${HIDE_AGENT_TMUX:-false}|${COLLAPSE_AGENT_TMUX:-false}" > "$FAST_CF" 2>/dev/null
 fi
 
 if [ -O "$FAST_CF" ]; then
   # shellcheck disable=SC2034
   IFS='|' read -r PH TT EF MP BR PD PT PPD QA GH_URL GIT_STAGED GIT_MODIFIED GIT_AHEAD \
                   EXEC_STATUS EXEC_WAVE EXEC_TWAVES EXEC_DONE EXEC_TOTAL EXEC_CURRENT \
-                  AGENT_N < "$FAST_CF"
+                  AGENT_N PPT QA_COLOR HIDE_AGENT_TMUX COLLAPSE_AGENT_TMUX < "$FAST_CF"
+fi
+
+# Badge color: live check (not cached) so transitions are immediate.
+# [ -f ] is a single stat() syscall — negligible cost vs cache TTL staleness.
+VBW_CTX=0; [ -f ".vbw-planning/.vbw-context" ] && VBW_CTX=1
+if [ "$VBW_CTX" = "1" ]; then
+  VC="${C}${B}"
+else
+  VC="${D}"
 fi
 
 AGENT_LINE=""
+
+# --- Early collapse exit: skip slow cache for collapsed worktree panes ---
+# In collapsed worktrees, the output only uses input-parsed values (MODEL, PCT,
+# CTX_USED_FMT, etc.), so we can skip OAuth/API/cost/update work entirely.
+if [ -n "${TMUX:-}" ]; then
+  _GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+  _GIT_COMMON=$(git rev-parse --git-common-dir 2>/dev/null)
+  if [ -n "$_GIT_DIR" ] && [ -n "$_GIT_COMMON" ] && [ "$_GIT_DIR" != "$_GIT_COMMON" ]; then
+    _MAIN_ROOT=$(dirname "$_GIT_COMMON")
+    _COLLAPSE_WT=$(jq -r '.statusline_collapse_agent_in_tmux // false' \
+      "$_MAIN_ROOT/.vbw-planning/config.json" 2>/dev/null)
+    if [ "$_COLLAPSE_WT" = "true" ]; then
+      [ "$PCT" -ge 90 ] && BC="$R" || { [ "$PCT" -ge 70 ] && BC="$Y" || BC="$G"; }
+      printf '%b\n' "Model: ${D}${MODEL}${X} ${D}│${X} Context: ${BC}${PCT}%${X} ${CTX_USED_FMT}/${CTX_SIZE_FMT} ${D}│${X} Tokens: ${IN_TOK_FMT}"
+      exit 0
+    fi
+  fi
+fi
 
 # --- Slow cache (60s TTL): usage limits + update check ---
 SLOW_CF="${_CACHE}-slow"
@@ -222,8 +309,8 @@ if ! cache_fresh "$SLOW_CF" 60; then
     OAUTH_TOKEN="$VBW_OAUTH_TOKEN"
   fi
 
-  # Priority 2: system credential store
-  if [ -z "$OAUTH_TOKEN" ]; then
+  # Priority 2: system credential store (skip if VBW_SKIP_KEYCHAIN=1, e.g. in tests)
+  if [ -z "$OAUTH_TOKEN" ] && [ "${VBW_SKIP_KEYCHAIN:-0}" != "1" ]; then
     if [ "$_OS" = "Darwin" ]; then
       CRED_JSON=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
       if [ -n "$CRED_JSON" ]; then
@@ -247,8 +334,15 @@ if ! cache_fresh "$SLOW_CF" 60; then
 
   # Priority 3: credentials file (check both with and without leading dot,
   # across all common Claude config locations)
+  # When VBW_SKIP_KEYCHAIN=1 (e.g. in tests), only check the explicitly-set
+  # CLAUDE_CONFIG_DIR — skip hardcoded fallback paths that may hold real credentials.
   if [ -z "$OAUTH_TOKEN" ]; then
-    for _cdir in "${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude"; do
+    if [ "${VBW_SKIP_KEYCHAIN:-0}" = "1" ]; then
+      _p3_dirs=("${CLAUDE_CONFIG_DIR:-}")
+    else
+      _p3_dirs=("${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude")
+    fi
+    for _cdir in "${_p3_dirs[@]}"; do
       [ -z "$_cdir" ] && continue
       for _cred in "$_cdir/.credentials.json" "$_cdir/credentials.json"; do
         if [ -f "$_cred" ]; then
@@ -260,12 +354,16 @@ if ! cache_fresh "$SLOW_CF" 60; then
   fi
 
   # Priority 4: detect auth method via claude CLI (distinguishes OAuth vs API key)
-  if [ -z "$OAUTH_TOKEN" ]; then
+  # Skip if VBW_SKIP_AUTH_CLI=1 (e.g. in tests on dev machines with real auth)
+  if [ -z "$OAUTH_TOKEN" ] && [ "${VBW_SKIP_AUTH_CLI:-0}" != "1" ]; then
     AUTH_STATUS=$(CLAUDECODE="" claude auth status --json 2>/dev/null) || AUTH_STATUS=""
     if [ -n "$AUTH_STATUS" ]; then
       AUTH_METHOD=$(echo "$AUTH_STATUS" | jq -r '.authMethod // empty' 2>/dev/null)
     fi
   fi
+
+  HIDE_LIMITS=$(jq -r '.statusline_hide_limits // false' .vbw-planning/config.json 2>/dev/null)
+  HIDE_LIMITS_API=$(jq -r '.statusline_hide_limits_for_api_key // false' .vbw-planning/config.json 2>/dev/null)
 
   FIVE_PCT=0; FIVE_EPOCH=0; WEEK_PCT=0; WEEK_EPOCH=0; SONNET_PCT=-1
   EXTRA_ENABLED=0; EXTRA_PCT=-1; EXTRA_USED_C=0; EXTRA_LIMIT_C=0; FETCH_OK="noauth"
@@ -313,13 +411,13 @@ if ! cache_fresh "$SLOW_CF" 60; then
     [ "$NEWEST" = "$REMOTE_VER" ] && UPDATE_AVAIL="$REMOTE_VER"
   fi
 
-  printf '%s\n' "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}" > "$SLOW_CF" 2>/dev/null
+  printf '%s\n' "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}|${HIDE_LIMITS:-false}|${HIDE_LIMITS_API:-false}" > "$SLOW_CF" 2>/dev/null
 fi
 
 if [ -O "$SLOW_CF" ]; then
   IFS='|' read -r FIVE_PCT FIVE_EPOCH WEEK_PCT WEEK_EPOCH SONNET_PCT \
                   EXTRA_ENABLED EXTRA_PCT EXTRA_USED_C EXTRA_LIMIT_C \
-                  FETCH_OK UPDATE_AVAIL AUTH_METHOD < "$SLOW_CF"
+                  FETCH_OK UPDATE_AVAIL AUTH_METHOD HIDE_LIMITS HIDE_LIMITS_API < "$SLOW_CF"
 fi
 
 # --- Cost cache: delta attribution per render ---
@@ -401,6 +499,13 @@ else
   USAGE_LINE="${D}Limits: N/A (using API key)${X}"
 fi
 
+# --- Hide-limits suppression ---
+if [ "$HIDE_LIMITS" = "true" ]; then
+  USAGE_LINE=""
+elif [ "$HIDE_LIMITS_API" = "true" ] && [ "$FETCH_OK" = "noauth" ]; then
+  USAGE_LINE=""
+fi
+
 # --- GitHub link (OSC 8 clickable) ---
 GH_LINK=""
 REPO_LABEL=""
@@ -423,32 +528,40 @@ FL=$((PCT * 10 / 100)); EM=$((10 - FL))
 CTX_BAR=""; [ "$FL" -gt 0 ] && CTX_BAR=$(printf "%${FL}s" | sed 's/ /▓/g')
 [ "$EM" -gt 0 ] && CTX_BAR="${CTX_BAR}$(printf "%${EM}s" | sed 's/ /░/g')"
 
-if [ "$EXEC_STATUS" = "running" ] && [ "${EXEC_TOTAL:-0}" -gt 0 ] 2>/dev/null; then
+_HIDE_EXEC_TMUX=false
+if [ "$HIDE_AGENT_TMUX" = "true" ] && [ -n "${TMUX:-}" ] && [ "$EXEC_STATUS" = "running" ]; then
+  _HIDE_EXEC_TMUX=true
+fi
+
+if [ "$_HIDE_EXEC_TMUX" != "true" ] && [ "$EXEC_STATUS" = "running" ] && [ "${EXEC_TOTAL:-0}" -gt 0 ] 2>/dev/null; then
   EXEC_PCT=$((EXEC_DONE * 100 / EXEC_TOTAL))
-  L1="${C}${B}[VBW]${X} Build: $(progress_bar "$EXEC_PCT" 8) ${EXEC_DONE}/${EXEC_TOTAL} plans"
+  L1="${VC}[VBW]${X} Build: $(progress_bar "$EXEC_PCT" 8) ${EXEC_DONE}/${EXEC_TOTAL} plans"
   [ "${EXEC_TWAVES:-0}" -gt 1 ] 2>/dev/null && L1="$L1 ${D}│${X} Wave ${EXEC_WAVE}/${EXEC_TWAVES}"
   [ -n "$EXEC_CURRENT" ] && L1="$L1 ${D}│${X} ${C}◆${X} ${EXEC_CURRENT}"
 elif [ "$EXEC_STATUS" = "complete" ]; then
   rm -f .vbw-planning/.execution-state.json "$FAST_CF" 2>/dev/null
   EXEC_STATUS=""
-  L1="${C}${B}[VBW]${X}"
+  L1="${VC}[VBW]${X}"
   [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
-  [ "$PT" -gt 0 ] 2>/dev/null && L1="$L1 ${D}│${X} Plans: ${PD}/${PT} (${PPD} this phase)"
-  L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
-  if [ "$QA" = "pass" ]; then L1="$L1 ${D}│${X} ${G}QA: pass${X}"
-  else L1="$L1 ${D}│${X} ${D}QA: --${X}"; fi
-elif [ -d ".vbw-planning" ]; then
-  L1="${C}${B}[VBW]${X}"
-  [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
-  [ "$PT" -gt 0 ] 2>/dev/null && L1="$L1 ${D}│${X} Plans: ${PD}/${PT} (${PPD} this phase)"
-  L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
-  if [ "$QA" = "pass" ]; then
-    L1="$L1 ${D}│${X} ${G}QA: pass${X}"
-  else
-    L1="$L1 ${D}│${X} ${D}QA: --${X}"
+  if [ "$PT" -gt 0 ] 2>/dev/null; then
+    L1="$L1 ${D}│${X} Plans: ${PD}/${PT}"
+    [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null && [ "$PD" -lt "$PT" ] 2>/dev/null && L1="$L1 (${PPD}/${PPT} this phase)"
   fi
+  L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
+  _qc="$D"; case "${QA_COLOR:-D}" in G) _qc="$G";; Y) _qc="$Y";; R) _qc="$R";; esac
+  L1="$L1 ${D}│${X} ${_qc}${QA}${X}"
+elif [ -d ".vbw-planning" ]; then
+  L1="${VC}[VBW]${X}"
+  [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
+  if [ "$PT" -gt 0 ] 2>/dev/null; then
+    L1="$L1 ${D}│${X} Plans: ${PD}/${PT}"
+    [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null && [ "$PD" -lt "$PT" ] 2>/dev/null && L1="$L1 (${PPD}/${PPT} this phase)"
+  fi
+  L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
+  _qc="$D"; case "${QA_COLOR:-D}" in G) _qc="$G";; Y) _qc="$Y";; R) _qc="$R";; esac
+  L1="$L1 ${D}│${X} ${_qc}${QA}${X}"
 else
-  L1="${C}${B}[VBW]${X} ${D}no project${X}"
+  L1="${VC}[VBW]${X} ${D}no project${X}"
 fi
 if [ -n "$BR" ] || [ -n "$GH_LINK" ] || [ -n "$REPO_LABEL" ]; then
   if [ -n "$GH_LINK" ]; then
@@ -483,7 +596,7 @@ fi
 
 printf '%b\n' "$L1"
 printf '%b\n' "$L2"
-printf '%b\n' "$L3"
+[ -n "$L3" ] && printf '%b\n' "$L3"
 printf '%b\n' "$L4"
 
 exit 0

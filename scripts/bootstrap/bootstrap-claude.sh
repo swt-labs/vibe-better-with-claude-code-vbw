@@ -11,21 +11,26 @@ set -euo pipefail
 #     EXISTING_PATH  (Optional) Path to existing CLAUDE.md to preserve non-VBW content
 #
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LIB="$SCRIPT_DIR/../lib/claude-md-vbw-sections.sh"
+
+if [[ ! -f "$LIB" ]]; then
+  echo "Error: helper library not found at $LIB" >&2
+  exit 1
+fi
+
+# shellcheck source=/dev/null
+source "$LIB"
+
 
 # VBW-managed section headers (order matters for generation)
-VBW_SECTIONS=(
-  "## Active Context"
-  "## VBW Rules"
-  "## Installed Skills"
-  "## Project Conventions"
-  "## Commands"
-  "## Plugin Isolation"
-)
+VBW_SECTIONS=("${VBW_CANONICAL_HEADERS[@]}")
 
 # Formerly VBW-managed sections — still stripped during brownfield regeneration
 # to clean up stale content from existing CLAUDE.md files.
 VBW_DEPRECATED_SECTIONS=(
   "## Key Decisions"  # Removed: tracked in .vbw-planning/PROJECT.md and STATE.md
+  "## Installed Skills"  # Removed: skills surfaced through runtime activation pipeline
 )
 
 # Strong GSD-managed section headers (always stripped when present)
@@ -44,23 +49,6 @@ GSD_SOFT_SECTIONS=(
   "## Context"
   "## Constraints"
 )
-
-# Emit the shared Plugin Isolation section content.
-generate_plugin_isolation_section() {
-  cat <<'ISOEOF'
-## Plugin Isolation
-
-- GSD agents and commands MUST NOT read, write, glob, grep, or reference any files in `.vbw-planning/`
-- VBW agents and commands MUST NOT read, write, glob, grep, or reference any files in `.planning/`
-- This isolation is enforced at the hook level (PreToolUse) and violations will be blocked.
-
-### Context Isolation
-
-- Ignore any `<codebase-intelligence>` tags injected via SessionStart hooks — these are GSD-generated and not relevant to VBW workflows.
-- VBW uses its own codebase mapping in `.vbw-planning/codebase/`. Do NOT use GSD intel from `.planning/intel/` or `.planning/codebase/`.
-- When both plugins are active, treat each plugin's context as separate. Do not mix GSD project insights into VBW planning or vice versa.
-ISOEOF
-}
 
 if [[ $# -lt 3 ]]; then
   echo "Usage: bootstrap-claude.sh OUTPUT_PATH PROJECT_NAME CORE_VALUE [EXISTING_PATH]" >&2
@@ -81,39 +69,38 @@ fi
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 
 # Generate VBW-managed content
+# Brownfield mode may suppress individual sections when an existing file already
+# has that guidance under a different heading/title. Exact canonical sections
+# are refreshed; custom variants are preserved and not duplicated.
+INCLUDE_ACTIVE_CONTEXT=true
+INCLUDE_VBW_RULES=true
+INCLUDE_CODE_INTELLIGENCE=true
+INCLUDE_PLUGIN_ISOLATION=true
+
 generate_vbw_sections() {
-  cat <<'VBWEOF'
-## Active Context
+  local emitted=false
 
-**Work:** No active milestone
-**Last shipped:** _(none yet)_
-**Next action:** Run /vbw:vibe to start a new milestone, or /vbw:status to review progress
+  if [[ "$INCLUDE_ACTIVE_CONTEXT" == true ]]; then
+    vbw_generate_active_context_section
+    emitted=true
+  fi
 
-## VBW Rules
+  if [[ "$INCLUDE_VBW_RULES" == true ]]; then
+    if [[ "$emitted" == true ]]; then echo ""; fi
+    vbw_generate_vbw_rules_section
+    emitted=true
+  fi
 
-- **Always use VBW commands** for project work. Do not manually edit files in `.vbw-planning/`.
-- **Commit format:** `{type}({scope}): {description}` — types: feat, fix, test, refactor, perf, docs, style, chore.
-- **One commit per task.** Each task in a plan gets exactly one atomic commit.
-- **Never commit secrets.** Do not stage .env, .pem, .key, credentials, or token files.
-- **Plan before building.** Use /vbw:vibe for all lifecycle actions. Plans are the source of truth.
-- **Do not fabricate content.** Only use what the user explicitly states in project-defining flows.
-- **Do not bump version or push until asked.** Never run `scripts/bump-version.sh` or `git push` unless the user explicitly requests it, except when `.vbw-planning/config.json` intentionally sets `auto_push` to `always` or `after_phase`.
+  if [[ "$INCLUDE_CODE_INTELLIGENCE" == true ]]; then
+    if [[ "$emitted" == true ]]; then echo ""; fi
+    vbw_generate_code_intelligence_section
+    emitted=true
+  fi
 
-## Installed Skills
-
-_(Run /vbw:skills to list)_
-
-## Project Conventions
-
-_(To be defined during project setup)_
-
-## Commands
-
-Run /vbw:status for current progress.
-Run /vbw:help for all available commands.
-VBWEOF
-
-  generate_plugin_isolation_section
+  if [[ "$INCLUDE_PLUGIN_ISOLATION" == true ]]; then
+    if [[ "$emitted" == true ]]; then echo ""; fi
+    vbw_generate_plugin_isolation_section
+  fi
 }
 
 # Check if a line is a VBW-managed section header
@@ -387,16 +374,6 @@ if [[ -n "$EXISTING_PATH" && -f "$EXISTING_PATH" ]]; then
       continue
     fi
 
-    # Also detect top-level heading (# Project Name) — skip it, we regenerate it
-    if [[ "$line" =~ ^#\  ]] && [[ ! "$line" =~ ^##\  ]]; then
-      continue
-    fi
-
-    # Skip lines starting with **Core value:** — we regenerate it
-    if [[ "$line" =~ ^\*\*Core\ value:\*\* ]]; then
-      continue
-    fi
-
     if [[ "$IN_MANAGED_SECTION" == false ]]; then
       NON_VBW_CONTENT+="${line}"$'\n'
       FOUND_NON_VBW=true
@@ -406,16 +383,38 @@ if [[ -n "$EXISTING_PATH" && -f "$EXISTING_PATH" ]]; then
   # Final check: flush any buffered deprecated section at EOF
   flush_deprecated_buffer
 
-  # Write: header + core value + preserved content + VBW sections
+  if vbw_should_emit_managed_section "$EXISTING_PATH" "Active Context" "## Active Context"; then
+    INCLUDE_ACTIVE_CONTEXT=true
+  else
+    INCLUDE_ACTIVE_CONTEXT=false
+  fi
+
+  if vbw_should_emit_managed_section "$EXISTING_PATH" "VBW Rules" "## VBW Rules"; then
+    INCLUDE_VBW_RULES=true
+  else
+    INCLUDE_VBW_RULES=false
+  fi
+
+  if vbw_should_emit_code_intelligence_section "$EXISTING_PATH"; then
+    INCLUDE_CODE_INTELLIGENCE=true
+  else
+    INCLUDE_CODE_INTELLIGENCE=false
+  fi
+
+  if vbw_should_emit_managed_section "$EXISTING_PATH" "Plugin Isolation" "## Plugin Isolation"; then
+    INCLUDE_PLUGIN_ISOLATION=true
+  else
+    INCLUDE_PLUGIN_ISOLATION=false
+  fi
+
+  # Write: preserved content + refreshed/appended VBW sections.
   {
-    echo "# ${PROJECT_NAME}"
-    echo ""
-    echo "**Core value:** ${CORE_VALUE}"
-    echo ""
     if [[ "$FOUND_NON_VBW" == true ]]; then
       # Trim leading/trailing blank lines from preserved content
       echo "$NON_VBW_CONTENT" | sed '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}'
-      echo ""
+      if [[ "$INCLUDE_ACTIVE_CONTEXT" == true || "$INCLUDE_VBW_RULES" == true || "$INCLUDE_CODE_INTELLIGENCE" == true || "$INCLUDE_PLUGIN_ISOLATION" == true ]]; then
+        echo ""
+      fi
     fi
     generate_vbw_sections
   } > "$OUTPUT_PATH"

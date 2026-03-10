@@ -137,6 +137,8 @@ VBW integrates with [Skills.sh](https://skills.sh), the open-source skill regist
 
 Five or six lines of pure situational awareness, rendered after every response. Phase progress, plan completion, effort profile, QA status... everything a senior engineer would track on a whiteboard, except the whiteboard has been replaced by a terminal and the senior engineer has been replaced by you.
 
+Four config switches let you trim what the statusline shows — hide the Limits line entirely, suppress it only for API-key sessions, hide agent progress in tmux, or collapse the full statusline to a single line in tmux worktree panes. See [Display](#display) for details.
+
 ---
 
 ## Installation
@@ -567,6 +569,11 @@ Quick reference for every key in `config/defaults.json`, in order. Click the sec
 | `rolling_summary` | `false` | [Cross-phase context](#cross-phase-context) |
 | `require_phase_discussion` | `false` | [Agent behavior](#agent-behavior) |
 | `auto_uat` | `false` | [Autonomy levels](#autonomy-levels) |
+| `statusline_hide_limits` | `false` | [Display](#display) |
+| `statusline_hide_limits_for_api_key` | `false` | [Display](#display) |
+| `statusline_hide_agent_in_tmux` | `false` | [Display](#display) |
+| `statusline_collapse_agent_in_tmux` | `false` | [Display](#display) |
+| `debug_logging` | `false` | [Runtime features](#runtime-features) |
 | `bash_guard` | `true`* | [Safety](#safety) |
 
 *`bash_guard` is not in `defaults.json` — it's read directly from project config with a default of `true` when absent.
@@ -835,6 +842,7 @@ These flags control optional runtime subsystems — execution integrity, observa
 | `validation_gates` | boolean | `true` | `true` / `false` |
 | `snapshot_resume` | boolean | `true` | `true` / `false` |
 | `monorepo_routing` | boolean | `true` | `true` / `false` |
+| `debug_logging` | boolean | `false` | `true` / `false` |
 
 - **`token_budgets`** — When `true`, enforces per-role character budgets on context passed to agents (defined in `config/token-budgets.json`). The control plane truncates compiled context to the role's `max_chars` limit before injection, preventing context window overflows. When `false`, context passes through untruncated.
 - **`two_phase_completion`** — When `true`, after each task commit the Dev agent runs a two-phase verification: the artifact registry tracks all files written during the task, then `two-phase-complete.sh` confirms the task's contract was fulfilled before marking it complete. Rejected tasks trigger auto-repair. When `false`, tasks complete immediately after commit.
@@ -842,6 +850,7 @@ These flags control optional runtime subsystems — execution integrity, observa
 - **`smart_routing`** — When `true`, the execute protocol skips unnecessary agents based on effort level: Scout is skipped for turbo/fast (no research needed), Architect is skipped for non-thorough effort (architecture review only at thorough). Reduces token spend on simpler phases. When `false`, all agents are always included.
 - **`validation_gates`** — When `true`, the execute protocol runs per-plan risk assessment (`assess-plan-risk.sh`) and resolves a dynamic gate policy (`resolve-gate-policy.sh`) that overrides static effort-based tables for QA tier, plan approval, and teammate communication level. When `false`, static effort-based tables are used (see [Execution Model](#execution-model)).
 - **`snapshot_resume`** — When `true`, VBW saves execution state snapshots to `.vbw-planning/.snapshots/` at key lifecycle points (phase start, compaction, agent completion). On crash recovery, `/vbw:resume` can restore from the latest snapshot. Max 10 snapshots per phase, oldest pruned automatically. When `false`, no snapshots are saved.
+- **`debug_logging`** — When `true`, hook-wrapper writes verbose diagnostic logs to `.vbw-planning/.debug/` for every hook invocation. Also activatable via the `VBW_DEBUG=1` environment variable. When `false`, no debug logs are written. Useful for troubleshooting hook or agent misbehavior.
 - **`monorepo_routing`** — When `true`, VBW detects monorepo structure (sub-packages with `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`) and maps plan file paths to relevant package roots. This scoping is used by `/vbw:map` for per-package analysis and by the context compiler to limit agent context to relevant packages. When `false`, the entire repo is treated as a single project.
 
 ### Display
@@ -850,9 +859,17 @@ These flags control optional runtime subsystems — execution integrity, observa
 | :--- | :--- | :--- | :--- |
 | `visual_format` | string | `unicode` | `unicode` / `ascii` |
 | `branch_per_milestone` | boolean | `false` | `true` / `false` |
+| `statusline_hide_limits` | boolean | `false` | `true` / `false` |
+| `statusline_hide_limits_for_api_key` | boolean | `false` | `true` / `false` |
+| `statusline_hide_agent_in_tmux` | boolean | `false` | `true` / `false` |
+| `statusline_collapse_agent_in_tmux` | boolean | `false` | `true` / `false` |
 
 - **`visual_format`** — Intended to switch between Unicode symbols (✓ ✗ ◆ ○ ⚡ ➜, box-drawing characters) and ASCII equivalents. Currently declared but not yet wired into agent output — agents always use Unicode.
 - **`branch_per_milestone`** — Intended to auto-create a git branch per milestone during Bootstrap. Currently declared but not yet implemented — has no runtime effect.
+- **`statusline_hide_limits`** — Suppress the Limits line unconditionally. Use when you never want to see token-limit information in the statusline.
+- **`statusline_hide_limits_for_api_key`** — Suppress the Limits line only when authenticated via an API key (not via Claude.ai OAuth). No effect when `statusline_hide_limits` is also `true`.
+- **`statusline_hide_agent_in_tmux`** — Suppress the Build/agent progress line while inside a tmux session. No effect outside tmux or when no build is running.
+- **`statusline_collapse_agent_in_tmux`** — Collapse the full multi-line statusline into a single summary line in agent/worktree tmux panes. Only applies inside tmux in a git worktree; no effect in the main repo pane.
 
 ### Staged rollout
 

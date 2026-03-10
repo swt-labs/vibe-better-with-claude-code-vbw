@@ -37,7 +37,12 @@ EOF
 
   mkdir -p .vbw-planning/phases/03-service-utility-tests
   echo "# plan" > .vbw-planning/phases/03-service-utility-tests/03-01-PLAN.md
-  echo "# Summary without frontmatter" > .vbw-planning/phases/03-service-utility-tests/03-01-SUMMARY.md
+  cat > .vbw-planning/phases/03-service-utility-tests/03-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
 
   local summary_path input
   summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/03-service-utility-tests/03-01-SUMMARY.md"
@@ -187,11 +192,21 @@ EOF
 
   # Phase 1: one plan, one summary (complete)
   echo "# plan" > .vbw-planning/phases/01-setup/01-01-PLAN.md
-  echo "# summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# summary
+SUMMARY
 
   # Phase 2: one plan, one summary (complete), but has UAT issues
   echo "# plan" > .vbw-planning/phases/02-core/02-01-PLAN.md
-  echo "# summary" > .vbw-planning/phases/02-core/02-01-SUMMARY.md
+  cat > .vbw-planning/phases/02-core/02-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# summary
+SUMMARY
   cat > .vbw-planning/phases/02-core/02-01-UAT.md <<'EOF'
 ---
 status: issues_found
@@ -237,11 +252,21 @@ EOF
 EOF
 
   echo "# plan" > .vbw-planning/phases/01-setup/01-01-PLAN.md
-  echo "# summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# summary
+SUMMARY
 
   # Phase 2: complete but UAT has only indented status (should NOT be detected)
   echo "# plan" > .vbw-planning/phases/02-core/02-01-PLAN.md
-  echo "# summary" > .vbw-planning/phases/02-core/02-01-SUMMARY.md
+  cat > .vbw-planning/phases/02-core/02-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# summary
+SUMMARY
   cat > .vbw-planning/phases/02-core/02-UAT.md <<'EOF'
 ---
 phase: 02
@@ -285,9 +310,19 @@ EOF
 EOF
 
   echo "# plan" > .vbw-planning/phases/01-setup/01-01-PLAN.md
-  echo "# summary" > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# summary
+SUMMARY
   echo "# plan" > .vbw-planning/phases/02-core/02-01-PLAN.md
-  echo "# summary" > .vbw-planning/phases/02-core/02-01-SUMMARY.md
+  cat > .vbw-planning/phases/02-core/02-01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# summary
+SUMMARY
 
   # Only SOURCE-UAT with issues — should be skipped by latest_non_source_uat
   cat > .vbw-planning/phases/02-core/02-SOURCE-UAT.md <<'EOF'

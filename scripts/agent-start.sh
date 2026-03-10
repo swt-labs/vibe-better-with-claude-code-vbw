@@ -42,6 +42,10 @@ normalize_agent_role() {
       printf 'architect'
       return 0
       ;;
+    vbw-docs|vbw-docs-[0-9]*|docs|docs-[0-9]*|team-docs|team-docs-[0-9]*)
+      printf 'docs'
+      return 0
+      ;;
   esac
 
   return 1

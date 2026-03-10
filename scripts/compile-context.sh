@@ -5,9 +5,6 @@ set -euo pipefail
 # Produces .context-{role}.md in the phase directory with role-specific context.
 # Exit 0 on success, exit 1 when phase directory not found.
 
-# shellcheck source=resolve-claude-dir.sh
-. "$(dirname "$0")/resolve-claude-dir.sh"
-
 if [ $# -lt 2 ]; then
   echo "Usage: compile-context.sh <phase-number> <role> [phases-dir]" >&2
   exit 1
@@ -67,6 +64,26 @@ if [ -z "$PHASE_NUM" ]; then PHASE_NUM="0"; fi
 
 # --- Find phase directory (with zero-pad normalization) ---
 PHASE_DIR=$(find "$PHASES_DIR" -maxdepth 1 -type d -name "${PHASE}-*" 2>/dev/null | head -1)
+
+# --- Resolve per-plan research file (prefer {NN}-{MM}-RESEARCH.md, fall back to {NN}-RESEARCH.md) ---
+resolve_research_file() {
+  local phase_dir="$1" plan_path="$2"
+  # If plan path provided, try per-plan research first
+  if [ -n "$plan_path" ] && [ -f "$plan_path" ]; then
+    local plan_basename
+    plan_basename=$(basename "$plan_path" .md)
+    # Extract {NN}-{MM} prefix from plan filename like "03-12-PLAN.md" -> "03-12"
+    local plan_prefix
+    plan_prefix=$(echo "$plan_basename" | sed 's/-PLAN$//')
+    local per_plan_research="${phase_dir}/${plan_prefix}-RESEARCH.md"
+    if [ -f "$per_plan_research" ]; then
+      echo "$per_plan_research"
+      return
+    fi
+  fi
+  # Fall back to any *-RESEARCH.md (legacy single-file or first per-plan match)
+  find "$phase_dir" -maxdepth 1 -name "*-RESEARCH.md" -print -quit 2>/dev/null || true
+}
 if [ -z "$PHASE_DIR" ]; then
   # Try zero-padded version: "1" -> "01"
   PADDED=$(printf "%02d" "$PHASE" 2>/dev/null || echo "$PHASE")
@@ -256,14 +273,17 @@ case "$ROLE" in
       else
         echo "None"
       fi
-      # --- Codebase mapping hint (issue #80) ---
-      emit_codebase_mapping_hint ARCHITECTURE CONCERNS STRUCTURE
-      # --- V3: Include RESEARCH.md if present ---
-      RESEARCH_FILE=$(find "$PHASE_DIR" -maxdepth 1 -name "*-RESEARCH.md" -print -quit 2>/dev/null || true)
+      # --- V3: Include RESEARCH.md if present (per-plan preferred) ---
+      RESEARCH_FILE=$(resolve_research_file "$PHASE_DIR" "$PLAN_PATH")
       if [ -n "$RESEARCH_FILE" ] && [ -f "$RESEARCH_FILE" ]; then
         echo ""
         echo "### Research Findings"
         cat "$RESEARCH_FILE"
+      else
+        # --- Codebase mapping hint only when no research exists (issue #80) ---
+        # When research exists, the Scout already analyzed the codebase;
+        # the mapping hint would trigger redundant reads.
+        emit_codebase_mapping_hint ARCHITECTURE CONCERNS STRUCTURE
       fi
     } > "${PHASE_DIR}/.context-lead.md"
     ;;
@@ -286,23 +306,6 @@ case "$ROLE" in
           echo ""
           echo "### Conventions"
           echo "$CONVENTIONS"
-        fi
-      fi
-      # --- Skill bundling (REQ-12) ---
-      if [ -n "$PLAN_PATH" ] && [ -f "$PLAN_PATH" ]; then
-        SKILLS=$(sed -n '/^---$/,/^---$/p' "$PLAN_PATH" | grep 'skills_used:' | sed 's/skills_used: *\[//' | sed 's/\]//' | tr ',' '\n' | sed 's/^ *//;s/ *$//;s/^"//;s/"$//' | grep -v '^$' || true)
-        if [ -n "$SKILLS" ]; then
-          echo ""
-          echo "### Skills Reference"
-          echo ""
-          while IFS= read -r skill; do
-            SKILL_FILE="$CLAUDE_DIR/skills/${skill}/SKILL.md"
-            if [ -f "$SKILL_FILE" ]; then
-              echo "#### ${skill}"
-              cat "$SKILL_FILE"
-              echo ""
-            fi
-          done <<< "$SKILLS"
         fi
       fi
       # --- Codebase mapping hint (issue #78) ---
@@ -346,8 +349,8 @@ case "$ROLE" in
           cat "$PLAN_PATH"
         fi
       fi
-      # --- V3: Include RESEARCH.md if present ---
-      RESEARCH_FILE=$(find "$PHASE_DIR" -maxdepth 1 -name "*-RESEARCH.md" -print -quit 2>/dev/null || true)
+      # --- V3: Include RESEARCH.md if present (per-plan preferred) ---
+      RESEARCH_FILE=$(resolve_research_file "$PHASE_DIR" "$PLAN_PATH")
       if [ -n "$RESEARCH_FILE" ] && [ -f "$RESEARCH_FILE" ]; then
         echo ""
         echo "### Research Findings"
@@ -421,8 +424,8 @@ case "$ROLE" in
           echo "$CONVENTIONS"
         fi
       fi
-      # --- V3: Include RESEARCH.md if present ---
-      RESEARCH_FILE=$(find "$PHASE_DIR" -maxdepth 1 -name "*-RESEARCH.md" -print -quit 2>/dev/null || true)
+      # --- V3: Include RESEARCH.md if present (per-plan preferred) ---
+      RESEARCH_FILE=$(resolve_research_file "$PHASE_DIR" "$PLAN_PATH")
       if [ -n "$RESEARCH_FILE" ] && [ -f "$RESEARCH_FILE" ]; then
         echo ""
         echo "### Research Findings"
@@ -479,8 +482,8 @@ case "$ROLE" in
       fi
       # --- Codebase mapping hint (issue #75) ---
       emit_codebase_mapping_hint ARCHITECTURE CONCERNS PATTERNS DEPENDENCIES
-      # --- V3: Include RESEARCH.md if present ---
-      RESEARCH_FILE=$(find "$PHASE_DIR" -maxdepth 1 -name "*-RESEARCH.md" -print -quit 2>/dev/null || true)
+      # --- V3: Include RESEARCH.md if present (per-plan preferred) ---
+      RESEARCH_FILE=$(resolve_research_file "$PHASE_DIR" "$PLAN_PATH")
       if [ -n "$RESEARCH_FILE" ] && [ -f "$RESEARCH_FILE" ]; then
         echo ""
         echo "### Research Findings"
@@ -553,8 +556,8 @@ case "$ROLE" in
       fi
       # --- Codebase mapping hint (issue #81) ---
       emit_codebase_mapping_hint ARCHITECTURE STACK
-      # --- V3: Include RESEARCH.md if present ---
-      RESEARCH_FILE=$(find "$PHASE_DIR" -maxdepth 1 -name "*-RESEARCH.md" -print -quit 2>/dev/null || true)
+      # --- V3: Include RESEARCH.md if present (per-plan preferred) ---
+      RESEARCH_FILE=$(resolve_research_file "$PHASE_DIR" "$PLAN_PATH")
       if [ -n "$RESEARCH_FILE" ] && [ -f "$RESEARCH_FILE" ]; then
         echo ""
         echo "### Research Findings"

@@ -4,7 +4,7 @@ category: supporting
 disable-model-invocation: true
 description: View, add, or manage project conventions. Shows what VBW already knows and warns about conflicts.
 argument-hint: "[\"convention text\" | remove <id> | refresh]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, LSP
 ---
 
 # VBW Teach $ARGUMENTS
@@ -70,13 +70,13 @@ Stored in `.vbw-planning/conventions.json`:
 
 **A4. Save:** Generate next CONV-{NNN} ID, add to conventions.json. Display: `✓ Added CONV-{NNN}: {rule} [{category}]`
 
-**A5. Update CLAUDE.md:** Regenerate `## Project Conventions` section. Format: `- {rule} [{category}]` per convention. No IDs, no source tags, no confidence.
+**A5. No CLAUDE.md edit needed:** Conventions live in `.vbw-planning/conventions.json`. Do NOT regenerate or append a `## Project Conventions` section in `CLAUDE.md`.
 
 ### `remove <id>`: Remove a convention
 
 1. Parse ID, find in conventions.json. Not found: `⚠ Convention not found: {id}`
 2. Display convention, ask confirmation
-3. Remove from conventions.json, update CLAUDE.md
+3. Remove from conventions.json
 4. Display: `✓ Removed {id}: {rule}`
 
 ### `refresh`: Re-run auto-detection
@@ -92,11 +92,11 @@ Stored in `.vbw-planning/conventions.json`:
 
 **R3. Reconcile:** User-defined always win. Replace stale auto-detected if conflicts. Add new. Remove orphaned auto-detections.
 
-**R4. Save and display:** Write conventions.json. Show added/updated/removed/kept counts + totals. Update CLAUDE.md.
+**R4. Save and display:** Write conventions.json. Show added/updated/removed/kept counts + totals. No CLAUDE.md rewrite.
 
 ## Convention Injection
 
-Conventions injected via CLAUDE.md `## Project Conventions` (loaded every session). QA checks user-defined + high-confidence auto-detected conventions. Violations appear as deviations in SUMMARY.md.
+Conventions are injected from `.vbw-planning/conventions.json` by `scripts/compile-context.sh` (not via `CLAUDE.md`). QA checks user-defined + high-confidence auto-detected conventions. Violations appear as deviations in SUMMARY.md.
 
 ## Output Format
 

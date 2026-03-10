@@ -8,6 +8,24 @@ set -u
 # Output: reconstructed execution state JSON to stdout.
 # Fail-open: exit 0 always. On error, outputs empty object.
 
+# Source shared summary-status helpers for status-aware SUMMARY detection
+_RS_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$_RS_SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "$_RS_SCRIPT_DIR/summary-utils.sh"
+  # Bridge wrappers: recover-state.sh call sites use these names
+  is_plan_finalized() { is_summary_terminal "$1"; }
+  extract_summary_status() {
+    local f="$1"
+    [ -f "$f" ] || return 1
+    sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$f" 2>/dev/null | head -1 | tr -d '[:space:]'
+  }
+else
+  # Safe default: treat plans as not finalized when helpers unavailable
+  is_plan_finalized() { return 1; }
+  extract_summary_status() { echo ""; return 1; }
+fi
+
 if [ $# -lt 1 ]; then
   echo "{}"
   exit 0
@@ -69,10 +87,17 @@ for plan_file in "$PHASE_DIR"/*-PLAN.md; do
   PLAN_TITLE=$(awk '/^title:/ {gsub(/^title: *"?|"?$/, ""); print}' "$plan_file" 2>/dev/null) || PLAN_TITLE="unknown"
   PLAN_WAVE=$(awk '/^wave:/ {gsub(/^wave: */, ""); print}' "$plan_file" 2>/dev/null) || PLAN_WAVE="1"
 
-  # Check if SUMMARY.md exists
+  # Check if SUMMARY.md exists with terminal status
   SUMMARY_FILE="$PHASE_DIR/${PLAN_ID}-SUMMARY.md"
-  if [ -f "$SUMMARY_FILE" ]; then
-    PLAN_STATUS="complete"
+  if is_plan_finalized "$SUMMARY_FILE"; then
+    PLAN_STATUS=$(extract_summary_status "$SUMMARY_FILE")
+    # Normalize to execution-state compatible values
+    case "$PLAN_STATUS" in
+      complete|completed) PLAN_STATUS="complete" ;;
+      partial) PLAN_STATUS="partial" ;;
+      failed) PLAN_STATUS="failed" ;;
+      *) PLAN_STATUS="pending" ;;
+    esac
   else
     PLAN_STATUS="pending"
   fi

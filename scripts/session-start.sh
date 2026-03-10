@@ -13,6 +13,16 @@ PLANNING_DIR=".vbw-planning"
 . "$(dirname "$0")/resolve-claude-dir.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Source shared summary-status helpers for status-aware SUMMARY detection
+if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "$SCRIPT_DIR/summary-utils.sh"
+else
+  # Safe default: report zero completions when helpers unavailable
+  count_complete_summaries() { echo "0"; }
+  count_done_summaries() { echo "0"; }
+fi
+
 # --- Capture session_id from hook stdin JSON ---
 # Claude Code passes a JSON object on stdin to SessionStart hooks containing
 # session_id. Since CLAUDE_SESSION_ID was removed from the env (upstream
@@ -115,11 +125,7 @@ EOF
       _plan_count=$((_plan_count + 1))
     done
 
-    _summary_count=0
-    for _summary_file in "$_pd"*-SUMMARY.md; do
-      [ -f "$_summary_file" ] || continue
-      _summary_count=$((_summary_count + 1))
-    done
+    _summary_count=$(count_complete_summaries "$_pd")
 
     if [ "${_summary_count:-0}" -lt "${_plan_count:-0}" ] 2>/dev/null; then
       if [ -z "$_first_incomplete" ] || [ "$_pd_num" -lt "$_first_incomplete" ] 2>/dev/null; then
@@ -180,9 +186,17 @@ if [ -f "$PLANNING_DIR/.compaction-marker" ]; then
   rm -f "$PLANNING_DIR/.compaction-marker" 2>/dev/null
 fi
 
+# Reset compaction loop counter at fresh session start
+rm -f "$PLANNING_DIR/.compaction-count" 2>/dev/null || true
+
+# Clear VBW context marker from previous session so statusline starts dim.
+# Placed after compaction guard: during compaction, post-compact.sh handles cleanup.
+# Only clear on genuine new session starts.
+rm -f "$PLANNING_DIR/.vbw-context" 2>/dev/null || true
+
 # Auto-migrate config if .vbw-planning exists.
 # Version marker retained here for backwards test compatibility.
-EXPECTED_FLAG_COUNT=34
+EXPECTED_FLAG_COUNT=39
 if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ]; then
   if ! bash "$SCRIPT_DIR/migrate-config.sh" "$PLANNING_DIR/config.json" >/dev/null 2>&1; then
     echo "WARNING: Config migration failed (jq error). Config may be missing flags (expected=$EXPECTED_FLAG_COUNT)." >&2
@@ -265,6 +279,58 @@ if [ -d "$PLANNING_DIR" ] && [ ! -f "$PLANNING_DIR/STATE.md" ]; then
   bash "$SCRIPT_DIR/migrate-orphaned-state.sh" "$PLANNING_DIR" 2>/dev/null || true
 fi
 
+# --- Strip stale ### Skills subsection from STATE.md (one-time) ---
+# Skills are now surfaced through the runtime activation pipeline.
+# The old ### Skills subsection under ## Decisions is no longer written
+# or read. Strip it from all STATE.md files so it doesn't linger.
+if [ -d "$PLANNING_DIR" ] && [ ! -f "$PLANNING_DIR/.skills-section-stripped" ]; then
+  _skills_state_files=""
+  [ -f "$PLANNING_DIR/STATE.md" ] && _skills_state_files="$PLANNING_DIR/STATE.md"
+  if [ -d "$PLANNING_DIR/milestones" ]; then
+    for _ms_dir in "$PLANNING_DIR"/milestones/*/; do
+      [ -f "${_ms_dir}STATE.md" ] && _skills_state_files="$_skills_state_files ${_ms_dir}STATE.md"
+    done
+  fi
+
+  _skills_strip_ok=true
+  for _sf in $_skills_state_files; do
+    if grep -q '^### Skills' "$_sf" 2>/dev/null; then
+      # Remove ### Skills and its content (up to next ### or ## heading)
+      if awk '
+        /^### Skills/ { skip=1; next }
+        skip && /^###?#? / { skip=0 }
+        skip==0 { print }
+      ' "$_sf" > "${_sf}.tmp" 2>/dev/null && mv "${_sf}.tmp" "$_sf" 2>/dev/null; then
+        : # success
+      else
+        rm -f "${_sf}.tmp" 2>/dev/null || true
+        _skills_strip_ok=false
+      fi
+    fi
+  done
+
+  if [ "$_skills_strip_ok" = true ]; then
+    echo "1" > "$PLANNING_DIR/.skills-section-stripped" 2>/dev/null || true
+  fi
+fi
+
+# --- Brownfield: detect SUMMARY.md files without valid completion status ---
+# Projects bootstrapped before status-aware detection may have SUMMARY files
+# that were created empty (touch) or with non-terminal statuses. Warn so users
+# know these plans won't be counted as complete under the new detection.
+_bf_bad_summary_count=0
+if [ -d "$PLANNING_DIR/phases" ]; then
+  for _bf_phase_dir in "$PLANNING_DIR"/phases/*/; do
+    [ -d "$_bf_phase_dir" ] || continue
+    for _bf_sf in "$_bf_phase_dir"*-SUMMARY.md; do
+      [ -f "$_bf_sf" ] || continue
+      if ! is_summary_complete "$_bf_sf"; then
+        _bf_bad_summary_count=$((_bf_bad_summary_count + 1))
+      fi
+    done
+  done
+fi
+
 # --- Session-level config cache (performance optimization, REQ-01 #9) ---
 # Write commonly-read config flags to a flat file for fast sourcing.
 # Invalidation: overwritten every session start. Scripts can opt-in:
@@ -290,6 +356,11 @@ fi
 # Compaction marker cleanup moved to the early-exit check above and to post-compact.sh
 
 UPDATE_MSG=""
+
+# Append brownfield SUMMARY warning if any non-complete files were found
+if [ "$_bf_bad_summary_count" -gt 0 ]; then
+  UPDATE_MSG="${UPDATE_MSG} BROWNFIELD: ${_bf_bad_summary_count} SUMMARY.md file(s) lack valid completion status (missing 'status: complete' in YAML frontmatter). These plans will not be counted as complete. Fix by adding frontmatter or re-execute with /vbw:vibe."
+fi
 
 # --- First-run welcome (DXP-03) ---
 VBW_MARKER="$CLAUDE_DIR/.vbw-welcomed"
@@ -576,15 +647,54 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
     PHASE_NUM=$(jq -r '.phase // ""' "$EXEC_STATE" 2>/dev/null)
     PHASE_DIR=""
     if [ -n "$PHASE_NUM" ]; then
-      PHASE_DIR=$(ls -d "$PLANNING_DIR/phases/${PHASE_NUM}-"* 2>/dev/null | head -1)
+      PHASE_DIR=$(find_phase_dir_by_num "$PLANNING_DIR" "$PHASE_NUM")
     fi
     if [ -n "$PHASE_DIR" ] && [ -d "$PHASE_DIR" ]; then
       PLAN_COUNT=$(jq -r '.plans | length' "$EXEC_STATE" 2>/dev/null)
       # zsh compat: use ls dir | grep to avoid bare glob expansion errors
       # shellcheck disable=SC2010
-      SUMMARY_COUNT=$(ls -1 "$PHASE_DIR" 2>/dev/null | grep '\-SUMMARY\.md$' | wc -l | tr -d ' ')
-      if [ "${SUMMARY_COUNT:-0}" -ge "${PLAN_COUNT:-1}" ] && [ "${PLAN_COUNT:-0}" -gt 0 ]; then
-        # All plans have SUMMARY.md — build finished after crash
+      SUMMARY_COUNT=0
+      STRICT_COMPLETE=0
+      for _ss_sf in "$PHASE_DIR"/*-SUMMARY.md; do
+        [ -f "$_ss_sf" ] || continue
+        _ss_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_ss_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+        case "$_ss_st" in
+          complete|completed) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)); STRICT_COMPLETE=$((STRICT_COMPLETE + 1)) ;;
+          partial) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)) ;;
+        esac
+      done
+
+      # Reconcile individual plan statuses against actual SUMMARY.md files.
+      # After a reset/undo, .execution-state.json may have stale "complete"
+      # entries for plans whose SUMMARY.md no longer exists on disk.
+      _json_done=$(jq -r '[.plans[]? | select(.status == "complete" or .status == "partial")] | length' "$EXEC_STATE" 2>/dev/null || echo 0)
+      if [ "${_json_done:-0}" -gt "${SUMMARY_COUNT:-0}" ] 2>/dev/null; then
+        # Build JSON array of plan IDs that actually have completed SUMMARY.md
+        _completed_json="[]"
+        for _sf in "$PHASE_DIR"/*-SUMMARY.md; do
+          [ -f "$_sf" ] || continue
+          _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+          case "$_sf_st" in
+            complete|completed|partial)
+              _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
+              _completed_json=$(echo "$_completed_json" | jq --arg id "$_sf_id" '. + [$id]')
+              ;;
+          esac
+        done
+        # Reset plans to "pending" if their SUMMARY.md is missing on disk
+        _reconcile_tmp="${EXEC_STATE}.reconcile.$$"
+        jq --argjson completed "$_completed_json" '
+          .plans |= map(
+            if (.status == "complete" or .status == "partial") and (.id as $pid | $completed | any(. == $pid) | not) then
+              .status = "pending"
+            else .
+            end
+          )
+        ' "$EXEC_STATE" > "$_reconcile_tmp" 2>/dev/null && mv "$_reconcile_tmp" "$EXEC_STATE" 2>/dev/null || rm -f "$_reconcile_tmp" 2>/dev/null
+      fi
+
+      if [ "${STRICT_COMPLETE:-0}" -ge "${PLAN_COUNT:-1}" ] && [ "${PLAN_COUNT:-0}" -gt 0 ]; then
+        # All plans are strictly complete — build finished after crash
         _exec_tmp="${EXEC_STATE}.tmp.$$"
         if jq '.status = "complete"' "$EXEC_STATE" > "$_exec_tmp" 2>/dev/null && mv "$_exec_tmp" "$EXEC_STATE" 2>/dev/null; then
           :
@@ -684,9 +794,10 @@ if [ -d "$PLANNING_DIR" ] && [ -f "$SCRIPT_DIR/clean-stale-teams.sh" ]; then
 fi
 
 # --- Stale .agent-last-words Cleanup ---
-# Remove crash recovery files older than 7 days to prevent accumulation
+# Remove crash recovery files older than 7 days to prevent accumulation.
+# BSD find -mtime +N (no units) requires age >= N+2 days, so +6 matches >= 8 days.
 if [ -d "$PLANNING_DIR/.agent-last-words" ]; then
-  find "$PLANNING_DIR/.agent-last-words" -name "*.txt" -type f -mtime +7 -delete 2>/dev/null || true
+  find "$PLANNING_DIR/.agent-last-words" -name "*.txt" -type f -mtime +6 -delete 2>/dev/null || true
 fi
 
 # --- tmux Detach Watchdog ---
@@ -776,8 +887,8 @@ if [ -f "$STATE_FILE" ]; then
   # Extract "Phase: N of M (name)" from "Phase: 1 of 3 (Context Diet)"
   phase_line=$(grep -m1 "^Phase:" "$STATE_FILE" 2>/dev/null || true)
   if [ -n "$phase_line" ]; then
-    phase_pos=$(echo "$phase_line" | sed 's/Phase: *\([0-9]*\).*/\1/')
-    phase_total=$(echo "$phase_line" | sed 's/.*of *\([0-9]*\).*/\1/')
+    phase_pos=$(echo "$phase_line" | sed -n 's/^Phase:[[:space:]]*\([0-9][0-9]*\).*/\1/p')
+    phase_total=$(echo "$phase_line" | sed -n 's/.*[[:space:]]of[[:space:]]*\([0-9][0-9]*\).*/\1/p')
     phase_name=$(echo "$phase_line" | sed -n 's/.*(\(.*\))/\1/p')
   fi
   # Extract status line
@@ -880,10 +991,19 @@ CTX="$CTX Progress: ${progress_pct}%."
 CTX="$CTX Config: effort=${config_effort}, autonomy=${config_autonomy}, auto_commit=${config_auto_commit}, planning_tracking=${config_planning_tracking}, auto_push=${config_auto_push}, verification=${config_verification}, prefer_teams=${config_prefer_teams}, max_tasks=${config_max_tasks}."
 CTX="$CTX Next: ${NEXT_ACTION}."
 
-jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" '{
+# --- GSD co-installation warning ---
+GSD_WARNING=""
+if [ -d "${CLAUDE_DIR}/commands/gsd" ] || [ -d ".planning" ]; then
+  GSD_WARNING=" WARNING: GSD plugin detected alongside VBW. Do NOT invoke any /gsd:* or Skill('gsd:*') commands during VBW workflows — they operate on .planning/ (wrong directory) and will corrupt your session state. Only use /vbw:* commands."
+fi
+
+# Brownfield cleanup: remove stale .skill-names from older versions
+rm -f "$PLANNING_DIR/.skill-names" 2>/dev/null || true
+
+jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" --arg gsd "${GSD_WARNING:-}" '{
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": ($welcome + $ctx + $update + $flags)
+    "additionalContext": ($welcome + $ctx + $update + $flags + $gsd)
   }
 }'
 

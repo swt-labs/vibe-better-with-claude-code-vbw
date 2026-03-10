@@ -66,10 +66,10 @@ EOF
   [ "$status" -eq 0 ]
   [ "$output" = "3" ]
 
-  # Verify all defaults.json keys are present (34 defaults keys)
+  # Verify all defaults.json keys are present (39 defaults keys)
   run jq 'keys | length' "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
-  [ "$output" = "34" ]
+  [ "$output" = "39" ]
 
   # Verify existing values were preserved
   run jq -r '.context_compiler' "$TEST_TEMP_DIR/.vbw-planning/config.json"
@@ -119,10 +119,10 @@ EOF
   # Both runs should produce identical result
   [ "$AFTER_FIRST" = "$AFTER_SECOND" ]
 
-  # Verify flag count is correct (34 total, graduated flags removed)
+  # Verify flag count is correct (39 total, graduated flags removed)
   run jq 'keys | length' "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
-  [ "$output" = "34" ]
+  [ "$output" = "39" ]
 }
 
 @test "migration detects malformed JSON" {
@@ -189,6 +189,21 @@ EOF
   run jq -r '.auto_push' "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
   [ "$output" = "never" ]
+}
+
+@test "migration strips subagent_skill_xml_mode (graduated)" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "effort": "balanced",
+  "subagent_skill_xml_mode": "names_only"
+}
+EOF
+
+  run_migration
+
+  run jq -r 'has("subagent_skill_xml_mode")' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
 }
 
 @test "migration preserves existing planning_tracking and auto_push values" {
@@ -357,10 +372,10 @@ EOF
   [ "$output" = "$EXPECTED_ADDED" ]
 }
 
-@test "EXPECTED_FLAG_COUNT is 34 after partial flag restoration" {
-  # Verify session-start.sh has EXPECTED_FLAG_COUNT=34
+@test "EXPECTED_FLAG_COUNT is 39 after statusline config additions" {
+  # Verify session-start.sh has EXPECTED_FLAG_COUNT=39
   SCRIPT_COUNT=$(grep 'EXPECTED_FLAG_COUNT=' "$SCRIPTS_DIR/session-start.sh" | grep -oE '[0-9]+' | head -1)
-  [ "$SCRIPT_COUNT" = "34" ]
+  [ "$SCRIPT_COUNT" = "39" ]
 }
 
 @test "migration strips all graduated V2/V3 flags from brownfield config" {

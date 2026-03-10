@@ -1,9 +1,10 @@
 ---
 name: vbw:fix
 category: supporting
+disable-model-invocation: true
 description: Apply a quick fix or small change with commit discipline. Turbo mode -- no planning ceremony.
 argument-hint: "<description of what to fix or change>"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, LSP
 ---
 
 # VBW Fix: $ARGUMENTS
@@ -28,14 +29,20 @@ Config: Pre-injected by SessionStart hook.
 
 2. **State:** Use `.vbw-planning/STATE.md`.
 
-3. **Spawn Dev:** Resolve model first:
+3. **Set delegation marker:** Before spawning Dev, activate the delegation guard so the orchestrator cannot accidentally write product files directly:
+    ```bash
+    bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/delegated-workflow.sh set fix turbo
+    ```
+
+4. **Spawn Dev:** Resolve model first:
     ```bash
     DEV_MODEL=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh dev .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
     DEV_MAX_TURNS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh dev .vbw-planning/config.json turbo)
     ```
 
-    Spawn vbw-dev as subagent via Task tool with `model: "${DEV_MODEL}"` and
-    `maxTurns: ${DEV_MAX_TURNS}`:
+    Spawn vbw-dev as subagent via Task tool with `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"`.
+    If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`.
+    If `DEV_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited):
 
     ```text
     Quick fix (Turbo mode). Effort: low.
@@ -47,7 +54,11 @@ Config: Pre-injected by SessionStart hook.
     If ambiguous or requires architectural decisions, STOP and report back.
     ```
 
-4. **Verify + present:** Check `git log --oneline -1`. Check Dev response for pre-existing issues.
+5. **Clear delegation marker + Verify + present:** Clear the marker first, then check results:
+    ```bash
+    bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/delegated-workflow.sh clear
+    ```
+    Check `git log --oneline -1`. Check Dev response for pre-existing issues.
     Committed, no discovered issues:
 
     ```text

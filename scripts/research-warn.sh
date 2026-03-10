@@ -29,7 +29,7 @@ if [ -z "$PHASE_DIR" ] || [ ! -d "$PHASE_DIR" ]; then
   exit 0
 fi
 
-# Look for RESEARCH.md in phase dir
+# Look for RESEARCH.md in phase dir (per-plan {NN}-{MM}-RESEARCH.md or legacy {NN}-RESEARCH.md)
 RESEARCH_FILE=$(find "$PHASE_DIR" -maxdepth 1 -name "*-RESEARCH.md" -print -quit 2>/dev/null || true)
 
 if [ -n "$RESEARCH_FILE" ] && [ -f "$RESEARCH_FILE" ]; then

@@ -129,6 +129,7 @@ Less good candidates:
    - Shell scripts: bash, no external dependencies beyond `jq` and `git`
    - Markdown commands: YAML frontmatter with single-line `description` field
    - No prettier on `.md` files with frontmatter (use `.prettierignore`)
+6. **LSP-first policy for agents:** Any agent with LSP in its `tools` list must include the repo-standard LSP-first guidance: prefer LSP for semantic code navigation, use Search/Grep/Glob only for literal strings, filenames, non-code assets, or LSP failure cases. See `references/lsp-first-policy.md` for the canonical wording and scope boundaries. The verification script `testing/verify-lsp-first-policy.sh` enforces this.
 
 ## Pull Request Process
 

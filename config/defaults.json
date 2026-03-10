@@ -11,7 +11,7 @@
   "context_compiler": true,
   "visual_format": "unicode",
   "max_tasks_per_plan": 5,
-  "prefer_teams": "auto",
+  "prefer_teams": "always",
   "branch_per_milestone": false,
   "plain_summary": true,
   "active_profile": "default",
@@ -39,5 +39,10 @@
   "monorepo_routing": true,
   "rolling_summary": false,
   "require_phase_discussion": false,
-  "auto_uat": false
+  "auto_uat": false,
+  "statusline_hide_limits": false,
+  "statusline_hide_limits_for_api_key": false,
+  "statusline_hide_agent_in_tmux": false,
+  "statusline_collapse_agent_in_tmux": false,
+  "debug_logging": false
 }

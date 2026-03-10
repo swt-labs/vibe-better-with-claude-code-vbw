@@ -55,7 +55,7 @@ load test_helper
 
 @test "fix command prompt mentions pre-existing failures in spawn block" {
   # The spawn prompt template must tell Dev about pre-existing reporting
-  sed -n '/^3\./,/^4\./p' "$PROJECT_ROOT/commands/fix.md" | grep -q 'pre-existing'
+  sed -n '/^4\./,/^5\./p' "$PROJECT_ROOT/commands/fix.md" | grep -q 'pre-existing'
 }
 
 @test "fix command has discovered issues output section" {
