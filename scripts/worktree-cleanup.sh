@@ -19,6 +19,12 @@ AGENT_WORKTREES_DIR=".vbw-planning/.agent-worktrees"
 # Remove the git worktree (idempotent — silently ignores if not found)
 git worktree remove "$WORKTREE_DIR" --force 2>/dev/null || true
 
+# Remove residual filesystem artifacts (e.g. .vbw-planning/, .DS_Store)
+rm -rf "$WORKTREE_DIR" 2>/dev/null || true
+
+# Remove parent .vbw-worktrees/ if now empty
+rmdir .vbw-worktrees 2>/dev/null || true
+
 # Delete the branch with -d (not -D) to avoid silently deleting unmerged branches
 git branch -d "$BRANCH" 2>/dev/null || true
 

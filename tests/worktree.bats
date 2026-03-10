@@ -97,6 +97,33 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
+@test "worktree-cleanup: removes residual worktree directory" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-worktrees/01-01/.vbw-planning
+  run bash "$SCRIPTS_DIR/worktree-cleanup.sh" 01 01
+  [ "$status" -eq 0 ]
+  [ ! -d ".vbw-worktrees/01-01" ]
+}
+
+@test "worktree-cleanup: removes empty parent .vbw-worktrees directory" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-worktrees/01-01/.vbw-planning
+  run bash "$SCRIPTS_DIR/worktree-cleanup.sh" 01 01
+  [ "$status" -eq 0 ]
+  [ ! -d ".vbw-worktrees" ]
+}
+
+@test "worktree-cleanup: keeps .vbw-worktrees when other worktrees exist" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-worktrees/01-01/.vbw-planning
+  mkdir -p .vbw-worktrees/02-01
+  run bash "$SCRIPTS_DIR/worktree-cleanup.sh" 01 01
+  [ "$status" -eq 0 ]
+  [ ! -d ".vbw-worktrees/01-01" ]
+  [ -d ".vbw-worktrees/02-01" ]
+  [ -d ".vbw-worktrees" ]
+}
+
 @test "worktree-cleanup: clears agent-worktree JSON matching phase-plan" {
   cd "$TEST_TEMP_DIR"
   mkdir -p .vbw-planning/.agent-worktrees
