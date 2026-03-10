@@ -12,7 +12,8 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
 ## Context
 
 - Working directory: current workspace root.
-- Plugin helper symlink: created by session startup at `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`. If the symlink does not exist, check for any `/tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh` as fallback, or the marketplace cache at `~/.claude/plugins/cache/vbw-marketplace/vbw/`.
+- Plugin cache root: `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw` (respects non-default `CLAUDE_CONFIG_DIR` if set).
+- Plugin helper symlink: created by session startup at `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`. If the symlink does not exist, try the fallback tiers described in Step 1.
 
 ## Guard
 
@@ -21,7 +22,13 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
 
 ## Steps
 
-1. **Resolve plugin root:** Determine the plugin root path. Try in order: (a) the session symlink `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`, (b) any existing `/tmp/.vbw-plugin-root-link-*` symlink, (c) the newest versioned directory under `~/.claude/plugins/cache/vbw-marketplace/vbw/` that contains `scripts/hook-wrapper.sh`. If none resolves to a valid directory, STOP: "Plugin root not found. The session startup hook may not have run. Try restarting your Claude session." Store the resolved path as `PLUGIN_ROOT` for subsequent steps.
+1. **Resolve plugin root:** Determine the plugin root path. Try in order:
+   (a) The session symlink `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`.
+   (b) Any existing `/tmp/.vbw-plugin-root-link-*` symlink whose target contains `scripts/hook-wrapper.sh`.
+   (c) The `local/` subdirectory under the plugin cache root (i.e. `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw/local/`), if it exists and contains `scripts/hook-wrapper.sh`.
+   (d) The numerically highest versioned directory under the plugin cache root — list subdirectories matching a dotted-version pattern (e.g. `1.30.0`), sort by each numeric component (major, minor, patch), pick the highest, and accept it only if it contains `scripts/hook-wrapper.sh`.
+   (e) Extract `--plugin-dir <path>` from the process tree (`ps axww`) and use that path if it contains `scripts/hook-wrapper.sh`.
+   If none resolves to a valid directory, STOP: "Plugin root not found. The session startup hook may not have run. Try restarting your Claude session." Store the resolved path as `PLUGIN_ROOT` for subsequent steps.
 
 2. **Load todos:** Run `bash ${PLUGIN_ROOT}/scripts/list-todos.sh {priority-filter}` (omit filter arg if none provided). Parse the JSON output.
 

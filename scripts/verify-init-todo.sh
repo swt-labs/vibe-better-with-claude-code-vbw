@@ -39,8 +39,15 @@ check "TODO-03" "todo command avoids preflight plugin-root resolver shell block"
 check "TODO-04" "todo command explains write-access requirement in restricted modes" grep -qi 'write access.*restricted\|restricted.*write access' "$TODO_CMD"
 check "LIST-01" "list-todos command avoids preflight plugin-root resolver shell block" test ! "$(grep -c 'VBW_CACHE_ROOT=' "$LIST_CMD")" -gt 0
 check "LIST-02" "list-todos command explains restricted-mode requirement" grep -qi 'restricted mode\|restricted.*permission' "$LIST_CMD"
-check "TODO-05" "todo command STOPs with restart guidance when STATE.md missing" grep -q 'STATE.md not found.*restarting your Claude session\|restarting your Claude session.*STATE.md' "$TODO_CMD"
-check "LIST-03" "list-todos command STOPs with restart guidance when plugin root fails" grep -q 'Plugin root not found.*restarting your Claude session\|restarting your Claude session.*Plugin root' "$LIST_CMD"
+# TODO-05: Extract the Step block that handles missing STATE.md, then assert both
+# the condition (STATE.md not found) and guidance (restart) appear within it.
+# Uses sed -En (ERE) for macOS compatibility (no BRE \+ or \|).
+check "TODO-05" "todo command STOPs with restart guidance when STATE.md missing" \
+  bash -c 'block=$(sed -En "/^[0-9]+\. .*(Resolve|Find)/,/^[0-9]+\. /p" "$1"); echo "$block" | grep -qi "STATE.md" && echo "$block" | grep -qi "restart"' _ "$TODO_CMD"
+# LIST-03: Extract Step 1 block (Resolve plugin root), then assert both
+# the failure condition and restart guidance appear within it.
+check "LIST-03" "list-todos command STOPs with restart guidance when plugin root fails" \
+  bash -c 'block=$(sed -En "/^[0-9]+\. .*Resolve plugin root/,/^[0-9]+\. /p" "$1"); echo "$block" | grep -qi "not found" && echo "$block" | grep -qi "restart"' _ "$LIST_CMD"
 
 echo ""
 echo "=== Bootstrap Output Contracts ==="
