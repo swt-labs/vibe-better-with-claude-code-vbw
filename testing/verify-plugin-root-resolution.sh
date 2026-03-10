@@ -365,6 +365,48 @@ fi
 
 echo "All runtime resolver safety checks passed."
 
+# --- Phase 3b: Drift detection — ensure TARGET_COMMANDS covers all preamble commands ---
+echo ""
+echo "=== Preamble Coverage Drift Detection ==="
+
+# Known non-preamble commands (no shell preamble by design)
+NON_PREAMBLE_COMMANDS="todo.md list-todos.md diag-session-key.md doctor.md pause.md profile.md teach.md uninstall.md"
+
+DRIFT_FAIL=0
+for file in "$COMMANDS_DIR"/*.md; do
+  base="$(basename "$file")"
+  # Skip known non-preamble commands
+  case " $NON_PREAMBLE_COMMANDS " in
+    *" $base "*) continue ;;
+  esac
+  # If this command has a preamble (pwd -P pattern), it should be in TARGET_COMMANDS
+  if grep -q 'cd "$R" 2>/dev/null && pwd -P' "$file"; then
+    found=0
+    for rel in "${TARGET_COMMANDS[@]}"; do
+      if [ "$rel" = "$base" ]; then found=1; break; fi
+    done
+    if [ "$found" -eq 0 ]; then
+      fail "$base: has preamble but is NOT in TARGET_COMMANDS — add it or add to NON_PREAMBLE_COMMANDS"
+      DRIFT_FAIL=1
+    fi
+  fi
+done
+
+if [ "$DRIFT_FAIL" -eq 0 ]; then
+  pass "all preamble commands are covered in TARGET_COMMANDS (no drift)"
+fi
+
+echo ""
+echo "==============================="
+echo "TOTAL: $PASS PASS, $FAIL FAIL"
+echo "==============================="
+
+if [ "$FAIL" -gt 0 ]; then
+  exit 1
+fi
+
+echo "All drift detection checks passed."
+
 # --- Phase 4: Behavioral verification of resolution mechanisms ---
 echo ""
 echo "=== Behavioral Resolution Verification ==="

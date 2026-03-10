@@ -12,7 +12,7 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
 ## Context
 
 - Working directory: current workspace root.
-- Plugin helper symlink: created by session startup at `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`. If the symlink does not exist, check for any `/tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh` as fallback (CLAUDE_PLUGIN_ROOT env var also points to the plugin root if set).
+- Plugin helper symlink: created by session startup at `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`. If the symlink does not exist, check for any `/tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh` as fallback.
 
 ## Guard
 
@@ -21,7 +21,7 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
 
 ## Steps
 
-1. **Resolve plugin root:** Determine the plugin root path. Try in order: (a) the session symlink `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`, (b) any existing `/tmp/.vbw-plugin-root-link-*` symlink, (c) if set, (CLAUDE_PLUGIN_ROOT env var). Store the resolved path as `PLUGIN_ROOT` for subsequent steps.
+1. **Resolve plugin root:** Determine the plugin root path. Try in order: (a) the session symlink `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`, (b) any existing `/tmp/.vbw-plugin-root-link-*` symlink. If neither resolves to a valid directory, STOP: "Plugin root not found. The session startup hook may not have run. Try restarting your Claude session." Store the resolved path as `PLUGIN_ROOT` for subsequent steps.
 
 2. **Load todos:** Run `bash ${PLUGIN_ROOT}/scripts/list-todos.sh {priority-filter}` (omit filter arg if none provided). Parse the JSON output.
 

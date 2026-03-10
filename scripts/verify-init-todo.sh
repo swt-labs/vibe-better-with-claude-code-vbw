@@ -39,6 +39,8 @@ check "TODO-03" "todo command avoids preflight plugin-root resolver shell block"
 check "TODO-04" "todo command explains write-access requirement in restricted modes" grep -qi 'write access.*restricted\|restricted.*write access' "$TODO_CMD"
 check "LIST-01" "list-todos command avoids preflight plugin-root resolver shell block" test ! "$(grep -c 'VBW_CACHE_ROOT=' "$LIST_CMD")" -gt 0
 check "LIST-02" "list-todos command explains restricted-mode requirement" grep -qi 'restricted mode\|restricted.*permission' "$LIST_CMD"
+check "TODO-05" "todo command has simplified STOP for missing STATE.md" grep -q 'try restarting your Claude session' "$TODO_CMD"
+check "LIST-03" "list-todos command has STOP for plugin root resolution failure" grep -q 'Plugin root not found' "$LIST_CMD"
 
 echo ""
 echo "=== Bootstrap Output Contracts ==="
