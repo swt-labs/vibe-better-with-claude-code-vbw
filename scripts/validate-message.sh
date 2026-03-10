@@ -7,7 +7,7 @@ set -u
 # Checks: (1) envelope completeness, (2) known type, (3) payload required fields,
 #          (4) role authorization, (5) file references against contract.
 # Output: JSON {valid: bool, errors: [...]}
-# Exit: 0 when valid (or flag off), 2 when invalid and v2_typed_protocol=true.
+# Exit: 0 when valid, 2 when invalid.
 
 PLANNING_DIR=".vbw-planning"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,6 +40,37 @@ ERRORS="[]"
 add_error() {
   ERRORS=$(echo "$ERRORS" | jq --arg e "$1" '. + [$e]' 2>/dev/null || echo "[$1]")
 }
+
+# 0. Normalize flat shutdown messages into V2 envelope shape.
+# Claude Code teammate inboxes may deliver shutdown_request as a flat JSON
+# object (no envelope nesting): {"type": "shutdown_request", "id": "...", ...}
+# or with "requestId" instead of "id". Normalize these into the V2 internal
+# shape so downstream validation doesn't reject them for missing envelope fields.
+MSG_TYPE_PRENORM=$(echo "$MSG" | jq -r '.type // ""' 2>/dev/null) || MSG_TYPE_PRENORM=""
+if [ "$MSG_TYPE_PRENORM" = "shutdown_request" ] || [ "$MSG_TYPE_PRENORM" = "shutdown_response" ]; then
+  HAS_PAYLOAD=$(echo "$MSG" | jq 'has("payload")' 2>/dev/null || echo "false")
+  if [ "$HAS_PAYLOAD" != "true" ]; then
+    # Flat message — normalize into V2 envelope.
+    # Extract identifier: prefer "requestId" (observed CC mailbox field), fall back to "id".
+    FLAT_ID=$(echo "$MSG" | jq -r '.requestId // .id // ""' 2>/dev/null) || FLAT_ID=""
+    FLAT_AUTHOR=$(echo "$MSG" | jq -r '.from // .author_role // "unknown"' 2>/dev/null) || FLAT_AUTHOR=""
+    MSG=$(echo "$MSG" | jq --arg fid "$FLAT_ID" --arg fauthor "$FLAT_AUTHOR" '
+      {
+        id: ($fid | if . == "" then "normalized-\(now | floor | tostring)" else . end),
+        type: .type,
+        phase: (.phase // 0),
+        task: (.task // "0-0"),
+        author_role: $fauthor,
+        target_role: (.target_role // null),
+        timestamp: (.timestamp // (now | tostring)),
+        schema_version: (.schema_version // "2.0"),
+        payload: (del(.type, .id, .requestId, .from, .phase, .task,
+                      .author_role, .target_role, .timestamp, .schema_version, .confidence)),
+        confidence: (.confidence // 1.0)
+      }
+    ' 2>/dev/null) || true
+  fi
+fi
 
 # 1. Envelope completeness
 ENVELOPE_FIELDS=$(jq -r '.envelope_fields[]' "$SCHEMAS_PATH" 2>/dev/null) || ENVELOPE_FIELDS=""

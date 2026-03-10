@@ -10,7 +10,7 @@ setup() {
   # Copy schemas
   mkdir -p "$TEST_TEMP_DIR/config/schemas"
   cp "$CONFIG_DIR/schemas/message-schemas.json" "$TEST_TEMP_DIR/config/schemas/"
-  # Enable V2 typed protocol
+  # V2 typed protocol graduated — flag set for backward compat with older test configs
   jq '.v2_typed_protocol = true | .v3_event_log = true' \
     "$TEST_TEMP_DIR/.vbw-planning/config.json" > "$TEST_TEMP_DIR/.vbw-planning/config.json.tmp" \
     && mv "$TEST_TEMP_DIR/.vbw-planning/config.json.tmp" "$TEST_TEMP_DIR/.vbw-planning/config.json"

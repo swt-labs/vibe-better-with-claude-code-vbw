@@ -33,7 +33,7 @@ V2 inter-agent messages use strict JSON schemas. Every message includes a mandat
 | shutdown_request | lead (orchestrator) | dev, qa, scout, lead, debugger, docs |
 | shutdown_response | dev, qa, scout, lead, debugger, docs | lead (orchestrator) |
 
-Unauthorized sender -> message rejected (v2_typed_protocol=true) or logged (false).
+Unauthorized sender -> message rejected.
 
 ## `scout_findings` (Scout -> Lead/Architect)
 
@@ -323,17 +323,21 @@ Acknowledgment from a teammate that it will terminate.
 }
 ```
 
-On receiving `shutdown_request`: respond with `shutdown_response` (approved=true), finish any in-progress tool call, then STOP all further work. Do NOT start new tasks, fix additional issues, or take any action after responding. The orchestrator will call TeamDelete after collecting all responses.
+### Delivery format
+
+Claude Code delivers `shutdown_request` as JSON text in the SendMessage inbox. The delivered message may not include the full V2 envelope — it may arrive as a simpler JSON object with just `type`, `id`, `from` (corresponds to `author_role` in the V2 envelope), `reason`, and `timestamp`. Agents MUST recognize `"type":"shutdown_request"` in the received message text regardless of envelope structure, and respond by **calling the SendMessage tool** with a `shutdown_response` (not plain text).
+
+On receiving `shutdown_request`: finish any in-progress tool call, **call the SendMessage tool** with `shutdown_response` (`request_id` echoed from the request, `approved: true`, `final_status`), then STOP all further work. Do NOT start new tasks, fix additional issues, or take any action after responding. The orchestrator will call TeamDelete after collecting all responses. **Plain text acknowledgement does NOT satisfy the shutdown protocol — you MUST call the SendMessage tool.**
 
 > **Conditional refusal:** The schema allows `approved: false` with `pending_work` describing what remains. Currently all agents are instructed to always approve. The orchestrator retries up to 3 times on rejection before proceeding. If a future agent needs to delay shutdown (e.g., mid-write to disk), update its Shutdown Handling section to allow conditional refusal with `approved: false`.
 
 ## Backward Compatibility
 
-Old-format messages (without full envelope) are accepted when `v2_typed_protocol=false`. The validate-message.sh script parses the `type` field to determine schema and validates accordingly.
+The `v2_typed_protocol` flag is a graduated feature flag — it has been always-on since v1.20 and is stripped from configs by `migrate-config.sh`. `validate-message.sh` always validates messages against the V2 schema; there is no fail-open bypass.
 
-**Note:** `shutdown_request` and `shutdown_response` were introduced in v2.0. When `v2_typed_protocol=false`, validate-message.sh short-circuits to valid (no schema check), so shutdown messages pass through without rejection. Agents running in V1 mode will not recognize these types and should treat unrecognized messages as plain markdown.
+Flat shutdown messages (without the full V2 envelope) are handled via **normalization**: `validate-message.sh` detects flat `shutdown_request`/`shutdown_response` messages (no `payload` key) and wraps them into V2 envelope shape before validation. This means simplified inbox delivery works — agents do not need to construct a full envelope.
 
 When receiving messages, agents should:
 1. Try to parse as V2 typed message (full envelope)
-2. Fall back to V1 format (simple type + payload)
+2. Fall back to flat JSON with `type` field (normalized automatically by the validator)
 3. Fall back to plain markdown on parse failure

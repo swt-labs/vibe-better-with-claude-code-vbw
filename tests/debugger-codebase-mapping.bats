@@ -687,12 +687,14 @@ STATE
 @test "compaction-instructions.sh default case does NOT include codebase mapping" {
   # The wildcard *) case should not mention codebase — only named roles get it
   # Feed an unknown agent name and verify no codebase reference in output
+  cd "$TEST_TEMP_DIR"
   echo '{"agent_name":"unknown-agent","matcher":"auto"}' | \
     bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
   ! grep -q 'codebase' "$TEST_TEMP_DIR/compaction-output.json"
 }
 
 @test "compaction-instructions.sh docs agent does NOT include codebase mapping" {
+  cd "$TEST_TEMP_DIR"
   echo '{"agent_name":"vbw-docs","matcher":"auto"}' | \
     bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
   ! grep -q 'codebase' "$TEST_TEMP_DIR/compaction-output.json"
@@ -703,18 +705,21 @@ STATE
 # =============================================================================
 
 @test "compaction-instructions.sh dev output uses full .vbw-planning/codebase/META.md path" {
+  cd "$TEST_TEMP_DIR"
   echo '{"agent_name":"vbw-dev","matcher":"auto"}' | \
     bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
   grep -q '.vbw-planning/codebase/META.md' "$TEST_TEMP_DIR/compaction-output.json"
 }
 
 @test "compaction-instructions.sh dev output includes whichever exist qualifier" {
+  cd "$TEST_TEMP_DIR"
   echo '{"agent_name":"vbw-dev","matcher":"auto"}' | \
     bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
   grep -q 'whichever exist' "$TEST_TEMP_DIR/compaction-output.json"
 }
 
 @test "compaction-instructions.sh qa output uses full META.md path and whichever exist" {
+  cd "$TEST_TEMP_DIR"
   echo '{"agent_name":"vbw-qa","matcher":"auto"}' | \
     bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
   grep -q '.vbw-planning/codebase/META.md' "$TEST_TEMP_DIR/compaction-output.json"
@@ -722,6 +727,7 @@ STATE
 }
 
 @test "compaction-instructions.sh debugger output uses full META.md path and whichever exist" {
+  cd "$TEST_TEMP_DIR"
   echo '{"agent_name":"vbw-debugger","matcher":"auto"}' | \
     bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
   grep -q '.vbw-planning/codebase/META.md' "$TEST_TEMP_DIR/compaction-output.json"
@@ -729,6 +735,7 @@ STATE
 }
 
 @test "compaction-instructions.sh lead output uses full META.md path and whichever exist" {
+  cd "$TEST_TEMP_DIR"
   echo '{"agent_name":"vbw-lead","matcher":"auto"}' | \
     bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
   grep -q '.vbw-planning/codebase/META.md' "$TEST_TEMP_DIR/compaction-output.json"
@@ -736,6 +743,7 @@ STATE
 }
 
 @test "compaction-instructions.sh architect output uses full META.md path and whichever exist" {
+  cd "$TEST_TEMP_DIR"
   echo '{"agent_name":"vbw-architect","matcher":"auto"}' | \
     bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
   grep -q '.vbw-planning/codebase/META.md' "$TEST_TEMP_DIR/compaction-output.json"

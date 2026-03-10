@@ -62,7 +62,7 @@ else
   echo "config_planning_tracking=manual"
   echo "config_auto_push=never"
   echo "config_verification_tier=standard"
-  echo "config_prefer_teams=always"
+  echo "config_prefer_teams=auto"
   echo "config_max_tasks_per_plan=5"
   echo "config_context_compiler=true"
   echo "config_require_phase_discussion=false"
@@ -581,7 +581,7 @@ CFG_AUTO_COMMIT="true"
 CFG_PLANNING_TRACKING="manual"
 CFG_AUTO_PUSH="never"
 CFG_VERIFICATION_TIER="standard"
-CFG_PREFER_TEAMS="always"
+CFG_PREFER_TEAMS="auto"
 CFG_MAX_TASKS="5"
 CFG_COMPACTION="130000"
 CFG_CONTEXT_COMPILER="true"
@@ -596,7 +596,7 @@ if [ "$JQ_AVAILABLE" = true ] && [ -f "$CONFIG_FILE" ]; then
     "CFG_PLANNING_TRACKING=\(.planning_tracking // "manual")",
     "CFG_AUTO_PUSH=\(.auto_push // "never")",
     "CFG_VERIFICATION_TIER=\(.verification_tier // "standard")",
-    "CFG_PREFER_TEAMS=\(.prefer_teams // "always")",
+    "CFG_PREFER_TEAMS=\(.prefer_teams // "auto")",
     "CFG_MAX_TASKS=\(.max_tasks_per_plan // 5)",
     "CFG_CONTEXT_COMPILER=\(if .context_compiler == null then true else .context_compiler end)",
     "CFG_COMPACTION=\(.compaction_threshold // 130000)",

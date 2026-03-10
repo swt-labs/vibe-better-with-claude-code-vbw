@@ -11,7 +11,7 @@ teardown() {
   teardown_temp_dir
 }
 
-@test "event-types: accepts V1 event type when v2_typed_protocol enabled" {
+@test "event-types: accepts V1 event type (graduated protocol)" {
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/log-event.sh" phase_start 1
   [ "$status" -eq 0 ]
@@ -20,7 +20,7 @@ teardown() {
   [ "$output" = "1" ]
 }
 
-@test "event-types: accepts V2 event type when v2_typed_protocol enabled" {
+@test "event-types: accepts V2 event type (graduated protocol)" {
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/log-event.sh" task_claimed 1
   [ "$status" -eq 0 ]

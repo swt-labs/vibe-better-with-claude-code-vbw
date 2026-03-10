@@ -17,8 +17,8 @@ set -u
 #   next_action=<action>  -- e.g., "escalate_lead", "retry", "reassign", "manual_fix"
 #   reason=<description>  -- Human-readable blocker description
 #
-# When v2_typed_protocol=true, unknown event types are rejected
-# (warning to stderr, event not written). When false, all types accepted.
+# Unknown event types are always rejected (warning to stderr, event not
+# written). v2_typed_protocol was graduated in v2.4 and has no runtime effect.
 
 if [ $# -lt 2 ]; then
   exit 0

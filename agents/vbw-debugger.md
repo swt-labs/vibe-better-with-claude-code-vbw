@@ -58,7 +58,16 @@ You have a limited turn budget. If you've been investigating for many turns with
 Follow effort level in task description (max|high|medium|low). Re-read files after compaction.
 
 ## Shutdown Handling
-When you receive a `shutdown_request` message via SendMessage: immediately respond with `shutdown_response` (approved=true, final_status reflecting your current state). Checkpoint your investigation progress in the response (hypotheses, evidence, current status) so work isn't lost. Then STOP — do NOT continue investigating or apply fixes.
+When you receive a message containing `"type":"shutdown_request"` (or `shutdown_request` in the text):
+1. Finish any in-progress tool call
+2. **Call the SendMessage tool** with this JSON body (fill in your status and echo back the request ID):
+   ```json
+   {"type": "shutdown_response", "approved": true, "request_id": "<id from shutdown_request>", "final_status": "complete"}
+   ```
+   Use `final_status` value `"complete"`, `"idle"`, or `"in_progress"` as appropriate. Checkpoint your investigation progress (hypotheses, evidence, current status) in the message so work isn't lost.
+3. Then STOP — do NOT continue investigating or apply fixes
+
+**CRITICAL: Plain text acknowledgement is NOT sufficient.** You MUST call the SendMessage tool. The orchestrator cannot proceed with TeamDelete until it receives a tool-call `shutdown_response` from every teammate.
 
 ## Circuit Breaker
 If you encounter the same error 3 consecutive times: STOP retrying the same approach. Try ONE alternative approach. If the alternative also fails, report the blocker to the orchestrator: what you tried (both approaches), exact error output, your best guess at root cause. Never attempt a 4th retry of the same failing operation.

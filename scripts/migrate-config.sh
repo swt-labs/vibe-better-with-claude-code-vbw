@@ -100,11 +100,15 @@ if ! jq -e 'has("model_overrides")' "$CONFIG_FILE" >/dev/null 2>&1; then
 fi
 
 if ! jq -e 'has("prefer_teams")' "$CONFIG_FILE" >/dev/null 2>&1; then
-  if ! apply_update '. + {prefer_teams: "always"}'; then
+  if ! apply_update '. + {prefer_teams: "auto"}'; then
     echo "ERROR: Config migration failed while adding prefer_teams." >&2
     exit 1
   fi
 fi
+
+# Note: prefer_teams "always" is a valid user-explicit setting (set via
+# /vbw:config). Do NOT migrate it to "auto" — there is no way to distinguish
+# a user's intentional choice from an old VBW default (#198 QA round 4).
 
 # Strip graduated feature flags — core infrastructure flags are always-on.
 # These keys have no runtime effect but accumulate in brownfield configs.

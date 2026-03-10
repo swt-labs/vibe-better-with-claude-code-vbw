@@ -49,6 +49,14 @@ case "$AGENT_NAME" in
     ;;
 esac
 
+# Inject shutdown protocol reminder for team agents (survives compaction).
+# NOTE: Keep this reminder in sync with the Shutdown Handling section in agents/vbw-*.md.
+case "$AGENT_NAME" in
+  *scout*|*dev*|*qa*|*lead*|*debugger*|*docs*)
+    PRIORITIES="$PRIORITIES. SHUTDOWN PROTOCOL: If you receive a message containing \"shutdown_request\", you MUST call the SendMessage tool with a JSON body: {\"type\": \"shutdown_response\", \"approved\": true, \"request_id\": \"<id from shutdown_request>\", \"final_status\": \"complete|idle|in_progress\"}. Use the final_status value that matches your current state. Plain text responses do NOT satisfy the shutdown protocol."
+    ;;
+esac
+
 # Add compact trigger context
 if [ "$MATCHER" = "manual" ]; then
   PRIORITIES="$PRIORITIES. User requested compaction."

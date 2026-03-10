@@ -139,7 +139,7 @@ Read each template from ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:
 | .vbw-planning/STATE.md | `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/templates/STATE.md |
 | .vbw-planning/config.json | `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/defaults.json |
 
-Create `.vbw-planning/phases/`. Ensure config.json includes `"prefer_teams": "always"` and `"model_profile": "quality"`.
+Create `.vbw-planning/phases/`. Ensure config.json includes `"prefer_teams": "auto"` and `"model_profile": "quality"`.
 
 AskUserQuestion (single select):
 - "How should VBW planning artifacts be tracked in git?"

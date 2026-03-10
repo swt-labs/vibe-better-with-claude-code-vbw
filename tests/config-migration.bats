@@ -167,10 +167,10 @@ EOF
 
   run_migration
 
-  # Verify prefer_teams was added with "always" default
+  # Verify prefer_teams was added with "auto" default
   run jq -r '.prefer_teams' "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
-  [ "$output" = "always" ]
+  [ "$output" = "auto" ]
 }
 
 @test "migration adds planning_tracking and auto_push defaults" {
@@ -293,6 +293,7 @@ EOF
 
   run_migration
 
+  # agent_teams:true → prefer_teams:"always" (rename only; "always" is preserved)
   run jq -r '.prefer_teams' "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
   [ "$output" = "always" ]
@@ -335,6 +336,38 @@ EOF
   run jq -r '.prefer_teams' "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
   [ "$output" = "auto" ]
+}
+
+@test "migration preserves prefer_teams always (intentional user choice)" {
+  # "always" may be a user-explicit setting via /vbw:config — do not clobber
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "effort": "balanced",
+  "prefer_teams": "always"
+}
+EOF
+
+  run_migration
+
+  run jq -r '.prefer_teams' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "always" ]
+}
+
+@test "migration preserves prefer_teams when_parallel" {
+  # Non-always values are real user choices — preserve them
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "effort": "balanced",
+  "prefer_teams": "when_parallel"
+}
+EOF
+
+  run_migration
+
+  run jq -r '.prefer_teams' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "when_parallel" ]
 }
 
 @test "migration backfills all missing defaults keys" {
