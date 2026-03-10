@@ -28,12 +28,13 @@ setup() {
   # Create a .vbw-session marker (should be preserved by session-stop)
   echo "test-session" > "$TEST_TEMP_DIR/.vbw-planning/.vbw-session"
 
-  # Clean stale PID tracker lock from previous interrupted runs
-  rmdir /tmp/vbw-agent-pid-lock 2>/dev/null || true
+  # Clean stale PID tracker lock from previous interrupted runs (rm -rf handles
+  # non-empty lock dirs left when a prior run was interrupted after pid write)
+  rm -rf /tmp/vbw-agent-pid-lock 2>/dev/null || true
 }
 
 teardown() {
-  rmdir /tmp/vbw-agent-pid-lock 2>/dev/null || true
+  rm -rf /tmp/vbw-agent-pid-lock 2>/dev/null || true
   teardown_temp_dir
 }
 

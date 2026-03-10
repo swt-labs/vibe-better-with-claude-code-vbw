@@ -17,30 +17,32 @@ LOCK_DIR="/tmp/vbw-agent-pid-lock"
 # --- File locking helpers ---
 acquire_lock() {
   local retries=50
-  local stale_checked=0
   while ! mkdir "$LOCK_DIR" 2>/dev/null; do
-    # On first failure, check for stale lock from a crashed process
-    if [ "$stale_checked" -eq 0 ]; then
-      stale_checked=1
-      if [ -f "${LOCK_DIR}/pid" ]; then
-        local lock_pid
-        lock_pid=$(cat "${LOCK_DIR}/pid" 2>/dev/null || echo "")
-        if [ -n "$lock_pid" ] && ! kill -0 "$lock_pid" 2>/dev/null; then
-          # Lock holder is dead — remove stale lock and retry immediately
-          rm -f "${LOCK_DIR}/pid"
-          rmdir "$LOCK_DIR" 2>/dev/null || true
-          continue
-        fi
-      else
-        # Lock dir exists but no pid file — treat as stale after a brief wait
-        sleep 0.2
-        if mkdir "$LOCK_DIR" 2>/dev/null; then
-          break
-        fi
-        # Still held — force-remove orphaned lock (no pid to validate)
+    # Check for stale lock on every iteration
+    if [ -f "${LOCK_DIR}/pid" ]; then
+      local lock_pid
+      lock_pid=$(cat "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+      if [ -n "$lock_pid" ] && ! kill -0 "$lock_pid" 2>/dev/null; then
+        # Lock holder is dead — remove stale lock and retry immediately
+        rm -f "${LOCK_DIR}/pid"
         rmdir "$LOCK_DIR" 2>/dev/null || true
         continue
       fi
+    else
+      # Lock dir exists but no pid file — holder may still be writing it.
+      # Wait for pid file to appear before concluding orphaned.
+      local pid_wait=0
+      while [ "$pid_wait" -lt 5 ] && [ ! -f "${LOCK_DIR}/pid" ]; do
+        sleep 0.1
+        pid_wait=$((pid_wait + 1))
+      done
+      # If pid file appeared, loop back to validate the holder normally
+      if [ -f "${LOCK_DIR}/pid" ]; then
+        continue
+      fi
+      # No pid file after 0.5s — lock is orphaned, remove it
+      rmdir "$LOCK_DIR" 2>/dev/null || true
+      continue
     fi
     retries=$((retries - 1))
     if [ "$retries" -le 0 ]; then
@@ -49,7 +51,7 @@ acquire_lock() {
     fi
     sleep 0.1
   done
-  # Record our PID so other processes can detect stale locks
+  # Record our PID immediately so stale detection works
   echo $$ > "${LOCK_DIR}/pid" 2>/dev/null || true
   return 0
 }
