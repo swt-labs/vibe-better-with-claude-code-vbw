@@ -28,12 +28,13 @@ setup() {
   # Create a .vbw-session marker (should be preserved by session-stop)
   echo "test-session" > "$TEST_TEMP_DIR/.vbw-planning/.vbw-session"
 
-  # Clean stale PID tracker lock from previous interrupted runs
-  rmdir /tmp/vbw-agent-pid-lock 2>/dev/null || true
+  # Clean stale PID tracker lock from previous interrupted runs (rm -rf handles
+  # non-empty lock dirs left when a prior run was interrupted after pid write)
+  rm -rf /tmp/vbw-agent-pid-lock 2>/dev/null || true
 }
 
 teardown() {
-  rmdir /tmp/vbw-agent-pid-lock 2>/dev/null || true
+  rm -rf /tmp/vbw-agent-pid-lock 2>/dev/null || true
   teardown_temp_dir
 }
 
@@ -177,6 +178,116 @@ simulate_session_stop() {
   # PID should be removed
   run grep "^${pid}$" ".vbw-planning/.agent-pids"
   [ "$status" -ne 0 ]
+}
+
+# =============================================================================
+# PID Tracker Prune — dead PID cleanup
+# =============================================================================
+
+@test "prune removes all dead PIDs and deletes the file" {
+  cd "$TEST_TEMP_DIR"
+  # Write fake dead PIDs
+  printf '99991\n99992\n99993\n' > ".vbw-planning/.agent-pids"
+
+  run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
+  [ "$status" -eq 0 ]
+
+  # File should be removed (all PIDs dead)
+  [ ! -f ".vbw-planning/.agent-pids" ]
+}
+
+@test "prune keeps alive PIDs and removes dead ones" {
+  cd "$TEST_TEMP_DIR"
+  # Start a real background process to get a live PID
+  sleep 30 &
+  local alive_pid=$!
+
+  printf "${alive_pid}\n99994\n99995\n" > ".vbw-planning/.agent-pids"
+
+  run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
+  [ "$status" -eq 0 ]
+
+  # File should exist with only the alive PID
+  [ -f ".vbw-planning/.agent-pids" ]
+  run grep "^${alive_pid}$" ".vbw-planning/.agent-pids"
+  [ "$status" -eq 0 ]
+
+  # Dead PIDs should be gone
+  run grep "^99994$" ".vbw-planning/.agent-pids"
+  [ "$status" -ne 0 ]
+  run grep "^99995$" ".vbw-planning/.agent-pids"
+  [ "$status" -ne 0 ]
+
+  kill "$alive_pid" 2>/dev/null || true
+}
+
+@test "prune is a no-op when .agent-pids does not exist" {
+  cd "$TEST_TEMP_DIR"
+  rm -f ".vbw-planning/.agent-pids"
+
+  run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
+  [ "$status" -eq 0 ]
+  [ ! -f ".vbw-planning/.agent-pids" ]
+}
+
+@test "prune ignores leftover .agent-pids.tmp from interrupted prune" {
+  cd "$TEST_TEMP_DIR"
+  # Simulate interrupted prune that left a stale temp file with a dead PID
+  echo "12345" > ".vbw-planning/.agent-pids.tmp"
+
+  # Put a live PID in the real file
+  sleep 30 &
+  local alive_pid=$!
+
+  printf "${alive_pid}\n99996\n" > ".vbw-planning/.agent-pids"
+
+  run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
+  [ "$status" -eq 0 ]
+
+  # File should contain ONLY the live PID (stale temp content must not leak)
+  [ -f ".vbw-planning/.agent-pids" ]
+  run cat ".vbw-planning/.agent-pids"
+  [ "$output" = "$alive_pid" ]
+
+  # Temp file should be cleaned up
+  [ ! -f ".vbw-planning/.agent-pids.tmp" ]
+
+  kill "$alive_pid" 2>/dev/null || true
+}
+
+@test "prune recovers from stale lock left by crashed process" {
+  cd "$TEST_TEMP_DIR"
+  # Simulate stale lock from a crashed process
+  mkdir -p /tmp/vbw-agent-pid-lock
+  echo "99999" > /tmp/vbw-agent-pid-lock/pid
+
+  printf '99997\n99998\n' > ".vbw-planning/.agent-pids"
+
+  run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
+  [ "$status" -eq 0 ]
+
+  # All dead PIDs should be pruned — file removed
+  [ ! -f ".vbw-planning/.agent-pids" ]
+
+  # Lock should be released
+  [ ! -d /tmp/vbw-agent-pid-lock ]
+}
+
+@test "prune recovers from stale lock directory with no pid file" {
+  cd "$TEST_TEMP_DIR"
+  # Simulate stale lock dir with no pid file (edge case: lock created but pid write failed)
+  mkdir -p /tmp/vbw-agent-pid-lock
+
+  printf '99997\n99998\n' > ".vbw-planning/.agent-pids"
+
+  run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
+  [ "$status" -eq 0 ]
+
+  # All dead PIDs should be pruned
+  [ ! -f ".vbw-planning/.agent-pids" ]
+
+  # Lock should be released
+  [ ! -d /tmp/vbw-agent-pid-lock ]
 }
 
 # =============================================================================

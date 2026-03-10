@@ -6,6 +6,7 @@ set -euo pipefail
 #   agent-pid-tracker.sh register <pid>
 #   agent-pid-tracker.sh unregister <pid>
 #   agent-pid-tracker.sh list
+#   agent-pid-tracker.sh prune
 #
 # Stores newline-delimited PIDs in .vbw-planning/.agent-pids
 # Uses mkdir-based file locking (macOS-compatible, no flock needed)
@@ -22,12 +23,41 @@ acquire_lock() {
       echo "ERROR: Failed to acquire lock after 50 attempts" >&2
       return 1
     fi
+    # Check for stale lock on every iteration
+    if [ -f "${LOCK_DIR}/pid" ]; then
+      local lock_pid
+      lock_pid=$(cat "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+      if [ -n "$lock_pid" ] && ! kill -0 "$lock_pid" 2>/dev/null; then
+        # Lock holder is dead — remove stale lock and retry immediately
+        rm -f "${LOCK_DIR}/pid"
+        rmdir "$LOCK_DIR" 2>/dev/null || true
+        continue
+      fi
+    else
+      # Lock dir exists but no pid file — holder may still be writing it.
+      # Wait for pid file to appear before concluding orphaned.
+      local pid_wait=0
+      while [ "$pid_wait" -lt 5 ] && [ ! -f "${LOCK_DIR}/pid" ]; do
+        sleep 0.1
+        pid_wait=$((pid_wait + 1))
+      done
+      # If pid file appeared, loop back to validate the holder normally
+      if [ -f "${LOCK_DIR}/pid" ]; then
+        continue
+      fi
+      # No pid file after 0.5s — lock is orphaned, remove it
+      rmdir "$LOCK_DIR" 2>/dev/null || true
+      continue
+    fi
     sleep 0.1
   done
+  # Record our PID immediately so stale detection works
+  echo $$ > "${LOCK_DIR}/pid" 2>/dev/null || true
   return 0
 }
 
 release_lock() {
+  rm -f "${LOCK_DIR}/pid" 2>/dev/null || true
   rmdir "$LOCK_DIR" 2>/dev/null || true
 }
 
@@ -75,9 +105,15 @@ cmd_unregister() {
     return 0
   fi
 
-  # Remove the PID line
+  # Remove the PID line (defensive rm -f mirrors cmd_prune pattern)
+  rm -f "${PID_FILE}.tmp" 2>/dev/null || true
   grep -v "^${pid}$" "$PID_FILE" > "${PID_FILE}.tmp" 2>/dev/null || true
   mv "${PID_FILE}.tmp" "$PID_FILE"
+
+  # Remove empty PID file (all entries unregistered)
+  if [ ! -s "$PID_FILE" ]; then
+    rm -f "$PID_FILE"
+  fi
 
   release_lock
   trap - EXIT
@@ -102,6 +138,41 @@ cmd_list() {
   done < "$PID_FILE"
 }
 
+cmd_prune() {
+  if [ ! -f "$PID_FILE" ]; then
+    return 0
+  fi
+
+  acquire_lock || return 1
+  trap release_lock EXIT
+
+  local temp_file="${PID_FILE}.tmp"
+  local kept=0
+
+  # Remove any leftover temp file from a previously interrupted prune
+  rm -f "$temp_file" 2>/dev/null || true
+
+  while IFS= read -r pid; do
+    [ -z "$pid" ] && continue
+    echo "$pid" | grep -qE '^[1-9][0-9]*$' || continue
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "$pid" >> "$temp_file"
+      kept=$((kept + 1))
+    fi
+  done < "$PID_FILE"
+
+  if [ "$kept" -gt 0 ] && [ -f "$temp_file" ]; then
+    mv "$temp_file" "$PID_FILE"
+  else
+    rm -f "$PID_FILE"
+  fi
+  # Clean up temp file in case mv didn't consume it (defensive)
+  rm -f "$temp_file" 2>/dev/null || true
+
+  release_lock
+  trap - EXIT
+}
+
 # --- Main ---
 CMD="${1:-}"
 case "$CMD" in
@@ -116,8 +187,11 @@ case "$CMD" in
   list)
     cmd_list
     ;;
+  prune)
+    cmd_prune
+    ;;
   *)
-    echo "Usage: $0 {register|unregister|list} [pid]" >&2
+    echo "Usage: $0 {register|unregister|list|prune} [pid]" >&2
     exit 1
     ;;
 esac
