@@ -511,7 +511,7 @@ Here's when each one shows up to work:
   │  PERMISSION MODEL                                                             │
   │                                                                               │
   │  Scout ─────────── True read-only (plan mode). Can look, can't touch.         │
-  │  QA ───────────── Read + Bash. Can verify, can't write. The auditor.          │
+  │  QA ───────────── Read + Bash. Persists only via write-verification.sh.        │
   │  Architect ─────── Edit/Bash blocked by platform. Write limited to plans      │
   │                    by instruction. Writes roadmaps, not code. Mostly.         │
   │  Lead ─────────── Read, Write, Bash, WebFetch. The middle manager.            │

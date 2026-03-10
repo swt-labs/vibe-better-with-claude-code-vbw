@@ -161,6 +161,32 @@ else
   pass "14: no orchestrator manual VERIFICATION.md fallback found"
 fi
 
+# ── Finding-regression checks (QA round 4) ───────────────────────────
+
+# 16. Execute protocol QA task descriptions use ${VBW_PLUGIN_ROOT} consistently
+#     (same pattern as all other script invocations — orchestrator resolves at top of file)
+PLUGIN_ROOT_COUNT=$(grep -c 'Plugin root: \${VBW_PLUGIN_ROOT}' "$EXEC_PROTO" || true)
+if [ "$PLUGIN_ROOT_COUNT" -ge 2 ]; then
+  pass "16: execute-protocol.md QA task descriptions use \${VBW_PLUGIN_ROOT} consistently ($PLUGIN_ROOT_COUNT occurrences)"
+else
+  fail "16: execute-protocol.md QA task descriptions missing \${VBW_PLUGIN_ROOT} (found $PLUGIN_ROOT_COUNT, expected ≥2)"
+fi
+
+# 17. vbw-qa.md Constraints does NOT have blanket "No file modification" without qualification
+#     Must qualify with "(Write, Edit, NotebookEdit are platform-denied)" or similar
+if grep -q 'No file modification\.' "$QA_AGENT" && ! grep -q 'No direct file modification' "$QA_AGENT"; then
+  fail "17: vbw-qa.md Constraints has unqualified 'No file modification' contradicting Persistence section"
+else
+  pass "17: vbw-qa.md Constraints properly qualifies file modification prohibition"
+fi
+
+# 18. README permission model QA line does NOT say "can't write" without qualification
+if grep -q "QA.*Can verify, can't write" "$ROOT/README.md"; then
+  fail "18: README permission model still says QA 'can't write' without qualifying deterministic writer"
+else
+  pass "18: README permission model QA line does not have unqualified 'can't write'"
+fi
+
 # ── Summary ──────────────────────────────────────────────────────────
 echo ""
 echo "==============================="

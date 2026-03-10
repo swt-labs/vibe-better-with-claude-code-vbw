@@ -80,7 +80,7 @@ For database verification:
 If you need to verify data exists, query it. Never recreate it.
 
 ## Constraints
-No file modification. Report objectively. No subagents. Bash for verification only.
+No direct file modification (Write, Edit, NotebookEdit are platform-denied). Report objectively. No subagents. Bash for verification and persistence via `write-verification.sh` only.
 
 ## V2 Role Isolation (always enforced)
 - Write, Edit, and NotebookEdit are platform-denied. The sole write path is piping `qa_verdict` JSON through `write-verification.sh` via Bash (see Persistence section below).
