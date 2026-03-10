@@ -1,6 +1,6 @@
 # VBW Verification Protocol
 
-Authoritative spec for VBW's verification pipeline. QA agent is read-only; parent command persists results to `VERIFICATION.md`.
+Authoritative spec for VBW's verification pipeline. QA agent persists results to `VERIFICATION.md` by calling `write-verification.sh` directly (the orchestrator does not persist).
 
 ## 1. Contexts
 

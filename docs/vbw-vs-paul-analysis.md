@@ -242,7 +242,7 @@ PAUL uses BDD-style AC in PLAN.md and reports pass/fail in SUMMARY.md. VBW uses 
 | **Hard gates** | `hard-gate.sh` runs `protected_file` checks before each task, `contract_compliance` checks, and `artifact_persistence` checks after |
 | **`security-filter.sh`** | Blocks access to `.env`, credentials, `.pem`, `.key` files |
 | **`bash-guard.sh`** | Intercepts destructive bash commands (40+ patterns) before they reach the shell |
-| **Agent tool permissions** | Platform-enforced `disallowedTools` — Scout and QA literally cannot write files |
+| **Agent tool permissions** | Platform-enforced `disallowedTools` — Scout cannot write files; QA restricted to persistence via `write-verification.sh` (Write/Edit disallowed) |
 
 PAUL relies on instructions (DO NOT CHANGE declarations) that the model is expected to respect. CARL adds dynamic rule injection, but rules are still instruction-level — nothing prevents the model from violating them during compaction or context overflow.
 
