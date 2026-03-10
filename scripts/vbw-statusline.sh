@@ -268,6 +268,15 @@ if [ -O "$FAST_CF" ]; then
                   AGENT_N PPT QA_COLOR HIDE_AGENT_TMUX COLLAPSE_AGENT_TMUX < "$FAST_CF"
 fi
 
+# Badge color: live check (not cached) so transitions are immediate.
+# [ -f ] is a single stat() syscall — negligible cost vs cache TTL staleness.
+VBW_CTX=0; [ -f ".vbw-planning/.vbw-context" ] && VBW_CTX=1
+if [ "$VBW_CTX" = "1" ]; then
+  VC="${C}${B}"
+else
+  VC="${D}"
+fi
+
 AGENT_LINE=""
 
 # --- Early collapse exit: skip slow cache for collapsed worktree panes ---
@@ -526,13 +535,13 @@ fi
 
 if [ "$_HIDE_EXEC_TMUX" != "true" ] && [ "$EXEC_STATUS" = "running" ] && [ "${EXEC_TOTAL:-0}" -gt 0 ] 2>/dev/null; then
   EXEC_PCT=$((EXEC_DONE * 100 / EXEC_TOTAL))
-  L1="${C}${B}[VBW]${X} Build: $(progress_bar "$EXEC_PCT" 8) ${EXEC_DONE}/${EXEC_TOTAL} plans"
+  L1="${VC}[VBW]${X} Build: $(progress_bar "$EXEC_PCT" 8) ${EXEC_DONE}/${EXEC_TOTAL} plans"
   [ "${EXEC_TWAVES:-0}" -gt 1 ] 2>/dev/null && L1="$L1 ${D}│${X} Wave ${EXEC_WAVE}/${EXEC_TWAVES}"
   [ -n "$EXEC_CURRENT" ] && L1="$L1 ${D}│${X} ${C}◆${X} ${EXEC_CURRENT}"
 elif [ "$EXEC_STATUS" = "complete" ]; then
   rm -f .vbw-planning/.execution-state.json "$FAST_CF" 2>/dev/null
   EXEC_STATUS=""
-  L1="${C}${B}[VBW]${X}"
+  L1="${VC}[VBW]${X}"
   [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
   if [ "$PT" -gt 0 ] 2>/dev/null; then
     L1="$L1 ${D}│${X} Plans: ${PD}/${PT}"
@@ -542,7 +551,7 @@ elif [ "$EXEC_STATUS" = "complete" ]; then
   _qc="$D"; case "${QA_COLOR:-D}" in G) _qc="$G";; Y) _qc="$Y";; R) _qc="$R";; esac
   L1="$L1 ${D}│${X} ${_qc}${QA}${X}"
 elif [ -d ".vbw-planning" ]; then
-  L1="${C}${B}[VBW]${X}"
+  L1="${VC}[VBW]${X}"
   [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
   if [ "$PT" -gt 0 ] 2>/dev/null; then
     L1="$L1 ${D}│${X} Plans: ${PD}/${PT}"
@@ -552,7 +561,7 @@ elif [ -d ".vbw-planning" ]; then
   _qc="$D"; case "${QA_COLOR:-D}" in G) _qc="$G";; Y) _qc="$Y";; R) _qc="$R";; esac
   L1="$L1 ${D}│${X} ${_qc}${QA}${X}"
 else
-  L1="${C}${B}[VBW]${X} ${D}no project${X}"
+  L1="${VC}[VBW]${X} ${D}no project${X}"
 fi
 if [ -n "$BR" ] || [ -n "$GH_LINK" ] || [ -n "$REPO_LABEL" ]; then
   if [ -n "$GH_LINK" ]; then

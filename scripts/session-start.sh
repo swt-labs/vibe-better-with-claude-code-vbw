@@ -189,6 +189,11 @@ fi
 # Reset compaction loop counter at fresh session start
 rm -f "$PLANNING_DIR/.compaction-count" 2>/dev/null || true
 
+# Clear VBW context marker from previous session so statusline starts dim.
+# Placed after compaction guard: during compaction, post-compact.sh handles cleanup.
+# Only clear on genuine new session starts.
+rm -f "$PLANNING_DIR/.vbw-context" 2>/dev/null || true
+
 # Auto-migrate config if .vbw-planning exists.
 # Version marker retained here for backwards test compatibility.
 EXPECTED_FLAG_COUNT=39

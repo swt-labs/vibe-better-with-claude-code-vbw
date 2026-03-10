@@ -322,3 +322,82 @@ JSON
   # Without TMUX, no collapse — L2 must be present
   [ -n "$l2" ]
 }
+
+# --- VBW_CTX badge color: live check, not cached ---
+
+@test "VBW badge is dim when .vbw-context marker absent" {
+  local repo="$TEST_TEMP_DIR/repo-badge-dim"
+  mkdir -p "$repo/.vbw-planning"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{ "effort": "balanced" }
+JSON
+
+  # Ensure marker does NOT exist
+  rm -f "$repo/.vbw-planning/.vbw-context" 2>/dev/null || true
+
+  cd "$repo"
+  local output
+  output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  cd "$PROJECT_ROOT"
+
+  local l1
+  l1=$(echo "$output" | sed -n '1p')
+  # L1 must contain [VBW] with dim prefix (\033[2m), not cyan (\033[36m)
+  echo "$l1" | grep -q $'\033\[2m\[VBW\]'
+  ! echo "$l1" | grep -q $'\033\[36m.*\[VBW\]'
+}
+
+@test "VBW badge is cyan+bold when .vbw-context marker present" {
+  local repo="$TEST_TEMP_DIR/repo-badge-cyan"
+  mkdir -p "$repo/.vbw-planning"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{ "effort": "balanced" }
+JSON
+
+  # Create the marker
+  touch "$repo/.vbw-planning/.vbw-context"
+
+  cd "$repo"
+  local output
+  output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  cd "$PROJECT_ROOT"
+
+  local l1
+  l1=$(echo "$output" | sed -n '1p')
+  # L1 must contain [VBW] with cyan+bold prefix (\033[36m\033[1m)
+  echo "$l1" | grep -q $'\033\[36m\033\[1m\[VBW\]'
+}
+
+@test "VBW badge reflects marker change without cache flush" {
+  local repo="$TEST_TEMP_DIR/repo-badge-live"
+  mkdir -p "$repo/.vbw-planning"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{ "effort": "balanced" }
+JSON
+
+  cd "$repo"
+
+  # First render: no marker → dim
+  rm -f ".vbw-planning/.vbw-context" 2>/dev/null || true
+  local out1
+  out1=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  local l1_dim
+  l1_dim=$(echo "$out1" | sed -n '1p')
+  echo "$l1_dim" | grep -q $'\033\[2m\[VBW\]'
+
+  # Second render: create marker → cyan (same cache, no TTL wait)
+  touch ".vbw-planning/.vbw-context"
+  local out2
+  out2=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  local l1_cyan
+  l1_cyan=$(echo "$out2" | sed -n '1p')
+  echo "$l1_cyan" | grep -q $'\033\[36m\033\[1m\[VBW\]'
+
+  cd "$PROJECT_ROOT"
+}

@@ -8,7 +8,7 @@ INPUT=$(cat)
 # Clean up cost tracking files and compaction marker (stale after compaction)
 # Preserve .active-agent and .active-agent-count — agents may still be running
 # after compaction. These are cleaned up by agent-stop.sh and session-stop.sh.
-rm -f .vbw-planning/.cost-ledger.json .vbw-planning/.compaction-marker 2>/dev/null
+rm -f .vbw-planning/.cost-ledger.json .vbw-planning/.compaction-marker .vbw-planning/.vbw-context 2>/dev/null
 
 # Try to identify agent role from input context
 ROLE=""
