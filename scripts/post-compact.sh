@@ -27,12 +27,15 @@ if [ -d ".vbw-planning/.compacting" ]; then
   fi
   rm -f ".vbw-planning/.compacting/${_cleanup_pid}.json" 2>/dev/null || true
 
-  # Also clean stale markers for dead PIDs
+  # Also clean stale markers for dead PIDs or invalid schema
   for _marker in .vbw-planning/.compacting/*.json; do
     [ ! -f "$_marker" ] && continue
     _mpid=$(jq -r '.pid // ""' "$_marker" 2>/dev/null)
-    # PID must be a positive integer — reject empty, negative, zero, or non-numeric
-    if ! echo "$_mpid" | grep -Eq '^[1-9][0-9]*$' || ! kill -0 "$_mpid" 2>/dev/null; then
+    _mts=$(jq -r '.started_at // ""' "$_marker" 2>/dev/null)
+    # Full schema validation: PID and started_at must be sane positive integers (max 10 digits)
+    if ! echo "$_mpid" | grep -Eq '^[1-9][0-9]{0,9}$' \
+       || ! echo "$_mts" | grep -Eq '^[1-9][0-9]{0,9}$' \
+       || ! kill -0 "$_mpid" 2>/dev/null; then
       rm -f "$_marker" 2>/dev/null || true
     fi
   done

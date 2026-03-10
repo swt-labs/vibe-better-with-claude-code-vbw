@@ -47,15 +47,18 @@ mkdir -p "$PLANNING_DIR/.compacting" 2>/dev/null || true
 for _stale_marker in "$PLANNING_DIR/.compacting"/*.json; do
   [ ! -f "$_stale_marker" ] && continue
   _stale_pid=$(jq -r '.pid // ""' "$_stale_marker" 2>/dev/null)
-  # PID must be a positive integer — reject empty, negative, zero, or non-numeric
-  if ! echo "$_stale_pid" | grep -Eq '^[1-9][0-9]*$' || ! kill -0 "$_stale_pid" 2>/dev/null; then
+  _stale_ts=$(jq -r '.started_at // ""' "$_stale_marker" 2>/dev/null)
+  # Full schema validation: PID and started_at must be sane positive integers
+  if ! echo "$_stale_pid" | grep -Eq '^[1-9][0-9]{0,9}$' \
+     || ! echo "$_stale_ts" | grep -Eq '^[1-9][0-9]{0,9}$' \
+     || ! kill -0 "$_stale_pid" 2>/dev/null; then
     rm -f "$_stale_marker" 2>/dev/null || true
   fi
 done
 
 # Validate timeout: must be a positive integer, fallback to 300
 COMPACTION_TIMEOUT="${VBW_COMPACTION_TIMEOUT:-300}"
-if ! echo "$COMPACTION_TIMEOUT" | grep -Eq '^[1-9][0-9]*$'; then
+if ! echo "$COMPACTION_TIMEOUT" | grep -Eq '^[1-9][0-9]{0,5}$'; then
   log "Invalid VBW_COMPACTION_TIMEOUT='$COMPACTION_TIMEOUT', using default 300"
   COMPACTION_TIMEOUT=300
 fi
@@ -79,9 +82,15 @@ check_compaction_timeouts() {
     started_at=$(jq -r '.started_at // 0' "$marker" 2>/dev/null)
 
     # Clean markers with missing/invalid critical data — they can never become valid
-    # PID must be a positive integer (prevents kill -TERM/-KILL against special PIDs like -1)
-    # started_at must be a positive integer (prevents arithmetic errors and false timeouts)
-    if ! echo "$pid" | grep -Eq '^[1-9][0-9]*$' || ! echo "$started_at" | grep -Eq '^[1-9][0-9]*$'; then
+    # PID must be a positive integer, max 10 digits (prevents special PIDs like -1)
+    # started_at must be a positive integer, max 10 digits (prevents arithmetic overflow)
+    if ! echo "$pid" | grep -Eq '^[1-9][0-9]{0,9}$' || ! echo "$started_at" | grep -Eq '^[1-9][0-9]{0,9}$'; then
+      rm -f "$marker" 2>/dev/null || true
+      continue
+    fi
+
+    # Reject future timestamps (clock skew > 60s)
+    if [ "$started_at" -gt $((now + 60)) ]; then
       rm -f "$marker" 2>/dev/null || true
       continue
     fi
@@ -95,24 +104,23 @@ check_compaction_timeouts() {
 
     age=$((now - started_at))
     if [ "$age" -gt "$COMPACTION_TIMEOUT" ]; then
-      # Resolve pane_id from live tmux state if marker has empty pane_id
-      if [ -z "$pane_id" ]; then
-        local _pane_list _walk_pid _resolved
-        _pane_list=$(tmux list-panes -a -F '#{pane_pid} #{pane_id}' 2>/dev/null) || _pane_list=""
-        if [ -n "$_pane_list" ]; then
-          _walk_pid="$pid"
-          while [ -n "$_walk_pid" ] && [ "$_walk_pid" != "0" ] && [ "$_walk_pid" != "1" ]; do
-            _resolved=$(echo "$_pane_list" | awk -v p="$_walk_pid" '$1 == p { print $2; exit }')
-            if [ -n "$_resolved" ]; then
-              pane_id="$_resolved"
-              break
-            fi
-            _walk_pid=$(ps -o ppid= -p "$_walk_pid" 2>/dev/null | tr -d ' ')
-          done
-        fi
+      # Always resolve pane_id from live tmux state using validated PID.
+      # Never trust stored pane_id — it may be stale or corrupted.
+      local _live_pane_id="" _pane_list _walk_pid _resolved
+      _pane_list=$(tmux list-panes -a -F '#{pane_pid} #{pane_id}' 2>/dev/null) || _pane_list=""
+      if [ -n "$_pane_list" ]; then
+        _walk_pid="$pid"
+        while [ -n "$_walk_pid" ] && [ "$_walk_pid" != "0" ] && [ "$_walk_pid" != "1" ]; do
+          _resolved=$(echo "$_pane_list" | awk -v p="$_walk_pid" '$1 == p { print $2; exit }')
+          if [ -n "$_resolved" ]; then
+            _live_pane_id="$_resolved"
+            break
+          fi
+          _walk_pid=$(ps -o ppid= -p "$_walk_pid" 2>/dev/null | tr -d ' ')
+        done
       fi
 
-      log "COMPACTION TIMEOUT: agent=$agent_name pid=$pid pane=$pane_id age=${age}s (limit=${COMPACTION_TIMEOUT}s)"
+      log "COMPACTION TIMEOUT: agent=$agent_name pid=$pid pane=$_live_pane_id age=${age}s (limit=${COMPACTION_TIMEOUT}s)"
 
       # Kill agent process then pane in background to avoid blocking the poll loop.
       # Order matters: SIGTERM first so the Stop hook can fire, then kill pane.
@@ -125,9 +133,9 @@ check_compaction_timeouts() {
           kill -KILL "$pid" 2>/dev/null || true
         fi
         # Kill tmux pane after agent process is terminated
-        if [ -n "$pane_id" ]; then
-          log "Killing tmux pane $pane_id"
-          tmux kill-pane -t "$pane_id" 2>/dev/null || true
+        if [ -n "$_live_pane_id" ]; then
+          log "Killing tmux pane $_live_pane_id"
+          tmux kill-pane -t "$_live_pane_id" 2>/dev/null || true
         fi
       ) &
 
