@@ -97,22 +97,12 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         Verification protocol: `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/verification-protocol.md
         Return findings using the qa_verdict schema (see `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/handoff-schemas.md).
         If tests reveal pre-existing failures unrelated to this phase, list them in your response under a "Pre-existing Issues" heading and include them in the qa_verdict payload's pre_existing_issues array.
+        Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/{phase}-VERIFICATION.md. Plugin root: `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`.
         ```
 
-    - QA agent reads all files itself.
+    - QA agent reads all files and persists VERIFICATION.md itself.
 
-4. **Persist:**
-  Parse QA output as JSON (`qa_verdict` schema).
-  Fallback: extract from markdown.
-  Pipe the `qa_verdict` JSON through the deterministic writer:
-  ```bash
-  echo "$QA_VERDICT_JSON" | bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/write-verification.sh "{phase-dir}/{phase}-VERIFICATION.md"
-  ```
-  If the script fails (exit 1) or `write-verification.sh` is missing, fall back to manual file writing:
-  write `{phase-dir}/{phase}-VERIFICATION.md` with frontmatter (phase, tier,
-  result, passed, failed, total, date) and QA body as content.
-
-1. **Present:** Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
+4. **Present:** Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
     ```text
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     Phase {NN}: {name} -- Verified

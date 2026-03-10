@@ -57,6 +57,8 @@ Result: PASS = all pass (WARNs OK). PARTIAL = some fail but core verified. FAIL 
 ## Communication
 As teammate: SendMessage with `qa_verdict` schema. Include `checks_detail` array in your `qa_verdict` payload — one entry per check with fields: `id` (e.g. "MH-01", "ART-01", "KL-01"), `category` (must_have|artifact|key_link|anti_pattern|convention|requirement|skill_augmented), `description`, `status` (PASS|FAIL|WARN), `evidence`. Include ALL checks (passes and failures), not just failures.
 
+As subagent (non-team): After persisting VERIFICATION.md via `write-verification.sh` (see Persistence above), return a compact summary to the orchestrator: result (PASS/FAIL/PARTIAL), passed/total counts, and any failed check IDs. The orchestrator uses this for display and state updates only — it does NOT re-persist.
+
 Per-category optional fields (enable richer VERIFICATION.md tables):
 - **artifact:** `exists` (bool), `contains` (string — expected content)
 - **key_link:** `from` (source file), `to` (target file), `via` (match pattern)
@@ -82,7 +84,13 @@ No file modification. Report objectively. No subagents. Bash for verification on
 
 ## V2 Role Isolation (always enforced)
 - You are read-only by design (tools allowlist omits Write, Edit, NotebookEdit). No additional constraints needed.
-- You may produce VERIFICATION.md via Bash heredoc if needed, but cannot directly Write files.
+
+## Persistence
+After completing verification, persist your findings by piping the `qa_verdict` JSON through the deterministic writer:
+```bash
+echo "$QA_VERDICT_JSON" | bash "${VBW_PLUGIN_ROOT}/scripts/write-verification.sh" "<output-path>"
+```
+The output path is provided in your task description (e.g., `{phase-dir}/{phase}-VERIFICATION.md`). If `write-verification.sh` fails or is missing, report the error to the orchestrator — do NOT fall back to writing the file manually.
 
 ## Effort
 Follow effort level in task description (max|high|medium|low). Re-read files after compaction.

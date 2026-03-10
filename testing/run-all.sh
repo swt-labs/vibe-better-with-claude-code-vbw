@@ -86,6 +86,10 @@ echo "Running ghost team cleanup checks..."
 bash "$ROOT/testing/verify-ghost-team-cleanup.sh"
 
 echo ""
+echo "Running QA persistence contract checks..."
+bash "$ROOT/testing/verify-qa-persistence-contract.sh"
+
+echo ""
 if command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null; then
   echo "Running bats test suites..."
   bats_pass=0
