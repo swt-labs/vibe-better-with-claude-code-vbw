@@ -259,13 +259,17 @@ emit_plan_metadata() {
     fi
   fi
 
-  # Check for existing research: per-plan first, then legacy
+  # Check for existing research: per-plan first, then legacy (plan/execute only).
+  # During the research stage, only per-plan research counts — the legacy file
+  # may be stale from a prior remediation round and must not trigger "already done".
   local per_plan_research="${PHASE_DIR}/${phase_prefix}-${next_mm}-RESEARCH.md"
-  local legacy_research="${PHASE_DIR}/${phase_prefix}-RESEARCH.md"
   if [ -f "$per_plan_research" ]; then
     research_path="$per_plan_research"
-  elif [ -f "$legacy_research" ]; then
-    research_path="$legacy_research"
+  elif [ "$stage" != "research" ]; then
+    local legacy_research="${PHASE_DIR}/${phase_prefix}-RESEARCH.md"
+    if [ -f "$legacy_research" ]; then
+      research_path="$legacy_research"
+    fi
   fi
 
   # Check if plan already exists for computed next_plan

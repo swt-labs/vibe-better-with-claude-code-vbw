@@ -404,13 +404,41 @@ EOF
   echo "$output" | grep -q "^plan_path=$"
 }
 
-@test "get-or-init research_path finds legacy research" {
+@test "get-or-init research stage ignores legacy research" {
+  # Bug #232: legacy 03-RESEARCH.md from a prior round caused the research
+  # stage to report research_path as non-empty, making the orchestrator skip
+  # research for the new remediation round.
   echo "research" > "$PHASE_DIR/.uat-remediation-stage"
   touch "$PHASE_DIR/01-RESEARCH.md"
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
   [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^research_path=$"
+}
+
+@test "get-or-init plan stage finds legacy research as fallback" {
+  # Legacy research IS a valid fallback for plan/execute stages (backward compat)
+  echo "plan" > "$PHASE_DIR/.uat-remediation-stage"
+  touch "$PHASE_DIR/01-RESEARCH.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
   echo "$output" | grep -q "^research_path=.*01-RESEARCH.md$"
+}
+
+@test "get-or-init research stage: many plans + legacy research still ignored" {
+  # Exact scenario from #232: 15 plans exist, per-plan research for some,
+  # plus stale legacy 03-RESEARCH.md. Research stage must NOT pick up the legacy.
+  echo "research" > "$PHASE_DIR/.uat-remediation-stage"
+  for i in $(seq -w 1 15); do touch "$PHASE_DIR/01-${i}-PLAN.md"; done
+  touch "$PHASE_DIR/01-12-RESEARCH.md" "$PHASE_DIR/01-13-RESEARCH.md" "$PHASE_DIR/01-15-RESEARCH.md"
+  touch "$PHASE_DIR/01-RESEARCH.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^next_plan=16$"
+  # Must NOT find legacy research — per-plan 01-16-RESEARCH.md doesn't exist, legacy must be ignored
+  echo "$output" | grep -q "^research_path=$"
 }
 
 @test "get-or-init per-plan research takes priority over legacy" {
