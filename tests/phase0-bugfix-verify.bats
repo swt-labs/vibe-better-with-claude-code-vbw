@@ -174,6 +174,10 @@ CONV
 # =============================================================================
 
 @test "compaction-instructions.sh outputs role-specific priorities" {
+  # Run from temp dir so the repo's .vbw-planning/.compaction-count doesn't
+  # trigger the compaction loop alarm and override role-specific output
+  cd "$TEST_TEMP_DIR"
+
   # Dev agent should get commit/file priorities
   run bash -c 'echo "{\"agent_name\":\"vbw-dev-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
   [ "$status" -eq 0 ]
