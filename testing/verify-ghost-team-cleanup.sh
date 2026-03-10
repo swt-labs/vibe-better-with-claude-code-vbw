@@ -16,6 +16,7 @@ DOCTOR_SCRIPT="$ROOT/scripts/doctor-cleanup.sh"
 
 PASS=0
 FAIL=0
+TEST_PARENT=$(mktemp -d)
 TMPDIR_BASE=""
 
 pass() {
@@ -29,7 +30,7 @@ fail() {
 }
 
 cleanup() {
-  [ -n "$TMPDIR_BASE" ] && rm -rf "$TMPDIR_BASE" 2>/dev/null || true
+  rm -rf "$TEST_PARENT" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -37,7 +38,7 @@ trap cleanup EXIT
 
 # Test 1: Configless VBW team directory is removed immediately
 test_configless_vbw_team_removed() {
-  TMPDIR_BASE=$(mktemp -d)
+  TMPDIR_BASE=$(mktemp -d "$TEST_PARENT/XXXXXX")
   local claude_dir="$TMPDIR_BASE/claude"
   local planning_dir="$TMPDIR_BASE/project/.vbw-planning"
   mkdir -p "$claude_dir/teams/vbw-phase-03/inboxes"
@@ -61,7 +62,7 @@ test_configless_vbw_team_removed() {
 
 # Test 2: Non-VBW configless team directories are preserved
 test_non_vbw_configless_preserved() {
-  TMPDIR_BASE=$(mktemp -d)
+  TMPDIR_BASE=$(mktemp -d "$TEST_PARENT/XXXXXX")
   local claude_dir="$TMPDIR_BASE/claude"
   local planning_dir="$TMPDIR_BASE/project/.vbw-planning"
   mkdir -p "$claude_dir/teams/my-custom-team/inboxes"
@@ -83,7 +84,7 @@ test_non_vbw_configless_preserved() {
 
 # Test 3: VBW team with config.json is preserved (not orphaned)
 test_vbw_team_with_config_preserved() {
-  TMPDIR_BASE=$(mktemp -d)
+  TMPDIR_BASE=$(mktemp -d "$TEST_PARENT/XXXXXX")
   local claude_dir="$TMPDIR_BASE/claude"
   local planning_dir="$TMPDIR_BASE/project/.vbw-planning"
   mkdir -p "$claude_dir/teams/vbw-phase-01/inboxes"
@@ -106,7 +107,7 @@ test_vbw_team_with_config_preserved() {
 
 # Test 4: Paired tasks directory removed with configless team
 test_paired_tasks_removed() {
-  TMPDIR_BASE=$(mktemp -d)
+  TMPDIR_BASE=$(mktemp -d "$TEST_PARENT/XXXXXX")
   local claude_dir="$TMPDIR_BASE/claude"
   local planning_dir="$TMPDIR_BASE/project/.vbw-planning"
   mkdir -p "$claude_dir/teams/vbw-plan-02/inboxes"
@@ -128,7 +129,7 @@ test_paired_tasks_removed() {
 
 # Test 5: Multiple configless VBW teams cleaned in single pass
 test_multiple_configless_cleaned() {
-  TMPDIR_BASE=$(mktemp -d)
+  TMPDIR_BASE=$(mktemp -d "$TEST_PARENT/XXXXXX")
   local claude_dir="$TMPDIR_BASE/claude"
   local planning_dir="$TMPDIR_BASE/project/.vbw-planning"
   mkdir -p "$claude_dir/tasks"
@@ -155,11 +156,57 @@ test_multiple_configless_cleaned() {
   rm -rf "$TMPDIR_BASE"
 }
 
+# Test 6: Configless vbw-debug-* team directory is removed immediately
+test_configless_vbw_debug_team_removed() {
+  TMPDIR_BASE=$(mktemp -d "$TEST_PARENT/XXXXXX")
+  local claude_dir="$TMPDIR_BASE/claude"
+  local planning_dir="$TMPDIR_BASE/project/.vbw-planning"
+  mkdir -p "$claude_dir/teams/vbw-debug-1741625400/inboxes"
+  mkdir -p "$claude_dir/tasks"
+  mkdir -p "$planning_dir"
+  echo '{}' > "$claude_dir/teams/vbw-debug-1741625400/inboxes/debugger.json"
+  touch "$claude_dir/teams/vbw-debug-1741625400/inboxes/debugger.json"
+
+  CLAUDE_CONFIG_DIR="$claude_dir" VBW_PLANNING_DIR="$planning_dir" \
+    bash "$CLEAN_SCRIPT" 2>/dev/null
+
+  if [ -d "$claude_dir/teams/vbw-debug-1741625400" ]; then
+    fail "configless vbw-debug-* team dir should be removed"
+  else
+    pass "configless vbw-debug-* team dir removed immediately"
+  fi
+  rm -rf "$TMPDIR_BASE"
+}
+
+# Test 7: Pass 2 removes stale VBW team WITH config.json after time threshold
+test_pass2_stale_team_with_config_removed() {
+  TMPDIR_BASE=$(mktemp -d "$TEST_PARENT/XXXXXX")
+  local claude_dir="$TMPDIR_BASE/claude"
+  local planning_dir="$TMPDIR_BASE/project/.vbw-planning"
+  mkdir -p "$claude_dir/teams/vbw-phase-09/inboxes"
+  mkdir -p "$claude_dir/tasks"
+  mkdir -p "$planning_dir"
+  echo '{"name":"vbw-phase-09"}' > "$claude_dir/teams/vbw-phase-09/config.json"
+  echo '{}' > "$claude_dir/teams/vbw-phase-09/inboxes/team-lead.json"
+  # Backdate inbox file to >2 hours ago (stale threshold)
+  touch -t 202001010000 "$claude_dir/teams/vbw-phase-09/inboxes/team-lead.json"
+
+  CLAUDE_CONFIG_DIR="$claude_dir" VBW_PLANNING_DIR="$planning_dir" \
+    bash "$CLEAN_SCRIPT" 2>/dev/null
+
+  if [ -d "$claude_dir/teams/vbw-phase-09" ]; then
+    fail "stale VBW team with config.json should be removed by pass 2"
+  else
+    pass "pass 2 removes stale VBW team with config.json after threshold"
+  fi
+  rm -rf "$TMPDIR_BASE"
+}
+
 # --- Integration Tests: doctor-cleanup.sh scan ---
 
 # Test 6: Doctor scan reports orphaned (configless) teams
 test_doctor_scan_reports_orphaned() {
-  TMPDIR_BASE=$(mktemp -d)
+  TMPDIR_BASE=$(mktemp -d "$TEST_PARENT/XXXXXX")
   local claude_dir="$TMPDIR_BASE/claude"
   local planning_dir="$TMPDIR_BASE/project/.vbw-planning"
   mkdir -p "$claude_dir/teams/vbw-phase-05/inboxes"
@@ -253,6 +300,42 @@ test_clean_script_vbw_prefix_guard() {
   fi
 }
 
+# Test 15: debug.md has pre-TeamCreate cleanup
+test_debug_pre_teamcreate_cleanup() {
+  if grep -q 'Pre-TeamCreate cleanup' "$ROOT/commands/debug.md"; then
+    pass "debug.md has pre-TeamCreate cleanup"
+  else
+    fail "debug.md missing pre-TeamCreate cleanup"
+  fi
+}
+
+# Test 16: map.md has pre-TeamCreate cleanup
+test_map_pre_teamcreate_cleanup() {
+  if grep -q 'Pre-TeamCreate cleanup' "$ROOT/commands/map.md"; then
+    pass "map.md has pre-TeamCreate cleanup"
+  else
+    fail "map.md missing pre-TeamCreate cleanup"
+  fi
+}
+
+# Test 17: debug.md uses vbw-debug- team naming convention
+test_debug_uses_vbw_prefix_naming() {
+  if grep -q 'vbw-debug-{timestamp}' "$ROOT/commands/debug.md"; then
+    pass "debug.md uses vbw-debug- team naming"
+  else
+    fail "debug.md does not use vbw-debug- team naming"
+  fi
+}
+
+# Test 18: map.md specifies vbw-map- team naming convention
+test_map_specifies_vbw_prefix_naming() {
+  if grep -q 'vbw-map-duo\|vbw-map-quad' "$ROOT/commands/map.md"; then
+    pass "map.md specifies vbw-map- team naming"
+  else
+    fail "map.md does not specify vbw-map- team naming"
+  fi
+}
+
 # --- Run all tests ---
 echo "=== Ghost Team Cleanup Tests (#203) ==="
 echo ""
@@ -262,13 +345,19 @@ test_non_vbw_configless_preserved
 test_vbw_team_with_config_preserved
 test_paired_tasks_removed
 test_multiple_configless_cleaned
+test_configless_vbw_debug_team_removed
+test_pass2_stale_team_with_config_removed
 test_doctor_scan_reports_orphaned
 test_exec_protocol_post_teamdelete_cleanup
 test_exec_protocol_pre_teamcreate_cleanup
 test_vibe_post_teamdelete_cleanup
 test_vibe_pre_teamcreate_cleanup
 test_map_post_teamdelete_cleanup
+test_map_pre_teamcreate_cleanup
 test_debug_post_teamdelete_cleanup
+test_debug_pre_teamcreate_cleanup
+test_debug_uses_vbw_prefix_naming
+test_map_specifies_vbw_prefix_naming
 test_clean_script_has_configless_pass
 test_clean_script_vbw_prefix_guard
 
