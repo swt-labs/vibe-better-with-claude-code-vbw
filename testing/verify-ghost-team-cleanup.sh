@@ -327,28 +327,39 @@ test_debug_pre_teamcreate_cleanup() {
   local cleanup_line naming_line
   cleanup_line=$(grep -n 'Pre-TeamCreate cleanup' "$ROOT/commands/debug.md" | head -1 | cut -d: -f1)
   naming_line=$(grep -n 'team_name="vbw-debug-' "$ROOT/commands/debug.md" | head -1 | cut -d: -f1)
-  if [ -n "$cleanup_line" ] && [ -n "$naming_line" ] && [ "$cleanup_line" -lt "$naming_line" ]; then
+  # Use -le: cleanup on same line as naming (single-line format) is also valid
+  if [ -n "$cleanup_line" ] && [ -n "$naming_line" ] && [ "$cleanup_line" -le "$naming_line" ]; then
     pass "debug.md has pre-TeamCreate cleanup before TeamCreate"
   else
     fail "debug.md pre-TeamCreate cleanup missing or out of order (cleanup=$cleanup_line, naming=$naming_line)"
   fi
 }
 
-# Test 16: map.md Step 3-duo has pre-TeamCreate cleanup
+# Test 16: map.md Step 3-duo has pre-TeamCreate cleanup before TeamCreate
 test_map_duo_pre_teamcreate_cleanup() {
-  if grep -q 'Pre-TeamCreate cleanup.*team_name="vbw-map-duo"' "$ROOT/commands/map.md"; then
-    pass "map.md Step 3-duo has pre-TeamCreate cleanup with vbw-map-duo naming"
+  local cleanup_line naming_line
+  cleanup_line=$(grep -n 'Pre-TeamCreate cleanup' "$ROOT/commands/map.md" | grep -i 'duo\|step 3-duo' | head -1 | cut -d: -f1)
+  # Fallback: if duo-specific line not found, get first Pre-TeamCreate cleanup line
+  [ -z "$cleanup_line" ] && cleanup_line=$(grep -n 'Pre-TeamCreate cleanup' "$ROOT/commands/map.md" | head -1 | cut -d: -f1)
+  naming_line=$(grep -n 'team_name="vbw-map-duo"' "$ROOT/commands/map.md" | head -1 | cut -d: -f1)
+  # Use -le: cleanup on same line as naming (single-line format) is also valid
+  if [ -n "$cleanup_line" ] && [ -n "$naming_line" ] && [ "$cleanup_line" -le "$naming_line" ]; then
+    pass "map.md Step 3-duo has pre-TeamCreate cleanup before vbw-map-duo naming"
   else
-    fail "map.md Step 3-duo missing pre-TeamCreate cleanup or vbw-map-duo naming"
+    fail "map.md Step 3-duo pre-TeamCreate cleanup missing or out of order (cleanup=$cleanup_line, naming=$naming_line)"
   fi
 }
 
-# Test 17: map.md Step 3-quad has pre-TeamCreate cleanup
+# Test 17: map.md Step 3-quad has pre-TeamCreate cleanup before TeamCreate
 test_map_quad_pre_teamcreate_cleanup() {
-  if grep -q 'Pre-TeamCreate cleanup.*team_name="vbw-map-quad"' "$ROOT/commands/map.md"; then
-    pass "map.md Step 3-quad has pre-TeamCreate cleanup with vbw-map-quad naming"
+  local cleanup_line naming_line
+  cleanup_line=$(grep -n 'Pre-TeamCreate cleanup' "$ROOT/commands/map.md" | tail -1 | cut -d: -f1)
+  naming_line=$(grep -n 'team_name="vbw-map-quad"' "$ROOT/commands/map.md" | head -1 | cut -d: -f1)
+  # Use -le: cleanup on same line as naming (single-line format) is also valid
+  if [ -n "$cleanup_line" ] && [ -n "$naming_line" ] && [ "$cleanup_line" -le "$naming_line" ]; then
+    pass "map.md Step 3-quad has pre-TeamCreate cleanup before vbw-map-quad naming"
   else
-    fail "map.md Step 3-quad missing pre-TeamCreate cleanup or vbw-map-quad naming"
+    fail "map.md Step 3-quad pre-TeamCreate cleanup missing or out of order (cleanup=$cleanup_line, naming=$naming_line)"
   fi
 }
 
@@ -379,6 +390,41 @@ test_map_quad_naming() {
   fi
 }
 
+# Test 21: Non-VBW configless team with stale inbox is preserved by pass 2
+test_non_vbw_stale_configless_preserved_pass2() {
+  TMPDIR_BASE=$(mktemp -d "$TEST_PARENT/XXXXXX")
+  local claude_dir="$TMPDIR_BASE/claude"
+  local planning_dir="$TMPDIR_BASE/project/.vbw-planning"
+  mkdir -p "$claude_dir/teams/other-plugin-team/inboxes"
+  mkdir -p "$claude_dir/tasks"
+  mkdir -p "$planning_dir"
+  # No config.json — configless. Backdate inbox to make it stale (>2h).
+  echo '{}' > "$claude_dir/teams/other-plugin-team/inboxes/agent.json"
+  touch -t 202001010000 "$claude_dir/teams/other-plugin-team/inboxes/agent.json"
+
+  CLAUDE_CONFIG_DIR="$claude_dir" VBW_PLANNING_DIR="$planning_dir" \
+    bash "$CLEAN_SCRIPT" 2>/dev/null
+
+  if [ -d "$claude_dir/teams/other-plugin-team" ]; then
+    pass "non-VBW configless team with stale inbox preserved by pass 2"
+  else
+    fail "non-VBW configless team with stale inbox was incorrectly removed by pass 2"
+  fi
+  rm -rf "$TMPDIR_BASE"
+}
+
+# Test 22: clean-stale-teams.sh pass 2 has vbw-* prefix guard
+test_clean_script_pass2_vbw_prefix_guard() {
+  # Pass 2 is the second for-loop block; verify it contains a vbw-* case guard
+  local pass2_region
+  pass2_region=$(sed -n '/^# Pass 2/,/^done$/p' "$CLEAN_SCRIPT")
+  if echo "$pass2_region" | grep -q 'case "$team_name" in vbw-\*)'; then
+    pass "clean-stale-teams.sh pass 2 has vbw-* prefix guard"
+  else
+    fail "clean-stale-teams.sh pass 2 missing vbw-* prefix guard"
+  fi
+}
+
 # --- Run all tests ---
 echo "=== Ghost Team Cleanup Tests (#203) ==="
 echo ""
@@ -406,6 +452,8 @@ test_map_duo_naming
 test_map_quad_naming
 test_clean_script_has_configless_pass
 test_clean_script_vbw_prefix_guard
+test_non_vbw_stale_configless_preserved_pass2
+test_clean_script_pass2_vbw_prefix_guard
 
 echo ""
 echo "==============================="

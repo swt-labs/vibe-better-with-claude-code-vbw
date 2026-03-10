@@ -59,6 +59,9 @@ scan_stale_teams() {
       continue
     fi
 
+    # Only scan VBW-owned teams for staleness — consistent with cleanup scope
+    case "$team_name" in vbw-*) ;; *) continue ;; esac
+
     local inbox_dir="$team_dir/inboxes"
 
     [ ! -d "$inbox_dir" ] && continue

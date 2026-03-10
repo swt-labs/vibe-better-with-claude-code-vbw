@@ -79,11 +79,16 @@ for team_dir in "$TEAMS_DIR"/*; do
   fi
 done
 
-# Pass 2: Clean stale teams (have config.json but inbox older than threshold)
+# Pass 2: Clean stale VBW teams (have config.json but inbox older than threshold)
+# Same vbw-* scope as pass 1 — VBW should not remove other plugins' teams.
 for team_dir in "$TEAMS_DIR"/*; do
   [ ! -d "$team_dir" ] && continue
 
   team_name=$(basename "$team_dir")
+
+  # Only target VBW-owned teams
+  case "$team_name" in vbw-*) ;; *) continue ;; esac
+
   inbox_dir="$team_dir/inboxes"
 
   # Skip if no inboxes directory
