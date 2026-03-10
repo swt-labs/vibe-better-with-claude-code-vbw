@@ -47,7 +47,8 @@ mkdir -p "$PLANNING_DIR/.compacting" 2>/dev/null || true
 for _stale_marker in "$PLANNING_DIR/.compacting"/*.json; do
   [ ! -f "$_stale_marker" ] && continue
   _stale_pid=$(jq -r '.pid // ""' "$_stale_marker" 2>/dev/null)
-  if [ -z "$_stale_pid" ] || ! kill -0 "$_stale_pid" 2>/dev/null; then
+  # PID must be a positive integer — reject empty, negative, zero, or non-numeric
+  if ! echo "$_stale_pid" | grep -Eq '^[1-9][0-9]*$' || ! kill -0 "$_stale_pid" 2>/dev/null; then
     rm -f "$_stale_marker" 2>/dev/null || true
   fi
 done
@@ -78,7 +79,9 @@ check_compaction_timeouts() {
     started_at=$(jq -r '.started_at // 0' "$marker" 2>/dev/null)
 
     # Clean markers with missing/invalid critical data — they can never become valid
-    if [ -z "$pid" ] || [ -z "$started_at" ] || [ "$started_at" -eq 0 ] 2>/dev/null; then
+    # PID must be a positive integer (prevents kill -TERM/-KILL against special PIDs like -1)
+    # started_at must be a positive integer (prevents arithmetic errors and false timeouts)
+    if ! echo "$pid" | grep -Eq '^[1-9][0-9]*$' || ! echo "$started_at" | grep -Eq '^[1-9][0-9]*$'; then
       rm -f "$marker" 2>/dev/null || true
       continue
     fi

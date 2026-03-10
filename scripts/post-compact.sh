@@ -31,7 +31,8 @@ if [ -d ".vbw-planning/.compacting" ]; then
   for _marker in .vbw-planning/.compacting/*.json; do
     [ ! -f "$_marker" ] && continue
     _mpid=$(jq -r '.pid // ""' "$_marker" 2>/dev/null)
-    if [ -z "$_mpid" ] || ! kill -0 "$_mpid" 2>/dev/null; then
+    # PID must be a positive integer — reject empty, negative, zero, or non-numeric
+    if ! echo "$_mpid" | grep -Eq '^[1-9][0-9]*$' || ! kill -0 "$_mpid" 2>/dev/null; then
       rm -f "$_marker" 2>/dev/null || true
     fi
   done
