@@ -76,6 +76,16 @@
         ]
       },
       {
+        "matcher": "Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'w=$(ls -1 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f \"$w\" ] && w=\"${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}\"; [ ! -f \"$w\" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f \"$f\" ] && w=\"$f\" && break; done; [ ! -f \"$w\" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- \"--plugin-dir [^ ]+\" | head -1); D=\"${D#--plugin-dir }\"; [ -n \"$D\" ] && w=\"$D/scripts/hook-wrapper.sh\"; }; [ -f \"$w\" ] && exec bash \"$w\" lsp-nudge.sh; exit 0'",
+            "timeout": 3
+          }
+        ]
+      },
+      {
         "matcher": "Write|Edit",
         "hooks": [
           {

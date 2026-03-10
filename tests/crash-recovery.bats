@@ -151,6 +151,7 @@ teardown() {
 ---
 phase: 1
 plan: 1
+status: complete
 ---
 ## What Was Built
 A widget

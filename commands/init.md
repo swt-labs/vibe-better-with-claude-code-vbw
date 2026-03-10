@@ -4,7 +4,7 @@ category: lifecycle
 disable-model-invocation: true
 description: Set up environment, scaffold .vbw-planning, detect project context, and bootstrap project-defining files.
 argument-hint:
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, LSP
 ---
 
 # VBW Init
@@ -202,6 +202,39 @@ Set GSD_ISOLATION_ENABLED=true for Step 3.5.
 
 **2b.** Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/detect-stack.sh "$(pwd)"`. Save full JSON. Display: `✓ Stack: {comma-separated detected_stack items}`
 
+**2.5. LSP setup (language servers + Claude plugins):**
+
+Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-lsp.sh` with the `detected_stack` JSON array from Step 2b and `CLAUDE_DIR/settings.json` path. Capture the JSON output.
+
+If `env_needed=false` AND all plugins have `plugin_enabled=true`: display `✓ LSP — already configured`, skip to 2c.
+
+Otherwise, display detected languages and recommended LSP plugins, then proceed through sub-steps:
+
+**2.5a (env flag):** If `env_needed=true`:
+- AskUserQuestion: "○ LSP Tools\n\nEnable LSP tools for Claude Code? This adds ENABLE_LSP_TOOL=1 to settings.json,\ngiving Claude access to goToDefinition, findReferences, and other code navigation tools."
+  - Approved: set `env.ENABLE_LSP_TOOL` to `"1"` in `CLAUDE_DIR/settings.json` (same write pattern as Step 0c)
+  - Declined: display "○ LSP env flag skipped"
+
+**2.5b (binary check):** For each plugin where `binary_installed=false`:
+- If `install_cmd` is not null: AskUserQuestion: "Install {description} language server?\nCommand: `{install_cmd}`"
+  - Approved: run command via Bash
+  - Declined: display "○ {description} — skipped"
+- If `install_cmd` is null (install_url only): display "○ {description} — manual install: {install_url}"
+
+**2.5c (marketplace catalog):** If any plugins have `plugin_enabled=false`:
+- Check catalog: `unset CLAUDECODE && claude plugin marketplace list 2>&1 | grep -q "{org}"` (using the `org` from the first pending plugin)
+- If catalog missing: AskUserQuestion: "LSP plugins are published on the `{org}` marketplace catalog. Add it?"
+  - Approved: run `unset CLAUDECODE && claude plugin marketplace add {org} 2>&1`
+  - Declined or fails: display "○ Marketplace catalog not available — skipping plugin installs" and skip 2.5d
+
+**2.5d (plugin install):** For plugins where `plugin_enabled=false`:
+- AskUserQuestion: "Install Claude LSP plugins for: {comma-separated descriptions}?"
+  - Approved: run `unset CLAUDECODE && claude plugin marketplace update {org} 2>&1` once, then for each: `unset CLAUDECODE && claude plugin install {plugin} 2>&1`
+  - Declined: display "○ LSP plugins — skipped"
+
+Display summary: `✓ LSP — {N} language server(s) configured` or `○ LSP — skipped`
+If any settings.json changes or plugins installed: display `(restart Claude Code to activate LSP)`
+
 **2c. Codebase mapping (adaptive):**
 - Greenfield (BROWNFIELD=false): skip. Display: `○ Greenfield — skipping codebase mapping`
 - SOURCE_FILE_COUNT < 200: run map **inline** — read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/commands/map.md` and follow directly
@@ -230,68 +263,15 @@ If greenfield: write `{"conventions": []}`. Display: `○ Conventions — none y
 
 **3d. Unified skill prompt:** Combine curated (from 2b) + registry (from 3c) results into single AskUserQuestion multiSelect. Tag `(curated)` or `(registry)`. Max 4 options + "Skip". Install selected: `npx skills add <skill> -g -y`.
 
-**3e.** Write Skills section to STATE.md (SKIL-05 capability map). Protocol:
-  1. **Discovery (SKIL-01):** Scan `CLAUDE_DIR/skills/` (global), `.claude/skills/` (project), `.claude/mcp.json` (mcp). Record name, scope, path per skill.
-  2. **Stack detection (SKIL-02):** Read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/stack-mappings.json`. For each category, match `detect` patterns via Glob/file content. Collect `recommended_skills[]`.
-  3. **find-skills bootstrap (SKIL-06):** Check `CLAUDE_DIR/skills/find-skills/` or `~/.agents/skills/find-skills/`. If missing + `skill_suggestions=true`: offer install (`npx skills add vercel-labs/skills --skill find-skills -g -y`).
-  4. **Suggestions (SKIL-03/04):** Compare recommended vs installed. Tag each `(curated)` or `(registry)`. If `auto_install_skills=true`: auto-install. Else: display with install commands.
-  5. **Write STATE.md section:** Format: `### Skills` / `**Installed:** {list or "None detected"}` / `**Suggested:** {list or "None"}` / `**Stack detected:** {comma-separated}` / `**Registry available:** yes/no`
-
 ### Step 3.5: Generate bootstrap CLAUDE.md
 
 VBW needs its rules and state sections in a CLAUDE.md file. /vbw:vibe regenerates later with project content.
 
 **Brownfield handling:** Read root `CLAUDE.md` via the Read tool.
-- **Exists:** The user already has a CLAUDE.md. Do NOT overwrite it. Instead, append VBW sections (`## VBW Rules`, `## State`, `## Installed Skills`, `## Project Conventions`, `## Commands`, and optionally `## Plugin Isolation`) to the END of the existing file, separated by a `---` line. Preserve all existing content verbatim. Display `✓ CLAUDE.md (VBW sections appended to existing)`.
-- **Does not exist:** Write a new `CLAUDE.md` at project root with the full template below. Display `✓ CLAUDE.md (created)`.
+- **Exists:** The user already has a CLAUDE.md. Do NOT overwrite it and do NOT assume the first heading/core-value lines belong to VBW. Preserve all user-authored content verbatim. Only refresh exact canonical VBW-owned sections already emitted by VBW (`## Active Context`, `## VBW Rules`, `## Plugin Isolation`) and add `## Code Intelligence` only if no Code Intelligence heading/guidance already exists anywhere in the file. Display `✓ CLAUDE.md (VBW sections refreshed in place)`.
+- **Does not exist:** Create a new `CLAUDE.md` via `bootstrap-claude.sh` during Step 7f. Do NOT hand-compose the file here.
 
-Template for NEW files — write verbatim, substituting `{...}` placeholders:
-```markdown
-# VBW-Managed Project
-This project uses VBW (Vibe Better with Claude Code) for structured development.
-## VBW Rules
-- **Always use VBW commands** for project work. Do not manually edit files in `.vbw-planning/`.
-- **Commit format:** `{type}({scope}): {description}` — types: feat, fix, test, refactor, perf, docs, style, chore.
-- **One commit per task.** Each task in a plan gets exactly one atomic commit.
-- **Never commit secrets.** Do not stage .env, .pem, .key, credentials, or token files.
-- **Plan before building.** Use /vbw:vibe for all lifecycle actions. Plans are the source of truth.
-- **Do not fabricate content.** Only use what the user explicitly states in project-defining flows.
-## State
-- Planning directory: `.vbw-planning/`
-- Project not yet defined — run /vbw:vibe to set up project identity and roadmap.
-## Installed Skills
-{list from STATE.md Skills section, or "None"}
-## Project Conventions
-{If conventions.json has entries: "These conventions are enforced during planning and verified during QA." + bulleted list of rules}
-{If none: "None yet. Run /vbw:teach to add project conventions."}
-## Commands
-Run /vbw:status for current progress.
-Run /vbw:help for all available commands.
-{ONLY if GSD_ISOLATION_ENABLED=true — include this section:}
-## Plugin Isolation
-- GSD agents and commands MUST NOT read, write, glob, grep, or reference any files in `.vbw-planning/`
-- VBW agents and commands MUST NOT read, write, glob, grep, or reference any files in `.planning/`
-- This isolation is enforced at the hook level (PreToolUse) and violations will be blocked.
-```
-
-Sections to append when **existing** CLAUDE.md found (same content, no `# VBW-Managed Project` header):
-```markdown
-
----
-
-## VBW Rules
-{same rules as above}
-## State
-{same state as above}
-## Installed Skills
-{same}
-## Project Conventions
-{same}
-## Commands
-{same}
-{## Plugin Isolation if applicable}
-```
-Keep total VBW addition under 40 lines. Add `✓ CLAUDE.md` to summary.
+Do not append `## Project Conventions` or `## Commands` to `CLAUDE.md`.
 
 ### Step 4: Present summary
 
@@ -461,8 +441,9 @@ If SKIP_INFERENCE=false (confirmed/corrected inference data):
 - Display: `✓ STATE.md`
 
 **7f. Generate/update CLAUDE.md:**
+- Extract `CORE_VALUE` from `.vbw-planning/PROJECT.md` (`grep -m1 '^\*\*Core value:\*\*' .vbw-planning/PROJECT.md | sed 's/^\*\*Core value:\*\* *//'`)
 - If root CLAUDE.md exists: pass it as EXISTING_PATH to preserve non-VBW content
-- Run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/bootstrap/bootstrap-claude.sh CLAUDE.md "$NAME" "$DESCRIPTION" "CLAUDE.md"`
+- Run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/bootstrap/bootstrap-claude.sh CLAUDE.md "$NAME" "$CORE_VALUE" "CLAUDE.md"`
   - If CLAUDE.md does not exist yet, omit the last argument
 - Display: `✓ CLAUDE.md`
 

@@ -49,8 +49,10 @@ All runtime script invocations below assume `VBW_PLUGIN_ROOT` is set.
 
 ### Step 2: Load plans and detect resume state
 
+**Orchestrator read-scope boundary:** You may ONLY read planning/state artifacts: `*-PLAN.md`, `*-SUMMARY.md`, `*-RESEARCH.md`, `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, `.execution-state.json`, `.context-*.md`, `config.json`, and `.vbw-planning/` metadata. Do NOT read product source files (application code, tests, configs outside `.vbw-planning/`). If you need to understand product code to make a routing or sequencing decision, that understanding must come from Dev — delegate it via a task.
+
 1. Glob `*-PLAN.md` in phase dir. Read each plan's YAML frontmatter.
-2. Check existing SUMMARY.md files (complete plans).
+2. Check existing SUMMARY.md files — a plan is complete only if its SUMMARY has `status: complete|partial` (use `is_summary_complete` from `scripts/summary-utils.sh`). A SUMMARY with `status: pending` or no status field is NOT complete.
 3. `git log --oneline -20` for committed tasks (crash recovery).
 4. Build remaining plans list. If `--plan=NN`, filter to that plan.
 4b. **Worktree isolation (REQ-WORKTREE):** If `worktree_isolation` is not `"off"` in config:
@@ -84,7 +86,7 @@ All runtime script invocations below assume `VBW_PLUGIN_ROOT` is set.
   "plans": [{"id": "NN-MM", "title": "...", "wave": W, "status": "pending|complete"}]
 }
 ```
-Set completed plans (with SUMMARY.md) to `"complete"`, others to `"pending"`.
+Set completed plans (with SUMMARY.md whose `status` is `complete` or `completed`) to `"complete"`, others to `"pending"`. A SUMMARY.md with a non-terminal status (e.g., `pending`) does NOT count as complete.
 
 7b. **Export correlation_id:** Set `VBW_CORRELATION_ID={CORRELATION_ID}` in the execution environment
     so log-event.sh can fall back to it if .execution-state.json is temporarily unavailable.
@@ -148,7 +150,15 @@ You are the team LEAD. NEVER implement tasks yourself.
 - Delegate ALL implementation to Dev teammates via TaskCreate
 - NEVER Write/Edit files in a plan's `files_modified` — only state files: STATE.md, ROADMAP.md, .execution-state.json, SUMMARY.md
 - If Dev fails: guidance via SendMessage, not takeover. If all Devs unavailable: create new Dev.
+- **Subagent return handling (non-team model):** When a Dev subagent Task returns, inspect the result immediately:
+  1. **blocker_report received:** Read the blocker details. If the blocker is a tool precondition error (e.g., "File has not been read yet"), amend the task description with explicit "Read {file} first, then edit" and re-spawn once. If the blocker is a validation contradiction or empty-result failure, do NOT blindly re-spawn — the same subagent prompt will hit the same wall. Instead: (a) verify the validation target yourself (run the bash/curl command Lead can execute), (b) if the data truly contradicts expectations, update the plan task to reflect reality, (c) re-spawn with the corrected task.
+  2. **Task returned without SUMMARY.md or with incomplete work:** Check what the Dev actually accomplished (git log, file changes). If partial progress was made, spawn a new Dev with "Continue from where the previous Dev stopped — files X, Y already modified, remaining work is Z." If zero progress, check whether the task description was ambiguous or missing context and re-spawn with clarification.
+  3. **Max retry: 2 re-spawns per plan.** After 2 failed Dev spawns for the same plan, stop and surface the blocker to the user: "Dev agent failed {N} times on plan {plan_id}. Last blocker: {details}. Manual intervention needed."
 - At Turbo (or smart-routed to turbo): no team — Dev executes directly.
+- **Runtime enforcement:** This directive is structurally enforced by the `file-guard.sh` PreToolUse hook. When `.execution-state.json` has `status: running` and effort is not turbo/direct, the hook blocks product-file Write/Edit from the orchestrator. Two bypass mechanisms exist:
+  - **Subagent model:** `.active-agent-count` (written by `agent-start.sh`): when count > 0, at least one VBW subagent is running and the write is allowed.
+  - **Agent teams model:** When `prefer_teams` is not `"never"` in config.json, the guard is bypassed entirely. `SubagentStart` hooks do not fire for agent team teammates (they are separate Claude Code sessions, not subagents spawned via the Agent tool), so `.active-agent-count` is never incremented for them. Since PreToolUse hooks cannot distinguish orchestrator from teammate (no `agent_id`/`agent_type` fields for teammates), the guard fails-open when teams are configured.
+  - When neither bypass applies (subagent count is 0 and `prefer_teams="never"`), the write is treated as an orchestrator action and blocked. Planning/state artifacts (`.vbw-planning/*`, `STATE.md`, `SUMMARY.md`, etc.) remain exempt.
 
 **Monorepo Routing (REQ-17):** If `monorepo_routing=true` in config:
 - Before context compilation, detect relevant package paths:
@@ -184,7 +194,13 @@ The existing individual script call sections (V3 Contract-Lite, V2 Hard Gates, C
 **Context compilation (REQ-11):** If control-plane.sh `full` action was used above and returned a `context_path`, use that path directly. Otherwise, if `config_context_compiler=true` from Context block above, before creating Dev tasks run:
 `bash "${VBW_PLUGIN_ROOT}/scripts/compile-context.sh" {phase} dev {phases_dir} {plan_path}`
 This produces `{phase-dir}/.context-dev.md` with phase goal and conventions.
-The plan_path argument enables skill bundling: compile-context.sh reads skills_used from the plan's frontmatter and bundles referenced SKILL.md content into .context-dev.md. If the plan has no skills_used, this is a no-op.
+The plan_path argument is passed for context. **Per-plan research:** When loading context for a specific plan `{NN}-{MM}-PLAN.md`, also check for `{phase-dir}/{NN}-{MM}-RESEARCH.md`. If it exists, include it in the Dev task prompt alongside the compiled context. Fall back to `{phase-dir}/{NN}-RESEARCH.md` (legacy single-file format) if no per-plan research exists. Skill activation uses a plan-driven architecture:
+- **Orchestrator skill selection:** When composing subagent task descriptions, the orchestrator evaluates installed skills (visible via `<available_skills>` in system context) — reading each skill's description to determine relevance to the specific task. Only relevant skills are included in the subagent prompt via `<skill_activation>` blocks at the prompt start. Irrelevant skills are omitted entirely.
+- **Lead (planning time):** Evaluates available skills and wires relevant ones into plans via `skills_used` frontmatter and `@`-references to SKILL.md files.
+- **Dev/QA/Scout/Docs (execution time):** Reads the plan's `skills_used` list and calls `Skill(skill-name)` for each listed skill before beginning work. If a skill in system context is missing from `skills_used`, activates it too (soft fallback). No written YES/NO evaluation required.
+- **Ad-hoc paths (`/vbw:fix`, `/vbw:debug`, `/vbw:research`):** Debugger/Dev/Scout checks installed skills in system context — no plan exists, so no `skills_used` frontmatter to reference. Agent activates relevant skills based on description evaluation.
+- **Architect (scoping time):** Evaluates installed skills in system context. Activates relevant skills before producing requirements and roadmap artifacts.
+- **Runtime skill hooks preserved:** `skill-hook-dispatch.sh` dispatches skill-defined PostToolUse/PreToolUse hooks at runtime. This is separate from skill *activation* and is unaffected by the plan-driven model.
 If compilation fails, proceed without it — Dev reads files directly.
 
 **V2 Token Budgets (REQ-12):** If control-plane.sh `compile` or `full` action was used and included token budget enforcement, skip this step. Otherwise:
@@ -201,6 +217,21 @@ If compilation fails, proceed without it — Dev reads files directly.
 - **Cleanup:** At phase end, clean up token state: `rm -f .vbw-planning/.token-state/*.json 2>/dev/null || true`
 - Truncation uses tail strategy (keep most recent context).
 
+**Pre-code validation gate (mandatory when plan requires it):**
+If a plan task contains validation requirements such as "MUST be done before any code changes", "Expected: ...", or "If absent, stop and re-analyze", the validation result is a hard gate:
+
+1. **Execute the validation** using the tool appropriate to the data source:
+   - **Public/anonymous endpoints** (docs pages, open APIs, status endpoints): WebFetch is acceptable.
+   - **Authenticated/private APIs** (signed requests, tokens, env-based secrets, custom headers): use Bash helper scripts, curl wrappers, or repo helper commands. Do not route authenticated API validation through WebFetch.
+2. **Evaluate the result:**
+   - If the result matches the task's expected shape: gate passes, proceed with code changes.
+   - If the result contradicts expectations (wrong values, missing fields, empty when non-empty expected): gate fails.
+3. **On gate failure:**
+   - Run ONE broadened sanity-check query (remove filters, broaden search, confirm environment/account context).
+   - If the contradiction remains: send `blocker_report` immediately. Do NOT proceed to the next task or begin code changes.
+   - Empty filtered results (`[]`, no matches) are contradictory when the task expected specific data — do not treat empty as success unless the task explicitly defines empty as the expected outcome.
+4. **Operator fallback:** If automated respawn after a blocker is not possible, surface a message to the user: "Validation gate failed for task {N}. Restart `/vbw:vibe` from current plan state to retry."
+
 
 **Model resolution:** Resolve models for Dev and QA agents:
 ```bash
@@ -215,10 +246,13 @@ QA_MAX_TURNS=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-agent-max-turns.sh" qa .
 if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
 ```
 
+**Skill activation for Dev/QA tasks:** Before composing task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to the tasks being executed. If any skills are relevant, include a `<skill_activation>` block as the FIRST line of every Dev and QA task description. Only include skills whose description matches the task at hand. If no skills are relevant, omit the block entirely.
+
 For each uncompleted plan, TaskCreate:
 ```yaml
 subject: "Execute {NN-MM}: {plan-title}"
 description: |
+  <skill_activation>Call Skill('{relevant-skill-1}'). Call Skill('{relevant-skill-2}').</skill_activation>
   Execute all tasks in {PLAN_PATH}.
   Effort: {DEV_EFFORT}. Working directory: {worktree_path (from execution-state.json for this plan) if worktree_isolation is enabled and worktree_path is set, else {pwd}}.
   {If worktree_isolation enabled and WTARGET non-empty: "Worktree targeting: {WTARGET}"}
@@ -232,7 +266,7 @@ activeForm: "Executing {NN-MM}"
 
 Display: `◆ Spawning Dev teammate (${DEV_MODEL})...`
 
-**CRITICAL:** Pass `model: "${DEV_MODEL}"` and `maxTurns: ${DEV_MAX_TURNS}` parameters to the Task tool invocation when spawning Dev teammates.
+**CRITICAL:** Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"` in the Task tool invocation when spawning Dev teammates. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If `DEV_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 **CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"` parameters to each Task tool invocation. This enables colored agent labels and status bar entries.
 
 Wire dependencies via TaskUpdate: read `depends_on` from each plan's frontmatter, add `addBlockedBy: [task IDs of dependency plans]`. Plans with empty depends_on start immediately.
@@ -394,12 +428,15 @@ RESULT=$(bash "${VBW_PLUGIN_ROOT}/scripts/two-phase-complete.sh" {task_id} {phas
 
 When a Dev teammate reports plan completion (task marked completed):
 1. **Check:** Verify `{phase_dir}/{plan_id}-SUMMARY.md` exists and contains commit hashes, task statuses, and files modified.
-2. **If missing or incomplete:** Send the Dev a message: "Write {plan_id}-SUMMARY.md using the template at templates/SUMMARY.md. Include commit hashes, tasks completed, files modified, and any deviations." Wait for confirmation before proceeding.
-3. **If Dev is unavailable:** Write it yourself from `git log --oneline` and the PLAN.md.
-4. **Schema Validation — SUMMARY.md (REQ-17, graduated, always-on):**
+2. **Status validation:** Verify SUMMARY.md frontmatter `status` is one of `complete|partial|failed`. Never accept `pending`, `draft`, or other non-terminal values. The `file-guard.sh` PreToolUse hook blocks SUMMARY writes with non-terminal status values.
+3. **If missing or incomplete:** Send the Dev a message: "Write {plan_id}-SUMMARY.md using the template at templates/SUMMARY.md. Include commit hashes, tasks completed, files modified, and any deviations." Wait for confirmation before proceeding.
+4. **If Dev is unavailable:** Write it yourself from `git log --oneline` and the PLAN.md.
+5. **Schema Validation — SUMMARY.md (REQ-17, graduated, always-on):**
   - Validate SUMMARY.md frontmatter: `VALID=$(bash "${VBW_PLUGIN_ROOT}/scripts/validate-schema.sh" summary {summary_path} 2>/dev/null || echo "valid")`
    - If `invalid`: log warning `⚠ Summary {plan_id} schema: ${VALID}` — advisory only.
-5. **Only after SUMMARY.md is verified:** Update plan status to `"complete"` in .execution-state.json and proceed.
+6. **Only after SUMMARY.md is verified with terminal status:** Update plan status to `"complete"` in .execution-state.json and proceed.
+
+**SUMMARY.md timing rule:** A SUMMARY.md represents completed execution. Never create a SUMMARY.md as a placeholder or stub before execution begins. Do not write SUMMARY.md with `status: pending` or any non-terminal status.
 
 ### Step 4: Post-build QA (optional)
 
@@ -444,7 +481,7 @@ echo "$QA_VERDICT_JSON" | bash "${VBW_PLUGIN_ROOT}/scripts/write-verification.sh
 ```
 If `write-verification.sh` fails or is missing, fall back to manual file writing (frontmatter + body).
 
-**CRITICAL:** Pass `model: "${QA_MODEL}"` and `maxTurns: ${QA_MAX_TURNS}` parameters to the Task tool invocation when spawning QA agents.
+**CRITICAL:** Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation when spawning QA agents. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 **CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "qa"` (or `name: "qa-wave{W}"` for per-wave QA) parameters to each QA Task tool invocation.
 
 ### Step 4.5: Human acceptance testing (UAT)

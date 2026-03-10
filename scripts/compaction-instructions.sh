@@ -45,7 +45,7 @@ case "$AGENT_NAME" in
     PRIORITIES="Preserve reproduction steps, hypotheses, evidence gathered, diagnosis. After compaction, if .vbw-planning/codebase/META.md exists, re-read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/"
     ;;
   *)
-    PRIORITIES="Preserve active command being executed, user's original request, current phase/plan context, file modification paths, any pending user decisions. Discard: tool output details, reference file contents (re-read from disk), previous command results"
+    PRIORITIES="Preserve active command being executed (which mode: Bootstrap/Scope/Discuss/Plan/Execute/Verify/Archive/UAT Remediation), user's original request, current phase/plan context, file modification paths, any pending user decisions. After compaction: do NOT call Skill('vbw:vibe') or any Skill('vbw:*') — the disable-model-invocation flag will block it. Instead, re-read the vibe command file from disk and resume at the correct mode section. Discard: tool output details, reference file contents (re-read from disk), previous command results"
     ;;
 esac
 
@@ -59,6 +59,27 @@ fi
 # Write compaction marker for Dev re-read guard (REQ-14)
 if [ -d ".vbw-planning" ]; then
   date +%s > .vbw-planning/.compaction-marker 2>/dev/null || true
+fi
+
+# --- Compaction loop breaker (infinite-loop prevention) ---
+# Increment a per-session counter. If it exceeds the threshold, inject a hard
+# stop directive so the agent terminates instead of looping forever.
+COMPACTION_LIMIT=10
+COMPACTION_COUNT_FILE=".vbw-planning/.compaction-count"
+if [ -d ".vbw-planning" ]; then
+  PREV_COUNT=0
+  if [ -f "$COMPACTION_COUNT_FILE" ]; then
+    PREV_COUNT=$(cat "$COMPACTION_COUNT_FILE" 2>/dev/null | tr -dc '0-9')
+    [ -z "$PREV_COUNT" ] && PREV_COUNT=0
+  fi
+  NEW_COUNT=$((PREV_COUNT + 1))
+  echo "$NEW_COUNT" > "$COMPACTION_COUNT_FILE" 2>/dev/null || true
+
+  if [ "$NEW_COUNT" -ge "$COMPACTION_LIMIT" ]; then
+    PRIORITIES="CRITICAL — COMPACTION LOOP DETECTED (${NEW_COUNT} compactions). You are in an infinite auto-compaction loop: your non-reducible context exceeds the compaction threshold, so every tool call triggers another compaction with zero forward progress. STOP ALL WORK IMMEDIATELY. Do NOT read any more files. Do NOT call any tools. Report to the user: 'VBW compaction loop detected after ${NEW_COUNT} cycles — session context is too large for the effective context window. Kill this session and retry with a smaller task scope or increase context window.' Then terminate." 
+  elif [ "$NEW_COUNT" -ge 3 ]; then
+    PRIORITIES="WARNING: This session has compacted ${NEW_COUNT} times (limit: ${COMPACTION_LIMIT}). You may be approaching an infinite compaction loop. Minimize file reads — only read files essential to your current task. $PRIORITIES"
+  fi
 fi
 
 # --- Save agent state snapshot ---

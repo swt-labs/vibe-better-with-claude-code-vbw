@@ -56,7 +56,7 @@ fi
 # non-VBW slash commands in prompt-preflight.sh (and stale markers are ignored
 # by security-filter.sh after 24h).
 rmdir "$PLANNING_DIR/.active-agent-count.lock" 2>/dev/null || true
-rm -f "$PLANNING_DIR/.active-agent" "$PLANNING_DIR/.active-agent-count" "$PLANNING_DIR/.agent-panes" "$PLANNING_DIR/.task-verify-seen" 2>/dev/null
+rm -f "$PLANNING_DIR/.active-agent" "$PLANNING_DIR/.active-agent-count" "$PLANNING_DIR/.agent-panes" "$PLANNING_DIR/.task-verify-seen" "$PLANNING_DIR/.delegated-workflow.json" 2>/dev/null
 
 # Clean up stale worktrees (>2 hours) — fail-silent
 SCRIPT_DIR_STOP="$(cd "$(dirname "$0")" && pwd)"

@@ -145,7 +145,7 @@ EOF
   grep -q "Primary languages: Swift" .vbw-planning/STATE.md
 }
 
-@test "preserves Skills subsection under Decisions" {
+@test "strips stale Skills subsection from Decisions during persist" {
   cd "$TEST_TEMP_DIR"
   create_state_with_skills ".vbw-planning/STATE.md"
 
@@ -156,8 +156,12 @@ EOF
     .vbw-planning/milestones/default/STATE.md .vbw-planning/STATE.md "Skills Project"
   [ "$status" -eq 0 ]
 
-  grep -q "### Skills" .vbw-planning/STATE.md
-  grep -q "swiftui-expert-skill" .vbw-planning/STATE.md
+  # Decisions content should survive
+  grep -q "## Decisions" .vbw-planning/STATE.md
+  grep -q "Use Core Data" .vbw-planning/STATE.md
+  # Skills subsection should be stripped
+  ! grep -q "### Skills" .vbw-planning/STATE.md
+  ! grep -q "swiftui-expert-skill" .vbw-planning/STATE.md
 }
 
 @test "handles STATE.md with no todos (None. placeholder)" {

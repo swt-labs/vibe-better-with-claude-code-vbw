@@ -64,6 +64,14 @@ trap cleanup_on_sighup SIGHUP
 # Debug mode: VBW_DEBUG=1 enables verbose hook tracing to stderr
 VBW_DEBUG="${VBW_DEBUG:-0}"
 
+# Resolve debug_logging from config.json (shared flag for all hook diagnostics)
+_DBG_ENABLED=0
+[ "$VBW_DEBUG" = "1" ] && _DBG_ENABLED=1
+if [ "$_DBG_ENABLED" != "1" ] && [ -f ".vbw-planning/config.json" ] && command -v jq &>/dev/null; then
+  _DBG_VAL=$(jq -r '.debug_logging // false' ".vbw-planning/config.json" 2>/dev/null || echo "false")
+  case "$_DBG_VAL" in true|1) _DBG_ENABLED=1 ;; esac
+fi
+
 # Resolve from plugin cache (version-sorted, latest wins)
 # shellcheck source=resolve-claude-dir.sh
 . "$(dirname "$0")/resolve-claude-dir.sh"
@@ -86,8 +94,32 @@ fi
 [ "$VBW_DEBUG" = "1" ] && echo "[VBW DEBUG] hook-wrapper: $SCRIPT → $TARGET" >&2
 
 # Execute — stdin flows through to the target script
-bash "$TARGET" "$@"
-RC=$?
+# When debug logging is enabled, capture stdout for the debug log while still passing it through
+if [ "$_DBG_ENABLED" = "1" ] && [ -d ".vbw-planning" ]; then
+  _DBG_LOG=".vbw-planning/.hook-debug.log"
+  _DBG_TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%s")
+  _DBG_TMP=$(mktemp 2>/dev/null || echo "/tmp/.vbw-hook-dbg-$$")
+  bash "$TARGET" "$@" | tee "$_DBG_TMP"
+  RC=${PIPESTATUS[0]}
+  _DBG_OUTPUT=$(cat "$_DBG_TMP" 2>/dev/null)
+  rm -f "$_DBG_TMP" 2>/dev/null
+  # Log the hook execution and its full output
+  {
+    echo "${_DBG_TS} hook=${SCRIPT} exit=${RC}"
+    if [ -n "$_DBG_OUTPUT" ]; then
+      _DBG_B64=$(echo -n "$_DBG_OUTPUT" | base64 2>/dev/null | tr -d '\n' || echo "encode-failed")
+      echo "${_DBG_TS} hook=${SCRIPT} output_base64=${_DBG_B64}"
+    fi
+  } >> "$_DBG_LOG" 2>/dev/null || true
+  # Trim to last 200 entries
+  if [ -f "$_DBG_LOG" ]; then
+    _DBG_LC=$(wc -l < "$_DBG_LOG" 2>/dev/null | tr -d ' ')
+    [ "${_DBG_LC:-0}" -gt 200 ] && { tail -100 "$_DBG_LOG" > "${_DBG_LOG}.tmp" && mv "${_DBG_LOG}.tmp" "$_DBG_LOG"; } 2>/dev/null
+  fi
+else
+  bash "$TARGET" "$@"
+  RC=$?
+fi
 [ "$VBW_DEBUG" = "1" ] && [ "$RC" -ne 0 ] && echo "[VBW DEBUG] hook-wrapper: $SCRIPT exit=$RC" >&2
 [ "$RC" -eq 0 ] && exit 0
 

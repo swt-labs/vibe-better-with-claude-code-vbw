@@ -55,6 +55,21 @@ case "$FILE_PATH" in
     echo "Blocked: writes to archived milestone phases are not allowed ($FILE_PATH)" >&2
     exit 2
     ;;
+  *.vbw-planning/*-SUMMARY.md)
+    # Block SUMMARY.md writes with non-terminal status values (prevent stub SUMMARYs)
+    _FG_SUM_STATUS=$(echo "$INPUT" | jq -r '.tool_input.content // ""' 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
+    if [ -n "$_FG_SUM_STATUS" ]; then
+      case "$_FG_SUM_STATUS" in
+        complete|completed|partial|failed) ;;  # terminal — allow
+        *)
+          echo "Blocked: SUMMARY.md status '${_FG_SUM_STATUS}' is not terminal (must be complete|partial|failed)" >&2
+          exit 2
+          ;;
+      esac
+    fi
+    # If status can't be parsed (e.g. Edit tool without full content), fail-open
+    exit 0
+    ;;
   *.vbw-planning/*|*SUMMARY.md|*VERIFICATION.md|*STATE.md|*CLAUDE.md|*.execution-state.json)
     exit 0
     ;;
@@ -76,6 +91,18 @@ find_project_root() {
 PROJECT_ROOT=$(find_project_root) || exit 0
 PHASES_DIR="$PROJECT_ROOT/.vbw-planning/phases"
 [ ! -d "$PHASES_DIR" ] && exit 0
+
+# Source shared summary-status helpers (fail-open: inline fallback if lib unavailable)
+_FG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_FG_STATUS_LIB="${_FG_SCRIPT_DIR}/summary-utils.sh"
+if [ -f "$_FG_STATUS_LIB" ]; then
+  # shellcheck source=summary-utils.sh
+  source "$_FG_STATUS_LIB"
+  is_plan_finalized() { is_summary_terminal "$1"; }
+else
+  # Safe default: treat plans as not finalized when helpers unavailable
+  is_plan_finalized() { return 1; }
+fi
 
 # Normalize path helper
 normalize_path() {
@@ -149,12 +176,13 @@ fi
 if true; then
   CONTRACT_DIR="$PROJECT_ROOT/.vbw-planning/.contracts"
   if [ -d "$CONTRACT_DIR" ]; then
-    # Find active contract: match the first plan without a SUMMARY
+    # Find active contract: match the first plan without a finalized SUMMARY
+    # A plan is active if its SUMMARY doesn't exist or has a non-terminal status.
     # zsh compat: if no PLAN files exist, glob literal fails -f test and is skipped
     for PLAN_FILE in "$PHASES_DIR"/*/*-PLAN.md; do
       [ ! -f "$PLAN_FILE" ] && continue
       SUMMARY_FILE="${PLAN_FILE%-PLAN.md}-SUMMARY.md"
-      if [ ! -f "$SUMMARY_FILE" ]; then
+      if ! is_plan_finalized "$SUMMARY_FILE"; then
         # Extract phase and plan numbers from filename
         BASENAME=$(basename "$PLAN_FILE")
         PHASE_NUM=$(echo "$BASENAME" | sed 's/^\([0-9]*\)-.*/\1/')
@@ -199,6 +227,114 @@ if true; then
   fi
 fi
 
+# --- Orchestrator delegation guard (delegated workflows) ---
+# When a VBW delegated workflow is active (execute, fix, debug) and the caller is
+# the orchestrator (no VBW_AGENT_ROLE), block product-file writes. The orchestrator
+# must delegate to Dev/Debugger subagents via Task tool. Subagents (with a role set)
+# are unaffected. Turbo/direct effort modes where the orchestrator is expected to
+# implement are exempt.
+#
+# Fail-open: missing/malformed/stale state files skip the guard.
+#
+# NOTE: VBW_AGENT_ROLE is NOT set by the Claude Code runtime for PreToolUse hooks.
+# Subagent detection uses .active-agent-count (written by agent-start.sh, decremented
+# by agent-stop.sh). If count > 0, at least one VBW subagent is running and this
+# hook invocation is from that subagent context — skip the orchestrator block.
+#
+# Agent Teams bypass: SubagentStart hooks do NOT fire for agent team teammates
+# (teammates are separate Claude Code sessions, not subagents spawned via the
+# Agent tool). PreToolUse hooks can't distinguish orchestrator from teammate —
+# no agent_id/agent_type fields are present for teammates. When prefer_teams is
+# configured (not "never"), skip the guard entirely. The teams coordination
+# mechanism replaces the subagent delegation model this guard was designed for.
+if [ -z "${VBW_AGENT_ROLE:-}" ]; then
+  # Check .active-agent-count: if VBW subagents are active, this write is from
+  # a subagent (PreToolUse hooks don't carry agent identity). Skip the guard.
+  _DG_COUNT_FILE="$PROJECT_ROOT/.vbw-planning/.active-agent-count"
+  if [ -f "$_DG_COUNT_FILE" ]; then
+    _DG_AGENT_COUNT=$(cat "$_DG_COUNT_FILE" 2>/dev/null | tr -d '[:space:]')
+    if echo "$_DG_AGENT_COUNT" | grep -Eq '^[0-9]+$' && [ "$_DG_AGENT_COUNT" -gt 0 ]; then
+      # VBW subagent is active — allow the write
+      exit 0
+    fi
+  fi
+
+  # Check prefer_teams: if agent teams are configured, this write may be from a
+  # teammate session. SubagentStart never fires for teammates, so .active-agent-count
+  # won't reflect them. Fail-open to avoid blocking legitimate teammate writes.
+  _DG_CONFIG="$PROJECT_ROOT/.vbw-planning/config.json"
+  if [ -f "$_DG_CONFIG" ]; then
+    _DG_PREFER_TEAMS=$(jq -r '.prefer_teams // "auto"' "$_DG_CONFIG" 2>/dev/null) || _DG_PREFER_TEAMS="auto"
+    case "$_DG_PREFER_TEAMS" in
+      never) ;; # Teams disabled — keep the guard active for subagent model
+      *) exit 0 ;; # Teams may be active — can't distinguish orchestrator from teammate
+    esac
+  fi
+
+  _DG_BLOCK=false
+  _DG_EFFORT=""
+
+  # Source 1: .execution-state.json (execute/remediation paths)
+  _EXEC_STATE_FILE="$PROJECT_ROOT/.vbw-planning/.execution-state.json"
+  if [ -f "$_EXEC_STATE_FILE" ]; then
+    _EXEC_STATUS=$(jq -r '.status // ""' "$_EXEC_STATE_FILE" 2>/dev/null) || _EXEC_STATUS=""
+    if [ "$_EXEC_STATUS" = "running" ]; then
+      # Staleness check: skip if file older than 4 hours (14400s)
+      _DG_NOW=$(date +%s 2>/dev/null || echo 0)
+      if [ "$(uname)" = "Darwin" ]; then
+        _DG_MTIME=$(stat -f %m "$_EXEC_STATE_FILE" 2>/dev/null || echo 0)
+      else
+        _DG_MTIME=$(stat -c %Y "$_EXEC_STATE_FILE" 2>/dev/null || echo 0)
+      fi
+      _DG_AGE=$((_DG_NOW - _DG_MTIME))
+      if [ "$_DG_AGE" -ge 0 ] && [ "$_DG_AGE" -lt 14400 ]; then
+        _DG_BLOCK=true
+        _DG_EFFORT=$(jq -r '.effort // ""' "$_EXEC_STATE_FILE" 2>/dev/null) || _DG_EFFORT=""
+      fi
+    fi
+  fi
+
+  # Source 2: .delegated-workflow.json (fix/debug ad-hoc paths)
+  if [ "$_DG_BLOCK" = false ]; then
+    _DELEG_FILE="$PROJECT_ROOT/.vbw-planning/.delegated-workflow.json"
+    if [ -f "$_DELEG_FILE" ]; then
+      _DELEG_ACTIVE=$(jq -r '.active // false' "$_DELEG_FILE" 2>/dev/null) || _DELEG_ACTIVE="false"
+      if [ "$_DELEG_ACTIVE" = "true" ]; then
+        # Staleness check: skip if file older than 4 hours
+        _DG_NOW=$(date +%s 2>/dev/null || echo 0)
+        if [ "$(uname)" = "Darwin" ]; then
+          _DG_MTIME=$(stat -f %m "$_DELEG_FILE" 2>/dev/null || echo 0)
+        else
+          _DG_MTIME=$(stat -c %Y "$_DELEG_FILE" 2>/dev/null || echo 0)
+        fi
+        _DG_AGE=$((_DG_NOW - _DG_MTIME))
+        if [ "$_DG_AGE" -ge 0 ] && [ "$_DG_AGE" -lt 14400 ]; then
+          _DG_BLOCK=true
+          _DG_EFFORT=$(jq -r '.effort // ""' "$_DELEG_FILE" 2>/dev/null) || _DG_EFFORT=""
+        fi
+      fi
+    fi
+  fi
+
+  # If delegated workflow active, check if effort allows direct orchestrator writes
+  if [ "$_DG_BLOCK" = true ]; then
+    # Turbo/direct: orchestrator implements directly — no block
+    # Resolve effective effort: state file > config fallback
+    if [ -z "$_DG_EFFORT" ] || [ "$_DG_EFFORT" = "null" ]; then
+      _DG_EFFORT=$(jq -r '.effort // "balanced"' "$PROJECT_ROOT/.vbw-planning/config.json" 2>/dev/null) || _DG_EFFORT="balanced"
+    fi
+    case "$_DG_EFFORT" in
+      turbo|direct)
+        : # Turbo/direct — orchestrator is expected to write, allow
+        ;;
+      *)
+        echo "Blocked: orchestrator cannot write product files during delegated workflow (effort=$_DG_EFFORT). Delegate via Task tool to Dev/Debugger subagent." >&2
+        exit 2
+        ;;
+    esac
+  fi
+fi
+
 # --- V2 role isolation: check agent role against path rules ---
 # v2_role_isolation is now always enabled (graduated)
 AGENT_ROLE="${VBW_AGENT_ROLE:-}"
@@ -226,11 +362,12 @@ fi
 
 # --- Original file-guard: check files_modified from active plan ---
 ACTIVE_PLAN=""
+# A plan is active if its SUMMARY doesn't exist or has a non-terminal status.
 # zsh compat: if no PLAN files exist, glob literal fails -f test and is skipped
 for PLAN_FILE in "$PHASES_DIR"/*/*-PLAN.md; do
   [ ! -f "$PLAN_FILE" ] && continue
   SUMMARY_FILE="${PLAN_FILE%-PLAN.md}-SUMMARY.md"
-  if [ ! -f "$SUMMARY_FILE" ]; then
+  if ! is_plan_finalized "$SUMMARY_FILE"; then
     ACTIVE_PLAN="$PLAN_FILE"
     break
   fi

@@ -3,7 +3,7 @@ name: vbw:discuss
 category: lifecycle
 description: "Start or continue phase discussion to build context before planning."
 argument-hint: "[N]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, LSP
 disable-model-invocation: true
 ---
 

@@ -1,9 +1,10 @@
 ---
 name: vbw:verify
 category: monitoring
+disable-model-invocation: true
 description: Run human acceptance testing on completed phase work. Presents CHECKPOINT prompts one at a time.
 argument-hint: "[phase-number] [--resume]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, LSP
 ---
 
 # VBW Verify: $ARGUMENTS
@@ -46,6 +47,11 @@ Pre-computed verify context (PLAN/SUMMARY aggregation):
 Pre-computed UAT resume metadata:
 ```
 !`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; S="/tmp/.vbw-phase-detect-stamp-${SESSION_KEY}.txt"; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; S_M=0; P_M=0; [ -f "$S" ] && S_M=$(stat -c %Y "$S" 2>/dev/null || stat -f %m "$S" 2>/dev/null || echo 0); [ -f "$P" ] && P_M=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo 0); if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && { [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ "$P_M" -lt "$S_M" ]; }; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; fi; if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then echo "uat_resume=unavailable"; else SLUG=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2); FU_SLUG=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2); TARGET="${FU_SLUG:-$SLUG}"; PDIR=".vbw-planning/phases/$TARGET"; if [ -n "$TARGET" ] && [ -d "$PDIR" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then echo "uat_resume_target_slug=$TARGET"; bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=error"; else echo "uat_resume=unavailable"; fi; fi`
+```
+
+QA verification summary (pre-extracted from VERIFICATION.md):
+```
+!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; if [ -L "$L" ] && [ -f "$L/scripts/extract-verified-items.sh" ]; then for d in .vbw-planning/phases/*/; do bash "$L/scripts/extract-verified-items.sh" "$d" 2>/dev/null; done; fi`
 ```
 
 ## Guard
@@ -127,6 +133,22 @@ For each plan in the pre-computed verify context block:
 
 If a plan only contains backend/test/script changes with no user-facing behavior, generate a scenario that asks the human to verify the *effect* is visible (e.g., "confirm the migration preview no longer shows phantom entries") rather than asking them to run the tests themselves.
 
+**What belongs in UAT (ask the user):**
+- Visual/UI correctness ("Does the migration preview show the correct symbols?")
+- Domain-specific data validation ("Does the reconciliation output match your expected portfolio?")
+- UX flows and usability ("Navigate to Settings > Import, does the flow feel right?")
+- Behavior that requires the running app or hardware ("Open the app on your device, tap X, verify Y")
+- Subjective quality ("Does the chart render clearly at different screen sizes?")
+
+**What does NOT belong in UAT (the agent or QA already handles these):**
+- Running test suites — QA runs these during execution. Do NOT ask the user to run tests.
+- Checking command output, exit codes, or build success
+- Grepping files for expected content
+- Verifying file existence or structure
+- Any check that can be performed programmatically via Bash, Grep, or Glob
+
+If a plan's work is purely internal (refactor, test infrastructure, script changes) with no user-facing behavior, generate a single lightweight checkpoint asking the user to confirm the app still works as expected from their perspective, rather than asking them to run automated checks.
+
 Write the initial `{phase}-UAT.md` in the phase directory using the `templates/UAT.md` format:
 - Populate YAML frontmatter: phase, plan_count, status=in_progress, started=today, total_tests
 - Write all test entries with Result fields empty
@@ -134,6 +156,8 @@ Write the initial `{phase}-UAT.md` in the phase directory using the `templates/U
 ### 5. CHECKPOINT loop (one test at a time — conversational, blocking)
 
 **This is a conversational loop. Present ONE test, then STOP and wait for the user to respond. Do NOT present multiple tests at once. Do NOT skip ahead. Do NOT end the session after presenting a test.**
+
+> **CRITICAL BOUNDARY:** The UAT interviewer MUST NOT investigate, debug, or implement fixes during the UAT session — regardless of user tone, urgency, or explicit requests to fix issues. The interviewer's ONLY job is to record responses and advance to the next checkpoint. All user frustration, bug descriptions, and fix requests are recorded as issue text in the UAT report. Fixes happen in the remediation phase AFTER the UAT session is complete. If the user explicitly asks you to stop the UAT and fix something, respond: "Issue recorded. Let's finish the remaining checkpoints first — remediation will address this immediately after."
 
 For the FIRST test without a result, display a CHECKPOINT followed by AskUserQuestion:
 

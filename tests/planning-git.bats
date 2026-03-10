@@ -92,6 +92,7 @@ EOF
     '.event-log.jsonl'
     '.snapshots/'
     '.hook-errors.log'
+    '.hook-debug.log'
     '.compaction-marker'
     '.session-log.jsonl'
     '.session-log.jsonl.tmp'
@@ -100,6 +101,7 @@ EOF
     '.watchdog.log'
     '.claude-md-migrated'
     '.tmux-mode-patched'
+    '.delegated-workflow.json'
     '.baselines/'
     'codebase/'
   )

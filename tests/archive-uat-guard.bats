@@ -27,7 +27,7 @@ teardown() {
 
   # Phase 8 has full execution artifacts + unresolved UAT
   touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-UAT.md <<'EOF'
 ---
 phase: 08
@@ -57,7 +57,7 @@ EOF
   echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
 
   touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-UAT.md <<'EOF'
 ---
 phase: 08
@@ -86,7 +86,7 @@ EOF
   mkdir -p .vbw-planning/milestones/01-old/phases/01-setup/
   echo "# Shipped" > .vbw-planning/milestones/01-old/SHIPPED.md
   touch .vbw-planning/milestones/01-old/phases/01-setup/01-01-PLAN.md
-  touch .vbw-planning/milestones/01-old/phases/01-setup/01-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-old/phases/01-setup/01-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-old/phases/01-setup/01-UAT.md <<'EOF'
 ---
 phase: 01
@@ -99,7 +99,7 @@ EOF
   mkdir -p .vbw-planning/milestones/02-latest/phases/03-api/
   echo "# Shipped" > .vbw-planning/milestones/02-latest/SHIPPED.md
   touch .vbw-planning/milestones/02-latest/phases/03-api/03-01-PLAN.md
-  touch .vbw-planning/milestones/02-latest/phases/03-api/03-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/02-latest/phases/03-api/03-01-SUMMARY.md
   cat > .vbw-planning/milestones/02-latest/phases/03-api/03-UAT.md <<'EOF'
 ---
 phase: 03
@@ -123,7 +123,7 @@ EOF
   mkdir -p .vbw-planning/milestones/01-old/phases/01-done/
   echo "# Shipped" > .vbw-planning/milestones/01-old/SHIPPED.md
   touch .vbw-planning/milestones/01-old/phases/01-done/01-01-PLAN.md
-  touch .vbw-planning/milestones/01-old/phases/01-done/01-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-old/phases/01-done/01-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-old/phases/01-done/01-UAT.md <<'EOF'
 ---
 phase: 01
@@ -145,7 +145,7 @@ EOF
   echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
 
   touch .vbw-planning/milestones/01-foundation/phases/05-polish/05-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/05-polish/05-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/05-polish/05-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/05-polish/05-UAT.md <<'EOF'
 ---
 phase: 05
@@ -168,7 +168,7 @@ EOF
   echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
 
   touch .vbw-planning/milestones/01-foundation/phases/05-polish/05-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/05-polish/05-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/05-polish/05-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/05-polish/05-UAT.md <<'EOF'
 ---
 phase: 05
@@ -189,7 +189,7 @@ EOF
   echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
 
   touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-UAT.md <<'EOF'
 ---
 phase: 08
@@ -210,7 +210,7 @@ EOF
   mkdir -p .vbw-planning/milestones/01-old/phases/03-api/
   echo "# Shipped" > .vbw-planning/milestones/01-old/SHIPPED.md
   touch .vbw-planning/milestones/01-old/phases/03-api/03-01-PLAN.md
-  touch .vbw-planning/milestones/01-old/phases/03-api/03-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-old/phases/03-api/03-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-old/phases/03-api/03-UAT.md <<'EOF'
 ---
 phase: 03
@@ -223,7 +223,7 @@ EOF
   mkdir -p .vbw-planning/milestones/02-latest/phases/04-ui/
   echo "# Shipped" > .vbw-planning/milestones/02-latest/SHIPPED.md
   touch .vbw-planning/milestones/02-latest/phases/04-ui/04-01-PLAN.md
-  touch .vbw-planning/milestones/02-latest/phases/04-ui/04-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/02-latest/phases/04-ui/04-01-SUMMARY.md
   cat > .vbw-planning/milestones/02-latest/phases/04-ui/04-UAT.md <<'EOF'
 ---
 phase: 04
@@ -245,7 +245,7 @@ EOF
   mkdir -p .vbw-planning/milestones/9-old/phases/01-legacy/
   echo "# Shipped" > .vbw-planning/milestones/9-old/SHIPPED.md
   touch .vbw-planning/milestones/9-old/phases/01-legacy/01-01-PLAN.md
-  touch .vbw-planning/milestones/9-old/phases/01-legacy/01-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/9-old/phases/01-legacy/01-01-SUMMARY.md
   cat > .vbw-planning/milestones/9-old/phases/01-legacy/01-UAT.md <<'EOF'
 ---
 phase: 01
@@ -257,7 +257,7 @@ EOF
   mkdir -p .vbw-planning/milestones/10-new/phases/02-api/
   echo "# Shipped" > .vbw-planning/milestones/10-new/SHIPPED.md
   touch .vbw-planning/milestones/10-new/phases/02-api/02-01-PLAN.md
-  touch .vbw-planning/milestones/10-new/phases/02-api/02-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/10-new/phases/02-api/02-01-SUMMARY.md
   cat > .vbw-planning/milestones/10-new/phases/02-api/02-UAT.md <<'EOF'
 ---
 phase: 02
@@ -277,7 +277,7 @@ EOF
   mkdir -p .vbw-planning/milestones/legacy-archive/phases/07-payments/
 
   touch .vbw-planning/milestones/legacy-archive/phases/07-payments/07-01-PLAN.md
-  touch .vbw-planning/milestones/legacy-archive/phases/07-payments/07-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/legacy-archive/phases/07-payments/07-01-SUMMARY.md
   cat > .vbw-planning/milestones/legacy-archive/phases/07-payments/07-UAT.md <<'EOF'
 ---
 phase: 07
@@ -297,7 +297,7 @@ EOF
   echo "# Project" > .vbw-planning/PROJECT.md
   mkdir -p .vbw-planning/phases/01-core/
   touch .vbw-planning/phases/01-core/01-01-PLAN.md
-  touch .vbw-planning/phases/01-core/01-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-core/01-01-SUMMARY.md
   cat > .vbw-planning/phases/01-core/01-UAT.md <<'EOF'
 ---
 phase: 01
@@ -317,7 +317,7 @@ EOF
   mkdir -p .vbw-planning/milestones/01-foundation/phases/08-cost-basis/
   echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
   touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-UAT.md <<'EOF'
 ---
 phase: 08
@@ -338,7 +338,7 @@ EOF
   echo "# Shipped" > ".vbw-planning/milestones/01 legacy/SHIPPED.md"
 
   touch ".vbw-planning/milestones/01 legacy/phases/01 core/01-01-PLAN.md"
-  touch ".vbw-planning/milestones/01 legacy/phases/01 core/01-01-SUMMARY.md"
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > ".vbw-planning/milestones/01 legacy/phases/01 core/01-01-SUMMARY.md"
   cat > ".vbw-planning/milestones/01 legacy/phases/01 core/01-UAT.md" <<'EOF'
 ---
 phase: 01
@@ -360,7 +360,7 @@ EOF
   echo "# Shipped" > ".vbw-planning/milestones/01 legacy/SHIPPED.md"
 
   touch ".vbw-planning/milestones/01 legacy/phases/01 core/01-01-PLAN.md"
-  touch ".vbw-planning/milestones/01 legacy/phases/01 core/01-01-SUMMARY.md"
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > ".vbw-planning/milestones/01 legacy/phases/01 core/01-01-SUMMARY.md"
   cat > ".vbw-planning/milestones/01 legacy/phases/01 core/01-UAT.md" <<'EOF'
 ---
 phase: 01
@@ -377,7 +377,7 @@ EOF
 @test "phase-detect treats Status key and trailing spaces as unresolved UAT" {
   mkdir -p .vbw-planning/phases/01-core
   touch .vbw-planning/phases/01-core/01-01-PLAN.md
-  touch .vbw-planning/phases/01-core/01-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-core/01-01-SUMMARY.md
   cat > .vbw-planning/phases/01-core/01-UAT.md <<'EOF'
 ---
 phase: 01
@@ -397,7 +397,7 @@ EOF
   mkdir -p .vbw-planning/milestones/01-foundation/phases/08-cost-basis/
   echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
   touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/08-cost-basis/08-UAT.md <<'EOF'
 ---
 phase: 08
@@ -479,7 +479,7 @@ EOF
 
   # Phase 05 — issues_found
   touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/05-migration/05-UAT.md <<'EOF'
 ---
 status: issues_found
@@ -489,7 +489,7 @@ EOF
 
   # Phase 07 — issues_found
   touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/07-detail/07-UAT.md <<'EOF'
 ---
 status: issues_found
@@ -499,7 +499,7 @@ EOF
 
   # Phase 08 — issues_found
   touch .vbw-planning/milestones/01-foundation/phases/08-warnings/08-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/08-warnings/08-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/08-warnings/08-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/08-warnings/08-UAT.md <<'EOF'
 ---
 status: issues_found
@@ -525,7 +525,7 @@ EOF
 
   # Phase 05 — remediated
   touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/05-migration/05-UAT.md <<'EOF'
 ---
 status: issues_found
@@ -536,7 +536,7 @@ EOF
 
   # Phase 07 — still unresolved
   touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/07-detail/07-UAT.md <<'EOF'
 ---
 status: issues_found
@@ -560,7 +560,7 @@ EOF
   echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
 
   touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/05-migration/05-UAT.md <<'EOF'
 ---
 status: issues_found
@@ -583,7 +583,7 @@ EOF
   echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
 
   touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/05-migration/05-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/05-migration/05-UAT.md <<'EOF'
 ---
 status: issues_found
@@ -592,7 +592,7 @@ Severity: major
 EOF
 
   touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-PLAN.md
-  touch .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/01-foundation/phases/07-detail/07-01-SUMMARY.md
   cat > .vbw-planning/milestones/01-foundation/phases/07-detail/07-UAT.md <<'EOF'
 ---
 status: issues_found

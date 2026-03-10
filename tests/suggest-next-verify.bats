@@ -385,3 +385,52 @@ EOF
   [[ "$output" == *"Milestone UAT recovery pending (01-foundation, 2 phase(s))"* ]]
   [[ "$output" != *"/vbw:vibe --archive"* ]]
 }
+
+# --- UAT round tracking in suggestion labels ---
+
+@test "suggest-next remediation label includes Round N when round files exist" {
+  cd "$TEST_TEMP_DIR"
+  create_phase_with_uat "03" "ui-polish" "major"
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/03-ui-polish"
+
+  # Create 5 archived round files
+  for i in 01 02 03 04 05; do
+    printf 'round %s\n' "$i" > "${phase_dir}/03-UAT-round-${i}.md"
+  done
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
+
+  [ "$status" -eq 0 ]
+  # 5 round files + active UAT = Round 6
+  [[ "$output" == *"Round 6"* ]]
+  [[ "$output" == *"Phase 03 (03-ui-polish)"* ]]
+}
+
+@test "suggest-next remediation label omits round suffix when no round files" {
+  cd "$TEST_TEMP_DIR"
+  create_phase_with_uat "03" "ui-polish" "major"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
+
+  [ "$status" -eq 0 ]
+  # No round files → no Round suffix
+  [[ "$output" != *"Round"* ]]
+  [[ "$output" == *"Phase 03 (03-ui-polish)"* ]]
+}
+
+@test "suggest-next minor fix label includes Round N when round files exist" {
+  cd "$TEST_TEMP_DIR"
+  create_phase_with_uat "02" "fixes" "minor"
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-fixes"
+
+  # Create 2 archived round files
+  printf 'round 1\n' > "${phase_dir}/02-UAT-round-01.md"
+  printf 'round 2\n' > "${phase_dir}/02-UAT-round-02.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
+
+  [ "$status" -eq 0 ]
+  # 2 round files + active UAT = Round 3
+  [[ "$output" == *"Round 3"* ]]
+  [[ "$output" == *"/vbw:fix"* ]]
+}
