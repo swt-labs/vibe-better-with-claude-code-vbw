@@ -127,6 +127,10 @@ Decision tree:
 - `prefer_teams='auto'`: Same as when_parallel (use current behavior, smart routing can downgrade)
 
 When team should be created based on prefer_teams:
+- **Pre-TeamCreate cleanup** (remove orphaned VBW team directories from prior sessions before creating a new team):
+  ```bash
+  bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true
+  ```
 - Create team via TeamCreate: `team_name="vbw-phase-{NN}"`, `description="Phase {NN}: {phase-name}"`
 - All Dev and QA agents below MUST be spawned with `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"` (from plan number) or `name: "qa"` parameters on the Task tool invocation.
 
@@ -573,8 +577,12 @@ Note: "Run inline" means the execute-protocol orchestrator runs the CHECKPOINT l
 3. Wait for each `shutdown_response` with `approved: true` (delivered as a SendMessage tool call from the teammate, NOT as plain text). If a teammate responds in plain text instead of calling SendMessage, re-send the `shutdown_request`. If a teammate rejects, re-request immediately (max 3 attempts per teammate — if still rejected after 3 attempts, log a warning and proceed with TeamDelete).
 4. Log event: `bash "${VBW_PLUGIN_ROOT}/scripts/log-event.sh" shutdown_received {phase} team={team_name} approved={count} rejected={count} 2>/dev/null || true`
 5. Call TeamDelete for team "vbw-phase-{NN}"
-6. Only THEN proceed to state updates and user-facing output below
-Failure to shut down leaves agents running in the background, consuming API credits (visible as hanging panes in tmux, invisible but still costly without tmux). If no team was created: skip shutdown sequence. **Recovery:** If shutdown stalls or agents linger after TeamDelete, do NOT manually `rm -rf ~/.claude/teams` — use `/vbw:doctor --cleanup` which runs `doctor-cleanup.sh` and `clean-stale-teams.sh` with safe atomic cleanup. These scripts detect stale teams (inbox >2h), orphan processes, and dangling PIDs.
+6. **Post-TeamDelete residual cleanup** (belt-and-suspenders — catches race-condition residuals where agents recreate inbox files after TeamDelete):
+   ```bash
+   bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true
+   ```
+7. Only THEN proceed to state updates and user-facing output below
+Failure to shut down leaves agents running in the background, consuming API credits (visible as hanging panes in tmux, invisible but still costly without tmux). If no team was created: skip shutdown sequence. **Recovery:** If shutdown stalls or agents linger after TeamDelete, do NOT manually `rm -rf ~/.claude/teams` — use `/vbw:doctor --cleanup` which runs `doctor-cleanup.sh` and `clean-stale-teams.sh` with safe atomic cleanup. These scripts detect stale teams, orphan processes, and dangling PIDs. `clean-stale-teams.sh` immediately removes VBW team directories missing `config.json` (orphaned residuals) without waiting for the 2-hour stale threshold.
 
 > **Runtime enforcement limitation:** Claude Code does not expose agent-team message tool calls (e.g., `SendMessage`) to `PreToolUse`/`PostToolUse` hooks with stable `tool_name` values. Therefore VBW cannot hook-validate malformed shutdown responses at runtime. Enforcement relies on: (1) mechanical SendMessage instructions in all 6 agent prompts, (2) compaction-instructions.sh reminders that survive context compaction, (3) orchestrator retry (re-send if teammate responds in plain text), and (4) `/vbw:doctor --cleanup` as a recovery path for stuck teams.
 

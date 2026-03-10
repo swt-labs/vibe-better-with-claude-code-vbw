@@ -49,6 +49,13 @@ scan_stale_teams() {
 
     local team_name
     team_name=$(basename "$team_dir")
+
+    # Check for orphaned/configless team directories (no config.json = corrupted residual)
+    if [ ! -f "$team_dir/config.json" ]; then
+      echo "orphaned_team|$team_name|no config.json (ghost team residual)"
+      continue
+    fi
+
     local inbox_dir="$team_dir/inboxes"
 
     [ ! -d "$inbox_dir" ] && continue

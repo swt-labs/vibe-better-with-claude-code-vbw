@@ -413,6 +413,10 @@ This mode handles the case where a milestone was archived before UAT issues were
      - `prefer_teams='auto'`: Same as when_parallel (Lead-only is low-risk)
 
      When team should be created (based on prefer_teams):
+     - **Pre-TeamCreate cleanup** (remove orphaned VBW team directories from prior sessions):
+       ```bash
+       bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true
+       ```
      - Create team via TeamCreate: `team_name="vbw-plan-{NN}"`, `description="Planning Phase {NN}: {phase-name}"`
      - Spawn Scout (if spawned in step 3) with `subagent_type: "vbw:vbw-scout"`, `team_name: "vbw-plan-{NN}"`, `name: "scout"` parameters on the Task tool invocation.
      - Spawn Lead with `subagent_type: "vbw:vbw-lead"`, `team_name: "vbw-plan-{NN}"`, `name: "lead"` parameters on the Task tool invocation.
@@ -420,8 +424,12 @@ This mode handles the case where a milestone was archived before UAT issues were
        1. Send `shutdown_request` to EVERY active teammate via SendMessage (Lead, Scout — excluding yourself, the orchestrator)
        2. Wait for each `shutdown_response` (approved=true) delivered via SendMessage tool call (NOT plain text). If a teammate responds in plain text instead of calling SendMessage, re-send the `shutdown_request`. If rejected, re-request (max 3 attempts per teammate — then proceed).
        3. Call TeamDelete for team "vbw-plan-{NN}"
-       4. Verify: after TeamDelete, there must be ZERO active teammates. If tmux panes still show agent labels, something went wrong — do NOT proceed. If teardown stalls, advise the user to run `/vbw:doctor --cleanup`.
-       5. Only THEN proceed to step 8
+       4. **Post-TeamDelete residual cleanup** (catches race-condition residuals):
+          ```bash
+          bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true
+          ```
+       5. Verify: after TeamDelete, there must be ZERO active teammates. If tmux panes still show agent labels, something went wrong — do NOT proceed. If teardown stalls, advise the user to run `/vbw:doctor --cleanup`.
+       6. Only THEN proceed to step 8
        **WHY THIS EXISTS:** Without this gate, each Plan invocation spawns a new Lead that lingers in tmux. After 2-3 phases, multiple @lea panes accumulate, each burning API credits doing nothing. This is the #1 user-reported cost issue.
 
      When team should NOT be created (Lead-only with when_parallel/auto):

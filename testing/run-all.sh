@@ -82,6 +82,10 @@ echo "Running live validation policy checks..."
 bash "$ROOT/testing/verify-live-validation-policy.sh"
 
 echo ""
+echo "Running ghost team cleanup checks..."
+bash "$ROOT/testing/verify-ghost-team-cleanup.sh"
+
+echo ""
 if command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null; then
   echo "Running bats test suites..."
   bats_pass=0
