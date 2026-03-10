@@ -198,7 +198,7 @@ simulate_session_stop() {
 @test "prune keeps alive PIDs and removes dead ones" {
   cd "$TEST_TEMP_DIR"
   # Start a real background process to get a live PID
-  sleep 300 &
+  sleep 30 &
   local alive_pid=$!
 
   printf "${alive_pid}\n99994\n99995\n" > ".vbw-planning/.agent-pids"
