@@ -475,3 +475,93 @@ teardown() {
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.valid == true'
 }
+
+# =============================================================================
+# Issue #198: Mechanical tool-call instructions in agent Shutdown Handling
+# Agents must be told to CALL the SendMessage tool, not just "respond"
+# =============================================================================
+
+@test "all agent shutdown handlers require calling SendMessage tool" {
+  for agent in dev qa scout lead debugger docs; do
+    local section
+    section=$(sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-${agent}.md")
+    echo "$section" | grep -qi 'call.*SendMessage tool' || {
+      echo "vbw-${agent}.md Shutdown Handling missing 'call the SendMessage tool' instruction"
+      return 1
+    }
+  done
+}
+
+@test "all agent shutdown handlers warn plain text is NOT sufficient" {
+  for agent in dev qa scout lead debugger docs; do
+    local section
+    section=$(sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-${agent}.md")
+    echo "$section" | grep -qi 'NOT sufficient' || {
+      echo "vbw-${agent}.md Shutdown Handling missing 'NOT sufficient' warning"
+      return 1
+    }
+  done
+}
+
+@test "all agent shutdown handlers specify approve: true" {
+  for agent in dev qa scout lead debugger docs; do
+    local section
+    section=$(sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-${agent}.md")
+    echo "$section" | grep -q 'approve.*true' || {
+      echo "vbw-${agent}.md Shutdown Handling missing approve: true instruction"
+      return 1
+    }
+  done
+}
+
+@test "all agent shutdown handlers specify shutdown_response type" {
+  for agent in dev qa scout lead debugger docs; do
+    local section
+    section=$(sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-${agent}.md")
+    echo "$section" | grep -q 'shutdown_response' || {
+      echo "vbw-${agent}.md Shutdown Handling missing shutdown_response type"
+      return 1
+    }
+  done
+}
+
+@test "handoff-schemas.md includes delivery format note" {
+  grep -q 'Delivery format' "$PROJECT_ROOT/references/handoff-schemas.md"
+}
+
+@test "handoff-schemas.md delivery note warns about plain text" {
+  local section
+  section=$(sed -n '/### Delivery format/,/^## /p' "$PROJECT_ROOT/references/handoff-schemas.md")
+  echo "$section" | grep -qi 'NOT satisfy\|NOT sufficient\|not plain text'
+}
+
+@test "compaction-instructions.sh injects shutdown protocol reminder for team agents" {
+  cd "$TEST_TEMP_DIR"
+  for agent in scout dev qa lead debugger docs; do
+    echo '{"agent_name":"vbw-'"$agent"'","matcher":"auto"}' | \
+      bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
+    local ctx
+    ctx=$(jq -r '.hookSpecificOutput.additionalContext' "$TEST_TEMP_DIR/compaction-output.json")
+    echo "$ctx" | grep -qi 'SHUTDOWN PROTOCOL' || {
+      echo "compaction-instructions.sh missing shutdown reminder for $agent"
+      return 1
+    }
+    echo "$ctx" | grep -qi 'SendMessage tool' || {
+      echo "compaction-instructions.sh missing SendMessage tool in shutdown reminder for $agent"
+      return 1
+    }
+  done
+}
+
+@test "compaction-instructions.sh does NOT inject shutdown reminder for default/unknown agents" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"agent_name":"unknown-agent","matcher":"auto"}' | \
+    bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
+  local ctx
+  ctx=$(jq -r '.hookSpecificOutput.additionalContext' "$TEST_TEMP_DIR/compaction-output.json")
+  echo "$ctx" | grep -qi 'SHUTDOWN PROTOCOL' && {
+    echo "compaction-instructions.sh should NOT inject shutdown reminder for unknown agents"
+    return 1
+  }
+  return 0
+}
