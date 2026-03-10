@@ -180,6 +180,56 @@ simulate_session_stop() {
 }
 
 # =============================================================================
+# PID Tracker Prune — dead PID cleanup
+# =============================================================================
+
+@test "prune removes all dead PIDs and deletes the file" {
+  cd "$TEST_TEMP_DIR"
+  # Write fake dead PIDs
+  printf '99991\n99992\n99993\n' > ".vbw-planning/.agent-pids"
+
+  run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
+  [ "$status" -eq 0 ]
+
+  # File should be removed (all PIDs dead)
+  [ ! -f ".vbw-planning/.agent-pids" ]
+}
+
+@test "prune keeps alive PIDs and removes dead ones" {
+  cd "$TEST_TEMP_DIR"
+  # Start a real background process to get a live PID
+  sleep 300 &
+  local alive_pid=$!
+
+  printf "${alive_pid}\n99994\n99995\n" > ".vbw-planning/.agent-pids"
+
+  run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
+  [ "$status" -eq 0 ]
+
+  # File should exist with only the alive PID
+  [ -f ".vbw-planning/.agent-pids" ]
+  run grep "^${alive_pid}$" ".vbw-planning/.agent-pids"
+  [ "$status" -eq 0 ]
+
+  # Dead PIDs should be gone
+  run grep "^99994$" ".vbw-planning/.agent-pids"
+  [ "$status" -ne 0 ]
+  run grep "^99995$" ".vbw-planning/.agent-pids"
+  [ "$status" -ne 0 ]
+
+  kill "$alive_pid" 2>/dev/null || true
+}
+
+@test "prune is a no-op when .agent-pids does not exist" {
+  cd "$TEST_TEMP_DIR"
+  rm -f ".vbw-planning/.agent-pids"
+
+  run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
+  [ "$status" -eq 0 ]
+  [ ! -f ".vbw-planning/.agent-pids" ]
+}
+
+# =============================================================================
 # Session Stop Cleanup
 # =============================================================================
 

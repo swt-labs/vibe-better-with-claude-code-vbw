@@ -6,6 +6,7 @@ set -euo pipefail
 #   agent-pid-tracker.sh register <pid>
 #   agent-pid-tracker.sh unregister <pid>
 #   agent-pid-tracker.sh list
+#   agent-pid-tracker.sh prune
 #
 # Stores newline-delimited PIDs in .vbw-planning/.agent-pids
 # Uses mkdir-based file locking (macOS-compatible, no flock needed)
@@ -102,6 +103,36 @@ cmd_list() {
   done < "$PID_FILE"
 }
 
+cmd_prune() {
+  if [ ! -f "$PID_FILE" ]; then
+    return 0
+  fi
+
+  acquire_lock || return 1
+  trap release_lock EXIT
+
+  local temp_file="${PID_FILE}.tmp"
+  local kept=0
+
+  while IFS= read -r pid; do
+    [ -z "$pid" ] && continue
+    echo "$pid" | grep -qE '^[1-9][0-9]*$' || continue
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "$pid" >> "$temp_file"
+      kept=$((kept + 1))
+    fi
+  done < "$PID_FILE"
+
+  if [ "$kept" -gt 0 ] && [ -f "$temp_file" ]; then
+    mv "$temp_file" "$PID_FILE"
+  else
+    rm -f "$temp_file" "$PID_FILE"
+  fi
+
+  release_lock
+  trap - EXIT
+}
+
 # --- Main ---
 CMD="${1:-}"
 case "$CMD" in
@@ -116,8 +147,11 @@ case "$CMD" in
   list)
     cmd_list
     ;;
+  prune)
+    cmd_prune
+    ;;
   *)
-    echo "Usage: $0 {register|unregister|list} [pid]" >&2
+    echo "Usage: $0 {register|unregister|list|prune} [pid]" >&2
     exit 1
     ;;
 esac

@@ -788,6 +788,12 @@ if [ -d "$PLANNING_DIR" ]; then
   cleanup_orphaned_agents || true
 fi
 
+# --- Prune Dead PIDs ---
+# Remove stale entries from .agent-pids to prevent unbounded growth across milestones.
+if [ -d "$PLANNING_DIR" ] && [ -f "$SCRIPT_DIR/agent-pid-tracker.sh" ]; then
+  bash "$SCRIPT_DIR/agent-pid-tracker.sh" prune 2>/dev/null || true
+fi
+
 # --- Stale Team Cleanup ---
 if [ -d "$PLANNING_DIR" ] && [ -f "$SCRIPT_DIR/clean-stale-teams.sh" ]; then
   bash "$SCRIPT_DIR/clean-stale-teams.sh" 2>/dev/null || true
