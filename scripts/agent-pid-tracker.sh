@@ -126,8 +126,10 @@ cmd_prune() {
   if [ "$kept" -gt 0 ] && [ -f "$temp_file" ]; then
     mv "$temp_file" "$PID_FILE"
   else
-    rm -f "$temp_file" "$PID_FILE"
+    rm -f "$PID_FILE"
   fi
+  # Clean up temp file in case mv didn't consume it (defensive)
+  rm -f "$temp_file" 2>/dev/null || true
 
   release_lock
   trap - EXIT
