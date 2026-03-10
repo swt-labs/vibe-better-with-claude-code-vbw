@@ -77,8 +77,9 @@ check_compaction_timeouts() {
     agent_name=$(jq -r '.agent_name // "unknown"' "$marker" 2>/dev/null)
     started_at=$(jq -r '.started_at // 0' "$marker" 2>/dev/null)
 
-    # Skip if missing critical data
-    if [ -z "$pid" ] || [ "$started_at" -eq 0 ] 2>/dev/null; then
+    # Clean markers with missing/invalid critical data — they can never become valid
+    if [ -z "$pid" ] || [ -z "$started_at" ] || [ "$started_at" -eq 0 ] 2>/dev/null; then
+      rm -f "$marker" 2>/dev/null || true
       continue
     fi
 
