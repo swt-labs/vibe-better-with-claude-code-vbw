@@ -37,27 +37,40 @@ else
     local dir="$1"
     [ -d "$dir" ] || return 0
     { find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null; \
-      find "$dir" -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null; \
-      find "$dir" -path '*/remediation/P*-*-round/*-PLAN.md' ! -name '.*' 2>/dev/null; } | sort
+      find "$dir" -maxdepth 2 -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null; \
+      find "$dir" -maxdepth 3 -path '*/remediation/P*-*-round/*-PLAN.md' ! -name '.*' 2>/dev/null; } | sort
+  }
+  _hg_frontmatter_scalar() {
+    local f="$1" key="$2"
+    [ -f "$f" ] || return 0
+    awk -v key="$key" '
+      BEGIN { in_fm=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^[^[:space:]]/ && $0 ~ key ":[[:space:]]*" {
+        line = $0; sub(key ":[[:space:]]*", "", line); print line; exit
+      }
+    ' "$f" 2>/dev/null | sed "s/^[\"']//; s/[\"']$//" || true
   }
   plan_contract_numbers() {
     local plan_file="$1"
     local basename phase plan
     basename=$(basename "$plan_file" 2>/dev/null) || basename="$plan_file"
-    case "$basename" in
-      P[0-9]*-R[0-9]*-*)
-        phase=$(echo "$basename" | sed 's/^P\([0-9]*\)-.*/\1/')
-        plan=$(echo "$basename" | sed 's/^P[0-9]*-R\([0-9]*\)-.*/\1/')
-        ;;
-      P[0-9]*-W[0-9]*-*)
-        phase=$(echo "$basename" | sed 's/^P\([0-9]*\)-.*/\1/')
-        plan=$(echo "$basename" | sed 's/^P[0-9]*-W[0-9]*-\([0-9]*\)-.*/\1/')
-        ;;
-      *)
-        phase=$(echo "$basename" | sed 's/^\([0-9]*\)-.*/\1/')
-        plan=$(echo "$basename" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/')
-        ;;
-    esac
+    phase=$(_hg_frontmatter_scalar "$plan_file" phase)
+    plan=$(_hg_frontmatter_scalar "$plan_file" plan)
+    if [ -z "$phase" ]; then
+      case "$basename" in
+        P[0-9]*-R[0-9]*-*|P[0-9]*-W[0-9]*-*) phase=$(echo "$basename" | sed 's/^P\([0-9]*\)-.*/\1/') ;;
+        *) phase=$(echo "$basename" | sed 's/^\([0-9]*\)-.*/\1/') ;;
+      esac
+    fi
+    if [ -z "$plan" ]; then
+      case "$basename" in
+        P[0-9]*-R[0-9]*-*) plan=$(echo "$basename" | sed 's/^P[0-9]*-R\([0-9]*\)-.*/\1/') ;;
+        P[0-9]*-W[0-9]*-*) plan=$(echo "$basename" | sed 's/^P[0-9]*-W[0-9]*-\([0-9]*\)-.*/\1/') ;;
+        *) plan=$(echo "$basename" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/') ;;
+      esac
+    fi
     printf '%s|%s\n' "$phase" "$plan"
   }
 fi

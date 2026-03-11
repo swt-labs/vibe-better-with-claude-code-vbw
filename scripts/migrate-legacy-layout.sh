@@ -120,17 +120,27 @@ if [ "$has_remediation" = true ]; then
   if [ "$max_round" -gt 0 ]; then
     mkdir -p "$PHASE_DIR/remediation"
 
-    # Count initial plans: only {MM}-PLAN.md (single-number prefix from Lead).
-    # Remediation plans are {NN}-{MM}-PLAN.md (two-number prefix).
-    initial_plan_count=$(find "$PHASE_DIR" -maxdepth 1 -name '[0-9]*-PLAN.md' ! -name '[0-9]*-[0-9]*-PLAN.md' ! -name '.*' 2>/dev/null | wc -l | tr -d ' ')
+    # Find max plan number among initial plans: only {MM}-PLAN.md (single-number prefix).
+    # Uses max(existing plan numbers) instead of count to avoid collisions when gaps exist.
+    max_plan_num=0
+    for _mp in "$PHASE_DIR"/[0-9]*-PLAN.md; do
+      [ -f "$_mp" ] || continue
+      _mp_bn=$(basename "$_mp")
+      # Skip {NN}-{MM}-PLAN.md (two-number prefix = remediation plans)
+      echo "$_mp_bn" | grep -qE '^[0-9]+-[0-9]+-PLAN\.md$' && continue
+      _mp_num=$(echo "$_mp_bn" | sed 's/^\([0-9]*\)-.*/\1/')
+      [ -z "$_mp_num" ] && continue
+      _mp_num=$((10#$_mp_num))
+      [ "$_mp_num" -gt "$max_plan_num" ] && max_plan_num=$_mp_num
+    done
 
     for rr_num in $(seq 1 "$max_round"); do
       rr=$(printf '%02d' "$rr_num")
       round_dir="$PHASE_DIR/remediation/P${PHASE_NUM}-${rr}-round"
       mkdir -p "$round_dir"
 
-      # Compute the plan MM for this round
-      plan_mm=$(printf '%02d' $((initial_plan_count + rr_num)))
+      # Compute the plan MM for this round using max plan number + round offset
+      plan_mm=$(printf '%02d' $((max_plan_num + rr_num)))
 
       # Move remediation research
       old_research="$PHASE_DIR/${PHASE_NUM}-${plan_mm}-RESEARCH.md"
@@ -209,9 +219,9 @@ fi
 if [ -n "$VBW_ROOT" ]; then
   local_bn=$(basename "$PHASE_DIR")
   if [ -f "$VBW_ROOT/.layout-v2-migrated" ]; then
-    # Remove the in-progress line
-    grep -v "^${local_bn} in-progress" "$VBW_ROOT/.layout-v2-migrated" > "$VBW_ROOT/.layout-v2-migrated.tmp" 2>/dev/null && \
-      mv "$VBW_ROOT/.layout-v2-migrated.tmp" "$VBW_ROOT/.layout-v2-migrated"
+    # Remove the in-progress line (grep -v returns 1 if all lines removed; use || true)
+    grep -v "^${local_bn} in-progress" "$VBW_ROOT/.layout-v2-migrated" > "$VBW_ROOT/.layout-v2-migrated.tmp" 2>/dev/null || true
+    mv "$VBW_ROOT/.layout-v2-migrated.tmp" "$VBW_ROOT/.layout-v2-migrated"
   fi
   echo "${local_bn} migrated $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$VBW_ROOT/.layout-v2-migrated"
 fi

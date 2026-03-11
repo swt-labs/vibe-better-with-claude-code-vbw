@@ -100,9 +100,12 @@ for f in "$PHASE_DIR"/[0-9]*-PLAN.md; do
   if [ -z "$wave" ]; then
     wave="1"
   fi
-  # Validate wave is numeric (F9: non-numeric values like "TBD" cause arithmetic errors)
+  # Validate wave is numeric and >= 1
   if ! echo "$wave" | grep -qE '^[0-9]+$'; then
     echo "organize-wave-structure: WARNING: non-numeric wave value '$wave' in $(basename "$f"), defaulting to 1" >&2
+    wave="1"
+  elif [ "$((10#$wave))" -lt 1 ]; then
+    echo "organize-wave-structure: WARNING: wave value '$wave' < 1 in $(basename "$f"), defaulting to 1" >&2
     wave="1"
   fi
   wave=$(printf '%02d' "$((10#$wave))")

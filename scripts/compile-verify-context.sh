@@ -25,8 +25,8 @@ fi
 
 # Find all PLAN files sorted by plan number (flat root + wave subdirs + remediation round dirs)
 PLAN_FILES=$( { find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null; \
-                find "$PHASE_DIR" -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null; \
-                find "$PHASE_DIR" -path '*/remediation/P*-*-round/*-PLAN.md' ! -name '.*' 2>/dev/null; } | sort )
+                find "$PHASE_DIR" -maxdepth 2 -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null; \
+                find "$PHASE_DIR" -maxdepth 3 -path '*/remediation/P*-*-round/*-PLAN.md' ! -name '.*' 2>/dev/null; } | sort )
 
 if [ -z "$PLAN_FILES" ]; then
   echo "verify_context=empty"

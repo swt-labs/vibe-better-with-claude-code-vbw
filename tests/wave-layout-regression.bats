@@ -338,6 +338,49 @@ SUMMARY
   ! grep -q "No prior completed phases" "$OUTPUT"
 }
 
+@test "rolling-summary: discovers remediation round summaries at depth 4" {
+  mkdir -p ".vbw-planning/phases/01-phase-one/remediation/P01-01-round"
+  mkdir -p ".vbw-planning/phases/02-phase-two"
+  cat > ".vbw-planning/phases/01-phase-one/remediation/P01-01-round/P01-R01-SUMMARY.md" <<'SUMMARY'
+---
+phase: 1
+plan: 3
+title: "Remediation Round 1"
+status: complete
+deviations: 1
+commit_hashes: ["rem1234"]
+tasks_completed: 2
+tasks_total: 2
+---
+## What Was Built
+Remediation fix.
+## Files Modified
+- scripts/fix.sh
+SUMMARY
+  cat > ".vbw-planning/phases/02-phase-two/02-01-SUMMARY.md" <<'SUMMARY'
+---
+phase: 2
+plan: 1
+title: "Phase Two Plan"
+status: complete
+deviations: 0
+commit_hashes: ["def5678"]
+tasks_completed: 3
+tasks_total: 3
+---
+## What Was Built
+Feature B.
+## Files Modified
+- scripts/b.sh
+SUMMARY
+  OUTPUT="$TEST_TEMP_DIR/ROLLING-CONTEXT.md"
+  run bash "$SCRIPTS_DIR/compile-rolling-summary.sh" ".vbw-planning/phases" "$OUTPUT"
+  [ "$status" -eq 0 ]
+  grep -q "Remediation Round 1" "$OUTPUT"
+  grep -q "Phase Two Plan" "$OUTPUT"
+  ! grep -q "No prior completed phases" "$OUTPUT"
+}
+
 # ==========================================================================
 # delta-files.sh — wave-layout global dedup
 # ==========================================================================

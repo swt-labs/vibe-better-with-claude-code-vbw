@@ -10,8 +10,8 @@ list_phase_plan_files() {
   local dir="$1"
   [ -d "$dir" ] || return 0
   { find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null; \
-    find "$dir" -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null; \
-    find "$dir" -path '*/remediation/P*-*-round/*-PLAN.md' ! -name '.*' 2>/dev/null; } | sort
+    find "$dir" -maxdepth 2 -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null; \
+    find "$dir" -maxdepth 3 -path '*/remediation/P*-*-round/*-PLAN.md' ! -name '.*' 2>/dev/null; } | sort
 }
 
 # list_phase_summary_files DIR
@@ -21,8 +21,8 @@ list_phase_summary_files() {
   local dir="$1"
   [ -d "$dir" ] || return 0
   { find "$dir" -maxdepth 1 ! -name '.*' -name '*-SUMMARY.md' 2>/dev/null; \
-    find "$dir" -path '*/P*-*-wave/*-SUMMARY.md' ! -name '.*' 2>/dev/null; \
-    find "$dir" -path '*/remediation/P*-*-round/*-SUMMARY.md' ! -name '.*' 2>/dev/null; } | sort
+    find "$dir" -maxdepth 2 -path '*/P*-*-wave/*-SUMMARY.md' ! -name '.*' 2>/dev/null; \
+    find "$dir" -maxdepth 3 -path '*/remediation/P*-*-round/*-SUMMARY.md' ! -name '.*' 2>/dev/null; } | sort
 }
 
 # frontmatter_scalar_value FILE KEY
@@ -35,9 +35,9 @@ frontmatter_scalar_value() {
     BEGIN { in_fm=0 }
     NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
     in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && $0 ~ "^[[:space:]]*" key ":[[:space:]]*" {
+    in_fm && /^[^[:space:]]/ && $0 ~ "^" key ":[[:space:]]*" {
       line = $0
-      sub("^[[:space:]]*" key ":[[:space:]]*", "", line)
+      sub("^" key ":[[:space:]]*", "", line)
       print line
       exit
     }
@@ -173,7 +173,7 @@ count_phase_contexts() {
   local dir="$1"
   local count=0
   count=$(( $(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | wc -l) + \
-            $(find "$dir" -path '*/P*-*-wave/*-CONTEXT.md' ! -name '.*' 2>/dev/null | wc -l) ))
+            $(find "$dir" -maxdepth 2 -path '*/P*-*-wave/*-CONTEXT.md' ! -name '.*' 2>/dev/null | wc -l) ))
   echo "$count" | tr -d ' '
 }
 
@@ -184,6 +184,6 @@ count_phase_contexts_any() {
   local dir="$1"
   local count=0
   count=$(( $(find "$dir" -maxdepth 1 ! -name '.*' \( -name '[0-9]*-CONTEXT.md' -o -name 'P[0-9]*-CONTEXT.md' \) 2>/dev/null | wc -l) + \
-            $(find "$dir" -path '*/P*-*-wave/*-CONTEXT.md' ! -name '.*' 2>/dev/null | wc -l) ))
+            $(find "$dir" -maxdepth 2 -path '*/P*-*-wave/*-CONTEXT.md' ! -name '.*' 2>/dev/null | wc -l) ))
   echo "$count" | tr -d ' '
 }

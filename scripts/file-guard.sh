@@ -102,24 +102,37 @@ if [ -f "$_FG_STATUS_LIB" ]; then
 else
   # Safe default: treat plans as not finalized when helpers unavailable
   is_plan_finalized() { return 1; }
+  _fg_frontmatter_scalar() {
+    local f="$1" key="$2"
+    [ -f "$f" ] || return 0
+    awk -v key="$key" '
+      BEGIN { in_fm=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^[^[:space:]]/ && $0 ~ key ":[[:space:]]*" {
+        line = $0; sub(key ":[[:space:]]*", "", line); print line; exit
+      }
+    ' "$f" 2>/dev/null | sed "s/^[\"']//; s/[\"']$//" || true
+  }
   plan_contract_numbers() {
     local _fg_file="$1"
     local _fg_base _fg_phase _fg_plan
     _fg_base=$(basename "$_fg_file" 2>/dev/null) || _fg_base="$_fg_file"
-    case "$_fg_base" in
-      P[0-9]*-R[0-9]*-*)
-        _fg_phase=$(echo "$_fg_base" | sed 's/^P\([0-9]*\)-.*/\1/')
-        _fg_plan=$(echo "$_fg_base" | sed 's/^P[0-9]*-R\([0-9]*\)-.*/\1/')
-        ;;
-      P[0-9]*-W[0-9]*-*)
-        _fg_phase=$(echo "$_fg_base" | sed 's/^P\([0-9]*\)-.*/\1/')
-        _fg_plan=$(echo "$_fg_base" | sed 's/^P[0-9]*-W[0-9]*-\([0-9]*\)-.*/\1/')
-        ;;
-      *)
-        _fg_phase=$(echo "$_fg_base" | sed 's/^\([0-9]*\)-.*/\1/')
-        _fg_plan=$(echo "$_fg_base" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/')
-        ;;
-    esac
+    _fg_phase=$(_fg_frontmatter_scalar "$_fg_file" phase)
+    _fg_plan=$(_fg_frontmatter_scalar "$_fg_file" plan)
+    if [ -z "$_fg_phase" ]; then
+      case "$_fg_base" in
+        P[0-9]*-R[0-9]*-*|P[0-9]*-W[0-9]*-*) _fg_phase=$(echo "$_fg_base" | sed 's/^P\([0-9]*\)-.*/\1/') ;;
+        *) _fg_phase=$(echo "$_fg_base" | sed 's/^\([0-9]*\)-.*/\1/') ;;
+      esac
+    fi
+    if [ -z "$_fg_plan" ]; then
+      case "$_fg_base" in
+        P[0-9]*-R[0-9]*-*) _fg_plan=$(echo "$_fg_base" | sed 's/^P[0-9]*-R\([0-9]*\)-.*/\1/') ;;
+        P[0-9]*-W[0-9]*-*) _fg_plan=$(echo "$_fg_base" | sed 's/^P[0-9]*-W[0-9]*-\([0-9]*\)-.*/\1/') ;;
+        *) _fg_plan=$(echo "$_fg_base" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/') ;;
+      esac
+    fi
     printf '%s|%s\n' "$_fg_phase" "$_fg_plan"
   }
 fi
@@ -166,13 +179,12 @@ resolve_contract_file() {
   local plan_padded="$plan_num"
   local candidate
 
-  for candidate in \
-    "$contract_dir/${phase_num}-${plan_num}.json"; do
-    [ -f "$candidate" ] && {
-      echo "$candidate"
-      return 0
-    }
-  done
+  # Try exact match first
+  candidate="$contract_dir/${phase_num}-${plan_num}.json"
+  if [ -f "$candidate" ]; then
+    echo "$candidate"
+    return 0
+  fi
 
   if echo "$phase_num" | grep -Eq '^[0-9]+$'; then
     phase_plain=$(echo "$phase_num" | sed 's/^0*//')

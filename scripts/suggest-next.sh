@@ -43,8 +43,8 @@ else
     local dir="$1"
     [ -d "$dir" ] || return 0
     { find "$dir" -maxdepth 1 -name '*-SUMMARY.md' ! -name '.*' 2>/dev/null; \
-      find "$dir" -path '*/P*-*-wave/*-SUMMARY.md' ! -name '.*' 2>/dev/null; \
-      find "$dir" -path '*/remediation/P*-*-round/*-SUMMARY.md' ! -name '.*' 2>/dev/null; } | sort
+      find "$dir" -maxdepth 2 -path '*/P*-*-wave/*-SUMMARY.md' ! -name '.*' 2>/dev/null; \
+      find "$dir" -maxdepth 3 -path '*/remediation/P*-*-round/*-SUMMARY.md' ! -name '.*' 2>/dev/null; } | sort
   }
 fi
 

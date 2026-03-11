@@ -88,8 +88,8 @@ sum_glob() {
     size=$(wc -c < "$f" 2>/dev/null) || continue
     total=$((total + size))
   done < <( { find "$dir" -maxdepth 1 -name "$pattern" -type f 2>/dev/null; \
-              find "$dir" -path '*/P*-*-wave/'"$pattern" -type f 2>/dev/null; \
-              find "$dir" -path '*/remediation/P*-*-round/'"$pattern" -type f 2>/dev/null; } )
+              find "$dir" -maxdepth 2 -path '*/P*-*-wave/'"$pattern" -type f 2>/dev/null; \
+              find "$dir" -maxdepth 3 -path '*/remediation/P*-*-round/'"$pattern" -type f 2>/dev/null; } )
   echo "$total"
 }
 
