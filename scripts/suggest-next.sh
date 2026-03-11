@@ -292,7 +292,8 @@ if [ -d "$PLANNING_DIR" ]; then
 
     # Count deviations and find failing plans in active phase
     if [ -n "$active_phase_dir" ] && [ -d "$active_phase_dir" ]; then
-      for sf in "$active_phase_dir"/*-SUMMARY.md; do
+      # Scan SUMMARYs at phase root AND inside wave subdirs
+      while IFS= read -r sf; do
         [ -f "$sf" ] || continue
         # Extract deviations count from frontmatter
         d=$(read_deviations_field "$sf")
@@ -307,7 +308,8 @@ if [ -d "$PLANNING_DIR" ]; then
           plan_id=$(basename "$sf" | sed 's/-SUMMARY.md//')
           failing_plan_ids="${failing_plan_ids:+$failing_plan_ids }$plan_id"
         fi
-      done
+      done < <( { find "$active_phase_dir" -maxdepth 1 -name '*-SUMMARY.md' ! -name '.*' 2>/dev/null; \
+                   find "$active_phase_dir" -path '*/P*-*-wave/*-SUMMARY.md' ! -name '.*' 2>/dev/null; } | sort )
 
       # Check for completed UAT in active phase (exclude SOURCE-UAT copies)
       for uf in "$active_phase_dir"/*-UAT.md; do

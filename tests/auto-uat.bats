@@ -565,6 +565,25 @@ EOF
   [[ "$output" == *"2 deviation(s)"* ]]
 }
 
+@test "suggest-next counts deviations from wave-subdir SUMMARYs" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  # Remove flat-root SUMMARY so only wave-subdir SUMMARY exists
+  rm -f "$dir/01-01-SUMMARY.md"
+  # Create a wave subdir with PLAN + SUMMARY (status: complete with deviations)
+  mkdir -p "$dir/P01-W01-01-wave"
+  printf -- '---\nphase: 01\nplan: 01-01\ntitle: Setup\nwave: 1\n---\n' > "$dir/P01-W01-01-wave/P01-W01-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 3\n---\nDone with deviations.\n' > "$dir/P01-W01-01-wave/P01-W01-01-SUMMARY.md"
+  # Also remove flat-root PLAN so count_phase_plans sees only wave plan
+  rm -f "$dir/01-01-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
+
+  [ "$status" -eq 0 ]
+  # Should find the wave-subdir SUMMARY and count 3 deviations
+  [[ "$output" == *"3 deviation(s)"* ]]
+}
+
 # --- Remediation re-verification lifecycle tests ---
 
 @test "phase-detect outputs needs_reverification when remediation stage=done" {

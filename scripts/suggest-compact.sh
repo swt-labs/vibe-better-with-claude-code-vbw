@@ -76,17 +76,19 @@ sum_bytes() {
   echo "$total"
 }
 
-# Sum bytes of files matching a glob pattern in a directory
+# Sum bytes of files matching a glob pattern in a directory (flat root + wave subdirs)
 sum_glob() {
   local dir="$1" pattern="$2"
   local total=0
   # Use find to avoid glob expansion issues in empty dirs
+  # Scan both flat root and wave subdirs
   while IFS= read -r f; do
     [ -z "$f" ] && continue
     local size
     size=$(wc -c < "$f" 2>/dev/null) || continue
     total=$((total + size))
-  done < <(find "$dir" -maxdepth 1 -name "$pattern" -type f 2>/dev/null)
+  done < <( { find "$dir" -maxdepth 1 -name "$pattern" -type f 2>/dev/null; \
+              find "$dir" -path '*/P*-*-wave/'"$pattern" -type f 2>/dev/null; } )
   echo "$total"
 }
 
