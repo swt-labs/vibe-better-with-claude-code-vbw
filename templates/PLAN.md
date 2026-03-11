@@ -1,5 +1,5 @@
 ---
-phase: {phase-id}
+phase: {NN} # bare integer, no quotes
 plan: {plan-number}
 title: {plan-title}
 type: execute

@@ -24,8 +24,8 @@ PLANNING_DIR=".vbw-planning"
 CONFIG_PATH="${CONFIG_PATH:-${PLANNING_DIR}/config.json}"
 
 # Extract phase and plan from frontmatter
-PHASE=$(awk '/^---$/{n++; next} n==1 && /^phase:/{print $2; exit}' "$PLAN_PATH" 2>/dev/null) || exit 0
-PLAN=$(awk '/^---$/{n++; next} n==1 && /^plan:/{print $2; exit}' "$PLAN_PATH" 2>/dev/null) || exit 0
+PHASE=$(awk '/^---$/{n++; next} n==1 && /^phase:/{gsub(/"/,"",$2); print $2; exit}' "$PLAN_PATH" 2>/dev/null) || exit 0
+PLAN=$(awk '/^---$/{n++; next} n==1 && /^plan:/{gsub(/"/,"",$2); print $2; exit}' "$PLAN_PATH" 2>/dev/null) || exit 0
 [ -z "$PHASE" ] || [ -z "$PLAN" ] && exit 0
 
 # Extract title (objective) from frontmatter
