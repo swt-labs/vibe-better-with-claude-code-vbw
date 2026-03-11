@@ -312,6 +312,36 @@ EOF
   ! echo "$output" | grep -q "^---CONTEXT---$"
 }
 
+@test "init normalizes quoted phase/round in UAT frontmatter" {
+  cat > "$PHASE_DIR/01-CONTEXT.md" <<'EOF'
+---
+phase: 01
+---
+
+# Context
+EOF
+  cat > "$PHASE_DIR/01-UAT.md" <<'EOF'
+---
+phase: "01"
+round: "03"
+severity: major
+---
+
+# UAT Report
+- Quoted phase and round values
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
+
+  # Quoted values should be normalized to bare integers
+  grep -q '^phase: 01$' "$PHASE_DIR/01-CONTEXT.md"
+  grep -q '^round: 03$' "$PHASE_DIR/01-CONTEXT.md"
+  # Should not contain quoted versions
+  ! grep -q 'phase: "01"' "$PHASE_DIR/01-CONTEXT.md"
+  ! grep -q 'round: "03"' "$PHASE_DIR/01-CONTEXT.md"
+}
+
 # --- get-or-init tests ---
 
 @test "get-or-init initializes when no state file exists" {

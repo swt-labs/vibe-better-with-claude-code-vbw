@@ -192,6 +192,11 @@ do_init() {
 
   if [ -n "$uat_file" ] && [ -f "$uat_file" ]; then
     uat_content=$(cat "$uat_file")
+    # Normalize quoted numeric values in YAML frontmatter
+    # LLM sometimes writes phase: "03" instead of phase: 03
+    uat_content=$(printf '%s\n' "$uat_content" | sed -E '/^---[[:space:]]*$/,/^---[[:space:]]*$/{
+      s/^([[:space:]]*(phase|round)[[:space:]]*:[[:space:]]*)"([0-9]+)"/\1\3/
+    }')
 
     if [ -n "$context_file" ] && [ -f "$context_file" ]; then
       _already_seeded=false
