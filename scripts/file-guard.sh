@@ -102,6 +102,26 @@ if [ -f "$_FG_STATUS_LIB" ]; then
 else
   # Safe default: treat plans as not finalized when helpers unavailable
   is_plan_finalized() { return 1; }
+  plan_contract_numbers() {
+    local _fg_file="$1"
+    local _fg_base _fg_phase _fg_plan
+    _fg_base=$(basename "$_fg_file" 2>/dev/null) || _fg_base="$_fg_file"
+    case "$_fg_base" in
+      P[0-9]*-R[0-9]*-*)
+        _fg_phase=$(echo "$_fg_base" | sed 's/^P\([0-9]*\)-.*/\1/')
+        _fg_plan=$(echo "$_fg_base" | sed 's/^P[0-9]*-R\([0-9]*\)-.*/\1/')
+        ;;
+      P[0-9]*-W[0-9]*-*)
+        _fg_phase=$(echo "$_fg_base" | sed 's/^P\([0-9]*\)-.*/\1/')
+        _fg_plan=$(echo "$_fg_base" | sed 's/^P[0-9]*-W[0-9]*-\([0-9]*\)-.*/\1/')
+        ;;
+      *)
+        _fg_phase=$(echo "$_fg_base" | sed 's/^\([0-9]*\)-.*/\1/')
+        _fg_plan=$(echo "$_fg_base" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/')
+        ;;
+    esac
+    printf '%s|%s\n' "$_fg_phase" "$_fg_plan"
+  }
 fi
 
 # Normalize path helper
@@ -134,6 +154,49 @@ to_abs_path() {
   file=$(basename "$base")
   resolved_dir=$(cd "$dir" 2>/dev/null && pwd) || resolved_dir="$dir"
   echo "${resolved_dir%/}/$file"
+}
+
+resolve_contract_file() {
+  local contract_dir="$1"
+  local phase_num="$2"
+  local plan_num="$3"
+  local phase_plain="$phase_num"
+  local plan_plain="$plan_num"
+  local phase_padded="$phase_num"
+  local plan_padded="$plan_num"
+  local candidate
+
+  for candidate in \
+    "$contract_dir/${phase_num}-${plan_num}.json"; do
+    [ -f "$candidate" ] && {
+      echo "$candidate"
+      return 0
+    }
+  done
+
+  if echo "$phase_num" | grep -Eq '^[0-9]+$'; then
+    phase_plain=$(echo "$phase_num" | sed 's/^0*//')
+    [ -n "$phase_plain" ] || phase_plain="0"
+    phase_padded=$(printf '%02d' "$((10#$phase_plain))" 2>/dev/null || echo "$phase_num")
+  fi
+  if echo "$plan_num" | grep -Eq '^[0-9]+$'; then
+    plan_plain=$(echo "$plan_num" | sed 's/^0*//')
+    [ -n "$plan_plain" ] || plan_plain="0"
+    plan_padded=$(printf '%02d' "$((10#$plan_plain))" 2>/dev/null || echo "$plan_num")
+  fi
+
+  for candidate in \
+    "$contract_dir/${phase_plain}-${plan_plain}.json" \
+    "$contract_dir/${phase_padded}-${plan_padded}.json" \
+    "$contract_dir/${phase_padded}-${plan_plain}.json" \
+    "$contract_dir/${phase_plain}-${plan_padded}.json"; do
+    [ -f "$candidate" ] && {
+      echo "$candidate"
+      return 0
+    }
+  done
+
+  echo "$contract_dir/${phase_num}-${plan_num}.json"
 }
 
 NORM_TARGET=$(normalize_path "$FILE_PATH")
@@ -183,26 +246,13 @@ if true; then
       [ ! -f "$PLAN_FILE" ] && continue
       SUMMARY_FILE="${PLAN_FILE%-PLAN.md}-SUMMARY.md"
       if ! is_plan_finalized "$SUMMARY_FILE"; then
-        # Extract phase and plan numbers from filename
-        BASENAME=$(basename "$PLAN_FILE")
-        case "$BASENAME" in
-          P[0-9]*-R[0-9]*-*)
-            # Remediation round plan: P{NN}-R{RR}-PLAN.md
-            PHASE_NUM=$(echo "$BASENAME" | sed 's/^P\([0-9]*\)-.*/\1/')
-            PLAN_NUM=$(echo "$BASENAME" | sed 's/^P[0-9]*-R\([0-9]*\)-.*/\1/')
-            ;;
-          P[0-9]*-W[0-9]*-*)
-            # Wave plan: P{NN}-W{WW}-{MM}-PLAN.md
-            PHASE_NUM=$(echo "$BASENAME" | sed 's/^P\([0-9]*\)-.*/\1/')
-            PLAN_NUM=$(echo "$BASENAME" | sed 's/^P[0-9]*-W[0-9]*-\([0-9]*\)-.*/\1/')
-            ;;
-          *)
-            # Legacy plan: {NN}-{MM}-PLAN.md
-            PHASE_NUM=$(echo "$BASENAME" | sed 's/^\([0-9]*\)-.*/\1/')
-            PLAN_NUM=$(echo "$BASENAME" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/')
-            ;;
-        esac
-        CONTRACT_FILE="${CONTRACT_DIR}/${PHASE_NUM}-${PLAN_NUM}.json"
+        _FG_CONTRACT_NUMBERS=$(plan_contract_numbers "$PLAN_FILE")
+        PHASE_NUM=${_FG_CONTRACT_NUMBERS%%|*}
+        PLAN_NUM=${_FG_CONTRACT_NUMBERS#*|}
+        if [ -z "$PHASE_NUM" ] || [ -z "$PLAN_NUM" ]; then
+          break
+        fi
+        CONTRACT_FILE=$(resolve_contract_file "$CONTRACT_DIR" "$PHASE_NUM" "$PLAN_NUM")
         if [ -f "$CONTRACT_FILE" ]; then
           # Check forbidden_paths
           FORBIDDEN=$(jq -r '.forbidden_paths[]' "$CONTRACT_FILE" 2>/dev/null) || FORBIDDEN=""

@@ -175,6 +175,32 @@ CONTRACT
   [ "$status" -eq 2 ]
 }
 
+@test "file-guard: remediation round uses contract keyed by frontmatter plan number" {
+  local round_dir=".vbw-planning/phases/01-test/remediation/P01-01-round"
+  mkdir -p "$round_dir"
+  cat > "$round_dir/P01-R01-PLAN.md" <<'PLAN'
+---
+phase: 01
+plan: 03
+title: Remediation
+files_modified:
+  - src/allowed.ts
+  - src/escape.ts
+---
+## Tasks
+### Task 1
+- **Files:** `src/allowed.ts`
+PLAN
+
+  bash "$SCRIPTS_DIR/generate-contract.sh" "$round_dir/P01-R01-PLAN.md" >/dev/null
+  [ -f ".vbw-planning/.contracts/01-03.json" ]
+
+  INPUT='{"tool_input":{"file_path":"src/escape.ts","content":"bad"}}'
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"01-03.json"* ]]
+}
+
 # ==========================================================================
 # route-monorepo.sh — wave-layout
 # ==========================================================================
@@ -207,6 +233,61 @@ PLAN
   run bash "$SCRIPTS_DIR/route-monorepo.sh" ".vbw-planning/phases/01-setup"
   [ "$status" -eq 0 ]
   [ "$output" = "[]" ]
+}
+
+@test "route-monorepo: discovers plans in remediation round dirs" {
+  mkdir -p packages/core
+  echo '{}' > packages/core/package.json
+  echo '{}' > package.json
+  mkdir -p ".vbw-planning/phases/01-setup/remediation/P01-01-round"
+  cat > ".vbw-planning/phases/01-setup/remediation/P01-01-round/P01-R01-PLAN.md" <<'PLAN'
+---
+phase: 01
+plan: 03
+title: Remediation
+---
+## Tasks
+### Task 1
+- **Files:** `packages/core/fix.js`
+PLAN
+
+  run bash "$SCRIPTS_DIR/route-monorepo.sh" ".vbw-planning/phases/01-setup"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e 'any(. == "packages/core")'
+}
+
+# ==========================================================================
+# compile-verify-context.sh — remediation round layout
+# ==========================================================================
+
+@test "compile-verify-context: includes remediation round plans and summaries" {
+  mkdir -p ".vbw-planning/phases/01-test/remediation/P01-01-round"
+  cat > ".vbw-planning/phases/01-test/remediation/P01-01-round/P01-R01-PLAN.md" <<'PLAN'
+---
+phase: 01
+plan: 03
+title: Remediation pass
+must_haves:
+  - Fix the broken path guard
+---
+PLAN
+  cat > ".vbw-planning/phases/01-test/remediation/P01-01-round/P01-R01-SUMMARY.md" <<'SUMMARY'
+---
+status: partial
+---
+## What Was Built
+Tightened brownfield remediation lookup.
+
+## Files Modified
+- `src/bugfix.ts`
+SUMMARY
+
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" ".vbw-planning/phases/01-test"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== PLAN 03: Remediation pass ==="* ]]
+  [[ "$output" == *"status: partial"* ]]
+  [[ "$output" == *"files_modified: src/bugfix.ts"* ]]
+  [[ "$output" == *"verify_plan_count=1"* ]]
 }
 
 # ==========================================================================
@@ -295,6 +376,34 @@ SUMMARY
   echo "$output" | grep -q 'src/wave-only.ts'
 }
 
+@test "delta-files: includes remediation round summaries" {
+  local NODIR
+  NODIR=$(mktemp -d)
+  mkdir -p "$NODIR/phases/01-setup/remediation/P01-01-round"
+  cat > "$NODIR/phases/01-setup/remediation/P01-01-round/P01-R01-SUMMARY.md" <<'SUMMARY'
+---
+status: complete
+---
+## Files Modified
+- src/remediation-only.ts
+- src/shared.ts
+SUMMARY
+  cat > "$NODIR/phases/01-setup/01-01-SUMMARY.md" <<'SUMMARY'
+---
+status: complete
+---
+## Files Modified
+- src/shared.ts
+SUMMARY
+
+  cd "$NODIR"
+  run bash "$SCRIPTS_DIR/delta-files.sh" "phases/01-setup"
+  rm -rf "$NODIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q 'src/remediation-only.ts'
+  [ "$(echo "$output" | grep -c 'src/shared.ts')" -eq 1 ]
+}
+
 # ==========================================================================
 # qa-gate.sh — wave-layout plan counting
 # ==========================================================================
@@ -350,4 +459,21 @@ S
   source "$SCRIPTS_DIR/summary-utils.sh"
   count=$(count_complete_summaries "$phase_dir")
   [ "$count" -eq 2 ]
+}
+
+@test "hard-gate artifact_persistence: remediation round reports frontmatter plan number" {
+  mkdir -p ".vbw-planning/phases/01-test/remediation/P01-01-round"
+  cat > ".vbw-planning/phases/01-test/remediation/P01-01-round/P01-R01-PLAN.md" <<'PLAN'
+---
+phase: 01
+plan: 03
+title: Remediation
+---
+PLAN
+
+  run bash "$SCRIPTS_DIR/hard-gate.sh" artifact_persistence 01 4 1 "/dev/null"
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.result == "fail"'
+  echo "$output" | jq -e '.evidence | contains("plan-03")'
+  echo "$output" | jq -e '(.evidence | contains("plan-01")) | not'
 }

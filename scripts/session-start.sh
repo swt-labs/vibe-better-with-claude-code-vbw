@@ -21,6 +21,18 @@ else
   # Safe default: report zero completions when helpers unavailable
   count_complete_summaries() { echo "0"; }
   count_done_summaries() { echo "0"; }
+  list_phase_summary_files() {
+    local dir="$1"
+    [ -d "$dir" ] || return 0
+    { find "$dir" -maxdepth 1 ! -name '.*' -name '*-SUMMARY.md' 2>/dev/null; \
+      find "$dir" -path '*/P*-*-wave/*-SUMMARY.md' ! -name '.*' 2>/dev/null; \
+      find "$dir" -path '*/remediation/P*-*-round/*-SUMMARY.md' ! -name '.*' 2>/dev/null; } | sort
+  }
+  summary_status_value() {
+    local f="$1"
+    [ -f "$f" ] || return 1
+    sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$f" 2>/dev/null | head -1 | tr -d '[:space:]'
+  }
 fi
 
 # --- Capture session_id from hook stdin JSON ---
@@ -318,20 +330,12 @@ _bf_bad_summary_count=0
 if [ -d "$PLANNING_DIR/phases" ]; then
   for _bf_phase_dir in "$PLANNING_DIR"/phases/*/; do
     [ -d "$_bf_phase_dir" ] || continue
-    # Scan flat root SUMMARYs
-    for _bf_sf in "$_bf_phase_dir"*-SUMMARY.md; do
+    while IFS= read -r _bf_sf; do
       [ -f "$_bf_sf" ] || continue
       if ! is_summary_complete "$_bf_sf"; then
         _bf_bad_summary_count=$((_bf_bad_summary_count + 1))
       fi
-    done
-    # Scan wave-subdir SUMMARYs
-    for _bf_sf in "$_bf_phase_dir"P*-*-wave/*-SUMMARY.md; do
-      [ -f "$_bf_sf" ] || continue
-      if ! is_summary_complete "$_bf_sf"; then
-        _bf_bad_summary_count=$((_bf_bad_summary_count + 1))
-      fi
-    done
+    done < <(list_phase_summary_files "$_bf_phase_dir")
   done
 fi
 
@@ -659,24 +663,14 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
       # shellcheck disable=SC2010
       SUMMARY_COUNT=0
       STRICT_COMPLETE=0
-      # Scan flat root SUMMARYs
-      for _ss_sf in "$PHASE_DIR"/*-SUMMARY.md; do
+      while IFS= read -r _ss_sf; do
         [ -f "$_ss_sf" ] || continue
-        _ss_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_ss_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+        _ss_st=$(summary_status_value "$_ss_sf")
         case "$_ss_st" in
           complete|completed) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)); STRICT_COMPLETE=$((STRICT_COMPLETE + 1)) ;;
           partial) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)) ;;
         esac
-      done
-      # Scan wave-subdir SUMMARYs
-      for _ss_sf in "$PHASE_DIR"/P*-*-wave/*-SUMMARY.md; do
-        [ -f "$_ss_sf" ] || continue
-        _ss_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_ss_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
-        case "$_ss_st" in
-          complete|completed) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)); STRICT_COMPLETE=$((STRICT_COMPLETE + 1)) ;;
-          partial) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)) ;;
-        esac
-      done
+      done < <(list_phase_summary_files "$PHASE_DIR")
 
       # Reconcile individual plan statuses against actual SUMMARY.md files.
       # After a reset/undo, .execution-state.json may have stale "complete"
@@ -685,28 +679,16 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
       if [ "${_json_done:-0}" -gt "${SUMMARY_COUNT:-0}" ] 2>/dev/null; then
         # Build JSON array of plan IDs that actually have completed SUMMARY.md
         _completed_json="[]"
-        # Scan flat root SUMMARYs
-        for _sf in "$PHASE_DIR"/*-SUMMARY.md; do
+        while IFS= read -r _sf; do
           [ -f "$_sf" ] || continue
-          _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+          _sf_st=$(summary_status_value "$_sf")
           case "$_sf_st" in
             complete|completed|partial)
               _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
               _completed_json=$(echo "$_completed_json" | jq --arg id "$_sf_id" '. + [$id]')
               ;;
           esac
-        done
-        # Scan wave-subdir SUMMARYs
-        for _sf in "$PHASE_DIR"/P*-*-wave/*-SUMMARY.md; do
-          [ -f "$_sf" ] || continue
-          _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
-          case "$_sf_st" in
-            complete|completed|partial)
-              _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
-              _completed_json=$(echo "$_completed_json" | jq --arg id "$_sf_id" '. + [$id]')
-              ;;
-          esac
-        done
+        done < <(list_phase_summary_files "$PHASE_DIR")
         # Reset plans to "pending" if their SUMMARY.md is missing on disk
         _reconcile_tmp="${EXEC_STATE}.reconcile.$$"
         jq --argjson completed "$_completed_json" '

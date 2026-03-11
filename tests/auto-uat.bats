@@ -584,6 +584,37 @@ EOF
   [[ "$output" == *"3 deviation(s)"* ]]
 }
 
+@test "suggest-next counts deviations from remediation round SUMMARYs" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  local tmp
+  tmp=$(mktemp)
+  jq '.auto_uat = false' "$TEST_TEMP_DIR/.vbw-planning/config.json" > "$tmp" && mv "$tmp" "$TEST_TEMP_DIR/.vbw-planning/config.json"
+
+  mkdir -p "$dir/remediation/P01-01-round"
+  printf -- '---\nphase: 01\nplan: 03\ntitle: Remediation\n---\n' > "$dir/remediation/P01-01-round/P01-R01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 4\n---\nDone with remediation deviations.\n' > "$dir/remediation/P01-01-round/P01-R01-SUMMARY.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" status
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Archive completed work"* ]]
+  [ "$(grep -cF 'zero deviations' <<< "$output")" -eq 0 ]
+}
+
+@test "suggest-next finds failing remediation round plan IDs" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  mkdir -p "$dir/remediation/P01-01-round"
+  printf -- '---\nphase: 01\nplan: 03\ntitle: Remediation\n---\n' > "$dir/remediation/P01-01-round/P01-R01-PLAN.md"
+  printf -- '---\nstatus: failed\ndeviations: 2\n---\nNeeds another pass.\n' > "$dir/remediation/P01-01-round/P01-R01-SUMMARY.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" qa fail
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:fix -- Fix plan P01-R01 (failed QA)"* ]]
+}
+
 # --- Remediation re-verification lifecycle tests ---
 
 @test "phase-detect outputs needs_reverification when remediation stage=done" {

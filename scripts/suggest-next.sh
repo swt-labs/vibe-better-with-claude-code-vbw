@@ -39,6 +39,13 @@ if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
 else
   # Safe default: report zero completions when helpers unavailable
   count_complete_summaries() { echo "0"; }
+  list_phase_summary_files() {
+    local dir="$1"
+    [ -d "$dir" ] || return 0
+    { find "$dir" -maxdepth 1 -name '*-SUMMARY.md' ! -name '.*' 2>/dev/null; \
+      find "$dir" -path '*/P*-*-wave/*-SUMMARY.md' ! -name '.*' 2>/dev/null; \
+      find "$dir" -path '*/remediation/P*-*-round/*-SUMMARY.md' ! -name '.*' 2>/dev/null; } | sort
+  }
 fi
 
 list_child_dirs_sorted() {
@@ -292,7 +299,7 @@ if [ -d "$PLANNING_DIR" ]; then
 
     # Count deviations and find failing plans in active phase
     if [ -n "$active_phase_dir" ] && [ -d "$active_phase_dir" ]; then
-      # Scan SUMMARYs at phase root AND inside wave subdirs
+      # Scan SUMMARYs at phase root, wave subdirs, and remediation round dirs
       while IFS= read -r sf; do
         [ -f "$sf" ] || continue
         # Extract deviations count from frontmatter
@@ -308,8 +315,7 @@ if [ -d "$PLANNING_DIR" ]; then
           plan_id=$(basename "$sf" | sed 's/-SUMMARY.md//')
           failing_plan_ids="${failing_plan_ids:+$failing_plan_ids }$plan_id"
         fi
-      done < <( { find "$active_phase_dir" -maxdepth 1 -name '*-SUMMARY.md' ! -name '.*' 2>/dev/null; \
-                   find "$active_phase_dir" -path '*/P*-*-wave/*-SUMMARY.md' ! -name '.*' 2>/dev/null; } | sort )
+      done < <(list_phase_summary_files "$active_phase_dir")
 
       # Check for completed UAT in active phase (exclude SOURCE-UAT copies)
       for uf in "$active_phase_dir"/*-UAT.md; do

@@ -29,6 +29,39 @@ PLANNING_DIR=".vbw-planning"
 CONFIG_PATH="${PLANNING_DIR}/config.json"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+if [ -f "${SCRIPT_DIR}/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "${SCRIPT_DIR}/summary-utils.sh"
+else
+  list_phase_plan_files() {
+    local dir="$1"
+    [ -d "$dir" ] || return 0
+    { find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null; \
+      find "$dir" -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null; \
+      find "$dir" -path '*/remediation/P*-*-round/*-PLAN.md' ! -name '.*' 2>/dev/null; } | sort
+  }
+  plan_contract_numbers() {
+    local plan_file="$1"
+    local basename phase plan
+    basename=$(basename "$plan_file" 2>/dev/null) || basename="$plan_file"
+    case "$basename" in
+      P[0-9]*-R[0-9]*-*)
+        phase=$(echo "$basename" | sed 's/^P\([0-9]*\)-.*/\1/')
+        plan=$(echo "$basename" | sed 's/^P[0-9]*-R\([0-9]*\)-.*/\1/')
+        ;;
+      P[0-9]*-W[0-9]*-*)
+        phase=$(echo "$basename" | sed 's/^P\([0-9]*\)-.*/\1/')
+        plan=$(echo "$basename" | sed 's/^P[0-9]*-W[0-9]*-\([0-9]*\)-.*/\1/')
+        ;;
+      *)
+        phase=$(echo "$basename" | sed 's/^\([0-9]*\)-.*/\1/')
+        plan=$(echo "$basename" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/')
+        ;;
+    esac
+    printf '%s|%s\n' "$phase" "$plan"
+  }
+fi
+
 AUTONOMY="unknown"
 if [ -f "$CONFIG_PATH" ] && command -v jq &>/dev/null; then
   AUTONOMY=$(jq -r '.autonomy // "unknown"' "$CONFIG_PATH" 2>/dev/null || echo "unknown")
@@ -175,18 +208,11 @@ case "$GATE_TYPE" in
 
     # Check all plans up to current have SUMMARY.md
     MISSING=""
-    for plan_file in "$PHASE_DIR"/*-PLAN.md "$PHASE_DIR"/P*-*-wave/*-PLAN.md "$PHASE_DIR"/remediation/P*-*-round/*-PLAN.md; do
+    while IFS= read -r plan_file; do
       [ ! -f "$plan_file" ] && continue
-      PLAN_BASENAME=$(basename "$plan_file")
-      # Extract plan number: legacy "01-01-PLAN.md", P-prefix "P01-W01-01-PLAN.md", or remediation "P01-R01-PLAN.md"
-      case "$PLAN_BASENAME" in
-        P[0-9]*-R[0-9]*-*)
-          PLAN_NUM=$(echo "$PLAN_BASENAME" | sed 's/^P[0-9]*-R\([0-9]*\)-.*/\1/') ;;
-        P[0-9]*-W[0-9]*-*)
-          PLAN_NUM=$(echo "$PLAN_BASENAME" | sed 's/^P[0-9]*-W[0-9]*-\([0-9]*\)-.*/\1/') ;;
-        *)
-          PLAN_NUM=$(echo "$PLAN_BASENAME" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/') ;;
-      esac
+      _HG_CONTRACT_NUMBERS=$(plan_contract_numbers "$plan_file")
+      PLAN_NUM=${_HG_CONTRACT_NUMBERS#*|}
+      [ -n "$PLAN_NUM" ] || continue
       # Only check plans before the current one
       if [ "$PLAN_NUM" -lt "$PLAN" ] 2>/dev/null; then
         SUMMARY_FILE="${plan_file%-PLAN.md}-SUMMARY.md"
@@ -194,7 +220,7 @@ case "$GATE_TYPE" in
           MISSING="${MISSING}plan-${PLAN_NUM} "
         fi
       fi
-    done
+    done < <(list_phase_plan_files "$PHASE_DIR")
 
     if [ -n "$MISSING" ]; then
       emit_result "fail" "missing SUMMARY.md for: ${MISSING}"

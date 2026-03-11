@@ -540,6 +540,65 @@ SUMMARY
   [ "$recovered_status" = "complete" ]
 }
 
+@test "session-start: brownfield invalid-summary scan includes remediation round summaries" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/phases/01-setup/remediation/P01-01-round
+  cat > .vbw-planning/phases/01-setup/remediation/P01-01-round/P01-R01-SUMMARY.md <<'SUMMARY'
+---
+status: partial
+---
+# Summary
+SUMMARY
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"BROWNFIELD:"* ]]
+}
+
+@test "session-start: reconcile counts remediation round summaries for completion" {
+  cd "$TEST_TEMP_DIR"
+  rm -f .vbw-planning/phases/01-setup/01-01-PLAN.md
+  mkdir -p .vbw-planning/phases/01-setup/remediation/P01-01-round
+  echo "# Plan" > .vbw-planning/phases/01-setup/remediation/P01-01-round/P01-R01-PLAN.md
+  cat > .vbw-planning/phases/01-setup/remediation/P01-01-round/P01-R01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
+  cat > .vbw-planning/.execution-state.json <<'STATE'
+{"phase":1,"status":"running","plans":[{"id":"P01-R01","status":"pending"}]}
+STATE
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+
+  recovered_status=$(jq -r '.status' .vbw-planning/.execution-state.json 2>/dev/null)
+  [ "$recovered_status" = "complete" ]
+}
+
+@test "session-start: reconcile preserves completed remediation plan IDs" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/phases/01-setup/remediation/P01-01-round
+  cat > .vbw-planning/phases/01-setup/remediation/P01-01-round/P01-R01-SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
+  cat > .vbw-planning/.execution-state.json <<'STATE'
+{"phase":1,"status":"running","plans":[{"id":"P01-R01","status":"complete"},{"id":"01-02","status":"complete"}]}
+STATE
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+
+  first_status=$(jq -r '.plans[] | select(.id == "P01-R01") | .status' .vbw-planning/.execution-state.json 2>/dev/null)
+  second_status=$(jq -r '.plans[] | select(.id == "01-02") | .status' .vbw-planning/.execution-state.json 2>/dev/null)
+  [ "$first_status" = "complete" ]
+  [ "$second_status" = "pending" ]
+}
+
 @test "recover-state: treats SUMMARY status 'completed' as complete" {
   cd "$TEST_TEMP_DIR"
   local tmp

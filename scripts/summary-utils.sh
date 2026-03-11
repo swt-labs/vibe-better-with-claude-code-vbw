@@ -3,6 +3,84 @@
 # Source this from scripts that need status-based completion detection.
 # All functions are portable bash (3.2+), no external dependencies beyond sed.
 
+# list_phase_plan_files DIR
+# Emits PLAN.md files for a phase directory across flat root, wave subdirs,
+# and remediation round dirs.
+list_phase_plan_files() {
+  local dir="$1"
+  [ -d "$dir" ] || return 0
+  { find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null; \
+    find "$dir" -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null; \
+    find "$dir" -path '*/remediation/P*-*-round/*-PLAN.md' ! -name '.*' 2>/dev/null; } | sort
+}
+
+# list_phase_summary_files DIR
+# Emits SUMMARY.md files for a phase directory across flat root, wave subdirs,
+# and remediation round dirs.
+list_phase_summary_files() {
+  local dir="$1"
+  [ -d "$dir" ] || return 0
+  { find "$dir" -maxdepth 1 ! -name '.*' -name '*-SUMMARY.md' 2>/dev/null; \
+    find "$dir" -path '*/P*-*-wave/*-SUMMARY.md' ! -name '.*' 2>/dev/null; \
+    find "$dir" -path '*/remediation/P*-*-round/*-SUMMARY.md' ! -name '.*' 2>/dev/null; } | sort
+}
+
+# frontmatter_scalar_value FILE KEY
+# Reads a simple scalar from YAML frontmatter and strips surrounding quotes.
+frontmatter_scalar_value() {
+  local f="$1"
+  local key="$2"
+  [ -f "$f" ] || return 0
+  awk -v key="$key" '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && $0 ~ "^[[:space:]]*" key ":[[:space:]]*" {
+      line = $0
+      sub("^[[:space:]]*" key ":[[:space:]]*", "", line)
+      print line
+      exit
+    }
+  ' "$f" 2>/dev/null | sed "s/^[\"']//; s/[\"']$//" || true
+}
+
+# plan_contract_numbers FILE
+# Emits "<phase>|<plan>" for a PLAN.md file, preferring frontmatter phase/plan
+# so migrated remediation files keep their original plan ordinal.
+plan_contract_numbers() {
+  local plan_file="$1"
+  local basename phase plan
+  basename=$(basename "$plan_file" 2>/dev/null) || basename="$plan_file"
+
+  phase=$(frontmatter_scalar_value "$plan_file" phase)
+  plan=$(frontmatter_scalar_value "$plan_file" plan)
+
+  if [ -z "$phase" ]; then
+    case "$basename" in
+      P[0-9]*-R[0-9]*-*|P[0-9]*-W[0-9]*-*) phase=$(echo "$basename" | sed 's/^P\([0-9]*\)-.*/\1/') ;;
+      *) phase=$(echo "$basename" | sed 's/^\([0-9]*\)-.*/\1/') ;;
+    esac
+  fi
+
+  if [ -z "$plan" ]; then
+    case "$basename" in
+      P[0-9]*-R[0-9]*-*) plan=$(echo "$basename" | sed 's/^P[0-9]*-R\([0-9]*\)-.*/\1/') ;;
+      P[0-9]*-W[0-9]*-*) plan=$(echo "$basename" | sed 's/^P[0-9]*-W[0-9]*-\([0-9]*\)-.*/\1/') ;;
+      *) plan=$(echo "$basename" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/') ;;
+    esac
+  fi
+
+  printf '%s|%s\n' "$phase" "$plan"
+}
+
+# summary_status_value FILE_PATH
+# Emits the normalized status from SUMMARY frontmatter, or nothing if absent.
+summary_status_value() {
+  local f="$1"
+  [ -f "$f" ] || return 1
+  tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]'
+}
+
 # is_summary_complete FILE_PATH
 # Returns 0 if SUMMARY exists and has terminal-complete status, 1 otherwise.
 # "complete" and "completed" are both accepted as terminal-complete.
@@ -11,7 +89,7 @@ is_summary_complete() {
   local f="$1"
   [ -f "$f" ] || return 1
   local status
-  status=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
+  status=$(summary_status_value "$f")
   case "$status" in
     complete|completed) return 0 ;;
     *) return 1 ;;
@@ -24,7 +102,7 @@ is_summary_terminal() {
   local f="$1"
   [ -f "$f" ] || return 1
   local status
-  status=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
+  status=$(summary_status_value "$f")
   case "$status" in
     complete|completed|partial|failed) return 0 ;;
     *) return 1 ;;
@@ -38,24 +116,12 @@ count_complete_summaries() {
   local dir="$1"
   local count=0
   local f
-  for f in "$dir"/*-SUMMARY.md; do
+  while IFS= read -r f; do
     [ -f "$f" ] || continue
     if is_summary_complete "$f"; then
       count=$((count + 1))
     fi
-  done
-  for f in "$dir"/P*-*-wave/*-SUMMARY.md; do
-    [ -f "$f" ] || continue
-    if is_summary_complete "$f"; then
-      count=$((count + 1))
-    fi
-  done
-  for f in "$dir"/remediation/P*-*-round/*-SUMMARY.md; do
-    [ -f "$f" ] || continue
-    if is_summary_complete "$f"; then
-      count=$((count + 1))
-    fi
-  done
+  done < <(list_phase_summary_files "$dir")
   echo "$count"
 }
 
@@ -67,21 +133,11 @@ count_done_summaries() {
   local dir="$1"
   local count=0
   local f st
-  for f in "$dir"/*-SUMMARY.md; do
+  while IFS= read -r f; do
     [ -f "$f" ] || continue
-    st=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
+    st=$(summary_status_value "$f")
     case "$st" in complete|completed|partial) count=$((count + 1)) ;; esac
-  done
-  for f in "$dir"/P*-*-wave/*-SUMMARY.md; do
-    [ -f "$f" ] || continue
-    st=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
-    case "$st" in complete|completed|partial) count=$((count + 1)) ;; esac
-  done
-  for f in "$dir"/remediation/P*-*-round/*-SUMMARY.md; do
-    [ -f "$f" ] || continue
-    st=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
-    case "$st" in complete|completed|partial) count=$((count + 1)) ;; esac
-  done
+  done < <(list_phase_summary_files "$dir")
   echo "$count"
 }
 
@@ -92,24 +148,12 @@ count_terminal_summaries() {
   local dir="$1"
   local count=0
   local f
-  for f in "$dir"/*-SUMMARY.md; do
+  while IFS= read -r f; do
     [ -f "$f" ] || continue
     if is_summary_terminal "$f"; then
       count=$((count + 1))
     fi
-  done
-  for f in "$dir"/P*-*-wave/*-SUMMARY.md; do
-    [ -f "$f" ] || continue
-    if is_summary_terminal "$f"; then
-      count=$((count + 1))
-    fi
-  done
-  for f in "$dir"/remediation/P*-*-round/*-SUMMARY.md; do
-    [ -f "$f" ] || continue
-    if is_summary_terminal "$f"; then
-      count=$((count + 1))
-    fi
-  done
+  done < <(list_phase_summary_files "$dir")
   echo "$count"
 }
 
@@ -119,11 +163,7 @@ count_terminal_summaries() {
 # and remediation round dirs (remediation/P*-*-round/*-PLAN.md).
 count_phase_plans() {
   local dir="$1"
-  local count=0
-  count=$(( $(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l) + \
-            $(find "$dir" -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null | wc -l) + \
-            $(find "$dir" -path '*/remediation/P*-*-round/*-PLAN.md' ! -name '.*' 2>/dev/null | wc -l) ))
-  echo "$count" | tr -d ' '
+  list_phase_plan_files "$dir" | wc -l | tr -d ' '
 }
 
 # count_phase_contexts DIR

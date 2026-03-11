@@ -194,6 +194,19 @@ teardown() {
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
 
+@test "suggest-compact: remediation round plans increase execute cost" {
+  echo "93|200000" > .vbw-planning/.context-usage
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  mkdir -p .vbw-planning/phases/01-setup/remediation/P01-01-round
+  printf '%*s' 15000 '' > .vbw-planning/phases/01-setup/remediation/P01-01-round/P01-R01-PLAN.md
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
+}
+
 @test "suggest-compact: state files contribute to cost" {
   # Base QA: NEEDED=5175. At 97% remaining=6000 → OK (6000 > 5175)
   # With STATE.md(5000) + ROADMAP.md(5000): EST_COST=6500, NEEDED=7475
