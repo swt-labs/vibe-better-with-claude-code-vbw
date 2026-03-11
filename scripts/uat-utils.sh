@@ -76,13 +76,13 @@ latest_non_source_uat() {
     *) dir="$dir/" ;;
   esac
 
-  for f in "${dir}"[0-9]*-UAT.md; do
+  for f in "${dir}"[0-9]*-UAT.md "${dir}"P[0-9]*-UAT.md; do
     [ -f "$f" ] || continue
     case "$f" in *SOURCE-UAT.md) continue ;; esac
-    # Extract numeric prefix from basename (e.g., "01" from "01-UAT.md")
+    # Extract numeric prefix from basename (e.g., "01" from "01-UAT.md" or "03" from "P03-UAT.md")
     local bname num
     bname=$(basename "$f")
-    num=$(echo "$bname" | sed 's/^\([0-9]*\).*/\1/' | sed 's/^0*//')
+    num=$(echo "$bname" | sed 's/^P//' | sed 's/^\([0-9]*\).*/\1/' | sed 's/^0*//')
     num=${num:-0}
     if [ "$num" -gt "$latest_num" ] 2>/dev/null; then
       latest_num=$num
