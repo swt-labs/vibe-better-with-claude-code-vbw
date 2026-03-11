@@ -746,8 +746,8 @@ EOF
   run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$dir"
   [ "$status" -eq 0 ]
 
-  # Round file should be staged for addition
-  run git diff --cached --name-only --diff-filter=A
+  # Round file should be staged (addition or rename)
+  run git diff --cached --name-only --diff-filter=AR
   [[ "$output" == *"P01-R01-UAT.md"* ]]
 
   # .uat-remediation-stage should be staged for deletion

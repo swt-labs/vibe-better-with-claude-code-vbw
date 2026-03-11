@@ -116,7 +116,8 @@ get_round() {
     local max_rr=0
     for d in "$PHASE_DIR"/remediation/P${PHASE_NUM}-*-round; do
       [ -d "$d" ] || continue
-      local rr=$(basename "$d" | sed "s/^P${PHASE_NUM}-\([0-9]*\)-round$/\1/")
+      local rr
+      rr=$(basename "$d" | sed "s/^P${PHASE_NUM}-\([0-9]*\)-round$/\1/")
       [ -z "$rr" ] && continue
       local rr_num=$((10#$rr))
       [ "$rr_num" -gt "$max_rr" ] && max_rr=$rr_num
