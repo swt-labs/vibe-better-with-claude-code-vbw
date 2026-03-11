@@ -79,6 +79,10 @@ latest_non_source_uat() {
   for f in "${dir}"[0-9]*-UAT.md "${dir}"P[0-9]*-UAT.md; do
     [ -f "$f" ] || continue
     case "$f" in *SOURCE-UAT.md) continue ;; esac
+    # Exclude round UAT files (P{NN}-R{RR}-UAT.md) that may be misplaced in phase root
+    local bname_check
+    bname_check=$(basename "$f")
+    case "$bname_check" in P[0-9]*-R[0-9]*-UAT.md) continue ;; esac
     # Extract numeric prefix from basename (e.g., "01" from "01-UAT.md" or "03" from "P03-UAT.md")
     local bname num
     bname=$(basename "$f")
@@ -96,12 +100,11 @@ latest_non_source_uat() {
   return 0
 }
 
-# count_uat_rounds — Count archived UAT round files in a phase directory.
+# count_uat_rounds — Count remediation rounds in a phase directory.
 #
-# Scans for {phase_num}-UAT-round-*.md files, extracts the numeric round
-# suffix from each, and prints the maximum round number found (0 if none).
-# This is the single source of truth for round semantics — display round
-# is count + 1 when active issues exist.
+# Scans both legacy flat layout ({phase_num}-UAT-round-*.md files at phase root)
+# and new subdir layout (P{NN}-{RR}-round/ dirs under remediation/). Returns the
+# maximum round number found (0 if none).
 count_uat_rounds() {
   local dir="$1"
   local phase_num="$2"
@@ -112,6 +115,7 @@ count_uat_rounds() {
     *) dir="$dir/" ;;
   esac
 
+  # Legacy flat layout: {phase_num}-UAT-round-*.md at phase root
   for rf in "${dir}${phase_num}"-UAT-round-*.md; do
     [ -f "$rf" ] || continue
     local round_num
@@ -119,6 +123,18 @@ count_uat_rounds() {
     if [ -n "$round_num" ] && echo "$round_num" | grep -qE '^[0-9]+$'; then
       if [ "$round_num" -gt "$max_round" ] 2>/dev/null; then
         max_round="$round_num"
+      fi
+    fi
+  done
+
+  # New subdir layout: remediation/P{NN}-{RR}-round/ dirs
+  for rd in "${dir}remediation/"P${phase_num}-*-round; do
+    [ -d "$rd" ] || continue
+    local rr
+    rr=$(basename "$rd" | sed "s/^P${phase_num}-0*\\([0-9]*\\)-round$/\\1/")
+    if [ -n "$rr" ] && echo "$rr" | grep -qE '^[0-9]+$'; then
+      if [ "$rr" -gt "$max_round" ] 2>/dev/null; then
+        max_round="$rr"
       fi
     fi
   done

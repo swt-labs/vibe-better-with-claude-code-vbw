@@ -209,7 +209,16 @@ if ! cache_fresh "$FAST_CF" 5; then
             complete|passed) QA="UAT: pass"; QA_COLOR="G" ;;
             issues_found)
               _rem_stage="none"
-              [ -f "$PDIR/.uat-remediation-stage" ] && _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
+              # New layout first, then legacy fallback
+              if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
+                if grep -q '^stage=' "$PDIR/remediation/.uat-remediation-stage" 2>/dev/null; then
+                  _rem_stage=$(grep '^stage=' "$PDIR/remediation/.uat-remediation-stage" | head -1 | sed 's/^stage=//' | tr -d '[:space:]')
+                else
+                  _rem_stage=$(tr -d '[:space:]' < "$PDIR/remediation/.uat-remediation-stage")
+                fi
+              elif [ -f "$PDIR/.uat-remediation-stage" ]; then
+                _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
+              fi
               case "$_rem_stage" in
                 done)    QA="UAT: re-verify"; QA_COLOR="Y" ;;
                 none)    QA="UAT: fail";      QA_COLOR="R" ;;

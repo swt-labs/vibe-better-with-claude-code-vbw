@@ -280,7 +280,15 @@ if [ -d "$PHASES_DIR" ]; then
         UAT_ROUND_COUNT=$(count_uat_rounds "$TARGET_DIR" "$UAT_ISSUES_PHASE")
         # Check if remediation is complete (stage=done) → needs re-verification
         _rem_stage="none"
-        if [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
+        # New layout: remediation/.uat-remediation-stage
+        if [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
+          if grep -q '^stage=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null; then
+            _rem_stage=$(grep '^stage=' "${TARGET_DIR}remediation/.uat-remediation-stage" | head -1 | sed 's/^stage=//' | tr -d '[:space:]')
+          else
+            _rem_stage=$(tr -d '[:space:]' < "${TARGET_DIR}remediation/.uat-remediation-stage")
+          fi
+        # Legacy layout: .uat-remediation-stage at phase root
+        elif [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
           _rem_stage=$(tr -d '[:space:]' < "${TARGET_DIR}.uat-remediation-stage")
         fi
         # Pre-compute plan/summary counts (needed for state routing AND stale-stage reconciliation)
@@ -291,7 +299,16 @@ if [ -d "$PHASES_DIR" ]; then
         # advanced (session crash/kill/compaction), auto-advance to "done" so the
         # orchestrator routes to re-verification instead of re-execution.
         if [ "$_rem_stage" = "execute" ] && [ "$NEXT_PHASE_PLANS" -gt 0 ] && [ "$NEXT_PHASE_SUMMARIES" -ge "$NEXT_PHASE_PLANS" ]; then
-          echo "done" > "${TARGET_DIR}.uat-remediation-stage"
+          # Write to new location if it exists, otherwise legacy
+          if [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
+            if grep -q '^stage=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null; then
+              sed 's/^stage=.*/stage=done/' "${TARGET_DIR}remediation/.uat-remediation-stage" > "${TARGET_DIR}remediation/.uat-remediation-stage.tmp" && mv "${TARGET_DIR}remediation/.uat-remediation-stage.tmp" "${TARGET_DIR}remediation/.uat-remediation-stage"
+            else
+              echo "done" > "${TARGET_DIR}remediation/.uat-remediation-stage"
+            fi
+          else
+            echo "done" > "${TARGET_DIR}.uat-remediation-stage"
+          fi
           _rem_stage="done"
         fi
         if [ "$_rem_stage" = "done" ]; then

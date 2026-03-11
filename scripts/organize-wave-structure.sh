@@ -100,6 +100,11 @@ for f in "$PHASE_DIR"/[0-9]*-PLAN.md; do
   if [ -z "$wave" ]; then
     wave="1"
   fi
+  # Validate wave is numeric (F9: non-numeric values like "TBD" cause arithmetic errors)
+  if ! echo "$wave" | grep -qE '^[0-9]+$'; then
+    echo "organize-wave-structure: WARNING: non-numeric wave value '$wave' in $(basename "$f"), defaulting to 1" >&2
+    wave="1"
+  fi
   wave=$(printf '%02d' "$((10#$wave))")
 
   plan_files+=("$f")
@@ -126,8 +131,11 @@ for f in "${plan_files[@]}"; do
   # Move plan
   target_plan="$wave_dir/P${PHASE_NUM}-W${wave}-${plan_mm}-PLAN.md"
   if [ ! -f "$target_plan" ]; then
-    mv "$f" "$target_plan"
-    echo "organized: $(basename "$f") -> P${PHASE_NUM}-${wave}-wave/$(basename "$target_plan")"
+    if ! mv "$f" "$target_plan" 2>/dev/null; then
+      echo "organize-wave-structure: WARNING: failed to move $(basename "$f") to $wave_dir/" >&2
+    else
+      echo "organized: $(basename "$f") -> P${PHASE_NUM}-${wave}-wave/$(basename "$target_plan")"
+    fi
   fi
 
   # Move matching summary if it exists
@@ -136,11 +144,17 @@ for f in "${plan_files[@]}"; do
   target_summary="$wave_dir/P${PHASE_NUM}-W${wave}-${plan_mm}-SUMMARY.md"
 
   if [ -f "$old_summary" ] && [ ! -f "$target_summary" ]; then
-    mv "$old_summary" "$target_summary"
-    echo "organized: $(basename "$old_summary") -> P${PHASE_NUM}-${wave}-wave/$(basename "$target_summary")"
+    if ! mv "$old_summary" "$target_summary" 2>/dev/null; then
+      echo "organize-wave-structure: WARNING: failed to move $(basename "$old_summary")" >&2
+    else
+      echo "organized: $(basename "$old_summary") -> P${PHASE_NUM}-${wave}-wave/$(basename "$target_summary")"
+    fi
   elif [ -f "$old_summary2" ] && [ ! -f "$target_summary" ]; then
-    mv "$old_summary2" "$target_summary"
-    echo "organized: $(basename "$old_summary2") -> P${PHASE_NUM}-${wave}-wave/$(basename "$target_summary")"
+    if ! mv "$old_summary2" "$target_summary" 2>/dev/null; then
+      echo "organize-wave-structure: WARNING: failed to move $(basename "$old_summary2")" >&2
+    else
+      echo "organized: $(basename "$old_summary2") -> P${PHASE_NUM}-${wave}-wave/$(basename "$target_summary")"
+    fi
   fi
 done
 

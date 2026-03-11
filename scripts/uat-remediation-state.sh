@@ -394,6 +394,32 @@ case "$CMD" in
       write_stage_file "research" "$new_round"
       echo "research"
       emit_plan_metadata "research"
+      # Re-seed CONTEXT with latest UAT report for the new round
+      _init_emit_context=false
+      _init_context_file=""
+      # Note: no 'local' here — we're in a case block, not a function
+      context_file="" ; uat_file="" ; uat_content=""
+      context_file=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' \( -name "P${PHASE_NUM}-CONTEXT.md" -o -name '[0-9]*-CONTEXT.md' \) 2>/dev/null | sort | head -1)
+      if type latest_non_source_uat &>/dev/null; then
+        uat_file=$(latest_non_source_uat "$PHASE_DIR")
+      fi
+      if [ -z "$uat_file" ]; then
+        uat_file=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' \( -name "P${PHASE_NUM}-UAT.md" -o -name '[0-9]*-UAT.md' \) ! -name '*SOURCE-UAT.md' 2>/dev/null | sort | tail -1)
+      fi
+      if [ -n "$uat_file" ] && [ -f "$uat_file" ] && [ -n "$context_file" ] && [ -f "$context_file" ]; then
+        uat_content=$(cat "$uat_file")
+        # Strip old UAT section and append new
+        awk '/^## UAT Remediation Issues[[:space:]]*$/ { exit } { print }' \
+          "$context_file" > "${context_file}.tmp" && mv "${context_file}.tmp" "$context_file"
+        {
+          echo "## UAT Remediation Issues"
+          echo ""
+          printf '%s\n' "$uat_content"
+        } >> "$context_file"
+        _init_emit_context=true
+        _init_context_file="$context_file"
+      fi
+      emit_init_context
     elif [ "$existing" != "none" ]; then
       echo "$existing"
       emit_plan_metadata "$existing"

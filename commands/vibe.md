@@ -322,6 +322,23 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
      ```bash
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
+     Then continue to the next stage (`verify`).
+   - `verify`: Spawn QA to verify the remediation work for this round. After verification completes, advance:
+     ```bash
+     bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
+     ```
+     Then continue to the next stage (`uat`).
+   - `uat`: Re-run UAT for this phase (spawn QA with `--uat` flag). After UAT completes, check the result:
+     - **UAT passed** (all tests pass): advance to `done`:
+       ```bash
+       bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
+       ```
+       Display "Remediation complete — all UAT tests passed."
+     - **UAT has issues** (any test failed): signal `needs-round` instead of advancing:
+       ```bash
+       bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "$PHASE_DIR"
+       ```
+       Then loop back to step 5 (`get-or-init`) — the script will detect `needs-round`, create the next round directory, re-seed CONTEXT with the new UAT failures, and return `research` with fresh round metadata.
    - `fix` (minor-only path): Route to a quick-fix implementation path for the same phase using the extracted UAT issue list as task input (equivalent to `/vbw:fix`, but without requiring the user to invoke it manually). After changes, advance:
      ```bash
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"

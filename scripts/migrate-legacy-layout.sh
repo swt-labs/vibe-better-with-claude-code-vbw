@@ -39,15 +39,22 @@ case "$PHASE_DIR" in
     ;;
 esac
 
-# Check migration marker
+# Check migration marker — skip only if fully migrated (not in-progress)
 if [ -n "$VBW_ROOT" ] && [ -f "$VBW_ROOT/.layout-v2-migrated" ]; then
-  # Already migrated — check if this specific phase was included
-  if grep -q "$(basename "$PHASE_DIR")" "$VBW_ROOT/.layout-v2-migrated" 2>/dev/null; then
+  if grep -q "$(basename "$PHASE_DIR") migrated" "$VBW_ROOT/.layout-v2-migrated" 2>/dev/null; then
     exit 0
   fi
 fi
 
 echo "migrate-legacy-layout: migrating $(basename "$PHASE_DIR")..."
+
+# Write in-progress marker early so interrupted runs can be detected on re-run.
+# The marker is finalized at the end with the actual completion timestamp.
+if [ -n "$VBW_ROOT" ]; then
+  if ! grep -q "$(basename "$PHASE_DIR")" "$VBW_ROOT/.layout-v2-migrated" 2>/dev/null; then
+    echo "$(basename "$PHASE_DIR") in-progress $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$VBW_ROOT/.layout-v2-migrated"
+  fi
+fi
 
 # --- Step 1: Detect and migrate flat remediation artifacts FIRST ---
 # Must happen before organize-wave-structure.sh so remediation {NN}-{MM}-PLAN.md
@@ -186,10 +193,16 @@ if [ -f "$ORGANIZE_SCRIPT" ]; then
   bash "$ORGANIZE_SCRIPT" "$PHASE_DIR"
 fi
 
-# --- Step 3: Record migration marker ---
+# --- Step 3: Record migration marker (replace in-progress with completed) ---
 
 if [ -n "$VBW_ROOT" ]; then
-  echo "$(basename "$PHASE_DIR") migrated $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$VBW_ROOT/.layout-v2-migrated"
+  local_bn=$(basename "$PHASE_DIR")
+  if [ -f "$VBW_ROOT/.layout-v2-migrated" ]; then
+    # Remove the in-progress line
+    grep -v "^${local_bn} in-progress" "$VBW_ROOT/.layout-v2-migrated" > "$VBW_ROOT/.layout-v2-migrated.tmp" 2>/dev/null && \
+      mv "$VBW_ROOT/.layout-v2-migrated.tmp" "$VBW_ROOT/.layout-v2-migrated"
+  fi
+  echo "${local_bn} migrated $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$VBW_ROOT/.layout-v2-migrated"
 fi
 
 echo "migrate-legacy-layout: done"

@@ -52,9 +52,18 @@ fi
 
 # Check remediation stage — only archive when stage=done
 _REM_STAGE="none"
-_stage_file="${PHASE_DIR%/}/.uat-remediation-stage"
-if [ -f "$_stage_file" ]; then
-  _REM_STAGE=$(tr -d '[:space:]' < "$_stage_file")
+# New layout: remediation/.uat-remediation-stage
+_stage_file_new="${PHASE_DIR%/}/remediation/.uat-remediation-stage"
+# Legacy layout: .uat-remediation-stage at phase root
+_stage_file_legacy="${PHASE_DIR%/}/.uat-remediation-stage"
+if [ -f "$_stage_file_new" ]; then
+  if grep -q '^stage=' "$_stage_file_new" 2>/dev/null; then
+    _REM_STAGE=$(grep '^stage=' "$_stage_file_new" | head -1 | sed 's/^stage=//' | tr -d '[:space:]')
+  else
+    _REM_STAGE=$(tr -d '[:space:]' < "$_stage_file_new")
+  fi
+elif [ -f "$_stage_file_legacy" ]; then
+  _REM_STAGE=$(tr -d '[:space:]' < "$_stage_file_legacy")
 fi
 if [ "$_REM_STAGE" != "done" ]; then
   echo "Error: remediation stage is '${_REM_STAGE}', not 'done' — remediation still in progress" >&2
@@ -86,14 +95,15 @@ fi
 # Archive: rename UAT to round file
 mv "$UAT_FILE" "${PHASE_DIR}${ROUND_FILE}"
 
-# Reset remediation stage
-rm -f "${PHASE_DIR}.uat-remediation-stage"
+# Reset remediation stage — remove both new and legacy locations
+rm -f "${PHASE_DIR}remediation/.uat-remediation-stage" "${PHASE_DIR}.uat-remediation-stage"
 
 # Pre-stage changes in git so boundary commits capture them even if the
 # LLM improvises a manual commit instead of using planning-git.sh.
 if git rev-parse --git-dir >/dev/null 2>&1; then
   git add "${PHASE_DIR}${ROUND_FILE}" 2>/dev/null || true
   git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
+  git rm -f --quiet "${PHASE_DIR}remediation/.uat-remediation-stage" 2>/dev/null || true
 fi
 
 # Output for logging
