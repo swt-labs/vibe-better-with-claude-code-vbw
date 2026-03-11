@@ -33,7 +33,13 @@ fi
 
 # --- Strategy 2: Extract from SUMMARY.md files (no git) ---
 if [ -d "$PHASE_DIR" ]; then
+  # Scan flat root SUMMARYs
   for summary in "$PHASE_DIR"/*-SUMMARY.md; do
+    [ -f "$summary" ] || continue
+    sed -n '/^## Files Modified/,/^## /p' "$summary" 2>/dev/null | grep '^- ' | sed 's/^- //' | sed 's/ (.*)$//'
+  done | sort -u | grep -v '^$'
+  # Scan wave-subdir SUMMARYs
+  for summary in "$PHASE_DIR"/P*-*-wave/*-SUMMARY.md; do
     [ -f "$summary" ] || continue
     sed -n '/^## Files Modified/,/^## /p' "$summary" 2>/dev/null | grep '^- ' | sed 's/^- //' | sed 's/ (.*)$//'
   done | sort -u | grep -v '^$'

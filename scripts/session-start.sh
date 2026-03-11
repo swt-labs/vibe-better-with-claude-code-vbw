@@ -65,7 +65,7 @@ find_phase_dir_by_num() {
 
 phase_dir_has_plans() {
   _phase_dir="$1"
-  [ -n "$_phase_dir" ] && [ -d "$_phase_dir" ] && ls "$_phase_dir"*-PLAN.md >/dev/null 2>&1
+  [ -n "$_phase_dir" ] && [ -d "$_phase_dir" ] && [ "$(count_phase_plans "$_phase_dir")" -gt 0 ] 2>/dev/null
 }
 
 # Choose a recovery phase deterministically when STATE.md/execution-state phase is unusable.
@@ -119,11 +119,7 @@ EOF
       _first_with_plan="$_pd_num"
     fi
 
-    _plan_count=0
-    for _plan_file in "$_pd"*-PLAN.md; do
-      [ -f "$_plan_file" ] || continue
-      _plan_count=$((_plan_count + 1))
-    done
+    _plan_count=$(count_phase_plans "$_pd")
 
     _summary_count=$(count_complete_summaries "$_pd")
 
@@ -322,7 +318,15 @@ _bf_bad_summary_count=0
 if [ -d "$PLANNING_DIR/phases" ]; then
   for _bf_phase_dir in "$PLANNING_DIR"/phases/*/; do
     [ -d "$_bf_phase_dir" ] || continue
+    # Scan flat root SUMMARYs
     for _bf_sf in "$_bf_phase_dir"*-SUMMARY.md; do
+      [ -f "$_bf_sf" ] || continue
+      if ! is_summary_complete "$_bf_sf"; then
+        _bf_bad_summary_count=$((_bf_bad_summary_count + 1))
+      fi
+    done
+    # Scan wave-subdir SUMMARYs
+    for _bf_sf in "$_bf_phase_dir"P*-*-wave/*-SUMMARY.md; do
       [ -f "$_bf_sf" ] || continue
       if ! is_summary_complete "$_bf_sf"; then
         _bf_bad_summary_count=$((_bf_bad_summary_count + 1))
@@ -655,7 +659,17 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
       # shellcheck disable=SC2010
       SUMMARY_COUNT=0
       STRICT_COMPLETE=0
+      # Scan flat root SUMMARYs
       for _ss_sf in "$PHASE_DIR"/*-SUMMARY.md; do
+        [ -f "$_ss_sf" ] || continue
+        _ss_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_ss_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+        case "$_ss_st" in
+          complete|completed) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)); STRICT_COMPLETE=$((STRICT_COMPLETE + 1)) ;;
+          partial) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)) ;;
+        esac
+      done
+      # Scan wave-subdir SUMMARYs
+      for _ss_sf in "$PHASE_DIR"/P*-*-wave/*-SUMMARY.md; do
         [ -f "$_ss_sf" ] || continue
         _ss_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_ss_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
         case "$_ss_st" in
@@ -671,7 +685,19 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
       if [ "${_json_done:-0}" -gt "${SUMMARY_COUNT:-0}" ] 2>/dev/null; then
         # Build JSON array of plan IDs that actually have completed SUMMARY.md
         _completed_json="[]"
+        # Scan flat root SUMMARYs
         for _sf in "$PHASE_DIR"/*-SUMMARY.md; do
+          [ -f "$_sf" ] || continue
+          _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+          case "$_sf_st" in
+            complete|completed|partial)
+              _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
+              _completed_json=$(echo "$_completed_json" | jq --arg id "$_sf_id" '. + [$id]')
+              ;;
+          esac
+        done
+        # Scan wave-subdir SUMMARYs
+        for _sf in "$PHASE_DIR"/P*-*-wave/*-SUMMARY.md; do
           [ -f "$_sf" ] || continue
           _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
           case "$_sf_st" in
