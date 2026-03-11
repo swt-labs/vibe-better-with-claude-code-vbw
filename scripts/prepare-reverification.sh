@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# prepare-reverification.sh — Archive old UAT and reset remediation stage for re-verification.
+# prepare-reverification.sh — Archive old UAT and advance remediation round for re-verification.
 #
 # Usage: prepare-reverification.sh <phase-dir>
 #
-# Archives the current UAT.md to {NN}-UAT-round-{seq}.md, removes
-# .uat-remediation-stage, and outputs the archive details for logging.
+# Archives the current UAT.md to {NN}-UAT-round-{seq}.md, advances the
+# remediation state to the next round (stage=research, round incremented),
+# and outputs the archive details for logging.
 #
 # Guards:
 #   - Refuses if no UAT.md exists (nothing to archive)
@@ -90,14 +91,17 @@ fi
 # Archive: rename UAT to round file
 mv "$UAT_FILE" "${PHASE_DIR}${ROUND_FILE}"
 
-# Reset remediation stage (both new and legacy locations)
-rm -f "${PHASE_DIR}remediation/.uat-remediation-stage" "${PHASE_DIR}.uat-remediation-stage"
+# Advance remediation to next round (increments round counter, creates round dir, resets to research)
+bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" needs-round "${PHASE_DIR%/}" >/dev/null
+
+# Clean up legacy state file if present (new-location state file persists with updated round)
+rm -f "${PHASE_DIR}.uat-remediation-stage"
 
 # Pre-stage changes in git so boundary commits capture them even if the
 # LLM improvises a manual commit instead of using planning-git.sh.
 if git rev-parse --git-dir >/dev/null 2>&1; then
   git add "${PHASE_DIR}${ROUND_FILE}" 2>/dev/null || true
-  git rm -f --quiet "${PHASE_DIR}remediation/.uat-remediation-stage" 2>/dev/null || true
+  git add "${PHASE_DIR}remediation/.uat-remediation-stage" 2>/dev/null || true
   git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
 fi
 

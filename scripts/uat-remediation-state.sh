@@ -261,7 +261,6 @@ emit_plan_metadata() {
   # Emit round-dir metadata for orchestrators.
   # Reports the current round, round directory, and paths to existing
   # research/plan files within the round dir (with legacy phase-root fallback).
-  local stage="$1"
   local round round_dir research_path="" plan_path=""
 
   round=$(get_round)
@@ -352,7 +351,7 @@ case "$CMD" in
       exit 1
     fi
     do_init "$SEVERITY_ARG"
-    emit_plan_metadata "$(get_stage)"
+    emit_plan_metadata
     emit_init_context
     ;;
 
@@ -370,12 +369,11 @@ case "$CMD" in
         rm -f "$LEGACY_STATE_FILE"
       fi
       echo "$existing"
-      emit_plan_metadata "$existing"
+      emit_plan_metadata
     else
       do_init "$SEVERITY_ARG"
       # Init always sets research or fix — read back for stage-aware metadata
-      _init_stage=$(get_stage)
-      emit_plan_metadata "$_init_stage"
+      emit_plan_metadata
       emit_init_context
     fi
     ;;

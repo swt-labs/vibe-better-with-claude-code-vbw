@@ -306,7 +306,6 @@ if [ -d "$PHASES_DIR" ]; then
         if [ "$_rem_stage" = "execute" ] && [ "$_total_plans" -gt 0 ] && [ "$_total_summaries" -ge "$_total_plans" ]; then
           # Write to whichever state file location exists
           if [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
-            local _cur_round
             _cur_round=$(grep '^round=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
             printf 'stage=done\nround=%s\n' "${_cur_round:-01}" > "${TARGET_DIR}remediation/.uat-remediation-stage"
           else
