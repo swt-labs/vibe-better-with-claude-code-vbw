@@ -199,7 +199,7 @@ if ! cache_fresh "$FAST_CF" 5; then
     if [ -n "$PH" ] && [ "$PH" != "0" ]; then
       PDIR=$(find .vbw-planning/phases -maxdepth 1 -type d -name "$(printf '%02d' "$PH")-*" 2>/dev/null | head -1)
       [ -n "$PDIR" ] && PPD=$(count_complete_summaries "$PDIR")
-      [ -n "$PDIR" ] && PPT=$(find "$PDIR" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+      [ -n "$PDIR" ] && PPT=$(count_phase_plans "$PDIR")
       # Lifecycle-aware QA/UAT indicator: UAT supersedes VERIFICATION.md
       if [ -n "$PDIR" ]; then
         _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)

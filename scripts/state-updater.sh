@@ -39,7 +39,7 @@ update_state_md() {
   [ -f "$state_md" ] || return 0
 
   local plan_count summary_count pct
-  plan_count=$(find "$phase_dir" -maxdepth 1 -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+  plan_count=$(count_phase_plans "$phase_dir")
   summary_count=$(count_terminal_summaries "$phase_dir")
 
   if [ "$plan_count" -gt 0 ]; then
@@ -83,7 +83,7 @@ update_roadmap() {
   phase_num=$(echo "$dirname" | sed 's/^\([0-9]*\).*/\1/' | sed 's/^0*//')
   [ -z "$phase_num" ] && return 0
 
-  plan_count=$(find "$phase_dir" -maxdepth 1 -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+  plan_count=$(count_phase_plans "$phase_dir")
   summary_count=$(count_terminal_summaries "$phase_dir")
 
   [ "$plan_count" -eq 0 ] && return 0
@@ -194,7 +194,7 @@ advance_phase() {
 
   # Check if triggering phase is complete (terminal status, not just existence)
   local plan_count summary_count
-  plan_count=$(find "$phase_dir" -maxdepth 1 -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+  plan_count=$(count_phase_plans "$phase_dir")
   summary_count=$(count_terminal_summaries "$phase_dir")
   [ "$plan_count" -gt 0 ] && [ "$summary_count" -eq "$plan_count" ] || return 0
 
@@ -210,7 +210,7 @@ advance_phase() {
   while IFS= read -r dir; do
     local dirname p s
     dirname=$(basename "$dir")
-    p=$(find "$dir" -maxdepth 1 -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+    p=$(count_phase_plans "$dir")
     s=$(count_terminal_summaries "$dir")
 
     if [ "$p" -eq 0 ] || [ "$s" -lt "$p" ]; then

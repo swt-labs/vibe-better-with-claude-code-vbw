@@ -219,13 +219,13 @@ if [ -d "$PLANNING_DIR" ]; then
       phase_count=$((phase_count + 1))
       phase_slug=$(basename "$dir" | sed 's/^[0-9]*-//')
 
-      plans=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+      plans=$(count_phase_plans "$dir")
       summaries=$(count_complete_summaries "$dir")
 
       if [ "$plans" -eq 0 ] && [ -z "$next_unplanned" ]; then
         # Track first undiscussed phase (for require_phase_discussion suggestions)
         if [ "$cfg_require_phase_discussion" = "true" ] && [ -z "$next_undiscussed" ]; then
-          context_files=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | wc -l | tr -d ' ')
+          context_files=$(count_phase_contexts_any "$dir")
           if [ "$context_files" -eq 0 ]; then
             next_undiscussed="$phase_num"
           elif [ -z "$next_preseeded" ]; then
@@ -243,7 +243,7 @@ if [ -d "$PLANNING_DIR" ]; then
                 next_preseeded="$phase_num"
                 break
               fi
-            done < <(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | sort)
+            done < <(find "$dir" -maxdepth 1 ! -name '.*' \( -name '[0-9]*-CONTEXT.md' -o -name 'P[0-9]*-CONTEXT.md' \) 2>/dev/null | sort)
           fi
         fi
         next_unplanned="$phase_num"
@@ -379,7 +379,7 @@ if [ "$CMD" = "verify" ] && [ "$effective_result" = "issues_found" ] && [ -d "${
     for dir in ${SN_VERIFY_DIRS[@]+"${SN_VERIFY_DIRS[@]}"}; do
       [ -d "$dir" ] || continue
       # Guard: skip phases without execution artifacts (matching phase-detect.sh)
-      _plans=$(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+      _plans=$(count_phase_plans "$dir")
       _summaries=$(count_complete_summaries "$dir")
       if [ "$_plans" -eq 0 ] || [ "$_summaries" -lt "$_plans" ]; then
         continue

@@ -113,7 +113,7 @@ detect_phase_dir() {
     [ ! -d "$d" ] && continue
     last_dir="$d"
     local plans summaries
-    plans=$(find "$d" -maxdepth 1 -name '*-PLAN.md' -type f 2>/dev/null | wc -l | tr -d ' ')
+    plans=$(count_phase_plans "$d")
     summaries=$(count_complete_summaries "$d")
     if [ "$plans" -gt 0 ] && [ "$summaries" -lt "$plans" ]; then
       echo "$d"

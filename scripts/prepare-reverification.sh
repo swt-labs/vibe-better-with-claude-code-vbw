@@ -3,16 +3,15 @@
 #
 # Usage: prepare-reverification.sh <phase-dir>
 #
-# Archives the current UAT.md to {NN}-UAT-round-{seq}.md, removes
-# .uat-remediation-stage, and outputs the archive details for logging.
+# Archives the current UAT.md to remediation/P{NN}-{RR}-round/P{NN}-R{RR}-UAT.md,
+# removes .uat-remediation-stage, and outputs the archive details for logging.
 #
 # Guards:
 #   - Refuses if no UAT.md exists (nothing to archive)
 #   - Refuses if UAT status is not issues_found (don't archive a passing UAT)
 #
-# The round file naming ({NN}-UAT-round-{seq}.md) self-excludes from all
-# existing UAT globs ([0-9]*-UAT.md, *-UAT.md) because it ends with
-# -round-{seq}.md, not -UAT.md.
+# The round file is stored inside a round-specific subdirectory under
+# remediation/, so it self-excludes from all existing UAT globs.
 
 set -eo pipefail
 
@@ -104,6 +103,7 @@ rm -f "${PHASE_DIR}remediation/.uat-remediation-stage" "${PHASE_DIR}.uat-remedia
 # Pre-stage changes in git so boundary commits capture them even if the
 # LLM improvises a manual commit instead of using planning-git.sh.
 if git rev-parse --git-dir >/dev/null 2>&1; then
+  git rm -f --quiet "$UAT_FILE" 2>/dev/null || true
   git add "${ROUND_DIR}${ROUND_FILE}" 2>/dev/null || true
   git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
   git rm -f --quiet "${PHASE_DIR}remediation/.uat-remediation-stage" 2>/dev/null || true

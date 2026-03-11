@@ -23,8 +23,9 @@ if [ ! -d "$PHASE_DIR" ]; then
   exit 0
 fi
 
-# Find all PLAN files sorted by plan number
-PLAN_FILES=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | sort)
+# Find all PLAN files sorted by plan number (flat root + wave subdirs)
+PLAN_FILES=$( { find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null; \
+                find "$PHASE_DIR" -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null; } | sort )
 
 if [ -z "$PLAN_FILES" ]; then
   echo "verify_context=empty"
@@ -71,9 +72,14 @@ while IFS= read -r plan_file; do
     END { print items }
   ' "$plan_file" 2>/dev/null) || MUST_HAVES=""
 
-  # Find corresponding SUMMARY file
+  # Find corresponding SUMMARY file (same directory as plan, or phase root)
   PLAN_BASE=$(basename "$plan_file" | sed 's/-PLAN\.md$//')
-  SUMMARY_FILE=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name "${PLAN_BASE}-SUMMARY.md" 2>/dev/null | head -1)
+  PLAN_PARENT=$(dirname "$plan_file")
+  SUMMARY_FILE=$(find "$PLAN_PARENT" -maxdepth 1 ! -name '.*' -name "${PLAN_BASE}-SUMMARY.md" 2>/dev/null | head -1)
+  # Fallback: check phase root if plan was in a wave subdir
+  if [ -z "$SUMMARY_FILE" ] && [ "$PLAN_PARENT" != "$PHASE_DIR" ] && [ "$PLAN_PARENT" != "${PHASE_DIR%/}" ]; then
+    SUMMARY_FILE=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name "${PLAN_BASE}-SUMMARY.md" 2>/dev/null | head -1)
+  fi
 
   STATUS="no_summary"
   WHAT_BUILT=""
