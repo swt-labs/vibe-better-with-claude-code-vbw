@@ -33,11 +33,18 @@ is_summary_terminal() {
 
 # count_complete_summaries DIR
 # Returns count of SUMMARY.md files with terminal-complete status in DIR.
+# Scans both flat root and wave subdirs (P*-*-wave/).
 count_complete_summaries() {
   local dir="$1"
   local count=0
   local f
   for f in "$dir"/*-SUMMARY.md; do
+    [ -f "$f" ] || continue
+    if is_summary_complete "$f"; then
+      count=$((count + 1))
+    fi
+  done
+  for f in "$dir"/P*-*-wave/*-SUMMARY.md; do
     [ -f "$f" ] || continue
     if is_summary_complete "$f"; then
       count=$((count + 1))
@@ -49,6 +56,7 @@ count_complete_summaries() {
 # count_done_summaries DIR
 # Returns count of SUMMARY.md files considered "done" for reconciliation:
 # complete, completed, or partial (matching recover-state.sh's promotion of partial→complete).
+# Scans both flat root and wave subdirs (P*-*-wave/).
 count_done_summaries() {
   local dir="$1"
   local count=0
@@ -58,11 +66,17 @@ count_done_summaries() {
     st=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
     case "$st" in complete|completed|partial) count=$((count + 1)) ;; esac
   done
+  for f in "$dir"/P*-*-wave/*-SUMMARY.md; do
+    [ -f "$f" ] || continue
+    st=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
+    case "$st" in complete|completed|partial) count=$((count + 1)) ;; esac
+  done
   echo "$count"
 }
 
 # count_terminal_summaries DIR
 # Returns count of SUMMARY.md files with any terminal status in DIR.
+# Scans both flat root and wave subdirs (P*-*-wave/).
 count_terminal_summaries() {
   local dir="$1"
   local count=0
@@ -73,5 +87,44 @@ count_terminal_summaries() {
       count=$((count + 1))
     fi
   done
+  for f in "$dir"/P*-*-wave/*-SUMMARY.md; do
+    [ -f "$f" ] || continue
+    if is_summary_terminal "$f"; then
+      count=$((count + 1))
+    fi
+  done
   echo "$count"
+}
+
+# count_phase_plans DIR
+# Returns count of PLAN.md files in DIR, scanning both flat root
+# (legacy [0-9]*-PLAN.md) and wave subdirs (P*-*-wave/*-PLAN.md).
+count_phase_plans() {
+  local dir="$1"
+  local count=0
+  count=$(( $(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l) + \
+            $(find "$dir" -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null | wc -l) ))
+  echo "$count" | tr -d ' '
+}
+
+# count_phase_contexts DIR
+# Returns count of CONTEXT.md files in DIR, scanning both flat root
+# (legacy [0-9]*-CONTEXT.md) and wave subdirs (P*-*-wave/*-CONTEXT.md).
+count_phase_contexts() {
+  local dir="$1"
+  local count=0
+  count=$(( $(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | wc -l) + \
+            $(find "$dir" -path '*/P*-*-wave/*-CONTEXT.md' ! -name '.*' 2>/dev/null | wc -l) ))
+  echo "$count" | tr -d ' '
+}
+
+# Also count P-prefix CONTEXT at phase root (e.g., P01-CONTEXT.md from do_init)
+# count_phase_contexts_any DIR
+# Broader: includes P{NN}-CONTEXT.md at root level too.
+count_phase_contexts_any() {
+  local dir="$1"
+  local count=0
+  count=$(( $(find "$dir" -maxdepth 1 ! -name '.*' \( -name '[0-9]*-CONTEXT.md' -o -name 'P[0-9]*-CONTEXT.md' \) 2>/dev/null | wc -l) + \
+            $(find "$dir" -path '*/P*-*-wave/*-CONTEXT.md' ! -name '.*' 2>/dev/null | wc -l) ))
+  echo "$count" | tr -d ' '
 }

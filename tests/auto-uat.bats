@@ -656,13 +656,13 @@ EOF
   [ "$status" -eq 0 ]
   # Original UAT should be gone
   [ ! -f "$dir/01-UAT.md" ]
-  # Round file should exist
-  [ -f "$dir/01-UAT-round-01.md" ]
+  # Round file should exist in round dir
+  [ -f "$dir/remediation/P01-01-round/P01-R01-UAT.md" ]
   # Remediation stage should be removed
   [ ! -f "$dir/.uat-remediation-stage" ]
   # Output should confirm
   [[ "$output" == *"archived=01-UAT.md"* ]]
-  [[ "$output" == *"round_file=01-UAT-round-01.md"* ]]
+  [[ "$output" == *"round_file=P01-R01-UAT.md"* ]]
   [[ "$output" == *"phase=01"* ]]
 }
 
@@ -671,14 +671,15 @@ EOF
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
   printf -- '---\nphase: 01\nstatus: issues_found\n---\nIssues.\n' > "$dir/01-UAT.md"
   printf 'done' > "$dir/.uat-remediation-stage"
-  # Pre-existing round files
-  printf 'round 1\n' > "$dir/01-UAT-round-01.md"
-  printf 'round 2\n' > "$dir/01-UAT-round-02.md"
+  # Pre-existing round dirs (new layout)
+  mkdir -p "$dir/remediation/P01-01-round" "$dir/remediation/P01-02-round"
+  printf 'round 1\n' > "$dir/remediation/P01-01-round/P01-R01-UAT.md"
+  printf 'round 2\n' > "$dir/remediation/P01-02-round/P01-R02-UAT.md"
 
   run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$dir"
   [ "$status" -eq 0 ]
-  [ -f "$dir/01-UAT-round-03.md" ]
-  [[ "$output" == *"round_file=01-UAT-round-03.md"* ]]
+  [ -f "$dir/remediation/P01-03-round/P01-R03-UAT.md" ]
+  [[ "$output" == *"round_file=P01-R03-UAT.md"* ]]
 }
 
 @test "prepare-reverification is idempotent when no UAT exists (already archived)" {
@@ -728,7 +729,7 @@ EOF
 
   # Round file should be staged for addition
   run git diff --cached --name-only --diff-filter=A
-  [[ "$output" == *"01-UAT-round-01.md"* ]]
+  [[ "$output" == *"P01-R01-UAT.md"* ]]
 
   # .uat-remediation-stage should be staged for deletion
   run git diff --cached --name-only --diff-filter=D
@@ -859,8 +860,8 @@ EOF
   [ "$status" -eq 0 ]
   # Old UAT should be archived
   [ ! -f "$dir/01-UAT.md" ]
-  # Round file should exist
-  ls "$dir"/01-UAT-round-*.md 2>/dev/null | grep -q .
+  # Round file should exist in round dir
+  [ -f "$dir/remediation/P01-01-round/P01-R01-UAT.md" ]
 }
 
 # --- QA round 6: body-fallback tightening (finding #1) ---
@@ -915,7 +916,7 @@ EOF
   run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$dir"
   [ "$status" -eq 0 ]
   [[ "$output" == *"archived=01-UAT.md"* ]]
-  [ -f "$dir/01-UAT-round-01.md" ]
+  [ -f "$dir/remediation/P01-01-round/P01-R01-UAT.md" ]
   [ ! -f "$dir/01-UAT.md" ]
 
   # Second run: should exit 0 with skip marker (no UAT to archive)
@@ -954,10 +955,11 @@ EOF
   cd "$TEST_TEMP_DIR"
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
 
-  # Create 3 archived round files
-  printf 'round 1\n' > "$dir/01-UAT-round-01.md"
-  printf 'round 2\n' > "$dir/01-UAT-round-02.md"
-  printf 'round 3\n' > "$dir/01-UAT-round-03.md"
+  # Create 3 archived round dirs (new layout)
+  mkdir -p "$dir/remediation/P01-01-round" "$dir/remediation/P01-02-round" "$dir/remediation/P01-03-round"
+  printf 'round 1\n' > "$dir/remediation/P01-01-round/P01-R01-UAT.md"
+  printf 'round 2\n' > "$dir/remediation/P01-02-round/P01-R02-UAT.md"
+  printf 'round 3\n' > "$dir/remediation/P01-03-round/P01-R03-UAT.md"
 
   # Active UAT with issues + remediation done
   printf -- '---\nphase: 01\nstatus: issues_found\n---\nIssues.\n' > "$dir/01-UAT.md"
@@ -971,6 +973,6 @@ EOF
   # prepare-reverification should create round-04 (3 + 1)
   run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$dir"
   [ "$status" -eq 0 ]
-  [ -f "$dir/01-UAT-round-04.md" ]
-  [[ "$output" == *"round_file=01-UAT-round-04.md"* ]]
+  [ -f "$dir/remediation/P01-04-round/P01-R04-UAT.md" ]
+  [[ "$output" == *"round_file=P01-R04-UAT.md"* ]]
 }

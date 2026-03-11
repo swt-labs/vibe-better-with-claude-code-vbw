@@ -70,9 +70,10 @@ if [ "$_REM_STAGE" != "done" ]; then
   exit 1
 fi
 
-# Extract phase number from UAT filename (e.g., "01" from "01-UAT.md")
+# Extract phase number from UAT filename (e.g., "01" from "01-UAT.md" or "P01-UAT.md")
 UAT_BASENAME=$(basename "$UAT_FILE")
-PHASE_NUM=$(echo "$UAT_BASENAME" | sed 's/^\([0-9]*\).*/\1/')
+# Strip optional P-prefix before extracting digits
+PHASE_NUM=$(echo "$UAT_BASENAME" | sed 's/^P//' | sed 's/^\([0-9]*\).*/\1/')
 
 # Normalize phase dir path
 case "$PHASE_DIR" in
@@ -85,15 +86,17 @@ MAX_ROUND=$(count_uat_rounds "$PHASE_DIR" "$PHASE_NUM")
 
 NEXT_ROUND=$((MAX_ROUND + 1))
 ROUND_PADDED=$(printf '%02d' "$NEXT_ROUND")
-ROUND_FILE="${PHASE_NUM}-UAT-round-${ROUND_PADDED}.md"
+ROUND_FILE="P${PHASE_NUM}-R${ROUND_PADDED}-UAT.md"
+ROUND_DIR="${PHASE_DIR}remediation/P${PHASE_NUM}-${ROUND_PADDED}-round/"
 
 # Warn if we've been through many rounds — signal the user may want a different approach
 if [ "$NEXT_ROUND" -ge 3 ]; then
   echo "reverification_warning=This phase has been through $MAX_ROUND remediation rounds. Consider a different approach if issues persist."
 fi
 
-# Archive: rename UAT to round file
-mv "$UAT_FILE" "${PHASE_DIR}${ROUND_FILE}"
+# Archive: create round dir if needed, move UAT into it
+mkdir -p "$ROUND_DIR"
+mv "$UAT_FILE" "${ROUND_DIR}${ROUND_FILE}"
 
 # Reset remediation stage — remove both new and legacy locations
 rm -f "${PHASE_DIR}remediation/.uat-remediation-stage" "${PHASE_DIR}.uat-remediation-stage"
@@ -101,7 +104,7 @@ rm -f "${PHASE_DIR}remediation/.uat-remediation-stage" "${PHASE_DIR}.uat-remedia
 # Pre-stage changes in git so boundary commits capture them even if the
 # LLM improvises a manual commit instead of using planning-git.sh.
 if git rev-parse --git-dir >/dev/null 2>&1; then
-  git add "${PHASE_DIR}${ROUND_FILE}" 2>/dev/null || true
+  git add "${ROUND_DIR}${ROUND_FILE}" 2>/dev/null || true
   git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
   git rm -f --quiet "${PHASE_DIR}remediation/.uat-remediation-stage" 2>/dev/null || true
 fi

@@ -418,6 +418,23 @@ case "$CMD" in
         } >> "$context_file"
         _init_emit_context=true
         _init_context_file="$context_file"
+      elif [ -n "$uat_file" ] && [ -f "$uat_file" ] && { [ -z "$context_file" ] || [ ! -f "$context_file" ]; }; then
+        # CONTEXT doesn't exist — create one (mirrors do_init behavior)
+        uat_content=$(cat "$uat_file")
+        context_file="$PHASE_DIR/P${PHASE_NUM}-CONTEXT.md"
+        {
+          echo "---"
+          echo "pre_seeded: true"
+          echo "---"
+          echo ""
+          echo "# Phase ${PHASE_NUM}: UAT Remediation — Context"
+          echo ""
+          echo "## UAT Remediation Issues"
+          echo ""
+          printf '%s\n' "$uat_content"
+        } > "$context_file"
+        _init_emit_context=true
+        _init_context_file="$context_file"
       fi
       emit_init_context
     elif [ "$existing" != "none" ]; then

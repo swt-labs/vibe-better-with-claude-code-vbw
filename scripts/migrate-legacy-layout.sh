@@ -79,11 +79,22 @@ if [ ${#uat_round_files[@]} -gt 0 ] || [ -f "$OLD_STAGE_FILE" ]; then
   has_remediation=true
 fi
 
-# If already has remediation/ dir with round subdirs, skip remediation migration
+# If already has remediation/ dir with round subdirs, check if legacy artifacts remain.
+# If all legacy remediation files are already migrated, skip. Otherwise resume.
 if [ -d "$PHASE_DIR/remediation" ]; then
   existing_rounds=$(find "$PHASE_DIR/remediation" -maxdepth 1 -type d -name 'P*-round' 2>/dev/null | wc -l | tr -d ' ')
   if [ "$existing_rounds" -gt 0 ]; then
-    has_remediation=false
+    # Check for remaining legacy remediation files at phase root
+    _remaining_legacy=0
+    if [ ${#uat_round_files[@]} -gt 0 ]; then
+      _remaining_legacy=$(( _remaining_legacy + ${#uat_round_files[@]} ))
+    fi
+    if [ -f "$OLD_STAGE_FILE" ]; then
+      _remaining_legacy=$(( _remaining_legacy + 1 ))
+    fi
+    if [ "$_remaining_legacy" -eq 0 ]; then
+      has_remediation=false
+    fi
   fi
 fi
 
