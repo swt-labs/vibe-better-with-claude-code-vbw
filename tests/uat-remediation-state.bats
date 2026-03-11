@@ -509,6 +509,24 @@ EOF
   grep -q "^round=02$" "$PHASE_DIR/remediation/.uat-remediation-stage"
 }
 
+@test "needs-round from legacy-only state creates remediation dir and round-02" {
+  # Legacy state file at phase root — no remediation/ directory exists
+  echo "done" > "$PHASE_DIR/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "research" ]
+  # Legacy get_round() returns "01" → increment to "02"
+  echo "$output" | grep -q "^round=02$"
+  echo "$output" | grep -q "^round_dir=.*remediation/round-02$"
+  # remediation/ dir and round-02 sub-dir created by mkdir -p
+  [ -d "$PHASE_DIR/remediation/round-02" ]
+  # New-format state file written
+  [ -f "$PHASE_DIR/remediation/.uat-remediation-stage" ]
+  grep -q "^stage=research$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^round=02$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+}
+
 @test "get-or-init plan_path empty when plan does not exist in round dir" {
   mkdir -p "$PHASE_DIR/remediation/round-01"
   printf 'stage=research\nround=01\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
