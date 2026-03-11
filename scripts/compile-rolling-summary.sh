@@ -21,7 +21,7 @@ if [ -d "$PHASES_DIR" ]; then
       SUMMARY_FILES="${SUMMARY_FILES}${f}
 "
     fi
-  done < <(find "$PHASES_DIR" -maxdepth 2 -name "*-SUMMARY.md" 2>/dev/null | sort)
+  done < <(find "$PHASES_DIR" -maxdepth 3 -name "*-SUMMARY.md" 2>/dev/null | sort)
 fi
 
 # Remove trailing newline
@@ -31,7 +31,7 @@ SUMMARY_FILES="${SUMMARY_FILES%
 # Count total SUMMARY.md files (including incomplete ones) to detect single-phase no-op
 TOTAL_COUNT=0
 if [ -d "$PHASES_DIR" ]; then
-  TOTAL_COUNT=$(find "$PHASES_DIR" -maxdepth 2 -name "*-SUMMARY.md" 2>/dev/null | wc -l | tr -d ' ')
+  TOTAL_COUNT=$(find "$PHASES_DIR" -maxdepth 3 -name "*-SUMMARY.md" 2>/dev/null | wc -l | tr -d ' ')
 fi
 
 # ── Single-phase no-op ─────────────────────────────────────────────────────────

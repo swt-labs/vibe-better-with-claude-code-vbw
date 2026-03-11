@@ -175,9 +175,16 @@ case "$GATE_TYPE" in
 
     # Check all plans up to current have SUMMARY.md
     MISSING=""
-    for plan_file in "$PHASE_DIR"/*-PLAN.md; do
+    for plan_file in "$PHASE_DIR"/*-PLAN.md "$PHASE_DIR"/P*-*-wave/*-PLAN.md; do
       [ ! -f "$plan_file" ] && continue
-      PLAN_NUM=$(basename "$plan_file" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/')
+      PLAN_BASENAME=$(basename "$plan_file")
+      # Extract plan number: legacy "01-01-PLAN.md" or P-prefix "P01-W01-01-PLAN.md"
+      case "$PLAN_BASENAME" in
+        P[0-9]*-W[0-9]*-*)
+          PLAN_NUM=$(echo "$PLAN_BASENAME" | sed 's/^P[0-9]*-W[0-9]*-\([0-9]*\)-.*/\1/') ;;
+        *)
+          PLAN_NUM=$(echo "$PLAN_BASENAME" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/') ;;
+      esac
       # Only check plans before the current one
       if [ "$PLAN_NUM" -lt "$PLAN" ] 2>/dev/null; then
         SUMMARY_FILE="${plan_file%-PLAN.md}-SUMMARY.md"

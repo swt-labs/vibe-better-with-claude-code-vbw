@@ -179,14 +179,24 @@ if true; then
     # Find active contract: match the first plan without a finalized SUMMARY
     # A plan is active if its SUMMARY doesn't exist or has a non-terminal status.
     # zsh compat: if no PLAN files exist, glob literal fails -f test and is skipped
-    for PLAN_FILE in "$PHASES_DIR"/*/*-PLAN.md; do
+    for PLAN_FILE in "$PHASES_DIR"/*/*-PLAN.md "$PHASES_DIR"/*/P*-*-wave/*-PLAN.md; do
       [ ! -f "$PLAN_FILE" ] && continue
       SUMMARY_FILE="${PLAN_FILE%-PLAN.md}-SUMMARY.md"
       if ! is_plan_finalized "$SUMMARY_FILE"; then
         # Extract phase and plan numbers from filename
         BASENAME=$(basename "$PLAN_FILE")
-        PHASE_NUM=$(echo "$BASENAME" | sed 's/^\([0-9]*\)-.*/\1/')
-        PLAN_NUM=$(echo "$BASENAME" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/')
+        case "$BASENAME" in
+          P[0-9]*-W[0-9]*-*)
+            # Wave plan: P{NN}-W{WW}-{MM}-PLAN.md
+            PHASE_NUM=$(echo "$BASENAME" | sed 's/^P\([0-9]*\)-.*/\1/')
+            PLAN_NUM=$(echo "$BASENAME" | sed 's/^P[0-9]*-W[0-9]*-\([0-9]*\)-.*/\1/')
+            ;;
+          *)
+            # Legacy plan: {NN}-{MM}-PLAN.md
+            PHASE_NUM=$(echo "$BASENAME" | sed 's/^\([0-9]*\)-.*/\1/')
+            PLAN_NUM=$(echo "$BASENAME" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/')
+            ;;
+        esac
         CONTRACT_FILE="${CONTRACT_DIR}/${PHASE_NUM}-${PLAN_NUM}.json"
         if [ -f "$CONTRACT_FILE" ]; then
           # Check forbidden_paths
@@ -364,7 +374,7 @@ fi
 ACTIVE_PLAN=""
 # A plan is active if its SUMMARY doesn't exist or has a non-terminal status.
 # zsh compat: if no PLAN files exist, glob literal fails -f test and is skipped
-for PLAN_FILE in "$PHASES_DIR"/*/*-PLAN.md; do
+for PLAN_FILE in "$PHASES_DIR"/*/*-PLAN.md "$PHASES_DIR"/*/P*-*-wave/*-PLAN.md; do
   [ ! -f "$PLAN_FILE" ] && continue
   SUMMARY_FILE="${PLAN_FILE%-PLAN.md}-SUMMARY.md"
   if ! is_plan_finalized "$SUMMARY_FILE"; then

@@ -48,9 +48,9 @@ if [ ${#PACKAGE_ROOTS[@]} -eq 0 ]; then
   exit 0
 fi
 
-# Extract file paths from PLAN.md task sections
+# Extract file paths from PLAN.md task sections (flat root + wave subdirs)
 PLAN_FILES=()
-for plan_file in "$PHASE_DIR"/*-PLAN.md; do
+for plan_file in "$PHASE_DIR"/*-PLAN.md "$PHASE_DIR"/P*-*-wave/*-PLAN.md; do
   [ ! -f "$plan_file" ] && continue
   # Extract Files: lines from task blocks
   while IFS= read -r line; do
@@ -66,7 +66,7 @@ done
 
 # Match plan files to package roots
 RELEVANT_ROOTS=()
-for plan_file in "${PLAN_FILES[@]}"; do
+for plan_file in "${PLAN_FILES[@]+"${PLAN_FILES[@]}"}"; do
   [ -z "$plan_file" ] && continue
   for root in "${PACKAGE_ROOTS[@]}"; do
     # Strip leading ./ from root for comparison

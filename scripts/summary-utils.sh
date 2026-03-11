@@ -50,6 +50,12 @@ count_complete_summaries() {
       count=$((count + 1))
     fi
   done
+  for f in "$dir"/remediation/P*-*-round/*-SUMMARY.md; do
+    [ -f "$f" ] || continue
+    if is_summary_complete "$f"; then
+      count=$((count + 1))
+    fi
+  done
   echo "$count"
 }
 
@@ -67,6 +73,11 @@ count_done_summaries() {
     case "$st" in complete|completed|partial) count=$((count + 1)) ;; esac
   done
   for f in "$dir"/P*-*-wave/*-SUMMARY.md; do
+    [ -f "$f" ] || continue
+    st=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
+    case "$st" in complete|completed|partial) count=$((count + 1)) ;; esac
+  done
+  for f in "$dir"/remediation/P*-*-round/*-SUMMARY.md; do
     [ -f "$f" ] || continue
     st=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
     case "$st" in complete|completed|partial) count=$((count + 1)) ;; esac
@@ -93,17 +104,25 @@ count_terminal_summaries() {
       count=$((count + 1))
     fi
   done
+  for f in "$dir"/remediation/P*-*-round/*-SUMMARY.md; do
+    [ -f "$f" ] || continue
+    if is_summary_terminal "$f"; then
+      count=$((count + 1))
+    fi
+  done
   echo "$count"
 }
 
 # count_phase_plans DIR
-# Returns count of PLAN.md files in DIR, scanning both flat root
-# (legacy [0-9]*-PLAN.md) and wave subdirs (P*-*-wave/*-PLAN.md).
+# Returns count of PLAN.md files in DIR, scanning flat root
+# (legacy [0-9]*-PLAN.md), wave subdirs (P*-*-wave/*-PLAN.md),
+# and remediation round dirs (remediation/P*-*-round/*-PLAN.md).
 count_phase_plans() {
   local dir="$1"
   local count=0
   count=$(( $(find "$dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l) + \
-            $(find "$dir" -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null | wc -l) ))
+            $(find "$dir" -path '*/P*-*-wave/*-PLAN.md' ! -name '.*' 2>/dev/null | wc -l) + \
+            $(find "$dir" -path '*/remediation/P*-*-round/*-PLAN.md' ! -name '.*' 2>/dev/null | wc -l) ))
   echo "$count" | tr -d ' '
 }
 

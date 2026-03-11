@@ -79,16 +79,16 @@ done
 
 PHASE_SLUG=$(basename "$PHASE_DIR" | sed "s/^$(printf '%02d' "$PHASE")-//")
 
-# Collect plan IDs from PLAN.md files
+# Collect plan IDs from PLAN.md files (flat root, wave subdirs, remediation rounds)
 PLANS_JSON="[]"
-for plan_file in "$PHASE_DIR"/*-PLAN.md; do
+for plan_file in "$PHASE_DIR"/*-PLAN.md "$PHASE_DIR"/P*-*-wave/*-PLAN.md "$PHASE_DIR"/remediation/P*-*-round/*-PLAN.md; do
   [ ! -f "$plan_file" ] && continue
   PLAN_ID=$(basename "$plan_file" | sed 's/-PLAN\.md$//')
   PLAN_TITLE=$(awk '/^title:/ {gsub(/^title: *"?|"?$/, ""); print}' "$plan_file" 2>/dev/null) || PLAN_TITLE="unknown"
   PLAN_WAVE=$(awk '/^wave:/ {gsub(/^wave: */, ""); print}' "$plan_file" 2>/dev/null) || PLAN_WAVE="1"
 
-  # Check if SUMMARY.md exists with terminal status
-  SUMMARY_FILE="$PHASE_DIR/${PLAN_ID}-SUMMARY.md"
+  # Check if SUMMARY.md exists with terminal status — co-located with the plan
+  SUMMARY_FILE="$(dirname "$plan_file")/${PLAN_ID}-SUMMARY.md"
   if is_plan_finalized "$SUMMARY_FILE"; then
     PLAN_STATUS=$(extract_summary_status "$SUMMARY_FILE")
     # Normalize to execution-state compatible values

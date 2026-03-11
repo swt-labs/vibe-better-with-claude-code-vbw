@@ -15,6 +15,7 @@ if [ -f "$_QG_SCRIPT_DIR/summary-utils.sh" ]; then
 else
   # Safe default: treat no summaries as complete when helpers unavailable
   count_complete_summaries() { echo "0"; }
+  count_phase_plans() { echo "0"; }
 fi
 
 # Read stdin to consume task context
@@ -29,7 +30,7 @@ SUMMARIES_TOTAL=0
 
 for phase_dir in .vbw-planning/phases/*/; do
   [ -d "$phase_dir" ] || continue
-  PLANS=$(ls -1 "$phase_dir"*-PLAN.md 2>/dev/null | wc -l | tr -d ' ')
+  PLANS=$(count_phase_plans "$phase_dir")
   SUMMARIES=$(count_complete_summaries "$phase_dir")
   PLANS_TOTAL=$(( PLANS_TOTAL + PLANS ))
   SUMMARIES_TOTAL=$(( SUMMARIES_TOTAL + SUMMARIES ))
