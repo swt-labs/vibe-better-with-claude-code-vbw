@@ -385,17 +385,17 @@ This mode handles the case where a milestone was archived before UAT issues were
 
 **Steps:**
 1. **Parse args:** Phase number (optional, auto-detected), --effort (optional, falls back to config).
-2. **Phase context:** If `{phase-dir}/{phase}-CONTEXT.md` exists, include it in Lead agent context. If not, proceed without — users who want context run `/vbw:discuss {NN}` first.
+2. **Phase context:** If `{phase-dir}/P{phase}-CONTEXT.md` exists, include it in Lead agent context. Fall back to `{phase-dir}/{phase}-CONTEXT.md` (legacy pre-v2 naming). If neither exists, proceed without — users who want context run `/vbw:discuss {NN}` first.
 3. **Research persistence (REQ-08, graduated):** If effort != turbo:
-   - Determine the next plan number `{MM}`: glob `*-PLAN.md` in the phase dir, extract the highest `{MM}` value, add 1 (zero-padded to 2 digits). If no plans exist, `{MM}=01`.
-   - Check for per-plan research `{phase-dir}/{phase}-{MM}-RESEARCH.md` (preferred) or legacy `{phase-dir}/{phase}-RESEARCH.md` (fallback).
-   - **If neither exists:** Spawn Scout agent to research the phase goal, requirements, and relevant codebase patterns. Scout writes its findings directly to the output path. Pass `<output_path>{phase-dir}/{phase}-{MM}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file using its Write tool. If a legacy `{phase-dir}/{phase}-RESEARCH.md` exists, delete it after Scout writes the per-plan file to avoid stale context. After Scout completes, confirm the file exists (read first line). Resolve Scout model:
+   - Determine the next plan number `{MM}`: glob `*-PLAN.md` in the phase dir (including wave subdirs `P*-*-wave/`), extract the highest `{MM}` value, add 1 (zero-padded to 2 digits). If no plans exist, `{MM}=01`.
+   - Check for per-plan research in priority order: `{phase-dir}/P{phase}-{MM}-RESEARCH.md` (v2 P-prefix), then `{phase-dir}/{phase}-{MM}-RESEARCH.md` (legacy). Also check phase-level: `{phase-dir}/P{phase}-RESEARCH.md` (v2) then `{phase-dir}/{phase}-RESEARCH.md` (legacy fallback).
+   - **If none exists:** Spawn Scout agent to research the phase goal, requirements, and relevant codebase patterns. Scout writes its findings directly to the output path. Pass `<output_path>{phase-dir}/P{phase}-{MM}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file using its Write tool. If a legacy `{phase-dir}/{phase}-RESEARCH.md` exists, delete it after Scout writes the per-plan file to avoid stale context. After Scout completes, confirm the file exists (read first line). Resolve Scout model:
      ```bash
      SCOUT_MODEL=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json)
      SCOUT_MAX_TURNS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}")
      ```
    Pass `subagent_type: "vbw:vbw-scout"` and `model: "${SCOUT_MODEL}"` to the Task tool. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited). Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Scout prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
-   - **If exists (per-plan or legacy):** Record the RESEARCH.md path (per-plan `{phase}-{MM}-RESEARCH.md` or legacy `{phase}-RESEARCH.md`) for inclusion in the Lead prompt. The Lead prompt MUST include the directive: `Read {research-path} for full research findings before planning.` Do NOT inline a summary of the research as a substitute — the Lead must read the file itself to get the complete, unabridged findings. Lead may update the per-plan RESEARCH.md if new information emerges.
+   - **If exists (per-plan or legacy):** Record the RESEARCH.md path (per-plan `P{phase}-{MM}-RESEARCH.md`, or legacy `{phase}-{MM}-RESEARCH.md` / `P{phase}-RESEARCH.md` / `{phase}-RESEARCH.md`) for inclusion in the Lead prompt. The Lead prompt MUST include the directive: `Read {research-path} for full research findings before planning.` Do NOT inline a summary of the research as a substitute — the Lead must read the file itself to get the complete, unabridged findings. Lead may update the per-plan RESEARCH.md if new information emerges.
    - **On failure:** Log warning, continue planning without research. Do not block.
    - **Authenticated live validation policy:** Scout cannot safely validate authenticated/private APIs (no Bash access). If research identifies a need for authenticated live validation (signed requests, API tokens, env-based secrets), Scout must flag it with `⚠ REQUIRES AUTHENTICATED LIVE VALIDATION` in findings. The execute stage (Dev/Debugger) performs that validation via Bash before code changes. Do not route authenticated API validation through WebFetch.
    - If effort=turbo: skip entirely.
@@ -466,6 +466,14 @@ This mode handles the case where a milestone was archived before UAT issues were
     fi
     ```
     This catches any misnamed files written by Lead (e.g., turbo mode or models that bypass the PreToolUse block).
+8b. **Organize wave structure:**
+    ```bash
+    WAVE_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/organize-wave-structure.sh"
+    if [ -f "$WAVE_SCRIPT" ]; then
+      bash "$WAVE_SCRIPT" "{phase_dir}"
+    fi
+    ```
+    Moves flat `{MM}-PLAN.md` files into `P{NN}-{WW}-wave/` subdirectories based on `wave:` frontmatter. Renames phase-root files to P-prefix. Idempotent — skips already-organized files.
 9. **Validate output:** Verify PLAN.md has valid frontmatter (phase, plan, title, wave, depends_on, must_haves) and tasks. Check wave deps acyclic.
 10. **Present:** Update STATE.md (phase position, plan count, status=Planned). Resolve model profile:
    ```bash
@@ -506,6 +514,14 @@ Before reading:
       bash "$NORM_SCRIPT" "{phase_dir}"
     fi
     ```
+0b. **Organize wave structure:**
+    ```bash
+    WAVE_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/organize-wave-structure.sh"
+    if [ -f "$WAVE_SCRIPT" ]; then
+      bash "$WAVE_SCRIPT" "{phase_dir}"
+    fi
+    ```
+    Ensures flat plan files are organized into wave subdirectories before the protocol reads them. Idempotent — no-op when already organized.
 1. **Parse arguments:** Phase number (auto-detect if omitted), --effort, --skip-qa, --plan=NN.
 2. **Run execute guards:**
    - Not initialized: STOP "Run /vbw:init first."
@@ -543,10 +559,10 @@ Missing name: STOP "Usage: `/vbw:vibe --add <phase-name>`"
 5. **Problem research (conditional):** If $ARGUMENTS contain a problem description (bug report, feature request, multi-sentence intent) rather than just a bare phase name:
    - Resolve Scout model: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json`
    - Resolve Scout max turns: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "$(jq -r '.effort // "balanced"' .vbw-planning/config.json 2>/dev/null)"`
-   - Spawn Scout agent (with `subagent_type: "vbw:vbw-scout"`) to research the problem in the codebase. Pass `<output_path>{phase-dir}/{NN}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes its findings directly using its Write tool. Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Scout prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely. After Scout completes, confirm the file exists (read first line).
+   - Spawn Scout agent (with `subagent_type: "vbw:vbw-scout"`) to research the problem in the codebase. Pass `<output_path>{phase-dir}/P{NN}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes its findings directly using its Write tool. Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Scout prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely. After Scout completes, confirm the file exists (read first line).
    - Use Scout findings to write an informed phase goal and success criteria in ROADMAP.md.
    - On failure: log warning, write phase goal from $ARGUMENTS alone. Do not block.
-   - **This eliminates duplicate research** — Plan mode step 3 checks for existing RESEARCH.md and skips Scout if found.
+   - **This eliminates duplicate research** — Plan mode step 3 checks for existing RESEARCH.md (P-prefix and legacy paths) and skips Scout if found.
 6. Update ROADMAP.md: append phase list entry, append Phase Details section (using Scout findings if available), add progress row.
 7. Present: Phase Banner with position, goal. Checklist for roadmap update + dir creation. Next Up: `/vbw:vibe --discuss` or `/vbw:vibe --plan`.
 
@@ -563,7 +579,7 @@ Inserting before completed phase: WARN + confirm.
 3. Identify renumbering: all phases >= position shift up by 1.
 4. Renumber dirs in REVERSE order: rename dir {NN}-{slug} -> {NN+1}-{slug}, rename internal PLAN/SUMMARY files, update `phase:` frontmatter, update `depends_on` references.
 5. Create dir: `mkdir -p .vbw-planning/phases/{NN}-{slug}/`
-6. **Problem research (conditional):** Same as Add Phase step 5 — if $ARGUMENTS contain a problem description, spawn Scout (with `subagent_type: "vbw:vbw-scout"`) to research the codebase. Pass `<output_path>{phase-dir}/{NN}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file directly. This prevents Plan mode from duplicating the research.
+6. **Problem research (conditional):** Same as Add Phase step 5 — if $ARGUMENTS contain a problem description, spawn Scout (with `subagent_type: "vbw:vbw-scout"`) to research the codebase. Pass `<output_path>{phase-dir}/P{NN}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file directly. This prevents Plan mode from duplicating the research.
 7. Update ROADMAP.md: insert new phase entry + details at position (using Scout findings if available), renumber subsequent entries/headers/cross-refs, update progress table.
 8. Present: Phase Banner with renumber count, phase changes, file checklist, Next Up.
 

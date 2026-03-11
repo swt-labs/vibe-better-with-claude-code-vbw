@@ -32,6 +32,15 @@
 # State file: {phase-dir}/remediation/.uat-remediation-stage
 # Format: key=value pairs (stage=X, round=NN)
 # Round dirs: {phase-dir}/remediation/P{NN}-{RR}-round/
+#
+# DESTRUCTIVE SEMANTICS — CONTEXT.md UAT section:
+#   The init and needs-round paths truncate CONTEXT.md at the
+#   "## UAT Remediation Issues" heading and replace everything below it with
+#   fresh UAT issue data. Any manual notes added under that heading will be
+#   discarded on the next round reseed. This is by design — the canonical
+#   UAT issue data comes from the UAT report, not from manual edits. Users
+#   who need to preserve notes should place them above that heading or in a
+#   separate file.
 
 set -eo pipefail
 

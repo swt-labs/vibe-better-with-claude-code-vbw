@@ -51,7 +51,7 @@ All runtime script invocations below assume `VBW_PLUGIN_ROOT` is set.
 
 **Orchestrator read-scope boundary:** You may ONLY read planning/state artifacts: `*-PLAN.md`, `*-SUMMARY.md`, `*-RESEARCH.md`, `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, `.execution-state.json`, `.context-*.md`, `config.json`, and `.vbw-planning/` metadata. Do NOT read product source files (application code, tests, configs outside `.vbw-planning/`). If you need to understand product code to make a routing or sequencing decision, that understanding must come from Dev — delegate it via a task.
 
-1. Glob `*-PLAN.md` in phase dir. Read each plan's YAML frontmatter.
+1. Glob `*-PLAN.md` in phase dir **and** wave subdirs (`P*-*-wave/`). Read each plan's YAML frontmatter.
 2. Check existing SUMMARY.md files — a plan is complete only if its SUMMARY has `status: complete|partial` (use `is_summary_complete` from `scripts/summary-utils.sh`). A SUMMARY with `status: pending` or no status field is NOT complete.
 3. `git log --oneline -20` for committed tasks (crash recovery).
 4. Build remaining plans list. If `--plan=NN`, filter to that plan.
@@ -198,7 +198,7 @@ The existing individual script call sections (V3 Contract-Lite, V2 Hard Gates, C
 **Context compilation (REQ-11):** If control-plane.sh `full` action was used above and returned a `context_path`, use that path directly. Otherwise, if `config_context_compiler=true` from Context block above, before creating Dev tasks run:
 `bash "${VBW_PLUGIN_ROOT}/scripts/compile-context.sh" {phase} dev {phases_dir} {plan_path}`
 This produces `{phase-dir}/.context-dev.md` with phase goal and conventions.
-The plan_path argument is passed for context. **Per-plan research:** When loading context for a specific plan `{NN}-{MM}-PLAN.md`, also check for `{phase-dir}/{NN}-{MM}-RESEARCH.md`. If it exists, include it in the Dev task prompt alongside the compiled context. Fall back to `{phase-dir}/{NN}-RESEARCH.md` (legacy single-file format) if no per-plan research exists. Skill activation uses a plan-driven architecture:
+The plan_path argument is passed for context. **Per-plan research:** When loading context for a specific plan (e.g. `P{NN}-W{WW}-{MM}-PLAN.md` or legacy `{NN}-{MM}-PLAN.md`), check for research in priority order: `{phase-dir}/P{NN}-{MM}-RESEARCH.md` (v2 P-prefix), then `{phase-dir}/{NN}-{MM}-RESEARCH.md` (legacy per-plan). If neither exists, check phase-level: `{phase-dir}/P{NN}-RESEARCH.md` (v2) then `{phase-dir}/{NN}-RESEARCH.md` (legacy single-file). Include whatever is found in the Dev task prompt alongside the compiled context. Skill activation uses a plan-driven architecture:
 - **Orchestrator skill selection:** When composing subagent task descriptions, the orchestrator evaluates installed skills (visible via `<available_skills>` in system context) — reading each skill's description to determine relevance to the specific task. Only relevant skills are included in the subagent prompt via `<skill_activation>` blocks at the prompt start. Irrelevant skills are omitted entirely.
 - **Lead (planning time):** Evaluates available skills and wires relevant ones into plans via `skills_used` frontmatter and `@`-references to SKILL.md files.
 - **Dev/QA/Scout/Docs (execution time):** Reads the plan's `skills_used` list and calls `Skill(skill-name)` for each listed skill before beginning work. If a skill in system context is missing from `skills_used`, activates it too (soft fallback). No written YES/NO evaluation required.

@@ -211,6 +211,17 @@ if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ]; then
   fi
 fi
 
+# --- Auto-migrate legacy flat phase layout to v2 wave + round structure ---
+# Brownfield installs may have flat {MM}-PLAN.md files or flat remediation
+# artifacts. migrate-legacy-layout.sh is idempotent (per-phase marker in
+# .layout-v2-migrated) and safe to call on every session start.
+if [ -d "$PLANNING_DIR/phases" ] && [ -f "$SCRIPT_DIR/migrate-legacy-layout.sh" ]; then
+  for _mig_phase_dir in "$PLANNING_DIR"/phases/*/; do
+    [ -d "$_mig_phase_dir" ] || continue
+    bash "$SCRIPT_DIR/migrate-legacy-layout.sh" "$_mig_phase_dir" >/dev/null 2>&1 || true
+  done
+fi
+
 # --- Migrate .claude/CLAUDE.md to root CLAUDE.md (one-time, #20) ---
 # Old VBW versions wrote a duplicate isolation guard to .claude/CLAUDE.md.
 # Consolidate to root CLAUDE.md only. Three scenarios:
