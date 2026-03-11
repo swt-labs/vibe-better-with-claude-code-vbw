@@ -516,3 +516,115 @@ EOF
   # Should get 01|03 (frontmatter plan=03), not 01|01 (filename R01)
   [[ "$result" == *"01|03"* ]] || [[ "$result" == *"1|03"* ]]
 }
+
+@test "hard-gate fallback _hg_frontmatter_scalar: anchored key avoids substring match" {
+  local plan_dir
+  plan_dir=$(mktemp -d)
+  cat > "$plan_dir/P01-W01-01-PLAN.md" <<'EOF'
+---
+interphase: 99
+phase: 3
+subplan: 77
+plan: 05
+---
+EOF
+
+  result=$(bash -c '
+    _hg_frontmatter_scalar() {
+      local f="$1" key="$2"
+      [ -f "$f" ] || return 0
+      awk -v key="$key" '\''
+        BEGIN { in_fm=0 }
+        NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+        in_fm && /^---[[:space:]]*$/ { exit }
+        in_fm && /^[^[:space:]]/ && $0 ~ "^" key ":[[:space:]]*" {
+          line = $0; sub("^" key ":[[:space:]]*", "", line); print line; exit
+        }
+      '\'' "$f" 2>/dev/null | sed "s/^[\"'"'"']//; s/[\"'"'"']$//" || true
+    }
+    echo "$(_hg_frontmatter_scalar "'"$plan_dir"'/P01-W01-01-PLAN.md" phase)|$(_hg_frontmatter_scalar "'"$plan_dir"'/P01-W01-01-PLAN.md" plan)"
+  ')
+
+  rm -rf "$plan_dir"
+  # Must return "3|05" — not "inter99|sub77" from substring matches
+  [[ "$result" == "3|05" ]] || [[ "$result" == "3|5" ]]
+}
+
+@test "file-guard fallback _fg_frontmatter_scalar: anchored key avoids substring match" {
+  local plan_dir
+  plan_dir=$(mktemp -d)
+  cat > "$plan_dir/P02-W01-01-PLAN.md" <<'EOF'
+---
+gameplan: 88
+plan: 04
+interphase: 99
+phase: 2
+---
+EOF
+
+  result=$(bash -c '
+    _fg_frontmatter_scalar() {
+      local f="$1" key="$2"
+      [ -f "$f" ] || return 0
+      awk -v key="$key" '\''
+        BEGIN { in_fm=0 }
+        NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+        in_fm && /^---[[:space:]]*$/ { exit }
+        in_fm && /^[^[:space:]]/ && $0 ~ "^" key ":[[:space:]]*" {
+          line = $0; sub("^" key ":[[:space:]]*", "", line); print line; exit
+        }
+      '\'' "$f" 2>/dev/null | sed "s/^[\"'"'"']//; s/[\"'"'"']$//" || true
+    }
+    echo "$(_fg_frontmatter_scalar "'"$plan_dir"'/P02-W01-01-PLAN.md" phase)|$(_fg_frontmatter_scalar "'"$plan_dir"'/P02-W01-01-PLAN.md" plan)"
+  ')
+
+  rm -rf "$plan_dir"
+  # Must return "2|04" — not "inter99|game88" from substring matches
+  [[ "$result" == "2|04" ]] || [[ "$result" == "2|4" ]]
+}
+
+# ===========================================================================
+# Zero-initial-plans migration edge case (Finding 5)
+# ===========================================================================
+
+@test "migrate-legacy-layout: zero initial plans with remediation artifacts migrates correctly" {
+  local test_dir
+  test_dir=$(mktemp -d)
+  cd "$test_dir"
+
+  git init -q .
+  mkdir -p .vbw-planning/phases/01-setup
+
+  # No initial plans (no {MM}-PLAN.md files at root)
+  # But there IS a remediation plan at position 01 (legacy two-number prefix)
+  cat > ".vbw-planning/phases/01-setup/01-01-PLAN.md" <<'EOF'
+---
+phase: 01
+plan: 01
+title: Remediation round 1
+---
+Fix stuff.
+EOF
+  cat > ".vbw-planning/phases/01-setup/01-01-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+Done.
+EOF
+
+  # Add a legacy .uat-remediation-stage to trigger remediation detection
+  echo "done" > ".vbw-planning/phases/01-setup/.uat-remediation-stage"
+
+  git add -A && git commit -q -m "initial"
+
+  run bash "$BATS_TEST_DIRNAME/../scripts/migrate-legacy-layout.sh" ".vbw-planning/phases/01-setup"
+  [ "$status" -eq 0 ]
+
+  # max_plan_num=0, rr_num=1, so plan_mm=01 → looks for 01-01-PLAN.md → migrates it
+  [ -f ".vbw-planning/phases/01-setup/remediation/P01-01-round/P01-R01-PLAN.md" ]
+  [ -f ".vbw-planning/phases/01-setup/remediation/P01-01-round/P01-R01-SUMMARY.md" ]
+  [ ! -f ".vbw-planning/phases/01-setup/01-01-PLAN.md" ]
+
+  cd "$BATS_TEST_DIRNAME"
+  rm -rf "$test_dir"
+}

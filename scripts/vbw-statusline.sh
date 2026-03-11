@@ -190,7 +190,7 @@ if ! cache_fresh "$FAST_CF" 5; then
     GIT_AHEAD=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
   fi
   if [ -d ".vbw-planning/phases" ]; then
-    PT=$(find .vbw-planning/phases -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+    PT=$(find .vbw-planning/phases -maxdepth 4 -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
     PD=0
     for _sl_pdir in .vbw-planning/phases/*/; do
       [ -d "$_sl_pdir" ] || continue
@@ -226,7 +226,7 @@ if ! cache_fresh "$FAST_CF" 5; then
               esac ;;
             *) QA="UAT: ?"; QA_COLOR="Y" ;;
           esac
-        elif [ -n "$(find "$PDIR" -name '*VERIFICATION.md' 2>/dev/null | head -1)" ]; then
+        elif [ -n "$(find "$PDIR" -maxdepth 3 -name '*VERIFICATION.md' 2>/dev/null | head -1)" ]; then
           QA="QA: pass"; QA_COLOR="G"
         fi
       fi

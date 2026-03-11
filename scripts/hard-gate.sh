@@ -47,8 +47,8 @@ else
       BEGIN { in_fm=0 }
       NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
       in_fm && /^---[[:space:]]*$/ { exit }
-      in_fm && /^[^[:space:]]/ && $0 ~ key ":[[:space:]]*" {
-        line = $0; sub(key ":[[:space:]]*", "", line); print line; exit
+      in_fm && /^[^[:space:]]/ && $0 ~ "^" key ":[[:space:]]*" {
+        line = $0; sub("^" key ":[[:space:]]*", "", line); print line; exit
       }
     ' "$f" 2>/dev/null | sed "s/^[\"']//; s/[\"']$//" || true
   }
