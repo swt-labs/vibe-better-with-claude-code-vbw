@@ -48,9 +48,9 @@ if [ ${#PACKAGE_ROOTS[@]} -eq 0 ]; then
   exit 0
 fi
 
-# Extract file paths from PLAN.md task sections (flat root + wave subdirs)
+# Extract file paths from PLAN.md task sections (flat root + wave subdirs + remediation round dirs)
 PLAN_FILES=()
-for plan_file in "$PHASE_DIR"/*-PLAN.md "$PHASE_DIR"/P*-*-wave/*-PLAN.md; do
+for plan_file in "$PHASE_DIR"/*-PLAN.md "$PHASE_DIR"/P*-*-wave/*-PLAN.md "$PHASE_DIR"/remediation/P*-*-round/*-PLAN.md; do
   [ ! -f "$plan_file" ] && continue
   # Extract Files: lines from task blocks
   while IFS= read -r line; do
