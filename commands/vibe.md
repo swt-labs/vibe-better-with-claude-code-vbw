@@ -343,10 +343,44 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
        bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
        ```
      Then continue to the next stage (`execute`), respecting autonomy confirmation rules.
-   - `execute`: Continue through normal Execute flow for that phase. Dev writes the execution summary to `{round_dir}/R{RR}-SUMMARY.md`. After execution completes, advance:
-     ```bash
-     bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
-     ```
+   - `execute`: Execute the remediation plan by spawning Dev agents sequentially — one per task in the plan. Do NOT use "normal Execute flow" or `execute-protocol.md` — remediation execution is self-contained with no wave parallelism.
+
+     **NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation execution spawns Dev agents directly via Task tool with **no `team_name` or `name` parameters**.
+
+     - Read `{round_dir}/R{RR}-PLAN.md` (using `round` and `round_dir` from step 5) and extract the task list from the plan frontmatter/body. Each task has an ID (e.g., `P07`, `P08`, `UAT-3`).
+     - Resolve Dev model:
+       ```bash
+       DEV_MODEL=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh dev .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json)
+       DEV_MAX_TURNS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-max-turns.sh dev .vbw-planning/config.json "{effort}")
+       ```
+     - Before composing Dev task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Dev prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
+     - For each task in the plan (**sequentially**, one at a time — wait for each Dev to complete before spawning the next):
+       - Spawn vbw-dev via Task tool: Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"`. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If empty, omit maxTurns.
+       - Dev prompt MUST include:
+         - The task details from the plan (description, files to modify, acceptance criteria).
+         - `"Write your execution summary to {round_dir}/R{RR}-{task-id}-SUMMARY.md"` (e.g., `R01-P07-SUMMARY.md`). Do NOT include wave prefixes (no `W1-`, `W2-`, etc.) in filenames.
+         - `"Do NOT create git worktrees. Work in the project root directory."`
+         - If `.vbw-planning/codebase/META.md` exists: `"Read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/ to bootstrap codebase understanding before executing."`
+       - Display: `◆ Spawning Dev agent for task {task-id} (${DEV_MODEL})...` → `✓ Dev agent complete for task {task-id}`.
+       - Validate: Confirm the summary file exists (read first line).
+     - After all tasks complete, normalize filenames (strips any wave prefixes that leaked):
+       ```bash
+       NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
+       if [ -f "$NORM_SCRIPT" ]; then
+         bash "$NORM_SCRIPT" "{round_dir}"
+       fi
+       ```
+     - **Worktree cleanup check:** After execution, check for orphan CC worktrees:
+       ```bash
+       if [ -d ".claude/worktrees" ] && [ -n "$(ls -A .claude/worktrees 2>/dev/null)" ]; then
+         echo "⚠ Found CC worktrees at .claude/worktrees/ — run 'git worktree list' and 'git worktree remove <path>' to clean up"
+       fi
+       ```
+       Display this warning to the user if worktrees are found. Do NOT auto-delete them.
+     - Advance:
+       ```bash
+       bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
+       ```
    - `fix` (minor-only path): Route to a quick-fix implementation path for the same phase using the extracted UAT issue list as task input (equivalent to `/vbw:fix`, but without requiring the user to invoke it manually). After changes, advance:
      ```bash
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"

@@ -103,4 +103,32 @@ for f in "$PHASE_DIR"/[Cc][Oo][Nn][Tt][Ee][Xx][Tt]-[0-9]*.[mM][dD]; do
   echo "renamed: $BASENAME -> $(basename "$TARGET")"
 done
 
+# Pattern: Strip wave prefixes from remediation summaries
+# R{RR}-W{N}-{id}-SUMMARY.md → R{RR}-{id}-SUMMARY.md (case-insensitive)
+# R{RR}-W{N}-{id}-LIVE-SUMMARY.md → R{RR}-{id}-SUMMARY.md
+# R{RR}-W{N}-{id}-FIX-SUMMARY.md → R{RR}-{id}-SUMMARY.md
+for f in "$PHASE_DIR"/[Rr][0-9]*-[Ww][0-9]*-*.[mM][dD]; do
+  [ -f "$f" ] || continue
+  [ ! -L "$f" ] || continue  # skip symlinks
+  BASENAME=$(basename "$f")
+  # Match: R{RR}-W{N}-{rest} where rest contains SUMMARY (any variant)
+  if ! echo "$BASENAME" | grep -qiE '^R[0-9]+-W[0-9]+-.*SUMMARY\.(md|MD)$'; then
+    continue
+  fi
+  # Strip the W{N}- segment and normalize suffix variants to plain SUMMARY
+  NEWNAME=$(echo "$BASENAME" | sed -E 's/^([Rr][0-9]+-)[Ww][0-9]+-/\1/' | sed -E 's/-(LIVE-SUMMARY|FIX-SUMMARY)\.(md|MD)$/-SUMMARY.md/i')
+  # If no suffix normalization was needed, ensure .md extension is lowercase
+  NEWNAME=$(echo "$NEWNAME" | sed -E 's/\.(MD)$/.md/')
+  TARGET="$PHASE_DIR/$NEWNAME"
+  if [ "$f" = "$TARGET" ]; then
+    continue
+  fi
+  if [ -f "$TARGET" ]; then
+    echo "skipped: $BASENAME (target $NEWNAME already exists)" >&2
+    continue
+  fi
+  mv "$f" "$TARGET"
+  echo "renamed: $BASENAME -> $NEWNAME"
+done
+
 exit 0
