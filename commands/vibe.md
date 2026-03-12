@@ -313,10 +313,35 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
      Then continue to the next stage (`plan`).
-   - `plan`: If `plan_path` from step 5 is non-empty, the plan was already written in a previous session — do NOT re-plan. Read the existing plan and advance directly to `execute`. Otherwise, execute **Plan mode steps 1-12 above** for the same phase, using `round` from step 5 as `{RR}`. Write the plan to `{round_dir}/R{RR}-PLAN.md`. "No separate discussion" means skip Discuss assumption-gathering (step 2) — the UAT report serves as scope. For step 3 (research persistence), use `research_path` from step 5: if non-empty, include it in Lead's context (no re-run of Scout needed); if empty, skip research. **Pass the priority-ranked issue list (step 3) to Lead** with recurring-issue annotations. After planning completes, advance:
-     ```bash
-     bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
-     ```
+   - `plan`: If `plan_path` from step 5 is non-empty, the plan was already written in a previous session — do NOT re-plan. Read the existing plan and advance directly to `execute`. Otherwise, spawn Lead as a **single subagent** to write the remediation plan:
+
+     **NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name` or `name` parameters**. This is NOT "Plan mode steps 1-12" — those steps include team logic that does not apply here.
+
+     - Resolve Lead model:
+       ```bash
+       LEAD_MODEL=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh lead .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json)
+       LEAD_MAX_TURNS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-max-turns.sh lead .vbw-planning/config.json "{effort}")
+       ```
+     - Before composing the Lead task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Lead prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
+     - Spawn vbw-lead via Task tool: Set `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"`. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If empty, omit maxTurns.
+     - Lead prompt MUST include:
+       - If `research_path` from step 5 is non-empty: `Read {research_path} for full research findings before planning.` (Lead must read the file, do NOT inline a summary.)
+       - The priority-ranked issue list from step 3 with recurring-issue annotations.
+       - `"Plans will be executed by a team of parallel Dev agents — one agent per plan. Maximize wave 1 plans (no deps) so agents start simultaneously. Ensure same-wave plans modify disjoint file sets to avoid merge conflicts."`
+       - Output path: `{round_dir}/R{RR}-PLAN.md` (using `round` from step 5 as `{RR}`).
+     - Display `◆ Spawning Lead agent...` → `✓ Lead agent complete`.
+     - Normalize plan filenames:
+       ```bash
+       NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
+       if [ -f "$NORM_SCRIPT" ]; then
+         bash "$NORM_SCRIPT" "{round_dir}"
+       fi
+       ```
+     - Validate: Verify plan has valid frontmatter (phase, plan, title, wave, depends_on, must_haves) and tasks.
+     - After planning completes, advance:
+       ```bash
+       bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
+       ```
      Then continue to the next stage (`execute`), respecting autonomy confirmation rules.
    - `execute`: Continue through normal Execute flow for that phase. Dev writes the execution summary to `{round_dir}/R{RR}-SUMMARY.md`. After execution completes, advance:
      ```bash
