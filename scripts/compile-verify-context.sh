@@ -46,12 +46,17 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   LATEST_ROUND=""
   REMED_DIR="$PHASE_DIR/remediation"
   if [ -d "$REMED_DIR" ]; then
-    for round_dir in $(find "$REMED_DIR" -maxdepth 1 -type d -name 'round-*' 2>/dev/null | sort -t- -k2 -n -r); do
-      round_num=$(basename "$round_dir" | sed 's/^round-//')
+    _best_round_num=0
+    for round_dir in "$REMED_DIR"/round-*/; do
+      [ -d "$round_dir" ] || continue
+      round_num=$(basename "$round_dir" | sed 's/^round-0*//')
+      round_num=${round_num:-0}
       rr=$(printf '%02d' "$round_num")
-      if ls "$round_dir"/R"${rr}"-PLAN.md >/dev/null 2>&1 && ls "$round_dir"/R"${rr}"-SUMMARY.md >/dev/null 2>&1; then
-        LATEST_ROUND="$round_num"
-        break
+      if [ "$round_num" -gt "$_best_round_num" ] 2>/dev/null && \
+         ls "$round_dir"/R"${rr}"-PLAN.md >/dev/null 2>&1 && \
+         ls "$round_dir"/R"${rr}"-SUMMARY.md >/dev/null 2>&1; then
+        _best_round_num="$round_num"
+        LATEST_ROUND="$rr"
       fi
     done
   fi

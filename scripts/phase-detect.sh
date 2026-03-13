@@ -307,7 +307,8 @@ if [ -d "$PHASES_DIR" ]; then
           # Write to whichever state file location exists
           if [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
             _cur_round=$(grep '^round=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-            printf 'stage=done\nround=%s\n' "${_cur_round:-01}" > "${TARGET_DIR}remediation/.uat-remediation-stage"
+            _cur_layout=$(grep '^layout=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+            printf 'stage=done\nround=%s\nlayout=%s\n' "${_cur_round:-01}" "${_cur_layout:-round-dir}" > "${TARGET_DIR}remediation/.uat-remediation-stage"
           else
             echo "done" > "${TARGET_DIR}.uat-remediation-stage"
           fi
