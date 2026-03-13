@@ -187,7 +187,7 @@ For the FIRST test without a result, display a CHECKPOINT followed by AskUserQue
 {scenario description}
 ```
 
-Then use AskUserQuestion:
+Then call the `AskUserQuestion` tool (this MUST be a tool_use call, NOT text output):
 
 ```yaml
 question: "Expected: {expected result}"
@@ -201,6 +201,8 @@ options:
 ```
 
 The tool automatically provides a freeform "Other" option for the user to describe issues.
+
+**AskUserQuestion is a tool call (NON-NEGOTIABLE):** You MUST invoke AskUserQuestion via the tool_use mechanism — never emit the question parameters as text, JSON, or any other inline format in your response body. If AskUserQuestion appears in your text output instead of as a tool call, the checkpoint will not be presented to the user and the session will end prematurely.
 
 **STOP HERE.** Wait for the AskUserQuestion response. Do NOT continue to the next test, do NOT skip to Step 6, and do NOT end the turn. The tool call blocks until the user responds.
 

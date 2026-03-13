@@ -109,6 +109,8 @@ fi
 Display: "⚠ Renamed misnamed plan files to `{NN}-PLAN.md` convention."
 Then re-run phase-detect.sh and use updated output for routing below.
 
+**State-driven routing prohibition (NON-NEGOTIABLE):** When state detection routes to a mode, enter that mode IMMEDIATELY in the same turn. Do NOT use TaskCreate, TaskUpdate, or any task management tool for state-driven routing — these add overhead and delay execution. State routing is deterministic: the pre-computed data in the Context section above provides all information needed to act. Execute the routed mode inline without planning, reviewing protocols, or reading files not specified in that mode's steps.
+
 | Priority | Condition | Mode | Confirmation |
 |---|---|---|---|
 | 1 | `planning_dir_exists=false` | Init redirect | (redirect, no confirmation) |
@@ -124,7 +126,15 @@ Then re-run phase-detect.sh and use updated output for routing below.
 | 11 | `next_phase_state=all_done` AND `config_auto_uat=true` AND `has_unverified_phases=true` | Verify | (no confirmation — auto_uat intent) |
 | 12 | `next_phase_state=all_done` | Archive | "All phases complete. Run audit and archive?" |
 
-**Re-verify after remediation:** When `next_phase_state=needs_reverification`, remediation is complete but the phase hasn't been re-verified. Run `bash {plugin-root}/scripts/prepare-reverification.sh {phase-dir}` to archive the old UAT and advance the remediation round counter, then **continue directly into Verify mode below** for that phase — do NOT stop and tell the user to run a separate command. The `needs_reverification` state fires regardless of `auto_uat` — remediation always requires re-verification. The `auto_uat` flag only controls whether the user is prompted for confirmation.
+**Re-verify after remediation (needs_reverification) — IMMEDIATE EXECUTION (NON-NEGOTIABLE):**
+When `next_phase_state=needs_reverification`, execute these steps inline in the same turn — do NOT create tasks, read protocol files, or perform any intermediate planning:
+1. Run: `bash {plugin-root}/scripts/prepare-reverification.sh {phase-dir}`
+2. Parse output: `archived=in-round-dir|already_archived`, `round_file=...`, `phase=NN`, `layout=...`
+3. If `archived=in-round-dir`: display "Archived previous UAT → {round_file}. Starting fresh re-verification."
+   If `skipped=already_archived`: display "UAT already archived. Starting fresh re-verification."
+4. **Continue directly into Verify mode below** for that phase — do NOT stop, do NOT tell the user to run a separate command.
+
+The `needs_reverification` state fires regardless of `auto_uat` — remediation always requires re-verification. The `auto_uat` flag only controls whether the user is prompted for confirmation.
 
 **auto_uat mid-milestone:** When `config_auto_uat=true` and `has_unverified_phases=true` but `next_phase_state` is NOT `all_done`, **continue directly into Verify mode below** targeting phase `{first_unverified_phase}` (from phase-detect output) — do NOT stop and tell the user to run a separate command. This ensures each completed phase gets UAT verification immediately after execution, even when later phases still need work. After verification completes, the next `/vbw:vibe` call re-runs phase-detect and routes to the next pending phase.
 
@@ -562,7 +572,7 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 **Phase auto-detection:** First phase with `*-SUMMARY.md` but no canonical `*-UAT.md` (exclude `*-SOURCE-UAT.md` copies). All verified: STOP "All phases have UAT results. Specify: `/vbw:verify {NN}`"
 
 **Steps:**
-1. Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/commands/verify.md` protocol.
+1. Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/commands/verify.md` protocol. When entering from `needs_reverification` or `auto_uat` routing, the pre-computed verify context (verify_scope, uat_path, uat_resume) is already available from the Context section above — do NOT re-compute or re-read these values.
 2. Execute the verify protocol for the target phase. Use the pre-computed "Verify context" block from this command's Context section — it contains the PLAN/SUMMARY aggregation and UAT resume metadata for the target phase. Pass this data through to the verify protocol steps so they do NOT read individual PLAN/SUMMARY files or scan-parse UAT.md for resume state.
 3. Display results per verify.md output format.
 
