@@ -658,8 +658,11 @@ EOF
   [ ! -f "$dir/01-UAT.md" ]
   # Round file should exist
   [ -f "$dir/01-UAT-round-01.md" ]
-  # Remediation stage should be removed
+  # Legacy state file should be removed
   [ ! -f "$dir/.uat-remediation-stage" ]
+  # New-location state file should persist with advanced round
+  [ -f "$dir/remediation/.uat-remediation-stage" ]
+  grep -q 'round=02' "$dir/remediation/.uat-remediation-stage"
   # Output should confirm
   [[ "$output" == *"archived=01-UAT.md"* ]]
   [[ "$output" == *"round_file=01-UAT-round-01.md"* ]]
@@ -679,6 +682,9 @@ EOF
   [ "$status" -eq 0 ]
   [ -f "$dir/01-UAT-round-03.md" ]
   [[ "$output" == *"round_file=01-UAT-round-03.md"* ]]
+  # State file should show advanced round (from legacy round=01 to round=02)
+  [ -f "$dir/remediation/.uat-remediation-stage" ]
+  grep -q 'stage=research' "$dir/remediation/.uat-remediation-stage"
 }
 
 @test "prepare-reverification is idempotent when no UAT exists (already archived)" {
@@ -729,8 +735,10 @@ EOF
   # Round file should be staged for addition
   run git diff --cached --name-only --diff-filter=A
   [[ "$output" == *"01-UAT-round-01.md"* ]]
+  # New-location state file should be staged for addition (persists with updated round)
+  [[ "$output" == *"remediation/.uat-remediation-stage"* ]]
 
-  # .uat-remediation-stage should be staged for deletion
+  # Legacy .uat-remediation-stage should be staged for deletion
   run git diff --cached --name-only --diff-filter=D
   [[ "$output" == *".uat-remediation-stage"* ]]
 }
@@ -861,6 +869,9 @@ EOF
   [ ! -f "$dir/01-UAT.md" ]
   # Round file should exist
   ls "$dir"/01-UAT-round-*.md 2>/dev/null | grep -q .
+  # New-location state file should persist with advanced round
+  [ -f "$dir/remediation/.uat-remediation-stage" ]
+  grep -q 'stage=research' "$dir/remediation/.uat-remediation-stage"
 }
 
 # --- QA round 6: body-fallback tightening (finding #1) ---

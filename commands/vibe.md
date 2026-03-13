@@ -42,7 +42,7 @@ Milestone UAT issues (milestone recovery only):
 
 Verify context (verify routing only — needs_reverification OR auto_uat+unverified):
 ```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; S="/tmp/.vbw-phase-detect-stamp-${SESSION_KEY}.txt"; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; S_M=0; P_M=0; [ -f "$S" ] && S_M=$(stat -c %Y "$S" 2>/dev/null || stat -f %m "$S" 2>/dev/null || echo 0); [ -f "$P" ] && P_M=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo 0); if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && { [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ "$P_M" -lt "$S_M" ]; }; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; fi; if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then echo "not_verify_routing"; else STATE=$(printf '%s' "$PD" | grep '^next_phase_state=' | head -1 | cut -d= -f2); AUTO_UAT=$(printf '%s' "$PD" | grep '^config_auto_uat=' | head -1 | cut -d= -f2); HAS_UV=$(printf '%s' "$PD" | grep '^has_unverified_phases=' | head -1 | cut -d= -f2); TARGET=""; if [ "$STATE" = "needs_reverification" ]; then TARGET=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2); elif [ "$AUTO_UAT" = "true" ] && [ "$HAS_UV" = "true" ]; then TARGET=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2); fi; if [ -n "$TARGET" ]; then PDIR=".vbw-planning/phases/$TARGET"; echo "verify_target_slug=$TARGET"; if [ -d "$PDIR" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then bash "$L/scripts/compile-verify-context.sh" "$PDIR" 2>/dev/null || echo "verify_context_error=true"; else echo "verify_context_error=true"; fi; echo "---"; if [ "$STATE" = "needs_reverification" ]; then echo "uat_resume=pending_archive"; elif [ -d "$PDIR" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=error"; else echo "uat_resume=error"; fi; else echo "not_verify_routing"; fi; fi`
+!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; S="/tmp/.vbw-phase-detect-stamp-${SESSION_KEY}.txt"; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; S_M=0; P_M=0; [ -f "$S" ] && S_M=$(stat -c %Y "$S" 2>/dev/null || stat -f %m "$S" 2>/dev/null || echo 0); [ -f "$P" ] && P_M=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo 0); if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && { [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ "$P_M" -lt "$S_M" ]; }; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; fi; if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then echo "not_verify_routing"; else STATE=$(printf '%s' "$PD" | grep '^next_phase_state=' | head -1 | cut -d= -f2); AUTO_UAT=$(printf '%s' "$PD" | grep '^config_auto_uat=' | head -1 | cut -d= -f2); HAS_UV=$(printf '%s' "$PD" | grep '^has_unverified_phases=' | head -1 | cut -d= -f2); TARGET=""; if [ "$STATE" = "needs_reverification" ]; then TARGET=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2); elif [ "$AUTO_UAT" = "true" ] && [ "$HAS_UV" = "true" ]; then TARGET=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2); fi; if [ -n "$TARGET" ]; then PDIR=".vbw-planning/phases/$TARGET"; echo "verify_target_slug=$TARGET"; if [ -d "$PDIR" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then REMED_FLAG=""; if find "$PDIR/remediation" -path '*/round-*/R*-SUMMARY.md' 2>/dev/null | head -1 | grep -q .; then REMED_FLAG="--remediation-only"; fi; bash "$L/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR" 2>/dev/null || echo "verify_context_error=true"; else echo "verify_context_error=true"; fi; echo "---"; if [ "$STATE" = "needs_reverification" ]; then echo "uat_resume=pending_archive"; elif [ -d "$PDIR" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=error"; else echo "uat_resume=error"; fi; else echo "not_verify_routing"; fi; fi`
 ```
 
 !`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; bash "$L/scripts/suggest-compact.sh" execute 2>/dev/null || true`
@@ -124,11 +124,11 @@ Then re-run phase-detect.sh and use updated output for routing below.
 | 11 | `next_phase_state=all_done` AND `config_auto_uat=true` AND `has_unverified_phases=true` | Verify | (no confirmation — auto_uat intent) |
 | 12 | `next_phase_state=all_done` | Archive | "All phases complete. Run audit and archive?" |
 
-**Re-verify after remediation:** When `next_phase_state=needs_reverification`, remediation is complete but the phase hasn't been re-verified. Run `bash {plugin-root}/scripts/prepare-reverification.sh {phase-dir}` to archive the old UAT and reset the remediation stage, then route to `/vbw:verify {phase-number}`. The `needs_reverification` state fires regardless of `auto_uat` — remediation always requires re-verification. The `auto_uat` flag only controls whether the user is prompted for confirmation.
+**Re-verify after remediation:** When `next_phase_state=needs_reverification`, remediation is complete but the phase hasn't been re-verified. Run `bash {plugin-root}/scripts/prepare-reverification.sh {phase-dir}` to archive the old UAT and advance the remediation round counter, then **continue directly into Verify mode below** for that phase — do NOT stop and tell the user to run a separate command. The `needs_reverification` state fires regardless of `auto_uat` — remediation always requires re-verification. The `auto_uat` flag only controls whether the user is prompted for confirmation.
 
-**auto_uat mid-milestone:** When `config_auto_uat=true` and `has_unverified_phases=true` but `next_phase_state` is NOT `all_done`, route to Verify mode before continuing to the next phase. Use `first_unverified_phase` and `first_unverified_slug` from phase-detect output to target the specific phase: `/vbw:verify {first_unverified_phase}`. This ensures each completed phase gets UAT verification immediately after execution, even when later phases still need work. After verification completes, the next `/vbw:vibe` call re-runs phase-detect and routes to the next pending phase.
+**auto_uat mid-milestone:** When `config_auto_uat=true` and `has_unverified_phases=true` but `next_phase_state` is NOT `all_done`, **continue directly into Verify mode below** targeting phase `{first_unverified_phase}` (from phase-detect output) — do NOT stop and tell the user to run a separate command. This ensures each completed phase gets UAT verification immediately after execution, even when later phases still need work. After verification completes, the next `/vbw:vibe` call re-runs phase-detect and routes to the next pending phase.
 
-**auto_uat + all_done:** When `config_auto_uat=true` and `has_unverified_phases=true`, skip the Archive confirmation and route directly to Verify mode. Use `first_unverified_phase` from phase-detect output to target the specific phase: `/vbw:verify {first_unverified_phase}`. After verification completes, the next `/vbw:vibe` call re-runs phase-detect — if more unverified phases remain, it routes to Verify again; otherwise it falls through to Archive (priority 12).
+**auto_uat + all_done:** When `config_auto_uat=true` and `has_unverified_phases=true`, skip the Archive confirmation and **continue directly into Verify mode below** targeting phase `{first_unverified_phase}` (from phase-detect output) — do NOT stop and tell the user to run a separate command. After verification completes, the next `/vbw:vibe` call re-runs phase-detect — if more unverified phases remain, it routes to Verify again; otherwise it falls through to Archive (priority 12).
 
 **all_done + natural language:** If $ARGUMENTS describe new work (bug, feature, task) and state is `all_done`, route to Add Phase mode instead of Archive. Add Phase handles codebase context loading and research internally — do NOT spawn an Explore agent or do ad-hoc research before entering the mode.
 
@@ -294,38 +294,92 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    **Run directly (do NOT capture with `$()`).**
    - Both resume and init paths emit **plan metadata** after the stage line:
      ```text
-     next_plan=XX          — zero-padded next plan number (e.g., 15)
+     round=RR              — zero-padded current round number (e.g., 01)
+     round_dir=<path>      — full path to the round directory (e.g., .vbw-planning/phases/03-slug/remediation/round-01)
      research_path=<path>  — path to existing RESEARCH.md (empty if none)
      plan_path=<path>      — path to existing PLAN.md (empty if none)
      ```
-     **Use these values directly** — do NOT glob `*-PLAN.md` or search for RESEARCH.md files. The script pre-computes all three from the phase directory (stage-aware: uses research-plan correlation for `plan`/`execute` stages to handle session-death-before-advance correctly).
+     **Use these values directly** — do NOT glob `*-PLAN.md` or search for RESEARCH.md files. The script pre-computes all paths from the phase directory (with legacy phase-root fallback for brownfield projects).
    - If a stage was already persisted (resume after compaction/restart), the script returns the stage word + plan metadata with no side effects.
-   - If no stage existed (first entry into remediation), the script initializes the stage file, pre-seeds CONTEXT.md, and returns the stage word + plan metadata + `---CONTEXT---` separator with the full pre-seeded CONTEXT.md content — **use this directly as your remediation context. Do NOT separately read UAT.md or CONTEXT.md files.**
-   - If the returned stage is `done`: UAT remediation already completed for this phase. Display "Remediation already completed. Run `/vbw:verify --resume` to re-test." STOP.
+   - If no stage existed (first entry into remediation), the script initializes the stage file, creates `remediation/round-01/` directory, pre-seeds CONTEXT.md, and returns the stage word + plan metadata + `---CONTEXT---` separator with the full pre-seeded CONTEXT.md content — **use this directly as your remediation context. Do NOT separately read UAT.md or CONTEXT.md files.**
+   - If the returned stage is `done`: UAT remediation already completed for this phase. Display "Remediation already completed. Run `/vbw:vibe` to re-verify." STOP.
+   **Task list hygiene:** When resuming at a stage beyond `research` (e.g., stage=`plan` or `execute`), all prior stages already completed in a previous session. Immediately mark those stages as completed in your task list — do NOT leave them as not-started or in-progress. Only stages at or after the current `STAGE` should be active. When the final stage completes, mark ALL tasks (including the current one) as completed before presenting the summary.
 6. **Execute the current stage** based on `STAGE`:
    **File read prohibition:** Do NOT read `{phase}-UAT.md` or `{phase}-CONTEXT.md` — all UAT data is already available from step 2 (pre-computed issue lines) and step 5 (CONTEXT.md content emitted by `get-or-init`). Reading these files wastes tool calls.
-   **Plan metadata prohibition:** Do NOT glob `*-PLAN.md` or search for `*-RESEARCH.md` — use the pre-computed `next_plan`, `research_path`, and `plan_path` values from step 5.
-   - `research`: If `research_path` from step 5 is non-empty, research already exists — skip to advancing the stage. Otherwise, spawn Scout (with `subagent_type: "vbw:vbw-scout"`) with the pre-computed UAT issue lines (`ID|SEVERITY|DESCRIPTION|FAILED_IN_ROUNDS` from step 2), **ordered by failure_count descending** (step 3), so Scout investigates the relevant code areas for each issue. Use `next_plan` from step 5 as `{MM}`. Pass `<output_path>{phase-dir}/{phase}-{MM}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file directly. Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Scout prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
+   **Round metadata prohibition:** Do NOT glob `*-PLAN.md` or search for `*-RESEARCH.md` — use the pre-computed `round`, `round_dir`, `research_path`, and `plan_path` values from step 5.
+   - `research`: If `research_path` from step 5 is non-empty, research already exists — skip to advancing the stage. Otherwise, spawn Scout (with `subagent_type: "vbw:vbw-scout"`) with the pre-computed UAT issue lines (`ID|SEVERITY|DESCRIPTION|FAILED_IN_ROUNDS` from step 2), **ordered by failure_count descending** (step 3), so Scout investigates the relevant code areas for each issue. Use `round` from step 5 as `{RR}`. Pass `<output_path>{round_dir}/R{RR}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file directly. Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Scout prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
      **Live data validation:** When any issue involves external data sources (APIs, databases, services), include in the Scout prompt: *"For issues involving external data sources, use WebFetch to query accessible HTTP endpoints and compare actual responses against what the code expects. For non-HTTP data sources, document what live data needs to be checked and flag it as ⚠ REQUIRES LIVE VALIDATION for the execute stage."*
      After Scout completes, confirm RESEARCH.md exists (read first line), then advance:
      ```bash
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
      Then continue to the next stage (`plan`).
-   - `plan`: If `plan_path` from step 5 is non-empty, the plan was already written in a previous session — do NOT re-plan. Read the existing plan and advance directly to `execute`. Otherwise, execute **Plan mode steps 1-12 above** for the same phase, using `next_plan` from step 5 as `{MM}`. "No separate discussion" means skip Discuss assumption-gathering (step 2) — the UAT report serves as scope. For step 3 (research persistence), use `research_path` from step 5: if non-empty, include it in Lead's context (no re-run of Scout needed); if empty, skip research. **Pass the priority-ranked issue list (step 3) to Lead** with recurring-issue annotations. After planning completes, advance:
-     ```bash
-     bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
-     ```
+   - `plan`: If `plan_path` from step 5 is non-empty, the plan was already written in a previous session — do NOT re-plan. Read the existing plan and advance directly to `execute`. Otherwise, spawn Lead as a **single subagent** to write the remediation plan:
+
+     **NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name` or `name` parameters**. This is NOT "Plan mode steps 1-12" — those steps include team logic that does not apply here.
+
+     - Resolve Lead model:
+       ```bash
+       LEAD_MODEL=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh lead .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json)
+       LEAD_MAX_TURNS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-max-turns.sh lead .vbw-planning/config.json "{effort}")
+       ```
+     - Before composing the Lead task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Lead prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
+     - Spawn vbw-lead via Task tool: Set `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"`. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If empty, omit maxTurns.
+     - Lead prompt MUST include:
+       - If `research_path` from step 5 is non-empty: `Read {research_path} for full research findings before planning.` (Lead must read the file, do NOT inline a summary.)
+       - The priority-ranked issue list from step 3 with recurring-issue annotations.
+       - `"Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md and follow its structure exactly. This template is different from the regular PLAN.md — it has no wave or depends_on fields because remediation tasks are always sequential. Produce a flat ordered task list where each task can see the results of previous tasks."` (Lead must read the template file.)
+       - Output path: `{round_dir}/R{RR}-PLAN.md` (using `round` from step 5 as `{RR}`).
+     - Display `◆ Spawning Lead agent...` → `✓ Lead agent complete`.
+     - Normalize plan filenames:
+       ```bash
+       NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
+       if [ -f "$NORM_SCRIPT" ]; then
+         bash "$NORM_SCRIPT" "{round_dir}"
+       fi
+       ```
+     - Validate: Verify plan has valid frontmatter (phase, round, title, must_haves) and tasks.
+     - After planning completes, advance:
+       ```bash
+       bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
+       ```
      Then continue to the next stage (`execute`), respecting autonomy confirmation rules.
-   - `execute`: Continue through normal Execute flow for that phase. After execution completes, advance:
-     ```bash
-     bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
-     ```
+   - `execute`: Execute the remediation plan by spawning Dev agents sequentially — one per task in the plan. Do NOT use "normal Execute flow" or `execute-protocol.md` — remediation execution is self-contained with no wave parallelism.
+
+     **NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation execution spawns Dev agents directly via Task tool with **no `team_name` or `name` parameters**.
+
+     - Read `{round_dir}/R{RR}-PLAN.md` (using `round` and `round_dir` from step 5) and extract the task list from the plan frontmatter/body. Each task has an ID (e.g., `P07`, `P08`, `UAT-3`).
+     - Resolve Dev model:
+       ```bash
+       DEV_MODEL=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh dev .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json)
+       DEV_MAX_TURNS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-max-turns.sh dev .vbw-planning/config.json "{effort}")
+       ```
+     - Before composing Dev task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Dev prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
+     - For each task in the plan (**sequentially**, one at a time — wait for each Dev to complete before spawning the next):
+       - Spawn vbw-dev via Task tool: Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"`. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If empty, omit maxTurns.
+       - Dev prompt MUST include:
+         - The task details from the plan (description, files to modify, acceptance criteria).
+         - `"Read the remediation summary template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-SUMMARY.md and follow its structure for your task section."` For the **first task only**, also include: `"Create {round_dir}/R{RR}-SUMMARY.md with the YAML frontmatter from the template (populate phase, round, title from the plan; set status to in-progress, tasks_completed to 0, tasks_total to {total}) followed by your ## Task {N}: {name} section."` For **subsequent tasks**, include: `"Append your ## Task {N}: {name} section to {round_dir}/R{RR}-SUMMARY.md. Do NOT rewrite the frontmatter or earlier task sections. Do NOT leave trailing blank lines after your section."`
+         - `"Do NOT create git worktrees. Work in the project root directory."`
+         - If `.vbw-planning/codebase/META.md` exists: `"Read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/ to bootstrap codebase understanding before executing."`
+       - Display: `◆ Spawning Dev agent for task {task-id} (${DEV_MODEL})...` → `✓ Dev agent complete for task {task-id}`.
+     - **Frontmatter finalization:** After ALL Dev agents have completed, update the YAML frontmatter in `{round_dir}/R{RR}-SUMMARY.md`: set `status` to `complete` (or `partial`/`failed`), `completed` to today's date, `tasks_completed` to the actual count, and populate `commit_hashes`, `files_modified`, and `deviations` with aggregate data from all task sections. Strip any trailing blank lines from the file.
+     - **Worktree cleanup check:** After execution, check for orphan CC worktrees:
+       ```bash
+       if [ -d ".claude/worktrees" ] && [ -n "$(ls -A .claude/worktrees 2>/dev/null)" ]; then
+         echo "⚠ Found CC worktrees at .claude/worktrees/ — run 'git worktree list' and 'git worktree remove <path>' to clean up"
+       fi
+       ```
+       Display this warning to the user if worktrees are found. Do NOT auto-delete them.
+     - Advance:
+       ```bash
+       bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
+       ```
    - `fix` (minor-only path): Route to a quick-fix implementation path for the same phase using the extracted UAT issue list as task input (equivalent to `/vbw:fix`, but without requiring the user to invoke it manually). After changes, advance:
      ```bash
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
-     Suggest `/vbw:verify --resume`.
+     Suggest `/vbw:vibe`.
 7. Present a remediation summary with: phase, issue count, severity mix, current stage, chosen path (`research -> plan -> execute` or quick-fix), and per-test recurrence. For any issue with `failure_count >= 2`, include: `"⚠ RECURRING ({failure_count}/{uat_round} rounds): {ID} — {DESCRIPTION}"`. First-time failures display without the annotation.
 
 ### Mode: Milestone UAT Recovery
@@ -634,7 +688,7 @@ After Execute mode completes (autonomy=pure-vibe only): if more unbuilt phases e
 
 ## Output Format
 
-Follow @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md for all output.
+Follow @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md for all output except Verify mode (UAT files use plain markdown — do NOT read brand-essentials during verification).
 
 Per-mode output:
 - **Bootstrap:** project-defined banner + transition to scoping

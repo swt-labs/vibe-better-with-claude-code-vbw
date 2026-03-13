@@ -196,7 +196,7 @@ if [ -d "$PHASES_DIR" ]; then
         continue
       fi
 
-      UAT_FILE=$(latest_non_source_uat "$DIR")
+      UAT_FILE=$(current_uat "$DIR")
       if [ -f "$UAT_FILE" ]; then
         UAT_STATUS=$(extract_status_value "$UAT_FILE")
         if [ "$UAT_STATUS" = "issues_found" ]; then
@@ -280,7 +280,12 @@ if [ -d "$PHASES_DIR" ]; then
         UAT_ROUND_COUNT=$(count_uat_rounds "$TARGET_DIR" "$UAT_ISSUES_PHASE")
         # Check if remediation is complete (stage=done) → needs re-verification
         _rem_stage="none"
-        if [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
+        if [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
+          # New round-dir state file (key=value format)
+          _rem_stage=$(grep '^stage=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          _rem_stage="${_rem_stage:-none}"
+        elif [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
+          # Legacy state file (single word)
           _rem_stage=$(tr -d '[:space:]' < "${TARGET_DIR}.uat-remediation-stage")
         fi
         # Pre-compute plan/summary counts (needed for state routing AND stale-stage reconciliation)
@@ -290,11 +295,25 @@ if [ -d "$PHASES_DIR" ]; then
         # (all plans have SUMMARY with status:complete) but the stage was never
         # advanced (session crash/kill/compaction), auto-advance to "done" so the
         # orchestrator routes to re-verification instead of re-execution.
-        if [ "$_rem_stage" = "execute" ] && [ "$NEXT_PHASE_PLANS" -gt 0 ] && [ "$NEXT_PHASE_SUMMARIES" -ge "$NEXT_PHASE_PLANS" ]; then
-          echo "done" > "${TARGET_DIR}.uat-remediation-stage"
+        # Also check round-dir summaries for the new layout.
+        _total_plans="$NEXT_PHASE_PLANS"
+        _total_summaries="$NEXT_PHASE_SUMMARIES"
+        # Count round-dir plans/summaries
+        _rd_plans=$(find "$TARGET_DIR" -path '*/remediation/round-*/R*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+        _rd_summaries=$(find "$TARGET_DIR" -path '*/remediation/round-*/R*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+        _total_plans=$(( _total_plans + _rd_plans ))
+        _total_summaries=$(( _total_summaries + _rd_summaries ))
+        if [ "$_rem_stage" = "execute" ] && [ "$_total_plans" -gt 0 ] && [ "$_total_summaries" -ge "$_total_plans" ]; then
+          # Write to whichever state file location exists
+          if [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
+            _cur_round=$(grep '^round=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+            printf 'stage=done\nround=%s\n' "${_cur_round:-01}" > "${TARGET_DIR}remediation/.uat-remediation-stage"
+          else
+            echo "done" > "${TARGET_DIR}.uat-remediation-stage"
+          fi
           _rem_stage="done"
         fi
-        if [ "$_rem_stage" = "done" ]; then
+        if [ "$_rem_stage" = "done" ] || [ "$_rem_stage" = "verify" ]; then
           NEXT_PHASE_STATE="needs_reverification"
         else
           NEXT_PHASE_STATE="needs_uat_remediation"
@@ -386,7 +405,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     [ "$_uv_plans" -gt 0 ] || continue
     _uv_sums=$(count_complete_summaries "$_uv_dir")
     [ "$_uv_sums" -ge "$_uv_plans" ] || continue
-    _uv_uat=$(latest_non_source_uat "$_uv_dir")
+    _uv_uat=$(current_uat "$_uv_dir")
     _uv_is_unverified=false
     if [ -z "$_uv_uat" ]; then
       _uv_is_unverified=true
@@ -525,7 +544,7 @@ if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] ||
         continue
       fi
 
-      _ms_uat=$(latest_non_source_uat "$_ms_phase_dir")
+      _ms_uat=$(current_uat "$_ms_phase_dir")
       if [ -f "$_ms_uat" ]; then
         _ms_uat_status=$(extract_status_value "$_ms_uat")
         if [ "$_ms_uat_status" = "issues_found" ]; then

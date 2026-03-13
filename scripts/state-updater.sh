@@ -59,11 +59,11 @@ slug_to_name() {
 }
 
 # Check if a phase has unresolved UAT issues
-# Uses shared extract_status_value() + latest_non_source_uat() from uat-utils.sh
+# Uses shared extract_status_value() + current_uat() from uat-utils.sh
 phase_has_uat_issues() {
   local phase_dir="$1"
   local uat_file status_val
-  uat_file=$(latest_non_source_uat "$phase_dir")
+  uat_file=$(current_uat "$phase_dir")
   [ -f "$uat_file" ] || return 1
   status_val=$(extract_status_value "$uat_file")
   [ "$status_val" = "issues_found" ]

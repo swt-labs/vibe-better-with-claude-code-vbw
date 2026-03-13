@@ -204,13 +204,22 @@ if ! cache_fresh "$FAST_CF" 5; then
       # Lifecycle-aware QA/UAT indicator: UAT supersedes VERIFICATION.md
       if [ -n "$PDIR" ]; then
         _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
+        # Round-dir fallback: check remediation/round-*/R*-UAT.md
+        if [ -z "$_uat_file" ]; then
+          _uat_file=$(find "$PDIR/remediation" -path '*/round-*/R*-UAT.md' 2>/dev/null | sort -t/ -k2 -V | tail -1)
+        fi
         if [ -n "$_uat_file" ]; then
           _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null)
           case "$_uat_status" in
             complete|passed) QA="UAT: pass"; QA_COLOR="G" ;;
             issues_found)
               _rem_stage="none"
-              [ -f "$PDIR/.uat-remediation-stage" ] && _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
+              if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
+                _rem_stage=$(grep '^stage=' "$PDIR/remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+                _rem_stage="${_rem_stage:-none}"
+              elif [ -f "$PDIR/.uat-remediation-stage" ]; then
+                _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
+              fi
               case "$_rem_stage" in
                 done)    QA="UAT: re-verify"; QA_COLOR="Y" ;;
                 none)    QA="UAT: fail";      QA_COLOR="R" ;;

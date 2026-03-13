@@ -27,8 +27,10 @@ if [ ! -d "$PHASE_DIR" ]; then
   exit 0
 fi
 
-# Find the latest UAT file
-if type latest_non_source_uat &>/dev/null; then
+# Find the active UAT file (round-dir first, then phase-root fallback)
+if type current_uat &>/dev/null; then
+  UAT_FILE=$(current_uat "$PHASE_DIR")
+elif type latest_non_source_uat &>/dev/null; then
   UAT_FILE=$(latest_non_source_uat "$PHASE_DIR")
 else
   UAT_FILE=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-UAT.md' ! -name '*SOURCE-UAT.md' 2>/dev/null | sort | tail -1)

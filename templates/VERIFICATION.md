@@ -1,5 +1,5 @@
 ---
-phase: {phase-id}
+phase: {NN} # bare integer, no quotes
 tier: {quick|standard|deep}
 result: {PASS|FAIL|PARTIAL}
 passed: {N}

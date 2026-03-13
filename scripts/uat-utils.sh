@@ -7,6 +7,8 @@
 #                                   with body-level fallback for brownfield files.
 #   latest_non_source_uat <dir>   — Find the latest canonical UAT file in a phase
 #                                   directory, excluding SOURCE-UAT.md copies.
+#   current_uat <dir>             — Find the active UAT file (round-dir first,
+#                                   then phase-root fallback).
 #   count_uat_rounds <dir> <num>  — Count existing {num}-UAT-round-*.md files
 #                                   in a phase directory. Returns max round number.
 
@@ -96,12 +98,11 @@ latest_non_source_uat() {
   return 0
 }
 
-# count_uat_rounds — Count archived UAT round files in a phase directory.
+# count_uat_rounds — Count remediation rounds in both flat and round-dir layouts.
 #
-# Scans for {phase_num}-UAT-round-*.md files, extracts the numeric round
-# suffix from each, and prints the maximum round number found (0 if none).
-# This is the single source of truth for round semantics — display round
-# is count + 1 when active issues exist.
+# Flat layout: scans for {phase_num}-UAT-round-*.md files at phase root.
+# Round-dir layout: scans for remediation/round-*/R*-UAT.md files.
+# Returns the maximum round number found across both locations (0 if none).
 count_uat_rounds() {
   local dir="$1"
   local phase_num="$2"
@@ -112,6 +113,7 @@ count_uat_rounds() {
     *) dir="$dir/" ;;
   esac
 
+  # Flat layout: {phase_num}-UAT-round-{NN}.md
   for rf in "${dir}${phase_num}"-UAT-round-*.md; do
     [ -f "$rf" ] || continue
     local round_num
@@ -123,12 +125,24 @@ count_uat_rounds() {
     fi
   done
 
+  # Round-dir layout: remediation/round-{NN}/R{NN}-UAT.md
+  for rf in "${dir}"remediation/round-*/R*-UAT.md; do
+    [ -f "$rf" ] || continue
+    local rr_num
+    rr_num=$(basename "$rf" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
+    if [ -n "$rr_num" ] && echo "$rr_num" | grep -qE '^[0-9]+$'; then
+      if [ "$rr_num" -gt "$max_round" ] 2>/dev/null; then
+        max_round="$rr_num"
+      fi
+    fi
+  done
+
   printf '%d' "$max_round"
 }
 
 # extract_round_issue_ids — Extract test IDs that had "Result: issue" in a
 # UAT round file. Prints one ID per line. Works on both archived round files
-# and active UAT files.
+# (flat layout) and round-dir UAT files (R{RR}-UAT.md).
 extract_round_issue_ids() {
   local file="$1"
   [ -f "$file" ] || return 0
@@ -143,4 +157,58 @@ extract_round_issue_ids() {
       print id
     }
   ' "$file"
+}
+
+# current_uat — Find the active UAT file, checking round-dir layout first.
+#
+# If the phase has a round-dir remediation layout with an R{RR}-UAT.md in the
+# current round directory, returns that path. Otherwise falls back to
+# latest_non_source_uat() (phase-root UAT).
+#
+# Same contract as latest_non_source_uat: returns a filepath string if found,
+# empty string if not, exit 0 always.
+current_uat() {
+  local dir="$1"
+
+  case "$dir" in
+    */) ;;
+    *) dir="$dir/" ;;
+  esac
+
+  # Check round-dir remediation state
+  local state_file="${dir}remediation/.uat-remediation-stage"
+  if [ -f "$state_file" ]; then
+    local layout round rr
+    layout=$(grep '^layout=' "$state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    round=$(grep '^round=' "$state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    if [ "$layout" = "round-dir" ] && [ -n "$round" ]; then
+      rr=$(printf '%02d' "$round" 2>/dev/null) || rr="$round"
+      local round_uat="${dir}remediation/round-${rr}/R${rr}-UAT.md"
+      if [ -f "$round_uat" ]; then
+        printf '%s\n' "$round_uat"
+        return 0
+      fi
+      # Current round's UAT doesn't exist yet (start of new round).
+      # Scan all round dirs for the latest existing R{NN}-UAT.md.
+      local _prev_best="" _prev_best_num=-1
+      for _ruat in "${dir}"remediation/round-*/R*-UAT.md; do
+        [ -f "$_ruat" ] || continue
+        local _rnum
+        _rnum=$(basename "$_ruat" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
+        if [ -n "$_rnum" ] && echo "$_rnum" | grep -qE '^[0-9]+$'; then
+          if [ "$_rnum" -gt "$_prev_best_num" ] 2>/dev/null; then
+            _prev_best_num=$_rnum
+            _prev_best="$_ruat"
+          fi
+        fi
+      done
+      if [ -n "$_prev_best" ]; then
+        printf '%s\n' "$_prev_best"
+        return 0
+      fi
+    fi
+  fi
+
+  # Fall back to phase-root UAT
+  latest_non_source_uat "${dir%/}"
 }
