@@ -66,6 +66,8 @@ Profile depth controls gray area count:
 Present gray areas as a multi-select using AskUserQuestion: "Which areas should we discuss?"
 No "skip all" option — if the user ran discuss, give them real choices.
 
+> **AskUserQuestion spacing**: output 3–4 blank lines before the tool call (the dialog obscures trailing text).
+
 ## Step 3: Explore
 
 For each selected area, have a natural conversation. Not a form. Not a fixed number of questions.

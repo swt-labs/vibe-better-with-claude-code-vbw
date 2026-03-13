@@ -18,6 +18,11 @@
 #   files_modified: <file1>, <file2>, ...
 #   status: <complete|partial|failed|no_summary>
 #
+# Remediation awareness: when .uat-remediation-stage indicates a round-dir
+# layout and stage=done/verify, scopes to the current round's R{RR}-PLAN.md
+# and R{RR}-SUMMARY.md instead of phase-root plans. Also emits prior UAT
+# issues so the verifier knows what was supposed to be fixed.
+#
 # If no PLAN files exist, outputs: verify_context=empty
 
 set -euo pipefail

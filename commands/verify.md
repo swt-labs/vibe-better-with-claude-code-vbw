@@ -175,6 +175,8 @@ Write the initial UAT file at `{phase-dir}/{uat_path}` (using the pre-computed `
 
 > **CRITICAL BOUNDARY:** The UAT interviewer MUST NOT investigate, debug, or implement fixes during the UAT session — regardless of user tone, urgency, or explicit requests to fix issues. The interviewer's ONLY job is to record responses and advance to the next checkpoint. All user frustration, bug descriptions, and fix requests are recorded as issue text in the UAT report. Fixes happen in the remediation phase AFTER the UAT session is complete. If the user explicitly asks you to stop the UAT and fix something, respond: "Issue recorded. Let's finish the remaining checkpoints first — remediation will address this immediately after."
 
+Follow @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md for all output formatting (symbols, bars, AskUserQuestion spacing).
+
 For the FIRST test without a result, display a CHECKPOINT followed by AskUserQuestion:
 
 ```text
@@ -185,7 +187,7 @@ For the FIRST test without a result, display a CHECKPOINT followed by AskUserQue
 {scenario description}
 ```
 
-Then immediately use AskUserQuestion:
+Then use AskUserQuestion:
 
 ```yaml
 question: "Expected: {expected result}"
@@ -200,7 +202,9 @@ options:
 
 The tool automatically provides a freeform "Other" option for the user to describe issues.
 
-After response: process (Step 5), persist (Step 7), then present the NEXT test. Repeat until all tests are done, then go to Step 8.
+**STOP HERE.** Wait for the AskUserQuestion response. Do NOT continue to the next test, do NOT skip to Step 6, and do NOT end the turn. The tool call blocks until the user responds.
+
+**After the user responds:** process the response (Step 6), persist to disk (Step 8), then present the NEXT test using the same CHECKPOINT + AskUserQuestion format. **STOP and wait again.** Repeat until all tests are done, then go to Step 9.
 
 ### 6. Response mapping
 

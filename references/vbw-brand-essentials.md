@@ -59,5 +59,6 @@ Progress bars always 10 characters wide for visual consistency.
 3. LLM-generated output uses horizontal bars (━), not box-drawing side borders
 4. Keep lines under 80 characters inside boxes
 5. Use semantic symbols consistently across all agent output
+6. When using AskUserQuestion, always end your text output with 3–4 empty lines (`\n\n\n\n`) before the tool call — the dialog covers the last few visible lines. Remove this rule when anthropics/claude-code#23862 is resolved.
 
 This file is the single source of truth for brand vocabulary. Output templates are defined inline in each command file's Output Format section.

@@ -307,15 +307,29 @@ teardown() {
 # vbw-statusline.sh: caches context usage to .context-usage
 # =============================================================================
 
-@test "statusline: writes .context-usage with pct and size" {
+@test "statusline: writes .context-usage with session ID, pct, and size" {
   mkdir -p .vbw-planning
-  # Pipe minimal JSON to statusline; it should cache usage
+  # Pipe minimal JSON to statusline; it should cache usage with session ID
+  export CLAUDE_SESSION_ID="test-session-abc"
   echo '{"context_window":{"used_percentage":42,"remaining_percentage":58,"context_window_size":200000,"current_usage":{"input_tokens":10000,"output_tokens":5000,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}},"cost":{"total_cost_usd":0,"total_duration_ms":0,"total_api_duration_ms":0,"total_lines_added":0,"total_lines_removed":0},"model":{"display_name":"Claude"},"version":"1.0"}' \
     | bash "$SCRIPTS_DIR/vbw-statusline.sh" > /dev/null 2>&1
   [ -f ".vbw-planning/.context-usage" ]
-  IFS='|' read -r pct size < .vbw-planning/.context-usage
+  IFS='|' read -r sid pct size < .vbw-planning/.context-usage
+  [ "$sid" = "test-session-abc" ]
   [ "$pct" = "42" ]
   [ "$size" = "200000" ]
+}
+
+@test "statusline: .context-usage defaults session ID to unknown" {
+  mkdir -p .vbw-planning
+  unset CLAUDE_SESSION_ID
+  echo '{"context_window":{"used_percentage":50,"remaining_percentage":50,"context_window_size":100000,"current_usage":{"input_tokens":10000,"output_tokens":5000,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}},"cost":{"total_cost_usd":0,"total_duration_ms":0,"total_api_duration_ms":0,"total_lines_added":0,"total_lines_removed":0},"model":{"display_name":"Claude"},"version":"1.0"}' \
+    | bash "$SCRIPTS_DIR/vbw-statusline.sh" > /dev/null 2>&1
+  [ -f ".vbw-planning/.context-usage" ]
+  IFS='|' read -r sid pct size < .vbw-planning/.context-usage
+  [ "$sid" = "unknown" ]
+  [ "$pct" = "50" ]
+  [ "$size" = "100000" ]
 }
 
 # =============================================================================
@@ -394,4 +408,61 @@ teardown() {
 
 @test "discuss.md passes discuss mode to suggest-compact.sh" {
   grep 'suggest-compact.sh' "$PROJECT_ROOT/commands/discuss.md" | grep -q 'discuss'
+}
+
+# =============================================================================
+# Session-ID freshness validation (#238)
+# =============================================================================
+
+@test "suggest-compact: stale session ID causes silent skip" {
+  echo "old-session-id|95|200000" > .vbw-planning/.context-usage
+  CLAUDE_SESSION_ID="new-session-id" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: matching session ID triggers normal guard" {
+  echo "my-session|95|200000" > .vbw-planning/.context-usage
+  CLAUDE_SESSION_ID="my-session" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
+}
+
+@test "suggest-compact: legacy 2-field format still works (backward compat)" {
+  echo "95|200000" > .vbw-planning/.context-usage
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
+}
+
+@test "suggest-compact: missing CLAUDE_SESSION_ID defaults to unknown on both sides" {
+  # Both writer and reader default to "unknown" — should match and proceed
+  echo "unknown|95|200000" > .vbw-planning/.context-usage
+  unset CLAUDE_SESSION_ID
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
+}
+
+@test "suggest-compact: 3-field format with low usage no warn" {
+  echo "my-session|30|200000" > .vbw-planning/.context-usage
+  CLAUDE_SESSION_ID="my-session" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: 3-field format respects compaction threshold" {
+  # compaction_threshold is absolute token count — 165000 tokens
+  # 82% of 200K = 164000 used tokens + EST_COST → exceeds 165000 → warn
+  echo '{"compaction_threshold":165000}' > .vbw-planning/config.json
+  echo "my-session|82|200000" > .vbw-planning/.context-usage
+  CLAUDE_SESSION_ID="my-session" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
+
+  # 30% of 200K = 60000 used tokens + EST_COST → below 165000 → no warn
+  echo "my-session|30|200000" > .vbw-planning/.context-usage
+  CLAUDE_SESSION_ID="my-session" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }

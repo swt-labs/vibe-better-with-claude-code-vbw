@@ -74,6 +74,7 @@ EOF
     '.execution-state.json'
     '.execution-state.json.tmp'
     '.context-*.md'
+    '.context-usage'
     '.contracts/'
     '.locks/'
     '.token-state/'

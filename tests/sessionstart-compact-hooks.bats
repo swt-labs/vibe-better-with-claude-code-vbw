@@ -418,3 +418,17 @@ MOCK
   [ "$status" -eq 0 ]
   ! echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("BROWNFIELD")' >/dev/null
 }
+
+# =============================================================================
+# .context-usage cleanup (#238)
+# =============================================================================
+
+@test "session-start: clears stale .context-usage file" {
+  cd "$TEST_TEMP_DIR"
+  echo "95|200000" > .vbw-planning/.context-usage
+  [ -f .vbw-planning/.context-usage ]
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+  [ ! -f .vbw-planning/.context-usage ]
+}

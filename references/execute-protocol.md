@@ -523,7 +523,7 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
    {scenario description}
    ```
 
-   Then immediately use AskUserQuestion:
+   Then use AskUserQuestion:
 
    ```yaml
    question: "Expected: {expected result}"
