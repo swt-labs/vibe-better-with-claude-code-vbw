@@ -234,3 +234,210 @@ EOF
   [[ "$output" == *"Invariant two holds"* ]]
   [[ "$output" == *"src/foo.ts"* ]]
 }
+
+# --- --remediation-only tests ---
+
+@test "compile-verify-context: --remediation-only with completed round emits only round plans" {
+  # Phase-root plan (should be excluded)
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original login form
+wave: 1
+must_haves:
+  - Email field validates format
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Login form
+## Files Modified
+- `src/login.tsx` -- created
+EOF
+
+  # Remediation round-01 with both PLAN and SUMMARY
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: R01
+title: Fix validation bug
+wave: 1
+must_haves:
+  - Email validation no longer rejects valid addresses
+---
+EOF
+  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Fixed email regex
+## Files Modified
+- `src/validators.ts` -- modified
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=01"* ]]
+  [[ "$output" == *"=== PLAN R01: Fix validation bug ==="* ]]
+  [[ "$output" == *"Email validation no longer rejects valid addresses"* ]]
+  # Phase-root plan should NOT appear
+  [[ "$output" != *"Original login form"* ]]
+  [[ "$output" == *"verify_plan_count=1"* ]]
+}
+
+@test "compile-verify-context: --remediation-only picks latest completed round" {
+  # Round 01 — complete (has both PLAN and SUMMARY)
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+---
+plan: R01
+title: Round 1 fix
+must_haves:
+  - Old fix
+---
+EOF
+  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Round 1 work
+EOF
+
+  # Round 02 — complete (has both PLAN and SUMMARY)
+  mkdir -p "$PHASE_DIR/remediation/round-02"
+  cat > "$PHASE_DIR/remediation/round-02/R02-PLAN.md" <<'EOF'
+---
+plan: R02
+title: Round 2 fix
+must_haves:
+  - Latest fix
+---
+EOF
+  cat > "$PHASE_DIR/remediation/round-02/R02-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Round 2 work
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=02"* ]]
+  [[ "$output" == *"=== PLAN R02: Round 2 fix ==="* ]]
+  [[ "$output" == *"Latest fix"* ]]
+  # Round 01 should NOT appear
+  [[ "$output" != *"Round 1 fix"* ]]
+  [[ "$output" == *"verify_plan_count=1"* ]]
+}
+
+@test "compile-verify-context: --remediation-only falls back to full when no completed round" {
+  # Phase-root plan
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Original plan
+must_haves:
+  - Something
+---
+EOF
+
+  # Round 01 — incomplete (PLAN only, no SUMMARY)
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+---
+plan: R01
+title: Incomplete round
+must_haves:
+  - Unfinished
+---
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=full"* ]]
+  # Falls back to full scope — both plans appear
+  [[ "$output" == *"Original plan"* ]]
+  [[ "$output" == *"Incomplete round"* ]]
+}
+
+@test "compile-verify-context: --remediation-only with empty remediation dir falls back to full" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Some plan
+must_haves:
+  - Feature
+---
+EOF
+
+  mkdir -p "$PHASE_DIR/remediation"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=full"* ]]
+  [[ "$output" == *"Some plan"* ]]
+}
+
+@test "compile-verify-context: no flag with remediation dirs emits all plans with full scope" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Phase-root plan
+must_haves:
+  - Original feature
+---
+EOF
+
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+---
+plan: R01
+title: Remediation plan
+must_haves:
+  - Fix something
+---
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=full"* ]]
+  [[ "$output" == *"Phase-root plan"* ]]
+  [[ "$output" == *"Remediation plan"* ]]
+  [[ "$output" == *"verify_plan_count=2"* ]]
+}
+
+@test "compile-verify-context: full scope emits verify_scope=full header" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Basic plan
+must_haves:
+  - Something
+---
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # First non-empty content line should contain verify_scope
+  [[ "${lines[0]}" == "verify_scope=full" ]]
+}
