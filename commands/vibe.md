@@ -358,10 +358,12 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
        - Spawn vbw-dev via Task tool: Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"`. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If empty, omit maxTurns.
        - Dev prompt MUST include:
          - The task details from the plan (description, files to modify, acceptance criteria).
-         - `"Append your execution results to {round_dir}/R{RR}-SUMMARY.md under a section header for this task (e.g., ## Task {task-id})."` Do NOT include wave prefixes (no `W1-`, `W2-`, etc.) or task-id segments in the summary filename — all tasks share a single `R{RR}-SUMMARY.md` per round.
+         - `"Report your execution results at the end of your response in this format: What Was Built (bullet list), Files Modified (file -- action: purpose), Deviations (if any), Commit hashes (if any)."`
          - `"Do NOT create git worktrees. Work in the project root directory."`
          - If `.vbw-planning/codebase/META.md` exists: `"Read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/ to bootstrap codebase understanding before executing."`
        - Display: `◆ Spawning Dev agent for task {task-id} (${DEV_MODEL})...` → `✓ Dev agent complete for task {task-id}`.
+       - After each Dev completes, note its reported results (what was built, files modified, deviations, commits) for inclusion in the consolidated summary.
+     - **Summary consolidation (NON-NEGOTIABLE):** After ALL Dev agents have completed, write `{round_dir}/R{RR}-SUMMARY.md` as a single coherent file. Read the remediation summary template at `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-SUMMARY.md` and follow its structure exactly. Populate the frontmatter with aggregate data (all commit hashes, all modified files, total tasks completed/total, overall status, today's date). Write one `## Task {N}: {name}` section per task using the results collected from each Dev agent. Do NOT append incrementally — write the complete file once.
      - **Worktree cleanup check:** After execution, check for orphan CC worktrees:
        ```bash
        if [ -d ".claude/worktrees" ] && [ -n "$(ls -A .claude/worktrees 2>/dev/null)" ]; then
