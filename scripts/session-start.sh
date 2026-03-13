@@ -194,6 +194,10 @@ rm -f "$PLANNING_DIR/.compaction-count" 2>/dev/null || true
 # Only clear on genuine new session starts.
 rm -f "$PLANNING_DIR/.vbw-context" 2>/dev/null || true
 
+# Clear stale context-usage cache so suggest-compact.sh doesn't fire false
+# pre-flight warnings using data from a previous session (#238).
+rm -f "$PLANNING_DIR/.context-usage" 2>/dev/null || true
+
 # Auto-migrate config if .vbw-planning exists.
 # Version marker retained here for backwards test compatibility.
 EXPECTED_FLAG_COUNT=39
