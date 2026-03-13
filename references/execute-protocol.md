@@ -88,6 +88,8 @@ All runtime script invocations below assume `VBW_PLUGIN_ROOT` is set.
 ```
 Set completed plans (with SUMMARY.md whose `status` is `complete` or `completed`) to `"complete"`, others to `"pending"`. A SUMMARY.md with a non-terminal status (e.g., `pending`) does NOT count as complete.
 
+**Task list hygiene (crash-resume):** When resuming execution (`.execution-state.json` already existed), plans that are already `"complete"` were finished in a prior session. Immediately mark those plans as completed in your task list — do NOT leave them as not-started or in-progress. Only pending plans should be active in your task list.
+
 7b. **Export correlation_id:** Set `VBW_CORRELATION_ID={CORRELATION_ID}` in the execution environment
     so log-event.sh can fall back to it if .execution-state.json is temporarily unavailable.
     Log a confirmation: `◆ Correlation ID: {CORRELATION_ID}`
