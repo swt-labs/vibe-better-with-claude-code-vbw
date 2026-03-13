@@ -203,6 +203,10 @@ if ! cache_fresh "$FAST_CF" 5; then
       # Lifecycle-aware QA/UAT indicator: UAT supersedes VERIFICATION.md
       if [ -n "$PDIR" ]; then
         _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
+        # Round-dir fallback: check remediation/round-*/R*-UAT.md
+        if [ -z "$_uat_file" ]; then
+          _uat_file=$(find "$PDIR/remediation" -path '*/round-*/R*-UAT.md' 2>/dev/null | sort -t/ -k2 -V | tail -1)
+        fi
         if [ -n "$_uat_file" ]; then
           _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null)
           case "$_uat_status" in

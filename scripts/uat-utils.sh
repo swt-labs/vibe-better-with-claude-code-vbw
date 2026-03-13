@@ -188,6 +188,24 @@ current_uat() {
         printf '%s\n' "$round_uat"
         return 0
       fi
+      # Current round's UAT doesn't exist yet (start of new round).
+      # Scan all round dirs for the latest existing R{NN}-UAT.md.
+      local _prev_best="" _prev_best_num=-1
+      for _ruat in "${dir}"remediation/round-*/R*-UAT.md; do
+        [ -f "$_ruat" ] || continue
+        local _rnum
+        _rnum=$(basename "$_ruat" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
+        if [ -n "$_rnum" ] && echo "$_rnum" | grep -qE '^[0-9]+$'; then
+          if [ "$_rnum" -gt "$_prev_best_num" ] 2>/dev/null; then
+            _prev_best_num=$_rnum
+            _prev_best="$_ruat"
+          fi
+        fi
+      done
+      if [ -n "$_prev_best" ]; then
+        printf '%s\n' "$_prev_best"
+        return 0
+      fi
     fi
   fi
 

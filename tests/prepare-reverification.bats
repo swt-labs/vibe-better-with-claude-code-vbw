@@ -118,3 +118,33 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"not 'issues_found'"* ]]
 }
+
+@test "round-dir layout: round-dir UAT found via current_uat skips mv" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+---
+phase: "03"
+status: issues_found
+total_tests: 3
+passed: 2
+failed: 1
+---
+# UAT — Remediation Round 01
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+
+  # R01-UAT.md still exists (NOT mv'd)
+  [ -f "$PHASE_DIR/remediation/round-01/R01-UAT.md" ]
+
+  # Output indicates in-round-dir archival
+  [[ "$output" == *"archived=in-round-dir"* ]]
+
+  # State advanced to next round
+  grep -q "^stage=research$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^round=02$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+}

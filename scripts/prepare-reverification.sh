@@ -35,7 +35,7 @@ _SCRIPT_DIR_PR="$(cd "$(dirname "$0")" && pwd)"
 . "$_SCRIPT_DIR_PR/uat-utils.sh"
 
 # Find the UAT file
-UAT_FILE=$(latest_non_source_uat "$PHASE_DIR")
+UAT_FILE=$(current_uat "$PHASE_DIR")
 
 if [ -z "$UAT_FILE" ] || [ ! -f "$UAT_FILE" ]; then
   # Idempotent: if UAT was already archived (e.g., vibe.md ran this before
@@ -96,6 +96,25 @@ if [ -f "$_new_stage_file" ]; then
     _LAYOUT="round-dir"
   fi
 fi
+
+# For round-dir UATs already in their round directory, skip mv archival
+case "$UAT_FILE" in
+  */remediation/round-*/R*-UAT.md)
+    # UAT already lives in its round dir — no archival mv needed, just advance state
+    bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" needs-round "${PHASE_DIR%/}" >/dev/null
+    rm -f "${PHASE_DIR}.uat-remediation-stage"
+    if git rev-parse --git-dir >/dev/null 2>&1; then
+      git add "${PHASE_DIR}remediation/.uat-remediation-stage" 2>/dev/null || true
+      git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
+    fi
+    PHASE_NUM=$(basename "${PHASE_DIR%/}" | sed 's/^\([0-9]*\).*/\1/')
+    echo "archived=in-round-dir"
+    echo "round_file=$UAT_BASENAME"
+    echo "phase=$PHASE_NUM"
+    echo "layout=$_LAYOUT"
+    exit 0
+    ;;
+esac
 
 # Archive: rename UAT to round file
 mv "$UAT_FILE" "${PHASE_DIR}${ROUND_FILE}"
