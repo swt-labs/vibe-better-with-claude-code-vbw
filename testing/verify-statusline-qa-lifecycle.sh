@@ -375,6 +375,175 @@ else
   fail "remediation override: expected true|this remediation|2|1, got '${_REM_COUNTS}'"
 fi
 
+# --- Structural: granular UAT remediation stage mapping ---
+echo ""
+echo "--- Structural: granular UAT remediation stage mapping ---"
+
+# Test 22: statusline maps stage=none to UAT: Issues
+if grep -q '"UAT: Issues"' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline maps stage=none to 'UAT: Issues'"
+else
+  fail "statusline maps stage=none to 'UAT: Issues'"
+fi
+
+# Test 23: statusline maps stage=research to UAT: Researching
+if grep -q '"UAT: Researching"' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline maps stage=research to 'UAT: Researching'"
+else
+  fail "statusline maps stage=research to 'UAT: Researching'"
+fi
+
+# Test 24: statusline maps stage=plan to UAT: Planning
+if grep -q '"UAT: Planning"' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline maps stage=plan to 'UAT: Planning'"
+else
+  fail "statusline maps stage=plan to 'UAT: Planning'"
+fi
+
+# Test 25: statusline maps stage=execute|fix to UAT: Fixing
+if grep -q 'execute|fix)' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline maps stage=execute|fix to 'UAT: Fixing'"
+else
+  fail "statusline maps stage=execute|fix to 'UAT: Fixing'"
+fi
+
+# Test 26: statusline maps stage=done|verify to UAT: Verification
+if grep -q 'done|verify)' "$ROOT/scripts/vbw-statusline.sh" && \
+   grep -q '"UAT: Verification"' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline maps stage=done|verify to 'UAT: Verification'"
+else
+  fail "statusline maps stage=done|verify to 'UAT: Verification'"
+fi
+
+# --- Functional: remediation stage → QA indicator ---
+echo ""
+echo "--- Functional: remediation stage → QA indicator ---"
+
+# Helper: create project with UAT issues_found + remediation stage
+setup_uat_remediation() {
+  local dir="$1" stage="$2"
+  mkdir -p "$dir/.vbw-planning/phases/01-test/remediation"
+  echo '{}' > "$dir/.vbw-planning/config.json"
+  printf 'Phase: 1 of 1 (test)\nStatus: active\n' > "$dir/.vbw-planning/STATE.md"
+  printf '# Test\nContent\n' > "$dir/.vbw-planning/PROJECT.md"
+  printf '%s\n' '---' 'title: Test' '---' > "$dir/.vbw-planning/phases/01-test/01-01-PLAN.md"
+  printf '%s\n' '---' 'status: complete' '---' 'Done' > "$dir/.vbw-planning/phases/01-test/01-01-SUMMARY.md"
+  printf '%s\n' '---' 'phase: 01' 'status: issues_found' '---' 'Issues.' > "$dir/.vbw-planning/phases/01-test/01-UAT.md"
+  if [ "$stage" != "__none__" ]; then
+    printf 'stage=%s\nround=01\nlayout=round-dir\n' "$stage" > "$dir/.vbw-planning/phases/01-test/remediation/.uat-remediation-stage"
+  fi
+}
+
+# Helper: extract QA value from statusline case logic
+extract_qa() {
+  local dir="$1"
+  cd "$dir" && {
+    . "$ROOT/scripts/summary-utils.sh"
+    PDIR=".vbw-planning/phases/01-test"
+    _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
+    if [ -n "$_uat_file" ]; then
+      _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null)
+      if [ "$_uat_status" = "issues_found" ]; then
+        _rem_stage="none"
+        if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
+          _rem_stage=$(grep '^stage=' "$PDIR/remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          _rem_stage="${_rem_stage:-none}"
+        elif [ -f "$PDIR/.uat-remediation-stage" ]; then
+          _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
+        fi
+        case "$_rem_stage" in
+          none)         echo "UAT: Issues" ;;
+          research)     echo "UAT: Researching" ;;
+          plan)         echo "UAT: Planning" ;;
+          execute|fix)  echo "UAT: Fixing" ;;
+          done|verify)  echo "UAT: Verification" ;;
+          *)            echo "UAT: Fixing" ;;
+        esac
+      fi
+    fi
+  }
+}
+
+# Test 27: stage=none → UAT: Issues
+T27="$TMPDIR_BASE/t27"
+setup_uat_remediation "$T27" "__none__"
+_QA=$(extract_qa "$T27")
+if [ "$_QA" = "UAT: Issues" ]; then
+  pass "stage=none (no file) → UAT: Issues"
+else
+  fail "stage=none (no file) → UAT: Issues (got '$_QA')"
+fi
+
+# Test 28: stage=research → UAT: Researching
+T28="$TMPDIR_BASE/t28"
+setup_uat_remediation "$T28" "research"
+_QA=$(extract_qa "$T28")
+if [ "$_QA" = "UAT: Researching" ]; then
+  pass "stage=research → UAT: Researching"
+else
+  fail "stage=research → UAT: Researching (got '$_QA')"
+fi
+
+# Test 29: stage=plan → UAT: Planning
+T29="$TMPDIR_BASE/t29"
+setup_uat_remediation "$T29" "plan"
+_QA=$(extract_qa "$T29")
+if [ "$_QA" = "UAT: Planning" ]; then
+  pass "stage=plan → UAT: Planning"
+else
+  fail "stage=plan → UAT: Planning (got '$_QA')"
+fi
+
+# Test 30: stage=execute → UAT: Fixing
+T30="$TMPDIR_BASE/t30"
+setup_uat_remediation "$T30" "execute"
+_QA=$(extract_qa "$T30")
+if [ "$_QA" = "UAT: Fixing" ]; then
+  pass "stage=execute → UAT: Fixing"
+else
+  fail "stage=execute → UAT: Fixing (got '$_QA')"
+fi
+
+# Test 31: stage=fix → UAT: Fixing
+T31="$TMPDIR_BASE/t31"
+setup_uat_remediation "$T31" "fix"
+_QA=$(extract_qa "$T31")
+if [ "$_QA" = "UAT: Fixing" ]; then
+  pass "stage=fix → UAT: Fixing"
+else
+  fail "stage=fix → UAT: Fixing (got '$_QA')"
+fi
+
+# Test 32: stage=done → UAT: Verification
+T32="$TMPDIR_BASE/t32"
+setup_uat_remediation "$T32" "done"
+_QA=$(extract_qa "$T32")
+if [ "$_QA" = "UAT: Verification" ]; then
+  pass "stage=done → UAT: Verification"
+else
+  fail "stage=done → UAT: Verification (got '$_QA')"
+fi
+
+# Test 33: stage=verify → UAT: Verification
+T33="$TMPDIR_BASE/t33"
+setup_uat_remediation "$T33" "verify"
+_QA=$(extract_qa "$T33")
+if [ "$_QA" = "UAT: Verification" ]; then
+  pass "stage=verify → UAT: Verification"
+else
+  fail "stage=verify → UAT: Verification (got '$_QA')"
+fi
+
+# Test 34: unknown stage → UAT: Fixing (fallback)
+T34="$TMPDIR_BASE/t34"
+setup_uat_remediation "$T34" "unknown_stage"
+_QA=$(extract_qa "$T34")
+if [ "$_QA" = "UAT: Fixing" ]; then
+  pass "unknown stage → UAT: Fixing (fallback)"
+else
+  fail "unknown stage → UAT: Fixing (got '$_QA')"
+fi
+
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS passed, $FAIL failed"

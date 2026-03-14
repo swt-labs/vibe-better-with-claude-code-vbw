@@ -256,9 +256,12 @@ if ! cache_fresh "$FAST_CF" 5; then
                 _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
               fi
               case "$_rem_stage" in
-                done)    QA="UAT: re-verify"; QA_COLOR="Y" ;;
-                none)    QA="UAT: fail";      QA_COLOR="R" ;;
-                *)       QA="UAT: fixing";    QA_COLOR="Y" ;;
+                none)         QA="UAT: Issues";       QA_COLOR="R" ;;
+                research)     QA="UAT: Researching";  QA_COLOR="Y" ;;
+                plan)         QA="UAT: Planning";     QA_COLOR="Y" ;;
+                execute|fix)  QA="UAT: Fixing";       QA_COLOR="Y" ;;
+                done|verify)  QA="UAT: Verification"; QA_COLOR="Y" ;;
+                *)            QA="UAT: Fixing";       QA_COLOR="Y" ;;
               esac ;;
             *) QA="UAT: ?"; QA_COLOR="Y" ;;
           esac
