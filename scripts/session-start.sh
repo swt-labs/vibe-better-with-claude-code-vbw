@@ -1010,6 +1010,14 @@ fi
 # Brownfield cleanup: remove stale .skill-names from older versions
 rm -f "$PLANNING_DIR/.skill-names" 2>/dev/null || true
 
+# Pre-warm statusline fast cache so the first dsR() call (5s timeout)
+# doesn't hit a cold start with 20+ subprocess forks.  Feed minimal
+# JSON on stdin (the metrics CC would normally provide) and discard
+# stdout.  Run in background so it doesn't delay the hook response.
+if [ -f "$SCRIPT_DIR/vbw-statusline.sh" ]; then
+  echo '{}' | bash "$SCRIPT_DIR/vbw-statusline.sh" >/dev/null 2>&1 &
+fi
+
 jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" --arg gsd "${GSD_WARNING:-}" '{
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
