@@ -16,7 +16,7 @@ All notable changes to VBW will be documented in this file.
 ### Changed
 
 - **`qa`** -- QA now persists `VERIFICATION.md` through `write-verification.sh` directly instead of relying on a heredoc escape hatch or parent-command passthrough. (PR #231)
-- **`agents`** -- Move subagent skill injection to `SubagentStart` so spawned agents reliably receive skills, and stop accidental YAML turn ceilings from capping agents that should be unlimited. (PR #197)
+- **`skills`** -- Fix forced skill evaluation for spawned agents by moving skill injection to `SubagentStart`, so team and subagent workflows reliably receive the skills they need; also stop accidental YAML turn ceilings from capping agents that should be unlimited. (PR #197)
 - **`session-start`** -- Warn when GSD is co-installed to reduce cross-wired `/gsd:*` versus `/vbw:*` workflows in VBW sessions. (PR #197)
 - **`remediation`** -- Make remediation planning and execution self-contained and sequential so remediation no longer inherits normal execute-mode wave/team behavior or creates unnecessary worktrees. (PR #236)
 - **`todo`** -- Make `/vbw:todo` and `/vbw:list-todos` fail cleanly in restricted permission modes with actionable guidance. (PR #227)
