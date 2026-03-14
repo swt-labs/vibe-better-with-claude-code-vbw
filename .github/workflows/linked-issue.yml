@@ -20,8 +20,14 @@ jobs:
       - name: Check for linked issue
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
+          if printf '%s\n' "$PR_TITLE" | grep -qE '^chore: release v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Release PR detected — skipping linked issue check"
+            exit 0
+          fi
+
           # Strip HTML comments so refs inside <!-- ... --> are not matched
           CLEAN_BODY=$(printf '%s\n' "$PR_BODY" | sed 's/<!--.*-->//g' | sed '/<!--/,/-->/d')
 

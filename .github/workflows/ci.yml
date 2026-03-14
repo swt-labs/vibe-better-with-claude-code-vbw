@@ -83,7 +83,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect release PR
+        id: release-pr
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if printf '%s\n' "$PR_TITLE" | grep -qE '^chore: release v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Release PR detected — skipping QA review evidence check"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Check if QA-relevant files changed
+        if: steps.release-pr.outputs.skip != 'true'
         id: check-paths
         env:
           GH_TOKEN: ${{ github.token }}
@@ -106,7 +119,7 @@ jobs:
           fi
 
       - name: Check for QA round commits
-        if: steps.check-paths.outputs.qa_relevant == 'true'
+        if: steps.release-pr.outputs.skip != 'true' && steps.check-paths.outputs.qa_relevant == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -124,3 +137,8 @@ jobs:
           fi
 
           echo "QA review evidence verified ($qa_count rounds)"
+
+      - name: Release PR skip notice
+        if: steps.release-pr.outputs.skip == 'true'
+        run: |
+          echo "Skipping QA review evidence for release PR title format chore: release v{number}."

@@ -2,6 +2,41 @@
 
 All notable changes to VBW will be documented in this file.
 
+## [1.33.0] - 2026-03-14
+
+### Added
+
+- **`remediation`** -- Store UAT remediation artifacts in dedicated `remediation/round-XX/` directories with `RXX-*` filenames, while keeping legacy flat layouts readable via fallback logic. (PR #236)
+- **`remediation`** -- Add dedicated remediation research, plan, and summary templates so remediation rounds use their own structured artifacts instead of overloading phase-level files. (PR #236)
+- **`statusline`** -- Add four display controls to hide the limits line, hide it only for API-key sessions, suppress the build/agent line in tmux, or collapse the statusline to a single line in tmux. (PR #118)
+- **`statusline`** -- Color the `[VBW]` badge dynamically based on whether VBW context is active in the current session. (PR #213)
+- **`dx`** -- Add `scripts/dev-setup.sh` plus an optional `claude-vbw` launcher to automate local VBW setup, teardown, status checks, and launching Claude Code against a local clone. (PR #212)
+- **`ci`** -- Require pull requests to link an issue, recognizing closing keywords, bare issue refs, full issue URLs, and sidebar-linked issues. (PR #194)
+
+### Changed
+
+- **`qa`** -- QA now persists `VERIFICATION.md` through `write-verification.sh` directly instead of relying on a heredoc escape hatch or parent-command passthrough. (PR #231)
+- **`agents`** -- Move subagent skill injection to `SubagentStart` so spawned agents reliably receive skills, and stop accidental YAML turn ceilings from capping agents that should be unlimited. (PR #197)
+- **`session-start`** -- Warn when GSD is co-installed to reduce cross-wired `/gsd:*` versus `/vbw:*` workflows in VBW sessions. (PR #197)
+- **`remediation`** -- Make remediation planning and execution self-contained and sequential so remediation no longer inherits normal execute-mode wave/team behavior or creates unnecessary worktrees. (PR #236)
+- **`todo`** -- Make `/vbw:todo` and `/vbw:list-todos` fail cleanly in restricted permission modes with actionable guidance. (PR #227)
+- **`release`** -- Make release-audit changelog insertion non-interactive: generated entries are written immediately and completed before the separate README prompt. (PR #243)
+- **`prompts`** -- Add and clarify AskUserQuestion spacing guidance so dialogs do not obscure surrounding output. (PR #241)
+- **`config`** -- Change the default `prefer_teams` setting from `always` to `auto` so VBW only spins up teams when parallelism is useful. (PR #236)
+
+### Fixed
+
+- **`verify`** -- Limit post-remediation re-verification to the latest remediation round, carry prior UAT issues forward into targeted tests, and write remediation UAT files into the round directory instead of the phase root. (PR #236)
+- **`compact`** -- Clear stale `.context-usage` data at session boundaries and stamp it with session IDs so new sessions do not inherit false high-context warnings from old sessions. (PR #239)
+- **`statusline`** -- Fix stale completion counts after reset/undo, count only valid completed summaries, and render remediation/UAT lifecycle states more accurately. (PRs #197, #236)
+- **`statusline`** -- Fix first-render reliability by seeding caches on session start and avoiding blocking stdin reads. (PR #236)
+- **`agents`** -- Add explicit mechanical `shutdown_response` tool-call instructions so shutdown requests are acknowledged through the team protocol. (PR #226)
+- **`teams`** -- Clean stale or orphaned VBW team directories before `TeamCreate` and after `TeamDelete` to prevent ghost agent labels in Claude Code's status bar. (PR #230)
+- **`worktree`** -- Fully remove residual `.vbw-worktrees/` directories and stale git worktree metadata during cleanup, including locked worktrees. (PR #229)
+- **`watchdog`** -- Kill tmux panes that get stuck indefinitely during compaction. (PR #190)
+- **`agents`** -- Prune dead PIDs from `.agent-pids` on session start. (PR #228)
+- **`ci`** -- Harden linked-issue enforcement with `synchronize` coverage, tighter matching rules, clearer failure messages, explicit permissions, and updated docs/templates. (PR #196)
+
 ## [1.32.2] - 2026-02-26
 
 ### Fixed
