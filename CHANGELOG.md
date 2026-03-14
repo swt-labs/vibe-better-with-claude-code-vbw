@@ -2,6 +2,32 @@
 
 All notable changes to VBW will be documented in this file.
 
+## [1.33.0] - 2026-03-14
+
+### Added
+
+- **`remediation`** -- Store remediation-round artifacts in dedicated round directories with legacy fallback, preventing phase-root naming collisions. (PR #236)
+- **`statusline`** -- Add four config switches to control statusline visibility, including limits-line and tmux display behavior. (PR #118)
+- **`statusline`** -- Color the VBW badge dynamically based on current context state. (PR #213)
+- **`dx`** -- Add `scripts/dev-setup.sh` to automate local VBW development setup and teardown. (PR #212)
+- **`ci`** -- Require linked issues on pull requests.
+
+### Changed
+
+- **`qa`** -- Call `write-verification.sh` directly and remove the heredoc escape hatch from QA verification flows. (PR #231)
+- **`skills`** -- Make skill activation plan-driven across all agents. (PR #197)
+- **`release`** -- Use `/vbw-release` consistently in release command references and write audit-generated changelog entries without waiting for user confirmation. (PRs #186, #243)
+- **`refs`** -- Add a brand-essentials spacing rule to keep AskUserQuestion dialogs from obscuring output text. (PR #241)
+- **`todo`** -- Make `/vbw:todo` fail politely in restricted permission modes. (PR #227)
+
+### Fixed
+
+- **`teams`** -- Add mechanical `shutdown_response` tool-call instructions and mitigate ghost agent labels from orphaned team directories. (PRs #226, #230)
+- **`worktree`** -- Remove residual `.vbw-worktrees/` directories during cleanup and kill tmux panes that get stuck in compaction. (PRs #229, #190)
+- **`agents`** -- Prune dead PIDs from `.agent-pids` on session start. (PR #228)
+- **`ci`** -- Land follow-up QA fixes for the linked-issue check. (PR #196)
+- **`verify`** -- Shorten checkpoint banners and buffer AskUserQuestion prompts to avoid UAT clipping in Claude Code's TUI.
+
 ## [1.32.2] - 2026-02-26
 
 ### Fixed
