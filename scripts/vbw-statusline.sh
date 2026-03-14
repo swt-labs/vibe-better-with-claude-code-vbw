@@ -2,7 +2,20 @@
 # VBW Status Line — 4-line dashboard (L1: project, L2: context, L3: usage+cache, L4: model/cost)
 # Cache: {prefix}-fast (5s), {prefix}-slow (60s), {prefix}-cost (per-render), {prefix}-ok (permanent)
 
-input=$(cat)
+# Read stdin with timeout — CC may not pipe data on the first dsR() invocation
+# (no cost/model info yet), and bare `cat` would block until the 5s dsR timeout
+# kills us. Use a read loop: 1s timeout per line handles multi-line JSON while
+# bailing fast when CC sends nothing. Total budget: ~2s for read + ~1s for render
+# = 3s well within dsR's 5s timeout.
+input=""
+while IFS= read -t 1 -r _line; do
+  input="${input}${_line}"
+done 2>/dev/null
+# Capture trailing data after last newline (if no final \n)
+[ -n "${_line:-}" ] && input="${input}${_line}"
+# Replace stdin with /dev/null — prevents downstream commands (jq, curl, etc.)
+# from inheriting a hung pipe and blocking indefinitely.
+exec 0</dev/null
 
 # Colors
 C='\033[36m' G='\033[32m' Y='\033[33m' R='\033[31m'
@@ -139,9 +152,10 @@ CTX_USED=$((IN_TOK + CACHE_W + CACHE_R))
 CTX_USED_FMT=$(fmt_tok "$CTX_USED")
 CTX_SIZE_FMT=$(fmt_tok "$CTX_SIZE")
 
-# Cache context usage for pre-flight guard (suggest-compact.sh)
+# Cache context usage for pre-flight guard (suggest-compact.sh).
+# Include session ID so suggest-compact.sh can detect stale cross-session data (#238).
 if [ -d ".vbw-planning" ]; then
-  printf '%s\n' "${PCT}|${CTX_SIZE}" > .vbw-planning/.context-usage 2>/dev/null || true
+  printf '%s\n' "${CLAUDE_SESSION_ID:-unknown}|${PCT}|${CTX_SIZE}" > .vbw-planning/.context-usage 2>/dev/null || true
 fi
 IN_TOK_FMT=$(fmt_tok "$IN_TOK")
 OUT_TOK_FMT=$(fmt_tok "$OUT_TOK")
@@ -163,6 +177,7 @@ FAST_CF="${_CACHE}-fast"
 if ! cache_fresh "$FAST_CF" 5; then
   PH=""; TT=""; EF="balanced"; MP="quality"; BR=""
   PD=0; PT=0; PPD=0; PPT=0; QA="--"; QA_COLOR="D"; GH_URL=""
+  PP_LABEL="this phase"; REM_ACTIVE="false"
   if [ -f ".vbw-planning/STATE.md" ]; then
     # Parse "Phase: N of M (slug)" — extract N and M before parenthetical
     # to avoid picking up numbers from phase name slugs like "01-context-diet"
@@ -195,25 +210,58 @@ if ! cache_fresh "$FAST_CF" 5; then
     for _sl_pdir in .vbw-planning/phases/*/; do
       [ -d "$_sl_pdir" ] || continue
       PD=$((PD + $(count_complete_summaries "$_sl_pdir")))
+      # Count remediation round summaries (round-dir layout)
+      for _sl_rdir in "$_sl_pdir"remediation/round-*/; do
+        [ -d "$_sl_rdir" ] || continue
+        PD=$((PD + $(count_complete_summaries "$_sl_rdir")))
+      done
     done
     if [ -n "$PH" ] && [ "$PH" != "0" ]; then
       PDIR=$(find .vbw-planning/phases -maxdepth 1 -type d -name "$(printf '%02d' "$PH")-*" 2>/dev/null | head -1)
       [ -n "$PDIR" ] && PPD=$(count_complete_summaries "$PDIR")
       [ -n "$PDIR" ] && PPT=$(find "$PDIR" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
+      # Remediation-aware plan counts: override PPT/PPD with remediation round totals
+      if [ -n "$PDIR" ] && [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
+        REM_ACTIVE="true"
+        PP_LABEL="this remediation"
+        _rem_ppt=0; _rem_ppd=0
+        for _rem_rdir in "$PDIR"/remediation/round-*/; do
+          [ -d "$_rem_rdir" ] || continue
+          _rem_ppt=$((_rem_ppt + $(find "$_rem_rdir" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')))
+          _rem_ppd=$((_rem_ppd + $(count_complete_summaries "$_rem_rdir")))
+        done
+        PPT="$_rem_ppt"
+        PPD="$_rem_ppd"
+      elif [ -n "$PDIR" ] && [ -f "$PDIR/.uat-remediation-stage" ]; then
+        REM_ACTIVE="true"
+        PP_LABEL="this remediation"
+      fi
       # Lifecycle-aware QA/UAT indicator: UAT supersedes VERIFICATION.md
       if [ -n "$PDIR" ]; then
         _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
+        # Round-dir fallback: check remediation/round-*/R*-UAT.md
+        if [ -z "$_uat_file" ]; then
+          _uat_file=$(find "$PDIR/remediation" -path '*/round-*/R*-UAT.md' 2>/dev/null | sort -t/ -k2 -V | tail -1)
+        fi
         if [ -n "$_uat_file" ]; then
           _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null)
           case "$_uat_status" in
             complete|passed) QA="UAT: pass"; QA_COLOR="G" ;;
             issues_found)
               _rem_stage="none"
-              [ -f "$PDIR/.uat-remediation-stage" ] && _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
+              if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
+                _rem_stage=$(grep '^stage=' "$PDIR/remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+                _rem_stage="${_rem_stage:-none}"
+              elif [ -f "$PDIR/.uat-remediation-stage" ]; then
+                _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
+              fi
               case "$_rem_stage" in
-                done)    QA="UAT: re-verify"; QA_COLOR="Y" ;;
-                none)    QA="UAT: fail";      QA_COLOR="R" ;;
-                *)       QA="UAT: fixing";    QA_COLOR="Y" ;;
+                none)         QA="UAT: Issues";       QA_COLOR="R" ;;
+                research)     QA="UAT: Researching";  QA_COLOR="Y" ;;
+                plan)         QA="UAT: Planning";     QA_COLOR="Y" ;;
+                execute|fix)  QA="UAT: Fixing";       QA_COLOR="Y" ;;
+                done|verify)  QA="UAT: Verification"; QA_COLOR="Y" ;;
+                *)            QA="UAT: Fixing";       QA_COLOR="Y" ;;
               esac ;;
             *) QA="UAT: ?"; QA_COLOR="Y" ;;
           esac
@@ -258,14 +306,18 @@ if ! cache_fresh "$FAST_CF" 5; then
   # prevent field misalignment in the pipe-delimited fast cache.
   _EXEC_CURRENT_SAFE="${EXEC_CURRENT//|/-}"
 
-  printf '%s\n' "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${_EXEC_CURRENT_SAFE:-}|${AGENT_DATA:-0}|${PPT:-0}|${QA_COLOR:-D}|${HIDE_AGENT_TMUX:-false}|${COLLAPSE_AGENT_TMUX:-false}" > "$FAST_CF" 2>/dev/null
+  printf '%s\n' "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${_EXEC_CURRENT_SAFE:-}|${AGENT_DATA:-0}|${PPT:-0}|${QA_COLOR:-D}|${HIDE_AGENT_TMUX:-false}|${COLLAPSE_AGENT_TMUX:-false}|${PP_LABEL:-this phase}|${REM_ACTIVE:-false}" > "$FAST_CF" 2>/dev/null
 fi
 
 if [ -O "$FAST_CF" ]; then
   # shellcheck disable=SC2034
   IFS='|' read -r PH TT EF MP BR PD PT PPD QA GH_URL GIT_STAGED GIT_MODIFIED GIT_AHEAD \
                   EXEC_STATUS EXEC_WAVE EXEC_TWAVES EXEC_DONE EXEC_TOTAL EXEC_CURRENT \
-                  AGENT_N PPT QA_COLOR HIDE_AGENT_TMUX COLLAPSE_AGENT_TMUX < "$FAST_CF"
+                  AGENT_N PPT QA_COLOR HIDE_AGENT_TMUX COLLAPSE_AGENT_TMUX \
+                  PP_LABEL REM_ACTIVE < "$FAST_CF"
+  # Defaults for caches written by older statusline versions
+  PP_LABEL="${PP_LABEL:-this phase}"
+  REM_ACTIVE="${REM_ACTIVE:-false}"
 fi
 
 # Badge color: live check (not cached) so transitions are immediate.
@@ -545,7 +597,11 @@ elif [ "$EXEC_STATUS" = "complete" ]; then
   [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
   if [ "$PT" -gt 0 ] 2>/dev/null; then
     L1="$L1 ${D}│${X} Plans: ${PD}/${PT}"
-    [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null && [ "$PD" -lt "$PT" ] 2>/dev/null && L1="$L1 (${PPD}/${PPT} this phase)"
+    if [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null; then
+      if [ "$PD" -lt "$PT" ] 2>/dev/null || [ "$REM_ACTIVE" = "true" ]; then
+        L1="$L1 (${PPD}/${PPT} ${PP_LABEL})"
+      fi
+    fi
   fi
   L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
   _qc="$D"; case "${QA_COLOR:-D}" in G) _qc="$G";; Y) _qc="$Y";; R) _qc="$R";; esac
@@ -555,7 +611,11 @@ elif [ -d ".vbw-planning" ]; then
   [ "$TT" -gt 0 ] 2>/dev/null && L1="$L1 Phase ${PH}/${TT}" || L1="$L1 Phase ${PH:-?}"
   if [ "$PT" -gt 0 ] 2>/dev/null; then
     L1="$L1 ${D}│${X} Plans: ${PD}/${PT}"
-    [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null && [ "$PD" -lt "$PT" ] 2>/dev/null && L1="$L1 (${PPD}/${PPT} this phase)"
+    if [ "${TT:-0}" -gt 1 ] 2>/dev/null && [ "${PPT:-0}" -gt 0 ] 2>/dev/null; then
+      if [ "$PD" -lt "$PT" ] 2>/dev/null || [ "$REM_ACTIVE" = "true" ]; then
+        L1="$L1 (${PPD}/${PPT} ${PP_LABEL})"
+      fi
+    fi
   fi
   L1="$L1 ${D}│${X} Effort: $EF ${D}│${X} Model: $MP"
   _qc="$D"; case "${QA_COLOR:-D}" in G) _qc="$G";; Y) _qc="$Y";; R) _qc="$R";; esac

@@ -27,11 +27,37 @@ if [ ! -d "$PHASE_DIR" ]; then
   exit 0
 fi
 
-# Find the latest UAT file
-if type latest_non_source_uat &>/dev/null; then
-  UAT_FILE=$(latest_non_source_uat "$PHASE_DIR")
-else
-  UAT_FILE=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-UAT.md' ! -name '*SOURCE-UAT.md' 2>/dev/null | sort | tail -1)
+# Round-dir aware guard: when a remediation state file indicates round-dir
+# layout, check ONLY the current round's UAT file. Do NOT fall back to
+# previous rounds — stale resume data (e.g. all_done from round 01) would
+# cause the model to STOP instead of generating fresh tests for round 02.
+_state_file="${PHASE_DIR%/}/remediation/.uat-remediation-stage"
+if [ -f "$_state_file" ]; then
+  _layout=$(grep '^layout=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+  _round=$(grep '^round=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+  if [ "$_layout" = "round-dir" ] && [ -n "$_round" ]; then
+    _rr=$(printf '%02d' "$_round" 2>/dev/null) || _rr="$_round"
+    _round_uat="${PHASE_DIR%/}/remediation/round-${_rr}/R${_rr}-UAT.md"
+    if [ -f "$_round_uat" ]; then
+      UAT_FILE="$_round_uat"
+    else
+      # Current round has no UAT yet — new round, not stale data
+      echo "uat_resume=none"
+      exit 0
+    fi
+  fi
+fi
+
+# Find the active UAT file (round-dir first, then phase-root fallback)
+# Skipped when the round-dir guard above already resolved UAT_FILE.
+if [ -z "${UAT_FILE:-}" ]; then
+  if type current_uat &>/dev/null; then
+    UAT_FILE=$(current_uat "$PHASE_DIR")
+  elif type latest_non_source_uat &>/dev/null; then
+    UAT_FILE=$(latest_non_source_uat "$PHASE_DIR")
+  else
+    UAT_FILE=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-UAT.md' ! -name '*SOURCE-UAT.md' 2>/dev/null | sort | tail -1)
+  fi
 fi
 
 if [ -z "$UAT_FILE" ] || [ ! -f "$UAT_FILE" ]; then

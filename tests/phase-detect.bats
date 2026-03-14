@@ -939,3 +939,36 @@ EOF
   # No active UAT issues → round count stays 0 (no routing target)
   echo "$output" | grep -q "uat_round_count=0"
 }
+
+@test "auto-advance scoped to current round: previous-round summary does not trigger advance" {
+  # Round 02, stage=execute. Round 01 has plan+summary, round 02 has plan only.
+  # Auto-advance should NOT trigger because the current round (02) has no summary.
+  # Phase-root plan+summary required so the UAT scan picks up this phase.
+  mkdir -p .vbw-planning/phases/01-feature/remediation/round-01
+  mkdir -p .vbw-planning/phases/01-feature/remediation/round-02
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  printf 'stage=execute\nround=02\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/.uat-remediation-stage
+  touch .vbw-planning/phases/01-feature/remediation/round-01/R01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/remediation/round-01/R01-SUMMARY.md
+  touch .vbw-planning/phases/01-feature/remediation/round-02/R02-PLAN.md
+  # No R02-SUMMARY.md — execution not complete for round 02
+
+  # Round 01 UAT with issues (needed to route into UAT remediation path)
+  cat > .vbw-planning/phases/01-feature/remediation/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  create_test_config
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+
+  # Stage must NOT advance to done — should remain needs_uat_remediation (execute)
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  # Confirm the state file was NOT rewritten to done
+  grep -q "^stage=execute$" .vbw-planning/phases/01-feature/remediation/.uat-remediation-stage
+}

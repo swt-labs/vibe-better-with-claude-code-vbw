@@ -1,35 +1,104 @@
 #!/usr/bin/env bash
 # compile-verify-context.sh — Pre-compute PLAN/SUMMARY data for verify.md.
-# Usage: compile-verify-context.sh <phase-dir>
+# Usage: compile-verify-context.sh [--remediation-only] <phase-dir>
 #
 # Outputs compact structured blocks per plan so the LLM doesn't need to
 # read individual PLAN.md and SUMMARY.md files during verification.
 #
+# Options:
+#   --remediation-only  Only emit plans from the latest completed remediation
+#                       round (R*-PLAN.md with matching R*-SUMMARY.md).
+#                       Falls back to full scope if no completed round found.
+#
 # For each plan, emits:
+#   verify_scope=full|remediation [round=RR]
 #   === PLAN <plan-id>: <title> ===
 #   must_haves: <item1>; <item2>; ...
 #   what_was_built: <first 5 lines of "What Was Built" section>
 #   files_modified: <file1>, <file2>, ...
 #   status: <complete|partial|failed|no_summary>
 #
+# Remediation awareness: when .uat-remediation-stage indicates a round-dir
+# layout and stage=done/verify, scopes to the current round's R{RR}-PLAN.md
+# and R{RR}-SUMMARY.md instead of phase-root plans. Also emits prior UAT
+# issues so the verifier knows what was supposed to be fixed.
+#
 # If no PLAN files exist, outputs: verify_context=empty
 
 set -euo pipefail
 
-PHASE_DIR="${1:?Usage: compile-verify-context.sh <phase-dir>}"
+REMEDIATION_ONLY=false
+if [ "${1:-}" = "--remediation-only" ]; then
+  REMEDIATION_ONLY=true
+  shift
+fi
+
+PHASE_DIR="${1:?Usage: compile-verify-context.sh [--remediation-only] <phase-dir>}"
 
 if [ ! -d "$PHASE_DIR" ]; then
   echo "verify_context_error=no_phase_dir"
   exit 0
 fi
 
-# Find all PLAN files sorted by plan number
-PLAN_FILES=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | sort)
+# Find plan files based on scope mode
+if [ "$REMEDIATION_ONLY" = true ]; then
+  # Find the latest completed round (has both R{RR}-PLAN.md and R{RR}-SUMMARY.md)
+  LATEST_ROUND=""
+  REMED_DIR="$PHASE_DIR/remediation"
+  if [ -d "$REMED_DIR" ]; then
+    _best_round_num=0
+    for round_dir in "$REMED_DIR"/round-*/; do
+      [ -d "$round_dir" ] || continue
+      round_num=$(basename "$round_dir" | sed 's/^round-0*//')
+      round_num=${round_num:-0}
+      rr=$(printf '%02d' "$round_num")
+      if [ "$round_num" -gt "$_best_round_num" ] 2>/dev/null && \
+         ls "$round_dir"/R"${rr}"-PLAN.md >/dev/null 2>&1 && \
+         ls "$round_dir"/R"${rr}"-SUMMARY.md >/dev/null 2>&1; then
+        _best_round_num="$round_num"
+        LATEST_ROUND="$rr"
+      fi
+    done
+  fi
 
-if [ -z "$PLAN_FILES" ]; then
+  if [ -n "$LATEST_ROUND" ]; then
+    rr=$(printf '%02d' "$LATEST_ROUND")
+    ALL_PLAN_FILES=$(find "$REMED_DIR/round-$rr" -maxdepth 1 -name "R${rr}-PLAN.md" 2>/dev/null | sort)
+    SCOPE_HEADER="verify_scope=remediation round=$rr"
+    UAT_PATH="remediation/round-$rr/R${rr}-UAT.md"
+  else
+    # Fallback: no completed round found — use full scope
+    REMEDIATION_ONLY=false
+  fi
+fi
+
+if [ "$REMEDIATION_ONLY" = false ]; then
+  # Full scope: all phase-root plans + all round-dir plans
+  PLAN_FILES=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | sort)
+  ROUND_PLAN_FILES=$(find "$PHASE_DIR" -path '*/remediation/round-*/R*-PLAN.md' 2>/dev/null | sort)
+
+  ALL_PLAN_FILES="$PLAN_FILES"
+  if [ -n "$ROUND_PLAN_FILES" ]; then
+    if [ -n "$ALL_PLAN_FILES" ]; then
+      ALL_PLAN_FILES=$(printf '%s\n%s' "$ALL_PLAN_FILES" "$ROUND_PLAN_FILES")
+    else
+      ALL_PLAN_FILES="$ROUND_PLAN_FILES"
+    fi
+  fi
+  SCOPE_HEADER="verify_scope=full"
+  # Extract phase number from directory basename (e.g., "03" from "03-slug-name")
+  _phase_num=$(basename "$PHASE_DIR" | sed 's/^\([0-9]*\).*/\1/')
+  UAT_PATH="${_phase_num}-UAT.md"
+fi
+
+if [ -z "$ALL_PLAN_FILES" ]; then
   echo "verify_context=empty"
   exit 0
 fi
+
+# Emit scope header and UAT path after confirming plans exist
+echo "$SCOPE_HEADER"
+echo "uat_path=$UAT_PATH"
 
 PLAN_COUNT=0
 
@@ -72,8 +141,11 @@ while IFS= read -r plan_file; do
   ' "$plan_file" 2>/dev/null) || MUST_HAVES=""
 
   # Find corresponding SUMMARY file
+  # Phase-root plans: {NN}-{MM}-PLAN.md → {NN}-{MM}-SUMMARY.md (same dir)
+  # Round-dir plans: R{RR}-PLAN.md → R{RR}-SUMMARY.md (same dir)
   PLAN_BASE=$(basename "$plan_file" | sed 's/-PLAN\.md$//')
-  SUMMARY_FILE=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name "${PLAN_BASE}-SUMMARY.md" 2>/dev/null | head -1)
+  PLAN_DIR=$(dirname "$plan_file")
+  SUMMARY_FILE=$(find "$PLAN_DIR" -maxdepth 1 ! -name '.*' -name "${PLAN_BASE}-SUMMARY.md" 2>/dev/null | head -1)
 
   STATUS="no_summary"
   WHAT_BUILT=""
@@ -128,6 +200,6 @@ while IFS= read -r plan_file; do
   echo "files_modified: ${FILES_MODIFIED:-none}"
   echo "status: ${STATUS}"
   echo ""
-done <<< "$PLAN_FILES"
+done <<< "$ALL_PLAN_FILES"
 
 echo "verify_plan_count=${PLAN_COUNT}"

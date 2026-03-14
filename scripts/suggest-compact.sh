@@ -11,7 +11,7 @@ set -u
 #   mode: execute|plan|verify|qa|discuss
 #
 # Reads:
-#   .vbw-planning/.context-usage   — "used_pct|context_window_size" (cached by statusline)
+#   .vbw-planning/.context-usage   — "session_id|used_pct|context_window_size" (cached by statusline; legacy 2-field "used_pct|context_window_size" also accepted)
 #   .vbw-planning/config.json      — compaction_threshold, autonomy, effort
 #   Plugin root reference files     — measured per mode
 #   .vbw-planning/ project files    — measured per mode
@@ -258,10 +258,25 @@ if [ ! -f "$USAGE_FILE" ]; then
   exit 0
 fi
 
-IFS='|' read -r USED_PCT CTX_SIZE < "$USAGE_FILE" 2>/dev/null || exit 0
+IFS='|' read -r FIELD1 FIELD2 FIELD3 < "$USAGE_FILE" 2>/dev/null || exit 0
 
-# Validate
-if ! [[ "${USED_PCT:-}" =~ ^[0-9]+$ ]] || ! [[ "${CTX_SIZE:-}" =~ ^[0-9]+$ ]]; then
+# Parse format: new 3-field "SESSION_ID|PCT|CTX_SIZE" or legacy 2-field "PCT|CTX_SIZE"
+if [ -n "${FIELD3:-}" ] && [[ "${FIELD2:-}" =~ ^[0-9]+$ ]] && [[ "${FIELD3:-}" =~ ^[0-9]+$ ]]; then
+  # 3-field format: validate session freshness
+  FILE_SID="$FIELD1"
+  USED_PCT="$FIELD2"
+  CTX_SIZE="$FIELD3"
+  CURRENT_SID="${CLAUDE_SESSION_ID:-unknown}"
+  if [ "$FILE_SID" != "$CURRENT_SID" ]; then
+    # Stale data from a different session — skip guard (#238)
+    exit 0
+  fi
+elif [[ "${FIELD1:-}" =~ ^[0-9]+$ ]] && [[ "${FIELD2:-}" =~ ^[0-9]+$ ]] && [ -z "${FIELD3:-}" ]; then
+  # Legacy 2-field format: no session check (backward compat)
+  USED_PCT="$FIELD1"
+  CTX_SIZE="$FIELD2"
+else
+  # Unrecognized format
   exit 0
 fi
 

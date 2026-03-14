@@ -194,6 +194,10 @@ rm -f "$PLANNING_DIR/.compaction-count" 2>/dev/null || true
 # Only clear on genuine new session starts.
 rm -f "$PLANNING_DIR/.vbw-context" 2>/dev/null || true
 
+# Clear stale context-usage cache so suggest-compact.sh doesn't fire false
+# pre-flight warnings using data from a previous session (#238).
+rm -f "$PLANNING_DIR/.context-usage" 2>/dev/null || true
+
 # Auto-migrate config if .vbw-planning exists.
 # Version marker retained here for backwards test compatibility.
 EXPECTED_FLAG_COUNT=39
@@ -1005,6 +1009,39 @@ fi
 
 # Brownfield cleanup: remove stale .skill-names from older versions
 rm -f "$PLANNING_DIR/.skill-names" 2>/dev/null || true
+
+# Seed statusline caches so the first dsR() call (5s timeout) finds warm
+# data instead of cold-starting 20+ subprocess forks + 2 curl calls.
+# Compute the same cache key that vbw-statusline.sh uses:
+_SL_VER=$(cat "$SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
+_SL_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+if command -v md5sum &>/dev/null; then
+  _SL_HASH=$(echo "$_SL_ROOT" | md5sum | cut -c1-8)
+elif command -v md5 &>/dev/null; then
+  _SL_HASH=$(echo "$_SL_ROOT" | md5 -q | cut -c1-8)
+else
+  _SL_HASH=$(printf '%s' "$_SL_ROOT" | cksum | cut -d' ' -f1)
+fi
+_SL_CACHE="/tmp/vbw-${_SL_VER:-0}-$(id -u)-${_SL_HASH}"
+
+# Only seed if caches don't already exist (avoids overwriting real data mid-session).
+if [ ! -f "${_SL_CACHE}-fast" ]; then
+  # Map session-start.sh variables to fast cache fields.
+  _ph=0; _tt=0
+  [ "$phase_pos" != "unknown" ] && _ph="$phase_pos"
+  [ "$phase_total" != "unknown" ] && _tt="$phase_total"
+  _br=$(git branch --show-current 2>/dev/null || true)
+  # Fast cache: PH|TT|EF|MP|BR|PD|PT|PPD|QA|GH_URL|GIT_STAGED|GIT_MODIFIED|GIT_AHEAD|
+  #   EXEC_STATUS|EXEC_WAVE|EXEC_TWAVES|EXEC_DONE|EXEC_TOTAL|EXEC_CURRENT|
+  #   AGENT_DATA|PPT|QA_COLOR|HIDE_AGENT_TMUX|COLLAPSE_AGENT_TMUX|PP_LABEL|REM_ACTIVE
+  printf '%s\n' "${_ph}|${_tt}|${config_effort:-balanced}|quality|${_br:-}|0|0|0|--||0|0|0||||0|0||0|0|D|false|false|this phase|false" > "${_SL_CACHE}-fast" 2>/dev/null
+fi
+if [ ! -f "${_SL_CACHE}-slow" ]; then
+  # Slow cache: all-default noauth stub (usage/limits show "--" until 60s rebuild)
+  printf '%s\n' "0|0|0|0|-1|0|-1|0|0|noauth|||false|false" > "${_SL_CACHE}-slow" 2>/dev/null
+fi
+# Sentinel: prevent vbw-statusline.sh from nuking our seeded caches.
+[ ! -f "${_SL_CACHE}-ok" ] && touch "${_SL_CACHE}-ok" 2>/dev/null
 
 jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" --arg gsd "${GSD_WARNING:-}" '{
   "hookSpecificOutput": {

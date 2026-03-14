@@ -1,5 +1,5 @@
 ---
-phase: {phase-id}
+phase: {NN} # bare integer, no quotes
 plan_count: {N}
 status: {in_progress|complete|issues_found}
 started: {YYYY-MM-DD}

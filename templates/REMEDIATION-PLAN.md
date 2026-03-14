@@ -1,11 +1,8 @@
 ---
 phase: {NN} # bare integer, no quotes
-plan: {plan-number}
+round: {RR} # remediation round number, bare integer
 title: {plan-title}
-type: execute
-wave: {wave-number}
-depends_on: [{deps}]
-cross_phase_deps: [{phase: {NN}, plan: "{NN-MM}", artifact: "{path}", reason: "{why}"}]
+type: remediation
 autonomous: {true|false}
 effort_override: {thorough|balanced|fast|turbo}
 skills_used: [{skill}]
@@ -23,6 +20,8 @@ must_haves:
 @{context-file}
 </context>
 <tasks>
+<!-- Tasks are executed sequentially — task N+1 sees the results of task N.
+     Order matters: place foundational fixes before dependent ones. -->
 <task type="auto">
   <name>{task-name}</name>
   <files>
@@ -46,5 +45,5 @@ must_haves:
 - {criterion}
 </success_criteria>
 <output>
-{plan-number}-SUMMARY.md
+R{RR}-SUMMARY.md
 </output>

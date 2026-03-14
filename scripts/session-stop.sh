@@ -57,6 +57,7 @@ fi
 # by security-filter.sh after 24h).
 rmdir "$PLANNING_DIR/.active-agent-count.lock" 2>/dev/null || true
 rm -f "$PLANNING_DIR/.active-agent" "$PLANNING_DIR/.active-agent-count" "$PLANNING_DIR/.agent-panes" "$PLANNING_DIR/.task-verify-seen" "$PLANNING_DIR/.delegated-workflow.json" 2>/dev/null
+rm -f "$PLANNING_DIR/.context-usage" 2>/dev/null || true
 rm -rf "$PLANNING_DIR/.compacting" 2>/dev/null || true
 
 # Clean up stale worktrees (>2 hours) — fail-silent
