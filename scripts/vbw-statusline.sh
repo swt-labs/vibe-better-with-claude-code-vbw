@@ -201,9 +201,10 @@ _AC_WINDOW_CAP="${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-$_S_WINDOW}"
 _AC_MAX_OUTPUT="${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-$_S_OUTPUT}"
 
 # Match Claude Code's truthiness check: "1", "true", "yes", "on" all disable
+# Uses case-insensitive patterns for bash 3.2 compatibility (macOS default)
 _AC_SKIP=false
-case "${_AC_DISABLED,,}" in
-  1|true|yes|on) _AC_SKIP=true ;;
+case "$_AC_DISABLED" in
+  1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Oo][Nn]) _AC_SKIP=true ;;
 esac
 
 # Strip leading zeros to prevent bash octal interpretation (e.g., "08000" → "8000")
