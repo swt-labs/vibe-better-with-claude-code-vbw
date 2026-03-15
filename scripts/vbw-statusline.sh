@@ -146,6 +146,138 @@ CACHE_W=${CACHE_W:-0}; CACHE_R=${CACHE_R:-0}; COST=${COST:-0}
 DUR_MS=${DUR_MS:-0}; API_MS=${API_MS:-0}; ADDED=${ADDED:-0}; REMOVED=${REMOVED:-0}
 MODEL=${MODEL:-Claude}; VER=${VER:-?}
 
+# --- Autocompact buffer normalization (#237) ---
+# Claude Code reserves context for autocompact that's never usable. Raw percentages
+# make users think they have more headroom than they do. Normalize so 100% = trigger.
+#
+# Algorithm (reverse-engineered from cli.js v2.1.76):
+#   effective_window = context_window - min(max_output_tokens, 20000)
+#   default_trigger  = effective_window - 13000
+#   override_trigger = floor(effective_window * pct / 100)   [if override set]
+#   trigger          = min(override_trigger, default_trigger)
+#   buffer           = context_window - trigger
+#
+# Constants: OUTPUT_TOKEN_CAP=20000, HEADROOM=13000
+# Results:   200K → buffer=33K (16.5%), 1M → buffer=33K (3.3%)
+#            1M + override=95 → buffer=69K (6.9%)
+#
+# Also respects:
+#   CLAUDE_CODE_AUTO_COMPACT_WINDOW — caps context window for compact math
+#   CLAUDE_CODE_MAX_OUTPUT_TOKENS   — min(value, 20000) for output deduction
+# Notes:
+#   - Override decimals (e.g., 95.5) handled via fixed-point x10 math.
+#   - Output token deduction defaults to 20K (correct for Claude 4 family).
+#     Older models (3.5 Sonnet=8K, Claude 3=4K) use smaller deductions internally,
+#     making our buffer estimate ~12K too large (pessimistic/safe direction).
+#     Users on older models can set CLAUDE_CODE_MAX_OUTPUT_TOKENS for accuracy.
+
+_AC_DISABLED=""
+_AC_OVERRIDE=""
+_AC_WINDOW_CAP=""
+_AC_MAX_OUTPUT=""
+
+# Resolve env vars: real env > settings.json env block (single jq call for all 4)
+# Note: first settings.json with any env value wins — values are NOT merged across files.
+# This matches the credential lookup pattern elsewhere in this script.
+_AC_SETTINGS_ENV=""
+for _sdir in "${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude"; do
+  [ -z "$_sdir" ] && continue
+  [ -f "$_sdir/settings.json" ] || continue
+  _AC_SETTINGS_ENV=$(jq -r '[
+    .env.DISABLE_AUTO_COMPACT // "",
+    .env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE // "",
+    .env.CLAUDE_CODE_AUTO_COMPACT_WINDOW // "",
+    .env.CLAUDE_CODE_MAX_OUTPUT_TOKENS // ""
+  ] | join("|")' "$_sdir/settings.json" 2>/dev/null)
+  # Only break if at least one value was found (jq returns "|||" for empty .env)
+  [ -n "$_AC_SETTINGS_ENV" ] && [ "$_AC_SETTINGS_ENV" != "|||" ] && break
+done
+IFS='|' read -r _S_DISABLED _S_OVERRIDE _S_WINDOW _S_OUTPUT <<< "$_AC_SETTINGS_ENV"
+
+# Real env vars take priority over settings.json
+_AC_DISABLED="${DISABLE_AUTO_COMPACT:-$_S_DISABLED}"
+_AC_OVERRIDE="${CLAUDE_AUTOCOMPACT_PCT_OVERRIDE:-$_S_OVERRIDE}"
+_AC_WINDOW_CAP="${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-$_S_WINDOW}"
+_AC_MAX_OUTPUT="${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-$_S_OUTPUT}"
+
+# Match Claude Code's truthiness check: "1", "true", "yes", "on" all disable
+_AC_SKIP=false
+case "${_AC_DISABLED,,}" in
+  1|true|yes|on) _AC_SKIP=true ;;
+esac
+
+if [ "$_AC_SKIP" = "false" ] && [ "${CTX_SIZE:-0}" -gt 0 ] 2>/dev/null; then
+  # Apply AUTO_COMPACT_WINDOW cap (if set, use the smaller of window and cap)
+  _AC_CTX="$CTX_SIZE"
+  if [ -n "$_AC_WINDOW_CAP" ] 2>/dev/null; then
+    _WC="${_AC_WINDOW_CAP%%.*}"
+    if [ "$_WC" -gt 0 ] 2>/dev/null && [ "$_WC" -lt "$_AC_CTX" ] 2>/dev/null; then
+      _AC_CTX="$_WC"
+    fi
+  fi
+
+  # Output token deduction: min(max_output_tokens, 20000), default 20000
+  _OUT_CAP=20000
+  if [ -n "$_AC_MAX_OUTPUT" ] 2>/dev/null; then
+    _MO="${_AC_MAX_OUTPUT%%.*}"
+    if [ "$_MO" -gt 0 ] 2>/dev/null && [ "$_MO" -lt 20000 ] 2>/dev/null; then
+      _OUT_CAP="$_MO"
+    fi
+  fi
+
+  # Effective window after output token reservation
+  _EFF=$((_AC_CTX - _OUT_CAP))
+  [ "$_EFF" -lt 0 ] && _EFF=0
+
+  # Default trigger: effective - 13K headroom
+  _DEF_TRIGGER=$((_EFF - 13000))
+  [ "$_DEF_TRIGGER" -lt 0 ] && _DEF_TRIGGER=0
+
+  _TRIGGER="$_DEF_TRIGGER"
+
+  # Override: floor(effective * pct / 100), then min with default
+  # Fixed-point x10 to handle decimals like "95.5" without floating point.
+  # "95.5" → whole=95 frac=5 → pct_x10=955 → effective * 955 / 1000
+  if [ -n "$_AC_OVERRIDE" ] 2>/dev/null; then
+    _OV_WHOLE="${_AC_OVERRIDE%%.*}"
+    _OV_FRAC="0"
+    case "$_AC_OVERRIDE" in
+      *.*) _OV_FRAC="${_AC_OVERRIDE#*.}"; _OV_FRAC="${_OV_FRAC:0:1}"; _OV_FRAC="${_OV_FRAC:-0}" ;;
+    esac
+    # Guard: ensure both parts are numeric
+    if [ "$_OV_WHOLE" -ge 0 ] 2>/dev/null && [ "$_OV_FRAC" -ge 0 ] 2>/dev/null; then
+      _OV_PCT_X10=$((_OV_WHOLE * 10 + _OV_FRAC))
+      if [ "$_OV_PCT_X10" -gt 0 ] && [ "$_OV_PCT_X10" -le 1000 ]; then
+        _OV_TRIGGER=$((_EFF * _OV_PCT_X10 / 1000))
+        [ "$_OV_TRIGGER" -lt "$_DEF_TRIGGER" ] && _TRIGGER="$_OV_TRIGGER"
+      fi
+    fi
+  fi
+
+  if [ "$_TRIGGER" -gt 0 ]; then
+    # Buffer as percentage of RAW window (CTX_SIZE) because REM from Claude Code
+    # is also a percentage of the raw window. Both must use the same reference frame.
+    # Use CTX_SIZE - _TRIGGER (not _AC_CTX - _TRIGGER) so the buffer spans from
+    # the raw window down to the trigger point, regardless of any window cap.
+    _BUFFER=$((CTX_SIZE - _TRIGGER))
+    _BUF_PCT_X10=$((_BUFFER * 1000 / CTX_SIZE))
+
+    # Normalize remaining: strip buffer zone, rescale to usable range
+    # REM is 0-100 integer from Claude Code. Convert to x10 for precision.
+    _REM_X10=$((REM * 10))
+    [ "$_BUF_PCT_X10" -ge 1000 ] && _BUF_PCT_X10=999  # defensive: prevent division by zero
+    _USABLE_REM=$(( (_REM_X10 - _BUF_PCT_X10) * 1000 / (1000 - _BUF_PCT_X10) ))
+    [ "$_USABLE_REM" -lt 0 ] && _USABLE_REM=0
+    [ "$_USABLE_REM" -gt 1000 ] && _USABLE_REM=1000
+
+    PCT=$(( 100 - (_USABLE_REM + 5) / 10 ))
+    [ "$PCT" -lt 0 ] && PCT=0
+    [ "$PCT" -gt 100 ] && PCT=100
+    REM=$((100 - PCT))
+    CTX_SIZE="$_TRIGGER"
+  fi
+fi
+
 NOW=$(date +%s)
 
 CTX_USED=$((IN_TOK + CACHE_W + CACHE_R))
