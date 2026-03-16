@@ -34,11 +34,13 @@ else
   fail "backoff reads previous status from slow cache"
 fi
 
-# --- Test 4: backoff escalates TTL on fail or stale ---
-if grep -q '_PREV_STATUS.*=.*"fail"\|_PREV_STATUS.*=.*"stale"' "$SL" && grep -q '_SLOW_TTL=300' "$SL"; then
-  pass "backoff escalates TTL to 300s on persistent failure/stale"
+# --- Test 4: backoff escalates TTL on fail, stale, or notraffic ---
+if grep -q '_PREV_STATUS.*=.*"fail"\|_PREV_STATUS.*=.*"stale"' "$SL" \
+   && grep -q '_PREV_STATUS.*=.*"notraffic"' "$SL" \
+   && grep -q '_SLOW_TTL=300' "$SL"; then
+  pass "backoff escalates TTL to 300s on persistent failure/stale/notraffic"
 else
-  fail "backoff escalates TTL to 300s on persistent failure/stale"
+  fail "backoff escalates TTL to 300s on persistent failure/stale/notraffic"
 fi
 
 # --- Test 5: default slow TTL is 60s ---
@@ -74,6 +76,30 @@ if grep -q 'retry in 5m' "$SL" && ! grep -q 'retry in 60s' "$SL"; then
   pass "retry message says 5m (not 60s) for both fail and stale"
 else
   fail "retry message says 5m (not 60s) for both fail and stale"
+fi
+
+# --- Test 10: notraffic guard covers version check curl (QA round 1 F1) ---
+# The version check curl must be inside the else branch of the notraffic guard,
+# so it's skipped when nonessential traffic is disabled.
+# Verify: "notraffic guard" comment closing comes AFTER the REMOTE_VER curl line.
+_NOTRAFFIC_LINE=$(grep -n 'end: notraffic guard' "$SL" | head -1 | cut -d: -f1)
+_VERSION_CURL_LINE=$(grep -n 'raw.githubusercontent.com.*VERSION' "$SL" | head -1 | cut -d: -f1)
+if [ -n "$_NOTRAFFIC_LINE" ] && [ -n "$_VERSION_CURL_LINE" ] \
+   && [ "$_VERSION_CURL_LINE" -lt "$_NOTRAFFIC_LINE" ] 2>/dev/null; then
+  pass "notraffic guard covers version check curl"
+else
+  fail "notraffic guard covers version check curl"
+fi
+
+# --- Test 11: notraffic guard covers token lookups (QA round 1 F3) ---
+# Token Priority 1 (VBW_OAUTH_TOKEN) must be inside the else branch of notraffic guard.
+_TOKEN_P1_LINE=$(grep -n 'VBW_OAUTH_TOKEN' "$SL" | head -1 | cut -d: -f1)
+_NOTRAFFIC_ELSE_LINE=$(grep -n 'skip token lookup.*version check' "$SL" | head -1 | cut -d: -f1)
+if [ -n "$_TOKEN_P1_LINE" ] && [ -n "$_NOTRAFFIC_ELSE_LINE" ] \
+   && [ "$_TOKEN_P1_LINE" -gt "$_NOTRAFFIC_ELSE_LINE" ] 2>/dev/null; then
+  pass "notraffic guard covers token lookups"
+else
+  fail "notraffic guard covers token lookups"
 fi
 
 echo ""

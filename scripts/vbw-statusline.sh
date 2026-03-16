@@ -492,12 +492,35 @@ SLOW_CF="${_CACHE}-slow"
 _SLOW_TTL=60
 if [ -O "$SLOW_CF" ]; then
   _PREV_STATUS=$(awk -F'|' '{print $10}' "$SLOW_CF" 2>/dev/null)
-  [ "$_PREV_STATUS" = "fail" ] || [ "$_PREV_STATUS" = "stale" ] && _SLOW_TTL=300
+  [ "$_PREV_STATUS" = "fail" ] || [ "$_PREV_STATUS" = "stale" ] || [ "$_PREV_STATUS" = "notraffic" ] && _SLOW_TTL=300
 fi
 
 if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
+  FIVE_PCT=0; FIVE_EPOCH=0; WEEK_PCT=0; WEEK_EPOCH=0; SONNET_PCT=-1
+  EXTRA_ENABLED=0; EXTRA_PCT=-1; EXTRA_USED_C=0; EXTRA_LIMIT_C=0; FETCH_OK="noauth"
   OAUTH_TOKEN=""
   AUTH_METHOD=""
+  HIDE_LIMITS=$(jq -r '.statusline_hide_limits // false' .vbw-planning/config.json 2>/dev/null)
+  HIDE_LIMITS_API=$(jq -r '.statusline_hide_limits_for_api_key // false' .vbw-planning/config.json 2>/dev/null)
+
+  # Respect CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC — skip ALL outbound requests (#249)
+  # Check real env var first, then settings.json env block.
+  _SKIP_TRAFFIC="${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-}"
+  if [ -z "$_SKIP_TRAFFIC" ]; then
+    for _sdir in "${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude"; do
+      [ -z "$_sdir" ] && continue
+      [ -f "$_sdir/settings.json" ] || continue
+      _SKIP_TRAFFIC=$(jq -r '.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC // ""' "$_sdir/settings.json" 2>/dev/null)
+      [ -n "$_SKIP_TRAFFIC" ] && break
+    done
+  fi
+  case "$_SKIP_TRAFFIC" in
+    1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Oo][Nn]) FETCH_OK="notraffic" ;;
+  esac
+
+  if [ "$FETCH_OK" = "notraffic" ]; then
+    : # skip token lookup, usage fetch, and version check entirely
+  else
 
   # Priority 1: env var override (escape hatch for keychain issues)
   if [ -n "${VBW_OAUTH_TOKEN:-}" ]; then
@@ -557,30 +580,7 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
     fi
   fi
 
-  HIDE_LIMITS=$(jq -r '.statusline_hide_limits // false' .vbw-planning/config.json 2>/dev/null)
-  HIDE_LIMITS_API=$(jq -r '.statusline_hide_limits_for_api_key // false' .vbw-planning/config.json 2>/dev/null)
-
-  FIVE_PCT=0; FIVE_EPOCH=0; WEEK_PCT=0; WEEK_EPOCH=0; SONNET_PCT=-1
-  EXTRA_ENABLED=0; EXTRA_PCT=-1; EXTRA_USED_C=0; EXTRA_LIMIT_C=0; FETCH_OK="noauth"
-
-  # Respect CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC — skip usage fetch (#249)
-  # Check real env var first, then settings.json env block.
-  _SKIP_TRAFFIC="${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-}"
-  if [ -z "$_SKIP_TRAFFIC" ]; then
-    for _sdir in "${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude"; do
-      [ -z "$_sdir" ] && continue
-      [ -f "$_sdir/settings.json" ] || continue
-      _SKIP_TRAFFIC=$(jq -r '.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC // ""' "$_sdir/settings.json" 2>/dev/null)
-      [ -n "$_SKIP_TRAFFIC" ] && break
-    done
-  fi
-  case "$_SKIP_TRAFFIC" in
-    1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Oo][Nn]) FETCH_OK="notraffic" ;;
-  esac
-
-  if [ "$FETCH_OK" = "notraffic" ]; then
-    : # skip usage fetch entirely
-  elif [ -n "$OAUTH_TOKEN" ]; then
+  if [ -n "$OAUTH_TOKEN" ]; then
     HTTP_CODE=$(curl -s -o /tmp/vbw-usage-body-"${_UID}" -w '%{http_code}' --max-time 3 \
       -H "Authorization: Bearer ${OAUTH_TOKEN}" \
       -H "anthropic-beta: oauth-2025-04-20" \
@@ -624,6 +624,8 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
     NEWEST=$(printf '%s\n%s\n' "$_VER" "$REMOTE_VER" | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)
     [ "$NEWEST" = "$REMOTE_VER" ] && UPDATE_AVAIL="$REMOTE_VER"
   fi
+
+  fi # end: notraffic guard
 
   printf '%s\n' "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}|${HIDE_LIMITS:-false}|${HIDE_LIMITS_API:-false}" > "$SLOW_CF" 2>/dev/null
 fi
