@@ -21,7 +21,7 @@ else
 fi
 
 # --- Test 2: stale state renders actionable message ---
-if grep -q 'FETCH_OK.*=.*"stale"' "$SL" && grep -q 'token stale.*re-login' "$SL"; then
+if grep -q 'FETCH_OK.*=.*"stale"' "$SL" && grep -q 'rate limited.*re-login' "$SL"; then
   pass "stale state renders actionable re-login message"
 else
   fail "stale state renders actionable re-login message"
@@ -34,13 +34,13 @@ else
   fail "backoff reads previous status from slow cache"
 fi
 
-# --- Test 4: backoff escalates TTL on fail, stale, or notraffic ---
+# --- Test 4: backoff escalates TTL on fail or stale (not notraffic — user-intentional) ---
 if grep -q '_PREV_STATUS.*=.*"fail"\|_PREV_STATUS.*=.*"stale"' "$SL" \
-   && grep -q '_PREV_STATUS.*=.*"notraffic"' "$SL" \
+   && ! grep -q '_PREV_STATUS.*=.*"notraffic".*_SLOW_TTL' "$SL" \
    && grep -q '_SLOW_TTL=300' "$SL"; then
-  pass "backoff escalates TTL to 300s on persistent failure/stale/notraffic"
+  pass "backoff escalates TTL to 300s on persistent failure/stale only"
 else
-  fail "backoff escalates TTL to 300s on persistent failure/stale/notraffic"
+  fail "backoff escalates TTL to 300s on persistent failure/stale only"
 fi
 
 # --- Test 5: default slow TTL is 60s ---

@@ -488,11 +488,11 @@ fi
 # --- Slow cache (60s TTL, 300s on persistent failure): usage limits + update check ---
 SLOW_CF="${_CACHE}-slow"
 
-# Backoff: use 300s TTL when previous fetch failed or token was stale (#249)
+# Backoff: use 300s TTL when previous fetch failed or was rate-limited (#249)
 _SLOW_TTL=60
 if [ -O "$SLOW_CF" ]; then
   _PREV_STATUS=$(awk -F'|' '{print $10}' "$SLOW_CF" 2>/dev/null)
-  [ "$_PREV_STATUS" = "fail" ] || [ "$_PREV_STATUS" = "stale" ] || [ "$_PREV_STATUS" = "notraffic" ] && _SLOW_TTL=300
+  [ "$_PREV_STATUS" = "fail" ] || [ "$_PREV_STATUS" = "stale" ] && _SLOW_TTL=300
 fi
 
 if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
@@ -708,7 +708,7 @@ if [ "$FETCH_OK" = "ok" ]; then
 elif [ "$FETCH_OK" = "auth" ]; then
   USAGE_LINE="${D}Limits: auth expired (run /login)${X}"
 elif [ "$FETCH_OK" = "stale" ]; then
-  USAGE_LINE="${D}Limits: token stale (retry in 5m — re-login to fix)${X}"
+  USAGE_LINE="${D}Limits: rate limited (retry in 5m — re-login if persistent)${X}"
 elif [ "$FETCH_OK" = "fail" ]; then
   USAGE_LINE="${D}Limits: fetch failed (retry in 5m)${X}"
 elif [ "$FETCH_OK" = "notraffic" ]; then
