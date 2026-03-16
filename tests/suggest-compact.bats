@@ -37,10 +37,15 @@ setup() {
   setup_temp_dir
   create_test_config
   create_mock_plugin
+  # Isolate from user's ~/.claude/settings.json (may have CLAUDE_AUTOCOMPACT_PCT_OVERRIDE)
+  mkdir -p "$TEST_TEMP_DIR/claude-config"
+  echo '{"env":{"DISABLE_AUTO_COMPACT":"false"}}' > "$TEST_TEMP_DIR/claude-config/settings.json"
+  export CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/claude-config"
   cd "$TEST_TEMP_DIR"
 }
 
 teardown() {
+  unset CLAUDE_CONFIG_DIR
   teardown_temp_dir
 }
 
@@ -316,8 +321,11 @@ teardown() {
   [ -f ".vbw-planning/.context-usage" ]
   IFS='|' read -r sid pct size < .vbw-planning/.context-usage
   [ "$sid" = "test-session-abc" ]
-  [ "$pct" = "42" ]
-  [ "$size" = "200000" ]
+  # Autocompact normalization (#237): raw 42% on 200K → normalized to ~50%
+  # trigger=167K, buffer=33K, BUF_PCT_X10=165, usable=(580-165)*1000/835=497
+  # PCT = 100 - (497+5)/10 = 50, CTX_SIZE = trigger = 167000
+  [ "$pct" = "50" ]
+  [ "$size" = "167000" ]
 }
 
 @test "statusline: .context-usage defaults session ID to unknown" {
@@ -328,8 +336,11 @@ teardown() {
   [ -f ".vbw-planning/.context-usage" ]
   IFS='|' read -r sid pct size < .vbw-planning/.context-usage
   [ "$sid" = "unknown" ]
-  [ "$pct" = "50" ]
-  [ "$size" = "100000" ]
+  # Autocompact normalization (#237): raw 50% on 100K → normalized to ~75%
+  # effective=80K, trigger=67K, buffer=33K, BUF_PCT_X10=330
+  # usable=(500-330)*1000/670=253, PCT=100-(253+5)/10=75, CTX_SIZE=67000
+  [ "$pct" = "75" ]
+  [ "$size" = "67000" ]
 }
 
 # =============================================================================
