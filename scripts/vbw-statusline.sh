@@ -485,10 +485,17 @@ if [ -n "${TMUX:-}" ]; then
   fi
 fi
 
-# --- Slow cache (60s TTL): usage limits + update check ---
+# --- Slow cache (60s TTL, 300s on persistent failure): usage limits + update check ---
 SLOW_CF="${_CACHE}-slow"
 
-if ! cache_fresh "$SLOW_CF" 60; then
+# Backoff: use 300s TTL when previous fetch failed or token was stale (#249)
+_SLOW_TTL=60
+if [ -O "$SLOW_CF" ]; then
+  _PREV_STATUS=$(awk -F'|' '{print $10}' "$SLOW_CF" 2>/dev/null)
+  [ "$_PREV_STATUS" = "fail" ] || [ "$_PREV_STATUS" = "stale" ] && _SLOW_TTL=300
+fi
+
+if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
   OAUTH_TOKEN=""
   AUTH_METHOD=""
 
@@ -556,7 +563,24 @@ if ! cache_fresh "$SLOW_CF" 60; then
   FIVE_PCT=0; FIVE_EPOCH=0; WEEK_PCT=0; WEEK_EPOCH=0; SONNET_PCT=-1
   EXTRA_ENABLED=0; EXTRA_PCT=-1; EXTRA_USED_C=0; EXTRA_LIMIT_C=0; FETCH_OK="noauth"
 
-  if [ -n "$OAUTH_TOKEN" ]; then
+  # Respect CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC — skip usage fetch (#249)
+  # Check real env var first, then settings.json env block.
+  _SKIP_TRAFFIC="${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-}"
+  if [ -z "$_SKIP_TRAFFIC" ]; then
+    for _sdir in "${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude"; do
+      [ -z "$_sdir" ] && continue
+      [ -f "$_sdir/settings.json" ] || continue
+      _SKIP_TRAFFIC=$(jq -r '.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC // ""' "$_sdir/settings.json" 2>/dev/null)
+      [ -n "$_SKIP_TRAFFIC" ] && break
+    done
+  fi
+  case "$_SKIP_TRAFFIC" in
+    1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Oo][Nn]) FETCH_OK="notraffic" ;;
+  esac
+
+  if [ "$FETCH_OK" = "notraffic" ]; then
+    : # skip usage fetch entirely
+  elif [ -n "$OAUTH_TOKEN" ]; then
     HTTP_CODE=$(curl -s -o /tmp/vbw-usage-body-"${_UID}" -w '%{http_code}' --max-time 3 \
       -H "Authorization: Bearer ${OAUTH_TOKEN}" \
       -H "anthropic-beta: oauth-2025-04-20" \
@@ -586,6 +610,8 @@ if ! cache_fresh "$SLOW_CF" 60; then
     else
       if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
         FETCH_OK="auth"
+      elif [ "$HTTP_CODE" = "429" ]; then
+        FETCH_OK="stale"
       else
         FETCH_OK="fail"
       fi
@@ -679,8 +705,12 @@ if [ "$FETCH_OK" = "ok" ]; then
   fi
 elif [ "$FETCH_OK" = "auth" ]; then
   USAGE_LINE="${D}Limits: auth expired (run /login)${X}"
+elif [ "$FETCH_OK" = "stale" ]; then
+  USAGE_LINE="${D}Limits: token stale (retry in 5m — re-login to fix)${X}"
 elif [ "$FETCH_OK" = "fail" ]; then
-  USAGE_LINE="${D}Limits: fetch failed (retry in 60s)${X}"
+  USAGE_LINE="${D}Limits: fetch failed (retry in 5m)${X}"
+elif [ "$FETCH_OK" = "notraffic" ]; then
+  USAGE_LINE="${D}Limits: skipped (nonessential traffic disabled)${X}"
 elif [ "$AUTH_METHOD" = "claude.ai" ]; then
   USAGE_LINE="${D}Limits: keychain access denied (allow Terminal in Keychain Access.app or set VBW_OAUTH_TOKEN)${X}"
 else
