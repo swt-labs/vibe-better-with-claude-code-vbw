@@ -31,8 +31,16 @@ teardown() {
 
 @test "cache key includes repo-specific hash" {
   local uid=$(id -u)
-  # Run statusline in the project repo
+  # Run statusline in an isolated repo (not the real project root) to avoid
+  # race conditions with concurrent dsR invocations from active Claude Code
+  # sessions that also run vbw-statusline.sh in the same repo.
+  local repo="$TEST_TEMP_DIR/repo-hash"
+  mkdir -p "$repo"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cd "$repo"
   echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
+  cd "$PROJECT_ROOT"
   # Cache files should contain an 8-char hash segment after the UID
   local cache_files
   cache_files=$(ls /tmp/vbw-*-"${uid}"-*-fast 2>/dev/null || true)
@@ -44,8 +52,14 @@ teardown() {
 @test "different repos produce different cache keys" {
   local uid=$(id -u)
 
-  # Run in project repo
+  # Run in an isolated repo (not the real project root)
+  local repo1="$TEST_TEMP_DIR/repo1"
+  mkdir -p "$repo1"
+  git -C "$repo1" init -q
+  git -C "$repo1" commit --allow-empty -m "test(init): seed" -q
+  cd "$repo1"
   echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
+  cd "$PROJECT_ROOT"
   local cache1
   cache1=$(ls /tmp/vbw-*-"${uid}"-*-fast 2>/dev/null | head -1)
 

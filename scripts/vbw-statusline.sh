@@ -67,6 +67,25 @@ cache_fresh() {
   [ $((NOW - mt)) -le "$ttl" ]
 }
 
+# Resolve CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC from env var or settings.json.
+# Sets _NOTRAFFIC_ACTIVE=1 if the flag is truthy, empty otherwise.
+_resolve_notraffic() {
+  _NOTRAFFIC_ACTIVE=""
+  local _val="${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-}"
+  if [ -z "$_val" ]; then
+    local _sdir
+    for _sdir in "${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude"; do
+      [ -z "$_sdir" ] && continue
+      [ -f "$_sdir/settings.json" ] || continue
+      _val=$(jq -r '.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC // ""' "$_sdir/settings.json" 2>/dev/null)
+      [ -n "$_val" ] && break
+    done
+  fi
+  case "$_val" in
+    1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Oo][Nn]) _NOTRAFFIC_ACTIVE=1 ;;
+  esac
+}
+
 progress_bar() {
   local pct="$1" width="$2"
   local filled=$((pct * width / 100))
@@ -485,12 +504,36 @@ if [ -n "${TMUX:-}" ]; then
   fi
 fi
 
-# --- Slow cache (60s TTL): usage limits + update check ---
+# --- Slow cache (60s TTL, 300s on persistent failure): usage limits + update check ---
 SLOW_CF="${_CACHE}-slow"
 
-if ! cache_fresh "$SLOW_CF" 60; then
+# Backoff: use 300s TTL when previous fetch failed or was rate-limited (#249)
+_SLOW_TTL=60
+if [ -O "$SLOW_CF" ]; then
+  _PREV_STATUS=$(awk -F'|' '{print $10}' "$SLOW_CF" 2>/dev/null)
+  [ "$_PREV_STATUS" = "fail" ] || [ "$_PREV_STATUS" = "ratelimited" ] && _SLOW_TTL=300
+fi
+# If notraffic flag just became active, skip backoff so it takes effect promptly (#249 QA R3/R4)
+if [ "$_SLOW_TTL" -gt 60 ] 2>/dev/null; then
+  _resolve_notraffic
+  [ -n "$_NOTRAFFIC_ACTIVE" ] && _SLOW_TTL=60
+fi
+
+if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
+  FIVE_PCT=0; FIVE_EPOCH=0; WEEK_PCT=0; WEEK_EPOCH=0; SONNET_PCT=-1
+  EXTRA_ENABLED=0; EXTRA_PCT=-1; EXTRA_USED_C=0; EXTRA_LIMIT_C=0; FETCH_OK="noauth"
   OAUTH_TOKEN=""
   AUTH_METHOD=""
+  HIDE_LIMITS=$(jq -r '.statusline_hide_limits // false' .vbw-planning/config.json 2>/dev/null)
+  HIDE_LIMITS_API=$(jq -r '.statusline_hide_limits_for_api_key // false' .vbw-planning/config.json 2>/dev/null)
+
+  # Respect CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC — skip ALL outbound requests (#249)
+  _resolve_notraffic
+  [ -n "$_NOTRAFFIC_ACTIVE" ] && FETCH_OK="notraffic"
+
+  if [ "$FETCH_OK" = "notraffic" ]; then
+    : # skip token lookup, usage fetch, and version check entirely
+  else
 
   # Priority 1: env var override (escape hatch for keychain issues)
   if [ -n "${VBW_OAUTH_TOKEN:-}" ]; then
@@ -550,12 +593,6 @@ if ! cache_fresh "$SLOW_CF" 60; then
     fi
   fi
 
-  HIDE_LIMITS=$(jq -r '.statusline_hide_limits // false' .vbw-planning/config.json 2>/dev/null)
-  HIDE_LIMITS_API=$(jq -r '.statusline_hide_limits_for_api_key // false' .vbw-planning/config.json 2>/dev/null)
-
-  FIVE_PCT=0; FIVE_EPOCH=0; WEEK_PCT=0; WEEK_EPOCH=0; SONNET_PCT=-1
-  EXTRA_ENABLED=0; EXTRA_PCT=-1; EXTRA_USED_C=0; EXTRA_LIMIT_C=0; FETCH_OK="noauth"
-
   if [ -n "$OAUTH_TOKEN" ]; then
     HTTP_CODE=$(curl -s -o /tmp/vbw-usage-body-"${_UID}" -w '%{http_code}' --max-time 3 \
       -H "Authorization: Bearer ${OAUTH_TOKEN}" \
@@ -586,6 +623,8 @@ if ! cache_fresh "$SLOW_CF" 60; then
     else
       if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
         FETCH_OK="auth"
+      elif [ "$HTTP_CODE" = "429" ]; then
+        FETCH_OK="ratelimited"
       else
         FETCH_OK="fail"
       fi
@@ -598,6 +637,8 @@ if ! cache_fresh "$SLOW_CF" 60; then
     NEWEST=$(printf '%s\n%s\n' "$_VER" "$REMOTE_VER" | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)
     [ "$NEWEST" = "$REMOTE_VER" ] && UPDATE_AVAIL="$REMOTE_VER"
   fi
+
+  fi # end: notraffic guard
 
   printf '%s\n' "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}|${HIDE_LIMITS:-false}|${HIDE_LIMITS_API:-false}" > "$SLOW_CF" 2>/dev/null
 fi
@@ -679,12 +720,18 @@ if [ "$FETCH_OK" = "ok" ]; then
   fi
 elif [ "$FETCH_OK" = "auth" ]; then
   USAGE_LINE="${D}Limits: auth expired (run /login)${X}"
+elif [ "$FETCH_OK" = "ratelimited" ]; then
+  USAGE_LINE="${D}Limits: rate limited (retry in 5m — re-login if persistent)${X}"
 elif [ "$FETCH_OK" = "fail" ]; then
-  USAGE_LINE="${D}Limits: fetch failed (retry in 60s)${X}"
+  USAGE_LINE="${D}Limits: fetch failed (retry in 5m)${X}"
+elif [ "$FETCH_OK" = "notraffic" ]; then
+  USAGE_LINE="${D}Limits: skipped (nonessential traffic disabled)${X}"
 elif [ "$AUTH_METHOD" = "claude.ai" ]; then
   USAGE_LINE="${D}Limits: keychain access denied (allow Terminal in Keychain Access.app or set VBW_OAUTH_TOKEN)${X}"
-else
+elif [ "$FETCH_OK" = "noauth" ]; then
   USAGE_LINE="${D}Limits: N/A (using API key)${X}"
+else
+  USAGE_LINE="${D}Limits: unavailable${X}"
 fi
 
 # --- Hide-limits suppression ---
