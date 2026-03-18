@@ -498,7 +498,7 @@ if [ -d "$PHASES_DIR" ] && [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     _rx_src_ph=$(awk '/^source_phase:/{gsub(/^source_phase:[[:space:]]*/,""); gsub(/[[:space:]]*$/,""); print; exit}' "$_rx_ctx" 2>/dev/null || true)
     if [ -n "$_rx_src_ms" ] && [ -n "$_rx_src_ph" ]; then
       _rx_resolved="$PLANNING_DIR/milestones/$_rx_src_ms/phases/$_rx_src_ph"
-      REMEDIATED_MS_PATHS="${REMEDIATED_MS_PATHS:+${REMEDIATED_MS_PATHS}|}$_rx_resolved"
+      REMEDIATED_MS_PATHS="${REMEDIATED_MS_PATHS:+${REMEDIATED_MS_PATHS}$'\n'}$_rx_resolved"
     fi
   done
 fi
@@ -552,7 +552,7 @@ if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] ||
 
       # Skip phases covered by active remediation (brownfield: no .remediated marker)
       _ms_phase_canonical="${_ms_phase_dir%/}"
-      if [ -n "$REMEDIATED_MS_PATHS" ] && echo "$REMEDIATED_MS_PATHS" | grep -qF "$_ms_phase_canonical"; then
+      if [ -n "$REMEDIATED_MS_PATHS" ] && printf '%s\n' "$REMEDIATED_MS_PATHS" | grep -Fqx -- "$_ms_phase_canonical"; then
         continue
       fi
 

@@ -293,6 +293,51 @@ EOF
   echo "$output" | grep -q "milestone_uat_slug=legacy-archive"
 }
 
+@test "milestone UAT cross-reference matches exact source phase path, not prefixes" {
+  mkdir -p .vbw-planning/phases/01-remediate-v1-core-old/
+  touch .vbw-planning/phases/01-remediate-v1-core-old/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-remediate-v1-core-old/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-remediate-v1-core-old/01-CONTEXT.md <<'EOF'
+---
+phase: 01
+source_milestone: v1
+source_phase: 01-core-old
+pre_seeded: true
+---
+EOF
+
+  mkdir -p .vbw-planning/milestones/v1/phases/01-core/
+  mkdir -p .vbw-planning/milestones/v1/phases/01-core-old/
+  echo "# Shipped" > .vbw-planning/milestones/v1/SHIPPED.md
+
+  touch .vbw-planning/milestones/v1/phases/01-core/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/v1/phases/01-core/01-01-SUMMARY.md
+  cat > .vbw-planning/milestones/v1/phases/01-core/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  touch .vbw-planning/milestones/v1/phases/01-core-old/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/v1/phases/01-core-old/01-01-SUMMARY.md
+  cat > .vbw-planning/milestones/v1/phases/01-core-old/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=true"
+  echo "$output" | grep -q "milestone_uat_phase_dirs=.*phases/01-core$"
+  phase_dirs=$(echo "$output" | grep '^milestone_uat_phase_dirs=' | sed 's/^[^=]*=//')
+  [[ "$phase_dirs" != *"01-core-old"* ]]
+}
+
 @test "phase-detect milestone recovery derives phase number from archived artifacts when dir is non-canonical" {
   mkdir -p .vbw-planning/phases
   mkdir -p .vbw-planning/milestones/legacy-archive/phases/payments/

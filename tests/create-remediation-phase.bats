@@ -483,6 +483,35 @@ EOF
   [ "$dir_count" -eq 1 ]
 }
 
+@test "create-remediation-phase waits for allocation lock before creating a new phase" {
+  mkdir -p .vbw-planning/milestones/01-arch/phases/03-api
+
+  cat > .vbw-planning/milestones/01-arch/phases/03-api/03-UAT.md <<'EOF'
+---
+status: issues_found
+---
+Severity: major
+EOF
+
+  mkdir -p .vbw-planning/.create-remediation-phase.lock
+  local output_file="$TEST_TEMP_DIR/locked-create-remediation.out"
+
+  bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
+    .vbw-planning \
+    .vbw-planning/milestones/01-arch/phases/03-api \
+    > "$output_file" 2>&1 &
+  local bg_pid=$!
+
+  sleep 1
+  kill -0 "$bg_pid"
+
+  rmdir .vbw-planning/.create-remediation-phase.lock
+  wait "$bg_pid"
+
+  grep -q '^phase=01$' "$output_file"
+  grep -q '^phase_dir=.vbw-planning/phases/01-remediate-01-arch-api$' "$output_file"
+}
+
 # --- F-10: archive-stripped STATE.md triggers re-bootstrap ---
 
 @test "create-remediation-phase re-bootstraps when archive strips Phase: line (F-10)" {

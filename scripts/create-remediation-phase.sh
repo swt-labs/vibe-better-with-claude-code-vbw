@@ -32,6 +32,36 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/uat-utils.sh"
 
+LOCK_DIR="$PLANNING_DIR/.create-remediation-phase.lock"
+
+acquire_phase_allocation_lock() {
+  local wait_count=0
+  while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+    if [ -f "$LOCK_DIR/pid" ]; then
+      local owner_pid
+      owner_pid=$(cat "$LOCK_DIR/pid" 2>/dev/null || true)
+      if [ -n "$owner_pid" ] && echo "$owner_pid" | grep -qE '^[0-9]+$' && ! kill -0 "$owner_pid" 2>/dev/null; then
+        rm -rf "$LOCK_DIR" 2>/dev/null || true
+        continue
+      fi
+    fi
+    wait_count=$((wait_count + 1))
+    if [ "$wait_count" -ge 300 ]; then
+      echo "Error: timed out waiting for remediation phase allocation lock" >&2
+      exit 1
+    fi
+    sleep 0.1
+  done
+  printf '%s\n' "$$" > "$LOCK_DIR/pid"
+}
+
+release_phase_allocation_lock() {
+  rm -rf "$LOCK_DIR" 2>/dev/null || true
+}
+
+acquire_phase_allocation_lock
+trap 'release_phase_allocation_lock' EXIT
+
 list_child_dirs_sorted() {
   local parent="$1"
   [ -d "$parent" ] || return 0
