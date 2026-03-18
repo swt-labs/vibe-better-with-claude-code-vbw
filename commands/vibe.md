@@ -602,7 +602,8 @@ Missing name: STOP "Usage: `/vbw:vibe --add <phase-name>`"
    - On failure: log warning, write phase goal from $ARGUMENTS alone. Do not block.
    - **This eliminates duplicate research** — Plan mode step 3 checks for existing RESEARCH.md and skips Scout if found.
 6. Update ROADMAP.md: append phase list entry, append Phase Details section (using Scout findings if available), add progress row.
-7. Present: Phase Banner with position, goal. Checklist for roadmap update + dir creation. Next Up: `/vbw:vibe --discuss` or `/vbw:vibe --plan`.
+7. Update STATE.md phase total: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/update-phase-total.sh .vbw-planning`
+8. Present: Phase Banner with position, goal. Checklist for roadmap update + dir creation. Next Up: `/vbw:vibe --discuss` or `/vbw:vibe --plan`.
 
 ### Mode: Insert Phase
 
@@ -619,7 +620,8 @@ Inserting before completed phase: WARN + confirm.
 5. Create dir: `mkdir -p .vbw-planning/phases/{NN}-{slug}/`
 6. **Problem research (conditional):** Same as Add Phase step 5 — if $ARGUMENTS contain a problem description, spawn Scout (with `subagent_type: "vbw:vbw-scout"`) to research the codebase. Pass `<output_path>{phase-dir}/{NN}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file directly. This prevents Plan mode from duplicating the research.
 7. Update ROADMAP.md: insert new phase entry + details at position (using Scout findings if available), renumber subsequent entries/headers/cross-refs, update progress table.
-8. Present: Phase Banner with renumber count, phase changes, file checklist, Next Up.
+8. Update STATE.md phase total: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/update-phase-total.sh .vbw-planning --inserted {position}` (where {position} is the insert position from step 2).
+9. Present: Phase Banner with renumber count, phase changes, file checklist, Next Up.
 
 ### Mode: Remove Phase
 
@@ -635,7 +637,8 @@ Completed ([x] in roadmap): STOP "Cannot remove completed Phase {NN}."
 3. Remove dir: `rm -rf .vbw-planning/phases/{NN}-{slug}/`
 4. Renumber FORWARD: for each phase > removed: rename dir {NN} -> {NN-1}, rename internal files, update frontmatter, update depends_on.
 5. Update ROADMAP.md: remove phase entry + details, renumber subsequent, update deps, update progress table.
-6. Present: Phase Banner with renumber count, phase changes, file checklist, Next Up.
+6. Update STATE.md phase total: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/update-phase-total.sh .vbw-planning --removed {NN}` (where {NN} is the removed phase number from step 1).
+7. Present: Phase Banner with renumber count, phase changes, file checklist, Next Up.
 
 ### Mode: Archive
 
