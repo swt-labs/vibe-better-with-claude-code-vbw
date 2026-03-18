@@ -5,8 +5,9 @@ set -u
 # Fail-OPEN: exit 0 on any parse error (never block legitimate Grep usage)
 
 # --- Config override (fast path) ---
-if command -v jq >/dev/null 2>&1 && [ -f ".vbw-planning/config.json" ]; then
-  NUDGE=$(jq -r '.lsp_nudge // true' .vbw-planning/config.json 2>/dev/null)
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+if command -v jq >/dev/null 2>&1 && [ -f "$PLANNING_DIR/config.json" ]; then
+  NUDGE=$(jq -r '.lsp_nudge // true' "$PLANNING_DIR/config.json" 2>/dev/null)
   [ "$NUDGE" = "false" ] && exit 0
 fi
 

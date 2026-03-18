@@ -30,7 +30,7 @@ fi
 
 case "$ACTION" in
   save)
-    STATE_PATH="${3:-.vbw-planning/.execution-state.json}"
+    STATE_PATH="${3:-$PLANNING_DIR/.execution-state.json}"
     mkdir -p "$SNAPSHOTS_DIR" 2>/dev/null || exit 0
     [ ! -f "$STATE_PATH" ] && exit 0
 
@@ -40,7 +40,7 @@ case "$ACTION" in
     # Optional agent metadata
     AGENT_ROLE="${4:-}"
     if [ -z "$AGENT_ROLE" ]; then
-      AGENT_ROLE=$(cat .vbw-planning/.active-agent 2>/dev/null || echo "unknown")
+      AGENT_ROLE=$(cat "$PLANNING_DIR/.active-agent" 2>/dev/null || echo "unknown")
     fi
     TRIGGER="${5:-unknown}"
 

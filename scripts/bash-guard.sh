@@ -6,12 +6,14 @@ set -u
 
 # --- Override checks (fast path) ---
 
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+
 # Env var override
 [ "${VBW_ALLOW_DESTRUCTIVE:-0}" = "1" ] && exit 0
 
 # Config override: bash_guard=false disables entirely
-if command -v jq >/dev/null 2>&1 && [ -f ".vbw-planning/config.json" ]; then
-  GUARD=$(jq -r '.bash_guard // true' .vbw-planning/config.json 2>/dev/null)
+if command -v jq >/dev/null 2>&1 && [ -f "$PLANNING_DIR/config.json" ]; then
+  GUARD=$(jq -r '.bash_guard // true' "$PLANNING_DIR/config.json" 2>/dev/null)
   [ "$GUARD" = "false" ] && exit 0
 fi
 
@@ -33,7 +35,7 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || exit
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(dirname "$SCRIPT_DIR")"
 DEFAULT_PATTERNS="$PLUGIN_ROOT/config/destructive-commands.txt"
-LOCAL_PATTERNS=".vbw-planning/destructive-commands.local.txt"
+LOCAL_PATTERNS="$PLANNING_DIR/destructive-commands.local.txt"
 
 # Build combined pattern from all sources
 PATTERNS=""
@@ -59,7 +61,7 @@ if echo "$COMMAND" | grep -iqE "$PATTERNS"; then
   echo "See: config/destructive-commands.txt for the full blocklist." >&2
 
   # Event logging (best-effort, non-blocking)
-  if [ -d ".vbw-planning" ]; then
+  if [ -d "$PLANNING_DIR" ]; then
     PREVIEW=$(echo "$COMMAND" | head -c 40)
     AGENT="${VBW_ACTIVE_AGENT:-unknown}"
     TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%s")
@@ -67,7 +69,7 @@ if echo "$COMMAND" | grep -iqE "$PATTERNS"; then
     PREVIEW=$(echo "$PREVIEW" | sed 's/"/\\"/g')
     MATCHED_ESC=$(echo "$MATCHED" | sed 's/"/\\"/g')
     printf '{"event":"bash_guard_block","command_preview":"%s","pattern_matched":"%s","agent":"%s","timestamp":"%s"}\n' \
-      "$PREVIEW" "$MATCHED_ESC" "$AGENT" "$TS" >> ".vbw-planning/.event-log.jsonl" 2>/dev/null
+      "$PREVIEW" "$MATCHED_ESC" "$AGENT" "$TS" >> "$PLANNING_DIR/.event-log.jsonl" 2>/dev/null
   fi
 
   exit 2

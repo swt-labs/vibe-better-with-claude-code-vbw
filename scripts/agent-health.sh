@@ -8,7 +8,8 @@ set -u
 #   agent-health.sh stop      # SubagentStop hook: Clean up health file
 #   agent-health.sh cleanup   # Stop hook: Remove all health tracking
 
-HEALTH_DIR=".vbw-planning/.agent-health"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+HEALTH_DIR="$PLANNING_DIR/.agent-health"
 # shellcheck source=resolve-claude-dir.sh
 . "$(dirname "$0")/resolve-claude-dir.sh" 2>/dev/null || true
 

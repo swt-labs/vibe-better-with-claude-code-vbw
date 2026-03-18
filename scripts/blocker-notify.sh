@@ -4,8 +4,10 @@ set -u
 # Outputs additionalContext with unblocked task info
 # Exit 0 always (advisory, never blocks)
 
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+
 # Only apply to VBW contexts with active teams
-[ ! -d ".vbw-planning" ] && exit 0
+[ ! -d "$PLANNING_DIR" ] && exit 0
 command -v jq &>/dev/null || exit 0
 
 # Read stdin to get completed task context

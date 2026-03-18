@@ -11,7 +11,8 @@ set -euo pipefail
 # Stores newline-delimited PIDs in .vbw-planning/.agent-pids
 # Uses mkdir-based file locking (macOS-compatible, no flock needed)
 
-PID_FILE=".vbw-planning/.agent-pids"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+PID_FILE="$PLANNING_DIR/.agent-pids"
 LOCK_DIR="/tmp/vbw-agent-pid-lock"
 
 # --- File locking helpers ---

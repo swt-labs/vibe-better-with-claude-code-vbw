@@ -4,8 +4,10 @@ set -u
 # Exit 2 = block completion, Exit 0 = allow
 # Exit 0 on ANY error (fail-open: never block legitimate work)
 
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+
 # Only apply to VBW contexts
-[ ! -d ".vbw-planning" ] && exit 0
+[ ! -d "$PLANNING_DIR" ] && exit 0
 
 # Read stdin to get task context
 INPUT=$(cat 2>/dev/null) || exit 0
@@ -38,8 +40,8 @@ fi
 NOW=$(date +%s 2>/dev/null) || exit 0
 # Configurable commit recency window (default: 2 hours)
 TWO_HOURS=7200
-if command -v jq &>/dev/null && [ -f ".vbw-planning/config.json" ]; then
-  _window=$(jq -r '.qa_commit_window_seconds // 7200' .vbw-planning/config.json 2>/dev/null)
+if command -v jq &>/dev/null && [ -f "$PLANNING_DIR/config.json" ]; then
+  _window=$(jq -r '.qa_commit_window_seconds // 7200' "$PLANNING_DIR/config.json" 2>/dev/null)
   [ "${_window:-0}" -gt 0 ] 2>/dev/null && TWO_HOURS="$_window"
 fi
 RECENT_COMMITS=$(git log --oneline -20 --format="%ct %s" 2>/dev/null) || exit 0
@@ -114,7 +116,7 @@ echo "No recent commit found matching task: '$TASK_SUBJECT' (matched $MATCH_COUN
 # Circuit breaker: if this same subject has already been blocked once, allow it
 # on the second attempt. This prevents infinite hook loops where the agent
 # responds to the block, triggering another turn, which triggers the hook again.
-SEEN_FILE=".vbw-planning/.task-verify-seen"
+SEEN_FILE="$PLANNING_DIR/.task-verify-seen"
 SUBJECT_HASH=$(printf '%s' "$TASK_SUBJECT" | md5 2>/dev/null || printf '%s' "$TASK_SUBJECT" | md5sum 2>/dev/null | cut -d' ' -f1 || printf '%s' "$TASK_SUBJECT" | cksum 2>/dev/null | cut -d' ' -f1 || echo "${#TASK_SUBJECT}-${TASK_SUBJECT%% *}")
 if [ -f "$SEEN_FILE" ] && grep -qFx "$SUBJECT_HASH" "$SEEN_FILE" 2>/dev/null; then
   echo "Circuit breaker: allowing repeat-blocked task (same subject blocked before)" >&2

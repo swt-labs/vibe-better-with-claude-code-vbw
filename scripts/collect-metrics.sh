@@ -16,8 +16,10 @@ EVENT="$1"
 PHASE="$2"
 shift 2
 
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+
 # Check metrics flag — if disabled, exit silently
-CONFIG_PATH=".vbw-planning/config.json"
+CONFIG_PATH="$PLANNING_DIR/config.json"
 if [ -f "$CONFIG_PATH" ] && command -v jq &>/dev/null; then
   METRICS_ENABLED=$(jq -r 'if .metrics != null then .metrics elif .v3_metrics != null then .v3_metrics else true end' "$CONFIG_PATH" 2>/dev/null || echo "true")
   if [ "$METRICS_ENABLED" != "true" ]; then
@@ -50,7 +52,7 @@ for arg in "$@"; do
   esac
 done
 
-METRICS_DIR=".vbw-planning/.metrics"
+METRICS_DIR="$PLANNING_DIR/.metrics"
 METRICS_FILE="${METRICS_DIR}/run-metrics.jsonl"
 
 # Create dir if needed

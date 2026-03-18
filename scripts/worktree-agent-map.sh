@@ -17,7 +17,8 @@ if [ -z "$CMD" ] || [ -z "$AGENT" ]; then
   exit 0
 fi
 
-STORAGE_DIR=".vbw-planning/.agent-worktrees"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+STORAGE_DIR="$PLANNING_DIR/.agent-worktrees"
 MAP_FILE="${STORAGE_DIR}/${AGENT}.json"
 
 case "$CMD" in

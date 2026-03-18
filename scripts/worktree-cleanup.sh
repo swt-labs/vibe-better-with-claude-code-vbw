@@ -12,10 +12,11 @@ fi
 PHASE="$1"
 PLAN="$2"
 
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 WORKTREES_PARENT=".vbw-worktrees"
 WORKTREE_DIR="${WORKTREES_PARENT}/${PHASE}-${PLAN}"
 BRANCH="vbw/${PHASE}-${PLAN}"
-AGENT_WORKTREES_DIR=".vbw-planning/.agent-worktrees"
+AGENT_WORKTREES_DIR="$PLANNING_DIR/.agent-worktrees"
 
 # Unlock the worktree if locked (locked worktrees resist single --force)
 git worktree unlock "$WORKTREE_DIR" 2>/dev/null || true

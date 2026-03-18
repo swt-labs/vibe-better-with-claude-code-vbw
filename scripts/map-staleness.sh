@@ -3,16 +3,18 @@
 # Output: key-value pairs on stdout. Exit 0 always.
 set -euo pipefail
 
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+
 # Skip during compaction — post-compact.sh handles the compact SessionStart.
-if [[ -f ".vbw-planning/.compaction-marker" ]]; then
-  _cm_ts=$(cat ".vbw-planning/.compaction-marker" 2>/dev/null || echo 0)
+if [[ -f "$PLANNING_DIR/.compaction-marker" ]]; then
+  _cm_ts=$(cat "$PLANNING_DIR/.compaction-marker" 2>/dev/null || echo 0)
   _cm_now=$(date +%s 2>/dev/null || echo 0)
   if (( _cm_now - _cm_ts < 60 )); then
     exit 0
   fi
 fi
 
-META=".vbw-planning/codebase/META.md"
+META="$PLANNING_DIR/codebase/META.md"
 
 # Detect hook context: when stdout is not a terminal, we're called as a hook.
 # In hook mode, only JSON goes to stdout; diagnostics go to stderr.
