@@ -27,6 +27,15 @@
 
 set -euo pipefail
 
+_CVC_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$_CVC_SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "$_CVC_SCRIPT_DIR/summary-utils.sh"
+else
+  # Fallback: treat all summaries as terminal when helpers unavailable
+  is_summary_terminal() { [ -f "$1" ]; }
+fi
+
 REMEDIATION_ONLY=false
 if [ "${1:-}" = "--remediation-only" ]; then
   REMEDIATION_ONLY=true
@@ -54,7 +63,8 @@ if [ "$REMEDIATION_ONLY" = true ]; then
       rr=$(printf '%02d' "$round_num")
       if [ "$round_num" -gt "$_best_round_num" ] 2>/dev/null && \
          ls "$round_dir"/R"${rr}"-PLAN.md >/dev/null 2>&1 && \
-         ls "$round_dir"/R"${rr}"-SUMMARY.md >/dev/null 2>&1; then
+         ls "$round_dir"/R"${rr}"-SUMMARY.md >/dev/null 2>&1 && \
+         is_summary_terminal "$round_dir/R${rr}-SUMMARY.md"; then
         _best_round_num="$round_num"
         LATEST_ROUND="$rr"
       fi

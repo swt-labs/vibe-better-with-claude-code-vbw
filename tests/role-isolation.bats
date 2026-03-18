@@ -131,6 +131,15 @@ CONTRACT
   [ "$status" -eq 0 ]
 }
 
+@test "file-guard: blocks archived milestone remediation SUMMARY" {
+  cd "$TEST_TEMP_DIR"
+  CONTENT='---\nstatus: in-progress\n---\nTask.'
+  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/milestones/01-foundation/phases/03-test/remediation/round-01/R01-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"archived milestone"* ]]
+}
+
 # --- Role isolation in agent YAML ---
 
 @test "agent: lead has V2 role isolation section" {

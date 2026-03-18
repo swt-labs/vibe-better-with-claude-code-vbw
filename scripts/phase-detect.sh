@@ -307,8 +307,14 @@ if [ -d "$PHASES_DIR" ]; then
           _cur_rr="${_cr_val:-01}"
         fi
         # Count round-dir plans/summaries for current round only
+        # Summary must have terminal status (complete|partial|failed) to count —
+        # remediation summaries use an incremental lifecycle (in-progress → terminal).
         _rd_plans=$(find "$TARGET_DIR" -path "*/remediation/round-${_cur_rr}/R${_cur_rr}-PLAN.md" 2>/dev/null | wc -l | tr -d ' ')
-        _rd_summaries=$(find "$TARGET_DIR" -path "*/remediation/round-${_cur_rr}/R${_cur_rr}-SUMMARY.md" 2>/dev/null | wc -l | tr -d ' ')
+        _rd_summary_file=$(find "$TARGET_DIR" -path "*/remediation/round-${_cur_rr}/R${_cur_rr}-SUMMARY.md" 2>/dev/null | head -1)
+        _rd_summaries=0
+        if [ -n "$_rd_summary_file" ] && is_summary_terminal "$_rd_summary_file"; then
+          _rd_summaries=1
+        fi
         _total_plans=$(( _total_plans + _rd_plans ))
         _total_summaries=$(( _total_summaries + _rd_summaries ))
         if [ "$_rem_stage" = "execute" ] && [ "$_total_plans" -gt 0 ] && [ "$_total_summaries" -ge "$_total_plans" ]; then

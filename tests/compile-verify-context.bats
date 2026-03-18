@@ -517,3 +517,51 @@ EOF
   [[ "$output" == *"verify_scope=full"* ]]
   [[ "$output" == *"uat_path=03-UAT.md"* ]]
 }
+
+@test "compile-verify-context: --remediation-only skips round with in-progress summary" {
+  # Round 01 — complete
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+---
+plan: R01
+title: Round 1 fix
+must_haves:
+  - Old fix
+---
+EOF
+  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Round 1 work
+EOF
+
+  # Round 02 — in-progress (not terminal)
+  mkdir -p "$PHASE_DIR/remediation/round-02"
+  cat > "$PHASE_DIR/remediation/round-02/R02-PLAN.md" <<'EOF'
+---
+plan: R02
+title: Round 2 fix
+must_haves:
+  - Latest fix
+---
+EOF
+  cat > "$PHASE_DIR/remediation/round-02/R02-SUMMARY.md" <<'EOF'
+---
+status: in-progress
+tasks_completed: 1
+tasks_total: 3
+---
+## Task 1: Done
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Should pick round 01 (terminal), not round 02 (in-progress)
+  [[ "$output" == *"verify_scope=remediation round=01"* ]]
+  [[ "$output" == *"Round 1 fix"* ]]
+  [[ "$output" != *"Round 2 fix"* ]]
+}

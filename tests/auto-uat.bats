@@ -985,3 +985,40 @@ EOF
   [ -f "$dir/01-UAT-round-04.md" ]
   [[ "$output" == *"round_file=01-UAT-round-04.md"* ]]
 }
+
+# --- QA round 1 #255: in-progress remediation summary must not auto-advance ---
+
+@test "phase-detect does not auto-advance when remediation summary is in-progress" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  # UAT with issues triggers remediation path
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+  # Remediation round-01 in execute stage with round-dir layout
+  mkdir -p "$dir/remediation"
+  printf 'stage=execute\nround=01\nlayout=round-dir\n' > "$dir/remediation/.uat-remediation-stage"
+  # Round-01 has PLAN and an in-progress SUMMARY (not terminal)
+  mkdir -p "$dir/remediation/round-01"
+  printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/round-01/R01-PLAN.md"
+  printf -- '---\nstatus: in-progress\ntasks_completed: 1\ntasks_total: 5\n---\n\n## Task 1: Done\n' > "$dir/remediation/round-01/R01-SUMMARY.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Must NOT advance to needs_reverification — summary is not terminal
+  [[ "$output" == *"next_phase_state=needs_uat_remediation"* ]]
+}
+
+@test "phase-detect auto-advances when remediation summary has terminal status" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+  mkdir -p "$dir/remediation"
+  printf 'stage=execute\nround=01\nlayout=round-dir\n' > "$dir/remediation/.uat-remediation-stage"
+  mkdir -p "$dir/remediation/round-01"
+  printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/round-01/R01-PLAN.md"
+  printf -- '---\nstatus: complete\ntasks_completed: 5\ntasks_total: 5\n---\n\nAll done.\n' > "$dir/remediation/round-01/R01-SUMMARY.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Terminal status — should advance
+  [[ "$output" == *"next_phase_state=needs_reverification"* ]]
+}
