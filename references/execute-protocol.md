@@ -434,7 +434,7 @@ RESULT=$(bash "${VBW_PLUGIN_ROOT}/scripts/two-phase-complete.sh" {task_id} {phas
 
 When a Dev teammate reports plan completion (task marked completed):
 1. **Check:** Verify `{phase_dir}/{plan_id}-SUMMARY.md` exists and contains commit hashes, task statuses, and files modified.
-2. **Status validation:** Verify SUMMARY.md frontmatter `status` is one of `complete|partial|failed`. Never accept `pending`, `draft`, or other non-terminal values. The `file-guard.sh` PreToolUse hook blocks SUMMARY writes with non-terminal status values.
+2. **Status validation:** Verify SUMMARY.md frontmatter `status` is one of `complete|partial|failed`. Never accept `pending`, `draft`, or other non-terminal values. The `file-guard.sh` PreToolUse hook blocks SUMMARY writes with non-terminal status values. **Exception:** Remediation round summaries (`R{RR}-SUMMARY.md`) are exempt from this guard — they use an incremental lifecycle where the first Dev creates the file with `status: in-progress`, subsequent Devs append task sections, and the Lead finalizes the frontmatter to a terminal status after all tasks complete.
 3. **If missing or incomplete:** Send the Dev a message: "Write {plan_id}-SUMMARY.md using the template at templates/SUMMARY.md. Include commit hashes, tasks completed, files modified, and any deviations." Wait for confirmation before proceeding.
 4. **If Dev is unavailable:** Write it yourself from `git log --oneline` and the PLAN.md.
 5. **Schema Validation — SUMMARY.md (REQ-17, graduated, always-on):**
@@ -442,7 +442,7 @@ When a Dev teammate reports plan completion (task marked completed):
    - If `invalid`: log warning `⚠ Summary {plan_id} schema: ${VALID}` — advisory only.
 6. **Only after SUMMARY.md is verified with terminal status:** Update plan status to `"complete"` in .execution-state.json and proceed.
 
-**SUMMARY.md timing rule:** A SUMMARY.md represents completed execution. Never create a SUMMARY.md as a placeholder or stub before execution begins. Do not write SUMMARY.md with `status: pending` or any non-terminal status.
+**SUMMARY.md timing rule:** A SUMMARY.md represents completed execution. Never create a SUMMARY.md as a placeholder or stub before execution begins. Do not write SUMMARY.md with `status: pending` or any non-terminal status. **Exception:** Remediation round summaries (`R{RR}-SUMMARY.md`) are built incrementally across multiple Dev agents — the first Dev creates the file with `status: in-progress` and subsequent Devs append task sections. The Lead finalizes the frontmatter after all tasks complete.
 
 ### Step 4: Post-build QA (optional)
 

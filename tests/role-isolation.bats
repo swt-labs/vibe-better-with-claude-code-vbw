@@ -96,6 +96,41 @@ CONTRACT
   [ "$status" -eq 0 ]
 }
 
+# --- Remediation round SUMMARY exemption ---
+
+@test "file-guard: allows remediation round SUMMARY with in-progress status" {
+  cd "$TEST_TEMP_DIR"
+  CONTENT='---\nphase: 3\nround: 7\ntitle: Fix bugs\nstatus: in-progress\ntasks_completed: 0\ntasks_total: 5\n---\n\n## Task 1: Fix it\nDone.'
+  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/phases/03-test/remediation/round-07/R07-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 0 ]
+}
+
+@test "file-guard: allows remediation round SUMMARY with terminal status" {
+  cd "$TEST_TEMP_DIR"
+  CONTENT='---\nphase: 3\nround: 7\ntitle: Fix bugs\nstatus: complete\ntasks_completed: 5\ntasks_total: 5\n---\n\nAll done.'
+  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/phases/03-test/remediation/round-07/R07-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 0 ]
+}
+
+@test "file-guard: still blocks plan-level SUMMARY with non-terminal status" {
+  cd "$TEST_TEMP_DIR"
+  CONTENT='---\nphase: 3\nplan: 1\ntitle: Test\nstatus: in-progress\n---\n\nDraft.'
+  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/phases/03-test/03-01-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"not terminal"* ]]
+}
+
+@test "file-guard: allows plan-level SUMMARY with terminal status" {
+  cd "$TEST_TEMP_DIR"
+  CONTENT='---\nphase: 3\nplan: 1\ntitle: Test\nstatus: complete\n---\n\nDone.'
+  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/phases/03-test/03-01-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 0 ]
+}
+
 # --- Role isolation in agent YAML ---
 
 @test "agent: lead has V2 role isolation section" {
