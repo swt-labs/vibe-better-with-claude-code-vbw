@@ -21,7 +21,7 @@ set -u
 
 MODE="${1:-execute}"
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 USAGE_FILE="$PLANNING_DIR/.context-usage"
 
 # Source shared summary-status helpers for status-aware SUMMARY detection

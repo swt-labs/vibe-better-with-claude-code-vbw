@@ -8,7 +8,7 @@ set -u
 
 INPUT=$(cat)
 LAST_MESSAGE=$(echo "$INPUT" | jq -r '.last_assistant_message // ""' 2>/dev/null)
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 COUNT_FILE="$PLANNING_DIR/.active-agent-count"
 LOCK_DIR="$PLANNING_DIR/.active-agent-count.lock"
 

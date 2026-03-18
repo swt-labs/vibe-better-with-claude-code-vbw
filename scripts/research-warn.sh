@@ -9,7 +9,7 @@ set -u
 
 PHASE_DIR="${1:-}"
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 CONFIG_PATH="${PLANNING_DIR}/config.json"
 
 # Read effort config

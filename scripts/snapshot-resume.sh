@@ -15,7 +15,7 @@ fi
 ACTION="$1"
 PHASE="$2"
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 SNAPSHOTS_DIR="${PLANNING_DIR}/.snapshots"
 CONFIG_PATH="${PLANNING_DIR}/config.json"
 

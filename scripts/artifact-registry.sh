@@ -9,7 +9,7 @@ set -u
 # Stores in .vbw-planning/.artifacts/registry.jsonl
 # Gated by two_phase_completion flag
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 CONFIG_PATH="${PLANNING_DIR}/config.json"
 
 # Check feature flag

@@ -17,7 +17,7 @@ set -u
 #
 # The marker file is transient (gitignored via planning-git.sh).
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 MARKER_FILE="$PLANNING_DIR/.delegated-workflow.json"
 
 ACTION="${1:-}"

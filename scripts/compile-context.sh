@@ -13,7 +13,7 @@ fi
 PHASE="$1"
 ROLE="$2"
 PHASES_DIR="${3:-.vbw-planning/phases}"
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 PLAN_PATH="${4:-}"
 
 # Milestone path guard: refuse to compile context for archived milestone directories.

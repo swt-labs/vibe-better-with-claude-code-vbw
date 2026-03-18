@@ -12,7 +12,7 @@ fi
 
 # If SUMMARY.md doesn't exist, check for crash recovery fallback
 if [ ! -f "$FILE_PATH" ]; then
-  PLANNING_DIR=".vbw-planning"
+  PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
   LAST_WORDS_DIR="$PLANNING_DIR/.agent-last-words"
 
   # Look for recent .agent-last-words files (within last 60 seconds)

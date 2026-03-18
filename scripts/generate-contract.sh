@@ -20,7 +20,7 @@ fi
 PLAN_PATH="$1"
 [ ! -f "$PLAN_PATH" ] && exit 0
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 CONFIG_PATH="${CONFIG_PATH:-${PLANNING_DIR}/config.json}"
 
 # Extract phase and plan from frontmatter

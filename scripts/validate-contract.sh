@@ -20,7 +20,7 @@ TASK_NUM="$3"
 shift 3
 
 # shellcheck disable=SC2034 # PLANNING_DIR used by convention across VBW scripts
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Validate contract file exists

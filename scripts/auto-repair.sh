@@ -25,7 +25,7 @@ PLAN="$3"
 TASK="$4"
 CONTRACT_PATH="$5"
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 MAX_RETRIES=2

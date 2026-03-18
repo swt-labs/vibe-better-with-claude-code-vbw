@@ -8,7 +8,7 @@ set -u
 # Output: markdown table to stdout.
 # Exit: 0 always.
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 METRICS_FILE="${PLANNING_DIR}/.metrics/run-metrics.jsonl"
 EVENTS_FILE="${PLANNING_DIR}/.events/event-log.jsonl"
 

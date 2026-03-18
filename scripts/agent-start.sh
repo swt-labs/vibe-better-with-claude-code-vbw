@@ -4,7 +4,7 @@ set -u
 # Writes stripped agent name to .vbw-planning/.active-agent
 
 INPUT=$(cat)
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 [ ! -d "$PLANNING_DIR" ] && exit 0
 
 AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // .agent_name // .name // ""' 2>/dev/null)

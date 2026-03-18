@@ -17,7 +17,7 @@ ACTION="$1"
 TASK_ID="$2"
 shift 2
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 LOCKS_DIR="${PLANNING_DIR}/.locks"
 LOCK_FILE="${LOCKS_DIR}/${TASK_ID}.lock"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

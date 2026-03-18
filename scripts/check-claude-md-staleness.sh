@@ -20,7 +20,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LIB="$SCRIPT_DIR/lib/claude-md-vbw-sections.sh"
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 CLAUDE_MD="CLAUDE.md"
 
 if [ ! -f "$LIB" ]; then

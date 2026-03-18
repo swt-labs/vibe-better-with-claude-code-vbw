@@ -23,7 +23,7 @@ set -eo pipefail
 CMD="${1:-}"
 RESULT="${2:-}"
 TARGET_PHASE_ARG="${3:-}"
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Source shared UAT helpers (extract_status_value → aliased as read_status_field, current_uat, latest_non_source_uat)

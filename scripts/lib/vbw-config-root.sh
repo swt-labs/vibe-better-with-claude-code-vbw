@@ -26,7 +26,8 @@ find_vbw_root() {
   fi
 
   local _cwd
-  _cwd=$(pwd)
+  # Use pwd -P to resolve symlinks so traversal works through symlinked directories
+  _cwd=$(pwd -P 2>/dev/null || pwd)
   while [ "$_cwd" != "/" ]; do
     if [ -f "$_cwd/.vbw-planning/config.json" ]; then
       export VBW_CONFIG_ROOT="$_cwd"
@@ -36,7 +37,9 @@ find_vbw_root() {
     _cwd=$(dirname "$_cwd")
   done
 
-  # Not found anywhere in the ancestry — fall back to CWD (backwards-compatible)
-  export VBW_CONFIG_ROOT="."
-  export VBW_PLANNING_DIR=".vbw-planning"
+  # Not found anywhere in the ancestry — fall back to absolute CWD (backwards-compatible)
+  local _fallback
+  _fallback=$(pwd -P 2>/dev/null || pwd)
+  export VBW_CONFIG_ROOT="$_fallback"
+  export VBW_PLANNING_DIR="$_fallback/.vbw-planning"
 }

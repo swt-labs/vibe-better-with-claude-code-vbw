@@ -24,7 +24,7 @@ if [ $# -lt 2 ]; then
   exit 0
 fi
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 # shellcheck disable=SC2034 # CONFIG_PATH declared for consistency with other VBW scripts
 CONFIG_PATH="${PLANNING_DIR}/config.json"
 

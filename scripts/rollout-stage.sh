@@ -9,7 +9,7 @@ set -u
 # Exit 0 always -- rollout must never block execution.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 CONFIG_PATH="${PLANNING_DIR}/config.json"
 EVENTS_FILE="${PLANNING_DIR}/.events/event-log.jsonl"
 STAGES_PATH="${SCRIPT_DIR}/../config/rollout-stages.json"

@@ -13,7 +13,7 @@ if [ -z "$PHASE" ]; then
   exit 0
 fi
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 EVENTS_FILE="${PLANNING_DIR}/.events/event-log.jsonl"
 PHASES_DIR="${PLANNING_DIR}/phases"
 

@@ -7,7 +7,7 @@ set -u
 # Exit 0 always — baseline measurement must never block execution.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 EVENTS_FILE="${PLANNING_DIR}/.events/event-log.jsonl"
 METRICS_FILE="${PLANNING_DIR}/.metrics/run-metrics.jsonl"
 BASELINES_DIR="${PLANNING_DIR}/.baselines"

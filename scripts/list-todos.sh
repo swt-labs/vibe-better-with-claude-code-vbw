@@ -21,7 +21,7 @@ set -euo pipefail
 #
 # Exit codes: always 0 (fail-open for agent consumption)
 
-PLANNING_DIR=".vbw-planning"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 FILTER="${1:-}"
 
 # --- Resolve STATE.md for todos (project-level data lives at root) ---
