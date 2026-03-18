@@ -278,7 +278,7 @@ seed_remediation_roadmap_and_state() {
     if [ -f "$state_file" ] && grep -q '^\*\*Milestone:\*\* UAT Remediation$' "$state_file" 2>/dev/null; then
       existing_phase_lines=$(awk '
         BEGIN { count = 0 }
-        /^- \*\*Phase [0-9]+:\*\*/ { count++ }
+        /^- \*\*Phase [0-9]+/ { count++ }
         END { print count + 0 }
       ' "$state_file" 2>/dev/null)
       existing_phase_lines="${existing_phase_lines:-0}"
@@ -288,7 +288,7 @@ seed_remediation_roadmap_and_state() {
         # missing in brownfield STATE.md files.
         awk -v start="$((existing_phase_lines + 1))" -v end="$phase_count" '
           /^## Phase Status$/ { phase_status_header = NR }
-          /^- \*\*Phase [0-9]+:\*\*/ { last_phase_line = NR }
+          /^- \*\*Phase [0-9]+/ { last_phase_line = NR }
           { lines[NR] = $0; count = NR }
           END {
             inserted = 0

@@ -309,3 +309,37 @@ EOF
   # Should exit early without changes
   grep -q '^Phase: 2 of 3' .vbw-planning/STATE.md
 }
+
+# --- F-15: status inference with actual artifacts ---
+
+@test "update-phase-total: Phase Status infers Complete from plans+summaries" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+## Current Phase
+Phase: 2 of 3 (Build)
+Plans: 0/0
+Progress: 0%
+Status: active
+
+## Phase Status
+- **Phase 1:** Pending
+- **Phase 2:** Pending
+- **Phase 3:** Pending
+EOF
+  mkdir -p .vbw-planning/phases/01-setup
+  mkdir -p .vbw-planning/phases/02-build
+  mkdir -p .vbw-planning/phases/03-deploy
+  # Phase 1: complete (1 plan, 1 terminal summary)
+  touch .vbw-planning/phases/01-setup/01-PLAN.md
+  printf -- '---\nstatus: complete\n---\n' > .vbw-planning/phases/01-setup/01-SUMMARY.md
+  # Phase 2: has a plan only
+  touch .vbw-planning/phases/02-build/01-PLAN.md
+  # Phase 3: empty
+  run bash "$SCRIPTS_DIR/update-phase-total.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+  grep -q 'Phase 1.*Complete' .vbw-planning/STATE.md
+  grep -q 'Phase 2.*Planned' .vbw-planning/STATE.md
+  grep -q 'Phase 3.*Pending' .vbw-planning/STATE.md
+}

@@ -6,6 +6,14 @@ set -u
 #   --removed N:  a phase was removed at position N (adjust current if > N)
 # Always recalculates total from filesystem.
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  source "$SCRIPT_DIR/summary-utils.sh"
+else
+  count_terminal_summaries() { echo "0"; }
+fi
+
 planning_root="${1:-.vbw-planning}"
 state_md="${planning_root}/STATE.md"
 phases_dir="${planning_root}/phases"
@@ -92,7 +100,7 @@ while IFS= read -r dir; do
   local_name=$(basename "$dir" | sed 's/^[0-9]*-//' | tr '-' ' ' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1')
   # Check for existing plans/summaries to infer status
   local_plans=$(find "$dir" -maxdepth 1 -name '[0-9]*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')
-  local_summaries=$(find "$dir" -maxdepth 1 -name '*-SUMMARY.md' 2>/dev/null | wc -l | tr -d ' ')
+  local_summaries=$(count_terminal_summaries "$dir")
   if [ "$local_plans" -gt 0 ] && [ "$local_summaries" -ge "$local_plans" ]; then
     status_text="Complete"
   elif [ "$local_summaries" -gt 0 ]; then
@@ -105,7 +113,7 @@ while IFS= read -r dir; do
     status_text="Pending"
   fi
   echo "- **Phase ${phase_idx} (${local_name}):** ${status_text}" >> "$new_status_file"
-done < <(find "$phases_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+done < <(find "$phases_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-))
 
 # Replace existing ## Phase Status section if present
 if [ -s "$new_status_file" ] && grep -q '^## Phase Status' "$state_md" 2>/dev/null; then
