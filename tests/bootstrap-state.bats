@@ -101,6 +101,29 @@ teardown() {
   grep -q '^Status: active$' .vbw-planning/STATE.md
 }
 
+@test "bootstrap-state: emits Project and Milestone metadata lines" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "My Project" "Alpha Release" 2
+  [ "$status" -eq 0 ]
+  grep -q '^\*\*Project:\*\* My Project$' .vbw-planning/STATE.md
+  grep -q '^\*\*Milestone:\*\* Alpha Release$' .vbw-planning/STATE.md
+}
+
+@test "bootstrap-state: rejects PHASE_COUNT=0" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test" "MVP" 0
+  [ "$status" -eq 1 ]
+}
+
+@test "bootstrap-state: rejects non-numeric PHASE_COUNT" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test" "MVP" abc
+  [ "$status" -eq 1 ]
+}
+
 # --- Brownfield preservation tests (existing STATE.md) ---
 
 @test "bootstrap-state: preserves existing Todos from prior milestone" {

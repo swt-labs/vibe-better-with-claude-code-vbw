@@ -19,6 +19,12 @@ PROJECT_NAME="$2"
 MILESTONE_NAME="$3"
 PHASE_COUNT="$4"
 
+# Validate PHASE_COUNT is a positive integer
+if ! [[ "$PHASE_COUNT" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ERROR: PHASE_COUNT must be a positive integer, got: '$PHASE_COUNT'" >&2
+  exit 1
+fi
+
 STARTED=$(date +%Y-%m-%d)
 
 # Ensure parent directory exists
