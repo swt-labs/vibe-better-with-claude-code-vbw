@@ -34,9 +34,28 @@ source "$SCRIPT_DIR/uat-utils.sh"
 
 LOCK_DIR="$PLANNING_DIR/.create-remediation-phase.lock"
 
+lock_dir_mtime() {
+  local path="$1"
+  if [ "$(uname)" = "Darwin" ]; then
+    stat -f %m "$path" 2>/dev/null || echo 0
+  else
+    stat -c %Y "$path" 2>/dev/null || echo 0
+  fi
+}
+
 acquire_phase_allocation_lock() {
   local wait_count=0
   while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+    if [ -d "$LOCK_DIR" ] && [ ! -f "$LOCK_DIR/pid" ]; then
+      local now_ts lock_ts lock_age
+      now_ts=$(date +%s 2>/dev/null || echo 0)
+      lock_ts=$(lock_dir_mtime "$LOCK_DIR")
+      lock_age=$((now_ts - lock_ts))
+      if [ "$lock_age" -ge 5 ] 2>/dev/null; then
+        rm -rf "$LOCK_DIR" 2>/dev/null || true
+        continue
+      fi
+    fi
     if [ -f "$LOCK_DIR/pid" ]; then
       local owner_pid
       owner_pid=$(cat "$LOCK_DIR/pid" 2>/dev/null || true)
@@ -98,6 +117,21 @@ humanize_slug() {
   text=$(printf '%s' "$text" | tr '-' ' ')
   text=$(printf '%s' "$text" | sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//')
   printf '%s' "$text"
+}
+
+remediation_dir_matches_source() {
+  local dir="$1"
+  local expected_milestone="$2"
+  local expected_phase="$3"
+  local ctx_file actual_milestone actual_phase
+
+  ctx_file=$(ls -1 "$dir"/[0-9]*-CONTEXT.md 2>/dev/null | sort | head -1 || true)
+  [ -f "$ctx_file" ] || return 1
+
+  actual_milestone=$(extract_frontmatter_value "$ctx_file" "source_milestone")
+  actual_phase=$(extract_frontmatter_value "$ctx_file" "source_phase")
+
+  [ "$actual_milestone" = "$expected_milestone" ] && [ "$actual_phase" = "$expected_phase" ]
 }
 
 find_progress_row_for_phase() {
@@ -360,6 +394,7 @@ NEXT_PHASE_PADDED=$(printf "%02d" "$NEXT_PHASE")
 
 SOURCE_PHASE_SLUG=$(basename "$MILESTONE_PHASE_DIR" | sed 's/^[0-9]*-//')
 SOURCE_MILESTONE_SLUG=$(basename "$(dirname "$(dirname "$MILESTONE_PHASE_DIR")")")
+SOURCE_PHASE_BASENAME=$(basename "$MILESTONE_PHASE_DIR")
 RAW_SLUG="remediate-${SOURCE_MILESTONE_SLUG}-${SOURCE_PHASE_SLUG}"
 PHASE_SLUG=$(echo "$RAW_SLUG" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g')
 
@@ -376,8 +411,17 @@ fi
 TARGET_PHASE_DIR="$PHASES_DIR/${NEXT_PHASE_PADDED}-${PHASE_SLUG}"
 
 # F-01 guard: detect an existing dir with the same slug (race window between
-# mkdir and .remediated write). Reuse if found instead of creating a duplicate.
-EXISTING_SLUG_DIR=$(find "$PHASES_DIR" -mindepth 1 -maxdepth 1 -type d -name "[0-9]*-${PHASE_SLUG}" 2>/dev/null | head -1)
+# mkdir and .remediated write). Reuse only when the existing dir provenance
+# matches this exact archived milestone phase; slug collisions must allocate a
+# new numeric phase instead of silently aliasing a different source phase.
+EXISTING_SLUG_DIR=""
+while IFS= read -r _slug_dir; do
+  [ -d "$_slug_dir" ] || continue
+  if remediation_dir_matches_source "$_slug_dir" "$SOURCE_MILESTONE_SLUG" "$SOURCE_PHASE_BASENAME"; then
+    EXISTING_SLUG_DIR="$_slug_dir"
+    break
+  fi
+done < <(find "$PHASES_DIR" -mindepth 1 -maxdepth 1 -type d -name "[0-9]*-${PHASE_SLUG}" 2>/dev/null | sort -V)
 if [[ -n "$EXISTING_SLUG_DIR" && -d "$EXISTING_SLUG_DIR" ]]; then
   TARGET_PHASE_DIR="$EXISTING_SLUG_DIR"
   NEXT_PHASE_PADDED=$(basename "$EXISTING_SLUG_DIR" | sed 's/[^0-9].*//')
@@ -393,8 +437,6 @@ UAT_CONTENT=""
 if [[ -n "$SOURCE_UAT" && -f "$SOURCE_UAT" ]]; then
   UAT_CONTENT=$(cat "$SOURCE_UAT")
 fi
-
-SOURCE_PHASE_BASENAME=$(basename "$MILESTONE_PHASE_DIR")
 
 CONTEXT_FILE="$TARGET_PHASE_DIR/${NEXT_PHASE_PADDED}-CONTEXT.md"
 

@@ -512,6 +512,62 @@ EOF
   grep -q '^phase_dir=.vbw-planning/phases/01-remediate-01-arch-api$' "$output_file"
 }
 
+@test "create-remediation-phase reaps stale pid-less allocation lock" {
+  mkdir -p .vbw-planning/milestones/01-arch/phases/03-api
+
+  cat > .vbw-planning/milestones/01-arch/phases/03-api/03-UAT.md <<'EOF'
+---
+status: issues_found
+---
+Severity: major
+EOF
+
+  mkdir -p .vbw-planning/.create-remediation-phase.lock
+  touch -t 202001010101 .vbw-planning/.create-remediation-phase.lock
+
+  run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
+    .vbw-planning \
+    .vbw-planning/milestones/01-arch/phases/03-api
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q '^phase=01$'
+}
+
+@test "create-remediation-phase does not alias different sources that sanitize to the same slug" {
+  mkdir -p '.vbw-planning/milestones/01-arch/phases/03-api legacy'
+  mkdir -p '.vbw-planning/milestones/01-arch/phases/04-api-legacy'
+
+  cat > '.vbw-planning/milestones/01-arch/phases/03-api legacy/03-UAT.md' <<'EOF'
+---
+status: issues_found
+---
+Severity: major
+EOF
+
+  cat > '.vbw-planning/milestones/01-arch/phases/04-api-legacy/04-UAT.md' <<'EOF'
+---
+status: issues_found
+---
+Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
+    .vbw-planning \
+    '.vbw-planning/milestones/01-arch/phases/03-api legacy'
+  [ "$status" -eq 0 ]
+  first_phase_dir=$(echo "$output" | grep '^phase_dir=' | sed 's/^phase_dir=//')
+
+  run bash "$SCRIPTS_DIR/create-remediation-phase.sh" \
+    .vbw-planning \
+    '.vbw-planning/milestones/01-arch/phases/04-api-legacy'
+  [ "$status" -eq 0 ]
+  second_phase_dir=$(echo "$output" | grep '^phase_dir=' | sed 's/^phase_dir=//')
+
+  [ "$first_phase_dir" != "$second_phase_dir" ]
+  grep -q "$first_phase_dir" '.vbw-planning/milestones/01-arch/phases/03-api legacy/.remediated'
+  grep -q "$second_phase_dir" '.vbw-planning/milestones/01-arch/phases/04-api-legacy/.remediated'
+}
+
 # --- F-10: archive-stripped STATE.md triggers re-bootstrap ---
 
 @test "create-remediation-phase re-bootstraps when archive strips Phase: line (F-10)" {
