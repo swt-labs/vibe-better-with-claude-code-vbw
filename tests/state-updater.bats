@@ -114,6 +114,25 @@ EOF
   grep -q '^Status: active$' .vbw-planning/STATE.md
 }
 
+@test "PLAN trigger supports legacy PLAN.md naming and flips status ready to active" {
+  cd "$TEST_TEMP_DIR"
+  create_state_and_roadmap "$TEST_TEMP_DIR/.vbw-planning" 2
+  sed -i.bak 's/^Status: .*/Status: ready/' .vbw-planning/STATE.md && rm -f .vbw-planning/STATE.md.bak
+
+  mkdir -p .vbw-planning/phases/02-compat
+  echo "# plan" > .vbw-planning/phases/02-compat/PLAN.md
+
+  local plan_path input
+  plan_path="$TEST_TEMP_DIR/.vbw-planning/phases/02-compat/PLAN.md"
+  input=$(jq -nc --arg p "$plan_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^Plans: 0/1$' .vbw-planning/STATE.md
+  grep -q '^Status: active$' .vbw-planning/STATE.md
+}
+
 @test "summary update is milestone-aware for state, roadmap, and execution-state" {
   cd "$TEST_TEMP_DIR"
 
@@ -164,6 +183,52 @@ EOF
 
   jq -e '.plans[0].status == "complete"' .vbw-planning/milestones/m1/.execution-state.json >/dev/null
   jq -e '.plans[0].status == "pending"' .vbw-planning/.execution-state.json >/dev/null
+}
+
+@test "summary trigger supports legacy SUMMARY.md naming" {
+  cd "$TEST_TEMP_DIR"
+
+  mkdir -p .vbw-planning/phases/01-setup
+  mkdir -p .vbw-planning/phases/02-core
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+Phase: 1 of 2 (Setup)
+Plans: 0/1
+Progress: 0%
+Status: active
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+- [ ] Phase 1: Setup
+- [ ] Phase 2: Core
+
+| Phase | Progress | Status | Completed |
+|------|----------|--------|-----------|
+| 1 - Setup | 0/1 | pending | - |
+| 2 - Core | 0/1 | pending | - |
+EOF
+
+  echo "# plan" > .vbw-planning/phases/01-setup/PLAN.md
+  cat > .vbw-planning/phases/01-setup/SUMMARY.md <<'SUMMARY'
+---
+status: complete
+---
+# summary
+SUMMARY
+  echo "# plan" > .vbw-planning/phases/02-core/PLAN.md
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^Plans: 1/1$' .vbw-planning/STATE.md
+  grep -q '^Progress: 100%$' .vbw-planning/STATE.md
+  grep -q '^Phase: 2 of 2 (Core)$' .vbw-planning/STATE.md
+  grep -q '^- \[x\] Phase 1: Setup$' .vbw-planning/ROADMAP.md
+  grep -Eq '^\| 1 - Setup \| 1/1 \| complete \| [0-9]{4}-[0-9]{2}-[0-9]{2} \|$' .vbw-planning/ROADMAP.md
 }
 
 @test "advance_phase sets needs_remediation when next phase has UAT issues" {

@@ -233,6 +233,25 @@ EOF
   echo "$output" | grep -q "next_phase_plans=1"
 }
 
+@test "legacy PLAN.md and SUMMARY.md support UAT remediation detection" {
+  mkdir -p .vbw-planning/phases/01-legacy/
+  touch .vbw-planning/phases/01-legacy/PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-legacy/SUMMARY.md
+  cat > .vbw-planning/phases/01-legacy/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "uat_issues_phase=01"
+}
+
 @test "dotfile PLAN files are not counted as plan artifacts" {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md

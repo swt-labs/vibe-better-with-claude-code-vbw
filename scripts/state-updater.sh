@@ -284,7 +284,7 @@ INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null)
 
 # PLAN.md trigger: update plan count + activate status
-if echo "$FILE_PATH" | grep -qE 'phases/[^/]+/[0-9]+(-[0-9]+)?-PLAN\.md$'; then
+if echo "$FILE_PATH" | grep -qE 'phases/[^/]+/([0-9]+(-[0-9]+)?-PLAN|PLAN)\.md$'; then
   update_state_md "$(dirname "$FILE_PATH")"
   update_roadmap "$(dirname "$FILE_PATH")"
   # Status: ready → active when a plan is written
@@ -305,7 +305,7 @@ if echo "$FILE_PATH" | grep -qE 'phases/[^/]+/[0-9]+(-[0-9]+)?-UAT\.md$'; then
 fi
 
 # SUMMARY.md trigger: update execution state + progress
-if ! echo "$FILE_PATH" | grep -qE 'phases/.*-SUMMARY\.md$'; then
+if ! echo "$FILE_PATH" | grep -qE 'phases/[^/]+/([0-9]+(-[0-9]+)?-SUMMARY|SUMMARY)\.md$'; then
   exit 0
 fi
 
@@ -314,7 +314,10 @@ fi
 PHASE_DIR="$(dirname "$FILE_PATH")"
 PLANNING_ROOT="$(planning_root_from_phase_dir "$PHASE_DIR")"
 STATE_FILE="${PLANNING_ROOT}/.execution-state.json"
-SUMMARY_ID="$(basename "$FILE_PATH" | sed 's/-SUMMARY\.md$//')"
+case "$(basename "$FILE_PATH")" in
+  SUMMARY.md) SUMMARY_ID="" ;;
+  *) SUMMARY_ID="$(basename "$FILE_PATH" | sed 's/-SUMMARY\.md$//')" ;;
+esac
 
 # Parse SUMMARY.md YAML frontmatter for phase, plan, status
 PHASE=""
