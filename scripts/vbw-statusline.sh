@@ -24,14 +24,18 @@ D='\033[2m' B='\033[1m' X='\033[0m'
 # --- Cached platform info ---
 _UID=$(id -u)
 _OS=$(uname)
-# Derive script dir early — used as a stable anchor for all path resolution below.
-# This prevents agents cd-ing around the monorepo from shifting the repo root to a
-# foreign project (fix for monorepo statusline bleed-through, companion to #258).
+# Derive script dir early — used as a preferred anchor for path resolution.
+# In dev (--plugin-dir), the script lives inside the project repo; anchoring here
+# makes root resolution immune to agents cd-ing around the monorepo (#266).
+# In production (plugin cache under ~/.config/claude-code/...), the script lives
+# outside any project repo so script-relative resolution will fail; we fall back
+# to CWD in that case (same as the pre-fix behaviour).
 _SL_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 _VER=$(cat "$_SL_SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
-# Use the script's own location (not CWD) as the git anchor so hooks fired from a
-# subdirectory or a sibling worktree always resolve to this session's repo root.
-_REPO_ROOT=$(cd "$_SL_SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null || (cd "$_SL_SCRIPT_DIR/.." && pwd -P))
+# Prefer script-relative git root (dev/--plugin-dir); fall back to CWD-relative
+# (production installs where the plugin cache is outside the project repo).
+_REPO_ROOT=$(cd "$_SL_SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null) \
+  || _REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
 if command -v md5sum &>/dev/null; then
   _REPO_HASH=$(echo "$_REPO_ROOT" | md5sum | cut -c1-8)
 elif command -v md5 &>/dev/null; then
