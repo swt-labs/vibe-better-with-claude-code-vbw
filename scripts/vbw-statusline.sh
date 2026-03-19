@@ -24,8 +24,14 @@ D='\033[2m' B='\033[1m' X='\033[0m'
 # --- Cached platform info ---
 _UID=$(id -u)
 _OS=$(uname)
-_VER=$(cat "$(dirname "$0")/../VERSION" 2>/dev/null | tr -d '[:space:]')
-_REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+# Derive script dir early — used as a stable anchor for all path resolution below.
+# This prevents agents cd-ing around the monorepo from shifting the repo root to a
+# foreign project (fix for monorepo statusline bleed-through, companion to #258).
+_SL_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+_VER=$(cat "$_SL_SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
+# Use the script's own location (not CWD) as the git anchor so hooks fired from a
+# subdirectory or a sibling worktree always resolve to this session's repo root.
+_REPO_ROOT=$(cd "$_SL_SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null || (cd "$_SL_SCRIPT_DIR/.." && pwd -P))
 if command -v md5sum &>/dev/null; then
   _REPO_HASH=$(echo "$_REPO_ROOT" | md5sum | cut -c1-8)
 elif command -v md5 &>/dev/null; then
@@ -44,7 +50,7 @@ fi
 # --- Helpers ---
 
 # Source shared summary-status helpers for status-aware SUMMARY detection
-_SL_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# (_SL_SCRIPT_DIR already set above in platform info section)
 if [ -f "$_SL_SCRIPT_DIR/summary-utils.sh" ]; then
   # shellcheck source=summary-utils.sh
   . "$_SL_SCRIPT_DIR/summary-utils.sh"
@@ -85,9 +91,10 @@ else
 fi
 
 # Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
+# Pass _SL_SCRIPT_DIR as the stable anchor so agent CWD changes don't shift the root.
 # shellcheck source=lib/vbw-config-root.sh
 . "$_SL_SCRIPT_DIR/lib/vbw-config-root.sh"
-find_vbw_root
+find_vbw_root "$_SL_SCRIPT_DIR"
 
 cache_fresh() {
   local cf="$1" ttl="$2"
