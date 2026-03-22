@@ -433,13 +433,18 @@ This mode handles the case where a milestone was archived before UAT issues were
    ```bash
    FRESH_PD=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh 2>/dev/null)
    ```
-   Parse `next_phase_state` from `FRESH_PD`. Route based on the updated state — follow the same priority table above:
-   - `needs_discussion` → Route to Discuss mode for the detected phase (same turn, inline)
-   - `needs_plan_and_execute` → Route to Plan + Execute mode (same turn, inline)
-   - `needs_execute` → Route to Execute mode (same turn, inline)
-   - `phase_count=0` (no phases) → Route to Scope mode: "No phases defined. Scope the work?"
-   - `all_done` → Route to Archive mode
-   Do NOT stop and ask "What would you like to build?" when phases already exist. The routing table handles all cases.
+   **Error guard:** If `FRESH_PD` is empty or contains `phase_detect_error=true`, display "⚠ Phase detection failed after marking milestones. Run `/vbw:vibe` again." and STOP.
+   **Re-trigger guard:** If `FRESH_PD` still shows `milestone_uat_issues=true`, the marking was incomplete (some phase dirs were skipped or invalid). Display "⚠ Some milestone UAT markers could not be written. Manually create `.remediated` files in the affected phase dirs, then run `/vbw:vibe`." and STOP — do NOT re-enter Milestone UAT Recovery (prevents infinite loop).
+   Otherwise, parse `next_phase_state` from `FRESH_PD` and apply the **full priority table above** (priorities 1–12) to determine the correct mode. Route inline in the same turn. Key outcomes:
+   - `needs_uat_remediation` → UAT Remediation mode
+   - `needs_reverification` → Re-verify mode
+   - `needs_discussion` → Discuss mode
+   - `needs_plan_and_execute` → Plan + Execute mode
+   - `needs_execute` → Execute mode
+   - `phase_count=0` → Scope mode
+   - `all_done` with `config_auto_uat=true` and `has_unverified_phases=true` → Verify mode
+   - `all_done` → Archive mode
+   This list is illustrative — always defer to the full priority table for compound conditions (e.g., auto_uat + has_unverified_phases mid-milestone). Do NOT stop and ask "What would you like to build?" when phases already exist.
 
 ### Mode: Plan
 
