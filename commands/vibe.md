@@ -429,7 +429,24 @@ This mode handles the case where a milestone was archived before UAT issues were
    fi
    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/mark-milestone-remediated.sh .vbw-planning "$TARGET_PHASE_DIRS"
    ```
-   Then continue to normal all_done/new-work routing.
+   **Re-route after marking (NON-NEGOTIABLE):** The pre-computed routing state is now stale — `.remediated` markers changed on-disk state. Re-run phase-detect to discover existing phases or new-work eligibility:
+   ```bash
+   FRESH_PD=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh 2>/dev/null)
+   ```
+   **Error guard:** If `FRESH_PD` is empty or contains `phase_detect_error=true`, display "⚠ Phase detection failed after marking milestones. Run `/vbw:vibe` again." and STOP.
+   **Re-trigger guard:** If `FRESH_PD` still shows `milestone_uat_issues=true`, check whether `milestone_uat_slug` from `FRESH_PD` matches the slug that was just processed (the original `milestone_uat_slug` from the pre-computed state). If it matches — the marking failed for this milestone. Display "⚠ Some milestone UAT markers could not be written. Manually create `.remediated` files in the affected phase dirs, then run `/vbw:vibe`." and STOP (prevents infinite loop). If it does NOT match — a different older milestone has unresolved UAT; let routing continue (the priority table will handle it, which may route to Milestone UAT Recovery for that other milestone).
+   Otherwise, parse all routing variables from `FRESH_PD` (`next_phase_state`, `phase_count`, `config_auto_uat`, `has_unverified_phases`, etc.) and apply the **full priority table above** (priorities 1–12) to determine the correct mode. Route inline in the same turn. Key outcomes:
+   - `needs_uat_remediation` → UAT Remediation mode
+   - `needs_reverification` → Re-verify mode
+   - `milestone_uat_issues=true` (different milestone) → Milestone UAT Recovery mode
+   - `config_auto_uat=true` + `has_unverified_phases=true` + `next_phase_state != all_done` → Verify mode (mid-milestone auto-UAT)
+   - `needs_discussion` → Discuss mode
+   - `needs_plan_and_execute` → Plan + Execute mode
+   - `needs_execute` → Execute mode
+   - `phase_count=0` → Scope mode
+   - `all_done` with `config_auto_uat=true` and `has_unverified_phases=true` → Verify mode
+   - `all_done` → Archive mode
+   This list is illustrative — always defer to the full priority table for compound conditions. Do NOT stop and ask "What would you like to build?" when phases already exist.
 
 ### Mode: Plan
 

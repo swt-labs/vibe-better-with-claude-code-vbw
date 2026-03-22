@@ -138,6 +138,38 @@ else
 fi
 
 # =========================================================================
+# Part 4: Milestone UAT Recovery "Start fresh" re-route contract
+# =========================================================================
+
+# Test 17: vibe.md Start fresh re-routes via phase-detect.sh after marking
+if grep -q 'FRESH_PD.*phase-detect\.sh' "$SCRIPT_DIR/commands/vibe.md"; then
+  pass "vibe.md Start fresh re-runs phase-detect.sh after marking"
+else
+  fail "vibe.md Start fresh missing phase-detect.sh re-run after marking"
+fi
+
+# Test 18: vibe.md Start fresh has error guard for phase-detect failure
+if grep -q 'phase_detect_error=true.*STOP\|STOP.*phase_detect_error\|empty.*phase_detect_error' "$SCRIPT_DIR/commands/vibe.md"; then
+  pass "vibe.md Start fresh has error guard for phase-detect failure"
+else
+  fail "vibe.md Start fresh missing error guard for phase-detect failure"
+fi
+
+# Test 19: vibe.md Start fresh has re-trigger guard for milestone_uat loop
+if grep -q 'milestone_uat_issues=true.*STOP\|Re-trigger guard' "$SCRIPT_DIR/commands/vibe.md"; then
+  pass "vibe.md Start fresh has re-trigger guard for milestone_uat loop"
+else
+  fail "vibe.md Start fresh missing re-trigger guard"
+fi
+
+# Test 20: vibe.md Start fresh references full priority table
+if grep -q 'full priority table' "$SCRIPT_DIR/commands/vibe.md"; then
+  pass "vibe.md Start fresh references full priority table for re-routing"
+else
+  fail "vibe.md Start fresh missing full priority table reference"
+fi
+
+# =========================================================================
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS_COUNT PASS, $FAIL_COUNT FAIL"
