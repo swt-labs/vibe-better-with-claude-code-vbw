@@ -429,7 +429,17 @@ This mode handles the case where a milestone was archived before UAT issues were
    fi
    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/mark-milestone-remediated.sh .vbw-planning "$TARGET_PHASE_DIRS"
    ```
-   Then continue to normal all_done/new-work routing.
+   **Re-route after marking (NON-NEGOTIABLE):** The pre-computed routing state is now stale — `.remediated` markers changed on-disk state. Re-run phase-detect to discover existing phases or new-work eligibility:
+   ```bash
+   FRESH_PD=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh 2>/dev/null)
+   ```
+   Parse `next_phase_state` from `FRESH_PD`. Route based on the updated state — follow the same priority table above:
+   - `needs_discussion` → Route to Discuss mode for the detected phase (same turn, inline)
+   - `needs_plan_and_execute` → Route to Plan + Execute mode (same turn, inline)
+   - `needs_execute` → Route to Execute mode (same turn, inline)
+   - `phase_count=0` (no phases) → Route to Scope mode: "No phases defined. Scope the work?"
+   - `all_done` → Route to Archive mode
+   Do NOT stop and ask "What would you like to build?" when phases already exist. The routing table handles all cases.
 
 ### Mode: Plan
 
