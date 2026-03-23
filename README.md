@@ -445,7 +445,7 @@ VBW uses 7 specialized agents, each with native tool permissions enforced via YA
 
 | Agent | Role | Tools | Denied | Mode |
 | :--- | :--- | :--- | :--- | :--- |
-| **Scout** | Research and information gathering. The responsible one. | Read, Grep, Glob, WebSearch, WebFetch | Write, Edit, NotebookEdit, Bash | `plan` |
+| **Scout** | Research and information gathering. The responsible one. | Inherited (all except denied) + MCP | Bash, Edit, NotebookEdit, Task | `plan` |
 | **Architect** | Creates roadmaps and phase structure. Writes plans, not code. | Read, Glob, Grep, Write | Edit, WebFetch, Bash | `acceptEdits` |
 | **Lead** | Merges research + planning + self-review. The one who actually makes decisions. | Read, Glob, Grep, Write, Bash, WebFetch | Edit | `acceptEdits` |
 | **Dev** | Writes code, makes commits, builds things. Handle with care. | Full access | -- | `acceptEdits` |

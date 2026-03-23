@@ -258,6 +258,8 @@ if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
 
 **Skill activation for Dev/QA tasks:** Before composing task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to the tasks being executed. If any skills are relevant, include a `<skill_activation>` block as the FIRST line of every Dev and QA task description. Only include skills whose description matches the task at hand. If no skills are relevant, omit the block entirely.
 
+**MCP tool evaluation for Dev tasks:** Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to the tasks (build tools, documentation servers, domain-specific APIs), note them in the Dev task description so the Dev agent knows which MCP tools to use.
+
 For each uncompleted plan, TaskCreate:
 ```yaml
 subject: "Execute {NN-MM}: {plan-title}"

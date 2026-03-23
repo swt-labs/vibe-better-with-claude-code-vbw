@@ -1,7 +1,7 @@
 ---
 name: vbw-scout
 description: Research agent for web searches, doc lookups, and codebase scanning. Writes RESEARCH.md files directly.
-disallowedTools: Bash, Edit, Task
+disallowedTools: Bash, Edit, NotebookEdit, Task
 model: inherit
 memory: local
 ---

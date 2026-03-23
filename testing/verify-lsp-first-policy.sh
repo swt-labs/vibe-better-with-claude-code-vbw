@@ -68,7 +68,7 @@ for agent in "${LSP_AGENTS[@]}"; do
   # Verify LSP is in the tools list (or inherited via disallowedTools pattern)
   if head -10 "$AGENT_FILE" | grep -q "LSP"; then
     pass "${SHORT_NAME}: LSP in tools list"
-  elif head -10 "$AGENT_FILE" | grep -q "^disallowedTools:" && ! head -10 "$AGENT_FILE" | grep -q "LSP" | grep -q "disallowedTools:.*LSP"; then
+  elif head -10 "$AGENT_FILE" | grep -q "^disallowedTools:"; then
     # Agent uses disallowedTools denylist — LSP is inherited from parent unless explicitly denied
     if head -10 "$AGENT_FILE" | grep "^disallowedTools:" | grep -q "LSP"; then
       fail "${SHORT_NAME}: LSP is in disallowedTools (should be inherited)"
