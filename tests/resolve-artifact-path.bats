@@ -233,6 +233,20 @@ teardown() {
   [ "$output" = "03-01-PLAN.md" ]
 }
 
+@test "--plan-number= with empty value errors for summary" {
+  mkdir -p "$TEST_DIR/03-auth"
+  run bash "$SCRIPT" summary "$TEST_DIR/03-auth" --plan-number=
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"--plan-number is required"* ]]
+}
+
+@test "--plan-number= with empty value errors for research" {
+  mkdir -p "$TEST_DIR/03-auth"
+  run bash "$SCRIPT" research "$TEST_DIR/03-auth" --plan-number=
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"--plan-number is required"* ]]
+}
+
 @test "plan: ignores non-numeric plan files matching glob" {
   mkdir -p "$TEST_DIR/03-auth"
   touch "$TEST_DIR/03-auth/03-01-PLAN.md"
@@ -270,6 +284,34 @@ teardown() {
   # hard-gate.sh: sed 's/^[0-9]*-\([0-9]*\)-.*/\1/'
   EXTRACTED=$(echo "$PLAN_NAME" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/')
   [ "$EXTRACTED" = "04" ]
+}
+
+# --- Integration: per-phase types match downstream consumers ---
+
+@test "uat output produces valid filename for compile-verify-context.sh" {
+  mkdir -p "$TEST_DIR/05-deploy"
+  UAT_NAME=$(bash "$SCRIPT" uat "$TEST_DIR/05-deploy")
+  # compile-verify-context.sh uses UAT_PATH=$(bash .../resolve-artifact-path.sh uat "$PHASE_DIR")
+  # then reads "$PHASE_DIR/$UAT_PATH" -- verify the name is well-formed
+  [ "$UAT_NAME" = "05-UAT.md" ]
+  # Verify the name matches the glob pattern used by uat-utils.sh
+  [[ "$UAT_NAME" == [0-9]*-UAT.md ]]
+}
+
+@test "verification output matches write-verification.sh expected input pattern" {
+  mkdir -p "$TEST_DIR/03-auth"
+  VERIF_NAME=$(bash "$SCRIPT" verification "$TEST_DIR/03-auth")
+  [ "$VERIF_NAME" = "03-VERIFICATION.md" ]
+  # write-verification.sh receives this as the output path basename
+  # Verify it matches the pattern expected by extract-verified-items
+  [[ "$VERIF_NAME" == [0-9]*-VERIFICATION.md ]]
+}
+
+@test "context output matches discussion-engine.md write pattern" {
+  mkdir -p "$TEST_DIR/02-setup"
+  CONTEXT_NAME=$(bash "$SCRIPT" context "$TEST_DIR/02-setup")
+  [ "$CONTEXT_NAME" = "02-CONTEXT.md" ]
+  [[ "$CONTEXT_NAME" == [0-9]*-CONTEXT.md ]]
 }
 
 # --- Contract: callsite wiring ---
