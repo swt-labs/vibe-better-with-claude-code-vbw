@@ -170,7 +170,9 @@ If a plan's work is purely internal (refactor, test infrastructure, script chang
 
 Write the initial UAT file at `{phase-dir}/{uat_path}` (using the pre-computed `uat_path` from Step 1) using the `templates/UAT.md` format. If the parent directory doesn't exist (e.g., `remediation/round-01/`), create it first.
 - Populate YAML frontmatter: phase, plan_count, status=in_progress, started=today, total_tests
-- Write all test entries with Result fields empty
+- Write all test entries with Result fields empty (no placeholder values)
+
+**Result field values (NON-NEGOTIABLE):** The `**Result:**` field in each test entry MUST be exactly one of three lowercase values: `pass`, `skip`, or `issue`. Never write `FAIL`, `PARTIAL`, `PASS`, `PASSED`, or any other value — downstream scripts depend on this exact vocabulary to extract issues and compute status.
 
 ### 5. CHECKPOINT loop (one test at a time — conversational, blocking)
 
@@ -297,13 +299,17 @@ Discovered issue D{NN} recorded (severity: {level}).
 
 ### 8. After each response: persist immediately
 
-- Update the UAT file at `{phase-dir}/{uat_path}` with the result for this test
+- Update the UAT file at `{phase-dir}/{uat_path}` with the result for this test. The `**Result:**` value MUST be exactly `pass`, `skip`, or `issue` (lowercase). Map user responses: Pass→`pass`, Skip→`skip`, any issue/fail/problem→`issue`. Never write FAIL, PARTIAL, or any other value.
 - Write the file to disk (survives /clear)
 - Display progress: `✓ {completed}/{total} tests`
 
 ### 9. Session complete
 
-- Update the UAT file at `{phase-dir}/{uat_path}` frontmatter: status (complete or issues_found), completed date, final counts
+- **Finalize UAT status (script-based — NON-NEGOTIABLE):** Run the finalize script to deterministically compute and update frontmatter status, counts, and completed date:
+  ```bash
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/finalize-uat-status.sh "{phase-dir}/{uat_path}"
+  ```
+  The script reads all `**Result:**` lines, counts pass/skip/issue, and updates the YAML frontmatter (`status`, `completed`, `passed`, `skipped`, `issues`, `total_tests`). Its output (`status={status} passed={N} ...`) provides the values for the summary display below. Do NOT manually update frontmatter fields — the script is the source of truth.
 - Display summary:
 
 ```text

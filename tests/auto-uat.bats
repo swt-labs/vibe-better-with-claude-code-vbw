@@ -1276,3 +1276,43 @@ EOF
   grep -q "UI automation capabilities" "$verify"
   grep -q "MCP server" "$verify"
 }
+
+# --- UAT format and lifecycle contract tests ---
+
+@test "verify.md enforces exact Result field values" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # Must enforce exactly pass/skip/issue (lowercase)
+  grep -q 'MUST be exactly one of three lowercase values' "$verify" || \
+    grep -q 'MUST be exactly.*pass.*skip.*issue' "$verify"
+  # Must prohibit FAIL, PARTIAL, PASS values
+  grep -q 'Never write.*FAIL.*PARTIAL' "$verify"
+}
+
+@test "verify.md Step 9 calls finalize-uat-status.sh" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # Must call the finalize script instead of relying on LLM instruction
+  grep -q "finalize-uat-status.sh" "$verify"
+  grep -q "script is the source of truth" "$verify"
+}
+
+@test "finalize-uat-status.sh exists and is executable" {
+  local script="$BATS_TEST_DIRNAME/../scripts/finalize-uat-status.sh"
+  [ -f "$script" ]
+  [ -x "$script" ]
+}
+
+@test "vibe.md UAT Remediation chains into re-verification after execute" {
+  local vibe="$BATS_TEST_DIRNAME/../commands/vibe.md"
+  # Must call prepare-reverification.sh after execute stage
+  grep -q "prepare-reverification.sh" "$vibe"
+  # Must continue directly into Verify mode
+  grep -q "Continue directly into Verify mode" "$vibe"
+  # Must NOT just suggest /vbw:vibe
+  grep -q "Chain into re-verification (NON-NEGOTIABLE)" "$vibe"
+}
+
+@test "extract-uat-issues.sh accepts FAIL and PARTIAL Result values" {
+  local script="$BATS_TEST_DIRNAME/../scripts/extract-uat-issues.sh"
+  # The AWK parser must handle issue/fail/failed/partial
+  grep -q 'issue|fail|failed|partial' "$script"
+}

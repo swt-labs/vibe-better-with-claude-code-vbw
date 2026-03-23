@@ -68,18 +68,66 @@ fi
 
 # Parse UAT markdown for issue entries.
 # Extracts: test ID (from ### header), severity, single-line description.
+# Accepts Result values: issue, fail, failed, partial, FAIL, PARTIAL (case-insensitive).
+# Extracts description from structured "- Description:" sub-bullet OR from
+# inline **Issue:** content when structured sub-bullets are missing.
 awk '
+  function tolower_str(s,    i, c, out) {
+    out = ""
+    for (i = 1; i <= length(s); i++) {
+      c = substr(s, i, 1)
+      if (c >= "A" && c <= "Z")
+        c = sprintf("%c", index("ABCDEFGHIJKLMNOPQRSTUVWXYZ", c) + 96)
+      out = out c
+    }
+    return out
+  }
+  function emit_issue() {
+    if (description == "" && inline_issue != "") description = inline_issue
+    if (description == "") description = "(no description)"
+    if (severity == "") {
+      # Infer severity from keywords in description
+      ldesc = tolower_str(description)
+      if (ldesc ~ /crash|broken|error|doesnt work|fails|exception/)
+        severity = "critical"
+      else if (ldesc ~ /wrong|incorrect|missing|not working|bug/)
+        severity = "major"
+      else if (ldesc ~ /minor|cosmetic|nitpick|small|typo|polish/)
+        severity = "minor"
+      else
+        severity = "major"
+    }
+    printf "%s|%s|%s\n", id, severity, description
+    has_issue = 0; description = ""; severity = ""; inline_issue = ""
+  }
   /^### [PD][0-9]/ {
+    # Emit any pending issue from previous test before starting new one
+    if (has_issue) emit_issue()
     # Extract test ID from header: "### P01-T2: title" or "### D1: title"
     id = $2
     sub(/:$/, "", id)
     has_issue = 0
     description = ""
     severity = ""
+    inline_issue = ""
     next
   }
-  /^- \*\*Result:\*\*[[:space:]]*issue/ {
-    has_issue = 1
+  /^- \*\*Result:\*\*/ {
+    val = $0
+    sub(/^- \*\*Result:\*\*[[:space:]]*/, "", val)
+    gsub(/[[:space:]]+$/, "", val)
+    lval = tolower_str(val)
+    if (lval ~ /^(issue|fail|failed|partial)/) {
+      has_issue = 1
+    }
+    next
+  }
+  has_issue && /^- \*\*Issue:\*\*/ {
+    # Capture inline issue text after **Issue:** (fallback description)
+    itxt = $0
+    sub(/^- \*\*Issue:\*\*[[:space:]]*/, "", itxt)
+    gsub(/[[:space:]]+$/, "", itxt)
+    if (itxt != "" && itxt != "{if result=issue}") inline_issue = itxt
     next
   }
   has_issue && /^[[:space:]]*- Description:/ {
@@ -88,8 +136,7 @@ awk '
     gsub(/[[:space:]]+$/, "", desc)
     description = desc
     if (severity != "") {
-      printf "%s|%s|%s\n", id, severity, description
-      has_issue = 0; description = ""; severity = ""
+      emit_issue()
     }
     next
   }
@@ -97,23 +144,23 @@ awk '
     sev = $0
     sub(/^[[:space:]]*- Severity:[[:space:]]*/, "", sev)
     gsub(/[[:space:]]+$/, "", sev)
-    severity = sev
-    if (description != "") {
-      printf "%s|%s|%s\n", id, severity, description
-      has_issue = 0; description = ""; severity = ""
+    severity = tolower_str(sev)
+    if (description != "" || inline_issue != "") {
+      emit_issue()
     }
     next
   }
-  /^### / {
-    # New section — emit partial issue if only one field was captured
-    if (has_issue && (description != "" || severity != "")) {
-      if (description == "") description = "(no description)"
-      if (severity == "") severity = "unknown"
-      printf "%s|%s|%s\n", id, severity, description
-    }
+  /^### / || /^## / {
+    # New section — emit pending issue
+    if (has_issue) emit_issue()
     has_issue = 0
     description = ""
     severity = ""
+    inline_issue = ""
+  }
+  END {
+    # Emit any trailing issue at end of file
+    if (has_issue) emit_issue()
   }
 ' "$UAT_FILE" > /tmp/.vbw-uat-issues-$$.txt
 trap 'rm -f /tmp/.vbw-uat-issues-$$.txt /tmp/.vbw-uat-round-ids-$$.txt' EXIT
