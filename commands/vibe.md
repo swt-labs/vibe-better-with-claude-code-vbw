@@ -136,7 +136,7 @@ When `next_phase_state=needs_reverification`, execute these steps inline in the 
 
 The `needs_reverification` state fires regardless of `auto_uat` — remediation always requires re-verification. The `auto_uat` flag only controls whether the user is prompted for confirmation.
 
-**auto_uat verification (needs_verification):** When `next_phase_state=needs_verification`, **continue directly into Verify mode below** targeting phase `{next_phase}` (from phase-detect output) — do NOT stop and tell the user to run a separate command. This state fires when `auto_uat=true` and a completed phase has no UAT verification yet, regardless of whether later phases still need work. After verification completes, the next `/vbw:vibe` call re-runs phase-detect and routes to the next pending phase.
+**auto_uat verification (needs_verification):** When `next_phase_state=needs_verification`, **continue directly into Verify mode below** targeting phase `{next_phase}` (from phase-detect output) — do NOT stop and tell the user to run a separate command. Verify mode runs the CHECKPOINT loop **inline in this conversation** via AskUserQuestion — do NOT spawn a QA agent or any subagent for UAT (see Verify mode's inline execution rule). This state fires when `auto_uat=true` and a completed phase has no UAT verification yet, regardless of whether later phases still need work. After verification completes, the next `/vbw:vibe` call re-runs phase-detect and routes to the next pending phase.
 
 **all_done + natural language:** If $ARGUMENTS describe new work (bug, feature, task) and state is `all_done`, route to Add Phase mode instead of Archive. Add Phase handles codebase context loading and research internally — do NOT spawn an Explore agent or do ad-hoc research before entering the mode.
 
@@ -592,9 +592,11 @@ Then Read the protocol file and execute Steps 2-5 as written.
 No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 **Phase auto-detection:** First phase with `*-SUMMARY.md` but no canonical `*-UAT.md` (exclude `*-SOURCE-UAT.md` copies). All verified: STOP "All phases have UAT results. Specify: `/vbw:verify {NN}`"
 
+**Inline execution (NON-NEGOTIABLE):** UAT is an interactive conversation with the human user via AskUserQuestion CHECKPOINT prompts. Do NOT spawn a QA agent, Dev agent, or any subagent for UAT verification. Do NOT use TaskCreate to delegate UAT. The AskUserQuestion tool is only available to the orchestrator — subagents cannot interact with the user, so delegating UAT to a subagent bypasses user input entirely and produces auto-written UAT files without human judgment. Run the verify.md CHECKPOINT loop directly in this conversation, the same way UAT Remediation coordinates its stages inline.
+
 **Steps:**
 1. Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/commands/verify.md` protocol. When entering from `needs_reverification` or `auto_uat` routing, the pre-computed verify context (verify_scope, uat_path, uat_resume) is already available from the Context section above — do NOT re-compute or re-read these values.
-2. Execute the verify protocol for the target phase. Use the pre-computed "Verify context" block from this command's Context section — it contains the PLAN/SUMMARY aggregation and UAT resume metadata for the target phase. Pass this data through to the verify protocol steps so they do NOT read individual PLAN/SUMMARY files or scan-parse UAT.md for resume state.
+2. Execute the verify.md steps inline in this conversation. Specifically: generate test scenarios (verify.md Step 4), then run the CHECKPOINT loop (verify.md Step 5) presenting one test at a time via AskUserQuestion and waiting for the user's response before proceeding to the next test. Use the pre-computed "Verify context" block from this command's Context section — it contains the PLAN/SUMMARY aggregation and UAT resume metadata for the target phase. Pass this data through to the verify protocol steps so they do NOT read individual PLAN/SUMMARY files or scan-parse UAT.md for resume state.
 3. Display results per verify.md output format.
 
 ### Mode: Add Phase

@@ -1204,3 +1204,40 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"next_phase_state=needs_reverification"* ]]
 }
+
+# --- Contract: UAT inline execution prohibition (issue #273) ---
+
+@test "vibe.md Verify mode contains inline execution prohibition" {
+  local vibe="$BATS_TEST_DIRNAME/../commands/vibe.md"
+  # Verify mode must explicitly prohibit subagent delegation
+  grep -q "Do NOT spawn a QA agent" "$vibe"
+  grep -q "Do NOT use TaskCreate to delegate UAT" "$vibe"
+  grep -q "AskUserQuestion tool is only available to the orchestrator" "$vibe"
+}
+
+@test "vibe.md needs_verification routing note mentions inline execution" {
+  local vibe="$BATS_TEST_DIRNAME/../commands/vibe.md"
+  # The routing note after the priority table must reinforce inline execution
+  grep -q "do NOT spawn a QA agent or any subagent for UAT" "$vibe"
+}
+
+@test "execute-protocol.md Step 4.5 contains subagent prohibition" {
+  local proto="$BATS_TEST_DIRNAME/../references/execute-protocol.md"
+  # Step 4.5 must prohibit subagent delegation for UAT
+  grep -q "Do NOT spawn a QA agent" "$proto"
+  grep -q "this is NOT a subagent operation" "$proto"
+  grep -q "AskUserQuestion tool is only available to the orchestrator" "$proto"
+}
+
+@test "verify.md has AskUserQuestion in allowed-tools" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # verify.md MUST have AskUserQuestion — this is what enables interactive UAT
+  grep -q "AskUserQuestion" "$verify"
+}
+
+@test "vbw-qa.md does NOT have AskUserQuestion in tools" {
+  local qa="$BATS_TEST_DIRNAME/../agents/vbw-qa.md"
+  # QA agent must NOT have AskUserQuestion — it cannot interact with the user
+  # This is the architectural reason UAT cannot be delegated to QA
+  ! grep -q "AskUserQuestion" "$qa"
+}

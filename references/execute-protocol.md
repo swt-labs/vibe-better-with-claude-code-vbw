@@ -559,7 +559,7 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
    - If no issues: proceed to Step 5
    - If issues found: display issue summary, suggest `/vbw:fix`, STOP (do not proceed to Step 5)
 
-Note: "Run inline" means the execute-protocol orchestrator runs the CHECKPOINT loop directly in the main conversation, not by invoking /vbw:verify as a command. The orchestrator must wait for user input at each checkpoint — this is NOT a subagent operation.
+**Inline execution (NON-NEGOTIABLE):** The orchestrator runs the CHECKPOINT loop directly in the main conversation — this is NOT a subagent operation. Do NOT spawn a QA agent, Dev agent, or any subagent for UAT. Do NOT use TaskCreate to delegate UAT. The AskUserQuestion tool is only available to the orchestrator — subagents cannot interact with the user, so delegating UAT to a subagent bypasses user input entirely. The orchestrator must wait for user input at each checkpoint.
 
 ### Step 5: Update state and present summary
 
