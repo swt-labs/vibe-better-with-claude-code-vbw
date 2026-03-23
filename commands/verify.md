@@ -74,6 +74,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   Use the refreshed phase-detect output for all subsequent guard checks and steps. Also regenerate pre-computed verify context and UAT resume metadata for the target phase after auto-detection (Step 1).
 - **Auto-detect phase** (no explicit number): Phase detection is pre-computed in Context above (or refreshed by normalization above). Use `next_phase` and `next_phase_slug` for the target phase.
   - If `next_phase_state=needs_reverification`: use `next_phase` directly — this is the phase that just completed remediation and needs re-verification.
+  - If `next_phase_state=needs_verification`: use `next_phase` directly — this is the first fully-built phase that needs UAT verification (auto_uat routing).
   - If `first_unverified_phase` is set: use that phase directly — this is the first fully-built phase without a terminal UAT.
   - Fallback: scan phase dirs for first with `*-SUMMARY.md` but no canonical `*-UAT.md` (exclude `*-SOURCE-UAT.md` copies).
   - Found: announce "Auto-detected Phase {NN} ({slug})". All verified: STOP "All phases have UAT results. Specify: `/vbw:verify {NN}`"

@@ -174,7 +174,8 @@ EOF
   # setup() already creates 01-setup with SUMMARY but no UAT
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"next_phase_state=all_done"* ]]
+  # auto_uat=true (from setup) + unverified → needs_verification overrides all_done
+  [[ "$output" == *"next_phase_state=needs_verification"* ]]
   [[ "$output" == *"has_unverified_phases=true"* ]]
 }
 
@@ -210,10 +211,13 @@ EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  # Phase state is NOT all_done (phase 02 needs work)
-  [[ "$output" == *"next_phase_state=needs_plan_and_execute"* ]]
-  # But unverified phases should still be detected
+  # auto_uat=true + unverified → needs_verification overrides needs_plan_and_execute
+  [[ "$output" == *"next_phase_state=needs_verification"* ]]
+  # Unverified phases still detected
   [[ "$output" == *"has_unverified_phases=true"* ]]
+  # NEXT_PHASE points to the unverified phase, not the next unbuilt one
+  [[ "$output" == *"next_phase=01"* ]]
+  [[ "$output" == *"next_phase_slug=01-setup"* ]]
 }
 
 @test "phase-detect has_unverified_phases=false mid-milestone when completed phase has UAT" {
@@ -241,6 +245,67 @@ EOF
   [ "$status" -eq 0 ]
   # Phase 01 is partially built, should NOT be flagged as unverified
   [[ "$output" == *"has_unverified_phases=false"* ]]
+}
+
+# --- needs_verification state override tests (issue #270) ---
+
+@test "phase-detect needs_verification override fires when auto_uat=true and has_unverified" {
+  cd "$TEST_TEMP_DIR"
+  # setup(): auto_uat=true, phase 01 fully built, no UAT
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"next_phase_state=needs_verification"* ]]
+  [[ "$output" == *"next_phase=01"* ]]
+  [[ "$output" == *"next_phase_slug=01-setup"* ]]
+}
+
+@test "phase-detect needs_verification override does NOT fire when auto_uat=false" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.auto_uat = false' "$TEST_TEMP_DIR/.vbw-planning/config.json" > "$tmp" && mv "$tmp" "$TEST_TEMP_DIR/.vbw-planning/config.json"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Without auto_uat, should fall through to all_done (only phase is fully built)
+  [[ "$output" == *"next_phase_state=all_done"* ]]
+  [[ "$output" == *"has_unverified_phases=true"* ]]
+}
+
+@test "phase-detect needs_verification override does NOT preempt needs_reverification" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+  printf 'done' > "$dir/.uat-remediation-stage"
+  # Phase 02 fully built but no UAT → unverified
+  local dir2="$TEST_TEMP_DIR/.vbw-planning/phases/02-feature"
+  mkdir -p "$dir2"
+  printf -- '---\nphase: 02\nplan: 02-01\ntitle: Feature\n---\n' > "$dir2/02-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\nDone.\n' > "$dir2/02-01-SUMMARY.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # needs_reverification should NOT be overridden by needs_verification
+  [[ "$output" == *"next_phase_state=needs_reverification"* ]]
+  [[ "$output" == *"has_unverified_phases=true"* ]]
+}
+
+@test "phase-detect needs_verification override does NOT preempt needs_uat_remediation" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+  # No remediation stage → needs_uat_remediation
+  # Phase 02 fully built but no UAT → unverified
+  local dir2="$TEST_TEMP_DIR/.vbw-planning/phases/02-feature"
+  mkdir -p "$dir2"
+  printf -- '---\nphase: 02\nplan: 02-01\ntitle: Feature\n---\n' > "$dir2/02-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\nDone.\n' > "$dir2/02-01-SUMMARY.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # needs_uat_remediation should NOT be overridden
+  [[ "$output" == *"next_phase_state=needs_uat_remediation"* ]]
+  [[ "$output" == *"has_unverified_phases=true"* ]]
 }
 
 @test "suggest-next execute with auto_uat=true mid-milestone suppresses continue" {
