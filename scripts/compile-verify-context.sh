@@ -97,8 +97,7 @@ if [ "$REMEDIATION_ONLY" = false ]; then
   fi
   SCOPE_HEADER="verify_scope=full"
   # Resolve UAT path via canonical resolver
-  _script_dir="$(cd "$(dirname "$0")" && pwd)"
-  UAT_PATH=$(bash "${_script_dir}/resolve-artifact-path.sh" uat "$PHASE_DIR")
+  UAT_PATH=$(bash "${_CVC_SCRIPT_DIR}/resolve-artifact-path.sh" uat "$PHASE_DIR")
 fi
 
 if [ -z "$ALL_PLAN_FILES" ]; then

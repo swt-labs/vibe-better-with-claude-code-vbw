@@ -212,6 +212,30 @@ teardown() {
   [[ "$output" == *"must be numeric"* ]]
 }
 
+@test "--plan-number 0 exits 1" {
+  mkdir -p "$TEST_DIR/03-auth"
+  run bash "$SCRIPT" plan "$TEST_DIR/03-auth" --plan-number 0
+  [ "$status" -eq 1 ]
+  [[ "$output" == *">= 1"* ]]
+}
+
+@test "--plan-number= with empty value falls through to auto-detect for plan" {
+  mkdir -p "$TEST_DIR/03-auth"
+  run bash "$SCRIPT" plan "$TEST_DIR/03-auth" --plan-number=
+  [ "$status" -eq 0 ]
+  [ "$output" = "03-01-PLAN.md" ]
+}
+
+@test "plan: ignores non-numeric plan files matching glob" {
+  mkdir -p "$TEST_DIR/03-auth"
+  touch "$TEST_DIR/03-auth/03-01-PLAN.md"
+  touch "$TEST_DIR/03-auth/NOTES-PLAN.md"
+  touch "$TEST_DIR/03-auth/foo-bar-PLAN.md"
+  run bash "$SCRIPT" plan "$TEST_DIR/03-auth"
+  [ "$status" -eq 0 ]
+  [ "$output" = "03-02-PLAN.md" ]
+}
+
 # --- Integration: round-trip with phase-state-utils consumers ---
 
 @test "plan output matches count_phase_plans glob pattern" {
@@ -266,4 +290,8 @@ teardown() {
 
 @test "contract: verify.md calls resolve-artifact-path.sh" {
   grep -q 'resolve-artifact-path\.sh' commands/verify.md
+}
+
+@test "contract: qa.md calls resolve-artifact-path.sh" {
+  grep -q 'resolve-artifact-path\.sh' commands/qa.md
 }

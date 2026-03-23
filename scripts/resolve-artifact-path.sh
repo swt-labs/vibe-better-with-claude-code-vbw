@@ -97,11 +97,15 @@ case "$TYPE" in
     ;;
 esac
 
-# Validate --plan-number is numeric if provided
+# Validate --plan-number is numeric and >= 1 if provided
 if [ -n "${PLAN_NUMBER:-}" ]; then
   case "$PLAN_NUMBER" in
     *[!0-9]*)
       echo "error: --plan-number must be numeric, got: $PLAN_NUMBER" >&2
+      exit 1
+      ;;
+    0)
+      echo "error: --plan-number must be >= 1, got: 0" >&2
       exit 1
       ;;
   esac
