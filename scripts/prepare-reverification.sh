@@ -153,7 +153,6 @@ if [ "$_LAYOUT" = "round-dir" ]; then
   fi
 
   echo "archived=kept"
-  echo "round_file=$UAT_BASENAME"
   echo "phase=$PHASE_NUM"
   echo "layout=$_LAYOUT"
   exit 0

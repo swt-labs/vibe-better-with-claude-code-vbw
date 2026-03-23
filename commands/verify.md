@@ -112,7 +112,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   - Run `prepare-reverification.sh {phase-dir}` to archive the old UAT and reset remediation stage
   - If the script outputs `skipped=already_archived`, display: `UAT already archived. Starting fresh re-verification.`
   - If the script fails (non-zero exit), display the error message and **STOP** — do not continue to Step 3
-  - If `archived=source` or `archived=kept`: display: `Phase UAT preserved. Starting fresh re-verification in round dir.`
+  - If `archived=kept`: display: `Phase UAT preserved. Starting fresh re-verification in round dir.`
   - Otherwise display: `Archived previous UAT → {round_file}. Starting fresh re-verification.`
   - Continue to Step 3 (generate new tests) — do NOT resume the old UAT
 

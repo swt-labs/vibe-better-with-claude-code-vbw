@@ -395,8 +395,10 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
      - **Chain into re-verification (NON-NEGOTIABLE):** After the execute stage advances to `done`, the remediation round is complete but NOT verified. Immediately prepare for re-verification and chain into Verify mode in the same turn:
        1. Run: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/prepare-reverification.sh "$PHASE_DIR"`
        2. **Error guard:** If the script fails (non-zero exit), display the error message and **STOP** — do not attempt to enter Verify mode with stale/missing context.
-       3. Parse output: `archived=...`, `round_file=...`
+       3. Parse output: `archived=kept|in-round-dir`, `skipped=already_archived|ready_for_verify`, `round_file=...`, `phase=NN`, `layout=...`
        4. If `archived=kept`: display "Phase UAT preserved. Starting re-verification in round dir."
+          If `skipped=ready_for_verify`: display "Round {NN} remediation complete. Starting re-verification."
+          If `skipped=already_archived`: display "UAT already archived. Starting re-verification."
           Otherwise: display "Archived previous UAT → {round_file}. Starting re-verification."
        5. Planning artifact boundary commit (conditional):
           ```bash

@@ -64,6 +64,29 @@ EOF
   [[ "$output" == *"layout=round-dir"* ]]
 }
 
+@test "round-dir layout: idempotent when called again with stage=verify" {
+  create_issues_uat
+
+  # State already at verify (e.g., vibe.md already called prepare-reverification)
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=verify\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+
+  # Phase-root UAT still untouched
+  [ -f "$PHASE_DIR/03-UAT.md" ]
+
+  # Stage stays at verify, round stays 01
+  grep -q "^stage=verify$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^round=01$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  # Output uses archived=kept (idempotent)
+  [[ "$output" == *"archived=kept"* ]]
+}
+
 @test "flat layout: archives UAT and advances to next round" {
   create_issues_uat
 
