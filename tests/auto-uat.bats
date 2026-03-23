@@ -876,9 +876,78 @@ EOF
   [[ "$output" != *"needs_reverification"* ]]
 }
 
-@test "verify.md precomputed target prefers next_phase_slug during reverification" {
-  run grep -q 'if \[ "\$STATE" = "needs_reverification" \] || \[ "\$STATE" = "needs_verification" \]; then TARGET="\$SLUG"; else TARGET="\${FU_SLUG:-\$SLUG}"; fi' "$PROJECT_ROOT/commands/verify.md"
+@test "verify.md precomputed verify context prefers next_phase_slug during reverification" {
+  local session="qa4-verify-context-$$"
+  local link="/tmp/.vbw-plugin-root-link-$session"
+  local cache="/tmp/.vbw-phase-detect-$session.txt"
+  local stamp="/tmp/.vbw-phase-detect-stamp-$session.txt"
+  local plugin_root="$TEST_TEMP_DIR/plugin-root"
+  local cmd
+
+  mkdir -p "$plugin_root/scripts" "$TEST_TEMP_DIR/.vbw-planning/phases/01-setup" "$TEST_TEMP_DIR/.vbw-planning/phases/02-feature"
+  printf '%s\n' '#!/bin/bash' 'echo "verify_context=stub"' > "$plugin_root/scripts/compile-verify-context.sh"
+  chmod +x "$plugin_root/scripts/compile-verify-context.sh"
+  ln -s "$plugin_root" "$link"
+
+  printf '%s\n' \
+    'next_phase_state=needs_reverification' \
+    'next_phase_slug=01-setup' \
+    'first_unverified_slug=02-feature' > "$cache"
+
+  cmd=$(awk '
+    /^Pre-computed verify context \(PLAN\/SUMMARY aggregation\):$/ { in_block=1; next }
+    in_block && /^!`/ {
+      sub(/^!`/, "")
+      sub(/`$/, "")
+      print
+      exit
+    }
+  ' "$PROJECT_ROOT/commands/verify.md")
+
+  cd "$TEST_TEMP_DIR"
+  run env CLAUDE_SESSION_ID="$session" bash -c "$cmd"
+
   [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_target_slug=01-setup"* ]]
+
+  rm -f "$link" "$cache" "$stamp"
+}
+
+@test "verify.md precomputed UAT resume prefers next_phase_slug during reverification" {
+  local session="qa4-uat-resume-$$"
+  local link="/tmp/.vbw-plugin-root-link-$session"
+  local cache="/tmp/.vbw-phase-detect-$session.txt"
+  local stamp="/tmp/.vbw-phase-detect-stamp-$session.txt"
+  local plugin_root="$TEST_TEMP_DIR/plugin-root-resume"
+  local cmd
+
+  mkdir -p "$plugin_root/scripts" "$TEST_TEMP_DIR/.vbw-planning/phases/01-setup" "$TEST_TEMP_DIR/.vbw-planning/phases/02-feature"
+  printf '%s\n' '#!/bin/bash' 'echo "uat_resume=stub"' > "$plugin_root/scripts/extract-uat-resume.sh"
+  chmod +x "$plugin_root/scripts/extract-uat-resume.sh"
+  ln -s "$plugin_root" "$link"
+
+  printf '%s\n' \
+    'next_phase_state=needs_reverification' \
+    'next_phase_slug=01-setup' \
+    'first_unverified_slug=02-feature' > "$cache"
+
+  cmd=$(awk '
+    /^Pre-computed UAT resume metadata:$/ { in_block=1; next }
+    in_block && /^!`/ {
+      sub(/^!`/, "")
+      sub(/`$/, "")
+      print
+      exit
+    }
+  ' "$PROJECT_ROOT/commands/verify.md")
+
+  cd "$TEST_TEMP_DIR"
+  run env CLAUDE_SESSION_ID="$session" bash -c "$cmd"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"uat_resume_target_slug=01-setup"* ]]
+
+  rm -f "$link" "$cache" "$stamp"
 }
 
 # --- QA round 5 finding 1: status/resume prioritise reverification over remediation ---
