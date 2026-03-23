@@ -44,6 +44,7 @@ Current project:
      ```
    - Display: `◆ Spawning Scout (${SCOUT_MODEL})...`
    - Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Scout prompt MUST start with a `<skill_activation>` block. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
+   - Also evaluate available MCP tools in your system context. If any MCP servers provide documentation, search, or data retrieval capabilities relevant to this research topic (e.g., Apple Docs for Apple APIs, web search MCPs for multi-source queries), note them in the Scout's task context so it prioritizes those tools over generic WebSearch/WebFetch where applicable.
   - Spawn vbw-scout as subagent(s) via Task tool. **Set `subagent_type: "vbw:vbw-scout"` and `model: "${SCOUT_MODEL}"` in the Task tool invocation. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
 ```
 <skill_activation>

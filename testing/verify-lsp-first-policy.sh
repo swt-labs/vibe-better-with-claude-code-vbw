@@ -65,9 +65,16 @@ for agent in "${LSP_AGENTS[@]}"; do
     continue
   fi
 
-  # Verify LSP is in the tools list (or inherited via context for Dev)
+  # Verify LSP is in the tools list (or inherited via disallowedTools pattern)
   if head -10 "$AGENT_FILE" | grep -q "LSP"; then
     pass "${SHORT_NAME}: LSP in tools list"
+  elif head -10 "$AGENT_FILE" | grep -q "^disallowedTools:" && ! head -10 "$AGENT_FILE" | grep -q "LSP" | grep -q "disallowedTools:.*LSP"; then
+    # Agent uses disallowedTools denylist — LSP is inherited from parent unless explicitly denied
+    if head -10 "$AGENT_FILE" | grep "^disallowedTools:" | grep -q "LSP"; then
+      fail "${SHORT_NAME}: LSP is in disallowedTools (should be inherited)"
+    else
+      pass "${SHORT_NAME}: LSP inherited via disallowedTools pattern (not denied)"
+    fi
   elif [[ "$agent" == "vbw-dev" ]] && grep -q "Prefer.*LSP\|prefer.*LSP" "$AGENT_FILE"; then
     pass "${SHORT_NAME}: LSP inherited (tools via context), LSP guidance present"
   else

@@ -29,6 +29,9 @@ Display: `◆ Lead: Researching phase context...`
 **If no RESEARCH.md exists:** Scan codebase to understand the problem space. If `.vbw-planning/codebase/META.md` exists, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding. Prefer **LSP** (go-to-definition, find-references, find-symbol) for navigating type hierarchies, tracing call sites, and following data flow. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`). WebFetch for new libs/APIs.
 
 **Always:** If no `<skill_activation>` block was in your prompt, evaluate available skills: check the `<available_skills>` block in your system context and call `Skill(skill-name)` for each relevant skill. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Research stays in context.
+
+If Scout-produced RESEARCH.md includes findings from MCP tools (documentation servers, web search MCPs, domain-specific data sources), trust those equally to WebFetch/WebSearch findings — they come from the user's installed information sources.
+
 Display: `✓ Lead: Research complete -- {N} files read, context loaded`
 
 ### Stage 2: Decompose
