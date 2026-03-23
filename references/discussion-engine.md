@@ -90,7 +90,11 @@ No disambiguation subsystem. Just good conversation.
 
 ## Step 4: Capture
 
-Write `{phase}-CONTEXT.md` to the phase directory:
+Resolve the CONTEXT filename:
+```bash
+CONTEXT_NAME=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-artifact-path.sh context "{phase-dir}")
+```
+Write `${CONTEXT_NAME}` to the phase directory:
 
 ```markdown
 # Phase N: Name — Context

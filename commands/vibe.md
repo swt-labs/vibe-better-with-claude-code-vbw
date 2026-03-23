@@ -456,17 +456,27 @@ This mode handles the case where a milestone was archived before UAT issues were
 
 **Steps:**
 1. **Parse args:** Phase number (optional, auto-detected), --effort (optional, falls back to config).
-2. **Phase context:** If `{phase-dir}/{phase}-CONTEXT.md` exists, include it in Lead agent context. If not, proceed without — users who want context run `/vbw:discuss {NN}` first.
+2. **Phase context:** Resolve CONTEXT path:
+   ```bash
+   CONTEXT_NAME=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-artifact-path.sh context "{phase-dir}")
+   ```
+   If `{phase-dir}/${CONTEXT_NAME}` exists, include it in Lead agent context. If not, proceed without — users who want context run `/vbw:discuss {NN}` first.
 3. **Research persistence (REQ-08, graduated):** If effort != turbo:
-   - Determine the next plan number `{MM}`: glob `*-PLAN.md` in the phase dir, extract the highest `{MM}` value, add 1 (zero-padded to 2 digits). If no plans exist, `{MM}=01`.
-   - Check for per-plan research `{phase-dir}/{phase}-{MM}-RESEARCH.md` (preferred) or legacy `{phase-dir}/{phase}-RESEARCH.md` (fallback).
-   - **If neither exists:** Spawn Scout agent to research the phase goal, requirements, and relevant codebase patterns. Scout writes its findings directly to the output path. Pass `<output_path>{phase-dir}/{phase}-{MM}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file using its Write tool. If a legacy `{phase-dir}/{phase}-RESEARCH.md` exists, delete it after Scout writes the per-plan file to avoid stale context. After Scout completes, confirm the file exists (read first line). Resolve Scout model:
+   - Determine the next plan number `{MM}` and resolve artifact paths:
+     ```bash
+     RESOLVE_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-artifact-path.sh"
+     NEXT_PLAN_NAME=$(bash "$RESOLVE_SCRIPT" plan "{phase-dir}")
+     MM=$(echo "$NEXT_PLAN_NAME" | sed 's/^[0-9]*-\([0-9]*\)-.*/\1/')
+     RESEARCH_NAME=$(bash "$RESOLVE_SCRIPT" research "{phase-dir}" --plan-number "$MM")
+     ```
+   - Check for per-plan research `{phase-dir}/${RESEARCH_NAME}` (preferred) or legacy `{phase-dir}/{phase}-RESEARCH.md` (fallback).
+   - **If neither exists:** Spawn Scout agent to research the phase goal, requirements, and relevant codebase patterns. Scout writes its findings directly to the output path. Pass `<output_path>{phase-dir}/${RESEARCH_NAME}</output_path>` in the Scout prompt so Scout writes the file using its Write tool. If a legacy `{phase-dir}/{phase}-RESEARCH.md` exists, delete it after Scout writes the per-plan file to avoid stale context. After Scout completes, confirm the file exists (read first line). Resolve Scout model:
      ```bash
      SCOUT_MODEL=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json)
      SCOUT_MAX_TURNS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}")
      ```
    Pass `subagent_type: "vbw:vbw-scout"` and `model: "${SCOUT_MODEL}"` to the Task tool. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited). Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Scout prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
-   - **If exists (per-plan or legacy):** Record the RESEARCH.md path (per-plan `{phase}-{MM}-RESEARCH.md` or legacy `{phase}-RESEARCH.md`) for inclusion in the Lead prompt. The Lead prompt MUST include the directive: `Read {research-path} for full research findings before planning.` Do NOT inline a summary of the research as a substitute — the Lead must read the file itself to get the complete, unabridged findings. Lead may update the per-plan RESEARCH.md if new information emerges.
+   - **If exists (per-plan or legacy):** Record the RESEARCH.md path (per-plan `${RESEARCH_NAME}` or legacy `{phase}-RESEARCH.md`) for inclusion in the Lead prompt. The Lead prompt MUST include the directive: `Read {research-path} for full research findings before planning.` Do NOT inline a summary of the research as a substitute — the Lead must read the file itself to get the complete, unabridged findings. Lead may update the per-plan RESEARCH.md if new information emerges.
    - **On failure:** Log warning, continue planning without research. Do not block.
    - **Authenticated live validation policy:** Scout cannot safely validate authenticated/private APIs (no Bash access). If research identifies a need for authenticated live validation (signed requests, API tokens, env-based secrets), Scout must flag it with `⚠ REQUIRES AUTHENTICATED LIVE VALIDATION` in findings. The execute stage (Dev/Debugger) performs that validation via Bash before code changes. Do not route authenticated API validation through WebFetch.
    - If effort=turbo: skip entirely.
@@ -481,7 +491,11 @@ This mode handles the case where a milestone was archived before UAT issues were
    ```
    Behavior: `planning_tracking=commit` commits RESEARCH.md if changed. Skipped when research was pre-existing or effort=turbo.
 5. **Context compilation:** If `config_context_compiler=true`, run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} lead {phases_dir}`. Include `.context-lead.md` in Lead agent context if produced.
-6. **Turbo shortcut:** If effort=turbo, skip Lead. Read phase reqs from ROADMAP.md, create single lightweight plan as `{NN}-PLAN.md` in the phase directory.
+6. **Turbo shortcut:** If effort=turbo, skip Lead. Resolve the plan filename:
+   ```bash
+   TURBO_PLAN=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-artifact-path.sh plan "{phase-dir}")
+   ```
+   Read phase reqs from ROADMAP.md, create single lightweight plan as `${TURBO_PLAN}` in the phase directory.
 7. **Other efforts:**
    - Resolve Lead model:
      ```bash
@@ -528,6 +542,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    - **CRITICAL:** Set `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"` in the Task tool invocation. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
    - **CRITICAL:** If a RESEARCH.md was found or created in step 3, include in the Lead prompt: `Read {research-path} for full research findings before planning.` where `{research-path}` is the per-plan or legacy path from step 3. The Lead must read the file itself — do NOT substitute an inlined summary.
    - **CRITICAL:** Include in the Lead prompt: "Plans will be executed by a team of parallel Dev agents — one agent per plan. Maximize wave 1 plans (no deps) so agents start simultaneously. Ensure same-wave plans modify disjoint file sets to avoid merge conflicts."
+   - **CRITICAL:** Include in the Lead prompt: `Use resolve-artifact-path.sh to compute plan filenames: bash ${RESOLVE_SCRIPT} plan "{phase-dir}" --plan-number {MM}` where `RESOLVE_SCRIPT` is the path from step 3. The script returns the canonical filename (e.g., `03-01-PLAN.md`). Call it once per plan with the plan number.
    - Display `◆ Spawning Lead agent...` -> `✓ Lead agent complete`.
 8. **Normalize plan filenames:**
     ```bash

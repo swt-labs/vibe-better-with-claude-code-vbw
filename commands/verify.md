@@ -99,7 +99,11 @@ QA verification summary (pre-extracted from VERIFICATION.md):
 - Use pre-computed verify context from the "Pre-computed verify context" block above (or refreshed output if normalization ran) — it contains per-plan titles, must_haves, what was built, files modified, and status. Do NOT read individual `*-SUMMARY.md` or `*-PLAN.md` files.
 - **Parse `verify_scope`** from the first line of the verify context block. When `verify_scope=remediation round=RR`, this is a re-verification session scoped to remediation round RR only. When `verify_scope=full`, standard full-scope verification. Use this in Step 4 to determine test framing.
 - **Parse `uat_path`** from the second line of the verify context block. This is the relative path (from phase dir) where the UAT file should be written — e.g., `03-UAT.md` for full scope or `remediation/round-01/R01-UAT.md` for remediation scope. Use this in Steps 4, 8, and 9 instead of hardcoding `{phase}-UAT.md`.
-- **If user specified an explicit phase number** that differs from `verify_target_slug`, ignore the pre-computed context (it was generated for the auto-detected phase). Read PLAN/SUMMARY files from the user-specified phase directory instead — this always uses full scope with `uat_path={phase}-UAT.md`.
+- **If user specified an explicit phase number** that differs from `verify_target_slug`, ignore the pre-computed context (it was generated for the auto-detected phase). Read PLAN/SUMMARY files from the user-specified phase directory instead — this always uses full scope. Resolve UAT path:
+  ```bash
+  UAT_NAME=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-artifact-path.sh uat "{phase-dir}")
+  ```
+  Use `uat_path=${UAT_NAME}`.
 
 ### 2. Handle re-verification state
 

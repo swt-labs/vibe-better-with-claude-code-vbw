@@ -96,9 +96,9 @@ if [ "$REMEDIATION_ONLY" = false ]; then
     fi
   fi
   SCOPE_HEADER="verify_scope=full"
-  # Extract phase number from directory basename (e.g., "03" from "03-slug-name")
-  _phase_num=$(basename "$PHASE_DIR" | sed 's/^\([0-9]*\).*/\1/')
-  UAT_PATH="${_phase_num}-UAT.md"
+  # Resolve UAT path via canonical resolver
+  _script_dir="$(cd "$(dirname "$0")" && pwd)"
+  UAT_PATH=$(bash "${_script_dir}/resolve-artifact-path.sh" uat "$PHASE_DIR")
 fi
 
 if [ -z "$ALL_PLAN_FILES" ]; then
