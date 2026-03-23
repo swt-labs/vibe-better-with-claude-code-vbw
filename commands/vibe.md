@@ -128,11 +128,12 @@ Then re-run phase-detect.sh and use updated output for routing below.
 **Re-verify after remediation (needs_reverification) — IMMEDIATE EXECUTION (NON-NEGOTIABLE):**
 When `next_phase_state=needs_reverification`, execute these steps inline in the same turn — do NOT create tasks, read protocol files, or perform any intermediate planning:
 1. Run: `bash {plugin-root}/scripts/prepare-reverification.sh {phase-dir}`
-2. Parse output: `archived=in-round-dir|already_archived|ready_for_verify`, `round_file=...`, `phase=NN`, `layout=...`
-3. If `archived=in-round-dir`: display "Archived previous UAT → {round_file}. Starting fresh re-verification."
+2. **Error guard:** If the script fails (non-zero exit), display the error message and **STOP** — do not attempt to enter Verify mode with stale/missing context.
+3. Parse output: `archived=in-round-dir|already_archived|ready_for_verify`, `round_file=...`, `phase=NN`, `layout=...`
+4. If `archived=in-round-dir`: display "Archived previous UAT → {round_file}. Starting fresh re-verification."
    If `skipped=already_archived`: display "UAT already archived. Starting fresh re-verification."
    If `skipped=ready_for_verify`: display "Round {NN} remediation complete. Starting fresh re-verification."
-4. **Continue directly into Verify mode below** for that phase — do NOT stop, do NOT tell the user to run a separate command.
+5. **Continue directly into Verify mode below** for that phase — do NOT stop, do NOT tell the user to run a separate command.
 
 The `needs_reverification` state fires regardless of `auto_uat` — remediation always requires re-verification. The `auto_uat` flag only controls whether the user is prompted for confirmation.
 

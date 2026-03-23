@@ -1327,8 +1327,12 @@ EOF
 
 @test "vibe.md re-verification chain has error guard for prepare-reverification" {
   local vibe="$BATS_TEST_DIRNAME/../commands/vibe.md"
-  # Must check for script failure before proceeding
-  grep -q 'Error guard.*script fails' "$vibe" || grep -q 'non-zero exit.*STOP' "$vibe"
+  # Both call sites must check for script failure:
+  # 1. Execute→verify chain (in UAT Remediation mode)
+  # 2. State routing path (needs_reverification priority)
+  local guard_count
+  guard_count=$(grep -c 'Error guard.*script fails\|non-zero exit.*STOP' "$vibe")
+  [ "$guard_count" -ge 2 ]
 }
 
 @test "uat-utils.sh extract_round_issue_ids matches lenient Result values" {
