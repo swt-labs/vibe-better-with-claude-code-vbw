@@ -1,5 +1,5 @@
 #!/bin/bash
-set -u
+set -euo pipefail
 # resolve-artifact-path.sh — Single source of truth for phase-directory artifact filenames.
 #
 # Usage: bash resolve-artifact-path.sh <type> <phase-dir> [--plan-number MM]
@@ -96,6 +96,16 @@ case "$TYPE" in
     exit 0
     ;;
 esac
+
+# Validate --plan-number is numeric if provided
+if [ -n "${PLAN_NUMBER:-}" ]; then
+  case "$PLAN_NUMBER" in
+    *[!0-9]*)
+      echo "error: --plan-number must be numeric, got: $PLAN_NUMBER" >&2
+      exit 1
+      ;;
+  esac
+fi
 
 # --- Per-plan types: need plan number ---
 

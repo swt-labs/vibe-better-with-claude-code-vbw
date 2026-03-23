@@ -205,6 +205,13 @@ teardown() {
   [[ "$output" == *"unknown option"* ]]
 }
 
+@test "non-numeric --plan-number exits 1" {
+  mkdir -p "$TEST_DIR/03-auth"
+  run bash "$SCRIPT" plan "$TEST_DIR/03-auth" --plan-number abc
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"must be numeric"* ]]
+}
+
 # --- Integration: round-trip with phase-state-utils consumers ---
 
 @test "plan output matches count_phase_plans glob pattern" {
@@ -255,4 +262,8 @@ teardown() {
 
 @test "contract: compile-verify-context.sh calls resolve-artifact-path.sh" {
   grep -q 'resolve-artifact-path\.sh' scripts/compile-verify-context.sh
+}
+
+@test "contract: verify.md calls resolve-artifact-path.sh" {
+  grep -q 'resolve-artifact-path\.sh' commands/verify.md
 }

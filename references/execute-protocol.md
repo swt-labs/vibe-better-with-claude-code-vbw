@@ -477,9 +477,15 @@ If compilation fails, proceed without it.
 
 Display: `◆ Spawning QA agent (${QA_MODEL})...`
 
-**Per-wave QA (Thorough/Balanced, QA_TIMING=per-wave):** After each wave completes, spawn QA concurrently with next wave's Dev work. QA receives only completed wave's PLAN.md + SUMMARY.md + "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." Include the output path in the task description so QA persists directly: "Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/{phase}-VERIFICATION-wave{W}.md. Plugin root: ${VBW_PLUGIN_ROOT}." After final wave, spawn integration QA covering all plans + cross-plan integration with output path `{phase-dir}/{phase}-VERIFICATION.md`. QA calls `write-verification.sh` directly — the orchestrator does NOT persist. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
+Resolve the VERIFICATION filename before spawning QA:
+```bash
+VERIF_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" verification "{phase-dir}")
+VERIF_BASE="${VERIF_NAME%.md}"
+```
 
-**Post-build QA (Fast, QA_TIMING=post-build):** Spawn QA after ALL plans complete. Include in task description: "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol. Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/{phase}-VERIFICATION.md. Plugin root: ${VBW_PLUGIN_ROOT}." QA calls `write-verification.sh` directly — the orchestrator does NOT persist. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
+**Per-wave QA (Thorough/Balanced, QA_TIMING=per-wave):** After each wave completes, spawn QA concurrently with next wave's Dev work. QA receives only completed wave's PLAN.md + SUMMARY.md + "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." Include the output path in the task description so QA persists directly: "Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/${VERIF_BASE}-wave{W}.md. Plugin root: ${VBW_PLUGIN_ROOT}." After final wave, spawn integration QA covering all plans + cross-plan integration with output path `{phase-dir}/${VERIF_NAME}`. QA calls `write-verification.sh` directly — the orchestrator does NOT persist. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
+
+**Post-build QA (Fast, QA_TIMING=post-build):** Spawn QA after ALL plans complete. Include in task description: "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol. Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/${VERIF_NAME}. Plugin root: ${VBW_PLUGIN_ROOT}." QA calls `write-verification.sh` directly — the orchestrator does NOT persist. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
 
 **CRITICAL:** Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation when spawning QA agents. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 **CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "qa"` (or `name: "qa-wave{W}"` for per-wave QA) parameters to each QA Task tool invocation.
@@ -507,12 +513,17 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
 
 **UAT execution:**
 
-1. Check if `{phase-dir}/{phase}-UAT.md` already exists with `status: complete`. If so: "○ UAT already complete" and proceed to Step 5.
+Resolve the UAT filename before proceeding:
+```bash
+UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phase-dir}")
+```
+
+1. Check if `{phase-dir}/${UAT_NAME}` already exists with `status: complete`. If so: "○ UAT already complete" and proceed to Step 5.
 2. Generate test scenarios from completed SUMMARY.md files:
    - Read each SUMMARY.md: extract what was built, files modified, must_haves
    - Generate 1-3 test scenarios per plan requiring HUMAN verification
    - Minimum 1 test per plan. Test IDs: `P{plan}-T{NN}`
-   - Write initial `{phase}-UAT.md` in phase dir with all tests (Result fields empty)
+   - Write initial `${UAT_NAME}` in phase dir with all tests (Result fields empty)
 3. **CHECKPOINT loop — present ONE test at a time, wait for user response:**
 
    **This is a conversational loop. Do NOT present all tests at once. Do NOT end the session after presenting a test. Do NOT proceed to Step 5 until all tests are complete.**
@@ -553,7 +564,7 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
    - **Freeform text (via "Other"):** Apply case-insensitive, trimmed string matching:
      - **Skip words** (skip, skipped, next, n/a, na, later, defer): record skip
      - **Anything else**: treat the entire response text as an issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major)
-   - Update `{phase}-UAT.md` immediately (persist to disk)
+   - Update `${UAT_NAME}` immediately (persist to disk)
    - Display progress: `✓ {completed}/{total} tests`
    - If more tests remain: present the NEXT test using the same CHECKPOINT format with AskUserQuestion, then **STOP and wait again**
    - If all tests done: go to step 4
