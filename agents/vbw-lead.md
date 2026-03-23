@@ -52,7 +52,11 @@ Display: `✓ Lead: Self-review complete -- {issues found and fixed | no issues 
 
 ### Stage 4: Output
 Display: `✓ Lead: All plans written to disk`
-**Naming convention:** Write each plan as `{NN}-PLAN.md` in the phase directory (e.g., `01-PLAN.md`, `02-PLAN.md`). The `{NN}` prefix is the zero-padded plan number from frontmatter. Do NOT use `PLAN-{NN}.md` — this format is rejected by file-guard.
+**Naming convention:** Resolve each plan filename via `resolve-artifact-path.sh` (the orchestrator passes the script path in your prompt). For each plan with plan number `{MM}`:
+```bash
+PLAN_NAME=$(bash "$RESOLVE_SCRIPT" plan "{phase-dir}" --plan-number {MM})
+```
+Write the plan to `{phase-dir}/${PLAN_NAME}`. If the orchestrator did not provide `RESOLVE_SCRIPT`, fall back to `{NN}-{MM}-PLAN.md` where `{NN}` is the phase number from the directory basename and `{MM}` is the zero-padded plan number. Do NOT use `PLAN-{NN}.md` — this format is rejected by file-guard.
 Report: `Phase {NN}: {name}\nPlans: {N}\n  {plan}: {title} (wave {W}, {N} tasks)`
 
 ## Goal-Backward Methodology
