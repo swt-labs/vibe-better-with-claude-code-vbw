@@ -32,7 +32,7 @@ failed: 1
 EOF
 }
 
-@test "round-dir layout: preserves phase-root UAT as SOURCE-UAT" {
+@test "round-dir layout: leaves phase-root UAT in place and advances to verify" {
   create_issues_uat
 
   # Create round-dir remediation state with stage=done
@@ -46,10 +46,10 @@ EOF
 
   [ "$status" -eq 0 ]
 
-  # Original UAT renamed to SOURCE-UAT (not round-01)
-  [ ! -f "$PHASE_DIR/03-UAT.md" ]
-  [ -f "$PHASE_DIR/03-SOURCE-UAT.md" ]
-  # No -round- files created at phase root
+  # Original UAT still exists at phase root (NOT renamed or moved)
+  [ -f "$PHASE_DIR/03-UAT.md" ]
+  # No SOURCE-UAT or -round- files created at phase root
+  [ ! -f "$PHASE_DIR/03-SOURCE-UAT.md" ]
   round_files=$(find "$PHASE_DIR" -maxdepth 1 -name '03-UAT-round-*.md' 2>/dev/null)
   [ -z "$round_files" ]
 
@@ -59,9 +59,8 @@ EOF
   # Round is still 01
   grep -q "^round=01$" "$PHASE_DIR/remediation/.uat-remediation-stage"
 
-  # Output uses archived=source marker and correct round_file
-  [[ "$output" == *"archived=source"* ]]
-  [[ "$output" == *"round_file=03-SOURCE-UAT.md"* ]]
+  # Output uses archived=kept marker
+  [[ "$output" == *"archived=kept"* ]]
   [[ "$output" == *"layout=round-dir"* ]]
 }
 

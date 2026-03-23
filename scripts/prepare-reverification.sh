@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# prepare-reverification.sh — Archive old UAT and advance remediation round for re-verification.
+# prepare-reverification.sh — Advance remediation state for re-verification.
 #
 # Usage: prepare-reverification.sh <phase-dir>
 #
-# Round-dir layout: Renames the phase-root UAT to {NN}-SOURCE-UAT.md (preserving
-# it as the original source document) and advances stage to verify. Round-specific
-# UATs in remediation/round-*/R*-UAT.md are handled separately (current round
-# advances to next round, stale rounds advance to verify).
+# Round-dir layout: Leaves the phase-root UAT in place (it's the permanent
+# historical record) and advances state to verify. verify.md writes
+# R{RR}-UAT.md in the round directory; current_uat() prioritizes round-dir
+# UATs over phase-root ones. Round-dir UATs already in their round directory
+# are handled separately (current round advances to next round, stale rounds
+# advance to verify).
 #
 # Flat/legacy layout: Archives UAT to {NN}-UAT-round-{seq}.md and advances to
 # the next remediation round (original behavior).
@@ -131,29 +133,27 @@ case "$UAT_FILE" in
     ;;
 esac
 
-# --- Phase-root UAT archival (two strategies depending on layout) ---
+# --- Phase-root UAT handling depends on layout ---
 
 if [ "$_LAYOUT" = "round-dir" ]; then
   # Round-dir layout: the phase-root UAT is the ORIGINAL document that found
-  # issues and triggered remediation — not a round artifact. Preserve it as
-  # SOURCE-UAT (matching the convention used by create-remediation-phase.sh
-  # and excluded by latest_non_source_uat() / current_uat() globs).
-  SOURCE_FILE="${PHASE_NUM}-SOURCE-UAT.md"
-  mv "$UAT_FILE" "${PHASE_DIR}${SOURCE_FILE}"
-
-  # Advance done → verify (verify.md writes R{RR}-UAT.md in the round dir)
-  bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" advance "${PHASE_DIR%/}" >/dev/null
+  # issues and triggered remediation. Leave it in place — it serves as the
+  # permanent historical record. verify.md writes R{RR}-UAT.md in the round
+  # dir, and current_uat() prioritizes round-dir UATs over phase-root ones.
+  # Just advance state done → verify.
+  if [ "$_REM_STAGE" = "done" ]; then
+    bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" advance "${PHASE_DIR%/}" >/dev/null
+  fi
 
   rm -f "${PHASE_DIR}.uat-remediation-stage"
 
   if git rev-parse --git-dir >/dev/null 2>&1; then
-    git add "${PHASE_DIR}${SOURCE_FILE}" 2>/dev/null || true
     git add "${PHASE_DIR}remediation/.uat-remediation-stage" 2>/dev/null || true
     git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
   fi
 
-  echo "archived=source"
-  echo "round_file=$SOURCE_FILE"
+  echo "archived=kept"
+  echo "round_file=$UAT_BASENAME"
   echo "phase=$PHASE_NUM"
   echo "layout=$_LAYOUT"
   exit 0

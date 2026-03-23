@@ -129,8 +129,8 @@ Then re-run phase-detect.sh and use updated output for routing below.
 When `next_phase_state=needs_reverification`, execute these steps inline in the same turn — do NOT create tasks, read protocol files, or perform any intermediate planning:
 1. Run: `bash {plugin-root}/scripts/prepare-reverification.sh {phase-dir}`
 2. **Error guard:** If the script fails (non-zero exit), display the error message and **STOP** — do not attempt to enter Verify mode with stale/missing context.
-3. Parse output: `archived=source|in-round-dir|already_archived|ready_for_verify`, `round_file=...`, `phase=NN`, `layout=...`
-4. If `archived=source`: display "Preserved original UAT as {round_file}. Starting fresh re-verification."
+3. Parse output: `archived=kept|in-round-dir|already_archived|ready_for_verify`, `round_file=...`, `phase=NN`, `layout=...`
+4. If `archived=kept`: display "Phase UAT preserved. Starting fresh re-verification in round dir."
    If `archived=in-round-dir`: display "Archived previous UAT → {round_file}. Starting fresh re-verification."
    If `skipped=already_archived`: display "UAT already archived. Starting fresh re-verification."
    If `skipped=ready_for_verify`: display "Round {NN} remediation complete. Starting fresh re-verification."
@@ -396,7 +396,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
        1. Run: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/prepare-reverification.sh "$PHASE_DIR"`
        2. **Error guard:** If the script fails (non-zero exit), display the error message and **STOP** — do not attempt to enter Verify mode with stale/missing context.
        3. Parse output: `archived=...`, `round_file=...`
-       4. If `archived=source`: display "Preserved original UAT as {round_file}. Starting re-verification."
+       4. If `archived=kept`: display "Phase UAT preserved. Starting re-verification in round dir."
           Otherwise: display "Archived previous UAT → {round_file}. Starting re-verification."
        5. Planning artifact boundary commit (conditional):
           ```bash
