@@ -521,8 +521,25 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
 1. Check if `{phase-dir}/${UAT_NAME}` already exists with `status: complete`. If so: "○ UAT already complete" and proceed to Step 5.
 2. Generate test scenarios from completed SUMMARY.md files:
    - Read each SUMMARY.md: extract what was built, files modified, must_haves
-   - Generate 1-3 test scenarios per plan requiring HUMAN verification
+   - Generate 1-3 test scenarios per plan requiring HUMAN judgment — things only a person can verify
    - Minimum 1 test per plan. Test IDs: `P{plan}-T{NN}`
+
+   **UAT tests must require human judgment.** Good examples:
+   - Open the app and navigate to screen X — does it display Y correctly?
+   - Perform user workflow A → B → C — does the result look right?
+   - Check that the UI reflects the change — is the label/value/layout correct?
+
+   **NEVER generate tests that can be performed programmatically.** These belong in QA (Step 4), not UAT:
+   - ✗ Grep/search files for expected content or missing imports
+   - ✗ Verify file existence, deletion, or structure
+   - ✗ Run a test suite or individual test (xcodebuild test, pytest, bats, jest, etc.)
+   - ✗ Run a CLI command and check its exit code or output
+   - ✗ Run a linter, type-checker, or build command
+
+   **Skill-aware exclusion:** If any active skill, tool, or MCP server gives the model UI automation capabilities (e.g., describe-UI, tap/click simulation, accessibility inspection, screenshot capture, DOM querying), then UI interactions that can be verified programmatically via those capabilities also belong in QA, not UAT. Only include scenarios that cannot be automated even with available tooling — subjective quality, visual design judgment, domain-specific data correctness, or hardware-dependent behavior.
+
+   If a plan's work is purely internal (refactor, test infrastructure, script changes) with no user-facing behavior, generate a single lightweight checkpoint asking the user to confirm the app still works as expected — do not ask them to run automated checks.
+
    - Write initial `${UAT_NAME}` in phase dir with all tests (Result fields empty)
 3. **CHECKPOINT loop — present ONE test at a time, wait for user response:**
 
@@ -574,7 +591,7 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
    - If no issues: proceed to Step 5
    - If issues found: display issue summary, suggest `/vbw:fix`, STOP (do not proceed to Step 5)
 
-Note: "Run inline" means the execute-protocol orchestrator runs the CHECKPOINT loop directly in the main conversation, not by invoking /vbw:verify as a command. The orchestrator must wait for user input at each checkpoint — this is NOT a subagent operation.
+**Inline execution (NON-NEGOTIABLE):** The orchestrator runs the CHECKPOINT loop directly in the main conversation — this is NOT a subagent operation. Do NOT spawn a QA agent, Dev agent, or any subagent for UAT. Do NOT use TaskCreate to delegate UAT. The AskUserQuestion tool is only available to the orchestrator — subagents cannot interact with the user, so delegating UAT to a subagent bypasses user input entirely. The orchestrator must wait for user input at each checkpoint.
 
 ### Step 5: Update state and present summary
 

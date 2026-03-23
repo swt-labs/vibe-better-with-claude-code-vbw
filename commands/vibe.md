@@ -40,9 +40,9 @@ Milestone UAT issues (milestone recovery only):
 !`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; S="/tmp/.vbw-phase-detect-stamp-${SESSION_KEY}.txt"; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; S_M=0; P_M=0; [ -f "$S" ] && S_M=$(stat -c %Y "$S" 2>/dev/null || stat -f %m "$S" 2>/dev/null || echo 0); [ -f "$P" ] && P_M=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo 0); if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && { [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ "$P_M" -lt "$S_M" ]; }; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; fi; if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then echo "not_milestone_recovery"; else MS_UAT=$(printf '%s' "$PD" | grep '^milestone_uat_issues=' | head -1 | cut -d= -f2); if [ "$MS_UAT" = "true" ]; then MS_DIRS=$(printf '%s' "$PD" | grep '^milestone_uat_phase_dirs=' | head -1 | cut -d= -f2); IFS='|' read -ra DIRS <<< "$MS_DIRS"; for d in "${DIRS[@]}"; do [ -d "$d" ] || continue; echo "milestone_phase_dir=$d"; bash "$L/scripts/extract-uat-issues.sh" "$d" 2>/dev/null || echo "uat_extract_error=true dir=$d"; echo "---"; done; else echo "not_milestone_recovery"; fi; fi`
 ```
 
-Verify context (verify routing only — needs_reverification OR auto_uat+unverified):
+Verify context (verify routing only — needs_reverification OR needs_verification):
 ```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; S="/tmp/.vbw-phase-detect-stamp-${SESSION_KEY}.txt"; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; S_M=0; P_M=0; [ -f "$S" ] && S_M=$(stat -c %Y "$S" 2>/dev/null || stat -f %m "$S" 2>/dev/null || echo 0); [ -f "$P" ] && P_M=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo 0); if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && { [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ "$P_M" -lt "$S_M" ]; }; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; fi; if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then echo "not_verify_routing"; else STATE=$(printf '%s' "$PD" | grep '^next_phase_state=' | head -1 | cut -d= -f2); AUTO_UAT=$(printf '%s' "$PD" | grep '^config_auto_uat=' | head -1 | cut -d= -f2); HAS_UV=$(printf '%s' "$PD" | grep '^has_unverified_phases=' | head -1 | cut -d= -f2); TARGET=""; if [ "$STATE" = "needs_reverification" ]; then TARGET=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2); elif [ "$AUTO_UAT" = "true" ] && [ "$HAS_UV" = "true" ]; then TARGET=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2); fi; if [ -n "$TARGET" ]; then PDIR=".vbw-planning/phases/$TARGET"; echo "verify_target_slug=$TARGET"; if [ -d "$PDIR" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then REMED_FLAG=""; if find "$PDIR/remediation" -path '*/round-*/R*-SUMMARY.md' 2>/dev/null | head -1 | grep -q .; then REMED_FLAG="--remediation-only"; fi; bash "$L/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR" 2>/dev/null || echo "verify_context_error=true"; else echo "verify_context_error=true"; fi; echo "---"; if [ "$STATE" = "needs_reverification" ]; then echo "uat_resume=pending_archive"; elif [ -d "$PDIR" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=error"; else echo "uat_resume=error"; fi; else echo "not_verify_routing"; fi; fi`
+!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; S="/tmp/.vbw-phase-detect-stamp-${SESSION_KEY}.txt"; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; S_M=0; P_M=0; [ -f "$S" ] && S_M=$(stat -c %Y "$S" 2>/dev/null || stat -f %m "$S" 2>/dev/null || echo 0); [ -f "$P" ] && P_M=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo 0); if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && { [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ "$P_M" -lt "$S_M" ]; }; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; fi; if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then echo "not_verify_routing"; else STATE=$(printf '%s' "$PD" | grep '^next_phase_state=' | head -1 | cut -d= -f2); AUTO_UAT=$(printf '%s' "$PD" | grep '^config_auto_uat=' | head -1 | cut -d= -f2); HAS_UV=$(printf '%s' "$PD" | grep '^has_unverified_phases=' | head -1 | cut -d= -f2); TARGET=""; if [ "$STATE" = "needs_reverification" ] || [ "$STATE" = "needs_verification" ]; then TARGET=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2); elif [ "$AUTO_UAT" = "true" ] && [ "$HAS_UV" = "true" ]; then TARGET=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2); fi; if [ -n "$TARGET" ]; then PDIR=".vbw-planning/phases/$TARGET"; echo "verify_target_slug=$TARGET"; if [ -d "$PDIR" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then REMED_FLAG=""; if find "$PDIR/remediation" -path '*/round-*/R*-SUMMARY.md' 2>/dev/null | head -1 | grep -q .; then REMED_FLAG="--remediation-only"; fi; bash "$L/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR" 2>/dev/null || echo "verify_context_error=true"; else echo "verify_context_error=true"; fi; echo "---"; if [ "$STATE" = "needs_reverification" ]; then echo "uat_resume=pending_archive"; elif [ "$STATE" = "needs_verification" ]; then if [ -d "$PDIR" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=none"; else echo "uat_resume=none"; fi; elif [ -d "$PDIR" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=error"; else echo "uat_resume=error"; fi; else echo "not_verify_routing"; fi; fi`
 ```
 
 !`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; bash "$L/scripts/suggest-compact.sh" execute 2>/dev/null || true`
@@ -119,27 +119,25 @@ Then re-run phase-detect.sh and use updated output for routing below.
 | 4 | `next_phase_state=needs_reverification` | Re-verify | auto_uat=true: no confirmation. auto_uat=false: "Phase {NN} remediation complete. Run re-verification?" |
 | 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
 | 6 | `phase_count=0` | Scope | "Project defined but no phases. Scope the work?" |
-| 7 | `config_auto_uat=true` AND `has_unverified_phases=true` AND `next_phase_state` != `all_done` | Verify | (no confirmation — auto_uat intent, mid-milestone) |
+| 7 | `next_phase_state=needs_verification` | Verify | (no confirmation — auto_uat intent) |
 | 8 | `next_phase_state=needs_discussion` | Discuss | "Phase {NN} needs discussion before planning. Start discussion?" |
 | 9 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {NN} needs planning and execution. Start?" |
 | 10 | `next_phase_state=needs_execute` | Execute | "Phase {NN} is planned. Execute it?" |
-| 11 | `next_phase_state=all_done` AND `config_auto_uat=true` AND `has_unverified_phases=true` | Verify | (no confirmation — auto_uat intent) |
-| 12 | `next_phase_state=all_done` | Archive | "All phases complete. Run audit and archive?" |
+| 11 | `next_phase_state=all_done` | Archive | "All phases complete. Run audit and archive?" |
 
 **Re-verify after remediation (needs_reverification) — IMMEDIATE EXECUTION (NON-NEGOTIABLE):**
 When `next_phase_state=needs_reverification`, execute these steps inline in the same turn — do NOT create tasks, read protocol files, or perform any intermediate planning:
 1. Run: `bash {plugin-root}/scripts/prepare-reverification.sh {phase-dir}`
-2. Parse output: `archived=in-round-dir|already_archived|ready_for_verify`, `round_file=...`, `phase=NN`, `layout=...`
-3. If `archived=in-round-dir`: display "Archived previous UAT → {round_file}. Starting fresh re-verification."
+2. **Error guard:** If the script fails (non-zero exit), display the error message and **STOP** — do not attempt to enter Verify mode with stale/missing context.
+3. Parse output: `archived=in-round-dir|already_archived|ready_for_verify`, `round_file=...`, `phase=NN`, `layout=...`
+4. If `archived=in-round-dir`: display "Archived previous UAT → {round_file}. Starting fresh re-verification."
    If `skipped=already_archived`: display "UAT already archived. Starting fresh re-verification."
    If `skipped=ready_for_verify`: display "Round {NN} remediation complete. Starting fresh re-verification."
-4. **Continue directly into Verify mode below** for that phase — do NOT stop, do NOT tell the user to run a separate command.
+5. **Continue directly into Verify mode below** for that phase — do NOT stop, do NOT tell the user to run a separate command.
 
 The `needs_reverification` state fires regardless of `auto_uat` — remediation always requires re-verification. The `auto_uat` flag only controls whether the user is prompted for confirmation.
 
-**auto_uat mid-milestone:** When `config_auto_uat=true` and `has_unverified_phases=true` but `next_phase_state` is NOT `all_done`, **continue directly into Verify mode below** targeting phase `{first_unverified_phase}` (from phase-detect output) — do NOT stop and tell the user to run a separate command. This ensures each completed phase gets UAT verification immediately after execution, even when later phases still need work. After verification completes, the next `/vbw:vibe` call re-runs phase-detect and routes to the next pending phase.
-
-**auto_uat + all_done:** When `config_auto_uat=true` and `has_unverified_phases=true`, skip the Archive confirmation and **continue directly into Verify mode below** targeting phase `{first_unverified_phase}` (from phase-detect output) — do NOT stop and tell the user to run a separate command. After verification completes, the next `/vbw:vibe` call re-runs phase-detect — if more unverified phases remain, it routes to Verify again; otherwise it falls through to Archive (priority 12).
+**auto_uat verification (needs_verification):** When `next_phase_state=needs_verification`, **continue directly into Verify mode below** targeting phase `{next_phase}` (from phase-detect output) — do NOT stop and tell the user to run a separate command. Verify mode runs the CHECKPOINT loop **inline in this conversation** via AskUserQuestion — do NOT spawn a QA agent or any subagent for UAT (see Verify mode's inline execution rule). This state fires when `auto_uat=true` and a completed phase has no UAT verification yet, regardless of whether later phases still need work. After verification completes, the next `/vbw:vibe` call re-runs phase-detect and routes to the next pending phase.
 
 **all_done + natural language:** If $ARGUMENTS describe new work (bug, feature, task) and state is `all_done`, route to Add Phase mode instead of Archive. Add Phase handles codebase context loading and research internally — do NOT spawn an Explore agent or do ad-hoc research before entering the mode.
 
@@ -393,12 +391,30 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
        ```bash
        bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
        ```
+     - **Chain into re-verification (NON-NEGOTIABLE):** After the execute stage advances to `done`, the remediation round is complete but NOT verified. Immediately prepare for re-verification and chain into Verify mode in the same turn:
+       1. Run: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/prepare-reverification.sh "$PHASE_DIR"`
+       2. **Error guard:** If the script fails (non-zero exit), display the error message and **STOP** — do not attempt to enter Verify mode with stale/missing context.
+       3. Parse output: `archived=...`, `round_file=...`
+       4. Display: "Archived previous UAT → {round_file}. Starting re-verification."
+       5. Planning artifact boundary commit (conditional):
+          ```bash
+          PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+          if [ -f "$PG_SCRIPT" ]; then
+            bash "$PG_SCRIPT" commit-boundary "execute phase {NN} remediation round {RR}" .vbw-planning/config.json
+          fi
+          ```
+       6. **Continue directly into Verify mode** for this phase — do NOT stop, do NOT tell the user to run `/vbw:vibe`. Enter Verify mode (below) inline in the same turn. The pre-computed verify context may be stale (it was computed at session start, before remediation). Re-compute it:
+          ```bash
+          bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh --remediation-only "$PHASE_DIR"
+          ```
+          Use this fresh verify context for the Verify mode CHECKPOINT loop.
+       Do NOT present the remediation summary (Step 7) and stop — the summary is only useful if the session cannot continue (e.g., compaction).
    - `fix` (minor-only path): Route to a quick-fix implementation path for the same phase using the extracted UAT issue list as task input (equivalent to `/vbw:fix`, but without requiring the user to invoke it manually). After changes, advance:
      ```bash
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
-     Suggest `/vbw:vibe`.
-7. Present a remediation summary with: phase, issue count, severity mix, current stage, chosen path (`research -> plan -> execute` or quick-fix), and per-test recurrence. For any issue with `failure_count >= 2`, include: `"⚠ RECURRING ({failure_count}/{uat_round} rounds): {ID} — {DESCRIPTION}"`. First-time failures display without the annotation.
+     Then chain into re-verification using the same steps as the execute stage above (prepare-reverification → commit boundary → Verify mode inline). Do NOT suggest `/vbw:vibe` — enter Verify mode in the same turn.
+7. **Fallback remediation summary** (only when re-verification chaining could not complete in this turn — e.g., context window limits, compaction, or session interruption): Present a remediation summary with: phase, issue count, severity mix, current stage, chosen path (`research -> plan -> execute` or quick-fix), and per-test recurrence. For any issue with `failure_count >= 2`, include: `"⚠ RECURRING ({failure_count}/{uat_round} rounds): {ID} — {DESCRIPTION}"`. First-time failures display without the annotation. End with: "Run `/vbw:vibe` to start re-verification."
 
 ### Mode: Milestone UAT Recovery
 
@@ -435,18 +451,17 @@ This mode handles the case where a milestone was archived before UAT issues were
    ```
    **Error guard:** If `FRESH_PD` is empty or contains `phase_detect_error=true`, display "⚠ Phase detection failed after marking milestones. Run `/vbw:vibe` again." and STOP.
    **Re-trigger guard:** If `FRESH_PD` still shows `milestone_uat_issues=true`, check whether `milestone_uat_slug` from `FRESH_PD` matches the slug that was just processed (the original `milestone_uat_slug` from the pre-computed state). If it matches — the marking failed for this milestone. Display "⚠ Some milestone UAT markers could not be written. Manually create `.remediated` files in the affected phase dirs, then run `/vbw:vibe`." and STOP (prevents infinite loop). If it does NOT match — a different older milestone has unresolved UAT; let routing continue (the priority table will handle it, which may route to Milestone UAT Recovery for that other milestone).
-   Otherwise, parse all routing variables from `FRESH_PD` (`next_phase_state`, `phase_count`, `config_auto_uat`, `has_unverified_phases`, etc.) and apply the **full priority table above** (priorities 1–12) to determine the correct mode. Route inline in the same turn. Key outcomes:
+   Otherwise, parse all routing variables from `FRESH_PD` (`next_phase_state`, `phase_count`, `config_auto_uat`, `has_unverified_phases`, etc.) and apply the **full priority table above** (priorities 1–11) to determine the correct mode. Route inline in the same turn. Key outcomes:
    - `needs_uat_remediation` → UAT Remediation mode
    - `needs_reverification` → Re-verify mode
    - `milestone_uat_issues=true` (different milestone) → Milestone UAT Recovery mode
-   - `config_auto_uat=true` + `has_unverified_phases=true` + `next_phase_state != all_done` → Verify mode (mid-milestone auto-UAT)
+   - `needs_verification` → Verify mode (auto_uat)
    - `needs_discussion` → Discuss mode
    - `needs_plan_and_execute` → Plan + Execute mode
    - `needs_execute` → Execute mode
    - `phase_count=0` → Scope mode
-   - `all_done` with `config_auto_uat=true` and `has_unverified_phases=true` → Verify mode
    - `all_done` → Archive mode
-   This list is illustrative — always defer to the full priority table for compound conditions. Do NOT stop and ask "What would you like to build?" when phases already exist.
+   This list is illustrative — always defer to the full priority table. Do NOT stop and ask "What would you like to build?" when phases already exist.
 
 ### Mode: Plan
 
@@ -611,9 +626,11 @@ Then Read the protocol file and execute Steps 2-5 as written.
 No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 **Phase auto-detection:** First phase with `*-SUMMARY.md` but no canonical `*-UAT.md` (exclude `*-SOURCE-UAT.md` copies). All verified: STOP "All phases have UAT results. Specify: `/vbw:verify {NN}`"
 
+**Inline execution (NON-NEGOTIABLE):** UAT is an interactive conversation with the human user via AskUserQuestion CHECKPOINT prompts. Do NOT spawn a QA agent, Dev agent, or any subagent for UAT verification. Do NOT use TaskCreate to delegate UAT. The AskUserQuestion tool is only available to the orchestrator — subagents cannot interact with the user, so delegating UAT to a subagent bypasses user input entirely and produces auto-written UAT files without human judgment. Run the verify.md CHECKPOINT loop directly in this conversation, the same way UAT Remediation coordinates its stages inline.
+
 **Steps:**
 1. Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/commands/verify.md` protocol. When entering from `needs_reverification` or `auto_uat` routing, the pre-computed verify context (verify_scope, uat_path, uat_resume) is already available from the Context section above — do NOT re-compute or re-read these values.
-2. Execute the verify protocol for the target phase. Use the pre-computed "Verify context" block from this command's Context section — it contains the PLAN/SUMMARY aggregation and UAT resume metadata for the target phase. Pass this data through to the verify protocol steps so they do NOT read individual PLAN/SUMMARY files or scan-parse UAT.md for resume state.
+2. Execute the verify.md steps inline in this conversation. Specifically: generate test scenarios (verify.md Step 4), then run the CHECKPOINT loop (verify.md Step 5) presenting one test at a time via AskUserQuestion and waiting for the user's response before proceeding to the next test. Use the pre-computed "Verify context" block from this command's Context section — it contains the PLAN/SUMMARY aggregation and UAT resume metadata for the target phase. Pass this data through to the verify protocol steps so they do NOT read individual PLAN/SUMMARY files or scan-parse UAT.md for resume state.
 3. Display results per verify.md output format.
 
 ### Mode: Add Phase

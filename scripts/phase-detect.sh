@@ -137,12 +137,15 @@ fi
 echo "has_shipped_milestones=$HAS_SHIPPED_MILESTONES"
 echo "needs_milestone_rename=$NEEDS_MILESTONE_RENAME"
 
-# --- Early config read: require_phase_discussion (needed before phase scanning) ---
+# --- Early config read: require_phase_discussion + auto_uat (needed before phase scanning) ---
 CFG_REQUIRE_PHASE_DISCUSSION="false"
+CFG_AUTO_UAT_EARLY="false"
 CONFIG_FILE_EARLY="$PLANNING_DIR/config.json"
 if [ "$JQ_AVAILABLE" = true ] && [ -f "$CONFIG_FILE_EARLY" ]; then
   _rpd=$(jq -r 'if .require_phase_discussion == null then false else .require_phase_discussion end' "$CONFIG_FILE_EARLY" 2>/dev/null) || true
   [ -n "${_rpd:-}" ] && CFG_REQUIRE_PHASE_DISCUSSION="$_rpd"
+  _aue=$(jq -r 'if .auto_uat == null then false else .auto_uat end' "$CONFIG_FILE_EARLY" 2>/dev/null) || true
+  [ -n "${_aue:-}" ] && CFG_AUTO_UAT_EARLY="$_aue"
 fi
 
 # --- Phase scanning ---
@@ -446,6 +449,30 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
       break
     fi
   done
+fi
+
+# --- needs_verification override: make auto_uat routing unambiguous ---
+# When auto_uat is on and a completed phase needs verification, override
+# next_phase_state to needs_verification and point NEXT_PHASE at the
+# unverified phase. This eliminates the ambiguous compound condition in
+# vibe.md's priority table (config_auto_uat + has_unverified_phases +
+# next_phase_state != all_done) and makes routing deterministic via a
+# single state check.
+if [ "$CFG_AUTO_UAT_EARLY" = "true" ] && [ "$HAS_UNVERIFIED_PHASES" = "true" ]; then
+  case "$NEXT_PHASE_STATE" in
+    needs_discussion|needs_plan_and_execute|needs_execute|all_done)
+      NEXT_PHASE="$FIRST_UNVERIFIED_PHASE"
+      NEXT_PHASE_SLUG="$FIRST_UNVERIFIED_SLUG"
+      NEXT_PHASE_STATE="needs_verification"
+      _UV_DIR="$PHASES_DIR/$FIRST_UNVERIFIED_SLUG"
+      if [ -d "$_UV_DIR" ]; then
+        NEXT_PHASE_PLANS=$(count_phase_plans "$_UV_DIR")
+        NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_UV_DIR")
+      fi
+      ;;
+    # Don't override needs_uat_remediation, needs_reverification — those take priority
+    *) ;;
+  esac
 fi
 
 echo "phase_count=$PHASE_COUNT"

@@ -174,7 +174,8 @@ EOF
   # setup() already creates 01-setup with SUMMARY but no UAT
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"next_phase_state=all_done"* ]]
+  # auto_uat=true (from setup) + unverified → needs_verification overrides all_done
+  [[ "$output" == *"next_phase_state=needs_verification"* ]]
   [[ "$output" == *"has_unverified_phases=true"* ]]
 }
 
@@ -210,10 +211,13 @@ EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  # Phase state is NOT all_done (phase 02 needs work)
-  [[ "$output" == *"next_phase_state=needs_plan_and_execute"* ]]
-  # But unverified phases should still be detected
+  # auto_uat=true + unverified → needs_verification overrides needs_plan_and_execute
+  [[ "$output" == *"next_phase_state=needs_verification"* ]]
+  # Unverified phases still detected
   [[ "$output" == *"has_unverified_phases=true"* ]]
+  # NEXT_PHASE points to the unverified phase, not the next unbuilt one
+  [[ "$output" == *"next_phase=01"* ]]
+  [[ "$output" == *"next_phase_slug=01-setup"* ]]
 }
 
 @test "phase-detect has_unverified_phases=false mid-milestone when completed phase has UAT" {
@@ -241,6 +245,67 @@ EOF
   [ "$status" -eq 0 ]
   # Phase 01 is partially built, should NOT be flagged as unverified
   [[ "$output" == *"has_unverified_phases=false"* ]]
+}
+
+# --- needs_verification state override tests (issue #270) ---
+
+@test "phase-detect needs_verification override fires when auto_uat=true and has_unverified" {
+  cd "$TEST_TEMP_DIR"
+  # setup(): auto_uat=true, phase 01 fully built, no UAT
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"next_phase_state=needs_verification"* ]]
+  [[ "$output" == *"next_phase=01"* ]]
+  [[ "$output" == *"next_phase_slug=01-setup"* ]]
+}
+
+@test "phase-detect needs_verification override does NOT fire when auto_uat=false" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.auto_uat = false' "$TEST_TEMP_DIR/.vbw-planning/config.json" > "$tmp" && mv "$tmp" "$TEST_TEMP_DIR/.vbw-planning/config.json"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # Without auto_uat, should fall through to all_done (only phase is fully built)
+  [[ "$output" == *"next_phase_state=all_done"* ]]
+  [[ "$output" == *"has_unverified_phases=true"* ]]
+}
+
+@test "phase-detect needs_verification override does NOT preempt needs_reverification" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+  printf 'done' > "$dir/.uat-remediation-stage"
+  # Phase 02 fully built but no UAT → unverified
+  local dir2="$TEST_TEMP_DIR/.vbw-planning/phases/02-feature"
+  mkdir -p "$dir2"
+  printf -- '---\nphase: 02\nplan: 02-01\ntitle: Feature\n---\n' > "$dir2/02-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\nDone.\n' > "$dir2/02-01-SUMMARY.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # needs_reverification should NOT be overridden by needs_verification
+  [[ "$output" == *"next_phase_state=needs_reverification"* ]]
+  [[ "$output" == *"has_unverified_phases=true"* ]]
+}
+
+@test "phase-detect needs_verification override does NOT preempt needs_uat_remediation" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
+  # No remediation stage → needs_uat_remediation
+  # Phase 02 fully built but no UAT → unverified
+  local dir2="$TEST_TEMP_DIR/.vbw-planning/phases/02-feature"
+  mkdir -p "$dir2"
+  printf -- '---\nphase: 02\nplan: 02-01\ntitle: Feature\n---\n' > "$dir2/02-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\nDone.\n' > "$dir2/02-01-SUMMARY.md"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # needs_uat_remediation should NOT be overridden
+  [[ "$output" == *"next_phase_state=needs_uat_remediation"* ]]
+  [[ "$output" == *"has_unverified_phases=true"* ]]
 }
 
 @test "suggest-next execute with auto_uat=true mid-milestone suppresses continue" {
@@ -811,6 +876,80 @@ EOF
   [[ "$output" != *"needs_reverification"* ]]
 }
 
+@test "verify.md precomputed verify context prefers next_phase_slug during reverification" {
+  local session="qa4-verify-context-$$"
+  local link="/tmp/.vbw-plugin-root-link-$session"
+  local cache="/tmp/.vbw-phase-detect-$session.txt"
+  local stamp="/tmp/.vbw-phase-detect-stamp-$session.txt"
+  local plugin_root="$TEST_TEMP_DIR/plugin-root"
+  local cmd
+
+  mkdir -p "$plugin_root/scripts" "$TEST_TEMP_DIR/.vbw-planning/phases/01-setup" "$TEST_TEMP_DIR/.vbw-planning/phases/02-feature"
+  printf '%s\n' '#!/bin/bash' 'echo "verify_context=stub"' > "$plugin_root/scripts/compile-verify-context.sh"
+  chmod +x "$plugin_root/scripts/compile-verify-context.sh"
+  ln -s "$plugin_root" "$link"
+
+  printf '%s\n' \
+    'next_phase_state=needs_reverification' \
+    'next_phase_slug=01-setup' \
+    'first_unverified_slug=02-feature' > "$cache"
+
+  cmd=$(awk '
+    /^Pre-computed verify context \(PLAN\/SUMMARY aggregation\):$/ { in_block=1; next }
+    in_block && /^!`/ {
+      sub(/^!`/, "")
+      sub(/`$/, "")
+      print
+      exit
+    }
+  ' "$PROJECT_ROOT/commands/verify.md")
+
+  cd "$TEST_TEMP_DIR"
+  run env CLAUDE_SESSION_ID="$session" bash -c "$cmd"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_target_slug=01-setup"* ]]
+
+  rm -f "$link" "$cache" "$stamp"
+}
+
+@test "verify.md precomputed UAT resume prefers next_phase_slug during reverification" {
+  local session="qa4-uat-resume-$$"
+  local link="/tmp/.vbw-plugin-root-link-$session"
+  local cache="/tmp/.vbw-phase-detect-$session.txt"
+  local stamp="/tmp/.vbw-phase-detect-stamp-$session.txt"
+  local plugin_root="$TEST_TEMP_DIR/plugin-root-resume"
+  local cmd
+
+  mkdir -p "$plugin_root/scripts" "$TEST_TEMP_DIR/.vbw-planning/phases/01-setup" "$TEST_TEMP_DIR/.vbw-planning/phases/02-feature"
+  printf '%s\n' '#!/bin/bash' 'echo "uat_resume=stub"' > "$plugin_root/scripts/extract-uat-resume.sh"
+  chmod +x "$plugin_root/scripts/extract-uat-resume.sh"
+  ln -s "$plugin_root" "$link"
+
+  printf '%s\n' \
+    'next_phase_state=needs_reverification' \
+    'next_phase_slug=01-setup' \
+    'first_unverified_slug=02-feature' > "$cache"
+
+  cmd=$(awk '
+    /^Pre-computed UAT resume metadata:$/ { in_block=1; next }
+    in_block && /^!`/ {
+      sub(/^!`/, "")
+      sub(/`$/, "")
+      print
+      exit
+    }
+  ' "$PROJECT_ROOT/commands/verify.md")
+
+  cd "$TEST_TEMP_DIR"
+  run env CLAUDE_SESSION_ID="$session" bash -c "$cmd"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"uat_resume_target_slug=01-setup"* ]]
+
+  rm -f "$link" "$cache" "$stamp"
+}
+
 # --- QA round 5 finding 1: status/resume prioritise reverification over remediation ---
 
 @test "suggest-next status suggests re-verify not remediation when needs_reverification" {
@@ -1064,4 +1203,140 @@ EOF
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"next_phase_state=needs_reverification"* ]]
+}
+
+# --- Contract: UAT inline execution prohibition (issue #273) ---
+
+@test "vibe.md Verify mode contains inline execution prohibition" {
+  local vibe="$BATS_TEST_DIRNAME/../commands/vibe.md"
+  # Verify mode must explicitly prohibit subagent delegation
+  grep -q "Do NOT spawn a QA agent" "$vibe"
+  grep -q "Do NOT use TaskCreate to delegate UAT" "$vibe"
+  grep -q "AskUserQuestion tool is only available to the orchestrator" "$vibe"
+}
+
+@test "vibe.md needs_verification routing note mentions inline execution" {
+  local vibe="$BATS_TEST_DIRNAME/../commands/vibe.md"
+  # The routing note after the priority table must reinforce inline execution
+  grep -q "do NOT spawn a QA agent or any subagent for UAT" "$vibe"
+}
+
+@test "execute-protocol.md Step 4.5 contains subagent prohibition" {
+  local proto="$BATS_TEST_DIRNAME/../references/execute-protocol.md"
+  # Step 4.5 must prohibit subagent delegation for UAT
+  grep -q "Do NOT spawn a QA agent" "$proto"
+  grep -q "this is NOT a subagent operation" "$proto"
+  grep -q "AskUserQuestion tool is only available to the orchestrator" "$proto"
+}
+
+@test "verify.md has AskUserQuestion in allowed-tools" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # verify.md MUST have AskUserQuestion — this is what enables interactive UAT
+  grep -q "AskUserQuestion" "$verify"
+}
+
+@test "vbw-qa.md does NOT have AskUserQuestion in tools" {
+  local qa="$BATS_TEST_DIRNAME/../agents/vbw-qa.md"
+  # QA agent must NOT have AskUserQuestion — it cannot interact with the user
+  # This is the architectural reason UAT cannot be delegated to QA
+  ! grep -q "AskUserQuestion" "$qa"
+}
+
+# --- Contract: UAT automated-check prohibition (issue #274) ---
+
+@test "execute-protocol.md Step 4.5 prohibits automated checks in UAT" {
+  local proto="$BATS_TEST_DIRNAME/../references/execute-protocol.md"
+  # Must prohibit grep/file-check/test-suite type UAT tests
+  grep -q "NEVER generate tests that can be performed programmatically" "$proto"
+  grep -q "Grep/search files for expected content" "$proto"
+  grep -q "Verify file existence" "$proto"
+  grep -q "Run a test suite" "$proto"
+}
+
+@test "verify.md Step 4 prohibits automated checks in UAT" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # Must prohibit automated checks
+  grep -q "NEVER generate tests that ask the user to run automated checks" "$verify"
+  grep -q "Grepping files for expected content" "$verify"
+  grep -q "Verifying file existence" "$verify"
+}
+
+@test "execute-protocol.md Step 4.5 has skill-aware exclusion" {
+  local proto="$BATS_TEST_DIRNAME/../references/execute-protocol.md"
+  # Must account for skill/tool/MCP-based UI automation
+  grep -q "Skill-aware exclusion" "$proto"
+  grep -q "UI automation capabilities" "$proto"
+  grep -q "MCP server" "$proto"
+}
+
+@test "verify.md Step 4 has skill-aware exclusion" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # Must account for skill/tool/MCP-based UI automation
+  grep -q "Skill-aware exclusion" "$verify"
+  grep -q "UI automation capabilities" "$verify"
+  grep -q "MCP server" "$verify"
+}
+
+# --- UAT format and lifecycle contract tests ---
+
+@test "verify.md enforces exact Result field values" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # Must enforce exactly pass/skip/issue (lowercase)
+  grep -q 'MUST be exactly one of three lowercase values' "$verify" || \
+    grep -q 'MUST be exactly.*pass.*skip.*issue' "$verify"
+  # Must prohibit FAIL, PARTIAL, PASS values
+  grep -q 'Never write.*FAIL.*PARTIAL' "$verify"
+}
+
+@test "verify.md Step 9 calls finalize-uat-status.sh" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # Must call the finalize script instead of relying on LLM instruction
+  grep -q "finalize-uat-status.sh" "$verify"
+  grep -q "script is the source of truth" "$verify"
+}
+
+@test "finalize-uat-status.sh exists and is executable" {
+  local script="$BATS_TEST_DIRNAME/../scripts/finalize-uat-status.sh"
+  [ -f "$script" ]
+  [ -x "$script" ]
+}
+
+@test "vibe.md UAT Remediation chains into re-verification after execute" {
+  local vibe="$BATS_TEST_DIRNAME/../commands/vibe.md"
+  # Must call prepare-reverification.sh after execute stage
+  grep -q "prepare-reverification.sh" "$vibe"
+  # Must continue directly into Verify mode
+  grep -q "Continue directly into Verify mode" "$vibe"
+  # Must NOT just suggest /vbw:vibe
+  grep -q "Chain into re-verification (NON-NEGOTIABLE)" "$vibe"
+}
+
+@test "extract-uat-issues.sh accepts FAIL and PARTIAL Result values" {
+  local script="$BATS_TEST_DIRNAME/../scripts/extract-uat-issues.sh"
+  # The AWK parser must handle issue/fail/failed/partial
+  grep -q 'issue|fail|failed|partial' "$script"
+}
+
+@test "verify.md writes stage=verified instead of deleting state file" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # Must write stage=verified for successful re-verification
+  grep -q 'stage=verified' "$verify"
+  # Must NOT delete the state file (rm deletes it, breaking current_uat())
+  ! grep -q 'rm "$_state_file"' "$verify"
+}
+
+@test "vibe.md re-verification chain has error guard for prepare-reverification" {
+  local vibe="$BATS_TEST_DIRNAME/../commands/vibe.md"
+  # Both call sites must check for script failure:
+  # 1. Execute→verify chain (in UAT Remediation mode)
+  # 2. State routing path (needs_reverification priority)
+  local guard_count
+  guard_count=$(grep -c 'Error guard.*script fails\|non-zero exit.*STOP' "$vibe")
+  [ "$guard_count" -ge 2 ]
+}
+
+@test "uat-utils.sh extract_round_issue_ids matches lenient Result values" {
+  local utils="$BATS_TEST_DIRNAME/../scripts/uat-utils.sh"
+  # Must use lenient matching (issue|fail|failed|partial), not just literal "issue"
+  grep -q 'issue|fail|failed|partial' "$utils"
 }

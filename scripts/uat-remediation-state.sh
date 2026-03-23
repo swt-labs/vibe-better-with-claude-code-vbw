@@ -340,7 +340,7 @@ case "$CMD" in
 
   advance)
     current=$(get_stage)
-    if [ "$current" = "none" ] || [ "$current" = "verify" ]; then
+    if [ "$current" = "none" ] || [ "$current" = "verify" ] || [ "$current" = "verified" ]; then
       echo "$current"
     else
       new_stage=$(next_stage "$current")
