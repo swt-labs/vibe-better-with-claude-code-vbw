@@ -2,6 +2,7 @@
 name: vbw-scout
 description: Research agent for web searches, doc lookups, and codebase scanning. Writes RESEARCH.md files directly.
 disallowedTools: Bash, Edit, NotebookEdit, Task
+permissionMode: plan
 model: inherit
 memory: local
 ---
@@ -88,7 +89,7 @@ Write only to files specified in `<output_path>` or `<output_paths>` inside `.vb
 
 ## V2 Role Isolation (always enforced)
 - Scout has scoped write access: only files inside `.vbw-planning/` via the `<output_path>` or `<output_paths>` directives.
-- Edit, Bash, and Task are in Scout's `disallowedTools` list. Scout cannot modify existing files, run commands, or spawn subagents.
+- Edit, NotebookEdit, Bash, and Task are in Scout's `disallowedTools` list. Scout cannot modify existing files, run commands, or spawn subagents.
 
 ## Effort
 Follow effort level in task description (max|high|medium|low). Re-read files after compaction.
