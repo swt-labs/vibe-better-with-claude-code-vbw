@@ -576,3 +576,109 @@ EOF
   # Description should have pipes replaced with dashes
   [[ "$output" == *"P01-T1|major|Portal shows A - B error code"* ]]
 }
+
+# --- F-04/F-05: stale completed date is cleared for in_progress ---
+
+@test "finalize-uat-status: clears stale completed date when status becomes in_progress" {
+  local dir="$BATS_TEST_TMPDIR/f04"
+  mkdir -p "$dir"
+  cat > "$dir/01-UAT.md" << 'EOF'
+---
+status: issues_found
+completed: 2026-01-15
+passed: 2
+skipped: 0
+issues: 1
+total_tests: 3
+---
+
+## Tests
+
+### P01-T1: Feature A
+
+- **Result:** pass
+
+### P01-T2: Feature B
+
+- **Result:**
+
+### P01-T3: Feature C
+
+- **Result:** pass
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$dir/01-UAT.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=in_progress"* ]]
+
+  # Completed date must be cleared, not preserved from previous state
+  run grep '^completed:' "$dir/01-UAT.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == "completed:" ]]
+}
+
+# --- F-06: verified state preserves current_uat() discoverability ---
+
+@test "current_uat discovers round-dir UAT when stage=verified" {
+  local dir="$BATS_TEST_TMPDIR/f06/01-feature"
+  mkdir -p "$dir/remediation/round-02"
+
+  # Write a state file with stage=verified (post-successful re-verification)
+  printf 'stage=verified\nround=02\nlayout=round-dir\n' > "$dir/remediation/.uat-remediation-stage"
+
+  # Write the passing round-dir UAT
+  cat > "$dir/remediation/round-02/R02-UAT.md" << 'EOF'
+---
+status: complete
+completed: 2026-03-21
+passed: 3
+skipped: 0
+issues: 0
+total_tests: 3
+---
+EOF
+
+  # current_uat should find the round-dir UAT via the state file
+  source "$SCRIPTS_DIR/uat-utils.sh"
+  result=$(current_uat "$dir")
+  [ -n "$result" ]
+  [[ "$result" == *"R02-UAT.md" ]]
+}
+
+# --- F-03: extract_round_issue_ids matches FAIL/PARTIAL/failed ---
+
+@test "extract_round_issue_ids matches FAIL, PARTIAL, and failed Result values" {
+  local uat="$BATS_TEST_TMPDIR/f03-uat.md"
+  cat > "$uat" << 'EOF'
+---
+status: issues_found
+---
+
+## Tests
+
+### P01-T1: Feature A
+
+- **Result:** FAIL
+
+### P01-T2: Feature B
+
+- **Result:** PARTIAL (needs rework)
+
+### P01-T3: Feature C
+
+- **Result:** failed
+
+### P01-T4: Feature D
+
+- **Result:** pass
+EOF
+
+  source "$SCRIPTS_DIR/uat-utils.sh"
+  result=$(extract_round_issue_ids "$uat")
+  # Should match all three non-pass entries
+  [[ "$result" == *"P01-T1"* ]]
+  [[ "$result" == *"P01-T2"* ]]
+  [[ "$result" == *"P01-T3"* ]]
+  # Should NOT match the passing entry
+  [[ "$result" != *"P01-T4"* ]]
+}

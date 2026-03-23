@@ -1316,3 +1316,23 @@ EOF
   # The AWK parser must handle issue/fail/failed/partial
   grep -q 'issue|fail|failed|partial' "$script"
 }
+
+@test "verify.md writes stage=verified instead of deleting state file" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # Must write stage=verified for successful re-verification
+  grep -q 'stage=verified' "$verify"
+  # Must NOT delete the state file (rm deletes it, breaking current_uat())
+  ! grep -q 'rm "$_state_file"' "$verify"
+}
+
+@test "vibe.md re-verification chain has error guard for prepare-reverification" {
+  local vibe="$BATS_TEST_DIRNAME/../commands/vibe.md"
+  # Must check for script failure before proceeding
+  grep -q 'Error guard.*script fails' "$vibe" || grep -q 'non-zero exit.*STOP' "$vibe"
+}
+
+@test "uat-utils.sh extract_round_issue_ids matches lenient Result values" {
+  local utils="$BATS_TEST_DIRNAME/../scripts/uat-utils.sh"
+  # Must use lenient matching (issue|fail|failed|partial), not just literal "issue"
+  grep -q 'issue|fail|failed|partial' "$utils"
+}

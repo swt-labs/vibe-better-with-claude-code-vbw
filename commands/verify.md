@@ -339,11 +339,15 @@ These are already recorded in the UAT.md and will flow into remediation alongsid
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
   ```
   This increments the round counter, creates the next round directory, and resets stage to `research`.
-- If `status=complete`: Remediation verified successfully. Reset remediation stage:
+- If `status=complete`: Remediation verified successfully. Mark remediation as verified (do NOT delete the state file — `current_uat()` needs it to locate the round-dir UAT):
   ```bash
-  # Clear the remediation state — no more rounds needed
+  # Mark remediation as verified — preserves round/layout so current_uat() can still find the round-dir UAT
   _state_file="{phase-dir}/remediation/.uat-remediation-stage"
-  if [ -f "$_state_file" ]; then rm "$_state_file"; fi
+  if [ -f "$_state_file" ]; then
+    _cur_round=$(grep '^round=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    _cur_layout=$(grep '^layout=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    printf 'stage=verified\nround=%s\nlayout=%s\n' "${_cur_round:-01}" "${_cur_layout:-round-dir}" > "$_state_file"
+  fi
   ```
 
 - If issues found:

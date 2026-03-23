@@ -147,14 +147,30 @@ extract_round_issue_ids() {
   local file="$1"
   [ -f "$file" ] || return 0
   awk '
+    function tolower_str(s,    i, c, out) {
+      out = ""
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (c >= "A" && c <= "Z")
+          c = sprintf("%c", index("ABCDEFGHIJKLMNOPQRSTUVWXYZ", c) + 96)
+        out = out c
+      }
+      return out
+    }
     /^### [PD][0-9]/ {
       id = $2
       sub(/:$/, "", id)
       has_issue = 0
       next
     }
-    /^- \*\*Result:\*\*[[:space:]]*issue/ {
-      print id
+    /^- \*\*Result:\*\*/ {
+      val = $0
+      sub(/^- \*\*Result:\*\*[[:space:]]*/, "", val)
+      gsub(/[[:space:]]+$/, "", val)
+      lval = tolower_str(val)
+      if (lval ~ /^(issue|fail|failed|partial)/) {
+        print id
+      }
     }
   ' "$file"
 }

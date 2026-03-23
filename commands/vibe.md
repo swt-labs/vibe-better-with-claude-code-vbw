@@ -392,16 +392,17 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
        ```
      - **Chain into re-verification (NON-NEGOTIABLE):** After the execute stage advances to `done`, the remediation round is complete but NOT verified. Immediately prepare for re-verification and chain into Verify mode in the same turn:
        1. Run: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/prepare-reverification.sh "$PHASE_DIR"`
-       2. Parse output: `archived=...`, `round_file=...`
-       3. Display: "Archived previous UAT → {round_file}. Starting re-verification."
-       4. Planning artifact boundary commit (conditional):
+       2. **Error guard:** If the script fails (non-zero exit), display the error message and **STOP** — do not attempt to enter Verify mode with stale/missing context.
+       3. Parse output: `archived=...`, `round_file=...`
+       4. Display: "Archived previous UAT → {round_file}. Starting re-verification."
+       5. Planning artifact boundary commit (conditional):
           ```bash
           PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
           if [ -f "$PG_SCRIPT" ]; then
             bash "$PG_SCRIPT" commit-boundary "execute phase {NN} remediation round {RR}" .vbw-planning/config.json
           fi
           ```
-       5. **Continue directly into Verify mode** for this phase — do NOT stop, do NOT tell the user to run `/vbw:vibe`. Enter Verify mode (below) inline in the same turn. The pre-computed verify context may be stale (it was computed at session start, before remediation). Re-compute it:
+       6. **Continue directly into Verify mode** for this phase — do NOT stop, do NOT tell the user to run `/vbw:vibe`. Enter Verify mode (below) inline in the same turn. The pre-computed verify context may be stale (it was computed at session start, before remediation). Re-compute it:
           ```bash
           bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh --remediation-only "$PHASE_DIR"
           ```

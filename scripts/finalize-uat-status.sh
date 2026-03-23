@@ -110,7 +110,7 @@ awk -v status="$STATUS" -v completed="$TODAY" -v passed="$PASSED" \
       printf "status: %s\n", status
     } else if ($0 ~ /^completed[[:space:]]*:/) {
       if (completed != "") printf "completed: %s\n", completed
-      else print $0  # preserve existing value for in_progress
+      else printf "completed:\n"  # clear stale date for in_progress
     } else if ($0 ~ /^passed[[:space:]]*:/) {
       printf "passed: %s\n", passed
     } else if ($0 ~ /^skipped[[:space:]]*:/) {
