@@ -104,11 +104,11 @@ if [ -n "${PLAN_NUMBER:-}" ]; then
       echo "error: --plan-number must be numeric, got: $PLAN_NUMBER" >&2
       exit 1
       ;;
-    0)
-      echo "error: --plan-number must be >= 1, got: 0" >&2
-      exit 1
-      ;;
   esac
+  if [ "$((10#$PLAN_NUMBER))" -lt 1 ]; then
+    echo "error: --plan-number must be >= 1, got: $PLAN_NUMBER" >&2
+    exit 1
+  fi
 fi
 
 # --- Per-plan types: need plan number ---

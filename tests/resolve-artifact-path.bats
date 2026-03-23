@@ -219,6 +219,13 @@ teardown() {
   [[ "$output" == *">= 1"* ]]
 }
 
+@test "--plan-number 00 exits 1" {
+  mkdir -p "$TEST_DIR/03-auth"
+  run bash "$SCRIPT" plan "$TEST_DIR/03-auth" --plan-number 00
+  [ "$status" -eq 1 ]
+  [[ "$output" == *">= 1"* ]]
+}
+
 @test "--plan-number= with empty value falls through to auto-detect for plan" {
   mkdir -p "$TEST_DIR/03-auth"
   run bash "$SCRIPT" plan "$TEST_DIR/03-auth" --plan-number=
