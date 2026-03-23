@@ -30,7 +30,7 @@ fi
 # Parse all **Result:** values from test entries
 # Returns: one word per line (pass, skip, issue, empty, or the raw value)
 RESULTS=$(awk '
-  /^### [PD][0-9]/ { in_test = 1; has_result = 0; next }
+  /^### [PD][0-9]/ { in_test = 1; next }
   in_test && /^- \*\*Result:\*\*/ {
     val = $0
     sub(/^- \*\*Result:\*\*[[:space:]]*/, "", val)
@@ -56,7 +56,6 @@ RESULTS=$(awk '
       # Unknown value — treat as issue (defensive)
       print "issue"
     }
-    has_result = 1
     next
   }
   /^### / { in_test = 0 }
@@ -81,7 +80,8 @@ while IFS= read -r result; do
 done <<< "$RESULTS"
 
 # Determine status
-if [ "$EMPTY" -gt 0 ]; then
+# TOTAL=0 means no test entries found — file is incomplete/malformed
+if [ "$TOTAL" -eq 0 ] || [ "$EMPTY" -gt 0 ]; then
   STATUS="in_progress"
 elif [ "$ISSUES" -gt 0 ]; then
   STATUS="issues_found"
@@ -89,7 +89,12 @@ else
   STATUS="complete"
 fi
 
-TODAY=$(date +%Y-%m-%d)
+# Only set completed date for terminal statuses
+if [ "$STATUS" = "in_progress" ]; then
+  TODAY=""
+else
+  TODAY=$(date +%Y-%m-%d)
+fi
 
 # Update frontmatter in-place using awk
 # Preserves all other frontmatter fields, only updates the target fields
@@ -104,7 +109,8 @@ awk -v status="$STATUS" -v completed="$TODAY" -v passed="$PASSED" \
     if ($0 ~ /^status[[:space:]]*:/) {
       printf "status: %s\n", status
     } else if ($0 ~ /^completed[[:space:]]*:/) {
-      printf "completed: %s\n", completed
+      if (completed != "") printf "completed: %s\n", completed
+      else print $0  # preserve existing value for in_progress
     } else if ($0 ~ /^passed[[:space:]]*:/) {
       printf "passed: %s\n", passed
     } else if ($0 ~ /^skipped[[:space:]]*:/) {

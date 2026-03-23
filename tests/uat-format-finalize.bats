@@ -194,6 +194,65 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"status=in_progress"* ]]
   grep -q "^status: in_progress" "$uat"
+  # F-01/F-06: completed date must NOT be set for in_progress
+  ! grep -q "^completed: 20" "$uat"
+}
+
+@test "finalize-uat-status: zero test entries → status=in_progress" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 01
+plan_count: 1
+status: in_progress
+started: 2026-03-23
+completed:
+total_tests: 0
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=in_progress"* ]]
+  [[ "$output" == *"total=0"* ]]
+  grep -q "^status: in_progress" "$uat"
+  # completed must NOT be set
+  ! grep -q "^completed: 20" "$uat"
+}
+
+@test "finalize-uat-status: PASS (uppercase) result → status=complete" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 01
+plan_count: 1
+status: in_progress
+started: 2026-03-23
+completed:
+total_tests: 1
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### P01-T1: Test one
+
+- **Result:** PASS
+- **Issue:**
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=complete"* ]]
+  [[ "$output" == *"passed=1"* ]]
+  grep -q "^status: complete" "$uat"
 }
 
 @test "finalize-uat-status: mixed pass and skip → status=complete" {
@@ -484,4 +543,36 @@ EOF
   # Both FAIL and PARTIAL should be extracted
   [[ "$output" == *"P02-T1|"* ]]
   [[ "$output" == *"P02-T2|"* ]]
+}
+
+@test "extract-uat-issues: pipe chars in description are sanitized" {
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
+  create_uat_phase "$dir" "01-UAT.md" <<'EOF'
+---
+phase: 01
+plan_count: 1
+status: issues_found
+started: 2026-03-23
+completed: 2026-03-23
+total_tests: 1
+passed: 0
+skipped: 0
+issues: 1
+---
+
+## Tests
+
+### P01-T1: Portal error
+
+- **Result:** issue
+- **Issue:** Portal shows A | B error code
+  - Description: Portal shows A | B error code
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$dir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"uat_issues_total=1"* ]]
+  # Description should have pipes replaced with dashes
+  [[ "$output" == *"P01-T1|major|Portal shows A - B error code"* ]]
 }

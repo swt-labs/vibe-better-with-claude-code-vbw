@@ -97,6 +97,8 @@ awk '
       else
         severity = "major"
     }
+    # Sanitize pipe chars in description to prevent field corruption
+    gsub(/\|/, "-", description)
     printf "%s|%s|%s\n", id, severity, description
     has_issue = 0; description = ""; severity = ""; inline_issue = ""
   }
