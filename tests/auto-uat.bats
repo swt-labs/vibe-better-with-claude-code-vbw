@@ -1241,3 +1241,38 @@ EOF
   # This is the architectural reason UAT cannot be delegated to QA
   ! grep -q "AskUserQuestion" "$qa"
 }
+
+# --- Contract: UAT automated-check prohibition (issue #274) ---
+
+@test "execute-protocol.md Step 4.5 prohibits automated checks in UAT" {
+  local proto="$BATS_TEST_DIRNAME/../references/execute-protocol.md"
+  # Must prohibit grep/file-check/test-suite type UAT tests
+  grep -q "NEVER generate tests that can be performed programmatically" "$proto"
+  grep -q "Grep/search files for expected content" "$proto"
+  grep -q "Verify file existence" "$proto"
+  grep -q "Run a test suite" "$proto"
+}
+
+@test "verify.md Step 4 prohibits automated checks in UAT" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # Must prohibit automated checks
+  grep -q "NEVER generate tests that ask the user to run automated checks" "$verify"
+  grep -q "Grepping files for expected content" "$verify"
+  grep -q "Verifying file existence" "$verify"
+}
+
+@test "execute-protocol.md Step 4.5 has skill-aware exclusion" {
+  local proto="$BATS_TEST_DIRNAME/../references/execute-protocol.md"
+  # Must account for skill/tool/MCP-based UI automation
+  grep -q "Skill-aware exclusion" "$proto"
+  grep -q "UI automation capabilities" "$proto"
+  grep -q "MCP server" "$proto"
+}
+
+@test "verify.md Step 4 has skill-aware exclusion" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  # Must account for skill/tool/MCP-based UI automation
+  grep -q "Skill-aware exclusion" "$verify"
+  grep -q "UI automation capabilities" "$verify"
+  grep -q "MCP server" "$verify"
+}
