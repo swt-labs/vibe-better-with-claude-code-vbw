@@ -717,6 +717,14 @@ case "$CMD" in
   status)
     if [ "$next_phase_state" = "needs_reverification" ]; then
       suggest "/vbw:vibe -- Re-verify Phase ${pd_next_phase:-} after remediation"
+    elif [ "$next_phase_state" = "needs_verification" ]; then
+      if [ -n "$first_unverified_phase" ]; then
+        _uv_label="$first_unverified_phase"
+        [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
+        suggest "/vbw:verify $first_unverified_phase -- Verify $_uv_label before continuing"
+      else
+        suggest "/vbw:verify -- Verify completed phases before continuing"
+      fi
     elif [ "$all_done" = true ]; then
       if ! suggest_milestone_recovery; then
         if [ "$deviation_count" -eq 0 ]; then
@@ -785,6 +793,14 @@ case "$CMD" in
   resume)
     if [ "$next_phase_state" = "needs_reverification" ]; then
       suggest "/vbw:vibe -- Re-verify Phase ${pd_next_phase:-} after remediation"
+    elif [ "$next_phase_state" = "needs_verification" ]; then
+      if [ -n "$first_unverified_phase" ]; then
+        _uv_label="$first_unverified_phase"
+        [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
+        suggest "/vbw:verify $first_unverified_phase -- Verify $_uv_label before continuing"
+      else
+        suggest "/vbw:verify -- Verify completed phases before continuing"
+      fi
     elif [ -n "$current_uat_issues_phase" ]; then
       if [ "$current_uat_major_or_higher" = true ]; then
         suggest "/vbw:vibe -- Remediate UAT issues for $current_uat_issues_label"
