@@ -876,6 +876,11 @@ EOF
   [[ "$output" != *"needs_reverification"* ]]
 }
 
+@test "verify.md precomputed target prefers next_phase_slug during reverification" {
+  run grep -q 'if \[ "\$STATE" = "needs_reverification" \] || \[ "\$STATE" = "needs_verification" \]; then TARGET="\$SLUG"; else TARGET="\${FU_SLUG:-\$SLUG}"; fi' "$PROJECT_ROOT/commands/verify.md"
+  [ "$status" -eq 0 ]
+}
+
 # --- QA round 5 finding 1: status/resume prioritise reverification over remediation ---
 
 @test "suggest-next status suggests re-verify not remediation when needs_reverification" {

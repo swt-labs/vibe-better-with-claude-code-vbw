@@ -73,6 +73,19 @@ teardown() {
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("needs discussion")' >/dev/null
 }
 
+@test "session-start: needs_reverification state suggests re-verification" {
+  cd "$TEST_TEMP_DIR"
+  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
+  printf '%s\n' '---' 'phase: 01' 'plan: 01-01' 'title: Setup' '---' > "$dir/01-01-PLAN.md"
+  printf '%s\n' '---' 'status: complete' 'deviations: 0' '---' 'Done.' > "$dir/01-01-SUMMARY.md"
+  printf '%s\n' '---' 'phase: 01' 'status: issues_found' '---' 'Failed tests.' > "$dir/01-UAT.md"
+  printf 'done' > "$dir/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"run re-verification"* ]]
+}
+
 @test "session-start: no phases with shipped milestones suggests new milestone" {
   cd "$TEST_TEMP_DIR"
   rm -rf .vbw-planning/phases
