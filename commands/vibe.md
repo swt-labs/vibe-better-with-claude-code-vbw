@@ -528,37 +528,7 @@ This mode handles the case where a milestone was archived before UAT issues were
        exit 1
      fi
      ```
-   - **Team creation:** Read prefer_teams config:
-     ```bash
-     PREFER_TEAMS=$(jq -r '.prefer_teams // "auto"' .vbw-planning/config.json 2>/dev/null)
-     ```
-     Decision tree:
-     - `prefer_teams='always'`: Create team even for Lead-only (no Scout)
-     - `prefer_teams='when_parallel'`: Create team only if Scout was spawned (research needed), else no team
-     - `prefer_teams='auto'`: Same as when_parallel (Lead-only is low-risk)
-
-     When team should be created (based on prefer_teams):
-     - **Pre-TeamCreate cleanup** (remove orphaned VBW team directories from prior sessions):
-       ```bash
-       bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true
-       ```
-     - Create team via TeamCreate: `team_name="vbw-plan-{NN}"`, `description="Planning Phase {NN}: {phase-name}"`
-     - Spawn Scout (if spawned in step 3) with `subagent_type: "vbw:vbw-scout"`, `team_name: "vbw-plan-{NN}"`, `name: "scout"` parameters on the Task tool invocation.
-     - Spawn Lead with `subagent_type: "vbw:vbw-lead"`, `team_name: "vbw-plan-{NN}"`, `name: "lead"` parameters on the Task tool invocation.
-     - **HARD GATE — Shutdown before proceeding (NON-NEGOTIABLE):** After all team agents complete their work, you MUST shut down the team BEFORE validating output, presenting results, auto-chaining to Execute, or asking the user anything. This gate CANNOT be skipped, deferred, or optimized away — even after compaction. Lingering agents burn API credits silently.
-       1. Send `shutdown_request` to EVERY active teammate via SendMessage (Lead, Scout — excluding yourself, the orchestrator)
-       2. Wait for each `shutdown_response` (approved=true) delivered via SendMessage tool call (NOT plain text). If a teammate responds in plain text instead of calling SendMessage, re-send the `shutdown_request`. If rejected, re-request (max 3 attempts per teammate — then proceed).
-       3. Call TeamDelete for team "vbw-plan-{NN}"
-       4. **Post-TeamDelete residual cleanup** (catches race-condition residuals):
-          ```bash
-          bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true
-          ```
-       5. Verify: after TeamDelete, there must be ZERO active teammates. If tmux panes still show agent labels, something went wrong — do NOT proceed. If teardown stalls, advise the user to run `/vbw:doctor --cleanup`.
-       6. Only THEN proceed to step 8
-       **WHY THIS EXISTS:** Without this gate, each Plan invocation spawns a new Lead that lingers in tmux. After 2-3 phases, multiple @lea panes accumulate, each burning API credits doing nothing. This is the #1 user-reported cost issue.
-
-     When team should NOT be created (Lead-only with when_parallel/auto):
-     - Spawn vbw-lead as subagent via Task tool without team (single agent, no team overhead).
+   **No team creation in Plan mode.** Scout (step 3) and Lead are sequential — Scout must complete before Lead starts (Lead reads the RESEARCH.md). Teams are only for parallel Dev agents in Execute mode (`prefer_teams` is evaluated there, not here). Always spawn Lead as a plain subagent.
    - Before composing the Lead task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Lead prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
    - Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, note them in the Lead's task context so Lead can include them when spawning Dev agents.
    - Spawn vbw-lead as subagent via Task tool with compiled context (or full file list as fallback).
@@ -598,8 +568,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    fi
    ```
    Behavior: `planning_tracking=commit` commits planning artifacts if changed. `auto_push=always` pushes when upstream exists.
-12. **Pre-chain verification:** Before auto-chaining or presenting results, confirm the planning team was fully shut down (step 7 HARD GATE completed). If you skipped the gate or are unsure after compaction, send `shutdown_request` to any teammates that may still be active and call TeamDelete before continuing. NEVER enter Execute mode with a prior planning team still alive.
-13. **Cautious gate (autonomy=cautious only):** STOP after planning. Ask "Plans ready. Execute Phase {NN}?" Other levels: auto-chain.
+12. **Cautious gate (autonomy=cautious only):** STOP after planning. Ask "Plans ready. Execute Phase {NN}?" Other levels: auto-chain.
 
 ### Mode: Execute
 
@@ -762,7 +731,7 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
 
 After Execute mode completes (autonomy=pure-vibe only): if more unbuilt phases exist, auto-continue to next phase (Plan + Execute). Loop until `next_phase_state=all_done` or error. Other autonomy levels: STOP after phase.
 
-**CRITICAL — Between iterations:** Before starting the next phase's Plan mode, verify ALL agents from the previous phase (Dev, QA, Lead, Scout) have been shut down via the Execute mode Step 5 HARD GATE and the Plan mode HARD GATE. Do NOT spawn a new Lead while a prior Lead is still active. If unsure (e.g., after compaction), send `shutdown_request` to any teammates that may still exist from prior teams and call TeamDelete before creating a new team.
+**CRITICAL — Between iterations:** Before starting the next phase's Plan mode, verify ALL agents from the previous phase (Dev, QA) have been shut down via the Execute mode Step 5 HARD GATE. Do NOT enter Plan mode while prior Execute agents are still active. If unsure (e.g., after compaction), send `shutdown_request` to any teammates that may still exist from the prior Execute team and call TeamDelete before continuing.
 
 ## Output Format
 

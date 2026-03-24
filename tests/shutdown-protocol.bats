@@ -777,8 +777,10 @@ teardown() {
 
 @test "shutdown recovery guidance present in all team-producing commands" {
   # All commands that create teams must mention plain text retry, doctor cleanup,
-  # and zero-teammate verification
-  for cmd in vibe.md debug.md map.md; do
+  # and zero-teammate verification.
+  # Note: vibe.md delegates team creation to execute-protocol.md (Plan mode uses
+  # subagents only, not teams). Only commands with inline TeamCreate need this.
+  for cmd in debug.md map.md; do
     local content
     content=$(cat "$PROJECT_ROOT/commands/$cmd")
     echo "$content" | grep -q 'plain text' || {

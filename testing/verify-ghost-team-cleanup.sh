@@ -268,21 +268,21 @@ test_exec_protocol_pre_teamcreate_cleanup() {
   fi
 }
 
-# Test 9: vibe.md has post-TeamDelete cleanup in plan mode
-test_vibe_post_teamdelete_cleanup() {
-  if grep -q 'Post-TeamDelete residual cleanup' "$ROOT/commands/vibe.md"; then
-    pass "vibe.md has post-TeamDelete residual cleanup"
+# Test 9: vibe.md states no team creation in Plan mode
+test_vibe_no_team_in_plan_mode() {
+  if grep -q 'No team creation in Plan mode' "$ROOT/commands/vibe.md"; then
+    pass "vibe.md enforces no team creation in Plan mode"
   else
-    fail "vibe.md missing post-TeamDelete residual cleanup"
+    fail "vibe.md missing 'No team creation in Plan mode' statement"
   fi
 }
 
-# Test 10: vibe.md has pre-TeamCreate cleanup in plan mode
-test_vibe_pre_teamcreate_cleanup() {
-  if grep -q 'Pre-TeamCreate cleanup' "$ROOT/commands/vibe.md"; then
-    pass "vibe.md has pre-TeamCreate cleanup"
+# Test 10: vibe.md does not contain TeamCreate/TeamDelete in Plan mode
+test_vibe_no_team_machinery_in_plan() {
+  if grep -q 'TeamCreate.*vbw-plan' "$ROOT/commands/vibe.md" || grep -q 'TeamDelete.*vbw-plan' "$ROOT/commands/vibe.md"; then
+    fail "vibe.md still references TeamCreate/TeamDelete for planning teams"
   else
-    fail "vibe.md missing pre-TeamCreate cleanup"
+    pass "vibe.md has no planning team machinery"
   fi
 }
 
@@ -491,8 +491,8 @@ test_doctor_scan_reports_orphaned
 test_doctor_scan_skips_non_vbw_orphan
 test_exec_protocol_post_teamdelete_cleanup
 test_exec_protocol_pre_teamcreate_cleanup
-test_vibe_post_teamdelete_cleanup
-test_vibe_pre_teamcreate_cleanup
+test_vibe_no_team_in_plan_mode
+test_vibe_no_team_machinery_in_plan
 test_map_post_teamdelete_cleanup
 test_debug_post_teamdelete_cleanup
 test_debug_pre_teamcreate_cleanup
