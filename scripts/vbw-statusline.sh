@@ -443,7 +443,7 @@ if ! cache_fresh "$FAST_CF" 5; then
           _uat_file=$(find "$PDIR/remediation" -path '*/round-*/R*-UAT.md' 2>/dev/null | sort -t/ -k2 -V | tail -1)
         fi
         if [ -n "$_uat_file" ]; then
-          _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null)
+          _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null | tr '[:upper:]' '[:lower:]')
           _uat_status=$(normalize_uat_status "$_uat_status")
           case "$_uat_status" in
             complete) QA="UAT: pass"; QA_COLOR="G" ;;

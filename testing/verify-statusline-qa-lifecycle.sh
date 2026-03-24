@@ -443,7 +443,7 @@ extract_qa() {
     PDIR=".vbw-planning/phases/01-test"
     _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
     if [ -n "$_uat_file" ]; then
-      _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null)
+      _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null | tr '[:upper:]' '[:lower:]')
       _uat_status=$(normalize_uat_status "$_uat_status")
       if [ "$_uat_status" = "issues_found" ]; then
         _rem_stage="none"
@@ -557,7 +557,7 @@ _FAST_QA=$(cd "$T35" && {
   PDIR=".vbw-planning/phases/01-test"
   _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
   if [ -n "$_uat_file" ]; then
-    _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null)
+    _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null | tr '[:upper:]' '[:lower:]')
     _uat_status=$(normalize_uat_status "$_uat_status")
     if [ "$_uat_status" = "complete" ]; then
       QA="pass"
