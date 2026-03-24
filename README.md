@@ -510,7 +510,7 @@ Here's when each one shows up to work:
   ┌───────────────────────────────────────────────────────────────────────────────┐
   │  PERMISSION MODEL                                                             │
   │                                                                               │
-  │  Scout ─────────── True read-only (plan mode). Can look, can't touch.         │
+  │  Scout ─────────── Plan mode. Writes research to .vbw-planning/ only.         │
   │  QA ───────────── Read + Bash. Persists only via write-verification.sh.        │
   │  Architect ─────── Edit/Bash blocked by platform. Write limited to plans      │
   │                    by instruction. Writes roadmaps, not code. Mostly.         │

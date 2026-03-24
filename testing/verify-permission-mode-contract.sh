@@ -4,7 +4,7 @@ set -euo pipefail
 # verify-permission-mode-contract.sh — Verify agent permissionMode declarations
 #
 # Checks:
-# - Read-only agents (Scout, QA) declare permissionMode: plan
+# - Plan-mode agents (Scout, QA) declare permissionMode: plan
 # - Edit agents (Dev, Lead, Architect, Debugger, Docs) declare permissionMode: acceptEdits
 # - Every agent has an explicit permissionMode in frontmatter
 
