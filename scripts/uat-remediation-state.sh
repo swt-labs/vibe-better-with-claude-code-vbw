@@ -123,6 +123,21 @@ get_round_dir() {
   echo "$PHASE_DIR/remediation/round-${round}"
 }
 
+# Start a new remediation round: increment round, create dir, reset to research.
+# Shared by advance-from-verify and needs-round commands.
+start_new_round() {
+  local current_round next_round next_round_padded
+  current_round=$(get_round)
+  next_round=$(( 10#$current_round + 1 ))
+  next_round_padded=$(printf '%02d' "$next_round")
+  mkdir -p "$PHASE_DIR/remediation/round-${next_round_padded}"
+  printf 'stage=research\nround=%s\nlayout=round-dir\n' "$next_round_padded" > "$STATE_FILE"
+  [ -f "$LEGACY_STATE_FILE" ] && rm -f "$LEGACY_STATE_FILE"
+  echo "research"
+  echo "round=${next_round_padded}"
+  echo "round_dir=$PHASE_DIR/remediation/round-${next_round_padded}"
+}
+
 next_stage() {
   local current="$1"
   local -a stages
@@ -343,15 +358,7 @@ case "$CMD" in
       echo "$current"
     elif [ "$current" = "verify" ]; then
       # Verification found issues — start a new remediation round
-      current_round=$(get_round)
-      next_round=$(( 10#$current_round + 1 ))
-      next_round_padded=$(printf '%02d' "$next_round")
-      mkdir -p "$PHASE_DIR/remediation/round-${next_round_padded}"
-      printf 'stage=research\nround=%s\nlayout=round-dir\n' "$next_round_padded" > "$STATE_FILE"
-      [ -f "$LEGACY_STATE_FILE" ] && rm -f "$LEGACY_STATE_FILE"
-      echo "research"
-      echo "round=${next_round_padded}"
-      echo "round_dir=$PHASE_DIR/remediation/round-${next_round_padded}"
+      start_new_round
     elif [ "$current" = "verified" ]; then
       # Verification passed — no-op (nothing to remediate)
       echo "$current"
@@ -374,15 +381,7 @@ case "$CMD" in
 
   needs-round)
     # Start a new remediation round: increment round, create dir, reset to research
-    current_round=$(get_round)
-    next_round=$(( 10#$current_round + 1 ))
-    next_round_padded=$(printf '%02d' "$next_round")
-    mkdir -p "$PHASE_DIR/remediation/round-${next_round_padded}"
-    printf 'stage=research\nround=%s\nlayout=round-dir\n' "$next_round_padded" > "$STATE_FILE"
-    [ -f "$LEGACY_STATE_FILE" ] && rm -f "$LEGACY_STATE_FILE"
-    echo "research"
-    echo "round=${next_round_padded}"
-    echo "round_dir=$PHASE_DIR/remediation/round-${next_round_padded}"
+    start_new_round
     ;;
 
   init)
