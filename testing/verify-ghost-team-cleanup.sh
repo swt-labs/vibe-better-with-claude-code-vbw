@@ -277,12 +277,15 @@ test_vibe_no_team_in_plan_mode() {
   fi
 }
 
-# Test 10: vibe.md does not contain TeamCreate/TeamDelete in Plan mode
+# Test 10: vibe.md Plan mode section does not contain any TeamCreate/TeamDelete
 test_vibe_no_team_machinery_in_plan() {
-  if grep -q 'TeamCreate.*vbw-plan' "$ROOT/commands/vibe.md" || grep -q 'TeamDelete.*vbw-plan' "$ROOT/commands/vibe.md"; then
-    fail "vibe.md still references TeamCreate/TeamDelete for planning teams"
+  # Extract the Plan mode section (between "### Mode: Plan" and the next "### Mode:")
+  local plan_section
+  plan_section=$(sed -n '/^### Mode: Plan$/,/^### Mode:/p' "$ROOT/commands/vibe.md")
+  if echo "$plan_section" | grep -q 'TeamCreate' || echo "$plan_section" | grep -q 'TeamDelete'; then
+    fail "vibe.md Plan mode section still references TeamCreate/TeamDelete"
   else
-    pass "vibe.md has no planning team machinery"
+    pass "vibe.md Plan mode section has no team machinery"
   fi
 }
 
