@@ -101,7 +101,7 @@ Most Claude Code plugins were built for the subagent era, one main session spawn
 
 - **Native hooks for continuous verification.** 22 hooks across 11 event types run automatically -- validating SUMMARY.md structure, checking commit format, validating frontmatter descriptions, gating task completion, blocking sensitive file access, enforcing plan file boundaries, managing session lifecycle, tracking agent health and cost attribution, tracking session metrics, pre-flight prompt validation, and post-compaction context verification. No more spawning a QA agent after every task. The platform enforces it, not the prompt.
 
-- **Platform-enforced tool permissions.** Each agent has `tools`/`disallowedTools` in their YAML frontmatter -- 4 of 7 agents have platform-enforced deny lists. Scout literally cannot write files; QA can only persist VERIFICATION.md through the deterministic `write-verification.sh` script (Write/Edit tools are disallowed). Sensitive file access (`.env`, credentials) is intercepted by the `security-filter` hook. `disallowedTools` is enforced by Claude Code itself, not by instructions an agent might ignore during compaction.
+- **Platform-enforced tool permissions.** Each agent has `tools`/`disallowedTools` in their YAML frontmatter -- 4 of 7 agents have platform-enforced deny lists. Scout can write research files to `.vbw-planning/` but cannot edit existing code, run commands, or spawn subagents (Edit, Bash, NotebookEdit, Task are platform-denied); QA can only persist VERIFICATION.md through the deterministic `write-verification.sh` script (Write/Edit tools are disallowed). Sensitive file access (`.env`, credentials) is intercepted by the `security-filter` hook. `disallowedTools` is enforced by Claude Code itself, not by instructions an agent might ignore during compaction.
 
 - **Database safety guard.** A PreToolUse hook (`bash-guard.sh`) intercepts every Bash command before it reaches the shell and blocks known destructive patterns -- `migrate:fresh`, `db:drop`, `TRUNCATE TABLE`, `FLUSHALL`, and 40+ patterns across Laravel, Rails, Django, Prisma, Knex, Sequelize, TypeORM, Drizzle, Diesel, SQLx, Ecto, raw SQL clients, Redis, MongoDB, and Docker volumes. All five agents with Bash access (Dev, QA, Lead, Debugger, Docs) are filtered equally. Override with `VBW_ALLOW_DESTRUCTIVE=1` env var or `bash_guard=false` in config. Extend with `.vbw-planning/destructive-commands.local.txt` for project-specific patterns. See **[Database Safety Guard](docs/database-safety-guard.md)** for the full design, flowchart, and pattern list.
 
@@ -179,7 +179,7 @@ Claude Code will ask permission before file writes, bash commands, etc. You appr
 claude --dangerously-skip-permissions
 ```
 
-No permission prompts. No interruptions. Agents run uninterrupted until the work is done or your API budget isn't. VBW's built-in security controls (Scout is fully read-only, QA can only persist via a deterministic writer script, `security-filter.sh` blocks `.env` and credentials, QA gates on every task) still apply. The platform just stops asking "are you sure?" every time an agent wants to create a file.
+No permission prompts. No interruptions. Agents run uninterrupted until the work is done or your API budget isn't. VBW's built-in security controls (Scout writes only to `.vbw-planning/` and cannot edit or run commands, QA can only persist via a deterministic writer script, `security-filter.sh` blocks `.env` and credentials, QA gates on every task) still apply. The platform just stops asking "are you sure?" every time an agent wants to create a file.
 
 This is how most vibe coders run it. The agents work longer, the flow stays unbroken, and you get to pretend you're supervising while scrolling Twitter.
 
@@ -453,7 +453,7 @@ VBW uses 7 specialized agents, each with native tool permissions enforced via YA
 | **Debugger** | Scientific method bug investigation. One issue, one session. | Full access | -- | `acceptEdits` |
 | **Docs** | Documentation specialist. READMEs, changelogs, API docs, guides. | Read, Grep, Glob, Bash, Write, Edit | -- | `acceptEdits` |
 
-**Denied** = `disallowedTools` -- platform-enforced denial. These tools are blocked by Claude Code itself, not by instructions an agent might ignore during compaction. **Mode** = `permissionMode` -- `plan` means no interactive edits — Scout is fully read-only; QA can only persist VERIFICATION.md via `write-verification.sh`, `acceptEdits` means the agent can propose and apply changes.
+**Denied** = `disallowedTools` -- platform-enforced denial. These tools are blocked by Claude Code itself, not by instructions an agent might ignore during compaction. **Mode** = `permissionMode` -- `plan` means no interactive edits — Scout writes research files to `.vbw-planning/` but cannot edit code or run commands; QA can only persist VERIFICATION.md via `write-verification.sh`, `acceptEdits` means the agent can propose and apply changes.
 
 Here's when each one shows up to work:
 
