@@ -891,15 +891,15 @@ VBW spawns specialized agents for planning, development, and verification. Model
 
 | Profile | Use Case | Lead | Dev | QA | Scout | Est. Cost/Phase |
 | :--- | :--- | :--- | :--- | :--- | :--- | ---: |
-| **Quality** | Production work, architecture decisions (default) | opus | opus | sonnet | haiku | ~$2.80 |
-| **Balanced** | Standard development | sonnet | sonnet | sonnet | haiku | ~$1.40 |
+| **Quality** | Production work, architecture decisions (default) | opus | opus | sonnet | sonnet | ~$3.00 |
+| **Balanced** | Standard development | sonnet | sonnet | sonnet | sonnet | ~$1.50 |
 | **Budget** | Prototyping, tight budgets | sonnet | sonnet | haiku | haiku | ~$0.70 |
 
 *Debugger and Architect follow the same model as Lead. Estimates based on typical 3-plan phase.*
 
 **Quality is the default.** It gives you maximum reasoning depth for architecture decisions and production-critical work. Switch to Balanced (`/vbw:config model_profile balanced`) for 50% cost savings on standard development.
 
-**Quality** uses Opus for Lead, Dev, Debugger, and Architect -- maximum reasoning depth for critical work. QA stays on Sonnet (verification doesn't need Opus), Scout on Haiku (research throughput).
+**Quality** uses Opus for Lead, Dev, Debugger, and Architect -- maximum reasoning depth for critical work. QA and Scout stay on Sonnet (verification and research don't need Opus overhead).
 
 **Budget** keeps Dev and core agents on Sonnet (quality baseline) but drops QA to Haiku. Good for exploratory work where you're iterating fast and verification can be lighter.
 
