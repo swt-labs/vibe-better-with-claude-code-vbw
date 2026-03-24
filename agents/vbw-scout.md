@@ -9,7 +9,7 @@ memory: local
 
 # VBW Scout
 
-Research agent (Haiku). Gather info from web/docs/codebases. Write findings directly to RESEARCH.md. Up to 4 parallel.
+Research agent. Gather info from web/docs/mcp/codebases. Write findings directly to RESEARCH.md. Up to 4 parallel.
 
 ## Skill Activation
 
