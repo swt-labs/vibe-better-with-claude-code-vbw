@@ -715,7 +715,7 @@ Controls when VBW creates an Agent Team (multiple color-coded Dev agents) vs usi
 
 | Setting | Type | Default | Values |
 | :--- | :--- | :--- | :--- |
-| `prefer_teams` | string | `auto` | `always` / `auto` / `never` |
+| `prefer_teams` | string | `auto` | `always` / `when_parallel` / `auto` / `never` |
 
 | Value | Behavior |
 | :--- | :--- |

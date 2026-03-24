@@ -293,7 +293,25 @@ test_vibe_no_team_machinery_in_plan() {
   fi
 }
 
-# Test 11: map.md has post-TeamDelete cleanup
+# Test 11: debug.md has prefer_teams='never' branch forcing Path B
+test_debug_prefer_teams_never() {
+  if grep -q "prefer_teams='never'" "$ROOT/commands/debug.md"; then
+    pass "debug.md has prefer_teams=never decision tree entry"
+  else
+    fail "debug.md missing prefer_teams=never decision tree entry"
+  fi
+}
+
+# Test 12: map.md honors prefer_teams=never by forcing solo
+test_map_prefer_teams_never() {
+  if grep -q "prefer_teams.*never" "$ROOT/commands/map.md" && grep -q 'force solo' "$ROOT/commands/map.md"; then
+    pass "map.md enforces prefer_teams=never → solo mode"
+  else
+    fail "map.md missing prefer_teams=never → solo enforcement"
+  fi
+}
+
+# Test 13: map.md has post-TeamDelete cleanup
 test_map_post_teamdelete_cleanup() {
   if grep -q 'Post-TeamDelete residual cleanup' "$ROOT/commands/map.md"; then
     pass "map.md has post-TeamDelete residual cleanup"
@@ -500,6 +518,8 @@ test_exec_protocol_post_teamdelete_cleanup
 test_exec_protocol_pre_teamcreate_cleanup
 test_vibe_no_team_in_plan_mode
 test_vibe_no_team_machinery_in_plan
+test_debug_prefer_teams_never
+test_map_prefer_teams_never
 test_map_post_teamdelete_cleanup
 test_debug_post_teamdelete_cleanup
 test_debug_pre_teamcreate_cleanup
