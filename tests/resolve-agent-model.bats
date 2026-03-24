@@ -21,7 +21,7 @@ teardown() {
 @test "resolves scout model from quality profile" {
   run bash "$SCRIPTS_DIR/resolve-agent-model.sh" scout "$TEST_TEMP_DIR/.vbw-planning/config.json" "$CONFIG_DIR/model-profiles.json"
   [ "$status" -eq 0 ]
-  [ "$output" = "haiku" ]
+  [ "$output" = "sonnet" ]
 }
 
 @test "resolves dev model from balanced profile" {

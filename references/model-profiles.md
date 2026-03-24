@@ -15,12 +15,12 @@ VBW spawns 7 specialized agents (Lead, Dev, QA, Scout, Debugger, Architect, Docs
 | Lead | opus | Maximum planning depth and research quality |
 | Dev | opus | Complex implementation, deep reasoning |
 | QA | sonnet | Solid verification without Opus cost |
-| Scout | haiku | Research throughput, 60x cheaper |
+| Scout | sonnet | Research quality with MCP tool access |
 | Debugger | opus | Root cause analysis needs deep reasoning |
 | Architect | opus | Roadmap and phase structure requires strategic thinking |
 | Docs | sonnet | Documentation tasks benefit from clear prose without Opus cost |
 
-**Est. cost per phase:** ~$2.80 (baseline)
+**Est. cost per phase:** ~$3.00 (baseline)
 
 ### Balanced
 **Use when:** Standard development work, most phases.
@@ -30,12 +30,12 @@ VBW spawns 7 specialized agents (Lead, Dev, QA, Scout, Debugger, Architect, Docs
 | Lead | sonnet | Good planning quality, 5x cheaper than Opus |
 | Dev | sonnet | Solid implementation for most tasks |
 | QA | sonnet | Standard verification depth |
-| Scout | haiku | Research throughput, cost-effective |
+| Scout | sonnet | Research quality, MCP tool access |
 | Debugger | sonnet | Good debugging for common issues |
 | Architect | sonnet | Clear roadmaps without Opus overhead |
 | Docs | sonnet | Standard documentation quality |
 
-**Est. cost per phase:** ~$1.40 (50% of Quality)
+**Est. cost per phase:** ~$1.50 (50% of Quality)
 
 ### Budget
 **Use when:** Prototyping, exploratory work, tight budget constraints.
@@ -78,8 +78,8 @@ Switch to a different profile and back, or manually edit .vbw-planning/config.js
 
 | Profile | Lead | Dev | QA | Scout | Docs | Est. Cost/Phase | vs Quality |
 |---------|------|-----|----|----|------|-----------------|------------|
-| Quality | opus | opus | sonnet | haiku | sonnet | $2.80 | 100% |
-| Balanced | sonnet | sonnet | sonnet | haiku | sonnet | $1.40 | 50% |
+| Quality | opus | opus | sonnet | sonnet | sonnet | $3.00 | 100% |
+| Balanced | sonnet | sonnet | sonnet | sonnet | sonnet | $1.50 | 50% |
 | Budget | sonnet | sonnet | haiku | haiku | sonnet | $0.70 | 25% |
 
 *Estimates based on typical 3-plan phase with 2 Dev teammates, 1 QA run, Lead planning. Assumes ~15K input + ~5K output tokens per agent turn. Opus ~$15/$75 per MTok, Sonnet ~$3/$15, Haiku ~$0.25/$1.25 (input/output). Actual costs vary by phase complexity and plan count.*

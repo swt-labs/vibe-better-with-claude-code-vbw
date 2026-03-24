@@ -3,7 +3,7 @@
     "lead": "opus",
     "dev": "opus",
     "qa": "sonnet",
-    "scout": "haiku",
+    "scout": "sonnet",
     "debugger": "opus",
     "architect": "opus",
     "docs": "sonnet"
@@ -12,7 +12,7 @@
     "lead": "sonnet",
     "dev": "sonnet",
     "qa": "sonnet",
-    "scout": "haiku",
+    "scout": "sonnet",
     "debugger": "sonnet",
     "architect": "sonnet",
     "docs": "sonnet"

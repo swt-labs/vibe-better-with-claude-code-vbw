@@ -2,7 +2,7 @@
   "_comment_context_windows": "All Claude 4.x models have ~200K token context windows (~800K chars at 4:1 ratio)",
   "_comment_scaling_rationale": "Budgets are set at 1-4% of model context windows to leave headroom for instructions, codebase context, and prior conversation. Character budgets used instead of tokens for cross-model consistency and simpler enforcement.",
   "_comment_percentage_breakdown": {
-    "scout": "1% of 800K = 8K chars (Haiku - minimal research queries)",
+    "scout": "1% of 800K = 8K chars (Sonnet/Haiku - research queries)",
     "lead": "2.5% of 800K = 20K chars (Opus/Sonnet - plan production)",
     "dev": "4% of 800K = 32K chars (Opus/Sonnet - per-task implementation, scales with complexity)",
     "qa": "3% of 800K = 24K chars (Sonnet/Haiku - verification goals)",
