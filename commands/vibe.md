@@ -334,7 +334,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
      Then continue to the next stage (`plan`).
    - `plan`: If `plan_path` from step 5 is non-empty, the plan was already written in a previous session — do NOT re-plan. Read the existing plan and advance directly to `execute`. Otherwise, spawn Lead as a **single subagent** to write the remediation plan:
 
-     **NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name` or `name` parameters**. This is NOT "Plan mode steps 1-12" — those steps include team logic that does not apply here.
+     **NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name` or `name` parameters**. This is NOT "Plan mode steps 1-12" — remediation has its own sequential flow that does not use the standard planning pipeline.
 
      - Resolve Lead model:
        ```bash

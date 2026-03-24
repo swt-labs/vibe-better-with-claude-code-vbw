@@ -54,8 +54,14 @@ Count source files (Glob), excluding: .vbw-planning/, node_modules/, .git/, vend
 | duo | 200-1000 | 2 scouts, combined domains | 2 |
 | quad | 1000+ | Full 4-scout team | 4 |
 
-Overrides: --tier flag forces tier. Agent Teams not enabled → force solo (`⚠ Agent Teams not enabled — using solo mode`).
+Overrides: --tier flag forces tier. Agent Teams not enabled → force solo (`⚠ Agent Teams not enabled — using solo mode`). `prefer_teams='never'` in config → force solo (`⚠ prefer_teams=never — using solo mode`).
 Display: `◆ Sizing: {SOURCE_FILE_COUNT} source files → {tier} mode`
+
+Read `prefer_teams` before applying tier:
+```bash
+PREFER_TEAMS=$(jq -r '.prefer_teams // "auto"' .vbw-planning/config.json 2>/dev/null)
+```
+If `PREFER_TEAMS` is `never`, force solo regardless of file count or --tier flag.
 
 ### Step 2: Detect monorepo
 

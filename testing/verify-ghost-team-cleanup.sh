@@ -282,6 +282,10 @@ test_vibe_no_team_machinery_in_plan() {
   # Extract the Plan mode section (between "### Mode: Plan" and the next "### Mode:")
   local plan_section
   plan_section=$(sed -n '/^### Mode: Plan$/,/^### Mode:/p' "$ROOT/commands/vibe.md")
+  if [ -z "$plan_section" ]; then
+    fail "Could not extract Plan mode section from vibe.md (heading format may have changed)"
+    return
+  fi
   if echo "$plan_section" | grep -q 'TeamCreate' || echo "$plan_section" | grep -q 'TeamDelete'; then
     fail "vibe.md Plan mode section still references TeamCreate/TeamDelete"
   else
