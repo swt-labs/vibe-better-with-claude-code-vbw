@@ -97,6 +97,17 @@ teardown() {
   grep -q "^layout=round-dir$" "$PHASE_DIR/remediation/.uat-remediation-stage"
 }
 
+@test "advance from verified is no-op" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=verified\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [ "$output" = "verified" ]
+  # State file unchanged
+  grep -q "^stage=verified$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+}
+
 @test "advance preserves round number" {
   mkdir -p "$PHASE_DIR/remediation"
   printf 'stage=research\nround=03\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"

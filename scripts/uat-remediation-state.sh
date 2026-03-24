@@ -341,7 +341,7 @@ case "$CMD" in
     current=$(get_stage)
     if [ "$current" = "none" ]; then
       echo "$current"
-    elif [ "$current" = "verify" ] || [ "$current" = "verified" ]; then
+    elif [ "$current" = "verify" ]; then
       # Verification found issues — start a new remediation round
       current_round=$(get_round)
       next_round=$(( 10#$current_round + 1 ))
@@ -352,6 +352,9 @@ case "$CMD" in
       echo "research"
       echo "round=${next_round_padded}"
       echo "round_dir=$PHASE_DIR/remediation/round-${next_round_padded}"
+    elif [ "$current" = "verified" ]; then
+      # Verification passed — no-op (nothing to remediate)
+      echo "$current"
     else
       new_stage=$(next_stage "$current")
       round=$(get_round)
@@ -376,6 +379,7 @@ case "$CMD" in
     next_round_padded=$(printf '%02d' "$next_round")
     mkdir -p "$PHASE_DIR/remediation/round-${next_round_padded}"
     printf 'stage=research\nround=%s\nlayout=round-dir\n' "$next_round_padded" > "$STATE_FILE"
+    [ -f "$LEGACY_STATE_FILE" ] && rm -f "$LEGACY_STATE_FILE"
     echo "research"
     echo "round=${next_round_padded}"
     echo "round_dir=$PHASE_DIR/remediation/round-${next_round_padded}"
