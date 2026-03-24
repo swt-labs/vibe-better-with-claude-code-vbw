@@ -103,3 +103,101 @@ teardown() {
   result=$(current_uat "$PHASE_DIR")
   [[ "$result" == *"03-UAT.md" ]]
 }
+
+# --- normalize_uat_status tests ---
+
+@test "normalize_uat_status: all_pass maps to complete" {
+  result=$(normalize_uat_status "all_pass")
+  [ "$result" = "complete" ]
+}
+
+@test "normalize_uat_status: passed maps to complete" {
+  result=$(normalize_uat_status "passed")
+  [ "$result" = "complete" ]
+}
+
+@test "normalize_uat_status: pass maps to complete" {
+  result=$(normalize_uat_status "pass")
+  [ "$result" = "complete" ]
+}
+
+@test "normalize_uat_status: all_passed maps to complete" {
+  result=$(normalize_uat_status "all_passed")
+  [ "$result" = "complete" ]
+}
+
+@test "normalize_uat_status: verified maps to complete" {
+  result=$(normalize_uat_status "verified")
+  [ "$result" = "complete" ]
+}
+
+@test "normalize_uat_status: no_issues maps to complete" {
+  result=$(normalize_uat_status "no_issues")
+  [ "$result" = "complete" ]
+}
+
+@test "normalize_uat_status: canonical values pass through unchanged" {
+  [ "$(normalize_uat_status "complete")" = "complete" ]
+  [ "$(normalize_uat_status "issues_found")" = "issues_found" ]
+  [ "$(normalize_uat_status "in_progress")" = "in_progress" ]
+  [ "$(normalize_uat_status "pending")" = "pending" ]
+  [ "$(normalize_uat_status "failed")" = "failed" ]
+}
+
+@test "normalize_uat_status: empty input returns empty" {
+  result=$(normalize_uat_status "")
+  [ "$result" = "" ]
+}
+
+@test "normalize_uat_status: unknown values pass through unchanged" {
+  [ "$(normalize_uat_status "success")" = "success" ]
+  [ "$(normalize_uat_status "done")" = "done" ]
+  [ "$(normalize_uat_status "aborted")" = "aborted" ]
+}
+
+# --- extract_status_value normalization integration ---
+
+@test "extract_status_value: normalizes all_pass in frontmatter to complete" {
+  cat > "$PHASE_DIR/03-UAT.md" <<'EOF'
+---
+phase: 03
+status: all_pass
+---
+All tests passed.
+EOF
+  result=$(extract_status_value "$PHASE_DIR/03-UAT.md")
+  [ "$result" = "complete" ]
+}
+
+@test "extract_status_value: normalizes passed in frontmatter to complete" {
+  cat > "$PHASE_DIR/03-UAT.md" <<'EOF'
+---
+phase: 03
+status: passed
+---
+All tests passed.
+EOF
+  result=$(extract_status_value "$PHASE_DIR/03-UAT.md")
+  [ "$result" = "complete" ]
+}
+
+@test "extract_status_value: normalizes all_pass in body fallback to complete" {
+  cat > "$PHASE_DIR/03-UAT.md" <<'EOF'
+# UAT Report
+status: all_pass
+EOF
+  result=$(extract_status_value "$PHASE_DIR/03-UAT.md")
+  [ "$result" = "complete" ]
+}
+
+@test "extract_status_value: issues_found passes through unchanged" {
+  cat > "$PHASE_DIR/03-UAT.md" <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+Issues found.
+EOF
+  result=$(extract_status_value "$PHASE_DIR/03-UAT.md")
+  [ "$result" = "issues_found" ]
+}

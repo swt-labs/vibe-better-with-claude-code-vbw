@@ -59,6 +59,14 @@ else
       print tolower(val); exit
     }
   ' "$UAT_FILE" 2>/dev/null || true)
+  # Normalize LLM synonyms when uat-utils.sh unavailable
+  if type normalize_uat_status &>/dev/null; then
+    STATUS=$(normalize_uat_status "$STATUS")
+  else
+    case "$STATUS" in
+      all_pass|passed|pass|all_passed|verified|no_issues) STATUS="complete" ;;
+    esac
+  fi
 fi
 
 if [ "$STATUS" != "issues_found" ]; then

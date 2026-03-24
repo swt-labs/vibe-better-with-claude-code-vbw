@@ -991,3 +991,70 @@ EOF
   # Confirm the state file was NOT rewritten to done
   grep -q "^stage=execute$" .vbw-planning/phases/01-feature/remediation/.uat-remediation-stage
 }
+
+# --- UAT status normalization in phase-detect ---
+
+@test "phase with all_pass UAT is treated as verified (not unverified)" {
+  mkdir -p .vbw-planning/phases/01-feature
+  touch .vbw-planning/phases/01-feature/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-SUMMARY.md
+  cat > .vbw-planning/phases/01-feature/01-UAT.md <<'EOF'
+---
+phase: 01
+status: all_pass
+total_tests: 3
+passed: 3
+issues: 0
+---
+All tests passed.
+EOF
+
+  # Enable auto_uat to trigger the unverified phases scan
+  cat > .vbw-planning/config.json <<'CONF'
+{
+  "effort": "balanced",
+  "auto_uat": true,
+  "auto_commit": true,
+  "planning_tracking": "manual",
+  "auto_push": "never"
+}
+CONF
+
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+
+  # all_pass should be normalized to complete → phase is verified → not unverified
+  echo "$output" | grep -q "has_unverified_phases=false"
+  # Should NOT route to needs_verification
+  ! echo "$output" | grep -q "next_phase_state=needs_verification"
+}
+
+@test "phase with passed UAT is treated as verified (not unverified)" {
+  mkdir -p .vbw-planning/phases/01-feature
+  touch .vbw-planning/phases/01-feature/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-SUMMARY.md
+  cat > .vbw-planning/phases/01-feature/01-UAT.md <<'EOF'
+---
+phase: 01
+status: passed
+---
+All tests passed.
+EOF
+
+  cat > .vbw-planning/config.json <<'CONF'
+{
+  "effort": "balanced",
+  "auto_uat": true,
+  "auto_commit": true,
+  "planning_tracking": "manual",
+  "auto_push": "never"
+}
+CONF
+
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+
+  echo "$output" | grep -q "has_unverified_phases=false"
+}
