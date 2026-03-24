@@ -413,8 +413,9 @@ fi
 # A phase is "unverified" if it is fully built (summaries >= plans, plans > 0)
 # but has no completed UAT.md (excluding SOURCE-UAT.md which are verbatim copies
 # from milestone remediation). A UAT with a non-terminal status (e.g. draft,
-# in_progress) is treated as unverified. Terminal statuses: complete, passed,
-# issues_found. Scan runs regardless of NEXT_PHASE_STATE so auto_uat can trigger
+# in_progress) is treated as unverified. Terminal statuses: complete, issues_found
+# (LLM synonyms like all_pass, passed, verified are normalized by extract_status_value).
+# Scan runs regardless of NEXT_PHASE_STATE so auto_uat can trigger
 # mid-milestone (not only at all_done).
 HAS_UNVERIFIED_PHASES=false
 FIRST_UNVERIFIED_PHASE=""
