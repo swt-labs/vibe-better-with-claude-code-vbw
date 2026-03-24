@@ -127,6 +127,7 @@ Decision tree:
 - `prefer_teams='always'`: Create team for ALL plan counts (even 1 plan), unless turbo or smart-routed to turbo
 - `prefer_teams='when_parallel'`: Create team only when 2+ uncompleted plans, unless turbo or smart-routed to turbo
 - `prefer_teams='auto'`: Same as when_parallel (use current behavior, smart routing can downgrade)
+- `prefer_teams='never'`: Never create teams. All agents run as sequential subagents — no parallel execution.
 
 When team should be created based on prefer_teams:
 - **Pre-TeamCreate cleanup** (remove orphaned VBW team directories from prior sessions before creating a new team):
@@ -136,7 +137,7 @@ When team should be created based on prefer_teams:
 - Create team via TeamCreate: `team_name="vbw-phase-{NN}"`, `description="Phase {NN}: {phase-name}"`
 - All Dev and QA agents below MUST be spawned with `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"` (from plan number) or `name: "qa"` parameters on the Task tool invocation.
 
-When team should NOT be created (1 plan with when_parallel/auto, or turbo, or smart-routed turbo):
+When team should NOT be created (prefer_teams='never', or 1 plan with when_parallel/auto, or turbo, or smart-routed turbo):
 - Skip TeamCreate — single agent, no team overhead.
 
 **Smart Routing (REQ-15):** If `smart_routing=true` in config:
