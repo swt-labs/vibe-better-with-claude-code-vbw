@@ -149,6 +149,12 @@ teardown() {
   [ "$result" = "" ]
 }
 
+@test "normalize_uat_status: unknown values pass through unchanged" {
+  [ "$(normalize_uat_status "success")" = "success" ]
+  [ "$(normalize_uat_status "done")" = "done" ]
+  [ "$(normalize_uat_status "aborted")" = "aborted" ]
+}
+
 # --- extract_status_value normalization integration ---
 
 @test "extract_status_value: normalizes all_pass in frontmatter to complete" {

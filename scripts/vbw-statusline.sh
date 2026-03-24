@@ -53,6 +53,14 @@ else
   count_complete_summaries() { echo "0"; }
   count_done_summaries() { echo "0"; }
 fi
+# Source shared UAT helpers for status normalization
+if [ -f "$_SL_SCRIPT_DIR/uat-utils.sh" ]; then
+  # shellcheck source=uat-utils.sh
+  . "$_SL_SCRIPT_DIR/uat-utils.sh"
+else
+  # Safe default: passthrough when helpers unavailable
+  normalize_uat_status() { echo "$1"; }
+fi
 if [ -f "$_SL_SCRIPT_DIR/phase-state-utils.sh" ]; then
   # shellcheck source=phase-state-utils.sh
   . "$_SL_SCRIPT_DIR/phase-state-utils.sh"
@@ -436,8 +444,9 @@ if ! cache_fresh "$FAST_CF" 5; then
         fi
         if [ -n "$_uat_file" ]; then
           _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null)
+          _uat_status=$(normalize_uat_status "$_uat_status")
           case "$_uat_status" in
-            complete|passed) QA="UAT: pass"; QA_COLOR="G" ;;
+            complete) QA="UAT: pass"; QA_COLOR="G" ;;
             issues_found)
               _rem_stage="none"
               if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
