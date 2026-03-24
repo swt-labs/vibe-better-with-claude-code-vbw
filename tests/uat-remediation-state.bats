@@ -82,12 +82,19 @@ teardown() {
   grep -q "^round=01$" "$PHASE_DIR/remediation/.uat-remediation-stage"
 }
 
-@test "advance from verify stays at verify" {
-  mkdir -p "$PHASE_DIR/remediation"
+@test "advance from verify starts new round" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
   printf 'stage=verify\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR"
-  [ "$output" = "verify" ]
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "research" ]
+  echo "$output" | grep -q "^round=02$"
+  echo "$output" | grep -q "^round_dir=.*remediation/round-02$"
+  [ -d "$PHASE_DIR/remediation/round-02" ]
+  grep -q "^stage=research$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^round=02$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^layout=round-dir$" "$PHASE_DIR/remediation/.uat-remediation-stage"
 }
 
 @test "advance preserves round number" {

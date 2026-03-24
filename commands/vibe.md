@@ -318,6 +318,11 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - If a stage was already persisted (resume after compaction/restart), the script returns the stage word + plan metadata with no side effects.
    - If no stage existed (first entry into remediation), the script initializes the stage file, creates `remediation/round-01/` directory, pre-seeds CONTEXT.md, and returns the stage word + plan metadata + `---CONTEXT---` separator with the full pre-seeded CONTEXT.md content — **use this directly as your remediation context. Do NOT separately read UAT.md or CONTEXT.md files.**
    - If the returned stage is `done`: UAT remediation already completed for this phase. Display "Remediation already completed. Run `/vbw:vibe` to re-verify." STOP.
+   - If the returned stage is `verify`: Re-verification found issues but the next round hasn't started yet (session died before advancing). Call `advance` to start the next round:
+     ```bash
+     bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
+     ```
+     This returns `research` with new round metadata (`round=RR`, `round_dir=...`). Use these values for the rest of the flow. Continue as if stage is `research`.
    **Task list (NON-NEGOTIABLE ordering and state):** Immediately after resolving the stage, create a task list with items in **exactly this order** for the major path: (1) Research, (2) Plan, (3) Execute. For the minor path: (1) Fix. **Item numbering must match stage order** — Research is always #1, Plan #2, Execute #3. Never reorder items.
    - **Initial creation:** If the resolved stage is `research`, mark Research as in-progress, Plan and Execute as not-started. If the resolved stage is `plan` (resume case), mark Research as completed, Plan as in-progress, Execute as not-started. If `execute`, mark Research and Plan as completed, Execute as in-progress.
    - **Same-session progression:** When a stage completes and you advance to the next stage within the same session (e.g., research completes → advance → start plan), immediately update the task list: mark the completed stage as completed and the new stage as in-progress. Do NOT defer task list updates or recreate the list from scratch.
