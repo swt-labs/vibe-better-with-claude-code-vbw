@@ -629,6 +629,8 @@ EOF
   grep -q "^stage=research$" "$PHASE_DIR/remediation/.uat-remediation-stage"
   grep -q "^round=02$" "$PHASE_DIR/remediation/.uat-remediation-stage"
   grep -q "^layout=round-dir$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  # Legacy state file cleaned up
+  [ ! -f "$PHASE_DIR/.uat-remediation-stage" ]
 }
 
 @test "get-or-init plan_path empty when plan does not exist in round dir" {
