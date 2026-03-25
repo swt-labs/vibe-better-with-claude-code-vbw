@@ -122,6 +122,8 @@ normalize_decisions_section() {
     NR == 1 { print "## Decisions"; next }
     {
       low = tolower($0)
+      if (low ~ /^[-*][[:space:]]+none\.?[[:space:]]*$/) next
+      if (low ~ /^none\.?[[:space:]]*$/) next
       if (low ~ /^[-*][[:space:]]+_\(no[[:space:]]+decisions[[:space:]]+yet\)_[[:space:]]*$/) next
       if (low ~ /^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$/) next
       if (low ~ /^\|[[:space:]]*decision([[:space:]]*\|.*)?$/) next

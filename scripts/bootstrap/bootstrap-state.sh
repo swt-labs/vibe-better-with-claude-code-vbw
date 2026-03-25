@@ -109,6 +109,7 @@ format_decisions_table() {
     local lower_line
     lower_line=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
     [[ -z "$line" ]] && continue
+    [[ "$lower_line" == "none" ]] && continue
     [[ "$lower_line" == "none." ]] && continue
     [[ "$lower_line" == "_(no decisions yet)_" ]] && continue
     echo "| $line | | |"

@@ -193,3 +193,57 @@ EOF
   [ -f ".vbw-planning/CONTEXT.md" ]
   grep -q "Build test scope" ".vbw-planning/CONTEXT.md"
 }
+
+@test "milestone-context: lifecycle roundtrip preserves CONTEXT.md through persist and unarchive" {
+  cd "$TEST_TEMP_DIR"
+
+  mkdir -p ".vbw-planning/milestones/ms1/phases/01-setup"
+  touch ".vbw-planning/milestones/ms1/phases/01-setup/01-01-PLAN.md"
+  touch ".vbw-planning/milestones/ms1/phases/01-setup/01-01-SUMMARY.md"
+
+  cat > ".vbw-planning/milestones/ms1/ROADMAP.md" <<'EOF'
+# Roadmap
+## Phase 1: Setup
+EOF
+
+  cat > ".vbw-planning/milestones/ms1/STATE.md" <<'EOF'
+# State
+
+**Project:** Lifecycle Test
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth separate | 2026-03-25 | Clear milestone boundary |
+
+## Todos
+None.
+
+## Blockers
+None
+EOF
+
+  cat > ".vbw-planning/milestones/ms1/CONTEXT.md" <<'EOF'
+# Lifecycle Test — Milestone Context
+
+## Scope Boundary
+Build setup milestone.
+
+## Decomposition Decisions
+### Phase Count & Grouping
+One phase for setup only.
+EOF
+
+  bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    ".vbw-planning/milestones/ms1/STATE.md" ".vbw-planning/STATE.md" "Lifecycle Test"
+
+  [ -f ".vbw-planning/STATE.md" ]
+  grep -q 'Keep auth separate' ".vbw-planning/STATE.md"
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/ms1" ".vbw-planning"
+  [ "$status" -eq 0 ]
+
+  [ -f ".vbw-planning/CONTEXT.md" ]
+  grep -q 'Build setup milestone' ".vbw-planning/CONTEXT.md"
+}
