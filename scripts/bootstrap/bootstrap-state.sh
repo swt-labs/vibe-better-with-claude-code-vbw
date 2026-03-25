@@ -43,6 +43,36 @@ extract_section() {
   ' "$file"
 }
 
+format_decisions_table() {
+  local decisions="$1"
+
+  if [[ -z "$decisions" ]]; then
+    echo "| Decision | Date | Rationale |"
+    echo "|----------|------|-----------|"
+    echo "| _(No decisions yet)_ | | |"
+    return 0
+  fi
+
+  echo "| Decision | Date | Rationale |"
+  echo "|----------|------|-----------|"
+
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    if [[ "$line" =~ ^\| ]]; then
+      local lower
+      lower=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
+      [[ "$lower" =~ ^\|[[:space:]:-]+\|?[[:space:]]*$ ]] && continue
+      [[ "$lower" =~ ^\|[[:space:]]*decision([[:space:]]*\|.*)?$ ]] && continue
+      echo "$line"
+      continue
+    fi
+
+    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+    [[ -z "$line" ]] && continue
+    echo "| $line | | |"
+  done <<< "$decisions"
+}
+
 # Preserve existing project-level sections if output file already exists
 # (e.g., carried forward from a prior milestone by persist-state-after-ship.sh)
 EXISTING_TODOS=""
@@ -87,11 +117,9 @@ fi
   echo ""
   echo "## Key Decisions"
   if [[ -n "$EXISTING_DECISIONS" ]]; then
-    echo "$EXISTING_DECISIONS"
+    format_decisions_table "$EXISTING_DECISIONS"
   else
-    echo "| Decision | Date | Rationale |"
-    echo "|----------|------|-----------|"
-    echo "| _(No decisions yet)_ | | |"
+    format_decisions_table ""
   fi
   echo ""
   echo "## Todos"

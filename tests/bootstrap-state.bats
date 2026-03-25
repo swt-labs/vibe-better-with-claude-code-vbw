@@ -173,6 +173,29 @@ EOF
   grep -q "MVVM pattern" .vbw-planning/STATE.md
 }
 
+@test "bootstrap-state: normalizes legacy decision lists to canonical table" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Use SwiftUI for all new views
+- Adopt MVVM pattern
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  grep -q '^| Decision | Date | Rationale |$' .vbw-planning/STATE.md
+  grep -q '^| Use SwiftUI for all new views | | |$' .vbw-planning/STATE.md
+  grep -q '^| Adopt MVVM pattern | | |$' .vbw-planning/STATE.md
+}
+
 @test "bootstrap-state: preserves existing Blockers from prior milestone" {
   cd "$TEST_TEMP_DIR"
   cat > .vbw-planning/STATE.md <<'EOF'

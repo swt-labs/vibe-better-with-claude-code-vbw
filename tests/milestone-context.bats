@@ -35,8 +35,8 @@ teardown() {
 
 ## Phase 1: Test Phase
 **Goal:** Test phase goal
-**Success Criteria:** Test criteria
-**Requirements:** Not available
+**Success:** Test criteria
+**Reqs:** Not available
 ROADMAP
 
   cat > "$TEMP_PLANNING/CONTEXT.md" <<'CTX'
@@ -80,8 +80,8 @@ CTX
 
 ## Phase 1: Test Phase
 **Goal:** Test phase goal
-**Success Criteria:** Test criteria
-**Requirements:** Not available
+**Success:** Test criteria
+**Reqs:** Not available
 ROADMAP
 
   # No CONTEXT.md created
@@ -112,8 +112,8 @@ ROADMAP
 
 ## Phase 1: Test Phase
 **Goal:** Test phase goal
-**Success Criteria:** Test criteria
-**Requirements:** Not available
+**Success:** Test criteria
+**Reqs:** Not available
 ROADMAP
 
   cat > "$TEMP_PLANNING/CONTEXT.md" <<'CTX'
