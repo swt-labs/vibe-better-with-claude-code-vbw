@@ -24,18 +24,17 @@ D='\033[2m' B='\033[1m' X='\033[0m'
 # --- Cached platform info ---
 _UID=$(id -u)
 _OS=$(uname)
-# Derive script dir early — used as a preferred anchor for path resolution.
+# Derive script dir early — used as a preferred anchor for find_vbw_root (#266).
 # In dev (--plugin-dir), the script lives inside the project repo; anchoring here
-# makes root resolution immune to agents cd-ing around the monorepo (#266).
-# In production (plugin cache under ~/.config/claude-code/...), the script lives
-# outside any project repo so script-relative resolution will fail; we fall back
-# to CWD in that case (same as the pre-fix behaviour).
+# makes .vbw-planning/ resolution immune to agents cd-ing around the monorepo.
+# In production (plugin cache), the script lives outside any project repo so
+# script-relative resolution fails gracefully and find_vbw_root falls back to CWD.
 _SL_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 _VER=$(cat "$_SL_SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
-# Prefer script-relative git root (dev/--plugin-dir); fall back to CWD-relative
-# (production installs where the plugin cache is outside the project repo).
-_REPO_ROOT=$(cd "$_SL_SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null) \
-  || _REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+# _REPO_ROOT must always reflect the *user's* project repo (CWD-relative), not the
+# plugin's location. Script-relative git root would resolve to the VBW repo in dev
+# mode, breaking cache isolation between different user projects.
+_REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
 if command -v md5sum &>/dev/null; then
   _REPO_HASH=$(echo "$_REPO_ROOT" | md5sum | cut -c1-8)
 elif command -v md5 &>/dev/null; then

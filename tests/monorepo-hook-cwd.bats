@@ -148,7 +148,60 @@ JSON
   [ "$result" = "$root" ]
 }
 
-# --- Test 6: statusline reads config from subdirectory (end-to-end) ---
+# --- Test 6: find_vbw_root with start_dir resolves from script location (#266) ---
+
+@test "find_vbw_root: resolves via start_dir when CWD is outside project" {
+  local root="$TEST_TEMP_DIR/project-anchor"
+  setup_workspace "$root"
+  # Create a directory *inside* the project to simulate a script living in the repo
+  mkdir -p "$root/scripts/lib"
+  local root_real; root_real=$(cd "$root" && pwd -P 2>/dev/null || echo "$root")
+
+  # CWD is outside the project (no .vbw-planning/ here)
+  local outside="$TEST_TEMP_DIR/outside-dir"
+  mkdir -p "$outside"
+
+  local result
+  result=$(
+    cd "$outside"
+    unset VBW_CONFIG_ROOT 2>/dev/null || true
+    unset VBW_PLANNING_DIR 2>/dev/null || true
+    . "$LIB"
+    find_vbw_root "$root/scripts"
+    echo "$VBW_CONFIG_ROOT"
+  )
+  cd "$PROJECT_ROOT"
+
+  [ "$result" = "$root_real" ]
+}
+
+# --- Test 7: find_vbw_root with start_dir falls back to CWD when start_dir outside project ---
+
+@test "find_vbw_root: falls back to CWD when start_dir is outside any project" {
+  local root="$TEST_TEMP_DIR/cwd-fallback"
+  setup_workspace "$root"
+  local root_real; root_real=$(cd "$root" && pwd -P 2>/dev/null || echo "$root")
+
+  # start_dir is outside any project
+  local cache_dir="$TEST_TEMP_DIR/plugin-cache/scripts"
+  mkdir -p "$cache_dir"
+
+  local result
+  result=$(
+    cd "$root"
+    unset VBW_CONFIG_ROOT 2>/dev/null || true
+    unset VBW_PLANNING_DIR 2>/dev/null || true
+    . "$LIB"
+    find_vbw_root "$cache_dir"
+    echo "$VBW_CONFIG_ROOT"
+  )
+  cd "$PROJECT_ROOT"
+
+  # Should resolve via CWD since start_dir walk fails
+  [ "$result" = "$root_real" ]
+}
+
+# --- Test 8: statusline reads config from subdirectory (end-to-end) ---
 
 @test "statusline: reads model_profile from subdirectory CWD (not hardcoded default)" {
   local root="$TEST_TEMP_DIR/monorepo-statusline"
