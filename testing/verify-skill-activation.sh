@@ -468,6 +468,22 @@ for agent_file in vbw-lead.md vbw-dev.md vbw-qa.md vbw-scout.md vbw-debugger.md 
   fi
 done
 
+# Layer 1b: Agents using disallowedTools (denylist) must have MCP Tool Usage section
+# Agents with disallowedTools inherit MCP tools from the parent session, so they need
+# guidance on when/how to use them. Agents with tools allowlist block MCP inheritance.
+echo ""
+echo "=== MCP Tool Usage Section (disallowedTools agents) ==="
+for agent_file in "$ROOT"/agents/vbw-*.md; do
+  agent_name=$(basename "$agent_file")
+  if grep -q '^disallowedTools:' "$agent_file"; then
+    if grep -q '## MCP Tool Usage' "$agent_file"; then
+      pass "$agent_name: has ## MCP Tool Usage section (uses disallowedTools denylist)"
+    else
+      fail "$agent_name: missing ## MCP Tool Usage section (uses disallowedTools but no MCP guidance)"
+    fi
+  fi
+done
+
 # Layer 2: Script-driven skill activation removed (replaced by orchestrator-composed intelligent selection)
 if [ ! -f "$ROOT/scripts/generate-skill-activation.sh" ]; then
   pass "generate-skill-activation.sh: deleted (replaced by intelligent orchestrator selection)"
