@@ -284,3 +284,73 @@ EOF
 
   [ "$HASH1" != "$HASH2" ]
 }
+
+@test "cache-context.sh: scout conventions fingerprint changes hash" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/conventions.json <<'EOF'
+{"conventions":[{"tag":"STYLE","rule":"Scout v1"}]}
+EOF
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 scout .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  cat > .vbw-planning/conventions.json <<'EOF'
+{"conventions":[{"tag":"STYLE","rule":"Scout v2"}]}
+EOF
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 scout .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" != "$HASH2" ]
+}
+
+@test "cache-context.sh: research fingerprint changes hash for dev role" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/phases/02-test-phase/02-RESEARCH.md <<'EOF'
+## Findings
+- Initial research
+EOF
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  cat > .vbw-planning/phases/02-test-phase/02-RESEARCH.md <<'EOF'
+## Findings
+- Updated research
+EOF
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" != "$HASH2" ]
+}
+
+@test "cache-context.sh: delta content fingerprint changes hash when file content changes but file list stays same" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/phases/02-test-phase/02-01-SUMMARY.md <<'EOF'
+## Files Modified
+- sample.txt
+EOF
+  echo 'v1' > sample.txt
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  echo 'v2' > sample.txt
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" != "$HASH2" ]
+}

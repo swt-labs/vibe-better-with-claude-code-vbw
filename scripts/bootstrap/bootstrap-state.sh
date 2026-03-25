@@ -80,6 +80,7 @@ extract_todos_section() {
 
 format_decisions_table() {
   local decisions="$1"
+  local emitted=0
 
   if [[ -z "$decisions" ]]; then
     echo "| Decision | Date | Rationale |"
@@ -100,6 +101,7 @@ format_decisions_table() {
       [[ "$lower" =~ ^\|[[:space:]]*decision([[:space:]]*\|.*)?$ ]] && continue
       [[ "$lower" =~ ^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$ ]] && continue
       echo "$line"
+      emitted=1
       continue
     fi
 
@@ -110,7 +112,12 @@ format_decisions_table() {
     [[ "$lower_line" == "none." ]] && continue
     [[ "$lower_line" == "_(no decisions yet)_" ]] && continue
     echo "| $line | | |"
+    emitted=1
   done <<< "$decisions"
+
+  if [[ "$emitted" -eq 0 ]]; then
+    echo "| _(No decisions yet)_ | | |"
+  fi
 }
 
 # Preserve existing project-level sections if output file already exists

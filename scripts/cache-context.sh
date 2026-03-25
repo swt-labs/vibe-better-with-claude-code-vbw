@@ -28,6 +28,17 @@ fingerprint_file() {
   fi
 }
 
+resolve_phase_dir_for_cache() {
+  if [ -n "$PLAN_PATH" ] && [ -f "$PLAN_PATH" ]; then
+    dirname "$PLAN_PATH"
+    return 0
+  fi
+
+  local padded_phase
+  padded_phase=$(printf "%02d" "$PHASE" 2>/dev/null || echo "$PHASE")
+  find "$PLANNING_DIR/phases" -maxdepth 1 -type d -name "${padded_phase}-*" 2>/dev/null | head -1
+}
+
 # --- Build hash input from deterministic sources ---
 HASH_INPUT="phase=${PHASE}:role=${ROLE}"
 
@@ -39,7 +50,17 @@ fi
 
 # Changed files list (git diff for delta awareness)
 if command -v git &>/dev/null && git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
-  CHANGED_SUM=$(git diff --name-only HEAD 2>/dev/null | sort | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nogit")
+  CHANGED_SUM=$({
+    git diff --binary HEAD 2>/dev/null || true
+    git diff --binary --cached 2>/dev/null || true
+    git ls-files --others --exclude-standard 2>/dev/null | while IFS= read -r file; do
+      [ -n "$file" ] || continue
+      echo "UNTRACKED:$file"
+      if [ -f "$file" ]; then
+        shasum -a 256 "$file" 2>/dev/null || true
+      fi
+    done
+  } | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nogit")
   HASH_INPUT="${HASH_INPUT}:changed=${CHANGED_SUM}"
 fi
 
@@ -57,7 +78,7 @@ if [[ "$ROLE" =~ ^(lead|debugger)$ ]]; then
   HASH_INPUT="${HASH_INPUT}:state=${STATE_SUM}"
 fi
 
-if [[ "$ROLE" =~ ^(dev|qa|debugger|architect)$ ]]; then
+if [[ "$ROLE" =~ ^(dev|qa|scout|debugger|architect)$ ]]; then
   CONVENTIONS_SUM=$(fingerprint_file "$PLANNING_DIR/conventions.json" "noconventions")
   HASH_INPUT="${HASH_INPUT}:conventions=${CONVENTIONS_SUM}"
 fi
@@ -68,16 +89,9 @@ if [[ "$ROLE" =~ ^(debugger|dev|qa|lead|architect)$ ]] && [ -d "$PLANNING_DIR/co
   HASH_INPUT="${HASH_INPUT}:codebase=${MAP_SUM}"
 fi
 
-# Research file fingerprint (lead context changes when research appears/changes)
-if [ "$ROLE" = "lead" ]; then
-  # Derive phase directory from plan path or phase number
-  PHASE_DIR_CACHE=""
-  if [ -n "$PLAN_PATH" ] && [ -f "$PLAN_PATH" ]; then
-    PHASE_DIR_CACHE=$(dirname "$PLAN_PATH")
-  else
-    PADDED_PHASE=$(printf "%02d" "$PHASE" 2>/dev/null || echo "$PHASE")
-    PHASE_DIR_CACHE=$(find "$PLANNING_DIR/phases" -maxdepth 1 -type d -name "${PADDED_PHASE}-*" 2>/dev/null | head -1)
-  fi
+# Research file fingerprint (roles that include Research Findings)
+if [[ "$ROLE" =~ ^(lead|dev|scout|debugger|architect)$ ]]; then
+  PHASE_DIR_CACHE=$(resolve_phase_dir_for_cache)
   if [ -n "$PHASE_DIR_CACHE" ] && [ -d "$PHASE_DIR_CACHE" ]; then
     RESEARCH_FILES=$(find "$PHASE_DIR_CACHE" -maxdepth 1 -name "*-RESEARCH.md" 2>/dev/null | sort)
     if [ -n "$RESEARCH_FILES" ]; then
@@ -85,6 +99,29 @@ if [ "$ROLE" = "lead" ]; then
       HASH_INPUT="${HASH_INPUT}:research=${RESEARCH_SUM}"
     else
       HASH_INPUT="${HASH_INPUT}:research=none"
+    fi
+  fi
+fi
+
+# Delta fingerprint (roles that include changed files / code slices)
+if [[ "$ROLE" =~ ^(dev|scout|debugger)$ ]] && [ -f "${0%/*}/delta-files.sh" ]; then
+  PHASE_DIR_CACHE=$(resolve_phase_dir_for_cache)
+  if [ -n "$PHASE_DIR_CACHE" ] && [ -d "$PHASE_DIR_CACHE" ]; then
+    DELTA_FILES=$(bash "${0%/*}/delta-files.sh" "$PHASE_DIR_CACHE" "$PLAN_PATH" 2>/dev/null || true)
+    if [ -n "$DELTA_FILES" ]; then
+      DELTA_LIST_SUM=$(printf '%s\n' "$DELTA_FILES" | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nodelta")
+      DELTA_CONTENT_SUM=$(printf '%s\n' "$DELTA_FILES" | while IFS= read -r file; do
+        [ -n "$file" ] || continue
+        echo "FILE:$file"
+        if [ -f "$file" ]; then
+          shasum -a 256 "$file" 2>/dev/null || true
+        else
+          echo "missing"
+        fi
+      done | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nodeltacontent")
+      HASH_INPUT="${HASH_INPUT}:delta-list=${DELTA_LIST_SUM}:delta-content=${DELTA_CONTENT_SUM}"
+    else
+      HASH_INPUT="${HASH_INPUT}:delta-list=none:delta-content=none"
     fi
   fi
 fi

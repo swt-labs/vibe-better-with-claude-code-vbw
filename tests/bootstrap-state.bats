@@ -217,7 +217,7 @@ EOF
     .vbw-planning/STATE.md "Test Project" "Beta" 2
   [ "$status" -eq 0 ]
   ! grep -q '^| None\. | | |$' .vbw-planning/STATE.md
-  ! grep -q '^| _(No decisions yet)_ | | |$' .vbw-planning/STATE.md
+  grep -q '^| _(No decisions yet)_ | | |$' .vbw-planning/STATE.md
 }
 
 @test "bootstrap-state: preserves legacy Pending Todos subsection" {
