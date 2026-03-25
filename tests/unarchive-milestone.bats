@@ -224,6 +224,40 @@ EOF
   grep -q 'PostgreSQL for data store' ".vbw-planning/STATE.md"
 }
 
+@test "root decision row wins tie against archived decision row" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| Use REST API for backend | 2026-02-10 | Archived rationale |
+
+## Todos
+None.
+EOF
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| Use REST API for backend | 2026-02-18 | Root rationale |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q '| Use REST API for backend | 2026-02-18 | Root rationale |' ".vbw-planning/STATE.md"
+  ! grep -q 'Archived rationale' ".vbw-planning/STATE.md"
+}
+
 @test "aborts when root phases/ has active work" {
   create_archived_milestone "foundation"
   mkdir -p ".vbw-planning/phases/01-current"

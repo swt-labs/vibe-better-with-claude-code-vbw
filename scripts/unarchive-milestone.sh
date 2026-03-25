@@ -240,7 +240,7 @@ merge_items() {
       local new_score existing_score
       new_score=$(decision_item_score "$line")
       existing_score=$(decision_item_score "${result[$found_index]}")
-      if [ "$new_score" -gt "$existing_score" ]; then
+      if [ "$new_score" -ge "$existing_score" ]; then
         result[$found_index]="$line"
       fi
     fi

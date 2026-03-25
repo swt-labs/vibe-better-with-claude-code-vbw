@@ -281,7 +281,10 @@ case "$ROLE" in
           { low = tolower($0) }
           low ~ /^##[[:space:]]+(key[[:space:]]+)?decisions[[:space:]]*$/ { found=1; next }
           found && /^## / { found=0 }
-          found { print }
+          found && low ~ /^###[[:space:]]+pending[[:space:]]+todos[[:space:]]*$/ { found=0; skip_skills=0; next }
+          found && low ~ /^###[[:space:]]+skills[[:space:]]*$/ { skip_skills=1; next }
+          skip_skills && /^###?#? / { skip_skills=0 }
+          found && !skip_skills { print }
         ' "$PLANNING_DIR/STATE.md" 2>/dev/null) || true
         if [ -n "$DECISIONS" ]; then
           echo "$DECISIONS"

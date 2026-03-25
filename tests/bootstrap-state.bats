@@ -238,8 +238,12 @@ EOF
   run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
     .vbw-planning/STATE.md "Test Project" "Beta" 2
   [ "$status" -eq 0 ]
-  grep -q 'Migrate session store' .vbw-planning/STATE.md
-  grep -q 'Rework onboarding copy' .vbw-planning/STATE.md
+  awk '/^## Key Decisions$/{f=1;next} /^## /{f=0} f{print}' .vbw-planning/STATE.md > "$TEST_TEMP_DIR/decisions.txt"
+  awk '/^## Todos$/{f=1;next} /^## /{f=0} f{print}' .vbw-planning/STATE.md > "$TEST_TEMP_DIR/todos.txt"
+  grep -q 'Migrate session store' "$TEST_TEMP_DIR/todos.txt"
+  grep -q 'Rework onboarding copy' "$TEST_TEMP_DIR/todos.txt"
+  ! grep -q 'Migrate session store' "$TEST_TEMP_DIR/decisions.txt"
+  ! grep -q 'Rework onboarding copy' "$TEST_TEMP_DIR/decisions.txt"
 }
 
 @test "bootstrap-state: strips legacy Skills subsection from decisions carry-forward" {

@@ -133,6 +133,7 @@ if [[ -f "$OUTPUT_PATH" ]]; then
     { low = tolower($0) }
     low ~ /^##[[:space:]]+(key )?decisions[[:space:]]*$/ { found=1; next }
     found && /^## / { found=0 }
+    found && low ~ /^###[[:space:]]+pending[[:space:]]+todos[[:space:]]*$/ { found=0; skip_skills=0; next }
     found && low ~ /^###[[:space:]]+skills[[:space:]]*$/ { skip_skills=1; next }
     skip_skills && /^###?#? / { skip_skills=0 }
     found && !skip_skills { print }

@@ -626,6 +626,36 @@ EOF
   ! grep -qi "Activity Log" .vbw-planning/STATE.md
 }
 
+@test "persist script keeps legacy Pending Todos out of Decisions" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Pending Todos Test
+
+## Decisions
+- Keep auth service isolated
+
+### Pending Todos
+- Migrate session store
+- Rework onboarding copy
+
+## Blockers
+None
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Pending Todos Test"
+  [ "$status" -eq 0 ]
+
+  awk '/^## Decisions$/{f=1;next} /^## /{f=0} f{print}' .vbw-planning/STATE.md > "$TEST_TEMP_DIR/decisions.txt"
+  awk '/^## Todos$/{f=1;next} /^## /{f=0} f{print}' .vbw-planning/STATE.md > "$TEST_TEMP_DIR/todos.txt"
+  grep -q 'Keep auth service isolated' "$TEST_TEMP_DIR/decisions.txt"
+  grep -q 'Migrate session store' "$TEST_TEMP_DIR/todos.txt"
+  ! grep -q 'Migrate session store' "$TEST_TEMP_DIR/decisions.txt"
+}
+
 # Finding 5 (QA R4): bootstrap-state.sh also tolerates extra spaces
 @test "bootstrap preserves todos with extra-space headings in existing STATE.md" {
   cd "$TEST_TEMP_DIR"

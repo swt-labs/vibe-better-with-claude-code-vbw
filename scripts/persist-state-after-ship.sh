@@ -58,6 +58,41 @@ extract_section() {
   ' "$file"
 }
 
+extract_todos() {
+  local file="$1"
+  awk '
+    {
+      low = tolower($0)
+
+      if (low ~ /^##[[:space:]]+todos[[:space:]]*$/) {
+        found=1
+        mode="h2"
+        if (!hdr) { print "## Todos"; hdr=1 }
+        next
+      }
+
+      if (low ~ /^###[[:space:]]+pending[[:space:]]+todos[[:space:]]*$/) {
+        found=1
+        mode="h3"
+        if (!hdr) { print "## Todos"; hdr=1 }
+        next
+      }
+
+      if (found && mode == "h2" && /^## /) {
+        found=0
+        mode=""
+      }
+
+      if (found && mode == "h3" && (/^## / || /^### /)) {
+        found=0
+        mode=""
+      }
+
+      if (found) { print }
+    }
+  ' "$file"
+}
+
 # Decisions section may use "## Decisions" (template) or "## Key Decisions"
 # (bootstrap-state.sh). Case-insensitive. Merges all matching occurrences.
 # Strips any ### Skills subsection (no longer written or read).
@@ -67,6 +102,7 @@ extract_decisions() {
     { low = tolower($0) }
     low ~ /^##[[:space:]]+(key )?decisions[[:space:]]*$/ { found=1; if (!hdr) { print $0; hdr=1 }; next }
     found && /^## / { found=0 }
+    found && low ~ /^###[[:space:]]+pending[[:space:]]+todos[[:space:]]*$/ { found=0; skip_skills=0; next }
     found && low ~ /^###[[:space:]]+skills[[:space:]]*$/ { skip_skills=1; next }
     skip_skills && /^###?#? / { skip_skills=0 }
     found && !skip_skills { print }
@@ -98,7 +134,7 @@ generate_root_state() {
 
   # Todos
   local todos
-  todos=$(extract_section "$ARCHIVED_PATH" "Todos")
+  todos=$(extract_todos "$ARCHIVED_PATH")
   if section_has_body "$todos"; then
     echo "$todos"
     echo ""
