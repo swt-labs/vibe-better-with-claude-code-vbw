@@ -332,6 +332,11 @@ if [ -f "$MILESTONE_DIR/ROADMAP.md" ]; then
   mv "$MILESTONE_DIR/ROADMAP.md" "$PLANNING_DIR/ROADMAP.md"
 fi
 
+# Move milestone CONTEXT.md (scope decisions)
+if [ -f "$MILESTONE_DIR/CONTEXT.md" ]; then
+  mv "$MILESTONE_DIR/CONTEXT.md" "$PLANNING_DIR/CONTEXT.md"
+fi
+
 # Move STATE.md (archived version is the base)
 if [ -f "$ARCHIVED_STATE" ]; then
   mv "$ARCHIVED_STATE" "$ROOT_STATE"

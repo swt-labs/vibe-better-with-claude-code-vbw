@@ -71,6 +71,13 @@ if command -v jq &>/dev/null && [ -f "$CONFIG_PATH" ]; then
   fi
 fi
 
+# Milestone context fingerprint
+MILESTONE_CONTEXT_PATH="$PLANNING_DIR/CONTEXT.md"
+if [ -f "$MILESTONE_CONTEXT_PATH" ]; then
+  MILESTONE_SUM=$(shasum -a 256 "$MILESTONE_CONTEXT_PATH" 2>/dev/null | cut -d' ' -f1 || echo "nomilestone")
+  HASH_INPUT="${HASH_INPUT}:milestone=${MILESTONE_SUM}"
+fi
+
 # --- Compute final hash ---
 HASH=$(printf '%s' "$HASH_INPUT" | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "")
 

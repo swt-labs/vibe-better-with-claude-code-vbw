@@ -53,15 +53,11 @@ Build a recipe recommendation app.
 3 phases because auth, core, polish are independent concerns.
 CTX
 
-  ORIG_CLAUDE_DIR="${CLAUDE_DIR:-}"
-  export CLAUDE_DIR="$TEST_TEMP_DIR"
   rm -rf "$TEST_TEMP_DIR/.vbw-planning"
   ln -sf "$TEMP_PLANNING" "$TEST_TEMP_DIR/.vbw-planning"
 
   cd "$TEST_TEMP_DIR"
   bash "$PROJECT_ROOT/scripts/compile-context.sh" 01 lead "$TEMP_PHASES"
-
-  [ -n "$ORIG_CLAUDE_DIR" ] && export CLAUDE_DIR="$ORIG_CLAUDE_DIR" || unset CLAUDE_DIR
 
   CONTEXT_FILE="$TEMP_PHASES/01-test-phase/.context-lead.md"
   [ -f "$CONTEXT_FILE" ]
@@ -90,15 +86,11 @@ ROADMAP
 
   # No CONTEXT.md created
 
-  ORIG_CLAUDE_DIR="${CLAUDE_DIR:-}"
-  export CLAUDE_DIR="$TEST_TEMP_DIR"
   rm -rf "$TEST_TEMP_DIR/.vbw-planning"
   ln -sf "$TEMP_PLANNING" "$TEST_TEMP_DIR/.vbw-planning"
 
   cd "$TEST_TEMP_DIR"
   bash "$PROJECT_ROOT/scripts/compile-context.sh" 01 lead "$TEMP_PHASES"
-
-  [ -n "$ORIG_CLAUDE_DIR" ] && export CLAUDE_DIR="$ORIG_CLAUDE_DIR" || unset CLAUDE_DIR
 
   CONTEXT_FILE="$TEMP_PHASES/01-test-phase/.context-lead.md"
   [ -f "$CONTEXT_FILE" ]
@@ -131,8 +123,6 @@ ROADMAP
 Test milestone scope.
 CTX
 
-  ORIG_CLAUDE_DIR="${CLAUDE_DIR:-}"
-  export CLAUDE_DIR="$TEST_TEMP_DIR"
   rm -rf "$TEST_TEMP_DIR/.vbw-planning"
   ln -sf "$TEMP_PLANNING" "$TEST_TEMP_DIR/.vbw-planning"
 
@@ -144,6 +134,4 @@ CTX
     [ -f "$CONTEXT_FILE" ] || { echo "Missing .context-${role}.md"; return 1; }
     grep -q "### Milestone Scope Context" "$CONTEXT_FILE" || { echo "Role $role missing milestone context"; return 1; }
   done
-
-  [ -n "$ORIG_CLAUDE_DIR" ] && export CLAUDE_DIR="$ORIG_CLAUDE_DIR" || unset CLAUDE_DIR
 }
