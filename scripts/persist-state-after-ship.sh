@@ -114,6 +114,39 @@ section_has_body() {
   [[ -n "$1" ]] && echo "$1" | tail -n +2 | grep -qv '^[[:space:]]*$'
 }
 
+normalize_decisions_section() {
+  local section="$1"
+  [[ -n "$section" ]] || return 0
+
+  printf '%s\n' "$section" | awk '
+    NR == 1 { print "## Decisions"; next }
+    {
+      low = tolower($0)
+      if (low ~ /^[-*][[:space:]]+_\(no[[:space:]]+decisions[[:space:]]+yet\)_[[:space:]]*$/) next
+      if (low ~ /^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$/) next
+      if (low ~ /^\|[[:space:]]*decision([[:space:]]*\|.*)?$/) next
+      if (low ~ /^\|[[:space:]:-]+\|?[[:space:]]*$/) next
+      if ($0 ~ /^[[:space:]]*$/) next
+      print
+    }
+  '
+}
+
+normalize_todos_section() {
+  local section="$1"
+  [[ -n "$section" ]] || return 0
+
+  printf '%s\n' "$section" | awk '
+    NR == 1 { print "## Todos"; next }
+    {
+      low = tolower($0)
+      if (low ~ /^none\.?[[:space:]]*$/) next
+      if ($0 ~ /^[[:space:]]*$/) next
+      print
+    }
+  '
+}
+
 generate_root_state() {
   echo "# State"
   echo ""
@@ -123,6 +156,7 @@ generate_root_state() {
   # Decisions
   local decisions
   decisions=$(extract_decisions "$ARCHIVED_PATH")
+  decisions=$(normalize_decisions_section "$decisions")
   if section_has_body "$decisions"; then
     echo "$decisions"
     echo ""
@@ -135,6 +169,7 @@ generate_root_state() {
   # Todos
   local todos
   todos=$(extract_todos "$ARCHIVED_PATH")
+  todos=$(normalize_todos_section "$todos")
   if section_has_body "$todos"; then
     echo "$todos"
     echo ""

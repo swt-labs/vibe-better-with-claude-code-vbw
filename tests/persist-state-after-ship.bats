@@ -522,6 +522,39 @@ EOF
   grep -q "None\." .vbw-planning/STATE.md
 }
 
+@test "persist script removes placeholder lines when real decisions or todos exist" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Mixed Placeholder Test
+
+## Decisions
+- _(No decisions yet)_
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |
+
+## Todos
+None.
+
+### Pending Todos
+- Migrate session store
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Mixed Placeholder Test"
+  [ "$status" -eq 0 ]
+
+  ! grep -q '_(No decisions yet)_' .vbw-planning/STATE.md
+  grep -q 'Keep auth service isolated' .vbw-planning/STATE.md
+  grep -q 'Migrate session store' .vbw-planning/STATE.md
+  ! grep -q '^None\.$' .vbw-planning/STATE.md
+}
+
 # Duplicate ## Todos — second group's items should be merged into output
 @test "persist script merges content from duplicate section headings" {
   cd "$TEST_TEMP_DIR"
