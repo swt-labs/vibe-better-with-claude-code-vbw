@@ -551,3 +551,41 @@ EOF
   grep -q 'Root blocker from active notes' ".vbw-planning/STATE.md"
   grep -q 'Root codebase profile note' ".vbw-planning/STATE.md"
 }
+
+@test "unarchive does not preserve Blockers None placeholder alongside real blockers" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+- Use REST API for backend
+
+## Todos
+- Upgrade deps after milestone
+
+## Blockers
+None
+EOF
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Blockers
+- Root blocker from active notes
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q 'Root blocker from active notes' ".vbw-planning/STATE.md"
+  ! awk '
+    /^## Blockers$/ { in_section=1; next }
+    in_section && /^## / { in_section=0 }
+    in_section { print }
+  ' ".vbw-planning/STATE.md" | grep -q '^None$'
+}

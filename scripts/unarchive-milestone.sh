@@ -181,7 +181,7 @@ merge_items() {
   # Process items1 first (keep original formatting)
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    [[ "$line" == "None." ]] && continue
+    [[ "$line" == "None." || "$line" == "None" ]] && continue
     local norm
     if [[ "$kind" == "decisions" ]]; then
       norm=$(normalize_decision_item "$line")
@@ -215,7 +215,7 @@ merge_items() {
   # Process items2 (add only unseen)
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    [[ "$line" == "None." ]] && continue
+    [[ "$line" == "None." || "$line" == "None" ]] && continue
     local norm
     if [[ "$kind" == "decisions" ]]; then
       norm=$(normalize_decision_item "$line")

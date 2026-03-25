@@ -67,7 +67,7 @@ extract_decisions() {
     { low = tolower($0) }
     low ~ /^##[[:space:]]+(key )?decisions[[:space:]]*$/ { found=1; if (!hdr) { print $0; hdr=1 }; next }
     found && /^## / { found=0 }
-    found && /^### Skills/ { skip_skills=1; next }
+    found && low ~ /^###[[:space:]]+skills[[:space:]]*$/ { skip_skills=1; next }
     skip_skills && /^###?#? / { skip_skills=0 }
     found && !skip_skills { print }
   ' "$file"
