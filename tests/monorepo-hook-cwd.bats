@@ -201,7 +201,34 @@ JSON
   [ "$result" = "$root_real" ]
 }
 
-# --- Test 8: statusline reads config from subdirectory (end-to-end) ---
+# --- Test 8: find_vbw_root skips redundant CWD walk when start_dir == CWD ---
+
+@test "find_vbw_root: resolves correctly when start_dir equals CWD (no redundant walk)" {
+  local root="$TEST_TEMP_DIR/same-dir"
+  setup_workspace "$root"
+  local root_real; root_real=$(cd "$root" && pwd -P 2>/dev/null || echo "$root")
+
+  local result
+  result=$(
+    cd "$root"
+    unset VBW_CONFIG_ROOT 2>/dev/null || true
+    unset VBW_PLANNING_DIR 2>/dev/null || true
+    . "$LIB"
+    # start_dir == CWD — the optimization guard on line 56 should skip the
+    # redundant CWD walk but still resolve via the start_dir walk
+    find_vbw_root "$root"
+    echo "$VBW_CONFIG_ROOT"
+  )
+  cd "$PROJECT_ROOT"
+
+  [ "$result" = "$root_real" ]
+}
+
+# --- Test 9: statusline reads config from subdirectory (end-to-end) ---
+# NOTE: In local dev environments with an initialized .vbw-planning/, this test
+# may pass coincidentally because find_vbw_root("$_SL_SCRIPT_DIR") finds the
+# VBW project's config instead of the test workspace's. In CI (no .vbw-planning/
+# in checkout), the fallback to CWD correctly reaches the test workspace.
 
 @test "statusline: reads model_profile from subdirectory CWD (not hardcoded default)" {
   local root="$TEST_TEMP_DIR/monorepo-statusline"
