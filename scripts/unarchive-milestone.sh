@@ -292,6 +292,8 @@ replace_or_append_section() {
 
 ROOT_STATE="$PLANNING_DIR/STATE.md"
 ARCHIVED_STATE="$MILESTONE_DIR/STATE.md"
+ROOT_ROADMAP="$PLANNING_DIR/ROADMAP.md"
+ROOT_CONTEXT="$PLANNING_DIR/CONTEXT.md"
 
 # --- Merge Todos and Decisions ---
 root_todos=""
@@ -312,16 +314,23 @@ fi
 merged_todos=$(merge_items "todos" "$archived_todos" "$root_todos")
 merged_decisions=$(merge_items "decisions" "$archived_decisions" "$root_decisions")
 
+# --- Refuse to clobber active scoped milestone artifacts ---
+if [ -d "$PLANNING_DIR/phases" ] && [ -n "$(find "$PLANNING_DIR/phases" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+  echo "Error: root phases/ directory contains active milestone artifacts — aborting to prevent data loss" >&2
+  echo "  Back up or remove $PLANNING_DIR/phases/, ROADMAP.md, and CONTEXT.md before unarchiving." >&2
+  exit 1
+fi
+
+if [ -f "$ROOT_ROADMAP" ] || [ -f "$ROOT_CONTEXT" ]; then
+  echo "Error: root ROADMAP.md or CONTEXT.md exists — aborting to prevent overwriting scoped work" >&2
+  echo "  Back up or remove $ROOT_ROADMAP and $ROOT_CONTEXT before unarchiving." >&2
+  exit 1
+fi
+
 # --- Move files back to root ---
 # Move phases
 if [ -d "$MILESTONE_DIR/phases" ]; then
   if [ -d "$PLANNING_DIR/phases" ]; then
-    # Abort if root phases/ contains any files (active work would be destroyed)
-    if [ -n "$(find "$PLANNING_DIR/phases" -type f 2>/dev/null)" ]; then
-      echo "Error: root phases/ directory contains files — aborting to prevent data loss" >&2
-      echo "  Back up or remove $PLANNING_DIR/phases/ before unarchiving." >&2
-      exit 1
-    fi
     rm -rf "$PLANNING_DIR/phases"
   fi
   mv "$MILESTONE_DIR/phases" "$PLANNING_DIR/phases"

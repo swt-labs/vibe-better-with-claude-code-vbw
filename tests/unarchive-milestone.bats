@@ -231,12 +231,60 @@ EOF
   run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
     ".vbw-planning/milestones/foundation" ".vbw-planning"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"root phases/ directory contains files"* ]]
+  [[ "$output" == *"root phases/ directory contains active milestone artifacts"* ]]
 
   # Root phases should be untouched
   [ -f ".vbw-planning/phases/01-current/PLAN.md" ]
 
   # Archived milestone should still exist
+  [ -d ".vbw-planning/milestones/foundation/phases" ]
+}
+
+@test "aborts when root phases/ contains empty scoped milestone dirs" {
+  create_archived_milestone "foundation"
+  mkdir -p ".vbw-planning/phases/01-new-scope"
+  cat > ".vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+## Phase 1: New Scope
+EOF
+  cat > ".vbw-planning/CONTEXT.md" <<'EOF'
+# New Scope — Milestone Context
+
+## Scope Boundary
+Fresh scoped work
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"root phases/ directory contains active milestone artifacts"* ]]
+
+  [ -d ".vbw-planning/phases/01-new-scope" ]
+  [ -f ".vbw-planning/ROADMAP.md" ]
+  [ -f ".vbw-planning/CONTEXT.md" ]
+  [ -d ".vbw-planning/milestones/foundation/phases" ]
+}
+
+@test "aborts when root roadmap or context exists without phases" {
+  create_archived_milestone "foundation"
+  cat > ".vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+## Phase 1: New Scope
+EOF
+  cat > ".vbw-planning/CONTEXT.md" <<'EOF'
+# New Scope — Milestone Context
+
+## Scope Boundary
+Fresh scoped work
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"root ROADMAP.md or CONTEXT.md exists"* ]]
+
+  [ -f ".vbw-planning/ROADMAP.md" ]
+  [ -f ".vbw-planning/CONTEXT.md" ]
   [ -d ".vbw-planning/milestones/foundation/phases" ]
 }
 

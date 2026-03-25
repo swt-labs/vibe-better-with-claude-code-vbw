@@ -259,6 +259,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - **Gathered date** and **Calibration** (builder or architect, inferred from conversation signals — same as Discussion Engine calibration)
    - **Scope Boundary:** the user's scope description from step 2
    - **Decomposition Decisions:** rationale for phase count, grouping, and ordering from step 3
+  - **Scope Coverage:** what the milestone covers vs what is explicitly excluded or deferred
    - **Requirement Mapping:** which REQ-IDs map to which phases (from step 3)
    - **Key Decisions:** project-level decisions surfaced during scoping (tech choices, architecture patterns that transcend the milestone). Also insert these as rows in STATE.md's `## Key Decisions` table (append after the header row, replacing the `_(No decisions yet)_` placeholder if present). Milestone-scoped decisions (phase ordering rationale, scope boundaries) stay only in CONTEXT.md.
    - **Deferred Ideas:** out-of-scope ideas mentioned during steps 2-3
@@ -280,10 +281,10 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 **Phase auto-detection:** Same as Discuss mode.
 
 **Steps:**
-1. Load context: ROADMAP.md, REQUIREMENTS.md, PROJECT.md, STATE.md, CONTEXT.md (if exists), codebase signals.
+1. Load context: ROADMAP.md, REQUIREMENTS.md, PROJECT.md, STATE.md, milestone `.vbw-planning/CONTEXT.md` (if exists), target phase `{NN}-CONTEXT.md` (if exists), codebase signals.
 2. Generate 5-10 assumptions by impact: scope (included/excluded), technical (implied approaches), ordering (sequencing), dependency (prior phases), user preference (defaults without stated preference).
 3. Gather feedback per assumption: "Confirm, correct, or expand?" Confirm=proceed, Correct=user provides answer, Expand=user adds nuance.
-4. Present grouped by status (confirmed/corrected/expanded). This mode does NOT write files. For persistence: "Run `/vbw:vibe --discuss {NN}` to capture as CONTEXT.md." Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh vibe`.
+4. Present grouped by status (confirmed/corrected/expanded). This mode does NOT write files. For persistence: "Run `/vbw:vibe --discuss {NN}` to capture as `{NN}-CONTEXT.md`." Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh vibe`.
 
 ### Mode: UAT Remediation
 
