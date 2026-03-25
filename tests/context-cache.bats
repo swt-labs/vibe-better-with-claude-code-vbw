@@ -262,6 +262,20 @@ EOF
   [ "$HASH1" != "$HASH2" ]
 }
 
+@test "compile-context.sh: lead reads legacy Decisions heading for Active Decisions" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+## Decisions
+- Keep feature flags conservative
+EOF
+
+  run bash "$SCRIPTS_DIR/compile-context.sh" 02 lead .vbw-planning/phases .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  grep -q 'Keep feature flags conservative' .vbw-planning/phases/02-test-phase/.context-lead.md
+}
+
 @test "cache-context.sh: conventions fingerprint changes hash for dev role" {
   cd "$TEST_TEMP_DIR"
   cat > .vbw-planning/conventions.json <<'EOF'

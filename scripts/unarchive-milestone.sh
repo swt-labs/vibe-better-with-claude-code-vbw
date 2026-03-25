@@ -400,11 +400,20 @@ merged_todos=$(merge_items "todos" "$archived_todos" "$root_todos")
 merged_decisions=$(merge_items "decisions" "$archived_decisions" "$root_decisions")
 
 has_active_root_scope_artifacts() {
-  local phases_dir="$1/phases"
+  local planning_root="$1"
+  local phases_dir="$planning_root/phases"
   [ -d "$phases_dir" ] || return 1
 
-  find "$phases_dir" -mindepth 1 -maxdepth 1 \
-    \( -type d -o \( -type f ! -name '.*' \) \) -print -quit 2>/dev/null | grep -q .
+  if find "$phases_dir" -mindepth 1 -type f ! -name '.*' -print -quit 2>/dev/null | grep -q .; then
+    return 0
+  fi
+
+  if { [ -f "$planning_root/ROADMAP.md" ] || [ -f "$planning_root/CONTEXT.md" ]; } && \
+     find "$phases_dir" -mindepth 1 -maxdepth 1 -type d -print -quit 2>/dev/null | grep -q .; then
+    return 0
+  fi
+
+  return 1
 }
 
 # --- Refuse to clobber active scoped milestone artifacts ---

@@ -277,7 +277,12 @@ case "$ROLE" in
       echo ""
       echo "### Active Decisions"
       if [ -f "$PLANNING_DIR/STATE.md" ]; then
-        DECISIONS=$(sed -n '/^## Key Decisions/,/^## [A-Z]/p' "$PLANNING_DIR/STATE.md" 2>/dev/null | sed '$d' | tail -n +2) || true
+        DECISIONS=$(awk '
+          { low = tolower($0) }
+          low ~ /^##[[:space:]]+(key[[:space:]]+)?decisions[[:space:]]*$/ { found=1; next }
+          found && /^## / { found=0 }
+          found { print }
+        ' "$PLANNING_DIR/STATE.md" 2>/dev/null) || true
         if [ -n "$DECISIONS" ]; then
           echo "$DECISIONS"
         else

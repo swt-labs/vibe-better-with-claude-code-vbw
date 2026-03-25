@@ -303,6 +303,18 @@ EOF
   [ -f ".vbw-planning/ROADMAP.md" ]
 }
 
+@test "ignores empty phase dirs when no roadmap or context exists" {
+  create_archived_milestone "foundation"
+  mkdir -p ".vbw-planning/phases/01-stale-empty"
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+
+  [ -d ".vbw-planning/phases/01-setup" ]
+  [ -f ".vbw-planning/ROADMAP.md" ]
+}
+
 @test "restores key decisions with canonical table header" {
   create_archived_milestone "foundation"
 
