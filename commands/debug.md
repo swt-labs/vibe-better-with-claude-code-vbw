@@ -55,9 +55,10 @@ Recent commits:
     - `prefer_teams='always'`: Use Path A (team) for ALL bugs, regardless of effort or ambiguity
     - `prefer_teams='when_parallel'`: Use Path A (team) only if effort=high AND ambiguous, else Path B
     - `prefer_teams='auto'`: Same as when_parallel (single debugger is low-risk for non-ambiguous bugs)
+    - `prefer_teams='never'`: Always use Path B (single debugger, no team). Overrides effort and ambiguity.
 
 4. **Spawn investigation:**
-    **Path A: Competing Hypotheses** (prefer_teams='always' OR (effort=high AND ambiguous)):
+    **Path A: Competing Hypotheses** (prefer_teams='always' OR (prefer_teams!='never' AND effort=high AND ambiguous)):
     - Generate 3 hypotheses (cause, codebase area, confirming evidence)
     - Resolve Debugger model:
         ```bash
