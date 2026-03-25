@@ -242,6 +242,32 @@ EOF
   grep -q 'Rework onboarding copy' .vbw-planning/STATE.md
 }
 
+@test "bootstrap-state: strips legacy Skills subsection from decisions carry-forward" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Keep auth service isolated
+
+### Skills
+**Installed:** foo, bar
+**Suggested:** baz
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  ! grep -q 'Installed:' .vbw-planning/STATE.md
+  ! grep -q 'Suggested:' .vbw-planning/STATE.md
+  grep -q 'Keep auth service isolated' .vbw-planning/STATE.md
+}
+
 @test "bootstrap-state: preserves existing Blockers from prior milestone" {
   cd "$TEST_TEMP_DIR"
   cat > .vbw-planning/STATE.md <<'EOF'

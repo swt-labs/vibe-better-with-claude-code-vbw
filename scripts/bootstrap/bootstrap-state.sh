@@ -133,7 +133,9 @@ if [[ -f "$OUTPUT_PATH" ]]; then
     { low = tolower($0) }
     low ~ /^##[[:space:]]+(key )?decisions[[:space:]]*$/ { found=1; next }
     found && /^## / { found=0 }
-    found { print }
+    found && /^### Skills/ { skip_skills=1; next }
+    skip_skills && /^###?#? / { skip_skills=0 }
+    found && !skip_skills { print }
   ' "$OUTPUT_PATH")
   EXISTING_BLOCKERS=$(extract_section "$OUTPUT_PATH" "Blockers")
   EXISTING_CODEBASE=$(extract_section "$OUTPUT_PATH" "Codebase Profile")

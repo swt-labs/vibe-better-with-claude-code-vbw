@@ -63,6 +63,18 @@ extract_todo_items() {
   ' "$file"
 }
 
+extract_named_section() {
+  local file="$1" heading="$2"
+  [ -f "$file" ] || return 0
+  awk -v h="$heading" '
+    BEGIN { pat = tolower(h) }
+    { low = tolower($0) }
+    low ~ ("^##[[:space:]]+" pat "[[:space:]]*$") { found=1; next }
+    found && /^## / { found=0 }
+    found { print }
+  ' "$file"
+}
+
 # --- Extract decisions from STATE.md ---
 # Supports current/legacy headings: "## Key Decisions" and "## Decisions"
 extract_decision_items() {
@@ -375,6 +387,60 @@ replace_or_append_section() {
   rm -f "$content_file"
 }
 
+replace_or_append_named_section() {
+  local file="$1" heading="$2" new_content="$3"
+  local tmp="${file}.tmp.$$"
+  local content_file="${file}.content.$$"
+
+  printf '%s\n' "$new_content" > "$content_file"
+
+  awk -v h="$heading" -v cfile="$content_file" '
+    BEGIN { pat = tolower(h) }
+    function is_target(line, low) {
+      low = tolower(line)
+      return (low ~ ("^##[[:space:]]+" pat "[[:space:]]*$"))
+    }
+    function print_section(ln) {
+      print "## " h
+      while ((getline ln < cfile) > 0) {
+        print ln
+      }
+      close(cfile)
+    }
+    {
+      line = $0
+      if (skip && /^## /) {
+        skip = 0
+      }
+      if (skip) {
+        next
+      }
+      if (is_target(line)) {
+        if (!inserted) {
+          print_section()
+          inserted = 1
+          printed_any = 1
+          last_nonempty = 1
+        }
+        skip = 1
+        next
+      }
+      print line
+      printed_any = 1
+      last_nonempty = (line !~ /^[[:space:]]*$/)
+    }
+    END {
+      if (!inserted) {
+        if (printed_any && last_nonempty) {
+          print ""
+        }
+        print_section()
+      }
+    }
+  ' "$file" > "$tmp" && mv "$tmp" "$file"
+  rm -f "$content_file"
+}
+
 ROOT_STATE="$PLANNING_DIR/STATE.md"
 ARCHIVED_STATE="$MILESTONE_DIR/STATE.md"
 ROOT_ROADMAP="$PLANNING_DIR/ROADMAP.md"
@@ -385,19 +451,32 @@ root_todos=""
 archived_todos=""
 root_decisions=""
 archived_decisions=""
+root_blockers=""
+archived_blockers=""
+root_codebase=""
+archived_codebase=""
 
 if [ -f "$ROOT_STATE" ]; then
   root_todos=$(extract_todo_items "$ROOT_STATE")
   root_decisions=$(extract_decision_items "$ROOT_STATE")
+  root_blockers=$(extract_named_section "$ROOT_STATE" "Blockers")
+  root_codebase=$(extract_named_section "$ROOT_STATE" "Codebase Profile")
 fi
 
 if [ -f "$ARCHIVED_STATE" ]; then
   archived_todos=$(extract_todo_items "$ARCHIVED_STATE")
   archived_decisions=$(extract_decision_items "$ARCHIVED_STATE")
+  archived_blockers=$(extract_named_section "$ARCHIVED_STATE" "Blockers")
+  archived_codebase=$(extract_named_section "$ARCHIVED_STATE" "Codebase Profile")
 fi
 
 merged_todos=$(merge_items "todos" "$archived_todos" "$root_todos")
 merged_decisions=$(merge_items "decisions" "$archived_decisions" "$root_decisions")
+merged_blockers=$(merge_items "todos" "$archived_blockers" "$root_blockers")
+effective_codebase="$root_codebase"
+if [ -z "$effective_codebase" ]; then
+  effective_codebase="$archived_codebase"
+fi
 
 has_active_root_scope_artifacts() {
   local planning_root="$1"
@@ -459,6 +538,12 @@ if [ -f "$ROOT_STATE" ]; then
     replace_or_append_section "$ROOT_STATE" "todos" "## Todos" "$merged_todos"
   fi
   replace_or_append_section "$ROOT_STATE" "decisions" "## Key Decisions" "$merged_decisions"
+  if [ -n "$merged_blockers" ]; then
+    replace_or_append_named_section "$ROOT_STATE" "Blockers" "$merged_blockers"
+  fi
+  if [ -n "$effective_codebase" ]; then
+    replace_or_append_named_section "$ROOT_STATE" "Codebase Profile" "$effective_codebase"
+  fi
 fi
 
 # --- Clean up milestone dir ---

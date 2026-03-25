@@ -529,3 +529,25 @@ EOF
   grep -q 'Add caching layer' ".vbw-planning/STATE.md"
   grep -q 'PostgreSQL for data store' ".vbw-planning/STATE.md"
 }
+
+@test "preserves root blockers and codebase profile when unarchiving" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Blockers
+- Root blocker from active notes
+
+## Codebase Profile
+- Root codebase profile note
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q 'Root blocker from active notes' ".vbw-planning/STATE.md"
+  grep -q 'Root codebase profile note' ".vbw-planning/STATE.md"
+}
