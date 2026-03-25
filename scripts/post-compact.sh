@@ -222,6 +222,7 @@ if [ -z "$ROLE" ] || [ "$ROLE" = "unknown" ]; then
       case "$PD_STATE" in
         needs_uat_remediation)   ACTIVE_MODE="UAT Remediation" ;;
         needs_reverification)    ACTIVE_MODE="Verify" ;;
+        needs_verification)      ACTIVE_MODE="Verify" ;;
         needs_discussion)        ACTIVE_MODE="Discuss" ;;
         needs_plan_and_execute)  ACTIVE_MODE="Plan" ;;
         needs_execute)           ACTIVE_MODE="Execute" ;;

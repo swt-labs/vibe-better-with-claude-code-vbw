@@ -3,8 +3,11 @@
 # and prepare-reverification. Source this file; do not execute directly.
 #
 # Functions:
+#   normalize_uat_status <value>  — Map LLM-generated UAT status synonyms to
+#                                   canonical values (complete, issues_found, etc.).
 #   extract_status_value <file>   — Extract status value from YAML frontmatter
 #                                   with body-level fallback for brownfield files.
+#                                   Applies normalize_uat_status automatically.
 #   latest_non_source_uat <dir>   — Find the latest canonical UAT file in a phase
 #                                   directory, excluding SOURCE-UAT.md copies.
 #   current_uat <dir>             — Find the active UAT file (round-dir first,
@@ -18,6 +21,24 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   exit 1
 fi
 
+# normalize_uat_status — Map LLM-generated UAT status synonyms to canonical values.
+#
+# The UAT template defines: in_progress, complete, issues_found.
+# LLMs sometimes write semantically equivalent but non-canonical values
+# (e.g., "all_pass", "passed", "verified"). Without normalization, downstream
+# consumers (phase-detect, prepare-reverification, state-updater) fail to
+# recognize these as terminal statuses, causing mis-routing.
+#
+# Canonical terminal statuses: complete, issues_found
+# Canonical non-terminal: in_progress, pending
+normalize_uat_status() {
+  local raw="${1:-}"
+  case "$raw" in
+    all_pass|passed|pass|all_passed|verified|no_issues) echo "complete" ;;
+    *) echo "$raw" ;;
+  esac
+}
+
 # extract_status_value — Extract 'status:' value from a markdown file.
 #
 # Priority: YAML frontmatter (between --- delimiters at file start).
@@ -25,6 +46,11 @@ fi
 # requires the line to start at column 0 (no leading whitespace) to avoid
 # matching indented prose, markdown list items, or table rows that happen
 # to contain 'status:'.
+#
+# UAT files: the extracted value is passed through normalize_uat_status() to
+# map LLM synonyms (all_pass, passed, verified, etc.) to canonical values.
+# SUMMARY files are unaffected — their valid statuses (complete, partial,
+# failed) never match any normalization rule.
 extract_status_value() {
   local file="$1"
   local result
@@ -52,13 +78,15 @@ extract_status_value() {
         sub(/^[^:]*:[[:space:]]*/, "", value)
         gsub(/[[:space:]]+$/, "", value)
         v = tolower(value)
-        if (v == "issues_found" || v == "complete" || v == "passed" || v == "in_progress" || v == "pending" || v == "failed" || v == "aborted") {
+        if (v == "issues_found" || v == "complete" || v == "passed" || v == "in_progress" || v == "pending" || v == "failed" || v == "aborted" || v == "all_pass" || v == "all_passed" || v == "pass" || v == "verified" || v == "no_issues") {
           print v
           exit
         }
       }
     ' "$file" 2>/dev/null || true)
   fi
+  # Normalize LLM synonyms to canonical values
+  result=$(normalize_uat_status "$result")
   printf '%s' "$result"
 }
 
@@ -147,14 +175,30 @@ extract_round_issue_ids() {
   local file="$1"
   [ -f "$file" ] || return 0
   awk '
+    function tolower_str(s,    i, c, out) {
+      out = ""
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (c >= "A" && c <= "Z")
+          c = sprintf("%c", index("ABCDEFGHIJKLMNOPQRSTUVWXYZ", c) + 96)
+        out = out c
+      }
+      return out
+    }
     /^### [PD][0-9]/ {
       id = $2
       sub(/:$/, "", id)
       has_issue = 0
       next
     }
-    /^- \*\*Result:\*\*[[:space:]]*issue/ {
-      print id
+    /^- \*\*Result:\*\*/ {
+      val = $0
+      sub(/^- \*\*Result:\*\*[[:space:]]*/, "", val)
+      gsub(/[[:space:]]+$/, "", val)
+      lval = tolower_str(val)
+      if (lval ~ /^(issue|fail|failed|partial)/) {
+        print id
+      }
     }
   ' "$file"
 }

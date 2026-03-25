@@ -101,7 +101,7 @@ Most Claude Code plugins were built for the subagent era, one main session spawn
 
 - **Native hooks for continuous verification.** 22 hooks across 11 event types run automatically -- validating SUMMARY.md structure, checking commit format, validating frontmatter descriptions, gating task completion, blocking sensitive file access, enforcing plan file boundaries, managing session lifecycle, tracking agent health and cost attribution, tracking session metrics, pre-flight prompt validation, and post-compaction context verification. No more spawning a QA agent after every task. The platform enforces it, not the prompt.
 
-- **Platform-enforced tool permissions.** Each agent has `tools`/`disallowedTools` in their YAML frontmatter -- 4 of 7 agents have platform-enforced deny lists. Scout literally cannot write files; QA can only persist VERIFICATION.md through the deterministic `write-verification.sh` script (Write/Edit tools are disallowed). Sensitive file access (`.env`, credentials) is intercepted by the `security-filter` hook. `disallowedTools` is enforced by Claude Code itself, not by instructions an agent might ignore during compaction.
+- **Platform-enforced tool permissions.** Each agent has `tools`/`disallowedTools` in their YAML frontmatter -- 4 of 7 agents have platform-enforced deny lists. Scout can write research files to `.vbw-planning/` but cannot edit existing code, run commands, or spawn subagents (Edit, Bash, NotebookEdit, Task are platform-denied); QA can only persist VERIFICATION.md through the deterministic `write-verification.sh` script (Write/Edit tools are disallowed). Sensitive file access (`.env`, credentials) is intercepted by the `security-filter` hook. `disallowedTools` is enforced by Claude Code itself, not by instructions an agent might ignore during compaction.
 
 - **Database safety guard.** A PreToolUse hook (`bash-guard.sh`) intercepts every Bash command before it reaches the shell and blocks known destructive patterns -- `migrate:fresh`, `db:drop`, `TRUNCATE TABLE`, `FLUSHALL`, and 40+ patterns across Laravel, Rails, Django, Prisma, Knex, Sequelize, TypeORM, Drizzle, Diesel, SQLx, Ecto, raw SQL clients, Redis, MongoDB, and Docker volumes. All five agents with Bash access (Dev, QA, Lead, Debugger, Docs) are filtered equally. Override with `VBW_ALLOW_DESTRUCTIVE=1` env var or `bash_guard=false` in config. Extend with `.vbw-planning/destructive-commands.local.txt` for project-specific patterns. See **[Database Safety Guard](docs/database-safety-guard.md)** for the full design, flowchart, and pattern list.
 
@@ -179,7 +179,7 @@ Claude Code will ask permission before file writes, bash commands, etc. You appr
 claude --dangerously-skip-permissions
 ```
 
-No permission prompts. No interruptions. Agents run uninterrupted until the work is done or your API budget isn't. VBW's built-in security controls (Scout is fully read-only, QA can only persist via a deterministic writer script, `security-filter.sh` blocks `.env` and credentials, QA gates on every task) still apply. The platform just stops asking "are you sure?" every time an agent wants to create a file.
+No permission prompts. No interruptions. Agents run uninterrupted until the work is done or your API budget isn't. VBW's built-in security controls (Scout writes only to `.vbw-planning/` and cannot edit or run commands, QA can only persist via a deterministic writer script, `security-filter.sh` blocks `.env` and credentials, QA gates on every task) still apply. The platform just stops asking "are you sure?" every time an agent wants to create a file.
 
 This is how most vibe coders run it. The agents work longer, the flow stays unbroken, and you get to pretend you're supervising while scrolling Twitter.
 
@@ -445,7 +445,7 @@ VBW uses 7 specialized agents, each with native tool permissions enforced via YA
 
 | Agent | Role | Tools | Denied | Mode |
 | :--- | :--- | :--- | :--- | :--- |
-| **Scout** | Research and information gathering. The responsible one. | Read, Grep, Glob, WebSearch, WebFetch | Write, Edit, NotebookEdit, Bash | `plan` |
+| **Scout** | Research and information gathering. The responsible one. | Inherited (all except denied) + MCP | Bash, Edit, NotebookEdit, Task | `plan` |
 | **Architect** | Creates roadmaps and phase structure. Writes plans, not code. | Read, Glob, Grep, Write | Edit, WebFetch, Bash | `acceptEdits` |
 | **Lead** | Merges research + planning + self-review. The one who actually makes decisions. | Read, Glob, Grep, Write, Bash, WebFetch | Edit | `acceptEdits` |
 | **Dev** | Writes code, makes commits, builds things. Handle with care. | Full access | -- | `acceptEdits` |
@@ -453,7 +453,7 @@ VBW uses 7 specialized agents, each with native tool permissions enforced via YA
 | **Debugger** | Scientific method bug investigation. One issue, one session. | Full access | -- | `acceptEdits` |
 | **Docs** | Documentation specialist. READMEs, changelogs, API docs, guides. | Read, Grep, Glob, Bash, Write, Edit | -- | `acceptEdits` |
 
-**Denied** = `disallowedTools` -- platform-enforced denial. These tools are blocked by Claude Code itself, not by instructions an agent might ignore during compaction. **Mode** = `permissionMode` -- `plan` means no interactive edits — Scout is fully read-only; QA can only persist VERIFICATION.md via `write-verification.sh`, `acceptEdits` means the agent can propose and apply changes.
+**Denied** = `disallowedTools` -- platform-enforced denial. These tools are blocked by Claude Code itself, not by instructions an agent might ignore during compaction. **Mode** = `permissionMode` -- `plan` means no interactive edits — Scout writes research files to `.vbw-planning/` but cannot edit code or run commands; QA can only persist VERIFICATION.md via `write-verification.sh`, `acceptEdits` means the agent can propose and apply changes.
 
 Here's when each one shows up to work:
 
@@ -481,7 +481,7 @@ Here's when each one shows up to work:
   │(subagt)  │   (scope creep is for amateurs)                         │ verify
   └──────────┘                                                         │
                                                                        ▼
-  HOOKS (11 event types, 21 handlers)                              VERIFICATION.md
+  HOOKS (11 event types, 22 handlers)                              VERIFICATION.md
   ┌───────────────────────────────────────────────────────────────────────────────┐
   │  Verification                                                                 │
   │    PostToolUse ──── Validates SUMMARY.md on write, checks commit format,      │
@@ -510,7 +510,7 @@ Here's when each one shows up to work:
   ┌───────────────────────────────────────────────────────────────────────────────┐
   │  PERMISSION MODEL                                                             │
   │                                                                               │
-  │  Scout ─────────── True read-only (plan mode). Can look, can't touch.         │
+  │  Scout ─────────── Plan mode. Writes research to .vbw-planning/ only.         │
   │  QA ───────────── Read + Bash. Persists only via write-verification.sh.        │
   │  Architect ─────── Edit/Bash blocked by platform. Write limited to plans      │
   │                    by instruction. Writes roadmaps, not code. Mostly.         │
@@ -715,14 +715,15 @@ Controls when VBW creates an Agent Team (multiple color-coded Dev agents) vs usi
 
 | Setting | Type | Default | Values |
 | :--- | :--- | :--- | :--- |
-| `prefer_teams` | string | `auto` | `always` / `auto` |
+| `prefer_teams` | string | `auto` | `always` / `when_parallel` / `auto` / `never` |
 
 | Value | Behavior |
 | :--- | :--- |
 | `always` | Creates a team for every phase, even with 1 plan. Maximum agent visibility. |
 | `auto` | Creates a team only when 2+ plans exist. Single plan = single agent, lower overhead. Default. Smart routing may further downgrade simple plans to turbo (no team). `when_parallel` is an alias for `auto`. |
+| `never` | Never creates teams. All agents run as sequential subagents. Disables parallel execution entirely. |
 
-This setting determines whether parallel execution is even possible. With a single agent (1 plan, no team), there's no concurrency by definition. `auto` also creates teams when parallelism adds value beyond just execute: Scout needed in planning, or ambiguous bugs in debug.
+This setting determines whether parallel execution is even possible. With a single agent (1 plan, no team), there's no concurrency by definition. `auto` also creates teams for ambiguous bugs in debug mode. Note: Planning always uses sequential subagents (Scout → Lead), not teams — `prefer_teams` only affects Execute and debug/map modes.
 
 #### `worktree_isolation` — Filesystem Isolation
 
@@ -891,15 +892,15 @@ VBW spawns specialized agents for planning, development, and verification. Model
 
 | Profile | Use Case | Lead | Dev | QA | Scout | Est. Cost/Phase |
 | :--- | :--- | :--- | :--- | :--- | :--- | ---: |
-| **Quality** | Production work, architecture decisions (default) | opus | opus | sonnet | haiku | ~$2.80 |
-| **Balanced** | Standard development | sonnet | sonnet | sonnet | haiku | ~$1.40 |
+| **Quality** | Production work, architecture decisions (default) | opus | opus | sonnet | sonnet | ~$3.00 |
+| **Balanced** | Standard development | sonnet | sonnet | sonnet | sonnet | ~$1.50 |
 | **Budget** | Prototyping, tight budgets | sonnet | sonnet | haiku | haiku | ~$0.70 |
 
 *Debugger and Architect follow the same model as Lead. Estimates based on typical 3-plan phase.*
 
 **Quality is the default.** It gives you maximum reasoning depth for architecture decisions and production-critical work. Switch to Balanced (`/vbw:config model_profile balanced`) for 50% cost savings on standard development.
 
-**Quality** uses Opus for Lead, Dev, Debugger, and Architect -- maximum reasoning depth for critical work. QA stays on Sonnet (verification doesn't need Opus), Scout on Haiku (research throughput).
+**Quality** uses Opus for Lead, Dev, Debugger, and Architect -- maximum reasoning depth for critical work. QA and Scout stay on Sonnet (verification and research don't need Opus overhead).
 
 **Budget** keeps Dev and core agents on Sonnet (quality baseline) but drops QA to Haiku. Good for exploratory work where you're iterating fast and verification can be lighter.
 

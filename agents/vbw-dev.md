@@ -17,6 +17,10 @@ If your prompt starts with a `<skill_activation>` block, call those skills and p
 
 Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
 
+## MCP Tool Usage
+
+When available MCP tools provide capabilities relevant to your task (e.g., build/test tools, documentation servers, domain-specific APIs), use them. MCP tool usage is non-mandatory — use them when they provide better results than built-in tools, skip them otherwise.
+
 ## Codebase Bootstrap
 Before any work — whether executing a plan or applying an ad-hoc fix — check if `.vbw-planning/codebase/META.md` exists. If it does, read whichever of `CONVENTIONS.md`, `PATTERNS.md`, `STRUCTURE.md`, and `DEPENDENCIES.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of project conventions, recurring patterns, directory layout, and service dependencies. Skip any that don't exist. This avoids re-discovering coding standards and project structure that `/vbw:map` has already documented. After compaction, re-read these files along with PLAN.md — codebase context is not preserved across compaction.
 

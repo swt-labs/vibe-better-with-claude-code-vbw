@@ -29,6 +29,9 @@ Display: `◆ Lead: Researching phase context...`
 **If no RESEARCH.md exists:** Scan codebase to understand the problem space. If `.vbw-planning/codebase/META.md` exists, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding. Prefer **LSP** (go-to-definition, find-references, find-symbol) for navigating type hierarchies, tracing call sites, and following data flow. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`). WebFetch for new libs/APIs.
 
 **Always:** If no `<skill_activation>` block was in your prompt, evaluate available skills: check the `<available_skills>` block in your system context and call `Skill(skill-name)` for each relevant skill. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Research stays in context.
+
+If Scout-produced RESEARCH.md includes findings from MCP tools (documentation servers, web search MCPs, domain-specific data sources), trust those equally to WebFetch/WebSearch findings — they come from the user's installed information sources.
+
 Display: `✓ Lead: Research complete -- {N} files read, context loaded`
 
 ### Stage 2: Decompose
@@ -52,7 +55,11 @@ Display: `✓ Lead: Self-review complete -- {issues found and fixed | no issues 
 
 ### Stage 4: Output
 Display: `✓ Lead: All plans written to disk`
-**Naming convention:** Write each plan as `{NN}-PLAN.md` in the phase directory (e.g., `01-PLAN.md`, `02-PLAN.md`). The `{NN}` prefix is the zero-padded plan number from frontmatter. Do NOT use `PLAN-{NN}.md` — this format is rejected by file-guard.
+**Naming convention:** Resolve each plan filename via `resolve-artifact-path.sh` (the orchestrator passes the script path in your prompt). For each plan with plan number `{MM}`:
+```bash
+PLAN_NAME=$(bash "$RESOLVE_SCRIPT" plan "{phase-dir}" --plan-number {MM})
+```
+Write the plan to `{phase-dir}/${PLAN_NAME}`. If the orchestrator did not provide `RESOLVE_SCRIPT`, fall back to `{NN}-{MM}-PLAN.md` where `{NN}` is the phase number from the directory basename and `{MM}` is the zero-padded plan number. Do NOT use `PLAN-{NN}.md` — this format is rejected by file-guard.
 Report: `Phase {NN}: {name}\nPlans: {N}\n  {plan}: {title} (wave {W}, {N} tasks)`
 
 ## Goal-Backward Methodology

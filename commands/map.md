@@ -54,8 +54,14 @@ Count source files (Glob), excluding: .vbw-planning/, node_modules/, .git/, vend
 | duo | 200-1000 | 2 scouts, combined domains | 2 |
 | quad | 1000+ | Full 4-scout team | 4 |
 
-Overrides: --tier flag forces tier. Agent Teams not enabled → force solo (`⚠ Agent Teams not enabled — using solo mode`).
+Overrides: --tier flag forces tier. Agent Teams not enabled → force solo (`⚠ Agent Teams not enabled — using solo mode`). `prefer_teams='never'` in config → force solo (`⚠ prefer_teams=never — using solo mode`).
 Display: `◆ Sizing: {SOURCE_FILE_COUNT} source files → {tier} mode`
+
+Read `prefer_teams` before applying tier:
+```bash
+PREFER_TEAMS=$(jq -r '.prefer_teams // "auto"' .vbw-planning/config.json 2>/dev/null)
+```
+If `PREFER_TEAMS` is `never`, force solo regardless of file count or --tier flag.
 
 ### Step 2: Detect monorepo
 
@@ -101,6 +107,7 @@ Mode: {MAPPING_MODE}. After writing all 3 files, send a `scout_findings` message
 
 **Scout model (effort-gated):** Fast/Turbo: `Model: haiku`. Thorough/Balanced: inherit session model.
 **Scout turn budget (effort-gated):** Resolve with `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}"`. If `SCOUT_MAX_TURNS` is non-empty, pass `maxTurns: ${SCOUT_MAX_TURNS}` to each Scout TaskCreate. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
+**MCP tools:** If MCP tools relevant to codebase analysis are available (e.g., documentation servers for framework APIs discovered during mapping), note them in the Scout task prompt so Scouts can use them alongside local file analysis.
 Wait for all findings. Proceed to Step 3.5.
 
 ---
@@ -111,7 +118,7 @@ Wait for all findings. Proceed to Step 3.5.
 - Scout 3 (Quality): `<output_paths>` = `.vbw-planning/codebase/CONVENTIONS.md`, `.vbw-planning/codebase/TESTING.md`
 - Scout 4 (Concerns): `<output_paths>` = `.vbw-planning/codebase/CONCERNS.md`
 
-Security: PreToolUse hook handles enforcement. **Scout model:** same as duo. **Scout turn budget:** same as duo (pass `maxTurns: ${SCOUT_MAX_TURNS}` when non-empty, omit when empty).
+Security: PreToolUse hook handles enforcement. **Scout model:** same as duo. **Scout turn budget:** same as duo (pass `maxTurns: ${SCOUT_MAX_TURNS}` when non-empty, omit when empty). **MCP tools:** same as duo.
 
 **Scout communication (effort-gated):**
 

@@ -127,6 +127,7 @@ Decision tree:
 - `prefer_teams='always'`: Create team for ALL plan counts (even 1 plan), unless turbo or smart-routed to turbo
 - `prefer_teams='when_parallel'`: Create team only when 2+ uncompleted plans, unless turbo or smart-routed to turbo
 - `prefer_teams='auto'`: Same as when_parallel (use current behavior, smart routing can downgrade)
+- `prefer_teams='never'`: Never create teams. All agents run as sequential subagents — no parallel execution.
 
 When team should be created based on prefer_teams:
 - **Pre-TeamCreate cleanup** (remove orphaned VBW team directories from prior sessions before creating a new team):
@@ -136,7 +137,7 @@ When team should be created based on prefer_teams:
 - Create team via TeamCreate: `team_name="vbw-phase-{NN}"`, `description="Phase {NN}: {phase-name}"`
 - All Dev and QA agents below MUST be spawned with `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"` (from plan number) or `name: "qa"` parameters on the Task tool invocation.
 
-When team should NOT be created (1 plan with when_parallel/auto, or turbo, or smart-routed turbo):
+When team should NOT be created (prefer_teams='never', or 1 plan with when_parallel/auto, or turbo, or smart-routed turbo):
 - Skip TeamCreate — single agent, no team overhead.
 
 **Smart Routing (REQ-15):** If `smart_routing=true` in config:
@@ -200,7 +201,11 @@ The existing individual script call sections (V3 Contract-Lite, V2 Hard Gates, C
 **Context compilation (REQ-11):** If control-plane.sh `full` action was used above and returned a `context_path`, use that path directly. Otherwise, if `config_context_compiler=true` from Context block above, before creating Dev tasks run:
 `bash "${VBW_PLUGIN_ROOT}/scripts/compile-context.sh" {phase} dev {phases_dir} {plan_path}`
 This produces `{phase-dir}/.context-dev.md` with phase goal and conventions.
-The plan_path argument is passed for context. **Per-plan research:** When loading context for a specific plan `{NN}-{MM}-PLAN.md`, also check for `{phase-dir}/{NN}-{MM}-RESEARCH.md`. If it exists, include it in the Dev task prompt alongside the compiled context. Fall back to `{phase-dir}/{NN}-RESEARCH.md` (legacy single-file format) if no per-plan research exists. Skill activation uses a plan-driven architecture:
+The plan_path argument is passed for context. **Per-plan research:** When loading context for a specific plan `{NN}-{MM}-PLAN.md`, resolve the research path:
+```bash
+RESEARCH_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" research "{phase-dir}" --plan-number {MM})
+```
+If `{phase-dir}/${RESEARCH_NAME}` exists, include it in the Dev task prompt alongside the compiled context. Fall back to `{phase-dir}/{NN}-RESEARCH.md` (legacy single-file format) if no per-plan research exists. Skill activation uses a plan-driven architecture:
 - **Orchestrator skill selection:** When composing subagent task descriptions, the orchestrator evaluates installed skills (visible via `<available_skills>` in system context) — reading each skill's description to determine relevance to the specific task. Only relevant skills are included in the subagent prompt via `<skill_activation>` blocks at the prompt start. Irrelevant skills are omitted entirely.
 - **Lead (planning time):** Evaluates available skills and wires relevant ones into plans via `skills_used` frontmatter and `@`-references to SKILL.md files.
 - **Dev/QA/Scout/Docs (execution time):** Reads the plan's `skills_used` list and calls `Skill(skill-name)` for each listed skill before beginning work. If a skill in system context is missing from `skills_used`, activates it too (soft fallback). No written YES/NO evaluation required.
@@ -253,6 +258,8 @@ if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
 ```
 
 **Skill activation for Dev/QA tasks:** Before composing task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to the tasks being executed. If any skills are relevant, include a `<skill_activation>` block as the FIRST line of every Dev and QA task description. Only include skills whose description matches the task at hand. If no skills are relevant, omit the block entirely.
+
+**MCP tool evaluation for Dev tasks:** Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to the tasks (build tools, documentation servers, domain-specific APIs), note them in the Dev task description so the Dev agent knows which MCP tools to use.
 
 For each uncompleted plan, TaskCreate:
 ```yaml
@@ -473,9 +480,15 @@ If compilation fails, proceed without it.
 
 Display: `◆ Spawning QA agent (${QA_MODEL})...`
 
-**Per-wave QA (Thorough/Balanced, QA_TIMING=per-wave):** After each wave completes, spawn QA concurrently with next wave's Dev work. QA receives only completed wave's PLAN.md + SUMMARY.md + "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." Include the output path in the task description so QA persists directly: "Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/{phase}-VERIFICATION-wave{W}.md. Plugin root: ${VBW_PLUGIN_ROOT}." After final wave, spawn integration QA covering all plans + cross-plan integration with output path `{phase-dir}/{phase}-VERIFICATION.md`. QA calls `write-verification.sh` directly — the orchestrator does NOT persist. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
+Resolve the VERIFICATION filename before spawning QA:
+```bash
+VERIF_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" verification "{phase-dir}")
+VERIF_BASE="${VERIF_NAME%.md}"
+```
 
-**Post-build QA (Fast, QA_TIMING=post-build):** Spawn QA after ALL plans complete. Include in task description: "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol. Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/{phase}-VERIFICATION.md. Plugin root: ${VBW_PLUGIN_ROOT}." QA calls `write-verification.sh` directly — the orchestrator does NOT persist. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
+**Per-wave QA (Thorough/Balanced, QA_TIMING=per-wave):** After each wave completes, spawn QA concurrently with next wave's Dev work. QA receives only completed wave's PLAN.md + SUMMARY.md + "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol." Include the output path in the task description so QA persists directly: "Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/${VERIF_BASE}-wave{W}.md. Plugin root: ${VBW_PLUGIN_ROOT}." After final wave, spawn integration QA covering all plans + cross-plan integration with output path `{phase-dir}/${VERIF_NAME}`. QA calls `write-verification.sh` directly — the orchestrator does NOT persist. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
+
+**Post-build QA (Fast, QA_TIMING=post-build):** Spawn QA after ALL plans complete. Include in task description: "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol. Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/${VERIF_NAME}. Plugin root: ${VBW_PLUGIN_ROOT}." QA calls `write-verification.sh` directly — the orchestrator does NOT persist. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
 
 **CRITICAL:** Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation when spawning QA agents. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 **CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "qa"` (or `name: "qa-wave{W}"` for per-wave QA) parameters to each QA Task tool invocation.
@@ -503,12 +516,34 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
 
 **UAT execution:**
 
-1. Check if `{phase-dir}/{phase}-UAT.md` already exists with `status: complete`. If so: "○ UAT already complete" and proceed to Step 5.
+Resolve the UAT filename before proceeding:
+```bash
+UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phase-dir}")
+```
+
+1. Check if `{phase-dir}/${UAT_NAME}` already exists with `status: complete`. If so: "○ UAT already complete" and proceed to Step 5.
 2. Generate test scenarios from completed SUMMARY.md files:
    - Read each SUMMARY.md: extract what was built, files modified, must_haves
-   - Generate 1-3 test scenarios per plan requiring HUMAN verification
+   - Generate 1-3 test scenarios per plan requiring HUMAN judgment — things only a person can verify
    - Minimum 1 test per plan. Test IDs: `P{plan}-T{NN}`
-   - Write initial `{phase}-UAT.md` in phase dir with all tests (Result fields empty)
+
+   **UAT tests must require human judgment.** Good examples:
+   - Open the app and navigate to screen X — does it display Y correctly?
+   - Perform user workflow A → B → C — does the result look right?
+   - Check that the UI reflects the change — is the label/value/layout correct?
+
+   **NEVER generate tests that can be performed programmatically.** These belong in QA (Step 4), not UAT:
+   - ✗ Grep/search files for expected content or missing imports
+   - ✗ Verify file existence, deletion, or structure
+   - ✗ Run a test suite or individual test (xcodebuild test, pytest, bats, jest, etc.)
+   - ✗ Run a CLI command and check its exit code or output
+   - ✗ Run a linter, type-checker, or build command
+
+   **Skill-aware exclusion:** If any active skill, tool, or MCP server gives the model UI automation capabilities (e.g., describe-UI, tap/click simulation, accessibility inspection, screenshot capture, DOM querying), then UI interactions that can be verified programmatically via those capabilities also belong in QA, not UAT. Only include scenarios that cannot be automated even with available tooling — subjective quality, visual design judgment, domain-specific data correctness, or hardware-dependent behavior.
+
+   If a plan's work is purely internal (refactor, test infrastructure, script changes) with no user-facing behavior, generate a single lightweight checkpoint asking the user to confirm the app still works as expected — do not ask them to run automated checks.
+
+   - Write initial `${UAT_NAME}` in phase dir with all tests (Result fields empty)
 3. **CHECKPOINT loop — present ONE test at a time, wait for user response:**
 
    **This is a conversational loop. Do NOT present all tests at once. Do NOT end the session after presenting a test. Do NOT proceed to Step 5 until all tests are complete.**
@@ -549,7 +584,7 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
    - **Freeform text (via "Other"):** Apply case-insensitive, trimmed string matching:
      - **Skip words** (skip, skipped, next, n/a, na, later, defer): record skip
      - **Anything else**: treat the entire response text as an issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major)
-   - Update `{phase}-UAT.md` immediately (persist to disk)
+   - Update `${UAT_NAME}` immediately (persist to disk)
    - Display progress: `✓ {completed}/{total} tests`
    - If more tests remain: present the NEXT test using the same CHECKPOINT format with AskUserQuestion, then **STOP and wait again**
    - If all tests done: go to step 4
@@ -559,7 +594,7 @@ If `AUTO_UAT` is not `true` and autonomy is confident or pure-vibe: display "○
    - If no issues: proceed to Step 5
    - If issues found: display issue summary, suggest `/vbw:fix`, STOP (do not proceed to Step 5)
 
-Note: "Run inline" means the execute-protocol orchestrator runs the CHECKPOINT loop directly in the main conversation, not by invoking /vbw:verify as a command. The orchestrator must wait for user input at each checkpoint — this is NOT a subagent operation.
+**Inline execution (NON-NEGOTIABLE):** The orchestrator runs the CHECKPOINT loop directly in the main conversation — this is NOT a subagent operation. Do NOT spawn a QA agent, Dev agent, or any subagent for UAT. Do NOT use TaskCreate to delegate UAT. The AskUserQuestion tool is only available to the orchestrator — subagents cannot interact with the user, so delegating UAT to a subagent bypasses user input entirely. The orchestrator must wait for user input at each checkpoint.
 
 ### Step 5: Update state and present summary
 

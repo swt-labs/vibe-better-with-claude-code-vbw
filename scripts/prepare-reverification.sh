@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
-# prepare-reverification.sh — Archive old UAT and advance remediation round for re-verification.
+# prepare-reverification.sh — Advance remediation state for re-verification.
 #
 # Usage: prepare-reverification.sh <phase-dir>
 #
-# Archives the current UAT.md to {NN}-UAT-round-{seq}.md, advances the
-# remediation state to the next round (stage=research, round incremented),
-# and outputs the archive details for logging.
+# Round-dir layout: Leaves the phase-root UAT in place (it's the permanent
+# historical record) and advances state to verify. verify.md writes
+# R{RR}-UAT.md in the round directory; current_uat() prioritizes round-dir
+# UATs over phase-root ones. Round-dir UATs already in their round directory
+# are handled separately (current round advances to next round, stale rounds
+# advance to verify).
+#
+# Flat/legacy layout: Archives UAT to {NN}-UAT-round-{seq}.md and advances to
+# the next remediation round (original behavior).
 #
 # Guards:
 #   - Refuses if no UAT.md exists (nothing to archive)
 #   - Refuses if UAT status is not issues_found (don't archive a passing UAT)
 #
-# The round file naming ({NN}-UAT-round-{seq}.md) self-excludes from all
-# existing UAT globs ([0-9]*-UAT.md, *-UAT.md) because it ends with
+# The flat-layout round file naming ({NN}-UAT-round-{seq}.md) self-excludes from
+# all existing UAT globs ([0-9]*-UAT.md, *-UAT.md) because it ends with
 # -round-{seq}.md, not -UAT.md.
 
 set -eo pipefail
@@ -76,19 +82,8 @@ case "$PHASE_DIR" in
   *) PHASE_DIR="$PHASE_DIR/" ;;
 esac
 
-# Find next round sequence number (via shared helper)
-MAX_ROUND=$(count_uat_rounds "$PHASE_DIR" "$PHASE_NUM")
-
-NEXT_ROUND=$((MAX_ROUND + 1))
-ROUND_PADDED=$(printf '%02d' "$NEXT_ROUND")
-ROUND_FILE="${PHASE_NUM}-UAT-round-${ROUND_PADDED}.md"
-
-# Warn if we've been through many rounds — signal the user may want a different approach
-if [ "$NEXT_ROUND" -ge 3 ]; then
-  echo "reverification_warning=This phase has been through $MAX_ROUND remediation rounds. Consider a different approach if issues persist."
-fi
-
-# Detect layout from remediation state file
+# Detect layout from remediation state file (before round counting — round-dir
+# layout uses a completely different archival strategy)
 _LAYOUT="flat"
 if [ -f "$_new_stage_file" ]; then
   _layout_val=$(grep '^layout=' "$_new_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
@@ -138,19 +133,45 @@ case "$UAT_FILE" in
     ;;
 esac
 
-# Archive: rename UAT to round file
-mv "$UAT_FILE" "${PHASE_DIR}${ROUND_FILE}"
+# --- Phase-root UAT handling depends on layout ---
 
 if [ "$_LAYOUT" = "round-dir" ]; then
-  # Round-dir layout: do NOT advance to next round yet.
-  # verify.md will write R{RR}-UAT.md into the current round dir, then
-  # advance only if re-verification finds issues.
-  # Advance done → verify through the proper state machine.
-  bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" advance "${PHASE_DIR%/}" >/dev/null
-else
-  # Flat/legacy layout: advance remediation to next round (original behavior)
-  bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" needs-round "${PHASE_DIR%/}" >/dev/null
+  # Round-dir layout: the phase-root UAT is the ORIGINAL document that found
+  # issues and triggered remediation. Leave it in place — it serves as the
+  # permanent historical record. verify.md writes R{RR}-UAT.md in the round
+  # dir, and current_uat() prioritizes round-dir UATs over phase-root ones.
+  # Just advance state done → verify.
+  if [ "$_REM_STAGE" = "done" ]; then
+    bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" advance "${PHASE_DIR%/}" >/dev/null
+  fi
+
+  rm -f "${PHASE_DIR}.uat-remediation-stage"
+
+  if git rev-parse --git-dir >/dev/null 2>&1; then
+    git add "${PHASE_DIR}remediation/.uat-remediation-stage" 2>/dev/null || true
+    git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
+  fi
+
+  echo "archived=kept"
+  echo "phase=$PHASE_NUM"
+  echo "layout=$_LAYOUT"
+  exit 0
 fi
+
+# Flat/legacy layout: archive to numbered round file
+MAX_ROUND=$(count_uat_rounds "$PHASE_DIR" "$PHASE_NUM")
+
+NEXT_ROUND=$((MAX_ROUND + 1))
+ROUND_PADDED=$(printf '%02d' "$NEXT_ROUND")
+ROUND_FILE="${PHASE_NUM}-UAT-round-${ROUND_PADDED}.md"
+
+# Warn if we've been through many rounds — signal the user may want a different approach
+if [ "$NEXT_ROUND" -ge 3 ]; then
+  echo "reverification_warning=This phase has been through $MAX_ROUND remediation rounds. Consider a different approach if issues persist."
+fi
+
+mv "$UAT_FILE" "${PHASE_DIR}${ROUND_FILE}"
+bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" needs-round "${PHASE_DIR%/}" >/dev/null
 
 # Clean up legacy state file if present (new-location state file persists with updated round)
 rm -f "${PHASE_DIR}.uat-remediation-stage"

@@ -32,7 +32,7 @@ failed: 1
 EOF
 }
 
-@test "round-dir layout: archives UAT and advances to verify without changing round" {
+@test "round-dir layout: leaves phase-root UAT in place and advances to verify" {
   create_issues_uat
 
   # Create round-dir remediation state with stage=done
@@ -46,10 +46,12 @@ EOF
 
   [ "$status" -eq 0 ]
 
-  # UAT was archived
-  [ ! -f "$PHASE_DIR/03-UAT.md" ]
-  archived_file=$(find "$PHASE_DIR" -maxdepth 1 -name '03-UAT-round-*.md' | head -1)
-  [ -n "$archived_file" ]
+  # Original UAT still exists at phase root (NOT renamed or moved)
+  [ -f "$PHASE_DIR/03-UAT.md" ]
+  # No SOURCE-UAT or -round- files created at phase root
+  [ ! -f "$PHASE_DIR/03-SOURCE-UAT.md" ]
+  round_files=$(find "$PHASE_DIR" -maxdepth 1 -name '03-UAT-round-*.md' 2>/dev/null)
+  [ -z "$round_files" ]
 
   # Stage is verify — NOT advanced to research/round-02
   grep -q "^stage=verify$" "$PHASE_DIR/remediation/.uat-remediation-stage"
@@ -57,8 +59,32 @@ EOF
   # Round is still 01
   grep -q "^round=01$" "$PHASE_DIR/remediation/.uat-remediation-stage"
 
-  # Output includes layout=round-dir
+  # Output uses archived=kept marker
+  [[ "$output" == *"archived=kept"* ]]
   [[ "$output" == *"layout=round-dir"* ]]
+}
+
+@test "round-dir layout: idempotent when called again with stage=verify" {
+  create_issues_uat
+
+  # State already at verify (e.g., vibe.md already called prepare-reverification)
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=verify\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+
+  # Phase-root UAT still untouched
+  [ -f "$PHASE_DIR/03-UAT.md" ]
+
+  # Stage stays at verify, round stays 01
+  grep -q "^stage=verify$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^round=01$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  # Output uses archived=kept (idempotent)
+  [[ "$output" == *"archived=kept"* ]]
 }
 
 @test "flat layout: archives UAT and advances to next round" {

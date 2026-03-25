@@ -84,6 +84,12 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         ```
 
     - Display: `◆ Spawning QA agent (${QA_MODEL})...`
+    - Resolve the VERIFICATION filename before spawning QA:
+
+        ```bash
+        VERIF_NAME=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-artifact-path.sh verification "{phase-dir}")
+        ```
+
     - Spawn vbw-qa as subagent via Task tool. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in
       the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass
       `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
@@ -97,7 +103,7 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         Verification protocol: `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/verification-protocol.md
         Return findings using the qa_verdict schema (see `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/handoff-schemas.md).
         If tests reveal pre-existing failures unrelated to this phase, list them in your response under a "Pre-existing Issues" heading and include them in the qa_verdict payload's pre_existing_issues array.
-        Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/{phase}-VERIFICATION.md. Plugin root: `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`.
+        Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/${VERIF_NAME}. Plugin root: `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`.
         ```
 
     - QA agent reads all files and persists VERIFICATION.md itself. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.

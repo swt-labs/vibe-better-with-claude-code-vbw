@@ -439,10 +439,12 @@ extract_qa() {
   local dir="$1"
   cd "$dir" && {
     . "$ROOT/scripts/summary-utils.sh"
+    . "$ROOT/scripts/uat-utils.sh"
     PDIR=".vbw-planning/phases/01-test"
     _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
     if [ -n "$_uat_file" ]; then
-      _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null)
+      _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+      _uat_status=$(normalize_uat_status "$_uat_status")
       if [ "$_uat_status" = "issues_found" ]; then
         _rem_stage="none"
         if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
@@ -542,6 +544,35 @@ if [ "$_QA" = "UAT: Fixing" ]; then
   pass "unknown stage → UAT: Fixing (fallback)"
 else
   fail "unknown stage → UAT: Fixing (got '$_QA')"
+fi
+
+# Test 35: UAT with status: all_pass → should be treated as complete (normalization)
+T35="$TMPDIR_BASE/t35"
+setup_project "$T35"
+printf '%s\n' '---' 'phase: 01' 'status: all_pass' 'total_tests: 3' 'passed: 3' 'issues: 0' '---' 'All tests passed.' > "$T35/.vbw-planning/phases/01-test/01-UAT.md"
+_FAST_QA=$(cd "$T35" && {
+  . "$ROOT/scripts/summary-utils.sh"
+  . "$ROOT/scripts/uat-utils.sh"
+  QA="--"
+  PDIR=".vbw-planning/phases/01-test"
+  _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
+  if [ -n "$_uat_file" ]; then
+    _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+    _uat_status=$(normalize_uat_status "$_uat_status")
+    if [ "$_uat_status" = "complete" ]; then
+      QA="pass"
+    elif [ "$_uat_status" = "issues_found" ]; then
+      QA="issues"
+    else
+      QA="?"
+    fi
+  fi
+  echo "$QA"
+})
+if [ "$_FAST_QA" = "pass" ]; then
+  pass "UAT status: all_pass → normalized to complete → pass"
+else
+  fail "UAT status: all_pass → normalized to complete → pass (got '$_FAST_QA')"
 fi
 
 echo ""

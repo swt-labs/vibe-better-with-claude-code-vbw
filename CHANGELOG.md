@@ -2,6 +2,23 @@
 
 All notable changes to VBW will be documented in this file.
 
+## [1.33.2] - 2026-03-24
+
+### Added
+
+- **`scripts`** -- Add `resolve-artifact-path.sh` for deterministic artifact filename resolution, replacing inline LLM-computed filenames across plan, summary, research, context, UAT, and verification artifacts. (PR #277)
+- **`agents`** -- Enable MCP tool access for VBW subagents by switching Scout from a restrictive `tools:` allowlist to a `disallowedTools:` denylist pattern, and adding MCP evaluation guidance to orchestrator commands. (PR #280)
+
+### Fixed
+
+- **`hooks`** -- Exempt remediation round summaries (`R{RR}-SUMMARY.md`) from the file-guard terminal-status check that blocks SUMMARY writes with non-terminal status values. (PR #255)
+- **`state`** -- Restore canonical `## Current Phase` section in STATE.md after milestone archive, introduce shared phase-state helpers, and harden brownfield/archive recovery for consistent phase status across all downstream readers. (PR #256)
+- **`statusline`** -- Resolve `.vbw-planning/config.json` by walking up from CWD instead of using bare relative paths, fixing monorepo subdirectory hook execution. (PR #259)
+- **`vibe`** -- Re-route after milestone UAT "Start fresh" instead of dead-ending, by re-running phase-detect after marking milestones as remediated. (PR #269)
+- **`phase-detect`** -- Add `needs_verification` as a first-class state to eliminate ambiguous `auto_uat` routing, and prohibit UAT delegation to subagents. (PR #271)
+- **`uat`** -- Fix `advance` from `verify` stage to start a new remediation round instead of dead-ending as a no-op. (PR #282)
+- **`uat`** -- Normalize LLM-generated UAT status synonyms (`all_pass`, `passed`, `verified`, etc.) to canonical forms so phase-detect recognizes them as terminal statuses. (PR #284)
+
 ## [1.33.1] - 2026-03-17
 
 ### Added

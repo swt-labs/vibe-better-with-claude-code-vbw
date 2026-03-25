@@ -108,15 +108,28 @@ else
   fail "hooks.json: skill-hook-dispatch.sh missing (should be preserved)"
 fi
 
-# --- Skill in all agent tools: allowlists ---
+# --- Skill in all agent tools: allowlists (or inherited via disallowedTools pattern) ---
 
 for agent_file in vbw-qa.md vbw-scout.md vbw-debugger.md vbw-architect.md vbw-docs.md; do
   AGENT_PATH="$ROOT/agents/$agent_file"
   AGENT_TOOLS=$(sed -n '/^---$/,/^---$/p' "$AGENT_PATH" | grep '^tools:' || true)
-  if echo "$AGENT_TOOLS" | grep -q 'Skill'; then
-    pass "$agent_file: Skill in tools allowlist"
+  AGENT_DISALLOWED=$(sed -n '/^---$/,/^---$/p' "$AGENT_PATH" | grep '^disallowedTools:' || true)
+  if [ -n "$AGENT_TOOLS" ]; then
+    # Agent uses tools: allowlist — Skill must be explicitly listed
+    if echo "$AGENT_TOOLS" | grep -q 'Skill'; then
+      pass "$agent_file: Skill in tools allowlist"
+    else
+      fail "$agent_file: Skill NOT in tools allowlist"
+    fi
+  elif [ -n "$AGENT_DISALLOWED" ]; then
+    # Agent uses disallowedTools: denylist — Skill is inherited from parent
+    if echo "$AGENT_DISALLOWED" | grep -q 'Skill'; then
+      fail "$agent_file: Skill is in disallowedTools (should be inherited)"
+    else
+      pass "$agent_file: Skill inherited via disallowedTools pattern (not denied)"
+    fi
   else
-    fail "$agent_file: Skill NOT in tools allowlist"
+    fail "$agent_file: Neither tools: nor disallowedTools: found in frontmatter"
   fi
 done
 
