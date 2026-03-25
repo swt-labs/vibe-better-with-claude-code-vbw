@@ -255,7 +255,14 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/bootstrap/bootstrap-state.sh .vbw-planning/STATE.md "$PROJECT_NAME" "$MILESTONE_NAME" "$PHASE_COUNT"
    ```
    Do NOT write next-action suggestions (e.g. "Run /vbw:vibe --plan 1") into the Todos section — those are ephemeral display output from suggest-next.sh, not persistent state.
-6. Display "Scoping complete. {N} phases created." STOP -- do not auto-continue to planning.
+6. Write milestone context to `.vbw-planning/CONTEXT.md` using the template from `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/MILESTONE-CONTEXT.md`. Capture:
+   - **Scope Boundary:** the user's scope description from step 2
+   - **Decomposition Decisions:** rationale for phase count, grouping, and ordering from step 3
+   - **Requirement Mapping:** which REQ-IDs map to which phases (from step 3)
+   - **Key Decisions:** project-level decisions surfaced during scoping (tech choices, architecture patterns that transcend the milestone). Also insert these as rows in STATE.md's `## Key Decisions` table (append after the header row, replacing the `_(No decisions yet)_` placeholder if present). Milestone-scoped decisions (phase ordering rationale, scope boundaries) stay only in CONTEXT.md.
+   - **Deferred Ideas:** out-of-scope ideas mentioned during steps 2-3
+   - Also append to `.vbw-planning/discovery.json` (if it exists) with `"phase": "milestone"` for any inferred requirements or deferred ideas.
+7. Display "Scoping complete. {N} phases created." STOP -- do not auto-continue to planning.
 
 ### Mode: Discuss
 
@@ -705,7 +712,7 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
    ```
    Compiles final rolling context before artifacts move to milestones/. Fail-open.
    When `rolling_summary=false`: skip.
-5. Archive: `mkdir -p .vbw-planning/milestones/`. Move roadmap, state, phases to milestones/{SLUG}/. Write SHIPPED.md. Delete stale RESUME.md.
+5. Archive: `mkdir -p .vbw-planning/milestones/`. Move roadmap, state, phases, and milestone CONTEXT.md (if exists) to milestones/{SLUG}/. Write SHIPPED.md. Delete stale RESUME.md.
 5b. **Persist project-level state:** After archiving, run:
    ```bash
    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/persist-state-after-ship.sh \

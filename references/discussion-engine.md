@@ -169,3 +169,12 @@ Also append to `discovery.json` using this schema:
 - **Explore conversationally.** Thread-following, not form-filling.
 - **Capture for downstream agents.** The output must let researcher, planner, and executor act without asking the user again.
 - **Trust Claude's judgment.** This protocol is a guide, not a state machine.
+
+## Two-Tier Context System
+
+Decision capture happens at two levels:
+
+- **Milestone scope** → `.vbw-planning/CONTEXT.md` — written by Scope mode (`/vbw:vibe --scope`). Captures decomposition decisions (why N phases, ordering rationale), requirement-to-phase mapping, project-level key decisions, and deferred ideas. Archived with the milestone.
+- **Phase discussion** → `.vbw-planning/phases/{NN}/{NN}-CONTEXT.md` — written by this Discussion Engine. Captures gray-area decisions, user preferences, and scope boundaries for a single phase.
+
+Both are injected into agent context by `compile-context.sh`. Milestone context gives agents the "why" behind the phase structure; phase context gives them the "what" for their specific phase.
