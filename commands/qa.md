@@ -90,6 +90,10 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         VERIF_NAME=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-artifact-path.sh verification "{phase-dir}")
         ```
 
+    - Before composing the QA task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to verifying this phase's work. If any skills are relevant, the QA prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the verification task. If no skills are relevant, omit the skill_activation block entirely.
+
+    - Also evaluate available MCP tools in your system context. If any MCP servers provide build, test, documentation, or domain-specific capabilities relevant to verification, note them in the QA task context.
+
     - Spawn vbw-qa as subagent via Task tool. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in
       the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass
       `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
