@@ -19,6 +19,15 @@ CONFIG_PATH="${3:-$PLANNING_DIR/config.json}"
 PLAN_PATH="${4:-}"
 CACHE_DIR="$PLANNING_DIR/.cache/context"
 
+fingerprint_file() {
+  local path="$1" missing_label="$2"
+  if [ -f "$path" ]; then
+    shasum -a 256 "$path" 2>/dev/null | cut -d' ' -f1 || echo "$missing_label"
+  else
+    echo "$missing_label"
+  fi
+}
+
 # --- Build hash input from deterministic sources ---
 HASH_INPUT="phase=${PHASE}:role=${ROLE}"
 
@@ -32,6 +41,25 @@ fi
 if command -v git &>/dev/null && git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
   CHANGED_SUM=$(git diff --name-only HEAD 2>/dev/null | sort | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nogit")
   HASH_INPUT="${HASH_INPUT}:changed=${CHANGED_SUM}"
+fi
+
+# Core planning artifact fingerprints
+ROADMAP_SUM=$(fingerprint_file "$PLANNING_DIR/ROADMAP.md" "noroadmap")
+HASH_INPUT="${HASH_INPUT}:roadmap=${ROADMAP_SUM}"
+
+if [[ "$ROLE" =~ ^(lead|qa|scout|architect)$ ]]; then
+  REQUIREMENTS_SUM=$(fingerprint_file "$PLANNING_DIR/REQUIREMENTS.md" "noreqs")
+  HASH_INPUT="${HASH_INPUT}:requirements=${REQUIREMENTS_SUM}"
+fi
+
+if [[ "$ROLE" =~ ^(lead|debugger)$ ]]; then
+  STATE_SUM=$(fingerprint_file "$PLANNING_DIR/STATE.md" "nostate")
+  HASH_INPUT="${HASH_INPUT}:state=${STATE_SUM}"
+fi
+
+if [[ "$ROLE" =~ ^(dev|qa|debugger|architect)$ ]]; then
+  CONVENTIONS_SUM=$(fingerprint_file "$PLANNING_DIR/conventions.json" "noconventions")
+  HASH_INPUT="${HASH_INPUT}:conventions=${CONVENTIONS_SUM}"
 fi
 
 # Codebase mapping fingerprint (roles with mapping hints need cache invalidation)

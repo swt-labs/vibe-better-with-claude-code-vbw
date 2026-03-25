@@ -140,6 +140,24 @@ normalize_decision_item() {
     tr '[:upper:]' '[:lower:]'
 }
 
+decision_item_score() {
+  local line="$1"
+  local score=0
+
+  if [[ "$line" =~ ^\| ]]; then
+    local cols col1 col2 col3
+    cols=$(printf '%s\n' "$line" | sed 's/^|//; s/|$//')
+    col1=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}')
+    col2=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}')
+    col3=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $3); print $3}')
+    [ -n "$col1" ] && score=1
+    [ -n "$col2" ] && score=$((score + 1))
+    [ -n "$col3" ] && score=$((score + 1))
+  fi
+
+  echo "$score"
+}
+
 # --- Merge two sets of items with dedup ---
 # Usage: merge_items KIND "items1_multiline" "items2_multiline"
 # Returns deduplicated union
@@ -160,16 +178,25 @@ merge_items() {
     fi
     [ -z "$norm" ] && continue
 
-    local found=false
+    local found=false found_index=-1 idx=0
     for s in "${seen_normalized[@]+"${seen_normalized[@]}"}"; do
       if [[ "$s" == "$norm" ]]; then
         found=true
+        found_index=$idx
         break
       fi
+      idx=$((idx + 1))
     done
     if [[ "$found" == false ]]; then
       seen_normalized+=("$norm")
       result+=("$line")
+    elif [[ "$kind" == "decisions" ]]; then
+      local new_score existing_score
+      new_score=$(decision_item_score "$line")
+      existing_score=$(decision_item_score "${result[$found_index]}")
+      if [ "$new_score" -gt "$existing_score" ]; then
+        result[$found_index]="$line"
+      fi
     fi
   done <<< "$items1"
 
@@ -185,16 +212,25 @@ merge_items() {
     fi
     [ -z "$norm" ] && continue
 
-    local found=false
+    local found=false found_index=-1 idx=0
     for s in "${seen_normalized[@]+"${seen_normalized[@]}"}"; do
       if [[ "$s" == "$norm" ]]; then
         found=true
+        found_index=$idx
         break
       fi
+      idx=$((idx + 1))
     done
     if [[ "$found" == false ]]; then
       seen_normalized+=("$norm")
       result+=("$line")
+    elif [[ "$kind" == "decisions" ]]; then
+      local new_score existing_score
+      new_score=$(decision_item_score "$line")
+      existing_score=$(decision_item_score "${result[$found_index]}")
+      if [ "$new_score" -gt "$existing_score" ]; then
+        result[$found_index]="$line"
+      fi
     fi
   done <<< "$items2"
 
@@ -206,7 +242,12 @@ merge_items() {
 format_decision_items_for_state() {
   local items="$1"
 
-  [ -n "$items" ] || return 0
+  if [ -z "$items" ]; then
+    echo "| Decision | Date | Rationale |"
+    echo "|----------|------|-----------|"
+    echo "| _(No decisions yet)_ | | |"
+    return 0
+  fi
 
   echo "| Decision | Date | Rationale |"
   echo "|----------|------|-----------|"
@@ -408,9 +449,7 @@ if [ -f "$ROOT_STATE" ]; then
   if [ -n "$merged_todos" ]; then
     replace_or_append_section "$ROOT_STATE" "todos" "## Todos" "$merged_todos"
   fi
-  if [ -n "$merged_decisions" ]; then
-    replace_or_append_section "$ROOT_STATE" "decisions" "## Key Decisions" "$merged_decisions"
-  fi
+  replace_or_append_section "$ROOT_STATE" "decisions" "## Key Decisions" "$merged_decisions"
 fi
 
 # --- Clean up milestone dir ---

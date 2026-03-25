@@ -188,3 +188,99 @@ teardown() {
 
   [ "$HASH1" != "$HASH2" ]
 }
+
+@test "cache-context.sh: roadmap fingerprint changes hash when ROADMAP.md changes" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Test Roadmap
+## Phase 2: Test Phase
+**Goal:** Updated goal
+**Success:** Tests pass
+**Reqs:** REQ-01
+EOF
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" != "$HASH2" ]
+}
+
+@test "cache-context.sh: requirements fingerprint changes hash for lead role" {
+  cd "$TEST_TEMP_DIR"
+  echo "- [REQ-01] Original requirement" > .vbw-planning/REQUIREMENTS.md
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 lead .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  echo "- [REQ-01] Updated requirement" > .vbw-planning/REQUIREMENTS.md
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 lead .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" != "$HASH2" ]
+}
+
+@test "cache-context.sh: state fingerprint changes hash for lead role" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Use API v1 | | |
+EOF
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 lead .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Use API v2 | | |
+EOF
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 lead .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" != "$HASH2" ]
+}
+
+@test "cache-context.sh: conventions fingerprint changes hash for dev role" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/conventions.json <<'EOF'
+{"conventions":[{"tag":"STYLE","rule":"Use v1"}]}
+EOF
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  cat > .vbw-planning/conventions.json <<'EOF'
+{"conventions":[{"tag":"STYLE","rule":"Use v2"}]}
+EOF
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" != "$HASH2" ]
+}

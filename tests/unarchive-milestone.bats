@@ -218,6 +218,7 @@ EOF
 
   # Table-format "Add caching layer" from root should survive merge
   grep -q 'caching layer' ".vbw-planning/STATE.md"
+  grep -q '| Use REST API for backend | 2026-02-15 | Performance requirements |' ".vbw-planning/STATE.md"
 
   # List-format "PostgreSQL for data store" from archive should survive
   grep -q 'PostgreSQL for data store' ".vbw-planning/STATE.md"
@@ -334,6 +335,54 @@ EOF
   [ "$status" -eq 0 ]
   ! grep -q '_(No decisions yet)_' ".vbw-planning/STATE.md"
   grep -q 'Use REST API for backend' ".vbw-planning/STATE.md"
+}
+
+@test "unarchive rewrites placeholder-only decisions to canonical empty table" {
+  mkdir -p ".vbw-planning/milestones/empty/phases/01-setup"
+  touch ".vbw-planning/milestones/empty/phases/01-setup/01-01-PLAN.md"
+  touch ".vbw-planning/milestones/empty/phases/01-setup/01-01-SUMMARY.md"
+  cat > ".vbw-planning/milestones/empty/ROADMAP.md" <<'EOF'
+# Roadmap
+## Phase 1: Setup
+EOF
+  cat > ".vbw-planning/milestones/empty/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Key Decisions
+- _(No decisions yet)_
+
+## Todos
+None.
+EOF
+  cat > ".vbw-planning/milestones/empty/SHIPPED.md" <<'EOF'
+# Shipped
+EOF
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Key Decisions
+None.
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/empty" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q '^| Decision | Date | Rationale |$' ".vbw-planning/STATE.md"
+  grep -q '^| _(No decisions yet)_ | | |$' ".vbw-planning/STATE.md"
+  ! grep -q '^- _(No decisions yet)_' ".vbw-planning/STATE.md"
+  ! awk '
+    /^## Key Decisions$/ { in_section=1; next }
+    in_section && /^## / { in_section=0 }
+    in_section { print }
+  ' ".vbw-planning/STATE.md" | grep -q '^None\.$'
 }
 
 @test "dedups todos with varied priority tag formats" {

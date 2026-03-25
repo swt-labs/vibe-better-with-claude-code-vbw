@@ -43,6 +43,41 @@ extract_section() {
   ' "$file"
 }
 
+extract_todos_section() {
+  local file="$1"
+  awk '
+    {
+      low = tolower($0)
+
+      if (low ~ /^##[[:space:]]+todos[[:space:]]*$/) {
+        found=1
+        mode="h2"
+        next
+      }
+
+      if (low ~ /^###[[:space:]]+pending[[:space:]]+todos[[:space:]]*$/) {
+        found=1
+        mode="h3"
+        next
+      }
+
+      if (found && mode == "h2" && /^## /) {
+        found=0
+        mode=""
+      }
+
+      if (found && mode == "h3" && (/^## / || /^### /)) {
+        found=0
+        mode=""
+      }
+
+      if (found) {
+        print
+      }
+    }
+  ' "$file"
+}
+
 format_decisions_table() {
   local decisions="$1"
 
@@ -85,7 +120,7 @@ EXISTING_DECISIONS=""
 EXISTING_BLOCKERS=""
 EXISTING_CODEBASE=""
 if [[ -f "$OUTPUT_PATH" ]]; then
-  EXISTING_TODOS=$(extract_section "$OUTPUT_PATH" "Todos")
+  EXISTING_TODOS=$(extract_todos_section "$OUTPUT_PATH")
   # Decisions may use "## Decisions" or "## Key Decisions"
   EXISTING_DECISIONS=$(awk '
     { low = tolower($0) }

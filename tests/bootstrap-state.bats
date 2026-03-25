@@ -220,6 +220,28 @@ EOF
   ! grep -q '^| _(No decisions yet)_ | | |$' .vbw-planning/STATE.md
 }
 
+@test "bootstrap-state: preserves legacy Pending Todos subsection" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Keep auth service isolated
+
+### Pending Todos
+- Migrate session store
+- Rework onboarding copy
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  grep -q 'Migrate session store' .vbw-planning/STATE.md
+  grep -q 'Rework onboarding copy' .vbw-planning/STATE.md
+}
+
 @test "bootstrap-state: preserves existing Blockers from prior milestone" {
   cd "$TEST_TEMP_DIR"
   cat > .vbw-planning/STATE.md <<'EOF'
