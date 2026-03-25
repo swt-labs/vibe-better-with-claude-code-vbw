@@ -135,3 +135,61 @@ CTX
     grep -q "### Milestone Scope Context" "$CONTEXT_FILE" || { echo "Role $role missing milestone context"; return 1; }
   done
 }
+
+@test "milestone-context: unarchive-milestone restores CONTEXT.md" {
+  cd "$TEST_TEMP_DIR"
+
+  # Create archived milestone with CONTEXT.md
+  MILESTONE_DIR=".vbw-planning/milestones/test-ms"
+  mkdir -p "$MILESTONE_DIR/phases/01-setup"
+  touch "$MILESTONE_DIR/phases/01-setup/01-01-PLAN.md"
+  touch "$MILESTONE_DIR/phases/01-setup/01-01-SUMMARY.md"
+
+  cat > "$MILESTONE_DIR/ROADMAP.md" <<'EOF'
+# Roadmap
+## Phase 1: Setup
+EOF
+
+  cat > "$MILESTONE_DIR/STATE.md" <<'EOF'
+# State
+**Project:** Test
+Phase: 1 of 1
+Status: complete
+
+## Key Decisions
+| Decision | Date | Rationale |
+
+## Todos
+None.
+
+## Blockers
+None
+
+## Activity Log
+- 2026-03-25: Created
+EOF
+
+  cat > "$MILESTONE_DIR/CONTEXT.md" <<'EOF'
+# Test — Milestone Context
+
+## Scope Boundary
+Build test scope.
+
+## Decomposition Decisions
+### Phase Count & Grouping
+1 phase for simplicity.
+EOF
+
+  cat > "$MILESTONE_DIR/SHIPPED.md" <<'EOF'
+# Shipped
+Date: 2026-03-25
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" "$MILESTONE_DIR" ".vbw-planning"
+  [ "$status" -eq 0 ]
+
+  # CONTEXT.md should be restored to planning root
+  [ -f ".vbw-planning/CONTEXT.md" ]
+  grep -q "Build test scope" ".vbw-planning/CONTEXT.md"
+}
