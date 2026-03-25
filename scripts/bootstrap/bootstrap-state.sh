@@ -63,12 +63,17 @@ format_decisions_table() {
       lower=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
       [[ "$lower" =~ ^\|[[:space:]:-]+\|?[[:space:]]*$ ]] && continue
       [[ "$lower" =~ ^\|[[:space:]]*decision([[:space:]]*\|.*)?$ ]] && continue
+      [[ "$lower" =~ ^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$ ]] && continue
       echo "$line"
       continue
     fi
 
     line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+    local lower_line
+    lower_line=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
     [[ -z "$line" ]] && continue
+    [[ "$lower_line" == "none." ]] && continue
+    [[ "$lower_line" == "_(no decisions yet)_" ]] && continue
     echo "| $line | | |"
   done <<< "$decisions"
 }

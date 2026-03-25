@@ -86,6 +86,12 @@ extract_decision_items() {
       }
 
       if (/^[-*] /) {
+        if (low ~ /^[-*][[:space:]]+none\.[[:space:]]*$/) {
+          next
+        }
+        if (low ~ /^[-*][[:space:]]+_\(no[[:space:]]+decisions[[:space:]]+yet\)_[[:space:]]*$/) {
+          next
+        }
         print
         next
       }
@@ -96,6 +102,9 @@ extract_decision_items() {
           next
         }
         if (low ~ /^\|[[:space:]]*decision([[:space:]]*\|.*)?$/) {
+          next
+        }
+        if (low ~ /^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$/) {
           next
         }
         print
@@ -207,11 +216,20 @@ format_decision_items_for_state() {
     [[ "$line" == "None." ]] && continue
 
     if [[ "$line" =~ ^\| ]]; then
+      local lower
+      lower=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
+      [[ "$lower" =~ ^\|[[:space:]]*decision([[:space:]]*\|.*)?$ ]] && continue
+      [[ "$lower" =~ ^\|[[:space:]:-]+\|?[[:space:]]*$ ]] && continue
+      [[ "$lower" =~ ^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$ ]] && continue
       echo "$line"
       continue
     fi
 
     line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+    local lower_line
+    lower_line=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
+    [[ "$lower_line" == "none." ]] && continue
+    [[ "$lower_line" == "_(no decisions yet)_" ]] && continue
     echo "| $line | | |"
   done <<< "$items"
 }

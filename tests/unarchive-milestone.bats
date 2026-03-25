@@ -314,6 +314,28 @@ EOF
   grep -q 'Use REST API for backend' ".vbw-planning/STATE.md"
 }
 
+@test "unarchive ignores empty decision placeholders when merging real decisions" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Key Decisions
+- _(No decisions yet)_
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '_(No decisions yet)_' ".vbw-planning/STATE.md"
+  grep -q 'Use REST API for backend' ".vbw-planning/STATE.md"
+}
+
 @test "dedups todos with varied priority tag formats" {
   create_archived_milestone "foundation"
 
