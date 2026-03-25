@@ -194,6 +194,28 @@ merge_items() {
   done
 }
 
+format_decision_items_for_state() {
+  local items="$1"
+
+  [ -n "$items" ] || return 0
+
+  echo "| Decision | Date | Rationale |"
+  echo "|----------|------|-----------|"
+
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    [[ "$line" == "None." ]] && continue
+
+    if [[ "$line" =~ ^\| ]]; then
+      echo "$line"
+      continue
+    fi
+
+    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+    echo "| $line | | |"
+  done <<< "$items"
+}
+
 # --- Replace or append a section in a file with normalized heading matching ---
 # Usage: replace_or_append_section FILE KIND CANONICAL_HEADER NEW_CONTENT
 # KIND: "todos" or "decisions"
@@ -202,7 +224,11 @@ replace_or_append_section() {
   local tmp="${file}.tmp.$$"
   local content_file="${file}.content.$$"
 
-  printf '%s\n' "$new_content" > "$content_file"
+  if [[ "$kind" == "decisions" ]]; then
+    format_decision_items_for_state "$new_content" > "$content_file"
+  else
+    printf '%s\n' "$new_content" > "$content_file"
+  fi
 
   awk -v kind="$kind" -v canonical="$canonical_header" -v cfile="$content_file" '
     function is_decision_heading(line, low) {
@@ -314,8 +340,16 @@ fi
 merged_todos=$(merge_items "todos" "$archived_todos" "$root_todos")
 merged_decisions=$(merge_items "decisions" "$archived_decisions" "$root_decisions")
 
+has_active_root_scope_artifacts() {
+  local phases_dir="$1/phases"
+  [ -d "$phases_dir" ] || return 1
+
+  find "$phases_dir" -mindepth 1 -maxdepth 1 \
+    \( -type d -o \( -type f ! -name '.*' \) \) -print -quit 2>/dev/null | grep -q .
+}
+
 # --- Refuse to clobber active scoped milestone artifacts ---
-if [ -d "$PLANNING_DIR/phases" ] && [ -n "$(find "$PLANNING_DIR/phases" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+if has_active_root_scope_artifacts "$PLANNING_DIR"; then
   echo "Error: root phases/ directory contains active milestone artifacts — aborting to prevent data loss" >&2
   echo "  Back up or remove $PLANNING_DIR/phases/, ROADMAP.md, and CONTEXT.md before unarchiving." >&2
   exit 1

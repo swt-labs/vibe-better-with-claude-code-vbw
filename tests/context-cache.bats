@@ -171,3 +171,20 @@ teardown() {
   # Hash must differ when rolling context content changes
   [ "$HASH1" != "$HASH2" ]
 }
+
+@test "cache-context.sh: milestone context fingerprint changes hash when CONTEXT.md changes" {
+  cd "$TEST_TEMP_DIR"
+  echo "# Milestone Context v1" > .vbw-planning/CONTEXT.md
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  echo "# Milestone Context v2" > .vbw-planning/CONTEXT.md
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" != "$HASH2" ]
+}

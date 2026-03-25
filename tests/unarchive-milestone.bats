@@ -288,6 +288,32 @@ EOF
   [ -d ".vbw-planning/milestones/foundation/phases" ]
 }
 
+@test "ignores hidden placeholder files in root phases/" {
+  create_archived_milestone "foundation"
+  mkdir -p ".vbw-planning/phases"
+  touch ".vbw-planning/phases/.DS_Store"
+  touch ".vbw-planning/phases/.gitkeep"
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+
+  [ -d ".vbw-planning/phases/01-setup" ]
+  [ -f ".vbw-planning/ROADMAP.md" ]
+}
+
+@test "restores key decisions with canonical table header" {
+  create_archived_milestone "foundation"
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+
+  grep -q '^| Decision | Date | Rationale |$' ".vbw-planning/STATE.md"
+  grep -q '^|----------|------|-----------|$' ".vbw-planning/STATE.md"
+  grep -q 'Use REST API for backend' ".vbw-planning/STATE.md"
+}
+
 @test "dedups todos with varied priority tag formats" {
   create_archived_milestone "foundation"
 
