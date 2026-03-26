@@ -429,6 +429,53 @@ EOF
   grep -q 'Upgrade deps after milestone' ".vbw-planning/STATE.md"
 }
 
+@test "unarchive rewrites placeholder-only todos to canonical None" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | | |
+
+## Todos
+- None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '^- None\.$' ".vbw-planning/STATE.md"
+  grep -q '^None\.$' ".vbw-planning/STATE.md"
+}
+
+@test "unarchive skips decision subheadings and escapes literal pipes" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Decisions
+### API
+- Use REST | GraphQL fallback
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '^| ### API | | |$' ".vbw-planning/STATE.md"
+  grep -q '^| Use REST \\| GraphQL fallback | | |$' ".vbw-planning/STATE.md"
+}
+
 @test "unarchive rewrites placeholder-only decisions to canonical empty table" {
   mkdir -p ".vbw-planning/milestones/empty/phases/01-setup"
   touch ".vbw-planning/milestones/empty/phases/01-setup/01-01-PLAN.md"

@@ -277,7 +277,7 @@ format_decision_items_for_state() {
 
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    [[ "$line" == "None." ]] && continue
+    [[ "$line" == "None." || "$line" == "None" ]] && continue
 
     if [[ "$line" =~ ^\| ]]; then
       local lower
@@ -289,12 +289,14 @@ format_decision_items_for_state() {
       continue
     fi
 
+    [[ "$line" =~ ^#+[[:space:]] ]] && continue
     line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
     local lower_line
     lower_line=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
     [[ "$lower_line" == "none" ]] && continue
     [[ "$lower_line" == "none." ]] && continue
     [[ "$lower_line" == "_(no decisions yet)_" ]] && continue
+    line=$(printf '%s\n' "$line" | sed 's/|/\\|/g')
     echo "| $line | | |"
   done <<< "$items"
 }
@@ -546,9 +548,7 @@ fi
 
 # --- Write merged sections into restored STATE.md ---
 if [ -f "$ROOT_STATE" ]; then
-  if [ -n "$merged_todos" ]; then
-    replace_or_append_section "$ROOT_STATE" "todos" "## Todos" "$merged_todos"
-  fi
+  replace_or_append_section "$ROOT_STATE" "todos" "## Todos" "${merged_todos:-None.}"
   replace_or_append_section "$ROOT_STATE" "decisions" "## Key Decisions" "$merged_decisions"
   if [ -n "$merged_blockers" ]; then
     replace_or_append_named_section "$ROOT_STATE" "Blockers" "$merged_blockers"

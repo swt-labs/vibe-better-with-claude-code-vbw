@@ -134,12 +134,14 @@ normalize_decisions_section() {
       if (low ~ /^\|[[:space:]]*decision([[:space:]]*\|.*)?$/) next
       if (low ~ /^\|[[:space:]:-]+\|?[[:space:]]*$/) next
       if ($0 ~ /^[[:space:]]*$/) next
+      if ($0 ~ /^#+[[:space:]]/) next
       if ($0 ~ /^\|/) {
         print
         next
       }
       line=$0
       sub(/^[-*][[:space:]]+/, "", line)
+      gsub(/\|/, "\\|", line)
       print "| " line " | | |"
     }
   ' | while IFS= read -r line; do

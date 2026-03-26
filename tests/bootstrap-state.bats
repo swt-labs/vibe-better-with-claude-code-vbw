@@ -242,6 +242,28 @@ EOF
   grep -q '^None\.$' .vbw-planning/STATE.md
 }
 
+@test "bootstrap-state: skips decision subheadings and escapes literal pipes" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+### API
+- Use REST | GraphQL fallback
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  ! grep -q '^| ### API | | |$' .vbw-planning/STATE.md
+  grep -q '^| Use REST \\| GraphQL fallback | | |$' .vbw-planning/STATE.md
+}
+
 @test "bootstrap-state: preserves legacy Pending Todos subsection" {
   cd "$TEST_TEMP_DIR"
   cat > .vbw-planning/STATE.md <<'EOF'

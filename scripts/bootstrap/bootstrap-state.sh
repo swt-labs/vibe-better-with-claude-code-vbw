@@ -128,6 +128,7 @@ format_decisions_table() {
       continue
     fi
 
+    [[ "$line" =~ ^#+[[:space:]] ]] && continue
     line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
     local lower_line
     lower_line=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
@@ -135,6 +136,7 @@ format_decisions_table() {
     [[ "$lower_line" == "none" ]] && continue
     [[ "$lower_line" == "none." ]] && continue
     [[ "$lower_line" == "_(no decisions yet)_" ]] && continue
+    line=$(printf '%s\n' "$line" | sed 's/|/\\|/g')
     echo "| $line | | |"
     emitted=1
   done <<< "$decisions"
