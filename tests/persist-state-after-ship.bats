@@ -523,6 +523,27 @@ EOF
   grep -q "None\." .vbw-planning/STATE.md
 }
 
+@test "persist script emits canonical sections when decisions and todos headings are missing" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Missing Sections Test
+
+## Blockers
+None
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Missing Sections Test"
+  [ "$status" -eq 0 ]
+  grep -q '^## Key Decisions$' .vbw-planning/STATE.md
+  grep -q '_(No decisions yet)_' .vbw-planning/STATE.md
+  grep -q '^## Todos$' .vbw-planning/STATE.md
+  grep -q '^None\.$' .vbw-planning/STATE.md
+}
+
 @test "persist script removes placeholder lines when real decisions or todos exist" {
   cd "$TEST_TEMP_DIR"
   mkdir -p .vbw-planning/milestones/m1

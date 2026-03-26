@@ -118,7 +118,13 @@ section_has_body() {
 
 normalize_decisions_section() {
   local section="$1"
-  [[ -n "$section" ]] || return 0
+  if [[ -z "$section" ]]; then
+    echo "## Key Decisions"
+    echo "| Decision | Date | Rationale |"
+    echo "|----------|------|-----------|"
+    echo "| _(No decisions yet)_ | | |"
+    return 0
+  fi
 
   local rows
   rows=$(printf '%s\n' "$section" | awk '
@@ -156,7 +162,11 @@ normalize_decisions_section() {
 
 normalize_todos_section() {
   local section="$1"
-  [[ -n "$section" ]] || return 0
+  if [[ -z "$section" ]]; then
+    echo "## Todos"
+    echo "None."
+    return 0
+  fi
 
   local rows
   rows=$(printf '%s\n' "$section" | awk '

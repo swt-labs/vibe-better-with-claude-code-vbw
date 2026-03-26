@@ -183,6 +183,13 @@ else
   fail "vibe: missing milestone CONTEXT refresh instructions for phase mutations"
 fi
 
+preserve_count=$(grep -c 'Preserve project-level key decisions and deferred ideas where still valid\.' "$VIBE_FILE" 2>/dev/null || echo 0)
+if [ "$preserve_count" -eq 3 ]; then
+  pass "vibe: add/insert/remove preserve milestone decisions and deferred ideas"
+else
+  fail "vibe: expected 3 preservation instructions for milestone CONTEXT refresh, found $preserve_count"
+fi
+
 echo ""
 echo "=== Command Reference Verification ==="
 

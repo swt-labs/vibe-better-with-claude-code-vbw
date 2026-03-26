@@ -489,6 +489,9 @@ fi
 merged_todos=$(merge_items "todos" "$archived_todos" "$root_todos")
 merged_decisions=$(merge_items "decisions" "$archived_decisions" "$root_decisions")
 merged_blockers=$(merge_items "todos" "$archived_blockers" "$root_blockers")
+if [ -n "$root_codebase" ] && printf '%s\n' "$root_codebase" | grep -Eq '^[[:space:]]*None\.?[[:space:]]*$'; then
+  root_codebase=""
+fi
 effective_codebase="$root_codebase"
 if [ -z "$effective_codebase" ]; then
   effective_codebase="$archived_codebase"
