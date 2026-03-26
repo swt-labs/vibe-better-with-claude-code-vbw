@@ -189,6 +189,49 @@ teardown() {
   [ "$HASH1" != "$HASH2" ]
 }
 
+@test "cache-context.sh: research fingerprint changes hash when phase path contains spaces" {
+  SPACE_ROOT="$TEST_TEMP_DIR/space dir"
+  mkdir -p "$SPACE_ROOT/.vbw-planning/phases/02-test phase"
+
+  cat > "$SPACE_ROOT/.vbw-planning/config.json" <<'EOF'
+{"v3_context_cache": true}
+EOF
+  cat > "$SPACE_ROOT/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+## Phase 2: Test Phase
+**Goal:** Test goal
+**Success:** Tests pass
+**Reqs:** REQ-01
+EOF
+  cat > "$SPACE_ROOT/.vbw-planning/phases/02-test phase/02-01-PLAN.md" <<'EOF'
+---
+phase: 2
+plan: 1
+title: "Test Plan"
+wave: 1
+depends_on: []
+must_haves: ["test"]
+---
+EOF
+  echo "## Findings
+- v1" > "$SPACE_ROOT/.vbw-planning/phases/02-test phase/02-RESEARCH.md"
+
+  cd "$SPACE_ROOT"
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    ".vbw-planning/phases/02-test phase/02-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  echo "## Findings
+- v2" > "$SPACE_ROOT/.vbw-planning/phases/02-test phase/02-RESEARCH.md"
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    ".vbw-planning/phases/02-test phase/02-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" != "$HASH2" ]
+}
+
 @test "cache-context.sh: roadmap fingerprint changes hash when ROADMAP.md changes" {
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \

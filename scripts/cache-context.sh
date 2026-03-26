@@ -95,7 +95,11 @@ if [[ "$ROLE" =~ ^(lead|dev|scout|debugger|architect)$ ]]; then
   if [ -n "$PHASE_DIR_CACHE" ] && [ -d "$PHASE_DIR_CACHE" ]; then
     RESEARCH_FILES=$(find "$PHASE_DIR_CACHE" -maxdepth 1 -name "*-RESEARCH.md" 2>/dev/null | sort)
     if [ -n "$RESEARCH_FILES" ]; then
-      RESEARCH_SUM=$(cat $RESEARCH_FILES 2>/dev/null | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "noresearch")
+      RESEARCH_SUM=$(printf '%s\n' "$RESEARCH_FILES" | while IFS= read -r research_file; do
+        [ -n "$research_file" ] || continue
+        printf '%s\n' "$research_file"
+        shasum -a 256 "$research_file" 2>/dev/null || true
+      done | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "noresearch")
       HASH_INPUT="${HASH_INPUT}:research=${RESEARCH_SUM}"
     else
       HASH_INPUT="${HASH_INPUT}:research=none"

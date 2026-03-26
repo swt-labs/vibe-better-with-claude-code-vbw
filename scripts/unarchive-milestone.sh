@@ -93,6 +93,11 @@ extract_decision_items() {
         found=0
       }
 
+      if (found && low ~ /^###[[:space:]]+pending[[:space:]]+todos[[:space:]]*$/) {
+        found=0
+        next
+      }
+
       if (!found) {
         next
       }

@@ -587,6 +587,32 @@ EOF
   grep -q 'Document migration edge-cases' ".vbw-planning/STATE.md"
 }
 
+@test "unarchive keeps Pending Todos out of decisions when nested under Decisions" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Decisions
+- Keep feature flags conservative
+
+### Pending Todos
+- Document migration edge-cases
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+
+  awk '/^## Key Decisions$/{f=1;next} /^## /{f=0} f{print}' ".vbw-planning/STATE.md" > "$TEST_TEMP_DIR/decisions.txt"
+  awk '/^## Todos$/{f=1;next} /^## /{f=0} f{print}' ".vbw-planning/STATE.md" > "$TEST_TEMP_DIR/todos.txt"
+  grep -q 'Keep feature flags conservative' "$TEST_TEMP_DIR/decisions.txt"
+  grep -q 'Document migration edge-cases' "$TEST_TEMP_DIR/todos.txt"
+  ! grep -q 'Document migration edge-cases' "$TEST_TEMP_DIR/decisions.txt"
+}
+
 @test "merges compact table decisions without space after pipe" {
   create_archived_milestone "foundation"
 
