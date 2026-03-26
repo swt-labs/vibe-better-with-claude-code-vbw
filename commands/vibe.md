@@ -154,7 +154,7 @@ Every mode triggers confirmation via AskUserQuestion before executing, with cont
 - **Exception:** `--yolo` skips all confirmation gates. Error guards (missing roadmap, uninitialized project) still halt.
 - **Exception:** Flags skip confirmation (explicit intent).
 
-**Discussion-aware alternatives (NON-NEGOTIABLE):** Alternatives must reflect whether discussion has already happened for the target phase. Never offer "discuss this phase" when a `{NN}-CONTEXT.md` exists — discussion is already complete.
+**Discussion-aware alternatives (NON-NEGOTIABLE):** Alternatives must reflect whether discussion has already happened for the target phase. Never offer "discuss this phase" as if discussion never happened — when `{NN}-CONTEXT.md` exists, use continuation-aware wording like "Start a discussion" (which enters the Discussion Engine's continuation mode, building on existing context rather than repeating it).
 
 | Routing state | Recommended | Alternatives |
 | --- | --- | --- |

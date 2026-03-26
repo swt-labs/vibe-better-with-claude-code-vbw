@@ -88,6 +88,8 @@ Present gray areas as a multi-select using AskUserQuestion.
 
 ## Step 3: Explore
 
+**Early exit:** If no areas were selected (user chose "None — discussion is complete" in Step 2), skip directly to Step 4.
+
 For each selected area, have a natural conversation. Not a form. Not a fixed number of questions.
 
 The rhythm:
