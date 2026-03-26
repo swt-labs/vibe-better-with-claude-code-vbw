@@ -259,7 +259,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - **Gathered date** and **Calibration** (builder or architect, inferred from conversation signals — same as Discussion Engine calibration)
    - **Scope Boundary:** the user's scope description from step 2
    - **Decomposition Decisions:** rationale for phase count, grouping, and ordering from step 3
-    - **Scope Coverage:** what the milestone covers vs what is explicitly excluded or deferred
+   - **Scope Coverage:** what the milestone covers vs what is explicitly excluded or deferred
    - **Requirement Mapping:** which REQ-IDs map to which phases (from step 3)
    - **Key Decisions:** project-level decisions surfaced during scoping (tech choices, architecture patterns that transcend the milestone). Also insert these as rows in STATE.md's `## Key Decisions` table (append after the header row, replacing the `_(No decisions yet)_` placeholder if present). Milestone-scoped decisions (phase ordering rationale, scope boundaries) stay only in CONTEXT.md.
    - **Deferred Ideas:** out-of-scope ideas mentioned during steps 2-3
@@ -500,7 +500,7 @@ This mode handles the case where a milestone was archived before UAT issues were
      RESEARCH_NAME=$(bash "$RESOLVE_SCRIPT" research "{phase-dir}" --plan-number "$MM")
      ```
    - Check for per-plan research `{phase-dir}/${RESEARCH_NAME}` (preferred) or legacy `{phase-dir}/{phase}-RESEARCH.md` (fallback).
-   - **If neither exists:** If `config_context_compiler=true`, compile Scout context first: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} scout {phases_dir}`. Include `.context-scout.md` in the Scout prompt if produced, described as: "compiled context — includes milestone scope decisions (decomposition rationale, scope boundaries, cross-phase key decisions) and phase operational context (goal, success criteria, matched requirements)."
+   - **If neither exists:** If `config_context_compiler=true`, compile Scout context first: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} scout {phases_dir}`. Include `.context-scout.md` in the Scout prompt if produced, described as: "compiled context — includes milestone scope decisions (decomposition rationale, scope boundaries, cross-phase key decisions) and phase operational context (goal, success criteria, matched requirements, conventions, changed files)."
      Spawn Scout agent to research the phase goal, requirements, and relevant codebase patterns. Scout writes its findings directly to the output path. Pass `<output_path>{phase-dir}/${RESEARCH_NAME}</output_path>` in the Scout prompt so Scout writes the file using its Write tool. If a legacy `{phase-dir}/{phase}-RESEARCH.md` exists, delete it after Scout writes the per-plan file to avoid stale context. After Scout completes, confirm the file exists (read first line). Resolve Scout model:
      ```bash
      SCOUT_MODEL=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json)
@@ -602,7 +602,7 @@ Before reading:
 3. **Compile context:** If `config_context_compiler=true`, run:
    - `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} dev {phases_dir} {plan_path}`
    - `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} qa {phases_dir}`
-   Include compiled context paths in Dev and QA task descriptions. When referencing `.context-dev.md`, describe it as: "compiled context — includes milestone scope decisions (decomposition rationale, scope boundaries, cross-phase key decisions) and phase operational context (goal, conventions, research findings)." When referencing `.context-qa.md`, describe it as: "compiled context — includes milestone scope decisions and phase verification targets (success criteria, requirements, test expectations)."
+   Include compiled context paths in Dev and QA task descriptions. When referencing `.context-dev.md`, describe it as: "compiled context — includes milestone scope decisions (decomposition rationale, scope boundaries, cross-phase key decisions) and phase operational context (goal, conventions, active plan, research findings, changed files, code slices)." When referencing `.context-qa.md`, describe it as: "compiled context — includes milestone scope decisions and phase verification context (success criteria, requirements, conventions to check)."
 
 Then Read the protocol file and execute Steps 2-5 as written.
 
