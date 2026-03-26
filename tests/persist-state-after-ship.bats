@@ -107,7 +107,7 @@ EOF
   grep -q "## Todos" .vbw-planning/STATE.md
   grep -q "Fix auth module regression" .vbw-planning/STATE.md
   grep -q "Migrate to new API" .vbw-planning/STATE.md
-  grep -q "## Decisions" .vbw-planning/STATE.md
+  grep -q "## Key Decisions" .vbw-planning/STATE.md
   grep -q "## Blockers" .vbw-planning/STATE.md
 }
 
@@ -145,6 +145,27 @@ EOF
   grep -q "Primary languages: Swift" .vbw-planning/STATE.md
 }
 
+@test "persist script preserves real Codebase Profile lines when placeholder is also present" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Codebase Profile
+None.
+- Brownfield: true
+- Primary languages: Swift
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Test Project"
+  [ "$status" -eq 0 ]
+  grep -q 'Brownfield: true' .vbw-planning/STATE.md
+  grep -q 'Primary languages: Swift' .vbw-planning/STATE.md
+}
+
 @test "strips stale Skills subsection from Decisions during persist" {
   cd "$TEST_TEMP_DIR"
   create_state_with_skills ".vbw-planning/STATE.md"
@@ -157,7 +178,8 @@ EOF
   [ "$status" -eq 0 ]
 
   # Decisions content should survive
-  grep -q "## Decisions" .vbw-planning/STATE.md
+  grep -q "## Key Decisions" .vbw-planning/STATE.md
+  grep -q '^| Decision | Date | Rationale |$' .vbw-planning/STATE.md
   grep -q "Use Core Data" .vbw-planning/STATE.md
   # Skills subsection should be stripped
   ! grep -q "### Skills" .vbw-planning/STATE.md
@@ -522,6 +544,60 @@ EOF
   grep -q "None\." .vbw-planning/STATE.md
 }
 
+@test "persist script emits canonical sections when decisions and todos headings are missing" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Missing Sections Test
+
+## Blockers
+None
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Missing Sections Test"
+  [ "$status" -eq 0 ]
+  grep -q '^## Key Decisions$' .vbw-planning/STATE.md
+  grep -q '_(No decisions yet)_' .vbw-planning/STATE.md
+  grep -q '^## Todos$' .vbw-planning/STATE.md
+  grep -q '^None\.$' .vbw-planning/STATE.md
+}
+
+@test "persist script removes placeholder lines when real decisions or todos exist" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Mixed Placeholder Test
+
+## Decisions
+- _(No decisions yet)_
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |
+
+## Todos
+None.
+
+### Pending Todos
+- Migrate session store
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Mixed Placeholder Test"
+  [ "$status" -eq 0 ]
+
+  ! grep -q '_(No decisions yet)_' .vbw-planning/STATE.md
+  grep -q 'Keep auth service isolated' .vbw-planning/STATE.md
+  grep -q 'Migrate session store' .vbw-planning/STATE.md
+  ! grep -q '^None\.$' .vbw-planning/STATE.md
+}
+
 # Duplicate ## Todos — second group's items should be merged into output
 @test "persist script merges content from duplicate section headings" {
   cd "$TEST_TEMP_DIR"
@@ -624,6 +700,159 @@ EOF
   # Milestone sections should still be excluded
   ! grep -qi "Current Phase" .vbw-planning/STATE.md
   ! grep -qi "Activity Log" .vbw-planning/STATE.md
+}
+
+@test "persist script keeps legacy Pending Todos out of Decisions" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Pending Todos Test
+
+## Decisions
+- Keep auth service isolated
+
+### Pending Todos
+- Migrate session store
+- Rework onboarding copy
+
+## Blockers
+None
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Pending Todos Test"
+  [ "$status" -eq 0 ]
+
+  awk '/^## Key Decisions$/{f=1;next} /^## /{f=0} f{print}' .vbw-planning/STATE.md > "$TEST_TEMP_DIR/decisions.txt"
+  awk '/^## Todos$/{f=1;next} /^## /{f=0} f{print}' .vbw-planning/STATE.md > "$TEST_TEMP_DIR/todos.txt"
+  grep -q 'Keep auth service isolated' "$TEST_TEMP_DIR/decisions.txt"
+  grep -q 'Migrate session store' "$TEST_TEMP_DIR/todos.txt"
+  ! grep -q 'Migrate session store' "$TEST_TEMP_DIR/decisions.txt"
+}
+
+@test "persist script strips bullet None todo placeholders" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Bullet None Todo Test
+
+## Decisions
+- Keep auth service isolated
+
+## Todos
+- None.
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Bullet None Todo Test"
+  [ "$status" -eq 0 ]
+  ! grep -q '^- None\.$' .vbw-planning/STATE.md
+  grep -q '^None\.$' .vbw-planning/STATE.md
+}
+
+@test "persist script emits canonical key decisions without subheading rows" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Canonical Decisions Test
+
+## Decisions
+### API
+- Use REST | GraphQL fallback
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Canonical Decisions Test"
+  [ "$status" -eq 0 ]
+  grep -q '^## Key Decisions$' .vbw-planning/STATE.md
+  ! grep -q '^| ### API | | |$' .vbw-planning/STATE.md
+  grep -q '^| Use REST \\| GraphQL fallback | | |$' .vbw-planning/STATE.md
+}
+
+@test "persist script does not append empty placeholder when real decisions exist" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Placeholder Regression Test
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Placeholder Regression Test"
+  [ "$status" -eq 0 ]
+  ! grep -q '_(No decisions yet)_' .vbw-planning/STATE.md
+  grep -q 'Keep auth service isolated' .vbw-planning/STATE.md
+}
+
+@test "persist script dedupes identical decisions across legacy and canonical headings" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Dedupe Decisions Test
+
+## Decisions
+- Keep auth service isolated
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | | |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Dedupe Decisions Test"
+  [ "$status" -eq 0 ]
+  count=$(grep -c 'Keep auth service isolated' .vbw-planning/STATE.md)
+  [ "$count" -eq 1 ]
+}
+
+@test "persist script keeps richer canonical decision rows over legacy bullets" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Dedupe Decisions Test
+
+## Decisions
+- Keep auth service isolated
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Dedupe Decisions Test"
+  [ "$status" -eq 0 ]
+  grep -q '| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |' .vbw-planning/STATE.md
 }
 
 # Finding 5 (QA R4): bootstrap-state.sh also tolerates extra spaces

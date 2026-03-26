@@ -218,9 +218,44 @@ EOF
 
   # Table-format "Add caching layer" from root should survive merge
   grep -q 'caching layer' ".vbw-planning/STATE.md"
+  grep -q '| Use REST API for backend | 2026-02-15 | Performance requirements |' ".vbw-planning/STATE.md"
 
   # List-format "PostgreSQL for data store" from archive should survive
   grep -q 'PostgreSQL for data store' ".vbw-planning/STATE.md"
+}
+
+@test "root decision row wins tie against archived decision row" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| Use REST API for backend | 2026-02-10 | Archived rationale |
+
+## Todos
+None.
+EOF
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| Use REST API for backend | 2026-02-18 | Root rationale |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q '| Use REST API for backend | 2026-02-18 | Root rationale |' ".vbw-planning/STATE.md"
+  ! grep -q 'Archived rationale' ".vbw-planning/STATE.md"
 }
 
 @test "aborts when root phases/ has active work" {
@@ -231,13 +266,320 @@ EOF
   run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
     ".vbw-planning/milestones/foundation" ".vbw-planning"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"root phases/ directory contains files"* ]]
+  [[ "$output" == *"root phases/ directory contains active milestone artifacts"* ]]
 
   # Root phases should be untouched
   [ -f ".vbw-planning/phases/01-current/PLAN.md" ]
 
   # Archived milestone should still exist
   [ -d ".vbw-planning/milestones/foundation/phases" ]
+}
+
+@test "aborts when root phases/ contains empty scoped milestone dirs" {
+  create_archived_milestone "foundation"
+  mkdir -p ".vbw-planning/phases/01-new-scope"
+  cat > ".vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+## Phase 1: New Scope
+EOF
+  cat > ".vbw-planning/CONTEXT.md" <<'EOF'
+# New Scope — Milestone Context
+
+## Scope Boundary
+Fresh scoped work
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"root phases/ directory contains active milestone artifacts"* ]]
+
+  [ -d ".vbw-planning/phases/01-new-scope" ]
+  [ -f ".vbw-planning/ROADMAP.md" ]
+  [ -f ".vbw-planning/CONTEXT.md" ]
+  [ -d ".vbw-planning/milestones/foundation/phases" ]
+}
+
+@test "aborts when root roadmap or context exists without phases" {
+  create_archived_milestone "foundation"
+  cat > ".vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+## Phase 1: New Scope
+EOF
+  cat > ".vbw-planning/CONTEXT.md" <<'EOF'
+# New Scope — Milestone Context
+
+## Scope Boundary
+Fresh scoped work
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"root ROADMAP.md or CONTEXT.md exists"* ]]
+
+  [ -f ".vbw-planning/ROADMAP.md" ]
+  [ -f ".vbw-planning/CONTEXT.md" ]
+  [ -d ".vbw-planning/milestones/foundation/phases" ]
+}
+
+@test "ignores hidden placeholder files in root phases/" {
+  create_archived_milestone "foundation"
+  mkdir -p ".vbw-planning/phases"
+  touch ".vbw-planning/phases/.DS_Store"
+  touch ".vbw-planning/phases/.gitkeep"
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+
+  [ -d ".vbw-planning/phases/01-setup" ]
+  [ -f ".vbw-planning/ROADMAP.md" ]
+}
+
+@test "ignores empty phase dirs when no roadmap or context exists" {
+  create_archived_milestone "foundation"
+  mkdir -p ".vbw-planning/phases/01-stale-empty"
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+
+  [ -d ".vbw-planning/phases/01-setup" ]
+  [ -f ".vbw-planning/ROADMAP.md" ]
+}
+
+@test "restores key decisions with canonical table header" {
+  create_archived_milestone "foundation"
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+
+  grep -q '^| Decision | Date | Rationale |$' ".vbw-planning/STATE.md"
+  grep -q '^|----------|------|-----------|$' ".vbw-planning/STATE.md"
+  grep -q 'Use REST API for backend' ".vbw-planning/STATE.md"
+}
+
+@test "unarchive ignores empty decision placeholders when merging real decisions" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Key Decisions
+- _(No decisions yet)_
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '_(No decisions yet)_' ".vbw-planning/STATE.md"
+  grep -q 'Use REST API for backend' ".vbw-planning/STATE.md"
+}
+
+@test "unarchive ignores bare None decision placeholders" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Key Decisions
+- None
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '| None | | |' ".vbw-planning/STATE.md"
+  grep -q 'Use REST API for backend' ".vbw-planning/STATE.md"
+}
+
+@test "unarchive ignores bullet None todo placeholders" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Todos
+- None.
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | | |
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '^- None\.$' ".vbw-planning/STATE.md"
+  grep -q 'Upgrade deps after milestone' ".vbw-planning/STATE.md"
+}
+
+@test "unarchive rewrites placeholder-only todos to canonical None" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | | |
+
+## Todos
+- None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '^- None\.$' ".vbw-planning/STATE.md"
+  grep -q '^None\.$' ".vbw-planning/STATE.md"
+}
+
+@test "unarchive skips decision subheadings and escapes literal pipes" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Decisions
+### API
+- Use REST | GraphQL fallback
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '^| ### API | | |$' ".vbw-planning/STATE.md"
+  grep -q '^| Use REST \\| GraphQL fallback | | |$' ".vbw-planning/STATE.md"
+}
+
+@test "unarchive does not duplicate canonical table separator rows" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  count=$(grep -c '^|----------|------|-----------|$' ".vbw-planning/STATE.md")
+  [ "$count" -eq 1 ]
+}
+
+@test "unarchive keeps escaped-pipe decision rows distinct from plain rows" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| REST | 2026-02-10 | Archived rationale |
+
+## Todos
+None.
+EOF
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| REST \| GraphQL fallback | 2026-02-18 | Root rationale |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q '| REST | 2026-02-10 | Archived rationale |' ".vbw-planning/STATE.md"
+  grep -q '| REST \\| GraphQL fallback | 2026-02-18 | Root rationale |' ".vbw-planning/STATE.md"
+}
+
+@test "unarchive rewrites placeholder-only decisions to canonical empty table" {
+  mkdir -p ".vbw-planning/milestones/empty/phases/01-setup"
+  touch ".vbw-planning/milestones/empty/phases/01-setup/01-01-PLAN.md"
+  touch ".vbw-planning/milestones/empty/phases/01-setup/01-01-SUMMARY.md"
+  cat > ".vbw-planning/milestones/empty/ROADMAP.md" <<'EOF'
+# Roadmap
+## Phase 1: Setup
+EOF
+  cat > ".vbw-planning/milestones/empty/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Key Decisions
+- _(No decisions yet)_
+
+## Todos
+None.
+EOF
+  cat > ".vbw-planning/milestones/empty/SHIPPED.md" <<'EOF'
+# Shipped
+EOF
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Key Decisions
+None.
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/empty" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q '^| Decision | Date | Rationale |$' ".vbw-planning/STATE.md"
+  grep -q '^| _(No decisions yet)_ | | |$' ".vbw-planning/STATE.md"
+  ! grep -q '^- _(No decisions yet)_' ".vbw-planning/STATE.md"
+  ! awk '
+    /^## Key Decisions$/ { in_section=1; next }
+    in_section && /^## / { in_section=0 }
+    in_section { print }
+  ' ".vbw-planning/STATE.md" | grep -q '^None\.$'
 }
 
 @test "dedups todos with varied priority tag formats" {
@@ -350,6 +692,32 @@ EOF
   grep -q 'Document migration edge-cases' ".vbw-planning/STATE.md"
 }
 
+@test "unarchive keeps Pending Todos out of decisions when nested under Decisions" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Decisions
+- Keep feature flags conservative
+
+### Pending Todos
+- Document migration edge-cases
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+
+  awk '/^## Key Decisions$/{f=1;next} /^## /{f=0} f{print}' ".vbw-planning/STATE.md" > "$TEST_TEMP_DIR/decisions.txt"
+  awk '/^## Todos$/{f=1;next} /^## /{f=0} f{print}' ".vbw-planning/STATE.md" > "$TEST_TEMP_DIR/todos.txt"
+  grep -q 'Keep feature flags conservative' "$TEST_TEMP_DIR/decisions.txt"
+  grep -q 'Document migration edge-cases' "$TEST_TEMP_DIR/todos.txt"
+  ! grep -q 'Document migration edge-cases' "$TEST_TEMP_DIR/decisions.txt"
+}
+
 @test "merges compact table decisions without space after pipe" {
   create_archived_milestone "foundation"
 
@@ -371,4 +739,119 @@ EOF
 
   grep -q 'Add caching layer' ".vbw-planning/STATE.md"
   grep -q 'PostgreSQL for data store' ".vbw-planning/STATE.md"
+}
+
+@test "preserves root blockers and codebase profile when unarchiving" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Blockers
+- Root blocker from active notes
+
+## Codebase Profile
+- Root codebase profile note
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q 'Root blocker from active notes' ".vbw-planning/STATE.md"
+  grep -q 'Root codebase profile note' ".vbw-planning/STATE.md"
+}
+
+@test "placeholder root codebase profile does not override archived profile" {
+  create_archived_milestone "foundation"
+
+  cat >> ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+
+## Codebase Profile
+- Archived codebase profile note
+EOF
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Codebase Profile
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q 'Archived codebase profile note' ".vbw-planning/STATE.md"
+}
+
+@test "placeholder archived codebase profile is not restored" {
+  create_archived_milestone "foundation"
+
+  cat >> ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+
+## Codebase Profile
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '^## Codebase Profile$' ".vbw-planning/STATE.md"
+}
+
+@test "mixed archived codebase profile keeps real lines and drops placeholder" {
+  create_archived_milestone "foundation"
+
+  cat >> ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+
+## Codebase Profile
+None.
+- Archived codebase profile note
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q 'Archived codebase profile note' ".vbw-planning/STATE.md"
+}
+
+@test "unarchive does not preserve Blockers None placeholder alongside real blockers" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+- Use REST API for backend
+
+## Todos
+- Upgrade deps after milestone
+
+## Blockers
+None
+EOF
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Blockers
+- Root blocker from active notes
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q 'Root blocker from active notes' ".vbw-planning/STATE.md"
+  ! awk '
+    /^## Blockers$/ { in_section=1; next }
+    in_section && /^## / { in_section=0 }
+    in_section { print }
+  ' ".vbw-planning/STATE.md" | grep -q '^None$'
 }
