@@ -287,7 +287,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 **Guard:** Initialized, phase exists in roadmap.
 **Phase auto-detection:** First phase without `*-CONTEXT.md`. All discussed: STOP "All phases discussed. Specify: `/vbw:vibe --discuss N`"
 
-**Continuation mode:** When the target phase already has a `{NN}-CONTEXT.md`, this is a **continuation discussion** — not a fresh one. Display: "Phase {NN} already has discussion context. Continuing to explore additional topics." The Discussion Engine will load existing decisions as baseline and focus on uncovered gray areas.
+**Continuation mode:** When the target phase already has a `{NN}-CONTEXT.md`, this is a **continuation discussion** — not a fresh one. If the CONTEXT.md has `pre_seeded: true` in its YAML frontmatter (remediation phase), WARN the user that this phase has pre-seeded UAT context and ask whether they want to re-discuss (which overwrites the pre-seeded content) or skip discussion and proceed to planning. Otherwise display: "Phase {NN} already has discussion context. Continuing to explore additional topics." The Discussion Engine will load existing decisions as baseline and focus on uncovered gray areas.
 
 **Steps:**
 1. Determine target phase from $ARGUMENTS or auto-detection.
