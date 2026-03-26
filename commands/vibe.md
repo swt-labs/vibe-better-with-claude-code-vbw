@@ -470,7 +470,17 @@ This mode handles the case where a milestone was archived before UAT issues were
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/create-remediation-phase.sh .vbw-planning "$dir"
    done
    ```
-   The script also writes a `.remediated` marker in each source milestone phase dir to prevent re-triggering on future sessions. After creating all phases, write a ROADMAP.md and update STATE.md reflecting the remediation phases, then route to Plan mode for the first phase.
+   The script also writes a `.remediated` marker in each source milestone phase dir to prevent re-triggering on future sessions. After creating all phases, write a ROADMAP.md and update STATE.md reflecting the remediation phases.
+   **Remediation commit boundary (conditional):**
+   ```bash
+  PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "create milestone remediation phases" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
+   ```
+   Then route to Plan mode for the first phase.
 5. If the user chooses start-fresh: persist acknowledgement markers for all affected archived phases before continuing:
    ```bash
    TARGET_PHASE_DIRS="$milestone_uat_phase_dirs"
