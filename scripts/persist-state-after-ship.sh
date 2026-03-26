@@ -227,7 +227,6 @@ normalize_decisions_section() {
   if [ "${#rows_out[@]}" -eq 0 ]; then
     echo "| _(No decisions yet)_ | | |"
   else
-    emitted=1
     for row in "${rows_out[@]}"; do
       printf '%s\n' "$row"
     done

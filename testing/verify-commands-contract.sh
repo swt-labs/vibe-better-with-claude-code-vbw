@@ -172,24 +172,31 @@ echo ""
 echo "=== Milestone Context Refresh Verification ==="
 
 VIBE_FILE="$COMMANDS_DIR/vibe.md"
-if grep -q 'If `\.vbw-planning/CONTEXT\.md` exists, rewrite it to reflect the updated milestone decomposition' "$VIBE_FILE"; then
-  refresh_count=$(grep -c 'If `\.vbw-planning/CONTEXT\.md` exists, rewrite it to reflect the updated milestone decomposition' "$VIBE_FILE")
-  if [ "$refresh_count" -eq 3 ]; then
-    pass "vibe: add/insert/remove all refresh milestone CONTEXT.md"
-  else
-    fail "vibe: expected 3 milestone CONTEXT refresh instructions, found $refresh_count"
-  fi
-else
-  fail "vibe: missing milestone CONTEXT refresh instructions for phase mutations"
-fi
+mode_block() {
+  local heading="$1"
+  awk -v h="$heading" '
+    $0 == h { found=1; print; next }
+    found && /^### Mode: / { exit }
+    found { print }
+  ' "$VIBE_FILE"
+}
 
-preserve_count=$(grep -c 'Preserve project-level key decisions and deferred ideas where still valid\.' "$VIBE_FILE" 2>/dev/null || true)
-preserve_count=${preserve_count:-0}
-if [ "$preserve_count" -eq 3 ]; then
-  pass "vibe: add/insert/remove preserve milestone decisions and deferred ideas"
-else
-  fail "vibe: expected 3 preservation instructions for milestone CONTEXT refresh, found $preserve_count"
-fi
+for mode in "### Mode: Add Phase" "### Mode: Insert Phase" "### Mode: Remove Phase"; do
+  block=$(mode_block "$mode")
+  label=${mode#"### Mode: "}
+
+  if printf '%s\n' "$block" | grep -q 'If `\.vbw-planning/CONTEXT\.md` exists, rewrite it to reflect the updated milestone decomposition'; then
+    pass "vibe: $label refreshes milestone CONTEXT.md"
+  else
+    fail "vibe: $label missing milestone CONTEXT refresh instruction"
+  fi
+
+  if printf '%s\n' "$block" | grep -q 'Preserve project-level key decisions and deferred ideas where still valid\.'; then
+    pass "vibe: $label preserves milestone decisions and deferred ideas"
+  else
+    fail "vibe: $label missing preservation instruction for milestone CONTEXT refresh"
+  fi
+done
 
 echo ""
 echo "=== Command Reference Verification ==="
