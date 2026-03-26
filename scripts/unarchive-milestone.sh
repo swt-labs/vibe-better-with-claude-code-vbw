@@ -147,9 +147,10 @@ normalize_todo_item() {
 # For table rows, dedup by the decision text (first column) only.
 normalize_decision_item() {
   local line="$1"
+  local escaped_pipe='__VBW_ESCAPED_PIPE__'
 
   if [[ "$line" =~ ^\| ]]; then
-    line=$(printf '%s\n' "$line" | sed 's/^|//' | awk -F'|' '{print $1}')
+    line=$(printf '%s\n' "$line" | sed "s/\\\\|/${escaped_pipe}/g" | sed 's/^|//' | sed 's/|$//' | awk -F'|' '{print $1}' | sed "s/${escaped_pipe}/|/g")
   else
     line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
   fi
@@ -166,13 +167,14 @@ normalize_decision_item() {
 decision_item_score() {
   local line="$1"
   local score=0
+  local escaped_pipe='__VBW_ESCAPED_PIPE__'
 
   if [[ "$line" =~ ^\| ]]; then
     local cols col1 col2 col3
-    cols=$(printf '%s\n' "$line" | sed 's/^|//; s/|$//')
-    col1=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}')
-    col2=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}')
-    col3=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $3); print $3}')
+    cols=$(printf '%s\n' "$line" | sed "s/\\\\|/${escaped_pipe}/g" | sed 's/^|//; s/|$//')
+    col1=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}' | sed "s/${escaped_pipe}/|/g")
+    col2=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}' | sed "s/${escaped_pipe}/|/g")
+    col3=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $3); print $3}' | sed "s/${escaped_pipe}/|/g")
     [ -n "$col1" ] && score=1
     [ -n "$col2" ] && score=$((score + 1))
     [ -n "$col3" ] && score=$((score + 1))

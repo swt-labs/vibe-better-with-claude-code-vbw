@@ -169,6 +169,21 @@ for pd_cmd in $PHASE_DETECT_REQUIRED_COMMANDS; do
 done
 
 echo ""
+echo "=== Milestone Context Refresh Verification ==="
+
+VIBE_FILE="$COMMANDS_DIR/vibe.md"
+if grep -q 'If `\.vbw-planning/CONTEXT\.md` exists, rewrite it to reflect the updated milestone decomposition' "$VIBE_FILE"; then
+  refresh_count=$(grep -c 'If `\.vbw-planning/CONTEXT\.md` exists, rewrite it to reflect the updated milestone decomposition' "$VIBE_FILE")
+  if [ "$refresh_count" -eq 3 ]; then
+    pass "vibe: add/insert/remove all refresh milestone CONTEXT.md"
+  else
+    fail "vibe: expected 3 milestone CONTEXT refresh instructions, found $refresh_count"
+  fi
+else
+  fail "vibe: missing milestone CONTEXT refresh instructions for phase mutations"
+fi
+
+echo ""
 echo "=== Command Reference Verification ==="
 
 while IFS= read -r ref; do

@@ -476,6 +476,40 @@ EOF
   grep -q '^| Use REST \\| GraphQL fallback | | |$' ".vbw-planning/STATE.md"
 }
 
+@test "unarchive keeps escaped-pipe decision rows distinct from plain rows" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| REST | 2026-02-10 | Archived rationale |
+
+## Todos
+None.
+EOF
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| REST \| GraphQL fallback | 2026-02-18 | Root rationale |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  grep -q '| REST | 2026-02-10 | Archived rationale |' ".vbw-planning/STATE.md"
+  grep -q '| REST \\| GraphQL fallback | 2026-02-18 | Root rationale |' ".vbw-planning/STATE.md"
+}
+
 @test "unarchive rewrites placeholder-only decisions to canonical empty table" {
   mkdir -p ".vbw-planning/milestones/empty/phases/01-setup"
   touch ".vbw-planning/milestones/empty/phases/01-setup/01-01-PLAN.md"
