@@ -165,7 +165,6 @@ normalize_decisions_section() {
   echo "| Decision | Date | Rationale |"
   echo "|----------|------|-----------|"
 
-  local emitted=0
   local -a seen_keys=()
   local -a rows_out=()
   local -a scores=()
