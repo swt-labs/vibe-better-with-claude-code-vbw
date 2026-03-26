@@ -457,6 +457,29 @@ replace_or_append_named_section() {
   rm -f "$content_file"
 }
 
+remove_named_section() {
+  local file="$1" heading="$2"
+  local tmp="${file}.tmp.$$"
+
+  awk -v h="$heading" '
+    BEGIN { pat = tolower(h) }
+    {
+      low = tolower($0)
+      if (skip && /^## /) {
+        skip = 0
+      }
+      if (skip) {
+        next
+      }
+      if (low ~ ("^##[[:space:]]+" pat "[[:space:]]*$")) {
+        skip = 1
+        next
+      }
+      print
+    }
+  ' "$file" > "$tmp" && mv "$tmp" "$file"
+}
+
 ROOT_STATE="$PLANNING_DIR/STATE.md"
 ARCHIVED_STATE="$MILESTONE_DIR/STATE.md"
 ROOT_ROADMAP="$PLANNING_DIR/ROADMAP.md"
@@ -491,6 +514,9 @@ merged_decisions=$(merge_items "decisions" "$archived_decisions" "$root_decision
 merged_blockers=$(merge_items "todos" "$archived_blockers" "$root_blockers")
 if [ -n "$root_codebase" ] && printf '%s\n' "$root_codebase" | grep -Eq '^[[:space:]]*None\.?[[:space:]]*$'; then
   root_codebase=""
+fi
+if [ -n "$archived_codebase" ] && printf '%s\n' "$archived_codebase" | grep -Eq '^[[:space:]]*None\.?[[:space:]]*$'; then
+  archived_codebase=""
 fi
 effective_codebase="$root_codebase"
 if [ -z "$effective_codebase" ]; then
@@ -560,6 +586,8 @@ if [ -f "$ROOT_STATE" ]; then
   fi
   if [ -n "$effective_codebase" ]; then
     replace_or_append_named_section "$ROOT_STATE" "Codebase Profile" "$effective_codebase"
+  else
+    remove_named_section "$ROOT_STATE" "Codebase Profile"
   fi
 fi
 

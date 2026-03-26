@@ -787,6 +787,21 @@ EOF
   grep -q 'Archived codebase profile note' ".vbw-planning/STATE.md"
 }
 
+@test "placeholder archived codebase profile is not restored" {
+  create_archived_milestone "foundation"
+
+  cat >> ".vbw-planning/milestones/foundation/STATE.md" <<'EOF'
+
+## Codebase Profile
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '^## Codebase Profile$' ".vbw-planning/STATE.md"
+}
+
 @test "unarchive does not preserve Blockers None placeholder alongside real blockers" {
   create_archived_milestone "foundation"
 
