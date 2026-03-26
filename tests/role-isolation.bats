@@ -101,7 +101,7 @@ CONTRACT
 @test "file-guard: allows remediation round SUMMARY with in-progress status" {
   cd "$TEST_TEMP_DIR"
   CONTENT='---\nphase: 3\nround: 7\ntitle: Fix bugs\nstatus: in-progress\ntasks_completed: 0\ntasks_total: 5\n---\n\n## Task 1: Fix it\nDone.'
-  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/phases/03-test/remediation/round-07/R07-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
+  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/phases/03-test/remediation/uat/round-07/R07-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
   run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
   [ "$status" -eq 0 ]
 }
@@ -109,7 +109,7 @@ CONTRACT
 @test "file-guard: allows remediation round SUMMARY with terminal status" {
   cd "$TEST_TEMP_DIR"
   CONTENT='---\nphase: 3\nround: 7\ntitle: Fix bugs\nstatus: complete\ntasks_completed: 5\ntasks_total: 5\n---\n\nAll done.'
-  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/phases/03-test/remediation/round-07/R07-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
+  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/phases/03-test/remediation/uat/round-07/R07-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
   run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
   [ "$status" -eq 0 ]
 }
@@ -134,7 +134,7 @@ CONTRACT
 @test "file-guard: blocks archived milestone remediation SUMMARY" {
   cd "$TEST_TEMP_DIR"
   CONTENT='---\nstatus: in-progress\n---\nTask.'
-  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/milestones/01-foundation/phases/03-test/remediation/round-01/R01-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
+  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/milestones/01-foundation/phases/03-test/remediation/uat/round-01/R01-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
   run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"archived milestone"* ]]

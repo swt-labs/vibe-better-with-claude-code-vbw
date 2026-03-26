@@ -466,6 +466,57 @@ fi
 ```
 When the agent type is in the skip list, QA is skipped automatically without needing `--skip-qa` flag. Docs-only changes don't need formal QA.
 
+**Dev-surfaced issues collection (before spawning QA):**
+After all plans are complete (Step 3c verified), collect deviations and pre-existing issues from all SUMMARY.md files. This data is passed to QA in the task description so QA can treat deviations as FAIL checks and persist pre-existing issues in VERIFICATION.md.
+
+```bash
+# Collect deviations and pre-existing issues from all SUMMARY.md files
+DEV_ISSUES=""
+for summary_file in {phase-dir}/*-SUMMARY.md; do
+  [ -f "$summary_file" ] || continue
+  plan_id=$(basename "$summary_file" | sed 's/-SUMMARY\.md$//')
+
+  # Extract deviations from YAML frontmatter
+  devs=$(awk '
+    BEGIN { in_fm=0; in_dev=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^deviations:/ { in_dev=1; next }
+    in_fm && in_dev && /^[[:space:]]+- / {
+      line=$0; sub(/^[[:space:]]+- /, "", line)
+      gsub(/^"/, "", line); gsub(/"$/, "", line)
+      items = items (items ? "; " : "") line; next
+    }
+    in_fm && in_dev && /^[^[:space:]]/ { exit }
+    END { print items }
+  ' "$summary_file" 2>/dev/null)
+
+  # Extract pre-existing issues from body
+  preex=$(awk '
+    /^## Pre-existing Issues/ { found=1; next }
+    found && /^## / { exit }
+    found && /^[[:space:]]*$/ { next }
+    found && /^- / { line=$0; sub(/^- /, "", line); items = items (items ? "; " : "") line }
+    END { print items }
+  ' "$summary_file" 2>/dev/null)
+
+  if [ -n "$devs" ]; then
+    DEV_ISSUES="${DEV_ISSUES}DEVIATIONS (Plan ${plan_id}): ${devs}\n"
+  fi
+  if [ -n "$preex" ]; then
+    DEV_ISSUES="${DEV_ISSUES}PREEXISTING (Plan ${plan_id}): ${preex}\n"
+  fi
+done
+```
+
+If `DEV_ISSUES` is non-empty, include it in the QA task description:
+```
+Dev-surfaced issues (include in VERIFICATION.md):
+${DEV_ISSUES}
+DEVIATIONS are plan violations — treat each as a FAIL check.
+PREEXISTING items go in the "Pre-existing Issues" section of VERIFICATION.md.
+```
+
 **Tier resolution:** When `validation_gates=true`: use `qa_tier` from gate policy resolved in Step 3.
 When `validation_gates=false` (default): map effort to tier: turbo=skip (already handled), fast=quick, balanced=standard, thorough=deep. Override: if >15 requirements or last phase before ship, force Deep.
 
@@ -492,6 +543,64 @@ VERIF_BASE="${VERIF_NAME%.md}"
 
 **CRITICAL:** Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation when spawning QA agents. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 **CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "qa"` (or `name: "qa-wave{W}"` for per-wave QA) parameters to each QA Task tool invocation.
+
+### Step 4.1: QA Result Gating (NON-NEGOTIABLE)
+
+After QA completes (subagent returns or teammate sends `qa_verdict`), read the VERIFICATION.md result:
+```bash
+QA_RESULT=$(awk '
+  BEGIN { in_fm=0 }
+  NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+  in_fm && /^---[[:space:]]*$/ { exit }
+  in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+' "{phase-dir}/${VERIF_NAME}" 2>/dev/null)
+```
+
+**Branch on QA result:**
+- **PASS:** Display `◆ QA: PASS` — proceed to Step 4.5 (UAT)
+- **FAIL or PARTIAL:** Display `◆ QA: ${QA_RESULT}` — enter QA remediation loop below
+- **Missing/unreadable:** Display `⚠ QA: VERIFICATION.md missing or unreadable` — treat as FAIL, enter remediation loop
+
+**QA Remediation Loop (inline, same session):**
+
+This loop runs inline during execution — no second `/vbw:vibe` call needed. If the session ends mid-loop, phase-detect will detect the `.qa-remediation-stage` state file and route to `needs_qa_remediation` on the next `/vbw:vibe` call.
+
+1. **Init state:**
+   ```bash
+   bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" init "{phase-dir}"
+   ```
+   Parse output: `stage`, `round`, `round_dir`
+
+2. **Loop (max 3 rounds):**
+   ```
+   while round <= 3:
+   ```
+
+   **stage=plan:** Create `R{RR}-PLAN.md` in `{round_dir}`:
+   - Read VERIFICATION.md for failed checks — each failure becomes a fix item
+   - Scope the plan: what to fix, which files, acceptance criteria
+   - The orchestrator writes the plan (QA identified problems, orchestrator determines fixes)
+   - Advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
+
+   **stage=execute:** Spawn a Dev subagent per `R{RR}-PLAN.md`:
+   - **Always subagent — NO team creation for QA remediation (NON-NEGOTIABLE)**
+   - Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"`
+   - Dev fixes code, commits, writes `R{RR}-SUMMARY.md` in `{round_dir}`
+   - After Dev completes, advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
+
+   **stage=verify:** Re-run QA:
+   - Spawn QA agent as subagent — overwrites the phase-level VERIFICATION.md
+   - Include dev-surfaced issues from the round's `R{RR}-SUMMARY.md` (same collection logic as Step 4)
+   - After QA returns, read VERIFICATION.md result:
+     - **PASS:** Advance to done: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`, display `◆ QA remediation: PASS (round {RR})`, break loop, proceed to Step 4.5
+     - **FAIL/PARTIAL:** Start new round: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" needs-round "{phase-dir}"`, display `◆ QA remediation round {RR}: ${QA_RESULT}`, continue loop
+
+3. **After max rounds (3):** If QA still fails, display:
+   ```
+   ⚠ QA remediation exhausted (3 rounds). Remaining failures:
+   {list failed checks from VERIFICATION.md}
+   ```
+   Proceed to Step 5 (output) with `QA: FAIL` — do NOT enter UAT.
 
 ### Step 4.5: Human acceptance testing (UAT)
 

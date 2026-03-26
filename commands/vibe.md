@@ -116,10 +116,11 @@ Then re-run phase-detect.sh and use updated output for routing below.
 | 1 | `planning_dir_exists=false` | Init redirect | (redirect, no confirmation) |
 | 2 | `project_exists=false` | Bootstrap | "No project defined. Set one up?" |
 | 3 | `next_phase_state=needs_uat_remediation` | UAT Remediation | auto_uat=true: no confirmation. auto_uat=false: "Phase {NN} has unresolved UAT issues. Continue with remediation now?" |
+| 3.5 | `next_phase_state=needs_qa_remediation` | QA Remediation | auto_uat=true: no confirmation. auto_uat=false: "Phase {NN} has QA failures. Continue with QA remediation?" |
 | 4 | `next_phase_state=needs_reverification` | Re-verify | auto_uat=true: no confirmation. auto_uat=false: "Phase {NN} remediation complete. Run re-verification?" |
 | 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
 | 6 | `phase_count=0` | Scope | "Project defined but no phases. Scope the work?" |
-| 7 | `next_phase_state=needs_verification` | Verify | (no confirmation — auto_uat intent) |
+| 7 | `next_phase_state=needs_verification` | Verify | (no confirmation — auto_uat intent). **QA gate:** If `qa_status=pending`, spawn QA inline first (see QA Gate section below). If `qa_status=failed`, enter QA remediation inline. Only proceed to Verify mode when `qa_status` is `passed` or `remediated`. |
 | 8 | `next_phase_state=needs_discussion` | Discuss | "Phase {NN} needs discussion before planning. Start discussion?" |
 | 9 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {NN} needs planning and execution. Start?" |
 | 10 | `next_phase_state=needs_execute` | Execute | "Phase {NN} is planned. Execute it?" |
@@ -139,6 +140,47 @@ When `next_phase_state=needs_reverification`, execute these steps inline in the 
 The `needs_reverification` state fires regardless of `auto_uat` — remediation always requires re-verification. The `auto_uat` flag only controls whether the user is prompted for confirmation.
 
 **auto_uat verification (needs_verification):** When `next_phase_state=needs_verification`, **continue directly into Verify mode below** targeting phase `{next_phase}` (from phase-detect output) — do NOT stop and tell the user to run a separate command. Verify mode runs the CHECKPOINT loop **inline in this conversation** via AskUserQuestion — do NOT spawn a QA agent or any subagent for UAT (see Verify mode's inline execution rule). This state fires when `auto_uat=true` and a completed phase has no UAT verification yet, regardless of whether later phases still need work. After verification completes, the next `/vbw:vibe` call re-runs phase-detect and routes to the next pending phase.
+
+**QA gate before UAT (needs_verification) — NON-NEGOTIABLE:**
+Before entering Verify mode (UAT), check `qa_status` from phase-detect output:
+- `qa_status=passed` or `qa_status=remediated`: proceed to Verify mode (UAT).
+- `qa_status=pending` (no VERIFICATION.md — QA never ran): spawn QA inline first. Resolve QA model, compile QA context, and spawn the QA agent as a subagent (same as execute-protocol Step 4). After QA returns, read VERIFICATION.md result:
+  - PASS → proceed to Verify mode (UAT)
+  - FAIL/PARTIAL → init QA remediation: `bash {plugin-root}/scripts/qa-remediation-state.sh init {phase-dir}`, then enter QA Remediation mode below
+- `qa_status=failed` (VERIFICATION.md exists with FAIL/PARTIAL): init QA remediation and enter QA Remediation mode
+- `qa_status=remediating`: should not reach here (phase-detect routes to `needs_qa_remediation` first)
+- `--skip-qa` flag: bypass all QA gates, proceed directly to Verify mode
+
+**QA Remediation mode (needs_qa_remediation) — cross-session recovery:**
+When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persisted stage. This is the cross-session recovery path — the inline execution path is in execute-protocol.md Step 4.
+
+1. Read current state: `bash {plugin-root}/scripts/qa-remediation-state.sh get {phase-dir}`
+   Parse output: `stage`, `round`, `round_dir`
+2. Read VERIFICATION.md for the phase to identify failed checks
+
+**Stage-specific actions:**
+
+- **stage=plan:** Create `R{RR}-PLAN.md` in `{round_dir}`:
+  - Read VERIFICATION.md failed checks — these are the "issues" to fix
+  - Scope the plan to VERIFICATION.md failures: what to fix, which files, acceptance criteria
+  - The orchestrator/Lead writes the plan (QA says what's wrong, planning says how to fix)
+  - After writing the plan, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
+
+- **stage=execute:** Spawn a Dev subagent per `R{RR}-PLAN.md`:
+  - Always subagent — NO team creation for QA remediation (NON-NEGOTIABLE)
+  - Dev fixes code, commits, writes `R{RR}-SUMMARY.md` in `{round_dir}`
+  - After Dev completes, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
+
+- **stage=verify:** Re-run QA:
+  - Spawn QA agent as subagent — overwrites the phase-level VERIFICATION.md
+  - After QA returns, read VERIFICATION.md result:
+    - PASS → advance to done: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`, then **continue directly into Verify mode** for the phase
+    - FAIL/PARTIAL → start new round: `bash {plugin-root}/scripts/qa-remediation-state.sh needs-round {phase-dir}`, loop back to stage=plan
+    - After max rounds (3): display failures, STOP — surface to user
+
+- **stage=done:** Proceed to Verify mode (UAT) for the phase
+
+**QA Remediation + UAT blocking:** UAT cannot start while QA remediation is active. The `needs_qa_remediation` state takes priority over `needs_verification` in the routing table.
 
 **all_done + natural language:** If $ARGUMENTS describe new work (bug, feature, task) and state is `all_done`, route to Add Phase mode instead of Archive. Add Phase handles codebase context loading and research internally — do NOT spawn an Explore agent or do ad-hoc research before entering the mode.
 
@@ -347,13 +389,13 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - Both resume and init paths emit **plan metadata** after the stage line:
      ```text
      round=RR              — zero-padded current round number (e.g., 01)
-     round_dir=<path>      — full path to the round directory (e.g., .vbw-planning/phases/03-slug/remediation/round-01)
+     round_dir=<path>      — full path to the round directory (e.g., .vbw-planning/phases/03-slug/remediation/uat/round-01)
      research_path=<path>  — path to existing RESEARCH.md (empty if none)
      plan_path=<path>      — path to existing PLAN.md (empty if none)
      ```
      **Use these values directly** — do NOT glob `*-PLAN.md` or search for RESEARCH.md files. The script pre-computes all paths from the phase directory (with legacy phase-root fallback for brownfield projects).
    - If a stage was already persisted (resume after compaction/restart), the script returns the stage word + plan metadata with no side effects.
-   - If no stage existed (first entry into remediation), the script initializes the stage file, creates `remediation/round-01/` directory, pre-seeds the phase `{NN}-CONTEXT.md`, and returns the stage word + plan metadata + `---CONTEXT---` separator with the full pre-seeded context content — **use this directly as your remediation context. Do NOT separately read UAT.md or `{NN}-CONTEXT.md` files.**
+   - If no stage existed (first entry into remediation), the script initializes the stage file, creates `remediation/uat/round-01/` directory, pre-seeds the phase `{NN}-CONTEXT.md`, and returns the stage word + plan metadata + `---CONTEXT---` separator with the full pre-seeded context content — **use this directly as your remediation context. Do NOT separately read UAT.md or `{NN}-CONTEXT.md` files.**
    - If the returned stage is `done`: UAT remediation already completed for this phase. Display "Remediation already completed. Run `/vbw:vibe` to re-verify." STOP.
    **Task list (NON-NEGOTIABLE ordering and state):** Immediately after resolving the stage, create a task list with items in **exactly this order** for the major path: (1) Research, (2) Plan, (3) Execute. For the minor path: (1) Fix. **Item numbering must match stage order** — Research is always #1, Plan #2, Execute #3. Never reorder items.
    - **Initial creation:** If the resolved stage is `research`, mark Research as in-progress, Plan and Execute as not-started. If the resolved stage is `plan` (resume case), mark Research as completed, Plan as in-progress, Execute as not-started. If `execute`, mark Research and Plan as completed, Execute as in-progress.

@@ -739,8 +739,8 @@ EOF
   # Legacy state file should be removed
   [ ! -f "$dir/.uat-remediation-stage" ]
   # New-location state file should persist with advanced round
-  [ -f "$dir/remediation/.uat-remediation-stage" ]
-  grep -q 'round=02' "$dir/remediation/.uat-remediation-stage"
+  [ -f "$dir/remediation/uat/.uat-remediation-stage" ]
+  grep -q 'round=02' "$dir/remediation/uat/.uat-remediation-stage"
   # Output should confirm
   [[ "$output" == *"archived=01-UAT.md"* ]]
   [[ "$output" == *"round_file=01-UAT-round-01.md"* ]]
@@ -761,8 +761,8 @@ EOF
   [ -f "$dir/01-UAT-round-03.md" ]
   [[ "$output" == *"round_file=01-UAT-round-03.md"* ]]
   # State file should show advanced round (from legacy round=01 to round=02)
-  [ -f "$dir/remediation/.uat-remediation-stage" ]
-  grep -q 'stage=research' "$dir/remediation/.uat-remediation-stage"
+  [ -f "$dir/remediation/uat/.uat-remediation-stage" ]
+  grep -q 'stage=research' "$dir/remediation/uat/.uat-remediation-stage"
 }
 
 @test "prepare-reverification is idempotent when no UAT exists (already archived)" {
@@ -814,7 +814,7 @@ EOF
   run git diff --cached --name-only --diff-filter=A
   [[ "$output" == *"01-UAT-round-01.md"* ]]
   # New-location state file should be staged for addition (persists with updated round)
-  [[ "$output" == *"remediation/.uat-remediation-stage"* ]]
+  [[ "$output" == *"remediation/uat/.uat-remediation-stage"* ]]
 
   # Legacy .uat-remediation-stage should be staged for deletion
   run git diff --cached --name-only --diff-filter=D
@@ -1020,8 +1020,8 @@ EOF
   # Round file should exist
   ls "$dir"/01-UAT-round-*.md 2>/dev/null | grep -q .
   # New-location state file should persist with advanced round
-  [ -f "$dir/remediation/.uat-remediation-stage" ]
-  grep -q 'stage=research' "$dir/remediation/.uat-remediation-stage"
+  [ -f "$dir/remediation/uat/.uat-remediation-stage" ]
+  grep -q 'stage=research' "$dir/remediation/uat/.uat-remediation-stage"
 }
 
 # --- QA round 6: body-fallback tightening (finding #1) ---
@@ -1144,12 +1144,12 @@ EOF
   # UAT with issues triggers remediation path
   printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
   # Remediation round-01 in execute stage with round-dir layout
-  mkdir -p "$dir/remediation"
-  printf 'stage=execute\nround=01\nlayout=round-dir\n' > "$dir/remediation/.uat-remediation-stage"
+  mkdir -p "$dir/remediation/uat"
+  printf 'stage=execute\nround=01\nlayout=round-dir\n' > "$dir/remediation/uat/.uat-remediation-stage"
   # Round-01 has PLAN and an in-progress SUMMARY (not terminal)
-  mkdir -p "$dir/remediation/round-01"
-  printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/round-01/R01-PLAN.md"
-  printf -- '---\nstatus: in-progress\ntasks_completed: 1\ntasks_total: 5\n---\n\n## Task 1: Done\n' > "$dir/remediation/round-01/R01-SUMMARY.md"
+  mkdir -p "$dir/remediation/uat/round-01"
+  printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/uat/round-01/R01-PLAN.md"
+  printf -- '---\nstatus: in-progress\ntasks_completed: 1\ntasks_total: 5\n---\n\n## Task 1: Done\n' > "$dir/remediation/uat/round-01/R01-SUMMARY.md"
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
@@ -1161,11 +1161,11 @@ EOF
   cd "$TEST_TEMP_DIR"
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
   printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
-  mkdir -p "$dir/remediation"
-  printf 'stage=execute\nround=01\nlayout=round-dir\n' > "$dir/remediation/.uat-remediation-stage"
-  mkdir -p "$dir/remediation/round-01"
-  printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/round-01/R01-PLAN.md"
-  printf -- '---\nstatus: complete\ntasks_completed: 5\ntasks_total: 5\n---\n\nAll done.\n' > "$dir/remediation/round-01/R01-SUMMARY.md"
+  mkdir -p "$dir/remediation/uat"
+  printf 'stage=execute\nround=01\nlayout=round-dir\n' > "$dir/remediation/uat/.uat-remediation-stage"
+  mkdir -p "$dir/remediation/uat/round-01"
+  printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/uat/round-01/R01-PLAN.md"
+  printf -- '---\nstatus: complete\ntasks_completed: 5\ntasks_total: 5\n---\n\nAll done.\n' > "$dir/remediation/uat/round-01/R01-SUMMARY.md"
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
@@ -1177,11 +1177,11 @@ EOF
   cd "$TEST_TEMP_DIR"
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
   printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
-  mkdir -p "$dir/remediation"
-  printf 'stage=execute\nround=01\nlayout=round-dir\n' > "$dir/remediation/.uat-remediation-stage"
-  mkdir -p "$dir/remediation/round-01"
-  printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/round-01/R01-PLAN.md"
-  printf -- '---\nstatus: partial\ntasks_completed: 3\ntasks_total: 5\n---\n\nPartial.\n' > "$dir/remediation/round-01/R01-SUMMARY.md"
+  mkdir -p "$dir/remediation/uat"
+  printf 'stage=execute\nround=01\nlayout=round-dir\n' > "$dir/remediation/uat/.uat-remediation-stage"
+  mkdir -p "$dir/remediation/uat/round-01"
+  printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/uat/round-01/R01-PLAN.md"
+  printf -- '---\nstatus: partial\ntasks_completed: 3\ntasks_total: 5\n---\n\nPartial.\n' > "$dir/remediation/uat/round-01/R01-SUMMARY.md"
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
@@ -1192,11 +1192,11 @@ EOF
   cd "$TEST_TEMP_DIR"
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
   printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
-  mkdir -p "$dir/remediation"
-  printf 'stage=execute\nround=01\nlayout=round-dir\n' > "$dir/remediation/.uat-remediation-stage"
-  mkdir -p "$dir/remediation/round-01"
-  printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/round-01/R01-PLAN.md"
-  printf -- '---\nstatus: failed\ntasks_completed: 0\ntasks_total: 5\n---\n\nFailed.\n' > "$dir/remediation/round-01/R01-SUMMARY.md"
+  mkdir -p "$dir/remediation/uat"
+  printf 'stage=execute\nround=01\nlayout=round-dir\n' > "$dir/remediation/uat/.uat-remediation-stage"
+  mkdir -p "$dir/remediation/uat/round-01"
+  printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/uat/round-01/R01-PLAN.md"
+  printf -- '---\nstatus: failed\ntasks_completed: 0\ntasks_total: 5\n---\n\nFailed.\n' > "$dir/remediation/uat/round-01/R01-SUMMARY.md"
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]

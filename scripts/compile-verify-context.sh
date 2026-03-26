@@ -53,7 +53,11 @@ fi
 if [ "$REMEDIATION_ONLY" = true ]; then
   # Find the latest completed round (has both R{RR}-PLAN.md and R{RR}-SUMMARY.md)
   LATEST_ROUND=""
-  REMED_DIR="$PHASE_DIR/remediation"
+  REMED_DIR="$PHASE_DIR/remediation/uat"
+  # Legacy fallback: check old path if new doesn't exist
+  if [ ! -d "$REMED_DIR" ] && [ -d "$PHASE_DIR/remediation" ]; then
+    REMED_DIR="$PHASE_DIR/remediation"
+  fi
   if [ -d "$REMED_DIR" ]; then
     _best_round_num=0
     for round_dir in "$REMED_DIR"/round-*/; do
@@ -75,7 +79,7 @@ if [ "$REMEDIATION_ONLY" = true ]; then
     rr=$(printf '%02d' "$LATEST_ROUND")
     ALL_PLAN_FILES=$(find "$REMED_DIR/round-$rr" -maxdepth 1 -name "R${rr}-PLAN.md" 2>/dev/null | sort)
     SCOPE_HEADER="verify_scope=remediation round=$rr"
-    UAT_PATH="remediation/round-$rr/R${rr}-UAT.md"
+    UAT_PATH="remediation/uat/round-$rr/R${rr}-UAT.md"
   else
     # Fallback: no completed round found — use full scope
     REMEDIATION_ONLY=false
@@ -85,7 +89,7 @@ fi
 if [ "$REMEDIATION_ONLY" = false ]; then
   # Full scope: all phase-root plans + all round-dir plans
   PLAN_FILES=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | sort)
-  ROUND_PLAN_FILES=$(find "$PHASE_DIR" -path '*/remediation/round-*/R*-PLAN.md' 2>/dev/null | sort)
+  ROUND_PLAN_FILES=$(find "$PHASE_DIR" -path '*/remediation/uat/round-*/R*-PLAN.md' 2>/dev/null | sort)
 
   ALL_PLAN_FILES="$PLAN_FILES"
   if [ -n "$ROUND_PLAN_FILES" ]; then
@@ -195,6 +199,36 @@ while IFS= read -r plan_file; do
       }
       END { print files }
     ' "$SUMMARY_FILE" 2>/dev/null) || FILES_MODIFIED=""
+
+    # Extract deviations from SUMMARY.md YAML frontmatter
+    DEVIATIONS=$(awk '
+      BEGIN { in_fm=0; in_dev=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^deviations:/ { in_dev=1; next }
+      in_fm && in_dev && /^[[:space:]]+- / {
+        line = $0
+        sub(/^[[:space:]]+- /, "", line)
+        gsub(/^"/, "", line); gsub(/"$/, "", line)
+        items = items (items ? "; " : "") line
+        next
+      }
+      in_fm && in_dev && /^[^[:space:]]/ { exit }
+      END { print items }
+    ' "$SUMMARY_FILE" 2>/dev/null) || DEVIATIONS=""
+
+    # Extract pre-existing issues from body section
+    PRE_EXISTING=$(awk '
+      /^## Pre-existing Issues/ { found=1; next }
+      found && /^## / { exit }
+      found && /^[[:space:]]*$/ { next }
+      found && /^[-|]/ {
+        line = $0
+        sub(/^- /, "", line)
+        items = items (items ? "; " : "") line
+      }
+      END { print items }
+    ' "$SUMMARY_FILE" 2>/dev/null) || PRE_EXISTING=""
   fi
 
   # Emit structured block
@@ -208,6 +242,8 @@ while IFS= read -r plan_file; do
   fi
   echo "files_modified: ${FILES_MODIFIED:-none}"
   echo "status: ${STATUS}"
+  echo "deviations: ${DEVIATIONS:-none}"
+  echo "pre_existing_issues: ${PRE_EXISTING:-none}"
   echo ""
 done <<< "$ALL_PLAN_FILES"
 

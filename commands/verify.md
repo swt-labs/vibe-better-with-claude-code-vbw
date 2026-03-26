@@ -79,6 +79,19 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   - Fallback: scan phase dirs for first with `*-SUMMARY.md` but no canonical `*-UAT.md` (exclude `*-SOURCE-UAT.md` copies).
   - Found: announce "Auto-detected Phase {NN} ({slug})". All verified: STOP "All phases have UAT results. Specify: `/vbw:verify {NN}`"
 - No SUMMARY.md in target phase dir: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
+- **QA gate (NON-NEGOTIABLE unless `--skip-qa`):** Before entering UAT Steps, check whether QA has passed for the target phase. Read `qa_status` from Phase state (Context above). If not present, check for VERIFICATION.md in the target phase dir:
+  ```bash
+  PDIR=".vbw-planning/phases/{target-slug}"
+  PHASE_NUM=$(echo "{target-slug}" | sed 's/^\([0-9]*\).*/\1/')
+  VERIF_FILE=$(find "$PDIR" -maxdepth 1 ! -name '.*' -name "${PHASE_NUM}-VERIFICATION.md" 2>/dev/null | head -1)
+  QA_REM_FILE="$PDIR/remediation/qa/.qa-remediation-stage"
+  ```
+  - If `$QA_REM_FILE` exists with `stage` not equal to `done`: STOP "Phase {NN} has active QA remediation (round {round}, stage {stage}). Run `/vbw:vibe` to continue QA remediation before UAT."
+  - If no VERIFICATION.md and no `--skip-qa`: STOP "Phase {NN} has no QA verification. Run `/vbw:vibe` to execute QA first, or use `/vbw:verify --skip-qa` to bypass."
+  - If VERIFICATION.md exists, read its frontmatter `result:` field:
+    - `PASS`: proceed to UAT Steps
+    - `FAIL` or `PARTIAL`: STOP "Phase {NN} QA result is {result}. Run `/vbw:vibe` to continue QA remediation, or use `/vbw:verify --skip-qa` to bypass."
+  - If `--skip-qa` flag is present: bypass all QA checks, proceed to UAT Steps
 
 ## Steps
 
@@ -99,7 +112,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   Use the refreshed output in place of the pre-computed blocks from Context.
 - Use pre-computed verify context from the "Pre-computed verify context" block above (or refreshed output if normalization ran) — it contains per-plan titles, must_haves, what was built, files modified, and status. Do NOT read individual `*-SUMMARY.md` or `*-PLAN.md` files.
 - **Parse `verify_scope`** from the first line of the verify context block. When `verify_scope=remediation round=RR`, this is a re-verification session scoped to remediation round RR only. When `verify_scope=full`, standard full-scope verification. Use this in Step 4 to determine test framing.
-- **Parse `uat_path`** from the second line of the verify context block. This is the relative path (from phase dir) where the UAT file should be written — e.g., `03-UAT.md` for full scope or `remediation/round-01/R01-UAT.md` for remediation scope. Use this in Steps 4, 8, and 9 instead of hardcoding `{phase}-UAT.md`.
+- **Parse `uat_path`** from the second line of the verify context block. This is the relative path (from phase dir) where the UAT file should be written — e.g., `03-UAT.md` for full scope or `remediation/uat/round-01/R01-UAT.md` for remediation scope. Use this in Steps 4, 8, and 9 instead of hardcoding `{phase}-UAT.md`.
 - **If user specified an explicit phase number** that differs from `verify_target_slug`, ignore the pre-computed context (it was generated for the auto-detected phase). Read PLAN/SUMMARY files from the user-specified phase directory instead — this always uses full scope. Resolve UAT path:
   ```bash
   UAT_NAME=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-artifact-path.sh uat "{phase-dir}")
@@ -173,7 +186,7 @@ If a plan only contains backend/test/script changes with no user-facing behavior
 
 If a plan's work is purely internal (refactor, test infrastructure, script changes) with no user-facing behavior, generate a single lightweight checkpoint asking the user to confirm the app still works as expected from their perspective, rather than asking them to run automated checks.
 
-Write the initial UAT file at `{phase-dir}/{uat_path}` (using the pre-computed `uat_path` from Step 1) using the `templates/UAT.md` format. If the parent directory doesn't exist (e.g., `remediation/round-01/`), create it first.
+Write the initial UAT file at `{phase-dir}/{uat_path}` (using the pre-computed `uat_path` from Step 1) using the `templates/UAT.md` format. If the parent directory doesn't exist (e.g., `remediation/uat/round-01/`), create it first.
 - Populate YAML frontmatter: phase, plan_count, status=in_progress, started=today, total_tests
 - Write all test entries with Result fields empty (no placeholder values)
 
@@ -347,7 +360,7 @@ These are already recorded in the UAT.md and will flow into remediation alongsid
 - If `status=complete`: Remediation verified successfully. Mark remediation as verified (do NOT delete the state file — `current_uat()` needs it to locate the round-dir UAT):
   ```bash
   # Mark remediation as verified — preserves round/layout so current_uat() can still find the round-dir UAT
-  _state_file="{phase-dir}/remediation/.uat-remediation-stage"
+  _state_file="{phase-dir}/remediation/uat/.uat-remediation-stage"
   if [ -f "$_state_file" ]; then
     _cur_round=$(grep '^round=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
     _cur_layout=$(grep '^layout=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')

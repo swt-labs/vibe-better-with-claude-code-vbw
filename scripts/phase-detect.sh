@@ -74,6 +74,8 @@ else
   echo "has_unverified_phases=false"
   echo "first_unverified_phase="
   echo "first_unverified_slug="
+  echo "qa_status=none"
+  echo "qa_round=00"
   echo "has_codebase_map=false"
   echo "brownfield=false"
   echo "execution_state=none"
@@ -287,9 +289,9 @@ if [ -d "$PHASES_DIR" ]; then
         UAT_ROUND_COUNT=$(count_uat_rounds "$TARGET_DIR" "$UAT_ISSUES_PHASE")
         # Check if remediation is complete (stage=done) → needs re-verification
         _rem_stage="none"
-        if [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
+        if [ -f "${TARGET_DIR}remediation/uat/.uat-remediation-stage" ]; then
           # New round-dir state file (key=value format)
-          _rem_stage=$(grep '^stage=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          _rem_stage=$(grep '^stage=' "${TARGET_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
           _rem_stage="${_rem_stage:-none}"
         elif [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
           # Legacy state file (single word)
@@ -309,15 +311,15 @@ if [ -d "$PHASES_DIR" ]; then
         _total_summaries="$NEXT_PHASE_SUMMARIES"
         # Read current round for scoped counting
         _cur_rr="01"
-        if [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
-          _cr_val=$(grep '^round=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+        if [ -f "${TARGET_DIR}remediation/uat/.uat-remediation-stage" ]; then
+          _cr_val=$(grep '^round=' "${TARGET_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
           _cur_rr="${_cr_val:-01}"
         fi
         # Count round-dir plans/summaries for current round only
         # Summary must have terminal status (complete|partial|failed) to count —
         # remediation summaries use an incremental lifecycle (in-progress → terminal).
-        _rd_plans=$(find "$TARGET_DIR" -path "*/remediation/round-${_cur_rr}/R${_cur_rr}-PLAN.md" 2>/dev/null | wc -l | tr -d ' ')
-        _rd_summary_file=$(find "$TARGET_DIR" -path "*/remediation/round-${_cur_rr}/R${_cur_rr}-SUMMARY.md" 2>/dev/null | head -1)
+        _rd_plans=$(find "$TARGET_DIR" -path "*/remediation/uat/round-${_cur_rr}/R${_cur_rr}-PLAN.md" 2>/dev/null | wc -l | tr -d ' ')
+        _rd_summary_file=$(find "$TARGET_DIR" -path "*/remediation/uat/round-${_cur_rr}/R${_cur_rr}-SUMMARY.md" 2>/dev/null | head -1)
         _rd_summaries=0
         if [ -n "$_rd_summary_file" ] && is_summary_terminal "$_rd_summary_file"; then
           _rd_summaries=1
@@ -326,10 +328,10 @@ if [ -d "$PHASES_DIR" ]; then
         _total_summaries=$(( _total_summaries + _rd_summaries ))
         if [ "$_rem_stage" = "execute" ] && [ "$_total_plans" -gt 0 ] && [ "$_total_summaries" -ge "$_total_plans" ]; then
           # Write to whichever state file location exists
-          if [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
-            _cur_round=$(grep '^round=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-            _cur_layout=$(grep '^layout=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-            printf 'stage=done\nround=%s\nlayout=%s\n' "${_cur_round:-01}" "${_cur_layout:-round-dir}" > "${TARGET_DIR}remediation/.uat-remediation-stage"
+          if [ -f "${TARGET_DIR}remediation/uat/.uat-remediation-stage" ]; then
+            _cur_round=$(grep '^round=' "${TARGET_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+            _cur_layout=$(grep '^layout=' "${TARGET_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+            printf 'stage=done\nround=%s\nlayout=%s\n' "${_cur_round:-01}" "${_cur_layout:-round-dir}" > "${TARGET_DIR}remediation/uat/.uat-remediation-stage"
           else
             echo "done" > "${TARGET_DIR}.uat-remediation-stage"
           fi
@@ -417,9 +419,18 @@ fi
 # (LLM synonyms like all_pass, passed, verified are normalized by extract_status_value).
 # Scan runs regardless of NEXT_PHASE_STATE so auto_uat can trigger
 # mid-milestone (not only at all_done).
+#
+# QA status is also computed here for the first unverified phase:
+#   qa_status=pending       — no VERIFICATION.md exists (QA never ran)
+#   qa_status=passed        — VERIFICATION.md exists with result: PASS
+#   qa_status=failed        — VERIFICATION.md exists with result: FAIL or PARTIAL
+#   qa_status=remediating   — QA remediation state file exists with active stage
+#   qa_status=remediated    — QA remediation state file exists with stage=done
 HAS_UNVERIFIED_PHASES=false
 FIRST_UNVERIFIED_PHASE=""
 FIRST_UNVERIFIED_SLUG=""
+QA_STATUS="none"
+QA_ROUND="00"
 if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   for _uv_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
     [ -d "$_uv_dir" ] || continue
@@ -428,6 +439,41 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     [ "$_uv_plans" -gt 0 ] || continue
     _uv_sums=$(count_complete_summaries "$_uv_dir")
     [ "$_uv_sums" -ge "$_uv_plans" ] || continue
+
+    # --- QA remediation state check (blocks unverified detection) ---
+    _qa_rem_stage="none"
+    _qa_rem_round="00"
+    _qa_rem_file="${_uv_dir}remediation/qa/.qa-remediation-stage"
+    if [ -f "$_qa_rem_file" ]; then
+      _qa_rem_stage=$(grep '^stage=' "$_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      _qa_rem_stage="${_qa_rem_stage:-none}"
+      _qa_rem_round=$(grep '^round=' "$_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      _qa_rem_round="${_qa_rem_round:-01}"
+    fi
+
+    # If QA remediation is active (not done), this phase is NOT "unverified" —
+    # it's "in QA remediation". Skip it for unverified detection but record
+    # the QA status for routing.
+    if [ "$_qa_rem_stage" != "none" ] && [ "$_qa_rem_stage" != "done" ]; then
+      if [ -z "$FIRST_UNVERIFIED_PHASE" ]; then
+        _uv_dirname=$(basename "$_uv_dir")
+        FIRST_UNVERIFIED_PHASE=$(echo "$_uv_dirname" | sed 's/^\([0-9]*\).*/\1/')
+        FIRST_UNVERIFIED_SLUG="$_uv_dirname"
+        QA_STATUS="remediating"
+        QA_ROUND="$_qa_rem_round"
+      fi
+      # Don't set HAS_UNVERIFIED_PHASES — QA remediation takes priority
+      break
+    fi
+
+    # --- QA VERIFICATION.md check ---
+    _uv_verif=""
+    _uv_dirname_tmp=$(basename "$_uv_dir")
+    _uv_num_tmp=$(echo "$_uv_dirname_tmp" | sed 's/^\([0-9]*\).*/\1/')
+    if [ -n "$_uv_num_tmp" ]; then
+      _uv_verif=$(find "$_uv_dir" -maxdepth 1 ! -name '.*' -name "${_uv_num_tmp}-VERIFICATION.md" 2>/dev/null | head -1)
+    fi
+
     _uv_uat=$(current_uat "$_uv_dir")
     _uv_is_unverified=false
     if [ -z "$_uv_uat" ]; then
@@ -446,10 +492,43 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
         _uv_dirname=$(basename "$_uv_dir")
         FIRST_UNVERIFIED_PHASE=$(echo "$_uv_dirname" | sed 's/^\([0-9]*\).*/\1/')
         FIRST_UNVERIFIED_SLUG="$_uv_dirname"
+
+        # Compute QA status for this phase
+        if [ "$_qa_rem_stage" = "done" ]; then
+          QA_STATUS="remediated"
+        elif [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+          _qa_result=$(awk '
+            BEGIN { in_fm=0 }
+            NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+            in_fm && /^---[[:space:]]*$/ { exit }
+            in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+          ' "$_uv_verif" 2>/dev/null) || _qa_result=""
+          case "$_qa_result" in
+            PASS) QA_STATUS="passed" ;;
+            FAIL|PARTIAL) QA_STATUS="failed" ;;
+            *) QA_STATUS="pending" ;;
+          esac
+        else
+          QA_STATUS="pending"
+        fi
       fi
       break
     fi
   done
+fi
+
+# --- needs_qa_remediation override: route to QA remediation before verification ---
+# When QA remediation is active (qa_status=remediating), override next_phase_state
+# to needs_qa_remediation. This takes priority over needs_verification.
+if [ "$QA_STATUS" = "remediating" ] && [ -n "$FIRST_UNVERIFIED_PHASE" ]; then
+  NEXT_PHASE="$FIRST_UNVERIFIED_PHASE"
+  NEXT_PHASE_SLUG="$FIRST_UNVERIFIED_SLUG"
+  NEXT_PHASE_STATE="needs_qa_remediation"
+  _QR_DIR="$PHASES_DIR/$FIRST_UNVERIFIED_SLUG"
+  if [ -d "$_QR_DIR" ]; then
+    NEXT_PHASE_PLANS=$(count_phase_plans "$_QR_DIR")
+    NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QR_DIR")
+  fi
 fi
 
 # --- needs_verification override: make auto_uat routing unambiguous ---
@@ -459,7 +538,8 @@ fi
 # vibe.md's priority table (config_auto_uat + has_unverified_phases +
 # next_phase_state != all_done) and makes routing deterministic via a
 # single state check.
-if [ "$CFG_AUTO_UAT_EARLY" = "true" ] && [ "$HAS_UNVERIFIED_PHASES" = "true" ]; then
+# GUARD: Do NOT override when QA remediation is active — that takes priority.
+if [ "$CFG_AUTO_UAT_EARLY" = "true" ] && [ "$HAS_UNVERIFIED_PHASES" = "true" ] && [ "$QA_STATUS" != "remediating" ]; then
   case "$NEXT_PHASE_STATE" in
     needs_discussion|needs_plan_and_execute|needs_execute|all_done)
       NEXT_PHASE="$FIRST_UNVERIFIED_PHASE"
@@ -471,7 +551,7 @@ if [ "$CFG_AUTO_UAT_EARLY" = "true" ] && [ "$HAS_UNVERIFIED_PHASES" = "true" ]; 
         NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_UV_DIR")
       fi
       ;;
-    # Don't override needs_uat_remediation, needs_reverification — those take priority
+    # Don't override needs_uat_remediation, needs_reverification, needs_qa_remediation — those take priority
     *) ;;
   esac
 fi
@@ -485,6 +565,8 @@ echo "next_phase_summaries=$NEXT_PHASE_SUMMARIES"
 echo "has_unverified_phases=$HAS_UNVERIFIED_PHASES"
 echo "first_unverified_phase=$FIRST_UNVERIFIED_PHASE"
 echo "first_unverified_slug=$FIRST_UNVERIFIED_SLUG"
+echo "qa_status=$QA_STATUS"
+echo "qa_round=$QA_ROUND"
 echo "uat_issues_phase=$UAT_ISSUES_PHASE"
 echo "uat_issues_slug=$UAT_ISSUES_SLUG"
 echo "uat_issues_major_or_higher=$UAT_ISSUES_MAJOR_OR_HIGHER"

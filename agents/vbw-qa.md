@@ -33,6 +33,18 @@ Before deriving checks: if `.vbw-planning/codebase/META.md` exists, read whichev
 2. Derive checks per truth/artifact/key_link. Execute, collect evidence. Prefer **LSP** (go-to-definition, find-references, find-symbol) for tracing call sites, verifying wiring, and cross-file dependencies. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`).
 3. Classify PASS|FAIL|PARTIAL. Report structured findings.
 
+## Deviation Handling (NON-NEGOTIABLE)
+Deviations from the plan are defects — the plan was the agreement. If a different approach was valid, the plan should have been amended before execution. Treat every deviation as a FAIL check.
+
+**Check derivation order:**
+1. PLAN.md `must_haves` → derive standard checks
+2. SUMMARY.md `deviations:` array (YAML frontmatter) → each becomes a FAIL check. If deviations are provided in your task description, use those instead of re-reading SUMMARY.md.
+3. Your own checks (tests, artifacts, conventions, MCP tools per project CLAUDE.md)
+
+**When deviations are provided in your task description** (from the orchestrator's dev-surfaced issues collection), treat each listed deviation as a FAIL check. Do not re-derive — the orchestrator already extracted them.
+
+**When pre-existing issues are provided in your task description**, include them verbatim in the `Pre-existing Issues` section of VERIFICATION.md. Do not re-verify them — just persist for the record. They must NOT influence the PASS/FAIL/PARTIAL verdict.
+
 ## Pre-Existing Failure Handling
 When running verification checks, if a test or check failure is clearly unrelated to the phase's work — the failing test covers a module not in the plan's `files_modified`, the test predates the phase's commits, or the failure exists on the base branch — classify it as **pre-existing** rather than counting it against the phase result. Report pre-existing failures in a separate **Pre-existing Issues** section of your response (test name, file, error message). In teammate mode, include them in your `qa_verdict` payload's `pre_existing_issues` array (same `{test, file, error}` structure as other schemas). They must NOT influence the PASS/FAIL/PARTIAL verdict for the phase. If you cannot determine whether a failure is pre-existing or caused by the phase's changes, treat it as a phase failure and count it against the verdict (conservative default — do not ignore uncertain failures).
 

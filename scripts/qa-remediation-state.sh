@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+# qa-remediation-state.sh — Track QA remediation chain progress on disk.
+#
+# Persists the current stage of the plan → execute → verify chain so that
+# the orchestrator can resume correctly after compaction or session restart.
+#
+# Usage:
+#   qa-remediation-state.sh get         <phase-dir>   → prints current stage + metadata
+#   qa-remediation-state.sh advance     <phase-dir>   → advances to next stage
+#   qa-remediation-state.sh reset       <phase-dir>   → removes state file
+#   qa-remediation-state.sh init        <phase-dir>   → initializes for QA remediation
+#   qa-remediation-state.sh needs-round <phase-dir>   → starts a new remediation round
+#
+# Stages: plan → execute → verify → done
+#   (no research/discuss — VERIFICATION.md failures are the input)
+#
+# Remediation artifacts live in {phase-dir}/remediation/qa/round-{RR}/ with
+# R{RR}-PLAN.md, R{RR}-SUMMARY.md naming.
+# State file: {phase-dir}/remediation/qa/.qa-remediation-stage (key=value pairs).
+
+set -eo pipefail
+
+CMD="${1:-}"
+PHASE_DIR="${2:-}"
+
+if [ -z "$CMD" ] || [ -z "$PHASE_DIR" ]; then
+  echo "Usage: qa-remediation-state.sh <get|advance|reset|init|needs-round> <phase-dir>" >&2
+  exit 1
+fi
+
+# Milestone path guard: refuse to operate on archived milestones.
+case "$PHASE_DIR" in
+  */.vbw-planning/milestones/*|.vbw-planning/milestones/*)
+    echo "Error: refusing to operate on archived milestone path: $PHASE_DIR" >&2
+    echo "QA remediation must target active phases in .vbw-planning/phases/" >&2
+    exit 1
+    ;;
+esac
+
+STATE_FILE="$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+# QA remediation stages: plan → execute → verify → done
+STAGES=("plan" "execute" "verify" "done")
+
+get_stage() {
+  if [ -f "$STATE_FILE" ]; then
+    local _val
+    _val=$(grep '^stage=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    echo "${_val:-none}"
+  else
+    echo "none"
+  fi
+}
+
+get_round() {
+  if [ -f "$STATE_FILE" ]; then
+    local _val
+    _val=$(grep '^round=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    echo "${_val:-01}"
+  else
+    echo "01"
+  fi
+}
+
+get_round_dir() {
+  local round
+  round=$(get_round)
+  echo "$PHASE_DIR/remediation/qa/round-${round}"
+}
+
+next_stage() {
+  local current="$1"
+  local found=false
+  for s in "${STAGES[@]}"; do
+    if [ "$found" = true ]; then
+      echo "$s"
+      return 0
+    fi
+    if [ "$s" = "$current" ]; then
+      found=true
+    fi
+  done
+  # If current stage not found or at end, return done
+  echo "done"
+}
+
+start_new_round() {
+  local current_round next_round next_round_padded
+  current_round=$(get_round)
+  next_round=$(( 10#$current_round + 1 ))
+  next_round_padded=$(printf '%02d' "$next_round")
+  mkdir -p "$PHASE_DIR/remediation/qa/round-${next_round_padded}"
+  printf 'stage=plan\nround=%s\n' "$next_round_padded" > "$STATE_FILE"
+  echo "plan"
+  echo "round=${next_round_padded}"
+  echo "round_dir=$PHASE_DIR/remediation/qa/round-${next_round_padded}"
+}
+
+emit_metadata() {
+  local round round_dir plan_path summary_path
+  round=$(get_round)
+  round_dir="$PHASE_DIR/remediation/qa/round-${round}"
+  echo "round=${round}"
+  echo "round_dir=${round_dir}"
+
+  # Report existing artifacts in the round dir
+  plan_path=""
+  if [ -f "${round_dir}/R${round}-PLAN.md" ]; then
+    plan_path="${round_dir}/R${round}-PLAN.md"
+  fi
+  echo "plan_path=${plan_path}"
+
+  summary_path=""
+  if [ -f "${round_dir}/R${round}-SUMMARY.md" ]; then
+    summary_path="${round_dir}/R${round}-SUMMARY.md"
+  fi
+  echo "summary_path=${summary_path}"
+}
+
+case "$CMD" in
+  get)
+    stage=$(get_stage)
+    echo "$stage"
+    if [ "$stage" != "none" ]; then
+      emit_metadata
+    fi
+    ;;
+
+  init)
+    # Create remediation directory and first round dir
+    mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+    printf 'stage=plan\nround=01\n' > "$STATE_FILE"
+    echo "plan"
+    emit_metadata
+    ;;
+
+  advance)
+    current=$(get_stage)
+    if [ "$current" = "none" ]; then
+      echo "Error: no QA remediation in progress" >&2
+      exit 1
+    fi
+    next=$(next_stage "$current")
+    round=$(get_round)
+
+    # When advancing from verify, check result:
+    # - If verify → done, that means QA passed
+    # - The orchestrator reads VERIFICATION.md before calling advance
+    printf 'stage=%s\nround=%s\n' "$next" "$round" > "$STATE_FILE"
+    echo "$next"
+    emit_metadata
+    ;;
+
+  needs-round)
+    # Start a new remediation round (QA failed again)
+    start_new_round
+    ;;
+
+  reset)
+    rm -f "$STATE_FILE"
+    echo "none"
+    ;;
+
+  *)
+    echo "Error: unknown command: $CMD" >&2
+    echo "Usage: qa-remediation-state.sh <get|advance|reset|init|needs-round> <phase-dir>" >&2
+    exit 1
+    ;;
+esac

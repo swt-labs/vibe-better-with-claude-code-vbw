@@ -260,8 +260,8 @@ status: complete
 EOF
 
   # Remediation round-01 with both PLAN and SUMMARY
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
 ---
 phase: 03
 plan: R01
@@ -271,7 +271,7 @@ must_haves:
   - Email validation no longer rejects valid addresses
 ---
 EOF
-  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'EOF'
 ---
 status: complete
 ---
@@ -295,8 +295,8 @@ EOF
 
 @test "compile-verify-context: --remediation-only picks latest completed round" {
   # Round 01 — complete (has both PLAN and SUMMARY)
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
 ---
 plan: R01
 title: Round 1 fix
@@ -304,7 +304,7 @@ must_haves:
   - Old fix
 ---
 EOF
-  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'EOF'
 ---
 status: complete
 ---
@@ -313,8 +313,8 @@ status: complete
 EOF
 
   # Round 02 — complete (has both PLAN and SUMMARY)
-  mkdir -p "$PHASE_DIR/remediation/round-02"
-  cat > "$PHASE_DIR/remediation/round-02/R02-PLAN.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-02"
+  cat > "$PHASE_DIR/remediation/uat/round-02/R02-PLAN.md" <<'EOF'
 ---
 plan: R02
 title: Round 2 fix
@@ -322,7 +322,7 @@ must_haves:
   - Latest fix
 ---
 EOF
-  cat > "$PHASE_DIR/remediation/round-02/R02-SUMMARY.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-02/R02-SUMMARY.md" <<'EOF'
 ---
 status: complete
 ---
@@ -354,8 +354,8 @@ must_haves:
 EOF
 
   # Round 01 — incomplete (PLAN only, no SUMMARY)
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
 ---
 plan: R01
 title: Incomplete round
@@ -384,7 +384,7 @@ must_haves:
 ---
 EOF
 
-  mkdir -p "$PHASE_DIR/remediation"
+  mkdir -p "$PHASE_DIR/remediation/uat"
 
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
@@ -404,8 +404,8 @@ must_haves:
 ---
 EOF
 
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
 ---
 plan: R01
 title: Remediation plan
@@ -462,8 +462,8 @@ EOF
 }
 
 @test "compile-verify-context: remediation scope emits uat_path with round dir" {
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
 ---
 plan: R01
 title: Round 1 remediation
@@ -471,7 +471,7 @@ must_haves:
   - Fix the issue
 ---
 EOF
-  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'EOF'
 ---
 status: complete
 ---
@@ -485,7 +485,7 @@ EOF
   run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"uat_path=remediation/round-01/R01-UAT.md"* ]]
+  [[ "$output" == *"uat_path=remediation/uat/round-01/R01-UAT.md"* ]]
 }
 
 @test "compile-verify-context: fallback full scope emits uat_path with phase number" {
@@ -500,8 +500,8 @@ must_haves:
 EOF
 
   # Remediation round with no SUMMARY (incomplete) — forces fallback to full
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
 ---
 plan: R01
 title: Incomplete
@@ -520,8 +520,8 @@ EOF
 
 @test "compile-verify-context: --remediation-only skips round with in-progress summary" {
   # Round 01 — complete
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
 ---
 plan: R01
 title: Round 1 fix
@@ -529,7 +529,7 @@ must_haves:
   - Old fix
 ---
 EOF
-  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'EOF'
 ---
 status: complete
 ---
@@ -538,8 +538,8 @@ status: complete
 EOF
 
   # Round 02 — in-progress (not terminal)
-  mkdir -p "$PHASE_DIR/remediation/round-02"
-  cat > "$PHASE_DIR/remediation/round-02/R02-PLAN.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-02"
+  cat > "$PHASE_DIR/remediation/uat/round-02/R02-PLAN.md" <<'EOF'
 ---
 plan: R02
 title: Round 2 fix
@@ -547,7 +547,7 @@ must_haves:
   - Latest fix
 ---
 EOF
-  cat > "$PHASE_DIR/remediation/round-02/R02-SUMMARY.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-02/R02-SUMMARY.md" <<'EOF'
 ---
 status: in-progress
 tasks_completed: 1
@@ -567,8 +567,8 @@ EOF
 }
 
 @test "compile-verify-context: --remediation-only accepts partial status as terminal" {
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
 ---
 plan: R01
 title: Partial round
@@ -576,7 +576,7 @@ must_haves:
   - Partial fix
 ---
 EOF
-  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'EOF'
 ---
 status: partial
 tasks_completed: 2
@@ -595,8 +595,8 @@ EOF
 }
 
 @test "compile-verify-context: --remediation-only accepts failed status as terminal" {
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
 ---
 plan: R01
 title: Failed round
@@ -604,7 +604,7 @@ must_haves:
   - Failed fix
 ---
 EOF
-  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'EOF'
 ---
 status: failed
 tasks_completed: 0

@@ -410,7 +410,7 @@ if ! cache_fresh "$FAST_CF" 5; then
       PT=$((PT + $(count_phase_plans "$_sl_pdir")))
       PD=$((PD + $(count_complete_summaries "$_sl_pdir")))
       # Count remediation round summaries (round-dir layout)
-      for _sl_rdir in "$_sl_pdir"remediation/round-*/; do
+      for _sl_rdir in "$_sl_pdir"remediation/uat/round-*/; do
         [ -d "$_sl_rdir" ] || continue
         PD=$((PD + $(count_complete_summaries "$_sl_rdir")))
       done
@@ -420,11 +420,11 @@ if ! cache_fresh "$FAST_CF" 5; then
       [ -n "$PDIR" ] && PPD=$(count_complete_summaries "$PDIR")
       [ -n "$PDIR" ] && PPT=$(count_phase_plans "$PDIR")
       # Remediation-aware plan counts: override PPT/PPD with remediation round totals
-      if [ -n "$PDIR" ] && [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
+      if [ -n "$PDIR" ] && [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ]; then
         REM_ACTIVE="true"
         PP_LABEL="this remediation"
         _rem_ppt=0; _rem_ppd=0
-        for _rem_rdir in "$PDIR"/remediation/round-*/; do
+        for _rem_rdir in "$PDIR"/remediation/uat/round-*/; do
           [ -d "$_rem_rdir" ] || continue
           _rem_ppt=$((_rem_ppt + $(find "$_rem_rdir" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')))
           _rem_ppd=$((_rem_ppd + $(count_complete_summaries "$_rem_rdir")))
@@ -438,7 +438,7 @@ if ! cache_fresh "$FAST_CF" 5; then
       # Lifecycle-aware QA/UAT indicator: UAT supersedes VERIFICATION.md
       if [ -n "$PDIR" ]; then
         _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
-        # Round-dir fallback: check remediation/round-*/R*-UAT.md
+        # Round-dir fallback: check remediation/uat/round-*/R*-UAT.md
         if [ -z "$_uat_file" ]; then
           _uat_file=$(find "$PDIR/remediation" -path '*/round-*/R*-UAT.md' 2>/dev/null | sort -t/ -k2 -V | tail -1)
         fi
@@ -449,8 +449,8 @@ if ! cache_fresh "$FAST_CF" 5; then
             complete) QA="UAT: pass"; QA_COLOR="G" ;;
             issues_found)
               _rem_stage="none"
-              if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
-                _rem_stage=$(grep '^stage=' "$PDIR/remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+              if [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ]; then
+                _rem_stage=$(grep '^stage=' "$PDIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
                 _rem_stage="${_rem_stage:-none}"
               elif [ -f "$PDIR/.uat-remediation-stage" ]; then
                 _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")

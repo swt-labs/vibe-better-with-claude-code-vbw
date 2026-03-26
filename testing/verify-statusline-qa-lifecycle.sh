@@ -257,11 +257,11 @@ echo ""
 echo "--- Structural: remediation-aware plan counting ---"
 
 # Test 15: PD counting includes remediation round summaries
-if grep -q 'remediation/round-\*/' "$ROOT/scripts/vbw-statusline.sh" && \
+if grep -q 'remediation/uat/round-\*/' "$ROOT/scripts/vbw-statusline.sh" && \
    grep -q 'count_complete_summaries.*_sl_rdir\|count_complete_summaries.*_rem_rdir' "$ROOT/scripts/vbw-statusline.sh"; then
-  pass "PD counting iterates remediation/round-*/ for summaries"
+  pass "PD counting iterates remediation/uat/round-*/ for summaries"
 else
-  fail "PD counting iterates remediation/round-*/ for summaries"
+  fail "PD counting iterates remediation/uat/round-*/ for summaries"
 fi
 
 # Test 16: statusline has PP_LABEL variable for dynamic parenthetical label
@@ -299,7 +299,7 @@ echo "--- Functional: remediation plan counting ---"
 
 # Test 20: PD includes remediation round summaries
 T20="$TMPDIR_BASE/t20"
-mkdir -p "$T20/.vbw-planning/phases/01-test/remediation/round-01"
+mkdir -p "$T20/.vbw-planning/phases/01-test/remediation/uat/round-01"
 echo '{}' > "$T20/.vbw-planning/config.json"
 printf 'Phase: 1 of 1 (test)\nStatus: active\n' > "$T20/.vbw-planning/STATE.md"
 printf '# Test\nContent\n' > "$T20/.vbw-planning/PROJECT.md"
@@ -307,15 +307,15 @@ printf '# Test\nContent\n' > "$T20/.vbw-planning/PROJECT.md"
 printf '%s\n' '---' 'phase: "01"' 'plan: "01"' 'title: Test' 'wave: 1' '---' > "$T20/.vbw-planning/phases/01-test/01-01-PLAN.md"
 printf '%s\n' '---' 'status: complete' '---' 'Done' > "$T20/.vbw-planning/phases/01-test/01-01-SUMMARY.md"
 # Remediation round plan + summary (complete)
-printf '%s\n' '---' 'phase: 01' 'round: 01' 'title: Fix issues' '---' > "$T20/.vbw-planning/phases/01-test/remediation/round-01/R01-PLAN.md"
-printf '%s\n' '---' 'status: complete' '---' 'Fixed' > "$T20/.vbw-planning/phases/01-test/remediation/round-01/R01-SUMMARY.md"
+printf '%s\n' '---' 'phase: 01' 'round: 01' 'title: Fix issues' '---' > "$T20/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-PLAN.md"
+printf '%s\n' '---' 'status: complete' '---' 'Fixed' > "$T20/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-SUMMARY.md"
 _PD_COUNT=$(cd "$T20" && {
   . "$ROOT/scripts/summary-utils.sh"
   PD=0
   for _sl_pdir in .vbw-planning/phases/*/; do
     [ -d "$_sl_pdir" ] || continue
     PD=$((PD + $(count_complete_summaries "$_sl_pdir")))
-    for _sl_rdir in "$_sl_pdir"remediation/round-*/; do
+    for _sl_rdir in "$_sl_pdir"remediation/uat/round-*/; do
       [ -d "$_sl_rdir" ] || continue
       PD=$((PD + $(count_complete_summaries "$_sl_rdir")))
     done
@@ -330,8 +330,8 @@ fi
 
 # Test 21: PPT/PPD override during active remediation
 T21="$TMPDIR_BASE/t21"
-mkdir -p "$T21/.vbw-planning/phases/01-test/remediation/round-01"
-mkdir -p "$T21/.vbw-planning/phases/01-test/remediation/round-02"
+mkdir -p "$T21/.vbw-planning/phases/01-test/remediation/uat/round-01"
+mkdir -p "$T21/.vbw-planning/phases/01-test/remediation/uat/round-02"
 echo '{}' > "$T21/.vbw-planning/config.json"
 printf 'Phase: 1 of 1 (test)\nStatus: active\n' > "$T21/.vbw-planning/STATE.md"
 printf '# Test\nContent\n' > "$T21/.vbw-planning/PROJECT.md"
@@ -339,22 +339,22 @@ printf '# Test\nContent\n' > "$T21/.vbw-planning/PROJECT.md"
 printf '%s\n' '---' 'title: Test' '---' > "$T21/.vbw-planning/phases/01-test/01-01-PLAN.md"
 printf '%s\n' '---' 'status: complete' '---' 'Done' > "$T21/.vbw-planning/phases/01-test/01-01-SUMMARY.md"
 # Remediation state file (active)
-printf 'stage=research\nround=02\nlayout=round-dir\n' > "$T21/.vbw-planning/phases/01-test/remediation/.uat-remediation-stage"
+printf 'stage=research\nround=02\nlayout=round-dir\n' > "$T21/.vbw-planning/phases/01-test/remediation/uat/.uat-remediation-stage"
 # Round 01: plan + complete summary
-printf '%s\n' '---' 'title: R01 fix' '---' > "$T21/.vbw-planning/phases/01-test/remediation/round-01/R01-PLAN.md"
-printf '%s\n' '---' 'status: complete' '---' 'Fixed' > "$T21/.vbw-planning/phases/01-test/remediation/round-01/R01-SUMMARY.md"
+printf '%s\n' '---' 'title: R01 fix' '---' > "$T21/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-PLAN.md"
+printf '%s\n' '---' 'status: complete' '---' 'Fixed' > "$T21/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-SUMMARY.md"
 # Round 02: plan only (no summary yet)
-printf '%s\n' '---' 'title: R02 fix' '---' > "$T21/.vbw-planning/phases/01-test/remediation/round-02/R02-PLAN.md"
+printf '%s\n' '---' 'title: R02 fix' '---' > "$T21/.vbw-planning/phases/01-test/remediation/uat/round-02/R02-PLAN.md"
 _REM_COUNTS=$(cd "$T21" && {
   . "$ROOT/scripts/summary-utils.sh"
   PDIR=".vbw-planning/phases/01-test"
   REM_ACTIVE="false"; PP_LABEL="this phase"
   PPT=0; PPD=0
-  if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
+  if [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ]; then
     REM_ACTIVE="true"
     PP_LABEL="this remediation"
     _rem_ppt=0; _rem_ppd=0
-    for _rem_rdir in "$PDIR"/remediation/round-*/; do
+    for _rem_rdir in "$PDIR"/remediation/uat/round-*/; do
       [ -d "$_rem_rdir" ] || continue
       _rem_ppt=$((_rem_ppt + $(find "$_rem_rdir" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')))
       _rem_ppd=$((_rem_ppd + $(count_complete_summaries "$_rem_rdir")))
@@ -422,7 +422,7 @@ echo "--- Functional: remediation stage → QA indicator ---"
 # Helper: create project with UAT issues_found + remediation stage
 setup_uat_remediation() {
   local dir="$1" stage="$2"
-  mkdir -p "$dir/.vbw-planning/phases/01-test/remediation"
+  mkdir -p "$dir/.vbw-planning/phases/01-test/remediation/uat"
   echo '{}' > "$dir/.vbw-planning/config.json"
   printf 'Phase: 1 of 1 (test)\nStatus: active\n' > "$dir/.vbw-planning/STATE.md"
   printf '# Test\nContent\n' > "$dir/.vbw-planning/PROJECT.md"
@@ -430,7 +430,7 @@ setup_uat_remediation() {
   printf '%s\n' '---' 'status: complete' '---' 'Done' > "$dir/.vbw-planning/phases/01-test/01-01-SUMMARY.md"
   printf '%s\n' '---' 'phase: 01' 'status: issues_found' '---' 'Issues.' > "$dir/.vbw-planning/phases/01-test/01-UAT.md"
   if [ "$stage" != "__none__" ]; then
-    printf 'stage=%s\nround=01\nlayout=round-dir\n' "$stage" > "$dir/.vbw-planning/phases/01-test/remediation/.uat-remediation-stage"
+    printf 'stage=%s\nround=01\nlayout=round-dir\n' "$stage" > "$dir/.vbw-planning/phases/01-test/remediation/uat/.uat-remediation-stage"
   fi
 }
 
@@ -447,8 +447,8 @@ extract_qa() {
       _uat_status=$(normalize_uat_status "$_uat_status")
       if [ "$_uat_status" = "issues_found" ]; then
         _rem_stage="none"
-        if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
-          _rem_stage=$(grep '^stage=' "$PDIR/remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+        if [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ]; then
+          _rem_stage=$(grep '^stage=' "$PDIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
           _rem_stage="${_rem_stage:-none}"
         elif [ -f "$PDIR/.uat-remediation-stage" ]; then
           _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")

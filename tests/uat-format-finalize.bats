@@ -621,13 +621,13 @@ EOF
 
 @test "current_uat discovers round-dir UAT when stage=verified" {
   local dir="$BATS_TEST_TMPDIR/f06/01-feature"
-  mkdir -p "$dir/remediation/round-02"
+  mkdir -p "$dir/remediation/uat/round-02"
 
   # Write a state file with stage=verified (post-successful re-verification)
-  printf 'stage=verified\nround=02\nlayout=round-dir\n' > "$dir/remediation/.uat-remediation-stage"
+  printf 'stage=verified\nround=02\nlayout=round-dir\n' > "$dir/remediation/uat/.uat-remediation-stage"
 
   # Write the passing round-dir UAT
-  cat > "$dir/remediation/round-02/R02-UAT.md" << 'EOF'
+  cat > "$dir/remediation/uat/round-02/R02-UAT.md" << 'EOF'
 ---
 status: complete
 completed: 2026-03-21
