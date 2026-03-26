@@ -500,7 +500,8 @@ This mode handles the case where a milestone was archived before UAT issues were
      RESEARCH_NAME=$(bash "$RESOLVE_SCRIPT" research "{phase-dir}" --plan-number "$MM")
      ```
    - Check for per-plan research `{phase-dir}/${RESEARCH_NAME}` (preferred) or legacy `{phase-dir}/{phase}-RESEARCH.md` (fallback).
-   - **If neither exists:** Spawn Scout agent to research the phase goal, requirements, and relevant codebase patterns. Scout writes its findings directly to the output path. Pass `<output_path>{phase-dir}/${RESEARCH_NAME}</output_path>` in the Scout prompt so Scout writes the file using its Write tool. If a legacy `{phase-dir}/{phase}-RESEARCH.md` exists, delete it after Scout writes the per-plan file to avoid stale context. After Scout completes, confirm the file exists (read first line). Resolve Scout model:
+   - **If neither exists:** If `config_context_compiler=true`, compile Scout context first: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} scout {phases_dir}`. Include `.context-scout.md` in the Scout prompt if produced, described as: "compiled context — includes milestone scope decisions (decomposition rationale, scope boundaries, cross-phase key decisions) and phase operational context (goal, success criteria, matched requirements)."
+     Spawn Scout agent to research the phase goal, requirements, and relevant codebase patterns. Scout writes its findings directly to the output path. Pass `<output_path>{phase-dir}/${RESEARCH_NAME}</output_path>` in the Scout prompt so Scout writes the file using its Write tool. If a legacy `{phase-dir}/{phase}-RESEARCH.md` exists, delete it after Scout writes the per-plan file to avoid stale context. After Scout completes, confirm the file exists (read first line). Resolve Scout model:
      ```bash
      SCOUT_MODEL=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json)
      SCOUT_MAX_TURNS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}")
@@ -520,7 +521,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    fi
    ```
    Behavior: `planning_tracking=commit` commits RESEARCH.md if changed. Skipped when research was pre-existing or effort=turbo.
-5. **Context compilation:** If `config_context_compiler=true`, run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} lead {phases_dir}`. Include `.context-lead.md` in Lead agent context if produced.
+5. **Context compilation:** If `config_context_compiler=true`, run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} lead {phases_dir}`. Include `.context-lead.md` in Lead agent context if produced. When including it in the Lead prompt, describe its contents: "Read `.context-lead.md` for compiled context — includes milestone scope decisions (decomposition rationale, scope boundaries, cross-phase key decisions) and operational context (phase goal, success criteria, matched requirements, active decisions, research findings)."
 6. **Turbo shortcut:** If effort=turbo, skip Lead. Resolve the plan filename:
    ```bash
    TURBO_PLAN=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-artifact-path.sh plan "{phase-dir}")
@@ -601,7 +602,7 @@ Before reading:
 3. **Compile context:** If `config_context_compiler=true`, run:
    - `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} dev {phases_dir} {plan_path}`
    - `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} qa {phases_dir}`
-   Include compiled context paths in Dev and QA task descriptions.
+   Include compiled context paths in Dev and QA task descriptions. When referencing `.context-dev.md`, describe it as: "compiled context — includes milestone scope decisions (decomposition rationale, scope boundaries, cross-phase key decisions) and phase operational context (goal, conventions, research findings)." When referencing `.context-qa.md`, describe it as: "compiled context — includes milestone scope decisions and phase verification targets (success criteria, requirements, test expectations)."
 
 Then Read the protocol file and execute Steps 2-5 as written.
 
