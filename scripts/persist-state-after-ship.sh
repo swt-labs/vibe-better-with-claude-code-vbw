@@ -53,7 +53,7 @@ extract_section() {
       if (!hdr) { print $0; hdr=1 }
       next
     }
-    found && /^## / { found=0 }
+    found && /^##[[:space:]]+/ { found=0 }
     found { print }
   ' "$file"
 }
@@ -78,7 +78,7 @@ extract_todos() {
         next
       }
 
-      if (found && mode == "h2" && /^## /) {
+      if (found && mode == "h2" && /^##[[:space:]]+/) {
         found=0
         mode=""
       }
@@ -293,7 +293,7 @@ generate_root_state() {
 
   local codebase
   codebase=$(extract_section "$ARCHIVED_PATH" "Codebase Profile")
-  if section_has_body "$codebase" && ! printf '%s\n' "$codebase" | tail -n +2 | grep -Eq '^[[:space:]]*None\.?[[:space:]]*$'; then
+  if section_has_body "$codebase" && printf '%s\n' "$codebase" | tail -n +2 | grep -Eqv '^[[:space:]]*(None\.?)?[[:space:]]*$'; then
     echo "$codebase"
     echo ""
   fi

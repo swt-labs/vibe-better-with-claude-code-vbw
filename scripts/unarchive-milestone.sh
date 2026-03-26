@@ -46,7 +46,7 @@ extract_todo_items() {
         next
       }
 
-      if (found && mode == "h2" && /^## /) {
+      if (found && mode == "h2" && /^##[[:space:]]+/) {
         found=0
         mode=""
       }
@@ -70,7 +70,7 @@ extract_named_section() {
     BEGIN { pat = tolower(h) }
     { low = tolower($0) }
     low ~ ("^##[[:space:]]+" pat "[[:space:]]*$") { found=1; next }
-    found && /^## / { found=0 }
+    found && /^##[[:space:]]+/ { found=0 }
     found { print }
   ' "$file"
 }
@@ -512,10 +512,10 @@ fi
 merged_todos=$(merge_items "todos" "$archived_todos" "$root_todos")
 merged_decisions=$(merge_items "decisions" "$archived_decisions" "$root_decisions")
 merged_blockers=$(merge_items "todos" "$archived_blockers" "$root_blockers")
-if [ -n "$root_codebase" ] && printf '%s\n' "$root_codebase" | grep -Eq '^[[:space:]]*None\.?[[:space:]]*$'; then
+if [ -n "$root_codebase" ] && ! printf '%s\n' "$root_codebase" | grep -Eqv '^[[:space:]]*(None\.?)?[[:space:]]*$'; then
   root_codebase=""
 fi
-if [ -n "$archived_codebase" ] && printf '%s\n' "$archived_codebase" | grep -Eq '^[[:space:]]*None\.?[[:space:]]*$'; then
+if [ -n "$archived_codebase" ] && ! printf '%s\n' "$archived_codebase" | grep -Eqv '^[[:space:]]*(None\.?)?[[:space:]]*$'; then
   archived_codebase=""
 fi
 effective_codebase="$root_codebase"

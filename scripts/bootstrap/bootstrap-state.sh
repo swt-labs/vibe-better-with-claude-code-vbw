@@ -33,7 +33,7 @@ extract_section() {
     BEGIN { pat = tolower(h) }
     { low = tolower($0) }
     low ~ ("^##[[:space:]]+" pat "[[:space:]]*$") { found=1; next }
-    found && /^## / { found=0 }
+    found && /^##[[:space:]]+/ { found=0 }
     found { print }
   ' "$file"
 }
@@ -56,7 +56,7 @@ extract_todos_section() {
         next
       }
 
-      if (found && mode == "h2" && /^## /) {
+      if (found && mode == "h2" && /^##[[:space:]]+/) {
         found=0
         mode=""
       }
@@ -218,7 +218,7 @@ if [[ -f "$OUTPUT_PATH" ]]; then
   ' "$OUTPUT_PATH")
   EXISTING_BLOCKERS=$(extract_section "$OUTPUT_PATH" "Blockers")
   EXISTING_CODEBASE=$(extract_section "$OUTPUT_PATH" "Codebase Profile")
-  if [[ -n "$EXISTING_CODEBASE" ]] && printf '%s\n' "$EXISTING_CODEBASE" | grep -Eq '^[[:space:]]*None\.?[[:space:]]*$'; then
+  if [[ -n "$EXISTING_CODEBASE" ]] && ! printf '%s\n' "$EXISTING_CODEBASE" | grep -Eqv '^[[:space:]]*(None\.?)?[[:space:]]*$'; then
     EXISTING_CODEBASE=""
   fi
 fi

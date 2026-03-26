@@ -145,6 +145,27 @@ EOF
   grep -q "Primary languages: Swift" .vbw-planning/STATE.md
 }
 
+@test "persist script preserves real Codebase Profile lines when placeholder is also present" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Codebase Profile
+None.
+- Brownfield: true
+- Primary languages: Swift
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Test Project"
+  [ "$status" -eq 0 ]
+  grep -q 'Brownfield: true' .vbw-planning/STATE.md
+  grep -q 'Primary languages: Swift' .vbw-planning/STATE.md
+}
+
 @test "strips stale Skills subsection from Decisions during persist" {
   cd "$TEST_TEMP_DIR"
   create_state_with_skills ".vbw-planning/STATE.md"

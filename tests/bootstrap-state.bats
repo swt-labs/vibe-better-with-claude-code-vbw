@@ -470,6 +470,26 @@ EOF
   grep -q "Primary languages: Swift" .vbw-planning/STATE.md
 }
 
+@test "bootstrap-state: preserves Codebase Profile real lines when placeholder is also present" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Codebase Profile
+None.
+- Brownfield: true
+- Primary languages: Swift
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  grep -q 'Brownfield: true' .vbw-planning/STATE.md
+  grep -q 'Primary languages: Swift' .vbw-planning/STATE.md
+}
+
 # --- Post-archive restoration test ---
 
 @test "bootstrap-state: restores ## Current Phase after archive strips it" {
