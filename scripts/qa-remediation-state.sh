@@ -97,24 +97,13 @@ start_new_round() {
 }
 
 emit_metadata() {
-  local round round_dir plan_path summary_path
+  local round round_dir
   round=$(get_round)
   round_dir="$PHASE_DIR/remediation/qa/round-${round}"
   echo "round=${round}"
   echo "round_dir=${round_dir}"
-
-  # Report existing artifacts in the round dir
-  plan_path=""
-  if [ -f "${round_dir}/R${round}-PLAN.md" ]; then
-    plan_path="${round_dir}/R${round}-PLAN.md"
-  fi
-  echo "plan_path=${plan_path}"
-
-  summary_path=""
-  if [ -f "${round_dir}/R${round}-SUMMARY.md" ]; then
-    summary_path="${round_dir}/R${round}-SUMMARY.md"
-  fi
-  echo "summary_path=${summary_path}"
+  echo "plan_path=${round_dir}/R${round}-PLAN.md"
+  echo "summary_path=${round_dir}/R${round}-SUMMARY.md"
 }
 
 case "$CMD" in
@@ -156,6 +145,19 @@ case "$CMD" in
     start_new_round
     ;;
 
+  get-or-init)
+    stage=$(get_stage)
+    if [ "$stage" = "none" ]; then
+      mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+      printf 'stage=plan\nround=01\n' > "$STATE_FILE"
+      echo "plan"
+      emit_metadata
+    else
+      echo "$stage"
+      emit_metadata
+    fi
+    ;;
+
   reset)
     rm -f "$STATE_FILE"
     echo "none"
@@ -163,7 +165,7 @@ case "$CMD" in
 
   *)
     echo "Error: unknown command: $CMD" >&2
-    echo "Usage: qa-remediation-state.sh <get|advance|reset|init|needs-round> <phase-dir>" >&2
+    echo "Usage: qa-remediation-state.sh <get|get-or-init|advance|reset|init|needs-round> <phase-dir>" >&2
     exit 1
     ;;
 esac

@@ -90,6 +90,10 @@ if [ "$REMEDIATION_ONLY" = false ]; then
   # Full scope: all phase-root plans + all round-dir plans
   PLAN_FILES=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | sort)
   ROUND_PLAN_FILES=$(find "$PHASE_DIR" -path '*/remediation/uat/round-*/R*-PLAN.md' 2>/dev/null | sort)
+  # Legacy fallback: check old remediation/round-* layout for brownfield compat
+  if [ -z "$ROUND_PLAN_FILES" ]; then
+    ROUND_PLAN_FILES=$(find "$PHASE_DIR" -path '*/remediation/round-*/R*-PLAN.md' 2>/dev/null | sort)
+  fi
 
   ALL_PLAN_FILES="$PLAN_FILES"
   if [ -n "$ROUND_PLAN_FILES" ]; then
@@ -222,7 +226,7 @@ while IFS= read -r plan_file; do
       /^## Pre-existing Issues/ { found=1; next }
       found && /^## / { exit }
       found && /^[[:space:]]*$/ { next }
-      found && /^[-|]/ {
+      found && /^- / {
         line = $0
         sub(/^- /, "", line)
         items = items (items ? "; " : "") line
