@@ -85,7 +85,11 @@ fi
 
 # Codebase mapping fingerprint (roles with mapping hints need cache invalidation)
 if [[ "$ROLE" =~ ^(debugger|dev|qa|lead|architect)$ ]] && [ -d "$PLANNING_DIR/codebase" ]; then
-  MAP_SUM=$(ls -la "$PLANNING_DIR/codebase"/*.md 2>/dev/null | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nomap")
+  MAP_SUM=$(find "$PLANNING_DIR/codebase" -maxdepth 1 -name '*.md' -print 2>/dev/null | sort | while IFS= read -r map_file; do
+    [ -n "$map_file" ] || continue
+    printf '%s\n' "$map_file"
+    shasum -a 256 "$map_file" 2>/dev/null || true
+  done | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nomap")
   HASH_INPUT="${HASH_INPUT}:codebase=${MAP_SUM}"
 fi
 

@@ -448,6 +448,24 @@ STATE
   [ "$HASH1" != "$HASH2" ]
 }
 
+@test "cache-context.sh debugger hash changes when codebase mapping content changes without file removal" {
+  cd "$TEST_TEMP_DIR"
+
+  mkdir -p .vbw-planning/codebase
+  echo "# Meta" > .vbw-planning/codebase/META.md
+  echo "# Architecture v1" > .vbw-planning/codebase/ARCHITECTURE.md
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 01 debugger "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  echo "# Architecture v2" > .vbw-planning/codebase/ARCHITECTURE.md
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 01 debugger "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" != "$HASH2" ]
+}
+
 @test "cache-context.sh non-mapping role hash unaffected by codebase mapping" {
   cd "$TEST_TEMP_DIR"
 
