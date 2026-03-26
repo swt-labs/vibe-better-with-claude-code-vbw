@@ -781,6 +781,33 @@ EOF
   grep -q 'Keep auth service isolated' .vbw-planning/STATE.md
 }
 
+@test "persist script dedupes identical decisions across legacy and canonical headings" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Dedupe Decisions Test
+
+## Decisions
+- Keep auth service isolated
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | | |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Dedupe Decisions Test"
+  [ "$status" -eq 0 ]
+  count=$(grep -c 'Keep auth service isolated' .vbw-planning/STATE.md)
+  [ "$count" -eq 1 ]
+}
+
 # Finding 5 (QA R4): bootstrap-state.sh also tolerates extra spaces
 @test "bootstrap preserves todos with extra-space headings in existing STATE.md" {
   cd "$TEST_TEMP_DIR"

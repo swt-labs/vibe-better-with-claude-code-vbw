@@ -197,16 +197,16 @@ EOF
 @test "milestone-context: lifecycle roundtrip preserves CONTEXT.md through persist and unarchive" {
   cd "$TEST_TEMP_DIR"
 
-  mkdir -p ".vbw-planning/milestones/ms1/phases/01-setup"
-  touch ".vbw-planning/milestones/ms1/phases/01-setup/01-01-PLAN.md"
-  touch ".vbw-planning/milestones/ms1/phases/01-setup/01-01-SUMMARY.md"
+  mkdir -p ".vbw-planning/phases/01-setup"
+  touch ".vbw-planning/phases/01-setup/01-01-PLAN.md"
+  touch ".vbw-planning/phases/01-setup/01-01-SUMMARY.md"
 
-  cat > ".vbw-planning/milestones/ms1/ROADMAP.md" <<'EOF'
+  cat > ".vbw-planning/ROADMAP.md" <<'EOF'
 # Roadmap
 ## Phase 1: Setup
 EOF
 
-  cat > ".vbw-planning/milestones/ms1/STATE.md" <<'EOF'
+  cat > ".vbw-planning/STATE.md" <<'EOF'
 # State
 
 **Project:** Lifecycle Test
@@ -223,7 +223,7 @@ None.
 None
 EOF
 
-  cat > ".vbw-planning/milestones/ms1/CONTEXT.md" <<'EOF'
+  cat > ".vbw-planning/CONTEXT.md" <<'EOF'
 # Lifecycle Test — Milestone Context
 
 ## Scope Boundary
@@ -233,6 +233,12 @@ Build setup milestone.
 ### Phase Count & Grouping
 One phase for setup only.
 EOF
+
+  mkdir -p ".vbw-planning/milestones/ms1"
+  mv ".vbw-planning/ROADMAP.md" ".vbw-planning/milestones/ms1/ROADMAP.md"
+  mv ".vbw-planning/STATE.md" ".vbw-planning/milestones/ms1/STATE.md"
+  mv ".vbw-planning/CONTEXT.md" ".vbw-planning/milestones/ms1/CONTEXT.md"
+  mv ".vbw-planning/phases" ".vbw-planning/milestones/ms1/phases"
 
   bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
     ".vbw-planning/milestones/ms1/STATE.md" ".vbw-planning/STATE.md" "Lifecycle Test"

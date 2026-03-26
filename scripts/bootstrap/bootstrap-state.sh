@@ -101,9 +101,23 @@ format_todos_section() {
   fi
 }
 
+decision_key() {
+  local line="$1"
+  local escaped_pipe='__VBW_ESCAPED_PIPE__'
+
+  if [[ "$line" =~ ^\| ]]; then
+    line=$(printf '%s\n' "$line" | sed "s/\\\\|/${escaped_pipe}/g" | sed 's/^|//' | sed 's/|$//' | awk -F'|' '{print $1}' | sed "s/${escaped_pipe}/|/g")
+  else
+    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+  fi
+
+  printf '%s\n' "$line" | sed -E 's/\*\*//g' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[[:space:]]+/ /g' | tr '[:upper:]' '[:lower:]'
+}
+
 format_decisions_table() {
   local decisions="$1"
   local emitted=0
+  local seen_keys=""
 
   if [[ -z "$decisions" ]]; then
     echo "| Decision | Date | Rationale |"
@@ -117,12 +131,20 @@ format_decisions_table() {
 
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
+
     if [[ "$line" =~ ^\| ]]; then
       local lower
       lower=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
       [[ "$lower" =~ ^\|([[:space:]:-]+\|)+[[:space:]:-]*$ ]] && continue
       [[ "$lower" =~ ^\|[[:space:]]*decision([[:space:]]*\|.*)?$ ]] && continue
       [[ "$lower" =~ ^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$ ]] && continue
+      local key
+      key=$(decision_key "$line")
+      [ -n "$key" ] || continue
+      if printf '%s\n' "$seen_keys" | grep -Fxq "$key"; then
+        continue
+      fi
+      seen_keys=$(printf '%s\n%s' "$seen_keys" "$key")
       echo "$line"
       emitted=1
       continue
@@ -136,6 +158,15 @@ format_decisions_table() {
     [[ "$lower_line" == "none" ]] && continue
     [[ "$lower_line" == "none." ]] && continue
     [[ "$lower_line" == "_(no decisions yet)_" ]] && continue
+
+    local key
+    key=$(decision_key "$line")
+    [ -n "$key" ] || continue
+    if printf '%s\n' "$seen_keys" | grep -Fxq "$key"; then
+      continue
+    fi
+    seen_keys=$(printf '%s\n%s' "$seen_keys" "$key")
+
     line=$(printf '%s\n' "$line" | sed 's/|/\\|/g')
     echo "| $line | | |"
     emitted=1
@@ -166,6 +197,9 @@ if [[ -f "$OUTPUT_PATH" ]]; then
   ' "$OUTPUT_PATH")
   EXISTING_BLOCKERS=$(extract_section "$OUTPUT_PATH" "Blockers")
   EXISTING_CODEBASE=$(extract_section "$OUTPUT_PATH" "Codebase Profile")
+  if [[ -n "$EXISTING_CODEBASE" ]] && printf '%s\n' "$EXISTING_CODEBASE" | grep -Eq '^[[:space:]]*None\.?[[:space:]]*$'; then
+    EXISTING_CODEBASE=""
+  fi
 fi
 
 {

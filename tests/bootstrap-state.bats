@@ -287,6 +287,32 @@ EOF
   [ "$count" -eq 1 ]
 }
 
+@test "bootstrap-state: dedupes identical decisions across legacy and canonical headings" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Keep auth service isolated
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | | |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  count=$(grep -c 'Keep auth service isolated' .vbw-planning/STATE.md)
+  [ "$count" -eq 1 ]
+}
+
 @test "bootstrap-state: preserves legacy Pending Todos subsection" {
   cd "$TEST_TEMP_DIR"
   cat > .vbw-planning/STATE.md <<'EOF'

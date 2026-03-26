@@ -116,6 +116,19 @@ section_has_body() {
   [[ -n "$1" ]] && echo "$1" | tail -n +2 | grep -qv '^[[:space:]]*$'
 }
 
+decision_key() {
+  local line="$1"
+  local escaped_pipe='__VBW_ESCAPED_PIPE__'
+
+  if [[ "$line" =~ ^\| ]]; then
+    line=$(printf '%s\n' "$line" | sed "s/\\\\|/${escaped_pipe}/g" | sed 's/^|//' | sed 's/|$//' | awk -F'|' '{print $1}' | sed "s/${escaped_pipe}/|/g")
+  else
+    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+  fi
+
+  printf '%s\n' "$line" | sed -E 's/\*\*//g' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[[:space:]]+/ /g' | tr '[:upper:]' '[:lower:]'
+}
+
 normalize_decisions_section() {
   local section="$1"
   if [[ -z "$section" ]]; then
@@ -126,36 +139,45 @@ normalize_decisions_section() {
     return 0
   fi
 
-  local rows
-  rows=$(printf '%s\n' "$section" | awk '
-    NR == 1 { next }
-    {
-      low = tolower($0)
-      if (low ~ /^[-*][[:space:]]+none\.?[[:space:]]*$/) next
-      if (low ~ /^none\.?[[:space:]]*$/) next
-      if (low ~ /^[-*][[:space:]]+_\(no[[:space:]]+decisions[[:space:]]+yet\)_[[:space:]]*$/) next
-      if (low ~ /^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$/) next
-      if (low ~ /^\|[[:space:]]*decision([[:space:]]*\|.*)?$/) next
-      if (low ~ /^\|([[:space:]:-]+\|)+[[:space:]:-]*$/) next
-      if ($0 ~ /^[[:space:]]*$/) next
-      if ($0 ~ /^#+[[:space:]]/) next
-      if ($0 ~ /^\|/) {
-        print
-        next
-      }
-      line=$0
-      sub(/^[-*][[:space:]]+/, "", line)
-      gsub(/\|/, "\\|", line)
-      print "| " line " | | |"
-    }
-  ')
-
   echo "## Key Decisions"
   echo "| Decision | Date | Rationale |"
   echo "|----------|------|-----------|"
-  if [[ -n "$rows" ]]; then
-    printf '%s\n' "$rows"
-  else
+
+  local emitted=0
+  local seen_keys=""
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+
+    local low
+    low=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
+    [[ "$low" =~ ^[-*][[:space:]]+none\.?[[:space:]]*$ ]] && continue
+    [[ "$low" =~ ^none\.?[[:space:]]*$ ]] && continue
+    [[ "$low" =~ ^[-*][[:space:]]+_\(no[[:space:]]+decisions[[:space:]]+yet\)_[[:space:]]*$ ]] && continue
+    [[ "$low" =~ ^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$ ]] && continue
+    [[ "$low" =~ ^\|[[:space:]]*decision([[:space:]]*\|.*)?$ ]] && continue
+    [[ "$low" =~ ^\|([[:space:]:-]+\|)+[[:space:]:-]*$ ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    [[ "$line" =~ ^#+[[:space:]] ]] && continue
+
+    local key
+    key=$(decision_key "$line")
+    [ -n "$key" ] || continue
+    if printf '%s\n' "$seen_keys" | grep -Fxq "$key"; then
+      continue
+    fi
+    seen_keys=$(printf '%s\n%s' "$seen_keys" "$key")
+
+    if [[ "$line" =~ ^\| ]]; then
+      printf '%s\n' "$line"
+    else
+      line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+      line=$(printf '%s\n' "$line" | sed 's/|/\\|/g')
+      printf '| %s | | |\n' "$line"
+    fi
+    emitted=1
+  done <<< "$(printf '%s\n' "$section" | tail -n +2)"
+
+  if [[ "$emitted" -eq 0 ]]; then
     echo "| _(No decisions yet)_ | | |"
   fi
 }
@@ -219,7 +241,7 @@ generate_root_state() {
 
   local codebase
   codebase=$(extract_section "$ARCHIVED_PATH" "Codebase Profile")
-  if section_has_body "$codebase"; then
+  if section_has_body "$codebase" && ! printf '%s\n' "$codebase" | tail -n +2 | grep -Eq '^[[:space:]]*None\.?[[:space:]]*$'; then
     echo "$codebase"
     echo ""
   fi
