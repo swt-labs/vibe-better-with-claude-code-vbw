@@ -112,7 +112,7 @@ Then re-run phase-detect.sh and use updated output for routing below.
 **State-driven routing prohibition (NON-NEGOTIABLE):** When state detection routes to a mode, enter that mode IMMEDIATELY in the same turn. Do NOT use TaskCreate, TaskUpdate, or any task management tool for state-driven routing — these add overhead and delay execution. State routing is deterministic: the pre-computed data in the Context section above provides all information needed to act. Execute the routed mode inline without planning, reviewing protocols, or reading files not specified in that mode's steps.
 
 | Priority | Condition | Mode | Confirmation |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | `planning_dir_exists=false` | Init redirect | (redirect, no confirmation) |
 | 2 | `project_exists=false` | Bootstrap | "No project defined. Set one up?" |
 | 3 | `next_phase_state=needs_uat_remediation` | UAT Remediation | auto_uat=true: no confirmation. auto_uat=false: "Phase {NN} has unresolved UAT issues. Continue with remediation now?" |
@@ -157,7 +157,7 @@ Every mode triggers confirmation via AskUserQuestion before executing, with cont
 **Discussion-aware alternatives (NON-NEGOTIABLE):** Alternatives must reflect whether discussion has already happened for the target phase. Never offer "discuss this phase" when a `{NN}-CONTEXT.md` exists — discussion is already complete.
 
 | Routing state | Recommended | Alternatives |
-|---|---|---|
+| --- | --- | --- |
 | `needs_discussion` | "Discuss phase {NN}" | "Skip discussion and plan directly", "View phase goal first" |
 | `needs_plan_and_execute` | "Plan and execute phase {NN}" | "Plan only (review before executing)", "Deepen discussion (explore additional topics beyond what's already captured)" |
 | `needs_execute` | "Execute phase {NN}" | "Review plans first", "Deepen discussion (revisit scope with existing insights as baseline)" |
@@ -190,7 +190,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 - **B1.5: Discovery Depth** -- Read `discovery_questions` and `active_profile` from config. Map profile to depth:
 
   | Profile | Depth | Questions |
-  |---------|-------|-----------|
+  | --------- | ------- | ----------- |
   | yolo | skip | 0 |
   | prototype | quick | 1-2 |
   | default | standard | 3-5 |

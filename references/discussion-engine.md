@@ -24,7 +24,7 @@ Read conversation signals to determine user sophistication. This is NOT a questi
 Two modes, silently selected:
 
 | Mode | Signals | Question style | Depth |
-|------|---------|---------------|-------|
+| ------ | --------- | --------------- | ------- |
 | **Builder** | Plain language, vibe keywords, prototype/yolo profile | Scenario-based, no jargon, cause-and-effect | Concrete situations |
 | **Architect** | Technical terms, specific requirements, production profile | Direct, uses domain terms, trade-off framing | Design decisions |
 
@@ -75,7 +75,7 @@ For bootstrap context (no phases yet): generate gray areas from the project desc
 Profile depth controls gray area count:
 
 | Profile | Gray Areas |
-|---------|-----------|
+| --------- | ----------- |
 | prototype | 2-3 |
 | default | 3-5 |
 | production | 4-6 |
@@ -179,7 +179,7 @@ Also append to `discovery.json` using this schema:
 ## Config Interaction
 
 | Config | Effect |
-|--------|--------|
+| -------- | -------- |
 | `active_profile=yolo` | Skip discussion entirely |
 | `active_profile=prototype` | 2-3 gray areas, quick explore |
 | `active_profile=default` | 3-5 gray areas, standard depth |
