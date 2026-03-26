@@ -118,6 +118,8 @@ CONTEXT_NAME=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scr
 - Append new entries to `## Deferred Ideas` if any surfaced
 - Update the `Gathered:` date to today's date
 - Do NOT remove, rewrite, or reorder existing content — the original discussion decisions are still valid
+- Also append new entries to `discovery.json` (same schema as fresh discussion below) — continuation insights must flow into the discovery record
+- **Early exit:** If the user selected "None — discussion is complete" in Step 2, skip capture entirely — do NOT update the date or any file content
 
 **Fresh discussion:** Write `${CONTEXT_NAME}` to the phase directory:
 

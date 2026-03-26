@@ -159,8 +159,8 @@ Every mode triggers confirmation via AskUserQuestion before executing, with cont
 | Routing state | Recommended | Alternatives |
 | --- | --- | --- |
 | `needs_discussion` | "Discuss phase {NN}" | "Skip discussion and plan directly", "View phase goal first" |
-| `needs_plan_and_execute` | "Plan and execute phase {NN}" | "Plan only (review before executing)", "Deepen discussion (explore additional topics beyond what's already captured)" |
-| `needs_execute` | "Execute phase {NN}" | "Review plans first", "Deepen discussion (revisit scope with existing insights as baseline)" |
+| `needs_plan_and_execute` | "Plan and execute phase {NN}" | "Plan only (review before executing)", "Start a discussion (explore gray areas before planning)" |
+| `needs_execute` | "Execute phase {NN}" | "Review plans first", "Start a discussion (revisit scope before executing)" |
 
 ## Modes
 
