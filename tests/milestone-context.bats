@@ -83,6 +83,9 @@ CTX
   grep -q "### Milestone Scope Context" "$CONTEXT_FILE"
   grep -q "Scope Boundary" "$CONTEXT_FILE"
   grep -q "recipe recommendation app" "$CONTEXT_FILE"
+
+  # H1 title must be stripped to avoid inverted heading hierarchy
+  ! grep -q "^# Test Project" "$CONTEXT_FILE"
 }
 
 @test "milestone-context: compile-context omits milestone section when no CONTEXT.md" {
