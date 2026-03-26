@@ -41,3 +41,16 @@ Phase state:
 ## Execute
 
 Read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/discussion-engine.md` and follow its protocol for the target phase.
+
+## After Discussion
+
+**Discussion commit boundary (conditional):**
+```bash
+PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+if [ -f "$PG_SCRIPT" ]; then
+  bash "$PG_SCRIPT" commit-boundary "discuss phase {NN}" .vbw-planning/config.json
+else
+  echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+fi
+```
+Behavior: `planning_tracking=commit` commits `{NN}-CONTEXT.md` and `discovery.json` if changed. Other modes no-op.

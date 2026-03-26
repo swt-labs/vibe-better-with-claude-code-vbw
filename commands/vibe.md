@@ -262,7 +262,17 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - **Requirement Mapping:** which REQ-IDs map to which phases (from step 3)
    - **Key Decisions:** project-level decisions surfaced during scoping (tech choices, architecture patterns that transcend the milestone). Also insert these as rows in STATE.md's `## Key Decisions` table (append after the header row, replacing the `_(No decisions yet)_` placeholder if present). Milestone-scoped decisions (phase ordering rationale, scope boundaries) stay only in CONTEXT.md.
    - **Deferred Ideas:** out-of-scope ideas mentioned during steps 2-3
-7. Display "Scoping complete. {N} phases created." STOP -- do not auto-continue to planning.
+7. **Scope commit boundary (conditional):**
+   ```bash
+  PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "scope milestone" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
+   ```
+   Behavior: `planning_tracking=commit` commits `.vbw-planning/` if changed (ROADMAP.md, STATE.md, CONTEXT.md, phase dirs). Other modes no-op.
+8. Display "Scoping complete. {N} phases created." STOP -- do not auto-continue to planning.
 
 ### Mode: Discuss
 
@@ -272,7 +282,17 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 **Steps:**
 1. Determine target phase from $ARGUMENTS or auto-detection.
 2. Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/references/discussion-engine.md` and follow its protocol for the target phase.
-3. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh vibe`.
+3. **Discussion commit boundary (conditional):**
+   ```bash
+  PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "discuss phase {NN}" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
+   ```
+   Behavior: `planning_tracking=commit` commits `{NN}-CONTEXT.md` and `discovery.json` if changed. Other modes no-op.
+4. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh vibe`.
 
 ### Mode: Assumptions
 
@@ -638,7 +658,17 @@ Missing name: STOP "Usage: `/vbw:vibe --add <phase-name>`"
 6. Update ROADMAP.md: append phase list entry, append Phase Details section (using Scout findings if available), add progress row.
 7. If `.vbw-planning/CONTEXT.md` exists, rewrite it to reflect the updated milestone decomposition (phase count/grouping, ordering, scope coverage, and requirement mapping). Preserve project-level key decisions and deferred ideas where still valid.
 8. Update STATE.md phase total: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/update-phase-total.sh .vbw-planning`
-9. Present: Phase Banner with position, goal. Checklist for roadmap update + dir creation. Next Up: `/vbw:vibe --discuss` or `/vbw:vibe --plan`.
+9. **Phase mutation commit boundary (conditional):**
+   ```bash
+  PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "add phase {NN}-{slug}" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
+   ```
+   Behavior: `planning_tracking=commit` commits `.vbw-planning/` if changed. Other modes no-op.
+10. Present: Phase Banner with position, goal. Checklist for roadmap update + dir creation. Next Up: `/vbw:vibe --discuss` or `/vbw:vibe --plan`.
 
 ### Mode: Insert Phase
 
@@ -657,7 +687,17 @@ Inserting before completed phase: WARN + confirm.
 7. Update ROADMAP.md: insert new phase entry + details at position (using Scout findings if available), renumber subsequent entries/headers/cross-refs, update progress table.
 8. If `.vbw-planning/CONTEXT.md` exists, rewrite it to reflect the updated milestone decomposition (phase count/grouping, ordering, scope coverage, and requirement mapping). Preserve project-level key decisions and deferred ideas where still valid.
 9. Update STATE.md phase total: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/update-phase-total.sh .vbw-planning --inserted {position}` (where {position} is the insert position from step 2).
-10. Present: Phase Banner with renumber count, phase changes, file checklist, Next Up.
+10. **Phase mutation commit boundary (conditional):**
+    ```bash
+   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+    if [ -f "$PG_SCRIPT" ]; then
+      bash "$PG_SCRIPT" commit-boundary "insert phase {NN}-{slug} at position {position}" .vbw-planning/config.json
+    else
+      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+    fi
+    ```
+    Behavior: `planning_tracking=commit` commits `.vbw-planning/` if changed. Other modes no-op.
+11. Present: Phase Banner with renumber count, phase changes, file checklist, Next Up.
 
 ### Mode: Remove Phase
 
@@ -675,7 +715,17 @@ Completed ([x] in roadmap): STOP "Cannot remove completed Phase {NN}."
 5. Update ROADMAP.md: remove phase entry + details, renumber subsequent, update deps, update progress table.
 6. If `.vbw-planning/CONTEXT.md` exists, rewrite it to reflect the updated milestone decomposition (phase count/grouping, ordering, scope coverage, and requirement mapping). Preserve project-level key decisions and deferred ideas where still valid.
 7. Update STATE.md phase total: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/update-phase-total.sh .vbw-planning --removed {NN}` (where {NN} is the removed phase number from step 1).
-8. Present: Phase Banner with renumber count, phase changes, file checklist, Next Up.
+8. **Phase mutation commit boundary (conditional):**
+   ```bash
+  PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "remove phase {NN}" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
+   ```
+   Behavior: `planning_tracking=commit` commits `.vbw-planning/` if changed. Other modes no-op.
+9. Present: Phase Banner with renumber count, phase changes, file checklist, Next Up.
 
 ### Mode: Archive
 
