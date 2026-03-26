@@ -225,10 +225,9 @@ JSON
 }
 
 # --- Test 9: statusline reads config from subdirectory (end-to-end) ---
-# NOTE: In local dev environments with an initialized .vbw-planning/, this test
-# may pass coincidentally because find_vbw_root("$_SL_SCRIPT_DIR") finds the
-# VBW project's config instead of the test workspace's. In CI (no .vbw-planning/
-# in checkout), the fallback to CWD correctly reaches the test workspace.
+# Hermetic: copies the statusline script + deps into the test workspace so
+# $_SL_SCRIPT_DIR resolves inside the workspace, preventing find_vbw_root
+# from escaping to the developer's real .vbw-planning/ directory.
 
 @test "statusline: reads model_profile from subdirectory CWD (not hardcoded default)" {
   local root="$TEST_TEMP_DIR/monorepo-statusline"
@@ -240,10 +239,23 @@ JSON
 {"effort": "balanced", "model_profile": "balanced"}
 JSON
 
+  # Copy statusline script and its dependencies into the test workspace
+  # so $_SL_SCRIPT_DIR cannot resolve outside the workspace
+  local sl_dir="$root/scripts"
+  mkdir -p "$sl_dir/lib"
+  cp "$STATUSLINE" "$sl_dir/vbw-statusline.sh"
+  cp "$SCRIPTS_DIR/lib/vbw-config-root.sh" "$sl_dir/lib/"
+  # Copy optional sourced helpers (statusline degrades gracefully if absent)
+  for f in summary-utils.sh uat-utils.sh phase-state-utils.sh; do
+    [ -f "$SCRIPTS_DIR/$f" ] && cp "$SCRIPTS_DIR/$f" "$sl_dir/"
+  done
+  # VERSION file lives one level up from scripts/
+  [ -f "$PROJECT_ROOT/VERSION" ] && cp "$PROJECT_ROOT/VERSION" "$root/"
+
   cd "$root/apps/mobile"
   unset VBW_CONFIG_ROOT VBW_PLANNING_DIR 2>/dev/null || true
   local output
-  output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  output=$(echo '{}' | bash "$sl_dir/vbw-statusline.sh" 2>&1)
   cd "$PROJECT_ROOT"
 
   # "bal" must appear in the model_profile field of the output

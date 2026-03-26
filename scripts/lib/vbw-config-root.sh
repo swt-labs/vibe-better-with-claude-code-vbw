@@ -23,14 +23,17 @@
 # New scripts MUST source this file instead of hardcoding ".vbw-planning".
 
 _walk_up_for_vbw_root() {
-  local _cwd="$1"
+  local _cwd="$1" _prev
   while [ "$_cwd" != "/" ]; do
     if [ -f "$_cwd/.vbw-planning/config.json" ]; then
       export VBW_CONFIG_ROOT="$_cwd"
       export VBW_PLANNING_DIR="$_cwd/.vbw-planning"
       return 0
     fi
+    _prev="$_cwd"
     _cwd=$(dirname "$_cwd")
+    # Guard: dirname stopped making progress (e.g. relative path hit ".")
+    [ "$_cwd" = "$_prev" ] && break
   done
   return 1
 }
@@ -47,13 +50,18 @@ find_vbw_root() {
   _cwd_dir=$(pwd -P 2>/dev/null || pwd)
 
   if [ -n "${1:-}" ]; then
-    # Resolve start_dir to an absolute path
-    _start_dir=$(cd "$1" && pwd -P 2>/dev/null) || _start_dir="$1"
-    # Walk up from start_dir first (works when script lives inside the project, e.g. dev/--plugin-dir)
-    _walk_up_for_vbw_root "$_start_dir" && return 0
-    # Not found via script-relative walk — try CWD (production: plugin cache is outside project)
-    # Only attempt if CWD differs from start_dir to avoid redundant traversal
-    [ "$_cwd_dir" != "$_start_dir" ] && _walk_up_for_vbw_root "$_cwd_dir" && return 0
+    # Resolve start_dir to an absolute path; suppress cd stderr so bad paths
+    # don't leak error messages into hook/statusline output (#267)
+    if _start_dir=$(cd "$1" 2>/dev/null && pwd -P 2>/dev/null); then
+      # Walk up from start_dir first (works when script lives inside the project, e.g. dev/--plugin-dir)
+      _walk_up_for_vbw_root "$_start_dir" && return 0
+      # Not found via script-relative walk — try CWD (production: plugin cache is outside project)
+      # Only attempt if CWD differs from start_dir to avoid redundant traversal
+      [ "$_cwd_dir" != "$_start_dir" ] && _walk_up_for_vbw_root "$_cwd_dir" && return 0
+    else
+      # Failed to resolve start_dir; fall back to walking from CWD only
+      _walk_up_for_vbw_root "$_cwd_dir" && return 0
+    fi
   else
     _walk_up_for_vbw_root "$_cwd_dir" && return 0
   fi
