@@ -154,6 +154,14 @@ Every mode triggers confirmation via AskUserQuestion before executing, with cont
 - **Exception:** `--yolo` skips all confirmation gates. Error guards (missing roadmap, uninitialized project) still halt.
 - **Exception:** Flags skip confirmation (explicit intent).
 
+**Discussion-aware alternatives (NON-NEGOTIABLE):** Alternatives must reflect whether discussion has already happened for the target phase. Never offer "discuss this phase" when a `{NN}-CONTEXT.md` exists — discussion is already complete.
+
+| Routing state | Recommended | Alternatives |
+|---|---|---|
+| `needs_discussion` | "Discuss phase {NN}" | "Skip discussion and plan directly", "View phase goal first" |
+| `needs_plan_and_execute` | "Plan and execute phase {NN}" | "Plan only (review before executing)", "Deepen discussion (explore additional topics beyond what's already captured)" |
+| `needs_execute` | "Execute phase {NN}" | "Review plans first", "Deepen discussion (revisit scope with existing insights as baseline)" |
+
 ## Modes
 
 ### Mode: Init Redirect
@@ -261,6 +269,8 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 
 **Guard:** Initialized, phase exists in roadmap.
 **Phase auto-detection:** First phase without `*-CONTEXT.md`. All discussed: STOP "All phases discussed. Specify: `/vbw:vibe --discuss N`"
+
+**Continuation mode:** When the target phase already has a `{NN}-CONTEXT.md`, this is a **continuation discussion** — not a fresh one. Display: "Phase {NN} already has discussion context. Continuing to explore additional topics." The Discussion Engine will load existing decisions as baseline and focus on uncovered gray areas.
 
 **Steps:**
 1. Determine target phase from $ARGUMENTS or auto-detection.
