@@ -17,6 +17,9 @@ teardown() {
 
   grep -q "## Scope Boundary" "$TEMPLATE"
   grep -q "## Decomposition Decisions" "$TEMPLATE"
+  grep -q "### Phase Count & Grouping" "$TEMPLATE"
+  grep -q "### Phase Ordering" "$TEMPLATE"
+  grep -q "### Scope Coverage" "$TEMPLATE"
   grep -q "## Requirement Mapping" "$TEMPLATE"
   grep -q "## Key Decisions" "$TEMPLATE"
   grep -q "## Deferred Ideas" "$TEMPLATE"

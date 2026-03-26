@@ -147,7 +147,8 @@ fi
 MILESTONE_CONTEXT_PATH="${PLANNING_DIR}/CONTEXT.md"
 MILESTONE_CONTEXT_SECTION=""
 if [ -f "$MILESTONE_CONTEXT_PATH" ]; then
-  MILESTONE_CONTEXT_SECTION=$(cat "$MILESTONE_CONTEXT_PATH" 2>/dev/null || true)
+  # Strip the H1 title line to avoid inverted heading hierarchy (H1 nested under H3)
+  MILESTONE_CONTEXT_SECTION=$(sed '1{/^# /d;}' "$MILESTONE_CONTEXT_PATH" 2>/dev/null || true)
 fi
 
 # Record start time for metrics
