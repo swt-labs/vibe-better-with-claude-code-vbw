@@ -258,8 +258,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 6. Write milestone context to `.vbw-planning/CONTEXT.md` using the template from `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/MILESTONE-CONTEXT.md`. Capture:
    - **Gathered date** and **Calibration** (builder or architect, inferred from conversation signals — same as Discussion Engine calibration)
    - **Scope Boundary:** the user's scope description from step 2
-   - **Decomposition Decisions:** rationale for phase count, grouping, and ordering from step 3
-   - **Scope Coverage:** what the milestone covers vs what is explicitly excluded or deferred
+   - **Decomposition Decisions:** rationale for phase count, grouping, and ordering from step 3. Includes **Scope Coverage** (what the milestone covers vs what is explicitly excluded or deferred) as a subsection under Decomposition Decisions per the template structure.
    - **Requirement Mapping:** which REQ-IDs map to which phases (from step 3)
    - **Key Decisions:** project-level decisions surfaced during scoping (tech choices, architecture patterns that transcend the milestone). Also insert these as rows in STATE.md's `## Key Decisions` table (append after the header row, replacing the `_(No decisions yet)_` placeholder if present). Milestone-scoped decisions (phase ordering rationale, scope boundaries) stay only in CONTEXT.md.
    - **Deferred Ideas:** out-of-scope ideas mentioned during steps 2-3

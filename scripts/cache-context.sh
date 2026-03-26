@@ -51,8 +51,7 @@ fi
 # Changed files list (git diff for delta awareness)
 if command -v git &>/dev/null && git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
   CHANGED_SUM=$({
-    git diff --binary HEAD 2>/dev/null || true
-    git diff --binary --cached 2>/dev/null || true
+    git diff HEAD 2>/dev/null || true
     git ls-files --others --exclude-standard 2>/dev/null | while IFS= read -r file; do
       [ -n "$file" ] || continue
       echo "UNTRACKED:$file"

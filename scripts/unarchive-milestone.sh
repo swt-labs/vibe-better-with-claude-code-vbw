@@ -178,6 +178,9 @@ decision_item_score() {
     [ -n "$col1" ] && score=1
     [ -n "$col2" ] && score=$((score + 1))
     [ -n "$col3" ] && score=$((score + 1))
+  else
+    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+    [ -n "$line" ] && score=1
   fi
 
   echo "$score"
