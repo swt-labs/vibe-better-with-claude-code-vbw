@@ -313,6 +313,31 @@ EOF
   [ "$count" -eq 1 ]
 }
 
+@test "bootstrap-state: keeps richer canonical decision rows over legacy bullets" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Keep auth service isolated
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  grep -q '| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |' .vbw-planning/STATE.md
+}
+
 @test "bootstrap-state: preserves legacy Pending Todos subsection" {
   cd "$TEST_TEMP_DIR"
   cat > .vbw-planning/STATE.md <<'EOF'

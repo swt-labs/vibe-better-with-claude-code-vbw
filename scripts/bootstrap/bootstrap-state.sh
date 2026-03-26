@@ -19,19 +19,14 @@ PROJECT_NAME="$2"
 MILESTONE_NAME="$3"
 PHASE_COUNT="$4"
 
-# Validate PHASE_COUNT is a positive integer
 if ! [[ "$PHASE_COUNT" =~ ^[1-9][0-9]*$ ]]; then
   echo "ERROR: PHASE_COUNT must be a positive integer, got: '$PHASE_COUNT'" >&2
   exit 1
 fi
 
 STARTED=$(date +%Y-%m-%d)
-
-# Ensure parent directory exists
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 
-# Extract a section body (lines between heading and next ## heading, exclusive).
-# Case-insensitive heading match. Returns empty string if section not found.
 extract_section() {
   local file="$1" heading="$2"
   awk -v h="$heading" '
@@ -114,20 +109,41 @@ decision_key() {
   printf '%s\n' "$line" | sed -E 's/\*\*//g' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[[:space:]]+/ /g' | tr '[:upper:]' '[:lower:]'
 }
 
+decision_row_score() {
+  local line="$1"
+  local score=0
+  local escaped_pipe='__VBW_ESCAPED_PIPE__'
+
+  if [[ "$line" =~ ^\| ]]; then
+    local cols col1 col2 col3
+    cols=$(printf '%s\n' "$line" | sed "s/\\\\|/${escaped_pipe}/g" | sed 's/^|//' | sed 's/|$//')
+    col1=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}' | sed "s/${escaped_pipe}/|/g")
+    col2=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}' | sed "s/${escaped_pipe}/|/g")
+    col3=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $3); print $3}' | sed "s/${escaped_pipe}/|/g")
+    [ -n "$col1" ] && score=1
+    [ -n "$col2" ] && score=$((score + 1))
+    [ -n "$col3" ] && score=$((score + 1))
+  else
+    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+    [ -n "$line" ] && score=1
+  fi
+
+  echo "$score"
+}
+
 format_decisions_table() {
   local decisions="$1"
-  local emitted=0
-  local seen_keys=""
-
-  if [[ -z "$decisions" ]]; then
-    echo "| Decision | Date | Rationale |"
-    echo "|----------|------|-----------|"
-    echo "| _(No decisions yet)_ | | |"
-    return 0
-  fi
+  local -a seen_keys=()
+  local -a rows=()
+  local -a scores=()
 
   echo "| Decision | Date | Rationale |"
   echo "|----------|------|-----------|"
+
+  if [[ -z "$decisions" ]]; then
+    echo "| _(No decisions yet)_ | | |"
+    return 0
+  fi
 
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
@@ -138,54 +154,59 @@ format_decisions_table() {
       [[ "$lower" =~ ^\|([[:space:]:-]+\|)+[[:space:]:-]*$ ]] && continue
       [[ "$lower" =~ ^\|[[:space:]]*decision([[:space:]]*\|.*)?$ ]] && continue
       [[ "$lower" =~ ^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$ ]] && continue
-      local key
-      key=$(decision_key "$line")
-      [ -n "$key" ] || continue
-      if printf '%s\n' "$seen_keys" | grep -Fxq "$key"; then
-        continue
-      fi
-      seen_keys=$(printf '%s\n%s' "$seen_keys" "$key")
-      echo "$line"
-      emitted=1
-      continue
+    else
+      [[ "$line" =~ ^#+[[:space:]] ]] && continue
+      line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+      local lower_line
+      lower_line=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
+      [[ -z "$line" ]] && continue
+      [[ "$lower_line" == "none" ]] && continue
+      [[ "$lower_line" == "none." ]] && continue
+      [[ "$lower_line" == "_(no decisions yet)_" ]] && continue
+      line=$(printf '%s\n' "$line" | sed 's/|/\\|/g')
+      line="| $line | | |"
     fi
 
-    [[ "$line" =~ ^#+[[:space:]] ]] && continue
-    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
-    local lower_line
-    lower_line=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
-    [[ -z "$line" ]] && continue
-    [[ "$lower_line" == "none" ]] && continue
-    [[ "$lower_line" == "none." ]] && continue
-    [[ "$lower_line" == "_(no decisions yet)_" ]] && continue
-
-    local key
+    local key score idx found
     key=$(decision_key "$line")
     [ -n "$key" ] || continue
-    if printf '%s\n' "$seen_keys" | grep -Fxq "$key"; then
+    score=$(decision_row_score "$line")
+    found=-1
+    for idx in "${!seen_keys[@]}"; do
+      if [[ "${seen_keys[$idx]}" == "$key" ]]; then
+        found=$idx
+        break
+      fi
+    done
+
+    if [ "$found" -ge 0 ]; then
+      if [ "$score" -gt "${scores[$found]}" ]; then
+        rows[$found]="$line"
+        scores[$found]="$score"
+      fi
       continue
     fi
-    seen_keys=$(printf '%s\n%s' "$seen_keys" "$key")
 
-    line=$(printf '%s\n' "$line" | sed 's/|/\\|/g')
-    echo "| $line | | |"
-    emitted=1
+    seen_keys+=("$key")
+    rows+=("$line")
+    scores+=("$score")
   done <<< "$decisions"
 
-  if [[ "$emitted" -eq 0 ]]; then
+  if [ "${#rows[@]}" -eq 0 ]; then
     echo "| _(No decisions yet)_ | | |"
+  else
+    for row in "${rows[@]}"; do
+      echo "$row"
+    done
   fi
 }
 
-# Preserve existing project-level sections if output file already exists
-# (e.g., carried forward from a prior milestone by persist-state-after-ship.sh)
 EXISTING_TODOS=""
 EXISTING_DECISIONS=""
 EXISTING_BLOCKERS=""
 EXISTING_CODEBASE=""
 if [[ -f "$OUTPUT_PATH" ]]; then
   EXISTING_TODOS=$(extract_todos_section "$OUTPUT_PATH")
-  # Decisions may use "## Decisions" or "## Key Decisions"
   EXISTING_DECISIONS=$(awk '
     { low = tolower($0) }
     low ~ /^##[[:space:]]+(key )?decisions[[:space:]]*$/ { found=1; next }
@@ -246,7 +267,6 @@ fi
     echo "None"
   fi
 
-  # Codebase Profile (optional — only if it existed in prior state)
   if [[ -n "$EXISTING_CODEBASE" ]]; then
     echo ""
     echo "## Codebase Profile"

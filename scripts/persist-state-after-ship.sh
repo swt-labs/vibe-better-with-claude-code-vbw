@@ -129,6 +129,28 @@ decision_key() {
   printf '%s\n' "$line" | sed -E 's/\*\*//g' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[[:space:]]+/ /g' | tr '[:upper:]' '[:lower:]'
 }
 
+decision_row_score() {
+  local line="$1"
+  local score=0
+  local escaped_pipe='__VBW_ESCAPED_PIPE__'
+
+  if [[ "$line" =~ ^\| ]]; then
+    local cols col1 col2 col3
+    cols=$(printf '%s\n' "$line" | sed "s/\\\\|/${escaped_pipe}/g" | sed 's/^|//' | sed 's/|$//')
+    col1=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}' | sed "s/${escaped_pipe}/|/g")
+    col2=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}' | sed "s/${escaped_pipe}/|/g")
+    col3=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $3); print $3}' | sed "s/${escaped_pipe}/|/g")
+    [ -n "$col1" ] && score=1
+    [ -n "$col2" ] && score=$((score + 1))
+    [ -n "$col3" ] && score=$((score + 1))
+  else
+    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+    [ -n "$line" ] && score=1
+  fi
+
+  echo "$score"
+}
+
 normalize_decisions_section() {
   local section="$1"
   if [[ -z "$section" ]]; then
@@ -144,7 +166,9 @@ normalize_decisions_section() {
   echo "|----------|------|-----------|"
 
   local emitted=0
-  local seen_keys=""
+  local -a seen_keys=()
+  local -a rows_out=()
+  local -a scores=()
   while IFS= read -r line; do
     [ -z "$line" ] && continue
 
@@ -162,23 +186,51 @@ normalize_decisions_section() {
     local key
     key=$(decision_key "$line")
     [ -n "$key" ] || continue
-    if printf '%s\n' "$seen_keys" | grep -Fxq "$key"; then
-      continue
-    fi
-    seen_keys=$(printf '%s\n%s' "$seen_keys" "$key")
+    local idx found score
+    score=$(decision_row_score "$line")
+    found=-1
+    for idx in "${!seen_keys[@]}"; do
+      if [[ "${seen_keys[$idx]}" == "$key" ]]; then
+        found=$idx
+        break
+      fi
+    done
 
     if [[ "$line" =~ ^\| ]]; then
-      printf '%s\n' "$line"
+      if [ "$found" -ge 0 ]; then
+        if [ "$score" -gt "${scores[$found]}" ]; then
+          rows_out[$found]="$line"
+          scores[$found]="$score"
+        fi
+      else
+        seen_keys+=("$key")
+        rows_out+=("$line")
+        scores+=("$score")
+      fi
     else
       line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
       line=$(printf '%s\n' "$line" | sed 's/|/\\|/g')
-      printf '| %s | | |\n' "$line"
+      line="| $line | | |"
+      if [ "$found" -ge 0 ]; then
+        if [ "$score" -gt "${scores[$found]}" ]; then
+          rows_out[$found]="$line"
+          scores[$found]="$score"
+        fi
+      else
+        seen_keys+=("$key")
+        rows_out+=("$line")
+        scores+=("$score")
+      fi
     fi
-    emitted=1
   done <<< "$(printf '%s\n' "$section" | tail -n +2)"
 
-  if [[ "$emitted" -eq 0 ]]; then
+  if [ "${#rows_out[@]}" -eq 0 ]; then
     echo "| _(No decisions yet)_ | | |"
+  else
+    emitted=1
+    for row in "${rows_out[@]}"; do
+      printf '%s\n' "$row"
+    done
   fi
 }
 
