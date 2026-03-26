@@ -264,6 +264,29 @@ EOF
   grep -q '^| Use REST \\| GraphQL fallback | | |$' .vbw-planning/STATE.md
 }
 
+@test "bootstrap-state: does not duplicate canonical table separator rows" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  count=$(grep -c '^|----------|------|-----------|$' .vbw-planning/STATE.md)
+  [ "$count" -eq 1 ]
+}
+
 @test "bootstrap-state: preserves legacy Pending Todos subsection" {
   cd "$TEST_TEMP_DIR"
   cat > .vbw-planning/STATE.md <<'EOF'

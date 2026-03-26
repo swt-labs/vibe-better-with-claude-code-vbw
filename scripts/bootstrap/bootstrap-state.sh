@@ -120,7 +120,7 @@ format_decisions_table() {
     if [[ "$line" =~ ^\| ]]; then
       local lower
       lower=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
-      [[ "$lower" =~ ^\|[[:space:]:-]+\|?[[:space:]]*$ ]] && continue
+      [[ "$lower" =~ ^\|([[:space:]:-]+\|)+[[:space:]:-]*$ ]] && continue
       [[ "$lower" =~ ^\|[[:space:]]*decision([[:space:]]*\|.*)?$ ]] && continue
       [[ "$lower" =~ ^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$ ]] && continue
       echo "$line"

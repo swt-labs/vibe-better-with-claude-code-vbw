@@ -476,6 +476,30 @@ EOF
   grep -q '^| Use REST \\| GraphQL fallback | | |$' ".vbw-planning/STATE.md"
 }
 
+@test "unarchive does not duplicate canonical table separator rows" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# VBW State
+
+**Project:** Test Project
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  count=$(grep -c '^|----------|------|-----------|$' ".vbw-planning/STATE.md")
+  [ "$count" -eq 1 ]
+}
+
 @test "unarchive keeps escaped-pipe decision rows distinct from plain rows" {
   create_archived_milestone "foundation"
 

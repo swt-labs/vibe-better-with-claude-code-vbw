@@ -13,8 +13,8 @@ set -euo pipefail
 # Log) are excluded — they belong in the archive.
 #
 # Project-level sections (preserved):
-#   ## Decisions
-#   ## Todos
+#   ## Decisions / ## Key Decisions
+#   ## Todos / ### Pending Todos
 #   ## Blockers
 #   ## Codebase Profile
 #
@@ -42,17 +42,17 @@ fi
 
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 
-# Sections to preserve (project-level, survive across milestones)
-# Uses awk to extract each section by ## heading, stopping at the next ## heading.
-# Case-insensitive matching. Collects content from ALL matching headings
-# (prints heading once, merges body lines) to handle duplicate sections.
 extract_section() {
   local file="$1"
   local heading="$2"
   awk -v h="$heading" '
     BEGIN { pat = tolower(h) }
     { low = tolower($0) }
-    low ~ ("^##[[:space:]]+" pat "[[:space:]]*$") { found=1; if (!hdr) { print $0; hdr=1 }; next }
+    low ~ ("^##[[:space:]]+" pat "[[:space:]]*$") {
+      found=1
+      if (!hdr) { print $0; hdr=1 }
+      next
+    }
     found && /^## / { found=0 }
     found { print }
   ' "$file"
@@ -93,14 +93,17 @@ extract_todos() {
   ' "$file"
 }
 
-# Decisions section may use "## Decisions" (template) or "## Key Decisions"
-# (bootstrap-state.sh). Case-insensitive. Merges all matching occurrences.
-# Strips any ### Skills subsection (no longer written or read).
 extract_decisions() {
   local file="$1"
   awk '
-    { low = tolower($0) }
-    low ~ /^##[[:space:]]+(key )?decisions[[:space:]]*$/ { found=1; if (!hdr) { print $0; hdr=1 }; next }
+    {
+      low = tolower($0)
+    }
+    low ~ /^##[[:space:]]+(key )?decisions[[:space:]]*$/ {
+      found=1
+      if (!hdr) { print "## Key Decisions"; hdr=1 }
+      next
+    }
     found && /^## / { found=0 }
     found && low ~ /^###[[:space:]]+pending[[:space:]]+todos[[:space:]]*$/ { found=0; skip_skills=0; next }
     found && low ~ /^###[[:space:]]+skills[[:space:]]*$/ { skip_skills=1; next }
@@ -109,7 +112,6 @@ extract_decisions() {
   ' "$file"
 }
 
-# Check if extracted section has content beyond just the heading line
 section_has_body() {
   [[ -n "$1" ]] && echo "$1" | tail -n +2 | grep -qv '^[[:space:]]*$'
 }
@@ -118,12 +120,8 @@ normalize_decisions_section() {
   local section="$1"
   [[ -n "$section" ]] || return 0
 
-  local emitted=0
-  echo "## Key Decisions"
-  echo "| Decision | Date | Rationale |"
-  echo "|----------|------|-----------|"
-
-  printf '%s\n' "$section" | awk '
+  local rows
+  rows=$(printf '%s\n' "$section" | awk '
     NR == 1 { next }
     {
       low = tolower($0)
@@ -132,7 +130,7 @@ normalize_decisions_section() {
       if (low ~ /^[-*][[:space:]]+_\(no[[:space:]]+decisions[[:space:]]+yet\)_[[:space:]]*$/) next
       if (low ~ /^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$/) next
       if (low ~ /^\|[[:space:]]*decision([[:space:]]*\|.*)?$/) next
-      if (low ~ /^\|[[:space:]:-]+\|?[[:space:]]*$/) next
+      if (low ~ /^\|([[:space:]:-]+\|)+[[:space:]:-]*$/) next
       if ($0 ~ /^[[:space:]]*$/) next
       if ($0 ~ /^#+[[:space:]]/) next
       if ($0 ~ /^\|/) {
@@ -144,12 +142,14 @@ normalize_decisions_section() {
       gsub(/\|/, "\\|", line)
       print "| " line " | | |"
     }
-  ' | while IFS= read -r line; do
-    echo "$line"
-    emitted=1
-  done
+  ')
 
-  if [[ "$emitted" -eq 0 ]]; then
+  echo "## Key Decisions"
+  echo "| Decision | Date | Rationale |"
+  echo "|----------|------|-----------|"
+  if [[ -n "$rows" ]]; then
+    printf '%s\n' "$rows"
+  else
     echo "| _(No decisions yet)_ | | |"
   fi
 }
@@ -158,8 +158,9 @@ normalize_todos_section() {
   local section="$1"
   [[ -n "$section" ]] || return 0
 
-  printf '%s\n' "$section" | awk '
-    NR == 1 { print "## Todos"; next }
+  local rows
+  rows=$(printf '%s\n' "$section" | awk '
+    NR == 1 { next }
     {
       low = tolower($0)
       if (low ~ /^[-*][[:space:]]+none\.?[[:space:]]*$/) next
@@ -167,7 +168,14 @@ normalize_todos_section() {
       if ($0 ~ /^[[:space:]]*$/) next
       print
     }
-  '
+  ')
+
+  echo "## Todos"
+  if [[ -n "$rows" ]]; then
+    printf '%s\n' "$rows"
+  else
+    echo "None."
+  fi
 }
 
 generate_root_state() {
@@ -176,35 +184,18 @@ generate_root_state() {
   echo "**Project:** ${PROJECT_NAME}"
   echo ""
 
-  # Decisions
   local decisions
   decisions=$(extract_decisions "$ARCHIVED_PATH")
   decisions=$(normalize_decisions_section "$decisions")
-  if section_has_body "$decisions"; then
-    echo "$decisions"
-    echo ""
-  else
-    echo "## Key Decisions"
-    echo "| Decision | Date | Rationale |"
-    echo "|----------|------|-----------|"
-    echo "| _(No decisions yet)_ | | |"
-    echo ""
-  fi
+  echo "$decisions"
+  echo ""
 
-  # Todos
   local todos
   todos=$(extract_todos "$ARCHIVED_PATH")
   todos=$(normalize_todos_section "$todos")
-  if section_has_body "$todos"; then
-    echo "$todos"
-    echo ""
-  else
-    echo "## Todos"
-    echo "None."
-    echo ""
-  fi
+  echo "$todos"
+  echo ""
 
-  # Blockers
   local blockers
   blockers=$(extract_section "$ARCHIVED_PATH" "Blockers")
   if section_has_body "$blockers"; then
@@ -216,7 +207,6 @@ generate_root_state() {
     echo ""
   fi
 
-  # Codebase Profile (optional — only if it exists in archived state)
   local codebase
   codebase=$(extract_section "$ARCHIVED_PATH" "Codebase Profile")
   if section_has_body "$codebase"; then

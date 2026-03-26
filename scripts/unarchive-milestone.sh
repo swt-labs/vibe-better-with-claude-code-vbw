@@ -115,7 +115,7 @@ extract_decision_items() {
 
       if (/^\|/) {
         # Skip markdown separators and common table header row
-        if (low ~ /^\|[[:space:]:-]+\|?[[:space:]]*$/) {
+        if (low ~ /^\|([[:space:]:-]+\|)+[[:space:]:-]*$/) {
           next
         }
         if (low ~ /^\|[[:space:]]*decision([[:space:]]*\|.*)?$/) {
@@ -285,7 +285,7 @@ format_decision_items_for_state() {
       local lower
       lower=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
       [[ "$lower" =~ ^\|[[:space:]]*decision([[:space:]]*\|.*)?$ ]] && continue
-      [[ "$lower" =~ ^\|[[:space:]:-]+\|?[[:space:]]*$ ]] && continue
+      [[ "$lower" =~ ^\|([[:space:]:-]+\|)+[[:space:]:-]*$ ]] && continue
       [[ "$lower" =~ ^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$ ]] && continue
       echo "$line"
       continue

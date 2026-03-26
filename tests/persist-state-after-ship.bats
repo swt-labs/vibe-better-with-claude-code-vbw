@@ -736,6 +736,30 @@ EOF
   grep -q '^| Use REST \\| GraphQL fallback | | |$' .vbw-planning/STATE.md
 }
 
+@test "persist script does not append empty placeholder when real decisions exist" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Placeholder Regression Test
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Placeholder Regression Test"
+  [ "$status" -eq 0 ]
+  ! grep -q '_(No decisions yet)_' .vbw-planning/STATE.md
+  grep -q 'Keep auth service isolated' .vbw-planning/STATE.md
+}
+
 # Finding 5 (QA R4): bootstrap-state.sh also tolerates extra spaces
 @test "bootstrap preserves todos with extra-space headings in existing STATE.md" {
   cd "$TEST_TEMP_DIR"
