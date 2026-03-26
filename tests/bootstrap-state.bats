@@ -217,7 +217,29 @@ EOF
     .vbw-planning/STATE.md "Test Project" "Beta" 2
   [ "$status" -eq 0 ]
   ! grep -q '^| None\. | | |$' .vbw-planning/STATE.md
+  ! grep -q '^| None | | |$' .vbw-planning/STATE.md
   grep -q '^| _(No decisions yet)_ | | |$' .vbw-planning/STATE.md
+}
+
+@test "bootstrap-state: strips bullet None todo placeholders" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Keep auth service isolated
+
+## Todos
+- None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  ! grep -q '^- None\.$' .vbw-planning/STATE.md
+  grep -q '^None\.$' .vbw-planning/STATE.md
 }
 
 @test "bootstrap-state: preserves legacy Pending Todos subsection" {

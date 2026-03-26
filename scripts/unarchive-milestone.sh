@@ -127,12 +127,15 @@ extract_decision_items() {
 
 # --- Normalize todo item for dedup comparison ---
 normalize_todo_item() {
-  printf '%s\n' "$1" | \
+  local normalized
+  normalized=$(printf '%s\n' "$1" | \
     sed -E 's/^[-*][[:space:]]+//' | \
     sed -E 's/^\[[^]]+\][[:space:]]*//' | \
     sed -E 's/[[:space:]]*\(added[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}\)$//' | \
     sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[[:space:]]+/ /g' | \
-    tr '[:upper:]' '[:lower:]'
+    tr '[:upper:]' '[:lower:]')
+  [[ "$normalized" == "none" || "$normalized" == "none." ]] && return 0
+  printf '%s\n' "$normalized"
 }
 
 # --- Normalize decision item for dedup comparison ---
@@ -146,10 +149,13 @@ normalize_decision_item() {
     line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
   fi
 
-  printf '%s\n' "$line" | \
+  local normalized
+  normalized=$(printf '%s\n' "$line" | \
     sed -E 's/\*\*//g' | \
     sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[[:space:]]+/ /g' | \
-    tr '[:upper:]' '[:lower:]'
+    tr '[:upper:]' '[:lower:]')
+  [[ "$normalized" == "none" || "$normalized" == "none." ]] && return 0
+  printf '%s\n' "$normalized"
 }
 
 decision_item_score() {
@@ -281,6 +287,7 @@ format_decision_items_for_state() {
     line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
     local lower_line
     lower_line=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
+    [[ "$lower_line" == "none" ]] && continue
     [[ "$lower_line" == "none." ]] && continue
     [[ "$lower_line" == "_(no decisions yet)_" ]] && continue
     echo "| $line | | |"

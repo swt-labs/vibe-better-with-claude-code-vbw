@@ -78,6 +78,29 @@ extract_todos_section() {
   ' "$file"
 }
 
+format_todos_section() {
+  local todos="$1"
+  local emitted=0
+
+  if [[ -z "$todos" ]]; then
+    echo "None."
+    return 0
+  fi
+
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    local normalized
+    normalized=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//' | tr '[:upper:]' '[:lower:]')
+    [[ "$normalized" == "none" || "$normalized" == "none." ]] && continue
+    echo "$line"
+    emitted=1
+  done <<< "$todos"
+
+  if [[ "$emitted" -eq 0 ]]; then
+    echo "None."
+  fi
+}
+
 format_decisions_table() {
   local decisions="$1"
   local emitted=0
@@ -175,9 +198,9 @@ fi
   echo ""
   echo "## Todos"
   if [[ -n "$EXISTING_TODOS" ]]; then
-    echo "$EXISTING_TODOS"
+    format_todos_section "$EXISTING_TODOS"
   else
-    echo "None."
+    format_todos_section ""
   fi
   echo ""
   echo "## Blockers"

@@ -383,6 +383,52 @@ EOF
   grep -q 'Use REST API for backend' ".vbw-planning/STATE.md"
 }
 
+@test "unarchive ignores bare None decision placeholders" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Key Decisions
+- None
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '| None | | |' ".vbw-planning/STATE.md"
+  grep -q 'Use REST API for backend' ".vbw-planning/STATE.md"
+}
+
+@test "unarchive ignores bullet None todo placeholders" {
+  create_archived_milestone "foundation"
+
+  cat > ".vbw-planning/STATE.md" <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Todos
+- None.
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | | |
+EOF
+
+  run bash "$SCRIPTS_DIR/unarchive-milestone.sh" \
+    ".vbw-planning/milestones/foundation" ".vbw-planning"
+  [ "$status" -eq 0 ]
+  ! grep -q '^- None\.$' ".vbw-planning/STATE.md"
+  grep -q 'Upgrade deps after milestone' ".vbw-planning/STATE.md"
+}
+
 @test "unarchive rewrites placeholder-only decisions to canonical empty table" {
   mkdir -p ".vbw-planning/milestones/empty/phases/01-setup"
   touch ".vbw-planning/milestones/empty/phases/01-setup/01-01-PLAN.md"

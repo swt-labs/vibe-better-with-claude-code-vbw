@@ -118,8 +118,13 @@ normalize_decisions_section() {
   local section="$1"
   [[ -n "$section" ]] || return 0
 
+  local emitted=0
+  echo "## Key Decisions"
+  echo "| Decision | Date | Rationale |"
+  echo "|----------|------|-----------|"
+
   printf '%s\n' "$section" | awk '
-    NR == 1 { print "## Decisions"; next }
+    NR == 1 { next }
     {
       low = tolower($0)
       if (low ~ /^[-*][[:space:]]+none\.?[[:space:]]*$/) next
@@ -129,9 +134,22 @@ normalize_decisions_section() {
       if (low ~ /^\|[[:space:]]*decision([[:space:]]*\|.*)?$/) next
       if (low ~ /^\|[[:space:]:-]+\|?[[:space:]]*$/) next
       if ($0 ~ /^[[:space:]]*$/) next
-      print
+      if ($0 ~ /^\|/) {
+        print
+        next
+      }
+      line=$0
+      sub(/^[-*][[:space:]]+/, "", line)
+      print "| " line " | | |"
     }
-  '
+  ' | while IFS= read -r line; do
+    echo "$line"
+    emitted=1
+  done
+
+  if [[ "$emitted" -eq 0 ]]; then
+    echo "| _(No decisions yet)_ | | |"
+  fi
 }
 
 normalize_todos_section() {
@@ -142,6 +160,7 @@ normalize_todos_section() {
     NR == 1 { print "## Todos"; next }
     {
       low = tolower($0)
+      if (low ~ /^[-*][[:space:]]+none\.?[[:space:]]*$/) next
       if (low ~ /^none\.?[[:space:]]*$/) next
       if ($0 ~ /^[[:space:]]*$/) next
       print
@@ -163,8 +182,10 @@ generate_root_state() {
     echo "$decisions"
     echo ""
   else
-    echo "## Decisions"
-    echo "- _(No decisions yet)_"
+    echo "## Key Decisions"
+    echo "| Decision | Date | Rationale |"
+    echo "|----------|------|-----------|"
+    echo "| _(No decisions yet)_ | | |"
     echo ""
   fi
 

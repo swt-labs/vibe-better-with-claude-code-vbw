@@ -107,7 +107,7 @@ EOF
   grep -q "## Todos" .vbw-planning/STATE.md
   grep -q "Fix auth module regression" .vbw-planning/STATE.md
   grep -q "Migrate to new API" .vbw-planning/STATE.md
-  grep -q "## Decisions" .vbw-planning/STATE.md
+  grep -q "## Key Decisions" .vbw-planning/STATE.md
   grep -q "## Blockers" .vbw-planning/STATE.md
 }
 
@@ -157,7 +157,8 @@ EOF
   [ "$status" -eq 0 ]
 
   # Decisions content should survive
-  grep -q "## Decisions" .vbw-planning/STATE.md
+  grep -q "## Key Decisions" .vbw-planning/STATE.md
+  grep -q '^| Decision | Date | Rationale |$' .vbw-planning/STATE.md
   grep -q "Use Core Data" .vbw-planning/STATE.md
   # Skills subsection should be stripped
   ! grep -q "### Skills" .vbw-planning/STATE.md
@@ -682,11 +683,33 @@ EOF
     .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Pending Todos Test"
   [ "$status" -eq 0 ]
 
-  awk '/^## Decisions$/{f=1;next} /^## /{f=0} f{print}' .vbw-planning/STATE.md > "$TEST_TEMP_DIR/decisions.txt"
+  awk '/^## Key Decisions$/{f=1;next} /^## /{f=0} f{print}' .vbw-planning/STATE.md > "$TEST_TEMP_DIR/decisions.txt"
   awk '/^## Todos$/{f=1;next} /^## /{f=0} f{print}' .vbw-planning/STATE.md > "$TEST_TEMP_DIR/todos.txt"
   grep -q 'Keep auth service isolated' "$TEST_TEMP_DIR/decisions.txt"
   grep -q 'Migrate session store' "$TEST_TEMP_DIR/todos.txt"
   ! grep -q 'Migrate session store' "$TEST_TEMP_DIR/decisions.txt"
+}
+
+@test "persist script strips bullet None todo placeholders" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/milestones/m1
+  cat > ".vbw-planning/milestones/m1/STATE.md" <<'EOF'
+# State
+
+**Project:** Bullet None Todo Test
+
+## Decisions
+- Keep auth service isolated
+
+## Todos
+- None.
+EOF
+
+  run bash "$SCRIPTS_DIR/persist-state-after-ship.sh" \
+    .vbw-planning/milestones/m1/STATE.md .vbw-planning/STATE.md "Bullet None Todo Test"
+  [ "$status" -eq 0 ]
+  ! grep -q '^- None\.$' .vbw-planning/STATE.md
+  grep -q '^None\.$' .vbw-planning/STATE.md
 }
 
 # Finding 5 (QA R4): bootstrap-state.sh also tolerates extra spaces
