@@ -143,6 +143,14 @@ if [ "$ROLLING_SUMMARY" = "true" ] && [ "$PHASE_NUM" -gt 1 ] 2>/dev/null && [ -f
   ROLLING_CONTEXT_SECTION=$(cat "$ROLLING_CONTEXT_PATH" 2>/dev/null || true)
 fi
 
+# Milestone scope context (written by Scope mode)
+MILESTONE_CONTEXT_PATH="${PLANNING_DIR}/CONTEXT.md"
+MILESTONE_CONTEXT_SECTION=""
+if [ -f "$MILESTONE_CONTEXT_PATH" ]; then
+  # Strip the H1 title line to avoid inverted heading hierarchy (H1 nested under H3)
+  MILESTONE_CONTEXT_SECTION=$(sed '1{/^# /d;}' "$MILESTONE_CONTEXT_PATH" 2>/dev/null || true)
+fi
+
 # Record start time for metrics
 if [ "$V3_METRICS_ENABLED" = "true" ]; then
   START_TIME=$(date +%s 2>/dev/null || echo "0")
@@ -237,6 +245,12 @@ case "$ROLE" in
         echo "$ROLLING_CONTEXT_SECTION"
         echo ""
       fi
+      if [ -n "$MILESTONE_CONTEXT_SECTION" ]; then
+        echo ""
+        echo "### Milestone Scope Context"
+        echo "$MILESTONE_CONTEXT_SECTION"
+        echo ""
+      fi
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -264,7 +278,15 @@ case "$ROLE" in
       echo ""
       echo "### Active Decisions"
       if [ -f "$PLANNING_DIR/STATE.md" ]; then
-        DECISIONS=$(sed -n '/^## Key Decisions/,/^## [A-Z]/p' "$PLANNING_DIR/STATE.md" 2>/dev/null | sed '$d' | tail -n +2) || true
+        DECISIONS=$(awk '
+          { low = tolower($0) }
+          low ~ /^##[[:space:]]+(key[[:space:]]+)?decisions[[:space:]]*$/ { found=1; next }
+          found && /^##[[:space:]]/ { found=0 }
+          found && low ~ /^###[[:space:]]+pending[[:space:]]+todos[[:space:]]*$/ { found=0; skip_skills=0; next }
+          found && low ~ /^###[[:space:]]+skills[[:space:]]*$/ { skip_skills=1; next }
+          skip_skills && /^###?#? / { skip_skills=0 }
+          found && !skip_skills { print }
+        ' "$PLANNING_DIR/STATE.md" 2>/dev/null) || true
         if [ -n "$DECISIONS" ]; then
           echo "$DECISIONS"
         else
@@ -295,6 +317,12 @@ case "$ROLE" in
         echo ""
         echo "### Prior Phase Context (Rolling Summary)"
         echo "$ROLLING_CONTEXT_SECTION"
+        echo ""
+      fi
+      if [ -n "$MILESTONE_CONTEXT_SECTION" ]; then
+        echo ""
+        echo "### Milestone Scope Context"
+        echo "$MILESTONE_CONTEXT_SECTION"
         echo ""
       fi
       echo ""
@@ -368,6 +396,12 @@ case "$ROLE" in
         echo "$ROLLING_CONTEXT_SECTION"
         echo ""
       fi
+      if [ -n "$MILESTONE_CONTEXT_SECTION" ]; then
+        echo ""
+        echo "### Milestone Scope Context"
+        echo "$MILESTONE_CONTEXT_SECTION"
+        echo ""
+      fi
       echo ""
       echo "### Goal"
       echo "$PHASE_GOAL"
@@ -401,6 +435,12 @@ case "$ROLE" in
         echo ""
         echo "### Prior Phase Context (Rolling Summary)"
         echo "$ROLLING_CONTEXT_SECTION"
+        echo ""
+      fi
+      if [ -n "$MILESTONE_CONTEXT_SECTION" ]; then
+        echo ""
+        echo "### Milestone Scope Context"
+        echo "$MILESTONE_CONTEXT_SECTION"
         echo ""
       fi
       echo ""
@@ -452,6 +492,12 @@ case "$ROLE" in
         echo ""
         echo "### Prior Phase Context (Rolling Summary)"
         echo "$ROLLING_CONTEXT_SECTION"
+        echo ""
+      fi
+      if [ -n "$MILESTONE_CONTEXT_SECTION" ]; then
+        echo ""
+        echo "### Milestone Scope Context"
+        echo "$MILESTONE_CONTEXT_SECTION"
         echo ""
       fi
       echo ""
@@ -531,6 +577,12 @@ case "$ROLE" in
         echo ""
         echo "### Prior Phase Context (Rolling Summary)"
         echo "$ROLLING_CONTEXT_SECTION"
+        echo ""
+      fi
+      if [ -n "$MILESTONE_CONTEXT_SECTION" ]; then
+        echo ""
+        echo "### Milestone Scope Context"
+        echo "$MILESTONE_CONTEXT_SECTION"
         echo ""
       fi
       echo ""

@@ -43,21 +43,27 @@ else
   fail "2: vbw-qa.md does not reference write-verification.sh"
 fi
 
-# 3. QA agent tools allowlist omits Write (enforced via tools: line in frontmatter)
+# 3. QA agent tool permissions prevent Write access
+# QA uses disallowedTools denylist + permissionMode: plan (platform enforces read-only)
+DISALLOWED_LINE=$(grep '^disallowedTools:' "$QA_AGENT" || true)
 TOOLS_LINE=$(grep '^tools:' "$QA_AGENT" || true)
-if [ -z "$TOOLS_LINE" ]; then
-  fail "3: vbw-qa.md has no tools line in frontmatter"
-elif echo "$TOOLS_LINE" | grep -qv 'Write'; then
+PERM_MODE=$(grep '^permissionMode:' "$QA_AGENT" || true)
+if [ -n "$DISALLOWED_LINE" ] && echo "$PERM_MODE" | grep -q 'plan'; then
+  # disallowedTools + permissionMode: plan = platform blocks Write/Edit
+  pass "3: vbw-qa.md uses disallowedTools + permissionMode: plan (Write blocked by platform)"
+elif [ -n "$TOOLS_LINE" ] && echo "$TOOLS_LINE" | grep -qv 'Write'; then
   pass "3: vbw-qa.md tools allowlist omits Write"
 else
-  fail "3: vbw-qa.md tools allowlist includes Write (should be read-only)"
+  fail "3: vbw-qa.md: Write access not adequately restricted"
 fi
 
-# 4. QA agent still has Bash in tools
-if grep -q 'tools:.*Bash' "$QA_AGENT"; then
+# 4. QA agent can run Bash commands (not blocked)
+if [ -n "$DISALLOWED_LINE" ] && echo "$DISALLOWED_LINE" | grep -qv 'Bash'; then
+  pass "4: vbw-qa.md disallowedTools does not block Bash"
+elif [ -n "$TOOLS_LINE" ] && echo "$TOOLS_LINE" | grep -q 'Bash'; then
   pass "4: vbw-qa.md still has Bash in tools"
 else
-  fail "4: vbw-qa.md missing Bash in tools"
+  fail "4: vbw-qa.md Bash access not available"
 fi
 
 # ── Orchestrator (commands/qa.md) checks ─────────────────────────────

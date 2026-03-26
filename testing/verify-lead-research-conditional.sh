@@ -75,12 +75,12 @@ else
   fail "compile-context: codebase mapping hint not conditional on research"
 fi
 
-# --- cache-context.sh: research file hash for lead role ---
+# --- cache-context.sh: research file hash for roles that emit Research Findings ---
 
-if grep -q 'ROLE.*=.*"lead"' "$CACHE" && grep -q 'research=' "$CACHE"; then
-  pass "cache-context: lead role includes research in hash"
+if grep -Eq 'ROLE.*=~.*lead\|dev\|scout\|debugger\|architect' "$CACHE" && grep -q 'research=' "$CACHE"; then
+  pass "cache-context: research-emitting roles include research in hash"
 else
-  fail "cache-context: lead role missing research in hash"
+  fail "cache-context: research-emitting roles missing research in hash"
 fi
 
 if grep -q 'research=none' "$CACHE"; then

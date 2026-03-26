@@ -880,7 +880,6 @@ EOF
   local session="qa4-verify-context-$$"
   local link="/tmp/.vbw-plugin-root-link-$session"
   local cache="/tmp/.vbw-phase-detect-$session.txt"
-  local stamp="/tmp/.vbw-phase-detect-stamp-$session.txt"
   local plugin_root="$TEST_TEMP_DIR/plugin-root"
   local cmd
 
@@ -910,14 +909,13 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"verify_target_slug=01-setup"* ]]
 
-  rm -f "$link" "$cache" "$stamp"
+  rm -f "$link" "$cache"
 }
 
 @test "verify.md precomputed UAT resume prefers next_phase_slug during reverification" {
   local session="qa4-uat-resume-$$"
   local link="/tmp/.vbw-plugin-root-link-$session"
   local cache="/tmp/.vbw-phase-detect-$session.txt"
-  local stamp="/tmp/.vbw-phase-detect-stamp-$session.txt"
   local plugin_root="$TEST_TEMP_DIR/plugin-root-resume"
   local cmd
 
@@ -947,7 +945,7 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"uat_resume_target_slug=01-setup"* ]]
 
-  rm -f "$link" "$cache" "$stamp"
+  rm -f "$link" "$cache"
 }
 
 # --- QA round 5 finding 1: status/resume prioritise reverification over remediation ---

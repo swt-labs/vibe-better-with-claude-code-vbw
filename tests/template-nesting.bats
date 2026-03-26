@@ -157,7 +157,6 @@ _conditional_wait_pattern() {
 _simulate_phase_detect_reader() {
   local L="$1"
   local P="$2"
-  local S="$3"
   local PD=""
 
   [ -f "$P" ] && PD=$(cat "$P")
@@ -169,12 +168,7 @@ _simulate_phase_detect_reader() {
       i=$((i+1))
     done
 
-    S_M=0
-    P_M=0
-    [ -f "$S" ] && S_M=$(stat -c %Y "$S" 2>/dev/null || stat -f %m "$S" 2>/dev/null || echo 0)
-    [ -f "$P" ] && P_M=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo 0)
-
-    if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && { [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ "$P_M" -lt "$S_M" ]; }; then
+    if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
       PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
     fi
   fi
@@ -194,11 +188,11 @@ _simulate_phase_detect_reader() {
   done
 }
 
-@test "commands with phase-detect preamble write stamp file" {
+@test "commands with phase-detect preamble no longer use stamp file" {
   for cmd in resume status vibe discuss qa verify; do
     local count
-    count=$(grep -cF "$(_stamp_file_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
-    [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing phase-detect stamp file path"; return 1; }
+    count=$(grep -cF "$(_stamp_file_pattern)" "$PROJECT_ROOT/commands/${cmd}.md") || true
+    [ "$count" -eq 0 ] || { echo "FAIL: ${cmd}.md still references phase-detect stamp file"; return 1; }
   done
 }
 
@@ -218,11 +212,11 @@ _simulate_phase_detect_reader() {
   done
 }
 
-@test "commands with phase-detect refresh stale cache via mtime guard" {
+@test "commands with phase-detect always re-run when plugin link exists" {
   for cmd in resume status vibe discuss qa verify; do
     local count
-    count=$(grep -cF "$(_stale_cache_mtime_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
-    [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing stale-cache mtime guard"; return 1; }
+    count=$(grep -cF "$(_stale_cache_mtime_pattern)" "$PROJECT_ROOT/commands/${cmd}.md") || true
+    [ "$count" -eq 0 ] || { echo "FAIL: ${cmd}.md still uses stale-cache mtime guard"; return 1; }
   done
 }
 
@@ -240,13 +234,12 @@ _simulate_phase_detect_reader() {
 }
 
 @test "reader bypasses error cache when live script is available" {
-  local td root link cache stamp out
+  local td root link cache out
   td=$(_new_tmp_test_dir)
 
   root="$td/root"
   link="$td/link"
   cache="$td/pd.txt"
-  stamp="$td/stamp.txt"
   mkdir -p "$root/scripts"
 
   cat > "$root/scripts/phase-detect.sh" <<'EOF'
@@ -256,22 +249,20 @@ EOF
   chmod +x "$root/scripts/phase-detect.sh"
 
   ln -s "$root" "$link"
-  : > "$stamp"
   echo "phase_detect_error=true" > "$cache"
 
-  out=$(_simulate_phase_detect_reader "$link" "$cache" "$stamp")
+  out=$(_simulate_phase_detect_reader "$link" "$cache")
   [[ "$out" == *"next_phase_state=fresh_live"* ]]
   [[ "$out" != *"phase_detect_error=true"* ]]
 }
 
-@test "reader refreshes stale cache older than stamp" {
-  local td root link cache stamp out
+@test "reader always re-runs phase-detect when link exists" {
+  local td root link cache out
   td=$(_new_tmp_test_dir)
 
   root="$td/root"
   link="$td/link"
   cache="$td/pd.txt"
-  stamp="$td/stamp.txt"
   mkdir -p "$root/scripts"
 
   cat > "$root/scripts/phase-detect.sh" <<'EOF'
@@ -281,38 +272,33 @@ EOF
   chmod +x "$root/scripts/phase-detect.sh"
 
   echo "next_phase_state=stale_cache" > "$cache"
-  : > "$stamp"
-  touch -t 202402020101 "$cache"
-  touch -t 202402020102 "$stamp"
   ln -s "$root" "$link"
 
-  out=$(_simulate_phase_detect_reader "$link" "$cache" "$stamp")
+  out=$(_simulate_phase_detect_reader "$link" "$cache")
   [[ "$out" == *"next_phase_state=fresh_live"* ]]
   [[ "$out" != *"next_phase_state=stale_cache"* ]]
 }
 
 @test "reader skips wait when cache is valid and symlink is absent" {
-  local td cache stamp out
+  local td cache out
   td=$(_new_tmp_test_dir)
 
   cache="$td/pd.txt"
-  stamp="$td/stamp.txt"
   echo "next_phase_state=cached_ok" > "$cache"
 
-  _simulate_phase_detect_reader "$td/no-link" "$cache" "$stamp" > "$td/out.txt"
+  _simulate_phase_detect_reader "$td/no-link" "$cache" > "$td/out.txt"
   out=$(cat "$td/out.txt")
 
   [[ "$out" == *"next_phase_state=cached_ok"* ]]
 }
 
 @test "reader treats whitespace-only output as error" {
-  local td root link cache stamp out
+  local td root link cache out
   td=$(_new_tmp_test_dir)
 
   root="$td/root"
   link="$td/link"
   cache="$td/pd.txt"
-  stamp="$td/stamp.txt"
   mkdir -p "$root/scripts"
 
   cat > "$root/scripts/phase-detect.sh" <<'EOF'
@@ -322,10 +308,9 @@ EOF
   chmod +x "$root/scripts/phase-detect.sh"
 
   ln -s "$root" "$link"
-  : > "$stamp"
   : > "$cache"
 
-  out=$(_simulate_phase_detect_reader "$link" "$cache" "$stamp")
+  out=$(_simulate_phase_detect_reader "$link" "$cache")
   [[ "$out" == "phase_detect_error=true" ]]
 }
 

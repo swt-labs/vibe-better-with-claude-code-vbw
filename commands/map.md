@@ -107,6 +107,7 @@ Mode: {MAPPING_MODE}. After writing all 3 files, send a `scout_findings` message
 
 **Scout model (effort-gated):** Fast/Turbo: `Model: haiku`. Thorough/Balanced: inherit session model.
 **Scout turn budget (effort-gated):** Resolve with `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}"`. If `SCOUT_MAX_TURNS` is non-empty, pass `maxTurns: ${SCOUT_MAX_TURNS}` to each Scout TaskCreate. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
+**Skill pre-evaluation:** Before composing Scout task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to codebase mapping. If any skills are relevant, the Scout prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
 **MCP tools:** If MCP tools relevant to codebase analysis are available (e.g., documentation servers for framework APIs discovered during mapping), note them in the Scout task prompt so Scouts can use them alongside local file analysis.
 Wait for all findings. Proceed to Step 3.5.
 
@@ -118,7 +119,7 @@ Wait for all findings. Proceed to Step 3.5.
 - Scout 3 (Quality): `<output_paths>` = `.vbw-planning/codebase/CONVENTIONS.md`, `.vbw-planning/codebase/TESTING.md`
 - Scout 4 (Concerns): `<output_paths>` = `.vbw-planning/codebase/CONCERNS.md`
 
-Security: PreToolUse hook handles enforcement. **Scout model:** same as duo. **Scout turn budget:** same as duo (pass `maxTurns: ${SCOUT_MAX_TURNS}` when non-empty, omit when empty). **MCP tools:** same as duo.
+Security: PreToolUse hook handles enforcement. **Scout model:** same as duo. **Scout turn budget:** same as duo (pass `maxTurns: ${SCOUT_MAX_TURNS}` when non-empty, omit when empty). **Skill pre-evaluation:** same as duo. **MCP tools:** same as duo.
 
 **Scout communication (effort-gated):**
 

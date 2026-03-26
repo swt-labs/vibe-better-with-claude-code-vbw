@@ -40,7 +40,9 @@ Config: Pre-injected by SessionStart hook.
     DEV_MAX_TURNS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh dev .vbw-planning/config.json turbo)
     ```
 
-    Evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this fix (build tools, documentation servers, domain-specific APIs), note them in the Dev task description.
+    Before composing the Dev task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific fix. If any skills are relevant, the Dev prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
+
+    Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this fix (build tools, documentation servers, domain-specific APIs), note them in the Dev task description.
 
     Spawn vbw-dev as subagent via Task tool with `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"`.
     If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`.

@@ -46,7 +46,7 @@ extract_todo_items() {
         next
       }
 
-      if (found && mode == "h2" && /^## /) {
+      if (found && mode == "h2" && /^##[[:space:]]+/) {
         found=0
         mode=""
       }
@@ -60,6 +60,18 @@ extract_todo_items() {
         print
       }
     }
+  ' "$file"
+}
+
+extract_named_section() {
+  local file="$1" heading="$2"
+  [ -f "$file" ] || return 0
+  awk -v h="$heading" '
+    BEGIN { pat = tolower(h) }
+    { low = tolower($0) }
+    low ~ ("^##[[:space:]]+" pat "[[:space:]]*$") { found=1; next }
+    found && /^##[[:space:]]+/ { found=0 }
+    found { print }
   ' "$file"
 }
 
@@ -81,21 +93,35 @@ extract_decision_items() {
         found=0
       }
 
+      if (found && low ~ /^###[[:space:]]+pending[[:space:]]+todos[[:space:]]*$/) {
+        found=0
+        next
+      }
+
       if (!found) {
         next
       }
 
       if (/^[-*] /) {
+        if (low ~ /^[-*][[:space:]]+none\.[[:space:]]*$/) {
+          next
+        }
+        if (low ~ /^[-*][[:space:]]+_\(no[[:space:]]+decisions[[:space:]]+yet\)_[[:space:]]*$/) {
+          next
+        }
         print
         next
       }
 
       if (/^\|/) {
         # Skip markdown separators and common table header row
-        if (low ~ /^\|[[:space:]:-]+\|?[[:space:]]*$/) {
+        if (low ~ /^\|([[:space:]:-]+\|)+[[:space:]:-]*$/) {
           next
         }
         if (low ~ /^\|[[:space:]]*decision([[:space:]]*\|.*)?$/) {
+          next
+        }
+        if (low ~ /^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$/) {
           next
         }
         print
@@ -106,29 +132,58 @@ extract_decision_items() {
 
 # --- Normalize todo item for dedup comparison ---
 normalize_todo_item() {
-  printf '%s\n' "$1" | \
+  local normalized
+  normalized=$(printf '%s\n' "$1" | \
     sed -E 's/^[-*][[:space:]]+//' | \
     sed -E 's/^\[[^]]+\][[:space:]]*//' | \
     sed -E 's/[[:space:]]*\(added[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}\)$//' | \
     sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[[:space:]]+/ /g' | \
-    tr '[:upper:]' '[:lower:]'
+    tr '[:upper:]' '[:lower:]')
+  [[ "$normalized" == "none" || "$normalized" == "none." ]] && return 0
+  printf '%s\n' "$normalized"
 }
 
 # --- Normalize decision item for dedup comparison ---
 # For table rows, dedup by the decision text (first column) only.
 normalize_decision_item() {
   local line="$1"
+  local escaped_pipe='__VBW_ESCAPED_PIPE__'
 
   if [[ "$line" =~ ^\| ]]; then
-    line=$(printf '%s\n' "$line" | sed 's/^|//' | awk -F'|' '{print $1}')
+    line=$(printf '%s\n' "$line" | sed "s/\\\\|/${escaped_pipe}/g" | sed 's/^|//' | sed 's/|$//' | awk -F'|' '{print $1}' | sed "s/${escaped_pipe}/|/g")
   else
     line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
   fi
 
-  printf '%s\n' "$line" | \
+  local normalized
+  normalized=$(printf '%s\n' "$line" | \
     sed -E 's/\*\*//g' | \
     sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[[:space:]]+/ /g' | \
-    tr '[:upper:]' '[:lower:]'
+    tr '[:upper:]' '[:lower:]')
+  [[ "$normalized" == "none" || "$normalized" == "none." ]] && return 0
+  printf '%s\n' "$normalized"
+}
+
+decision_item_score() {
+  local line="$1"
+  local score=0
+  local escaped_pipe='__VBW_ESCAPED_PIPE__'
+
+  if [[ "$line" =~ ^\| ]]; then
+    local cols col1 col2 col3
+    cols=$(printf '%s\n' "$line" | sed "s/\\\\|/${escaped_pipe}/g" | sed 's/^|//; s/|$//')
+    col1=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}' | sed "s/${escaped_pipe}/|/g")
+    col2=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}' | sed "s/${escaped_pipe}/|/g")
+    col3=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $3); print $3}' | sed "s/${escaped_pipe}/|/g")
+    [ -n "$col1" ] && score=1
+    [ -n "$col2" ] && score=$((score + 1))
+    [ -n "$col3" ] && score=$((score + 1))
+  else
+    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+    [ -n "$line" ] && score=1
+  fi
+
+  echo "$score"
 }
 
 # --- Merge two sets of items with dedup ---
@@ -142,7 +197,7 @@ merge_items() {
   # Process items1 first (keep original formatting)
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    [[ "$line" == "None." ]] && continue
+    [[ "$line" == "None." || "$line" == "None" ]] && continue
     local norm
     if [[ "$kind" == "decisions" ]]; then
       norm=$(normalize_decision_item "$line")
@@ -151,23 +206,32 @@ merge_items() {
     fi
     [ -z "$norm" ] && continue
 
-    local found=false
+    local found=false found_index=-1 idx=0
     for s in "${seen_normalized[@]+"${seen_normalized[@]}"}"; do
       if [[ "$s" == "$norm" ]]; then
         found=true
+        found_index=$idx
         break
       fi
+      idx=$((idx + 1))
     done
     if [[ "$found" == false ]]; then
       seen_normalized+=("$norm")
       result+=("$line")
+    elif [[ "$kind" == "decisions" ]]; then
+      local new_score existing_score
+      new_score=$(decision_item_score "$line")
+      existing_score=$(decision_item_score "${result[$found_index]}")
+      if [ "$new_score" -gt "$existing_score" ]; then
+        result[$found_index]="$line"
+      fi
     fi
   done <<< "$items1"
 
   # Process items2 (add only unseen)
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    [[ "$line" == "None." ]] && continue
+    [[ "$line" == "None." || "$line" == "None" ]] && continue
     local norm
     if [[ "$kind" == "decisions" ]]; then
       norm=$(normalize_decision_item "$line")
@@ -176,22 +240,70 @@ merge_items() {
     fi
     [ -z "$norm" ] && continue
 
-    local found=false
+    local found=false found_index=-1 idx=0
     for s in "${seen_normalized[@]+"${seen_normalized[@]}"}"; do
       if [[ "$s" == "$norm" ]]; then
         found=true
+        found_index=$idx
         break
       fi
+      idx=$((idx + 1))
     done
     if [[ "$found" == false ]]; then
       seen_normalized+=("$norm")
       result+=("$line")
+    elif [[ "$kind" == "decisions" ]]; then
+      local new_score existing_score
+      new_score=$(decision_item_score "$line")
+      existing_score=$(decision_item_score "${result[$found_index]}")
+      if [ "$new_score" -ge "$existing_score" ]; then
+        result[$found_index]="$line"
+      fi
     fi
   done <<< "$items2"
 
   for item in "${result[@]+"${result[@]}"}"; do
     echo "$item"
   done
+}
+
+format_decision_items_for_state() {
+  local items="$1"
+
+  if [ -z "$items" ]; then
+    echo "| Decision | Date | Rationale |"
+    echo "|----------|------|-----------|"
+    echo "| _(No decisions yet)_ | | |"
+    return 0
+  fi
+
+  echo "| Decision | Date | Rationale |"
+  echo "|----------|------|-----------|"
+
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    [[ "$line" == "None." || "$line" == "None" ]] && continue
+
+    if [[ "$line" =~ ^\| ]]; then
+      local lower
+      lower=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
+      [[ "$lower" =~ ^\|[[:space:]]*decision([[:space:]]*\|.*)?$ ]] && continue
+      [[ "$lower" =~ ^\|([[:space:]:-]+\|)+[[:space:]:-]*$ ]] && continue
+      [[ "$lower" =~ ^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$ ]] && continue
+      echo "$line"
+      continue
+    fi
+
+    [[ "$line" =~ ^#+[[:space:]] ]] && continue
+    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+    local lower_line
+    lower_line=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
+    [[ "$lower_line" == "none" ]] && continue
+    [[ "$lower_line" == "none." ]] && continue
+    [[ "$lower_line" == "_(no decisions yet)_" ]] && continue
+    line=$(printf '%s\n' "$line" | sed 's/|/\\|/g')
+    echo "| $line | | |"
+  done <<< "$items"
 }
 
 # --- Replace or append a section in a file with normalized heading matching ---
@@ -202,7 +314,11 @@ replace_or_append_section() {
   local tmp="${file}.tmp.$$"
   local content_file="${file}.content.$$"
 
-  printf '%s\n' "$new_content" > "$content_file"
+  if [[ "$kind" == "decisions" ]]; then
+    format_decision_items_for_state "$new_content" > "$content_file"
+  else
+    printf '%s\n' "$new_content" > "$content_file"
+  fi
 
   awk -v kind="$kind" -v canonical="$canonical_header" -v cfile="$content_file" '
     function is_decision_heading(line, low) {
@@ -290,38 +406,160 @@ replace_or_append_section() {
   rm -f "$content_file"
 }
 
+replace_or_append_named_section() {
+  local file="$1" heading="$2" new_content="$3"
+  local tmp="${file}.tmp.$$"
+  local content_file="${file}.content.$$"
+
+  printf '%s\n' "$new_content" > "$content_file"
+
+  awk -v h="$heading" -v cfile="$content_file" '
+    BEGIN { pat = tolower(h) }
+    function is_target(line, low) {
+      low = tolower(line)
+      return (low ~ ("^##[[:space:]]+" pat "[[:space:]]*$"))
+    }
+    function print_section(ln) {
+      print "## " h
+      while ((getline ln < cfile) > 0) {
+        print ln
+      }
+      close(cfile)
+    }
+    {
+      line = $0
+      if (skip && /^## /) {
+        skip = 0
+      }
+      if (skip) {
+        next
+      }
+      if (is_target(line)) {
+        if (!inserted) {
+          print_section()
+          inserted = 1
+          printed_any = 1
+          last_nonempty = 1
+        }
+        skip = 1
+        next
+      }
+      print line
+      printed_any = 1
+      last_nonempty = (line !~ /^[[:space:]]*$/)
+    }
+    END {
+      if (!inserted) {
+        if (printed_any && last_nonempty) {
+          print ""
+        }
+        print_section()
+      }
+    }
+  ' "$file" > "$tmp" && mv "$tmp" "$file"
+  rm -f "$content_file"
+}
+
+remove_named_section() {
+  local file="$1" heading="$2"
+  local tmp="${file}.tmp.$$"
+
+  awk -v h="$heading" '
+    BEGIN { pat = tolower(h) }
+    {
+      low = tolower($0)
+      if (skip && /^## /) {
+        skip = 0
+      }
+      if (skip) {
+        next
+      }
+      if (low ~ ("^##[[:space:]]+" pat "[[:space:]]*$")) {
+        skip = 1
+        next
+      }
+      print
+    }
+  ' "$file" > "$tmp" && mv "$tmp" "$file"
+}
+
 ROOT_STATE="$PLANNING_DIR/STATE.md"
 ARCHIVED_STATE="$MILESTONE_DIR/STATE.md"
+ROOT_ROADMAP="$PLANNING_DIR/ROADMAP.md"
+ROOT_CONTEXT="$PLANNING_DIR/CONTEXT.md"
 
 # --- Merge Todos and Decisions ---
 root_todos=""
 archived_todos=""
 root_decisions=""
 archived_decisions=""
+root_blockers=""
+archived_blockers=""
+root_codebase=""
+archived_codebase=""
 
 if [ -f "$ROOT_STATE" ]; then
   root_todos=$(extract_todo_items "$ROOT_STATE")
   root_decisions=$(extract_decision_items "$ROOT_STATE")
+  root_blockers=$(extract_named_section "$ROOT_STATE" "Blockers")
+  root_codebase=$(extract_named_section "$ROOT_STATE" "Codebase Profile")
 fi
 
 if [ -f "$ARCHIVED_STATE" ]; then
   archived_todos=$(extract_todo_items "$ARCHIVED_STATE")
   archived_decisions=$(extract_decision_items "$ARCHIVED_STATE")
+  archived_blockers=$(extract_named_section "$ARCHIVED_STATE" "Blockers")
+  archived_codebase=$(extract_named_section "$ARCHIVED_STATE" "Codebase Profile")
 fi
 
 merged_todos=$(merge_items "todos" "$archived_todos" "$root_todos")
 merged_decisions=$(merge_items "decisions" "$archived_decisions" "$root_decisions")
+merged_blockers=$(merge_items "todos" "$archived_blockers" "$root_blockers")
+if [ -n "$root_codebase" ] && ! printf '%s\n' "$root_codebase" | grep -Eqv '^[[:space:]]*(None\.?)?[[:space:]]*$'; then
+  root_codebase=""
+fi
+if [ -n "$archived_codebase" ] && ! printf '%s\n' "$archived_codebase" | grep -Eqv '^[[:space:]]*(None\.?)?[[:space:]]*$'; then
+  archived_codebase=""
+fi
+effective_codebase="$root_codebase"
+if [ -z "$effective_codebase" ]; then
+  effective_codebase="$archived_codebase"
+fi
+
+has_active_root_scope_artifacts() {
+  local planning_root="$1"
+  local phases_dir="$planning_root/phases"
+  [ -d "$phases_dir" ] || return 1
+
+  if find "$phases_dir" -mindepth 1 -type f ! -name '.*' -print -quit 2>/dev/null | grep -q .; then
+    return 0
+  fi
+
+  if { [ -f "$planning_root/ROADMAP.md" ] || [ -f "$planning_root/CONTEXT.md" ]; } && \
+     find "$phases_dir" -mindepth 1 -maxdepth 1 -type d -print -quit 2>/dev/null | grep -q .; then
+    return 0
+  fi
+
+  return 1
+}
+
+# --- Refuse to clobber active scoped milestone artifacts ---
+if has_active_root_scope_artifacts "$PLANNING_DIR"; then
+  echo "Error: root phases/ directory contains active milestone artifacts — aborting to prevent data loss" >&2
+  echo "  Back up or remove $PLANNING_DIR/phases/, ROADMAP.md, and CONTEXT.md before unarchiving." >&2
+  exit 1
+fi
+
+if [ -f "$ROOT_ROADMAP" ] || [ -f "$ROOT_CONTEXT" ]; then
+  echo "Error: root ROADMAP.md or CONTEXT.md exists — aborting to prevent overwriting scoped work" >&2
+  echo "  Back up or remove $ROOT_ROADMAP and $ROOT_CONTEXT before unarchiving." >&2
+  exit 1
+fi
 
 # --- Move files back to root ---
 # Move phases
 if [ -d "$MILESTONE_DIR/phases" ]; then
   if [ -d "$PLANNING_DIR/phases" ]; then
-    # Abort if root phases/ contains any files (active work would be destroyed)
-    if [ -n "$(find "$PLANNING_DIR/phases" -type f 2>/dev/null)" ]; then
-      echo "Error: root phases/ directory contains files — aborting to prevent data loss" >&2
-      echo "  Back up or remove $PLANNING_DIR/phases/ before unarchiving." >&2
-      exit 1
-    fi
     rm -rf "$PLANNING_DIR/phases"
   fi
   mv "$MILESTONE_DIR/phases" "$PLANNING_DIR/phases"
@@ -332,6 +570,11 @@ if [ -f "$MILESTONE_DIR/ROADMAP.md" ]; then
   mv "$MILESTONE_DIR/ROADMAP.md" "$PLANNING_DIR/ROADMAP.md"
 fi
 
+# Move milestone CONTEXT.md (scope decisions)
+if [ -f "$MILESTONE_DIR/CONTEXT.md" ]; then
+  mv "$MILESTONE_DIR/CONTEXT.md" "$PLANNING_DIR/CONTEXT.md"
+fi
+
 # Move STATE.md (archived version is the base)
 if [ -f "$ARCHIVED_STATE" ]; then
   mv "$ARCHIVED_STATE" "$ROOT_STATE"
@@ -339,11 +582,15 @@ fi
 
 # --- Write merged sections into restored STATE.md ---
 if [ -f "$ROOT_STATE" ]; then
-  if [ -n "$merged_todos" ]; then
-    replace_or_append_section "$ROOT_STATE" "todos" "## Todos" "$merged_todos"
+  replace_or_append_section "$ROOT_STATE" "todos" "## Todos" "${merged_todos:-None.}"
+  replace_or_append_section "$ROOT_STATE" "decisions" "## Key Decisions" "$merged_decisions"
+  if [ -n "$merged_blockers" ]; then
+    replace_or_append_named_section "$ROOT_STATE" "Blockers" "$merged_blockers"
   fi
-  if [ -n "$merged_decisions" ]; then
-    replace_or_append_section "$ROOT_STATE" "decisions" "## Key Decisions" "$merged_decisions"
+  if [ -n "$effective_codebase" ]; then
+    replace_or_append_named_section "$ROOT_STATE" "Codebase Profile" "$effective_codebase"
+  else
+    remove_named_section "$ROOT_STATE" "Codebase Profile"
   fi
 fi
 

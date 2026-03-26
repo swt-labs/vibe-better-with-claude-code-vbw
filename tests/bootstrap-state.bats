@@ -173,6 +173,247 @@ EOF
   grep -q "MVVM pattern" .vbw-planning/STATE.md
 }
 
+@test "bootstrap-state: normalizes legacy decision lists to canonical table" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Use SwiftUI for all new views
+- Adopt MVVM pattern
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  grep -q '^| Decision | Date | Rationale |$' .vbw-planning/STATE.md
+  grep -q '^| Use SwiftUI for all new views | | |$' .vbw-planning/STATE.md
+  grep -q '^| Adopt MVVM pattern | | |$' .vbw-planning/STATE.md
+}
+
+@test "bootstrap-state: skips legacy empty decision placeholders" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+None.
+
+## Key Decisions
+| _(No decisions yet)_ | | |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  ! grep -q '^| None\. | | |$' .vbw-planning/STATE.md
+  ! grep -q '^| None | | |$' .vbw-planning/STATE.md
+  grep -q '^| _(No decisions yet)_ | | |$' .vbw-planning/STATE.md
+}
+
+@test "bootstrap-state: strips bullet None todo placeholders" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Keep auth service isolated
+
+## Todos
+- None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  ! grep -q '^- None\.$' .vbw-planning/STATE.md
+  grep -q '^None\.$' .vbw-planning/STATE.md
+}
+
+@test "bootstrap-state: skips decision subheadings and escapes literal pipes" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+### API
+- Use REST | GraphQL fallback
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  ! grep -q '^| ### API | | |$' .vbw-planning/STATE.md
+  grep -q '^| Use REST \\| GraphQL fallback | | |$' .vbw-planning/STATE.md
+}
+
+@test "bootstrap-state: does not duplicate canonical table separator rows" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  count=$(grep -c '^|----------|------|-----------|$' .vbw-planning/STATE.md)
+  [ "$count" -eq 1 ]
+}
+
+@test "bootstrap-state: dedupes identical decisions across legacy and canonical headings" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Keep auth service isolated
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | | |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  count=$(grep -c 'Keep auth service isolated' .vbw-planning/STATE.md)
+  [ "$count" -eq 1 ]
+}
+
+@test "bootstrap-state: keeps richer canonical decision rows over legacy bullets" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Keep auth service isolated
+
+## Key Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  grep -q '| Keep auth service isolated | 2026-02-18 | Preserve clean boundary |' .vbw-planning/STATE.md
+}
+
+@test "bootstrap-state: preserves legacy Pending Todos subsection" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Keep auth service isolated
+
+### Pending Todos
+- Migrate session store
+- Rework onboarding copy
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  awk '/^## Key Decisions$/{f=1;next} /^## /{f=0} f{print}' .vbw-planning/STATE.md > "$TEST_TEMP_DIR/decisions.txt"
+  awk '/^## Todos$/{f=1;next} /^## /{f=0} f{print}' .vbw-planning/STATE.md > "$TEST_TEMP_DIR/todos.txt"
+  grep -q 'Migrate session store' "$TEST_TEMP_DIR/todos.txt"
+  grep -q 'Rework onboarding copy' "$TEST_TEMP_DIR/todos.txt"
+  ! grep -q 'Migrate session store' "$TEST_TEMP_DIR/decisions.txt"
+  ! grep -q 'Rework onboarding copy' "$TEST_TEMP_DIR/decisions.txt"
+}
+
+@test "bootstrap-state: strips legacy Skills subsection from decisions carry-forward" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Keep auth service isolated
+
+### Skills
+**Installed:** foo, bar
+**Suggested:** baz
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  ! grep -q 'Installed:' .vbw-planning/STATE.md
+  ! grep -q 'Suggested:' .vbw-planning/STATE.md
+  grep -q 'Keep auth service isolated' .vbw-planning/STATE.md
+}
+
+@test "bootstrap-state: strips lowercase legacy skills heading with trailing spaces" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Decisions
+- Keep auth service isolated
+
+### skills   
+**Installed:** foo, bar
+
+## Todos
+None.
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  ! grep -q 'Installed:' .vbw-planning/STATE.md
+  grep -q 'Keep auth service isolated' .vbw-planning/STATE.md
+}
+
 @test "bootstrap-state: preserves existing Blockers from prior milestone" {
   cd "$TEST_TEMP_DIR"
   cat > .vbw-planning/STATE.md <<'EOF'
@@ -227,6 +468,26 @@ EOF
   grep -q "## Codebase Profile" .vbw-planning/STATE.md
   grep -q "Brownfield: true" .vbw-planning/STATE.md
   grep -q "Primary languages: Swift" .vbw-planning/STATE.md
+}
+
+@test "bootstrap-state: preserves Codebase Profile real lines when placeholder is also present" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+
+## Codebase Profile
+None.
+- Brownfield: true
+- Primary languages: Swift
+EOF
+
+  run bash "$SCRIPTS_DIR/bootstrap/bootstrap-state.sh" \
+    .vbw-planning/STATE.md "Test Project" "Beta" 2
+  [ "$status" -eq 0 ]
+  grep -q 'Brownfield: true' .vbw-planning/STATE.md
+  grep -q 'Primary languages: Swift' .vbw-planning/STATE.md
 }
 
 # --- Post-archive restoration test ---

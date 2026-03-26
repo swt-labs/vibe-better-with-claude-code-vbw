@@ -13,8 +13,8 @@ set -euo pipefail
 # Log) are excluded — they belong in the archive.
 #
 # Project-level sections (preserved):
-#   ## Decisions
-#   ## Todos
+#   ## Decisions / ## Key Decisions
+#   ## Todos / ### Pending Todos
 #   ## Blockers
 #   ## Codebase Profile
 #
@@ -42,40 +42,222 @@ fi
 
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 
-# Sections to preserve (project-level, survive across milestones)
-# Uses awk to extract each section by ## heading, stopping at the next ## heading.
-# Case-insensitive matching. Collects content from ALL matching headings
-# (prints heading once, merges body lines) to handle duplicate sections.
 extract_section() {
   local file="$1"
   local heading="$2"
   awk -v h="$heading" '
     BEGIN { pat = tolower(h) }
     { low = tolower($0) }
-    low ~ ("^##[[:space:]]+" pat "[[:space:]]*$") { found=1; if (!hdr) { print $0; hdr=1 }; next }
-    found && /^## / { found=0 }
+    low ~ ("^##[[:space:]]+" pat "[[:space:]]*$") {
+      found=1
+      if (!hdr) { print $0; hdr=1 }
+      next
+    }
+    found && /^##[[:space:]]+/ { found=0 }
     found { print }
   ' "$file"
 }
 
-# Decisions section may use "## Decisions" (template) or "## Key Decisions"
-# (bootstrap-state.sh). Case-insensitive. Merges all matching occurrences.
-# Strips any ### Skills subsection (no longer written or read).
+extract_todos() {
+  local file="$1"
+  awk '
+    {
+      low = tolower($0)
+
+      if (low ~ /^##[[:space:]]+todos[[:space:]]*$/) {
+        found=1
+        mode="h2"
+        if (!hdr) { print "## Todos"; hdr=1 }
+        next
+      }
+
+      if (low ~ /^###[[:space:]]+pending[[:space:]]+todos[[:space:]]*$/) {
+        found=1
+        mode="h3"
+        if (!hdr) { print "## Todos"; hdr=1 }
+        next
+      }
+
+      if (found && mode == "h2" && /^##[[:space:]]+/) {
+        found=0
+        mode=""
+      }
+
+      if (found && mode == "h3" && (/^## / || /^### /)) {
+        found=0
+        mode=""
+      }
+
+      if (found) { print }
+    }
+  ' "$file"
+}
+
 extract_decisions() {
   local file="$1"
   awk '
-    { low = tolower($0) }
-    low ~ /^##[[:space:]]+(key )?decisions[[:space:]]*$/ { found=1; if (!hdr) { print $0; hdr=1 }; next }
-    found && /^## / { found=0 }
-    found && /^### Skills/ { skip_skills=1; next }
+    {
+      low = tolower($0)
+    }
+    low ~ /^##[[:space:]]+(key )?decisions[[:space:]]*$/ {
+      found=1
+      if (!hdr) { print "## Key Decisions"; hdr=1 }
+      next
+    }
+    found && /^##[[:space:]]/ { found=0 }
+    found && low ~ /^###[[:space:]]+pending[[:space:]]+todos[[:space:]]*$/ { found=0; skip_skills=0; next }
+    found && low ~ /^###[[:space:]]+skills[[:space:]]*$/ { skip_skills=1; next }
     skip_skills && /^###?#? / { skip_skills=0 }
     found && !skip_skills { print }
   ' "$file"
 }
 
-# Check if extracted section has content beyond just the heading line
 section_has_body() {
   [[ -n "$1" ]] && echo "$1" | tail -n +2 | grep -qv '^[[:space:]]*$'
+}
+
+decision_key() {
+  local line="$1"
+  local escaped_pipe='__VBW_ESCAPED_PIPE__'
+
+  if [[ "$line" =~ ^\| ]]; then
+    line=$(printf '%s\n' "$line" | sed "s/\\\\|/${escaped_pipe}/g" | sed 's/^|//' | sed 's/|$//' | awk -F'|' '{print $1}' | sed "s/${escaped_pipe}/|/g")
+  else
+    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+  fi
+
+  printf '%s\n' "$line" | sed -E 's/\*\*//g' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[[:space:]]+/ /g' | tr '[:upper:]' '[:lower:]'
+}
+
+decision_row_score() {
+  local line="$1"
+  local score=0
+  local escaped_pipe='__VBW_ESCAPED_PIPE__'
+
+  if [[ "$line" =~ ^\| ]]; then
+    local cols col1 col2 col3
+    cols=$(printf '%s\n' "$line" | sed "s/\\\\|/${escaped_pipe}/g" | sed 's/^|//' | sed 's/|$//')
+    col1=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}' | sed "s/${escaped_pipe}/|/g")
+    col2=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}' | sed "s/${escaped_pipe}/|/g")
+    col3=$(printf '%s\n' "$cols" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $3); print $3}' | sed "s/${escaped_pipe}/|/g")
+    [ -n "$col1" ] && score=1
+    [ -n "$col2" ] && score=$((score + 1))
+    [ -n "$col3" ] && score=$((score + 1))
+  else
+    line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+    [ -n "$line" ] && score=1
+  fi
+
+  echo "$score"
+}
+
+normalize_decisions_section() {
+  local section="$1"
+  if [[ -z "$section" ]]; then
+    echo "## Key Decisions"
+    echo "| Decision | Date | Rationale |"
+    echo "|----------|------|-----------|"
+    echo "| _(No decisions yet)_ | | |"
+    return 0
+  fi
+
+  echo "## Key Decisions"
+  echo "| Decision | Date | Rationale |"
+  echo "|----------|------|-----------|"
+
+  local -a seen_keys=()
+  local -a rows_out=()
+  local -a scores=()
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+
+    local low
+    low=$(printf '%s\n' "$line" | tr '[:upper:]' '[:lower:]')
+    [[ "$low" =~ ^[-*][[:space:]]+none\.?[[:space:]]*$ ]] && continue
+    [[ "$low" =~ ^none\.?[[:space:]]*$ ]] && continue
+    [[ "$low" =~ ^[-*][[:space:]]+_\(no[[:space:]]+decisions[[:space:]]+yet\)_[[:space:]]*$ ]] && continue
+    [[ "$low" =~ ^\|[[:space:]]*_\(no[[:space:]]+decisions[[:space:]]+yet\)_([[:space:]]*\|.*)?$ ]] && continue
+    [[ "$low" =~ ^\|[[:space:]]*decision([[:space:]]*\|.*)?$ ]] && continue
+    [[ "$low" =~ ^\|([[:space:]:-]+\|)+[[:space:]:-]*$ ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    [[ "$line" =~ ^#+[[:space:]] ]] && continue
+
+    local key
+    key=$(decision_key "$line")
+    [ -n "$key" ] || continue
+    local idx found score
+    score=$(decision_row_score "$line")
+    found=-1
+    for idx in "${!seen_keys[@]}"; do
+      if [[ "${seen_keys[$idx]}" == "$key" ]]; then
+        found=$idx
+        break
+      fi
+    done
+
+    if [[ "$line" =~ ^\| ]]; then
+      if [ "$found" -ge 0 ]; then
+        if [ "$score" -gt "${scores[$found]}" ]; then
+          rows_out[$found]="$line"
+          scores[$found]="$score"
+        fi
+      else
+        seen_keys+=("$key")
+        rows_out+=("$line")
+        scores+=("$score")
+      fi
+    else
+      line=$(printf '%s\n' "$line" | sed -E 's/^[-*][[:space:]]+//')
+      line=$(printf '%s\n' "$line" | sed 's/|/\\|/g')
+      line="| $line | | |"
+      if [ "$found" -ge 0 ]; then
+        if [ "$score" -gt "${scores[$found]}" ]; then
+          rows_out[$found]="$line"
+          scores[$found]="$score"
+        fi
+      else
+        seen_keys+=("$key")
+        rows_out+=("$line")
+        scores+=("$score")
+      fi
+    fi
+  done <<< "$(printf '%s\n' "$section" | tail -n +2)"
+
+  if [ "${#rows_out[@]}" -eq 0 ]; then
+    echo "| _(No decisions yet)_ | | |"
+  else
+    for row in "${rows_out[@]}"; do
+      printf '%s\n' "$row"
+    done
+  fi
+}
+
+normalize_todos_section() {
+  local section="$1"
+  if [[ -z "$section" ]]; then
+    echo "## Todos"
+    echo "None."
+    return 0
+  fi
+
+  local rows
+  rows=$(printf '%s\n' "$section" | awk '
+    NR == 1 { next }
+    {
+      low = tolower($0)
+      if (low ~ /^[-*][[:space:]]+none\.?[[:space:]]*$/) next
+      if (low ~ /^none\.?[[:space:]]*$/) next
+      if ($0 ~ /^[[:space:]]*$/) next
+      print
+    }
+  ')
+
+  echo "## Todos"
+  if [[ -n "$rows" ]]; then
+    printf '%s\n' "$rows"
+  else
+    echo "None."
+  fi
 }
 
 generate_root_state() {
@@ -84,31 +266,18 @@ generate_root_state() {
   echo "**Project:** ${PROJECT_NAME}"
   echo ""
 
-  # Decisions
   local decisions
   decisions=$(extract_decisions "$ARCHIVED_PATH")
-  if section_has_body "$decisions"; then
-    echo "$decisions"
-    echo ""
-  else
-    echo "## Decisions"
-    echo "- _(No decisions yet)_"
-    echo ""
-  fi
+  decisions=$(normalize_decisions_section "$decisions")
+  echo "$decisions"
+  echo ""
 
-  # Todos
   local todos
-  todos=$(extract_section "$ARCHIVED_PATH" "Todos")
-  if section_has_body "$todos"; then
-    echo "$todos"
-    echo ""
-  else
-    echo "## Todos"
-    echo "None."
-    echo ""
-  fi
+  todos=$(extract_todos "$ARCHIVED_PATH")
+  todos=$(normalize_todos_section "$todos")
+  echo "$todos"
+  echo ""
 
-  # Blockers
   local blockers
   blockers=$(extract_section "$ARCHIVED_PATH" "Blockers")
   if section_has_body "$blockers"; then
@@ -120,10 +289,9 @@ generate_root_state() {
     echo ""
   fi
 
-  # Codebase Profile (optional — only if it exists in archived state)
   local codebase
   codebase=$(extract_section "$ARCHIVED_PATH" "Codebase Profile")
-  if section_has_body "$codebase"; then
+  if section_has_body "$codebase" && printf '%s\n' "$codebase" | tail -n +2 | grep -Eqv '^[[:space:]]*(None\.?)?[[:space:]]*$'; then
     echo "$codebase"
     echo ""
   fi
