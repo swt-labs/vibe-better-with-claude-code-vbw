@@ -784,3 +784,39 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"deviations: none"* ]]
 }
+
+@test "compile-verify-context: body deviations bold-wrapped N/A with explanation is filtered" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Bold NA
+wave: 1
+must_haves:
+  - Something
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Bold NA
+status: complete
+---
+
+## What Was Built
+
+- Thing
+
+## Deviations
+
+- **N/A**: not applicable
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: none"* ]]
+}

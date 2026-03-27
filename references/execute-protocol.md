@@ -501,6 +501,7 @@ for summary_file in {phase-dir}/*-SUMMARY.md; do
       found && /^[[:space:]]*$/ { next }
       found && /^- / {
         line=$0; sub(/^- /, "", line)
+        if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
         sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
         lc = tolower(line)
         if (lc ~ /^none[. ]/ || lc == "none" || lc ~ /^n\/a[. ]/ || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
