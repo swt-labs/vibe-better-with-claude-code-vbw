@@ -578,20 +578,20 @@ WRITER=$(awk '
 if [[ "$WRITER" != "write-verification.sh" ]]; then
   echo "⚠ VERIFICATION.md was NOT produced by write-verification.sh (missing writer field). QA must re-run using the deterministic writer."
   QA_RESULT="FAIL"
+else
+  QA_RESULT=$(awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+  ' "{phase-dir}/${VERIF_NAME}" 2>/dev/null)
 fi
-
-QA_RESULT=$(awk '
-  BEGIN { in_fm=0 }
-  NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-  in_fm && /^---[[:space:]]*$/ { exit }
-  in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
-' "{phase-dir}/${VERIF_NAME}" 2>/dev/null)
 ```
 
 **Branch on QA result:**
 - **PASS:** Cross-check for FAIL checks that QA may have misclassified (defense-in-depth):
   ```bash
-  FAIL_COUNT=$(grep -cE '\| \*{0,2}FAIL\*{0,2} \|' "{phase-dir}/${VERIF_NAME}" 2>/dev/null || echo 0)
+  FAIL_COUNT=$(grep -cE '\|\s*\*{0,2}FAIL\*{0,2}\s*\|' "{phase-dir}/${VERIF_NAME}" 2>/dev/null || echo 0)
   ```
   If `FAIL_COUNT > 0`: override QA_RESULT to PARTIAL — display `⚠ QA reported PASS but VERIFICATION.md contains ${FAIL_COUNT} FAIL check(s). Overriding to PARTIAL.` Then enter QA remediation loop below.
   Otherwise: Display `◆ QA: PASS` — proceed to Step 4.5 (UAT)
