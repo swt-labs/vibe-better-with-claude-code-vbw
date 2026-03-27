@@ -735,6 +735,11 @@ load test_helper
   [ "$result" = "pass" ]
 }
 
+@test "verify response mapping: 'still' with co-occurring defect signal IS observation" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "pass, but it still runs fine despite the crash earlier")
+  [ "$result" = "pass_with_observation" ]
+}
+
 @test "verify response mapping: 'still broken' without pass → issue" {
   result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "it still shows the wrong value")
   [ "$result" = "issue" ]

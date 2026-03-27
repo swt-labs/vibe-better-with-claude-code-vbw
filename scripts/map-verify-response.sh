@@ -80,7 +80,7 @@ if [ -n "${tail_text:-}" ] && matches_re "$tail_text" "$issue_signal_re"; then
   # followed by a positive word (works, working, fine, good, correct, properly,
   # functioning, responsive, loads, launches), it's temporal not defective.
   if [[ "$tail_text" =~ still ]] && ! [[ "$tail_text" =~ (broken|bug|error|wrong|incorrect|missing|not\ working|doesnt\ work|fails|fail|failing|crash|exception|regress|problem|glitch|unusable|blocked) ]]; then
-    still_positive_re='still (works|working|fine|good|correct|properly|functioning|responsive|loads|launches|runs|ok|okay)'
+    still_positive_re='still (works|working|fine|good|correct|properly|functioning|responsive|loads|launches|runs|ok|okay|passes|functions|operates|running)'
     if matches_re "$tail_text" "$still_positive_re"; then
       tail_has_issue=0
     fi
