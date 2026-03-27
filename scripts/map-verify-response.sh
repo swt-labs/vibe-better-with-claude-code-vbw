@@ -65,11 +65,11 @@ matches_re "$normalized" "$skip_re" && has_skip=1 || true
 matches_re "$normalized" "$pass_re" && has_pass=1 || true
 matches_re "$normalized" "$idiom_positive_re" && idiomatic_positive=1 || true
 
-# Uncertainty guard: if hedging phrases present without a clear pass keyword,
-# the response is ambiguous and must be treated as issue.
+# Uncertainty guard: if hedging phrases present without a clear pass keyword
+# and without skip intent, the response is ambiguous and must be treated as issue.
 has_uncertainty=0
 matches_re "$normalized" "$uncertainty_re" && has_uncertainty=1 || true
-if [ "$has_uncertainty" -eq 1 ] && [ "$has_pass" -eq 0 ]; then
+if [ "$has_uncertainty" -eq 1 ] && [ "$has_pass" -eq 0 ] && [ "$has_skip" -eq 0 ]; then
   echo "issue"
   exit 0
 fi

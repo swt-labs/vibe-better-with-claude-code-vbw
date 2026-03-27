@@ -262,14 +262,14 @@ for file in "$COMMANDS_DIR"/*.md; do
   fi
 done
 
-# Check 8b: All command preambles link REAL_R not raw R (dynamic coverage)
+# Check 8b: All command preambles use the link helper with REAL_R (dynamic coverage)
 for file in "$COMMANDS_DIR"/*.md; do
   base="$(basename "$file" .md)"
   if grep -q 'LINK="/tmp/.vbw-plugin-root-link-' "$file"; then
-    if grep -q 'ln -s "$REAL_R"' "$file"; then
-      pass "$base: links REAL_R (canonical target)"
+    if grep -q 'ensure-plugin-root-link.sh" "$LINK" "$REAL_R"' "$file"; then
+      pass "$base: uses ensure-plugin-root-link helper with REAL_R"
     else
-      fail "$base: missing ln -s \"\$REAL_R\" — may link raw \$R through cache chain"
+      fail "$base: missing ensure-plugin-root-link helper call with REAL_R"
     fi
   fi
 done
@@ -567,6 +567,24 @@ for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
     fail "$base: still uses race-prone wait-for-link phase-detect fallback"
   else
     pass "$base: does not use race-prone wait-for-link phase-detect fallback"
+  fi
+done
+
+# Check 20: _refresh_phase_detect() includes symlink glob step (step 5 of 6-step cascade)
+for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
+  file="$COMMANDS_DIR/$rel"
+  base="$(basename "$rel" .md)"
+  # Count _refresh_phase_detect function definitions
+  func_count=$(grep -c '_refresh_phase_detect()' "$file" || true)
+  # Count symlink glob steps inside the file (after first function definition)
+  glob_count=$(grep -c '/tmp/.vbw-plugin-root-link-\*/scripts/hook-wrapper.sh' "$file" || true)
+  # The preamble line also has a glob, so subtract 1 for commands with a preamble glob
+  preamble_glob=$(head -25 "$file" | grep -c '/tmp/.vbw-plugin-root-link-\*/scripts/hook-wrapper.sh' || true)
+  helper_globs=$((glob_count - preamble_glob))
+  if [ "$helper_globs" -ge "$func_count" ]; then
+    pass "$base: _refresh_phase_detect() includes symlink glob step"
+  else
+    fail "$base: _refresh_phase_detect() missing symlink glob step ($helper_globs globs for $func_count functions)"
   fi
 done
 

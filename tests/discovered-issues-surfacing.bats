@@ -762,3 +762,13 @@ load test_helper
   result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "neither good nor working")
   [ "$result" = "issue" ]
 }
+
+@test "verify response mapping: skip + uncertainty → skip (not issue)" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "skip, I'm not sure about this one")
+  [ "$result" = "skip" ]
+}
+
+@test "verify response mapping: uncertainty + skip intent → skip" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "I think so, skip for now")
+  [ "$result" = "skip" ]
+}
