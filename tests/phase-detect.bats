@@ -1174,3 +1174,31 @@ CONF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
 }
+
+@test "qa_status is pending when PASS verification is stale for current code" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  echo "print(\"old\")" > app.py
+  git add app.py
+  git commit -m "old app" --quiet
+  verified_commit="$(git rev-parse HEAD)"
+
+  printf '%s\n' \
+    '---' \
+    'result: PASS' \
+    "verified_at_commit: ${verified_commit}" \
+    '---' \
+    '# Verification' \
+    'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  echo "print(\"new\")" > app.py
+  git add app.py
+  git commit -m "new app" --quiet
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}

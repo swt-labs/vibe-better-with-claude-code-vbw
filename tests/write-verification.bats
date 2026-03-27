@@ -41,6 +41,24 @@ JSON
   grep -q 'Feature exists' "$TEST_TEMP_DIR/out.md"
 }
 
+@test "write-verification: records verified_at_commit for current product code" {
+  cd "$TEST_TEMP_DIR"
+  git init --quiet
+  git config user.email "test@test.com"
+  git config user.name "Test"
+  echo "print('hello')" > app.py
+  git add app.py
+  git commit -m "add app" --quiet
+  expected_commit="$(git rev-parse HEAD)"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"phase":"01","tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Feature exists","status":"PASS","evidence":"Found it"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q "^verified_at_commit: $expected_commit$" "$TEST_TEMP_DIR/out.md"
+}
+
 @test "write-verification: generates Artifact Checks table" {
   cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
 {"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"ART-01","category":"artifact","description":"README present","status":"PASS","evidence":"exists"}]}}
@@ -271,7 +289,7 @@ JSON
   # Extract frontmatter field names in order
   local fields
   fields=$(sed -n '/^---$/,/^---$/{ /^---$/d; s/:.*//; p; }' "$TEST_TEMP_DIR/out.md" | tr '\n' ',')
-  [[ "$fields" == "phase,tier,result,passed,failed,total,date," ]]
+  [[ "$fields" == "phase,tier,result,passed,failed,total,date,verified_at_commit," ]]
 }
 
 # =============================================================================

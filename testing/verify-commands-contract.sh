@@ -169,6 +169,29 @@ for pd_cmd in $PHASE_DETECT_REQUIRED_COMMANDS; do
 done
 
 echo ""
+echo "=== Phase-Detect Refresh Safety Verification ==="
+
+for pd_safe_cmd in vibe verify; do
+  pd_safe_file="$COMMANDS_DIR/${pd_safe_cmd}.md"
+  if [ ! -f "$pd_safe_file" ]; then
+    fail "$pd_safe_cmd: command file not found"
+    continue
+  fi
+
+  if grep -Fq '_PD_CACHE="$PD"' "$pd_safe_file"; then
+    fail "$pd_safe_cmd: stale phase-detect cache fallback still present"
+  else
+    pass "$pd_safe_cmd: no stale phase-detect cache fallback"
+  fi
+
+  if grep -Fq 'if [ -L "$L" ] && [ -f "$L/scripts/hook-wrapper.sh" ]; then R="$L"; fi' "$pd_safe_file"; then
+    fail "$pd_safe_cmd: reuses session symlink as plugin-root candidate"
+  else
+    pass "$pd_safe_cmd: does not trust session symlink as plugin root"
+  fi
+done
+
+echo ""
 echo "=== Milestone Context Refresh Verification ==="
 
 VIBE_FILE="$COMMANDS_DIR/vibe.md"

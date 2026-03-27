@@ -421,11 +421,13 @@ fi
 # mid-milestone (not only at all_done).
 #
 # QA status is also computed here for the first unverified phase:
-#   qa_status=pending       — no VERIFICATION.md exists (QA never ran)
-#   qa_status=passed        — VERIFICATION.md exists with result: PASS
+#   qa_status=pending       — no VERIFICATION.md exists (QA never ran), or
+#                             VERIFICATION.md exists but code changed since verification
+#                             (verified_at_commit != current product-code HEAD)
+#   qa_status=passed        — VERIFICATION.md exists with result: PASS and code unchanged
 #   qa_status=failed        — VERIFICATION.md exists with result: FAIL or PARTIAL
 #   qa_status=remediating   — QA remediation state file exists with active stage
-#   qa_status=remediated    — QA remediation state file exists with stage=done
+#   qa_status=remediated    — QA remediation state file exists with stage=done and code unchanged
 HAS_UNVERIFIED_PHASES=false
 FIRST_UNVERIFIED_PHASE=""
 FIRST_UNVERIFIED_SLUG=""
@@ -504,7 +506,25 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
               in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
             ' "$_uv_verif" 2>/dev/null) || _qa_done_result=""
             case "$_qa_done_result" in
-              PASS) QA_STATUS="remediated" ;;
+              PASS)
+                # Staleness check for remediated path
+                _vac_rem=$(awk '
+                  BEGIN { in_fm=0 }
+                  NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+                  in_fm && /^---[[:space:]]*$/ { exit }
+                  in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
+                ' "$_uv_verif" 2>/dev/null) || _vac_rem=""
+                if [ -n "$_vac_rem" ]; then
+                  _cur_commit_rem=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+                  if [ -n "$_cur_commit_rem" ] && [ "$_cur_commit_rem" != "$_vac_rem" ]; then
+                    QA_STATUS="pending"
+                  else
+                    QA_STATUS="remediated"
+                  fi
+                else
+                  QA_STATUS="remediated"
+                fi
+                ;;
               *) QA_STATUS="failed" ;;
             esac
           else
@@ -518,7 +538,25 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
             in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
           ' "$_uv_verif" 2>/dev/null) || _qa_result=""
           case "$_qa_result" in
-            PASS) QA_STATUS="passed" ;;
+            PASS)
+              # Staleness check: if code changed since QA verified, treat as pending
+              _vac=$(awk '
+                BEGIN { in_fm=0 }
+                NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+                in_fm && /^---[[:space:]]*$/ { exit }
+                in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
+              ' "$_uv_verif" 2>/dev/null) || _vac=""
+              if [ -n "$_vac" ]; then
+                _cur_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+                if [ -n "$_cur_commit" ] && [ "$_cur_commit" != "$_vac" ]; then
+                  QA_STATUS="pending"
+                else
+                  QA_STATUS="passed"
+                fi
+              else
+                QA_STATUS="passed"
+              fi
+              ;;
             FAIL|PARTIAL) QA_STATUS="failed" ;;
             *) QA_STATUS="pending" ;;
           esac

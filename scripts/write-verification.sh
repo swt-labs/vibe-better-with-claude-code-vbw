@@ -64,6 +64,10 @@ fi
 
 date_val=$(date -u +%Y-%m-%d)
 
+# Capture current product-code commit for staleness detection
+# Excludes .vbw-planning/ and CLAUDE.md so planning commits don't invalidate QA
+verified_at_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+
 # Check if checks_detail exists and is a valid array
 has_checks_detail="false"
 detail_type=$(echo "$payload" | jq -r '.checks_detail | type // "null"' 2>/dev/null)
@@ -124,6 +128,9 @@ trap 'rm -f "$tmp_output"' EXIT
   echo "failed: $checks_failed"
   echo "total: $checks_total"
   echo "date: $date_val"
+  if [ -n "$verified_at_commit" ]; then
+    echo "verified_at_commit: $verified_at_commit"
+  fi
   echo "---"
   echo ""
 } > "$tmp_output"
