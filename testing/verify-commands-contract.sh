@@ -194,6 +194,7 @@ done
 echo ""
 echo "=== Verify Guardrail Verification ==="
 
+VIBE_FILE="$COMMANDS_DIR/vibe.md"
 VERIFY_FILE="$COMMANDS_DIR/verify.md"
 
 if grep -q 'Verify-context error guard (NON-NEGOTIABLE)' "$VERIFY_FILE"; then
@@ -214,10 +215,14 @@ else
   fail "verify: missing fresh-PASS requirement in explicit QA gate"
 fi
 
+if grep -q 'echo "verify_context=unavailable"' "$VIBE_FILE"; then
+  pass "vibe: routed verify precompute emits fail-closed verify_context sentinel"
+else
+  fail "vibe: routed verify precompute missing fail-closed verify_context sentinel"
+fi
+
 echo ""
 echo "=== Milestone Context Refresh Verification ==="
-
-VIBE_FILE="$COMMANDS_DIR/vibe.md"
 mode_block() {
   local heading="$1"
   awk -v h="$heading" '

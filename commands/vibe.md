@@ -246,7 +246,7 @@ if ! _refresh_phase_detect; then
 fi
 [ -f "$P" ] && PD=$(cat "$P")
 if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
-  echo "not_verify_routing"
+  echo "verify_context=unavailable"
 else
   STATE=$(printf '%s' "$PD" | grep '^next_phase_state=' | head -1 | cut -d= -f2)
   AUTO_UAT=$(printf '%s' "$PD" | grep '^config_auto_uat=' | head -1 | cut -d= -f2)
@@ -282,7 +282,7 @@ else
       echo "uat_resume=error"
     fi
   else
-    echo "not_verify_routing"
+    echo "verify_context=unavailable"
   fi
 fi`
 ```
