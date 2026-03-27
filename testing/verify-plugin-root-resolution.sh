@@ -544,13 +544,26 @@ for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
 done
 
 # Check 19: targeted commands no longer use link-order-dependent wait-loop fallback
-# Old race-prone form:
+# Old race-prone form (same line or adjacent lines):
 #   if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then
 #     i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do ...
 for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
   file="$COMMANDS_DIR/$rel"
   base="$(basename "$rel" .md)"
-  if grep -q 'phase_detect_error=true" ] || \[ -L "\$L" \].*while \[ ! -L "\$L" \]' "$file"; then
+  if awk '
+    /phase_detect_error=true/ && /\[ -L "\$L" \]/ {
+      if (/while \[ ! -L "\$L" \] && \[ \$i -lt 20 \]/) {
+        found=1; exit
+      }
+      armed=1
+      next
+    }
+    armed && /while \[ ! -L "\$L" \] && \[ \$i -lt 20 \]/ {
+      found=1; exit
+    }
+    { armed=0 }
+    END { exit found ? 0 : 1 }
+  ' "$file"; then
     fail "$base: still uses race-prone wait-for-link phase-detect fallback"
   else
     pass "$base: does not use race-prone wait-for-link phase-detect fallback"

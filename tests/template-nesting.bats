@@ -157,6 +157,7 @@ _conditional_wait_pattern() {
 _simulate_phase_detect_reader() {
   local L="$1"
   local P="$2"
+  local FALLBACK_ROOT="${3:-}"
   local PD=""
 
   _refresh_phase_detect() {
@@ -164,9 +165,14 @@ _simulate_phase_detect_reader() {
     if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
       R="$L"
     fi
+    if [ -z "$R" ] && [ -n "$FALLBACK_ROOT" ] && [ -f "$FALLBACK_ROOT/scripts/phase-detect.sh" ]; then
+      R="$FALLBACK_ROOT"
+    fi
     [ -n "$R" ] || return 1
 
     REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"
+    rm -f "$L"
+    ln -s "$REAL_R" "$L" 2>/dev/null || true
     PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
 
     if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
@@ -269,6 +275,28 @@ EOF
   out=$(_simulate_phase_detect_reader "$link" "$cache")
   [[ "$out" == *"next_phase_state=fresh_live"* ]]
   [[ "$out" != *"phase_detect_error=true"* ]]
+}
+
+@test "reader refreshes without pre-existing link when fallback root is available" {
+  local td root link cache out
+  td=$(_new_tmp_test_dir)
+
+  root="$td/root"
+  link="$td/link"
+  cache="$td/pd.txt"
+  mkdir -p "$root/scripts"
+
+  cat > "$root/scripts/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "next_phase_state=fresh_without_link"
+EOF
+  chmod +x "$root/scripts/phase-detect.sh"
+
+  echo "phase_detect_error=true" > "$cache"
+
+  out=$(_simulate_phase_detect_reader "$link" "$cache" "$root")
+  [[ "$out" == *"next_phase_state=fresh_without_link"* ]]
+  [ -L "$link" ]
 }
 
 @test "reader refreshes stale valid cache when live script is available" {
