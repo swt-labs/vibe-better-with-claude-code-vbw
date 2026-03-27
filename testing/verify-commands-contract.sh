@@ -171,7 +171,7 @@ done
 echo ""
 echo "=== Phase-Detect Refresh Safety Verification ==="
 
-for pd_safe_cmd in vibe verify; do
+for pd_safe_cmd in vibe verify resume status discuss qa; do
   pd_safe_file="$COMMANDS_DIR/${pd_safe_cmd}.md"
   if [ ! -f "$pd_safe_file" ]; then
     fail "$pd_safe_cmd: command file not found"
