@@ -752,3 +752,13 @@ load test_helper
 @test "verify command documents still as defect signal" {
   grep -qi 'still.*defect signal' "$PROJECT_ROOT/commands/verify.md"
 }
+
+@test "verify response mapping: uncertainty + negated pass → issue" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "I think it doesn't work")
+  [ "$result" = "issue" ]
+}
+
+@test "verify response mapping: 'neither good nor working' → issue" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "neither good nor working")
+  [ "$result" = "issue" ]
+}

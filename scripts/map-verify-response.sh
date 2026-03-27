@@ -24,7 +24,7 @@ pass_re="(^|[^[:alnum:]_])(pass|passed|looks good|works|correct|confirmed|yes|go
 idiom_positive_re="(^|[^[:alnum:]_])(not bad|can't complain|cant complain|cannot complain)([^[:alnum:]_]|$)"
 separator_re=' but | however | although | though | also |[,;.:] | - '
 issue_signal_re='(broken|bug|error|wrong|incorrect|missing|not working|doesnt work|fails|fail|failing|crash|exception|regress|problem|glitch|unusable|blocked|still)'
-negated_pass_re="(not|no|never|don't|doesn't|didn't|isn't|wasn't|cannot|can't|cant|won't|wont|wouldn't|shouldn't|hardly|barely)( [a-z]+){0,3} (pass|passed|works|work|good|fine|ok|okay|correct|confirmed)"
+negated_pass_re="(not|no|never|don't|doesn't|didn't|isn't|wasn't|cannot|can't|cant|won't|wont|wouldn't|shouldn't|hardly|barely|neither|nor)( [a-z]+){0,3} (pass|passed|works|work|good|fine|ok|okay|correct|confirmed)"
 negated_think_works_re="(don't|doesn't|didn't|cannot|can't|cant) (think|feel|guess|believe|know)( [a-z]+){0,4} (work|works|working)"
 # Uncertainty phrases are NOT pass-intent — they indicate the user is unsure.
 # If present without a clear pass keyword, the response falls through to issue.

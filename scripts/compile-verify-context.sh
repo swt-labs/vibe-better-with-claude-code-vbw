@@ -233,10 +233,11 @@ while IFS= read -r plan_file; do
         found && /^- / {
           line = $0
           sub(/^- /, "", line)
-          # Skip "None" / "None." / "N/A" / "None. <explanation>" / "No deviations" entries
-          if (line ~ /^[Nn]one[.[:space:]]/ || line ~ /^[Nn]one$/ || line ~ /^[Nn]\/[Aa][.[:space:]]/ || line ~ /^[Nn]\/[Aa]$/ || line ~ /^[Nn][Aa]$/ || line ~ /^[Nn]o deviations/) next
-          # Strip bold prefix if present (e.g., "**Foo**: bar")
+          # Strip bold prefix first so "**None**: ..." is normalized before filtering
           sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
+          # Skip "None" / "None." / "N/A" / "None. <explanation>" / "No deviations" entries (case-insensitive)
+          lc = tolower(line)
+          if (lc ~ /^none[. ]/ || lc == "none" || lc ~ /^n\/a[. ]/ || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
           items = items (items ? "; " : "") line
         }
         END { print items }
