@@ -886,6 +886,9 @@ EOF
   mkdir -p "$plugin_root/scripts" "$TEST_TEMP_DIR/.vbw-planning/phases/01-setup" "$TEST_TEMP_DIR/.vbw-planning/phases/02-feature"
   printf '%s\n' '#!/bin/bash' 'echo "verify_context=stub"' > "$plugin_root/scripts/compile-verify-context.sh"
   chmod +x "$plugin_root/scripts/compile-verify-context.sh"
+  printf '%s\n' '#!/bin/bash' 'true' > "$plugin_root/scripts/hook-wrapper.sh"
+  printf '%s\n' '#!/bin/bash' 'cat "'"$cache"'"' > "$plugin_root/scripts/phase-detect.sh"
+  chmod +x "$plugin_root/scripts/hook-wrapper.sh" "$plugin_root/scripts/phase-detect.sh"
   ln -s "$plugin_root" "$link"
 
   printf '%s\n' \
@@ -897,9 +900,12 @@ EOF
     /^Pre-computed verify context \(PLAN\/SUMMARY aggregation\):$/ { in_block=1; next }
     in_block && /^!`/ {
       sub(/^!`/, "")
-      sub(/`$/, "")
-      print
-      exit
+      if (/`$/) { sub(/`$/, ""); print; exit }
+      buf = $0 "\n"
+      while ((getline line) > 0) {
+        if (line ~ /`$/) { sub(/`$/, "", line); buf = buf line; print buf; exit }
+        buf = buf line "\n"
+      }
     }
   ' "$PROJECT_ROOT/commands/verify.md")
 
@@ -922,6 +928,9 @@ EOF
   mkdir -p "$plugin_root/scripts" "$TEST_TEMP_DIR/.vbw-planning/phases/01-setup" "$TEST_TEMP_DIR/.vbw-planning/phases/02-feature"
   printf '%s\n' '#!/bin/bash' 'echo "uat_resume=stub"' > "$plugin_root/scripts/extract-uat-resume.sh"
   chmod +x "$plugin_root/scripts/extract-uat-resume.sh"
+  printf '%s\n' '#!/bin/bash' 'true' > "$plugin_root/scripts/hook-wrapper.sh"
+  printf '%s\n' '#!/bin/bash' 'cat "'"$cache"'"' > "$plugin_root/scripts/phase-detect.sh"
+  chmod +x "$plugin_root/scripts/hook-wrapper.sh" "$plugin_root/scripts/phase-detect.sh"
   ln -s "$plugin_root" "$link"
 
   printf '%s\n' \
@@ -933,9 +942,12 @@ EOF
     /^Pre-computed UAT resume metadata:$/ { in_block=1; next }
     in_block && /^!`/ {
       sub(/^!`/, "")
-      sub(/`$/, "")
-      print
-      exit
+      if (/`$/) { sub(/`$/, ""); print; exit }
+      buf = $0 "\n"
+      while ((getline line) > 0) {
+        if (line ~ /`$/) { sub(/`$/, "", line); buf = buf line; print buf; exit }
+        buf = buf line "\n"
+      }
     }
   ' "$PROJECT_ROOT/commands/verify.md")
 
