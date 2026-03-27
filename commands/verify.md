@@ -215,6 +215,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
 
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
 - **Phase-detect error guard (NON-NEGOTIABLE):** If Phase state (from Context above) contains `phase_detect_error=true`, display: "⚠ Phase detection failed. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh` manually to debug." STOP. Do NOT fall back to phase-dir scanning or ad-hoc `VERIFICATION.md` checks when phase-detect failed.
+- **Verify-context error guard (NON-NEGOTIABLE):** If the pre-computed verify context block contains `verify_context_error=true` or `verify_context=unavailable`, display: "⚠ Verify context compilation failed. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh .vbw-planning/phases/{NN}-{slug}` manually to debug." STOP. Do NOT improvise by reading individual PLAN/SUMMARY files unless the user explicitly targeted a different phase number (see Step 1).
 - **Brownfield normalization:** If Phase state (from Context above) contains `misnamed_plans=true`, normalize all phase directories before proceeding:
   ```bash
   NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
@@ -237,7 +238,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   - Fallback: scan phase dirs for first with `*-SUMMARY.md` but no canonical `*-UAT.md` (exclude `*-SOURCE-UAT.md` copies).
   - Found: announce "Auto-detected Phase {NN} ({slug})". All verified: STOP "All phases have UAT results. Specify: `/vbw:verify {NN}`"
 - No SUMMARY.md in target phase dir: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
-- **QA gate (NON-NEGOTIABLE unless `--skip-qa`):** Before entering UAT Steps, check whether QA has passed for the target phase. Read `qa_status` from Phase state (Context above). If not present, check for VERIFICATION.md in the target phase dir:
+- **QA gate (NON-NEGOTIABLE unless `--skip-qa`):** Before entering UAT Steps, check whether QA has passed for the target phase. Use `qa_status` from Phase state only when the target phase is the same as the auto-detected `verify_target_slug` / first-unverified phase. If the user specified an explicit phase number that differs from the auto-detected target, ignore the pre-computed `qa_status` and compute the gate from that explicit phase's own VERIFICATION.md + QA remediation state.
   ```bash
   PDIR=".vbw-planning/phases/{target-slug}"
   PHASE_NUM=$(echo "{target-slug}" | sed 's/^\([0-9]*\).*/\1/')
@@ -247,7 +248,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   - If `$QA_REM_FILE` exists with `stage` not equal to `done`: STOP "Phase {NN} has active QA remediation (round {round}, stage {stage}). Run `/vbw:vibe` to continue QA remediation before UAT."
   - If no VERIFICATION.md and no `--skip-qa`: STOP "Phase {NN} has no QA verification. Run `/vbw:vibe` to execute QA first, or use `/vbw:verify --skip-qa` to bypass."
   - If VERIFICATION.md exists, read its frontmatter `result:` field:
-    - `PASS`: proceed to UAT Steps
+    - `PASS`: before proceeding, run the same stale-QA checks as phase-detect for this target phase: (1) if product-code working tree is dirty (`git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md'` non-empty) → STOP and rerun QA via `/vbw:vibe`; (2) if `verified_at_commit` exists and differs from current product-code `git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md'` → STOP and rerun QA; (3) if `verified_at_commit` is absent (brownfield file), compare VERIFICATION.md mtime to the latest product-code commit timestamp and STOP if the commit is newer. Only proceed to UAT when the PASS is fresh for the target phase.
     - `FAIL` or `PARTIAL`: STOP "Phase {NN} QA result is {result}. Run `/vbw:vibe` to continue QA remediation, or use `/vbw:verify --skip-qa` to bypass."
   - If `--skip-qa` flag is present: bypass all QA checks, proceed to UAT Steps
 
@@ -275,7 +276,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   ```bash
   UAT_NAME=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-artifact-path.sh uat "{phase-dir}")
   ```
-  Use `uat_path=${UAT_NAME}`.
+  Use `uat_path=${UAT_NAME}`. Also ignore the pre-computed `qa_status` for the auto-detected phase and apply the QA gate above to the explicit target phase only.
 
 ### 2. Handle re-verification state
 

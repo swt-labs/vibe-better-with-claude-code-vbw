@@ -192,6 +192,29 @@ for pd_safe_cmd in vibe verify; do
 done
 
 echo ""
+echo "=== Verify Guardrail Verification ==="
+
+VERIFY_FILE="$COMMANDS_DIR/verify.md"
+
+if grep -q 'Verify-context error guard (NON-NEGOTIABLE)' "$VERIFY_FILE"; then
+  pass "verify: has fail-closed verify-context error guard"
+else
+  fail "verify: missing fail-closed verify-context error guard"
+fi
+
+if grep -q 'If the user specified an explicit phase number that differs from the auto-detected target, ignore the pre-computed `qa_status`' "$VERIFY_FILE"; then
+  pass "verify: explicit target phases ignore auto-detected qa_status"
+else
+  fail "verify: missing explicit-phase qa_status override guidance"
+fi
+
+if grep -q 'Only proceed to UAT when the PASS is fresh for the target phase' "$VERIFY_FILE"; then
+  pass "verify: explicit QA gate requires fresh PASS for target phase"
+else
+  fail "verify: missing fresh-PASS requirement in explicit QA gate"
+fi
+
+echo ""
 echo "=== Milestone Context Refresh Verification ==="
 
 VIBE_FILE="$COMMANDS_DIR/vibe.md"
