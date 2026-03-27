@@ -55,7 +55,8 @@ case "$FILE_PATH" in
     echo "Blocked: writes to archived milestone phases are not allowed ($FILE_PATH)" >&2
     exit 2
     ;;
-  *.vbw-planning/*/remediation/uat/round-*/R[0-9]*-SUMMARY.md)
+  *.vbw-planning/*/remediation/uat/round-*/R[0-9]*-SUMMARY.md|\
+  *.vbw-planning/*/remediation/qa/round-*/R[0-9]*-SUMMARY.md)
     # Remediation round summaries have an incremental lifecycle:
     # task 1 Dev creates with status: in-progress, subsequent Devs append,
     # Lead finalizes to terminal status. Exempt from terminal-status guard.

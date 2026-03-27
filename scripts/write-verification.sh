@@ -81,6 +81,12 @@ elif [[ "$detail_type" != "null" && "$detail_type" != "" ]]; then
   exit 1
 fi
 
+# Require checks_detail for PASS/PARTIAL results — without detail, the claim is unvalidatable
+if [[ "$has_checks_detail" == "false" && ("$result" == "PASS" || "$result" == "PARTIAL") ]]; then
+  echo "Error: checks_detail is required when result is PASS or PARTIAL (cannot validate without detail)" >&2
+  exit 1
+fi
+
 # Validate checks_detail entries have required fields
 if [[ "$has_checks_detail" == "true" ]]; then
   invalid_entries=$(echo "$payload" | jq '[.checks_detail[] | select(

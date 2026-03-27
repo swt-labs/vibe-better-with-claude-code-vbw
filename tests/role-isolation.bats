@@ -114,6 +114,14 @@ CONTRACT
   [ "$status" -eq 0 ]
 }
 
+@test "file-guard: allows QA remediation round SUMMARY with in-progress status" {
+  cd "$TEST_TEMP_DIR"
+  CONTENT='---\nphase: 3\nround: 1\ntitle: QA fixes\nstatus: in-progress\ntasks_completed: 0\ntasks_total: 3\n---\n\n## Task 1: Fix deviation'
+  INPUT="{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".vbw-planning/phases/03-test/remediation/qa/round-01/R01-SUMMARY.md\",\"content\":\"$CONTENT\"}}"
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 0 ]
+}
+
 @test "file-guard: still blocks plan-level SUMMARY with non-terminal status" {
   cd "$TEST_TEMP_DIR"
   CONTENT='---\nphase: 3\nplan: 1\ntitle: Test\nstatus: in-progress\n---\n\nDraft.'

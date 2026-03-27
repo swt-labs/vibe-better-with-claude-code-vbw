@@ -148,9 +148,9 @@ JSON
 # write-verification.sh: fallback without checks_detail
 # =============================================================================
 
-@test "write-verification: falls back to body when no checks_detail" {
+@test "write-verification: falls back to body when no checks_detail (FAIL result)" {
   cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
-{"payload":{"tier":"quick","result":"PASS","checks":{"passed":3,"failed":0,"total":3},"body":"## Custom Content\nSome free-form text"}}
+{"payload":{"tier":"quick","result":"FAIL","checks":{"passed":3,"failed":0,"total":3},"body":"## Custom Content\nSome free-form text"}}
 JSON
   run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
   [ "$status" -eq 0 ]
@@ -338,6 +338,35 @@ JSON
 # =============================================================================
 # write-verification.sh: edge cases from QA round 1
 # =============================================================================
+
+@test "write-verification: rejects PASS without checks_detail" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1}}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"checks_detail is required when result is PASS"* ]]
+  [ ! -f "$TEST_TEMP_DIR/out.md" ]
+}
+
+@test "write-verification: rejects PARTIAL without checks_detail" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PARTIAL","checks":{"passed":1,"failed":1,"total":2}}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"checks_detail is required when result is PASS or PARTIAL"* ]]
+  [ ! -f "$TEST_TEMP_DIR/out.md" ]
+}
+
+@test "write-verification: allows FAIL without checks_detail" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"FAIL","checks":{"passed":1,"failed":1,"total":2},"failures":[{"check":"Link check"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '^result: FAIL' "$TEST_TEMP_DIR/out.md"
+}
 
 @test "write-verification: rejects checks_detail as object instead of array" {
   cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
