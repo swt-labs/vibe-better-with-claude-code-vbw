@@ -725,6 +725,16 @@ load test_helper
   [ "$result" = "pass_with_observation" ]
 }
 
+@test "verify response mapping: 'still works fine' is NOT a defect signal" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "pass, it still works fine")
+  [ "$result" = "pass" ]
+}
+
+@test "verify response mapping: 'still loads correctly' is NOT a defect signal" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "pass. still loads correctly")
+  [ "$result" = "pass" ]
+}
+
 @test "verify response mapping: 'still broken' without pass → issue" {
   result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "it still shows the wrong value")
   [ "$result" = "issue" ]

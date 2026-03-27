@@ -76,6 +76,15 @@ fi
 
 if [ -n "${tail_text:-}" ] && matches_re "$tail_text" "$issue_signal_re"; then
   tail_has_issue=1
+  # "still" false-positive guard: if the only defect signal is "still" and it's
+  # followed by a positive word (works, working, fine, good, correct, properly,
+  # functioning, responsive, loads, launches), it's temporal not defective.
+  if [[ "$tail_text" =~ still ]] && ! [[ "$tail_text" =~ (broken|bug|error|wrong|incorrect|missing|not\ working|doesnt\ work|fails|fail|failing|crash|exception|regress|problem|glitch|unusable|blocked) ]]; then
+    still_positive_re='still (works|working|fine|good|correct|properly|functioning|responsive|loads|launches|runs|ok|okay)'
+    if matches_re "$tail_text" "$still_positive_re"; then
+      tail_has_issue=0
+    fi
+  fi
 fi
 
 # Expanded negation guard, with idiomatic-positive exceptions.

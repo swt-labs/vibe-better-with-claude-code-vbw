@@ -58,7 +58,6 @@ RESULTS=$(awk '
       print "issue"
     } else {
       # Unknown value — treat as issue (defensive), log for debugging
-      print "issue" > "/dev/stderr"
       printf "finalize-uat-status: unrecognized Result value: %s\n", val > "/dev/stderr"
       print "issue"
     }
@@ -106,15 +105,20 @@ fi
 # Preserves all other frontmatter fields, only updates the target fields
 awk -v status="$STATUS" -v completed="$TODAY" -v passed="$PASSED" \
     -v skipped="$SKIPPED" -v issues="$ISSUES" -v total="$TOTAL" '
-  BEGIN { in_fm = 0; fm_done = 0 }
+  BEGIN { in_fm = 0; fm_done = 0; saw_completed = 0 }
   NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; print; next }
   in_fm && /^---[[:space:]]*$/ {
+    # Inject completed field if it was missing from frontmatter
+    if (!saw_completed && completed != "") {
+      printf "completed: %s\n", completed
+    }
     in_fm = 0; fm_done = 1; print; next
   }
   in_fm {
     if ($0 ~ /^status[[:space:]]*:/) {
       printf "status: %s\n", status
     } else if ($0 ~ /^completed[[:space:]]*:/) {
+      saw_completed = 1
       if (completed != "") printf "completed: %s\n", completed
       else printf "completed:\n"  # clear stale date for in_progress
     } else if ($0 ~ /^passed[[:space:]]*:/) {

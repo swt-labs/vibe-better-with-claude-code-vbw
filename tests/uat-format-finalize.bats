@@ -442,6 +442,35 @@ EOF
   [[ "$output" == *"status=complete"* ]]
 }
 
+@test "finalize-uat-status: injects completed date when field missing from frontmatter" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 01
+plan_count: 1
+status: in_progress
+started: 2026-03-27
+total_tests: 1
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### P01-T1: Test one
+
+- **Result:** pass
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=complete"* ]]
+  local today
+  today=$(date +%Y-%m-%d)
+  grep -q "^completed: $today" "$uat"
+}
+
 # --- extract-uat-issues.sh lenient parsing tests ---
 
 create_uat_phase() {

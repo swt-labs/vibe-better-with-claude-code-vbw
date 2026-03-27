@@ -233,8 +233,8 @@ while IFS= read -r plan_file; do
         found && /^- / {
           line = $0
           sub(/^- /, "", line)
-          # Skip "None" / "None." / "N/A" entries
-          if (line ~ /^[Nn]one\.?[[:space:]]*$/ || line ~ /^[Nn]\/[Aa]\.?[[:space:]]*$/) next
+          # Skip "None" / "None." / "N/A" / "None. <explanation>" entries
+          if (line ~ /^[Nn]one[.[:space:]]/ || line ~ /^[Nn]one$/ || line ~ /^[Nn]\/[Aa][.[:space:]]/ || line ~ /^[Nn]\/[Aa]$/) next
           # Strip bold prefix if present (e.g., "**Foo**: bar")
           sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
           items = items (items ? "; " : "") line

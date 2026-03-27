@@ -501,7 +501,7 @@ for summary_file in {phase-dir}/*-SUMMARY.md; do
       found && /^[[:space:]]*$/ { next }
       found && /^- / {
         line=$0; sub(/^- /, "", line)
-        if (line ~ /^[Nn]one\.?[[:space:]]*$/ || line ~ /^[Nn]\/[Aa]\.?[[:space:]]*$/) next
+        if (line ~ /^[Nn]one[.[:space:]]/ || line ~ /^[Nn]one$/ || line ~ /^[Nn]\/[Aa][.[:space:]]/ || line ~ /^[Nn]\/[Aa]$/) next
         sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
         items = items (items ? "; " : "") line
       }
