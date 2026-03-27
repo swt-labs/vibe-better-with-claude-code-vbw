@@ -1214,6 +1214,28 @@ CONF
   echo "$output" | grep -q "qa_status=pending"
 }
 
+@test "qa_status is pending for brownfield PASS verification after later commit" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  echo "print(\"before\")" > app.py
+  git add app.py
+  git commit -m "before qa" --quiet
+
+  printf '%s\n' '---' 'result: PASS' '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  sleep 1
+
+  echo "print(\"after\")" > app.py
+  git add app.py
+  git commit -m "after qa" --quiet
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}
+
 @test "qa_status is pending when PASS verification has uncommitted product changes" {
   mkdir -p .vbw-planning/phases/01-test
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
@@ -1234,6 +1256,29 @@ CONF
     'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
 
   echo "print(\"dirty\")" > app.py
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}
+
+@test "qa_status is pending for brownfield remediated verification after later commit" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  echo "print(\"before\")" > app.py
+  git add app.py
+  git commit -m "before remediated qa" --quiet
+
+  printf '%s\n' '---' 'result: PASS' '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  sleep 1
+
+  echo "print(\"after\")" > app.py
+  git add app.py
+  git commit -m "after remediated qa" --quiet
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]

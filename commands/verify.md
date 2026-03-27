@@ -214,6 +214,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
 ## Guard
 
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+- **Phase-detect error guard (NON-NEGOTIABLE):** If Phase state (from Context above) contains `phase_detect_error=true`, display: "⚠ Phase detection failed. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh` manually to debug." STOP. Do NOT fall back to phase-dir scanning or ad-hoc `VERIFICATION.md` checks when phase-detect failed.
 - **Brownfield normalization:** If Phase state (from Context above) contains `misnamed_plans=true`, normalize all phase directories before proceeding:
   ```bash
   NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"

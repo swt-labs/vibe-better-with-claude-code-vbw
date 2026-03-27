@@ -525,7 +525,13 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
                     QA_STATUS="remediated"
                   fi
                 else
-                  QA_STATUS="remediated"
+                  _cur_commit_ts_rem=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+                  _verif_mtime_rem=$(perl -e 'print +(stat shift)[9]' "$_uv_verif" 2>/dev/null || echo "")
+                  if [ -n "$_cur_commit_ts_rem" ] && [ -n "$_verif_mtime_rem" ] && [ "$_cur_commit_ts_rem" -gt "$_verif_mtime_rem" ]; then
+                    QA_STATUS="pending"
+                  else
+                    QA_STATUS="remediated"
+                  fi
                 fi
                 ;;
               *) QA_STATUS="failed" ;;
@@ -560,7 +566,13 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
                   QA_STATUS="passed"
                 fi
               else
-                QA_STATUS="passed"
+                _cur_commit_ts=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+                _verif_mtime=$(perl -e 'print +(stat shift)[9]' "$_uv_verif" 2>/dev/null || echo "")
+                if [ -n "$_cur_commit_ts" ] && [ -n "$_verif_mtime" ] && [ "$_cur_commit_ts" -gt "$_verif_mtime" ]; then
+                  QA_STATUS="pending"
+                else
+                  QA_STATUS="passed"
+                fi
               fi
               ;;
             FAIL|PARTIAL) QA_STATUS="failed" ;;

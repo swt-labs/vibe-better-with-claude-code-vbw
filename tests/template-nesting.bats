@@ -162,7 +162,7 @@ _simulate_phase_detect_reader() {
 
   _refresh_phase_detect() {
     local R="" REAL_R=""
-    if [ -n "$FALLBACK_ROOT" ] && [ -f "$FALLBACK_ROOT/scripts/phase-detect.sh" ]; then
+    if [ -n "$FALLBACK_ROOT" ] && [ -f "$FALLBACK_ROOT/scripts/hook-wrapper.sh" ] && [ -f "$FALLBACK_ROOT/scripts/phase-detect.sh" ]; then
       R="$FALLBACK_ROOT"
     fi
     [ -n "$R" ] || return 1
@@ -260,6 +260,7 @@ _simulate_phase_detect_reader() {
 #!/usr/bin/env bash
 echo "next_phase_state=fresh_live"
 EOF
+  : > "$root/scripts/hook-wrapper.sh"
   chmod +x "$root/scripts/phase-detect.sh"
 
   ln -s "$root" "$link"
@@ -283,6 +284,7 @@ EOF
 #!/usr/bin/env bash
 echo "next_phase_state=fresh_without_link"
 EOF
+  : > "$root/scripts/hook-wrapper.sh"
   chmod +x "$root/scripts/phase-detect.sh"
 
   echo "phase_detect_error=true" > "$cache"
@@ -305,6 +307,7 @@ EOF
 #!/usr/bin/env bash
 echo "next_phase_state=fresh_live"
 EOF
+  : > "$root/scripts/hook-wrapper.sh"
   chmod +x "$root/scripts/phase-detect.sh"
 
   echo "next_phase_state=stale_cache" > "$cache"
@@ -340,6 +343,7 @@ EOF
 #!/usr/bin/env bash
 printf '   \n\n'
 EOF
+  : > "$root/scripts/hook-wrapper.sh"
   chmod +x "$root/scripts/phase-detect.sh"
 
   ln -s "$root" "$link"
