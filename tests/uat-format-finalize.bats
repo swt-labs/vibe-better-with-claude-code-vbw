@@ -328,6 +328,120 @@ EOF
   [[ "$output" == *"Error"* ]]
 }
 
+# --- finalize-uat-status.sh robustness: edge-case Result values ---
+
+@test "finalize-uat-status: Result with leading whitespace → pass" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 01
+plan_count: 1
+status: in_progress
+started: 2026-03-27
+total_tests: 1
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### P01-T1: Test one
+
+- **Result:**  pass
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"passed=1"* ]]
+  [[ "$output" == *"status=complete"* ]]
+}
+
+@test "finalize-uat-status: Result 'passed!' with trailing punctuation → pass" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 01
+plan_count: 1
+status: in_progress
+started: 2026-03-27
+total_tests: 1
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### P01-T1: Test one
+
+- **Result:** passed!
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"passed=1"* ]]
+  [[ "$output" == *"status=complete"* ]]
+}
+
+@test "finalize-uat-status: Result with checkmark decorator → pass" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 01
+plan_count: 1
+status: in_progress
+started: 2026-03-27
+total_tests: 1
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### P01-T1: Test one
+
+- **Result:** ✓ pass
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"passed=1"* ]]
+  [[ "$output" == *"status=complete"* ]]
+}
+
+@test "finalize-uat-status: Result 'Pass' mixed case → pass" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 01
+plan_count: 1
+status: in_progress
+started: 2026-03-27
+total_tests: 2
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### P01-T1: Test one
+
+- **Result:** Pass
+
+### P01-T2: Test two
+
+- **Result:** PASSED
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"passed=2"* ]]
+  [[ "$output" == *"status=complete"* ]]
+}
+
 # --- extract-uat-issues.sh lenient parsing tests ---
 
 create_uat_phase() {

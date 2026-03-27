@@ -221,6 +221,28 @@ while IFS= read -r plan_file; do
       END { print items }
     ' "$SUMMARY_FILE" 2>/dev/null) || DEVIATIONS=""
 
+    # Fallback: extract deviations from body ## Deviations section
+    # Dev agents frequently write deviations only in the body section,
+    # omitting the YAML frontmatter array. This fallback ensures QA
+    # always receives deviation data regardless of where Dev wrote it.
+    if [ -z "$DEVIATIONS" ]; then
+      DEVIATIONS=$(awk '
+        /^## Deviations/ { found=1; next }
+        found && /^## / { exit }
+        found && /^[[:space:]]*$/ { next }
+        found && /^- / {
+          line = $0
+          sub(/^- /, "", line)
+          # Skip "None" / "None." / "N/A" entries
+          if (line ~ /^[Nn]one\.?[[:space:]]*$/ || line ~ /^[Nn]\/[Aa]\.?[[:space:]]*$/) next
+          # Strip bold prefix if present (e.g., "**Foo**: bar")
+          sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
+          items = items (items ? "; " : "") line
+        }
+        END { print items }
+      ' "$SUMMARY_FILE" 2>/dev/null) || DEVIATIONS=""
+    fi
+
     # Extract pre-existing issues from body section
     PRE_EXISTING=$(awk '
       /^## Pre-existing Issues/ { found=1; next }

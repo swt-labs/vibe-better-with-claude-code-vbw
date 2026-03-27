@@ -621,3 +621,130 @@ EOF
   [[ "$output" == *"verify_scope=remediation round=01"* ]]
   [[ "$output" == *"Failed round"* ]]
 }
+
+# --- Deviation extraction: body ## Deviations fallback ---
+
+@test "compile-verify-context: extracts deviations from body when YAML frontmatter has none" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Model with deviation
+wave: 1
+must_haves:
+  - Feature works
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Model with deviation
+status: complete
+completed: 2026-03-27
+tasks_completed: 3
+tasks_total: 3
+---
+
+Built the model.
+
+## What Was Built
+
+- The model
+
+## Files Modified
+
+- `src/model.swift` -- created: model
+
+## Deviations
+
+- **Uniqueness test approach**: Changed from raw constraint test to upsert pattern test
+- **Started before dependency completed**: Proceeded since API was on disk
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Changed from raw constraint test to upsert pattern test; Proceeded since API was on disk"* ]]
+}
+
+@test "compile-verify-context: YAML frontmatter deviations take priority over body" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Has both
+wave: 1
+must_haves:
+  - Feature works
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Has both
+status: complete
+deviations:
+  - "YAML deviation wins"
+---
+
+Built it.
+
+## What Was Built
+
+- Thing
+
+## Deviations
+
+- Body deviation should be ignored
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: YAML deviation wins"* ]]
+  [[ "$output" != *"Body deviation should be ignored"* ]]
+}
+
+@test "compile-verify-context: body deviations section with None is treated as no deviations" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: No deviations
+wave: 1
+must_haves:
+  - Something
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: No deviations
+status: complete
+---
+
+Built it.
+
+## What Was Built
+
+- Thing
+
+## Deviations
+
+None. All tasks implemented as specified.
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: none"* ]]
+}

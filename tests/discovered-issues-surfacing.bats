@@ -666,6 +666,12 @@ load test_helper
   grep -qi 'Observation extraction guard' "$PROJECT_ROOT/commands/verify.md"
 }
 
+@test "execute-protocol DEV_ISSUES block has body Deviations fallback" {
+  # The YAML-only extractor misses deviations written to the body ## Deviations
+  # section, which is the common case. The fallback must be present.
+  grep -q '## Deviations' "$PROJECT_ROOT/references/execute-protocol.md"
+}
+
 # =============================================================================
 # QA round 4 (PR #142): newline-separated input via stdin
 # =============================================================================
@@ -683,4 +689,51 @@ load test_helper
 @test "verify response mapping handles newline-only pass via stdin" {
   result=$(printf 'looks good\nno issues' | bash "$PROJECT_ROOT/scripts/map-verify-response.sh")
   [ "$result" = "pass" ]
+}
+
+# =============================================================================
+# Uncertainty exclusion and "still" defect signal
+# =============================================================================
+
+@test "verify response mapping: uncertainty without pass keyword → issue" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "I think so? ORCX and PRMB still show cost basis")
+  [ "$result" = "issue" ]
+}
+
+@test "verify response mapping: 'maybe' without pass keyword → issue" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "maybe, hard to tell")
+  [ "$result" = "issue" ]
+}
+
+@test "verify response mapping: 'probably' without pass keyword → issue" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "probably, not sure about that")
+  [ "$result" = "issue" ]
+}
+
+@test "verify response mapping: 'I guess' without pass keyword → issue" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "I guess so")
+  [ "$result" = "issue" ]
+}
+
+@test "verify response mapping: 'pass, I think it works' → pass (explicit keyword)" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "pass, I think it works")
+  [ "$result" = "pass" ]
+}
+
+@test "verify response mapping: 'still' triggers issue observation signal" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "pass, but the sidebar still shows old data")
+  [ "$result" = "pass_with_observation" ]
+}
+
+@test "verify response mapping: 'still broken' without pass → issue" {
+  result=$(bash "$PROJECT_ROOT/scripts/map-verify-response.sh" "it still shows the wrong value")
+  [ "$result" = "issue" ]
+}
+
+@test "verify command documents uncertainty exclusion guard" {
+  grep -qi 'Uncertainty exclusion' "$PROJECT_ROOT/commands/verify.md"
+}
+
+@test "verify command documents still as defect signal" {
+  grep -qi 'still.*defect signal' "$PROJECT_ROOT/commands/verify.md"
 }

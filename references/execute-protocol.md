@@ -491,6 +491,24 @@ for summary_file in {phase-dir}/*-SUMMARY.md; do
     END { print items }
   ' "$summary_file" 2>/dev/null)
 
+  # Fallback: extract deviations from body ## Deviations section
+  # Dev agents frequently write deviations only in the body, omitting
+  # the YAML frontmatter array. This fallback ensures QA always receives them.
+  if [ -z "$devs" ]; then
+    devs=$(awk '
+      /^## Deviations/ { found=1; next }
+      found && /^## / { exit }
+      found && /^[[:space:]]*$/ { next }
+      found && /^- / {
+        line=$0; sub(/^- /, "", line)
+        if (line ~ /^[Nn]one\.?[[:space:]]*$/ || line ~ /^[Nn]\/[Aa]\.?[[:space:]]*$/) next
+        sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
+        items = items (items ? "; " : "") line
+      }
+      END { print items }
+    ' "$summary_file" 2>/dev/null)
+  fi
+
   # Extract pre-existing issues from body
   preex=$(awk '
     /^## Pre-existing Issues/ { found=1; next }

@@ -35,7 +35,11 @@ RESULTS=$(awk '
     val = $0
     sub(/^- \*\*Result:\*\*[[:space:]]*/, "", val)
     gsub(/[[:space:]]+$/, "", val)
-    # Normalize to lowercase
+    # Strip common decorators (checkmarks, emoji, bullets)
+    gsub(/^[^a-zA-Z{]+/, "", val)
+    gsub(/[^a-zA-Z}]+$/, "", val)
+    # Normalize to lowercase using portable loop
+    lval = ""
     for (i = 1; i <= length(val); i++) {
       c = substr(val, i, 1)
       if (c >= "A" && c <= "Z") {
@@ -43,17 +47,19 @@ RESULTS=$(awk '
       }
       lval = lval c
     }
-    val = lval; lval = ""
+    val = lval
     if (val == "" || val == "{pass|skip|issue}") {
       print "empty"
-    } else if (val == "pass" || val == "passed") {
+    } else if (val ~ /^pass/) {
       print "pass"
-    } else if (val == "skip" || val == "skipped") {
+    } else if (val ~ /^skip/) {
       print "skip"
-    } else if (val == "issue" || val == "fail" || val == "failed" || val ~ /^partial/) {
+    } else if (val ~ /^issue/ || val ~ /^fail/ || val ~ /^partial/) {
       print "issue"
     } else {
-      # Unknown value — treat as issue (defensive)
+      # Unknown value — treat as issue (defensive), log for debugging
+      print "issue" > "/dev/stderr"
+      printf "finalize-uat-status: unrecognized Result value: %s\n", val > "/dev/stderr"
       print "issue"
     }
     next
