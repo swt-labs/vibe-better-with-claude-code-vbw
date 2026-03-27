@@ -72,6 +72,7 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; d
     | grep -v '@${CLAUDE_PLUGIN_ROOT}' \
     | grep -v 'Plugin root:' \
     | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -[df] "${CLAUDE_PLUGIN_ROOT}' \
+    | grep -v 'if \[ -z "\$R" \] && \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" \]; then R="${CLAUDE_PLUGIN_ROOT}"; fi' \
     | grep -v 'VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"' \
     | grep -v 'checked CLAUDE_PLUGIN_ROOT' \
     | grep -v 'CLAUDE_PLUGIN_ROOT:+' \
@@ -88,6 +89,7 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; d
       | grep -v '@${CLAUDE_PLUGIN_ROOT}' \
       | grep -v 'Plugin root:' \
       | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -[df] "${CLAUDE_PLUGIN_ROOT}' \
+      | grep -v 'if \[ -z "\$R" \] && \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" \]; then R="${CLAUDE_PLUGIN_ROOT}"; fi' \
       | grep -v 'VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"' \
       | grep -v 'checked CLAUDE_PLUGIN_ROOT' \
       | grep -v 'CLAUDE_PLUGIN_ROOT:+' \
@@ -520,4 +522,49 @@ if [ "$FAIL" -gt 0 ]; then
 fi
 
 echo "All behavioral resolution checks passed."
+
+# --- Phase 5: phase-detect self-healing regression checks ---
+echo ""
+echo "=== Phase-Detect Self-Healing Regression Checks ==="
+
+PASS=0
+FAIL=0
+
+PHASE_DETECT_COMMANDS=(vibe.md verify.md status.md resume.md qa.md discuss.md)
+
+# Check 18: targeted commands define a self-healing refresh helper in phase-detect readers
+for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
+  file="$COMMANDS_DIR/$rel"
+  base="$(basename "$rel" .md)"
+  if grep -q '_refresh_phase_detect()' "$file"; then
+    pass "$base: phase-detect reader defines _refresh_phase_detect()"
+  else
+    fail "$base: missing _refresh_phase_detect() self-healing helper"
+  fi
+done
+
+# Check 19: targeted commands no longer use link-order-dependent wait-loop fallback
+# Old race-prone form:
+#   if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then
+#     i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do ...
+for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
+  file="$COMMANDS_DIR/$rel"
+  base="$(basename "$rel" .md)"
+  if grep -q 'phase_detect_error=true" ] || \[ -L "\$L" \].*while \[ ! -L "\$L" \]' "$file"; then
+    fail "$base: still uses race-prone wait-for-link phase-detect fallback"
+  else
+    pass "$base: does not use race-prone wait-for-link phase-detect fallback"
+  fi
+done
+
+echo ""
+echo "==============================="
+echo "TOTAL: $PASS PASS, $FAIL FAIL"
+echo "==============================="
+
+if [ "$FAIL" -gt 0 ]; then
+  exit 1
+fi
+
+echo "All phase-detect self-healing regression checks passed."
 exit 0

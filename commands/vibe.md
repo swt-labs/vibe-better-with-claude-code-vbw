@@ -22,7 +22,60 @@ Plugin root:
 
 Pre-computed state (via phase-detect.sh):
 ```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; fi; if [ -n "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ "$PD" != "phase_detect_error=true" ]; then printf '%s' "$PD"; else echo "phase_detect_error=true"; fi`
+!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"
+L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
+P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
+PD=""
+_refresh_phase_detect() {
+  local VBW_CACHE_ROOT R V D REAL_R
+  VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"
+  R=""
+  if [ -L "$L" ] && [ -f "$L/scripts/hook-wrapper.sh" ]; then R="$L"; fi
+  if [ -z "$R" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi
+  if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi
+  if [ -z "$R" ]; then
+    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
+    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
+  fi
+  if [ -z "$R" ]; then
+    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1)
+    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
+  fi
+  if [ -z "$R" ]; then
+    for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
+      [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break
+    done
+  fi
+  if [ -z "$R" ]; then
+    D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)
+    D="${D#--plugin-dir }"
+    [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"
+  fi
+  if [ -z "$R" ] || [ ! -d "$R" ] || [ ! -f "$R/scripts/phase-detect.sh" ]; then
+    return 1
+  fi
+  REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"
+  rm -f "$L"
+  ln -s "$REAL_R" "$L" 2>/dev/null || true
+  PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+  if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
+    return 1
+  fi
+  printf '%s' "$PD" > "$P"
+  return 0
+}
+[ -f "$P" ] && PD=$(cat "$P")
+if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ]; then
+  if ! _refresh_phase_detect; then
+    PD="phase_detect_error=true"
+    printf '%s\n' "$PD" > "$P"
+  fi
+fi
+if [ -n "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ "$PD" != "phase_detect_error=true" ]; then
+  printf '%s' "$PD"
+else
+  echo "phase_detect_error=true"
+fi`
 ```
 
 Config:
@@ -32,17 +85,238 @@ Config:
 
 UAT issues (remediation only):
 ```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; fi; if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then echo "not_in_remediation"; else STATE=$(printf '%s' "$PD" | grep '^next_phase_state=' | head -1 | cut -d= -f2); if [ "$STATE" = "needs_uat_remediation" ]; then SLUG=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2); PDIR=".vbw-planning/phases/$SLUG"; if [ -d "$PDIR" ]; then bash "$L/scripts/extract-uat-issues.sh" "$PDIR" 2>/dev/null || echo "uat_extract_error=true"; else echo "uat_extract_error=true"; fi; else echo "not_in_remediation"; fi; fi`
+!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"
+L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
+P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
+PD=""
+_refresh_phase_detect() {
+  local VBW_CACHE_ROOT R V D REAL_R
+  VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"
+  R=""
+  if [ -L "$L" ] && [ -f "$L/scripts/hook-wrapper.sh" ]; then R="$L"; fi
+  if [ -z "$R" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi
+  if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi
+  if [ -z "$R" ]; then
+    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
+    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
+  fi
+  if [ -z "$R" ]; then
+    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1)
+    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
+  fi
+  if [ -z "$R" ]; then
+    for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
+      [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break
+    done
+  fi
+  if [ -z "$R" ]; then
+    D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)
+    D="${D#--plugin-dir }"
+    [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"
+  fi
+  if [ -z "$R" ] || [ ! -d "$R" ] || [ ! -f "$R/scripts/phase-detect.sh" ]; then
+    return 1
+  fi
+  REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"
+  rm -f "$L"
+  ln -s "$REAL_R" "$L" 2>/dev/null || true
+  PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+  if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
+    return 1
+  fi
+  printf '%s' "$PD" > "$P"
+  return 0
+}
+[ -f "$P" ] && PD=$(cat "$P")
+if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ]; then
+  if ! _refresh_phase_detect; then
+    PD="phase_detect_error=true"
+    printf '%s\n' "$PD" > "$P"
+  fi
+fi
+if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
+  echo "not_in_remediation"
+else
+  STATE=$(printf '%s' "$PD" | grep '^next_phase_state=' | head -1 | cut -d= -f2)
+  if [ "$STATE" = "needs_uat_remediation" ]; then
+    SLUG=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2)
+    PDIR=".vbw-planning/phases/$SLUG"
+    if [ -d "$PDIR" ] && [ -L "$L" ]; then
+      bash "$L/scripts/extract-uat-issues.sh" "$PDIR" 2>/dev/null || echo "uat_extract_error=true"
+    else
+      echo "uat_extract_error=true"
+    fi
+  else
+    echo "not_in_remediation"
+  fi
+fi`
 ```
 
 Milestone UAT issues (milestone recovery only):
 ```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; fi; if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then echo "not_milestone_recovery"; else MS_UAT=$(printf '%s' "$PD" | grep '^milestone_uat_issues=' | head -1 | cut -d= -f2); if [ "$MS_UAT" = "true" ]; then MS_DIRS=$(printf '%s' "$PD" | grep '^milestone_uat_phase_dirs=' | head -1 | cut -d= -f2); IFS='|' read -ra DIRS <<< "$MS_DIRS"; for d in "${DIRS[@]}"; do [ -d "$d" ] || continue; echo "milestone_phase_dir=$d"; bash "$L/scripts/extract-uat-issues.sh" "$d" 2>/dev/null || echo "uat_extract_error=true dir=$d"; echo "---"; done; else echo "not_milestone_recovery"; fi; fi`
+!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"
+L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
+P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
+PD=""
+_refresh_phase_detect() {
+  local VBW_CACHE_ROOT R V D REAL_R
+  VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"
+  R=""
+  if [ -L "$L" ] && [ -f "$L/scripts/hook-wrapper.sh" ]; then R="$L"; fi
+  if [ -z "$R" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi
+  if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi
+  if [ -z "$R" ]; then
+    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
+    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
+  fi
+  if [ -z "$R" ]; then
+    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1)
+    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
+  fi
+  if [ -z "$R" ]; then
+    for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
+      [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break
+    done
+  fi
+  if [ -z "$R" ]; then
+    D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)
+    D="${D#--plugin-dir }"
+    [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"
+  fi
+  if [ -z "$R" ] || [ ! -d "$R" ] || [ ! -f "$R/scripts/phase-detect.sh" ]; then
+    return 1
+  fi
+  REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"
+  rm -f "$L"
+  ln -s "$REAL_R" "$L" 2>/dev/null || true
+  PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+  if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
+    return 1
+  fi
+  printf '%s' "$PD" > "$P"
+  return 0
+}
+[ -f "$P" ] && PD=$(cat "$P")
+if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ]; then
+  if ! _refresh_phase_detect; then
+    PD="phase_detect_error=true"
+    printf '%s\n' "$PD" > "$P"
+  fi
+fi
+if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
+  echo "not_milestone_recovery"
+else
+  MS_UAT=$(printf '%s' "$PD" | grep '^milestone_uat_issues=' | head -1 | cut -d= -f2)
+  if [ "$MS_UAT" = "true" ]; then
+    MS_DIRS=$(printf '%s' "$PD" | grep '^milestone_uat_phase_dirs=' | head -1 | cut -d= -f2)
+    IFS='|' read -ra DIRS <<< "$MS_DIRS"
+    for d in "${DIRS[@]}"; do
+      [ -d "$d" ] || continue
+      echo "milestone_phase_dir=$d"
+      if [ -L "$L" ]; then
+        bash "$L/scripts/extract-uat-issues.sh" "$d" 2>/dev/null || echo "uat_extract_error=true dir=$d"
+      else
+        echo "uat_extract_error=true dir=$d"
+      fi
+      echo "---"
+    done
+  else
+    echo "not_milestone_recovery"
+  fi
+fi`
 ```
 
 Verify context (verify routing only — needs_reverification OR needs_verification):
 ```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; fi; if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then echo "not_verify_routing"; else STATE=$(printf '%s' "$PD" | grep '^next_phase_state=' | head -1 | cut -d= -f2); AUTO_UAT=$(printf '%s' "$PD" | grep '^config_auto_uat=' | head -1 | cut -d= -f2); HAS_UV=$(printf '%s' "$PD" | grep '^has_unverified_phases=' | head -1 | cut -d= -f2); TARGET=""; if [ "$STATE" = "needs_reverification" ] || [ "$STATE" = "needs_verification" ]; then TARGET=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2); elif [ "$AUTO_UAT" = "true" ] && [ "$HAS_UV" = "true" ]; then TARGET=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2); fi; if [ -n "$TARGET" ]; then PDIR=".vbw-planning/phases/$TARGET"; echo "verify_target_slug=$TARGET"; if [ -d "$PDIR" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then REMED_FLAG=""; if find "$PDIR/remediation" -path '*/round-*/R*-SUMMARY.md' 2>/dev/null | head -1 | grep -q .; then REMED_FLAG="--remediation-only"; fi; bash "$L/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR" 2>/dev/null || echo "verify_context_error=true"; else echo "verify_context_error=true"; fi; echo "---"; if [ "$STATE" = "needs_reverification" ]; then echo "uat_resume=pending_archive"; elif [ "$STATE" = "needs_verification" ]; then if [ -d "$PDIR" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=none"; else echo "uat_resume=none"; fi; elif [ -d "$PDIR" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=error"; else echo "uat_resume=error"; fi; else echo "not_verify_routing"; fi; fi`
+!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"
+L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
+P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
+PD=""
+_refresh_phase_detect() {
+  local VBW_CACHE_ROOT R V D REAL_R
+  VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"
+  R=""
+  if [ -L "$L" ] && [ -f "$L/scripts/hook-wrapper.sh" ]; then R="$L"; fi
+  if [ -z "$R" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi
+  if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi
+  if [ -z "$R" ]; then
+    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
+    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
+  fi
+  if [ -z "$R" ]; then
+    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1)
+    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
+  fi
+  if [ -z "$R" ]; then
+    for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
+      [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break
+    done
+  fi
+  if [ -z "$R" ]; then
+    D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)
+    D="${D#--plugin-dir }"
+    [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"
+  fi
+  if [ -z "$R" ] || [ ! -d "$R" ] || [ ! -f "$R/scripts/phase-detect.sh" ]; then
+    return 1
+  fi
+  REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"
+  rm -f "$L"
+  ln -s "$REAL_R" "$L" 2>/dev/null || true
+  PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+  if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
+    return 1
+  fi
+  printf '%s' "$PD" > "$P"
+  return 0
+}
+[ -f "$P" ] && PD=$(cat "$P")
+if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ]; then
+  if ! _refresh_phase_detect; then
+    PD="phase_detect_error=true"
+    printf '%s\n' "$PD" > "$P"
+  fi
+fi
+if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
+  echo "not_verify_routing"
+else
+  STATE=$(printf '%s' "$PD" | grep '^next_phase_state=' | head -1 | cut -d= -f2)
+  AUTO_UAT=$(printf '%s' "$PD" | grep '^config_auto_uat=' | head -1 | cut -d= -f2)
+  HAS_UV=$(printf '%s' "$PD" | grep '^has_unverified_phases=' | head -1 | cut -d= -f2)
+  TARGET=""
+  if [ "$STATE" = "needs_reverification" ] || [ "$STATE" = "needs_verification" ]; then
+    TARGET=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2)
+  elif [ "$AUTO_UAT" = "true" ] && [ "$HAS_UV" = "true" ]; then
+    TARGET=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2)
+  fi
+  if [ -n "$TARGET" ]; then
+    PDIR=".vbw-planning/phases/$TARGET"
+    echo "verify_target_slug=$TARGET"
+    if [ -d "$PDIR" ] && [ -L "$L" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then
+      REMED_FLAG=""
+      if find "$PDIR/remediation" -path '*/round-*/R*-SUMMARY.md' 2>/dev/null | head -1 | grep -q .; then REMED_FLAG="--remediation-only"; fi
+      bash "$L/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR" 2>/dev/null || echo "verify_context_error=true"
+    else
+      echo "verify_context_error=true"
+    fi
+    echo "---"
+    if [ "$STATE" = "needs_reverification" ]; then
+      echo "uat_resume=pending_archive"
+    elif [ "$STATE" = "needs_verification" ]; then
+      if [ -d "$PDIR" ] && [ -L "$L" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then
+        bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=none"
+      else
+        echo "uat_resume=none"
+      fi
+    elif [ -d "$PDIR" ] && [ -L "$L" ] && [ -f "$L/scripts/extract-uat-resume.sh" ]; then
+      bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=error"
+    else
+      echo "uat_resume=error"
+    fi
+  else
+    echo "not_verify_routing"
+  fi
+fi`
 ```
 
 !`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; bash "$L/scripts/suggest-compact.sh" execute 2>/dev/null || true`

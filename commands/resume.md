@@ -22,7 +22,60 @@ Plugin root:
 
 Pre-computed state (via phase-detect.sh):
 ```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; PD=""; [ -f "$P" ] && PD=$(cat "$P"); if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""; fi; fi; if [ -n "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ "$PD" != "phase_detect_error=true" ]; then printf '%s' "$PD"; else echo "phase_detect_error=true"; fi`
+!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"
+L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
+P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
+PD=""
+_refresh_phase_detect() {
+  local VBW_CACHE_ROOT R V D REAL_R
+  VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"
+  R=""
+  if [ -L "$L" ] && [ -f "$L/scripts/hook-wrapper.sh" ]; then R="$L"; fi
+  if [ -z "$R" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi
+  if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi
+  if [ -z "$R" ]; then
+    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
+    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
+  fi
+  if [ -z "$R" ]; then
+    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1)
+    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
+  fi
+  if [ -z "$R" ]; then
+    for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
+      [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break
+    done
+  fi
+  if [ -z "$R" ]; then
+    D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)
+    D="${D#--plugin-dir }"
+    [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"
+  fi
+  if [ -z "$R" ] || [ ! -d "$R" ] || [ ! -f "$R/scripts/phase-detect.sh" ]; then
+    return 1
+  fi
+  REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"
+  rm -f "$L"
+  ln -s "$REAL_R" "$L" 2>/dev/null || true
+  PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+  if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
+    return 1
+  fi
+  printf '%s' "$PD" > "$P"
+  return 0
+}
+[ -f "$P" ] && PD=$(cat "$P")
+if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ]; then
+  if ! _refresh_phase_detect; then
+    PD="phase_detect_error=true"
+    printf '%s\n' "$PD" > "$P"
+  fi
+fi
+if [ -n "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ "$PD" != "phase_detect_error=true" ]; then
+  printf '%s' "$PD"
+else
+  echo "phase_detect_error=true"
+fi`
 ```
 
 ## Guard

@@ -35,38 +35,38 @@ load test_helper
   [ "$status" -eq 1 ]
 }
 
-# ── Guarded symlink template expressions exist where expected ────────────────
-# Dependent template expressions must include a spin-wait guard that waits for
-# the session-specific symlink to be created by the preamble expression.
-# Pattern: L="/tmp/..."; i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; ...
+# ── Guarded symlink template expressions exist only where still needed ───────
+# After the phase-detect self-healing refactor, the heavyweight state readers no
+# longer wait on another prompt block to create the symlink/cache. The remaining
+# guarded wait-patterns are lightweight readers that only need the link path.
 
 _guard_pattern() {
   # No backticks needed — this substring is inside the template expression
   printf 'while [ ! -L "$L" ] && [ $i -lt 20 ]'
 }
 
-@test "vibe.md has 5 guarded symlink template expressions" {
+@test "vibe.md has 1 guarded symlink template expression" {
   local count
   count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/vibe.md")
-  [ "$count" -eq 5 ]
+  [ "$count" -eq 1 ]
 }
 
-@test "qa.md has 2 guarded symlink template expressions" {
+@test "qa.md has 1 guarded symlink template expression" {
   local count
   count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/qa.md")
-  [ "$count" -eq 2 ]
+  [ "$count" -eq 1 ]
 }
 
-@test "verify.md has 4 guarded symlink template expressions" {
+@test "verify.md has 1 guarded symlink template expression" {
   local count
   count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/verify.md")
-  [ "$count" -eq 4 ]
+  [ "$count" -eq 1 ]
 }
 
-@test "discuss.md has 2 guarded symlink template expressions" {
+@test "discuss.md has 1 guarded symlink template expression" {
   local count
   count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/discuss.md")
-  [ "$count" -eq 2 ]
+  [ "$count" -eq 1 ]
 }
 
 @test "help.md has 1 guarded symlink template expression" {
@@ -81,22 +81,22 @@ _guard_pattern() {
   [ "$count" -eq 1 ]
 }
 
-@test "resume.md has 1 guarded symlink template expression" {
+@test "resume.md has 0 guarded symlink template expressions" {
   local count
   count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/resume.md" || true)
-  [ "${count:-0}" -eq 1 ]
+  [ "${count:-0}" -eq 0 ]
 }
 
-@test "status.md has 1 guarded symlink template expression" {
+@test "status.md has 0 guarded symlink template expressions" {
   local count
   count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/status.md" || true)
-  [ "${count:-0}" -eq 1 ]
+  [ "${count:-0}" -eq 0 ]
 }
 
-@test "total guarded symlink template expressions across commands is 17" {
+@test "total guarded symlink template expressions across commands is 6" {
   local count
   count=$(grep -rcF "$(_guard_pattern)" "$PROJECT_ROOT/commands/" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')
-  [ "$count" -eq 17 ]
+  [ "$count" -eq 6 ]
 }
 
 @test "guarded expressions use symlink path variable not direct path" {
@@ -159,17 +159,30 @@ _simulate_phase_detect_reader() {
   local P="$2"
   local PD=""
 
+  _refresh_phase_detect() {
+    local R="" REAL_R=""
+    if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+      R="$L"
+    fi
+    [ -n "$R" ] || return 1
+
+    REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"
+    PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+
+    if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
+      return 1
+    fi
+
+    printf '%s' "$PD" > "$P"
+    return 0
+  }
+
   [ -f "$P" ] && PD=$(cat "$P")
 
-  if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then
-    i=0
-    while [ ! -L "$L" ] && [ $i -lt 20 ]; do
-      sleep 0.1
-      i=$((i+1))
-    done
-
-    if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
-      PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+  if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ]; then
+    if ! _refresh_phase_detect; then
+      PD="phase_detect_error=true"
+      printf '%s\n' "$PD" > "$P"
     fi
   fi
 
@@ -220,11 +233,11 @@ _simulate_phase_detect_reader() {
   done
 }
 
-@test "commands with phase-detect wait conditionally (not always)" {
+@test "commands with phase-detect define self-healing refresh helpers" {
   for cmd in resume status vibe discuss qa verify; do
     local count
-    count=$(grep -cF "$(_conditional_wait_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
-    [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing conditional wait guard"; return 1; }
+    count=$(grep -cF '_refresh_phase_detect()' "$PROJECT_ROOT/commands/${cmd}.md")
+    [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing self-healing refresh helper"; return 1; }
   done
 }
 
@@ -256,7 +269,7 @@ EOF
   [[ "$out" != *"phase_detect_error=true"* ]]
 }
 
-@test "reader always re-runs phase-detect when link exists" {
+@test "reader keeps valid cache when link exists" {
   local td root link cache out
   td=$(_new_tmp_test_dir)
 
@@ -275,8 +288,8 @@ EOF
   ln -s "$root" "$link"
 
   out=$(_simulate_phase_detect_reader "$link" "$cache")
-  [[ "$out" == *"next_phase_state=fresh_live"* ]]
-  [[ "$out" != *"next_phase_state=stale_cache"* ]]
+  [[ "$out" == *"next_phase_state=stale_cache"* ]]
+  [[ "$out" != *"next_phase_state=fresh_live"* ]]
 }
 
 @test "reader skips wait when cache is valid and symlink is absent" {
@@ -314,14 +327,18 @@ EOF
   [[ "$out" == "phase_detect_error=true" ]]
 }
 
-@test "vibe.md reads phase-detect live with temp-file fallback" {
+@test "vibe.md uses self-healing live read with temp-file fallback" {
   local cat_count
   cat_count=$(grep -cF 'cat "$P"' "$PROJECT_ROOT/commands/vibe.md" || true)
   [ "${cat_count:-0}" -ge 1 ] || { echo "FAIL: vibe.md missing phase-detect temp-file fallback"; return 1; }
 
   local live_count
-  live_count=$(grep -cF 'bash "$L/scripts/phase-detect.sh"' "$PROJECT_ROOT/commands/vibe.md")
+  live_count=$(grep -cF 'bash "$REAL_R/scripts/phase-detect.sh"' "$PROJECT_ROOT/commands/vibe.md")
   [ "$live_count" -ge 1 ] || { echo "FAIL: vibe.md missing live phase-detect read"; return 1; }
+
+  local helper_count
+  helper_count=$(grep -cF '_refresh_phase_detect()' "$PROJECT_ROOT/commands/vibe.md")
+  [ "$helper_count" -ge 1 ] || { echo "FAIL: vibe.md missing self-healing refresh helper"; return 1; }
 }
 
 # ── UAT protocol safeguards ─────────────────────────────────────────────────
