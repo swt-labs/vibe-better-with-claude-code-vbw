@@ -208,3 +208,37 @@ teardown() {
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$ARCHIVED_DIR"
   [ "$status" -eq 1 ]
 }
+
+@test "needs-round with corrupt round value errors" {
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=done\nround=abc\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 1 ]
+}
+
+@test "advance with unknown stage errors" {
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=garbage\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" advance "$PHASE_DIR"
+  [ "$status" -eq 1 ]
+}
+
+@test "init overwrites existing state" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=execute\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  grep -q "^stage=plan$" "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  grep -q "^round=01$" "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+}
+
+@test "needs-round exceeding max rounds exits with code 2" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-03"
+  printf 'stage=done\nround=03\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 2 ]
+}

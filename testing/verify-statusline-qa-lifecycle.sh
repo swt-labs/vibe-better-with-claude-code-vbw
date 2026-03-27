@@ -577,6 +577,43 @@ fi
 
 echo ""
 echo "==============================="
+
+# --- QA remediation statusline contract checks ---
+echo ""
+echo "--- QA Remediation Statusline Contract ---"
+
+# Verify statusline handles QA remediation stages
+if grep -q 'remediation/qa/.qa-remediation-stage' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline references QA remediation stage file"
+else
+  fail "statusline must reference remediation/qa/.qa-remediation-stage"
+fi
+
+# Verify statusline parses VERIFICATION.md result field
+if grep -q 'in_fm && /^result:/' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline parses VERIFICATION.md result field"
+else
+  fail "statusline must parse VERIFICATION.md result: field (not just check existence)"
+fi
+
+# Verify QA FAIL status is displayed
+if grep -q 'QA: FAIL' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline displays QA: FAIL for failed verification"
+else
+  fail "statusline must display QA: FAIL for failed verification results"
+fi
+
+# Verify QA remediation stages are shown
+for stage_label in "QA: Planning fix" "QA: Fixing" "QA: Re-verifying"; do
+  if grep -q "$stage_label" "$ROOT/scripts/vbw-statusline.sh"; then
+    pass "statusline displays '$stage_label' for QA remediation"
+  else
+    fail "statusline must display '$stage_label' for QA remediation stage"
+  fi
+done
+
+echo ""
+echo "==============================="
 echo "TOTAL: $PASS passed, $FAIL failed"
 echo "==============================="
 [ "$FAIL" -eq 0 ] || exit 1

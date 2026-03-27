@@ -495,7 +495,21 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
 
         # Compute QA status for this phase
         if [ "$_qa_rem_stage" = "done" ]; then
-          QA_STATUS="remediated"
+          # Cross-validate: ensure VERIFICATION.md also shows PASS
+          if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+            _qa_done_result=$(awk '
+              BEGIN { in_fm=0 }
+              NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+              in_fm && /^---[[:space:]]*$/ { exit }
+              in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+            ' "$_uv_verif" 2>/dev/null) || _qa_done_result=""
+            case "$_qa_done_result" in
+              PASS) QA_STATUS="remediated" ;;
+              *) QA_STATUS="failed" ;;
+            esac
+          else
+            QA_STATUS="remediated"
+          fi
         elif [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
           _qa_result=$(awk '
             BEGIN { in_fm=0 }

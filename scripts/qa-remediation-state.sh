@@ -68,8 +68,22 @@ get_round_dir() {
   echo "$PHASE_DIR/remediation/qa/round-${round}"
 }
 
+MAX_ROUNDS=3
+
+validate_stage() {
+  local stage="$1"
+  for s in "${STAGES[@]}"; do
+    [ "$s" = "$stage" ] && return 0
+  done
+  return 1
+}
+
 next_stage() {
   local current="$1"
+  if ! validate_stage "$current"; then
+    echo "Error: unknown stage: $current" >&2
+    return 1
+  fi
   local found=false
   for s in "${STAGES[@]}"; do
     if [ "$found" = true ]; then
@@ -80,7 +94,7 @@ next_stage() {
       found=true
     fi
   done
-  # If current stage not found or at end, return done
+  # At end of chain (done) — stay at done
   echo "done"
 }
 
@@ -102,6 +116,10 @@ start_new_round() {
     exit 1
   fi
   next_round=$(( 10#$current_round + 1 ))
+  if [ "$next_round" -gt "$MAX_ROUNDS" ]; then
+    echo "Error: max QA remediation rounds ($MAX_ROUNDS) exceeded" >&2
+    exit 2
+  fi
   next_round_padded=$(printf '%02d' "$next_round")
   mkdir -p "$PHASE_DIR/remediation/qa/round-${next_round_padded}"
   printf 'stage=plan\nround=%s\n' "$next_round_padded" > "$STATE_FILE"
