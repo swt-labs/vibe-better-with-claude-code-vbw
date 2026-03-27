@@ -289,7 +289,50 @@ JSON
   # Extract frontmatter field names in order
   local fields
   fields=$(sed -n '/^---$/,/^---$/{ /^---$/d; s/:.*//; p; }' "$TEST_TEMP_DIR/out.md" | tr '\n' ',')
-  [[ "$fields" == "phase,tier,result,passed,failed,total,date,verified_at_commit," ]]
+  [[ "$fields" == "phase,tier,result,passed,failed,total,date,verified_at_commit,writer," ]]
+}
+
+# =============================================================================
+# write-verification.sh: provenance marker and result integrity
+# =============================================================================
+
+@test "write-verification: includes writer provenance field in frontmatter" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Test","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '^writer: write-verification.sh' "$TEST_TEMP_DIR/out.md"
+}
+
+@test "write-verification: auto-corrects PASS to PARTIAL when FAIL checks exist" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"deep","result":"PASS","checks":{"passed":2,"failed":1,"total":3},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","description":"B","status":"PASS","evidence":"ok"},{"id":"D-01","category":"must_have","description":"Deviation","status":"FAIL","evidence":"plan violated"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  # Result should be corrected from PASS to PARTIAL
+  grep -q '^result: PARTIAL' "$TEST_TEMP_DIR/out.md"
+  # Warning should be emitted on stderr
+  [[ "$output" == *"result auto-corrected from PASS to PARTIAL"* ]]
+}
+
+@test "write-verification: preserves FAIL result when FAIL checks exist" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"deep","result":"FAIL","checks":{"passed":1,"failed":1,"total":2},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"},{"id":"D-01","category":"must_have","description":"Deviation","status":"FAIL","evidence":"plan violated"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '^result: FAIL' "$TEST_TEMP_DIR/out.md"
+}
+
+@test "write-verification: preserves PASS when no FAIL checks" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","description":"B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '^result: PASS' "$TEST_TEMP_DIR/out.md"
 }
 
 # =============================================================================

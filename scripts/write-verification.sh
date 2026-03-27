@@ -112,6 +112,12 @@ if [[ "$has_checks_detail" == "true" ]]; then
       echo "Error: checks counters must match checks_detail statuses/counts (checks.passed=${checks_passed}, checks.failed=${checks_failed}, checks.total=${checks_total}; detail PASS=${detail_passed}, FAIL=${detail_failed}, TOTAL=${detail_total})" >&2
       exit 1
     fi
+
+    # Enforce result/status integrity: FAIL checks preclude PASS result
+    if [[ "$detail_failed" -gt 0 && "$result" == "PASS" ]]; then
+      echo "Warning: result auto-corrected from PASS to PARTIAL (${detail_failed} FAIL check(s) found in checks_detail)" >&2
+      result="PARTIAL"
+    fi
 fi
 
 # Write to temp file first, then move atomically to prevent partial writes
@@ -131,6 +137,7 @@ trap 'rm -f "$tmp_output"' EXIT
   if [ -n "$verified_at_commit" ]; then
     echo "verified_at_commit: $verified_at_commit"
   fi
+  echo "writer: write-verification.sh"
   echo "---"
   echo ""
 } > "$tmp_output"

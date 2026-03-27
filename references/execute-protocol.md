@@ -568,6 +568,18 @@ VERIF_BASE="${VERIF_NAME%.md}"
 
 After QA completes (subagent returns or teammate sends `qa_verdict`), read the VERIFICATION.md result:
 ```bash
+# Provenance check — detect if QA bypassed write-verification.sh
+WRITER=$(awk '
+  BEGIN { in_fm=0 }
+  NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+  in_fm && /^---[[:space:]]*$/ { exit }
+  in_fm && /^writer:/ { sub(/^writer:[[:space:]]*/, ""); print; exit }
+' "{phase-dir}/${VERIF_NAME}" 2>/dev/null)
+if [[ "$WRITER" != "write-verification.sh" ]]; then
+  echo "⚠ VERIFICATION.md was NOT produced by write-verification.sh (missing writer field). QA must re-run using the deterministic writer."
+  QA_RESULT="FAIL"
+fi
+
 QA_RESULT=$(awk '
   BEGIN { in_fm=0 }
   NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
@@ -577,7 +589,12 @@ QA_RESULT=$(awk '
 ```
 
 **Branch on QA result:**
-- **PASS:** Display `◆ QA: PASS` — proceed to Step 4.5 (UAT)
+- **PASS:** Cross-check for FAIL checks that QA may have misclassified (defense-in-depth):
+  ```bash
+  FAIL_COUNT=$(grep -cE '\| \*{0,2}FAIL\*{0,2} \|' "{phase-dir}/${VERIF_NAME}" 2>/dev/null || echo 0)
+  ```
+  If `FAIL_COUNT > 0`: override QA_RESULT to PARTIAL — display `⚠ QA reported PASS but VERIFICATION.md contains ${FAIL_COUNT} FAIL check(s). Overriding to PARTIAL.` Then enter QA remediation loop below.
+  Otherwise: Display `◆ QA: PASS` — proceed to Step 4.5 (UAT)
 - **FAIL or PARTIAL:** Display `◆ QA: ${QA_RESULT}` — enter QA remediation loop below
 - **Missing/unreadable:** Display `⚠ QA: VERIFICATION.md missing or unreadable` — treat as FAIL, enter remediation loop
 
