@@ -162,15 +162,12 @@ _simulate_phase_detect_reader() {
 
   _refresh_phase_detect() {
     local R="" REAL_R=""
-    if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
-      R="$L"
-    fi
-    if [ -z "$R" ] && [ -n "$FALLBACK_ROOT" ] && [ -f "$FALLBACK_ROOT/scripts/phase-detect.sh" ]; then
+    if [ -n "$FALLBACK_ROOT" ] && [ -f "$FALLBACK_ROOT/scripts/phase-detect.sh" ]; then
       R="$FALLBACK_ROOT"
     fi
     [ -n "$R" ] || return 1
 
-    REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"
+    REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || return 1
     rm -f "$L"
     ln -s "$REAL_R" "$L" 2>/dev/null || true
     PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
@@ -183,16 +180,12 @@ _simulate_phase_detect_reader() {
     return 0
   }
 
-  [ -f "$P" ] && PD=$(cat "$P")
-  _PD_CACHE="$PD"
-
   if ! _refresh_phase_detect; then
-    PD="$_PD_CACHE"
-    if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ]; then
-      PD="phase_detect_error=true"
-      printf '%s\n' "$PD" > "$P"
-    fi
+    PD="phase_detect_error=true"
+    printf '%s\n' "$PD" > "$P"
   fi
+
+  [ -f "$P" ] && PD=$(cat "$P")
 
   if [ -n "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ "$PD" != "phase_detect_error=true" ]; then
     printf '%s' "$PD"
@@ -272,7 +265,7 @@ EOF
   ln -s "$root" "$link"
   echo "phase_detect_error=true" > "$cache"
 
-  out=$(_simulate_phase_detect_reader "$link" "$cache")
+  out=$(_simulate_phase_detect_reader "$link" "$cache" "$root")
   [[ "$out" == *"next_phase_state=fresh_live"* ]]
   [[ "$out" != *"phase_detect_error=true"* ]]
 }
@@ -317,11 +310,11 @@ EOF
   echo "next_phase_state=stale_cache" > "$cache"
   ln -s "$root" "$link"
 
-  out=$(_simulate_phase_detect_reader "$link" "$cache")
+  out=$(_simulate_phase_detect_reader "$link" "$cache" "$root")
   [[ "$out" == *"next_phase_state=fresh_live"* ]]
 }
 
-@test "reader skips wait when cache is valid and symlink is absent" {
+@test "reader fails closed when cache is valid but no live resolver is available" {
   local td cache out
   td=$(_new_tmp_test_dir)
 
@@ -331,7 +324,7 @@ EOF
   _simulate_phase_detect_reader "$td/no-link" "$cache" > "$td/out.txt"
   out=$(cat "$td/out.txt")
 
-  [[ "$out" == *"next_phase_state=cached_ok"* ]]
+  [[ "$out" == "phase_detect_error=true" ]]
 }
 
 @test "reader treats whitespace-only output as error" {

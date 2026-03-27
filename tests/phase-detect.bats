@@ -1163,6 +1163,17 @@ CONF
   echo "$output" | grep -q "qa_status=failed"
 }
 
+@test "qa_status is pending when qa-remediation done but VERIFICATION is missing" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}
+
 @test "needs_qa_remediation blocks needs_verification" {
   mkdir -p .vbw-planning/phases/01-test/remediation/qa
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
@@ -1197,6 +1208,32 @@ CONF
   echo "print(\"new\")" > app.py
   git add app.py
   git commit -m "new app" --quiet
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}
+
+@test "qa_status is pending when PASS verification has uncommitted product changes" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  echo "print(\"clean\")" > app.py
+  git add app.py
+  git commit -m "clean app" --quiet
+  verified_commit="$(git rev-parse HEAD)"
+
+  printf '%s\n' \
+    '---' \
+    'result: PASS' \
+    "verified_at_commit: ${verified_commit}" \
+    '---' \
+    '# Verification' \
+    'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  echo "print(\"dirty\")" > app.py
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]

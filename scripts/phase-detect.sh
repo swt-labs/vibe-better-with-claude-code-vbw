@@ -514,7 +514,10 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
                   in_fm && /^---[[:space:]]*$/ { exit }
                   in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
                 ' "$_uv_verif" 2>/dev/null) || _vac_rem=""
-                if [ -n "$_vac_rem" ]; then
+                _qa_dirty_now_rem=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
+                if [ -n "$_qa_dirty_now_rem" ]; then
+                  QA_STATUS="pending"
+                elif [ -n "$_vac_rem" ]; then
                   _cur_commit_rem=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
                   if [ -n "$_cur_commit_rem" ] && [ "$_cur_commit_rem" != "$_vac_rem" ]; then
                     QA_STATUS="pending"
@@ -528,7 +531,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
               *) QA_STATUS="failed" ;;
             esac
           else
-            QA_STATUS="remediated"
+            QA_STATUS="pending"
           fi
         elif [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
           _qa_result=$(awk '
@@ -546,7 +549,10 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
                 in_fm && /^---[[:space:]]*$/ { exit }
                 in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
               ' "$_uv_verif" 2>/dev/null) || _vac=""
-              if [ -n "$_vac" ]; then
+              _qa_dirty_now=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
+              if [ -n "$_qa_dirty_now" ]; then
+                QA_STATUS="pending"
+              elif [ -n "$_vac" ]; then
                 _cur_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
                 if [ -n "$_cur_commit" ] && [ "$_cur_commit" != "$_vac" ]; then
                   QA_STATUS="pending"
