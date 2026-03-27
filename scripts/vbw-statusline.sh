@@ -469,8 +469,30 @@ if ! cache_fresh "$FAST_CF" 5; then
               esac ;;
             *) QA="UAT: ?"; QA_COLOR="Y" ;;
           esac
-        elif [ -n "$(find "$PDIR" -name '*VERIFICATION.md' 2>/dev/null | head -1)" ]; then
-          QA="QA: pass"; QA_COLOR="G"
+        elif [ -f "$PDIR/remediation/qa/.qa-remediation-stage" ]; then
+          _qa_rem_stage=$(grep '^stage=' "$PDIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          _qa_rem_stage="${_qa_rem_stage:-none}"
+          case "$_qa_rem_stage" in
+            plan)    QA="QA: Planning fix"; QA_COLOR="Y" ;;
+            execute) QA="QA: Fixing";       QA_COLOR="Y" ;;
+            verify)  QA="QA: Re-verifying"; QA_COLOR="Y" ;;
+            done)    QA="QA: pass";         QA_COLOR="G" ;;
+            *)       QA="QA: Remediating";  QA_COLOR="Y" ;;
+          esac
+        elif [ -n "$(find "$PDIR" -maxdepth 1 -name '*VERIFICATION.md' 2>/dev/null | head -1)" ]; then
+          _verif_file=$(find "$PDIR" -maxdepth 1 -name '*VERIFICATION.md' 2>/dev/null | head -1)
+          _qa_result=$(awk '
+            BEGIN { in_fm=0 }
+            NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+            in_fm && /^---[[:space:]]*$/ { exit }
+            in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+          ' "$_verif_file" 2>/dev/null) || _qa_result=""
+          case "$_qa_result" in
+            PASS) QA="QA: pass"; QA_COLOR="G" ;;
+            FAIL) QA="QA: FAIL"; QA_COLOR="R" ;;
+            PARTIAL) QA="QA: partial"; QA_COLOR="Y" ;;
+            *) QA="QA: pending"; QA_COLOR="Y" ;;
+          esac
         fi
       fi
     fi

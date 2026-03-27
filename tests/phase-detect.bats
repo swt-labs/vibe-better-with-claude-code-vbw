@@ -1115,6 +1115,30 @@ CONF
   echo "$output" | grep -q "qa_round=01"
 }
 
+@test "qa_status is remediating for plan stage" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=plan' 'round=02' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=remediating"
+}
+
+@test "qa_status is remediating for verify stage" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=verify' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=remediating"
+}
+
 @test "needs_qa_remediation blocks needs_verification" {
   mkdir -p .vbw-planning/phases/01-test/remediation/qa
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md

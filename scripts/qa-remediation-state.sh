@@ -18,13 +18,13 @@
 # R{RR}-PLAN.md, R{RR}-SUMMARY.md naming.
 # State file: {phase-dir}/remediation/qa/.qa-remediation-stage (key=value pairs).
 
-set -eo pipefail
+set -euo pipefail
 
 CMD="${1:-}"
 PHASE_DIR="${2:-}"
 
 if [ -z "$CMD" ] || [ -z "$PHASE_DIR" ]; then
-  echo "Usage: qa-remediation-state.sh <get|advance|reset|init|needs-round> <phase-dir>" >&2
+  echo "Usage: qa-remediation-state.sh <get|get-or-init|advance|reset|init|needs-round> <phase-dir>" >&2
   exit 1
 fi
 
@@ -85,8 +85,22 @@ next_stage() {
 }
 
 start_new_round() {
-  local current_round next_round next_round_padded
+  local current_stage current_round next_round next_round_padded
+  current_stage=$(get_stage)
+  # Only allow new round from verify or done — not from plan/execute
+  case "$current_stage" in
+    verify|done) ;;
+    *)
+      echo "Error: needs-round requires stage verify or done, got: $current_stage" >&2
+      exit 1
+      ;;
+  esac
   current_round=$(get_round)
+  # Guard: ensure round is numeric
+  if ! [[ "$current_round" =~ ^[0-9]+$ ]]; then
+    echo "Error: corrupt round value in state file: $current_round" >&2
+    exit 1
+  fi
   next_round=$(( 10#$current_round + 1 ))
   next_round_padded=$(printf '%02d' "$next_round")
   mkdir -p "$PHASE_DIR/remediation/qa/round-${next_round_padded}"

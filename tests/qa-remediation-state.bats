@@ -149,6 +149,32 @@ teardown() {
   [ -d "$PHASE_DIR/remediation/qa/round-03" ]
 }
 
+@test "needs-round from verify stage succeeds" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "plan" ]
+  echo "$output" | grep -q "^round=02$"
+}
+
+@test "needs-round from plan stage errors" {
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=plan\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 1 ]
+}
+
+@test "needs-round from execute stage errors" {
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=execute\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 1 ]
+}
+
 # --- reset command ---
 
 @test "reset removes state file" {
