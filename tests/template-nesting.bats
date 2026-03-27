@@ -168,8 +168,7 @@ _simulate_phase_detect_reader() {
     [ -n "$R" ] || return 1
 
     REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || return 1
-    rm -f "$L"
-    ln -s "$REAL_R" "$L" 2>/dev/null || true
+    bash "$PROJECT_ROOT/scripts/ensure-plugin-root-link.sh" "$L" "$REAL_R" >/dev/null 2>&1 || true
     PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
 
     if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
@@ -252,7 +251,7 @@ _simulate_phase_detect_reader() {
   td=$(_new_tmp_test_dir)
 
   root="$td/root"
-  link="$td/link"
+  link="$td/.vbw-plugin-root-link-test-live"
   cache="$td/pd.txt"
   mkdir -p "$root/scripts"
 
@@ -276,7 +275,7 @@ EOF
   td=$(_new_tmp_test_dir)
 
   root="$td/root"
-  link="$td/link"
+  link="$td/.vbw-plugin-root-link-test-refresh"
   cache="$td/pd.txt"
   mkdir -p "$root/scripts"
 
@@ -299,7 +298,7 @@ EOF
   td=$(_new_tmp_test_dir)
 
   root="$td/root"
-  link="$td/link"
+  link="$td/.vbw-plugin-root-link-test-stale"
   cache="$td/pd.txt"
   mkdir -p "$root/scripts"
 
@@ -324,7 +323,7 @@ EOF
   cache="$td/pd.txt"
   echo "next_phase_state=cached_ok" > "$cache"
 
-  _simulate_phase_detect_reader "$td/no-link" "$cache" > "$td/out.txt"
+  _simulate_phase_detect_reader "$td/.vbw-plugin-root-link-test-missing" "$cache" > "$td/out.txt"
   out=$(cat "$td/out.txt")
 
   [[ "$out" == "phase_detect_error=true" ]]
@@ -335,7 +334,7 @@ EOF
   td=$(_new_tmp_test_dir)
 
   root="$td/root"
-  link="$td/link"
+  link="$td/.vbw-plugin-root-link-test-whitespace"
   cache="$td/pd.txt"
   mkdir -p "$root/scripts"
 
@@ -437,7 +436,7 @@ _canonical_pwd_pattern() {
 @test "all 16 preamble commands link REAL_R not raw R" {
   # todo and list-todos intentionally have no shell preamble (fix for #201)
   for cmd in config debug discuss fix help init map qa research resume skills status update verify vibe whats-new; do
-    grep -q 'ln -s "$REAL_R" "$LINK"' "$PROJECT_ROOT/commands/${cmd}.md" || \
-      { echo "FAIL: ${cmd}.md still links raw \$R instead of \$REAL_R"; return 1; }
+    grep -q 'ensure-plugin-root-link.sh" "$LINK" "$REAL_R"' "$PROJECT_ROOT/commands/${cmd}.md" || \
+      { echo "FAIL: ${cmd}.md missing ensure-plugin-root-link helper call"; return 1; }
   done
 }
