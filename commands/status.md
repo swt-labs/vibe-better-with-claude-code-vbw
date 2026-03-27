@@ -82,8 +82,10 @@ _refresh_phase_detect() {
   return 0
 }
 [ -f "$P" ] && PD=$(cat "$P")
-if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ]; then
-  if ! _refresh_phase_detect; then
+_PD_CACHE="$PD"
+if ! _refresh_phase_detect; then
+  PD="$_PD_CACHE"
+  if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ]; then
     PD="phase_detect_error=true"
     printf '%s\n' "$PD" > "$P"
   fi

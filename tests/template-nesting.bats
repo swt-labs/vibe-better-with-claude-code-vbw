@@ -178,9 +178,11 @@ _simulate_phase_detect_reader() {
   }
 
   [ -f "$P" ] && PD=$(cat "$P")
+  _PD_CACHE="$PD"
 
-  if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ]; then
-    if ! _refresh_phase_detect; then
+  if ! _refresh_phase_detect; then
+    PD="$_PD_CACHE"
+    if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ]; then
       PD="phase_detect_error=true"
       printf '%s\n' "$PD" > "$P"
     fi
@@ -269,7 +271,7 @@ EOF
   [[ "$out" != *"phase_detect_error=true"* ]]
 }
 
-@test "reader keeps valid cache when link exists" {
+@test "reader refreshes stale valid cache when live script is available" {
   local td root link cache out
   td=$(_new_tmp_test_dir)
 
@@ -288,8 +290,7 @@ EOF
   ln -s "$root" "$link"
 
   out=$(_simulate_phase_detect_reader "$link" "$cache")
-  [[ "$out" == *"next_phase_state=stale_cache"* ]]
-  [[ "$out" != *"next_phase_state=fresh_live"* ]]
+  [[ "$out" == *"next_phase_state=fresh_live"* ]]
 }
 
 @test "reader skips wait when cache is valid and symlink is absent" {
