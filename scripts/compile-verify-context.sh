@@ -96,14 +96,19 @@ if [ "$REMEDIATION_ONLY" = false ]; then
     ROUND_PLAN_FILES=$(find "$PHASE_DIR" -path '*/remediation/round-*/R*-PLAN.md' 2>/dev/null | sort)
   fi
 
+  # QA remediation plans live in remediation/qa/round-*/R*-PLAN.md
+  QA_ROUND_PLAN_FILES=$(find "$PHASE_DIR" -path '*/remediation/qa/round-*/R*-PLAN.md' 2>/dev/null | sort)
+
   ALL_PLAN_FILES="$PLAN_FILES"
-  if [ -n "$ROUND_PLAN_FILES" ]; then
-    if [ -n "$ALL_PLAN_FILES" ]; then
-      ALL_PLAN_FILES=$(printf '%s\n%s' "$ALL_PLAN_FILES" "$ROUND_PLAN_FILES")
-    else
-      ALL_PLAN_FILES="$ROUND_PLAN_FILES"
+  for _extra_plans in "$ROUND_PLAN_FILES" "$QA_ROUND_PLAN_FILES"; do
+    if [ -n "$_extra_plans" ]; then
+      if [ -n "$ALL_PLAN_FILES" ]; then
+        ALL_PLAN_FILES=$(printf '%s\n%s' "$ALL_PLAN_FILES" "$_extra_plans")
+      else
+        ALL_PLAN_FILES="$_extra_plans"
+      fi
     fi
-  fi
+  done
   SCOPE_HEADER="verify_scope=full"
   # Resolve UAT path via canonical resolver
   UAT_PATH=$(bash "${_CVC_SCRIPT_DIR}/resolve-artifact-path.sh" uat "$PHASE_DIR")
@@ -125,7 +130,11 @@ while IFS= read -r plan_file; do
   PLAN_COUNT=$((PLAN_COUNT + 1))
 
   # Extract plan number and title from frontmatter
+  # Try plan: first, fall back to round: (prefixed with R) for remediation plans
   PLAN_ID=$(awk '/^---$/{n++; next} n==1 && /^plan:/{v=$2; gsub(/^["'"'"']|["'"'"']$/, "", v); print v; exit}' "$plan_file" 2>/dev/null) || PLAN_ID=""
+  if [ -z "$PLAN_ID" ]; then
+    PLAN_ID=$(awk '/^---$/{n++; next} n==1 && /^round:/{v=$2; gsub(/^["'"'"']|["'"'"']$/, "", v); print "R" v; exit}' "$plan_file" 2>/dev/null) || PLAN_ID=""
+  fi
   TITLE=$(awk '/^---$/{n++; next} n==1 && /^title:/{sub(/^title: */, ""); gsub(/^["'"'"']|["'"'"']$/, ""); print; exit}' "$plan_file" 2>/dev/null) || TITLE=""
 
   # Extract must_haves from frontmatter (reuse pattern from generate-contract.sh)

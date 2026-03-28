@@ -850,3 +850,140 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"deviations: none"* ]]
 }
+
+# ============================================================
+# QA remediation plan discovery
+# ============================================================
+
+@test "compile-verify-context: discovers QA remediation plans in full-scope mode" {
+  # Phase-root plan
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original feature
+must_haves:
+  - Feature works
+---
+<objective>Build feature</objective>
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original feature
+status: complete
+---
+## What Was Built
+- The feature
+## Files Modified
+- `src/feature.swift` -- created
+EOF
+
+  # QA remediation round plan + summary
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix QA deviations
+type: remediation
+must_haves:
+  - Deviation resolved
+---
+<objective>Fix deviations found by QA</objective>
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix QA deviations
+type: remediation
+status: complete
+---
+## What Was Built
+- Fixed the deviation
+## Files Modified
+- `src/feature.swift` -- modified
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Should find both the regular plan and the QA remediation plan
+  [[ "$output" == *"verify_plan_count=2"* ]]
+  [[ "$output" == *"=== PLAN 01: Original feature ==="* ]]
+  [[ "$output" == *"=== PLAN R01: Fix QA deviations ==="* ]]
+}
+
+@test "compile-verify-context: PLAN_ID falls back to round: for remediation plans" {
+  # Only a QA remediation plan (no phase-root plans)
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Second QA fix round
+type: remediation
+must_haves:
+  - All checks pass
+---
+<objective>Fix remaining QA issues</objective>
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Second QA fix round
+type: remediation
+status: complete
+---
+## What Was Built
+- Fixed remaining issues
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== PLAN R02: Second QA fix round ==="* ]]
+  [[ "$output" == *"status: complete"* ]]
+}
+
+@test "compile-verify-context: QA remediation summary deviations extracted" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix deviations
+type: remediation
+must_haves:
+  - API matches spec
+---
+<objective>Fix deviation</objective>
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix deviations
+type: remediation
+status: complete
+deviations:
+  - "Used different endpoint naming"
+---
+## What Was Built
+- Reimplemented the API layer
+## Files Modified
+- `src/api.swift` -- rewritten
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Used different endpoint naming"* ]]
+  [[ "$output" == *"files_modified: src/api.swift"* ]]
+}
