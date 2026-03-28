@@ -434,3 +434,42 @@ EOF
   [[ "$output" == *"Round 3"* ]]
   [[ "$output" == *"/vbw:fix"* ]]
 }
+
+# --- QA remediation round VERIFICATION.md reading ---
+
+@test "suggest-next reads round VERIFICATION.md when QA remediation stage=done" {
+  cd "$TEST_TEMP_DIR"
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/03-ui"
+  mkdir -p "$phase_dir/remediation/qa/round-02"
+  printf -- '---\nphase: 03\nplan: 03-01\n---\n' > "${phase_dir}/03-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\n' > "${phase_dir}/03-01-SUMMARY.md"
+  # Phase-level is frozen as FAIL
+  printf 'result: FAIL\n' > "${phase_dir}/03-VERIFICATION.md"
+  # Round VERIFICATION.md has PASS
+  printf 'result: PASS\n' > "${phase_dir}/remediation/qa/round-02/R02-VERIFICATION.md"
+  printf 'stage=done\nround=2\n' > "${phase_dir}/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
+
+  [ "$status" -eq 0 ]
+  # Should see PASS from round, not FAIL from phase-level
+  [[ "$output" != *"QA FAIL"* ]]
+}
+
+@test "suggest-next falls back to phase-level when no round VERIFICATION.md exists (brownfield)" {
+  cd "$TEST_TEMP_DIR"
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/03-ui"
+  mkdir -p "$phase_dir/remediation/qa"
+  printf -- '---\nphase: 03\nplan: 03-01\n---\n' > "${phase_dir}/03-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\n' > "${phase_dir}/03-01-SUMMARY.md"
+  # Phase-level has PASS (old behavior overwrote it)
+  printf 'result: PASS\n' > "${phase_dir}/03-VERIFICATION.md"
+  printf 'stage=done\nround=1\n' > "${phase_dir}/remediation/qa/.qa-remediation-stage"
+  # No round-01 directory/file
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
+
+  [ "$status" -eq 0 ]
+  # Falls back to phase-level PASS, no QA FAIL
+  [[ "$output" != *"QA FAIL"* ]]
+}

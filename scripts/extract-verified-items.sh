@@ -158,7 +158,7 @@ for vf in "${verif_files[@]}"; do
     echo "  QA: $result (${passed:-0}/${total} passed${failed:+, ${failed} failed}${tier:+, tier: $tier})"
   else
     # Last resort: grep for Verdict line
-    verdict=$(grep -i 'Verdict' "$vf" 2>/dev/null | sed 's/^#* *//; s/\*\*//g' | head -1)
+    verdict=$(grep -i 'Verdict' "$vf" 2>/dev/null | sed 's/^#* *//; s/\*\*//g' | head -1 || true)
     if [[ -n "$verdict" ]]; then
       echo ""
       echo "  $verdict"
