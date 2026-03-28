@@ -488,6 +488,36 @@ EOF
   [[ "$output" == *"uat_path=remediation/uat/round-01/R01-UAT.md"* ]]
 }
 
+@test "compile-verify-context: legacy remediation layout emits correct uat_path" {
+  # Legacy layout: remediation/round-* (no uat/ sublevel)
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+---
+plan: R01
+title: Legacy round 1
+must_haves:
+  - Fix legacy issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Fixed things
+## Files Modified
+- file.txt
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # uat_path must NOT contain uat/ since the legacy layout has no uat/ sublevel
+  [[ "$output" == *"uat_path=remediation/round-01/R01-UAT.md"* ]]
+  [[ "$output" == *"verify_scope=remediation round=01"* ]]
+}
+
 @test "compile-verify-context: fallback full scope emits uat_path with phase number" {
   # Phase-root plan exists
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'

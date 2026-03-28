@@ -79,7 +79,8 @@ if [ "$REMEDIATION_ONLY" = true ]; then
     rr=$(printf '%02d' "$LATEST_ROUND")
     ALL_PLAN_FILES=$(find "$REMED_DIR/round-$rr" -maxdepth 1 -name "R${rr}-PLAN.md" 2>/dev/null | sort)
     SCOPE_HEADER="verify_scope=remediation round=$rr"
-    UAT_PATH="remediation/uat/round-$rr/R${rr}-UAT.md"
+    # Derive UAT_PATH relative to PHASE_DIR so legacy layouts get the correct path
+    UAT_PATH="${REMED_DIR#"$PHASE_DIR/"}/round-$rr/R${rr}-UAT.md"
   else
     # Fallback: no completed round found — use full scope
     REMEDIATION_ONLY=false
