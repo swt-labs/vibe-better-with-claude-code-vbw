@@ -402,9 +402,14 @@ The `needs_reverification` state fires regardless of `auto_uat` — remediation 
 **QA gate before UAT (needs_verification) — NON-NEGOTIABLE:**
 Before entering Verify mode (UAT), check `qa_status` from phase-detect output:
 - `qa_status=passed` or `qa_status=remediated`: proceed to Verify mode (UAT). These values mean VERIFICATION.md exists with PASS and the product code has not changed since QA verified it (staleness check via `verified_at_commit`).
-- `qa_status=pending` (no VERIFICATION.md, or VERIFICATION.md exists but code changed since QA verified — stale): spawn QA inline first. Resolve QA model, compile QA context, and spawn the QA agent as a subagent (same as execute-protocol Step 4). After QA returns, read VERIFICATION.md result:
-  - PASS → proceed to Verify mode (UAT)
-  - FAIL/PARTIAL → init QA remediation: `bash {plugin-root}/scripts/qa-remediation-state.sh init {phase-dir}`, then enter QA Remediation mode below
+- `qa_status=pending` (no VERIFICATION.md, or VERIFICATION.md exists but code changed since QA verified — stale): spawn QA inline first. Resolve QA model, compile QA context, and spawn the QA agent as a subagent (same as execute-protocol Step 4). After QA returns, run the deterministic gate:
+  ```bash
+  bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
+  ```
+  **Follow `qa_gate_routing` output literally — no exceptions, no judgment, no rationalization. Do NOT evaluate whether failures are justified, acceptable, or minor:**
+  - `qa_gate_routing=PROCEED_TO_UAT` → proceed to Verify mode (UAT)
+  - `qa_gate_routing=REMEDIATION_REQUIRED` → init QA remediation: `bash {plugin-root}/scripts/qa-remediation-state.sh init {phase-dir}`, then enter QA Remediation mode below
+  - `qa_gate_routing=QA_RERUN_REQUIRED` → re-spawn QA agent immediately (max 2 retries). If QA fails to produce a valid result after 2 re-runs, STOP and escalate to user: "QA failed to produce a valid VERIFICATION.md after {N} attempts. Manual intervention needed."
 - `qa_status=failed` (VERIFICATION.md exists with FAIL/PARTIAL): init QA remediation and enter QA Remediation mode
 - `qa_status=remediating`: should not reach here (phase-detect routes to `needs_qa_remediation` first)
 - `--skip-qa` flag: bypass all QA gates, proceed directly to Verify mode
@@ -431,9 +436,14 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 
 - **stage=verify:** Re-run QA:
   - Spawn QA agent as subagent — overwrites the phase-level VERIFICATION.md
-  - After QA returns, read VERIFICATION.md result:
-    - PASS → advance to done: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`, then **continue directly into Verify mode** for the phase
-    - FAIL/PARTIAL → start new round: `bash {plugin-root}/scripts/qa-remediation-state.sh needs-round {phase-dir}`, loop back to stage=plan
+  - After QA returns, run the deterministic gate:
+    ```bash
+    bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
+    ```
+    **Follow `qa_gate_routing` literally — no exceptions, no judgment:**
+    - `qa_gate_routing=PROCEED_TO_UAT` → advance to done: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`, then **continue directly into Verify mode** for the phase
+    - `qa_gate_routing=REMEDIATION_REQUIRED` → start new round: `bash {plugin-root}/scripts/qa-remediation-state.sh needs-round {phase-dir}`, loop back to stage=plan
+    - `qa_gate_routing=QA_RERUN_REQUIRED` → re-spawn QA immediately (max 2 retries per round). If QA still fails to produce valid output, treat as REMEDIATION_REQUIRED.
     - After max rounds (3): display failures, STOP — surface to user
 
 - **stage=done:** Proceed to Verify mode (UAT) for the phase

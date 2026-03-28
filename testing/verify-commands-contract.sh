@@ -250,6 +250,33 @@ for mode in "### Mode: Add Phase" "### Mode: Insert Phase" "### Mode: Remove Pha
 done
 
 echo ""
+echo "=== QA Result Gate Contract ==="
+
+# vibe.md must reference qa-result-gate.sh in the QA gate section
+if grep -q 'qa-result-gate\.sh' "$COMMANDS_DIR/vibe.md" 2>/dev/null; then
+  pass "vibe: references qa-result-gate.sh"
+else
+  fail "vibe: missing qa-result-gate.sh reference in QA gate section"
+fi
+
+# execute-protocol.md must reference qa-result-gate.sh in Step 4.1
+if grep -q 'qa-result-gate\.sh' "$ROOT/references/execute-protocol.md" 2>/dev/null; then
+  pass "execute-protocol: references qa-result-gate.sh"
+else
+  fail "execute-protocol: missing qa-result-gate.sh reference in Step 4.1"
+fi
+
+# Both must include the anti-rationalization instruction
+for f in "$COMMANDS_DIR/vibe.md" "$ROOT/references/execute-protocol.md"; do
+  base=$(basename "$f")
+  if grep -q 'no exceptions, no judgment' "$f" 2>/dev/null; then
+    pass "$base: has anti-rationalization instruction"
+  else
+    fail "$base: missing anti-rationalization instruction for qa_gate_routing"
+  fi
+done
+
+echo ""
 echo "=== Command Reference Verification ==="
 
 while IFS= read -r ref; do

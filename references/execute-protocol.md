@@ -566,37 +566,15 @@ VERIF_BASE="${VERIF_NAME%.md}"
 
 ### Step 4.1: QA Result Gating (NON-NEGOTIABLE)
 
-After QA completes (subagent returns or teammate sends `qa_verdict`), read the VERIFICATION.md result:
+After QA completes (subagent returns or teammate sends `qa_verdict`), run the deterministic gate:
 ```bash
-# Provenance check — detect if QA bypassed write-verification.sh
-WRITER=$(awk '
-  BEGIN { in_fm=0 }
-  NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-  in_fm && /^---[[:space:]]*$/ { exit }
-  in_fm && /^writer:/ { sub(/^writer:[[:space:]]*/, ""); print; exit }
-' "{phase-dir}/${VERIF_NAME}" 2>/dev/null)
-if [[ "$WRITER" != "write-verification.sh" ]]; then
-  echo "⚠ VERIFICATION.md was NOT produced by write-verification.sh (missing writer field). QA must re-run using the deterministic writer."
-  QA_RESULT="FAIL"
-else
-  QA_RESULT=$(awk '
-    BEGIN { in_fm=0 }
-    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-    in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
-  ' "{phase-dir}/${VERIF_NAME}" 2>/dev/null)
-fi
+bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
 ```
 
-**Branch on QA result:**
-- **PASS:** Cross-check for FAIL checks that QA may have misclassified (defense-in-depth):
-  ```bash
-  FAIL_COUNT=$(grep -cE '\|\s*\*{0,2}FAIL\*{0,2}\s*\|' "{phase-dir}/${VERIF_NAME}" 2>/dev/null || echo 0)
-  ```
-  If `FAIL_COUNT > 0`: override QA_RESULT to PARTIAL — display `⚠ QA reported PASS but VERIFICATION.md contains ${FAIL_COUNT} FAIL check(s). Overriding to PARTIAL.` Then enter QA remediation loop below.
-  Otherwise: Display `◆ QA: PASS` — proceed to Step 4.5 (UAT)
-- **FAIL or PARTIAL:** Display `◆ QA: ${QA_RESULT}` — enter QA remediation loop below
-- **Missing/unreadable:** Display `⚠ QA: VERIFICATION.md missing or unreadable` — treat as FAIL, enter remediation loop
+**Follow `qa_gate_routing` output literally — no exceptions, no judgment, no rationalization. Do NOT evaluate whether failures are justified, acceptable, or minor. The gate script has already made the decision:**
+- **`qa_gate_routing=PROCEED_TO_UAT`:** Display `◆ QA: PASS` — proceed to Step 4.5 (UAT)
+- **`qa_gate_routing=REMEDIATION_REQUIRED`:** Display `◆ QA: ${qa_gate_result} (${qa_gate_fail_count} FAIL)` — enter QA remediation loop below
+- **`qa_gate_routing=QA_RERUN_REQUIRED`:** Display `⚠ QA result invalid (writer=${qa_gate_writer}, result=${qa_gate_result}). Re-running QA.` — re-spawn QA agent immediately (no plan→execute cycle). Max 2 retries. If QA still fails to produce a valid result, STOP and escalate: "QA failed to produce a valid VERIFICATION.md after {N} attempts. Manual intervention needed."
 
 **QA Remediation Loop (inline, same session):**
 
@@ -628,9 +606,14 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    **stage=verify:** Re-run QA:
    - Spawn QA agent as subagent — overwrites the phase-level VERIFICATION.md
    - Include dev-surfaced issues from the round's `R{RR}-SUMMARY.md` (same collection logic as Step 4)
-   - After QA returns, read VERIFICATION.md result:
-     - **PASS:** Advance to done: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`, display `◆ QA remediation: PASS (round {RR})`, break loop, proceed to Step 4.5
-     - **FAIL/PARTIAL:** Start new round: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" needs-round "{phase-dir}"`, display `◆ QA remediation round {RR}: ${QA_RESULT}`, continue loop
+   - After QA returns, run the deterministic gate:
+     ```bash
+     bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
+     ```
+     **Follow `qa_gate_routing` literally — no exceptions, no judgment:**
+     - **`qa_gate_routing=PROCEED_TO_UAT`:** Advance to done: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`, display `◆ QA remediation: PASS (round {RR})`, break loop, proceed to Step 4.5
+     - **`qa_gate_routing=REMEDIATION_REQUIRED`:** Start new round: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" needs-round "{phase-dir}"`, display `◆ QA remediation round {RR}: ${qa_gate_result}`, continue loop
+     - **`qa_gate_routing=QA_RERUN_REQUIRED`:** Re-spawn QA immediately (max 2 retries per round). If still invalid, treat as REMEDIATION_REQUIRED.
 
 3. **After max rounds (3):** If QA still fails, display:
    ```
