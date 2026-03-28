@@ -378,7 +378,7 @@ Then re-run phase-detect.sh and use updated output for routing below.
 | 4 | `next_phase_state=needs_reverification` | Re-verify | auto_uat=true: no confirmation. auto_uat=false: "Phase {NN} remediation complete. Run re-verification?" |
 | 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
 | 6 | `phase_count=0` | Scope | "Project defined but no phases. Scope the work?" |
-| 7 | `next_phase_state=needs_verification` | Verify | (no confirmation — auto_uat intent). **QA gate:** If `qa_status=pending`, spawn QA inline first (see QA Gate section below). If `qa_status=failed`, enter QA remediation inline. Only proceed to Verify mode when `qa_status` is `passed` or `remediated`. |
+| 7 | `next_phase_state=needs_verification` | Verify | (no confirmation — auto_uat intent). **QA gate:** If `qa_status=pending`, display "Phase {NN} QA is pending — running QA now." and spawn QA inline first (see QA Gate section below). If `qa_status=failed`, enter QA remediation inline. Only proceed to Verify mode when `qa_status` is `passed` or `remediated`. |
 | 8 | `next_phase_state=needs_discussion` | Discuss | "Phase {NN} needs discussion before planning. Start discussion?" |
 | 9 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {NN} needs planning and execution. Start?" |
 | 10 | `next_phase_state=needs_execute` | Execute | "Phase {NN} is planned. Execute it?" |
@@ -402,7 +402,7 @@ The `needs_reverification` state fires regardless of `auto_uat` — remediation 
 **QA gate before UAT (needs_verification) — NON-NEGOTIABLE:**
 Before entering Verify mode (UAT), check `qa_status` from phase-detect output:
 - `qa_status=passed` or `qa_status=remediated`: proceed to Verify mode (UAT). These values mean VERIFICATION.md exists with PASS and the product code has not changed since QA verified it (staleness check via `verified_at_commit`).
-- `qa_status=pending` (no VERIFICATION.md, or VERIFICATION.md exists but code changed since QA verified — stale): spawn QA inline first. Resolve QA model, compile QA context, and spawn the QA agent as a subagent (same as execute-protocol Step 4). After QA returns, run the deterministic gate:
+- `qa_status=pending` (no VERIFICATION.md, or VERIFICATION.md exists but code changed since QA verified — stale): display "Phase {NN} QA is pending — running QA now." and spawn QA inline first. Resolve QA model, compile QA context, and spawn the QA agent as a subagent (same as execute-protocol Step 4). After QA returns, run the deterministic gate:
   ```bash
   bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
   ```

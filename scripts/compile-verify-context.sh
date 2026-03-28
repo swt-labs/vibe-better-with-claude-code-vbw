@@ -215,6 +215,8 @@ while IFS= read -r plan_file; do
         line = $0
         sub(/^[[:space:]]+- /, "", line)
         gsub(/^"/, "", line); gsub(/"$/, "", line)
+        lc = tolower(line)
+        if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
         items = items (items ? "; " : "") line
         next
       }
