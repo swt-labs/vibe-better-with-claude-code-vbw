@@ -64,9 +64,18 @@ get_round() {
   fi
 }
 
+canonicalize_round() {
+  local round="$1"
+  round="${round:-01}"
+  if ! [[ "$round" =~ ^[0-9]+$ ]]; then
+    round="01"
+  fi
+  printf '%02d' "$((10#$round))"
+}
+
 get_round_dir() {
   local round
-  round=$(get_round)
+  round=$(canonicalize_round "$(get_round)")
   echo "$PHASE_DIR/remediation/qa/round-${round}"
 }
 
@@ -131,7 +140,7 @@ start_new_round() {
 
 emit_metadata() {
   local round round_dir source_verification_path
-  round=$(get_round)
+  round=$(canonicalize_round "$(get_round)")
   round_dir="$PHASE_DIR/remediation/qa/round-${round}"
   source_verification_path=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" plan-input "$PHASE_DIR" 2>/dev/null || true)
   if [ -z "$source_verification_path" ]; then

@@ -1380,6 +1380,44 @@ EOF
   [[ "$output" != *"--- Phase VERIFICATION"* ]]
 }
 
+@test "compile-verify-context: verification history falls back to plain VERIFICATION.md" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Brownfield plan
+must_haves:
+  - Preserve original failure history
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature
+EOF
+  cat > "$PHASE_DIR/VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Brownfield failure | FAIL | Still broken |
+| MH-02 | must_have | Other check | PASS | Fine |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== VERIFICATION HISTORY ==="* ]]
+  [[ "$output" == *"--- Phase VERIFICATION (FAIL) ---"* ]]
+  [[ "$output" == *"Brownfield failure"* ]]
+  [[ "$output" != *"Other check"* ]]
+}
+
 @test "compile-verify-context: FAIL in description column not extracted as FAIL row" {
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
 ---

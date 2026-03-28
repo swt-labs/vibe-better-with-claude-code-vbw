@@ -39,6 +39,19 @@ teardown() {
   echo "$output" | grep -q "^round_dir=.*remediation/qa/round-02$"
 }
 
+@test "get canonicalizes unpadded round metadata on resume" {
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=verify\nround=2\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round=02$"
+  echo "$output" | grep -q "^round_dir=.*remediation/qa/round-02$"
+  echo "$output" | grep -q "^plan_path=.*remediation/qa/round-02/R02-PLAN.md$"
+  echo "$output" | grep -q "^summary_path=.*remediation/qa/round-02/R02-SUMMARY.md$"
+  echo "$output" | grep -q "^verification_path=.*remediation/qa/round-02/R02-VERIFICATION.md$"
+}
+
 # --- init command ---
 
 @test "init creates state file and round-01 dir" {

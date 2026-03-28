@@ -293,10 +293,9 @@ done <<< "$ALL_PLAN_FILES"
 # Extracts FAIL rows from phase-level and per-round VERIFICATION.md files
 # so each QA round has full visibility into what was originally broken
 # and what prior rounds attempted/found.
-_cvc_phase_num=$(basename "$PHASE_DIR" | grep -oE '^[0-9]+' 2>/dev/null || true)
-_cvc_phase_verif=""
-if [ -n "$_cvc_phase_num" ]; then
-  _cvc_phase_verif=$(find "$PHASE_DIR" -maxdepth 1 -name "${_cvc_phase_num}-VERIFICATION.md" 2>/dev/null | head -1)
+_cvc_phase_verif=$(bash "${_CVC_SCRIPT_DIR}/resolve-verification-path.sh" phase "$PHASE_DIR" 2>/dev/null || true)
+if [ -n "$_cvc_phase_verif" ] && [ ! -f "$_cvc_phase_verif" ]; then
+  _cvc_phase_verif=""
 fi
 
 # QA round VERIFICATION.md files
