@@ -39,6 +39,62 @@ create_verif() {
   } > "$PHASE_DIR/01-VERIFICATION.md"
 }
 
+# Helper: create a SUMMARY.md with YAML frontmatter deviations
+create_summary_with_yaml_deviations() {
+  local plan_id="${1}"
+  local deviations="${2:-}"  # newline-separated deviation items
+  {
+    echo "---"
+    echo "plan: $plan_id"
+    if [ -n "$deviations" ]; then
+      echo "deviations:"
+      while IFS= read -r dev; do
+        [ -n "$dev" ] && echo "  - \"$dev\""
+      done <<< "$deviations"
+    fi
+    echo "---"
+    echo ""
+    echo "## Summary"
+    echo "Work completed."
+  } > "$PHASE_DIR/${plan_id}-SUMMARY.md"
+}
+
+# Helper: create a SUMMARY.md with body-only deviations (no YAML)
+create_summary_with_body_deviations() {
+  local plan_id="${1}"
+  local deviations="${2:-}"  # newline-separated deviation items
+  {
+    echo "---"
+    echo "plan: $plan_id"
+    echo "---"
+    echo ""
+    echo "## Deviations"
+    if [ -n "$deviations" ]; then
+      while IFS= read -r dev; do
+        [ -n "$dev" ] && echo "- $dev"
+      done <<< "$deviations"
+    else
+      echo "- None"
+    fi
+    echo ""
+    echo "## Summary"
+    echo "Work completed."
+  } > "$PHASE_DIR/${plan_id}-SUMMARY.md"
+}
+
+# Helper: create a PLAN.md stub
+create_plan() {
+  local plan_id="${1}"
+  {
+    echo "---"
+    echo "plan: $plan_id"
+    echo "---"
+    echo ""
+    echo "## Objective"
+    echo "Test plan for $plan_id"
+  } > "$PHASE_DIR/${plan_id}-PLAN.md"
+}
+
 @test "PASS with clean body → PROCEED_TO_UAT" {
   create_verif "write-verification.sh" "PASS" "## Must-Have Checks
 | Check | Status |
@@ -293,4 +349,272 @@ VERIF
   # Should read the prefixed file (PASS), not the plain one (FAIL)
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
   [[ "$output" == *"qa_gate_result=PASS"* ]]
+}
+
+# ============================================================
+# Deviation cross-check tests
+# ============================================================
+
+@test "PASS + YAML deviations in SUMMARY.md → QA_RERUN_REQUIRED with deviation_override" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Used different API than planned"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "PASS + body-only deviations in SUMMARY.md → QA_RERUN_REQUIRED" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_body_deviations "01-01" "Skipped error handling for edge case"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "PASS + placeholder deviations (None) → PROCEED_TO_UAT" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "None"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "PASS + placeholder deviations (N/A) → PROCEED_TO_UAT" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "N/A"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "PASS + body placeholder (**None**) → PROCEED_TO_UAT" {
+  create_verif "write-verification.sh" "PASS"
+  {
+    echo "---"
+    echo "plan: 01-01"
+    echo "---"
+    echo ""
+    echo "## Deviations"
+    echo "- **None**"
+  } > "$PHASE_DIR/01-01-SUMMARY.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "FAIL + deviations → REMEDIATION_REQUIRED (deviations don't change FAIL routing)" {
+  create_verif "write-verification.sh" "FAIL"
+  create_summary_with_yaml_deviations "01-01" "Used different API than planned"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "PASS + multiple SUMMARY.md files with deviations → aggregated count" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed API endpoint"
+  create_summary_with_body_deviations "01-02" "$(printf 'Skipped validation\nUsed different model')"
+  create_summary_with_yaml_deviations "01-03" "None"  # placeholder — not counted
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=3"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "PASS + no SUMMARY.md files → PROCEED_TO_UAT (no deviation check)" {
+  create_verif "write-verification.sh" "PASS"
+  # No SUMMARY.md files — standalone QA or legacy phase
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "PASS + deviations with multiple items in YAML array → all counted" {
+  create_verif "write-verification.sh" "PASS"
+  {
+    echo "---"
+    echo "plan: 01-01"
+    echo "deviations:"
+    echo "  - \"Changed error handling approach\""
+    echo "  - \"Skipped optional caching layer\""
+    echo "  - \"Used URLSession instead of Alamofire\""
+    echo "---"
+    echo ""
+    echo "## Summary"
+    echo "Work completed."
+  } > "$PHASE_DIR/01-01-SUMMARY.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=3"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "diagnostic fields always present even with no deviations or plans" {
+  create_verif "write-verification.sh" "PASS"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" == *"qa_gate_plan_count=0"* ]]
+  [[ "$output" == *"qa_gate_plans_verified_count=0"* ]]
+}
+
+# ============================================================
+# Plan coverage tests
+# ============================================================
+
+@test "PASS + plans_verified < plan_count → QA_RERUN_REQUIRED" {
+  # Create 3 PLAN.md files but VERIFICATION.md only lists 2 plans_verified
+  create_plan "01-01"
+  create_plan "01-02"
+  create_plan "01-03"
+  {
+    echo "---"
+    echo "phase: 01"
+    echo "result: PASS"
+    echo "passed: 10"
+    echo "failed: 0"
+    echo "total: 10"
+    echo "writer: write-verification.sh"
+    echo "plans_verified:"
+    echo "  - 01-01"
+    echo "  - 01-02"
+    echo "---"
+  } > "$PHASE_DIR/01-VERIFICATION.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_plan_count=3"* ]]
+  [[ "$output" == *"qa_gate_plans_verified_count=2"* ]]
+  [[ "$output" == *"qa_gate_plan_coverage=2/3"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "PASS + plans_verified == plan_count → PROCEED_TO_UAT" {
+  create_plan "01-01"
+  create_plan "01-02"
+  {
+    echo "---"
+    echo "phase: 01"
+    echo "result: PASS"
+    echo "passed: 10"
+    echo "failed: 0"
+    echo "total: 10"
+    echo "writer: write-verification.sh"
+    echo "plans_verified:"
+    echo "  - 01-01"
+    echo "  - 01-02"
+    echo "---"
+  } > "$PHASE_DIR/01-VERIFICATION.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_plan_count=2"* ]]
+  [[ "$output" == *"qa_gate_plans_verified_count=2"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "PASS + plans_verified absent (brownfield) → PROCEED_TO_UAT" {
+  create_plan "01-01"
+  create_plan "01-02"
+  # No plans_verified in frontmatter — brownfield compat
+  create_verif "write-verification.sh" "PASS"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_plan_count=2"* ]]
+  [[ "$output" == *"qa_gate_plans_verified_count=0"* ]]
+  # Brownfield: plans_verified_count=0 means field absent → skip check
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "PASS + no PLAN.md files → PROCEED_TO_UAT (no coverage check)" {
+  # Standalone QA — no plans to cover
+  create_verif "write-verification.sh" "PASS"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_plan_count=0"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "FAIL + incomplete plan coverage → REMEDIATION_REQUIRED (plan coverage doesn't change FAIL routing)" {
+  create_plan "01-01"
+  create_plan "01-02"
+  {
+    echo "---"
+    echo "phase: 01"
+    echo "result: FAIL"
+    echo "passed: 8"
+    echo "failed: 2"
+    echo "total: 10"
+    echo "writer: write-verification.sh"
+    echo "plans_verified:"
+    echo "  - 01-01"
+    echo "---"
+  } > "$PHASE_DIR/01-VERIFICATION.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "deviation override takes priority over plan coverage check" {
+  # Both deviation and plan coverage would trigger — deviation fires first
+  create_plan "01-01"
+  create_plan "01-02"
+  create_summary_with_yaml_deviations "01-01" "Changed approach"
+  {
+    echo "---"
+    echo "phase: 01"
+    echo "result: PASS"
+    echo "passed: 10"
+    echo "failed: 0"
+    echo "total: 10"
+    echo "writer: write-verification.sh"
+    echo "plans_verified:"
+    echo "  - 01-01"
+    echo "---"
+  } > "$PHASE_DIR/01-VERIFICATION.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }

@@ -758,3 +758,92 @@ JSON
   [[ "$output" == *"PASS KL-01: a.js"* ]]
   [[ "$output" == *"FAIL ART-01: README.md"* ]]
 }
+
+# =============================================================================
+# write-verification.sh: plans_verified validation
+# =============================================================================
+
+@test "write-verification: plans_verified written to frontmatter" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  # Create PLAN.md files
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"plans_verified":["01-01","01-02"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Feature A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"01-02","description":"Feature B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '^plans_verified:' "$pdir/out.md"
+  grep -q '  - 01-01' "$pdir/out.md"
+  grep -q '  - 01-02' "$pdir/out.md"
+}
+
+@test "write-verification: rejects missing plans_verified when plans exist" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Test","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"plans_verified is required"* ]]
+}
+
+@test "write-verification: rejects incomplete plans_verified" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+  echo "---" > "$pdir/01-03-PLAN.md"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"plans_verified":["01-01","01-02"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Test A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"01-02","description":"Test B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"plans_verified has 2 entries but 3 PLAN.md files exist"* ]]
+}
+
+@test "write-verification: rejects plans_verified with no matching plan_ref in checks" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+
+  # plans_verified lists 01-02, but no check has plan_ref=01-02
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"plans_verified":["01-01","01-02"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Test A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"01-01","description":"Test B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"plan '01-02' is in plans_verified but no check"* ]]
+}
+
+@test "write-verification: accepts valid plans_verified with plan_ref cross-references" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":3,"failed":0,"total":3},"plans_verified":["01-01","01-02"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Test A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"01-02","description":"Test B","status":"PASS","evidence":"ok"},{"id":"ART-01","category":"artifact","plan_ref":"01-01","description":"File exists","status":"PASS","evidence":"found"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "write-verification: no plans in dir → skips plans_verified check" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  # No PLAN.md files — standalone QA
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Test","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+}

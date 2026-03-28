@@ -574,7 +574,7 @@ bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
 **Follow `qa_gate_routing` output literally — no exceptions, no judgment, no rationalization. Do NOT evaluate whether failures are justified, acceptable, or minor. The gate script has already made the decision:**
 - **`qa_gate_routing=PROCEED_TO_UAT`:** Display `◆ QA: PASS` — proceed to Step 4.5 (UAT)
 - **`qa_gate_routing=REMEDIATION_REQUIRED`:** Display `◆ QA: ${qa_gate_result} (${qa_gate_fail_count} FAIL)` — enter QA remediation loop below
-- **`qa_gate_routing=QA_RERUN_REQUIRED`:** Display `⚠ QA result invalid (writer=${qa_gate_writer}, result=${qa_gate_result}). Re-running QA.` — re-spawn QA agent immediately (no plan→execute cycle). Max 2 retries. If QA still fails to produce a valid result, STOP and escalate: "QA failed to produce a valid VERIFICATION.md after {N} attempts. Manual intervention needed."
+- **`qa_gate_routing=QA_RERUN_REQUIRED`:** Display `⚠ QA result invalid (writer=${qa_gate_writer}, result=${qa_gate_result}). Re-running QA.` — re-spawn QA agent immediately (no plan→execute cycle). Max 2 retries. If `qa_gate_deviation_override=true`, tell QA: "Previous QA run found PASS but SUMMARY.md files contain ${qa_gate_deviation_count} deviations that were not reflected as FAIL checks. Each deviation MUST become a FAIL check — do not rationalize deviations as acceptable." If `qa_gate_plan_coverage` is present, tell QA: "Previous QA run only verified ${qa_gate_plans_verified_count}/${qa_gate_plan_count} plans. Every plan in the phase must be verified — include all plan IDs in plans_verified." If QA still fails to produce a valid result, STOP and escalate: "QA failed to produce a valid VERIFICATION.md after {N} attempts. Manual intervention needed."
 
 **QA Remediation Loop (inline, same session):**
 
@@ -613,7 +613,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
      **Follow `qa_gate_routing` output literally — no exceptions, no judgment, no rationalization. Do NOT evaluate whether failures are justified, acceptable, or minor. The gate script has already made the decision:**
      - **`qa_gate_routing=PROCEED_TO_UAT`:** Advance to done: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`, display `◆ QA remediation: PASS (round {RR})`, break loop, proceed to Step 4.5
      - **`qa_gate_routing=REMEDIATION_REQUIRED`:** Start new round: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" needs-round "{phase-dir}"`, display `◆ QA remediation round {RR}: ${qa_gate_result}`, continue loop
-     - **`qa_gate_routing=QA_RERUN_REQUIRED`:** Re-spawn QA immediately (max 2 retries per round). If still invalid, treat as REMEDIATION_REQUIRED.
+     - **`qa_gate_routing=QA_RERUN_REQUIRED`:** Re-spawn QA immediately (max 2 retries per round). If `qa_gate_deviation_override=true`, tell QA: "Previous QA run found PASS but SUMMARY.md files contain ${qa_gate_deviation_count} deviations that were not reflected as FAIL checks. Each deviation MUST become a FAIL check — do not rationalize deviations as acceptable." If `qa_gate_plan_coverage` is present, tell QA: "Previous QA run only verified ${qa_gate_plans_verified_count}/${qa_gate_plan_count} plans. Every plan in the phase must be verified — include all plan IDs in plans_verified." If still invalid, treat as REMEDIATION_REQUIRED.
 
 3. **After max rounds (3):** If QA still fails, display:
    ```

@@ -6,6 +6,7 @@ passed: {N}
 failed: {N}
 total: {N}
 date: {YYYY-MM-DD}
+plans_verified: # array of plan IDs verified (e.g., [01-01, 01-02])
 ---
 
 ## Must-Have Checks

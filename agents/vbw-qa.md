@@ -63,7 +63,7 @@ Check tables use **5-col** (`# | ID | {col} | Status | Evidence`) or **6-col** p
 Summary: `Tier | Result | Passed: N/total | Failed: list`
 
 ### VERIFICATION.md Format
-Frontmatter: `phase`, `tier` (quick|standard|deep), `result` (PASS|FAIL|PARTIAL), `passed`, `failed`, `total`, `date`.
+Frontmatter: `phase`, `tier` (quick|standard|deep), `result` (PASS|FAIL|PARTIAL), `passed`, `failed`, `total`, `date`, `plans_verified` (array of plan IDs verified).
 
 Body sections (include all that apply) — tables use 5-col or 6-col per-category:
 - `## Must-Have Checks` — 5-col: # | ID | Truth/Condition | Status | Evidence
@@ -80,9 +80,18 @@ Result: PASS = all pass (WARNs OK). PARTIAL = some fail but core verified. FAIL 
 **Deviation result override (NON-NEGOTIABLE):** If ANY deviation check (declared or undeclared) exists, the result CANNOT be PASS — it must be FAIL or PARTIAL at minimum. Deviations are FAIL checks by definition (see Deviation Handling above), and FAIL checks preclude PASS regardless of whether the functional behavior is correct. The plan was the agreement; deviations break that agreement. Do NOT classify deviation checks as WARN to preserve a PASS result.
 
 ## Communication
-As teammate: SendMessage with `qa_verdict` schema. Include `checks_detail` array in your `qa_verdict` payload — one entry per check with fields: `id` (e.g. "MH-01", "ART-01", "KL-01"), `category` (must_have|artifact|key_link|anti_pattern|convention|requirement|skill_augmented), `description`, `status` (PASS|FAIL|WARN), `evidence`. Include ALL checks (passes and failures), not just failures. After sending `qa_verdict`, persist VERIFICATION.md per the Persistence section below.
+As teammate: SendMessage with `qa_verdict` schema. Include `checks_detail` array in your `qa_verdict` payload — one entry per check with fields: `id` (e.g. "MH-01", "ART-01", "KL-01"), `category` (must_have|artifact|key_link|anti_pattern|convention|requirement|skill_augmented), `description`, `status` (PASS|FAIL|WARN), `evidence`, `plan_ref` (which plan this check verifies, e.g. "02-01"). Include ALL checks (passes and failures), not just failures. Include `plans_verified` array listing every plan ID verified (e.g. `["02-01", "02-02", "02-03"]`). After sending `qa_verdict`, persist VERIFICATION.md per the Persistence section below.
 
 As subagent (non-team): After persisting VERIFICATION.md via `write-verification.sh` (see Persistence below), return a compact summary to the orchestrator: result (PASS/FAIL/PARTIAL), passed/total counts, and any failed check IDs. The orchestrator uses this for display and state updates only — it does NOT re-persist.
+
+**plan_ref requirement (NON-NEGOTIABLE):** Every check in `checks_detail` MUST include a `plan_ref` field identifying which plan the check verifies (e.g. `"plan_ref": "02-01"`). `write-verification.sh` validates that every plan ID in `plans_verified` has at least one check with a matching `plan_ref`. If any plan lacks referencing checks, the script rejects the payload (exit 1).
+
+**plans_verified requirement (NON-NEGOTIABLE):** The `plans_verified` array MUST list every plan ID in the phase (matching every `*-PLAN.md` file). `write-verification.sh` validates completeness — if any plan is missing, the script rejects the payload (exit 1).
+
+Example `checks_detail` entry with `plan_ref`:
+```json
+{"id": "MH-01", "category": "must_have", "plan_ref": "02-01", "description": "API endpoint returns 200", "status": "PASS", "evidence": "curl test confirmed"}
+```
 
 Per-category optional fields (enable richer VERIFICATION.md tables):
 - **artifact:** `exists` (bool), `contains` (string — expected content)

@@ -409,7 +409,7 @@ Before entering Verify mode (UAT), check `qa_status` from phase-detect output:
   **Follow `qa_gate_routing` output literally — no exceptions, no judgment, no rationalization. Do NOT evaluate whether failures are justified, acceptable, or minor. The gate script has already made the decision:**
   - `qa_gate_routing=PROCEED_TO_UAT` → proceed to Verify mode (UAT)
   - `qa_gate_routing=REMEDIATION_REQUIRED` → init QA remediation: `bash {plugin-root}/scripts/qa-remediation-state.sh init {phase-dir}`, then enter QA Remediation mode below
-  - `qa_gate_routing=QA_RERUN_REQUIRED` → re-spawn QA agent immediately (max 2 retries). If QA fails to produce a valid result after 2 re-runs, STOP and escalate to user: "QA failed to produce a valid VERIFICATION.md after {N} attempts. Manual intervention needed."
+  - `qa_gate_routing=QA_RERUN_REQUIRED` → re-spawn QA agent immediately (max 2 retries). If `qa_gate_deviation_override=true`, tell QA: "Previous QA run found PASS but SUMMARY.md files contain {qa_gate_deviation_count} deviations that were not reflected as FAIL checks. Each deviation MUST become a FAIL check — do not rationalize deviations as acceptable." If `qa_gate_plan_coverage` is present, tell QA: "Previous QA run only verified {qa_gate_plans_verified_count}/{qa_gate_plan_count} plans. Every plan in the phase must be verified — include all plan IDs in plans_verified." If QA fails to produce a valid result after 2 re-runs, STOP and escalate to user: "QA failed to produce a valid VERIFICATION.md after {N} attempts. Manual intervention needed."
 - `qa_status=failed` (VERIFICATION.md exists with FAIL/PARTIAL): init QA remediation and enter QA Remediation mode
 - `qa_status=remediating`: should not reach here (phase-detect routes to `needs_qa_remediation` first)
 - `--skip-qa` flag: bypass all QA gates, proceed directly to Verify mode
@@ -443,7 +443,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     **Follow `qa_gate_routing` output literally — no exceptions, no judgment, no rationalization. Do NOT evaluate whether failures are justified, acceptable, or minor. The gate script has already made the decision:**
     - `qa_gate_routing=PROCEED_TO_UAT` → advance to done: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`, then **continue directly into Verify mode** for the phase
     - `qa_gate_routing=REMEDIATION_REQUIRED` → start new round: `bash {plugin-root}/scripts/qa-remediation-state.sh needs-round {phase-dir}`, loop back to stage=plan
-    - `qa_gate_routing=QA_RERUN_REQUIRED` → re-spawn QA immediately (max 2 retries per round). If QA still fails to produce valid output, treat as REMEDIATION_REQUIRED.
+    - `qa_gate_routing=QA_RERUN_REQUIRED` → re-spawn QA immediately (max 2 retries per round). If `qa_gate_deviation_override=true`, tell QA: "Previous QA run found PASS but SUMMARY.md files contain {qa_gate_deviation_count} deviations that were not reflected as FAIL checks. Each deviation MUST become a FAIL check — do not rationalize deviations as acceptable." If `qa_gate_plan_coverage` is present, tell QA: "Previous QA run only verified {qa_gate_plans_verified_count}/{qa_gate_plan_count} plans. Every plan in the phase must be verified — include all plan IDs in plans_verified." If QA still fails to produce valid output, treat as REMEDIATION_REQUIRED.
     - After max rounds (3): display failures, STOP — surface to user
 
 - **stage=done:** Proceed to Verify mode (UAT) for the phase
