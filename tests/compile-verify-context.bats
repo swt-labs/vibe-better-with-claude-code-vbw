@@ -987,3 +987,164 @@ EOF
   [[ "$output" == *"deviations: Used different endpoint naming"* ]]
   [[ "$output" == *"files_modified: src/api.swift"* ]]
 }
+
+@test "compile-verify-context: --remediation-only excludes QA remediation plans" {
+  # Phase-root plan
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original feature
+must_haves:
+  - Feature works
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original feature
+status: complete
+---
+## What Was Built
+- Thing
+EOF
+
+  # UAT remediation round (should be found by --remediation-only)
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix UAT issues
+type: remediation
+must_haves:
+  - UAT issue fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix UAT issues
+type: remediation
+status: complete
+---
+## What Was Built
+- Fixed UAT issue
+EOF
+
+  # QA remediation round (should NOT be found by --remediation-only)
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix QA deviations
+type: remediation
+must_haves:
+  - Deviation resolved
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix QA deviations
+type: remediation
+status: complete
+---
+## What Was Built
+- Fixed deviation
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation"* ]]
+  [[ "$output" == *"verify_plan_count=1"* ]]
+  [[ "$output" == *"Fix UAT issues"* ]]
+  [[ "$output" != *"Fix QA deviations"* ]]
+}
+
+@test "compile-verify-context: full-scope discovers phase-root + UAT + QA remediation plans" {
+  # Phase-root plan
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original feature
+must_haves:
+  - Feature works
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original feature
+status: complete
+---
+## What Was Built
+- The feature
+EOF
+
+  # UAT remediation plan
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix UAT issues
+type: remediation
+must_haves:
+  - UAT fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix UAT issues
+type: remediation
+status: complete
+---
+## What Was Built
+- Fixed UAT
+EOF
+
+  # QA remediation plan
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix QA deviations
+type: remediation
+must_haves:
+  - QA fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Fix QA deviations
+type: remediation
+status: complete
+---
+## What Was Built
+- Fixed QA deviation
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=full"* ]]
+  [[ "$output" == *"verify_plan_count=3"* ]]
+  [[ "$output" == *"Original feature"* ]]
+  [[ "$output" == *"Fix UAT issues"* ]]
+  [[ "$output" == *"Fix QA deviations"* ]]
+}
