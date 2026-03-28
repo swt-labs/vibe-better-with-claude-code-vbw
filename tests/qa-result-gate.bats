@@ -627,7 +627,8 @@ VERIF
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "Changed API approach"
   # Simulate active remediation cycle
-  echo "stage=verify" > "$PHASE_DIR/.qa-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  echo "stage=verify" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
@@ -654,7 +655,8 @@ VERIF
 @test "FAIL during remediation still routes to REMEDIATION_REQUIRED" {
   create_verif "write-verification.sh" "FAIL"
   create_summary_with_yaml_deviations "01-01" "Changed API approach"
-  echo "stage=verify" > "$PHASE_DIR/.qa-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  echo "stage=verify" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   run bash "$SCRIPT" "$PHASE_DIR"
 

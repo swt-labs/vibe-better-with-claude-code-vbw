@@ -62,7 +62,7 @@ VERIF_PATH="$PHASE_DIR/$VERIF_NAME"
 # Detect active QA remediation — deviation override is suppressed during remediation
 # because SUMMARY.md deviations are historical (the code has been fixed)
 IN_REMEDIATION="false"
-if [ -f "$PHASE_DIR/.qa-remediation-stage" ]; then
+if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
   IN_REMEDIATION="true"
 fi
 
@@ -142,6 +142,7 @@ for summary_file in "$PHASE_DIR"/*-SUMMARY.md; do
         line=$0; sub(/^- /, "", line)
         if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
         sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
+        if (line == "") next
         lc = tolower(line)
         if (lc == "none" || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
         count++

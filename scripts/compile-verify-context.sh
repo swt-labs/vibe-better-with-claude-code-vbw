@@ -238,6 +238,7 @@ while IFS= read -r plan_file; do
           if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
           # Strip bold prefix so "**Foo**: bar" becomes "bar"
           sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
+          if (line == "") next
           # Skip "None" / "None." / "N/A" / "None. <explanation>" / "No deviations" entries (case-insensitive)
           lc = tolower(line)
           if (lc ~ /^none[. ]/ || lc == "none" || lc ~ /^n\/a[. ]/ || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
