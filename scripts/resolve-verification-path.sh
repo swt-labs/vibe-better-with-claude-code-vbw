@@ -42,13 +42,32 @@ if [ ! -d "$PHASE_DIR" ]; then
 fi
 
 phase_level_path() {
-  local canonical_name canonical_path base phase_num
+  local canonical_name canonical_path base phase_num phase_prefix wave_files
 
   canonical_name=$(bash "$SCRIPT_DIR/resolve-artifact-path.sh" verification "$PHASE_DIR" 2>/dev/null || true)
   if [ -n "$canonical_name" ]; then
     canonical_path="$PHASE_DIR/$canonical_name"
     if [ -f "$canonical_path" ]; then
       echo "$canonical_path"
+      return 0
+    fi
+    phase_prefix="${canonical_name%-VERIFICATION.md}"
+  else
+    phase_prefix=""
+  fi
+
+  if [ -z "$phase_prefix" ]; then
+    base=$(basename "${PHASE_DIR%/}")
+    phase_num=$(echo "$base" | sed 's/^\([0-9]*\).*/\1/')
+    if [ -n "$phase_num" ] && [[ "$phase_num" =~ ^[0-9]+$ ]]; then
+      phase_prefix=$(printf '%02d' "$((10#$phase_num))")
+    fi
+  fi
+
+  if [ -n "$phase_prefix" ]; then
+    wave_files=$(ls -1 "$PHASE_DIR/${phase_prefix}-VERIFICATION-wave"*.md 2>/dev/null | (sort -V 2>/dev/null || sort) || true)
+    if [ -n "$wave_files" ]; then
+      printf '%s\n' "$wave_files" | tail -1
       return 0
     fi
   fi

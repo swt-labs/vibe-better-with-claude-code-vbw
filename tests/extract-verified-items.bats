@@ -79,6 +79,84 @@ EOF
   [[ "$output" == *"MH-01"* ]]
 }
 
+@test "extract-verified-items prefers latest wave verification when final file absent" {
+  local phase_dir="$TEST_TEMP_DIR/phases/01-core"
+  mkdir -p "$phase_dir"
+  cat > "$phase_dir/01-VERIFICATION-wave1.md" <<'EOF'
+---
+result: FAIL
+passed: 0
+failed: 1
+total: 1
+---
+
+## Must-Have Checks
+
+| # | ID | Description | Status | Evidence |
+|---|---|---|---|---|
+| 1 | MH-01 | Old wave | **FAIL** | Broken |
+EOF
+  cat > "$phase_dir/01-VERIFICATION-wave2.md" <<'EOF'
+---
+result: PASS
+passed: 1
+failed: 0
+total: 1
+---
+
+## Must-Have Checks
+
+| # | ID | Description | Status | Evidence |
+|---|---|---|---|---|
+| 1 | MH-02 | Latest wave | **PASS** | Fixed |
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-verified-items.sh" "$phase_dir"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PASS MH-02: Latest wave"* ]]
+  [[ "$output" != *"FAIL MH-01: Old wave"* ]]
+}
+
+@test "extract-verified-items prefers final verification over older wave files" {
+  local phase_dir="$TEST_TEMP_DIR/phases/01-core"
+  mkdir -p "$phase_dir"
+  cat > "$phase_dir/01-VERIFICATION-wave1.md" <<'EOF'
+---
+result: FAIL
+passed: 0
+failed: 1
+total: 1
+---
+
+## Must-Have Checks
+
+| # | ID | Description | Status | Evidence |
+|---|---|---|---|---|
+| 1 | MH-01 | Old wave | **FAIL** | Broken |
+EOF
+  cat > "$phase_dir/01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+passed: 1
+failed: 0
+total: 1
+---
+
+## Must-Have Checks
+
+| # | ID | Description | Status | Evidence |
+|---|---|---|---|---|
+| 1 | MH-02 | Final verification | **PASS** | Fixed |
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-verified-items.sh" "$phase_dir"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PASS MH-02: Final verification"* ]]
+  [[ "$output" != *"FAIL MH-01: Old wave"* ]]
+}
+
 @test "extract-verified-items includes round VERIFICATION.md when stage=done" {
   local phase_dir="$TEST_TEMP_DIR/phases/03-ui"
   mkdir -p "$phase_dir/remediation/qa/round-02"

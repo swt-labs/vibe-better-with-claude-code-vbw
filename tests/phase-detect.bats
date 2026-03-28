@@ -1104,6 +1104,19 @@ CONF
   echo "$output" | grep -q "qa_status=passed"
 }
 
+@test "qa_status is passed when latest wave verification has PASS result" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Wave 1 failed.' > .vbw-planning/phases/01-test/01-VERIFICATION-wave1.md
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Wave 2 passed.' > .vbw-planning/phases/01-test/01-VERIFICATION-wave2.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=passed"
+}
+
 @test "qa_status is failed when VERIFICATION.md has FAIL result" {
   mkdir -p .vbw-planning/phases/01-test
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
