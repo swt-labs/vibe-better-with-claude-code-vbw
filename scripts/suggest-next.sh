@@ -292,11 +292,35 @@ if [ -d "$PLANNING_DIR" ]; then
     # Find most recent QA result
     for dir in "$PHASES_DIR"/*/; do
       [ -d "$dir" ] || continue
-      for vf in "$dir"/*-VERIFICATION.md; do
-        [ -f "$vf" ] || continue
-        r=$(grep -m1 '^result:' "$vf" 2>/dev/null | sed 's/result:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
-        [ -n "$r" ] && last_qa_result="$r"
-      done
+      # Check if QA remediation completed — use round VERIFICATION.md if stage=done
+      _sn_qa_rem_file="${dir}remediation/qa/.qa-remediation-stage"
+      _sn_verif_checked=false
+      if [ -f "$_sn_qa_rem_file" ]; then
+        _sn_qa_stage=$(grep '^stage=' "$_sn_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+        if [ "$_sn_qa_stage" = "done" ]; then
+          _sn_qa_round=$(grep '^round=' "$_sn_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+          _sn_qa_round="${_sn_qa_round:-01}"
+          if [[ "$_sn_qa_round" =~ ^[0-9]+$ ]]; then
+            _sn_qa_round=$(printf '%02d' "$((10#${_sn_qa_round}))")
+          else
+            _sn_qa_round="01"
+          fi
+          _sn_round_verif="${dir}remediation/qa/round-${_sn_qa_round}/R${_sn_qa_round}-VERIFICATION.md"
+          if [ -f "$_sn_round_verif" ]; then
+            r=$(grep -m1 '^result:' "$_sn_round_verif" 2>/dev/null | sed 's/result:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
+            [ -n "$r" ] && last_qa_result="$r"
+            _sn_verif_checked=true
+          fi
+        fi
+      fi
+      # Fallback: read phase-level VERIFICATION.md
+      if [ "$_sn_verif_checked" = false ]; then
+        for vf in "$dir"/*-VERIFICATION.md; do
+          [ -f "$vf" ] || continue
+          r=$(grep -m1 '^result:' "$vf" 2>/dev/null | sed 's/result:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
+          [ -n "$r" ] && last_qa_result="$r"
+        done
+      fi
     done
 
     # Count deviations and find failing plans in active phase

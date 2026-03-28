@@ -258,6 +258,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   QA_REM_FILE="$PDIR/remediation/qa/.qa-remediation-stage"
   ```
   - If `$QA_REM_FILE` exists with `stage` not equal to `done`: STOP "Phase {NN} has active QA remediation (round {round}, stage {stage}). Run `/vbw:vibe` to continue QA remediation before UAT."
+  - If `$QA_REM_FILE` exists with `stage=done`: read `round=` from the file, then use the round VERIFICATION.md (`$PDIR/remediation/qa/round-{round}/R{round}-VERIFICATION.md`) instead of the phase-level file. The phase-level file stays frozen as the original QA FAIL — the round file has the final remediated result.
   - If no VERIFICATION.md and no `--skip-qa`: STOP "Phase {NN} has no QA verification. Run `/vbw:vibe` to execute QA first, or use `/vbw:verify --skip-qa` to bypass."
   - If VERIFICATION.md exists, read its frontmatter `result:` field:
     - `PASS`: before proceeding, run the same stale-QA checks as phase-detect for this target phase: (1) if product-code working tree is dirty (`git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md'` non-empty) → STOP and rerun QA via `/vbw:vibe`; (2) if `verified_at_commit` exists and differs from current product-code `git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md'` → STOP and rerun QA; (3) if `verified_at_commit` is absent (brownfield file), compare VERIFICATION.md mtime to the latest product-code commit timestamp and STOP if the commit is newer. Only proceed to UAT when the PASS is fresh for the target phase.
