@@ -1312,6 +1312,34 @@ CONF
   echo "$output" | grep -q "qa_status=remediating"
 }
 
+@test "earlier UAT remediation keeps priority over later active QA remediation" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  # Phase 01: unresolved UAT issues
+  mkdir -p .vbw-planning/phases/01-uat-issues
+  echo "# Plan" > .vbw-planning/phases/01-uat-issues/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-uat-issues/01-SUMMARY.md
+  cat > .vbw-planning/phases/01-uat-issues/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  # Phase 02: active QA remediation
+  mkdir -p .vbw-planning/phases/02-remediating/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/02-remediating/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-remediating/02-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  echo "$output" | grep -q "next_phase=01"
+}
+
 @test "qa_status is pending when PASS verification is stale for current code" {
   mkdir -p .vbw-planning/phases/01-test
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md

@@ -144,6 +144,44 @@ EOF
   [[ "$output" == *"verify_plan_count=1"* ]]
 }
 
+@test "compile-verify-context: legacy PLAN.md and SUMMARY.md are supported" {
+  cat > "$PHASE_DIR/PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Legacy plan
+must_haves:
+  - Legacy path works
+---
+EOF
+
+  cat > "$PHASE_DIR/SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Legacy plan
+status: complete
+---
+
+## What Was Built
+
+- Legacy phase artifact support
+
+## Files Modified
+
+- `src/legacy.ts` -- modified: legacy flow
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== PLAN 01: Legacy plan ==="* ]]
+  [[ "$output" == *"Legacy phase artifact support"* ]]
+  [[ "$output" == *"src/legacy.ts"* ]]
+  [[ "$output" == *"verify_plan_count=1"* ]]
+}
+
 @test "compile-verify-context: empty dir returns verify_context=empty" {
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"

@@ -628,7 +628,7 @@ fi
 # --- needs_qa_remediation override: route to QA remediation before verification ---
 # When QA remediation is active (qa_status=remediating), override next_phase_state
 # to needs_qa_remediation. This takes priority over needs_verification.
-if [ -n "$QA_REMEDIATING_PHASE" ]; then
+if [ -n "$QA_REMEDIATING_PHASE" ] && [ "$NEXT_PHASE_STATE" != "needs_uat_remediation" ]; then
   NEXT_PHASE="$QA_REMEDIATING_PHASE"
   NEXT_PHASE_SLUG="$QA_REMEDIATING_SLUG"
   NEXT_PHASE_STATE="needs_qa_remediation"

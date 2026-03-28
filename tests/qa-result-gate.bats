@@ -546,6 +546,33 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "legacy PLAN.md and SUMMARY.md count toward gate plan and deviation checks" {
+  cat > "$PHASE_DIR/PLAN.md" <<'PLAN'
+---
+plan: 01
+title: Legacy plan
+---
+PLAN
+  cat > "$PHASE_DIR/SUMMARY.md" <<'SUMMARY'
+---
+plan: 01
+deviations:
+  - "Legacy deviation"
+---
+
+## Summary
+Legacy work completed.
+SUMMARY
+  create_verif "write-verification.sh" "PASS"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_plan_count=1"* ]]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
 @test "PASS + plans_verified absent (brownfield) → PROCEED_TO_UAT" {
   create_plan "01-01"
   create_plan "01-02"

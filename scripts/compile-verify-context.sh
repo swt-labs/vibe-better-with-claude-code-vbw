@@ -89,7 +89,7 @@ fi
 
 if [ "$REMEDIATION_ONLY" = false ]; then
   # Full scope: all phase-root plans + all round-dir plans
-  PLAN_FILES=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | sort)
+  PLAN_FILES=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' \( -name '[0-9]*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | sort)
   ROUND_PLAN_FILES=$(find "$PHASE_DIR" -path '*/remediation/uat/round-*/R*-PLAN.md' 2>/dev/null | sort)
   # Legacy fallback: check old remediation/round-* layout for brownfield compat
   if [ -z "$ROUND_PLAN_FILES" ]; then
@@ -169,10 +169,15 @@ while IFS= read -r plan_file; do
 
   # Find corresponding SUMMARY file
   # Phase-root plans: {NN}-{MM}-PLAN.md → {NN}-{MM}-SUMMARY.md (same dir)
+  # Legacy phase-root plan: PLAN.md → SUMMARY.md (same dir)
   # Round-dir plans: R{RR}-PLAN.md → R{RR}-SUMMARY.md (same dir)
   PLAN_BASE=$(basename "$plan_file" | sed 's/-PLAN\.md$//')
   PLAN_DIR=$(dirname "$plan_file")
-  SUMMARY_FILE=$(find "$PLAN_DIR" -maxdepth 1 ! -name '.*' -name "${PLAN_BASE}-SUMMARY.md" 2>/dev/null | head -1)
+  if [ "$(basename "$plan_file")" = "PLAN.md" ] && [ -f "$PLAN_DIR/SUMMARY.md" ]; then
+    SUMMARY_FILE="$PLAN_DIR/SUMMARY.md"
+  else
+    SUMMARY_FILE=$(find "$PLAN_DIR" -maxdepth 1 ! -name '.*' -name "${PLAN_BASE}-SUMMARY.md" 2>/dev/null | head -1)
+  fi
 
   STATUS="no_summary"
   WHAT_BUILT=""

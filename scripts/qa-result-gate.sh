@@ -139,7 +139,7 @@ FAIL_COUNT=$(grep -cE '\|[[:space:]]*\*{0,2}FAIL\*{0,2}[[:space:]]*\|' "$VERIF_P
 # Deviation count — scan all SUMMARY.md files for non-placeholder deviations
 # Uses the same AWK extraction logic as execute-protocol.md Step 4
 DEVIATION_COUNT=0
-for summary_file in "$SUMMARY_SCOPE_DIR"/*-SUMMARY.md; do
+while IFS= read -r summary_file; do
   [ -f "$summary_file" ] || continue
 
   # Extract deviations from YAML frontmatter
@@ -180,14 +180,14 @@ for summary_file in "$SUMMARY_SCOPE_DIR"/*-SUMMARY.md; do
   fi
 
   DEVIATION_COUNT=$((DEVIATION_COUNT + ${devs:-0}))
-done
+done < <(find "$SUMMARY_SCOPE_DIR" -maxdepth 1 ! -name '.*' \( -name '*-SUMMARY.md' -o -name 'SUMMARY.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
 
 # Plan coverage — count PLAN.md files and plans_verified entries
 PLAN_COUNT=0
-for plan_file in "$PLAN_SCOPE_DIR"/*-PLAN.md; do
+while IFS= read -r plan_file; do
   [ -f "$plan_file" ] || continue
   PLAN_COUNT=$((PLAN_COUNT + 1))
-done
+done < <(find "$PLAN_SCOPE_DIR" -maxdepth 1 ! -name '.*' \( -name '*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
 
 # Parse plans_verified from VERIFICATION.md frontmatter (YAML array)
 PLANS_VERIFIED_COUNT=$(awk '
