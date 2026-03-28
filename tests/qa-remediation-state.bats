@@ -248,6 +248,7 @@ teardown() {
 @test "emit_metadata includes verification_path on init" {
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR"
   [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^source_verification_path=.*01-VERIFICATION.md$"
   echo "$output" | grep -q "^verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
 }
 
@@ -257,6 +258,7 @@ teardown() {
 
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
   [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^source_verification_path=.*01-VERIFICATION.md$"
   echo "$output" | grep -q "^verification_path=.*remediation/qa/round-02/R02-VERIFICATION.md$"
 }
 
@@ -269,12 +271,15 @@ teardown() {
 @test "verification_path updates after needs-round" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  printf '%s\n' '---' 'result: FAIL' '---' > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
 
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "^round=02$"
+  echo "$output" | grep -q "^source_verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
   # After needs-round, get should show round-02 verification_path
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+  echo "$output" | grep -q "^source_verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
   echo "$output" | grep -q "^verification_path=.*remediation/qa/round-02/R02-VERIFICATION.md$"
 }
 

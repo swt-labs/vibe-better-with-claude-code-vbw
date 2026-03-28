@@ -30,6 +30,8 @@ set -euo pipefail
 
 PHASE_DIR="${1:-}"
 VERIF_NAME="${2:-}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+RESOLVE_VERIF_SCRIPT="$SCRIPT_DIR/resolve-verification-path.sh"
 
 if [ -z "$PHASE_DIR" ]; then
   echo "qa_gate_writer=missing"
@@ -46,26 +48,25 @@ fi
 # phase-detect.sh and hard-gate.sh: {NN}-VERIFICATION.md is the primary
 # convention, with plain VERIFICATION.md as a brownfield fallback.
 if [ -z "$VERIF_NAME" ]; then
-  PHASE_NUM=$(basename "$PHASE_DIR" | grep -oE '^[0-9]+' 2>/dev/null || true)
-  if [ -n "$PHASE_NUM" ] && [ -e "$PHASE_DIR/${PHASE_NUM}-VERIFICATION.md" ]; then
-    VERIF_NAME="${PHASE_NUM}-VERIFICATION.md"
-  elif [ -e "$PHASE_DIR/VERIFICATION.md" ]; then
-    VERIF_NAME="VERIFICATION.md"
+  VERIF_PATH=$(bash "$RESOLVE_VERIF_SCRIPT" phase "$PHASE_DIR" 2>/dev/null || true)
+  if [ -n "$VERIF_PATH" ]; then
+    VERIF_NAME=$(basename "$VERIF_PATH")
   else
-    # Neither convention found — use prefixed name so "file not found" is reported
+    PHASE_NUM=$(basename "$PHASE_DIR" | grep -oE '^[0-9]+' 2>/dev/null || true)
     VERIF_NAME="${PHASE_NUM:-01}-VERIFICATION.md"
+    VERIF_PATH="$PHASE_DIR/$VERIF_NAME"
   fi
+else
+  VERIF_PATH="$PHASE_DIR/$VERIF_NAME"
 fi
-
-VERIF_PATH="$PHASE_DIR/$VERIF_NAME"
 
 # Detect active QA remediation — deviation override is suppressed during remediation
 # because SUMMARY.md deviations are historical (the code has been fixed)
 IN_REMEDIATION="false"
 PLAN_SCOPE_DIR="$PHASE_DIR"  # Default: phase-level plans
+SUMMARY_SCOPE_DIR="$PHASE_DIR"  # Default: phase-level summaries
 if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
   IN_REMEDIATION="true"
-  # Auto-discover round VERIFICATION.md
   _gate_round=$(grep '^round=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
   _gate_round="${_gate_round:-01}"
   # Defensive: ensure round is numeric before arithmetic
@@ -76,10 +77,14 @@ if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
   _gate_round=$(printf '%02d' "$((10#${_gate_round}))")
   _gate_round_dir="$PHASE_DIR/remediation/qa/round-${_gate_round}"
   _gate_round_verif="${_gate_round_dir}/R${_gate_round}-VERIFICATION.md"
-  if [ -f "$_gate_round_verif" ]; then
-    VERIF_PATH="$_gate_round_verif"
-    VERIF_NAME="R${_gate_round}-VERIFICATION.md"
+  _gate_current_verif=$(bash "$RESOLVE_VERIF_SCRIPT" current "$PHASE_DIR" 2>/dev/null || true)
+  if [ -n "${_gate_current_verif:-}" ]; then
+    VERIF_PATH="$_gate_current_verif"
+    VERIF_NAME=$(basename "$VERIF_PATH")
+  fi
+  if [ "$VERIF_PATH" = "$_gate_round_verif" ]; then
     PLAN_SCOPE_DIR="$_gate_round_dir"
+    SUMMARY_SCOPE_DIR="$_gate_round_dir"
   fi
 fi
 
@@ -128,7 +133,7 @@ FAIL_COUNT=$(grep -cE '\|[[:space:]]*\*{0,2}FAIL\*{0,2}[[:space:]]*\|' "$VERIF_P
 # Deviation count — scan all SUMMARY.md files for non-placeholder deviations
 # Uses the same AWK extraction logic as execute-protocol.md Step 4
 DEVIATION_COUNT=0
-for summary_file in "$PHASE_DIR"/*-SUMMARY.md; do
+for summary_file in "$SUMMARY_SCOPE_DIR"/*-SUMMARY.md; do
   [ -f "$summary_file" ] || continue
 
   # Extract deviations from YAML frontmatter
@@ -220,10 +225,11 @@ case "$RESULT" in
     if [ "$FAIL_COUNT" -gt 0 ] 2>/dev/null; then
       # 6. PASS with FAIL rows → defense-in-depth override
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
-    elif [ "$DEVIATION_COUNT" -gt 0 ] && [ "$IN_REMEDIATION" = "false" ]; then
-      # 5a. PASS but deviations exist without FAIL checks → QA rationalized deviations
-      # Suppressed during remediation: SUMMARY.md deviations are historical records,
-      # the code has been fixed, and a fresh QA verdict should be trusted.
+    elif [ "$DEVIATION_COUNT" -gt 0 ] && { [ "$IN_REMEDIATION" = "false" ] || [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; }; then
+      # 5a. PASS but deviations exist without FAIL checks → QA rationalized deviations.
+      # During remediation, phase-root SUMMARY.md deviations are historical and must
+      # not override a fresh PASS. Current-round SUMMARY.md deviations are still real
+      # and must be reflected as FAIL checks, so scoped round summaries keep the override.
       echo "qa_gate_deviation_override=true"
       # Also check plan coverage so both diagnostics surface simultaneously
       if [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then

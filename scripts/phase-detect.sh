@@ -469,11 +469,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     fi
 
     # --- QA VERIFICATION.md check ---
-    _uv_verif=""
-    _uv_dirname_tmp=$(basename "$_uv_dir")
-    _uv_num_tmp=$(echo "$_uv_dirname_tmp" | sed 's/^\([0-9]*\).*/\1/')
-    if [ -n "$_uv_num_tmp" ]; then
-      _uv_verif=$(find "$_uv_dir" -maxdepth 1 ! -name '.*' -name "${_uv_num_tmp}-VERIFICATION.md" 2>/dev/null | head -1)
+    _uv_verif=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" phase "$_uv_dir" 2>/dev/null || true)
+    if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
+      _uv_verif=""
     fi
 
     _uv_uat=$(current_uat "$_uv_dir")
@@ -497,14 +495,11 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
 
         # Compute QA status for this phase
         if [ "$_qa_rem_stage" = "done" ]; then
-          # Use round VERIFICATION.md for cross-validation (phase-level stays as original FAIL)
-          if ! [[ "$_qa_rem_round" =~ ^[0-9]+$ ]]; then
-            _qa_rem_round="01"
-          fi
-          _qa_rem_round_padded=$(printf '%02d' "$((10#${_qa_rem_round:-1}))")
-          _qa_round_verif="${_uv_dir}remediation/qa/round-${_qa_rem_round_padded}/R${_qa_rem_round_padded}-VERIFICATION.md"
-          if [ -f "$_qa_round_verif" ]; then
-            _uv_verif="$_qa_round_verif"
+          # Use the authoritative current verification path for cross-validation:
+          # round VERIFICATION.md when present, otherwise phase-level numbered/plain fallback.
+          _uv_verif=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" current "$_uv_dir" 2>/dev/null || true)
+          if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
+            _uv_verif=""
           fi
           # Cross-validate: ensure VERIFICATION.md also shows PASS
           if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then

@@ -473,3 +473,17 @@ EOF
   # Falls back to phase-level PASS, no QA FAIL
   [[ "$output" != *"QA FAIL"* ]]
 }
+
+@test "suggest-next reads brownfield plain VERIFICATION.md when numbered file absent" {
+  cd "$TEST_TEMP_DIR"
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/03-ui"
+  mkdir -p "$phase_dir"
+  printf -- '---\nphase: 03\nplan: 03-01\n---\n' > "${phase_dir}/03-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\n' > "${phase_dir}/03-01-SUMMARY.md"
+  printf 'result: PASS\n' > "${phase_dir}/VERIFICATION.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"QA FAIL"* ]]
+}

@@ -54,6 +54,31 @@ EOF
   [[ "$output" == *"MH-02"* ]]
 }
 
+@test "extract-verified-items reads brownfield plain VERIFICATION.md" {
+  local phase_dir="$TEST_TEMP_DIR/phases/01-core"
+  mkdir -p "$phase_dir"
+  cat > "$phase_dir/VERIFICATION.md" <<'EOF'
+---
+result: PASS
+passed: 1
+failed: 0
+total: 1
+---
+
+## Must-Have Checks
+
+| # | ID | Description | Status | Evidence |
+|---|---|---|---|---|
+| 1 | MH-01 | Brownfield check | **PASS** | OK |
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-verified-items.sh" "$phase_dir"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"QA-VERIFIED ITEMS"* ]]
+  [[ "$output" == *"MH-01"* ]]
+}
+
 @test "extract-verified-items includes round VERIFICATION.md when stage=done" {
   local phase_dir="$TEST_TEMP_DIR/phases/03-ui"
   mkdir -p "$phase_dir/remediation/qa/round-02"

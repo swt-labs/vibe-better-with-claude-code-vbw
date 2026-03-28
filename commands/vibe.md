@@ -418,14 +418,16 @@ Before entering Verify mode (UAT), check `qa_status` from phase-detect output:
 When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persisted stage. This is the cross-session recovery path — the inline execution path is in execute-protocol.md Step 4.
 
 1. Read current state: `bash {plugin-root}/scripts/qa-remediation-state.sh get {phase-dir}`
-   Parse output: `stage`, `round`, `round_dir`
-2. Read VERIFICATION.md for the phase to identify failed checks
+  Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `verification_path`
+2. Read `source_verification_path` to identify the current failed checks.
+  - Round 01: phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
+  - Round 02+: previous round's `R{RR}-VERIFICATION.md`
 
 **Stage-specific actions:**
 
 - **stage=plan:** Create `R{RR}-PLAN.md` in `{round_dir}`:
-  - Read VERIFICATION.md failed checks — these are the "issues" to fix
-  - Scope the plan to VERIFICATION.md failures: what to fix, which files, acceptance criteria
+  - Read `source_verification_path` failed checks — these are the current "issues" to fix
+  - Scope the plan to those failures: what to fix, which files, acceptance criteria
   - The orchestrator/Lead writes the plan (QA says what's wrong, planning says how to fix)
   - After writing the plan, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
 

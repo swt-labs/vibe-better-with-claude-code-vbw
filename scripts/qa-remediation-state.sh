@@ -20,6 +20,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 CMD="${1:-}"
 PHASE_DIR="${2:-}"
 
@@ -128,11 +130,16 @@ start_new_round() {
 }
 
 emit_metadata() {
-  local round round_dir
+  local round round_dir source_verification_path
   round=$(get_round)
   round_dir="$PHASE_DIR/remediation/qa/round-${round}"
+  source_verification_path=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" plan-input "$PHASE_DIR" 2>/dev/null || true)
+  if [ -z "$source_verification_path" ]; then
+    source_verification_path="$PHASE_DIR/$(bash "$SCRIPT_DIR/resolve-artifact-path.sh" verification "$PHASE_DIR" 2>/dev/null || echo '01-VERIFICATION.md')"
+  fi
   echo "round=${round}"
   echo "round_dir=${round_dir}"
+  echo "source_verification_path=${source_verification_path}"
   echo "plan_path=${round_dir}/R${round}-PLAN.md"
   echo "summary_path=${round_dir}/R${round}-SUMMARY.md"
   echo "verification_path=${round_dir}/R${round}-VERIFICATION.md"

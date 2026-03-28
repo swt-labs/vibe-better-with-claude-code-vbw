@@ -1092,6 +1092,18 @@ CONF
   echo "$output" | grep -q "qa_status=passed"
 }
 
+@test "qa_status is passed when brownfield plain VERIFICATION.md has PASS result" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'All passed.' > .vbw-planning/phases/01-test/VERIFICATION.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=passed"
+}
+
 @test "qa_status is failed when VERIFICATION.md has FAIL result" {
   mkdir -p .vbw-planning/phases/01-test
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md

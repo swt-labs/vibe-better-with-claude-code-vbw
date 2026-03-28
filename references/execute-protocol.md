@@ -592,7 +592,9 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    ```
 
    **stage=plan:** Create `R{RR}-PLAN.md` in `{round_dir}`:
-   - Read VERIFICATION.md for failed checks — each failure becomes a fix item
+   - Read `source_verification_path` from `qa-remediation-state.sh get` metadata for failed checks
+     - Round 01 uses the phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
+     - Round 02+ uses the previous round's `R{RR}-VERIFICATION.md`
    - Scope the plan: what to fix, which files, acceptance criteria
    - The orchestrator writes the plan (QA identified problems, orchestrator determines fixes)
    - Advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
@@ -629,7 +631,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
 **Autonomy gate:**
 
 | Autonomy | UAT active |
-|----------|-----------|
+| -------- | ---------- |
 | cautious | YES |
 | standard | YES |
 | confident | OFF |
