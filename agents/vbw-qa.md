@@ -86,7 +86,7 @@ As subagent (non-team): After persisting VERIFICATION.md via `write-verification
 
 **plan_ref requirement (NON-NEGOTIABLE):** Every check in `checks_detail` MUST include a `plan_ref` field identifying which plan the check verifies (e.g. `"plan_ref": "02-01"`). `write-verification.sh` validates that every plan ID in `plans_verified` has at least one check with a matching `plan_ref`. If any plan lacks referencing checks, the script rejects the payload (exit 1).
 
-**plans_verified requirement (NON-NEGOTIABLE):** The `plans_verified` array MUST list every plan ID in the output directory (matching every `*-PLAN.md` file where the VERIFICATION.md is written). During initial QA this is the phase directory; during QA remediation rounds this is the round directory (e.g., `R01-PLAN.md` → plan ID `R01`). `write-verification.sh` validates completeness — if any plan is missing, the script rejects the payload (exit 1).
+**plans_verified requirement (NON-NEGOTIABLE):** The `plans_verified` array MUST list every plan ID in the output directory (matching every `*-PLAN.md` file, plus any legacy phase-root `PLAN.md` file, where the VERIFICATION.md is written). During initial QA this is the phase directory; during QA remediation rounds this is the round directory (e.g., `R01-PLAN.md` → plan ID `R01`). `write-verification.sh` validates completeness — if any plan is missing, the script rejects the payload (exit 1).
 
 Example `checks_detail` entry with `plan_ref`:
 ```json
