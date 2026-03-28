@@ -878,3 +878,18 @@ JSON
   pv_line=$(grep -n '^plans_verified:' "$pdir/out.md" | head -1 | cut -d: -f1)
   [ "$writer_line" -lt "$pv_line" ]
 }
+
+@test "write-verification: duplicate plans_verified entries are deduplicated before validation" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+
+  # plans_verified has duplicates: ["01-01", "01-01"] — only 1 unique, but 2 plans exist
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"plans_verified":["01-01","01-01"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"01-01","description":"B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"plans_verified has"* ]]
+}

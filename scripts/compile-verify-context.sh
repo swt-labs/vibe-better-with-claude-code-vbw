@@ -241,7 +241,7 @@ while IFS= read -r plan_file; do
           if (line == "") next
           # Skip "None" / "None." / "N/A" / "None. <explanation>" / "No deviations" entries (case-insensitive)
           lc = tolower(line)
-          if (lc ~ /^none[. ]/ || lc == "none" || lc ~ /^n\/a[. ]/ || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
+          if (lc == "none" || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
           items = items (items ? "; " : "") line
         }
         END { print items }

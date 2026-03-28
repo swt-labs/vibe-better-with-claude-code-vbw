@@ -674,3 +674,22 @@ VERIF
   [[ "$output" == *"qa_gate_deviation_count=1"* ]]
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
+
+@test "PASS + deviations + incomplete plan coverage → both diagnostics emitted" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed API design"
+  # 2 plans but verification only covers 1
+  create_plan "01-01"
+  create_plan "01-02"
+  # Add plans_verified to VERIFICATION.md frontmatter (only plan 01-01)
+  local vf="$PHASE_DIR/01-VERIFICATION.md"
+  sed -i '' '/^result:/a\
+plans_verified: 01-01' "$vf"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_plan_coverage=1/2"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}

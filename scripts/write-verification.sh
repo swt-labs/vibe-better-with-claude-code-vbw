@@ -144,11 +144,11 @@ for pf in "$phase_dir"/*-PLAN.md; do
   plan_count=$((plan_count + 1))
 done
 
-# Extract plans_verified from payload
+# Extract plans_verified from payload (deduplicated)
 has_plans_verified="false"
 plans_verified_type=$(echo "$payload" | jq -r '.plans_verified | type // "null"' 2>/dev/null)
 if [[ "$plans_verified_type" == "array" ]]; then
-  plans_verified_count=$(echo "$payload" | jq -r '.plans_verified | length')
+  plans_verified_count=$(echo "$payload" | jq -r '[.plans_verified | unique | .[]] | length')
   if [[ "$plans_verified_count" -gt 0 ]]; then
     has_plans_verified="true"
   fi
@@ -166,7 +166,7 @@ if [[ "$plan_count" -gt 0 ]]; then
     exit 1
   fi
 
-  # Validate each plans_verified ID matches an actual PLAN.md file
+  # Validate each plans_verified ID matches an actual PLAN.md file (using deduplicated list)
   while IFS= read -r plan_id; do
     plan_id_trimmed=$(echo "$plan_id" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     [ -z "$plan_id_trimmed" ] && continue
@@ -174,7 +174,7 @@ if [[ "$plan_count" -gt 0 ]]; then
       echo "Error: plan '${plan_id_trimmed}' in plans_verified does not match any PLAN.md file in $(basename "$phase_dir"). Expected '${plan_id_trimmed}-PLAN.md'." >&2
       exit 1
     fi
-  done < <(echo "$payload" | jq -r '.plans_verified[]')
+  done < <(echo "$payload" | jq -r '[.plans_verified | unique | .[]] | .[]')
 
   # Cross-reference: every plan_id in plans_verified must have at least 1 check with matching plan_ref
   if [[ "$has_checks_detail" == "true" ]]; then
@@ -187,7 +187,7 @@ if [[ "$plan_count" -gt 0 ]]; then
         echo "Error: plan '${plan_id_trimmed}' is in plans_verified but no check in checks_detail has plan_ref='${plan_id_trimmed}'. Every verified plan must have at least one check referencing it." >&2
         exit 1
       fi
-    done < <(echo "$payload" | jq -r '.plans_verified[]')
+    done < <(echo "$payload" | jq -r '[.plans_verified | unique | .[]] | .[]')
   fi
 fi
 

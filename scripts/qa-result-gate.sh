@@ -204,6 +204,10 @@ case "$RESULT" in
       # Suppressed during remediation: SUMMARY.md deviations are historical records,
       # the code has been fixed, and a fresh QA verdict should be trusted.
       echo "qa_gate_deviation_override=true"
+      # Also check plan coverage so both diagnostics surface simultaneously
+      if [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
+        echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
+      fi
       echo "qa_gate_routing=QA_RERUN_REQUIRED"
     elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
       # 5b. PASS but incomplete plan coverage → QA skipped some plans
