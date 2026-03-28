@@ -120,8 +120,11 @@ EOF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"QA-VERIFIED ITEMS"* ]]
-  # Both phase-level FAIL items and round PASS items should appear
-  [[ "$output" == *"PASS"* ]]
+  # Only the authoritative round PASS items should appear after remediation is done
+  [[ "$output" == *"PASS MH-01: Build passes"* ]]
+  [[ "$output" == *"PASS MH-02: Tests pass"* ]]
+  [[ "$output" != *"FAIL MH-01: Build passes"* ]]
+  [[ "$output" != *"FAIL MH-02: Tests pass"* ]]
 }
 
 @test "extract-verified-items falls back to phase-level when round file missing (brownfield)" {

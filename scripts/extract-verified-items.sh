@@ -38,7 +38,13 @@ append_verif_file "$phase_dir/VERIFICATION.md"
 # Add the authoritative QA verification path. This pulls in the remediated
 # round VERIFICATION.md only after QA remediation reaches stage=done and also
 # covers brownfield plain VERIFICATION.md.
-append_verif_file "$(bash "$SCRIPT_DIR/resolve-verification-path.sh" authoritative "$phase_dir" 2>/dev/null || true)"
+authoritative_verif=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" authoritative "$phase_dir" 2>/dev/null || true)
+if [[ "$authoritative_verif" == *"/remediation/qa/round-"*"/R"*-VERIFICATION.md ]]; then
+  # After QA remediation completes, downstream UAT-facing consumers should see
+  # only the authoritative remediated verification, not the frozen phase-level FAIL.
+  verif_files=()
+fi
+append_verif_file "$authoritative_verif"
 
 if [[ ${#verif_files[@]} -eq 0 ]]; then
   exit 0

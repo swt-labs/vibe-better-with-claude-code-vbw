@@ -47,7 +47,7 @@ STAGES=("plan" "execute" "verify" "done")
 get_stage() {
   if [ -f "$STATE_FILE" ]; then
     local _val
-    _val=$(grep '^stage=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    _val=$(grep '^stage=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
     echo "${_val:-none}"
   else
     echo "none"
@@ -57,7 +57,7 @@ get_stage() {
 get_round() {
   if [ -f "$STATE_FILE" ]; then
     local _val
-    _val=$(grep '^round=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    _val=$(grep '^round=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
     echo "${_val:-01}"
   else
     echo "01"
