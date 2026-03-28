@@ -35,9 +35,10 @@ while IFS= read -r f; do
 done < <(ls "$phase_dir"/*-VERIFICATION*.md 2>/dev/null)
 append_verif_file "$phase_dir/VERIFICATION.md"
 
-# Add the authoritative current verification path. This pulls in the remediated
-# round VERIFICATION.md when present and also covers brownfield plain VERIFICATION.md.
-append_verif_file "$(bash "$SCRIPT_DIR/resolve-verification-path.sh" current "$phase_dir" 2>/dev/null || true)"
+# Add the authoritative QA verification path. This pulls in the remediated
+# round VERIFICATION.md only after QA remediation reaches stage=done and also
+# covers brownfield plain VERIFICATION.md.
+append_verif_file "$(bash "$SCRIPT_DIR/resolve-verification-path.sh" authoritative "$phase_dir" 2>/dev/null || true)"
 
 if [[ ${#verif_files[@]} -eq 0 ]]; then
   exit 0

@@ -203,6 +203,7 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"QA-VERIFIED ITEMS"* ]]
   # Only phase-level FAIL, round file should NOT be included (stage != done)
+  [[ "$output" != *"PASS MH-01: Build passes"* ]]
   [[ "$output" == *"FAIL"* ]]
   [[ "$output" != *"Fixed"* ]]
 }

@@ -4,7 +4,7 @@ set -euo pipefail
 # resolve-verification-path.sh — Canonical resolver for QA VERIFICATION.md inputs.
 #
 # Usage:
-#   bash resolve-verification-path.sh <phase|current|plan-input> <phase-dir>
+#   bash resolve-verification-path.sh <phase|current|authoritative|plan-input> <phase-dir>
 #
 # Modes:
 #   phase      → phase-level VERIFICATION path (prefers {NN}-VERIFICATION.md,
@@ -12,6 +12,9 @@ set -euo pipefail
 #                canonical numbered path)
 #   current    → authoritative QA result for the phase (current round
 #                R{RR}-VERIFICATION.md when present, else phase-level fallback)
+#   authoritative → QA result downstream UAT consumers should trust
+#                (round VERIFICATION only after remediation reaches stage=done,
+#                else phase-level fallback)
 #   plan-input → verification artifact to plan remediation from (previous round's
 #                R{RR}-VERIFICATION.md when planning round N>1, else phase-level fallback)
 
@@ -21,12 +24,12 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 STATE_FILE="${PHASE_DIR%/}/remediation/qa/.qa-remediation-stage"
 
 if [ -z "$MODE" ] || [ -z "$PHASE_DIR" ]; then
-  echo "usage: resolve-verification-path.sh <phase|current|plan-input> <phase-dir>" >&2
+  echo "usage: resolve-verification-path.sh <phase|current|authoritative|plan-input> <phase-dir>" >&2
   exit 1
 fi
 
 case "$MODE" in
-  phase|current|plan-input) ;;
+  phase|current|authoritative|plan-input) ;;
   *)
     echo "error: unknown mode: $MODE" >&2
     exit 1
@@ -80,6 +83,12 @@ read_round() {
   printf '%02d' "$((10#$round))"
 }
 
+read_stage() {
+  local stage
+  stage=$(grep '^stage=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+  echo "${stage:-none}"
+}
+
 phase_path=$(phase_level_path)
 
 case "$MODE" in
@@ -93,6 +102,20 @@ case "$MODE" in
       if [ -f "$round_path" ]; then
         echo "$round_path"
         exit 0
+      fi
+    fi
+    echo "$phase_path"
+    ;;
+  authoritative)
+    if [ -f "$STATE_FILE" ]; then
+      stage=$(read_stage)
+      if [ "$stage" = "done" ]; then
+        round=$(read_round)
+        round_path="$PHASE_DIR/remediation/qa/round-${round}/R${round}-VERIFICATION.md"
+        if [ -f "$round_path" ]; then
+          echo "$round_path"
+          exit 0
+        fi
       fi
     fi
     echo "$phase_path"

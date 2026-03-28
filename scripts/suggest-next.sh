@@ -290,10 +290,10 @@ if [ -d "$PLANNING_DIR" ]; then
       all_done=true
     fi
 
-    # Find most recent QA result using the authoritative verification resolver.
+    # Find most recent authoritative QA result for downstream/UAT suggestions.
     for dir in "$PHASES_DIR"/*/; do
       [ -d "$dir" ] || continue
-      _sn_verif=$(bash "$RESOLVE_VERIF_SCRIPT" current "${dir%/}" 2>/dev/null || true)
+      _sn_verif=$(bash "$RESOLVE_VERIF_SCRIPT" authoritative "${dir%/}" 2>/dev/null || true)
       [ -n "$_sn_verif" ] || continue
       [ -f "$_sn_verif" ] || continue
       r=$(grep -m1 '^result:' "$_sn_verif" 2>/dev/null | sed 's/result:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
