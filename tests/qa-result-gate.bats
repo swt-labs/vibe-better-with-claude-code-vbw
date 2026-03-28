@@ -676,15 +676,23 @@ VERIF
 }
 
 @test "PASS + deviations + incomplete plan coverage → both diagnostics emitted" {
-  create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "Changed API design"
   # 2 plans but verification only covers 1
   create_plan "01-01"
   create_plan "01-02"
-  # Add plans_verified to VERIFICATION.md frontmatter (only plan 01-01)
-  local vf="$PHASE_DIR/01-VERIFICATION.md"
-  sed -i '' '/^result:/a\
-plans_verified: 01-01' "$vf"
+  # Write VERIFICATION.md with proper YAML array for plans_verified (only plan 01-01)
+  cat > "$PHASE_DIR/01-VERIFICATION.md" << 'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - 01-01
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Test | PASS | ok |
+VERIF
 
   run bash "$SCRIPT" "$PHASE_DIR"
 

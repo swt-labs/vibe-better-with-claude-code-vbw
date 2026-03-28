@@ -211,7 +211,7 @@ trap 'rm -f "$tmp_output"' EXIT
   echo "writer: write-verification.sh"
   if [[ "$has_plans_verified" == "true" ]]; then
     echo "plans_verified:"
-    echo "$payload" | jq -r '.plans_verified[]' | while IFS= read -r pvid; do
+    echo "$payload" | jq -r '[.plans_verified | unique | .[]] | .[]' | while IFS= read -r pvid; do
       echo "  - $pvid"
     done
   fi

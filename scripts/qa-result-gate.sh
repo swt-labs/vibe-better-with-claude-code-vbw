@@ -144,7 +144,7 @@ for summary_file in "$PHASE_DIR"/*-SUMMARY.md; do
         sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
         if (line == "") next
         lc = tolower(line)
-        if (lc == "none" || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
+        if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
         count++
       }
       END { print count }
