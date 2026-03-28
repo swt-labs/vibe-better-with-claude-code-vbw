@@ -238,6 +238,15 @@ teardown() {
   [ "$status" -eq 1 ]
 }
 
+@test "get normalizes unknown stage to none" {
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=garbage\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [ "$output" = "none" ]
+}
+
 @test "init overwrites existing state" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-02"
   printf 'stage=execute\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"

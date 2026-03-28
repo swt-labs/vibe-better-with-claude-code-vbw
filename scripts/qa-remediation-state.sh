@@ -47,8 +47,16 @@ STAGES=("plan" "execute" "verify" "done")
 get_stage() {
   if [ -f "$STATE_FILE" ]; then
     local _val
+    local _stage
     _val=$(grep '^stage=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
-    echo "${_val:-none}"
+    _val="${_val:-none}"
+    for _stage in "${STAGES[@]}"; do
+      if [ "$_stage" = "$_val" ]; then
+        echo "$_val"
+        return 0
+      fi
+    done
+    echo "none"
   else
     echo "none"
   fi

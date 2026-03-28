@@ -201,35 +201,19 @@ case "$GATE_TYPE" in
     PHASE_DIR=$(ls -d "${PHASES_DIR}/${PHASE}-"* 2>/dev/null | head -1)
     [ -z "$PHASE_DIR" ] && { emit_result "pass" "phase dir not found"; exit 0; }
 
-    # Prefer final phase verification artifact over wave files.
-    # Selection order:
-    # 1) <phasePrefix>-VERIFICATION.md (authoritative final)
-    # 2) Latest <phasePrefix>-VERIFICATION-waveN.md
-    # 3) Brownfield fallback: VERIFICATION.md
-    # 4) Legacy fallback: first *-VERIFICATION*.md
+    # Resolve the authoritative verification artifact first. Under QA remediation,
+    # this may be the completed round's R{RR}-VERIFICATION.md rather than the
+    # frozen phase-root FAIL record.
     VERIFICATION_FILE=""
-    PHASE_BASENAME=$(basename "$PHASE_DIR")
-    PHASE_PREFIX="${PHASE_BASENAME%%-*}"
-
-    # 1) Final deterministic phase verification file
-    if [ -f "$PHASE_DIR/${PHASE_PREFIX}-VERIFICATION.md" ]; then
-      VERIFICATION_FILE="$PHASE_DIR/${PHASE_PREFIX}-VERIFICATION.md"
-    fi
-
-    # 2) Latest wave verification (if final file absent)
-    if [ -z "$VERIFICATION_FILE" ]; then
-      WAVE_FILES=$(ls -1 "$PHASE_DIR/${PHASE_PREFIX}-VERIFICATION-wave"*.md 2>/dev/null | (sort -V 2>/dev/null || sort))
-      if [ -n "$WAVE_FILES" ]; then
-        VERIFICATION_FILE=$(printf '%s\n' "$WAVE_FILES" | tail -1)
+    GATE_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    if [ -f "$GATE_SCRIPT_DIR/resolve-verification-path.sh" ]; then
+      VERIFICATION_FILE=$(bash "$GATE_SCRIPT_DIR/resolve-verification-path.sh" authoritative "$PHASE_DIR" 2>/dev/null || true)
+      if [ -n "$VERIFICATION_FILE" ] && [ ! -f "$VERIFICATION_FILE" ]; then
+        VERIFICATION_FILE=""
       fi
     fi
 
-    # 3) Brownfield fallback: non-prefixed VERIFICATION.md
-    if [ -z "$VERIFICATION_FILE" ] && [ -f "$PHASE_DIR/VERIFICATION.md" ]; then
-      VERIFICATION_FILE="$PHASE_DIR/VERIFICATION.md"
-    fi
-
-    # 4) Legacy fallback: any prefixed verification artifact
+    # Legacy fallback: any prefixed verification artifact.
     if [ -z "$VERIFICATION_FILE" ]; then
       for vf in "$PHASE_DIR"/*-VERIFICATION*.md; do
         [ -f "$vf" ] && VERIFICATION_FILE="$vf" && break

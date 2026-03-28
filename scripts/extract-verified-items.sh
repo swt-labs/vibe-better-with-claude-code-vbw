@@ -130,6 +130,8 @@ for vf in "${verif_files[@]}"; do
             else
               status=$(echo "$safe_line" | awk -F'|' '{gsub(/^ +| +$/, "", $5); print $5}')
             fi
+            # Strip markdown bold markers (**PASS** → PASS)
+            status=$(echo "$status" | sed 's/\*\*//g')
             if [[ -n "$check_id" && -n "$status" ]]; then
               echo "  $status $check_id: $description"
             fi
