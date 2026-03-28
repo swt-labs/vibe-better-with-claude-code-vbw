@@ -433,6 +433,40 @@ FIRST_UNVERIFIED_PHASE=""
 FIRST_UNVERIFIED_SLUG=""
 QA_STATUS="none"
 QA_ROUND="00"
+QA_REMEDIATING_PHASE=""
+QA_REMEDIATING_SLUG=""
+QA_REMEDIATING_ROUND="00"
+
+# Detect active QA remediation globally before the unverified-phase scan.
+# This prevents a later in-progress remediation from being masked by an earlier
+# fully built phase that simply lacks terminal UAT.
+if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
+  for _qr_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
+    [ -d "$_qr_dir" ] || continue
+    _qr_plans=$(count_phase_plans "$_qr_dir")
+    [ "$_qr_plans" -gt 0 ] || continue
+    _qr_sums=$(count_complete_summaries "$_qr_dir")
+    [ "$_qr_sums" -ge "$_qr_plans" ] || continue
+
+    _qr_rem_file="${_qr_dir}remediation/qa/.qa-remediation-stage"
+    [ -f "$_qr_rem_file" ] || continue
+
+    _qr_stage=$(grep '^stage=' "$_qr_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+    _qr_stage="${_qr_stage:-none}"
+    case "$_qr_stage" in
+      none|done) continue ;;
+    esac
+
+    _qr_round=$(grep '^round=' "$_qr_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+    _qr_round="${_qr_round:-01}"
+    _qr_dirname=$(basename "$_qr_dir")
+    QA_REMEDIATING_PHASE=$(echo "$_qr_dirname" | sed 's/^\([0-9]*\).*/\1/')
+    QA_REMEDIATING_SLUG="$_qr_dirname"
+    QA_REMEDIATING_ROUND="$_qr_round"
+    break
+  done
+fi
+
 if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   for _uv_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
     [ -d "$_uv_dir" ] || continue
@@ -594,11 +628,13 @@ fi
 # --- needs_qa_remediation override: route to QA remediation before verification ---
 # When QA remediation is active (qa_status=remediating), override next_phase_state
 # to needs_qa_remediation. This takes priority over needs_verification.
-if [ "$QA_STATUS" = "remediating" ] && [ -n "$FIRST_UNVERIFIED_PHASE" ]; then
-  NEXT_PHASE="$FIRST_UNVERIFIED_PHASE"
-  NEXT_PHASE_SLUG="$FIRST_UNVERIFIED_SLUG"
+if [ -n "$QA_REMEDIATING_PHASE" ]; then
+  NEXT_PHASE="$QA_REMEDIATING_PHASE"
+  NEXT_PHASE_SLUG="$QA_REMEDIATING_SLUG"
   NEXT_PHASE_STATE="needs_qa_remediation"
-  _QR_DIR="$PHASES_DIR/$FIRST_UNVERIFIED_SLUG"
+  QA_STATUS="remediating"
+  QA_ROUND="$QA_REMEDIATING_ROUND"
+  _QR_DIR="$PHASES_DIR/$QA_REMEDIATING_SLUG"
   if [ -d "$_QR_DIR" ]; then
     NEXT_PHASE_PLANS=$(count_phase_plans "$_QR_DIR")
     NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QR_DIR")
