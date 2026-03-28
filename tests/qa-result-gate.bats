@@ -701,3 +701,17 @@ VERIF
   [[ "$output" == *"qa_gate_plan_coverage=1/2"* ]]
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
+
+@test "unreadable VERIFICATION.md → QA_RERUN_REQUIRED" {
+  create_verif "write-verification.sh" "PASS"
+  chmod 000 "$PHASE_DIR/01-VERIFICATION.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=unreadable"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+
+  # Restore permissions for cleanup
+  chmod 644 "$PHASE_DIR/01-VERIFICATION.md"
+}

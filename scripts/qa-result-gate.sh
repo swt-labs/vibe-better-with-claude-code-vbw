@@ -124,7 +124,7 @@ for summary_file in "$PHASE_DIR"/*-SUMMARY.md; do
       line=$0; sub(/^[[:space:]]+- /, "", line)
       gsub(/^"/, "", line); gsub(/"$/, "", line)
       lc = tolower(line)
-      if (lc == "none" || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
+      if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
       count++
     }
     in_fm && in_dev && /^[^[:space:]]/ { exit }
@@ -167,7 +167,11 @@ PLANS_VERIFIED_COUNT=$(awk '
   NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
   in_fm && /^---[[:space:]]*$/ { exit }
   in_fm && /^plans_verified:/ { in_pv=1; next }
-  in_fm && in_pv && /^[[:space:]]+- / { count++; next }
+  in_fm && in_pv && /^[[:space:]]+- / {
+    val=$0; sub(/^[[:space:]]+- /, "", val)
+    if (!seen[val]++) count++
+    next
+  }
   in_fm && in_pv && /^[^[:space:]]/ { exit }
   END { print count }
 ' "$VERIF_PATH" 2>/dev/null)
