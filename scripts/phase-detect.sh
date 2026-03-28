@@ -497,6 +497,12 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
 
         # Compute QA status for this phase
         if [ "$_qa_rem_stage" = "done" ]; then
+          # Use round VERIFICATION.md for cross-validation (phase-level stays as original FAIL)
+          _qa_rem_round_padded=$(printf '%02d' "$((10#${_qa_rem_round:-1}))")
+          _qa_round_verif="${_uv_dir}remediation/qa/round-${_qa_rem_round_padded}/R${_qa_rem_round_padded}-VERIFICATION.md"
+          if [ -f "$_qa_round_verif" ]; then
+            _uv_verif="$_qa_round_verif"
+          fi
           # Cross-validate: ensure VERIFICATION.md also shows PASS
           if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
             _qa_done_result=$(awk '

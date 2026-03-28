@@ -1148,3 +1148,180 @@ EOF
   [[ "$output" == *"Fix UAT issues"* ]]
   [[ "$output" == *"Fix QA deviations"* ]]
 }
+
+# --- VERIFICATION HISTORY ---
+
+@test "compile-verify-context: emits verification history for phase-level VERIFICATION.md" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Item one | FAIL | Missing |
+| MH-02 | must_have | Item two | PASS | Done |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== VERIFICATION HISTORY ==="* ]]
+  [[ "$output" == *"--- Phase VERIFICATION (FAIL) ---"* ]]
+  [[ "$output" == *"FAIL"*"Missing"* ]]
+  # PASS rows should NOT appear in history
+  local fail_rows
+  fail_rows=$(echo "$output" | grep -c "Item two.*PASS" || true)
+  [ "$fail_rows" -eq 0 ]
+}
+
+@test "compile-verify-context: verification history compounds across rounds" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Widget renders fast
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Widget
+EOF
+  # Phase-level FAIL (original)
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget renders within 200ms | FAIL | Measured 350ms |
+| ART-03 | artifact | Test coverage | FAIL | No test file |
+EOF
+
+  # Round 01 VERIFICATION (partial fix)
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: Fix widget speed
+must_haves:
+  - Faster widget
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+round: 01
+status: complete
+---
+## What Was Built
+- Optimized widget
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+result: PARTIAL
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget renders within 200ms | FAIL | Measured 210ms |
+| ART-03 | artifact | Test coverage | PASS | Tests added |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== VERIFICATION HISTORY ==="* ]]
+  [[ "$output" == *"--- Phase VERIFICATION (FAIL) ---"* ]]
+  [[ "$output" == *"350ms"* ]]
+  [[ "$output" == *"--- Round 01 VERIFICATION (PARTIAL) ---"* ]]
+  [[ "$output" == *"210ms"* ]]
+}
+
+@test "compile-verify-context: no verification history when no VERIFICATION.md exists" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # No VERIFICATION HISTORY block
+  [[ "$output" != *"=== VERIFICATION HISTORY ==="* ]]
+}
+
+@test "compile-verify-context: verification history only extracts FAIL rows" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Good thing | PASS | Works |
+| MH-02 | must_have | Bad thing | FAIL | Broken |
+| MH-03 | must_have | Also good | PASS | Fine |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== VERIFICATION HISTORY ==="* ]]
+  # Only FAIL row present
+  [[ "$output" == *"Bad thing"*"FAIL"* ]]
+  # Count lines with "Good thing" and "Also good" in verification history section
+  # These are PASS rows and should not appear in the history
+  local pass_in_history
+  pass_in_history=$(echo "$output" | awk '/VERIFICATION HISTORY/,0' | grep -c "PASS" || true)
+  [ "$pass_in_history" -eq 0 ]
+}

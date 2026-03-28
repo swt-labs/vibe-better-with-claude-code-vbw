@@ -62,8 +62,19 @@ VERIF_PATH="$PHASE_DIR/$VERIF_NAME"
 # Detect active QA remediation — deviation override is suppressed during remediation
 # because SUMMARY.md deviations are historical (the code has been fixed)
 IN_REMEDIATION="false"
+PLAN_SCOPE_DIR="$PHASE_DIR"  # Default: phase-level plans
 if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
   IN_REMEDIATION="true"
+  # Auto-discover round VERIFICATION.md
+  _gate_round=$(grep '^round=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+  _gate_round="${_gate_round:-01}"
+  _gate_round_dir="$PHASE_DIR/remediation/qa/round-${_gate_round}"
+  _gate_round_verif="${_gate_round_dir}/R${_gate_round}-VERIFICATION.md"
+  if [ -f "$_gate_round_verif" ]; then
+    VERIF_PATH="$_gate_round_verif"
+    VERIF_NAME="R${_gate_round}-VERIFICATION.md"
+    PLAN_SCOPE_DIR="$_gate_round_dir"
+  fi
 fi
 
 # 1. File doesn't exist
@@ -156,7 +167,7 @@ done
 
 # Plan coverage — count PLAN.md files and plans_verified entries
 PLAN_COUNT=0
-for plan_file in "$PHASE_DIR"/*-PLAN.md; do
+for plan_file in "$PLAN_SCOPE_DIR"/*-PLAN.md; do
   [ -f "$plan_file" ] || continue
   PLAN_COUNT=$((PLAN_COUNT + 1))
 done

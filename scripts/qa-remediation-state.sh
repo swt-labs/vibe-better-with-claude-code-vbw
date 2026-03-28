@@ -136,6 +136,7 @@ emit_metadata() {
   echo "round_dir=${round_dir}"
   echo "plan_path=${round_dir}/R${round}-PLAN.md"
   echo "summary_path=${round_dir}/R${round}-SUMMARY.md"
+  echo "verification_path=${round_dir}/R${round}-VERIFICATION.md"
 }
 
 case "$CMD" in

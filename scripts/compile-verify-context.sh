@@ -289,4 +289,59 @@ while IFS= read -r plan_file; do
   echo ""
 done <<< "$ALL_PLAN_FILES"
 
+# --- Verification History (compound for QA remediation rounds) ---
+# Extracts FAIL rows from phase-level and per-round VERIFICATION.md files
+# so each QA round has full visibility into what was originally broken
+# and what prior rounds attempted/found.
+_cvc_phase_num=$(basename "$PHASE_DIR" | grep -oE '^[0-9]+' 2>/dev/null || true)
+_cvc_phase_verif=""
+if [ -n "$_cvc_phase_num" ]; then
+  _cvc_phase_verif=$(find "$PHASE_DIR" -maxdepth 1 -name "${_cvc_phase_num}-VERIFICATION.md" 2>/dev/null | head -1)
+fi
+
+# QA round VERIFICATION.md files
+_cvc_qa_round_verifs=$(find "$PHASE_DIR" -path '*/remediation/qa/round-*/R*-VERIFICATION.md' 2>/dev/null | sort)
+
+_cvc_has_verif_history=false
+if [ -n "$_cvc_phase_verif" ] && [ -f "$_cvc_phase_verif" ]; then
+  _cvc_has_verif_history=true
+fi
+if [ -n "$_cvc_qa_round_verifs" ]; then
+  _cvc_has_verif_history=true
+fi
+
+if [ "$_cvc_has_verif_history" = true ]; then
+  echo "=== VERIFICATION HISTORY ==="
+
+  # Phase-level (original findings)
+  if [ -n "$_cvc_phase_verif" ] && [ -f "$_cvc_phase_verif" ]; then
+    _cvc_vhist_result=$(awk '
+      BEGIN { in_fm=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+    ' "$_cvc_phase_verif" 2>/dev/null) || _cvc_vhist_result=""
+    echo "--- Phase VERIFICATION (${_cvc_vhist_result:-unknown}) ---"
+    awk '/^\| / && /FAIL/' "$_cvc_phase_verif" 2>/dev/null || true
+  fi
+
+  # Per-round (chronological compounding)
+  if [ -n "$_cvc_qa_round_verifs" ]; then
+    while IFS= read -r _cvc_verif_file; do
+      [ -f "$_cvc_verif_file" ] || continue
+      _cvc_vhist_rr=$(basename "$_cvc_verif_file" | sed 's/^R\([0-9]*\).*/\1/')
+      _cvc_vhist_rresult=$(awk '
+        BEGIN { in_fm=0 }
+        NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+        in_fm && /^---[[:space:]]*$/ { exit }
+        in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+      ' "$_cvc_verif_file" 2>/dev/null) || _cvc_vhist_rresult=""
+      echo "--- Round ${_cvc_vhist_rr} VERIFICATION (${_cvc_vhist_rresult:-unknown}) ---"
+      awk '/^\| / && /FAIL/' "$_cvc_verif_file" 2>/dev/null || true
+    done <<< "$_cvc_qa_round_verifs"
+  fi
+
+  echo ""
+fi
+
 echo "verify_plan_count=${PLAN_COUNT}"

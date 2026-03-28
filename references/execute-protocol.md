@@ -604,8 +604,10 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    - After Dev completes, advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
 
    **stage=verify:** Re-run QA:
-   - Spawn QA agent as subagent — overwrites the phase-level VERIFICATION.md
-   - Include dev-surfaced issues from the round's `R{RR}-SUMMARY.md` (same collection logic as Step 4)
+   - Run `compile-verify-context.sh {phase-dir}` to get compounded verification history (original phase-level failures + all prior round results) plus plan/summary context
+   - Spawn QA agent as subagent — writes to `{verification_path}` (from `qa-remediation-state.sh` metadata)
+     - Output path: `{round_dir}/R{RR}-VERIFICATION.md` — phase-level VERIFICATION.md stays frozen
+     - Include the compiled verify context output in QA's task description
    - After QA returns, run the deterministic gate:
      ```bash
      bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
