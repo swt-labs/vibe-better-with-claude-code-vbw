@@ -43,6 +43,15 @@ if [[ -z "$tier" || -z "$result" ]]; then
   exit 1
 fi
 
+# Validate result is one of the allowed values
+case "$result" in
+  PASS|FAIL|PARTIAL) ;;
+  *)
+    echo "Error: result must be PASS, FAIL, or PARTIAL (got '$result')" >&2
+    exit 1
+    ;;
+esac
+
 if [[ -z "$checks_passed" || -z "$checks_total" ]]; then
   echo "Error: missing required fields (checks.passed, checks.total)" >&2
   exit 1

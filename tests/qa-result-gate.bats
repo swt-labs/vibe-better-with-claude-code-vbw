@@ -172,3 +172,54 @@ create_verif() {
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
   [[ "$output" == *"qa_gate_fail_count=1"* ]]
 }
+
+@test "empty file → QA_RERUN_REQUIRED" {
+  touch "$PHASE_DIR/VERIFICATION.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+  [[ "$output" == *"qa_gate_writer=missing"* ]]
+}
+
+@test "no frontmatter delimiters → QA_RERUN_REQUIRED" {
+  printf 'Just some text without frontmatter\n' > "$PHASE_DIR/VERIFICATION.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+  [[ "$output" == *"qa_gate_writer=missing"* ]]
+}
+
+@test "FAIL result with multiple FAIL rows → correct count" {
+  create_verif "write-verification.sh" "FAIL" "## Checks
+| Check | Status |
+|-------|--------|
+| Feature A | FAIL |
+| Feature B | FAIL |
+| Feature C | PASS |"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  [[ "$output" == *"qa_gate_result=FAIL"* ]]
+  [[ "$output" == *"qa_gate_fail_count=2"* ]]
+}
+
+@test "trailing whitespace in result field is stripped" {
+  cat > "$PHASE_DIR/VERIFICATION.md" <<'VERIF'
+---
+result: PASS 
+writer: write-verification.sh
+---
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+}

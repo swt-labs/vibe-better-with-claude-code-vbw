@@ -57,18 +57,18 @@ WRITER=$(awk '
   BEGIN { in_fm=0 }
   NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
   in_fm && /^---[[:space:]]*$/ { exit }
-  in_fm && /^writer:/ { sub(/^writer:[[:space:]]*/, ""); print; exit }
+  in_fm && /^writer:/ { sub(/^writer:[[:space:]]*/, ""); sub(/[[:space:]]+$/, ""); print; exit }
 ' "$VERIF_PATH" 2>/dev/null)
 
 RESULT=$(awk '
   BEGIN { in_fm=0 }
   NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
   in_fm && /^---[[:space:]]*$/ { exit }
-  in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+  in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); sub(/[[:space:]]+$/, ""); print; exit }
 ' "$VERIF_PATH" 2>/dev/null)
 
 # Body FAIL count (defense-in-depth cross-check)
-FAIL_COUNT=$(grep -cE '\|\s*\*{0,2}FAIL\*{0,2}\s*\|' "$VERIF_PATH" 2>/dev/null || echo 0)
+FAIL_COUNT=$(grep -cE '\|[[:space:]]*\*{0,2}FAIL\*{0,2}[[:space:]]*\|' "$VERIF_PATH" 2>/dev/null || echo 0)
 
 # Output diagnostic fields
 echo "qa_gate_writer=${WRITER:-missing}"

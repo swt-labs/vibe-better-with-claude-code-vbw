@@ -252,27 +252,30 @@ done
 echo ""
 echo "=== QA Result Gate Contract ==="
 
-# vibe.md must reference qa-result-gate.sh in the QA gate section
-if grep -q 'qa-result-gate\.sh' "$COMMANDS_DIR/vibe.md" 2>/dev/null; then
-  pass "vibe: references qa-result-gate.sh"
+# vibe.md must reference qa-result-gate.sh at both gate call sites (primary + remediation verify)
+_vibe_gate_count=$(grep -c 'qa-result-gate\.sh' "$COMMANDS_DIR/vibe.md" 2>/dev/null || echo 0)
+if [ "$_vibe_gate_count" -ge 2 ]; then
+  pass "vibe: references qa-result-gate.sh at $_vibe_gate_count call sites"
 else
-  fail "vibe: missing qa-result-gate.sh reference in QA gate section"
+  fail "vibe: expected >=2 qa-result-gate.sh references, found $_vibe_gate_count"
 fi
 
-# execute-protocol.md must reference qa-result-gate.sh in Step 4.1
-if grep -q 'qa-result-gate\.sh' "$ROOT/references/execute-protocol.md" 2>/dev/null; then
-  pass "execute-protocol: references qa-result-gate.sh"
+# execute-protocol.md must reference qa-result-gate.sh at both call sites
+_ep_gate_count=$(grep -c 'qa-result-gate\.sh' "$ROOT/references/execute-protocol.md" 2>/dev/null || echo 0)
+if [ "$_ep_gate_count" -ge 2 ]; then
+  pass "execute-protocol: references qa-result-gate.sh at $_ep_gate_count call sites"
 else
-  fail "execute-protocol: missing qa-result-gate.sh reference in Step 4.1"
+  fail "execute-protocol: expected >=2 qa-result-gate.sh references, found $_ep_gate_count"
 fi
 
-# Both must include the anti-rationalization instruction
+# Both must include the anti-rationalization instruction at all gate call sites
 for f in "$COMMANDS_DIR/vibe.md" "$ROOT/references/execute-protocol.md"; do
   base=$(basename "$f")
-  if grep -q 'no exceptions, no judgment' "$f" 2>/dev/null; then
-    pass "$base: has anti-rationalization instruction"
+  _ar_count=$(grep -c 'no exceptions, no judgment, no rationalization' "$f" 2>/dev/null || echo 0)
+  if [ "$_ar_count" -ge 2 ]; then
+    pass "$base: has anti-rationalization instruction at $_ar_count call sites"
   else
-    fail "$base: missing anti-rationalization instruction for qa_gate_routing"
+    fail "$base: expected >=2 anti-rationalization instructions, found $_ar_count"
   fi
 done
 

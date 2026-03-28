@@ -440,7 +440,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     ```bash
     bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
     ```
-    **Follow `qa_gate_routing` literally — no exceptions, no judgment:**
+    **Follow `qa_gate_routing` output literally — no exceptions, no judgment, no rationalization. Do NOT evaluate whether failures are justified, acceptable, or minor. The gate script has already made the decision:**
     - `qa_gate_routing=PROCEED_TO_UAT` → advance to done: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`, then **continue directly into Verify mode** for the phase
     - `qa_gate_routing=REMEDIATION_REQUIRED` → start new round: `bash {plugin-root}/scripts/qa-remediation-state.sh needs-round {phase-dir}`, loop back to stage=plan
     - `qa_gate_routing=QA_RERUN_REQUIRED` → re-spawn QA immediately (max 2 retries per round). If QA still fails to produce valid output, treat as REMEDIATION_REQUIRED.
