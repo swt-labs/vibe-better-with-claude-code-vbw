@@ -97,7 +97,16 @@ Deep tier only. Traces requirement IDs to implementing artifacts.
 
 Scope: current phase only. Cross-phase requirements noted but not flagged.
 
-## 8. Continuous Verification Hooks (VRFY-03, VRFY-04, VRFY-05)
+## 8. Test Execution Best Practices (VRFY-09)
+
+When running a project's test suite during verification:
+
+- **Capture full output:** Redirect test output to a file (`> /tmp/test-results.txt 2>&1`) rather than piping through `tail` or `head`. Truncated output hides failures that appear early in the run.
+- **Search for failures:** After capturing, search the output for failure patterns (`grep -E 'FAIL|ERROR|error:|failed' /tmp/test-results.txt`) to find all failures regardless of position.
+- **Report tail for summary:** Display the last 30-50 lines for the summary/statistics, but base your verdict on the full failure search.
+- **Clean up:** Remove temp files after verification completes.
+
+## 9. Continuous Verification Hooks (VRFY-03, VRFY-04, VRFY-05)
 
 Protocol instructions in agent definitions (not JS hooks or event handlers).
 

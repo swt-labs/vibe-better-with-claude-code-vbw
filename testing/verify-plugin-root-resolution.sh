@@ -72,6 +72,7 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; d
     | grep -v '@${CLAUDE_PLUGIN_ROOT}' \
     | grep -v 'Plugin root:' \
     | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -[df] "${CLAUDE_PLUGIN_ROOT}' \
+    | grep -v 'if \[ -z "\$R" \] && \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" \]; then R="${CLAUDE_PLUGIN_ROOT}"; fi' \
     | grep -v 'VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"' \
     | grep -v 'checked CLAUDE_PLUGIN_ROOT' \
     | grep -v 'CLAUDE_PLUGIN_ROOT:+' \
@@ -88,6 +89,7 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; d
       | grep -v '@${CLAUDE_PLUGIN_ROOT}' \
       | grep -v 'Plugin root:' \
       | grep -v 'if \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -[df] "${CLAUDE_PLUGIN_ROOT}' \
+      | grep -v 'if \[ -z "\$R" \] && \[ -n "${CLAUDE_PLUGIN_ROOT:-}" \] && \[ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" \]; then R="${CLAUDE_PLUGIN_ROOT}"; fi' \
       | grep -v 'VBW_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"' \
       | grep -v 'checked CLAUDE_PLUGIN_ROOT' \
       | grep -v 'CLAUDE_PLUGIN_ROOT:+' \
@@ -260,14 +262,14 @@ for file in "$COMMANDS_DIR"/*.md; do
   fi
 done
 
-# Check 8b: All command preambles link REAL_R not raw R (dynamic coverage)
+# Check 8b: All command preambles use the link helper with REAL_R (dynamic coverage)
 for file in "$COMMANDS_DIR"/*.md; do
   base="$(basename "$file" .md)"
   if grep -q 'LINK="/tmp/.vbw-plugin-root-link-' "$file"; then
-    if grep -q 'ln -s "$REAL_R"' "$file"; then
-      pass "$base: links REAL_R (canonical target)"
+    if grep -q 'ensure-plugin-root-link.sh" "$LINK" "$REAL_R"' "$file"; then
+      pass "$base: uses ensure-plugin-root-link helper with REAL_R"
     else
-      fail "$base: missing ln -s \"\$REAL_R\" — may link raw \$R through cache chain"
+      fail "$base: missing ensure-plugin-root-link helper call with REAL_R"
     fi
   fi
 done
@@ -520,4 +522,80 @@ if [ "$FAIL" -gt 0 ]; then
 fi
 
 echo "All behavioral resolution checks passed."
+
+# --- Phase 5: phase-detect self-healing regression checks ---
+echo ""
+echo "=== Phase-Detect Self-Healing Regression Checks ==="
+
+PASS=0
+FAIL=0
+
+PHASE_DETECT_COMMANDS=(vibe.md verify.md status.md resume.md qa.md discuss.md)
+
+# Check 18: targeted commands define a self-healing refresh helper in phase-detect readers
+for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
+  file="$COMMANDS_DIR/$rel"
+  base="$(basename "$rel" .md)"
+  if grep -q '_refresh_phase_detect()' "$file"; then
+    pass "$base: phase-detect reader defines _refresh_phase_detect()"
+  else
+    fail "$base: missing _refresh_phase_detect() self-healing helper"
+  fi
+done
+
+# Check 19: targeted commands no longer use link-order-dependent wait-loop fallback
+# Old race-prone form (same line or adjacent lines):
+#   if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then
+#     i=0; while [ ! -L "$L" ] && [ $i -lt 20 ]; do ...
+for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
+  file="$COMMANDS_DIR/$rel"
+  base="$(basename "$rel" .md)"
+  if awk '
+    /phase_detect_error=true/ && /\[ -L "\$L" \]/ {
+      if (/while \[ ! -L "\$L" \] && \[ \$i -lt 20 \]/) {
+        found=1; exit
+      }
+      armed=1
+      next
+    }
+    armed && /while \[ ! -L "\$L" \] && \[ \$i -lt 20 \]/ {
+      found=1; exit
+    }
+    { armed=0 }
+    END { exit found ? 0 : 1 }
+  ' "$file"; then
+    fail "$base: still uses race-prone wait-for-link phase-detect fallback"
+  else
+    pass "$base: does not use race-prone wait-for-link phase-detect fallback"
+  fi
+done
+
+# Check 20: _refresh_phase_detect() includes symlink glob step (step 5 of 6-step cascade)
+for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
+  file="$COMMANDS_DIR/$rel"
+  base="$(basename "$rel" .md)"
+  # Count _refresh_phase_detect function definitions
+  func_count=$(grep -c '_refresh_phase_detect()' "$file" || true)
+  # Count symlink glob steps inside the file (after first function definition)
+  glob_count=$(grep -c '/tmp/.vbw-plugin-root-link-\*/scripts/hook-wrapper.sh' "$file" || true)
+  # The preamble line also has a glob, so subtract 1 for commands with a preamble glob
+  preamble_glob=$(head -25 "$file" | grep -c '/tmp/.vbw-plugin-root-link-\*/scripts/hook-wrapper.sh' || true)
+  helper_globs=$((glob_count - preamble_glob))
+  if [ "$helper_globs" -ge "$func_count" ]; then
+    pass "$base: _refresh_phase_detect() includes symlink glob step"
+  else
+    fail "$base: _refresh_phase_detect() missing symlink glob step ($helper_globs globs for $func_count functions)"
+  fi
+done
+
+echo ""
+echo "==============================="
+echo "TOTAL: $PASS PASS, $FAIL FAIL"
+echo "==============================="
+
+if [ "$FAIL" -gt 0 ]; then
+  exit 1
+fi
+
+echo "All phase-detect self-healing regression checks passed."
 exit 0

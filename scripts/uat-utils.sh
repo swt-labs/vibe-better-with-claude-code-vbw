@@ -129,7 +129,7 @@ latest_non_source_uat() {
 # count_uat_rounds — Count remediation rounds in both flat and round-dir layouts.
 #
 # Flat layout: scans for {phase_num}-UAT-round-*.md files at phase root.
-# Round-dir layout: scans for remediation/round-*/R*-UAT.md files.
+# Round-dir layout: scans for remediation/uat/round-*/R*-UAT.md files.
 # Returns the maximum round number found across both locations (0 if none).
 count_uat_rounds() {
   local dir="$1"
@@ -153,8 +153,8 @@ count_uat_rounds() {
     fi
   done
 
-  # Round-dir layout: remediation/round-{NN}/R{NN}-UAT.md
-  for rf in "${dir}"remediation/round-*/R*-UAT.md; do
+  # Round-dir layout: remediation/uat/round-{NN}/R{NN}-UAT.md
+  for rf in "${dir}"remediation/uat/round-*/R*-UAT.md; do
     [ -f "$rf" ] || continue
     local rr_num
     rr_num=$(basename "$rf" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
@@ -220,14 +220,14 @@ current_uat() {
   esac
 
   # Check round-dir remediation state
-  local state_file="${dir}remediation/.uat-remediation-stage"
+  local state_file="${dir}remediation/uat/.uat-remediation-stage"
   if [ -f "$state_file" ]; then
     local layout round rr
     layout=$(grep '^layout=' "$state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
     round=$(grep '^round=' "$state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
     if [ "$layout" = "round-dir" ] && [ -n "$round" ]; then
       rr=$(printf '%02d' "$round" 2>/dev/null) || rr="$round"
-      local round_uat="${dir}remediation/round-${rr}/R${rr}-UAT.md"
+      local round_uat="${dir}remediation/uat/round-${rr}/R${rr}-UAT.md"
       if [ -f "$round_uat" ]; then
         printf '%s\n' "$round_uat"
         return 0
@@ -235,7 +235,7 @@ current_uat() {
       # Current round's UAT doesn't exist yet (start of new round).
       # Scan all round dirs for the latest existing R{NN}-UAT.md.
       local _prev_best="" _prev_best_num=-1
-      for _ruat in "${dir}"remediation/round-*/R*-UAT.md; do
+      for _ruat in "${dir}"remediation/uat/round-*/R*-UAT.md; do
         [ -f "$_ruat" ] || continue
         local _rnum
         _rnum=$(basename "$_ruat" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')

@@ -169,9 +169,60 @@ for pd_cmd in $PHASE_DETECT_REQUIRED_COMMANDS; do
 done
 
 echo ""
-echo "=== Milestone Context Refresh Verification ==="
+echo "=== Phase-Detect Refresh Safety Verification ==="
+
+for pd_safe_cmd in vibe verify resume status discuss qa; do
+  pd_safe_file="$COMMANDS_DIR/${pd_safe_cmd}.md"
+  if [ ! -f "$pd_safe_file" ]; then
+    fail "$pd_safe_cmd: command file not found"
+    continue
+  fi
+
+  if grep -Fq '_PD_CACHE="$PD"' "$pd_safe_file"; then
+    fail "$pd_safe_cmd: stale phase-detect cache fallback still present"
+  else
+    pass "$pd_safe_cmd: no stale phase-detect cache fallback"
+  fi
+
+  if grep -Fq 'if [ -L "$L" ] && [ -f "$L/scripts/hook-wrapper.sh" ]; then R="$L"; fi' "$pd_safe_file"; then
+    fail "$pd_safe_cmd: reuses session symlink as plugin-root candidate"
+  else
+    pass "$pd_safe_cmd: does not trust session symlink as plugin root"
+  fi
+done
+
+echo ""
+echo "=== Verify Guardrail Verification ==="
 
 VIBE_FILE="$COMMANDS_DIR/vibe.md"
+VERIFY_FILE="$COMMANDS_DIR/verify.md"
+
+if grep -q 'Verify-context error guard (NON-NEGOTIABLE)' "$VERIFY_FILE"; then
+  pass "verify: has fail-closed verify-context error guard"
+else
+  fail "verify: missing fail-closed verify-context error guard"
+fi
+
+if grep -q 'If the user specified an explicit phase number that differs from the auto-detected target, ignore the pre-computed `qa_status`' "$VERIFY_FILE"; then
+  pass "verify: explicit target phases ignore auto-detected qa_status"
+else
+  fail "verify: missing explicit-phase qa_status override guidance"
+fi
+
+if grep -q 'Only proceed to UAT when the PASS is fresh for the target phase' "$VERIFY_FILE"; then
+  pass "verify: explicit QA gate requires fresh PASS for target phase"
+else
+  fail "verify: missing fresh-PASS requirement in explicit QA gate"
+fi
+
+if grep -q 'echo "verify_context=unavailable"' "$VIBE_FILE"; then
+  pass "vibe: routed verify precompute emits fail-closed verify_context sentinel"
+else
+  fail "vibe: routed verify precompute missing fail-closed verify_context sentinel"
+fi
+
+echo ""
+echo "=== Milestone Context Refresh Verification ==="
 mode_block() {
   local heading="$1"
   awk -v h="$heading" '
@@ -195,6 +246,36 @@ for mode in "### Mode: Add Phase" "### Mode: Insert Phase" "### Mode: Remove Pha
     pass "vibe: $label preserves milestone decisions and deferred ideas"
   else
     fail "vibe: $label missing preservation instruction for milestone CONTEXT refresh"
+  fi
+done
+
+echo ""
+echo "=== QA Result Gate Contract ==="
+
+# vibe.md must reference qa-result-gate.sh at both gate call sites (primary + remediation verify)
+_vibe_gate_count=$(grep -c 'qa-result-gate\.sh' "$COMMANDS_DIR/vibe.md" 2>/dev/null || echo 0)
+if [ "$_vibe_gate_count" -ge 2 ]; then
+  pass "vibe: references qa-result-gate.sh at $_vibe_gate_count call sites"
+else
+  fail "vibe: expected >=2 qa-result-gate.sh references, found $_vibe_gate_count"
+fi
+
+# execute-protocol.md must reference qa-result-gate.sh at both call sites
+_ep_gate_count=$(grep -c 'qa-result-gate\.sh' "$ROOT/references/execute-protocol.md" 2>/dev/null || echo 0)
+if [ "$_ep_gate_count" -ge 2 ]; then
+  pass "execute-protocol: references qa-result-gate.sh at $_ep_gate_count call sites"
+else
+  fail "execute-protocol: expected >=2 qa-result-gate.sh references, found $_ep_gate_count"
+fi
+
+# Both must include the anti-rationalization instruction at all gate call sites
+for f in "$COMMANDS_DIR/vibe.md" "$ROOT/references/execute-protocol.md"; do
+  base=$(basename "$f")
+  _ar_count=$(grep -c 'no exceptions, no judgment, no rationalization' "$f" 2>/dev/null || echo 0)
+  if [ "$_ar_count" -ge 2 ]; then
+    pass "$base: has anti-rationalization instruction at $_ar_count call sites"
+  else
+    fail "$base: expected >=2 anti-rationalization instructions, found $_ar_count"
   fi
 done
 

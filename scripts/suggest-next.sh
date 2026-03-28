@@ -331,7 +331,7 @@ if [ -d "$PLANNING_DIR" ]; then
       done
       # Round-dir fallback: check remediation round UATs
       if [ "$has_uat" != true ]; then
-        for uf in "$active_phase_dir"/remediation/round-*/R*-UAT.md; do
+        for uf in "$active_phase_dir"/remediation/uat/round-*/R*-UAT.md; do
           [ -f "$uf" ] || continue
           us=$(read_status_field "$uf")
           if [ "$us" = "complete" ] || [ "$us" = "passed" ]; then

@@ -188,7 +188,7 @@ CURRENT_ROUND=$((MAX_ARCHIVED + 1))
 # Build recurrence map: for each archived round, extract issue IDs
 # Format: associative-style lines "ID ROUND_NUM" in a temp file
 # Scans both flat layout ({NN}-UAT-round-*.md) and round-dir layout
-# (remediation/round-*/R*-UAT.md).
+# (remediation/uat/round-*/R*-UAT.md).
 : > /tmp/.vbw-uat-round-ids-$$.txt
 if type extract_round_issue_ids &>/dev/null && [ "$MAX_ARCHIVED" -gt 0 ]; then
   # Flat layout: {phase_num}-UAT-round-{NN}.md
@@ -201,8 +201,8 @@ if type extract_round_issue_ids &>/dev/null && [ "$MAX_ARCHIVED" -gt 0 ]; then
       done
     fi
   done >> /tmp/.vbw-uat-round-ids-$$.txt
-  # Round-dir layout: remediation/round-{NN}/R{NN}-UAT.md
-  for rf in "${PHASE_DIR%/}"/remediation/round-*/R*-UAT.md; do
+  # Round-dir layout: remediation/uat/round-{NN}/R{NN}-UAT.md
+  for rf in "${PHASE_DIR%/}"/remediation/uat/round-*/R*-UAT.md; do
     [ -f "$rf" ] || continue
     ROUND_NUM=$(basename "$rf" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
     if [ -n "$ROUND_NUM" ] && echo "$ROUND_NUM" | grep -qE '^[0-9]+$'; then

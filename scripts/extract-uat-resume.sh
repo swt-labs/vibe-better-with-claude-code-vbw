@@ -31,13 +31,13 @@ fi
 # layout, check ONLY the current round's UAT file. Do NOT fall back to
 # previous rounds — stale resume data (e.g. all_done from round 01) would
 # cause the model to STOP instead of generating fresh tests for round 02.
-_state_file="${PHASE_DIR%/}/remediation/.uat-remediation-stage"
+_state_file="${PHASE_DIR%/}/remediation/uat/.uat-remediation-stage"
 if [ -f "$_state_file" ]; then
   _layout=$(grep '^layout=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
   _round=$(grep '^round=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
   if [ "$_layout" = "round-dir" ] && [ -n "$_round" ]; then
     _rr=$(printf '%02d' "$_round" 2>/dev/null) || _rr="$_round"
-    _round_uat="${PHASE_DIR%/}/remediation/round-${_rr}/R${_rr}-UAT.md"
+    _round_uat="${PHASE_DIR%/}/remediation/uat/round-${_rr}/R${_rr}-UAT.md"
     if [ -f "$_round_uat" ]; then
       UAT_FILE="$_round_uat"
     else

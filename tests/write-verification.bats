@@ -41,6 +41,24 @@ JSON
   grep -q 'Feature exists' "$TEST_TEMP_DIR/out.md"
 }
 
+@test "write-verification: records verified_at_commit for current product code" {
+  cd "$TEST_TEMP_DIR"
+  git init --quiet
+  git config user.email "test@test.com"
+  git config user.name "Test"
+  echo "print('hello')" > app.py
+  git add app.py
+  git commit -m "add app" --quiet
+  expected_commit="$(git rev-parse HEAD)"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"phase":"01","tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Feature exists","status":"PASS","evidence":"Found it"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q "^verified_at_commit: $expected_commit$" "$TEST_TEMP_DIR/out.md"
+}
+
 @test "write-verification: generates Artifact Checks table" {
   cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
 {"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"ART-01","category":"artifact","description":"README present","status":"PASS","evidence":"exists"}]}}
@@ -130,9 +148,9 @@ JSON
 # write-verification.sh: fallback without checks_detail
 # =============================================================================
 
-@test "write-verification: falls back to body when no checks_detail" {
+@test "write-verification: falls back to body when no checks_detail (FAIL result)" {
   cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
-{"payload":{"tier":"quick","result":"PASS","checks":{"passed":3,"failed":0,"total":3},"body":"## Custom Content\nSome free-form text"}}
+{"payload":{"tier":"quick","result":"FAIL","checks":{"passed":3,"failed":0,"total":3},"body":"## Custom Content\nSome free-form text"}}
 JSON
   run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
   [ "$status" -eq 0 ]
@@ -271,12 +289,84 @@ JSON
   # Extract frontmatter field names in order
   local fields
   fields=$(sed -n '/^---$/,/^---$/{ /^---$/d; s/:.*//; p; }' "$TEST_TEMP_DIR/out.md" | tr '\n' ',')
-  [[ "$fields" == "phase,tier,result,passed,failed,total,date," ]]
+  [[ "$fields" == "phase,tier,result,passed,failed,total,date,verified_at_commit,writer," ]]
+}
+
+# =============================================================================
+# write-verification.sh: provenance marker and result integrity
+# =============================================================================
+
+@test "write-verification: includes writer provenance field in frontmatter" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Test","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '^writer: write-verification.sh' "$TEST_TEMP_DIR/out.md"
+}
+
+@test "write-verification: auto-corrects PASS to PARTIAL when FAIL checks exist" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"deep","result":"PASS","checks":{"passed":2,"failed":1,"total":3},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","description":"B","status":"PASS","evidence":"ok"},{"id":"D-01","category":"must_have","description":"Deviation","status":"FAIL","evidence":"plan violated"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  # Result should be corrected from PASS to PARTIAL
+  grep -q '^result: PARTIAL' "$TEST_TEMP_DIR/out.md"
+  # Warning should be emitted on stderr
+  [[ "$output" == *"result auto-corrected from PASS to PARTIAL"* ]]
+}
+
+@test "write-verification: preserves FAIL result when FAIL checks exist" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"deep","result":"FAIL","checks":{"passed":1,"failed":1,"total":2},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"},{"id":"D-01","category":"must_have","description":"Deviation","status":"FAIL","evidence":"plan violated"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '^result: FAIL' "$TEST_TEMP_DIR/out.md"
+}
+
+@test "write-verification: preserves PASS when no FAIL checks" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"checks_detail":[{"id":"MH-01","category":"must_have","description":"A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","description":"B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '^result: PASS' "$TEST_TEMP_DIR/out.md"
 }
 
 # =============================================================================
 # write-verification.sh: edge cases from QA round 1
 # =============================================================================
+
+@test "write-verification: rejects PASS without checks_detail" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PASS","checks":{"passed":1,"failed":0,"total":1}}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"checks_detail is required when result is PASS"* ]]
+  [ ! -f "$TEST_TEMP_DIR/out.md" ]
+}
+
+@test "write-verification: rejects PARTIAL without checks_detail" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"PARTIAL","checks":{"passed":1,"failed":1,"total":2}}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"checks_detail is required when result is PASS or PARTIAL"* ]]
+  [ ! -f "$TEST_TEMP_DIR/out.md" ]
+}
+
+@test "write-verification: allows FAIL without checks_detail" {
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"standard","result":"FAIL","checks":{"passed":1,"failed":1,"total":2},"failures":[{"check":"Link check"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$TEST_TEMP_DIR/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '^result: FAIL' "$TEST_TEMP_DIR/out.md"
+}
 
 @test "write-verification: rejects checks_detail as object instead of array" {
   cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
@@ -667,4 +757,139 @@ JSON
   [[ "$output" == *"PASS MH-01: Feature A"* ]]
   [[ "$output" == *"PASS KL-01: a.js"* ]]
   [[ "$output" == *"FAIL ART-01: README.md"* ]]
+}
+
+# =============================================================================
+# write-verification.sh: plans_verified validation
+# =============================================================================
+
+@test "write-verification: plans_verified written to frontmatter" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  # Create PLAN.md files
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"plans_verified":["01-01","01-02"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Feature A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"01-02","description":"Feature B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '^plans_verified:' "$pdir/out.md"
+  grep -q '  - 01-01' "$pdir/out.md"
+  grep -q '  - 01-02' "$pdir/out.md"
+}
+
+@test "write-verification: rejects missing plans_verified when plans exist" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Test","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"plans_verified is required"* ]]
+}
+
+@test "write-verification: rejects incomplete plans_verified" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+  echo "---" > "$pdir/01-03-PLAN.md"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"plans_verified":["01-01","01-02"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Test A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"01-02","description":"Test B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"plans_verified has 2 entries but 3 PLAN.md files exist"* ]]
+}
+
+@test "write-verification: rejects plans_verified with no matching plan_ref in checks" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+
+  # plans_verified lists 01-02, but no check has plan_ref=01-02
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"plans_verified":["01-01","01-02"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Test A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"01-01","description":"Test B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"plan '01-02' is in plans_verified but no check"* ]]
+}
+
+@test "write-verification: accepts valid plans_verified with plan_ref cross-references" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":3,"failed":0,"total":3},"plans_verified":["01-01","01-02"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Test A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"01-02","description":"Test B","status":"PASS","evidence":"ok"},{"id":"ART-01","category":"artifact","plan_ref":"01-01","description":"File exists","status":"PASS","evidence":"found"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "write-verification: no plans in dir → skips plans_verified check" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  # No PLAN.md files — standalone QA
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"checks_detail":[{"id":"MH-01","category":"must_have","description":"Test","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "write-verification: rejects plans_verified with bogus plan ID not matching any file" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+
+  # plans_verified lists "bogus" which doesn't match any PLAN.md file
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"plans_verified":["01-01","bogus"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Test A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"bogus","description":"Test B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"does not match any PLAN.md file"* ]]
+}
+
+@test "write-verification: plans_verified appears after writer in frontmatter" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"plans_verified":["01-01"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Test","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  # Verify field order: writer before plans_verified
+  writer_line=$(grep -n '^writer:' "$pdir/out.md" | head -1 | cut -d: -f1)
+  pv_line=$(grep -n '^plans_verified:' "$pdir/out.md" | head -1 | cut -d: -f1)
+  [ "$writer_line" -lt "$pv_line" ]
+}
+
+@test "write-verification: duplicate plans_verified entries are deduplicated before validation" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+
+  # plans_verified has duplicates: ["01-01", "01-01"] — only 1 unique, but 2 plans exist
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"plans_verified":["01-01","01-01"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"01-01","description":"B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"plans_verified has"* ]]
 }
