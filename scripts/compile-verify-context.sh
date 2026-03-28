@@ -322,7 +322,7 @@ if [ "$_cvc_has_verif_history" = true ]; then
       in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
     ' "$_cvc_phase_verif" 2>/dev/null) || _cvc_vhist_result=""
     echo "--- Phase VERIFICATION (${_cvc_vhist_result:-unknown}) ---"
-    awk -F'|' '/^\|/ && NF>=5 { s=$5; gsub(/[[:space:]]*\*+[[:space:]]*/, " ", s); if (s ~ /FAIL/) print }' "$_cvc_phase_verif" 2>/dev/null || true
+    awk -F'|' '/^\|/ && NF>=5 { for(i=5;i<=NF;i++) { s=$i; gsub(/[[:space:]]*\*+[[:space:]]*/, " ", s); if(s ~ /FAIL/) { print; break } } }' "$_cvc_phase_verif" 2>/dev/null || true
   fi
 
   # Per-round (chronological compounding)
@@ -337,7 +337,7 @@ if [ "$_cvc_has_verif_history" = true ]; then
         in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
       ' "$_cvc_verif_file" 2>/dev/null) || _cvc_vhist_rresult=""
       echo "--- Round ${_cvc_vhist_rr} VERIFICATION (${_cvc_vhist_rresult:-unknown}) ---"
-      awk -F'|' '/^\|/ && NF>=5 { s=$5; gsub(/[[:space:]]*\*+[[:space:]]*/, " ", s); if (s ~ /FAIL/) print }' "$_cvc_verif_file" 2>/dev/null || true
+      awk -F'|' '/^\|/ && NF>=5 { for(i=5;i<=NF;i++) { s=$i; gsub(/[[:space:]]*\*+[[:space:]]*/, " ", s); if(s ~ /FAIL/) { print; break } } }' "$_cvc_verif_file" 2>/dev/null || true
     done <<< "$_cvc_qa_round_verifs"
   fi
 

@@ -895,3 +895,21 @@ PLAN
   [[ "$output" == *"qa_gate_result=PASS"* ]]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
+
+@test "gate handles non-numeric round in state file gracefully" {
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget | FAIL | Broken |"
+
+  # State file with corrupt non-numeric round
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=verify\nround=abc\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  # Must exit 0 (gate contract) and fall back to phase-level
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=FAIL"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}

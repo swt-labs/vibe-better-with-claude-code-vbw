@@ -1416,3 +1416,58 @@ EOF
   false_fail=$(echo "$output" | awk '/VERIFICATION HISTORY/,0' | grep -c "FAIL message rendering" || true)
   [ "$false_fail" -eq 0 ]
 }
+
+@test "compile-verify-context: verification history extracts FAIL from 6-column artifact tables" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Must-Have Checks
+| # | ID | Description | Status | Evidence |
+|---|-----|-------------|--------|----------|
+| 1 | MH-01 | Widget speed | PASS | Fast |
+| 2 | MH-02 | Widget accuracy | FAIL | Off by 10% |
+
+## Artifact Checks
+| # | ID | Artifact | Exists | Contains | Status |
+|---|-----|----------|--------|----------|--------|
+| 1 | ART-01 | tests/widget.test.ts | Yes | Coverage | PASS |
+| 2 | ART-02 | docs/api.md | No | - | FAIL |
+
+## Key Link Checks
+| # | ID | From | To | Via | Status |
+|---|-----|------|-----|-----|--------|
+| 1 | KL-01 | component | store | Redux | FAIL |
+| 2 | KL-02 | route | page | Router | PASS |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== VERIFICATION HISTORY ==="* ]]
+  # Must-have FAIL (5-col) extracted
+  [[ "$output" == *"Widget accuracy"*"FAIL"* ]]
+  # Artifact FAIL (6-col) extracted
+  [[ "$output" == *"docs/api.md"*"FAIL"* ]]
+  # Key link FAIL (6-col) extracted
+  [[ "$output" == *"Redux"*"FAIL"* ]]
+  # PASS rows should NOT appear
+  local pass_in_history
+  pass_in_history=$(echo "$output" | awk '/VERIFICATION HISTORY/,0' | grep -c "PASS" || true)
+  [ "$pass_in_history" -eq 0 ]
+}
