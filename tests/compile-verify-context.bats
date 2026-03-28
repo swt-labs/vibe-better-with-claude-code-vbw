@@ -1325,3 +1325,94 @@ EOF
   pass_in_history=$(echo "$output" | awk '/VERIFICATION HISTORY/,0' | grep -c "PASS" || true)
   [ "$pass_in_history" -eq 0 ]
 }
+
+@test "compile-verify-context: verification history with round-only (no phase-level VERIFICATION.md)" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature
+EOF
+
+  # Round VERIFICATION.md only — no phase-level
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: Fix issues
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+round: 01
+status: complete
+---
+## What Was Built
+- Fixes
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+result: PARTIAL
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Speed check | FAIL | Still slow |
+| MH-02 | must_have | Test check | PASS | Tests added |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== VERIFICATION HISTORY ==="* ]]
+  [[ "$output" == *"--- Round 01 VERIFICATION (PARTIAL) ---"* ]]
+  [[ "$output" == *"Still slow"* ]]
+  # No phase verification section (since no phase-level file)
+  [[ "$output" != *"--- Phase VERIFICATION"* ]]
+}
+
+@test "compile-verify-context: FAIL in description column not extracted as FAIL row" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Verify FAIL message rendering | PASS | Works correctly |
+| MH-02 | must_have | Error handling | PASS | All good |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== VERIFICATION HISTORY ==="* ]]
+  # PASS row with "FAIL" in description should NOT appear as FAIL
+  local false_fail
+  false_fail=$(echo "$output" | awk '/VERIFICATION HISTORY/,0' | grep -c "FAIL message rendering" || true)
+  [ "$false_fail" -eq 0 ]
+}

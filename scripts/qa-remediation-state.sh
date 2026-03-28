@@ -124,8 +124,7 @@ start_new_round() {
   mkdir -p "$PHASE_DIR/remediation/qa/round-${next_round_padded}"
   printf 'stage=plan\nround=%s\n' "$next_round_padded" > "$STATE_FILE"
   echo "plan"
-  echo "round=${next_round_padded}"
-  echo "round_dir=$PHASE_DIR/remediation/qa/round-${next_round_padded}"
+  emit_metadata
 }
 
 emit_metadata() {

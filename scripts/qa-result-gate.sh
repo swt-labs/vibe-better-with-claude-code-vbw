@@ -68,6 +68,8 @@ if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
   # Auto-discover round VERIFICATION.md
   _gate_round=$(grep '^round=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
   _gate_round="${_gate_round:-01}"
+  # Defensive zero-padding (consistent with phase-detect.sh)
+  _gate_round=$(printf '%02d' "$((10#${_gate_round}))")
   _gate_round_dir="$PHASE_DIR/remediation/qa/round-${_gate_round}"
   _gate_round_verif="${_gate_round_dir}/R${_gate_round}-VERIFICATION.md"
   if [ -f "$_gate_round_verif" ]; then

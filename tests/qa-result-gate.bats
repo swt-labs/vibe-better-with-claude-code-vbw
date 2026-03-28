@@ -824,3 +824,74 @@ VERIF
   [[ "$output" == *"qa_gate_result=FAIL"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
+
+@test "gate reads round-02 VERIFICATION.md correctly" {
+  # Phase-level VERIFICATION.md with original FAIL
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget | FAIL | Broken |"
+
+  # Active QA remediation at round 02
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" << 'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R02
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget | PASS | Fixed |
+VERIF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" << 'PLAN'
+---
+round: 02
+title: Fix widget again
+---
+PLAN
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+  [[ "$output" == *"qa_gate_plan_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "gate handles unpadded round number in state file" {
+  # Phase-level FAIL
+  create_verif "write-verification.sh" "FAIL"
+
+  # State file with unpadded round=2 (brownfield/corruption)
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=2\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" << 'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Test | PASS | ok |
+VERIF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" << 'PLAN'
+---
+round: 02
+title: Fix
+---
+PLAN
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Should find round-02 file despite unpadded round=2 in state
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
