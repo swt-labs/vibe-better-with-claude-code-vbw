@@ -254,3 +254,43 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
   [[ "$output" == *"qa_gate_writer=write-verification.sh"* ]]
 }
+
+@test "multi-digit phase number resolves correctly" {
+  MULTI_DIR="$TEST_DIR/10-multi-digit-phase"
+  mkdir -p "$MULTI_DIR"
+  {
+    echo "---"
+    echo "result: PASS"
+    echo "writer: write-verification.sh"
+    echo "---"
+  } > "$MULTI_DIR/10-VERIFICATION.md"
+
+  run bash "$SCRIPT" "$MULTI_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  [[ "$output" == *"qa_gate_writer=write-verification.sh"* ]]
+}
+
+@test "prefixed file takes priority over plain VERIFICATION.md" {
+  # Both {NN}-VERIFICATION.md and VERIFICATION.md exist — prefixed wins
+  {
+    echo "---"
+    echo "result: PASS"
+    echo "writer: write-verification.sh"
+    echo "---"
+  } > "$PHASE_DIR/01-VERIFICATION.md"
+  {
+    echo "---"
+    echo "result: FAIL"
+    echo "writer: write-verification.sh"
+    echo "---"
+  } > "$PHASE_DIR/VERIFICATION.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Should read the prefixed file (PASS), not the plain one (FAIL)
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+}
