@@ -5,7 +5,8 @@ SCRIPT="$REPO_ROOT/scripts/qa-result-gate.sh"
 
 setup() {
   TEST_DIR="$(mktemp -d)"
-  PHASE_DIR="$TEST_DIR/phase"
+  # Use numbered phase-dir prefix to match production convention ({NN}-slug)
+  PHASE_DIR="$TEST_DIR/01-test-phase"
   mkdir -p "$PHASE_DIR"
 }
 
@@ -35,7 +36,7 @@ create_verif() {
     if [ -n "$body" ]; then
       printf '%s\n' "$body"
     fi
-  } > "$PHASE_DIR/VERIFICATION.md"
+  } > "$PHASE_DIR/01-VERIFICATION.md"
 }
 
 @test "PASS with clean body → PROCEED_TO_UAT" {
@@ -125,7 +126,7 @@ create_verif() {
     echo "result: "
     echo "writer: write-verification.sh"
     echo "---"
-  } > "$PHASE_DIR/VERIFICATION.md"
+  } > "$PHASE_DIR/01-VERIFICATION.md"
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
@@ -151,7 +152,7 @@ create_verif() {
 
 @test "custom verif-name argument" {
   create_verif "write-verification.sh" "PASS"
-  mv "$PHASE_DIR/VERIFICATION.md" "$PHASE_DIR/CUSTOM-VERIF.md"
+  mv "$PHASE_DIR/01-VERIFICATION.md" "$PHASE_DIR/CUSTOM-VERIF.md"
 
   run bash "$SCRIPT" "$PHASE_DIR" "CUSTOM-VERIF.md"
 
@@ -174,7 +175,7 @@ create_verif() {
 }
 
 @test "empty file → QA_RERUN_REQUIRED" {
-  touch "$PHASE_DIR/VERIFICATION.md"
+  touch "$PHASE_DIR/01-VERIFICATION.md"
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
@@ -184,7 +185,7 @@ create_verif() {
 }
 
 @test "no frontmatter delimiters → QA_RERUN_REQUIRED" {
-  printf 'Just some text without frontmatter\n' > "$PHASE_DIR/VERIFICATION.md"
+  printf 'Just some text without frontmatter\n' > "$PHASE_DIR/01-VERIFICATION.md"
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
@@ -210,7 +211,7 @@ create_verif() {
 }
 
 @test "trailing whitespace in result field is stripped" {
-  cat > "$PHASE_DIR/VERIFICATION.md" <<'VERIF'
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'VERIF'
 ---
 result: PASS 
 writer: write-verification.sh
@@ -222,4 +223,34 @@ VERIF
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
   [[ "$output" == *"qa_gate_result=PASS"* ]]
+}
+
+@test "auto-resolves {NN}-VERIFICATION.md from phase-dir prefix" {
+  # Phase dir is 01-test-phase, so gate should find 01-VERIFICATION.md
+  create_verif "write-verification.sh" "PASS"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  # Confirm the auto-resolved file was actually read (not a false positive from missing-file path)
+  [[ "$output" == *"qa_gate_writer=write-verification.sh"* ]]
+}
+
+@test "brownfield fallback to plain VERIFICATION.md" {
+  # Create a phase dir WITHOUT numbered prefix
+  BROWNFIELD_DIR="$TEST_DIR/legacy-phase"
+  mkdir -p "$BROWNFIELD_DIR"
+  {
+    echo "---"
+    echo "result: PASS"
+    echo "writer: write-verification.sh"
+    echo "---"
+  } > "$BROWNFIELD_DIR/VERIFICATION.md"
+
+  run bash "$SCRIPT" "$BROWNFIELD_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  [[ "$output" == *"qa_gate_writer=write-verification.sh"* ]]
 }

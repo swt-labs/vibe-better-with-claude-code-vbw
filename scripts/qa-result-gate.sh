@@ -22,7 +22,7 @@ set -euo pipefail
 #   QA_RERUN_REQUIRED    — no trustworthy QA result, re-spawn QA (not code remediation)
 
 PHASE_DIR="${1:-}"
-VERIF_NAME="${2:-VERIFICATION.md}"
+VERIF_NAME="${2:-}"
 
 if [ -z "$PHASE_DIR" ]; then
   echo "qa_gate_writer=missing"
@@ -30,6 +30,21 @@ if [ -z "$PHASE_DIR" ]; then
   echo "qa_gate_fail_count=0"
   echo "qa_gate_routing=QA_RERUN_REQUIRED"
   exit 0
+fi
+
+# Auto-resolve VERIFICATION.md filename using the same convention as
+# phase-detect.sh and hard-gate.sh: {NN}-VERIFICATION.md is the primary
+# convention, with plain VERIFICATION.md as a brownfield fallback.
+if [ -z "$VERIF_NAME" ]; then
+  PHASE_NUM=$(basename "$PHASE_DIR" | grep -oE '^[0-9]+' 2>/dev/null || true)
+  if [ -n "$PHASE_NUM" ] && [ -e "$PHASE_DIR/${PHASE_NUM}-VERIFICATION.md" ]; then
+    VERIF_NAME="${PHASE_NUM}-VERIFICATION.md"
+  elif [ -e "$PHASE_DIR/VERIFICATION.md" ]; then
+    VERIF_NAME="VERIFICATION.md"
+  else
+    # Neither convention found — use prefixed name so "file not found" is reported
+    VERIF_NAME="${PHASE_NUM:-01}-VERIFICATION.md"
+  fi
 fi
 
 VERIF_PATH="$PHASE_DIR/$VERIF_NAME"
