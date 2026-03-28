@@ -618,3 +618,57 @@ VERIF
   [[ "$output" == *"qa_gate_deviation_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
+
+# ============================================================
+# Remediation-awareness tests (F-01)
+# ============================================================
+
+@test "PASS + deviations during active remediation → PROCEED_TO_UAT (deviation override suppressed)" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed API approach"
+  # Simulate active remediation cycle
+  echo "stage=verify" > "$PHASE_DIR/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  # Deviation override should NOT fire during remediation
+  [[ "$output" != *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "PASS + deviations without remediation → QA_RERUN_REQUIRED (deviation override fires)" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed API approach"
+  # No .qa-remediation-stage file → not in remediation
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "FAIL during remediation still routes to REMEDIATION_REQUIRED" {
+  create_verif "write-verification.sh" "FAIL"
+  create_summary_with_yaml_deviations "01-01" "Changed API approach"
+  echo "stage=verify" > "$PHASE_DIR/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "deviation starting with None-word is counted (not filtered as placeholder)" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "None of the planned endpoints were implemented"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}

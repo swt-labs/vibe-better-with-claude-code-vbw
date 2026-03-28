@@ -59,8 +59,15 @@ fi
 
 VERIF_PATH="$PHASE_DIR/$VERIF_NAME"
 
+# Detect active QA remediation — deviation override is suppressed during remediation
+# because SUMMARY.md deviations are historical (the code has been fixed)
+IN_REMEDIATION="false"
+if [ -f "$PHASE_DIR/.qa-remediation-stage" ]; then
+  IN_REMEDIATION="true"
+fi
+
 # 1. File doesn't exist
-if [ ! -e "$VERIF_PATH" ]; then
+if [ ! -f "$VERIF_PATH" ]; then
   echo "qa_gate_writer=missing"
   echo "qa_gate_result=missing"
   echo "qa_gate_fail_count=0"
@@ -117,7 +124,7 @@ for summary_file in "$PHASE_DIR"/*-SUMMARY.md; do
       line=$0; sub(/^[[:space:]]+- /, "", line)
       gsub(/^"/, "", line); gsub(/"$/, "", line)
       lc = tolower(line)
-      if (lc ~ /^none[. ]/ || lc == "none" || lc ~ /^n\/a[. ]/ || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
+      if (lc == "none" || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
       count++
     }
     in_fm && in_dev && /^[^[:space:]]/ { exit }
@@ -136,7 +143,7 @@ for summary_file in "$PHASE_DIR"/*-SUMMARY.md; do
         if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
         sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
         lc = tolower(line)
-        if (lc ~ /^none[. ]/ || lc == "none" || lc ~ /^n\/a[. ]/ || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
+        if (lc == "none" || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
         count++
       }
       END { print count }
@@ -191,8 +198,10 @@ case "$RESULT" in
     if [ "$FAIL_COUNT" -gt 0 ] 2>/dev/null; then
       # 6. PASS with FAIL rows → defense-in-depth override
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
-    elif [ "$DEVIATION_COUNT" -gt 0 ]; then
+    elif [ "$DEVIATION_COUNT" -gt 0 ] && [ "$IN_REMEDIATION" = "false" ]; then
       # 5a. PASS but deviations exist without FAIL checks → QA rationalized deviations
+      # Suppressed during remediation: SUMMARY.md deviations are historical records,
+      # the code has been fixed, and a fresh QA verdict should be trusted.
       echo "qa_gate_deviation_override=true"
       echo "qa_gate_routing=QA_RERUN_REQUIRED"
     elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then

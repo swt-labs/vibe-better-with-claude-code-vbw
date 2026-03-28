@@ -847,3 +847,34 @@ JSON
   run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
   [ "$status" -eq 0 ]
 }
+
+@test "write-verification: rejects plans_verified with bogus plan ID not matching any file" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+  echo "---" > "$pdir/01-02-PLAN.md"
+
+  # plans_verified lists "bogus" which doesn't match any PLAN.md file
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":2,"failed":0,"total":2},"plans_verified":["01-01","bogus"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Test A","status":"PASS","evidence":"ok"},{"id":"MH-02","category":"must_have","plan_ref":"bogus","description":"Test B","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"does not match any PLAN.md file"* ]]
+}
+
+@test "write-verification: plans_verified appears after writer in frontmatter" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"plans_verified":["01-01"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01-01","description":"Test","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  # Verify field order: writer before plans_verified
+  writer_line=$(grep -n '^writer:' "$pdir/out.md" | head -1 | cut -d: -f1)
+  pv_line=$(grep -n '^plans_verified:' "$pdir/out.md" | head -1 | cut -d: -f1)
+  [ "$writer_line" -lt "$pv_line" ]
+}

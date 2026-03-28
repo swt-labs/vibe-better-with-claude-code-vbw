@@ -166,6 +166,16 @@ if [[ "$plan_count" -gt 0 ]]; then
     exit 1
   fi
 
+  # Validate each plans_verified ID matches an actual PLAN.md file
+  while IFS= read -r plan_id; do
+    plan_id_trimmed=$(echo "$plan_id" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    [ -z "$plan_id_trimmed" ] && continue
+    if [ ! -f "$phase_dir/${plan_id_trimmed}-PLAN.md" ]; then
+      echo "Error: plan '${plan_id_trimmed}' in plans_verified does not match any PLAN.md file in $(basename "$phase_dir"). Expected '${plan_id_trimmed}-PLAN.md'." >&2
+      exit 1
+    fi
+  done < <(echo "$payload" | jq -r '.plans_verified[]')
+
   # Cross-reference: every plan_id in plans_verified must have at least 1 check with matching plan_ref
   if [[ "$has_checks_detail" == "true" ]]; then
     while IFS= read -r plan_id; do

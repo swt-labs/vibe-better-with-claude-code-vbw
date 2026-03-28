@@ -6,7 +6,7 @@ passed: {N}
 failed: {N}
 total: {N}
 date: {YYYY-MM-DD}
-plans_verified: # array of plan IDs verified (e.g., [01-01, 01-02])
+plans_verified: # YAML list of plan IDs verified (written by write-verification.sh)
 ---
 
 ## Must-Have Checks
