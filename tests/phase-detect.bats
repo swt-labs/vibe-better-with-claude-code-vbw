@@ -1238,6 +1238,20 @@ CONF
   echo "$output" | grep -q "qa_status=remediated"
 }
 
+@test "qa_status degrades gracefully with corrupt round in state file" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n%s\n' 'stage=done' 'round=abc' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  # Phase-level with PASS (brownfield fallback target)
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  # Must not crash — exits 0
+  [ "$status" -eq 0 ]
+}
+
 @test "needs_qa_remediation blocks needs_verification" {
   mkdir -p .vbw-planning/phases/01-test/remediation/qa
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md

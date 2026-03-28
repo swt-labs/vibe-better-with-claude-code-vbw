@@ -498,6 +498,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
         # Compute QA status for this phase
         if [ "$_qa_rem_stage" = "done" ]; then
           # Use round VERIFICATION.md for cross-validation (phase-level stays as original FAIL)
+          if ! [[ "$_qa_rem_round" =~ ^[0-9]+$ ]]; then
+            _qa_rem_round="01"
+          fi
           _qa_rem_round_padded=$(printf '%02d' "$((10#${_qa_rem_round:-1}))")
           _qa_round_verif="${_uv_dir}remediation/qa/round-${_qa_rem_round_padded}/R${_qa_rem_round_padded}-VERIFICATION.md"
           if [ -f "$_qa_round_verif" ]; then
