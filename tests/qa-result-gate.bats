@@ -957,3 +957,38 @@ VERIF
   [[ "$output" == *"qa_gate_deviation_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
+
+@test "explicit verif-name override is preserved during active remediation" {
+  create_verif "write-verification.sh" "FAIL"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Regression fixed | PASS | ok |
+VERIF
+  cat > "$PHASE_DIR/CUSTOM-VERIF.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-99 | must_have | Custom override | FAIL | forced |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR" "CUSTOM-VERIF.md"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=FAIL"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}

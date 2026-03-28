@@ -30,6 +30,10 @@ set -euo pipefail
 
 PHASE_DIR="${1:-}"
 VERIF_NAME="${2:-}"
+EXPLICIT_VERIF_NAME=false
+if [ -n "$VERIF_NAME" ]; then
+  EXPLICIT_VERIF_NAME=true
+fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RESOLVE_VERIF_SCRIPT="$SCRIPT_DIR/resolve-verification-path.sh"
 
@@ -77,10 +81,12 @@ if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
   _gate_round=$(printf '%02d' "$((10#${_gate_round}))")
   _gate_round_dir="$PHASE_DIR/remediation/qa/round-${_gate_round}"
   _gate_round_verif="${_gate_round_dir}/R${_gate_round}-VERIFICATION.md"
-  _gate_current_verif=$(bash "$RESOLVE_VERIF_SCRIPT" current "$PHASE_DIR" 2>/dev/null || true)
-  if [ -n "${_gate_current_verif:-}" ]; then
-    VERIF_PATH="$_gate_current_verif"
-    VERIF_NAME=$(basename "$VERIF_PATH")
+  if [ "$EXPLICIT_VERIF_NAME" = false ]; then
+    _gate_current_verif=$(bash "$RESOLVE_VERIF_SCRIPT" current "$PHASE_DIR" 2>/dev/null || true)
+    if [ -n "${_gate_current_verif:-}" ]; then
+      VERIF_PATH="$_gate_current_verif"
+      VERIF_NAME=$(basename "$VERIF_PATH")
+    fi
   fi
   if [ "$VERIF_PATH" = "$_gate_round_verif" ]; then
     PLAN_SCOPE_DIR="$_gate_round_dir"
