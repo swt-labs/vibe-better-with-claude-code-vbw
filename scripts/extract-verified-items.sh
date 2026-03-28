@@ -14,10 +14,31 @@ fi
 
 # Find VERIFICATION.md files in the phase directory
 # Supports: NN-VERIFICATION.md, NN-VERIFICATION-waveN.md
+# When QA remediation completed (stage=done), also include round VERIFICATION.md
+# which has the final remediated result (phase-level stays frozen as original FAIL)
 verif_files=()
 while IFS= read -r f; do
   verif_files+=("$f")
 done < <(ls "$phase_dir"/*-VERIFICATION*.md 2>/dev/null)
+
+# Check for completed QA remediation round VERIFICATION.md
+_evi_qa_rem_file="$phase_dir/remediation/qa/.qa-remediation-stage"
+if [ -f "$_evi_qa_rem_file" ]; then
+  _evi_qa_stage=$(grep '^stage=' "$_evi_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+  if [ "$_evi_qa_stage" = "done" ]; then
+    _evi_qa_round=$(grep '^round=' "$_evi_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+    _evi_qa_round="${_evi_qa_round:-01}"
+    if [[ "$_evi_qa_round" =~ ^[0-9]+$ ]]; then
+      _evi_qa_round=$(printf '%02d' "$((10#${_evi_qa_round}))")
+    else
+      _evi_qa_round="01"
+    fi
+    _evi_round_verif="$phase_dir/remediation/qa/round-${_evi_qa_round}/R${_evi_qa_round}-VERIFICATION.md"
+    if [ -f "$_evi_round_verif" ]; then
+      verif_files+=("$_evi_round_verif")
+    fi
+  fi
+fi
 
 if [[ ${#verif_files[@]} -eq 0 ]]; then
   exit 0
