@@ -136,10 +136,10 @@ for vf in "${verif_files[@]}"; do
     if grep -qE '^✓ \*\*|^⚠ \*\*' "$vf" 2>/dev/null; then
       grep -E '^✓ \*\*' "$vf" 2>/dev/null | sed 's/\*\*//g; s/ — .*//' | while IFS= read -r line; do
         echo "  $line"
-      done
+      done || true
       grep -E '^⚠ \*\*' "$vf" 2>/dev/null | sed 's/\*\*//g; s/ — .*//' | while IFS= read -r line; do
         echo "  $line"
-      done
+      done || true
     fi
 
     # Try old Total row pattern

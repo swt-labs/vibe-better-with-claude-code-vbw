@@ -181,3 +181,51 @@ EOF
   [[ "$output" == *"FAIL"* ]]
   [[ "$output" != *"Fixed"* ]]
 }
+
+@test "extract-verified-items handles brownfield VERIFICATION.md with only check-mark lines" {
+  local phase_dir="$TEST_TEMP_DIR/phases/01-core"
+  mkdir -p "$phase_dir"
+  # Old format with only ✓ lines (no ⚠ lines)
+  cat > "$phase_dir/01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+passed: 2
+failed: 0
+total: 2
+---
+
+✓ **MH-01** — Build passes
+✓ **MH-02** — Tests pass
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-verified-items.sh" "$phase_dir"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"QA-VERIFIED ITEMS"* ]]
+  [[ "$output" == *"MH-01"* ]]
+  [[ "$output" == *"MH-02"* ]]
+}
+
+@test "extract-verified-items handles brownfield VERIFICATION.md with only warning lines" {
+  local phase_dir="$TEST_TEMP_DIR/phases/01-core"
+  mkdir -p "$phase_dir"
+  # Old format with only ⚠ lines (no ✓ lines)
+  cat > "$phase_dir/01-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+passed: 0
+failed: 2
+total: 2
+---
+
+⚠ **MH-01** — Build fails
+⚠ **MH-02** — Tests fail
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-verified-items.sh" "$phase_dir"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"QA-VERIFIED ITEMS"* ]]
+  [[ "$output" == *"MH-01"* ]]
+  [[ "$output" == *"MH-02"* ]]
+}
