@@ -1352,6 +1352,41 @@ EOF
   echo "$output" | grep -q "next_phase=01"
 }
 
+@test "earlier unplanned phase keeps priority over later active QA remediation" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  mkdir -p .vbw-planning/phases/01-unplanned
+
+  mkdir -p .vbw-planning/phases/02-remediating/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/02-remediating/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-remediating/02-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+  echo "$output" | grep -q "next_phase=01"
+}
+
+@test "earlier mid-execution phase keeps priority over later active QA remediation" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  mkdir -p .vbw-planning/phases/01-executing
+  echo "# Plan" > .vbw-planning/phases/01-executing/01-01-PLAN.md
+
+  mkdir -p .vbw-planning/phases/02-remediating/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/02-remediating/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-remediating/02-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_execute"
+  echo "$output" | grep -q "next_phase=01"
+}
+
 @test "qa_status is pending when PASS verification is stale for current code" {
   mkdir -p .vbw-planning/phases/01-test
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md

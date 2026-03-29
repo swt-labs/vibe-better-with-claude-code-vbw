@@ -634,18 +634,23 @@ fi
 
 # --- needs_qa_remediation override: route to QA remediation before verification ---
 # When QA remediation is active (qa_status=remediating), override next_phase_state
-# to needs_qa_remediation. This takes priority over needs_verification.
+# to needs_qa_remediation only for verification-class states. Earlier unfinished
+# phases (discussion / planning / execution) still take priority.
 if [ -n "$QA_REMEDIATING_PHASE" ] && [ "$NEXT_PHASE_STATE" != "needs_uat_remediation" ]; then
-  NEXT_PHASE="$QA_REMEDIATING_PHASE"
-  NEXT_PHASE_SLUG="$QA_REMEDIATING_SLUG"
-  NEXT_PHASE_STATE="needs_qa_remediation"
-  QA_STATUS="remediating"
-  QA_ROUND="$QA_REMEDIATING_ROUND"
-  _QR_DIR="$PHASES_DIR/$QA_REMEDIATING_SLUG"
-  if [ -d "$_QR_DIR" ]; then
-    NEXT_PHASE_PLANS=$(count_phase_plans "$_QR_DIR")
-    NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QR_DIR")
-  fi
+  case "$NEXT_PHASE_STATE" in
+    needs_verification|needs_reverification|all_done|no_phases)
+      NEXT_PHASE="$QA_REMEDIATING_PHASE"
+      NEXT_PHASE_SLUG="$QA_REMEDIATING_SLUG"
+      NEXT_PHASE_STATE="needs_qa_remediation"
+      QA_STATUS="remediating"
+      QA_ROUND="$QA_REMEDIATING_ROUND"
+      _QR_DIR="$PHASES_DIR/$QA_REMEDIATING_SLUG"
+      if [ -d "$_QR_DIR" ]; then
+        NEXT_PHASE_PLANS=$(count_phase_plans "$_QR_DIR")
+        NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QR_DIR")
+      fi
+      ;;
+  esac
 fi
 
 # --- needs_verification override: make auto_uat routing unambiguous ---

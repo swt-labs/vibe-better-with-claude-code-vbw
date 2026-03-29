@@ -78,9 +78,10 @@ else
   fail "statusline uses red/yellow colors for UAT failure/remediation states"
 fi
 
-# Test 7: VERIFICATION.md check is fallback only (after UAT check)
-# The VERIFICATION.md check should come after the UAT file check in an elif
-if grep -q 'elif.*VERIFICATION.md\|else.*VERIFICATION' "$ROOT/scripts/vbw-statusline.sh"; then
+# Test 7: VERIFICATION.md check is fallback only (after UAT / QA-remediation checks)
+# Accept either the original elif/else structure or the newer normalized
+# `_qa_rem_stage=none` fallback guard.
+if grep -qE 'elif.*VERIFICATION.md|else.*VERIFICATION|_qa_rem_stage:-none.*VERIFICATION.md' "$ROOT/scripts/vbw-statusline.sh"; then
   pass "VERIFICATION.md check is fallback (only when no UAT file exists)"
 else
   fail "VERIFICATION.md check is fallback (only when no UAT file exists)"
@@ -611,6 +612,13 @@ for stage_label in "QA: Planning fix" "QA: Fixing" "QA: Re-verifying"; do
     fail "statusline must display '$stage_label' for QA remediation stage"
   fi
 done
+
+# Verify invalid QA remediation stages normalize to none instead of showing a ghost remediation state
+if grep -q 'QA: Remediating' "$ROOT/scripts/vbw-statusline.sh"; then
+  fail "statusline must not display a generic QA: Remediating fallback for invalid stage values"
+else
+  pass "statusline does not display a generic QA: Remediating fallback for invalid stage values"
+fi
 
 echo ""
 echo "==============================="

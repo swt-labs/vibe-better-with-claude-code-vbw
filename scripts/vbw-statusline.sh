@@ -477,9 +477,10 @@ if ! cache_fresh "$FAST_CF" 5; then
             execute) QA="QA: Fixing";       QA_COLOR="Y" ;;
             verify)  QA="QA: Re-verifying"; QA_COLOR="Y" ;;
             done)    QA="QA: pass";         QA_COLOR="G" ;;
-            *)       QA="QA: Remediating";  QA_COLOR="Y" ;;
+            *)       _qa_rem_stage="none" ;;
           esac
-        elif [ -n "$(find "$PDIR" -maxdepth 1 -name '*VERIFICATION.md' 2>/dev/null | head -1)" ]; then
+        fi
+        if [ "${_qa_rem_stage:-none}" = "none" ] && [ -n "$(find "$PDIR" -maxdepth 1 -name '*VERIFICATION.md' 2>/dev/null | head -1)" ]; then
           _verif_file=$(find "$PDIR" -maxdepth 1 -name '*VERIFICATION.md' 2>/dev/null | head -1)
           _qa_result=$(awk '
             BEGIN { in_fm=0 }
