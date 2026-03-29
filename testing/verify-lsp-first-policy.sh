@@ -186,7 +186,9 @@ echo "--- Contributor docs LSP-first convention checks ---"
 AGENTS_MD="$ROOT/AGENTS.md"
 CONTRIB="$ROOT/CONTRIBUTING.md"
 
-if grep -Eiq 'LSP-first.*code navigation|lsp-first-policy\.md' "$AGENTS_MD"; then
+if [ ! -f "$AGENTS_MD" ]; then
+  echo "SKIP  AGENTS.md: not present (gitignored)"
+elif grep -Eiq 'LSP-first.*code navigation|lsp-first-policy\.md' "$AGENTS_MD"; then
   pass "AGENTS.md: LSP-first convention documented"
 else
   fail "AGENTS.md: missing LSP-first convention"
