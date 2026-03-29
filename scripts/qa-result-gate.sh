@@ -258,7 +258,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
     _mo_commits="${_mo_commits:-0}"
     if [ -n "$_mo_files" ]; then
       while IFS= read -r _mo_path; do
-        _mo_path=$(echo "$_mo_path" | tr -d '[:space:]' | sed 's/,$//')
+        _mo_path=$(echo "$_mo_path" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/,$//')
         [ -n "$_mo_path" ] || continue
         case "$_mo_path" in
           .vbw-planning/*) ;; # metadata path — continue checking

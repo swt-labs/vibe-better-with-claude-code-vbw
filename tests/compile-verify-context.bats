@@ -1833,3 +1833,53 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" != *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
 }
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS handles multi-table VERIFICATION.md" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - API works
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  # Multi-table VERIFICATION.md with Must-Have (5-col) and Artifact (6-col)
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Must-Have Checks
+| ID | Category | Truth/Condition | Status | Evidence |
+|----|----------|-----------------|--------|----------|
+| MH-01 | must_have | API returns JSON | FAIL | Returns XML |
+| MH-02 | must_have | Auth works | PASS | Done |
+
+## Artifact Checks
+| # | ID | Artifact | Exists | Key Link | Status |
+|---|-----|----------|--------|----------|--------|
+| 1 | ART-01 | docs/api.md | Yes | - | PASS |
+| 2 | ART-02 | docs/deploy.md | No | - | FAIL |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  # Must-Have FAIL should be detected
+  [[ "$output" == *"FAIL_ID: MH-01"* ]]
+  [[ "$output" == *"API returns JSON"* ]]
+  # Artifact FAIL should also be detected (from second table)
+  [[ "$output" == *"FAIL_ID: ART-02"* ]]
+  # PASS rows excluded
+  [[ "$output" != *"FAIL_ID: MH-02"* ]]
+  [[ "$output" != *"FAIL_ID: ART-01"* ]]
+}

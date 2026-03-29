@@ -422,10 +422,14 @@ if [ "$_cvc_has_verif_history" = true ]; then
         gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
         return v
       }
+      # Non-table rows reset header detection for next table section
+      !/^\|/ { header_found = 0; next }
       /^\|/ {
+        # Separator rows are skipped (they follow headers, precede data)
         if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
-        # Detect header row to find column indices (once per table)
+        # Detect header row to find column indices (once per table section)
         if (!header_found) {
+          status_col = 0; id_col = 0; desc_col = 0
           for (i = 2; i < NF; i++) {
             cell = trim($i)
             if (cell == "Status") status_col = i
