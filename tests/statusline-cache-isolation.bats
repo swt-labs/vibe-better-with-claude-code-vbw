@@ -15,10 +15,14 @@ setup() {
   export GIT_AUTHOR_EMAIL="test@test.local"
   export GIT_COMMITTER_NAME="test"
   export GIT_COMMITTER_EMAIL="test@test.local"
+  export VBW_SKIP_KEYCHAIN=1
+  export VBW_SKIP_AUTH_CLI=1
+  export VBW_SKIP_UPDATE_CHECK=1
 }
 
 teardown() {
   cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
+  unset VBW_SKIP_KEYCHAIN VBW_SKIP_AUTH_CLI VBW_SKIP_UPDATE_CHECK
   unset CLAUDE_CONFIG_DIR TEST_CLAUDE_CONFIG_DIR
   teardown_temp_dir
 }
@@ -198,25 +202,30 @@ JSON
 
 @test "cache-nuke.sh cleans repo-scoped caches" {
   local uid=$(id -u)
-  echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
+  local tmp_cache_root="$TEST_TEMP_DIR/tmp-cache-root"
+  mkdir -p "$tmp_cache_root"
+  touch "$tmp_cache_root/vbw-1.33.2-${uid}-deadbeef-fast"
+  touch "$tmp_cache_root/vbw-1.33.2-${uid}-deadbeef-slow"
   local before
-  before=$(ls /tmp/vbw-*-${uid}-* 2>/dev/null | wc -l | tr -d ' ')
+  before=$(ls "$tmp_cache_root"/vbw-*-${uid}-* 2>/dev/null | wc -l | tr -d ' ')
   [ "$before" -gt 0 ]
 
-  run bash "$SCRIPTS_DIR/cache-nuke.sh"
+  run env VBW_TMP_CACHE_ROOT="$tmp_cache_root" bash "$SCRIPTS_DIR/cache-nuke.sh"
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.wiped | has("plugin_cache") and has("temp_caches") and has("versions_removed")' >/dev/null
 
   local after
-  after=$(ls /tmp/vbw-*-${uid}-* 2>/dev/null | wc -l | tr -d ' ')
+  after=$(ls "$tmp_cache_root"/vbw-*-${uid}-* 2>/dev/null | wc -l | tr -d ' ')
   [ "$after" -eq 0 ]
 }
 
 @test "cache-nuke.sh succeeds with empty plugin cache glob under pipefail" {
   local claude_dir="$TEST_TEMP_DIR/claude-empty-cache"
+  local tmp_cache_root="$TEST_TEMP_DIR/tmp-cache-empty"
   mkdir -p "$claude_dir/plugins/cache/vbw-marketplace/vbw"
+  mkdir -p "$tmp_cache_root"
 
-  run env CLAUDE_CONFIG_DIR="$claude_dir" bash "$SCRIPTS_DIR/cache-nuke.sh"
+  run env CLAUDE_CONFIG_DIR="$claude_dir" VBW_TMP_CACHE_ROOT="$tmp_cache_root" bash "$SCRIPTS_DIR/cache-nuke.sh"
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.wiped.versions_removed == 0' >/dev/null
   echo "$output" | jq -e '.wiped | has("plugin_cache") and has("temp_caches") and has("versions_removed")' >/dev/null
@@ -224,9 +233,11 @@ JSON
 
 @test "cache-nuke.sh returns JSON summary on no-op run" {
   local claude_dir="$TEST_TEMP_DIR/claude-noop"
+  local tmp_cache_root="$TEST_TEMP_DIR/tmp-cache-noop"
   mkdir -p "$claude_dir"
+  mkdir -p "$tmp_cache_root"
 
-  run env CLAUDE_CONFIG_DIR="$claude_dir" bash "$SCRIPTS_DIR/cache-nuke.sh"
+  run env CLAUDE_CONFIG_DIR="$claude_dir" VBW_TMP_CACHE_ROOT="$tmp_cache_root" bash "$SCRIPTS_DIR/cache-nuke.sh"
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.wiped.plugin_cache == false' >/dev/null
   echo "$output" | jq -e '.wiped.temp_caches == false' >/dev/null
@@ -236,10 +247,12 @@ JSON
 @test "cache-nuke.sh --keep-latest keeps newest real version when local symlink exists" {
   local claude_dir="$TEST_TEMP_DIR/claude-keep-latest"
   local cache_dir="$claude_dir/plugins/cache/vbw-marketplace/vbw"
+  local tmp_cache_root="$TEST_TEMP_DIR/tmp-cache-keep-latest"
   mkdir -p "$cache_dir/1.29.0" "$cache_dir/1.30.0" "$TEST_TEMP_DIR/local-plugin"
+  mkdir -p "$tmp_cache_root"
   ln -s "$TEST_TEMP_DIR/local-plugin" "$cache_dir/local"
 
-  run env CLAUDE_CONFIG_DIR="$claude_dir" bash "$SCRIPTS_DIR/cache-nuke.sh" --keep-latest
+  run env CLAUDE_CONFIG_DIR="$claude_dir" VBW_TMP_CACHE_ROOT="$tmp_cache_root" bash "$SCRIPTS_DIR/cache-nuke.sh" --keep-latest
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.wiped.plugin_cache == true' >/dev/null
   echo "$output" | jq -e '.wiped.versions_removed == 1' >/dev/null
@@ -252,10 +265,12 @@ JSON
 @test "cache-nuke.sh always returns JSON summary even when delete fails" {
   local claude_dir="$TEST_TEMP_DIR/claude-delete-fail"
   local cache_dir="$claude_dir/plugins/cache/vbw-marketplace/vbw"
+  local tmp_cache_root="$TEST_TEMP_DIR/tmp-cache-delete-fail"
   mkdir -p "$cache_dir/1.29.0" "$cache_dir/1.30.0"
+  mkdir -p "$tmp_cache_root"
 
   chmod 500 "$cache_dir"
-  run env CLAUDE_CONFIG_DIR="$claude_dir" bash "$SCRIPTS_DIR/cache-nuke.sh" --keep-latest
+  run env CLAUDE_CONFIG_DIR="$claude_dir" VBW_TMP_CACHE_ROOT="$tmp_cache_root" bash "$SCRIPTS_DIR/cache-nuke.sh" --keep-latest
   chmod 700 "$cache_dir"
 
   [ "$status" -eq 0 ]

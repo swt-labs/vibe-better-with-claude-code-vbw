@@ -14,11 +14,15 @@ setup() {
   export GIT_AUTHOR_EMAIL="test@test.local"
   export GIT_COMMITTER_NAME="test"
   export GIT_COMMITTER_EMAIL="test@test.local"
+  export VBW_SKIP_KEYCHAIN=1
+  export VBW_SKIP_AUTH_CLI=1
+  export VBW_SKIP_UPDATE_CHECK=1
   cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
 }
 
 teardown() {
   cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
+  unset VBW_SKIP_KEYCHAIN VBW_SKIP_AUTH_CLI VBW_SKIP_UPDATE_CHECK CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
   teardown_temp_dir
 }
 
@@ -124,12 +128,13 @@ JSON
 JSON
 
   cd "$repo"
-  # With a fake OAuth token, the API call will fail → FETCH_OK="fail"
-  # "fail" is excluded from suppression, so L3 should still be present
+  # Force fully offline mode while still exercising the non-blank L3 path.
+  export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
   export VBW_OAUTH_TOKEN="fake_token_for_test"
   local output
   output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
   unset VBW_OAUTH_TOKEN
+  unset CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
   cd "$PROJECT_ROOT"
 
   local l3
