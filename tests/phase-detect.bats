@@ -1481,3 +1481,41 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=pending"
 }
+
+@test "first_qa_attention targets stale QA even when terminal UAT exists" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  echo "print(\"before\")" > app.py
+  git add app.py
+  git commit -m "before stale qa with uat" --quiet
+  verified_commit="$(git rev-parse HEAD)"
+
+  printf '%s\n' \
+    '---' \
+    'result: PASS' \
+    "verified_at_commit: ${verified_commit}" \
+    '---' \
+    '# Verification' \
+    'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: complete
+---
+All tests passed.
+EOF
+
+  echo "print(\"after\")" > app.py
+  git add app.py
+  git commit -m "after stale qa with uat" --quiet
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "first_qa_attention_phase=01"
+  echo "$output" | grep -q "first_qa_attention_slug=01-test"
+  echo "$output" | grep -q "qa_attention_status=pending"
+}

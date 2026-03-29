@@ -239,6 +239,12 @@ else
   fail "execute-protocol: QA remediation verify missing remediation-only verify context"
 fi
 
+if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$VIBE_FILE"; then
+  pass "vibe: QA remediation verify uses remediation-only verify context"
+else
+  fail "vibe: QA remediation verify missing remediation-only verify context"
+fi
+
 if grep -q 'if \[ -f "\$PDIR/remediation/uat/.uat-remediation-stage" \] || \[ -f "\$PDIR/remediation/qa/.qa-remediation-stage" \]' "$VERIFY_FILE"; then
   pass "verify: misnamed-plan refresh recomputes remediation scope from active state files"
 else
@@ -284,6 +290,12 @@ else
   fail "qa: missing qa-remediation-state.sh get — standalone QA may overwrite phase-level verification"
 fi
 
+if grep -q 'first_qa_attention_phase' "$QA_FILE" && grep -q 'qa_attention_status' "$QA_FILE"; then
+  pass "qa: auto-detect can target stale or failed QA even with terminal UAT"
+else
+  fail "qa: missing first_qa_attention-based auto-detect guidance"
+fi
+
 if grep -q 'case "\$QA_STAGE" in' "$QA_FILE" && grep -q 'verify)' "$QA_FILE" && grep -q 'done)' "$QA_FILE" && grep -q 'plan|execute' "$QA_FILE"; then
   pass "qa: uses persisted verification_path only for verify/done and blocks plan/execute"
 else
@@ -308,7 +320,7 @@ else
   fail "qa: missing persisted verification_path contract for standalone QA output"
 fi
 
-if grep -q 'first_unverified_phase' "$QA_FILE" && grep -q 'qa_status` is `pending` or `failed`' "$QA_FILE"; then
+if grep -q 'first_qa_attention_phase' "$QA_FILE" && grep -q 'qa_attention_status' "$QA_FILE"; then
   pass "qa: auto-detect retargets stale or failed authoritative QA artifacts"
 else
   fail "qa: auto-detect missing stale/failed authoritative QA retargeting guidance"

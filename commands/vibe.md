@@ -437,7 +437,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
   - After Dev completes, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
 
 - **stage=verify:** Re-run QA:
-  - Run `compile-verify-context.sh {phase-dir}` to get compounded verification history (original phase-level failures + all prior round results) plus plan/summary context
+  - Run `compile-verify-context.sh --remediation-only {phase-dir}` to get compounded verification history plus the current round's plan/summary context only
   - Spawn QA agent as subagent — writes to `{verification_path}` (from `qa-remediation-state.sh get` metadata)
     - The output path is `{round_dir}/R{RR}-VERIFICATION.md` — NOT the phase-level file
     - Phase-level VERIFICATION.md stays frozen as the original QA FAIL result
