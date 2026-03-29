@@ -14,11 +14,11 @@ setup() {
   export GIT_AUTHOR_EMAIL="test@test.local"
   export GIT_COMMITTER_NAME="test"
   export GIT_COMMITTER_EMAIL="test@test.local"
-  rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+  cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
 }
 
 teardown() {
-  rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+  cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
   teardown_temp_dir
 }
 

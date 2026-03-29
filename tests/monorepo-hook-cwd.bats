@@ -7,6 +7,7 @@ load test_helper
 
 LIB="$SCRIPTS_DIR/lib/vbw-config-root.sh"
 STATUSLINE="$SCRIPTS_DIR/vbw-statusline.sh"
+SESSION_START="$SCRIPTS_DIR/session-start.sh"
 
 setup() {
   setup_temp_dir
@@ -15,14 +16,14 @@ setup() {
   export GIT_AUTHOR_EMAIL="test@test.local"
   export GIT_COMMITTER_NAME="test"
   export GIT_COMMITTER_EMAIL="test@test.local"
-  rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+  cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
   # Ensure VBW_CONFIG_ROOT is unset before each test for a clean walk
   unset VBW_CONFIG_ROOT 2>/dev/null || true
   unset VBW_PLANNING_DIR 2>/dev/null || true
 }
 
 teardown() {
-  rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+  cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
   teardown_temp_dir
 }
 
@@ -299,6 +300,7 @@ JSON
   mkdir -p "$sl_dir/lib"
   cp "$STATUSLINE" "$sl_dir/vbw-statusline.sh"
   cp "$SCRIPTS_DIR/lib/vbw-config-root.sh" "$sl_dir/lib/"
+  cp "$SCRIPTS_DIR/lib/vbw-cache-key.sh" "$sl_dir/lib/"
   # Copy optional sourced helpers (statusline degrades gracefully if absent)
   for f in summary-utils.sh uat-utils.sh phase-state-utils.sh; do
     [ -f "$SCRIPTS_DIR/$f" ] && cp "$SCRIPTS_DIR/$f" "$sl_dir/"
@@ -318,4 +320,29 @@ JSON
   # The hardcoded default "quality" must NOT appear as the model profile
   # (use a pattern that matches the profile display, not any word)
   ! echo "$output" | grep -qiE "model.*qual|qual.*model|profile.*qual"
+}
+
+@test "session-start seeds statusline cache per nested VBW workspace root" {
+  local outer="$TEST_TEMP_DIR/nested-session-outer"
+  local inner="$outer/packages/ui"
+
+  setup_workspace "$outer"
+  mkdir -p "$inner/.vbw-planning" "$inner/src"
+  cat > "$inner/.vbw-planning/config.json" <<'JSON'
+{"effort": "balanced", "model_profile": "balanced"}
+JSON
+
+  local outer_cache inner_cache
+  outer_cache=$(vbw_cache_prefix_for_root "$outer" "$ORIG_UID")
+  inner_cache=$(vbw_cache_prefix_for_root "$inner" "$ORIG_UID")
+  [ "$outer_cache" != "$inner_cache" ]
+
+  cd "$inner/src"
+  bash "$SESSION_START" >/dev/null 2>&1
+  cd "$PROJECT_ROOT"
+
+  [ -f "${inner_cache}-fast" ]
+  [ -f "${inner_cache}-slow" ]
+  [ -f "${inner_cache}-ok" ]
+  [ ! -f "${outer_cache}-fast" ]
 }

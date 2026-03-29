@@ -15,6 +15,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
 # shellcheck source=lib/vbw-config-root.sh
 . "$SCRIPT_DIR/lib/vbw-config-root.sh"
+# shellcheck source=lib/vbw-cache-key.sh
+. "$SCRIPT_DIR/lib/vbw-cache-key.sh"
 find_vbw_root
 PLANNING_DIR="$VBW_PLANNING_DIR"
 
@@ -1051,15 +1053,8 @@ rm -f "$PLANNING_DIR/.skill-names" 2>/dev/null || true
 # data instead of cold-starting 20+ subprocess forks + 2 curl calls.
 # Compute the same cache key that vbw-statusline.sh uses:
 _SL_VER=$(cat "$SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
-_SL_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
-if command -v md5sum &>/dev/null; then
-  _SL_HASH=$(echo "$_SL_ROOT" | md5sum | cut -c1-8)
-elif command -v md5 &>/dev/null; then
-  _SL_HASH=$(echo "$_SL_ROOT" | md5 -q | cut -c1-8)
-else
-  _SL_HASH=$(printf '%s' "$_SL_ROOT" | cksum | cut -d' ' -f1)
-fi
-_SL_CACHE="/tmp/vbw-${_SL_VER:-0}-$(id -u)-${_SL_HASH}"
+_SL_CACHE_ROOT="${VBW_CONFIG_ROOT:-$(pwd -P 2>/dev/null || pwd)}"
+_SL_CACHE=$(vbw_cache_prefix "${_SL_VER:-0}" "$(id -u)" "$_SL_CACHE_ROOT")
 
 # Only seed if caches don't already exist (avoids overwriting real data mid-session).
 if [ ! -f "${_SL_CACHE}-fast" ]; then

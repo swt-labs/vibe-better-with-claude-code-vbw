@@ -41,39 +41,40 @@ default_bats_workers() {
 }
 
 run_job() {
-  local type="$1" name="$2" cmd="$3"
+  local type="$1" name="$2"
+  shift 2
   JOB_NAMES+=("$name")
   JOB_TYPES+=("$type")
-  bash -c "$cmd" > "$TMPDIR_JOBS/$name.out" 2>&1 &
+  "$@" > "$TMPDIR_JOBS/$name.out" 2>&1 &
   JOB_PIDS+=("$!")
 }
 
 # --- Launch contract checks ---
-run_job contract "init-todo"                "bash '$ROOT/scripts/verify-init-todo.sh'"
-run_job contract "claude-bootstrap"         "bash '$ROOT/scripts/verify-claude-bootstrap.sh'"
-run_job contract "bash-scripts-contract"    "bash '$ROOT/testing/verify-bash-scripts-contract.sh'"
-run_job contract "commands-contract"        "bash '$ROOT/testing/verify-commands-contract.sh'"
-run_job contract "no-inline-exec-spans"     "bash '$ROOT/testing/verify-no-inline-exec-spans.sh'"
-run_job contract "plugin-root-resolution"   "bash '$ROOT/testing/verify-plugin-root-resolution.sh'"
-run_job contract "hook-event-name"          "bash '$ROOT/testing/verify-hook-event-name.sh'"
-run_job contract "plan-filename-convention" "bash '$ROOT/testing/verify-plan-filename-convention.sh'"
-run_job contract "skill-activation"         "bash '$ROOT/testing/verify-skill-activation.sh'"
-run_job contract "permission-mode-contract" "bash '$ROOT/testing/verify-permission-mode-contract.sh'"
-run_job contract "delegation-guard"         "bash '$ROOT/testing/verify-delegation-guard.sh'"
-run_job contract "summary-status-contract"  "bash '$ROOT/testing/verify-summary-status-contract.sh'"
-run_job contract "summary-utils-contract"   "bash '$ROOT/testing/verify-summary-utils-contract.sh'"
-run_job contract "exec-state-reconciliation" "bash '$ROOT/testing/verify-exec-state-reconciliation.sh'"
-run_job contract "statusline-qa-lifecycle"  "bash '$ROOT/testing/verify-statusline-qa-lifecycle.sh'"
-run_job contract "statusline-429-backoff"   "bash '$ROOT/testing/verify-statusline-429-backoff.sh'"
-run_job contract "uat-recurrence"           "bash '$ROOT/testing/verify-uat-recurrence.sh'"
-run_job contract "lead-research-conditional" "bash '$ROOT/testing/verify-lead-research-conditional.sh'"
-run_job contract "lsp-setup"                "bash '$ROOT/testing/verify-lsp-setup.sh'"
-run_job contract "lsp-first-policy"         "bash '$ROOT/testing/verify-lsp-first-policy.sh'"
-run_job contract "claude-md-staleness"      "bash '$ROOT/testing/verify-claude-md-staleness.sh'"
-run_job contract "dev-recovery-guidance"    "bash '$ROOT/testing/verify-dev-recovery-guidance.sh'"
-run_job contract "live-validation-policy"   "bash '$ROOT/testing/verify-live-validation-policy.sh'"
-run_job contract "ghost-team-cleanup"       "bash '$ROOT/testing/verify-ghost-team-cleanup.sh'"
-run_job contract "qa-persistence-contract"  "bash '$ROOT/testing/verify-qa-persistence-contract.sh'"
+run_job contract "init-todo"                bash "$ROOT/scripts/verify-init-todo.sh"
+run_job contract "claude-bootstrap"         bash "$ROOT/scripts/verify-claude-bootstrap.sh"
+run_job contract "bash-scripts-contract"    bash "$ROOT/testing/verify-bash-scripts-contract.sh"
+run_job contract "commands-contract"        bash "$ROOT/testing/verify-commands-contract.sh"
+run_job contract "no-inline-exec-spans"     bash "$ROOT/testing/verify-no-inline-exec-spans.sh"
+run_job contract "plugin-root-resolution"   bash "$ROOT/testing/verify-plugin-root-resolution.sh"
+run_job contract "hook-event-name"          bash "$ROOT/testing/verify-hook-event-name.sh"
+run_job contract "plan-filename-convention" bash "$ROOT/testing/verify-plan-filename-convention.sh"
+run_job contract "skill-activation"         bash "$ROOT/testing/verify-skill-activation.sh"
+run_job contract "permission-mode-contract" bash "$ROOT/testing/verify-permission-mode-contract.sh"
+run_job contract "delegation-guard"         bash "$ROOT/testing/verify-delegation-guard.sh"
+run_job contract "summary-status-contract"  bash "$ROOT/testing/verify-summary-status-contract.sh"
+run_job contract "summary-utils-contract"   bash "$ROOT/testing/verify-summary-utils-contract.sh"
+run_job contract "exec-state-reconciliation" bash "$ROOT/testing/verify-exec-state-reconciliation.sh"
+run_job contract "statusline-qa-lifecycle"  bash "$ROOT/testing/verify-statusline-qa-lifecycle.sh"
+run_job contract "statusline-429-backoff"   bash "$ROOT/testing/verify-statusline-429-backoff.sh"
+run_job contract "uat-recurrence"           bash "$ROOT/testing/verify-uat-recurrence.sh"
+run_job contract "lead-research-conditional" bash "$ROOT/testing/verify-lead-research-conditional.sh"
+run_job contract "lsp-setup"                bash "$ROOT/testing/verify-lsp-setup.sh"
+run_job contract "lsp-first-policy"         bash "$ROOT/testing/verify-lsp-first-policy.sh"
+run_job contract "claude-md-staleness"      bash "$ROOT/testing/verify-claude-md-staleness.sh"
+run_job contract "dev-recovery-guidance"    bash "$ROOT/testing/verify-dev-recovery-guidance.sh"
+run_job contract "live-validation-policy"   bash "$ROOT/testing/verify-live-validation-policy.sh"
+run_job contract "ghost-team-cleanup"       bash "$ROOT/testing/verify-ghost-team-cleanup.sh"
+run_job contract "qa-persistence-contract"  bash "$ROOT/testing/verify-qa-persistence-contract.sh"
 
 # --- Launch bats workers concurrently with contract checks ---
 BATS_WORKERS="${BATS_WORKERS:-$(default_bats_workers)}"
@@ -84,7 +85,7 @@ if command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; then
   bats_launched=true
 
   if [ "$BATS_WORKERS" -le 1 ] || [ "$total_files" -le 1 ]; then
-    run_job bats "bats-all" "bats ${bats_files[*]}"
+    run_job bats "bats-all" bats "${bats_files[@]}"
   else
     for ((w=0; w<BATS_WORKERS; w++)); do
       worker_files=()
@@ -92,7 +93,7 @@ if command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; then
         worker_files+=("${bats_files[$f]}")
       done
       if [ "${#worker_files[@]}" -gt 0 ]; then
-        run_job bats "bats-worker-$w" "bats ${worker_files[*]}"
+        run_job bats "bats-worker-$w" bats "${worker_files[@]}"
       fi
     done
   fi

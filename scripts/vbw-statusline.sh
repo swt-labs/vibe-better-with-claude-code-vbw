@@ -31,18 +31,19 @@ _OS=$(uname)
 # script-relative resolution fails gracefully and find_vbw_root falls back to CWD.
 _SL_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 _VER=$(cat "$_SL_SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
-# _REPO_ROOT must always reflect the *user's* project repo (CWD-relative), not the
-# plugin's location. Script-relative git root would resolve to the VBW repo in dev
-# mode, breaking cache isolation between different user projects.
+# Resolve the VBW workspace root before deriving the temp cache key.
+# Cache isolation must follow the resolved .vbw-planning boundary, not just the git
+# top-level root, so nested VBW workspaces inside one monorepo do not share caches.
+# shellcheck source=lib/vbw-config-root.sh
+. "$_SL_SCRIPT_DIR/lib/vbw-config-root.sh"
+# shellcheck source=lib/vbw-cache-key.sh
+. "$_SL_SCRIPT_DIR/lib/vbw-cache-key.sh"
+find_vbw_root "$_SL_SCRIPT_DIR"
+
+# _REPO_ROOT is still used for GitHub link rendering and bare-directory labels.
 _REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
-if command -v md5sum &>/dev/null; then
-  _REPO_HASH=$(echo "$_REPO_ROOT" | md5sum | cut -c1-8)
-elif command -v md5 &>/dev/null; then
-  _REPO_HASH=$(echo "$_REPO_ROOT" | md5 -q | cut -c1-8)
-else
-  _REPO_HASH=$(printf '%s' "$_REPO_ROOT" | cksum | cut -d' ' -f1)
-fi
-_CACHE="/tmp/vbw-${_VER:-0}-${_UID}-${_REPO_HASH}"
+_CACHE_ROOT="${VBW_CONFIG_ROOT:-$_REPO_ROOT}"
+_CACHE=$(vbw_cache_prefix "${_VER:-0}" "$_UID" "$_CACHE_ROOT")
 
 # Clean stale caches from previous versions on first run
 if ! [ -f "${_CACHE}-ok" ] || ! [ -O "${_CACHE}-ok" ]; then
@@ -132,12 +133,6 @@ qa_verification_stale() {
   _verif_mtime=$(perl -e 'print +(stat shift)[9]' "$verif_file" 2>/dev/null || echo "")
   [ -n "$_cur_commit_ts" ] && [ -n "$_verif_mtime" ] && [ "$_cur_commit_ts" -ge "$_verif_mtime" ]
 }
-
-# Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
-# Pass _SL_SCRIPT_DIR as the stable anchor so agent CWD changes don't shift the root.
-# shellcheck source=lib/vbw-config-root.sh
-. "$_SL_SCRIPT_DIR/lib/vbw-config-root.sh"
-find_vbw_root "$_SL_SCRIPT_DIR"
 
 cache_fresh() {
   local cf="$1" ttl="$2"
@@ -729,12 +724,18 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
   fi
 
   if [ -n "$OAUTH_TOKEN" ]; then
-    HTTP_CODE=$(curl -s -o /tmp/vbw-usage-body-"${_UID}" -w '%{http_code}' --max-time 3 \
+    HTTP_CODE="000"
+    USAGE_RAW=""
+    HTTP_RAW=$(curl -s -w $'\n%{http_code}' --max-time 3 \
       -H "Authorization: Bearer ${OAUTH_TOKEN}" \
       -H "anthropic-beta: oauth-2025-04-20" \
-      "https://api.anthropic.com/api/oauth/usage" 2>/dev/null) || HTTP_CODE="000"
-    USAGE_RAW=$(cat /tmp/vbw-usage-body-"${_UID}" 2>/dev/null)
-    rm -f /tmp/vbw-usage-body-"${_UID}" 2>/dev/null
+      "https://api.anthropic.com/api/oauth/usage" 2>/dev/null) || HTTP_RAW=""
+    if [ -n "$HTTP_RAW" ]; then
+      HTTP_CODE="${HTTP_RAW##*$'\n'}"
+      case "$HTTP_RAW" in
+        *$'\n'*) USAGE_RAW="${HTTP_RAW%$'\n'*}" ;;
+      esac
+    fi
 
     if [ -n "$USAGE_RAW" ] && echo "$USAGE_RAW" | jq -e '.five_hour' >/dev/null 2>&1; then
       IFS='|' read -r FIVE_PCT FIVE_EPOCH WEEK_PCT WEEK_EPOCH SONNET_PCT \
