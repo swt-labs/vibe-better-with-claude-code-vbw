@@ -252,6 +252,18 @@ EOF
   echo "$output" | grep -q "uat_issues_phase=01"
 }
 
+@test "corrupt QA remediation stage does not route as active remediation" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  printf 'stage=garbage\nround=01\n' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  ! echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  echo "$output" | grep -q "qa_status=pending"
+}
+
 @test "dotfile PLAN files are not counted as plan artifacts" {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md

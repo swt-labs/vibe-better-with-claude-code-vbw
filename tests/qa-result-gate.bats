@@ -216,6 +216,64 @@ create_plan() {
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "during remediation verify stage gate reads current round verification" {
+  create_verif "write-verification.sh" "FAIL"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+phase: 01
+tier: full
+result: PASS
+passed: 10
+failed: 0
+total: 10
+date: 2026-03-27
+writer: write-verification.sh
+---
+
+## Must-Have Checks
+| Check | Status |
+|-------|--------|
+| Feature works | PASS |
+EOF
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "during remediation plan stage gate ignores stale round verification" {
+  create_verif "write-verification.sh" "FAIL"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+phase: 01
+tier: full
+result: PASS
+passed: 10
+failed: 0
+total: 10
+date: 2026-03-27
+writer: write-verification.sh
+---
+
+## Must-Have Checks
+| Check | Status |
+|-------|--------|
+| Feature works | PASS |
+EOF
+  printf 'stage=plan\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=FAIL"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
 @test "bold FAIL markers in body are counted" {
   create_verif "write-verification.sh" "PASS" "## Checks
 | Check | Status |

@@ -71,6 +71,12 @@ PLAN_SCOPE_DIR="$PHASE_DIR"  # Default: phase-level plans
 SUMMARY_SCOPE_DIR="$PHASE_DIR"  # Default: phase-level summaries
 if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
   IN_REMEDIATION="true"
+  _gate_stage=$(grep '^stage=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+  _gate_stage="${_gate_stage:-none}"
+  case "$_gate_stage" in
+    plan|execute|verify|done) ;;
+    *) _gate_stage="none" ;;
+  esac
   _gate_round=$(grep '^round=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
   _gate_round="${_gate_round:-01}"
   # Defensive: ensure round is numeric before arithmetic
@@ -82,11 +88,21 @@ if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
   _gate_round_dir="$PHASE_DIR/remediation/qa/round-${_gate_round}"
   _gate_round_verif="${_gate_round_dir}/R${_gate_round}-VERIFICATION.md"
   if [ "$EXPLICIT_VERIF_NAME" = false ]; then
-    _gate_current_verif=$(bash "$RESOLVE_VERIF_SCRIPT" current "$PHASE_DIR" 2>/dev/null || true)
-    if [ -n "${_gate_current_verif:-}" ]; then
-      VERIF_PATH="$_gate_current_verif"
-      VERIF_NAME=$(basename "$VERIF_PATH")
-    fi
+    case "$_gate_stage" in
+      verify)
+        if [ -f "$_gate_round_verif" ]; then
+          VERIF_PATH="$_gate_round_verif"
+          VERIF_NAME=$(basename "$VERIF_PATH")
+        fi
+        ;;
+      done)
+        _gate_authoritative_verif=$(bash "$RESOLVE_VERIF_SCRIPT" authoritative "$PHASE_DIR" 2>/dev/null || true)
+        if [ -n "${_gate_authoritative_verif:-}" ]; then
+          VERIF_PATH="$_gate_authoritative_verif"
+          VERIF_NAME=$(basename "$VERIF_PATH")
+        fi
+        ;;
+    esac
   fi
   if [ "$VERIF_PATH" = "$_gate_round_verif" ]; then
     PLAN_SCOPE_DIR="$_gate_round_dir"

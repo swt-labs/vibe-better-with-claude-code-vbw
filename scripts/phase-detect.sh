@@ -25,6 +25,13 @@ list_child_dirs_sorted() {
     (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
 }
 
+normalize_qa_remediation_stage() {
+  case "${1:-none}" in
+    plan|execute|verify|done) echo "$1" ;;
+    *) echo "none" ;;
+  esac
+}
+
 # --- jq availability ---
 JQ_AVAILABLE=false
 if command -v jq &>/dev/null; then
@@ -452,7 +459,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     [ -f "$_qr_rem_file" ] || continue
 
     _qr_stage=$(grep '^stage=' "$_qr_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
-    _qr_stage="${_qr_stage:-none}"
+    _qr_stage=$(normalize_qa_remediation_stage "${_qr_stage:-none}")
     case "$_qr_stage" in
       none|done) continue ;;
     esac
@@ -482,7 +489,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     _qa_rem_file="${_uv_dir}remediation/qa/.qa-remediation-stage"
     if [ -f "$_qa_rem_file" ]; then
       _qa_rem_stage=$(grep '^stage=' "$_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-      _qa_rem_stage="${_qa_rem_stage:-none}"
+      _qa_rem_stage=$(normalize_qa_remediation_stage "${_qa_rem_stage:-none}")
       _qa_rem_round=$(grep '^round=' "$_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
       _qa_rem_round="${_qa_rem_round:-01}"
     fi
