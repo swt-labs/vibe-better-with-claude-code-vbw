@@ -145,7 +145,11 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         QA_STAGE=$(printf '%s\n' "$QA_STATE" | head -1)
         VERIF_PATH=$(printf '%s\n' "$QA_STATE" | awk -F= '/^verification_path=/{print $2; exit}')
         case "$QA_STAGE" in
-          verify|done) ;;
+          verify) ;;
+          done)
+            VERIF_PATH=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-verification-path.sh current "{phase-dir}" 2>/dev/null || true)
+            [ -n "$VERIF_PATH" ] && [ ! -f "$VERIF_PATH" ] && VERIF_PATH=""
+            ;;
           plan|execute)
             echo "Phase {NN} has active QA remediation at stage ${QA_STAGE}. Run /vbw:vibe to continue remediation before standalone QA." >&2
             exit 1

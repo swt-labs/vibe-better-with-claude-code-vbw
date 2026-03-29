@@ -1583,3 +1583,44 @@ EOF
   false_fail=$(echo "$output" | awk '/VERIFICATION HISTORY/,0' | grep -c "Contains FAIL example" || true)
   [ "$false_fail" -eq 0 ]
 }
+
+@test "compile-verify-context: remediation-only supports QA remediation rounds" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Root plan
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Root feature
+EOF
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: QA remediation round
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+plan: R01
+status: complete
+---
+## What Was Built
+- Remediation fix
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=01"* ]]
+  [[ "$output" == *"=== PLAN R01: QA remediation round ==="* ]]
+  [[ "$output" != *"=== PLAN 01: Root plan ==="* ]]
+  [[ "$output" == *"uat_path=03-UAT.md"* ]]
+}

@@ -53,12 +53,40 @@ fi
 if [ "$REMEDIATION_ONLY" = true ]; then
   # Find the latest completed round (has both R{RR}-PLAN.md and R{RR}-SUMMARY.md)
   LATEST_ROUND=""
-  REMED_DIR="$PHASE_DIR/remediation/uat"
-  # Legacy fallback: check old path if new doesn't exist
-  if [ ! -d "$REMED_DIR" ] && [ -d "$PHASE_DIR/remediation" ]; then
+  REMED_DIR=""
+  REMED_KIND=""
+  for _candidate in "$PHASE_DIR/remediation/uat" "$PHASE_DIR/remediation/qa"; do
+    [ -d "$_candidate" ] || continue
+    _best_round_num=0
+    _candidate_round=""
+    for round_dir in "$_candidate"/round-*/; do
+      [ -d "$round_dir" ] || continue
+      round_num=$(basename "$round_dir" | sed 's/^round-0*//')
+      round_num=${round_num:-0}
+      rr=$(printf '%02d' "$round_num")
+      if [ "$round_num" -gt "$_best_round_num" ] 2>/dev/null && \
+         ls "$round_dir"/R"${rr}"-PLAN.md >/dev/null 2>&1 && \
+         ls "$round_dir"/R"${rr}"-SUMMARY.md >/dev/null 2>&1 && \
+         is_summary_terminal "$round_dir/R${rr}-SUMMARY.md"; then
+        _best_round_num="$round_num"
+        _candidate_round="$rr"
+      fi
+    done
+    if [ -n "$_candidate_round" ]; then
+      LATEST_ROUND="$_candidate_round"
+      REMED_DIR="$_candidate"
+      case "$_candidate" in
+        */remediation/uat) REMED_KIND="uat" ;;
+        */remediation/qa) REMED_KIND="qa" ;;
+      esac
+      break
+    fi
+  done
+
+  # Legacy fallback: check old remediation/round-* layout if no new-style round dir found
+  if [ -z "$LATEST_ROUND" ] && [ -d "$PHASE_DIR/remediation" ]; then
     REMED_DIR="$PHASE_DIR/remediation"
-  fi
-  if [ -d "$REMED_DIR" ]; then
+    REMED_KIND="legacy"
     _best_round_num=0
     for round_dir in "$REMED_DIR"/round-*/; do
       [ -d "$round_dir" ] || continue
@@ -79,8 +107,16 @@ if [ "$REMEDIATION_ONLY" = true ]; then
     rr=$(printf '%02d' "$LATEST_ROUND")
     ALL_PLAN_FILES=$(find "$REMED_DIR/round-$rr" -maxdepth 1 -name "R${rr}-PLAN.md" 2>/dev/null | sort)
     SCOPE_HEADER="verify_scope=remediation round=$rr"
-    # Derive UAT_PATH relative to PHASE_DIR so legacy layouts get the correct path
-    UAT_PATH="${REMED_DIR#"$PHASE_DIR/"}/round-$rr/R${rr}-UAT.md"
+    # UAT remediation rounds write round-scoped UAT artifacts; QA remediation
+    # rounds still hand off to the canonical phase-level UAT path.
+    case "$REMED_KIND" in
+      qa)
+        UAT_PATH=$(bash "${_CVC_SCRIPT_DIR}/resolve-artifact-path.sh" uat "$PHASE_DIR")
+        ;;
+      *)
+        UAT_PATH="${REMED_DIR#"$PHASE_DIR/"}/round-$rr/R${rr}-UAT.md"
+        ;;
+    esac
   else
     # Fallback: no completed round found — use full scope
     REMEDIATION_ONLY=false
