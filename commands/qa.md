@@ -108,6 +108,7 @@ fi`
   Use the refreshed phase-detect output for all subsequent guard checks and steps.
 - **Auto-detect phase** (no explicit number): Phase detection is pre-computed in Context above. Use `next_phase` and `next_phase_slug` for the target phase.
   - If `next_phase_state=needs_qa_remediation`, target that phase directly — standalone QA must re-verify the active remediation round rather than overwrite the frozen phase-level VERIFICATION.
+  - If `first_unverified_phase` is set and `qa_status` is `pending` or `failed`, target that phase directly — existing QA artifacts may be stale or failed even when a file already exists.
   - Otherwise, to find the first phase needing QA: scan phase dirs for first with completed `*-SUMMARY.md` files but no authoritative QA verification artifact (no numbered final VERIFICATION, no brownfield plain `VERIFICATION.md`, no wave fallback). Found: announce "Auto-detected Phase {NN} ({slug})". All verified: STOP "All phases verified. Specify: `/vbw:qa {NN}`"
 - Phase not built (no SUMMARYs): STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 
@@ -139,8 +140,9 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
 
         ```bash
         QA_STATE=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/qa-remediation-state.sh get "{phase-dir}" 2>/dev/null || true)
+        QA_STAGE=$(printf '%s\n' "$QA_STATE" | head -1)
         VERIF_PATH=$(printf '%s\n' "$QA_STATE" | awk -F= '/^verification_path=/{print $2; exit}')
-        if [ -z "$VERIF_PATH" ]; then
+        if [ "$QA_STAGE" != "verify" ] || [ -z "$VERIF_PATH" ]; then
           VERIF_NAME=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-artifact-path.sh verification "{phase-dir}")
           VERIF_PATH="{phase-dir}/${VERIF_NAME}"
         fi

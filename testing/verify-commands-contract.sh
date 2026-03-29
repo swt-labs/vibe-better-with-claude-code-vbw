@@ -260,10 +260,28 @@ else
   fail "qa: missing qa-remediation-state.sh get — standalone QA may overwrite phase-level verification"
 fi
 
+if grep -q 'QA_STAGE=$(printf' "$QA_FILE" && grep -q '\[ "$QA_STAGE" != "verify" \]' "$QA_FILE"; then
+  pass "qa: only treats persisted verification_path as active during verify stage"
+else
+  fail "qa: missing verify-stage guard for persisted verification_path"
+fi
+
 if grep -q 'verification_path=' "$QA_FILE" && grep -q 'Output path: {VERIF_PATH}' "$QA_FILE"; then
-  pass "qa: uses persisted verification_path for standalone QA output"
+  pass "qa: uses persisted verification_path contract for standalone QA output"
 else
   fail "qa: missing persisted verification_path contract for standalone QA output"
+fi
+
+if grep -q 'first_unverified_phase' "$QA_FILE" && grep -q 'qa_status` is `pending` or `failed`' "$QA_FILE"; then
+  pass "qa: auto-detect retargets stale or failed authoritative QA artifacts"
+else
+  fail "qa: auto-detect missing stale/failed authoritative QA retargeting guidance"
+fi
+
+if grep -q 'compile-verify-context.sh --remediation-only' "$VIBE_FILE"; then
+  pass "vibe: refreshes verify context before QA remediation handoff to Verify"
+else
+  fail "vibe: missing verify-context refresh for QA remediation handoff"
 fi
 
 # vibe.md must reference qa-result-gate.sh at both gate call sites (primary + remediation verify)
