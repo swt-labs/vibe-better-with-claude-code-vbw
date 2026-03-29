@@ -201,35 +201,19 @@ case "$GATE_TYPE" in
     PHASE_DIR=$(ls -d "${PHASES_DIR}/${PHASE}-"* 2>/dev/null | head -1)
     [ -z "$PHASE_DIR" ] && { emit_result "pass" "phase dir not found"; exit 0; }
 
-    # Prefer final phase verification artifact over wave files.
-    # Selection order:
-    # 1) <phasePrefix>-VERIFICATION.md (authoritative final)
-    # 2) Latest <phasePrefix>-VERIFICATION-waveN.md
-    # 3) Brownfield fallback: VERIFICATION.md
-    # 4) Legacy fallback: first *-VERIFICATION*.md
+    # Resolve the authoritative verification artifact first. Under QA remediation,
+    # this may be the completed round's R{RR}-VERIFICATION.md rather than the
+    # frozen phase-root FAIL record.
     VERIFICATION_FILE=""
-    PHASE_BASENAME=$(basename "$PHASE_DIR")
-    PHASE_PREFIX="${PHASE_BASENAME%%-*}"
-
-    # 1) Final deterministic phase verification file
-    if [ -f "$PHASE_DIR/${PHASE_PREFIX}-VERIFICATION.md" ]; then
-      VERIFICATION_FILE="$PHASE_DIR/${PHASE_PREFIX}-VERIFICATION.md"
-    fi
-
-    # 2) Latest wave verification (if final file absent)
-    if [ -z "$VERIFICATION_FILE" ]; then
-      WAVE_FILES=$(ls -1 "$PHASE_DIR/${PHASE_PREFIX}-VERIFICATION-wave"*.md 2>/dev/null | (sort -V 2>/dev/null || sort))
-      if [ -n "$WAVE_FILES" ]; then
-        VERIFICATION_FILE=$(printf '%s\n' "$WAVE_FILES" | tail -1)
+    GATE_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    if [ -f "$GATE_SCRIPT_DIR/resolve-verification-path.sh" ]; then
+      VERIFICATION_FILE=$(bash "$GATE_SCRIPT_DIR/resolve-verification-path.sh" authoritative "$PHASE_DIR" 2>/dev/null || true)
+      if [ -n "$VERIFICATION_FILE" ] && [ ! -f "$VERIFICATION_FILE" ]; then
+        VERIFICATION_FILE=""
       fi
     fi
 
-    # 3) Brownfield fallback: non-prefixed VERIFICATION.md
-    if [ -z "$VERIFICATION_FILE" ] && [ -f "$PHASE_DIR/VERIFICATION.md" ]; then
-      VERIFICATION_FILE="$PHASE_DIR/VERIFICATION.md"
-    fi
-
-    # 4) Legacy fallback: any prefixed verification artifact
+    # Legacy fallback: any prefixed verification artifact.
     if [ -z "$VERIFICATION_FILE" ]; then
       for vf in "$PHASE_DIR"/*-VERIFICATION*.md; do
         [ -f "$vf" ] && VERIFICATION_FILE="$vf" && break
@@ -247,12 +231,55 @@ case "$GATE_TYPE" in
       exit 2
     fi
 
-    # Check for PASS verdict
-    if grep -qi 'PASS\|passed\|all.*pass' "$VERIFICATION_FILE" 2>/dev/null; then
-      emit_result "pass" "verification passed"
-    elif grep -qi 'FAIL\|failed' "$VERIFICATION_FILE" 2>/dev/null; then
+    VERIFICATION_RESULT=$(awk '
+      BEGIN { in_fm=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); sub(/[[:space:]]+$/, ""); print; exit }
+    ' "$VERIFICATION_FILE" 2>/dev/null || true)
+
+    case "$VERIFICATION_RESULT" in
+      PASS)
+        _vg_dirty=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
+        if [ -n "$_vg_dirty" ]; then
+          emit_result "fail" "verification stale (working tree changed since verification)"
+          exit 2
+        fi
+        _vg_verified_at_commit=$(awk '
+          BEGIN { in_fm=0 }
+          NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+          in_fm && /^---[[:space:]]*$/ { exit }
+          in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); sub(/[[:space:]]+$/, ""); print; exit }
+        ' "$VERIFICATION_FILE" 2>/dev/null || true)
+        if [ -n "$_vg_verified_at_commit" ]; then
+          _vg_cur_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+          if [ -n "$_vg_cur_commit" ] && [ "$_vg_cur_commit" != "$_vg_verified_at_commit" ]; then
+            emit_result "fail" "verification stale (verified_at_commit no longer matches product code)"
+            exit 2
+          fi
+        else
+          _vg_cur_commit_ts=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+          _vg_verif_mtime=$(perl -e 'print +(stat shift)[9]' "$VERIFICATION_FILE" 2>/dev/null || echo "")
+          if [ -n "$_vg_cur_commit_ts" ] && [ -n "$_vg_verif_mtime" ] && [ "$_vg_cur_commit_ts" -ge "$_vg_verif_mtime" ]; then
+            emit_result "fail" "verification stale (product code changed after verification)"
+            exit 2
+          fi
+        fi
+        emit_result "pass" "verification passed"
+        exit 0
+        ;;
+      FAIL|PARTIAL)
+        emit_result "fail" "verification failed"
+        exit 2
+        ;;
+    esac
+
+    # Brownfield fallback: no structured result field available.
+    if grep -qi 'FAIL\|failed' "$VERIFICATION_FILE" 2>/dev/null; then
       emit_result "fail" "verification failed"
       exit 2
+    elif grep -qi 'PASS\|passed\|all.*pass' "$VERIFICATION_FILE" 2>/dev/null; then
+      emit_result "pass" "verification passed"
     else
       emit_result "pass" "verification status unclear, fail-open"
     fi

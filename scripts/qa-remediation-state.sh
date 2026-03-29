@@ -20,6 +20,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 CMD="${1:-}"
 PHASE_DIR="${2:-}"
 
@@ -45,8 +47,16 @@ STAGES=("plan" "execute" "verify" "done")
 get_stage() {
   if [ -f "$STATE_FILE" ]; then
     local _val
-    _val=$(grep '^stage=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-    echo "${_val:-none}"
+    local _stage
+    _val=$(grep '^stage=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+    _val="${_val:-none}"
+    for _stage in "${STAGES[@]}"; do
+      if [ "$_stage" = "$_val" ]; then
+        echo "$_val"
+        return 0
+      fi
+    done
+    echo "none"
   else
     echo "none"
   fi
@@ -55,16 +65,25 @@ get_stage() {
 get_round() {
   if [ -f "$STATE_FILE" ]; then
     local _val
-    _val=$(grep '^round=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    _val=$(grep '^round=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
     echo "${_val:-01}"
   else
     echo "01"
   fi
 }
 
+canonicalize_round() {
+  local round="$1"
+  round="${round:-01}"
+  if ! [[ "$round" =~ ^[0-9]+$ ]]; then
+    round="01"
+  fi
+  printf '%02d' "$((10#$round))"
+}
+
 get_round_dir() {
   local round
-  round=$(get_round)
+  round=$(canonicalize_round "$(get_round)")
   echo "$PHASE_DIR/remediation/qa/round-${round}"
 }
 
@@ -124,18 +143,23 @@ start_new_round() {
   mkdir -p "$PHASE_DIR/remediation/qa/round-${next_round_padded}"
   printf 'stage=plan\nround=%s\n' "$next_round_padded" > "$STATE_FILE"
   echo "plan"
-  echo "round=${next_round_padded}"
-  echo "round_dir=$PHASE_DIR/remediation/qa/round-${next_round_padded}"
+  emit_metadata
 }
 
 emit_metadata() {
-  local round round_dir
-  round=$(get_round)
+  local round round_dir source_verification_path
+  round=$(canonicalize_round "$(get_round)")
   round_dir="$PHASE_DIR/remediation/qa/round-${round}"
+  source_verification_path=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" plan-input "$PHASE_DIR" 2>/dev/null || true)
+  if [ -z "$source_verification_path" ]; then
+    source_verification_path="$PHASE_DIR/$(bash "$SCRIPT_DIR/resolve-artifact-path.sh" verification "$PHASE_DIR" 2>/dev/null || echo '01-VERIFICATION.md')"
+  fi
   echo "round=${round}"
   echo "round_dir=${round_dir}"
+  echo "source_verification_path=${source_verification_path}"
   echo "plan_path=${round_dir}/R${round}-PLAN.md"
   echo "summary_path=${round_dir}/R${round}-SUMMARY.md"
+  echo "verification_path=${round_dir}/R${round}-VERIFICATION.md"
 }
 
 case "$CMD" in

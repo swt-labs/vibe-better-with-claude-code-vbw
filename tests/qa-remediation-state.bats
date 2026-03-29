@@ -39,6 +39,19 @@ teardown() {
   echo "$output" | grep -q "^round_dir=.*remediation/qa/round-02$"
 }
 
+@test "get canonicalizes unpadded round metadata on resume" {
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=verify\nround=2\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round=02$"
+  echo "$output" | grep -q "^round_dir=.*remediation/qa/round-02$"
+  echo "$output" | grep -q "^plan_path=.*remediation/qa/round-02/R02-PLAN.md$"
+  echo "$output" | grep -q "^summary_path=.*remediation/qa/round-02/R02-SUMMARY.md$"
+  echo "$output" | grep -q "^verification_path=.*remediation/qa/round-02/R02-VERIFICATION.md$"
+}
+
 # --- init command ---
 
 @test "init creates state file and round-01 dir" {
@@ -225,6 +238,15 @@ teardown() {
   [ "$status" -eq 1 ]
 }
 
+@test "get normalizes unknown stage to none" {
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=garbage\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [ "$output" = "none" ]
+}
+
 @test "init overwrites existing state" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-02"
   printf 'stage=execute\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
@@ -241,4 +263,53 @@ teardown() {
 
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
   [ "$status" -eq 2 ]
+}
+
+# --- verification_path metadata ---
+
+@test "emit_metadata includes verification_path on init" {
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^source_verification_path=.*01-VERIFICATION.md$"
+  echo "$output" | grep -q "^verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
+}
+
+@test "emit_metadata includes verification_path on get" {
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=execute\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^source_verification_path=.*01-VERIFICATION.md$"
+  echo "$output" | grep -q "^verification_path=.*remediation/qa/round-02/R02-VERIFICATION.md$"
+}
+
+@test "emit_metadata includes verification_path on get-or-init" {
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get-or-init "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
+}
+
+@test "verification_path updates after needs-round" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  printf '%s\n' '---' 'result: FAIL' '---' > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round=02$"
+  echo "$output" | grep -q "^source_verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
+  # After needs-round, get should show round-02 verification_path
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+  echo "$output" | grep -q "^source_verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
+  echo "$output" | grep -q "^verification_path=.*remediation/qa/round-02/R02-VERIFICATION.md$"
+}
+
+@test "verification_path preserved through advance" {
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR" >/dev/null
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
 }

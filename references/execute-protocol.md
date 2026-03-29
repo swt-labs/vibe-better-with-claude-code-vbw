@@ -406,8 +406,7 @@ All metrics calls should be `2>/dev/null || true` — never block execution.
   - Gate failures trigger auto-repair with same flow as pre-task.
 - **Post-plan gate (after all tasks complete, before marking plan done):**
   1. `artifact_persistence` gate: `bash "${VBW_PLUGIN_ROOT}/scripts/hard-gate.sh" artifact_persistence {phase} {plan} {task} {contract_path}`
-  2. `verification_threshold` gate: `bash "${VBW_PLUGIN_ROOT}/scripts/hard-gate.sh" verification_threshold {phase} {plan} {task} {contract_path}`
-  - These gates fire AFTER SUMMARY.md verification but BEFORE updating execution-state.json to "complete".
+  - This gate fires AFTER SUMMARY.md verification but BEFORE updating execution-state.json to "complete".
 - **YOLO mode:** Hard gates ALWAYS fire regardless of autonomy level. YOLO only skips confirmation prompts.
 - **Fallback:** If hard-gate.sh or auto-repair.sh errors (not a gate fail, but a script error), log to metrics and continue (fail-open on script errors, hard-stop only on gate verdicts).
 
@@ -465,6 +464,12 @@ if echo "$QA_SKIP_AGENTS" | jq -e --arg agent "$AGENT_TYPE" 'contains([$agent])'
 fi
 ```
 When the agent type is in the skip list, QA is skipped automatically without needing `--skip-qa` flag. Docs-only changes don't need formal QA.
+
+**After QA persists VERIFICATION.md (and only after that), run the verification threshold gate:**
+```bash
+bash "${VBW_PLUGIN_ROOT}/scripts/hard-gate.sh" verification_threshold {phase} {plan} {task} {contract_path}
+```
+If this gate fails, treat it as a QA/verification failure and stop before UAT.
 
 **Dev-surfaced issues collection (before spawning QA):**
 After all plans are complete (Step 3c verified), collect deviations and pre-existing issues from all SUMMARY.md files. This data is passed to QA in the task description so QA can treat deviations as FAIL checks and persist pre-existing issues in VERIFICATION.md.
@@ -584,7 +589,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    ```bash
    bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" init "{phase-dir}"
    ```
-   Parse output: `stage`, `round`, `round_dir`
+  Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `verification_path`
 
 2. **Loop (max 3 rounds):**
    ```
@@ -592,7 +597,9 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    ```
 
    **stage=plan:** Create `R{RR}-PLAN.md` in `{round_dir}`:
-   - Read VERIFICATION.md for failed checks — each failure becomes a fix item
+   - Read `source_verification_path` from `qa-remediation-state.sh get` metadata for failed checks
+     - Round 01 uses the phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
+     - Round 02+ uses the previous round's `R{RR}-VERIFICATION.md`
    - Scope the plan: what to fix, which files, acceptance criteria
    - The orchestrator writes the plan (QA identified problems, orchestrator determines fixes)
    - Advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
@@ -604,8 +611,10 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    - After Dev completes, advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
 
    **stage=verify:** Re-run QA:
-   - Spawn QA agent as subagent — overwrites the phase-level VERIFICATION.md
-   - Include dev-surfaced issues from the round's `R{RR}-SUMMARY.md` (same collection logic as Step 4)
+   - Run `compile-verify-context.sh --remediation-only {phase-dir}` to get compounded verification history plus the current round's plan/summary context only
+   - Spawn QA agent as subagent — writes to `{verification_path}` (from `qa-remediation-state.sh` metadata)
+     - Output path: `{round_dir}/R{RR}-VERIFICATION.md` — phase-level VERIFICATION.md stays frozen
+     - Include the compiled verify context output in QA's task description
    - After QA returns, run the deterministic gate:
      ```bash
      bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
@@ -627,7 +636,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
 **Autonomy gate:**
 
 | Autonomy | UAT active |
-|----------|-----------|
+| -------- | ---------- |
 | cautious | YES |
 | standard | YES |
 | confident | OFF |

@@ -53,12 +53,69 @@ fi
 if [ "$REMEDIATION_ONLY" = true ]; then
   # Find the latest completed round (has both R{RR}-PLAN.md and R{RR}-SUMMARY.md)
   LATEST_ROUND=""
-  REMED_DIR="$PHASE_DIR/remediation/uat"
-  # Legacy fallback: check old path if new doesn't exist
-  if [ ! -d "$REMED_DIR" ] && [ -d "$PHASE_DIR/remediation" ]; then
-    REMED_DIR="$PHASE_DIR/remediation"
+  REMED_DIR=""
+  REMED_KIND=""
+
+  _cvc_candidates=()
+  _active_remediation=false
+  if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
+    _qa_stage=$(grep '^stage=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    case "${_qa_stage:-none}" in
+      verify|done)
+        _cvc_candidates+=("$PHASE_DIR/remediation/qa")
+        _active_remediation=true
+        ;;
+    esac
   fi
-  if [ -d "$REMED_DIR" ]; then
+  if [ -f "$PHASE_DIR/remediation/uat/.uat-remediation-stage" ]; then
+    _uat_stage=$(grep '^stage=' "$PHASE_DIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    case "${_uat_stage:-none}" in
+      research|plan|execute|fix|verify|done)
+        if [ "$_active_remediation" = false ]; then
+          _cvc_candidates+=("$PHASE_DIR/remediation/uat")
+          _active_remediation=true
+        fi
+        ;;
+    esac
+  fi
+  # Historical fallback order for explicit --remediation-only callers when no
+  # active state picked a scope: UAT rounds first, then QA rounds.
+  if [ "$_active_remediation" = false ]; then
+    _cvc_candidates+=("$PHASE_DIR/remediation/uat" "$PHASE_DIR/remediation/qa")
+  fi
+
+  for _candidate in "${_cvc_candidates[@]}"; do
+    [ -d "$_candidate" ] || continue
+    _best_round_num=0
+    _candidate_round=""
+    for round_dir in "$_candidate"/round-*/; do
+      [ -d "$round_dir" ] || continue
+      round_num=$(basename "$round_dir" | sed 's/^round-0*//')
+      round_num=${round_num:-0}
+      rr=$(printf '%02d' "$round_num")
+      if [ "$round_num" -gt "$_best_round_num" ] 2>/dev/null && \
+         ls "$round_dir"/R"${rr}"-PLAN.md >/dev/null 2>&1 && \
+         ls "$round_dir"/R"${rr}"-SUMMARY.md >/dev/null 2>&1 && \
+         is_summary_terminal "$round_dir/R${rr}-SUMMARY.md"; then
+        _best_round_num="$round_num"
+        _candidate_round="$rr"
+      fi
+    done
+    if [ -n "$_candidate_round" ]; then
+      LATEST_ROUND="$_candidate_round"
+      REMED_DIR="$_candidate"
+      case "$_candidate" in
+        */remediation/uat) REMED_KIND="uat" ;;
+        */remediation/qa) REMED_KIND="qa" ;;
+      esac
+      break
+    fi
+  done
+
+  # Legacy fallback: check old remediation/round-* layout if no new-style round dir found.
+  if [ -z "$LATEST_ROUND" ] && [ -d "$PHASE_DIR/remediation" ]; then
+    REMED_DIR="$PHASE_DIR/remediation"
+    REMED_KIND="legacy"
     _best_round_num=0
     for round_dir in "$REMED_DIR"/round-*/; do
       [ -d "$round_dir" ] || continue
@@ -79,8 +136,16 @@ if [ "$REMEDIATION_ONLY" = true ]; then
     rr=$(printf '%02d' "$LATEST_ROUND")
     ALL_PLAN_FILES=$(find "$REMED_DIR/round-$rr" -maxdepth 1 -name "R${rr}-PLAN.md" 2>/dev/null | sort)
     SCOPE_HEADER="verify_scope=remediation round=$rr"
-    # Derive UAT_PATH relative to PHASE_DIR so legacy layouts get the correct path
-    UAT_PATH="${REMED_DIR#"$PHASE_DIR/"}/round-$rr/R${rr}-UAT.md"
+    # UAT remediation rounds write round-scoped UAT artifacts; QA remediation
+    # rounds still hand off to the canonical phase-level UAT path.
+    case "$REMED_KIND" in
+      qa)
+        UAT_PATH=$(bash "${_CVC_SCRIPT_DIR}/resolve-artifact-path.sh" uat "$PHASE_DIR")
+        ;;
+      *)
+        UAT_PATH="${REMED_DIR#"$PHASE_DIR/"}/round-$rr/R${rr}-UAT.md"
+        ;;
+    esac
   else
     # Fallback: no completed round found — use full scope
     REMEDIATION_ONLY=false
@@ -89,7 +154,7 @@ fi
 
 if [ "$REMEDIATION_ONLY" = false ]; then
   # Full scope: all phase-root plans + all round-dir plans
-  PLAN_FILES=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' -name '[0-9]*-PLAN.md' 2>/dev/null | sort)
+  PLAN_FILES=$(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' \( -name '[0-9]*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | sort)
   ROUND_PLAN_FILES=$(find "$PHASE_DIR" -path '*/remediation/uat/round-*/R*-PLAN.md' 2>/dev/null | sort)
   # Legacy fallback: check old remediation/round-* layout for brownfield compat
   if [ -z "$ROUND_PLAN_FILES" ]; then
@@ -169,10 +234,15 @@ while IFS= read -r plan_file; do
 
   # Find corresponding SUMMARY file
   # Phase-root plans: {NN}-{MM}-PLAN.md → {NN}-{MM}-SUMMARY.md (same dir)
+  # Legacy phase-root plan: PLAN.md → SUMMARY.md (same dir)
   # Round-dir plans: R{RR}-PLAN.md → R{RR}-SUMMARY.md (same dir)
   PLAN_BASE=$(basename "$plan_file" | sed 's/-PLAN\.md$//')
   PLAN_DIR=$(dirname "$plan_file")
-  SUMMARY_FILE=$(find "$PLAN_DIR" -maxdepth 1 ! -name '.*' -name "${PLAN_BASE}-SUMMARY.md" 2>/dev/null | head -1)
+  if [ "$(basename "$plan_file")" = "PLAN.md" ] && [ -f "$PLAN_DIR/SUMMARY.md" ]; then
+    SUMMARY_FILE="$PLAN_DIR/SUMMARY.md"
+  else
+    SUMMARY_FILE=$(find "$PLAN_DIR" -maxdepth 1 ! -name '.*' -name "${PLAN_BASE}-SUMMARY.md" 2>/dev/null | head -1)
+  fi
 
   STATUS="no_summary"
   WHAT_BUILT=""
@@ -288,5 +358,101 @@ while IFS= read -r plan_file; do
   echo "pre_existing_issues: ${PRE_EXISTING:-none}"
   echo ""
 done <<< "$ALL_PLAN_FILES"
+
+# --- Verification History (compound for QA remediation rounds) ---
+# Extracts FAIL rows from phase-level and per-round VERIFICATION.md files
+# so each QA round has full visibility into what was originally broken
+# and what prior rounds attempted/found.
+_cvc_phase_verif=$(bash "${_CVC_SCRIPT_DIR}/resolve-verification-path.sh" phase "$PHASE_DIR" 2>/dev/null || true)
+if [ -n "$_cvc_phase_verif" ] && [ ! -f "$_cvc_phase_verif" ]; then
+  _cvc_phase_verif=""
+fi
+
+# QA round VERIFICATION.md files
+_cvc_qa_round_verifs=$(find "$PHASE_DIR" -path '*/remediation/qa/round-*/R*-VERIFICATION.md' 2>/dev/null | sort)
+
+_cvc_has_verif_history=false
+if [ -n "$_cvc_phase_verif" ] && [ -f "$_cvc_phase_verif" ]; then
+  _cvc_has_verif_history=true
+fi
+if [ -n "$_cvc_qa_round_verifs" ]; then
+  _cvc_has_verif_history=true
+fi
+
+if [ "$_cvc_has_verif_history" = true ]; then
+  echo "=== VERIFICATION HISTORY ==="
+
+  # Phase-level (original findings)
+  if [ -n "$_cvc_phase_verif" ] && [ -f "$_cvc_phase_verif" ]; then
+    _cvc_vhist_result=$(awk '
+      BEGIN { in_fm=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+    ' "$_cvc_phase_verif" 2>/dev/null) || _cvc_vhist_result=""
+    echo "--- Phase VERIFICATION (${_cvc_vhist_result:-unknown}) ---"
+    awk -F'|' '
+      function trim(v) {
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        return v
+      }
+      /^\|/ {
+        if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
+        for (i = 2; i < NF; i++) {
+          cell = trim($i)
+          if (cell == "Status") {
+            status_col = i
+            next
+          }
+        }
+        if (status_col > 0) {
+          status = trim($(status_col))
+          gsub(/\*+/, "", status)
+          status = trim(status)
+          if (status == "FAIL") print
+        }
+      }
+    ' "$_cvc_phase_verif" 2>/dev/null || true
+  fi
+
+  # Per-round (chronological compounding)
+  if [ -n "$_cvc_qa_round_verifs" ]; then
+    while IFS= read -r _cvc_verif_file; do
+      [ -f "$_cvc_verif_file" ] || continue
+      _cvc_vhist_rr=$(basename "$_cvc_verif_file" | sed 's/^R\([0-9]*\).*/\1/')
+      _cvc_vhist_rresult=$(awk '
+        BEGIN { in_fm=0 }
+        NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+        in_fm && /^---[[:space:]]*$/ { exit }
+        in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+      ' "$_cvc_verif_file" 2>/dev/null) || _cvc_vhist_rresult=""
+      echo "--- Round ${_cvc_vhist_rr} VERIFICATION (${_cvc_vhist_rresult:-unknown}) ---"
+      awk -F'|' '
+        function trim(v) {
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+          return v
+        }
+        /^\|/ {
+          if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
+          for (i = 2; i < NF; i++) {
+            cell = trim($i)
+            if (cell == "Status") {
+              status_col = i
+              next
+            }
+          }
+          if (status_col > 0) {
+            status = trim($(status_col))
+            gsub(/\*+/, "", status)
+            status = trim(status)
+            if (status == "FAIL") print
+          }
+        }
+      ' "$_cvc_verif_file" 2>/dev/null || true
+    done <<< "$_cvc_qa_round_verifs"
+  fi
+
+  echo ""
+fi
 
 echo "verify_plan_count=${PLAN_COUNT}"

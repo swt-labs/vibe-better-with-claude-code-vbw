@@ -92,6 +92,28 @@ else
   }
 fi
 
+qa_verification_stale() {
+  local verif_file="$1"
+  [ -n "$verif_file" ] && [ -f "$verif_file" ] || return 1
+  local _vac _dirty _cur_commit _cur_commit_ts _verif_mtime
+  _dirty=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
+  [ -n "$_dirty" ] && return 0
+  _vac=$(awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
+  ' "$verif_file" 2>/dev/null) || _vac=""
+  if [ -n "$_vac" ]; then
+    _cur_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+    [ -n "$_cur_commit" ] && [ "$_cur_commit" != "$_vac" ] && return 0
+    return 1
+  fi
+  _cur_commit_ts=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+  _verif_mtime=$(perl -e 'print +(stat shift)[9]' "$verif_file" 2>/dev/null || echo "")
+  [ -n "$_cur_commit_ts" ] && [ -n "$_verif_mtime" ] && [ "$_cur_commit_ts" -ge "$_verif_mtime" ]
+}
+
 # Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
 # shellcheck source=lib/vbw-config-root.sh
 . "$_SL_SCRIPT_DIR/lib/vbw-config-root.sh"
@@ -450,7 +472,15 @@ if ! cache_fresh "$FAST_CF" 5; then
           _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null | tr '[:upper:]' '[:lower:]')
           _uat_status=$(normalize_uat_status "$_uat_status")
           case "$_uat_status" in
-            complete) QA="UAT: pass"; QA_COLOR="G" ;;
+            complete)
+              _stale_verif=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" current "$PDIR" 2>/dev/null || true)
+              [ -n "$_stale_verif" ] && [ ! -f "$_stale_verif" ] && _stale_verif=""
+              if qa_verification_stale "$_stale_verif"; then
+                QA="QA: pending"; QA_COLOR="Y"
+              else
+                QA="UAT: pass"; QA_COLOR="G"
+              fi
+              ;;
             issues_found)
               _rem_stage="none"
               if [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ]; then
@@ -476,11 +506,19 @@ if ! cache_fresh "$FAST_CF" 5; then
             plan)    QA="QA: Planning fix"; QA_COLOR="Y" ;;
             execute) QA="QA: Fixing";       QA_COLOR="Y" ;;
             verify)  QA="QA: Re-verifying"; QA_COLOR="Y" ;;
-            done)    QA="QA: pass";         QA_COLOR="G" ;;
-            *)       QA="QA: Remediating";  QA_COLOR="Y" ;;
+            done)    ;;
+            *)       _qa_rem_stage="none" ;;
           esac
-        elif [ -n "$(find "$PDIR" -maxdepth 1 -name '*VERIFICATION.md' 2>/dev/null | head -1)" ]; then
-          _verif_file=$(find "$PDIR" -maxdepth 1 -name '*VERIFICATION.md' 2>/dev/null | head -1)
+        fi
+        _verif_file=""
+        if [ "${_qa_rem_stage:-none}" = "done" ]; then
+          _verif_file=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" current "$PDIR" 2>/dev/null || true)
+          [ -n "$_verif_file" ] && [ ! -f "$_verif_file" ] && _verif_file=""
+        elif [ "${_qa_rem_stage:-none}" = "none" ]; then
+          _verif_file=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" phase "$PDIR" 2>/dev/null || true)
+          [ -n "$_verif_file" ] && [ ! -f "$_verif_file" ] && _verif_file=""
+        fi
+        if [ -n "$_verif_file" ]; then
           _qa_result=$(awk '
             BEGIN { in_fm=0 }
             NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
@@ -488,7 +526,13 @@ if ! cache_fresh "$FAST_CF" 5; then
             in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
           ' "$_verif_file" 2>/dev/null) || _qa_result=""
           case "$_qa_result" in
-            PASS) QA="QA: pass"; QA_COLOR="G" ;;
+            PASS)
+              if qa_verification_stale "$_verif_file"; then
+                QA="QA: pending"; QA_COLOR="Y"
+              else
+                QA="QA: pass"; QA_COLOR="G"
+              fi
+              ;;
             FAIL) QA="QA: FAIL"; QA_COLOR="R" ;;
             PARTIAL) QA="QA: partial"; QA_COLOR="Y" ;;
             *) QA="QA: pending"; QA_COLOR="Y" ;;

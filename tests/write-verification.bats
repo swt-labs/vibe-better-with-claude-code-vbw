@@ -823,6 +823,19 @@ JSON
   [[ "$output" == *"plan '01-02' is in plans_verified but no check"* ]]
 }
 
+@test "write-verification: rejects checks_detail entries missing plan_ref when plans exist" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  echo "---" > "$pdir/01-01-PLAN.md"
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"plans_verified":["01-01"],"checks_detail":[{"id":"MH-01","category":"must_have","description":"Test A","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"every checks_detail entry must include a non-empty plan_ref"* ]]
+}
+
 @test "write-verification: accepts valid plans_verified with plan_ref cross-references" {
   local pdir="$TEST_TEMP_DIR/phases/01-setup"
   mkdir -p "$pdir"
@@ -834,6 +847,25 @@ JSON
 JSON
   run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
   [ "$status" -eq 0 ]
+}
+
+@test "write-verification: accepts legacy PLAN.md with plans_verified coverage" {
+  local pdir="$TEST_TEMP_DIR/phases/01-setup"
+  mkdir -p "$pdir"
+  cat > "$pdir/PLAN.md" <<'PLAN'
+---
+plan: 01
+title: Legacy plan
+---
+PLAN
+
+  cat > "$TEST_TEMP_DIR/input.json" << 'JSON'
+{"payload":{"tier":"quick","result":"PASS","checks":{"passed":1,"failed":0,"total":1},"plans_verified":["01"],"checks_detail":[{"id":"MH-01","category":"must_have","plan_ref":"01","description":"Legacy plan verified","status":"PASS","evidence":"ok"}]}}
+JSON
+  run bash "$SCRIPTS_DIR/write-verification.sh" "$pdir/out.md" < "$TEST_TEMP_DIR/input.json"
+  [ "$status" -eq 0 ]
+  grep -q '^plans_verified:' "$pdir/out.md"
+  grep -q '  - 01' "$pdir/out.md"
 }
 
 @test "write-verification: no plans in dir → skips plans_verified check" {

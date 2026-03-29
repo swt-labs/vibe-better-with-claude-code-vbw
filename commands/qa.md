@@ -106,7 +106,12 @@ fi`
   bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh" > "/tmp/.vbw-phase-detect-${CLAUDE_SESSION_ID:-default}.txt"
   ```
   Use the refreshed phase-detect output for all subsequent guard checks and steps.
-- **Auto-detect phase** (no explicit number): Phase detection is pre-computed in Context above. Use `next_phase` and `next_phase_slug` for the target phase. To find the first phase needing QA: scan phase dirs for first with `*-SUMMARY.md` but no `*-VERIFICATION.md` (phase-detect.sh provides the base phase state; QA-specific detection requires this additional check). Found: announce "Auto-detected Phase {NN} ({slug})". All verified: STOP "All phases verified. Specify: `/vbw:qa {NN}`"
+- **Auto-detect phase** (no explicit number): Phase detection is pre-computed in Context above. Use `next_phase` and `next_phase_slug` for the target phase.
+  - If `next_phase_state=needs_qa_remediation`, target that phase directly.
+    - If the remediation stage is `plan` or `execute`, STOP and tell the user to run `/vbw:vibe` to continue QA remediation first — standalone QA must not mint a round VERIFICATION before re-verification is actually ready.
+    - If the remediation stage is `verify` or `done`, standalone QA re-verifies the authoritative round artifact rather than overwriting the frozen phase-level VERIFICATION.
+  - If `first_qa_attention_phase` is set and `qa_attention_status` is `pending`, `failed`, or `verify`, target that phase directly — existing QA artifacts may be stale or failed even when a file already exists, and verify-stage remediation rounds remain directly re-runnable even if an earlier phase is unfinished.
+  - Otherwise, to find the first phase needing QA: scan phase dirs for first with completed `*-SUMMARY.md` files but no authoritative QA verification artifact (no numbered final VERIFICATION, no brownfield plain `VERIFICATION.md`, no wave fallback). Found: announce "Auto-detected Phase {NN} ({slug})". All verified: STOP "All phases verified. Specify: `/vbw:qa {NN}`"
 - Phase not built (no SUMMARYs): STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 
 Note: Continuous verification handled by hooks. This command is for deep, on-demand verification only.
@@ -133,10 +138,28 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         ```
 
     - Display: `◆ Spawning QA agent (${QA_MODEL})...`
-    - Resolve the VERIFICATION filename before spawning QA:
+    - Resolve the VERIFICATION output path before spawning QA:
 
         ```bash
-        VERIF_NAME=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-artifact-path.sh verification "{phase-dir}")
+        QA_STATE=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/qa-remediation-state.sh get "{phase-dir}" 2>/dev/null || true)
+        QA_STAGE=$(printf '%s\n' "$QA_STATE" | head -1)
+        VERIF_PATH=$(printf '%s\n' "$QA_STATE" | awk -F= '/^verification_path=/{print $2; exit}')
+        case "$QA_STAGE" in
+          verify) ;;
+          done)
+            VERIF_PATH=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-verification-path.sh current "{phase-dir}" 2>/dev/null || true)
+            [ -n "$VERIF_PATH" ] && [ ! -f "$VERIF_PATH" ] && VERIF_PATH=""
+            ;;
+          plan|execute)
+            echo "Phase {NN} has active QA remediation at stage ${QA_STAGE}. Run /vbw:vibe to continue remediation before standalone QA." >&2
+            exit 1
+            ;;
+          *) VERIF_PATH="" ;;
+        esac
+        if [ -z "$VERIF_PATH" ]; then
+          VERIF_NAME=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-artifact-path.sh verification "{phase-dir}")
+          VERIF_PATH="{phase-dir}/${VERIF_NAME}"
+        fi
         ```
 
     - Before composing the QA task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to verifying this phase's work. If any skills are relevant, the QA prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the verification task. If no skills are relevant, omit the skill_activation block entirely.
@@ -149,14 +172,20 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
 
         ```text
         Verify phase {NN}. Tier: {ACTIVE_TIER}.
-        Plans: {paths to PLAN.md files}
-        Summaries: {paths to SUMMARY.md files}
+        Determine verification scope from `VERIF_PATH`.
+        - If `VERIF_PATH` is under `remediation/qa/round-*/R*-VERIFICATION.md`, scope verification to that remediation round only.
+          - Plans: {current round R{RR}-PLAN.md path(s) only}
+          - Summaries: {current round R{RR}-SUMMARY.md path(s) only}
+          - Do NOT include phase-root PLAN.md/SUMMARY.md files in plans_verified or plan_ref for round-scoped output.
+        - Otherwise, verify full phase scope.
+          - Plans: {paths to phase PLAN.md files}
+          - Summaries: {paths to phase SUMMARY.md files}
         Phase success criteria: {section from ROADMAP.md}
         If `.vbw-planning/codebase/META.md` exists, read CONVENTIONS.md, TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying.
         Verification protocol: `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/verification-protocol.md
         Return findings using the qa_verdict schema (see `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/handoff-schemas.md).
         If tests reveal pre-existing failures unrelated to this phase, list them in your response under a "Pre-existing Issues" heading and include them in the qa_verdict payload's pre_existing_issues array.
-        Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/${VERIF_NAME}. Plugin root: `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`.
+        Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {VERIF_PATH}. Plugin root: `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`.
         ```
 
     - QA agent reads all files and persists VERIFICATION.md itself. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.

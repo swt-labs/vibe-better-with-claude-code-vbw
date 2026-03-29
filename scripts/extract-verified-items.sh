@@ -7,17 +7,44 @@
 #          and avoids generating redundant UAT checkpoints.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 phase_dir="${1:-}"
 if [[ -z "$phase_dir" || ! -d "$phase_dir" ]]; then
   exit 0
 fi
 
-# Find VERIFICATION.md files in the phase directory
-# Supports: NN-VERIFICATION.md, NN-VERIFICATION-waveN.md
 verif_files=()
+append_verif_file() {
+  local candidate="$1"
+  local existing
+  [ -n "$candidate" ] || return 0
+  [ -f "$candidate" ] || return 0
+  if [[ ${#verif_files[@]} -gt 0 ]]; then
+    for existing in "${verif_files[@]}"; do
+      [ "$existing" = "$candidate" ] && return 0
+    done
+  fi
+  verif_files+=("$candidate")
+}
+
+# Find phase-level VERIFICATION.md files in the phase directory.
+# Supports: NN-VERIFICATION.md, NN-VERIFICATION-waveN.md, and brownfield plain VERIFICATION.md.
 while IFS= read -r f; do
-  verif_files+=("$f")
+  append_verif_file "$f"
 done < <(ls "$phase_dir"/*-VERIFICATION*.md 2>/dev/null)
+append_verif_file "$phase_dir/VERIFICATION.md"
+
+# Add the authoritative QA verification path. This pulls in the remediated
+# round VERIFICATION.md only after QA remediation reaches stage=done and also
+# covers brownfield plain VERIFICATION.md.
+authoritative_verif=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" authoritative "$phase_dir" 2>/dev/null || true)
+if [ -n "$authoritative_verif" ] && [ -f "$authoritative_verif" ]; then
+  # Downstream UAT-facing consumers should see only the authoritative QA view,
+  # not a mix of superseded wave files or frozen historical failures.
+  verif_files=()
+fi
+append_verif_file "$authoritative_verif"
 
 if [[ ${#verif_files[@]} -eq 0 ]]; then
   exit 0
@@ -103,6 +130,8 @@ for vf in "${verif_files[@]}"; do
             else
               status=$(echo "$safe_line" | awk -F'|' '{gsub(/^ +| +$/, "", $5); print $5}')
             fi
+            # Strip markdown bold markers (**PASS** → PASS)
+            status=$(echo "$status" | sed 's/\*\*//g')
             if [[ -n "$check_id" && -n "$status" ]]; then
               echo "  $status $check_id: $description"
             fi
@@ -115,10 +144,10 @@ for vf in "${verif_files[@]}"; do
     if grep -qE '^✓ \*\*|^⚠ \*\*' "$vf" 2>/dev/null; then
       grep -E '^✓ \*\*' "$vf" 2>/dev/null | sed 's/\*\*//g; s/ — .*//' | while IFS= read -r line; do
         echo "  $line"
-      done
+      done || true
       grep -E '^⚠ \*\*' "$vf" 2>/dev/null | sed 's/\*\*//g; s/ — .*//' | while IFS= read -r line; do
         echo "  $line"
-      done
+      done || true
     fi
 
     # Try old Total row pattern
@@ -137,7 +166,7 @@ for vf in "${verif_files[@]}"; do
     echo "  QA: $result (${passed:-0}/${total} passed${failed:+, ${failed} failed}${tier:+, tier: $tier})"
   else
     # Last resort: grep for Verdict line
-    verdict=$(grep -i 'Verdict' "$vf" 2>/dev/null | sed 's/^#* *//; s/\*\*//g' | head -1)
+    verdict=$(grep -i 'Verdict' "$vf" 2>/dev/null | sed 's/^#* *//; s/\*\*//g' | head -1 || true)
     if [[ -n "$verdict" ]]; then
       echo ""
       echo "  $verdict"

@@ -278,7 +278,10 @@ else
     echo "verify_target_slug=$TARGET"
     if [ -d "$PDIR" ] && [ -L "$L" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then
       REMED_FLAG=""
-      if find "$PDIR/remediation" -path '*/round-*/R*-SUMMARY.md' 2>/dev/null | head -1 | grep -q .; then REMED_FLAG="--remediation-only"; fi
+      _uat_stage=$(grep '^stage=' "$PDIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      _qa_stage=$(grep '^stage=' "$PDIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      case "${_uat_stage:-none}" in research|plan|execute|fix|verify|done) REMED_FLAG="--remediation-only" ;; esac
+      case "${_qa_stage:-none}" in verify|done) REMED_FLAG="--remediation-only" ;; esac
       bash "$L/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR" 2>/dev/null || echo "verify_context_error=true"
     else
       echo "verify_context_error=true"
@@ -418,14 +421,16 @@ Before entering Verify mode (UAT), check `qa_status` from phase-detect output:
 When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persisted stage. This is the cross-session recovery path — the inline execution path is in execute-protocol.md Step 4.
 
 1. Read current state: `bash {plugin-root}/scripts/qa-remediation-state.sh get {phase-dir}`
-   Parse output: `stage`, `round`, `round_dir`
-2. Read VERIFICATION.md for the phase to identify failed checks
+  Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `verification_path`
+2. Read `source_verification_path` to identify the current failed checks.
+  - Round 01: phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
+  - Round 02+: previous round's `R{RR}-VERIFICATION.md`
 
 **Stage-specific actions:**
 
 - **stage=plan:** Create `R{RR}-PLAN.md` in `{round_dir}`:
-  - Read VERIFICATION.md failed checks — these are the "issues" to fix
-  - Scope the plan to VERIFICATION.md failures: what to fix, which files, acceptance criteria
+  - Read `source_verification_path` failed checks — these are the current "issues" to fix
+  - Scope the plan to those failures: what to fix, which files, acceptance criteria
   - The orchestrator/Lead writes the plan (QA says what's wrong, planning says how to fix)
   - After writing the plan, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
 
@@ -435,18 +440,30 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
   - After Dev completes, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
 
 - **stage=verify:** Re-run QA:
-  - Spawn QA agent as subagent — overwrites the phase-level VERIFICATION.md
+  - Run `compile-verify-context.sh --remediation-only {phase-dir}` to get compounded verification history plus the current round's plan/summary context only
+  - Spawn QA agent as subagent — writes to `{verification_path}` (from `qa-remediation-state.sh get` metadata)
+    - The output path is `{round_dir}/R{RR}-VERIFICATION.md` — NOT the phase-level file
+    - Phase-level VERIFICATION.md stays frozen as the original QA FAIL result
+    - Include the compiled verify context output in QA's task description
   - After QA returns, run the deterministic gate:
     ```bash
     bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
     ```
     **Follow `qa_gate_routing` output literally — no exceptions, no judgment, no rationalization. Do NOT evaluate whether failures are justified, acceptable, or minor. The gate script has already made the decision:**
-    - `qa_gate_routing=PROCEED_TO_UAT` → advance to done: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`, then **continue directly into Verify mode** for the phase
+    - `qa_gate_routing=PROCEED_TO_UAT` → advance to done: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`, then **refresh verify context before entering Verify mode**:
+      ```bash
+      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh --remediation-only "{phase-dir}"
+      ```
+      Use this fresh verify context and **continue directly into Verify mode** for the phase
     - `qa_gate_routing=REMEDIATION_REQUIRED` → start new round: `bash {plugin-root}/scripts/qa-remediation-state.sh needs-round {phase-dir}`, loop back to stage=plan
     - `qa_gate_routing=QA_RERUN_REQUIRED` → re-spawn QA immediately (max 2 retries per round). If `qa_gate_deviation_override=true`, tell QA: "Previous QA run found PASS but SUMMARY.md files contain {qa_gate_deviation_count} deviations that were not reflected as FAIL checks. Each deviation MUST become a FAIL check — do not rationalize deviations as acceptable." If `qa_gate_plan_coverage` is present, tell QA: "Previous QA run only verified {qa_gate_plans_verified_count}/{qa_gate_plan_count} plans. Every plan in the phase must be verified — include all plan IDs in plans_verified." If QA still fails to produce valid output, treat as REMEDIATION_REQUIRED.
     - After max rounds (3): display failures, STOP — surface to user
 
-- **stage=done:** Proceed to Verify mode (UAT) for the phase
+- **stage=done:** Re-compute verify context, then proceed to Verify mode (UAT) for the phase:
+  ```bash
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh --remediation-only "{phase-dir}"
+  ```
+  Use this fresh verify context for the Verify mode CHECKPOINT loop.
 
 **QA Remediation + UAT blocking:** UAT cannot start while QA remediation is active. The `needs_qa_remediation` state takes priority over `needs_verification` in the routing table.
 

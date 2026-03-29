@@ -25,6 +25,13 @@ list_child_dirs_sorted() {
     (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
 }
 
+normalize_qa_remediation_stage() {
+  case "${1:-none}" in
+    plan|execute|verify|done) echo "$1" ;;
+    *) echo "none" ;;
+  esac
+}
+
 # --- jq availability ---
 JQ_AVAILABLE=false
 if command -v jq &>/dev/null; then
@@ -74,6 +81,9 @@ else
   echo "has_unverified_phases=false"
   echo "first_unverified_phase="
   echo "first_unverified_slug="
+  echo "first_qa_attention_phase="
+  echo "first_qa_attention_slug="
+  echo "qa_attention_status=none"
   echo "qa_status=none"
   echo "qa_round=00"
   echo "has_codebase_map=false"
@@ -431,8 +441,45 @@ fi
 HAS_UNVERIFIED_PHASES=false
 FIRST_UNVERIFIED_PHASE=""
 FIRST_UNVERIFIED_SLUG=""
+FIRST_QA_ATTENTION_PHASE=""
+FIRST_QA_ATTENTION_SLUG=""
+QA_ATTENTION_STATUS="none"
 QA_STATUS="none"
 QA_ROUND="00"
+QA_REMEDIATING_PHASE=""
+QA_REMEDIATING_SLUG=""
+QA_REMEDIATING_ROUND="00"
+
+# Detect active QA remediation globally before the unverified-phase scan.
+# This prevents a later in-progress remediation from being masked by an earlier
+# fully built phase that simply lacks terminal UAT.
+if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
+  for _qr_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
+    [ -d "$_qr_dir" ] || continue
+    _qr_plans=$(count_phase_plans "$_qr_dir")
+    [ "$_qr_plans" -gt 0 ] || continue
+    _qr_sums=$(count_complete_summaries "$_qr_dir")
+    [ "$_qr_sums" -ge "$_qr_plans" ] || continue
+
+    _qr_rem_file="${_qr_dir}remediation/qa/.qa-remediation-stage"
+    [ -f "$_qr_rem_file" ] || continue
+
+    _qr_stage=$(grep '^stage=' "$_qr_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+    _qr_stage=$(normalize_qa_remediation_stage "${_qr_stage:-none}")
+    case "$_qr_stage" in
+      none|done) continue ;;
+    esac
+
+    _qr_round=$(grep '^round=' "$_qr_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+    _qr_round="${_qr_round:-01}"
+    _qr_dirname=$(basename "$_qr_dir")
+    QA_REMEDIATING_PHASE=$(echo "$_qr_dirname" | sed 's/^\([0-9]*\).*/\1/')
+    QA_REMEDIATING_SLUG="$_qr_dirname"
+    QA_REMEDIATING_ROUND="$_qr_round"
+    break
+  done
+fi
+
 if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   for _uv_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
     [ -d "$_uv_dir" ] || continue
@@ -448,7 +495,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     _qa_rem_file="${_uv_dir}remediation/qa/.qa-remediation-stage"
     if [ -f "$_qa_rem_file" ]; then
       _qa_rem_stage=$(grep '^stage=' "$_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-      _qa_rem_stage="${_qa_rem_stage:-none}"
+      _qa_rem_stage=$(normalize_qa_remediation_stage "${_qa_rem_stage:-none}")
       _qa_rem_round=$(grep '^round=' "$_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
       _qa_rem_round="${_qa_rem_round:-01}"
     fi
@@ -469,11 +516,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     fi
 
     # --- QA VERIFICATION.md check ---
-    _uv_verif=""
-    _uv_dirname_tmp=$(basename "$_uv_dir")
-    _uv_num_tmp=$(echo "$_uv_dirname_tmp" | sed 's/^\([0-9]*\).*/\1/')
-    if [ -n "$_uv_num_tmp" ]; then
-      _uv_verif=$(find "$_uv_dir" -maxdepth 1 ! -name '.*' -name "${_uv_num_tmp}-VERIFICATION.md" 2>/dev/null | head -1)
+    _uv_verif=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" phase "$_uv_dir" 2>/dev/null || true)
+    if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
+      _uv_verif=""
     fi
 
     _uv_uat=$(current_uat "$_uv_dir")
@@ -497,6 +542,12 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
 
         # Compute QA status for this phase
         if [ "$_qa_rem_stage" = "done" ]; then
+          # Use the authoritative current verification path for cross-validation:
+          # round VERIFICATION.md when present, otherwise phase-level numbered/plain fallback.
+          _uv_verif=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" current "$_uv_dir" 2>/dev/null || true)
+          if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
+            _uv_verif=""
+          fi
           # Cross-validate: ensure VERIFICATION.md also shows PASS
           if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
             _qa_done_result=$(awk '
@@ -587,18 +638,117 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   done
 fi
 
+# --- QA attention detection for standalone /vbw:qa ---
+# Unlike FIRST_UNVERIFIED_PHASE, this scan also covers built phases that already
+# have terminal UAT but whose QA verification is stale or failed.
+if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
+  for _qa_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
+    [ -d "$_qa_dir" ] || continue
+    _qa_plans=$(count_phase_plans "$_qa_dir")
+    [ "$_qa_plans" -gt 0 ] || continue
+    _qa_sums=$(count_complete_summaries "$_qa_dir")
+    [ "$_qa_sums" -ge "$_qa_plans" ] || continue
+
+    _qa_stage="none"
+    _qa_round_scan="00"
+    _qa_rem_file_scan="${_qa_dir}remediation/qa/.qa-remediation-stage"
+    if [ -f "$_qa_rem_file_scan" ]; then
+      _qa_stage=$(grep '^stage=' "$_qa_rem_file_scan" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      _qa_stage=$(normalize_qa_remediation_stage "${_qa_stage:-none}")
+      _qa_round_scan=$(grep '^round=' "$_qa_rem_file_scan" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      _qa_round_scan="${_qa_round_scan:-01}"
+    fi
+
+    _qa_attention="none"
+    # Active remediation is handled by next_phase_state=needs_qa_remediation,
+    # except standalone /vbw:qa still needs a signal for verify-stage rounds
+    # when an earlier phase blocks the main orchestrator route.
+    case "$_qa_stage" in
+      plan|execute) continue ;;
+      verify) _qa_attention="verify" ;;
+    esac
+
+    _qa_verif_scan=""
+    if [ "$_qa_stage" = "done" ]; then
+      _qa_verif_scan=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" current "$_qa_dir" 2>/dev/null || true)
+    elif [ "$_qa_attention" = "none" ]; then
+      _qa_verif_scan=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" phase "$_qa_dir" 2>/dev/null || true)
+    fi
+    if [ -n "$_qa_verif_scan" ] && [ ! -f "$_qa_verif_scan" ]; then
+      _qa_verif_scan=""
+    fi
+
+    if [ "$_qa_attention" = "none" ] && [ -n "$_qa_verif_scan" ] && [ -f "$_qa_verif_scan" ]; then
+      _qa_result_scan=$(awk '
+        BEGIN { in_fm=0 }
+        NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+        in_fm && /^---[[:space:]]*$/ { exit }
+        in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+      ' "$_qa_verif_scan" 2>/dev/null) || _qa_result_scan=""
+      case "$_qa_result_scan" in
+        FAIL|PARTIAL)
+          _qa_attention="failed"
+          ;;
+        PASS)
+          _vac_scan=$(awk '
+            BEGIN { in_fm=0 }
+            NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+            in_fm && /^---[[:space:]]*$/ { exit }
+            in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
+          ' "$_qa_verif_scan" 2>/dev/null) || _vac_scan=""
+          _qa_dirty_scan=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
+          if [ -n "$_qa_dirty_scan" ]; then
+            _qa_attention="pending"
+          elif [ -n "$_vac_scan" ]; then
+            _cur_commit_scan=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+            if [ -n "$_cur_commit_scan" ] && [ "$_cur_commit_scan" != "$_vac_scan" ]; then
+              _qa_attention="pending"
+            fi
+          else
+            _cur_commit_ts_scan=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+            _verif_mtime_scan=$(perl -e 'print +(stat shift)[9]' "$_qa_verif_scan" 2>/dev/null || echo "")
+            if [ -n "$_cur_commit_ts_scan" ] && [ -n "$_verif_mtime_scan" ] && [ "$_cur_commit_ts_scan" -ge "$_verif_mtime_scan" ]; then
+              _qa_attention="pending"
+            fi
+          fi
+          ;;
+        *)
+          _qa_attention="pending"
+          ;;
+      esac
+    elif [ "$_qa_attention" = "none" ]; then
+      _qa_attention="pending"
+    fi
+
+    if [ "$_qa_attention" != "none" ]; then
+      _qa_dirname=$(basename "$_qa_dir")
+      FIRST_QA_ATTENTION_PHASE=$(echo "$_qa_dirname" | sed 's/^\([0-9]*\).*/\1/')
+      FIRST_QA_ATTENTION_SLUG="$_qa_dirname"
+      QA_ATTENTION_STATUS="$_qa_attention"
+      break
+    fi
+  done
+fi
+
 # --- needs_qa_remediation override: route to QA remediation before verification ---
 # When QA remediation is active (qa_status=remediating), override next_phase_state
-# to needs_qa_remediation. This takes priority over needs_verification.
-if [ "$QA_STATUS" = "remediating" ] && [ -n "$FIRST_UNVERIFIED_PHASE" ]; then
-  NEXT_PHASE="$FIRST_UNVERIFIED_PHASE"
-  NEXT_PHASE_SLUG="$FIRST_UNVERIFIED_SLUG"
-  NEXT_PHASE_STATE="needs_qa_remediation"
-  _QR_DIR="$PHASES_DIR/$FIRST_UNVERIFIED_SLUG"
-  if [ -d "$_QR_DIR" ]; then
-    NEXT_PHASE_PLANS=$(count_phase_plans "$_QR_DIR")
-    NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QR_DIR")
-  fi
+# to needs_qa_remediation only for verification-class states. Earlier unfinished
+# phases (discussion / planning / execution) still take priority.
+if [ -n "$QA_REMEDIATING_PHASE" ] && [ "$NEXT_PHASE_STATE" != "needs_uat_remediation" ]; then
+  case "$NEXT_PHASE_STATE" in
+    needs_verification|needs_reverification|all_done|no_phases)
+      NEXT_PHASE="$QA_REMEDIATING_PHASE"
+      NEXT_PHASE_SLUG="$QA_REMEDIATING_SLUG"
+      NEXT_PHASE_STATE="needs_qa_remediation"
+      QA_STATUS="remediating"
+      QA_ROUND="$QA_REMEDIATING_ROUND"
+      _QR_DIR="$PHASES_DIR/$QA_REMEDIATING_SLUG"
+      if [ -d "$_QR_DIR" ]; then
+        NEXT_PHASE_PLANS=$(count_phase_plans "$_QR_DIR")
+        NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QR_DIR")
+      fi
+      ;;
+  esac
 fi
 
 # --- needs_verification override: make auto_uat routing unambiguous ---
@@ -635,6 +785,9 @@ echo "next_phase_summaries=$NEXT_PHASE_SUMMARIES"
 echo "has_unverified_phases=$HAS_UNVERIFIED_PHASES"
 echo "first_unverified_phase=$FIRST_UNVERIFIED_PHASE"
 echo "first_unverified_slug=$FIRST_UNVERIFIED_SLUG"
+echo "first_qa_attention_phase=$FIRST_QA_ATTENTION_PHASE"
+echo "first_qa_attention_slug=$FIRST_QA_ATTENTION_SLUG"
+echo "qa_attention_status=$QA_ATTENTION_STATUS"
 echo "qa_status=$QA_STATUS"
 echo "qa_round=$QA_ROUND"
 echo "uat_issues_phase=$UAT_ISSUES_PHASE"

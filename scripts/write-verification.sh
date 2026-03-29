@@ -138,11 +138,47 @@ fi
 # Plans_verified validation — enforce plan coverage when PLAN.md files exist
 # Derive phase dir from output path to count plans
 phase_dir=$(dirname "$output_path")
-plan_count=0
-for pf in "$phase_dir"/*-PLAN.md; do
+plan_files=()
+while IFS= read -r pf; do
   [ -f "$pf" ] || continue
-  plan_count=$((plan_count + 1))
-done
+  plan_files+=("$pf")
+done < <(find "$phase_dir" -maxdepth 1 ! -name '.*' \( -name '*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+plan_count=${#plan_files[@]}
+
+legacy_plan_id() {
+  local plan_file="$1"
+  local plan_id
+  plan_id=$(awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^plan:/ {
+      sub(/^plan:[[:space:]]*/, "")
+      gsub(/^"|"$/, "")
+      print
+      exit
+    }
+  ' "$plan_file" 2>/dev/null | head -1 | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"]//;s/['\"]$//")
+  if [[ -n "$plan_id" ]]; then
+    echo "$plan_id"
+  else
+    echo "PLAN"
+  fi
+}
+
+plan_id_matches_file() {
+  local plan_id="$1"
+  local plan_file="$2"
+  local base legacy_id
+
+  base=$(basename "$plan_file")
+  if [[ "$base" = "PLAN.md" ]]; then
+    legacy_id=$(legacy_plan_id "$plan_file")
+    [[ "$plan_id" = "$legacy_id" || "$plan_id" = "PLAN" || "$plan_id" = "PLAN.md" ]]
+  else
+    [[ "$plan_id" = "${base%-PLAN.md}" ]]
+  fi
+}
 
 # Extract plans_verified from payload (deduplicated)
 has_plans_verified="false"
@@ -161,6 +197,14 @@ if [[ "$plan_count" -gt 0 ]]; then
     exit 1
   fi
 
+  if [[ "$has_checks_detail" == "true" ]]; then
+    missing_plan_refs=$(echo "$payload" | jq '[.checks_detail[] | select((.plan_ref | type?) != "string" or ((.plan_ref // "") | gsub("^\\s+|\\s+$"; "")) == "")] | length')
+    if [[ "$missing_plan_refs" -gt 0 ]]; then
+      echo "Error: every checks_detail entry must include a non-empty plan_ref when PLAN.md files exist." >&2
+      exit 1
+    fi
+  fi
+
   if [[ "$plans_verified_count" -lt "$plan_count" ]]; then
     echo "Error: plans_verified has ${plans_verified_count} entries but ${plan_count} PLAN.md files exist. All plans must be verified." >&2
     exit 1
@@ -168,10 +212,17 @@ if [[ "$plan_count" -gt 0 ]]; then
 
   # Validate each plans_verified ID matches an actual PLAN.md file (using deduplicated list)
   while IFS= read -r plan_id; do
+    matched_plan="false"
     plan_id_trimmed=$(echo "$plan_id" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     [ -z "$plan_id_trimmed" ] && continue
-    if [ ! -f "$phase_dir/${plan_id_trimmed}-PLAN.md" ]; then
-      echo "Error: plan '${plan_id_trimmed}' in plans_verified does not match any PLAN.md file in $(basename "$phase_dir"). Expected '${plan_id_trimmed}-PLAN.md'." >&2
+    for plan_file in "${plan_files[@]}"; do
+      if plan_id_matches_file "$plan_id_trimmed" "$plan_file"; then
+        matched_plan="true"
+        break
+      fi
+    done
+    if [[ "$matched_plan" != "true" ]]; then
+      echo "Error: plan '${plan_id_trimmed}' in plans_verified does not match any PLAN.md file in $(basename "$phase_dir")." >&2
       exit 1
     fi
   done < <(echo "$payload" | jq -r '[.plans_verified | unique | .[]] | .[]')

@@ -216,6 +216,90 @@ create_plan() {
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "during remediation verify stage gate reads current round verification" {
+  create_verif "write-verification.sh" "FAIL"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+phase: 01
+tier: full
+result: PASS
+passed: 10
+failed: 0
+total: 10
+date: 2026-03-27
+writer: write-verification.sh
+---
+
+## Must-Have Checks
+| Check | Status |
+|-------|--------|
+| Feature works | PASS |
+EOF
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "during remediation plan stage gate ignores stale round verification" {
+  create_verif "write-verification.sh" "FAIL"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+phase: 01
+tier: full
+result: PASS
+passed: 10
+failed: 0
+total: 10
+date: 2026-03-27
+writer: write-verification.sh
+---
+
+## Must-Have Checks
+| Check | Status |
+|-------|--------|
+| Feature works | PASS |
+EOF
+  printf 'stage=plan\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=FAIL"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "corrupt remediation stage does not suppress deviation override" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Used different API than planned"
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=garbage\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "during remediation verify stage missing round verification fails closed" {
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=missing"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
 @test "bold FAIL markers in body are counted" {
   create_verif "write-verification.sh" "PASS" "## Checks
 | Check | Status |
@@ -546,6 +630,33 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "legacy PLAN.md and SUMMARY.md count toward gate plan and deviation checks" {
+  cat > "$PHASE_DIR/PLAN.md" <<'PLAN'
+---
+plan: 01
+title: Legacy plan
+---
+PLAN
+  cat > "$PHASE_DIR/SUMMARY.md" <<'SUMMARY'
+---
+plan: 01
+deviations:
+  - "Legacy deviation"
+---
+
+## Summary
+Legacy work completed.
+SUMMARY
+  create_verif "write-verification.sh" "PASS"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_plan_count=1"* ]]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
 @test "PASS + plans_verified absent (brownfield) → PROCEED_TO_UAT" {
   create_plan "01-01"
   create_plan "01-02"
@@ -627,14 +738,33 @@ VERIF
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "Changed API approach"
   # Simulate active remediation cycle
-  mkdir -p "$PHASE_DIR/remediation/qa"
-  echo "stage=verify" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Fix | PASS | Done |
+VERIF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix
+---
+PLAN
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
-  # Deviation override should NOT fire during remediation
+  # Historical phase-root deviations are ignored during active remediation when
+  # the current round verification is authoritative.
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
   [[ "$output" != *"qa_gate_deviation_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
@@ -655,8 +785,26 @@ VERIF
 @test "FAIL during remediation still routes to REMEDIATION_REQUIRED" {
   create_verif "write-verification.sh" "FAIL"
   create_summary_with_yaml_deviations "01-01" "Changed API approach"
-  mkdir -p "$PHASE_DIR/remediation/qa"
-  echo "stage=verify" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: FAIL
+plans_verified:
+  - R01
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Fix | FAIL | Broken |
+VERIF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix
+---
+PLAN
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
@@ -714,4 +862,282 @@ VERIF
 
   # Restore permissions for cleanup
   chmod 644 "$PHASE_DIR/01-VERIFICATION.md"
+}
+
+# --- Round VERIFICATION.md auto-discovery ---
+
+@test "gate reads round VERIFICATION.md when remediation active" {
+  # Phase-level VERIFICATION.md with original FAIL
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget | FAIL | Broken |"
+
+  # Active QA remediation with round-01 VERIFICATION.md that PASSes
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" << 'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget | PASS | Fixed |
+VERIF
+  # Round-dir plan for plan coverage alignment
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" << 'PLAN'
+---
+round: 01
+title: Fix widget
+---
+PLAN
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "gate reads phase-level when no remediation active" {
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget | FAIL | Broken |"
+
+  # No .qa-remediation-stage file
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=FAIL"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "plan coverage scoped to round dir during remediation" {
+  # Phase-level: 3 plans
+  create_plan "01-01"
+  create_plan "01-02"
+  create_plan "01-03"
+
+  # Active remediation with 1 round plan
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" << 'PLAN'
+---
+round: 01
+title: Fix issues
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" << 'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Fix | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Plan count should be 1 (round dir), not 3 (phase dir)
+  [[ "$output" == *"qa_gate_plan_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "gate falls back to phase-level if round VERIFICATION.md missing" {
+  # Phase-level VERIFICATION.md
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget | FAIL | Broken |"
+
+  # Active remediation but NO round VERIFICATION.md yet
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=execute\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Falls back to phase-level (FAIL)
+  [[ "$output" == *"qa_gate_result=FAIL"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "gate reads round-02 VERIFICATION.md correctly" {
+  # Phase-level VERIFICATION.md with original FAIL
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget | FAIL | Broken |"
+
+  # Active QA remediation at round 02
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" << 'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R02
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget | PASS | Fixed |
+VERIF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" << 'PLAN'
+---
+round: 02
+title: Fix widget again
+---
+PLAN
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+  [[ "$output" == *"qa_gate_plan_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "gate handles unpadded round number in state file" {
+  # Phase-level FAIL
+  create_verif "write-verification.sh" "FAIL"
+
+  # State file with unpadded round=2 (brownfield/corruption)
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=2\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" << 'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Test | PASS | ok |
+VERIF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" << 'PLAN'
+---
+round: 02
+title: Fix
+---
+PLAN
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Should find round-02 file despite unpadded round=2 in state
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "gate handles non-numeric round in state file gracefully" {
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget | FAIL | Broken |"
+
+  # State file with corrupt non-numeric round
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=verify\nround=abc\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  # Must exit 0 (gate contract) and fail closed because the implied round-01
+  # verification artifact is missing.
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=missing"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "current-round deviations during remediation still require QA rerun" {
+  # Historical phase-level verification stays frozen as FAIL
+  create_verif "write-verification.sh" "FAIL"
+  create_summary_with_yaml_deviations "01-01" "Historical deviation"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix regression
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+deviations:
+  - "Used alternate fix path"
+---
+
+## Summary
+Remediation applied.
+SUMMARY
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Regression fixed | PASS | ok |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "explicit verif-name override is preserved during active remediation" {
+  create_verif "write-verification.sh" "FAIL"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Regression fixed | PASS | ok |
+VERIF
+  cat > "$PHASE_DIR/CUSTOM-VERIF.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-99 | must_have | Custom override | FAIL | forced |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR" "CUSTOM-VERIF.md"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=FAIL"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
