@@ -72,6 +72,17 @@ SH
   touch "$root/tests/alpha.bats" "$root/tests/beta.bats" "$root/tests/statusline-cache-isolation.bats"
 }
 
+create_failing_stub_script() {
+  local path="$1"
+  mkdir -p "$(dirname "$path")"
+  cat > "$path" <<'SH'
+#!/usr/bin/env bash
+echo "TOTAL: 48 PASS, 1 FAIL"
+exit 1
+SH
+  chmod +x "$path"
+}
+
 @test "invalid BATS_WORKERS falls back and keeps serial bats files out of worker batches" {
   local root="$TEST_TEMP_DIR/stub-repo"
   create_stub_workspace "$root"
@@ -85,4 +96,35 @@ SH
 
   [ "$(grep -c 'statusline-cache-isolation.bats' "$BATS_LOG")" -eq 1 ]
   grep 'statusline-cache-isolation.bats' "$BATS_LOG" | grep -vq 'alpha.bats\|beta.bats'
+}
+
+@test "overall summary prints after all contract output finishes" {
+  local root="$TEST_TEMP_DIR/stub-repo-fail"
+  local output_file="$TEST_TEMP_DIR/run-all-output.txt"
+  create_stub_workspace "$root"
+  create_failing_stub_script "$root/testing/verify-lsp-first-policy.sh"
+  export BATS_LOG="$TEST_TEMP_DIR/bats-fail.log"
+  export PATH="$root/bin:$PATH"
+
+  run env RUN_VIBE_VERIFY=0 bash -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+  printf '%s\n' "$output" > "$output_file"
+
+  local pass_line fail_begin_line fail_total_line fail_end_line summary_line
+  pass_line=$(grep -n '^PASS: qa-persistence-contract$' "$output_file" | cut -d: -f1)
+  fail_begin_line=$(grep -n '^--- begin lsp-first-policy output ---$' "$output_file" | cut -d: -f1)
+  fail_total_line=$(grep -n '^TOTAL: 48 PASS, 1 FAIL$' "$output_file" | cut -d: -f1)
+  fail_end_line=$(grep -n '^--- end lsp-first-policy output ---$' "$output_file" | cut -d: -f1)
+  summary_line=$(grep -n '^Contract checks: 24/25 passed$' "$output_file" | cut -d: -f1)
+
+  [ -n "$pass_line" ]
+  [ -n "$fail_begin_line" ]
+  [ -n "$fail_total_line" ]
+  [ -n "$fail_end_line" ]
+  [ -n "$summary_line" ]
+
+  [ "$pass_line" -lt "$fail_begin_line" ]
+  [ "$fail_begin_line" -lt "$fail_total_line" ]
+  [ "$fail_total_line" -lt "$fail_end_line" ]
+  [ "$fail_end_line" -lt "$summary_line" ]
 }

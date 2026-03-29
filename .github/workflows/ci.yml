@@ -97,6 +97,7 @@ jobs:
         run: |
           declare -a NAMES=()
           declare -a PIDS=()
+          declare -a RESULTS=()
           declare -a FAILED_NAMES=()
           run_check() {
             local name="$1" cmd="$2"
@@ -133,22 +134,37 @@ jobs:
 
           failures=0
           for i in "${!PIDS[@]}"; do
-            if ! wait "${PIDS[$i]}"; then
+            if wait "${PIDS[$i]}"; then
+              RESULTS[$i]=0
+            else
+              RESULTS[$i]=1
               failures=$((failures + 1))
               FAILED_NAMES+=("${NAMES[$i]}")
-              echo "::error::FAIL: ${NAMES[$i]}"
-              echo "--- begin ${NAMES[$i]} output ---"
-              cat "/tmp/contract-${NAMES[$i]}.out"
-              echo "--- end ${NAMES[$i]} output ---"
-            else
-              echo "PASS: ${NAMES[$i]}"
             fi
           done
-          echo ""
-          echo "Contract checks: $(( ${#NAMES[@]} - failures ))/${#NAMES[@]} passed"
+
+          for i in "${!NAMES[@]}"; do
+            if [ "${RESULTS[$i]:-1}" -eq 0 ]; then
+              echo "PASS: ${NAMES[$i]}"
+            else
+              echo "FAIL: ${NAMES[$i]}"
+            fi
+          done
+
           if [ "$failures" -gt 0 ]; then
+            echo ""
+            for i in "${!NAMES[@]}"; do
+              [ "${RESULTS[$i]:-1}" -ne 0 ] || continue
+              echo "::error::FAIL: ${NAMES[$i]}"
+              echo "::group::${NAMES[$i]} output"
+              cat "/tmp/contract-${NAMES[$i]}.out"
+              echo "::endgroup::"
+            fi
             echo "Failed contract scripts: ${FAILED_NAMES[*]}"
           fi
+
+          echo ""
+          echo "Contract checks: $(( ${#NAMES[@]} - failures ))/${#NAMES[@]} passed"
           [ "$failures" -eq 0 ] || exit 1
 
   qa-review-check:

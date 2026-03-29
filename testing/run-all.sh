@@ -13,6 +13,8 @@ trap 'rm -rf "$TMPDIR_JOBS"' EXIT
 declare -a JOB_NAMES=()
 declare -a JOB_PIDS=()
 declare -a JOB_TYPES=()  # "contract" or "bats"
+declare -a JOB_EXIT_CODES=()
+declare -a serial_bats_files=()
 declare -a SERIAL_BATS_FILES=(
   "$ROOT/tests/statusline-cache-isolation.bats"
 )
@@ -145,22 +147,17 @@ for i in "${!JOB_PIDS[@]}"; do
   name="${JOB_NAMES[$i]}"
   type="${JOB_TYPES[$i]}"
 
-  if ! wait "${JOB_PIDS[$i]}"; then
-    if [ "$type" = "contract" ]; then
-      contract_fail=$((contract_fail + 1))
-      echo "FAIL: $name"
-      cat "$TMPDIR_JOBS/$name.out"
-      echo ""
-    else
-      bats_workers_failed=1
-      echo "--- $name FAILURES ---"
-      grep -E '^not ok|^# ' "$TMPDIR_JOBS/$name.out" || true
-      echo ""
-    fi
-  else
+  if wait "${JOB_PIDS[$i]}"; then
+    JOB_EXIT_CODES[$i]=0
     if [ "$type" = "contract" ]; then
       contract_pass=$((contract_pass + 1))
-      echo "PASS: $name"
+    fi
+  else
+    JOB_EXIT_CODES[$i]=1
+    if [ "$type" = "contract" ]; then
+      contract_fail=$((contract_fail + 1))
+    else
+      bats_workers_failed=1
     fi
   fi
 
@@ -170,6 +167,34 @@ for i in "${!JOB_PIDS[@]}"; do
     wf=$(grep -c '^not ok ' "$TMPDIR_JOBS/$name.out" 2>/dev/null || true)
     bats_pass=$((bats_pass + ${wp:-0}))
     bats_fail=$((bats_fail + ${wf:-0}))
+  fi
+done
+
+for i in "${!JOB_PIDS[@]}"; do
+  name="${JOB_NAMES[$i]}"
+  type="${JOB_TYPES[$i]}"
+  [ "$type" = "contract" ] || continue
+  if [ "${JOB_EXIT_CODES[$i]:-1}" -eq 0 ]; then
+    echo "PASS: $name"
+  else
+    echo "FAIL: $name"
+  fi
+done
+
+for i in "${!JOB_PIDS[@]}"; do
+  name="${JOB_NAMES[$i]}"
+  type="${JOB_TYPES[$i]}"
+  [ "${JOB_EXIT_CODES[$i]:-1}" -ne 0 ] || continue
+
+  if [ "$type" = "contract" ]; then
+    echo "--- begin $name output ---"
+    cat "$TMPDIR_JOBS/$name.out"
+    echo "--- end $name output ---"
+    echo ""
+  else
+    echo "--- $name FAILURES ---"
+    grep -E '^not ok|^# ' "$TMPDIR_JOBS/$name.out" || true
+    echo ""
   fi
 done
 
