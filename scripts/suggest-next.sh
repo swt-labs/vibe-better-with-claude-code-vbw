@@ -25,6 +25,7 @@ RESULT="${2:-}"
 TARGET_PHASE_ARG="${3:-}"
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+RESOLVE_VERIF_SCRIPT="$SCRIPT_DIR/resolve-verification-path.sh"
 
 # Source shared UAT helpers (extract_status_value → aliased as read_status_field, current_uat, latest_non_source_uat)
 # shellcheck source=uat-utils.sh
@@ -289,14 +290,14 @@ if [ -d "$PLANNING_DIR" ]; then
       all_done=true
     fi
 
-    # Find most recent QA result
+    # Find most recent authoritative QA result for downstream/UAT suggestions.
     for dir in "$PHASES_DIR"/*/; do
       [ -d "$dir" ] || continue
-      for vf in "$dir"/*-VERIFICATION.md; do
-        [ -f "$vf" ] || continue
-        r=$(grep -m1 '^result:' "$vf" 2>/dev/null | sed 's/result:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
-        [ -n "$r" ] && last_qa_result="$r"
-      done
+      _sn_verif=$(bash "$RESOLVE_VERIF_SCRIPT" authoritative "${dir%/}" 2>/dev/null || true)
+      [ -n "$_sn_verif" ] || continue
+      [ -f "$_sn_verif" ] || continue
+      r=$(grep -m1 '^result:' "$_sn_verif" 2>/dev/null | sed 's/result:[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
+      [ -n "$r" ] && last_qa_result="$r"
     done
 
     # Count deviations and find failing plans in active phase
@@ -331,7 +332,7 @@ if [ -d "$PLANNING_DIR" ]; then
       done
       # Round-dir fallback: check remediation round UATs
       if [ "$has_uat" != true ]; then
-        for uf in "$active_phase_dir"/remediation/round-*/R*-UAT.md; do
+        for uf in "$active_phase_dir"/remediation/uat/round-*/R*-UAT.md; do
           [ -f "$uf" ] || continue
           us=$(read_status_field "$uf")
           if [ "$us" = "complete" ] || [ "$us" = "passed" ]; then

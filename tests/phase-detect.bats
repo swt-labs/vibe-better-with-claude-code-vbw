@@ -252,6 +252,18 @@ EOF
   echo "$output" | grep -q "uat_issues_phase=01"
 }
 
+@test "corrupt QA remediation stage does not route as active remediation" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  printf 'stage=garbage\nround=01\n' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  ! echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  echo "$output" | grep -q "qa_status=pending"
+}
+
 @test "dotfile PLAN files are not counted as plan artifacts" {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md
@@ -963,18 +975,18 @@ EOF
   # Round 02, stage=execute. Round 01 has plan+summary, round 02 has plan only.
   # Auto-advance should NOT trigger because the current round (02) has no summary.
   # Phase-root plan+summary required so the UAT scan picks up this phase.
-  mkdir -p .vbw-planning/phases/01-feature/remediation/round-01
-  mkdir -p .vbw-planning/phases/01-feature/remediation/round-02
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-02
   touch .vbw-planning/phases/01-feature/01-01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
-  printf 'stage=execute\nround=02\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/.uat-remediation-stage
-  touch .vbw-planning/phases/01-feature/remediation/round-01/R01-PLAN.md
-  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/remediation/round-01/R01-SUMMARY.md
-  touch .vbw-planning/phases/01-feature/remediation/round-02/R02-PLAN.md
+  printf 'stage=execute\nround=02\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  touch .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-SUMMARY.md
+  touch .vbw-planning/phases/01-feature/remediation/uat/round-02/R02-PLAN.md
   # No R02-SUMMARY.md — execution not complete for round 02
 
   # Round 01 UAT with issues (needed to route into UAT remediation path)
-  cat > .vbw-planning/phases/01-feature/remediation/round-01/R01-UAT.md <<'EOF'
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
 ---
 phase: 01
 status: issues_found
@@ -989,7 +1001,7 @@ EOF
   # Stage must NOT advance to done — should remain needs_uat_remediation (execute)
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   # Confirm the state file was NOT rewritten to done
-  grep -q "^stage=execute$" .vbw-planning/phases/01-feature/remediation/.uat-remediation-stage
+  grep -q "^stage=execute$" .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
 }
 
 # --- UAT status normalization in phase-detect ---
@@ -1057,4 +1069,472 @@ CONF
   [ "$status" -eq 0 ]
 
   echo "$output" | grep -q "has_unverified_phases=false"
+}
+
+# --- QA status detection tests ---
+
+@test "qa_status defaults to none when no phases" {
+  mkdir -p .vbw-planning/phases
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=none"
+  echo "$output" | grep -q "qa_round=00"
+}
+
+@test "qa_status is pending when SUMMARY.md exists but no VERIFICATION.md" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}
+
+@test "qa_status is passed when VERIFICATION.md has PASS result" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'All passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=passed"
+}
+
+@test "qa_status is passed when brownfield plain VERIFICATION.md has PASS result" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'All passed.' > .vbw-planning/phases/01-test/VERIFICATION.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=passed"
+}
+
+@test "qa_status is passed when latest wave verification has PASS result" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Wave 1 failed.' > .vbw-planning/phases/01-test/01-VERIFICATION-wave1.md
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Wave 2 passed.' > .vbw-planning/phases/01-test/01-VERIFICATION-wave2.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=passed"
+}
+
+@test "qa_status is failed when VERIFICATION.md has FAIL result" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed checks.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=failed"
+}
+
+@test "qa_status is remediating when qa-remediation-stage is active" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=remediating"
+  echo "$output" | grep -q "qa_round=01"
+}
+
+@test "qa_status is remediating for plan stage" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=plan' 'round=02' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=remediating"
+}
+
+@test "qa_status is remediating for verify stage" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=verify' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=remediating"
+}
+
+@test "qa_status is remediated when qa-remediation done and PASS" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=remediated"
+}
+
+@test "qa_status is failed when qa-remediation done but FAIL in VERIFICATION" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Still failing.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=failed"
+}
+
+@test "qa_status is pending when qa-remediation done but VERIFICATION is missing" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}
+
+@test "qa_status remediated reads round VERIFICATION.md when stage=done" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa/round-01
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  # Phase-level stays as original FAIL
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Original failure.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  # Round VERIFICATION.md has PASS
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after fix.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=remediated"
+}
+
+@test "qa_status failed reads round VERIFICATION.md FAIL when stage=done" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa/round-01
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  # Phase-level original FAIL
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Original failure.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  # Round VERIFICATION.md also FAIL
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Still failing.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=failed"
+}
+
+@test "qa_status falls back to phase-level when round VERIFICATION.md absent and stage=done" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  # Phase-level has PASS (brownfield: old behavior where phase-level was overwritten)
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  # No round VERIFICATION.md (brownfield: pre-feature installation)
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=remediated"
+}
+
+@test "qa_status remediated reads round-02 VERIFICATION.md when stage=done" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa/round-02
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n%s\n' 'stage=done' 'round=02' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  # Phase-level stays as original FAIL
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Original failure.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  # Round-02 VERIFICATION.md has PASS
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after round 2.' > .vbw-planning/phases/01-test/remediation/qa/round-02/R02-VERIFICATION.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=remediated"
+}
+
+@test "qa_status degrades gracefully with corrupt round in state file" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n%s\n' 'stage=done' 'round=abc' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  # Phase-level with PASS (brownfield fallback target)
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  # Must not crash — exits 0
+  [ "$status" -eq 0 ]
+}
+
+@test "needs_qa_remediation blocks needs_verification" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=plan' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+}
+
+@test "later active QA remediation takes priority over earlier unverified phase" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  # Phase 01: fully built, no UAT yet → unverified
+  mkdir -p .vbw-planning/phases/01-unverified
+  echo "# Plan" > .vbw-planning/phases/01-unverified/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-unverified/01-SUMMARY.md
+
+  # Phase 02: fully built with active QA remediation
+  mkdir -p .vbw-planning/phases/02-remediating/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/02-remediating/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-remediating/02-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  echo "$output" | grep -q "next_phase=02"
+  echo "$output" | grep -q "next_phase_slug=02-remediating"
+  echo "$output" | grep -q "qa_status=remediating"
+}
+
+@test "earlier UAT remediation keeps priority over later active QA remediation" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  # Phase 01: unresolved UAT issues
+  mkdir -p .vbw-planning/phases/01-uat-issues
+  echo "# Plan" > .vbw-planning/phases/01-uat-issues/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-uat-issues/01-SUMMARY.md
+  cat > .vbw-planning/phases/01-uat-issues/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  # Phase 02: active QA remediation
+  mkdir -p .vbw-planning/phases/02-remediating/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/02-remediating/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-remediating/02-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  echo "$output" | grep -q "next_phase=01"
+}
+
+@test "earlier unplanned phase keeps priority over later active QA remediation" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  mkdir -p .vbw-planning/phases/01-unplanned
+
+  mkdir -p .vbw-planning/phases/02-remediating/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/02-remediating/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-remediating/02-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+  echo "$output" | grep -q "next_phase=01"
+}
+
+@test "earlier mid-execution phase keeps priority over later active QA remediation" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  mkdir -p .vbw-planning/phases/01-executing
+  echo "# Plan" > .vbw-planning/phases/01-executing/01-01-PLAN.md
+
+  mkdir -p .vbw-planning/phases/02-remediating/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/02-remediating/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-remediating/02-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_execute"
+  echo "$output" | grep -q "next_phase=01"
+}
+
+@test "qa_status is pending when PASS verification is stale for current code" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  echo "print(\"old\")" > app.py
+  git add app.py
+  git commit -m "old app" --quiet
+  verified_commit="$(git rev-parse HEAD)"
+
+  printf '%s\n' \
+    '---' \
+    'result: PASS' \
+    "verified_at_commit: ${verified_commit}" \
+    '---' \
+    '# Verification' \
+    'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  echo "print(\"new\")" > app.py
+  git add app.py
+  git commit -m "new app" --quiet
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}
+
+@test "qa_status is pending for brownfield PASS verification after later commit" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  echo "print(\"before\")" > app.py
+  git add app.py
+  git commit -m "before qa" --quiet
+
+  printf '%s\n' '---' 'result: PASS' '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  echo "print(\"after\")" > app.py
+  git add app.py
+  git commit -m "after qa" --quiet
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}
+
+@test "qa_status is pending when PASS verification has uncommitted product changes" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  echo "print(\"clean\")" > app.py
+  git add app.py
+  git commit -m "clean app" --quiet
+  verified_commit="$(git rev-parse HEAD)"
+
+  printf '%s\n' \
+    '---' \
+    'result: PASS' \
+    "verified_at_commit: ${verified_commit}" \
+    '---' \
+    '# Verification' \
+    'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  echo "print(\"dirty\")" > app.py
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}
+
+@test "qa_status is pending for brownfield remediated verification after later commit" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  echo "print(\"before\")" > app.py
+  git add app.py
+  git commit -m "before remediated qa" --quiet
+
+  printf '%s\n' '---' 'result: PASS' '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  echo "print(\"after\")" > app.py
+  git add app.py
+  git commit -m "after remediated qa" --quiet
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}
+
+@test "first_qa_attention targets stale QA even when terminal UAT exists" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  echo "print(\"before\")" > app.py
+  git add app.py
+  git commit -m "before stale qa with uat" --quiet
+  verified_commit="$(git rev-parse HEAD)"
+
+  printf '%s\n' \
+    '---' \
+    'result: PASS' \
+    "verified_at_commit: ${verified_commit}" \
+    '---' \
+    '# Verification' \
+    'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: complete
+---
+All tests passed.
+EOF
+
+  echo "print(\"after\")" > app.py
+  git add app.py
+  git commit -m "after stale qa with uat" --quiet
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "first_qa_attention_phase=01"
+  echo "$output" | grep -q "first_qa_attention_slug=01-test"
+  echo "$output" | grep -q "qa_attention_status=pending"
+}
+
+@test "first_qa_attention targets verify-stage QA remediation even when earlier phase is unfinished" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  mkdir -p .vbw-planning/phases/01-unplanned
+
+  mkdir -p .vbw-planning/phases/02-remediating/remediation/qa/round-01
+  echo "# Plan" > .vbw-planning/phases/02-remediating/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-remediating/02-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=verify' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+  echo "$output" | grep -q "first_qa_attention_phase=02"
+  echo "$output" | grep -q "first_qa_attention_slug=02-remediating"
+  echo "$output" | grep -q "qa_attention_status=verify"
 }

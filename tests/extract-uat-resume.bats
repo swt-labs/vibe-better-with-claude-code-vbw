@@ -253,11 +253,11 @@ total_tests: 2
 @test "extract-uat-resume: round-dir current round UAT missing returns none (not stale previous round)" {
   # Round 02 has no UAT yet; round 01 has a completed UAT.
   # The script must return none (not stale all_done from round 01).
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  mkdir -p "$PHASE_DIR/remediation/round-02"
-  printf 'stage=verify\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  mkdir -p "$PHASE_DIR/remediation/uat/round-02"
+  printf 'stage=verify\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
-  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
 ---
 phase: 03
 status: complete
@@ -288,11 +288,11 @@ EOF
 @test "extract-uat-resume: round-dir current round UAT exists returns current round data" {
   # Both round 01 (all_done) and round 02 (partial) exist.
   # The script must return resume data from round 02, not round 01.
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  mkdir -p "$PHASE_DIR/remediation/round-02"
-  printf 'stage=verify\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  mkdir -p "$PHASE_DIR/remediation/uat/round-02"
+  printf 'stage=verify\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
-  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
 ---
 phase: 03
 status: complete
@@ -313,7 +313,7 @@ passed: 2
 ## Summary
 EOF
 
-  cat > "$PHASE_DIR/remediation/round-02/R02-UAT.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-02/R02-UAT.md" <<'EOF'
 ---
 phase: 03
 status: in_progress
@@ -346,10 +346,10 @@ EOF
 
 @test "extract-uat-resume: round-dir current round UAT all_done returns correct counts" {
   # Round 02 UAT has all tests completed.
-  mkdir -p "$PHASE_DIR/remediation/round-02"
-  printf 'stage=verify\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/uat/round-02"
+  printf 'stage=verify\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
-  cat > "$PHASE_DIR/remediation/round-02/R02-UAT.md" <<'EOF'
+  cat > "$PHASE_DIR/remediation/uat/round-02/R02-UAT.md" <<'EOF'
 ---
 phase: 03
 status: complete

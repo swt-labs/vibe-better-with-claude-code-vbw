@@ -59,7 +59,7 @@ fi
 
 # Check remediation stage — only archive when stage=done
 _REM_STAGE="none"
-_new_stage_file="${PHASE_DIR%/}/remediation/.uat-remediation-stage"
+_new_stage_file="${PHASE_DIR%/}/remediation/uat/.uat-remediation-stage"
 _stage_file="${PHASE_DIR%/}/.uat-remediation-stage"
 if [ -f "$_new_stage_file" ]; then
   _REM_STAGE=$(grep '^stage=' "$_new_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
@@ -94,7 +94,7 @@ fi
 
 # For round-dir UATs already in their round directory, skip mv archival
 case "$UAT_FILE" in
-  */remediation/round-*/R*-UAT.md)
+  */remediation/uat/round-*/R*-UAT.md)
     # Extract round number from the UAT filename (e.g., R01 → 1, R02 → 2)
     _uat_round_raw=$(basename "$UAT_FILE" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
     _uat_round="${_uat_round_raw:-0}"
@@ -111,7 +111,7 @@ case "$UAT_FILE" in
       bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" needs-round "${PHASE_DIR%/}" >/dev/null
       rm -f "${PHASE_DIR}.uat-remediation-stage"
       if git rev-parse --git-dir >/dev/null 2>&1; then
-        git add "${PHASE_DIR}remediation/.uat-remediation-stage" 2>/dev/null || true
+        git add "${PHASE_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null || true
         git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
       fi
       echo "archived=in-round-dir"
@@ -148,7 +148,7 @@ if [ "$_LAYOUT" = "round-dir" ]; then
   rm -f "${PHASE_DIR}.uat-remediation-stage"
 
   if git rev-parse --git-dir >/dev/null 2>&1; then
-    git add "${PHASE_DIR}remediation/.uat-remediation-stage" 2>/dev/null || true
+    git add "${PHASE_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null || true
     git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
   fi
 
@@ -180,7 +180,7 @@ rm -f "${PHASE_DIR}.uat-remediation-stage"
 # LLM improvises a manual commit instead of using planning-git.sh.
 if git rev-parse --git-dir >/dev/null 2>&1; then
   git add "${PHASE_DIR}${ROUND_FILE}" 2>/dev/null || true
-  git add "${PHASE_DIR}remediation/.uat-remediation-stage" 2>/dev/null || true
+  git add "${PHASE_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null || true
   git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
 fi
 

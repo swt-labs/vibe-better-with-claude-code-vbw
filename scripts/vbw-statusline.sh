@@ -101,6 +101,28 @@ else
   }
 fi
 
+qa_verification_stale() {
+  local verif_file="$1"
+  [ -n "$verif_file" ] && [ -f "$verif_file" ] || return 1
+  local _vac _dirty _cur_commit _cur_commit_ts _verif_mtime
+  _dirty=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
+  [ -n "$_dirty" ] && return 0
+  _vac=$(awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
+  ' "$verif_file" 2>/dev/null) || _vac=""
+  if [ -n "$_vac" ]; then
+    _cur_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+    [ -n "$_cur_commit" ] && [ "$_cur_commit" != "$_vac" ] && return 0
+    return 1
+  fi
+  _cur_commit_ts=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+  _verif_mtime=$(perl -e 'print +(stat shift)[9]' "$verif_file" 2>/dev/null || echo "")
+  [ -n "$_cur_commit_ts" ] && [ -n "$_verif_mtime" ] && [ "$_cur_commit_ts" -ge "$_verif_mtime" ]
+}
+
 # Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
 # Pass _SL_SCRIPT_DIR as the stable anchor so agent CWD changes don't shift the root.
 # shellcheck source=lib/vbw-config-root.sh
@@ -420,7 +442,7 @@ if ! cache_fresh "$FAST_CF" 5; then
       PT=$((PT + $(count_phase_plans "$_sl_pdir")))
       PD=$((PD + $(count_complete_summaries "$_sl_pdir")))
       # Count remediation round summaries (round-dir layout)
-      for _sl_rdir in "$_sl_pdir"remediation/round-*/; do
+      for _sl_rdir in "$_sl_pdir"remediation/uat/round-*/; do
         [ -d "$_sl_rdir" ] || continue
         PD=$((PD + $(count_complete_summaries "$_sl_rdir")))
       done
@@ -430,11 +452,11 @@ if ! cache_fresh "$FAST_CF" 5; then
       [ -n "$PDIR" ] && PPD=$(count_complete_summaries "$PDIR")
       [ -n "$PDIR" ] && PPT=$(count_phase_plans "$PDIR")
       # Remediation-aware plan counts: override PPT/PPD with remediation round totals
-      if [ -n "$PDIR" ] && [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
+      if [ -n "$PDIR" ] && [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ]; then
         REM_ACTIVE="true"
         PP_LABEL="this remediation"
         _rem_ppt=0; _rem_ppd=0
-        for _rem_rdir in "$PDIR"/remediation/round-*/; do
+        for _rem_rdir in "$PDIR"/remediation/uat/round-*/; do
           [ -d "$_rem_rdir" ] || continue
           _rem_ppt=$((_rem_ppt + $(find "$_rem_rdir" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')))
           _rem_ppd=$((_rem_ppd + $(count_complete_summaries "$_rem_rdir")))
@@ -448,19 +470,31 @@ if ! cache_fresh "$FAST_CF" 5; then
       # Lifecycle-aware QA/UAT indicator: UAT supersedes VERIFICATION.md
       if [ -n "$PDIR" ]; then
         _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
-        # Round-dir fallback: check remediation/round-*/R*-UAT.md
+        # Round-dir fallback: check remediation/uat/round-*/R*-UAT.md
         if [ -z "$_uat_file" ]; then
-          _uat_file=$(find "$PDIR/remediation" -path '*/round-*/R*-UAT.md' 2>/dev/null | sort -t/ -k2 -V | tail -1)
+          _uat_file=$(find "$PDIR/remediation/uat" -path '*/round-*/R*-UAT.md' 2>/dev/null | sort -t/ -k2 -V | tail -1)
+        fi
+        # Legacy fallback: check old remediation/round-*/R*-UAT.md layout
+        if [ -z "$_uat_file" ]; then
+          _uat_file=$(find "$PDIR/remediation" -maxdepth 2 -path '*/round-*/R*-UAT.md' 2>/dev/null | sort -t/ -k2 -V | tail -1)
         fi
         if [ -n "$_uat_file" ]; then
           _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null | tr '[:upper:]' '[:lower:]')
           _uat_status=$(normalize_uat_status "$_uat_status")
           case "$_uat_status" in
-            complete) QA="UAT: pass"; QA_COLOR="G" ;;
+            complete)
+              _stale_verif=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" current "$PDIR" 2>/dev/null || true)
+              [ -n "$_stale_verif" ] && [ ! -f "$_stale_verif" ] && _stale_verif=""
+              if qa_verification_stale "$_stale_verif"; then
+                QA="QA: pending"; QA_COLOR="Y"
+              else
+                QA="UAT: pass"; QA_COLOR="G"
+              fi
+              ;;
             issues_found)
               _rem_stage="none"
-              if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
-                _rem_stage=$(grep '^stage=' "$PDIR/remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+              if [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ]; then
+                _rem_stage=$(grep '^stage=' "$PDIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
                 _rem_stage="${_rem_stage:-none}"
               elif [ -f "$PDIR/.uat-remediation-stage" ]; then
                 _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
@@ -475,8 +509,44 @@ if ! cache_fresh "$FAST_CF" 5; then
               esac ;;
             *) QA="UAT: ?"; QA_COLOR="Y" ;;
           esac
-        elif [ -n "$(find "$PDIR" -name '*VERIFICATION.md' 2>/dev/null | head -1)" ]; then
-          QA="QA: pass"; QA_COLOR="G"
+        elif [ -f "$PDIR/remediation/qa/.qa-remediation-stage" ]; then
+          _qa_rem_stage=$(grep '^stage=' "$PDIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          _qa_rem_stage="${_qa_rem_stage:-none}"
+          case "$_qa_rem_stage" in
+            plan)    QA="QA: Planning fix"; QA_COLOR="Y" ;;
+            execute) QA="QA: Fixing";       QA_COLOR="Y" ;;
+            verify)  QA="QA: Re-verifying"; QA_COLOR="Y" ;;
+            done)    ;;
+            *)       _qa_rem_stage="none" ;;
+          esac
+        fi
+        _verif_file=""
+        if [ "${_qa_rem_stage:-none}" = "done" ]; then
+          _verif_file=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" current "$PDIR" 2>/dev/null || true)
+          [ -n "$_verif_file" ] && [ ! -f "$_verif_file" ] && _verif_file=""
+        elif [ "${_qa_rem_stage:-none}" = "none" ]; then
+          _verif_file=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" phase "$PDIR" 2>/dev/null || true)
+          [ -n "$_verif_file" ] && [ ! -f "$_verif_file" ] && _verif_file=""
+        fi
+        if [ -n "$_verif_file" ]; then
+          _qa_result=$(awk '
+            BEGIN { in_fm=0 }
+            NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+            in_fm && /^---[[:space:]]*$/ { exit }
+            in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+          ' "$_verif_file" 2>/dev/null) || _qa_result=""
+          case "$_qa_result" in
+            PASS)
+              if qa_verification_stale "$_verif_file"; then
+                QA="QA: pending"; QA_COLOR="Y"
+              else
+                QA="QA: pass"; QA_COLOR="G"
+              fi
+              ;;
+            FAIL) QA="QA: FAIL"; QA_COLOR="R" ;;
+            PARTIAL) QA="QA: partial"; QA_COLOR="Y" ;;
+            *) QA="QA: pending"; QA_COLOR="Y" ;;
+          esac
         fi
       fi
     fi

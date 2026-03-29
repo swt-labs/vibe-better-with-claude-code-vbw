@@ -31,9 +31,9 @@
 #   (discuss is skipped — the UAT report serves as the scoping document)
 # Stages (minor-only path):     fix → done
 #
-# Remediation artifacts live in {phase-dir}/remediation/round-{RR}/ with
+# Remediation artifacts live in {phase-dir}/remediation/uat/round-{RR}/ with
 # R{RR}-RESEARCH.md, R{RR}-PLAN.md, R{RR}-SUMMARY.md, R{RR}-UAT.md naming.
-# State file: {phase-dir}/remediation/.uat-remediation-stage (key=value pairs).
+# State file: {phase-dir}/remediation/uat/.uat-remediation-stage (key=value pairs).
 #   layout=round-dir  — artifacts in round dir only (fresh init / needs-round)
 #   layout=legacy     — phase-root artifacts are current round (migrated from old format)
 # Legacy fallback: reads {phase-dir}/.uat-remediation-stage (single word) for
@@ -66,8 +66,24 @@ case "$PHASE_DIR" in
     ;;
 esac
 
-STATE_FILE="$PHASE_DIR/remediation/.uat-remediation-stage"
+STATE_FILE="$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 LEGACY_STATE_FILE="$PHASE_DIR/.uat-remediation-stage"
+LEGACY_REMED_STATE_FILE="$PHASE_DIR/remediation/.uat-remediation-stage"
+
+# Auto-migrate: if old-location state file exists but new doesn't, migrate
+if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_REMED_STATE_FILE" ]; then
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  cp "$LEGACY_REMED_STATE_FILE" "$STATE_FILE"
+  # Migrate existing round dirs
+  for _mig_rd in "$PHASE_DIR/remediation"/round-*/; do
+    [ -d "$_mig_rd" ] || continue
+    _mig_name=$(basename "$_mig_rd")
+    if [ ! -d "$PHASE_DIR/remediation/uat/$_mig_name" ]; then
+      mv "$_mig_rd" "$PHASE_DIR/remediation/uat/$_mig_name"
+    fi
+  done
+  rm -f "$LEGACY_REMED_STATE_FILE"
+fi
 
 # Major/critical chain order (UAT report serves as discussion — no separate discuss step)
 MAJOR_STAGES=("research" "plan" "execute" "done")
@@ -120,7 +136,7 @@ get_layout() {
 get_round_dir() {
   local round
   round=$(get_round)
-  echo "$PHASE_DIR/remediation/round-${round}"
+  echo "$PHASE_DIR/remediation/uat/round-${round}"
 }
 
 # Start a new remediation round: increment round, create dir, reset to research.
@@ -130,12 +146,12 @@ start_new_round() {
   current_round=$(get_round)
   next_round=$(( 10#$current_round + 1 ))
   next_round_padded=$(printf '%02d' "$next_round")
-  mkdir -p "$PHASE_DIR/remediation/round-${next_round_padded}"
+  mkdir -p "$PHASE_DIR/remediation/uat/round-${next_round_padded}"
   printf 'stage=research\nround=%s\nlayout=round-dir\n' "$next_round_padded" > "$STATE_FILE"
   [ -f "$LEGACY_STATE_FILE" ] && rm -f "$LEGACY_STATE_FILE"
   echo "research"
   echo "round=${next_round_padded}"
-  echo "round_dir=$PHASE_DIR/remediation/round-${next_round_padded}"
+  echo "round_dir=$PHASE_DIR/remediation/uat/round-${next_round_padded}"
 }
 
 next_stage() {
@@ -175,13 +191,14 @@ do_init() {
   esac
 
   # Create remediation directory and first round dir
-  mkdir -p "$PHASE_DIR/remediation/round-01"
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
 
   # Write key=value state file (layout=round-dir: fresh round, no legacy fallback)
   printf 'stage=%s\nround=01\nlayout=round-dir\n' "$initial_stage" > "$STATE_FILE"
 
-  # Remove legacy state file if it exists (migrated to new location)
+  # Remove legacy state files if they exist (migrated to new location)
   rm -f "$LEGACY_STATE_FILE"
+  rm -f "$LEGACY_REMED_STATE_FILE"
 
   echo "$initial_stage"
 
@@ -403,7 +420,7 @@ case "$CMD" in
     if [ "$existing" != "none" ]; then
       # If resuming from legacy state file, migrate to new format
       if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_STATE_FILE" ]; then
-        mkdir -p "$PHASE_DIR/remediation/round-01"
+        mkdir -p "$PHASE_DIR/remediation/uat/round-01"
         # layout=legacy: phase-root artifacts are current work (migrated from old format)
         printf 'stage=%s\nround=01\nlayout=legacy\n' "$existing" > "$STATE_FILE"
         rm -f "$LEGACY_STATE_FILE"

@@ -78,9 +78,10 @@ else
   fail "statusline uses red/yellow colors for UAT failure/remediation states"
 fi
 
-# Test 7: VERIFICATION.md check is fallback only (after UAT check)
-# The VERIFICATION.md check should come after the UAT file check in an elif
-if grep -q 'elif.*VERIFICATION.md\|else.*VERIFICATION' "$ROOT/scripts/vbw-statusline.sh"; then
+# Test 7: VERIFICATION.md check is fallback only (after UAT / QA-remediation checks)
+# Accept either the original elif/else structure or the newer normalized
+# `_qa_rem_stage=none` fallback guard.
+if grep -qE 'elif.*VERIFICATION.md|else.*VERIFICATION|_qa_rem_stage:-none.*VERIFICATION.md|resolve-verification-path\.sh" phase' "$ROOT/scripts/vbw-statusline.sh"; then
   pass "VERIFICATION.md check is fallback (only when no UAT file exists)"
 else
   fail "VERIFICATION.md check is fallback (only when no UAT file exists)"
@@ -257,11 +258,11 @@ echo ""
 echo "--- Structural: remediation-aware plan counting ---"
 
 # Test 15: PD counting includes remediation round summaries
-if grep -q 'remediation/round-\*/' "$ROOT/scripts/vbw-statusline.sh" && \
+if grep -q 'remediation/uat/round-\*/' "$ROOT/scripts/vbw-statusline.sh" && \
    grep -q 'count_complete_summaries.*_sl_rdir\|count_complete_summaries.*_rem_rdir' "$ROOT/scripts/vbw-statusline.sh"; then
-  pass "PD counting iterates remediation/round-*/ for summaries"
+  pass "PD counting iterates remediation/uat/round-*/ for summaries"
 else
-  fail "PD counting iterates remediation/round-*/ for summaries"
+  fail "PD counting iterates remediation/uat/round-*/ for summaries"
 fi
 
 # Test 16: statusline has PP_LABEL variable for dynamic parenthetical label
@@ -299,7 +300,7 @@ echo "--- Functional: remediation plan counting ---"
 
 # Test 20: PD includes remediation round summaries
 T20="$TMPDIR_BASE/t20"
-mkdir -p "$T20/.vbw-planning/phases/01-test/remediation/round-01"
+mkdir -p "$T20/.vbw-planning/phases/01-test/remediation/uat/round-01"
 echo '{}' > "$T20/.vbw-planning/config.json"
 printf 'Phase: 1 of 1 (test)\nStatus: active\n' > "$T20/.vbw-planning/STATE.md"
 printf '# Test\nContent\n' > "$T20/.vbw-planning/PROJECT.md"
@@ -307,15 +308,15 @@ printf '# Test\nContent\n' > "$T20/.vbw-planning/PROJECT.md"
 printf '%s\n' '---' 'phase: "01"' 'plan: "01"' 'title: Test' 'wave: 1' '---' > "$T20/.vbw-planning/phases/01-test/01-01-PLAN.md"
 printf '%s\n' '---' 'status: complete' '---' 'Done' > "$T20/.vbw-planning/phases/01-test/01-01-SUMMARY.md"
 # Remediation round plan + summary (complete)
-printf '%s\n' '---' 'phase: 01' 'round: 01' 'title: Fix issues' '---' > "$T20/.vbw-planning/phases/01-test/remediation/round-01/R01-PLAN.md"
-printf '%s\n' '---' 'status: complete' '---' 'Fixed' > "$T20/.vbw-planning/phases/01-test/remediation/round-01/R01-SUMMARY.md"
+printf '%s\n' '---' 'phase: 01' 'round: 01' 'title: Fix issues' '---' > "$T20/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-PLAN.md"
+printf '%s\n' '---' 'status: complete' '---' 'Fixed' > "$T20/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-SUMMARY.md"
 _PD_COUNT=$(cd "$T20" && {
   . "$ROOT/scripts/summary-utils.sh"
   PD=0
   for _sl_pdir in .vbw-planning/phases/*/; do
     [ -d "$_sl_pdir" ] || continue
     PD=$((PD + $(count_complete_summaries "$_sl_pdir")))
-    for _sl_rdir in "$_sl_pdir"remediation/round-*/; do
+    for _sl_rdir in "$_sl_pdir"remediation/uat/round-*/; do
       [ -d "$_sl_rdir" ] || continue
       PD=$((PD + $(count_complete_summaries "$_sl_rdir")))
     done
@@ -330,8 +331,8 @@ fi
 
 # Test 21: PPT/PPD override during active remediation
 T21="$TMPDIR_BASE/t21"
-mkdir -p "$T21/.vbw-planning/phases/01-test/remediation/round-01"
-mkdir -p "$T21/.vbw-planning/phases/01-test/remediation/round-02"
+mkdir -p "$T21/.vbw-planning/phases/01-test/remediation/uat/round-01"
+mkdir -p "$T21/.vbw-planning/phases/01-test/remediation/uat/round-02"
 echo '{}' > "$T21/.vbw-planning/config.json"
 printf 'Phase: 1 of 1 (test)\nStatus: active\n' > "$T21/.vbw-planning/STATE.md"
 printf '# Test\nContent\n' > "$T21/.vbw-planning/PROJECT.md"
@@ -339,22 +340,22 @@ printf '# Test\nContent\n' > "$T21/.vbw-planning/PROJECT.md"
 printf '%s\n' '---' 'title: Test' '---' > "$T21/.vbw-planning/phases/01-test/01-01-PLAN.md"
 printf '%s\n' '---' 'status: complete' '---' 'Done' > "$T21/.vbw-planning/phases/01-test/01-01-SUMMARY.md"
 # Remediation state file (active)
-printf 'stage=research\nround=02\nlayout=round-dir\n' > "$T21/.vbw-planning/phases/01-test/remediation/.uat-remediation-stage"
+printf 'stage=research\nround=02\nlayout=round-dir\n' > "$T21/.vbw-planning/phases/01-test/remediation/uat/.uat-remediation-stage"
 # Round 01: plan + complete summary
-printf '%s\n' '---' 'title: R01 fix' '---' > "$T21/.vbw-planning/phases/01-test/remediation/round-01/R01-PLAN.md"
-printf '%s\n' '---' 'status: complete' '---' 'Fixed' > "$T21/.vbw-planning/phases/01-test/remediation/round-01/R01-SUMMARY.md"
+printf '%s\n' '---' 'title: R01 fix' '---' > "$T21/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-PLAN.md"
+printf '%s\n' '---' 'status: complete' '---' 'Fixed' > "$T21/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-SUMMARY.md"
 # Round 02: plan only (no summary yet)
-printf '%s\n' '---' 'title: R02 fix' '---' > "$T21/.vbw-planning/phases/01-test/remediation/round-02/R02-PLAN.md"
+printf '%s\n' '---' 'title: R02 fix' '---' > "$T21/.vbw-planning/phases/01-test/remediation/uat/round-02/R02-PLAN.md"
 _REM_COUNTS=$(cd "$T21" && {
   . "$ROOT/scripts/summary-utils.sh"
   PDIR=".vbw-planning/phases/01-test"
   REM_ACTIVE="false"; PP_LABEL="this phase"
   PPT=0; PPD=0
-  if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
+  if [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ]; then
     REM_ACTIVE="true"
     PP_LABEL="this remediation"
     _rem_ppt=0; _rem_ppd=0
-    for _rem_rdir in "$PDIR"/remediation/round-*/; do
+    for _rem_rdir in "$PDIR"/remediation/uat/round-*/; do
       [ -d "$_rem_rdir" ] || continue
       _rem_ppt=$((_rem_ppt + $(find "$_rem_rdir" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | wc -l | tr -d ' ')))
       _rem_ppd=$((_rem_ppd + $(count_complete_summaries "$_rem_rdir")))
@@ -422,7 +423,7 @@ echo "--- Functional: remediation stage → QA indicator ---"
 # Helper: create project with UAT issues_found + remediation stage
 setup_uat_remediation() {
   local dir="$1" stage="$2"
-  mkdir -p "$dir/.vbw-planning/phases/01-test/remediation"
+  mkdir -p "$dir/.vbw-planning/phases/01-test/remediation/uat"
   echo '{}' > "$dir/.vbw-planning/config.json"
   printf 'Phase: 1 of 1 (test)\nStatus: active\n' > "$dir/.vbw-planning/STATE.md"
   printf '# Test\nContent\n' > "$dir/.vbw-planning/PROJECT.md"
@@ -430,7 +431,7 @@ setup_uat_remediation() {
   printf '%s\n' '---' 'status: complete' '---' 'Done' > "$dir/.vbw-planning/phases/01-test/01-01-SUMMARY.md"
   printf '%s\n' '---' 'phase: 01' 'status: issues_found' '---' 'Issues.' > "$dir/.vbw-planning/phases/01-test/01-UAT.md"
   if [ "$stage" != "__none__" ]; then
-    printf 'stage=%s\nround=01\nlayout=round-dir\n' "$stage" > "$dir/.vbw-planning/phases/01-test/remediation/.uat-remediation-stage"
+    printf 'stage=%s\nround=01\nlayout=round-dir\n' "$stage" > "$dir/.vbw-planning/phases/01-test/remediation/uat/.uat-remediation-stage"
   fi
 }
 
@@ -447,8 +448,8 @@ extract_qa() {
       _uat_status=$(normalize_uat_status "$_uat_status")
       if [ "$_uat_status" = "issues_found" ]; then
         _rem_stage="none"
-        if [ -f "$PDIR/remediation/.uat-remediation-stage" ]; then
-          _rem_stage=$(grep '^stage=' "$PDIR/remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+        if [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ]; then
+          _rem_stage=$(grep '^stage=' "$PDIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
           _rem_stage="${_rem_stage:-none}"
         elif [ -f "$PDIR/.uat-remediation-stage" ]; then
           _rem_stage=$(tr -d '[:space:]' < "$PDIR/.uat-remediation-stage")
@@ -573,6 +574,64 @@ if [ "$_FAST_QA" = "pass" ]; then
   pass "UAT status: all_pass → normalized to complete → pass"
 else
   fail "UAT status: all_pass → normalized to complete → pass (got '$_FAST_QA')"
+fi
+
+echo ""
+echo "==============================="
+
+# --- QA remediation statusline contract checks ---
+echo ""
+echo "--- QA Remediation Statusline Contract ---"
+
+# Verify statusline handles QA remediation stages
+if grep -q 'remediation/qa/.qa-remediation-stage' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline references QA remediation stage file"
+else
+  fail "statusline must reference remediation/qa/.qa-remediation-stage"
+fi
+
+# Verify statusline parses VERIFICATION.md result field
+if grep -q 'in_fm && /^result:/' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline parses VERIFICATION.md result field"
+else
+  fail "statusline must parse VERIFICATION.md result: field (not just check existence)"
+fi
+
+# Verify statusline uses the shared verification resolver instead of ad-hoc find order
+if grep -q 'resolve-verification-path.sh' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline uses shared verification resolver"
+else
+  fail "statusline must use shared verification resolver for QA artifact precedence"
+fi
+
+# Verify statusline checks verification freshness before showing green states
+if grep -q 'qa_verification_stale' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline checks verification freshness before showing green QA/UAT states"
+else
+  fail "statusline must check verification freshness before showing green QA/UAT states"
+fi
+
+# Verify QA FAIL status is displayed
+if grep -q 'QA: FAIL' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline displays QA: FAIL for failed verification"
+else
+  fail "statusline must display QA: FAIL for failed verification results"
+fi
+
+# Verify QA remediation stages are shown
+for stage_label in "QA: Planning fix" "QA: Fixing" "QA: Re-verifying"; do
+  if grep -q "$stage_label" "$ROOT/scripts/vbw-statusline.sh"; then
+    pass "statusline displays '$stage_label' for QA remediation"
+  else
+    fail "statusline must display '$stage_label' for QA remediation stage"
+  fi
+done
+
+# Verify invalid QA remediation stages normalize to none instead of showing a ghost remediation state
+if grep -q 'QA: Remediating' "$ROOT/scripts/vbw-statusline.sh"; then
+  fail "statusline must not display a generic QA: Remediating fallback for invalid stage values"
+else
+  pass "statusline does not display a generic QA: Remediating fallback for invalid stage values"
 fi
 
 echo ""

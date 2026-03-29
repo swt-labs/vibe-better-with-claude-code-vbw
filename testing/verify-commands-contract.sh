@@ -169,9 +169,96 @@ for pd_cmd in $PHASE_DETECT_REQUIRED_COMMANDS; do
 done
 
 echo ""
-echo "=== Milestone Context Refresh Verification ==="
+echo "=== Phase-Detect Refresh Safety Verification ==="
+
+for pd_safe_cmd in vibe verify resume status discuss qa; do
+  pd_safe_file="$COMMANDS_DIR/${pd_safe_cmd}.md"
+  if [ ! -f "$pd_safe_file" ]; then
+    fail "$pd_safe_cmd: command file not found"
+    continue
+  fi
+
+  if grep -Fq '_PD_CACHE="$PD"' "$pd_safe_file"; then
+    fail "$pd_safe_cmd: stale phase-detect cache fallback still present"
+  else
+    pass "$pd_safe_cmd: no stale phase-detect cache fallback"
+  fi
+
+  if grep -Fq 'if [ -L "$L" ] && [ -f "$L/scripts/hook-wrapper.sh" ]; then R="$L"; fi' "$pd_safe_file"; then
+    fail "$pd_safe_cmd: reuses session symlink as plugin-root candidate"
+  else
+    pass "$pd_safe_cmd: does not trust session symlink as plugin root"
+  fi
+done
+
+echo ""
+echo "=== Verify Guardrail Verification ==="
 
 VIBE_FILE="$COMMANDS_DIR/vibe.md"
+VERIFY_FILE="$COMMANDS_DIR/verify.md"
+
+if grep -q 'Verify-context error guard (NON-NEGOTIABLE)' "$VERIFY_FILE"; then
+  pass "verify: has fail-closed verify-context error guard"
+else
+  fail "verify: missing fail-closed verify-context error guard"
+fi
+
+if grep -q 'If the user specified an explicit phase number that differs from the auto-detected target, ignore the pre-computed `qa_status`' "$VERIFY_FILE"; then
+  pass "verify: explicit target phases ignore auto-detected qa_status"
+else
+  fail "verify: missing explicit-phase qa_status override guidance"
+fi
+
+if grep -q 'Only proceed to UAT when the PASS is fresh for the target phase' "$VERIFY_FILE"; then
+  pass "verify: explicit QA gate requires fresh PASS for target phase"
+else
+  fail "verify: missing fresh-PASS requirement in explicit QA gate"
+fi
+
+if grep -q 'echo "verify_context=unavailable"' "$VIBE_FILE"; then
+  pass "vibe: routed verify precompute emits fail-closed verify_context sentinel"
+else
+  fail "vibe: routed verify precompute missing fail-closed verify_context sentinel"
+fi
+
+if grep -q '_uat_stage=' "$VERIFY_FILE" && grep -q '_qa_stage=' "$VERIFY_FILE" && grep -q 'research|plan|execute|fix|verify|done' "$VERIFY_FILE"; then
+  pass "verify: remediation-only precompute is driven by normalized remediation stages"
+else
+  fail "verify: remediation-only precompute still appears history-driven instead of normalized-state driven"
+fi
+
+if grep -q 'grep '\''^stage=' "$VIBE_FILE" && grep -q '_uat_stage=' "$VIBE_FILE" && grep -q '_qa_stage=' "$VIBE_FILE"; then
+  pass "vibe: remediation-only precompute is driven by normalized remediation stages"
+else
+  fail "vibe: remediation-only precompute still appears history-driven instead of normalized-state driven"
+fi
+
+if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: QA remediation verify uses remediation-only verify context"
+else
+  fail "execute-protocol: QA remediation verify missing remediation-only verify context"
+fi
+
+if grep -q 'After QA persists VERIFICATION.md (and only after that), run the verification threshold gate' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: verification_threshold runs after QA persists VERIFICATION"
+else
+  fail "execute-protocol: verification_threshold ordering still appears before QA"
+fi
+
+if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$VIBE_FILE"; then
+  pass "vibe: QA remediation verify uses remediation-only verify context"
+else
+  fail "vibe: QA remediation verify missing remediation-only verify context"
+fi
+
+if grep -q 'PDIR=".vbw-planning/phases/{target-slug}"' "$VERIFY_FILE" && grep -q '_uat_stage=' "$VERIFY_FILE" && grep -q '_qa_stage=' "$VERIFY_FILE"; then
+  pass "verify: misnamed-plan refresh recomputes remediation scope from active state files"
+else
+  fail "verify: misnamed-plan refresh still appears history-driven instead of state-driven"
+fi
+
+echo ""
+echo "=== Milestone Context Refresh Verification ==="
 mode_block() {
   local heading="$1"
   awk -v h="$heading" '
@@ -195,6 +282,104 @@ for mode in "### Mode: Add Phase" "### Mode: Insert Phase" "### Mode: Remove Pha
     pass "vibe: $label preserves milestone decisions and deferred ideas"
   else
     fail "vibe: $label missing preservation instruction for milestone CONTEXT refresh"
+  fi
+done
+
+echo ""
+echo "=== QA Result Gate Contract ==="
+
+QA_FILE="$COMMANDS_DIR/qa.md"
+
+if grep -q 'qa-remediation-state\.sh get' "$QA_FILE"; then
+  pass "qa: resolves remediation state before choosing verification output path"
+else
+  fail "qa: missing qa-remediation-state.sh get — standalone QA may overwrite phase-level verification"
+fi
+
+if grep -q 'first_qa_attention_phase' "$QA_FILE" && grep -q 'qa_attention_status' "$QA_FILE"; then
+  pass "qa: auto-detect can target stale or failed QA even with terminal UAT"
+else
+  fail "qa: missing first_qa_attention-based auto-detect guidance"
+fi
+
+if grep -q 'pending`, `failed`, or `verify`' "$QA_FILE"; then
+  pass "qa: auto-detect includes verify-stage remediation escape hatch"
+else
+  fail "qa: auto-detect missing verify-stage remediation escape hatch"
+fi
+
+if grep -q 'case "\$QA_STAGE" in' "$QA_FILE" && grep -q 'verify)' "$QA_FILE" && grep -q 'done)' "$QA_FILE" && grep -q 'plan|execute' "$QA_FILE"; then
+  pass "qa: uses persisted verification_path only for verify/done and blocks plan/execute"
+else
+  fail "qa: missing verify/done output guard and plan/execute stop for persisted verification_path"
+fi
+
+if grep -q 'resolve-verification-path\.sh current' "$QA_FILE"; then
+  pass "qa: resolves authoritative verification path for done-stage remediation"
+else
+  fail "qa: missing authoritative done-stage verification path resolution"
+fi
+
+if grep -q 'source_verification_path' "$ROOT/references/execute-protocol.md" && grep -q 'verification_path' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: parses full QA remediation metadata contract"
+else
+  fail "execute-protocol: missing source_verification_path/verification_path in QA remediation metadata parsing"
+fi
+
+if grep -q 'verification_path=' "$QA_FILE" && grep -q 'Output path: {VERIF_PATH}' "$QA_FILE"; then
+  pass "qa: uses persisted verification_path contract for standalone QA output"
+else
+  fail "qa: missing persisted verification_path contract for standalone QA output"
+fi
+
+if grep -q 'Determine verification scope from `VERIF_PATH`' "$QA_FILE"; then
+  pass "qa: standalone QA scope is tied to resolved VERIF_PATH"
+else
+  fail "qa: standalone QA scope still appears disconnected from resolved VERIF_PATH"
+fi
+
+if grep -q 'Determine verification scope from `VERIF_PATH`' "$QA_FILE"; then
+  pass "qa: standalone QA scope is tied to resolved VERIF_PATH"
+else
+  fail "qa: standalone QA scope still appears disconnected from resolved VERIF_PATH"
+fi
+
+if grep -q 'first_qa_attention_phase' "$QA_FILE" && grep -q 'qa_attention_status' "$QA_FILE"; then
+  pass "qa: auto-detect retargets stale or failed authoritative QA artifacts"
+else
+  fail "qa: auto-detect missing stale/failed authoritative QA retargeting guidance"
+fi
+
+if grep -q 'compile-verify-context.sh --remediation-only' "$VIBE_FILE"; then
+  pass "vibe: refreshes verify context before QA remediation handoff to Verify"
+else
+  fail "vibe: missing verify-context refresh for QA remediation handoff"
+fi
+
+# vibe.md must reference qa-result-gate.sh at both gate call sites (primary + remediation verify)
+_vibe_gate_count=$(grep -c 'qa-result-gate\.sh' "$COMMANDS_DIR/vibe.md" 2>/dev/null || echo 0)
+if [ "$_vibe_gate_count" -ge 2 ]; then
+  pass "vibe: references qa-result-gate.sh at $_vibe_gate_count call sites"
+else
+  fail "vibe: expected >=2 qa-result-gate.sh references, found $_vibe_gate_count"
+fi
+
+# execute-protocol.md must reference qa-result-gate.sh at both call sites
+_ep_gate_count=$(grep -c 'qa-result-gate\.sh' "$ROOT/references/execute-protocol.md" 2>/dev/null || echo 0)
+if [ "$_ep_gate_count" -ge 2 ]; then
+  pass "execute-protocol: references qa-result-gate.sh at $_ep_gate_count call sites"
+else
+  fail "execute-protocol: expected >=2 qa-result-gate.sh references, found $_ep_gate_count"
+fi
+
+# Both must include the anti-rationalization instruction at all gate call sites
+for f in "$COMMANDS_DIR/vibe.md" "$ROOT/references/execute-protocol.md"; do
+  base=$(basename "$f")
+  _ar_count=$(grep -c 'no exceptions, no judgment, no rationalization' "$f" 2>/dev/null || echo 0)
+  if [ "$_ar_count" -ge 2 ]; then
+    pass "$base: has anti-rationalization instruction at $_ar_count call sites"
+  else
+    fail "$base: expected >=2 anti-rationalization instructions, found $_ar_count"
   fi
 done
 

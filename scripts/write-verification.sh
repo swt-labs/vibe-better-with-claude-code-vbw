@@ -43,6 +43,15 @@ if [[ -z "$tier" || -z "$result" ]]; then
   exit 1
 fi
 
+# Validate result is one of the allowed values
+case "$result" in
+  PASS|FAIL|PARTIAL) ;;
+  *)
+    echo "Error: result must be PASS, FAIL, or PARTIAL (got '$result')" >&2
+    exit 1
+    ;;
+esac
+
 if [[ -z "$checks_passed" || -z "$checks_total" ]]; then
   echo "Error: missing required fields (checks.passed, checks.total)" >&2
   exit 1
@@ -64,6 +73,10 @@ fi
 
 date_val=$(date -u +%Y-%m-%d)
 
+# Capture current product-code commit for staleness detection
+# Excludes .vbw-planning/ and CLAUDE.md so planning commits don't invalidate QA
+verified_at_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+
 # Check if checks_detail exists and is a valid array
 has_checks_detail="false"
 detail_type=$(echo "$payload" | jq -r '.checks_detail | type // "null"' 2>/dev/null)
@@ -74,6 +87,12 @@ if [[ "$detail_type" == "array" ]]; then
   fi
 elif [[ "$detail_type" != "null" && "$detail_type" != "" ]]; then
   echo "Error: checks_detail must be an array, got $detail_type" >&2
+  exit 1
+fi
+
+# Require checks_detail for PASS/PARTIAL results — without detail, the claim is unvalidatable
+if [[ "$has_checks_detail" == "false" && ("$result" == "PASS" || "$result" == "PARTIAL") ]]; then
+  echo "Error: checks_detail is required when result is PASS or PARTIAL (cannot validate without detail)" >&2
   exit 1
 fi
 
@@ -108,6 +127,119 @@ if [[ "$has_checks_detail" == "true" ]]; then
       echo "Error: checks counters must match checks_detail statuses/counts (checks.passed=${checks_passed}, checks.failed=${checks_failed}, checks.total=${checks_total}; detail PASS=${detail_passed}, FAIL=${detail_failed}, TOTAL=${detail_total})" >&2
       exit 1
     fi
+
+    # Enforce result/status integrity: FAIL checks preclude PASS result
+    if [[ "$detail_failed" -gt 0 && "$result" == "PASS" ]]; then
+      echo "Warning: result auto-corrected from PASS to PARTIAL (${detail_failed} FAIL check(s) found in checks_detail)" >&2
+      result="PARTIAL"
+    fi
+fi
+
+# Plans_verified validation — enforce plan coverage when PLAN.md files exist
+# Derive phase dir from output path to count plans
+phase_dir=$(dirname "$output_path")
+plan_files=()
+while IFS= read -r pf; do
+  [ -f "$pf" ] || continue
+  plan_files+=("$pf")
+done < <(find "$phase_dir" -maxdepth 1 ! -name '.*' \( -name '*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+plan_count=${#plan_files[@]}
+
+legacy_plan_id() {
+  local plan_file="$1"
+  local plan_id
+  plan_id=$(awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^plan:/ {
+      sub(/^plan:[[:space:]]*/, "")
+      gsub(/^"|"$/, "")
+      print
+      exit
+    }
+  ' "$plan_file" 2>/dev/null | head -1 | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"]//;s/['\"]$//")
+  if [[ -n "$plan_id" ]]; then
+    echo "$plan_id"
+  else
+    echo "PLAN"
+  fi
+}
+
+plan_id_matches_file() {
+  local plan_id="$1"
+  local plan_file="$2"
+  local base legacy_id
+
+  base=$(basename "$plan_file")
+  if [[ "$base" = "PLAN.md" ]]; then
+    legacy_id=$(legacy_plan_id "$plan_file")
+    [[ "$plan_id" = "$legacy_id" || "$plan_id" = "PLAN" || "$plan_id" = "PLAN.md" ]]
+  else
+    [[ "$plan_id" = "${base%-PLAN.md}" ]]
+  fi
+}
+
+# Extract plans_verified from payload (deduplicated)
+has_plans_verified="false"
+plans_verified_type=$(echo "$payload" | jq -r '.plans_verified | type // "null"' 2>/dev/null)
+if [[ "$plans_verified_type" == "array" ]]; then
+  plans_verified_count=$(echo "$payload" | jq -r '[.plans_verified | unique | .[]] | length')
+  if [[ "$plans_verified_count" -gt 0 ]]; then
+    has_plans_verified="true"
+  fi
+fi
+
+if [[ "$plan_count" -gt 0 ]]; then
+  # Plans exist — enforce plans_verified completeness
+  if [[ "$has_plans_verified" != "true" ]]; then
+    echo "Error: plans_verified is required when PLAN.md files exist (found ${plan_count} plans). QA must list every verified plan ID." >&2
+    exit 1
+  fi
+
+  if [[ "$has_checks_detail" == "true" ]]; then
+    missing_plan_refs=$(echo "$payload" | jq '[.checks_detail[] | select((.plan_ref | type?) != "string" or ((.plan_ref // "") | gsub("^\\s+|\\s+$"; "")) == "")] | length')
+    if [[ "$missing_plan_refs" -gt 0 ]]; then
+      echo "Error: every checks_detail entry must include a non-empty plan_ref when PLAN.md files exist." >&2
+      exit 1
+    fi
+  fi
+
+  if [[ "$plans_verified_count" -lt "$plan_count" ]]; then
+    echo "Error: plans_verified has ${plans_verified_count} entries but ${plan_count} PLAN.md files exist. All plans must be verified." >&2
+    exit 1
+  fi
+
+  # Validate each plans_verified ID matches an actual PLAN.md file (using deduplicated list)
+  while IFS= read -r plan_id; do
+    matched_plan="false"
+    plan_id_trimmed=$(echo "$plan_id" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    [ -z "$plan_id_trimmed" ] && continue
+    for plan_file in "${plan_files[@]}"; do
+      if plan_id_matches_file "$plan_id_trimmed" "$plan_file"; then
+        matched_plan="true"
+        break
+      fi
+    done
+    if [[ "$matched_plan" != "true" ]]; then
+      echo "Error: plan '${plan_id_trimmed}' in plans_verified does not match any PLAN.md file in $(basename "$phase_dir")." >&2
+      exit 1
+    fi
+  done < <(echo "$payload" | jq -r '[.plans_verified | unique | .[]] | .[]')
+
+  # Cross-reference: every plan_id in plans_verified must have at least 1 check with matching plan_ref
+  if [[ "$has_checks_detail" == "true" ]]; then
+    while IFS= read -r plan_id; do
+      plan_id_trimmed=$(echo "$plan_id" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      [ -z "$plan_id_trimmed" ] && continue
+      ref_count=$(echo "$payload" | jq --arg pid "$plan_id_trimmed" \
+        '[.checks_detail[] | select(.plan_ref == $pid)] | length')
+      if [[ "$ref_count" -eq 0 ]]; then
+        echo "Error: plan '${plan_id_trimmed}' is in plans_verified but no check in checks_detail has plan_ref='${plan_id_trimmed}'. Every verified plan must have at least one check referencing it." >&2
+        exit 1
+      fi
+    done < <(echo "$payload" | jq -r '[.plans_verified | unique | .[]] | .[]')
+  fi
 fi
 
 # Write to temp file first, then move atomically to prevent partial writes
@@ -124,6 +256,16 @@ trap 'rm -f "$tmp_output"' EXIT
   echo "failed: $checks_failed"
   echo "total: $checks_total"
   echo "date: $date_val"
+  if [ -n "$verified_at_commit" ]; then
+    echo "verified_at_commit: $verified_at_commit"
+  fi
+  echo "writer: write-verification.sh"
+  if [[ "$has_plans_verified" == "true" ]]; then
+    echo "plans_verified:"
+    echo "$payload" | jq -r '[.plans_verified | unique | .[]] | .[]' | while IFS= read -r pvid; do
+      echo "  - $pvid"
+    done
+  fi
   echo "---"
   echo ""
 } > "$tmp_output"

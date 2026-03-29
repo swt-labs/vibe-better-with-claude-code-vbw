@@ -36,10 +36,10 @@ EOF
   create_issues_uat
 
   # Create round-dir remediation state with stage=done
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
-  touch "$PHASE_DIR/remediation/round-01/R01-PLAN.md"
-  touch "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md"
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  touch "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md"
+  touch "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md"
 
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
@@ -54,10 +54,10 @@ EOF
   [ -z "$round_files" ]
 
   # Stage is verify — NOT advanced to research/round-02
-  grep -q "^stage=verify$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^stage=verify$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
   # Round is still 01
-  grep -q "^round=01$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^round=01$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
   # Output uses archived=kept marker
   [[ "$output" == *"archived=kept"* ]]
@@ -68,8 +68,8 @@ EOF
   create_issues_uat
 
   # State already at verify (e.g., vibe.md already called prepare-reverification)
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  printf 'stage=verify\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=verify\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
@@ -80,8 +80,8 @@ EOF
   [ -f "$PHASE_DIR/03-UAT.md" ]
 
   # Stage stays at verify, round stays 01
-  grep -q "^stage=verify$" "$PHASE_DIR/remediation/.uat-remediation-stage"
-  grep -q "^round=01$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^stage=verify$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=01$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
   # Output uses archived=kept (idempotent)
   [[ "$output" == *"archived=kept"* ]]
@@ -91,8 +91,8 @@ EOF
   create_issues_uat
 
   # Create flat/legacy remediation state (in new location but without layout)
-  mkdir -p "$PHASE_DIR/remediation"
-  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
@@ -103,8 +103,8 @@ EOF
   [ ! -f "$PHASE_DIR/03-UAT.md" ]
 
   # Flat layout calls needs-round — stage should be research, round incremented
-  grep -q "^stage=research$" "$PHASE_DIR/remediation/.uat-remediation-stage"
-  grep -q "^round=02$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^stage=research$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=02$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
   # Output includes layout=flat
   [[ "$output" == *"layout=flat"* ]]
@@ -112,8 +112,8 @@ EOF
 
 @test "round-dir layout: phase-root UAT absent exits 0 with skip marker" {
   # No UAT file exists (already archived)
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
@@ -135,8 +135,8 @@ failed: 0
 # UAT — Phase 03
 EOF
 
-  mkdir -p "$PHASE_DIR/remediation"
-  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
@@ -146,9 +146,9 @@ EOF
 }
 
 @test "round-dir layout: round-dir UAT found via current_uat skips mv" {
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
-  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
 ---
 phase: "03"
 status: issues_found
@@ -165,26 +165,26 @@ EOF
   [ "$status" -eq 0 ]
 
   # R01-UAT.md still exists (NOT mv'd)
-  [ -f "$PHASE_DIR/remediation/round-01/R01-UAT.md" ]
+  [ -f "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" ]
 
   # Output indicates in-round-dir archival
   [[ "$output" == *"archived=in-round-dir"* ]]
 
   # State advanced to next round
-  grep -q "^stage=research$" "$PHASE_DIR/remediation/.uat-remediation-stage"
-  grep -q "^round=02$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^stage=research$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=02$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 }
 
 @test "round-dir layout: previous round UAT skipped when current round has no UAT" {
   # Round 02 is current, stage=done, but only R01-UAT.md exists (from round 01).
   # No R02-UAT.md yet — prepare-reverification should NOT archive or advance rounds.
-  mkdir -p "$PHASE_DIR/remediation/round-01" "$PHASE_DIR/remediation/round-02"
-  printf 'stage=done\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
-  touch "$PHASE_DIR/remediation/round-01/R01-PLAN.md"
-  touch "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md"
-  touch "$PHASE_DIR/remediation/round-02/R02-PLAN.md"
-  touch "$PHASE_DIR/remediation/round-02/R02-SUMMARY.md"
-  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01" "$PHASE_DIR/remediation/uat/round-02"
+  printf 'stage=done\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  touch "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md"
+  touch "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md"
+  touch "$PHASE_DIR/remediation/uat/round-02/R02-PLAN.md"
+  touch "$PHASE_DIR/remediation/uat/round-02/R02-SUMMARY.md"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
 ---
 phase: "03"
 status: issues_found
@@ -205,19 +205,19 @@ EOF
   [[ "$output" != *"archived=in-round-dir"* ]]
 
   # State should be verify (advanced from done), NOT research/round=03
-  grep -q "^stage=verify$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^stage=verify$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
   # Round stays at 02 — NOT bumped to 03
-  grep -q "^round=02$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^round=02$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 
   # R01-UAT.md still exists untouched
-  [ -f "$PHASE_DIR/remediation/round-01/R01-UAT.md" ]
+  [ -f "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" ]
 }
 
 @test "round-dir layout: stage=verify accepted when current round UAT has issues" {
   # Round 01, stage=verify, R01-UAT.md with issues — should archive and advance to round 02
-  mkdir -p "$PHASE_DIR/remediation/round-01"
-  printf 'stage=verify\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
-  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=verify\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
 ---
 phase: "03"
 status: issues_found
@@ -237,6 +237,6 @@ EOF
   [[ "$output" == *"archived=in-round-dir"* ]]
 
   # State advanced to next round (round-02, stage=research)
-  grep -q "^stage=research$" "$PHASE_DIR/remediation/.uat-remediation-stage"
-  grep -q "^round=02$" "$PHASE_DIR/remediation/.uat-remediation-stage"
+  grep -q "^stage=research$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=02$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 }

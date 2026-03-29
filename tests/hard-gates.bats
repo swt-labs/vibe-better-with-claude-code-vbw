@@ -166,6 +166,71 @@ EOF
   [[ "$output" == *"verification passed"* ]]
 }
 
+@test "gate: verification_threshold uses completed QA remediation round over frozen phase FAIL" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p ".vbw-planning/phases/01-test/remediation/qa/round-01"
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" << 'EOF'
+## Summary
+Result: FAIL
+EOF
+  cat > ".vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md" << 'EOF'
+## Summary
+Result: PASS
+EOF
+  printf 'stage=done\nround=01\n' > ".vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/hard-gate.sh" verification_threshold 01 1 1 ".vbw-planning/.contracts/nonexistent.json"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.result == "pass"'
+  [[ "$output" == *"verification passed"* ]]
+}
+
+@test "gate: verification_threshold fails mixed PASS/FAIL table when frontmatter result is FAIL" {
+  cd "$TEST_TEMP_DIR"
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" << 'EOF'
+---
+result: FAIL
+---
+
+## Must-Have Checks
+| # | ID | Description | Status | Evidence |
+|---|---|---|---|---|
+| 1 | MH-01 | Happy path | PASS | OK |
+| 2 | MH-02 | Edge case | FAIL | Broken |
+EOF
+
+  run bash "$SCRIPTS_DIR/hard-gate.sh" verification_threshold 01 1 1 ".vbw-planning/.contracts/nonexistent.json"
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.result == "fail"'
+  [[ "$output" == *"verification failed"* ]]
+}
+
+
+@test "gate: verification_threshold fails stale PASS verification by verified_at_commit" {
+  cd "$TEST_TEMP_DIR"
+  git init -q
+  git config user.name "test"
+  git config user.email "test@test.com"
+  echo "before" > app.txt
+  git add app.txt
+  git commit -q -m "before verification"
+  verified_commit="$(git rev-parse HEAD)"
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" <<EOF
+---
+result: PASS
+verified_at_commit: ${verified_commit}
+---
+EOF
+  echo "after" > app.txt
+  git add app.txt
+  git commit -q -m "after verification"
+
+  run bash "$SCRIPTS_DIR/hard-gate.sh" verification_threshold 01 1 1 ".vbw-planning/.contracts/nonexistent.json"
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.result == "fail"'
+  [[ "$output" == *"verification stale"* ]]
+}
+
 
 @test "gate: JSON output format correct" {
   create_valid_contract
