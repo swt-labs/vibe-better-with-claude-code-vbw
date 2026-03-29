@@ -24,7 +24,16 @@ D='\033[2m' B='\033[1m' X='\033[0m'
 # --- Cached platform info ---
 _UID=$(id -u)
 _OS=$(uname)
-_VER=$(cat "$(dirname "$0")/../VERSION" 2>/dev/null | tr -d '[:space:]')
+# Derive script dir early — used as a preferred anchor for find_vbw_root (#266).
+# In dev (--plugin-dir), the script lives inside the project repo; anchoring here
+# makes .vbw-planning/ resolution immune to agents cd-ing around the monorepo.
+# In production (plugin cache), the script lives outside any project repo so
+# script-relative resolution fails gracefully and find_vbw_root falls back to CWD.
+_SL_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+_VER=$(cat "$_SL_SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
+# _REPO_ROOT must always reflect the *user's* project repo (CWD-relative), not the
+# plugin's location. Script-relative git root would resolve to the VBW repo in dev
+# mode, breaking cache isolation between different user projects.
 _REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
 if command -v md5sum &>/dev/null; then
   _REPO_HASH=$(echo "$_REPO_ROOT" | md5sum | cut -c1-8)
@@ -44,7 +53,7 @@ fi
 # --- Helpers ---
 
 # Source shared summary-status helpers for status-aware SUMMARY detection
-_SL_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# (_SL_SCRIPT_DIR already set above in platform info section)
 if [ -f "$_SL_SCRIPT_DIR/summary-utils.sh" ]; then
   # shellcheck source=summary-utils.sh
   . "$_SL_SCRIPT_DIR/summary-utils.sh"
@@ -115,9 +124,10 @@ qa_verification_stale() {
 }
 
 # Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
+# Pass _SL_SCRIPT_DIR as the stable anchor so agent CWD changes don't shift the root.
 # shellcheck source=lib/vbw-config-root.sh
 . "$_SL_SCRIPT_DIR/lib/vbw-config-root.sh"
-find_vbw_root
+find_vbw_root "$_SL_SCRIPT_DIR"
 
 cache_fresh() {
   local cf="$1" ttl="$2"
