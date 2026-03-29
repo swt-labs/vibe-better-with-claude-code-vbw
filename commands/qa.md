@@ -107,7 +107,9 @@ fi`
   ```
   Use the refreshed phase-detect output for all subsequent guard checks and steps.
 - **Auto-detect phase** (no explicit number): Phase detection is pre-computed in Context above. Use `next_phase` and `next_phase_slug` for the target phase.
-  - If `next_phase_state=needs_qa_remediation`, target that phase directly — standalone QA must re-verify the active remediation round rather than overwrite the frozen phase-level VERIFICATION.
+  - If `next_phase_state=needs_qa_remediation`, target that phase directly.
+    - If the remediation stage is `plan` or `execute`, STOP and tell the user to run `/vbw:vibe` to continue QA remediation first — standalone QA must not mint a round VERIFICATION before re-verification is actually ready.
+    - If the remediation stage is `verify` or `done`, standalone QA re-verifies the authoritative round artifact rather than overwriting the frozen phase-level VERIFICATION.
   - If `first_unverified_phase` is set and `qa_status` is `pending` or `failed`, target that phase directly — existing QA artifacts may be stale or failed even when a file already exists.
   - Otherwise, to find the first phase needing QA: scan phase dirs for first with completed `*-SUMMARY.md` files but no authoritative QA verification artifact (no numbered final VERIFICATION, no brownfield plain `VERIFICATION.md`, no wave fallback). Found: announce "Auto-detected Phase {NN} ({slug})". All verified: STOP "All phases verified. Specify: `/vbw:qa {NN}`"
 - Phase not built (no SUMMARYs): STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
@@ -143,7 +145,11 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         QA_STAGE=$(printf '%s\n' "$QA_STATE" | head -1)
         VERIF_PATH=$(printf '%s\n' "$QA_STATE" | awk -F= '/^verification_path=/{print $2; exit}')
         case "$QA_STAGE" in
-          plan|execute|verify|done) ;;
+          verify|done) ;;
+          plan|execute)
+            echo "Phase {NN} has active QA remediation at stage ${QA_STAGE}. Run /vbw:vibe to continue remediation before standalone QA." >&2
+            exit 1
+            ;;
           *) VERIF_PATH="" ;;
         esac
         if [ -z "$VERIF_PATH" ]; then

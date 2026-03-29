@@ -260,10 +260,10 @@ else
   fail "qa: missing qa-remediation-state.sh get — standalone QA may overwrite phase-level verification"
 fi
 
-if grep -q 'QA_STAGE=$(printf' "$QA_FILE" && grep -q 'plan|execute|verify|done' "$QA_FILE"; then
-  pass "qa: treats persisted verification_path as active for remediation stages"
+if grep -q 'QA_STAGE=$(printf' "$QA_FILE" && grep -q 'verify|done' "$QA_FILE" && grep -q 'plan|execute' "$QA_FILE"; then
+  pass "qa: uses persisted verification_path only for verify/done and blocks plan/execute"
 else
-  fail "qa: missing remediation-stage guard for persisted verification_path"
+  fail "qa: missing verify/done output guard and plan/execute stop for persisted verification_path"
 fi
 
 if grep -q 'source_verification_path' "$ROOT/references/execute-protocol.md" && grep -q 'verification_path' "$ROOT/references/execute-protocol.md"; then

@@ -197,6 +197,14 @@ if [[ "$plan_count" -gt 0 ]]; then
     exit 1
   fi
 
+  if [[ "$has_checks_detail" == "true" ]]; then
+    missing_plan_refs=$(echo "$payload" | jq '[.checks_detail[] | select((.plan_ref | type?) != "string" or ((.plan_ref // "") | gsub("^\\s+|\\s+$"; "")) == "")] | length')
+    if [[ "$missing_plan_refs" -gt 0 ]]; then
+      echo "Error: every checks_detail entry must include a non-empty plan_ref when PLAN.md files exist." >&2
+      exit 1
+    fi
+  fi
+
   if [[ "$plans_verified_count" -lt "$plan_count" ]]; then
     echo "Error: plans_verified has ${plans_verified_count} entries but ${plan_count} PLAN.md files exist. All plans must be verified." >&2
     exit 1
