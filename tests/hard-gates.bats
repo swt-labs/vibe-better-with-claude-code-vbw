@@ -205,6 +205,7 @@ EOF
   [[ "$output" == *"verification failed"* ]]
 }
 
+
 @test "gate: verification_threshold fails stale PASS verification by verified_at_commit" {
   cd "$TEST_TEMP_DIR"
   git init -q

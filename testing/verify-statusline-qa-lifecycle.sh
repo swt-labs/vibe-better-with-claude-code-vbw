@@ -604,7 +604,7 @@ else
   fail "statusline must use shared verification resolver for QA artifact precedence"
 fi
 
-# Verify statusline applies stale-QA checks to both UAT and pre-UAT verification paths
+# Verify statusline checks verification freshness before showing green states
 if grep -q 'qa_verification_stale' "$ROOT/scripts/vbw-statusline.sh"; then
   pass "statusline checks verification freshness before showing green QA/UAT states"
 else

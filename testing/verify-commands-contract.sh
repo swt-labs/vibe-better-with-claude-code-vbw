@@ -239,6 +239,12 @@ else
   fail "execute-protocol: QA remediation verify missing remediation-only verify context"
 fi
 
+if grep -q 'After QA persists VERIFICATION.md (and only after that), run the verification threshold gate' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: verification_threshold runs after QA persists VERIFICATION"
+else
+  fail "execute-protocol: verification_threshold ordering still appears before QA"
+fi
+
 if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$VIBE_FILE"; then
   pass "vibe: QA remediation verify uses remediation-only verify context"
 else
@@ -324,6 +330,18 @@ if grep -q 'verification_path=' "$QA_FILE" && grep -q 'Output path: {VERIF_PATH}
   pass "qa: uses persisted verification_path contract for standalone QA output"
 else
   fail "qa: missing persisted verification_path contract for standalone QA output"
+fi
+
+if grep -q 'Determine verification scope from `VERIF_PATH`' "$QA_FILE"; then
+  pass "qa: standalone QA scope is tied to resolved VERIF_PATH"
+else
+  fail "qa: standalone QA scope still appears disconnected from resolved VERIF_PATH"
+fi
+
+if grep -q 'Determine verification scope from `VERIF_PATH`' "$QA_FILE"; then
+  pass "qa: standalone QA scope is tied to resolved VERIF_PATH"
+else
+  fail "qa: standalone QA scope still appears disconnected from resolved VERIF_PATH"
 fi
 
 if grep -q 'first_qa_attention_phase' "$QA_FILE" && grep -q 'qa_attention_status' "$QA_FILE"; then
