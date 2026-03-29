@@ -78,7 +78,7 @@ SH
   export BATS_LOG="$TEST_TEMP_DIR/bats.log"
   export PATH="$root/bin:$PATH"
 
-  run bash -c "cd '$root' && BATS_WORKERS=banana bash testing/run-all.sh"
+  run env RUN_VIBE_VERIFY=0 bash -c "cd '$root' && BATS_WORKERS=banana bash testing/run-all.sh"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q 'Invalid BATS_WORKERS=banana'
   echo "$output" | grep -q 'Running serial bats files'

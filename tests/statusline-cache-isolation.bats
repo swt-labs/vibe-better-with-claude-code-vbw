@@ -95,6 +95,40 @@ teardown() {
   [ "$cache_a" = "$cache_a_after" ]
 }
 
+@test "concurrent same-workspace renders keep cost attribution consistent" {
+  local repo="$TEST_TEMP_DIR/concurrent-repo"
+  mkdir -p "$repo/.vbw-planning"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{"effort":"balanced","model_profile":"balanced"}
+JSON
+
+  local cache_prefix ledger_file base_input cost_five cost_ten
+  cache_prefix=$(vbw_cache_prefix_for_root "$repo" "$ORIG_UID")
+  ledger_file="$repo/.vbw-planning/.cost-ledger.json"
+  base_input='{"context_window":{"used_percentage":1,"remaining_percentage":99,"current_usage":{"input_tokens":1,"output_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0},"context_window_size":200000},"cost":{"total_cost_usd":0.00,"total_duration_ms":0,"total_api_duration_ms":0,"total_lines_added":0,"total_lines_removed":0},"model":{"display_name":"Claude"},"version":"test"}'
+  cost_five='{"context_window":{"used_percentage":1,"remaining_percentage":99,"current_usage":{"input_tokens":1,"output_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0},"context_window_size":200000},"cost":{"total_cost_usd":0.05,"total_duration_ms":0,"total_api_duration_ms":0,"total_lines_added":0,"total_lines_removed":0},"model":{"display_name":"Claude"},"version":"test"}'
+  cost_ten='{"context_window":{"used_percentage":1,"remaining_percentage":99,"current_usage":{"input_tokens":1,"output_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0},"context_window_size":200000},"cost":{"total_cost_usd":0.10,"total_duration_ms":0,"total_api_duration_ms":0,"total_lines_added":0,"total_lines_removed":0},"model":{"display_name":"Claude"},"version":"test"}'
+
+  cd "$repo"
+  printf '%s' "$base_input" | env CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 bash "$STATUSLINE" >/dev/null 2>&1
+
+  printf '%s' "$cost_five" | env CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 bash "$STATUSLINE" >/dev/null 2>&1 &
+  pid_a=$!
+  printf '%s' "$cost_ten" | env CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 bash "$STATUSLINE" >/dev/null 2>&1 &
+  pid_b=$!
+  wait "$pid_a"
+  wait "$pid_b"
+  cd "$PROJECT_ROOT"
+
+  [ -f "${cache_prefix}-fast" ]
+  [ -f "${cache_prefix}-slow" ]
+  [ -f "${cache_prefix}-cost" ]
+  run jq -e '.other == 10' "$ledger_file"
+  [ "$status" -eq 0 ]
+}
+
 @test "nested VBW workspaces inside one repo produce different cache keys" {
   local outer="$TEST_TEMP_DIR/nested-outer"
   local inner="$outer/packages/ui"

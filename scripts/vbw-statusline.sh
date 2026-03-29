@@ -147,6 +147,33 @@ cache_fresh() {
   [ $((NOW - mt)) -le "$ttl" ]
 }
 
+atomic_write_string() {
+  local target="$1" content="$2" tmp
+  tmp="${target}.tmp.$$.$RANDOM"
+  if printf '%s\n' "$content" > "$tmp" 2>/dev/null && mv "$tmp" "$target" 2>/dev/null; then
+    return 0
+  fi
+  rm -f "$tmp" 2>/dev/null || true
+  return 1
+}
+
+acquire_lock_dir() {
+  local lock_dir="$1" attempts=0
+  while ! mkdir "$lock_dir" 2>/dev/null; do
+    attempts=$((attempts + 1))
+    [ "$attempts" -ge 100 ] && return 1
+    sleep 0.02
+  done
+  printf '%s\n' "$$" > "$lock_dir/pid" 2>/dev/null || true
+  return 0
+}
+
+release_lock_dir() {
+  local lock_dir="$1"
+  rm -f "$lock_dir/pid" 2>/dev/null || true
+  rmdir "$lock_dir" 2>/dev/null || rm -rf "$lock_dir" 2>/dev/null || true
+}
+
 # Resolve CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC from env var or settings.json.
 # Sets _NOTRAFFIC_ACTIVE=1 if the flag is truthy, empty otherwise.
 _resolve_notraffic() {
@@ -591,7 +618,7 @@ if ! cache_fresh "$FAST_CF" 5; then
   # prevent field misalignment in the pipe-delimited fast cache.
   _EXEC_CURRENT_SAFE="${EXEC_CURRENT//|/-}"
 
-  printf '%s\n' "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${_EXEC_CURRENT_SAFE:-}|${AGENT_DATA:-0}|${PPT:-0}|${QA_COLOR:-D}|${HIDE_AGENT_TMUX:-false}|${COLLAPSE_AGENT_TMUX:-false}|${PP_LABEL:-this phase}|${REM_ACTIVE:-false}" > "$FAST_CF" 2>/dev/null
+  atomic_write_string "$FAST_CF" "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${_EXEC_CURRENT_SAFE:-}|${AGENT_DATA:-0}|${PPT:-0}|${QA_COLOR:-D}|${HIDE_AGENT_TMUX:-false}|${COLLAPSE_AGENT_TMUX:-false}|${PP_LABEL:-this phase}|${REM_ACTIVE:-false}" 2>/dev/null || true
 fi
 
 if [ -O "$FAST_CF" ]; then
@@ -791,7 +818,7 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
 
   fi # end: notraffic guard
 
-  printf '%s\n' "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}|${AUTH_CLASS:-api_key}|${HIDE_LIMITS:-false}|${HIDE_LIMITS_API:-false}" > "$SLOW_CF" 2>/dev/null
+  atomic_write_string "$SLOW_CF" "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}|${AUTH_CLASS:-api_key}|${HIDE_LIMITS:-false}|${HIDE_LIMITS_API:-false}" 2>/dev/null || true
 fi
 
 if [ -O "$SLOW_CF" ]; then
@@ -810,12 +837,14 @@ fi
 
 # --- Cost cache: delta attribution per render ---
 COST_CF="${_CACHE}-cost"
-PREV_COST=""
-[ -O "$COST_CF" ] && PREV_COST=$(cat "$COST_CF" 2>/dev/null)
-printf '%s\n' "${COST}" > "$COST_CF" 2>/dev/null
-
 LEDGER_FILE="$VBW_PLANNING_DIR/.cost-ledger.json"
-if [ -n "$PREV_COST" ] && [ -d "$VBW_PLANNING_DIR" ]; then
+PREV_COST=""
+_COST_LOCK_DIR="${_CACHE}-cost.lock"
+if acquire_lock_dir "$_COST_LOCK_DIR"; then
+  [ -O "$COST_CF" ] && PREV_COST=$(cat "$COST_CF" 2>/dev/null)
+  atomic_write_string "$COST_CF" "${COST}" 2>/dev/null || true
+
+  if [ -n "$PREV_COST" ] && [ -d "$VBW_PLANNING_DIR" ]; then
   _to_cents() {
     local val="$1" w f
     w="${val%%.*}"
@@ -832,14 +861,19 @@ if [ -n "$PREV_COST" ] && [ -d "$VBW_PLANNING_DIR" ]; then
     [ -z "$ACTIVE_AGENT" ] && ACTIVE_AGENT="other"
 
     if [ -f "$LEDGER_FILE" ] && jq empty "$LEDGER_FILE" 2>/dev/null; then
-      jq --arg agent "$ACTIVE_AGENT" --argjson delta "$DELTA_CENTS" \
-        '.[$agent] = ((.[$agent] // 0) + $delta)' "$LEDGER_FILE" > "${LEDGER_FILE}.tmp" 2>/dev/null \
-        && mv "${LEDGER_FILE}.tmp" "$LEDGER_FILE"
+      _LEDGER_JSON=$(jq --arg agent "$ACTIVE_AGENT" --argjson delta "$DELTA_CENTS" \
+        '.[$agent] = ((.[$agent] // 0) + $delta)' "$LEDGER_FILE" 2>/dev/null)
+      [ -n "${_LEDGER_JSON:-}" ] && atomic_write_string "$LEDGER_FILE" "$_LEDGER_JSON" 2>/dev/null || true
     else
-      printf '{"%s":%d}\n' "$ACTIVE_AGENT" "$DELTA_CENTS" > "$LEDGER_FILE"
+      atomic_write_string "$LEDGER_FILE" "{\"$ACTIVE_AGENT\":$DELTA_CENTS}" 2>/dev/null || true
     fi
   fi
 fi
+  release_lock_dir "$_COST_LOCK_DIR"
+else
+  atomic_write_string "$COST_CF" "${COST}" 2>/dev/null || true
+fi
+unset _COST_LOCK_DIR _LEDGER_JSON
 
 # --- Usage rendering ---
 USAGE_LINE=""
