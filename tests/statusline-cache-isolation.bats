@@ -17,8 +17,19 @@ setup() {
   export GIT_AUTHOR_EMAIL="test@test.local"
   export GIT_COMMITTER_NAME="test"
   export GIT_COMMITTER_EMAIL="test@test.local"
-  # Clean any existing caches
-  rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+}
+
+# Compute the repo hash the same way vbw-statusline.sh does
+_repo_hash() {
+  local repo_root
+  repo_root=$(git -C "$1" rev-parse --show-toplevel 2>/dev/null || echo "$1")
+  if command -v md5sum &>/dev/null; then
+    echo "$repo_root" | md5sum | cut -c1-8
+  elif command -v md5 &>/dev/null; then
+    echo "$repo_root" | md5 -q | cut -c1-8
+  else
+    printf '%s' "$repo_root" | cksum | cut -d' ' -f1
+  fi
 }
 
 teardown() {
@@ -41,42 +52,46 @@ teardown() {
   cd "$repo"
   echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
   cd "$PROJECT_ROOT"
-  # Cache files should contain an 8-char hash segment after the UID
-  local cache_files
-  cache_files=$(ls /tmp/vbw-*-"${uid}"-*-fast 2>/dev/null || true)
-  [ -n "$cache_files" ]
-  # Verify the hash segment is present (pattern: vbw-{ver}-{uid}-{hash}-fast)
-  echo "$cache_files" | grep -qE "vbw-[0-9.]+-${uid}-[a-f0-9]+-fast"
+  # Compute expected hash for this repo
+  local expected_hash
+  expected_hash=$(_repo_hash "$repo")
+  # Cache file with this repo's hash should exist
+  [ -f "/tmp/vbw-0-${uid}-${expected_hash}-fast" ] || \
+    ls /tmp/vbw-*-"${uid}"-"${expected_hash}"-fast 2>/dev/null | grep -q .
 }
 
 @test "different repos produce different cache keys" {
   local uid=$(id -u)
 
-  # Run in an isolated repo (not the real project root)
+  # Create two isolated repos
   local repo1="$TEST_TEMP_DIR/repo1"
   mkdir -p "$repo1"
   git -C "$repo1" init -q
   git -C "$repo1" commit --allow-empty -m "test(init): seed" -q
-  cd "$repo1"
-  echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
-  cd "$PROJECT_ROOT"
-  local cache1
-  cache1=$(ls /tmp/vbw-*-"${uid}"-*-fast 2>/dev/null | head -1)
 
-  # Create a second repo and run there
   local repo2="$TEST_TEMP_DIR/repo2"
   mkdir -p "$repo2"
   git -C "$repo2" init -q
   git -C "$repo2" commit --allow-empty -m "test(init): seed" -q
-  rm -f /tmp/vbw-*-"${uid}"-*-fast 2>/dev/null
+
+  # Compute expected hashes
+  local hash1 hash2
+  hash1=$(_repo_hash "$repo1")
+  hash2=$(_repo_hash "$repo2")
+
+  # Hashes should differ
+  [ "$hash1" != "$hash2" ]
+
+  # Run statusline in both
+  cd "$repo1"
+  echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
   cd "$repo2"
   echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
   cd "$PROJECT_ROOT"
-  local cache2
-  cache2=$(ls /tmp/vbw-*-"${uid}"-*-fast 2>/dev/null | head -1)
 
-  # Cache filenames should differ (different hash)
-  [ "$cache1" != "$cache2" ]
+  # Both repo-specific cache files should exist
+  ls /tmp/vbw-*-"${uid}"-"${hash1}"-fast &>/dev/null
+  ls /tmp/vbw-*-"${uid}"-"${hash2}"-fast &>/dev/null
 }
 
 @test "cache is not shared between repos within TTL window" {
@@ -91,20 +106,23 @@ teardown() {
   git -C "$repo_b" init -q
   git -C "$repo_b" commit --allow-empty -m "test(init): seed" -q
 
+  # Compute repo A's specific cache file
+  local hash_a
+  hash_a=$(_repo_hash "$repo_a")
+
   # Run statusline in repo A
   cd "$repo_a"
   echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
   local cache_a
-  cache_a=$(cat /tmp/vbw-*-"${uid}"-*-fast 2>/dev/null | head -1)
+  cache_a=$(cat /tmp/vbw-*-"${uid}"-"${hash_a}"-fast 2>/dev/null | head -1)
 
   # Run statusline in repo B (within 5s TTL)
   cd "$repo_b"
   echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
 
   # Repo A's cache should be unchanged
-  cd "$repo_a"
   local cache_a_after
-  cache_a_after=$(cat /tmp/vbw-*-"${uid}"-*-fast 2>/dev/null | head -1)
+  cache_a_after=$(cat /tmp/vbw-*-"${uid}"-"${hash_a}"-fast 2>/dev/null | head -1)
   cd "$PROJECT_ROOT"
 
   [ "$cache_a" = "$cache_a_after" ]

@@ -370,7 +370,7 @@ fi
 # Write commonly-read config flags to a flat file for fast sourcing.
 # Invalidation: overwritten every session start. Scripts can opt-in:
 #   [ -f /tmp/vbw-config-cache-$(id -u) ] && source /tmp/vbw-config-cache-$(id -u)
-VBW_CONFIG_CACHE="/tmp/vbw-config-cache-$(id -u)"
+VBW_CONFIG_CACHE="${VBW_CONFIG_CACHE:-/tmp/vbw-config-cache-$(id -u)}"
 if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ] && command -v jq &>/dev/null; then
   jq -r '
     "VBW_EFFORT=\(.effort // "balanced")",

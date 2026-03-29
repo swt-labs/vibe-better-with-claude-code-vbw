@@ -46,7 +46,17 @@ _CACHE="/tmp/vbw-${_VER:-0}-${_UID}-${_REPO_HASH}"
 
 # Clean stale caches from previous versions on first run
 if ! [ -f "${_CACHE}-ok" ] || ! [ -O "${_CACHE}-ok" ]; then
-  rm -f /tmp/vbw-*-"${_UID}"-* /tmp/vbw-sl-cache-"${_UID}" /tmp/vbw-usage-cache-"${_UID}" /tmp/vbw-gh-cache-"${_UID}" /tmp/vbw-team-cache-"${_UID}" /tmp/vbw-*-"${_UID}" 2>/dev/null
+  # Only remove old-format caches (no repo hash) — do NOT glob all UID caches,
+  # as that would nuke concurrent repos' caches under parallel test execution.
+  rm -f /tmp/vbw-sl-cache-"${_UID}" /tmp/vbw-usage-cache-"${_UID}" /tmp/vbw-gh-cache-"${_UID}" /tmp/vbw-team-cache-"${_UID}" /tmp/vbw-*-"${_UID}" 2>/dev/null
+  # Clean old-format caches that lack the repo hash (e.g. vbw-1.0.0-501-fast)
+  for f in /tmp/vbw-*-"${_UID}"-fast /tmp/vbw-*-"${_UID}"-slow /tmp/vbw-*-"${_UID}"-cost /tmp/vbw-*-"${_UID}"-ok; do
+    # Old format: vbw-{ver}-{uid}-{suffix} (3 dashes). New format: vbw-{ver}-{uid}-{hash}-{suffix} (4 dashes).
+    _stale_bn="${f##*/}"
+    _stale_dc=$(echo "$_stale_bn" | tr -cd '-' | wc -c | tr -d ' ')
+    [ "$_stale_dc" -le 3 ] && rm -f "$f" 2>/dev/null
+  done
+  unset _stale_bn _stale_dc f
   touch "${_CACHE}-ok"
 fi
 

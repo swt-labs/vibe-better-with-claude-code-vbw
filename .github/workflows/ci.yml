@@ -46,9 +46,13 @@ jobs:
             exit 1
           fi
 
-  test:
-    name: Test
+  bats-tests:
+    name: Bats Tests (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - uses: actions/checkout@v4
 
@@ -61,20 +65,79 @@ jobs:
       - name: Install jq
         run: sudo apt-get install -y -qq jq
 
-      - name: Run bats tests
-        run: bats tests/
+      - name: Run bats shard
+        env:
+          SHARD: ${{ matrix.shard }}
+          TOTAL_SHARDS: 4
+        run: |
+          files=(tests/*.bats)
+          shard_files=()
+          for i in "${!files[@]}"; do
+            if [ $((i % TOTAL_SHARDS)) -eq "$SHARD" ]; then
+              shard_files+=("${files[$i]}")
+            fi
+          done
+          echo "Shard $SHARD: running ${#shard_files[@]} of ${#files[@]} bats files"
+          bats "${shard_files[@]}"
 
-      - name: Verify init/todo contracts
-        run: bash scripts/verify-init-todo.sh
+  contract-tests:
+    name: Contract Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Verify CLAUDE bootstrap contracts
-        run: bash scripts/verify-claude-bootstrap.sh
+      - name: Install jq
+        run: sudo apt-get install -y -qq jq
 
-      - name: Verify bash script contracts
-        run: bash testing/verify-bash-scripts-contract.sh
+      - name: Run all contract checks (parallel)
+        run: |
+          declare -a NAMES=() PIDS=()
+          run_check() {
+            local name="$1" cmd="$2"
+            NAMES+=("$name")
+            bash -c "$cmd" > "/tmp/contract-$name.out" 2>&1 &
+            PIDS+=("$!")
+          }
 
-      - name: Verify command contracts
-        run: bash testing/verify-commands-contract.sh
+          run_check "init-todo"                "bash scripts/verify-init-todo.sh"
+          run_check "claude-bootstrap"         "bash scripts/verify-claude-bootstrap.sh"
+          run_check "bash-scripts-contract"    "bash testing/verify-bash-scripts-contract.sh"
+          run_check "commands-contract"        "bash testing/verify-commands-contract.sh"
+          run_check "no-inline-exec-spans"     "bash testing/verify-no-inline-exec-spans.sh"
+          run_check "plugin-root-resolution"   "bash testing/verify-plugin-root-resolution.sh"
+          run_check "hook-event-name"          "bash testing/verify-hook-event-name.sh"
+          run_check "plan-filename-convention" "bash testing/verify-plan-filename-convention.sh"
+          run_check "skill-activation"         "bash testing/verify-skill-activation.sh"
+          run_check "permission-mode-contract" "bash testing/verify-permission-mode-contract.sh"
+          run_check "delegation-guard"         "bash testing/verify-delegation-guard.sh"
+          run_check "summary-status-contract"  "bash testing/verify-summary-status-contract.sh"
+          run_check "summary-utils-contract"   "bash testing/verify-summary-utils-contract.sh"
+          run_check "exec-state-reconciliation" "bash testing/verify-exec-state-reconciliation.sh"
+          run_check "statusline-qa-lifecycle"  "bash testing/verify-statusline-qa-lifecycle.sh"
+          run_check "statusline-429-backoff"   "bash testing/verify-statusline-429-backoff.sh"
+          run_check "uat-recurrence"           "bash testing/verify-uat-recurrence.sh"
+          run_check "lead-research-conditional" "bash testing/verify-lead-research-conditional.sh"
+          run_check "lsp-setup"                "bash testing/verify-lsp-setup.sh"
+          run_check "lsp-first-policy"         "bash testing/verify-lsp-first-policy.sh"
+          run_check "claude-md-staleness"      "bash testing/verify-claude-md-staleness.sh"
+          run_check "dev-recovery-guidance"    "bash testing/verify-dev-recovery-guidance.sh"
+          run_check "live-validation-policy"   "bash testing/verify-live-validation-policy.sh"
+          run_check "ghost-team-cleanup"       "bash testing/verify-ghost-team-cleanup.sh"
+          run_check "qa-persistence-contract"  "bash testing/verify-qa-persistence-contract.sh"
+
+          failures=0
+          for i in "${!PIDS[@]}"; do
+            if ! wait "${PIDS[$i]}"; then
+              failures=$((failures + 1))
+              echo "::error::FAIL: ${NAMES[$i]}"
+              cat "/tmp/contract-${NAMES[$i]}.out"
+            else
+              echo "PASS: ${NAMES[$i]}"
+            fi
+          done
+          echo ""
+          echo "Contract checks: $(( ${#NAMES[@]} - failures ))/${#NAMES[@]} passed"
+          [ "$failures" -eq 0 ] || exit 1
 
   qa-review-check:
     name: QA Review Evidence
