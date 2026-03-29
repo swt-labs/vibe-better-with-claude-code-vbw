@@ -240,6 +240,31 @@ case "$GATE_TYPE" in
 
     case "$VERIFICATION_RESULT" in
       PASS)
+        _vg_dirty=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
+        if [ -n "$_vg_dirty" ]; then
+          emit_result "fail" "verification stale (working tree changed since verification)"
+          exit 2
+        fi
+        _vg_verified_at_commit=$(awk '
+          BEGIN { in_fm=0 }
+          NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+          in_fm && /^---[[:space:]]*$/ { exit }
+          in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); sub(/[[:space:]]+$/, ""); print; exit }
+        ' "$VERIFICATION_FILE" 2>/dev/null || true)
+        if [ -n "$_vg_verified_at_commit" ]; then
+          _vg_cur_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+          if [ -n "$_vg_cur_commit" ] && [ "$_vg_cur_commit" != "$_vg_verified_at_commit" ]; then
+            emit_result "fail" "verification stale (verified_at_commit no longer matches product code)"
+            exit 2
+          fi
+        else
+          _vg_cur_commit_ts=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+          _vg_verif_mtime=$(perl -e 'print +(stat shift)[9]' "$VERIFICATION_FILE" 2>/dev/null || echo "")
+          if [ -n "$_vg_cur_commit_ts" ] && [ -n "$_vg_verif_mtime" ] && [ "$_vg_cur_commit_ts" -ge "$_vg_verif_mtime" ]; then
+            emit_result "fail" "verification stale (product code changed after verification)"
+            exit 2
+          fi
+        fi
         emit_result "pass" "verification passed"
         exit 0
         ;;

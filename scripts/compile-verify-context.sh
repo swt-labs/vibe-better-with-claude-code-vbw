@@ -57,18 +57,20 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   REMED_KIND=""
 
   _cvc_candidates=()
-  if [ -f "$PHASE_DIR/remediation/uat/.uat-remediation-stage" ]; then
-    _uat_stage=$(grep '^stage=' "$PHASE_DIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-    case "${_uat_stage:-none}" in
-      research|plan|execute|fix|verify|done) _cvc_candidates+=("$PHASE_DIR/remediation/uat") ;;
-    esac
-  fi
   if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
     _qa_stage=$(grep '^stage=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
     case "${_qa_stage:-none}" in
       verify|done) _cvc_candidates+=("$PHASE_DIR/remediation/qa") ;;
     esac
   fi
+  if [ -f "$PHASE_DIR/remediation/uat/.uat-remediation-stage" ]; then
+    _uat_stage=$(grep '^stage=' "$PHASE_DIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    case "${_uat_stage:-none}" in
+      research|plan|execute|fix|verify|done) _cvc_candidates+=("$PHASE_DIR/remediation/uat") ;;
+    esac
+  fi
+  # Historical fallback order for explicit --remediation-only callers when no
+  # active state picked a scope: UAT rounds first, then QA rounds.
   _cvc_candidates+=("$PHASE_DIR/remediation/uat" "$PHASE_DIR/remediation/qa")
 
   for _candidate in "${_cvc_candidates[@]}"; do
@@ -99,7 +101,7 @@ if [ "$REMEDIATION_ONLY" = true ]; then
     fi
   done
 
-  # Legacy fallback: check old remediation/round-* layout if no new-style round dir found
+  # Legacy fallback: check old remediation/round-* layout if no new-style round dir found.
   if [ -z "$LATEST_ROUND" ] && [ -d "$PHASE_DIR/remediation" ]; then
     REMED_DIR="$PHASE_DIR/remediation"
     REMED_KIND="legacy"

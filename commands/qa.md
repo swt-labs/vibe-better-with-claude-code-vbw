@@ -172,8 +172,13 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
 
         ```text
         Verify phase {NN}. Tier: {ACTIVE_TIER}.
-        Plans: {paths to PLAN.md files}
-        Summaries: {paths to SUMMARY.md files}
+        If QA remediation stage is verify or done, scope verification to the current remediation round only.
+        - Plans: {current round R{RR}-PLAN.md path(s) only}
+        - Summaries: {current round R{RR}-SUMMARY.md path(s) only}
+        - Do NOT include phase-root PLAN.md/SUMMARY.md files in plans_verified or plan_ref for round-scoped output.
+        Otherwise:
+        - Plans: {paths to phase PLAN.md files}
+        - Summaries: {paths to phase SUMMARY.md files}
         Phase success criteria: {section from ROADMAP.md}
         If `.vbw-planning/codebase/META.md` exists, read CONVENTIONS.md, TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying.
         Verification protocol: `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/verification-protocol.md

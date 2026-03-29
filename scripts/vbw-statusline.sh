@@ -526,7 +526,13 @@ if ! cache_fresh "$FAST_CF" 5; then
             in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
           ' "$_verif_file" 2>/dev/null) || _qa_result=""
           case "$_qa_result" in
-            PASS) QA="QA: pass"; QA_COLOR="G" ;;
+            PASS)
+              if qa_verification_stale "$_verif_file"; then
+                QA="QA: pending"; QA_COLOR="Y"
+              else
+                QA="QA: pass"; QA_COLOR="G"
+              fi
+              ;;
             FAIL) QA="QA: FAIL"; QA_COLOR="R" ;;
             PARTIAL) QA="QA: partial"; QA_COLOR="Y" ;;
             *) QA="QA: pending"; QA_COLOR="Y" ;;

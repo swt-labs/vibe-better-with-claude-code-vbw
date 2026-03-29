@@ -205,6 +205,31 @@ EOF
   [[ "$output" == *"verification failed"* ]]
 }
 
+@test "gate: verification_threshold fails stale PASS verification by verified_at_commit" {
+  cd "$TEST_TEMP_DIR"
+  git init -q
+  git config user.name "test"
+  git config user.email "test@test.com"
+  echo "before" > app.txt
+  git add app.txt
+  git commit -q -m "before verification"
+  verified_commit="$(git rev-parse HEAD)"
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" <<EOF
+---
+result: PASS
+verified_at_commit: ${verified_commit}
+---
+EOF
+  echo "after" > app.txt
+  git add app.txt
+  git commit -q -m "after verification"
+
+  run bash "$SCRIPTS_DIR/hard-gate.sh" verification_threshold 01 1 1 ".vbw-planning/.contracts/nonexistent.json"
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.result == "fail"'
+  [[ "$output" == *"verification stale"* ]]
+}
+
 
 @test "gate: JSON output format correct" {
   create_valid_contract
