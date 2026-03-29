@@ -584,7 +584,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    ```bash
    bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" init "{phase-dir}"
    ```
-   Parse output: `stage`, `round`, `round_dir`
+  Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `verification_path`
 
 2. **Loop (max 3 rounds):**
    ```

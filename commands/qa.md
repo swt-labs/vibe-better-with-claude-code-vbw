@@ -143,7 +143,7 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         QA_STAGE=$(printf '%s\n' "$QA_STATE" | head -1)
         VERIF_PATH=$(printf '%s\n' "$QA_STATE" | awk -F= '/^verification_path=/{print $2; exit}')
         case "$QA_STAGE" in
-          plan|execute|verify) ;;
+          plan|execute|verify|done) ;;
           *) VERIF_PATH="" ;;
         esac
         if [ -z "$VERIF_PATH" ]; then
