@@ -8,7 +8,7 @@ on:
 # Paths that contain plugin logic — QA review is only required for PRs touching these.
 # Docs-only or config-only changes skip the QA round commit requirement automatically.
 env:
-  QA_PATHS: agents/ commands/ config/ hooks/ references/ scripts/ templates/ testing/ tests/
+  QA_PATHS: .github/workflows/ agents/ commands/ config/ hooks/ references/ scripts/ templates/ testing/ tests/
 
 jobs:
   lint:

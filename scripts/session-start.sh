@@ -371,8 +371,11 @@ fi
 # --- Session-level config cache (performance optimization, REQ-01 #9) ---
 # Write commonly-read config flags to a flat file for fast sourcing.
 # Invalidation: overwritten every session start. Scripts can opt-in:
-#   [ -f /tmp/vbw-config-cache-$(id -u) ] && source /tmp/vbw-config-cache-$(id -u)
-VBW_CONFIG_CACHE="${VBW_CONFIG_CACHE:-/tmp/vbw-config-cache-$(id -u)}"
+#   [ -f "${VBW_CONFIG_CACHE:-...}" ] && source "$VBW_CONFIG_CACHE"
+_VBW_CACHE_VER=$(cat "$SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
+_VBW_CONFIG_CACHE_ROOT="${VBW_CONFIG_ROOT:-$(pwd -P 2>/dev/null || pwd)}"
+_VBW_CONFIG_CACHE_DEFAULT="$(vbw_cache_prefix "${_VBW_CACHE_VER:-0}" "$(id -u)" "$_VBW_CONFIG_CACHE_ROOT")-config.env"
+VBW_CONFIG_CACHE="${VBW_CONFIG_CACHE:-$_VBW_CONFIG_CACHE_DEFAULT}"
 if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ] && command -v jq &>/dev/null; then
   jq -r '
     "VBW_EFFORT=\(.effort // "balanced")",
@@ -410,7 +413,8 @@ fi
 
 # --- Update check (once per day, fail-silent) ---
 
-CACHE="/tmp/vbw-update-check-$(id -u)"
+_VBW_UPDATE_CACHE_KEY=$(vbw_hash_path "$SCRIPT_DIR")
+CACHE="/tmp/vbw-update-check-$(id -u)-${_VBW_UPDATE_CACHE_KEY}"
 NOW=$(date +%s)
 if [ "$(uname)" = "Darwin" ]; then
   MT=$(stat -f %m "$CACHE" 2>/dev/null || echo 0)
