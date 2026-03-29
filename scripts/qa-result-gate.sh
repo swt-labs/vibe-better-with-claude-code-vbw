@@ -70,11 +70,10 @@ IN_REMEDIATION="false"
 PLAN_SCOPE_DIR="$PHASE_DIR"  # Default: phase-level plans
 SUMMARY_SCOPE_DIR="$PHASE_DIR"  # Default: phase-level summaries
 if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
-  IN_REMEDIATION="true"
   _gate_stage=$(grep '^stage=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
   _gate_stage="${_gate_stage:-none}"
   case "$_gate_stage" in
-    plan|execute|verify|done) ;;
+    plan|execute|verify|done) IN_REMEDIATION="true" ;;
     *) _gate_stage="none" ;;
   esac
   _gate_round=$(grep '^round=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)

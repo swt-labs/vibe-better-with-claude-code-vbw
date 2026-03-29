@@ -274,6 +274,20 @@ EOF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
+@test "corrupt remediation stage does not suppress deviation override" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Used different API than planned"
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=garbage\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
 @test "bold FAIL markers in body are counted" {
   create_verif "write-verification.sh" "PASS" "## Checks
 | Check | Status |

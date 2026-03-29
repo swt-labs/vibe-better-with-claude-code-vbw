@@ -81,7 +81,7 @@ fi
 # Test 7: VERIFICATION.md check is fallback only (after UAT / QA-remediation checks)
 # Accept either the original elif/else structure or the newer normalized
 # `_qa_rem_stage=none` fallback guard.
-if grep -qE 'elif.*VERIFICATION.md|else.*VERIFICATION|_qa_rem_stage:-none.*VERIFICATION.md' "$ROOT/scripts/vbw-statusline.sh"; then
+if grep -qE 'elif.*VERIFICATION.md|else.*VERIFICATION|_qa_rem_stage:-none.*VERIFICATION.md|resolve-verification-path\.sh" phase' "$ROOT/scripts/vbw-statusline.sh"; then
   pass "VERIFICATION.md check is fallback (only when no UAT file exists)"
 else
   fail "VERIFICATION.md check is fallback (only when no UAT file exists)"
@@ -595,6 +595,13 @@ if grep -q 'in_fm && /^result:/' "$ROOT/scripts/vbw-statusline.sh"; then
   pass "statusline parses VERIFICATION.md result field"
 else
   fail "statusline must parse VERIFICATION.md result: field (not just check existence)"
+fi
+
+# Verify statusline uses the shared verification resolver instead of ad-hoc find order
+if grep -q 'resolve-verification-path.sh' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline uses shared verification resolver"
+else
+  fail "statusline must use shared verification resolver for QA artifact precedence"
 fi
 
 # Verify QA FAIL status is displayed

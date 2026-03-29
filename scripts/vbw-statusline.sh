@@ -480,8 +480,12 @@ if ! cache_fresh "$FAST_CF" 5; then
             *)       _qa_rem_stage="none" ;;
           esac
         fi
-        if [ "${_qa_rem_stage:-none}" = "none" ] && [ -n "$(find "$PDIR" -maxdepth 1 -name '*VERIFICATION.md' 2>/dev/null | head -1)" ]; then
-          _verif_file=$(find "$PDIR" -maxdepth 1 -name '*VERIFICATION.md' 2>/dev/null | head -1)
+        _verif_file=""
+        if [ "${_qa_rem_stage:-none}" = "none" ]; then
+          _verif_file=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" phase "$PDIR" 2>/dev/null || true)
+          [ -n "$_verif_file" ] && [ ! -f "$_verif_file" ] && _verif_file=""
+        fi
+        if [ -n "$_verif_file" ]; then
           _qa_result=$(awk '
             BEGIN { in_fm=0 }
             NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }

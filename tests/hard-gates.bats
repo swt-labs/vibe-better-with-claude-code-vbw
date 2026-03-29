@@ -185,6 +185,26 @@ EOF
   [[ "$output" == *"verification passed"* ]]
 }
 
+@test "gate: verification_threshold fails mixed PASS/FAIL table when frontmatter result is FAIL" {
+  cd "$TEST_TEMP_DIR"
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" << 'EOF'
+---
+result: FAIL
+---
+
+## Must-Have Checks
+| # | ID | Description | Status | Evidence |
+|---|---|---|---|---|
+| 1 | MH-01 | Happy path | PASS | OK |
+| 2 | MH-02 | Edge case | FAIL | Broken |
+EOF
+
+  run bash "$SCRIPTS_DIR/hard-gate.sh" verification_threshold 01 1 1 ".vbw-planning/.contracts/nonexistent.json"
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.result == "fail"'
+  [[ "$output" == *"verification failed"* ]]
+}
+
 
 @test "gate: JSON output format correct" {
   create_valid_contract

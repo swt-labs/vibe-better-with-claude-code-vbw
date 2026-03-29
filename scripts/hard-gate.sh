@@ -231,12 +231,30 @@ case "$GATE_TYPE" in
       exit 2
     fi
 
-    # Check for PASS verdict
-    if grep -qi 'PASS\|passed\|all.*pass' "$VERIFICATION_FILE" 2>/dev/null; then
-      emit_result "pass" "verification passed"
-    elif grep -qi 'FAIL\|failed' "$VERIFICATION_FILE" 2>/dev/null; then
+    VERIFICATION_RESULT=$(awk '
+      BEGIN { in_fm=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); sub(/[[:space:]]+$/, ""); print; exit }
+    ' "$VERIFICATION_FILE" 2>/dev/null || true)
+
+    case "$VERIFICATION_RESULT" in
+      PASS)
+        emit_result "pass" "verification passed"
+        exit 0
+        ;;
+      FAIL|PARTIAL)
+        emit_result "fail" "verification failed"
+        exit 2
+        ;;
+    esac
+
+    # Brownfield fallback: no structured result field available.
+    if grep -qi 'FAIL\|failed' "$VERIFICATION_FILE" 2>/dev/null; then
       emit_result "fail" "verification failed"
       exit 2
+    elif grep -qi 'PASS\|passed\|all.*pass' "$VERIFICATION_FILE" 2>/dev/null; then
+      emit_result "pass" "verification passed"
     else
       emit_result "pass" "verification status unclear, fail-open"
     fi

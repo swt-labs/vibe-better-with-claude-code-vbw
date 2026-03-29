@@ -257,14 +257,24 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   VERIF_FILE=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-verification-path.sh phase "$PDIR" 2>/dev/null || true)
   [ -n "$VERIF_FILE" ] && [ ! -f "$VERIF_FILE" ] && VERIF_FILE=""
   QA_REM_FILE="$PDIR/remediation/qa/.qa-remediation-stage"
+  QA_REM_STAGE="none"
+  if [ -f "$QA_REM_FILE" ]; then
+    QA_REM_STAGE=$(grep '^stage=' "$QA_REM_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    QA_REM_STAGE="${QA_REM_STAGE:-none}"
+    case "$QA_REM_STAGE" in
+      plan|execute|verify|done) ;;
+      *) QA_REM_STAGE="none" ;;
+    esac
+  fi
   ```
-  - If `$QA_REM_FILE` exists with `stage` not equal to `done`: STOP "Phase {NN} has active QA remediation (round {round}, stage {stage}). Run `/vbw:vibe` to continue QA remediation before UAT."
-  - If `$QA_REM_FILE` exists with `stage=done`: refresh `VERIF_FILE` before reading `result:` or running stale-QA checks:
+  - If `QA_REM_STAGE` is `plan`, `execute`, or `verify`: STOP "Phase {NN} has active QA remediation (round {round}, stage {stage}). Run `/vbw:vibe` to continue QA remediation before UAT."
+  - If `QA_REM_STAGE=done`: refresh `VERIF_FILE` before reading `result:` or running stale-QA checks:
     ```bash
     VERIF_FILE=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-verification-path.sh current "$PDIR" 2>/dev/null || true)
     [ -n "$VERIF_FILE" ] && [ ! -f "$VERIF_FILE" ] && VERIF_FILE=""
     ```
     This prefers the remediated round VERIFICATION.md and falls back to the phase-level numbered/plain file for brownfield installs.
+  - If `QA_REM_FILE` exists but `QA_REM_STAGE=none` after normalization, treat it as corrupt/stale and continue using the resolved `VERIF_FILE` above.
   - If no VERIFICATION.md and no `--skip-qa`: STOP "Phase {NN} has no QA verification. Run `/vbw:vibe` to execute QA first, or use `/vbw:verify --skip-qa` to bypass."
   - If VERIFICATION.md exists, read its frontmatter `result:` field:
     - `PASS`: before proceeding, run the same stale-QA checks as phase-detect for this target phase: (1) if product-code working tree is dirty (`git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md'` non-empty) → STOP and rerun QA via `/vbw:vibe`; (2) if `verified_at_commit` exists and differs from current product-code `git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md'` → STOP and rerun QA; (3) if `verified_at_commit` is absent (brownfield file), compare VERIFICATION.md mtime to the latest product-code commit timestamp and STOP if the commit is newer. Only proceed to UAT when the PASS is fresh for the target phase.
