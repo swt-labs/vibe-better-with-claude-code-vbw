@@ -9,11 +9,17 @@ set -euo pipefail
 #   agent-pid-tracker.sh prune
 #
 # Stores newline-delimited PIDs in .vbw-planning/.agent-pids
-# Uses mkdir-based file locking (macOS-compatible, no flock needed)
+# Uses symlink-based file locking (macOS-compatible, no flock needed)
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/vbw-cache-key.sh
+. "$SCRIPT_DIR/lib/vbw-cache-key.sh"
 
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 PID_FILE="$PLANNING_DIR/.agent-pids"
-LOCK_DIR="${VBW_AGENT_PID_LOCK_DIR:-/tmp/vbw-agent-pid-lock}"
+LOCK_ROOT=$(cd "$(dirname "$PLANNING_DIR")" 2>/dev/null && pwd -P 2>/dev/null || pwd -P 2>/dev/null || pwd)
+LOCK_KEY=$(vbw_hash_path "$LOCK_ROOT")
+LOCK_DIR="${VBW_AGENT_PID_LOCK_DIR:-/tmp/vbw-agent-pid-lock-$(id -u)-${LOCK_KEY}}"
 
 # --- File locking helpers ---
 acquire_lock() {

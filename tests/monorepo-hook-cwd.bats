@@ -282,6 +282,28 @@ JSON
   [ "$result" = "$inner_real" ]
 }
 
+@test "find_vbw_root: prefers CWD workspace when start_dir points at another VBW repo" {
+  local plugin_root="$TEST_TEMP_DIR/plugin-repo"
+  local target_root="$TEST_TEMP_DIR/target-repo"
+  mkdir -p "$plugin_root/scripts" "$target_root/apps/mobile"
+  setup_workspace "$plugin_root"
+  setup_workspace "$target_root"
+  local target_real; target_real=$(cd "$target_root" && pwd -P 2>/dev/null || echo "$target_root")
+
+  local result
+  result=$(
+    cd "$target_root/apps/mobile"
+    unset VBW_CONFIG_ROOT 2>/dev/null || true
+    unset VBW_PLANNING_DIR 2>/dev/null || true
+    . "$LIB"
+    find_vbw_root "$plugin_root/scripts"
+    echo "$VBW_CONFIG_ROOT"
+  )
+  cd "$PROJECT_ROOT"
+
+  [ "$result" = "$target_real" ]
+}
+
 # --- Test 11: statusline reads config from subdirectory (end-to-end) ---
 # Hermetic: copies the statusline script + deps into the test workspace so
 # $_SL_SCRIPT_DIR resolves inside the workspace, preventing find_vbw_root

@@ -13,8 +13,10 @@
 #   VBW_PLANNING_DIR — convenience alias: $VBW_CONFIG_ROOT/.vbw-planning
 #
 # Resolution strategy when start_dir is provided:
-#   1. Walk up from start_dir — finds config when script lives inside the project (dev/--plugin-dir)
-#   2. If not found, walk up from PWD — finds config when script lives in plugin cache (production)
+#   1. Walk up from PWD — prefer the active workspace when the script lives in a different repo
+#      (e.g. local --plugin-dir development with the VBW repo checked out separately)
+#   2. If not found, walk up from start_dir — useful when the script lives inside the project but
+#      the current process has drifted outside the workspace root
 #   3. Fallback: PWD (backwards-compatible — CWD is root)
 # When called without args: walks from PWD only (all existing callers unchanged).
 #
@@ -50,14 +52,13 @@ find_vbw_root() {
   _cwd_dir=$(pwd -P 2>/dev/null || pwd)
 
   if [ -n "${1:-}" ]; then
+    # Prefer the active workspace when CWD is already inside a VBW project.
+    _walk_up_for_vbw_root "$_cwd_dir" && return 0
     # Resolve start_dir to an absolute path; suppress cd stderr so bad paths
     # don't leak error messages into hook/statusline output (#267)
     if _start_dir=$(cd "$1" 2>/dev/null && pwd -P 2>/dev/null); then
-      # Walk up from start_dir first (works when script lives inside the project, e.g. dev/--plugin-dir)
+      # Fall back to start_dir when CWD is outside any VBW workspace.
       _walk_up_for_vbw_root "$_start_dir" && return 0
-      # Not found via script-relative walk — try CWD (production: plugin cache is outside project)
-      # Only attempt if CWD differs from start_dir to avoid redundant traversal
-      [ "$_cwd_dir" != "$_start_dir" ] && _walk_up_for_vbw_root "$_cwd_dir" && return 0
     else
       # Failed to resolve start_dir; fall back to walking from CWD only
       _walk_up_for_vbw_root "$_cwd_dir" && return 0

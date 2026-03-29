@@ -78,6 +78,10 @@ jobs:
             fi
           done
           echo "Shard $SHARD: running ${#shard_files[@]} of ${#files[@]} bats files"
+          if [ "${#shard_files[@]}" -eq 0 ]; then
+            echo "Shard $SHARD: no bats files assigned, skipping"
+            exit 0
+          fi
           bats "${shard_files[@]}"
 
   contract-tests:
