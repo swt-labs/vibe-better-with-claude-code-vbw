@@ -159,7 +159,7 @@ jobs:
               echo "::group::${NAMES[$i]} output"
               cat "/tmp/contract-${NAMES[$i]}.out"
               echo "::endgroup::"
-            fi
+            done
             echo "Failed contract scripts: ${FAILED_NAMES[*]}"
           fi
 
