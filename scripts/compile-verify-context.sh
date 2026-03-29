@@ -413,6 +413,40 @@ if [ "$_cvc_has_verif_history" = true ]; then
         }
       }
     ' "$_cvc_phase_verif" 2>/dev/null || true
+
+    # Emit structured FAIL resolution requirements so QA knows each
+    # original FAIL must be re-verified against a specific resolution path
+    echo "--- ORIGINAL FAIL RESOLUTION STATUS ---"
+    awk -F'|' '
+      function trim(v) {
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        return v
+      }
+      /^\|/ {
+        if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
+        # Detect header row to find column indices
+        for (i = 2; i < NF; i++) {
+          cell = trim($i)
+          if (cell == "Status") status_col = i
+          if (cell == "ID") id_col = i
+          if (cell == "Truth/Condition") desc_col = i
+          # Artifact checks use "Artifact" column
+          if (cell == "Artifact") desc_col = i
+          # Convention checks use "Convention" column
+          if (cell == "Convention") desc_col = i
+        }
+        if (status_col > 0) {
+          status = trim($(status_col))
+          gsub(/\*+/, "", status)
+          status = trim(status)
+          if (status == "FAIL") {
+            fail_id = (id_col > 0) ? trim($(id_col)) : "UNKNOWN"
+            desc = (desc_col > 0) ? trim($(desc_col)) : "No description"
+            printf "FAIL_ID: %s | ORIGINAL: %s | RESOLUTION_REQUIRED: code-fix, plan-amendment, or documented process-exception\n", fail_id, desc
+          }
+        }
+      }
+    ' "$_cvc_phase_verif" 2>/dev/null || true
   fi
 
   # Per-round (chronological compounding)

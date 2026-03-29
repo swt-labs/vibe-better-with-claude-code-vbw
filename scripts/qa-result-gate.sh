@@ -21,6 +21,8 @@ set -euo pipefail
 #
 # Optional override diagnostics (only present when an override fires):
 #   qa_gate_deviation_override=true  — PASS overridden because deviations exist but no FAIL checks
+#   qa_gate_metadata_only_override=true — PASS overridden because remediation round changed only metadata
+#   qa_gate_phase_deviation_count=<N> — deviations in phase-root SUMMARYs (metadata-only override)
 #   qa_gate_plan_coverage=N/M        — plans verified vs plans expected
 #
 # Routing values:
@@ -107,6 +109,54 @@ if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
   fi
 fi
 
+# Count non-placeholder deviations across SUMMARY.md files in a given directory.
+# Uses the same AWK extraction logic as execute-protocol.md Step 4.
+# Arguments: $1 = directory to scan for SUMMARY.md files
+count_deviations_in_dir() {
+  local scan_dir="${1:-}"
+  local total=0
+  [ -d "$scan_dir" ] || { echo 0; return; }
+  while IFS= read -r _cdf_file; do
+    [ -f "$_cdf_file" ] || continue
+    local _cdf_devs
+    _cdf_devs=$(awk '
+      BEGIN { in_fm=0; in_dev=0; count=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^deviations:/ { in_dev=1; next }
+      in_fm && in_dev && /^[[:space:]]+- / {
+        line=$0; sub(/^[[:space:]]+- /, "", line)
+        gsub(/^"/, "", line); gsub(/"$/, "", line)
+        lc = tolower(line)
+        if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
+        count++
+      }
+      in_fm && in_dev && /^[^[:space:]]/ { exit }
+      END { print count }
+    ' "$_cdf_file" 2>/dev/null)
+    if [ "${_cdf_devs:-0}" -eq 0 ]; then
+      _cdf_devs=$(awk '
+        BEGIN { count=0 }
+        /^## Deviations/ { found=1; next }
+        found && /^## / { exit }
+        found && /^[[:space:]]*$/ { next }
+        found && /^- / {
+          line=$0; sub(/^- /, "", line)
+          if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
+          sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
+          if (line == "") next
+          lc = tolower(line)
+          if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
+          count++
+        }
+        END { print count }
+      ' "$_cdf_file" 2>/dev/null)
+    fi
+    total=$((total + ${_cdf_devs:-0}))
+  done < <(find "$scan_dir" -maxdepth 1 ! -name '.*' \( -name '*-SUMMARY.md' -o -name 'SUMMARY.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+  echo "$total"
+}
+
 # 1. File doesn't exist
 if [ ! -f "$VERIF_PATH" ]; then
   echo "qa_gate_writer=missing"
@@ -149,51 +199,75 @@ RESULT=$(awk '
 # Body FAIL count (defense-in-depth cross-check)
 FAIL_COUNT=$(grep -cE '\|[[:space:]]*\*{0,2}FAIL\*{0,2}[[:space:]]*\|' "$VERIF_PATH" 2>/dev/null || echo 0)
 
-# Deviation count — scan all SUMMARY.md files for non-placeholder deviations
-# Uses the same AWK extraction logic as execute-protocol.md Step 4
-DEVIATION_COUNT=0
-while IFS= read -r summary_file; do
-  [ -f "$summary_file" ] || continue
+# Deviation count — scan SUMMARY.md files for non-placeholder deviations
+DEVIATION_COUNT=$(count_deviations_in_dir "$SUMMARY_SCOPE_DIR")
 
-  # Extract deviations from YAML frontmatter
-  devs=$(awk '
-    BEGIN { in_fm=0; in_dev=0; count=0 }
-    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-    in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && /^deviations:/ { in_dev=1; next }
-    in_fm && in_dev && /^[[:space:]]+- / {
-      line=$0; sub(/^[[:space:]]+- /, "", line)
-      gsub(/^"/, "", line); gsub(/"$/, "", line)
-      lc = tolower(line)
-      if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
-      count++
-    }
-    in_fm && in_dev && /^[^[:space:]]/ { exit }
-    END { print count }
-  ' "$summary_file" 2>/dev/null)
-
-  # Fallback: extract from body ## Deviations section
-  if [ "${devs:-0}" -eq 0 ]; then
-    devs=$(awk '
-      BEGIN { count=0 }
-      /^## Deviations/ { found=1; next }
-      found && /^## / { exit }
-      found && /^[[:space:]]*$/ { next }
-      found && /^- / {
-        line=$0; sub(/^- /, "", line)
-        if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
-        sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
-        if (line == "") next
-        lc = tolower(line)
-        if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
-        count++
+# Metadata-only round detection — if remediation round modified only
+# .vbw-planning/ files (no production code), phase-level deviations
+# are still unresolved and the override must fire.
+METADATA_ONLY_ROUND="false"
+if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
+  # Scan round SUMMARY.md files_modified for non-metadata paths
+  _mo_has_code_changes="false"
+  _mo_found_summary="false"
+  while IFS= read -r _mo_summary; do
+    [ -f "$_mo_summary" ] || continue
+    _mo_found_summary="true"
+    # Extract files_modified from YAML frontmatter
+    _mo_files=$(awk '
+      BEGIN { in_fm=0; in_fm_arr=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^files_modified:/ {
+        # Inline array: files_modified: [a, b]
+        rest=$0; sub(/^files_modified:[[:space:]]*/, "", rest)
+        if (rest ~ /^\[/) { gsub(/[\[\]"]/, "", rest); print rest; exit }
+        in_fm_arr=1; next
       }
+      in_fm && in_fm_arr && /^[[:space:]]+- / {
+        line=$0; sub(/^[[:space:]]+- /, "", line)
+        gsub(/^"/, "", line); gsub(/"$/, "", line)
+        print line
+      }
+      in_fm && in_fm_arr && /^[^[:space:]]/ { exit }
+    ' "$_mo_summary" 2>/dev/null)
+    # Also check commit_hashes — empty means no real commits
+    _mo_commits=$(awk '
+      BEGIN { in_fm=0; in_arr=0; count=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^commit_hashes:/ {
+        rest=$0; sub(/^commit_hashes:[[:space:]]*/, "", rest)
+        if (rest ~ /^\[\]/) { exit }
+        if (rest ~ /^\[/) { count++; exit }
+        in_arr=1; next
+      }
+      in_fm && in_arr && /^[[:space:]]+- / { count++ }
+      in_fm && in_arr && /^[^[:space:]]/ { exit }
       END { print count }
-    ' "$summary_file" 2>/dev/null)
+    ' "$_mo_summary" 2>/dev/null)
+    _mo_commits="${_mo_commits:-0}"
+    if [ -n "$_mo_files" ]; then
+      while IFS= read -r _mo_path; do
+        _mo_path=$(echo "$_mo_path" | tr -d '[:space:]' | sed 's/,$//')
+        [ -n "$_mo_path" ] || continue
+        case "$_mo_path" in
+          .vbw-planning/*) ;; # metadata path — continue checking
+          *) _mo_has_code_changes="true"; break ;;
+        esac
+      done <<< "$_mo_files"
+    elif [ "$_mo_commits" -eq 0 ] 2>/dev/null; then
+      # No files modified AND no commits → metadata-only (or empty round)
+      :
+    fi
+    [ "$_mo_has_code_changes" = "true" ] && break
+  done < <(find "$SUMMARY_SCOPE_DIR" -maxdepth 1 ! -name '.*' \( -name '*-SUMMARY.md' -o -name 'SUMMARY.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+  # Only flag metadata-only when a round SUMMARY.md exists — if no summary was
+  # found, we can't determine what changed, so fall through to default behavior.
+  if [ "$_mo_found_summary" = "true" ] && [ "$_mo_has_code_changes" = "false" ]; then
+    METADATA_ONLY_ROUND="true"
   fi
-
-  DEVIATION_COUNT=$((DEVIATION_COUNT + ${devs:-0}))
-done < <(find "$SUMMARY_SCOPE_DIR" -maxdepth 1 ! -name '.*' \( -name '*-SUMMARY.md' -o -name 'SUMMARY.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+fi
 
 # Plan coverage — count PLAN.md files and plans_verified entries
 PLAN_COUNT=0
@@ -238,7 +312,7 @@ if [ -z "$RESULT" ]; then
   exit 0
 fi
 
-# 5-7. Route based on result + fail count + deviation cross-check + plan coverage
+# 5-7. Route based on result + fail count + deviation cross-check + plan coverage + metadata-only
 case "$RESULT" in
   PASS)
     if [ "$FAIL_COUNT" -gt 0 ] 2>/dev/null; then
@@ -255,6 +329,20 @@ case "$RESULT" in
         echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
       fi
       echo "qa_gate_routing=QA_RERUN_REQUIRED"
+    elif [ "$METADATA_ONLY_ROUND" = "true" ]; then
+      # 5c. Remediation round made no code changes — only metadata/.vbw-planning/ updates.
+      # Re-check phase-level deviations since they are still unresolved.
+      PHASE_DEVIATION_COUNT=$(count_deviations_in_dir "$PHASE_DIR")
+      if [ "$PHASE_DEVIATION_COUNT" -gt 0 ] 2>/dev/null; then
+        echo "qa_gate_metadata_only_override=true"
+        echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
+        echo "qa_gate_routing=REMEDIATION_REQUIRED"
+      elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
+        echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
+        echo "qa_gate_routing=QA_RERUN_REQUIRED"
+      else
+        echo "qa_gate_routing=PROCEED_TO_UAT"
+      fi
     elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
       # 5b. PASS but incomplete plan coverage → QA skipped some plans
       echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"

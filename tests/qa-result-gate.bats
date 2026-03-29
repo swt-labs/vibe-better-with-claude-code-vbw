@@ -1141,3 +1141,227 @@ VERIF
   [[ "$output" == *"qa_gate_result=FAIL"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
+
+# --- Metadata-only round detection tests ---
+
+# Helper: create a round SUMMARY.md with files_modified in YAML frontmatter
+create_round_summary_with_files() {
+  local round_dir="${1}"
+  local round="${2}"
+  local files_yaml="${3:-}"  # pre-formatted YAML lines for files_modified
+  local commits_yaml="${4:-}"  # pre-formatted YAML lines for commit_hashes
+  {
+    echo "---"
+    echo "plan: R${round}"
+    echo "status: complete"
+    if [ -n "$commits_yaml" ]; then
+      echo "commit_hashes:"
+      echo "$commits_yaml"
+    else
+      echo "commit_hashes: []"
+    fi
+    if [ -n "$files_yaml" ]; then
+      echo "files_modified:"
+      echo "$files_yaml"
+    else
+      echo "files_modified: []"
+    fi
+    echo "deviations: []"
+    echo "---"
+    echo ""
+    echo "## Summary"
+    echo "Work done."
+  } > "${round_dir}/R${round}-SUMMARY.md"
+}
+
+@test "metadata-only round with phase-level deviations → REMEDIATION_REQUIRED" {
+  create_verif "write-verification.sh" "PASS"
+  # Phase-level SUMMARY.md has real deviations
+  create_summary_with_yaml_deviations "01-01" "Changed API approach"
+
+  # Set up active remediation
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # Round SUMMARY.md modifies ONLY .vbw-planning/ files — no code changes
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"
+  - ".vbw-planning/phases/01-test/01-03-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Document deviations
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Deviations documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_phase_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "metadata-only round with zero phase-level deviations → PROCEED_TO_UAT" {
+  create_verif "write-verification.sh" "PASS"
+  # Phase-level SUMMARY.md has NO deviations
+  create_summary_with_yaml_deviations "01-01" "None"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Fix done | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "round with real code changes + phase deviations → PROCEED_TO_UAT (existing behavior)" {
+  create_verif "write-verification.sh" "PASS"
+  # Phase-level SUMMARY.md has deviations
+  create_summary_with_yaml_deviations "01-01" "Changed API approach"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # Round SUMMARY.md modifies real code files (not metadata-only)
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "src/MyService.swift"
+  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"' \
+    '  - "abc1234"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix code
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Code fixed | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "mixed files_modified with some .vbw-planning/ and some code → not metadata-only" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed approach"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"
+  - "Sources/Calculator.swift"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Fixed | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "metadata-only round with empty files_modified and no commits → REMEDIATION_REQUIRED" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Batch commit deviation"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # Empty files_modified and empty commit_hashes
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" "" ""
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Document deviations
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_phase_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}

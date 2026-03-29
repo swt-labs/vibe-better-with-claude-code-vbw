@@ -600,7 +600,13 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    - Read `source_verification_path` from `qa-remediation-state.sh get` metadata for failed checks
      - Round 01 uses the phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
      - Round 02+ uses the previous round's `R{RR}-VERIFICATION.md`
-   - Scope the plan: what to fix, which files, acceptance criteria
+   - **Deviation Classification (NON-NEGOTIABLE):** For each FAIL check in the source VERIFICATION.md, classify as exactly one of:
+     - **`code-fix`**: The code/config must change to match the plan. The remediation plan MUST include tasks with actual production code file modifications.
+     - **`plan-amendment`**: The deviation was a valid improvement over the original plan. The remediation plan MUST include a task to update the original PLAN.md with the actual approach and rationale, marking the deviation as resolved-by-amendment.
+     - **`process-exception`**: Genuinely non-fixable retroactive issue (e.g., cannot un-batch a historical commit without risky rebase). The remediation plan must include the exception classification with explicit reasoning why it is non-fixable.
+   - **The plan MUST include at least one `code-fix` or `plan-amendment` task if ANY FAIL check is classifiable as such.** A plan that classifies all FAIL checks as `process-exception` when code-fix or plan-amendment alternatives exist is itself a defect. Documentation-only changes to SUMMARY.md deviations arrays are NOT a valid resolution for code/architecture deviations.
+   - Include `fail_classifications:` YAML array in R{RR}-PLAN.md frontmatter (each entry: `{id: "FAIL-ID", type: "code-fix|plan-amendment|process-exception", rationale: "..."}`)
+   - Scope the plan to those failures: what to fix, which files, acceptance criteria
    - The orchestrator writes the plan (QA identified problems, orchestrator determines fixes)
    - Advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
 
@@ -615,6 +621,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    - Spawn QA agent as subagent — writes to `{verification_path}` (from `qa-remediation-state.sh` metadata)
      - Output path: `{round_dir}/R{RR}-VERIFICATION.md` — phase-level VERIFICATION.md stays frozen
      - Include the compiled verify context output in QA's task description
+     - **Include in QA task description:** "In addition to verifying the remediation plan's own must_haves, you MUST re-verify each original FAIL from the VERIFICATION HISTORY section. For each FAIL_ID: if classified as code-fix, verify the code now matches the plan; if classified as plan-amendment, verify the original PLAN.md has been updated with the actual approach and rationale; if classified as process-exception, verify the exception is documented with non-fixable justification. Any original FAIL that has not been addressed by one of these three paths is still a FAIL."
    - After QA returns, run the deterministic gate:
      ```bash
      bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
@@ -623,6 +630,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
      - **`qa_gate_routing=PROCEED_TO_UAT`:** Advance to done: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`, display `◆ QA remediation: PASS (round {RR})`, break loop, proceed to Step 4.5
      - **`qa_gate_routing=REMEDIATION_REQUIRED`:** Start new round: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" needs-round "{phase-dir}"`, display `◆ QA remediation round {RR}: ${qa_gate_result}`, continue loop
      - **`qa_gate_routing=QA_RERUN_REQUIRED`:** Re-spawn QA immediately (max 2 retries per round). If `qa_gate_deviation_override=true`, tell QA: "Previous QA run found PASS but SUMMARY.md files contain ${qa_gate_deviation_count} deviations that were not reflected as FAIL checks. Each deviation MUST become a FAIL check — do not rationalize deviations as acceptable." If `qa_gate_plan_coverage` is present, tell QA: "Previous QA run only verified ${qa_gate_plans_verified_count}/${qa_gate_plan_count} plans. Every plan in the phase must be verified — include all plan IDs in plans_verified." If still invalid, treat as REMEDIATION_REQUIRED.
+     - **When `qa_gate_metadata_only_override=true`** (routing will be `REMEDIATION_REQUIRED`): Display `⚠ QA remediation round made no code changes — only metadata updates. ${qa_gate_phase_deviation_count} original deviations remain unaddressed. Starting new remediation round with code-fix or plan-amendment requirements.` The next round's `stage=plan` MUST classify each FAIL as code-fix, plan-amendment, or process-exception per the Deviation Classification rules above.
 
 3. **After max rounds (3):** If QA still fails, display:
    ```
