@@ -233,6 +233,18 @@ else
   fail "vibe: remediation-only precompute still appears history-driven instead of state-driven"
 fi
 
+if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: QA remediation verify uses remediation-only verify context"
+else
+  fail "execute-protocol: QA remediation verify missing remediation-only verify context"
+fi
+
+if grep -q 'if \[ -f "\$PDIR/remediation/uat/.uat-remediation-stage" \] || \[ -f "\$PDIR/remediation/qa/.qa-remediation-stage" \]' "$VERIFY_FILE"; then
+  pass "verify: misnamed-plan refresh recomputes remediation scope from active state files"
+else
+  fail "verify: misnamed-plan refresh still appears history-driven instead of state-driven"
+fi
+
 echo ""
 echo "=== Milestone Context Refresh Verification ==="
 mode_block() {

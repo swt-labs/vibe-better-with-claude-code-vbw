@@ -291,7 +291,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   ```bash
   PDIR=".vbw-planning/phases/{target-slug}"
   REMED_FLAG=""
-  if find "$PDIR/remediation" -path '*/round-*/R*-SUMMARY.md' 2>/dev/null | head -1 | grep -q .; then
+  if [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ] || [ -f "$PDIR/remediation/qa/.qa-remediation-stage" ]; then
     REMED_FLAG="--remediation-only"
   fi
   bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR"
