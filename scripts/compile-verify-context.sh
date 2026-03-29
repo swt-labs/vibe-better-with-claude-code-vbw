@@ -55,7 +55,23 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   LATEST_ROUND=""
   REMED_DIR=""
   REMED_KIND=""
-  for _candidate in "$PHASE_DIR/remediation/uat" "$PHASE_DIR/remediation/qa"; do
+
+  _cvc_candidates=()
+  if [ -f "$PHASE_DIR/remediation/uat/.uat-remediation-stage" ]; then
+    _uat_stage=$(grep '^stage=' "$PHASE_DIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    case "${_uat_stage:-none}" in
+      research|plan|execute|fix|verify|done) _cvc_candidates+=("$PHASE_DIR/remediation/uat") ;;
+    esac
+  fi
+  if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
+    _qa_stage=$(grep '^stage=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    case "${_qa_stage:-none}" in
+      verify|done) _cvc_candidates+=("$PHASE_DIR/remediation/qa") ;;
+    esac
+  fi
+  _cvc_candidates+=("$PHASE_DIR/remediation/uat" "$PHASE_DIR/remediation/qa")
+
+  for _candidate in "${_cvc_candidates[@]}"; do
     [ -d "$_candidate" ] || continue
     _best_round_num=0
     _candidate_round=""

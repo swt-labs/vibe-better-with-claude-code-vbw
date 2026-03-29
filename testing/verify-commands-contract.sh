@@ -221,6 +221,18 @@ else
   fail "vibe: routed verify precompute missing fail-closed verify_context sentinel"
 fi
 
+if grep -q 'remediation/uat/.uat-remediation-stage' "$VERIFY_FILE" && grep -q 'remediation/qa/.qa-remediation-stage' "$VERIFY_FILE"; then
+  pass "verify: remediation-only precompute is driven by active remediation state files"
+else
+  fail "verify: remediation-only precompute still appears history-driven instead of state-driven"
+fi
+
+if grep -q 'remediation/uat/.uat-remediation-stage' "$VIBE_FILE" && grep -q 'remediation/qa/.qa-remediation-stage' "$VIBE_FILE"; then
+  pass "vibe: remediation-only precompute is driven by active remediation state files"
+else
+  fail "vibe: remediation-only precompute still appears history-driven instead of state-driven"
+fi
+
 echo ""
 echo "=== Milestone Context Refresh Verification ==="
 mode_block() {

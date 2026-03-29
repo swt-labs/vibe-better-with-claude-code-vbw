@@ -1624,3 +1624,65 @@ EOF
   [[ "$output" != *"=== PLAN 01: Root plan ==="* ]]
   [[ "$output" == *"uat_path=03-UAT.md"* ]]
 }
+
+@test "compile-verify-context: remediation-only prefers active QA remediation over stale UAT history" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Root plan
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Root feature
+EOF
+
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: Old UAT remediation
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'EOF'
+---
+plan: R01
+status: complete
+---
+## What Was Built
+- Old UAT fix
+EOF
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  cat > "$PHASE_DIR/remediation/qa/.qa-remediation-stage" <<'EOF'
+stage=done
+round=02
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+round: 02
+title: Current QA remediation
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+plan: R02
+status: complete
+---
+## What Was Built
+- Current QA fix
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=02"* ]]
+  [[ "$output" == *"=== PLAN R02: Current QA remediation ==="* ]]
+  [[ "$output" != *"=== PLAN R01: Old UAT remediation ==="* ]]
+  [[ "$output" == *"uat_path=03-UAT.md"* ]]
+}

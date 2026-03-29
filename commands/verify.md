@@ -146,7 +146,7 @@ else
   if [ -n "$TARGET" ] && [ -d "$PDIR" ] && [ -L "$L" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then
     echo "verify_target_slug=$TARGET"
     REMED_FLAG=""
-    if find "$PDIR/remediation" -path '*/round-*/R*-SUMMARY.md' 2>/dev/null | head -1 | grep -q .; then REMED_FLAG="--remediation-only"; fi
+    if [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ] || [ -f "$PDIR/remediation/qa/.qa-remediation-stage" ]; then REMED_FLAG="--remediation-only"; fi
     bash "$L/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR" 2>/dev/null || echo "verify_context_error=true"
   else
     echo "verify_context=unavailable"
