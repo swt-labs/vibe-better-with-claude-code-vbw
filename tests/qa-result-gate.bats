@@ -762,8 +762,9 @@ PLAN
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
-  # Deviation override should NOT fire during remediation
+  # Historical phase-root deviations are ignored during active remediation when
+  # the current round verification is authoritative.
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
   [[ "$output" != *"qa_gate_deviation_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
