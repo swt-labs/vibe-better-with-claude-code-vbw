@@ -288,6 +288,18 @@ EOF
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
+@test "during remediation verify stage missing round verification fails closed" {
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=missing"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
 @test "bold FAIL markers in body are counted" {
   create_verif "write-verification.sh" "PASS" "## Checks
 | Check | Status |
@@ -726,8 +738,26 @@ SUMMARY
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "Changed API approach"
   # Simulate active remediation cycle
-  mkdir -p "$PHASE_DIR/remediation/qa"
-  echo "stage=verify" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Fix | PASS | Done |
+VERIF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix
+---
+PLAN
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
@@ -754,8 +784,26 @@ SUMMARY
 @test "FAIL during remediation still routes to REMEDIATION_REQUIRED" {
   create_verif "write-verification.sh" "FAIL"
   create_summary_with_yaml_deviations "01-01" "Changed API approach"
-  mkdir -p "$PHASE_DIR/remediation/qa"
-  echo "stage=verify" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: FAIL
+plans_verified:
+  - R01
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Fix | FAIL | Broken |
+VERIF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix
+---
+PLAN
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
@@ -1007,10 +1055,11 @@ PLAN
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
-  # Must exit 0 (gate contract) and fall back to phase-level
+  # Must exit 0 (gate contract) and fail closed because the implied round-01
+  # verification artifact is missing.
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_result=FAIL"* ]]
-  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  [[ "$output" == *"qa_gate_result=missing"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
 @test "current-round deviations during remediation still require QA rerun" {

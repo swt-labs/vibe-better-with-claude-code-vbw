@@ -142,7 +142,11 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         QA_STATE=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/qa-remediation-state.sh get "{phase-dir}" 2>/dev/null || true)
         QA_STAGE=$(printf '%s\n' "$QA_STATE" | head -1)
         VERIF_PATH=$(printf '%s\n' "$QA_STATE" | awk -F= '/^verification_path=/{print $2; exit}')
-        if [ "$QA_STAGE" != "verify" ] || [ -z "$VERIF_PATH" ]; then
+        case "$QA_STAGE" in
+          plan|execute|verify) ;;
+          *) VERIF_PATH="" ;;
+        esac
+        if [ -z "$VERIF_PATH" ]; then
           VERIF_NAME=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-artifact-path.sh verification "{phase-dir}")
           VERIF_PATH="{phase-dir}/${VERIF_NAME}"
         fi

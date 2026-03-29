@@ -89,10 +89,8 @@ if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
   if [ "$EXPLICIT_VERIF_NAME" = false ]; then
     case "$_gate_stage" in
       verify)
-        if [ -f "$_gate_round_verif" ]; then
-          VERIF_PATH="$_gate_round_verif"
-          VERIF_NAME=$(basename "$VERIF_PATH")
-        fi
+        VERIF_PATH="$_gate_round_verif"
+        VERIF_NAME=$(basename "$VERIF_PATH")
         ;;
       done)
         _gate_authoritative_verif=$(bash "$RESOLVE_VERIF_SCRIPT" authoritative "$PHASE_DIR" 2>/dev/null || true)
