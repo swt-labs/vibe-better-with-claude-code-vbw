@@ -167,6 +167,22 @@ jobs:
           echo "Contract checks: $(( ${#NAMES[@]} - failures ))/${#NAMES[@]} passed"
           [ "$failures" -eq 0 ] || exit 1
 
+  test:
+    name: Test
+    if: always()
+    needs: [bats-tests, contract-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.bats-tests.result }}" != "success" ] || [ "${{ needs.contract-tests.result }}" != "success" ]; then
+            echo "One or more test jobs failed:"
+            echo "  bats-tests: ${{ needs.bats-tests.result }}"
+            echo "  contract-tests: ${{ needs.contract-tests.result }}"
+            exit 1
+          fi
+          echo "All test jobs passed."
+
   qa-review-check:
     name: QA Review Evidence
     if: github.event_name == 'pull_request'
