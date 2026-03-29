@@ -221,7 +221,16 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       in_fm && /^files_modified:/ {
         # Inline array: files_modified: [a, b]
         rest=$0; sub(/^files_modified:[[:space:]]*/, "", rest)
-        if (rest ~ /^\[/) { gsub(/[\[\]"]/, "", rest); print rest; exit }
+        if (rest ~ /^\[/) {
+          gsub(/[\[\]"]/, "", rest)
+          # Split comma-separated values onto separate lines
+          n = split(rest, arr, ",")
+          for (i = 1; i <= n; i++) {
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", arr[i])
+            if (arr[i] != "") print arr[i]
+          }
+          exit
+        }
         in_fm_arr=1; next
       }
       in_fm && in_fm_arr && /^[[:space:]]+- / {
@@ -256,9 +265,9 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
           *) _mo_has_code_changes="true"; break ;;
         esac
       done <<< "$_mo_files"
-    elif [ "$_mo_commits" -eq 0 ] 2>/dev/null; then
-      # No files modified AND no commits → metadata-only (or empty round)
-      :
+    elif [ "$_mo_commits" -gt 0 ] 2>/dev/null; then
+      # No files listed but commits exist → assume code changes were made
+      _mo_has_code_changes="true"
     fi
     [ "$_mo_has_code_changes" = "true" ] && break
   done < <(find "$SUMMARY_SCOPE_DIR" -maxdepth 1 ! -name '.*' \( -name '*-SUMMARY.md' -o -name 'SUMMARY.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))

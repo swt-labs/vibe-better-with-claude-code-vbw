@@ -1365,3 +1365,138 @@ VERIF
   [[ "$output" == *"qa_gate_phase_deviation_count=1"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
+
+@test "inline YAML array with mixed paths correctly detects code changes" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed approach"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # Use inline YAML array format instead of list format
+  {
+    echo "---"
+    echo "plan: R01"
+    echo "status: complete"
+    echo "commit_hashes: [\"abc1234\"]"
+    echo 'files_modified: [".vbw-planning/phases/01-test/01-01-SUMMARY.md", "src/MyService.swift"]'
+    echo "deviations: []"
+    echo "---"
+    echo ""
+    echo "## Summary"
+    echo "Work done."
+  } > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix code
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Code fixed | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Contains real code file → not metadata-only
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "inline YAML array with only metadata paths is metadata-only" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed API"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # Inline YAML array with only .vbw-planning/ paths
+  {
+    echo "---"
+    echo "plan: R01"
+    echo "status: complete"
+    echo "commit_hashes: []"
+    echo 'files_modified: [".vbw-planning/phases/01-test/01-01-SUMMARY.md", ".vbw-planning/STATE.md"]'
+    echo "deviations: []"
+    echo "---"
+    echo ""
+    echo "## Summary"
+    echo "Work done."
+  } > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Document
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "empty files_modified but commits present → not metadata-only" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed approach"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # files_modified is empty but commit_hashes has entries → real work happened
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    "" \
+    '  - "abc1234"
+  - "def5678"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix code
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Fixed | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Has commits → not metadata-only despite empty files_modified
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}

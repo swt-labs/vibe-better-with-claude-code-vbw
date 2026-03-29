@@ -1686,3 +1686,150 @@ EOF
   [[ "$output" != *"=== PLAN R01: Old UAT remediation ==="* ]]
   [[ "$output" == *"uat_path=03-UAT.md"* ]]
 }
+
+# --- ORIGINAL FAIL RESOLUTION STATUS ---
+
+@test "compile-verify-context: emits ORIGINAL FAIL RESOLUTION STATUS for phase FAILs" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Must-Have Checks
+| ID | Category | Truth/Condition | Status | Evidence |
+|----|----------|-----------------|--------|----------|
+| MH-01 | must_have | API returns JSON | FAIL | Returns XML |
+| MH-02 | must_have | Widget renders | PASS | Confirmed |
+| MH-03 | must_have | Tests pass | FAIL | 2 failures |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  # Should contain FAIL_ID for MH-01 and MH-03, but not MH-02 (PASS)
+  [[ "$output" == *"FAIL_ID: MH-01"* ]]
+  [[ "$output" == *"FAIL_ID: MH-03"* ]]
+  [[ "$output" != *"FAIL_ID: MH-02"* ]]
+  # Should include the Truth/Condition description
+  [[ "$output" == *"API returns JSON"* ]]
+  [[ "$output" == *"Tests pass"* ]]
+  # Should include resolution requirement
+  [[ "$output" == *"RESOLUTION_REQUIRED: code-fix, plan-amendment, or documented process-exception"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS excludes PASS-only verifications" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Must-Have Checks
+| ID | Category | Truth/Condition | Status | Evidence |
+|----|----------|-----------------|--------|----------|
+| MH-01 | must_have | API returns JSON | PASS | Confirmed |
+| MH-02 | must_have | Widget renders | PASS | Done |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Block should still be emitted but with no FAIL_ID entries
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  [[ "$output" != *"FAIL_ID:"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS handles Description column header" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Login works | FAIL | 401 error |
+| MH-02 | must_have | Logout works | PASS | Done |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"FAIL_ID: MH-01"* ]]
+  [[ "$output" == *"Login works"* ]]
+  [[ "$output" != *"FAIL_ID: MH-02"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS not emitted without phase VERIFICATION.md" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  # No VERIFICATION.md at all
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+}

@@ -424,16 +424,22 @@ if [ "$_cvc_has_verif_history" = true ]; then
       }
       /^\|/ {
         if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
-        # Detect header row to find column indices
-        for (i = 2; i < NF; i++) {
-          cell = trim($i)
-          if (cell == "Status") status_col = i
-          if (cell == "ID") id_col = i
-          if (cell == "Truth/Condition") desc_col = i
-          # Artifact checks use "Artifact" column
-          if (cell == "Artifact") desc_col = i
-          # Convention checks use "Convention" column
-          if (cell == "Convention") desc_col = i
+        # Detect header row to find column indices (once per table)
+        if (!header_found) {
+          for (i = 2; i < NF; i++) {
+            cell = trim($i)
+            if (cell == "Status") status_col = i
+            if (cell == "ID") id_col = i
+            if (cell == "Truth/Condition") desc_col = i
+            if (cell == "Artifact") desc_col = i
+            if (cell == "Convention") desc_col = i
+            if (cell == "Description") desc_col = i
+            if (cell == "Pattern") desc_col = i
+            if (cell == "Requirement") desc_col = i
+            if (cell == "From") desc_col = i
+          }
+          if (status_col > 0) header_found = 1
+          next
         }
         if (status_col > 0) {
           status = trim($(status_col))
