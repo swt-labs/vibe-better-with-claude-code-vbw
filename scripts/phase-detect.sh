@@ -659,23 +659,26 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
       _qa_round_scan="${_qa_round_scan:-01}"
     fi
 
-    # Active remediation is handled by next_phase_state=needs_qa_remediation.
+    _qa_attention="none"
+    # Active remediation is handled by next_phase_state=needs_qa_remediation,
+    # except standalone /vbw:qa still needs a signal for verify-stage rounds
+    # when an earlier phase blocks the main orchestrator route.
     case "$_qa_stage" in
-      plan|execute|verify) continue ;;
+      plan|execute) continue ;;
+      verify) _qa_attention="verify" ;;
     esac
 
     _qa_verif_scan=""
     if [ "$_qa_stage" = "done" ]; then
       _qa_verif_scan=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" current "$_qa_dir" 2>/dev/null || true)
-    else
+    elif [ "$_qa_attention" = "none" ]; then
       _qa_verif_scan=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" phase "$_qa_dir" 2>/dev/null || true)
     fi
     if [ -n "$_qa_verif_scan" ] && [ ! -f "$_qa_verif_scan" ]; then
       _qa_verif_scan=""
     fi
 
-    _qa_attention="none"
-    if [ -n "$_qa_verif_scan" ] && [ -f "$_qa_verif_scan" ]; then
+    if [ "$_qa_attention" = "none" ] && [ -n "$_qa_verif_scan" ] && [ -f "$_qa_verif_scan" ]; then
       _qa_result_scan=$(awk '
         BEGIN { in_fm=0 }
         NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
@@ -713,7 +716,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
           _qa_attention="pending"
           ;;
       esac
-    else
+    elif [ "$_qa_attention" = "none" ]; then
       _qa_attention="pending"
     fi
 

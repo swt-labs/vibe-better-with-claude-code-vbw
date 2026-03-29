@@ -110,7 +110,7 @@ fi`
   - If `next_phase_state=needs_qa_remediation`, target that phase directly.
     - If the remediation stage is `plan` or `execute`, STOP and tell the user to run `/vbw:vibe` to continue QA remediation first — standalone QA must not mint a round VERIFICATION before re-verification is actually ready.
     - If the remediation stage is `verify` or `done`, standalone QA re-verifies the authoritative round artifact rather than overwriting the frozen phase-level VERIFICATION.
-  - If `first_qa_attention_phase` is set and `qa_attention_status` is `pending` or `failed`, target that phase directly — existing QA artifacts may be stale or failed even when a file already exists and even when terminal UAT already exists.
+  - If `first_qa_attention_phase` is set and `qa_attention_status` is `pending`, `failed`, or `verify`, target that phase directly — existing QA artifacts may be stale or failed even when a file already exists, and verify-stage remediation rounds remain directly re-runnable even if an earlier phase is unfinished.
   - Otherwise, to find the first phase needing QA: scan phase dirs for first with completed `*-SUMMARY.md` files but no authoritative QA verification artifact (no numbered final VERIFICATION, no brownfield plain `VERIFICATION.md`, no wave fallback). Found: announce "Auto-detected Phase {NN} ({slug})". All verified: STOP "All phases verified. Specify: `/vbw:qa {NN}`"
 - Phase not built (no SUMMARYs): STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 

@@ -278,7 +278,10 @@ else
     echo "verify_target_slug=$TARGET"
     if [ -d "$PDIR" ] && [ -L "$L" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then
       REMED_FLAG=""
-      if [ -f "$PDIR/remediation/uat/.uat-remediation-stage" ] || [ -f "$PDIR/remediation/qa/.qa-remediation-stage" ]; then REMED_FLAG="--remediation-only"; fi
+      _uat_stage=$(grep '^stage=' "$PDIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      _qa_stage=$(grep '^stage=' "$PDIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      case "${_uat_stage:-none}" in research|plan|execute|fix|verify|done) REMED_FLAG="--remediation-only" ;; esac
+      case "${_qa_stage:-none}" in verify|done) REMED_FLAG="--remediation-only" ;; esac
       bash "$L/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR" 2>/dev/null || echo "verify_context_error=true"
     else
       echo "verify_context_error=true"

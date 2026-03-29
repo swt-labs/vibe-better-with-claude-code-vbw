@@ -1519,3 +1519,22 @@ EOF
   echo "$output" | grep -q "first_qa_attention_slug=01-test"
   echo "$output" | grep -q "qa_attention_status=pending"
 }
+
+@test "first_qa_attention targets verify-stage QA remediation even when earlier phase is unfinished" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  mkdir -p .vbw-planning/phases/01-unplanned
+
+  mkdir -p .vbw-planning/phases/02-remediating/remediation/qa/round-01
+  echo "# Plan" > .vbw-planning/phases/02-remediating/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-remediating/02-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=verify' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+  echo "$output" | grep -q "first_qa_attention_phase=02"
+  echo "$output" | grep -q "first_qa_attention_slug=02-remediating"
+  echo "$output" | grep -q "qa_attention_status=verify"
+}

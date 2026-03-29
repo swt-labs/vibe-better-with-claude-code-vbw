@@ -221,16 +221,16 @@ else
   fail "vibe: routed verify precompute missing fail-closed verify_context sentinel"
 fi
 
-if grep -q 'remediation/uat/.uat-remediation-stage' "$VERIFY_FILE" && grep -q 'remediation/qa/.qa-remediation-stage' "$VERIFY_FILE"; then
-  pass "verify: remediation-only precompute is driven by active remediation state files"
+if grep -q '_uat_stage=' "$VERIFY_FILE" && grep -q '_qa_stage=' "$VERIFY_FILE" && grep -q 'research|plan|execute|fix|verify|done' "$VERIFY_FILE"; then
+  pass "verify: remediation-only precompute is driven by normalized remediation stages"
 else
-  fail "verify: remediation-only precompute still appears history-driven instead of state-driven"
+  fail "verify: remediation-only precompute still appears history-driven instead of normalized-state driven"
 fi
 
-if grep -q 'remediation/uat/.uat-remediation-stage' "$VIBE_FILE" && grep -q 'remediation/qa/.qa-remediation-stage' "$VIBE_FILE"; then
-  pass "vibe: remediation-only precompute is driven by active remediation state files"
+if grep -q 'grep '\''^stage=' "$VIBE_FILE" && grep -q '_uat_stage=' "$VIBE_FILE" && grep -q '_qa_stage=' "$VIBE_FILE"; then
+  pass "vibe: remediation-only precompute is driven by normalized remediation stages"
 else
-  fail "vibe: remediation-only precompute still appears history-driven instead of state-driven"
+  fail "vibe: remediation-only precompute still appears history-driven instead of normalized-state driven"
 fi
 
 if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$ROOT/references/execute-protocol.md"; then
@@ -245,7 +245,7 @@ else
   fail "vibe: QA remediation verify missing remediation-only verify context"
 fi
 
-if grep -q 'if \[ -f "\$PDIR/remediation/uat/.uat-remediation-stage" \] || \[ -f "\$PDIR/remediation/qa/.qa-remediation-stage" \]' "$VERIFY_FILE"; then
+if grep -q 'PDIR=".vbw-planning/phases/{target-slug}"' "$VERIFY_FILE" && grep -q '_uat_stage=' "$VERIFY_FILE" && grep -q '_qa_stage=' "$VERIFY_FILE"; then
   pass "verify: misnamed-plan refresh recomputes remediation scope from active state files"
 else
   fail "verify: misnamed-plan refresh still appears history-driven instead of state-driven"
@@ -294,6 +294,12 @@ if grep -q 'first_qa_attention_phase' "$QA_FILE" && grep -q 'qa_attention_status
   pass "qa: auto-detect can target stale or failed QA even with terminal UAT"
 else
   fail "qa: missing first_qa_attention-based auto-detect guidance"
+fi
+
+if grep -q 'pending`, `failed`, or `verify`' "$QA_FILE"; then
+  pass "qa: auto-detect includes verify-stage remediation escape hatch"
+else
+  fail "qa: auto-detect missing verify-stage remediation escape hatch"
 fi
 
 if grep -q 'case "\$QA_STAGE" in' "$QA_FILE" && grep -q 'verify)' "$QA_FILE" && grep -q 'done)' "$QA_FILE" && grep -q 'plan|execute' "$QA_FILE"; then
