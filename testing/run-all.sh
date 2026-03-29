@@ -13,6 +13,17 @@ trap 'rm -rf "$TMPDIR_JOBS"' EXIT
 declare -a JOB_NAMES=()
 declare -a JOB_PIDS=()
 declare -a JOB_TYPES=()  # "contract" or "bats"
+declare -a SERIAL_BATS_FILES=(
+  "$ROOT/tests/statusline-cache-isolation.bats"
+)
+
+is_serial_bats_file() {
+  local candidate="$1" serial_file
+  for serial_file in "${SERIAL_BATS_FILES[@]}"; do
+    [ "$candidate" = "$serial_file" ] && return 0
+  done
+  return 1
+}
 
 default_bats_workers() {
   local cpu_count
@@ -80,13 +91,22 @@ run_job contract "qa-persistence-contract"  bash "$ROOT/testing/verify-qa-persis
 BATS_WORKERS="${BATS_WORKERS:-$(default_bats_workers)}"
 bats_launched=false
 if command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; then
-  bats_files=("$ROOT/tests/"*.bats)
+  all_bats_files=("$ROOT/tests/"*.bats)
+  bats_files=()
+  serial_bats_files=()
+  for bats_file in "${all_bats_files[@]}"; do
+    if is_serial_bats_file "$bats_file"; then
+      serial_bats_files+=("$bats_file")
+    else
+      bats_files+=("$bats_file")
+    fi
+  done
   total_files="${#bats_files[@]}"
   bats_launched=true
 
-  if [ "$BATS_WORKERS" -le 1 ] || [ "$total_files" -le 1 ]; then
+  if [ "$total_files" -gt 0 ] && { [ "$BATS_WORKERS" -le 1 ] || [ "$total_files" -le 1 ]; }; then
     run_job bats "bats-all" bats "${bats_files[@]}"
-  else
+  elif [ "$total_files" -gt 0 ]; then
     for ((w=0; w<BATS_WORKERS; w++)); do
       worker_files=()
       for ((f=w; f<total_files; f+=BATS_WORKERS)); do
@@ -102,6 +122,7 @@ fi
 bats_label="0 bats"
 if [ "$bats_launched" = true ]; then
   bats_label="$BATS_WORKERS bats workers"
+  [ "${#serial_bats_files[@]}" -gt 0 ] && bats_label="$bats_label + ${#serial_bats_files[@]} serial file(s)"
 fi
 echo "Launched ${#JOB_PIDS[@]} parallel jobs (25 contract + $bats_label)..."
 echo ""
@@ -141,6 +162,20 @@ for i in "${!JOB_PIDS[@]}"; do
     bats_fail=$((bats_fail + ${wf:-0}))
   fi
 done
+
+if [ "${#serial_bats_files[@]}" -gt 0 ]; then
+  echo "Running serial bats files..."
+  if ! bats "${serial_bats_files[@]}" > "$TMPDIR_JOBS/bats-serial.out" 2>&1; then
+    bats_workers_failed=1
+    echo "--- bats-serial FAILURES ---"
+    grep -E '^not ok|^# ' "$TMPDIR_JOBS/bats-serial.out" || true
+    echo ""
+  fi
+  wp=$(grep -c '^ok ' "$TMPDIR_JOBS/bats-serial.out" 2>/dev/null || true)
+  wf=$(grep -c '^not ok ' "$TMPDIR_JOBS/bats-serial.out" 2>/dev/null || true)
+  bats_pass=$((bats_pass + ${wp:-0}))
+  bats_fail=$((bats_fail + ${wf:-0}))
+fi
 
 # --- Summary ---
 total_contracts=$((contract_pass + contract_fail))

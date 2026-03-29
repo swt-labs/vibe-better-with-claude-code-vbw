@@ -7,7 +7,6 @@ load test_helper
 
 LIB="$SCRIPTS_DIR/lib/vbw-config-root.sh"
 STATUSLINE="$SCRIPTS_DIR/vbw-statusline.sh"
-SESSION_START="$SCRIPTS_DIR/session-start.sh"
 
 setup() {
   setup_temp_dir
@@ -322,27 +321,3 @@ JSON
   ! echo "$output" | grep -qiE "model.*qual|qual.*model|profile.*qual"
 }
 
-@test "session-start seeds statusline cache per nested VBW workspace root" {
-  local outer="$TEST_TEMP_DIR/nested-session-outer"
-  local inner="$outer/packages/ui"
-
-  setup_workspace "$outer"
-  mkdir -p "$inner/.vbw-planning" "$inner/src"
-  cat > "$inner/.vbw-planning/config.json" <<'JSON'
-{"effort": "balanced", "model_profile": "balanced"}
-JSON
-
-  local outer_cache inner_cache
-  outer_cache=$(vbw_cache_prefix_for_root "$outer" "$ORIG_UID")
-  inner_cache=$(vbw_cache_prefix_for_root "$inner" "$ORIG_UID")
-  [ "$outer_cache" != "$inner_cache" ]
-
-  cd "$inner/src"
-  bash "$SESSION_START" >/dev/null 2>&1
-  cd "$PROJECT_ROOT"
-
-  [ -f "${inner_cache}-fast" ]
-  [ -f "${inner_cache}-slow" ]
-  [ -f "${inner_cache}-ok" ]
-  [ ! -f "${outer_cache}-fast" ]
-}

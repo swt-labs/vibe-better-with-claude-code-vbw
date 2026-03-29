@@ -13,12 +13,14 @@ export CONFIG_DIR="${PROJECT_ROOT}/config"
 setup_temp_dir() {
   TEST_TEMP_DIR=$(mktemp -d)
   export TEST_TEMP_DIR
+  export VBW_AGENT_PID_LOCK_DIR="$TEST_TEMP_DIR/.vbw-agent-pid-lock"
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
 }
 
 # Clean up temp directory
 teardown_temp_dir() {
   [ -n "${TEST_TEMP_DIR:-}" ] && rm -rf "$TEST_TEMP_DIR"
+  unset VBW_AGENT_PID_LOCK_DIR
 }
 
 vbw_cache_prefix_for_root() {

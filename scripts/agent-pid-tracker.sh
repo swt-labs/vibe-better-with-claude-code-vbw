@@ -13,7 +13,7 @@ set -euo pipefail
 
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 PID_FILE="$PLANNING_DIR/.agent-pids"
-LOCK_DIR="/tmp/vbw-agent-pid-lock"
+LOCK_DIR="${VBW_AGENT_PID_LOCK_DIR:-/tmp/vbw-agent-pid-lock}"
 
 # --- File locking helpers ---
 acquire_lock() {
