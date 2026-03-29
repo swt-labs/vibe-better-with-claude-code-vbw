@@ -30,7 +30,7 @@ else
   fail "references/lsp-first-policy.md missing"
 fi
 
-if grep -q "LSP.*first\|prefer LSP\|Prefer.*LSP" "$POLICY" 2>/dev/null; then
+if grep -Eiq 'LSP.*first|prefer LSP|Prefer.*LSP' "$POLICY" 2>/dev/null; then
   pass "policy doc states LSP-first rule"
 else
   fail "policy doc missing LSP-first rule"
@@ -42,7 +42,7 @@ else
   fail "policy doc missing Search/Grep/Glob fallback scope"
 fi
 
-if grep -q "LSP is unavailable\|LSP.*error" "$POLICY" 2>/dev/null; then
+if grep -Eiq 'LSP is unavailable|LSP.*error' "$POLICY" 2>/dev/null; then
   pass "policy doc covers LSP unavailable fallback"
 else
   fail "policy doc missing LSP unavailable fallback"
@@ -75,14 +75,14 @@ for agent in "${LSP_AGENTS[@]}"; do
     else
       pass "${SHORT_NAME}: LSP inherited via disallowedTools pattern (not denied)"
     fi
-  elif [[ "$agent" == "vbw-dev" ]] && grep -q "Prefer.*LSP\|prefer.*LSP" "$AGENT_FILE"; then
+  elif [[ "$agent" == "vbw-dev" ]] && grep -Eiq 'Prefer.*LSP|prefer.*LSP' "$AGENT_FILE"; then
     pass "${SHORT_NAME}: LSP inherited (tools via context), LSP guidance present"
   else
     fail "${SHORT_NAME}: LSP missing from tools list"
   fi
 
   # Verify LSP-first preference wording (case-insensitive)
-  if grep -qi "Prefer.*LSP.*(go-to-definition, find-references" "$AGENT_FILE"; then
+  if grep -Eiq 'Prefer.*LSP.*\(go-to-definition, find-references' "$AGENT_FILE"; then
     pass "${SHORT_NAME}: LSP-first preference instruction present"
   else
     fail "${SHORT_NAME}: missing LSP-first preference instruction"
@@ -124,7 +124,7 @@ else
 fi
 
 # Research-present path should still allow targeted LSP
-if grep -A5 "If RESEARCH.md exists" "$LEAD" | grep -q "prefer.*LSP\|LSP.*(go-to-definition"; then
+if grep -A5 "If RESEARCH.md exists" "$LEAD" | grep -Eiq 'prefer.*LSP|LSP.*\(go-to-definition'; then
   pass "lead: research-present path allows targeted LSP validation"
 else
   fail "lead: research-present path missing targeted LSP validation"
@@ -186,13 +186,13 @@ echo "--- Contributor docs LSP-first convention checks ---"
 AGENTS_MD="$ROOT/AGENTS.md"
 CONTRIB="$ROOT/CONTRIBUTING.md"
 
-if grep -q "LSP-first.*code navigation\|lsp-first-policy.md" "$AGENTS_MD"; then
+if grep -Eiq 'LSP-first.*code navigation|lsp-first-policy\.md' "$AGENTS_MD"; then
   pass "AGENTS.md: LSP-first convention documented"
 else
   fail "AGENTS.md: missing LSP-first convention"
 fi
 
-if grep -q "LSP-first.*policy\|lsp-first-policy.md" "$CONTRIB"; then
+if grep -Eiq 'LSP-first.*policy|lsp-first-policy\.md' "$CONTRIB"; then
   pass "CONTRIBUTING.md: LSP-first policy referenced"
 else
   fail "CONTRIBUTING.md: missing LSP-first policy reference"

@@ -95,7 +95,9 @@ jobs:
 
       - name: Run all contract checks (parallel)
         run: |
-          declare -a NAMES=() PIDS=()
+          declare -a NAMES=()
+          declare -a PIDS=()
+          declare -a FAILED_NAMES=()
           run_check() {
             local name="$1" cmd="$2"
             NAMES+=("$name")
@@ -133,14 +135,20 @@ jobs:
           for i in "${!PIDS[@]}"; do
             if ! wait "${PIDS[$i]}"; then
               failures=$((failures + 1))
+              FAILED_NAMES+=("${NAMES[$i]}")
               echo "::error::FAIL: ${NAMES[$i]}"
+              echo "--- begin ${NAMES[$i]} output ---"
               cat "/tmp/contract-${NAMES[$i]}.out"
+              echo "--- end ${NAMES[$i]} output ---"
             else
               echo "PASS: ${NAMES[$i]}"
             fi
           done
           echo ""
           echo "Contract checks: $(( ${#NAMES[@]} - failures ))/${#NAMES[@]} passed"
+          if [ "$failures" -gt 0 ]; then
+            echo "Failed contract scripts: ${FAILED_NAMES[*]}"
+          fi
           [ "$failures" -eq 0 ] || exit 1
 
   qa-review-check:
