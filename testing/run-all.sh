@@ -89,6 +89,16 @@ run_job contract "qa-persistence-contract"  bash "$ROOT/testing/verify-qa-persis
 
 # --- Launch bats workers concurrently with contract checks ---
 BATS_WORKERS="${BATS_WORKERS:-$(default_bats_workers)}"
+case "$BATS_WORKERS" in
+  ''|*[!0-9]*)
+    echo "Invalid BATS_WORKERS=$BATS_WORKERS — falling back to auto-detected worker count."
+    BATS_WORKERS="$(default_bats_workers)"
+    ;;
+  0)
+    echo "Invalid BATS_WORKERS=0 — falling back to auto-detected worker count."
+    BATS_WORKERS="$(default_bats_workers)"
+    ;;
+esac
 bats_launched=false
 if command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; then
   all_bats_files=("$ROOT/tests/"*.bats)

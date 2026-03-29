@@ -654,20 +654,14 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
   EXTRA_ENABLED=0; EXTRA_PCT=-1; EXTRA_USED_C=0; EXTRA_LIMIT_C=0; FETCH_OK="noauth"
   OAUTH_TOKEN=""
   AUTH_METHOD=""
+  AUTH_CLASS="api_key"
   HIDE_LIMITS=$(jq -r '.statusline_hide_limits // false' "$VBW_PLANNING_DIR/config.json" 2>/dev/null)
   HIDE_LIMITS_API=$(jq -r '.statusline_hide_limits_for_api_key // false' "$VBW_PLANNING_DIR/config.json" 2>/dev/null)
-
-  # Respect CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC — skip ALL outbound requests (#249)
-  _resolve_notraffic
-  [ -n "$_NOTRAFFIC_ACTIVE" ] && FETCH_OK="notraffic"
-
-  if [ "$FETCH_OK" = "notraffic" ]; then
-    : # skip token lookup, usage fetch, and version check entirely
-  else
 
   # Priority 1: env var override (escape hatch for keychain issues)
   if [ -n "${VBW_OAUTH_TOKEN:-}" ]; then
     OAUTH_TOKEN="$VBW_OAUTH_TOKEN"
+    AUTH_CLASS="oauth"
   fi
 
   # Priority 2: system credential store (skip if VBW_SKIP_KEYCHAIN=1, e.g. in tests)
@@ -676,6 +670,7 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
       CRED_JSON=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
       if [ -n "$CRED_JSON" ]; then
         OAUTH_TOKEN=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+        [ -n "$OAUTH_TOKEN" ] && AUTH_CLASS="oauth"
       fi
     else
       # Linux: try secret-tool (GNOME Keyring) then pass (password-store)
@@ -683,11 +678,13 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
         CRED_JSON=$(secret-tool lookup service "Claude Code-credentials" 2>/dev/null)
         if [ -n "$CRED_JSON" ]; then
           OAUTH_TOKEN=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+          [ -n "$OAUTH_TOKEN" ] && AUTH_CLASS="oauth"
         fi
       elif command -v pass &>/dev/null; then
         CRED_JSON=$(pass show "claude-code/credentials" 2>/dev/null)
         if [ -n "$CRED_JSON" ]; then
           OAUTH_TOKEN=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+          [ -n "$OAUTH_TOKEN" ] && AUTH_CLASS="oauth"
         fi
       fi
     fi
@@ -708,7 +705,10 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
       for _cred in "$_cdir/.credentials.json" "$_cdir/credentials.json"; do
         if [ -f "$_cred" ]; then
           OAUTH_TOKEN=$(jq -r '.claudeAiOauth.accessToken // empty' "$_cred" 2>/dev/null)
-          [ -n "$OAUTH_TOKEN" ] && break 2
+          if [ -n "$OAUTH_TOKEN" ]; then
+            AUTH_CLASS="oauth"
+            break 2
+          fi
         fi
       done
     done
@@ -720,8 +720,17 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
     AUTH_STATUS=$(CLAUDECODE="" claude auth status --json 2>/dev/null) || AUTH_STATUS=""
     if [ -n "$AUTH_STATUS" ]; then
       AUTH_METHOD=$(echo "$AUTH_STATUS" | jq -r '.authMethod // empty' 2>/dev/null)
+      [ "$AUTH_METHOD" = "claude.ai" ] && AUTH_CLASS="oauth"
     fi
   fi
+
+  # Respect CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC — skip ALL outbound requests (#249)
+  _resolve_notraffic
+  [ -n "$_NOTRAFFIC_ACTIVE" ] && FETCH_OK="notraffic"
+
+  if [ "$FETCH_OK" = "notraffic" ]; then
+    : # skip usage fetch and version check entirely
+  else
 
   if [ -n "$OAUTH_TOKEN" ]; then
     HTTP_CODE="000"
@@ -782,13 +791,21 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
 
   fi # end: notraffic guard
 
-  printf '%s\n' "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}|${HIDE_LIMITS:-false}|${HIDE_LIMITS_API:-false}" > "$SLOW_CF" 2>/dev/null
+  printf '%s\n' "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}|${AUTH_CLASS:-api_key}|${HIDE_LIMITS:-false}|${HIDE_LIMITS_API:-false}" > "$SLOW_CF" 2>/dev/null
 fi
 
 if [ -O "$SLOW_CF" ]; then
   IFS='|' read -r FIVE_PCT FIVE_EPOCH WEEK_PCT WEEK_EPOCH SONNET_PCT \
                   EXTRA_ENABLED EXTRA_PCT EXTRA_USED_C EXTRA_LIMIT_C \
-                  FETCH_OK UPDATE_AVAIL AUTH_METHOD HIDE_LIMITS HIDE_LIMITS_API < "$SLOW_CF"
+                  FETCH_OK UPDATE_AVAIL AUTH_METHOD AUTH_CLASS HIDE_LIMITS HIDE_LIMITS_API < "$SLOW_CF"
+  # Backward compatibility: older slow-cache entries had no AUTH_CLASS field.
+  if [ "$AUTH_CLASS" = "true" ] || [ "$AUTH_CLASS" = "false" ]; then
+    HIDE_LIMITS_API="$HIDE_LIMITS"
+    HIDE_LIMITS="$AUTH_CLASS"
+    AUTH_CLASS="api_key"
+    [ "$AUTH_METHOD" = "claude.ai" ] && AUTH_CLASS="oauth"
+  fi
+  AUTH_CLASS="${AUTH_CLASS:-api_key}"
 fi
 
 # --- Cost cache: delta attribution per render ---
@@ -879,7 +896,7 @@ fi
 # --- Hide-limits suppression ---
 if [ "$HIDE_LIMITS" = "true" ]; then
   USAGE_LINE=""
-elif [ "$HIDE_LIMITS_API" = "true" ] && [ "$FETCH_OK" = "noauth" ]; then
+elif [ "$HIDE_LIMITS_API" = "true" ] && [ "${AUTH_CLASS:-api_key}" = "api_key" ]; then
   USAGE_LINE=""
 fi
 
