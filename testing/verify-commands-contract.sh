@@ -252,6 +252,20 @@ done
 echo ""
 echo "=== QA Result Gate Contract ==="
 
+QA_FILE="$COMMANDS_DIR/qa.md"
+
+if grep -q 'qa-remediation-state\.sh get' "$QA_FILE"; then
+  pass "qa: resolves remediation state before choosing verification output path"
+else
+  fail "qa: missing qa-remediation-state.sh get — standalone QA may overwrite phase-level verification"
+fi
+
+if grep -q 'verification_path=' "$QA_FILE" && grep -q 'Output path: {VERIF_PATH}' "$QA_FILE"; then
+  pass "qa: uses persisted verification_path for standalone QA output"
+else
+  fail "qa: missing persisted verification_path contract for standalone QA output"
+fi
+
 # vibe.md must reference qa-result-gate.sh at both gate call sites (primary + remediation verify)
 _vibe_gate_count=$(grep -c 'qa-result-gate\.sh' "$COMMANDS_DIR/vibe.md" 2>/dev/null || echo 0)
 if [ "$_vibe_gate_count" -ge 2 ]; then

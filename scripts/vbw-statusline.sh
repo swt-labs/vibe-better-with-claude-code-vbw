@@ -476,12 +476,15 @@ if ! cache_fresh "$FAST_CF" 5; then
             plan)    QA="QA: Planning fix"; QA_COLOR="Y" ;;
             execute) QA="QA: Fixing";       QA_COLOR="Y" ;;
             verify)  QA="QA: Re-verifying"; QA_COLOR="Y" ;;
-            done)    QA="QA: pass";         QA_COLOR="G" ;;
+            done)    ;;
             *)       _qa_rem_stage="none" ;;
           esac
         fi
         _verif_file=""
-        if [ "${_qa_rem_stage:-none}" = "none" ]; then
+        if [ "${_qa_rem_stage:-none}" = "done" ]; then
+          _verif_file=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" current "$PDIR" 2>/dev/null || true)
+          [ -n "$_verif_file" ] && [ ! -f "$_verif_file" ] && _verif_file=""
+        elif [ "${_qa_rem_stage:-none}" = "none" ]; then
           _verif_file=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" phase "$PDIR" 2>/dev/null || true)
           [ -n "$_verif_file" ] && [ ! -f "$_verif_file" ] && _verif_file=""
         fi

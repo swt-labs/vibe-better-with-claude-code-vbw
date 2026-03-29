@@ -326,7 +326,28 @@ if [ "$_cvc_has_verif_history" = true ]; then
       in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
     ' "$_cvc_phase_verif" 2>/dev/null) || _cvc_vhist_result=""
     echo "--- Phase VERIFICATION (${_cvc_vhist_result:-unknown}) ---"
-    awk -F'|' '/^\|/ && NF>=5 { for(i=5;i<=NF;i++) { s=$i; gsub(/[[:space:]]*\*+[[:space:]]*/, " ", s); if(s ~ /FAIL/) { print; break } } }' "$_cvc_phase_verif" 2>/dev/null || true
+    awk -F'|' '
+      function trim(v) {
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        return v
+      }
+      /^\|/ {
+        if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
+        for (i = 2; i < NF; i++) {
+          cell = trim($i)
+          if (cell == "Status") {
+            status_col = i
+            next
+          }
+        }
+        if (status_col > 0) {
+          status = trim($(status_col))
+          gsub(/\*+/, "", status)
+          status = trim(status)
+          if (status == "FAIL") print
+        }
+      }
+    ' "$_cvc_phase_verif" 2>/dev/null || true
   fi
 
   # Per-round (chronological compounding)
@@ -341,7 +362,28 @@ if [ "$_cvc_has_verif_history" = true ]; then
         in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
       ' "$_cvc_verif_file" 2>/dev/null) || _cvc_vhist_rresult=""
       echo "--- Round ${_cvc_vhist_rr} VERIFICATION (${_cvc_vhist_rresult:-unknown}) ---"
-      awk -F'|' '/^\|/ && NF>=5 { for(i=5;i<=NF;i++) { s=$i; gsub(/[[:space:]]*\*+[[:space:]]*/, " ", s); if(s ~ /FAIL/) { print; break } } }' "$_cvc_verif_file" 2>/dev/null || true
+      awk -F'|' '
+        function trim(v) {
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+          return v
+        }
+        /^\|/ {
+          if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
+          for (i = 2; i < NF; i++) {
+            cell = trim($i)
+            if (cell == "Status") {
+              status_col = i
+              next
+            }
+          }
+          if (status_col > 0) {
+            status = trim($(status_col))
+            gsub(/\*+/, "", status)
+            status = trim(status)
+            if (status == "FAIL") print
+          }
+        }
+      ' "$_cvc_verif_file" 2>/dev/null || true
     done <<< "$_cvc_qa_round_verifs"
   fi
 

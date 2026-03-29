@@ -1547,3 +1547,39 @@ EOF
   pass_in_history=$(echo "$output" | awk '/VERIFICATION HISTORY/,0' | grep -c "PASS" || true)
   [ "$pass_in_history" -eq 0 ]
 }
+
+@test "compile-verify-context: 6-column non-status FAIL text does not create false failure history" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Artifact Checks
+| # | ID | Artifact | Exists | Contains | Status |
+|---|-----|----------|--------|----------|--------|
+| 1 | ART-01 | docs/api.md | Yes | Contains FAIL example | PASS |
+| 2 | ART-02 | docs/guide.md | Yes | Stable output | PASS |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== VERIFICATION HISTORY ==="* ]]
+  local false_fail
+  false_fail=$(echo "$output" | awk '/VERIFICATION HISTORY/,0' | grep -c "Contains FAIL example" || true)
+  [ "$false_fail" -eq 0 ]
+}
