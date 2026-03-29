@@ -224,7 +224,61 @@ JSON
   [ "$result" = "$root_real" ]
 }
 
-# --- Test 9: statusline reads config from subdirectory (end-to-end) ---
+# --- Test 9: find_vbw_root with nonexistent start_dir falls back to CWD (F-04) ---
+
+@test "find_vbw_root: falls back to CWD when start_dir does not exist" {
+  local root="$TEST_TEMP_DIR/nonexistent-start"
+  setup_workspace "$root"
+  local root_real; root_real=$(cd "$root" && pwd -P 2>/dev/null || echo "$root")
+
+  local result
+  result=$(
+    cd "$root"
+    unset VBW_CONFIG_ROOT 2>/dev/null || true
+    unset VBW_PLANNING_DIR 2>/dev/null || true
+    . "$LIB"
+    # Pass a completely nonexistent path — cd fails, else branch fires
+    find_vbw_root "/no/such/directory/anywhere"
+    echo "$VBW_CONFIG_ROOT"
+  )
+  cd "$PROJECT_ROOT"
+
+  # Should resolve via CWD fallback since start_dir doesn't exist
+  [ "$result" = "$root_real" ]
+}
+
+# --- Test 10: find_vbw_root resolves nearest ancestor with nested .vbw-planning/ (F-12) ---
+
+@test "find_vbw_root: resolves nearest ancestor when nested .vbw-planning/ exists" {
+  local outer="$TEST_TEMP_DIR/nested-outer"
+  local inner="$outer/packages/ui"
+  # Set up outer workspace
+  setup_workspace "$outer"
+  # Set up inner (nested) workspace with its own .vbw-planning/
+  mkdir -p "$inner/.vbw-planning"
+  cat > "$inner/.vbw-planning/config.json" <<'JSON'
+{"effort": "balanced", "model_profile": "balanced"}
+JSON
+  mkdir -p "$inner/src/components"
+
+  local inner_real; inner_real=$(cd "$inner" && pwd -P 2>/dev/null || echo "$inner")
+
+  local result
+  result=$(
+    cd "$inner/src/components"
+    unset VBW_CONFIG_ROOT 2>/dev/null || true
+    unset VBW_PLANNING_DIR 2>/dev/null || true
+    . "$LIB"
+    find_vbw_root
+    echo "$VBW_CONFIG_ROOT"
+  )
+  cd "$PROJECT_ROOT"
+
+  # Nearest ancestor (inner) should win, not outer
+  [ "$result" = "$inner_real" ]
+}
+
+# --- Test 11: statusline reads config from subdirectory (end-to-end) ---
 # Hermetic: copies the statusline script + deps into the test workspace so
 # $_SL_SCRIPT_DIR resolves inside the workspace, preventing find_vbw_root
 # from escaping to the developer's real .vbw-planning/ directory.
