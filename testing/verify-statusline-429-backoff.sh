@@ -82,8 +82,8 @@ fi
 # The version check curl must be inside the else branch of the notraffic guard,
 # so it's skipped when nonessential traffic is disabled.
 # Verify: "notraffic guard" comment closing comes AFTER the REMOTE_VER curl line.
-_NOTRAFFIC_LINE=$(grep -n 'end: notraffic guard' "$SL" | head -1 | cut -d: -f1)
-_VERSION_CURL_LINE=$(grep -n 'raw.githubusercontent.com.*VERSION' "$SL" | head -1 | cut -d: -f1)
+_NOTRAFFIC_LINE=$(grep -n 'end: notraffic guard' "$SL" | head -1 | cut -d: -f1 || true)
+_VERSION_CURL_LINE=$(grep -n 'raw.githubusercontent.com.*VERSION' "$SL" | head -1 | cut -d: -f1 || true)
 if [ -n "$_NOTRAFFIC_LINE" ] && [ -n "$_VERSION_CURL_LINE" ] \
    && [ "$_VERSION_CURL_LINE" -lt "$_NOTRAFFIC_LINE" ] 2>/dev/null; then
   pass "notraffic guard covers version check curl"
@@ -91,15 +91,16 @@ else
   fail "notraffic guard covers version check curl"
 fi
 
-# --- Test 11: notraffic guard covers token lookups (QA round 1 F3) ---
-# Token Priority 1 (VBW_OAUTH_TOKEN) must be inside the else branch of notraffic guard.
-_TOKEN_P1_LINE=$(grep -n 'VBW_OAUTH_TOKEN' "$SL" | head -1 | cut -d: -f1)
-_NOTRAFFIC_ELSE_LINE=$(grep -n 'skip token lookup.*version check' "$SL" | head -1 | cut -d: -f1)
-if [ -n "$_TOKEN_P1_LINE" ] && [ -n "$_NOTRAFFIC_ELSE_LINE" ] \
-   && [ "$_TOKEN_P1_LINE" -gt "$_NOTRAFFIC_ELSE_LINE" ] 2>/dev/null; then
-  pass "notraffic guard covers token lookups"
+# --- Test 11: auth classification happens before notraffic short-circuit ---
+# We now preserve API-key vs OAuth classification even when traffic is skipped.
+# That means token lookup must happen BEFORE the if [ "$FETCH_OK" = "notraffic" ] gate.
+_TOKEN_P1_LINE=$(grep -n 'VBW_OAUTH_TOKEN' "$SL" | head -1 | cut -d: -f1 || true)
+_NOTRAFFIC_SET_LINE=$(grep -n 'FETCH_OK="notraffic"' "$SL" | tail -1 | cut -d: -f1 || true)
+if [ -n "$_TOKEN_P1_LINE" ] && [ -n "$_NOTRAFFIC_SET_LINE" ] \
+   && [ "$_TOKEN_P1_LINE" -lt "$_NOTRAFFIC_SET_LINE" ] 2>/dev/null; then
+  pass "auth classification happens before notraffic short-circuit"
 else
-  fail "notraffic guard covers token lookups"
+  fail "auth classification happens before notraffic short-circuit"
 fi
 
 # --- Test 12: notraffic flag bypasses backoff TTL via shared helper (#249 QA R3/R4) ---
@@ -127,6 +128,13 @@ if grep -q 'FETCH_OK.*=.*"noauth"' "$SL" && grep -q 'using API key' "$SL"; then
   pass "noauth state renders API-key message before catch-all"
 else
   fail "noauth state renders API-key message before catch-all"
+fi
+
+# --- Test 15: hide-limits-for-api-key uses auth classification, not FETCH_OK ---
+if grep -q 'HIDE_LIMITS_API.*AUTH_CLASS' "$SL"; then
+  pass "hide-limits-for-api-key uses auth classification"
+else
+  fail "hide-limits-for-api-key uses auth classification"
 fi
 
 echo ""

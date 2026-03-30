@@ -49,8 +49,10 @@ setup() {
   export GIT_AUTHOR_EMAIL="test@test.local"
   export GIT_COMMITTER_NAME="test"
   export GIT_COMMITTER_EMAIL="test@test.local"
-  # Clean caches
-  rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+  export VBW_SKIP_KEYCHAIN=1
+  export VBW_SKIP_AUTH_CLI=1
+  export VBW_SKIP_UPDATE_CHECK=1
+  cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
   # Create isolated repo
   export TEST_REPO="$TEST_TEMP_DIR/repo-ac"
   mkdir -p "$TEST_REPO/.vbw-planning"
@@ -79,7 +81,8 @@ JSON
 
 teardown() {
   cd "$PROJECT_ROOT"
-  rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+  cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
+  unset VBW_SKIP_KEYCHAIN VBW_SKIP_AUTH_CLI VBW_SKIP_UPDATE_CHECK
   teardown_temp_dir
 }
 

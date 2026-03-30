@@ -15,14 +15,18 @@ setup() {
   export GIT_AUTHOR_EMAIL="test@test.local"
   export GIT_COMMITTER_NAME="test"
   export GIT_COMMITTER_EMAIL="test@test.local"
-  rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+  export VBW_SKIP_KEYCHAIN=1
+  export VBW_SKIP_AUTH_CLI=1
+  export VBW_SKIP_UPDATE_CHECK=1
+  cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
   # Ensure VBW_CONFIG_ROOT is unset before each test for a clean walk
   unset VBW_CONFIG_ROOT 2>/dev/null || true
   unset VBW_PLANNING_DIR 2>/dev/null || true
 }
 
 teardown() {
-  rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+  cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
+  unset VBW_SKIP_KEYCHAIN VBW_SKIP_AUTH_CLI VBW_SKIP_UPDATE_CHECK
   teardown_temp_dir
 }
 
@@ -278,6 +282,28 @@ JSON
   [ "$result" = "$inner_real" ]
 }
 
+@test "find_vbw_root: prefers CWD workspace when start_dir points at another VBW repo" {
+  local plugin_root="$TEST_TEMP_DIR/plugin-repo"
+  local target_root="$TEST_TEMP_DIR/target-repo"
+  mkdir -p "$plugin_root/scripts" "$target_root/apps/mobile"
+  setup_workspace "$plugin_root"
+  setup_workspace "$target_root"
+  local target_real; target_real=$(cd "$target_root" && pwd -P 2>/dev/null || echo "$target_root")
+
+  local result
+  result=$(
+    cd "$target_root/apps/mobile"
+    unset VBW_CONFIG_ROOT 2>/dev/null || true
+    unset VBW_PLANNING_DIR 2>/dev/null || true
+    . "$LIB"
+    find_vbw_root "$plugin_root/scripts"
+    echo "$VBW_CONFIG_ROOT"
+  )
+  cd "$PROJECT_ROOT"
+
+  [ "$result" = "$target_real" ]
+}
+
 # --- Test 11: statusline reads config from subdirectory (end-to-end) ---
 # Hermetic: copies the statusline script + deps into the test workspace so
 # $_SL_SCRIPT_DIR resolves inside the workspace, preventing find_vbw_root
@@ -299,6 +325,7 @@ JSON
   mkdir -p "$sl_dir/lib"
   cp "$STATUSLINE" "$sl_dir/vbw-statusline.sh"
   cp "$SCRIPTS_DIR/lib/vbw-config-root.sh" "$sl_dir/lib/"
+  cp "$SCRIPTS_DIR/lib/vbw-cache-key.sh" "$sl_dir/lib/"
   # Copy optional sourced helpers (statusline degrades gracefully if absent)
   for f in summary-utils.sh uat-utils.sh phase-state-utils.sh; do
     [ -f "$SCRIPTS_DIR/$f" ] && cp "$SCRIPTS_DIR/$f" "$sl_dir/"
@@ -319,3 +346,4 @@ JSON
   # (use a pattern that matches the profile display, not any word)
   ! echo "$output" | grep -qiE "model.*qual|qual.*model|profile.*qual"
 }
+

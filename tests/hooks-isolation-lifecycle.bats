@@ -87,9 +87,9 @@ load test_helper
 @test "session config cache file is written at session start" {
   setup_temp_dir
   create_test_config
-  CACHE_FILE="/tmp/vbw-config-cache-$(id -u)"
+  CACHE_FILE="$TEST_TEMP_DIR/vbw-config-cache"
   rm -f "$CACHE_FILE" 2>/dev/null
-  run bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/session-start.sh'"
+  run env VBW_CONFIG_CACHE="$CACHE_FILE" bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/session-start.sh'"
   [ -f "$CACHE_FILE" ]
   grep -q "VBW_EFFORT=" "$CACHE_FILE"
   grep -q "VBW_AUTONOMY=" "$CACHE_FILE"
