@@ -162,6 +162,37 @@ path_is_recorded_non_code_artifact() {
   esac
 }
 
+path_is_documentation_artifact() {
+  local path="${1:-}"
+  local base="${path##*/}"
+  case "$path" in
+    docs/*|*/docs/*)
+      return 0
+      ;;
+  esac
+  case "$base" in
+    AGENTS.md|README|README.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|LICENSE|LICENSE.*|*.md|*.mdx|*.txt|*.rst|*.adoc|*.asciidoc|*.pdf|*.png|*.jpg|*.jpeg|*.gif|*.svg|*.webp)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+path_is_repo_hygiene_artifact() {
+  local path="${1:-}"
+  local base="${path##*/}"
+  case "$base" in
+    .gitignore|.gitattributes|.editorconfig|.prettierignore|.eslintignore|.npmignore|.dockerignore|.stylelintignore|.markdownlint.json|.markdownlint.yaml|.markdownlint.yml|VERSION)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 path_is_metadata_artifact() {
   local path="${1:-}"
   case "$path" in
@@ -169,13 +200,32 @@ path_is_metadata_artifact() {
       return 0
       ;;
   esac
-  path_is_recorded_non_code_artifact "$path"
+  if path_is_recorded_non_code_artifact "$path"; then
+    return 0
+  fi
+  path_is_documentation_artifact "$path"
 }
 
 path_is_code_fix_support_artifact() {
   local path="${1:-}"
   case "$path" in
-    .vbw-planning/*|.claude/*|.claude-plugin/*|.github/*|docs/*|internal/*|testing/*|tests/*|*/docs/*|*/internal/*|*/testing/*|*/tests/*|.*|*/.*|AGENTS.md|CHANGELOG.md|CONTRIBUTING.md|LICENSE|README.md|VERSION|marketplace.json|*/AGENTS.md|*/CHANGELOG.md|*/CONTRIBUTING.md|*/LICENSE|*/README.md|*/VERSION|*/marketplace.json)
+    .vbw-planning/*|.claude/*|.claude-plugin/*)
+      return 0
+      ;;
+  esac
+  if path_is_recorded_non_code_artifact "$path"; then
+    return 0
+  fi
+  if path_is_documentation_artifact "$path"; then
+    return 0
+  fi
+  path_is_repo_hygiene_artifact "$path"
+}
+
+path_is_process_exception_evidence_artifact() {
+  local path="${1:-}"
+  case "$path" in
+    .vbw-planning/*|.claude/*)
       return 0
       ;;
   esac
@@ -412,6 +462,21 @@ paths_include_code_fix_evidence() {
       path=$(canonicalize_phase_path "$path" "$phase_dir")
     fi
     if ! path_is_code_fix_support_artifact "$path"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+paths_include_process_exception_evidence() {
+  local phase_dir="${1:-}"
+  while IFS= read -r path; do
+    path=$(normalize_recorded_path "$path")
+    [ -n "$path" ] || continue
+    if [ -n "$phase_dir" ]; then
+      path=$(canonicalize_phase_path "$path" "$phase_dir")
+    fi
+    if path_is_process_exception_evidence_artifact "$path"; then
       return 0
     fi
   done
@@ -1275,17 +1340,24 @@ case "$RESULT" in
       fi
       echo "qa_gate_routing=QA_RERUN_REQUIRED"
     elif [ "$METADATA_ONLY_ROUND" = "true" ]; then
-      # 5c. Remediation round made no code changes — only metadata/.vbw-planning/ updates.
-      # Re-check phase-level deviations. Metadata-only rounds are only invalid when
-      # they still claim a code-fix path.
-      # Pure plan-amendment / process-exception rounds are valid non-code resolutions.
-      # Semantic correctness of a process-exception (i.e. whether it is truly
-      # non-fixable) is enforced by remediation QA re-verifying the original FAILs;
-      # this deterministic gate only validates structural evidence.
+      # 5c. Remediation round made no implementation/config changes — only
+      # metadata/planning/documentation updates. Re-check phase-level deviations.
+      # Metadata-only rounds are invalid when they still claim a code-fix path.
+      # Pure plan-amendment rounds can resolve cleanly when the original plan was
+      # actually updated. Pure process-exception rounds can resolve cleanly only
+      # when the recorded evidence includes planning/remediation artifacts rather
+      # than delivered docs/README changes alone. Semantic correctness of a
+      # process-exception (i.e. whether it is truly non-fixable) is still enforced
+      # by remediation QA re-verifying the original FAILs; this deterministic gate
+      # only validates structural evidence.
       PHASE_DEVIATION_COUNT=$(count_deviations_in_dir "$PHASE_DIR")
       if [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null; then
         echo "qa_gate_metadata_only_override=true"
         echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
+        echo "qa_gate_routing=REMEDIATION_REQUIRED"
+      elif [ "$ROUND_PLAN_AMENDMENT_COUNT" -eq 0 ] 2>/dev/null \
+        && [ "$ROUND_CLASSIFICATION_TYPE_COUNT" -gt 0 ] 2>/dev/null \
+        && ! paths_include_process_exception_evidence "$PHASE_DIR" <<< "$ROUND_ALL_RECORDED_PATHS"; then
         echo "qa_gate_routing=REMEDIATION_REQUIRED"
       elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
         echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"

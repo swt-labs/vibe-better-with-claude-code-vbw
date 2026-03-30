@@ -2636,7 +2636,7 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
@@ -2870,22 +2870,25 @@ VERIF
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
-@test "tests-only code-fix round fails closed without production code edits" {
-  create_verif "write-verification.sh" "PASS"
-  create_summary_with_yaml_deviations "01-01" "Changed approach"
+@test "tests-only code-fix round can satisfy remediation evidence" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "tests/BaselineTests.swift" "baseline test fixture")
+  create_source_fail_verif "FAIL-01" "Integration tests still need to move into the required file" "$baseline_commit"
+  create_summary_with_yaml_deviations "01-01" "Merged tests into the wrong file"
+  commit_repo_file "tests/IntegrationTests.swift" "moved integration tests into the required file" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
-  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - "tests/qa-result-gate.bats"'
+    '  - "tests/IntegrationTests.swift"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
 round: 01
-title: Tests-only code-fix should fail closed
+title: Tests-only code-fix can resolve a file-placement deviation
 fail_classifications:
-  - {id: "FAIL-01", type: "code-fix", rationale: "Real production code still needs to change"}
+  - {id: "FAIL-01", type: "code-fix", rationale: "Moving the tests into the correct file resolves the original deviation"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -2905,7 +2908,7 @@ VERIF
 
   [ "$status" -eq 0 ]
   [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
-  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
 @test "repo-hygiene dotfile does not satisfy code-fix evidence" {
@@ -2948,12 +2951,12 @@ VERIF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
-@test "absolute support-only paths do not satisfy code-fix evidence" {
+@test "absolute documentation and repo-hygiene paths do not satisfy code-fix evidence" {
   init_git_repo
-  mkdir -p "$TEST_DIR/docs" "$TEST_DIR/tests"
+  mkdir -p "$TEST_DIR/docs"
   : > "$TEST_DIR/README.md"
   : > "$TEST_DIR/docs/remediation-notes.md"
-  : > "$TEST_DIR/tests/qa-result-gate.bats"
+  : > "$TEST_DIR/.gitignore"
 
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
@@ -2966,7 +2969,7 @@ VERIF
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     "  - \"$TEST_DIR/README.md\"
   - \"$TEST_DIR/docs/remediation-notes.md\"
-  - \"$TEST_DIR/tests/qa-result-gate.bats\""
+  - \"$TEST_DIR/.gitignore\""
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -2996,11 +2999,11 @@ VERIF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
-@test "absolute support-only paths do not satisfy code-fix evidence outside git repos" {
-  mkdir -p "$TEST_DIR/docs" "$TEST_DIR/tests"
+@test "absolute documentation and repo-hygiene paths do not satisfy code-fix evidence outside git repos" {
+  mkdir -p "$TEST_DIR/docs"
   : > "$TEST_DIR/README.md"
   : > "$TEST_DIR/docs/remediation-notes.md"
-  : > "$TEST_DIR/tests/qa-result-gate.bats"
+  : > "$TEST_DIR/.gitignore"
 
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
@@ -3013,7 +3016,7 @@ VERIF
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     "  - \"$TEST_DIR/README.md\"
   - \"$TEST_DIR/docs/remediation-notes.md\"
-  - \"$TEST_DIR/tests/qa-result-gate.bats\""
+  - \"$TEST_DIR/.gitignore\""
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -3245,7 +3248,7 @@ VERIF
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
-@test "docs-only round with process-exception is treated as delivered content rather than metadata-only" {
+@test "docs-only round with process-exception still fails closed" {
   create_source_fail_verif "FAIL-0101" "Delivered documentation still needs a process-exception classification"
   create_summary_with_yaml_deviations "01-01" "None"
 
@@ -3280,8 +3283,7 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
-  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
 @test "docs-only round without fail_classifications still fails closed when source FAILs exist" {
@@ -3319,7 +3321,7 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 

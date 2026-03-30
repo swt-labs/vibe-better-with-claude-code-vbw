@@ -1206,13 +1206,15 @@ plan: R01
 status: complete
 files_modified:
   - README.md
+  - .vbw-planning/phases/01-test/01-SUMMARY.md
 deviations: []
 ---
 EOF
   round_anchor_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Documented historical process exception.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   echo "remediation notes" > README.md
-  git add README.md
-  git commit -m "remediation docs" --quiet
+  git add README.md .vbw-planning/phases/01-test/01-SUMMARY.md
+  git commit -m "document remediation summary" --quiet
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n%s\n%s\n' 'stage=done' 'round=01' "round_started_at_commit=${round_anchor_commit}" > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - R01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after remediation.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
@@ -1274,14 +1276,16 @@ plan: R01
 status: complete
 files_modified:
   - README.md
+  - .vbw-planning/phases/01-test/01-SUMMARY.md
 deviations: []
 ---
 EOF
   # Round VERIFICATION.md has PASS
   round_anchor_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Round 01 documented the historical process exception.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   echo "round pass docs" > README.md
-  git add README.md
-  git commit -m "round pass docs" --quiet
+  git add README.md .vbw-planning/phases/01-test/01-SUMMARY.md
+  git commit -m "round pass summary evidence" --quiet
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n%s\n%s\n' 'stage=done' 'round=01' "round_started_at_commit=${round_anchor_commit}" > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - R01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after fix.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
@@ -1362,14 +1366,16 @@ plan: R02
 status: complete
 files_modified:
   - README.md
+  - .vbw-planning/phases/01-test/01-SUMMARY.md
 deviations: []
 ---
 EOF
   # Round-02 VERIFICATION.md has PASS
   round_anchor_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Round 02 documented the historical process exception.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   echo "round two docs" > README.md
-  git add README.md
-  git commit -m "round two docs" --quiet
+  git add README.md .vbw-planning/phases/01-test/01-SUMMARY.md
+  git commit -m "round two summary evidence" --quiet
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n%s\n%s\n' 'stage=done' 'round=02' "round_started_at_commit=${round_anchor_commit}" > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - R02' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after round 2.' > .vbw-planning/phases/01-test/remediation/qa/round-02/R02-VERIFICATION.md
