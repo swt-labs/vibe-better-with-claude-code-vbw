@@ -219,15 +219,40 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
       in_fm && /^---[[:space:]]*$/ { exit }
       in_fm && /^files_modified:/ {
-        # Inline array: files_modified: [a, b]
+        # Inline array: files_modified: ["a", "b"]
         rest=$0; sub(/^files_modified:[[:space:]]*/, "", rest)
         if (rest ~ /^\[/) {
-          gsub(/[\[\]"]/, "", rest)
-          # Split comma-separated values onto separate lines
-          n = split(rest, arr, ",")
-          for (i = 1; i <= n; i++) {
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", arr[i])
-            if (arr[i] != "") print arr[i]
+          # Strip brackets
+          gsub(/^\[|\][[:space:]]*$/, "", rest)
+          # Parse quoted CSV: split on commas outside quotes
+          remainder = rest
+          while (remainder != "") {
+            gsub(/^[[:space:]]+/, "", remainder)
+            if (remainder == "") break
+            if (substr(remainder, 1, 1) == "\"") {
+              # Quoted value — find closing quote
+              val = ""; remainder = substr(remainder, 2)
+              qi = index(remainder, "\"")
+              if (qi > 0) {
+                val = substr(remainder, 1, qi - 1)
+                remainder = substr(remainder, qi + 1)
+              } else {
+                val = remainder; remainder = ""
+              }
+            } else {
+              # Unquoted value — take until comma
+              ci = index(remainder, ",")
+              if (ci > 0) {
+                val = substr(remainder, 1, ci - 1)
+                remainder = substr(remainder, ci)
+              } else {
+                val = remainder; remainder = ""
+              }
+            }
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
+            if (val != "") print val
+            # Skip comma separator
+            sub(/^[[:space:]]*,[[:space:]]*/, "", remainder)
           }
           exit
         }
@@ -247,7 +272,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       in_fm && /^---[[:space:]]*$/ { exit }
       in_fm && /^commit_hashes:/ {
         rest=$0; sub(/^commit_hashes:[[:space:]]*/, "", rest)
-        if (rest ~ /^\[\]/) { exit }
+        if (rest ~ /^\[[[:space:]]*\]/) { exit }
         if (rest ~ /^\[/) { count++; exit }
         in_arr=1; next
       }

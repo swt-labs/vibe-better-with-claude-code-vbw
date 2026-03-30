@@ -1500,3 +1500,50 @@ VERIF
   [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
+
+@test "metadata-only round with zero deviations but incomplete plan coverage → QA_RERUN_REQUIRED" {
+  # Phase-level SUMMARY.md has NO deviations
+  create_summary_with_yaml_deviations "01-01" "None"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # Metadata-only files_modified
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+
+  # Two plans in the round dir but verification only covers one
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix part A
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix part B
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Fix done | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # No deviations so metadata_only_override doesn't fire,
+  # but incomplete plan coverage triggers QA_RERUN_REQUIRED
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_plan_coverage="* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
