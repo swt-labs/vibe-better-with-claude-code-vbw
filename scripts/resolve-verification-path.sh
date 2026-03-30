@@ -165,6 +165,7 @@ case "$MODE" in
           echo "$prev_path"
           exit 0
         fi
+        exit 0
       fi
     fi
     echo "$phase_path"

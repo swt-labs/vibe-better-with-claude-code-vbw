@@ -430,6 +430,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 
 - **stage=plan:** Create `R{RR}-PLAN.md` in `{round_dir}`:
   - Read `source_verification_path` failed checks — these are the current "issues" to fix
+    - If `source_verification_path` is empty, STOP and restore the missing prior-round verification artifact before planning. Do NOT fall back to the phase-level VERIFICATION for round 02+.
   - **Deviation Classification (NON-NEGOTIABLE):** For each FAIL check in the source VERIFICATION.md, classify as exactly one of:
     - **`code-fix`**: The code/config must change to match the plan. The remediation plan MUST include tasks with actual production code file modifications.
     - **`plan-amendment`**: The deviation was a valid improvement over the original plan. The remediation plan MUST include a task to update the original PLAN.md with the actual approach and rationale, marking the deviation as resolved-by-amendment.

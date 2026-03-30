@@ -147,11 +147,20 @@ path_is_original_plan_artifact() {
   local path="${1:-}"
   local phase_dir="${2:-}"
   local phase_dir_name
+  local phase_dir_abs
+  local repo_root_abs
+  local phase_dir_rel=""
   phase_dir_name="$(basename "$phase_dir")"
+  phase_dir_abs="$(cd "$phase_dir" 2>/dev/null && pwd -P || printf '%s' "$phase_dir")"
+  repo_root_abs="$(git -C "$phase_dir" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [ -n "$repo_root_abs" ] && [[ "$phase_dir_abs" == "$repo_root_abs/"* ]]; then
+    phase_dir_rel="${phase_dir_abs#"$repo_root_abs"/}"
+  fi
   case "$path" in
     */remediation/*) return 1 ;;
     R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md) return 1 ;;
-    */"$phase_dir_name"/*-PLAN.md|*/"$phase_dir_name"/PLAN.md) return 0 ;;
+    "$phase_dir_rel"/*-PLAN.md|"$phase_dir_rel"/PLAN.md) return 0 ;;
+    "$phase_dir_abs"/*-PLAN.md|"$phase_dir_abs"/PLAN.md) return 0 ;;
     *-PLAN.md|PLAN.md)
       if [ -n "$phase_dir" ] && [ -f "$phase_dir/$path" ]; then
         return 0
@@ -607,6 +616,7 @@ fi
 METADATA_ONLY_ROUND="false"
 ROUND_SUMMARY_MISSING="false"
 ROUND_CHANGE_EVIDENCE_UNAVAILABLE="false"
+ROUND_SUMMARY_NONTERMINAL="false"
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   # Scan round SUMMARY.md files_modified for non-metadata paths. When
   # files_modified is absent (older summaries / partial installs), fall back to
@@ -616,6 +626,16 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   while IFS= read -r _mo_summary; do
     [ -f "$_mo_summary" ] || continue
     _mo_found_summary="true"
+    _mo_status=$(awk '
+      BEGIN { in_fm=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^status:/ { sub(/^status:[[:space:]]*/, ""); print; exit }
+    ' "$_mo_summary" 2>/dev/null)
+    case "${_mo_status:-}" in
+      complete|completed|partial|failed) ;;
+      *) ROUND_SUMMARY_NONTERMINAL="true" ;;
+    esac
     _mo_files=$(extract_frontmatter_array_items "$_mo_summary" files_modified)
     _mo_commit_hashes=$(extract_frontmatter_array_items "$_mo_summary" commit_hashes)
     _mo_commits=$(printf '%s\n' "$_mo_commit_hashes" | awk 'NF { count++ } END { print count + 0 }')
@@ -688,6 +708,9 @@ case "$RESULT" in
   PASS)
     if [ "$FAIL_COUNT" -gt 0 ] 2>/dev/null; then
       # 6. PASS with FAIL rows → defense-in-depth override
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
+    elif [ "$ROUND_SUMMARY_NONTERMINAL" = "true" ]; then
+      echo "qa_gate_round_summary_nonterminal=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$ROUND_SOURCE_VERIFICATION_MISSING" = "true" ]; then
       echo "qa_gate_source_verification_missing=true"

@@ -151,7 +151,7 @@ emit_metadata() {
   round=$(canonicalize_round "$(get_round)")
   round_dir="$PHASE_DIR/remediation/qa/round-${round}"
   source_verification_path=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" plan-input "$PHASE_DIR" 2>/dev/null || true)
-  if [ -z "$source_verification_path" ]; then
+  if [ -z "$source_verification_path" ] && [ "$((10#$round))" -le 1 ] 2>/dev/null; then
     source_verification_path="$PHASE_DIR/$(bash "$SCRIPT_DIR/resolve-artifact-path.sh" verification "$PHASE_DIR" 2>/dev/null || echo '01-VERIFICATION.md')"
   fi
   echo "round=${round}"

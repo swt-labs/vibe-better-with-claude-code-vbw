@@ -1170,6 +1170,9 @@ PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
 ---
 plan: R01
+status: complete
+files_modified:
+  - src/Fix.swift
 deviations:
   - "Used alternate fix path"
 ---
@@ -1540,13 +1543,14 @@ VERIF
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |"
+  create_plan "01-01"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - ".vbw-planning/phases/01-test-phase/01-01-PLAN.md"
-  - ".vbw-planning/phases/01-test-phase/01-01-SUMMARY.md"'
+    "  - \"$PHASE_DIR/01-01-PLAN.md\"
+  - \"$PHASE_DIR/01-01-SUMMARY.md\""
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -1964,6 +1968,93 @@ VERIF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "plan-amendment does not accept archived milestone plan path" {
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/milestones/v1/phases/01-test-phase/01-01-PLAN.md"
+  - ".vbw-planning/phases/01-test-phase/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Archived milestone plan path is not enough
+fail_classifications:
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should be updated"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Notes updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "nonterminal remediation summary → REMEDIATION_REQUIRED" {
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: in-progress
+commit_hashes: []
+files_modified:
+  - src/Fix.swift
+deviations: []
+---
+
+## Task 1: In-progress remediation
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: In-progress summary should fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Production code still needs to change"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Verification exists | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_round_summary_nonterminal=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 

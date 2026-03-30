@@ -275,12 +275,13 @@ teardown() {
 }
 
 @test "emit_metadata includes verification_path on get" {
-  mkdir -p "$PHASE_DIR/remediation/qa"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Round 01 failed.' > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
   printf 'stage=execute\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^source_verification_path=.*01-VERIFICATION.md$"
+  echo "$output" | grep -q "^source_verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
   echo "$output" | grep -q "^verification_path=.*remediation/qa/round-02/R02-VERIFICATION.md$"
 }
 
