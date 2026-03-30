@@ -1102,7 +1102,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
         ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
         break
       elif [ -n "$GIT_ROOT" ]; then
-        if [ "$ROUND_ACTUAL_DIFF_PATHS_AVAILABLE" != "true" ]; then
+        if [ "$ROUND_STARTED_AFTER_SOURCE" != "true" ] || [ "$ROUND_ACTUAL_DIFF_PATHS_AVAILABLE" != "true" ]; then
           ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
           break
         fi
