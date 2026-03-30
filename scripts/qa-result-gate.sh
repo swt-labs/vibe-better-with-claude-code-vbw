@@ -499,9 +499,9 @@ count_deviations_in_dir() {
     ' 2>/dev/null)
     if [ "${_cdf_devs:-0}" -eq 0 ]; then
       _cdf_devs=$(awk '
-        BEGIN { count=0 }
-        /^## Deviations/ { found=1; next }
-        found && /^## / { exit }
+        BEGIN { count=0; found=0 }
+        /^## Deviations/ || /^### Deviations/ { found=1; next }
+        found && (/^## / || /^### /) { found=0; next }
         found && /^[[:space:]]*$/ { next }
         found && /^- / {
           line=$0; sub(/^- /, "", line)
@@ -570,6 +570,7 @@ DEVIATION_COUNT=$(count_deviations_in_dir "$SUMMARY_SCOPE_DIR")
 # are still unresolved and the override must fire.
 METADATA_ONLY_ROUND="false"
 ROUND_SUMMARY_MISSING="false"
+ROUND_CHANGE_EVIDENCE_UNAVAILABLE="false"
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   # Scan round SUMMARY.md files_modified for non-metadata paths. When
   # files_modified is absent (older summaries / partial installs), fall back to
@@ -594,8 +595,8 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
           _mo_has_code_changes="true"
         fi
       else
-        # If git history is unavailable, keep the old conservative fallback.
-        _mo_has_code_changes="true"
+        ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
+        break
       fi
     fi
     [ "$_mo_has_code_changes" = "true" ] && break
@@ -654,6 +655,9 @@ case "$RESULT" in
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$ROUND_SUMMARY_MISSING" = "true" ]; then
       echo "qa_gate_round_summary_missing=true"
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
+    elif [ "$ROUND_CHANGE_EVIDENCE_UNAVAILABLE" = "true" ]; then
+      echo "qa_gate_round_change_evidence_unavailable=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$DEVIATION_COUNT" -gt 0 ] && { [ "$IN_REMEDIATION" = "false" ] || [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; }; then
       # 5a. PASS but deviations exist without FAIL checks → QA rationalized deviations.

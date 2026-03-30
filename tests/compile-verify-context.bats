@@ -1069,6 +1069,126 @@ EOF
   [[ "$output" == *"files_modified: src/api.swift"* ]]
 }
 
+@test "compile-verify-context: remediation task-level deviations are extracted" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Task-level deviation extraction
+type: remediation
+must_haves:
+  - API matches spec
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Task-level deviation extraction
+type: remediation
+status: complete
+files_modified:
+  - src/api.swift
+deviations: []
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+
+### Deviations
+- Used a different helper function than planned
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Used a different helper function than planned"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS uses previous round verification for round 02" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original phase plan
+must_haves:
+  - Original requirement
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original phase plan
+status: complete
+---
+
+## What Was Built
+- Original build
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| PH-01 | must_have | Phase-level fail | FAIL | Missing |
+EOF
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| R1-01 | must_have | Round-one fail | FAIL | Still broken |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+must_haves:
+  - Fix round one fail
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+status: complete
+files_modified:
+  - src/fix.swift
+deviations: []
+---
+
+## Task 1: Fix round one fail
+
+### What Was Built
+- Implemented another fix attempt
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=02"* ]]
+  [[ "$output" == *"FAIL_ID: R1-01 | ORIGINAL: Round-one fail"* ]]
+  [[ "$output" != *"FAIL_ID: PH-01 | ORIGINAL: Phase-level fail"* ]]
+}
+
 @test "compile-verify-context: remediation summary what_was_built aggregates multiple task sections" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'

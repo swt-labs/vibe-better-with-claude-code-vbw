@@ -412,8 +412,9 @@ while IFS= read -r plan_file; do
     # always receives deviation data regardless of where Dev wrote it.
     if [ -z "$DEVIATIONS" ]; then
       DEVIATIONS=$(awk '
-        /^## Deviations/ { found=1; next }
-        found && /^## / { exit }
+        BEGIN { found=0 }
+        /^## Deviations/ || /^### Deviations/ { found=1; next }
+        found && (/^## / || /^### /) { found=0; next }
         found && /^[[:space:]]*$/ { next }
         found && /^- / {
           line = $0
@@ -471,6 +472,14 @@ if [ -n "$_cvc_phase_verif" ] && [ ! -f "$_cvc_phase_verif" ]; then
   _cvc_phase_verif=""
 fi
 
+_cvc_source_fail_verif=$(bash "${_CVC_SCRIPT_DIR}/resolve-verification-path.sh" plan-input "$PHASE_DIR" 2>/dev/null || true)
+if [ -n "$_cvc_source_fail_verif" ] && [ ! -f "$_cvc_source_fail_verif" ]; then
+  _cvc_source_fail_verif=""
+fi
+if [ -z "$_cvc_source_fail_verif" ] && [ -n "$_cvc_phase_verif" ]; then
+  _cvc_source_fail_verif="$_cvc_phase_verif"
+fi
+
 # QA round VERIFICATION.md files
 _cvc_qa_round_verifs=$(find "$PHASE_DIR" -path '*/remediation/qa/round-*/R*-VERIFICATION.md' 2>/dev/null | sort)
 
@@ -517,20 +526,22 @@ if [ "$_cvc_has_verif_history" = true ]; then
       }
     ' "$_cvc_phase_verif" 2>/dev/null || true
 
-    # Emit structured FAIL resolution requirements so QA knows each
-    # original FAIL must be re-verified against a specific resolution path
+  fi
+
+  # Emit structured FAIL resolution requirements from the current remediation
+  # planning input (phase-level on round 01, previous round verification on
+  # round 02+). QA uses this block as the authoritative set of FAIL_IDs that
+  # must be resolved in the current remediation round.
+  if [ -n "$_cvc_source_fail_verif" ] && [ -f "$_cvc_source_fail_verif" ]; then
     echo "--- ORIGINAL FAIL RESOLUTION STATUS ---"
     awk -F'|' '
       function trim(v) {
         gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
         return v
       }
-      # Non-table rows reset header detection for next table section
       !/^\|/ { header_found = 0; next }
       /^\|/ {
-        # Separator rows are skipped (they follow headers, precede data)
         if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
-        # Detect header row to find column indices (once per table section)
         if (!header_found) {
           status_col = 0; id_col = 0; desc_col = 0
           for (i = 2; i < NF; i++) {
@@ -561,7 +572,7 @@ if [ "$_cvc_has_verif_history" = true ]; then
           }
         }
       }
-    ' "$_cvc_phase_verif" 2>/dev/null || true
+    ' "$_cvc_source_fail_verif" 2>/dev/null || true
   fi
 
   # Per-round (chronological compounding)
