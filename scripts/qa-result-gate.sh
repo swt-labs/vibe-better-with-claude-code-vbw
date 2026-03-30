@@ -194,6 +194,7 @@ path_is_original_plan_artifact() {
     phase_dir_rel="${phase_dir_abs#"$repo_root_abs"/}"
   fi
   case "$path" in
+    ../*|*/../*|*/./*) return 1 ;;
     */remediation/*) return 1 ;;
     R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md) return 1 ;;
     "$phase_dir_rel"/*-PLAN.md|"$phase_dir_rel"/PLAN.md) return 0 ;;
@@ -225,6 +226,13 @@ canonicalize_phase_path() {
     path_base="${path##*/}"
     if [ -d "$path_dir" ]; then
       path_dir="$(cd "$path_dir" 2>/dev/null && pwd -P || printf '%s' "$path_dir")"
+      path="$path_dir/$path_base"
+    fi
+  elif [[ "$path" == */* ]] && [ -n "$phase_dir" ]; then
+    path_dir="${path%/*}"
+    path_base="${path##*/}"
+    if [ -d "$phase_dir/$path_dir" ]; then
+      path_dir="$(cd "$phase_dir/$path_dir" 2>/dev/null && pwd -P || printf '%s' "$phase_dir/$path_dir")"
       path="$path_dir/$path_base"
     fi
   fi
@@ -380,7 +388,6 @@ extract_verified_at_commit() {
       sub(/^verified_at_commit:[[:space:]]*/, "")
       sub(/[[:space:]]+$/, "")
       print
-      exit
     }
   ' "$file_path" 2>/dev/null
 }

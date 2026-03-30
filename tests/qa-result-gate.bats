@@ -123,6 +123,56 @@ create_plan() {
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
+@test "plan-amendment does not accept sibling-phase traversal path" {
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |"
+  create_plan "01-01"
+  mkdir -p "$TEST_DIR/02-other-phase"
+  cat > "$TEST_DIR/02-other-phase/02-01-PLAN.md" <<'PLAN'
+---
+plan: 02-01
+---
+
+## Objective
+Sibling phase plan
+PLAN
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "../02-other-phase/02-01-PLAN.md"
+  - ".vbw-planning/phases/01-test-phase/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Sibling phase traversal is not a valid plan amendment
+fail_classifications:
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should be updated", source_plan: "../02-other-phase/02-01-PLAN.md"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Notes updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
   [[ "$output" == *"qa_gate_writer=write-verification.sh"* ]]

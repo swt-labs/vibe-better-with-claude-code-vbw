@@ -340,6 +340,13 @@ else
   fail "execute-protocol: missing source_verification_path/verification_path in QA remediation metadata parsing"
 fi
 
+if grep -Eq 'source_plan`? must reference an original plan in the current phase only' "$ROOT/references/execute-protocol.md" \
+  && grep -Eq 'source_plan`? must reference an original plan in the current phase only' "$VIBE_FILE"; then
+  pass "execute-protocol/vibe: plan-amendment source_plan is constrained to current-phase original plans"
+else
+  fail "execute-protocol/vibe: missing current-phase-only constraint for plan-amendment source_plan"
+fi
+
 if grep -q 'carry forward the nearest earlier verification artifact in the remediation chain that still contains the unresolved FAILs' "$ROOT/references/execute-protocol.md" \
   && grep -q 'carry forward the nearest earlier verification artifact in the remediation chain that still contains the unresolved FAILs' "$VIBE_FILE"; then
   pass "execute-protocol/vibe: round 02+ planning carries unresolved FAIL source forward across gate-rejected PASS rounds"

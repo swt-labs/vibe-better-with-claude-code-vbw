@@ -608,7 +608,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    - **The plan MUST include at least one `code-fix` or `plan-amendment` task if ANY FAIL check is classifiable as such.** A plan that classifies all FAIL checks as `process-exception` when code-fix or plan-amendment alternatives exist is itself a defect. Documentation-only changes to SUMMARY.md deviations arrays are NOT a valid resolution for code/architecture deviations.
    - Include `fail_classifications:` YAML array in R{RR}-PLAN.md frontmatter.
      - `code-fix` / `process-exception` entries: `{id: "FAIL-ID", type: "code-fix|process-exception", rationale: "..."}`
-     - `plan-amendment` entries MUST also identify the original plan being amended: `{id: "FAIL-ID", type: "plan-amendment", rationale: "...", source_plan: "01-01-PLAN.md"}`
+     - `plan-amendment` entries MUST also identify the original plan being amended: `{id: "FAIL-ID", type: "plan-amendment", rationale: "...", source_plan: "01-01-PLAN.md"}`. `source_plan` must reference an original plan in the current phase only — never a sibling phase, archived milestone, or remediation plan.
    - Scope the plan to those failures: what to fix, which files, acceptance criteria
    - The orchestrator writes the plan (QA identified problems, orchestrator determines fixes)
    - Advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
