@@ -162,6 +162,29 @@ acquire_lock_dir() {
   while ! mkdir "$lock_dir" 2>/dev/null; do
     attempts=$((attempts + 1))
     [ "$attempts" -ge 100 ] && return 1
+    # Check for stale lock (holder process died)
+    if [ -f "$lock_dir/pid" ]; then
+      local lock_pid
+      lock_pid=$(cat "$lock_dir/pid" 2>/dev/null || echo "")
+      if [ -n "$lock_pid" ] && ! kill -0 "$lock_pid" 2>/dev/null; then
+        rm -f "$lock_dir/pid" 2>/dev/null || true
+        rmdir "$lock_dir" 2>/dev/null || true
+        continue
+      fi
+    else
+      # Lock dir exists but no pid file — wait briefly for holder to write it
+      local pw=0
+      while [ "$pw" -lt 5 ] && [ ! -f "$lock_dir/pid" ]; do
+        sleep 0.02
+        pw=$((pw + 1))
+      done
+      if [ -f "$lock_dir/pid" ]; then
+        continue
+      fi
+      # No pid file after 0.1s — lock is orphaned
+      rmdir "$lock_dir" 2>/dev/null || true
+      continue
+    fi
     sleep 0.02
   done
   printf '%s\n' "$$" > "$lock_dir/pid" 2>/dev/null || true

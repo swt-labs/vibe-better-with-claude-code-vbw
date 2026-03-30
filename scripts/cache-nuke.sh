@@ -80,7 +80,13 @@ fi
 # --- 2. Temp caches (statusline + update check) ---
 TEMP_FILES=$(ls "$TMP_CACHE_ROOT"/vbw-*-"${UID_TAG}"-* "$TMP_CACHE_ROOT"/vbw-*-"${UID_TAG}" "$TMP_CACHE_ROOT"/vbw-update-check-"${UID_TAG}" 2>/dev/null || true)
 if [[ -n "$TEMP_FILES" ]]; then
-  while IFS= read -r f; do rm -f "$f" 2>/dev/null || true; done <<< "$TEMP_FILES"
+  while IFS= read -r f; do
+    if [ -d "$f" ]; then
+      rm -rf "$f" 2>/dev/null || true
+    else
+      rm -f "$f" 2>/dev/null || true
+    fi
+  done <<< "$TEMP_FILES"
   wiped_temp_caches=true
 fi
 
