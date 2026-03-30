@@ -153,7 +153,7 @@ path_is_recorded_non_code_artifact() {
   local path="${1:-}"
   local base="${path##*/}"
   case "$base" in
-    SOURCE-UAT.md|PLAN.md|SUMMARY.md|VERIFICATION.md|RESEARCH.md|CONTEXT.md|UAT.md|*-PLAN.md|*-SUMMARY.md|*-VERIFICATION.md|*-RESEARCH.md|*-CONTEXT.md|*-UAT.md)
+    SOURCE-UAT.md|PLAN.md|SUMMARY.md|VERIFICATION.md|RESEARCH.md|CONTEXT.md|UAT.md|STATE.md|ROADMAP.md|PROJECT.md|REQUIREMENTS.md|RESUME.md|SHIPPED.md|*-PLAN.md|*-SUMMARY.md|*-VERIFICATION.md|*-RESEARCH.md|*-CONTEXT.md|*-UAT.md)
       return 0
       ;;
     *)
