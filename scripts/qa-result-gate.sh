@@ -124,7 +124,25 @@ extract_frontmatter_array_items() {
 
 normalize_recorded_path() {
   local path="${1:-}"
-  path=$(printf '%s' "$path" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"`]//;s/['\"`]$//;s/,$//")
+  local leading_char=""
+  local trailing_char=""
+  local squote="'"
+  local dquote='"'
+  local bquote='`'
+
+  path=$(printf '%s' "$path" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/,$//')
+  if [ -n "$path" ]; then
+    leading_char=${path%"${path#?}"}
+    case "$leading_char" in
+      "$squote"|"$dquote"|"$bquote") path="${path#?}" ;;
+    esac
+  fi
+  if [ -n "$path" ]; then
+    trailing_char=${path#"${path%?}"}
+    case "$trailing_char" in
+      "$squote"|"$dquote"|"$bquote") path="${path%?}" ;;
+    esac
+  fi
   while [[ "$path" == ./* ]]; do
     path="${path#./}"
   done
@@ -146,11 +164,9 @@ path_is_metadata_artifact() {
 path_is_original_plan_artifact() {
   local path="${1:-}"
   local phase_dir="${2:-}"
-  local phase_dir_name
   local phase_dir_abs
   local repo_root_abs
   local phase_dir_rel=""
-  phase_dir_name="$(basename "$phase_dir")"
   phase_dir_abs="$(cd "$phase_dir" 2>/dev/null && pwd -P || printf '%s' "$phase_dir")"
   repo_root_abs="$(git -C "$phase_dir" rev-parse --show-toplevel 2>/dev/null || true)"
   if [ -n "$repo_root_abs" ] && [[ "$phase_dir_abs" == "$repo_root_abs/"* ]]; then
@@ -527,9 +543,18 @@ count_deviations_in_dir() {
     if [ "${_cdf_devs:-0}" -eq 0 ]; then
       _cdf_devs=$(awk '
         BEGIN { count=0; found=0 }
-        /^## Deviations/ || /^### Deviations/ { found=1; next }
+          /^## Deviations/ || /^### Deviations/ { found=1; in_comment=0; next }
         found && (/^## / || /^### /) { found=0; next }
         found && /^[[:space:]]*$/ { next }
+          found && /^[[:space:]]*<!--/ {
+            in_comment=1
+            if ($0 ~ /-->/) in_comment=0
+            next
+          }
+          found && in_comment {
+            if ($0 ~ /-->/) in_comment=0
+            next
+          }
         found {
           line=$0
           sub(/^- /, "", line)
@@ -616,6 +641,7 @@ fi
 METADATA_ONLY_ROUND="false"
 ROUND_SUMMARY_MISSING="false"
 ROUND_CHANGE_EVIDENCE_UNAVAILABLE="false"
+ROUND_CHANGE_EVIDENCE_EMPTY="false"
 ROUND_SUMMARY_NONTERMINAL="false"
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   # Scan round SUMMARY.md files_modified for non-metadata paths. When
@@ -640,6 +666,9 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
     _mo_commit_hashes=$(extract_frontmatter_array_items "$_mo_summary" commit_hashes)
     _mo_commits=$(printf '%s\n' "$_mo_commit_hashes" | awk 'NF { count++ } END { print count + 0 }')
     _mo_commits="${_mo_commits:-0}"
+    if [ -z "$_mo_files" ] && [ "$_mo_commits" -eq 0 ] 2>/dev/null; then
+      ROUND_CHANGE_EVIDENCE_EMPTY="true"
+    fi
     if [ -n "$_mo_files" ]; then
       if paths_include_non_metadata <<< "$_mo_files"; then
         _mo_has_code_changes="true"
@@ -720,6 +749,9 @@ case "$RESULT" in
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$ROUND_CHANGE_EVIDENCE_UNAVAILABLE" = "true" ]; then
       echo "qa_gate_round_change_evidence_unavailable=true"
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
+    elif [ "$ROUND_CHANGE_EVIDENCE_EMPTY" = "true" ]; then
+      echo "qa_gate_round_change_evidence_empty=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$DEVIATION_COUNT" -gt 0 ] && { [ "$IN_REMEDIATION" = "false" ] || [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; }; then
       # 5a. PASS but deviations exist without FAIL checks → QA rationalized deviations.

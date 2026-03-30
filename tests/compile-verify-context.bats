@@ -1158,6 +1158,47 @@ EOF
   [[ "$output" == *"deviations: Used a different helper function than planned"* ]]
 }
 
+@test "compile-verify-context: remediation template comments in deviations section are ignored" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Comment-only deviation section
+type: remediation
+must_haves:
+  - API matches spec
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Comment-only deviation section
+type: remediation
+status: complete
+files_modified:
+  - src/api.swift
+deviations: []
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+
+### Deviations
+<!-- Or write `None` / `No deviations` as plain text when there were no deviations.
+     If there are multiple deviations, use one bullet per deviation. -->
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: none"* ]]
+}
+
 @test "compile-verify-context: plain-text remediation task-level deviations are extracted" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'

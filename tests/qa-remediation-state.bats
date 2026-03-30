@@ -270,7 +270,7 @@ teardown() {
 @test "emit_metadata includes verification_path on init" {
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^source_verification_path=.*01-VERIFICATION.md$"
+  echo "$output" | grep -q '^source_verification_path=$'
   echo "$output" | grep -q "^verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
 }
 

@@ -434,10 +434,19 @@ while IFS= read -r plan_file; do
     # always receives deviation data regardless of where Dev wrote it.
     if [ -z "$DEVIATIONS" ]; then
       DEVIATIONS=$(awk '
-        BEGIN { found=0 }
-        /^## Deviations/ || /^### Deviations/ { found=1; next }
+        BEGIN { found=0; in_comment=0 }
+        /^## Deviations/ || /^### Deviations/ { found=1; in_comment=0; next }
         found && (/^## / || /^### /) { found=0; next }
         found && /^[[:space:]]*$/ { next }
+        found && /^[[:space:]]*<!--/ {
+          in_comment=1
+          if ($0 ~ /-->/) in_comment=0
+          next
+        }
+        found && in_comment {
+          if ($0 ~ /-->/) in_comment=0
+          next
+        }
         found {
           line = $0
           sub(/^- /, "", line)
