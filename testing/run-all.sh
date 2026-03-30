@@ -136,7 +136,9 @@ if [ "$bats_launched" = true ]; then
   bats_label="$BATS_WORKERS bats workers"
   [ "${#serial_bats_files[@]}" -gt 0 ] && bats_label="$bats_label + ${#serial_bats_files[@]} serial file(s)"
 fi
-echo "Launched ${#JOB_PIDS[@]} parallel jobs (25 contract + $bats_label)..."
+contract_count=0
+for _jt in "${JOB_TYPES[@]}"; do [ "$_jt" = contract ] && contract_count=$((contract_count + 1)); done
+echo "Launched ${#JOB_PIDS[@]} parallel jobs ($contract_count contract + $bats_label)..."
 echo ""
 
 # --- Wait for all jobs, collect results ---
