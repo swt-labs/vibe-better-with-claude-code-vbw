@@ -2566,7 +2566,7 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
-@test "metadata-only round with empty files_modified and no commits → REMEDIATION_REQUIRED" {
+@test "empty change evidence round with empty files_modified and no commits → REMEDIATION_REQUIRED" {
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "Batch commit deviation"
 
@@ -2598,8 +2598,9 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
-  [[ "$output" == *"qa_gate_phase_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_round_change_evidence_empty=true"* ]]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" != *"qa_gate_phase_deviation_count="* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
