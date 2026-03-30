@@ -182,6 +182,42 @@ path_is_code_fix_support_artifact() {
   path_is_recorded_non_code_artifact "$path"
 }
 
+resolve_existing_path_target() {
+  local path="${1:-}"
+  local max_hops=40
+  local hop=0
+  local path_dir=""
+  local path_base=""
+  local target=""
+
+  [ -n "$path" ] || return 1
+  [ -e "$path" ] || return 1
+
+  while [ -L "$path" ]; do
+    if [ "$hop" -ge "$max_hops" ]; then
+      return 1
+    fi
+    path_dir="${path%/*}"
+    path_base="${path##*/}"
+    [ -n "$path_dir" ] || path_dir="."
+    path_dir="$(cd "$path_dir" 2>/dev/null && pwd -P || return 1)"
+    target="$(readlink "$path_dir/$path_base" 2>/dev/null || true)"
+    [ -n "$target" ] || return 1
+    case "$target" in
+      /*) path="$target" ;;
+      *) path="$path_dir/$target" ;;
+    esac
+    hop=$((hop + 1))
+  done
+
+  path_dir="${path%/*}"
+  path_base="${path##*/}"
+  [ -n "$path_dir" ] || path_dir="."
+  path_dir="$(cd "$path_dir" 2>/dev/null && pwd -P || return 1)"
+  [ -e "$path_dir/$path_base" ] || return 1
+  printf '%s' "$path_dir/$path_base"
+}
+
 resolve_original_plan_artifact_path() {
   local path="${1:-}"
   local phase_dir="${2:-}"
@@ -223,6 +259,11 @@ resolve_original_plan_artifact_path() {
     candidate_dir="$(cd "$candidate_dir" 2>/dev/null && pwd -P || printf '%s' "$candidate_dir")"
     candidate="$candidate_dir/$candidate_base"
   fi
+
+  candidate="$(resolve_existing_path_target "$candidate" 2>/dev/null || true)"
+  [ -n "$candidate" ] || return 1
+  candidate_dir="${candidate%/*}"
+  candidate_base="${candidate##*/}"
 
   [ "$candidate_dir" = "$phase_dir_abs" ] || return 1
 
