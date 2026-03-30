@@ -16,8 +16,11 @@ set -euo pipefail
 #   authoritative → QA result downstream UAT consumers should trust
 #                (round VERIFICATION only after remediation reaches stage=done,
 #                else phase-level fallback)
-#   plan-input → verification artifact to plan remediation from (previous round's
-#                R{RR}-VERIFICATION.md when planning round N>1, else phase-level fallback)
+#   plan-input → verification artifact to plan remediation from (the nearest
+#                earlier remediation verification that still contains unresolved
+#                FAIL rows; if no earlier round still has FAIL rows, fall back
+#                to the phase-level verification. Missing prior-round artifacts
+#                still fail closed.)
 
 MODE="${1:-}"
 PHASE_DIR="${2:-}"
@@ -113,6 +116,40 @@ read_stage() {
   esac
 }
 
+verification_has_fail_rows() {
+  local file_path="${1:-}"
+  [ -f "$file_path" ] || return 1
+  awk -F'|' '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    !/^\|/ { header_found = 0; next }
+    /^\|/ {
+      if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
+      if (!header_found) {
+        status_col = 0
+        for (i = 2; i < NF; i++) {
+          cell = trim($i)
+          if (cell == "Status") status_col = i
+        }
+        if (status_col > 0) header_found = 1
+        next
+      }
+      if (status_col > 0) {
+        status = trim($(status_col))
+        gsub(/\*+/, "", status)
+        status = trim(status)
+        if (status == "FAIL") {
+          found = 1
+          exit
+        }
+      }
+    }
+    END { exit(found ? 0 : 1) }
+  ' "$file_path" 2>/dev/null
+}
+
 phase_path=$(phase_level_path)
 
 case "$MODE" in
@@ -161,10 +198,25 @@ case "$MODE" in
       if [ "$((10#$round))" -gt 1 ]; then
         prev_round=$(printf '%02d' "$((10#$round - 1))")
         prev_path="$PHASE_DIR/remediation/qa/round-${prev_round}/R${prev_round}-VERIFICATION.md"
-        if [ -f "$prev_path" ]; then
-          echo "$prev_path"
+        if [ ! -f "$prev_path" ]; then
           exit 0
         fi
+
+        search_round=$((10#$prev_round))
+        while [ "$search_round" -gt 0 ] 2>/dev/null; do
+          candidate_round=$(printf '%02d' "$search_round")
+          candidate_path="$PHASE_DIR/remediation/qa/round-${candidate_round}/R${candidate_round}-VERIFICATION.md"
+          if [ ! -f "$candidate_path" ]; then
+            exit 0
+          fi
+          if verification_has_fail_rows "$candidate_path"; then
+            echo "$candidate_path"
+            exit 0
+          fi
+          search_round=$((search_round - 1))
+        done
+
+        echo "$phase_path"
         exit 0
       fi
     fi

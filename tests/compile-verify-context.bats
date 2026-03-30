@@ -1389,6 +1389,85 @@ EOF
   [[ "$output" != *"FAIL_ID: PH-01 | ORIGINAL: Phase-level fail"* ]]
 }
 
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS falls back to phase verification when previous round passed structurally" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original phase plan
+must_haves:
+  - Original requirement
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original phase plan
+status: complete
+---
+
+## What Was Built
+- Original build
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| PH-01 | must_have | Phase-level fail | FAIL | Missing |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+must_haves:
+  - Carry forward unresolved original fail
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+status: complete
+files_modified:
+  - README.md
+deviations: []
+---
+
+## Task 1: Carry forward unresolved original fail
+
+### What Was Built
+- Documented the next remediation attempt
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=02"* ]]
+  [[ "$output" == *"FAIL_ID: PH-01 | ORIGINAL: Phase-level fail"* ]]
+  [[ "$output" != *"source_verification_missing=true"* ]]
+}
+
 @test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS marks missing phase verification on round 01" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"

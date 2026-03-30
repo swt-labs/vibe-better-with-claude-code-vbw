@@ -599,8 +599,8 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    **stage=plan:** Create `R{RR}-PLAN.md` in `{round_dir}`:
    - Read `source_verification_path` from `qa-remediation-state.sh get` metadata for failed checks
      - Round 01 uses the phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
-     - Round 02+ uses the previous round's `R{RR}-VERIFICATION.md`
-     - If `source_verification_path` is empty, STOP and restore the missing prior-round verification artifact before planning. Do NOT fall back to the phase-level VERIFICATION for round 02+.
+     - Round 02+ first checks the previous round's `R{RR}-VERIFICATION.md`. If that artifact still contains FAIL checks, use it. If it passed QA but the deterministic gate still required another remediation round, carry forward the nearest earlier verification artifact in the remediation chain that still contains the unresolved FAILs.
+     - If `source_verification_path` is empty, STOP and restore the missing prior-round verification artifact before planning. Do NOT silently fall back when the previous round's verification file is missing.
    - **Deviation Classification (NON-NEGOTIABLE):** For each FAIL check in the source VERIFICATION.md, classify as exactly one of:
      - **`code-fix`**: The code/config must change to match the plan. The remediation plan MUST include tasks with actual production code file modifications.
      - **`plan-amendment`**: The deviation was a valid improvement over the original plan. The remediation plan MUST include a task to update the original PLAN.md with the actual approach and rationale, marking the deviation as resolved-by-amendment.

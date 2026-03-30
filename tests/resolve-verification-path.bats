@@ -131,8 +131,77 @@ EOF
 ---
 result: FAIL
 ---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| R1-01 | must_have | Round-one failure persists | FAIL | Missing |
 EOF
   printf 'stage=plan\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/resolve-verification-path.sh" plan-input "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" ]
+}
+
+@test "resolve-verification-path plan-input falls back to phase verification when previous round passed with no FAIL rows" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| PH-01 | must_have | Original failure persists | FAIL | Missing |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+EOF
+  printf 'stage=plan\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/resolve-verification-path.sh" plan-input "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$PHASE_DIR/01-VERIFICATION.md" ]
+}
+
+@test "resolve-verification-path plan-input uses nearest earlier round with FAIL rows" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| PH-01 | must_have | Phase failure | FAIL | Missing |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| R1-01 | must_have | Round-one failure persists | FAIL | Missing |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+EOF
+  printf 'stage=plan\nround=03\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   run bash "$SCRIPTS_DIR/resolve-verification-path.sh" plan-input "$PHASE_DIR"
 

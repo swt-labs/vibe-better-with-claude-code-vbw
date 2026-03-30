@@ -340,6 +340,13 @@ else
   fail "execute-protocol: missing source_verification_path/verification_path in QA remediation metadata parsing"
 fi
 
+if grep -q 'carry forward the nearest earlier verification artifact in the remediation chain that still contains the unresolved FAILs' "$ROOT/references/execute-protocol.md" \
+  && grep -q 'carry forward the nearest earlier verification artifact in the remediation chain that still contains the unresolved FAILs' "$VIBE_FILE"; then
+  pass "execute-protocol/vibe: round 02+ planning carries unresolved FAIL source forward across gate-rejected PASS rounds"
+else
+  fail "execute-protocol/vibe: missing unresolved FAIL carry-forward guidance for round 02+ remediation planning"
+fi
+
 if grep -q 'verification_path=' "$QA_FILE" && grep -q 'Output path: {VERIF_PATH}' "$QA_FILE"; then
   pass "qa: uses persisted verification_path contract for standalone QA output"
 else
