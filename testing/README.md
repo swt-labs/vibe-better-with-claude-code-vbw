@@ -6,7 +6,7 @@ This folder contains verification scripts for VBW that are safe to run locally a
 
 Run all checks:
 
-- `bash testing/run-all.sh` — runs CI-parity shell lint, contract checks, and bats
+- `bash testing/run-all.sh` — runs CI-parity shell lint, contract checks, and bats (`shellcheck` required locally)
 
 Run individual checks:
 

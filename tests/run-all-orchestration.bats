@@ -147,3 +147,18 @@ SH
   echo "$output" | grep -q '^--- begin shell-lint output ---$'
   echo "$output" | grep -q '^Lint checks: 0/1 passed$'
 }
+
+@test "run-all fails when shellcheck is unavailable for CI-parity lint" {
+  local root="$TEST_TEMP_DIR/stub-repo-no-shellcheck"
+  create_stub_workspace "$root"
+  cp "$PROJECT_ROOT/testing/run-lint.sh" "$root/testing/run-lint.sh"
+  chmod +x "$root/testing/run-lint.sh"
+  export BATS_LOG="$TEST_TEMP_DIR/bats-no-shellcheck.log"
+
+  run env PATH="$root/bin:/usr/bin:/bin" RUN_VIBE_VERIFY=0 bash -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+
+  echo "$output" | grep -q '^FAIL: shell-lint$'
+  echo "$output" | grep -q 'shellcheck is required for CI-parity local verification'
+  echo "$output" | grep -q '^Lint checks: 0/1 passed$'
+}

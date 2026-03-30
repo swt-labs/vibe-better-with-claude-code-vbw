@@ -45,7 +45,8 @@ if command -v shellcheck >/dev/null 2>&1; then
     lint_error "ShellCheck found issues in one or more files (see above)"
   fi
 else
-  echo "SKIP: shellcheck not installed — skipping ShellCheck (install with: brew install shellcheck)"
+  lint_error "shellcheck is required for CI-parity local verification (install with: brew install shellcheck)"
+  shellcheck_failed=1
 fi
 
 syntax_failed=0
