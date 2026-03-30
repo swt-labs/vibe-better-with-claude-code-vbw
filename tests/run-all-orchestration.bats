@@ -84,6 +84,24 @@ SH
   chmod +x "$path"
 }
 
+link_runtime_tool() {
+  local root="$1"
+  local tool_name="$2"
+  local tool_path
+
+  tool_path="$(command -v "$tool_name")"
+  ln -sf "$tool_path" "$root/bin/$tool_name"
+}
+
+link_run_all_system_tools() {
+  local root="$1"
+  local tool_name
+
+  for tool_name in bash cat dirname find grep ls mktemp rm sort; do
+    link_runtime_tool "$root" "$tool_name"
+  done
+}
+
 @test "invalid BATS_WORKERS falls back and keeps serial bats files out of worker batches" {
   local root="$TEST_TEMP_DIR/stub-repo"
   create_stub_workspace "$root"
@@ -150,12 +168,15 @@ SH
 
 @test "run-all fails when shellcheck is unavailable for CI-parity lint" {
   local root="$TEST_TEMP_DIR/stub-repo-no-shellcheck"
+  local host_bash
   create_stub_workspace "$root"
   cp "$PROJECT_ROOT/testing/run-lint.sh" "$root/testing/run-lint.sh"
   chmod +x "$root/testing/run-lint.sh"
+  link_run_all_system_tools "$root"
+  host_bash="$(command -v bash)"
   export BATS_LOG="$TEST_TEMP_DIR/bats-no-shellcheck.log"
 
-  run env PATH="$root/bin:/usr/bin:/bin" RUN_VIBE_VERIFY=0 bash -c "cd '$root' && bash testing/run-all.sh"
+  run env PATH="$root/bin" RUN_VIBE_VERIFY=0 "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
   [ "$status" -eq 1 ]
 
   echo "$output" | grep -q '^FAIL: shell-lint$'
