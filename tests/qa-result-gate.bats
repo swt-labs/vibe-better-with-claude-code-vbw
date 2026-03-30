@@ -59,6 +59,22 @@ create_summary_with_yaml_deviations() {
   } > "$PHASE_DIR/${plan_id}-SUMMARY.md"
 }
 
+init_git_repo() {
+  git -C "$TEST_DIR" init -q
+  git -C "$TEST_DIR" config user.email "test@example.com"
+  git -C "$TEST_DIR" config user.name "VBW Test"
+}
+
+commit_repo_file() {
+  local relative_path="${1}"
+  local content="${2:-content}"
+  mkdir -p "$(dirname "$TEST_DIR/$relative_path")"
+  printf '%s\n' "$content" > "$TEST_DIR/$relative_path"
+  git -C "$TEST_DIR" add "$relative_path"
+  git -C "$TEST_DIR" commit -q -m "add $relative_path"
+  git -C "$TEST_DIR" rev-parse HEAD
+}
+
 # Helper: create a SUMMARY.md with body-only deviations (no YAML)
 create_summary_with_body_deviations() {
   local plan_id="${1}"
@@ -122,6 +138,40 @@ create_plan() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
   [[ "$output" == *"qa_gate_fail_count=1"* ]]
+}
+
+@test "PASS with FAIL in non-status column does not trigger fail override" {
+  create_verif "write-verification.sh" "PASS" "## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| CHK-01 | must_have | Contains FAIL token in description | PASS | Done |
+| CHK-02 | must_have | Clean status | PASS | FAIL |"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_fail_count=0"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "PASS with flow-style YAML deviations → QA_RERUN_REQUIRED" {
+  create_verif "write-verification.sh" "PASS"
+  cat > "$PHASE_DIR/01-01-SUMMARY.md" <<'SUMMARY'
+---
+plan: 01-01
+deviations: ["Changed API contract", 'Moved tests to existing file']
+---
+
+## Summary
+Work completed.
+SUMMARY
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=2"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
 @test "PARTIAL result → REMEDIATION_REQUIRED" {
@@ -219,6 +269,8 @@ create_plan() {
 @test "during remediation verify stage gate reads current round verification" {
   create_verif "write-verification.sh" "FAIL"
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "src/Feature.swift"'
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
 ---
 phase: 01
@@ -657,10 +709,10 @@ SUMMARY
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
-@test "PASS + plans_verified absent (brownfield) → PROCEED_TO_UAT" {
+@test "PASS + plans_verified absent → QA_RERUN_REQUIRED" {
   create_plan "01-01"
   create_plan "01-02"
-  # No plans_verified in frontmatter — brownfield compat
+  # No plans_verified in frontmatter — invalid when plan files exist
   create_verif "write-verification.sh" "PASS"
 
   run bash "$SCRIPT" "$PHASE_DIR"
@@ -668,8 +720,8 @@ SUMMARY
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_plan_count=2"* ]]
   [[ "$output" == *"qa_gate_plans_verified_count=0"* ]]
-  # Brownfield: plans_verified_count=0 means field absent → skip check
-  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  [[ "$output" == *"qa_gate_plan_coverage=0/2"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
 @test "PASS + no PLAN.md files → PROCEED_TO_UAT (no coverage check)" {
@@ -740,6 +792,8 @@ SUMMARY
   # Simulate active remediation cycle
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "src/Fix.swift"'
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
 ---
 writer: write-verification.sh
@@ -756,6 +810,8 @@ VERIF
 ---
 round: 01
 title: Fix
+fail_classifications:
+  - {id: "DEV-0101-COMMIT", type: "process-exception", rationale: "Historical git topology cannot be safely rewritten"}
 ---
 PLAN
 
@@ -803,6 +859,8 @@ VERIF
 ---
 round: 01
 title: Fix
+fail_classifications:
+  - {id: "DEV-0101-COMMIT", type: "process-exception", rationale: "Historical git topology cannot be safely rewritten"}
 ---
 PLAN
 
@@ -876,6 +934,8 @@ VERIF
   # Active QA remediation with round-01 VERIFICATION.md that PASSes
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "src/Widget.swift"'
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" << 'VERIF'
 ---
 writer: write-verification.sh
@@ -927,6 +987,8 @@ PLAN
   # Active remediation with 1 round plan
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "src/Fix.swift"'
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" << 'PLAN'
 ---
 round: 01
@@ -983,6 +1045,8 @@ VERIF
   # Active QA remediation at round 02
   mkdir -p "$PHASE_DIR/remediation/qa/round-02"
   printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-02" "02" \
+    '  - "src/Widget.swift"'
   cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" << 'VERIF'
 ---
 writer: write-verification.sh
@@ -1017,6 +1081,8 @@ PLAN
   # State file with unpadded round=2 (brownfield/corruption)
   mkdir -p "$PHASE_DIR/remediation/qa/round-02"
   printf 'stage=verify\nround=2\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-02" "02" \
+    '  - "src/Fix.swift"'
   cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" << 'VERIF'
 ---
 writer: write-verification.sh
@@ -1230,6 +1296,8 @@ VERIF
 ---
 round: 01
 title: Fix
+fail_classifications:
+  - {id: "DEV-0101-COMMIT", type: "process-exception", rationale: "Historical git topology cannot be safely rewritten"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -1250,6 +1318,502 @@ VERIF
   [ "$status" -eq 0 ]
   [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "metadata-only round with only process-exception classifications → PROCEED_TO_UAT" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Historical batched commit"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Document process exception
+fail_classifications:
+  - {id: "DEV-0101-COMMIT", type: "process-exception", rationale: "Historical git topology cannot be safely rewritten"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Process exception documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "metadata-only round with missing fail_classifications → REMEDIATION_REQUIRED" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Historical orchestration issue"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Missing classifications should fail closed
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Remediation documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "metadata-only round with inline fail_classifications process-exception → PROCEED_TO_UAT" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Historical batched commit"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Inline classifications
+fail_classifications: [{id: "DEV-0101-COMMIT", type: "process-exception", rationale: "Historical git topology cannot be safely rewritten"}]
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Process exception documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "metadata-only round with code-fix classification and zero deviations → REMEDIATION_REQUIRED" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "None"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Metadata-only round cannot satisfy code fix
+fail_classifications:
+  - {id: "FAIL-0101", type: "code-fix", rationale: "Code must change to match the plan"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documentation updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "metadata-only round with plan-amendment but no original plan edit → REMEDIATION_REQUIRED" {
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "README.md"
+  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Plan amendment requires plan edit
+fail_classifications:
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should reflect actual approach"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Notes updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "metadata-only round with plan-amendment and original plan edit → PROCEED_TO_UAT" {
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test-phase/01-01-PLAN.md"
+  - ".vbw-planning/phases/01-test-phase/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Valid plan amendment
+fail_classifications:
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan updated with actual approach"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Plan updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "metadata-only round with no-ID source verification can pass via count-based process-exception coverage" {
+  create_verif "write-verification.sh" "FAIL" "## Checks
+| Category | Description | Status | Evidence |
+|----------|-------------|--------|----------|
+| must_have | Historical process issue | FAIL | Missing justification |"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test-phase/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Brownfield no-ID verification
+fail_classifications:
+  - {id: "FAIL-ROW-01", type: "process-exception", rationale: "Historical process issue cannot be retroactively fixed"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Exception documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "metadata-only round with mixed ID and no-ID source FAIL rows requires full classification coverage" {
+  create_verif "write-verification.sh" "FAIL" "## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | First issue | FAIL | Missing |
+|  | must_have | Legacy no-ID issue | FAIL | Missing |"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test-phase/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Mixed ID coverage must fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Only one FAIL classified"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Partial remediation documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "missing remediation round summary → REMEDIATION_REQUIRED" {
+  create_verif "write-verification.sh" "PASS"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Missing summary should fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Summary artifact missing"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Verification exists | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_round_summary_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "flow-style plans_verified still enforces plan coverage" {
+  create_verif "write-verification.sh" "PASS"
+  create_plan "01-01"
+  create_plan "01-02"
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'VERIF'
+---
+phase: 01
+tier: full
+result: PASS
+passed: 10
+failed: 0
+total: 10
+date: 2026-03-27
+writer: write-verification.sh
+plans_verified: ["01-01"]
+---
+
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | First plan verified | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_plan_coverage=1/2"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "metadata-only round with README-only changes still fails for code-fix classifications" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "None"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "README.md"
+  - "docs/remediation-notes.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Docs-only round cannot satisfy code fix
+fail_classifications:
+  - {id: "FAIL-0101", type: "code-fix", rationale: "Code must change to match the plan"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Docs updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "metadata-only round with partial fail classification coverage → REMEDIATION_REQUIRED" {
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | First issue | FAIL | Missing |
+| FAIL-02 | must_have | Second issue | FAIL | Missing |"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Partial coverage should fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Only one FAIL was classified"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Partial remediation documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "metadata-only round with invalid classification type → REMEDIATION_REQUIRED" {
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | First issue | FAIL | Missing |"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Invalid type should fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "documentation-only", rationale: "Invalid enum value"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Invalid type documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
 @test "round with real code changes + phase deviations → PROCEED_TO_UAT (existing behavior)" {
@@ -1461,6 +2025,52 @@ VERIF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
+@test "single-quoted inline files_modified array is metadata-only" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed API"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  {
+    echo "---"
+    echo "plan: R01"
+    echo "status: complete"
+    echo "commit_hashes: []"
+    echo "files_modified: ['.vbw-planning/phases/01-test/01-01-SUMMARY.md', '.vbw-planning/STATE.md']"
+    echo "deviations: []"
+    echo "---"
+    echo
+    echo "## Summary"
+    echo "Work done."
+  } > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Document
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
 @test "empty files_modified but commits present → not metadata-only" {
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "Changed approach"
@@ -1501,6 +2111,56 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "missing files_modified falls back to commit paths for metadata-only detection" {
+  init_git_repo
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed approach"
+
+  meta_commit=$(commit_repo_file ".vbw-planning/STATE.md" "metadata only change")
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<EOF
+---
+plan: R01
+status: complete
+commit_hashes:
+  - "$meta_commit"
+deviations: []
+---
+
+## Summary
+Work done.
+EOF
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Document
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_phase_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
 @test "metadata-only round with zero deviations but incomplete plan coverage → QA_RERUN_REQUIRED" {
   # Phase-level SUMMARY.md has NO deviations
   create_summary_with_yaml_deviations "01-01" "None"
@@ -1517,6 +2177,8 @@ VERIF
 ---
 round: 01
 title: Fix part A
+fail_classifications:
+  - {id: "DEV-0101-COMMIT", type: "process-exception", rationale: "Historical git topology cannot be safely rewritten"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'PLAN'

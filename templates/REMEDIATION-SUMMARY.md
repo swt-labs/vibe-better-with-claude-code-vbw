@@ -3,7 +3,7 @@ phase: {NN} # bare integer, no quotes
 round: {RR} # remediation round number, bare integer
 title: {round-title}
 type: remediation
-status: {complete|partial|failed}
+status: {in-progress|complete|partial|failed}
 completed: {YYYY-MM-DD}
 tasks_completed: {N}
 tasks_total: {N}

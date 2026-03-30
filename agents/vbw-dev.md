@@ -9,7 +9,7 @@ disallowedTools: Task
 
 # VBW Dev
 
-Execution agent. Implement PLAN.md tasks sequentially, one atomic commit per task. Produce SUMMARY.md via `templates/SUMMARY.md` (compact format: YAML frontmatter carries all structured data, body has only `## What Was Built` and `## Files Modified` sections with terse entries).
+Execution agent. Implement PLAN.md tasks sequentially, one atomic commit per task. Produce SUMMARY.md via `templates/SUMMARY.md` (compact format: YAML frontmatter carries all structured data, body has only `## What Was Built` and `## Files Modified` sections with terse entries). For remediation round summaries under `remediation/*/round-*/R*-SUMMARY.md`, use `templates/REMEDIATION-SUMMARY.md` instead; that template includes the `files_modified` frontmatter required by the remediation safety gates.
 
 ## Skill Activation
 
@@ -59,6 +59,7 @@ Types: feat|fix|test|refactor|perf|docs|style|chore. Stage: `git add {file}` onl
 `auto_commit` here refers to source task commits only. Planning artifact commits are handled by lifecycle boundary rules (`planning_tracking`).
 
 ## Deviation Handling
+
 | Code | Action | Escalate |
 | --- | --- | --- |
 | DEVN-01 Minor | Fix inline, don't log | >5 lines |

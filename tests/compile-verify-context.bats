@@ -144,6 +144,42 @@ EOF
   [[ "$output" == *"verify_plan_count=1"* ]]
 }
 
+@test "compile-verify-context: flow-style YAML deviations are emitted" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Flow deviations
+must_haves:
+  - Feature delivered
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Flow deviations
+status: complete
+deviations: ["Changed API contract", 'Moved tests to existing file']
+---
+
+## What Was Built
+
+- Feature delivered
+
+## Files Modified
+
+- `src/feature.ts` -- modified: implement feature
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Changed API contract; Moved tests to existing file"* ]]
+}
+
 @test "compile-verify-context: legacy PLAN.md and SUMMARY.md are supported" {
   cat > "$PHASE_DIR/PLAN.md" <<'EOF'
 ---
@@ -1009,12 +1045,18 @@ round: 01
 title: Fix deviations
 type: remediation
 status: complete
+files_modified:
+  - src/api.swift
 deviations:
   - "Used different endpoint naming"
 ---
-## What Was Built
+
+## Task 1: Update API layer
+
+### What Was Built
 - Reimplemented the API layer
-## Files Modified
+
+### Files Modified
 - `src/api.swift` -- rewritten
 EOF
 
@@ -1022,8 +1064,112 @@ EOF
   run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
+  [[ "$output" == *"Reimplemented the API layer"* ]]
   [[ "$output" == *"deviations: Used different endpoint naming"* ]]
   [[ "$output" == *"files_modified: src/api.swift"* ]]
+}
+
+@test "compile-verify-context: remediation summary what_was_built aggregates multiple task sections" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Multi-task remediation
+type: remediation
+must_haves:
+  - Fix both issues
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Multi-task remediation
+type: remediation
+status: complete
+files_modified:
+  - src/api.swift
+  - src/ui.swift
+deviations: []
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+
+### Files Modified
+- `src/api.swift` -- rewritten
+
+## Task 2: Update UI layer
+
+### What Was Built
+- Adjusted the remediation UI flow
+
+### Files Modified
+- `src/ui.swift` -- rewritten
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Reimplemented the API layer"* ]]
+  [[ "$output" == *"Adjusted the remediation UI flow"* ]]
+}
+
+@test "compile-verify-context: remediation-only includes all QA round plans" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: First remediation plan
+type: remediation
+must_haves:
+  - Fix first issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Second remediation plan
+type: remediation
+must_haves:
+  - Fix second issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Remediation summary
+type: remediation
+status: complete
+files_modified:
+  - src/api.swift
+deviations: []
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== PLAN R01: First remediation plan ==="* ]]
+  [[ "$output" == *"=== PLAN R01-02: Second remediation plan ==="* ]]
+  [[ "$output" == *"=== PLAN R01-02: Second remediation plan ==="*"status: complete"* ]]
+  [[ "$output" == *"=== PLAN R01-02: Second remediation plan ==="*"Reimplemented the API layer"* ]]
+  [[ "$output" == *"verify_plan_count=2"* ]]
 }
 
 @test "compile-verify-context: --remediation-only excludes QA remediation plans" {
@@ -1832,6 +1978,41 @@ EOF
 
   [ "$status" -eq 0 ]
   [[ "$output" != *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS synthesizes IDs for no-ID FAIL rows" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| Category | Description | Status | Evidence |
+|----------|-------------|--------|----------|
+| must_have | Legacy brownfield failure | FAIL | Missing |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"FAIL_ID: FAIL-ROW-01 | ORIGINAL: Legacy brownfield failure"* ]]
 }
 
 @test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS handles multi-table VERIFICATION.md" {

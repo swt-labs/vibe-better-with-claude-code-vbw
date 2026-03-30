@@ -1,6 +1,7 @@
 ---
 phase: {NN} # bare integer, no quotes
 round: {RR} # remediation round number, bare integer
+plan: {round-plan-id} # stable plan ID, e.g. R01 or R01-02
 title: {plan-title}
 type: remediation
 autonomous: {true|false}
@@ -8,6 +9,8 @@ effort_override: {thorough|balanced|fast|turbo}
 skills_used: [{skill}]
 files_modified: [{path}]
 forbidden_commands: []
+fail_classifications:
+  - {id: "FAIL-ID", type: "code-fix|plan-amendment|process-exception", rationale: "why this classification applies"}
 must_haves:
   truths: ["{invariant}"]
   artifacts: [{path: "{file}", provides: "{what}", contains: "{string}"}]

@@ -173,10 +173,12 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         ```text
         Verify phase {NN}. Tier: {ACTIVE_TIER}.
         Determine verification scope from `VERIF_PATH`.
-        - If `VERIF_PATH` is under `remediation/qa/round-*/R*-VERIFICATION.md`, scope verification to that remediation round only.
-          - Plans: {current round R{RR}-PLAN.md path(s) only}
-          - Summaries: {current round R{RR}-SUMMARY.md path(s) only}
+        - If `VERIF_PATH` is under `remediation/qa/round-*/R*-VERIFICATION.md`, re-verify the remediation round using compounded remediation context.
+          - Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/compile-verify-context.sh --remediation-only "{phase-dir}"` and use its `VERIFICATION HISTORY` section to re-verify each original FAIL from the source VERIFICATION.
+          - Plans for `plans_verified` / `plan_ref`: {current round R{RR}-PLAN.md path(s) only}
+          - Summaries for current-round execution evidence: {current round R{RR}-SUMMARY.md path(s) only}
           - Do NOT include phase-root PLAN.md/SUMMARY.md files in plans_verified or plan_ref for round-scoped output.
+          - Any original FAIL not resolved by code-fix, plan-amendment, or documented process-exception is still a FAIL, even if the remediation round's own must_haves pass.
         - Otherwise, verify full phase scope.
           - Plans: {paths to phase PLAN.md files}
           - Summaries: {paths to phase SUMMARY.md files}

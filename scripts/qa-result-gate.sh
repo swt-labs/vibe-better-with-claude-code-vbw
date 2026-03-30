@@ -39,6 +39,373 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RESOLVE_VERIF_SCRIPT="$SCRIPT_DIR/resolve-verification-path.sh"
 
+# Extract YAML-frontmatter array items from either block-list form:
+#   key:
+#     - value
+# or flow-style form:
+#   key: ["value", 'other value']
+extract_frontmatter_array_items() {
+  local file_path="${1:-}"
+  local key_name="${2:-}"
+  [ -f "$file_path" ] || return 0
+  [ -n "$key_name" ] || return 0
+  awk -v key="$key_name" '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    function strip_quotes(v, first, last) {
+      first = substr(v, 1, 1)
+      last = substr(v, length(v), 1)
+      if ((first == "\"" && last == "\"") || (first == squote && last == squote)) {
+        return substr(v, 2, length(v) - 2)
+      }
+      return v
+    }
+    function emit_value(v) {
+      v = trim(v)
+      if (v == "") return
+      v = strip_quotes(v)
+      if (v != "") print v
+    }
+    function parse_flow_array(rest, i, ch, current, quote) {
+      rest = trim(rest)
+      if (rest !~ /^\[/) return 0
+      sub(/^\[/, "", rest)
+      sub(/\][[:space:]]*$/, "", rest)
+      current = ""
+      quote = ""
+      for (i = 1; i <= length(rest); i++) {
+        ch = substr(rest, i, 1)
+        if (quote == "") {
+          if (ch == "\"" || ch == squote) {
+            quote = ch
+            current = current ch
+            continue
+          }
+          if (ch == ",") {
+            emit_value(current)
+            current = ""
+            continue
+          }
+        } else if (ch == quote) {
+          quote = ""
+          current = current ch
+          continue
+        }
+        current = current ch
+      }
+      emit_value(current)
+      return 1
+    }
+    BEGIN {
+      in_fm = 0
+      in_arr = 0
+      squote = sprintf("%c", 39)
+    }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && $0 ~ ("^" key ":[[:space:]]*") {
+      rest = $0
+      sub("^" key ":[[:space:]]*", "", rest)
+      if (parse_flow_array(rest)) exit
+      in_arr = 1
+      next
+    }
+    in_fm && in_arr && /^[[:space:]]+- / {
+      line = $0
+      sub(/^[[:space:]]+- /, "", line)
+      emit_value(line)
+      next
+    }
+    in_fm && in_arr && /^[^[:space:]]/ { exit }
+  ' "$file_path" 2>/dev/null
+}
+
+path_is_metadata_artifact() {
+  local path="${1:-}"
+  case "$path" in
+    .vbw-planning/*|docs/*|.github/*|.claude/*|README|README.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|LICENSE|LICENSE.*|CLAUDE.md|AGENTS.md|CODEOWNERS|.gitignore|.gitattributes|.editorconfig|.prettierignore)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+path_is_original_plan_artifact() {
+  local path="${1:-}"
+  local phase_dir_name="${2:-}"
+  case "$path" in
+    */remediation/*) return 1 ;;
+    */"$phase_dir_name"/*-PLAN.md|*/"$phase_dir_name"/PLAN.md) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+paths_include_original_plan_artifact() {
+  local phase_dir_name="${1:-}"
+  while IFS= read -r path; do
+    path=$(printf '%s' "$path" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"]//;s/['\"]$//;s/,$//")
+    [ -n "$path" ] || continue
+    if path_is_original_plan_artifact "$path" "$phase_dir_name"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+paths_include_non_metadata() {
+  while IFS= read -r path; do
+    path=$(printf '%s' "$path" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"]//;s/['\"]$//;s/,$//")
+    [ -n "$path" ] || continue
+    if ! path_is_metadata_artifact "$path"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+commit_hashes_to_changed_files() {
+  local repo_root="${1:-}"
+  local commit_hashes="${2:-}"
+  [ -n "$repo_root" ] || return 0
+  [ -n "$commit_hashes" ] || return 0
+  while IFS= read -r commit_hash; do
+    commit_hash=$(printf '%s' "$commit_hash" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"]//;s/['\"]$//")
+    [ -n "$commit_hash" ] || continue
+    git -C "$repo_root" show --name-only --format= "$commit_hash" 2>/dev/null || true
+  done <<< "$commit_hashes"
+}
+
+extract_fail_classification_types() {
+  local file_path="${1:-}"
+  [ -f "$file_path" ] || return 0
+  awk '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    BEGIN {
+      in_fm = 0
+      in_fc = 0
+      squote = sprintf("%c", 39)
+    }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^fail_classifications:/ {
+      rest = $0
+      sub(/^fail_classifications:[[:space:]]*/, "", rest)
+      if (rest ~ /^\[/) {
+        while (match(rest, /type:[[:space:]]*[^,}\]]+/)) {
+          type = substr(rest, RSTART, RLENGTH)
+          sub(/^type:[[:space:]]*/, "", type)
+          gsub(/[",}]/, "", type)
+          gsub(squote, "", type)
+          type = trim(type)
+          if (type != "") print type
+          rest = substr(rest, RSTART + RLENGTH)
+        }
+        exit
+      }
+      in_fc = 1
+      next
+    }
+    in_fm && in_fc && /^[[:space:]]+- / {
+      line = $0
+      if (match(line, /type:[[:space:]]*[^,}]+/)) {
+        type = substr(line, RSTART, RLENGTH)
+        sub(/^type:[[:space:]]*/, "", type)
+        gsub(/[",}]/, "", type)
+        gsub(squote, "", type)
+        type = trim(type)
+        if (type != "") print type
+      }
+      next
+    }
+    in_fm && in_fc && /^[[:space:]]+type:/ {
+      line = $0
+      sub(/^[[:space:]]+type:[[:space:]]*/, "", line)
+      gsub(/[",}]/, "", line)
+      gsub(squote, "", line)
+      line = trim(line)
+      if (line != "") print line
+      next
+    }
+    in_fm && in_fc && /^[^[:space:]]/ { exit }
+  ' "$file_path" 2>/dev/null
+}
+
+extract_fail_classification_ids() {
+  local file_path="${1:-}"
+  [ -f "$file_path" ] || return 0
+  awk '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    BEGIN {
+      in_fm = 0
+      in_fc = 0
+      squote = sprintf("%c", 39)
+    }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^fail_classifications:/ {
+      rest = $0
+      sub(/^fail_classifications:[[:space:]]*/, "", rest)
+      if (rest ~ /^\[/) {
+        while (match(rest, /id:[[:space:]]*[^,}\]]+/)) {
+          id = substr(rest, RSTART, RLENGTH)
+          sub(/^id:[[:space:]]*/, "", id)
+          gsub(/[",}]/, "", id)
+          gsub(squote, "", id)
+          id = trim(id)
+          if (id != "") print id
+          rest = substr(rest, RSTART + RLENGTH)
+        }
+        exit
+      }
+      in_fc = 1
+      next
+    }
+    in_fm && in_fc && /^[[:space:]]+- / {
+      line = $0
+      if (match(line, /id:[[:space:]]*[^,}]+/)) {
+        id = substr(line, RSTART, RLENGTH)
+        sub(/^id:[[:space:]]*/, "", id)
+        gsub(/[",}]/, "", id)
+        gsub(squote, "", id)
+        id = trim(id)
+        if (id != "") print id
+      }
+      next
+    }
+    in_fm && in_fc && /^[[:space:]]+id:/ {
+      line = $0
+      sub(/^[[:space:]]+id:[[:space:]]*/, "", line)
+      gsub(/[",}]/, "", line)
+      gsub(squote, "", line)
+      line = trim(line)
+      if (line != "") print line
+      next
+    }
+    in_fm && in_fc && /^[^[:space:]]/ { exit }
+  ' "$file_path" 2>/dev/null
+}
+
+collect_fail_classification_types_in_dir() {
+  local scan_dir="${1:-}"
+  [ -d "$scan_dir" ] || return 0
+  while IFS= read -r _cfc_plan; do
+    [ -f "$_cfc_plan" ] || continue
+    extract_fail_classification_types "$_cfc_plan"
+  done < <(find "$scan_dir" -maxdepth 1 ! -name '.*' \( -name '*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+}
+
+collect_fail_classification_ids_in_dir() {
+  local scan_dir="${1:-}"
+  [ -d "$scan_dir" ] || return 0
+  while IFS= read -r _cfc_plan; do
+    [ -f "$_cfc_plan" ] || continue
+    extract_fail_classification_ids "$_cfc_plan"
+  done < <(find "$scan_dir" -maxdepth 1 ! -name '.*' \( -name '*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+}
+
+fail_classification_types_are_valid() {
+  local saw_type=false
+  while IFS= read -r classification_type; do
+    [ -n "$classification_type" ] || continue
+    saw_type=true
+    case "$classification_type" in
+      code-fix|plan-amendment|process-exception) ;;
+      *) return 1 ;;
+    esac
+  done
+  [ "$saw_type" = true ]
+}
+
+extract_fail_ids_from_verification() {
+  local file_path="${1:-}"
+  [ -f "$file_path" ] || return 0
+  awk -F'|' '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    !/^\|/ { header_found = 0; next }
+    /^\|/ {
+      if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
+      if (!header_found) {
+        status_col = 0
+        id_col = 0
+        for (i = 2; i < NF; i++) {
+          cell = trim($i)
+          if (cell == "Status") status_col = i
+          if (cell == "ID") id_col = i
+        }
+        if (status_col > 0) header_found = 1
+        next
+      }
+      if (status_col > 0) {
+        status = trim($(status_col))
+        gsub(/\*+/, "", status)
+        status = trim(status)
+        if (status == "FAIL") {
+          fail_index++
+          fail_id = (id_col > 0) ? trim($(id_col)) : ""
+          if (fail_id == "") fail_id = sprintf("FAIL-ROW-%02d", fail_index)
+          print fail_id
+        }
+      }
+    }
+  ' "$file_path" 2>/dev/null
+}
+
+count_fail_rows_in_verification() {
+  local file_path="${1:-}"
+  [ -f "$file_path" ] || { echo 0; return; }
+  awk -F'|' '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    !/^\|/ { header_found = 0; next }
+    /^\|/ {
+      if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
+      if (!header_found) {
+        status_col = 0
+        for (i = 2; i < NF; i++) {
+          cell = trim($i)
+          if (cell == "Status") status_col = i
+        }
+        if (status_col > 0) header_found = 1
+        next
+      }
+      if (status_col > 0) {
+        status = trim($(status_col))
+        gsub(/\*+/, "", status)
+        status = trim(status)
+        if (status == "FAIL") count++
+      }
+    }
+    END { print count + 0 }
+  ' "$file_path" 2>/dev/null
+}
+
+classification_ids_cover_source_fail_ids() {
+  local source_fail_ids="${1:-}"
+  local classified_ids="${2:-}"
+  while IFS= read -r source_fail_id; do
+    [ -n "$source_fail_id" ] || continue
+    if ! printf '%s\n' "$classified_ids" | grep -Fx -- "$source_fail_id" >/dev/null 2>&1; then
+      return 1
+    fi
+  done <<< "$source_fail_ids"
+  return 0
+}
+
 if [ -z "$PHASE_DIR" ]; then
   echo "qa_gate_writer=missing"
   echo "qa_gate_result=missing"
@@ -109,6 +476,8 @@ if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
   fi
 fi
 
+GIT_ROOT=$(git -C "$PHASE_DIR" rev-parse --show-toplevel 2>/dev/null || true)
+
 # Count non-placeholder deviations across SUMMARY.md files in a given directory.
 # Uses the same AWK extraction logic as execute-protocol.md Step 4.
 # Arguments: $1 = directory to scan for SUMMARY.md files
@@ -119,21 +488,15 @@ count_deviations_in_dir() {
   while IFS= read -r _cdf_file; do
     [ -f "$_cdf_file" ] || continue
     local _cdf_devs
-    _cdf_devs=$(awk '
-      BEGIN { in_fm=0; in_dev=0; count=0 }
-      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-      in_fm && /^---[[:space:]]*$/ { exit }
-      in_fm && /^deviations:/ { in_dev=1; next }
-      in_fm && in_dev && /^[[:space:]]+- / {
-        line=$0; sub(/^[[:space:]]+- /, "", line)
-        gsub(/^"/, "", line); gsub(/"$/, "", line)
-        lc = tolower(line)
+    _cdf_devs=$(extract_frontmatter_array_items "$_cdf_file" deviations | awk '
+      BEGIN { count=0 }
+      {
+        lc = tolower($0)
         if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
         count++
       }
-      in_fm && in_dev && /^[^[:space:]]/ { exit }
       END { print count }
-    ' "$_cdf_file" 2>/dev/null)
+    ' 2>/dev/null)
     if [ "${_cdf_devs:-0}" -eq 0 ]; then
       _cdf_devs=$(awk '
         BEGIN { count=0 }
@@ -197,7 +560,7 @@ RESULT=$(awk '
 ' "$VERIF_PATH" 2>/dev/null)
 
 # Body FAIL count (defense-in-depth cross-check)
-FAIL_COUNT=$(grep -cE '\|[[:space:]]*\*{0,2}FAIL\*{0,2}[[:space:]]*\|' "$VERIF_PATH" 2>/dev/null || echo 0)
+FAIL_COUNT=$(count_fail_rows_in_verification "$VERIF_PATH")
 
 # Deviation count — scan SUMMARY.md files for non-placeholder deviations
 DEVIATION_COUNT=$(count_deviations_in_dir "$SUMMARY_SCOPE_DIR")
@@ -206,99 +569,43 @@ DEVIATION_COUNT=$(count_deviations_in_dir "$SUMMARY_SCOPE_DIR")
 # .vbw-planning/ files (no production code), phase-level deviations
 # are still unresolved and the override must fire.
 METADATA_ONLY_ROUND="false"
+ROUND_SUMMARY_MISSING="false"
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
-  # Scan round SUMMARY.md files_modified for non-metadata paths
+  # Scan round SUMMARY.md files_modified for non-metadata paths. When
+  # files_modified is absent (older summaries / partial installs), fall back to
+  # commit_hashes and inspect the actual changed paths from git.
   _mo_has_code_changes="false"
   _mo_found_summary="false"
   while IFS= read -r _mo_summary; do
     [ -f "$_mo_summary" ] || continue
     _mo_found_summary="true"
-    # Extract files_modified from YAML frontmatter
-    _mo_files=$(awk '
-      BEGIN { in_fm=0; in_fm_arr=0 }
-      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-      in_fm && /^---[[:space:]]*$/ { exit }
-      in_fm && /^files_modified:/ {
-        # Inline array: files_modified: ["a", "b"]
-        rest=$0; sub(/^files_modified:[[:space:]]*/, "", rest)
-        if (rest ~ /^\[/) {
-          # Strip brackets
-          gsub(/^\[|\][[:space:]]*$/, "", rest)
-          # Parse quoted CSV: split on commas outside quotes
-          remainder = rest
-          while (remainder != "") {
-            gsub(/^[[:space:]]+/, "", remainder)
-            if (remainder == "") break
-            if (substr(remainder, 1, 1) == "\"") {
-              # Quoted value — find closing quote
-              val = ""; remainder = substr(remainder, 2)
-              qi = index(remainder, "\"")
-              if (qi > 0) {
-                val = substr(remainder, 1, qi - 1)
-                remainder = substr(remainder, qi + 1)
-              } else {
-                val = remainder; remainder = ""
-              }
-            } else {
-              # Unquoted value — take until comma
-              ci = index(remainder, ",")
-              if (ci > 0) {
-                val = substr(remainder, 1, ci - 1)
-                remainder = substr(remainder, ci)
-              } else {
-                val = remainder; remainder = ""
-              }
-            }
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
-            if (val != "") print val
-            # Skip comma separator
-            sub(/^[[:space:]]*,[[:space:]]*/, "", remainder)
-          }
-          exit
-        }
-        in_fm_arr=1; next
-      }
-      in_fm && in_fm_arr && /^[[:space:]]+- / {
-        line=$0; sub(/^[[:space:]]+- /, "", line)
-        gsub(/^"/, "", line); gsub(/"$/, "", line)
-        print line
-      }
-      in_fm && in_fm_arr && /^[^[:space:]]/ { exit }
-    ' "$_mo_summary" 2>/dev/null)
-    # Also check commit_hashes — empty means no real commits
-    _mo_commits=$(awk '
-      BEGIN { in_fm=0; in_arr=0; count=0 }
-      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-      in_fm && /^---[[:space:]]*$/ { exit }
-      in_fm && /^commit_hashes:/ {
-        rest=$0; sub(/^commit_hashes:[[:space:]]*/, "", rest)
-        if (rest ~ /^\[[[:space:]]*\]/) { exit }
-        if (rest ~ /^\[/) { count++; exit }
-        in_arr=1; next
-      }
-      in_fm && in_arr && /^[[:space:]]+- / { count++ }
-      in_fm && in_arr && /^[^[:space:]]/ { exit }
-      END { print count }
-    ' "$_mo_summary" 2>/dev/null)
+    _mo_files=$(extract_frontmatter_array_items "$_mo_summary" files_modified)
+    _mo_commit_hashes=$(extract_frontmatter_array_items "$_mo_summary" commit_hashes)
+    _mo_commits=$(printf '%s\n' "$_mo_commit_hashes" | awk 'NF { count++ } END { print count + 0 }')
     _mo_commits="${_mo_commits:-0}"
     if [ -n "$_mo_files" ]; then
-      while IFS= read -r _mo_path; do
-        _mo_path=$(echo "$_mo_path" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/,$//')
-        [ -n "$_mo_path" ] || continue
-        case "$_mo_path" in
-          .vbw-planning/*) ;; # metadata path — continue checking
-          *) _mo_has_code_changes="true"; break ;;
-        esac
-      done <<< "$_mo_files"
+      if paths_include_non_metadata <<< "$_mo_files"; then
+        _mo_has_code_changes="true"
+      fi
     elif [ "$_mo_commits" -gt 0 ] 2>/dev/null; then
-      # No files listed but commits exist → assume code changes were made
-      _mo_has_code_changes="true"
+      _mo_commit_files="$(commit_hashes_to_changed_files "$GIT_ROOT" "$_mo_commit_hashes" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))"
+      if [ -n "$_mo_commit_files" ]; then
+        if paths_include_non_metadata <<< "$_mo_commit_files"; then
+          _mo_has_code_changes="true"
+        fi
+      else
+        # If git history is unavailable, keep the old conservative fallback.
+        _mo_has_code_changes="true"
+      fi
     fi
     [ "$_mo_has_code_changes" = "true" ] && break
   done < <(find "$SUMMARY_SCOPE_DIR" -maxdepth 1 ! -name '.*' \( -name '*-SUMMARY.md' -o -name 'SUMMARY.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
   # Only flag metadata-only when a round SUMMARY.md exists — if no summary was
-  # found, we can't determine what changed, so fall through to default behavior.
-  if [ "$_mo_found_summary" = "true" ] && [ "$_mo_has_code_changes" = "false" ]; then
+  # found, the remediation round is structurally incomplete and PASS must not
+  # proceed without the artifact that carries change evidence.
+  if [ "$_mo_found_summary" = "false" ]; then
+    ROUND_SUMMARY_MISSING="true"
+  elif [ "$_mo_has_code_changes" = "false" ]; then
     METADATA_ONLY_ROUND="true"
   fi
 fi
@@ -311,19 +618,12 @@ while IFS= read -r plan_file; do
 done < <(find "$PLAN_SCOPE_DIR" -maxdepth 1 ! -name '.*' \( -name '*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
 
 # Parse plans_verified from VERIFICATION.md frontmatter (YAML array)
-PLANS_VERIFIED_COUNT=$(awk '
-  BEGIN { in_fm=0; in_pv=0; count=0 }
-  NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-  in_fm && /^---[[:space:]]*$/ { exit }
-  in_fm && /^plans_verified:/ { in_pv=1; next }
-  in_fm && in_pv && /^[[:space:]]+- / {
-    val=$0; sub(/^[[:space:]]+- /, "", val)
-    if (!seen[val]++) count++
-    next
+PLANS_VERIFIED_COUNT=$(extract_frontmatter_array_items "$VERIF_PATH" plans_verified | awk '
+  {
+    if (!seen[$0]++) count++
   }
-  in_fm && in_pv && /^[^[:space:]]/ { exit }
-  END { print count }
-' "$VERIF_PATH" 2>/dev/null)
+  END { print count + 0 }
+' 2>/dev/null)
 PLANS_VERIFIED_COUNT="${PLANS_VERIFIED_COUNT:-0}"
 
 # Output diagnostic fields
@@ -352,6 +652,9 @@ case "$RESULT" in
     if [ "$FAIL_COUNT" -gt 0 ] 2>/dev/null; then
       # 6. PASS with FAIL rows → defense-in-depth override
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
+    elif [ "$ROUND_SUMMARY_MISSING" = "true" ]; then
+      echo "qa_gate_round_summary_missing=true"
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$DEVIATION_COUNT" -gt 0 ] && { [ "$IN_REMEDIATION" = "false" ] || [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; }; then
       # 5a. PASS but deviations exist without FAIL checks → QA rationalized deviations.
       # During remediation, phase-root SUMMARY.md deviations are historical and must
@@ -359,25 +662,68 @@ case "$RESULT" in
       # and must be reflected as FAIL checks, so scoped round summaries keep the override.
       echo "qa_gate_deviation_override=true"
       # Also check plan coverage so both diagnostics surface simultaneously
-      if [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
+      if [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
         echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
       fi
       echo "qa_gate_routing=QA_RERUN_REQUIRED"
     elif [ "$METADATA_ONLY_ROUND" = "true" ]; then
       # 5c. Remediation round made no code changes — only metadata/.vbw-planning/ updates.
-      # Re-check phase-level deviations since they are still unresolved.
+      # Re-check phase-level deviations. Metadata-only rounds are only invalid when
+      # they still claim a code-fix path (or omit fail_classifications entirely).
+      # Pure plan-amendment / process-exception rounds are valid non-code resolutions.
+      # Semantic correctness of a process-exception (i.e. whether it is truly
+      # non-fixable) is enforced by remediation QA re-verifying the original FAILs;
+      # this deterministic gate only validates structural evidence.
       PHASE_DEVIATION_COUNT=$(count_deviations_in_dir "$PHASE_DIR")
-      if [ "$PHASE_DEVIATION_COUNT" -gt 0 ] 2>/dev/null; then
+      SOURCE_VERIFICATION_PATH=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null | awk -F= '/^source_verification_path=/{print $2; exit}')
+      SOURCE_FAIL_IDS=""
+      SOURCE_FAIL_ID_COUNT=0
+      SOURCE_FAIL_ROW_COUNT=0
+      if [ -n "$SOURCE_VERIFICATION_PATH" ] && [ -r "$SOURCE_VERIFICATION_PATH" ]; then
+        SOURCE_FAIL_IDS=$(extract_fail_ids_from_verification "$SOURCE_VERIFICATION_PATH")
+        SOURCE_FAIL_ID_COUNT=$(printf '%s\n' "$SOURCE_FAIL_IDS" | awk 'NF { count++ } END { print count + 0 }')
+        SOURCE_FAIL_ROW_COUNT=$(count_fail_rows_in_verification "$SOURCE_VERIFICATION_PATH")
+      fi
+
+      ROUND_CLASSIFICATION_TYPES=$(collect_fail_classification_types_in_dir "$PLAN_SCOPE_DIR")
+      ROUND_CLASSIFICATION_IDS=$(collect_fail_classification_ids_in_dir "$PLAN_SCOPE_DIR" | (sort -u 2>/dev/null || sort -u))
+      ROUND_CLASSIFICATION_TYPE_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_TYPES" | awk 'NF { count++ } END { print count + 0 }')
+      ROUND_CLASSIFICATION_ID_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_IDS" | awk 'NF { count++ } END { print count + 0 }')
+      ROUND_CODE_FIX_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_TYPES" | awk '$0 == "code-fix" { count++ } END { print count + 0 }')
+      ROUND_PLAN_AMENDMENT_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_TYPES" | awk '$0 == "plan-amendment" { count++ } END { print count + 0 }')
+      ROUND_CLASSIFICATIONS_VALID=true
+
+      if [ "$ROUND_CLASSIFICATION_ID_COUNT" -eq 0 ] 2>/dev/null || [ "$ROUND_CLASSIFICATION_ID_COUNT" -ne "$ROUND_CLASSIFICATION_TYPE_COUNT" ] 2>/dev/null; then
+        ROUND_CLASSIFICATIONS_VALID=false
+      elif ! fail_classification_types_are_valid <<< "$ROUND_CLASSIFICATION_TYPES"; then
+        ROUND_CLASSIFICATIONS_VALID=false
+      elif [ "$SOURCE_FAIL_ROW_COUNT" -gt 0 ] 2>/dev/null && [ "$SOURCE_FAIL_ID_COUNT" -eq 0 ] 2>/dev/null; then
+        if [ "$ROUND_CLASSIFICATION_TYPE_COUNT" -ne "$SOURCE_FAIL_ROW_COUNT" ] 2>/dev/null; then
+          ROUND_CLASSIFICATIONS_VALID=false
+        fi
+      elif [ "$SOURCE_FAIL_ID_COUNT" -gt 0 ] 2>/dev/null && ! classification_ids_cover_source_fail_ids "$SOURCE_FAIL_IDS" "$ROUND_CLASSIFICATION_IDS"; then
+        ROUND_CLASSIFICATIONS_VALID=false
+      fi
+
+      if [ "$ROUND_CLASSIFICATIONS_VALID" != "true" ]; then
         echo "qa_gate_metadata_only_override=true"
         echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
         echo "qa_gate_routing=REMEDIATION_REQUIRED"
-      elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
+      elif [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null; then
+        echo "qa_gate_metadata_only_override=true"
+        echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
+        echo "qa_gate_routing=REMEDIATION_REQUIRED"
+      elif [ "$ROUND_PLAN_AMENDMENT_COUNT" -gt 0 ] 2>/dev/null && ! paths_include_original_plan_artifact "$(basename "$PHASE_DIR")" <<< "${_mo_files:-${_mo_commit_files:-}}"; then
+        echo "qa_gate_metadata_only_override=true"
+        echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
+        echo "qa_gate_routing=REMEDIATION_REQUIRED"
+      elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
         echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
         echo "qa_gate_routing=QA_RERUN_REQUIRED"
       else
         echo "qa_gate_routing=PROCEED_TO_UAT"
       fi
-    elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
+    elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
       # 5b. PASS but incomplete plan coverage → QA skipped some plans
       echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
       echo "qa_gate_routing=QA_RERUN_REQUIRED"
