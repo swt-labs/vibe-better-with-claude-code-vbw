@@ -292,6 +292,20 @@ commit_hashes_to_changed_files() {
   done <<< "$commit_hashes"
 }
 
+commit_hashes_resolve_cleanly() {
+  local repo_root="${1:-}"
+  local commit_hashes="${2:-}"
+  local commit_hash
+  [ -n "$repo_root" ] || return 1
+  [ -n "$commit_hashes" ] || return 1
+  while IFS= read -r commit_hash; do
+    commit_hash=$(printf '%s' "$commit_hash" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"]//;s/['\"]$//")
+    [ -n "$commit_hash" ] || continue
+    git -C "$repo_root" cat-file -e "${commit_hash}^{commit}" 2>/dev/null || return 1
+  done <<< "$commit_hashes"
+  return 0
+}
+
 extract_fail_classification_types() {
   local file_path="${1:-}"
   [ -f "$file_path" ] || return 0
@@ -820,6 +834,7 @@ fi
 # are still unresolved and the override must fire.
 METADATA_ONLY_ROUND="false"
 ROUND_SUMMARY_MISSING="false"
+ROUND_PLAN_MISSING="false"
 ROUND_CHANGE_EVIDENCE_UNAVAILABLE="false"
 ROUND_CHANGE_EVIDENCE_EMPTY="false"
 ROUND_SUMMARY_NONTERMINAL="false"
@@ -856,6 +871,10 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
         _mo_has_code_changes="true"
       fi
     elif [ "$_mo_commits" -gt 0 ] 2>/dev/null; then
+      if ! commit_hashes_resolve_cleanly "$GIT_ROOT" "$_mo_commit_hashes"; then
+        ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
+        break
+      fi
       _mo_commit_files="$(commit_hashes_to_changed_files "$GIT_ROOT" "$_mo_commit_hashes" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))"
       if [ -n "$_mo_commit_files" ]; then
         _mo_all_recorded_paths=$(printf '%s\n%s\n' "${_mo_all_recorded_paths:-}" "$_mo_commit_files")
@@ -894,6 +913,10 @@ PLANS_VERIFIED_COUNT=$(extract_frontmatter_array_items "$VERIF_PATH" plans_verif
   END { print count + 0 }
 ' 2>/dev/null)
 PLANS_VERIFIED_COUNT="${PLANS_VERIFIED_COUNT:-0}"
+
+if [ "$IN_REMEDIATION" = "true" ] && [ "$PLAN_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$PLAN_COUNT" -eq 0 ] 2>/dev/null; then
+  ROUND_PLAN_MISSING="true"
+fi
 
 ROUND_ALL_RECORDED_PATHS=$(printf '%s\n' "${_mo_all_recorded_paths:-}" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))
 ROUND_CLASSIFICATION_TYPES=""
@@ -956,6 +979,8 @@ case "$RESULT" in
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$ROUND_SUMMARY_MISSING" = "true" ]; then
       echo "qa_gate_round_summary_missing=true"
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
+    elif [ "$ROUND_PLAN_MISSING" = "true" ]; then
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$ROUND_CHANGE_EVIDENCE_UNAVAILABLE" = "true" ]; then
       echo "qa_gate_round_change_evidence_unavailable=true"

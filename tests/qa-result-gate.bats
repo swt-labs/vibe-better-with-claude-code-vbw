@@ -271,6 +271,12 @@ SUMMARY
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     '  - "src/Feature.swift"'
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: Current round verification should be authoritative
+---
+EOF
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
 ---
 phase: 01
@@ -281,6 +287,8 @@ failed: 0
 total: 10
 date: 2026-03-27
 writer: write-verification.sh
+plans_verified:
+  - R01
 ---
 
 ## Must-Have Checks
@@ -1692,6 +1700,33 @@ VERIF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
+@test "missing remediation round plan → REMEDIATION_REQUIRED" {
+  create_verif "write-verification.sh" "PASS"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "src/Fix.swift"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified: []
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Verification exists | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
 @test "missing files_modified + unresolved commit hashes → REMEDIATION_REQUIRED" {
   create_verif "write-verification.sh" "PASS"
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -1715,6 +1750,55 @@ round: 01
 title: Missing files_modified must fail closed
 fail_classifications:
   - {id: "FAIL-01", type: "process-exception", rationale: "Need change evidence to trust this round"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Verification exists | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "mixed valid and invalid commit hashes fail closed" {
+  create_verif "write-verification.sh" "PASS"
+  init_git_repo
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  valid_commit=$(commit_repo_file "src/Fix.swift" "real code change")
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<EOF
+---
+plan: R01
+status: complete
+commit_hashes:
+  - "$valid_commit"
+  - deadbeef
+deviations: []
+---
+
+## Task 1: Mixed provenance should fail closed
+EOF
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Mixed provenance must fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Need complete change evidence"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
