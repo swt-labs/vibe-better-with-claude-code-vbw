@@ -2363,7 +2363,7 @@ VERIF
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
-@test "docs-only round is treated as delivered content rather than metadata-only" {
+@test "docs-only round with process-exception is treated as delivered content rather than metadata-only" {
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "None"
 
@@ -2379,7 +2379,7 @@ VERIF
 round: 01
 title: Docs-only round cannot satisfy code fix
 fail_classifications:
-  - {id: "FAIL-0101", type: "code-fix", rationale: "Code must change to match the plan"}
+  - {id: "FAIL-0101", type: "process-exception", rationale: "Delivered content fix is documented outside planning metadata"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'

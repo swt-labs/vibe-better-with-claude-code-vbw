@@ -158,7 +158,7 @@ EOF
   echo "$output" | grep -q "uat_issues_major_or_higher=true"
 }
 
-@test "re-verified UAT with status complete clears remediation state" {
+@test "terminal UAT with missing QA verification reroutes to needs_verification" {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
@@ -176,7 +176,8 @@ EOF
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_issues_phase=none"
-  echo "$output" | grep -q "next_phase_state=all_done"
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_verification"
 }
 
 @test "orphan UAT without PLAN or SUMMARY is ignored" {
@@ -1006,7 +1007,7 @@ EOF
 
 # --- UAT status normalization in phase-detect ---
 
-@test "phase with all_pass UAT is treated as verified (not unverified)" {
+@test "phase with all_pass UAT is treated as verified but still needs QA when verification is missing" {
   mkdir -p .vbw-planning/phases/01-feature
   touch .vbw-planning/phases/01-feature/01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-SUMMARY.md
@@ -1036,10 +1037,10 @@ CONF
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
 
-  # all_pass should be normalized to complete → phase is verified → not unverified
+  # all_pass should be normalized to complete → phase is verified for UAT,
+  # but terminal UAT with no QA artifact must still reroute to needs_verification.
   echo "$output" | grep -q "has_unverified_phases=false"
-  # Should NOT route to needs_verification
-  ! echo "$output" | grep -q "next_phase_state=needs_verification"
+  echo "$output" | grep -q "next_phase_state=needs_verification"
 }
 
 @test "phase with passed UAT is treated as verified (not unverified)" {

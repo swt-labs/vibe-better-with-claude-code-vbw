@@ -161,6 +161,18 @@ path_is_metadata_artifact() {
   esac
 }
 
+path_is_code_fix_support_artifact() {
+  local path="${1:-}"
+  case "$path" in
+    .vbw-planning/*|.github/*|.claude/*|docs/*|README|README.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|LICENSE|LICENSE.*|CLAUDE.md|AGENTS.md|CODEOWNERS|.gitignore|.gitattributes|.editorconfig|.prettierignore|tests/*|testing/*|test/*|__tests__/*|spec/*|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 path_is_original_plan_artifact() {
   local path="${1:-}"
   local phase_dir="${2:-}"
@@ -251,6 +263,17 @@ paths_include_non_metadata() {
     path=$(normalize_recorded_path "$path")
     [ -n "$path" ] || continue
     if ! path_is_metadata_artifact "$path"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+paths_include_code_fix_evidence() {
+  while IFS= read -r path; do
+    path=$(normalize_recorded_path "$path")
+    [ -n "$path" ] || continue
+    if ! path_is_code_fix_support_artifact "$path"; then
       return 0
     fi
   done
@@ -939,6 +962,8 @@ case "$RESULT" in
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$ROUND_CHANGE_EVIDENCE_EMPTY" = "true" ]; then
       echo "qa_gate_round_change_evidence_empty=true"
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
+    elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null && ! paths_include_code_fix_evidence <<< "$ROUND_ALL_RECORDED_PATHS"; then
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$ROUND_PLAN_AMENDMENT_COUNT" -gt 0 ] 2>/dev/null && {
       [ "$ROUND_PLAN_AMENDMENT_SOURCE_PLAN_COUNT" -ne "$ROUND_PLAN_AMENDMENT_COUNT" ] 2>/dev/null \

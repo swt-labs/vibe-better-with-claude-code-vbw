@@ -4,16 +4,16 @@ trap 'exit 0' EXIT
 # Pre-compute all project state for implement.md and other commands.
 # Output: key=value pairs on stdout, one per line. Exit 0 always.
 
-PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
-
-# Source shared UAT helpers (extract_status_value, latest_non_source_uat)
 _SCRIPT_DIR_PD="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=uat-utils.sh
-. "$_SCRIPT_DIR_PD/uat-utils.sh"
-# shellcheck source=summary-utils.sh
-. "$_SCRIPT_DIR_PD/summary-utils.sh"
+SCRIPT_DIR="$_SCRIPT_DIR_PD"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+if [ -f "$_SCRIPT_DIR_PD/summary-utils.sh" ]; then
+  . "$_SCRIPT_DIR_PD/summary-utils.sh"
+fi
+if [ -f "$_SCRIPT_DIR_PD/uat-utils.sh" ]; then
+  . "$_SCRIPT_DIR_PD/uat-utils.sh"
+fi
 if [ -f "$_SCRIPT_DIR_PD/phase-state-utils.sh" ]; then
-  # shellcheck source=phase-state-utils.sh
   . "$_SCRIPT_DIR_PD/phase-state-utils.sh"
 fi
 
@@ -786,21 +786,8 @@ if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; t
   _QA_ATT_DIR="$PHASES_DIR/$FIRST_QA_ATTENTION_SLUG/"
   _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
   _QA_ATT_UAT_STATUS=""
-  _QA_ATT_PHASE_VERIF=""
-  _QA_ATT_AUTHORITATIVE_VERIF=""
-  _QA_ATT_HAS_EXISTING_VERIFICATION="false"
-  _QA_ATT_REQUIRES_AUTHORITATIVE_RECHECK="false"
   if [ -f "$_QA_ATT_UAT" ]; then
     _QA_ATT_UAT_STATUS=$(extract_status_value "$_QA_ATT_UAT")
-  fi
-
-  _QA_ATT_PHASE_VERIF=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" phase "$_QA_ATT_DIR" 2>/dev/null || true)
-  _QA_ATT_AUTHORITATIVE_VERIF=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" authoritative "$_QA_ATT_DIR" 2>/dev/null || true)
-  if [ -n "$_QA_ATT_PHASE_VERIF" ] && [ -f "$_QA_ATT_PHASE_VERIF" ]; then
-    _QA_ATT_HAS_EXISTING_VERIFICATION="true"
-  fi
-  if [ -n "$_QA_ATT_AUTHORITATIVE_VERIF" ] && [ "$_QA_ATT_AUTHORITATIVE_VERIF" != "$_QA_ATT_PHASE_VERIF" ]; then
-    _QA_ATT_REQUIRES_AUTHORITATIVE_RECHECK="true"
   fi
 
   case "$_QA_ATT_UAT_STATUS" in
@@ -827,16 +814,14 @@ if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; t
           QA_STATUS="remediating"
           ;;
         pending)
-          if [ "$_QA_ATT_HAS_EXISTING_VERIFICATION" = "true" ] || [ "$_QA_ATT_REQUIRES_AUTHORITATIVE_RECHECK" = "true" ]; then
-            NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
-            NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
-            if [ -d "$_QA_ATT_DIR" ]; then
-              NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
-              NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
-            fi
-            NEXT_PHASE_STATE="needs_verification"
-            QA_STATUS="pending"
+          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+          if [ -d "$_QA_ATT_DIR" ]; then
+            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
           fi
+          NEXT_PHASE_STATE="needs_verification"
+          QA_STATUS="pending"
           ;;
       esac
       ;;
