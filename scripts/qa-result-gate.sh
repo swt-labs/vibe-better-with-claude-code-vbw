@@ -182,31 +182,64 @@ path_is_code_fix_support_artifact() {
   path_is_recorded_non_code_artifact "$path"
 }
 
-path_is_original_plan_artifact() {
+resolve_original_plan_artifact_path() {
   local path="${1:-}"
   local phase_dir="${2:-}"
-  local phase_dir_abs
-  local repo_root_abs
+  local phase_dir_abs=""
+  local repo_root_abs=""
   local phase_dir_rel=""
+  local candidate=""
+  local candidate_dir=""
+  local candidate_base=""
+
+  path=$(normalize_recorded_path "$path")
+  [ -n "$path" ] || return 1
+  [ -n "$phase_dir" ] || return 1
+
   phase_dir_abs="$(cd "$phase_dir" 2>/dev/null && pwd -P || printf '%s' "$phase_dir")"
   repo_root_abs="$(git -C "$phase_dir" rev-parse --show-toplevel 2>/dev/null || true)"
   if [ -n "$repo_root_abs" ] && [[ "$phase_dir_abs" == "$repo_root_abs/"* ]]; then
     phase_dir_rel="${phase_dir_abs#"$repo_root_abs"/}"
   fi
+
   case "$path" in
     ../*|*/../*|*/./*) return 1 ;;
     */remediation/*) return 1 ;;
+  esac
+
+  if [[ "$path" == /* ]]; then
+    candidate="$path"
+  elif [ -n "$phase_dir_rel" ] && [[ "$path" == "$phase_dir_rel/"* ]]; then
+    candidate="$repo_root_abs/$path"
+  elif [[ "$path" != */* ]] && { [[ "$path" == *-PLAN.md ]] || [[ "$path" == PLAN.md ]]; }; then
+    candidate="$phase_dir_abs/$path"
+  else
+    return 1
+  fi
+
+  candidate_dir="${candidate%/*}"
+  candidate_base="${candidate##*/}"
+  if [ -d "$candidate_dir" ]; then
+    candidate_dir="$(cd "$candidate_dir" 2>/dev/null && pwd -P || printf '%s' "$candidate_dir")"
+    candidate="$candidate_dir/$candidate_base"
+  fi
+
+  [ "$candidate_dir" = "$phase_dir_abs" ] || return 1
+
+  case "$candidate_base" in
     R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md) return 1 ;;
-    "$phase_dir_rel"/*-PLAN.md|"$phase_dir_rel"/PLAN.md) return 0 ;;
-    "$phase_dir_abs"/*-PLAN.md|"$phase_dir_abs"/PLAN.md) return 0 ;;
-    *-PLAN.md|PLAN.md)
-      if [ -n "$phase_dir" ] && [ -f "$phase_dir/$path" ]; then
-        return 0
-      fi
-      return 1
-      ;;
+    *-PLAN.md|PLAN.md) ;;
     *) return 1 ;;
   esac
+
+  [ -f "$candidate" ] || return 1
+  printf '%s' "$candidate"
+}
+
+path_is_original_plan_artifact() {
+  local path="${1:-}"
+  local phase_dir="${2:-}"
+  resolve_original_plan_artifact_path "$path" "$phase_dir" >/dev/null 2>&1
 }
 
 canonicalize_phase_path() {

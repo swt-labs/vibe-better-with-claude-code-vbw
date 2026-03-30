@@ -79,6 +79,14 @@ commit_repo_file() {
   git -C "$TEST_DIR" rev-parse HEAD
 }
 
+delete_repo_file() {
+  local relative_path="${1}"
+  rm -f "$TEST_DIR/$relative_path"
+  git -C "$TEST_DIR" add -u "$relative_path"
+  git -C "$TEST_DIR" commit -q -m "delete $relative_path"
+  git -C "$TEST_DIR" rev-parse HEAD
+}
+
 # Helper: create a SUMMARY.md with body-only deviations (no YAML)
 create_summary_with_body_deviations() {
   local plan_id="${1}"
@@ -216,6 +224,90 @@ plans_verified:
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | MH-01 | must_have | Documentation updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "plan-amendment accepts repo-relative original plan path when file still exists" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
+  commit_repo_file "01-test-phase/01-01-PLAN.md" "updated plan with rationale" >/dev/null
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "01-test-phase/01-01-PLAN.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Repo-relative original plan path remains valid when the plan still exists
+fail_classifications:
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan updated with actual approach", source_plan: "01-test-phase/01-01-PLAN.md"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Plan updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "plan-amendment does not accept deleted absolute original plan path" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
+  delete_repo_file "01-test-phase/01-01-PLAN.md" >/dev/null
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    "  - \"$PHASE_DIR/01-01-PLAN.md\""
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<PLAN
+---
+round: 01
+title: Deleted absolute original plan path is not valid amendment evidence
+fail_classifications:
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should be updated", source_plan: "$PHASE_DIR/01-01-PLAN.md"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Plan updated | PASS | Done |
 VERIF
 
   run bash "$SCRIPT" "$PHASE_DIR"
