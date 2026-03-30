@@ -477,7 +477,19 @@ _cvc_source_fail_verif=$(bash "${_CVC_SCRIPT_DIR}/resolve-verification-path.sh" 
 if [ -n "$_cvc_source_fail_verif" ] && [ ! -f "$_cvc_source_fail_verif" ]; then
   _cvc_source_fail_verif=""
 fi
-if [ -z "$_cvc_source_fail_verif" ] && [ -n "$_cvc_phase_verif" ]; then
+_cvc_source_fail_verif_missing=false
+if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
+  _cvc_active_round=$(grep '^round=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+  if [[ "${_cvc_active_round:-}" =~ ^[0-9]+$ ]] && [ "$((10#${_cvc_active_round}))" -gt 1 ] 2>/dev/null; then
+    _cvc_prev_round=$(printf '%02d' "$((10#${_cvc_active_round} - 1))")
+    _cvc_expected_source_verif="$PHASE_DIR/remediation/qa/round-${_cvc_prev_round}/R${_cvc_prev_round}-VERIFICATION.md"
+    if [ ! -f "$_cvc_expected_source_verif" ]; then
+      _cvc_source_fail_verif_missing=true
+      _cvc_source_fail_verif=""
+    fi
+  fi
+fi
+if [ "$_cvc_source_fail_verif_missing" = false ] && [ -z "$_cvc_source_fail_verif" ] && [ -n "$_cvc_phase_verif" ]; then
   _cvc_source_fail_verif="$_cvc_phase_verif"
 fi
 
@@ -533,7 +545,10 @@ if [ "$_cvc_has_verif_history" = true ]; then
   # planning input (phase-level on round 01, previous round verification on
   # round 02+). QA uses this block as the authoritative set of FAIL_IDs that
   # must be resolved in the current remediation round.
-  if [ -n "$_cvc_source_fail_verif" ] && [ -f "$_cvc_source_fail_verif" ]; then
+  if [ "$_cvc_source_fail_verif_missing" = true ]; then
+    echo "--- ORIGINAL FAIL RESOLUTION STATUS ---"
+    echo "source_verification_missing=true"
+  elif [ -n "$_cvc_source_fail_verif" ] && [ -f "$_cvc_source_fail_verif" ]; then
     echo "--- ORIGINAL FAIL RESOLUTION STATUS ---"
     awk -F'|' '
       function trim(v) {
