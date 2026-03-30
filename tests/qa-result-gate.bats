@@ -2380,7 +2380,7 @@ VERIF
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
-@test "tests-only code-fix round still fails metadata-only gate" {
+@test "tests-only code-fix round counts as substantive remediation work" {
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "Changed approach"
 
@@ -2414,7 +2414,8 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
 @test "flow-style plans_verified still enforces plan coverage" {
@@ -2523,7 +2524,7 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 

@@ -152,7 +152,7 @@ normalize_recorded_path() {
 path_is_metadata_artifact() {
   local path="${1:-}"
   case "$path" in
-    .vbw-planning/*|.github/*|.claude/*|LICENSE|LICENSE.*|CLAUDE.md|AGENTS.md|CODEOWNERS|.gitignore|.gitattributes|.editorconfig|.prettierignore|tests/*|testing/*|test/*|__tests__/*|spec/*|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
+    .vbw-planning/*|.claude/*|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
       return 0
       ;;
     *)
@@ -164,7 +164,7 @@ path_is_metadata_artifact() {
 path_is_code_fix_support_artifact() {
   local path="${1:-}"
   case "$path" in
-    .vbw-planning/*|.github/*|.claude/*|docs/*|README|README.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|LICENSE|LICENSE.*|CLAUDE.md|AGENTS.md|CODEOWNERS|.gitignore|.gitattributes|.editorconfig|.prettierignore|tests/*|testing/*|test/*|__tests__/*|spec/*|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
+    .vbw-planning/*|.claude/*|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
       return 0
       ;;
     *)

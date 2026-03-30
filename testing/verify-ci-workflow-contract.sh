@@ -5,6 +5,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORKFLOW="$ROOT/.github/workflows/ci.yml"
+RUN_ALL="$ROOT/testing/run-all.sh"
 
 PASS=0
 FAIL=0
@@ -28,6 +29,14 @@ job_block() {
   ' "$WORKFLOW"
 }
 
+extract_run_all_contract_names() {
+  grep 'run_job contract ' "$RUN_ALL" | sed 's/.*run_job contract "\([^"]*\)".*/\1/' | (sort 2>/dev/null || cat)
+}
+
+extract_ci_contract_names() {
+  grep 'run_check "' "$WORKFLOW" | sed 's/.*run_check "\([^"]*\)".*/\1/' | (sort 2>/dev/null || cat)
+}
+
 echo "=== CI Workflow Contract Verification ==="
 
 LINT_BLOCK="$(job_block lint)"
@@ -44,6 +53,14 @@ if grep -q 'bash testing/verify-ci-workflow-contract.sh' <<< "$CONTRACT_BLOCK"; 
   pass "ci.yml: contract-tests job includes verify-ci-workflow-contract.sh"
 else
   fail "ci.yml: contract-tests job missing verify-ci-workflow-contract.sh"
+fi
+
+RUN_ALL_CONTRACTS="$(extract_run_all_contract_names)"
+CI_CONTRACTS="$(extract_ci_contract_names)"
+if [ "$RUN_ALL_CONTRACTS" = "$CI_CONTRACTS" ]; then
+  pass "ci.yml: contract-tests job matches testing/run-all.sh contract set"
+else
+  fail "ci.yml: contract-tests job does not match testing/run-all.sh contract set"
 fi
 
 if grep -q 'needs: \[bats-tests, contract-tests, lint\]' <<< "$TEST_BLOCK"; then
