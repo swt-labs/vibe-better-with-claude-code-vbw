@@ -2880,7 +2880,7 @@ VERIF
   code_commit=$(commit_repo_file "src/MyService.swift" "real code change")
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
-  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   # files_modified is empty but commit_hashes has entries → real work happened
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
@@ -2914,9 +2914,10 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
-@test "missing files_modified + valid commit hashes but no verified_at_commit → REMEDIATION_REQUIRED" {
+@test "missing files_modified + valid commit hashes but no round_started_at_commit → REMEDIATION_REQUIRED" {
   init_git_repo
-  create_verif "write-verification.sh" "PASS"
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
+  create_verif "write-verification.sh" "PASS" "" "$baseline_commit"
 
   code_commit=$(commit_repo_file "src/MyService.swift" "real code change")
 
@@ -2962,7 +2963,7 @@ VERIF
   meta_commit=$(commit_repo_file ".vbw-planning/STATE.md" "metadata only change")
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
-  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<EOF
 ---

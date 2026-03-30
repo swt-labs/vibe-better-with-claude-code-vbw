@@ -164,7 +164,7 @@ path_is_metadata_artifact() {
 path_is_code_fix_support_artifact() {
   local path="${1:-}"
   case "$path" in
-    .vbw-planning/*|.claude/*|.github/*|docs/*|internal/*|testing/*|tests/*|AGENTS.md|CHANGELOG.md|CONTRIBUTING.md|LICENSE|README.md|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
+    .vbw-planning/*|.claude/*|.claude-plugin/*|.github/*|docs/*|internal/*|testing/*|tests/*|AGENTS.md|CHANGELOG.md|CONTRIBUTING.md|LICENSE|README.md|VERSION|marketplace.json|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
       return 0
       ;;
     *)
@@ -308,25 +308,37 @@ commit_hashes_resolve_cleanly() {
 
 commit_hashes_are_round_local() {
   local repo_root="${1:-}"
-  local baseline_commit="${2:-}"
+  local round_anchor_commit="${2:-}"
   local commit_hashes="${3:-}"
   local head_commit=""
   local commit_hash
   [ -n "$repo_root" ] || return 1
-  [ -n "$baseline_commit" ] || return 1
+  [ -n "$round_anchor_commit" ] || return 1
   [ -n "$commit_hashes" ] || return 1
-  git -C "$repo_root" cat-file -e "${baseline_commit}^{commit}" 2>/dev/null || return 1
+  git -C "$repo_root" cat-file -e "${round_anchor_commit}^{commit}" 2>/dev/null || return 1
   head_commit=$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || true)
   [ -n "$head_commit" ] || return 1
   while IFS= read -r commit_hash; do
     commit_hash=$(printf '%s' "$commit_hash" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"]//;s/['\"]$//")
     [ -n "$commit_hash" ] || continue
     git -C "$repo_root" cat-file -e "${commit_hash}^{commit}" 2>/dev/null || return 1
-    [ "$commit_hash" != "$baseline_commit" ] || return 1
-    git -C "$repo_root" merge-base --is-ancestor "$baseline_commit" "$commit_hash" 2>/dev/null || return 1
+    [ "$commit_hash" != "$round_anchor_commit" ] || return 1
+    git -C "$repo_root" merge-base --is-ancestor "$round_anchor_commit" "$commit_hash" 2>/dev/null || return 1
     git -C "$repo_root" merge-base --is-ancestor "$commit_hash" "$head_commit" 2>/dev/null || return 1
   done <<< "$commit_hashes"
   return 0
+}
+
+commit_is_ancestor_or_same() {
+  local repo_root="${1:-}"
+  local ancestor_commit="${2:-}"
+  local descendant_commit="${3:-}"
+  [ -n "$repo_root" ] || return 1
+  [ -n "$ancestor_commit" ] || return 1
+  [ -n "$descendant_commit" ] || return 1
+  git -C "$repo_root" cat-file -e "${ancestor_commit}^{commit}" 2>/dev/null || return 1
+  git -C "$repo_root" cat-file -e "${descendant_commit}^{commit}" 2>/dev/null || return 1
+  git -C "$repo_root" merge-base --is-ancestor "$ancestor_commit" "$descendant_commit" 2>/dev/null
 }
 
 extract_verified_at_commit() {
@@ -872,12 +884,19 @@ SOURCE_VERIFICATION_PATH=""
 SOURCE_VERIFIED_AT_COMMIT=""
 SOURCE_FAIL_IDS=""
 SOURCE_FAIL_ROW_COUNT=0
+ROUND_STARTED_AT_COMMIT=""
+ROUND_STARTED_AFTER_SOURCE="true"
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
-  SOURCE_VERIFICATION_PATH=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null | awk -F= '/^source_verification_path=/{print $2; exit}')
+  _qa_remediation_state=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null || true)
+  SOURCE_VERIFICATION_PATH=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^source_verification_path=/{print $2; exit}')
+  ROUND_STARTED_AT_COMMIT=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^round_started_at_commit=/{print $2; exit}')
   if [ -n "$SOURCE_VERIFICATION_PATH" ] && [ -r "$SOURCE_VERIFICATION_PATH" ]; then
     SOURCE_VERIFIED_AT_COMMIT=$(extract_verified_at_commit "$SOURCE_VERIFICATION_PATH")
     SOURCE_FAIL_IDS=$(extract_fail_ids_from_verification "$SOURCE_VERIFICATION_PATH")
     SOURCE_FAIL_ROW_COUNT=$(count_fail_rows_in_verification "$SOURCE_VERIFICATION_PATH")
+  fi
+  if [ -n "$SOURCE_VERIFIED_AT_COMMIT" ] && [ -n "$ROUND_STARTED_AT_COMMIT" ] && ! commit_is_ancestor_or_same "$GIT_ROOT" "$SOURCE_VERIFIED_AT_COMMIT" "$ROUND_STARTED_AT_COMMIT"; then
+    ROUND_STARTED_AFTER_SOURCE="false"
   fi
 fi
 
@@ -894,7 +913,8 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   # Scan round SUMMARY.md files_modified for non-metadata paths. When
   # files_modified is absent (older summaries / partial installs), fall back to
   # commit_hashes only when they can be proven to belong to this round's history
-  # after the source verification's verified_at_commit.
+  # after the round-start anchor and, when available, the source verification's
+  # verified_at_commit.
   _mo_has_code_changes="false"
   _mo_found_summary="false"
   _mo_all_recorded_paths=""
@@ -925,7 +945,8 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       fi
     elif [ "$_mo_commits" -gt 0 ] 2>/dev/null; then
       if ! commit_hashes_resolve_cleanly "$GIT_ROOT" "$_mo_commit_hashes" \
-        || ! commit_hashes_are_round_local "$GIT_ROOT" "$SOURCE_VERIFIED_AT_COMMIT" "$_mo_commit_hashes"; then
+        || [ "$ROUND_STARTED_AFTER_SOURCE" != "true" ] \
+        || ! commit_hashes_are_round_local "$GIT_ROOT" "$ROUND_STARTED_AT_COMMIT" "$_mo_commit_hashes"; then
         ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
         break
       fi

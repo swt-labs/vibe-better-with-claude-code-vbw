@@ -12,6 +12,22 @@ teardown() {
   teardown_temp_dir
 }
 
+init_git_repo() {
+  git -C "$TEST_TEMP_DIR" init -q
+  git -C "$TEST_TEMP_DIR" config user.email "test@example.com"
+  git -C "$TEST_TEMP_DIR" config user.name "VBW Test"
+}
+
+commit_repo_file() {
+  local relative_path="${1}"
+  local content="${2:-content}"
+  mkdir -p "$(dirname "$TEST_TEMP_DIR/$relative_path")"
+  printf '%s\n' "$content" > "$TEST_TEMP_DIR/$relative_path"
+  git -C "$TEST_TEMP_DIR" add "$relative_path"
+  git -C "$TEST_TEMP_DIR" commit -q -m "add $relative_path"
+  git -C "$TEST_TEMP_DIR" rev-parse HEAD
+}
+
 # --- get command ---
 
 @test "get returns none when no state file exists" {
@@ -70,6 +86,16 @@ teardown() {
   echo "$output" | grep -q "^round=01$"
   echo "$output" | grep -q "^round_dir=.*remediation/qa/round-01$"
   echo "$output" | grep -q "^plan_path=.*R01-PLAN.md$"
+}
+
+@test "init captures round_started_at_commit from current git HEAD" {
+  init_git_repo
+  head_commit=$(commit_repo_file "src/base.txt" "baseline")
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round_started_at_commit=${head_commit}$"
+  grep -q "^round_started_at_commit=${head_commit}$" "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 }
 
 # --- get-or-init command ---
@@ -160,6 +186,23 @@ teardown() {
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "^round=03$"
   [ -d "$PHASE_DIR/remediation/qa/round-03" ]
+}
+
+@test "needs-round refreshes round_started_at_commit to current HEAD" {
+  init_git_repo
+  first_commit=$(commit_repo_file "src/first.txt" "first")
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR" >/dev/null
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  second_commit=$(commit_repo_file "src/second.txt" "second")
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q '^round=02$'
+  echo "$output" | grep -q "^round_started_at_commit=${second_commit}$"
+  grep -q "^round_started_at_commit=${second_commit}$" "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  [ "$first_commit" != "$second_commit" ]
 }
 
 @test "needs-round from verify stage succeeds" {
