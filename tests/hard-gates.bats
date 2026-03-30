@@ -166,6 +166,31 @@ EOF
   [[ "$output" == *"verification passed"* ]]
 }
 
+@test "gate: verification_threshold rejects structured phase-level PASS when qa-result-gate says rerun required" {
+  cd "$TEST_TEMP_DIR"
+  cat > ".vbw-planning/phases/01-test/01-PLAN.md" << 'EOF'
+# Plan
+EOF
+  cat > ".vbw-planning/phases/01-test/01-SUMMARY.md" << 'EOF'
+---
+deviations:
+  - Changed API approach
+---
+EOF
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" << 'EOF'
+---
+result: PASS
+writer: write-verification.sh
+---
+## Summary
+Result: PASS
+EOF
+
+  run bash "$SCRIPTS_DIR/hard-gate.sh" verification_threshold 01 1 1 ".vbw-planning/.contracts/nonexistent.json"
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.result == "fail"'
+}
+
 @test "gate: verification_threshold uses completed QA remediation round over frozen phase FAIL" {
   cd "$TEST_TEMP_DIR"
   mkdir -p ".vbw-planning/phases/01-test/remediation/qa/round-01"

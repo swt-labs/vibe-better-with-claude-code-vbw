@@ -1464,6 +1464,30 @@ EOF
   echo "$output" | grep -q "qa_status=pending"
 }
 
+@test "qa_status is pending when structured phase PASS fails qa-result-gate" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  cat > .vbw-planning/phases/01-test/01-SUMMARY.md <<'EOF'
+---
+deviations:
+  - Changed API approach
+---
+EOF
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  printf '%s\n' \
+    '---' \
+    'result: PASS' \
+    'writer: write-verification.sh' \
+    '---' \
+    '# Verification' \
+    'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending"
+}
+
 @test "qa_status is pending for brownfield remediated verification after later commit" {
   mkdir -p .vbw-planning/phases/01-test/remediation/qa
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md

@@ -32,6 +32,17 @@ normalize_qa_remediation_stage() {
   esac
 }
 
+verification_writer() {
+  local verification_file="$1"
+  [ -f "$verification_file" ] || return 0
+  awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^writer:/ { sub(/^writer:[[:space:]]*/, ""); print; exit }
+  ' "$verification_file" 2>/dev/null
+}
+
 qa_gate_routing_for_phase() {
   local phase_dir="$1"
   [ -f "$_SCRIPT_DIR_PD/qa-result-gate.sh" ] || return 0
@@ -618,6 +629,21 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
           _qa_result=$(printf '%s' "$_qa_result" | tr '[:lower:]' '[:upper:]')
           case "$_qa_result" in
             PASS)
+              _qa_writer=$(verification_writer "$_uv_verif")
+              if [ "$_qa_writer" = "write-verification.sh" ]; then
+                _qa_gate_routing=$(qa_gate_routing_for_phase "$_uv_dir")
+                case "${_qa_gate_routing:-}" in
+                  REMEDIATION_REQUIRED)
+                    QA_STATUS="failed"
+                    ;;
+                  QA_RERUN_REQUIRED|"")
+                    QA_STATUS="pending"
+                    ;;
+                  PROCEED_TO_UAT)
+                    ;;
+                esac
+              fi
+              if [ "$QA_STATUS" = "none" ] || [ "$QA_STATUS" = "passed" ]; then
               # Staleness check: if code changed since QA verified, treat as pending
               _vac=$(awk '
                 BEGIN { in_fm=0 }
@@ -643,6 +669,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
                 else
                   QA_STATUS="passed"
                 fi
+              fi
               fi
               ;;
             FAIL|PARTIAL) QA_STATUS="failed" ;;
