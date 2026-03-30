@@ -48,10 +48,16 @@ fail() {
   FAIL=$((FAIL + 1))
 }
 
+is_tracked_repo_file() {
+  local abs="$1"
+  git -C "$ROOT" ls-files --error-unmatch "${abs#$ROOT/}" >/dev/null 2>&1
+}
+
 echo "=== Plugin Root Inline Resolution Verification ==="
 
 for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; do
   [ -f "$file" ] || continue
+  is_tracked_repo_file "$file" || continue
   base="$(basename "$file" .md)"
 
   # Skip files with no CLAUDE_PLUGIN_ROOT references at all
@@ -120,6 +126,7 @@ FAIL2=0
 
 for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; do
   [ -f "$file" ] || continue
+  is_tracked_repo_file "$file" || continue
   base="$(basename "$file" .md)"
 
   # Only check preamble !` backtick expressions (those using ${CLAUDE_PLUGIN_ROOT} with braces).
@@ -212,6 +219,8 @@ fi
 
 # Check 5: All command files with reader callsites have a preamble
 for file in "$COMMANDS_DIR"/*.md; do
+  [ -f "$file" ] || continue
+  is_tracked_repo_file "$file" || continue
   base="$(basename "$file" .md)"
   reader_count=$(grep -c 'echo /tmp/.vbw-plugin-root-link-' "$file" 2>/dev/null || true)
   if [ "$reader_count" -gt 0 ]; then
@@ -252,6 +261,8 @@ done
 
 # Check 8: All command preambles use pwd -P for canonical symlink resolution
 for file in "$COMMANDS_DIR"/*.md; do
+  [ -f "$file" ] || continue
+  is_tracked_repo_file "$file" || continue
   base="$(basename "$file" .md)"
   if grep -q 'LINK="/tmp/.vbw-plugin-root-link-' "$file"; then
     if grep -q 'cd "$R" 2>/dev/null && pwd -P' "$file"; then
@@ -264,6 +275,8 @@ done
 
 # Check 8b: All command preambles use the link helper with REAL_R (dynamic coverage)
 for file in "$COMMANDS_DIR"/*.md; do
+  [ -f "$file" ] || continue
+  is_tracked_repo_file "$file" || continue
   base="$(basename "$file" .md)"
   if grep -q 'LINK="/tmp/.vbw-plugin-root-link-' "$file"; then
     if grep -q 'ensure-plugin-root-link.sh" "$LINK" "$REAL_R"' "$file"; then
@@ -298,6 +311,8 @@ TARGET_COMMANDS=(
 )
 for rel in "${TARGET_COMMANDS[@]}"; do
   file="$COMMANDS_DIR/$rel"
+  [ -f "$file" ] || continue
+  is_tracked_repo_file "$file" || continue
   base="$(basename "$rel" .md)"
   if grep -q 'SESSION_KEY="${CLAUDE_SESSION_ID:-default}"' "$file"; then
     pass "$base: preamble uses CLAUDE_SESSION_ID:-default session key"
@@ -320,6 +335,8 @@ fi
 # when CLAUDE_PLUGIN_ROOT is unset and marketplace cache is empty.
 for rel in "${TARGET_COMMANDS[@]}"; do
   file="$COMMANDS_DIR/$rel"
+  [ -f "$file" ] || continue
+  is_tracked_repo_file "$file" || continue
   base="$(basename "$rel" .md)"
   if grep -qF '/tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh' "$file"; then
     pass "$base: preamble includes symlink glob fallback"
@@ -341,6 +358,8 @@ fi
 # grep -oE -- "--plugin-dir [^ ]+" is more robust.
 for rel in "${TARGET_COMMANDS[@]}"; do
   file="$COMMANDS_DIR/$rel"
+  [ -f "$file" ] || continue
+  is_tracked_repo_file "$file" || continue
   base="$(basename "$rel" .md)"
   if grep -q 'sed.*--plugin-dir' "$file"; then
     fail "$base: uses fragile sed pattern for --plugin-dir extraction"
@@ -377,6 +396,7 @@ NON_PREAMBLE_COMMANDS="todo.md list-todos.md doctor.md pause.md profile.md teach
 DRIFT_FAIL=0
 for file in "$COMMANDS_DIR"/*.md; do
   base="$(basename "$file")"
+  is_tracked_repo_file "$file" || continue
   # Skip known non-preamble commands
   case " $NON_PREAMBLE_COMMANDS " in
     *" $base "*) continue ;;

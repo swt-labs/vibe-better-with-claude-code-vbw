@@ -14,11 +14,15 @@ setup() {
   export GIT_AUTHOR_EMAIL="test@test.local"
   export GIT_COMMITTER_NAME="test"
   export GIT_COMMITTER_EMAIL="test@test.local"
-  rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+  export VBW_SKIP_KEYCHAIN=1
+  export VBW_SKIP_AUTH_CLI=1
+  export VBW_SKIP_UPDATE_CHECK=1
+  cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
 }
 
 teardown() {
-  rm -f /tmp/vbw-*-"${ORIG_UID}"-* /tmp/vbw-*-"${ORIG_UID}" 2>/dev/null || true
+  cleanup_vbw_caches_under_temp_dir "$ORIG_UID"
+  unset VBW_SKIP_KEYCHAIN VBW_SKIP_AUTH_CLI VBW_SKIP_UPDATE_CHECK CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
   teardown_temp_dir
 }
 
@@ -112,6 +116,42 @@ JSON
 
 @test "statusline_hide_limits_for_api_key true with OAuth token: L3 still has content" {
   local repo="$TEST_TEMP_DIR/repo-hide-api-oauth"
+  local fake_bin="$TEST_TEMP_DIR/fake-bin"
+  mkdir -p "$repo/.vbw-planning"
+  mkdir -p "$fake_bin"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{
+  "effort": "balanced",
+  "statusline_hide_limits": false,
+  "statusline_hide_limits_for_api_key": true
+}
+JSON
+
+  cat > "$fake_bin/curl" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n%s' '{"five_hour":{"utilization":0,"resets_at":"2030-01-01T00:00:00Z"},"seven_day":{"utilization":0,"resets_at":"2030-01-01T00:00:00Z"},"seven_day_sonnet":{"utilization":0},"extra_usage":{"is_enabled":false,"utilization":0,"used_credits":0,"monthly_limit":0}}' '200'
+SH
+  chmod +x "$fake_bin/curl"
+
+  cd "$repo"
+  local old_path="$PATH"
+  export PATH="$fake_bin:$PATH"
+  export VBW_OAUTH_TOKEN="fake_token_for_test"
+  local output
+  output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  unset VBW_OAUTH_TOKEN
+  export PATH="$old_path"
+  cd "$PROJECT_ROOT"
+
+  local l3
+  l3=$(echo "$output" | sed -n '3p')
+  [ -n "$l3" ]
+}
+
+@test "statusline_hide_limits_for_api_key true without OAuth and notraffic: L3 is blank" {
+  local repo="$TEST_TEMP_DIR/repo-hide-api-notraffic"
   mkdir -p "$repo/.vbw-planning"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
@@ -124,17 +164,16 @@ JSON
 JSON
 
   cd "$repo"
-  # With a fake OAuth token, the API call will fail → FETCH_OK="fail"
-  # "fail" is excluded from suppression, so L3 should still be present
-  export VBW_OAUTH_TOKEN="fake_token_for_test"
+  export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+  unset VBW_OAUTH_TOKEN 2>/dev/null || true
   local output
   output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
-  unset VBW_OAUTH_TOKEN
+  unset CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
   cd "$PROJECT_ROOT"
 
-  local l3
-  l3=$(echo "$output" | sed -n '3p')
-  [ -n "$l3" ]
+  local line_count
+  line_count=$(echo "$output" | wc -l | tr -d ' ')
+  [ "$line_count" -eq 3 ]
 }
 
 # --- statusline_collapse_agent_in_tmux: collapses in worktrees, not in main repo ---

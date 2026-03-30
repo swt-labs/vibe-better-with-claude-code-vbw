@@ -31,22 +31,33 @@ _OS=$(uname)
 # script-relative resolution fails gracefully and find_vbw_root falls back to CWD.
 _SL_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 _VER=$(cat "$_SL_SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
-# _REPO_ROOT must always reflect the *user's* project repo (CWD-relative), not the
-# plugin's location. Script-relative git root would resolve to the VBW repo in dev
-# mode, breaking cache isolation between different user projects.
+# Resolve the VBW workspace root before deriving the temp cache key.
+# Cache isolation must follow the resolved .vbw-planning boundary, not just the git
+# top-level root, so nested VBW workspaces inside one monorepo do not share caches.
+# shellcheck source=lib/vbw-config-root.sh
+. "$_SL_SCRIPT_DIR/lib/vbw-config-root.sh"
+# shellcheck source=lib/vbw-cache-key.sh
+. "$_SL_SCRIPT_DIR/lib/vbw-cache-key.sh"
+find_vbw_root "$_SL_SCRIPT_DIR"
+
+# _REPO_ROOT is still used for GitHub link rendering and bare-directory labels.
 _REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
-if command -v md5sum &>/dev/null; then
-  _REPO_HASH=$(echo "$_REPO_ROOT" | md5sum | cut -c1-8)
-elif command -v md5 &>/dev/null; then
-  _REPO_HASH=$(echo "$_REPO_ROOT" | md5 -q | cut -c1-8)
-else
-  _REPO_HASH=$(printf '%s' "$_REPO_ROOT" | cksum | cut -d' ' -f1)
-fi
-_CACHE="/tmp/vbw-${_VER:-0}-${_UID}-${_REPO_HASH}"
+_CACHE_ROOT="${VBW_CONFIG_ROOT:-$_REPO_ROOT}"
+_CACHE=$(vbw_cache_prefix "${_VER:-0}" "$_UID" "$_CACHE_ROOT")
 
 # Clean stale caches from previous versions on first run
 if ! [ -f "${_CACHE}-ok" ] || ! [ -O "${_CACHE}-ok" ]; then
-  rm -f /tmp/vbw-*-"${_UID}"-* /tmp/vbw-sl-cache-"${_UID}" /tmp/vbw-usage-cache-"${_UID}" /tmp/vbw-gh-cache-"${_UID}" /tmp/vbw-team-cache-"${_UID}" /tmp/vbw-*-"${_UID}" 2>/dev/null
+  # Only remove old-format caches (no repo hash) — do NOT glob all UID caches,
+  # as that would nuke concurrent repos' caches under parallel test execution.
+  rm -f /tmp/vbw-sl-cache-"${_UID}" /tmp/vbw-usage-cache-"${_UID}" /tmp/vbw-gh-cache-"${_UID}" /tmp/vbw-team-cache-"${_UID}" /tmp/vbw-*-"${_UID}" 2>/dev/null
+  # Clean old-format caches that lack the repo hash (e.g. vbw-1.0.0-501-fast)
+  for f in /tmp/vbw-*-"${_UID}"-fast /tmp/vbw-*-"${_UID}"-slow /tmp/vbw-*-"${_UID}"-cost /tmp/vbw-*-"${_UID}"-ok; do
+    # Old format: vbw-{ver}-{uid}-{suffix} (3 dashes). New format: vbw-{ver}-{uid}-{hash}-{suffix} (4 dashes).
+    _stale_bn="${f##*/}"
+    _stale_dc=$(echo "$_stale_bn" | tr -cd '-' | wc -c | tr -d ' ')
+    [ "$_stale_dc" -le 3 ] && rm -f "$f" 2>/dev/null
+  done
+  unset _stale_bn _stale_dc f
   touch "${_CACHE}-ok"
 fi
 
@@ -123,12 +134,6 @@ qa_verification_stale() {
   [ -n "$_cur_commit_ts" ] && [ -n "$_verif_mtime" ] && [ "$_cur_commit_ts" -ge "$_verif_mtime" ]
 }
 
-# Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
-# Pass _SL_SCRIPT_DIR as the stable anchor so agent CWD changes don't shift the root.
-# shellcheck source=lib/vbw-config-root.sh
-. "$_SL_SCRIPT_DIR/lib/vbw-config-root.sh"
-find_vbw_root "$_SL_SCRIPT_DIR"
-
 cache_fresh() {
   local cf="$1" ttl="$2"
   [ ! -f "$cf" ] && return 1
@@ -140,6 +145,56 @@ cache_fresh() {
     mt=$(stat -c %Y "$cf" 2>/dev/null || echo 0)
   fi
   [ $((NOW - mt)) -le "$ttl" ]
+}
+
+atomic_write_string() {
+  local target="$1" content="$2" tmp
+  tmp="${target}.tmp.$$.$RANDOM"
+  if printf '%s\n' "$content" > "$tmp" 2>/dev/null && mv "$tmp" "$target" 2>/dev/null; then
+    return 0
+  fi
+  rm -f "$tmp" 2>/dev/null || true
+  return 1
+}
+
+acquire_lock_dir() {
+  local lock_dir="$1" attempts=0
+  while ! mkdir "$lock_dir" 2>/dev/null; do
+    attempts=$((attempts + 1))
+    [ "$attempts" -ge 100 ] && return 1
+    # Check for stale lock (holder process died)
+    if [ -f "$lock_dir/pid" ]; then
+      local lock_pid
+      lock_pid=$(cat "$lock_dir/pid" 2>/dev/null || echo "")
+      if [ -n "$lock_pid" ] && ! kill -0 "$lock_pid" 2>/dev/null; then
+        rm -f "$lock_dir/pid" 2>/dev/null || true
+        rmdir "$lock_dir" 2>/dev/null || true
+        continue
+      fi
+    else
+      # Lock dir exists but no pid file — wait briefly for holder to write it
+      local pw=0
+      while [ "$pw" -lt 5 ] && [ ! -f "$lock_dir/pid" ]; do
+        sleep 0.02
+        pw=$((pw + 1))
+      done
+      if [ -f "$lock_dir/pid" ]; then
+        continue
+      fi
+      # No pid file after 0.1s — lock is orphaned
+      rmdir "$lock_dir" 2>/dev/null || true
+      continue
+    fi
+    sleep 0.02
+  done
+  printf '%s\n' "$$" > "$lock_dir/pid" 2>/dev/null || true
+  return 0
+}
+
+release_lock_dir() {
+  local lock_dir="$1"
+  rm -f "$lock_dir/pid" 2>/dev/null || true
+  rmdir "$lock_dir" 2>/dev/null || rm -rf "$lock_dir" 2>/dev/null || true
 }
 
 # Resolve CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC from env var or settings.json.
@@ -586,7 +641,7 @@ if ! cache_fresh "$FAST_CF" 5; then
   # prevent field misalignment in the pipe-delimited fast cache.
   _EXEC_CURRENT_SAFE="${EXEC_CURRENT//|/-}"
 
-  printf '%s\n' "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${_EXEC_CURRENT_SAFE:-}|${AGENT_DATA:-0}|${PPT:-0}|${QA_COLOR:-D}|${HIDE_AGENT_TMUX:-false}|${COLLAPSE_AGENT_TMUX:-false}|${PP_LABEL:-this phase}|${REM_ACTIVE:-false}" > "$FAST_CF" 2>/dev/null
+  atomic_write_string "$FAST_CF" "${PH:-0}|${TT:-0}|${EF}|${MP}|${BR}|${PD}|${PT}|${PPD}|${QA}|${GH_URL}|${GIT_STAGED:-0}|${GIT_MODIFIED:-0}|${GIT_AHEAD:-0}|${EXEC_STATUS:-}|${EXEC_WAVE:-0}|${EXEC_TWAVES:-0}|${EXEC_DONE:-0}|${EXEC_TOTAL:-0}|${_EXEC_CURRENT_SAFE:-}|${AGENT_DATA:-0}|${PPT:-0}|${QA_COLOR:-D}|${HIDE_AGENT_TMUX:-false}|${COLLAPSE_AGENT_TMUX:-false}|${PP_LABEL:-this phase}|${REM_ACTIVE:-false}" 2>/dev/null || true
 fi
 
 if [ -O "$FAST_CF" ]; then
@@ -649,20 +704,14 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
   EXTRA_ENABLED=0; EXTRA_PCT=-1; EXTRA_USED_C=0; EXTRA_LIMIT_C=0; FETCH_OK="noauth"
   OAUTH_TOKEN=""
   AUTH_METHOD=""
+  AUTH_CLASS="api_key"
   HIDE_LIMITS=$(jq -r '.statusline_hide_limits // false' "$VBW_PLANNING_DIR/config.json" 2>/dev/null)
   HIDE_LIMITS_API=$(jq -r '.statusline_hide_limits_for_api_key // false' "$VBW_PLANNING_DIR/config.json" 2>/dev/null)
-
-  # Respect CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC — skip ALL outbound requests (#249)
-  _resolve_notraffic
-  [ -n "$_NOTRAFFIC_ACTIVE" ] && FETCH_OK="notraffic"
-
-  if [ "$FETCH_OK" = "notraffic" ]; then
-    : # skip token lookup, usage fetch, and version check entirely
-  else
 
   # Priority 1: env var override (escape hatch for keychain issues)
   if [ -n "${VBW_OAUTH_TOKEN:-}" ]; then
     OAUTH_TOKEN="$VBW_OAUTH_TOKEN"
+    AUTH_CLASS="oauth"
   fi
 
   # Priority 2: system credential store (skip if VBW_SKIP_KEYCHAIN=1, e.g. in tests)
@@ -671,6 +720,7 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
       CRED_JSON=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
       if [ -n "$CRED_JSON" ]; then
         OAUTH_TOKEN=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+        [ -n "$OAUTH_TOKEN" ] && AUTH_CLASS="oauth"
       fi
     else
       # Linux: try secret-tool (GNOME Keyring) then pass (password-store)
@@ -678,11 +728,13 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
         CRED_JSON=$(secret-tool lookup service "Claude Code-credentials" 2>/dev/null)
         if [ -n "$CRED_JSON" ]; then
           OAUTH_TOKEN=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+          [ -n "$OAUTH_TOKEN" ] && AUTH_CLASS="oauth"
         fi
       elif command -v pass &>/dev/null; then
         CRED_JSON=$(pass show "claude-code/credentials" 2>/dev/null)
         if [ -n "$CRED_JSON" ]; then
           OAUTH_TOKEN=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+          [ -n "$OAUTH_TOKEN" ] && AUTH_CLASS="oauth"
         fi
       fi
     fi
@@ -703,7 +755,10 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
       for _cred in "$_cdir/.credentials.json" "$_cdir/credentials.json"; do
         if [ -f "$_cred" ]; then
           OAUTH_TOKEN=$(jq -r '.claudeAiOauth.accessToken // empty' "$_cred" 2>/dev/null)
-          [ -n "$OAUTH_TOKEN" ] && break 2
+          if [ -n "$OAUTH_TOKEN" ]; then
+            AUTH_CLASS="oauth"
+            break 2
+          fi
         fi
       done
     done
@@ -715,16 +770,31 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
     AUTH_STATUS=$(CLAUDECODE="" claude auth status --json 2>/dev/null) || AUTH_STATUS=""
     if [ -n "$AUTH_STATUS" ]; then
       AUTH_METHOD=$(echo "$AUTH_STATUS" | jq -r '.authMethod // empty' 2>/dev/null)
+      [ "$AUTH_METHOD" = "claude.ai" ] && AUTH_CLASS="oauth"
     fi
   fi
 
+  # Respect CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC — skip ALL outbound requests (#249)
+  _resolve_notraffic
+  [ -n "$_NOTRAFFIC_ACTIVE" ] && FETCH_OK="notraffic"
+
+  if [ "$FETCH_OK" = "notraffic" ]; then
+    : # skip usage fetch and version check entirely
+  else
+
   if [ -n "$OAUTH_TOKEN" ]; then
-    HTTP_CODE=$(curl -s -o /tmp/vbw-usage-body-"${_UID}" -w '%{http_code}' --max-time 3 \
+    HTTP_CODE="000"
+    USAGE_RAW=""
+    HTTP_RAW=$(curl -s -w $'\n%{http_code}' --max-time 3 \
       -H "Authorization: Bearer ${OAUTH_TOKEN}" \
       -H "anthropic-beta: oauth-2025-04-20" \
-      "https://api.anthropic.com/api/oauth/usage" 2>/dev/null) || HTTP_CODE="000"
-    USAGE_RAW=$(cat /tmp/vbw-usage-body-"${_UID}" 2>/dev/null)
-    rm -f /tmp/vbw-usage-body-"${_UID}" 2>/dev/null
+      "https://api.anthropic.com/api/oauth/usage" 2>/dev/null) || HTTP_RAW=""
+    if [ -n "$HTTP_RAW" ]; then
+      HTTP_CODE="${HTTP_RAW##*$'\n'}"
+      case "$HTTP_RAW" in
+        *$'\n'*) USAGE_RAW="${HTTP_RAW%$'\n'*}" ;;
+      esac
+    fi
 
     if [ -n "$USAGE_RAW" ] && echo "$USAGE_RAW" | jq -e '.five_hour' >/dev/null 2>&1; then
       IFS='|' read -r FIVE_PCT FIVE_EPOCH WEEK_PCT WEEK_EPOCH SONNET_PCT \
@@ -757,31 +827,47 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
   fi
 
   UPDATE_AVAIL=""
-  REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/yidakee/vibe-better-with-claude-code-vbw/main/VERSION" 2>/dev/null | tr -d '[:space:]')
-  if [ -n "$REMOTE_VER" ] && [ -n "$_VER" ] && [ "$REMOTE_VER" != "$_VER" ]; then
-    NEWEST=$(printf '%s\n%s\n' "$_VER" "$REMOTE_VER" | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)
-    [ "$NEWEST" = "$REMOTE_VER" ] && UPDATE_AVAIL="$REMOTE_VER"
+  _SKIP_UPDATE_CHECK=false
+  case "${VBW_SKIP_UPDATE_CHECK:-0}" in
+    1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Oo][Nn]) _SKIP_UPDATE_CHECK=true ;;
+  esac
+  if [ "$_SKIP_UPDATE_CHECK" = false ]; then
+    REMOTE_VER=$(curl -sf --max-time 3 "https://raw.githubusercontent.com/yidakee/vibe-better-with-claude-code-vbw/main/VERSION" 2>/dev/null | tr -d '[:space:]')
+    if [ -n "$REMOTE_VER" ] && [ -n "$_VER" ] && [ "$REMOTE_VER" != "$_VER" ]; then
+      NEWEST=$(printf '%s\n%s\n' "$_VER" "$REMOTE_VER" | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1)
+      [ "$NEWEST" = "$REMOTE_VER" ] && UPDATE_AVAIL="$REMOTE_VER"
+    fi
   fi
 
   fi # end: notraffic guard
 
-  printf '%s\n' "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}|${HIDE_LIMITS:-false}|${HIDE_LIMITS_API:-false}" > "$SLOW_CF" 2>/dev/null
+  atomic_write_string "$SLOW_CF" "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}|${AUTH_CLASS:-api_key}|${HIDE_LIMITS:-false}|${HIDE_LIMITS_API:-false}" 2>/dev/null || true
 fi
 
 if [ -O "$SLOW_CF" ]; then
   IFS='|' read -r FIVE_PCT FIVE_EPOCH WEEK_PCT WEEK_EPOCH SONNET_PCT \
                   EXTRA_ENABLED EXTRA_PCT EXTRA_USED_C EXTRA_LIMIT_C \
-                  FETCH_OK UPDATE_AVAIL AUTH_METHOD HIDE_LIMITS HIDE_LIMITS_API < "$SLOW_CF"
+                  FETCH_OK UPDATE_AVAIL AUTH_METHOD AUTH_CLASS HIDE_LIMITS HIDE_LIMITS_API < "$SLOW_CF"
+  # Backward compatibility: older slow-cache entries had no AUTH_CLASS field.
+  if [ "$AUTH_CLASS" = "true" ] || [ "$AUTH_CLASS" = "false" ]; then
+    HIDE_LIMITS_API="$HIDE_LIMITS"
+    HIDE_LIMITS="$AUTH_CLASS"
+    AUTH_CLASS="api_key"
+    [ "$AUTH_METHOD" = "claude.ai" ] && AUTH_CLASS="oauth"
+  fi
+  AUTH_CLASS="${AUTH_CLASS:-api_key}"
 fi
 
 # --- Cost cache: delta attribution per render ---
 COST_CF="${_CACHE}-cost"
-PREV_COST=""
-[ -O "$COST_CF" ] && PREV_COST=$(cat "$COST_CF" 2>/dev/null)
-printf '%s\n' "${COST}" > "$COST_CF" 2>/dev/null
-
 LEDGER_FILE="$VBW_PLANNING_DIR/.cost-ledger.json"
-if [ -n "$PREV_COST" ] && [ -d "$VBW_PLANNING_DIR" ]; then
+PREV_COST=""
+_COST_LOCK_DIR="${_CACHE}-cost.lock"
+if acquire_lock_dir "$_COST_LOCK_DIR"; then
+  [ -O "$COST_CF" ] && PREV_COST=$(cat "$COST_CF" 2>/dev/null)
+  atomic_write_string "$COST_CF" "${COST}" 2>/dev/null || true
+
+  if [ -n "$PREV_COST" ] && [ -d "$VBW_PLANNING_DIR" ]; then
   _to_cents() {
     local val="$1" w f
     w="${val%%.*}"
@@ -798,14 +884,19 @@ if [ -n "$PREV_COST" ] && [ -d "$VBW_PLANNING_DIR" ]; then
     [ -z "$ACTIVE_AGENT" ] && ACTIVE_AGENT="other"
 
     if [ -f "$LEDGER_FILE" ] && jq empty "$LEDGER_FILE" 2>/dev/null; then
-      jq --arg agent "$ACTIVE_AGENT" --argjson delta "$DELTA_CENTS" \
-        '.[$agent] = ((.[$agent] // 0) + $delta)' "$LEDGER_FILE" > "${LEDGER_FILE}.tmp" 2>/dev/null \
-        && mv "${LEDGER_FILE}.tmp" "$LEDGER_FILE"
+      _LEDGER_JSON=$(jq --arg agent "$ACTIVE_AGENT" --argjson delta "$DELTA_CENTS" \
+        '.[$agent] = ((.[$agent] // 0) + $delta)' "$LEDGER_FILE" 2>/dev/null)
+      [ -n "${_LEDGER_JSON:-}" ] && atomic_write_string "$LEDGER_FILE" "$_LEDGER_JSON" 2>/dev/null || true
     else
-      printf '{"%s":%d}\n' "$ACTIVE_AGENT" "$DELTA_CENTS" > "$LEDGER_FILE"
+      atomic_write_string "$LEDGER_FILE" "{\"$ACTIVE_AGENT\":$DELTA_CENTS}" 2>/dev/null || true
     fi
   fi
 fi
+  release_lock_dir "$_COST_LOCK_DIR"
+else
+  atomic_write_string "$COST_CF" "${COST}" 2>/dev/null || true
+fi
+unset _COST_LOCK_DIR _LEDGER_JSON
 
 # --- Usage rendering ---
 USAGE_LINE=""
@@ -862,7 +953,7 @@ fi
 # --- Hide-limits suppression ---
 if [ "$HIDE_LIMITS" = "true" ]; then
   USAGE_LINE=""
-elif [ "$HIDE_LIMITS_API" = "true" ] && [ "$FETCH_OK" = "noauth" ]; then
+elif [ "$HIDE_LIMITS_API" = "true" ] && [ "${AUTH_CLASS:-api_key}" = "api_key" ]; then
   USAGE_LINE=""
 fi
 

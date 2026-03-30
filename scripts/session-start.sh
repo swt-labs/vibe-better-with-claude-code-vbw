@@ -15,6 +15,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
 # shellcheck source=lib/vbw-config-root.sh
 . "$SCRIPT_DIR/lib/vbw-config-root.sh"
+# shellcheck source=lib/vbw-cache-key.sh
+. "$SCRIPT_DIR/lib/vbw-cache-key.sh"
 find_vbw_root
 PLANNING_DIR="$VBW_PLANNING_DIR"
 
@@ -369,8 +371,11 @@ fi
 # --- Session-level config cache (performance optimization, REQ-01 #9) ---
 # Write commonly-read config flags to a flat file for fast sourcing.
 # Invalidation: overwritten every session start. Scripts can opt-in:
-#   [ -f /tmp/vbw-config-cache-$(id -u) ] && source /tmp/vbw-config-cache-$(id -u)
-VBW_CONFIG_CACHE="/tmp/vbw-config-cache-$(id -u)"
+#   [ -f "${VBW_CONFIG_CACHE:-...}" ] && source "$VBW_CONFIG_CACHE"
+_VBW_CACHE_VER=$(cat "$SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
+_VBW_CONFIG_CACHE_ROOT="${VBW_CONFIG_ROOT:-$(pwd -P 2>/dev/null || pwd)}"
+_VBW_CONFIG_CACHE_DEFAULT="$(vbw_cache_prefix "${_VBW_CACHE_VER:-0}" "$(id -u)" "$_VBW_CONFIG_CACHE_ROOT")-config.env"
+VBW_CONFIG_CACHE="${VBW_CONFIG_CACHE:-$_VBW_CONFIG_CACHE_DEFAULT}"
 if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ] && command -v jq &>/dev/null; then
   jq -r '
     "VBW_EFFORT=\(.effort // "balanced")",
@@ -408,7 +413,8 @@ fi
 
 # --- Update check (once per day, fail-silent) ---
 
-CACHE="/tmp/vbw-update-check-$(id -u)"
+_VBW_UPDATE_CACHE_KEY=$(vbw_hash_path "$SCRIPT_DIR")
+CACHE="/tmp/vbw-update-check-$(id -u)-${_VBW_UPDATE_CACHE_KEY}"
 NOW=$(date +%s)
 if [ "$(uname)" = "Darwin" ]; then
   MT=$(stat -f %m "$CACHE" 2>/dev/null || echo 0)
@@ -1046,39 +1052,6 @@ fi
 
 # Brownfield cleanup: remove stale .skill-names from older versions
 rm -f "$PLANNING_DIR/.skill-names" 2>/dev/null || true
-
-# Seed statusline caches so the first dsR() call (5s timeout) finds warm
-# data instead of cold-starting 20+ subprocess forks + 2 curl calls.
-# Compute the same cache key that vbw-statusline.sh uses:
-_SL_VER=$(cat "$SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
-_SL_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
-if command -v md5sum &>/dev/null; then
-  _SL_HASH=$(echo "$_SL_ROOT" | md5sum | cut -c1-8)
-elif command -v md5 &>/dev/null; then
-  _SL_HASH=$(echo "$_SL_ROOT" | md5 -q | cut -c1-8)
-else
-  _SL_HASH=$(printf '%s' "$_SL_ROOT" | cksum | cut -d' ' -f1)
-fi
-_SL_CACHE="/tmp/vbw-${_SL_VER:-0}-$(id -u)-${_SL_HASH}"
-
-# Only seed if caches don't already exist (avoids overwriting real data mid-session).
-if [ ! -f "${_SL_CACHE}-fast" ]; then
-  # Map session-start.sh variables to fast cache fields.
-  _ph=0; _tt=0
-  [ "$phase_pos" != "unknown" ] && _ph="$phase_pos"
-  [ "$phase_total" != "unknown" ] && _tt="$phase_total"
-  _br=$(git branch --show-current 2>/dev/null || true)
-  # Fast cache: PH|TT|EF|MP|BR|PD|PT|PPD|QA|GH_URL|GIT_STAGED|GIT_MODIFIED|GIT_AHEAD|
-  #   EXEC_STATUS|EXEC_WAVE|EXEC_TWAVES|EXEC_DONE|EXEC_TOTAL|EXEC_CURRENT|
-  #   AGENT_DATA|PPT|QA_COLOR|HIDE_AGENT_TMUX|COLLAPSE_AGENT_TMUX|PP_LABEL|REM_ACTIVE
-  printf '%s\n' "${_ph}|${_tt}|${config_effort:-balanced}|quality|${_br:-}|0|0|0|--||0|0|0||||0|0||0|0|D|false|false|this phase|false" > "${_SL_CACHE}-fast" 2>/dev/null
-fi
-if [ ! -f "${_SL_CACHE}-slow" ]; then
-  # Slow cache: all-default noauth stub (usage/limits show "--" until 60s rebuild)
-  printf '%s\n' "0|0|0|0|-1|0|-1|0|0|noauth|||false|false" > "${_SL_CACHE}-slow" 2>/dev/null
-fi
-# Sentinel: prevent vbw-statusline.sh from nuking our seeded caches.
-[ ! -f "${_SL_CACHE}-ok" ] && touch "${_SL_CACHE}-ok" 2>/dev/null
 
 jq -n --arg ctx "$CTX" --arg update "$UPDATE_MSG" --arg welcome "$WELCOME_MSG" --arg flags "${FLAG_WARNINGS:-}" --arg gsd "${GSD_WARNING:-}" '{
   "hookSpecificOutput": {

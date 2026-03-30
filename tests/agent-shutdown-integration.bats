@@ -30,11 +30,11 @@ setup() {
 
   # Clean stale PID tracker lock from previous interrupted runs (rm -rf handles
   # non-empty lock dirs left when a prior run was interrupted after pid write)
-  rm -rf /tmp/vbw-agent-pid-lock 2>/dev/null || true
+  rm -rf "$VBW_AGENT_PID_LOCK_DIR" 2>/dev/null || true
 }
 
 teardown() {
-  rm -rf /tmp/vbw-agent-pid-lock 2>/dev/null || true
+  rm -rf "$VBW_AGENT_PID_LOCK_DIR" 2>/dev/null || true
   teardown_temp_dir
 }
 
@@ -258,8 +258,8 @@ simulate_session_stop() {
 @test "prune recovers from stale lock left by crashed process" {
   cd "$TEST_TEMP_DIR"
   # Simulate stale lock from a crashed process
-  mkdir -p /tmp/vbw-agent-pid-lock
-  echo "99999" > /tmp/vbw-agent-pid-lock/pid
+  mkdir -p "$VBW_AGENT_PID_LOCK_DIR"
+  echo "99999" > "$VBW_AGENT_PID_LOCK_DIR/pid"
 
   printf '99997\n99998\n' > ".vbw-planning/.agent-pids"
 
@@ -270,13 +270,13 @@ simulate_session_stop() {
   [ ! -f ".vbw-planning/.agent-pids" ]
 
   # Lock should be released
-  [ ! -d /tmp/vbw-agent-pid-lock ]
+  [ ! -d "$VBW_AGENT_PID_LOCK_DIR" ]
 }
 
 @test "prune recovers from stale lock directory with no pid file" {
   cd "$TEST_TEMP_DIR"
   # Simulate stale lock dir with no pid file (edge case: lock created but pid write failed)
-  mkdir -p /tmp/vbw-agent-pid-lock
+  mkdir -p "$VBW_AGENT_PID_LOCK_DIR"
 
   printf '99997\n99998\n' > ".vbw-planning/.agent-pids"
 
@@ -287,7 +287,7 @@ simulate_session_stop() {
   [ ! -f ".vbw-planning/.agent-pids" ]
 
   # Lock should be released
-  [ ! -d /tmp/vbw-agent-pid-lock ]
+  [ ! -d "$VBW_AGENT_PID_LOCK_DIR" ]
 }
 
 # =============================================================================

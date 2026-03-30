@@ -19,6 +19,7 @@ fi
 . "$(dirname "$0")/resolve-claude-dir.sh"
 PLUGIN_CACHE_DIR="$CLAUDE_DIR/plugins/cache/vbw-marketplace/vbw"
 UID_TAG="$(id -u)"
+TMP_CACHE_ROOT="${VBW_TMP_CACHE_ROOT:-/tmp}"
 
 wiped_plugin_cache=false
 wiped_temp_caches=false
@@ -77,9 +78,15 @@ if [[ -d "$PLUGIN_CACHE_DIR" ]]; then
 fi
 
 # --- 2. Temp caches (statusline + update check) ---
-TEMP_FILES=$(ls /tmp/vbw-*-"${UID_TAG}"-* /tmp/vbw-*-"${UID_TAG}" /tmp/vbw-update-check-"${UID_TAG}" 2>/dev/null || true)
+TEMP_FILES=$(ls "$TMP_CACHE_ROOT"/vbw-*-"${UID_TAG}"-* "$TMP_CACHE_ROOT"/vbw-*-"${UID_TAG}" "$TMP_CACHE_ROOT"/vbw-update-check-"${UID_TAG}" 2>/dev/null || true)
 if [[ -n "$TEMP_FILES" ]]; then
-  while IFS= read -r f; do rm -f "$f" 2>/dev/null || true; done <<< "$TEMP_FILES"
+  while IFS= read -r f; do
+    if [ -d "$f" ]; then
+      rm -rf "$f" 2>/dev/null || true
+    else
+      rm -f "$f" 2>/dev/null || true
+    fi
+  done <<< "$TEMP_FILES"
   wiped_temp_caches=true
 fi
 
