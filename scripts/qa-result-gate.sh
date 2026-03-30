@@ -134,7 +134,7 @@ normalize_recorded_path() {
 path_is_metadata_artifact() {
   local path="${1:-}"
   case "$path" in
-    .vbw-planning/*|docs/*|.github/*|.claude/*|README|README.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|LICENSE|LICENSE.*|CLAUDE.md|AGENTS.md|CODEOWNERS|.gitignore|.gitattributes|.editorconfig|.prettierignore|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md)
+    .vbw-planning/*|docs/*|.github/*|.claude/*|README|README.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|LICENSE|LICENSE.*|CLAUDE.md|AGENTS.md|CODEOWNERS|.gitignore|.gitattributes|.editorconfig|.prettierignore|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md)
       return 0
       ;;
     *)
@@ -145,22 +145,29 @@ path_is_metadata_artifact() {
 
 path_is_original_plan_artifact() {
   local path="${1:-}"
-  local phase_dir_name="${2:-}"
+  local phase_dir="${2:-}"
+  local phase_dir_name
+  phase_dir_name="$(basename "$phase_dir")"
   case "$path" in
     */remediation/*) return 1 ;;
     R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md) return 1 ;;
     */"$phase_dir_name"/*-PLAN.md|*/"$phase_dir_name"/PLAN.md) return 0 ;;
-    *-PLAN.md|PLAN.md) return 0 ;;
+    *-PLAN.md|PLAN.md)
+      if [ -n "$phase_dir" ] && [ -f "$phase_dir/$path" ]; then
+        return 0
+      fi
+      return 1
+      ;;
     *) return 1 ;;
   esac
 }
 
 paths_include_original_plan_artifact() {
-  local phase_dir_name="${1:-}"
+  local phase_dir="${1:-}"
   while IFS= read -r path; do
     path=$(normalize_recorded_path "$path")
     [ -n "$path" ] || continue
-    if path_is_original_plan_artifact "$path" "$phase_dir_name"; then
+    if path_is_original_plan_artifact "$path" "$phase_dir"; then
       return 0
     fi
   done
@@ -704,6 +711,9 @@ case "$RESULT" in
       SOURCE_FAIL_IDS=""
       SOURCE_FAIL_ID_COUNT=0
       SOURCE_FAIL_ROW_COUNT=0
+      if [ "$SOURCE_VERIFICATION_MISSING" != "true" ] && { [ -z "$SOURCE_VERIFICATION_PATH" ] || [ ! -r "$SOURCE_VERIFICATION_PATH" ]; }; then
+        SOURCE_VERIFICATION_MISSING="true"
+      fi
       if [ "$SOURCE_VERIFICATION_MISSING" != "true" ] && [ -n "$SOURCE_VERIFICATION_PATH" ] && [ -r "$SOURCE_VERIFICATION_PATH" ]; then
         SOURCE_FAIL_IDS=$(extract_fail_ids_from_verification "$SOURCE_VERIFICATION_PATH")
         SOURCE_FAIL_ID_COUNT=$(printf '%s\n' "$SOURCE_FAIL_IDS" | awk 'NF { count++ } END { print count + 0 }')
@@ -743,7 +753,7 @@ case "$RESULT" in
         echo "qa_gate_metadata_only_override=true"
         echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
         echo "qa_gate_routing=REMEDIATION_REQUIRED"
-      elif [ "$ROUND_PLAN_AMENDMENT_COUNT" -gt 0 ] 2>/dev/null && ! paths_include_original_plan_artifact "$(basename "$PHASE_DIR")" <<< "${_mo_files:-${_mo_commit_files:-}}"; then
+      elif [ "$ROUND_PLAN_AMENDMENT_COUNT" -gt 0 ] 2>/dev/null && ! paths_include_original_plan_artifact "$PHASE_DIR" <<< "${_mo_files:-${_mo_commit_files:-}}"; then
         echo "qa_gate_metadata_only_override=true"
         echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
         echo "qa_gate_routing=REMEDIATION_REQUIRED"

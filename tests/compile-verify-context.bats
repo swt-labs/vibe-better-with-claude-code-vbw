@@ -1299,6 +1299,46 @@ EOF
   [[ "$output" != *"FAIL_ID: PH-01 | ORIGINAL: Phase-level fail"* ]]
 }
 
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS marks missing phase verification on round 01" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Round one remediation
+type: remediation
+must_haves:
+  - Fix original fail
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Round one remediation
+type: remediation
+status: complete
+files_modified:
+  - src/fix.swift
+deviations: []
+---
+
+## Task 1: Fix original fail
+
+### What Was Built
+- Implemented first remediation attempt
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  [[ "$output" == *"source_verification_missing=true"* ]]
+}
+
 @test "compile-verify-context: remediation summary what_was_built aggregates multiple task sections" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'

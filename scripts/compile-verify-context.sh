@@ -487,6 +487,8 @@ if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
       _cvc_source_fail_verif_missing=true
       _cvc_source_fail_verif=""
     fi
+  elif [[ "${_cvc_active_round:-}" =~ ^[0-9]+$ ]] && [ -z "$_cvc_source_fail_verif" ]; then
+    _cvc_source_fail_verif_missing=true
   fi
 fi
 if [ "$_cvc_source_fail_verif_missing" = false ] && [ -z "$_cvc_source_fail_verif" ] && [ -n "$_cvc_phase_verif" ]; then
@@ -501,6 +503,9 @@ if [ -n "$_cvc_phase_verif" ] && [ -f "$_cvc_phase_verif" ]; then
   _cvc_has_verif_history=true
 fi
 if [ -n "$_cvc_qa_round_verifs" ]; then
+  _cvc_has_verif_history=true
+fi
+if [ "$_cvc_source_fail_verif_missing" = true ]; then
   _cvc_has_verif_history=true
 fi
 
