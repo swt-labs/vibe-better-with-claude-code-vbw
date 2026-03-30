@@ -2,7 +2,7 @@
 # extract-verified-items.sh — Extract compact QA-verified items from VERIFICATION.md
 # Usage: extract-verified-items.sh <phase-dir>
 # Output: One line per verified item (check ID + short description), plus verdict.
-#         Empty output if no VERIFICATION.md exists.
+#         Empty output if no authoritative VERIFICATION.md exists.
 # Purpose: Feed into verify.md so the LLM knows what QA already confirmed
 #          and avoids generating redundant UAT checkpoints.
 set -euo pipefail
@@ -28,23 +28,32 @@ append_verif_file() {
   verif_files+=("$candidate")
 }
 
-# Find phase-level VERIFICATION.md files in the phase directory.
-# Supports: NN-VERIFICATION.md, NN-VERIFICATION-waveN.md, and brownfield plain VERIFICATION.md.
-while IFS= read -r f; do
-  append_verif_file "$f"
-done < <(ls "$phase_dir"/*-VERIFICATION*.md 2>/dev/null)
-append_verif_file "$phase_dir/VERIFICATION.md"
-
-# Add the authoritative QA verification path. This pulls in the remediated
-# round VERIFICATION.md only after QA remediation reaches stage=done and also
-# covers brownfield plain VERIFICATION.md.
+phase_verif=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" phase "$phase_dir" 2>/dev/null || true)
 authoritative_verif=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" authoritative "$phase_dir" 2>/dev/null || true)
-if [ -n "$authoritative_verif" ] && [ -f "$authoritative_verif" ]; then
-  # Downstream UAT-facing consumers should see only the authoritative QA view,
-  # not a mix of superseded wave files or frozen historical failures.
-  verif_files=()
+
+if [ -n "$authoritative_verif" ] && [ "$authoritative_verif" != "$phase_verif" ]; then
+  # Once remediation reaches stage=done, the authoritative QA view is the
+  # round-scoped artifact only. If that file is missing, fail closed and do
+  # not resurrect frozen phase-level verification files.
+  append_verif_file "$authoritative_verif"
+  if [[ ${#verif_files[@]} -eq 0 ]]; then
+    exit 0
+  fi
+else
+  # Find phase-level VERIFICATION.md files in the phase directory.
+  # Supports: NN-VERIFICATION.md, NN-VERIFICATION-waveN.md, and brownfield plain VERIFICATION.md.
+  while IFS= read -r f; do
+    append_verif_file "$f"
+  done < <(ls "$phase_dir"/*-VERIFICATION*.md 2>/dev/null)
+  append_verif_file "$phase_dir/VERIFICATION.md"
+
+  if [ -n "$authoritative_verif" ] && [ -f "$authoritative_verif" ]; then
+    # Downstream UAT-facing consumers should see only the authoritative QA view,
+    # not a mix of superseded wave files or frozen historical failures.
+    verif_files=()
+  fi
+  append_verif_file "$authoritative_verif"
 fi
-append_verif_file "$authoritative_verif"
 
 if [[ ${#verif_files[@]} -eq 0 ]]; then
   exit 0

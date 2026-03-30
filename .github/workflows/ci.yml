@@ -102,6 +102,7 @@ jobs:
           run_check "dev-recovery-guidance"    "bash testing/verify-dev-recovery-guidance.sh"
           run_check "live-validation-policy"   "bash testing/verify-live-validation-policy.sh"
           run_check "ghost-team-cleanup"       "bash testing/verify-ghost-team-cleanup.sh"
+          run_check "ci-workflow-contract"     "bash testing/verify-ci-workflow-contract.sh"
           run_check "qa-persistence-contract"  "bash testing/verify-qa-persistence-contract.sh"
 
           failures=0
@@ -142,13 +143,14 @@ jobs:
   test:
     name: Test
     if: always()
-    needs: [bats-tests, contract-tests]
+    needs: [bats-tests, contract-tests, lint]
     runs-on: ubuntu-latest
     steps:
       - name: Check test results
         run: |
-          if [ "${{ needs.bats-tests.result }}" != "success" ] || [ "${{ needs.contract-tests.result }}" != "success" ]; then
+          if [ "${{ needs.bats-tests.result }}" != "success" ] || [ "${{ needs.contract-tests.result }}" != "success" ] || [ "${{ needs.lint.result }}" != "success" ]; then
             echo "One or more test jobs failed:"
+            echo "  lint: ${{ needs.lint.result }}"
             echo "  bats-tests: ${{ needs.bats-tests.result }}"
             echo "  contract-tests: ${{ needs.contract-tests.result }}"
             exit 1
