@@ -42,8 +42,40 @@ jobs:
           SHARD: ${{ matrix.shard }}
           TOTAL_SHARDS: 4
         run: |
-          files=(tests/*.bats)
+          files=()
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            files+=("$file")
+          done < <(bash testing/list-bats-files.sh --shardable)
           bash testing/run-bats-shard.sh "$SHARD" "$TOTAL_SHARDS" "${files[@]}"
+
+  bats-serial:
+    name: Bats Tests (serial)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats-core
+        run: |
+          git clone --depth 1 --branch v1.13.0 https://github.com/bats-core/bats-core.git /tmp/bats-core
+          sudo /tmp/bats-core/install.sh /usr/local
+          bats -v
+
+      - name: Install jq
+        run: sudo apt-get install -y -qq jq
+
+      - name: Run serial bats files
+        run: |
+          files=()
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            files+=("$file")
+          done < <(bash testing/list-bats-files.sh --serial)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No serial bats files configured, skipping"
+            exit 0
+          fi
+          bats "${files[@]}"
 
   contract-tests:
     name: Contract Tests
@@ -132,15 +164,16 @@ jobs:
   test:
     name: Test
     if: always()
-    needs: [bats-tests, contract-tests, lint]
+    needs: [bats-tests, bats-serial, contract-tests, lint]
     runs-on: ubuntu-latest
     steps:
       - name: Check test results
         run: |
-          if [ "${{ needs.bats-tests.result }}" != "success" ] || [ "${{ needs.contract-tests.result }}" != "success" ] || [ "${{ needs.lint.result }}" != "success" ]; then
+          if [ "${{ needs.bats-tests.result }}" != "success" ] || [ "${{ needs.bats-serial.result }}" != "success" ] || [ "${{ needs.contract-tests.result }}" != "success" ] || [ "${{ needs.lint.result }}" != "success" ]; then
             echo "One or more test jobs failed:"
             echo "  lint: ${{ needs.lint.result }}"
             echo "  bats-tests: ${{ needs.bats-tests.result }}"
+            echo "  bats-serial: ${{ needs.bats-serial.result }}"
             echo "  contract-tests: ${{ needs.contract-tests.result }}"
             exit 1
           fi

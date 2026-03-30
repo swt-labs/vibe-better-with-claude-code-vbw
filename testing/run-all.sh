@@ -5,6 +5,7 @@ set -euo pipefail
 # Launches shared lint, contract checks, and bats workers concurrently, then collects results.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LIST_BATS_FILES="$ROOT/testing/list-bats-files.sh"
 
 TMPDIR_JOBS="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR_JOBS"' EXIT
@@ -20,43 +21,6 @@ declare -a JOB_PIDS=()
 declare -a JOB_TYPES=()  # "lint", "contract", or "bats"
 declare -a JOB_EXIT_CODES=()
 declare -a serial_bats_files=()
-declare -a SERIAL_BATS_FILES=(
-  "$ROOT/tests/statusline-cache-isolation.bats"
-)
-
-is_serial_bats_file() {
-  local candidate="$1" serial_file
-  for serial_file in "${SERIAL_BATS_FILES[@]}"; do
-    [ "$candidate" = "$serial_file" ] && return 0
-  done
-  return 1
-}
-
-default_bats_workers() {
-  local cpu_count
-  cpu_count=""
-
-  if command -v sysctl >/dev/null 2>&1; then
-    cpu_count=$(sysctl -n hw.ncpu 2>/dev/null || true)
-  fi
-  if [ -z "$cpu_count" ] && command -v nproc >/dev/null 2>&1; then
-    cpu_count=$(nproc 2>/dev/null || true)
-  fi
-
-  case "$cpu_count" in
-    ''|*[!0-9]*) cpu_count=4 ;;
-  esac
-
-  # Cap at 8 to avoid diminishing returns and temp-file contention.
-  if [ "$cpu_count" -gt 8 ]; then
-    cpu_count=8
-  fi
-  if [ "$cpu_count" -lt 2 ]; then
-    cpu_count=2
-  fi
-
-  echo "$cpu_count"
-}
 
 run_job() {
   local type="$1" name="$2"
@@ -99,15 +63,15 @@ run_job contract "ci-workflow-contract"     bash "$ROOT/testing/verify-ci-workfl
 run_job contract "qa-persistence-contract"  bash "$ROOT/testing/verify-qa-persistence-contract.sh"
 
 # --- Launch bats workers concurrently with contract checks ---
-BATS_WORKERS="${BATS_WORKERS:-$(default_bats_workers)}"
+BATS_WORKERS="${BATS_WORKERS:-4}"
 case "$BATS_WORKERS" in
   ''|*[!0-9]*)
-    echo "Invalid BATS_WORKERS=$BATS_WORKERS — falling back to auto-detected worker count."
-    BATS_WORKERS="$(default_bats_workers)"
+    echo "Invalid BATS_WORKERS=$BATS_WORKERS — falling back to CI shard count (4 workers)."
+    BATS_WORKERS=4
     ;;
   0)
-    echo "Invalid BATS_WORKERS=0 — falling back to auto-detected worker count."
-    BATS_WORKERS="$(default_bats_workers)"
+    echo "Invalid BATS_WORKERS=0 — falling back to CI shard count (4 workers)."
+    BATS_WORKERS=4
     ;;
 esac
 bats_launched=false
@@ -116,16 +80,17 @@ if ! command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; th
   echo "ERROR: bats is required for CI-parity local verification (install bats-core)."
   bats_missing=true
 elif command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; then
-  all_bats_files=("$ROOT/tests/"*.bats)
   bats_files=()
+  while IFS= read -r bats_file; do
+    [ -n "$bats_file" ] || continue
+    bats_files+=("$bats_file")
+  done < <(bash "$LIST_BATS_FILES" --shardable)
+
   serial_bats_files=()
-  for bats_file in "${all_bats_files[@]}"; do
-    if is_serial_bats_file "$bats_file"; then
-      serial_bats_files+=("$bats_file")
-    else
-      bats_files+=("$bats_file")
-    fi
-  done
+  while IFS= read -r bats_file; do
+    [ -n "$bats_file" ] || continue
+    serial_bats_files+=("$bats_file")
+  done < <(bash "$LIST_BATS_FILES" --serial)
   total_files="${#bats_files[@]}"
   bats_launched=true
 

@@ -27,6 +27,8 @@ create_stub_workspace() {
   local file
   mkdir -p "$root/testing" "$root/scripts" "$root/tests" "$root/bin"
   cp "$PROJECT_ROOT/testing/run-all.sh" "$root/testing/run-all.sh"
+  cp "$PROJECT_ROOT/testing/list-bats-files.sh" "$root/testing/list-bats-files.sh"
+  cp "$PROJECT_ROOT/testing/run-bats-shard.sh" "$root/testing/run-bats-shard.sh"
 
   cat > "$root/bin/bats" <<'SH'
 #!/usr/bin/env bash

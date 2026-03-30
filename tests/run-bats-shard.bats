@@ -2,6 +2,7 @@
 
 REPO_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
 SCRIPT="$REPO_ROOT/testing/run-bats-shard.sh"
+LIST_SCRIPT="$REPO_ROOT/testing/list-bats-files.sh"
 
 @test "run-bats-shard prints modulo-selected files" {
   run bash "$SCRIPT" 1 4 --print-files \
@@ -23,4 +24,29 @@ SCRIPT="$REPO_ROOT/testing/run-bats-shard.sh"
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"usage: run-bats-shard.sh"* ]]
+}
+
+@test "list-bats-files shardable omits serial-only bats file and is sorted" {
+  run bash "$LIST_SCRIPT" --shardable
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$REPO_ROOT/tests/adaptive-governance.bats"* ]]
+  [[ "$output" != *"$REPO_ROOT/tests/statusline-cache-isolation.bats"* ]]
+
+  first_line=$(printf '%s\n' "$output" | head -1)
+  [ "$first_line" = "$REPO_ROOT/tests/adaptive-governance.bats" ]
+}
+
+@test "list-bats-files serial returns statusline-cache-isolation only" {
+  run bash "$LIST_SCRIPT" --serial
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$REPO_ROOT/tests/statusline-cache-isolation.bats" ]
+}
+
+@test "list-bats-files rejects invalid mode" {
+  run bash "$LIST_SCRIPT" --wat
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"usage: list-bats-files.sh --shardable|--serial"* ]]
 }

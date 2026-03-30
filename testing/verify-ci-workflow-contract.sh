@@ -6,6 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORKFLOW="$ROOT/.github/workflows/ci.yml"
 RUN_ALL="$ROOT/testing/run-all.sh"
+LIST_BATS="$ROOT/testing/list-bats-files.sh"
 
 PASS=0
 FAIL=0
@@ -42,6 +43,7 @@ echo "=== CI Workflow Contract Verification ==="
 LINT_BLOCK="$(job_block lint)"
 CONTRACT_BLOCK="$(job_block contract-tests)"
 TEST_BLOCK="$(job_block test)"
+BATS_SERIAL_BLOCK="$(job_block bats-serial)"
 
 if grep -q 'bash testing/run-lint.sh' <<< "$LINT_BLOCK"; then
   pass "ci.yml: lint job runs shared testing/run-lint.sh"
@@ -53,6 +55,24 @@ if grep -q 'bash testing/run-bats-shard.sh' "$WORKFLOW" && grep -q 'run-bats-sha
   pass "ci.yml/testing: CI and local runner share the same bats shard helper"
 else
   fail "ci.yml/testing: CI and local runner do not share the same bats shard helper"
+fi
+
+if grep -q 'bash testing/list-bats-files.sh --shardable' "$WORKFLOW" && grep -q 'bash "$LIST_BATS_FILES" --shardable' "$RUN_ALL"; then
+  pass "ci.yml/testing: CI and local runner share deterministic shardable bats discovery"
+else
+  fail "ci.yml/testing: CI and local runner do not share deterministic shardable bats discovery"
+fi
+
+if grep -q 'bash testing/list-bats-files.sh --serial' "$WORKFLOW" && grep -q 'bash "$LIST_BATS_FILES" --serial' "$RUN_ALL"; then
+  pass "ci.yml/testing: CI and local runner share deterministic serial bats discovery"
+else
+  fail "ci.yml/testing: CI and local runner do not share deterministic serial bats discovery"
+fi
+
+if grep -q 'BATS_WORKERS="${BATS_WORKERS:-4}"' "$RUN_ALL"; then
+  pass "run-all: defaults to CI shard count (4 workers)"
+else
+  fail "run-all: does not default to CI shard count (4 workers)"
 fi
 
 if grep -q 'bash testing/verify-ci-workflow-contract.sh' <<< "$CONTRACT_BLOCK"; then
@@ -69,16 +89,22 @@ else
   fail "ci.yml: contract-tests job does not match testing/run-all.sh contract set"
 fi
 
-if grep -q 'needs: \[bats-tests, contract-tests, lint\]' <<< "$TEST_BLOCK"; then
-  pass "ci.yml: test aggregator depends on lint, bats-tests, and contract-tests"
+if grep -q 'needs: \[bats-tests, bats-serial, contract-tests, lint\]' <<< "$TEST_BLOCK"; then
+  pass "ci.yml: test aggregator depends on lint, bats-tests, bats-serial, and contract-tests"
 else
-  fail "ci.yml: test aggregator missing lint in needs"
+  fail "ci.yml: test aggregator missing one or more required jobs in needs"
 fi
 
-if grep -q '\${{ needs.lint.result }}' <<< "$TEST_BLOCK"; then
-  pass "ci.yml: test aggregator checks lint result explicitly"
+if grep -q '\${{ needs.lint.result }}' <<< "$TEST_BLOCK" && grep -q '\${{ needs.bats-serial.result }}' <<< "$TEST_BLOCK"; then
+  pass "ci.yml: test aggregator checks lint and serial bats results explicitly"
 else
-  fail "ci.yml: test aggregator does not check lint result explicitly"
+  fail "ci.yml: test aggregator does not check lint/serial bats results explicitly"
+fi
+
+if grep -q 'bats "${files\[@\]}"' <<< "$BATS_SERIAL_BLOCK"; then
+  pass "ci.yml: serial bats job runs discovered serial files explicitly"
+else
+  fail "ci.yml: serial bats job does not run discovered serial files explicitly"
 fi
 
 echo ""

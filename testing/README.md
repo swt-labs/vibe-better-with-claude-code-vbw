@@ -6,11 +6,17 @@ This folder contains verification scripts for VBW that are safe to run locally a
 
 Run all checks:
 
-- `bash testing/run-all.sh` — runs CI-parity shell lint, contract checks, and bats (`jq`, `shellcheck`, and `bats` required locally)
+- `bash testing/run-all.sh` — runs CI-parity shell lint, contract checks, and bats using the same 4 shard layout and serial-bats split as CI (`jq`, `shellcheck`, and `bats` required locally)
 
 Reproduce an individual CI bats shard locally:
 
-- `bash testing/run-bats-shard.sh 1 4 tests/*.bats`
+- `files=(); while IFS= read -r file; do files+=("$file"); done < <(bash testing/list-bats-files.sh --shardable)`
+- `bash testing/run-bats-shard.sh 1 4 "${files[@]}"`
+
+Run the serial bats files locally:
+
+- `files=(); while IFS= read -r file; do files+=("$file"); done < <(bash testing/list-bats-files.sh --serial)`
+- `bats "${files[@]}"`
 
 Run individual checks:
 
