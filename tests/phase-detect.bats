@@ -1178,25 +1178,27 @@ CONF
 }
 
 @test "qa_status is remediated when qa-remediation done and PASS" {
-  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa/round-01
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   echo "# My Project" > .vbw-planning/PROJECT.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Original failure.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
   current_commit="$(git rev-parse HEAD)"
-  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after remediation.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=remediated"
 }
 
 @test "qa_status is failed when qa-remediation done but FAIL in VERIFICATION" {
-  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa/round-01
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
-  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Still failing.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Original failure.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
   printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   echo "# My Project" > .vbw-planning/PROJECT.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Still failing after remediation.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=failed"
@@ -1244,19 +1246,19 @@ CONF
   echo "$output" | grep -q "qa_status=failed"
 }
 
-@test "qa_status falls back to phase-level when round VERIFICATION.md absent and stage=done" {
+@test "qa_status is pending when round VERIFICATION.md absent and stage=done" {
   mkdir -p .vbw-planning/phases/01-test/remediation/qa
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   echo "# My Project" > .vbw-planning/PROJECT.md
-  # Phase-level has PASS (brownfield: old behavior where phase-level was overwritten)
+  # Phase-level PASS stays frozen, but missing round verification must fail closed.
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
-  # No round VERIFICATION.md (brownfield: pre-feature installation)
+  # No round VERIFICATION.md
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "qa_status=remediated"
+  echo "$output" | grep -q "qa_status=pending"
 }
 
 @test "qa_status remediated reads round-02 VERIFICATION.md when stage=done" {

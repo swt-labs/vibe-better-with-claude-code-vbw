@@ -130,6 +130,10 @@ case "$MODE" in
             echo "$round_path"
             exit 0
           fi
+          if [ "$stage" = "done" ]; then
+            echo "$round_path"
+            exit 0
+          fi
           ;;
       esac
     fi
@@ -143,8 +147,10 @@ case "$MODE" in
         round_path="$PHASE_DIR/remediation/qa/round-${round}/R${round}-VERIFICATION.md"
         if [ -f "$round_path" ]; then
           echo "$round_path"
-          exit 0
+        else
+          echo "$round_path"
         fi
+        exit 0
       fi
     fi
     echo "$phase_path"
