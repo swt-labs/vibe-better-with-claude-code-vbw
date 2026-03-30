@@ -416,6 +416,55 @@ EOF
   [[ "$output" == *"verify_plan_count=1"* ]]
 }
 
+@test "compile-verify-context: --remediation-only honors active QA remediation round over stale higher round" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Active round one
+type: remediation
+must_haves:
+  - Fix current issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Round 1 work
+EOF
+
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Stale higher round
+type: remediation
+must_haves:
+  - Old stale issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Round 2 stale work
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=01"* ]]
+  [[ "$output" == *"=== PLAN R01: Active round one ==="* ]]
+  [[ "$output" != *"Stale higher round"* ]]
+}
+
 @test "compile-verify-context: --remediation-only falls back to full when no completed round" {
   # Phase-root plan
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'

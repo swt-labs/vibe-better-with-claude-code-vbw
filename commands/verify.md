@@ -275,8 +275,12 @@ QA verification summary (pre-extracted from VERIFICATION.md):
     ```bash
     VERIF_FILE=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-verification-path.sh current "$PDIR" 2>/dev/null || true)
     [ -n "$VERIF_FILE" ] && [ ! -f "$VERIF_FILE" ] && VERIF_FILE=""
+    if [ -z "$VERIF_FILE" ]; then
+      echo "Phase {NN} QA remediation is done, but the round-scoped VERIFICATION artifact is missing. Run /vbw:vibe to restore the remediation artifact before UAT." >&2
+      exit 1
+    fi
     ```
-    This prefers the remediated round VERIFICATION.md and falls back to the phase-level numbered/plain file for brownfield installs.
+    This requires the remediated round VERIFICATION.md. The phase-level VERIFICATION.md stays frozen and must not be reused once QA remediation reaches `done`.
   - If `QA_REM_FILE` exists but `QA_REM_STAGE=none` after normalization, treat it as corrupt/stale and continue using the resolved `VERIF_FILE` above.
   - If no VERIFICATION.md and no `--skip-qa`: STOP "Phase {NN} has no QA verification. Run `/vbw:vibe` to execute QA first, or use `/vbw:verify --skip-qa` to bypass."
   - If VERIFICATION.md exists, read its frontmatter `result:` field:

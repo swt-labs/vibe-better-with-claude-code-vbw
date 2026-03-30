@@ -149,6 +149,10 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
           done)
             VERIF_PATH=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-verification-path.sh current "{phase-dir}" 2>/dev/null || true)
             [ -n "$VERIF_PATH" ] && [ ! -f "$VERIF_PATH" ] && VERIF_PATH=""
+            if [ -z "$VERIF_PATH" ] || [ ! -f "$VERIF_PATH" ]; then
+              echo "Phase {NN} QA remediation is done, but the round-scoped VERIFICATION artifact is missing. Re-run /vbw:vibe to restore the remediation artifact before standalone QA." >&2
+              exit 1
+            fi
             ;;
           plan|execute)
             echo "Phase {NN} has active QA remediation at stage ${QA_STAGE}. Run /vbw:vibe to continue remediation before standalone QA." >&2

@@ -133,6 +133,7 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   LATEST_ROUND=""
   REMED_DIR=""
   REMED_KIND=""
+  _cvc_preferred_round=""
 
   _cvc_candidates=()
   _active_remediation=false
@@ -141,6 +142,12 @@ if [ "$REMEDIATION_ONLY" = true ]; then
     case "${_qa_stage:-none}" in
       verify|done)
         _cvc_candidates+=("$PHASE_DIR/remediation/qa")
+        _cvc_preferred_round=$(grep '^round=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+        if ! [[ "${_cvc_preferred_round:-}" =~ ^[0-9]+$ ]]; then
+          _cvc_preferred_round=""
+        elif [ -n "$_cvc_preferred_round" ]; then
+          _cvc_preferred_round=$(printf '%02d' "$((10#$_cvc_preferred_round))")
+        fi
         _active_remediation=true
         ;;
     esac
@@ -164,6 +171,21 @@ if [ "$REMEDIATION_ONLY" = true ]; then
 
   for _candidate in "${_cvc_candidates[@]}"; do
     [ -d "$_candidate" ] || continue
+    if [ "$_candidate" = "$PHASE_DIR/remediation/qa" ] && [ -n "$_cvc_preferred_round" ]; then
+      _preferred_round_dir="$_candidate/round-$_cvc_preferred_round"
+      if [ -d "$_preferred_round_dir" ] && \
+         ls "$_preferred_round_dir"/R"$_cvc_preferred_round"-PLAN.md >/dev/null 2>&1 && \
+         ls "$_preferred_round_dir"/R"$_cvc_preferred_round"-SUMMARY.md >/dev/null 2>&1 && \
+         is_summary_terminal "$_preferred_round_dir/R${_cvc_preferred_round}-SUMMARY.md"; then
+        LATEST_ROUND="$_cvc_preferred_round"
+        REMED_DIR="$_candidate"
+        REMED_KIND="qa"
+        break
+      fi
+      # Active QA remediation should not be hijacked by a stale higher round.
+      REMEDIATION_ONLY=false
+      break
+    fi
     _best_round_num=0
     _candidate_round=""
     for round_dir in "$_candidate"/round-*/; do
