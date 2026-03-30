@@ -365,6 +365,15 @@ commit_hashes_are_round_local() {
   return 0
 }
 
+git_diff_paths_since_commit() {
+  local repo_root="${1:-}"
+  local anchor_commit="${2:-}"
+  [ -n "$repo_root" ] || return 0
+  [ -n "$anchor_commit" ] || return 0
+  git -C "$repo_root" cat-file -e "${anchor_commit}^{commit}" 2>/dev/null || return 0
+  git -C "$repo_root" diff --name-only "$anchor_commit"..HEAD 2>/dev/null || true
+}
+
 commit_is_ancestor_or_same() {
   local repo_root="${1:-}"
   local ancestor_commit="${2:-}"
@@ -921,6 +930,8 @@ SOURCE_FAIL_IDS=""
 SOURCE_FAIL_ROW_COUNT=0
 ROUND_STARTED_AT_COMMIT=""
 ROUND_STARTED_AFTER_SOURCE="true"
+ROUND_ACTUAL_DIFF_PATHS=""
+ROUND_ACTUAL_DIFF_PATHS_AVAILABLE="false"
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   _qa_remediation_state=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null || true)
   SOURCE_VERIFICATION_PATH=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^source_verification_path=/{print $2; exit}')
@@ -935,6 +946,10 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   fi
   if [ -n "$SOURCE_VERIFIED_AT_COMMIT" ] && [ -n "$ROUND_STARTED_AT_COMMIT" ] && ! commit_is_ancestor_or_same "$GIT_ROOT" "$SOURCE_VERIFIED_AT_COMMIT" "$ROUND_STARTED_AT_COMMIT"; then
     ROUND_STARTED_AFTER_SOURCE="false"
+  fi
+  if [ -n "$GIT_ROOT" ] && [ -n "$ROUND_STARTED_AT_COMMIT" ]; then
+    ROUND_ACTUAL_DIFF_PATHS_AVAILABLE="true"
+    ROUND_ACTUAL_DIFF_PATHS=$(git_diff_paths_since_commit "$GIT_ROOT" "$ROUND_STARTED_AT_COMMIT" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))
   fi
 fi
 
@@ -956,6 +971,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   _mo_has_code_changes="false"
   _mo_found_summary="false"
   _mo_all_recorded_paths=""
+  _mo_effective_files=""
   while IFS= read -r _mo_summary; do
     [ -f "$_mo_summary" ] || continue
     _mo_found_summary="true"
@@ -977,8 +993,13 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       ROUND_CHANGE_EVIDENCE_EMPTY="true"
     fi
     if [ -n "$_mo_files" ]; then
-      _mo_all_recorded_paths=$(printf '%s\n%s\n' "${_mo_all_recorded_paths:-}" "$_mo_files")
-      if paths_include_non_metadata "$PHASE_DIR" <<< "$_mo_files"; then
+      if [ "$ROUND_ACTUAL_DIFF_PATHS_AVAILABLE" = "true" ]; then
+        _mo_effective_files="$ROUND_ACTUAL_DIFF_PATHS"
+      else
+        _mo_effective_files="$_mo_files"
+      fi
+      _mo_all_recorded_paths=$(printf '%s\n%s\n' "${_mo_all_recorded_paths:-}" "$_mo_effective_files")
+      if paths_include_non_metadata "$PHASE_DIR" <<< "$_mo_effective_files"; then
         _mo_has_code_changes="true"
       fi
     elif [ "$_mo_commits" -gt 0 ] 2>/dev/null; then

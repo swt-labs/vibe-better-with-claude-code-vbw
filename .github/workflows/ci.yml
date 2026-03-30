@@ -43,18 +43,7 @@ jobs:
           TOTAL_SHARDS: 4
         run: |
           files=(tests/*.bats)
-          shard_files=()
-          for i in "${!files[@]}"; do
-            if [ $((i % TOTAL_SHARDS)) -eq "$SHARD" ]; then
-              shard_files+=("${files[$i]}")
-            fi
-          done
-          echo "Shard $SHARD: running ${#shard_files[@]} of ${#files[@]} bats files"
-          if [ "${#shard_files[@]}" -eq 0 ]; then
-            echo "Shard $SHARD: no bats files assigned, skipping"
-            exit 0
-          fi
-          bats "${shard_files[@]}"
+          bash testing/run-bats-shard.sh "$SHARD" "$TOTAL_SHARDS" "${files[@]}"
 
   contract-tests:
     name: Contract Tests

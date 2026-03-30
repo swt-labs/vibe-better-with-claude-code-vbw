@@ -134,9 +134,10 @@ elif command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; th
   elif [ "$total_files" -gt 0 ]; then
     for ((w=0; w<BATS_WORKERS; w++)); do
       worker_files=()
-      for ((f=w; f<total_files; f+=BATS_WORKERS)); do
-        worker_files+=("${bats_files[$f]}")
-      done
+      while IFS= read -r worker_file; do
+        [ -n "$worker_file" ] || continue
+        worker_files+=("$worker_file")
+      done < <(bash "$ROOT/testing/run-bats-shard.sh" "$w" "$BATS_WORKERS" --print-files "${bats_files[@]}")
       if [ "${#worker_files[@]}" -gt 0 ]; then
         run_job bats "bats-worker-$w" bats "${worker_files[@]}"
       fi

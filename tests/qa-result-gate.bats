@@ -173,6 +173,50 @@ VERIF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
+@test "plan-amendment requires actual round diff to include the original plan when git evidence is available" {
+  init_git_repo
+  mkdir -p "$TEST_DIR/docs"
+  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
+  commit_repo_file "README.md" "docs-only follow-up" >/dev/null
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "01-01-PLAN.md"
+  - "README.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Claimed plan amendment must be corroborated by the round diff
+fail_classifications:
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should be updated", source_plan: "01-01-PLAN.md"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documentation updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
   [[ "$output" == *"qa_gate_writer=write-verification.sh"* ]]
@@ -2792,6 +2836,49 @@ VERIF
 
   [ "$status" -eq 0 ]
   [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "claimed code path must be corroborated by the round diff when git evidence is available" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "baseline")
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | Production code still differs from the plan | FAIL | Missing fix |" "$baseline_commit"
+  commit_repo_file "README.md" "docs-only follow-up" >/dev/null
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "src/MyService.swift"
+  - "README.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Claimed code fix must be corroborated by the round diff
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Production code still needs to change"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documentation updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 

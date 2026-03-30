@@ -8,6 +8,10 @@ Run all checks:
 
 - `bash testing/run-all.sh` — runs CI-parity shell lint, contract checks, and bats (`jq`, `shellcheck`, and `bats` required locally)
 
+Reproduce an individual CI bats shard locally:
+
+- `bash testing/run-bats-shard.sh 1 4 tests/*.bats`
+
 Run individual checks:
 
 - `bash scripts/verify-init-todo.sh`

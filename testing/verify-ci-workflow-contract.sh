@@ -49,6 +49,12 @@ else
   fail "ci.yml: lint job does not run shared testing/run-lint.sh"
 fi
 
+if grep -q 'bash testing/run-bats-shard.sh' "$WORKFLOW" && grep -q 'run-bats-shard.sh' "$RUN_ALL"; then
+  pass "ci.yml/testing: CI and local runner share the same bats shard helper"
+else
+  fail "ci.yml/testing: CI and local runner do not share the same bats shard helper"
+fi
+
 if grep -q 'bash testing/verify-ci-workflow-contract.sh' <<< "$CONTRACT_BLOCK"; then
   pass "ci.yml: contract-tests job includes verify-ci-workflow-contract.sh"
 else
