@@ -1109,6 +1109,46 @@ EOF
   [[ "$output" == *"deviations: Used a different helper function than planned"* ]]
 }
 
+@test "compile-verify-context: plain-text remediation task-level deviations are extracted" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Plain-text deviation extraction
+type: remediation
+must_haves:
+  - API matches spec
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Plain-text deviation extraction
+type: remediation
+status: complete
+files_modified:
+  - src/api.swift
+deviations: []
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+
+### Deviations
+Used a different helper function than planned
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Used a different helper function than planned"* ]]
+}
+
 @test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS uses previous round verification for round 02" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
   printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"

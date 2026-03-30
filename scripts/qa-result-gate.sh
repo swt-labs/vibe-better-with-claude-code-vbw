@@ -122,6 +122,15 @@ extract_frontmatter_array_items() {
   ' "$file_path" 2>/dev/null
 }
 
+normalize_recorded_path() {
+  local path="${1:-}"
+  path=$(printf '%s' "$path" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"`]//;s/['\"`]$//;s/,$//")
+  while [[ "$path" == ./* ]]; do
+    path="${path#./}"
+  done
+  printf '%s' "$path"
+}
+
 path_is_metadata_artifact() {
   local path="${1:-}"
   case "$path" in
@@ -140,6 +149,7 @@ path_is_original_plan_artifact() {
   case "$path" in
     */remediation/*) return 1 ;;
     */"$phase_dir_name"/*-PLAN.md|*/"$phase_dir_name"/PLAN.md) return 0 ;;
+    *-PLAN.md|PLAN.md) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -147,7 +157,7 @@ path_is_original_plan_artifact() {
 paths_include_original_plan_artifact() {
   local phase_dir_name="${1:-}"
   while IFS= read -r path; do
-    path=$(printf '%s' "$path" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"]//;s/['\"]$//;s/,$//")
+    path=$(normalize_recorded_path "$path")
     [ -n "$path" ] || continue
     if path_is_original_plan_artifact "$path" "$phase_dir_name"; then
       return 0
@@ -158,7 +168,7 @@ paths_include_original_plan_artifact() {
 
 paths_include_non_metadata() {
   while IFS= read -r path; do
-    path=$(printf '%s' "$path" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"]//;s/['\"]$//;s/,$//")
+    path=$(normalize_recorded_path "$path")
     [ -n "$path" ] || continue
     if ! path_is_metadata_artifact "$path"; then
       return 0
@@ -503,13 +513,15 @@ count_deviations_in_dir() {
         /^## Deviations/ || /^### Deviations/ { found=1; next }
         found && (/^## / || /^### /) { found=0; next }
         found && /^[[:space:]]*$/ { next }
-        found && /^- / {
-          line=$0; sub(/^- /, "", line)
+        found {
+          line=$0
+          sub(/^- /, "", line)
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
           if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
           sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
           if (line == "") next
           lc = tolower(line)
-          if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
+          if (lc ~ /^none(\.[[:space:]].*|\.?)$/ || lc ~ /^n\/a(\.[[:space:]].*|\.?)$/ || lc ~ /^na(\.[[:space:]].*|\.?)$/ || lc ~ /^no deviations($|[.:].*)/) next
           count++
         }
         END { print count }

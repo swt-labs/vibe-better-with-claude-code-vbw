@@ -27,7 +27,10 @@ deviations:
 - `{file-path}` -- {action}: {purpose}
 
 ### Deviations
-{deviations-or-none}
+- {deviation-description}
+
+<!-- Or write `None` / `No deviations` as plain text when there were no deviations.
+  If there are multiple deviations, use one bullet per deviation. -->
 
 <!-- Repeat "## Task {N}" section for each task in the plan.
      Keep task sections in execution order.

@@ -416,9 +416,10 @@ while IFS= read -r plan_file; do
         /^## Deviations/ || /^### Deviations/ { found=1; next }
         found && (/^## / || /^### /) { found=0; next }
         found && /^[[:space:]]*$/ { next }
-        found && /^- / {
+        found {
           line = $0
           sub(/^- /, "", line)
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
           # Check bold label for None/N/A before stripping (e.g., **N/A**: not applicable)
           if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
           # Strip bold prefix so "**Foo**: bar" becomes "bar"
@@ -426,7 +427,7 @@ while IFS= read -r plan_file; do
           if (line == "") next
           # Skip "None" / "None." / "N/A" / "None. <explanation>" / "No deviations" entries (case-insensitive)
           lc = tolower(line)
-          if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
+          if (lc ~ /^none(\.[[:space:]].*|\.?)$/ || lc ~ /^n\/a(\.[[:space:]].*|\.?)$/ || lc ~ /^na(\.[[:space:]].*|\.?)$/ || lc ~ /^no deviations($|[.:].*)/) next
           items = items (items ? "; " : "") line
         }
         END { print items }
