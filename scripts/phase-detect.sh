@@ -556,6 +556,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
               in_fm && /^---[[:space:]]*$/ { exit }
               in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
             ' "$_uv_verif" 2>/dev/null) || _qa_done_result=""
+            _qa_done_result=$(printf '%s' "$_qa_done_result" | tr '[:lower:]' '[:upper:]')
             case "$_qa_done_result" in
               PASS)
                 # Staleness check for remediated path
@@ -597,6 +598,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
             in_fm && /^---[[:space:]]*$/ { exit }
             in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
           ' "$_uv_verif" 2>/dev/null) || _qa_result=""
+          _qa_result=$(printf '%s' "$_qa_result" | tr '[:lower:]' '[:upper:]')
           case "$_qa_result" in
             PASS)
               # Staleness check: if code changed since QA verified, treat as pending
@@ -685,6 +687,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
         in_fm && /^---[[:space:]]*$/ { exit }
         in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
       ' "$_qa_verif_scan" 2>/dev/null) || _qa_result_scan=""
+      _qa_result_scan=$(printf '%s' "$_qa_result_scan" | tr '[:lower:]' '[:upper:]')
       case "$_qa_result_scan" in
         FAIL|PARTIAL)
           _qa_attention="failed"
