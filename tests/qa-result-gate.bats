@@ -123,6 +123,13 @@ create_plan() {
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  [[ "$output" == *"qa_gate_writer=write-verification.sh"* ]]
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+  [[ "$output" == *"qa_gate_fail_count=0"* ]]
+}
+
 @test "plan-amendment does not accept sibling-phase traversal path" {
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
@@ -215,13 +222,6 @@ VERIF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
-}
-
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
-  [[ "$output" == *"qa_gate_writer=write-verification.sh"* ]]
-  [[ "$output" == *"qa_gate_result=PASS"* ]]
-  [[ "$output" == *"qa_gate_fail_count=0"* ]]
 }
 
 @test "PASS with FAIL rows in body → REMEDIATION_REQUIRED (override)" {
