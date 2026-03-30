@@ -239,6 +239,13 @@ else
   fail "execute-protocol: QA remediation verify missing remediation-only verify context"
 fi
 
+if grep -q 'verify the exception is documented with non-fixable justification and that the justification is credible for this FAIL' "$ROOT/references/execute-protocol.md" \
+  && grep -q 'documentation alone is insufficient when the original FAIL still appears fixable via code or plan amendment' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: remediation QA rejects unjustified process-exception labels"
+else
+  fail "execute-protocol: remediation QA guidance still allows documentation-only process-exception loophole"
+fi
+
 if grep -q 'After QA persists VERIFICATION.md (and only after that), run the verification threshold gate' "$ROOT/references/execute-protocol.md"; then
   pass "execute-protocol: verification_threshold runs after QA persists VERIFICATION"
 else
@@ -249,6 +256,13 @@ if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$VIBE_FIL
   pass "vibe: QA remediation verify uses remediation-only verify context"
 else
   fail "vibe: QA remediation verify missing remediation-only verify context"
+fi
+
+if grep -q 'verify the exception is documented with non-fixable justification and that the justification is credible for this FAIL' "$VIBE_FILE" \
+  && grep -q 'documentation alone is insufficient when the original FAIL still appears fixable via code or plan amendment' "$VIBE_FILE"; then
+  pass "vibe: remediation QA rejects unjustified process-exception labels"
+else
+  fail "vibe: remediation QA guidance still allows documentation-only process-exception loophole"
 fi
 
 if grep -q 'PDIR=".vbw-planning/phases/{target-slug}"' "$VERIFY_FILE" && grep -q '_uat_stage=' "$VERIFY_FILE" && grep -q '_qa_stage=' "$VERIFY_FILE"; then

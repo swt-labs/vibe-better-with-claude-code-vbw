@@ -604,6 +604,7 @@ if [ "$_cvc_has_verif_history" = true ]; then
             if (cell == "Artifact") desc_col = i
             if (cell == "Convention") desc_col = i
             if (cell == "Description") desc_col = i
+            if (cell == "Link") desc_col = i
             if (cell == "Pattern") desc_col = i
             if (cell == "Requirement") desc_col = i
             if (cell == "From") desc_col = i

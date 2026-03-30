@@ -2314,6 +2314,43 @@ EOF
   [[ "$output" != *"FAIL_ID: MH-02"* ]]
 }
 
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS handles Link column header fallback" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Key Link Checks
+| # | ID | Link | Status | Evidence |
+|---|-----|------|--------|----------|
+| 1 | KL-01 | qa-result-gate.sh → vibe.md routing | FAIL | Routing drift |
+| 2 | KL-02 | qa-result-gate.sh → execute-protocol.md routing | PASS | Aligned |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"FAIL_ID: KL-01"* ]]
+  [[ "$output" == *"qa-result-gate.sh → vibe.md routing"* ]]
+  [[ "$output" != *"FAIL_ID: KL-02"* ]]
+}
+
 @test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS not emitted without phase VERIFICATION.md" {
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
 ---
