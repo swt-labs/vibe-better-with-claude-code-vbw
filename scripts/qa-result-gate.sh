@@ -175,7 +175,7 @@ path_is_metadata_artifact() {
 path_is_code_fix_support_artifact() {
   local path="${1:-}"
   case "$path" in
-    .vbw-planning/*|.claude/*|.claude-plugin/*|.github/*|docs/*|internal/*|testing/*|tests/*|AGENTS.md|CHANGELOG.md|CONTRIBUTING.md|LICENSE|README.md|VERSION|marketplace.json)
+    .vbw-planning/*|.claude/*|.claude-plugin/*|.github/*|docs/*|internal/*|testing/*|tests/*|.*|*/.*|AGENTS.md|CHANGELOG.md|CONTRIBUTING.md|LICENSE|README.md|VERSION|marketplace.json)
       return 0
       ;;
   esac
