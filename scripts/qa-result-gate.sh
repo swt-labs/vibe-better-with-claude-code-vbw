@@ -134,7 +134,7 @@ normalize_recorded_path() {
 path_is_metadata_artifact() {
   local path="${1:-}"
   case "$path" in
-    .vbw-planning/*|docs/*|.github/*|.claude/*|README|README.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|LICENSE|LICENSE.*|CLAUDE.md|AGENTS.md|CODEOWNERS|.gitignore|.gitattributes|.editorconfig|.prettierignore|tests/*|testing/*|test/*|__tests__/*|spec/*|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md)
+    .vbw-planning/*|docs/*|.github/*|.claude/*|README|README.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|LICENSE|LICENSE.*|CLAUDE.md|AGENTS.md|CODEOWNERS|.gitignore|.gitattributes|.editorconfig|.prettierignore|tests/*|testing/*|test/*|__tests__/*|spec/*|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
       return 0
       ;;
     *)
@@ -585,6 +585,22 @@ FAIL_COUNT=$(count_fail_rows_in_verification "$VERIF_PATH")
 # Deviation count — scan SUMMARY.md files for non-placeholder deviations
 DEVIATION_COUNT=$(count_deviations_in_dir "$SUMMARY_SCOPE_DIR")
 
+ROUND_SOURCE_VERIFICATION_MISSING="false"
+if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
+  if [ -n "${_gate_round:-}" ] && [ "$((10#${_gate_round}))" -gt 1 ] 2>/dev/null; then
+    _expected_source_round=$(printf '%02d' "$((10#${_gate_round} - 1))")
+    _expected_source_verification="$PHASE_DIR/remediation/qa/round-${_expected_source_round}/R${_expected_source_round}-VERIFICATION.md"
+    if [ ! -r "$_expected_source_verification" ]; then
+      ROUND_SOURCE_VERIFICATION_MISSING="true"
+    fi
+  else
+    _phase_source_verification=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" phase "$PHASE_DIR" 2>/dev/null || true)
+    if [ -z "$_phase_source_verification" ] || [ ! -r "$_phase_source_verification" ]; then
+      ROUND_SOURCE_VERIFICATION_MISSING="true"
+    fi
+  fi
+fi
+
 # Metadata-only round detection — if remediation round modified only
 # .vbw-planning/ files (no production code), phase-level deviations
 # are still unresolved and the override must fire.
@@ -673,6 +689,9 @@ case "$RESULT" in
     if [ "$FAIL_COUNT" -gt 0 ] 2>/dev/null; then
       # 6. PASS with FAIL rows → defense-in-depth override
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
+    elif [ "$ROUND_SOURCE_VERIFICATION_MISSING" = "true" ]; then
+      echo "qa_gate_source_verification_missing=true"
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$ROUND_SUMMARY_MISSING" = "true" ]; then
       echo "qa_gate_round_summary_missing=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
@@ -699,22 +718,11 @@ case "$RESULT" in
       # non-fixable) is enforced by remediation QA re-verifying the original FAILs;
       # this deterministic gate only validates structural evidence.
       PHASE_DEVIATION_COUNT=$(count_deviations_in_dir "$PHASE_DIR")
-      SOURCE_VERIFICATION_MISSING="false"
-      if [ -n "${_gate_round:-}" ] && [ "$((10#${_gate_round}))" -gt 1 ] 2>/dev/null; then
-        _expected_source_round=$(printf '%02d' "$((10#${_gate_round} - 1))")
-        _expected_source_verification="$PHASE_DIR/remediation/qa/round-${_expected_source_round}/R${_expected_source_round}-VERIFICATION.md"
-        if [ ! -r "$_expected_source_verification" ]; then
-          SOURCE_VERIFICATION_MISSING="true"
-        fi
-      fi
       SOURCE_VERIFICATION_PATH=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null | awk -F= '/^source_verification_path=/{print $2; exit}')
       SOURCE_FAIL_IDS=""
       SOURCE_FAIL_ID_COUNT=0
       SOURCE_FAIL_ROW_COUNT=0
-      if [ "$SOURCE_VERIFICATION_MISSING" != "true" ] && { [ -z "$SOURCE_VERIFICATION_PATH" ] || [ ! -r "$SOURCE_VERIFICATION_PATH" ]; }; then
-        SOURCE_VERIFICATION_MISSING="true"
-      fi
-      if [ "$SOURCE_VERIFICATION_MISSING" != "true" ] && [ -n "$SOURCE_VERIFICATION_PATH" ] && [ -r "$SOURCE_VERIFICATION_PATH" ]; then
+      if [ -n "$SOURCE_VERIFICATION_PATH" ] && [ -r "$SOURCE_VERIFICATION_PATH" ]; then
         SOURCE_FAIL_IDS=$(extract_fail_ids_from_verification "$SOURCE_VERIFICATION_PATH")
         SOURCE_FAIL_ID_COUNT=$(printf '%s\n' "$SOURCE_FAIL_IDS" | awk 'NF { count++ } END { print count + 0 }')
         SOURCE_FAIL_ROW_COUNT=$(count_fail_rows_in_verification "$SOURCE_VERIFICATION_PATH")
@@ -740,12 +748,7 @@ case "$RESULT" in
         ROUND_CLASSIFICATIONS_VALID=false
       fi
 
-      if [ "$SOURCE_VERIFICATION_MISSING" = "true" ]; then
-        echo "qa_gate_source_verification_missing=true"
-        echo "qa_gate_metadata_only_override=true"
-        echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
-        echo "qa_gate_routing=REMEDIATION_REQUIRED"
-      elif [ "$ROUND_CLASSIFICATIONS_VALID" != "true" ]; then
+      if [ "$ROUND_CLASSIFICATIONS_VALID" != "true" ]; then
         echo "qa_gate_metadata_only_override=true"
         echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
         echo "qa_gate_routing=REMEDIATION_REQUIRED"

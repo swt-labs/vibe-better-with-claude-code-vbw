@@ -979,6 +979,7 @@ PLAN
 }
 
 @test "plan coverage scoped to round dir during remediation" {
+  create_verif "write-verification.sh" "PASS"
   # Phase-level: 3 plans
   create_plan "01-01"
   create_plan "01-02"
@@ -1043,8 +1044,20 @@ VERIF
 | MH-01 | must_have | Widget | FAIL | Broken |"
 
   # Active QA remediation at round 02
-  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
   printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" << 'VERIF'
+---
+writer: write-verification.sh
+result: FAIL
+plans_verified:
+  - R01
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Widget | FAIL | Still broken |
+VERIF
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-02" "02" \
     '  - "src/Widget.swift"'
   cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" << 'VERIF'
@@ -1079,8 +1092,20 @@ PLAN
   create_verif "write-verification.sh" "FAIL"
 
   # State file with unpadded round=2 (brownfield/corruption)
-  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
   printf 'stage=verify\nround=2\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" << 'VERIF'
+---
+writer: write-verification.sh
+result: FAIL
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Test | FAIL | still broken |
+VERIF
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-02" "02" \
     '  - "src/Fix.swift"'
   cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" << 'VERIF'
@@ -2051,6 +2076,80 @@ VERIF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "round-02 missing previous verification still fails closed with non-metadata edits" {
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-02" "02" \
+    '  - "src/Fix.swift"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'PLAN'
+---
+round: 02
+title: Missing previous verification must fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Cannot validate without previous round verification"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Verification exists | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "bare summary artifact path still counts as metadata-only" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed API"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Bare summary path is still metadata
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Production code still needs to change"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Summary updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
