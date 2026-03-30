@@ -1550,6 +1550,66 @@ EOF
   echo "$output" | grep -q "qa_attention_status=failed"
 }
 
+@test "all_done routes to QA remediation when round-scoped PASS fails deterministic gate" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa/round-01
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  cat > .vbw-planning/phases/01-test/01-VERIFICATION.md <<'EOF'
+---
+result: FAIL
+writer: write-verification.sh
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | Original failure still needs remediation | FAIL | Missing |
+EOF
+
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-PLAN.md <<'EOF'
+---
+round: 01
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Code still needs to change"}
+---
+EOF
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md <<'EOF'
+---
+plan: R01
+status: complete
+files_modified:
+  - README.md
+deviations: []
+---
+EOF
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md <<'EOF'
+---
+result: PASS
+writer: write-verification.sh
+plans_verified:
+  - R01
+---
+## Summary
+Result: PASS
+EOF
+  printf 'stage=done\nround=01\n' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: complete
+---
+All tests passed.
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  echo "$output" | grep -q "qa_attention_status=failed"
+}
+
 @test "first_qa_attention targets verify-stage QA remediation even when earlier phase is unfinished" {
   echo "# My Project" > .vbw-planning/PROJECT.md
 

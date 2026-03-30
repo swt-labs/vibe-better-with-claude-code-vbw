@@ -360,6 +360,12 @@ else
   fail "qa: missing persisted verification_path contract for standalone QA output"
 fi
 
+if grep -q 'qa-result-gate\.sh' "$QA_FILE" && grep -q 'not authoritative' "$QA_FILE"; then
+  pass "qa: standalone remediation QA reruns deterministic gate before trusting round-scoped PASS artifacts"
+else
+  fail "qa: missing deterministic gate reconciliation for standalone remediation QA"
+fi
+
 if grep -q 'Determine verification scope from `VERIF_PATH`' "$QA_FILE"; then
   pass "qa: standalone QA scope is tied to resolved VERIF_PATH"
 else

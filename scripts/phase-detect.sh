@@ -32,6 +32,12 @@ normalize_qa_remediation_stage() {
   esac
 }
 
+qa_gate_routing_for_phase() {
+  local phase_dir="$1"
+  [ -f "$_SCRIPT_DIR_PD/qa-result-gate.sh" ] || return 0
+  bash "$_SCRIPT_DIR_PD/qa-result-gate.sh" "$phase_dir" 2>/dev/null | awk -F= '/^qa_gate_routing=/{print $2; exit}'
+}
+
 # --- jq availability ---
 JQ_AVAILABLE=false
 if command -v jq &>/dev/null; then
@@ -559,6 +565,15 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
             _qa_done_result=$(printf '%s' "$_qa_done_result" | tr '[:lower:]' '[:upper:]')
             case "$_qa_done_result" in
               PASS)
+                _qa_done_gate_routing=$(qa_gate_routing_for_phase "$_uv_dir")
+                case "${_qa_done_gate_routing:-}" in
+                  REMEDIATION_REQUIRED)
+                    QA_STATUS="failed"
+                    ;;
+                  QA_RERUN_REQUIRED|"")
+                    QA_STATUS="pending"
+                    ;;
+                  PROCEED_TO_UAT)
                 # Staleness check for remediated path
                 _vac_rem=$(awk '
                   BEGIN { in_fm=0 }
@@ -585,6 +600,8 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
                     QA_STATUS="remediated"
                   fi
                 fi
+                    ;;
+                esac
                 ;;
               *) QA_STATUS="failed" ;;
             esac
@@ -693,6 +710,15 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
           _qa_attention="failed"
           ;;
         PASS)
+          _qa_gate_scan=$(qa_gate_routing_for_phase "$_qa_dir")
+          case "${_qa_gate_scan:-}" in
+            REMEDIATION_REQUIRED)
+              _qa_attention="failed"
+              ;;
+            QA_RERUN_REQUIRED|"")
+              _qa_attention="pending"
+              ;;
+            PROCEED_TO_UAT)
           _vac_scan=$(awk '
             BEGIN { in_fm=0 }
             NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
@@ -714,6 +740,8 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
               _qa_attention="pending"
             fi
           fi
+              ;;
+          esac
           ;;
         *)
           _qa_attention="pending"

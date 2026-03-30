@@ -196,7 +196,20 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
 
     - QA agent reads all files and persists VERIFICATION.md itself. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
 
-4. **Present:** Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
+4. **Reconcile with the deterministic QA gate before trusting the result:**
+    - Immediately after QA persists `VERIFICATION.md`, run:
+
+      ```bash
+      QA_GATE=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/qa-result-gate.sh "{phase-dir}" 2>/dev/null || true)
+      QA_GATE_ROUTING=$(printf '%s\n' "$QA_GATE" | awk -F= '/^qa_gate_routing=/{print $2; exit}')
+      ```
+
+    - Follow `QA_GATE_ROUTING` literally:
+      - `PROCEED_TO_UAT` → continue to presentation.
+      - `REMEDIATION_REQUIRED` → if `VERIF_PATH` is round-scoped (`remediation/qa/round-*/R*-VERIFICATION.md`), the round VERIFICATION is **not authoritative**. Display that standalone QA found a result, but the deterministic gate still requires remediation; tell the user to continue via `/vbw:vibe`. Do **not** present the round as a shippable PASS.
+      - `QA_RERUN_REQUIRED` → display that the persisted verification artifact is invalid or incomplete and must be re-run before it can be trusted. Do **not** present it as authoritative.
+
+5. **Present:** Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
     ```text
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     Phase {NN}: {name} -- Verified

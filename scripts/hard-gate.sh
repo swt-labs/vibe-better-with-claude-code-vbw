@@ -246,6 +246,21 @@ case "$GATE_TYPE" in
 
     case "$VERIFICATION_RESULT" in
       PASS)
+        if [ -f "$GATE_SCRIPT_DIR/qa-result-gate.sh" ] && [ -n "$PHASE_VERIFICATION_FILE" ] && [ -n "$VERIFICATION_FILE" ] && [ "$VERIFICATION_FILE" != "$PHASE_VERIFICATION_FILE" ]; then
+          _qa_gate_output=$(bash "$GATE_SCRIPT_DIR/qa-result-gate.sh" "$PHASE_DIR" 2>/dev/null || true)
+          _qa_gate_routing=$(printf '%s\n' "${_qa_gate_output:-}" | awk -F= '/^qa_gate_routing=/{print $2; exit}')
+          case "${_qa_gate_routing:-}" in
+            PROCEED_TO_UAT) ;;
+            QA_RERUN_REQUIRED)
+              emit_result "fail" "verification invalid"
+              exit 2
+              ;;
+            *)
+              emit_result "fail" "verification failed"
+              exit 2
+              ;;
+          esac
+        fi
         _vg_dirty=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
         if [ -n "$_vg_dirty" ]; then
           emit_result "fail" "verification stale (working tree changed since verification)"

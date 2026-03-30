@@ -185,6 +185,53 @@ EOF
   [[ "$output" == *"verification passed"* ]]
 }
 
+@test "gate: verification_threshold rejects round-scoped PASS when qa-result-gate still requires remediation" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p ".vbw-planning/phases/01-test/remediation/qa/round-01"
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" << 'EOF'
+---
+result: FAIL
+writer: write-verification.sh
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | Original failure still needs remediation | FAIL | Missing |
+EOF
+  cat > ".vbw-planning/phases/01-test/remediation/qa/round-01/R01-PLAN.md" << 'EOF'
+---
+round: 01
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Code still needs to change"}
+---
+EOF
+  cat > ".vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md" << 'EOF'
+---
+plan: R01
+status: complete
+files_modified:
+  - README.md
+deviations: []
+---
+EOF
+  cat > ".vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md" << 'EOF'
+---
+result: PASS
+writer: write-verification.sh
+plans_verified:
+  - R01
+---
+## Summary
+Result: PASS
+EOF
+  printf 'stage=done\nround=01\n' > ".vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/hard-gate.sh" verification_threshold 01 1 1 ".vbw-planning/.contracts/nonexistent.json"
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.result == "fail"'
+  [[ "$output" == *"verification failed"* ]]
+}
+
 @test "gate: verification_threshold fails closed when authoritative remediation verification is missing" {
   cd "$TEST_TEMP_DIR"
   mkdir -p ".vbw-planning/phases/01-test/remediation/qa"
