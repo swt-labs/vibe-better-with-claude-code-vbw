@@ -180,7 +180,7 @@ EOF
   cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" << 'EOF'
 ---
 result: PASS
-writer: write-verification.sh
+writer: 
 ---
 ## Summary
 Result: PASS

@@ -1478,7 +1478,7 @@ EOF
   printf '%s\n' \
     '---' \
     'result: PASS' \
-    'writer: write-verification.sh' \
+    'writer: ' \
     '---' \
     '# Verification' \
     'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md

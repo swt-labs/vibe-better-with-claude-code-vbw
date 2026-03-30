@@ -629,21 +629,18 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
           _qa_result=$(printf '%s' "$_qa_result" | tr '[:lower:]' '[:upper:]')
           case "$_qa_result" in
             PASS)
-              _qa_writer=$(verification_writer "$_uv_verif")
-              if [ "$_qa_writer" = "write-verification.sh" ]; then
-                _qa_gate_routing=$(qa_gate_routing_for_phase "$_uv_dir")
-                case "${_qa_gate_routing:-}" in
-                  REMEDIATION_REQUIRED)
-                    QA_STATUS="failed"
-                    ;;
-                  QA_RERUN_REQUIRED|"")
-                    QA_STATUS="pending"
-                    ;;
-                  PROCEED_TO_UAT)
-                    ;;
-                esac
-              fi
-              if [ "$QA_STATUS" = "none" ] || [ "$QA_STATUS" = "passed" ]; then
+              _qa_gate_routing=$(qa_gate_routing_for_phase "$_uv_dir")
+              case "${_qa_gate_routing:-}" in
+                REMEDIATION_REQUIRED)
+                  QA_STATUS="failed"
+                  ;;
+                QA_RERUN_REQUIRED|"")
+                  QA_STATUS="pending"
+                  ;;
+                PROCEED_TO_UAT)
+                  ;;
+              esac
+              if [ "$QA_STATUS" != "failed" ] && [ "$QA_STATUS" != "pending" ]; then
               # Staleness check: if code changed since QA verified, treat as pending
               _vac=$(awk '
                 BEGIN { in_fm=0 }

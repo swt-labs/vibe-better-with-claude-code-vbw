@@ -244,16 +244,9 @@ case "$GATE_TYPE" in
       in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); sub(/[[:space:]]+$/, ""); print; exit }
     ' "$VERIFICATION_FILE" 2>/dev/null || true)
 
-    VERIFICATION_WRITER=$(awk '
-      BEGIN { in_fm=0 }
-      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-      in_fm && /^---[[:space:]]*$/ { exit }
-      in_fm && /^writer:/ { sub(/^writer:[[:space:]]*/, ""); sub(/[[:space:]]+$/, ""); print; exit }
-    ' "$VERIFICATION_FILE" 2>/dev/null || true)
-
     case "$VERIFICATION_RESULT" in
       PASS)
-        if [ -f "$GATE_SCRIPT_DIR/qa-result-gate.sh" ] && [ -n "$VERIFICATION_FILE" ] && { { [ -n "$PHASE_VERIFICATION_FILE" ] && [ "$VERIFICATION_FILE" != "$PHASE_VERIFICATION_FILE" ]; } || [ "$VERIFICATION_WRITER" = "write-verification.sh" ]; }; then
+        if [ -f "$GATE_SCRIPT_DIR/qa-result-gate.sh" ] && [ -n "$VERIFICATION_FILE" ]; then
           _qa_gate_output=$(bash "$GATE_SCRIPT_DIR/qa-result-gate.sh" "$PHASE_DIR" 2>/dev/null || true)
           _qa_gate_routing=$(printf '%s\n' "${_qa_gate_output:-}" | awk -F= '/^qa_gate_routing=/{print $2; exit}')
           case "${_qa_gate_routing:-}" in
