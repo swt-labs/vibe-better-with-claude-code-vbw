@@ -19,6 +19,7 @@ create_verif() {
   local writer="${1:-write-verification.sh}"
   local result="${2:-PASS}"
   local body="${3:-}"
+  local verified_at_commit="${4:-}"
   {
     echo "---"
     echo "phase: 01"
@@ -28,6 +29,9 @@ create_verif() {
     echo "failed: 0"
     echo "total: 10"
     echo "date: 2026-03-27"
+    if [ -n "$verified_at_commit" ]; then
+      echo "verified_at_commit: $verified_at_commit"
+    fi
     if [ "$writer" != "OMIT" ]; then
       echo "writer: $writer"
     fi
@@ -963,6 +967,8 @@ VERIF
 ---
 round: 01
 title: Fix widget
+fail_classifications:
+  - {id: "MH-01", type: "code-fix", rationale: "Widget code changed to resolve the failing must-have"}
 ---
 PLAN
 
@@ -1086,6 +1092,8 @@ VERIF
 ---
 round: 02
 title: Fix widget again
+fail_classifications:
+  - {id: "MH-01", type: "code-fix", rationale: "Widget code changed again to resolve the remaining failing must-have"}
 ---
 PLAN
 
@@ -1134,6 +1142,8 @@ VERIF
 ---
 round: 02
 title: Fix
+fail_classifications:
+  - {id: "MH-01", type: "code-fix", rationale: "Round-02 code change resolves the prior failing must-have"}
 ---
 PLAN
 
@@ -2379,7 +2389,7 @@ VERIF
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
-@test "tests-only code-fix round counts as substantive remediation work" {
+@test "tests-only code-fix round fails closed without production code edits" {
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "Changed approach"
 
@@ -2414,7 +2424,7 @@ VERIF
 
   [ "$status" -eq 0 ]
   [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
-  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
 @test "flow-style plans_verified still enforces plan coverage" {
@@ -2484,6 +2494,45 @@ VERIF
   [ "$status" -eq 0 ]
   [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "docs-only round without fail_classifications still fails closed when source FAILs exist" {
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-0101 | must_have | Remediation must classify the original failure | FAIL | Missing classification |"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "README.md"
+  - "docs/remediation-notes.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Missing classifications should fail closed even for docs-only rounds
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Docs updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
 @test "metadata-only round with partial fail classification coverage → REMEDIATION_REQUIRED" {
@@ -2824,7 +2873,8 @@ VERIF
 
 @test "empty files_modified but commits present → not metadata-only" {
   init_git_repo
-  create_verif "write-verification.sh" "PASS"
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
+  create_verif "write-verification.sh" "PASS" "" "$baseline_commit"
   create_summary_with_yaml_deviations "01-01" "Changed approach"
 
   code_commit=$(commit_repo_file "src/MyService.swift" "real code change")
@@ -2864,9 +2914,49 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
-@test "missing files_modified falls back to commit paths for metadata-only detection" {
+@test "missing files_modified + valid commit hashes but no verified_at_commit → REMEDIATION_REQUIRED" {
   init_git_repo
   create_verif "write-verification.sh" "PASS"
+
+  code_commit=$(commit_repo_file "src/MyService.swift" "real code change")
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    "" \
+    "  - \"$code_commit\""
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Commit-only evidence requires a verified_at_commit baseline
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Fixed | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "missing files_modified falls back to commit paths for metadata-only detection" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
+  create_verif "write-verification.sh" "PASS" "" "$baseline_commit"
   create_summary_with_yaml_deviations "01-01" "Changed approach"
 
   meta_commit=$(commit_repo_file ".vbw-planning/STATE.md" "metadata only change")

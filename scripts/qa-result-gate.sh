@@ -164,7 +164,7 @@ path_is_metadata_artifact() {
 path_is_code_fix_support_artifact() {
   local path="${1:-}"
   case "$path" in
-    .vbw-planning/*|.claude/*|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
+    .vbw-planning/*|.claude/*|.github/*|docs/*|internal/*|testing/*|tests/*|AGENTS.md|CHANGELOG.md|CONTRIBUTING.md|LICENSE|README.md|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
       return 0
       ;;
     *)
@@ -304,6 +304,45 @@ commit_hashes_resolve_cleanly() {
     git -C "$repo_root" cat-file -e "${commit_hash}^{commit}" 2>/dev/null || return 1
   done <<< "$commit_hashes"
   return 0
+}
+
+commit_hashes_are_round_local() {
+  local repo_root="${1:-}"
+  local baseline_commit="${2:-}"
+  local commit_hashes="${3:-}"
+  local head_commit=""
+  local commit_hash
+  [ -n "$repo_root" ] || return 1
+  [ -n "$baseline_commit" ] || return 1
+  [ -n "$commit_hashes" ] || return 1
+  git -C "$repo_root" cat-file -e "${baseline_commit}^{commit}" 2>/dev/null || return 1
+  head_commit=$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || true)
+  [ -n "$head_commit" ] || return 1
+  while IFS= read -r commit_hash; do
+    commit_hash=$(printf '%s' "$commit_hash" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^['\"]//;s/['\"]$//")
+    [ -n "$commit_hash" ] || continue
+    git -C "$repo_root" cat-file -e "${commit_hash}^{commit}" 2>/dev/null || return 1
+    [ "$commit_hash" != "$baseline_commit" ] || return 1
+    git -C "$repo_root" merge-base --is-ancestor "$baseline_commit" "$commit_hash" 2>/dev/null || return 1
+    git -C "$repo_root" merge-base --is-ancestor "$commit_hash" "$head_commit" 2>/dev/null || return 1
+  done <<< "$commit_hashes"
+  return 0
+}
+
+extract_verified_at_commit() {
+  local file_path="${1:-}"
+  [ -f "$file_path" ] || return 0
+  awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^verified_at_commit:/ {
+      sub(/^verified_at_commit:[[:space:]]*/, "")
+      sub(/[[:space:]]+$/, "")
+      print
+      exit
+    }
+  ' "$file_path" 2>/dev/null
 }
 
 extract_fail_classification_types() {
@@ -829,6 +868,19 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   fi
 fi
 
+SOURCE_VERIFICATION_PATH=""
+SOURCE_VERIFIED_AT_COMMIT=""
+SOURCE_FAIL_IDS=""
+SOURCE_FAIL_ROW_COUNT=0
+if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
+  SOURCE_VERIFICATION_PATH=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null | awk -F= '/^source_verification_path=/{print $2; exit}')
+  if [ -n "$SOURCE_VERIFICATION_PATH" ] && [ -r "$SOURCE_VERIFICATION_PATH" ]; then
+    SOURCE_VERIFIED_AT_COMMIT=$(extract_verified_at_commit "$SOURCE_VERIFICATION_PATH")
+    SOURCE_FAIL_IDS=$(extract_fail_ids_from_verification "$SOURCE_VERIFICATION_PATH")
+    SOURCE_FAIL_ROW_COUNT=$(count_fail_rows_in_verification "$SOURCE_VERIFICATION_PATH")
+  fi
+fi
+
 # Metadata-only round detection — if remediation round modified only
 # .vbw-planning/ files (no production code), phase-level deviations
 # are still unresolved and the override must fire.
@@ -841,7 +893,8 @@ ROUND_SUMMARY_NONTERMINAL="false"
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   # Scan round SUMMARY.md files_modified for non-metadata paths. When
   # files_modified is absent (older summaries / partial installs), fall back to
-  # commit_hashes and inspect the actual changed paths from git.
+  # commit_hashes only when they can be proven to belong to this round's history
+  # after the source verification's verified_at_commit.
   _mo_has_code_changes="false"
   _mo_found_summary="false"
   _mo_all_recorded_paths=""
@@ -871,7 +924,8 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
         _mo_has_code_changes="true"
       fi
     elif [ "$_mo_commits" -gt 0 ] 2>/dev/null; then
-      if ! commit_hashes_resolve_cleanly "$GIT_ROOT" "$_mo_commit_hashes"; then
+      if ! commit_hashes_resolve_cleanly "$GIT_ROOT" "$_mo_commit_hashes" \
+        || ! commit_hashes_are_round_local "$GIT_ROOT" "$SOURCE_VERIFIED_AT_COMMIT" "$_mo_commit_hashes"; then
         ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
         break
       fi
@@ -938,9 +992,16 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   ROUND_PLAN_AMENDMENT_SOURCE_PLANS=$(collect_fail_classification_source_plans_in_dir "$PLAN_SCOPE_DIR")
   ROUND_PLAN_AMENDMENT_SOURCE_PLAN_COUNT=$(printf '%s\n' "$ROUND_PLAN_AMENDMENT_SOURCE_PLANS" | awk 'NF { count++ } END { print count + 0 }')
 
-  if [ "$ROUND_CLASSIFICATION_ID_COUNT" -eq 0 ] 2>/dev/null || [ "$ROUND_CLASSIFICATION_ID_COUNT" -ne "$ROUND_CLASSIFICATION_TYPE_COUNT" ] 2>/dev/null; then
+  if [ "$ROUND_CLASSIFICATION_ID_COUNT" -ne "$ROUND_CLASSIFICATION_TYPE_COUNT" ] 2>/dev/null; then
     ROUND_CLASSIFICATIONS_VALID=false
-  elif ! fail_classification_types_are_valid <<< "$ROUND_CLASSIFICATION_TYPES"; then
+  elif [ "$ROUND_CLASSIFICATION_TYPE_COUNT" -gt 0 ] 2>/dev/null && ! fail_classification_types_are_valid <<< "$ROUND_CLASSIFICATION_TYPES"; then
+    ROUND_CLASSIFICATIONS_VALID=false
+  elif [ "$METADATA_ONLY_ROUND" = "true" ] && [ "$ROUND_CLASSIFICATION_ID_COUNT" -eq 0 ] 2>/dev/null; then
+    ROUND_CLASSIFICATIONS_VALID=false
+  elif [ "$SOURCE_FAIL_ROW_COUNT" -gt 0 ] 2>/dev/null && {
+    [ "$ROUND_CLASSIFICATION_TYPE_COUNT" -ne "$SOURCE_FAIL_ROW_COUNT" ] 2>/dev/null \
+      || ! classification_ids_cover_source_fail_ids "$SOURCE_FAIL_IDS" "$ROUND_CLASSIFICATION_IDS";
+  }; then
     ROUND_CLASSIFICATIONS_VALID=false
   fi
 fi
@@ -988,7 +1049,14 @@ case "$RESULT" in
     elif [ "$ROUND_CHANGE_EVIDENCE_EMPTY" = "true" ]; then
       echo "qa_gate_round_change_evidence_empty=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
-    elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null && ! paths_include_code_fix_evidence <<< "$ROUND_ALL_RECORDED_PATHS"; then
+    elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$ROUND_CLASSIFICATIONS_VALID" != "true" ]; then
+      if [ "$METADATA_ONLY_ROUND" = "true" ]; then
+        PHASE_DEVIATION_COUNT=$(count_deviations_in_dir "$PHASE_DIR")
+        echo "qa_gate_metadata_only_override=true"
+        echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
+      fi
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
+    elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$METADATA_ONLY_ROUND" != "true" ] && [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null && ! paths_include_code_fix_evidence <<< "$ROUND_ALL_RECORDED_PATHS"; then
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$ROUND_PLAN_AMENDMENT_COUNT" -gt 0 ] 2>/dev/null && {
       [ "$ROUND_PLAN_AMENDMENT_SOURCE_PLAN_COUNT" -ne "$ROUND_PLAN_AMENDMENT_COUNT" ] 2>/dev/null \
@@ -1010,35 +1078,13 @@ case "$RESULT" in
     elif [ "$METADATA_ONLY_ROUND" = "true" ]; then
       # 5c. Remediation round made no code changes — only metadata/.vbw-planning/ updates.
       # Re-check phase-level deviations. Metadata-only rounds are only invalid when
-      # they still claim a code-fix path (or omit fail_classifications entirely).
+      # they still claim a code-fix path.
       # Pure plan-amendment / process-exception rounds are valid non-code resolutions.
       # Semantic correctness of a process-exception (i.e. whether it is truly
       # non-fixable) is enforced by remediation QA re-verifying the original FAILs;
       # this deterministic gate only validates structural evidence.
       PHASE_DEVIATION_COUNT=$(count_deviations_in_dir "$PHASE_DIR")
-      SOURCE_VERIFICATION_PATH=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null | awk -F= '/^source_verification_path=/{print $2; exit}')
-      SOURCE_FAIL_IDS=""
-      SOURCE_FAIL_ID_COUNT=0
-      SOURCE_FAIL_ROW_COUNT=0
-      if [ -n "$SOURCE_VERIFICATION_PATH" ] && [ -r "$SOURCE_VERIFICATION_PATH" ]; then
-        SOURCE_FAIL_IDS=$(extract_fail_ids_from_verification "$SOURCE_VERIFICATION_PATH")
-        SOURCE_FAIL_ID_COUNT=$(printf '%s\n' "$SOURCE_FAIL_IDS" | awk 'NF { count++ } END { print count + 0 }')
-        SOURCE_FAIL_ROW_COUNT=$(count_fail_rows_in_verification "$SOURCE_VERIFICATION_PATH")
-      fi
-
-      if [ "$SOURCE_FAIL_ROW_COUNT" -gt 0 ] 2>/dev/null && [ "$SOURCE_FAIL_ID_COUNT" -eq 0 ] 2>/dev/null; then
-        if [ "$ROUND_CLASSIFICATION_TYPE_COUNT" -ne "$SOURCE_FAIL_ROW_COUNT" ] 2>/dev/null; then
-          ROUND_CLASSIFICATIONS_VALID=false
-        fi
-      elif [ "$SOURCE_FAIL_ID_COUNT" -gt 0 ] 2>/dev/null && ! classification_ids_cover_source_fail_ids "$SOURCE_FAIL_IDS" "$ROUND_CLASSIFICATION_IDS"; then
-        ROUND_CLASSIFICATIONS_VALID=false
-      fi
-
-      if [ "$ROUND_CLASSIFICATIONS_VALID" != "true" ]; then
-        echo "qa_gate_metadata_only_override=true"
-        echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
-        echo "qa_gate_routing=REMEDIATION_REQUIRED"
-      elif [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null; then
+      if [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null; then
         echo "qa_gate_metadata_only_override=true"
         echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
         echo "qa_gate_routing=REMEDIATION_REQUIRED"
