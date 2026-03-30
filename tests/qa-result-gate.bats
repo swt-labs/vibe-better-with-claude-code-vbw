@@ -123,6 +123,16 @@ create_plan() {
   } > "$PHASE_DIR/${plan_id}-PLAN.md"
 }
 
+create_source_fail_verif() {
+  local fail_id="${1:-FAIL-01}"
+  local description="${2:-Original failure still needs remediation}"
+  local verified_at_commit="${3:-}"
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| ${fail_id} | must_have | ${description} | FAIL | Missing |" "$verified_at_commit"
+}
+
 @test "PASS with clean body → PROCEED_TO_UAT" {
   create_verif "write-verification.sh" "PASS" "## Must-Have Checks
 | Check | Status |
@@ -499,7 +509,7 @@ SUMMARY
 }
 
 @test "during remediation verify stage gate reads current round verification" {
-  create_verif "write-verification.sh" "FAIL"
+  create_source_fail_verif "FAIL-01" "Feature still needs remediation"
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     '  - "src/Feature.swift"'
@@ -1029,7 +1039,7 @@ SUMMARY
 # ============================================================
 
 @test "PASS + deviations during active remediation → PROCEED_TO_UAT (deviation override suppressed)" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "DEV-0101-COMMIT" "Historical git topology still needs a remediation decision"
   create_summary_with_yaml_deviations "01-01" "Changed API approach"
   # Simulate active remediation cycle
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -1196,7 +1206,7 @@ VERIF
 round: 01
 title: Fix widget
 fail_classifications:
-  - {id: "MH-01", type: "code-fix", rationale: "Widget code changed to resolve the failing must-have"}
+  - {id: "MH-01", type: "process-exception", rationale: "Fixture validates round verification precedence rather than git-backed code evidence"}
 ---
 PLAN
 
@@ -1223,7 +1233,7 @@ PLAN
 }
 
 @test "plan coverage scoped to round dir during remediation" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Round-scoped plan coverage still needs verification"
   # Phase-level: 3 plans
   create_plan "01-01"
   create_plan "01-02"
@@ -1238,6 +1248,8 @@ PLAN
 ---
 round: 01
 title: Fix issues
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Fixture validates round-dir plan coverage, not code-fix proofing"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" << 'VERIF'
@@ -1321,7 +1333,7 @@ VERIF
 round: 02
 title: Fix widget again
 fail_classifications:
-  - {id: "MH-01", type: "code-fix", rationale: "Widget code changed again to resolve the remaining failing must-have"}
+  - {id: "MH-01", type: "process-exception", rationale: "Fixture validates round-02 verification selection rather than git-backed code evidence"}
 ---
 PLAN
 
@@ -1335,7 +1347,7 @@ PLAN
 
 @test "gate handles unpadded round number in state file" {
   # Phase-level FAIL
-  create_verif "write-verification.sh" "FAIL"
+  create_source_fail_verif "MH-01" "Test still needs remediation"
 
   # State file with unpadded round=2 (brownfield/corruption)
   mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
@@ -1371,7 +1383,7 @@ VERIF
 round: 02
 title: Fix
 fail_classifications:
-  - {id: "MH-01", type: "code-fix", rationale: "Round-02 code change resolves the prior failing must-have"}
+  - {id: "MH-01", type: "process-exception", rationale: "Fixture validates round parsing rather than git-backed code evidence"}
 ---
 PLAN
 
@@ -1404,7 +1416,7 @@ PLAN
 
 @test "current-round deviations during remediation still require QA rerun" {
   # Historical phase-level verification stays frozen as FAIL
-  create_verif "write-verification.sh" "FAIL"
+  create_source_fail_verif "FAIL-01" "Historical deviation still needs remediation"
   create_summary_with_yaml_deviations "01-01" "Historical deviation"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -1413,6 +1425,8 @@ PLAN
 ---
 round: 01
 title: Fix regression
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Current-round deviations should still trigger a QA rerun"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
@@ -1517,7 +1531,7 @@ create_round_summary_with_files() {
 }
 
 @test "metadata-only round with phase-level deviations → REMEDIATION_REQUIRED" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Deviation still needs a real fix"
   # Phase-level SUMMARY.md has real deviations
   create_summary_with_yaml_deviations "01-01" "Changed API approach"
 
@@ -1534,6 +1548,8 @@ create_round_summary_with_files() {
 ---
 round: 01
 title: Document deviations
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Metadata-only evidence cannot satisfy the original code deviation"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -1552,13 +1568,12 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
-  [[ "$output" == *"qa_gate_phase_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
 @test "metadata-only round with zero phase-level deviations → PROCEED_TO_UAT" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "DEV-0101-COMMIT" "Historical process exception still needs classification"
   # Phase-level SUMMARY.md has NO deviations
   create_summary_with_yaml_deviations "01-01" "None"
 
@@ -1597,7 +1612,7 @@ VERIF
 }
 
 @test "metadata-only round with only process-exception classifications → PROCEED_TO_UAT" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "DEV-0101-COMMIT" "Historical process exception still needs classification"
   create_summary_with_yaml_deviations "01-01" "Historical batched commit"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -1670,7 +1685,7 @@ VERIF
 }
 
 @test "metadata-only round with inline fail_classifications process-exception → PROCEED_TO_UAT" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "DEV-0101-COMMIT" "Historical process exception still needs classification"
   create_summary_with_yaml_deviations "01-01" "Historical batched commit"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -1908,7 +1923,7 @@ VERIF
 }
 
 @test "missing remediation round summary → REMEDIATION_REQUIRED" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Summary artifact still needed to prove remediation"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
@@ -1969,7 +1984,7 @@ VERIF
 }
 
 @test "missing files_modified + unresolved commit hashes → REMEDIATION_REQUIRED" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Round-local evidence still needed"
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
@@ -2014,7 +2029,7 @@ VERIF
 }
 
 @test "mixed valid and invalid commit hashes fail closed" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Round-local evidence still needed"
   init_git_repo
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
@@ -2063,7 +2078,7 @@ VERIF
 }
 
 @test "empty change evidence plus process-exception still fails closed" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Documented process exception still needs real evidence"
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
@@ -2108,7 +2123,7 @@ VERIF
 }
 
 @test "task-level remediation deviations still trigger QA rerun" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Task-level deviation still needs QA rerun"
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
@@ -2158,7 +2173,7 @@ VERIF
 }
 
 @test "plain-text task-level remediation deviations still trigger QA rerun" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Task-level deviation still needs QA rerun"
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
@@ -2208,7 +2223,7 @@ VERIF
 }
 
 @test "metadata-only detection tolerates dot-slash and backticks in files_modified" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Metadata-only round still needs a valid process-exception classification"
   create_summary_with_yaml_deviations "01-01" "Changed API"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -2763,7 +2778,7 @@ VERIF
 }
 
 @test "bare UAT CONTEXT and RESEARCH artifact paths still count as metadata-only" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Production code still needs to change"
   create_summary_with_yaml_deviations "01-01" "Changed API"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -2798,13 +2813,12 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
-  [[ "$output" == *"qa_gate_phase_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
 @test "bare root planning basenames still count as metadata-only" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Production code still needs to change"
   create_summary_with_yaml_deviations "01-01" "Changed API"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -2840,8 +2854,7 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
-  [[ "$output" == *"qa_gate_phase_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
@@ -3233,7 +3246,7 @@ VERIF
 }
 
 @test "docs-only round with process-exception is treated as delivered content rather than metadata-only" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-0101" "Delivered documentation still needs a process-exception classification"
   create_summary_with_yaml_deviations "01-01" "None"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -3391,7 +3404,7 @@ VERIF
 }
 
 @test "round with real code changes + phase deviations → PROCEED_TO_UAT (existing behavior)" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Historical deviation still needs remediation"
   # Phase-level SUMMARY.md has deviations
   create_summary_with_yaml_deviations "01-01" "Changed API approach"
 
@@ -3408,6 +3421,8 @@ VERIF
 ---
 round: 01
 title: Fix code
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Fixture validates non-metadata path detection rather than code-fix proofing"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -3431,7 +3446,7 @@ VERIF
 }
 
 @test "mixed files_modified with some .vbw-planning/ and some code → not metadata-only" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Historical deviation still needs remediation"
   create_summary_with_yaml_deviations "01-01" "Changed approach"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -3445,6 +3460,8 @@ VERIF
 ---
 round: 01
 title: Fix
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Fixture validates metadata detection rather than code-fix proofing"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -3468,7 +3485,7 @@ VERIF
 }
 
 @test "empty change evidence round with empty files_modified and no commits → REMEDIATION_REQUIRED" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Documented remediation still needs actual evidence"
   create_summary_with_yaml_deviations "01-01" "Batch commit deviation"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -3481,6 +3498,8 @@ VERIF
 ---
 round: 01
 title: Document deviations
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Empty evidence cannot satisfy even documented remediation"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -3506,7 +3525,7 @@ VERIF
 }
 
 @test "inline YAML array with mixed paths correctly detects code changes" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Historical deviation still needs remediation"
   create_summary_with_yaml_deviations "01-01" "Changed approach"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -3530,6 +3549,8 @@ VERIF
 ---
 round: 01
 title: Fix code
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Fixture validates mixed inline path parsing rather than code-fix proofing"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -3554,7 +3575,7 @@ VERIF
 }
 
 @test "inline YAML array with only metadata paths is metadata-only" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Production code still needs to change"
   create_summary_with_yaml_deviations "01-01" "Changed API"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -3578,6 +3599,8 @@ VERIF
 ---
 round: 01
 title: Document
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Metadata-only inline paths cannot satisfy the original code fix"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -3596,12 +3619,12 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
 @test "single-quoted inline files_modified array is metadata-only" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "FAIL-01" "Production code still needs to change"
   create_summary_with_yaml_deviations "01-01" "Changed API"
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -3624,6 +3647,8 @@ VERIF
 ---
 round: 01
 title: Document
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Metadata-only inline paths cannot satisfy the original code fix"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -3642,14 +3667,14 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
 @test "empty files_modified but commits present → not metadata-only" {
   init_git_repo
   baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
-  create_verif "write-verification.sh" "PASS" "" "$baseline_commit"
+  create_source_fail_verif "FAIL-01" "Production code still differs from the plan" "$baseline_commit"
   create_summary_with_yaml_deviations "01-01" "Changed approach"
 
   code_commit=$(commit_repo_file "src/MyService.swift" "real code change")
@@ -3666,6 +3691,8 @@ VERIF
 ---
 round: 01
 title: Fix code
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Commit-backed code change should satisfy the original failure"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -3692,7 +3719,7 @@ VERIF
 @test "missing files_modified + valid commit hashes but no round_started_at_commit → REMEDIATION_REQUIRED" {
   init_git_repo
   baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
-  create_verif "write-verification.sh" "PASS" "" "$baseline_commit"
+  create_source_fail_verif "FAIL-01" "Production code still differs from the plan" "$baseline_commit"
 
   code_commit=$(commit_repo_file "src/MyService.swift" "real code change")
 
@@ -3707,6 +3734,8 @@ VERIF
 ---
 round: 01
 title: Commit-only evidence requires a verified_at_commit baseline
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Commit-backed remediation still needs a trustworthy round anchor"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -3818,7 +3847,7 @@ VERIF
 @test "missing files_modified falls back to commit paths for metadata-only detection" {
   init_git_repo
   baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
-  create_verif "write-verification.sh" "PASS" "" "$baseline_commit"
+  create_source_fail_verif "FAIL-01" "Production code still differs from the plan" "$baseline_commit"
   create_summary_with_yaml_deviations "01-01" "Changed approach"
 
   meta_commit=$(commit_repo_file ".vbw-planning/STATE.md" "metadata only change")
@@ -3843,6 +3872,8 @@ EOF
 ---
 round: 01
 title: Document
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Metadata-only commit fallback cannot satisfy the original code fix"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -3867,7 +3898,7 @@ VERIF
 }
 
 @test "metadata-only round with zero deviations but incomplete plan coverage → QA_RERUN_REQUIRED" {
-  create_verif "write-verification.sh" "PASS"
+  create_source_fail_verif "DEV-0101-COMMIT" "Historical process exception still needs classification"
   # Phase-level SUMMARY.md has NO deviations
   create_summary_with_yaml_deviations "01-01" "None"
 

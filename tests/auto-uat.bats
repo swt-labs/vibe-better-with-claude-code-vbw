@@ -186,7 +186,7 @@ EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"next_phase_state=all_done"* ]]
+  [[ "$output" == *"next_phase_state=needs_verification"* ]]
   [[ "$output" == *"has_unverified_phases=false"* ]]
 }
 
