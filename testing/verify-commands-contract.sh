@@ -209,10 +209,20 @@ else
   fail "verify: missing explicit-phase qa_status override guidance"
 fi
 
-if grep -q 'Only proceed to UAT when the PASS is fresh for the target phase' "$VERIFY_FILE"; then
-  pass "verify: explicit QA gate requires fresh PASS for target phase"
+if grep -q 'Only proceed to UAT when the PASS is both gate-authoritative and fresh for the target phase' "$VERIFY_FILE"; then
+  pass "verify: explicit QA gate requires gate-authoritative fresh PASS for target phase"
 else
-  fail "verify: missing fresh-PASS requirement in explicit QA gate"
+  fail "verify: missing gate-authoritative fresh-PASS requirement in explicit QA gate"
+fi
+
+if grep -q 'qa-result-gate\.sh' "$VERIFY_FILE" \
+  && grep -q 'QA_GATE_ROUTING=' "$VERIFY_FILE" \
+  && grep -q 'PROCEED_TO_UAT' "$VERIFY_FILE" \
+  && grep -q 'QA_RERUN_REQUIRED' "$VERIFY_FILE" \
+  && grep -q 'REMEDIATION_REQUIRED' "$VERIFY_FILE"; then
+  pass "verify: standalone UAT honors deterministic QA gate before UAT"
+else
+  fail "verify: missing deterministic qa-result-gate enforcement before UAT"
 fi
 
 if grep -q 'echo "verify_context=unavailable"' "$VIBE_FILE"; then
