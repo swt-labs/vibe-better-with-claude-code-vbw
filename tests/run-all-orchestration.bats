@@ -184,3 +184,18 @@ link_run_all_system_tools() {
   echo "$output" | grep -q 'shellcheck is required for CI-parity local verification'
   echo "$output" | grep -q '^Lint checks: 0/1 passed$'
 }
+
+@test "run-all fails when bats is unavailable for CI-parity verification" {
+  local root="$TEST_TEMP_DIR/stub-repo-no-bats"
+  local host_bash
+  create_stub_workspace "$root"
+  rm -f "$root/bin/bats"
+  link_run_all_system_tools "$root"
+  host_bash="$(command -v bash)"
+
+  run env PATH="$root/bin" RUN_VIBE_VERIFY=0 "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+
+  echo "$output" | grep -q 'bats is required for CI-parity local verification'
+  echo "$output" | grep -q '^BATS: unavailable (bats is required for CI parity)$'
+}

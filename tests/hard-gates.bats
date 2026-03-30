@@ -185,6 +185,21 @@ EOF
   [[ "$output" == *"verification passed"* ]]
 }
 
+@test "gate: verification_threshold fails closed when authoritative remediation verification is missing" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p ".vbw-planning/phases/01-test/remediation/qa"
+  cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" << 'EOF'
+## Summary
+Result: PASS
+EOF
+  printf 'stage=done\nround=01\n' > ".vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/hard-gate.sh" verification_threshold 01 1 1 ".vbw-planning/.contracts/nonexistent.json"
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.result == "fail"'
+  [[ "$output" == *"VERIFICATION.md missing"* ]]
+}
+
 @test "gate: verification_threshold fails mixed PASS/FAIL table when frontmatter result is FAIL" {
   cd "$TEST_TEMP_DIR"
   cat > ".vbw-planning/phases/01-test/01-VERIFICATION.md" << 'EOF'

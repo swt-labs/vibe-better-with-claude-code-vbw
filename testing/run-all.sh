@@ -106,7 +106,11 @@ case "$BATS_WORKERS" in
     ;;
 esac
 bats_launched=false
-if command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; then
+bats_missing=false
+if ! command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; then
+  echo "ERROR: bats is required for CI-parity local verification (install bats-core)."
+  bats_missing=true
+elif command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; then
   all_bats_files=("$ROOT/tests/"*.bats)
   bats_files=()
   serial_bats_files=()
@@ -247,6 +251,8 @@ fi
 echo "Contract checks: ${contract_pass}/${total_contracts} passed"
 if [ "$bats_launched" = true ]; then
   echo "BATS: $bats_pass passed, $bats_fail failed"
+elif [ "$bats_missing" = true ]; then
+  echo "BATS: unavailable (bats is required for CI parity)"
 else
   echo "BATS: skipped (bats not installed or no .bats files found)"
 fi
@@ -255,6 +261,7 @@ echo "==============================="
 any_failure=0
 [ "$lint_fail" -gt 0 ] && any_failure=1
 [ "$contract_fail" -gt 0 ] && any_failure=1
+[ "$bats_missing" = true ] && any_failure=1
 [ "$bats_workers_failed" -ne 0 ] && any_failure=1
 
 if [ "$any_failure" -ne 0 ]; then

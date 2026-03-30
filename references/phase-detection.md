@@ -58,7 +58,9 @@ When `require_phase_discussion=true` in config, the lifecycle command (`/vbw:vib
 1. List phase directories in numeric order
 2. If a phase has active QA remediation (`remediation/qa/.qa-remediation-stage` with stage `verify`), that phase is the QA target and writes to the persisted `verification_path` for the current round.
 3. If `phase-detect.sh` reports `first_unverified_phase` with `qa_status=pending` or `qa_status=failed`, that phase is the QA target even when an older verification artifact already exists.
-4. Otherwise, for each built phase, resolve authoritative QA verification using the same precedence as `resolve-verification-path.sh` (numbered final → brownfield plain → latest wave fallback).
+4. Otherwise, for each built phase, resolve authoritative QA verification using `resolve-verification-path.sh`.
+   - Default/brownfield phases: numbered final → brownfield plain → latest wave fallback.
+   - After QA remediation reaches `stage=done`: the authoritative artifact is the round-scoped `remediation/qa/round-{RR}/R{RR}-VERIFICATION.md` only. If that artifact is missing, fail closed — do NOT fall back to the frozen phase-level verification file.
 5. The first built phase with no authoritative QA verification artifact is the target.
 6. If found: use that phase
 7. If all built phases are verified: report "All phases verified. Specify a phase to re-verify: `/vbw:qa N`" and STOP
