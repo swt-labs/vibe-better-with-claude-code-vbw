@@ -274,6 +274,34 @@ canonicalize_phase_path() {
   printf '%s' "$path"
 }
 
+canonicalize_recorded_paths() {
+  local phase_dir="${1:-}"
+  local path=""
+  while IFS= read -r path; do
+    path=$(normalize_recorded_path "$path")
+    [ -n "$path" ] || continue
+    if [ -n "$phase_dir" ]; then
+      path=$(canonicalize_phase_path "$path" "$phase_dir")
+    fi
+    [ -n "$path" ] || continue
+    printf '%s\n' "$path"
+  done | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u)
+}
+
+intersect_canonical_paths() {
+  local candidate_paths="${1:-}"
+  local reference_paths="${2:-}"
+  local path=""
+  [ -n "$candidate_paths" ] || return 0
+  [ -n "$reference_paths" ] || return 0
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    if printf '%s\n' "$reference_paths" | grep -Fx -- "$path" >/dev/null 2>&1; then
+      printf '%s\n' "$path"
+    fi
+  done <<< "$candidate_paths" | (sort -u 2>/dev/null || sort -u)
+}
+
 paths_include_original_plan_artifact() {
   local phase_dir="${1:-}"
   while IFS= read -r path; do
@@ -932,6 +960,7 @@ ROUND_STARTED_AT_COMMIT=""
 ROUND_STARTED_AFTER_SOURCE="true"
 ROUND_ACTUAL_DIFF_PATHS=""
 ROUND_ACTUAL_DIFF_PATHS_AVAILABLE="false"
+ROUND_ACTUAL_DIFF_PATHS_CANONICAL=""
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   _qa_remediation_state=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null || true)
   SOURCE_VERIFICATION_PATH=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^source_verification_path=/{print $2; exit}')
@@ -947,9 +976,10 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   if [ -n "$SOURCE_VERIFIED_AT_COMMIT" ] && [ -n "$ROUND_STARTED_AT_COMMIT" ] && ! commit_is_ancestor_or_same "$GIT_ROOT" "$SOURCE_VERIFIED_AT_COMMIT" "$ROUND_STARTED_AT_COMMIT"; then
     ROUND_STARTED_AFTER_SOURCE="false"
   fi
-  if [ -n "$GIT_ROOT" ] && [ -n "$ROUND_STARTED_AT_COMMIT" ]; then
+  if [ -n "$GIT_ROOT" ] && [ -n "$ROUND_STARTED_AT_COMMIT" ] && git -C "$GIT_ROOT" cat-file -e "${ROUND_STARTED_AT_COMMIT}^{commit}" 2>/dev/null; then
     ROUND_ACTUAL_DIFF_PATHS_AVAILABLE="true"
     ROUND_ACTUAL_DIFF_PATHS=$(git_diff_paths_since_commit "$GIT_ROOT" "$ROUND_STARTED_AT_COMMIT" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))
+    ROUND_ACTUAL_DIFF_PATHS_CANONICAL=$(printf '%s\n' "$ROUND_ACTUAL_DIFF_PATHS" | canonicalize_recorded_paths "$PHASE_DIR")
   fi
 fi
 
@@ -986,6 +1016,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       *) ROUND_SUMMARY_NONTERMINAL="true" ;;
     esac
     _mo_files=$(extract_frontmatter_array_items "$_mo_summary" files_modified)
+    _mo_recorded_files=$(printf '%s\n' "$_mo_files" | canonicalize_recorded_paths "$PHASE_DIR")
     _mo_commit_hashes=$(extract_frontmatter_array_items "$_mo_summary" commit_hashes)
     _mo_commits=$(printf '%s\n' "$_mo_commit_hashes" | awk 'NF { count++ } END { print count + 0 }')
     _mo_commits="${_mo_commits:-0}"
@@ -993,10 +1024,21 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       ROUND_CHANGE_EVIDENCE_EMPTY="true"
     fi
     if [ -n "$_mo_files" ]; then
-      if [ "$ROUND_ACTUAL_DIFF_PATHS_AVAILABLE" = "true" ]; then
-        _mo_effective_files="$ROUND_ACTUAL_DIFF_PATHS"
+      if [ -z "$_mo_recorded_files" ]; then
+        ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
+        break
+      elif [ -n "$GIT_ROOT" ]; then
+        if [ "$ROUND_ACTUAL_DIFF_PATHS_AVAILABLE" != "true" ]; then
+          ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
+          break
+        fi
+        _mo_effective_files=$(intersect_canonical_paths "$_mo_recorded_files" "$ROUND_ACTUAL_DIFF_PATHS_CANONICAL")
+        if [ -z "$_mo_effective_files" ]; then
+          ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
+          break
+        fi
       else
-        _mo_effective_files="$_mo_files"
+        _mo_effective_files="$_mo_recorded_files"
       fi
       _mo_all_recorded_paths=$(printf '%s\n%s\n' "${_mo_all_recorded_paths:-}" "$_mo_effective_files")
       if paths_include_non_metadata "$PHASE_DIR" <<< "$_mo_effective_files"; then
