@@ -175,7 +175,7 @@ path_is_metadata_artifact() {
 path_is_code_fix_support_artifact() {
   local path="${1:-}"
   case "$path" in
-    .vbw-planning/*|.claude/*|.claude-plugin/*|.github/*|docs/*|internal/*|testing/*|tests/*|.*|*/.*|AGENTS.md|CHANGELOG.md|CONTRIBUTING.md|LICENSE|README.md|VERSION|marketplace.json)
+    .vbw-planning/*|.claude/*|.claude-plugin/*|.github/*|docs/*|internal/*|testing/*|tests/*|*/docs/*|*/internal/*|*/testing/*|*/tests/*|.*|*/.*|AGENTS.md|CHANGELOG.md|CONTRIBUTING.md|LICENSE|README.md|VERSION|marketplace.json|*/AGENTS.md|*/CHANGELOG.md|*/CONTRIBUTING.md|*/LICENSE|*/README.md|*/VERSION|*/marketplace.json)
       return 0
       ;;
   esac
@@ -925,6 +925,9 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   _qa_remediation_state=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null || true)
   SOURCE_VERIFICATION_PATH=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^source_verification_path=/{print $2; exit}')
   ROUND_STARTED_AT_COMMIT=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^round_started_at_commit=/{print $2; exit}')
+  if [ -n "${_gate_round:-}" ] && [ "$((10#${_gate_round}))" -gt 1 ] 2>/dev/null && { [ -z "$SOURCE_VERIFICATION_PATH" ] || [ ! -r "$SOURCE_VERIFICATION_PATH" ]; }; then
+    ROUND_SOURCE_VERIFICATION_MISSING="true"
+  fi
   if [ -n "$SOURCE_VERIFICATION_PATH" ] && [ -r "$SOURCE_VERIFICATION_PATH" ]; then
     SOURCE_VERIFIED_AT_COMMIT=$(extract_verified_at_commit "$SOURCE_VERIFICATION_PATH")
     SOURCE_FAIL_IDS=$(extract_fail_ids_from_verification "$SOURCE_VERIFICATION_PATH")

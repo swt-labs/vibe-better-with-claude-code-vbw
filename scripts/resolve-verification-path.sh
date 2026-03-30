@@ -216,7 +216,9 @@ case "$MODE" in
           search_round=$((search_round - 1))
         done
 
-        echo "$phase_path"
+        if [ -f "$phase_path" ]; then
+          echo "$phase_path"
+        fi
         exit 0
       fi
     fi

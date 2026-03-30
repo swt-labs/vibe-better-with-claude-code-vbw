@@ -432,7 +432,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
   - Read `source_verification_path` failed checks — these are the current "issues" to fix
     - Round 01 uses the phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`).
     - Round 02+ first checks the previous round's `R{RR}-VERIFICATION.md`. If that artifact still contains FAIL checks, use it. If it passed QA but the deterministic gate still required another remediation round, carry forward the nearest earlier verification artifact in the remediation chain that still contains the unresolved FAILs.
-    - If `source_verification_path` is empty, STOP and restore the missing prior-round verification artifact before planning. Do NOT silently fall back when the previous round's verification file is missing.
+    - If `source_verification_path` is empty, STOP and restore the earlier verification artifact that should have carried the unresolved FAILs before planning. Do NOT silently continue when the previous round verification is missing or when the carried-forward phase-level source artifact no longer exists.
   - **Deviation Classification (NON-NEGOTIABLE):** For each FAIL check in the source VERIFICATION.md, classify as exactly one of:
     - **`code-fix`**: The code/config must change to match the plan. The remediation plan MUST include tasks with actual production code file modifications.
     - **`plan-amendment`**: The deviation was a valid improvement over the original plan. The remediation plan MUST include a task to update the original PLAN.md with the actual approach and rationale, marking the deviation as resolved-by-amendment.
