@@ -98,7 +98,7 @@ link_run_all_system_tools() {
   local root="$1"
   local tool_name
 
-  for tool_name in bash cat dirname find grep ls mktemp rm sort; do
+  for tool_name in bash cat dirname find grep jq ls mktemp rm sort; do
     link_runtime_tool "$root" "$tool_name"
   done
 }
@@ -198,4 +198,18 @@ link_run_all_system_tools() {
 
   echo "$output" | grep -q 'bats is required for CI-parity local verification'
   echo "$output" | grep -q '^BATS: unavailable (bats is required for CI parity)$'
+}
+
+@test "run-all fails when jq is unavailable for CI-parity verification" {
+  local root="$TEST_TEMP_DIR/stub-repo-no-jq"
+  local host_bash
+  create_stub_workspace "$root"
+  link_run_all_system_tools "$root"
+  rm -f "$root/bin/jq"
+  host_bash="$(command -v bash)"
+
+  run env PATH="$root/bin" RUN_VIBE_VERIFY=0 "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+
+  echo "$output" | grep -q 'jq is required for CI-parity local verification'
 }

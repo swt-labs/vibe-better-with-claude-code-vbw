@@ -275,6 +275,8 @@ SUMMARY
 ---
 round: 01
 title: Current round verification should be authoritative
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Current round verification fixture uses a synthetic FAIL source with no stable table IDs"}
 ---
 EOF
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'

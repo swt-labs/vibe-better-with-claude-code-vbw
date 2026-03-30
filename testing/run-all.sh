@@ -9,6 +9,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMPDIR_JOBS="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR_JOBS"' EXIT
 
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ERROR: jq is required for CI-parity local verification (install with: brew install jq)."
+  exit 1
+fi
+
 # --- Shared parallel job infrastructure ---
 declare -a JOB_NAMES=()
 declare -a JOB_PIDS=()
