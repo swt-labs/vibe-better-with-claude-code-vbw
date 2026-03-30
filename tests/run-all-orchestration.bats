@@ -41,6 +41,7 @@ SH
   chmod +x "$root/bin/bats"
 
   for file in \
+    testing/run-lint.sh \
     scripts/verify-init-todo.sh \
     scripts/verify-claude-bootstrap.sh \
     testing/verify-bash-scripts-contract.sh \
@@ -110,21 +111,39 @@ SH
   [ "$status" -eq 1 ]
   printf '%s\n' "$output" > "$output_file"
 
-  local pass_line fail_begin_line fail_total_line fail_end_line summary_line
+  local pass_line fail_begin_line fail_total_line fail_end_line lint_summary_line summary_line
   pass_line=$(grep -n '^PASS: qa-persistence-contract$' "$output_file" | cut -d: -f1)
   fail_begin_line=$(grep -n '^--- begin lsp-first-policy output ---$' "$output_file" | cut -d: -f1)
   fail_total_line=$(grep -n '^TOTAL: 48 PASS, 1 FAIL$' "$output_file" | cut -d: -f1)
   fail_end_line=$(grep -n '^--- end lsp-first-policy output ---$' "$output_file" | cut -d: -f1)
+  lint_summary_line=$(grep -n '^Lint checks: 1/1 passed$' "$output_file" | cut -d: -f1)
   summary_line=$(grep -n '^Contract checks: 24/25 passed$' "$output_file" | cut -d: -f1)
 
   [ -n "$pass_line" ]
   [ -n "$fail_begin_line" ]
   [ -n "$fail_total_line" ]
   [ -n "$fail_end_line" ]
+  [ -n "$lint_summary_line" ]
   [ -n "$summary_line" ]
 
   [ "$pass_line" -lt "$fail_begin_line" ]
   [ "$fail_begin_line" -lt "$fail_total_line" ]
   [ "$fail_total_line" -lt "$fail_end_line" ]
-  [ "$fail_end_line" -lt "$summary_line" ]
+  [ "$fail_end_line" -lt "$lint_summary_line" ]
+  [ "$lint_summary_line" -lt "$summary_line" ]
+}
+
+@test "lint failures are surfaced as a separate run-all section" {
+  local root="$TEST_TEMP_DIR/stub-repo-lint-fail"
+  create_stub_workspace "$root"
+  create_failing_stub_script "$root/testing/run-lint.sh"
+  export BATS_LOG="$TEST_TEMP_DIR/bats-lint-fail.log"
+  export PATH="$root/bin:$PATH"
+
+  run env RUN_VIBE_VERIFY=0 bash -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+
+  echo "$output" | grep -q '^FAIL: shell-lint$'
+  echo "$output" | grep -q '^--- begin shell-lint output ---$'
+  echo "$output" | grep -q '^Lint checks: 0/1 passed$'
 }

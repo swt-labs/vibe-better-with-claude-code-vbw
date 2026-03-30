@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # run-all.sh — Single entrypoint for repo verification checks
-# Launches ALL contract checks and bats workers concurrently, then collects results.
+# Launches shared lint, contract checks, and bats workers concurrently, then collects results.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -12,7 +12,7 @@ trap 'rm -rf "$TMPDIR_JOBS"' EXIT
 # --- Shared parallel job infrastructure ---
 declare -a JOB_NAMES=()
 declare -a JOB_PIDS=()
-declare -a JOB_TYPES=()  # "contract" or "bats"
+declare -a JOB_TYPES=()  # "lint", "contract", or "bats"
 declare -a JOB_EXIT_CODES=()
 declare -a serial_bats_files=()
 declare -a SERIAL_BATS_FILES=(
@@ -61,6 +61,9 @@ run_job() {
   "$@" > "$TMPDIR_JOBS/$name.out" 2>&1 &
   JOB_PIDS+=("$!")
 }
+
+# --- Launch shell lint ---
+run_job lint "shell-lint"                bash "$ROOT/testing/run-lint.sh"
 
 # --- Launch contract checks ---
 run_job contract "init-todo"                bash "$ROOT/scripts/verify-init-todo.sh"
@@ -138,10 +141,13 @@ if [ "$bats_launched" = true ]; then
 fi
 contract_count=0
 for _jt in "${JOB_TYPES[@]}"; do [ "$_jt" = contract ] && contract_count=$((contract_count + 1)); done
-echo "Launched ${#JOB_PIDS[@]} parallel jobs ($contract_count contract + $bats_label)..."
+lint_count=0
+for _jt in "${JOB_TYPES[@]}"; do [ "$_jt" = lint ] && lint_count=$((lint_count + 1)); done
+echo "Launched ${#JOB_PIDS[@]} parallel jobs ($lint_count lint + $contract_count contract + $bats_label)..."
 echo ""
 
 # --- Wait for all jobs, collect results ---
+lint_pass=0 lint_fail=0
 contract_pass=0 contract_fail=0
 bats_pass=0 bats_fail=0 bats_workers_failed=0
 
@@ -151,12 +157,16 @@ for i in "${!JOB_PIDS[@]}"; do
 
   if wait "${JOB_PIDS[$i]}"; then
     JOB_EXIT_CODES[$i]=0
-    if [ "$type" = "contract" ]; then
+    if [ "$type" = "lint" ]; then
+      lint_pass=$((lint_pass + 1))
+    elif [ "$type" = "contract" ]; then
       contract_pass=$((contract_pass + 1))
     fi
   else
     JOB_EXIT_CODES[$i]=1
-    if [ "$type" = "contract" ]; then
+    if [ "$type" = "lint" ]; then
+      lint_fail=$((lint_fail + 1))
+    elif [ "$type" = "contract" ]; then
       contract_fail=$((contract_fail + 1))
     else
       bats_workers_failed=1
@@ -169,6 +179,17 @@ for i in "${!JOB_PIDS[@]}"; do
     wf=$(grep -c '^not ok ' "$TMPDIR_JOBS/$name.out" 2>/dev/null || true)
     bats_pass=$((bats_pass + ${wp:-0}))
     bats_fail=$((bats_fail + ${wf:-0}))
+  fi
+done
+
+for i in "${!JOB_PIDS[@]}"; do
+  name="${JOB_NAMES[$i]}"
+  type="${JOB_TYPES[$i]}"
+  [ "$type" = "lint" ] || continue
+  if [ "${JOB_EXIT_CODES[$i]:-1}" -eq 0 ]; then
+    echo "PASS: $name"
+  else
+    echo "FAIL: $name"
   fi
 done
 
@@ -188,7 +209,7 @@ for i in "${!JOB_PIDS[@]}"; do
   type="${JOB_TYPES[$i]}"
   [ "${JOB_EXIT_CODES[$i]:-1}" -ne 0 ] || continue
 
-  if [ "$type" = "contract" ]; then
+  if [ "$type" = "contract" ] || [ "$type" = "lint" ]; then
     echo "--- begin $name output ---"
     cat "$TMPDIR_JOBS/$name.out"
     echo "--- end $name output ---"
@@ -215,9 +236,13 @@ if [ "${#serial_bats_files[@]}" -gt 0 ]; then
 fi
 
 # --- Summary ---
+total_lint=$((lint_pass + lint_fail))
 total_contracts=$((contract_pass + contract_fail))
 echo ""
 echo "==============================="
+if [ "$total_lint" -gt 0 ]; then
+  echo "Lint checks: ${lint_pass}/${total_lint} passed"
+fi
 echo "Contract checks: ${contract_pass}/${total_contracts} passed"
 if [ "$bats_launched" = true ]; then
   echo "BATS: $bats_pass passed, $bats_fail failed"
@@ -227,6 +252,7 @@ fi
 echo "==============================="
 
 any_failure=0
+[ "$lint_fail" -gt 0 ] && any_failure=1
 [ "$contract_fail" -gt 0 ] && any_failure=1
 [ "$bats_workers_failed" -ne 0 ] && any_failure=1
 
