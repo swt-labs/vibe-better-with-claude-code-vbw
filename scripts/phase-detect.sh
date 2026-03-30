@@ -776,6 +776,70 @@ if [ "$CFG_AUTO_UAT_EARLY" = "true" ] && [ "$HAS_UNVERIFIED_PHASES" = "true" ] &
   esac
 fi
 
+# --- all_done QA-attention override: never archive while a terminal-UAT phase still needs QA attention ---
+# Only phases that already have terminal UAT should override all_done. Phases
+# with no UAT yet are handled by the normal lifecycle and auto_uat routing.
+if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; then
+  _QA_ATT_DIR="$PHASES_DIR/$FIRST_QA_ATTENTION_SLUG/"
+  _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
+  _QA_ATT_UAT_STATUS=""
+  _QA_ATT_PHASE_VERIF=""
+  _QA_ATT_AUTHORITATIVE_VERIF=""
+  _QA_ATT_HAS_EXISTING_VERIFICATION="false"
+  _QA_ATT_REQUIRES_AUTHORITATIVE_RECHECK="false"
+  if [ -f "$_QA_ATT_UAT" ]; then
+    _QA_ATT_UAT_STATUS=$(extract_status_value "$_QA_ATT_UAT")
+  fi
+
+  _QA_ATT_PHASE_VERIF=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" phase "$_QA_ATT_DIR" 2>/dev/null || true)
+  _QA_ATT_AUTHORITATIVE_VERIF=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" authoritative "$_QA_ATT_DIR" 2>/dev/null || true)
+  if [ -n "$_QA_ATT_PHASE_VERIF" ] && [ -f "$_QA_ATT_PHASE_VERIF" ]; then
+    _QA_ATT_HAS_EXISTING_VERIFICATION="true"
+  fi
+  if [ -n "$_QA_ATT_AUTHORITATIVE_VERIF" ] && [ "$_QA_ATT_AUTHORITATIVE_VERIF" != "$_QA_ATT_PHASE_VERIF" ]; then
+    _QA_ATT_REQUIRES_AUTHORITATIVE_RECHECK="true"
+  fi
+
+  case "$_QA_ATT_UAT_STATUS" in
+    complete|passed)
+      case "$QA_ATTENTION_STATUS" in
+        failed)
+          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+          if [ -d "$_QA_ATT_DIR" ]; then
+            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+          fi
+          NEXT_PHASE_STATE="needs_qa_remediation"
+          QA_STATUS="failed"
+          ;;
+        verify)
+          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+          if [ -d "$_QA_ATT_DIR" ]; then
+            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+          fi
+          NEXT_PHASE_STATE="needs_qa_remediation"
+          QA_STATUS="remediating"
+          ;;
+        pending)
+          if [ "$_QA_ATT_HAS_EXISTING_VERIFICATION" = "true" ] || [ "$_QA_ATT_REQUIRES_AUTHORITATIVE_RECHECK" = "true" ]; then
+            NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+            NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+            if [ -d "$_QA_ATT_DIR" ]; then
+              NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+              NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+            fi
+            NEXT_PHASE_STATE="needs_verification"
+            QA_STATUS="pending"
+          fi
+          ;;
+      esac
+      ;;
+  esac
+fi
+
 echo "phase_count=$PHASE_COUNT"
 echo "next_phase=$NEXT_PHASE"
 echo "next_phase_slug=$NEXT_PHASE_SLUG"

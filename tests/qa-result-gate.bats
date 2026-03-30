@@ -1497,7 +1497,7 @@ VERIF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
-@test "metadata-only round with plan-amendment but no original plan edit → REMEDIATION_REQUIRED" {
+@test "plan-amendment without required source plan edit → REMEDIATION_REQUIRED" {
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
@@ -1515,7 +1515,7 @@ VERIF
 round: 01
 title: Plan amendment requires plan edit
 fail_classifications:
-  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should reflect actual approach"}
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should reflect actual approach", source_plan: "01-01-PLAN.md"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -1534,7 +1534,7 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
@@ -1557,7 +1557,7 @@ VERIF
 round: 01
 title: Valid plan amendment
 fail_classifications:
-  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan updated with actual approach"}
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan updated with actual approach", source_plan: "01-01-PLAN.md"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -1952,7 +1952,7 @@ VERIF
 round: 01
 title: Short filename plan amendment
 fail_classifications:
-  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan updated with actual approach"}
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan updated with actual approach", source_plan: "01-01-PLAN.md"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -1993,7 +1993,7 @@ VERIF
 round: 01
 title: Unrelated bare plan filename is not enough
 fail_classifications:
-  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should be updated"}
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should be updated", source_plan: "01-01-PLAN.md"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -2034,7 +2034,7 @@ VERIF
 round: 01
 title: Archived milestone plan path is not enough
 fail_classifications:
-  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should be updated"}
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should be updated", source_plan: "01-01-PLAN.md"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -2156,7 +2156,7 @@ VERIF
 round: 01
 title: Bare remediation plan filename is not enough
 fail_classifications:
-  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should be updated"}
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan should be updated", source_plan: "01-01-PLAN.md"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -2369,7 +2369,7 @@ VERIF
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
-@test "metadata-only round with README-only changes still fails for code-fix classifications" {
+@test "docs-only round is treated as delivered content rather than metadata-only" {
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "None"
 
@@ -2404,8 +2404,8 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
-  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
 @test "metadata-only round with partial fail classification coverage → REMEDIATION_REQUIRED" {

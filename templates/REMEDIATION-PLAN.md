@@ -10,7 +10,8 @@ skills_used: [{skill}]
 files_modified: [{path}]
 forbidden_commands: []
 fail_classifications:
-  - {id: "FAIL-ID", type: "code-fix|plan-amendment|process-exception", rationale: "why this classification applies"}
+  - {id: "FAIL-ID", type: "code-fix|process-exception", rationale: "why this classification applies"}
+  - {id: "FAIL-ID", type: "plan-amendment", rationale: "why this classification applies", source_plan: "01-01-PLAN.md"}
 must_haves:
   truths: ["{invariant}"]
   artifacts: [{path: "{file}", provides: "{what}", contains: "{string}"}]

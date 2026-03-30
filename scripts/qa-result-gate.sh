@@ -152,7 +152,7 @@ normalize_recorded_path() {
 path_is_metadata_artifact() {
   local path="${1:-}"
   case "$path" in
-    .vbw-planning/*|docs/*|.github/*|.claude/*|README|README.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|LICENSE|LICENSE.*|CLAUDE.md|AGENTS.md|CODEOWNERS|.gitignore|.gitattributes|.editorconfig|.prettierignore|tests/*|testing/*|test/*|__tests__/*|spec/*|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
+    .vbw-planning/*|.github/*|.claude/*|LICENSE|LICENSE.*|CLAUDE.md|AGENTS.md|CODEOWNERS|.gitignore|.gitattributes|.editorconfig|.prettierignore|tests/*|testing/*|test/*|__tests__/*|spec/*|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
       return 0
       ;;
     *)
@@ -185,6 +185,53 @@ path_is_original_plan_artifact() {
       ;;
     *) return 1 ;;
   esac
+}
+
+canonicalize_phase_path() {
+  local path="${1:-}"
+  local phase_dir="${2:-}"
+  local phase_dir_abs=""
+  local repo_root_abs=""
+  local phase_dir_rel=""
+
+  path=$(normalize_recorded_path "$path")
+  [ -n "$path" ] || return 1
+
+  phase_dir_abs="$(cd "$phase_dir" 2>/dev/null && pwd -P || printf '%s' "$phase_dir")"
+  repo_root_abs="$(git -C "$phase_dir" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [ -n "$repo_root_abs" ] && [[ "$phase_dir_abs" == "$repo_root_abs/"* ]]; then
+    phase_dir_rel="${phase_dir_abs#"$repo_root_abs"/}"
+  fi
+
+  if [ -n "$repo_root_abs" ] && [[ "$path" == "$repo_root_abs/"* ]]; then
+    printf '%s' "${path#"$repo_root_abs"/}"
+    return 0
+  fi
+
+  if [ -n "$phase_dir_abs" ] && [[ "$path" == "$phase_dir_abs/"* ]]; then
+    if [ -n "$repo_root_abs" ] && [[ "$path" == "$repo_root_abs/"* ]]; then
+      printf '%s' "${path#"$repo_root_abs"/}"
+    else
+      printf '%s' "$path"
+    fi
+    return 0
+  fi
+
+  if [ -n "$phase_dir_rel" ] && [[ "$path" == "$phase_dir_rel/"* ]]; then
+    printf '%s' "$path"
+    return 0
+  fi
+
+  if [ -f "$phase_dir/$path" ]; then
+    if [ -n "$phase_dir_rel" ]; then
+      printf '%s' "$phase_dir_rel/$path"
+    else
+      printf '%s' "$phase_dir/$path"
+    fi
+    return 0
+  fi
+
+  printf '%s' "$path"
 }
 
 paths_include_original_plan_artifact() {
@@ -354,6 +401,116 @@ collect_fail_classification_ids_in_dir() {
     [ -f "$_cfc_plan" ] || continue
     extract_fail_classification_ids "$_cfc_plan"
   done < <(find "$scan_dir" -maxdepth 1 ! -name '.*' \( -name '*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+}
+
+extract_fail_classification_source_plans() {
+  local file_path="${1:-}"
+  [ -f "$file_path" ] || return 0
+  awk '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    BEGIN {
+      in_fm = 0
+      in_fc = 0
+      squote = sprintf("%c", 39)
+    }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^fail_classifications:/ {
+      rest = $0
+      sub(/^fail_classifications:[[:space:]]*/, "", rest)
+      if (rest ~ /^\[/) {
+        while (match(rest, /source_plan:[[:space:]]*[^,}\]]+/)) {
+          source_plan = substr(rest, RSTART, RLENGTH)
+          sub(/^source_plan:[[:space:]]*/, "", source_plan)
+          gsub(/[",}]/, "", source_plan)
+          gsub(squote, "", source_plan)
+          source_plan = trim(source_plan)
+          if (source_plan != "") print source_plan
+          rest = substr(rest, RSTART + RLENGTH)
+        }
+        exit
+      }
+      in_fc = 1
+      next
+    }
+    in_fm && in_fc && /^[[:space:]]+- / {
+      line = $0
+      if (match(line, /source_plan:[[:space:]]*[^,}]+/)) {
+        source_plan = substr(line, RSTART, RLENGTH)
+        sub(/^source_plan:[[:space:]]*/, "", source_plan)
+        gsub(/[",}]/, "", source_plan)
+        gsub(squote, "", source_plan)
+        source_plan = trim(source_plan)
+        if (source_plan != "") print source_plan
+      }
+      next
+    }
+    in_fm && in_fc && /^[[:space:]]+source_plan:/ {
+      line = $0
+      sub(/^[[:space:]]+source_plan:[[:space:]]*/, "", line)
+      gsub(/[",}]/, "", line)
+      gsub(squote, "", line)
+      line = trim(line)
+      if (line != "") print line
+      next
+    }
+    in_fm && in_fc && /^[^[:space:]]/ { exit }
+  ' "$file_path" 2>/dev/null
+}
+
+collect_fail_classification_source_plans_in_dir() {
+  local scan_dir="${1:-}"
+  [ -d "$scan_dir" ] || return 0
+  while IFS= read -r _cfc_plan; do
+    [ -f "$_cfc_plan" ] || continue
+    extract_fail_classification_source_plans "$_cfc_plan"
+  done < <(find "$scan_dir" -maxdepth 1 ! -name '.*' \( -name '*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+}
+
+plan_amendment_source_plans_are_valid() {
+  local phase_dir="${1:-}"
+  local source_plan canonical_plan
+  while IFS= read -r source_plan; do
+    source_plan=$(normalize_recorded_path "$source_plan")
+    [ -n "$source_plan" ] || return 1
+    canonical_plan=$(canonicalize_phase_path "$source_plan" "$phase_dir")
+    if ! path_is_original_plan_artifact "$canonical_plan" "$phase_dir"; then
+      return 1
+    fi
+  done
+  return 0
+}
+
+paths_cover_required_original_plan_artifacts() {
+  local phase_dir="${1:-}"
+  local required_paths="${2:-}"
+  local recorded_paths required_path required_canonical recorded_path recorded_canonical found
+
+  recorded_paths=$(cat)
+  while IFS= read -r required_path; do
+    required_path=$(normalize_recorded_path "$required_path")
+    [ -n "$required_path" ] || return 1
+    required_canonical=$(canonicalize_phase_path "$required_path" "$phase_dir")
+    [ -n "$required_canonical" ] || return 1
+
+    found=false
+    while IFS= read -r recorded_path; do
+      recorded_path=$(normalize_recorded_path "$recorded_path")
+      [ -n "$recorded_path" ] || continue
+      recorded_canonical=$(canonicalize_phase_path "$recorded_path" "$phase_dir")
+      if [ "$recorded_canonical" = "$required_canonical" ]; then
+        found=true
+        break
+      fi
+    done <<< "$recorded_paths"
+
+    [ "$found" = true ] || return 1
+  done <<< "$required_paths"
+
+  return 0
 }
 
 fail_classification_types_are_valid() {
@@ -649,6 +806,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   # commit_hashes and inspect the actual changed paths from git.
   _mo_has_code_changes="false"
   _mo_found_summary="false"
+  _mo_all_recorded_paths=""
   while IFS= read -r _mo_summary; do
     [ -f "$_mo_summary" ] || continue
     _mo_found_summary="true"
@@ -670,12 +828,14 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       ROUND_CHANGE_EVIDENCE_EMPTY="true"
     fi
     if [ -n "$_mo_files" ]; then
+      _mo_all_recorded_paths=$(printf '%s\n%s\n' "${_mo_all_recorded_paths:-}" "$_mo_files")
       if paths_include_non_metadata <<< "$_mo_files"; then
         _mo_has_code_changes="true"
       fi
     elif [ "$_mo_commits" -gt 0 ] 2>/dev/null; then
       _mo_commit_files="$(commit_hashes_to_changed_files "$GIT_ROOT" "$_mo_commit_hashes" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))"
       if [ -n "$_mo_commit_files" ]; then
+        _mo_all_recorded_paths=$(printf '%s\n%s\n' "${_mo_all_recorded_paths:-}" "$_mo_commit_files")
         if paths_include_non_metadata <<< "$_mo_commit_files"; then
           _mo_has_code_changes="true"
         fi
@@ -711,6 +871,33 @@ PLANS_VERIFIED_COUNT=$(extract_frontmatter_array_items "$VERIF_PATH" plans_verif
   END { print count + 0 }
 ' 2>/dev/null)
 PLANS_VERIFIED_COUNT="${PLANS_VERIFIED_COUNT:-0}"
+
+ROUND_ALL_RECORDED_PATHS=$(printf '%s\n' "${_mo_all_recorded_paths:-}" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))
+ROUND_CLASSIFICATION_TYPES=""
+ROUND_CLASSIFICATION_IDS=""
+ROUND_CLASSIFICATION_TYPE_COUNT=0
+ROUND_CLASSIFICATION_ID_COUNT=0
+ROUND_CODE_FIX_COUNT=0
+ROUND_PLAN_AMENDMENT_COUNT=0
+ROUND_PLAN_AMENDMENT_SOURCE_PLANS=""
+ROUND_PLAN_AMENDMENT_SOURCE_PLAN_COUNT=0
+ROUND_CLASSIFICATIONS_VALID=true
+if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
+  ROUND_CLASSIFICATION_TYPES=$(collect_fail_classification_types_in_dir "$PLAN_SCOPE_DIR")
+  ROUND_CLASSIFICATION_IDS=$(collect_fail_classification_ids_in_dir "$PLAN_SCOPE_DIR" | (sort -u 2>/dev/null || sort -u))
+  ROUND_CLASSIFICATION_TYPE_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_TYPES" | awk 'NF { count++ } END { print count + 0 }')
+  ROUND_CLASSIFICATION_ID_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_IDS" | awk 'NF { count++ } END { print count + 0 }')
+  ROUND_CODE_FIX_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_TYPES" | awk '$0 == "code-fix" { count++ } END { print count + 0 }')
+  ROUND_PLAN_AMENDMENT_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_TYPES" | awk '$0 == "plan-amendment" { count++ } END { print count + 0 }')
+  ROUND_PLAN_AMENDMENT_SOURCE_PLANS=$(collect_fail_classification_source_plans_in_dir "$PLAN_SCOPE_DIR")
+  ROUND_PLAN_AMENDMENT_SOURCE_PLAN_COUNT=$(printf '%s\n' "$ROUND_PLAN_AMENDMENT_SOURCE_PLANS" | awk 'NF { count++ } END { print count + 0 }')
+
+  if [ "$ROUND_CLASSIFICATION_ID_COUNT" -eq 0 ] 2>/dev/null || [ "$ROUND_CLASSIFICATION_ID_COUNT" -ne "$ROUND_CLASSIFICATION_TYPE_COUNT" ] 2>/dev/null; then
+    ROUND_CLASSIFICATIONS_VALID=false
+  elif ! fail_classification_types_are_valid <<< "$ROUND_CLASSIFICATION_TYPES"; then
+    ROUND_CLASSIFICATIONS_VALID=false
+  fi
+fi
 
 # Output diagnostic fields
 echo "qa_gate_writer=${WRITER:-missing}"
@@ -753,6 +940,12 @@ case "$RESULT" in
     elif [ "$ROUND_CHANGE_EVIDENCE_EMPTY" = "true" ]; then
       echo "qa_gate_round_change_evidence_empty=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
+    elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$ROUND_PLAN_AMENDMENT_COUNT" -gt 0 ] 2>/dev/null && {
+      [ "$ROUND_PLAN_AMENDMENT_SOURCE_PLAN_COUNT" -ne "$ROUND_PLAN_AMENDMENT_COUNT" ] 2>/dev/null \
+        || ! plan_amendment_source_plans_are_valid "$PHASE_DIR" <<< "$ROUND_PLAN_AMENDMENT_SOURCE_PLANS" \
+        || ! paths_cover_required_original_plan_artifacts "$PHASE_DIR" "$ROUND_PLAN_AMENDMENT_SOURCE_PLANS" <<< "$ROUND_ALL_RECORDED_PATHS";
+    }; then
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$DEVIATION_COUNT" -gt 0 ] && { [ "$IN_REMEDIATION" = "false" ] || [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; }; then
       # 5a. PASS but deviations exist without FAIL checks → QA rationalized deviations.
       # During remediation, phase-root SUMMARY.md deviations are historical and must
@@ -783,19 +976,7 @@ case "$RESULT" in
         SOURCE_FAIL_ROW_COUNT=$(count_fail_rows_in_verification "$SOURCE_VERIFICATION_PATH")
       fi
 
-      ROUND_CLASSIFICATION_TYPES=$(collect_fail_classification_types_in_dir "$PLAN_SCOPE_DIR")
-      ROUND_CLASSIFICATION_IDS=$(collect_fail_classification_ids_in_dir "$PLAN_SCOPE_DIR" | (sort -u 2>/dev/null || sort -u))
-      ROUND_CLASSIFICATION_TYPE_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_TYPES" | awk 'NF { count++ } END { print count + 0 }')
-      ROUND_CLASSIFICATION_ID_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_IDS" | awk 'NF { count++ } END { print count + 0 }')
-      ROUND_CODE_FIX_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_TYPES" | awk '$0 == "code-fix" { count++ } END { print count + 0 }')
-      ROUND_PLAN_AMENDMENT_COUNT=$(printf '%s\n' "$ROUND_CLASSIFICATION_TYPES" | awk '$0 == "plan-amendment" { count++ } END { print count + 0 }')
-      ROUND_CLASSIFICATIONS_VALID=true
-
-      if [ "$ROUND_CLASSIFICATION_ID_COUNT" -eq 0 ] 2>/dev/null || [ "$ROUND_CLASSIFICATION_ID_COUNT" -ne "$ROUND_CLASSIFICATION_TYPE_COUNT" ] 2>/dev/null; then
-        ROUND_CLASSIFICATIONS_VALID=false
-      elif ! fail_classification_types_are_valid <<< "$ROUND_CLASSIFICATION_TYPES"; then
-        ROUND_CLASSIFICATIONS_VALID=false
-      elif [ "$SOURCE_FAIL_ROW_COUNT" -gt 0 ] 2>/dev/null && [ "$SOURCE_FAIL_ID_COUNT" -eq 0 ] 2>/dev/null; then
+      if [ "$SOURCE_FAIL_ROW_COUNT" -gt 0 ] 2>/dev/null && [ "$SOURCE_FAIL_ID_COUNT" -eq 0 ] 2>/dev/null; then
         if [ "$ROUND_CLASSIFICATION_TYPE_COUNT" -ne "$SOURCE_FAIL_ROW_COUNT" ] 2>/dev/null; then
           ROUND_CLASSIFICATIONS_VALID=false
         fi
@@ -808,10 +989,6 @@ case "$RESULT" in
         echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
         echo "qa_gate_routing=REMEDIATION_REQUIRED"
       elif [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null; then
-        echo "qa_gate_metadata_only_override=true"
-        echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
-        echo "qa_gate_routing=REMEDIATION_REQUIRED"
-      elif [ "$ROUND_PLAN_AMENDMENT_COUNT" -gt 0 ] 2>/dev/null && ! paths_include_original_plan_artifact "$PHASE_DIR" <<< "${_mo_files:-${_mo_commit_files:-}}"; then
         echo "qa_gate_metadata_only_override=true"
         echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
         echo "qa_gate_routing=REMEDIATION_REQUIRED"
