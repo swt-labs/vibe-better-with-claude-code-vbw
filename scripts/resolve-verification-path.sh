@@ -216,12 +216,14 @@ case "$MODE" in
           search_round=$((search_round - 1))
         done
 
-        if [ -f "$phase_path" ]; then
+        if verification_has_fail_rows "$phase_path"; then
           echo "$phase_path"
         fi
         exit 0
       fi
     fi
-    echo "$phase_path"
+    if verification_has_fail_rows "$phase_path"; then
+      echo "$phase_path"
+    fi
     ;;
 esac

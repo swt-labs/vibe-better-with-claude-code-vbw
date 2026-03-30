@@ -1468,6 +1468,65 @@ EOF
   [[ "$output" != *"source_verification_missing=true"* ]]
 }
 
+@test "compile-verify-context: PASS-only carried-forward phase verification marks source missing" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+must_haves:
+  - Missing carried-forward FAILs must fail closed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+status: complete
+files_modified:
+  - README.md
+deviations: []
+---
+
+## Task 1: Missing carried-forward FAILs must fail closed
+
+### What Was Built
+- Documented the next remediation attempt
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  [[ "$output" == *"source_verification_missing=true"* ]]
+  [[ "$output" != *"FAIL_ID:"* ]]
+}
+
 @test "compile-verify-context: carried-forward phase verification missing after structural PASS marks source missing" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
   printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"

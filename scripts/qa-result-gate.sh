@@ -1039,7 +1039,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   _qa_remediation_state=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null || true)
   SOURCE_VERIFICATION_PATH=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^source_verification_path=/{print $2; exit}')
   ROUND_STARTED_AT_COMMIT=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^round_started_at_commit=/{print $2; exit}')
-  if [ -n "${_gate_round:-}" ] && [ "$((10#${_gate_round}))" -gt 1 ] 2>/dev/null && { [ -z "$SOURCE_VERIFICATION_PATH" ] || [ ! -r "$SOURCE_VERIFICATION_PATH" ]; }; then
+  if [ -z "$SOURCE_VERIFICATION_PATH" ] || [ ! -r "$SOURCE_VERIFICATION_PATH" ]; then
     ROUND_SOURCE_VERIFICATION_MISSING="true"
   fi
   if [ -n "$SOURCE_VERIFICATION_PATH" ] && [ -r "$SOURCE_VERIFICATION_PATH" ]; then
@@ -1199,6 +1199,9 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       || ! classification_ids_cover_source_fail_ids "$SOURCE_FAIL_IDS" "$ROUND_CLASSIFICATION_IDS";
   }; then
     ROUND_CLASSIFICATIONS_VALID=false
+  fi
+  if [ -z "$GIT_ROOT" ] && { [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null || [ "$ROUND_PLAN_AMENDMENT_COUNT" -gt 0 ] 2>/dev/null; }; then
+    ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
   fi
 fi
 

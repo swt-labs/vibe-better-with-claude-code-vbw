@@ -509,7 +509,9 @@ if [ -n "$_cvc_source_fail_verif" ] && [ ! -f "$_cvc_source_fail_verif" ]; then
   _cvc_source_fail_verif=""
 fi
 _cvc_source_fail_verif_missing=false
+_cvc_remediation_state_active=false
 if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
+  _cvc_remediation_state_active=true
   _cvc_active_round=$(grep '^round=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
   if [[ "${_cvc_active_round:-}" =~ ^[0-9]+$ ]] && [ "$((10#${_cvc_active_round}))" -gt 1 ] 2>/dev/null; then
     _cvc_prev_round=$(printf '%02d' "$((10#${_cvc_active_round} - 1))")
@@ -518,11 +520,12 @@ if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
       _cvc_source_fail_verif_missing=true
       _cvc_source_fail_verif=""
     fi
-  elif [[ "${_cvc_active_round:-}" =~ ^[0-9]+$ ]] && [ -z "$_cvc_source_fail_verif" ]; then
+  fi
+  if [[ "${_cvc_active_round:-}" =~ ^[0-9]+$ ]] && [ -z "$_cvc_source_fail_verif" ]; then
     _cvc_source_fail_verif_missing=true
   fi
 fi
-if [ "$_cvc_source_fail_verif_missing" = false ] && [ -z "$_cvc_source_fail_verif" ] && [ -n "$_cvc_phase_verif" ]; then
+if [ "$_cvc_source_fail_verif_missing" = false ] && [ -z "$_cvc_source_fail_verif" ] && [ -n "$_cvc_phase_verif" ] && [ "$_cvc_remediation_state_active" = false ]; then
   _cvc_source_fail_verif="$_cvc_phase_verif"
 fi
 

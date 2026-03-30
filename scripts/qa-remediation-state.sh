@@ -174,14 +174,8 @@ emit_metadata() {
   round_dir="$PHASE_DIR/remediation/qa/round-${round}"
   round_started_at_commit=$(get_round_started_at_commit)
   source_verification_path=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" plan-input "$PHASE_DIR" 2>/dev/null || true)
-  if [ "$((10#$round))" -le 1 ] 2>/dev/null && [ -n "$source_verification_path" ] && [ ! -f "$source_verification_path" ]; then
+  if [ -n "$source_verification_path" ] && [ ! -f "$source_verification_path" ]; then
     source_verification_path=""
-  fi
-  if [ -z "$source_verification_path" ] && [ "$((10#$round))" -le 1 ] 2>/dev/null; then
-    _phase_candidate="$PHASE_DIR/$(bash "$SCRIPT_DIR/resolve-artifact-path.sh" verification "$PHASE_DIR" 2>/dev/null || echo '01-VERIFICATION.md')"
-    if [ -f "$_phase_candidate" ]; then
-      source_verification_path="$_phase_candidate"
-    fi
   fi
   echo "round=${round}"
   echo "round_dir=${round_dir}"

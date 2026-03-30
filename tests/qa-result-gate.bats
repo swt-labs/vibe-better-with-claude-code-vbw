@@ -1784,14 +1784,16 @@ VERIF
 }
 
 @test "metadata-only round with plan-amendment and original plan edit → PROCEED_TO_UAT" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
-| FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |"
-  create_plan "01-01"
+| FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
+  commit_repo_file "01-test-phase/01-01-PLAN.md" "updated plan with actual approach" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
-  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     "  - \"$PHASE_DIR/01-01-PLAN.md\"
@@ -2254,14 +2256,16 @@ VERIF
 }
 
 @test "plan-amendment accepts short original plan filename" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
-| FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |"
-  create_plan "01-01"
+| FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
+  commit_repo_file "01-test-phase/01-01-PLAN.md" "updated plan with actual approach" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
-  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     '  - "01-01-PLAN.md"
@@ -2668,6 +2672,59 @@ VERIF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
+@test "round-02 PASS-only phase verification still fails closed when no FAIL source remains" {
+  create_verif "write-verification.sh" "PASS" "## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+VERIF
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-02" "02" \
+    '  - ".vbw-planning/phases/01-test-phase/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'PLAN'
+---
+round: 02
+title: Missing carried-forward FAIL source must fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Cannot classify a source FAIL set that no longer exists"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documentation updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
 @test "bare summary artifact path still counts as metadata-only" {
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "Changed API"
@@ -2970,6 +3027,49 @@ VERIF
 
   [ "$status" -eq 0 ]
   [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "self-reported production code path outside git repo does not satisfy code-fix evidence" {
+  mkdir -p "$PHASE_DIR/src"
+  : > "$PHASE_DIR/src/Fix.swift"
+
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | Production code still differs from the plan | FAIL | Missing fix |"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "src/Fix.swift"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Non-git self-reported code path is not trustworthy round-local evidence
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Production code still needs to change"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Code updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
