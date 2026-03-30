@@ -149,10 +149,11 @@ normalize_recorded_path() {
   printf '%s' "$path"
 }
 
-path_is_metadata_artifact() {
+path_is_recorded_non_code_artifact() {
   local path="${1:-}"
-  case "$path" in
-    .vbw-planning/*|.claude/*|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
+  local base="${path##*/}"
+  case "$base" in
+    SOURCE-UAT.md|PLAN.md|SUMMARY.md|VERIFICATION.md|RESEARCH.md|CONTEXT.md|UAT.md|*-PLAN.md|*-SUMMARY.md|*-VERIFICATION.md|*-RESEARCH.md|*-CONTEXT.md|*-UAT.md)
       return 0
       ;;
     *)
@@ -161,16 +162,24 @@ path_is_metadata_artifact() {
   esac
 }
 
+path_is_metadata_artifact() {
+  local path="${1:-}"
+  case "$path" in
+    .vbw-planning/*|.claude/*)
+      return 0
+      ;;
+  esac
+  path_is_recorded_non_code_artifact "$path"
+}
+
 path_is_code_fix_support_artifact() {
   local path="${1:-}"
   case "$path" in
-    .vbw-planning/*|.claude/*|.claude-plugin/*|.github/*|docs/*|internal/*|testing/*|tests/*|AGENTS.md|CHANGELOG.md|CONTRIBUTING.md|LICENSE|README.md|VERSION|marketplace.json|R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md|R[0-9][0-9]-SUMMARY.md|R[0-9][0-9]-VERIFICATION.md|*-PLAN.md|PLAN.md|*-SUMMARY.md|SUMMARY.md|*-VERIFICATION.md|VERIFICATION.md)
+    .vbw-planning/*|.claude/*|.claude-plugin/*|.github/*|docs/*|internal/*|testing/*|tests/*|AGENTS.md|CHANGELOG.md|CONTRIBUTING.md|LICENSE|README.md|VERSION|marketplace.json)
       return 0
       ;;
-    *)
-      return 1
-      ;;
   esac
+  path_is_recorded_non_code_artifact "$path"
 }
 
 path_is_original_plan_artifact() {

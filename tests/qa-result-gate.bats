@@ -2377,6 +2377,47 @@ VERIF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
+@test "bare UAT CONTEXT and RESEARCH artifact paths still count as metadata-only" {
+  create_verif "write-verification.sh" "PASS"
+  create_summary_with_yaml_deviations "01-01" "Changed API"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "01-UAT.md"
+  - "01-CONTEXT.md"
+  - "01-01-RESEARCH.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Bare non-code artifacts are still metadata-only
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Production code still needs to change"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Artifact docs updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_phase_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
 @test "done-stage missing round verification → QA_RERUN_REQUIRED" {
   create_verif "write-verification.sh" "PASS"
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
