@@ -214,9 +214,20 @@ canonicalize_phase_path() {
   local phase_dir_abs=""
   local repo_root_abs=""
   local phase_dir_rel=""
+  local path_dir=""
+  local path_base=""
 
   path=$(normalize_recorded_path "$path")
   [ -n "$path" ] || return 1
+
+  if [[ "$path" == /* ]]; then
+    path_dir="${path%/*}"
+    path_base="${path##*/}"
+    if [ -d "$path_dir" ]; then
+      path_dir="$(cd "$path_dir" 2>/dev/null && pwd -P || printf '%s' "$path_dir")"
+      path="$path_dir/$path_base"
+    fi
+  fi
 
   phase_dir_abs="$(cd "$phase_dir" 2>/dev/null && pwd -P || printf '%s' "$phase_dir")"
   repo_root_abs="$(git -C "$phase_dir" rev-parse --show-toplevel 2>/dev/null || true)"
@@ -247,7 +258,7 @@ canonicalize_phase_path() {
     if [ -n "$phase_dir_rel" ]; then
       printf '%s' "$phase_dir_rel/$path"
     else
-      printf '%s' "$phase_dir/$path"
+      printf '%s' "$phase_dir_abs/$path"
     fi
     return 0
   fi
@@ -268,9 +279,13 @@ paths_include_original_plan_artifact() {
 }
 
 paths_include_non_metadata() {
+  local phase_dir="${1:-}"
   while IFS= read -r path; do
     path=$(normalize_recorded_path "$path")
     [ -n "$path" ] || continue
+    if [ -n "$phase_dir" ]; then
+      path=$(canonicalize_phase_path "$path" "$phase_dir")
+    fi
     if ! path_is_metadata_artifact "$path"; then
       return 0
     fi
@@ -279,9 +294,13 @@ paths_include_non_metadata() {
 }
 
 paths_include_code_fix_evidence() {
+  local phase_dir="${1:-}"
   while IFS= read -r path; do
     path=$(normalize_recorded_path "$path")
     [ -n "$path" ] || continue
+    if [ -n "$phase_dir" ]; then
+      path=$(canonicalize_phase_path "$path" "$phase_dir")
+    fi
     if ! path_is_code_fix_support_artifact "$path"; then
       return 0
     fi
@@ -949,7 +968,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
     fi
     if [ -n "$_mo_files" ]; then
       _mo_all_recorded_paths=$(printf '%s\n%s\n' "${_mo_all_recorded_paths:-}" "$_mo_files")
-      if paths_include_non_metadata <<< "$_mo_files"; then
+      if paths_include_non_metadata "$PHASE_DIR" <<< "$_mo_files"; then
         _mo_has_code_changes="true"
       fi
     elif [ "$_mo_commits" -gt 0 ] 2>/dev/null; then
@@ -962,7 +981,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       _mo_commit_files="$(commit_hashes_to_changed_files "$GIT_ROOT" "$_mo_commit_hashes" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))"
       if [ -n "$_mo_commit_files" ]; then
         _mo_all_recorded_paths=$(printf '%s\n%s\n' "${_mo_all_recorded_paths:-}" "$_mo_commit_files")
-        if paths_include_non_metadata <<< "$_mo_commit_files"; then
+        if paths_include_non_metadata "$PHASE_DIR" <<< "$_mo_commit_files"; then
           _mo_has_code_changes="true"
         fi
       else
@@ -1086,7 +1105,7 @@ case "$RESULT" in
         echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
       fi
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
-    elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$METADATA_ONLY_ROUND" != "true" ] && [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null && ! paths_include_code_fix_evidence <<< "$ROUND_ALL_RECORDED_PATHS"; then
+    elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$METADATA_ONLY_ROUND" != "true" ] && [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null && ! paths_include_code_fix_evidence "$PHASE_DIR" <<< "$ROUND_ALL_RECORDED_PATHS"; then
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$ROUND_PLAN_AMENDMENT_COUNT" -gt 0 ] 2>/dev/null && {
       [ "$ROUND_PLAN_AMENDMENT_SOURCE_PLAN_COUNT" -ne "$ROUND_PLAN_AMENDMENT_COUNT" ] 2>/dev/null \
