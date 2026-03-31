@@ -63,6 +63,31 @@ PREFER_TEAMS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-defa
 ```
 If `PREFER_TEAMS` is `never`, force solo regardless of file count or --tier flag.
 
+### Step 1.3: Detect code-analysis MCP capabilities
+
+Inspect the available tool names in the system context (the deferred tools list in `<system-reminder>` blocks). Tool names follow the pattern `mcp__{server_name}__{tool_name}`. Pattern-match the **tool_name suffix** (the portion after the last `__`) against these capability signatures:
+
+```
+CAPABILITY_ARCHITECTURE    := tool name ending in: get_architecture, analyze_architecture, extract_architecture
+CAPABILITY_SYMBOL_SEARCH   := tool name ending in: search_graph, find_symbols, search_symbols, workspace_symbol
+CAPABILITY_DEPENDENCY_GRAPH := tool name ending in: query_graph, get_dependencies, analyze_dependencies, dependency_graph
+CAPABILITY_CALL_TRACING    := tool name ending in: trace_call_path, find_callers, call_hierarchy
+CAPABILITY_CODE_SEARCH     := tool name ending in: search_code, code_search
+CAPABILITY_CODE_SNIPPET    := tool name ending in: get_code_snippet, read_function, get_function
+CAPABILITY_HOTSPOT_ANALYSIS := tool name ending in: detect_changes, hotspot_analysis, complexity_analysis
+CAPABILITY_INDEX           := tool name ending in: index_repository, index_status
+```
+
+For each detected capability, store the full tool name (e.g., `mcp__codebase-memory-mcp__get_architecture`). This produces a **`MCP_MAP_CAPABILITIES`** set mapping capability categories to specific tool names. Multiple tools may match the same category (list all).
+
+If any capabilities are detected, also check for `CAPABILITY_INDEX` — if an indexing tool is available, note it for the graph freshness instruction in downstream steps.
+
+Display:
+- If capabilities detected: `◆ MCP: {N} code-analysis capabilities detected — will delegate structural analysis`
+- If none: `○ MCP: No code-analysis tools detected — using file-based analysis`
+
+**IMPORTANT:** Do NOT hardcode any MCP server names in the detection logic. Only tool name suffix patterns matter. Detection is purely capability-based.
+
 ### Step 2: Detect monorepo
 
 **JS/Node patterns:** Check lerna.json, pnpm-workspace.yaml, packages/ or apps/ with sub-package.json, root workspaces field.
