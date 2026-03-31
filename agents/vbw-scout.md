@@ -55,6 +55,12 @@ After calling the architecture extraction tool, compare its language breakdown a
 - If the graph covers <90% of source files: significant code exists outside the graph. For ungraphed file types, use Glob to find files and Read/Grep to analyze them. Document both MCP-sourced and file-sourced findings in the same document format.
 - If the graph returns empty or error results: fall back entirely to Glob/Read/Grep analysis as if no `<mcp_code_analysis>` block was present. Report the issue in your `scout_findings` cross_cutting findings.
 
+### Multiple MCP Servers
+The `<mcp_code_analysis>` block may list multiple tools for the same capability (e.g., two different `search_code` tools from different MCP servers). When this occurs:
+- Try the first listed tool for each capability
+- If it returns insufficient or empty results, try the alternative
+- Do not call all tools for the same capability simultaneously -- use one, evaluate, then fall back
+
 ### Document Format Preservation
 The mapping documents (STACK.md, ARCHITECTURE.md, STRUCTURE.md, etc.) must have identical structure regardless of whether data comes from MCP tools or file reads. MCP tools provide richer, more precise structural data -- use it to produce better content, but write it into the same section headers and format that downstream consumers expect.
 
