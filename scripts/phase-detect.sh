@@ -190,6 +190,7 @@ UAT_ISSUES_MAJOR_OR_HIGHER=false
 UAT_ISSUES_PHASES=""
 UAT_ISSUES_COUNT=0
 UAT_ROUND_COUNT=0
+UAT_ISSUES_FILE=""
 
 if [ -d "$PHASES_DIR" ]; then
   # Collect phase directories in numeric order (prevents 100 sorting before 11)
@@ -240,6 +241,7 @@ if [ -d "$PHASES_DIR" ]; then
           if [ "$UAT_ISSUES_PHASE" = "none" ]; then
             UAT_ISSUES_PHASE="$NUM"
             UAT_ISSUES_SLUG="$DIRNAME"
+            UAT_ISSUES_FILE="$UAT_FILE"
           fi
 
           # Accumulate all phases with issues
@@ -1122,45 +1124,116 @@ if [ -f "$EXEC_STATE_FILE" ]; then
 fi
 echo "execution_state=$EXEC_STATE"
 
+# --- UAT issue extraction function ---
+# Parses a UAT file and emits pipe-delimited issue lines (ID|severity|description|round).
+# Used inline by both single-phase and milestone extraction below.
+# Usage: _pd_extract_issues_from_uat <uat-file> [round]
+_pd_extract_issues_from_uat() {
+  local _uat_f="$1"
+  local _round="${2:-1}"
+  [ -f "$_uat_f" ] || return 0
+  awk -v rnd="$_round" '
+    function tlwr(s,    i,c,o) {
+      o=""; for(i=1;i<=length(s);i++){c=substr(s,i,1);if(c>="A"&&c<="Z")c=sprintf("%c",index("ABCDEFGHIJKLMNOPQRSTUVWXYZ",c)+96);o=o c}; return o
+    }
+    function emit() {
+      if(desc==""&&inl!="")desc=inl; if(desc=="")desc="(no description)"
+      if(sev==""){ld=tlwr(desc);if(ld~/crash|broken|error|fails|exception/)sev="critical";else if(ld~/wrong|incorrect|missing|not working|bug/)sev="major";else sev="major"}
+      gsub(/\|/,"-",desc); printf "%s|%s|%s|%s\n",id,sev,desc,rnd; hi=0;desc="";sev="";inl=""
+    }
+    /^### [PD][0-9]/{if(hi)emit();id=$2;sub(/:$/,"",id);hi=0;desc="";sev="";inl="";next}
+    /^- \*\*Result:\*\*/{v=$0;sub(/^- \*\*Result:\*\*[[:space:]]*/,"",v);gsub(/[[:space:]]+$/,"",v);if(tlwr(v)~/^(issue|fail|failed|partial)/)hi=1;next}
+    hi&&/^- \*\*Issue:\*\*/{t=$0;sub(/^- \*\*Issue:\*\*[[:space:]]*/,"",t);gsub(/[[:space:]]+$/,"",t);if(t!=""&&t!="{if result=issue}")inl=t;next}
+    hi&&/^[[:space:]]*- Description:/{d=$0;sub(/^[[:space:]]*- Description:[[:space:]]*/,"",d);gsub(/[[:space:]]+$/,"",d);desc=d;if(sev!="")emit();next}
+    hi&&/^[[:space:]]*- Severity:/{s=$0;sub(/^[[:space:]]*- Severity:[[:space:]]*/,"",s);gsub(/[[:space:]]+$/,"",s);sev=tlwr(s);if(desc!=""||inl!="")emit();next}
+    /^### /||/^## /{if(hi)emit();hi=0;desc="";sev="";inl=""}
+    END{if(hi)emit()}
+  ' "$_uat_f" 2>/dev/null
+}
+
 # --- Inline UAT extraction for needs_uat_remediation ---
-# Runs extract-uat-issues.sh inline when the next phase needs UAT remediation.
-# This eliminates a separate template block in vibe.md that is prone to race
-# conditions during parallel template expansion (the block independently resolves
-# the plugin root via a cascade that can fail if the symlink hasn't been created
-# yet by the Plugin root block). By folding the extraction into phase-detect.sh,
-# the data flows through the existing caching mechanism.
+# Extracts issue summary directly, using the UAT file path already resolved
+# during phase scanning. Avoids launching extract-uat-issues.sh as a subprocess
+# because the subprocess consistently fails in Claude Code's template expansion
+# context (the awk parser produces empty output, triggering the consistency
+# guard) despite working in all terminal contexts.
 if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" ]; then
-  _PD_EXTRACT_SCRIPT="$SCRIPT_DIR/extract-uat-issues.sh"
-  _PD_PHASE_DIR="${PHASES_DIR}/${NEXT_PHASE_SLUG}"
-  if [ -f "$_PD_EXTRACT_SCRIPT" ] && [ -d "$_PD_PHASE_DIR" ]; then
-    _uat_data=$(bash "$_PD_EXTRACT_SCRIPT" "$_PD_PHASE_DIR" 2>/dev/null) || _uat_data=""
-    if [ -n "$_uat_data" ]; then
+  # Re-resolve UAT file if not captured during loop (e.g., routing override)
+  if [ -z "$UAT_ISSUES_FILE" ] || [ ! -f "$UAT_ISSUES_FILE" ]; then
+    _PD_PHASE_DIR="${PHASES_DIR}/${NEXT_PHASE_SLUG}"
+    if [ -d "$_PD_PHASE_DIR" ]; then
+      if type current_uat &>/dev/null; then
+        UAT_ISSUES_FILE=$(current_uat "$_PD_PHASE_DIR")
+      elif type latest_non_source_uat &>/dev/null; then
+        UAT_ISSUES_FILE=$(latest_non_source_uat "$_PD_PHASE_DIR")
+      fi
+    fi
+  fi
+  if [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_ISSUES_FILE" ]; then
+    _pd_uat_phase=$(basename "$(dirname "$UAT_ISSUES_FILE")" | sed 's/[^0-9].*//')
+    _pd_uat_fname=$(basename "$UAT_ISSUES_FILE")
+    _pd_uat_round=$((UAT_ROUND_COUNT + 1))
+    _pd_uat_issues=$(_pd_extract_issues_from_uat "$UAT_ISSUES_FILE" "$_pd_uat_round") || _pd_uat_issues=""
+    _pd_issue_count=0
+    if [ -n "$_pd_uat_issues" ]; then
+      _pd_issue_count=$(printf '%s\n' "$_pd_uat_issues" | wc -l | tr -d ' ')
+    fi
+    if [ "$_pd_issue_count" -gt 0 ]; then
       echo "---UAT_EXTRACT_START---"
-      printf '%s\n' "$_uat_data"
+      echo "uat_phase=${_pd_uat_phase} uat_issues_total=${_pd_issue_count} uat_round=${_pd_uat_round} uat_file=${_pd_uat_fname}"
+      printf '%s\n' "$_pd_uat_issues"
+      echo "---UAT_EXTRACT_END---"
+    else
+      # Fallback: extraction produced no issues despite issues_found status.
+      # Emit a diagnostic marker so downstream consumers know to read the file directly.
+      echo "---UAT_EXTRACT_START---"
+      echo "uat_extract_error=true uat_file=${_pd_uat_fname}"
       echo "---UAT_EXTRACT_END---"
     fi
   fi
 fi
 
 # --- Inline milestone UAT extraction ---
-# Same pattern: runs extract-uat-issues.sh for each milestone phase with UAT
-# issues, eliminating the race-prone separate template block.
+# Same pattern: inline extraction for milestone UAT issues.
 if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; then
-  _PD_EXTRACT_SCRIPT="${_PD_EXTRACT_SCRIPT:-$SCRIPT_DIR/extract-uat-issues.sh}"
-  if [ -f "$_PD_EXTRACT_SCRIPT" ]; then
-    echo "---MILESTONE_UAT_EXTRACT_START---"
-    _pd_old_ifs="$IFS"
-    IFS='|'
-    for _pd_ms_dir in $MILESTONE_UAT_PHASE_DIRS; do
-      IFS="$_pd_old_ifs"
-      [ -d "$_pd_ms_dir" ] || continue
-      echo "milestone_phase_dir=$_pd_ms_dir"
-      bash "$_PD_EXTRACT_SCRIPT" "$_pd_ms_dir" 2>/dev/null || echo "uat_extract_error=true dir=$_pd_ms_dir"
-      echo "---"
-    done
+  echo "---MILESTONE_UAT_EXTRACT_START---"
+  _pd_old_ifs="$IFS"
+  IFS='|'
+  for _pd_ms_dir in $MILESTONE_UAT_PHASE_DIRS; do
     IFS="$_pd_old_ifs"
-    echo "---MILESTONE_UAT_EXTRACT_END---"
-  fi
+    [ -d "$_pd_ms_dir" ] || continue
+    echo "milestone_phase_dir=$_pd_ms_dir"
+    _pd_ms_uat=""
+    if type current_uat &>/dev/null; then
+      _pd_ms_uat=$(current_uat "$_pd_ms_dir")
+    elif type latest_non_source_uat &>/dev/null; then
+      _pd_ms_uat=$(latest_non_source_uat "$_pd_ms_dir")
+    fi
+    if [ -n "$_pd_ms_uat" ] && [ -f "$_pd_ms_uat" ]; then
+      _pd_ms_phase=$(basename "$_pd_ms_dir" | sed 's/[^0-9].*//')
+      _pd_ms_fname=$(basename "$_pd_ms_uat")
+      _pd_ms_round=1
+      if type count_uat_rounds &>/dev/null; then
+        _pd_ms_round=$(( $(count_uat_rounds "$_pd_ms_dir" "$_pd_ms_phase") + 1 ))
+      fi
+      _pd_ms_issues=$(_pd_extract_issues_from_uat "$_pd_ms_uat" "$_pd_ms_round") || _pd_ms_issues=""
+      _pd_ms_count=0
+      if [ -n "$_pd_ms_issues" ]; then
+        _pd_ms_count=$(printf '%s\n' "$_pd_ms_issues" | wc -l | tr -d ' ')
+      fi
+      if [ "$_pd_ms_count" -gt 0 ]; then
+        echo "uat_phase=${_pd_ms_phase} uat_issues_total=${_pd_ms_count} uat_round=${_pd_ms_round} uat_file=${_pd_ms_fname}"
+        printf '%s\n' "$_pd_ms_issues"
+      else
+        echo "uat_extract_error=true dir=$_pd_ms_dir"
+      fi
+    else
+      echo "uat_extract_error=true dir=$_pd_ms_dir"
+    fi
+    echo "---"
+  done
+  IFS="$_pd_old_ifs"
+  echo "---MILESTONE_UAT_EXTRACT_END---"
 fi
 
 exit 0
