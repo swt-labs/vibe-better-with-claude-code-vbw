@@ -108,6 +108,45 @@ EOF
   echo "$output" | grep -q "uat_issues_major_or_higher=true"
 }
 
+@test "inline UAT extraction emitted for needs_uat_remediation" {
+  mkdir -p .vbw-planning/phases/01-test/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: sample test
+
+- **Result:** issue
+- **Issue:** sample issue description
+  - Description: something is broken
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
+  echo "$output" | grep -q "^---UAT_EXTRACT_END---$"
+  echo "$output" | grep -q "uat_phase=01"
+  echo "$output" | grep -q "uat_issues_total=1"
+  echo "$output" | grep -q "P01-T1|major|something is broken|1"
+}
+
+@test "no inline UAT extraction when state is not needs_uat_remediation" {
+  mkdir -p .vbw-planning/phases/01-test/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
+}
+
 @test "minor-only UAT issues set major-or-higher flag false" {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md

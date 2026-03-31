@@ -1130,8 +1130,7 @@ echo "execution_state=$EXEC_STATE"
 # yet by the Plugin root block). By folding the extraction into phase-detect.sh,
 # the data flows through the existing caching mechanism.
 if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" ]; then
-  _PD_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  _PD_EXTRACT_SCRIPT="$_PD_SCRIPT_DIR/extract-uat-issues.sh"
+  _PD_EXTRACT_SCRIPT="$SCRIPT_DIR/extract-uat-issues.sh"
   _PD_PHASE_DIR="${PHASES_DIR}/${NEXT_PHASE_SLUG}"
   if [ -f "$_PD_EXTRACT_SCRIPT" ] && [ -d "$_PD_PHASE_DIR" ]; then
     _uat_data=$(bash "$_PD_EXTRACT_SCRIPT" "$_PD_PHASE_DIR" 2>/dev/null) || _uat_data=""
@@ -1147,8 +1146,7 @@ fi
 # Same pattern: runs extract-uat-issues.sh for each milestone phase with UAT
 # issues, eliminating the race-prone separate template block.
 if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; then
-  _PD_SCRIPT_DIR="${_PD_SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
-  _PD_EXTRACT_SCRIPT="${_PD_EXTRACT_SCRIPT:-$_PD_SCRIPT_DIR/extract-uat-issues.sh}"
+  _PD_EXTRACT_SCRIPT="${_PD_EXTRACT_SCRIPT:-$SCRIPT_DIR/extract-uat-issues.sh}"
   if [ -f "$_PD_EXTRACT_SCRIPT" ]; then
     echo "---MILESTONE_UAT_EXTRACT_START---"
     _pd_old_ifs="$IFS"
