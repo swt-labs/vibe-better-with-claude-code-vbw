@@ -100,3 +100,40 @@ teardown() {
   local scout_file="$BATS_TEST_DIRNAME/../agents/vbw-scout.md"
   grep -q 'Graph Coverage Gaps' "$scout_file"
 }
+
+# =============================================================================
+# No-regression fallback tests (Tests 11-15)
+# =============================================================================
+
+@test "map.md preserves existing Step 1 argument parsing" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  grep -q '\-\-incremental' "$map_file"
+  grep -q '\-\-package' "$map_file"
+  grep -q '\-\-tier' "$map_file"
+}
+
+@test "map.md preserves existing tier table" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  # All three tier names must be present in Step 1.5
+  local tier_section
+  tier_section=$(sed -n '/Step 1\.5/,/Step [2-9]/p' "$map_file")
+  echo "$tier_section" | grep -q 'solo'
+  echo "$tier_section" | grep -q 'duo'
+  echo "$tier_section" | grep -q 'quad'
+}
+
+@test "map.md preserves Step 3.5 document verification" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  grep -q 'Step 3\.5' "$map_file"
+}
+
+@test "map.md preserves Step 4 synthesis" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  grep -q 'INDEX\.md' "$map_file"
+  grep -q 'PATTERNS\.md' "$map_file"
+}
+
+@test "map.md preserves Step 5 shutdown protocol" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  grep -q 'shutdown_request' "$map_file"
+}
