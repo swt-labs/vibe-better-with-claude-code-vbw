@@ -592,10 +592,17 @@ issues: 2
 - **Expected:** It should work'
 
   cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+  # Capture stderr separately to verify diagnostic message
+  run bash -c "bash '$SCRIPTS_DIR/extract-uat-issues.sh' '$PHASE_DIR' 2>/tmp/.vbw-test-stderr-$$.txt"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"uat_extract_error=inconsistent_status"* ]]
+  [[ "$output" == *"uat_extract_error=true"* ]]
+  # Verify stderr diagnostic includes inconsistency details
+  local stderr_content
+  stderr_content=$(cat /tmp/.vbw-test-stderr-$$.txt 2>/dev/null)
+  rm -f /tmp/.vbw-test-stderr-$$.txt
+  [[ "$stderr_content" == *"inconsistent_status"* ]]
+  [[ "$stderr_content" == *"frontmatter_issues=2"* ]]
 }
 
 @test "extract-uat-issues: consistency guard does not trigger when frontmatter issues=0" {
@@ -618,8 +625,8 @@ issues: 0
 
   [ "$status" -eq 0 ]
   [[ "${lines[0]}" == *"uat_issues_total=0"* ]]
-  # Should NOT show inconsistent_status since frontmatter says 0
-  [[ "$output" != *"inconsistent_status"* ]]
+  # Should NOT show error since frontmatter says 0
+  [[ "$output" != *"uat_extract_error"* ]]
 }
 
 @test "extract-uat-issues: consistency guard does not fire when awk correctly finds issues" {
@@ -644,5 +651,5 @@ issues: 1
   [ "$status" -eq 0 ]
   [[ "${lines[0]}" == *"uat_issues_total=1"* ]]
   [[ "${lines[1]}" == "P01-T1|major|Something is broken|1" ]]
-  [[ "$output" != *"inconsistent_status"* ]]
+  [[ "$output" != *"uat_extract_error"* ]]
 }

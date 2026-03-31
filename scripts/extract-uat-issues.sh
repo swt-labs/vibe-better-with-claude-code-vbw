@@ -194,7 +194,7 @@ if [ "$ISSUE_COUNT" -eq 0 ]; then
   FM_ISSUES=$(printf '%s' "$FM_ISSUES" | tr -d '[:space:]')
   if [ -n "$FM_ISSUES" ] && [ "$FM_ISSUES" != "0" ]; then
     echo "uat_extract_error=inconsistent_status frontmatter_issues=${FM_ISSUES} parsed_issues=0" >&2
-    echo "uat_extract_error=inconsistent_status"
+    echo "uat_extract_error=true"
     exit 0
   fi
 fi
