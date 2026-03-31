@@ -176,6 +176,30 @@ EOF
   echo "$output" | grep -q "P01-T1|critical|round-dir broken"
 }
 
+@test "inline UAT extraction emits error marker when no parseable issues" {
+  mkdir -p .vbw-planning/phases/01-test/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  # UAT file with issues_found but no ### P/D test sections
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+Some text without parseable test headers.
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
+  echo "$output" | grep -q "uat_extract_error=true"
+  echo "$output" | grep -q "^---UAT_EXTRACT_END---$"
+}
+
 @test "milestone UAT extraction emitted for milestone_uat_issues" {
   # Create a shipped milestone with UAT issues
   mkdir -p .vbw-planning/milestones/m01-test/phases/01-alpha/
