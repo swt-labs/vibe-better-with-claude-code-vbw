@@ -1148,7 +1148,7 @@ _pd_extract_issues_from_uat() {
     hi&&/^[[:space:]]*- Severity:/{s=$0;sub(/^[[:space:]]*- Severity:[[:space:]]*/,"",s);gsub(/[[:space:]]+$/,"",s);sev=tlwr(s);if(desc!=""||inl!="")emit();next}
     /^### /||/^## /{if(hi)emit();hi=0;desc="";sev="";inl=""}
     END{if(hi)emit()}
-  ' "$_uat_f" 2>/dev/null
+  ' "$_uat_f"
 }
 
 # --- Inline UAT extraction for needs_uat_remediation ---
@@ -1176,7 +1176,23 @@ if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" 
     _pd_uat_phase="${UAT_ISSUES_PHASE}"
     _pd_uat_fname=$(basename "$UAT_ISSUES_FILE")
     _pd_uat_round=$((UAT_ROUND_COUNT + 1))
-    _pd_uat_issues=$(_pd_extract_issues_from_uat "$UAT_ISSUES_FILE" "$_pd_uat_round") || _pd_uat_issues=""
+    # Diagnostic: log extraction inputs and awk behavior to temp file
+    _pd_diag="/tmp/.vbw-uat-extract-diag-$$.txt"
+    {
+      echo "UAT_ISSUES_FILE=$UAT_ISSUES_FILE"
+      echo "FULL_PATH=$(cd "$(dirname "$UAT_ISSUES_FILE")" 2>/dev/null && pwd -P)/$(basename "$UAT_ISSUES_FILE")"
+      echo "FILE_EXISTS=$([ -f "$UAT_ISSUES_FILE" ] && echo yes || echo no)"
+      echo "FILE_SIZE=$(wc -c < "$UAT_ISSUES_FILE" 2>/dev/null || echo 0)"
+      echo "FILE_LINES=$(wc -l < "$UAT_ISSUES_FILE" 2>/dev/null || echo 0)"
+      echo "RESULT_HEADERS=$(grep -c '^### [PD][0-9]' "$UAT_ISSUES_FILE" 2>/dev/null || echo 0)"
+      echo "RESULT_ISSUES=$(grep -ci '^\- \*\*Result:\*\*.*issue' "$UAT_ISSUES_FILE" 2>/dev/null || echo 0)"
+      echo "AWK_PATH=$(which awk 2>/dev/null)"
+      echo "BASH_VERSION=$BASH_VERSION"
+      echo "PWD=$PWD"
+    } > "$_pd_diag" 2>&1
+    _pd_uat_issues=$(_pd_extract_issues_from_uat "$UAT_ISSUES_FILE" "$_pd_uat_round" 2>>"$_pd_diag") || _pd_uat_issues=""
+    echo "AWK_OUTPUT_LENGTH=${#_pd_uat_issues}" >> "$_pd_diag" 2>/dev/null
+    echo "AWK_OUTPUT=[$_pd_uat_issues]" >> "$_pd_diag" 2>/dev/null
     _pd_issue_count=0
     if [ -n "$_pd_uat_issues" ]; then
       _pd_issue_count=$(printf '%s\n' "$_pd_uat_issues" | wc -l | tr -d ' ')
