@@ -1203,6 +1203,15 @@ if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" 
     echo "FILE_HEAD=[$(head -5 "$UAT_ISSUES_FILE" 2>/dev/null | cat -v)]" >> "$_pd_diag" 2>/dev/null
     # Diagnostic: check if the function body is intact
     echo "FUNC_CHECK=$(type _pd_extract_issues_from_uat 2>&1 | head -3)" >> "$_pd_diag" 2>/dev/null
+    # Diagnostic: dump FULL function body to separate file
+    type _pd_extract_issues_from_uat > /tmp/.vbw-uat-func-dump-$$.txt 2>&1
+    # Diagnostic: run the awk directly (not via function) with stderr captured
+    _pd_direct_awk=$(awk -v rnd="$_pd_uat_round" '
+      /^### [PD][0-9]/{id=$2;sub(/:$/,"",id);hi=0;next}
+      /^- \*\*Result:\*\*/{v=$0;sub(/^- \*\*Result:\*\*[[:space:]]*/,"",v);gsub(/[[:space:]]+$/,"",v);if(v~/^[Ii]ssue/)hi=1;next}
+      hi&&/^[[:space:]]*- Severity:/{s=$0;sub(/^[[:space:]]*- Severity:[[:space:]]*/,"",s);gsub(/[[:space:]]+$/,"",s);printf "%s|%s|%s\n",id,s,rnd;hi=0;next}
+    ' "$UAT_ISSUES_FILE" 2>&1) || true
+    echo "DIRECT_AWK_TEST=[$_pd_direct_awk]" >> "$_pd_diag" 2>/dev/null
     _pd_issue_count=0
     if [ -n "$_pd_uat_issues" ]; then
       _pd_issue_count=$(printf '%s\n' "$_pd_uat_issues" | wc -l | tr -d ' ')
