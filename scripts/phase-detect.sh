@@ -1122,4 +1122,47 @@ if [ -f "$EXEC_STATE_FILE" ]; then
 fi
 echo "execution_state=$EXEC_STATE"
 
+# --- Inline UAT extraction for needs_uat_remediation ---
+# Runs extract-uat-issues.sh inline when the next phase needs UAT remediation.
+# This eliminates a separate template block in vibe.md that is prone to race
+# conditions during parallel template expansion (the block independently resolves
+# the plugin root via a cascade that can fail if the symlink hasn't been created
+# yet by the Plugin root block). By folding the extraction into phase-detect.sh,
+# the data flows through the existing caching mechanism.
+if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" ]; then
+  _PD_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  _PD_EXTRACT_SCRIPT="$_PD_SCRIPT_DIR/extract-uat-issues.sh"
+  _PD_PHASE_DIR="${PHASES_DIR}/${NEXT_PHASE_SLUG}"
+  if [ -f "$_PD_EXTRACT_SCRIPT" ] && [ -d "$_PD_PHASE_DIR" ]; then
+    _uat_data=$(bash "$_PD_EXTRACT_SCRIPT" "$_PD_PHASE_DIR" 2>/dev/null) || _uat_data=""
+    if [ -n "$_uat_data" ]; then
+      echo "---UAT_EXTRACT_START---"
+      printf '%s\n' "$_uat_data"
+      echo "---UAT_EXTRACT_END---"
+    fi
+  fi
+fi
+
+# --- Inline milestone UAT extraction ---
+# Same pattern: runs extract-uat-issues.sh for each milestone phase with UAT
+# issues, eliminating the race-prone separate template block.
+if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; then
+  _PD_SCRIPT_DIR="${_PD_SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+  _PD_EXTRACT_SCRIPT="${_PD_EXTRACT_SCRIPT:-$_PD_SCRIPT_DIR/extract-uat-issues.sh}"
+  if [ -f "$_PD_EXTRACT_SCRIPT" ]; then
+    echo "---MILESTONE_UAT_EXTRACT_START---"
+    _pd_old_ifs="$IFS"
+    IFS='|'
+    for _pd_ms_dir in $MILESTONE_UAT_PHASE_DIRS; do
+      IFS="$_pd_old_ifs"
+      [ -d "$_pd_ms_dir" ] || continue
+      echo "milestone_phase_dir=$_pd_ms_dir"
+      bash "$_PD_EXTRACT_SCRIPT" "$_pd_ms_dir" 2>/dev/null || echo "uat_extract_error=true dir=$_pd_ms_dir"
+      echo "---"
+    done
+    IFS="$_pd_old_ifs"
+    echo "---MILESTONE_UAT_EXTRACT_END---"
+  fi
+fi
+
 exit 0
