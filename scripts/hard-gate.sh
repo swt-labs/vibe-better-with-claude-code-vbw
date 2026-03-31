@@ -205,16 +205,22 @@ case "$GATE_TYPE" in
     # this may be the completed round's R{RR}-VERIFICATION.md rather than the
     # frozen phase-root FAIL record.
     VERIFICATION_FILE=""
+    PHASE_VERIFICATION_FILE=""
+    AUTHORITATIVE_MISSING_FATAL="false"
     GATE_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
     if [ -f "$GATE_SCRIPT_DIR/resolve-verification-path.sh" ]; then
+      PHASE_VERIFICATION_FILE=$(bash "$GATE_SCRIPT_DIR/resolve-verification-path.sh" phase "$PHASE_DIR" 2>/dev/null || true)
       VERIFICATION_FILE=$(bash "$GATE_SCRIPT_DIR/resolve-verification-path.sh" authoritative "$PHASE_DIR" 2>/dev/null || true)
-      if [ -n "$VERIFICATION_FILE" ] && [ ! -f "$VERIFICATION_FILE" ]; then
+      if [ -n "$VERIFICATION_FILE" ] && [ "$VERIFICATION_FILE" != "$PHASE_VERIFICATION_FILE" ] && [ ! -f "$VERIFICATION_FILE" ]; then
+        AUTHORITATIVE_MISSING_FATAL="true"
+        VERIFICATION_FILE=""
+      elif [ -n "$VERIFICATION_FILE" ] && [ ! -f "$VERIFICATION_FILE" ]; then
         VERIFICATION_FILE=""
       fi
     fi
 
     # Legacy fallback: any prefixed verification artifact.
-    if [ -z "$VERIFICATION_FILE" ]; then
+    if [ -z "$VERIFICATION_FILE" ] && [ "$AUTHORITATIVE_MISSING_FATAL" != "true" ]; then
       for vf in "$PHASE_DIR"/*-VERIFICATION*.md; do
         [ -f "$vf" ] && VERIFICATION_FILE="$vf" && break
       done
@@ -240,6 +246,21 @@ case "$GATE_TYPE" in
 
     case "$VERIFICATION_RESULT" in
       PASS)
+        if [ -f "$GATE_SCRIPT_DIR/qa-result-gate.sh" ] && [ -n "$VERIFICATION_FILE" ]; then
+          _qa_gate_output=$(bash "$GATE_SCRIPT_DIR/qa-result-gate.sh" "$PHASE_DIR" 2>/dev/null || true)
+          _qa_gate_routing=$(printf '%s\n' "${_qa_gate_output:-}" | awk -F= '/^qa_gate_routing=/{print $2; exit}')
+          case "${_qa_gate_routing:-}" in
+            PROCEED_TO_UAT) ;;
+            QA_RERUN_REQUIRED)
+              emit_result "fail" "verification invalid"
+              exit 2
+              ;;
+            *)
+              emit_result "fail" "verification failed"
+              exit 2
+              ;;
+          esac
+        fi
         _vg_dirty=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
         if [ -n "$_vg_dirty" ]; then
           emit_result "fail" "verification stale (working tree changed since verification)"

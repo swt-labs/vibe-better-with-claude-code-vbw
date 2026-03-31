@@ -144,6 +144,42 @@ EOF
   [[ "$output" == *"verify_plan_count=1"* ]]
 }
 
+@test "compile-verify-context: flow-style YAML deviations are emitted" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Flow deviations
+must_haves:
+  - Feature delivered
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Flow deviations
+status: complete
+deviations: ["Changed API contract", 'Moved tests to existing file']
+---
+
+## What Was Built
+
+- Feature delivered
+
+## Files Modified
+
+- `src/feature.ts` -- modified: implement feature
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Changed API contract; Moved tests to existing file"* ]]
+}
+
 @test "compile-verify-context: legacy PLAN.md and SUMMARY.md are supported" {
   cat > "$PHASE_DIR/PLAN.md" <<'EOF'
 ---
@@ -378,6 +414,55 @@ EOF
   # Round 01 should NOT appear
   [[ "$output" != *"Round 1 fix"* ]]
   [[ "$output" == *"verify_plan_count=1"* ]]
+}
+
+@test "compile-verify-context: --remediation-only honors active QA remediation round over stale higher round" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Active round one
+type: remediation
+must_haves:
+  - Fix current issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Round 1 work
+EOF
+
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Stale higher round
+type: remediation
+must_haves:
+  - Old stale issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Round 2 stale work
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=01"* ]]
+  [[ "$output" == *"=== PLAN R01: Active round one ==="* ]]
+  [[ "$output" != *"Stale higher round"* ]]
 }
 
 @test "compile-verify-context: --remediation-only falls back to full when no completed round" {
@@ -1009,12 +1094,18 @@ round: 01
 title: Fix deviations
 type: remediation
 status: complete
+files_modified:
+  - src/api.swift
 deviations:
   - "Used different endpoint naming"
 ---
-## What Was Built
+
+## Task 1: Update API layer
+
+### What Was Built
 - Reimplemented the API layer
-## Files Modified
+
+### Files Modified
 - `src/api.swift` -- rewritten
 EOF
 
@@ -1022,8 +1113,611 @@ EOF
   run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
+  [[ "$output" == *"Reimplemented the API layer"* ]]
   [[ "$output" == *"deviations: Used different endpoint naming"* ]]
   [[ "$output" == *"files_modified: src/api.swift"* ]]
+}
+
+@test "compile-verify-context: remediation task-level deviations are extracted" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Task-level deviation extraction
+type: remediation
+must_haves:
+  - API matches spec
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Task-level deviation extraction
+type: remediation
+status: complete
+files_modified:
+  - src/api.swift
+deviations: []
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+
+### Deviations
+- Used a different helper function than planned
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Used a different helper function than planned"* ]]
+}
+
+@test "compile-verify-context: remediation template comments in deviations section are ignored" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Comment-only deviation section
+type: remediation
+must_haves:
+  - API matches spec
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Comment-only deviation section
+type: remediation
+status: complete
+files_modified:
+  - src/api.swift
+deviations: []
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+
+### Deviations
+<!-- Or write `None` / `No deviations` as plain text when there were no deviations.
+     If there are multiple deviations, use one bullet per deviation. -->
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: none"* ]]
+}
+
+@test "compile-verify-context: plain-text remediation task-level deviations are extracted" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Plain-text deviation extraction
+type: remediation
+must_haves:
+  - API matches spec
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Plain-text deviation extraction
+type: remediation
+status: complete
+files_modified:
+  - src/api.swift
+deviations: []
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+
+### Deviations
+Used a different helper function than planned
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Used a different helper function than planned"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS uses previous round verification for round 02" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original phase plan
+must_haves:
+  - Original requirement
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original phase plan
+status: complete
+---
+
+## What Was Built
+- Original build
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| PH-01 | must_have | Phase-level fail | FAIL | Missing |
+EOF
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| R1-01 | must_have | Round-one fail | FAIL | Still broken |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+must_haves:
+  - Fix round one fail
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+status: complete
+files_modified:
+  - src/fix.swift
+deviations: []
+---
+
+## Task 1: Fix round one fail
+
+### What Was Built
+- Implemented another fix attempt
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=02"* ]]
+  [[ "$output" == *"FAIL_ID: R1-01 | ORIGINAL: Round-one fail"* ]]
+  [[ "$output" != *"FAIL_ID: PH-01 | ORIGINAL: Phase-level fail"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS marks missing previous round verification" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original phase plan
+must_haves:
+  - Original requirement
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original phase plan
+status: complete
+---
+
+## What Was Built
+- Original build
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| PH-01 | must_have | Phase-level fail | FAIL | Missing |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+must_haves:
+  - Fix round one fail
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+status: complete
+files_modified:
+  - src/fix.swift
+deviations: []
+---
+
+## Task 1: Fix round one fail
+
+### What Was Built
+- Implemented another fix attempt
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  [[ "$output" == *"source_verification_missing=true"* ]]
+  [[ "$output" != *"FAIL_ID: PH-01 | ORIGINAL: Phase-level fail"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS falls back to phase verification when previous round passed structurally" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original phase plan
+must_haves:
+  - Original requirement
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Original phase plan
+status: complete
+---
+
+## What Was Built
+- Original build
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| PH-01 | must_have | Phase-level fail | FAIL | Missing |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+must_haves:
+  - Carry forward unresolved original fail
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+status: complete
+files_modified:
+  - README.md
+deviations: []
+---
+
+## Task 1: Carry forward unresolved original fail
+
+### What Was Built
+- Documented the next remediation attempt
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=02"* ]]
+  [[ "$output" == *"FAIL_ID: PH-01 | ORIGINAL: Phase-level fail"* ]]
+  [[ "$output" != *"source_verification_missing=true"* ]]
+}
+
+@test "compile-verify-context: PASS-only carried-forward phase verification marks source missing" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+must_haves:
+  - Missing carried-forward FAILs must fail closed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+status: complete
+files_modified:
+  - README.md
+deviations: []
+---
+
+## Task 1: Missing carried-forward FAILs must fail closed
+
+### What Was Built
+- Documented the next remediation attempt
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  [[ "$output" == *"source_verification_missing=true"* ]]
+  [[ "$output" != *"FAIL_ID:"* ]]
+}
+
+@test "compile-verify-context: carried-forward phase verification missing after structural PASS marks source missing" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+must_haves:
+  - Source verification must still exist
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 02
+title: Round two remediation
+type: remediation
+status: complete
+files_modified:
+  - README.md
+deviations: []
+---
+
+## Task 1: Source verification must still exist
+
+### What Was Built
+- Documented the missing source verification problem
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  [[ "$output" == *"source_verification_missing=true"* ]]
+  [[ "$output" != *"FAIL_ID:"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS marks missing phase verification on round 01" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Round one remediation
+type: remediation
+must_haves:
+  - Fix original fail
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Round one remediation
+type: remediation
+status: complete
+files_modified:
+  - src/fix.swift
+deviations: []
+---
+
+## Task 1: Fix original fail
+
+### What Was Built
+- Implemented first remediation attempt
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  [[ "$output" == *"source_verification_missing=true"* ]]
+}
+
+@test "compile-verify-context: remediation summary what_was_built aggregates multiple task sections" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Multi-task remediation
+type: remediation
+must_haves:
+  - Fix both issues
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Multi-task remediation
+type: remediation
+status: complete
+files_modified:
+  - src/api.swift
+  - src/ui.swift
+deviations: []
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+
+### Files Modified
+- `src/api.swift` -- rewritten
+
+## Task 2: Update UI layer
+
+### What Was Built
+- Adjusted the remediation UI flow
+
+### Files Modified
+- `src/ui.swift` -- rewritten
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Reimplemented the API layer"* ]]
+  [[ "$output" == *"Adjusted the remediation UI flow"* ]]
+}
+
+@test "compile-verify-context: remediation-only includes all QA round plans" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: First remediation plan
+type: remediation
+must_haves:
+  - Fix first issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Second remediation plan
+type: remediation
+must_haves:
+  - Fix second issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Remediation summary
+type: remediation
+status: complete
+files_modified:
+  - src/api.swift
+deviations: []
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== PLAN R01: First remediation plan ==="* ]]
+  [[ "$output" == *"=== PLAN R01-02: Second remediation plan ==="* ]]
+  [[ "$output" == *"=== PLAN R01-02: Second remediation plan ==="*"status: complete"* ]]
+  [[ "$output" == *"=== PLAN R01-02: Second remediation plan ==="*"Reimplemented the API layer"* ]]
+  [[ "$output" == *"verify_plan_count=2"* ]]
 }
 
 @test "compile-verify-context: --remediation-only excludes QA remediation plans" {
@@ -1685,4 +2379,273 @@ EOF
   [[ "$output" == *"=== PLAN R02: Current QA remediation ==="* ]]
   [[ "$output" != *"=== PLAN R01: Old UAT remediation ==="* ]]
   [[ "$output" == *"uat_path=03-UAT.md"* ]]
+}
+
+# --- ORIGINAL FAIL RESOLUTION STATUS ---
+
+@test "compile-verify-context: emits ORIGINAL FAIL RESOLUTION STATUS for phase FAILs" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Must-Have Checks
+| ID | Category | Truth/Condition | Status | Evidence |
+|----|----------|-----------------|--------|----------|
+| MH-01 | must_have | API returns JSON | FAIL | Returns XML |
+| MH-02 | must_have | Widget renders | PASS | Confirmed |
+| MH-03 | must_have | Tests pass | FAIL | 2 failures |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  # Should contain FAIL_ID for MH-01 and MH-03, but not MH-02 (PASS)
+  [[ "$output" == *"FAIL_ID: MH-01"* ]]
+  [[ "$output" == *"FAIL_ID: MH-03"* ]]
+  [[ "$output" != *"FAIL_ID: MH-02"* ]]
+  # Should include the Truth/Condition description
+  [[ "$output" == *"API returns JSON"* ]]
+  [[ "$output" == *"Tests pass"* ]]
+  # Should include resolution requirement
+  [[ "$output" == *"RESOLUTION_REQUIRED: code-fix, plan-amendment, or documented process-exception"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS excludes PASS-only verifications" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Must-Have Checks
+| ID | Category | Truth/Condition | Status | Evidence |
+|----|----------|-----------------|--------|----------|
+| MH-01 | must_have | API returns JSON | PASS | Confirmed |
+| MH-02 | must_have | Widget renders | PASS | Done |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Block should still be emitted but with no FAIL_ID entries
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  [[ "$output" != *"FAIL_ID:"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS handles Description column header" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Login works | FAIL | 401 error |
+| MH-02 | must_have | Logout works | PASS | Done |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"FAIL_ID: MH-01"* ]]
+  [[ "$output" == *"Login works"* ]]
+  [[ "$output" != *"FAIL_ID: MH-02"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS handles Link column header fallback" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Key Link Checks
+| # | ID | Link | Status | Evidence |
+|---|-----|------|--------|----------|
+| 1 | KL-01 | qa-result-gate.sh → vibe.md routing | FAIL | Routing drift |
+| 2 | KL-02 | qa-result-gate.sh → execute-protocol.md routing | PASS | Aligned |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"FAIL_ID: KL-01"* ]]
+  [[ "$output" == *"qa-result-gate.sh → vibe.md routing"* ]]
+  [[ "$output" != *"FAIL_ID: KL-02"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS not emitted without phase VERIFICATION.md" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  # No VERIFICATION.md at all
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS synthesizes IDs for no-ID FAIL rows" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Test plan
+must_haves:
+  - Item one
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Checks
+| Category | Description | Status | Evidence |
+|----------|-------------|--------|----------|
+| must_have | Legacy brownfield failure | FAIL | Missing |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"FAIL_ID: FAIL-ROW-01 | ORIGINAL: Legacy brownfield failure"* ]]
+}
+
+@test "compile-verify-context: ORIGINAL FAIL RESOLUTION STATUS handles multi-table VERIFICATION.md" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Test plan
+must_haves:
+  - API works
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature A
+EOF
+  # Multi-table VERIFICATION.md with Must-Have (5-col) and Artifact (6-col)
+  cat > "$PHASE_DIR/03-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+## Must-Have Checks
+| ID | Category | Truth/Condition | Status | Evidence |
+|----|----------|-----------------|--------|----------|
+| MH-01 | must_have | API returns JSON | FAIL | Returns XML |
+| MH-02 | must_have | Auth works | PASS | Done |
+
+## Artifact Checks
+| # | ID | Artifact | Exists | Key Link | Status |
+|---|-----|----------|--------|----------|--------|
+| 1 | ART-01 | docs/api.md | Yes | - | PASS |
+| 2 | ART-02 | docs/deploy.md | No | - | FAIL |
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--- ORIGINAL FAIL RESOLUTION STATUS ---"* ]]
+  # Must-Have FAIL should be detected
+  [[ "$output" == *"FAIL_ID: MH-01"* ]]
+  [[ "$output" == *"API returns JSON"* ]]
+  # Artifact FAIL should also be detected (from second table)
+  [[ "$output" == *"FAIL_ID: ART-02"* ]]
+  # PASS rows excluded
+  [[ "$output" != *"FAIL_ID: MH-02"* ]]
+  [[ "$output" != *"FAIL_ID: ART-01"* ]]
 }

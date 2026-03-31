@@ -60,7 +60,7 @@ fi
 LEAD_AGENT="$ROOT/agents/vbw-lead.md"
 LEAD_TOOLS=$(sed -n '/^---$/,/^---$/p' "$LEAD_AGENT" | grep '^tools:' || true)
 
-if echo "$LEAD_TOOLS" | grep -q 'Skill'; then
+if grep -q 'Skill' <<< "$LEAD_TOOLS"; then
   pass "vbw-lead.md: Skill in tools allowlist"
 else
   fail "vbw-lead.md: Skill NOT in tools allowlist"
@@ -116,14 +116,14 @@ for agent_file in vbw-qa.md vbw-scout.md vbw-debugger.md vbw-architect.md vbw-do
   AGENT_DISALLOWED=$(sed -n '/^---$/,/^---$/p' "$AGENT_PATH" | grep '^disallowedTools:' || true)
   if [ -n "$AGENT_TOOLS" ]; then
     # Agent uses tools: allowlist — Skill must be explicitly listed
-    if echo "$AGENT_TOOLS" | grep -q 'Skill'; then
+    if grep -q 'Skill' <<< "$AGENT_TOOLS"; then
       pass "$agent_file: Skill in tools allowlist"
     else
       fail "$agent_file: Skill NOT in tools allowlist"
     fi
   elif [ -n "$AGENT_DISALLOWED" ]; then
     # Agent uses disallowedTools: denylist — Skill is inherited from parent
-    if echo "$AGENT_DISALLOWED" | grep -q 'Skill'; then
+    if grep -q 'Skill' <<< "$AGENT_DISALLOWED"; then
       fail "$agent_file: Skill is in disallowedTools (should be inherited)"
     else
       pass "$agent_file: Skill inherited via disallowedTools pattern (not denied)"
@@ -374,7 +374,7 @@ fi
 for agent_file in vbw-dev.md vbw-qa.md vbw-docs.md vbw-lead.md vbw-scout.md vbw-architect.md vbw-debugger.md; do
   AGENT_PATH="$ROOT/agents/$agent_file"
   FRONTMATTER=$(sed -n '/^---$/,/^---$/p' "$AGENT_PATH")
-  if echo "$FRONTMATTER" | grep -q '^maxTurns:'; then
+  if grep -q '^maxTurns:' <<< "$FRONTMATTER"; then
     fail "$agent_file: maxTurns still in YAML frontmatter (should be removed)"
   else
     pass "$agent_file: no maxTurns in YAML frontmatter"
@@ -428,7 +428,7 @@ _ROLES_AGENT_START=$(sed -n '/normalize_agent_role/,/^}/p' "$_AGENT_START" | gre
 
 # Verify all 7 roles are present in agent-start.sh
 for _role in architect debugger dev docs lead qa scout; do
-  if echo "$_ROLES_AGENT_START" | grep -q "^${_role}$"; then
+  if grep -q "^${_role}$" <<< "$_ROLES_AGENT_START"; then
     pass "agent-start.sh: normalize handles '$_role' role"
   else
     fail "agent-start.sh: normalize missing '$_role' role"

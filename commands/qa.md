@@ -149,6 +149,10 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
           done)
             VERIF_PATH=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-verification-path.sh current "{phase-dir}" 2>/dev/null || true)
             [ -n "$VERIF_PATH" ] && [ ! -f "$VERIF_PATH" ] && VERIF_PATH=""
+            if [ -z "$VERIF_PATH" ] || [ ! -f "$VERIF_PATH" ]; then
+              echo "Phase {NN} QA remediation is done, but the round-scoped VERIFICATION artifact is missing. Re-run /vbw:vibe to restore the remediation artifact before standalone QA." >&2
+              exit 1
+            fi
             ;;
           plan|execute)
             echo "Phase {NN} has active QA remediation at stage ${QA_STAGE}. Run /vbw:vibe to continue remediation before standalone QA." >&2
@@ -173,10 +177,12 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         ```text
         Verify phase {NN}. Tier: {ACTIVE_TIER}.
         Determine verification scope from `VERIF_PATH`.
-        - If `VERIF_PATH` is under `remediation/qa/round-*/R*-VERIFICATION.md`, scope verification to that remediation round only.
-          - Plans: {current round R{RR}-PLAN.md path(s) only}
-          - Summaries: {current round R{RR}-SUMMARY.md path(s) only}
+        - If `VERIF_PATH` is under `remediation/qa/round-*/R*-VERIFICATION.md`, re-verify the remediation round using compounded remediation context.
+          - Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/compile-verify-context.sh --remediation-only "{phase-dir}"` and use its `VERIFICATION HISTORY` section to re-verify each original FAIL from the source VERIFICATION.
+          - Plans for `plans_verified` / `plan_ref`: {current round R{RR}-PLAN.md path(s) only}
+          - Summaries for current-round execution evidence: {current round R{RR}-SUMMARY.md path(s) only}
           - Do NOT include phase-root PLAN.md/SUMMARY.md files in plans_verified or plan_ref for round-scoped output.
+          - Any original FAIL not resolved by code-fix, plan-amendment, or documented process-exception is still a FAIL, even if the remediation round's own must_haves pass.
         - Otherwise, verify full phase scope.
           - Plans: {paths to phase PLAN.md files}
           - Summaries: {paths to phase SUMMARY.md files}
@@ -190,7 +196,20 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
 
     - QA agent reads all files and persists VERIFICATION.md itself. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
 
-4. **Present:** Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
+4. **Reconcile with the deterministic QA gate before trusting the result:**
+    - Immediately after QA persists `VERIFICATION.md`, run:
+
+      ```bash
+      QA_GATE=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/qa-result-gate.sh "{phase-dir}" 2>/dev/null || true)
+      QA_GATE_ROUTING=$(printf '%s\n' "$QA_GATE" | awk -F= '/^qa_gate_routing=/{print $2; exit}')
+      ```
+
+    - Follow `QA_GATE_ROUTING` literally:
+      - `PROCEED_TO_UAT` → continue to presentation.
+      - `REMEDIATION_REQUIRED` → if `VERIF_PATH` is round-scoped (`remediation/qa/round-*/R*-VERIFICATION.md`), the round VERIFICATION is **not authoritative**. Display that standalone QA found a result, but the deterministic gate still requires remediation; tell the user to continue via `/vbw:vibe`. Do **not** present the round as a shippable PASS.
+      - `QA_RERUN_REQUIRED` → display that the persisted verification artifact is invalid or incomplete and must be re-run before it can be trusted. Do **not** present it as authoritative.
+
+5. **Present:** Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
     ```text
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     Phase {NN}: {name} -- Verified

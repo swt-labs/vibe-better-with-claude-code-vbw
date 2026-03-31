@@ -72,6 +72,27 @@ get_round() {
   fi
 }
 
+get_round_started_at_commit() {
+  if [ -f "$STATE_FILE" ]; then
+    local _val
+    _val=$(grep '^round_started_at_commit=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '[:space:]' || true)
+    echo "${_val:-}"
+  else
+    echo ""
+  fi
+}
+
+capture_round_started_at_commit() {
+  git -C "$PHASE_DIR" rev-parse HEAD 2>/dev/null || true
+}
+
+write_state() {
+  local stage="$1"
+  local round="$2"
+  local round_started_at_commit="${3:-}"
+  printf 'stage=%s\nround=%s\nround_started_at_commit=%s\n' "$stage" "$round" "$round_started_at_commit" > "$STATE_FILE"
+}
+
 canonicalize_round() {
   local round="$1"
   round="${round:-01}"
@@ -118,7 +139,7 @@ next_stage() {
 }
 
 start_new_round() {
-  local current_stage current_round next_round next_round_padded
+  local current_stage current_round next_round next_round_padded round_started_at_commit
   current_stage=$(get_stage)
   # Only allow new round from verify or done — not from plan/execute
   case "$current_stage" in
@@ -141,21 +162,24 @@ start_new_round() {
   fi
   next_round_padded=$(printf '%02d' "$next_round")
   mkdir -p "$PHASE_DIR/remediation/qa/round-${next_round_padded}"
-  printf 'stage=plan\nround=%s\n' "$next_round_padded" > "$STATE_FILE"
+  round_started_at_commit=$(capture_round_started_at_commit)
+  write_state "plan" "$next_round_padded" "$round_started_at_commit"
   echo "plan"
   emit_metadata
 }
 
 emit_metadata() {
-  local round round_dir source_verification_path
+  local round round_dir source_verification_path round_started_at_commit
   round=$(canonicalize_round "$(get_round)")
   round_dir="$PHASE_DIR/remediation/qa/round-${round}"
+  round_started_at_commit=$(get_round_started_at_commit)
   source_verification_path=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" plan-input "$PHASE_DIR" 2>/dev/null || true)
-  if [ -z "$source_verification_path" ]; then
-    source_verification_path="$PHASE_DIR/$(bash "$SCRIPT_DIR/resolve-artifact-path.sh" verification "$PHASE_DIR" 2>/dev/null || echo '01-VERIFICATION.md')"
+  if [ -n "$source_verification_path" ] && [ ! -f "$source_verification_path" ]; then
+    source_verification_path=""
   fi
   echo "round=${round}"
   echo "round_dir=${round_dir}"
+  echo "round_started_at_commit=${round_started_at_commit}"
   echo "source_verification_path=${source_verification_path}"
   echo "plan_path=${round_dir}/R${round}-PLAN.md"
   echo "summary_path=${round_dir}/R${round}-SUMMARY.md"
@@ -173,8 +197,9 @@ case "$CMD" in
 
   init)
     # Create remediation directory and first round dir
+    round_started_at_commit=$(capture_round_started_at_commit)
     mkdir -p "$PHASE_DIR/remediation/qa/round-01"
-    printf 'stage=plan\nround=01\n' > "$STATE_FILE"
+    write_state "plan" "01" "$round_started_at_commit"
     echo "plan"
     emit_metadata
     ;;
@@ -187,11 +212,12 @@ case "$CMD" in
     fi
     next=$(next_stage "$current")
     round=$(get_round)
+    round_started_at_commit=$(get_round_started_at_commit)
 
     # When advancing from verify, check result:
     # - If verify → done, that means QA passed
     # - The orchestrator reads VERIFICATION.md before calling advance
-    printf 'stage=%s\nround=%s\n' "$next" "$round" > "$STATE_FILE"
+    write_state "$next" "$round" "$round_started_at_commit"
     echo "$next"
     emit_metadata
     ;;
@@ -204,8 +230,9 @@ case "$CMD" in
   get-or-init)
     stage=$(get_stage)
     if [ "$stage" = "none" ]; then
+      round_started_at_commit=$(capture_round_started_at_commit)
       mkdir -p "$PHASE_DIR/remediation/qa/round-01"
-      printf 'stage=plan\nround=01\n' > "$STATE_FILE"
+      write_state "plan" "01" "$round_started_at_commit"
       echo "plan"
       emit_metadata
     else

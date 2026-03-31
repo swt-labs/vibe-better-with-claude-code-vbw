@@ -205,7 +205,7 @@ EOF
   [[ "$output" != *"FAIL MH-02: Tests pass"* ]]
 }
 
-@test "extract-verified-items falls back to phase-level when round file missing (brownfield)" {
+@test "extract-verified-items fails closed when authoritative round file is missing after remediation done" {
   local phase_dir="$TEST_TEMP_DIR/phases/03-ui"
   mkdir -p "$phase_dir/remediation/qa"
   cat > "$phase_dir/03-VERIFICATION.md" <<'EOF'
@@ -227,8 +227,7 @@ EOF
   run bash "$SCRIPTS_DIR/extract-verified-items.sh" "$phase_dir"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"QA-VERIFIED ITEMS"* ]]
-  [[ "$output" == *"MH-01"* ]]
+  [ -z "$output" ]
 }
 
 @test "extract-verified-items handles non-numeric round gracefully" {

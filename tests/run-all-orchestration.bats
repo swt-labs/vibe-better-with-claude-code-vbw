@@ -27,6 +27,8 @@ create_stub_workspace() {
   local file
   mkdir -p "$root/testing" "$root/scripts" "$root/tests" "$root/bin"
   cp "$PROJECT_ROOT/testing/run-all.sh" "$root/testing/run-all.sh"
+  cp "$PROJECT_ROOT/testing/list-bats-files.sh" "$root/testing/list-bats-files.sh"
+  cp "$PROJECT_ROOT/testing/run-bats-shard.sh" "$root/testing/run-bats-shard.sh"
 
   cat > "$root/bin/bats" <<'SH'
 #!/usr/bin/env bash
@@ -41,6 +43,7 @@ SH
   chmod +x "$root/bin/bats"
 
   for file in \
+    testing/run-lint.sh \
     scripts/verify-init-todo.sh \
     scripts/verify-claude-bootstrap.sh \
     testing/verify-bash-scripts-contract.sh \
@@ -65,6 +68,7 @@ SH
     testing/verify-dev-recovery-guidance.sh \
     testing/verify-live-validation-policy.sh \
     testing/verify-ghost-team-cleanup.sh \
+    testing/verify-ci-workflow-contract.sh \
     testing/verify-qa-persistence-contract.sh; do
     create_stub_script "$root/$file"
   done
@@ -81,6 +85,24 @@ echo "TOTAL: 48 PASS, 1 FAIL"
 exit 1
 SH
   chmod +x "$path"
+}
+
+link_runtime_tool() {
+  local root="$1"
+  local tool_name="$2"
+  local tool_path
+
+  tool_path="$(command -v "$tool_name")"
+  ln -sf "$tool_path" "$root/bin/$tool_name"
+}
+
+link_run_all_system_tools() {
+  local root="$1"
+  local tool_name
+
+  for tool_name in bash cat dirname find grep jq ls mktemp rm sort; do
+    link_runtime_tool "$root" "$tool_name"
+  done
 }
 
 @test "invalid BATS_WORKERS falls back and keeps serial bats files out of worker batches" {
@@ -110,21 +132,86 @@ SH
   [ "$status" -eq 1 ]
   printf '%s\n' "$output" > "$output_file"
 
-  local pass_line fail_begin_line fail_total_line fail_end_line summary_line
+  local pass_line fail_begin_line fail_total_line fail_end_line lint_summary_line summary_line
   pass_line=$(grep -n '^PASS: qa-persistence-contract$' "$output_file" | cut -d: -f1)
   fail_begin_line=$(grep -n '^--- begin lsp-first-policy output ---$' "$output_file" | cut -d: -f1)
   fail_total_line=$(grep -n '^TOTAL: 48 PASS, 1 FAIL$' "$output_file" | cut -d: -f1)
   fail_end_line=$(grep -n '^--- end lsp-first-policy output ---$' "$output_file" | cut -d: -f1)
-  summary_line=$(grep -n '^Contract checks: 24/25 passed$' "$output_file" | cut -d: -f1)
+  lint_summary_line=$(grep -n '^Lint checks: 1/1 passed$' "$output_file" | cut -d: -f1)
+  summary_line=$(grep -n '^Contract checks: 25/26 passed$' "$output_file" | cut -d: -f1)
 
   [ -n "$pass_line" ]
   [ -n "$fail_begin_line" ]
   [ -n "$fail_total_line" ]
   [ -n "$fail_end_line" ]
+  [ -n "$lint_summary_line" ]
   [ -n "$summary_line" ]
 
   [ "$pass_line" -lt "$fail_begin_line" ]
   [ "$fail_begin_line" -lt "$fail_total_line" ]
   [ "$fail_total_line" -lt "$fail_end_line" ]
-  [ "$fail_end_line" -lt "$summary_line" ]
+  [ "$fail_end_line" -lt "$lint_summary_line" ]
+  [ "$lint_summary_line" -lt "$summary_line" ]
+}
+
+@test "lint failures are surfaced as a separate run-all section" {
+  local root="$TEST_TEMP_DIR/stub-repo-lint-fail"
+  create_stub_workspace "$root"
+  create_failing_stub_script "$root/testing/run-lint.sh"
+  export BATS_LOG="$TEST_TEMP_DIR/bats-lint-fail.log"
+  export PATH="$root/bin:$PATH"
+
+  run env RUN_VIBE_VERIFY=0 bash -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+
+  echo "$output" | grep -q '^FAIL: shell-lint$'
+  echo "$output" | grep -q '^--- begin shell-lint output ---$'
+  echo "$output" | grep -q '^Lint checks: 0/1 passed$'
+}
+
+@test "run-all fails when shellcheck is unavailable for CI-parity lint" {
+  local root="$TEST_TEMP_DIR/stub-repo-no-shellcheck"
+  local host_bash
+  create_stub_workspace "$root"
+  cp "$PROJECT_ROOT/testing/run-lint.sh" "$root/testing/run-lint.sh"
+  chmod +x "$root/testing/run-lint.sh"
+  link_run_all_system_tools "$root"
+  host_bash="$(command -v bash)"
+  export BATS_LOG="$TEST_TEMP_DIR/bats-no-shellcheck.log"
+
+  run env PATH="$root/bin" RUN_VIBE_VERIFY=0 "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+
+  echo "$output" | grep -q '^FAIL: shell-lint$'
+  echo "$output" | grep -q 'shellcheck is required for CI-parity local verification'
+  echo "$output" | grep -q '^Lint checks: 0/1 passed$'
+}
+
+@test "run-all fails when bats is unavailable for CI-parity verification" {
+  local root="$TEST_TEMP_DIR/stub-repo-no-bats"
+  local host_bash
+  create_stub_workspace "$root"
+  rm -f "$root/bin/bats"
+  link_run_all_system_tools "$root"
+  host_bash="$(command -v bash)"
+
+  run env PATH="$root/bin" RUN_VIBE_VERIFY=0 "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+
+  echo "$output" | grep -q 'bats is required for CI-parity local verification'
+  echo "$output" | grep -q '^BATS: unavailable (bats is required for CI parity)$'
+}
+
+@test "run-all fails when jq is unavailable for CI-parity verification" {
+  local root="$TEST_TEMP_DIR/stub-repo-no-jq"
+  local host_bash
+  create_stub_workspace "$root"
+  link_run_all_system_tools "$root"
+  rm -f "$root/bin/jq"
+  host_bash="$(command -v bash)"
+
+  run env PATH="$root/bin" RUN_VIBE_VERIFY=0 "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+
+  echo "$output" | grep -q 'jq is required for CI-parity local verification'
 }

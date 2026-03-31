@@ -147,6 +147,33 @@ cache_fresh() {
   [ $((NOW - mt)) -le "$ttl" ]
 }
 
+file_mtime_epoch() {
+  local path="$1"
+  if [ "$_OS" = "Darwin" ]; then
+    stat -f %m "$path" 2>/dev/null || echo 0
+  else
+    stat -c %Y "$path" 2>/dev/null || echo 0
+  fi
+}
+
+lifecycle_artifacts_newer_than_cache() {
+  local cf="$1" planning_dir="$2"
+  local cache_mt artifact artifact_mt
+  [ -f "$cf" ] || return 1
+  [ -d "$planning_dir/phases" ] || return 1
+
+  cache_mt=$(file_mtime_epoch "$cf")
+  while IFS= read -r artifact; do
+    [ -f "$artifact" ] || continue
+    artifact_mt=$(file_mtime_epoch "$artifact")
+    if [ "$artifact_mt" -gt "$cache_mt" ] 2>/dev/null; then
+      return 0
+    fi
+  done < <(find "$planning_dir/phases" -type f \( \( -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' \) -o -name '*VERIFICATION.md' -o -name '.qa-remediation-stage' -o -name '.uat-remediation-stage' \) 2>/dev/null)
+
+  return 1
+}
+
 atomic_write_string() {
   local target="$1" content="$2" tmp
   tmp="${target}.tmp.$$.$RANDOM"
@@ -459,7 +486,7 @@ fi
 # --- Fast cache (5s TTL): VBW state + execution + agents ---
 FAST_CF="${_CACHE}-fast"
 
-if ! cache_fresh "$FAST_CF" 5; then
+if ! cache_fresh "$FAST_CF" 5 || lifecycle_artifacts_newer_than_cache "$FAST_CF" "$VBW_PLANNING_DIR"; then
   PH=""; TT=""; EF="balanced"; MP="quality"; BR=""
   PD=0; PT=0; PPD=0; PPT=0; QA="--"; QA_COLOR="D"; GH_URL=""
   PP_LABEL="this phase"; REM_ACTIVE="false"
@@ -522,29 +549,20 @@ if ! cache_fresh "$FAST_CF" 5; then
         REM_ACTIVE="true"
         PP_LABEL="this remediation"
       fi
-      # Lifecycle-aware QA/UAT indicator: UAT supersedes VERIFICATION.md
+      # Lifecycle-aware QA/UAT indicator: the canonical current UAT supersedes
+      # VERIFICATION.md and historical phase-root UAT artifacts.
       if [ -n "$PDIR" ]; then
-        _uat_file=$(find "$PDIR" -maxdepth 1 -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' ! -name '*-UAT-round-*' 2>/dev/null | head -1)
-        # Round-dir fallback: check remediation/uat/round-*/R*-UAT.md
-        if [ -z "$_uat_file" ]; then
-          _uat_file=$(find "$PDIR/remediation/uat" -path '*/round-*/R*-UAT.md' 2>/dev/null | sort -t/ -k2 -V | tail -1)
-        fi
-        # Legacy fallback: check old remediation/round-*/R*-UAT.md layout
-        if [ -z "$_uat_file" ]; then
-          _uat_file=$(find "$PDIR/remediation" -maxdepth 2 -path '*/round-*/R*-UAT.md' 2>/dev/null | sort -t/ -k2 -V | tail -1)
-        fi
+        _uat_file=$(current_uat "$PDIR" 2>/dev/null || true)
+        [ -n "$_uat_file" ] && [ ! -f "$_uat_file" ] && _uat_file=""
         if [ -n "$_uat_file" ]; then
           _uat_status=$(awk 'NR==1 && /^---/{f=1;next} f && /^---/{exit} f && /^status:/{gsub(/^status:[[:space:]]*/,""); print; exit}' "$_uat_file" 2>/dev/null | tr '[:upper:]' '[:lower:]')
           _uat_status=$(normalize_uat_status "$_uat_status")
           case "$_uat_status" in
             complete)
-              _stale_verif=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" current "$PDIR" 2>/dev/null || true)
-              [ -n "$_stale_verif" ] && [ ! -f "$_stale_verif" ] && _stale_verif=""
-              if qa_verification_stale "$_stale_verif"; then
-                QA="QA: pending"; QA_COLOR="Y"
-              else
-                QA="UAT: pass"; QA_COLOR="G"
-              fi
+              QA="UAT: pass"; QA_COLOR="G"
+              ;;
+            in_progress|in-progress|draft|pending)
+              QA="UAT: in progress"; QA_COLOR="Y"
               ;;
             issues_found)
               _rem_stage="none"
@@ -559,7 +577,7 @@ if ! cache_fresh "$FAST_CF" 5; then
                 research)     QA="UAT: Researching";  QA_COLOR="Y" ;;
                 plan)         QA="UAT: Planning";     QA_COLOR="Y" ;;
                 execute|fix)  QA="UAT: Fixing";       QA_COLOR="Y" ;;
-                done|verify)  QA="UAT: Verification"; QA_COLOR="Y" ;;
+                done|verify|verified) QA="UAT: Verification"; QA_COLOR="Y" ;;
                 *)            QA="UAT: Fixing";       QA_COLOR="Y" ;;
               esac ;;
             *) QA="UAT: ?"; QA_COLOR="Y" ;;
@@ -575,33 +593,35 @@ if ! cache_fresh "$FAST_CF" 5; then
             *)       _qa_rem_stage="none" ;;
           esac
         fi
-        _verif_file=""
-        if [ "${_qa_rem_stage:-none}" = "done" ]; then
-          _verif_file=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" current "$PDIR" 2>/dev/null || true)
-          [ -n "$_verif_file" ] && [ ! -f "$_verif_file" ] && _verif_file=""
-        elif [ "${_qa_rem_stage:-none}" = "none" ]; then
-          _verif_file=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" phase "$PDIR" 2>/dev/null || true)
-          [ -n "$_verif_file" ] && [ ! -f "$_verif_file" ] && _verif_file=""
-        fi
-        if [ -n "$_verif_file" ]; then
-          _qa_result=$(awk '
-            BEGIN { in_fm=0 }
-            NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-            in_fm && /^---[[:space:]]*$/ { exit }
-            in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
-          ' "$_verif_file" 2>/dev/null) || _qa_result=""
-          case "$_qa_result" in
-            PASS)
-              if qa_verification_stale "$_verif_file"; then
-                QA="QA: pending"; QA_COLOR="Y"
-              else
-                QA="QA: pass"; QA_COLOR="G"
-              fi
-              ;;
-            FAIL) QA="QA: FAIL"; QA_COLOR="R" ;;
-            PARTIAL) QA="QA: partial"; QA_COLOR="Y" ;;
-            *) QA="QA: pending"; QA_COLOR="Y" ;;
-          esac
+        if [ -z "$_uat_file" ]; then
+          _verif_file=""
+          if [ "${_qa_rem_stage:-none}" = "done" ]; then
+            _verif_file=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" current "$PDIR" 2>/dev/null || true)
+            [ -n "$_verif_file" ] && [ ! -f "$_verif_file" ] && _verif_file=""
+          elif [ "${_qa_rem_stage:-none}" = "none" ]; then
+            _verif_file=$(bash "$_SL_SCRIPT_DIR/resolve-verification-path.sh" phase "$PDIR" 2>/dev/null || true)
+            [ -n "$_verif_file" ] && [ ! -f "$_verif_file" ] && _verif_file=""
+          fi
+          if [ -n "$_verif_file" ]; then
+            _qa_result=$(awk '
+              BEGIN { in_fm=0 }
+              NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+              in_fm && /^---[[:space:]]*$/ { exit }
+              in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+            ' "$_verif_file" 2>/dev/null) || _qa_result=""
+            case "$_qa_result" in
+              PASS)
+                if qa_verification_stale "$_verif_file"; then
+                  QA="QA: pending"; QA_COLOR="Y"
+                else
+                  QA="QA: pass"; QA_COLOR="G"
+                fi
+                ;;
+              FAIL) QA="QA: FAIL"; QA_COLOR="R" ;;
+              PARTIAL) QA="QA: partial"; QA_COLOR="Y" ;;
+              *) QA="QA: pending"; QA_COLOR="Y" ;;
+            esac
+          fi
         fi
       fi
     fi

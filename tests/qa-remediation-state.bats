@@ -12,6 +12,22 @@ teardown() {
   teardown_temp_dir
 }
 
+init_git_repo() {
+  git -C "$TEST_TEMP_DIR" init -q
+  git -C "$TEST_TEMP_DIR" config user.email "test@example.com"
+  git -C "$TEST_TEMP_DIR" config user.name "VBW Test"
+}
+
+commit_repo_file() {
+  local relative_path="${1}"
+  local content="${2:-content}"
+  mkdir -p "$(dirname "$TEST_TEMP_DIR/$relative_path")"
+  printf '%s\n' "$content" > "$TEST_TEMP_DIR/$relative_path"
+  git -C "$TEST_TEMP_DIR" add "$relative_path"
+  git -C "$TEST_TEMP_DIR" commit -q -m "add $relative_path"
+  git -C "$TEST_TEMP_DIR" rev-parse HEAD
+}
+
 # --- get command ---
 
 @test "get returns none when no state file exists" {
@@ -70,6 +86,16 @@ teardown() {
   echo "$output" | grep -q "^round=01$"
   echo "$output" | grep -q "^round_dir=.*remediation/qa/round-01$"
   echo "$output" | grep -q "^plan_path=.*R01-PLAN.md$"
+}
+
+@test "init captures round_started_at_commit from current git HEAD" {
+  init_git_repo
+  head_commit=$(commit_repo_file "src/base.txt" "baseline")
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round_started_at_commit=${head_commit}$"
+  grep -q "^round_started_at_commit=${head_commit}$" "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 }
 
 # --- get-or-init command ---
@@ -160,6 +186,23 @@ teardown() {
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "^round=03$"
   [ -d "$PHASE_DIR/remediation/qa/round-03" ]
+}
+
+@test "needs-round refreshes round_started_at_commit to current HEAD" {
+  init_git_repo
+  first_commit=$(commit_repo_file "src/first.txt" "first")
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR" >/dev/null
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  second_commit=$(commit_repo_file "src/second.txt" "second")
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q '^round=02$'
+  echo "$output" | grep -q "^round_started_at_commit=${second_commit}$"
+  grep -q "^round_started_at_commit=${second_commit}$" "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  [ "$first_commit" != "$second_commit" ]
 }
 
 @test "needs-round from verify stage succeeds" {
@@ -270,17 +313,34 @@ teardown() {
 @test "emit_metadata includes verification_path on init" {
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^source_verification_path=.*01-VERIFICATION.md$"
+  echo "$output" | grep -q '^source_verification_path=$'
   echo "$output" | grep -q "^verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
 }
 
+@test "emit_metadata keeps source_verification_path empty when phase verification has no FAIL rows" {
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+EOF
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q '^source_verification_path=$'
+}
+
 @test "emit_metadata includes verification_path on get" {
-  mkdir -p "$PHASE_DIR/remediation/qa"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf '%s\n' '---' 'result: FAIL' '---' '## Checks' '| ID | Category | Description | Status | Evidence |' '|----|----------|-------------|--------|----------|' '| R1-01 | must_have | Round 01 failed | FAIL | Missing |' > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
   printf 'stage=execute\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^source_verification_path=.*01-VERIFICATION.md$"
+  echo "$output" | grep -q "^source_verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
   echo "$output" | grep -q "^verification_path=.*remediation/qa/round-02/R02-VERIFICATION.md$"
 }
 
@@ -293,7 +353,7 @@ teardown() {
 @test "verification_path updates after needs-round" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
-  printf '%s\n' '---' 'result: FAIL' '---' > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
+  printf '%s\n' '---' 'result: FAIL' '---' '## Checks' '| ID | Category | Description | Status | Evidence |' '|----|----------|-------------|--------|----------|' '| R1-01 | must_have | Round 01 failed | FAIL | Missing |' > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
 
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
   [ "$status" -eq 0 ]
@@ -302,6 +362,26 @@ teardown() {
   # After needs-round, get should show round-02 verification_path
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
   echo "$output" | grep -q "^source_verification_path=.*remediation/qa/round-01/R01-VERIFICATION.md$"
+  echo "$output" | grep -q "^verification_path=.*remediation/qa/round-02/R02-VERIFICATION.md$"
+}
+
+@test "verification_path updates after needs-round but leaves source_verification_path empty when no FAIL source remains" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |
+EOF
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  printf '%s\n' '---' 'result: PASS' '---' '## Checks' '| ID | Category | Description | Status | Evidence |' '|----|----------|-------------|--------|----------|' '| MH-01 | must_have | Structural bookkeeping passed | PASS | Done |' > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q '^source_verification_path=$'
   echo "$output" | grep -q "^verification_path=.*remediation/qa/round-02/R02-VERIFICATION.md$"
 }
 

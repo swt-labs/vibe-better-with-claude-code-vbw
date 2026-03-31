@@ -9,7 +9,8 @@
 #   pass/passed             → passed
 #   skip/skipped            → skipped
 #   issue/fail/failed/partial → issue
-#   empty or missing        → incomplete (keeps status=in_progress)
+#   empty                   → incomplete (keeps status=in_progress)
+#   missing Result line     → malformed UAT block (fail closed)
 #
 # Status determination:
 #   Any result is issue/fail/partial → status=issues_found
@@ -27,11 +28,18 @@ if [ ! -f "$UAT_FILE" ]; then
   exit 1
 fi
 
-# Parse all **Result:** values from test entries
-# Returns: one word per line (pass, skip, issue, empty, or the raw value)
+# Parse all **Result:** values from test entries.
+# Returns one token per line: pass, skip, issue, empty, __missing__, or
+# __unknown__:<raw>.
 RESULTS=$(awk '
-  /^### [PD][0-9]/ { in_test = 1; next }
+  /^### [PD][0-9]/ {
+    if (in_test && saw_result == 0) print "__missing__"
+    in_test = 1
+    saw_result = 0
+    next
+  }
   in_test && /^- \*\*Result:\*\*/ {
+    saw_result = 1
     val = $0
     sub(/^- \*\*Result:\*\*[[:space:]]*/, "", val)
     gsub(/[[:space:]]+$/, "", val)
@@ -57,13 +65,18 @@ RESULTS=$(awk '
     } else if (val ~ /^issue/ || val ~ /^fail/ || val ~ /^partial/) {
       print "issue"
     } else {
-      # Unknown value — treat as issue (defensive), log for debugging
-      printf "finalize-uat-status: unrecognized Result value: %s\n", val > "/dev/stderr"
-      print "issue"
+      print "__unknown__:" val
     }
     next
   }
-  /^### / { in_test = 0 }
+  /^### / {
+    if (in_test && saw_result == 0) print "__missing__"
+    in_test = 0
+    saw_result = 0
+  }
+  END {
+    if (in_test && saw_result == 0) print "__missing__"
+  }
 ' "$UAT_FILE")
 
 # Count results
@@ -72,9 +85,23 @@ SKIPPED=0
 ISSUES=0
 EMPTY=0
 TOTAL=0
+UNKNOWN=0
+MISSING=0
 
 while IFS= read -r result; do
   [ -z "$result" ] && continue
+  case "$result" in
+    __unknown__:*)
+      printf 'finalize-uat-status: unrecognized Result value: %s\n' "${result#__unknown__:}" >&2
+      UNKNOWN=$((UNKNOWN + 1))
+      continue
+      ;;
+    __missing__)
+      printf 'finalize-uat-status: missing Result line in test block\n' >&2
+      MISSING=$((MISSING + 1))
+      continue
+      ;;
+  esac
   TOTAL=$((TOTAL + 1))
   case "$result" in
     pass)  PASSED=$((PASSED + 1)) ;;
@@ -83,6 +110,11 @@ while IFS= read -r result; do
     empty) EMPTY=$((EMPTY + 1)) ;;
   esac
 done <<< "$RESULTS"
+
+if [ "$UNKNOWN" -gt 0 ] || [ "$MISSING" -gt 0 ]; then
+  echo "finalize-uat-status: refusing to rewrite frontmatter due to malformed Result values" >&2
+  exit 1
+fi
 
 # Determine status
 # TOTAL=0 means no test entries found — file is incomplete/malformed
