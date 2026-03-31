@@ -1124,39 +1124,32 @@ if [ -f "$EXEC_STATE_FILE" ]; then
 fi
 echo "execution_state=$EXEC_STATE"
 
-# --- UAT issue extraction function ---
-# Parses a UAT file and emits pipe-delimited issue lines (ID|severity|description|round).
-# Used inline by both single-phase and milestone extraction below.
-# Usage: _pd_extract_issues_from_uat <uat-file> [round]
-_pd_extract_issues_from_uat() {
-  local _uat_f="$1"
-  local _round="${2:-1}"
-  [ -f "$_uat_f" ] || return 0
-  awk -v rnd="$_round" '
-    function tlwr(s,    i,c,o) {
-      o=""; for(i=1;i<=length(s);i++){c=substr(s,i,1);if(c>="A"&&c<="Z")c=sprintf("%c",index("ABCDEFGHIJKLMNOPQRSTUVWXYZ",c)+96);o=o c}; return o
-    }
-    function emit() {
-      if(desc==""&&inl!="")desc=inl; if(desc=="")desc="(no description)"
-      if(sev==""){ld=tlwr(desc);if(ld~/crash|broken|error|doesnt work|fails|exception/)sev="critical";else if(ld~/wrong|incorrect|missing|not working|bug/)sev="major";else if(ld~/minor|cosmetic|nitpick|small|typo|polish/)sev="minor";else sev="major"}
-      gsub(/\|/,"-",desc); printf "%s|%s|%s|%s\n",id,sev,desc,rnd; hi=0;desc="";sev="";inl=""
-    }
-    /^### [PD][0-9]/{if(hi)emit();id=$2;sub(/:$/,"",id);hi=0;desc="";sev="";inl="";next}
-    /^- \*\*Result:\*\*/{v=$0;sub(/^- \*\*Result:\*\*[[:space:]]*/,"",v);gsub(/[[:space:]]+$/,"",v);if(tlwr(v)~/^(issue|fail|failed|partial)/)hi=1;next}
-    hi&&/^- \*\*Issue:\*\*/{t=$0;sub(/^- \*\*Issue:\*\*[[:space:]]*/,"",t);gsub(/[[:space:]]+$/,"",t);if(t!=""&&t!="{if result=issue}")inl=t;next}
-    hi&&/^[[:space:]]*- Description:/{d=$0;sub(/^[[:space:]]*- Description:[[:space:]]*/,"",d);gsub(/[[:space:]]+$/,"",d);desc=d;if(sev!="")emit();next}
-    hi&&/^[[:space:]]*- Severity:/{s=$0;sub(/^[[:space:]]*- Severity:[[:space:]]*/,"",s);gsub(/[[:space:]]+$/,"",s);sev=tlwr(s);if(desc!=""||inl!="")emit();next}
-    /^### /||/^## /{if(hi)emit();hi=0;desc="";sev="";inl=""}
-    END{if(hi)emit()}
-  ' "$_uat_f"
+# --- UAT issue extraction ---
+# Writes the awk program to a temp file and runs it with `awk -f`. This avoids
+# a confirmed bash bug where awk programs inside functions called via $()
+# command substitution produce empty output in Claude Code's template expansion
+# context, despite working in all terminal contexts. Trivial awk patterns and
+# direct awk invocations work; only function-scoped awk via $() fails.
+_PD_AWK_PROG="/tmp/.vbw-uat-awk-$$.awk"
+cat > "$_PD_AWK_PROG" << 'AWKEOF'
+function tlwr(s,    i,c,o) {
+  o=""; for(i=1;i<=length(s);i++){c=substr(s,i,1);if(c>="A"&&c<="Z")c=sprintf("%c",index("ABCDEFGHIJKLMNOPQRSTUVWXYZ",c)+96);o=o c}; return o
 }
+function emit() {
+  if(desc==""&&inl!="")desc=inl; if(desc=="")desc="(no description)"
+  if(sev==""){ld=tlwr(desc);if(ld~/crash|broken|error|doesnt work|fails|exception/)sev="critical";else if(ld~/wrong|incorrect|missing|not working|bug/)sev="major";else if(ld~/minor|cosmetic|nitpick|small|typo|polish/)sev="minor";else sev="major"}
+  gsub(/\|/,"-",desc); printf "%s|%s|%s|%s\n",id,sev,desc,rnd; hi=0;desc="";sev="";inl=""
+}
+/^### [PD][0-9]/{if(hi)emit();id=$2;sub(/:$/,"",id);hi=0;desc="";sev="";inl="";next}
+/^- \*\*Result:\*\*/{v=$0;sub(/^- \*\*Result:\*\*[[:space:]]*/,"",v);gsub(/[[:space:]]+$/,"",v);if(tlwr(v)~/^(issue|fail|failed|partial)/)hi=1;next}
+hi&&/^- \*\*Issue:\*\*/{t=$0;sub(/^- \*\*Issue:\*\*[[:space:]]*/,"",t);gsub(/[[:space:]]+$/,"",t);if(t!=""&&t!="{if result=issue}")inl=t;next}
+hi&&/^[[:space:]]*- Description:/{d=$0;sub(/^[[:space:]]*- Description:[[:space:]]*/,"",d);gsub(/[[:space:]]+$/,"",d);desc=d;if(sev!="")emit();next}
+hi&&/^[[:space:]]*- Severity:/{s=$0;sub(/^[[:space:]]*- Severity:[[:space:]]*/,"",s);gsub(/[[:space:]]+$/,"",s);sev=tlwr(s);if(desc!=""||inl!="")emit();next}
+/^### /||/^## /{if(hi)emit();hi=0;desc="";sev="";inl=""}
+END{if(hi)emit()}
+AWKEOF
 
 # --- Inline UAT extraction for needs_uat_remediation ---
-# Extracts issue summary directly, using the UAT file path already resolved
-# during phase scanning. Avoids launching extract-uat-issues.sh as a subprocess
-# because the subprocess consistently fails in Claude Code's template expansion
-# context (the awk parser produces empty output, triggering the consistency
-# guard) despite working in all terminal contexts.
 if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" ]; then
   # Re-resolve UAT file if not captured during loop (e.g., routing override)
   if [ -z "$UAT_ISSUES_FILE" ] || [ ! -f "$UAT_ISSUES_FILE" ]; then
@@ -1170,48 +1163,10 @@ if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" 
     fi
   fi
   if [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_ISSUES_FILE" ]; then
-    # Use the phase number already computed during the scan loop, not derived
-    # from the file path (which breaks for round-dir UAT paths like
-    # remediation/uat/round-02/R02-UAT.md where dirname gives "round-02").
     _pd_uat_phase="${UAT_ISSUES_PHASE}"
     _pd_uat_fname=$(basename "$UAT_ISSUES_FILE")
     _pd_uat_round=$((UAT_ROUND_COUNT + 1))
-    # Diagnostic: log extraction inputs and awk behavior to temp file
-    _pd_diag="/tmp/.vbw-uat-extract-diag-$$.txt"
-    {
-      echo "UAT_ISSUES_FILE=$UAT_ISSUES_FILE"
-      echo "FULL_PATH=$(cd "$(dirname "$UAT_ISSUES_FILE")" 2>/dev/null && pwd -P)/$(basename "$UAT_ISSUES_FILE")"
-      echo "FILE_EXISTS=$([ -f "$UAT_ISSUES_FILE" ] && echo yes || echo no)"
-      echo "FILE_SIZE=$(wc -c < "$UAT_ISSUES_FILE" 2>/dev/null || echo 0)"
-      echo "FILE_LINES=$(wc -l < "$UAT_ISSUES_FILE" 2>/dev/null || echo 0)"
-      echo "RESULT_HEADERS=$(grep -c '^### [PD][0-9]' "$UAT_ISSUES_FILE" 2>/dev/null || echo 0)"
-      echo "RESULT_ISSUES=$(grep -ci '^\- \*\*Result:\*\*.*issue' "$UAT_ISSUES_FILE" 2>/dev/null || echo 0)"
-      echo "AWK_PATH=$(which awk 2>/dev/null)"
-      echo "BASH_VERSION=$BASH_VERSION"
-      echo "PWD=$PWD"
-    } > "$_pd_diag" 2>&1
-    _pd_uat_issues=$(_pd_extract_issues_from_uat "$UAT_ISSUES_FILE" "$_pd_uat_round" 2>>"$_pd_diag") || _pd_uat_issues=""
-    echo "AWK_OUTPUT_LENGTH=${#_pd_uat_issues}" >> "$_pd_diag" 2>/dev/null
-    echo "AWK_OUTPUT=[$_pd_uat_issues]" >> "$_pd_diag" 2>/dev/null
-    # Diagnostic: run a trivial awk to test if pattern matching works at all
-    _pd_awk_test=$(awk '/^### [PD][0-9]/{print NR": "$0}' "$UAT_ISSUES_FILE" 2>&1) || true
-    echo "TRIVIAL_AWK_TEST=[$_pd_awk_test]" >> "$_pd_diag" 2>/dev/null
-    # Diagnostic: test the Result pattern
-    _pd_awk_result=$(awk '/\*\*Result:\*\*/{print NR": "$0}' "$UAT_ISSUES_FILE" 2>&1) || true
-    echo "RESULT_AWK_TEST=[$_pd_awk_result]" >> "$_pd_diag" 2>/dev/null
-    # Diagnostic: dump first few lines of the file
-    echo "FILE_HEAD=[$(head -5 "$UAT_ISSUES_FILE" 2>/dev/null | cat -v)]" >> "$_pd_diag" 2>/dev/null
-    # Diagnostic: check if the function body is intact
-    echo "FUNC_CHECK=$(type _pd_extract_issues_from_uat 2>&1 | head -3)" >> "$_pd_diag" 2>/dev/null
-    # Diagnostic: dump FULL function body to separate file
-    type _pd_extract_issues_from_uat > /tmp/.vbw-uat-func-dump-$$.txt 2>&1
-    # Diagnostic: run the awk directly (not via function) with stderr captured
-    _pd_direct_awk=$(awk -v rnd="$_pd_uat_round" '
-      /^### [PD][0-9]/{id=$2;sub(/:$/,"",id);hi=0;next}
-      /^- \*\*Result:\*\*/{v=$0;sub(/^- \*\*Result:\*\*[[:space:]]*/,"",v);gsub(/[[:space:]]+$/,"",v);if(v~/^[Ii]ssue/)hi=1;next}
-      hi&&/^[[:space:]]*- Severity:/{s=$0;sub(/^[[:space:]]*- Severity:[[:space:]]*/,"",s);gsub(/[[:space:]]+$/,"",s);printf "%s|%s|%s\n",id,s,rnd;hi=0;next}
-    ' "$UAT_ISSUES_FILE" 2>&1) || true
-    echo "DIRECT_AWK_TEST=[$_pd_direct_awk]" >> "$_pd_diag" 2>/dev/null
+    _pd_uat_issues=$(awk -v rnd="$_pd_uat_round" -f "$_PD_AWK_PROG" "$UAT_ISSUES_FILE" 2>/dev/null) || _pd_uat_issues=""
     _pd_issue_count=0
     if [ -n "$_pd_uat_issues" ]; then
       _pd_issue_count=$(printf '%s\n' "$_pd_uat_issues" | wc -l | tr -d ' ')
@@ -1222,8 +1177,6 @@ if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" 
       printf '%s\n' "$_pd_uat_issues"
       echo "---UAT_EXTRACT_END---"
     else
-      # Fallback: extraction produced no issues despite issues_found status.
-      # Emit a diagnostic marker so downstream consumers know to read the file directly.
       echo "---UAT_EXTRACT_START---"
       echo "uat_extract_error=true uat_file=${_pd_uat_fname}"
       echo "---UAT_EXTRACT_END---"
@@ -1232,7 +1185,6 @@ if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" 
 fi
 
 # --- Inline milestone UAT extraction ---
-# Same pattern: inline extraction for milestone UAT issues.
 if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; then
   echo "---MILESTONE_UAT_EXTRACT_START---"
   _pd_old_ifs="$IFS"
@@ -1254,7 +1206,7 @@ if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; the
       if type count_uat_rounds &>/dev/null; then
         _pd_ms_round=$(( $(count_uat_rounds "$_pd_ms_dir" "$_pd_ms_phase") + 1 ))
       fi
-      _pd_ms_issues=$(_pd_extract_issues_from_uat "$_pd_ms_uat" "$_pd_ms_round") || _pd_ms_issues=""
+      _pd_ms_issues=$(awk -v rnd="$_pd_ms_round" -f "$_PD_AWK_PROG" "$_pd_ms_uat" 2>/dev/null) || _pd_ms_issues=""
       _pd_ms_count=0
       if [ -n "$_pd_ms_issues" ]; then
         _pd_ms_count=$(printf '%s\n' "$_pd_ms_issues" | wc -l | tr -d ' ')
@@ -1274,4 +1226,5 @@ if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; the
   echo "---MILESTONE_UAT_EXTRACT_END---"
 fi
 
+rm -f "$_PD_AWK_PROG" 2>/dev/null
 exit 0
