@@ -209,10 +209,20 @@ else
   fail "verify: missing explicit-phase qa_status override guidance"
 fi
 
-if grep -q 'Only proceed to UAT when the PASS is fresh for the target phase' "$VERIFY_FILE"; then
-  pass "verify: explicit QA gate requires fresh PASS for target phase"
+if grep -q 'Only proceed to UAT when the PASS is both gate-authoritative and fresh for the target phase' "$VERIFY_FILE"; then
+  pass "verify: explicit QA gate requires gate-authoritative fresh PASS for target phase"
 else
-  fail "verify: missing fresh-PASS requirement in explicit QA gate"
+  fail "verify: missing gate-authoritative fresh-PASS requirement in explicit QA gate"
+fi
+
+if grep -q 'qa-result-gate\.sh' "$VERIFY_FILE" \
+  && grep -q 'QA_GATE_ROUTING=' "$VERIFY_FILE" \
+  && grep -q 'PROCEED_TO_UAT' "$VERIFY_FILE" \
+  && grep -q 'QA_RERUN_REQUIRED' "$VERIFY_FILE" \
+  && grep -q 'REMEDIATION_REQUIRED' "$VERIFY_FILE"; then
+  pass "verify: standalone UAT honors deterministic QA gate before UAT"
+else
+  fail "verify: missing deterministic qa-result-gate enforcement before UAT"
 fi
 
 if grep -q 'echo "verify_context=unavailable"' "$VIBE_FILE"; then
@@ -221,22 +231,29 @@ else
   fail "vibe: routed verify precompute missing fail-closed verify_context sentinel"
 fi
 
-if grep -q '_uat_stage=' "$VERIFY_FILE" && grep -q '_qa_stage=' "$VERIFY_FILE" && grep -q 'research|plan|execute|fix|verify|done' "$VERIFY_FILE"; then
-  pass "verify: remediation-only precompute is driven by normalized remediation stages"
+if grep -q 'compile-verify-context-for-uat\.sh' "$VERIFY_FILE"; then
+  pass "verify: precomputed UAT context uses shared scope resolver"
 else
-  fail "verify: remediation-only precompute still appears history-driven instead of normalized-state driven"
+  fail "verify: precomputed UAT context missing shared scope resolver"
 fi
 
-if grep -q 'grep '\''^stage=' "$VIBE_FILE" && grep -q '_uat_stage=' "$VIBE_FILE" && grep -q '_qa_stage=' "$VIBE_FILE"; then
-  pass "vibe: remediation-only precompute is driven by normalized remediation stages"
+if grep -q 'compile-verify-context-for-uat\.sh' "$VIBE_FILE"; then
+  pass "vibe: precomputed UAT context uses shared scope resolver"
 else
-  fail "vibe: remediation-only precompute still appears history-driven instead of normalized-state driven"
+  fail "vibe: precomputed UAT context missing shared scope resolver"
 fi
 
 if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$ROOT/references/execute-protocol.md"; then
   pass "execute-protocol: QA remediation verify uses remediation-only verify context"
 else
   fail "execute-protocol: QA remediation verify missing remediation-only verify context"
+fi
+
+if grep -q 'verify the exception is documented with non-fixable justification and that the justification is credible for this FAIL' "$ROOT/references/execute-protocol.md" \
+  && grep -q 'documentation alone is insufficient when the original FAIL still appears fixable via code or plan amendment' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: remediation QA rejects unjustified process-exception labels"
+else
+  fail "execute-protocol: remediation QA guidance still allows documentation-only process-exception loophole"
 fi
 
 if grep -q 'After QA persists VERIFICATION.md (and only after that), run the verification threshold gate' "$ROOT/references/execute-protocol.md"; then
@@ -251,10 +268,25 @@ else
   fail "vibe: QA remediation verify missing remediation-only verify context"
 fi
 
-if grep -q 'PDIR=".vbw-planning/phases/{target-slug}"' "$VERIFY_FILE" && grep -q '_uat_stage=' "$VERIFY_FILE" && grep -q '_qa_stage=' "$VERIFY_FILE"; then
-  pass "verify: misnamed-plan refresh recomputes remediation scope from active state files"
+if grep -q 'verify the exception is documented with non-fixable justification and that the justification is credible for this FAIL' "$VIBE_FILE" \
+  && grep -q 'documentation alone is insufficient when the original FAIL still appears fixable via code or plan amendment' "$VIBE_FILE"; then
+  pass "vibe: remediation QA rejects unjustified process-exception labels"
 else
-  fail "verify: misnamed-plan refresh still appears history-driven instead of state-driven"
+  fail "vibe: remediation QA guidance still allows documentation-only process-exception loophole"
+fi
+
+if grep -q 'compile-verify-context-for-uat\.sh' "$VERIFY_FILE"; then
+  pass "verify: misnamed-plan refresh recomputes UAT scope through shared resolver"
+else
+  fail "verify: misnamed-plan refresh missing shared UAT scope resolver"
+fi
+
+if grep -q '_uat_state_file=.*remediation/uat/\.uat-remediation-stage' "$VERIFY_FILE" \
+  && grep -q '_uat_legacy_file=.*\.uat-remediation-stage' "$VERIFY_FILE" \
+  && grep -q '_uat_state_exists' "$VERIFY_FILE"; then
+  pass "verify: remediation lifecycle advance has state-existence guard (new-format and legacy)"
+else
+  fail "verify: remediation lifecycle advance missing state-existence guard before needs-round"
 fi
 
 echo ""
@@ -326,10 +358,30 @@ else
   fail "execute-protocol: missing source_verification_path/verification_path in QA remediation metadata parsing"
 fi
 
+if grep -Eq 'source_plan`? must reference an original plan in the current phase only' "$ROOT/references/execute-protocol.md" \
+  && grep -Eq 'source_plan`? must reference an original plan in the current phase only' "$VIBE_FILE"; then
+  pass "execute-protocol/vibe: plan-amendment source_plan is constrained to current-phase original plans"
+else
+  fail "execute-protocol/vibe: missing current-phase-only constraint for plan-amendment source_plan"
+fi
+
+if grep -q 'carry forward the nearest earlier verification artifact in the remediation chain that still contains the unresolved FAILs' "$ROOT/references/execute-protocol.md" \
+  && grep -q 'carry forward the nearest earlier verification artifact in the remediation chain that still contains the unresolved FAILs' "$VIBE_FILE"; then
+  pass "execute-protocol/vibe: round 02+ planning carries unresolved FAIL source forward across gate-rejected PASS rounds"
+else
+  fail "execute-protocol/vibe: missing unresolved FAIL carry-forward guidance for round 02+ remediation planning"
+fi
+
 if grep -q 'verification_path=' "$QA_FILE" && grep -q 'Output path: {VERIF_PATH}' "$QA_FILE"; then
   pass "qa: uses persisted verification_path contract for standalone QA output"
 else
   fail "qa: missing persisted verification_path contract for standalone QA output"
+fi
+
+if grep -q 'qa-result-gate\.sh' "$QA_FILE" && grep -q 'not authoritative' "$QA_FILE"; then
+  pass "qa: standalone remediation QA reruns deterministic gate before trusting round-scoped PASS artifacts"
+else
+  fail "qa: missing deterministic gate reconciliation for standalone remediation QA"
 fi
 
 if grep -q 'Determine verification scope from `VERIF_PATH`' "$QA_FILE"; then

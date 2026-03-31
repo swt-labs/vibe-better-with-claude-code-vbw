@@ -10,6 +10,7 @@ set -euo pipefail
 # - Orchestrator passes output path to QA in the task description
 # - execute-protocol.md describes QA calling write-verification.sh (not orchestrator)
 # - verification-protocol.md reflects QA-side persistence
+# - QA remediation guidance requires judging process-exception validity, not mere documentation
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -191,6 +192,20 @@ if grep -q "QA.*Can verify, can't write" "$ROOT/README.md"; then
   fail "18: README permission model still says QA 'can't write' without qualifying deterministic writer"
 else
   pass "18: README permission model QA line does not have unqualified 'can't write'"
+fi
+
+# 19. QA remediation instructions require process-exception credibility, not mere docs
+if grep -q 'Process-exception.*justification is credible for this specific FAIL' "$QA_AGENT"; then
+  pass "19: vbw-qa.md requires QA to judge process-exception credibility"
+else
+  fail "19: vbw-qa.md still treats process-exception as documentation-only"
+fi
+
+# 20. QA remediation instructions keep fixable issues open despite process-exception labels
+if grep -q 'documentation alone is insufficient when code-fix or plan-amendment is still realistically available' "$QA_AGENT"; then
+  pass "20: vbw-qa.md keeps fixable FAILs open despite process-exception paperwork"
+else
+  fail "20: vbw-qa.md missing guard against laundering fixable FAILs through process-exception paperwork"
 fi
 
 # ── Summary ──────────────────────────────────────────────────────────

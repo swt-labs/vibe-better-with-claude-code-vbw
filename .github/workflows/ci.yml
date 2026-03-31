@@ -15,31 +15,8 @@ jobs:
       - name: Install ShellCheck
         run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
 
-      - name: ShellCheck
-        run: |
-          failed=0
-          while IFS= read -r -d '' file; do
-            if ! shellcheck -S warning "$file"; then
-              failed=1
-            fi
-          done < <(find scripts hooks -type f -name "*.sh" -print0)
-          if [ "$failed" -ne 0 ]; then
-            echo "::error::ShellCheck found issues in one or more files (see above)"
-            exit 1
-          fi
-
-      - name: Shell syntax check
-        run: |
-          failed=0
-          while IFS= read -r -d '' file; do
-            if ! bash -n "$file"; then
-              echo "::error file=$file::Syntax error in $file"
-              failed=1
-            fi
-          done < <(find scripts testing -type f -name "*.sh" -print0)
-          if [ "$failed" -ne 0 ]; then
-            exit 1
-          fi
+      - name: Run shell lint checks
+        run: bash testing/run-lint.sh
 
   bats-tests:
     name: Bats Tests (shard ${{ matrix.shard }})
@@ -65,19 +42,40 @@ jobs:
           SHARD: ${{ matrix.shard }}
           TOTAL_SHARDS: 4
         run: |
-          files=(tests/*.bats)
-          shard_files=()
-          for i in "${!files[@]}"; do
-            if [ $((i % TOTAL_SHARDS)) -eq "$SHARD" ]; then
-              shard_files+=("${files[$i]}")
-            fi
-          done
-          echo "Shard $SHARD: running ${#shard_files[@]} of ${#files[@]} bats files"
-          if [ "${#shard_files[@]}" -eq 0 ]; then
-            echo "Shard $SHARD: no bats files assigned, skipping"
+          files=()
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            files+=("$file")
+          done < <(bash testing/list-bats-files.sh --shardable)
+          bash testing/run-bats-shard.sh "$SHARD" "$TOTAL_SHARDS" "${files[@]}"
+
+  bats-serial:
+    name: Bats Tests (serial)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats-core
+        run: |
+          git clone --depth 1 --branch v1.13.0 https://github.com/bats-core/bats-core.git /tmp/bats-core
+          sudo /tmp/bats-core/install.sh /usr/local
+          bats -v
+
+      - name: Install jq
+        run: sudo apt-get install -y -qq jq
+
+      - name: Run serial bats files
+        run: |
+          files=()
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            files+=("$file")
+          done < <(bash testing/list-bats-files.sh --serial)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No serial bats files configured, skipping"
             exit 0
           fi
-          bats "${shard_files[@]}"
+          bats "${files[@]}"
 
   contract-tests:
     name: Contract Tests
@@ -125,6 +123,7 @@ jobs:
           run_check "dev-recovery-guidance"    "bash testing/verify-dev-recovery-guidance.sh"
           run_check "live-validation-policy"   "bash testing/verify-live-validation-policy.sh"
           run_check "ghost-team-cleanup"       "bash testing/verify-ghost-team-cleanup.sh"
+          run_check "ci-workflow-contract"     "bash testing/verify-ci-workflow-contract.sh"
           run_check "qa-persistence-contract"  "bash testing/verify-qa-persistence-contract.sh"
 
           failures=0
@@ -165,14 +164,16 @@ jobs:
   test:
     name: Test
     if: always()
-    needs: [bats-tests, contract-tests]
+    needs: [bats-tests, bats-serial, contract-tests, lint]
     runs-on: ubuntu-latest
     steps:
       - name: Check test results
         run: |
-          if [ "${{ needs.bats-tests.result }}" != "success" ] || [ "${{ needs.contract-tests.result }}" != "success" ]; then
+          if [ "${{ needs.bats-tests.result }}" != "success" ] || [ "${{ needs.bats-serial.result }}" != "success" ] || [ "${{ needs.contract-tests.result }}" != "success" ] || [ "${{ needs.lint.result }}" != "success" ]; then
             echo "One or more test jobs failed:"
+            echo "  lint: ${{ needs.lint.result }}"
             echo "  bats-tests: ${{ needs.bats-tests.result }}"
+            echo "  bats-serial: ${{ needs.bats-serial.result }}"
             echo "  contract-tests: ${{ needs.contract-tests.result }}"
             exit 1
           fi

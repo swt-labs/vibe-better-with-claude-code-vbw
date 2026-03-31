@@ -641,3 +641,33 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "^plan_path=$"
 }
+
+# --- needs-round guard tests ---
+
+@test "needs-round fails when no state file exists (prevents phantom round-02)" {
+  # Regression test: calling needs-round without prior init used to silently
+  # create round-02 from a phantom round-01 default (get_round() returns "01"
+  # when no state file exists, then start_new_round() increments to "02").
+  # This happened when the LLM incorrectly called needs-round during first-time
+  # UAT instead of only during re-verification after remediation.
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 1 ]
+  echo "$output" | grep -qi "no UAT remediation state exists"
+  # No state file or round directory should be created
+  [ ! -f "$PHASE_DIR/remediation/uat/.uat-remediation-stage" ]
+  [ ! -d "$PHASE_DIR/remediation/uat/round-02" ]
+}
+
+@test "needs-round succeeds when state file exists (normal re-verification)" {
+  bash "$SCRIPTS_DIR/uat-remediation-state.sh" init "$PHASE_DIR" "major" >/dev/null
+  # Advance through to done
+  bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "research" ]
+  echo "$output" | grep -q "^round=02$"
+  [ -d "$PHASE_DIR/remediation/uat/round-02" ]
+}

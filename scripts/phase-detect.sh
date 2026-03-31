@@ -4,16 +4,16 @@ trap 'exit 0' EXIT
 # Pre-compute all project state for implement.md and other commands.
 # Output: key=value pairs on stdout, one per line. Exit 0 always.
 
-PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
-
-# Source shared UAT helpers (extract_status_value, latest_non_source_uat)
 _SCRIPT_DIR_PD="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=uat-utils.sh
-. "$_SCRIPT_DIR_PD/uat-utils.sh"
-# shellcheck source=summary-utils.sh
-. "$_SCRIPT_DIR_PD/summary-utils.sh"
+SCRIPT_DIR="$_SCRIPT_DIR_PD"
+PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+if [ -f "$_SCRIPT_DIR_PD/summary-utils.sh" ]; then
+  . "$_SCRIPT_DIR_PD/summary-utils.sh"
+fi
+if [ -f "$_SCRIPT_DIR_PD/uat-utils.sh" ]; then
+  . "$_SCRIPT_DIR_PD/uat-utils.sh"
+fi
 if [ -f "$_SCRIPT_DIR_PD/phase-state-utils.sh" ]; then
-  # shellcheck source=phase-state-utils.sh
   . "$_SCRIPT_DIR_PD/phase-state-utils.sh"
 fi
 
@@ -30,6 +30,23 @@ normalize_qa_remediation_stage() {
     plan|execute|verify|done) echo "$1" ;;
     *) echo "none" ;;
   esac
+}
+
+verification_writer() {
+  local verification_file="$1"
+  [ -f "$verification_file" ] || return 0
+  awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^writer:/ { sub(/^writer:[[:space:]]*/, ""); print; exit }
+  ' "$verification_file" 2>/dev/null
+}
+
+qa_gate_routing_for_phase() {
+  local phase_dir="$1"
+  [ -f "$_SCRIPT_DIR_PD/qa-result-gate.sh" ] || return 0
+  bash "$_SCRIPT_DIR_PD/qa-result-gate.sh" "$phase_dir" 2>/dev/null | awk -F= '/^qa_gate_routing=/{print $2; exit}'
 }
 
 # --- jq availability ---
@@ -556,8 +573,18 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
               in_fm && /^---[[:space:]]*$/ { exit }
               in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
             ' "$_uv_verif" 2>/dev/null) || _qa_done_result=""
+            _qa_done_result=$(printf '%s' "$_qa_done_result" | tr '[:lower:]' '[:upper:]')
             case "$_qa_done_result" in
               PASS)
+                _qa_done_gate_routing=$(qa_gate_routing_for_phase "$_uv_dir")
+                case "${_qa_done_gate_routing:-}" in
+                  REMEDIATION_REQUIRED)
+                    QA_STATUS="failed"
+                    ;;
+                  QA_RERUN_REQUIRED|"")
+                    QA_STATUS="pending"
+                    ;;
+                  PROCEED_TO_UAT)
                 # Staleness check for remediated path
                 _vac_rem=$(awk '
                   BEGIN { in_fm=0 }
@@ -584,6 +611,8 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
                     QA_STATUS="remediated"
                   fi
                 fi
+                    ;;
+                esac
                 ;;
               *) QA_STATUS="failed" ;;
             esac
@@ -597,8 +626,21 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
             in_fm && /^---[[:space:]]*$/ { exit }
             in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
           ' "$_uv_verif" 2>/dev/null) || _qa_result=""
+          _qa_result=$(printf '%s' "$_qa_result" | tr '[:lower:]' '[:upper:]')
           case "$_qa_result" in
             PASS)
+              _qa_gate_routing=$(qa_gate_routing_for_phase "$_uv_dir")
+              case "${_qa_gate_routing:-}" in
+                REMEDIATION_REQUIRED)
+                  QA_STATUS="failed"
+                  ;;
+                QA_RERUN_REQUIRED|"")
+                  QA_STATUS="pending"
+                  ;;
+                PROCEED_TO_UAT)
+                  ;;
+              esac
+              if [ "$QA_STATUS" != "failed" ] && [ "$QA_STATUS" != "pending" ]; then
               # Staleness check: if code changed since QA verified, treat as pending
               _vac=$(awk '
                 BEGIN { in_fm=0 }
@@ -624,6 +666,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
                 else
                   QA_STATUS="passed"
                 fi
+              fi
               fi
               ;;
             FAIL|PARTIAL) QA_STATUS="failed" ;;
@@ -685,11 +728,21 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
         in_fm && /^---[[:space:]]*$/ { exit }
         in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
       ' "$_qa_verif_scan" 2>/dev/null) || _qa_result_scan=""
+      _qa_result_scan=$(printf '%s' "$_qa_result_scan" | tr '[:lower:]' '[:upper:]')
       case "$_qa_result_scan" in
         FAIL|PARTIAL)
           _qa_attention="failed"
           ;;
         PASS)
+          _qa_gate_scan=$(qa_gate_routing_for_phase "$_qa_dir")
+          case "${_qa_gate_scan:-}" in
+            REMEDIATION_REQUIRED)
+              _qa_attention="failed"
+              ;;
+            QA_RERUN_REQUIRED|"")
+              _qa_attention="pending"
+              ;;
+            PROCEED_TO_UAT)
           _vac_scan=$(awk '
             BEGIN { in_fm=0 }
             NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
@@ -711,6 +764,8 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
               _qa_attention="pending"
             fi
           fi
+              ;;
+          esac
           ;;
         *)
           _qa_attention="pending"
@@ -773,6 +828,55 @@ if [ "$CFG_AUTO_UAT_EARLY" = "true" ] && [ "$HAS_UNVERIFIED_PHASES" = "true" ] &
       ;;
     # Don't override needs_uat_remediation, needs_reverification, needs_qa_remediation — those take priority
     *) ;;
+  esac
+fi
+
+# --- all_done QA-attention override: never archive while a terminal-UAT phase still needs QA attention ---
+# Only phases that already have terminal UAT should override all_done. Phases
+# with no UAT yet are handled by the normal lifecycle and auto_uat routing.
+if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; then
+  _QA_ATT_DIR="$PHASES_DIR/$FIRST_QA_ATTENTION_SLUG/"
+  _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
+  _QA_ATT_UAT_STATUS=""
+  if [ -f "$_QA_ATT_UAT" ]; then
+    _QA_ATT_UAT_STATUS=$(extract_status_value "$_QA_ATT_UAT")
+  fi
+
+  case "$_QA_ATT_UAT_STATUS" in
+    complete|passed)
+      case "$QA_ATTENTION_STATUS" in
+        failed)
+          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+          if [ -d "$_QA_ATT_DIR" ]; then
+            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+          fi
+          NEXT_PHASE_STATE="needs_qa_remediation"
+          QA_STATUS="failed"
+          ;;
+        verify)
+          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+          if [ -d "$_QA_ATT_DIR" ]; then
+            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+          fi
+          NEXT_PHASE_STATE="needs_qa_remediation"
+          QA_STATUS="remediating"
+          ;;
+        pending)
+          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+          if [ -d "$_QA_ATT_DIR" ]; then
+            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+          fi
+          NEXT_PHASE_STATE="needs_verification"
+          QA_STATUS="pending"
+          ;;
+      esac
+      ;;
   esac
 fi
 

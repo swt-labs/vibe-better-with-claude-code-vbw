@@ -442,6 +442,76 @@ EOF
   [[ "$output" == *"status=complete"* ]]
 }
 
+@test "finalize-uat-status: unrecognized Result value fails closed without rewriting frontmatter" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 01
+plan_count: 1
+status: in_progress
+started: 2026-03-27
+completed:
+total_tests: 2
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### P01-T1: Broken token
+
+- **Result:** `a``
+
+### P01-T2: Empty-ish token
+
+- **Result:** ````
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unrecognized Result value"* ]]
+  grep -q '^status: in_progress' "$uat"
+  grep -q '^passed: 0' "$uat"
+  grep -q '^skipped: 0' "$uat"
+  grep -q '^issues: 0' "$uat"
+}
+
+@test "finalize-uat-status: missing Result line in a test block fails closed without rewriting frontmatter" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 01
+plan_count: 1
+status: in_progress
+started: 2026-03-27
+completed:
+total_tests: 2
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### P01-T1: Missing result
+
+- **Expected:** Something should happen
+
+### P01-T2: Valid result
+
+- **Result:** pass
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing Result line"* ]]
+  grep -q '^status: in_progress' "$uat"
+  grep -q '^passed: 0' "$uat"
+  grep -q '^skipped: 0' "$uat"
+  grep -q '^issues: 0' "$uat"
+}
+
 @test "finalize-uat-status: injects completed date when field missing from frontmatter" {
   local uat="$TEST_TEMP_DIR/01-UAT.md"
   create_uat_file "$uat" <<'EOF'

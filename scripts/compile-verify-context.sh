@@ -27,6 +27,84 @@
 
 set -euo pipefail
 
+extract_frontmatter_array_items() {
+  local file_path="${1:-}"
+  local key_name="${2:-}"
+  [ -f "$file_path" ] || return 0
+  [ -n "$key_name" ] || return 0
+  awk -v key="$key_name" '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    function strip_quotes(v, first, last) {
+      first = substr(v, 1, 1)
+      last = substr(v, length(v), 1)
+      if ((first == "\"" && last == "\"") || (first == squote && last == squote)) {
+        return substr(v, 2, length(v) - 2)
+      }
+      return v
+    }
+    function emit_value(v) {
+      v = trim(v)
+      if (v == "") return
+      v = strip_quotes(v)
+      if (v != "") print v
+    }
+    function parse_flow_array(rest, i, ch, current, quote) {
+      rest = trim(rest)
+      if (rest !~ /^\[/) return 0
+      sub(/^\[/, "", rest)
+      sub(/\][[:space:]]*$/, "", rest)
+      current = ""
+      quote = ""
+      for (i = 1; i <= length(rest); i++) {
+        ch = substr(rest, i, 1)
+        if (quote == "") {
+          if (ch == "\"" || ch == squote) {
+            quote = ch
+            current = current ch
+            continue
+          }
+          if (ch == ",") {
+            emit_value(current)
+            current = ""
+            continue
+          }
+        } else if (ch == quote) {
+          quote = ""
+          current = current ch
+          continue
+        }
+        current = current ch
+      }
+      emit_value(current)
+      return 1
+    }
+    BEGIN {
+      in_fm = 0
+      in_arr = 0
+      squote = sprintf("%c", 39)
+    }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && $0 ~ ("^" key ":[[:space:]]*") {
+      rest = $0
+      sub("^" key ":[[:space:]]*", "", rest)
+      if (parse_flow_array(rest)) exit
+      in_arr = 1
+      next
+    }
+    in_fm && in_arr && /^[[:space:]]+- / {
+      line = $0
+      sub(/^[[:space:]]+- /, "", line)
+      emit_value(line)
+      next
+    }
+    in_fm && in_arr && /^[^[:space:]]/ { exit }
+  ' "$file_path" 2>/dev/null
+}
+
 _CVC_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$_CVC_SCRIPT_DIR/summary-utils.sh" ]; then
   # shellcheck source=summary-utils.sh
@@ -55,6 +133,7 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   LATEST_ROUND=""
   REMED_DIR=""
   REMED_KIND=""
+  _cvc_preferred_round=""
 
   _cvc_candidates=()
   _active_remediation=false
@@ -63,6 +142,12 @@ if [ "$REMEDIATION_ONLY" = true ]; then
     case "${_qa_stage:-none}" in
       verify|done)
         _cvc_candidates+=("$PHASE_DIR/remediation/qa")
+        _cvc_preferred_round=$(grep '^round=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+        if ! [[ "${_cvc_preferred_round:-}" =~ ^[0-9]+$ ]]; then
+          _cvc_preferred_round=""
+        elif [ -n "$_cvc_preferred_round" ]; then
+          _cvc_preferred_round=$(printf '%02d' "$((10#$_cvc_preferred_round))")
+        fi
         _active_remediation=true
         ;;
     esac
@@ -86,6 +171,21 @@ if [ "$REMEDIATION_ONLY" = true ]; then
 
   for _candidate in "${_cvc_candidates[@]}"; do
     [ -d "$_candidate" ] || continue
+    if [ "$_candidate" = "$PHASE_DIR/remediation/qa" ] && [ -n "$_cvc_preferred_round" ]; then
+      _preferred_round_dir="$_candidate/round-$_cvc_preferred_round"
+      if [ -d "$_preferred_round_dir" ] && \
+         ls "$_preferred_round_dir"/R"$_cvc_preferred_round"-PLAN.md >/dev/null 2>&1 && \
+         ls "$_preferred_round_dir"/R"$_cvc_preferred_round"-SUMMARY.md >/dev/null 2>&1 && \
+         is_summary_terminal "$_preferred_round_dir/R${_cvc_preferred_round}-SUMMARY.md"; then
+        LATEST_ROUND="$_cvc_preferred_round"
+        REMED_DIR="$_candidate"
+        REMED_KIND="qa"
+        break
+      fi
+      # Active QA remediation should not be hijacked by a stale higher round.
+      REMEDIATION_ONLY=false
+      break
+    fi
     _best_round_num=0
     _candidate_round=""
     for round_dir in "$_candidate"/round-*/; do
@@ -134,7 +234,7 @@ if [ "$REMEDIATION_ONLY" = true ]; then
 
   if [ -n "$LATEST_ROUND" ]; then
     rr=$(printf '%02d' "$LATEST_ROUND")
-    ALL_PLAN_FILES=$(find "$REMED_DIR/round-$rr" -maxdepth 1 -name "R${rr}-PLAN.md" 2>/dev/null | sort)
+    ALL_PLAN_FILES=$(find "$REMED_DIR/round-$rr" -maxdepth 1 \( -name "R${rr}-PLAN.md" -o -name "R${rr}-*-PLAN.md" \) 2>/dev/null | sort)
     SCOPE_HEADER="verify_scope=remediation round=$rr"
     # UAT remediation rounds write round-scoped UAT artifacts; QA remediation
     # rounds still hand off to the canonical phase-level UAT path.
@@ -198,7 +298,12 @@ while IFS= read -r plan_file; do
   # Try plan: first, fall back to round: (prefixed with R) for remediation plans
   PLAN_ID=$(awk '/^---$/{n++; next} n==1 && /^plan:/{v=$2; gsub(/^["'"'"']|["'"'"']$/, "", v); print v; exit}' "$plan_file" 2>/dev/null) || PLAN_ID=""
   if [ -z "$PLAN_ID" ]; then
-    PLAN_ID=$(awk '/^---$/{n++; next} n==1 && /^round:/{v=$2; gsub(/^["'"'"']|["'"'"']$/, "", v); print "R" v; exit}' "$plan_file" 2>/dev/null) || PLAN_ID=""
+    case "$(basename "$plan_file")" in
+      R*-PLAN.md) PLAN_ID="$(basename "$plan_file" | sed 's/-PLAN\.md$//')" ;;
+      *)
+        PLAN_ID=$(awk '/^---$/{n++; next} n==1 && /^round:/{v=$2; gsub(/^["'"'"']|["'"'"']$/, "", v); print "R" v; exit}' "$plan_file" 2>/dev/null) || PLAN_ID=""
+        ;;
+    esac
   fi
   TITLE=$(awk '/^---$/{n++; next} n==1 && /^title:/{sub(/^title: */, ""); gsub(/^["'"'"']|["'"'"']$/, ""); print; exit}' "$plan_file" 2>/dev/null) || TITLE=""
 
@@ -240,6 +345,9 @@ while IFS= read -r plan_file; do
   PLAN_DIR=$(dirname "$plan_file")
   if [ "$(basename "$plan_file")" = "PLAN.md" ] && [ -f "$PLAN_DIR/SUMMARY.md" ]; then
     SUMMARY_FILE="$PLAN_DIR/SUMMARY.md"
+  elif [[ "$PLAN_DIR" == */round-* ]] && [[ "$PLAN_BASE" =~ ^R[0-9][0-9](-.*)?$ ]]; then
+    ROUND_SUMMARY_BASE=$(printf '%s' "$PLAN_BASE" | sed 's/^\(R[0-9][0-9]\).*/\1/')
+    SUMMARY_FILE="$PLAN_DIR/${ROUND_SUMMARY_BASE}-SUMMARY.md"
   else
     SUMMARY_FILE=$(find "$PLAN_DIR" -maxdepth 1 ! -name '.*' -name "${PLAN_BASE}-SUMMARY.md" 2>/dev/null | head -1)
   fi
@@ -257,6 +365,15 @@ while IFS= read -r plan_file; do
       in_fm && /^status:/ { sub(/^status:[[:space:]]*/, ""); print; exit }
     ' "$SUMMARY_FILE" 2>/dev/null) || STATUS="unknown"
 
+    # Extract frontmatter files_modified array when present. This is the canonical
+    # source for remediation summaries, which aggregate changed files in YAML.
+    FILES_MODIFIED=$(extract_frontmatter_array_items "$SUMMARY_FILE" files_modified | awk '
+      {
+        files = files (files ? ", " : "") $0
+      }
+      END { print files }
+    ' 2>/dev/null) || FILES_MODIFIED=""
+
     # Extract "What Was Built" (first 5 lines after the heading)
     WHAT_BUILT=$(awk '
       /^## What Was Built/ { found=1; count=0; next }
@@ -265,43 +382,51 @@ while IFS= read -r plan_file; do
       found { count++; if (count <= 5) print; if (count >= 5) exit }
     ' "$SUMMARY_FILE" 2>/dev/null) || WHAT_BUILT=""
 
-    # Extract "Files Modified" section
-    FILES_MODIFIED=$(awk '
-      /^## Files Modified/ { found=1; next }
-      found && /^## / { exit }
-      found && /^[[:space:]]*$/ { next }
-      found && /^- / {
-        line = $0
-        sub(/^- /, "", line)
-        # Extract just the file path (before " -- ")
-        if (index(line, " -- ") > 0) {
-          line = substr(line, 1, index(line, " -- ") - 1)
+    # Canonical remediation summaries keep build notes under per-task
+    # sections (`### What Was Built`) rather than a top-level heading.
+    if [ -z "$WHAT_BUILT" ]; then
+      WHAT_BUILT=$(awk '
+        /^### What Was Built/ { found=1; next }
+        found && /^### / { found=0; next }
+        found && /^## / { found=0; next }
+        found && /^[[:space:]]*$/ { next }
+        found {
+          count++
+          if (count <= 5) print
         }
-        # Strip backticks
-        gsub(/`/, "", line)
-        files = files (files ? ", " : "") line
-      }
-      END { print files }
-    ' "$SUMMARY_FILE" 2>/dev/null) || FILES_MODIFIED=""
+      ' "$SUMMARY_FILE" 2>/dev/null) || WHAT_BUILT=""
+    fi
 
-    # Extract deviations from SUMMARY.md YAML frontmatter
-    DEVIATIONS=$(awk '
-      BEGIN { in_fm=0; in_dev=0 }
-      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-      in_fm && /^---[[:space:]]*$/ { exit }
-      in_fm && /^deviations:/ { in_dev=1; next }
-      in_fm && in_dev && /^[[:space:]]+- / {
-        line = $0
-        sub(/^[[:space:]]+- /, "", line)
-        gsub(/^"/, "", line); gsub(/"$/, "", line)
-        lc = tolower(line)
+    # Fallback for phase-root summaries that still list files in a body section.
+    if [ -z "$FILES_MODIFIED" ]; then
+      FILES_MODIFIED=$(awk '
+        /^## Files Modified/ { found=1; next }
+        found && /^## / { exit }
+        found && /^[[:space:]]*$/ { next }
+        found && /^- / {
+          line = $0
+          sub(/^- /, "", line)
+          # Extract just the file path (before " -- ")
+          if (index(line, " -- ") > 0) {
+            line = substr(line, 1, index(line, " -- ") - 1)
+          }
+          # Strip backticks
+          gsub(/`/, "", line)
+          files = files (files ? ", " : "") line
+        }
+        END { print files }
+      ' "$SUMMARY_FILE" 2>/dev/null) || FILES_MODIFIED=""
+    fi
+
+    # Extract deviations from SUMMARY.md YAML frontmatter (block or flow arrays)
+    DEVIATIONS=$(extract_frontmatter_array_items "$SUMMARY_FILE" deviations | awk '
+      {
+        lc = tolower($0)
         if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
-        items = items (items ? "; " : "") line
-        next
+        items = items (items ? "; " : "") $0
       }
-      in_fm && in_dev && /^[^[:space:]]/ { exit }
       END { print items }
-    ' "$SUMMARY_FILE" 2>/dev/null) || DEVIATIONS=""
+    ' 2>/dev/null) || DEVIATIONS=""
 
     # Fallback: extract deviations from body ## Deviations section
     # Dev agents frequently write deviations only in the body section,
@@ -309,12 +434,23 @@ while IFS= read -r plan_file; do
     # always receives deviation data regardless of where Dev wrote it.
     if [ -z "$DEVIATIONS" ]; then
       DEVIATIONS=$(awk '
-        /^## Deviations/ { found=1; next }
-        found && /^## / { exit }
+        BEGIN { found=0; in_comment=0 }
+        /^## Deviations/ || /^### Deviations/ { found=1; in_comment=0; next }
+        found && (/^## / || /^### /) { found=0; next }
         found && /^[[:space:]]*$/ { next }
-        found && /^- / {
+        found && /^[[:space:]]*<!--/ {
+          in_comment=1
+          if ($0 ~ /-->/) in_comment=0
+          next
+        }
+        found && in_comment {
+          if ($0 ~ /-->/) in_comment=0
+          next
+        }
+        found {
           line = $0
           sub(/^- /, "", line)
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
           # Check bold label for None/N/A before stripping (e.g., **N/A**: not applicable)
           if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
           # Strip bold prefix so "**Foo**: bar" becomes "bar"
@@ -322,7 +458,7 @@ while IFS= read -r plan_file; do
           if (line == "") next
           # Skip "None" / "None." / "N/A" / "None. <explanation>" / "No deviations" entries (case-insensitive)
           lc = tolower(line)
-          if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
+          if (lc ~ /^none(\.[[:space:]].*|\.?)$/ || lc ~ /^n\/a(\.[[:space:]].*|\.?)$/ || lc ~ /^na(\.[[:space:]].*|\.?)$/ || lc ~ /^no deviations($|[.:].*)/) next
           items = items (items ? "; " : "") line
         }
         END { print items }
@@ -368,6 +504,31 @@ if [ -n "$_cvc_phase_verif" ] && [ ! -f "$_cvc_phase_verif" ]; then
   _cvc_phase_verif=""
 fi
 
+_cvc_source_fail_verif=$(bash "${_CVC_SCRIPT_DIR}/resolve-verification-path.sh" plan-input "$PHASE_DIR" 2>/dev/null || true)
+if [ -n "$_cvc_source_fail_verif" ] && [ ! -f "$_cvc_source_fail_verif" ]; then
+  _cvc_source_fail_verif=""
+fi
+_cvc_source_fail_verif_missing=false
+_cvc_remediation_state_active=false
+if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
+  _cvc_remediation_state_active=true
+  _cvc_active_round=$(grep '^round=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+  if [[ "${_cvc_active_round:-}" =~ ^[0-9]+$ ]] && [ "$((10#${_cvc_active_round}))" -gt 1 ] 2>/dev/null; then
+    _cvc_prev_round=$(printf '%02d' "$((10#${_cvc_active_round} - 1))")
+    _cvc_expected_source_verif="$PHASE_DIR/remediation/qa/round-${_cvc_prev_round}/R${_cvc_prev_round}-VERIFICATION.md"
+    if [ ! -f "$_cvc_expected_source_verif" ]; then
+      _cvc_source_fail_verif_missing=true
+      _cvc_source_fail_verif=""
+    fi
+  fi
+  if [[ "${_cvc_active_round:-}" =~ ^[0-9]+$ ]] && [ -z "$_cvc_source_fail_verif" ]; then
+    _cvc_source_fail_verif_missing=true
+  fi
+fi
+if [ "$_cvc_source_fail_verif_missing" = false ] && [ -z "$_cvc_source_fail_verif" ] && [ -n "$_cvc_phase_verif" ] && [ "$_cvc_remediation_state_active" = false ]; then
+  _cvc_source_fail_verif="$_cvc_phase_verif"
+fi
+
 # QA round VERIFICATION.md files
 _cvc_qa_round_verifs=$(find "$PHASE_DIR" -path '*/remediation/qa/round-*/R*-VERIFICATION.md' 2>/dev/null | sort)
 
@@ -376,6 +537,9 @@ if [ -n "$_cvc_phase_verif" ] && [ -f "$_cvc_phase_verif" ]; then
   _cvc_has_verif_history=true
 fi
 if [ -n "$_cvc_qa_round_verifs" ]; then
+  _cvc_has_verif_history=true
+fi
+if [ "$_cvc_source_fail_verif_missing" = true ]; then
   _cvc_has_verif_history=true
 fi
 
@@ -413,6 +577,58 @@ if [ "$_cvc_has_verif_history" = true ]; then
         }
       }
     ' "$_cvc_phase_verif" 2>/dev/null || true
+
+  fi
+
+  # Emit structured FAIL resolution requirements from the current remediation
+  # planning input (phase-level on round 01, previous round verification on
+  # round 02+). QA uses this block as the authoritative set of FAIL_IDs that
+  # must be resolved in the current remediation round.
+  if [ "$_cvc_source_fail_verif_missing" = true ]; then
+    echo "--- ORIGINAL FAIL RESOLUTION STATUS ---"
+    echo "source_verification_missing=true"
+  elif [ -n "$_cvc_source_fail_verif" ] && [ -f "$_cvc_source_fail_verif" ]; then
+    echo "--- ORIGINAL FAIL RESOLUTION STATUS ---"
+    awk -F'|' '
+      function trim(v) {
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        return v
+      }
+      !/^\|/ { header_found = 0; next }
+      /^\|/ {
+        if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
+        if (!header_found) {
+          status_col = 0; id_col = 0; desc_col = 0
+          for (i = 2; i < NF; i++) {
+            cell = trim($i)
+            if (cell == "Status") status_col = i
+            if (cell == "ID") id_col = i
+            if (cell == "Truth/Condition") desc_col = i
+            if (cell == "Artifact") desc_col = i
+            if (cell == "Convention") desc_col = i
+            if (cell == "Description") desc_col = i
+            if (cell == "Link") desc_col = i
+            if (cell == "Pattern") desc_col = i
+            if (cell == "Requirement") desc_col = i
+            if (cell == "From") desc_col = i
+          }
+          if (status_col > 0) header_found = 1
+          next
+        }
+        if (status_col > 0) {
+          status = trim($(status_col))
+          gsub(/\*+/, "", status)
+          status = trim(status)
+          if (status == "FAIL") {
+            fail_index++
+            fail_id = (id_col > 0) ? trim($(id_col)) : ""
+            if (fail_id == "") fail_id = sprintf("FAIL-ROW-%02d", fail_index)
+            desc = (desc_col > 0) ? trim($(desc_col)) : "No description"
+            printf "FAIL_ID: %s | ORIGINAL: %s | RESOLUTION_REQUIRED: code-fix, plan-amendment, or documented process-exception\n", fail_id, desc
+          }
+        }
+      }
+    ' "$_cvc_source_fail_verif" 2>/dev/null || true
   fi
 
   # Per-round (chronological compounding)
