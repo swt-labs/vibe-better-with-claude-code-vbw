@@ -11,18 +11,10 @@ setup() {
   setup_temp_dir
   export _OS=$(uname)
 
-  # Build a minimal shim with just the functions under test
-  cat > "$TEST_TEMP_DIR/lifecycle-funcs.sh" <<'SHIM'
-file_mtime_epoch() {
-  local path="$1"
-  if [ "$_OS" = "Darwin" ]; then
-    stat -f %m "$path" 2>/dev/null || echo 0
-  else
-    stat -c %Y "$path" 2>/dev/null || echo 0
-  fi
-}
-SHIM
-  # Append lifecycle_artifacts_newer_than_cache from the real script
+  # Build a minimal shim with just the functions under test.
+  # Extract both functions from the real script so they stay in sync.
+  sed -n '/^file_mtime_epoch()/,/^}/p' \
+    "$SCRIPTS_DIR/vbw-statusline.sh" > "$TEST_TEMP_DIR/lifecycle-funcs.sh"
   sed -n '/^lifecycle_artifacts_newer_than_cache()/,/^}/p' \
     "$SCRIPTS_DIR/vbw-statusline.sh" >> "$TEST_TEMP_DIR/lifecycle-funcs.sh"
 
