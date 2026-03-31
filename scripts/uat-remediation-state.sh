@@ -397,7 +397,14 @@ case "$CMD" in
     ;;
 
   needs-round)
-    # Start a new remediation round: increment round, create dir, reset to research
+    # Start a new remediation round: increment round, create dir, reset to research.
+    # Guard: requires an existing state file — can't advance to "next round" if
+    # remediation was never initialized. Without this guard, get_round() defaults
+    # to "01" and start_new_round() creates round-02 from a phantom round-01.
+    if [ ! -f "$STATE_FILE" ] && [ ! -f "$LEGACY_STATE_FILE" ]; then
+      echo "Error: no UAT remediation state exists for $PHASE_DIR — cannot advance to next round without prior init" >&2
+      exit 1
+    fi
     start_new_round
     ;;
 

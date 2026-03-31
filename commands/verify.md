@@ -546,7 +546,15 @@ Discovered issue D{NN} recorded (severity: {level}).
 ```
 These are already recorded in the UAT.md and will flow into remediation alongside test failures. If no discovered issues: omit the section.
 
-**Remediation lifecycle advance (when `verify_scope=remediation`):**
+**Remediation lifecycle advance (ONLY when `verify_scope=remediation` — skip entirely for first-time UAT):**
+First, verify that UAT remediation state actually exists before running any lifecycle commands. If no state file exists, this is a first-time UAT — do NOT call `needs-round` or any remediation state command:
+```bash
+_uat_state_file="{phase-dir}/remediation/uat/.uat-remediation-stage"
+_uat_state_exists=false
+[ -f "$_uat_state_file" ] && _uat_state_exists=true
+```
+**If `_uat_state_exists=false`:** Skip this entire block — this is a first-time UAT, not a re-verification after remediation.
+**If `_uat_state_exists=true` AND `verify_scope=remediation`:**
 - If `status=issues_found`: Advance to the next remediation round:
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
