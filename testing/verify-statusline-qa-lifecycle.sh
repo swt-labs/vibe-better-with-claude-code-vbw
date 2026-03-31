@@ -36,18 +36,18 @@ echo ""
 # --- Structural: statusline checks UAT file status, not just VERIFICATION.md existence ---
 echo "--- Structural: QA indicator checks UAT status ---"
 
-# Test 1: statusline has uat_file detection (not just VERIFICATION.md check)
-if grep -q '_uat_file.*find.*UAT.md' "$ROOT/scripts/vbw-statusline.sh"; then
-  pass "statusline searches for UAT file in phase dir"
+# Test 1: statusline resolves the canonical current UAT (not just VERIFICATION.md check)
+if grep -q 'current_uat' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline resolves canonical current UAT via shared helper"
 else
-  fail "statusline searches for UAT file in phase dir"
+  fail "statusline resolves canonical current UAT via shared helper"
 fi
 
-# Test 2: statusline excludes SOURCE-UAT and round files from UAT detection
-if grep -q 'SOURCE-UAT\|UAT-round' "$ROOT/scripts/vbw-statusline.sh"; then
-  pass "statusline excludes SOURCE-UAT and round files from UAT detection"
+# Test 2: statusline relies on uat-utils exclusion/precedence rules instead of ad-hoc globs
+if grep -q 'latest_non_source_uat\|current_uat' "$ROOT/scripts/vbw-statusline.sh"; then
+  pass "statusline delegates SOURCE-UAT and round-dir precedence to uat-utils"
 else
-  fail "statusline excludes SOURCE-UAT and round files from UAT detection"
+  fail "statusline delegates SOURCE-UAT and round-dir precedence to uat-utils"
 fi
 
 # Test 3: statusline reads UAT status from frontmatter
