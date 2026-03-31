@@ -547,11 +547,12 @@ Discovered issue D{NN} recorded (severity: {level}).
 These are already recorded in the UAT.md and will flow into remediation alongside test failures. If no discovered issues: omit the section.
 
 **Remediation lifecycle advance (ONLY when `verify_scope=remediation` — skip entirely for first-time UAT):**
-First, verify that UAT remediation state actually exists before running any lifecycle commands. If no state file exists, this is a first-time UAT — do NOT call `needs-round` or any remediation state command:
+First, verify that UAT remediation state actually exists before running any lifecycle commands. If no state file exists (neither new-format nor legacy location), this is a first-time UAT — do NOT call `needs-round` or any remediation state command:
 ```bash
 _uat_state_file="{phase-dir}/remediation/uat/.uat-remediation-stage"
+_uat_legacy_file="{phase-dir}/.uat-remediation-stage"
 _uat_state_exists=false
-[ -f "$_uat_state_file" ] && _uat_state_exists=true
+{ [ -f "$_uat_state_file" ] || [ -f "$_uat_legacy_file" ]; } && _uat_state_exists=true
 ```
 **If `_uat_state_exists=false`:** Skip this entire block — this is a first-time UAT, not a re-verification after remediation.
 **If `_uat_state_exists=true` AND `verify_scope=remediation`:**
