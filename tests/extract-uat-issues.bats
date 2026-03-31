@@ -600,9 +600,9 @@ issues: 2
   # Verify stderr diagnostic includes inconsistency details
   local stderr_content
   stderr_content=$(cat /tmp/.vbw-test-stderr-$$.txt 2>/dev/null)
-  rm -f /tmp/.vbw-test-stderr-$$.txt
   [[ "$stderr_content" == *"inconsistent_status"* ]]
   [[ "$stderr_content" == *"frontmatter_issues=2"* ]]
+  rm -f /tmp/.vbw-test-stderr-$$.txt
 }
 
 @test "extract-uat-issues: consistency guard does not trigger when frontmatter issues=0" {
