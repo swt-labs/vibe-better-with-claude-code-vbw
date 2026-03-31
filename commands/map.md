@@ -133,7 +133,58 @@ Mode: {MAPPING_MODE}. After writing all 3 files, send a `scout_findings` message
 **Scout model (effort-gated):** Fast/Turbo: `Model: haiku`. Thorough/Balanced: inherit session model.
 **Scout turn budget (effort-gated):** Resolve with `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}"`. If `SCOUT_MAX_TURNS` is non-empty, pass `maxTurns: ${SCOUT_MAX_TURNS}` to each Scout TaskCreate. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 **Skill pre-evaluation:** Before composing Scout task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to codebase mapping. If any skills are relevant, the Scout prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
-**MCP tools:** If MCP tools relevant to codebase analysis are available (e.g., documentation servers for framework APIs discovered during mapping), note them in the Scout task prompt so Scouts can use them alongside local file analysis.
+**MCP code-analysis delegation:** If `MCP_MAP_CAPABILITIES` (from Step 1.3) is non-empty, prepend the following `<mcp_code_analysis>` block to each Scout's task description. If `MCP_MAP_CAPABILITIES` is empty, omit the block entirely (Scout prompts unchanged from pre-MCP behavior).
+
+For **Scout A** (Tech + Architecture), include capabilities relevant to STACK.md, DEPENDENCIES.md, ARCHITECTURE.md, STRUCTURE.md:
+```
+<mcp_code_analysis>
+Code-analysis MCP tools are available. Use them as your PRIMARY source for structural analysis before falling back to Glob/Read/Grep.
+
+Available capabilities:
+{For each detected capability relevant to this Scout's documents, list: "- {Category}: {full_tool_name} — use for {target documents}"}
+
+Capability-to-document routing:
+- Architecture extraction → ARCHITECTURE.md, STACK.md
+- Symbol search → STRUCTURE.md (module layout, entry points)
+- Dependency graph → DEPENDENCIES.md (inter-module dependencies)
+- Call tracing → ARCHITECTURE.md (data flow)
+
+{If CAPABILITY_INDEX detected:}
+IMPORTANT: Call {index_tool_name} first if the graph may be stale (check with index_status if available, otherwise call index_repository at session start).
+
+Fall back to Glob/Read/Grep for:
+- External dependency manifests (package.json, go.mod, Cargo.toml — version numbers)
+- CI/CD configuration (GitHub Actions YAML, Makefile, Dockerfile)
+- Directory tree listing (Glob still needed for exact file paths)
+- Non-code assets (images, fonts, binary files)
+</mcp_code_analysis>
+```
+
+For **Scout B** (Quality + Concerns), include capabilities relevant to CONVENTIONS.md, TESTING.md, CONCERNS.md:
+```
+<mcp_code_analysis>
+Code-analysis MCP tools are available. Use them as your PRIMARY source for structural analysis before falling back to Glob/Read/Grep.
+
+Available capabilities:
+{For each detected capability relevant to this Scout's documents, list: "- {Category}: {full_tool_name} — use for {target documents}"}
+
+Capability-to-document routing:
+- Code search → CONVENTIONS.md (naming patterns), TESTING.md (test patterns)
+- Code snippet → CONVENTIONS.md (code style examples)
+- Call tracing → CONCERNS.md (complexity hotspots)
+- Hotspot analysis → CONCERNS.md (risk areas, high fan-out)
+
+{If CAPABILITY_INDEX detected:}
+IMPORTANT: Call {index_tool_name} first if the graph may be stale (check with index_status if available, otherwise call index_repository at session start).
+
+Fall back to Glob/Read/Grep for:
+- CI/CD configuration (GitHub Actions YAML, Makefile, Dockerfile)
+- Linter/formatter config (.eslintrc, .prettierrc, tsconfig.json)
+- Non-code assets and documentation files
+</mcp_code_analysis>
+```
+
+Additionally, if MCP tools relevant to non-code-analysis tasks are available (e.g., documentation servers for framework APIs), note them in the Scout task prompt so Scouts can use them alongside local file analysis.
 Wait for all findings. Proceed to Step 3.5.
 
 ---
@@ -144,7 +195,12 @@ Wait for all findings. Proceed to Step 3.5.
 - Scout 3 (Quality): `<output_paths>` = `.vbw-planning/codebase/CONVENTIONS.md`, `.vbw-planning/codebase/TESTING.md`
 - Scout 4 (Concerns): `<output_paths>` = `.vbw-planning/codebase/CONCERNS.md`
 
-Security: PreToolUse hook handles enforcement. **Scout model:** same as duo. **Scout turn budget:** same as duo (pass `maxTurns: ${SCOUT_MAX_TURNS}` when non-empty, omit when empty). **Skill pre-evaluation:** same as duo. **MCP tools:** same as duo.
+Security: PreToolUse hook handles enforcement. **Scout model:** same as duo. **Scout turn budget:** same as duo (pass `maxTurns: ${SCOUT_MAX_TURNS}` when non-empty, omit when empty). **Skill pre-evaluation:** same as duo.
+**MCP code-analysis delegation:** same as duo — if `MCP_MAP_CAPABILITIES` is non-empty, prepend the `<mcp_code_analysis>` block to each Scout's task description with capabilities routed to their assigned documents:
+- Scout 1 (Tech Stack): capabilities relevant to STACK.md + DEPENDENCIES.md (architecture extraction, dependency graph, symbol search)
+- Scout 2 (Architecture): capabilities relevant to ARCHITECTURE.md + STRUCTURE.md (architecture extraction, symbol search, call tracing)
+- Scout 3 (Quality): capabilities relevant to CONVENTIONS.md + TESTING.md (code search, code snippet)
+- Scout 4 (Concerns): capabilities relevant to CONCERNS.md (hotspot analysis, call tracing, dependency graph)
 
 **Scout communication (effort-gated):**
 
