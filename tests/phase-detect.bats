@@ -147,6 +147,37 @@ EOF
   ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
 }
 
+@test "milestone UAT extraction emitted for milestone_uat_issues" {
+  # Create a shipped milestone with UAT issues
+  mkdir -p .vbw-planning/milestones/m01-test/phases/01-alpha/
+  touch .vbw-planning/milestones/m01-test/phases/01-alpha/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/m01-test/phases/01-alpha/01-01-SUMMARY.md
+  cat > .vbw-planning/milestones/m01-test/phases/01-alpha/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: milestone test
+
+- **Result:** issue
+- **Issue:** milestone issue
+  - Description: milestone broken
+  - Severity: major
+EOF
+  # Create an active phases dir that is empty (forces all_done → milestone recovery)
+  mkdir -p .vbw-planning/phases/
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^---MILESTONE_UAT_EXTRACT_START---$"
+  echo "$output" | grep -q "^---MILESTONE_UAT_EXTRACT_END---$"
+  echo "$output" | grep -q "P01-T1|major|milestone broken"
+}
+
 @test "minor-only UAT issues set major-or-higher flag false" {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md

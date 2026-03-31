@@ -1138,7 +1138,7 @@ _pd_extract_issues_from_uat() {
     }
     function emit() {
       if(desc==""&&inl!="")desc=inl; if(desc=="")desc="(no description)"
-      if(sev==""){ld=tlwr(desc);if(ld~/crash|broken|error|fails|exception/)sev="critical";else if(ld~/wrong|incorrect|missing|not working|bug/)sev="major";else sev="major"}
+      if(sev==""){ld=tlwr(desc);if(ld~/crash|broken|error|doesnt work|fails|exception/)sev="critical";else if(ld~/wrong|incorrect|missing|not working|bug/)sev="major";else if(ld~/minor|cosmetic|nitpick|small|typo|polish/)sev="minor";else sev="major"}
       gsub(/\|/,"-",desc); printf "%s|%s|%s|%s\n",id,sev,desc,rnd; hi=0;desc="";sev="";inl=""
     }
     /^### [PD][0-9]/{if(hi)emit();id=$2;sub(/:$/,"",id);hi=0;desc="";sev="";inl="";next}
