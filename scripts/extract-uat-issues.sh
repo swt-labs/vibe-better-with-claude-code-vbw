@@ -177,6 +177,28 @@ trap 'rm -f /tmp/.vbw-uat-issues-$$.txt /tmp/.vbw-uat-round-ids-$$.txt' EXIT
 
 ISSUE_COUNT=$(wc -l < /tmp/.vbw-uat-issues-$$.txt | tr -d ' ')
 
+# Consistency guard: if frontmatter says issues_found but awk parsed 0 issues,
+# the extraction is unreliable. Flag as error rather than returning misleading
+# uat_issues_total=0 (which the LLM may trust).
+if [ "$ISSUE_COUNT" -eq 0 ]; then
+  # Cross-check against frontmatter issues: count
+  FM_ISSUES=$(awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^[[:space:]]*issues[[:space:]]*:/ {
+      val=$0; sub(/^[^:]*:[[:space:]]*/, "", val); gsub(/[[:space:]]+$/, "", val)
+      print val; exit
+    }
+  ' "$UAT_FILE" 2>/dev/null || true)
+  FM_ISSUES=$(printf '%s' "$FM_ISSUES" | tr -d '[:space:]')
+  if [ -n "$FM_ISSUES" ] && [ "$FM_ISSUES" != "0" ]; then
+    echo "uat_extract_error=inconsistent_status frontmatter_issues=${FM_ISSUES} parsed_issues=0" >&2
+    echo "uat_extract_error=true"
+    exit 0
+  fi
+fi
+
 # Compute current round number from archived round files
 if type count_uat_rounds &>/dev/null; then
   MAX_ARCHIVED=$(count_uat_rounds "$PHASE_DIR" "$PHASE_NUM")
