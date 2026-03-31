@@ -1170,7 +1170,10 @@ if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" 
     fi
   fi
   if [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_ISSUES_FILE" ]; then
-    _pd_uat_phase=$(basename "$(dirname "$UAT_ISSUES_FILE")" | sed 's/[^0-9].*//')
+    # Use the phase number already computed during the scan loop, not derived
+    # from the file path (which breaks for round-dir UAT paths like
+    # remediation/uat/round-02/R02-UAT.md where dirname gives "round-02").
+    _pd_uat_phase="${UAT_ISSUES_PHASE}"
     _pd_uat_fname=$(basename "$UAT_ISSUES_FILE")
     _pd_uat_round=$((UAT_ROUND_COUNT + 1))
     _pd_uat_issues=$(_pd_extract_issues_from_uat "$UAT_ISSUES_FILE" "$_pd_uat_round") || _pd_uat_issues=""

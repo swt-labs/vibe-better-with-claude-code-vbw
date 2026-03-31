@@ -147,6 +147,35 @@ EOF
   ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
 }
 
+@test "inline UAT extraction with round-dir layout" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/uat/round-01/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  printf '%s\n' 'round=01' 'layout=round-dir' > .vbw-planning/phases/01-test/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-test/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: round-dir test
+
+- **Result:** issue
+- **Issue:** round-dir issue
+  - Description: round-dir broken
+  - Severity: critical
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
+  echo "$output" | grep -q "uat_phase=01"
+  echo "$output" | grep -q "P01-T1|critical|round-dir broken"
+}
+
 @test "milestone UAT extraction emitted for milestone_uat_issues" {
   # Create a shipped milestone with UAT issues
   mkdir -p .vbw-planning/milestones/m01-test/phases/01-alpha/
