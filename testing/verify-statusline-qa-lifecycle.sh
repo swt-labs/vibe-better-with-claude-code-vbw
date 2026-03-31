@@ -437,12 +437,12 @@ else
   fail "statusline maps stage=execute|fix to 'UAT: Fixing'"
 fi
 
-# Test 26: statusline maps stage=done|verify to UAT: Verification
-if grep -q 'done|verify)' "$ROOT/scripts/vbw-statusline.sh" && \
+# Test 26: statusline maps stage=done|verify|verified to UAT: Verification
+if grep -q 'done|verify|verified)' "$ROOT/scripts/vbw-statusline.sh" && \
    grep -q '"UAT: Verification"' "$ROOT/scripts/vbw-statusline.sh"; then
-  pass "statusline maps stage=done|verify to 'UAT: Verification'"
+  pass "statusline maps stage=done|verify|verified to 'UAT: Verification'"
 else
-  fail "statusline maps stage=done|verify to 'UAT: Verification'"
+  fail "statusline maps stage=done|verify|verified to 'UAT: Verification'"
 fi
 
 # --- Functional: remediation stage → QA indicator ---
@@ -488,7 +488,7 @@ extract_qa() {
           research)     echo "UAT: Researching" ;;
           plan)         echo "UAT: Planning" ;;
           execute|fix)  echo "UAT: Fixing" ;;
-          done|verify)  echo "UAT: Verification" ;;
+          done|verify|verified) echo "UAT: Verification" ;;
           *)            echo "UAT: Fixing" ;;
         esac
       fi

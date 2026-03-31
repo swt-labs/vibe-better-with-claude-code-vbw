@@ -169,7 +169,7 @@ lifecycle_artifacts_newer_than_cache() {
     if [ "$artifact_mt" -gt "$cache_mt" ] 2>/dev/null; then
       return 0
     fi
-  done < <(find "$planning_dir/phases" -type f \( -name '*-UAT.md' -o -name '*VERIFICATION.md' -o -name '.qa-remediation-stage' -o -name '.uat-remediation-stage' \) 2>/dev/null)
+  done < <(find "$planning_dir/phases" -type f \( \( -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' \) -o -name '*VERIFICATION.md' -o -name '.qa-remediation-stage' -o -name '.uat-remediation-stage' \) 2>/dev/null)
 
   return 1
 }
@@ -577,7 +577,7 @@ if ! cache_fresh "$FAST_CF" 5 || lifecycle_artifacts_newer_than_cache "$FAST_CF"
                 research)     QA="UAT: Researching";  QA_COLOR="Y" ;;
                 plan)         QA="UAT: Planning";     QA_COLOR="Y" ;;
                 execute|fix)  QA="UAT: Fixing";       QA_COLOR="Y" ;;
-                done|verify)  QA="UAT: Verification"; QA_COLOR="Y" ;;
+                done|verify|verified) QA="UAT: Verification"; QA_COLOR="Y" ;;
                 *)            QA="UAT: Fixing";       QA_COLOR="Y" ;;
               esac ;;
             *) QA="UAT: ?"; QA_COLOR="Y" ;;
