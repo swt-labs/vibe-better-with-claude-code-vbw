@@ -49,6 +49,12 @@ MCP tools cover structural code analysis but not everything. Fall back to Glob/R
 - **Non-code assets**: documentation, images, binary files
 - **Languages not indexed**: if the architecture tool's language breakdown omits significant source files visible via Glob, supplement with Read/Grep for those file types
 
+### Graph Coverage Gaps
+After calling the architecture extraction tool, compare its language breakdown against your Glob-based file count:
+- If the graph reports languages covering 90%+ of source files: trust MCP tools as comprehensive; minimal Glob/Read supplement needed
+- If the graph covers <90% of source files: significant code exists outside the graph. For ungraphed file types, use Glob to find files and Read/Grep to analyze them. Document both MCP-sourced and file-sourced findings in the same document format.
+- If the graph returns empty or error results: fall back entirely to Glob/Read/Grep analysis as if no `<mcp_code_analysis>` block was present. Report the issue in your `scout_findings` cross_cutting findings.
+
 ### Document Format Preservation
 The mapping documents (STACK.md, ARCHITECTURE.md, STRUCTURE.md, etc.) must have identical structure regardless of whether data comes from MCP tools or file reads. MCP tools provide richer, more precise structural data -- use it to produce better content, but write it into the same section headers and format that downstream consumers expect.
 
