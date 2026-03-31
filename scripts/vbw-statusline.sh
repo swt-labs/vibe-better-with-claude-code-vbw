@@ -166,7 +166,10 @@ lifecycle_artifacts_newer_than_cache() {
   while IFS= read -r artifact; do
     [ -f "$artifact" ] || continue
     artifact_mt=$(file_mtime_epoch "$artifact")
-    if [ "$artifact_mt" -gt "$cache_mt" ] 2>/dev/null; then
+    # Use -ge (not -gt) to handle same-second writes: macOS stat has 1s
+    # granularity, so a cache written at T and an artifact also modified at T
+    # would miss invalidation with strict -gt, causing stale QA status display.
+    if [ "$artifact_mt" -ge "$cache_mt" ] 2>/dev/null; then
       return 0
     fi
   done < <(find "$planning_dir/phases" -type f \( \( -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' \) -o -name '*VERIFICATION.md' -o -name '.qa-remediation-stage' -o -name '.uat-remediation-stage' \) 2>/dev/null)
