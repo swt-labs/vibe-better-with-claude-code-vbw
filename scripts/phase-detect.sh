@@ -1193,6 +1193,16 @@ if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" 
     _pd_uat_issues=$(_pd_extract_issues_from_uat "$UAT_ISSUES_FILE" "$_pd_uat_round" 2>>"$_pd_diag") || _pd_uat_issues=""
     echo "AWK_OUTPUT_LENGTH=${#_pd_uat_issues}" >> "$_pd_diag" 2>/dev/null
     echo "AWK_OUTPUT=[$_pd_uat_issues]" >> "$_pd_diag" 2>/dev/null
+    # Diagnostic: run a trivial awk to test if pattern matching works at all
+    _pd_awk_test=$(awk '/^### [PD][0-9]/{print NR": "$0}' "$UAT_ISSUES_FILE" 2>&1) || true
+    echo "TRIVIAL_AWK_TEST=[$_pd_awk_test]" >> "$_pd_diag" 2>/dev/null
+    # Diagnostic: test the Result pattern
+    _pd_awk_result=$(awk '/\*\*Result:\*\*/{print NR": "$0}' "$UAT_ISSUES_FILE" 2>&1) || true
+    echo "RESULT_AWK_TEST=[$_pd_awk_result]" >> "$_pd_diag" 2>/dev/null
+    # Diagnostic: dump first few lines of the file
+    echo "FILE_HEAD=[$(head -5 "$UAT_ISSUES_FILE" 2>/dev/null | cat -v)]" >> "$_pd_diag" 2>/dev/null
+    # Diagnostic: check if the function body is intact
+    echo "FUNC_CHECK=$(type _pd_extract_issues_from_uat 2>&1 | head -3)" >> "$_pd_diag" 2>/dev/null
     _pd_issue_count=0
     if [ -n "$_pd_uat_issues" ]; then
       _pd_issue_count=$(printf '%s\n' "$_pd_uat_issues" | wc -l | tr -d ' ')
