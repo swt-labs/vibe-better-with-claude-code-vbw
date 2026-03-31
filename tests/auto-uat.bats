@@ -1305,6 +1305,12 @@ EOF
   grep -q "script is the source of truth" "$verify"
 }
 
+@test "verify.md Step 9 stops on finalize failure" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  grep -q "If the script fails" "$verify"
+  grep -q "STOP" "$verify"
+}
+
 @test "finalize-uat-status.sh exists and is executable" {
   local script="$BATS_TEST_DIRNAME/../scripts/finalize-uat-status.sh"
   [ -f "$script" ]

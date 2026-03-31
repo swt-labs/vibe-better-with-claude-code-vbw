@@ -143,14 +143,9 @@ else
   FU_SLUG=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2)
   if [ "$STATE" = "needs_reverification" ] || [ "$STATE" = "needs_verification" ]; then TARGET="$SLUG"; else TARGET="${FU_SLUG:-$SLUG}"; fi
   PDIR=".vbw-planning/phases/$TARGET"
-  if [ -n "$TARGET" ] && [ -d "$PDIR" ] && [ -L "$L" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then
+  if [ -n "$TARGET" ] && [ -d "$PDIR" ] && [ -L "$L" ] && [ -f "$L/scripts/compile-verify-context-for-uat.sh" ]; then
     echo "verify_target_slug=$TARGET"
-    REMED_FLAG=""
-    _uat_stage=$(grep '^stage=' "$PDIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-    _qa_stage=$(grep '^stage=' "$PDIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-    case "${_uat_stage:-none}" in research|plan|execute|fix|verify|done) REMED_FLAG="--remediation-only" ;; esac
-    case "${_qa_stage:-none}" in verify|done) REMED_FLAG="--remediation-only" ;; esac
-    bash "$L/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR" 2>/dev/null || echo "verify_context_error=true"
+    bash "$L/scripts/compile-verify-context-for-uat.sh" "$PDIR" 2>/dev/null || echo "verify_context_error=true"
   else
     echo "verify_context=unavailable"
   fi
@@ -304,12 +299,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
 - **If initial Phase state contained `misnamed_plans=true`:** re-run compile-verify-context.sh and extract-uat-resume.sh for the resolved target phase dir, since pre-computed blocks used stale filenames:
   ```bash
   PDIR=".vbw-planning/phases/{target-slug}"
-  REMED_FLAG=""
-  _uat_stage=$(grep '^stage=' "$PDIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-  _qa_stage=$(grep '^stage=' "$PDIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-  case "${_uat_stage:-none}" in research|plan|execute|fix|verify|done) REMED_FLAG="--remediation-only" ;; esac
-  case "${_qa_stage:-none}" in verify|done) REMED_FLAG="--remediation-only" ;; esac
-  bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR"
+  bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh" "$PDIR"
   bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/extract-uat-resume.sh" "$PDIR"
   ```
   Use the refreshed output in place of the pre-computed blocks from Context.
@@ -532,7 +522,7 @@ Discovered issue D{NN} recorded (severity: {level}).
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/finalize-uat-status.sh "{phase-dir}/{uat_path}"
   ```
-  The script reads all `**Result:**` lines, counts pass/skip/issue, and updates the YAML frontmatter (`status`, `completed`, `passed`, `skipped`, `issues`, `total_tests`). Its output (`status={status} passed={N} ...`) provides the values for the summary display below. Do NOT manually update frontmatter fields — the script is the source of truth.
+  If the script fails or reports unrecognized `**Result:**` values, STOP and surface the error. Do NOT patch the UAT frontmatter manually. The script reads all `**Result:**` lines, counts pass/skip/issue, and updates the YAML frontmatter (`status`, `completed`, `passed`, `skipped`, `issues`, `total_tests`). Its output (`status={status} passed={N} ...`) provides the values for the summary display below. Do NOT manually update frontmatter fields — the script is the source of truth.
 - Display summary:
 
 ```text

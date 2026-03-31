@@ -276,13 +276,8 @@ else
   if [ -n "$TARGET" ]; then
     PDIR=".vbw-planning/phases/$TARGET"
     echo "verify_target_slug=$TARGET"
-    if [ -d "$PDIR" ] && [ -L "$L" ] && [ -f "$L/scripts/compile-verify-context.sh" ]; then
-      REMED_FLAG=""
-      _uat_stage=$(grep '^stage=' "$PDIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-      _qa_stage=$(grep '^stage=' "$PDIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-      case "${_uat_stage:-none}" in research|plan|execute|fix|verify|done) REMED_FLAG="--remediation-only" ;; esac
-      case "${_qa_stage:-none}" in verify|done) REMED_FLAG="--remediation-only" ;; esac
-      bash "$L/scripts/compile-verify-context.sh" $REMED_FLAG "$PDIR" 2>/dev/null || echo "verify_context_error=true"
+    if [ -d "$PDIR" ] && [ -L "$L" ] && [ -f "$L/scripts/compile-verify-context-for-uat.sh" ]; then
+      bash "$L/scripts/compile-verify-context-for-uat.sh" "$PDIR" 2>/dev/null || echo "verify_context_error=true"
     else
       echo "verify_context_error=true"
     fi
@@ -467,7 +462,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     **Follow `qa_gate_routing` output literally — no exceptions, no judgment, no rationalization. Do NOT evaluate whether failures are justified, acceptable, or minor. The gate script has already made the decision:**
     - `qa_gate_routing=PROCEED_TO_UAT` → advance to done: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`, then **refresh verify context before entering Verify mode**:
       ```bash
-      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh --remediation-only "{phase-dir}"
+      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh "{phase-dir}"
       ```
       Use this fresh verify context and **continue directly into Verify mode** for the phase
     - `qa_gate_routing=REMEDIATION_REQUIRED` → start new round: `bash {plugin-root}/scripts/qa-remediation-state.sh needs-round {phase-dir}`, loop back to stage=plan
@@ -479,7 +474,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 
 - **stage=done:** Re-compute verify context, then proceed to Verify mode (UAT) for the phase:
   ```bash
-  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh --remediation-only "{phase-dir}"
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh "{phase-dir}"
   ```
   Use this fresh verify context for the Verify mode CHECKPOINT loop.
 
@@ -794,7 +789,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
           ```
        6. **Continue directly into Verify mode** for this phase — do NOT stop, do NOT tell the user to run `/vbw:vibe`. Enter Verify mode (below) inline in the same turn. The pre-computed verify context may be stale (it was computed at session start, before remediation). Re-compute it:
           ```bash
-          bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh --remediation-only "$PHASE_DIR"
+          bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh "$PHASE_DIR"
           ```
           Use this fresh verify context for the Verify mode CHECKPOINT loop.
        Do NOT present the remediation summary (Step 7) and stop — the summary is only useful if the session cannot continue (e.g., compaction).

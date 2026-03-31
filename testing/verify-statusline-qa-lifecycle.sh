@@ -112,6 +112,35 @@ setup_project() {
   printf '%s\n' '---' 'status: complete' '---' 'Done' > "$dir/.vbw-planning/phases/01-test/01-01-SUMMARY.md"
 }
 
+setup_statusline_repo() {
+  local dir="$1"
+  setup_project "$dir"
+  (cd "$dir" && git init -q && git config user.email test@example.com && git config user.name "VBW Test")
+  printf 'struct App {}\n' > "$dir/App.swift"
+  (cd "$dir" && git add . >/dev/null 2>&1 && git commit -q -m "init")
+}
+
+statusline_cache_prefix() {
+  local root="$1" uid version root_real
+  uid=$(id -u)
+  version=$(tr -d '[:space:]' < "$ROOT/VERSION" 2>/dev/null || echo 0)
+  root_real=$(cd "$root" 2>/dev/null && pwd -P 2>/dev/null || printf '%s' "$root")
+  # shellcheck source=/dev/null
+  . "$ROOT/scripts/lib/vbw-cache-key.sh"
+  vbw_cache_prefix "$version" "$uid" "$root_real"
+}
+
+cleanup_statusline_cache() {
+  local prefix
+  prefix=$(statusline_cache_prefix "$1")
+  rm -f "${prefix}-fast" "${prefix}-slow" "${prefix}-cost" "${prefix}-ok" 2>/dev/null || true
+}
+
+run_statusline_l1() {
+  local dir="$1"
+  (cd "$dir" && CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 bash "$ROOT/scripts/vbw-statusline.sh" <<< '{}' | head -1 | perl -pe 's/\e\[[0-9;]*m//g; s/\e\]8;;.*?\a//g; s/\e\]8;;\a//g')
+}
+
 # Test 9: No VERIFICATION.md, no UAT → QA: --
 T9="$TMPDIR_BASE/t9"
 setup_project "$T9"
@@ -574,6 +603,56 @@ if [ "$_FAST_QA" = "pass" ]; then
   pass "UAT status: all_pass → normalized to complete → pass"
 else
   fail "UAT status: all_pass → normalized to complete → pass (got '$_FAST_QA')"
+fi
+
+# Test 36: direct statusline run shows UAT in progress instead of falling back to QA label
+T36="$TMPDIR_BASE/t36"
+setup_statusline_repo "$T36"
+printf '%s\n' '---' 'phase: 01' 'result: PASS' 'verified_at_commit: '"$(cd "$T36" && git rev-parse HEAD)" '---' > "$T36/.vbw-planning/phases/01-test/01-VERIFICATION.md"
+printf '%s\n' '---' 'phase: 01' 'status: in_progress' '---' 'Still testing.' > "$T36/.vbw-planning/phases/01-test/01-UAT.md"
+cleanup_statusline_cache "$T36"
+_L1=$(run_statusline_l1 "$T36")
+if [[ "$_L1" == *"UAT: in progress"* ]]; then
+  pass "direct statusline run shows UAT: in progress during active UAT"
+else
+  fail "direct statusline run shows UAT: in progress during active UAT (got '$_L1')"
+fi
+
+# Test 37: complete UAT must not be downgraded to QA pending by stale verification
+T37="$TMPDIR_BASE/t37"
+setup_statusline_repo "$T37"
+_base_commit=$(cd "$T37" && git rev-parse HEAD)
+printf '%s\n' '---' 'phase: 01' 'result: PASS' "verified_at_commit: ${_base_commit}" '---' > "$T37/.vbw-planning/phases/01-test/01-VERIFICATION.md"
+printf 'struct App { let version = 2 }\n' > "$T37/App.swift"
+(cd "$T37" && git add App.swift >/dev/null 2>&1 && git commit -q -m "stale verification")
+printf '%s\n' '---' 'phase: 01' 'status: complete' 'passed: 1' 'skipped: 0' 'issues: 0' 'total_tests: 1' '---' 'All passed.' > "$T37/.vbw-planning/phases/01-test/01-UAT.md"
+cleanup_statusline_cache "$T37"
+_L1=$(run_statusline_l1 "$T37")
+if [[ "$_L1" == *"UAT: pass"* ]]; then
+  pass "complete UAT is not downgraded by stale QA verification"
+else
+  fail "complete UAT is not downgraded by stale QA verification (got '$_L1')"
+fi
+
+# Test 38: fast cache refreshes when canonical UAT appears after a cached QA render
+T38="$TMPDIR_BASE/t38"
+setup_statusline_repo "$T38"
+_fresh_commit=$(cd "$T38" && git rev-parse HEAD)
+printf '%s\n' '---' 'phase: 01' 'result: PASS' "verified_at_commit: ${_fresh_commit}" '---' > "$T38/.vbw-planning/phases/01-test/01-VERIFICATION.md"
+cleanup_statusline_cache "$T38"
+_L1=$(run_statusline_l1 "$T38")
+if [[ "$_L1" != *"QA: pass"* ]]; then
+  fail "cache baseline for UAT refresh test should start at QA: pass (got '$_L1')"
+else
+  pass "cache baseline for UAT refresh test starts at QA: pass"
+fi
+printf '%s\n' '---' 'phase: 01' 'status: issues_found' 'passed: 0' 'skipped: 0' 'issues: 1' 'total_tests: 1' '---' 'Issue found.' > "$T38/.vbw-planning/phases/01-test/01-UAT.md"
+touch -t 203001010101 "$T38/.vbw-planning/phases/01-test/01-UAT.md"
+_L1=$(run_statusline_l1 "$T38")
+if [[ "$_L1" == *"UAT: Issues"* ]]; then
+  pass "fast cache refreshes when canonical UAT appears"
+else
+  fail "fast cache refreshes when canonical UAT appears (got '$_L1')"
 fi
 
 echo ""

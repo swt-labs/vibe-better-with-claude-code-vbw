@@ -231,16 +231,16 @@ else
   fail "vibe: routed verify precompute missing fail-closed verify_context sentinel"
 fi
 
-if grep -q '_uat_stage=' "$VERIFY_FILE" && grep -q '_qa_stage=' "$VERIFY_FILE" && grep -q 'research|plan|execute|fix|verify|done' "$VERIFY_FILE"; then
-  pass "verify: remediation-only precompute is driven by normalized remediation stages"
+if grep -q 'compile-verify-context-for-uat\.sh' "$VERIFY_FILE"; then
+  pass "verify: precomputed UAT context uses shared scope resolver"
 else
-  fail "verify: remediation-only precompute still appears history-driven instead of normalized-state driven"
+  fail "verify: precomputed UAT context missing shared scope resolver"
 fi
 
-if grep -q 'grep '\''^stage=' "$VIBE_FILE" && grep -q '_uat_stage=' "$VIBE_FILE" && grep -q '_qa_stage=' "$VIBE_FILE"; then
-  pass "vibe: remediation-only precompute is driven by normalized remediation stages"
+if grep -q 'compile-verify-context-for-uat\.sh' "$VIBE_FILE"; then
+  pass "vibe: precomputed UAT context uses shared scope resolver"
 else
-  fail "vibe: remediation-only precompute still appears history-driven instead of normalized-state driven"
+  fail "vibe: precomputed UAT context missing shared scope resolver"
 fi
 
 if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$ROOT/references/execute-protocol.md"; then
@@ -275,10 +275,10 @@ else
   fail "vibe: remediation QA guidance still allows documentation-only process-exception loophole"
 fi
 
-if grep -q 'PDIR=".vbw-planning/phases/{target-slug}"' "$VERIFY_FILE" && grep -q '_uat_stage=' "$VERIFY_FILE" && grep -q '_qa_stage=' "$VERIFY_FILE"; then
-  pass "verify: misnamed-plan refresh recomputes remediation scope from active state files"
+if grep -q 'compile-verify-context-for-uat\.sh' "$VERIFY_FILE"; then
+  pass "verify: misnamed-plan refresh recomputes UAT scope through shared resolver"
 else
-  fail "verify: misnamed-plan refresh still appears history-driven instead of state-driven"
+  fail "verify: misnamed-plan refresh missing shared UAT scope resolver"
 fi
 
 echo ""

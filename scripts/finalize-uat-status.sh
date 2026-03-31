@@ -27,8 +27,8 @@ if [ ! -f "$UAT_FILE" ]; then
   exit 1
 fi
 
-# Parse all **Result:** values from test entries
-# Returns: one word per line (pass, skip, issue, empty, or the raw value)
+# Parse all **Result:** values from test entries.
+# Returns one token per line: pass, skip, issue, empty, or __unknown__:<raw>.
 RESULTS=$(awk '
   /^### [PD][0-9]/ { in_test = 1; next }
   in_test && /^- \*\*Result:\*\*/ {
@@ -57,9 +57,7 @@ RESULTS=$(awk '
     } else if (val ~ /^issue/ || val ~ /^fail/ || val ~ /^partial/) {
       print "issue"
     } else {
-      # Unknown value — treat as issue (defensive), log for debugging
-      printf "finalize-uat-status: unrecognized Result value: %s\n", val > "/dev/stderr"
-      print "issue"
+      print "__unknown__:" val
     }
     next
   }
@@ -72,9 +70,17 @@ SKIPPED=0
 ISSUES=0
 EMPTY=0
 TOTAL=0
+UNKNOWN=0
 
 while IFS= read -r result; do
   [ -z "$result" ] && continue
+  case "$result" in
+    __unknown__:*)
+      printf 'finalize-uat-status: unrecognized Result value: %s\n' "${result#__unknown__:}" >&2
+      UNKNOWN=$((UNKNOWN + 1))
+      continue
+      ;;
+  esac
   TOTAL=$((TOTAL + 1))
   case "$result" in
     pass)  PASSED=$((PASSED + 1)) ;;
@@ -83,6 +89,11 @@ while IFS= read -r result; do
     empty) EMPTY=$((EMPTY + 1)) ;;
   esac
 done <<< "$RESULTS"
+
+if [ "$UNKNOWN" -gt 0 ]; then
+  echo "finalize-uat-status: refusing to rewrite frontmatter due to unrecognized Result values" >&2
+  exit 1
+fi
 
 # Determine status
 # TOTAL=0 means no test entries found — file is incomplete/malformed
