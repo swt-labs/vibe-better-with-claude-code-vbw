@@ -1125,29 +1125,11 @@ fi
 echo "execution_state=$EXEC_STATE"
 
 # --- UAT issue extraction ---
-# Writes the awk program to a temp file and runs it with `awk -f`. This avoids
-# a confirmed bash bug where awk programs inside functions called via $()
-# command substitution produce empty output in Claude Code's template expansion
-# context, despite working in all terminal contexts. Trivial awk patterns and
-# direct awk invocations work; only function-scoped awk via $() fails.
-_PD_AWK_PROG="/tmp/.vbw-uat-awk-$$.awk"
-cat > "$_PD_AWK_PROG" << 'AWKEOF'
-function tlwr(s,    i,c,o) {
-  o=""; for(i=1;i<=length(s);i++){c=substr(s,i,1);if(c>="A"&&c<="Z")c=sprintf("%c",index("ABCDEFGHIJKLMNOPQRSTUVWXYZ",c)+96);o=o c}; return o
-}
-function emit() {
-  if(desc==""&&inl!="")desc=inl; if(desc=="")desc="(no description)"
-  if(sev==""){ld=tlwr(desc);if(ld~/crash|broken|error|doesnt work|fails|exception/)sev="critical";else if(ld~/wrong|incorrect|missing|not working|bug/)sev="major";else if(ld~/minor|cosmetic|nitpick|small|typo|polish/)sev="minor";else sev="major"}
-  gsub(/\|/,"-",desc); printf "%s|%s|%s|%s\n",id,sev,desc,rnd; hi=0;desc="";sev="";inl=""
-}
-/^### [PD][0-9]/{if(hi)emit();id=$2;sub(/:$/,"",id);hi=0;desc="";sev="";inl="";next}
-/^- \*\*Result:\*\*/{v=$0;sub(/^- \*\*Result:\*\*[[:space:]]*/,"",v);gsub(/[[:space:]]+$/,"",v);if(tlwr(v)~/^(issue|fail|failed|partial)/)hi=1;next}
-hi&&/^- \*\*Issue:\*\*/{t=$0;sub(/^- \*\*Issue:\*\*[[:space:]]*/,"",t);gsub(/[[:space:]]+$/,"",t);if(t!=""&&t!="{if result=issue}")inl=t;next}
-hi&&/^[[:space:]]*- Description:/{d=$0;sub(/^[[:space:]]*- Description:[[:space:]]*/,"",d);gsub(/[[:space:]]+$/,"",d);desc=d;if(sev!="")emit();next}
-hi&&/^[[:space:]]*- Severity:/{s=$0;sub(/^[[:space:]]*- Severity:[[:space:]]*/,"",s);gsub(/[[:space:]]+$/,"",s);sev=tlwr(s);if(desc!=""||inl!="")emit();next}
-/^### /||/^## /{if(hi)emit();hi=0;desc="";sev="";inl=""}
-END{if(hi)emit()}
-AWKEOF
+# The awk program is inlined directly at each call site rather than wrapped in
+# a function or written to a temp file. Diagnostics confirmed that awk inside
+# bash functions called via $() subshell capture produces zero output in Claude
+# Code's template expansion context, but awk invoked directly at the call site
+# works reliably. Inlining avoids both the subshell bug and temp-file overhead.
 
 # --- Inline UAT extraction for needs_uat_remediation ---
 if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" ]; then
@@ -1166,7 +1148,23 @@ if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" 
     _pd_uat_phase="${UAT_ISSUES_PHASE}"
     _pd_uat_fname=$(basename "$UAT_ISSUES_FILE")
     _pd_uat_round=$((UAT_ROUND_COUNT + 1))
-    _pd_uat_issues=$(awk -v rnd="$_pd_uat_round" -f "$_PD_AWK_PROG" "$UAT_ISSUES_FILE" 2>/dev/null) || _pd_uat_issues=""
+    _pd_uat_issues=$(awk -v rnd="$_pd_uat_round" '
+function tlwr(s,    i,c,o) {
+  o=""; for(i=1;i<=length(s);i++){c=substr(s,i,1);if(c>="A"&&c<="Z")c=sprintf("%c",index("ABCDEFGHIJKLMNOPQRSTUVWXYZ",c)+96);o=o c}; return o
+}
+function emit() {
+  if(desc==""&&inl!="")desc=inl; if(desc=="")desc="(no description)"
+  if(sev==""){ld=tlwr(desc);if(ld~/crash|broken|error|doesnt work|fails|exception/)sev="critical";else if(ld~/wrong|incorrect|missing|not working|bug/)sev="major";else if(ld~/minor|cosmetic|nitpick|small|typo|polish/)sev="minor";else sev="major"}
+  gsub(/\|/,"-",desc); printf "%s|%s|%s|%s\n",id,sev,desc,rnd; hi=0;desc="";sev="";inl=""
+}
+/^### [PD][0-9]/{if(hi)emit();id=$2;sub(/:$/,"",id);hi=0;desc="";sev="";inl="";next}
+/^- \*\*Result:\*\*/{v=$0;sub(/^- \*\*Result:\*\*[[:space:]]*/,"",v);gsub(/[[:space:]]+$/,"",v);if(tlwr(v)~/^(issue|fail|failed|partial)/)hi=1;next}
+hi&&/^- \*\*Issue:\*\*/{t=$0;sub(/^- \*\*Issue:\*\*[[:space:]]*/,"",t);gsub(/[[:space:]]+$/,"",t);if(t!=""&&t!="{if result=issue}")inl=t;next}
+hi&&/^[[:space:]]*- Description:/{d=$0;sub(/^[[:space:]]*- Description:[[:space:]]*/,"",d);gsub(/[[:space:]]+$/,"",d);desc=d;if(sev!="")emit();next}
+hi&&/^[[:space:]]*- Severity:/{s=$0;sub(/^[[:space:]]*- Severity:[[:space:]]*/,"",s);gsub(/[[:space:]]+$/,"",s);sev=tlwr(s);if(desc!=""||inl!="")emit();next}
+/^### /||/^## /{if(hi)emit();hi=0;desc="";sev="";inl=""}
+END{if(hi)emit()}
+' "$UAT_ISSUES_FILE" 2>/dev/null) || _pd_uat_issues=""
     _pd_issue_count=0
     if [ -n "$_pd_uat_issues" ]; then
       _pd_issue_count=$(printf '%s\n' "$_pd_uat_issues" | wc -l | tr -d ' ')
@@ -1206,7 +1204,23 @@ if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; the
       if type count_uat_rounds &>/dev/null; then
         _pd_ms_round=$(( $(count_uat_rounds "$_pd_ms_dir" "$_pd_ms_phase") + 1 ))
       fi
-      _pd_ms_issues=$(awk -v rnd="$_pd_ms_round" -f "$_PD_AWK_PROG" "$_pd_ms_uat" 2>/dev/null) || _pd_ms_issues=""
+      _pd_ms_issues=$(awk -v rnd="$_pd_ms_round" '
+function tlwr(s,    i,c,o) {
+  o=""; for(i=1;i<=length(s);i++){c=substr(s,i,1);if(c>="A"&&c<="Z")c=sprintf("%c",index("ABCDEFGHIJKLMNOPQRSTUVWXYZ",c)+96);o=o c}; return o
+}
+function emit() {
+  if(desc==""&&inl!="")desc=inl; if(desc=="")desc="(no description)"
+  if(sev==""){ld=tlwr(desc);if(ld~/crash|broken|error|doesnt work|fails|exception/)sev="critical";else if(ld~/wrong|incorrect|missing|not working|bug/)sev="major";else if(ld~/minor|cosmetic|nitpick|small|typo|polish/)sev="minor";else sev="major"}
+  gsub(/\|/,"-",desc); printf "%s|%s|%s|%s\n",id,sev,desc,rnd; hi=0;desc="";sev="";inl=""
+}
+/^### [PD][0-9]/{if(hi)emit();id=$2;sub(/:$/,"",id);hi=0;desc="";sev="";inl="";next}
+/^- \*\*Result:\*\*/{v=$0;sub(/^- \*\*Result:\*\*[[:space:]]*/,"",v);gsub(/[[:space:]]+$/,"",v);if(tlwr(v)~/^(issue|fail|failed|partial)/)hi=1;next}
+hi&&/^- \*\*Issue:\*\*/{t=$0;sub(/^- \*\*Issue:\*\*[[:space:]]*/,"",t);gsub(/[[:space:]]+$/,"",t);if(t!=""&&t!="{if result=issue}")inl=t;next}
+hi&&/^[[:space:]]*- Description:/{d=$0;sub(/^[[:space:]]*- Description:[[:space:]]*/,"",d);gsub(/[[:space:]]+$/,"",d);desc=d;if(sev!="")emit();next}
+hi&&/^[[:space:]]*- Severity:/{s=$0;sub(/^[[:space:]]*- Severity:[[:space:]]*/,"",s);gsub(/[[:space:]]+$/,"",s);sev=tlwr(s);if(desc!=""||inl!="")emit();next}
+/^### /||/^## /{if(hi)emit();hi=0;desc="";sev="";inl=""}
+END{if(hi)emit()}
+' "$_pd_ms_uat" 2>/dev/null) || _pd_ms_issues=""
       _pd_ms_count=0
       if [ -n "$_pd_ms_issues" ]; then
         _pd_ms_count=$(printf '%s\n' "$_pd_ms_issues" | wc -l | tr -d ' ')
@@ -1226,5 +1240,4 @@ if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; the
   echo "---MILESTONE_UAT_EXTRACT_END---"
 fi
 
-rm -f "$_PD_AWK_PROG" 2>/dev/null
 exit 0
