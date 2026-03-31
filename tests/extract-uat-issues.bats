@@ -10,6 +10,7 @@ setup() {
 }
 
 teardown() {
+  rm -f /tmp/.vbw-test-stderr-$$.txt
   teardown_temp_dir
 }
 
