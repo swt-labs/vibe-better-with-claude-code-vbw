@@ -69,3 +69,34 @@ teardown() {
   solo_section=$(sed -n '/Step 3-solo/,/Step 3-duo/p' "$map_file")
   echo "$solo_section" | grep -q 'MCP_MAP_CAPABILITIES\|MCP-accelerated\|mcp_code_analysis\|code-analysis MCP'
 }
+
+# =============================================================================
+# META.md schema and Scout agent validation tests (Tests 6-10)
+# =============================================================================
+
+@test "map.md Step 5 includes mcp_capabilities in META.md" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  grep -q 'mcp_capabilities' "$map_file"
+}
+
+@test "vbw-scout.md has Code-Analysis MCP for Mapping section" {
+  local scout_file="$BATS_TEST_DIRNAME/../agents/vbw-scout.md"
+  grep -q 'Code-Analysis MCP for Mapping' "$scout_file"
+}
+
+@test "vbw-scout.md mapping MCP section covers index freshness" {
+  local scout_file="$BATS_TEST_DIRNAME/../agents/vbw-scout.md"
+  grep -q 'index_repository' "$scout_file"
+  grep -q 'Index Freshness' "$scout_file"
+}
+
+@test "vbw-scout.md mapping MCP section covers hybrid fallback" {
+  local scout_file="$BATS_TEST_DIRNAME/../agents/vbw-scout.md"
+  grep -q 'Hybrid Fallback' "$scout_file"
+  grep -q 'Fall back to Glob/Read/Grep' "$scout_file"
+}
+
+@test "vbw-scout.md mapping MCP section covers graph coverage gaps" {
+  local scout_file="$BATS_TEST_DIRNAME/../agents/vbw-scout.md"
+  grep -q 'Graph Coverage Gaps' "$scout_file"
+}
