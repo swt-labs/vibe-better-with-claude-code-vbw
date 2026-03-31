@@ -565,3 +565,84 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"uat_extract_status=complete"* ]]
 }
+
+@test "extract-uat-issues: consistency guard triggers when frontmatter says issues but awk finds none" {
+  # Simulate the bug: status=issues_found and issues=1 in frontmatter,
+  # but the markdown body has no parseable issue entries (e.g., all tests pass
+  # or the Result/Issue markup is missing/malformed)
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 2
+---
+
+## Tests
+
+### P01-T1: Test with pass result
+
+- **Plan:** 03-01 — Fix something
+- **Scenario:** Do something
+- **Expected:** It works
+- **Result:** pass
+
+### P01-T2: Test with no result line
+
+- **Plan:** 03-01 — Another test
+- **Scenario:** Do another thing
+- **Expected:** It should work'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"uat_extract_error=inconsistent_status"* ]]
+}
+
+@test "extract-uat-issues: consistency guard does not trigger when frontmatter issues=0" {
+  # status=issues_found but issues=0 is an odd state but the guard should
+  # only fire when the frontmatter explicitly says there ARE issues
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 0
+---
+
+## Tests
+
+### P01-T1: Test
+
+- **Result:** pass'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_issues_total=0"* ]]
+  # Should NOT show inconsistent_status since frontmatter says 0
+  [[ "$output" != *"inconsistent_status"* ]]
+}
+
+@test "extract-uat-issues: consistency guard does not fire when awk correctly finds issues" {
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: Failing test
+
+- **Result:** issue
+- **Issue:**
+  - Description: Something is broken
+  - Severity: major'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_issues_total=1"* ]]
+  [[ "${lines[1]}" == "P01-T1|major|Something is broken|1" ]]
+  [[ "$output" != *"inconsistent_status"* ]]
+}
