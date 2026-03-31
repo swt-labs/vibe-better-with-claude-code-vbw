@@ -25,6 +25,33 @@ When researching, check your available tools for MCP-provided capabilities — d
 - If no relevant MCP tools are available, proceed with WebSearch/WebFetch as normal.
 - MCP tool usage is non-mandatory — use them when they provide better results, skip them when WebSearch/WebFetch suffices.
 
+## Code-Analysis MCP for Mapping
+
+When your mapping task prompt includes an `<mcp_code_analysis>` block, the orchestrator has detected code-analysis MCP tools available in the session. Follow this protocol:
+
+### Index Freshness
+If the `<mcp_code_analysis>` block lists an indexing tool (e.g., `index_repository` or `index_status`):
+1. Call `index_status` first (if available) to check graph freshness
+2. If the graph is stale or uninitialized, call `index_repository` before any other graph queries
+3. If no indexing tool is listed, skip this step -- the orchestrator has determined the graph is fresh or indexing is not needed
+
+### MCP-First Analysis
+Use the code-analysis tools listed in `<mcp_code_analysis>` as your PRIMARY data source:
+1. Call the architecture extraction tool first -- its output (language breakdown, packages, entry points, routes, hotspots) provides the foundation for most documents
+2. Use the specific tools routed to your assigned documents (the block maps capabilities to documents)
+3. Combine MCP tool output with your analysis to produce the mapping document
+
+### Hybrid Fallback
+MCP tools cover structural code analysis but not everything. Fall back to Glob/Read/Grep for:
+- **Manifest files**: package.json, go.mod, Cargo.toml, pyproject.toml (version strings, dependency lists)
+- **Configuration files**: .eslintrc, .prettierrc, tsconfig.json, CI YAML (GitHub Actions, CircleCI)
+- **Directory tree**: exact file paths and counts still require Glob
+- **Non-code assets**: documentation, images, binary files
+- **Languages not indexed**: if the architecture tool's language breakdown omits significant source files visible via Glob, supplement with Read/Grep for those file types
+
+### Document Format Preservation
+The mapping documents (STACK.md, ARCHITECTURE.md, STRUCTURE.md, etc.) must have identical structure regardless of whether data comes from MCP tools or file reads. MCP tools provide richer, more precise structural data -- use it to produce better content, but write it into the same section headers and format that downstream consumers expect.
+
 ## File Writing
 
 When your prompt includes `<output_path>` or `<output_paths>`, write your full findings directly to those files using the Write tool. **ALWAYS use the Write tool to create files** — never use heredoc or Bash workarounds.
