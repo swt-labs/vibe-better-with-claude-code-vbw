@@ -136,6 +136,34 @@ EOF
   [[ "$output" != *"Original feature"* ]]
 }
 
+@test "compile-verify-context-for-uat: verified remediation stage uses full scope" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Original feature
+must_haves:
+  - Feature works
+---
+EOF
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  printf 'stage=verified\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: UAT remediation round
+must_haves:
+  - UAT issue fixed
+---
+EOF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=full"* ]]
+  [[ "$output" == *"Original feature"* ]]
+}
+
 @test "contract: vibe.md uses compile-verify-context-for-uat.sh for auto-UAT context" {
   grep -q 'compile-verify-context-for-uat\.sh' "$PROJECT_ROOT/commands/vibe.md"
 }

@@ -281,6 +281,14 @@ else
   fail "verify: misnamed-plan refresh missing shared UAT scope resolver"
 fi
 
+if grep -q '_uat_state_file=.*remediation/uat/\.uat-remediation-stage' "$VERIFY_FILE" \
+  && grep -q '_uat_legacy_file=.*\.uat-remediation-stage' "$VERIFY_FILE" \
+  && grep -q '_uat_state_exists' "$VERIFY_FILE"; then
+  pass "verify: remediation lifecycle advance has state-existence guard (new-format and legacy)"
+else
+  fail "verify: remediation lifecycle advance missing state-existence guard before needs-round"
+fi
+
 echo ""
 echo "=== Milestone Context Refresh Verification ==="
 mode_block() {
