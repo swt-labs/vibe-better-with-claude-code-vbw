@@ -884,8 +884,8 @@ EOF
   local cmd
 
   mkdir -p "$plugin_root/scripts" "$TEST_TEMP_DIR/.vbw-planning/phases/01-setup" "$TEST_TEMP_DIR/.vbw-planning/phases/02-feature"
-  printf '%s\n' '#!/bin/bash' 'echo "verify_context=stub"' > "$plugin_root/scripts/compile-verify-context.sh"
-  chmod +x "$plugin_root/scripts/compile-verify-context.sh"
+  printf '%s\n' '#!/bin/bash' 'echo "verify_context=stub"' > "$plugin_root/scripts/compile-verify-context-for-uat.sh"
+  chmod +x "$plugin_root/scripts/compile-verify-context-for-uat.sh"
   printf '%s\n' '#!/bin/bash' 'true' > "$plugin_root/scripts/hook-wrapper.sh"
   printf '%s\n' '#!/bin/bash' 'cat "'"$cache"'"' > "$plugin_root/scripts/phase-detect.sh"
   chmod +x "$plugin_root/scripts/hook-wrapper.sh" "$plugin_root/scripts/phase-detect.sh"
