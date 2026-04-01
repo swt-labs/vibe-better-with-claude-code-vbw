@@ -253,6 +253,12 @@ _simulate_phase_detect_reader() {
   [ "${stat_count:-0}" -ge 4 ] || { echo 'FAIL: vibe.md missing cache mtime freshness check'; return 1; }
 }
 
+@test "vibe.md guarded readers use a shared live phase-detect lock" {
+  local lock_count
+  lock_count=$(grep -cF '/tmp/.vbw-phase-detect-live-${SESSION_KEY}.lock' "$PROJECT_ROOT/commands/vibe.md" || true)
+  [ "${lock_count:-0}" -ge 4 ] || { echo 'FAIL: vibe.md missing shared live phase-detect lock in guarded readers'; return 1; }
+}
+
 @test "commands with phase-detect define self-healing refresh helpers or guarded live reads" {
   for cmd in resume status discuss qa verify; do
     local count

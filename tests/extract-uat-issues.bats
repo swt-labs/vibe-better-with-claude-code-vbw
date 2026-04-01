@@ -832,3 +832,27 @@ issues: 1
   [[ "${lines[1]}" == "P01-T1|major|Something is broken|1" ]]
   [[ "$output" != *"uat_extract_error"* ]]
 }
+
+@test "extract-uat-issues: shared parser accepts bold Description and Severity bullets" {
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: Styled issue
+
+- **Result:** issue
+- **Issue:**
+  - **Description:** Styled issue still parses
+  - **Severity:** minor'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_issues_total=1"* ]]
+  [[ "${lines[1]}" == "P01-T1|minor|Styled issue still parses|1" ]]
+}

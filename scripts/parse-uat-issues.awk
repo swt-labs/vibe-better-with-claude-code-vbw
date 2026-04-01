@@ -77,9 +77,27 @@ has_issue && /^[[:space:]]*- Description:/ {
   next
 }
 
+has_issue && /^[[:space:]]*- \*\*Description:\*\*/ {
+  desc = $0
+  sub(/^[[:space:]]*- \*\*Description:\*\*[[:space:]]*/, "", desc)
+  gsub(/[[:space:]]+$/, "", desc)
+  description = desc
+  if (severity != "") emit_issue()
+  next
+}
+
 has_issue && /^[[:space:]]*- Severity:/ {
   sev = $0
   sub(/^[[:space:]]*- Severity:[[:space:]]*/, "", sev)
+  gsub(/[[:space:]]+$/, "", sev)
+  severity = tolower_str(sev)
+  if (description != "" || inline_issue != "") emit_issue()
+  next
+}
+
+has_issue && /^[[:space:]]*- \*\*Severity:\*\*/ {
+  sev = $0
+  sub(/^[[:space:]]*- \*\*Severity:\*\*[[:space:]]*/, "", sev)
   gsub(/[[:space:]]+$/, "", sev)
   severity = tolower_str(sev)
   if (description != "" || inline_issue != "") emit_issue()

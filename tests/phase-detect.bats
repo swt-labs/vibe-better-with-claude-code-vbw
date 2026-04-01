@@ -230,6 +230,38 @@ EOF
   ! echo "$marker" | grep -q 'uat_extract_error=true'
 }
 
+@test "inline UAT extraction preserves bold severity parsing parity with standalone extractor" {
+  mkdir -p .vbw-planning/phases/01-test/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: styled issue
+
+- **Result:** issue
+- **Issue:**
+  - **Description:** Styled issue still parses
+  - **Severity:** minor
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" .vbw-planning/phases/01-test
+  [ "$status" -eq 0 ]
+  expected="$output"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  marker=$(printf '%s\n' "$output" | awk '/^---UAT_EXTRACT_START---$/{f=1; next} /^---UAT_EXTRACT_END---$/{exit} f{print}')
+  [ "$marker" = "$expected" ]
+  echo "$marker" | grep -q 'P01-T1|minor|Styled issue still parses|1'
+}
+
 @test "milestone extraction preserves zero-issue parity with standalone extractor" {
   mkdir -p .vbw-planning/milestones/m01-test/phases/01-alpha/
   mkdir -p .vbw-planning/phases/
