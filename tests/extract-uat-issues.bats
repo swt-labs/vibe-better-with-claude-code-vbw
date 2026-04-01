@@ -444,56 +444,83 @@ issues: 1
 # ===========================================================================
 
 @test "uat-preseed: runs phase-detect live when cached file is missing (race fix)" {
-  # Simulate the race: symlink exists but cached phase-detect file does NOT.
-  # The fix runs phase-detect.sh live instead of only reading the cached file.
+  # Simulate the current vibe.md Block 5 reader logic.
+  # When the symlink exists and the cached phase-detect file is absent,
+  # the reader must consume the marker payload from a live phase-detect run.
   local session_key="test-race-$$"
   local link="/tmp/.vbw-plugin-root-link-${session_key}"
   local cache_file="/tmp/.vbw-phase-detect-${session_key}.txt"
+  local fake_root="$TEST_TEMP_DIR/fake-plugin"
 
-  # Create symlink pointing to plugin root
-  ln -sf "$PROJECT_ROOT" "$link"
+  mkdir -p "$fake_root/scripts"
+  cat > "$fake_root/scripts/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+cat <<'OUT'
+next_phase_state=needs_uat_remediation
+next_phase_slug=03-test-phase
+---UAT_EXTRACT_START---
+uat_phase=03 uat_issues_total=1 uat_round=1 uat_file=03-UAT.md
+P01-T2|major|Race condition test issue|1
+---UAT_EXTRACT_END---
+OUT
+EOF
+  chmod +x "$fake_root/scripts/phase-detect.sh"
+
+  # Create symlink pointing to fake plugin root
+  ln -sf "$fake_root" "$link"
   # Ensure NO cached file exists (simulates race)
   rm -f "$cache_file"
-
-  # Create project state that phase-detect would read
-  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/03-test-phase"
-  create_uat_file '---
-status: issues_found
----
-### P01-T2: Test failure
-- **Result:** issue
-  - Description: Race condition test issue
-  - Severity: major'
 
   cd "$TEST_TEMP_DIR"
 
   # Run the expansion logic (extracted from vibe.md Block 5)
-  # This should run phase-detect.sh live when cached file is absent
   run bash -c '
     SESSION_KEY="'"$session_key"'"
     L="'"$link"'"
     P="'"$cache_file"'"
     PD=""
+    _PD_START_TS=$(date +%s 2>/dev/null || echo 0)
+    _phase_detect_cache_fresh() {
+      local m=""
+      [ -f "$P" ] || return 1
+      m=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo "")
+      [ -n "$m" ] || return 1
+      [ "$m" -ge "$_PD_START_TS" ] 2>/dev/null
+    }
+    i=0
+    while [ $i -lt 100 ]; do
+      if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+        break
+      fi
+      if _phase_detect_cache_fresh; then
+        break
+      fi
+      sleep 0.1
+      i=$((i+1))
+    done
     if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
       PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
     fi
-    [ -z "$PD" ] && [ -f "$P" ] && PD=$(cat "$P")
-    STATE=$(printf "%s" "$PD" | grep "^next_phase_state=" | head -1 | cut -d= -f2)
-    if [ "$STATE" = "needs_uat_remediation" ]; then
-      SLUG=$(printf "%s" "$PD" | grep "^next_phase_slug=" | head -1 | cut -d= -f2)
-      PDIR=".vbw-planning/phases/$SLUG"
-      [ -d "$PDIR" ] && bash "$L/scripts/extract-uat-issues.sh" "$PDIR" 2>/dev/null || echo "uat_extract_error=true"
+    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
+    if [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] || [ "$PD" = "phase_detect_error=true" ]; then
+      echo "uat_extract_error=true"
+      exit 0
+    fi
+    if printf "%s" "$PD" | grep -q "^---UAT_EXTRACT_START---$"; then
+      printf "%s\n" "$PD" | awk "/^---UAT_EXTRACT_START---$/{f=1; next} /^---UAT_EXTRACT_END---$/{exit} f{print}"
     else
-      echo "not_in_remediation"
+      STATE=$(printf "%s" "$PD" | grep "^next_phase_state=" | head -1 | cut -d= -f2)
+      if [ "$STATE" = "needs_uat_remediation" ]; then
+        echo "uat_extract_error=true"
+      else
+        echo "not_in_remediation"
+      fi
     fi
   '
 
   [ "$status" -eq 0 ]
-  # phase-detect ran live but this test dir has no config.json etc,
-  # so phase-detect returns an error or non-remediation state — that's fine,
-  # the key assertion is that it didn't silently fail with empty PD.
-  # The output should be "not_in_remediation" (no .vbw-planning/config.json)
-  [[ "$output" == *"not_in_remediation"* ]] || [[ "$output" == *"uat_extract"* ]]
+  [[ "$output" == *"uat_phase=03 uat_issues_total=1 uat_round=1 uat_file=03-UAT.md"* ]]
+  [[ "$output" == *"P01-T2|major|Race condition test issue|1"* ]]
 
   # Cleanup
   rm -f "$link" "$cache_file"
@@ -504,42 +531,53 @@ status: issues_found
   local link="/tmp/.vbw-plugin-root-link-${session_key}"
   local cache_file="/tmp/.vbw-phase-detect-${session_key}.txt"
 
-  # No symlink, but cached file exists
+  # No symlink, but cached file exists with the marker payload already embedded.
   rm -f "$link"
-  echo "next_phase_state=needs_uat_remediation
+  cat > "$cache_file" <<'EOF'
+next_phase_state=needs_uat_remediation
 next_phase_slug=03-test-phase
-next_phase=3" > "$cache_file"
-
-  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/03-test-phase"
-  create_uat_file '---
-status: issues_found
----
-### P01-T2: Test failure
-- **Result:** issue
-  - Description: Fallback test issue
-  - Severity: major'
+next_phase=3
+---UAT_EXTRACT_START---
+uat_phase=03 uat_issues_total=1 uat_round=1 uat_file=03-UAT.md
+P01-T2|major|Fallback test issue|1
+---UAT_EXTRACT_END---
+EOF
 
   cd "$TEST_TEMP_DIR"
 
-  # With no symlink, wait loop exits after max retries, then falls back to cached file
-  # Since symlink doesn't exist, extract-uat-issues.sh can't be resolved via $L
+  # With no symlink, reader falls back to the cached phase-detect marker block.
   run bash -c '
     SESSION_KEY="'"$session_key"'"
     L="'"$link"'"
     P="'"$cache_file"'"
-    # Skip wait (no symlink to wait for in test)
     PD=""
+    _PD_START_TS=0
+    _phase_detect_cache_fresh() {
+      [ -f "$P" ]
+    }
     if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
       PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
     fi
-    [ -z "$PD" ] && [ -f "$P" ] && PD=$(cat "$P")
-    STATE=$(printf "%s" "$PD" | grep "^next_phase_state=" | head -1 | cut -d= -f2)
-    echo "state=$STATE"
+    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
+    if [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] || [ "$PD" = "phase_detect_error=true" ]; then
+      echo "uat_extract_error=true"
+      exit 0
+    fi
+    if printf "%s" "$PD" | grep -q "^---UAT_EXTRACT_START---$"; then
+      printf "%s\n" "$PD" | awk "/^---UAT_EXTRACT_START---$/{f=1; next} /^---UAT_EXTRACT_END---$/{exit} f{print}"
+    else
+      STATE=$(printf "%s" "$PD" | grep "^next_phase_state=" | head -1 | cut -d= -f2)
+      if [ "$STATE" = "needs_uat_remediation" ]; then
+        echo "uat_extract_error=true"
+      else
+        echo "not_in_remediation"
+      fi
+    fi
   '
 
   [ "$status" -eq 0 ]
-  # Should have read the cached file and found needs_uat_remediation
-  [[ "$output" == *"state=needs_uat_remediation"* ]]
+  [[ "$output" == *"uat_phase=03 uat_issues_total=1 uat_round=1 uat_file=03-UAT.md"* ]]
+  [[ "$output" == *"P01-T2|major|Fallback test issue|1"* ]]
 
   rm -f "$cache_file"
 }
