@@ -142,7 +142,16 @@ if type count_uat_rounds &>/dev/null; then
 else
   MAX_ARCHIVED=0
 fi
-CURRENT_ROUND=$((MAX_ARCHIVED + 1))
+CURRENT_ROUND=""
+case "$UAT_FILE" in
+  */remediation/uat/round-*/R*-UAT.md)
+    CURRENT_ROUND=$(basename "$UAT_FILE" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
+    CURRENT_ROUND="${CURRENT_ROUND:-0}"
+    ;;
+esac
+if [ -z "$CURRENT_ROUND" ] || ! echo "$CURRENT_ROUND" | grep -qE '^[0-9]+$'; then
+  CURRENT_ROUND=$((MAX_ARCHIVED + 1))
+fi
 
 # Build recurrence map: for each archived round, extract issue IDs
 # Format: associative-style lines "ID ROUND_NUM" in a temp file
@@ -153,6 +162,7 @@ if [ "$MAX_ARCHIVED" -gt 0 ]; then
   # Flat layout: {phase_num}-UAT-round-{NN}.md
   for rf in "${PHASE_DIR%/}/${PHASE_NUM}"-UAT-round-*.md; do
     [ -f "$rf" ] || continue
+    [ "$rf" = "$UAT_FILE" ] && continue
     ROUND_NUM=$(basename "$rf" | sed "s/^${PHASE_NUM}-UAT-round-0*\\([0-9]*\\)\\.md$/\\1/")
     if [ -n "$ROUND_NUM" ] && echo "$ROUND_NUM" | grep -qE '^[0-9]+$'; then
       awk -f "$ROUND_ID_PARSER" "$rf" | while IFS= read -r rid; do
@@ -163,6 +173,7 @@ if [ "$MAX_ARCHIVED" -gt 0 ]; then
   # Round-dir layout: remediation/uat/round-{NN}/R{NN}-UAT.md
   for rf in "${PHASE_DIR%/}"/remediation/uat/round-*/R*-UAT.md; do
     [ -f "$rf" ] || continue
+    [ "$rf" = "$UAT_FILE" ] && continue
     ROUND_NUM=$(basename "$rf" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
     if [ -n "$ROUND_NUM" ] && echo "$ROUND_NUM" | grep -qE '^[0-9]+$'; then
       awk -f "$ROUND_ID_PARSER" "$rf" | while IFS= read -r rid; do

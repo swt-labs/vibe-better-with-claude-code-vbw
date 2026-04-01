@@ -259,6 +259,13 @@ _simulate_phase_detect_reader() {
   [ "${lock_count:-0}" -ge 4 ] || { echo 'FAIL: vibe.md missing shared live phase-detect lock in guarded readers'; return 1; }
 }
 
+@test "vibe.md preamble uses the same phase-detect live lock" {
+  grep -qF 'LOCK="/tmp/.vbw-phase-detect-live-${SESSION_KEY}.lock"' "$PROJECT_ROOT/commands/vibe.md" || {
+    echo 'FAIL: vibe.md preamble missing shared phase-detect live lock';
+    return 1;
+  }
+}
+
 @test "commands with phase-detect define self-healing refresh helpers or guarded live reads" {
   for cmd in resume status discuss qa verify; do
     local count

@@ -1185,6 +1185,7 @@ _pd_build_uat_issue_lines() {
 
   for _pd_rf in "${phase_dir}${phase_num}"-UAT-round-*.md; do
     [ -f "$_pd_rf" ] || continue
+    [ "$_pd_rf" = "$uat_file" ] && continue
     _pd_round_num=$(basename "$_pd_rf" | sed "s/^${phase_num}-UAT-round-0*\\([0-9]*\\)\\.md$/\\1/")
     if [ -n "$_pd_round_num" ] && echo "$_pd_round_num" | grep -qE '^[0-9]+$'; then
       while IFS= read -r _pd_rid; do
@@ -1196,6 +1197,7 @@ _pd_build_uat_issue_lines() {
 
   for _pd_rf in "${phase_dir}"remediation/uat/round-*/R*-UAT.md; do
     [ -f "$_pd_rf" ] || continue
+    [ "$_pd_rf" = "$uat_file" ] && continue
     _pd_round_num=$(basename "$_pd_rf" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
     if [ -n "$_pd_round_num" ] && echo "$_pd_round_num" | grep -qE '^[0-9]+$'; then
       while IFS= read -r _pd_rid; do
@@ -1237,7 +1239,16 @@ if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" 
   if [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_ISSUES_FILE" ]; then
     _pd_uat_phase="${UAT_ISSUES_PHASE}"
     _pd_uat_fname=$(basename "$UAT_ISSUES_FILE")
-    _pd_uat_round=$((UAT_ROUND_COUNT + 1))
+    _pd_uat_round=""
+    case "$UAT_ISSUES_FILE" in
+      */remediation/uat/round-*/R*-UAT.md)
+        _pd_uat_round=$(basename "$UAT_ISSUES_FILE" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
+        _pd_uat_round="${_pd_uat_round:-0}"
+        ;;
+    esac
+    if [ -z "$_pd_uat_round" ] || ! echo "$_pd_uat_round" | grep -qE '^[0-9]+$'; then
+      _pd_uat_round=$((UAT_ROUND_COUNT + 1))
+    fi
     _pd_build_uat_issue_lines "$_PD_PHASE_DIR" "$_pd_uat_phase" "$UAT_ISSUES_FILE" "$_pd_uat_round"
 
     echo "---UAT_EXTRACT_START---"
@@ -1272,8 +1283,17 @@ if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; the
     if [ -n "$_pd_ms_uat" ] && [ -f "$_pd_ms_uat" ]; then
       _pd_ms_phase=$(resolve_phase_number_from_phase_dir "$_pd_ms_dir")
       _pd_ms_fname=$(basename "$_pd_ms_uat")
-      _pd_ms_round=1
-      if [ -n "$_pd_ms_phase" ] && type count_uat_rounds &>/dev/null; then
+      _pd_ms_round=""
+      case "$_pd_ms_uat" in
+        */remediation/uat/round-*/R*-UAT.md)
+          _pd_ms_round=$(basename "$_pd_ms_uat" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
+          _pd_ms_round="${_pd_ms_round:-0}"
+          ;;
+      esac
+      if [ -z "$_pd_ms_round" ] || ! echo "$_pd_ms_round" | grep -qE '^[0-9]+$'; then
+        _pd_ms_round=1
+      fi
+      if [ -n "$_pd_ms_phase" ] && type count_uat_rounds &>/dev/null && [ "$_pd_ms_round" = "1" ]; then
         _pd_ms_round=$(( $(count_uat_rounds "$_pd_ms_dir" "$_pd_ms_phase") + 1 ))
       fi
 

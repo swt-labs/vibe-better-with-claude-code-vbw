@@ -496,8 +496,27 @@ EOF
       sleep 0.1
       i=$((i+1))
     done
-    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && \
-      PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+    if [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+      LOCK="/tmp/.vbw-phase-detect-live-${SESSION_KEY}.lock"
+      i=0
+      while [ $i -lt 100 ]; do
+        if _phase_detect_cache_fresh; then
+          PD=$(cat "$P")
+          break
+        fi
+        if mkdir "$LOCK" 2>/dev/null; then
+          PTMP="${P}.reader.$$.$RANDOM"
+          PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+          if [ -n "$(printf "%s" "$PD" | tr -d "[:space:]")" ]; then
+            printf "%s\n" "$PD" > "$PTMP" 2>/dev/null && mv "$PTMP" "$P" 2>/dev/null || true
+          fi
+          rmdir "$LOCK" 2>/dev/null || true
+          break
+        fi
+        sleep 0.1
+        i=$((i+1))
+      done
+    fi
     [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -f "$P" ] && PD=$(cat "$P")
     if [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] || [ "$PD" = "phase_detect_error=true" ]; then
       echo "uat_extract_error=true"
@@ -561,8 +580,27 @@ EOF
       sleep 0.1
       i=$((i+1))
     done
-    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && \
-      PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+    if [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+      LOCK="/tmp/.vbw-phase-detect-live-${SESSION_KEY}.lock"
+      i=0
+      while [ $i -lt 100 ]; do
+        if _phase_detect_cache_fresh; then
+          PD=$(cat "$P")
+          break
+        fi
+        if mkdir "$LOCK" 2>/dev/null; then
+          PTMP="${P}.reader.$$.$RANDOM"
+          PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+          if [ -n "$(printf "%s" "$PD" | tr -d "[:space:]")" ]; then
+            printf "%s\n" "$PD" > "$PTMP" 2>/dev/null && mv "$PTMP" "$P" 2>/dev/null || true
+          fi
+          rmdir "$LOCK" 2>/dev/null || true
+          break
+        fi
+        sleep 0.1
+        i=$((i+1))
+      done
+    fi
     [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -f "$P" ] && PD=$(cat "$P")
     if [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] || [ "$PD" = "phase_detect_error=true" ]; then
       echo "uat_extract_error=true"
