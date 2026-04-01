@@ -242,7 +242,25 @@ Read all 7 docs. Produce:
 
 **HARD GATE — Shutdown before presenting results:** Solo: no team, skip. Duo/Quad: send `shutdown_request` to each teammate, wait for `shutdown_response` (approved=true) delivered via SendMessage tool call (NOT plain text). If a teammate responds in plain text instead of calling SendMessage, re-send the `shutdown_request`. If rejected, re-request (max 3 attempts per teammate — then proceed). Call TeamDelete. **Post-TeamDelete residual cleanup:** `bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true`. Verify: after TeamDelete, there must be ZERO active teammates. If teardown stalls, advise the user to run `/vbw:doctor --cleanup`. Only THEN proceed to META.md and user output. Failure to shut down leaves agents running and consuming API credits.
 
-Write META.md: mapped_at, git_hash, file_count, document list, mode, monorepo flag, mapping_tier.
+Write META.md: mapped_at, git_hash, file_count, document list, mode, monorepo flag, mapping_tier, mcp_capabilities.
+
+The `mcp_capabilities` field records which capability categories from Step 1.3 were detected and used during mapping. This serves debugging (users can see whether MCP delegation was active) and incremental mode (future mapping can check if prior mapping used MCP tools and whether those tools are still available).
+
+Example with MCP capabilities:
+```yaml
+mcp_capabilities:
+  - architecture_extraction
+  - symbol_search
+  - dependency_graph
+  - call_tracing
+  - code_search
+  - hotspot_analysis
+```
+
+Example without MCP capabilities:
+```yaml
+mcp_capabilities: none
+```
 
 Display per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md: Phase Banner (Codebase Mapped, Mode, Tier), ✓ per document, Key Findings (◆), Next Up block.
 
