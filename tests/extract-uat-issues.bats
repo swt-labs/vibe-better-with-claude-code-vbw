@@ -745,6 +745,99 @@ EOF
   rm -f "$link" "$cache_file"
 }
 
+@test "uat-preseed: does not fall back to stale cache after lock timeout" {
+  local session_key="test-stale-cache-$$"
+  local link="/tmp/.vbw-plugin-root-link-${session_key}"
+  local cache_file="/tmp/.vbw-phase-detect-${session_key}.txt"
+  local lock_dir="/tmp/.vbw-phase-detect-live-${session_key}.lock"
+  local fake_root="$TEST_TEMP_DIR/fake-plugin-stale-cache"
+
+  mkdir -p "$fake_root/scripts"
+  cat > "$fake_root/scripts/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+cat <<'OUT'
+next_phase_state=needs_uat_remediation
+next_phase_slug=03-test-phase
+---UAT_EXTRACT_START---
+uat_phase=03 uat_issues_total=1 uat_round=1 uat_file=03-UAT.md
+P01-T2|major|Fresh live issue|1
+---UAT_EXTRACT_END---
+OUT
+EOF
+  chmod +x "$fake_root/scripts/phase-detect.sh"
+  ln -sf "$fake_root" "$link"
+
+  # Pre-existing stale cache (older than the current invocation start)
+  cat > "$cache_file" <<'EOF'
+next_phase_state=needs_uat_remediation
+next_phase_slug=03-test-phase
+---UAT_EXTRACT_START---
+uat_extract_error=true uat_file=03-UAT.md
+---UAT_EXTRACT_END---
+EOF
+  # Hold the lock so the reader cannot acquire a live-fallback writer slot.
+  mkdir "$lock_dir"
+
+  cd "$TEST_TEMP_DIR"
+  run bash -c '
+    SESSION_KEY="'"$session_key"'"
+    L="'"$link"'"
+    P="'"$cache_file"'"
+    PD=""
+    _PD_START_TS=$(( (stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo 0) + 1 ))
+    _phase_detect_cache_fresh() {
+      local m=""
+      [ -f "$P" ] || return 1
+      m=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo "")
+      [ -n "$m" ] || return 1
+      [ "$m" -ge "$_PD_START_TS" ] 2>/dev/null
+    }
+    i=0
+    while [ $i -lt 5 ]; do
+      if _phase_detect_cache_fresh; then
+        PD=$(cat "$P")
+        break
+      fi
+      sleep 0.1
+      i=$((i+1))
+    done
+    if [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+      LOCK="/tmp/.vbw-phase-detect-live-${SESSION_KEY}.lock"
+      i=0
+      while [ $i -lt 5 ]; do
+        if _phase_detect_cache_fresh; then
+          PD=$(cat "$P")
+          break
+        fi
+        if mkdir "$LOCK" 2>/dev/null; then
+          PTMP="${P}.reader.$$.$RANDOM"
+          PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+          if [ -n "$(printf "%s" "$PD" | tr -d "[:space:]")" ]; then
+            printf "%s\n" "$PD" > "$PTMP" 2>/dev/null && mv "$PTMP" "$P" 2>/dev/null || true
+          fi
+          rmdir "$LOCK" 2>/dev/null || true
+          break
+        fi
+        sleep 0.1
+        i=$((i+1))
+      done
+    fi
+    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
+    if [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] || [ "$PD" = "phase_detect_error=true" ]; then
+      echo "uat_extract_error=true"
+      exit 0
+    fi
+    printf "%s\n" "$PD" | awk "/^---UAT_EXTRACT_START---$/{f=1; next} /^---UAT_EXTRACT_END---$/{exit} f{print}"
+  '
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"uat_extract_error=true"* ]]
+  [[ "$output" != *"Fresh live issue"* ]]
+
+  rmdir "$lock_dir" 2>/dev/null || true
+  rm -f "$link" "$cache_file"
+}
+
 # ===========================================================================
 # Milestone-style path coverage (Phase A — pre-emit milestone UAT)
 # ===========================================================================

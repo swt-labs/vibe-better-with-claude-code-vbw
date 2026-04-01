@@ -1284,8 +1284,10 @@ if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; the
       _pd_ms_phase=$(resolve_phase_number_from_phase_dir "$_pd_ms_dir")
       _pd_ms_fname=$(basename "$_pd_ms_uat")
       _pd_ms_round=""
+      _pd_ms_is_round_dir=false
       case "$_pd_ms_uat" in
         */remediation/uat/round-*/R*-UAT.md)
+          _pd_ms_is_round_dir=true
           _pd_ms_round=$(basename "$_pd_ms_uat" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
           _pd_ms_round="${_pd_ms_round:-0}"
           ;;
@@ -1293,7 +1295,7 @@ if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; the
       if [ -z "$_pd_ms_round" ] || ! echo "$_pd_ms_round" | grep -qE '^[0-9]+$'; then
         _pd_ms_round=1
       fi
-      if [ -n "$_pd_ms_phase" ] && type count_uat_rounds &>/dev/null && [ "$_pd_ms_round" = "1" ]; then
+      if [ -n "$_pd_ms_phase" ] && type count_uat_rounds &>/dev/null && [ "$_pd_ms_is_round_dir" = false ]; then
         _pd_ms_round=$(( $(count_uat_rounds "$_pd_ms_dir" "$_pd_ms_phase") + 1 ))
       fi
 
