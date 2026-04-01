@@ -4,34 +4,20 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Post to Discord
         env:
           WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RELEASE_NAME: ${{ github.event.release.name }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           RELEASE_URL: ${{ github.event.release.html_url }}
           RELEASE_BODY: ${{ github.event.release.body }}
-        run: |
-          # Truncate body to fit Discord's 4096 embed description limit
-          BODY=$(echo "$RELEASE_BODY" | head -c 4000)
-
-          # Build Discord embed payload
-          PAYLOAD=$(jq -n \
-            --arg title "$RELEASE_TAG" \
-            --arg url "$RELEASE_URL" \
-            --arg body "$BODY" \
-            '{
-              embeds: [{
-                title: ("Release " + $title),
-                url: $url,
-                description: $body,
-                color: 5814783
-              }]
-            }')
-
-          curl -sf -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
-            "$WEBHOOK_URL"
+        run: bash scripts/post-discord-release.sh
