@@ -175,6 +175,31 @@ issues: 0
   [[ "$output" == *"uat_extract_status=complete"* ]]
 }
 
+@test "extract-uat-issues: accepts a direct UAT file path" {
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T2: Direct file input
+
+- **Result:** issue
+- **Issue:**
+  - Description: File-path input still works
+  - Severity: major'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR/03-UAT.md"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_phase=03"* ]]
+  [[ "${lines[0]}" == *"uat_issues_total=1"* ]]
+  [[ "${lines[1]}" == "P01-T2|major|File-path input still works|1" ]]
+}
+
 @test "extract-uat-issues: missing directory returns error" {
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$TEST_TEMP_DIR/nonexistent"
@@ -354,6 +379,39 @@ issues: 2
   [[ "${lines[1]}" == "P01-T1|major|Old problem|1,2" ]]
   # P02-T1 is first-time (only current round)
   [[ "${lines[2]}" == "P02-T1|minor|New problem|2" ]]
+}
+
+@test "extract-uat-issues: output matches phase-detect marker payload for recurring issue" {
+  touch "$PHASE_DIR/03-01-PLAN.md"
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > "$PHASE_DIR/03-01-SUMMARY.md"
+  create_round_file 1 "P01-T1"
+  create_round_file 2 "P01-T1"
+
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: Recurring test
+
+- **Result:** issue
+- **Issue:**
+  - Description: Still broken
+  - Severity: major'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  expected="$output"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  marker=$(printf '%s\n' "$output" | awk '/^---UAT_EXTRACT_START---$/{f=1; next} /^---UAT_EXTRACT_END---$/{exit} f{print}')
+  [ "$marker" = "$expected" ]
 }
 
 @test "extract-uat-issues: discovered issue D-prefix tracked across rounds" {

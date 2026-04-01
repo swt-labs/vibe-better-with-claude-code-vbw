@@ -70,11 +70,11 @@ else
   fail "extract-uat-issues.sh should call count_uat_rounds"
 fi
 
-# Test 8: extract-uat-issues.sh calls extract_round_issue_ids
-if grep -q 'extract_round_issue_ids' "$SCRIPT_DIR/scripts/extract-uat-issues.sh"; then
-  pass "extract-uat-issues.sh calls extract_round_issue_ids for recurrence scanning"
+# Test 8: extract-uat-issues.sh performs recurrence scanning via helper or shared parser
+if grep -q 'extract_round_issue_ids\|extract-round-issue-ids.awk' "$SCRIPT_DIR/scripts/extract-uat-issues.sh"; then
+  pass "extract-uat-issues.sh performs recurrence scanning for archived rounds"
 else
-  fail "extract-uat-issues.sh should call extract_round_issue_ids"
+  fail "extract-uat-issues.sh should scan archived rounds for recurrence"
 fi
 
 # Test 9: uat-utils.sh has extract_round_issue_ids function

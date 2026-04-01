@@ -231,6 +231,160 @@ EOF
   echo "$output" | grep -q "P01-T1|major|milestone broken"
 }
 
+@test "inline UAT extraction preserves FAILED_IN_ROUNDS recurrence parity" {
+  mkdir -p .vbw-planning/phases/03-feature/
+  touch .vbw-planning/phases/03-feature/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/03-feature/03-01-SUMMARY.md
+  cat > .vbw-planning/phases/03-feature/03-UAT-round-01.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: still broken
+  - Severity: major
+EOF
+  cat > .vbw-planning/phases/03-feature/03-UAT-round-02.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: still broken
+  - Severity: major
+EOF
+  cat > .vbw-planning/phases/03-feature/03-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: still broken
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" .vbw-planning/phases/03-feature
+  [ "$status" -eq 0 ]
+  expected="$output"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  marker=$(printf '%s\n' "$output" | awk '/^---UAT_EXTRACT_START---$/{f=1; next} /^---UAT_EXTRACT_END---$/{exit} f{print}')
+  [ "$marker" = "$expected" ]
+}
+
+@test "milestone UAT extraction preserves FAILED_IN_ROUNDS recurrence parity" {
+  mkdir -p .vbw-planning/milestones/m01-test/phases/03-feature/
+  mkdir -p .vbw-planning/phases/
+  echo "# Shipped" > .vbw-planning/milestones/m01-test/SHIPPED.md
+  touch .vbw-planning/milestones/m01-test/phases/03-feature/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/m01-test/phases/03-feature/03-01-SUMMARY.md
+  cat > .vbw-planning/milestones/m01-test/phases/03-feature/03-UAT-round-01.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: milestone still broken
+  - Severity: major
+EOF
+  cat > .vbw-planning/milestones/m01-test/phases/03-feature/03-UAT-round-02.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: milestone still broken
+  - Severity: major
+EOF
+  cat > .vbw-planning/milestones/m01-test/phases/03-feature/03-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: milestone still broken
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" .vbw-planning/milestones/m01-test/phases/03-feature
+  [ "$status" -eq 0 ]
+  expected="$output"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  marker=$(printf '%s\n' "$output" | awk '/^---MILESTONE_UAT_EXTRACT_START---$/{f=1; next} /^---MILESTONE_UAT_EXTRACT_END---$/{exit} f{print}' | awk '/^milestone_phase_dir=/{next} /^---$/{exit} {print}')
+  [ "$marker" = "$expected" ]
+}
+
+@test "milestone extraction uses resolved phase number for non-canonical phase dir" {
+  mkdir -p .vbw-planning/milestones/m01-test/phases/setup-api/
+  mkdir -p .vbw-planning/phases/
+  echo "# Shipped" > .vbw-planning/milestones/m01-test/SHIPPED.md
+  touch .vbw-planning/milestones/m01-test/phases/setup-api/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/m01-test/phases/setup-api/03-01-SUMMARY.md
+  cat > .vbw-planning/milestones/m01-test/phases/setup-api/03-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P03-T1: recovered number
+
+- **Result:** issue
+- **Issue:**
+  - Description: non-canonical dir still reports phase 03
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=true"
+  echo "$output" | grep -q "milestone_phase_dir=.vbw-planning/milestones/m01-test/phases/setup-api"
+  echo "$output" | grep -q "uat_phase=03 uat_issues_total=1 uat_round=1 uat_file=03-UAT.md"
+}
+
 @test "minor-only UAT issues set major-or-higher flag false" {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md

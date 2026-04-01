@@ -1125,17 +1125,107 @@ fi
 echo "execution_state=$EXEC_STATE"
 
 # --- UAT issue extraction ---
-# The awk program is inlined directly at each call site rather than wrapped in
-# a function or written to a temp file. Diagnostics confirmed that awk inside
-# bash functions called via $() subshell capture produces zero output in Claude
-# Code's template expansion context, but awk invoked directly at the call site
-# works reliably. Inlining avoids both the subshell bug and temp-file overhead.
+# Use shared awk assets so phase-detect and extract-uat-issues.sh emit the same
+# issue-line contract. The awk programs are invoked directly at the call site
+# rather than via a function captured with $(), which proved unreliable in
+# Claude Code template expansion.
+_PD_ISSUE_PARSER="$_SCRIPT_DIR_PD/parse-uat-issues.awk"
+_PD_ROUND_ID_PARSER="$_SCRIPT_DIR_PD/extract-round-issue-ids.awk"
 
-# --- Inline UAT extraction for needs_uat_remediation ---
+_pd_build_uat_issue_lines() {
+  local phase_dir="$1"
+  local phase_num="$2"
+  local uat_file="$3"
+  local current_round="$4"
+  local _pd_base_issues=""
+  local _pd_base_count=0
+  local _pd_fm_issues=""
+  local _pd_round_ids=""
+  local _pd_rf=""
+  local _pd_round_num=""
+  local _pd_past_rounds=""
+  local _pd_failed_in=""
+  local _pd_line=""
+
+  _PD_EXTRACT_LINES=""
+  _PD_EXTRACT_COUNT=0
+  _PD_EXTRACT_ERROR=""
+
+  if [ ! -f "$_PD_ISSUE_PARSER" ] || [ ! -f "$_PD_ROUND_ID_PARSER" ]; then
+    _PD_EXTRACT_ERROR="true"
+    return 0
+  fi
+
+  _pd_base_issues=$(awk -f "$_PD_ISSUE_PARSER" "$uat_file" 2>/dev/null) || _pd_base_issues=""
+  if [ -n "$_pd_base_issues" ]; then
+    _pd_base_count=$(printf '%s\n' "$_pd_base_issues" | wc -l | tr -d ' ')
+  fi
+
+  if [ "$_pd_base_count" -eq 0 ]; then
+    _pd_fm_issues=$(awk '
+      BEGIN { in_fm=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^[[:space:]]*issues[[:space:]]*:/ {
+        val=$0; sub(/^[^:]*:[[:space:]]*/, "", val); gsub(/[[:space:]]+$/, "", val)
+        print val; exit
+      }
+    ' "$uat_file" 2>/dev/null || true)
+    _pd_fm_issues=$(printf '%s' "$_pd_fm_issues" | tr -d '[:space:]')
+    if [ -n "$_pd_fm_issues" ] && [ "$_pd_fm_issues" != "0" ]; then
+      _PD_EXTRACT_ERROR="true"
+    fi
+    return 0
+  fi
+
+  case "$phase_dir" in
+    */) ;;
+    *) phase_dir="$phase_dir/" ;;
+  esac
+
+  for _pd_rf in "${phase_dir}${phase_num}"-UAT-round-*.md; do
+    [ -f "$_pd_rf" ] || continue
+    _pd_round_num=$(basename "$_pd_rf" | sed "s/^${phase_num}-UAT-round-0*\\([0-9]*\\)\\.md$/\\1/")
+    if [ -n "$_pd_round_num" ] && echo "$_pd_round_num" | grep -qE '^[0-9]+$'; then
+      while IFS= read -r _pd_rid; do
+        [ -n "$_pd_rid" ] || continue
+        _pd_round_ids="${_pd_round_ids}${_pd_round_ids:+$'\n'}${_pd_rid} ${_pd_round_num}"
+      done < <(awk -f "$_PD_ROUND_ID_PARSER" "$_pd_rf" 2>/dev/null)
+    fi
+  done
+
+  for _pd_rf in "${phase_dir}"remediation/uat/round-*/R*-UAT.md; do
+    [ -f "$_pd_rf" ] || continue
+    _pd_round_num=$(basename "$_pd_rf" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
+    if [ -n "$_pd_round_num" ] && echo "$_pd_round_num" | grep -qE '^[0-9]+$'; then
+      while IFS= read -r _pd_rid; do
+        [ -n "$_pd_rid" ] || continue
+        _pd_round_ids="${_pd_round_ids}${_pd_round_ids:+$'\n'}${_pd_rid} ${_pd_round_num}"
+      done < <(awk -f "$_PD_ROUND_ID_PARSER" "$_pd_rf" 2>/dev/null)
+    fi
+  done
+
+  while IFS='|' read -r _pd_id _pd_sev _pd_desc; do
+    [ -n "$_pd_id" ] || continue
+    _pd_past_rounds=""
+    if [ -n "$_pd_round_ids" ]; then
+      _pd_past_rounds=$(printf '%s\n' "$_pd_round_ids" | awk -v id="$_pd_id" '$1 == id { print $2 }' | sort -n | paste -sd, -) || _pd_past_rounds=""
+    fi
+    if [ -n "$_pd_past_rounds" ]; then
+      _pd_failed_in="${_pd_past_rounds},${current_round}"
+    else
+      _pd_failed_in="$current_round"
+    fi
+    _pd_line="${_pd_id}|${_pd_sev}|${_pd_desc}|${_pd_failed_in}"
+    _PD_EXTRACT_LINES="${_PD_EXTRACT_LINES}${_PD_EXTRACT_LINES:+$'\n'}${_pd_line}"
+    _PD_EXTRACT_COUNT=$((_PD_EXTRACT_COUNT + 1))
+  done < <(printf '%s\n' "$_pd_base_issues")
+}
+
+# --- Active phase UAT extraction for needs_uat_remediation ---
 if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" ]; then
-  # Re-resolve UAT file if not captured during loop (e.g., routing override)
+  _PD_PHASE_DIR="${PHASES_DIR}/${NEXT_PHASE_SLUG}"
   if [ -z "$UAT_ISSUES_FILE" ] || [ ! -f "$UAT_ISSUES_FILE" ]; then
-    _PD_PHASE_DIR="${PHASES_DIR}/${NEXT_PHASE_SLUG}"
     if [ -d "$_PD_PHASE_DIR" ]; then
       if type current_uat &>/dev/null; then
         UAT_ISSUES_FILE=$(current_uat "$_PD_PHASE_DIR")
@@ -1148,41 +1238,20 @@ if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" 
     _pd_uat_phase="${UAT_ISSUES_PHASE}"
     _pd_uat_fname=$(basename "$UAT_ISSUES_FILE")
     _pd_uat_round=$((UAT_ROUND_COUNT + 1))
-    _pd_uat_issues=$(awk -v rnd="$_pd_uat_round" '
-function tlwr(s,    i,c,o) {
-  o=""; for(i=1;i<=length(s);i++){c=substr(s,i,1);if(c>="A"&&c<="Z")c=sprintf("%c",index("ABCDEFGHIJKLMNOPQRSTUVWXYZ",c)+96);o=o c}; return o
-}
-function emit() {
-  if(desc==""&&inl!="")desc=inl; if(desc=="")desc="(no description)"
-  if(sev==""){ld=tlwr(desc);if(ld~/crash|broken|error|doesnt work|fails|exception/)sev="critical";else if(ld~/wrong|incorrect|missing|not working|bug/)sev="major";else if(ld~/minor|cosmetic|nitpick|small|typo|polish/)sev="minor";else sev="major"}
-  gsub(/\|/,"-",desc); printf "%s|%s|%s|%s\n",id,sev,desc,rnd; hi=0;desc="";sev="";inl=""
-}
-/^### [PD][0-9]/{if(hi)emit();id=$2;sub(/:$/,"",id);hi=0;desc="";sev="";inl="";next}
-/^- \*\*Result:\*\*/{v=$0;sub(/^- \*\*Result:\*\*[[:space:]]*/,"",v);gsub(/[[:space:]]+$/,"",v);if(tlwr(v)~/^(issue|fail|failed|partial)/)hi=1;next}
-hi&&/^- \*\*Issue:\*\*/{t=$0;sub(/^- \*\*Issue:\*\*[[:space:]]*/,"",t);gsub(/[[:space:]]+$/,"",t);if(t!=""&&t!="{if result=issue}")inl=t;next}
-hi&&/^[[:space:]]*- Description:/{d=$0;sub(/^[[:space:]]*- Description:[[:space:]]*/,"",d);gsub(/[[:space:]]+$/,"",d);desc=d;if(sev!="")emit();next}
-hi&&/^[[:space:]]*- Severity:/{s=$0;sub(/^[[:space:]]*- Severity:[[:space:]]*/,"",s);gsub(/[[:space:]]+$/,"",s);sev=tlwr(s);if(desc!=""||inl!="")emit();next}
-/^### /||/^## /{if(hi)emit();hi=0;desc="";sev="";inl=""}
-END{if(hi)emit()}
-' "$UAT_ISSUES_FILE" 2>/dev/null) || _pd_uat_issues=""
-    _pd_issue_count=0
-    if [ -n "$_pd_uat_issues" ]; then
-      _pd_issue_count=$(printf '%s\n' "$_pd_uat_issues" | wc -l | tr -d ' ')
-    fi
-    if [ "$_pd_issue_count" -gt 0 ]; then
-      echo "---UAT_EXTRACT_START---"
-      echo "uat_phase=${_pd_uat_phase} uat_issues_total=${_pd_issue_count} uat_round=${_pd_uat_round} uat_file=${_pd_uat_fname}"
-      printf '%s\n' "$_pd_uat_issues"
-      echo "---UAT_EXTRACT_END---"
+    _pd_build_uat_issue_lines "$_PD_PHASE_DIR" "$_pd_uat_phase" "$UAT_ISSUES_FILE" "$_pd_uat_round"
+
+    echo "---UAT_EXTRACT_START---"
+    if [ "$_PD_EXTRACT_COUNT" -gt 0 ]; then
+      echo "uat_phase=${_pd_uat_phase} uat_issues_total=${_PD_EXTRACT_COUNT} uat_round=${_pd_uat_round} uat_file=${_pd_uat_fname}"
+      printf '%s\n' "$_PD_EXTRACT_LINES"
     else
-      echo "---UAT_EXTRACT_START---"
       echo "uat_extract_error=true uat_file=${_pd_uat_fname}"
-      echo "---UAT_EXTRACT_END---"
     fi
+    echo "---UAT_EXTRACT_END---"
   fi
 fi
 
-# --- Inline milestone UAT extraction ---
+# --- Milestone UAT extraction ---
 if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; then
   echo "---MILESTONE_UAT_EXTRACT_START---"
   _pd_old_ifs="$IFS"
@@ -1197,37 +1266,26 @@ if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; the
     elif type latest_non_source_uat &>/dev/null; then
       _pd_ms_uat=$(latest_non_source_uat "$_pd_ms_dir")
     fi
+
     if [ -n "$_pd_ms_uat" ] && [ -f "$_pd_ms_uat" ]; then
-      _pd_ms_phase=$(basename "$_pd_ms_dir" | sed 's/[^0-9].*//')
+      _pd_ms_phase=$(resolve_phase_number_from_phase_dir "$_pd_ms_dir")
       _pd_ms_fname=$(basename "$_pd_ms_uat")
       _pd_ms_round=1
-      if type count_uat_rounds &>/dev/null; then
+      if [ -n "$_pd_ms_phase" ] && type count_uat_rounds &>/dev/null; then
         _pd_ms_round=$(( $(count_uat_rounds "$_pd_ms_dir" "$_pd_ms_phase") + 1 ))
       fi
-      _pd_ms_issues=$(awk -v rnd="$_pd_ms_round" '
-function tlwr(s,    i,c,o) {
-  o=""; for(i=1;i<=length(s);i++){c=substr(s,i,1);if(c>="A"&&c<="Z")c=sprintf("%c",index("ABCDEFGHIJKLMNOPQRSTUVWXYZ",c)+96);o=o c}; return o
-}
-function emit() {
-  if(desc==""&&inl!="")desc=inl; if(desc=="")desc="(no description)"
-  if(sev==""){ld=tlwr(desc);if(ld~/crash|broken|error|doesnt work|fails|exception/)sev="critical";else if(ld~/wrong|incorrect|missing|not working|bug/)sev="major";else if(ld~/minor|cosmetic|nitpick|small|typo|polish/)sev="minor";else sev="major"}
-  gsub(/\|/,"-",desc); printf "%s|%s|%s|%s\n",id,sev,desc,rnd; hi=0;desc="";sev="";inl=""
-}
-/^### [PD][0-9]/{if(hi)emit();id=$2;sub(/:$/,"",id);hi=0;desc="";sev="";inl="";next}
-/^- \*\*Result:\*\*/{v=$0;sub(/^- \*\*Result:\*\*[[:space:]]*/,"",v);gsub(/[[:space:]]+$/,"",v);if(tlwr(v)~/^(issue|fail|failed|partial)/)hi=1;next}
-hi&&/^- \*\*Issue:\*\*/{t=$0;sub(/^- \*\*Issue:\*\*[[:space:]]*/,"",t);gsub(/[[:space:]]+$/,"",t);if(t!=""&&t!="{if result=issue}")inl=t;next}
-hi&&/^[[:space:]]*- Description:/{d=$0;sub(/^[[:space:]]*- Description:[[:space:]]*/,"",d);gsub(/[[:space:]]+$/,"",d);desc=d;if(sev!="")emit();next}
-hi&&/^[[:space:]]*- Severity:/{s=$0;sub(/^[[:space:]]*- Severity:[[:space:]]*/,"",s);gsub(/[[:space:]]+$/,"",s);sev=tlwr(s);if(desc!=""||inl!="")emit();next}
-/^### /||/^## /{if(hi)emit();hi=0;desc="";sev="";inl=""}
-END{if(hi)emit()}
-' "$_pd_ms_uat" 2>/dev/null) || _pd_ms_issues=""
-      _pd_ms_count=0
-      if [ -n "$_pd_ms_issues" ]; then
-        _pd_ms_count=$(printf '%s\n' "$_pd_ms_issues" | wc -l | tr -d ' ')
+
+      if [ -n "$_pd_ms_phase" ]; then
+        _pd_build_uat_issue_lines "$_pd_ms_dir" "$_pd_ms_phase" "$_pd_ms_uat" "$_pd_ms_round"
+      else
+        _PD_EXTRACT_LINES=""
+        _PD_EXTRACT_COUNT=0
+        _PD_EXTRACT_ERROR="true"
       fi
-      if [ "$_pd_ms_count" -gt 0 ]; then
-        echo "uat_phase=${_pd_ms_phase} uat_issues_total=${_pd_ms_count} uat_round=${_pd_ms_round} uat_file=${_pd_ms_fname}"
-        printf '%s\n' "$_pd_ms_issues"
+
+      if [ "$_PD_EXTRACT_COUNT" -gt 0 ]; then
+        echo "uat_phase=${_pd_ms_phase} uat_issues_total=${_PD_EXTRACT_COUNT} uat_round=${_pd_ms_round} uat_file=${_pd_ms_fname}"
+        printf '%s\n' "$_PD_EXTRACT_LINES"
       else
         echo "uat_extract_error=true dir=$_pd_ms_dir"
       fi

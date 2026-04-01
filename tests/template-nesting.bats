@@ -45,7 +45,7 @@ _guard_pattern() {
   printf 'while [ ! -L "$L" ] && [ $i -lt 20 ]'
 }
 
-@test "vibe.md has 1 guarded symlink template expression" {
+@test "vibe.md has 1 simple guarded symlink template expression" {
   local count
   count=$(grep -cF "$(_guard_pattern)" "$PROJECT_ROOT/commands/vibe.md")
   [ "$count" -eq 1 ]
@@ -99,10 +99,12 @@ _guard_pattern() {
   [ "$count" -eq 6 ]
 }
 
-@test "guarded expressions use symlink path variable not direct path" {
-  # All guarded expressions should reference scripts via $L variable, not direct path
-  run bash -c "grep -F '$(_guard_pattern)' \"$PROJECT_ROOT/commands/\"*.md | grep -v 'bash \"\$L/scripts/'"
-  [ "$status" -eq 1 ]
+@test "guarded expressions define and use the L symlink variable" {
+  for cmd in vibe qa verify discuss help skills; do
+    local count
+    count=$(grep -c 'L="/tmp/.vbw-plugin-root-link-' "$PROJECT_ROOT/commands/${cmd}.md")
+    [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing L symlink variable for guarded reads"; return 1; }
+  done
 }
 
 # ── Atomic phase-detect via preamble temp file ──────────────────────────────
@@ -194,11 +196,15 @@ _simulate_phase_detect_reader() {
 }
 
 @test "commands with phase-detect run it atomically in preamble" {
-  for cmd in resume status vibe discuss qa verify; do
+  for cmd in resume status discuss qa verify; do
     local count
     count=$(grep -cF "$(_atomic_pd_preamble_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
     [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing atomic phase-detect in preamble"; return 1; }
   done
+
+  grep -q 'PTMP="${P}.tmp\.\$\$"' "$PROJECT_ROOT/commands/vibe.md" || { echo "FAIL: vibe.md missing temp output path for atomic phase-detect preamble"; return 1; }
+  grep -q 'bash "\$LINK/scripts/phase-detect.sh" > "\$PTMP"' "$PROJECT_ROOT/commands/vibe.md" || { echo "FAIL: vibe.md missing temp-file phase-detect write"; return 1; }
+  grep -q 'mv "\$PTMP" "\$P"' "$PROJECT_ROOT/commands/vibe.md" || { echo "FAIL: vibe.md missing atomic phase-detect rename"; return 1; }
 }
 
 @test "commands with phase-detect preamble no longer use stamp file" {
@@ -210,11 +216,15 @@ _simulate_phase_detect_reader() {
 }
 
 @test "commands with phase-detect use guarded temp-file read fallback" {
-  for cmd in resume status vibe discuss qa verify; do
+  for cmd in resume status discuss qa verify; do
     local count
     count=$(grep -cF "$(_atomic_pd_temp_read_pattern)" "$PROJECT_ROOT/commands/${cmd}.md")
     [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing guarded phase-detect temp-file read"; return 1; }
   done
+
+  local vibe_count
+  vibe_count=$(grep -cF 'PD=$(cat "$P")' "$PROJECT_ROOT/commands/vibe.md" || true)
+  [ "${vibe_count:-0}" -ge 1 ] || { echo 'FAIL: vibe.md missing guarded phase-detect temp-file read'; return 1; }
 }
 
 @test "commands with phase-detect treat error cache as cache miss" {
@@ -233,12 +243,26 @@ _simulate_phase_detect_reader() {
   done
 }
 
-@test "commands with phase-detect define self-healing refresh helpers" {
-  for cmd in resume status vibe discuss qa verify; do
+@test "vibe.md guarded readers require fresh cache before fallback" {
+  local start_count fresh_count stat_count
+  start_count=$(grep -cF '_PD_START_TS=$(date +%s' "$PROJECT_ROOT/commands/vibe.md" || true)
+  fresh_count=$(grep -cF '_phase_detect_cache_fresh()' "$PROJECT_ROOT/commands/vibe.md" || true)
+  stat_count=$(grep -c 'stat -c %Y "\$P"\|stat -f %m "\$P"' "$PROJECT_ROOT/commands/vibe.md" || true)
+  [ "${start_count:-0}" -ge 4 ] || { echo 'FAIL: vibe.md missing invocation-start freshness guard'; return 1; }
+  [ "${fresh_count:-0}" -ge 4 ] || { echo 'FAIL: vibe.md missing fresh-cache helper in guarded readers'; return 1; }
+  [ "${stat_count:-0}" -ge 4 ] || { echo 'FAIL: vibe.md missing cache mtime freshness check'; return 1; }
+}
+
+@test "commands with phase-detect define self-healing refresh helpers or guarded live reads" {
+  for cmd in resume status discuss qa verify; do
     local count
     count=$(grep -cF '_refresh_phase_detect()' "$PROJECT_ROOT/commands/${cmd}.md")
     [ "$count" -ge 1 ] || { echo "FAIL: ${cmd}.md missing self-healing refresh helper"; return 1; }
   done
+
+  local vibe_live_count
+  vibe_live_count=$(grep -cF 'bash "$L/scripts/phase-detect.sh"' "$PROJECT_ROOT/commands/vibe.md")
+  [ "$vibe_live_count" -ge 4 ] || { echo "FAIL: vibe.md missing guarded live phase-detect reads"; return 1; }
 }
 
 @test "vibe/verify secondary readers no longer use legacy empty-only fallback" {
@@ -358,12 +382,8 @@ EOF
   [ "${cat_count:-0}" -ge 1 ] || { echo "FAIL: vibe.md missing phase-detect temp-file fallback"; return 1; }
 
   local live_count
-  live_count=$(grep -cF 'bash "$REAL_R/scripts/phase-detect.sh"' "$PROJECT_ROOT/commands/vibe.md")
-  [ "$live_count" -ge 1 ] || { echo "FAIL: vibe.md missing live phase-detect read"; return 1; }
-
-  local helper_count
-  helper_count=$(grep -cF '_refresh_phase_detect()' "$PROJECT_ROOT/commands/vibe.md")
-  [ "$helper_count" -ge 1 ] || { echo "FAIL: vibe.md missing self-healing refresh helper"; return 1; }
+  live_count=$(grep -cF 'bash "$L/scripts/phase-detect.sh"' "$PROJECT_ROOT/commands/vibe.md")
+  [ "$live_count" -ge 4 ] || { echo "FAIL: vibe.md missing live phase-detect reads"; return 1; }
 }
 
 # ── UAT protocol safeguards ─────────────────────────────────────────────────

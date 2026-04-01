@@ -552,11 +552,20 @@ FAIL=0
 
 PHASE_DETECT_COMMANDS=(vibe.md verify.md status.md resume.md qa.md discuss.md)
 
-# Check 18: targeted commands define a self-healing refresh helper in phase-detect readers
+# Check 18: targeted commands define a self-healing refresh helper in
+# phase-detect readers, except vibe.md which now uses guarded live reads with
+# temp-file fallback to avoid stale same-session cache reuse.
 for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
   file="$COMMANDS_DIR/$rel"
   base="$(basename "$rel" .md)"
-  if grep -q '_refresh_phase_detect()' "$file"; then
+  if [ "$rel" = "vibe.md" ]; then
+    live_count=$(grep -cF 'bash "$L/scripts/phase-detect.sh"' "$file" || true)
+    if [ "${live_count:-0}" -ge 4 ]; then
+      pass "$base: phase-detect reader uses guarded live reads"
+    else
+      fail "$base: missing guarded live phase-detect reads"
+    fi
+  elif grep -q '_refresh_phase_detect()' "$file"; then
     pass "$base: phase-detect reader defines _refresh_phase_detect()"
   else
     fail "$base: missing _refresh_phase_detect() self-healing helper"
@@ -590,10 +599,20 @@ for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
   fi
 done
 
-# Check 20: _refresh_phase_detect() includes symlink glob step (step 5 of 6-step cascade)
+# Check 20: helper-based readers include the symlink glob step (step 5 of the
+# 6-step cascade). vibe.md has no helper and is validated via its guarded live
+# reads in Check 18.
 for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
   file="$COMMANDS_DIR/$rel"
   base="$(basename "$rel" .md)"
+  if [ "$rel" = "vibe.md" ]; then
+    if grep -q '/tmp/.vbw-plugin-root-link-\*/scripts/hook-wrapper.sh' "$file"; then
+      pass "$base: guarded live-read path still includes symlink glob fallback in the preamble"
+    else
+      fail "$base: missing symlink glob fallback in preamble"
+    fi
+    continue
+  fi
   # Count _refresh_phase_detect function definitions
   func_count=$(grep -c '_refresh_phase_detect()' "$file" || true)
   # Count symlink glob steps inside the file (after first function definition)
