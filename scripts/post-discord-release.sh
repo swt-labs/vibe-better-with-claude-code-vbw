@@ -22,6 +22,18 @@ build_execute_url() {
   esac
 }
 
+build_message_delete_url() {
+  local webhook_url="$1" message_id="$2" base query
+
+  base="${webhook_url%%\?*}"
+  if [ "$base" = "$webhook_url" ]; then
+    printf '%s/messages/%s\n' "$webhook_url" "$message_id"
+  else
+    query="${webhook_url#*\?}"
+    printf '%s/messages/%s?%s\n' "$base" "$message_id" "$query"
+  fi
+}
+
 truncate_title() {
   "$JQ_BIN" -rn \
     --arg value "$1" \
@@ -93,8 +105,8 @@ is_retryable_http_code() {
   esac
 }
 
-post_payload() {
-  local payload="$1" chunk_label="$2"
+request_with_retry() {
+  local method="$1" url="$2" action_label="$3" response_path="$4" payload="${5:-}"
   local headers_file body_file stderr_file
   local attempt curl_exit http_code retry_after error_detail
 
@@ -109,17 +121,30 @@ post_payload() {
     : > "$stderr_file"
 
     set +e
-    http_code=$("$CURL_BIN" -sS \
-      -D "$headers_file" \
-      -o "$body_file" \
-      -H "Content-Type: application/json" \
-      -d "$payload" \
-      -w '%{http_code}' \
-      "$execute_url" 2>"$stderr_file")
+    if [ -n "$payload" ]; then
+      http_code=$("$CURL_BIN" -sS \
+        -X "$method" \
+        -D "$headers_file" \
+        -o "$body_file" \
+        -H "Content-Type: application/json" \
+        -d "$payload" \
+        -w '%{http_code}' \
+        "$url" 2>"$stderr_file")
+    else
+      http_code=$("$CURL_BIN" -sS \
+        -X "$method" \
+        -D "$headers_file" \
+        -o "$body_file" \
+        -w '%{http_code}' \
+        "$url" 2>"$stderr_file")
+    fi
     curl_exit=$?
     set -e
 
     if [ "$curl_exit" -eq 0 ] && [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+      if [ -n "$response_path" ]; then
+        cp "$body_file" "$response_path"
+      fi
       rm -f "$headers_file" "$body_file" "$stderr_file"
       return 0
     fi
@@ -127,7 +152,7 @@ post_payload() {
     if [ "$attempt" -lt "$MAX_POST_ATTEMPTS" ] && { [ "$curl_exit" -ne 0 ] || is_retryable_http_code "$http_code"; }; then
       retry_after=$(retry_delay_for "$http_code" "$headers_file" "$body_file" "$attempt")
       printf 'Retrying %s after %ss (attempt %s/%s)\n' \
-        "$chunk_label" "$retry_after" "$((attempt + 1))" "$MAX_POST_ATTEMPTS" >&2
+        "$action_label" "$retry_after" "$((attempt + 1))" "$MAX_POST_ATTEMPTS" >&2
       sleep "$retry_after"
       attempt=$((attempt + 1))
       continue
@@ -140,10 +165,10 @@ post_payload() {
 
     if [ "$curl_exit" -ne 0 ]; then
       printf 'Failed to post %s after %s attempt(s) (curl exit %s): %s\n' \
-        "$chunk_label" "$attempt" "$curl_exit" "$error_detail" >&2
+        "$action_label" "$attempt" "$curl_exit" "$error_detail" >&2
     else
       printf 'Failed to post %s after %s attempt(s) (HTTP %s): %s\n' \
-        "$chunk_label" "$attempt" "$http_code" "$error_detail" >&2
+        "$action_label" "$attempt" "$http_code" "$error_detail" >&2
     fi
 
     rm -f "$headers_file" "$body_file" "$stderr_file"
@@ -151,6 +176,23 @@ post_payload() {
   done
 
   rm -f "$headers_file" "$body_file" "$stderr_file"
+}
+
+rollback_posted_messages() {
+  local idx message_id delete_url rollback_failed=0
+
+  [ "${#posted_message_ids[@]}" -gt 0 ] || return 0
+
+  printf 'Rolling back %s previously posted Discord message(s)\n' "${#posted_message_ids[@]}" >&2
+  for ((idx = ${#posted_message_ids[@]} - 1; idx >= 0; idx--)); do
+    message_id="${posted_message_ids[$idx]}"
+    delete_url=$(build_message_delete_url "$WEBHOOK_URL" "$message_id")
+    if ! request_with_retry DELETE "$delete_url" "delete message $message_id during rollback" ""; then
+      rollback_failed=1
+    fi
+  done
+
+  return "$rollback_failed"
 }
 
 release_label="$RELEASE_TAG"
@@ -167,15 +209,32 @@ fi
 execute_url=$(build_execute_url "$WEBHOOK_URL")
 chunks_json=$(chunk_body "$body_text")
 chunk_count=$("$JQ_BIN" -rn --argjson chunks "$chunks_json" '$chunks | length')
+response_body_file=$(mktemp)
+trap 'rm -f "$response_body_file"' EXIT
+
+declare -a posted_message_ids=()
 
 for ((i = 0; i < chunk_count; i++)); do
+  local_chunk_label="chunk $((i + 1))/$chunk_count"
   footer=""
   if [ "$chunk_count" -gt 1 ]; then
     footer="Part $((i + 1)) of $chunk_count"
   fi
 
   payload=$(build_payload "$display_title" "$RELEASE_URL" "$chunks_json" "$i" "$footer")
-  post_payload "$payload" "chunk $((i + 1))/$chunk_count"
+
+  if request_with_retry POST "$execute_url" "post $local_chunk_label" "$response_body_file" "$payload"; then
+    message_id=$("$JQ_BIN" -r '.id // empty' "$response_body_file")
+    if [ -z "$message_id" ]; then
+      printf 'Discord did not return a message id for %s; manual cleanup may be required.\n' "$local_chunk_label" >&2
+      rollback_posted_messages || printf 'Rollback failed after missing message id.\n' >&2
+      exit 1
+    fi
+    posted_message_ids+=("$message_id")
+  else
+    rollback_posted_messages || printf 'Rollback failed after a terminal posting error.\n' >&2
+    exit 1
+  fi
 done
 
 printf 'Posted %s Discord message(s) for %s\n' "$chunk_count" "$RELEASE_TAG"

@@ -18,6 +18,7 @@ url=""
 header_file=""
 body_file=""
 write_out=""
+method="POST"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -26,6 +27,10 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     -H|--header)
+      shift 2
+      ;;
+    -X)
+      method="$2"
       shift 2
       ;;
     -D|-o|-w)
@@ -62,6 +67,9 @@ if [ -n "${FAKE_CURL_FAIL_EXIT_ON_ATTEMPT:-}" ] && [ "$attempt_count" -eq "$FAKE
 fi
 
 http_code="${FAKE_CURL_DEFAULT_HTTP:-200}"
+if [ "$method" = "DELETE" ] && [ -z "${FAKE_CURL_DEFAULT_HTTP:-}" ]; then
+  http_code=204
+fi
 if [ -n "${FAKE_CURL_FAIL_ON_ATTEMPT:-}" ] && [ "$attempt_count" -eq "$FAKE_CURL_FAIL_ON_ATTEMPT" ]; then
   http_code="${FAKE_CURL_FAIL_HTTP:-429}"
 fi
@@ -76,16 +84,28 @@ if [ -n "$header_file" ]; then
 fi
 
 if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
-  posted_count=0
-  if [ -f "$FAKE_CURL_DIR/posted-count" ]; then
-    posted_count=$(cat "$FAKE_CURL_DIR/posted-count")
-  fi
-  posted_count=$((posted_count + 1))
+  if [ "$method" = "DELETE" ]; then
+    deleted_count=0
+    if [ -f "$FAKE_CURL_DIR/deleted-count" ]; then
+      deleted_count=$(cat "$FAKE_CURL_DIR/deleted-count")
+    fi
+    deleted_count=$((deleted_count + 1))
 
-  printf '%s' "$posted_count" > "$FAKE_CURL_DIR/posted-count"
-  printf '%s' "$payload" > "$FAKE_CURL_DIR/payload-$posted_count.json"
-  printf '%s' "$url" > "$FAKE_CURL_DIR/url-$posted_count.txt"
-  response_body=$(printf '{"id":"message-%s"}\n' "$posted_count")
+    printf '%s' "$deleted_count" > "$FAKE_CURL_DIR/deleted-count"
+    printf '%s' "$url" > "$FAKE_CURL_DIR/delete-url-$deleted_count.txt"
+    response_body=""
+  else
+    posted_count=0
+    if [ -f "$FAKE_CURL_DIR/posted-count" ]; then
+      posted_count=$(cat "$FAKE_CURL_DIR/posted-count")
+    fi
+    posted_count=$((posted_count + 1))
+
+    printf '%s' "$posted_count" > "$FAKE_CURL_DIR/posted-count"
+    printf '%s' "$payload" > "$FAKE_CURL_DIR/payload-$posted_count.json"
+    printf '%s' "$url" > "$FAKE_CURL_DIR/url-$posted_count.txt"
+    response_body=$(printf '{"id":"message-%s"}\n' "$posted_count")
+  fi
 else
   response_body=$(printf '{"message":"rate limited","retry_after":%s,"global":false}\n' "${FAKE_CURL_RETRY_AFTER:-0}")
 fi
@@ -130,6 +150,14 @@ attempt_count() {
   fi
 }
 
+delete_count() {
+  if [ -f "$FAKE_CURL_DIR/deleted-count" ]; then
+    cat "$FAKE_CURL_DIR/deleted-count"
+  else
+    echo 0
+  fi
+}
+
 @test "uses release name when present and disables mentions" {
   export WEBHOOK_URL="https://discord.example/webhook"
   export RELEASE_NAME="VBW 1.31.0"
@@ -144,6 +172,10 @@ attempt_count() {
   run jq -r '.embeds[0].title' "$FAKE_CURL_DIR/payload-1.json"
   [ "$status" -eq 0 ]
   [ "$output" = "Release VBW 1.31.0" ]
+
+  run jq -r '.embeds[0].url' "$FAKE_CURL_DIR/payload-1.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$RELEASE_URL" ]
 
   run jq -r '.embeds[0].description' "$FAKE_CURL_DIR/payload-1.json"
   [ "$status" -eq 0 ]
@@ -228,4 +260,26 @@ attempt_count() {
   run jq -r -s '[ .[] | .embeds[0].description ] | join("")' "$FAKE_CURL_DIR"/payload-*.json
   [ "$status" -eq 0 ]
   [ "$output" = "$long_body" ]
+}
+
+@test "rolls back previously posted chunks when a later chunk fails terminally" {
+  local long_body
+  long_body="$(printf 'section-%04d\n' $(seq 1 700))"
+
+  export WEBHOOK_URL="https://discord.example/webhook"
+  export RELEASE_NAME=""
+  export RELEASE_TAG="v1.31.4"
+  export RELEASE_URL="https://github.com/swt-labs/vibe-better-with-claude-code-vbw/releases/tag/v1.31.4"
+  export RELEASE_BODY="$long_body"
+  export FAKE_CURL_FAIL_ON_ATTEMPT=2
+  export FAKE_CURL_FAIL_HTTP=404
+
+  run bash "$SCRIPTS_DIR/post-discord-release.sh"
+  [ "$status" -eq 1 ]
+  [ "$(payload_count)" -eq 1 ]
+  [ "$(delete_count)" -eq 1 ]
+
+  run cat "$FAKE_CURL_DIR/delete-url-1.txt"
+  [ "$status" -eq 0 ]
+  [ "$output" = "https://discord.example/webhook/messages/message-1" ]
 }
