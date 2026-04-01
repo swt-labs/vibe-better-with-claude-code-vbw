@@ -14,12 +14,11 @@ setup() {
 set -euo pipefail
 
 payload=""
+attachment_path=""
 url=""
 header_file=""
 body_file=""
 write_out=""
-method="POST"
-deliver_and_fail="false"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -27,11 +26,20 @@ while [ "$#" -gt 0 ]; do
       payload="$2"
       shift 2
       ;;
-    -H|--header)
+    -F)
+      form_field="$2"
+      case "$form_field" in
+        payload_json=*)
+          payload="${form_field#payload_json=}"
+          ;;
+        files\[0\]=@*)
+          attachment_path="${form_field#*=@}"
+          attachment_path="${attachment_path%%;*}"
+          ;;
+      esac
       shift 2
       ;;
-    -X)
-      method="$2"
+    -H|--header)
       shift 2
       ;;
     -D|-o|-w)
@@ -42,7 +50,7 @@ while [ "$#" -gt 0 ]; do
       esac
       shift 2
       ;;
-    -f|-s|-S|-fsS|-sf|-fS|-sSf|-fs|-sS)
+    -s|-S|-sS)
       shift
       ;;
     *)
@@ -59,23 +67,9 @@ fi
 attempt_count=$((attempt_count + 1))
 printf '%s' "$attempt_count" > "$FAKE_CURL_DIR/attempt-count"
 
-if [ -n "${FAKE_CURL_FAIL_EXIT_ON_ATTEMPT:-}" ] && [ "$attempt_count" -eq "$FAKE_CURL_FAIL_EXIT_ON_ATTEMPT" ]; then
-  printf 'simulated network failure\n' >&2
-  if [ -n "$write_out" ] && [ "$write_out" = '%{http_code}' ]; then
-    printf '000'
-  fi
-  exit "${FAKE_CURL_FAIL_EXIT_CODE:-7}"
-fi
-
 http_code="${FAKE_CURL_DEFAULT_HTTP:-200}"
-if [ "$method" = "DELETE" ] && [ -z "${FAKE_CURL_DEFAULT_HTTP:-}" ]; then
-  http_code=204
-fi
 if [ -n "${FAKE_CURL_FAIL_ON_ATTEMPT:-}" ] && [ "$attempt_count" -eq "$FAKE_CURL_FAIL_ON_ATTEMPT" ]; then
   http_code="${FAKE_CURL_FAIL_HTTP:-429}"
-fi
-if [ -n "${FAKE_CURL_DELIVER_AND_FAIL_ON_ATTEMPT:-}" ] && [ "$attempt_count" -eq "$FAKE_CURL_DELIVER_AND_FAIL_ON_ATTEMPT" ]; then
-  deliver_and_fail="true"
 fi
 
 if [ -n "$header_file" ]; then
@@ -87,52 +81,43 @@ if [ -n "$header_file" ]; then
   fi
 fi
 
-if [ "$deliver_and_fail" = "true" ]; then
+if [ -n "${FAKE_CURL_DELIVER_AND_FAIL_ON_ATTEMPT:-}" ] && [ "$attempt_count" -eq "$FAKE_CURL_DELIVER_AND_FAIL_ON_ATTEMPT" ]; then
   posted_count=0
   if [ -f "$FAKE_CURL_DIR/posted-count" ]; then
     posted_count=$(cat "$FAKE_CURL_DIR/posted-count")
   fi
   posted_count=$((posted_count + 1))
-
   printf '%s' "$posted_count" > "$FAKE_CURL_DIR/posted-count"
   printf '%s' "$payload" > "$FAKE_CURL_DIR/payload-$posted_count.json"
   printf '%s' "$url" > "$FAKE_CURL_DIR/url-$posted_count.txt"
-
+  if [ -n "$attachment_path" ]; then
+    cp "$attachment_path" "$FAKE_CURL_DIR/attachment-$posted_count.md"
+  fi
   if [ -n "$body_file" ]; then
     : > "$body_file"
   fi
-
   if [ -n "$write_out" ] && [ "$write_out" = '%{http_code}' ]; then
     printf '000'
   fi
-
   printf 'simulated network failure after send\n' >&2
   exit "${FAKE_CURL_DELIVER_AND_FAIL_EXIT_CODE:-56}"
-elif [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
-  if [ "$method" = "DELETE" ]; then
-    deleted_count=0
-    if [ -f "$FAKE_CURL_DIR/deleted-count" ]; then
-      deleted_count=$(cat "$FAKE_CURL_DIR/deleted-count")
-    fi
-    deleted_count=$((deleted_count + 1))
+fi
 
-    printf '%s' "$deleted_count" > "$FAKE_CURL_DIR/deleted-count"
-    printf '%s' "$url" > "$FAKE_CURL_DIR/delete-url-$deleted_count.txt"
-    response_body=""
-  else
-    posted_count=0
-    if [ -f "$FAKE_CURL_DIR/posted-count" ]; then
-      posted_count=$(cat "$FAKE_CURL_DIR/posted-count")
-    fi
-    posted_count=$((posted_count + 1))
-
-    printf '%s' "$posted_count" > "$FAKE_CURL_DIR/posted-count"
-    printf '%s' "$payload" > "$FAKE_CURL_DIR/payload-$posted_count.json"
-    printf '%s' "$url" > "$FAKE_CURL_DIR/url-$posted_count.txt"
-    response_body=$(printf '{"id":"message-%s"}\n' "$posted_count")
+if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+  posted_count=0
+  if [ -f "$FAKE_CURL_DIR/posted-count" ]; then
+    posted_count=$(cat "$FAKE_CURL_DIR/posted-count")
   fi
+  posted_count=$((posted_count + 1))
+  printf '%s' "$posted_count" > "$FAKE_CURL_DIR/posted-count"
+  printf '%s' "$payload" > "$FAKE_CURL_DIR/payload-$posted_count.json"
+  printf '%s' "$url" > "$FAKE_CURL_DIR/url-$posted_count.txt"
+  if [ -n "$attachment_path" ]; then
+    cp "$attachment_path" "$FAKE_CURL_DIR/attachment-$posted_count.md"
+  fi
+  response_body=$(printf '{"id":"message-%s"}\n' "$posted_count")
 else
-  response_body=$(printf '{"message":"rate limited","retry_after":%s,"global":false}\n' "${FAKE_CURL_RETRY_AFTER:-0}")
+  response_body=$(printf '{"message":"request failed","retry_after":%s,"global":false}\n' "${FAKE_CURL_RETRY_AFTER:-0}")
 fi
 
 if [ -n "$body_file" ]; then
@@ -175,14 +160,6 @@ attempt_count() {
   fi
 }
 
-delete_count() {
-  if [ -f "$FAKE_CURL_DIR/deleted-count" ]; then
-    cat "$FAKE_CURL_DIR/deleted-count"
-  else
-    echo 0
-  fi
-}
-
 @test "uses release name when present and disables mentions" {
   export WEBHOOK_URL="https://discord.example/webhook"
   export RELEASE_NAME="VBW 1.31.0"
@@ -193,6 +170,7 @@ delete_count() {
   run bash "$SCRIPTS_DIR/post-discord-release.sh"
   [ "$status" -eq 0 ]
   [ "$(payload_count)" -eq 1 ]
+  [ ! -e "$FAKE_CURL_DIR/attachment-1.md" ]
 
   run jq -r '.embeds[0].title' "$FAKE_CURL_DIR/payload-1.json"
   [ "$status" -eq 0 ]
@@ -215,7 +193,7 @@ delete_count() {
   [ "$output" = "https://discord.example/webhook?wait=true" ]
 }
 
-@test "splits long release notes across multiple webhook posts without truncation" {
+@test "attaches the full release notes when the embed description would overflow" {
   local long_body
   long_body="$(printf 'section-%04d\n' $(seq 1 700))"
 
@@ -227,45 +205,39 @@ delete_count() {
 
   run bash "$SCRIPTS_DIR/post-discord-release.sh"
   [ "$status" -eq 0 ]
-  [ "$(payload_count)" -gt 1 ]
+  [ "$(payload_count)" -eq 1 ]
 
-  run jq -r '.embeds[0].title' "$FAKE_CURL_DIR/payload-1.json"
-  [ "$status" -eq 0 ]
-  [ "$output" = "Release v1.31.1" ]
-
-  run jq -r -s '[ .[] | .embeds[0].description ] | join("")' "$FAKE_CURL_DIR"/payload-*.json
+  run cat "$FAKE_CURL_DIR/attachment-1.md"
   [ "$status" -eq 0 ]
   [ "$output" = "$long_body" ]
 
-  run jq -s 'all(.[]; (.embeds[0].description | length) <= 4096)' "$FAKE_CURL_DIR"/payload-*.json
+  run jq -r '.attachments[0].filename' "$FAKE_CURL_DIR/payload-1.json"
   [ "$status" -eq 0 ]
-  [ "$output" = "true" ]
+  [ "$output" = "release-notes.md" ]
+
+  run jq -r '.embeds[0].description' "$FAKE_CURL_DIR/payload-1.json"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'Full release notes attached as `release-notes.md`.' ]]
+  [ ${#output} -le 4096 ]
 }
 
-@test "retries a rate-limited chunk and still posts the full changelog" {
-  local long_body
-  long_body="$(printf 'section-%04d\n' $(seq 1 700))"
-
+@test "retries a rate-limited request and still posts the notification" {
   export WEBHOOK_URL="https://discord.example/webhook"
   export RELEASE_NAME=""
   export RELEASE_TAG="v1.31.2"
   export RELEASE_URL="https://github.com/swt-labs/vibe-better-with-claude-code-vbw/releases/tag/v1.31.2"
-  export RELEASE_BODY="$long_body"
-  export FAKE_CURL_FAIL_ON_ATTEMPT=2
+  export RELEASE_BODY="Release notes"
+  export FAKE_CURL_FAIL_ON_ATTEMPT=1
   export FAKE_CURL_FAIL_HTTP=429
   export FAKE_CURL_RETRY_AFTER=0
 
   run bash "$SCRIPTS_DIR/post-discord-release.sh"
   [ "$status" -eq 0 ]
-  [ "$(payload_count)" -eq 3 ]
-  [ "$(attempt_count)" -eq 4 ]
-
-  run jq -r -s '[ .[] | .embeds[0].description ] | join("")' "$FAKE_CURL_DIR"/payload-*.json
-  [ "$status" -eq 0 ]
-  [ "$output" = "$long_body" ]
+  [ "$(payload_count)" -eq 1 ]
+  [ "$(attempt_count)" -eq 2 ]
 }
 
-@test "does not retry an ambiguously delivered chunk and rolls back prior chunks" {
+@test "does not retry an ambiguously delivered notification request" {
   local long_body
   long_body="$(printf 'section-%04d\n' $(seq 1 700))"
 
@@ -274,38 +246,15 @@ delete_count() {
   export RELEASE_TAG="v1.31.3"
   export RELEASE_URL="https://github.com/swt-labs/vibe-better-with-claude-code-vbw/releases/tag/v1.31.3"
   export RELEASE_BODY="$long_body"
-  export FAKE_CURL_DELIVER_AND_FAIL_ON_ATTEMPT=2
+  export FAKE_CURL_DELIVER_AND_FAIL_ON_ATTEMPT=1
   export FAKE_CURL_DELIVER_AND_FAIL_EXIT_CODE=56
 
   run bash "$SCRIPTS_DIR/post-discord-release.sh"
   [ "$status" -eq 1 ]
-  [ "$(payload_count)" -eq 2 ]
-  [ "$(attempt_count)" -eq 3 ]
-  [ "$(delete_count)" -eq 1 ]
-
-  run cat "$FAKE_CURL_DIR/delete-url-1.txt"
-  [ "$status" -eq 0 ]
-  [ "$output" = "https://discord.example/webhook/messages/message-1" ]
-}
-
-@test "rolls back previously posted chunks when a later chunk fails terminally" {
-  local long_body
-  long_body="$(printf 'section-%04d\n' $(seq 1 700))"
-
-  export WEBHOOK_URL="https://discord.example/webhook"
-  export RELEASE_NAME=""
-  export RELEASE_TAG="v1.31.4"
-  export RELEASE_URL="https://github.com/swt-labs/vibe-better-with-claude-code-vbw/releases/tag/v1.31.4"
-  export RELEASE_BODY="$long_body"
-  export FAKE_CURL_FAIL_ON_ATTEMPT=2
-  export FAKE_CURL_FAIL_HTTP=404
-
-  run bash "$SCRIPTS_DIR/post-discord-release.sh"
-  [ "$status" -eq 1 ]
   [ "$(payload_count)" -eq 1 ]
-  [ "$(delete_count)" -eq 1 ]
+  [ "$(attempt_count)" -eq 1 ]
 
-  run cat "$FAKE_CURL_DIR/delete-url-1.txt"
+  run cat "$FAKE_CURL_DIR/attachment-1.md"
   [ "$status" -eq 0 ]
-  [ "$output" = "https://discord.example/webhook/messages/message-1" ]
+  [ "$output" = "$long_body" ]
 }
