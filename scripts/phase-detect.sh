@@ -1241,11 +1241,13 @@ if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" 
     _pd_build_uat_issue_lines "$_PD_PHASE_DIR" "$_pd_uat_phase" "$UAT_ISSUES_FILE" "$_pd_uat_round"
 
     echo "---UAT_EXTRACT_START---"
-    if [ "$_PD_EXTRACT_COUNT" -gt 0 ]; then
-      echo "uat_phase=${_pd_uat_phase} uat_issues_total=${_PD_EXTRACT_COUNT} uat_round=${_pd_uat_round} uat_file=${_pd_uat_fname}"
-      printf '%s\n' "$_PD_EXTRACT_LINES"
-    else
+    if [ -n "$_PD_EXTRACT_ERROR" ]; then
       echo "uat_extract_error=true uat_file=${_pd_uat_fname}"
+    else
+      echo "uat_phase=${_pd_uat_phase} uat_issues_total=${_PD_EXTRACT_COUNT} uat_round=${_pd_uat_round} uat_file=${_pd_uat_fname}"
+      if [ "$_PD_EXTRACT_COUNT" -gt 0 ]; then
+        printf '%s\n' "$_PD_EXTRACT_LINES"
+      fi
     fi
     echo "---UAT_EXTRACT_END---"
   fi
@@ -1283,11 +1285,13 @@ if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; the
         _PD_EXTRACT_ERROR="true"
       fi
 
-      if [ "$_PD_EXTRACT_COUNT" -gt 0 ]; then
-        echo "uat_phase=${_pd_ms_phase} uat_issues_total=${_PD_EXTRACT_COUNT} uat_round=${_pd_ms_round} uat_file=${_pd_ms_fname}"
-        printf '%s\n' "$_PD_EXTRACT_LINES"
-      else
+      if [ -n "$_PD_EXTRACT_ERROR" ]; then
         echo "uat_extract_error=true dir=$_pd_ms_dir"
+      else
+        echo "uat_phase=${_pd_ms_phase} uat_issues_total=${_PD_EXTRACT_COUNT} uat_round=${_pd_ms_round} uat_file=${_pd_ms_fname}"
+        if [ "$_PD_EXTRACT_COUNT" -gt 0 ]; then
+          printf '%s\n' "$_PD_EXTRACT_LINES"
+        fi
       fi
     else
       echo "uat_extract_error=true dir=$_pd_ms_dir"

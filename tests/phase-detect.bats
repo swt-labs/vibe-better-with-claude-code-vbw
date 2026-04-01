@@ -200,6 +200,68 @@ EOF
   echo "$output" | grep -q "^---UAT_EXTRACT_END---$"
 }
 
+@test "inline UAT extraction preserves zero-issue parity with standalone extractor" {
+  mkdir -p .vbw-planning/phases/01-test/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 0
+---
+
+## Tests
+
+### P01-T1: all good
+
+- **Result:** pass
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" .vbw-planning/phases/01-test
+  [ "$status" -eq 0 ]
+  expected="$output"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  marker=$(printf '%s\n' "$output" | awk '/^---UAT_EXTRACT_START---$/{f=1; next} /^---UAT_EXTRACT_END---$/{exit} f{print}')
+  [ "$marker" = "$expected" ]
+  echo "$marker" | grep -q 'uat_issues_total=0'
+  ! echo "$marker" | grep -q 'uat_extract_error=true'
+}
+
+@test "milestone extraction preserves zero-issue parity with standalone extractor" {
+  mkdir -p .vbw-planning/milestones/m01-test/phases/01-alpha/
+  mkdir -p .vbw-planning/phases/
+  echo '# Shipped' > .vbw-planning/milestones/m01-test/SHIPPED.md
+  touch .vbw-planning/milestones/m01-test/phases/01-alpha/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/m01-test/phases/01-alpha/01-01-SUMMARY.md
+  cat > .vbw-planning/milestones/m01-test/phases/01-alpha/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 0
+---
+
+## Tests
+
+### P01-T1: all good
+
+- **Result:** pass
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" .vbw-planning/milestones/m01-test/phases/01-alpha
+  [ "$status" -eq 0 ]
+  expected="$output"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  marker=$(printf '%s\n' "$output" | awk '/^---MILESTONE_UAT_EXTRACT_START---$/{f=1; next} /^---MILESTONE_UAT_EXTRACT_END---$/{exit} f{print}' | awk '/^milestone_phase_dir=/{next} /^---$/{exit} {print}')
+  [ "$marker" = "$expected" ]
+  echo "$marker" | grep -q 'uat_issues_total=0'
+  ! echo "$marker" | grep -q 'uat_extract_error=true'
+}
+
 @test "milestone UAT extraction emitted for milestone_uat_issues" {
   # Create a shipped milestone with UAT issues
   mkdir -p .vbw-planning/milestones/m01-test/phases/01-alpha/

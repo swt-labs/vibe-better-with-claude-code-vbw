@@ -36,19 +36,16 @@ _phase_detect_cache_fresh() {
 }
 i=0
 while [ $i -lt 100 ]; do
-  if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
-    break
-  fi
   if _phase_detect_cache_fresh; then
+    PD=$(cat "$P")
     break
   fi
   sleep 0.1
   i=$((i+1))
 done
-if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && \
   PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
-fi
-[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
+[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ -f "$P" ] && PD=$(cat "$P")
 if [ -n "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ "$PD" != "phase_detect_error=true" ]; then
   printf '%s' "$PD"
 else
@@ -77,19 +74,16 @@ _phase_detect_cache_fresh() {
 }
 i=0
 while [ $i -lt 100 ]; do
-  if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
-    break
-  fi
   if _phase_detect_cache_fresh; then
+    PD=$(cat "$P")
     break
   fi
   sleep 0.1
   i=$((i+1))
 done
-if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && \
   PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
-fi
-[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
+[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ -f "$P" ] && PD=$(cat "$P")
 if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
   echo "uat_extract_error=true"
   exit 0
@@ -122,19 +116,16 @@ _phase_detect_cache_fresh() {
 }
 i=0
 while [ $i -lt 100 ]; do
-  if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
-    break
-  fi
   if _phase_detect_cache_fresh; then
+    PD=$(cat "$P")
     break
   fi
   sleep 0.1
   i=$((i+1))
 done
-if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && \
   PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
-fi
-[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
+[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ -f "$P" ] && PD=$(cat "$P")
 if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
   echo "milestone_extract_unavailable=true"
   exit 0
@@ -167,19 +158,16 @@ _phase_detect_cache_fresh() {
 }
 i=0
 while [ $i -lt 100 ]; do
-  if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
-    break
-  fi
   if _phase_detect_cache_fresh; then
+    PD=$(cat "$P")
     break
   fi
   sleep 0.1
   i=$((i+1))
 done
-if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && \
   PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
-fi
-[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
+[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ -f "$P" ] && PD=$(cat "$P")
 if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
   echo "verify_context=unavailable"
 else

@@ -489,19 +489,16 @@ EOF
     }
     i=0
     while [ $i -lt 100 ]; do
-      if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
-        break
-      fi
       if _phase_detect_cache_fresh; then
+        PD=$(cat "$P")
         break
       fi
       sleep 0.1
       i=$((i+1))
     done
-    if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && \
       PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
-    fi
-    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
+    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -f "$P" ] && PD=$(cat "$P")
     if [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] || [ "$PD" = "phase_detect_error=true" ]; then
       echo "uat_extract_error=true"
       exit 0
@@ -555,10 +552,18 @@ EOF
     _phase_detect_cache_fresh() {
       [ -f "$P" ]
     }
-    if [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+    i=0
+    while [ $i -lt 100 ]; do
+      if _phase_detect_cache_fresh; then
+        PD=$(cat "$P")
+        break
+      fi
+      sleep 0.1
+      i=$((i+1))
+    done
+    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && \
       PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
-    fi
-    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
+    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -f "$P" ] && PD=$(cat "$P")
     if [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] || [ "$PD" = "phase_detect_error=true" ]; then
       echo "uat_extract_error=true"
       exit 0
@@ -580,6 +585,83 @@ EOF
   [[ "$output" == *"P01-T2|major|Fallback test issue|1"* ]]
 
   rm -f "$cache_file"
+}
+
+@test "uat-preseed: prefers fresh cache over live phase-detect when symlink already exists" {
+  local session_key="test-cache-first-$$"
+  local link="/tmp/.vbw-plugin-root-link-${session_key}"
+  local cache_file="/tmp/.vbw-phase-detect-${session_key}.txt"
+  local fake_root="$TEST_TEMP_DIR/fake-plugin-cache-first"
+
+  mkdir -p "$fake_root/scripts"
+  cat > "$fake_root/scripts/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+cat <<'OUT'
+next_phase_state=needs_uat_remediation
+next_phase_slug=03-test-phase
+---UAT_EXTRACT_START---
+uat_extract_error=true uat_file=03-UAT.md
+---UAT_EXTRACT_END---
+OUT
+EOF
+  chmod +x "$fake_root/scripts/phase-detect.sh"
+  ln -sf "$fake_root" "$link"
+  rm -f "$cache_file"
+
+  # Publish a fresh cached payload shortly after the reader starts. The fixed
+  # reader waits for the cache instead of immediately breaking on symlink
+  # existence and consuming the stale live phase-detect output.
+  (
+    sleep 0.2
+    cat > "$cache_file" <<'EOF'
+next_phase_state=needs_uat_remediation
+next_phase_slug=03-test-phase
+---UAT_EXTRACT_START---
+uat_phase=03 uat_issues_total=1 uat_round=1 uat_file=03-UAT.md
+P01-T2|major|Fresh cached issue|1
+---UAT_EXTRACT_END---
+EOF
+  ) &
+
+  cd "$TEST_TEMP_DIR"
+  run bash -c '
+    SESSION_KEY="'"$session_key"'"
+    L="'"$link"'"
+    P="'"$cache_file"'"
+    PD=""
+    _PD_START_TS=$(date +%s 2>/dev/null || echo 0)
+    _phase_detect_cache_fresh() {
+      local m=""
+      [ -f "$P" ] || return 1
+      m=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo "")
+      [ -n "$m" ] || return 1
+      [ "$m" -ge "$_PD_START_TS" ] 2>/dev/null
+    }
+    i=0
+    while [ $i -lt 100 ]; do
+      if _phase_detect_cache_fresh; then
+        PD=$(cat "$P")
+        break
+      fi
+      sleep 0.1
+      i=$((i+1))
+    done
+    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ] && \
+      PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+    [ -z "$(printf "%s" "$PD" | tr -d "[:space:]")" ] && [ -f "$P" ] && PD=$(cat "$P")
+    if printf "%s" "$PD" | grep -q "^---UAT_EXTRACT_START---$"; then
+      printf "%s\n" "$PD" | awk "/^---UAT_EXTRACT_START---$/{f=1; next} /^---UAT_EXTRACT_END---$/{exit} f{print}"
+    else
+      echo "no-marker"
+    fi
+  '
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"uat_phase=03 uat_issues_total=1 uat_round=1 uat_file=03-UAT.md"* ]]
+  [[ "$output" == *"P01-T2|major|Fresh cached issue|1"* ]]
+  [[ "$output" != *"uat_extract_error=true uat_file=03-UAT.md"* ]]
+
+  rm -f "$link" "$cache_file"
 }
 
 # ===========================================================================
