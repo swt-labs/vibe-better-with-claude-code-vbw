@@ -19,6 +19,7 @@ header_file=""
 body_file=""
 write_out=""
 method="POST"
+deliver_and_fail="false"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -73,6 +74,9 @@ fi
 if [ -n "${FAKE_CURL_FAIL_ON_ATTEMPT:-}" ] && [ "$attempt_count" -eq "$FAKE_CURL_FAIL_ON_ATTEMPT" ]; then
   http_code="${FAKE_CURL_FAIL_HTTP:-429}"
 fi
+if [ -n "${FAKE_CURL_DELIVER_AND_FAIL_ON_ATTEMPT:-}" ] && [ "$attempt_count" -eq "$FAKE_CURL_DELIVER_AND_FAIL_ON_ATTEMPT" ]; then
+  deliver_and_fail="true"
+fi
 
 if [ -n "$header_file" ]; then
   if [ "$http_code" = "429" ]; then
@@ -83,7 +87,28 @@ if [ -n "$header_file" ]; then
   fi
 fi
 
-if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+if [ "$deliver_and_fail" = "true" ]; then
+  posted_count=0
+  if [ -f "$FAKE_CURL_DIR/posted-count" ]; then
+    posted_count=$(cat "$FAKE_CURL_DIR/posted-count")
+  fi
+  posted_count=$((posted_count + 1))
+
+  printf '%s' "$posted_count" > "$FAKE_CURL_DIR/posted-count"
+  printf '%s' "$payload" > "$FAKE_CURL_DIR/payload-$posted_count.json"
+  printf '%s' "$url" > "$FAKE_CURL_DIR/url-$posted_count.txt"
+
+  if [ -n "$body_file" ]; then
+    : > "$body_file"
+  fi
+
+  if [ -n "$write_out" ] && [ "$write_out" = '%{http_code}' ]; then
+    printf '000'
+  fi
+
+  printf 'simulated network failure after send\n' >&2
+  exit "${FAKE_CURL_DELIVER_AND_FAIL_EXIT_CODE:-56}"
+elif [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
   if [ "$method" = "DELETE" ]; then
     deleted_count=0
     if [ -f "$FAKE_CURL_DIR/deleted-count" ]; then
@@ -240,7 +265,7 @@ delete_count() {
   [ "$output" = "$long_body" ]
 }
 
-@test "retries a transient curl failure and still posts the full changelog" {
+@test "does not retry an ambiguously delivered chunk and rolls back prior chunks" {
   local long_body
   long_body="$(printf 'section-%04d\n' $(seq 1 700))"
 
@@ -249,17 +274,18 @@ delete_count() {
   export RELEASE_TAG="v1.31.3"
   export RELEASE_URL="https://github.com/swt-labs/vibe-better-with-claude-code-vbw/releases/tag/v1.31.3"
   export RELEASE_BODY="$long_body"
-  export FAKE_CURL_FAIL_EXIT_ON_ATTEMPT=1
-  export FAKE_CURL_FAIL_EXIT_CODE=7
+  export FAKE_CURL_DELIVER_AND_FAIL_ON_ATTEMPT=2
+  export FAKE_CURL_DELIVER_AND_FAIL_EXIT_CODE=56
 
   run bash "$SCRIPTS_DIR/post-discord-release.sh"
-  [ "$status" -eq 0 ]
-  [ "$(payload_count)" -eq 3 ]
-  [ "$(attempt_count)" -eq 4 ]
+  [ "$status" -eq 1 ]
+  [ "$(payload_count)" -eq 2 ]
+  [ "$(attempt_count)" -eq 3 ]
+  [ "$(delete_count)" -eq 1 ]
 
-  run jq -r -s '[ .[] | .embeds[0].description ] | join("")' "$FAKE_CURL_DIR"/payload-*.json
+  run cat "$FAKE_CURL_DIR/delete-url-1.txt"
   [ "$status" -eq 0 ]
-  [ "$output" = "$long_body" ]
+  [ "$output" = "https://discord.example/webhook/messages/message-1" ]
 }
 
 @test "rolls back previously posted chunks when a later chunk fails terminally" {

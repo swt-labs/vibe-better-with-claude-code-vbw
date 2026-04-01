@@ -105,6 +105,17 @@ is_retryable_http_code() {
   esac
 }
 
+should_retry_request() {
+  local method="$1" curl_exit="$2" http_code="$3"
+
+  if [ "$curl_exit" -ne 0 ]; then
+    [ "$method" != "POST" ]
+    return $?
+  fi
+
+  is_retryable_http_code "$http_code"
+}
+
 request_with_retry() {
   local method="$1" url="$2" action_label="$3" response_path="$4" payload="${5:-}"
   local headers_file body_file stderr_file
@@ -149,7 +160,7 @@ request_with_retry() {
       return 0
     fi
 
-    if [ "$attempt" -lt "$MAX_POST_ATTEMPTS" ] && { [ "$curl_exit" -ne 0 ] || is_retryable_http_code "$http_code"; }; then
+    if [ "$attempt" -lt "$MAX_POST_ATTEMPTS" ] && should_retry_request "$method" "$curl_exit" "$http_code"; then
       retry_after=$(retry_delay_for "$http_code" "$headers_file" "$body_file" "$attempt")
       printf 'Retrying %s after %ss (attempt %s/%s)\n' \
         "$action_label" "$retry_after" "$((attempt + 1))" "$MAX_POST_ATTEMPTS" >&2
@@ -164,10 +175,10 @@ request_with_retry() {
     fi
 
     if [ "$curl_exit" -ne 0 ]; then
-      printf 'Failed to post %s after %s attempt(s) (curl exit %s): %s\n' \
+      printf 'Failed to complete %s after %s attempt(s) (curl exit %s): %s\n' \
         "$action_label" "$attempt" "$curl_exit" "$error_detail" >&2
     else
-      printf 'Failed to post %s after %s attempt(s) (HTTP %s): %s\n' \
+      printf 'Failed to complete %s after %s attempt(s) (HTTP %s): %s\n' \
         "$action_label" "$attempt" "$http_code" "$error_detail" >&2
     fi
 
