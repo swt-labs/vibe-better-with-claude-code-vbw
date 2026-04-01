@@ -109,6 +109,21 @@ else
   fail "vibe.md missing per-test priority ranking"
 fi
 
+# Test 12b: vibe.md distinguishes active UAT round from remediation round
+if grep -q 'active_uat_round' "$SCRIPT_DIR/commands/vibe.md" && grep -q 'less than `RR`' "$SCRIPT_DIR/commands/vibe.md"; then
+  pass "vibe.md distinguishes active UAT round from remediation round"
+else
+  fail "vibe.md should distinguish active UAT round from remediation round"
+fi
+
+# Test 12c: recurrence scanning excludes the active step-2 artifact and never defaults to RR
+if grep -q 'exclude the active step-2 UAT artifact itself from the scan' "$SCRIPT_DIR/commands/vibe.md" \
+  && grep -q 'never.*default to `RR`' "$SCRIPT_DIR/commands/vibe.md"; then
+  pass "vibe.md excludes the active UAT artifact from recurrence scan"
+else
+  fail "vibe.md should exclude the active UAT artifact from recurrence scan"
+fi
+
 # Test 13: vibe.md has RECURRING annotation for failure_count >= 2
 if grep -q 'RECURRING' "$SCRIPT_DIR/commands/vibe.md" && grep -q 'failure_count >= 2' "$SCRIPT_DIR/commands/vibe.md"; then
   pass "vibe.md has RECURRING annotation for failure_count >= 2"
