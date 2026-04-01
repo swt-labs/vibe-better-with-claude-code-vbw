@@ -200,6 +200,49 @@ issues: 1
   [[ "${lines[1]}" == "P01-T2|major|File-path input still works|1" ]]
 }
 
+@test "extract-uat-issues: direct round-dir UAT file preserves current round and recurrence" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01" "$PHASE_DIR/remediation/uat/round-02"
+  printf 'stage=verify\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+## Tests
+
+### P01-T2: recurring
+
+- **Result:** issue
+- **Issue:**
+  - Description: Broke before
+  - Severity: major
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-02/R02-UAT.md" <<'EOF'
+---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T2: recurring
+
+- **Result:** issue
+- **Issue:**
+  - Description: Broke again
+  - Severity: major
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR/remediation/uat/round-02/R02-UAT.md"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_round=2"* ]]
+  [[ "${lines[1]}" == "P01-T2|major|Broke again|1,2" ]]
+}
+
 @test "extract-uat-issues: missing directory returns error" {
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$TEST_TEMP_DIR/nonexistent"

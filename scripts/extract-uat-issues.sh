@@ -36,8 +36,15 @@ UAT_FILE=""
 if [ -d "$INPUT_PATH" ]; then
   PHASE_DIR="$INPUT_PATH"
 elif [ -f "$INPUT_PATH" ]; then
-  PHASE_DIR=$(dirname "$INPUT_PATH")
   UAT_FILE="$INPUT_PATH"
+  case "$INPUT_PATH" in
+    */remediation/uat/round-*/R*-UAT.md)
+      PHASE_DIR=$(dirname "$(dirname "$(dirname "$(dirname "$INPUT_PATH")")")")
+      ;;
+    *)
+      PHASE_DIR=$(dirname "$INPUT_PATH")
+      ;;
+  esac
 else
   echo "uat_extract_error=true" >&2
   exit 1
