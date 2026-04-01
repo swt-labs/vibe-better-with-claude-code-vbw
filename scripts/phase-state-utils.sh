@@ -130,5 +130,34 @@ resolve_phase_number_from_phase_dir() {
     fi
   fi
 
+  # Round-dir / active UAT fallback: when a non-canonical phase dir uses legacy
+  # root artifacts but the current UAT lives at remediation/uat/round-*/R*-UAT.md,
+  # recover the phase number from that current UAT frontmatter.
+  if type current_uat &>/dev/null; then
+    uat_file=$(current_uat "$dir")
+  else
+    uat_file=""
+  fi
+  if [ -n "$uat_file" ] && [ -f "$uat_file" ]; then
+    num=$(awk '
+      NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm {
+        lower = tolower($0)
+        if (lower ~ /^phase:[[:space:]]*[0-9]+[[:space:]]*$/) {
+          value = $0
+          sub(/^[^:]*:[[:space:]]*/, "", value)
+          gsub(/[[:space:]]+$/, "", value)
+          print value
+          exit
+        }
+      }
+    ' "$uat_file" 2>/dev/null || true)
+    if [ -n "$num" ] && echo "$num" | grep -qE '^[0-9]+$'; then
+      echo "$num"
+      return 0
+    fi
+  fi
+
   echo ""
 }

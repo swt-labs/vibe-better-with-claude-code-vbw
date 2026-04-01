@@ -70,11 +70,11 @@ else
   fail "extract-uat-issues.sh should call count_uat_rounds"
 fi
 
-# Test 8: extract-uat-issues.sh calls extract_round_issue_ids
-if grep -q 'extract_round_issue_ids' "$SCRIPT_DIR/scripts/extract-uat-issues.sh"; then
-  pass "extract-uat-issues.sh calls extract_round_issue_ids for recurrence scanning"
+# Test 8: extract-uat-issues.sh performs recurrence scanning via helper or shared parser
+if grep -q 'extract_round_issue_ids\|extract-round-issue-ids.awk' "$SCRIPT_DIR/scripts/extract-uat-issues.sh"; then
+  pass "extract-uat-issues.sh performs recurrence scanning for archived rounds"
 else
-  fail "extract-uat-issues.sh should call extract_round_issue_ids"
+  fail "extract-uat-issues.sh should scan archived rounds for recurrence"
 fi
 
 # Test 9: uat-utils.sh has extract_round_issue_ids function
@@ -95,9 +95,9 @@ else
   fail "vibe.md UAT Remediation missing FAILED_IN_ROUNDS reference"
 fi
 
-# Test 11: vibe.md has phase-level escalation (uat_round >= 3)
-if grep -q 'uat_round >= 3' "$SCRIPT_DIR/commands/vibe.md"; then
-  pass "vibe.md has phase-level escalation at uat_round >= 3"
+# Test 11: vibe.md has phase-level escalation (current round >= 3)
+if grep -q 'RR >= 3\|round >= 3\|uat_round >= 3' "$SCRIPT_DIR/commands/vibe.md"; then
+  pass "vibe.md has phase-level escalation at round >= 3"
 else
   fail "vibe.md missing phase-level escalation threshold"
 fi
@@ -107,6 +107,21 @@ if grep -q 'failure_count descending' "$SCRIPT_DIR/commands/vibe.md"; then
   pass "vibe.md has per-test priority ranking by failure_count descending"
 else
   fail "vibe.md missing per-test priority ranking"
+fi
+
+# Test 12b: vibe.md distinguishes active UAT round from remediation round
+if grep -q 'active_uat_round' "$SCRIPT_DIR/commands/vibe.md" && grep -q 'less than `RR`' "$SCRIPT_DIR/commands/vibe.md"; then
+  pass "vibe.md distinguishes active UAT round from remediation round"
+else
+  fail "vibe.md should distinguish active UAT round from remediation round"
+fi
+
+# Test 12c: recurrence scanning excludes the active step-2 artifact and never defaults to RR
+if grep -q 'exclude the active step-2 UAT artifact itself from the scan' "$SCRIPT_DIR/commands/vibe.md" \
+  && grep -q 'never.*default to `RR`' "$SCRIPT_DIR/commands/vibe.md"; then
+  pass "vibe.md excludes the active UAT artifact from recurrence scan"
+else
+  fail "vibe.md should exclude the active UAT artifact from recurrence scan"
 fi
 
 # Test 13: vibe.md has RECURRING annotation for failure_count >= 2

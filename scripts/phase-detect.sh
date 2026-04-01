@@ -25,6 +25,20 @@ list_child_dirs_sorted() {
     (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
 }
 
+phase_relative_path() {
+  local base="${1%/}"
+  local path="$2"
+
+  case "$path" in
+    "$base"/*)
+      printf '%s\n' "${path#"$base"/}"
+      ;;
+    *)
+      basename "$path"
+      ;;
+  esac
+}
+
 normalize_qa_remediation_stage() {
   case "${1:-none}" in
     plan|execute|verify|done) echo "$1" ;;
@@ -74,6 +88,7 @@ else
   echo "uat_issues_major_or_higher=false"
   echo "uat_issues_phases="
   echo "uat_issues_count=0"
+  echo "uat_file=none"
   echo "uat_round_count=0"
   echo "has_shipped_milestones=false"
   echo "needs_milestone_rename=false"
@@ -190,6 +205,8 @@ UAT_ISSUES_MAJOR_OR_HIGHER=false
 UAT_ISSUES_PHASES=""
 UAT_ISSUES_COUNT=0
 UAT_ROUND_COUNT=0
+UAT_ISSUES_FILE=""
+UAT_ISSUES_RELATIVE_FILE="none"
 
 if [ -d "$PHASES_DIR" ]; then
   # Collect phase directories in numeric order (prevents 100 sorting before 11)
@@ -240,6 +257,7 @@ if [ -d "$PHASES_DIR" ]; then
           if [ "$UAT_ISSUES_PHASE" = "none" ]; then
             UAT_ISSUES_PHASE="$NUM"
             UAT_ISSUES_SLUG="$DIRNAME"
+            UAT_ISSUES_FILE="$UAT_FILE"
           fi
 
           # Accumulate all phases with issues
@@ -880,6 +898,15 @@ if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; t
   esac
 fi
 
+if [ "$UAT_ISSUES_PHASE" != "none" ] && [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_ISSUES_FILE" ]; then
+  _pd_active_phase_dir="${PHASES_DIR}/${UAT_ISSUES_SLUG}"
+  if [ -d "$_pd_active_phase_dir" ]; then
+    UAT_ISSUES_RELATIVE_FILE=$(phase_relative_path "$_pd_active_phase_dir" "$UAT_ISSUES_FILE")
+  else
+    UAT_ISSUES_RELATIVE_FILE=$(basename "$UAT_ISSUES_FILE")
+  fi
+fi
+
 echo "phase_count=$PHASE_COUNT"
 echo "next_phase=$NEXT_PHASE"
 echo "next_phase_slug=$NEXT_PHASE_SLUG"
@@ -899,6 +926,7 @@ echo "uat_issues_slug=$UAT_ISSUES_SLUG"
 echo "uat_issues_major_or_higher=$UAT_ISSUES_MAJOR_OR_HIGHER"
 echo "uat_issues_phases=$UAT_ISSUES_PHASES"
 echo "uat_issues_count=$UAT_ISSUES_COUNT"
+echo "uat_file=$UAT_ISSUES_RELATIVE_FILE"
 echo "uat_round_count=$UAT_ROUND_COUNT"
 
 # --- Misnamed plan file diagnostic ---
@@ -1121,5 +1149,165 @@ if [ -f "$EXEC_STATE_FILE" ]; then
   fi
 fi
 echo "execution_state=$EXEC_STATE"
+
+# --- UAT issue extraction ---
+# Use shared awk assets so phase-detect and extract-uat-issues.sh emit the same
+# issue-line contract. The awk programs are invoked directly at the call site
+# rather than via a function captured with $(), which proved unreliable in
+# Claude Code template expansion.
+_PD_ISSUE_PARSER="$_SCRIPT_DIR_PD/parse-uat-issues.awk"
+_PD_ROUND_ID_PARSER="$_SCRIPT_DIR_PD/extract-round-issue-ids.awk"
+
+_pd_build_uat_issue_lines() {
+  local phase_dir="$1"
+  local phase_num="$2"
+  local uat_file="$3"
+  local current_round="$4"
+  local _pd_base_issues=""
+  local _pd_base_count=0
+  local _pd_fm_issues=""
+  local _pd_round_ids=""
+  local _pd_rf=""
+  local _pd_round_num=""
+  local _pd_past_rounds=""
+  local _pd_failed_in=""
+  local _pd_line=""
+
+  _PD_EXTRACT_LINES=""
+  _PD_EXTRACT_COUNT=0
+  _PD_EXTRACT_ERROR=""
+
+  if [ ! -f "$_PD_ISSUE_PARSER" ] || [ ! -f "$_PD_ROUND_ID_PARSER" ]; then
+    _PD_EXTRACT_ERROR="true"
+    return 0
+  fi
+
+  _pd_base_issues=$(awk -f "$_PD_ISSUE_PARSER" "$uat_file" 2>/dev/null) || _pd_base_issues=""
+  if [ -n "$_pd_base_issues" ]; then
+    _pd_base_count=$(printf '%s\n' "$_pd_base_issues" | wc -l | tr -d ' ')
+  fi
+
+  if [ "$_pd_base_count" -eq 0 ]; then
+    _pd_fm_issues=$(awk '
+      BEGIN { in_fm=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^[[:space:]]*issues[[:space:]]*:/ {
+        val=$0; sub(/^[^:]*:[[:space:]]*/, "", val); gsub(/[[:space:]]+$/, "", val)
+        print val; exit
+      }
+    ' "$uat_file" 2>/dev/null || true)
+    _pd_fm_issues=$(printf '%s' "$_pd_fm_issues" | tr -d '[:space:]')
+    if [ -n "$_pd_fm_issues" ] && [ "$_pd_fm_issues" != "0" ]; then
+      _PD_EXTRACT_ERROR="true"
+    fi
+    return 0
+  fi
+
+  case "$phase_dir" in
+    */) ;;
+    *) phase_dir="$phase_dir/" ;;
+  esac
+
+  for _pd_rf in "${phase_dir}${phase_num}"-UAT-round-*.md; do
+    [ -f "$_pd_rf" ] || continue
+    [ "$_pd_rf" = "$uat_file" ] && continue
+    _pd_round_num=$(basename "$_pd_rf" | sed "s/^${phase_num}-UAT-round-0*\\([0-9]*\\)\\.md$/\\1/")
+    if [ -n "$_pd_round_num" ] && echo "$_pd_round_num" | grep -qE '^[0-9]+$'; then
+      while IFS= read -r _pd_rid; do
+        [ -n "$_pd_rid" ] || continue
+        _pd_round_ids="${_pd_round_ids}${_pd_round_ids:+$'\n'}${_pd_rid} ${_pd_round_num}"
+      done < <(awk -f "$_PD_ROUND_ID_PARSER" "$_pd_rf" 2>/dev/null)
+    fi
+  done
+
+  for _pd_rf in "${phase_dir}"remediation/uat/round-*/R*-UAT.md; do
+    [ -f "$_pd_rf" ] || continue
+    [ "$_pd_rf" = "$uat_file" ] && continue
+    _pd_round_num=$(basename "$_pd_rf" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
+    if [ -n "$_pd_round_num" ] && echo "$_pd_round_num" | grep -qE '^[0-9]+$'; then
+      while IFS= read -r _pd_rid; do
+        [ -n "$_pd_rid" ] || continue
+        _pd_round_ids="${_pd_round_ids}${_pd_round_ids:+$'\n'}${_pd_rid} ${_pd_round_num}"
+      done < <(awk -f "$_PD_ROUND_ID_PARSER" "$_pd_rf" 2>/dev/null)
+    fi
+  done
+
+  while IFS='|' read -r _pd_id _pd_sev _pd_desc; do
+    [ -n "$_pd_id" ] || continue
+    _pd_past_rounds=""
+    if [ -n "$_pd_round_ids" ]; then
+      _pd_past_rounds=$(printf '%s\n' "$_pd_round_ids" | awk -v id="$_pd_id" '$1 == id { print $2 }' | sort -n | paste -sd, -) || _pd_past_rounds=""
+    fi
+    if [ -n "$_pd_past_rounds" ]; then
+      _pd_failed_in="${_pd_past_rounds},${current_round}"
+    else
+      _pd_failed_in="$current_round"
+    fi
+    _pd_line="${_pd_id}|${_pd_sev}|${_pd_desc}|${_pd_failed_in}"
+    _PD_EXTRACT_LINES="${_PD_EXTRACT_LINES}${_PD_EXTRACT_LINES:+$'\n'}${_pd_line}"
+    _PD_EXTRACT_COUNT=$((_PD_EXTRACT_COUNT + 1))
+  done < <(printf '%s\n' "$_pd_base_issues")
+}
+
+# --- Milestone UAT extraction ---
+if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; then
+  echo "---MILESTONE_UAT_EXTRACT_START---"
+  _pd_old_ifs="$IFS"
+  IFS='|'
+  for _pd_ms_dir in $MILESTONE_UAT_PHASE_DIRS; do
+    IFS="$_pd_old_ifs"
+    [ -d "$_pd_ms_dir" ] || continue
+    echo "milestone_phase_dir=$_pd_ms_dir"
+    _pd_ms_uat=""
+    if type current_uat &>/dev/null; then
+      _pd_ms_uat=$(current_uat "$_pd_ms_dir")
+    elif type latest_non_source_uat &>/dev/null; then
+      _pd_ms_uat=$(latest_non_source_uat "$_pd_ms_dir")
+    fi
+
+    if [ -n "$_pd_ms_uat" ] && [ -f "$_pd_ms_uat" ]; then
+      _pd_ms_phase=$(resolve_phase_number_from_phase_dir "$_pd_ms_dir")
+      _pd_ms_fname=$(basename "$_pd_ms_uat")
+      _pd_ms_round=""
+      _pd_ms_is_round_dir=false
+      case "$_pd_ms_uat" in
+        */remediation/uat/round-*/R*-UAT.md)
+          _pd_ms_is_round_dir=true
+          _pd_ms_round=$(basename "$_pd_ms_uat" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
+          _pd_ms_round="${_pd_ms_round:-0}"
+          ;;
+      esac
+      if [ -z "$_pd_ms_round" ] || ! echo "$_pd_ms_round" | grep -qE '^[0-9]+$'; then
+        _pd_ms_round=1
+      fi
+      if [ -n "$_pd_ms_phase" ] && type count_uat_rounds &>/dev/null && [ "$_pd_ms_is_round_dir" = false ]; then
+        _pd_ms_round=$(( $(count_uat_rounds "$_pd_ms_dir" "$_pd_ms_phase") + 1 ))
+      fi
+
+      if [ -n "$_pd_ms_phase" ]; then
+        _pd_build_uat_issue_lines "$_pd_ms_dir" "$_pd_ms_phase" "$_pd_ms_uat" "$_pd_ms_round"
+      else
+        _PD_EXTRACT_LINES=""
+        _PD_EXTRACT_COUNT=0
+        _PD_EXTRACT_ERROR="true"
+      fi
+
+      if [ -n "$_PD_EXTRACT_ERROR" ]; then
+        echo "uat_extract_error=true dir=$_pd_ms_dir"
+      else
+        echo "uat_phase=${_pd_ms_phase} uat_issues_total=${_PD_EXTRACT_COUNT} uat_round=${_pd_ms_round} uat_file=${_pd_ms_fname}"
+        if [ "$_PD_EXTRACT_COUNT" -gt 0 ]; then
+          printf '%s\n' "$_PD_EXTRACT_LINES"
+        fi
+      fi
+    else
+      echo "uat_extract_error=true dir=$_pd_ms_dir"
+    fi
+    echo "---"
+  done
+  IFS="$_pd_old_ifs"
+  echo "---MILESTONE_UAT_EXTRACT_END---"
+fi
 
 exit 0

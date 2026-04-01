@@ -231,6 +231,20 @@ else
   fail "vibe: routed verify precompute missing fail-closed verify_context sentinel"
 fi
 
+if grep -q 'Read the active UAT artifact exactly once' "$VIBE_FILE" \
+  && grep -q 'Do NOT shell out to `extract-uat-issues.sh` for active-phase routing' "$VIBE_FILE" \
+  && grep -q 'Use `uat_file` from the pre-computed state when available' "$VIBE_FILE"; then
+  pass "vibe: active UAT remediation reads the active UAT artifact directly from routing metadata"
+else
+  fail "vibe: active UAT remediation missing direct-read routing guidance"
+fi
+
+if grep -q 'UAT issues (remediation only):' "$VIBE_FILE" || grep -q '^---UAT_EXTRACT_START---$' "$VIBE_FILE"; then
+  fail "vibe: active UAT remediation still includes the precomputed extraction block"
+else
+  pass "vibe: active UAT remediation no longer embeds an active extraction marker block"
+fi
+
 if grep -q 'compile-verify-context-for-uat\.sh' "$VERIFY_FILE"; then
   pass "verify: precomputed UAT context uses shared scope resolver"
 else

@@ -104,8 +104,397 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_slug=01-test"
   echo "$output" | grep -q "uat_issues_phase=01"
   echo "$output" | grep -q "uat_issues_major_or_higher=true"
+  echo "$output" | grep -q "uat_file=01-UAT.md"
+}
+
+@test "active UAT routing metadata emitted for needs_uat_remediation" {
+  mkdir -p .vbw-planning/phases/01-test/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: sample test
+
+- **Result:** issue
+- **Issue:** sample issue description
+  - Description: something is broken
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "uat_issues_count=1"
+  echo "$output" | grep -q "uat_file=01-UAT.md"
+  ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
+}
+
+@test "no active UAT marker block when state is not needs_uat_remediation" {
+  mkdir -p .vbw-planning/phases/01-test/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
+  echo "$output" | grep -q "uat_file=none"
+}
+
+@test "active UAT routing metadata uses round-dir relative path" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/uat/round-01/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  printf '%s\n' 'round=01' 'layout=round-dir' > .vbw-planning/phases/01-test/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-test/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: round-dir test
+
+- **Result:** issue
+- **Issue:** round-dir issue
+  - Description: round-dir broken
+  - Severity: critical
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "uat_file=remediation/uat/round-01/R01-UAT.md"
+  echo "$output" | grep -q "uat_issues_count=1"
+  ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
+}
+
+@test "active UAT routing metadata does not depend on parseable issue bodies" {
+  mkdir -p .vbw-planning/phases/01-test/
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  # UAT file with issues_found but no ### P/D test sections
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+Some text without parseable test headers.
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  echo "$output" | grep -q "uat_file=01-UAT.md"
+  ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
+}
+
+@test "milestone extraction preserves zero-issue parity with standalone extractor" {
+  mkdir -p .vbw-planning/milestones/m01-test/phases/01-alpha/
+  mkdir -p .vbw-planning/phases/
+  echo '# Shipped' > .vbw-planning/milestones/m01-test/SHIPPED.md
+  touch .vbw-planning/milestones/m01-test/phases/01-alpha/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/m01-test/phases/01-alpha/01-01-SUMMARY.md
+  cat > .vbw-planning/milestones/m01-test/phases/01-alpha/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 0
+---
+
+## Tests
+
+### P01-T1: all good
+
+- **Result:** pass
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" .vbw-planning/milestones/m01-test/phases/01-alpha
+  [ "$status" -eq 0 ]
+  expected="$output"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  marker=$(printf '%s\n' "$output" | awk '/^---MILESTONE_UAT_EXTRACT_START---$/{f=1; next} /^---MILESTONE_UAT_EXTRACT_END---$/{exit} f{print}' | awk '/^milestone_phase_dir=/{next} /^---$/{exit} {print}')
+  [ "$marker" = "$expected" ]
+  echo "$marker" | grep -q 'uat_issues_total=0'
+  ! echo "$marker" | grep -q 'uat_extract_error=true'
+}
+
+@test "milestone UAT extraction emitted for milestone_uat_issues" {
+  # Create a shipped milestone with UAT issues
+  mkdir -p .vbw-planning/milestones/m01-test/phases/01-alpha/
+  touch .vbw-planning/milestones/m01-test/phases/01-alpha/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/m01-test/phases/01-alpha/01-01-SUMMARY.md
+  cat > .vbw-planning/milestones/m01-test/phases/01-alpha/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P01-T1: milestone test
+
+- **Result:** issue
+- **Issue:** milestone issue
+  - Description: milestone broken
+  - Severity: major
+EOF
+  # Create an active phases dir that is empty (forces all_done → milestone recovery)
+  mkdir -p .vbw-planning/phases/
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^---MILESTONE_UAT_EXTRACT_START---$"
+  echo "$output" | grep -q "^---MILESTONE_UAT_EXTRACT_END---$"
+  echo "$output" | grep -q "P01-T1|major|milestone broken"
+}
+
+@test "inline UAT extraction preserves FAILED_IN_ROUNDS recurrence parity" {
+  mkdir -p .vbw-planning/phases/03-feature/
+  touch .vbw-planning/phases/03-feature/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/03-feature/03-01-SUMMARY.md
+  cat > .vbw-planning/phases/03-feature/03-UAT-round-01.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: still broken
+  - Severity: major
+EOF
+  cat > .vbw-planning/phases/03-feature/03-UAT-round-02.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: still broken
+  - Severity: major
+EOF
+  cat > .vbw-planning/phases/03-feature/03-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: still broken
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  echo "$output" | grep -q "uat_issues_count=1"
+  echo "$output" | grep -q "uat_file=03-UAT.md"
+  echo "$output" | grep -q "uat_round_count=2"
+  ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
+}
+
+@test "milestone UAT extraction preserves FAILED_IN_ROUNDS recurrence parity" {
+  mkdir -p .vbw-planning/milestones/m01-test/phases/03-feature/
+  mkdir -p .vbw-planning/phases/
+  echo "# Shipped" > .vbw-planning/milestones/m01-test/SHIPPED.md
+  touch .vbw-planning/milestones/m01-test/phases/03-feature/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/m01-test/phases/03-feature/03-01-SUMMARY.md
+  cat > .vbw-planning/milestones/m01-test/phases/03-feature/03-UAT-round-01.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: milestone still broken
+  - Severity: major
+EOF
+  cat > .vbw-planning/milestones/m01-test/phases/03-feature/03-UAT-round-02.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: milestone still broken
+  - Severity: major
+EOF
+  cat > .vbw-planning/milestones/m01-test/phases/03-feature/03-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: milestone still broken
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" .vbw-planning/milestones/m01-test/phases/03-feature
+  [ "$status" -eq 0 ]
+  expected="$output"
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  marker=$(printf '%s\n' "$output" | awk '/^---MILESTONE_UAT_EXTRACT_START---$/{f=1; next} /^---MILESTONE_UAT_EXTRACT_END---$/{exit} f{print}' | awk '/^milestone_phase_dir=/{next} /^---$/{exit} {print}')
+  [ "$marker" = "$expected" ]
+}
+
+@test "milestone extraction uses resolved phase number for non-canonical phase dir" {
+  mkdir -p .vbw-planning/milestones/m01-test/phases/setup-api/
+  mkdir -p .vbw-planning/phases/
+  echo "# Shipped" > .vbw-planning/milestones/m01-test/SHIPPED.md
+  touch .vbw-planning/milestones/m01-test/phases/setup-api/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/m01-test/phases/setup-api/03-01-SUMMARY.md
+  cat > .vbw-planning/milestones/m01-test/phases/setup-api/03-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P03-T1: recovered number
+
+- **Result:** issue
+- **Issue:**
+  - Description: non-canonical dir still reports phase 03
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=true"
+  echo "$output" | grep -q "milestone_phase_dir=.vbw-planning/milestones/m01-test/phases/setup-api"
+  echo "$output" | grep -q "uat_phase=03 uat_issues_total=1 uat_round=1 uat_file=03-UAT.md"
+}
+
+@test "milestone extraction resolves phase number from round-dir UAT in non-canonical phase dir" {
+  mkdir -p .vbw-planning/milestones/m01-test/phases/setup-api/remediation/uat/round-01/
+  mkdir -p .vbw-planning/milestones/m01-test/phases/setup-api/remediation/uat/round-02/
+  mkdir -p .vbw-planning/phases/
+  echo "# Shipped" > .vbw-planning/milestones/m01-test/SHIPPED.md
+  # Legacy brownfield root artifacts without numeric prefixes
+  printf '%s\n' '---' 'phase: 03' 'plan: legacy' 'title: Setup' '---' > .vbw-planning/milestones/m01-test/phases/setup-api/PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/m01-test/phases/setup-api/SUMMARY.md
+  printf 'stage=verify\nround=02\nlayout=round-dir\n' > .vbw-planning/milestones/m01-test/phases/setup-api/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/milestones/m01-test/phases/setup-api/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: broke before
+  - Severity: major
+EOF
+  cat > .vbw-planning/milestones/m01-test/phases/setup-api/remediation/uat/round-02/R02-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: broke again
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=true"
+  echo "$output" | grep -q "milestone_phase_dir=.vbw-planning/milestones/m01-test/phases/setup-api"
+  echo "$output" | grep -q "uat_phase=03 uat_issues_total=1 uat_round=2 uat_file=R02-UAT.md"
+  echo "$output" | grep -q "P03-T2|major|broke again|1,2"
+}
+
+@test "milestone extraction preserves round-01 parity for non-canonical round-dir current UAT" {
+  mkdir -p .vbw-planning/milestones/m01-test/phases/setup-api/remediation/uat/round-01/
+  mkdir -p .vbw-planning/phases/
+  echo "# Shipped" > .vbw-planning/milestones/m01-test/SHIPPED.md
+  printf '%s\n' '---' 'phase: 03' 'plan: legacy' 'title: Setup' '---' > .vbw-planning/milestones/m01-test/phases/setup-api/PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/milestones/m01-test/phases/setup-api/SUMMARY.md
+  printf 'stage=verify\nround=01\nlayout=round-dir\n' > .vbw-planning/milestones/m01-test/phases/setup-api/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/milestones/m01-test/phases/setup-api/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### P03-T2: recurring issue
+
+- **Result:** issue
+- **Issue:**
+  - Description: broke first time
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "milestone_uat_issues=true"
+  echo "$output" | grep -q "uat_phase=03 uat_issues_total=1 uat_round=1 uat_file=R01-UAT.md"
+  echo "$output" | grep -q "P03-T2|major|broke first time|1"
 }
 
 @test "minor-only UAT issues set major-or-higher flag false" {

@@ -17,7 +17,7 @@ Working directory:
 ```
 Plugin root:
 ```
-!`VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"; R=""; if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi; if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi; if [ -z "$R" ]; then V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1); [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"; fi; if [ -z "$R" ]; then L=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1); [ -n "$L" ] && [ -f "${VBW_CACHE_ROOT}/${L}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${L}"; fi; if [ -z "$R" ]; then for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break; done; fi; if [ -z "$R" ]; then D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1); D="${D#--plugin-dir }"; [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"; fi; if [ -z "$R" ] || [ ! -d "$R" ]; then echo "VBW: plugin root resolution failed" >&2; exit 1; fi; SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || { echo "VBW: plugin root canonicalization failed" >&2; exit 1; }; bash "$REAL_R/scripts/ensure-plugin-root-link.sh" "$LINK" "$REAL_R" >/dev/null 2>&1 || { echo "VBW: plugin root link failed" >&2; exit 1; }; bash "$LINK/scripts/phase-detect.sh" > "/tmp/.vbw-phase-detect-${SESSION_KEY}.txt" 2>/dev/null || echo "phase_detect_error=true" > "/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; echo "$LINK"`
+!`VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"; R=""; if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi; if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi; if [ -z "$R" ]; then V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1); [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"; fi; if [ -z "$R" ]; then L=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1); [ -n "$L" ] && [ -f "${VBW_CACHE_ROOT}/${L}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${L}"; fi; if [ -z "$R" ]; then for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break; done; fi; if [ -z "$R" ]; then D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1); D="${D#--plugin-dir }"; [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"; fi; if [ -z "$R" ] || [ ! -d "$R" ]; then echo "VBW: plugin root resolution failed" >&2; exit 1; fi; SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"; PTMP="${P}.tmp.$$"; LOCK="/tmp/.vbw-phase-detect-live-${SESSION_KEY}.lock"; REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || { echo "VBW: plugin root canonicalization failed" >&2; exit 1; }; bash "$REAL_R/scripts/ensure-plugin-root-link.sh" "$LINK" "$REAL_R" >/dev/null 2>&1 || { echo "VBW: plugin root link failed" >&2; exit 1; }; LOCKED=false; i=0; while [ $i -lt 100 ]; do if mkdir "$LOCK" 2>/dev/null; then LOCKED=true; break; fi; sleep 0.1; i=$((i+1)); done; if [ "$LOCKED" = true ]; then bash "$LINK/scripts/phase-detect.sh" > "$PTMP" 2>/dev/null || printf '%s\n' 'phase_detect_error=true' > "$PTMP"; mv "$PTMP" "$P"; rmdir "$LOCK" 2>/dev/null || true; else j=0; while [ $j -lt 100 ]; do [ -f "$P" ] && break; sleep 0.1; j=$((j+1)); done; [ -f "$P" ] || { printf '%s\n' 'phase_detect_error=true' > "$PTMP"; mv "$PTMP" "$P"; }; fi; echo "$LINK"`
 ```
 
 Pre-computed state (via phase-detect.sh):
@@ -26,47 +26,45 @@ Pre-computed state (via phase-detect.sh):
 L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
 P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
 PD=""
-_refresh_phase_detect() {
-  local VBW_CACHE_ROOT R V D REAL_R
-  VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"
-  R=""
-  if [ -z "$R" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi
-  if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi
-  if [ -z "$R" ]; then
-    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
-    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
-  fi
-  if [ -z "$R" ]; then
-    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1)
-    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
-  fi
-  if [ -z "$R" ]; then
-    for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
-      [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break
-    done
-  fi
-  if [ -z "$R" ]; then
-    D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)
-    D="${D#--plugin-dir }"
-    [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"
-  fi
-  if [ -z "$R" ] || [ ! -d "$R" ] || [ ! -f "$R/scripts/phase-detect.sh" ]; then
-    return 1
-  fi
-  REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || return 1
-  bash "$REAL_R/scripts/ensure-plugin-root-link.sh" "$L" "$REAL_R" >/dev/null 2>&1 || true
-  PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
-  if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
-    return 1
-  fi
-  printf '%s' "$PD" > "$P"
-  return 0
+_PD_START_TS=$(date +%s 2>/dev/null || echo 0)
+_phase_detect_cache_fresh() {
+  local m=""
+  [ -f "$P" ] || return 1
+  m=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo "")
+  [ -n "$m" ] || return 1
+  [ "$m" -ge "$_PD_START_TS" ] 2>/dev/null
 }
-if ! _refresh_phase_detect; then
-  PD="phase_detect_error=true"
-  printf '%s\n' "$PD" > "$P"
+i=0
+while [ $i -lt 100 ]; do
+  if _phase_detect_cache_fresh; then
+    PD=$(cat "$P")
+    break
+  fi
+  sleep 0.1
+  i=$((i+1))
+done
+if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+  LOCK="/tmp/.vbw-phase-detect-live-${SESSION_KEY}.lock"
+  i=0
+  while [ $i -lt 100 ]; do
+    if _phase_detect_cache_fresh; then
+      PD=$(cat "$P")
+      break
+    fi
+    if mkdir "$LOCK" 2>/dev/null; then
+      PTMP="${P}.reader.$$.$RANDOM"
+      PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+      if [ -n "$(printf '%s' "$PD" | tr -d '[:space:]')" ]; then
+        printf '%s\n' "$PD" > "$PTMP" 2>/dev/null && mv "$PTMP" "$P" 2>/dev/null || true
+      fi
+      rmdir "$LOCK" 2>/dev/null || true
+      break
+    fi
+    sleep 0.1
+    i=$((i+1))
+  done
 fi
-[ -f "$P" ] && PD=$(cat "$P")
+[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
 if [ -n "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ "$PD" != "phase_detect_error=true" ]; then
   printf '%s' "$PD"
 else
@@ -79,135 +77,61 @@ Config:
 !`cat .vbw-planning/config.json 2>/dev/null || echo "No config found"`
 ```
 
-UAT issues (remediation only):
-```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"
-L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
-P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
-PD=""
-_refresh_phase_detect() {
-  local VBW_CACHE_ROOT R V D REAL_R
-  VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"
-  R=""
-  if [ -z "$R" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi
-  if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi
-  if [ -z "$R" ]; then
-    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
-    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
-  fi
-  if [ -z "$R" ]; then
-    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1)
-    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
-  fi
-  if [ -z "$R" ]; then
-    for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
-      [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break
-    done
-  fi
-  if [ -z "$R" ]; then
-    D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)
-    D="${D#--plugin-dir }"
-    [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"
-  fi
-  if [ -z "$R" ] || [ ! -d "$R" ] || [ ! -f "$R/scripts/phase-detect.sh" ]; then
-    return 1
-  fi
-  REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || return 1
-  bash "$REAL_R/scripts/ensure-plugin-root-link.sh" "$L" "$REAL_R" >/dev/null 2>&1 || true
-  PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
-  if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
-    return 1
-  fi
-  printf '%s' "$PD" > "$P"
-  return 0
-}
-if ! _refresh_phase_detect; then
-  PD="phase_detect_error=true"
-  printf '%s\n' "$PD" > "$P"
-fi
-[ -f "$P" ] && PD=$(cat "$P")
-if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
-  echo "not_in_remediation"
-else
-  STATE=$(printf '%s' "$PD" | grep '^next_phase_state=' | head -1 | cut -d= -f2)
-  if [ "$STATE" = "needs_uat_remediation" ]; then
-    SLUG=$(printf '%s' "$PD" | grep '^next_phase_slug=' | head -1 | cut -d= -f2)
-    PDIR=".vbw-planning/phases/$SLUG"
-    if [ -d "$PDIR" ] && [ -L "$L" ]; then
-      bash "$L/scripts/extract-uat-issues.sh" "$PDIR" 2>/dev/null || echo "uat_extract_error=true"
-    else
-      echo "uat_extract_error=true"
-    fi
-  else
-    echo "not_in_remediation"
-  fi
-fi`
-```
-
 Milestone UAT issues (milestone recovery only):
 ```
 !`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"
 L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
 P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
 PD=""
-_refresh_phase_detect() {
-  local VBW_CACHE_ROOT R V D REAL_R
-  VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"
-  R=""
-  if [ -z "$R" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi
-  if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi
-  if [ -z "$R" ]; then
-    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
-    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
-  fi
-  if [ -z "$R" ]; then
-    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1)
-    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
-  fi
-  if [ -z "$R" ]; then
-    for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
-      [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break
-    done
-  fi
-  if [ -z "$R" ]; then
-    D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)
-    D="${D#--plugin-dir }"
-    [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"
-  fi
-  if [ -z "$R" ] || [ ! -d "$R" ] || [ ! -f "$R/scripts/phase-detect.sh" ]; then
-    return 1
-  fi
-  REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || return 1
-  bash "$REAL_R/scripts/ensure-plugin-root-link.sh" "$L" "$REAL_R" >/dev/null 2>&1 || true
-  PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
-  if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
-    return 1
-  fi
-  printf '%s' "$PD" > "$P"
-  return 0
+_PD_START_TS=$(date +%s 2>/dev/null || echo 0)
+_phase_detect_cache_fresh() {
+  local m=""
+  [ -f "$P" ] || return 1
+  m=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo "")
+  [ -n "$m" ] || return 1
+  [ "$m" -ge "$_PD_START_TS" ] 2>/dev/null
 }
-if ! _refresh_phase_detect; then
-  PD="phase_detect_error=true"
-  printf '%s\n' "$PD" > "$P"
+i=0
+while [ $i -lt 100 ]; do
+  if _phase_detect_cache_fresh; then
+    PD=$(cat "$P")
+    break
+  fi
+  sleep 0.1
+  i=$((i+1))
+done
+if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+  LOCK="/tmp/.vbw-phase-detect-live-${SESSION_KEY}.lock"
+  i=0
+  while [ $i -lt 100 ]; do
+    if _phase_detect_cache_fresh; then
+      PD=$(cat "$P")
+      break
+    fi
+    if mkdir "$LOCK" 2>/dev/null; then
+      PTMP="${P}.reader.$$.$RANDOM"
+      PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+      if [ -n "$(printf '%s' "$PD" | tr -d '[:space:]')" ]; then
+        printf '%s\n' "$PD" > "$PTMP" 2>/dev/null && mv "$PTMP" "$P" 2>/dev/null || true
+      fi
+      rmdir "$LOCK" 2>/dev/null || true
+      break
+    fi
+    sleep 0.1
+    i=$((i+1))
+  done
 fi
-[ -f "$P" ] && PD=$(cat "$P")
+[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
 if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
-  echo "not_milestone_recovery"
+  echo "milestone_extract_unavailable=true"
+  exit 0
+fi
+if printf '%s' "$PD" | grep -q '^---MILESTONE_UAT_EXTRACT_START---$'; then
+  printf '%s\n' "$PD" | awk '/^---MILESTONE_UAT_EXTRACT_START---$/{f=1; next} /^---MILESTONE_UAT_EXTRACT_END---$/{exit} f{print}'
 else
   MS_UAT=$(printf '%s' "$PD" | grep '^milestone_uat_issues=' | head -1 | cut -d= -f2)
   if [ "$MS_UAT" = "true" ]; then
-    MS_DIRS=$(printf '%s' "$PD" | grep '^milestone_uat_phase_dirs=' | head -1 | cut -d= -f2)
-    IFS='|' read -ra DIRS <<< "$MS_DIRS"
-    for d in "${DIRS[@]}"; do
-      [ -d "$d" ] || continue
-      echo "milestone_phase_dir=$d"
-      if [ -L "$L" ]; then
-        bash "$L/scripts/extract-uat-issues.sh" "$d" 2>/dev/null || echo "uat_extract_error=true dir=$d"
-      else
-        echo "uat_extract_error=true dir=$d"
-      fi
-      echo "---"
-    done
+    echo "milestone_extract_unavailable=true"
   else
     echo "not_milestone_recovery"
   fi
@@ -220,47 +144,45 @@ Verify context (verify routing only — needs_reverification OR needs_verificati
 L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
 P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
 PD=""
-_refresh_phase_detect() {
-  local VBW_CACHE_ROOT R V D REAL_R
-  VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"
-  R=""
-  if [ -z "$R" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi
-  if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi
-  if [ -z "$R" ]; then
-    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
-    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
-  fi
-  if [ -z "$R" ]; then
-    V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1)
-    [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"
-  fi
-  if [ -z "$R" ]; then
-    for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
-      [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break
-    done
-  fi
-  if [ -z "$R" ]; then
-    D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)
-    D="${D#--plugin-dir }"
-    [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"
-  fi
-  if [ -z "$R" ] || [ ! -d "$R" ] || [ ! -f "$R/scripts/phase-detect.sh" ]; then
-    return 1
-  fi
-  REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || return 1
-  bash "$REAL_R/scripts/ensure-plugin-root-link.sh" "$L" "$REAL_R" >/dev/null 2>&1 || true
-  PD=$(bash "$REAL_R/scripts/phase-detect.sh" 2>/dev/null) || PD=""
-  if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
-    return 1
-  fi
-  printf '%s' "$PD" > "$P"
-  return 0
+_PD_START_TS=$(date +%s 2>/dev/null || echo 0)
+_phase_detect_cache_fresh() {
+  local m=""
+  [ -f "$P" ] || return 1
+  m=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo "")
+  [ -n "$m" ] || return 1
+  [ "$m" -ge "$_PD_START_TS" ] 2>/dev/null
 }
-if ! _refresh_phase_detect; then
-  PD="phase_detect_error=true"
-  printf '%s\n' "$PD" > "$P"
+i=0
+while [ $i -lt 100 ]; do
+  if _phase_detect_cache_fresh; then
+    PD=$(cat "$P")
+    break
+  fi
+  sleep 0.1
+  i=$((i+1))
+done
+if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && [ -L "$L" ] && [ -f "$L/scripts/phase-detect.sh" ]; then
+  LOCK="/tmp/.vbw-phase-detect-live-${SESSION_KEY}.lock"
+  i=0
+  while [ $i -lt 100 ]; do
+    if _phase_detect_cache_fresh; then
+      PD=$(cat "$P")
+      break
+    fi
+    if mkdir "$LOCK" 2>/dev/null; then
+      PTMP="${P}.reader.$$.$RANDOM"
+      PD=$(bash "$L/scripts/phase-detect.sh" 2>/dev/null) || PD=""
+      if [ -n "$(printf '%s' "$PD" | tr -d '[:space:]')" ]; then
+        printf '%s\n' "$PD" > "$PTMP" 2>/dev/null && mv "$PTMP" "$P" 2>/dev/null || true
+      fi
+      rmdir "$LOCK" 2>/dev/null || true
+      break
+    fi
+    sleep 0.1
+    i=$((i+1))
+  done
 fi
-[ -f "$P" ] && PD=$(cat "$P")
+[ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] && _phase_detect_cache_fresh && PD=$(cat "$P")
 if [ -z "$(printf '%s' "$PD" | tr -d '[:space:]')" ] || [ "$PD" = "phase_detect_error=true" ]; then
   echo "verify_context=unavailable"
 else
@@ -664,25 +586,15 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 **Steps:**
 1. Resolve target phase from pre-computed state (`next_phase`, `next_phase_slug`) when `next_phase_state=needs_uat_remediation`. Set `PHASE_DIR` to the resolved phase directory path.
    **Milestone path guard (NON-NEGOTIABLE):** If `PHASE_DIR` contains `.vbw-planning/milestones/` (e.g., `.vbw-planning/milestones/*/phases/`), STOP — this is an archived milestone. UAT Remediation operates only on active phases in `.vbw-planning/phases/`. Display: "⚠ UAT issues found in archived milestone, not active phases. Routing to Milestone UAT Recovery." Then route to Milestone UAT Recovery mode instead.
-2. **Use pre-computed UAT issues** from the "UAT issues (remediation only)" section above. The `extract-uat-issues.sh` output provides compact `ID|SEVERITY|DESCRIPTION|FAILED_IN_ROUNDS` lines — no need to read the full UAT file. The header line includes `uat_round={N}` indicating the current UAT round number. If the pre-computed section shows `uat_extract_error=true`, fall back to reading `{phase}-UAT.md` directly.
-3. **Recurrence analysis and priority ranking:**
-   Parse the 4th pipe field (`FAILED_IN_ROUNDS`) from each issue line. Compute `failure_count` = number of comma-separated values in `FAILED_IN_ROUNDS`. Parse `uat_round` from the header line.
-
-   **Phase-level escalation:** When `uat_round >= 3`, force ALL issues through `research → plan → execute` regardless of severity (always pass `"major"` to `get-or-init` in step 5). When `uat_round < 3` and no test has `failure_count >= 3`: existing severity-based routing is unchanged.
-
-   **Per-test priority ranking:** Rank issues by `failure_count` descending — tests that failed the most rounds get investigated and fixed FIRST. When presenting issues to Scout (research stage) and Lead (plan stage), reorder by `failure_count` descending and annotate:
-   - `⚠ RECURRING (failed N/M rounds): ID|SEVERITY|DESCRIPTION` for tests with `failure_count >= 2`
-   - `ID|SEVERITY|DESCRIPTION` (no annotation) for first-time failures
-
-   **Scout research prompt for recurring issues** MUST include: *"{ID} has failed in {N} of {M} remediation rounds (rounds: {FAILED_IN_ROUNDS}). Prior fixes have not resolved this. Investigate WHY previous fixes failed before proposing a new approach — examine the actual data flow, not just symptoms."*
-
-   **Lead planning prompt for recurring issues** MUST include: *"Prioritize recurring failures. {ID} has resisted {N} fix attempts — allocate more plans/effort to this issue than to first-time failures."*
-4. Treat the UAT issues as source-of-truth scope. Do NOT ask the user to restate issues already recorded in UAT.
-5. **Resolve remediation stage (single call):**
+2. Read the active UAT artifact exactly once. Use `uat_file` from the pre-computed state when available; it is phase-relative to `PHASE_DIR` (for example `03-UAT.md` or `remediation/uat/round-01/R01-UAT.md`). If `uat_file=none` or the computed path does not exist, resolve the active UAT artifact from `PHASE_DIR` with one deterministic fallback (current round-dir UAT first, phase-root fallback). If no active UAT artifact exists, STOP and display: "⚠ Phase {NN} routes to UAT remediation but no active UAT artifact could be found."
+  **Single-read rule (NON-NEGOTIABLE):** Use that single UAT read as the source of truth for issue descriptions, severities, and current remediation scope. Do NOT shell out to `extract-uat-issues.sh` for active-phase routing.
+  **Round-dir nuance:** At the start of a new remediation round, the active artifact may still be the latest previous-round UAT (for example step 4 returns `round=02` while the active file is `remediation/uat/round-01/R01-UAT.md`). That is expected — treat the artifact you read here as the current source report until a newer UAT exists.
+3. Normalize the current issue list from the UAT read. For each failing test or discovered issue, capture `ID`, `SEVERITY`, and `DESCRIPTION`. Treat this normalized issue list as source-of-truth scope. Do NOT ask the user to restate issues already recorded in UAT.
+4. **Resolve remediation stage (single call):**
    ```bash
    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh get-or-init "$PHASE_DIR" "major"
-   # or "minor" when uat_issues_major_or_higher=false AND no phase-level escalation
    ```
+  Use `major` when `uat_issues_major_or_higher=true`; otherwise use `minor` for the initial entry call.
    **Run directly (do NOT capture with `$()`).**
    - Both resume and init paths emit **plan metadata** after the stage line:
      ```text
@@ -699,17 +611,37 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - **Initial creation:** If the resolved stage is `research`, mark Research as in-progress, Plan and Execute as not-started. If the resolved stage is `plan` (resume case), mark Research as completed, Plan as in-progress, Execute as not-started. If `execute`, mark Research and Plan as completed, Execute as in-progress.
    - **Same-session progression:** When a stage completes and you advance to the next stage within the same session (e.g., research completes → advance → start plan), immediately update the task list: mark the completed stage as completed and the new stage as in-progress. Do NOT defer task list updates or recreate the list from scratch.
    - **Final stage:** When the last stage completes, mark ALL tasks as completed before presenting the summary.
+5. **Recurrence analysis and priority ranking:**
+  Use `round=RR` from step 4 as the **current remediation round** for stage management.
+
+  Derive `active_uat_round` from the single step-2 UAT artifact:
+  - `remediation/uat/round-{NN}/R{NN}-UAT.md` → `active_uat_round={NN}`
+  - phase-root `*-UAT.md` → the active report round at the phase root (round 1 when no archived round files exist; otherwise the root report comes after the archived round files already on disk)
+
+  **Important:** `active_uat_round` can be **less than `RR`** at the start of a new remediation round because the new round has no UAT yet. Do NOT assume the active UAT artifact belongs to the current remediation round.
+
+  **Post-route enrichment:** When inspecting earlier archived UAT artifacts for recurrence, read only the archived artifacts for this phase (flat `*-UAT-round-*.md` or round-dir `remediation/uat/round-*/R*-UAT.md`) and **exclude the active step-2 UAT artifact itself from the scan**. Build `FAILED_IN_ROUNDS` from the matching archived rounds plus `active_uat_round`. If no earlier matches exist, default each current issue to `FAILED_IN_ROUNDS={active_uat_round}` — **never** default to `RR` when the active artifact is a previous-round UAT.
+
+  **Phase-level escalation:** When `RR >= 3`, force ALL issues through `research → plan → execute` regardless of severity. If the persisted stage from step 4 is `fix`, replace the quick-fix task list with the major-path task list (`Research`, `Plan`, `Execute`) before continuing.
+
+  **Per-test priority ranking:** Rank issues by `failure_count` descending — tests that failed the most recorded UAT rounds get investigated and fixed FIRST. When presenting issues to Scout (research stage) and Lead (plan stage), reorder by `failure_count` descending and annotate:
+  - `⚠ RECURRING (failed in N recorded rounds): ID|SEVERITY|DESCRIPTION` for tests with `failure_count >= 2`
+  - `ID|SEVERITY|DESCRIPTION` (no annotation) for first-time failures
+
+  **Scout research prompt for recurring issues** MUST include: *"{ID} has failed in {N} recorded UAT rounds (rounds: {FAILED_IN_ROUNDS}). Current source artifact round: {active_uat_round}; current remediation round: {RR}. Prior fixes have not resolved this. Investigate WHY previous fixes failed before proposing a new approach — examine the actual data flow, not just symptoms."*
+
+  **Lead planning prompt for recurring issues** MUST include: *"Prioritize recurring failures. {ID} has failed in {N} recorded UAT rounds — allocate more plans/effort to this issue than to first-time failures."*
 6. **Execute the current stage** based on `STAGE`:
-   **File read prohibition:** Do NOT read `{phase}-UAT.md` or `{phase}-CONTEXT.md` — all UAT data is already available from step 2 (pre-computed issue lines) and step 5 (CONTEXT.md content emitted by `get-or-init`). Reading these files wastes tool calls.
-   **Round metadata prohibition:** Do NOT glob `*-PLAN.md` or search for `*-RESEARCH.md` — use the pre-computed `round`, `round_dir`, `research_path`, and `plan_path` values from step 5.
-   - `research`: If `research_path` from step 5 is non-empty, research already exists — skip to advancing the stage. Otherwise, spawn Scout (with `subagent_type: "vbw:vbw-scout"`) with the pre-computed UAT issue lines (`ID|SEVERITY|DESCRIPTION|FAILED_IN_ROUNDS` from step 2), **ordered by failure_count descending** (step 3), so Scout investigates the relevant code areas for each issue. Use `round` from step 5 as `{RR}`. Pass `<output_path>{round_dir}/R{RR}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file directly. Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Scout prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely. Also evaluate available MCP tools in your system context — if any MCP servers provide documentation, search, or data retrieval capabilities relevant to investigating these issues, note them in the Scout's task context so it prioritizes those tools over generic WebSearch/WebFetch where applicable.
+  **File read rule:** Do NOT re-read the active `{phase}-UAT.md` artifact unless step 5 requires earlier archived rounds for recurrence enrichment. Use the single step-2 UAT read as the active-round source of truth, and if step 5 scans archived rounds, exclude that active artifact from the scan. Do NOT read `{phase}-CONTEXT.md` — step 4 already emitted the remediation context when needed.
+   **Round metadata prohibition:** Do NOT glob `*-PLAN.md` or search for `*-RESEARCH.md` — use the pre-computed `round`, `round_dir`, `research_path`, and `plan_path` values from step 4.
+   - `research`: If `research_path` from step 4 is non-empty, research already exists — skip to advancing the stage. Otherwise, spawn Scout (with `subagent_type: "vbw:vbw-scout"`) with the normalized issue list from steps 3-5, **ordered by failure_count descending**, so Scout investigates the relevant code areas for each issue. Use `round` from step 4 as `{RR}`. Pass `<output_path>{round_dir}/R{RR}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file directly. Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Scout prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely. Also evaluate available MCP tools in your system context — if any MCP servers provide documentation, search, or data retrieval capabilities relevant to investigating these issues, note them in the Scout's task context so it prioritizes those tools over generic WebSearch/WebFetch where applicable.
      **Live data validation:** When any issue involves external data sources (APIs, databases, services), include in the Scout prompt: *"For issues involving external data sources, use WebFetch to query accessible HTTP endpoints and compare actual responses against what the code expects. For non-HTTP data sources, document what live data needs to be checked and flag it as ⚠ REQUIRES LIVE VALIDATION for the execute stage."*
      After Scout completes, confirm RESEARCH.md exists (read first line), then advance:
      ```bash
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
      Then continue to the next stage (`plan`).
-   - `plan`: If `plan_path` from step 5 is non-empty, the plan was already written in a previous session — do NOT re-plan. Read the existing plan and advance directly to `execute`. Otherwise, spawn Lead as a **single subagent** to write the remediation plan:
+    - `plan`: If `plan_path` from step 4 is non-empty, the plan was already written in a previous session — do NOT re-plan. Read the existing plan and advance directly to `execute`. Otherwise, spawn Lead as a **single subagent** to write the remediation plan:
 
      **NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name` or `name` parameters**. This is NOT "Plan mode steps 1-12" — remediation has its own sequential flow that does not use the standard planning pipeline.
 
@@ -722,10 +654,10 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
      - Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, note them in the Lead's task context so Lead can include them when spawning Dev agents.
      - Spawn vbw-lead via Task tool: Set `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"`. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If empty, omit maxTurns.
      - Lead prompt MUST include:
-       - If `research_path` from step 5 is non-empty: `Read {research_path} for full research findings before planning.` (Lead must read the file, do NOT inline a summary.)
-       - The priority-ranked issue list from step 3 with recurring-issue annotations.
+       - If `research_path` from step 4 is non-empty: `Read {research_path} for full research findings before planning.` (Lead must read the file, do NOT inline a summary.)
+       - The priority-ranked issue list from step 5 with recurring-issue annotations.
        - `"Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md and follow its structure exactly. This template is different from the regular PLAN.md — it has no wave or depends_on fields because remediation tasks are always sequential. Produce a flat ordered task list where each task can see the results of previous tasks."` (Lead must read the template file.)
-       - Output path: `{round_dir}/R{RR}-PLAN.md` (using `round` from step 5 as `{RR}`).
+       - Output path: `{round_dir}/R{RR}-PLAN.md` (using `round` from step 4 as `{RR}`).
      - Display `◆ Spawning Lead agent...` → `✓ Lead agent complete`.
      - Normalize plan filenames:
        ```bash
@@ -740,11 +672,11 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
        bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
        ```
      Then continue to the next stage (`execute`), respecting autonomy confirmation rules.
-   - `execute`: Execute the remediation plan by spawning Dev agents sequentially — one per task in the plan. Do NOT use "normal Execute flow" or `execute-protocol.md` — remediation execution is self-contained with no wave parallelism.
+    - `execute`: Execute the remediation plan by spawning Dev agents sequentially — one per task in the plan. Do NOT use "normal Execute flow" or `execute-protocol.md` — remediation execution is self-contained with no wave parallelism.
 
      **NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation execution spawns Dev agents directly via Task tool with **no `team_name` or `name` parameters**.
 
-     - Read `{round_dir}/R{RR}-PLAN.md` (using `round` and `round_dir` from step 5) and extract the task list from the plan frontmatter/body. Each task has an ID (e.g., `P07`, `P08`, `UAT-3`).
+     - Read `{round_dir}/R{RR}-PLAN.md` (using `round` and `round_dir` from step 4) and extract the task list from the plan frontmatter/body. Each task has an ID (e.g., `P07`, `P08`, `UAT-3`).
      - Resolve Dev model:
        ```bash
        DEV_MODEL=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-model.sh dev .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json)
@@ -793,12 +725,12 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
           ```
           Use this fresh verify context for the Verify mode CHECKPOINT loop.
        Do NOT present the remediation summary (Step 7) and stop — the summary is only useful if the session cannot continue (e.g., compaction).
-   - `fix` (minor-only path): Route to a quick-fix implementation path for the same phase using the extracted UAT issue list as task input (equivalent to `/vbw:fix`, but without requiring the user to invoke it manually). After changes, advance:
+    - `fix` (minor-only path): Route to a quick-fix implementation path for the same phase using the normalized issue list from step 3 (with step-5 recurrence annotations when available) as task input (equivalent to `/vbw:fix`, but without requiring the user to invoke it manually). After changes, advance:
      ```bash
      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
      ```
      Then chain into re-verification using the same steps as the execute stage above (prepare-reverification → commit boundary → Verify mode inline). Do NOT suggest `/vbw:vibe` — enter Verify mode in the same turn.
-7. **Fallback remediation summary** (only when re-verification chaining could not complete in this turn — e.g., context window limits, compaction, or session interruption): Present a remediation summary with: phase, issue count, severity mix, current stage, chosen path (`research -> plan -> execute` or quick-fix), and per-test recurrence. For any issue with `failure_count >= 2`, include: `"⚠ RECURRING ({failure_count}/{uat_round} rounds): {ID} — {DESCRIPTION}"`. First-time failures display without the annotation. End with: "Run `/vbw:vibe` to start re-verification."
+7. **Fallback remediation summary** (only when re-verification chaining could not complete in this turn — e.g., context window limits, compaction, or session interruption): Present a remediation summary with: phase, issue count, severity mix, current stage, chosen path (`research -> plan -> execute` or quick-fix), and per-test recurrence. For any issue with `failure_count >= 2`, include: `"⚠ RECURRING ({failure_count}/{round} rounds): {ID} — {DESCRIPTION}"`. First-time failures display without the annotation. End with: "Run `/vbw:vibe` to start re-verification."
 
 ### Mode: Milestone UAT Recovery
 

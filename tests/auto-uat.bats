@@ -1328,9 +1328,10 @@ EOF
 }
 
 @test "extract-uat-issues.sh accepts FAIL and PARTIAL Result values" {
-  local script="$BATS_TEST_DIRNAME/../scripts/extract-uat-issues.sh"
-  # The AWK parser must handle issue/fail/failed/partial
-  grep -q 'issue|fail|failed|partial' "$script"
+  local parser="$BATS_TEST_DIRNAME/../scripts/parse-uat-issues.awk"
+  [ -f "$parser" ]
+  # The shared AWK parser must handle issue/fail/failed/partial
+  grep -q 'issue|fail|failed|partial' "$parser"
 }
 
 @test "verify.md writes stage=verified instead of deleting state file" {
