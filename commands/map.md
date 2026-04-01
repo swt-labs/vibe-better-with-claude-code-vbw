@@ -99,10 +99,26 @@ If monorepo + --package: scope to that package.
 ### Step 3: Execute mapping (tier-branched)
 
 **Step 3-solo:** Orchestrator analyzes each domain sequentially, writes to `.vbw-planning/codebase/`:
+
+**MCP-accelerated analysis (when MCP_MAP_CAPABILITIES is non-empty):**
+If code-analysis MCP capabilities were detected in Step 1.3, use them as the primary data source for each domain. The orchestrator calls MCP tools directly instead of broad Glob/Read/Grep sweeps.
+
+Execution order:
+1. If CAPABILITY_INDEX detected: call the index tool to ensure graph freshness
+2. If CAPABILITY_ARCHITECTURE detected: call it first — its output (language breakdown, packages, entry points, routes, hotspots, cross-service boundaries) feeds STACK.md, ARCHITECTURE.md, and STRUCTURE.md
+3. Per domain, prefer MCP tools over file reads:
+   - Domain 1 (STACK.md + DEPENDENCIES.md): architecture extraction for languages/packages, dependency graph for inter-module deps. Fall back to Read for manifest files (package.json, go.mod version strings).
+   - Domain 2 (ARCHITECTURE.md + STRUCTURE.md): architecture extraction for entry points/routes/hotspots, call tracing for data flow, symbol search for module layout. Fall back to Glob for directory tree.
+   - Domain 3 (CONVENTIONS.md + TESTING.md): code search for naming/test patterns, code snippet for style examples. Fall back to Read for config files (.eslintrc, .prettierrc, CI YAML).
+   - Domain 4 (CONCERNS.md): hotspot analysis for risk areas, call tracing for high fan-out, dependency graph for coupling. Fall back to Read for non-code concern notes.
+4. Write documents in the same format as brute-force analysis — document structure must be identical regardless of data source. Downstream consumers (infer-project-context.sh, compile-context.sh, init.md Step 3b/3b2) parse these documents by section headers.
+
+**If MCP_MAP_CAPABILITIES is empty:** proceed with existing brute-force analysis (Glob/Read/Grep) unchanged:
 - Domain 1 (Tech Stack): STACK.md + DEPENDENCIES.md
 - Domain 2 (Architecture): ARCHITECTURE.md + STRUCTURE.md
 - Domain 3 (Quality): CONVENTIONS.md + TESTING.md
 - Domain 4 (Concerns): CONCERNS.md
+
 Display ✓ per domain. After all 7 docs written, skip Step 3.5, go to Step 4.
 
 ---
