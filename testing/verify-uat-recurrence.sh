@@ -95,9 +95,9 @@ else
   fail "vibe.md UAT Remediation missing FAILED_IN_ROUNDS reference"
 fi
 
-# Test 11: vibe.md has phase-level escalation (uat_round >= 3)
-if grep -q 'uat_round >= 3' "$SCRIPT_DIR/commands/vibe.md"; then
-  pass "vibe.md has phase-level escalation at uat_round >= 3"
+# Test 11: vibe.md has phase-level escalation (current round >= 3)
+if grep -q 'RR >= 3\|round >= 3\|uat_round >= 3' "$SCRIPT_DIR/commands/vibe.md"; then
+  pass "vibe.md has phase-level escalation at round >= 3"
 else
   fail "vibe.md missing phase-level escalation threshold"
 fi

@@ -104,11 +104,13 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_slug=01-test"
   echo "$output" | grep -q "uat_issues_phase=01"
   echo "$output" | grep -q "uat_issues_major_or_higher=true"
+  echo "$output" | grep -q "uat_file=01-UAT.md"
 }
 
-@test "inline UAT extraction emitted for needs_uat_remediation" {
+@test "active UAT routing metadata emitted for needs_uat_remediation" {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
@@ -131,23 +133,22 @@ EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
-  echo "$output" | grep -q "^---UAT_EXTRACT_END---$"
-  echo "$output" | grep -q "uat_phase=01"
-  echo "$output" | grep -q "uat_issues_total=1"
-  echo "$output" | grep -q "P01-T1|major|something is broken|1"
+  echo "$output" | grep -q "uat_issues_count=1"
+  echo "$output" | grep -q "uat_file=01-UAT.md"
+  ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
 }
 
-@test "no inline UAT extraction when state is not needs_uat_remediation" {
+@test "no active UAT marker block when state is not needs_uat_remediation" {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
   ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
+  echo "$output" | grep -q "uat_file=none"
 }
 
-@test "inline UAT extraction with round-dir layout" {
+@test "active UAT routing metadata uses round-dir relative path" {
   mkdir -p .vbw-planning/phases/01-test/remediation/uat/round-01/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
@@ -171,12 +172,12 @@ EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
-  echo "$output" | grep -q "uat_phase=01"
-  echo "$output" | grep -q "P01-T1|critical|round-dir broken"
+  echo "$output" | grep -q "uat_file=remediation/uat/round-01/R01-UAT.md"
+  echo "$output" | grep -q "uat_issues_count=1"
+  ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
 }
 
-@test "inline UAT extraction emits error marker when no parseable issues" {
+@test "active UAT routing metadata does not depend on parseable issue bodies" {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
@@ -195,71 +196,9 @@ EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
-  echo "$output" | grep -q "uat_extract_error=true"
-  echo "$output" | grep -q "^---UAT_EXTRACT_END---$"
-}
-
-@test "inline UAT extraction preserves zero-issue parity with standalone extractor" {
-  mkdir -p .vbw-planning/phases/01-test/
-  touch .vbw-planning/phases/01-test/01-01-PLAN.md
-  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
-  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
----
-phase: 01
-status: issues_found
-issues: 0
----
-
-## Tests
-
-### P01-T1: all good
-
-- **Result:** pass
-EOF
-
-  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" .vbw-planning/phases/01-test
-  [ "$status" -eq 0 ]
-  expected="$output"
-
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
-  [ "$status" -eq 0 ]
-  marker=$(printf '%s\n' "$output" | awk '/^---UAT_EXTRACT_START---$/{f=1; next} /^---UAT_EXTRACT_END---$/{exit} f{print}')
-  [ "$marker" = "$expected" ]
-  echo "$marker" | grep -q 'uat_issues_total=0'
-  ! echo "$marker" | grep -q 'uat_extract_error=true'
-}
-
-@test "inline UAT extraction preserves bold severity parsing parity with standalone extractor" {
-  mkdir -p .vbw-planning/phases/01-test/
-  touch .vbw-planning/phases/01-test/01-01-PLAN.md
-  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
-  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
----
-phase: 01
-status: issues_found
-issues: 1
----
-
-## Tests
-
-### P01-T1: styled issue
-
-- **Result:** issue
-- **Issue:**
-  - **Description:** Styled issue still parses
-  - **Severity:** minor
-EOF
-
-  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" .vbw-planning/phases/01-test
-  [ "$status" -eq 0 ]
-  expected="$output"
-
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
-  [ "$status" -eq 0 ]
-  marker=$(printf '%s\n' "$output" | awk '/^---UAT_EXTRACT_START---$/{f=1; next} /^---UAT_EXTRACT_END---$/{exit} f{print}')
-  [ "$marker" = "$expected" ]
-  echo "$marker" | grep -q 'P01-T1|minor|Styled issue still parses|1'
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  echo "$output" | grep -q "uat_file=01-UAT.md"
+  ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
 }
 
 @test "milestone extraction preserves zero-issue parity with standalone extractor" {
@@ -376,14 +315,13 @@ issues: 1
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" .vbw-planning/phases/03-feature
-  [ "$status" -eq 0 ]
-  expected="$output"
-
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  marker=$(printf '%s\n' "$output" | awk '/^---UAT_EXTRACT_START---$/{f=1; next} /^---UAT_EXTRACT_END---$/{exit} f{print}')
-  [ "$marker" = "$expected" ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  echo "$output" | grep -q "uat_issues_count=1"
+  echo "$output" | grep -q "uat_file=03-UAT.md"
+  echo "$output" | grep -q "uat_round_count=2"
+  ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
 }
 
 @test "milestone UAT extraction preserves FAILED_IN_ROUNDS recurrence parity" {

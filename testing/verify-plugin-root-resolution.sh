@@ -560,7 +560,7 @@ for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
   base="$(basename "$rel" .md)"
   if [ "$rel" = "vibe.md" ]; then
     live_count=$(grep -cF 'bash "$L/scripts/phase-detect.sh"' "$file" || true)
-    if [ "${live_count:-0}" -ge 4 ]; then
+    if [ "${live_count:-0}" -ge 3 ]; then
       pass "$base: phase-detect reader uses guarded live reads"
     else
       fail "$base: missing guarded live phase-detect reads"

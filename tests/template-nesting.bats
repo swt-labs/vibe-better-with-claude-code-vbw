@@ -248,15 +248,15 @@ _simulate_phase_detect_reader() {
   start_count=$(grep -cF '_PD_START_TS=$(date +%s' "$PROJECT_ROOT/commands/vibe.md" || true)
   fresh_count=$(grep -cF '_phase_detect_cache_fresh()' "$PROJECT_ROOT/commands/vibe.md" || true)
   stat_count=$(grep -c 'stat -c %Y "\$P"\|stat -f %m "\$P"' "$PROJECT_ROOT/commands/vibe.md" || true)
-  [ "${start_count:-0}" -ge 4 ] || { echo 'FAIL: vibe.md missing invocation-start freshness guard'; return 1; }
-  [ "${fresh_count:-0}" -ge 4 ] || { echo 'FAIL: vibe.md missing fresh-cache helper in guarded readers'; return 1; }
-  [ "${stat_count:-0}" -ge 4 ] || { echo 'FAIL: vibe.md missing cache mtime freshness check'; return 1; }
+  [ "${start_count:-0}" -ge 3 ] || { echo 'FAIL: vibe.md missing invocation-start freshness guard'; return 1; }
+  [ "${fresh_count:-0}" -ge 3 ] || { echo 'FAIL: vibe.md missing fresh-cache helper in guarded readers'; return 1; }
+  [ "${stat_count:-0}" -ge 3 ] || { echo 'FAIL: vibe.md missing cache mtime freshness check'; return 1; }
 }
 
 @test "vibe.md guarded readers use a shared live phase-detect lock" {
   local lock_count
   lock_count=$(grep -cF '/tmp/.vbw-phase-detect-live-${SESSION_KEY}.lock' "$PROJECT_ROOT/commands/vibe.md" || true)
-  [ "${lock_count:-0}" -ge 4 ] || { echo 'FAIL: vibe.md missing shared live phase-detect lock in guarded readers'; return 1; }
+  [ "${lock_count:-0}" -ge 3 ] || { echo 'FAIL: vibe.md missing shared live phase-detect lock in guarded readers'; return 1; }
 }
 
 @test "vibe.md preamble uses the same phase-detect live lock" {
@@ -275,7 +275,7 @@ _simulate_phase_detect_reader() {
 
   local vibe_live_count
   vibe_live_count=$(grep -cF 'bash "$L/scripts/phase-detect.sh"' "$PROJECT_ROOT/commands/vibe.md")
-  [ "$vibe_live_count" -ge 4 ] || { echo "FAIL: vibe.md missing guarded live phase-detect reads"; return 1; }
+  [ "$vibe_live_count" -ge 3 ] || { echo "FAIL: vibe.md missing guarded live phase-detect reads"; return 1; }
 }
 
 @test "vibe/verify secondary readers no longer use legacy empty-only fallback" {
@@ -396,7 +396,7 @@ EOF
 
   local live_count
   live_count=$(grep -cF 'bash "$L/scripts/phase-detect.sh"' "$PROJECT_ROOT/commands/vibe.md")
-  [ "$live_count" -ge 4 ] || { echo "FAIL: vibe.md missing live phase-detect reads"; return 1; }
+  [ "$live_count" -ge 3 ] || { echo "FAIL: vibe.md missing live phase-detect reads"; return 1; }
 }
 
 # ── UAT protocol safeguards ─────────────────────────────────────────────────

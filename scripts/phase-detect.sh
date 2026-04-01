@@ -25,6 +25,20 @@ list_child_dirs_sorted() {
     (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
 }
 
+phase_relative_path() {
+  local base="${1%/}"
+  local path="$2"
+
+  case "$path" in
+    "$base"/*)
+      printf '%s\n' "${path#"$base"/}"
+      ;;
+    *)
+      basename "$path"
+      ;;
+  esac
+}
+
 normalize_qa_remediation_stage() {
   case "${1:-none}" in
     plan|execute|verify|done) echo "$1" ;;
@@ -74,6 +88,7 @@ else
   echo "uat_issues_major_or_higher=false"
   echo "uat_issues_phases="
   echo "uat_issues_count=0"
+  echo "uat_file=none"
   echo "uat_round_count=0"
   echo "has_shipped_milestones=false"
   echo "needs_milestone_rename=false"
@@ -191,6 +206,7 @@ UAT_ISSUES_PHASES=""
 UAT_ISSUES_COUNT=0
 UAT_ROUND_COUNT=0
 UAT_ISSUES_FILE=""
+UAT_ISSUES_RELATIVE_FILE="none"
 
 if [ -d "$PHASES_DIR" ]; then
   # Collect phase directories in numeric order (prevents 100 sorting before 11)
@@ -882,6 +898,15 @@ if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; t
   esac
 fi
 
+if [ "$UAT_ISSUES_PHASE" != "none" ] && [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_ISSUES_FILE" ]; then
+  _pd_active_phase_dir="${PHASES_DIR}/${UAT_ISSUES_SLUG}"
+  if [ -d "$_pd_active_phase_dir" ]; then
+    UAT_ISSUES_RELATIVE_FILE=$(phase_relative_path "$_pd_active_phase_dir" "$UAT_ISSUES_FILE")
+  else
+    UAT_ISSUES_RELATIVE_FILE=$(basename "$UAT_ISSUES_FILE")
+  fi
+fi
+
 echo "phase_count=$PHASE_COUNT"
 echo "next_phase=$NEXT_PHASE"
 echo "next_phase_slug=$NEXT_PHASE_SLUG"
@@ -901,6 +926,7 @@ echo "uat_issues_slug=$UAT_ISSUES_SLUG"
 echo "uat_issues_major_or_higher=$UAT_ISSUES_MAJOR_OR_HIGHER"
 echo "uat_issues_phases=$UAT_ISSUES_PHASES"
 echo "uat_issues_count=$UAT_ISSUES_COUNT"
+echo "uat_file=$UAT_ISSUES_RELATIVE_FILE"
 echo "uat_round_count=$UAT_ROUND_COUNT"
 
 # --- Misnamed plan file diagnostic ---
@@ -1223,46 +1249,6 @@ _pd_build_uat_issue_lines() {
     _PD_EXTRACT_COUNT=$((_PD_EXTRACT_COUNT + 1))
   done < <(printf '%s\n' "$_pd_base_issues")
 }
-
-# --- Active phase UAT extraction for needs_uat_remediation ---
-if [ "$NEXT_PHASE_STATE" = "needs_uat_remediation" ] && [ -n "$NEXT_PHASE_SLUG" ]; then
-  _PD_PHASE_DIR="${PHASES_DIR}/${NEXT_PHASE_SLUG}"
-  if [ -z "$UAT_ISSUES_FILE" ] || [ ! -f "$UAT_ISSUES_FILE" ]; then
-    if [ -d "$_PD_PHASE_DIR" ]; then
-      if type current_uat &>/dev/null; then
-        UAT_ISSUES_FILE=$(current_uat "$_PD_PHASE_DIR")
-      elif type latest_non_source_uat &>/dev/null; then
-        UAT_ISSUES_FILE=$(latest_non_source_uat "$_PD_PHASE_DIR")
-      fi
-    fi
-  fi
-  if [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_ISSUES_FILE" ]; then
-    _pd_uat_phase="${UAT_ISSUES_PHASE}"
-    _pd_uat_fname=$(basename "$UAT_ISSUES_FILE")
-    _pd_uat_round=""
-    case "$UAT_ISSUES_FILE" in
-      */remediation/uat/round-*/R*-UAT.md)
-        _pd_uat_round=$(basename "$UAT_ISSUES_FILE" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
-        _pd_uat_round="${_pd_uat_round:-0}"
-        ;;
-    esac
-    if [ -z "$_pd_uat_round" ] || ! echo "$_pd_uat_round" | grep -qE '^[0-9]+$'; then
-      _pd_uat_round=$((UAT_ROUND_COUNT + 1))
-    fi
-    _pd_build_uat_issue_lines "$_PD_PHASE_DIR" "$_pd_uat_phase" "$UAT_ISSUES_FILE" "$_pd_uat_round"
-
-    echo "---UAT_EXTRACT_START---"
-    if [ -n "$_PD_EXTRACT_ERROR" ]; then
-      echo "uat_extract_error=true uat_file=${_pd_uat_fname}"
-    else
-      echo "uat_phase=${_pd_uat_phase} uat_issues_total=${_PD_EXTRACT_COUNT} uat_round=${_pd_uat_round} uat_file=${_pd_uat_fname}"
-      if [ "$_PD_EXTRACT_COUNT" -gt 0 ]; then
-        printf '%s\n' "$_PD_EXTRACT_LINES"
-      fi
-    fi
-    echo "---UAT_EXTRACT_END---"
-  fi
-fi
 
 # --- Milestone UAT extraction ---
 if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; then
