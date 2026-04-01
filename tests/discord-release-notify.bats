@@ -15,6 +15,9 @@ set -euo pipefail
 
 payload=""
 url=""
+header_file=""
+body_file=""
+write_out=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -23,6 +26,14 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     -H|--header)
+      shift 2
+      ;;
+    -D|-o|-w)
+      case "$1" in
+        -D) header_file="$2" ;;
+        -o) body_file="$2" ;;
+        -w) write_out="$2" ;;
+      esac
       shift 2
       ;;
     -f|-s|-S|-fsS|-sf|-fS|-sSf|-fs|-sS)
@@ -35,16 +46,63 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-count=0
-if [ -f "$FAKE_CURL_DIR/count" ]; then
-  count=$(cat "$FAKE_CURL_DIR/count")
+attempt_count=0
+if [ -f "$FAKE_CURL_DIR/attempt-count" ]; then
+  attempt_count=$(cat "$FAKE_CURL_DIR/attempt-count")
 fi
-count=$((count + 1))
+attempt_count=$((attempt_count + 1))
+printf '%s' "$attempt_count" > "$FAKE_CURL_DIR/attempt-count"
 
-printf '%s' "$count" > "$FAKE_CURL_DIR/count"
-printf '%s' "$payload" > "$FAKE_CURL_DIR/payload-$count.json"
-printf '%s' "$url" > "$FAKE_CURL_DIR/url-$count.txt"
-printf '{"id":"message-%s"}\n' "$count"
+if [ -n "${FAKE_CURL_FAIL_EXIT_ON_ATTEMPT:-}" ] && [ "$attempt_count" -eq "$FAKE_CURL_FAIL_EXIT_ON_ATTEMPT" ]; then
+  printf 'simulated network failure\n' >&2
+  if [ -n "$write_out" ] && [ "$write_out" = '%{http_code}' ]; then
+    printf '000'
+  fi
+  exit "${FAKE_CURL_FAIL_EXIT_CODE:-7}"
+fi
+
+http_code="${FAKE_CURL_DEFAULT_HTTP:-200}"
+if [ -n "${FAKE_CURL_FAIL_ON_ATTEMPT:-}" ] && [ "$attempt_count" -eq "$FAKE_CURL_FAIL_ON_ATTEMPT" ]; then
+  http_code="${FAKE_CURL_FAIL_HTTP:-429}"
+fi
+
+if [ -n "$header_file" ]; then
+  if [ "$http_code" = "429" ]; then
+    printf 'HTTP/1.1 429 Too Many Requests\r\nRetry-After: %s\r\nX-RateLimit-Reset-After: %s\r\n\r\n' \
+      "${FAKE_CURL_RETRY_AFTER:-0}" "${FAKE_CURL_RETRY_AFTER:-0}" > "$header_file"
+  else
+    printf 'HTTP/1.1 %s OK\r\n\r\n' "$http_code" > "$header_file"
+  fi
+fi
+
+if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+  posted_count=0
+  if [ -f "$FAKE_CURL_DIR/posted-count" ]; then
+    posted_count=$(cat "$FAKE_CURL_DIR/posted-count")
+  fi
+  posted_count=$((posted_count + 1))
+
+  printf '%s' "$posted_count" > "$FAKE_CURL_DIR/posted-count"
+  printf '%s' "$payload" > "$FAKE_CURL_DIR/payload-$posted_count.json"
+  printf '%s' "$url" > "$FAKE_CURL_DIR/url-$posted_count.txt"
+  response_body=$(printf '{"id":"message-%s"}\n' "$posted_count")
+else
+  response_body=$(printf '{"message":"rate limited","retry_after":%s,"global":false}\n' "${FAKE_CURL_RETRY_AFTER:-0}")
+fi
+
+if [ -n "$body_file" ]; then
+  printf '%s' "$response_body" > "$body_file"
+else
+  printf '%s' "$response_body"
+fi
+
+if [ -n "$write_out" ]; then
+  if [ "$write_out" = '%{http_code}' ]; then
+    printf '%s' "$http_code"
+  else
+    printf '%s' "$write_out"
+  fi
+fi
 EOF
   chmod +x bin/curl
 
@@ -57,8 +115,16 @@ teardown() {
 }
 
 payload_count() {
-  if [ -f "$FAKE_CURL_DIR/count" ]; then
-    cat "$FAKE_CURL_DIR/count"
+  if [ -f "$FAKE_CURL_DIR/posted-count" ]; then
+    cat "$FAKE_CURL_DIR/posted-count"
+  else
+    echo 0
+  fi
+}
+
+attempt_count() {
+  if [ -f "$FAKE_CURL_DIR/attempt-count" ]; then
+    cat "$FAKE_CURL_DIR/attempt-count"
   else
     echo 0
   fi
@@ -117,4 +183,49 @@ payload_count() {
   run jq -s 'all(.[]; (.embeds[0].description | length) <= 4096)' "$FAKE_CURL_DIR"/payload-*.json
   [ "$status" -eq 0 ]
   [ "$output" = "true" ]
+}
+
+@test "retries a rate-limited chunk and still posts the full changelog" {
+  local long_body
+  long_body="$(printf 'section-%04d\n' $(seq 1 700))"
+
+  export WEBHOOK_URL="https://discord.example/webhook"
+  export RELEASE_NAME=""
+  export RELEASE_TAG="v1.31.2"
+  export RELEASE_URL="https://github.com/swt-labs/vibe-better-with-claude-code-vbw/releases/tag/v1.31.2"
+  export RELEASE_BODY="$long_body"
+  export FAKE_CURL_FAIL_ON_ATTEMPT=2
+  export FAKE_CURL_FAIL_HTTP=429
+  export FAKE_CURL_RETRY_AFTER=0
+
+  run bash "$SCRIPTS_DIR/post-discord-release.sh"
+  [ "$status" -eq 0 ]
+  [ "$(payload_count)" -eq 3 ]
+  [ "$(attempt_count)" -eq 4 ]
+
+  run jq -r -s '[ .[] | .embeds[0].description ] | join("")' "$FAKE_CURL_DIR"/payload-*.json
+  [ "$status" -eq 0 ]
+  [ "$output" = "$long_body" ]
+}
+
+@test "retries a transient curl failure and still posts the full changelog" {
+  local long_body
+  long_body="$(printf 'section-%04d\n' $(seq 1 700))"
+
+  export WEBHOOK_URL="https://discord.example/webhook"
+  export RELEASE_NAME=""
+  export RELEASE_TAG="v1.31.3"
+  export RELEASE_URL="https://github.com/swt-labs/vibe-better-with-claude-code-vbw/releases/tag/v1.31.3"
+  export RELEASE_BODY="$long_body"
+  export FAKE_CURL_FAIL_EXIT_ON_ATTEMPT=1
+  export FAKE_CURL_FAIL_EXIT_CODE=7
+
+  run bash "$SCRIPTS_DIR/post-discord-release.sh"
+  [ "$status" -eq 0 ]
+  [ "$(payload_count)" -eq 3 ]
+  [ "$(attempt_count)" -eq 4 ]
+
+  run jq -r -s '[ .[] | .embeds[0].description ] | join("")' "$FAKE_CURL_DIR"/payload-*.json
+  [ "$status" -eq 0 ]
+  [ "$output" = "$long_body" ]
 }
