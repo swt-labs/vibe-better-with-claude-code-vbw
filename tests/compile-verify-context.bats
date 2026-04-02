@@ -2789,3 +2789,17 @@ SUM
   [ "$status" -eq 1 ]
   [[ "$output" == *"requires a value"* ]]
 }
+
+@test "compile-verify-context: --remediation-kind with quoted empty value errors" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only --remediation-kind "" "$PHASE_DIR"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"requires a value"* ]]
+}
+
+@test "compile-verify-context: --remediation-kind rejects option-like next arg" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-kind --remediation-only "$PHASE_DIR"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"requires a value"* ]]
+}

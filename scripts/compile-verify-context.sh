@@ -124,8 +124,12 @@ while [ $# -gt 0 ]; do
   case "${1:-}" in
     --remediation-only) REMEDIATION_ONLY=true; shift ;;
     --remediation-kind)
-      REMEDIATION_KIND="${2:-}"
-      shift 2 2>/dev/null || { echo "error: --remediation-kind requires a value (qa or uat)" >&2; exit 1; }
+      if [ $# -lt 2 ] || [ -z "${2:-}" ] || [[ "${2:-}" == --* ]]; then
+        echo "error: --remediation-kind requires a value (qa or uat)" >&2
+        exit 1
+      fi
+      REMEDIATION_KIND="$2"
+      shift 2
       ;;
     --remediation-kind=*)
       REMEDIATION_KIND="${1#--remediation-kind=}"
