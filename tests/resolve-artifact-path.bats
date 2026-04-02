@@ -337,8 +337,9 @@ teardown() {
   grep -q 'resolve-artifact-path\.sh' scripts/compile-verify-context.sh
 }
 
-@test "contract: verify.md calls resolve-artifact-path.sh" {
-  grep -q 'resolve-artifact-path\.sh' commands/verify.md
+@test "contract: verify.md uses shared UAT scope resolver for explicit targets" {
+  grep -q 'compile-verify-context-for-uat\.sh' commands/verify.md
+  grep -q 'Do NOT force full scope' commands/verify.md
 }
 
 @test "contract: qa.md calls resolve-artifact-path.sh" {

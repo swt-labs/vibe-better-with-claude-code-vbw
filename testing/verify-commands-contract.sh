@@ -310,6 +310,14 @@ else
   fail "verify: remediation re-verification missing refreshed round-dir uat_path validation"
 fi
 
+if grep -q 'ignore the pre-computed verify context, `next_phase_state`, `qa_status`, and UAT resume metadata' "$VERIFY_FILE" \
+  && grep -q 'Do NOT force full scope' "$VERIFY_FILE" \
+  && grep -q 'Use UAT resume metadata for the active target phase' "$VERIFY_FILE"; then
+  pass "verify: explicit target phase uses target-specific verify state instead of auto-detected phase state"
+else
+  fail "verify: explicit target phase still depends on auto-detected verify state"
+fi
+
 if grep -q '_uat_state_file=.*remediation/uat/\.uat-remediation-stage' "$VERIFY_FILE" \
   && grep -q '_uat_legacy_file=.*\.uat-remediation-stage' "$VERIFY_FILE" \
   && grep -q '_uat_state_exists' "$VERIFY_FILE"; then

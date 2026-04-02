@@ -311,15 +311,19 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh get-or-init "{phase-dir}" major
   ```
   Parse `round=RR` and override `uat_path=remediation/uat/round-{RR}/R{RR}-UAT.md` before Step 4 writes any UAT file. This applies to resumed `needs_reverification` sessions too.
-- **If user specified an explicit phase number** that differs from `verify_target_slug`, ignore the pre-computed context (it was generated for the auto-detected phase). Read PLAN/SUMMARY files from the user-specified phase directory instead — this always uses full scope. Resolve UAT path:
+- **If user specified an explicit phase number** that differs from `verify_target_slug`, ignore the pre-computed verify context, `next_phase_state`, `qa_status`, and UAT resume metadata from the auto-detected phase. Recompute target-specific verify context and UAT resume metadata:
   ```bash
-  UAT_NAME=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-artifact-path.sh uat "{phase-dir}")
+  PDIR=".vbw-planning/phases/{target-slug}"
+  bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh" "$PDIR"
+  bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/extract-uat-resume.sh" "$PDIR"
   ```
-  Use `uat_path=${UAT_NAME}`. Also ignore the pre-computed `qa_status` for the auto-detected phase and apply the QA gate above to the explicit target phase only.
+  Use this target-specific output instead of the auto-detected blocks from Context. Do NOT force full scope — let `compile-verify-context-for-uat.sh` decide whether the explicit target phase is full-scope verification or remediation re-verification. Apply the QA gate above to the explicit target phase only.
 
 ### 2. Handle re-verification state
 
-- If `next_phase_state=needs_reverification` (from Context above):
+- If the active target phase needs re-verification:
+  - For auto-detected routing, use `next_phase_state=needs_reverification` from Context above.
+  - For an explicit target phase, ignore the auto-detected `next_phase_state` and only enter this step when the explicit target's own current UAT status is `issues_found` and its UAT remediation stage is `done` or `verify`.
   - Run `prepare-reverification.sh {phase-dir}` to archive the old UAT and reset remediation stage
   - If the script outputs `skipped=already_archived`, display: `UAT already archived. Starting fresh re-verification.`
   - If the script fails (non-zero exit), display the error message and **STOP** — do not continue to Step 3
@@ -335,7 +339,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
 
 ### 3. Check for existing UAT session (resume support)
 
-- Use pre-computed UAT resume metadata from the "Pre-computed UAT resume metadata" block above (or refreshed metadata from Step 2 for `needs_reverification`):
+- Use UAT resume metadata for the active target phase (the pre-computed auto-detected block, the target-specific refresh from Step 1, or the refreshed metadata from Step 2 for re-verification):
   - `uat_resume=none`: no existing UAT session — proceed to Step 4 (generate tests)
   - `uat_resume=all_done uat_completed=N uat_total=N`: all tests already have results — display the summary, STOP
   - `uat_resume=<test-id> uat_completed=N uat_total=N`: resume at `<test-id>`. Display: `Resuming UAT session -- {completed}/{total} tests done`. Read the UAT.md once to load checkpoint text, then jump to the CHECKPOINT loop at the resume point.
