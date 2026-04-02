@@ -55,11 +55,16 @@ require_all "$EXEC_PROTO" \
   "Grep/search files for expected content or missing imports" \
   "Verify file existence, deletion, or structure" \
   "Run a test suite or individual test" \
-  "Run a CLI command and check its exit code or output"
+  "Run a CLI command and check its exit code or output" \
+  "Run a linter, type-checker, or build command"
 
 require_all "$VERIFY_FILE" \
   "verify: excludes automated QA checks from UAT" \
   "**NEVER generate tests that ask the user to run automated checks.**" \
+  "Run a test suite or individual test" \
+  "Run a CLI command and check its exit code or output" \
+  "Execute a script and verify it passes" \
+  "Run a linter, type-checker, or build command" \
   "Running test suites — QA runs these during execution. Do NOT ask the user to run tests." \
   "Checking command output, exit codes, or build success" \
   "Grepping files for expected content" \
