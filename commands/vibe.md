@@ -1070,7 +1070,7 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
    ```
    Compiles final rolling context before artifacts move to milestones/. Fail-open.
    When `rolling_summary=false`: skip.
-5. Archive: `mkdir -p .vbw-planning/milestones/{SLUG}`. Move ROADMAP.md, STATE.md, and phases/ to milestones/{SLUG}/. If `.vbw-planning/CONTEXT.md` exists, move it to milestones/{SLUG}/CONTEXT.md. Write SHIPPED.md. Delete stale RESUME.md.
+5. Archive: `mkdir -p .vbw-planning/milestones/{SLUG}`. Move ROADMAP.md, STATE.md, and phases/ to milestones/{SLUG}/. If `.vbw-planning/CONTEXT.md` exists, move it to milestones/{SLUG}/CONTEXT.md. Use the **Write** tool (not Bash) to create `.vbw-planning/milestones/{SLUG}/SHIPPED.md` — this ensures PostToolUse hooks fire for artifact tracking. Delete stale RESUME.md.
 5b. **Persist project-level state:** After archiving, run:
    ```bash
    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/persist-state-after-ship.sh \
