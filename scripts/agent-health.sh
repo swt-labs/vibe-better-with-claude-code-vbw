@@ -81,15 +81,15 @@ is_explicit_vbw_agent() {
 }
 
 # Derive a unique agent key from hook JSON.
-# Preference: agent_id > teammate_name > name > task_id > agent_name > agent_type.
-# Role preference: agent_type > agent_name > name > teammate_name.
+# Preference: agent_id > teammate_name > name > task_id > agent_name > agentName > agent_type.
+# Role preference: agent_type > agent_name > agentName > name > teammate_name.
 # Also extracts a normalized role for metadata.
 extract_agent_key_and_role() {
   local input="$1"
   local key="" role="" native_agent_type legacy_role_source role_source=""
 
   native_agent_type=$(echo "$input" | jq -r '.agent_type // ""' 2>/dev/null)
-  legacy_role_source=$(echo "$input" | jq -r '.agent_name // .name // .teammate_name // ""' 2>/dev/null)
+  legacy_role_source=$(echo "$input" | jq -r '.agent_name // .agentName // .name // .teammate_name // ""' 2>/dev/null)
 
   if [ -n "$native_agent_type" ]; then
     if is_explicit_vbw_agent "$native_agent_type"; then
@@ -121,6 +121,9 @@ extract_agent_key_and_role() {
     key=$(echo "$input" | jq -r '.agent_name // ""' 2>/dev/null)
   fi
   if [ -z "$key" ]; then
+    key=$(echo "$input" | jq -r '.agentName // ""' 2>/dev/null)
+  fi
+  if [ -z "$key" ]; then
     key=$(echo "$input" | jq -r '.agent_type // ""' 2>/dev/null)
   fi
 
@@ -141,15 +144,35 @@ extract_agent_key_and_role() {
 orphan_recovery() {
   local role="$1"
   local pid="$2"
+  local key="${3:-}"
   local tasks_dir="${CLAUDE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/tasks"
   local advisory=""
-  local task_file task_owner task_status task_id
+  local task_file task_owner task_status task_id health_file live_key live_role live_pid
 
   # Find team directory (assumes single team for now)
   # If multiple teams exist, we'll scan all of them
   if [ ! -d "$tasks_dir" ]; then
     echo "AGENT HEALTH: Orphan recovery — no tasks directory found"
     return
+  fi
+
+  # Role-owned tasks are shared across same-role teammates. If another live
+  # teammate with the same role still exists, do not clear ownership.
+  if [ -d "$HEALTH_DIR" ] && [ -n "$role" ]; then
+    for health_file in "$HEALTH_DIR"/*.json; do
+      [ ! -f "$health_file" ] && continue
+      live_key=$(jq -r '.key // ""' "$health_file" 2>/dev/null)
+      live_role=$(jq -r '.role // ""' "$health_file" 2>/dev/null)
+      live_pid=$(jq -r '.pid // ""' "$health_file" 2>/dev/null)
+
+      [ -n "$key" ] && [ "$live_key" = "$key" ] && continue
+      [ "$live_role" != "$role" ] && continue
+
+      if [ -n "$live_pid" ] && kill -0 "$live_pid" 2>/dev/null; then
+        echo "AGENT HEALTH: Orphan recovery — agent $role PID $pid is dead, but another live teammate with the same role is still active; leaving role-owned tasks unchanged"
+        return
+      fi
+    done
   fi
 
   # Scan all team directories
@@ -276,7 +299,7 @@ cmd_idle() {
     # PID is dead — call orphan recovery
     recovery_role="$role"
     [ -z "$recovery_role" ] && recovery_role="$key"
-    advisory=$(orphan_recovery "$recovery_role" "$pid")
+    advisory=$(orphan_recovery "$recovery_role" "$pid" "$key")
     jq -n \
       --arg event "TeammateIdle" \
       --arg context "$advisory" \
@@ -340,7 +363,7 @@ cmd_stop() {
       # PID is dead — call orphan recovery
       recovery_role="$role"
       [ -z "$recovery_role" ] && recovery_role="$key"
-      advisory=$(orphan_recovery "$recovery_role" "$pid")
+      advisory=$(orphan_recovery "$recovery_role" "$pid" "$key")
     fi
 
     # Remove health file

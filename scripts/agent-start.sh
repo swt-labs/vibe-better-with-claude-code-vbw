@@ -8,7 +8,7 @@ PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 [ ! -d "$PLANNING_DIR" ] && exit 0
 
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
-LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .name // ""' 2>/dev/null)
+LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
 
 # Only track VBW agents; maintain reference count for concurrent agents
 COUNT_FILE="$PLANNING_DIR/.active-agent-count"

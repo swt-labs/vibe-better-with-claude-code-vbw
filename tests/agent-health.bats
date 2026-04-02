@@ -36,6 +36,14 @@ teardown() {
   [ "$output" = "dev" ]
 }
 
+@test "agent-health: start accepts legacy agentName field" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"pid":"12346","agentName":"vbw-qa"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  [ -f "$HEALTH_DIR/qa.json" ]
+  run jq -r '.role' "$HEALTH_DIR/qa.json"
+  [ "$output" = "qa" ]
+}
+
 # Test 2: idle increments count
 @test "agent-health: idle increments count" {
   cd "$TEST_TEMP_DIR"
@@ -130,6 +138,36 @@ EOF
   run jq -r '.owner' "$TASKS_DIR/task-stop.json"
   [ "$output" = "" ]
 
+  rm -rf "$TASKS_DIR"
+}
+
+@test "agent-health: orphan recovery preserves role-owned task when another same-role teammate is still alive" {
+  cd "$TEST_TEMP_DIR"
+  TASKS_DIR="$CLAUDE_CONFIG_DIR/tasks/test-team-shared-$$"
+  mkdir -p "$TASKS_DIR"
+
+  cat > "$TASKS_DIR/task-shared.json" <<EOF
+{
+  "id": "task-shared",
+  "owner": "dev",
+  "status": "in_progress",
+  "subject": "Shared dev task"
+}
+EOF
+
+  sleep 30 &
+  LIVE_PID=$!
+
+  echo "{\"pid\":\"$LIVE_PID\",\"agent_id\":\"agent-live\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  echo '{"pid":"99997","agent_id":"agent-dead","agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+
+  run bash -c "echo '{\"pid\":\"99997\",\"agent_id\":\"agent-dead\",\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
+  [[ "$output" == *"another live teammate"* ]]
+
+  run jq -r '.owner' "$TASKS_DIR/task-shared.json"
+  [ "$output" = "dev" ]
+
+  kill $LIVE_PID 2>/dev/null || true
   rm -rf "$TASKS_DIR"
 }
 

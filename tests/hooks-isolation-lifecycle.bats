@@ -182,6 +182,17 @@ load test_helper
   teardown_temp_dir
 }
 
+@test "agent-start falls back to legacy agentName when native fields are absent" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  INPUT='{"agentName":"vbw-docs"}'
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '$INPUT' | bash '$SCRIPTS_DIR/agent-start.sh'"
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent")" = "docs" ]
+  teardown_temp_dir
+}
+
 @test "agent-start ignores non-VBW agent_type payloads" {
   setup_temp_dir
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
