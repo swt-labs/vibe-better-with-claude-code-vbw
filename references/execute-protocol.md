@@ -693,9 +693,23 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
    - ✗ Run a CLI command and check its exit code or output
    - ✗ Run a linter, type-checker, or build command
 
-   **Skill-aware exclusion:** If any active skill, tool, or MCP server gives the model UI automation capabilities (e.g., describe-UI, tap/click simulation, accessibility inspection, screenshot capture, DOM querying), then UI interactions that can be verified programmatically via those capabilities also belong in QA, not UAT. Only include scenarios that cannot be automated even with available tooling — subjective quality, visual design judgment, domain-specific data correctness, or hardware-dependent behavior.
+    **What belongs in UAT (ask the user):**
+    - Visual/UI correctness
+    - Domain-specific data validation
+    - UX flows and usability
+    - Behavior that requires the running app or hardware
+    - Subjective quality
 
-   If a plan's work is purely internal (refactor, test infrastructure, script changes) with no user-facing behavior, generate a single lightweight checkpoint asking the user to confirm the app still works as expected — do not ask them to run automated checks.
+    **What does NOT belong in UAT (the agent or QA already handles these):**
+    - Running test suites — QA runs these during execution. Do NOT ask the user to run tests.
+    - Checking command output, exit codes, or build success
+    - Grepping files for expected content
+    - Verifying file existence or structure
+    - Any check that can be performed programmatically via Bash, Grep, or Glob
+
+    **Skill-aware exclusion:** If any active skill, tool, or MCP server gives the model UI automation capabilities (e.g., describe-UI, tap/click simulation, accessibility inspection, screenshot capture, DOM querying), then UI interactions that can be verified programmatically via those capabilities also belong in QA, not UAT. Only include scenarios that require true human judgment — subjective quality, visual design assessment, domain-specific data correctness, or hardware-dependent behavior that available tooling cannot automate.
+
+    If a plan's work is purely internal (refactor, test infrastructure, script changes) with no user-facing behavior, generate a single lightweight checkpoint asking the user to confirm the app still works as expected from their perspective, rather than asking them to run automated checks.
 
    - Write initial `${UAT_NAME}` in phase dir with all tests (Result fields empty)
 3. **CHECKPOINT loop — present ONE test at a time, wait for user response:**
