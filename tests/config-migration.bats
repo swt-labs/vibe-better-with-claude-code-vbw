@@ -369,6 +369,36 @@ EOF
   [ "$output" = "auto" ]
 }
 
+@test "migration canonicalizes prefer_teams null to auto" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "effort": "balanced",
+  "prefer_teams": null
+}
+EOF
+
+  run_migration
+
+  run jq -r '.prefer_teams' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "auto" ]
+}
+
+@test "migration canonicalizes prefer_teams empty string to auto" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "effort": "balanced",
+  "prefer_teams": ""
+}
+EOF
+
+  run_migration
+
+  run jq -r '.prefer_teams' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "auto" ]
+}
+
 @test "migration backfills all missing defaults keys" {
   cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
 {

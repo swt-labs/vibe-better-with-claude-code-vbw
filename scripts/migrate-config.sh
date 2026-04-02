@@ -108,7 +108,7 @@ fi
 
 # Canonicalize legacy/team-equivalent prefer_teams values.
 # Canonical values are always|auto|never.
-if jq -e 'has("prefer_teams") and ((.prefer_teams == "when_parallel") or ((.prefer_teams | type) == "boolean"))' "$CONFIG_FILE" >/dev/null 2>&1; then
+if jq -e 'has("prefer_teams") and ((.prefer_teams == "when_parallel") or (.prefer_teams == "") or (.prefer_teams == null) or ((.prefer_teams | type) == "boolean"))' "$CONFIG_FILE" >/dev/null 2>&1; then
   if ! apply_update '.prefer_teams = (if .prefer_teams == true then "always" else "auto" end)'; then
     echo "ERROR: Config migration failed while canonicalizing prefer_teams." >&2
     exit 1
