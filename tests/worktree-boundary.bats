@@ -189,6 +189,17 @@ set_stale_mtime_3h() {
   [[ "$output" == *"$wt_path"* ]]
 }
 
+@test "compaction-instructions: bare non-VBW dev agent ignores VBW worktree mapping" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/non-vbw-dev"
+  mkdir -p "$wt_path"
+  mkdir -p .vbw-planning/.agent-worktrees
+  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+
+  run bash -c 'echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"CRITICAL: Your working directory"* ]]
+}
+
 @test "compaction-instructions: dev without worktree mapping omits path" {
   run bash -c 'echo "{\"agent_name\":\"vbw-dev-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
   [ "$status" -eq 0 ]
@@ -232,6 +243,17 @@ set_stale_mtime_3h() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"$wt_path"* ]]
   [[ "$output" == *"Worktree working directory"* ]]
+}
+
+@test "post-compact: bare non-VBW dev agent ignores VBW worktree path" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/non-vbw-dev"
+  mkdir -p "$wt_path"
+  mkdir -p .vbw-planning/.agent-worktrees
+  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+
+  run bash -c 'echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\"}" | bash "'"$SCRIPTS_DIR"'/post-compact.sh"'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Worktree working directory"* ]]
 }
 
 @test "post-compact: dev without worktree mapping omits path" {

@@ -71,9 +71,27 @@ normalize_agent_instance() {
   printf '%s' "$lower"
 }
 
+has_vbw_context() {
+  [ -f "$PLANNING_DIR/.vbw-session" ] \
+    || [ -f "$PLANNING_DIR/.active-agent" ] \
+    || [ -f "$PLANNING_DIR/.active-agent-count" ]
+}
+
+is_explicit_vbw_agent() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  echo "$lower" | grep -qE '^@?vbw:|^@?vbw-'
+}
+
 AGENT_ROLE=""
-if AGENT_ROLE=$(normalize_agent_role "$ROLE_SOURCE"); then
-  :
+if is_explicit_vbw_agent "$ROLE_SOURCE" || has_vbw_context; then
+  if AGENT_ROLE=$(normalize_agent_role "$ROLE_SOURCE"); then
+    :
+  else
+    AGENT_ROLE=""
+  fi
 else
   AGENT_ROLE=""
 fi
