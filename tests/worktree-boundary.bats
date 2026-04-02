@@ -179,14 +179,20 @@ set_stale_mtime_3h() {
 }
 
 @test "compaction-instructions: native agent_id and agent_type resolve worktree mapping" {
-  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/01-02"
-  mkdir -p "$wt_path"
+  local wt_path_one="$TEST_TEMP_DIR/.vbw-worktrees/01-01"
+  local wt_path_two="$TEST_TEMP_DIR/.vbw-worktrees/01-02"
+  mkdir -p "$wt_path_one" "$wt_path_two"
   mkdir -p .vbw-planning/.agent-worktrees
-  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+  echo "{\"worktree_path\":\"$wt_path_one\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+  echo "{\"worktree_path\":\"$wt_path_two\"}" > .vbw-planning/.agent-worktrees/dev-02.json
+
+  echo '{"agent_type":"vbw-dev","name":"dev-02","agent_id":"agent-abc123"}' | bash "$SCRIPTS_DIR/agent-start.sh" >/dev/null
+  [ -f ".vbw-planning/.agent-worktrees/agent-abc123.json" ]
 
   run bash -c 'echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"agent-abc123\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
   [ "$status" -eq 0 ]
-  [[ "$output" == *"$wt_path"* ]]
+  [[ "$output" == *"$wt_path_two"* ]]
+  [[ "$output" != *"$wt_path_one"* ]]
 }
 
 @test "compaction-instructions: bare non-VBW dev agent ignores VBW worktree mapping" {
@@ -235,14 +241,20 @@ set_stale_mtime_3h() {
 }
 
 @test "post-compact: native agent_id and agent_type resolve worktree path" {
-  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/01-02"
-  mkdir -p "$wt_path"
+  local wt_path_one="$TEST_TEMP_DIR/.vbw-worktrees/01-01"
+  local wt_path_two="$TEST_TEMP_DIR/.vbw-worktrees/01-02"
+  mkdir -p "$wt_path_one" "$wt_path_two"
   mkdir -p .vbw-planning/.agent-worktrees
-  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+  echo "{\"worktree_path\":\"$wt_path_one\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+  echo "{\"worktree_path\":\"$wt_path_two\"}" > .vbw-planning/.agent-worktrees/dev-02.json
+
+  echo '{"agent_type":"vbw-dev","name":"dev-02","agent_id":"agent-abc123"}' | bash "$SCRIPTS_DIR/agent-start.sh" >/dev/null
+  [ -f ".vbw-planning/.agent-worktrees/agent-abc123.json" ]
 
   run bash -c 'echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"agent-abc123\"}" | bash "'"$SCRIPTS_DIR"'/post-compact.sh"'
   [ "$status" -eq 0 ]
-  [[ "$output" == *"$wt_path"* ]]
+  [[ "$output" == *"$wt_path_two"* ]]
+  [[ "$output" != *"$wt_path_one"* ]]
   [[ "$output" == *"Worktree working directory"* ]]
 }
 

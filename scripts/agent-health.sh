@@ -67,8 +67,8 @@ normalize_agent_role() {
 }
 
 # Derive a unique agent key from hook JSON.
-# Preference: agent_id > name > task_id > agent_name > agent_type.
-# Role preference: agent_type > agent_name > name.
+# Preference: agent_id > teammate_name > name > task_id > agent_name > agent_type.
+# Role preference: agent_type > agent_name > name > teammate_name.
 # Also extracts a normalized role for metadata.
 extract_agent_key_and_role() {
   local input="$1"
@@ -77,6 +77,9 @@ extract_agent_key_and_role() {
   # Extract unique key: prefer native agent_id (e.g. "dev-01"), then fall
   # back through legacy fields used by older Claude Code runtimes.
   key=$(echo "$input" | jq -r '.agent_id // ""' 2>/dev/null)
+  if [ -z "$key" ]; then
+    key=$(echo "$input" | jq -r '.teammate_name // ""' 2>/dev/null)
+  fi
   if [ -z "$key" ]; then
     key=$(echo "$input" | jq -r '.name // ""' 2>/dev/null)
   fi
@@ -94,7 +97,7 @@ extract_agent_key_and_role() {
   key=$(normalize_agent_key "$key")
 
   # Extract role separately (for metadata/reporting and orphan recovery).
-  role=$(echo "$input" | jq -r '.agent_type // .agent_name // .name // ""' 2>/dev/null)
+  role=$(echo "$input" | jq -r '.agent_type // .agent_name // .name // .teammate_name // ""' 2>/dev/null)
   if role=$(normalize_agent_role "$role"); then
     :
   else

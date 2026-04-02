@@ -8,7 +8,9 @@ PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 [ ! -d "$PLANNING_DIR" ] && exit 0
 
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
+NATIVE_AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // ""' 2>/dev/null)
 LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .name // ""' 2>/dev/null)
+INSTANCE_NAME_SOURCE=$(echo "$INPUT" | jq -r '.name // .agent_name // ""' 2>/dev/null)
 
 # Only track VBW agents; maintain reference count for concurrent agents
 COUNT_FILE="$PLANNING_DIR/.active-agent-count"
@@ -54,6 +56,17 @@ normalize_agent_role() {
   esac
 
   return 1
+}
+
+normalize_agent_instance() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+  lower="${lower#vbw-}"
+  printf '%s' "$lower"
 }
 
 is_explicit_vbw_agent() {
@@ -156,6 +169,24 @@ update_agent_markers() {
   echo "$ROLE" > "$PLANNING_DIR/.active-agent"
 }
 
+register_worktree_agent_id_alias() {
+  local agent_id instance_name storage_dir source_file target_file
+
+  agent_id=$(normalize_agent_instance "$NATIVE_AGENT_ID")
+  instance_name=$(normalize_agent_instance "$INSTANCE_NAME_SOURCE")
+
+  [ -z "$agent_id" ] && return 0
+  [ -z "$instance_name" ] && return 0
+  [ "$agent_id" = "$instance_name" ] && return 0
+
+  storage_dir="$PLANNING_DIR/.agent-worktrees"
+  source_file="$storage_dir/${instance_name}.json"
+  target_file="$storage_dir/${agent_id}.json"
+
+  [ ! -f "$source_file" ] && return 0
+  cp "$source_file" "$target_file" 2>/dev/null || true
+}
+
 if [ -n "$ROLE" ]; then
   if acquire_lock; then
     trap 'release_lock' EXIT INT TERM
@@ -166,6 +197,8 @@ if [ -n "$ROLE" ]; then
     # Lock unavailable — proceed best-effort without lock.
     update_agent_markers
   fi
+
+  register_worktree_agent_id_alias
 
   # Register agent PID for tmux cleanup
   SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

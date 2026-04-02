@@ -52,6 +52,15 @@ run_health() {
   [ -f "$HEALTH_DIR/dev-01.json" ]
 }
 
+@test "idle bootstrap: documented teammate_name payload creates health file" {
+  [ ! -f "$HEALTH_DIR/dev-01.json" ]
+
+  echo "{\"agent_type\":\"dev\",\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
+
+  [ -f "$HEALTH_DIR/dev-01.json" ]
+}
+
 @test "unique keying: two Dev teammates get separate files" {
   # Start two different dev teammates with alive PIDs
   echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
@@ -111,6 +120,24 @@ run_health() {
 
   count_01=$(jq -r '.idle_count' "$HEALTH_DIR/agent-dev-01.json")
   count_02=$(jq -r '.idle_count' "$HEALTH_DIR/agent-dev-02.json")
+  [ "$count_01" -eq 2 ]
+  [ "$count_02" -eq 0 ]
+}
+
+@test "idle increments by teammate_name from documented payload" {
+  echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
+
+  echo "{\"agent_type\":\"dev\",\"name\":\"dev-02\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
+
+  echo "{\"agent_type\":\"dev\",\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle >/dev/null
+  echo "{\"agent_type\":\"dev\",\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle >/dev/null
+
+  count_01=$(jq -r '.idle_count' "$HEALTH_DIR/dev-01.json")
+  count_02=$(jq -r '.idle_count' "$HEALTH_DIR/dev-02.json")
   [ "$count_01" -eq 2 ]
   [ "$count_02" -eq 0 ]
 }
