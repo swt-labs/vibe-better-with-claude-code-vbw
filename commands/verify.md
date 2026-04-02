@@ -565,9 +565,10 @@ These are already recorded in the UAT.md and will flow into remediation alongsid
 First, verify that UAT remediation state actually exists before running any lifecycle commands. If no state file exists (neither new-format nor legacy location), this is a first-time UAT — do NOT call `needs-round` or any remediation state command:
 ```bash
 _uat_state_file="{phase-dir}/remediation/uat/.uat-remediation-stage"
+_uat_legacy_remed_file="{phase-dir}/remediation/.uat-remediation-stage"
 _uat_legacy_file="{phase-dir}/.uat-remediation-stage"
 _uat_state_exists=false
-{ [ -f "$_uat_state_file" ] || [ -f "$_uat_legacy_file" ]; } && _uat_state_exists=true
+{ [ -f "$_uat_state_file" ] || [ -f "$_uat_legacy_remed_file" ] || [ -f "$_uat_legacy_file" ]; } && _uat_state_exists=true
 ```
 **If `_uat_state_exists=false`:** Skip this entire block — this is a first-time UAT, not a re-verification after remediation.
 **If `_uat_state_exists=true` AND `verify_scope=remediation`:**
@@ -578,12 +579,32 @@ _uat_state_exists=false
   This increments the round counter, creates the next round directory, and resets stage to `research`.
 - If `status=complete`: Remediation verified successfully. Mark remediation as verified (do NOT delete the state file — `current_uat()` needs it to locate the round-dir UAT):
   ```bash
-  # Mark remediation as verified — preserves round/layout so current_uat() can still find the round-dir UAT
+  # Mark remediation as verified — preserves round/layout so current_uat() can still find the active round-scoped UAT
   _state_file="{phase-dir}/remediation/uat/.uat-remediation-stage"
+  _legacy_remed_file="{phase-dir}/remediation/.uat-remediation-stage"
+  _legacy_phase_file="{phase-dir}/.uat-remediation-stage"
+  _write_state_file=""
   if [ -f "$_state_file" ]; then
-    _cur_round=$(grep '^round=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-    _cur_layout=$(grep '^layout=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-    printf 'stage=verified\nround=%s\nlayout=%s\n' "${_cur_round:-01}" "${_cur_layout:-round-dir}" > "$_state_file"
+    _write_state_file="$_state_file"
+  elif [ -f "$_legacy_remed_file" ]; then
+    _write_state_file="$_legacy_remed_file"
+  elif [ -f "$_legacy_phase_file" ]; then
+    _write_state_file="$_legacy_phase_file"
+  fi
+  if [ -n "$_write_state_file" ]; then
+    _cur_round=$(grep '^round=' "$_write_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    _cur_layout=$(grep '^layout=' "$_write_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    case "$_write_state_file" in
+      */remediation/.uat-remediation-stage|*/.uat-remediation-stage)
+        _cur_round="${_cur_round:-01}"
+        _cur_layout="${_cur_layout:-legacy}"
+        ;;
+      *)
+        _cur_round="${_cur_round:-01}"
+        _cur_layout="${_cur_layout:-round-dir}"
+        ;;
+    esac
+    printf 'stage=verified\nround=%s\nlayout=%s\n' "$_cur_round" "$_cur_layout" > "$_write_state_file"
   fi
   ```
 
