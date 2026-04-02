@@ -4,7 +4,7 @@ category: advanced
 disable-model-invocation: true
 description: Run standalone research by spawning Scout agent(s) for web searches and documentation lookups.
 argument-hint: <research-topic> [--parallel]
-allowed-tools: Read, Write, Bash, Glob, Grep, WebFetch, Agent, LSP
+allowed-tools: Read, Write, Bash, Glob, Grep, WebFetch, WebSearch, Agent, LSP
 ---
 
 # VBW Research: $ARGUMENTS

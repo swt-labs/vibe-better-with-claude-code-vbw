@@ -508,6 +508,16 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
     fi
   fi
 
+  # Check WebSearch: if body uses WebSearch (not in a "do not [use] WebSearch"
+  # instruction), allowed-tools must include it
+  if printf '%s\n' "$body" | grep -q 'WebSearch' && printf '%s\n' "$body" | grep 'WebSearch' | grep -qvi 'do not.*WebSearch'; then
+    if printf '%s\n' "$ALLOWED" | grep -q 'WebSearch'; then
+      pass "$base: WebSearch in body matches allowed-tools"
+    else
+      fail "$base: body references WebSearch but allowed-tools does not include it"
+    fi
+  fi
+
   # Check Agent: if body references subagent spawning via "Task tool" or
   # subagent_type, allowed-tools must include Agent
   if printf '%s\n' "$body" | grep -qE '(via Task tool|subagent_type:)'; then
