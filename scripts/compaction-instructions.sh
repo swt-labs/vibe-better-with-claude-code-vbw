@@ -17,7 +17,7 @@ INPUT=$(cat)
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
 LEGACY_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
 INSTANCE_NAME_SOURCE=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // .agent_type // ""' 2>/dev/null)
-MATCHER=$(echo "$INPUT" | jq -r '.matcher // "auto"')
+TRIGGER=$(echo "$INPUT" | jq -r '.trigger // .matcher // "auto"' 2>/dev/null)
 
 normalize_agent_role() {
   local value="$1"
@@ -205,7 +205,7 @@ case "$AGENT_ROLE" in
 esac
 
 # Add compact trigger context
-if [ "$MATCHER" = "manual" ]; then
+if [ "$TRIGGER" = "manual" ]; then
   PRIORITIES="$PRIORITIES. User requested compaction."
 else
   PRIORITIES="$PRIORITIES. This is an automatic compaction at context limit."
@@ -271,7 +271,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f "$PLANNING_DIR/.execution-state.json" ] && [ -f "$SCRIPT_DIR/snapshot-resume.sh" ]; then
   SNAP_PHASE=$(jq -r '.phase // ""' "$PLANNING_DIR/.execution-state.json" 2>/dev/null)
   if [ -n "$SNAP_PHASE" ]; then
-    bash "$SCRIPT_DIR/snapshot-resume.sh" save "$SNAP_PHASE" "$PLANNING_DIR/.execution-state.json" "$AGENT_ROLE" "$MATCHER" 2>/dev/null || true
+    bash "$SCRIPT_DIR/snapshot-resume.sh" save "$SNAP_PHASE" "$PLANNING_DIR/.execution-state.json" "$AGENT_ROLE" "$TRIGGER" 2>/dev/null || true
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%d %H:%M:%S")
     echo "[$TIMESTAMP] Snapshot saved: phase=$SNAP_PHASE agent=${AGENT_ROLE:-$AGENT_INSTANCE_NAME}" >> "$PLANNING_DIR/.hook-errors.log" 2>/dev/null || true
   fi

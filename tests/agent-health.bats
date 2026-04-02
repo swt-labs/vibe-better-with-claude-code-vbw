@@ -44,6 +44,26 @@ teardown() {
   [ "$output" = "qa" ]
 }
 
+@test "agent-health: start initializes from documented native payload without pid" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"agent_id":"agent-no-pid","agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  [ -f "$HEALTH_DIR/agent-no-pid.json" ]
+  run jq -r '.role' "$HEALTH_DIR/agent-no-pid.json"
+  [ "$output" = "dev" ]
+  run jq -r '.pid | length > 0' "$HEALTH_DIR/agent-no-pid.json"
+  [ "$output" = "true" ]
+}
+
+@test "agent-health: no-pid native start file is reused by idle via agent_id" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"agent_id":"agent-idle","agent_type":"vbw-qa"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+
+  echo '{"agent_id":"agent-idle","agent_type":"vbw-qa"}' | bash "$SCRIPTS_DIR/agent-health.sh" idle >/dev/null
+
+  run jq -r '.idle_count' "$HEALTH_DIR/agent-idle.json"
+  [ "$output" = "1" ]
+}
+
 # Test 2: idle increments count
 @test "agent-health: idle increments count" {
   cd "$TEST_TEMP_DIR"

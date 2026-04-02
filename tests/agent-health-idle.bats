@@ -129,6 +129,17 @@ run_health() {
   [ "$count_02" -eq 0 ]
 }
 
+@test "idle reuses native agent_id file created without pid" {
+  echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"agent-dev-nopid\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
+
+  echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"agent-dev-nopid\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle >/dev/null
+
+  count=$(jq -r '.idle_count' "$HEALTH_DIR/agent-dev-nopid.json")
+  [ "$count" -eq 1 ]
+}
+
 @test "idle increments by teammate_name from documented payload" {
   echo "{\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start

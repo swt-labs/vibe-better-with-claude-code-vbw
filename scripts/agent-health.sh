@@ -210,14 +210,17 @@ cmd_start() {
 
   # Extract PID
   pid=$(echo "$input" | jq -r '.pid // ""' 2>/dev/null)
+  if [ -z "$pid" ]; then
+    pid="$PPID"
+  fi
 
   # Extract unique key and normalized role
   key_role=$(extract_agent_key_and_role "$input")
   key="${key_role%%|*}"
   role="${key_role##*|}"
 
-  # Skip if no key or PID extracted
-  if [ -z "$key" ] || [ -z "$pid" ]; then
+  # Skip if no agent identity extracted.
+  if [ -z "$key" ]; then
     exit 0
   fi
 
