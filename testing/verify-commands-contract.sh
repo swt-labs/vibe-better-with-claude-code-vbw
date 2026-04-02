@@ -257,6 +257,14 @@ else
   fail "vibe: precomputed UAT context missing shared scope resolver"
 fi
 
+if grep -q 'extract-uat-resume\.sh "{phase-dir}"' "$VIBE_FILE" \
+  && grep -q 'remediation/uat/round-{RR}/R{RR}-UAT.md' "$VIBE_FILE" \
+  && grep -q 'remediation/round-{RR}/R{RR}-UAT.md' "$VIBE_FILE"; then
+  pass "vibe: needs_reverification refreshes and validates round-scoped uat_path for round-dir and legacy layouts"
+else
+  fail "vibe: needs_reverification missing refreshed round-scoped uat_path validation"
+fi
+
 if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$ROOT/references/execute-protocol.md"; then
   pass "execute-protocol: QA remediation verify uses remediation-only verify context"
 else
@@ -295,10 +303,29 @@ else
   fail "verify: misnamed-plan refresh missing shared UAT scope resolver"
 fi
 
+if grep -q 'uat-remediation-state\.sh get-or-init "{phase-dir}" major' "$VERIFY_FILE" \
+  && grep -q 'remediation/uat/round-{RR}/R{RR}-UAT.md' "$VERIFY_FILE" \
+  && grep -q 'remediation/round-{RR}/R{RR}-UAT.md' "$VERIFY_FILE" \
+  && grep -q 'extract-uat-resume\.sh "{phase-dir}"' "$VERIFY_FILE"; then
+  pass "verify: remediation re-verification refreshes and validates round-scoped uat_path for round-dir and legacy layouts"
+else
+  fail "verify: remediation re-verification missing refreshed round-scoped uat_path validation"
+fi
+
+if grep -q 'ignore the pre-computed verify context, `next_phase_state`, `qa_status`, and UAT resume metadata' "$VERIFY_FILE" \
+  && grep -q 'Do NOT force full scope' "$VERIFY_FILE" \
+  && grep -q 'Use UAT resume metadata for the active target phase' "$VERIFY_FILE" \
+  && grep -q 'uat-remediation-state\.sh" get "{phase-dir}"' "$VERIFY_FILE"; then
+  pass "verify: explicit target phase uses target-specific verify state and blocks mid-remediation UAT"
+else
+  fail "verify: explicit target phase still depends on auto-detected state or allows mid-remediation UAT"
+fi
+
 if grep -q '_uat_state_file=.*remediation/uat/\.uat-remediation-stage' "$VERIFY_FILE" \
+  && grep -q '_uat_legacy_remed_file=.*remediation/\.uat-remediation-stage' "$VERIFY_FILE" \
   && grep -q '_uat_legacy_file=.*\.uat-remediation-stage' "$VERIFY_FILE" \
   && grep -q '_uat_state_exists' "$VERIFY_FILE"; then
-  pass "verify: remediation lifecycle advance has state-existence guard (new-format and legacy)"
+  pass "verify: remediation lifecycle advance has state-existence guard for new-format and both legacy locations"
 else
   fail "verify: remediation lifecycle advance missing state-existence guard before needs-round"
 fi

@@ -303,28 +303,48 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/extract-uat-resume.sh" "$PDIR"
   ```
   Use the refreshed output in place of the pre-computed blocks from Context.
-- Use pre-computed verify context from the "Pre-computed verify context" block above (or refreshed output if normalization ran) — it contains per-plan titles, must_haves, what was built, files modified, and status. Do NOT read individual `*-SUMMARY.md` or `*-PLAN.md` files.
+- Use pre-computed verify context from the "Pre-computed verify context" block above (or refreshed output if normalization ran or Step 2 refreshed re-verification state) — it contains per-plan titles, must_haves, what was built, files modified, and status. Do NOT read individual `*-SUMMARY.md` or `*-PLAN.md` files.
 - **Parse `verify_scope`** from the first line of the verify context block. When `verify_scope=remediation round=RR`, this is a re-verification session scoped to remediation round RR only. When `verify_scope=full`, standard full-scope verification. Use this in Step 4 to determine test framing.
 - **Parse `uat_path`** from the second line of the verify context block. This is the relative path (from phase dir) where the UAT file should be written — e.g., `03-UAT.md` for full scope or `remediation/uat/round-01/R01-UAT.md` for remediation scope. Use this in Steps 4, 8, and 9 instead of hardcoding `{phase}-UAT.md`.
-- **If user specified an explicit phase number** that differs from `verify_target_slug`, ignore the pre-computed context (it was generated for the auto-detected phase). Read PLAN/SUMMARY files from the user-specified phase directory instead — this always uses full scope. Resolve UAT path:
+- **Remediation safety check:** If `verify_scope=remediation` and `uat_path` does not already point at the current remediation round's round-scoped UAT path (`remediation/uat/round-{RR}/R{RR}-UAT.md` for round-dir layout, `remediation/round-{RR}/R{RR}-UAT.md` for legacy layout), run:
   ```bash
-  UAT_NAME=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-artifact-path.sh uat "{phase-dir}")
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh get-or-init "{phase-dir}" major
   ```
-  Use `uat_path=${UAT_NAME}`. Also ignore the pre-computed `qa_status` for the auto-detected phase and apply the QA gate above to the explicit target phase only.
+  Parse `round=RR` and `layout=...`, then override `uat_path` with the matching round-scoped path for that layout before Step 4 writes any UAT file. This applies to resumed `needs_reverification` sessions too.
+- **If user specified an explicit phase number** that differs from `verify_target_slug`, ignore the pre-computed verify context, `next_phase_state`, `qa_status`, and UAT resume metadata from the auto-detected phase. Recompute target-specific verify context and UAT resume metadata:
+  ```bash
+  PDIR=".vbw-planning/phases/{target-slug}"
+  bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh" "$PDIR"
+  bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/extract-uat-resume.sh" "$PDIR"
+  ```
+  Use this target-specific output instead of the auto-detected blocks from Context. Do NOT force full scope — let `compile-verify-context-for-uat.sh` decide whether the explicit target phase is full-scope verification or remediation re-verification. Apply the QA gate above to the explicit target phase only.
+  Then check the explicit target's own remediation stage:
+  ```bash
+  bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh" get "{phase-dir}"
+  ```
+  If that stage is `research`, `plan`, `execute`, or `fix`, STOP: `Phase {NN} has active UAT remediation (stage {stage}). Run /vbw:vibe to continue remediation before re-verification.`
 
 ### 2. Handle re-verification state
 
-- If `next_phase_state=needs_reverification` (from Context above):
+- If the active target phase needs re-verification:
+  - For auto-detected routing, use `next_phase_state=needs_reverification` from Context above.
+  - For an explicit target phase, ignore the auto-detected `next_phase_state` and only enter this step when the explicit target's own current UAT status is `issues_found` and its UAT remediation stage is `done` or `verify`.
   - Run `prepare-reverification.sh {phase-dir}` to archive the old UAT and reset remediation stage
   - If the script outputs `skipped=already_archived`, display: `UAT already archived. Starting fresh re-verification.`
   - If the script fails (non-zero exit), display the error message and **STOP** — do not continue to Step 3
   - If `archived=kept`: display: `Phase UAT preserved. Starting fresh re-verification in round dir.`
   - Otherwise display: `Archived previous UAT → {round_file}. Starting fresh re-verification.`
+  - Immediately refresh verify context and UAT resume metadata:
+    ```bash
+    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh "{phase-dir}"
+    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/extract-uat-resume.sh "{phase-dir}"
+    ```
+  - Use this refreshed output instead of the pre-computed verify context and UAT resume metadata for the rest of the session.
   - Continue to Step 3 (generate new tests) — do NOT resume the old UAT
 
 ### 3. Check for existing UAT session (resume support)
 
-- Use pre-computed UAT resume metadata from the "Pre-computed UAT resume metadata" block above:
+- Use UAT resume metadata for the active target phase (the pre-computed auto-detected block, the target-specific refresh from Step 1, or the refreshed metadata from Step 2 for re-verification):
   - `uat_resume=none`: no existing UAT session — proceed to Step 4 (generate tests)
   - `uat_resume=all_done uat_completed=N uat_total=N`: all tests already have results — display the summary, STOP
   - `uat_resume=<test-id> uat_completed=N uat_total=N`: resume at `<test-id>`. Display: `Resuming UAT session -- {completed}/{total} tests done`. Read the UAT.md once to load checkpoint text, then jump to the CHECKPOINT loop at the resume point.
@@ -550,9 +570,10 @@ These are already recorded in the UAT.md and will flow into remediation alongsid
 First, verify that UAT remediation state actually exists before running any lifecycle commands. If no state file exists (neither new-format nor legacy location), this is a first-time UAT — do NOT call `needs-round` or any remediation state command:
 ```bash
 _uat_state_file="{phase-dir}/remediation/uat/.uat-remediation-stage"
+_uat_legacy_remed_file="{phase-dir}/remediation/.uat-remediation-stage"
 _uat_legacy_file="{phase-dir}/.uat-remediation-stage"
 _uat_state_exists=false
-{ [ -f "$_uat_state_file" ] || [ -f "$_uat_legacy_file" ]; } && _uat_state_exists=true
+{ [ -f "$_uat_state_file" ] || [ -f "$_uat_legacy_remed_file" ] || [ -f "$_uat_legacy_file" ]; } && _uat_state_exists=true
 ```
 **If `_uat_state_exists=false`:** Skip this entire block — this is a first-time UAT, not a re-verification after remediation.
 **If `_uat_state_exists=true` AND `verify_scope=remediation`:**
@@ -563,12 +584,32 @@ _uat_state_exists=false
   This increments the round counter, creates the next round directory, and resets stage to `research`.
 - If `status=complete`: Remediation verified successfully. Mark remediation as verified (do NOT delete the state file — `current_uat()` needs it to locate the round-dir UAT):
   ```bash
-  # Mark remediation as verified — preserves round/layout so current_uat() can still find the round-dir UAT
+  # Mark remediation as verified — preserves round/layout so current_uat() can still find the active round-scoped UAT
   _state_file="{phase-dir}/remediation/uat/.uat-remediation-stage"
+  _legacy_remed_file="{phase-dir}/remediation/.uat-remediation-stage"
+  _legacy_phase_file="{phase-dir}/.uat-remediation-stage"
+  _write_state_file=""
   if [ -f "$_state_file" ]; then
-    _cur_round=$(grep '^round=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-    _cur_layout=$(grep '^layout=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-    printf 'stage=verified\nround=%s\nlayout=%s\n' "${_cur_round:-01}" "${_cur_layout:-round-dir}" > "$_state_file"
+    _write_state_file="$_state_file"
+  elif [ -f "$_legacy_remed_file" ]; then
+    _write_state_file="$_legacy_remed_file"
+  elif [ -f "$_legacy_phase_file" ]; then
+    _write_state_file="$_legacy_phase_file"
+  fi
+  if [ -n "$_write_state_file" ]; then
+    _cur_round=$(grep '^round=' "$_write_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    _cur_layout=$(grep '^layout=' "$_write_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    case "$_write_state_file" in
+      */remediation/.uat-remediation-stage|*/.uat-remediation-stage)
+        _cur_round="${_cur_round:-01}"
+        _cur_layout="${_cur_layout:-legacy}"
+        ;;
+      *)
+        _cur_round="${_cur_round:-01}"
+        _cur_layout="${_cur_layout:-round-dir}"
+        ;;
+    esac
+    printf 'stage=verified\nround=%s\nlayout=%s\n' "$_cur_round" "$_cur_layout" > "$_write_state_file"
   fi
   ```
 

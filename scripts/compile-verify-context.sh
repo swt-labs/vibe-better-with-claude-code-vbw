@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # compile-verify-context.sh — Pre-compute PLAN/SUMMARY data for verify.md.
-# Usage: compile-verify-context.sh [--remediation-only] <phase-dir>
+# Usage: compile-verify-context.sh [--remediation-only] [--remediation-kind {qa|uat}] <phase-dir>
 #
 # Outputs compact structured blocks per plan so the LLM doesn't need to
 # read individual PLAN.md and SUMMARY.md files during verification.
@@ -9,6 +9,10 @@
 #   --remediation-only  Only emit plans from the latest completed remediation
 #                       round (R*-PLAN.md with matching R*-SUMMARY.md).
 #                       Falls back to full scope if no completed round found.
+#   --remediation-kind  Filter remediation scan to only the specified kind
+#                       (qa or uat). Prevents wrong-kind matches when both
+#                       remediation dirs exist. Only meaningful with
+#                       --remediation-only.
 #
 # For each plan, emits:
 #   verify_scope=full|remediation [round=RR]
@@ -115,12 +119,37 @@ else
 fi
 
 REMEDIATION_ONLY=false
-if [ "${1:-}" = "--remediation-only" ]; then
-  REMEDIATION_ONLY=true
-  shift
+REMEDIATION_KIND=""
+while [ $# -gt 0 ]; do
+  case "${1:-}" in
+    --remediation-only) REMEDIATION_ONLY=true; shift ;;
+    --remediation-kind)
+      if [ $# -lt 2 ] || [ -z "${2:-}" ] || [[ "${2:-}" == --* ]]; then
+        echo "error: --remediation-kind requires a value (qa or uat)" >&2
+        exit 1
+      fi
+      REMEDIATION_KIND="$2"
+      shift 2
+      ;;
+    --remediation-kind=*)
+      REMEDIATION_KIND="${1#--remediation-kind=}"
+      if [ -z "$REMEDIATION_KIND" ]; then
+        echo "error: --remediation-kind requires a value (qa or uat)" >&2; exit 1
+      fi
+      shift
+      ;;
+    *) break ;;
+  esac
+done
+
+if [ -n "$REMEDIATION_KIND" ]; then
+  case "$REMEDIATION_KIND" in
+    qa|uat) ;;
+    *) echo "error: --remediation-kind must be 'qa' or 'uat', got: $REMEDIATION_KIND" >&2; exit 1 ;;
+  esac
 fi
 
-PHASE_DIR="${1:?Usage: compile-verify-context.sh [--remediation-only] <phase-dir>}"
+PHASE_DIR="${1:?Usage: compile-verify-context.sh [--remediation-only] [--remediation-kind qa|uat] phase-dir}"
 
 if [ ! -d "$PHASE_DIR" ]; then
   echo "verify_context_error=no_phase_dir"
@@ -134,10 +163,11 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   REMED_DIR=""
   REMED_KIND=""
   _cvc_preferred_round=""
+  _cvc_preferred_kind=""
 
   _cvc_candidates=()
   _active_remediation=false
-  if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
+  if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ] && [ "$REMEDIATION_KIND" != "uat" ]; then
     _qa_stage=$(grep '^stage=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
     case "${_qa_stage:-none}" in
       verify|done)
@@ -148,16 +178,24 @@ if [ "$REMEDIATION_ONLY" = true ]; then
         elif [ -n "$_cvc_preferred_round" ]; then
           _cvc_preferred_round=$(printf '%02d' "$((10#$_cvc_preferred_round))")
         fi
+        _cvc_preferred_kind="qa"
         _active_remediation=true
         ;;
     esac
   fi
-  if [ -f "$PHASE_DIR/remediation/uat/.uat-remediation-stage" ]; then
+  if [ -f "$PHASE_DIR/remediation/uat/.uat-remediation-stage" ] && [ "$REMEDIATION_KIND" != "qa" ]; then
     _uat_stage=$(grep '^stage=' "$PHASE_DIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
     case "${_uat_stage:-none}" in
       research|plan|execute|fix|verify|done)
         if [ "$_active_remediation" = false ]; then
           _cvc_candidates+=("$PHASE_DIR/remediation/uat")
+          _cvc_preferred_round=$(grep '^round=' "$PHASE_DIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          if ! [[ "${_cvc_preferred_round:-}" =~ ^[0-9]+$ ]]; then
+            _cvc_preferred_round=""
+          elif [ -n "$_cvc_preferred_round" ]; then
+            _cvc_preferred_round=$(printf '%02d' "$((10#$_cvc_preferred_round))")
+          fi
+          _cvc_preferred_kind="uat"
           _active_remediation=true
         fi
         ;;
@@ -165,13 +203,20 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   fi
   # Historical fallback order for explicit --remediation-only callers when no
   # active state picked a scope: UAT rounds first, then QA rounds.
+  # Respect --remediation-kind filter when set.
   if [ "$_active_remediation" = false ]; then
-    _cvc_candidates+=("$PHASE_DIR/remediation/uat" "$PHASE_DIR/remediation/qa")
+    if [ "$REMEDIATION_KIND" = "uat" ]; then
+      _cvc_candidates+=("$PHASE_DIR/remediation/uat")
+    elif [ "$REMEDIATION_KIND" = "qa" ]; then
+      _cvc_candidates+=("$PHASE_DIR/remediation/qa")
+    else
+      _cvc_candidates+=("$PHASE_DIR/remediation/uat" "$PHASE_DIR/remediation/qa")
+    fi
   fi
 
   for _candidate in "${_cvc_candidates[@]}"; do
     [ -d "$_candidate" ] || continue
-    if [ "$_candidate" = "$PHASE_DIR/remediation/qa" ] && [ -n "$_cvc_preferred_round" ]; then
+    if [ "$_candidate" = "$PHASE_DIR/remediation/qa" ] && [ "$_cvc_preferred_kind" = "qa" ] && [ -n "$_cvc_preferred_round" ]; then
       _preferred_round_dir="$_candidate/round-$_cvc_preferred_round"
       if [ -d "$_preferred_round_dir" ] && \
          ls "$_preferred_round_dir"/R"$_cvc_preferred_round"-PLAN.md >/dev/null 2>&1 && \
@@ -184,6 +229,16 @@ if [ "$REMEDIATION_ONLY" = true ]; then
       fi
       # Active QA remediation should not be hijacked by a stale higher round.
       REMEDIATION_ONLY=false
+      break
+    fi
+    if [ "$_candidate" = "$PHASE_DIR/remediation/uat" ] && [ "$_cvc_preferred_kind" = "uat" ] && [ -n "$_cvc_preferred_round" ]; then
+      # Active UAT re-verification must stay on the current remediation round,
+      # even if an earlier round is the latest one with a terminal summary.
+      # Falling back to a stale completed round risks overwriting prior-round
+      # UAT evidence and mis-scoping the re-verification session.
+      LATEST_ROUND="$_cvc_preferred_round"
+      REMED_DIR="$_candidate"
+      REMED_KIND="uat"
       break
     fi
     _best_round_num=0
@@ -213,7 +268,9 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   done
 
   # Legacy fallback: check old remediation/round-* layout if no new-style round dir found.
-  if [ -z "$LATEST_ROUND" ] && [ -d "$PHASE_DIR/remediation" ]; then
+  # Legacy round dirs represent historical UAT remediation only; an explicit
+  # QA filter must not cross over into that legacy UAT chain.
+  if [ -z "$LATEST_ROUND" ] && [ -d "$PHASE_DIR/remediation" ] && [ "$REMEDIATION_KIND" != "qa" ]; then
     REMED_DIR="$PHASE_DIR/remediation"
     REMED_KIND="legacy"
     _best_round_num=0

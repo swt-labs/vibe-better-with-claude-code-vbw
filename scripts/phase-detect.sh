@@ -334,13 +334,29 @@ if [ -d "$PHASES_DIR" ]; then
         UAT_ROUND_COUNT=$(count_uat_rounds "$TARGET_DIR" "$UAT_ISSUES_PHASE")
         # Check if remediation is complete (stage=done) → needs re-verification
         _rem_stage="none"
+        _rem_state_file=""
         if [ -f "${TARGET_DIR}remediation/uat/.uat-remediation-stage" ]; then
+          _rem_state_file="${TARGET_DIR}remediation/uat/.uat-remediation-stage"
           # New round-dir state file (key=value format)
-          _rem_stage=$(grep '^stage=' "${TARGET_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          _rem_stage=$(grep '^stage=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          _rem_stage="${_rem_stage:-none}"
+        elif [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
+          _rem_state_file="${TARGET_DIR}remediation/.uat-remediation-stage"
+          if grep -q '^stage=' "$_rem_state_file" 2>/dev/null; then
+            _rem_stage=$(grep '^stage=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          else
+            _rem_stage=$(tr -d '[:space:]' < "$_rem_state_file")
+          fi
           _rem_stage="${_rem_stage:-none}"
         elif [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
-          # Legacy state file (single word)
-          _rem_stage=$(tr -d '[:space:]' < "${TARGET_DIR}.uat-remediation-stage")
+          _rem_state_file="${TARGET_DIR}.uat-remediation-stage"
+          # Legacy state file (single-word or key=value)
+          if grep -q '^stage=' "$_rem_state_file" 2>/dev/null; then
+            _rem_stage=$(grep '^stage=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          else
+            _rem_stage=$(tr -d '[:space:]' < "$_rem_state_file")
+          fi
+          _rem_stage="${_rem_stage:-none}"
         fi
         # Pre-compute plan/summary counts (needed for state routing AND stale-stage reconciliation)
         NEXT_PHASE_PLANS=$(count_phase_plans "$TARGET_DIR")
@@ -356,8 +372,8 @@ if [ -d "$PHASES_DIR" ]; then
         _total_summaries="$NEXT_PHASE_SUMMARIES"
         # Read current round for scoped counting
         _cur_rr="01"
-        if [ -f "${TARGET_DIR}remediation/uat/.uat-remediation-stage" ]; then
-          _cr_val=$(grep '^round=' "${TARGET_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+        if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
+          _cr_val=$(grep '^round=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
           _cur_rr="${_cr_val:-01}"
         fi
         # Count round-dir plans/summaries for current round only
@@ -372,11 +388,18 @@ if [ -d "$PHASES_DIR" ]; then
         _total_plans=$(( _total_plans + _rd_plans ))
         _total_summaries=$(( _total_summaries + _rd_summaries ))
         if [ "$_rem_stage" = "execute" ] && [ "$_total_plans" -gt 0 ] && [ "$_total_summaries" -ge "$_total_plans" ]; then
-          # Write to whichever state file location exists
-          if [ -f "${TARGET_DIR}remediation/uat/.uat-remediation-stage" ]; then
-            _cur_round=$(grep '^round=' "${TARGET_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-            _cur_layout=$(grep '^layout=' "${TARGET_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-            printf 'stage=done\nround=%s\nlayout=%s\n' "${_cur_round:-01}" "${_cur_layout:-round-dir}" > "${TARGET_DIR}remediation/uat/.uat-remediation-stage"
+          # Write back to the same remediation state file we read.
+          if [ -n "$_rem_state_file" ] && grep -q '^stage=' "$_rem_state_file" 2>/dev/null; then
+            _cur_round=$(grep '^round=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+            _cur_layout=$(grep '^layout=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+            case "$_rem_state_file" in
+              */remediation/.uat-remediation-stage|*/.uat-remediation-stage)
+                printf 'stage=done\nround=%s\nlayout=%s\n' "${_cur_round:-01}" "${_cur_layout:-legacy}" > "$_rem_state_file"
+                ;;
+              *)
+                printf 'stage=done\nround=%s\nlayout=%s\n' "${_cur_round:-01}" "${_cur_layout:-round-dir}" > "$_rem_state_file"
+                ;;
+            esac
           else
             echo "done" > "${TARGET_DIR}.uat-remediation-stage"
           fi

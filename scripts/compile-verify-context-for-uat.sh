@@ -29,6 +29,12 @@ read_uat_stage() {
 
   if [ -f "$phase_dir/remediation/uat/.uat-remediation-stage" ]; then
     raw=$(grep '^stage=' "$phase_dir/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+  elif [ -f "$phase_dir/remediation/.uat-remediation-stage" ]; then
+    if grep -q '^stage=' "$phase_dir/remediation/.uat-remediation-stage" 2>/dev/null; then
+      raw=$(grep '^stage=' "$phase_dir/remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    else
+      raw=$(tr -d '[:space:]' < "$phase_dir/remediation/.uat-remediation-stage")
+    fi
   elif [ -f "$phase_dir/.uat-remediation-stage" ]; then
     if grep -q '^stage=' "$phase_dir/.uat-remediation-stage" 2>/dev/null; then
       raw=$(grep '^stage=' "$phase_dir/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
@@ -45,7 +51,7 @@ UAT_STAGE="$(read_uat_stage "$PHASE_DIR")"
 # Active remediation stages route to remediation-only scope.
 # "verified" means remediation is complete — use full scope for any re-verification.
 if [ -n "$UAT_STAGE" ] && [ "$UAT_STAGE" != "verified" ]; then
-  exec bash "$SCRIPT_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+  exec bash "$SCRIPT_DIR/compile-verify-context.sh" --remediation-only --remediation-kind uat "$PHASE_DIR"
 fi
 
 exec bash "$SCRIPT_DIR/compile-verify-context.sh" "$PHASE_DIR"
