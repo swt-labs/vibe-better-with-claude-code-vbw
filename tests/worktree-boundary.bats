@@ -193,6 +193,7 @@ set_stale_mtime_3h() {
   local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/non-vbw-dev"
   mkdir -p "$wt_path"
   mkdir -p .vbw-planning/.agent-worktrees
+  echo "session" > .vbw-planning/.vbw-session
   echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
 
   run bash -c 'echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
@@ -249,6 +250,7 @@ set_stale_mtime_3h() {
   local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/non-vbw-dev"
   mkdir -p "$wt_path"
   mkdir -p .vbw-planning/.agent-worktrees
+  echo "session" > .vbw-planning/.vbw-session
   echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
 
   run bash -c 'echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\"}" | bash "'"$SCRIPTS_DIR"'/post-compact.sh"'

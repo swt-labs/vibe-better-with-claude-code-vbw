@@ -14,7 +14,8 @@ set -u
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 
 INPUT=$(cat)
-ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_type // .agent_name // .agentName // .name // ""' 2>/dev/null)
+NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
+LEGACY_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
 INSTANCE_SOURCE=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // .agent_id // .agent_type // ""' 2>/dev/null)
 MATCHER=$(echo "$INPUT" | jq -r '.matcher // "auto"')
 
@@ -85,13 +86,27 @@ is_explicit_vbw_agent() {
   echo "$lower" | grep -qE '^@?vbw:|^@?vbw-'
 }
 
-AGENT_ROLE=""
-if is_explicit_vbw_agent "$ROLE_SOURCE" || has_vbw_context; then
-  if AGENT_ROLE=$(normalize_agent_role "$ROLE_SOURCE"); then
-    :
-  else
-    AGENT_ROLE=""
+resolve_agent_role() {
+  if [ -n "$NATIVE_AGENT_TYPE" ]; then
+    if is_explicit_vbw_agent "$NATIVE_AGENT_TYPE"; then
+      normalize_agent_role "$NATIVE_AGENT_TYPE"
+      return $?
+    fi
+
+    return 1
   fi
+
+  if is_explicit_vbw_agent "$LEGACY_ROLE_SOURCE" || has_vbw_context; then
+    normalize_agent_role "$LEGACY_ROLE_SOURCE"
+    return $?
+  fi
+
+  return 1
+}
+
+AGENT_ROLE=""
+if AGENT_ROLE=$(resolve_agent_role); then
+  :
 else
   AGENT_ROLE=""
 fi

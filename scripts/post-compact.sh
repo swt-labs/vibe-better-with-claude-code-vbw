@@ -73,13 +73,25 @@ is_explicit_vbw_agent() {
 }
 
 extract_agent_role() {
-  local value
-  value=$(echo "$INPUT" | jq -r '.agent_type // .agent_name // .agentName // .name // ""' 2>/dev/null) || value=""
-  if is_explicit_vbw_agent "$value" || has_vbw_context; then
-    normalize_agent_role "$value"
-  else
+  local native_value legacy_value
+
+  native_value=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null) || native_value=""
+  if [ -n "$native_value" ]; then
+    if is_explicit_vbw_agent "$native_value"; then
+      normalize_agent_role "$native_value"
+      return $?
+    fi
+
     return 1
   fi
+
+  legacy_value=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null) || legacy_value=""
+  if is_explicit_vbw_agent "$legacy_value" || has_vbw_context; then
+    normalize_agent_role "$legacy_value"
+    return $?
+  fi
+
+  return 1
 }
 
 extract_agent_instance() {

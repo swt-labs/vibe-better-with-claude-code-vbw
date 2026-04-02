@@ -193,6 +193,18 @@ load test_helper
   teardown_temp_dir
 }
 
+@test "agent-start ignores bare native agent_type even inside a VBW session" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo "session" > "$TEST_TEMP_DIR/.vbw-planning/.vbw-session"
+  INPUT='{"agent_type":"dev","name":"dev-01"}'
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '$INPUT' | bash '$SCRIPTS_DIR/agent-start.sh'"
+  [ "$status" -eq 0 ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count" ]
+  teardown_temp_dir
+}
+
 @test "agent-start creates count file for reference counting" {
   setup_temp_dir
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
