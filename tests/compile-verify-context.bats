@@ -2782,3 +2782,10 @@ SUM
   [ "$status" -eq 1 ]
   [[ "$output" == *"must be 'qa' or 'uat'"* ]]
 }
+
+@test "compile-verify-context: --remediation-kind= with empty value errors" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "--remediation-kind=" "$PHASE_DIR"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"requires a value"* ]]
+}

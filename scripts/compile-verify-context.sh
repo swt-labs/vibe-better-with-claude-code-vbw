@@ -129,6 +129,9 @@ while [ $# -gt 0 ]; do
       ;;
     --remediation-kind=*)
       REMEDIATION_KIND="${1#--remediation-kind=}"
+      if [ -z "$REMEDIATION_KIND" ]; then
+        echo "error: --remediation-kind requires a value (qa or uat)" >&2; exit 1
+      fi
       shift
       ;;
     *) break ;;
