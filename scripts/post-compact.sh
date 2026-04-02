@@ -96,13 +96,7 @@ extract_agent_role() {
 
 extract_agent_instance() {
   local value
-  value=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // .agent_id // .agent_type // ""' 2>/dev/null) || value=""
-  normalize_agent_instance "$value"
-}
-
-extract_agent_id() {
-  local value
-  value=$(echo "$INPUT" | jq -r '.agent_id // ""' 2>/dev/null) || value=""
+  value=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // .agent_type // ""' 2>/dev/null) || value=""
   normalize_agent_instance "$value"
 }
 
@@ -112,13 +106,11 @@ resolve_worktree_map_file() {
 
   [ ! -d "$storage_dir" ] && return 1
 
-  for instance_name in "$(extract_agent_id 2>/dev/null)" "$(extract_agent_instance 2>/dev/null)"; do
-    [ -z "$instance_name" ] && continue
-    if [ -f "$storage_dir/${instance_name}.json" ]; then
-      printf '%s' "$storage_dir/${instance_name}.json"
-      return 0
-    fi
-  done
+  instance_name=$(extract_agent_instance 2>/dev/null) || instance_name=""
+  if [ -n "$instance_name" ] && [ -f "$storage_dir/${instance_name}.json" ]; then
+    printf '%s' "$storage_dir/${instance_name}.json"
+    return 0
+  fi
 
   case "$ROLE" in
     vbw-dev|vbw-debugger)

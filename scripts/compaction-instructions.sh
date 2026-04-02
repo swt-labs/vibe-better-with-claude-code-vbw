@@ -15,9 +15,8 @@ PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 
 INPUT=$(cat)
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
-NATIVE_AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // ""' 2>/dev/null)
 LEGACY_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
-INSTANCE_NAME_SOURCE=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // ""' 2>/dev/null)
+INSTANCE_NAME_SOURCE=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // .agent_type // ""' 2>/dev/null)
 MATCHER=$(echo "$INPUT" | jq -r '.matcher // "auto"')
 
 normalize_agent_role() {
@@ -111,15 +110,14 @@ resolve_worktree_map_file() {
 
   [ ! -d "$storage_dir" ] && return 1
 
-  for candidate in "$NATIVE_AGENT_ID" "$INSTANCE_NAME_SOURCE"; do
-    [ -z "$candidate" ] && continue
+  candidate="$INSTANCE_NAME_SOURCE"
+  if [ -n "$candidate" ]; then
     normalized=$(normalize_agent_instance "$candidate")
-    [ -z "$normalized" ] && continue
-    if [ -f "$storage_dir/${normalized}.json" ]; then
+    if [ -n "$normalized" ] && [ -f "$storage_dir/${normalized}.json" ]; then
       printf '%s' "$storage_dir/${normalized}.json"
       return 0
     fi
-  done
+  fi
 
   case "$AGENT_ROLE" in
     dev|debugger)
@@ -144,7 +142,6 @@ else
 fi
 
 AGENT_INSTANCE_NAME=$(normalize_agent_instance "$INSTANCE_NAME_SOURCE")
-[ -z "$AGENT_INSTANCE_NAME" ] && AGENT_INSTANCE_NAME=$(normalize_agent_instance "$NATIVE_AGENT_ID")
 [ -z "$AGENT_INSTANCE_NAME" ] && AGENT_INSTANCE_NAME="$AGENT_ROLE"
 
 # VBW-specific compaction priorities per agent role
