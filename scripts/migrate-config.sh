@@ -106,6 +106,15 @@ if ! jq -e 'has("prefer_teams")' "$CONFIG_FILE" >/dev/null 2>&1; then
   fi
 fi
 
+# Canonicalize legacy/team-equivalent prefer_teams values.
+# Canonical values are always|auto|never.
+if jq -e 'has("prefer_teams") and ((.prefer_teams == "when_parallel") or ((.prefer_teams | type) == "boolean"))' "$CONFIG_FILE" >/dev/null 2>&1; then
+  if ! apply_update '.prefer_teams = (if .prefer_teams == true then "always" else "auto" end)'; then
+    echo "ERROR: Config migration failed while canonicalizing prefer_teams." >&2
+    exit 1
+  fi
+fi
+
 # Note: prefer_teams "always" is a valid user-explicit setting (set via
 # /vbw:config). Do NOT migrate it to "auto" — there is no way to distinguish
 # a user's intentional choice from an old VBW default (#198 QA round 4).

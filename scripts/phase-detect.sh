@@ -1099,12 +1099,12 @@ if [ "$JQ_AVAILABLE" = true ] && [ -f "$CONFIG_FILE" ]; then
     "CFG_PLANNING_TRACKING=\(.planning_tracking // "manual")",
     "CFG_AUTO_PUSH=\(.auto_push // "never")",
     "CFG_VERIFICATION_TIER=\(.verification_tier // "standard")",
-    "CFG_PREFER_TEAMS=\(.prefer_teams // "auto")",
     "CFG_MAX_TASKS=\(.max_tasks_per_plan // 5)",
     "CFG_CONTEXT_COMPILER=\(if .context_compiler == null then true else .context_compiler end)",
     "CFG_COMPACTION=\(.compaction_threshold // 130000)",
     "CFG_AUTO_UAT=\(if .auto_uat == null then false else .auto_uat end)"
   ' "$CONFIG_FILE" 2>/dev/null)" || true
+  CFG_PREFER_TEAMS=$(bash "$_SCRIPT_DIR_PD/normalize-prefer-teams.sh" "$CONFIG_FILE" 2>/dev/null || echo "auto")
 fi
 
 echo "config_effort=$CFG_EFFORT"

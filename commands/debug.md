@@ -42,7 +42,7 @@ Recent commits:
 
 3. **Routing decision + delegation marker:** Read prefer_teams config:
     ```bash
-    PREFER_TEAMS=$(jq -r '.prefer_teams // "auto"' .vbw-planning/config.json 2>/dev/null)
+  PREFER_TEAMS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/normalize-prefer-teams.sh .vbw-planning/config.json 2>/dev/null || echo "auto")
     ```
 
     Before spawning any agent, activate the delegation guard:
@@ -53,8 +53,7 @@ Recent commits:
     Decision tree:
 
     - `prefer_teams='always'`: Use Path A (team) for ALL bugs, regardless of effort or ambiguity
-    - `prefer_teams='when_parallel'`: Use Path A (team) only if effort=high AND ambiguous, else Path B
-    - `prefer_teams='auto'`: Same as when_parallel (single debugger is low-risk for non-ambiguous bugs)
+    - `prefer_teams='auto'`: Use Path A (team) only if effort=high AND ambiguous, else Path B
     - `prefer_teams='never'`: Always use Path B (single debugger, no team). Overrides effort and ambiguity.
 
 4. **Spawn investigation:**

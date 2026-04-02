@@ -715,12 +715,12 @@ Controls when VBW creates an Agent Team (multiple color-coded Dev agents) vs usi
 
 | Setting | Type | Default | Values |
 | :--- | :--- | :--- | :--- |
-| `prefer_teams` | string | `auto` | `always` / `when_parallel` / `auto` / `never` |
+| `prefer_teams` | string | `auto` | `always` / `auto` / `never` |
 
 | Value | Behavior |
 | :--- | :--- |
 | `always` | Creates a team for every phase, even with 1 plan. Maximum agent visibility. |
-| `auto` | Creates a team only when 2+ plans exist. Single plan = single agent, lower overhead. Default. Smart routing may further downgrade simple plans to turbo (no team). `when_parallel` is an alias for `auto`. |
+| `auto` | Creates a team only when 2+ plans exist. Single plan = single agent, lower overhead. Default. Smart routing may further downgrade simple plans to turbo (no team). |
 | `never` | Never creates teams. All agents run as sequential subagents. Disables parallel execution entirely. |
 
 This setting determines whether parallel execution is even possible. With a single agent (1 plan, no team), there's no concurrency by definition. `auto` also creates teams for ambiguous bugs in debug mode. Note: Planning always uses sequential subagents (Scout → Lead), not teams — `prefer_teams` only affects Execute and debug/map modes.

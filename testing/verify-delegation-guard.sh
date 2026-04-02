@@ -425,21 +425,21 @@ test_teams_auto_bypasses_guard() {
 }
 test_teams_auto_bypasses_guard
 
-# --- Test 19: Agent teams bypass — prefer_teams=when_parallel, active execution → allowed ---
-test_teams_when_parallel_bypasses_guard() {
+# --- Test 19: Legacy prefer_teams=when_parallel normalizes to auto and still bypasses ---
+test_teams_legacy_when_parallel_bypasses_guard() {
   setup_project
   echo '{"effort":"balanced","prefer_teams":"when_parallel"}' > "$PROJECT/.vbw-planning/config.json"
   jq -n '{status:"running", phase:1, effort:"balanced", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
     > "$PROJECT/.vbw-planning/.execution-state.json"
 
   if run_guard "$PROJECT" "src/app.js" "" >/dev/null 2>&1; then
-    pass "prefer_teams=when_parallel, active execution: allowed (teams bypass)"
+    pass "legacy prefer_teams=when_parallel, active execution: allowed (normalized teams bypass)"
   else
-    fail "prefer_teams=when_parallel: unexpected block (exit $?)"
+    fail "legacy prefer_teams=when_parallel: unexpected block (exit $?)"
   fi
   cleanup
 }
-test_teams_when_parallel_bypasses_guard
+test_teams_legacy_when_parallel_bypasses_guard
 
 # --- Test 20: Agent teams bypass NOT active — prefer_teams=never, active execution → blocked ---
 test_teams_never_does_not_bypass() {

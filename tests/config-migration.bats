@@ -303,7 +303,7 @@ EOF
   [ "$output" = "false" ]
 }
 
-@test "migration removes stale agent_teams when prefer_teams already exists" {
+@test "migration canonicalizes legacy prefer_teams alias while removing stale agent_teams" {
   cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
 {
   "effort": "balanced",
@@ -316,7 +316,7 @@ EOF
 
   run jq -r '.prefer_teams' "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
-  [ "$output" = "when_parallel" ]
+  [ "$output" = "auto" ]
 
   run jq -r 'has("agent_teams")' "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
@@ -354,8 +354,7 @@ EOF
   [ "$output" = "always" ]
 }
 
-@test "migration preserves prefer_teams when_parallel" {
-  # Non-always values are real user choices — preserve them
+@test "migration canonicalizes prefer_teams when_parallel to auto" {
   cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
 {
   "effort": "balanced",
@@ -367,7 +366,7 @@ EOF
 
   run jq -r '.prefer_teams' "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
-  [ "$output" = "when_parallel" ]
+  [ "$output" = "auto" ]
 }
 
 @test "migration backfills all missing defaults keys" {
