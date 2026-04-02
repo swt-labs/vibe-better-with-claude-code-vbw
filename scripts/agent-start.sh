@@ -76,6 +76,11 @@ select_agent_role_source() {
       return 0
     fi
 
+    if is_explicit_vbw_agent "$LEGACY_AGENT_ROLE_SOURCE"; then
+      printf '%s' "$LEGACY_AGENT_ROLE_SOURCE"
+      return 0
+    fi
+
     return 1
   fi
 

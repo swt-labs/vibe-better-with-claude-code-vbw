@@ -148,6 +148,8 @@ extract_agent_key_and_role() {
   if [ -n "$native_agent_type" ]; then
     if is_explicit_vbw_agent "$native_agent_type"; then
       role_source="$native_agent_type"
+    elif is_explicit_vbw_agent "$legacy_role_source"; then
+      role_source="$legacy_role_source"
     else
       echo "|"
       return 0
@@ -243,6 +245,11 @@ orphan_recovery() {
       [ "$live_role" != "$role" ] && continue
       if [ -n "$team_name" ] && [ "$live_team_name" != "$team_name" ]; then
         continue
+      fi
+
+      if [ -z "$live_pid" ]; then
+        echo "AGENT HEALTH: Orphan recovery — agent $role PID $pid is dead, but another same-role teammate is still tracked${team_name:+ for team $team_name}; leaving role-owned tasks unchanged"
+        return
       fi
 
       if [ -n "$live_pid" ] && kill -0 "$live_pid" 2>/dev/null; then

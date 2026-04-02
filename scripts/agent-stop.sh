@@ -29,8 +29,15 @@ is_explicit_vbw_agent() {
 
 should_process_stop() {
   if [ -n "$NATIVE_AGENT_TYPE" ]; then
-    is_explicit_vbw_agent "$NATIVE_AGENT_TYPE"
-    return $?
+    if is_explicit_vbw_agent "$NATIVE_AGENT_TYPE"; then
+      return 0
+    fi
+
+    if is_explicit_vbw_agent "$LEGACY_AGENT_ROLE_SOURCE"; then
+      return 0
+    fi
+
+    return 1
   fi
 
   if [ -n "$LEGACY_AGENT_ROLE_SOURCE" ]; then

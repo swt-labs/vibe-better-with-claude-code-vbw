@@ -201,6 +201,17 @@ set_stale_mtime_3h() {
   [[ "$output" != *"CRITICAL: Your working directory"* ]]
 }
 
+@test "compaction-instructions: explicit legacy VBW name beats non-VBW native agent_type" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/fallback-dev"
+  mkdir -p "$wt_path"
+  mkdir -p .vbw-planning/.agent-worktrees
+  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+
+  run bash -c 'echo "{\"agent_type\":\"helper-agent\",\"agent_name\":\"vbw-dev-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$wt_path"* ]]
+}
+
 @test "compaction-instructions: native fields fall back to current worktree under isolation" {
   local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/native-dev"
   mkdir -p "$wt_path" "$TEST_TEMP_DIR/.vbw-planning/.agent-worktrees"
@@ -271,6 +282,17 @@ set_stale_mtime_3h() {
   run bash -c 'echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\"}" | bash "'"$SCRIPTS_DIR"'/post-compact.sh"'
   [ "$status" -eq 0 ]
   [[ "$output" != *"Worktree working directory"* ]]
+}
+
+@test "post-compact: explicit legacy VBW name beats non-VBW native agent_type" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/fallback-dev"
+  mkdir -p "$wt_path"
+  mkdir -p .vbw-planning/.agent-worktrees
+  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+
+  run bash -c 'echo "{\"agent_type\":\"helper-agent\",\"agent_name\":\"vbw-dev-01\"}" | bash "'"$SCRIPTS_DIR"'/post-compact.sh"'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$wt_path"* ]]
 }
 
 @test "post-compact: native fields fall back to current worktree under isolation" {

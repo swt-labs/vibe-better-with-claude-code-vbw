@@ -93,6 +93,11 @@ resolve_agent_role() {
       return $?
     fi
 
+    if is_explicit_vbw_agent "$LEGACY_ROLE_SOURCE"; then
+      normalize_agent_role "$LEGACY_ROLE_SOURCE"
+      return $?
+    fi
+
     return 1
   fi
 

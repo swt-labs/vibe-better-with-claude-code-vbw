@@ -50,6 +50,18 @@ run_health_via_wrapper() {
   [ "$output" = "qa" ]
 }
 
+@test "agent-health: start falls back to explicit legacy VBW name when native agent_type is non-VBW" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"agent_type":"helper-agent","agent_name":"vbw-dev-01","pid":"12347"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  [ -f "$HEALTH_DIR/vbw-dev-01.json" ] || [ -f "$HEALTH_DIR/dev-01.json" ]
+  if [ -f "$HEALTH_DIR/dev-01.json" ]; then
+    run jq -r '.role' "$HEALTH_DIR/dev-01.json"
+  else
+    run jq -r '.role' "$HEALTH_DIR/vbw-dev-01.json"
+  fi
+  [ "$output" = "dev" ]
+}
+
 @test "agent-health: wrapper-routed start initializes from documented native payload without pid" {
   cd "$TEST_TEMP_DIR"
   run_health_via_wrapper start '{"agent_id":"agent-no-pid","agent_type":"vbw-dev"}'
@@ -311,6 +323,40 @@ EOF
   [ "$output" = "dev" ]
 
   kill $LIVE_PID 2>/dev/null || true
+}
+
+@test "agent-health: orphan recovery preserves role-owned task when same-team teammate has no pid" {
+  cd "$TEST_TEMP_DIR"
+  TASKS_DIR="$CLAUDE_CONFIG_DIR/tasks"
+  mkdir -p "$TASKS_DIR/vbw-phase-01" "$HEALTH_DIR"
+
+  cat > "$TASKS_DIR/vbw-phase-01/task-shared-nopid.json" <<EOF
+{
+  "id": "task-shared-nopid",
+  "owner": "dev",
+  "status": "in_progress",
+  "subject": "Shared dev task without pid"
+}
+EOF
+
+  cat > "$HEALTH_DIR/vbw-phase-01__dev-02.json" <<EOF
+{
+  "pid": "",
+  "key": "vbw-phase-01__dev-02",
+  "role": "dev",
+  "team_name": "vbw-phase-01",
+  "started_at": "2026-01-01T00:00:00Z",
+  "last_event_at": "2026-01-01T00:00:00Z",
+  "last_event": "idle_bootstrap",
+  "idle_count": 1
+}
+EOF
+
+  run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-01\",\"pid\":\"99994\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle | jq -r '.hookSpecificOutput.additionalContext'"
+  [[ "$output" == *"still tracked"* ]]
+
+  run jq -r '.owner' "$TASKS_DIR/vbw-phase-01/task-shared-nopid.json"
+  [ "$output" = "dev" ]
 }
 
 # Test 6: cleanup removes directory

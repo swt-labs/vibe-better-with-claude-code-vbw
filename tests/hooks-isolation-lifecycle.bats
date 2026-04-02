@@ -216,6 +216,17 @@ load test_helper
   teardown_temp_dir
 }
 
+@test "agent-start falls back to explicit legacy name when native agent_type is non-VBW" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  INPUT='{"agent_type":"dev","agent_name":"vbw-dev-01"}'
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '$INPUT' | bash '$SCRIPTS_DIR/agent-start.sh'"
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent")" = "dev" ]
+  teardown_temp_dir
+}
+
 @test "agent-start creates count file for reference counting" {
   setup_temp_dir
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
@@ -373,6 +384,19 @@ load test_helper
   [ "$status" -eq 0 ]
   [ -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
   [ -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count" ]
+  teardown_temp_dir
+}
+
+@test "agent-stop falls back to explicit legacy name when native agent_type is non-VBW" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo "dev" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
+  echo "1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  INPUT='{"agent_type":"helper-agent","agent_name":"vbw-dev-01"}'
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '$INPUT' | bash '$SCRIPTS_DIR/agent-stop.sh'"
+  [ "$status" -eq 0 ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count" ]
   teardown_temp_dir
 }
 
