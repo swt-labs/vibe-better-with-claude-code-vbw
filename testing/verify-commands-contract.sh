@@ -477,6 +477,59 @@ for f in "$COMMANDS_DIR/vibe.md" "$ROOT/references/execute-protocol.md"; do
 done
 
 echo ""
+echo "=== Allowed-Tools Consistency Verification ==="
+
+# Commands that reference specific tool names in their body must include those
+# tools in their allowed-tools frontmatter. Claude Code enforces allowed-tools as
+# a strict allowlist — unlisted tools are silently unavailable.
+for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
+  [ -f "$file" ] || continue
+  base="$(basename "$file" .md)"
+
+  FRONTMATTER="$(extract_frontmatter "$file")"
+  if [ -z "$FRONTMATTER" ]; then
+    continue
+  fi
+
+  ALLOWED="$(printf '%s\n' "$FRONTMATTER" | sed -n 's/^allowed-tools:[[:space:]]*//p' | head -1)"
+  if [ -z "$ALLOWED" ]; then
+    continue
+  fi
+
+  # Extract body (everything after second ---)
+  body="$(awk '/^---$/{d++; next} d>=2' "$file")"
+
+  # Check AskUserQuestion: if body references it, allowed-tools must include it
+  if printf '%s\n' "$body" | grep -q 'AskUserQuestion'; then
+    if printf '%s\n' "$ALLOWED" | grep -q 'AskUserQuestion'; then
+      pass "$base: AskUserQuestion in body matches allowed-tools"
+    else
+      fail "$base: body references AskUserQuestion but allowed-tools does not include it"
+    fi
+  fi
+
+  # Check Agent: if body references subagent spawning via "Task tool" or
+  # subagent_type, allowed-tools must include Agent
+  if printf '%s\n' "$body" | grep -qE '(via Task tool|subagent_type:)'; then
+    if printf '%s\n' "$ALLOWED" | grep -q 'Agent'; then
+      pass "$base: subagent spawning in body matches Agent in allowed-tools"
+    else
+      fail "$base: body spawns subagents but allowed-tools does not include Agent"
+    fi
+  fi
+
+  # Check TeamCreate: if body uses TeamCreate (not in a "Do NOT" instruction),
+  # allowed-tools must include it
+  if printf '%s\n' "$body" | grep -v 'Do NOT' | grep -q 'TeamCreate'; then
+    if printf '%s\n' "$ALLOWED" | grep -q 'TeamCreate'; then
+      pass "$base: TeamCreate in body matches allowed-tools"
+    else
+      fail "$base: body references TeamCreate but allowed-tools does not include it"
+    fi
+  fi
+done
+
+echo ""
 echo "=== Command Reference Verification ==="
 
 while IFS= read -r ref; do

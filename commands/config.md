@@ -4,7 +4,7 @@ category: supporting
 disable-model-invocation: true
 description: View and modify VBW configuration including effort profile, verification tier, and skill-hook wiring.
 argument-hint: [setting value]
-allowed-tools: Read, Write, Edit, Bash, Glob
+allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
 ---
 
 # VBW Config $ARGUMENTS

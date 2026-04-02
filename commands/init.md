@@ -4,7 +4,7 @@ category: lifecycle
 disable-model-invocation: true
 description: Set up environment, scaffold .vbw-planning, detect project context, and bootstrap project-defining files.
 argument-hint:
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, LSP
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Agent, LSP
 ---
 
 # VBW Init
