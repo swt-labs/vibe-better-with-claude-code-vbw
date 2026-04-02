@@ -163,6 +163,7 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   REMED_DIR=""
   REMED_KIND=""
   _cvc_preferred_round=""
+  _cvc_preferred_kind=""
 
   _cvc_candidates=()
   _active_remediation=false
@@ -177,6 +178,7 @@ if [ "$REMEDIATION_ONLY" = true ]; then
         elif [ -n "$_cvc_preferred_round" ]; then
           _cvc_preferred_round=$(printf '%02d' "$((10#$_cvc_preferred_round))")
         fi
+        _cvc_preferred_kind="qa"
         _active_remediation=true
         ;;
     esac
@@ -187,6 +189,13 @@ if [ "$REMEDIATION_ONLY" = true ]; then
       research|plan|execute|fix|verify|done)
         if [ "$_active_remediation" = false ]; then
           _cvc_candidates+=("$PHASE_DIR/remediation/uat")
+          _cvc_preferred_round=$(grep '^round=' "$PHASE_DIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          if ! [[ "${_cvc_preferred_round:-}" =~ ^[0-9]+$ ]]; then
+            _cvc_preferred_round=""
+          elif [ -n "$_cvc_preferred_round" ]; then
+            _cvc_preferred_round=$(printf '%02d' "$((10#$_cvc_preferred_round))")
+          fi
+          _cvc_preferred_kind="uat"
           _active_remediation=true
         fi
         ;;
@@ -207,7 +216,7 @@ if [ "$REMEDIATION_ONLY" = true ]; then
 
   for _candidate in "${_cvc_candidates[@]}"; do
     [ -d "$_candidate" ] || continue
-    if [ "$_candidate" = "$PHASE_DIR/remediation/qa" ] && [ -n "$_cvc_preferred_round" ]; then
+    if [ "$_candidate" = "$PHASE_DIR/remediation/qa" ] && [ "$_cvc_preferred_kind" = "qa" ] && [ -n "$_cvc_preferred_round" ]; then
       _preferred_round_dir="$_candidate/round-$_cvc_preferred_round"
       if [ -d "$_preferred_round_dir" ] && \
          ls "$_preferred_round_dir"/R"$_cvc_preferred_round"-PLAN.md >/dev/null 2>&1 && \
@@ -220,6 +229,16 @@ if [ "$REMEDIATION_ONLY" = true ]; then
       fi
       # Active QA remediation should not be hijacked by a stale higher round.
       REMEDIATION_ONLY=false
+      break
+    fi
+    if [ "$_candidate" = "$PHASE_DIR/remediation/uat" ] && [ "$_cvc_preferred_kind" = "uat" ] && [ -n "$_cvc_preferred_round" ]; then
+      # Active UAT re-verification must stay on the current remediation round,
+      # even if an earlier round is the latest one with a terminal summary.
+      # Falling back to a stale completed round risks overwriting prior-round
+      # UAT evidence and mis-scoping the re-verification session.
+      LATEST_ROUND="$_cvc_preferred_round"
+      REMED_DIR="$_candidate"
+      REMED_KIND="uat"
       break
     fi
     _best_round_num=0

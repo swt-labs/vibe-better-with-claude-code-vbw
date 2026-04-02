@@ -136,6 +136,42 @@ EOF
   [[ "$output" != *"Original feature"* ]]
 }
 
+@test "compile-verify-context-for-uat: legacy remediation state file location still uses remediation-only scope" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Original feature
+must_haves:
+  - Feature works
+---
+EOF
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=verify\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: Legacy remediation round
+must_haves:
+  - Legacy issue fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Fixed the legacy remediation issue
+EOF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=01"* ]]
+  [[ "$output" == *"uat_path=remediation/round-01/R01-UAT.md"* ]]
+  [[ "$output" == *"Legacy remediation round"* ]]
+  [[ "$output" != *"Original feature"* ]]
+}
+
 @test "compile-verify-context-for-uat: verified remediation stage uses full scope" {
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
 ---

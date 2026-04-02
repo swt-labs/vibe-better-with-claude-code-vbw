@@ -29,6 +29,12 @@ read_uat_stage() {
 
   if [ -f "$phase_dir/remediation/uat/.uat-remediation-stage" ]; then
     raw=$(grep '^stage=' "$phase_dir/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+  elif [ -f "$phase_dir/remediation/.uat-remediation-stage" ]; then
+    if grep -q '^stage=' "$phase_dir/remediation/.uat-remediation-stage" 2>/dev/null; then
+      raw=$(grep '^stage=' "$phase_dir/remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    else
+      raw=$(tr -d '[:space:]' < "$phase_dir/remediation/.uat-remediation-stage")
+    fi
   elif [ -f "$phase_dir/.uat-remediation-stage" ]; then
     if grep -q '^stage=' "$phase_dir/.uat-remediation-stage" 2>/dev/null; then
       raw=$(grep '^stage=' "$phase_dir/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')

@@ -2875,3 +2875,44 @@ EOF
   [[ "$output" == *"verify_scope=remediation round=01"* ]]
   [[ "$output" == *"uat_path=remediation/round-01/R01-UAT.md"* ]]
 }
+
+@test "compile-verify-context: active UAT prefers current round over stale completed round" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01" "$PHASE_DIR/remediation/uat/round-02"
+  printf 'stage=plan\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: Previous round fix
+must_haves:
+  - Previous round issue fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'EOF'
+---
+plan: R01
+status: complete
+---
+## What Was Built
+- Previous round fix
+EOF
+
+  cat > "$PHASE_DIR/remediation/uat/round-02/R02-PLAN.md" <<'EOF'
+---
+round: 02
+title: Current round fix
+must_haves:
+  - Current round issue fixed
+---
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only --remediation-kind uat "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=02"* ]]
+  [[ "$output" == *"uat_path=remediation/uat/round-02/R02-UAT.md"* ]]
+  [[ "$output" == *"=== PLAN R02: Current round fix ==="* ]]
+  [[ "$output" != *"=== PLAN R01: Previous round fix ==="* ]]
+  [[ "$output" == *"status: no_summary"* ]]
+}

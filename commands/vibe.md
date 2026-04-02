@@ -319,7 +319,7 @@ When `next_phase_state=needs_reverification`, execute these steps inline in the 
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/extract-uat-resume.sh "{phase-dir}"
   ```
   Use this refreshed output in place of the pre-computed verify blocks from Context.
-  **uat_path validation (defense-in-depth):** If the refreshed `uat_path` does not contain `remediation/uat/round-`, run:
+  **uat_path validation (defense-in-depth):** If the refreshed `uat_path` does not already point at the current remediation round's `remediation/uat/round-{RR}/R{RR}-UAT.md`, run:
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh get-or-init "{phase-dir}" major
   ```
