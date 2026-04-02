@@ -43,7 +43,7 @@ if [ "$MIGRATED_COUNT" -gt 0 ]; then
 fi
 ```
 
-This backfills all missing keys from `config/defaults.json` (without overwriting existing values), and migrates legacy `agent_teams` to `prefer_teams` (then removes stale `agent_teams`).
+This backfills all missing keys from `config/defaults.json` (without overwriting existing values), migrates legacy `agent_teams` to canonical `prefer_teams` values, and removes stale legacy keys.
 
 ### No arguments: Interactive configuration
 
@@ -354,7 +354,7 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | discovery_questions | boolean | true/false | true |
 | visual_format | string | unicode/ascii | unicode |
 | max_tasks_per_plan | number | 1-7 | 5 |
-| prefer_teams | string | always/when_parallel/auto/never | auto |
+| prefer_teams | string | always/auto/never | auto |
 | branch_per_milestone | boolean | true/false | false |
 | plain_summary | boolean | true/false | true |
 | active_profile | string | profile name or "custom" | default |

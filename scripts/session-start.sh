@@ -919,7 +919,7 @@ if [ -f "$CONFIG_FILE" ]; then
   config_planning_tracking=$(jq -r '.planning_tracking // "manual"' "$CONFIG_FILE" 2>/dev/null)
   config_auto_push=$(jq -r '.auto_push // "never"' "$CONFIG_FILE" 2>/dev/null)
   config_verification=$(jq -r '.verification_tier // "standard"' "$CONFIG_FILE" 2>/dev/null)
-  config_prefer_teams=$(jq -r '.prefer_teams // "auto"' "$CONFIG_FILE" 2>/dev/null)
+  config_prefer_teams=$(bash "$SCRIPT_DIR/normalize-prefer-teams.sh" "$CONFIG_FILE" 2>/dev/null)
   config_max_tasks=$(jq -r '.max_tasks_per_plan // 5' "$CONFIG_FILE" 2>/dev/null)
 fi
 

@@ -271,7 +271,7 @@ if [ -z "${VBW_AGENT_ROLE:-}" ]; then
   # won't reflect them. Fail-open to avoid blocking legitimate teammate writes.
   _DG_CONFIG="$PROJECT_ROOT/.vbw-planning/config.json"
   if [ -f "$_DG_CONFIG" ]; then
-    _DG_PREFER_TEAMS=$(jq -r '.prefer_teams // "auto"' "$_DG_CONFIG" 2>/dev/null) || _DG_PREFER_TEAMS="auto"
+    _DG_PREFER_TEAMS=$(bash "${_FG_SCRIPT_DIR}/normalize-prefer-teams.sh" "$_DG_CONFIG" 2>/dev/null) || _DG_PREFER_TEAMS="auto"
     case "$_DG_PREFER_TEAMS" in
       never) ;; # Teams disabled — keep the guard active for subagent model
       *) exit 0 ;; # Teams may be active — can't distinguish orchestrator from teammate

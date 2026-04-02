@@ -59,7 +59,7 @@ Display: `◆ Sizing: {SOURCE_FILE_COUNT} source files → {tier} mode`
 
 Read `prefer_teams` before applying tier:
 ```bash
-PREFER_TEAMS=$(jq -r '.prefer_teams // "auto"' .vbw-planning/config.json 2>/dev/null)
+PREFER_TEAMS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/normalize-prefer-teams.sh .vbw-planning/config.json 2>/dev/null || echo "auto")
 ```
 If `PREFER_TEAMS` is `never`, force solo regardless of file count or --tier flag.
 

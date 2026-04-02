@@ -5,9 +5,11 @@ load test_helper
 setup() {
   setup_temp_dir
   export HEALTH_DIR="$TEST_TEMP_DIR/.vbw-planning/.agent-health"
+  export CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/.claude"
 }
 
 teardown() {
+  unset CLAUDE_CONFIG_DIR
   teardown_temp_dir
 }
 
@@ -50,8 +52,8 @@ teardown() {
 @test "agent-health integration: orphan recovery" {
   cd "$TEST_TEMP_DIR"
 
-  # Setup mock tasks directory
-  TASKS_DIR="$HOME/.claude/tasks/test-team-$$"
+  # Setup isolated mock tasks directory
+  TASKS_DIR="$CLAUDE_CONFIG_DIR/tasks/test-team-$$"
   mkdir -p "$TASKS_DIR"
 
   cat > "$TASKS_DIR/task-orphan.json" <<EOF
