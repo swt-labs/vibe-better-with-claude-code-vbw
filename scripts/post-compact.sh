@@ -100,6 +100,41 @@ extract_agent_instance() {
   normalize_agent_instance "$value"
 }
 
+extract_agent_id() {
+  local value
+  value=$(echo "$INPUT" | jq -r '.agent_id // ""' 2>/dev/null) || value=""
+  normalize_agent_instance "$value"
+}
+
+resolve_worktree_map_file() {
+  local storage_dir="$VBW_PLANNING_DIR/.agent-worktrees"
+  local instance_name role_matches match_count first_match
+
+  [ ! -d "$storage_dir" ] && return 1
+
+  for instance_name in "$(extract_agent_id 2>/dev/null)" "$(extract_agent_instance 2>/dev/null)"; do
+    [ -z "$instance_name" ] && continue
+    if [ -f "$storage_dir/${instance_name}.json" ]; then
+      printf '%s' "$storage_dir/${instance_name}.json"
+      return 0
+    fi
+  done
+
+  case "$ROLE" in
+    vbw-dev|vbw-debugger)
+      role_matches=$(find "$storage_dir" -maxdepth 1 -type f \( -name "${ROLE#vbw-}.json" -o -name "${ROLE#vbw-}-*.json" \) 2>/dev/null | sort)
+      match_count=$(printf '%s\n' "$role_matches" | sed '/^$/d' | wc -l | tr -d ' ')
+      if [ "$match_count" = "1" ]; then
+        first_match=$(printf '%s\n' "$role_matches" | sed -n '1p')
+        [ -n "$first_match" ] && printf '%s' "$first_match"
+        return 0
+      fi
+      ;;
+  esac
+
+  return 1
+}
+
 # Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
 # shellcheck source=lib/vbw-config-root.sh
 . "$(dirname "$0")/lib/vbw-config-root.sh"
@@ -262,9 +297,8 @@ fi
 # --- Worktree context injection ---
 WORKTREE_CONTEXT=""
 if echo "$ROLE" | grep -q "vbw-dev\|vbw-debugger"; then
-  AGENT_NAME_SHORT=$(extract_agent_instance 2>/dev/null) || AGENT_NAME_SHORT=""
-  WORKTREE_MAP_FILE="$VBW_PLANNING_DIR/.agent-worktrees/${AGENT_NAME_SHORT}.json"
-  if [ -f "$WORKTREE_MAP_FILE" ]; then
+  WORKTREE_MAP_FILE=$(resolve_worktree_map_file) || WORKTREE_MAP_FILE=""
+  if [ -n "$WORKTREE_MAP_FILE" ] && [ -f "$WORKTREE_MAP_FILE" ]; then
     WT_PATH=$(jq -r '.worktree_path // ""' "$WORKTREE_MAP_FILE" 2>/dev/null) || WT_PATH=""
     if [ -n "$WT_PATH" ]; then
       WORKTREE_CONTEXT=" Worktree working directory: ${WT_PATH}. All file operations must use this path."

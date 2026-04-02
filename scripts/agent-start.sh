@@ -10,6 +10,10 @@ PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
 LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .name // ""' 2>/dev/null)
 
+# Only track VBW agents; maintain reference count for concurrent agents
+COUNT_FILE="$PLANNING_DIR/.active-agent-count"
+LOCK_DIR="$PLANNING_DIR/.active-agent-count.lock"
+
 normalize_agent_role() {
   local value="$1"
   local lower
@@ -96,10 +100,6 @@ if ROLE=$(normalize_agent_role "$AGENT_ROLE_SOURCE"); then
 else
   ROLE=""
 fi
-
-# Only track VBW agents; maintain reference count for concurrent agents
-COUNT_FILE="$PLANNING_DIR/.active-agent-count"
-LOCK_DIR="$PLANNING_DIR/.active-agent-count.lock"
 
 acquire_lock() {
   local attempts=0

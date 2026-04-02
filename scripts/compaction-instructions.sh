@@ -15,8 +15,9 @@ PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 
 INPUT=$(cat)
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
+NATIVE_AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // ""' 2>/dev/null)
 LEGACY_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
-INSTANCE_SOURCE=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // .agent_id // .agent_type // ""' 2>/dev/null)
+INSTANCE_NAME_SOURCE=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // ""' 2>/dev/null)
 MATCHER=$(echo "$INPUT" | jq -r '.matcher // "auto"')
 
 normalize_agent_role() {
@@ -104,6 +105,37 @@ resolve_agent_role() {
   return 1
 }
 
+resolve_worktree_map_file() {
+  local storage_dir="$PLANNING_DIR/.agent-worktrees"
+  local candidate normalized role_matches match_count first_match
+
+  [ ! -d "$storage_dir" ] && return 1
+
+  for candidate in "$NATIVE_AGENT_ID" "$INSTANCE_NAME_SOURCE"; do
+    [ -z "$candidate" ] && continue
+    normalized=$(normalize_agent_instance "$candidate")
+    [ -z "$normalized" ] && continue
+    if [ -f "$storage_dir/${normalized}.json" ]; then
+      printf '%s' "$storage_dir/${normalized}.json"
+      return 0
+    fi
+  done
+
+  case "$AGENT_ROLE" in
+    dev|debugger)
+      role_matches=$(find "$storage_dir" -maxdepth 1 -type f \( -name "${AGENT_ROLE}.json" -o -name "${AGENT_ROLE}-*.json" \) 2>/dev/null | sort)
+      match_count=$(printf '%s\n' "$role_matches" | sed '/^$/d' | wc -l | tr -d ' ')
+      if [ "$match_count" = "1" ]; then
+        first_match=$(printf '%s\n' "$role_matches" | sed -n '1p')
+        [ -n "$first_match" ] && printf '%s' "$first_match"
+        return 0
+      fi
+      ;;
+  esac
+
+  return 1
+}
+
 AGENT_ROLE=""
 if AGENT_ROLE=$(resolve_agent_role); then
   :
@@ -111,7 +143,8 @@ else
   AGENT_ROLE=""
 fi
 
-AGENT_INSTANCE_NAME=$(normalize_agent_instance "$INSTANCE_SOURCE")
+AGENT_INSTANCE_NAME=$(normalize_agent_instance "$INSTANCE_NAME_SOURCE")
+[ -z "$AGENT_INSTANCE_NAME" ] && AGENT_INSTANCE_NAME=$(normalize_agent_instance "$NATIVE_AGENT_ID")
 [ -z "$AGENT_INSTANCE_NAME" ] && AGENT_INSTANCE_NAME="$AGENT_ROLE"
 
 # VBW-specific compaction priorities per agent role
@@ -122,9 +155,8 @@ case "$AGENT_ROLE" in
   dev)
     PRIORITIES="Preserve commit hashes, file paths modified, deviation decisions, current task number. After compaction, if $PLANNING_DIR/codebase/META.md exists, re-read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from $PLANNING_DIR/codebase/"
     # Inject worktree path if agent has a mapping
-    AGENT_NAME_SHORT="$AGENT_INSTANCE_NAME"
-    WORKTREE_MAP_FILE="$PLANNING_DIR/.agent-worktrees/${AGENT_NAME_SHORT}.json"
-    if [ -f "$WORKTREE_MAP_FILE" ]; then
+    WORKTREE_MAP_FILE=$(resolve_worktree_map_file) || WORKTREE_MAP_FILE=""
+    if [ -n "$WORKTREE_MAP_FILE" ] && [ -f "$WORKTREE_MAP_FILE" ]; then
       WORKTREE_PATH=$(jq -r '.worktree_path // ""' "$WORKTREE_MAP_FILE" 2>/dev/null) || WORKTREE_PATH=""
       if [ -n "$WORKTREE_PATH" ]; then
         PRIORITIES="$PRIORITIES CRITICAL: Your working directory is ${WORKTREE_PATH}. All file operations MUST use this path."

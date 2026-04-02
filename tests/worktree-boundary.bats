@@ -184,7 +184,7 @@ set_stale_mtime_3h() {
   mkdir -p .vbw-planning/.agent-worktrees
   echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
 
-  run bash -c 'echo "{\"agent_type\":\"vbw-dev\",\"name\":\"dev-01\",\"agent_id\":\"agent-abc123\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  run bash -c 'echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"agent-abc123\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
   [ "$status" -eq 0 ]
   [[ "$output" == *"$wt_path"* ]]
 }
@@ -240,7 +240,7 @@ set_stale_mtime_3h() {
   mkdir -p .vbw-planning/.agent-worktrees
   echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
 
-  run bash -c 'echo "{\"agent_type\":\"vbw-dev\",\"name\":\"dev-01\",\"agent_id\":\"agent-abc123\"}" | bash "'"$SCRIPTS_DIR"'/post-compact.sh"'
+  run bash -c 'echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"agent-abc123\"}" | bash "'"$SCRIPTS_DIR"'/post-compact.sh"'
   [ "$status" -eq 0 ]
   [[ "$output" == *"$wt_path"* ]]
   [[ "$output" == *"Worktree working directory"* ]]
