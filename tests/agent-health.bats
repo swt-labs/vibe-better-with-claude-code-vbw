@@ -13,6 +13,12 @@ teardown() {
   teardown_temp_dir
 }
 
+run_health_via_wrapper() {
+  local cmd="$1"
+  local payload="$2"
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$payload' | CLAUDE_PLUGIN_ROOT='$PROJECT_ROOT' bash '$SCRIPTS_DIR/hook-wrapper.sh' agent-health.sh '$cmd'"
+}
+
 # Test 1: start creates health file
 @test "agent-health: start creates health file" {
   cd "$TEST_TEMP_DIR"
@@ -44,24 +50,42 @@ teardown() {
   [ "$output" = "qa" ]
 }
 
-@test "agent-health: start initializes from documented native payload without pid" {
+@test "agent-health: wrapper-routed start initializes from documented native payload without pid" {
   cd "$TEST_TEMP_DIR"
-  echo '{"agent_id":"agent-no-pid","agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  run_health_via_wrapper start '{"agent_id":"agent-no-pid","agent_type":"vbw-dev"}'
+  [ "$status" -eq 0 ]
   [ -f "$HEALTH_DIR/agent-no-pid.json" ]
   run jq -r '.role' "$HEALTH_DIR/agent-no-pid.json"
   [ "$output" = "dev" ]
-  run jq -r '.pid | length > 0' "$HEALTH_DIR/agent-no-pid.json"
-  [ "$output" = "true" ]
+  run jq -r '.pid' "$HEALTH_DIR/agent-no-pid.json"
+  [ -z "$output" ]
 }
 
-@test "agent-health: no-pid native start file is reused by idle via agent_id" {
+@test "agent-health: wrapper-routed no-pid start file is reused by idle via agent_id" {
   cd "$TEST_TEMP_DIR"
-  echo '{"agent_id":"agent-idle","agent_type":"vbw-qa"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  run_health_via_wrapper start '{"agent_id":"agent-idle","agent_type":"vbw-qa"}'
+  [ "$status" -eq 0 ]
 
   echo '{"agent_id":"agent-idle","agent_type":"vbw-qa"}' | bash "$SCRIPTS_DIR/agent-health.sh" idle >/dev/null
 
   run jq -r '.idle_count' "$HEALTH_DIR/agent-idle.json"
   [ "$output" = "1" ]
+}
+
+@test "agent-health: idle refreshes stored pid from payload after wrapper-routed start" {
+  cd "$TEST_TEMP_DIR"
+  run_health_via_wrapper start '{"agent_id":"agent-refresh","agent_type":"vbw-dev"}'
+  [ "$status" -eq 0 ]
+
+  sleep 30 &
+  LIVE_PID=$!
+
+  echo "{\"agent_id\":\"agent-refresh\",\"agent_type\":\"vbw-dev\",\"pid\":\"$LIVE_PID\"}" | bash "$SCRIPTS_DIR/agent-health.sh" idle >/dev/null
+
+  run jq -r '.pid' "$HEALTH_DIR/agent-refresh.json"
+  [ "$output" = "$LIVE_PID" ]
+
+  kill $LIVE_PID 2>/dev/null || true
 }
 
 # Test 2: idle increments count
@@ -185,6 +209,46 @@ EOF
   [[ "$output" == *"another live teammate"* ]]
 
   run jq -r '.owner' "$TASKS_DIR/task-shared.json"
+  [ "$output" = "dev" ]
+
+  kill $LIVE_PID 2>/dev/null || true
+  rm -rf "$TASKS_DIR"
+}
+
+@test "agent-health: stop prefers payload pid over stale stored pid" {
+  cd "$TEST_TEMP_DIR"
+  TASKS_DIR="$CLAUDE_CONFIG_DIR/tasks/test-team-stop-live-$$"
+  mkdir -p "$TASKS_DIR" "$HEALTH_DIR"
+
+  cat > "$TASKS_DIR/task-stop-live.json" <<EOF
+{
+  "id": "task-stop-live",
+  "owner": "dev",
+  "status": "in_progress",
+  "subject": "Healthy stop task"
+}
+EOF
+
+  cat > "$HEALTH_DIR/agent-stop-live.json" <<EOF
+{
+  "pid": "99996",
+  "key": "agent-stop-live",
+  "role": "dev",
+  "started_at": "2026-01-01T00:00:00Z",
+  "last_event_at": "2026-01-01T00:00:00Z",
+  "last_event": "start",
+  "idle_count": 0
+}
+EOF
+
+  sleep 30 &
+  LIVE_PID=$!
+
+  run bash -c "echo '{\"agent_id\":\"agent-stop-live\",\"agent_type\":\"vbw-dev\",\"pid\":\"$LIVE_PID\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  run jq -r '.owner' "$TASKS_DIR/task-stop-live.json"
   [ "$output" = "dev" ]
 
   kill $LIVE_PID 2>/dev/null || true

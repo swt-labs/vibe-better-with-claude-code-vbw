@@ -88,6 +88,36 @@ is_vbw_team_name() {
   echo "$lower" | grep -qE '^vbw-phase-[0-9]+$'
 }
 
+extract_payload_pid() {
+  local input="$1"
+  local pid=""
+
+  pid=$(echo "$input" | jq -r '.pid // ""' 2>/dev/null)
+  if echo "$pid" | grep -Eq '^[0-9]+$'; then
+    printf '%s' "$pid"
+  fi
+}
+
+refresh_health_pid_from_payload() {
+  local health_file="$1"
+  local input="$2"
+  local payload_pid=""
+  local current_pid=""
+
+  [ ! -f "$health_file" ] && return 1
+
+  payload_pid=$(extract_payload_pid "$input")
+  [ -z "$payload_pid" ] && return 1
+
+  current_pid=$(jq -r '.pid // ""' "$health_file" 2>/dev/null)
+  if [ "$current_pid" != "$payload_pid" ]; then
+    jq --arg pid "$payload_pid" '.pid = $pid' "$health_file" > "${health_file}.tmp" \
+      && mv "${health_file}.tmp" "$health_file"
+  fi
+
+  printf '%s' "$payload_pid"
+}
+
 # Derive a unique agent key from hook JSON.
 # Preference: agent_id > teammate_name > name > task_id > agent_name > agentName > agent_type.
 # Role preference: agent_type > agent_name > agentName > name > teammate_name.
@@ -232,10 +262,7 @@ cmd_start() {
   input=$(cat)
 
   # Extract PID
-  pid=$(echo "$input" | jq -r '.pid // ""' 2>/dev/null)
-  if [ -z "$pid" ]; then
-    pid="$PPID"
-  fi
+  pid=$(extract_payload_pid "$input")
 
   # Extract unique key and normalized role
   key_role=$(extract_agent_key_and_role "$input")
@@ -298,7 +325,7 @@ cmd_idle() {
   # Bootstrap on idle if no health file exists (SubagentStart may not have fired)
   if [ ! -f "$health_file" ]; then
     mkdir -p "$HEALTH_DIR"
-    pid=$(echo "$input" | jq -r '.pid // ""' 2>/dev/null)
+    pid=$(extract_payload_pid "$input")
     now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     jq -n \
       --arg pid "$pid" \
@@ -316,8 +343,12 @@ cmd_idle() {
       }' > "$health_file"
   fi
 
+  pid=$(refresh_health_pid_from_payload "$health_file" "$input") || pid=""
+
   # Load health data
-  pid=$(jq -r '.pid // ""' "$health_file" 2>/dev/null)
+  if [ -z "$pid" ]; then
+    pid=$(jq -r '.pid // ""' "$health_file" 2>/dev/null)
+  fi
   idle_count=$(jq -r '.idle_count // 0' "$health_file" 2>/dev/null)
 
   # Check PID liveness
@@ -383,7 +414,10 @@ cmd_stop() {
 
   if [ -f "$health_file" ]; then
     # Load PID and check liveness
-    pid=$(jq -r '.pid // ""' "$health_file" 2>/dev/null)
+    pid=$(refresh_health_pid_from_payload "$health_file" "$input") || pid=""
+    if [ -z "$pid" ]; then
+      pid=$(jq -r '.pid // ""' "$health_file" 2>/dev/null)
+    fi
 
     if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
       # PID is dead — call orphan recovery
