@@ -52,6 +52,7 @@ run_job contract "exec-state-reconciliation" bash "$ROOT/testing/verify-exec-sta
 run_job contract "statusline-qa-lifecycle"  bash "$ROOT/testing/verify-statusline-qa-lifecycle.sh"
 run_job contract "statusline-429-backoff"   bash "$ROOT/testing/verify-statusline-429-backoff.sh"
 run_job contract "uat-recurrence"           bash "$ROOT/testing/verify-uat-recurrence.sh"
+run_job contract "human-only-uat-contract"  bash "$ROOT/testing/verify-human-only-uat-contract.sh"
 run_job contract "lead-research-conditional" bash "$ROOT/testing/verify-lead-research-conditional.sh"
 run_job contract "lsp-setup"                bash "$ROOT/testing/verify-lsp-setup.sh"
 run_job contract "lsp-first-policy"         bash "$ROOT/testing/verify-lsp-first-policy.sh"

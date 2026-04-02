@@ -61,6 +61,7 @@ SH
     testing/verify-statusline-qa-lifecycle.sh \
     testing/verify-statusline-429-backoff.sh \
     testing/verify-uat-recurrence.sh \
+    testing/verify-human-only-uat-contract.sh \
     testing/verify-lead-research-conditional.sh \
     testing/verify-lsp-setup.sh \
     testing/verify-lsp-first-policy.sh \
@@ -139,7 +140,7 @@ link_run_all_system_tools() {
   fail_total_line=$(grep -n '^TOTAL: 48 PASS, 1 FAIL$' "$output_file" | cut -d: -f1)
   fail_end_line=$(grep -n '^--- end lsp-first-policy output ---$' "$output_file" | cut -d: -f1)
   lint_summary_line=$(grep -n '^Lint checks: 1/1 passed$' "$output_file" | cut -d: -f1)
-  summary_line=$(grep -n '^Contract checks: 26/27 passed$' "$output_file" | cut -d: -f1)
+  summary_line=$(grep -n '^Contract checks: 27/28 passed$' "$output_file" | cut -d: -f1)
 
   [ -n "$pass_line" ]
   [ -n "$fail_begin_line" ]

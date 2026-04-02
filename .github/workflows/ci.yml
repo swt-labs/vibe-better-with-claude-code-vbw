@@ -116,6 +116,7 @@ jobs:
           run_check "statusline-qa-lifecycle"  "bash testing/verify-statusline-qa-lifecycle.sh"
           run_check "statusline-429-backoff"   "bash testing/verify-statusline-429-backoff.sh"
           run_check "uat-recurrence"           "bash testing/verify-uat-recurrence.sh"
+          run_check "human-only-uat-contract"  "bash testing/verify-human-only-uat-contract.sh"
           run_check "lead-research-conditional" "bash testing/verify-lead-research-conditional.sh"
           run_check "lsp-setup"                "bash testing/verify-lsp-setup.sh"
           run_check "lsp-first-policy"         "bash testing/verify-lsp-first-policy.sh"
