@@ -24,6 +24,11 @@ normalize_agent_key() {
   printf '%s' "$lower"
 }
 
+normalize_team_name() {
+  local value="$1"
+  printf '%s' "$value" | tr '[:upper:]' '[:lower:]'
+}
+
 normalize_agent_role() {
   local value="$1"
   local lower
@@ -103,18 +108,27 @@ refresh_health_pid_from_payload() {
   local input="$2"
   local payload_pid=""
   local current_pid=""
+  local payload_team_name=""
 
   [ ! -f "$health_file" ] && return 1
 
   payload_pid=$(extract_payload_pid "$input")
+  payload_team_name=$(echo "$input" | jq -r '.team_name // ""' 2>/dev/null)
+  payload_team_name=$(normalize_team_name "$payload_team_name")
+
+  if [ -n "$payload_pid" ] || [ -n "$payload_team_name" ]; then
+    jq \
+      --arg pid "$payload_pid" \
+      --arg team_name "$payload_team_name" \
+      'if $pid != "" then .pid = $pid else . end
+       | if $team_name != "" then .team_name = $team_name else . end' \
+      "$health_file" > "${health_file}.tmp" && mv "${health_file}.tmp" "$health_file"
+  fi
+
   [ -z "$payload_pid" ] && return 1
 
   current_pid=$(jq -r '.pid // ""' "$health_file" 2>/dev/null)
-  if [ "$current_pid" != "$payload_pid" ]; then
-    jq --arg pid "$payload_pid" '.pid = $pid' "$health_file" > "${health_file}.tmp" \
-      && mv "${health_file}.tmp" "$health_file"
-  fi
-
+  [ "$current_pid" = "$payload_pid" ] || true
   printf '%s' "$payload_pid"
 }
 
@@ -124,11 +138,12 @@ refresh_health_pid_from_payload() {
 # Also extracts a normalized role for metadata.
 extract_agent_key_and_role() {
   local input="$1"
-  local key="" role="" native_agent_type legacy_role_source role_source="" team_name=""
+  local key="" role="" native_agent_type legacy_role_source role_source="" team_name="" team_scoped_legacy=0
 
   native_agent_type=$(echo "$input" | jq -r '.agent_type // ""' 2>/dev/null)
   legacy_role_source=$(echo "$input" | jq -r '.agent_name // .agentName // .name // .teammate_name // ""' 2>/dev/null)
   team_name=$(echo "$input" | jq -r '.team_name // ""' 2>/dev/null)
+  team_name=$(normalize_team_name "$team_name")
 
   if [ -n "$native_agent_type" ]; then
     if is_explicit_vbw_agent "$native_agent_type"; then
@@ -143,18 +158,19 @@ extract_agent_key_and_role() {
     if [ -n "$team_name" ]; then
       if is_vbw_team_name "$team_name"; then
         role_source="$legacy_role_source"
+        team_scoped_legacy=1
       else
-        echo "|"
+        echo "||"
         return 0
       fi
     elif has_vbw_context; then
       role_source="$legacy_role_source"
     else
-      echo "|"
+      echo "||"
       return 0
     fi
   else
-    echo "|"
+    echo "||"
     return 0
   fi
 
@@ -182,6 +198,9 @@ extract_agent_key_and_role() {
 
   # Normalize key for use as a stable health-file name.
   key=$(normalize_agent_key "$key")
+  if [ "$team_scoped_legacy" -eq 1 ] && [ -n "$team_name" ] && [ -n "$key" ]; then
+    key="${team_name}__${key}"
+  fi
 
   # Extract role separately (for metadata/reporting and orphan recovery).
   if role=$(normalize_agent_role "$role_source"); then
@@ -191,16 +210,17 @@ extract_agent_key_and_role() {
     role=$(echo "$role" | sed -E 's/-[0-9]+$//')
   fi
 
-  echo "$key|$role"
+  echo "$key|$role|$team_name"
 }
 
 orphan_recovery() {
   local role="$1"
   local pid="$2"
   local key="${3:-}"
+  local team_name="${4:-}"
   local tasks_dir="${CLAUDE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}/tasks"
   local advisory=""
-  local task_file task_owner task_status task_id health_file live_key live_role live_pid
+  local task_file task_owner task_status task_id health_file live_key live_role live_pid live_team_name team_dir
 
   # Find team directory (assumes single team for now)
   # If multiple teams exist, we'll scan all of them
@@ -217,9 +237,13 @@ orphan_recovery() {
       live_key=$(jq -r '.key // ""' "$health_file" 2>/dev/null)
       live_role=$(jq -r '.role // ""' "$health_file" 2>/dev/null)
       live_pid=$(jq -r '.pid // ""' "$health_file" 2>/dev/null)
+      live_team_name=$(jq -r '.team_name // ""' "$health_file" 2>/dev/null)
 
       [ -n "$key" ] && [ "$live_key" = "$key" ] && continue
       [ "$live_role" != "$role" ] && continue
+      if [ -n "$team_name" ] && [ "$live_team_name" != "$team_name" ]; then
+        continue
+      fi
 
       if [ -n "$live_pid" ] && kill -0 "$live_pid" 2>/dev/null; then
         echo "AGENT HEALTH: Orphan recovery — agent $role PID $pid is dead, but another live teammate with the same role is still active; leaving role-owned tasks unchanged"
@@ -228,8 +252,14 @@ orphan_recovery() {
     done
   fi
 
-  # Scan all team directories
-  for team_dir in "$tasks_dir"/*; do
+  if [ -n "$team_name" ]; then
+    set -- "$tasks_dir/$team_name"
+  else
+    set -- "$tasks_dir"/*
+  fi
+
+  # Scan the matching team directory when known, otherwise all teams.
+  for team_dir in "$@"; do
     [ ! -d "$team_dir" ] && continue
 
     # Scan task JSON files
@@ -258,7 +288,7 @@ orphan_recovery() {
 }
 
 cmd_start() {
-  local input pid key role key_role now
+  local input pid key role team_name key_role now
   input=$(cat)
 
   # Extract PID
@@ -267,7 +297,9 @@ cmd_start() {
   # Extract unique key and normalized role
   key_role=$(extract_agent_key_and_role "$input")
   key="${key_role%%|*}"
-  role="${key_role##*|}"
+  role_and_team="${key_role#*|}"
+  role="${role_and_team%%|*}"
+  team_name="${role_and_team#*|}"
 
   # Skip if no agent identity extracted.
   if [ -z "$key" ]; then
@@ -285,11 +317,13 @@ cmd_start() {
     --arg pid "$pid" \
     --arg key "$key" \
     --arg role "$role" \
+    --arg team_name "$team_name" \
     --arg ts "$now" \
     '{
       pid: $pid,
       key: $key,
       role: $role,
+      team_name: $team_name,
       started_at: $ts,
       last_event_at: $ts,
       last_event: "start",
@@ -308,13 +342,15 @@ cmd_start() {
 }
 
 cmd_idle() {
-  local input key role key_role health_file pid idle_count now advisory recovery_role
+  local input key role team_name key_role health_file pid idle_count now advisory recovery_role role_and_team
   input=$(cat)
 
   # Extract unique key and normalized role
   key_role=$(extract_agent_key_and_role "$input")
   key="${key_role%%|*}"
-  role="${key_role##*|}"
+  role_and_team="${key_role#*|}"
+  role="${role_and_team%%|*}"
+  team_name="${role_and_team#*|}"
 
   if [ -z "$key" ]; then
     exit 0
@@ -331,11 +367,13 @@ cmd_idle() {
       --arg pid "$pid" \
       --arg key "$key" \
       --arg role "$role" \
+      --arg team_name "$team_name" \
       --arg ts "$now" \
       '{
         pid: $pid,
         key: $key,
         role: $role,
+        team_name: $team_name,
         started_at: $ts,
         last_event_at: $ts,
         last_event: "idle_bootstrap",
@@ -356,7 +394,7 @@ cmd_idle() {
     # PID is dead — call orphan recovery
     recovery_role="$role"
     [ -z "$recovery_role" ] && recovery_role="$key"
-    advisory=$(orphan_recovery "$recovery_role" "$pid" "$key")
+    advisory=$(orphan_recovery "$recovery_role" "$pid" "$key" "$team_name")
     jq -n \
       --arg event "TeammateIdle" \
       --arg context "$advisory" \
@@ -397,13 +435,15 @@ cmd_idle() {
 }
 
 cmd_stop() {
-  local input key role key_role health_file pid advisory recovery_role
+  local input key role team_name key_role health_file pid advisory recovery_role role_and_team
   input=$(cat)
 
   # Extract unique key and normalized role
   key_role=$(extract_agent_key_and_role "$input")
   key="${key_role%%|*}"
-  role="${key_role##*|}"
+  role_and_team="${key_role#*|}"
+  role="${role_and_team%%|*}"
+  team_name="${role_and_team#*|}"
 
   if [ -z "$key" ]; then
     exit 0
@@ -423,7 +463,7 @@ cmd_stop() {
       # PID is dead — call orphan recovery
       recovery_role="$role"
       [ -z "$recovery_role" ] && recovery_role="$key"
-      advisory=$(orphan_recovery "$recovery_role" "$pid" "$key")
+      advisory=$(orphan_recovery "$recovery_role" "$pid" "$key" "$team_name")
     fi
 
     # Remove health file

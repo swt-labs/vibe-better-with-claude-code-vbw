@@ -70,22 +70,8 @@ run_health_via_wrapper() {
 
   run jq -r '.idle_count' "$HEALTH_DIR/agent-idle.json"
   [ "$output" = "1" ]
-}
-
-@test "agent-health: idle refreshes stored pid from payload after wrapper-routed start" {
-  cd "$TEST_TEMP_DIR"
-  run_health_via_wrapper start '{"agent_id":"agent-refresh","agent_type":"vbw-dev"}'
-  [ "$status" -eq 0 ]
-
-  sleep 30 &
-  LIVE_PID=$!
-
-  echo "{\"agent_id\":\"agent-refresh\",\"agent_type\":\"vbw-dev\",\"pid\":\"$LIVE_PID\"}" | bash "$SCRIPTS_DIR/agent-health.sh" idle >/dev/null
-
-  run jq -r '.pid' "$HEALTH_DIR/agent-refresh.json"
-  [ "$output" = "$LIVE_PID" ]
-
-  kill $LIVE_PID 2>/dev/null || true
+  run jq -r '.pid' "$HEALTH_DIR/agent-idle.json"
+  [ -z "$output" ]
 }
 
 # Test 2: idle increments count
@@ -215,44 +201,15 @@ EOF
   rm -rf "$TASKS_DIR"
 }
 
-@test "agent-health: stop prefers payload pid over stale stored pid" {
+@test "agent-health: no-pid native stop removes health file via agent_id" {
   cd "$TEST_TEMP_DIR"
-  TASKS_DIR="$CLAUDE_CONFIG_DIR/tasks/test-team-stop-live-$$"
-  mkdir -p "$TASKS_DIR" "$HEALTH_DIR"
-
-  cat > "$TASKS_DIR/task-stop-live.json" <<EOF
-{
-  "id": "task-stop-live",
-  "owner": "dev",
-  "status": "in_progress",
-  "subject": "Healthy stop task"
-}
-EOF
-
-  cat > "$HEALTH_DIR/agent-stop-live.json" <<EOF
-{
-  "pid": "99996",
-  "key": "agent-stop-live",
-  "role": "dev",
-  "started_at": "2026-01-01T00:00:00Z",
-  "last_event_at": "2026-01-01T00:00:00Z",
-  "last_event": "start",
-  "idle_count": 0
-}
-EOF
-
-  sleep 30 &
-  LIVE_PID=$!
-
-  run bash -c "echo '{\"agent_id\":\"agent-stop-live\",\"agent_type\":\"vbw-dev\",\"pid\":\"$LIVE_PID\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
+  run_health_via_wrapper start '{"agent_id":"agent-stop-nopid","agent_type":"vbw-dev"}'
   [ "$status" -eq 0 ]
-  [ -z "$output" ]
+  [ -f "$HEALTH_DIR/agent-stop-nopid.json" ]
 
-  run jq -r '.owner' "$TASKS_DIR/task-stop-live.json"
-  [ "$output" = "dev" ]
+  echo '{"agent_id":"agent-stop-nopid","agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" stop >/dev/null
 
-  kill $LIVE_PID 2>/dev/null || true
-  rm -rf "$TASKS_DIR"
+  [ ! -f "$HEALTH_DIR/agent-stop-nopid.json" ]
 }
 
 # Test 5: stop removes health file
@@ -296,18 +253,18 @@ EOF
 @test "agent-health: idle accepts legacy teammate_name for VBW-owned team namespaces" {
   cd "$TEST_TEMP_DIR"
 
-  sleep 30 &
-  LIVE_PID=$!
-
   while IFS='|' read -r teammate expected_role team_name; do
-    run bash -c "echo '{\"teammate_name\":\"$teammate\",\"team_name\":\"$team_name\",\"pid\":\"$LIVE_PID\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle >/dev/null"
+    key="${team_name}__${teammate}"
+    run bash -c "echo '{\"teammate_name\":\"$teammate\",\"team_name\":\"$team_name\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle >/dev/null"
     [ "$status" -eq 0 ]
 
-    run jq -r '.key' "$HEALTH_DIR/${teammate}.json"
-    [ "$output" = "$teammate" ]
-    run jq -r '.role' "$HEALTH_DIR/${teammate}.json"
+    run jq -r '.key' "$HEALTH_DIR/${key}.json"
+    [ "$output" = "$key" ]
+    run jq -r '.role' "$HEALTH_DIR/${key}.json"
     [ "$output" = "$expected_role" ]
-    run jq -r '.idle_count' "$HEALTH_DIR/${teammate}.json"
+    run jq -r '.team_name' "$HEALTH_DIR/${key}.json"
+    [ "$output" = "$team_name" ]
+    run jq -r '.idle_count' "$HEALTH_DIR/${key}.json"
     [ "$output" = "1" ]
   done <<'EOF'
 dev-01|dev|vbw-phase-01
@@ -315,6 +272,43 @@ debugger-01|debugger|vbw-debug-1741625400
 scout-01|scout|vbw-map-duo
 scout-02|scout|vbw-map-quad
 EOF
+}
+
+@test "agent-health: orphan recovery stays within matching legacy team_name scope" {
+  cd "$TEST_TEMP_DIR"
+  TASKS_DIR="$CLAUDE_CONFIG_DIR/tasks"
+  mkdir -p "$TASKS_DIR/vbw-phase-01" "$TASKS_DIR/vbw-map-duo"
+
+  cat > "$TASKS_DIR/vbw-phase-01/task-phase.json" <<EOF
+{
+  "id": "task-phase",
+  "owner": "dev",
+  "status": "in_progress",
+  "subject": "Phase team task"
+}
+EOF
+
+  cat > "$TASKS_DIR/vbw-map-duo/task-map.json" <<EOF
+{
+  "id": "task-map",
+  "owner": "dev",
+  "status": "in_progress",
+  "subject": "Map team task"
+}
+EOF
+
+  sleep 30 &
+  LIVE_PID=$!
+
+  echo "{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-map-duo\",\"pid\":\"$LIVE_PID\"}" | bash "$SCRIPTS_DIR/agent-health.sh" idle >/dev/null
+
+  run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-01\",\"pid\":\"99995\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle | jq -r '.hookSpecificOutput.additionalContext'"
+  [[ "$output" == *"task-phase"* ]]
+
+  run jq -r '.owner' "$TASKS_DIR/vbw-phase-01/task-phase.json"
+  [ "$output" = "" ]
+  run jq -r '.owner' "$TASKS_DIR/vbw-map-duo/task-map.json"
+  [ "$output" = "dev" ]
 
   kill $LIVE_PID 2>/dev/null || true
 }

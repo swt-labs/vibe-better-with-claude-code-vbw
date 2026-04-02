@@ -50,7 +50,7 @@ run_health() {
   [ ! -f "$HEALTH_DIR/dev-01.json" ]
 
   # Legacy/name-based payload inside an active VBW session
-  echo "{\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-01\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
 
   # After idle, a health file should exist (bootstrapped)
@@ -60,28 +60,38 @@ run_health() {
 @test "idle bootstrap: legacy teammate_name fallback creates health file" {
   [ ! -f "$HEALTH_DIR/dev-01.json" ]
 
-  echo "{\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-01\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
 
   [ -f "$HEALTH_DIR/dev-01.json" ]
 }
 
 @test "idle bootstrap: vbw team_name allows teammate_name payload" {
-  [ ! -f "$HEALTH_DIR/dev-01.json" ]
+  [ ! -f "$HEALTH_DIR/vbw-phase-07__dev-01.json" ]
 
-  echo "{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-07\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-07\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
 
-  [ -f "$HEALTH_DIR/dev-01.json" ]
+  [ -f "$HEALTH_DIR/vbw-phase-07__dev-01.json" ]
 }
 
 @test "idle bootstrap: non-VBW team_name is ignored even with vbw session marker" {
   [ ! -f "$HEALTH_DIR/dev-01.json" ]
 
-  run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"external-team\",\"pid\":\"$$\"}' | TEST_HEALTH_DIR='$HEALTH_DIR' TEST_PLANNING_DIR='$PLANNING_DIR' bash '$WRAPPER' idle"
+  run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"external-team\"}' | TEST_HEALTH_DIR='$HEALTH_DIR' TEST_PLANNING_DIR='$PLANNING_DIR' bash '$WRAPPER' idle"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
   [ ! -f "$HEALTH_DIR/dev-01.json" ]
+}
+
+@test "idle bootstrap: same legacy teammate_name across VBW teams gets separate files" {
+  echo "{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-01\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle >/dev/null
+  echo "{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-map-duo\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle >/dev/null
+
+  [ -f "$HEALTH_DIR/vbw-phase-01__dev-01.json" ]
+  [ -f "$HEALTH_DIR/vbw-map-duo__dev-01.json" ]
 }
 
 @test "unique keying: two Dev teammates get separate files" {
@@ -110,16 +120,16 @@ run_health() {
 
 @test "idle increments per-teammate, not by role" {
   # Start two devs with alive PIDs
-  echo "{\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-01\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
-  echo "{\"name\":\"dev-02\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-02\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
   # Idle dev-01 twice
-  echo "{\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-01\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
-  echo "{\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-01\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
 
   # dev-01 should have idle_count=2, dev-02 still at 0
@@ -159,15 +169,15 @@ run_health() {
 }
 
 @test "idle increments by teammate_name from documented payload" {
-  echo "{\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-01\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
-  echo "{\"name\":\"dev-02\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-02\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
-  echo "{\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-01\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle >/dev/null
-  echo "{\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-01\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle >/dev/null
 
   count_01=$(jq -r '.idle_count' "$HEALTH_DIR/dev-01.json")
@@ -177,17 +187,17 @@ run_health() {
 }
 
 @test "stuck advisory emitted at idle_count >= 3" {
-  echo "{\"name\":\"dev-03\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-03\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
   # Idle 3 times
-  echo "{\"teammate_name\":\"dev-03\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-03\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle > /dev/null
-  echo "{\"teammate_name\":\"dev-03\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-03\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle > /dev/null
 
   # Third idle should produce stuck advisory
-  output=$(echo "{\"teammate_name\":\"dev-03\",\"pid\":\"$$\"}" | \
+  output=$(echo "{\"teammate_name\":\"dev-03\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle)
 
   echo "$output" | grep -qi 'stuck\|appears stuck\|idle_count=3'
