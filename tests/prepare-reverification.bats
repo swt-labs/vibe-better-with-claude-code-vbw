@@ -123,6 +123,21 @@ EOF
   [[ "$output" == *"layout=flat"* ]]
 }
 
+@test "legacy round-dir remediation state preserves phase-root UAT" {
+  create_issues_uat
+
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$PHASE_DIR/03-UAT.md" ]
+  [[ "$output" == *"archived=kept"* ]]
+  [[ "$output" == *"layout=round-dir"* ]]
+}
+
 @test "round-dir layout: phase-root UAT absent exits 0 with skip marker" {
   # No UAT file exists (already archived)
   mkdir -p "$PHASE_DIR/remediation/uat/round-01"

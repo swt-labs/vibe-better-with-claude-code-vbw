@@ -62,10 +62,13 @@ _REM_STAGE="none"
 _new_stage_file="${PHASE_DIR%/}/remediation/uat/.uat-remediation-stage"
 _legacy_remed_stage_file="${PHASE_DIR%/}/remediation/.uat-remediation-stage"
 _stage_file="${PHASE_DIR%/}/.uat-remediation-stage"
+_active_stage_file=""
 if [ -f "$_new_stage_file" ]; then
+  _active_stage_file="$_new_stage_file"
   _REM_STAGE=$(grep '^stage=' "$_new_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
   _REM_STAGE="${_REM_STAGE:-none}"
 elif [ -f "$_legacy_remed_stage_file" ]; then
+  _active_stage_file="$_legacy_remed_stage_file"
   if grep -q '^stage=' "$_legacy_remed_stage_file" 2>/dev/null; then
     _REM_STAGE=$(grep '^stage=' "$_legacy_remed_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
   else
@@ -73,6 +76,7 @@ elif [ -f "$_legacy_remed_stage_file" ]; then
   fi
   _REM_STAGE="${_REM_STAGE:-none}"
 elif [ -f "$_stage_file" ]; then
+  _active_stage_file="$_stage_file"
   if grep -q '^stage=' "$_stage_file" 2>/dev/null; then
     _REM_STAGE=$(grep '^stage=' "$_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
   else
@@ -98,8 +102,8 @@ esac
 # Detect layout from remediation state file (before round counting — round-dir
 # layout uses a completely different archival strategy)
 _LAYOUT="flat"
-if [ -f "$_new_stage_file" ]; then
-  _layout_val=$(grep '^layout=' "$_new_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+if [ -n "$_active_stage_file" ] && [ -f "$_active_stage_file" ]; then
+  _layout_val=$(grep '^layout=' "$_active_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
   if [ "$_layout_val" = "round-dir" ]; then
     _LAYOUT="round-dir"
   fi
@@ -113,8 +117,8 @@ case "$UAT_FILE" in
     _uat_round="${_uat_round_raw:-0}"
     # Read current round from state file (strip leading zeros for numeric compare)
     _cur_round="1"
-    if [ -f "$_new_stage_file" ]; then
-      _cr_val=$(grep '^round=' "$_new_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    if [ -n "$_active_stage_file" ] && [ -f "$_active_stage_file" ]; then
+      _cr_val=$(grep '^round=' "$_active_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
       _cur_round=$(echo "${_cr_val:-01}" | sed 's/^0*//')
       _cur_round="${_cur_round:-1}"
     fi
