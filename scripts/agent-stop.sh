@@ -12,7 +12,7 @@ PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 COUNT_FILE="$PLANNING_DIR/.active-agent-count"
 LOCK_DIR="$PLANNING_DIR/.active-agent-count.lock"
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
-LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .name // ""' 2>/dev/null)
+LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
 
 has_vbw_context() {
   [ -f "$PLANNING_DIR/.vbw-session" ] \

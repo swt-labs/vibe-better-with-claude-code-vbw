@@ -400,6 +400,19 @@ load test_helper
   teardown_temp_dir
 }
 
+@test "agent-stop falls back to explicit legacy agentName when native agent_type is non-VBW" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo "dev" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
+  echo "1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  INPUT='{"agent_type":"helper-agent","agentName":"vbw-dev-01"}'
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '$INPUT' | bash '$SCRIPTS_DIR/agent-stop.sh'"
+  [ "$status" -eq 0 ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count" ]
+  teardown_temp_dir
+}
+
 @test "agent-stop two sequential stops from count=2 fully clean up markers" {
   setup_temp_dir
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
