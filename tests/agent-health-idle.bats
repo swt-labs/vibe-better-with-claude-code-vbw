@@ -12,20 +12,25 @@ SCRIPT="$BATS_TEST_DIRNAME/../scripts/agent-health.sh"
 
 setup() {
   export HEALTH_DIR
+  export PLANNING_DIR
   TMPDIR="$(mktemp -d)"
+  PLANNING_DIR="$TMPDIR/.vbw-planning"
   HEALTH_DIR="$TMPDIR/.vbw-planning/.agent-health"
   mkdir -p "$HEALTH_DIR"
+  echo "session" > "$PLANNING_DIR/.vbw-session"
+  export TEST_PLANNING_DIR="$PLANNING_DIR"
 
   # Override HEALTH_DIR inside agent-health.sh by creating a wrapper
   WRAPPER="$TMPDIR/agent-health-test.sh"
   cat > "$WRAPPER" <<'WRAPPER_EOF'
 #!/usr/bin/env bash
 set -u
+PLANNING_DIR="$TEST_PLANNING_DIR"
 HEALTH_DIR="$TEST_HEALTH_DIR"
 WRAPPER_EOF
   # Append the original script minus the first two lines (shebang + set -u)
-  # and minus the HEALTH_DIR assignment
-  tail -n +2 "$SCRIPT" | sed '/^HEALTH_DIR=/d' >> "$WRAPPER"
+  # and minus the PLANNING_DIR / HEALTH_DIR assignments
+  tail -n +2 "$SCRIPT" | sed '/^PLANNING_DIR=/d; /^HEALTH_DIR=/d' >> "$WRAPPER"
   chmod +x "$WRAPPER"
   export WRAPPER
 }
@@ -44,8 +49,8 @@ run_health() {
   # No start hook was called — health file doesn't exist
   [ ! -f "$HEALTH_DIR/dev-01.json" ]
 
-  # Send idle with teammate name "dev-01", use $$ as PID (alive process)
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  # Legacy/name-based payload inside an active VBW session
+  echo "{\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
 
   # After idle, a health file should exist (bootstrapped)
@@ -55,7 +60,7 @@ run_health() {
 @test "idle bootstrap: documented teammate_name payload creates health file" {
   [ ! -f "$HEALTH_DIR/dev-01.json" ]
 
-  echo "{\"agent_type\":\"dev\",\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
 
   [ -f "$HEALTH_DIR/dev-01.json" ]
@@ -63,10 +68,10 @@ run_health() {
 
 @test "unique keying: two Dev teammates get separate files" {
   # Start two different dev teammates with alive PIDs
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-02\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-02\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
   # Both should have separate health files
@@ -87,16 +92,16 @@ run_health() {
 
 @test "idle increments per-teammate, not by role" {
   # Start two devs with alive PIDs
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-02\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-02\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
   # Idle dev-01 twice
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
 
   # dev-01 should have idle_count=2, dev-02 still at 0
@@ -125,15 +130,15 @@ run_health() {
 }
 
 @test "idle increments by teammate_name from documented payload" {
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-02\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-02\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
-  echo "{\"agent_type\":\"dev\",\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle >/dev/null
-  echo "{\"agent_type\":\"dev\",\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle >/dev/null
 
   count_01=$(jq -r '.idle_count' "$HEALTH_DIR/dev-01.json")
@@ -143,17 +148,17 @@ run_health() {
 }
 
 @test "stuck advisory emitted at idle_count >= 3" {
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-03\",\"pid\":\"$$\"}" | \
+  echo "{\"name\":\"dev-03\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
 
   # Idle 3 times
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-03\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-03\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle > /dev/null
-  echo "{\"agent_type\":\"dev\",\"name\":\"dev-03\",\"pid\":\"$$\"}" | \
+  echo "{\"teammate_name\":\"dev-03\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle > /dev/null
 
   # Third idle should produce stuck advisory
-  output=$(echo "{\"agent_type\":\"dev\",\"name\":\"dev-03\",\"pid\":\"$$\"}" | \
+  output=$(echo "{\"teammate_name\":\"dev-03\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle)
 
   echo "$output" | grep -qi 'stuck\|appears stuck\|idle_count=3'

@@ -66,13 +66,44 @@ normalize_agent_role() {
   return 1
 }
 
+has_vbw_context() {
+  [ -f "$PLANNING_DIR/.vbw-session" ] \
+    || [ -f "$PLANNING_DIR/.active-agent" ] \
+    || [ -f "$PLANNING_DIR/.active-agent-count" ]
+}
+
+is_explicit_vbw_agent() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  echo "$lower" | grep -qE '^@?vbw:|^@?vbw-'
+}
+
 # Derive a unique agent key from hook JSON.
 # Preference: agent_id > teammate_name > name > task_id > agent_name > agent_type.
 # Role preference: agent_type > agent_name > name > teammate_name.
 # Also extracts a normalized role for metadata.
 extract_agent_key_and_role() {
   local input="$1"
-  local key="" role=""
+  local key="" role="" native_agent_type legacy_role_source role_source=""
+
+  native_agent_type=$(echo "$input" | jq -r '.agent_type // ""' 2>/dev/null)
+  legacy_role_source=$(echo "$input" | jq -r '.agent_name // .name // .teammate_name // ""' 2>/dev/null)
+
+  if [ -n "$native_agent_type" ]; then
+    if is_explicit_vbw_agent "$native_agent_type"; then
+      role_source="$native_agent_type"
+    else
+      echo "|"
+      return 0
+    fi
+  elif is_explicit_vbw_agent "$legacy_role_source" || has_vbw_context; then
+    role_source="$legacy_role_source"
+  else
+    echo "|"
+    return 0
+  fi
 
   # Extract unique key: prefer native agent_id (e.g. "dev-01"), then fall
   # back through legacy fields used by older Claude Code runtimes.
@@ -97,11 +128,10 @@ extract_agent_key_and_role() {
   key=$(normalize_agent_key "$key")
 
   # Extract role separately (for metadata/reporting and orphan recovery).
-  role=$(echo "$input" | jq -r '.agent_type // .agent_name // .name // .teammate_name // ""' 2>/dev/null)
-  if role=$(normalize_agent_role "$role"); then
+  if role=$(normalize_agent_role "$role_source"); then
     :
   else
-    role=$(normalize_agent_key "$role")
+    role=$(normalize_agent_key "$role_source")
     role=$(echo "$role" | sed -E 's/-[0-9]+$//')
   fi
 

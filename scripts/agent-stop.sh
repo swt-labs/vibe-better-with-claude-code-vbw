@@ -11,6 +11,39 @@ LAST_MESSAGE=$(echo "$INPUT" | jq -r '.last_assistant_message // ""' 2>/dev/null
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 COUNT_FILE="$PLANNING_DIR/.active-agent-count"
 LOCK_DIR="$PLANNING_DIR/.active-agent-count.lock"
+NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
+LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .name // ""' 2>/dev/null)
+
+has_vbw_context() {
+  [ -f "$PLANNING_DIR/.vbw-session" ] \
+    || [ -f "$PLANNING_DIR/.active-agent" ] \
+    || [ -f "$COUNT_FILE" ]
+}
+
+is_explicit_vbw_agent() {
+  local value="$1"
+  local lower
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  echo "$lower" | grep -qE '^@?vbw:|^@?vbw-'
+}
+
+should_process_stop() {
+  if [ -n "$NATIVE_AGENT_TYPE" ]; then
+    is_explicit_vbw_agent "$NATIVE_AGENT_TYPE"
+    return $?
+  fi
+
+  if [ -n "$LEGACY_AGENT_ROLE_SOURCE" ]; then
+    if is_explicit_vbw_agent "$LEGACY_AGENT_ROLE_SOURCE" || has_vbw_context; then
+      return 0
+    fi
+
+    return 1
+  fi
+
+  # Legacy callers/tests may not provide identity fields at all.
+  return 0
+}
 
 acquire_lock() {
   local attempts=0
@@ -78,6 +111,10 @@ decrement_or_cleanup() {
     rm -f "$PLANNING_DIR/.active-agent"
   fi
 }
+
+if ! should_process_stop; then
+  exit 0
+fi
 
 if acquire_lock; then
   trap 'release_lock' EXIT INT TERM

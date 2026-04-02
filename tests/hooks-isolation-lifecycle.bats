@@ -352,6 +352,19 @@ load test_helper
   teardown_temp_dir
 }
 
+@test "agent-stop ignores bare native agent_type even inside a VBW session" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo "session" > "$TEST_TEMP_DIR/.vbw-planning/.vbw-session"
+  echo "dev" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
+  echo "1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '{\"agent_type\":\"dev\"}' | bash '$SCRIPTS_DIR/agent-stop.sh'"
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count" ]
+  teardown_temp_dir
+}
+
 @test "agent-stop two sequential stops from count=2 fully clean up markers" {
   setup_temp_dir
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"

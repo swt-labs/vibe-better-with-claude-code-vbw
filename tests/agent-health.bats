@@ -152,6 +152,14 @@ EOF
   kill $SLEEP_PID 2>/dev/null || true
 }
 
+@test "agent-health: start ignores bare native agent_type even in a VBW session" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo "session" > "$TEST_TEMP_DIR/.vbw-planning/.vbw-session"
+  echo '{"pid":"12345","agent_type":"dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  [ ! -d "$HEALTH_DIR" ] || [ ! -f "$HEALTH_DIR/dev.json" ]
+}
+
 # Test 6: cleanup removes directory
 @test "agent-health: cleanup removes directory" {
   cd "$TEST_TEMP_DIR"

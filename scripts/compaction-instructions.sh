@@ -104,6 +104,23 @@ resolve_agent_role() {
   return 1
 }
 
+worktree_isolation_enabled() {
+  local config_path="$PLANNING_DIR/config.json"
+  local isolation="off"
+
+  if [ -f "$config_path" ]; then
+    isolation=$(jq -r '.worktree_isolation // "off"' "$config_path" 2>/dev/null) || isolation="off"
+  fi
+
+  [ "$isolation" != "off" ]
+}
+
+fallback_worktree_path() {
+  if worktree_isolation_enabled; then
+    pwd -P 2>/dev/null || true
+  fi
+}
+
 resolve_worktree_map_file() {
   local storage_dir="$PLANNING_DIR/.agent-worktrees"
   local candidate normalized role_matches match_count first_match
@@ -155,9 +172,11 @@ case "$AGENT_ROLE" in
     WORKTREE_MAP_FILE=$(resolve_worktree_map_file) || WORKTREE_MAP_FILE=""
     if [ -n "$WORKTREE_MAP_FILE" ] && [ -f "$WORKTREE_MAP_FILE" ]; then
       WORKTREE_PATH=$(jq -r '.worktree_path // ""' "$WORKTREE_MAP_FILE" 2>/dev/null) || WORKTREE_PATH=""
-      if [ -n "$WORKTREE_PATH" ]; then
-        PRIORITIES="$PRIORITIES CRITICAL: Your working directory is ${WORKTREE_PATH}. All file operations MUST use this path."
-      fi
+    else
+      WORKTREE_PATH=$(fallback_worktree_path)
+    fi
+    if [ -n "$WORKTREE_PATH" ]; then
+      PRIORITIES="$PRIORITIES CRITICAL: Your working directory is ${WORKTREE_PATH}. All file operations MUST use this path."
     fi
     ;;
   qa)

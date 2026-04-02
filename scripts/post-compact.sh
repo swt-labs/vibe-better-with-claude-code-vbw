@@ -127,6 +127,23 @@ resolve_worktree_map_file() {
   return 1
 }
 
+worktree_isolation_enabled() {
+  local config_path="$VBW_PLANNING_DIR/config.json"
+  local isolation="off"
+
+  if [ -f "$config_path" ]; then
+    isolation=$(jq -r '.worktree_isolation // "off"' "$config_path" 2>/dev/null) || isolation="off"
+  fi
+
+  [ "$isolation" != "off" ]
+}
+
+fallback_worktree_path() {
+  if worktree_isolation_enabled; then
+    pwd -P 2>/dev/null || true
+  fi
+}
+
 # Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
 # shellcheck source=lib/vbw-config-root.sh
 . "$(dirname "$0")/lib/vbw-config-root.sh"
@@ -292,9 +309,11 @@ if echo "$ROLE" | grep -q "vbw-dev\|vbw-debugger"; then
   WORKTREE_MAP_FILE=$(resolve_worktree_map_file) || WORKTREE_MAP_FILE=""
   if [ -n "$WORKTREE_MAP_FILE" ] && [ -f "$WORKTREE_MAP_FILE" ]; then
     WT_PATH=$(jq -r '.worktree_path // ""' "$WORKTREE_MAP_FILE" 2>/dev/null) || WT_PATH=""
-    if [ -n "$WT_PATH" ]; then
-      WORKTREE_CONTEXT=" Worktree working directory: ${WT_PATH}. All file operations must use this path."
-    fi
+  else
+    WT_PATH=$(fallback_worktree_path)
+  fi
+  if [ -n "$WT_PATH" ]; then
+    WORKTREE_CONTEXT=" Worktree working directory: ${WT_PATH}. All file operations must use this path."
   fi
 fi
 
