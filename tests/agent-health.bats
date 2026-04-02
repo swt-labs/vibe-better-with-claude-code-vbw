@@ -293,6 +293,32 @@ EOF
   [ ! -d "$HEALTH_DIR" ] || [ ! -f "$HEALTH_DIR/dev-01.json" ]
 }
 
+@test "agent-health: idle accepts legacy teammate_name for VBW-owned team namespaces" {
+  cd "$TEST_TEMP_DIR"
+
+  sleep 30 &
+  LIVE_PID=$!
+
+  while IFS='|' read -r teammate expected_role team_name; do
+    run bash -c "echo '{\"teammate_name\":\"$teammate\",\"team_name\":\"$team_name\",\"pid\":\"$LIVE_PID\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle >/dev/null"
+    [ "$status" -eq 0 ]
+
+    run jq -r '.key' "$HEALTH_DIR/${teammate}.json"
+    [ "$output" = "$teammate" ]
+    run jq -r '.role' "$HEALTH_DIR/${teammate}.json"
+    [ "$output" = "$expected_role" ]
+    run jq -r '.idle_count' "$HEALTH_DIR/${teammate}.json"
+    [ "$output" = "1" ]
+  done <<'EOF'
+dev-01|dev|vbw-phase-01
+debugger-01|debugger|vbw-debug-1741625400
+scout-01|scout|vbw-map-duo
+scout-02|scout|vbw-map-quad
+EOF
+
+  kill $LIVE_PID 2>/dev/null || true
+}
+
 # Test 6: cleanup removes directory
 @test "agent-health: cleanup removes directory" {
   cd "$TEST_TEMP_DIR"

@@ -85,7 +85,7 @@ is_vbw_team_name() {
   local lower
 
   lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
-  echo "$lower" | grep -qE '^vbw-phase-[0-9]+$'
+  echo "$lower" | grep -qE '^vbw-[a-z0-9-]+$'
 }
 
 extract_payload_pid() {
