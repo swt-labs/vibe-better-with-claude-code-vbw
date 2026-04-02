@@ -56,6 +56,7 @@ require_all "$EXEC_PROTO" \
   "Verify file existence, deletion, or structure" \
   "Run a test suite or individual test" \
   "Run a CLI command and check its exit code or output" \
+  "Execute a script and verify it passes" \
   "Run a linter, type-checker, or build command"
 
 require_all "$VERIFY_FILE" \
