@@ -318,6 +318,11 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/extract-uat-resume.sh" "$PDIR"
   ```
   Use this target-specific output instead of the auto-detected blocks from Context. Do NOT force full scope — let `compile-verify-context-for-uat.sh` decide whether the explicit target phase is full-scope verification or remediation re-verification. Apply the QA gate above to the explicit target phase only.
+  Then check the explicit target's own remediation stage:
+  ```bash
+  bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh" get "{phase-dir}"
+  ```
+  If that stage is `research`, `plan`, `execute`, or `fix`, STOP: `Phase {NN} has active UAT remediation (stage {stage}). Run /vbw:vibe to continue remediation before re-verification.`
 
 ### 2. Handle re-verification state
 

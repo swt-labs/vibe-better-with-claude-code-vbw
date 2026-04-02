@@ -314,10 +314,11 @@ fi
 
 if grep -q 'ignore the pre-computed verify context, `next_phase_state`, `qa_status`, and UAT resume metadata' "$VERIFY_FILE" \
   && grep -q 'Do NOT force full scope' "$VERIFY_FILE" \
-  && grep -q 'Use UAT resume metadata for the active target phase' "$VERIFY_FILE"; then
-  pass "verify: explicit target phase uses target-specific verify state instead of auto-detected phase state"
+  && grep -q 'Use UAT resume metadata for the active target phase' "$VERIFY_FILE" \
+  && grep -q 'uat-remediation-state\.sh" get "{phase-dir}"' "$VERIFY_FILE"; then
+  pass "verify: explicit target phase uses target-specific verify state and blocks mid-remediation UAT"
 else
-  fail "verify: explicit target phase still depends on auto-detected verify state"
+  fail "verify: explicit target phase still depends on auto-detected state or allows mid-remediation UAT"
 fi
 
 if grep -q '_uat_state_file=.*remediation/uat/\.uat-remediation-stage' "$VERIFY_FILE" \
