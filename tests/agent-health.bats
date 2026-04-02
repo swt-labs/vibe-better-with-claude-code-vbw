@@ -28,11 +28,11 @@ teardown() {
 
 @test "agent-health: start prefers agent_id for health file key" {
   cd "$TEST_TEMP_DIR"
-  echo '{"pid":"12345","agent_id":"dev-01","agent_type":"vbw-dev","name":"legacy-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
-  [ -f "$HEALTH_DIR/dev-01.json" ]
-  run jq -r '.key' "$HEALTH_DIR/dev-01.json"
-  [ "$output" = "dev-01" ]
-  run jq -r '.role' "$HEALTH_DIR/dev-01.json"
+  echo '{"pid":"12345","agent_id":"agent-abc123","agent_type":"vbw-dev","name":"dev-01"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  [ -f "$HEALTH_DIR/agent-abc123.json" ]
+  run jq -r '.key' "$HEALTH_DIR/agent-abc123.json"
+  [ "$output" = "agent-abc123" ]
+  run jq -r '.role' "$HEALTH_DIR/agent-abc123.json"
   [ "$output" = "dev" ]
 }
 
@@ -122,9 +122,9 @@ EOF
 }
 EOF
 
-  echo '{"pid":"99998","agent_id":"dev-01","agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  echo '{"pid":"99998","agent_id":"agent-stop-001","agent_type":"vbw:vbw-dev","name":"dev-01"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
-  run bash -c "echo '{\"pid\":\"99998\",\"agent_id\":\"dev-01\",\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
+  run bash -c "echo '{\"pid\":\"99998\",\"agent_id\":\"agent-stop-001\",\"agent_type\":\"vbw:vbw-dev\",\"name\":\"dev-01\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
   [[ "$output" == *"task-stop"* ]]
 
   run jq -r '.owner' "$TASKS_DIR/task-stop.json"

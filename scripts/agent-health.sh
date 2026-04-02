@@ -13,6 +13,59 @@ HEALTH_DIR="$PLANNING_DIR/.agent-health"
 # shellcheck source=resolve-claude-dir.sh
 . "$(dirname "$0")/resolve-claude-dir.sh" 2>/dev/null || true
 
+normalize_agent_key() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+  lower="${lower#vbw-}"
+  printf '%s' "$lower"
+}
+
+normalize_agent_role() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+
+  case "$lower" in
+    vbw-lead|vbw-lead-[0-9]*|lead|lead-[0-9]*|team-lead|team-lead-[0-9]*)
+      printf 'lead'
+      return 0
+      ;;
+    vbw-dev|vbw-dev-[0-9]*|dev|dev-[0-9]*|team-dev|team-dev-[0-9]*)
+      printf 'dev'
+      return 0
+      ;;
+    vbw-qa|vbw-qa-[0-9]*|qa|qa-[0-9]*|team-qa|team-qa-[0-9]*)
+      printf 'qa'
+      return 0
+      ;;
+    vbw-scout|vbw-scout-[0-9]*|scout|scout-[0-9]*|team-scout|team-scout-[0-9]*)
+      printf 'scout'
+      return 0
+      ;;
+    vbw-debugger|vbw-debugger-[0-9]*|debugger|debugger-[0-9]*|team-debugger|team-debugger-[0-9]*)
+      printf 'debugger'
+      return 0
+      ;;
+    vbw-architect|vbw-architect-[0-9]*|architect|architect-[0-9]*|team-architect|team-architect-[0-9]*)
+      printf 'architect'
+      return 0
+      ;;
+    vbw-docs|vbw-docs-[0-9]*|docs|docs-[0-9]*|team-docs|team-docs-[0-9]*)
+      printf 'docs'
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
 # Derive a unique agent key from hook JSON.
 # Preference: agent_id > name > task_id > agent_name > agent_type.
 # Role preference: agent_type > agent_name > name.
@@ -37,14 +90,17 @@ extract_agent_key_and_role() {
     key=$(echo "$input" | jq -r '.agent_type // ""' 2>/dev/null)
   fi
 
-  # Normalize key: strip prefixes, lowercase
-  key=$(echo "$key" | sed -E 's/^@?vbw[:-]//i' | tr '[:upper:]' '[:lower:]')
+  # Normalize key for use as a stable health-file name.
+  key=$(normalize_agent_key "$key")
 
-  # Extract role separately (for metadata/reporting)
+  # Extract role separately (for metadata/reporting and orphan recovery).
   role=$(echo "$input" | jq -r '.agent_type // .agent_name // .name // ""' 2>/dev/null)
-  role=$(echo "$role" | sed -E 's/^@?vbw[:-]//i' | tr '[:upper:]' '[:lower:]')
-  # Normalize to base role (strip numeric suffixes like dev-01 -> dev)
-  role=$(echo "$role" | sed -E 's/-[0-9]+$//')
+  if role=$(normalize_agent_role "$role"); then
+    :
+  else
+    role=$(normalize_agent_key "$role")
+    role=$(echo "$role" | sed -E 's/-[0-9]+$//')
+  fi
 
   echo "$key|$role"
 }

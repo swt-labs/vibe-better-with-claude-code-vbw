@@ -66,7 +66,7 @@ extract_agent_role() {
 
 extract_agent_instance() {
   local value
-  value=$(echo "$INPUT" | jq -r '.agent_id // .name // .agent_name // .agentName // .agent_type // ""' 2>/dev/null) || value=""
+  value=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // .agent_id // .agent_type // ""' 2>/dev/null) || value=""
   normalize_agent_instance "$value"
 }
 

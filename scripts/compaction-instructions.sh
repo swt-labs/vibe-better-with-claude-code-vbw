@@ -15,7 +15,7 @@ PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 
 INPUT=$(cat)
 ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_type // .agent_name // .agentName // .name // ""' 2>/dev/null)
-INSTANCE_SOURCE=$(echo "$INPUT" | jq -r '.agent_id // .name // .agent_name // .agentName // .agent_type // ""' 2>/dev/null)
+INSTANCE_SOURCE=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // .agent_id // .agent_type // ""' 2>/dev/null)
 MATCHER=$(echo "$INPUT" | jq -r '.matcher // "auto"')
 
 normalize_agent_role() {
