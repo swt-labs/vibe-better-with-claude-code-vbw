@@ -26,6 +26,16 @@ teardown() {
   [ "$output" = "0" ]
 }
 
+@test "agent-health: start prefers agent_id for health file key" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"pid":"12345","agent_id":"dev-01","agent_type":"vbw-dev","name":"legacy-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  [ -f "$HEALTH_DIR/dev-01.json" ]
+  run jq -r '.key' "$HEALTH_DIR/dev-01.json"
+  [ "$output" = "dev-01" ]
+  run jq -r '.role' "$HEALTH_DIR/dev-01.json"
+  [ "$output" = "dev" ]
+}
+
 # Test 2: idle increments count
 @test "agent-health: idle increments count" {
   cd "$TEST_TEMP_DIR"
@@ -95,6 +105,31 @@ EOF
   [ "$output" = "" ]
 
   # Cleanup
+  rm -rf "$TASKS_DIR"
+}
+
+@test "agent-health: stop orphan recovery still uses role when key comes from agent_id" {
+  cd "$TEST_TEMP_DIR"
+  TASKS_DIR="$CLAUDE_CONFIG_DIR/tasks/test-team-stop-$$"
+  mkdir -p "$TASKS_DIR"
+
+  cat > "$TASKS_DIR/task-stop.json" <<EOF
+{
+  "id": "task-stop",
+  "owner": "dev",
+  "status": "in_progress",
+  "subject": "Stop recovery task"
+}
+EOF
+
+  echo '{"pid":"99998","agent_id":"dev-01","agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+
+  run bash -c "echo '{\"pid\":\"99998\",\"agent_id\":\"dev-01\",\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
+  [[ "$output" == *"task-stop"* ]]
+
+  run jq -r '.owner' "$TASKS_DIR/task-stop.json"
+  [ "$output" = "" ]
+
   rm -rf "$TASKS_DIR"
 }
 

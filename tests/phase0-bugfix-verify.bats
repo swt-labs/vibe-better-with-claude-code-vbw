@@ -191,6 +191,15 @@ CONV
   echo "$output" | grep -q "research findings"
 }
 
+@test "compaction-instructions.sh accepts native agent_type without legacy agent_name" {
+  cd "$TEST_TEMP_DIR"
+
+  run bash -c 'echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"dev-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "commit hashes"
+  echo "$output" | grep -q "file paths modified"
+}
+
 @test "compaction-instructions.sh writes compaction marker" {
   cd "$TEST_TEMP_DIR"
   mkdir -p .vbw-planning

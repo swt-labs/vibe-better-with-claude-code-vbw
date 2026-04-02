@@ -14,14 +14,19 @@ HEALTH_DIR="$PLANNING_DIR/.agent-health"
 . "$(dirname "$0")/resolve-claude-dir.sh" 2>/dev/null || true
 
 # Derive a unique agent key from hook JSON.
-# Preference: name > task_id > agent_name > agent_type (role fallback).
+# Preference: agent_id > name > task_id > agent_name > agent_type.
+# Role preference: agent_type > agent_name > name.
 # Also extracts a normalized role for metadata.
 extract_agent_key_and_role() {
   local input="$1"
   local key="" role=""
 
-  # Extract unique key: prefer name (e.g. "dev-01"), then task_id, then agent_name
-  key=$(echo "$input" | jq -r '.name // ""' 2>/dev/null)
+  # Extract unique key: prefer native agent_id (e.g. "dev-01"), then fall
+  # back through legacy fields used by older Claude Code runtimes.
+  key=$(echo "$input" | jq -r '.agent_id // ""' 2>/dev/null)
+  if [ -z "$key" ]; then
+    key=$(echo "$input" | jq -r '.name // ""' 2>/dev/null)
+  fi
   if [ -z "$key" ]; then
     key=$(echo "$input" | jq -r '.task_id // ""' 2>/dev/null)
   fi
@@ -138,7 +143,7 @@ cmd_start() {
 }
 
 cmd_idle() {
-  local input key role key_role health_file pid idle_count now advisory
+  local input key role key_role health_file pid idle_count now advisory recovery_role
   input=$(cat)
 
   # Extract unique key and normalized role
@@ -180,7 +185,9 @@ cmd_idle() {
   # Check PID liveness
   if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
     # PID is dead — call orphan recovery
-    advisory=$(orphan_recovery "$role" "$pid")
+    recovery_role="$role"
+    [ -z "$recovery_role" ] && recovery_role="$key"
+    advisory=$(orphan_recovery "$recovery_role" "$pid")
     jq -n \
       --arg event "TeammateIdle" \
       --arg context "$advisory" \
@@ -221,7 +228,7 @@ cmd_idle() {
 }
 
 cmd_stop() {
-  local input key role key_role health_file pid advisory
+  local input key role key_role health_file pid advisory recovery_role
   input=$(cat)
 
   # Extract unique key and normalized role
@@ -242,7 +249,9 @@ cmd_stop() {
 
     if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
       # PID is dead — call orphan recovery
-      advisory=$(orphan_recovery "$key" "$pid")
+      recovery_role="$role"
+      [ -z "$recovery_role" ] && recovery_role="$key"
+      advisory=$(orphan_recovery "$recovery_role" "$pid")
     fi
 
     # Remove health file

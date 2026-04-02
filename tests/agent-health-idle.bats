@@ -65,6 +65,17 @@ run_health() {
   [ -f "$HEALTH_DIR/dev-02.json" ]
 }
 
+@test "unique keying: native agent_id distinguishes same-role teammates without name" {
+  echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"dev-01\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
+
+  echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"dev-02\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
+
+  [ -f "$HEALTH_DIR/dev-01.json" ]
+  [ -f "$HEALTH_DIR/dev-02.json" ]
+}
+
 @test "idle increments per-teammate, not by role" {
   # Start two devs with alive PIDs
   echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"pid\":\"$$\"}" | \
@@ -80,6 +91,24 @@ run_health() {
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
 
   # dev-01 should have idle_count=2, dev-02 still at 0
+  count_01=$(jq -r '.idle_count' "$HEALTH_DIR/dev-01.json")
+  count_02=$(jq -r '.idle_count' "$HEALTH_DIR/dev-02.json")
+  [ "$count_01" -eq 2 ]
+  [ "$count_02" -eq 0 ]
+}
+
+@test "idle increments by native agent_id when legacy name is absent" {
+  echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"dev-01\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
+
+  echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"dev-02\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" start
+
+  echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"dev-01\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle >/dev/null
+  echo "{\"agent_type\":\"vbw-dev\",\"agent_id\":\"dev-01\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle >/dev/null
+
   count_01=$(jq -r '.idle_count' "$HEALTH_DIR/dev-01.json")
   count_02=$(jq -r '.idle_count' "$HEALTH_DIR/dev-02.json")
   [ "$count_01" -eq 2 ]

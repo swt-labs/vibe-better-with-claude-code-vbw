@@ -5,6 +5,71 @@ set -u
 
 INPUT=$(cat)
 
+normalize_agent_role() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+
+  case "$lower" in
+    vbw-lead|vbw-lead-[0-9]*|lead|lead-[0-9]*|team-lead|team-lead-[0-9]*)
+      printf 'vbw-lead'
+      return 0
+      ;;
+    vbw-dev|vbw-dev-[0-9]*|dev|dev-[0-9]*|team-dev|team-dev-[0-9]*)
+      printf 'vbw-dev'
+      return 0
+      ;;
+    vbw-qa|vbw-qa-[0-9]*|qa|qa-[0-9]*|team-qa|team-qa-[0-9]*)
+      printf 'vbw-qa'
+      return 0
+      ;;
+    vbw-scout|vbw-scout-[0-9]*|scout|scout-[0-9]*|team-scout|team-scout-[0-9]*)
+      printf 'vbw-scout'
+      return 0
+      ;;
+    vbw-debugger|vbw-debugger-[0-9]*|debugger|debugger-[0-9]*|team-debugger|team-debugger-[0-9]*)
+      printf 'vbw-debugger'
+      return 0
+      ;;
+    vbw-architect|vbw-architect-[0-9]*|architect|architect-[0-9]*|team-architect|team-architect-[0-9]*)
+      printf 'vbw-architect'
+      return 0
+      ;;
+    vbw-docs|vbw-docs-[0-9]*|docs|docs-[0-9]*|team-docs|team-docs-[0-9]*)
+      printf 'vbw-docs'
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+normalize_agent_instance() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+  lower="${lower#vbw-}"
+  printf '%s' "$lower"
+}
+
+extract_agent_role() {
+  local value
+  value=$(echo "$INPUT" | jq -r '.agent_type // .agent_name // .agentName // .name // ""' 2>/dev/null) || value=""
+  normalize_agent_role "$value"
+}
+
+extract_agent_instance() {
+  local value
+  value=$(echo "$INPUT" | jq -r '.agent_id // .name // .agent_name // .agentName // .agent_type // ""' 2>/dev/null) || value=""
+  normalize_agent_instance "$value"
+}
+
 # Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
 # shellcheck source=lib/vbw-config-root.sh
 . "$(dirname "$0")/lib/vbw-config-root.sh"
@@ -46,14 +111,13 @@ if [ -d "$VBW_PLANNING_DIR/.compacting" ]; then
   done
 fi
 
-# Try to identify agent role from input context
+# Try to identify agent role from explicit hook fields.
 ROLE=""
-for pattern in vbw-lead vbw-dev vbw-qa vbw-scout vbw-debugger vbw-architect vbw-docs; do
-  if echo "$INPUT" | grep -qi "$pattern"; then
-    ROLE="$pattern"
-    break
-  fi
-done
+if ROLE=$(extract_agent_role); then
+  :
+else
+  ROLE=""
+fi
 
 # Convert plan id (e.g. "05-01") to numeric plan number (e.g. "1")
 plan_id_to_num() {
@@ -168,8 +232,7 @@ fi
 # --- Worktree context injection ---
 WORKTREE_CONTEXT=""
 if echo "$ROLE" | grep -q "vbw-dev\|vbw-debugger"; then
-  AGENT_NAME_COMPACT=$(echo "$INPUT" | jq -r '.agent_name // .agentName // ""' 2>/dev/null) || AGENT_NAME_COMPACT=""
-  AGENT_NAME_SHORT=$(echo "$AGENT_NAME_COMPACT" | sed 's/.*vbw-//')
+  AGENT_NAME_SHORT=$(extract_agent_instance 2>/dev/null) || AGENT_NAME_SHORT=""
   WORKTREE_MAP_FILE="$VBW_PLANNING_DIR/.agent-worktrees/${AGENT_NAME_SHORT}.json"
   if [ -f "$WORKTREE_MAP_FILE" ]; then
     WT_PATH=$(jq -r '.worktree_path // ""' "$WORKTREE_MAP_FILE" 2>/dev/null) || WT_PATH=""

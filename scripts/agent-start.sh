@@ -7,7 +7,8 @@ INPUT=$(cat)
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 [ ! -d "$PLANNING_DIR" ] && exit 0
 
-AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // .agent_name // .name // ""' 2>/dev/null)
+# Prefer native agent_type (CC v2.1.69+) and keep legacy fallback for older runtimes.
+AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_type // .agent_name // .name // ""' 2>/dev/null)
 
 normalize_agent_role() {
   local value="$1"
@@ -59,7 +60,7 @@ is_explicit_vbw_agent() {
 }
 
 ROLE=""
-if ROLE=$(normalize_agent_role "$AGENT_TYPE"); then
+if ROLE=$(normalize_agent_role "$AGENT_ROLE_SOURCE"); then
   :
 else
   ROLE=""
@@ -126,7 +127,7 @@ update_agent_markers() {
 
 if [ -n "$ROLE" ]; then
   # Accept non-prefixed role aliases only when a VBW context is already active.
-  if is_explicit_vbw_agent "$AGENT_TYPE" \
+  if is_explicit_vbw_agent "$AGENT_ROLE_SOURCE" \
     || [ -f "$PLANNING_DIR/.vbw-session" ] \
     || [ -f "$PLANNING_DIR/.active-agent" ] \
     || [ -f "$COUNT_FILE" ]; then

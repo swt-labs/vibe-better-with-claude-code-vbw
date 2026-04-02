@@ -160,6 +160,39 @@ load test_helper
   teardown_temp_dir
 }
 
+@test "agent-start prefers native agent_type over conflicting legacy aliases" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  INPUT='{"agent_type":"vbw-dev","agent_name":"team-lead"}'
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '$INPUT' | bash '$SCRIPTS_DIR/agent-start.sh'"
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent")" = "dev" ]
+  teardown_temp_dir
+}
+
+@test "agent-start falls back to legacy name when native fields are absent" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  INPUT='{"name":"vbw-qa"}'
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '$INPUT' | bash '$SCRIPTS_DIR/agent-start.sh'"
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent")" = "qa" ]
+  teardown_temp_dir
+}
+
+@test "agent-start ignores non-VBW agent_type payloads" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  INPUT='{"agent_type":"helper-agent"}'
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '$INPUT' | bash '$SCRIPTS_DIR/agent-start.sh'"
+  [ "$status" -eq 0 ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count" ]
+  teardown_temp_dir
+}
+
 @test "agent-start creates count file for reference counting" {
   setup_temp_dir
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
