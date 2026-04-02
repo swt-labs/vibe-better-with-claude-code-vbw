@@ -518,9 +518,9 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
     fi
   fi
 
-  # Check TeamCreate: if body uses TeamCreate (not in a "do not" instruction),
-  # allowed-tools must include it
-  if printf '%s\n' "$body" | grep -vi 'do not' | grep -q 'TeamCreate'; then
+  # Check TeamCreate: if body uses TeamCreate (not in a "do not [use] TeamCreate"
+  # instruction), allowed-tools must include it
+  if printf '%s\n' "$body" | grep -q 'TeamCreate' && printf '%s\n' "$body" | grep 'TeamCreate' | grep -qvi 'do not.*TeamCreate'; then
     if printf '%s\n' "$ALLOWED" | grep -q 'TeamCreate'; then
       pass "$base: TeamCreate in body matches allowed-tools"
     else
@@ -528,9 +528,9 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
     fi
   fi
 
-  # Check TaskCreate: if body uses TaskCreate (not in a "do not" instruction),
-  # allowed-tools must include it
-  if printf '%s\n' "$body" | grep -vi 'do not' | grep -q 'TaskCreate'; then
+  # Check TaskCreate: if body uses TaskCreate (not in a "do not [use] TaskCreate"
+  # instruction), allowed-tools must include it
+  if printf '%s\n' "$body" | grep -q 'TaskCreate' && printf '%s\n' "$body" | grep 'TaskCreate' | grep -qvi 'do not.*TaskCreate'; then
     if printf '%s\n' "$ALLOWED" | grep -q 'TaskCreate'; then
       pass "$base: TaskCreate in body matches allowed-tools"
     else
@@ -538,9 +538,9 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
     fi
   fi
 
-  # Check SendMessage: if body uses SendMessage (not in a "do not" instruction),
-  # allowed-tools must include it
-  if printf '%s\n' "$body" | grep -vi 'do not' | grep -q 'SendMessage'; then
+  # Check SendMessage: if body uses SendMessage (not in a "do not [use] SendMessage"
+  # instruction), allowed-tools must include it
+  if printf '%s\n' "$body" | grep -q 'SendMessage' && printf '%s\n' "$body" | grep 'SendMessage' | grep -qvi 'do not.*SendMessage'; then
     if printf '%s\n' "$ALLOWED" | grep -q 'SendMessage'; then
       pass "$base: SendMessage in body matches allowed-tools"
     else
@@ -548,9 +548,9 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
     fi
   fi
 
-  # Check TeamDelete: if body uses TeamDelete (not in a "do not" instruction),
-  # allowed-tools must include it
-  if printf '%s\n' "$body" | grep -vi 'do not' | grep -q 'TeamDelete'; then
+  # Check TeamDelete: if body uses TeamDelete (not in a "do not [use] TeamDelete"
+  # instruction), allowed-tools must include it
+  if printf '%s\n' "$body" | grep -q 'TeamDelete' && printf '%s\n' "$body" | grep 'TeamDelete' | grep -qvi 'do not.*TeamDelete'; then
     if printf '%s\n' "$ALLOWED" | grep -q 'TeamDelete'; then
       pass "$base: TeamDelete in body matches allowed-tools"
     else
