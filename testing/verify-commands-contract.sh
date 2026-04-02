@@ -257,6 +257,13 @@ else
   fail "vibe: precomputed UAT context missing shared scope resolver"
 fi
 
+if grep -q 'extract-uat-resume\.sh "{phase-dir}"' "$VIBE_FILE" \
+  && grep -q 'remediation/uat/round-{RR}/R{RR}-UAT.md' "$VIBE_FILE"; then
+  pass "vibe: needs_reverification refreshes and validates round-dir uat_path"
+else
+  fail "vibe: needs_reverification missing refreshed round-dir uat_path validation"
+fi
+
 if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$ROOT/references/execute-protocol.md"; then
   pass "execute-protocol: QA remediation verify uses remediation-only verify context"
 else
@@ -293,6 +300,14 @@ if grep -q 'compile-verify-context-for-uat\.sh' "$VERIFY_FILE"; then
   pass "verify: misnamed-plan refresh recomputes UAT scope through shared resolver"
 else
   fail "verify: misnamed-plan refresh missing shared UAT scope resolver"
+fi
+
+if grep -q 'uat-remediation-state\.sh get-or-init "{phase-dir}" major' "$VERIFY_FILE" \
+  && grep -q 'remediation/uat/round-{RR}/R{RR}-UAT.md' "$VERIFY_FILE" \
+  && grep -q 'extract-uat-resume\.sh "{phase-dir}"' "$VERIFY_FILE"; then
+  pass "verify: remediation re-verification refreshes and validates round-dir uat_path"
+else
+  fail "verify: remediation re-verification missing refreshed round-dir uat_path validation"
 fi
 
 if grep -q '_uat_state_file=.*remediation/uat/\.uat-remediation-stage' "$VERIFY_FILE" \

@@ -249,7 +249,9 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   done
 
   # Legacy fallback: check old remediation/round-* layout if no new-style round dir found.
-  if [ -z "$LATEST_ROUND" ] && [ -d "$PHASE_DIR/remediation" ]; then
+  # Legacy round dirs represent historical UAT remediation only; an explicit
+  # QA filter must not cross over into that legacy UAT chain.
+  if [ -z "$LATEST_ROUND" ] && [ -d "$PHASE_DIR/remediation" ] && [ "$REMEDIATION_KIND" != "qa" ]; then
     REMED_DIR="$PHASE_DIR/remediation"
     REMED_KIND="legacy"
     _best_round_num=0

@@ -2803,3 +2803,75 @@ SUM
   [ "$status" -eq 1 ]
   [[ "$output" == *"requires a value"* ]]
 }
+
+@test "compile-verify-context: --remediation-kind qa does not fall back to legacy remediation rounds" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Root plan
+must_haves:
+  - Root feature works
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Root feature
+EOF
+
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: Legacy remediation
+must_haves:
+  - Legacy fix
+---
+EOF
+  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+---
+plan: R01
+status: complete
+---
+## What Was Built
+- Legacy fix
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only --remediation-kind qa "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=full"* ]]
+  [[ "$output" == *"uat_path=03-UAT.md"* ]]
+  [[ "$output" != *"verify_scope=remediation round=01"* ]]
+}
+
+@test "compile-verify-context: --remediation-kind uat still supports legacy remediation rounds" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  cat > "$PHASE_DIR/remediation/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: Legacy remediation
+must_haves:
+  - Legacy fix
+---
+EOF
+  cat > "$PHASE_DIR/remediation/round-01/R01-SUMMARY.md" <<'EOF'
+---
+plan: R01
+status: complete
+---
+## What Was Built
+- Legacy fix
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only --remediation-kind uat "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=01"* ]]
+  [[ "$output" == *"uat_path=remediation/round-01/R01-UAT.md"* ]]
+}
