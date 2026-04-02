@@ -5,6 +5,150 @@ set -u
 
 INPUT=$(cat)
 
+normalize_agent_role() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+
+  case "$lower" in
+    vbw-lead|vbw-lead-[0-9]*|lead|lead-[0-9]*|team-lead|team-lead-[0-9]*)
+      printf 'vbw-lead'
+      return 0
+      ;;
+    vbw-dev|vbw-dev-[0-9]*|dev|dev-[0-9]*|team-dev|team-dev-[0-9]*)
+      printf 'vbw-dev'
+      return 0
+      ;;
+    vbw-qa|vbw-qa-[0-9]*|qa|qa-[0-9]*|team-qa|team-qa-[0-9]*)
+      printf 'vbw-qa'
+      return 0
+      ;;
+    vbw-scout|vbw-scout-[0-9]*|scout|scout-[0-9]*|team-scout|team-scout-[0-9]*)
+      printf 'vbw-scout'
+      return 0
+      ;;
+    vbw-debugger|vbw-debugger-[0-9]*|debugger|debugger-[0-9]*|team-debugger|team-debugger-[0-9]*)
+      printf 'vbw-debugger'
+      return 0
+      ;;
+    vbw-architect|vbw-architect-[0-9]*|architect|architect-[0-9]*|team-architect|team-architect-[0-9]*)
+      printf 'vbw-architect'
+      return 0
+      ;;
+    vbw-docs|vbw-docs-[0-9]*|docs|docs-[0-9]*|team-docs|team-docs-[0-9]*)
+      printf 'vbw-docs'
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+normalize_agent_instance() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+  lower="${lower#vbw-}"
+  printf '%s' "$lower"
+}
+
+has_vbw_context() {
+  [ -f "$VBW_PLANNING_DIR/.vbw-session" ] \
+    || [ -f "$VBW_PLANNING_DIR/.active-agent" ] \
+    || [ -f "$VBW_PLANNING_DIR/.active-agent-count" ]
+}
+
+is_explicit_vbw_agent() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  echo "$lower" | grep -qE '^@?vbw:|^@?vbw-'
+}
+
+extract_agent_role() {
+  local native_value legacy_value
+
+  native_value=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null) || native_value=""
+  legacy_value=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null) || legacy_value=""
+  if [ -n "$native_value" ]; then
+    if is_explicit_vbw_agent "$native_value"; then
+      normalize_agent_role "$native_value"
+      return $?
+    fi
+
+    if is_explicit_vbw_agent "$legacy_value"; then
+      normalize_agent_role "$legacy_value"
+      return $?
+    fi
+
+    return 1
+  fi
+
+  if is_explicit_vbw_agent "$legacy_value" || has_vbw_context; then
+    normalize_agent_role "$legacy_value"
+    return $?
+  fi
+
+  return 1
+}
+
+extract_agent_instance() {
+  local value
+  value=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // .agent_type // ""' 2>/dev/null) || value=""
+  normalize_agent_instance "$value"
+}
+
+resolve_worktree_map_file() {
+  local storage_dir="$VBW_PLANNING_DIR/.agent-worktrees"
+  local instance_name role_matches match_count first_match
+
+  [ ! -d "$storage_dir" ] && return 1
+
+  instance_name=$(extract_agent_instance 2>/dev/null) || instance_name=""
+  if [ -n "$instance_name" ] && [ -f "$storage_dir/${instance_name}.json" ]; then
+    printf '%s' "$storage_dir/${instance_name}.json"
+    return 0
+  fi
+
+  case "$ROLE" in
+    vbw-dev|vbw-debugger)
+      role_matches=$(find "$storage_dir" -maxdepth 1 -type f \( -name "${ROLE#vbw-}.json" -o -name "${ROLE#vbw-}-*.json" \) 2>/dev/null | sort)
+      match_count=$(printf '%s\n' "$role_matches" | sed '/^$/d' | wc -l | tr -d ' ')
+      if [ "$match_count" = "1" ]; then
+        first_match=$(printf '%s\n' "$role_matches" | sed -n '1p')
+        [ -n "$first_match" ] && printf '%s' "$first_match"
+        return 0
+      fi
+      ;;
+  esac
+
+  return 1
+}
+
+worktree_isolation_enabled() {
+  local config_path="$VBW_PLANNING_DIR/config.json"
+  local isolation="off"
+
+  if [ -f "$config_path" ]; then
+    isolation=$(jq -r '.worktree_isolation // "off"' "$config_path" 2>/dev/null) || isolation="off"
+  fi
+
+  [ "$isolation" != "off" ]
+}
+
+fallback_worktree_path() {
+  if worktree_isolation_enabled; then
+    pwd -P 2>/dev/null || true
+  fi
+}
+
 # Resolve VBW workspace root (issue #258: bare .vbw-planning/ fails in monorepo submodules)
 # shellcheck source=lib/vbw-config-root.sh
 . "$(dirname "$0")/lib/vbw-config-root.sh"
@@ -46,14 +190,13 @@ if [ -d "$VBW_PLANNING_DIR/.compacting" ]; then
   done
 fi
 
-# Try to identify agent role from input context
+# Try to identify agent role from explicit hook fields.
 ROLE=""
-for pattern in vbw-lead vbw-dev vbw-qa vbw-scout vbw-debugger vbw-architect vbw-docs; do
-  if echo "$INPUT" | grep -qi "$pattern"; then
-    ROLE="$pattern"
-    break
-  fi
-done
+if ROLE=$(extract_agent_role); then
+  :
+else
+  ROLE=""
+fi
 
 # Convert plan id (e.g. "05-01") to numeric plan number (e.g. "1")
 plan_id_to_num() {
@@ -168,14 +311,14 @@ fi
 # --- Worktree context injection ---
 WORKTREE_CONTEXT=""
 if echo "$ROLE" | grep -q "vbw-dev\|vbw-debugger"; then
-  AGENT_NAME_COMPACT=$(echo "$INPUT" | jq -r '.agent_name // .agentName // ""' 2>/dev/null) || AGENT_NAME_COMPACT=""
-  AGENT_NAME_SHORT=$(echo "$AGENT_NAME_COMPACT" | sed 's/.*vbw-//')
-  WORKTREE_MAP_FILE="$VBW_PLANNING_DIR/.agent-worktrees/${AGENT_NAME_SHORT}.json"
-  if [ -f "$WORKTREE_MAP_FILE" ]; then
+  WORKTREE_MAP_FILE=$(resolve_worktree_map_file) || WORKTREE_MAP_FILE=""
+  if [ -n "$WORKTREE_MAP_FILE" ] && [ -f "$WORKTREE_MAP_FILE" ]; then
     WT_PATH=$(jq -r '.worktree_path // ""' "$WORKTREE_MAP_FILE" 2>/dev/null) || WT_PATH=""
-    if [ -n "$WT_PATH" ]; then
-      WORKTREE_CONTEXT=" Worktree working directory: ${WT_PATH}. All file operations must use this path."
-    fi
+  else
+    WT_PATH=$(fallback_worktree_path)
+  fi
+  if [ -n "$WT_PATH" ]; then
+    WORKTREE_CONTEXT=" Worktree working directory: ${WT_PATH}. All file operations must use this path."
   fi
 fi
 

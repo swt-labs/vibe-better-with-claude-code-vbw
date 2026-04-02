@@ -178,7 +178,56 @@ set_stale_mtime_3h() {
   [[ "$output" == *"$wt_path"* ]]
 }
 
+@test "compaction-instructions: native agent_type resolves single mapped worktree" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/01-02"
+  mkdir -p "$wt_path"
+  mkdir -p .vbw-planning/.agent-worktrees
+  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+
+  run bash -c 'echo "{\"agent_type\":\"vbw-dev\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$wt_path"* ]]
+}
+
+@test "compaction-instructions: bare non-VBW dev agent ignores VBW worktree mapping" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/non-vbw-dev"
+  mkdir -p "$wt_path"
+  mkdir -p .vbw-planning/.agent-worktrees
+  echo "session" > .vbw-planning/.vbw-session
+  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+
+  run bash -c 'echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"CRITICAL: Your working directory"* ]]
+}
+
+@test "compaction-instructions: explicit legacy VBW name beats non-VBW native agent_type" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/fallback-dev"
+  mkdir -p "$wt_path"
+  mkdir -p .vbw-planning/.agent-worktrees
+  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+
+  run bash -c 'echo "{\"agent_type\":\"helper-agent\",\"agent_name\":\"vbw-dev-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$wt_path"* ]]
+}
+
+@test "compaction-instructions: native fields fall back to current worktree under isolation" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/native-dev"
+  mkdir -p "$wt_path" "$TEST_TEMP_DIR/.vbw-planning/.agent-worktrees"
+  jq '.worktree_isolation = "on"' .vbw-planning/config.json > .vbw-planning/config.json.tmp
+  mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+  echo '{"worktree_path":"/unused/dev-01"}' > .vbw-planning/.agent-worktrees/dev-01.json
+  echo '{"worktree_path":"/unused/dev-02"}' > .vbw-planning/.agent-worktrees/dev-02.json
+
+  run env VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash -c "cd '$wt_path' && echo '{\"agent_type\":\"vbw-dev\",\"agent_id\":\"agent-abc123\",\"matcher\":\"auto\"}' | bash '$SCRIPTS_DIR/compaction-instructions.sh'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$wt_path"* ]]
+}
+
 @test "compaction-instructions: dev without worktree mapping omits path" {
+  jq '.worktree_isolation = "off"' .vbw-planning/config.json > .vbw-planning/config.json.tmp
+  mv .vbw-planning/config.json.tmp .vbw-planning/config.json
   run bash -c 'echo "{\"agent_name\":\"vbw-dev-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
   [ "$status" -eq 0 ]
   [[ "$output" != *"CRITICAL: Your working directory"* ]]
@@ -211,7 +260,57 @@ set_stale_mtime_3h() {
   [[ "$output" == *"Worktree working directory"* ]]
 }
 
+@test "post-compact: native agent_type resolves single mapped worktree path" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/01-02"
+  mkdir -p "$wt_path"
+  mkdir -p .vbw-planning/.agent-worktrees
+  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+
+  run bash -c 'echo "{\"agent_type\":\"vbw-dev\"}" | bash "'"$SCRIPTS_DIR"'/post-compact.sh"'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$wt_path"* ]]
+  [[ "$output" == *"Worktree working directory"* ]]
+}
+
+@test "post-compact: bare non-VBW dev agent ignores VBW worktree path" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/non-vbw-dev"
+  mkdir -p "$wt_path"
+  mkdir -p .vbw-planning/.agent-worktrees
+  echo "session" > .vbw-planning/.vbw-session
+  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+
+  run bash -c 'echo "{\"agent_type\":\"dev\",\"name\":\"dev-01\"}" | bash "'"$SCRIPTS_DIR"'/post-compact.sh"'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Worktree working directory"* ]]
+}
+
+@test "post-compact: explicit legacy VBW name beats non-VBW native agent_type" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/fallback-dev"
+  mkdir -p "$wt_path"
+  mkdir -p .vbw-planning/.agent-worktrees
+  echo "{\"worktree_path\":\"$wt_path\"}" > .vbw-planning/.agent-worktrees/dev-01.json
+
+  run bash -c 'echo "{\"agent_type\":\"helper-agent\",\"agent_name\":\"vbw-dev-01\"}" | bash "'"$SCRIPTS_DIR"'/post-compact.sh"'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$wt_path"* ]]
+}
+
+@test "post-compact: native fields fall back to current worktree under isolation" {
+  local wt_path="$TEST_TEMP_DIR/.vbw-worktrees/native-dev"
+  mkdir -p "$wt_path" "$TEST_TEMP_DIR/.vbw-planning/.agent-worktrees"
+  jq '.worktree_isolation = "on"' .vbw-planning/config.json > .vbw-planning/config.json.tmp
+  mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+  echo '{"worktree_path":"/unused/dev-01"}' > .vbw-planning/.agent-worktrees/dev-01.json
+  echo '{"worktree_path":"/unused/dev-02"}' > .vbw-planning/.agent-worktrees/dev-02.json
+
+  run env VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash -c "cd '$wt_path' && echo '{\"agent_type\":\"vbw-dev\",\"agent_id\":\"agent-abc123\"}' | bash '$SCRIPTS_DIR/post-compact.sh'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$wt_path"* ]]
+}
+
 @test "post-compact: dev without worktree mapping omits path" {
+  jq '.worktree_isolation = "off"' .vbw-planning/config.json > .vbw-planning/config.json.tmp
+  mv .vbw-planning/config.json.tmp .vbw-planning/config.json
   run bash -c 'echo "{\"agent_name\":\"vbw-dev-01\"}" | bash "'"$SCRIPTS_DIR"'/post-compact.sh"'
   [ "$status" -eq 0 ]
   [[ "$output" != *"Worktree working directory"* ]]

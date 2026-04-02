@@ -601,8 +601,10 @@ STATE
 # =============================================================================
 
 @test "compaction-instructions.sh dev priorities include codebase mapping re-read" {
-  # The dev case in compaction-instructions.sh should mention codebase mapping
-  sed -n '/*dev*/,/;;/p' "$PROJECT_ROOT/scripts/compaction-instructions.sh" | grep -q 'codebase'
+  cd "$TEST_TEMP_DIR"
+  echo '{"agent_type":"vbw-dev","matcher":"auto"}' | \
+    bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
+  grep -q 'codebase' "$TEST_TEMP_DIR/compaction-output.json"
 }
 
 # =============================================================================
@@ -622,19 +624,31 @@ STATE
 # =============================================================================
 
 @test "compaction-instructions.sh debugger priorities include codebase mapping re-read" {
-  sed -n '/*debugger*/,/;;/p' "$PROJECT_ROOT/scripts/compaction-instructions.sh" | grep -q 'codebase'
+  cd "$TEST_TEMP_DIR"
+  echo '{"agent_type":"vbw-debugger","matcher":"auto"}' | \
+    bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
+  grep -q 'codebase' "$TEST_TEMP_DIR/compaction-output.json"
 }
 
 @test "compaction-instructions.sh lead priorities include codebase mapping re-read" {
-  sed -n '/*lead*/,/;;/p' "$PROJECT_ROOT/scripts/compaction-instructions.sh" | grep -q 'codebase'
+  cd "$TEST_TEMP_DIR"
+  echo '{"agent_type":"vbw-lead","matcher":"auto"}' | \
+    bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
+  grep -q 'codebase' "$TEST_TEMP_DIR/compaction-output.json"
 }
 
 @test "compaction-instructions.sh architect priorities include codebase mapping re-read" {
-  sed -n '/*architect*/,/;;/p' "$PROJECT_ROOT/scripts/compaction-instructions.sh" | grep -q 'codebase'
+  cd "$TEST_TEMP_DIR"
+  echo '{"agent_type":"vbw-architect","matcher":"auto"}' | \
+    bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
+  grep -q 'codebase' "$TEST_TEMP_DIR/compaction-output.json"
 }
 
 @test "compaction-instructions.sh qa priorities include codebase mapping re-read" {
-  sed -n '/*qa*/,/;;/p' "$PROJECT_ROOT/scripts/compaction-instructions.sh" | grep -q 'codebase'
+  cd "$TEST_TEMP_DIR"
+  echo '{"agent_type":"vbw-qa","matcher":"auto"}' | \
+    bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
+  grep -q 'codebase' "$TEST_TEMP_DIR/compaction-output.json"
 }
 
 # =============================================================================

@@ -179,22 +179,47 @@ CONV
   cd "$TEST_TEMP_DIR"
 
   # Dev agent should get commit/file priorities
-  run bash -c 'echo "{\"agent_name\":\"vbw-dev-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  run bash -c 'echo "{\"agent_name\":\"vbw-dev-01\",\"trigger\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null
   echo "$output" | grep -q "commit hashes"
   echo "$output" | grep -q "file paths modified"
 
   # Scout agent should get research priorities
-  run bash -c 'echo "{\"agent_name\":\"vbw-scout-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  run bash -c 'echo "{\"agent_name\":\"vbw-scout-01\",\"trigger\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "research findings"
+}
+
+@test "compaction-instructions.sh accepts native agent_type without legacy agent_name" {
+  cd "$TEST_TEMP_DIR"
+
+  run bash -c 'echo "{\"agent_type\":\"vbw-dev\",\"name\":\"dev-01\",\"agent_id\":\"agent-abc123\",\"trigger\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "commit hashes"
+  echo "$output" | grep -q "file paths modified"
+}
+
+@test "compaction-instructions.sh uses trigger=manual for user-requested copy" {
+  cd "$TEST_TEMP_DIR"
+
+  run bash -c 'echo "{\"agent_type\":\"vbw-dev\",\"trigger\":\"manual\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "User requested compaction"
+}
+
+@test "compaction-instructions.sh keeps matcher fallback for compatibility" {
+  cd "$TEST_TEMP_DIR"
+
+  run bash -c 'echo "{\"agent_type\":\"vbw-dev\",\"matcher\":\"manual\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "User requested compaction"
 }
 
 @test "compaction-instructions.sh writes compaction marker" {
   cd "$TEST_TEMP_DIR"
   mkdir -p .vbw-planning
-  run bash -c 'echo "{\"agent_name\":\"vbw-dev-01\",\"matcher\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
+  run bash -c 'echo "{\"agent_name\":\"vbw-dev-01\",\"trigger\":\"auto\"}" | bash "'"$SCRIPTS_DIR"'/compaction-instructions.sh"'
   [ "$status" -eq 0 ]
   [ -f ".vbw-planning/.compaction-marker" ]
 }

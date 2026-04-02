@@ -14,36 +14,186 @@ set -u
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 
 INPUT=$(cat)
-AGENT_NAME=$(echo "$INPUT" | jq -r '.agent_name // .agentName // ""')
-MATCHER=$(echo "$INPUT" | jq -r '.matcher // "auto"')
+NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
+LEGACY_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
+INSTANCE_NAME_SOURCE=$(echo "$INPUT" | jq -r '.name // .agent_name // .agentName // .agent_type // ""' 2>/dev/null)
+TRIGGER=$(echo "$INPUT" | jq -r '.trigger // .matcher // "auto"' 2>/dev/null)
+
+normalize_agent_role() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+
+  case "$lower" in
+    vbw-lead|vbw-lead-[0-9]*|lead|lead-[0-9]*|team-lead|team-lead-[0-9]*)
+      printf 'lead'
+      return 0
+      ;;
+    vbw-dev|vbw-dev-[0-9]*|dev|dev-[0-9]*|team-dev|team-dev-[0-9]*)
+      printf 'dev'
+      return 0
+      ;;
+    vbw-qa|vbw-qa-[0-9]*|qa|qa-[0-9]*|team-qa|team-qa-[0-9]*)
+      printf 'qa'
+      return 0
+      ;;
+    vbw-scout|vbw-scout-[0-9]*|scout|scout-[0-9]*|team-scout|team-scout-[0-9]*)
+      printf 'scout'
+      return 0
+      ;;
+    vbw-debugger|vbw-debugger-[0-9]*|debugger|debugger-[0-9]*|team-debugger|team-debugger-[0-9]*)
+      printf 'debugger'
+      return 0
+      ;;
+    vbw-architect|vbw-architect-[0-9]*|architect|architect-[0-9]*|team-architect|team-architect-[0-9]*)
+      printf 'architect'
+      return 0
+      ;;
+    vbw-docs|vbw-docs-[0-9]*|docs|docs-[0-9]*|team-docs|team-docs-[0-9]*)
+      printf 'docs'
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+normalize_agent_instance() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+  lower="${lower#vbw-}"
+  printf '%s' "$lower"
+}
+
+has_vbw_context() {
+  [ -f "$PLANNING_DIR/.vbw-session" ] \
+    || [ -f "$PLANNING_DIR/.active-agent" ] \
+    || [ -f "$PLANNING_DIR/.active-agent-count" ]
+}
+
+is_explicit_vbw_agent() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  echo "$lower" | grep -qE '^@?vbw:|^@?vbw-'
+}
+
+resolve_agent_role() {
+  if [ -n "$NATIVE_AGENT_TYPE" ]; then
+    if is_explicit_vbw_agent "$NATIVE_AGENT_TYPE"; then
+      normalize_agent_role "$NATIVE_AGENT_TYPE"
+      return $?
+    fi
+
+    if is_explicit_vbw_agent "$LEGACY_ROLE_SOURCE"; then
+      normalize_agent_role "$LEGACY_ROLE_SOURCE"
+      return $?
+    fi
+
+    return 1
+  fi
+
+  if is_explicit_vbw_agent "$LEGACY_ROLE_SOURCE" || has_vbw_context; then
+    normalize_agent_role "$LEGACY_ROLE_SOURCE"
+    return $?
+  fi
+
+  return 1
+}
+
+worktree_isolation_enabled() {
+  local config_path="$PLANNING_DIR/config.json"
+  local isolation="off"
+
+  if [ -f "$config_path" ]; then
+    isolation=$(jq -r '.worktree_isolation // "off"' "$config_path" 2>/dev/null) || isolation="off"
+  fi
+
+  [ "$isolation" != "off" ]
+}
+
+fallback_worktree_path() {
+  if worktree_isolation_enabled; then
+    pwd -P 2>/dev/null || true
+  fi
+}
+
+resolve_worktree_map_file() {
+  local storage_dir="$PLANNING_DIR/.agent-worktrees"
+  local candidate normalized role_matches match_count first_match
+
+  [ ! -d "$storage_dir" ] && return 1
+
+  candidate="$INSTANCE_NAME_SOURCE"
+  if [ -n "$candidate" ]; then
+    normalized=$(normalize_agent_instance "$candidate")
+    if [ -n "$normalized" ] && [ -f "$storage_dir/${normalized}.json" ]; then
+      printf '%s' "$storage_dir/${normalized}.json"
+      return 0
+    fi
+  fi
+
+  case "$AGENT_ROLE" in
+    dev|debugger)
+      role_matches=$(find "$storage_dir" -maxdepth 1 -type f \( -name "${AGENT_ROLE}.json" -o -name "${AGENT_ROLE}-*.json" \) 2>/dev/null | sort)
+      match_count=$(printf '%s\n' "$role_matches" | sed '/^$/d' | wc -l | tr -d ' ')
+      if [ "$match_count" = "1" ]; then
+        first_match=$(printf '%s\n' "$role_matches" | sed -n '1p')
+        [ -n "$first_match" ] && printf '%s' "$first_match"
+        return 0
+      fi
+      ;;
+  esac
+
+  return 1
+}
+
+AGENT_ROLE=""
+if AGENT_ROLE=$(resolve_agent_role); then
+  :
+else
+  AGENT_ROLE=""
+fi
+
+AGENT_INSTANCE_NAME=$(normalize_agent_instance "$INSTANCE_NAME_SOURCE")
+[ -z "$AGENT_INSTANCE_NAME" ] && AGENT_INSTANCE_NAME="$AGENT_ROLE"
 
 # VBW-specific compaction priorities per agent role
-case "$AGENT_NAME" in
-  *scout*)
+case "$AGENT_ROLE" in
+  scout)
     PRIORITIES="Preserve research findings, URLs, confidence assessments"
     ;;
-  *dev*)
+  dev)
     PRIORITIES="Preserve commit hashes, file paths modified, deviation decisions, current task number. After compaction, if $PLANNING_DIR/codebase/META.md exists, re-read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from $PLANNING_DIR/codebase/"
     # Inject worktree path if agent has a mapping
-    AGENT_NAME_SHORT=$(echo "$AGENT_NAME" | sed 's/.*vbw-//')
-    WORKTREE_MAP_FILE="$PLANNING_DIR/.agent-worktrees/${AGENT_NAME_SHORT}.json"
-    if [ -f "$WORKTREE_MAP_FILE" ]; then
+    WORKTREE_MAP_FILE=$(resolve_worktree_map_file) || WORKTREE_MAP_FILE=""
+    if [ -n "$WORKTREE_MAP_FILE" ] && [ -f "$WORKTREE_MAP_FILE" ]; then
       WORKTREE_PATH=$(jq -r '.worktree_path // ""' "$WORKTREE_MAP_FILE" 2>/dev/null) || WORKTREE_PATH=""
-      if [ -n "$WORKTREE_PATH" ]; then
-        PRIORITIES="$PRIORITIES CRITICAL: Your working directory is ${WORKTREE_PATH}. All file operations MUST use this path."
-      fi
+    else
+      WORKTREE_PATH=$(fallback_worktree_path)
+    fi
+    if [ -n "$WORKTREE_PATH" ]; then
+      PRIORITIES="$PRIORITIES CRITICAL: Your working directory is ${WORKTREE_PATH}. All file operations MUST use this path."
     fi
     ;;
-  *qa*)
+  qa)
     PRIORITIES="Preserve pass/fail status, gap descriptions, verification results. After compaction, if $PLANNING_DIR/codebase/META.md exists, re-read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from $PLANNING_DIR/codebase/"
     ;;
-  *lead*)
+  lead)
     PRIORITIES="Preserve phase status, plan structure, coordination decisions. After compaction, if $PLANNING_DIR/codebase/META.md exists, re-read ARCHITECTURE.md, CONCERNS.md, and STRUCTURE.md (whichever exist) from $PLANNING_DIR/codebase/"
     ;;
-  *architect*)
+  architect)
     PRIORITIES="Preserve requirement IDs, phase structure, success criteria, key decisions. After compaction, if $PLANNING_DIR/codebase/META.md exists, re-read ARCHITECTURE.md and STACK.md (whichever exist) from $PLANNING_DIR/codebase/"
     ;;
-  *debugger*)
+  debugger)
     PRIORITIES="Preserve reproduction steps, hypotheses, evidence gathered, diagnosis. After compaction, if $PLANNING_DIR/codebase/META.md exists, re-read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from $PLANNING_DIR/codebase/"
     ;;
   *)
@@ -53,14 +203,14 @@ esac
 
 # Inject shutdown protocol reminder for team agents (survives compaction).
 # NOTE: Keep this reminder in sync with the Shutdown Handling section in agents/vbw-*.md.
-case "$AGENT_NAME" in
-  *scout*|*dev*|*qa*|*lead*|*debugger*|*docs*)
+case "$AGENT_ROLE" in
+  scout|dev|qa|lead|debugger|docs)
     PRIORITIES="$PRIORITIES. SHUTDOWN PROTOCOL: If you receive a message containing \"shutdown_request\", you MUST call the SendMessage tool with a JSON body: {\"type\": \"shutdown_response\", \"approved\": true, \"request_id\": \"<id from shutdown_request>\", \"final_status\": \"complete|idle|in_progress\"}. Use the final_status value that matches your current state. Plain text responses do NOT satisfy the shutdown protocol."
     ;;
 esac
 
 # Add compact trigger context
-if [ "$MATCHER" = "manual" ]; then
+if [ "$TRIGGER" = "manual" ]; then
   PRIORITIES="$PRIORITIES. User requested compaction."
 else
   PRIORITIES="$PRIORITIES. This is an automatic compaction at context limit."
@@ -94,7 +244,7 @@ if [ -d "$PLANNING_DIR" ]; then
   jq -n \
     --arg pid "$COMPACT_PID" \
     --arg pane_id "$COMPACT_PANE_ID" \
-    --arg agent "$AGENT_NAME" \
+    --arg agent "$AGENT_INSTANCE_NAME" \
     --argjson ts "$COMPACT_TS" \
     '{pid: $pid, pane_id: $pane_id, agent_name: $agent, started_at: $ts}' \
     > "$PLANNING_DIR/.compacting/${COMPACT_PID}.json" 2>/dev/null || true
@@ -126,9 +276,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f "$PLANNING_DIR/.execution-state.json" ] && [ -f "$SCRIPT_DIR/snapshot-resume.sh" ]; then
   SNAP_PHASE=$(jq -r '.phase // ""' "$PLANNING_DIR/.execution-state.json" 2>/dev/null)
   if [ -n "$SNAP_PHASE" ]; then
-    bash "$SCRIPT_DIR/snapshot-resume.sh" save "$SNAP_PHASE" "$PLANNING_DIR/.execution-state.json" "$AGENT_NAME" "$MATCHER" 2>/dev/null || true
+    bash "$SCRIPT_DIR/snapshot-resume.sh" save "$SNAP_PHASE" "$PLANNING_DIR/.execution-state.json" "$AGENT_ROLE" "$TRIGGER" 2>/dev/null || true
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%d %H:%M:%S")
-    echo "[$TIMESTAMP] Snapshot saved: phase=$SNAP_PHASE agent=$AGENT_NAME" >> "$PLANNING_DIR/.hook-errors.log" 2>/dev/null || true
+    echo "[$TIMESTAMP] Snapshot saved: phase=$SNAP_PHASE agent=${AGENT_ROLE:-$AGENT_INSTANCE_NAME}" >> "$PLANNING_DIR/.hook-errors.log" 2>/dev/null || true
   fi
 fi
 
