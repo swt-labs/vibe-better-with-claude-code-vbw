@@ -407,7 +407,7 @@ These are the commands you'll use every day. This is the job now.
 | :--- | :--- |
 | `/vbw:status` | Progress dashboard showing all phases, completion bars, velocity metrics, and suggested next action. Add `--metrics` for token consumption breakdown per agent. |
 | `/vbw:qa [phase]` | Deep verification on demand. Three tiers (Quick, Standard, Deep) with goal-backward methodology. Continuous QA runs automatically via hooks during builds -- this command is for thorough, on-demand verification. Produces VERIFICATION.md. Phase is auto-detected when omitted. |
-| `/vbw:verify [phase]` | Human acceptance testing with per-test CHECKPOINT prompts. Presents success criteria one at a time, collects pass/fail/partial verdicts, supports resume if interrupted. Produces UAT.md. |
+| `/vbw:verify [phase]` | Human-only acceptance testing with per-test CHECKPOINT prompts. Presents success criteria one at a time, keeps automated/programmatic checks in QA, supports resume if interrupted, and produces UAT.md. |
 
 ### Supporting -- The Safety Net
 
