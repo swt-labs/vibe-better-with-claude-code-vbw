@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # compile-verify-context.sh — Pre-compute PLAN/SUMMARY data for verify.md.
-# Usage: compile-verify-context.sh [--remediation-only] <phase-dir>
+# Usage: compile-verify-context.sh [--remediation-only] [--remediation-kind {qa|uat}] <phase-dir>
 #
 # Outputs compact structured blocks per plan so the LLM doesn't need to
 # read individual PLAN.md and SUMMARY.md files during verification.
@@ -9,6 +9,10 @@
 #   --remediation-only  Only emit plans from the latest completed remediation
 #                       round (R*-PLAN.md with matching R*-SUMMARY.md).
 #                       Falls back to full scope if no completed round found.
+#   --remediation-kind  Filter remediation scan to only the specified kind
+#                       (qa or uat). Prevents wrong-kind matches when both
+#                       remediation dirs exist. Only meaningful with
+#                       --remediation-only.
 #
 # For each plan, emits:
 #   verify_scope=full|remediation [round=RR]
@@ -115,12 +119,30 @@ else
 fi
 
 REMEDIATION_ONLY=false
-if [ "${1:-}" = "--remediation-only" ]; then
-  REMEDIATION_ONLY=true
-  shift
+REMEDIATION_KIND=""
+while [ $# -gt 0 ]; do
+  case "${1:-}" in
+    --remediation-only) REMEDIATION_ONLY=true; shift ;;
+    --remediation-kind)
+      REMEDIATION_KIND="${2:-}"
+      shift 2 2>/dev/null || { echo "error: --remediation-kind requires a value (qa or uat)" >&2; exit 1; }
+      ;;
+    --remediation-kind=*)
+      REMEDIATION_KIND="${1#--remediation-kind=}"
+      shift
+      ;;
+    *) break ;;
+  esac
+done
+
+if [ -n "$REMEDIATION_KIND" ]; then
+  case "$REMEDIATION_KIND" in
+    qa|uat) ;;
+    *) echo "error: --remediation-kind must be 'qa' or 'uat', got: $REMEDIATION_KIND" >&2; exit 1 ;;
+  esac
 fi
 
-PHASE_DIR="${1:?Usage: compile-verify-context.sh [--remediation-only] <phase-dir>}"
+PHASE_DIR="${1:?Usage: compile-verify-context.sh [--remediation-only] [--remediation-kind qa|uat] phase-dir}"
 
 if [ ! -d "$PHASE_DIR" ]; then
   echo "verify_context_error=no_phase_dir"
@@ -137,7 +159,7 @@ if [ "$REMEDIATION_ONLY" = true ]; then
 
   _cvc_candidates=()
   _active_remediation=false
-  if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
+  if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ] && [ "$REMEDIATION_KIND" != "uat" ]; then
     _qa_stage=$(grep '^stage=' "$PHASE_DIR/remediation/qa/.qa-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
     case "${_qa_stage:-none}" in
       verify|done)
@@ -152,7 +174,7 @@ if [ "$REMEDIATION_ONLY" = true ]; then
         ;;
     esac
   fi
-  if [ -f "$PHASE_DIR/remediation/uat/.uat-remediation-stage" ]; then
+  if [ -f "$PHASE_DIR/remediation/uat/.uat-remediation-stage" ] && [ "$REMEDIATION_KIND" != "qa" ]; then
     _uat_stage=$(grep '^stage=' "$PHASE_DIR/remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
     case "${_uat_stage:-none}" in
       research|plan|execute|fix|verify|done)
@@ -165,8 +187,15 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   fi
   # Historical fallback order for explicit --remediation-only callers when no
   # active state picked a scope: UAT rounds first, then QA rounds.
+  # Respect --remediation-kind filter when set.
   if [ "$_active_remediation" = false ]; then
-    _cvc_candidates+=("$PHASE_DIR/remediation/uat" "$PHASE_DIR/remediation/qa")
+    if [ "$REMEDIATION_KIND" = "uat" ]; then
+      _cvc_candidates+=("$PHASE_DIR/remediation/uat")
+    elif [ "$REMEDIATION_KIND" = "qa" ]; then
+      _cvc_candidates+=("$PHASE_DIR/remediation/qa")
+    else
+      _cvc_candidates+=("$PHASE_DIR/remediation/uat" "$PHASE_DIR/remediation/qa")
+    fi
   fi
 
   for _candidate in "${_cvc_candidates[@]}"; do

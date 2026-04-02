@@ -45,7 +45,7 @@ UAT_STAGE="$(read_uat_stage "$PHASE_DIR")"
 # Active remediation stages route to remediation-only scope.
 # "verified" means remediation is complete — use full scope for any re-verification.
 if [ -n "$UAT_STAGE" ] && [ "$UAT_STAGE" != "verified" ]; then
-  exec bash "$SCRIPT_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+  exec bash "$SCRIPT_DIR/compile-verify-context.sh" --remediation-only --remediation-kind uat "$PHASE_DIR"
 fi
 
 exec bash "$SCRIPT_DIR/compile-verify-context.sh" "$PHASE_DIR"

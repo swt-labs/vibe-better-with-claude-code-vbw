@@ -171,3 +171,66 @@ EOF
 @test "contract: verify.md uses compile-verify-context-for-uat.sh for precomputed context" {
   grep -q 'compile-verify-context-for-uat\.sh' "$PROJECT_ROOT/commands/verify.md"
 }
+
+@test "compile-verify-context-for-uat: active UAT with completed QA returns UAT round uat_path" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Original feature
+must_haves:
+  - Feature works
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Root feature
+EOF
+
+  # QA remediation completed (would win scan without --remediation-kind)
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: QA fix
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+plan: R01
+status: complete
+---
+## What Was Built
+- QA fix
+EOF
+
+  # UAT remediation active
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'EOF'
+---
+round: 01
+title: UAT fix
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'EOF'
+---
+plan: R01
+status: complete
+---
+## What Was Built
+- UAT fix
+EOF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=01"* ]]
+  [[ "$output" == *"uat_path=remediation/uat/round-01/R01-UAT.md"* ]]
+  [[ "$output" == *"=== PLAN R01: UAT fix ==="* ]]
+  [[ "$output" != *"=== PLAN R01: QA fix ==="* ]]
+}

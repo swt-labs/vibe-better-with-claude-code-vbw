@@ -2649,3 +2649,136 @@ EOF
   [[ "$output" != *"FAIL_ID: MH-02"* ]]
   [[ "$output" != *"FAIL_ID: ART-01"* ]]
 }
+
+@test "compile-verify-context: --remediation-kind uat skips QA when both dirs exist" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'PLAN'
+---
+plan: 01
+title: Root plan
+---
+PLAN
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'SUM'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Root feature
+SUM
+
+  # QA remediation with terminal round (would normally win the scan)
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: QA fix
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUM'
+---
+plan: R01
+status: complete
+---
+## What Was Built
+- QA fix
+SUM
+
+  # UAT remediation with active stage
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: UAT fix
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'SUM'
+---
+plan: R01
+status: complete
+---
+## What Was Built
+- UAT fix
+SUM
+
+  cd "$TEST_TEMP_DIR"
+  # Without --remediation-kind, QA wins (existing behavior)
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"uat_path=03-UAT.md"* ]]
+
+  # With --remediation-kind uat, UAT wins and uat_path points to round dir
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only --remediation-kind uat "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=01"* ]]
+  [[ "$output" == *"uat_path=remediation/uat/round-01/R01-UAT.md"* ]]
+  [[ "$output" == *"=== PLAN R01: UAT fix ==="* ]]
+  [[ "$output" != *"=== PLAN R01: QA fix ==="* ]]
+}
+
+@test "compile-verify-context: --remediation-kind qa filters to QA only" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'PLAN'
+---
+plan: 01
+title: Root plan
+---
+PLAN
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'SUM'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Root feature
+SUM
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: QA fix
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUM'
+---
+plan: R01
+status: complete
+---
+## What Was Built
+- QA fix
+SUM
+
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: UAT fix
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-SUMMARY.md" <<'SUM'
+---
+plan: R01
+status: complete
+---
+## What Was Built
+- UAT fix
+SUM
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only --remediation-kind qa "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=01"* ]]
+  [[ "$output" == *"uat_path=03-UAT.md"* ]]
+  [[ "$output" == *"=== PLAN R01: QA fix ==="* ]]
+  [[ "$output" != *"=== PLAN R01: UAT fix ==="* ]]
+}
+
+@test "compile-verify-context: --remediation-kind rejects invalid values" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only --remediation-kind invalid "$PHASE_DIR"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"must be 'qa' or 'uat'"* ]]
+}
