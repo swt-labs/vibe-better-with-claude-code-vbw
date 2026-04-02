@@ -518,13 +518,43 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
     fi
   fi
 
-  # Check TeamCreate: if body uses TeamCreate (not in a "Do NOT" instruction),
+  # Check TeamCreate: if body uses TeamCreate (not in a "do not" instruction),
   # allowed-tools must include it
-  if printf '%s\n' "$body" | grep -v 'Do NOT' | grep -q 'TeamCreate'; then
+  if printf '%s\n' "$body" | grep -vi 'do not' | grep -q 'TeamCreate'; then
     if printf '%s\n' "$ALLOWED" | grep -q 'TeamCreate'; then
       pass "$base: TeamCreate in body matches allowed-tools"
     else
       fail "$base: body references TeamCreate but allowed-tools does not include it"
+    fi
+  fi
+
+  # Check TaskCreate: if body uses TaskCreate (not in a "do not" instruction),
+  # allowed-tools must include it
+  if printf '%s\n' "$body" | grep -vi 'do not' | grep -q 'TaskCreate'; then
+    if printf '%s\n' "$ALLOWED" | grep -q 'TaskCreate'; then
+      pass "$base: TaskCreate in body matches allowed-tools"
+    else
+      fail "$base: body references TaskCreate but allowed-tools does not include it"
+    fi
+  fi
+
+  # Check SendMessage: if body uses SendMessage (not in a "do not" instruction),
+  # allowed-tools must include it
+  if printf '%s\n' "$body" | grep -vi 'do not' | grep -q 'SendMessage'; then
+    if printf '%s\n' "$ALLOWED" | grep -q 'SendMessage'; then
+      pass "$base: SendMessage in body matches allowed-tools"
+    else
+      fail "$base: body references SendMessage but allowed-tools does not include it"
+    fi
+  fi
+
+  # Check TeamDelete: if body uses TeamDelete (not in a "do not" instruction),
+  # allowed-tools must include it
+  if printf '%s\n' "$body" | grep -vi 'do not' | grep -q 'TeamDelete'; then
+    if printf '%s\n' "$ALLOWED" | grep -q 'TeamDelete'; then
+      pass "$base: TeamDelete in body matches allowed-tools"
+    else
+      fail "$base: body references TeamDelete but allowed-tools does not include it"
     fi
   fi
 done
