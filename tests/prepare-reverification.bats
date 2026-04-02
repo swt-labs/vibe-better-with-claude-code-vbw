@@ -110,6 +110,19 @@ EOF
   [[ "$output" == *"layout=flat"* ]]
 }
 
+@test "legacy remediation state file with key-value stage is accepted" {
+  create_issues_uat
+
+  mkdir -p "$PHASE_DIR/remediation"
+  printf 'stage=verify\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"layout=flat"* ]]
+}
+
 @test "round-dir layout: phase-root UAT absent exits 0 with skip marker" {
   # No UAT file exists (already archived)
   mkdir -p "$PHASE_DIR/remediation/uat/round-01"

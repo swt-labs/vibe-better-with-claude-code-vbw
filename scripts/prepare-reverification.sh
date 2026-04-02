@@ -60,12 +60,25 @@ fi
 # Check remediation stage — only archive when stage=done
 _REM_STAGE="none"
 _new_stage_file="${PHASE_DIR%/}/remediation/uat/.uat-remediation-stage"
+_legacy_remed_stage_file="${PHASE_DIR%/}/remediation/.uat-remediation-stage"
 _stage_file="${PHASE_DIR%/}/.uat-remediation-stage"
 if [ -f "$_new_stage_file" ]; then
   _REM_STAGE=$(grep '^stage=' "$_new_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
   _REM_STAGE="${_REM_STAGE:-none}"
+elif [ -f "$_legacy_remed_stage_file" ]; then
+  if grep -q '^stage=' "$_legacy_remed_stage_file" 2>/dev/null; then
+    _REM_STAGE=$(grep '^stage=' "$_legacy_remed_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+  else
+    _REM_STAGE=$(tr -d '[:space:]' < "$_legacy_remed_stage_file")
+  fi
+  _REM_STAGE="${_REM_STAGE:-none}"
 elif [ -f "$_stage_file" ]; then
-  _REM_STAGE=$(tr -d '[:space:]' < "$_stage_file")
+  if grep -q '^stage=' "$_stage_file" 2>/dev/null; then
+    _REM_STAGE=$(grep '^stage=' "$_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+  else
+    _REM_STAGE=$(tr -d '[:space:]' < "$_stage_file")
+  fi
+  _REM_STAGE="${_REM_STAGE:-none}"
 fi
 if [ "$_REM_STAGE" != "done" ] && [ "$_REM_STAGE" != "verify" ]; then
   echo "Error: remediation stage is '${_REM_STAGE}', not 'done' or 'verify' — remediation still in progress" >&2

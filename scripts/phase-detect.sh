@@ -338,9 +338,21 @@ if [ -d "$PHASES_DIR" ]; then
           # New round-dir state file (key=value format)
           _rem_stage=$(grep '^stage=' "${TARGET_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
           _rem_stage="${_rem_stage:-none}"
+        elif [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
+          if grep -q '^stage=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null; then
+            _rem_stage=$(grep '^stage=' "${TARGET_DIR}remediation/.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          else
+            _rem_stage=$(tr -d '[:space:]' < "${TARGET_DIR}remediation/.uat-remediation-stage")
+          fi
+          _rem_stage="${_rem_stage:-none}"
         elif [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
-          # Legacy state file (single word)
-          _rem_stage=$(tr -d '[:space:]' < "${TARGET_DIR}.uat-remediation-stage")
+          # Legacy state file (single-word or key=value)
+          if grep -q '^stage=' "${TARGET_DIR}.uat-remediation-stage" 2>/dev/null; then
+            _rem_stage=$(grep '^stage=' "${TARGET_DIR}.uat-remediation-stage" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          else
+            _rem_stage=$(tr -d '[:space:]' < "${TARGET_DIR}.uat-remediation-stage")
+          fi
+          _rem_stage="${_rem_stage:-none}"
         fi
         # Pre-compute plan/summary counts (needed for state routing AND stale-stage reconciliation)
         NEXT_PHASE_PLANS=$(count_phase_plans "$TARGET_DIR")
