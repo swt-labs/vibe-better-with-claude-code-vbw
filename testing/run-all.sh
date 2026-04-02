@@ -62,6 +62,7 @@ run_job contract "live-validation-policy"   bash "$ROOT/testing/verify-live-vali
 run_job contract "ghost-team-cleanup"       bash "$ROOT/testing/verify-ghost-team-cleanup.sh"
 run_job contract "ci-workflow-contract"     bash "$ROOT/testing/verify-ci-workflow-contract.sh"
 run_job contract "discord-release-workflow" bash "$ROOT/testing/verify-discord-release-workflow-contract.sh"
+run_job contract "prefer-teams-canonicalization" bash "$ROOT/testing/verify-prefer-teams-canonicalization.sh"
 run_job contract "qa-persistence-contract"  bash "$ROOT/testing/verify-qa-persistence-contract.sh"
 
 # --- Launch bats workers concurrently with contract checks ---
