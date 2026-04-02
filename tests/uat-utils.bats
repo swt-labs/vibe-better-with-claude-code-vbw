@@ -104,6 +104,24 @@ teardown() {
   [[ "$result" == *"03-UAT.md" ]]
 }
 
+@test "current_uat: legacy remediation state file returns legacy round UAT" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=verify\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  touch "$PHASE_DIR/remediation/round-01/R01-UAT.md"
+
+  result=$(current_uat "$PHASE_DIR")
+  [[ "$result" == *"remediation/round-01/R01-UAT.md" ]]
+}
+
+@test "current_uat: legacy current round missing falls back to latest legacy round UAT" {
+  mkdir -p "$PHASE_DIR/remediation/round-01" "$PHASE_DIR/remediation/round-02"
+  printf 'stage=research\nround=02\nlayout=legacy\n' > "$PHASE_DIR/.uat-remediation-stage"
+  touch "$PHASE_DIR/remediation/round-01/R01-UAT.md"
+
+  result=$(current_uat "$PHASE_DIR")
+  [[ "$result" == *"remediation/round-01/R01-UAT.md" ]]
+}
+
 # --- normalize_uat_status tests ---
 
 @test "normalize_uat_status: all_pass maps to complete" {

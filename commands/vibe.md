@@ -313,7 +313,18 @@ When `next_phase_state=needs_reverification`, execute these steps inline in the 
    If `archived=in-round-dir`: display "Archived previous UAT → {round_file}. Starting fresh re-verification."
    If `skipped=already_archived`: display "UAT already archived. Starting fresh re-verification."
    If `skipped=ready_for_verify`: display "Round {NN} remediation complete. Starting fresh re-verification."
-5. **Continue directly into Verify mode below** for that phase — do NOT stop, do NOT tell the user to run a separate command.
+5. Refresh verify context and UAT resume metadata for that phase:
+  ```bash
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh "{phase-dir}"
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/extract-uat-resume.sh "{phase-dir}"
+  ```
+  Use this refreshed output in place of the pre-computed verify blocks from Context.
+  **uat_path validation (defense-in-depth):** If the refreshed `uat_path` does not already point at the current remediation round's round-scoped UAT path (`remediation/uat/round-{RR}/R{RR}-UAT.md` for round-dir layout, `remediation/round-{RR}/R{RR}-UAT.md` for legacy layout), run:
+  ```bash
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh get-or-init "{phase-dir}" major
+  ```
+  Parse `round=RR` and `layout=...`, then override `uat_path` with the matching round-scoped path for that layout before entering Verify mode.
+6. **Continue directly into Verify mode below** for that phase — do NOT stop, do NOT tell the user to run a separate command.
 
 The `needs_reverification` state fires regardless of `auto_uat` — remediation always requires re-verification. The `auto_uat` flag only controls whether the user is prompted for confirmation.
 
@@ -723,6 +734,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
           ```bash
           bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh "$PHASE_DIR"
           ```
+          **uat_path validation (defense-in-depth):** After parsing the fresh verify context, validate that `uat_path` already points at the current remediation round's round-scoped UAT path (`remediation/uat/round-{RR}/R{RR}-UAT.md` for round-dir layout, `remediation/round-{RR}/R{RR}-UAT.md` for legacy layout). If it does not (e.g., it points to the phase-root UAT like `03-UAT.md`), override it with the round-scoped path for the current round from `uat-remediation-state.sh`. This prevents the original phase-root UAT from being overwritten during re-verification.
           Use this fresh verify context for the Verify mode CHECKPOINT loop.
        Do NOT present the remediation summary (Step 7) and stop — the summary is only useful if the session cannot continue (e.g., compaction).
     - `fix` (minor-only path): Route to a quick-fix implementation path for the same phase using the normalized issue list from step 3 (with step-5 recurrence annotations when available) as task input (equivalent to `/vbw:fix`, but without requiring the user to invoke it manually). After changes, advance:
@@ -926,7 +938,7 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 **Inline execution (NON-NEGOTIABLE):** UAT is an interactive conversation with the human user via AskUserQuestion CHECKPOINT prompts. Do NOT spawn a QA agent, Dev agent, or any subagent for UAT verification. Do NOT use TaskCreate to delegate UAT. The AskUserQuestion tool is only available to the orchestrator — subagents cannot interact with the user, so delegating UAT to a subagent bypasses user input entirely and produces auto-written UAT files without human judgment. Run the verify.md CHECKPOINT loop directly in this conversation, the same way UAT Remediation coordinates its stages inline.
 
 **Steps:**
-1. Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/commands/verify.md` protocol. When entering from `needs_reverification` or `auto_uat` routing, the pre-computed verify context (verify_scope, uat_path, uat_resume) is already available from the Context section above — do NOT re-compute or re-read these values. **Error guard:** If the pre-computed verify block contains `verify_context_error=true` or `verify_context=unavailable`, display: "⚠ Verify context compilation failed. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh .vbw-planning/phases/{NN}-{slug}` manually to debug." STOP. Do NOT improvise by scanning PLAN/SUMMARY files manually in this routed path.
+1. Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/commands/verify.md` protocol. When entering from `needs_reverification` or `auto_uat` routing, the pre-computed verify context (verify_scope, uat_path, uat_resume) is already available from the Context section above — use it unless the `needs_reverification` flow above just refreshed verify context and resume metadata after `prepare-reverification.sh`, in which case use that refreshed output instead. **Error guard:** If the active verify block contains `verify_context_error=true` or `verify_context=unavailable`, display: "⚠ Verify context compilation failed. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh .vbw-planning/phases/{NN}-{slug}` manually to debug." STOP. Do NOT improvise by scanning PLAN/SUMMARY files manually in this routed path.
 2. Execute the verify.md steps inline in this conversation. Specifically: generate test scenarios (verify.md Step 4), then run the CHECKPOINT loop (verify.md Step 5) presenting one test at a time via AskUserQuestion and waiting for the user's response before proceeding to the next test. Use the pre-computed "Verify context" block from this command's Context section — it contains the PLAN/SUMMARY aggregation and UAT resume metadata for the target phase. Pass this data through to the verify protocol steps so they do NOT read individual PLAN/SUMMARY files or scan-parse UAT.md for resume state.
 3. Display results per verify.md output format.
 

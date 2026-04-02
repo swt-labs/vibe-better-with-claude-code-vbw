@@ -628,11 +628,8 @@ EOF
   touch .vbw-planning/phases/01-legacy/PLAN.md
   printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-legacy/SUMMARY.md
   cat > .vbw-planning/phases/01-legacy/01-UAT.md <<'EOF'
----
 phase: 01
 status: issues_found
----
-- Severity: major
 EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
@@ -640,6 +637,43 @@ EOF
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "uat_issues_phase=01"
+}
+
+@test "phase-detect: legacy key-value remediation state routes to needs_reverification" {
+  mkdir -p .vbw-planning/phases/01-legacy/remediation
+  touch .vbw-planning/phases/01-legacy/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-legacy/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-legacy/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+EOF
+  printf 'stage=done\nround=01\nlayout=legacy\n' > .vbw-planning/phases/01-legacy/.uat-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"next_phase_state=needs_reverification"* ]]
+}
+
+@test "phase-detect: stale execute auto-advance writes back to legacy remediation state file" {
+  mkdir -p .vbw-planning/phases/01-legacy/remediation
+  touch .vbw-planning/phases/01-legacy/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-legacy/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-legacy/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+EOF
+  printf 'stage=execute\nround=01\nlayout=legacy\n' > .vbw-planning/phases/01-legacy/remediation/.uat-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"next_phase_state=needs_reverification"* ]]
+  grep -q '^stage=done$' .vbw-planning/phases/01-legacy/remediation/.uat-remediation-stage
 }
 
 @test "corrupt QA remediation stage does not route as active remediation" {

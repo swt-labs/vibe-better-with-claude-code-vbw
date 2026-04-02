@@ -102,8 +102,14 @@ get_stage() {
       tr -d '[:space:]' < "$STATE_FILE"
     fi
   elif [ -f "$LEGACY_STATE_FILE" ]; then
-    # Legacy format: single word file at phase root
-    cat "$LEGACY_STATE_FILE" | tr -d '[:space:]'
+    # Legacy format: single word file at phase root, or brownfield key=value file
+    local _val
+    _val=$(grep '^stage=' "$LEGACY_STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+    if [ -n "$_val" ]; then
+      echo "$_val"
+    else
+      cat "$LEGACY_STATE_FILE" | tr -d '[:space:]'
+    fi
   else
     echo "none"
   fi
@@ -115,7 +121,13 @@ get_round() {
     _val=$(grep '^round=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
     echo "${_val:-01}"
   else
-    echo "01"
+    if [ -f "$LEGACY_STATE_FILE" ]; then
+      local _val
+      _val=$(grep '^round=' "$LEGACY_STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+      echo "${_val:-01}"
+    else
+      echo "01"
+    fi
   fi
 }
 
@@ -128,8 +140,15 @@ get_layout() {
     _val=$(grep '^layout=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
     echo "${_val:-round-dir}"
   else
-    # Legacy state file at phase root — artifacts are at phase root
-    echo "legacy"
+    # Legacy state file at phase root — artifacts are legacy unless the file
+    # explicitly opts into round-dir layout via key=value metadata.
+    if [ -f "$LEGACY_STATE_FILE" ]; then
+      local _val
+      _val=$(grep '^layout=' "$LEGACY_STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+      echo "${_val:-legacy}"
+    else
+      echo "legacy"
+    fi
   fi
 }
 

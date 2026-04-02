@@ -377,3 +377,79 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == "uat_resume=all_done uat_completed=2 uat_total=2" ]]
 }
+
+@test "extract-uat-resume: legacy current round UAT missing returns none" {
+  mkdir -p "$PHASE_DIR/remediation/round-01" "$PHASE_DIR/remediation/round-02"
+  printf 'stage=verify\nround=02\nlayout=legacy\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+---
+phase: 03
+status: complete
+total_tests: 1
+passed: 1
+---
+
+## Tests
+
+### P01-T1: Old legacy test
+
+- **Result:** pass
+
+## Summary
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-resume.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == "uat_resume=none" ]]
+}
+
+@test "extract-uat-resume: legacy current round UAT exists returns current round data" {
+  mkdir -p "$PHASE_DIR/remediation/round-01" "$PHASE_DIR/remediation/round-02"
+  printf 'stage=verify\nround=02\nlayout=legacy\n' > "$PHASE_DIR/.uat-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+---
+phase: 03
+status: complete
+total_tests: 1
+passed: 1
+---
+
+## Tests
+
+### P01-T1: Old legacy test
+
+- **Result:** pass
+
+## Summary
+EOF
+
+  cat > "$PHASE_DIR/remediation/round-02/R02-UAT.md" <<'EOF'
+---
+phase: 03
+status: in_progress
+total_tests: 2
+---
+
+## Tests
+
+### P01-T1: New legacy test
+
+- **Result:** pass
+
+### P01-T2: New legacy test 2
+
+- **Result:**
+
+## Summary
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-resume.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == "uat_resume=P01-T2 uat_completed=1 uat_total=2" ]]
+}
