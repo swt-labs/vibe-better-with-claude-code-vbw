@@ -80,16 +80,25 @@ is_explicit_vbw_agent() {
   echo "$lower" | grep -qE '^@?vbw:|^@?vbw-'
 }
 
+is_vbw_team_name() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  echo "$lower" | grep -qE '^vbw-phase-[0-9]+$'
+}
+
 # Derive a unique agent key from hook JSON.
 # Preference: agent_id > teammate_name > name > task_id > agent_name > agentName > agent_type.
 # Role preference: agent_type > agent_name > agentName > name > teammate_name.
 # Also extracts a normalized role for metadata.
 extract_agent_key_and_role() {
   local input="$1"
-  local key="" role="" native_agent_type legacy_role_source role_source=""
+  local key="" role="" native_agent_type legacy_role_source role_source="" team_name=""
 
   native_agent_type=$(echo "$input" | jq -r '.agent_type // ""' 2>/dev/null)
   legacy_role_source=$(echo "$input" | jq -r '.agent_name // .agentName // .name // .teammate_name // ""' 2>/dev/null)
+  team_name=$(echo "$input" | jq -r '.team_name // ""' 2>/dev/null)
 
   if [ -n "$native_agent_type" ]; then
     if is_explicit_vbw_agent "$native_agent_type"; then
@@ -98,8 +107,22 @@ extract_agent_key_and_role() {
       echo "|"
       return 0
     fi
-  elif is_explicit_vbw_agent "$legacy_role_source" || has_vbw_context; then
+  elif is_explicit_vbw_agent "$legacy_role_source"; then
     role_source="$legacy_role_source"
+  elif normalize_agent_role "$legacy_role_source" >/dev/null; then
+    if [ -n "$team_name" ]; then
+      if is_vbw_team_name "$team_name"; then
+        role_source="$legacy_role_source"
+      else
+        echo "|"
+        return 0
+      fi
+    elif has_vbw_context; then
+      role_source="$legacy_role_source"
+    else
+      echo "|"
+      return 0
+    fi
   else
     echo "|"
     return 0

@@ -218,6 +218,17 @@ EOF
   [ ! -d "$HEALTH_DIR" ] || [ ! -f "$HEALTH_DIR/dev.json" ]
 }
 
+@test "agent-health: idle ignores non-VBW team_name even in a VBW session" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo "session" > "$TEST_TEMP_DIR/.vbw-planning/.vbw-session"
+
+  run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"external-team\",\"pid\":\"$$\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -d "$HEALTH_DIR" ] || [ ! -f "$HEALTH_DIR/dev-01.json" ]
+}
+
 # Test 6: cleanup removes directory
 @test "agent-health: cleanup removes directory" {
   cd "$TEST_TEMP_DIR"

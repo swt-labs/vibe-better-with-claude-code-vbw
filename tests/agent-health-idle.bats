@@ -57,13 +57,31 @@ run_health() {
   [ -f "$HEALTH_DIR/dev-01.json" ]
 }
 
-@test "idle bootstrap: documented teammate_name payload creates health file" {
+@test "idle bootstrap: legacy teammate_name fallback creates health file" {
   [ ! -f "$HEALTH_DIR/dev-01.json" ]
 
   echo "{\"teammate_name\":\"dev-01\",\"pid\":\"$$\"}" | \
     TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
 
   [ -f "$HEALTH_DIR/dev-01.json" ]
+}
+
+@test "idle bootstrap: vbw team_name allows teammate_name payload" {
+  [ ! -f "$HEALTH_DIR/dev-01.json" ]
+
+  echo "{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-07\",\"pid\":\"$$\"}" | \
+    TEST_HEALTH_DIR="$HEALTH_DIR" bash "$WRAPPER" idle
+
+  [ -f "$HEALTH_DIR/dev-01.json" ]
+}
+
+@test "idle bootstrap: non-VBW team_name is ignored even with vbw session marker" {
+  [ ! -f "$HEALTH_DIR/dev-01.json" ]
+
+  run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"external-team\",\"pid\":\"$$\"}' | TEST_HEALTH_DIR='$HEALTH_DIR' TEST_PLANNING_DIR='$PLANNING_DIR' bash '$WRAPPER' idle"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -f "$HEALTH_DIR/dev-01.json" ]
 }
 
 @test "unique keying: two Dev teammates get separate files" {
