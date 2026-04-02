@@ -219,12 +219,25 @@ current_uat() {
     *) dir="$dir/" ;;
   esac
 
-  # Check round-dir remediation state
-  local state_file="${dir}remediation/uat/.uat-remediation-stage"
+  # Check remediation state (new location first, then brownfield legacy paths)
+  local state_file=""
+  if [ -f "${dir}remediation/uat/.uat-remediation-stage" ]; then
+    state_file="${dir}remediation/uat/.uat-remediation-stage"
+  elif [ -f "${dir}remediation/.uat-remediation-stage" ]; then
+    state_file="${dir}remediation/.uat-remediation-stage"
+  elif [ -f "${dir}.uat-remediation-stage" ]; then
+    state_file="${dir}.uat-remediation-stage"
+  fi
   if [ -f "$state_file" ]; then
     local layout round rr
     layout=$(grep '^layout=' "$state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
     round=$(grep '^round=' "$state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    case "$state_file" in
+      */remediation/.uat-remediation-stage|*/.uat-remediation-stage)
+        layout="${layout:-legacy}"
+        round="${round:-01}"
+        ;;
+    esac
     if [ "$layout" = "round-dir" ] && [ -n "$round" ]; then
       rr=$(printf '%02d' "$round" 2>/dev/null) || rr="$round"
       local round_uat="${dir}remediation/uat/round-${rr}/R${rr}-UAT.md"
@@ -248,6 +261,29 @@ current_uat() {
       done
       if [ -n "$_prev_best" ]; then
         printf '%s\n' "$_prev_best"
+        return 0
+      fi
+    elif [ "$layout" = "legacy" ] && [ -n "$round" ]; then
+      rr=$(printf '%02d' "$round" 2>/dev/null) || rr="$round"
+      local legacy_round_uat="${dir}remediation/round-${rr}/R${rr}-UAT.md"
+      if [ -f "$legacy_round_uat" ]; then
+        printf '%s\n' "$legacy_round_uat"
+        return 0
+      fi
+      local _legacy_best="" _legacy_best_num=-1
+      for _legacy_uat in "${dir}"remediation/round-*/R*-UAT.md; do
+        [ -f "$_legacy_uat" ] || continue
+        local _legacy_num
+        _legacy_num=$(basename "$_legacy_uat" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
+        if [ -n "$_legacy_num" ] && echo "$_legacy_num" | grep -qE '^[0-9]+$'; then
+          if [ "$_legacy_num" -gt "$_legacy_best_num" ] 2>/dev/null; then
+            _legacy_best_num=$_legacy_num
+            _legacy_best="$_legacy_uat"
+          fi
+        fi
+      done
+      if [ -n "$_legacy_best" ]; then
+        printf '%s\n' "$_legacy_best"
         return 0
       fi
     fi

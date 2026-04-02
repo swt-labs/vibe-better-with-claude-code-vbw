@@ -27,23 +27,48 @@ if [ ! -d "$PHASE_DIR" ]; then
   exit 0
 fi
 
-# Round-dir aware guard: when a remediation state file indicates round-dir
-# layout, check ONLY the current round's UAT file. Do NOT fall back to
-# previous rounds — stale resume data (e.g. all_done from round 01) would
-# cause the model to STOP instead of generating fresh tests for round 02.
-_state_file="${PHASE_DIR%/}/remediation/uat/.uat-remediation-stage"
+# Round-aware guard: when remediation state indicates a current round,
+# check ONLY that round's UAT file. Do NOT fall back to previous rounds —
+# stale resume data (e.g. all_done from round 01) would cause the model to
+# STOP instead of generating fresh tests for round 02.
+_state_file=""
+if [ -f "${PHASE_DIR%/}/remediation/uat/.uat-remediation-stage" ]; then
+  _state_file="${PHASE_DIR%/}/remediation/uat/.uat-remediation-stage"
+elif [ -f "${PHASE_DIR%/}/remediation/.uat-remediation-stage" ]; then
+  _state_file="${PHASE_DIR%/}/remediation/.uat-remediation-stage"
+elif [ -f "${PHASE_DIR%/}/.uat-remediation-stage" ]; then
+  _state_file="${PHASE_DIR%/}/.uat-remediation-stage"
+fi
 if [ -f "$_state_file" ]; then
   _layout=$(grep '^layout=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
   _round=$(grep '^round=' "$_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-  if [ "$_layout" = "round-dir" ] && [ -n "$_round" ]; then
+  case "$_state_file" in
+    */remediation/.uat-remediation-stage|*/.uat-remediation-stage)
+      _layout="${_layout:-legacy}"
+      _round="${_round:-01}"
+      ;;
+  esac
+  if [ -n "$_round" ]; then
     _rr=$(printf '%02d' "$_round" 2>/dev/null) || _rr="$_round"
-    _round_uat="${PHASE_DIR%/}/remediation/uat/round-${_rr}/R${_rr}-UAT.md"
-    if [ -f "$_round_uat" ]; then
-      UAT_FILE="$_round_uat"
-    else
-      # Current round has no UAT yet — new round, not stale data
-      echo "uat_resume=none"
-      exit 0
+    case "${_layout:-round-dir}" in
+      round-dir)
+        _round_uat="${PHASE_DIR%/}/remediation/uat/round-${_rr}/R${_rr}-UAT.md"
+        ;;
+      legacy)
+        _round_uat="${PHASE_DIR%/}/remediation/round-${_rr}/R${_rr}-UAT.md"
+        ;;
+      *)
+        _round_uat=""
+        ;;
+    esac
+    if [ -n "$_round_uat" ]; then
+      if [ -f "$_round_uat" ]; then
+        UAT_FILE="$_round_uat"
+      else
+        # Current round has no UAT yet — new round, not stale data
+        echo "uat_resume=none"
+        exit 0
+      fi
     fi
   fi
 fi

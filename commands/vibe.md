@@ -319,11 +319,11 @@ When `next_phase_state=needs_reverification`, execute these steps inline in the 
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/extract-uat-resume.sh "{phase-dir}"
   ```
   Use this refreshed output in place of the pre-computed verify blocks from Context.
-  **uat_path validation (defense-in-depth):** If the refreshed `uat_path` does not already point at the current remediation round's `remediation/uat/round-{RR}/R{RR}-UAT.md`, run:
+  **uat_path validation (defense-in-depth):** If the refreshed `uat_path` does not already point at the current remediation round's round-scoped UAT path (`remediation/uat/round-{RR}/R{RR}-UAT.md` for round-dir layout, `remediation/round-{RR}/R{RR}-UAT.md` for legacy layout), run:
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh get-or-init "{phase-dir}" major
   ```
-  Parse `round=RR` and override `uat_path=remediation/uat/round-{RR}/R{RR}-UAT.md` before entering Verify mode.
+  Parse `round=RR` and `layout=...`, then override `uat_path` with the matching round-scoped path for that layout before entering Verify mode.
 6. **Continue directly into Verify mode below** for that phase — do NOT stop, do NOT tell the user to run a separate command.
 
 The `needs_reverification` state fires regardless of `auto_uat` — remediation always requires re-verification. The `auto_uat` flag only controls whether the user is prompted for confirmation.
