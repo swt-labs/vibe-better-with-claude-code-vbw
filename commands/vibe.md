@@ -423,7 +423,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 
 ### Confirmation Gate
 
-Every mode triggers confirmation before executing. **Call AskUserQuestion** with the question from the routing table's Confirmation column (marked with `→ AskUserQuestion:`), providing the recommended option and alternatives from the table below.
+Every mode triggers confirmation before executing. **Call AskUserQuestion** with the question from the routing table's Confirmation column (marked with `→ AskUserQuestion:`), providing the recommended option and alternatives from the table below where listed. For simple yes/no confirmations without a table entry, offer the affirmative action as recommended and a "Skip" or "Not now" alternative.
 - **Exception:** `--yolo` skips all confirmation gates. Error guards (missing roadmap, uninitialized project) still halt.
 - **Exception:** Flags skip confirmation (explicit intent).
 
