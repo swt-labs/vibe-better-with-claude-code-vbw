@@ -265,7 +265,7 @@ If $ARGUMENTS present but no flags detected, interpret user intent:
 - Completion keywords (done, ship, archive, wrap up, finish, complete) -> Archive mode
 - Ambiguous -> AskUserQuestion with 2-3 contextual options
 
-ALWAYS confirm interpreted intent via AskUserQuestion before executing.
+ALWAYS call AskUserQuestion to confirm interpreted intent before executing.
 
 ### Path 3: State detection (no args)
 
@@ -292,17 +292,17 @@ Then re-run phase-detect.sh and use updated output for routing below.
 | Priority | Condition | Mode | Confirmation |
 | --- | --- | --- | --- |
 | 1 | `planning_dir_exists=false` | Init redirect | (redirect, no confirmation) |
-| 2 | `project_exists=false` | Bootstrap | "No project defined. Set one up?" |
-| 3 | `next_phase_state=needs_uat_remediation` | UAT Remediation | auto_uat=true: no confirmation. auto_uat=false: "Phase {NN} has unresolved UAT issues. Continue with remediation now?" |
-| 3.5 | `next_phase_state=needs_qa_remediation` | QA Remediation | auto_uat=true: no confirmation. auto_uat=false: "Phase {NN} has QA failures. Continue with QA remediation?" |
-| 4 | `next_phase_state=needs_reverification` | Re-verify | auto_uat=true: no confirmation. auto_uat=false: "Phase {NN} remediation complete. Run re-verification?" |
-| 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
-| 6 | `phase_count=0` | Scope | "Project defined but no phases. Scope the work?" |
+| 2 | `project_exists=false` | Bootstrap | → AskUserQuestion: "No project defined. Set one up?" |
+| 3 | `next_phase_state=needs_uat_remediation` | UAT Remediation | auto_uat=true: no confirmation. auto_uat=false: → AskUserQuestion: "Phase {NN} has unresolved UAT issues. Continue with remediation now?" |
+| 3.5 | `next_phase_state=needs_qa_remediation` | QA Remediation | auto_uat=true: no confirmation. auto_uat=false: → AskUserQuestion: "Phase {NN} has QA failures. Continue with QA remediation?" |
+| 4 | `next_phase_state=needs_reverification` | Re-verify | auto_uat=true: no confirmation. auto_uat=false: → AskUserQuestion: "Phase {NN} remediation complete. Run re-verification?" |
+| 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | → AskUserQuestion: "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
+| 6 | `phase_count=0` | Scope | → AskUserQuestion: "Project defined but no phases. Scope the work?" |
 | 7 | `next_phase_state=needs_verification` | Verify | (no confirmation — auto_uat intent). **QA gate:** If `qa_status=pending`, display "Phase {NN} QA is pending — running QA now." and spawn QA inline first (see QA Gate section below). This state also covers `all_done` milestones that were retargeted because authoritative QA on a completed phase is stale/missing. If `qa_status=failed`, enter QA remediation inline. Only proceed to Verify mode when `qa_status` is `passed` or `remediated`. |
-| 8 | `next_phase_state=needs_discussion` | Discuss | "Phase {NN} needs discussion before planning. Start discussion?" |
-| 9 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | "Phase {NN} needs planning and execution. Start?" |
-| 10 | `next_phase_state=needs_execute` | Execute | "Phase {NN} is planned. Execute it?" |
-| 11 | `next_phase_state=all_done` | Archive | "All phases complete. Run audit and archive?" (only when no `first_qa_attention_phase` remains) |
+| 8 | `next_phase_state=needs_discussion` | Discuss | → AskUserQuestion: "Phase {NN} needs discussion before planning. Start discussion?" |
+| 9 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | → AskUserQuestion: "Phase {NN} needs planning and execution. Start?" |
+| 10 | `next_phase_state=needs_execute` | Execute | → AskUserQuestion: "Phase {NN} is planned. Execute it?" |
+| 11 | `next_phase_state=all_done` | Archive | → AskUserQuestion: "All phases complete. Run audit and archive?" (only when no `first_qa_attention_phase` remains) |
 
 **Re-verify after remediation (needs_reverification) — IMMEDIATE EXECUTION (NON-NEGOTIABLE):**
 When `next_phase_state=needs_reverification`, execute these steps inline in the same turn — do NOT create tasks, read protocol files, or perform any intermediate planning:
@@ -423,7 +423,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 
 ### Confirmation Gate
 
-Every mode triggers confirmation via AskUserQuestion before executing, with contextual options (recommended action + alternatives).
+Every mode triggers confirmation before executing. **Call AskUserQuestion** with the question from the routing table's Confirmation column (marked with `→ AskUserQuestion:`), providing the recommended option and alternatives from the table below.
 - **Exception:** `--yolo` skips all confirmation gates. Error guards (missing roadmap, uninitialized project) still halt.
 - **Exception:** Flags skip confirmation (explicit intent).
 
@@ -434,6 +434,8 @@ Every mode triggers confirmation via AskUserQuestion before executing, with cont
 | `needs_discussion` | "Discuss phase {NN}" | "Skip discussion and plan directly", "View phase goal first" |
 | `needs_plan_and_execute` | "Plan and execute phase {NN}" | "Plan only (review before executing)", "Start a discussion (explore gray areas before planning)" |
 | `needs_execute` | "Execute phase {NN}" | "Review plans first", "Start a discussion (revisit scope before executing)" |
+
+**AskUserQuestion parameters:** Set the recommended option's `isRecommended` flag. Output 3–4 blank lines before the AskUserQuestion call (the dialog obscures trailing text).
 
 ## Modes
 
