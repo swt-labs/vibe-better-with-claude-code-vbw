@@ -154,7 +154,7 @@ group_end "Execution Protocol"
 
 group_start "GROUP 4: Command Surface (REQ-18 to REQ-20)"
 
-# REQ-18: 10 absorbed commands do NOT exist
+# REQ-18: 9 absorbed commands do NOT exist
 ABSORBED=(implement plan execute assumptions add-phase insert-phase remove-phase archive audit)
 for cmd in "${ABSORBED[@]}"; do
   check_absent "REQ-18" "commands/${cmd}.md does not exist" test -f "$COMMANDS_DIR/${cmd}.md"
