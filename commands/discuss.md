@@ -94,8 +94,9 @@ Determine the discussion mode before invoking the engine:
 
 1. If `$ARGUMENTS` contains `--assumptions` → mode is `assumptions`
 2. Else read `discussion_mode` from `.vbw-planning/config.json` (via `jq -r '.discussion_mode // "questions"'`)
-3. If config value is `"auto"` and `.vbw-planning/codebase/META.md` exists → mode is `assumptions`
-4. Otherwise → mode is `questions`
+3. If config value is `"assumptions"` → mode is `assumptions`
+4. If config value is `"auto"` and `.vbw-planning/codebase/META.md` exists → mode is `assumptions`
+5. Otherwise → mode is `questions`
 
 Pass the resolved mode to the engine: "Discussion mode: {resolved_mode}"
 

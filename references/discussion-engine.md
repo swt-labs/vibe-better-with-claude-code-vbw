@@ -47,7 +47,7 @@ Same gray area, two modes:
 Before orienting, check if `{NN}-CONTEXT.md` already exists for the target phase.
 
 - **If no CONTEXT.md exists:** Fresh discussion — proceed to Step 2 normally.
-- **If CONTEXT.md exists:** This is a **continuation discussion**. Read the existing file to understand what was already covered (Decisions sections, Deferred Ideas, Phase Boundary). Proceed to Step 2 with this context loaded.
+- **If CONTEXT.md exists:** This is a **continuation discussion**. Read the existing file to understand what was already covered (Decisions sections, Deferred Ideas, Phase Boundary). Proceed to Step 1.7 (if applicable) or Step 2 with this context loaded.
 
 ## Step 1.7: Assumptions Path
 
@@ -166,7 +166,7 @@ For each gray area identified, also form a preliminary recommendation based on t
 
 > "What decisions about this phase are NOT already captured in the existing discussion context? What new angles, edge cases, or deeper implications haven't been explored yet?"
 
-Exclude gray areas already covered by existing `## Decisions` subsections. Focus on:
+Exclude gray areas already covered by existing `## Decisions Made` subsections. Focus on:
 - Topics the user didn't select in the original discussion
 - Deeper implications of decisions already made (second-order effects)
 - Edge cases or integration concerns that surface after the first discussion
@@ -226,7 +226,7 @@ CONTEXT_NAME=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scr
 ```
 
 **Continuation mode (CONTEXT.md already exists):** Do NOT overwrite. Merge new insights into the existing file:
-- Add new `### [Gray Area]` subsections under `## Decisions` (after existing subsections)
+- Add new `### [Gray Area]` subsections under `## Decisions Made` (after existing subsections)
 - Append new entries to `## Deferred Ideas` if any surfaced
 - Update the `Gathered:` date to today's date
 - Do NOT remove, rewrite, or reorder existing content — the original discussion decisions are still valid
@@ -244,7 +244,7 @@ Calibration: builder | architect
 ## Phase Boundary
 [What this phase delivers — scope anchor from ROADMAP.md]
 
-## Decisions
+## Decisions Made
 ### [Gray Area 1]
 - [Decision or preference]
 - [Follow-up detail if captured]
@@ -299,7 +299,7 @@ Also append to `discovery.json` using this schema:
 | `active_profile=default` | 3-5 gray areas, standard depth |
 | `active_profile=production` | 4-6 gray areas, thorough explore |
 | `discovery_questions=false` | Skip discussion entirely |
-| `discussion_mode=assumptions` | Use assumptions path (Step 1.7) when codebase map exists |
+| `discussion_mode=assumptions` | Use assumptions path (Step 1.7); falls back to questions if no codebase map |
 | `discussion_mode=auto` | Auto-select: assumptions if `.vbw-planning/codebase/META.md` exists, questions otherwise |
 
 ## Design Principles
