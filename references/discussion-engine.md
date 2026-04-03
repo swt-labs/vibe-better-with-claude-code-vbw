@@ -103,7 +103,7 @@ The rhythm:
 4. If user picks "Let me explain...": read their free-form input, adjust your recommendation based on their reasoning, and confirm the updated decision. Treat their input as a preference, not a request for more options.
 5. After covering the area, move to the next one.
 
-**Clear-cut batching:** For decisions where the enterprise answer is standard practice across well-architected projects, batch them instead of asking individually: "For [area], we'll use these standard approaches: [list with brief reasoning]. Any of these need discussion?"
+**Clear-cut batching:** For decisions where the enterprise answer is standard practice across well-architected projects, batch them instead of asking individually. Present the batch as a list with brief reasoning and confirm via AskUserQuestion: "For [area], we'll use these standard approaches: [list with brief reasoning]. Any of these need discussion?"
 
 **Scope awareness** (simple, not a subsystem):
 If the user mentions something outside the phase boundary:
@@ -214,7 +214,7 @@ For every **technical decision** (architecture, data model, API design, framewor
 
 For **product decisions** (feature priority, UX preferences, naming, branding, target audience), present options equally — the user decides.
 
-When codebase context is available, ground recommendations in the existing architecture (patterns, conventions, prior decisions). When it is not, recommend enterprise best practices that minimize tech debt. If a recommendation depends on codebase state, read the relevant files before stating the recommendation — do not speculate about code you have not opened.
+When codebase context is available, ground recommendations in the existing architecture (patterns, conventions, prior decisions). When it is not, recommend enterprise best practices that minimize tech debt. If a recommendation depends on codebase state, read the relevant files or cite already-loaded context before stating the recommendation — do not speculate about code you have not opened.
 
 If the recommendation is clear-cut, state it as the plan and ask for confirmation via AskUserQuestion with the recommended option marked. If genuinely ambiguous (multiple valid approaches with material trade-offs), present 2-3 options with a recommended one marked, brief pros for each, and why you would pick the recommended one.
 
