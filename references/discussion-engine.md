@@ -100,7 +100,8 @@ The rhythm:
 1. Open with your recommendation for the area: state the gray area, provide your recommendation with brief reasoning (2-3 sentences), then ask for confirmation via AskUserQuestion. Format the first option as the recommended choice with "(Recommended — [brief reason])" in the label. Include 1-2 alternatives and a "Let me explain..." free-form option.
 2. If user picks recommended: confirm in one line, move on. No follow-ups for standard picks.
 3. If user picks alternative: record the preference. Only ask a follow-up if the alternative changes a downstream requirement or invalidates the recommendation's reasoning — otherwise move on.
-4. After covering the area, move to the next one.
+4. If user picks "Let me explain...": read their free-form input, adjust your recommendation based on their reasoning, and confirm the updated decision. Treat their input as a preference, not a request for more options.
+5. After covering the area, move to the next one.
 
 **Clear-cut batching:** For decisions where the enterprise answer is standard practice across well-architected projects, batch them instead of asking individually: "For [area], we'll use these standard approaches: [list with brief reasoning]. Any of these need discussion?"
 
@@ -215,7 +216,7 @@ For **product decisions** (feature priority, UX preferences, naming, branding, t
 
 When codebase context is available, ground recommendations in the existing architecture (patterns, conventions, prior decisions). When it is not, recommend enterprise best practices that minimize tech debt. If a recommendation depends on codebase state, read the relevant files before stating the recommendation — do not speculate about code you have not opened.
 
-If the recommendation is clear-cut, state it as the plan and ask for confirmation: "We'll use [X] because [reason]. Any concerns?" If genuinely ambiguous (multiple valid approaches with material trade-offs), present 2-3 options with a recommended one marked, brief pros for each, and why you would pick the recommended one.
+If the recommendation is clear-cut, state it as the plan and ask for confirmation via AskUserQuestion with the recommended option marked. If genuinely ambiguous (multiple valid approaches with material trade-offs), present 2-3 options with a recommended one marked, brief pros for each, and why you would pick the recommended one.
 
 Scale recommendation verbosity to the active profile: `production` shows full reasoning with trade-offs for alternatives; `default` gives concise reasoning; `prototype` states the decision with minimal justification.
 
