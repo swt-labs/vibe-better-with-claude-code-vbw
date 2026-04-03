@@ -97,7 +97,7 @@ Present gray areas as a multi-select using AskUserQuestion.
 For each selected area, have a natural conversation. Not a form. Not a fixed number of questions.
 
 The rhythm:
-1. Open with your recommendation for the area: state the gray area, provide your recommendation with brief reasoning (2-3 sentences), then ask for confirmation via AskUserQuestion. Format the first option as the recommended choice with "(Recommended — [brief reason])" in the label. Include 1-2 alternatives and a "Let me explain..." free-form option.
+1. Open with your recommendation for the area (for product decisions, present options equally per the Recommendation Principle instead): state the gray area, provide your recommendation with brief reasoning (2-3 sentences), then ask for confirmation via AskUserQuestion. Format the first option as the recommended choice with "(Recommended — [brief reason])" in the label. Include 1-2 alternatives and a "Let me explain..." free-form option.
 2. If user picks recommended: confirm in one line, move on. No follow-ups for standard picks.
 3. If user picks alternative: record the preference. Only ask a follow-up if the alternative changes a downstream requirement or invalidates the recommendation's reasoning — otherwise move on.
 4. If user picks "Let me explain...": read their free-form input, adjust your recommendation based on their reasoning, and confirm the updated decision. Treat their input as a preference, not a request for more options.
