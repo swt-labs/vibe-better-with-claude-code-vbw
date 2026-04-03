@@ -25,10 +25,6 @@ Run individual checks:
 - `bash testing/verify-bash-scripts-contract.sh`
 - `bash testing/verify-commands-contract.sh`
 
-Optional (local only, depends on your global Claude mirror state):
-
-- `RUN_VIBE_VERIFY=1 bash testing/run-all.sh`
-
 ## Real-project smoke tests (manual)
 
 For slash-command behavior, test in a separate sandbox repo (not this plugin repo), for example:

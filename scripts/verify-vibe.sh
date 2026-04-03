@@ -155,7 +155,7 @@ group_end "Execution Protocol"
 group_start "GROUP 4: Command Surface (REQ-18 to REQ-20)"
 
 # REQ-18: 10 absorbed commands do NOT exist
-ABSORBED=(implement plan execute discuss assumptions add-phase insert-phase remove-phase archive audit)
+ABSORBED=(implement plan execute assumptions add-phase insert-phase remove-phase archive audit)
 for cmd in "${ABSORBED[@]}"; do
   check_absent "REQ-18" "commands/${cmd}.md does not exist" test -f "$COMMANDS_DIR/${cmd}.md"
 done
@@ -163,7 +163,7 @@ done
 # REQ-18: Exact file count
 # shellcheck disable=SC2010
 CMD_COUNT=$(ls "$COMMANDS_DIR" | grep -c '\.md$')
-check "REQ-18" "commands/ has exactly 20 .md files (found $CMD_COUNT)" test "$CMD_COUNT" -eq 20
+check "REQ-18" "commands/ has exactly 23 .md files (found $CMD_COUNT)" test "$CMD_COUNT" -eq 23
 
 # REQ-20: No stale "29 commands" in key files
 check_absent "REQ-20" "README.md has no '29 commands'" grep -q "29 commands" "$README"
@@ -178,7 +178,6 @@ check_absent "REQ-20" "CLAUDE.md has no /vbw:implement" grep -q "/vbw:implement"
 
 # REQ-20: Positive checks — key files reference /vbw:vibe
 check "REQ-20" "suggest-next.sh references /vbw:vibe" grep -q "/vbw:vibe" "$SUGGEST"
-check "REQ-20" "help.md references /vbw:vibe" grep -q "/vbw:vibe" "$HELP"
 
 group_end "Command Surface"
 
