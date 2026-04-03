@@ -39,6 +39,67 @@ extract_frontmatter() {
   ' "$file"
 }
 
+trim() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+has_allowed_tool() {
+  local allowed="$1"
+  local target="$2"
+
+  printf '%s' "$allowed" | awk -v RS=',' -v target="$target" '
+    {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+      if ($0 == target) found=1
+    }
+    END { exit(found ? 0 : 1) }
+  '
+}
+
+first_trigger_line() {
+  local file="$1"
+  local positive_regex="$2"
+  local negative_regex="${3:-}"
+
+  awk -v pos="$positive_regex" -v neg="$negative_regex" '
+    BEGIN { IGNORECASE=1; delim=0 }
+    /^---$/ { delim++; next }
+    delim < 2 { next }
+    $0 ~ pos && (neg == "" || $0 !~ neg) { print; exit }
+  ' "$file"
+}
+
+check_allowed_tool_match() {
+  local base="$1"
+  local allowed="$2"
+  local file="$3"
+  local tool="$4"
+  local positive_regex="$5"
+  local negative_regex="${6:-}"
+  local trigger=""
+  local snippet=""
+
+  trigger=$(first_trigger_line "$file" "$positive_regex" "$negative_regex" || true)
+  [ -n "$trigger" ] || return 0
+
+  if has_allowed_tool "$allowed" "$tool"; then
+    pass "$base: $tool in body matches allowed-tools"
+    return 0
+  fi
+
+  snippet=$(trim "$trigger")
+  snippet="${snippet//$'\t'/ }"
+  snippet="${snippet//$'\r'/ }"
+  if [ ${#snippet} -gt 140 ]; then
+    snippet="${snippet:0:137}..."
+  fi
+
+  fail "$base: body references $tool but allowed-tools does not include it (trigger: $snippet)"
+}
+
 echo "=== Command Contract Verification ==="
 
 # Scan both commands/ (consumer-facing) and internal/ (maintainer-only)
@@ -475,6 +536,62 @@ for f in "$COMMANDS_DIR/vibe.md" "$ROOT/references/execute-protocol.md"; do
     fail "$base: expected >=2 anti-rationalization instructions, found $_ar_count"
   fi
 done
+
+echo ""
+echo "=== Allowed-Tools Consistency Verification ==="
+
+# Commands that reference specific tool names in their body must include those
+# tools in their allowed-tools frontmatter. Keep these checks exact-pattern and
+# low-noise: match real tool-call syntax or explicit tool names, not generic
+# prose about "skills" or "search".
+for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
+  [ -f "$file" ] || continue
+  base="$(basename "$file" .md)"
+
+  FRONTMATTER="$(extract_frontmatter "$file")"
+  if [ -z "$FRONTMATTER" ]; then
+    continue
+  fi
+
+  ALLOWED="$(printf '%s\n' "$FRONTMATTER" | sed -n 's/^allowed-tools:[[:space:]]*//p' | head -1)"
+  if [ -z "$ALLOWED" ]; then
+    continue
+  fi
+
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "AskUserQuestion" '(^|[^[:alnum:]_])AskUserQuestion([^[:alnum:]_]|$)'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "Skill" 'Call[[:space:]]+Skill[(]|(^|[^[:alnum:]_])Skill[(]'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "WebSearch" '(^|[^[:alnum:]_])WebSearch([^[:alnum:]_]|$)' 'do[[:space:]]+not.*WebSearch'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "Agent" '(via[[:space:]]+Task[[:space:]]+tool|Task[[:space:]]+tool[[:space:]]+invocation|subagent_type:)'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "TeamCreate" '(^|[^[:alnum:]_])TeamCreate([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TeamCreate'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "TaskCreate" '(^|[^[:alnum:]_])TaskCreate([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TaskCreate'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "SendMessage" '(^|[^[:alnum:]_])SendMessage([^[:alnum:]_]|$)' 'do[[:space:]]+not.*SendMessage'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "TeamDelete" '(^|[^[:alnum:]_])TeamDelete([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TeamDelete'
+done
+
+# Regression guards for prompt-text tool references that previously slipped
+# through the generic matcher. Keep these explicit until the generic helper is
+# proven to catch them in all command bodies.
+for skill_cmd in debug fix map qa research vibe; do
+  skill_file="$COMMANDS_DIR/${skill_cmd}.md"
+  [ -f "$skill_file" ] || continue
+
+  if grep -Fq 'Call Skill(' "$skill_file"; then
+    if grep -F 'allowed-tools:' "$skill_file" | grep -Fq 'Skill'; then
+      pass "$skill_cmd: regression guard confirms Skill allowlist"
+    else
+      fail "$skill_cmd: regression guard found Call Skill(...) but allowed-tools is missing Skill"
+    fi
+  fi
+done
+
+INIT_FILE="$COMMANDS_DIR/init.md"
+if [ -f "$INIT_FILE" ] && grep -Fq 'WebSearch' "$INIT_FILE"; then
+  if grep -F 'allowed-tools:' "$INIT_FILE" | grep -Fq 'WebSearch'; then
+    pass "init: regression guard confirms WebSearch allowlist"
+  else
+    fail "init: regression guard found WebSearch in body but allowed-tools is missing WebSearch"
+  fi
+fi
 
 echo ""
 echo "=== Command Reference Verification ==="

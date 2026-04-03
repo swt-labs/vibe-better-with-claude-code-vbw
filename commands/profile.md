@@ -4,7 +4,7 @@ category: supporting
 disable-model-invocation: true
 description: Switch between work profiles or create custom ones. Profiles change effort, autonomy, and verification in one go.
 argument-hint: "[profile-name | save | delete <name>]"
-allowed-tools: Read, Write, Edit
+allowed-tools: Read, Write, Edit, AskUserQuestion
 ---
 
 # VBW Profile $ARGUMENTS

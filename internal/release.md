@@ -4,7 +4,7 @@ category: lifecycle
 disable-model-invocation: true
 description: Two-phase release — prepare a release branch + PR, then finalize after merge.
 argument-hint: "[--finalize] [--dry-run] [--no-push] [--major] [--minor] [--skip-audit]"
-allowed-tools: Read, Edit, Bash, Glob, Grep
+allowed-tools: Read, Edit, Bash, Glob, Grep, AskUserQuestion
 ---
 
 # VBW Release $ARGUMENTS
