@@ -23,6 +23,7 @@ node_modules/
 .github/copilot-instructions.md
 .github/agents
 .github/hooks
+.github/references
 AGENTS.md
 CLAUDE.md
 
