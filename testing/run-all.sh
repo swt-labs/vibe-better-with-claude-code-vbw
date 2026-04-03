@@ -64,6 +64,7 @@ run_job contract "ci-workflow-contract"     bash "$ROOT/testing/verify-ci-workfl
 run_job contract "discord-release-workflow" bash "$ROOT/testing/verify-discord-release-workflow-contract.sh"
 run_job contract "prefer-teams-canonicalization" bash "$ROOT/testing/verify-prefer-teams-canonicalization.sh"
 run_job contract "qa-persistence-contract"  bash "$ROOT/testing/verify-qa-persistence-contract.sh"
+run_job contract "discussion-engine-contract" bash "$ROOT/testing/verify-discussion-engine-contract.sh"
 
 # --- Launch bats workers concurrently with contract checks ---
 BATS_WORKERS="${BATS_WORKERS:-4}"

@@ -150,6 +150,16 @@ Same output as Step 4 (Capture). Write `{NN}-CONTEXT.md` using the template. Ass
 
 Also append to `discovery.json` using the existing schema. For confirmed assumptions, the `answer` field records the assumption text. For corrected assumptions, `answer` records the user's correction with the original assumption noted.
 
+After writing context and discovery files, present a summary to the user showing each assumption with its resolution:
+
+| Indicator | Meaning |
+|-----------|---------|
+| ✓ confirmed (high) | Assumption confirmed as-is |
+| ⚡ validated (medium) | Assumption validated with evidence |
+| ? resolved (low) | Low-confidence area resolved through discussion |
+| ✗ corrected | User corrected the assumption |
+| ○ expanded | User added nuance via "Let me explain..." |
+
 After A5, skip Steps 2-4 for areas covered by assumptions. If any low-confidence areas fell through to Step 3 Explore, those are captured by Step 4 independently — A5 only captures the assumption-path decisions (high and medium confidence).
 
 ## Step 2: Orient
