@@ -103,7 +103,7 @@ The rhythm:
 4. If user picks "Let me explain...": read their free-form input, adjust your recommendation based on their reasoning, and confirm the updated decision. Treat their input as a preference, not a request for more options.
 5. After covering the area, move to the next one.
 
-**Clear-cut batching:** For decisions where the enterprise answer is standard practice across well-architected projects, batch them instead of asking individually. Present the batch as a list with brief reasoning and confirm via AskUserQuestion: "For [area], we'll use these standard approaches: [list with brief reasoning]. Any of these need discussion?"
+**Clear-cut batching:** For decisions where the enterprise answer is standard practice across well-architected projects, batch them instead of asking individually. Present the batch as a list with brief reasoning and confirm via AskUserQuestion with options like "All good", "I'd like to discuss one of these", and "Let me explain...": "For [area], we'll use these standard approaches: [list with brief reasoning]. Any of these need discussion?"
 
 **Scope awareness** (simple, not a subsystem):
 If the user mentions something outside the phase boundary:
