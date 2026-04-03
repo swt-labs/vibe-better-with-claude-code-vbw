@@ -2,6 +2,27 @@
 
 All notable changes to VBW will be documented in this file.
 
+## [1.34.1] - 2026-04-03
+
+### Added
+
+- **`hooks`** -- Prefer native `agent_id`/`agent_type` fields for subagent detection across start, stop, health, and compaction hooks, with backward-compatible fallback for legacy payload shapes. (PR #321)
+- **`ci`** -- Add Discord release notification workflow that posts rich embeds with release notes when a GitHub release is published. (PR #314)
+
+### Changed
+
+- **`config`** -- Canonicalize `prefer_teams` aliases by removing `when_parallel` as a distinct mode, normalizing legacy values to `always|auto|never` via a shared helper, and adding contract test coverage. (PR #320)
+- **`ci`** -- Add `.github/references` to `.gitignore`.
+
+### Fixed
+
+- **`vibe`** -- Fold Milestone UAT Recovery's two sequential AskUserQuestion calls into a single three-option question, eliminating the redundant yes/no entry gate. (PR #327)
+- **`vibe`** -- Add explicit `AskUserQuestion` tool-call directives at all confirmation gates in the routing table, co-locating tool instructions with routing decisions. (PR #326)
+- **`commands`** -- Add missing tools (AskUserQuestion, Agent, team management) to `allowed-tools` frontmatter across 14 command files, and add contract test for consistency. (PR #323)
+- **`archive`** -- Use the Write tool instead of Bash for SHIPPED.md creation so PostToolUse hooks fire for artifact tracking. (PR #319)
+- **`verify`** -- Keep execute-time UAT generation human-only by explicitly excluding programmatic and UI-automation checks from UAT in `execute-protocol.md`. (PR #318)
+- **`verify`** -- Add `--remediation-kind` filter to `compile-verify-context.sh` so UAT remediation re-verification scans only the UAT directory when both QA and UAT remediation exist. (PR #317)
+
 ## [1.34.0] - 2026-04-01
 
 ### Added
