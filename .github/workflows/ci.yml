@@ -128,6 +128,7 @@ jobs:
           run_check "discord-release-workflow" "bash testing/verify-discord-release-workflow-contract.sh"
           run_check "prefer-teams-canonicalization" "bash testing/verify-prefer-teams-canonicalization.sh"
           run_check "qa-persistence-contract"  "bash testing/verify-qa-persistence-contract.sh"
+          run_check "discussion-engine-contract" "bash testing/verify-discussion-engine-contract.sh"
 
           failures=0
           for i in "${!PIDS[@]}"; do

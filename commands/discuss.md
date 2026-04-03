@@ -2,7 +2,7 @@
 name: vbw:discuss
 category: lifecycle
 description: "Start or continue phase discussion to build context before planning."
-argument-hint: "[N]"
+argument-hint: "[N] [--assumptions]"
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, LSP
 disable-model-invocation: true
 ---
@@ -88,9 +88,21 @@ fi`
 3. If the target phase has a `*-CONTEXT.md` file WITHOUT `pre_seeded: true` (organic discussion already happened): This is a **continuation discussion**. Display: "Phase {NN} already has discussion context. Continuing to explore additional topics." The Discussion Engine's Step 1.5 will handle loading existing decisions as baseline.
 4. If no target was set by step 1 (no explicit phase number): auto-detect by finding the first phase directory without a `*-CONTEXT.md` file. If all phases already have context: STOP "All phases discussed. Specify a phase number to deepen an existing discussion."
 
+## Discussion Mode Resolution
+
+Determine the discussion mode before invoking the engine:
+
+1. If `$ARGUMENTS` contains `--assumptions` → mode is `assumptions`
+2. Else read `discussion_mode` from `.vbw-planning/config.json` (via `jq -r '.discussion_mode // "questions"'`)
+3. If config value is `"assumptions"` → mode is `assumptions`
+4. If config value is `"auto"` and `.vbw-planning/codebase/META.md` exists → mode is `assumptions`
+5. Otherwise → mode is `questions`
+
+Pass the resolved mode to the engine: "Discussion mode: {resolved_mode}"
+
 ## Execute
 
-Read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/discussion-engine.md` and follow its protocol for the target phase.
+Read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/discussion-engine.md` and follow its protocol for the target phase. The engine's Step 1.7 uses the resolved discussion mode to branch between assumptions and questions paths.
 
 ## After Discussion
 

@@ -23,3 +23,11 @@
 ## Decisions Made
 
 {Key decisions captured during discovery}
+
+<!-- Decision source variants:
+  Questions mode: ### [Gray Area] with decision bullets
+  Assumptions mode: ### [Gray Area] with decision bullets PLUS:
+    **Evidence:** [file paths + code patterns supporting the assumption]
+    **Confidence:** High|Medium|Low
+    **Correction:** [user correction — omit if confirmed as-is]
+-->
