@@ -440,6 +440,21 @@ EOF
   [ "$SCRIPT_COUNT" = "40" ]
 }
 
+@test "discussion_mode defaults to questions after migration" {
+  # Create config without discussion_mode (brownfield)
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "effort": "balanced",
+  "discovery_questions": true
+}
+EOF
+  run bash "$SCRIPTS_DIR/migrate-config.sh" "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  run jq -r '.discussion_mode' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "questions" ]
+}
+
 @test "migration strips all graduated V2/V3 flags from brownfield config" {
   # Create config with every graduated flag present
   cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'

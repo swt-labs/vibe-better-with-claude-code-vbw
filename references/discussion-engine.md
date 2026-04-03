@@ -62,7 +62,7 @@ Check these conditions in order. The first match wins:
 3. `discussion_mode` is `"auto"` AND `.vbw-planning/codebase/META.md` exists → use assumptions path
 4. `discussion_mode` is `"questions"` or `"auto"` without codebase map → proceed to Step 2 (standard questions path)
 
-**Codebase map guard:** If the assumptions path is activated but `.vbw-planning/codebase/META.md` does not exist, display: "Assumptions mode works best with codebase context. Run `/vbw:map` first for evidence-backed assumptions, or proceeding with questions mode." Then fall back to Step 2.
+**Codebase map guard:** If the assumptions path is activated but `.vbw-planning/codebase/META.md` does not exist, display: "Assumptions mode works best with codebase context. Run `/vbw:map` first for evidence-backed assumptions, or falling back to questions mode." Fall back to Step 2 (standard questions path).
 
 ### A1: Codebase Analysis
 
@@ -150,7 +150,7 @@ Same output as Step 4 (Capture). Write `{NN}-CONTEXT.md` using the template. Ass
 
 Also append to `discovery.json` using the existing schema. For confirmed assumptions, the `answer` field records the assumption text. For corrected assumptions, `answer` records the user's correction with the original assumption noted.
 
-After A5, skip Steps 2-4 — the assumptions path replaces Orient, Explore, and Capture for the areas it covers.
+After A5, skip Steps 2-4 for areas covered by assumptions. If any low-confidence areas fell through to Step 3 Explore, those are captured by Step 4 independently — A5 only captures the assumption-path decisions (high and medium confidence).
 
 ## Step 2: Orient
 
