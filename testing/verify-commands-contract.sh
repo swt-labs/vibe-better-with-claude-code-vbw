@@ -39,6 +39,67 @@ extract_frontmatter() {
   ' "$file"
 }
 
+trim() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+has_allowed_tool() {
+  local allowed="$1"
+  local target="$2"
+
+  printf '%s' "$allowed" | awk -v RS=',' -v target="$target" '
+    {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+      if ($0 == target) found=1
+    }
+    END { exit(found ? 0 : 1) }
+  '
+}
+
+first_trigger_line() {
+  local file="$1"
+  local positive_regex="$2"
+  local negative_regex="${3:-}"
+
+  awk -v pos="$positive_regex" -v neg="$negative_regex" '
+    BEGIN { IGNORECASE=1; delim=0 }
+    /^---$/ { delim++; next }
+    delim < 2 { next }
+    $0 ~ pos && (neg == "" || $0 !~ neg) { print; exit }
+  ' "$file"
+}
+
+check_allowed_tool_match() {
+  local base="$1"
+  local allowed="$2"
+  local file="$3"
+  local tool="$4"
+  local positive_regex="$5"
+  local negative_regex="${6:-}"
+  local trigger=""
+  local snippet=""
+
+  trigger=$(first_trigger_line "$file" "$positive_regex" "$negative_regex" || true)
+  [ -n "$trigger" ] || return 0
+
+  if has_allowed_tool "$allowed" "$tool"; then
+    pass "$base: $tool in body matches allowed-tools"
+    return 0
+  fi
+
+  snippet=$(trim "$trigger")
+  snippet="${snippet//$'\t'/ }"
+  snippet="${snippet//$'\r'/ }"
+  if [ ${#snippet} -gt 140 ]; then
+    snippet="${snippet:0:137}..."
+  fi
+
+  fail "$base: body references $tool but allowed-tools does not include it (trigger: $snippet)"
+}
+
 echo "=== Command Contract Verification ==="
 
 # Scan both commands/ (consumer-facing) and internal/ (maintainer-only)
@@ -480,8 +541,9 @@ echo ""
 echo "=== Allowed-Tools Consistency Verification ==="
 
 # Commands that reference specific tool names in their body must include those
-# tools in their allowed-tools frontmatter. Claude Code enforces allowed-tools as
-# a strict allowlist — unlisted tools are silently unavailable.
+# tools in their allowed-tools frontmatter. Keep these checks exact-pattern and
+# low-noise: match real tool-call syntax or explicit tool names, not generic
+# prose about "skills" or "search".
 for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
   [ -f "$file" ] || continue
   base="$(basename "$file" .md)"
@@ -496,78 +558,40 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
     continue
   fi
 
-  # Extract body (everything after second ---)
-  body="$(awk '/^---$/{d++; next} d>=2' "$file")"
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "AskUserQuestion" '(^|[^[:alnum:]_])AskUserQuestion([^[:alnum:]_]|$)'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "Skill" 'Call[[:space:]]+Skill[(]|(^|[^[:alnum:]_])Skill[(]'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "WebSearch" '(^|[^[:alnum:]_])WebSearch([^[:alnum:]_]|$)' 'do[[:space:]]+not.*WebSearch'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "Agent" '(via[[:space:]]+Task[[:space:]]+tool|Task[[:space:]]+tool[[:space:]]+invocation|subagent_type:)'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "TeamCreate" '(^|[^[:alnum:]_])TeamCreate([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TeamCreate'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "TaskCreate" '(^|[^[:alnum:]_])TaskCreate([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TaskCreate'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "SendMessage" '(^|[^[:alnum:]_])SendMessage([^[:alnum:]_]|$)' 'do[[:space:]]+not.*SendMessage'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "TeamDelete" '(^|[^[:alnum:]_])TeamDelete([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TeamDelete'
+done
 
-  # Check AskUserQuestion: if body references it, allowed-tools must include it
-  if printf '%s\n' "$body" | grep -q 'AskUserQuestion'; then
-    if printf '%s\n' "$ALLOWED" | grep -q 'AskUserQuestion'; then
-      pass "$base: AskUserQuestion in body matches allowed-tools"
-    else
-      fail "$base: body references AskUserQuestion but allowed-tools does not include it"
-    fi
-  fi
+# Regression guards for prompt-text tool references that previously slipped
+# through the generic matcher. Keep these explicit until the generic helper is
+# proven to catch them in all command bodies.
+for skill_cmd in debug fix map qa research vibe; do
+  skill_file="$COMMANDS_DIR/${skill_cmd}.md"
+  [ -f "$skill_file" ] || continue
 
-  # Check WebSearch: if body uses WebSearch (not in a "do not [use] WebSearch"
-  # instruction), allowed-tools must include it
-  if printf '%s\n' "$body" | grep -q 'WebSearch' && printf '%s\n' "$body" | grep 'WebSearch' | grep -qvi 'do not.*WebSearch'; then
-    if printf '%s\n' "$ALLOWED" | grep -q 'WebSearch'; then
-      pass "$base: WebSearch in body matches allowed-tools"
+  if grep -Fq 'Call Skill(' "$skill_file"; then
+    if grep -F 'allowed-tools:' "$skill_file" | grep -Fq 'Skill'; then
+      pass "$skill_cmd: regression guard confirms Skill allowlist"
     else
-      fail "$base: body references WebSearch but allowed-tools does not include it"
-    fi
-  fi
-
-  # Check Agent: if body references subagent spawning via "Task tool" or
-  # subagent_type, allowed-tools must include Agent
-  if printf '%s\n' "$body" | grep -qE '(via Task tool|subagent_type:)'; then
-    if printf '%s\n' "$ALLOWED" | grep -q 'Agent'; then
-      pass "$base: subagent spawning in body matches Agent in allowed-tools"
-    else
-      fail "$base: body spawns subagents but allowed-tools does not include Agent"
-    fi
-  fi
-
-  # Check TeamCreate: if body uses TeamCreate (not in a "do not [use] TeamCreate"
-  # instruction), allowed-tools must include it
-  if printf '%s\n' "$body" | grep -q 'TeamCreate' && printf '%s\n' "$body" | grep 'TeamCreate' | grep -qvi 'do not.*TeamCreate'; then
-    if printf '%s\n' "$ALLOWED" | grep -q 'TeamCreate'; then
-      pass "$base: TeamCreate in body matches allowed-tools"
-    else
-      fail "$base: body references TeamCreate but allowed-tools does not include it"
-    fi
-  fi
-
-  # Check TaskCreate: if body uses TaskCreate (not in a "do not [use] TaskCreate"
-  # instruction), allowed-tools must include it
-  if printf '%s\n' "$body" | grep -q 'TaskCreate' && printf '%s\n' "$body" | grep 'TaskCreate' | grep -qvi 'do not.*TaskCreate'; then
-    if printf '%s\n' "$ALLOWED" | grep -q 'TaskCreate'; then
-      pass "$base: TaskCreate in body matches allowed-tools"
-    else
-      fail "$base: body references TaskCreate but allowed-tools does not include it"
-    fi
-  fi
-
-  # Check SendMessage: if body uses SendMessage (not in a "do not [use] SendMessage"
-  # instruction), allowed-tools must include it
-  if printf '%s\n' "$body" | grep -q 'SendMessage' && printf '%s\n' "$body" | grep 'SendMessage' | grep -qvi 'do not.*SendMessage'; then
-    if printf '%s\n' "$ALLOWED" | grep -q 'SendMessage'; then
-      pass "$base: SendMessage in body matches allowed-tools"
-    else
-      fail "$base: body references SendMessage but allowed-tools does not include it"
-    fi
-  fi
-
-  # Check TeamDelete: if body uses TeamDelete (not in a "do not [use] TeamDelete"
-  # instruction), allowed-tools must include it
-  if printf '%s\n' "$body" | grep -q 'TeamDelete' && printf '%s\n' "$body" | grep 'TeamDelete' | grep -qvi 'do not.*TeamDelete'; then
-    if printf '%s\n' "$ALLOWED" | grep -q 'TeamDelete'; then
-      pass "$base: TeamDelete in body matches allowed-tools"
-    else
-      fail "$base: body references TeamDelete but allowed-tools does not include it"
+      fail "$skill_cmd: regression guard found Call Skill(...) but allowed-tools is missing Skill"
     fi
   fi
 done
+
+INIT_FILE="$COMMANDS_DIR/init.md"
+if [ -f "$INIT_FILE" ] && grep -Fq 'WebSearch' "$INIT_FILE"; then
+  if grep -F 'allowed-tools:' "$INIT_FILE" | grep -Fq 'WebSearch'; then
+    pass "init: regression guard confirms WebSearch allowlist"
+  else
+    fail "init: regression guard found WebSearch in body but allowed-tools is missing WebSearch"
+  fi
+fi
 
 echo ""
 echo "=== Command Reference Verification ==="
