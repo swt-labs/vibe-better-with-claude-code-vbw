@@ -129,6 +129,7 @@ jobs:
           run_check "prefer-teams-canonicalization" "bash testing/verify-prefer-teams-canonicalization.sh"
           run_check "qa-persistence-contract"  "bash testing/verify-qa-persistence-contract.sh"
           run_check "discussion-engine-contract" "bash testing/verify-discussion-engine-contract.sh"
+          run_check "verify-vibe"              "bash scripts/verify-vibe.sh"
 
           failures=0
           for i in "${!PIDS[@]}"; do

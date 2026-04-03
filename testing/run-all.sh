@@ -65,6 +65,7 @@ run_job contract "discord-release-workflow" bash "$ROOT/testing/verify-discord-r
 run_job contract "prefer-teams-canonicalization" bash "$ROOT/testing/verify-prefer-teams-canonicalization.sh"
 run_job contract "qa-persistence-contract"  bash "$ROOT/testing/verify-qa-persistence-contract.sh"
 run_job contract "discussion-engine-contract" bash "$ROOT/testing/verify-discussion-engine-contract.sh"
+run_job contract "verify-vibe"              bash "$ROOT/scripts/verify-vibe.sh"
 
 # --- Launch bats workers concurrently with contract checks ---
 BATS_WORKERS="${BATS_WORKERS:-4}"
@@ -244,12 +245,4 @@ if [ "$any_failure" -ne 0 ]; then
 fi
 
 echo ""
-if [ "${RUN_VIBE_VERIFY:-0}" = "1" ]; then
-  echo "Running vibe consolidation checks..."
-  bash "$ROOT/scripts/verify-vibe.sh"
-else
-  echo "Skipping scripts/verify-vibe.sh (set RUN_VIBE_VERIFY=1 to enable)."
-fi
-
-echo ""
-echo "All selected checks completed."
+echo "All checks completed."

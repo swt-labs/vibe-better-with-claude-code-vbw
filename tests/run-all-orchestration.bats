@@ -73,7 +73,8 @@ SH
     testing/verify-discord-release-workflow-contract.sh \
     testing/verify-prefer-teams-canonicalization.sh \
     testing/verify-qa-persistence-contract.sh \
-    testing/verify-discussion-engine-contract.sh; do
+    testing/verify-discussion-engine-contract.sh \
+    scripts/verify-vibe.sh; do
     create_stub_script "$root/$file"
   done
 
@@ -115,7 +116,7 @@ link_run_all_system_tools() {
   export BATS_LOG="$TEST_TEMP_DIR/bats.log"
   export PATH="$root/bin:$PATH"
 
-  run env RUN_VIBE_VERIFY=0 bash -c "cd '$root' && BATS_WORKERS=banana bash testing/run-all.sh"
+  run env bash -c "cd '$root' && BATS_WORKERS=banana bash testing/run-all.sh"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q 'Invalid BATS_WORKERS=banana'
   echo "$output" | grep -q 'Running serial bats files'
@@ -132,7 +133,7 @@ link_run_all_system_tools() {
   export BATS_LOG="$TEST_TEMP_DIR/bats-fail.log"
   export PATH="$root/bin:$PATH"
 
-  run env RUN_VIBE_VERIFY=0 bash -c "cd '$root' && bash testing/run-all.sh"
+  run env bash -c "cd '$root' && bash testing/run-all.sh"
   [ "$status" -eq 1 ]
   printf '%s\n' "$output" > "$output_file"
 
@@ -142,7 +143,7 @@ link_run_all_system_tools() {
   fail_total_line=$(grep -n '^TOTAL: 48 PASS, 1 FAIL$' "$output_file" | cut -d: -f1)
   fail_end_line=$(grep -n '^--- end lsp-first-policy output ---$' "$output_file" | cut -d: -f1)
   lint_summary_line=$(grep -n '^Lint checks: 1/1 passed$' "$output_file" | cut -d: -f1)
-  summary_line=$(grep -n '^Contract checks: 29/30 passed$' "$output_file" | cut -d: -f1)
+  summary_line=$(grep -n '^Contract checks: 30/31 passed$' "$output_file" | cut -d: -f1)
 
   [ -n "$pass_line" ]
   [ -n "$fail_begin_line" ]
@@ -165,7 +166,7 @@ link_run_all_system_tools() {
   export BATS_LOG="$TEST_TEMP_DIR/bats-lint-fail.log"
   export PATH="$root/bin:$PATH"
 
-  run env RUN_VIBE_VERIFY=0 bash -c "cd '$root' && bash testing/run-all.sh"
+  run env bash -c "cd '$root' && bash testing/run-all.sh"
   [ "$status" -eq 1 ]
 
   echo "$output" | grep -q '^FAIL: shell-lint$'
@@ -183,7 +184,7 @@ link_run_all_system_tools() {
   host_bash="$(command -v bash)"
   export BATS_LOG="$TEST_TEMP_DIR/bats-no-shellcheck.log"
 
-  run env PATH="$root/bin" RUN_VIBE_VERIFY=0 "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
+  run env PATH="$root/bin" "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
   [ "$status" -eq 1 ]
 
   echo "$output" | grep -q '^FAIL: shell-lint$'
@@ -199,7 +200,7 @@ link_run_all_system_tools() {
   link_run_all_system_tools "$root"
   host_bash="$(command -v bash)"
 
-  run env PATH="$root/bin" RUN_VIBE_VERIFY=0 "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
+  run env PATH="$root/bin" "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
   [ "$status" -eq 1 ]
 
   echo "$output" | grep -q 'bats is required for CI-parity local verification'
@@ -214,7 +215,7 @@ link_run_all_system_tools() {
   rm -f "$root/bin/jq"
   host_bash="$(command -v bash)"
 
-  run env PATH="$root/bin" RUN_VIBE_VERIFY=0 "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
+  run env PATH="$root/bin" "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
   [ "$status" -eq 1 ]
 
   echo "$output" | grep -q 'jq is required for CI-parity local verification'
