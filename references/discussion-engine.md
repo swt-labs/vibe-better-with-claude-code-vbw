@@ -21,6 +21,8 @@ Read conversation signals to determine user sophistication. This is NOT a questi
 - Config profile (yolo/prototype/default/production)
 - Whether they typed `/vbw:discuss` vs `/vbw:vibe`
 
+Also read `active_profile` to calibrate recommendation verbosity (see Recommendation Principle).
+
 Two modes, silently selected:
 
 | Mode | Signals | Question style | Depth |
@@ -30,14 +32,14 @@ Two modes, silently selected:
 
 Same gray area, two modes:
 
-**Builder:** "When someone's internet drops while they're writing a post, what should happen?"
-- "Save what they wrote and try again later"
-- "Show a warning and let them retry"
+**Builder:** "When someone's internet drops while they're writing a post, we'll save their work and try again when they're back online. This is standard — it prevents data loss. Sound good?"
+- "Sounds good (Recommended — prevents data loss)"
+- "I'd prefer it to show an error instead"
 - "Let me explain..."
 
-**Architect:** "Offline write strategy for post creation?"
-- "Queue locally, sync on reconnect (optimistic)"
-- "Block submission, show connectivity state (pessimistic)"
+**Architect:** "For offline write handling, the enterprise-standard approach is optimistic local queueing with sync on reconnect. Pessimistic blocking has a poor UX in mobile-first apps and doesn't reduce conflict risk. Recommendation: queue locally, sync on reconnect."
+- "Queue locally, sync on reconnect (Recommended — standard for mobile-first)"
+- "Block submission, show connectivity state"
 - "Let me explain..."
 
 ## Step 1.5: Detect Continuation
@@ -54,6 +56,8 @@ Read the phase goal from ROADMAP.md and **think** about what gray areas exist. N
 The engine asks itself:
 
 > "What decisions about this phase could go multiple ways and would change what gets built?"
+
+For each gray area identified, also form a preliminary recommendation based on the codebase context and enterprise best practices. If a recommendation depends on codebase state (existing patterns, data models, framework choices), read the relevant files or cite already-loaded context before forming the recommendation — do not speculate about code you have not opened. You will use these recommendations when exploring each area in Step 3.
 
 **Continuation mode:** When existing CONTEXT.md was loaded in Step 1.5, the question becomes:
 
@@ -93,10 +97,13 @@ Present gray areas as a multi-select using AskUserQuestion.
 For each selected area, have a natural conversation. Not a form. Not a fixed number of questions.
 
 The rhythm:
-1. Open with a framing question for the area (use AskUserQuestion).
-2. Each answer informs the next question — follow the thread.
-3. After 3-4 exchanges, check: "Anything else about [area], or move on?"
-4. If more: continue. If done: next area.
+1. Open with your recommendation for the area (for product decisions, present options equally per the Recommendation Principle instead): state the gray area, provide your recommendation with brief reasoning (2-3 sentences), then ask for confirmation via AskUserQuestion. Format the first option as the recommended choice with "(Recommended — [brief reason])" in the label. Include 1-2 alternatives and a "Let me explain..." free-form option.
+2. If user picks recommended: confirm in one line, move on. No follow-ups for standard picks.
+3. If user picks alternative: record the preference. Only ask a follow-up if the alternative changes a downstream requirement or invalidates the recommendation's reasoning — otherwise move on.
+4. If user picks "Let me explain...": read their free-form input, adjust your recommendation based on their reasoning, and confirm the updated decision. Treat their input as a preference, not a request for more options.
+5. After covering the area, move to the next one.
+
+**Clear-cut batching:** For decisions where the enterprise answer is standard practice across well-architected projects, batch them instead of asking individually. Present the batch as a list with brief reasoning and confirm via AskUserQuestion with options like "All good", "I'd like to discuss one of these", and "Let me explain...": "For [area], we'll use these standard approaches: [list with brief reasoning]. Any of these need discussion?"
 
 **Scope awareness** (simple, not a subsystem):
 If the user mentions something outside the phase boundary:
@@ -198,6 +205,40 @@ Also append to `discovery.json` using this schema:
 - **Explore conversationally.** Thread-following, not form-filling.
 - **Capture for downstream agents.** The output must let researcher, planner, and executor act without asking the user again.
 - **Trust Claude's judgment.** This protocol is a guide, not a state machine.
+
+## Recommendation Principle
+
+You own the technical decisions. The user owns the product decisions.
+
+For every **technical decision** (architecture, data model, API design, framework selection, error handling strategy), lead with your recommendation and reasoning. Do not present equal-weight options and wait for the user to ask what an expert would do.
+
+For **product decisions** (feature priority, UX preferences, naming, branding, target audience), present options equally — the user decides.
+
+When codebase context is available, ground recommendations in the existing architecture (patterns, conventions, prior decisions). When it is not, recommend enterprise best practices that minimize tech debt. If a recommendation depends on codebase state, read the relevant files or cite already-loaded context before stating the recommendation — do not speculate about code you have not opened.
+
+If the recommendation is clear-cut, state it as the plan and ask for confirmation via AskUserQuestion with the recommended option marked. If genuinely ambiguous (multiple valid approaches with material trade-offs), present 2-3 options with a recommended one marked, brief pros for each, and why you would pick the recommended one.
+
+Scale recommendation verbosity to the active profile: `production` shows full reasoning with trade-offs for alternatives; `default` gives concise reasoning; `prototype` states the decision with minimal justification.
+
+## Question Anti-Patterns
+
+<examples>
+<example>
+**Anti-pattern: Equal-weight technical options** — presenting architectural choices without a recommendation.
+
+BAD: "Should X use approach A or approach B?"
+
+GOOD: State the recommendation with reasoning, then confirm: "For X, the enterprise-standard approach is A because [reason]. Sound right?"
+</example>
+
+<example>
+**Anti-pattern: Asking questions the codebase can answer** — posing questions that reading the code would resolve.
+
+BAD: "Does [model] derive from [source A] or [source B]?"
+
+GOOD: Read the relevant file first, then state what the code shows and what it implies for the decision.
+</example>
+</examples>
 
 ## Two-Tier Context System
 
