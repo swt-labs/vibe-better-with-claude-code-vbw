@@ -65,6 +65,7 @@ create_test_config() {
   "skill_suggestions": true,
   "auto_install_skills": false,
   "discovery_questions": true,
+  "discussion_mode": "questions",
   "visual_format": "unicode",
   "max_tasks_per_plan": 5,
   "prefer_teams": "auto",

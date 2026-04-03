@@ -486,6 +486,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
     8. On failure: Log warning "⚠ Domain research timed out, proceeding with general questions". Set RESEARCH_AVAILABLE=false, continue.
   - **B2.2: Discussion Engine** -- Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/references/discussion-engine.md` and follow its protocol.
     - Context for the engine: "This is a new project. No phases yet." Use project description + domain research (if available) as input.
+    - If `.vbw-planning/codebase/META.md` exists and `discussion_mode` in config is `"assumptions"` or `"auto"`, pass "Discussion mode: assumptions" to the engine. The engine's Step 1.7 will form evidence-backed assumptions from codebase context instead of asking questions from scratch.
     - The engine handles calibration, gray area generation, exploration, and capture. The Recommendation Principle applies during bootstrap: lead with enterprise-standard recommendations for technical decisions, present product decisions equally.
     - Output: `discovery.json` with answered/inferred/deferred arrays.
   - **If skip (yolo profile or discovery_questions=false):** Ask 2 minimal static questions via AskUserQuestion:
@@ -585,11 +586,22 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 **Guard:** Initialized, phase exists in roadmap.
 **Phase auto-detection:** Same as Discuss mode.
 
+**Continuation mode:** Same as Discuss mode — if a `{NN}-CONTEXT.md` exists, this is a continuation. Pre-seeded remediation phases get the same warning.
+
 **Steps:**
-1. Load context: ROADMAP.md, REQUIREMENTS.md, PROJECT.md, STATE.md, milestone `.vbw-planning/CONTEXT.md` (if exists), target phase `{NN}-CONTEXT.md` (if exists), codebase signals.
-2. Generate 5-10 assumptions by impact: scope (included/excluded), technical (implied approaches), ordering (sequencing), dependency (prior phases), user preference (defaults without stated preference).
-3. Gather feedback per assumption: "Confirm, correct, or expand?" Confirm=proceed, Correct=user provides answer, Expand=user adds nuance.
-4. Present grouped by status (confirmed/corrected/expanded). This mode does NOT write files. For persistence: "Run `/vbw:vibe --discuss {NN}` to capture as `{NN}-CONTEXT.md`." Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh vibe`.
+1. Determine target phase from $ARGUMENTS or auto-detection.
+2. Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/references/discussion-engine.md` and follow its protocol for the target phase. Pass "Discussion mode: assumptions" to the engine — Step 1.7 handles the assumptions workflow (codebase analysis, assumption formation, user correction, capture).
+3. **Discussion commit boundary (conditional):**
+   ```bash
+  PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "assumptions phase {NN}" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
+   ```
+   Behavior: `planning_tracking=commit` commits `{NN}-CONTEXT.md` and `discovery.json` if changed. Other modes no-op.
+4. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh vibe`.
 
 ### Mode: UAT Remediation
 
@@ -1112,7 +1124,7 @@ Per-mode output:
 - **Bootstrap:** project-defined banner + transition to scoping
 - **Scope:** phases-created summary + STOP
 - **Discuss:** ✓ for captured answers, Next Up Block
-- **Assumptions:** numbered list, ✓ confirmed, ✗ corrected, ○ expanded, Next Up
+- **Assumptions:** numbered list with confidence indicators: ✓ confirmed (high), ⚡ validated (medium), ? resolved (low), ✗ corrected, ○ expanded (user added nuance), Next Up
 - **Plan:** Phase Banner (double-line box), plan list with waves/tasks, Effort, Next Up
 - **Execute:** Phase Banner, plan results (✓/✗), Metrics (plans, effort, deviations), QA result, "What happened" (NRW-02), Next Up
 - **Add/Insert/Remove Phase:** Phase Banner, ✓ checklist, Next Up

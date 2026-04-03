@@ -49,6 +49,109 @@ Before orienting, check if `{NN}-CONTEXT.md` already exists for the target phase
 - **If no CONTEXT.md exists:** Fresh discussion — proceed to Step 2 normally.
 - **If CONTEXT.md exists:** This is a **continuation discussion**. Read the existing file to understand what was already covered (Decisions sections, Deferred Ideas, Phase Boundary). Proceed to Step 2 with this context loaded.
 
+## Step 1.7: Assumptions Path
+
+An alternative to the question-driven Orient → Explore → Capture flow. Instead of asking the user about gray areas, read the codebase first, form evidence-backed assumptions, and present them for correction— reducing interaction from ~15-20 questions to ~2-4 corrections.
+
+### Activation
+
+Check these conditions in order. The first match wins:
+
+1. `--assumptions` flag is present → use assumptions path
+2. `discussion_mode` is `"assumptions"` in `.vbw-planning/config.json` → use assumptions path
+3. `discussion_mode` is `"auto"` AND `.vbw-planning/codebase/META.md` exists → use assumptions path
+4. `discussion_mode` is `"questions"` or `"auto"` without codebase map → proceed to Step 2 (standard questions path)
+
+**Codebase map guard:** If the assumptions path is activated but `.vbw-planning/codebase/META.md` does not exist, display: "Assumptions mode works best with codebase context. Run `/vbw:map` first for evidence-backed assumptions, or proceeding with questions mode." Then fall back to Step 2.
+
+### A1: Codebase Analysis
+
+Read codebase context files relevant to the target phase:
+
+- `.vbw-planning/codebase/ARCHITECTURE.md` — architecture patterns, data flow
+- `.vbw-planning/codebase/PATTERNS.md` — code conventions, design patterns
+- `.vbw-planning/codebase/CONCERNS.md` — known issues, tech debt
+- Phase goal from `ROADMAP.md`
+
+For specific gray areas that need deeper evidence, read actual source files (model definitions, service interfaces, view controllers) inline or via Explore subagent. Do not form assumptions from codebase summaries alone when the source files are readily available.
+
+### A2: Form Assumptions
+
+Identify gray areas using the same analytical process as Step 2 (Orient) — ask "what decisions about this phase could go multiple ways and would change what gets built?" For each gray area, form a structured assumption instead of a question.
+
+Gray area count follows the profile depth table: prototype 2-3, default 3-5, production 4-6.
+
+Structure each assumption as:
+
+```
+### [Gray Area Title]
+
+**Assumption:** [What you conclude based on codebase evidence]
+**Evidence:** [File paths + specific code patterns that support this]
+**Confidence:** High (90%+) | Medium (60-90%) | Low (<60%)
+**Consequence if wrong:** [What breaks or needs rework]
+```
+
+Ground confidence levels in codebase evidence:
+- **High** — codebase has explicit implementation matching the assumption
+- **Medium** — codebase has related patterns but the specific decision is ambiguous
+- **Low** — codebase provides no clear signal; genuine uncertainty
+
+For each assumption, also form a recommendation per the Recommendation Principle. Include the recommendation in the assumption text when it differs from the assumption itself.
+
+<example>
+### Cold-Start Behavior (New User With No History)
+
+**Assumption:** The app shows a curated default feed for new users, not an empty state. The `UserFeedService` already has a `defaultFeed()` method that returns trending items when `user.history.isEmpty`.
+**Evidence:** `src/services/UserFeedService.swift:42` — `func defaultFeed() -> [FeedItem]`; `src/models/User.swift:18` — `var history: [HistoryEntry] = []`
+**Confidence:** High (90%+)
+**Consequence if wrong:** Empty state UX needs design work, adding ~2 days to the phase
+</example>
+
+### A3: Present for Correction
+
+Present all assumptions at once, grouped by confidence level. Use `AskUserQuestion` with structured options.
+
+Presentation varies by profile:
+
+| Profile | Behavior |
+| ---------- | ---------- |
+| `production` | All confidence levels shown individually with detailed evidence citations. |
+| `default` | High confidence batched as a confirmation list. Medium shown individually. Low become standard questions (fall through to Step 3 Explore). |
+| `prototype` | High and medium batched as confirmations. Only low confidence shown individually. |
+| `yolo` | All assumptions accepted automatically. Low-confidence items flagged in output but not asked. |
+
+**High confidence (confirming):** Batch as a list: "Based on the codebase, I'm assuming: [numbered list with evidence citations]. Any corrections?"
+- Options: "All correct", "I'd like to correct one", "Let me explain..."
+
+**Medium confidence (validating):** Present individually: "I think [X] based on [evidence], but [gap]. Is this right?"
+- Options: "[Assumption] (Recommended — [reason])", "[Alternative]", "Let me explain..."
+
+**Low confidence (genuine questions):** Fall through to standard Step 3 Explore flow with recommendation-led questions.
+
+### A4: Process Corrections
+
+For each assumption the user reviews:
+- **Confirmed:** Record as a decision with the original assumption and evidence
+- **Corrected:** Record the user's correction as the decision, preserve the original assumption as context ("Originally assumed X based on [evidence]; user corrected to Y")
+- **Expanded:** If the user chose "Let me explain...", capture the nuance and update the assumption accordingly
+
+### A5: Capture
+
+Same output as Step 4 (Capture). Write `{NN}-CONTEXT.md` using the template. Assumption-sourced decisions go in `## Decisions Made` with evidence and confidence metadata:
+
+```
+### [Gray Area]
+- Decision: [confirmed assumption or user correction]
+- Evidence: [file paths + patterns]
+- Confidence: [level at time of assumption]
+- Correction: [user's correction — omit if confirmed as-is]
+```
+
+Also append to `discovery.json` using the existing schema. For confirmed assumptions, the `answer` field records the assumption text. For corrected assumptions, `answer` records the user's correction with the original assumption noted.
+
+After A5, skip Steps 2-4 — the assumptions path replaces Orient, Explore, and Capture for the areas it covers.
+
 ## Step 2: Orient
 
 Read the phase goal from ROADMAP.md and **think** about what gray areas exist. No keyword matching. No predefined templates. Pure analysis.
@@ -196,6 +299,8 @@ Also append to `discovery.json` using this schema:
 | `active_profile=default` | 3-5 gray areas, standard depth |
 | `active_profile=production` | 4-6 gray areas, thorough explore |
 | `discovery_questions=false` | Skip discussion entirely |
+| `discussion_mode=assumptions` | Use assumptions path (Step 1.7) when codebase map exists |
+| `discussion_mode=auto` | Auto-select: assumptions if `.vbw-planning/codebase/META.md` exists, questions otherwise |
 
 ## Design Principles
 
@@ -236,7 +341,7 @@ GOOD: State the recommendation with reasoning, then confirm: "For X, the enterpr
 
 BAD: "Does [model] derive from [source A] or [source B]?"
 
-GOOD: Read the relevant file first, then state what the code shows and what it implies for the decision.
+GOOD: Read the relevant file first, then state what the code shows and what it implies for the decision. See Step 1.7 (Assumptions Path) for the systematic approach: read codebase first, form assumptions, present for correction.
 </example>
 </examples>
 
