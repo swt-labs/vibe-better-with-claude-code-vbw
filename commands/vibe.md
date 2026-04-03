@@ -759,7 +759,7 @@ This mode handles the case where a milestone was archived before UAT issues were
 2. Display the unresolved issues to the user with milestone context (milestone slug, affected phase count, severity mix). Then call AskUserQuestion with three options:
    - **"Create remediation phases"** (set `isRecommended` when `milestone_uat_major_or_higher=true`): Create one remediation phase per affected milestone phase. Auto-populate each phase goal from the UAT issue descriptions. Route to Plan mode for the first created phase.
    - **"Start fresh with new work"**: Acknowledge the stale UAT issues, mark them as acknowledged (`.remediated`) so they don't re-trigger archive blocking, then proceed as if all_done. The user can define new work via `/vbw:vibe` with arguments.
-   - **"Not now"**: Skip milestone UAT recovery without marking anything. Display "Skipping milestone UAT recovery. Run `/vbw:vibe` again when ready to address these issues." and STOP. The unresolved UAT issues will re-trigger on the next `/vbw:vibe` invocation.
+   - **"Not now"**: Skip milestone UAT recovery without marking anything. The unresolved UAT issues will re-trigger on the next `/vbw:vibe` invocation.
    Output 3–4 blank lines before the AskUserQuestion call (the dialog obscures trailing text).
    **`--yolo` exception:** If `--yolo` was passed, skip the AskUserQuestion and auto-select "Create remediation phases" (the recommended action).
 3. If the user chooses remediation: create remediation phases via script — one per affected milestone phase:
@@ -805,6 +805,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    - `phase_count=0` → Scope mode
    - `all_done` → Archive mode
    This list is illustrative — always defer to the full priority table. Do NOT stop and ask "What would you like to build?" when phases already exist.
+5. If the user chooses "Not now": display "Skipping milestone UAT recovery. Run `/vbw:vibe` again when ready to address these issues." and STOP. No `.remediated` markers are written — the unresolved UAT issues will re-trigger on the next `/vbw:vibe` invocation.
 
 ### Mode: Plan
 
