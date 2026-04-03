@@ -296,7 +296,7 @@ Then re-run phase-detect.sh and use updated output for routing below.
 | 3 | `next_phase_state=needs_uat_remediation` | UAT Remediation | auto_uat=true: no confirmation. auto_uat=false: → AskUserQuestion: "Phase {NN} has unresolved UAT issues. Continue with remediation now?" |
 | 3.5 | `next_phase_state=needs_qa_remediation` | QA Remediation | auto_uat=true: no confirmation. auto_uat=false: → AskUserQuestion: "Phase {NN} has QA failures. Continue with QA remediation?" |
 | 4 | `next_phase_state=needs_reverification` | Re-verify | auto_uat=true: no confirmation. auto_uat=false: → AskUserQuestion: "Phase {NN} remediation complete. Run re-verification?" |
-| 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | → AskUserQuestion: "Milestone {slug} has unresolved UAT issues in {count} phase(s). Unarchive and remediate?" |
+| 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | (mode handles confirmation — see Milestone UAT Recovery steps) |
 | 6 | `phase_count=0` | Scope | → AskUserQuestion: "Project defined but no phases. Scope the work?" |
 | 7 | `next_phase_state=needs_verification` | Verify | (no confirmation — auto_uat intent). **QA gate:** If `qa_status=pending`, display "Phase {NN} QA is pending — running QA now." and spawn QA inline first (see QA Gate section below). This state also covers `all_done` milestones that were retargeted because authoritative QA on a completed phase is stale/missing. If `qa_status=failed`, enter QA remediation inline. Only proceed to Verify mode when `qa_status` is `passed` or `remediated`. |
 | 8 | `next_phase_state=needs_discussion` | Discuss | → AskUserQuestion: "Phase {NN} needs discussion before planning. Start discussion?" |
@@ -417,7 +417,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 
 **UAT remediation default:** When `next_phase_state=needs_uat_remediation`, plain `/vbw:vibe` must read that phase's UAT report and continue remediation directly. Do NOT require the user to manually specify `--discuss` or `--plan`.
 
-**Milestone UAT recovery:** When `milestone_uat_issues=true` and active phases are empty, the latest shipped milestone has unresolved UAT issues. Present the user with options: (a) create remediation phases to fix the UAT issues, or (b) start fresh with new work (ignoring the stale UAT). Use `milestone_uat_count` to determine how many phases are affected. When `milestone_uat_count` > 1, parse `milestone_uat_phase_dirs` (pipe-separated) to read all UAT reports and display a consolidated issue summary. Use `milestone_uat_major_or_higher` to determine severity context.
+**Milestone UAT recovery:** When `milestone_uat_issues=true` and active phases are empty, the latest shipped milestone has unresolved UAT issues. Present the user with options: (a) create remediation phases to fix the UAT issues, (b) start fresh with new work (ignoring the stale UAT), or (c) skip for now (issues re-trigger next session). Use `milestone_uat_count` to determine how many phases are affected. When `milestone_uat_count` > 1, parse `milestone_uat_phase_dirs` (pipe-separated) to read all UAT reports and display a consolidated issue summary. Use `milestone_uat_major_or_higher` to determine severity context.
 
 **Remediation + require_phase_discussion:** Both in-phase UAT remediation and milestone-level remediation phases skip the discussion step via pre-seeded phase context files. When `uat-remediation-state.sh get-or-init` runs for in-phase remediation, it appends the UAT report to the existing `{NN}-CONTEXT.md` and adds `pre_seeded: true` to its frontmatter — preserving the original discussion context while satisfying the `require_phase_discussion` gate. Milestone remediation phases created by `create-remediation-phase.sh` generate a fresh `{NN}-CONTEXT.md` with `pre_seeded: true` (populated from the source UAT report). Both paths use the same `pre_seeded` mechanism so `suggest-next.sh` handles them uniformly.
 
@@ -434,6 +434,7 @@ Every mode triggers confirmation before executing. **Call AskUserQuestion** with
 | `needs_discussion` | "Discuss phase {NN}" | "Skip discussion and plan directly", "View phase goal first" |
 | `needs_plan_and_execute` | "Plan and execute phase {NN}" | "Plan only (review before executing)", "Start a discussion (explore gray areas before planning)" |
 | `needs_execute` | "Execute phase {NN}" | "Review plans first", "Start a discussion (revisit scope before executing)" |
+| `milestone_uat_issues` | "Create remediation phases" | "Start fresh with new work", "Not now" |
 
 **AskUserQuestion parameters:** Set the recommended option's `isRecommended` flag. Output 3–4 blank lines before the AskUserQuestion call (the dialog obscures trailing text).
 
@@ -755,11 +756,13 @@ This mode handles the case where a milestone was archived before UAT issues were
 **Steps:**
 1. Use pre-computed milestone UAT issues from the "Milestone UAT issues" context block above. Each block starts with `milestone_phase_dir=<path>` followed by `extract-uat-issues.sh` output (header line + issue lines). Do NOT read UAT files from the milestone — all issue data is already extracted.
    If `milestone_uat_count` > 1, multiple blocks are present (one per affected phase, separated by `---`). If `milestone_uat_count` = 1, a single block is present.
-2. Display the unresolved issues to the user with milestone context (milestone slug, affected phase count, severity mix).
-3. Present options via AskUserQuestion:
-   - **"Create a remediation milestone"** (recommended for major/critical): Create one remediation phase per affected milestone phase. Auto-populate each phase goal from the UAT issue descriptions. Route to Plan mode for the first created phase.
+2. Display the unresolved issues to the user with milestone context (milestone slug, affected phase count, severity mix). Then call AskUserQuestion with three options:
+   - **"Create remediation phases"** (set `isRecommended` when `milestone_uat_major_or_higher=true`): Create one remediation phase per affected milestone phase. Auto-populate each phase goal from the UAT issue descriptions. Route to Plan mode for the first created phase.
    - **"Start fresh with new work"**: Acknowledge the stale UAT issues, mark them as acknowledged (`.remediated`) so they don't re-trigger archive blocking, then proceed as if all_done. The user can define new work via `/vbw:vibe` with arguments.
-4. If the user chooses remediation: create remediation phases via script — one per affected milestone phase:
+   - **"Not now"**: Skip milestone UAT recovery without marking anything. Display "Skipping milestone UAT recovery. Run `/vbw:vibe` again when ready to address these issues." and STOP. The unresolved UAT issues will re-trigger on the next `/vbw:vibe` invocation.
+   Output 3–4 blank lines before the AskUserQuestion call (the dialog obscures trailing text).
+   **`--yolo` exception:** If `--yolo` was passed, skip the AskUserQuestion and auto-select "Create remediation phases" (the recommended action).
+3. If the user chooses remediation: create remediation phases via script — one per affected milestone phase:
    ```bash
    IFS='|' read -ra UAT_DIRS <<< "$milestone_uat_phase_dirs"
    for dir in "${UAT_DIRS[@]}"; do
@@ -777,7 +780,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    fi
    ```
    Then route to Plan mode for the first phase.
-5. If the user chooses start-fresh: persist acknowledgement markers for all affected archived phases before continuing:
+4. If the user chooses start-fresh: persist acknowledgement markers for all affected archived phases before continuing:
    ```bash
    TARGET_PHASE_DIRS="$milestone_uat_phase_dirs"
    if [ -z "$TARGET_PHASE_DIRS" ] && [ "$milestone_uat_phase_dir" != "none" ]; then
