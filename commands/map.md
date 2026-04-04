@@ -67,26 +67,57 @@ If `PREFER_TEAMS` is `never`, force solo regardless of file count or --tier flag
 
 Inspect the available tool names in the system context (the deferred tools list in `<system-reminder>` blocks). Tool names follow the pattern `mcp__{server_name}__{tool_name}`. Pattern-match the **tool_name suffix** (the portion after the last `__`) against these capability signatures:
 
+**Pass 1: Name-suffix matching**
+
 ```
-CAPABILITY_ARCHITECTURE    := tool name ending in: get_architecture, analyze_architecture, extract_architecture
-CAPABILITY_SYMBOL_SEARCH   := tool name ending in: search_graph, find_symbols, search_symbols, workspace_symbol
-CAPABILITY_DEPENDENCY_GRAPH := tool name ending in: query_graph, get_dependencies, analyze_dependencies, dependency_graph
-CAPABILITY_CALL_TRACING    := tool name ending in: trace_call_path, find_callers, call_hierarchy
-CAPABILITY_CODE_SEARCH     := tool name ending in: search_code, code_search
-CAPABILITY_CODE_SNIPPET    := tool name ending in: get_code_snippet, read_function, get_function
-CAPABILITY_HOTSPOT_ANALYSIS := tool name ending in: detect_changes, hotspot_analysis, complexity_analysis
-CAPABILITY_INDEX           := tool name ending in: index_repository, index_status
+CAPABILITY_ARCHITECTURE     := tool name ending in: get_architecture, analyze_architecture, extract_architecture, get_repo_outline, get_symbol_importance
+CAPABILITY_SYMBOL_SEARCH    := tool name ending in: search_graph, find_symbols, search_symbols, workspace_symbol
+CAPABILITY_DEPENDENCY_GRAPH := tool name ending in: query_graph, get_dependencies, analyze_dependencies, dependency_graph, find_importers, get_layer_violations
+CAPABILITY_CALL_TRACING     := tool name ending in: trace_call_path, find_callers, call_hierarchy, find_importers, get_blast_radius
+CAPABILITY_CODE_SEARCH      := tool name ending in: search_code, code_search, search_sections, get_section, get_sections
+CAPABILITY_CODE_SNIPPET     := tool name ending in: get_code_snippet, read_function, get_function, get_symbol_source, get_section_context
+CAPABILITY_HOTSPOT_ANALYSIS := tool name ending in: detect_changes, hotspot_analysis, complexity_analysis, get_blast_radius, get_changed_symbols, find_dead_code, get_broken_links, get_doc_coverage
+CAPABILITY_INDEX            := tool name ending in: index_repository, index_status, index_local, index_repo, index_folder
+CAPABILITY_OUTLINE          := tool name ending in: get_file_outline, get_repo_outline, get_document_outline, get_toc, get_toc_tree
+CAPABILITY_IMPACT_ANALYSIS  := tool name ending in: get_blast_radius, get_changed_symbols, find_dead_code, get_layer_violations, get_doc_coverage, get_broken_links
+CAPABILITY_CLASS_HIERARCHY  := tool name ending in: get_class_hierarchy, class_hierarchy, get_inheritance
 ```
+
+Note: some tools (e.g., `find_importers`, `get_blast_radius`) map to multiple categories — this is intentional as they provide data useful for multiple mapping documents.
 
 For each detected capability, store the full tool name (e.g., `mcp__codebase-memory-mcp__get_architecture`). This produces a **`MCP_MAP_CAPABILITIES`** set mapping capability categories to specific tool names. Multiple tools may match the same category (list all).
 
-If any capabilities are detected, also check for `CAPABILITY_INDEX` — if an indexing tool is available, note it for the graph freshness instruction in downstream steps.
+**Pass 2: Description-based matching (unclassified tools only)**
+
+For each MCP tool not matched by Pass 1, use `ToolSearch` to load its schema and read its `description` field. Match the description text against these semantic keyword sets (case-insensitive):
+
+```
+CAPABILITY_ARCHITECTURE     := description contains: "architecture", "structure overview", "entry point", "package breakdown", "codebase overview"
+CAPABILITY_SYMBOL_SEARCH    := description contains: "find symbol", "search symbol", "locate function", "locate class", "symbol lookup", "find definition"
+CAPABILITY_DEPENDENCY_GRAPH := description contains: "dependency", "import graph", "module relationship", "dependency tree"
+CAPABILITY_CALL_TRACING     := description contains: "call graph", "caller", "callee", "call chain", "call hierarchy", "who calls", "what calls"
+CAPABILITY_CODE_SEARCH      := description contains: "search code", "text search", "content search", "search source", "search section"
+CAPABILITY_CODE_SNIPPET     := description contains: "source code for", "retrieve function", "retrieve symbol", "get source", "extract code", "symbol source"
+CAPABILITY_HOTSPOT_ANALYSIS := description contains: "complexity", "hotspot", "change impact", "risk score", "blast radius", "dead code", "unreachable"
+CAPABILITY_INDEX            := description contains: "index repository", "index folder", "index codebase", "reindex", "build index", "index local"
+CAPABILITY_OUTLINE          := description contains: "outline", "table of contents", "file structure", "symbol list", "section hierarchy"
+CAPABILITY_IMPACT_ANALYSIS  := description contains: "impact", "blast radius", "breaking change", "dead code", "coverage gap", "broken link", "layer violation"
+CAPABILITY_CLASS_HIERARCHY  := description contains: "inheritance", "class hierarchy", "type hierarchy", "class relationship", "subclass", "superclass"
+```
+
+Rules:
+1. Pass 1 (name suffix) always takes priority — Pass 2 only runs on tools not already classified
+2. A tool can match at most one category in Pass 2 (first match wins, categories checked in the order listed above)
+3. If a tool's description matches no keyword set, skip it — do not force-classify
+4. Tools classified by Pass 2 are added to MCP_MAP_CAPABILITIES with the same structure as Pass 1 results
+
+If any capabilities are detected (from either pass), also check for `CAPABILITY_INDEX` — if an indexing tool is available, note it for the graph freshness instruction in downstream steps.
 
 Display:
-- If capabilities detected: `◆ MCP: {N} code-analysis capabilities detected — will delegate structural analysis`
+- If capabilities detected: `◆ MCP: {N} code-analysis capabilities detected ({M} by name, {K} by description) — will delegate structural analysis`
 - If none: `○ MCP: No code-analysis tools detected — using file-based analysis`
 
-**IMPORTANT:** Do NOT hardcode any MCP server names in the detection logic. Only tool name suffix patterns matter. Detection is purely capability-based.
+**IMPORTANT:** Do NOT hardcode any MCP server names in the detection logic. Only tool name suffix patterns and description keywords matter. Detection is purely capability-based.
 
 ### Step 2: Detect monorepo
 
@@ -107,10 +138,10 @@ Execution order:
 1. If CAPABILITY_INDEX detected: call the index tool to ensure graph freshness
 2. If CAPABILITY_ARCHITECTURE detected: call it first — its output (language breakdown, packages, entry points, routes, hotspots, cross-service boundaries) feeds STACK.md, ARCHITECTURE.md, and STRUCTURE.md
 3. Per domain, prefer MCP tools over file reads:
-   - Domain 1 (STACK.md + DEPENDENCIES.md): architecture extraction for languages/packages, dependency graph for inter-module deps. Fall back to Read for manifest files (package.json, go.mod version strings).
-   - Domain 2 (ARCHITECTURE.md + STRUCTURE.md): architecture extraction for entry points/routes/hotspots, call tracing for data flow, symbol search for module layout. Fall back to Glob for directory tree.
+   - Domain 1 (STACK.md + DEPENDENCIES.md): architecture extraction for languages/packages, dependency graph for inter-module deps, outline for file organization. Fall back to Read for manifest files (package.json, go.mod version strings).
+   - Domain 2 (ARCHITECTURE.md + STRUCTURE.md): architecture extraction for entry points/routes/hotspots, call tracing for data flow, symbol search for module layout, class hierarchy for inheritance chains, outline for structural overview. Fall back to Glob for directory tree.
    - Domain 3 (CONVENTIONS.md + TESTING.md): code search for naming/test patterns, code snippet for style examples. Fall back to Read for config files (.eslintrc, .prettierrc, CI YAML).
-   - Domain 4 (CONCERNS.md): hotspot analysis for risk areas, call tracing for high fan-out, dependency graph for coupling. Fall back to Read for non-code concern notes.
+   - Domain 4 (CONCERNS.md): hotspot analysis for risk areas, call tracing for high fan-out, dependency graph for coupling, impact analysis for blast radius/dead code/broken links/layer violations. Fall back to Read for non-code concern notes.
 4. Write documents in the same format as brute-force analysis — document structure must be identical regardless of data source. Downstream consumers (infer-project-context.sh, compile-context.sh, init.md Step 3b/3b2) parse these documents by section headers.
 
 **If MCP_MAP_CAPABILITIES is empty:** proceed with existing brute-force analysis (Glob/Read/Grep) unchanged:
@@ -164,6 +195,8 @@ Capability-to-document routing:
 - Symbol search → STRUCTURE.md (module layout, entry points)
 - Dependency graph → DEPENDENCIES.md (inter-module dependencies)
 - Call tracing → ARCHITECTURE.md (data flow)
+- Outline extraction → STRUCTURE.md (file organization, module layout)
+- Class hierarchy → ARCHITECTURE.md (inheritance chains, type relationships)
 
 {If CAPABILITY_INDEX detected:}
 IMPORTANT: Call {index_tool_name} first if the graph may be stale (check with index_status if available, otherwise call index_repository at session start).
@@ -189,6 +222,7 @@ Capability-to-document routing:
 - Code snippet → CONVENTIONS.md (code style examples)
 - Call tracing → CONCERNS.md (complexity hotspots)
 - Hotspot analysis → CONCERNS.md (risk areas, high fan-out)
+- Impact analysis → CONCERNS.md (blast radius, dead code, broken links, layer violations)
 
 {If CAPABILITY_INDEX detected:}
 IMPORTANT: Call {index_tool_name} first if the graph may be stale (check with index_status if available, otherwise call index_repository at session start).
@@ -213,10 +247,10 @@ Wait for all findings. Proceed to Step 3.5.
 
 Security: PreToolUse hook handles enforcement. **Scout model:** same as duo. **Scout turn budget:** same as duo (pass `maxTurns: ${SCOUT_MAX_TURNS}` when non-empty, omit when empty). **Skill pre-evaluation:** same as duo.
 **MCP code-analysis delegation:** same as duo — if `MCP_MAP_CAPABILITIES` is non-empty, prepend the `<mcp_code_analysis>` block to each Scout's task description with capabilities routed to their assigned documents:
-- Scout 1 (Tech Stack): capabilities relevant to STACK.md + DEPENDENCIES.md (architecture extraction, dependency graph, symbol search)
-- Scout 2 (Architecture): capabilities relevant to ARCHITECTURE.md + STRUCTURE.md (architecture extraction, symbol search, call tracing)
+- Scout 1 (Tech Stack): capabilities relevant to STACK.md + DEPENDENCIES.md (architecture extraction, dependency graph, symbol search, outline)
+- Scout 2 (Architecture): capabilities relevant to ARCHITECTURE.md + STRUCTURE.md (architecture extraction, symbol search, call tracing, class hierarchy, outline)
 - Scout 3 (Quality): capabilities relevant to CONVENTIONS.md + TESTING.md (code search, code snippet)
-- Scout 4 (Concerns): capabilities relevant to CONCERNS.md (hotspot analysis, call tracing, dependency graph)
+- Scout 4 (Concerns): capabilities relevant to CONCERNS.md (hotspot analysis, call tracing, dependency graph, impact analysis)
 
 **Scout communication (effort-gated):**
 
