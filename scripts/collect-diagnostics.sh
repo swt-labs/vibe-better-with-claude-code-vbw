@@ -53,8 +53,14 @@ collect() {
 
   if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
     install_method="--plugin-dir"
-  elif [ -n "$PLUGIN_ROOT" ] && [[ "$PLUGIN_ROOT" != *"/plugins/cache/"* ]]; then
-    install_method="--plugin-dir (resolved)"
+  elif [ -n "$PLUGIN_ROOT" ]; then
+    local resolved_root
+    resolved_root=$(cd "$PLUGIN_ROOT" 2>/dev/null && pwd -P) || resolved_root="$PLUGIN_ROOT"
+    if [[ "$resolved_root" == *"/plugins/cache/"* ]]; then
+      install_method="marketplace"
+    else
+      install_method="--plugin-dir (resolved)"
+    fi
   elif [ -d "$cache_root" ]; then
     install_method="marketplace"
   else
