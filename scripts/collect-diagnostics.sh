@@ -20,7 +20,10 @@ redact() {
     | sed "s|${USER:-__no_user__}|<user>|g" \
     | sed -E 's/(sk-[a-zA-Z0-9]{10})[a-zA-Z0-9]+/\1.../g' \
     | sed -E 's/(ghp_[a-zA-Z0-9]{10})[a-zA-Z0-9]+/\1.../g' \
-    | sed -E 's/(gho_[a-zA-Z0-9]{10})[a-zA-Z0-9]+/\1.../g'
+    | sed -E 's/(gho_[a-zA-Z0-9]{10})[a-zA-Z0-9]+/\1.../g' \
+    | sed -E 's/(github_pat_[a-zA-Z0-9_]{10})[a-zA-Z0-9_]+/\1.../g' \
+    | sed -E 's/(ghs_[a-zA-Z0-9]{10})[a-zA-Z0-9]+/\1.../g' \
+    | sed -E 's/(ghu_[a-zA-Z0-9]{10})[a-zA-Z0-9]+/\1.../g'
 }
 
 # Collect all output into a function so we can pipe through redact once
@@ -115,7 +118,7 @@ collect() {
   echo "--- Config (redacted) ---"
   if [ -f "$PROJECT_DIR/.vbw-planning/config.json" ]; then
     if command -v jq >/dev/null 2>&1; then
-      jq 'walk(if type == "object" then with_entries(if (.key | test("key|token|secret|password|api_key"; "i")) then .value = "[REDACTED]" else . end) else . end)' \
+      jq 'def walk(f): . as $in | if type == "object" then reduce keys[] as $k ({}; . + {($k): ($in[$k] | walk(f))}) | f elif type == "array" then map(walk(f)) | f else f end; walk(if type == "object" then with_entries(if (.key | test("key|token|secret|password|api_key"; "i")) then .value = "[REDACTED]" else . end) else . end)' \
         "$PROJECT_DIR/.vbw-planning/config.json" 2>/dev/null || cat "$PROJECT_DIR/.vbw-planning/config.json" 2>/dev/null || echo "(read error)"
     else
       cat "$PROJECT_DIR/.vbw-planning/config.json" 2>/dev/null || echo "(read error)"
