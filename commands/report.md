@@ -73,14 +73,28 @@ Extract from `$ARGUMENTS`:
 
     d. Before running `gh issue create`, show the user the composed title and body. Ask for confirmation. Do not auto-file.
 
-    e. On confirmation, write the composed body to a temporary file and use `--body-file` to avoid shell quoting issues with multiline content:
+    e. On confirmation, write the composed title and body to temporary files to avoid shell quoting issues with special characters:
     ```bash
-    # Write body to temp file (handles quotes, newlines, special chars safely)
-    cat > /tmp/vbw-issue-body.md << 'ISSUE_BODY_EOF'
+    # Use mktemp for session-safe temp files
+    ISSUE_BODY_FILE=$(mktemp /tmp/vbw-issue-body.XXXXXX.md)
+    ISSUE_TITLE_FILE=$(mktemp /tmp/vbw-issue-title.XXXXXX.txt)
+
+    # Write title (may contain quotes, special chars from user input)
+    printf '%s' "<composed title>" > "$ISSUE_TITLE_FILE"
+
+    # Write body (handles quotes, newlines, special chars safely)
+    cat > "$ISSUE_BODY_FILE" << 'ISSUE_BODY_EOF'
     <composed body content>
     ISSUE_BODY_EOF
-    gh issue create --repo swt-labs/vibe-better-with-claude-code-vbw --title "<title>" --label bug --body-file /tmp/vbw-issue-body.md
-    rm -f /tmp/vbw-issue-body.md
+
+    # File the issue using temp files for safe argument passing
+    gh issue create --repo swt-labs/vibe-better-with-claude-code-vbw \
+      --title "$(cat "$ISSUE_TITLE_FILE")" \
+      --label bug \
+      --body-file "$ISSUE_BODY_FILE"
+
+    # Clean up temp files
+    rm -f "$ISSUE_BODY_FILE" "$ISSUE_TITLE_FILE"
     ```
 
     **If `--file-issue` was NOT passed:**
