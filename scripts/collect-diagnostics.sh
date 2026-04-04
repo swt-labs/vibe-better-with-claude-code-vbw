@@ -18,7 +18,7 @@ redact() {
 
   sed "s|${HOME:-/nonexistent}|~|g" \
     | sed "s|${USER:-__no_user__}|<user>|g" \
-    | sed -E 's/(sk-[a-zA-Z0-9]{10})[a-zA-Z0-9]+/\1.../g' \
+    | sed -E 's/(sk-[a-zA-Z0-9_-]{10})[a-zA-Z0-9_-]+/\1.../g' \
     | sed -E 's/(ghp_[a-zA-Z0-9]{10})[a-zA-Z0-9]+/\1.../g' \
     | sed -E 's/(gho_[a-zA-Z0-9]{10})[a-zA-Z0-9]+/\1.../g' \
     | sed -E 's/(github_pat_[a-zA-Z0-9_]{10})[a-zA-Z0-9_]+/\1.../g' \
@@ -29,7 +29,7 @@ redact() {
 # Collect all output into a function so we can pipe through redact once
 collect() {
   local vbw_version os_info cc_version install_method cache_state
-  local cache_root="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"
+  local cache_root="${CLAUDE_CONFIG_DIR:-${HOME:-/tmp}/.claude}/plugins/cache/vbw-marketplace/vbw"
 
   echo "=== VBW Diagnostic Report ==="
   echo "Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date 2>/dev/null || echo "unknown")"
@@ -53,6 +53,8 @@ collect() {
 
   if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
     install_method="--plugin-dir"
+  elif [ -n "$PLUGIN_ROOT" ] && [[ "$PLUGIN_ROOT" != *"/plugins/cache/"* ]]; then
+    install_method="--plugin-dir (resolved)"
   elif [ -d "$cache_root" ]; then
     install_method="marketplace"
   else
