@@ -79,8 +79,10 @@ Extract from `$ARGUMENTS`:
     ISSUE_BODY_FILE=$(mktemp /tmp/vbw-issue-body.XXXXXX.md)
     ISSUE_TITLE_FILE=$(mktemp /tmp/vbw-issue-title.XXXXXX.txt)
 
-    # Write title (may contain quotes, special chars from user input)
-    printf '%s' "<composed title>" > "$ISSUE_TITLE_FILE"
+    # Write title using heredoc (safe for quotes, special chars in user input)
+    cat > "$ISSUE_TITLE_FILE" << 'ISSUE_TITLE_EOF'
+    <composed title>
+    ISSUE_TITLE_EOF
 
     # Write body (handles quotes, newlines, special chars safely)
     cat > "$ISSUE_BODY_FILE" << 'ISSUE_BODY_EOF'
