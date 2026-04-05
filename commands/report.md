@@ -152,11 +152,11 @@ VBW version:
 
     **Method 4 — Manual fallback (last resort):**
 
-    If all of the above fail (install refused, auth failed, network error, etc.), display:
+    If all of the above fail (install refused, auth failed, network error, etc.), display the composed issue title, body, and a link:
     ```
     ⚠ Could not file issue automatically.
     File manually: https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=<bug_report.md or feature_request.md>
 
-    Copy the diagnostic report above and paste it into the issue body.
+    Copy the composed issue body above and paste it into the issue form.
     ```
     Use `?template=bug_report.md` for bugs or `?template=feature_request.md` for features.
