@@ -4,7 +4,7 @@ category: supporting
 disable-model-invocation: true
 description: Collect diagnostic context for bug reporting and optionally file a GitHub issue.
 argument-hint: "[problem description] [--file-issue]"
-allowed-tools: Read, Bash, Glob, Grep, mcp_github_issue_write
+allowed-tools: Read, Bash, Glob, Grep, mcp__github__issue_write
 ---
 
 # VBW Report
@@ -92,7 +92,7 @@ Extract from `$ARGUMENTS`:
 
     **Method 2 — GitHub MCP server (if available):**
 
-    If `gh` is not installed or not authenticated, check if `mcp_github_issue_write` is available in your tool list. If it is, call it with:
+    If `gh` is not installed or not authenticated, check if `mcp__github__issue_write` is available in your tool list. If it is, call it with:
     - `method`: `create`
     - `owner`: `swt-labs`
     - `repo`: `vibe-better-with-claude-code-vbw`
