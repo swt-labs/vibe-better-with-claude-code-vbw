@@ -36,7 +36,7 @@ This command is display-only — it surfaces diagnostics so the user can decide 
 
 - Do not write files, save memories, create todos, update STATE.md, modify CLAUDE.md, or take any action beyond collecting and displaying diagnostics.
 - The only exception is when `--file-issue` is passed AND the user confirms — filing is an explicit user-requested action with a confirmation gate.
-- The `Bash` tool is for running `collect-diagnostics.sh` and `gh` CLI commands only. Do not use it to write files or execute commands not specified in this protocol.
+- The `Bash` tool is for running `collect-diagnostics.sh` and the `gh` issue-filing flow (including temp file scaffolding) described in this protocol. Do not use it for any other purpose.
 
 ## Steps
 
