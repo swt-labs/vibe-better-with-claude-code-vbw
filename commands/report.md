@@ -2,8 +2,8 @@
 name: vbw:report
 category: supporting
 disable-model-invocation: true
-description: Collect diagnostic context and file a GitHub issue.
-argument-hint: "[problem description]"
+description: Collect diagnostics, classify bug or feature, and file a GitHub issue using the repo's issue template format.
+argument-hint: "<problem description>"
 allowed-tools: Read, Bash, Glob, Grep, mcp__github__issue_write
 ---
 
@@ -25,8 +25,7 @@ VBW version:
 
 ## Parse Arguments
 
-Extract from `$ARGUMENTS`:
-- Everything is the **problem description** (optional). No arguments is valid — the command still collects diagnostics and files with default placeholder text.
+`$ARGUMENTS` is the **problem description**. If empty, ask the user to describe the problem before proceeding — a description is required for filing.
 
 ## Steps
 
@@ -36,31 +35,68 @@ Extract from `$ARGUMENTS`:
     ```
     Capture the full output.
 
-2. **Display the report.** Show the diagnostic output verbatim inside a fenced code block. Do not paraphrase or reformat — the section headers and structure are designed for maintainer readability. If a problem description was provided, prepend it above the diagnostics:
+2. **Classify the issue.** Read the problem description and classify it as `bug` or `feature`:
+
+    - **Bug**: the description reports something broken, an error, unexpected behavior, a crash, a regression, or a mismatch between expected and actual behavior.
+    - **Feature**: the description requests something missing, a workflow improvement, a new capability, or a change to existing behavior that is not broken.
+    - When the description is ambiguous, classify as `bug`.
+
+3. **Compose the issue body and title.**
+
+    Derive a concise issue title from the problem description — summarize to ~10 words. Do not use the raw description verbatim as the title.
+
+    Compose the body using the template that matches the classification. Each section header must be bold on its own line, with content on the next line and a blank line between sections.
+
+    <examples>
+    <example>
+    **Classification: bug** — use this body structure (matches `.github/ISSUE_TEMPLATE/bug_report.md`):
 
     ```
-    ## Problem Description
-    {user's problem description from $ARGUMENTS}
+    **Command**
+    {the /vbw:* command from the description, or "Not specified"}
 
-    ## Diagnostic Report
+    **What happened**
+    {problem description from $ARGUMENTS}
+
+    **What you expected**
+    {inferred from description, or "Not provided — please edit this section"}
+
+    **Steps to reproduce**
+    {inferred from description, or "Not provided — please edit this section"}
+
+    **Environment**
+    - Claude Code version: {from diagnostics}
+    - OS: {from diagnostics}
+    - Plugin install method: {from diagnostics}
+    - Model: Not specified
+
+    **Additional context**
+    {full diagnostic report output in a fenced code block}
     ```
-    Then the fenced code block with the script output.
+    </example>
 
-3. **Compose and file the issue.**
+    <example>
+    **Classification: feature** — use this body structure (matches `.github/ISSUE_TEMPLATE/feature_request.md`):
 
-    a. Compose the issue content:
-    - **Title**: Use the problem description, or `"Bug report from /vbw:report"` if none given.
-    - **Body**: Format using the bug report template structure:
-      - `**Command**`: The `/vbw:*` command that triggered the issue (ask the user if not in the problem description, or put "Not specified")
-      - `**What happened**`: The problem description from `$ARGUMENTS`, or "Not provided — please edit"
-      - `**What you expected**`: "Not provided — please edit this section"
-      - `**Steps to reproduce**`: "Not provided — please edit this section"
-      - `**Environment**`: Extract from the diagnostic output (VBW version, OS, Claude Code version, install method)
-      - `**Additional context**`: The full diagnostic report output (the fenced block from step 2)
+    ```
+    **Problem**
+    {problem description from $ARGUMENTS}
 
-    b. Show the composed title and body as a brief preview so the user can see what will be filed.
+    **Proposed solution**
+    {inferred from description, or "Not provided — please edit this section"}
 
-    c. File the issue immediately using this fallback chain. Stop at the first method that succeeds:
+    **Alternatives considered**
+    Not provided — please edit this section
+
+    **Additional context**
+    {full diagnostic report output in a fenced code block}
+    ```
+    </example>
+    </examples>
+
+4. **File the issue.** Show the composed title and body as a brief preview, then file immediately using this fallback chain. Stop at the first method that succeeds:
+
+    Set the label based on classification: `bug` for bugs, `enhancement` for features.
 
     **Method 1 — `gh` CLI (if installed and authenticated):**
 
@@ -82,7 +118,7 @@ Extract from `$ARGUMENTS`:
 
     gh issue create --repo swt-labs/vibe-better-with-claude-code-vbw \
       --title "$(cat "$ISSUE_TITLE_FILE")" \
-      --label bug \
+      --label <bug or enhancement> \
       --body-file "$ISSUE_BODY_FILE"
     ```
 
@@ -94,7 +130,7 @@ Extract from `$ARGUMENTS`:
     - `repo`: `vibe-better-with-claude-code-vbw`
     - `title`: The composed title
     - `body`: The composed body
-    - `labels`: `["bug"]`
+    - `labels`: `["bug"]` or `["enhancement"]` based on classification
     - `assignees`: `["dpearson2699"]`
 
     **Method 3 — Install `gh` CLI, authenticate, then file:**
@@ -123,3 +159,4 @@ Extract from `$ARGUMENTS`:
 
     Copy the diagnostic report above and paste it into the issue body.
     ```
+    Use `?template=bug_report.md` for bugs or `?template=feature_request.md` for features in the URL.
