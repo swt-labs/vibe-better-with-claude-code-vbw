@@ -4,7 +4,7 @@ category: supporting
 disable-model-invocation: true
 description: Collect diagnostic context for bug reporting and optionally file a GitHub issue.
 argument-hint: "[problem description] [--file-issue]"
-allowed-tools: Read, Bash, Glob, Grep
+allowed-tools: Read, Bash, Glob, Grep, mcp_github_issue_write
 ---
 
 # VBW Report
@@ -74,6 +74,7 @@ Extract from `$ARGUMENTS`:
     ```bash
     ISSUE_BODY_FILE=$(mktemp /tmp/vbw-issue-body.XXXXXX.md)
     ISSUE_TITLE_FILE=$(mktemp /tmp/vbw-issue-title.XXXXXX.txt)
+    trap 'rm -f "$ISSUE_BODY_FILE" "$ISSUE_TITLE_FILE"' EXIT
 
     cat > "$ISSUE_TITLE_FILE" << 'ISSUE_TITLE_EOF'
     <composed title>
@@ -87,8 +88,6 @@ Extract from `$ARGUMENTS`:
       --title "$(cat "$ISSUE_TITLE_FILE")" \
       --label bug \
       --body-file "$ISSUE_BODY_FILE"
-
-    rm -f "$ISSUE_BODY_FILE" "$ISSUE_TITLE_FILE"
     ```
 
     **Method 2 — GitHub MCP server (if available):**
