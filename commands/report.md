@@ -52,65 +52,81 @@ Extract from `$ARGUMENTS`:
 
     **If `--file-issue` was passed:**
 
-    a. Check if `gh` CLI is available: `gh --version 2>/dev/null`
+    First, compose the issue content:
+    - **Title**: Use the problem description, or `"Bug report from /vbw:report"` if none given.
+    - **Body**: Format using the bug report template structure:
+      - `**Command**`: The `/vbw:*` command that triggered the issue (ask the user if not in the problem description, or put "Not specified")
+      - `**What happened**`: The problem description from `$ARGUMENTS`, or "Not provided — please edit"
+      - `**What you expected**`: "Not provided — please edit this section"
+      - `**Steps to reproduce**`: "Not provided — please edit this section"
+      - `**Environment**`: Extract from the diagnostic output (VBW version, OS, Claude Code version, install method)
+      - `**Additional context**`: The full diagnostic report output (the fenced block from step 2)
 
-    b. If `gh` is missing, check if the GitHub MCP server is available by attempting to use `mcp_github_issue_write`. If the MCP tool is available (i.e., it exists in your tool list), use it as the filing mechanism instead of `gh`:
+    Show the user the composed title and body. Ask for confirmation before filing. Do not auto-file.
 
-       - Compose the same title and body as described in step (c) below.
-       - Show the user the composed title and body. Ask for confirmation. Do not auto-file.
-       - On confirmation, call `mcp_github_issue_write` with:
-         - `method`: `create`
-         - `owner`: `swt-labs`
-         - `repo`: `vibe-better-with-claude-code-vbw`
-         - `title`: The composed title
-         - `body`: The composed body
-         - `labels`: `["bug"]`
-         - `assignees`: `["dpearson2699"]`
+    On confirmation, attempt to file using this fallback chain. Stop at the first method that succeeds:
 
-    c. If neither `gh` nor the MCP tool is available, display:
-    ```
-    ⚠ No issue-filing method available.
-    Option 1: Install GitHub CLI — brew install gh (macOS) or see https://cli.github.com/
-    Option 2: File manually — https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=bug_report.md
-    ```
-    Then paste the diagnostic report so the user can copy it into the manual issue.
+    **Method 1 — `gh` CLI (if installed and authenticated):**
 
-    d. If `gh` is available, compose a GitHub issue using the bug report template fields:
-       - **Title**: Use the problem description, or `"Bug report from /vbw:report"` if none given.
-       - **Body**: Format using the bug report template structure:
-         - `**Command**`: The `/vbw:*` command that triggered the issue (ask the user if not in the problem description, or put "Not specified")
-         - `**What happened**`: The problem description from `$ARGUMENTS`, or "Not provided — please edit"
-         - `**What you expected**`: "Not provided — please edit this section"
-         - `**Steps to reproduce**`: "Not provided — please edit this section"
-         - `**Environment**`: Extract from the diagnostic output (VBW version, OS, Claude Code version, install method)
-         - `**Additional context**`: The full diagnostic report output (the fenced block from step 2)
+    Check: `gh auth status 2>/dev/null`
 
-    e. Before running `gh issue create`, show the user the composed title and body. Ask for confirmation. Do not auto-file.
-
-    f. On confirmation, write the composed title and body to temporary files to avoid shell quoting issues with special characters:
+    If `gh` is installed and authenticated, file via temp files for safe quoting:
     ```bash
-    # Use mktemp for session-safe temp files
     ISSUE_BODY_FILE=$(mktemp /tmp/vbw-issue-body.XXXXXX.md)
     ISSUE_TITLE_FILE=$(mktemp /tmp/vbw-issue-title.XXXXXX.txt)
 
-    # Write title using heredoc (safe for quotes, special chars in user input)
     cat > "$ISSUE_TITLE_FILE" << 'ISSUE_TITLE_EOF'
     <composed title>
     ISSUE_TITLE_EOF
 
-    # Write body (handles quotes, newlines, special chars safely)
     cat > "$ISSUE_BODY_FILE" << 'ISSUE_BODY_EOF'
     <composed body content>
     ISSUE_BODY_EOF
 
-    # File the issue using temp files for safe argument passing
     gh issue create --repo swt-labs/vibe-better-with-claude-code-vbw \
       --title "$(cat "$ISSUE_TITLE_FILE")" \
       --label bug \
       --body-file "$ISSUE_BODY_FILE"
 
-    # Clean up temp files
     rm -f "$ISSUE_BODY_FILE" "$ISSUE_TITLE_FILE"
+    ```
+
+    **Method 2 — GitHub MCP server (if available):**
+
+    If `gh` is not installed or not authenticated, check if `mcp_github_issue_write` is available in your tool list. If it is, call it with:
+    - `method`: `create`
+    - `owner`: `swt-labs`
+    - `repo`: `vibe-better-with-claude-code-vbw`
+    - `title`: The composed title
+    - `body`: The composed body
+    - `labels`: `["bug"]`
+    - `assignees`: `["dpearson2699"]`
+
+    **Method 3 — Install `gh` CLI, authenticate, then file:**
+
+    If neither method 1 nor method 2 is available, install and set up `gh`:
+
+    a. Detect the platform and install `gh`:
+       - macOS: `brew install gh`
+       - Debian/Ubuntu: `sudo apt install gh` (or the official install script)
+       - Other: Direct the user to https://cli.github.com/ and skip to Method 4.
+
+    b. After installation, authenticate:
+       ```bash
+       gh auth login --web
+       ```
+       Walk the user through the browser-based auth flow. Wait for authentication to complete successfully (`gh auth status` returns 0).
+
+    c. Once authenticated, file the issue using the same `gh issue create` command from Method 1.
+
+    **Method 4 — Manual fallback (last resort):**
+
+    If all of the above fail (install refused, auth failed, network error, etc.), display:
+    ```
+    ⚠ Could not file issue automatically.
+    File manually: https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=bug_report.md
+
+    Copy the diagnostic report above and paste it into the issue body.
     ```
 
     **If `--file-issue` was NOT passed:**
