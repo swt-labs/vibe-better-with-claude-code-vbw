@@ -58,7 +58,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
     a. Compose the issue content:
     - **Title**: Use the problem description, or `"Bug report from /vbw:report"` if none given.
     - **Body**: Format using the bug report template structure:
-      - `**Command**`: The `/vbw:*` command that triggered the issue (ask the user if not in the problem description, or put "Not specified")
+      - `**Command**`: The `/vbw:*` command that triggered the issue (extract from the problem description, or put "Not specified")
       - `**What happened**`: The problem description from `$ARGUMENTS`, or "Not provided — please edit"
       - `**What you expected**`: "Not provided — please edit this section"
       - `**Steps to reproduce**`: "Not provided — please edit this section"
