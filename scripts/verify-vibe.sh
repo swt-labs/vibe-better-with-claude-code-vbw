@@ -163,7 +163,7 @@ done
 # REQ-18: Exact file count
 # shellcheck disable=SC2010
 CMD_COUNT=$(ls "$COMMANDS_DIR" | grep -c '\.md$')
-check "REQ-18" "commands/ has exactly 23 .md files (found $CMD_COUNT)" test "$CMD_COUNT" -eq 23
+check "REQ-18" "commands/ has exactly 24 .md files (found $CMD_COUNT)" test "$CMD_COUNT" -eq 24
 
 # REQ-20: No stale "29 commands" in key files
 check_absent "REQ-20" "README.md has no '29 commands'" grep -q "29 commands" "$README"
