@@ -287,7 +287,7 @@ fi
 Display: "⚠ Renamed misnamed plan files to `{NN}-PLAN.md` convention."
 Then re-run phase-detect.sh and use updated output for routing below.
 
-**State-driven routing prohibition (NON-NEGOTIABLE):** When state detection routes to a mode, enter that mode IMMEDIATELY in the same turn. Do NOT use TaskCreate, TaskUpdate, or any task management tool for state-driven routing — these add overhead and delay execution. State routing is deterministic: the pre-computed data in the Context section above provides all information needed to act. Execute the routed mode inline without planning, reviewing protocols, or reading files not specified in that mode's steps.
+**State-driven routing prohibition (NON-NEGOTIABLE):** When state detection routes to a mode, call its confirmation gate (AskUserQuestion — see Confirmation Gate section below) in the same turn, then execute the mode inline after the user responds. Do NOT use TaskCreate, TaskUpdate, or any task management tool for state-driven routing — these add overhead and delay execution. State routing is deterministic: the pre-computed data in the Context section above provides all routing information. Do not spawn tasks or read protocol files for routing decisions. After confirmation (when required by the routing table), execute the mode inline.
 
 | Priority | Condition | Mode | Confirmation |
 | --- | --- | --- | --- |
@@ -423,7 +423,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 
 ### Confirmation Gate
 
-Every mode triggers confirmation before executing. **Call AskUserQuestion** with the question from the routing table's Confirmation column (marked with `→ AskUserQuestion:`), providing the recommended option and alternatives from the table below where listed. For simple yes/no confirmations without a table entry, offer the affirmative action as recommended and a "Skip" or "Not now" alternative.
+Every mode triggers confirmation before executing. **Use the AskUserQuestion tool** to present the question from the routing table's Confirmation column (marked with `→ AskUserQuestion:`), providing the recommended option and alternatives from the table below where listed. Do not render the confirmation as prose text or run a no-op command — the AskUserQuestion tool must be invoked so the user can respond via the interactive UI. For simple yes/no confirmations without a table entry, offer the affirmative action as recommended and a "Skip" or "Not now" alternative.
 - **Exception:** `--yolo` skips all confirmation gates. Error guards (missing roadmap, uninitialized project) still halt.
 - **Exception:** Flags skip confirmation (explicit intent).
 
