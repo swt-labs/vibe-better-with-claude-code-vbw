@@ -2,8 +2,8 @@
 name: vbw:report
 category: supporting
 disable-model-invocation: true
-description: Collect diagnostic context for bug reporting and optionally file a GitHub issue.
-argument-hint: "[problem description] [--file-issue]"
+description: Collect diagnostic context and file a GitHub issue.
+argument-hint: "[problem description]"
 allowed-tools: Read, Bash, Glob, Grep, mcp__github__issue_write
 ---
 
@@ -26,9 +26,7 @@ VBW version:
 ## Parse Arguments
 
 Extract from `$ARGUMENTS`:
-- If it contains `--file-issue`, set FILE_ISSUE=true and remove the flag from the description text.
-- Everything else is the **problem description**.
-- Both are optional. No arguments = diagnostic-only mode.
+- Everything is the **problem description** (optional). No arguments is valid — the command still collects diagnostics and files with default placeholder text.
 
 ## Steps
 
@@ -48,11 +46,9 @@ Extract from `$ARGUMENTS`:
     ```
     Then the fenced code block with the script output.
 
-3. **Offer next steps.** Based on whether `--file-issue` was passed:
+3. **Compose and file the issue.**
 
-    **If `--file-issue` was passed:**
-
-    First, compose the issue content:
+    a. Compose the issue content:
     - **Title**: Use the problem description, or `"Bug report from /vbw:report"` if none given.
     - **Body**: Format using the bug report template structure:
       - `**Command**`: The `/vbw:*` command that triggered the issue (ask the user if not in the problem description, or put "Not specified")
@@ -62,9 +58,9 @@ Extract from `$ARGUMENTS`:
       - `**Environment**`: Extract from the diagnostic output (VBW version, OS, Claude Code version, install method)
       - `**Additional context**`: The full diagnostic report output (the fenced block from step 2)
 
-    Show the user the composed title and body. Ask for confirmation before filing. Do not auto-file.
+    b. Show the composed title and body as a brief preview so the user can see what will be filed.
 
-    On confirmation, attempt to file using this fallback chain. Stop at the first method that succeeds:
+    c. File the issue immediately using this fallback chain. Stop at the first method that succeeds:
 
     **Method 1 — `gh` CLI (if installed and authenticated):**
 
@@ -126,15 +122,4 @@ Extract from `$ARGUMENTS`:
     File manually: https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=bug_report.md
 
     Copy the diagnostic report above and paste it into the issue body.
-    ```
-
-    **If `--file-issue` was NOT passed:**
-
-    Display after the diagnostic report:
-    ```
-    To file an issue with these diagnostics:
-      /vbw:report --file-issue <problem description>
-
-    Or file manually:
-      https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=bug_report.md
     ```
