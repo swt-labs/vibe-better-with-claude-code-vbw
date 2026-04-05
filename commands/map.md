@@ -70,17 +70,17 @@ Inspect the available tool names in the system context (the deferred tools list 
 **Pass 1: Name-suffix matching**
 
 ```
-CAPABILITY_ARCHITECTURE     := tool name ending in: get_architecture, analyze_architecture, extract_architecture, get_repo_outline, get_symbol_importance
-CAPABILITY_SYMBOL_SEARCH    := tool name ending in: search_graph, find_symbols, search_symbols, workspace_symbol
-CAPABILITY_DEPENDENCY_GRAPH := tool name ending in: query_graph, get_dependencies, analyze_dependencies, dependency_graph, find_importers, get_layer_violations
-CAPABILITY_CALL_TRACING     := tool name ending in: trace_call_path, find_callers, call_hierarchy, find_importers, get_blast_radius
-CAPABILITY_CODE_SEARCH      := tool name ending in: search_code, code_search, search_sections, get_section, get_sections
-CAPABILITY_CODE_SNIPPET     := tool name ending in: get_code_snippet, read_function, get_function, get_symbol_source, get_section_context
-CAPABILITY_HOTSPOT_ANALYSIS := tool name ending in: detect_changes, hotspot_analysis, complexity_analysis, get_blast_radius, get_changed_symbols, find_dead_code, get_broken_links, get_doc_coverage
-CAPABILITY_INDEX            := tool name ending in: index_repository, index_status, index_local, index_repo, index_folder
-CAPABILITY_OUTLINE          := tool name ending in: get_file_outline, get_repo_outline, get_document_outline, get_toc, get_toc_tree
-CAPABILITY_IMPACT_ANALYSIS  := tool name ending in: get_blast_radius, get_changed_symbols, find_dead_code, get_layer_violations, get_doc_coverage, get_broken_links
-CAPABILITY_CLASS_HIERARCHY  := tool name ending in: get_class_hierarchy, class_hierarchy, get_inheritance
+CAPABILITY_ARCHITECTURE     := tool name ending in: get_architecture, analyze_architecture, extract_architecture, get_repo_outline, get_symbol_importance, analyze_project, architecture
+CAPABILITY_SYMBOL_SEARCH    := tool name ending in: search_graph, find_symbols, search_symbols, workspace_symbol, get_symbols, find_symbol, searchSymbols, getSymbol, find_usage, findReferences
+CAPABILITY_DEPENDENCY_GRAPH := tool name ending in: query_graph, get_dependencies, analyze_dependencies, dependency_graph, find_importers, get_layer_violations, resolve_import
+CAPABILITY_CALL_TRACING     := tool name ending in: trace_call_path, find_callers, call_hierarchy, find_importers, get_blast_radius, get_callers, get_callees, get_call_details, findReferences, codemap-callers, codemap-callees, codemap-path
+CAPABILITY_CODE_SEARCH      := tool name ending in: search_code, code_search, search_sections, get_section, get_sections, find_text, search_code_advanced, codemap-search
+CAPABILITY_CODE_SNIPPET     := tool name ending in: get_code_snippet, read_function, get_function, get_symbol_source, get_section_context, codemap-definition, codemap-node
+CAPABILITY_HOTSPOT_ANALYSIS := tool name ending in: detect_changes, hotspot_analysis, complexity_analysis, get_blast_radius, get_changed_symbols, find_dead_code, get_broken_links, get_doc_coverage, analyze_complexity, findDeadCode, prepareChange, codemap-diff-impact
+CAPABILITY_INDEX            := tool name ending in: index_repository, index_status, index_local, index_repo, index_folder, refresh_index, build_deep_index, reindex, codemap-reindex, get_index_info
+CAPABILITY_OUTLINE          := tool name ending in: get_file_outline, get_repo_outline, get_document_outline, get_toc, get_toc_tree, get_ast, get_file_summary, codemap-file
+CAPABILITY_IMPACT_ANALYSIS  := tool name ending in: get_blast_radius, get_changed_symbols, find_dead_code, get_layer_violations, get_doc_coverage, get_broken_links, codemap-impact, codemap-unused, codemap-diff-impact, compareAPI
+CAPABILITY_CLASS_HIERARCHY  := tool name ending in: get_class_hierarchy, class_hierarchy, get_inheritance, codemap-hierarchy, codemap-implementations
 ```
 
 Note: some tools (e.g., `find_importers`, `get_blast_radius`) map to multiple categories — this is intentional as they provide data useful for multiple mapping documents.

@@ -164,6 +164,66 @@ teardown() {
   echo "$cap_lines" | grep -q 'get_symbol_importance'
 }
 
+@test "map.md has suffixes for tree-sitter MCP tools" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  local cap_lines
+  cap_lines=$(grep 'CAPABILITY_.*:=' "$map_file")
+  echo "$cap_lines" | grep -q 'analyze_project'
+  echo "$cap_lines" | grep -q 'get_symbols'
+  echo "$cap_lines" | grep -q 'find_usage'
+  echo "$cap_lines" | grep -q 'find_text'
+  echo "$cap_lines" | grep -q 'analyze_complexity'
+  echo "$cap_lines" | grep -q 'get_ast'
+}
+
+@test "map.md has suffixes for Code Pathfinder tools" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  local cap_lines
+  cap_lines=$(grep 'CAPABILITY_.*:=' "$map_file")
+  echo "$cap_lines" | grep -q 'find_symbol'
+  echo "$cap_lines" | grep -q 'get_callers'
+  echo "$cap_lines" | grep -q 'get_callees'
+  echo "$cap_lines" | grep -q 'get_call_details'
+  echo "$cap_lines" | grep -q 'resolve_import'
+}
+
+@test "map.md has suffixes for CodeMCP/CKB camelCase tools" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  local cap_lines
+  cap_lines=$(grep 'CAPABILITY_.*:=' "$map_file")
+  echo "$cap_lines" | grep -q 'searchSymbols'
+  echo "$cap_lines" | grep -q 'findReferences'
+  echo "$cap_lines" | grep -q 'findDeadCode'
+  echo "$cap_lines" | grep -q 'getSymbol'
+  echo "$cap_lines" | grep -q 'compareAPI'
+  echo "$cap_lines" | grep -q 'prepareChange'
+}
+
+@test "map.md has suffixes for codemap hyphenated tools" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  local cap_lines
+  cap_lines=$(grep 'CAPABILITY_.*:=' "$map_file")
+  echo "$cap_lines" | grep -q 'codemap-callers'
+  echo "$cap_lines" | grep -q 'codemap-callees'
+  echo "$cap_lines" | grep -q 'codemap-search'
+  echo "$cap_lines" | grep -q 'codemap-definition'
+  echo "$cap_lines" | grep -q 'codemap-impact'
+  echo "$cap_lines" | grep -q 'codemap-hierarchy'
+  echo "$cap_lines" | grep -q 'codemap-implementations'
+  echo "$cap_lines" | grep -q 'codemap-unused'
+  echo "$cap_lines" | grep -q 'codemap-reindex'
+}
+
+@test "map.md has suffixes for code-index-mcp tools" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  local cap_lines
+  cap_lines=$(grep 'CAPABILITY_.*:=' "$map_file")
+  echo "$cap_lines" | grep -q 'search_code_advanced'
+  echo "$cap_lines" | grep -q 'refresh_index'
+  echo "$cap_lines" | grep -q 'build_deep_index'
+  echo "$cap_lines" | grep -q 'get_file_summary'
+}
+
 @test "map.md has extended suffixes for jdocmunch tools" {
   local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
   local cap_lines
