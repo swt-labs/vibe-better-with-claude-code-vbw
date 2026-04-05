@@ -54,14 +54,28 @@ Extract from `$ARGUMENTS`:
 
     a. Check if `gh` CLI is available: `gh --version 2>/dev/null`
 
-    b. If `gh` is missing, display:
-    ```
-    ⚠ GitHub CLI (gh) not installed.
-    Install: brew install gh (macOS) or see https://cli.github.com/
-    File manually: https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=bug_report.md
-    ```
+    b. If `gh` is missing, check if the GitHub MCP server is available by attempting to use `mcp_github_issue_write`. If the MCP tool is available (i.e., it exists in your tool list), use it as the filing mechanism instead of `gh`:
 
-    c. If `gh` is available, compose a GitHub issue using the bug report template fields:
+       - Compose the same title and body as described in step (c) below.
+       - Show the user the composed title and body. Ask for confirmation. Do not auto-file.
+       - On confirmation, call `mcp_github_issue_write` with:
+         - `method`: `create`
+         - `owner`: `swt-labs`
+         - `repo`: `vibe-better-with-claude-code-vbw`
+         - `title`: The composed title
+         - `body`: The composed body
+         - `labels`: `["bug"]`
+         - `assignees`: `["dpearson2699"]`
+
+    c. If neither `gh` nor the MCP tool is available, display:
+    ```
+    ⚠ No issue-filing method available.
+    Option 1: Install GitHub CLI — brew install gh (macOS) or see https://cli.github.com/
+    Option 2: File manually — https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=bug_report.md
+    ```
+    Then paste the diagnostic report so the user can copy it into the manual issue.
+
+    d. If `gh` is available, compose a GitHub issue using the bug report template fields:
        - **Title**: Use the problem description, or `"Bug report from /vbw:report"` if none given.
        - **Body**: Format using the bug report template structure:
          - `**Command**`: The `/vbw:*` command that triggered the issue (ask the user if not in the problem description, or put "Not specified")
@@ -71,9 +85,9 @@ Extract from `$ARGUMENTS`:
          - `**Environment**`: Extract from the diagnostic output (VBW version, OS, Claude Code version, install method)
          - `**Additional context**`: The full diagnostic report output (the fenced block from step 2)
 
-    d. Before running `gh issue create`, show the user the composed title and body. Ask for confirmation. Do not auto-file.
+    e. Before running `gh issue create`, show the user the composed title and body. Ask for confirmation. Do not auto-file.
 
-    e. On confirmation, write the composed title and body to temporary files to avoid shell quoting issues with special characters:
+    f. On confirmation, write the composed title and body to temporary files to avoid shell quoting issues with special characters:
     ```bash
     # Use mktemp for session-safe temp files
     ISSUE_BODY_FILE=$(mktemp /tmp/vbw-issue-body.XXXXXX.md)
