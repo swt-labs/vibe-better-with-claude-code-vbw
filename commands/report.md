@@ -30,6 +30,14 @@ Extract from `$ARGUMENTS`:
 - Everything else is the **problem description**.
 - Both are optional. No arguments = diagnostic-only mode.
 
+## Scope
+
+This command is display-only — it surfaces diagnostics so the user can decide what to do next.
+
+- Do not write files, save memories, create todos, update STATE.md, modify CLAUDE.md, or take any action beyond collecting and displaying diagnostics.
+- The only exception is when `--file-issue` is passed AND the user confirms — filing is an explicit user-requested action with a confirmation gate.
+- The `Bash` tool is for running `collect-diagnostics.sh` and the `gh` issue-filing flow (including temp file scaffolding) described in this protocol. Do not use it for any other purpose.
+
 ## Steps
 
 1. **Collect diagnostics.** Run the diagnostic collection script from the resolved plugin root. Pass the plugin root path as the first argument and the working directory as the second:
@@ -138,3 +146,5 @@ Extract from `$ARGUMENTS`:
     Or file manually:
       https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=bug_report.md
     ```
+
+    Stop here. Do not take any further action.
