@@ -155,8 +155,8 @@ VBW version:
     If all of the above fail (install refused, auth failed, network error, etc.), display:
     ```
     ⚠ Could not file issue automatically.
-    File manually: https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=bug_report.md
+    File manually: https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=<bug_report.md or feature_request.md>
 
     Copy the diagnostic report above and paste it into the issue body.
     ```
-    Use `?template=bug_report.md` for bugs or `?template=feature_request.md` for features in the URL.
+    Use `?template=bug_report.md` for bugs or `?template=feature_request.md` for features.
