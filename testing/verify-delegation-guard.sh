@@ -434,13 +434,34 @@ test_execute_team_marker_bypasses_guard() {
 }
 test_execute_team_marker_bypasses_guard
 
-# --- Test 18: stale/mismatched execute team marker does not bypass guard ---
+# --- Test 18: aged live execute team marker still bypasses guard ---
+test_aged_live_execute_team_marker_bypasses_guard() {
+  setup_project
+  jq -n '{status:"running", phase:1, effort:"balanced", correlation_id:"corr-123", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
+    > "$PROJECT/.vbw-planning/.execution-state.json"
+  jq -n '{mode:"execute", active:true, effort:"balanced", delegation_mode:"team", team_name:"vbw-phase-01", started_at:"2026-03-03T00:00:00Z", session_id:"session-test", correlation_id:"corr-123"}' \
+    > "$PROJECT/.vbw-planning/.delegated-workflow.json"
+  touch -t 202001010000 "$PROJECT/.vbw-planning/.delegated-workflow.json"
+
+  rm -f "$PROJECT/.vbw-planning/.active-agent-count" 2>/dev/null
+
+  if run_guard "$PROJECT" "src/app.js" "" >/dev/null 2>&1; then
+    pass "aged live execute team marker: allowed"
+  else
+    fail "aged live execute team marker: unexpected block (exit $?)"
+  fi
+  cleanup
+}
+test_aged_live_execute_team_marker_bypasses_guard
+
+# --- Test 19: stale/mismatched execute team marker does not bypass guard ---
 test_execute_team_marker_mismatch_does_not_bypass() {
   setup_project
   jq -n '{status:"running", phase:1, effort:"balanced", correlation_id:"live-corr", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
     > "$PROJECT/.vbw-planning/.execution-state.json"
   jq -n '{mode:"execute", active:true, effort:"balanced", delegation_mode:"team", team_name:"vbw-phase-01", started_at:"2026-03-03T00:00:00Z", session_id:"session-test", correlation_id:"stale-corr"}' \
     > "$PROJECT/.vbw-planning/.delegated-workflow.json"
+  touch -t 202001010000 "$PROJECT/.vbw-planning/.delegated-workflow.json"
 
   rm -f "$PROJECT/.vbw-planning/.active-agent-count" 2>/dev/null
 
@@ -455,7 +476,7 @@ test_execute_team_marker_mismatch_does_not_bypass() {
 }
 test_execute_team_marker_mismatch_does_not_bypass
 
-# --- Test 19: prefer_teams=always alone no longer bypasses guard ---
+# --- Test 20: prefer_teams=always alone no longer bypasses guard ---
 test_prefer_teams_always_alone_does_not_bypass() {
   setup_project
   echo '{"effort":"balanced","prefer_teams":"always"}' > "$PROJECT/.vbw-planning/config.json"
@@ -473,7 +494,7 @@ test_prefer_teams_always_alone_does_not_bypass() {
 }
 test_prefer_teams_always_alone_does_not_bypass
 
-# --- Test 20: prefer_teams=auto alone no longer bypasses guard ---
+# --- Test 21: prefer_teams=auto alone no longer bypasses guard ---
 test_prefer_teams_auto_alone_does_not_bypass() {
   setup_project
   echo '{"effort":"balanced","prefer_teams":"auto"}' > "$PROJECT/.vbw-planning/config.json"
@@ -491,7 +512,7 @@ test_prefer_teams_auto_alone_does_not_bypass() {
 }
 test_prefer_teams_auto_alone_does_not_bypass
 
-# --- Test 21: Legacy when_parallel alias alone no longer bypasses guard ---
+# --- Test 22: Legacy when_parallel alias alone no longer bypasses guard ---
 test_prefer_teams_legacy_when_parallel_alone_does_not_bypass() {
   setup_project
   echo '{"effort":"balanced","prefer_teams":"when_parallel"}' > "$PROJECT/.vbw-planning/config.json"

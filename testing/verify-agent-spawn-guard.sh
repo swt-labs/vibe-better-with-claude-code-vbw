@@ -75,7 +75,7 @@ run_guard() {
   local project_dir="$1"
   local team_name="$2"
   local run_in_background="$3"
-  local agent_name="${4:-dev-01}"
+  local agent_name="${4-dev-01}"
 
   local input
   input=$(jq -n \
@@ -153,6 +153,38 @@ test_team_mode_allows_team_scoped_spawn() {
 }
 test_team_mode_allows_team_scoped_spawn
 
+test_team_mode_requires_agent_name() {
+  setup_project
+  write_execution_state "corr-123"
+  write_marker execute team "vbw-phase-01" "corr-123"
+
+  local output rc
+  output=$(run_guard "$PROJECT" "vbw-phase-01" true "" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'requires teammate name metadata'; then
+    pass "Execute team mode blocks spawn without teammate name"
+  else
+    fail "Execute team mode should block missing teammate name (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_team_mode_requires_agent_name
+
+test_team_mode_requires_matching_team_name() {
+  setup_project
+  write_execution_state "corr-123"
+  write_marker execute team "vbw-phase-01" "corr-123"
+
+  local output rc
+  output=$(run_guard "$PROJECT" "vbw-phase-99" true 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q "requires team_name 'vbw-phase-01'"; then
+    pass "Execute team mode blocks mismatched team_name"
+  else
+    fail "Execute team mode should block mismatched team_name (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_team_mode_requires_matching_team_name
+
 test_non_team_mode_blocks_background_spawn() {
   setup_project
   write_execution_state "corr-123"
@@ -225,6 +257,23 @@ test_correlation_mismatch_is_ignored() {
   cleanup
 }
 test_correlation_mismatch_is_ignored
+
+test_aged_live_execute_marker_still_enforces_team_rules() {
+  setup_project
+  write_execution_state "corr-123"
+  write_marker execute team "vbw-phase-01" "corr-123"
+  touch -t 202001010000 "$PROJECT/.vbw-planning/.delegated-workflow.json"
+
+  local output rc
+  output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'requires team-scoped agent spawns'; then
+    pass "Aged but correlated execute team marker still enforces team metadata"
+  else
+    fail "Aged live execute marker should still be enforced (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_aged_live_execute_marker_still_enforces_team_rules
 
 echo ""
 echo "==============================="

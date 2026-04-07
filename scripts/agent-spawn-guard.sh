@@ -40,6 +40,7 @@ MODE=$(echo "$MARKER_STATUS" | jq -r '.mode // ""' 2>/dev/null) || exit 0
 
 DELEGATION_MODE=$(echo "$MARKER_STATUS" | jq -r '.delegation_mode // ""' 2>/dev/null) || exit 0
 [ -n "$DELEGATION_MODE" ] || exit 0
+EXPECTED_TEAM_NAME=$(echo "$MARKER_STATUS" | jq -r '.team_name // ""' 2>/dev/null) || exit 0
 
 TEAM_NAME=$(echo "$INPUT" | jq -r '.tool_input.team_name // ""' 2>/dev/null) || exit 0
 AGENT_NAME=$(echo "$INPUT" | jq -r '.tool_input.name // ""' 2>/dev/null) || exit 0
@@ -49,6 +50,14 @@ case "$DELEGATION_MODE" in
   team)
     if [ -z "$TEAM_NAME" ]; then
       echo "Blocked: execute team mode requires team-scoped agent spawns. Missing team_name on Agent spawn${AGENT_NAME:+ ($AGENT_NAME)}." >&2
+      exit 2
+    fi
+    if [ -z "$AGENT_NAME" ]; then
+      echo "Blocked: execute team mode requires teammate name metadata on team-scoped spawns." >&2
+      exit 2
+    fi
+    if [ -n "$EXPECTED_TEAM_NAME" ] && [ "$TEAM_NAME" != "$EXPECTED_TEAM_NAME" ]; then
+      echo "Blocked: execute team mode requires team_name '$EXPECTED_TEAM_NAME', got '$TEAM_NAME'." >&2
       exit 2
     fi
     ;;

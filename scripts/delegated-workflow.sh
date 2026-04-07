@@ -111,33 +111,47 @@ print_status_json() {
 
       if [ "$active" != "true" ]; then
         reason="inactive"
+      elif [ "$mode" = "execute" ]; then
+        if [ ! -f "$EXEC_STATE_FILE" ]; then
+          if [ -n "$marker_age_seconds_value" ] && printf '%s' "$marker_age_seconds_value" | grep -Eq '^[0-9]+$' && { [ "$marker_age_seconds_value" -lt 0 ] || [ "$marker_age_seconds_value" -ge "$STALE_SECS" ]; }; then
+            reason="stale_marker"
+          else
+            reason="missing_execution_state"
+          fi
+        elif ! jq empty "$EXEC_STATE_FILE" >/dev/null 2>&1; then
+          reason="invalid_execution_state"
+        else
+          exec_status=$(json_field "$EXEC_STATE_FILE" '.status')
+          exec_correlation_id=$(json_field "$EXEC_STATE_FILE" '.correlation_id')
+
+          if [ "$exec_status" != "running" ]; then
+            if [ -n "$marker_age_seconds_value" ] && printf '%s' "$marker_age_seconds_value" | grep -Eq '^[0-9]+$' && { [ "$marker_age_seconds_value" -lt 0 ] || [ "$marker_age_seconds_value" -ge "$STALE_SECS" ]; }; then
+              reason="stale_marker"
+            else
+              reason="execution_not_running"
+            fi
+          elif [ -z "$correlation_id" ]; then
+            reason="missing_marker_correlation_id"
+          elif [ -z "$exec_correlation_id" ]; then
+            reason="missing_execution_correlation_id"
+          elif [ "$correlation_id" != "$exec_correlation_id" ]; then
+            if [ -n "$marker_age_seconds_value" ] && printf '%s' "$marker_age_seconds_value" | grep -Eq '^[0-9]+$' && { [ "$marker_age_seconds_value" -lt 0 ] || [ "$marker_age_seconds_value" -ge "$STALE_SECS" ]; }; then
+              reason="stale_marker"
+            else
+              reason="correlation_mismatch"
+            fi
+          else
+            live=true
+            reason="ok"
+          fi
+        fi
       elif [ -z "$marker_age_seconds_value" ] || ! printf '%s' "$marker_age_seconds_value" | grep -Eq '^[0-9]+$'; then
         reason="unknown_marker_age"
       elif [ "$marker_age_seconds_value" -lt 0 ] || [ "$marker_age_seconds_value" -ge "$STALE_SECS" ]; then
         reason="stale_marker"
-      elif [ "$mode" != "execute" ]; then
+      else
         live=true
         reason="ok"
-      elif [ ! -f "$EXEC_STATE_FILE" ]; then
-        reason="missing_execution_state"
-      elif ! jq empty "$EXEC_STATE_FILE" >/dev/null 2>&1; then
-        reason="invalid_execution_state"
-      else
-        exec_status=$(json_field "$EXEC_STATE_FILE" '.status')
-        exec_correlation_id=$(json_field "$EXEC_STATE_FILE" '.correlation_id')
-
-        if [ "$exec_status" != "running" ]; then
-          reason="execution_not_running"
-        elif [ -z "$correlation_id" ]; then
-          reason="missing_marker_correlation_id"
-        elif [ -z "$exec_correlation_id" ]; then
-          reason="missing_execution_correlation_id"
-        elif [ "$correlation_id" != "$exec_correlation_id" ]; then
-          reason="correlation_mismatch"
-        else
-          live=true
-          reason="ok"
-        fi
       fi
     fi
   fi
