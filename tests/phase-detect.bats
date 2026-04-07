@@ -2006,6 +2006,44 @@ EOF
   echo "$output" | grep -q "next_phase=02"
 }
 
+@test "earlier unfinished work still emits failed QA-attention for later stage-less known-issues backlog" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  mkdir -p .vbw-planning/phases/01-unplanned
+
+  mkdir -p .vbw-planning/phases/02-known-issues
+  echo "# Plan" > .vbw-planning/phases/02-known-issues/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-known-issues/02-SUMMARY.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 02' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/02-known-issues/02-VERIFICATION.md
+  cat > .vbw-planning/phases/02-known-issues/known-issues.json <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "02",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "02-01-SUMMARY.md",
+      "last_seen_in": "02-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+  echo "$output" | grep -q "first_qa_attention_phase=02"
+  echo "$output" | grep -q "first_qa_attention_slug=02-known-issues"
+  echo "$output" | grep -q "qa_attention_status=failed"
+}
+
 @test "later active QA remediation outranks earlier mid-execution phase" {
   echo "# My Project" > .vbw-planning/PROJECT.md
 

@@ -497,6 +497,10 @@ load test_helper
   grep -q 'all_done QA-attention fallback (pending)' "$PROJECT_ROOT/commands/vibe.md"
 }
 
+@test "vibe command has earlier-work failed-QA fallback into QA remediation" {
+  grep -q 'Earlier-work QA-attention fallback (failed)' "$PROJECT_ROOT/commands/vibe.md"
+}
+
 @test "verify command skip-qa still blocks on unresolved known issues" {
   grep -q 'unresolved or unreadable tracked known issues' "$PROJECT_ROOT/commands/verify.md"
 }
