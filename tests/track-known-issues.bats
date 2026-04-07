@@ -246,3 +246,187 @@ EOF
   second_state=$(jq -cS '.issues[0]' "$PHASE_DIR/known-issues.json")
   [ "$first_state" = "$second_state" ]
 }
+
+# --- promote-todos tests ---
+
+write_state_md_with_todos() {
+  local content="${1:-None.}"
+  {
+    echo '# Project State'
+    echo ''
+    echo '## Decisions'
+    echo 'None.'
+    echo ''
+    echo '## Todos'
+    echo "$content"
+    echo ''
+    echo '## Blockers'
+    echo 'None.'
+  } > "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+write_legacy_state_md_with_todos() {
+  local content="${1:-None.}"
+  {
+    echo '# Project State'
+    echo ''
+    echo '## Decisions'
+    echo 'None.'
+    echo ''
+    echo '## Todos'
+    echo ''
+    echo '### Pending Todos'
+    echo "$content"
+    echo ''
+    echo '### Completed Todos'
+    echo 'None.'
+    echo ''
+    echo '## Blockers'
+    echo 'None.'
+  } > "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+write_known_issues_registry() {
+  local phase_num="$1"
+  shift
+  local issues_json="[]"
+  for issue_json in "$@"; do
+    issues_json=$(echo "$issues_json" | jq --argjson i "$issue_json" '. + [$i]')
+  done
+  jq -n --arg p "$phase_num" --argjson iss "$issues_json" \
+    '{schema_version:1, phase:$p, issues:$iss}' > "$PHASE_DIR/known-issues.json"
+}
+
+@test "track-known-issues: promote-todos with empty registry promotes nothing" {
+  write_state_md_with_todos "None."
+  echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=0"* ]]
+  [[ "$output" == *"total_known_issues=0"* ]]
+  grep -q "None\." "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos adds new issues to STATE.md" {
+  write_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-02","first_seen_round":1,"last_seen_round":2,"times_seen":3}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  [[ "$output" == *"total_known_issues=1"* ]]
+  # None. placeholder must be removed from Todos section
+  run bash -c 'awk "/^## Todos?$/{f=1;next} f&&/^##/{exit} f" "$1" | grep -q "^None\\.$"' -- "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  [ "$status" -ne 0 ]
+  # Entry must exist with [KNOWN-ISSUE] tag
+  grep -q "\[KNOWN-ISSUE\]" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "TestCrash" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "CrashTests.swift" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Source traceability from last_seen_in field
+  grep -q "(see 03-02)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos deduplicates existing entries" {
+  write_state_md_with_todos "- [KNOWN-ISSUE] TestCrash (CrashTests.swift): signal trap (phase 03, seen 2x) (see 03-01) (added 2025-01-01)"
+  write_known_issues_registry "03" \
+    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-02","first_seen_round":1,"last_seen_round":2,"times_seen":3}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=0"* ]]
+  [[ "$output" == *"already_tracked_count=1"* ]]
+  # Only one [KNOWN-ISSUE] line (no duplicate)
+  local count
+  count=$(grep -c "\[KNOWN-ISSUE\]" "$TEST_TEMP_DIR/.vbw-planning/STATE.md")
+  [ "$count" -eq 1 ]
+}
+
+@test "track-known-issues: promote-todos replaces None placeholder" {
+  write_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    '{"test":"TestA","file":"A.swift","error":"err","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # None. placeholder must be removed from Todos section
+  run bash -c 'awk "/^## Todos?$/{f=1;next} f&&/^##/{exit} f" "$1" | grep -q "^None\\.$"' -- "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  [ "$status" -ne 0 ]
+  grep -q "\[KNOWN-ISSUE\] TestA (A.swift)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos handles multiple issues" {
+  write_state_md_with_todos "- [HIGH] Existing high-pri todo (added 2025-01-01)"
+  write_known_issues_registry "03" \
+    '{"test":"TestA","file":"A.swift","error":"err A","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1}' \
+    '{"test":"TestB","file":"B.swift","error":"err B","first_seen_in":"03-02","last_seen_in":"03-02","first_seen_round":2,"last_seen_round":2,"times_seen":2}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=2"* ]]
+  # Original high-pri todo preserved
+  grep -q "\[HIGH\]" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Both new entries present
+  grep -q "TestA" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "TestB" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos works with legacy Pending Todos layout" {
+  write_legacy_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  # None. placeholder must be removed from Pending Todos section
+  run bash -c 'awk "/^### Pending Todos$/{f=1;next} f&&/^##/{exit} f" "$1" | grep -q "^None\\.$"' -- "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  [ "$status" -ne 0 ]
+  grep -q "\[KNOWN-ISSUE\] TestCrash (CrashTests.swift)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Legacy section structure preserved
+  grep -q "### Pending Todos" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "### Completed Todos" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos appends to non-empty legacy Pending Todos" {
+  write_legacy_state_md_with_todos "- [HIGH] Fix login bug"
+  write_known_issues_registry "03" \
+    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  # Original entry preserved
+  grep -q "\[HIGH\] Fix login bug" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # New entry added under Pending Todos
+  grep -q "\[KNOWN-ISSUE\] TestCrash (CrashTests.swift)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Completed Todos section preserved and not contaminated
+  grep -q "### Completed Todos" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Known issue appears before Completed Todos, not after
+  run bash -c 'awk "/^### Completed Todos/{exit} /KNOWN-ISSUE/{found=1} END{exit !found}" "$1"' -- "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  [ "$status" -eq 0 ]
+}
+
+@test "track-known-issues: promote-todos dedup uses exact key not substring" {
+  # testFoo exists but we're promoting testFooBar — must NOT be suppressed
+  write_state_md_with_todos "- [KNOWN-ISSUE] testFoo (path/a.swift): err (phase 03, seen 1x) (added 2025-01-01)"
+  write_known_issues_registry "03" \
+    '{"test":"testFooBar","file":"path/a.swift","error":"different err","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  [[ "$output" == *"already_tracked_count=0"* ]]
+  # Both entries present
+  grep -q "testFoo " "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "testFooBar" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}

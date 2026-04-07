@@ -209,6 +209,12 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
       bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/track-known-issues.sh sync-verification "{phase-dir}" "{VERIF_PATH}" 2>/dev/null || true
       ```
 
+      After sync-verification, auto-promote surviving known issues to `STATE.md ## Todos`:
+
+      ```bash
+      bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/track-known-issues.sh promote-todos "{phase-dir}" 2>/dev/null || true
+      ```
+
       Phase-level `VERIFICATION.md` merges newly found pre-existing issues into `{phase-dir}/known-issues.json` without clearing the execution-time backlog. Round-scoped `R{RR}-VERIFICATION.md` is authoritative for unresolved known issues and prunes/clears the registry when issues are fixed.
 
     - Then run:

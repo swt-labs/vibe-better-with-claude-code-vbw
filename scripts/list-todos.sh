@@ -4,7 +4,7 @@ set -euo pipefail
 # list-todos.sh — Extract and format pending todos from STATE.md
 #
 # Usage: list-todos.sh [priority-filter]
-#   priority-filter: optional "high", "low", or "normal" (case-insensitive)
+#   priority-filter: optional "high", "low", "known-issue", or "normal" (case-insensitive)
 #
 # Resolves milestone-scoped STATE.md, extracts ## Todos (or ### Pending Todos
 # for legacy/pre-migration STATE.md), parses priority tags and dates, computes
@@ -141,11 +141,13 @@ parse_todo_line() {
   # Strip leading "- "
   text="${line#- }"
 
-  # Extract priority
+  # Extract priority/category
   if [[ "$text" == "[HIGH] "* ]]; then
     priority="high"
   elif [[ "$text" == "[low] "* ]]; then
     priority="low"
+  elif [[ "$text" == "[KNOWN-ISSUE] "* ]]; then
+    priority="known-issue"
   else
     priority="normal"
   fi
@@ -259,11 +261,13 @@ main() {
     case "$pri" in
       high) pri_tag="[HIGH] " ;;
       low) pri_tag="[low] " ;;
+      known-issue) pri_tag="[KNOWN-ISSUE] " ;;
     esac
 
     # Strip priority prefix and date suffix for clean display
     display_text="${text#\[HIGH\] }"
     display_text="${display_text#\[low\] }"
+    display_text="${display_text#\[KNOWN-ISSUE\] }"
     display_text=$(echo "$display_text" | sed 's/ *(added [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\})$//')
 
     age_suffix=""

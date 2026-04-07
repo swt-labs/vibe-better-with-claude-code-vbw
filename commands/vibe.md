@@ -349,6 +349,10 @@ Before entering Verify mode (UAT), check `qa_status` from phase-detect output:
   ```bash
   bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-verification "{phase-dir}" "{QA-output-path}" 2>/dev/null || true
   ```
+  After sync-verification, auto-promote surviving known issues to `STATE.md ## Todos`:
+  ```bash
+  bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" promote-todos "{phase-dir}" 2>/dev/null || true
+  ```
   Then run the deterministic gate:
   ```bash
   bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
@@ -411,6 +415,10 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     - After QA persists `{verification_path}`, immediately sync tracked known issues:
       ```bash
       bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-verification "{phase-dir}" "{verification_path}" 2>/dev/null || true
+      ```
+    - After sync-verification, auto-promote surviving known issues to `STATE.md ## Todos` so they are visible via `/vbw:list-todos` and `/vbw:resume`:
+      ```bash
+      bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" promote-todos "{phase-dir}" 2>/dev/null || true
       ```
     - **Include in QA task description:** "In addition to verifying the remediation plan's own must_haves, you MUST re-verify each original FAIL from the VERIFICATION HISTORY section. For each FAIL_ID: if classified as code-fix, verify the code now matches the plan; if classified as plan-amendment, verify the original PLAN.md has been updated with the actual approach and rationale; if classified as process-exception, verify the exception is documented with non-fixable justification and that the justification is credible for this FAIL; if code-fix or plan-amendment still appears viable, keep the FAIL open. Any original FAIL that has not been addressed by one of these three paths is still a FAIL."
     - **Include in QA task description when a KNOWN ISSUES block is present:** "Tracked phase known issues are not informational in remediation rounds. Re-check each tracked known issue and return only the ones that remain unresolved in `pre_existing_issues`. A clean remediation QA run must return an empty `pre_existing_issues` array so `{phase-dir}/known-issues.json` can clear."
