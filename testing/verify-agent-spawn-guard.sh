@@ -35,19 +35,40 @@ write_marker() {
   local mode="$1"
   local delegation_mode="$2"
   local team_name="${3:-}"
+  local correlation_id="${4:-corr-123}"
 
   jq -n \
     --arg mode "$mode" \
     --arg delegation_mode "$delegation_mode" \
     --arg team_name "$team_name" \
+    --arg correlation_id "$correlation_id" \
     '{
       mode: $mode,
       active: true,
       effort: "balanced",
       delegation_mode: $delegation_mode,
       team_name: $team_name,
-      started_at: "2026-04-07T00:00:00Z"
+      started_at: "2026-04-07T00:00:00Z",
+      session_id: "session-test",
+      correlation_id: $correlation_id
     }' > "$PROJECT/.vbw-planning/.delegated-workflow.json"
+}
+
+write_execution_state() {
+  local correlation_id="${1:-corr-123}"
+  local status="${2:-running}"
+
+  jq -n \
+    --arg correlation_id "$correlation_id" \
+    --arg status "$status" \
+    '{
+      phase: 1,
+      phase_name: "test",
+      status: $status,
+      effort: "balanced",
+      correlation_id: $correlation_id,
+      plans: []
+    }' > "$PROJECT/.vbw-planning/.execution-state.json"
 }
 
 run_guard() {
@@ -104,7 +125,8 @@ test_no_marker_allows
 
 test_team_mode_requires_team_name() {
   setup_project
-  write_marker execute team "vbw-phase-01"
+  write_execution_state "corr-123"
+  write_marker execute team "vbw-phase-01" "corr-123"
 
   local output rc
   output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
@@ -119,7 +141,8 @@ test_team_mode_requires_team_name
 
 test_team_mode_allows_team_scoped_spawn() {
   setup_project
-  write_marker execute team "vbw-phase-01"
+  write_execution_state "corr-123"
+  write_marker execute team "vbw-phase-01" "corr-123"
 
   if run_guard "$PROJECT" "vbw-phase-01" true >/dev/null 2>&1; then
     pass "Execute team mode allows team-scoped spawn"
@@ -132,7 +155,8 @@ test_team_mode_allows_team_scoped_spawn
 
 test_non_team_mode_blocks_background_spawn() {
   setup_project
-  write_marker execute subagent ""
+  write_execution_state "corr-123"
+  write_marker execute subagent "" "corr-123"
 
   local output rc
   output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
@@ -147,7 +171,8 @@ test_non_team_mode_blocks_background_spawn
 
 test_non_team_mode_allows_foreground_spawn() {
   setup_project
-  write_marker execute subagent ""
+  write_execution_state "corr-123"
+  write_marker execute subagent "" "corr-123"
 
   if run_guard "$PROJECT" "" false >/dev/null 2>&1; then
     pass "Execute subagent mode allows foreground spawn"
@@ -160,7 +185,8 @@ test_non_team_mode_allows_foreground_spawn
 
 test_non_team_mode_blocks_team_name() {
   setup_project
-  write_marker execute direct ""
+  write_execution_state "corr-123"
+  write_marker execute direct "" "corr-123"
 
   local output rc
   output=$(run_guard "$PROJECT" "vbw-phase-01" false 2>&1) && rc=$? || rc=$?
@@ -185,6 +211,20 @@ test_fix_marker_is_ignored() {
   cleanup
 }
 test_fix_marker_is_ignored
+
+test_correlation_mismatch_is_ignored() {
+  setup_project
+  write_execution_state "live-corr"
+  write_marker execute team "vbw-phase-01" "stale-corr"
+
+  if run_guard "$PROJECT" "" true >/dev/null 2>&1; then
+    pass "Mismatched execute marker is ignored by spawn guard"
+  else
+    fail "Mismatched execute marker should not be treated as live"
+  fi
+  cleanup
+}
+test_correlation_mismatch_is_ignored
 
 echo ""
 echo "==============================="

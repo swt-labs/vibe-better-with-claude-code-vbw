@@ -27,17 +27,18 @@ find_project_root() {
   return 1
 }
 
-PROJECT_ROOT=$(find_project_root) || exit 0
-MARKER_FILE="$PROJECT_ROOT/.vbw-planning/.delegated-workflow.json"
-[ -f "$MARKER_FILE" ] || exit 0
+find_project_root >/dev/null || exit 0
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+MARKER_STATUS=$(bash "$SCRIPT_DIR/delegated-workflow.sh" status-json 2>/dev/null) || exit 0
+[ -n "$MARKER_STATUS" ] || exit 0
 
-ACTIVE=$(jq -r '.active // false' "$MARKER_FILE" 2>/dev/null) || exit 0
-[ "$ACTIVE" = "true" ] || exit 0
+MARKER_LIVE=$(echo "$MARKER_STATUS" | jq -r '.live // false' 2>/dev/null) || exit 0
+[ "$MARKER_LIVE" = "true" ] || exit 0
 
-MODE=$(jq -r '.mode // ""' "$MARKER_FILE" 2>/dev/null) || exit 0
+MODE=$(echo "$MARKER_STATUS" | jq -r '.mode // ""' 2>/dev/null) || exit 0
 [ "$MODE" = "execute" ] || exit 0
 
-DELEGATION_MODE=$(jq -r '.delegation_mode // ""' "$MARKER_FILE" 2>/dev/null) || exit 0
+DELEGATION_MODE=$(echo "$MARKER_STATUS" | jq -r '.delegation_mode // ""' 2>/dev/null) || exit 0
 [ -n "$DELEGATION_MODE" ] || exit 0
 
 TEAM_NAME=$(echo "$INPUT" | jq -r '.tool_input.team_name // ""' 2>/dev/null) || exit 0

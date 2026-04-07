@@ -280,19 +280,29 @@ test_delegated_workflow_script() {
   fi
 
   # execute team marker with runtime delegation metadata
+  jq -n '{phase:1,status:"running",effort:"balanced",correlation_id:"corr-123",plans:[]}' > "$tmpdir/.vbw-planning/.execution-state.json"
   (cd "$tmpdir" && bash "$DELEG_SCRIPT" set execute balanced team vbw-phase-01)
   if [ -f "$tmpdir/.vbw-planning/.delegated-workflow.json" ]; then
-    local execute_mode execute_delegation execute_team
+    local execute_mode execute_delegation execute_team execute_correlation
     execute_mode=$(jq -r '.mode' "$tmpdir/.vbw-planning/.delegated-workflow.json" 2>/dev/null)
     execute_delegation=$(jq -r '.delegation_mode // ""' "$tmpdir/.vbw-planning/.delegated-workflow.json" 2>/dev/null)
     execute_team=$(jq -r '.team_name // ""' "$tmpdir/.vbw-planning/.delegated-workflow.json" 2>/dev/null)
-    if [ "$execute_mode" = "execute" ] && [ "$execute_delegation" = "team" ] && [ "$execute_team" = "vbw-phase-01" ]; then
-      pass "delegated-workflow.sh set execute: records delegation_mode and team_name"
+    execute_correlation=$(jq -r '.correlation_id // ""' "$tmpdir/.vbw-planning/.delegated-workflow.json" 2>/dev/null)
+    if [ "$execute_mode" = "execute" ] && [ "$execute_delegation" = "team" ] && [ "$execute_team" = "vbw-phase-01" ] && [ "$execute_correlation" = "corr-123" ]; then
+      pass "delegated-workflow.sh set execute: records delegation_mode, team_name, and correlation_id"
     else
-      fail "delegated-workflow.sh set execute: unexpected marker contents (mode=$execute_mode delegation_mode=$execute_delegation team_name=$execute_team)"
+      fail "delegated-workflow.sh set execute: unexpected marker contents (mode=$execute_mode delegation_mode=$execute_delegation team_name=$execute_team correlation_id=$execute_correlation)"
     fi
   else
     fail "delegated-workflow.sh set execute: marker file not created"
+  fi
+
+  local live_status
+  live_status=$(cd "$tmpdir" && bash "$DELEG_SCRIPT" status-json)
+  if echo "$live_status" | jq -e '.live == true and .reason == "ok"' >/dev/null 2>&1; then
+    pass "delegated-workflow.sh status-json: live execute marker validates against execution state"
+  else
+    fail "delegated-workflow.sh status-json: expected live execute marker, got: $live_status"
   fi
 
   # check action (active)
@@ -408,8 +418,10 @@ test_execute_team_marker_bypasses_guard() {
   setup_project
   jq -n '{status:"running", phase:1, effort:"balanced", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
     > "$PROJECT/.vbw-planning/.execution-state.json"
-  jq -n '{mode:"execute", active:true, effort:"balanced", delegation_mode:"team", team_name:"vbw-phase-01", started_at:"2026-03-03T00:00:00Z"}' \
+  jq -n '{mode:"execute", active:true, effort:"balanced", delegation_mode:"team", team_name:"vbw-phase-01", started_at:"2026-03-03T00:00:00Z", session_id:"session-test", correlation_id:"corr-123"}' \
     > "$PROJECT/.vbw-planning/.delegated-workflow.json"
+  tmp=$(mktemp)
+  jq '.correlation_id = "corr-123"' "$PROJECT/.vbw-planning/.execution-state.json" > "$tmp" && mv "$tmp" "$PROJECT/.vbw-planning/.execution-state.json"
 
   rm -f "$PROJECT/.vbw-planning/.active-agent-count" 2>/dev/null
 
@@ -422,7 +434,28 @@ test_execute_team_marker_bypasses_guard() {
 }
 test_execute_team_marker_bypasses_guard
 
-# --- Test 18: prefer_teams=always alone no longer bypasses guard ---
+# --- Test 18: stale/mismatched execute team marker does not bypass guard ---
+test_execute_team_marker_mismatch_does_not_bypass() {
+  setup_project
+  jq -n '{status:"running", phase:1, effort:"balanced", correlation_id:"live-corr", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
+    > "$PROJECT/.vbw-planning/.execution-state.json"
+  jq -n '{mode:"execute", active:true, effort:"balanced", delegation_mode:"team", team_name:"vbw-phase-01", started_at:"2026-03-03T00:00:00Z", session_id:"session-test", correlation_id:"stale-corr"}' \
+    > "$PROJECT/.vbw-planning/.delegated-workflow.json"
+
+  rm -f "$PROJECT/.vbw-planning/.active-agent-count" 2>/dev/null
+
+  local output
+  output=$(run_guard "$PROJECT" "src/app.js" "" 2>&1) && local rc=$? || local rc=$?
+  if [ "$rc" -eq 2 ]; then
+    pass "mismatched execute team marker: blocked (no stale teams bypass)"
+  else
+    fail "mismatched execute team marker: expected exit 2, got $rc"
+  fi
+  cleanup
+}
+test_execute_team_marker_mismatch_does_not_bypass
+
+# --- Test 19: prefer_teams=always alone no longer bypasses guard ---
 test_prefer_teams_always_alone_does_not_bypass() {
   setup_project
   echo '{"effort":"balanced","prefer_teams":"always"}' > "$PROJECT/.vbw-planning/config.json"
@@ -440,7 +473,7 @@ test_prefer_teams_always_alone_does_not_bypass() {
 }
 test_prefer_teams_always_alone_does_not_bypass
 
-# --- Test 19: prefer_teams=auto alone no longer bypasses guard ---
+# --- Test 20: prefer_teams=auto alone no longer bypasses guard ---
 test_prefer_teams_auto_alone_does_not_bypass() {
   setup_project
   echo '{"effort":"balanced","prefer_teams":"auto"}' > "$PROJECT/.vbw-planning/config.json"
@@ -458,7 +491,7 @@ test_prefer_teams_auto_alone_does_not_bypass() {
 }
 test_prefer_teams_auto_alone_does_not_bypass
 
-# --- Test 20: Legacy when_parallel alias alone no longer bypasses guard ---
+# --- Test 21: Legacy when_parallel alias alone no longer bypasses guard ---
 test_prefer_teams_legacy_when_parallel_alone_does_not_bypass() {
   setup_project
   echo '{"effort":"balanced","prefer_teams":"when_parallel"}' > "$PROJECT/.vbw-planning/config.json"

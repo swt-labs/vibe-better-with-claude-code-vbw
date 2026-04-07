@@ -266,12 +266,19 @@ if [ -z "${VBW_AGENT_ROLE:-}" ]; then
   fi
 
   _DELEG_FILE="$PROJECT_ROOT/.vbw-planning/.delegated-workflow.json"
+  _DG_MARKER_STATUS=""
+  _DG_MARKER_LIVE="false"
+  _DG_MARKER_MODE=""
+  _DG_MARKER_EXEC_MODE=""
   if [ -f "$_DELEG_FILE" ]; then
-    _DELEG_ACTIVE=$(jq -r '.active // false' "$_DELEG_FILE" 2>/dev/null) || _DELEG_ACTIVE="false"
-    _DELEG_MODE=$(jq -r '.mode // ""' "$_DELEG_FILE" 2>/dev/null) || _DELEG_MODE=""
-    _DG_EXEC_MODE=$(jq -r '.delegation_mode // ""' "$_DELEG_FILE" 2>/dev/null) || _DG_EXEC_MODE=""
+    _DG_MARKER_STATUS=$(bash "${_FG_SCRIPT_DIR}/delegated-workflow.sh" status-json 2>/dev/null) || _DG_MARKER_STATUS=""
+    if [ -n "$_DG_MARKER_STATUS" ]; then
+      _DG_MARKER_LIVE=$(echo "$_DG_MARKER_STATUS" | jq -r '.live // false' 2>/dev/null) || _DG_MARKER_LIVE="false"
+      _DG_MARKER_MODE=$(echo "$_DG_MARKER_STATUS" | jq -r '.mode // ""' 2>/dev/null) || _DG_MARKER_MODE=""
+      _DG_MARKER_EXEC_MODE=$(echo "$_DG_MARKER_STATUS" | jq -r '.delegation_mode // ""' 2>/dev/null) || _DG_MARKER_EXEC_MODE=""
+    fi
 
-    if [ "$_DELEG_ACTIVE" = "true" ] && [ "$_DELEG_MODE" = "execute" ] && [ "$_DG_EXEC_MODE" = "team" ]; then
+    if [ "$_DG_MARKER_LIVE" = "true" ] && [ "$_DG_MARKER_MODE" = "execute" ] && [ "$_DG_MARKER_EXEC_MODE" = "team" ]; then
       exit 0
     fi
   fi
@@ -301,22 +308,9 @@ if [ -z "${VBW_AGENT_ROLE:-}" ]; then
 
   # Source 2: .delegated-workflow.json (execute/fix/debug delegated paths)
   if [ "$_DG_BLOCK" = false ]; then
-    if [ -f "$_DELEG_FILE" ]; then
-      _DELEG_ACTIVE=$(jq -r '.active // false' "$_DELEG_FILE" 2>/dev/null) || _DELEG_ACTIVE="false"
-      if [ "$_DELEG_ACTIVE" = "true" ]; then
-        # Staleness check: skip if file older than 4 hours
-        _DG_NOW=$(date +%s 2>/dev/null || echo 0)
-        if [ "$(uname)" = "Darwin" ]; then
-          _DG_MTIME=$(stat -f %m "$_DELEG_FILE" 2>/dev/null || echo 0)
-        else
-          _DG_MTIME=$(stat -c %Y "$_DELEG_FILE" 2>/dev/null || echo 0)
-        fi
-        _DG_AGE=$((_DG_NOW - _DG_MTIME))
-        if [ "$_DG_AGE" -ge 0 ] && [ "$_DG_AGE" -lt 14400 ]; then
-          _DG_BLOCK=true
-          _DG_EFFORT=$(jq -r '.effort // ""' "$_DELEG_FILE" 2>/dev/null) || _DG_EFFORT=""
-        fi
-      fi
+    if [ "$_DG_MARKER_LIVE" = "true" ]; then
+      _DG_BLOCK=true
+      _DG_EFFORT=$(echo "$_DG_MARKER_STATUS" | jq -r '.effort // ""' 2>/dev/null) || _DG_EFFORT=""
     fi
   fi
 

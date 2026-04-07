@@ -302,6 +302,7 @@ simulate_session_stop() {
   echo "2" > ".vbw-planning/.active-agent-count"
   mkdir -p ".vbw-planning/.active-agent-count.lock"
   echo "12345 %1" > ".vbw-planning/.agent-panes"
+  echo '{"mode":"execute","active":true,"delegation_mode":"team"}' > ".vbw-planning/.delegated-workflow.json"
 
   simulate_session_stop
 
@@ -309,6 +310,7 @@ simulate_session_stop() {
   [ ! -f ".vbw-planning/.active-agent-count" ]
   [ ! -d ".vbw-planning/.active-agent-count.lock" ]
   [ ! -f ".vbw-planning/.agent-panes" ]
+  [ ! -f ".vbw-planning/.delegated-workflow.json" ]
 }
 
 @test "session-stop removes .task-verify-seen (circuit breaker state)" {
