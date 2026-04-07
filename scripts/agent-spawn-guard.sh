@@ -29,7 +29,7 @@ find_project_root() {
 
 PROJECT_ROOT=$(find_project_root) || exit 0
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-MARKER_STATUS=$(bash "$SCRIPT_DIR/delegated-workflow.sh" status-json 2>/dev/null) || exit 0
+MARKER_STATUS=$(VBW_PLANNING_DIR="$PROJECT_ROOT/.vbw-planning" bash "$SCRIPT_DIR/delegated-workflow.sh" status-json 2>/dev/null) || exit 0
 [ -n "$MARKER_STATUS" ] || exit 0
 
 MARKER_LIVE=$(echo "$MARKER_STATUS" | jq -r '.live // false' 2>/dev/null) || exit 0

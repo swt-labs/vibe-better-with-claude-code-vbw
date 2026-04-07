@@ -271,7 +271,7 @@ if [ -z "${VBW_AGENT_ROLE:-}" ]; then
   _DG_MARKER_MODE=""
   _DG_MARKER_EXEC_MODE=""
   if [ -f "$_DELEG_FILE" ]; then
-    _DG_MARKER_STATUS=$(bash "${_FG_SCRIPT_DIR}/delegated-workflow.sh" status-json 2>/dev/null) || _DG_MARKER_STATUS=""
+    _DG_MARKER_STATUS=$(VBW_PLANNING_DIR="$PROJECT_ROOT/.vbw-planning" bash "${_FG_SCRIPT_DIR}/delegated-workflow.sh" status-json 2>/dev/null) || _DG_MARKER_STATUS=""
     if [ -n "$_DG_MARKER_STATUS" ]; then
       _DG_MARKER_LIVE=$(echo "$_DG_MARKER_STATUS" | jq -r '.live // false' 2>/dev/null) || _DG_MARKER_LIVE="false"
       _DG_MARKER_MODE=$(echo "$_DG_MARKER_STATUS" | jq -r '.mode // ""' 2>/dev/null) || _DG_MARKER_MODE=""
