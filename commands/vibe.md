@@ -949,6 +949,8 @@ This mode handles the case where a milestone was archived before UAT issues were
 
 ### Mode: Execute
 
+**Execute-mode invariant:** Parallel execution is only valid when the live tool set can create real team-scoped teammates. If real team semantics cannot be established, execute mode must warn and fall back to explicit non-team execution. Never simulate a team with background `Agent` spawns that lack `team_name`.
+
 Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/references/execute-protocol.md` and follow its instructions.
 
 This mode delegates entirely to the protocol file. **Orchestrator read-scope:** Do NOT read product source files. Your job is orchestration — read plans, check summaries, spawn Dev for remaining work. If you need product-code understanding to route or sequence, delegate that to Dev.

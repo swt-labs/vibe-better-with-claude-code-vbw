@@ -248,12 +248,11 @@ fi
 # by agent-stop.sh). If count > 0, at least one VBW subagent is running and this
 # hook invocation is from that subagent context — skip the orchestrator block.
 #
-# Agent Teams bypass: SubagentStart hooks do NOT fire for agent team teammates
-# (teammates are separate Claude Code sessions, not subagents spawned via the
-# Agent tool). PreToolUse hooks can't distinguish orchestrator from teammate —
-# no agent_id/agent_type fields are present for teammates. When prefer_teams is
-# configured (not "never"), skip the guard entirely. The teams coordination
-# mechanism replaces the subagent delegation model this guard was designed for.
+# Execute team-mode bypass: teammate sessions may not trigger SubagentStart
+# hooks, so `.active-agent-count` alone is insufficient to detect them. VBW
+# therefore records the actual delegated workflow mode in the transient
+# `.delegated-workflow.json` marker. Only an active execute marker with
+# `delegation_mode="team"` gets the team-style bypass.
 if [ -z "${VBW_AGENT_ROLE:-}" ]; then
   # Check .active-agent-count: if VBW subagents are active, this write is from
   # a subagent (PreToolUse hooks don't carry agent identity). Skip the guard.
@@ -266,16 +265,22 @@ if [ -z "${VBW_AGENT_ROLE:-}" ]; then
     fi
   fi
 
-  # Check prefer_teams: if agent teams are configured, this write may be from a
-  # teammate session. SubagentStart never fires for teammates, so .active-agent-count
-  # won't reflect them. Fail-open to avoid blocking legitimate teammate writes.
-  _DG_CONFIG="$PROJECT_ROOT/.vbw-planning/config.json"
-  if [ -f "$_DG_CONFIG" ]; then
-    _DG_PREFER_TEAMS=$(bash "${_FG_SCRIPT_DIR}/normalize-prefer-teams.sh" "$_DG_CONFIG" 2>/dev/null) || _DG_PREFER_TEAMS="auto"
-    case "$_DG_PREFER_TEAMS" in
-      never) ;; # Teams disabled — keep the guard active for subagent model
-      *) exit 0 ;; # Teams may be active — can't distinguish orchestrator from teammate
-    esac
+  _DELEG_FILE="$PROJECT_ROOT/.vbw-planning/.delegated-workflow.json"
+  _DG_MARKER_STATUS=""
+  _DG_MARKER_LIVE="false"
+  _DG_MARKER_MODE=""
+  _DG_MARKER_EXEC_MODE=""
+  if [ -f "$_DELEG_FILE" ]; then
+    _DG_MARKER_STATUS=$(VBW_PLANNING_DIR="$PROJECT_ROOT/.vbw-planning" bash "${_FG_SCRIPT_DIR}/delegated-workflow.sh" status-json 2>/dev/null) || _DG_MARKER_STATUS=""
+    if [ -n "$_DG_MARKER_STATUS" ]; then
+      _DG_MARKER_LIVE=$(echo "$_DG_MARKER_STATUS" | jq -r '.live // false' 2>/dev/null) || _DG_MARKER_LIVE="false"
+      _DG_MARKER_MODE=$(echo "$_DG_MARKER_STATUS" | jq -r '.mode // ""' 2>/dev/null) || _DG_MARKER_MODE=""
+      _DG_MARKER_EXEC_MODE=$(echo "$_DG_MARKER_STATUS" | jq -r '.delegation_mode // ""' 2>/dev/null) || _DG_MARKER_EXEC_MODE=""
+    fi
+
+    if [ "$_DG_MARKER_LIVE" = "true" ] && [ "$_DG_MARKER_MODE" = "execute" ] && [ "$_DG_MARKER_EXEC_MODE" = "team" ]; then
+      exit 0
+    fi
   fi
 
   _DG_BLOCK=false
@@ -301,25 +306,11 @@ if [ -z "${VBW_AGENT_ROLE:-}" ]; then
     fi
   fi
 
-  # Source 2: .delegated-workflow.json (fix/debug ad-hoc paths)
+  # Source 2: .delegated-workflow.json (execute/fix/debug delegated paths)
   if [ "$_DG_BLOCK" = false ]; then
-    _DELEG_FILE="$PROJECT_ROOT/.vbw-planning/.delegated-workflow.json"
-    if [ -f "$_DELEG_FILE" ]; then
-      _DELEG_ACTIVE=$(jq -r '.active // false' "$_DELEG_FILE" 2>/dev/null) || _DELEG_ACTIVE="false"
-      if [ "$_DELEG_ACTIVE" = "true" ]; then
-        # Staleness check: skip if file older than 4 hours
-        _DG_NOW=$(date +%s 2>/dev/null || echo 0)
-        if [ "$(uname)" = "Darwin" ]; then
-          _DG_MTIME=$(stat -f %m "$_DELEG_FILE" 2>/dev/null || echo 0)
-        else
-          _DG_MTIME=$(stat -c %Y "$_DELEG_FILE" 2>/dev/null || echo 0)
-        fi
-        _DG_AGE=$((_DG_NOW - _DG_MTIME))
-        if [ "$_DG_AGE" -ge 0 ] && [ "$_DG_AGE" -lt 14400 ]; then
-          _DG_BLOCK=true
-          _DG_EFFORT=$(jq -r '.effort // ""' "$_DELEG_FILE" 2>/dev/null) || _DG_EFFORT=""
-        fi
-      fi
+    if [ "$_DG_MARKER_LIVE" = "true" ]; then
+      _DG_BLOCK=true
+      _DG_EFFORT=$(echo "$_DG_MARKER_STATUS" | jq -r '.effort // ""' 2>/dev/null) || _DG_EFFORT=""
     fi
   fi
 

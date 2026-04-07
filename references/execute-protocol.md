@@ -123,21 +123,53 @@ Read prefer_teams config to determine team creation:
 PREFER_TEAMS=$(bash "${VBW_PLUGIN_ROOT}/scripts/normalize-prefer-teams.sh" .vbw-planning/config.json 2>/dev/null || echo "auto")
 ```
 
-Decision tree:
-- `prefer_teams='always'`: Create team for ALL plan counts (even 1 plan), unless turbo or smart-routed to turbo
-- `prefer_teams='auto'`: Create team only when 2+ uncompleted plans, unless turbo or smart-routed to turbo
-- `prefer_teams='never'`: Never create teams. All agents run as sequential subagents — no parallel execution.
+Team request policy:
+- `prefer_teams='always'`: request team mode for ALL remaining-plan counts (even 1 plan), unless turbo or smart-routed to turbo
+- `prefer_teams='auto'`: request team mode only when 2+ uncompleted plans remain, unless turbo or smart-routed to turbo
+- `prefer_teams='never'`: request explicit non-team mode
 
-When team should be created based on prefer_teams:
-- **Pre-TeamCreate cleanup** (remove orphaned VBW team directories from prior sessions before creating a new team):
-  ```bash
-  bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true
-  ```
-- Create team via TeamCreate: `team_name="vbw-phase-{NN}"`, `description="Phase {NN}: {phase-name}"`
-- All Dev and QA agents below MUST be spawned with `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"` (from plan number) or `name: "qa"` parameters on the Task tool invocation.
+Determine whether **real team semantics** are available in the live tool set before spawning anything:
+- Real team semantics are available when either:
+  1. `TeamCreate` + teammate task spawning are available, **or**
+  2. the live teammate spawn tool accepts both `team_name` and per-teammate `name` parameters (for example `Agent(...)` with `team_name:` and `name:`)
+- If the live tool set only supports plain background spawns (for example `Agent` with `run_in_background: true` but no `team_name`), then real team semantics are **NOT** available.
+- **Plain background `Agent` spawns without team semantics are NOT an agent team. Do NOT use them as a substitute for team mode.**
 
-When team should NOT be created (prefer_teams='never', or 1 plan with auto, or turbo, or smart-routed turbo):
-- Skip TeamCreate — single agent, no team overhead.
+Branch execute mode into exactly one of these runtime paths and persist it **before the first teammate spawn**:
+
+1. **True team mode**
+   - Use this path only when prefer_teams requests team mode **and** real team semantics are available.
+   - **Pre-TeamCreate cleanup** (remove orphaned VBW team directories from prior sessions before creating a new team):
+     ```bash
+     bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true
+     ```
+   - Set `TEAM_NAME="vbw-phase-{NN}"`.
+   - If literal `TeamCreate` is available, call it with `team_name="$TEAM_NAME"`, `description="Phase {NN}: {phase-name}"`.
+   - If literal `TeamCreate` is unavailable but the live teammate spawn tool accepts `team_name`, create the team implicitly by using the shared `TEAM_NAME` on every teammate spawn.
+   - Persist the actual runtime mode:
+     ```bash
+     bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {effort} team "$TEAM_NAME"
+     ```
+   - All Dev and QA teammates below MUST carry `team_name: "$TEAM_NAME"` plus `name: "dev-{MM}"` (from plan number) or `name: "qa"` / `name: "qa-wave{W}"` on the live spawn call.
+
+2. **Explicit non-team mode**
+   - Use this path when `prefer_teams='never'`, or when `prefer_teams='auto'` and only 1 plan remains, or when turbo / smart routing resolves to non-team execution.
+   - Persist the actual runtime mode:
+     ```bash
+     bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {effort} subagent
+     ```
+   - Skip TeamCreate. Spawn one Dev at a time and wait for completion before spawning the next one.
+   - **Do NOT use `run_in_background: true` to simulate parallelism in non-team mode.**
+
+3. **Team-tooling-unavailable fallback**
+   - Use this path when prefer_teams requests team mode but the live tool set cannot express real team semantics.
+   - Display: `⚠ Agent Teams not enabled — using non-team mode`
+   - Persist the fallback runtime mode:
+     ```bash
+     bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {effort} subagent
+     ```
+   - Skip TeamCreate and continue in explicit non-team mode.
+   - **Do NOT preserve “parallelism” by launching multiple background `Agent` spawns without `team_name`.**
 
 **Smart Routing (REQ-15):** If `smart_routing=true` in config:
 - Before creating agent teams, assess each plan:
@@ -163,8 +195,8 @@ You are the team LEAD. NEVER implement tasks yourself.
 - At Turbo (or smart-routed to turbo): no team — Dev executes directly.
 - **Runtime enforcement:** This directive is structurally enforced by the `file-guard.sh` PreToolUse hook. When `.execution-state.json` has `status: running` and effort is not turbo/direct, the hook blocks product-file Write/Edit from the orchestrator. Two bypass mechanisms exist:
   - **Subagent model:** `.active-agent-count` (written by `agent-start.sh`): when count > 0, at least one VBW subagent is running and the write is allowed.
-  - **Agent teams model:** When `prefer_teams` is not `"never"` in config.json, the guard is bypassed entirely. `SubagentStart` hooks do not fire for agent team teammates (they are separate Claude Code sessions, not subagents spawned via the Agent tool), so `.active-agent-count` is never incremented for them. Since PreToolUse hooks cannot distinguish orchestrator from teammate (no `agent_id`/`agent_type` fields for teammates), the guard fails-open when teams are configured.
-  - When neither bypass applies (subagent count is 0 and `prefer_teams="never"`), the write is treated as an orchestrator action and blocked. Planning/state artifacts (`.vbw-planning/*`, `STATE.md`, `SUMMARY.md`, etc.) remain exempt.
+  - **Execute team mode:** `scripts/delegated-workflow.sh set execute {effort} team {team_name}` records true team mode before teammate spawns. `file-guard.sh` bypasses only when that execute marker is active. This avoids assuming that `prefer_teams` or background `Agent` spawns automatically imply a real team.
+  - When neither bypass applies, the write is treated as an orchestrator action and blocked. Planning/state artifacts (`.vbw-planning/*`, `STATE.md`, `SUMMARY.md`, etc.) remain exempt.
 
 **Monorepo Routing (REQ-17):** If `monorepo_routing=true` in config:
 - Before context compilation, detect relevant package paths:
@@ -261,7 +293,7 @@ if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
 
 **MCP tool evaluation for Dev tasks:** Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to the tasks (build tools, documentation servers, domain-specific APIs), note them in the Dev task description so the Dev agent knows which MCP tools to use.
 
-For each uncompleted plan, TaskCreate:
+For each uncompleted plan, create the teammate task using the live teammate spawn tool (for example `TaskCreate` or `Agent`):
 ```yaml
 subject: "Execute {NN-MM}: {plan-title}"
 description: |
@@ -279,8 +311,9 @@ activeForm: "Executing {NN-MM}"
 
 Display: `◆ Spawning Dev teammate (${DEV_MODEL})...`
 
-**CRITICAL:** Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"` in the Task tool invocation when spawning Dev teammates. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If `DEV_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
-**CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"` parameters to each Task tool invocation. This enables colored agent labels and status bar entries.
+**CRITICAL:** Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"` on the live spawn call when spawning Dev teammates. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If `DEV_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
+**CRITICAL:** When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"` on the live spawn call. If the live spawn tool is `Agent`, those parameters belong on `Agent(...)`. If the live spawn tool is `TaskCreate`, put the same parameters there. Team mode without `team_name` is invalid.
+**CRITICAL:** In explicit non-team mode or team-tooling-unavailable fallback, do NOT use `run_in_background: true` to imitate parallel team execution.
 
 Wire dependencies via TaskUpdate: read `depends_on` from each plan's frontmatter, add `addBlockedBy: [task IDs of dependency plans]`. Plans with empty depends_on start immediately.
 
@@ -646,7 +679,7 @@ VERIF_BASE="${VERIF_NAME%.md}"
 **Post-build QA (Fast, QA_TIMING=post-build):** Spawn QA after ALL plans complete. Include in task description: "Phase context: {phase-dir}/.context-qa.md (if compiled). Model: ${QA_MODEL}. Your verification tier is {tier}. If `.vbw-planning/codebase/META.md` exists, read TESTING.md, CONCERNS.md, and ARCHITECTURE.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before verifying. Run {5-10|15-25|30+} checks per the tier definitions in your agent protocol. Persist your VERIFICATION.md by piping qa_verdict JSON through write-verification.sh. Output path: {phase-dir}/${VERIF_NAME}. Plugin root: ${VBW_PLUGIN_ROOT}." QA calls `write-verification.sh` directly — the orchestrator does NOT persist. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
 
 **CRITICAL:** Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation when spawning QA agents. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`. If `QA_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
-**CRITICAL:** When team was created (2+ plans), pass `team_name: "vbw-phase-{NN}"` and `name: "qa"` (or `name: "qa-wave{W}"` for per-wave QA) parameters to each QA Task tool invocation.
+**CRITICAL:** When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "qa"` (or `name: "qa-wave{W}"` for per-wave QA) parameters to each QA Task tool invocation.
 
 ### Step 4.1: QA Result Gating (NON-NEGOTIABLE)
 
@@ -871,6 +904,11 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
    ```
 7. Only THEN proceed to state updates and user-facing output below
 Failure to shut down leaves agents running in the background, consuming API credits (visible as hanging panes in tmux, invisible but still costly without tmux). If no team was created: skip shutdown sequence. **Recovery:** If shutdown stalls or agents linger after TeamDelete, do NOT manually `rm -rf ~/.claude/teams` — use `/vbw:doctor --cleanup` which runs `doctor-cleanup.sh` and `clean-stale-teams.sh` with safe atomic cleanup. These scripts detect stale teams, orphan processes, and dangling PIDs. `clean-stale-teams.sh` immediately removes VBW team directories missing `config.json` (orphaned residuals) without waiting for the 2-hour stale threshold.
+
+Regardless of whether a real team was created, clear the execute delegation marker before state updates:
+```bash
+bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" clear 2>/dev/null || true
+```
 
 > **Runtime enforcement limitation:** Claude Code does not expose agent-team message tool calls (e.g., `SendMessage`) to `PreToolUse`/`PostToolUse` hooks with stable `tool_name` values. Therefore VBW cannot hook-validate malformed shutdown responses at runtime. Enforcement relies on: (1) mechanical SendMessage instructions in all 6 agent prompts, (2) compaction-instructions.sh reminders that survive context compaction, (3) orchestrator retry (re-send if teammate responds in plain text), and (4) `/vbw:doctor --cleanup` as a recovery path for stuck teams.
 

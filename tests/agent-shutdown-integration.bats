@@ -311,6 +311,25 @@ simulate_session_stop() {
   [ ! -f ".vbw-planning/.agent-panes" ]
 }
 
+@test "session-stop preserves live execute delegated workflow marker" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"phase":1,"status":"running","effort":"balanced","correlation_id":"corr-123","plans":[]}' > ".vbw-planning/.execution-state.json"
+  echo '{"mode":"execute","active":true,"effort":"balanced","delegation_mode":"team","team_name":"vbw-phase-01","session_id":"session-test","correlation_id":"corr-123","started_at":"2026-04-07T00:00:00Z"}' > ".vbw-planning/.delegated-workflow.json"
+
+  simulate_session_stop
+
+  [ -f ".vbw-planning/.delegated-workflow.json" ]
+}
+
+@test "session-stop removes non-execute delegated workflow marker" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"mode":"fix","active":true,"effort":"balanced","delegation_mode":"","team_name":"","session_id":"session-test","correlation_id":"","started_at":"2026-04-07T00:00:00Z"}' > ".vbw-planning/.delegated-workflow.json"
+
+  simulate_session_stop
+
+  [ ! -f ".vbw-planning/.delegated-workflow.json" ]
+}
+
 @test "session-stop removes .task-verify-seen (circuit breaker state)" {
   cd "$TEST_TEMP_DIR"
   echo "abc123hash" > ".vbw-planning/.task-verify-seen"

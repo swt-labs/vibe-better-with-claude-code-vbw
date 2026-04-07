@@ -46,6 +46,7 @@ run_job contract "plan-filename-convention" bash "$ROOT/testing/verify-plan-file
 run_job contract "skill-activation"         bash "$ROOT/testing/verify-skill-activation.sh"
 run_job contract "permission-mode-contract" bash "$ROOT/testing/verify-permission-mode-contract.sh"
 run_job contract "delegation-guard"         bash "$ROOT/testing/verify-delegation-guard.sh"
+run_job contract "agent-spawn-guard"        bash "$ROOT/testing/verify-agent-spawn-guard.sh"
 run_job contract "summary-status-contract"  bash "$ROOT/testing/verify-summary-status-contract.sh"
 run_job contract "summary-utils-contract"   bash "$ROOT/testing/verify-summary-utils-contract.sh"
 run_job contract "exec-state-reconciliation" bash "$ROOT/testing/verify-exec-state-reconciliation.sh"

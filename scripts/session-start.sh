@@ -231,6 +231,21 @@ rm -f "$PLANNING_DIR/.vbw-context" 2>/dev/null || true
 # pre-flight warnings using data from a previous session (#238).
 rm -f "$PLANNING_DIR/.context-usage" 2>/dev/null || true
 
+# Clear stale delegated workflow markers, but preserve markers that still match
+# a live execute run. Team teammates may start their own Claude Code sessions,
+# so this must validate liveness instead of deleting the marker unconditionally.
+DELEGATED_MARKER="$PLANNING_DIR/.delegated-workflow.json"
+if [ -f "$DELEGATED_MARKER" ] && [ -f "$SCRIPT_DIR/delegated-workflow.sh" ] && command -v jq >/dev/null 2>&1; then
+  _dw_status=$(bash "$SCRIPT_DIR/delegated-workflow.sh" status-json 2>/dev/null || echo "")
+  if [ -n "$_dw_status" ]; then
+    _dw_exists=$(echo "$_dw_status" | jq -r '.exists // false' 2>/dev/null || echo "false")
+    _dw_preserve=$(echo "$_dw_status" | jq -r '.preserve_on_session_start // false' 2>/dev/null || echo "false")
+    if [ "$_dw_exists" = "true" ] && [ "$_dw_preserve" != "true" ]; then
+      bash "$SCRIPT_DIR/delegated-workflow.sh" clear 2>/dev/null || rm -f "$DELEGATED_MARKER" 2>/dev/null || true
+    fi
+  fi
+fi
+
 # Auto-migrate config if .vbw-planning exists.
 # Version marker retained here for backwards test compatibility.
 EXPECTED_FLAG_COUNT=40
