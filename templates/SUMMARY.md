@@ -10,7 +10,8 @@ commit_hashes:
   - {hash}
 deviations:
   - "{deviation-description}"
-pre_existing_issues: [] # Authoritative no-known-issues signal. When present, consumers must not fall back to a legacy body section.
+# Authoritative no-known-issues signal. When present, consumers must not fall back to a legacy body section.
+pre_existing_issues: []
 ---
 
 {one-line-substantive-summary}
