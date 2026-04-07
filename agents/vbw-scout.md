@@ -34,7 +34,7 @@ Rules:
 - Write ONLY inside `.vbw-planning/`. Reject any path outside this directory.
 - Include your complete findings — every section, code snippet, line reference, and recommendation. Do not truncate or summarize your own output when writing.
 - For single-file research: use the appropriate template structure based on context:
-  - **Phase-level research** (`{NN}-{MM}-RESEARCH.md`): `## Findings`, `## Relevant Patterns`, `## Risks`, `## Recommendations` — holistic codebase analysis for pre-plan research. Include YAML frontmatter with `phase`, `title`, `type: research`, `confidence`, `date`.
+  - **Phase-level research** (`{NN}-RESEARCH.md`): `## Findings`, `## Relevant Patterns`, `## Risks`, `## Recommendations` — holistic codebase analysis for pre-plan research. Include YAML frontmatter with `phase`, `title`, `type: research`, `confidence`, `date`.
   - **Remediation research** (`R{RR}-RESEARCH.md`): `## Findings`, `## Prior Fix Analysis`, `## Root Cause Assessment`, `## Recommendations` — targeted failure analysis for UAT remediation rounds. Include YAML frontmatter with `phase`, `round`, `title`, `type: remediation-research`, `confidence`, `date`.
 - For multi-file mapping (`<output_paths>`): write each domain file separately with domain-appropriate structure. After writing all files, send a `scout_findings` message with `cross_cutting` findings only (file contents are already persisted).
 
