@@ -291,7 +291,7 @@ write_known_issues_registry() {
 @test "track-known-issues: promote-todos adds new issues to STATE.md" {
   write_state_md_with_todos "None."
   write_known_issues_registry "03" \
-    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-02","first_seen_round":1,"last_seen_round":2,"times_seen":3,"source_path":"phases/03-test-phase/03-02-SUMMARY.md"}'
+    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-02","first_seen_round":1,"last_seen_round":2,"times_seen":3}'
 
   run bash "$SCRIPT" promote-todos "$PHASE_DIR"
 
@@ -304,12 +304,14 @@ write_known_issues_registry() {
   grep -q "\[KNOWN-ISSUE\]" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "TestCrash" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "CrashTests.swift" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Source traceability from last_seen_in field
+  grep -q "(see 03-02)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
 @test "track-known-issues: promote-todos deduplicates existing entries" {
-  write_state_md_with_todos "- [KNOWN-ISSUE] TestCrash (CrashTests.swift): signal trap (phase 03, seen 2x) (see phases/03-test-phase/03-01-SUMMARY.md) (added 2025-01-01)"
+  write_state_md_with_todos "- [KNOWN-ISSUE] TestCrash (CrashTests.swift): signal trap (phase 03, seen 2x) (see 03-01) (added 2025-01-01)"
   write_known_issues_registry "03" \
-    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-02","first_seen_round":1,"last_seen_round":2,"times_seen":3,"source_path":"phases/03-test-phase/03-02-SUMMARY.md"}'
+    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-02","first_seen_round":1,"last_seen_round":2,"times_seen":3}'
 
   run bash "$SCRIPT" promote-todos "$PHASE_DIR"
 
@@ -325,7 +327,7 @@ write_known_issues_registry() {
 @test "track-known-issues: promote-todos replaces None placeholder" {
   write_state_md_with_todos "None."
   write_known_issues_registry "03" \
-    '{"test":"TestA","file":"A.swift","error":"err","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1,"source_path":"phases/03-test-phase/03-01-SUMMARY.md"}'
+    '{"test":"TestA","file":"A.swift","error":"err","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1}'
 
   run bash "$SCRIPT" promote-todos "$PHASE_DIR"
 
@@ -337,8 +339,8 @@ write_known_issues_registry() {
 @test "track-known-issues: promote-todos handles multiple issues" {
   write_state_md_with_todos "- [HIGH] Existing high-pri todo (added 2025-01-01)"
   write_known_issues_registry "03" \
-    '{"test":"TestA","file":"A.swift","error":"err A","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1,"source_path":"phases/03-test-phase/03-01-SUMMARY.md"}' \
-    '{"test":"TestB","file":"B.swift","error":"err B","first_seen_in":"03-02","last_seen_in":"03-02","first_seen_round":2,"last_seen_round":2,"times_seen":2,"source_path":"phases/03-test-phase/03-02-SUMMARY.md"}'
+    '{"test":"TestA","file":"A.swift","error":"err A","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1}' \
+    '{"test":"TestB","file":"B.swift","error":"err B","first_seen_in":"03-02","last_seen_in":"03-02","first_seen_round":2,"last_seen_round":2,"times_seen":2}'
 
   run bash "$SCRIPT" promote-todos "$PHASE_DIR"
 

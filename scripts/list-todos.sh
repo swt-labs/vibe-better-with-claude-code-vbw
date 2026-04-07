@@ -4,7 +4,7 @@ set -euo pipefail
 # list-todos.sh — Extract and format pending todos from STATE.md
 #
 # Usage: list-todos.sh [priority-filter]
-#   priority-filter: optional "high", "low", or "normal" (case-insensitive)
+#   priority-filter: optional "high", "low", "known-issue", or "normal" (case-insensitive)
 #
 # Resolves milestone-scoped STATE.md, extracts ## Todos (or ### Pending Todos
 # for legacy/pre-migration STATE.md), parses priority tags and dates, computes

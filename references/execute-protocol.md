@@ -650,7 +650,7 @@ After collecting Dev-surfaced pre-existing issues from SUMMARY.md files, persist
 bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-summaries "{phase-dir}" 2>/dev/null || true
 ```
 
-This writes `{phase-dir}/known-issues.json`. The human-readable `Discovered Issues` block later in the execute summary is supplemental — the JSON registry is the authoritative phase backlog. Unresolved issues that survive QA and remediation are auto-promoted to `STATE.md ## Todos` via `promote-todos`, making them visible in `/vbw:list-todos` and `/vbw:resume`. Unresolved issues that survive QA and remediation are auto-promoted to `STATE.md ## Todos` via `promote-todos`, making them visible in `/vbw:list-todos` and `/vbw:resume`.
+This writes `{phase-dir}/known-issues.json`. The human-readable `Discovered Issues` block later in the execute summary is supplemental — the JSON registry is the authoritative phase backlog. Unresolved issues that survive QA and remediation are auto-promoted to `STATE.md ## Todos` via `promote-todos`, making them visible in `/vbw:list-todos` and `/vbw:resume`.
 
 If execution completed but the session ended before QA actually started, standalone/resumed phase-level QA entrypoints must rerun this `sync-summaries` backfill before the first `VERIFICATION.md` is written.
 
@@ -686,10 +686,6 @@ VERIF_BASE="${VERIF_NAME%.md}"
 After QA writes its VERIFICATION artifact, sync tracked known issues from that artifact before reading the gate:
 ```bash
 bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-verification "{phase-dir}" "{verification-output-path}" 2>/dev/null || true
-```
-After sync, auto-promote surviving known issues to `STATE.md ## Todos`:
-```bash
-bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" promote-todos "{phase-dir}" 2>/dev/null || true
 ```
 After sync, auto-promote surviving known issues to `STATE.md ## Todos`:
 ```bash

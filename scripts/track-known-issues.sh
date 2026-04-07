@@ -596,7 +596,7 @@ promote_todos() {
     file_path=$(printf '%s' "$issues_json" | jq -r ".[$i].file // \"unknown\"")
     error_msg=$(printf '%s' "$issues_json" | jq -r ".[$i].error // \"unspecified error\"")
     times_seen=$(printf '%s' "$issues_json" | jq -r ".[$i].times_seen // 1")
-    source_artifact=$(printf '%s' "$issues_json" | jq -r ".[$i].source_path // \"\"")
+    source_artifact=$(printf '%s' "$issues_json" | jq -r ".[$i].last_seen_in // \"\"")
 
     # Truncate error message for todo readability (max 80 chars)
     if [ "${#error_msg}" -gt 80 ]; then
