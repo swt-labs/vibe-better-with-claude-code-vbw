@@ -161,6 +161,19 @@ EOF
   [[ "$output" == *"input_mode=both"* ]]
 }
 
+@test "get infers known-issues input mode from phase verification after registry is cleared" {
+  write_phase_verification "PASS" $'## Pre-existing Issues\n| Test | File | Error |\n|------|------|-------|\n| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |'
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=done\nround=01\nround_started_at_commit=abc123\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_count=0"* ]]
+  [[ "$output" == *"phase_pre_existing_issue_count=1"* ]]
+  [[ "$output" == *"input_mode=known-issues"* ]]
+}
+
 @test "init captures round_started_at_commit from current git HEAD" {
   init_git_repo
   head_commit=$(commit_repo_file "src/base.txt" "baseline")

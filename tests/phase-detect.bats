@@ -1566,7 +1566,7 @@ EOF
   current_commit="$(git rev-parse HEAD)"
   cat > .vbw-planning/phases/01-test/01-VERIFICATION.md <<'EOF'
 ---
-result: PASS
+result: FAIL
 writer: write-verification.sh
 plans_verified:
   - 01
@@ -1923,6 +1923,63 @@ EOF
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=remediated"
+}
+
+@test "stage-done resume does not resurrect stale phase-level known issues after cleared round verification" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa/round-01
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  round_anchor_commit="$(git rev-parse HEAD)"
+  cat > .vbw-planning/phases/01-test/01-VERIFICATION.md <<'EOF'
+---
+result: PASS
+writer: write-verification.sh
+plans_verified:
+  - 01
+EOF
+  printf '%s\n' "verified_at_commit: ${round_anchor_commit}" >> .vbw-planning/phases/01-test/01-VERIFICATION.md
+  cat >> .vbw-planning/phases/01-test/01-VERIFICATION.md <<'EOF'
+---
+
+## Pre-existing Issues
+
+| Test | File | Error |
+|------|------|-------|
+| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | stale phase-level issue |
+EOF
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-PLAN.md <<'EOF'
+---
+round: 01
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Need a real fix"}
+---
+EOF
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md <<'EOF'
+---
+plan: R01
+status: complete
+files_modified:
+  - src/Fix.swift
+  - README.md
+  - .vbw-planning/phases/01-test/01-SUMMARY.md
+deviations: []
+---
+EOF
+  mkdir -p src
+  echo "real code fix" > src/Fix.swift
+  echo "round pass docs" > README.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Round 01 documented the remediation outcome.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  git add src/Fix.swift README.md .vbw-planning/phases/01-test/01-SUMMARY.md
+  git commit -m "round pass summary evidence" --quiet
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n%s\n%s\n' 'stage=done' 'round=01' "round_started_at_commit=${round_anchor_commit}" > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - R01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after remediation.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  [ ! -f .vbw-planning/phases/01-test/known-issues.json ]
+  ! echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
 }
 
 @test "qa_status degrades gracefully with corrupt round in state file" {

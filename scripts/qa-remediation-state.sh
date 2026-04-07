@@ -75,6 +75,27 @@ count_fail_rows_in_verification() {
   ' "$file_path" 2>/dev/null
 }
 
+count_pre_existing_issues_in_verification() {
+  local file_path="${1:-}"
+  [ -f "$file_path" ] || { echo 0; return; }
+  awk -F'|' '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    /^## Pre-existing Issues/ { found = 1; next }
+    found && /^## / { exit }
+    found && /^\|/ {
+      if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
+      test = trim($2)
+      file = trim($3)
+      if (tolower(test) == "test" && tolower(file) == "file") next
+      if (test != "") count++
+    }
+    END { print count + 0 }
+  ' "$file_path" 2>/dev/null
+}
+
 get_stage() {
   if [ -f "$STATE_FILE" ]; then
     local _val
@@ -202,6 +223,7 @@ start_new_round() {
 emit_metadata() {
   local round round_dir source_verification_path round_started_at_commit
   local source_fail_count known_issues_path known_issues_status known_issues_count
+  local phase_verification_path phase_pre_existing_issue_count
   local known_issues_meta input_mode
   round=$(canonicalize_round "$(get_round)")
   round_dir="$PHASE_DIR/remediation/qa/round-${round}"
@@ -213,6 +235,14 @@ emit_metadata() {
   source_fail_count=0
   if [ -n "$source_verification_path" ] && [ -f "$source_verification_path" ]; then
     source_fail_count=$(count_fail_rows_in_verification "$source_verification_path")
+  fi
+  phase_verification_path=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" phase "$PHASE_DIR" 2>/dev/null || true)
+  if [ -n "$phase_verification_path" ] && [ ! -f "$phase_verification_path" ]; then
+    phase_verification_path=""
+  fi
+  phase_pre_existing_issue_count=0
+  if [ -n "$phase_verification_path" ] && [ -f "$phase_verification_path" ]; then
+    phase_pre_existing_issue_count=$(count_pre_existing_issues_in_verification "$phase_verification_path")
   fi
   known_issues_path="$PHASE_DIR/known-issues.json"
   known_issues_status="missing"
@@ -233,6 +263,8 @@ emit_metadata() {
     input_mode="verification"
   elif [ "${known_issues_count:-0}" -gt 0 ] 2>/dev/null; then
     input_mode="known-issues"
+  elif [ "${phase_pre_existing_issue_count:-0}" -gt 0 ] 2>/dev/null; then
+    input_mode="known-issues"
   fi
   echo "round=${round}"
   echo "round_dir=${round_dir}"
@@ -242,6 +274,7 @@ emit_metadata() {
   echo "known_issues_path=${known_issues_path}"
   echo "known_issues_status=${known_issues_status}"
   echo "known_issues_count=${known_issues_count}"
+  echo "phase_pre_existing_issue_count=${phase_pre_existing_issue_count}"
   echo "input_mode=${input_mode}"
   echo "plan_path=${round_dir}/R${round}-PLAN.md"
   echo "summary_path=${round_dir}/R${round}-SUMMARY.md"

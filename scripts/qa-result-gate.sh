@@ -1113,12 +1113,17 @@ ROUND_STARTED_AFTER_SOURCE="true"
 ROUND_ACTUAL_DIFF_PATHS=""
 ROUND_ACTUAL_DIFF_PATHS_AVAILABLE="false"
 ROUND_ACTUAL_DIFF_PATHS_CANONICAL=""
+ROUND_INPUT_MODE="none"
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   _qa_remediation_state=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null || true)
   SOURCE_VERIFICATION_PATH=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^source_verification_path=/{print $2; exit}')
   ROUND_STARTED_AT_COMMIT=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^round_started_at_commit=/{print $2; exit}')
+  ROUND_INPUT_MODE=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^input_mode=/{print $2; exit}')
   if [ -z "$SOURCE_VERIFICATION_PATH" ] || [ ! -r "$SOURCE_VERIFICATION_PATH" ]; then
     ROUND_SOURCE_VERIFICATION_MISSING="true"
+  fi
+  if [ "${ROUND_INPUT_MODE:-none}" = "known-issues" ] && [ -z "$SOURCE_VERIFICATION_PATH" ]; then
+    ROUND_SOURCE_VERIFICATION_MISSING="false"
   fi
   if [ -n "$SOURCE_VERIFICATION_PATH" ] && [ -r "$SOURCE_VERIFICATION_PATH" ]; then
     SOURCE_VERIFIED_AT_COMMIT=$(extract_verified_at_commit "$SOURCE_VERIFICATION_PATH")

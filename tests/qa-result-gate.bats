@@ -3483,6 +3483,39 @@ EOF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
+@test "known-issues-only remediation round PASS can proceed when registry stays cleared" {
+  create_verif "write-verification.sh" "PASS" "## Pre-existing Issues
+| Test | File | Error |
+|------|------|-------|
+| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" '  - "src/Fix.swift"'
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Known-issues-only remediation round
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Known issues cleared | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
 @test "metadata-only round with partial fail classification coverage → REMEDIATION_REQUIRED" {
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |

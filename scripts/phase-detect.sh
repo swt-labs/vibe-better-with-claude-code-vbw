@@ -595,7 +595,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
       _uv_verif=""
     fi
-    if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+    if [ "$_qa_rem_stage" != "done" ] && [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
       restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
     fi
 
