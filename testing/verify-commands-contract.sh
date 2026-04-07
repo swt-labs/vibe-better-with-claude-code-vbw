@@ -527,6 +527,12 @@ else
   fail "execute-protocol: missing faux-team Agent prohibition"
 fi
 
+if grep -q '⚠ Agent Teams not enabled — using non-team mode' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: pins explicit non-team fallback warning text"
+else
+  fail "execute-protocol: missing explicit non-team fallback warning text"
+fi
+
 if grep -q 'scripts/delegated-workflow.sh" set execute' "$ROOT/references/execute-protocol.md" \
   && grep -q 'delegation_mode' "$ROOT/scripts/delegated-workflow.sh"; then
   pass "execute-protocol + delegated-workflow: runtime execute delegation mode is persisted"

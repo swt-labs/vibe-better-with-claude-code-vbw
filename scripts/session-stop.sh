@@ -60,12 +60,23 @@ fi
 # non-VBW slash commands in prompt-preflight.sh (and stale markers are ignored
 # by security-filter.sh after 24h).
 rmdir "$PLANNING_DIR/.active-agent-count.lock" 2>/dev/null || true
-rm -f "$PLANNING_DIR/.active-agent" "$PLANNING_DIR/.active-agent-count" "$PLANNING_DIR/.agent-panes" "$PLANNING_DIR/.task-verify-seen" "$PLANNING_DIR/.delegated-workflow.json" 2>/dev/null
+SCRIPT_DIR_STOP="$(cd "$(dirname "$0")" && pwd)"
+DELEGATED_MARKER="$PLANNING_DIR/.delegated-workflow.json"
+if [ -f "$DELEGATED_MARKER" ] && [ -f "$SCRIPT_DIR_STOP/delegated-workflow.sh" ] && command -v jq >/dev/null 2>&1; then
+  _dw_status=$(bash "$SCRIPT_DIR_STOP/delegated-workflow.sh" status-json 2>/dev/null || echo "")
+  if [ -n "$_dw_status" ]; then
+    _dw_exists=$(echo "$_dw_status" | jq -r '.exists // false' 2>/dev/null || echo "false")
+    _dw_preserve=$(echo "$_dw_status" | jq -r '.preserve_on_session_start // false' 2>/dev/null || echo "false")
+    if [ "$_dw_exists" = "true" ] && [ "$_dw_preserve" != "true" ]; then
+      bash "$SCRIPT_DIR_STOP/delegated-workflow.sh" clear 2>/dev/null || rm -f "$DELEGATED_MARKER" 2>/dev/null || true
+    fi
+  fi
+fi
+rm -f "$PLANNING_DIR/.active-agent" "$PLANNING_DIR/.active-agent-count" "$PLANNING_DIR/.agent-panes" "$PLANNING_DIR/.task-verify-seen" 2>/dev/null
 rm -f "$PLANNING_DIR/.context-usage" 2>/dev/null || true
 rm -rf "$PLANNING_DIR/.compacting" 2>/dev/null || true
 
 # Clean up stale worktrees (>2 hours) — fail-silent
-SCRIPT_DIR_STOP="$(cd "$(dirname "$0")" && pwd)"
 WORKTREES_DIR="$VBW_CONFIG_ROOT/.vbw-worktrees"
 if [ -d "$WORKTREES_DIR" ] && [ -f "$SCRIPT_DIR_STOP/worktree-cleanup.sh" ]; then
   NOW_STOP=$(date +%s)

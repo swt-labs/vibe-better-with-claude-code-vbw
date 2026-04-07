@@ -565,6 +565,32 @@ test_session_start_clears_fresh_fix_marker() {
 }
 test_session_start_clears_fresh_fix_marker
 
+# --- Test 24: session-stop preserves live execute team marker for downstream file-guard bypass ---
+test_session_stop_preserves_live_execute_team_marker() {
+  setup_project
+  jq -n '{status:"running", phase:1, effort:"balanced", correlation_id:"corr-123", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
+    > "$PROJECT/.vbw-planning/.execution-state.json"
+  jq -n '{mode:"execute", active:true, effort:"balanced", delegation_mode:"team", team_name:"vbw-phase-01", started_at:"2026-03-03T00:00:00Z", session_id:"session-test", correlation_id:"corr-123"}' \
+    > "$PROJECT/.vbw-planning/.delegated-workflow.json"
+
+  echo '{"cost_usd":0.01,"duration_ms":5000,"tokens_in":100,"tokens_out":50,"model":"test"}' \
+    | (cd "$PROJECT" && bash "$ROOT/scripts/session-stop.sh") >/dev/null 2>&1
+
+  [ -f "$PROJECT/.vbw-planning/.delegated-workflow.json" ] || {
+    fail "session-stop should preserve live execute team marker"
+    cleanup
+    return
+  }
+
+  if run_guard "$PROJECT" "src/app.js" "" >/dev/null 2>&1; then
+    pass "session-stop preserves live execute team marker for file-guard bypass"
+  else
+    fail "session-stop preserved marker path did not keep file-guard bypass"
+  fi
+  cleanup
+}
+test_session_stop_preserves_live_execute_team_marker
+
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"

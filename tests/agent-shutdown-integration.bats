@@ -302,7 +302,6 @@ simulate_session_stop() {
   echo "2" > ".vbw-planning/.active-agent-count"
   mkdir -p ".vbw-planning/.active-agent-count.lock"
   echo "12345 %1" > ".vbw-planning/.agent-panes"
-  echo '{"mode":"execute","active":true,"delegation_mode":"team"}' > ".vbw-planning/.delegated-workflow.json"
 
   simulate_session_stop
 
@@ -310,6 +309,24 @@ simulate_session_stop() {
   [ ! -f ".vbw-planning/.active-agent-count" ]
   [ ! -d ".vbw-planning/.active-agent-count.lock" ]
   [ ! -f ".vbw-planning/.agent-panes" ]
+}
+
+@test "session-stop preserves live execute delegated workflow marker" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"phase":1,"status":"running","effort":"balanced","correlation_id":"corr-123","plans":[]}' > ".vbw-planning/.execution-state.json"
+  echo '{"mode":"execute","active":true,"effort":"balanced","delegation_mode":"team","team_name":"vbw-phase-01","session_id":"session-test","correlation_id":"corr-123","started_at":"2026-04-07T00:00:00Z"}' > ".vbw-planning/.delegated-workflow.json"
+
+  simulate_session_stop
+
+  [ -f ".vbw-planning/.delegated-workflow.json" ]
+}
+
+@test "session-stop removes non-execute delegated workflow marker" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"mode":"fix","active":true,"effort":"balanced","delegation_mode":"","team_name":"","session_id":"session-test","correlation_id":"","started_at":"2026-04-07T00:00:00Z"}' > ".vbw-planning/.delegated-workflow.json"
+
+  simulate_session_stop
+
   [ ! -f ".vbw-planning/.delegated-workflow.json" ]
 }
 
