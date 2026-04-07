@@ -383,6 +383,10 @@ load test_helper
   grep -q '^pre_existing_issues:' "$PROJECT_ROOT/templates/SUMMARY.md"
 }
 
+@test "summary template marks empty pre_existing_issues as authoritative" {
+  grep -q 'Authoritative no-known-issues signal' "$PROJECT_ROOT/templates/SUMMARY.md"
+}
+
 # =============================================================================
 # QA command: discovered issues output + schema consistency
 # =============================================================================
@@ -439,6 +443,10 @@ load test_helper
 
 @test "execute-protocol syncs known issues from verification artifacts" {
   grep -q 'sync-verification' "$PROJECT_ROOT/references/execute-protocol.md"
+}
+
+@test "execute-protocol only uses legacy pre-existing fallback when frontmatter key is absent" {
+  grep -q 'key is absent' "$PROJECT_ROOT/references/execute-protocol.md"
 }
 
 # =============================================================================

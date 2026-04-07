@@ -3022,3 +3022,40 @@ EOF
   [[ "$output" == *"=== KNOWN ISSUES ==="* ]]
   [[ "$output" == *"known_issues_error=malformed"* ]]
 }
+
+@test "compile-verify-context: empty frontmatter pre_existing_issues suppresses stale legacy body fallback" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Empty frontmatter pre-existing issues
+wave: 1
+must_haves:
+  - Something
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Empty frontmatter pre-existing issues
+status: complete
+pre_existing_issues: []
+---
+
+## What Was Built
+
+- Thing
+
+## Pre-existing Issues
+- GhostIssueTests.swift: stale body issue must be ignored
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pre_existing_issues: none"* ]]
+  [[ "$output" != *"GhostIssueTests.swift"* ]]
+}

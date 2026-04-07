@@ -872,9 +872,13 @@ if [ "$CFG_AUTO_UAT_EARLY" = "true" ] && [ "$HAS_UNVERIFIED_PHASES" = "true" ] &
   esac
 fi
 
-# --- all_done QA-attention override: never archive while a terminal-UAT phase still needs QA attention ---
-# Only phases that already have terminal UAT should override all_done. Phases
-# with no UAT yet are handled by the normal lifecycle and auto_uat routing.
+# --- all_done QA-attention override: never archive while a completed phase still needs QA attention ---
+# Terminal-UAT phases always override all_done when QA attention remains. In
+# addition, a fully built phase with no UAT yet must override all_done when QA
+# has already run and the known-issues gate left qa_attention_status=failed or
+# verify. That preserves a deterministic plain `/vbw:vibe` resume path for the
+# post-initial-QA known-issues remediation case without broadening all no-UAT
+# phases into QA remediation.
 if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; then
   _QA_ATT_DIR="$PHASES_DIR/$FIRST_QA_ATTENTION_SLUG/"
   _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
@@ -915,6 +919,30 @@ if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; t
           fi
           NEXT_PHASE_STATE="needs_verification"
           QA_STATUS="pending"
+          ;;
+      esac
+      ;;
+    "")
+      case "$QA_ATTENTION_STATUS" in
+        failed)
+          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+          if [ -d "$_QA_ATT_DIR" ]; then
+            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+          fi
+          NEXT_PHASE_STATE="needs_qa_remediation"
+          QA_STATUS="failed"
+          ;;
+        verify)
+          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+          if [ -d "$_QA_ATT_DIR" ]; then
+            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+          fi
+          NEXT_PHASE_STATE="needs_qa_remediation"
+          QA_STATUS="remediating"
           ;;
       esac
       ;;

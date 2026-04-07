@@ -196,3 +196,27 @@ write_verification_with_issues() {
   [ "$status" -eq 0 ]
   [ "$output" = "LegacyIssueTests.swift" ]
 }
+
+@test "track-known-issues: explicit empty frontmatter suppresses stale legacy body fallback" {
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 03-01
+status: complete
+pre_existing_issues: []
+---
+
+## What Was Built
+- Something useful
+
+## Pre-existing Issues
+- GhostIssueTests.swift: stale body issue must be ignored
+EOF
+
+  run bash "$SCRIPT" sync-summaries "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_status=missing"* ]]
+  [[ "$output" == *"known_issues_count=0"* ]]
+  [ ! -f "$PHASE_DIR/known-issues.json" ]
+}

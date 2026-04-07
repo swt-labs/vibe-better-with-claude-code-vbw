@@ -118,6 +118,20 @@ extract_frontmatter_array_items() {
   ' "$file_path" 2>/dev/null
 }
 
+frontmatter_key_present() {
+  local file_path="${1:-}"
+  local key_name="${2:-}"
+  [ -f "$file_path" ] || return 1
+  [ -n "$key_name" ] || return 1
+  awk -v key="$key_name" '
+    BEGIN { in_fm = 0; found = 0 }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit(found ? 0 : 1) }
+    in_fm && $0 ~ ("^" key ":[[:space:]]*") { found = 1 }
+    END { exit(found ? 0 : 1) }
+  ' "$file_path" >/dev/null 2>&1
+}
+
 trim() {
   printf '%s' "${1:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
@@ -292,7 +306,7 @@ extract_summary_issues_json() {
     [ -f "$summary_file" ] || continue
     source_rel=$(relative_to_phase "$summary_file")
     frontmatter_items=$(extract_frontmatter_array_items "$summary_file" pre_existing_issues)
-    if [ -n "$frontmatter_items" ]; then
+    if frontmatter_key_present "$summary_file" pre_existing_issues; then
       while IFS= read -r item; do
         [ -n "$item" ] || continue
         parse_frontmatter_issue_json "$item" "$source_rel" 0 || true

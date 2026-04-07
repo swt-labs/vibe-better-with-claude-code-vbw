@@ -10,7 +10,7 @@ commit_hashes:
   - {hash}
 deviations:
   - "{deviation-description}"
-pre_existing_issues: [] # JSON object strings: ['{"test":"...","file":"...","error":"..."}']
+pre_existing_issues: [] # Authoritative no-known-issues signal. When present, consumers must not fall back to a legacy body section.
 ---
 
 {one-line-substantive-summary}

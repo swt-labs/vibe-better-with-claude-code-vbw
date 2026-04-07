@@ -109,6 +109,20 @@ extract_frontmatter_array_items() {
   ' "$file_path" 2>/dev/null
 }
 
+frontmatter_key_present() {
+  local file_path="${1:-}"
+  local key_name="${2:-}"
+  [ -f "$file_path" ] || return 1
+  [ -n "$key_name" ] || return 1
+  awk -v key="$key_name" '
+    BEGIN { in_fm = 0; found = 0 }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit(found ? 0 : 1) }
+    in_fm && $0 ~ ("^" key ":[[:space:]]*") { found = 1 }
+    END { exit(found ? 0 : 1) }
+  ' "$file_path" >/dev/null 2>&1
+}
+
 _CVC_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$_CVC_SCRIPT_DIR/summary-utils.sh" ]; then
   # shellcheck source=summary-utils.sh
@@ -549,7 +563,7 @@ while IFS= read -r plan_file; do
     ' 2>/dev/null) || PRE_EXISTING=""
 
     # Brownfield fallback: extract pre-existing issues from the legacy body section.
-    if [ -z "$PRE_EXISTING" ]; then
+    if [ -z "$PRE_EXISTING" ] && ! frontmatter_key_present "$SUMMARY_FILE" pre_existing_issues; then
       PRE_EXISTING=$(awk '
         /^## Pre-existing Issues/ { found=1; next }
         found && /^## / { exit }

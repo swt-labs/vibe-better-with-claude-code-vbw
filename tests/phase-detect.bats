@@ -2191,6 +2191,43 @@ EOF
   echo "$output" | grep -q "qa_attention_status=failed"
 }
 
+@test "all_done without UAT routes to QA remediation when known issues already failed QA" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  cat > .vbw-planning/phases/01-test/known-issues.json <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "01-01-SUMMARY.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_slug=01-test"
+  echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  echo "$output" | grep -q "first_qa_attention_phase=01"
+  echo "$output" | grep -q "qa_attention_status=failed"
+  echo "$output" | grep -q "qa_status=failed"
+}
+
 @test "all_done routes to QA remediation when round-scoped PASS fails deterministic gate" {
   mkdir -p .vbw-planning/phases/01-test/remediation/qa/round-01
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md

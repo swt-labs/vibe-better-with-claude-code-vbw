@@ -516,6 +516,15 @@ for summary_file in {phase-dir}/*-SUMMARY.md; do
   fi
 
   # Extract pre-existing issues from canonical SUMMARY.md frontmatter first.
+  preex_key_present=false
+  awk '
+    BEGIN { in_fm=0; found=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit(found ? 0 : 1) }
+    in_fm && /^pre_existing_issues:[[:space:]]*/ { found=1 }
+    END { exit(found ? 0 : 1) }
+  ' "$summary_file" >/dev/null 2>&1 && preex_key_present=true
+
   preex=$(awk '
     function trim(v) {
       gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
@@ -570,7 +579,10 @@ for summary_file in {phase-dir}/*-SUMMARY.md; do
   ' 2>/dev/null)
 
   # Brownfield fallback: extract pre-existing issues from the legacy body section.
-  if [ -z "$preex" ]; then
+  # Only use this when the canonical frontmatter key is absent. If the key is
+  # present as `pre_existing_issues: []`, that explicit empty array is the
+  # authoritative "no known issues" signal and must suppress stale body text.
+  if [ -z "$preex" ] && [ "$preex_key_present" != true ]; then
     preex=$(awk '
       /^## Pre-existing Issues/ { found=1; next }
       found && /^## / { exit }
