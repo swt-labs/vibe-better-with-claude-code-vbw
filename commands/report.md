@@ -2,7 +2,7 @@
 name: vbw:report
 category: supporting
 disable-model-invocation: true
-description: Collect diagnostic context and file a GitHub issue.
+description: Collect diagnostic context, classify bug or feature, and file a GitHub issue.
 argument-hint: "[problem description]"
 allowed-tools: Read, Bash, Glob, Grep, mcp__github__issue_write
 ---
@@ -25,8 +25,11 @@ VBW version:
 
 ## Parse Arguments
 
-Extract from `$ARGUMENTS`:
-- Everything is the **problem description** (optional). No arguments is valid — the command still collects diagnostics and files with default placeholder text.
+`$ARGUMENTS` is the **problem description**.
+
+- Everything in `$ARGUMENTS` is the description text.
+- The description is optional. If it is empty, still collect diagnostics and file the issue using default placeholder text.
+- If no description is provided, classify the issue as `bug` by default.
 
 ## Scope
 
@@ -53,21 +56,70 @@ This command collects diagnostics and files a GitHub issue — nothing else.
     ```
     Then the fenced code block with the script output.
 
-3. **Compose and file the issue.**
+3. **Classify the issue.** Read the problem description and classify it as `bug` or `feature`:
 
-    a. Compose the issue content:
-    - **Title**: Use the problem description, or `"Bug report from /vbw:report"` if none given.
-    - **Body**: Format using the bug report template structure:
-      - `**Command**`: The `/vbw:*` command that triggered the issue (extract from the problem description, or put "Not specified")
-      - `**What happened**`: The problem description from `$ARGUMENTS`, or "Not provided — please edit"
-      - `**What you expected**`: "Not provided — please edit this section"
-      - `**Steps to reproduce**`: "Not provided — please edit this section"
-      - `**Environment**`: Extract from the diagnostic output (VBW version, OS, Claude Code version, install method)
-      - `**Additional context**`: The full diagnostic report output (the fenced block from step 2)
+    - **Bug**: the description reports something broken, an error, unexpected behavior, a crash, a regression, or a mismatch between expected and actual behavior.
+    - **Feature**: the description requests something missing, a workflow improvement, a new capability, or a change to existing behavior that is not broken.
+    - When the description is ambiguous or empty, classify as `bug`.
 
-    b. Show the composed title and body as a brief preview so the user can see what will be filed.
+4. **Compose and file the issue.**
 
-    c. File the issue immediately using this fallback chain. Stop at the first method that succeeds:
+    a. Derive a concise issue title from the problem description — summarize to ~10 words. Do not use the raw description verbatim as the title. If no description is provided, use `"Bug report from /vbw:report"` for bugs or `"Feature request from /vbw:report"` for features.
+
+    b. Compose the body using the template that matches the classification. Each section header must be bold on its own line, with content on the next line and a blank line between sections.
+
+    <examples>
+    <example>
+    **Classification: bug** — use this body structure (matches `.github/ISSUE_TEMPLATE/bug_report.md`):
+
+    ```
+    **Command**
+    {the /vbw:* command from the description, or "Not specified"}
+
+    **What happened**
+    {problem description from $ARGUMENTS, or "Not provided — please edit this section"}
+
+    **What you expected**
+    {inferred from description, or "Not provided — please edit this section"}
+
+    **Steps to reproduce**
+    {inferred from description, or "Not provided — please edit this section"}
+
+    **Environment**
+    - Claude Code version: {from diagnostics}
+    - OS: {from diagnostics}
+    - Plugin install method: {from diagnostics}
+    - Model: Not specified
+
+    **Additional context**
+    {full diagnostic report output in a fenced code block}
+    ```
+    </example>
+
+    <example>
+    **Classification: feature** — use this body structure (matches `.github/ISSUE_TEMPLATE/feature_request.md`):
+
+    ```
+    **Problem**
+    {problem description from $ARGUMENTS, or "Not provided — please edit this section"}
+
+    **Proposed solution**
+    {inferred from description, or "Not provided — please edit this section"}
+
+    **Alternatives considered**
+    Not provided — please edit this section
+
+    **Additional context**
+    {full diagnostic report output in a fenced code block}
+    ```
+    </example>
+    </examples>
+
+    c. Show the composed title and body as a brief preview so the user can see what will be filed.
+
+    d. File the issue immediately using this fallback chain. Stop at the first method that succeeds:
+
+    Set the label based on classification: `bug` for bugs, `enhancement` for features.
 
     **Method 1 — `gh` CLI (if installed and authenticated):**
 
@@ -89,7 +141,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     gh issue create --repo swt-labs/vibe-better-with-claude-code-vbw \
       --title "$(cat "$ISSUE_TITLE_FILE")" \
-      --label bug \
+      --label <bug or enhancement> \
       --body-file "$ISSUE_BODY_FILE"
     ```
 
@@ -101,7 +153,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
     - `repo`: `vibe-better-with-claude-code-vbw`
     - `title`: The composed title
     - `body`: The composed body
-    - `labels`: `["bug"]`
+    - `labels`: `["bug"]` or `["enhancement"]` based on classification
     - `assignees`: `["dpearson2699"]`
 
     **Method 3 — Install `gh` CLI, authenticate, then file:**
@@ -123,12 +175,13 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     **Method 4 — Manual fallback (last resort):**
 
-    If all of the above fail (install refused, auth failed, network error, etc.), display:
+    If all of the above fail (install refused, auth failed, network error, etc.), display the composed issue title, body, and a link:
     ```
     ⚠ Could not file issue automatically.
-    File manually: https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=bug_report.md
+    File manually: https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=<bug_report.md or feature_request.md>
 
-    Copy the diagnostic report above and paste it into the issue body.
+    Copy the composed issue body above and paste it into the issue form.
     ```
+    Use `?template=bug_report.md` for bugs or `?template=feature_request.md` for features.
 
     Stop here. Do not take any further action.
