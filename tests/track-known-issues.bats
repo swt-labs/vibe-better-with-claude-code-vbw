@@ -220,3 +220,16 @@ EOF
   [[ "$output" == *"known_issues_count=0"* ]]
   [ ! -f "$PHASE_DIR/known-issues.json" ]
 }
+
+@test "track-known-issues: repeated sync-summaries is idempotent for unchanged summaries" {
+  write_summary_with_preexisting "03-01-SUMMARY.md" "03-01" 'TransferMatchingServiceTests.swift: debugTestConfiguration missing'
+
+  bash "$SCRIPT" sync-summaries "$PHASE_DIR" >/dev/null
+  first_state=$(jq -cS '.issues[0]' "$PHASE_DIR/known-issues.json")
+
+  run bash "$SCRIPT" sync-summaries "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  second_state=$(jq -cS '.issues[0]' "$PHASE_DIR/known-issues.json")
+  [ "$first_state" = "$second_state" ]
+}

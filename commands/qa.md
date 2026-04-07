@@ -164,7 +164,12 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
           VERIF_NAME=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-artifact-path.sh verification "{phase-dir}")
           VERIF_PATH="{phase-dir}/${VERIF_NAME}"
         fi
+        if [ ! -f "$VERIF_PATH" ]; then
+          bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/track-known-issues.sh sync-summaries "{phase-dir}" 2>/dev/null || true
+        fi
         ```
+
+      The guarded `sync-summaries` backfill above is for resumed phase-level QA only. It closes the interruption window where execution completed and `SUMMARY.md` files exist, but the earlier session ended before the post-build QA handoff created `{phase-dir}/known-issues.json`.
 
     - Before composing the QA task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to verifying this phase's work. If any skills are relevant, the QA prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the verification task. If no skills are relevant, omit the skill_activation block entirely.
 

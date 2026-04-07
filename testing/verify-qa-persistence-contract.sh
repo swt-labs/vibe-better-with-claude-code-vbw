@@ -84,6 +84,12 @@ else
   fail "6: commands/qa.md does not pass persistence info to QA"
 fi
 
+if grep -q 'track-known-issues\.sh sync-summaries' "$QA_CMD"; then
+  pass "6b: commands/qa.md backfills summary-known-issues before first phase-level QA run"
+else
+  fail "6b: commands/qa.md missing summary-known-issues backfill before phase-level QA"
+fi
+
 # ── Execute protocol checks ─────────────────────────────────────────
 EXEC_PROTO="$ROOT/references/execute-protocol.md"
 
@@ -177,6 +183,12 @@ if [ "$PLUGIN_ROOT_COUNT" -ge 2 ]; then
   pass "16: execute-protocol.md QA task descriptions use \${VBW_PLUGIN_ROOT} consistently ($PLUGIN_ROOT_COUNT occurrences)"
 else
   fail "16: execute-protocol.md QA task descriptions missing \${VBW_PLUGIN_ROOT} (found $PLUGIN_ROOT_COUNT, expected ≥2)"
+fi
+
+if grep -q 'track-known-issues\.sh" sync-summaries' "$ROOT/commands/vibe.md"; then
+  pass "16b: commands/vibe.md backfills summary-known-issues before resumed phase-level QA"
+else
+  fail "16b: commands/vibe.md missing summary-known-issues backfill before resumed phase-level QA"
 fi
 
 # 17. vbw-qa.md Constraints does NOT have blanket "No file modification" without qualification
