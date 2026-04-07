@@ -52,3 +52,18 @@ teardown() {
   [ ! -f "$PHASE_DIR/03-RESEARCH.md" ]
   [[ "$output" != *"03-01-RESEARCH.md -> 03-RESEARCH.md"* ]]
 }
+
+@test "does not rename when a three-digit higher-numbered per-plan research file exists" {
+  PHASE_DIR="$TEST_DIR/03-auth"
+  mkdir -p "$PHASE_DIR"
+  echo "plan 01 research" > "$PHASE_DIR/03-01-RESEARCH.md"
+  echo "plan 100 research" > "$PHASE_DIR/03-100-RESEARCH.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$PHASE_DIR/03-01-RESEARCH.md" ]
+  [ -f "$PHASE_DIR/03-100-RESEARCH.md" ]
+  [ ! -f "$PHASE_DIR/03-RESEARCH.md" ]
+  [[ "$output" != *"03-01-RESEARCH.md -> 03-RESEARCH.md"* ]]
+}

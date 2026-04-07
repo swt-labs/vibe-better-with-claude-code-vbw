@@ -73,10 +73,10 @@ else
   pass "vibe: old generic first-match brownfield fallback removed"
 fi
 
-if grep -Fq '! -name "{NN}-01-RESEARCH.md" -print -quit' "$VIBE"; then
-  pass "vibe: brownfield fallback excludes higher-numbered per-plan research"
+if grep -Fq '[0-9][0-9]*-RESEARCH.md" ! -name "{NN}-01-RESEARCH.md"' "$VIBE"; then
+  pass "vibe: brownfield fallback excludes higher-numbered per-plan research for any digit width"
 else
-  fail "vibe: brownfield fallback does not exclude higher-numbered per-plan research"
+  fail "vibe: brownfield fallback does not exclude higher-numbered per-plan research for any digit width"
 fi
 
 # --- vbw-lead.md: unconditional "Scan codebase via Glob/Grep" must be gone ---

@@ -117,7 +117,7 @@ if [ -n "$PHASE_NUM_NRM" ]; then
   NEW_RESEARCH="$PHASE_DIR/${PHASE_NUM_NRM}-RESEARCH.md"
   if [ -f "$OLD_RESEARCH" ] && [ ! -f "$NEW_RESEARCH" ]; then
     # Check that no other per-plan research files exist (02+)
-    OTHER_RESEARCH=$(find "$PHASE_DIR" -maxdepth 1 -name "${PHASE_NUM_NRM}-[0-9][0-9]-RESEARCH.md" ! -name "${PHASE_NUM_NRM}-01-RESEARCH.md" 2>/dev/null | head -1)
+    OTHER_RESEARCH=$(find "$PHASE_DIR" -maxdepth 1 -name "${PHASE_NUM_NRM}-[0-9][0-9]*-RESEARCH.md" ! -name "${PHASE_NUM_NRM}-01-RESEARCH.md" 2>/dev/null | head -1)
     if [ -z "$OTHER_RESEARCH" ]; then
       mv "$OLD_RESEARCH" "$NEW_RESEARCH"
       echo "renamed: $(basename "$OLD_RESEARCH") -> $(basename "$NEW_RESEARCH")"
