@@ -88,6 +88,7 @@ print_status_json() {
   local execution_age_seconds_value=""
   local marker_age_seconds_value=""
   local live=false
+  local preserve_on_session_start=false
   local reason="missing_marker"
 
   if [ -f "$EXEC_STATE_FILE" ]; then
@@ -151,6 +152,7 @@ print_status_json() {
             fi
           else
             live=true
+            preserve_on_session_start=true
             reason="ok"
           fi
         fi
@@ -181,6 +183,7 @@ print_status_json() {
       --arg execution_age_seconds "$execution_age_seconds_value" \
       --arg marker_age_seconds "$marker_age_seconds_value" \
       --argjson live "$live" \
+      --argjson preserve_on_session_start "$preserve_on_session_start" \
       --arg reason "$reason" \
       '{
         exists: $exists,
@@ -197,11 +200,12 @@ print_status_json() {
         execution_age_seconds: $execution_age_seconds,
         marker_age_seconds: $marker_age_seconds,
         live: $live,
+        preserve_on_session_start: $preserve_on_session_start,
         reason: $reason
       }'
   else
-    printf '{"exists":%s,"active":%s,"mode":"%s","effort":"%s","delegation_mode":"%s","team_name":"%s","started_at":"%s","session_id":"%s","correlation_id":"%s","execution_status":"%s","execution_correlation_id":"%s","execution_age_seconds":"%s","marker_age_seconds":"%s","live":%s,"reason":"%s"}\n' \
-      "$exists" "$active" "$mode" "$effort" "$delegation_mode" "$team_name" "$started_at" "$session_id" "$correlation_id" "$exec_status" "$exec_correlation_id" "$execution_age_seconds_value" "$marker_age_seconds_value" "$live" "$reason"
+    printf '{"exists":%s,"active":%s,"mode":"%s","effort":"%s","delegation_mode":"%s","team_name":"%s","started_at":"%s","session_id":"%s","correlation_id":"%s","execution_status":"%s","execution_correlation_id":"%s","execution_age_seconds":"%s","marker_age_seconds":"%s","live":%s,"preserve_on_session_start":%s,"reason":"%s"}\n' \
+      "$exists" "$active" "$mode" "$effort" "$delegation_mode" "$team_name" "$started_at" "$session_id" "$correlation_id" "$exec_status" "$exec_correlation_id" "$execution_age_seconds_value" "$marker_age_seconds_value" "$live" "$preserve_on_session_start" "$reason"
   fi
 }
 

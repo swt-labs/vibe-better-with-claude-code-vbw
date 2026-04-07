@@ -160,6 +160,28 @@ EOF
   [ ! -f ".vbw-planning/.delegated-workflow.json" ]
 }
 
+@test "session-start: removes fresh fix delegated workflow marker" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/.delegated-workflow.json <<'EOF'
+{"mode":"fix","active":true,"effort":"balanced","delegation_mode":"","team_name":"","session_id":"session-test","correlation_id":"","started_at":"2026-04-07T00:00:00Z"}
+EOF
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+  [ ! -f ".vbw-planning/.delegated-workflow.json" ]
+}
+
+@test "session-start: removes fresh debug delegated workflow marker" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/.delegated-workflow.json <<'EOF'
+{"mode":"debug","active":true,"effort":"balanced","delegation_mode":"","team_name":"","session_id":"session-test","correlation_id":"","started_at":"2026-04-07T00:00:00Z"}
+EOF
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+  [ ! -f ".vbw-planning/.delegated-workflow.json" ]
+}
+
 @test "session-start: preserves delegated workflow marker for live execute run" {
   cd "$TEST_TEMP_DIR"
   cat > .vbw-planning/.execution-state.json <<'STATE'

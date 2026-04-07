@@ -299,7 +299,7 @@ test_delegated_workflow_script() {
 
   local live_status
   live_status=$(cd "$tmpdir" && bash "$DELEG_SCRIPT" status-json)
-  if echo "$live_status" | jq -e '.live == true and .reason == "ok"' >/dev/null 2>&1; then
+  if echo "$live_status" | jq -e '.live == true and .preserve_on_session_start == true and .reason == "ok"' >/dev/null 2>&1; then
     pass "delegated-workflow.sh status-json: live execute marker validates against execution state"
   else
     fail "delegated-workflow.sh status-json: expected live execute marker, got: $live_status"
@@ -312,6 +312,15 @@ test_delegated_workflow_script() {
     pass "delegated-workflow.sh status-json: stale running execution state is not treated as live"
   else
     fail "delegated-workflow.sh status-json: expected stale execution state, got: $stale_status"
+  fi
+
+  (cd "$tmpdir" && bash "$DELEG_SCRIPT" set fix balanced)
+  local fix_status
+  fix_status=$(cd "$tmpdir" && bash "$DELEG_SCRIPT" status-json)
+  if echo "$fix_status" | jq -e '.live == true and .preserve_on_session_start == false and .mode == "fix"' >/dev/null 2>&1; then
+    pass "delegated-workflow.sh status-json: fix marker stays live for same-session guard use but is not preserved across SessionStart"
+  else
+    fail "delegated-workflow.sh status-json: expected non-preserved fix marker, got: $fix_status"
   fi
 
   # check action (active)
@@ -538,6 +547,23 @@ test_prefer_teams_legacy_when_parallel_alone_does_not_bypass() {
   cleanup
 }
 test_prefer_teams_legacy_when_parallel_alone_does_not_bypass
+
+# --- Test 23: session-start clears fresh fix marker before a new session guard evaluation ---
+test_session_start_clears_fresh_fix_marker() {
+  setup_project
+  jq -n '{mode:"fix", active:true, effort:"balanced", delegation_mode:"", team_name:"", started_at:"2026-03-03T00:00:00Z", session_id:"session-test", correlation_id:""}' \
+    > "$PROJECT/.vbw-planning/.delegated-workflow.json"
+
+  (cd "$PROJECT" && bash "$ROOT/scripts/session-start.sh") >/dev/null 2>&1
+
+  if run_guard "$PROJECT" "src/app.js" "" >/dev/null 2>&1; then
+    pass "session-start clears fresh fix marker before next-session file-guard evaluation"
+  else
+    fail "session-start should clear fresh fix marker before next-session guard evaluation"
+  fi
+  cleanup
+}
+test_session_start_clears_fresh_fix_marker
 
 echo ""
 echo "==============================="

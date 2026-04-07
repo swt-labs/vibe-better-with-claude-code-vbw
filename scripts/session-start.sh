@@ -239,8 +239,8 @@ if [ -f "$DELEGATED_MARKER" ] && [ -f "$SCRIPT_DIR/delegated-workflow.sh" ] && c
   _dw_status=$(bash "$SCRIPT_DIR/delegated-workflow.sh" status-json 2>/dev/null || echo "")
   if [ -n "$_dw_status" ]; then
     _dw_exists=$(echo "$_dw_status" | jq -r '.exists // false' 2>/dev/null || echo "false")
-    _dw_live=$(echo "$_dw_status" | jq -r '.live // false' 2>/dev/null || echo "false")
-    if [ "$_dw_exists" = "true" ] && [ "$_dw_live" != "true" ]; then
+    _dw_preserve=$(echo "$_dw_status" | jq -r '.preserve_on_session_start // false' 2>/dev/null || echo "false")
+    if [ "$_dw_exists" = "true" ] && [ "$_dw_preserve" != "true" ]; then
       bash "$SCRIPT_DIR/delegated-workflow.sh" clear 2>/dev/null || rm -f "$DELEGATED_MARKER" 2>/dev/null || true
     fi
   fi
