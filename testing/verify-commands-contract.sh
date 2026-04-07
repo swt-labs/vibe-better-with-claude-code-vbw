@@ -256,6 +256,7 @@ echo ""
 echo "=== Verify Guardrail Verification ==="
 
 VIBE_FILE="$COMMANDS_DIR/vibe.md"
+QA_FILE="$COMMANDS_DIR/qa.md"
 VERIFY_FILE="$COMMANDS_DIR/verify.md"
 
 if grep -q 'Verify-context error guard (NON-NEGOTIABLE)' "$VERIFY_FILE"; then
@@ -292,6 +293,18 @@ if grep -q 'KNOWN_ISSUES_STATUS=' "$VERIFY_FILE" \
   pass "verify: skip-qa guard blocks malformed known-issues registries"
 else
   fail "verify: missing malformed known-issues fail-closed guard in skip-qa path"
+fi
+
+if grep -q 'qa-remediation-state\.sh advance' "$QA_FILE"; then
+  pass "qa: round-scoped PROCEED_TO_UAT persists remediation advance"
+else
+  fail "qa: missing round-scoped qa-remediation-state advance before standalone QA success presentation"
+fi
+
+if grep -q 'qa-remediation-state\.sh needs-round' "$QA_FILE"; then
+  pass "qa: round-scoped REMEDIATION_REQUIRED persists next-round state"
+else
+  fail "qa: missing round-scoped qa-remediation-state needs-round before standalone remediation handoff"
 fi
 
 if grep -q 'echo "verify_context=unavailable"' "$VIBE_FILE"; then
@@ -488,7 +501,9 @@ else
   fail "qa: missing persisted verification_path contract for standalone QA output"
 fi
 
-if grep -q 'qa-result-gate\.sh' "$QA_FILE" && grep -q 'not authoritative' "$QA_FILE"; then
+if grep -q 'qa-result-gate\.sh' "$QA_FILE" \
+  && grep -q 'qa-remediation-state\.sh advance' "$QA_FILE" \
+  && grep -q 'qa-remediation-state\.sh needs-round' "$QA_FILE"; then
   pass "qa: standalone remediation QA reruns deterministic gate before trusting round-scoped PASS artifacts"
 else
   fail "qa: missing deterministic gate reconciliation for standalone remediation QA"

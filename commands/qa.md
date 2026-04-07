@@ -214,8 +214,20 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
       ```
 
     - Follow `QA_GATE_ROUTING` literally:
-      - `PROCEED_TO_UAT` → continue to presentation.
-      - `REMEDIATION_REQUIRED` → if `VERIF_PATH` is round-scoped (`remediation/qa/round-*/R*-VERIFICATION.md`), the round VERIFICATION is **not authoritative**. Display that standalone QA found a result, but the deterministic gate still requires remediation; tell the user to continue via `/vbw:vibe`. Do **not** present the round as a shippable PASS. If `qa_gate_known_issues_override=true`, note that the contract checks passed but `{qa_gate_known_issue_count}` tracked known issues remain unresolved in `{phase-dir}/known-issues.json`.
+      - `PROCEED_TO_UAT` → if `VERIF_PATH` is round-scoped (`remediation/qa/round-*/R*-VERIFICATION.md`), persist the remediation transition first:
+
+        ```bash
+        bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/qa-remediation-state.sh advance "{phase-dir}"
+        ```
+
+        Then continue to presentation.
+      - `REMEDIATION_REQUIRED` → if `VERIF_PATH` is round-scoped (`remediation/qa/round-*/R*-VERIFICATION.md`), persist the next remediation round first:
+
+        ```bash
+        bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/qa-remediation-state.sh needs-round "{phase-dir}"
+        ```
+
+        Then display that standalone QA found a result, but the deterministic gate still requires remediation; tell the user to continue via `/vbw:vibe`. Do **not** present the round as a shippable PASS. If `qa_gate_known_issues_override=true`, note that the contract checks passed but `{qa_gate_known_issue_count}` tracked known issues remain unresolved in `{phase-dir}/known-issues.json`.
       - `REMEDIATION_REQUIRED` → if `VERIF_PATH` is phase-level, initialize QA remediation state first so plain `/vbw:vibe` has a deterministic resume target:
 
         ```bash
