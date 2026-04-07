@@ -305,6 +305,15 @@ test_delegated_workflow_script() {
     fail "delegated-workflow.sh status-json: expected live execute marker, got: $live_status"
   fi
 
+  touch -t 202001010000 "$tmpdir/.vbw-planning/.execution-state.json"
+  local stale_status
+  stale_status=$(cd "$tmpdir" && bash "$DELEG_SCRIPT" status-json)
+  if echo "$stale_status" | jq -e '.live == false and .reason == "stale_execution_state"' >/dev/null 2>&1; then
+    pass "delegated-workflow.sh status-json: stale running execution state is not treated as live"
+  else
+    fail "delegated-workflow.sh status-json: expected stale execution state, got: $stale_status"
+  fi
+
   # check action (active)
   if (cd "$tmpdir" && bash "$DELEG_SCRIPT" check) >/dev/null 2>&1; then
     pass "delegated-workflow.sh check: returns 0 when active"

@@ -85,9 +85,14 @@ print_status_json() {
   local correlation_id=""
   local exec_status=""
   local exec_correlation_id=""
+  local execution_age_seconds_value=""
   local marker_age_seconds_value=""
   local live=false
   local reason="missing_marker"
+
+  if [ -f "$EXEC_STATE_FILE" ]; then
+    execution_age_seconds_value=$(marker_age_seconds "$EXEC_STATE_FILE")
+  fi
 
   if [ -f "$MARKER_FILE" ]; then
     exists=true
@@ -124,7 +129,11 @@ print_status_json() {
           exec_status=$(json_field "$EXEC_STATE_FILE" '.status')
           exec_correlation_id=$(json_field "$EXEC_STATE_FILE" '.correlation_id')
 
-          if [ "$exec_status" != "running" ]; then
+          if [ -z "$execution_age_seconds_value" ] || ! printf '%s' "$execution_age_seconds_value" | grep -Eq '^[0-9]+$'; then
+            reason="unknown_execution_age"
+          elif [ "$execution_age_seconds_value" -lt 0 ] || [ "$execution_age_seconds_value" -ge "$STALE_SECS" ]; then
+            reason="stale_execution_state"
+          elif [ "$exec_status" != "running" ]; then
             if [ -n "$marker_age_seconds_value" ] && printf '%s' "$marker_age_seconds_value" | grep -Eq '^[0-9]+$' && { [ "$marker_age_seconds_value" -lt 0 ] || [ "$marker_age_seconds_value" -ge "$STALE_SECS" ]; }; then
               reason="stale_marker"
             else
@@ -169,6 +178,7 @@ print_status_json() {
       --arg correlation_id "$correlation_id" \
       --arg execution_status "$exec_status" \
       --arg execution_correlation_id "$exec_correlation_id" \
+      --arg execution_age_seconds "$execution_age_seconds_value" \
       --arg marker_age_seconds "$marker_age_seconds_value" \
       --argjson live "$live" \
       --arg reason "$reason" \
@@ -184,13 +194,14 @@ print_status_json() {
         correlation_id: $correlation_id,
         execution_status: $execution_status,
         execution_correlation_id: $execution_correlation_id,
+        execution_age_seconds: $execution_age_seconds,
         marker_age_seconds: $marker_age_seconds,
         live: $live,
         reason: $reason
       }'
   else
-    printf '{"exists":%s,"active":%s,"mode":"%s","effort":"%s","delegation_mode":"%s","team_name":"%s","started_at":"%s","session_id":"%s","correlation_id":"%s","execution_status":"%s","execution_correlation_id":"%s","marker_age_seconds":"%s","live":%s,"reason":"%s"}\n' \
-      "$exists" "$active" "$mode" "$effort" "$delegation_mode" "$team_name" "$started_at" "$session_id" "$correlation_id" "$exec_status" "$exec_correlation_id" "$marker_age_seconds_value" "$live" "$reason"
+    printf '{"exists":%s,"active":%s,"mode":"%s","effort":"%s","delegation_mode":"%s","team_name":"%s","started_at":"%s","session_id":"%s","correlation_id":"%s","execution_status":"%s","execution_correlation_id":"%s","execution_age_seconds":"%s","marker_age_seconds":"%s","live":%s,"reason":"%s"}\n' \
+      "$exists" "$active" "$mode" "$effort" "$delegation_mode" "$team_name" "$started_at" "$session_id" "$correlation_id" "$exec_status" "$exec_correlation_id" "$execution_age_seconds_value" "$marker_age_seconds_value" "$live" "$reason"
   fi
 }
 
