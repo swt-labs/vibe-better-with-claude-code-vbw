@@ -1528,6 +1528,36 @@ CONF
   echo "$output" | grep -q "qa_status=passed"
 }
 
+@test "qa_status is failed when PASS verification still has unresolved known issues" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'All passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  cat > .vbw-planning/phases/01-test/known-issues.json <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "01-01-SUMMARY.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=failed"
+}
+
 @test "qa_status is passed when brownfield plain VERIFICATION.md has PASS result" {
   mkdir -p .vbw-planning/phases/01-test
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
@@ -1644,6 +1674,63 @@ EOF
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=remediated"
+}
+
+@test "qa_status stays failed when remediation PASS still has unresolved known issues" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa/round-01
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  cat > .vbw-planning/phases/01-test/01-VERIFICATION.md <<'EOF'
+---
+result: FAIL
+writer: write-verification.sh
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | Original failure | FAIL | Missing |
+EOF
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-PLAN.md <<'EOF'
+---
+round: 01
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Need a fix"}
+---
+EOF
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md <<'EOF'
+---
+plan: R01
+status: complete
+files_modified:
+  - README.md
+deviations: []
+---
+EOF
+  printf '%s\n%s\n%s\n' 'stage=done' 'round=01' "round_started_at_commit=${current_commit}" > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - R01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after remediation.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
+  cat > .vbw-planning/phases/01-test/known-issues.json <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "TransferMatchingServiceTests",
+      "file": "Tests/TransferMatchingServiceTests.swift",
+      "error": "debugTestConfiguration missing",
+      "first_seen_in": "01-01-SUMMARY.md",
+      "last_seen_in": "remediation/qa/round-01/R01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 1,
+      "times_seen": 3
+    }
+  ]
+}
+EOF
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=failed"
 }
 
 @test "qa_status is failed when qa-remediation done but FAIL in VERIFICATION" {

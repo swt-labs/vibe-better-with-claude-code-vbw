@@ -283,12 +283,17 @@ QA verification summary (pre-extracted from VERIFICATION.md):
     QA_GATE_ROUTING=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/qa-result-gate.sh "$PDIR" 2>/dev/null | awk -F= '/^qa_gate_routing=/{print $2; exit}')
     ```
     - `PROCEED_TO_UAT`: continue to the freshness checks below.
-    - `REMEDIATION_REQUIRED`: STOP "Phase {NN} QA gate still requires remediation. Run `/vbw:vibe` to continue QA remediation before UAT, or use `/vbw:verify --skip-qa` to bypass."
+    - `REMEDIATION_REQUIRED`: STOP "Phase {NN} QA gate still requires remediation (including unresolved tracked known issues, if any). Run `/vbw:vibe` to continue QA remediation before UAT."
     - `QA_RERUN_REQUIRED` or empty output: STOP "Phase {NN} QA verification is not authoritative yet. Run `/vbw:qa {NN}` or `/vbw:vibe` to re-run QA before UAT, or use `/vbw:verify --skip-qa` to bypass."
   - If VERIFICATION.md exists, read its frontmatter `result:` field:
     - `PASS`: before proceeding, run the same stale-QA checks as phase-detect for this target phase: (1) if product-code working tree is dirty (`git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md'` non-empty) → STOP and rerun QA via `/vbw:vibe`; (2) if `verified_at_commit` exists and differs from current product-code `git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md'` → STOP and rerun QA; (3) if `verified_at_commit` is absent (brownfield file), compare VERIFICATION.md mtime to the latest product-code commit timestamp and STOP if the commit is newer. Only proceed to UAT when the PASS is both gate-authoritative and fresh for the target phase.
     - `FAIL` or `PARTIAL`: STOP "Phase {NN} QA result is {result}. Run `/vbw:vibe` to continue QA remediation, or use `/vbw:verify --skip-qa` to bypass."
-  - If `--skip-qa` flag is present: bypass all QA checks, proceed to UAT Steps
+  - If `--skip-qa` flag is present: bypass QA execution and PASS freshness checks only. This does **not** bypass unresolved phase known issues. Before entering UAT, run:
+    ```bash
+    KNOWN_ISSUES_META=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/track-known-issues.sh status "$PDIR" 2>/dev/null || true)
+    KNOWN_ISSUES_COUNT=$(printf '%s\n' "$KNOWN_ISSUES_META" | awk -F= '/^known_issues_count=/{print $2; exit}')
+    ```
+    If `KNOWN_ISSUES_COUNT > 0`, STOP: "Phase {NN} still has unresolved tracked known issues. Run `/vbw:vibe` to continue QA remediation before UAT."
 
 ## Steps
 

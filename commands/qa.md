@@ -197,7 +197,15 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
     - QA agent reads all files and persists VERIFICATION.md itself. If QA reports a `write-verification.sh` failure, surface the error to the user — do NOT fall back to manual VERIFICATION.md writes.
 
 4. **Reconcile with the deterministic QA gate before trusting the result:**
-    - Immediately after QA persists `VERIFICATION.md`, run:
+    - Immediately after QA persists `VERIFICATION.md`, sync tracked known issues from the written artifact:
+
+      ```bash
+      bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/track-known-issues.sh sync-verification "{phase-dir}" "{VERIF_PATH}" 2>/dev/null || true
+      ```
+
+      Phase-level `VERIFICATION.md` merges newly found pre-existing issues into `{phase-dir}/known-issues.json` without clearing the execution-time backlog. Round-scoped `R{RR}-VERIFICATION.md` is authoritative for unresolved known issues and prunes/clears the registry when issues are fixed.
+
+    - Then run:
 
       ```bash
       QA_GATE=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/qa-result-gate.sh "{phase-dir}" 2>/dev/null || true)
@@ -206,7 +214,7 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
 
     - Follow `QA_GATE_ROUTING` literally:
       - `PROCEED_TO_UAT` → continue to presentation.
-      - `REMEDIATION_REQUIRED` → if `VERIF_PATH` is round-scoped (`remediation/qa/round-*/R*-VERIFICATION.md`), the round VERIFICATION is **not authoritative**. Display that standalone QA found a result, but the deterministic gate still requires remediation; tell the user to continue via `/vbw:vibe`. Do **not** present the round as a shippable PASS.
+      - `REMEDIATION_REQUIRED` → if `VERIF_PATH` is round-scoped (`remediation/qa/round-*/R*-VERIFICATION.md`), the round VERIFICATION is **not authoritative**. Display that standalone QA found a result, but the deterministic gate still requires remediation; tell the user to continue via `/vbw:vibe`. Do **not** present the round as a shippable PASS. If `qa_gate_known_issues_override=true`, note that the contract checks passed but `{qa_gate_known_issue_count}` tracked known issues remain unresolved in `{phase-dir}/known-issues.json`.
       - `QA_RERUN_REQUIRED` → display that the persisted verification artifact is invalid or incomplete and must be re-run before it can be trusted. Do **not** present it as authoritative.
 
 5. **Present:** Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
@@ -229,9 +237,9 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
   Discovered Issues:
     ⚠ testName (path/to/file): error message
     ⚠ testName (path/to/file): error message
-  Suggest: /vbw:todo <description> to track
+  Registry: {phase-dir}/known-issues.json
 ```
-This is **display-only**. Do NOT edit STATE.md, do NOT add todos, do NOT invoke /vbw:todo, and do NOT enter an interactive loop. The user decides whether to track these. If no discovered issues: omit the section entirely. After displaying discovered issues, STOP. Do not take further action.
+This display is supplemental to the phase registry. After `VERIFICATION.md` is written, the orchestrator must sync these issues into `{phase-dir}/known-issues.json` before reading the deterministic gate. Do NOT create todos automatically or enter an interactive loop here. If no discovered issues: omit the section entirely. After displaying discovered issues, STOP. Do not take further action.
 
 Run:
 ```text

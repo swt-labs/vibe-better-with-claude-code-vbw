@@ -541,6 +541,15 @@ DEVIATIONS are plan violations — treat each as a FAIL check.
 PREEXISTING items go in the "Pre-existing Issues" section of VERIFICATION.md.
 ```
 
+**Phase known-issues persistence (before QA):**
+After collecting Dev-surfaced pre-existing issues from SUMMARY.md files, persist them to phase state so a later QA session does not forget them:
+
+```bash
+bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-summaries "{phase-dir}" 2>/dev/null || true
+```
+
+This writes `{phase-dir}/known-issues.json`. The human-readable `Discovered Issues` block later in the execute summary is supplemental — the JSON registry is the authoritative phase backlog.
+
 **Tier resolution:** When `validation_gates=true`: use `qa_tier` from gate policy resolved in Step 3.
 When `validation_gates=false` (default): map effort to tier: turbo=skip (already handled), fast=quick, balanced=standard, thorough=deep. Override: if >15 requirements or last phase before ship, force Deep.
 
@@ -570,6 +579,13 @@ VERIF_BASE="${VERIF_NAME%.md}"
 
 ### Step 4.1: QA Result Gating (NON-NEGOTIABLE)
 
+After QA writes its VERIFICATION artifact, sync tracked known issues from that artifact before reading the gate:
+```bash
+bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-verification "{phase-dir}" "{verification-output-path}" 2>/dev/null || true
+```
+- Phase-level VERIFICATION writes merge new pre-existing issues into the existing registry without clearing the execution-time backlog.
+- Round-scoped `R{RR}-VERIFICATION.md` writes are authoritative for unresolved known issues and may prune or clear `{phase-dir}/known-issues.json`.
+
 After QA completes (subagent returns or teammate sends `qa_verdict`), run the deterministic gate:
 ```bash
 bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
@@ -577,7 +593,7 @@ bash "${VBW_PLUGIN_ROOT}/scripts/qa-result-gate.sh" "{phase-dir}"
 
 **Follow `qa_gate_routing` output literally — no exceptions, no judgment, no rationalization. Do NOT evaluate whether failures are justified, acceptable, or minor. The gate script has already made the decision:**
 - **`qa_gate_routing=PROCEED_TO_UAT`:** Display `◆ QA: PASS` — proceed to Step 4.5 (UAT)
-- **`qa_gate_routing=REMEDIATION_REQUIRED`:** Display `◆ QA: ${qa_gate_result} (${qa_gate_fail_count} FAIL)` — enter QA remediation loop below
+- **`qa_gate_routing=REMEDIATION_REQUIRED`:** Display `◆ QA: ${qa_gate_result} (${qa_gate_fail_count} FAIL)` — enter QA remediation loop below. If `qa_gate_known_issues_override=true`, the contract verification passed but `{qa_gate_known_issue_count}` unresolved tracked known issues remain in `{phase-dir}/known-issues.json`.
 - **`qa_gate_routing=QA_RERUN_REQUIRED`:** Display `⚠ QA result invalid (writer=${qa_gate_writer}, result=${qa_gate_result}). Re-running QA.` — re-spawn QA agent immediately (no plan→execute cycle). Max 2 retries. If `qa_gate_deviation_override=true`, tell QA: "Previous QA run found PASS but SUMMARY.md files contain ${qa_gate_deviation_count} deviations that were not reflected as FAIL checks. Each deviation MUST become a FAIL check — do not rationalize deviations as acceptable." If `qa_gate_plan_coverage` is present, tell QA: "Previous QA run only verified ${qa_gate_plans_verified_count}/${qa_gate_plan_count} plans. Every plan in the phase must be verified — include all plan IDs in plans_verified." If QA still fails to produce a valid result, STOP and escalate: "QA failed to produce a valid VERIFICATION.md after {N} attempts. Manual intervention needed."
 
 **QA Remediation Loop (inline, same session):**
@@ -588,7 +604,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    ```bash
    bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" init "{phase-dir}"
    ```
-  Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `verification_path`
+  Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `source_fail_count`, `known_issues_path`, `known_issues_count`, `input_mode`, `verification_path`
 
 2. **Loop (max 3 rounds):**
    ```
@@ -596,10 +612,11 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    ```
 
    **stage=plan:** Create `R{RR}-PLAN.md` in `{round_dir}`:
-   - Read `source_verification_path` from `qa-remediation-state.sh get` metadata for failed checks
+  - Read `source_verification_path` from `qa-remediation-state.sh get` metadata for failed checks when `source_fail_count>0`
+  - Read `known_issues_path` when `known_issues_count>0` — this is the phase-scoped unresolved known-issues backlog that must clear before UAT
      - Round 01 uses the phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
      - Round 02+ first checks the previous round's `R{RR}-VERIFICATION.md`. If that artifact still contains FAIL checks, use it. If it passed QA but the deterministic gate still required another remediation round, carry forward the nearest earlier verification artifact in the remediation chain that still contains the unresolved FAILs.
-      - If `source_verification_path` is empty, STOP and restore the earlier verification artifact that should have carried the unresolved FAILs before planning. Do NOT silently continue when the previous round verification is missing or when the carried-forward phase-level source artifact no longer exists.
+    - If `source_verification_path` is empty and `known_issues_count=0`, STOP and restore the earlier verification artifact that should have carried the unresolved FAILs before planning. Do NOT silently continue when the previous round verification is missing or when the carried-forward phase-level source artifact no longer exists.
    - **Deviation Classification (NON-NEGOTIABLE):** For each FAIL check in the source VERIFICATION.md, classify as exactly one of:
       - **`code-fix`**: The code/config must change to match the plan. The remediation plan MUST include tasks that modify the executable/config/test artifacts that actually implement the fix — not just planning or documentation files.
       - **`plan-amendment`**: The deviation was a valid improvement over the original plan. The remediation plan MUST include a task to update the original PLAN.md with the actual approach and rationale, marking the deviation as resolved-by-amendment.
@@ -624,6 +641,11 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    - Run `compile-verify-context.sh --remediation-only {phase-dir}` to get compounded verification history plus the current round's plan/summary context only
    - Spawn QA agent as subagent — writes to `{verification_path}` (from `qa-remediation-state.sh` metadata)
      - Output path: `{round_dir}/R{RR}-VERIFICATION.md` — phase-level VERIFICATION.md stays frozen
+     - After QA persists `{verification_path}`, immediately sync tracked known issues from that round artifact:
+       ```bash
+       bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-verification "{phase-dir}" "{verification_path}" 2>/dev/null || true
+       ```
+     - If `compile-verify-context.sh` emits a `KNOWN ISSUES` block, include in QA's task description: "Tracked phase known issues are not informational in remediation rounds. Re-check each tracked known issue and return only the ones that remain unresolved in `pre_existing_issues`. A clean remediation QA run must return an empty `pre_existing_issues` array so `{phase-dir}/known-issues.json` can clear."
      - Include the compiled verify context output in QA's task description
       - **Include in QA task description:** "In addition to verifying the remediation plan's own must_haves, you MUST re-verify each original FAIL from the VERIFICATION HISTORY section. For each FAIL_ID: if classified as code-fix, verify the code now matches the plan; if classified as plan-amendment, verify the original PLAN.md has been updated with the actual approach and rationale; if classified as process-exception, verify the exception is documented with non-fixable justification and that the justification is credible for this FAIL; if code-fix or plan-amendment still appears viable, keep the FAIL open. Any original FAIL that has not been addressed by one of these three paths is still a FAIL."
       - The deterministic gate validates structural evidence only. QA must decide whether a `process-exception` is *actually* justified during this re-verification step — documentation alone is insufficient when the original FAIL still appears fixable via code or plan amendment.
@@ -633,7 +655,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
      ```
      **Follow `qa_gate_routing` output literally — no exceptions, no judgment, no rationalization. Do NOT evaluate whether failures are justified, acceptable, or minor. The gate script has already made the decision:**
      - **`qa_gate_routing=PROCEED_TO_UAT`:** Advance to done: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`, display `◆ QA remediation: PASS (round {RR})`, break loop, proceed to Step 4.5
-     - **`qa_gate_routing=REMEDIATION_REQUIRED`:** Start new round: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" needs-round "{phase-dir}"`, display `◆ QA remediation round {RR}: ${qa_gate_result}`, continue loop
+    - **`qa_gate_routing=REMEDIATION_REQUIRED`:** Start new round: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" needs-round "{phase-dir}"`, display `◆ QA remediation round {RR}: ${qa_gate_result}`, continue loop. If `qa_gate_known_issues_override=true`, unresolved tracked known issues remain in `{phase-dir}/known-issues.json`.
      - **`qa_gate_routing=QA_RERUN_REQUIRED`:** Re-spawn QA immediately (max 2 retries per round). If `qa_gate_deviation_override=true`, tell QA: "Previous QA run found PASS but SUMMARY.md files contain ${qa_gate_deviation_count} deviations that were not reflected as FAIL checks. Each deviation MUST become a FAIL check — do not rationalize deviations as acceptable." If `qa_gate_plan_coverage` is present, tell QA: "Previous QA run only verified ${qa_gate_plans_verified_count}/${qa_gate_plan_count} plans. Every plan in the phase must be verified — include all plan IDs in plans_verified." If still invalid, treat as REMEDIATION_REQUIRED.
       - **When `qa_gate_metadata_only_override=true`** (routing will be `REMEDIATION_REQUIRED`): Display `⚠ QA remediation round made no implementation changes — only planning/documentation updates. The round still depends on a code-fix path (or omitted fail_classifications), so the original failures cannot be considered resolved without code changes. ${qa_gate_phase_deviation_count} phase deviations remain recorded.` This override is the deterministic safety net for rounds that still depend on code changes. Pure plan-amendment rounds can pass when the original plan was actually updated, and pure process-exception rounds still need planning/remediation-artifact evidence — delivered docs/README changes alone do not count. The next round's `stage=plan` MUST classify each FAIL as code-fix, plan-amendment, or process-exception per the Deviation Classification rules above.
       - **When `qa_gate_round_change_evidence_empty=true`** (routing will be `REMEDIATION_REQUIRED`): Display `⚠ QA remediation round recorded no change evidence — both files_modified and commit_hashes were empty. A PASS without any recorded changed files or commits cannot resolve prior FAILs.` The next round must produce real code/plan changes or capture justified remediation evidence instead of an empty summary.
@@ -871,9 +893,9 @@ Phase {NN}: {name} -- Built
   Discovered Issues:
     ⚠ {issue-1}
     ⚠ {issue-2}
-  Suggest: /vbw:todo <description> to track
+  Registry: {phase-dir}/known-issues.json
 ```
-This is **display-only**. Do NOT edit STATE.md, do NOT add todos, do NOT invoke /vbw:todo, and do NOT enter an interactive loop. The user decides whether to track these. If no discovered issues: omit the section entirely. After displaying discovered issues, STOP. Do not take further action.
+This display is supplemental to the phase registry. The orchestrator should already have synced these issues into `{phase-dir}/known-issues.json` before rendering this summary. Do NOT create todos automatically or enter an interactive loop here. If no discovered issues: omit the section entirely. After displaying discovered issues, STOP. Do not take further action.
 
 Run `bash "${VBW_PLUGIN_ROOT}/scripts/suggest-next.sh" execute {qa-result}` and display output.
 

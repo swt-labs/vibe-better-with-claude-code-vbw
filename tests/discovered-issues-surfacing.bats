@@ -393,12 +393,12 @@ load test_helper
   grep -q '⚠' "$PROJECT_ROOT/commands/qa.md"
 }
 
-@test "qa command discovered issues suggests /vbw:todo" {
-  grep -q '/vbw:todo' "$PROJECT_ROOT/commands/qa.md"
+@test "qa command discovered issues reference known-issues registry" {
+  grep -q 'known-issues.json' "$PROJECT_ROOT/commands/qa.md"
 }
 
-@test "qa command discovered issues is display-only" {
-  grep -q 'display-only' "$PROJECT_ROOT/commands/qa.md"
+@test "qa command syncs known issues after verification" {
+  grep -q 'track-known-issues.sh' "$PROJECT_ROOT/commands/qa.md"
 }
 
 @test "qa command spawn prompt reinforces pre-existing reporting" {
@@ -422,7 +422,15 @@ load test_helper
 # =============================================================================
 
 @test "execute-protocol discovered issues has de-duplication instruction" {
-  sed -n '/Discovered Issues/,/display-only/p' "$PROJECT_ROOT/references/execute-protocol.md" | grep -qi 'de-duplicate'
+  sed -n '/Discovered Issues/,/known-issues.json/p' "$PROJECT_ROOT/references/execute-protocol.md" | grep -qi 'de-duplicate'
+}
+
+@test "execute-protocol persists known issues before QA" {
+  grep -q 'sync-summaries' "$PROJECT_ROOT/references/execute-protocol.md"
+}
+
+@test "execute-protocol syncs known issues from verification artifacts" {
+  grep -q 'sync-verification' "$PROJECT_ROOT/references/execute-protocol.md"
 }
 
 # =============================================================================
@@ -453,6 +461,14 @@ load test_helper
   grep -q 'D{NN}' "$PROJECT_ROOT/commands/verify.md"
 }
 
+@test "vibe command references known-issues sync during QA" {
+  grep -q 'track-known-issues.sh' "$PROJECT_ROOT/commands/vibe.md"
+}
+
+@test "verify command skip-qa still blocks on unresolved known issues" {
+  grep -q 'still has unresolved tracked known issues' "$PROJECT_ROOT/commands/verify.md"
+}
+
 # =============================================================================
 # Consistency: all discovered issues blocks use the same format
 # =============================================================================
@@ -463,8 +479,9 @@ load test_helper
 
 @test "all discovered issues sections use display-only constraint" {
   local failed=""
-  # verify.md is excluded — its discovered issues flow into remediation via UAT.md, not display-only
-  for file in commands/fix.md commands/debug.md commands/qa.md references/execute-protocol.md; do
+  # verify.md is excluded — its discovered issues flow into remediation via UAT.md.
+  # qa.md and execute-protocol now sync to known-issues.json, so only fix/debug remain display-only.
+  for file in commands/fix.md commands/debug.md; do
     if grep -q 'Discovered Issues' "$PROJECT_ROOT/$file"; then
       if ! grep -q 'display-only' "$PROJECT_ROOT/$file"; then
         failed="${failed} ${file}"
@@ -476,8 +493,9 @@ load test_helper
 
 @test "all discovered issues sections suggest /vbw:todo" {
   local failed=""
-  # verify.md is excluded — its discovered issues flow into remediation via UAT.md
-  for file in commands/fix.md commands/debug.md commands/qa.md references/execute-protocol.md; do
+  # verify.md is excluded — its discovered issues flow into remediation via UAT.md.
+  # qa.md and execute-protocol now persist to known-issues.json instead of suggesting manual tracking.
+  for file in commands/fix.md commands/debug.md; do
     if grep -q 'Discovered Issues' "$PROJECT_ROOT/$file"; then
       if ! grep -q '/vbw:todo' "$PROJECT_ROOT/$file"; then
         failed="${failed} ${file}"
@@ -501,7 +519,8 @@ load test_helper
 
 @test "all discovered issues sections specify testName format" {
   local failed=""
-  # verify.md is excluded — uses D{NN} format for UAT remediation, not testName format
+  # verify.md is excluded — uses D{NN} format for UAT remediation, not testName format.
+  # qa.md and execute-protocol still display testName bullets even though they now sync to known-issues.json.
   for file in commands/fix.md commands/debug.md commands/qa.md references/execute-protocol.md; do
     if grep -q 'Discovered Issues' "$PROJECT_ROOT/$file"; then
       if ! grep -q 'testName.*path/to/file.*error' "$PROJECT_ROOT/$file"; then

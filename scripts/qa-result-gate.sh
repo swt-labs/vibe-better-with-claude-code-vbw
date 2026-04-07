@@ -15,6 +15,7 @@ set -euo pipefail
 #   qa_gate_result=<value>           — result field from frontmatter (or "missing"/"unreadable")
 #   qa_gate_fail_count=<N>           — count of FAIL rows in body
 #   qa_gate_deviation_count=<N>      — count of non-placeholder deviations across SUMMARY.md files
+#   qa_gate_known_issue_count=<N>    — unresolved phase known issues tracked on disk
 #   qa_gate_plan_count=<N>           — count of *-PLAN.md files in phase dir
 #   qa_gate_plans_verified_count=<N> — count of plans_verified entries in VERIFICATION.md frontmatter
 #   qa_gate_routing=<DIRECTIVE>      — the routing decision
@@ -22,6 +23,7 @@ set -euo pipefail
 # Optional override diagnostics (only present when an override fires):
 #   qa_gate_deviation_override=true  — PASS overridden because deviations exist but no FAIL checks
 #   qa_gate_metadata_only_override=true — PASS overridden because remediation round changed only metadata
+#   qa_gate_known_issues_override=true — PASS overridden because unresolved known issues remain
 #   qa_gate_phase_deviation_count=<N> — deviations in phase-root SUMMARYs (metadata-only override)
 #   qa_gate_plan_coverage=N/M        — plans verified vs plans expected
 #
@@ -976,6 +978,15 @@ if [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]; then
 fi
 
 GIT_ROOT=$(git -C "$PHASE_DIR" rev-parse --show-toplevel 2>/dev/null || true)
+KNOWN_ISSUES_STATUS="missing"
+KNOWN_ISSUES_COUNT=0
+if [ -f "$SCRIPT_DIR/track-known-issues.sh" ]; then
+  _known_issues_meta=$(bash "$SCRIPT_DIR/track-known-issues.sh" status "$PHASE_DIR" 2>/dev/null || true)
+  KNOWN_ISSUES_STATUS=$(printf '%s\n' "${_known_issues_meta:-}" | awk -F= '/^known_issues_status=/{print $2; exit}')
+  KNOWN_ISSUES_COUNT=$(printf '%s\n' "${_known_issues_meta:-}" | awk -F= '/^known_issues_count=/{print $2; exit}')
+fi
+KNOWN_ISSUES_STATUS="${KNOWN_ISSUES_STATUS:-missing}"
+KNOWN_ISSUES_COUNT="${KNOWN_ISSUES_COUNT:-0}"
 
 # Count non-placeholder deviations across SUMMARY.md files in a given directory.
 # Uses the same AWK extraction logic as execute-protocol.md Step 4.
@@ -1036,6 +1047,7 @@ if [ ! -f "$VERIF_PATH" ]; then
   echo "qa_gate_result=missing"
   echo "qa_gate_fail_count=0"
   echo "qa_gate_deviation_count=0"
+  echo "qa_gate_known_issue_count=0"
   echo "qa_gate_plan_count=0"
   echo "qa_gate_plans_verified_count=0"
   echo "qa_gate_routing=QA_RERUN_REQUIRED"
@@ -1048,6 +1060,7 @@ if [ ! -r "$VERIF_PATH" ]; then
   echo "qa_gate_result=unreadable"
   echo "qa_gate_fail_count=0"
   echo "qa_gate_deviation_count=0"
+  echo "qa_gate_known_issue_count=0"
   echo "qa_gate_plan_count=0"
   echo "qa_gate_plans_verified_count=0"
   echo "qa_gate_routing=QA_RERUN_REQUIRED"
@@ -1275,6 +1288,7 @@ echo "qa_gate_writer=${WRITER:-missing}"
 echo "qa_gate_result=${RESULT:-missing}"
 echo "qa_gate_fail_count=$FAIL_COUNT"
 echo "qa_gate_deviation_count=$DEVIATION_COUNT"
+echo "qa_gate_known_issue_count=$KNOWN_ISSUES_COUNT"
 echo "qa_gate_plan_count=$PLAN_COUNT"
 echo "qa_gate_plans_verified_count=$PLANS_VERIFIED_COUNT"
 
@@ -1369,6 +1383,9 @@ case "$RESULT" in
       # 5b. PASS but incomplete plan coverage → QA skipped some plans
       echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
       echo "qa_gate_routing=QA_RERUN_REQUIRED"
+    elif [ "$KNOWN_ISSUES_STATUS" = "present" ] && [ "$KNOWN_ISSUES_COUNT" -gt 0 ] 2>/dev/null; then
+      echo "qa_gate_known_issues_override=true"
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
     else
       # 5. Clean PASS
       echo "qa_gate_routing=PROCEED_TO_UAT"

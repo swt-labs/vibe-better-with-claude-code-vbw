@@ -2916,3 +2916,75 @@ EOF
   [[ "$output" != *"=== PLAN R01: Previous round fix ==="* ]]
   [[ "$output" == *"status: no_summary"* ]]
 }
+
+@test "compile-verify-context: emits KNOWN ISSUES block from phase registry" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Plan with known issues
+must_haves:
+  - Something
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature work
+EOF
+  cat > "$PHASE_DIR/known-issues.json" <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "03",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "03-01-SUMMARY.md",
+      "last_seen_in": "03-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== KNOWN ISSUES ==="* ]]
+  [[ "$output" == *"known_issue_count=1"* ]]
+  [[ "$output" == *"KNOWN_ISSUE: test=FIGIRegistryServiceTests | file=Tests/FIGIRegistryServiceTests.swift | error=compositeFigi missing"* ]]
+}
+
+@test "compile-verify-context: malformed known-issues registry is surfaced" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Plan with malformed registry
+must_haves:
+  - Something
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature work
+EOF
+  printf '%s\n' '{broken-json' > "$PHASE_DIR/known-issues.json"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== KNOWN ISSUES ==="* ]]
+  [[ "$output" == *"known_issues_error=malformed"* ]]
+}

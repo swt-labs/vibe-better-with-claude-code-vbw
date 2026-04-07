@@ -7,6 +7,16 @@ Authoritative spec for VBW's verification pipeline. QA agent persists results to
 - **Post-build:** Auto after `/vbw:vibe` execute mode (unless `--skip-qa` or turbo)
 - **Standalone:** `/vbw:qa <phase>`
 
+## 1.5 Known-Issues Lifecycle (VRFY-KI)
+
+- The phase-scoped registry is `{phase-dir}/known-issues.json`.
+- Dev/execute-discovered pre-existing issues are persisted there during normal phase execution.
+- QA still writes `VERIFICATION.md` first. Only **after** `write-verification.sh` succeeds should the orchestrator sync `pre_existing_issues` from that artifact into the registry.
+- Phase-level `VERIFICATION.md` merges new known issues into the registry without clearing execution-time issues.
+- Round-scoped remediation verification (`R{RR}-VERIFICATION.md`) is authoritative for unresolved known issues and may prune or clear the registry.
+- Known issues do **not** directly change QA PASS/FAIL/PARTIAL verdict semantics; they change lifecycle routing through `qa-result-gate.sh`.
+- UAT must not proceed while unresolved entries remain in `{phase-dir}/known-issues.json`.
+
 ## 2. Three-Tier Verification (VRFY-01)
 
 ### Quick (5-10 checks)

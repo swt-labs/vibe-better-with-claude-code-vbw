@@ -552,6 +552,35 @@ while IFS= read -r plan_file; do
   echo ""
 done <<< "$ALL_PLAN_FILES"
 
+# --- Known Issues (phase-scoped machine state for QA remediation/UAT gating) ---
+_cvc_known_issues_path="$PHASE_DIR/known-issues.json"
+if [ -f "$_cvc_known_issues_path" ]; then
+  if jq -e '.issues | type == "array"' "$_cvc_known_issues_path" >/dev/null 2>&1; then
+    _cvc_known_issue_count=$(jq '.issues | length' "$_cvc_known_issues_path" 2>/dev/null || echo 0)
+    if [ "${_cvc_known_issue_count:-0}" -gt 0 ] 2>/dev/null; then
+      echo "=== KNOWN ISSUES ==="
+      echo "known_issues_path=$(basename "$_cvc_known_issues_path")"
+      echo "known_issue_count=${_cvc_known_issue_count}"
+      jq -r '
+        .issues[]
+        | "KNOWN_ISSUE: test=" + (.test // "-")
+          + " | file=" + (.file // "-")
+          + " | error=" + (.error // "-")
+          + " | first_seen_in=" + (.first_seen_in // "-")
+          + " | last_seen_in=" + (.last_seen_in // "-")
+          + " | times_seen=" + ((.times_seen // 1) | tostring)
+          + " | first_seen_round=" + ((.first_seen_round // 0) | tostring)
+          + " | last_seen_round=" + ((.last_seen_round // 0) | tostring)
+      ' "$_cvc_known_issues_path" 2>/dev/null || true
+      echo ""
+    fi
+  else
+    echo "=== KNOWN ISSUES ==="
+    echo "known_issues_error=malformed"
+    echo ""
+  fi
+fi
+
 # --- Verification History (compound for QA remediation rounds) ---
 # Extracts FAIL rows from phase-level and per-round VERIFICATION.md files
 # so each QA round has full visibility into what was originally broken

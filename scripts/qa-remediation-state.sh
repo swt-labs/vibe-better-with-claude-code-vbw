@@ -44,6 +44,37 @@ STATE_FILE="$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 # QA remediation stages: plan → execute → verify → done
 STAGES=("plan" "execute" "verify" "done")
 
+count_fail_rows_in_verification() {
+  local file_path="${1:-}"
+  [ -f "$file_path" ] || { echo 0; return; }
+  awk -F'|' '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    !/^\|/ { header_found = 0; next }
+    /^\|/ {
+      if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
+      if (!header_found) {
+        status_col = 0
+        for (i = 2; i < NF; i++) {
+          cell = trim($i)
+          if (cell == "Status") status_col = i
+        }
+        if (status_col > 0) header_found = 1
+        next
+      }
+      if (status_col > 0) {
+        status = trim($(status_col))
+        gsub(/\*+/, "", status)
+        status = trim(status)
+        if (status == "FAIL") count++
+      }
+    }
+    END { print count + 0 }
+  ' "$file_path" 2>/dev/null
+}
+
 get_stage() {
   if [ -f "$STATE_FILE" ]; then
     local _val
@@ -170,6 +201,8 @@ start_new_round() {
 
 emit_metadata() {
   local round round_dir source_verification_path round_started_at_commit
+  local source_fail_count known_issues_path known_issues_status known_issues_count
+  local known_issues_meta input_mode
   round=$(canonicalize_round "$(get_round)")
   round_dir="$PHASE_DIR/remediation/qa/round-${round}"
   round_started_at_commit=$(get_round_started_at_commit)
@@ -177,10 +210,39 @@ emit_metadata() {
   if [ -n "$source_verification_path" ] && [ ! -f "$source_verification_path" ]; then
     source_verification_path=""
   fi
+  source_fail_count=0
+  if [ -n "$source_verification_path" ] && [ -f "$source_verification_path" ]; then
+    source_fail_count=$(count_fail_rows_in_verification "$source_verification_path")
+  fi
+  known_issues_path="$PHASE_DIR/known-issues.json"
+  known_issues_status="missing"
+  known_issues_count=0
+  if [ -f "$SCRIPT_DIR/track-known-issues.sh" ]; then
+    known_issues_meta=$(bash "$SCRIPT_DIR/track-known-issues.sh" status "$PHASE_DIR" 2>/dev/null || true)
+    known_issues_path=$(printf '%s\n' "$known_issues_meta" | awk -F= '/^known_issues_path=/{print $2; exit}')
+    known_issues_status=$(printf '%s\n' "$known_issues_meta" | awk -F= '/^known_issues_status=/{print $2; exit}')
+    known_issues_count=$(printf '%s\n' "$known_issues_meta" | awk -F= '/^known_issues_count=/{print $2; exit}')
+  fi
+  known_issues_path="${known_issues_path:-$PHASE_DIR/known-issues.json}"
+  known_issues_status="${known_issues_status:-missing}"
+  known_issues_count="${known_issues_count:-0}"
+  input_mode="none"
+  if [ "${source_fail_count:-0}" -gt 0 ] 2>/dev/null && [ "${known_issues_count:-0}" -gt 0 ] 2>/dev/null; then
+    input_mode="both"
+  elif [ "${source_fail_count:-0}" -gt 0 ] 2>/dev/null; then
+    input_mode="verification"
+  elif [ "${known_issues_count:-0}" -gt 0 ] 2>/dev/null; then
+    input_mode="known-issues"
+  fi
   echo "round=${round}"
   echo "round_dir=${round_dir}"
   echo "round_started_at_commit=${round_started_at_commit}"
   echo "source_verification_path=${source_verification_path}"
+  echo "source_fail_count=${source_fail_count}"
+  echo "known_issues_path=${known_issues_path}"
+  echo "known_issues_status=${known_issues_status}"
+  echo "known_issues_count=${known_issues_count}"
+  echo "input_mode=${input_mode}"
   echo "plan_path=${round_dir}/R${round}-PLAN.md"
   echo "summary_path=${round_dir}/R${round}-SUMMARY.md"
   echo "verification_path=${round_dir}/R${round}-VERIFICATION.md"
