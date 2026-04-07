@@ -413,6 +413,14 @@ load test_helper
   grep -q 'track-known-issues.sh' "$PROJECT_ROOT/commands/qa.md"
 }
 
+@test "qa command full-scope prompt injects authoritative known-issues registry" {
+  sed -n '/Otherwise, verify full phase scope/,/Phase success criteria/p' "$PROJECT_ROOT/commands/qa.md" | grep -q 'known-issues.json'
+}
+
+@test "qa command phase-level remediation-required suppresses verified presentation" {
+  sed -n '/Follow `QA_GATE_ROUTING` literally:/,/QA_RERUN_REQUIRED/p' "$PROJECT_ROOT/commands/qa.md" | grep -q 'Do \*\*not\*\* continue to the generic verified presentation'
+}
+
 @test "qa command spawn prompt reinforces pre-existing reporting" {
   sed -n '/Spawn QA/,/QA agent reads/p' "$PROJECT_ROOT/commands/qa.md" | grep -qi 'pre-existing'
 }
