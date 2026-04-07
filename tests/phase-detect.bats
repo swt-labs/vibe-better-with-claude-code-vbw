@@ -1558,6 +1558,37 @@ EOF
   echo "$output" | grep -q "qa_status=failed"
 }
 
+@test "phase-detect restores missing known-issues registry from existing verification before computing qa_status" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  cat > .vbw-planning/phases/01-test/01-VERIFICATION.md <<'EOF'
+---
+result: PASS
+writer: write-verification.sh
+plans_verified:
+  - 01
+EOF
+  printf '%s\n' "verified_at_commit: ${current_commit}" >> .vbw-planning/phases/01-test/01-VERIFICATION.md
+  cat >> .vbw-planning/phases/01-test/01-VERIFICATION.md <<'EOF'
+---
+
+## Pre-existing Issues
+
+| Test | File | Error |
+|------|------|-------|
+| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+
+  [ "$status" -eq 0 ]
+  [ -f .vbw-planning/phases/01-test/known-issues.json ]
+  echo "$output" | grep -q "qa_status=failed"
+}
+
 @test "qa_status is passed when brownfield plain VERIFICATION.md has PASS result" {
   mkdir -p .vbw-planning/phases/01-test
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md

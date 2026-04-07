@@ -63,6 +63,23 @@ qa_gate_routing_for_phase() {
   bash "$_SCRIPT_DIR_PD/qa-result-gate.sh" "$phase_dir" 2>/dev/null | awk -F= '/^qa_gate_routing=/{print $2; exit}'
 }
 
+restore_known_issues_from_verification_if_needed() {
+  local phase_dir="$1"
+  local verification_file="$2"
+  local known_meta known_status
+  [ -n "$phase_dir" ] || return 0
+  [ -f "$verification_file" ] || return 0
+  [ -f "$_SCRIPT_DIR_PD/track-known-issues.sh" ] || return 0
+
+  known_meta=$(bash "$_SCRIPT_DIR_PD/track-known-issues.sh" status "$phase_dir" 2>/dev/null || true)
+  known_status=$(printf '%s\n' "$known_meta" | awk -F= '/^known_issues_status=/{print $2; exit}')
+  case "${known_status:-missing}" in
+    missing|malformed)
+      bash "$_SCRIPT_DIR_PD/track-known-issues.sh" sync-verification "$phase_dir" "$verification_file" >/dev/null 2>&1 || true
+      ;;
+  esac
+}
+
 # --- jq availability ---
 JQ_AVAILABLE=false
 if command -v jq &>/dev/null; then
@@ -578,6 +595,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
       _uv_verif=""
     fi
+    if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+      restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
+    fi
 
     _uv_uat=$(current_uat "$_uv_dir")
     _uv_is_unverified=false
@@ -605,6 +625,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
           _uv_verif=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" current "$_uv_dir" 2>/dev/null || true)
           if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
             _uv_verif=""
+          fi
+          if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+            restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
           fi
           # Cross-validate: ensure VERIFICATION.md also shows PASS
           if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then

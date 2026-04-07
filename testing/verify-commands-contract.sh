@@ -295,6 +295,12 @@ else
   fail "verify: missing malformed known-issues fail-closed guard in skip-qa path"
 fi
 
+if grep -q 'sync-verification "\$PDIR" "\$VERIF_FILE"' "$VERIFY_FILE"; then
+  pass "verify: restores known-issues registry from existing verification artifacts before gating"
+else
+  fail "verify: missing known-issues restore from existing verification artifact"
+fi
+
 if grep -q 'qa-remediation-state\.sh advance' "$QA_FILE"; then
   pass "qa: round-scoped PROCEED_TO_UAT persists remediation advance"
 else

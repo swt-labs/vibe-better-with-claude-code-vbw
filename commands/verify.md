@@ -278,6 +278,14 @@ QA verification summary (pre-extracted from VERIFICATION.md):
     This requires the remediated round VERIFICATION.md. The phase-level VERIFICATION.md stays frozen and must not be reused once QA remediation reaches `done`.
   - If `QA_REM_FILE` exists but `QA_REM_STAGE=none` after normalization, treat it as corrupt/stale and continue using the resolved `VERIF_FILE` above.
   - If no VERIFICATION.md and no `--skip-qa`: STOP "Phase {NN} has no QA verification. Run `/vbw:vibe` to execute QA first, or use `/vbw:verify --skip-qa` to bypass."
+  - If `VERIF_FILE` exists but `known-issues.json` is missing or malformed, restore the authoritative registry before trusting QA/UAT state:
+    ```bash
+    KNOWN_ISSUES_META=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/track-known-issues.sh status "$PDIR" 2>/dev/null || true)
+    KNOWN_ISSUES_STATUS=$(printf '%s\n' "$KNOWN_ISSUES_META" | awk -F= '/^known_issues_status=/{print $2; exit}')
+    if [ -n "$VERIF_FILE" ] && { [ "$KNOWN_ISSUES_STATUS" = "missing" ] || [ "$KNOWN_ISSUES_STATUS" = "malformed" ]; }; then
+      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/track-known-issues.sh sync-verification "$PDIR" "$VERIF_FILE" 2>/dev/null || true
+    fi
+    ```
   - Before trusting any PASS artifact, re-run the deterministic QA gate for the target phase:
     ```bash
     QA_GATE_ROUTING=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/qa-result-gate.sh "$PDIR" 2>/dev/null | awk -F= '/^qa_gate_routing=/{print $2; exit}')
