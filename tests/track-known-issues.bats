@@ -265,6 +265,27 @@ write_state_md_with_todos() {
   } > "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
+write_legacy_state_md_with_todos() {
+  local content="${1:-None.}"
+  {
+    echo '# Project State'
+    echo ''
+    echo '## Decisions'
+    echo 'None.'
+    echo ''
+    echo '## Todos'
+    echo ''
+    echo '### Pending Todos'
+    echo "$content"
+    echo ''
+    echo '### Completed Todos'
+    echo 'None.'
+    echo ''
+    echo '## Blockers'
+    echo 'None.'
+  } > "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
 write_known_issues_registry() {
   local phase_num="$1"
   shift
@@ -351,4 +372,36 @@ write_known_issues_registry() {
   # Both new entries present
   grep -q "TestA" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "TestB" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos works with legacy Pending Todos layout" {
+  write_legacy_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  ! grep -q "^None\.$" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "\[KNOWN-ISSUE\] TestCrash (CrashTests.swift)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Legacy section structure preserved
+  grep -q "### Pending Todos" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "### Completed Todos" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos dedup uses exact key not substring" {
+  # testFoo exists but we're promoting testFooBar — must NOT be suppressed
+  write_state_md_with_todos "- [KNOWN-ISSUE] testFoo (path/a.swift): err (phase 03, seen 1x) (added 2025-01-01)"
+  write_known_issues_registry "03" \
+    '{"test":"testFooBar","file":"path/a.swift","error":"different err","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  [[ "$output" == *"already_tracked_count=0"* ]]
+  # Both entries present
+  grep -q "testFoo " "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "testFooBar" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }

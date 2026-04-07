@@ -575,9 +575,29 @@ promote_todos() {
   local state_content
   state_content=$(cat "$state_path")
 
-  # Extract the ## Todos section (or ## Todo) lines for dedup checking
-  local todos_section
-  todos_section=$(printf '%s\n' "$state_content" | sed -n '/^## Todo/,/^## /{ /^## Todo/d; /^## [^T]/d; p; }')
+  # Extract the todos section for dedup checking — two-pass approach mirroring list-todos.sh
+  local todos_section todo_anchor
+  # Pass 1: flat items directly under ## Todos (not inside ### subsections)
+  todos_section=$(printf '%s\n' "$state_content" | awk '
+    /^## Todos?$/ { found=1; next }
+    found && /^##/ { exit }
+    found && /^### / { sub_found=1; next }
+    found && sub_found && /^##/ { exit }
+    found && !sub_found && /^- / { print }
+  ')
+  todo_anchor="## Todos"
+
+  if [ -z "$todos_section" ]; then
+    # Pass 2: legacy ### Pending Todos subsection (pre-migration STATE.md)
+    todos_section=$(printf '%s\n' "$state_content" | awk '
+      /^### Pending Todos$/ { found=1; next }
+      found && /^##/ { exit }
+      found && /^- / { print }
+    ')
+    if [ -n "$todos_section" ]; then
+      todo_anchor="### Pending Todos"
+    fi
+  fi
 
   local phase_num
   phase_num=$(phase_number)
@@ -603,12 +623,11 @@ promote_todos() {
       error_msg="${error_msg:0:77}..."
     fi
 
-    # Check if already tracked: line contains both test name and file path
+    # Dedup by exact structured key matching the generated line format
     local is_dup=false
-    if printf '%s' "$todos_section" | grep -qF "$test_name"; then
-      if printf '%s' "$todos_section" | grep -F "$test_name" | grep -qF "$file_path"; then
-        is_dup=true
-      fi
+    local dedup_key="[KNOWN-ISSUE] ${test_name} (${file_path}):"
+    if printf '%s' "$todos_section" | grep -qF "$dedup_key"; then
+      is_dup=true
     fi
 
     if [ "$is_dup" = true ]; then
@@ -637,19 +656,23 @@ promote_todos() {
   tmp_file=$(mktemp "${state_path}.tmp.XXXXXX")
 
   # Replace "None." placeholder in Todos section, or append to existing todos
+  # Build awk anchor pattern from todo_anchor (escaping for regex)
+  local awk_anchor
+  awk_anchor=$(printf '%s' "$todo_anchor" | sed 's/[.[\*^$()+?{|]/\\&/g')
+
   if printf '%s' "$todos_section" | grep -qE '^\s*None\.?\s*$'; then
     # Replace the placeholder with new entries
-    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" awk '
-      /^## Todo/ { in_todos=1; print; next }
-      in_todos && /^## / { in_todos=0; print; next }
+    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" awk '
+      $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
+      in_todos && /^##/ { in_todos=0; print; next }
       in_todos && /^[[:space:]]*None\.?[[:space:]]*$/ { print ENVIRON["ENTRIES"]; in_todos=0; next }
       { print }
     ' > "$tmp_file"
   else
-    # Append new entries before the next ## section after ## Todos
-    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" awk '
-      /^## Todo/ { in_todos=1; print; next }
-      in_todos && /^## / { print ENVIRON["ENTRIES"]; print ""; in_todos=0; print; next }
+    # Append new entries before the next section heading after the anchor
+    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" awk '
+      $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
+      in_todos && /^##/ { print ENVIRON["ENTRIES"]; print ""; in_todos=0; print; next }
       { print }
       END { if (in_todos) { print ENVIRON["ENTRIES"] } }
     ' > "$tmp_file"
