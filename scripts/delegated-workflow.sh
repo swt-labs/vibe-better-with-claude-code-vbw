@@ -1,17 +1,19 @@
 #!/bin/bash
 set -u
-# delegated-workflow.sh — Manage delegated workflow markers for ad-hoc paths
+# delegated-workflow.sh — Manage delegated workflow markers for delegated paths
 #
-# Sets/clears/checks .vbw-planning/.delegated-workflow.json so the file-guard
-# PreToolUse hook can enforce delegation for /vbw:fix and /vbw:debug.
+# Sets/clears/checks .vbw-planning/.delegated-workflow.json so runtime guards
+# can enforce actual delegation semantics for execute/fix/debug flows.
 #
 # Usage:
-#   delegated-workflow.sh set <mode> [effort]
+#   delegated-workflow.sh set <mode> [effort] [delegation_mode] [team_name]
 #   delegated-workflow.sh clear
 #   delegated-workflow.sh check
 #
 # Actions:
-#   set   — Write marker with mode (fix|debug) and optional effort (default: balanced)
+#   set   — Write marker with mode (execute|fix|debug), optional effort
+#           (default: balanced), optional delegation_mode
+#           (team|subagent|direct), and optional team_name
 #   clear — Remove marker file
 #   check — Exit 0 if active, 1 if not active
 #
@@ -23,11 +25,13 @@ MARKER_FILE="$PLANNING_DIR/.delegated-workflow.json"
 ACTION="${1:-}"
 MODE="${2:-}"
 EFFORT="${3:-balanced}"
+DELEGATION_MODE="${4:-}"
+TEAM_NAME="${5:-}"
 
 case "$ACTION" in
   set)
     if [ -z "$MODE" ]; then
-      echo "Usage: delegated-workflow.sh set <mode> [effort]" >&2
+      echo "Usage: delegated-workflow.sh set <mode> [effort] [delegation_mode] [team_name]" >&2
       exit 1
     fi
     [ -d "$PLANNING_DIR" ] || { echo "No .vbw-planning/ directory" >&2; exit 1; }
@@ -36,12 +40,21 @@ case "$ACTION" in
       jq -n \
         --arg mode "$MODE" \
         --arg effort "$EFFORT" \
+        --arg delegation_mode "$DELEGATION_MODE" \
+        --arg team_name "$TEAM_NAME" \
         --arg started_at "$STARTED_AT" \
-        '{mode: $mode, active: true, effort: $effort, started_at: $started_at}' \
+        '{
+          mode: $mode,
+          active: true,
+          effort: $effort,
+          delegation_mode: $delegation_mode,
+          team_name: $team_name,
+          started_at: $started_at
+        }' \
         > "$MARKER_FILE" 2>/dev/null
     else
-      printf '{"mode":"%s","active":true,"effort":"%s","started_at":"%s"}\n' \
-        "$MODE" "$EFFORT" "$STARTED_AT" > "$MARKER_FILE" 2>/dev/null
+      printf '{"mode":"%s","active":true,"effort":"%s","delegation_mode":"%s","team_name":"%s","started_at":"%s"}\n' \
+        "$MODE" "$EFFORT" "$DELEGATION_MODE" "$TEAM_NAME" "$STARTED_AT" > "$MARKER_FILE" 2>/dev/null
     fi
     ;;
   clear)

@@ -279,6 +279,22 @@ test_delegated_workflow_script() {
     fail "delegated-workflow.sh set: marker file not created"
   fi
 
+  # execute team marker with runtime delegation metadata
+  (cd "$tmpdir" && bash "$DELEG_SCRIPT" set execute balanced team vbw-phase-01)
+  if [ -f "$tmpdir/.vbw-planning/.delegated-workflow.json" ]; then
+    local execute_mode execute_delegation execute_team
+    execute_mode=$(jq -r '.mode' "$tmpdir/.vbw-planning/.delegated-workflow.json" 2>/dev/null)
+    execute_delegation=$(jq -r '.delegation_mode // ""' "$tmpdir/.vbw-planning/.delegated-workflow.json" 2>/dev/null)
+    execute_team=$(jq -r '.team_name // ""' "$tmpdir/.vbw-planning/.delegated-workflow.json" 2>/dev/null)
+    if [ "$execute_mode" = "execute" ] && [ "$execute_delegation" = "team" ] && [ "$execute_team" = "vbw-phase-01" ]; then
+      pass "delegated-workflow.sh set execute: records delegation_mode and team_name"
+    else
+      fail "delegated-workflow.sh set execute: unexpected marker contents (mode=$execute_mode delegation_mode=$execute_delegation team_name=$execute_team)"
+    fi
+  else
+    fail "delegated-workflow.sh set execute: marker file not created"
+  fi
+
   # check action (active)
   if (cd "$tmpdir" && bash "$DELEG_SCRIPT" check) >/dev/null 2>&1; then
     pass "delegated-workflow.sh check: returns 0 when active"
@@ -387,77 +403,78 @@ test_no_count_file_still_blocks() {
 }
 test_no_count_file_still_blocks
 
-# --- Test 17: Agent teams bypass — prefer_teams=always, active execution → allowed ---
-# Teammates are separate Claude Code sessions, not subagents. SubagentStart never
-# fires for them, so .active-agent-count is 0. The prefer_teams check bypasses the
-# guard when teams are configured (can't distinguish orchestrator from teammate).
-test_teams_always_bypasses_guard() {
+# --- Test 17: Execute team marker bypasses guard for teammate writes ---
+test_execute_team_marker_bypasses_guard() {
   setup_project
-  echo '{"effort":"balanced","prefer_teams":"always"}' > "$PROJECT/.vbw-planning/config.json"
   jq -n '{status:"running", phase:1, effort:"balanced", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
     > "$PROJECT/.vbw-planning/.execution-state.json"
+  jq -n '{mode:"execute", active:true, effort:"balanced", delegation_mode:"team", team_name:"vbw-phase-01", started_at:"2026-03-03T00:00:00Z"}' \
+    > "$PROJECT/.vbw-planning/.delegated-workflow.json"
 
-  # No .active-agent-count (SubagentStart doesn't fire for teammates)
   rm -f "$PROJECT/.vbw-planning/.active-agent-count" 2>/dev/null
 
   if run_guard "$PROJECT" "src/app.js" "" >/dev/null 2>&1; then
-    pass "prefer_teams=always, active execution, no agent count: allowed (teams bypass)"
+    pass "execute team marker, active execution, no agent count: allowed"
   else
-    fail "prefer_teams=always: unexpected block (exit $?)"
+    fail "execute team marker: unexpected block (exit $?)"
   fi
   cleanup
 }
-test_teams_always_bypasses_guard
+test_execute_team_marker_bypasses_guard
 
-# --- Test 18: Agent teams bypass — prefer_teams=auto, active execution → allowed ---
-test_teams_auto_bypasses_guard() {
+# --- Test 18: prefer_teams=always alone no longer bypasses guard ---
+test_prefer_teams_always_alone_does_not_bypass() {
   setup_project
-  echo '{"effort":"balanced","prefer_teams":"auto"}' > "$PROJECT/.vbw-planning/config.json"
-  jq -n '{status:"running", phase:1, effort:"balanced", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
-    > "$PROJECT/.vbw-planning/.execution-state.json"
-
-  if run_guard "$PROJECT" "src/app.js" "" >/dev/null 2>&1; then
-    pass "prefer_teams=auto, active execution: allowed (teams bypass)"
-  else
-    fail "prefer_teams=auto: unexpected block (exit $?)"
-  fi
-  cleanup
-}
-test_teams_auto_bypasses_guard
-
-# --- Test 19: Legacy prefer_teams=when_parallel normalizes to auto and still bypasses ---
-test_teams_legacy_when_parallel_bypasses_guard() {
-  setup_project
-  echo '{"effort":"balanced","prefer_teams":"when_parallel"}' > "$PROJECT/.vbw-planning/config.json"
-  jq -n '{status:"running", phase:1, effort:"balanced", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
-    > "$PROJECT/.vbw-planning/.execution-state.json"
-
-  if run_guard "$PROJECT" "src/app.js" "" >/dev/null 2>&1; then
-    pass "legacy prefer_teams=when_parallel, active execution: allowed (normalized teams bypass)"
-  else
-    fail "legacy prefer_teams=when_parallel: unexpected block (exit $?)"
-  fi
-  cleanup
-}
-test_teams_legacy_when_parallel_bypasses_guard
-
-# --- Test 20: Agent teams bypass NOT active — prefer_teams=never, active execution → blocked ---
-test_teams_never_does_not_bypass() {
-  setup_project
-  echo '{"effort":"balanced","prefer_teams":"never"}' > "$PROJECT/.vbw-planning/config.json"
+  echo '{"effort":"balanced","prefer_teams":"always"}' > "$PROJECT/.vbw-planning/config.json"
   jq -n '{status:"running", phase:1, effort:"balanced", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
     > "$PROJECT/.vbw-planning/.execution-state.json"
 
   local output
   output=$(run_guard "$PROJECT" "src/app.js" "" 2>&1) && local rc=$? || local rc=$?
   if [ "$rc" -eq 2 ]; then
-    pass "prefer_teams=never, active execution: blocked (no teams bypass)"
+    pass "prefer_teams=always without execute team marker: blocked"
   else
-    fail "prefer_teams=never: expected exit 2, got $rc"
+    fail "prefer_teams=always without execute team marker: expected exit 2, got $rc"
   fi
   cleanup
 }
-test_teams_never_does_not_bypass
+test_prefer_teams_always_alone_does_not_bypass
+
+# --- Test 19: prefer_teams=auto alone no longer bypasses guard ---
+test_prefer_teams_auto_alone_does_not_bypass() {
+  setup_project
+  echo '{"effort":"balanced","prefer_teams":"auto"}' > "$PROJECT/.vbw-planning/config.json"
+  jq -n '{status:"running", phase:1, effort:"balanced", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
+    > "$PROJECT/.vbw-planning/.execution-state.json"
+
+  local output
+  output=$(run_guard "$PROJECT" "src/app.js" "" 2>&1) && local rc=$? || local rc=$?
+  if [ "$rc" -eq 2 ]; then
+    pass "prefer_teams=auto without execute team marker: blocked"
+  else
+    fail "prefer_teams=auto without execute team marker: expected exit 2, got $rc"
+  fi
+  cleanup
+}
+test_prefer_teams_auto_alone_does_not_bypass
+
+# --- Test 20: Legacy when_parallel alias alone no longer bypasses guard ---
+test_prefer_teams_legacy_when_parallel_alone_does_not_bypass() {
+  setup_project
+  echo '{"effort":"balanced","prefer_teams":"when_parallel"}' > "$PROJECT/.vbw-planning/config.json"
+  jq -n '{status:"running", phase:1, effort:"balanced", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
+    > "$PROJECT/.vbw-planning/.execution-state.json"
+
+  local output
+  output=$(run_guard "$PROJECT" "src/app.js" "" 2>&1) && local rc=$? || local rc=$?
+  if [ "$rc" -eq 2 ]; then
+    pass "legacy prefer_teams=when_parallel without execute team marker: blocked"
+  else
+    fail "legacy prefer_teams=when_parallel without execute team marker: expected exit 2, got $rc"
+  fi
+  cleanup
+}
+test_prefer_teams_legacy_when_parallel_alone_does_not_bypass
 
 echo ""
 echo "==============================="
