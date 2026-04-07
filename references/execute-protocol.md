@@ -749,10 +749,6 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    - Run `compile-verify-context.sh --remediation-only {phase-dir}` to get compounded verification history plus the current round's plan/summary context only
    - Spawn QA agent as subagent — writes to `{verification_path}` (from `qa-remediation-state.sh` metadata)
      - Output path: `{round_dir}/R{RR}-VERIFICATION.md` — phase-level VERIFICATION.md stays frozen
-     - After sync-verification, auto-promote surviving known issues to `STATE.md ## Todos`:
-       ```bash
-       bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" promote-todos "{phase-dir}" 2>/dev/null || true
-       ```
      - After QA persists `{verification_path}`, immediately sync tracked known issues from that round artifact:
        ```bash
        bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-verification "{phase-dir}" "{verification_path}" 2>/dev/null || true
