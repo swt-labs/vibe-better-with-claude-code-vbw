@@ -1383,6 +1383,9 @@ case "$RESULT" in
       # 5b. PASS but incomplete plan coverage → QA skipped some plans
       echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
       echo "qa_gate_routing=QA_RERUN_REQUIRED"
+    elif [ "$KNOWN_ISSUES_STATUS" = "malformed" ]; then
+      echo "qa_gate_known_issues_override=true"
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$KNOWN_ISSUES_STATUS" = "present" ] && [ "$KNOWN_ISSUES_COUNT" -gt 0 ] 2>/dev/null; then
       echo "qa_gate_known_issues_override=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"

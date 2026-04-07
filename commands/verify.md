@@ -291,9 +291,10 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   - If `--skip-qa` flag is present: bypass QA execution and PASS freshness checks only. This does **not** bypass unresolved phase known issues. Before entering UAT, run:
     ```bash
     KNOWN_ISSUES_META=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/track-known-issues.sh status "$PDIR" 2>/dev/null || true)
+    KNOWN_ISSUES_STATUS=$(printf '%s\n' "$KNOWN_ISSUES_META" | awk -F= '/^known_issues_status=/{print $2; exit}')
     KNOWN_ISSUES_COUNT=$(printf '%s\n' "$KNOWN_ISSUES_META" | awk -F= '/^known_issues_count=/{print $2; exit}')
     ```
-    If `KNOWN_ISSUES_COUNT > 0`, STOP: "Phase {NN} still has unresolved tracked known issues. Run `/vbw:vibe` to continue QA remediation before UAT."
+    If `KNOWN_ISSUES_STATUS=malformed` or `KNOWN_ISSUES_COUNT > 0`, STOP: "Phase {NN} still has unresolved or unreadable tracked known issues. Run `/vbw:vibe` to continue QA remediation before UAT."
 
 ## Steps
 

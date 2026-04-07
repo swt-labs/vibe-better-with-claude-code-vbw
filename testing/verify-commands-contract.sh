@@ -286,6 +286,14 @@ else
   fail "verify: missing deterministic qa-result-gate enforcement before UAT"
 fi
 
+if grep -q 'KNOWN_ISSUES_STATUS=' "$VERIFY_FILE" \
+  && grep -q 'KNOWN_ISSUES_STATUS=malformed' "$VERIFY_FILE" \
+  && grep -q 'unresolved or unreadable tracked known issues' "$VERIFY_FILE"; then
+  pass "verify: skip-qa guard blocks malformed known-issues registries"
+else
+  fail "verify: missing malformed known-issues fail-closed guard in skip-qa path"
+fi
+
 if grep -q 'echo "verify_context=unavailable"' "$VIBE_FILE"; then
   pass "vibe: routed verify precompute emits fail-closed verify_context sentinel"
 else
