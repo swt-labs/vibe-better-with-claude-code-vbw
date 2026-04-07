@@ -17,6 +17,44 @@ write_summary_with_preexisting() {
   local file_name="$1"
   local plan_id="$2"
   local issues="$3"
+  local issue test file error issue_json
+  {
+    echo '---'
+    echo "phase: 03"
+    echo "plan: ${plan_id}"
+    echo 'status: complete'
+    if [ -n "$issues" ]; then
+      echo 'pre_existing_issues:'
+      while IFS= read -r issue; do
+        [ -n "$issue" ] || continue
+        if [[ "$issue" =~ ^(.+)[[:space:]]+\(([^()]+)\):[[:space:]]*(.+)$ ]]; then
+          test="${BASH_REMATCH[1]}"
+          file="${BASH_REMATCH[2]}"
+          error="${BASH_REMATCH[3]}"
+        elif [[ "$issue" =~ ^([^:]+):[[:space:]]*(.+)$ ]]; then
+          test="${BASH_REMATCH[1]}"
+          file="$test"
+          error="${BASH_REMATCH[2]}"
+        else
+          continue
+        fi
+        issue_json=$(jq -cn --arg test "$test" --arg file "$file" --arg error "$error" '{test:$test,file:$file,error:$error}')
+        printf "%s\n" "  - '$issue_json'"
+      done <<< "$issues"
+    else
+      echo 'pre_existing_issues: []'
+    fi
+    echo '---'
+    echo
+    echo '## What Was Built'
+    echo '- Something useful'
+  } > "$PHASE_DIR/$file_name"
+}
+
+write_legacy_summary_with_preexisting() {
+  local file_name="$1"
+  local plan_id="$2"
+  local issues="$3"
   {
     echo '---'
     echo "phase: 03"
@@ -145,4 +183,16 @@ write_verification_with_issues() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"known_issues_status=malformed"* ]]
   [[ "$output" == *"known_issues_count=0"* ]]
+}
+
+@test "track-known-issues: sync-summaries still supports legacy body sections" {
+  write_legacy_summary_with_preexisting "03-01-SUMMARY.md" "03-01" 'LegacyIssueTests.swift: legacy fallback still works'
+
+  run bash "$SCRIPT" sync-summaries "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_count=1"* ]]
+  run jq -r '.issues[0].test' "$PHASE_DIR/known-issues.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "LegacyIssueTests.swift" ]
 }

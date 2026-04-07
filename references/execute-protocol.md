@@ -515,14 +515,70 @@ for summary_file in {phase-dir}/*-SUMMARY.md; do
     ' "$summary_file" 2>/dev/null)
   fi
 
-  # Extract pre-existing issues from body
+  # Extract pre-existing issues from canonical SUMMARY.md frontmatter first.
   preex=$(awk '
-    /^## Pre-existing Issues/ { found=1; next }
-    found && /^## / { exit }
-    found && /^[[:space:]]*$/ { next }
-    found && /^- / { line=$0; sub(/^- /, "", line); items = items (items ? "; " : "") line }
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    function strip_quotes(v, first, last) {
+      first = substr(v, 1, 1)
+      last = substr(v, length(v), 1)
+      if ((first == "\"" && last == "\"") || (first == squote && last == squote)) {
+        return substr(v, 2, length(v) - 2)
+      }
+      return v
+    }
+    function emit_value(v) {
+      v = trim(v)
+      if (v == "") return
+      v = strip_quotes(v)
+      if (v != "") print v
+    }
+    BEGIN { in_fm=0; in_arr=0; squote=sprintf("%c", 39) }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^pre_existing_issues:[[:space:]]*/ {
+      rest=$0
+      sub(/^pre_existing_issues:[[:space:]]*/, "", rest)
+      if (rest ~ /^\[/) exit
+      in_arr=1
+      next
+    }
+    in_fm && in_arr && /^[[:space:]]+- / {
+      line=$0
+      sub(/^[[:space:]]+- /, "", line)
+      emit_value(line)
+      next
+    }
+    in_fm && in_arr && /^[^[:space:]]/ { exit }
+  ' "$summary_file" 2>/dev/null | while IFS= read -r issue_json; do
+    [ -n "$issue_json" ] || continue
+    printf '%s' "$issue_json" | jq -er '
+      select(type == "object")
+      | if .file == .test then
+          (.test + ": " + .error)
+        else
+          (.test + " (" + .file + "): " + .error)
+        end
+    ' 2>/dev/null || true
+  done | awk '
+    {
+      items = items (items ? "; " : "") $0
+    }
     END { print items }
-  ' "$summary_file" 2>/dev/null)
+  ' 2>/dev/null)
+
+  # Brownfield fallback: extract pre-existing issues from the legacy body section.
+  if [ -z "$preex" ]; then
+    preex=$(awk '
+      /^## Pre-existing Issues/ { found=1; next }
+      found && /^## / { exit }
+      found && /^[[:space:]]*$/ { next }
+      found && /^- / { line=$0; sub(/^- /, "", line); items = items (items ? "; " : "") line }
+      END { print items }
+    ' "$summary_file" 2>/dev/null)
+  fi
 
   if [ -n "$devs" ]; then
     DEV_ISSUES="${DEV_ISSUES}DEVIATIONS (Plan ${plan_id}): ${devs}\n"

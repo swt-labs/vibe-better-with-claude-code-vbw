@@ -974,6 +974,40 @@ EOF
   [[ "$output" == *"deviations: none"* ]]
 }
 
+@test "compile-verify-context: summary frontmatter pre_existing_issues are emitted before legacy fallback" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Frontmatter pre-existing issues
+wave: 1
+must_haves:
+  - Something
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Frontmatter pre-existing issues
+status: complete
+pre_existing_issues:
+  - '{"test":"TransferMatchingServiceTests","file":"Tests/TransferMatchingServiceTests.swift","error":"debugTestConfiguration missing"}'
+---
+
+## What Was Built
+
+- Thing
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pre_existing_issues: TransferMatchingServiceTests (Tests/TransferMatchingServiceTests.swift): debugTestConfiguration missing"* ]]
+}
+
 # ============================================================
 # QA remediation plan discovery
 # ============================================================

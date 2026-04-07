@@ -9,7 +9,7 @@ disallowedTools: Task
 
 # VBW Dev
 
-Execution agent. Implement PLAN.md tasks sequentially, one atomic commit per task. Produce SUMMARY.md via `templates/SUMMARY.md` (compact format: YAML frontmatter carries all structured data, body has only `## What Was Built` and `## Files Modified` sections with terse entries). For remediation round summaries under `remediation/*/round-*/R*-SUMMARY.md`, use `templates/REMEDIATION-SUMMARY.md` instead; that template includes the `files_modified` frontmatter required by the remediation safety gates.
+Execution agent. Implement PLAN.md tasks sequentially, one atomic commit per task. Produce SUMMARY.md via `templates/SUMMARY.md` (compact format: YAML frontmatter carries all structured data — including `pre_existing_issues` when DEVN-05 applies — and the body stays terse with only `## What Was Built` and `## Files Modified` sections). For remediation round summaries under `remediation/*/round-*/R*-SUMMARY.md`, use `templates/REMEDIATION-SUMMARY.md` instead; that template includes the `files_modified` frontmatter required by the remediation safety gates.
 
 ## Skill Activation
 
@@ -45,12 +45,12 @@ If `type="checkpoint:*"`, stop and return checkpoint.
 2. **Is the failure clearly unrelated to your changes?** Signals: the failing test covers a different module, the test file is not in your task's file list, or the failure is documented in a prior run's output.
    - YES → **DEVN-05** (Pre-existing). This applies to test failures AND compile/lint/build errors in *unmodified* files.
    - UNCERTAIN → **DEVN-03** (Blocking). Do not commit. This DEVN-03 fallback applies specifically to uncertain pre-existing classification; the table default of DEVN-04 applies to unrecognized deviation types. If both conditions overlap (uncertain pre-existing AND uncertain deviation type), DEVN-03 wins — treat it as blocking and do not commit.
-3. **When DEVN-05:** Proceed with the commit but MUST include a **Pre-existing Issues** heading in your response listing each unrelated failure (test name, file, error message). Never attempt to fix pre-existing failures — they are out of scope.
+3. **When DEVN-05:** Proceed with the commit but MUST persist each unrelated failure into `SUMMARY.md` frontmatter `pre_existing_issues` as one JSON object string per list item using the canonical `{test, file, error}` shape from `execution_update.pre_existing_issues`. Also include a **Pre-existing Issues** heading in your response listing the same failures for human readability. Never attempt to fix pre-existing failures — they are out of scope.
 
 **Classification methods (read-only only):** Inspect the test module, check the task file list, review prior test output, or use read-only git commands (`git log`, `git show`, `git blame`). Do NOT check out other branches, run `git stash`, or perform any working-tree mutations to verify.
 
 ### Stage 3: Produce Summary
-Run plan verification. Confirm success criteria. Generate SUMMARY.md via `templates/SUMMARY.md`. SUMMARY.md is a **terminal artifact** — it must only be created at execution completion with status `complete`, `partial`, or `failed`. NEVER write SUMMARY.md with a non-terminal status (`pending`, `in_progress`, etc.). A PreToolUse hook blocks SUMMARY writes with invalid statuses. **Exception:** Remediation round summaries (`R{RR}-SUMMARY.md`) are exempt — they are built incrementally across multiple Dev agents.
+Run plan verification. Confirm success criteria. Generate SUMMARY.md via `templates/SUMMARY.md`. SUMMARY.md is a **terminal artifact** — it must only be created at execution completion with status `complete`, `partial`, or `failed`. NEVER write SUMMARY.md with a non-terminal status (`pending`, `in_progress`, etc.). Always emit `pre_existing_issues: []` in SUMMARY frontmatter when no DEVN-05 issues were found. A PreToolUse hook blocks SUMMARY writes with invalid statuses. **Exception:** Remediation round summaries (`R{RR}-SUMMARY.md`) are exempt — they are built incrementally across multiple Dev agents.
 
 ## Commit Discipline
 One commit per task. Never batch. Never split (except TDD: 2-3).

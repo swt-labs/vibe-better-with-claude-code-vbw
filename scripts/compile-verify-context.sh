@@ -522,18 +522,46 @@ while IFS= read -r plan_file; do
       ' "$SUMMARY_FILE" 2>/dev/null) || DEVIATIONS=""
     fi
 
-    # Extract pre-existing issues from body section
-    PRE_EXISTING=$(awk '
-      /^## Pre-existing Issues/ { found=1; next }
-      found && /^## / { exit }
-      found && /^[[:space:]]*$/ { next }
-      found && /^- / {
-        line = $0
-        sub(/^- /, "", line)
-        items = items (items ? "; " : "") line
+    # Extract pre-existing issues from canonical SUMMARY.md frontmatter first.
+    PRE_EXISTING=$(extract_frontmatter_array_items "$SUMMARY_FILE" pre_existing_issues | while IFS= read -r item; do
+      [ -n "$item" ] || continue
+      if ! printf '%s' "$item" | jq -e '
+        type == "object"
+        and (.test | type == "string")
+        and (.file | type == "string")
+        and (.error | type == "string")
+      ' >/dev/null 2>&1; then
+        continue
+      fi
+      _pre_test=$(printf '%s' "$item" | jq -r '.test')
+      _pre_file=$(printf '%s' "$item" | jq -r '.file')
+      _pre_error=$(printf '%s' "$item" | jq -r '.error')
+      if [ "$_pre_file" = "$_pre_test" ]; then
+        printf '%s: %s\n' "$_pre_test" "$_pre_error"
+      else
+        printf '%s (%s): %s\n' "$_pre_test" "$_pre_file" "$_pre_error"
+      fi
+    done | awk '
+      {
+        items = items (items ? "; " : "") $0
       }
       END { print items }
-    ' "$SUMMARY_FILE" 2>/dev/null) || PRE_EXISTING=""
+    ' 2>/dev/null) || PRE_EXISTING=""
+
+    # Brownfield fallback: extract pre-existing issues from the legacy body section.
+    if [ -z "$PRE_EXISTING" ]; then
+      PRE_EXISTING=$(awk '
+        /^## Pre-existing Issues/ { found=1; next }
+        found && /^## / { exit }
+        found && /^[[:space:]]*$/ { next }
+        found && /^- / {
+          line = $0
+          sub(/^- /, "", line)
+          items = items (items ? "; " : "") line
+        }
+        END { print items }
+      ' "$SUMMARY_FILE" 2>/dev/null) || PRE_EXISTING=""
+    fi
   fi
 
   # Emit structured block

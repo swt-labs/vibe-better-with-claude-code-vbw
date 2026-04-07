@@ -10,6 +10,7 @@ commit_hashes:
   - {hash}
 deviations:
   - "{deviation-description}"
+pre_existing_issues: [] # JSON object strings: ['{"test":"...","file":"...","error":"..."}']
 ---
 
 {one-line-substantive-summary}

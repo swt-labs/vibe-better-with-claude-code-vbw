@@ -246,6 +246,10 @@ load test_helper
   ! sed -n '/## Communication/,/^##/p' "$PROJECT_ROOT/agents/vbw-dev.md" | grep -q 'same.*structure as.*blocker_report'
 }
 
+@test "dev agent DEVN-05 instructs summary persistence in pre_existing_issues frontmatter" {
+  sed -n '/Pre-existing failures (DEVN-05)/,/^### /p' "$PROJECT_ROOT/agents/vbw-dev.md" | grep -q 'pre_existing_issues'
+}
+
 # =============================================================================
 # QA agent: pre-existing failure baseline awareness
 # =============================================================================
@@ -373,6 +377,10 @@ load test_helper
 
 @test "verification template Pre-existing Issues has Test/File/Error columns" {
   sed -n '/Pre-existing Issues/,/^##/p' "$PROJECT_ROOT/templates/VERIFICATION.md" | grep -q 'Test.*File.*Error'
+}
+
+@test "summary template exposes pre_existing_issues frontmatter" {
+  grep -q '^pre_existing_issues:' "$PROJECT_ROOT/templates/SUMMARY.md"
 }
 
 # =============================================================================
