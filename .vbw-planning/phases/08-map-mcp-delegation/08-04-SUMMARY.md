@@ -8,7 +8,8 @@ tasks_completed: 4
 tasks_total: 4
 commit_hashes:
   - 938d086
-deviations: []
+deviations:
+  - "Plan specified 5 new categories but only 3 were implemented (OUTLINE, IMPACT_ANALYSIS, CLASS_HIERARCHY). DOC_SEARCH and DOC_STRUCTURE were absorbed into existing CODE_SEARCH and OUTLINE categories via extended suffixes, making dedicated categories redundant."
 ---
 
 Extended Step 1.3 MCP capability detection with two-pass matching and broader tool coverage. Pass 1 (name suffix) extended with 20+ new suffixes covering jcodemunch and jdocmunch tool surfaces. Pass 2 (new) matches tool descriptions via semantic keyword sets for tools not caught by name. Added 3 new capability categories routed to mapping documents.

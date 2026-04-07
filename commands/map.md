@@ -4,7 +4,7 @@ category: advanced
 disable-model-invocation: true
 description: Analyze existing codebase with adaptive Scout teammates to produce structured mapping documents.
 argument-hint: [--incremental] [--package=name] [--tier=solo|duo|quad]
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, Agent, TeamCreate, TaskCreate, SendMessage, TeamDelete, Skill, LSP
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, Agent, TeamCreate, TaskCreate, SendMessage, TeamDelete, Skill, LSP, ToolSearch
 ---
 
 # VBW Map: $ARGUMENTS
@@ -63,7 +63,7 @@ PREFER_TEAMS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-defa
 ```
 If `PREFER_TEAMS` is `never`, force solo regardless of file count or --tier flag.
 
-### Step 1.3: Detect code-analysis MCP capabilities
+### Step 1.7: Detect code-analysis MCP capabilities
 
 Inspect the available tool names in the system context (the deferred tools list in `<system-reminder>` blocks). Tool names follow the pattern `mcp__{server_name}__{tool_name}`. Pattern-match the **tool_name suffix** (the portion after the last `__`) against these capability signatures:
 
@@ -83,7 +83,7 @@ CAPABILITY_IMPACT_ANALYSIS  := tool name ending in: get_blast_radius, get_change
 CAPABILITY_CLASS_HIERARCHY  := tool name ending in: get_class_hierarchy, class_hierarchy, get_inheritance, codemap-hierarchy, codemap-implementations
 ```
 
-Note: some tools (e.g., `find_importers`, `get_blast_radius`) map to multiple categories — this is intentional as they provide data useful for multiple mapping documents.
+Note: some tools (e.g., `find_importers`, `get_blast_radius`) map to multiple categories in Pass 1 — this is intentional as they provide data useful for multiple mapping documents. Pass 2 (description-based) restricts each tool to at most one category (first match wins) because description matches are fuzzier and multi-classification would increase false positives.
 
 For each detected capability, store the full tool name (e.g., `mcp__codebase-memory-mcp__get_architecture`). This produces a **`MCP_MAP_CAPABILITIES`** set mapping capability categories to specific tool names. Multiple tools may match the same category (list all).
 
@@ -132,7 +132,7 @@ If monorepo + --package: scope to that package.
 **Step 3-solo:** Orchestrator analyzes each domain sequentially, writes to `.vbw-planning/codebase/`:
 
 **MCP-accelerated analysis (when MCP_MAP_CAPABILITIES is non-empty):**
-If code-analysis MCP capabilities were detected in Step 1.3, use them as the primary data source for each domain. The orchestrator calls MCP tools directly instead of broad Glob/Read/Grep sweeps.
+If code-analysis MCP capabilities were detected in Step 1.7, use them as the primary data source for each domain. The orchestrator calls MCP tools directly instead of broad Glob/Read/Grep sweeps.
 
 Execution order:
 1. If CAPABILITY_INDEX detected: call the index tool to ensure graph freshness
@@ -180,7 +180,7 @@ Mode: {MAPPING_MODE}. After writing all 3 files, send a `scout_findings` message
 **Scout model (effort-gated):** Fast/Turbo: `Model: haiku`. Thorough/Balanced: inherit session model.
 **Scout turn budget (effort-gated):** Resolve with `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}"`. If `SCOUT_MAX_TURNS` is non-empty, pass `maxTurns: ${SCOUT_MAX_TURNS}` to each Scout TaskCreate. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 **Skill pre-evaluation:** Before composing Scout task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to codebase mapping. If any skills are relevant, the Scout prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
-**MCP code-analysis delegation:** If `MCP_MAP_CAPABILITIES` (from Step 1.3) is non-empty, prepend the following `<mcp_code_analysis>` block to each Scout's task description. If `MCP_MAP_CAPABILITIES` is empty, omit the block entirely (Scout prompts unchanged from pre-MCP behavior).
+**MCP code-analysis delegation:** If `MCP_MAP_CAPABILITIES` (from Step 1.7) is non-empty, prepend the following `<mcp_code_analysis>` block to each Scout's task description. If `MCP_MAP_CAPABILITIES` is empty, omit the block entirely (Scout prompts unchanged from pre-MCP behavior).
 
 For **Scout A** (Tech + Architecture), include capabilities relevant to STACK.md, DEPENDENCIES.md, ARCHITECTURE.md, STRUCTURE.md:
 ```
@@ -278,17 +278,22 @@ Read all 7 docs. Produce:
 
 Write META.md: mapped_at, git_hash, file_count, document list, mode, monorepo flag, mapping_tier, mcp_capabilities.
 
-The `mcp_capabilities` field records which capability categories from Step 1.3 were detected and used during mapping. This serves debugging (users can see whether MCP delegation was active) and incremental mode (future mapping can check if prior mapping used MCP tools and whether those tools are still available).
+The `mcp_capabilities` field records which capability categories from Step 1.7 were detected and used during mapping. This serves debugging (users can see whether MCP delegation was active) and incremental mode (future mapping can check if prior mapping used MCP tools and whether those tools are still available).
 
 Example with MCP capabilities:
 ```yaml
 mcp_capabilities:
-  - architecture_extraction
-  - symbol_search
-  - dependency_graph
-  - call_tracing
-  - code_search
-  - hotspot_analysis
+  - CAPABILITY_ARCHITECTURE
+  - CAPABILITY_SYMBOL_SEARCH
+  - CAPABILITY_DEPENDENCY_GRAPH
+  - CAPABILITY_CALL_TRACING
+  - CAPABILITY_CODE_SEARCH
+  - CAPABILITY_CODE_SNIPPET
+  - CAPABILITY_HOTSPOT_ANALYSIS
+  - CAPABILITY_INDEX
+  - CAPABILITY_OUTLINE
+  - CAPABILITY_IMPACT_ANALYSIS
+  - CAPABILITY_CLASS_HIERARCHY
 ```
 
 Example without MCP capabilities:

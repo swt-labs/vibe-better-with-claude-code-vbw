@@ -41,6 +41,11 @@ Use the code-analysis tools listed in `<mcp_code_analysis>` as your PRIMARY data
 2. Use the specific tools routed to your assigned documents (the block maps capabilities to documents)
 3. Combine MCP tool output with your analysis to produce the mapping document
 
+Beyond the core capabilities (architecture, symbol search, dependency graph, call tracing, code search, code snippet, hotspot analysis), the `<mcp_code_analysis>` block may also include:
+- **Outline extraction** → use for STRUCTURE.md (file organization, module layout, symbol lists)
+- **Impact analysis** → use for CONCERNS.md (blast radius, dead code, broken links, layer violations)
+- **Class hierarchy** → use for ARCHITECTURE.md (inheritance chains, type relationships, interface implementations)
+
 ### Hybrid Fallback
 MCP tools cover structural code analysis but not everything. Fall back to Glob/Read/Grep for:
 - **Manifest files**: package.json, go.mod, Cargo.toml, pyproject.toml (version strings, dependency lists)

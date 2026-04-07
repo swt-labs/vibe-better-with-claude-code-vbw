@@ -19,13 +19,13 @@ teardown() {
 # Capability detection tests (Tests 1-5)
 # =============================================================================
 
-@test "map.md contains Step 1.3 MCP capability detection" {
+@test "map.md contains Step 1.7 MCP capability detection" {
   local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
-  # Step 1.3 must exist
-  grep -qi 'Step 1\.3' "$map_file"
+  # Step 1.7 must exist
+  grep -qi 'Step 1\.7' "$map_file"
   # The step must mention MCP or capability
   local section
-  section=$(sed -n '/Step 1\.3/,/Step 2/p' "$map_file")
+  section=$(sed -n '/Step 1\.7/,/Step 2/p' "$map_file")
   echo "$section" | grep -qi 'MCP\|capability'
 }
 
@@ -43,7 +43,7 @@ teardown() {
 
 @test "map.md detection logic has no hardcoded server names" {
   local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
-  # Extract the capability definition lines (CAPABILITY_ := ...) from Step 1.3
+  # Extract the capability definition lines (CAPABILITY_ := ...) from Step 1.7
   # These are the actual detection patterns -- they must not contain server names
   local cap_lines
   cap_lines=$(grep 'CAPABILITY_.*:=' "$map_file")
@@ -295,6 +295,20 @@ teardown() {
   echo "$cap_lines" | grep -q 'get_code_snippet'
   echo "$cap_lines" | grep -q 'detect_changes'
   echo "$cap_lines" | grep -q 'index_repository'
+}
+
+@test "map.md allowed-tools includes ToolSearch for Pass 2 description matching" {
+  local map_file="$BATS_TEST_DIRNAME/../commands/map.md"
+  local frontmatter
+  frontmatter=$(sed -n '1,/^---$/p' "$map_file" | tail -n +2)
+  echo "$frontmatter" | grep -q 'ToolSearch'
+}
+
+@test "vbw-scout.md mentions outline, impact analysis, and class hierarchy capabilities" {
+  local scout_file="$BATS_TEST_DIRNAME/../agents/vbw-scout.md"
+  grep -qi 'outline extraction\|outline' "$scout_file"
+  grep -qi 'impact analysis' "$scout_file"
+  grep -qi 'class hierarchy' "$scout_file"
 }
 
 @test "map.md extended detection has no hardcoded server names" {
