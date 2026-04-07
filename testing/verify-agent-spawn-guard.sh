@@ -24,6 +24,7 @@ setup_project() {
   TMPDIR_BASE=$(mktemp -d)
   PROJECT="$TMPDIR_BASE/project"
   mkdir -p "$PROJECT/.vbw-planning/phases/01-test"
+  mkdir -p "$PROJECT/src/nested"
 }
 
 cleanup() {
@@ -76,6 +77,7 @@ run_guard() {
   local team_name="$2"
   local run_in_background="$3"
   local agent_name="${4-dev-01}"
+  local working_dir="${5:-$project_dir}"
 
   local input
   input=$(jq -n \
@@ -90,7 +92,7 @@ run_guard() {
       }
     }')
 
-  (cd "$project_dir" && bash "$GUARD" <<< "$input") 2>&1
+  (cd "$working_dir" && VBW_PLANNING_DIR="$project_dir/.vbw-planning" bash "$GUARD" <<< "$input") 2>&1
   return ${PIPESTATUS[0]}
 }
 
@@ -137,6 +139,21 @@ test_active_execute_without_live_marker_blocks() {
   cleanup
 }
 test_active_execute_without_live_marker_blocks
+
+test_active_execute_without_live_marker_blocks_from_nested_cwd() {
+  setup_project
+  write_execution_state "corr-123"
+
+  local output rc
+  output=$(run_guard "$PROJECT" "" true "dev-01" "$PROJECT/src/nested" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'missing live runtime delegation state'; then
+    pass "Active execute without live marker blocks from nested working directory"
+  else
+    fail "Nested-CWD active execute should block missing live marker (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_active_execute_without_live_marker_blocks_from_nested_cwd
 
 test_team_mode_requires_team_name() {
   setup_project

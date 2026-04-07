@@ -27,7 +27,7 @@ find_project_root() {
   return 1
 }
 
-find_project_root >/dev/null || exit 0
+PROJECT_ROOT=$(find_project_root) || exit 0
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MARKER_STATUS=$(bash "$SCRIPT_DIR/delegated-workflow.sh" status-json 2>/dev/null) || exit 0
 [ -n "$MARKER_STATUS" ] || exit 0
@@ -38,7 +38,7 @@ DELEGATION_MODE=$(echo "$MARKER_STATUS" | jq -r '.delegation_mode // ""' 2>/dev/
 EXPECTED_TEAM_NAME=$(echo "$MARKER_STATUS" | jq -r '.team_name // ""' 2>/dev/null) || exit 0
 MARKER_REASON=$(echo "$MARKER_STATUS" | jq -r '.reason // ""' 2>/dev/null) || exit 0
 
-EXEC_STATE_FILE=".vbw-planning/.execution-state.json"
+EXEC_STATE_FILE="$PROJECT_ROOT/.vbw-planning/.execution-state.json"
 EXEC_ACTIVE=false
 if [ -f "$EXEC_STATE_FILE" ] && jq empty "$EXEC_STATE_FILE" >/dev/null 2>&1; then
   EXEC_STATUS=$(jq -r '.status // ""' "$EXEC_STATE_FILE" 2>/dev/null) || EXEC_STATUS=""
