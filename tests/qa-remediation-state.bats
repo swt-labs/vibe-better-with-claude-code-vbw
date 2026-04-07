@@ -194,6 +194,22 @@ EOF
   grep -q "^round=02$" "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 }
 
+@test "get-or-init initializes a stage-less known-issues backlog for round 01" {
+  write_phase_verification "PASS" $'## Must-Have Checks\n| # | ID | Truth/Condition | Status | Evidence |\n|---|-----|-----------------|--------|----------|\n| 1 | MH-01 | Fixture check | PASS | Done |'
+  write_known_issues_file
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get-or-init "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "plan" ]
+  echo "$output" | grep -q "^round=01$"
+  echo "$output" | grep -q "^input_mode=known-issues$"
+  echo "$output" | grep -q "^known_issues_count=1$"
+  echo "$output" | grep -q "^plan_path=.*remediation/qa/round-01/R01-PLAN.md$"
+  [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]
+  [ -d "$PHASE_DIR/remediation/qa/round-01" ]
+}
+
 # --- advance command ---
 
 @test "advance chain: plan -> execute -> verify -> done" {

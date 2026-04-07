@@ -359,8 +359,9 @@ Before entering Verify mode (UAT), check `qa_status` from phase-detect output:
 **QA Remediation mode (needs_qa_remediation) — cross-session recovery:**
 When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persisted stage. This is the cross-session recovery path — the inline execution path is in execute-protocol.md Step 4. This state also covers completed phases with no UAT yet when phase-level QA already wrote a PASS artifact but unresolved tracked known issues still force remediation before UAT can begin.
 
-1. Read current state: `bash {plugin-root}/scripts/qa-remediation-state.sh get {phase-dir}`
+1. Read current state: `bash {plugin-root}/scripts/qa-remediation-state.sh get-or-init {phase-dir}`
   Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `source_fail_count`, `known_issues_path`, `known_issues_count`, `input_mode`, `verification_path`
+   If remediation state was absent, `get-or-init` initializes round 01 before stage-specific routing. This is the deterministic stage-less resume path for a persisted known-issues backlog.
 2. Read remediation inputs.
 - Round 01: phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
 - Round 02+: previous round's `R{RR}-VERIFICATION.md`

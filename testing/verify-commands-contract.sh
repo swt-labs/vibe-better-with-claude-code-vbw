@@ -313,6 +313,13 @@ else
   fail "vibe: routed verify precompute missing fail-closed verify_context sentinel"
 fi
 
+if grep -q 'qa-remediation-state\.sh get-or-init {phase-dir}' "$VIBE_FILE" \
+  && grep -q 'deterministic stage-less resume path' "$VIBE_FILE"; then
+  pass "vibe: QA remediation resume self-initializes absent state"
+else
+  fail "vibe: missing qa-remediation-state get-or-init for stage-less QA remediation resume"
+fi
+
 if grep -q 'Read the active UAT artifact exactly once' "$VIBE_FILE" \
   && grep -q 'Do NOT shell out to `extract-uat-issues.sh` for active-phase routing' "$VIBE_FILE" \
   && grep -q 'Use `uat_file` from the pre-computed state when available' "$VIBE_FILE"; then
