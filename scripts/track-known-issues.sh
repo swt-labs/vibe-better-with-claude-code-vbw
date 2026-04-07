@@ -6,6 +6,7 @@ set -euo pipefail
 # Usage:
 #   track-known-issues.sh sync-summaries <phase-dir>
 #   track-known-issues.sh sync-verification <phase-dir> <verification-path>
+#   track-known-issues.sh promote-todos <phase-dir>
 #   track-known-issues.sh status <phase-dir>
 #   track-known-issues.sh clear <phase-dir>
 
@@ -14,12 +15,12 @@ PHASE_DIR="${2:-}"
 VERIFICATION_PATH="${3:-}"
 
 usage() {
-  echo "usage: track-known-issues.sh <sync-summaries|sync-verification|status|clear> <phase-dir> [verification-path]" >&2
+  echo "usage: track-known-issues.sh <sync-summaries|sync-verification|promote-todos|status|clear> <phase-dir> [verification-path]" >&2
   exit 1
 }
 
 case "$CMD" in
-  sync-summaries|status|clear)
+  sync-summaries|status|clear|promote-todos)
     [ -n "$PHASE_DIR" ] || usage
     ;;
   sync-verification)
@@ -539,6 +540,129 @@ sync_verification() {
   write_registry "$final_json"
 }
 
+promote_todos() {
+  # Promote unresolved known issues to STATE.md ## Todos as [KNOWN-ISSUE] entries.
+  # Deduplicates by test name + file path against existing [KNOWN-ISSUE] lines.
+  local planning_dir="${VBW_PLANNING_DIR:-}"
+  if [ -z "$planning_dir" ]; then
+    # PHASE_DIR is like .vbw-planning/phases/03-slug/, so go up two levels
+    planning_dir=$(cd "$PHASE_DIR/../.." && pwd)
+  fi
+  local state_path="${planning_dir}/STATE.md"
+
+  if [ ! -f "$state_path" ]; then
+    echo "promoted_count=0"
+    echo "already_tracked_count=0"
+    echo "total_known_issues=0"
+    echo "promote_status=no_state_file"
+    return 0
+  fi
+
+  local issues_json
+  issues_json=$(load_registry_issues)
+  local total
+  total=$(printf '%s' "$issues_json" | jq 'length')
+
+  if [ "$total" -eq 0 ] 2>/dev/null; then
+    echo "promoted_count=0"
+    echo "already_tracked_count=0"
+    echo "total_known_issues=0"
+    echo "promote_status=empty_registry"
+    return 0
+  fi
+
+  # Read STATE.md content
+  local state_content
+  state_content=$(cat "$state_path")
+
+  # Extract the ## Todos section (or ## Todo) lines for dedup checking
+  local todos_section
+  todos_section=$(printf '%s\n' "$state_content" | sed -n '/^## Todo/,/^## /{ /^## Todo/d; /^## [^T]/d; p; }')
+
+  local phase_num
+  phase_num=$(phase_number)
+  local today
+  today=$(date +%Y-%m-%d)
+
+  local promoted=0
+  local already=0
+  local new_entries=""
+
+  # Iterate issues and check for duplicates
+  local i=0
+  while [ "$i" -lt "$total" ]; do
+    local test_name file_path error_msg times_seen source_artifact
+    test_name=$(printf '%s' "$issues_json" | jq -r ".[$i].test // \"unknown\"")
+    file_path=$(printf '%s' "$issues_json" | jq -r ".[$i].file // \"unknown\"")
+    error_msg=$(printf '%s' "$issues_json" | jq -r ".[$i].error // \"unspecified error\"")
+    times_seen=$(printf '%s' "$issues_json" | jq -r ".[$i].times_seen // 1")
+    source_artifact=$(printf '%s' "$issues_json" | jq -r ".[$i].source_path // \"\"")
+
+    # Truncate error message for todo readability (max 80 chars)
+    if [ "${#error_msg}" -gt 80 ]; then
+      error_msg="${error_msg:0:77}..."
+    fi
+
+    # Check if already tracked: line contains both test name and file path
+    local is_dup=false
+    if printf '%s' "$todos_section" | grep -qF "$test_name"; then
+      if printf '%s' "$todos_section" | grep -F "$test_name" | grep -qF "$file_path"; then
+        is_dup=true
+      fi
+    fi
+
+    if [ "$is_dup" = true ]; then
+      already=$((already + 1))
+    else
+      local source_ref=""
+      if [ -n "$source_artifact" ]; then
+        source_ref=" (see ${source_artifact})"
+      fi
+      new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"$'\n'
+      promoted=$((promoted + 1))
+    fi
+    i=$((i + 1))
+  done
+
+  if [ "$promoted" -eq 0 ]; then
+    echo "promoted_count=0"
+    echo "already_tracked_count=$already"
+    echo "total_known_issues=$total"
+    echo "promote_status=all_tracked"
+    return 0
+  fi
+
+  # Write updated STATE.md atomically
+  local tmp_file
+  tmp_file=$(mktemp "${state_path}.tmp.XXXXXX")
+
+  # Replace "None." placeholder in Todos section, or append to existing todos
+  if printf '%s' "$todos_section" | grep -qE '^\s*None\.?\s*$'; then
+    # Replace the placeholder with new entries
+    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" awk '
+      /^## Todo/ { in_todos=1; print; next }
+      in_todos && /^## / { in_todos=0; print; next }
+      in_todos && /^[[:space:]]*None\.?[[:space:]]*$/ { print ENVIRON["ENTRIES"]; in_todos=0; next }
+      { print }
+    ' > "$tmp_file"
+  else
+    # Append new entries before the next ## section after ## Todos
+    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" awk '
+      /^## Todo/ { in_todos=1; print; next }
+      in_todos && /^## / { print ENVIRON["ENTRIES"]; print ""; in_todos=0; print; next }
+      { print }
+      END { if (in_todos) { print ENVIRON["ENTRIES"] } }
+    ' > "$tmp_file"
+  fi
+
+  mv "$tmp_file" "$state_path"
+
+  echo "promoted_count=$promoted"
+  echo "already_tracked_count=$already"
+  echo "total_known_issues=$total"
+  echo "promote_status=promoted"
+}
+
 case "$CMD" in
   status)
     if [ ! -f "$REGISTRY_PATH" ]; then
@@ -558,5 +682,8 @@ case "$CMD" in
     ;;
   sync-verification)
     sync_verification
+    ;;
+  promote-todos)
+    promote_todos
     ;;
 esac

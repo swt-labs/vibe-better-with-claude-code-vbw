@@ -246,3 +246,107 @@ EOF
   second_state=$(jq -cS '.issues[0]' "$PHASE_DIR/known-issues.json")
   [ "$first_state" = "$second_state" ]
 }
+
+# --- promote-todos tests ---
+
+write_state_md_with_todos() {
+  local content="${1:-None.}"
+  {
+    echo '# Project State'
+    echo ''
+    echo '## Decisions'
+    echo 'None.'
+    echo ''
+    echo '## Todos'
+    echo "$content"
+    echo ''
+    echo '## Blockers'
+    echo 'None.'
+  } > "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+write_known_issues_registry() {
+  local phase_num="$1"
+  shift
+  local issues_json="[]"
+  for issue_json in "$@"; do
+    issues_json=$(echo "$issues_json" | jq --argjson i "$issue_json" '. + [$i]')
+  done
+  jq -n --arg p "$phase_num" --argjson iss "$issues_json" \
+    '{schema_version:1, phase:$p, issues:$iss}' > "$PHASE_DIR/known-issues.json"
+}
+
+@test "track-known-issues: promote-todos with empty registry promotes nothing" {
+  write_state_md_with_todos "None."
+  echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=0"* ]]
+  [[ "$output" == *"total_known_issues=0"* ]]
+  grep -q "None\." "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos adds new issues to STATE.md" {
+  write_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-02","first_seen_round":1,"last_seen_round":2,"times_seen":3,"source_path":"phases/03-test-phase/03-02-SUMMARY.md"}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  [[ "$output" == *"total_known_issues=1"* ]]
+  # None. placeholder must be removed
+  ! grep -q "^None\.$" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Entry must exist with [KNOWN-ISSUE] tag
+  grep -q "\[KNOWN-ISSUE\]" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "TestCrash" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "CrashTests.swift" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos deduplicates existing entries" {
+  write_state_md_with_todos "- [KNOWN-ISSUE] TestCrash (CrashTests.swift): signal trap (phase 03, seen 2x) (see phases/03-test-phase/03-01-SUMMARY.md) (added 2025-01-01)"
+  write_known_issues_registry "03" \
+    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-02","first_seen_round":1,"last_seen_round":2,"times_seen":3,"source_path":"phases/03-test-phase/03-02-SUMMARY.md"}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=0"* ]]
+  [[ "$output" == *"already_tracked_count=1"* ]]
+  # Only one [KNOWN-ISSUE] line (no duplicate)
+  local count
+  count=$(grep -c "\[KNOWN-ISSUE\]" "$TEST_TEMP_DIR/.vbw-planning/STATE.md")
+  [ "$count" -eq 1 ]
+}
+
+@test "track-known-issues: promote-todos replaces None placeholder" {
+  write_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    '{"test":"TestA","file":"A.swift","error":"err","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1,"source_path":"phases/03-test-phase/03-01-SUMMARY.md"}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  ! grep -q "^None\.$" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "\[KNOWN-ISSUE\] TestA (A.swift)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos handles multiple issues" {
+  write_state_md_with_todos "- [HIGH] Existing high-pri todo (added 2025-01-01)"
+  write_known_issues_registry "03" \
+    '{"test":"TestA","file":"A.swift","error":"err A","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1,"source_path":"phases/03-test-phase/03-01-SUMMARY.md"}' \
+    '{"test":"TestB","file":"B.swift","error":"err B","first_seen_in":"03-02","last_seen_in":"03-02","first_seen_round":2,"last_seen_round":2,"times_seen":2,"source_path":"phases/03-test-phase/03-02-SUMMARY.md"}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=2"* ]]
+  # Original high-pri todo preserved
+  grep -q "\[HIGH\]" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Both new entries present
+  grep -q "TestA" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "TestB" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
