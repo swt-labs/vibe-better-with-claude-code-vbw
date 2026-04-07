@@ -395,6 +395,26 @@ write_known_issues_registry() {
   grep -q "### Completed Todos" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
+@test "track-known-issues: promote-todos appends to non-empty legacy Pending Todos" {
+  write_legacy_state_md_with_todos "- [HIGH] Fix login bug"
+  write_known_issues_registry "03" \
+    '{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-01","last_seen_in":"03-01","first_seen_round":1,"last_seen_round":1,"times_seen":1}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  # Original entry preserved
+  grep -q "\[HIGH\] Fix login bug" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # New entry added under Pending Todos
+  grep -q "\[KNOWN-ISSUE\] TestCrash (CrashTests.swift)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Completed Todos section preserved and not contaminated
+  grep -q "### Completed Todos" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Known issue appears before Completed Todos, not after
+  run bash -c 'awk "/^### Completed Todos/{exit} /KNOWN-ISSUE/{found=1} END{exit !found}" "$1"' -- "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  [ "$status" -eq 0 ]
+}
+
 @test "track-known-issues: promote-todos dedup uses exact key not substring" {
   # testFoo exists but we're promoting testFooBar — must NOT be suppressed
   write_state_md_with_todos "- [KNOWN-ISSUE] testFoo (path/a.swift): err (phase 03, seen 1x) (added 2025-01-01)"
