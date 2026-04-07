@@ -21,6 +21,7 @@ fail() {
 echo "=== Lead Agent Research-Conditional Stage 1 Verification ==="
 
 LEAD="$ROOT/agents/vbw-lead.md"
+VIBE="$ROOT/commands/vibe.md"
 COMPILE="$ROOT/scripts/compile-context.sh"
 CACHE="$ROOT/scripts/cache-context.sh"
 
@@ -51,6 +52,32 @@ else
 fi
 
 # NOTE: Lead LSP preference checks moved to verify-lsp-first-policy.sh (repo-wide coverage)
+
+# --- vibe.md: brownfield research fallback must stay legacy-single-file only ---
+
+if grep -Fq 'historical `{phase-dir}/{NN}-01-RESEARCH.md` as brownfield phase research when no higher-numbered per-plan research exists' "$VIBE"; then
+  pass "vibe: legacy single-file brownfield rule present"
+else
+  fail "vibe: missing legacy single-file brownfield rule"
+fi
+
+if grep -Fq 'multiple per-plan research files remain distinct and do not count as phase-wide research' "$VIBE"; then
+  pass "vibe: multi-file per-plan research does not count as phase-wide"
+else
+  fail "vibe: missing multi-file per-plan research distinction"
+fi
+
+if grep -Fq 'BROWNFIELD_RESEARCH=$(find "{phase-dir}" -maxdepth 1 -name "{NN}-[0-9][0-9]-RESEARCH.md" -print -quit 2>/dev/null)' "$VIBE"; then
+  fail "vibe: old generic first-match brownfield fallback still present"
+else
+  pass "vibe: old generic first-match brownfield fallback removed"
+fi
+
+if grep -Fq '[0-9][0-9]*-RESEARCH.md" ! -name "{NN}-01-RESEARCH.md"' "$VIBE"; then
+  pass "vibe: brownfield fallback excludes higher-numbered per-plan research for any digit width"
+else
+  fail "vibe: brownfield fallback does not exclude higher-numbered per-plan research for any digit width"
+fi
 
 # --- vbw-lead.md: unconditional "Scan codebase via Glob/Grep" must be gone ---
 

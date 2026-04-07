@@ -34,6 +34,13 @@ teardown() {
   [ "$output" = "01-VERIFICATION.md" ]
 }
 
+@test "phase-research: returns {NN}-RESEARCH.md" {
+  mkdir -p "$TEST_DIR/04-research-test"
+  run bash "$SCRIPT" phase-research "$TEST_DIR/04-research-test"
+  [ "$status" -eq 0 ]
+  [ "$output" = "04-RESEARCH.md" ]
+}
+
 @test "per-phase types zero-pad single-digit phase numbers" {
   mkdir -p "$TEST_DIR/3-auth"
   run bash "$SCRIPT" context "$TEST_DIR/3-auth"
