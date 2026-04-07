@@ -590,8 +590,10 @@ promote_todos() {
 
   if [ -z "$todos_section" ]; then
     # Pass 2: legacy ### Pending Todos subsection (pre-migration STATE.md)
+    # Stop at ### Completed Todos or any ## heading — explicit boundary
     todos_section=$(printf '%s\n' "$state_content" | awk '
       /^### Pending Todos$/ { found=1; next }
+      found && /^### Completed Todos$/ { exit }
       found && /^##/ { exit }
       found && /[^ \t]/ { print }
     ')
@@ -658,22 +660,30 @@ promote_todos() {
 
   # Replace "None." placeholder in Todos section, or append to existing todos
   # Build awk anchor pattern from todo_anchor (escaping for regex)
-  local awk_anchor
+  local awk_anchor awk_stop_pattern
   awk_anchor=$(printf '%s' "$todo_anchor" | sed 's/[.[\*^$()+?{|]/\\&/g')
+  if [ "$todo_anchor" = "### Pending Todos" ]; then
+    # Legacy layout: stop explicitly at ### Completed Todos or any ## heading
+    # (^##) already catches ### headings since ### starts with ##; the
+    # explicit (^### Completed Todos$) documents the expected boundary)
+    awk_stop_pattern='(^### Completed Todos$)|(^##)'
+  else
+    awk_stop_pattern='^##'
+  fi
 
   if printf '%s' "$todos_section" | grep -qE '^\s*None\.?\s*$'; then
     # Replace the placeholder with new entries
-    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" awk '
+    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
       $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
-      in_todos && /^##/ { in_todos=0; print; next }
+      in_todos && $0 ~ ENVIRON["AWK_STOP"] { in_todos=0; print; next }
       in_todos && /^[[:space:]]*None\.?[[:space:]]*$/ { print ENVIRON["ENTRIES"]; in_todos=0; next }
       { print }
     ' > "$tmp_file"
   else
     # Append new entries before the next section heading after the anchor
-    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" awk '
+    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
       $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
-      in_todos && /^##/ { print ENVIRON["ENTRIES"]; print ""; in_todos=0; print; next }
+      in_todos && $0 ~ ENVIRON["AWK_STOP"] { print ENVIRON["ENTRIES"]; print ""; in_todos=0; print; next }
       { print }
       END { if (in_todos) { print ENVIRON["ENTRIES"] } }
     ' > "$tmp_file"
