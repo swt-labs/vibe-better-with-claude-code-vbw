@@ -319,8 +319,9 @@ write_known_issues_registry() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"promoted_count=1"* ]]
   [[ "$output" == *"total_known_issues=1"* ]]
-  # None. placeholder must be removed
-  ! grep -q "^None\.$" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # None. placeholder must be removed from Todos section
+  run bash -c 'awk "/^## Todos?$/{f=1;next} f&&/^##/{exit} f" "$1" | grep -q "^None\\.$"' -- "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  [ "$status" -ne 0 ]
   # Entry must exist with [KNOWN-ISSUE] tag
   grep -q "\[KNOWN-ISSUE\]" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "TestCrash" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
@@ -353,7 +354,9 @@ write_known_issues_registry() {
   run bash "$SCRIPT" promote-todos "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  ! grep -q "^None\.$" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # None. placeholder must be removed from Todos section
+  run bash -c 'awk "/^## Todos?$/{f=1;next} f&&/^##/{exit} f" "$1" | grep -q "^None\\.$"' -- "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  [ "$status" -ne 0 ]
   grep -q "\[KNOWN-ISSUE\] TestA (A.swift)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
@@ -383,7 +386,9 @@ write_known_issues_registry() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"promoted_count=1"* ]]
-  ! grep -q "^None\.$" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # None. placeholder must be removed from Pending Todos section
+  run bash -c 'awk "/^### Pending Todos$/{f=1;next} f&&/^##/{exit} f" "$1" | grep -q "^None\\.$"' -- "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  [ "$status" -ne 0 ]
   grep -q "\[KNOWN-ISSUE\] TestCrash (CrashTests.swift)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   # Legacy section structure preserved
   grep -q "### Pending Todos" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"

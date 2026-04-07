@@ -575,7 +575,8 @@ promote_todos() {
   local state_content
   state_content=$(cat "$state_path")
 
-  # Extract the todos section for dedup checking — two-pass approach mirroring list-todos.sh
+  # Extract the todos section for dedup and placeholder checking — two-pass approach mirroring list-todos.sh
+  # Captures ALL non-blank lines (not just bullets) so the None. placeholder is detected
   local todos_section todo_anchor
   # Pass 1: flat items directly under ## Todos (not inside ### subsections)
   todos_section=$(printf '%s\n' "$state_content" | awk '
@@ -583,7 +584,7 @@ promote_todos() {
     found && /^##/ { exit }
     found && /^### / { sub_found=1; next }
     found && sub_found && /^##/ { exit }
-    found && !sub_found && /^- / { print }
+    found && !sub_found && /[^ \t]/ { print }
   ')
   todo_anchor="## Todos"
 
@@ -592,7 +593,7 @@ promote_todos() {
     todos_section=$(printf '%s\n' "$state_content" | awk '
       /^### Pending Todos$/ { found=1; next }
       found && /^##/ { exit }
-      found && /^- / { print }
+      found && /[^ \t]/ { print }
     ')
     if [ -n "$todos_section" ]; then
       todo_anchor="### Pending Todos"
@@ -623,9 +624,9 @@ promote_todos() {
       error_msg="${error_msg:0:77}..."
     fi
 
-    # Dedup by exact structured key matching the generated line format
+    # Dedup by test+file pair regardless of tag prefix (matches [KNOWN-ISSUE], [HIGH], untagged, etc.)
     local is_dup=false
-    local dedup_key="[KNOWN-ISSUE] ${test_name} (${file_path}):"
+    local dedup_key="${test_name} (${file_path}):"
     if printf '%s' "$todos_section" | grep -qF "$dedup_key"; then
       is_dup=true
     fi
