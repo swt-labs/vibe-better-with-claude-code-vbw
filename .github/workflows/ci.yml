@@ -110,6 +110,7 @@ jobs:
           run_check "skill-activation"         "bash testing/verify-skill-activation.sh"
           run_check "permission-mode-contract" "bash testing/verify-permission-mode-contract.sh"
           run_check "delegation-guard"         "bash testing/verify-delegation-guard.sh"
+          run_check "agent-spawn-guard"        "bash testing/verify-agent-spawn-guard.sh"
           run_check "summary-status-contract"  "bash testing/verify-summary-status-contract.sh"
           run_check "summary-utils-contract"   "bash testing/verify-summary-utils-contract.sh"
           run_check "exec-state-reconciliation" "bash testing/verify-exec-state-reconciliation.sh"

@@ -55,6 +55,7 @@ SH
     testing/verify-skill-activation.sh \
     testing/verify-permission-mode-contract.sh \
     testing/verify-delegation-guard.sh \
+    testing/verify-agent-spawn-guard.sh \
     testing/verify-summary-status-contract.sh \
     testing/verify-summary-utils-contract.sh \
     testing/verify-exec-state-reconciliation.sh \
@@ -143,7 +144,7 @@ link_run_all_system_tools() {
   fail_total_line=$(grep -n '^TOTAL: 48 PASS, 1 FAIL$' "$output_file" | cut -d: -f1)
   fail_end_line=$(grep -n '^--- end lsp-first-policy output ---$' "$output_file" | cut -d: -f1)
   lint_summary_line=$(grep -n '^Lint checks: 1/1 passed$' "$output_file" | cut -d: -f1)
-  summary_line=$(grep -n '^Contract checks: 30/31 passed$' "$output_file" | cut -d: -f1)
+  summary_line=$(grep -n '^Contract checks: 31/32 passed$' "$output_file" | cut -d: -f1)
 
   [ -n "$pass_line" ]
   [ -n "$fail_begin_line" ]

@@ -510,6 +510,53 @@ else
   fail "vibe: missing verify-context refresh for QA remediation handoff"
 fi
 
+echo ""
+echo "=== Execute Team Routing Verification ==="
+
+if grep -q 'True team mode' "$ROOT/references/execute-protocol.md" \
+  && grep -q 'Explicit non-team mode' "$ROOT/references/execute-protocol.md" \
+  && grep -q 'Team-tooling-unavailable fallback' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: defines true team, explicit non-team, and fallback branches"
+else
+  fail "execute-protocol: missing one or more execute team-routing branches"
+fi
+
+if grep -q 'Plain background `Agent` spawns without team semantics are NOT an agent team' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: forbids faux-team background Agent substitution"
+else
+  fail "execute-protocol: missing faux-team Agent prohibition"
+fi
+
+if grep -q '⚠ Agent Teams not enabled — using non-team mode' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: pins explicit non-team fallback warning text"
+else
+  fail "execute-protocol: missing explicit non-team fallback warning text"
+fi
+
+if ! grep -Fq 'When team was created (2+ plans)' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'request team mode for ALL remaining-plan counts (even 1 plan)' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'ALL remaining-plan counts (even 1 plan)' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"`' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "qa"' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: single-plan team mode uses consistent true-team metadata wording"
+else
+  fail "execute-protocol: single-plan team mode wording is inconsistent or still references 2+ plan team creation"
+fi
+
+if grep -q 'scripts/delegated-workflow.sh" set execute' "$ROOT/references/execute-protocol.md" \
+  && grep -q 'delegation_mode' "$ROOT/scripts/delegated-workflow.sh"; then
+  pass "execute-protocol + delegated-workflow: runtime execute delegation mode is persisted"
+else
+  fail "execute-protocol + delegated-workflow: missing persisted execute delegation mode contract"
+fi
+
+if grep -q 'background `Agent` spawns that lack `team_name`' "$VIBE_FILE" \
+  && grep -q 'fall back to explicit non-team execution' "$VIBE_FILE"; then
+  pass "vibe: execute invariant forbids faux-team background Agent execution"
+else
+  fail "vibe: missing execute invariant for real-team vs explicit fallback"
+fi
+
 # vibe.md must reference qa-result-gate.sh at both gate call sites (primary + remediation verify)
 _vibe_gate_count=$(grep -c 'qa-result-gate\.sh' "$COMMANDS_DIR/vibe.md" 2>/dev/null || echo 0)
 if [ "$_vibe_gate_count" -ge 2 ]; then
