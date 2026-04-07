@@ -298,11 +298,13 @@ Then re-run phase-detect.sh and use updated output for routing below.
 | 4 | `next_phase_state=needs_reverification` | Re-verify | auto_uat=true: no confirmation. auto_uat=false: → AskUserQuestion: "Phase {NN} remediation complete. Run re-verification?" |
 | 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | (mode handles confirmation — see Milestone UAT Recovery steps) |
 | 6 | `phase_count=0` | Scope | → AskUserQuestion: "Project defined but no phases. Scope the work?" |
-| 7 | `next_phase_state=needs_verification` | Verify | (no confirmation — auto_uat intent). **QA gate:** If `qa_status=pending`, display "Phase {NN} QA is pending — running QA now." and spawn QA inline first (see QA Gate section below). This state also covers `all_done` milestones that were retargeted because authoritative QA on a completed phase is stale/missing. If `qa_status=failed`, enter QA remediation inline. Only proceed to Verify mode when `qa_status` is `passed` or `remediated`. |
+| 7 | `next_phase_state=needs_verification` | Verify | (no confirmation — auto_uat intent). **QA gate:** If `qa_status=pending`, display "Phase {NN} QA is pending — running QA now." and spawn QA inline first (see QA Gate section below). This state also covers `all_done` milestones that were retargeted because authoritative QA on a completed phase is stale/missing, plus fully built no-UAT phases retargeted back into verification when QA is still pending even with `auto_uat=false`. If `qa_status=failed`, enter QA remediation inline. Only proceed to Verify mode when `qa_status` is `passed` or `remediated`. |
 | 8 | `next_phase_state=needs_discussion` | Discuss | → AskUserQuestion: "Phase {NN} needs discussion before planning. Start discussion?" |
 | 9 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | → AskUserQuestion: "Phase {NN} needs planning and execution. Start?" |
 | 10 | `next_phase_state=needs_execute` | Execute | → AskUserQuestion: "Phase {NN} is planned. Execute it?" |
 | 11 | `next_phase_state=all_done` | Archive | → AskUserQuestion: "All phases complete. Run audit and archive?" (only when no `first_qa_attention_phase` remains) |
+
+**all_done QA-attention fallback (pending):** When `next_phase_state=all_done`, `first_qa_attention_phase` is set, and `qa_attention_status=pending`, do **not** archive yet. Target `first_qa_attention_phase` / `first_qa_attention_slug` and continue into Verify mode instead. This is the stage-less resume path for a completed phase whose QA verification is still missing or stale, even when `auto_uat=false`.
 
 **Re-verify after remediation (needs_reverification) — IMMEDIATE EXECUTION (NON-NEGOTIABLE):**
 When `next_phase_state=needs_reverification`, execute these steps inline in the same turn — do NOT create tasks, read protocol files, or perform any intermediate planning:

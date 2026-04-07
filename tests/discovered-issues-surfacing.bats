@@ -493,6 +493,10 @@ load test_helper
   grep -q 'track-known-issues.sh' "$PROJECT_ROOT/commands/vibe.md"
 }
 
+@test "vibe command has all_done pending-QA fallback into Verify mode" {
+  grep -q 'all_done QA-attention fallback (pending)' "$PROJECT_ROOT/commands/vibe.md"
+}
+
 @test "verify command skip-qa still blocks on unresolved known issues" {
   grep -q 'still has unresolved tracked known issues' "$PROJECT_ROOT/commands/verify.md"
 }
