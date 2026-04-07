@@ -530,7 +530,7 @@ sync_verification() {
   # Phase-level verification only adds new issues — it does not clear the
   # execution-time backlog because initial QA may not have re-verified every
   # pre-existing issue already tracked from SUMMARY.md.
-  if [ "$existing_state" = "malformed" ]; then
+  if [ "$existing_state" != "present" ]; then
     summary_seed_json=$(extract_summary_issues_json)
     final_json=$(merge_issue_sets "$summary_seed_json" "$incoming_json")
   else

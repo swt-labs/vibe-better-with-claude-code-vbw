@@ -148,6 +148,19 @@ write_verification_with_issues() {
   [ "$output" = "FIGIRegistryServiceTests,TransferMatchingServiceTests.swift" ]
 }
 
+@test "track-known-issues: missing registry restore from phase-level verification preserves summary backlog" {
+  write_summary_with_preexisting "03-01-SUMMARY.md" "03-01" 'TransferMatchingServiceTests.swift: debugTestConfiguration missing'
+  write_verification_with_issues "03-VERIFICATION.md" $'FIGIRegistryServiceTests\tTests/FIGIRegistryServiceTests.swift\tcompositeFigi missing'
+
+  run bash "$SCRIPT" sync-verification "$PHASE_DIR" "$PHASE_DIR/03-VERIFICATION.md"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_count=2"* ]]
+  run jq -r '.issues | sort_by(.test, .file) | map(.test) | join(",")' "$PHASE_DIR/known-issues.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "FIGIRegistryServiceTests,TransferMatchingServiceTests.swift" ]
+}
+
 @test "track-known-issues: round verification prunes resolved issues and keeps unresolved ones" {
   write_summary_with_preexisting "03-01-SUMMARY.md" "03-01" $'TransferMatchingServiceTests.swift: debugTestConfiguration missing\nFIGIRegistryServiceTests.swift: compositeFigi missing'
   bash "$SCRIPT" sync-summaries "$PHASE_DIR" >/dev/null

@@ -784,6 +784,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     if [ -n "$_qa_verif_scan" ] && [ ! -f "$_qa_verif_scan" ]; then
       _qa_verif_scan=""
     fi
+    if [ -n "$_qa_verif_scan" ] && [ -f "$_qa_verif_scan" ]; then
+      restore_known_issues_from_verification_if_needed "$_qa_dir" "$_qa_verif_scan"
+    fi
 
     if [ "$_qa_attention" = "none" ] && [ -n "$_qa_verif_scan" ] && [ -f "$_qa_verif_scan" ]; then
       _qa_result_scan=$(awk '
