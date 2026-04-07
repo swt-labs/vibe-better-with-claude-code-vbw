@@ -123,6 +123,21 @@ test_no_marker_allows() {
 }
 test_no_marker_allows
 
+test_active_execute_without_live_marker_blocks() {
+  setup_project
+  write_execution_state "corr-123"
+
+  local output rc
+  output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'missing live runtime delegation state'; then
+    pass "Active execute without live marker: blocked"
+  else
+    fail "Active execute without live marker should block (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_active_execute_without_live_marker_blocks
+
 test_team_mode_requires_team_name() {
   setup_project
   write_execution_state "corr-123"
@@ -244,19 +259,21 @@ test_fix_marker_is_ignored() {
 }
 test_fix_marker_is_ignored
 
-test_correlation_mismatch_is_ignored() {
+test_correlation_mismatch_blocks_during_active_execute() {
   setup_project
   write_execution_state "live-corr"
   write_marker execute team "vbw-phase-01" "stale-corr"
 
-  if run_guard "$PROJECT" "" true >/dev/null 2>&1; then
-    pass "Mismatched execute marker is ignored by spawn guard"
+  local output rc
+  output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'missing live runtime delegation state'; then
+    pass "Mismatched execute marker blocks during active execute"
   else
-    fail "Mismatched execute marker should not be treated as live"
+    fail "Mismatched execute marker should block during active execute (rc=$rc, output=$output)"
   fi
   cleanup
 }
-test_correlation_mismatch_is_ignored
+test_correlation_mismatch_blocks_during_active_execute
 
 test_aged_live_execute_marker_still_enforces_team_rules() {
   setup_project
