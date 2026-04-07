@@ -1971,7 +1971,7 @@ EOF
   echo "$output" | grep -q "next_phase=01"
 }
 
-@test "earlier unplanned phase keeps priority over later active QA remediation" {
+@test "later active QA remediation backed by known issues outranks earlier unplanned phase" {
   echo "# My Project" > .vbw-planning/PROJECT.md
 
   mkdir -p .vbw-planning/phases/01-unplanned
@@ -1981,14 +1981,32 @@ EOF
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-remediating/02-SUMMARY.md
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
   printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
+  cat > .vbw-planning/phases/02-remediating/known-issues.json <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "02",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "02-01-SUMMARY.md",
+      "last_seen_in": "02-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
-  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  echo "$output" | grep -q "next_phase=02"
 }
 
-@test "earlier mid-execution phase keeps priority over later active QA remediation" {
+@test "later active QA remediation outranks earlier mid-execution phase" {
   echo "# My Project" > .vbw-planning/PROJECT.md
 
   mkdir -p .vbw-planning/phases/01-executing
@@ -2002,8 +2020,8 @@ EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "next_phase_state=needs_execute"
-  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  echo "$output" | grep -q "next_phase=02"
 }
 
 @test "qa_status is pending when PASS verification is stale for current code" {
@@ -2288,7 +2306,7 @@ EOF
   echo "$output" | grep -q "qa_attention_status=failed"
 }
 
-@test "first_qa_attention targets verify-stage QA remediation even when earlier phase is unfinished" {
+@test "verify-stage QA remediation outranks earlier unfinished work" {
   echo "# My Project" > .vbw-planning/PROJECT.md
 
   mkdir -p .vbw-planning/phases/01-unplanned
@@ -2301,7 +2319,8 @@ EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+  echo "$output" | grep -q "next_phase=02"
+  echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
   echo "$output" | grep -q "first_qa_attention_phase=02"
   echo "$output" | grep -q "first_qa_attention_slug=02-remediating"
   echo "$output" | grep -q "qa_attention_status=verify"

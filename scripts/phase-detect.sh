@@ -826,13 +826,14 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   done
 fi
 
-# --- needs_qa_remediation override: route to QA remediation before verification ---
+# --- needs_qa_remediation override: active QA remediation is resume-authoritative ---
 # When QA remediation is active (qa_status=remediating), override next_phase_state
-# to needs_qa_remediation only for verification-class states. Earlier unfinished
-# phases (discussion / planning / execution) still take priority.
+# to needs_qa_remediation for every state except active UAT remediation. Once a
+# phase has entered the known-issues QA lifecycle, plain `/vbw:vibe` must resume
+# that backlog before drifting into unrelated discussion / planning / execution.
 if [ -n "$QA_REMEDIATING_PHASE" ] && [ "$NEXT_PHASE_STATE" != "needs_uat_remediation" ]; then
   case "$NEXT_PHASE_STATE" in
-    needs_verification|needs_reverification|all_done|no_phases)
+    needs_discussion|needs_plan_and_execute|needs_execute|needs_verification|needs_reverification|all_done|no_phases)
       NEXT_PHASE="$QA_REMEDIATING_PHASE"
       NEXT_PHASE_SLUG="$QA_REMEDIATING_SLUG"
       NEXT_PHASE_STATE="needs_qa_remediation"

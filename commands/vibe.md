@@ -307,6 +307,9 @@ Then re-run phase-detect.sh and use updated output for routing below.
 **all_done QA-attention fallback (pending):** When `next_phase_state=all_done`, `first_qa_attention_phase` is set, and `qa_attention_status=pending`, do **not** archive yet. Target `first_qa_attention_phase` / `first_qa_attention_slug` and continue into Verify mode instead. This is the stage-less resume path for a completed phase whose QA verification is still missing or stale, even when `auto_uat=false`.
 
 **Re-verify after remediation (needs_reverification) — IMMEDIATE EXECUTION (NON-NEGOTIABLE):**
+Persisted QA remediation / known-issues backlog is the authoritative plain `/vbw:vibe` resume target. When `next_phase_state=needs_qa_remediation`, do **not** skip ahead to unrelated earlier discussion, planning, or execution work — close the QA backlog first, unless an active UAT remediation path is already higher priority.
+
+**Re-verify after remediation (needs_reverification) — IMMEDIATE EXECUTION (NON-NEGOTIABLE):**
 When `next_phase_state=needs_reverification`, execute these steps inline in the same turn — do NOT create tasks, read protocol files, or perform any intermediate planning:
 1. Run: `bash {plugin-root}/scripts/prepare-reverification.sh {phase-dir}`
 2. **Error guard:** If the script fails (non-zero exit), display the error message and **STOP** — do not attempt to enter Verify mode with stale/missing context.
