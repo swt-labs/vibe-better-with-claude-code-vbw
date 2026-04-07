@@ -12,7 +12,7 @@ deviations:
   - "Plan specified 5 new categories but only 3 were implemented (OUTLINE, IMPACT_ANALYSIS, CLASS_HIERARCHY). DOC_SEARCH and DOC_STRUCTURE were absorbed into existing CODE_SEARCH and OUTLINE categories via extended suffixes, making dedicated categories redundant."
 ---
 
-Extended Step 1.3 MCP capability detection with two-pass matching and broader tool coverage. Pass 1 (name suffix) extended with 20+ new suffixes covering jcodemunch and jdocmunch tool surfaces. Pass 2 (new) matches tool descriptions via semantic keyword sets for tools not caught by name. Added 3 new capability categories routed to mapping documents.
+Extended Step 1.7 MCP capability detection with two-pass matching and broader tool coverage. Pass 1 (name suffix) extended with 20+ new suffixes covering jcodemunch and jdocmunch tool surfaces. Pass 2 (new) matches tool descriptions via semantic keyword sets for tools not caught by name. Added 3 new capability categories routed to mapping documents.
 
 ## What Was Built
 
@@ -24,7 +24,7 @@ Extended Step 1.3 MCP capability detection with two-pass matching and broader to
 
 ## Files Modified
 
-- `commands/map.md` — Extended Step 1.3 with Pass 1/Pass 2 structure, new suffixes, new categories, description keyword sets; updated routing in Step 3-solo, Step 3-duo, Step 3-quad
+- `commands/map.md` — Extended Step 1.7 with Pass 1/Pass 2 structure, new suffixes, new categories, description keyword sets; updated routing in Step 3-solo, Step 3-duo, Step 3-quad
 - `tests/map-mcp-delegation.bats` — Added 10 tests (16-25), all 25 pass
 
 ## Expected Coverage After
