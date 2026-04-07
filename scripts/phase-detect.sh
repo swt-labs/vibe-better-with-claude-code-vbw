@@ -63,6 +63,23 @@ qa_gate_routing_for_phase() {
   bash "$_SCRIPT_DIR_PD/qa-result-gate.sh" "$phase_dir" 2>/dev/null | awk -F= '/^qa_gate_routing=/{print $2; exit}'
 }
 
+restore_known_issues_from_verification_if_needed() {
+  local phase_dir="$1"
+  local verification_file="$2"
+  local known_meta known_status
+  [ -n "$phase_dir" ] || return 0
+  [ -f "$verification_file" ] || return 0
+  [ -f "$_SCRIPT_DIR_PD/track-known-issues.sh" ] || return 0
+
+  known_meta=$(bash "$_SCRIPT_DIR_PD/track-known-issues.sh" status "$phase_dir" 2>/dev/null || true)
+  known_status=$(printf '%s\n' "$known_meta" | awk -F= '/^known_issues_status=/{print $2; exit}')
+  case "${known_status:-missing}" in
+    missing|malformed)
+      bash "$_SCRIPT_DIR_PD/track-known-issues.sh" sync-verification "$phase_dir" "$verification_file" >/dev/null 2>&1 || true
+      ;;
+  esac
+}
+
 # --- jq availability ---
 JQ_AVAILABLE=false
 if command -v jq &>/dev/null; then
@@ -578,6 +595,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
       _uv_verif=""
     fi
+    if [ "$_qa_rem_stage" != "done" ] && [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+      restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
+    fi
 
     _uv_uat=$(current_uat "$_uv_dir")
     _uv_is_unverified=false
@@ -605,6 +625,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
           _uv_verif=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" current "$_uv_dir" 2>/dev/null || true)
           if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
             _uv_verif=""
+          fi
+          if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+            restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
           fi
           # Cross-validate: ensure VERIFICATION.md also shows PASS
           if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
@@ -761,6 +784,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     if [ -n "$_qa_verif_scan" ] && [ ! -f "$_qa_verif_scan" ]; then
       _qa_verif_scan=""
     fi
+    if [ -n "$_qa_verif_scan" ] && [ -f "$_qa_verif_scan" ]; then
+      restore_known_issues_from_verification_if_needed "$_qa_dir" "$_qa_verif_scan"
+    fi
 
     if [ "$_qa_attention" = "none" ] && [ -n "$_qa_verif_scan" ] && [ -f "$_qa_verif_scan" ]; then
       _qa_result_scan=$(awk '
@@ -826,13 +852,14 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   done
 fi
 
-# --- needs_qa_remediation override: route to QA remediation before verification ---
+# --- needs_qa_remediation override: active QA remediation is resume-authoritative ---
 # When QA remediation is active (qa_status=remediating), override next_phase_state
-# to needs_qa_remediation only for verification-class states. Earlier unfinished
-# phases (discussion / planning / execution) still take priority.
+# to needs_qa_remediation for every state except active UAT remediation. Once a
+# phase has entered the known-issues QA lifecycle, plain `/vbw:vibe` must resume
+# that backlog before drifting into unrelated discussion / planning / execution.
 if [ -n "$QA_REMEDIATING_PHASE" ] && [ "$NEXT_PHASE_STATE" != "needs_uat_remediation" ]; then
   case "$NEXT_PHASE_STATE" in
-    needs_verification|needs_reverification|all_done|no_phases)
+    needs_discussion|needs_plan_and_execute|needs_execute|needs_verification|needs_reverification|all_done|no_phases)
       NEXT_PHASE="$QA_REMEDIATING_PHASE"
       NEXT_PHASE_SLUG="$QA_REMEDIATING_SLUG"
       NEXT_PHASE_STATE="needs_qa_remediation"
@@ -872,9 +899,13 @@ if [ "$CFG_AUTO_UAT_EARLY" = "true" ] && [ "$HAS_UNVERIFIED_PHASES" = "true" ] &
   esac
 fi
 
-# --- all_done QA-attention override: never archive while a terminal-UAT phase still needs QA attention ---
-# Only phases that already have terminal UAT should override all_done. Phases
-# with no UAT yet are handled by the normal lifecycle and auto_uat routing.
+# --- all_done QA-attention override: never archive while a completed phase still needs QA attention ---
+# Terminal-UAT phases always override all_done when QA attention remains. In
+# addition, a fully built phase with no UAT yet must override all_done when QA
+# has already run and the known-issues gate left qa_attention_status=failed or
+# verify. That preserves a deterministic plain `/vbw:vibe` resume path for the
+# post-initial-QA known-issues remediation case without broadening all no-UAT
+# phases into QA remediation.
 if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; then
   _QA_ATT_DIR="$PHASES_DIR/$FIRST_QA_ATTENTION_SLUG/"
   _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
@@ -915,6 +946,30 @@ if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; t
           fi
           NEXT_PHASE_STATE="needs_verification"
           QA_STATUS="pending"
+          ;;
+      esac
+      ;;
+    "")
+      case "$QA_ATTENTION_STATUS" in
+        failed)
+          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+          if [ -d "$_QA_ATT_DIR" ]; then
+            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+          fi
+          NEXT_PHASE_STATE="needs_qa_remediation"
+          QA_STATUS="failed"
+          ;;
+        verify)
+          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+          if [ -d "$_QA_ATT_DIR" ]; then
+            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+          fi
+          NEXT_PHASE_STATE="needs_qa_remediation"
+          QA_STATUS="remediating"
           ;;
       esac
       ;;

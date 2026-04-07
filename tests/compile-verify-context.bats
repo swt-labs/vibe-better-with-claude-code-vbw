@@ -974,6 +974,40 @@ EOF
   [[ "$output" == *"deviations: none"* ]]
 }
 
+@test "compile-verify-context: summary frontmatter pre_existing_issues are emitted before legacy fallback" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Frontmatter pre-existing issues
+wave: 1
+must_haves:
+  - Something
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Frontmatter pre-existing issues
+status: complete
+pre_existing_issues:
+  - '{"test":"TransferMatchingServiceTests","file":"Tests/TransferMatchingServiceTests.swift","error":"debugTestConfiguration missing"}'
+---
+
+## What Was Built
+
+- Thing
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pre_existing_issues: TransferMatchingServiceTests (Tests/TransferMatchingServiceTests.swift): debugTestConfiguration missing"* ]]
+}
+
 # ============================================================
 # QA remediation plan discovery
 # ============================================================
@@ -2915,4 +2949,113 @@ EOF
   [[ "$output" == *"=== PLAN R02: Current round fix ==="* ]]
   [[ "$output" != *"=== PLAN R01: Previous round fix ==="* ]]
   [[ "$output" == *"status: no_summary"* ]]
+}
+
+@test "compile-verify-context: emits KNOWN ISSUES block from phase registry" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Plan with known issues
+must_haves:
+  - Something
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature work
+EOF
+  cat > "$PHASE_DIR/known-issues.json" <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "03",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "03-01-SUMMARY.md",
+      "last_seen_in": "03-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== KNOWN ISSUES ==="* ]]
+  [[ "$output" == *"known_issue_count=1"* ]]
+  [[ "$output" == *"KNOWN_ISSUE: test=FIGIRegistryServiceTests | file=Tests/FIGIRegistryServiceTests.swift | error=compositeFigi missing"* ]]
+}
+
+@test "compile-verify-context: malformed known-issues registry is surfaced" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Plan with malformed registry
+must_haves:
+  - Something
+---
+EOF
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+plan: 01
+status: complete
+---
+## What Was Built
+- Feature work
+EOF
+  printf '%s\n' '{broken-json' > "$PHASE_DIR/known-issues.json"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== KNOWN ISSUES ==="* ]]
+  [[ "$output" == *"known_issues_error=malformed"* ]]
+}
+
+@test "compile-verify-context: empty frontmatter pre_existing_issues suppresses stale legacy body fallback" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Empty frontmatter pre-existing issues
+wave: 1
+must_haves:
+  - Something
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Empty frontmatter pre-existing issues
+status: complete
+pre_existing_issues: []
+---
+
+## What Was Built
+
+- Thing
+
+## Pre-existing Issues
+- GhostIssueTests.swift: stale body issue must be ignored
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pre_existing_issues: none"* ]]
+  [[ "$output" != *"GhostIssueTests.swift"* ]]
 }

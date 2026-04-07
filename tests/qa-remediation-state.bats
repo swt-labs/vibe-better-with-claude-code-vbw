@@ -28,6 +28,48 @@ commit_repo_file() {
   git -C "$TEST_TEMP_DIR" rev-parse HEAD
 }
 
+write_phase_verification() {
+  local result="$1"
+  local body="$2"
+  {
+    echo '---'
+    echo 'phase: 01'
+    echo 'tier: standard'
+    echo "result: ${result}"
+    echo 'passed: 1'
+    echo 'failed: 0'
+    echo 'total: 1'
+    echo 'date: 2026-04-06'
+    echo 'writer: write-verification.sh'
+    echo 'plans_verified:'
+    echo '  - 01'
+    echo '---'
+    echo
+    printf '%s\n' "$body"
+  } > "$PHASE_DIR/01-VERIFICATION.md"
+}
+
+write_known_issues_file() {
+  cat > "$PHASE_DIR/known-issues.json" <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "01-01-SUMMARY.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+}
+
 # --- get command ---
 
 @test "get returns none when no state file exists" {
@@ -88,6 +130,50 @@ commit_repo_file() {
   echo "$output" | grep -q "^plan_path=.*R01-PLAN.md$"
 }
 
+@test "init emits known-issues-only input mode when PASS verification has tracked issues" {
+  write_phase_verification "PASS" $'## Must-Have Checks\n| # | ID | Truth/Condition | Status | Evidence |\n|---|-----|-----------------|--------|----------|\n| 1 | MH-01 | Fixture check | PASS | Done |'
+  write_known_issues_file
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" init "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'plan\n'* ]]
+  [[ "$output" == *"source_verification_path="* ]]
+  [[ "$output" == *"source_fail_count=0"* ]]
+  [[ "$output" == *"known_issues_path=$PHASE_DIR/known-issues.json"* ]]
+  [[ "$output" == *"known_issues_count=1"* ]]
+  [[ "$output" == *"input_mode=known-issues"* ]]
+}
+
+@test "get reports both verification fails and known issues" {
+  write_phase_verification "FAIL" $'## Must-Have Checks\n| # | ID | Truth/Condition | Status | Evidence |\n|---|-----|-----------------|--------|----------|\n| 1 | MH-01 | Fixture check | FAIL | Missing |'
+  write_known_issues_file
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=plan\nround=01\nround_started_at_commit=abc123\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'plan\n'* ]]
+  [[ "$output" == *"source_verification_path=$PHASE_DIR/01-VERIFICATION.md"* ]]
+  [[ "$output" == *"source_fail_count=1"* ]]
+  [[ "$output" == *"known_issues_count=1"* ]]
+  [[ "$output" == *"input_mode=both"* ]]
+}
+
+@test "get infers known-issues input mode from phase verification after registry is cleared" {
+  write_phase_verification "PASS" $'## Pre-existing Issues\n| Test | File | Error |\n|------|------|-------|\n| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |'
+  mkdir -p "$PHASE_DIR/remediation/qa"
+  printf 'stage=done\nround=01\nround_started_at_commit=abc123\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_count=0"* ]]
+  [[ "$output" == *"phase_pre_existing_issue_count=1"* ]]
+  [[ "$output" == *"input_mode=known-issues"* ]]
+}
+
 @test "init captures round_started_at_commit from current git HEAD" {
   init_git_repo
   head_commit=$(commit_repo_file "src/base.txt" "baseline")
@@ -119,6 +205,22 @@ commit_repo_file() {
   echo "$output" | grep -q "^round=02$"
   grep -q "^stage=execute$" "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
   grep -q "^round=02$" "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+}
+
+@test "get-or-init initializes a stage-less known-issues backlog for round 01" {
+  write_phase_verification "PASS" $'## Must-Have Checks\n| # | ID | Truth/Condition | Status | Evidence |\n|---|-----|-----------------|--------|----------|\n| 1 | MH-01 | Fixture check | PASS | Done |'
+  write_known_issues_file
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get-or-init "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "plan" ]
+  echo "$output" | grep -q "^round=01$"
+  echo "$output" | grep -q "^input_mode=known-issues$"
+  echo "$output" | grep -q "^known_issues_count=1$"
+  echo "$output" | grep -q "^plan_path=.*remediation/qa/round-01/R01-PLAN.md$"
+  [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]
+  [ -d "$PHASE_DIR/remediation/qa/round-01" ]
 }
 
 # --- advance command ---

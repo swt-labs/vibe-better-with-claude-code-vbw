@@ -256,6 +256,7 @@ echo ""
 echo "=== Verify Guardrail Verification ==="
 
 VIBE_FILE="$COMMANDS_DIR/vibe.md"
+QA_FILE="$COMMANDS_DIR/qa.md"
 VERIFY_FILE="$COMMANDS_DIR/verify.md"
 
 if grep -q 'Verify-context error guard (NON-NEGOTIABLE)' "$VERIFY_FILE"; then
@@ -286,10 +287,43 @@ else
   fail "verify: missing deterministic qa-result-gate enforcement before UAT"
 fi
 
+if grep -q 'KNOWN_ISSUES_STATUS=' "$VERIFY_FILE" \
+  && grep -q 'KNOWN_ISSUES_STATUS=malformed' "$VERIFY_FILE" \
+  && grep -q 'unresolved or unreadable tracked known issues' "$VERIFY_FILE"; then
+  pass "verify: skip-qa guard blocks malformed known-issues registries"
+else
+  fail "verify: missing malformed known-issues fail-closed guard in skip-qa path"
+fi
+
+if grep -q 'sync-verification "\$PDIR" "\$VERIF_FILE"' "$VERIFY_FILE"; then
+  pass "verify: restores known-issues registry from existing verification artifacts before gating"
+else
+  fail "verify: missing known-issues restore from existing verification artifact"
+fi
+
+if grep -q 'qa-remediation-state\.sh advance' "$QA_FILE"; then
+  pass "qa: round-scoped PROCEED_TO_UAT persists remediation advance"
+else
+  fail "qa: missing round-scoped qa-remediation-state advance before standalone QA success presentation"
+fi
+
+if grep -q 'qa-remediation-state\.sh needs-round' "$QA_FILE"; then
+  pass "qa: round-scoped REMEDIATION_REQUIRED persists next-round state"
+else
+  fail "qa: missing round-scoped qa-remediation-state needs-round before standalone remediation handoff"
+fi
+
 if grep -q 'echo "verify_context=unavailable"' "$VIBE_FILE"; then
   pass "vibe: routed verify precompute emits fail-closed verify_context sentinel"
 else
   fail "vibe: routed verify precompute missing fail-closed verify_context sentinel"
+fi
+
+if grep -q 'qa-remediation-state\.sh get-or-init {phase-dir}' "$VIBE_FILE" \
+  && grep -q 'deterministic stage-less resume path' "$VIBE_FILE"; then
+  pass "vibe: QA remediation resume self-initializes absent state"
+else
+  fail "vibe: missing qa-remediation-state get-or-init for stage-less QA remediation resume"
 fi
 
 if grep -q 'Read the active UAT artifact exactly once' "$VIBE_FILE" \
@@ -480,7 +514,9 @@ else
   fail "qa: missing persisted verification_path contract for standalone QA output"
 fi
 
-if grep -q 'qa-result-gate\.sh' "$QA_FILE" && grep -q 'not authoritative' "$QA_FILE"; then
+if grep -q 'qa-result-gate\.sh' "$QA_FILE" \
+  && grep -q 'qa-remediation-state\.sh advance' "$QA_FILE" \
+  && grep -q 'qa-remediation-state\.sh needs-round' "$QA_FILE"; then
   pass "qa: standalone remediation QA reruns deterministic gate before trusting round-scoped PASS artifacts"
 else
   fail "qa: missing deterministic gate reconciliation for standalone remediation QA"

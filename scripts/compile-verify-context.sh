@@ -109,6 +109,20 @@ extract_frontmatter_array_items() {
   ' "$file_path" 2>/dev/null
 }
 
+frontmatter_key_present() {
+  local file_path="${1:-}"
+  local key_name="${2:-}"
+  [ -f "$file_path" ] || return 1
+  [ -n "$key_name" ] || return 1
+  awk -v key="$key_name" '
+    BEGIN { in_fm = 0; found = 0 }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit(found ? 0 : 1) }
+    in_fm && $0 ~ ("^" key ":[[:space:]]*") { found = 1 }
+    END { exit(found ? 0 : 1) }
+  ' "$file_path" >/dev/null 2>&1
+}
+
 _CVC_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$_CVC_SCRIPT_DIR/summary-utils.sh" ]; then
   # shellcheck source=summary-utils.sh
@@ -522,18 +536,46 @@ while IFS= read -r plan_file; do
       ' "$SUMMARY_FILE" 2>/dev/null) || DEVIATIONS=""
     fi
 
-    # Extract pre-existing issues from body section
-    PRE_EXISTING=$(awk '
-      /^## Pre-existing Issues/ { found=1; next }
-      found && /^## / { exit }
-      found && /^[[:space:]]*$/ { next }
-      found && /^- / {
-        line = $0
-        sub(/^- /, "", line)
-        items = items (items ? "; " : "") line
+    # Extract pre-existing issues from canonical SUMMARY.md frontmatter first.
+    PRE_EXISTING=$(extract_frontmatter_array_items "$SUMMARY_FILE" pre_existing_issues | while IFS= read -r item; do
+      [ -n "$item" ] || continue
+      if ! printf '%s' "$item" | jq -e '
+        type == "object"
+        and (.test | type == "string")
+        and (.file | type == "string")
+        and (.error | type == "string")
+      ' >/dev/null 2>&1; then
+        continue
+      fi
+      _pre_test=$(printf '%s' "$item" | jq -r '.test')
+      _pre_file=$(printf '%s' "$item" | jq -r '.file')
+      _pre_error=$(printf '%s' "$item" | jq -r '.error')
+      if [ "$_pre_file" = "$_pre_test" ]; then
+        printf '%s: %s\n' "$_pre_test" "$_pre_error"
+      else
+        printf '%s (%s): %s\n' "$_pre_test" "$_pre_file" "$_pre_error"
+      fi
+    done | awk '
+      {
+        items = items (items ? "; " : "") $0
       }
       END { print items }
-    ' "$SUMMARY_FILE" 2>/dev/null) || PRE_EXISTING=""
+    ' 2>/dev/null) || PRE_EXISTING=""
+
+    # Brownfield fallback: extract pre-existing issues from the legacy body section.
+    if [ -z "$PRE_EXISTING" ] && ! frontmatter_key_present "$SUMMARY_FILE" pre_existing_issues; then
+      PRE_EXISTING=$(awk '
+        /^## Pre-existing Issues/ { found=1; next }
+        found && /^## / { exit }
+        found && /^[[:space:]]*$/ { next }
+        found && /^- / {
+          line = $0
+          sub(/^- /, "", line)
+          items = items (items ? "; " : "") line
+        }
+        END { print items }
+      ' "$SUMMARY_FILE" 2>/dev/null) || PRE_EXISTING=""
+    fi
   fi
 
   # Emit structured block
@@ -551,6 +593,35 @@ while IFS= read -r plan_file; do
   echo "pre_existing_issues: ${PRE_EXISTING:-none}"
   echo ""
 done <<< "$ALL_PLAN_FILES"
+
+# --- Known Issues (phase-scoped machine state for QA remediation/UAT gating) ---
+_cvc_known_issues_path="$PHASE_DIR/known-issues.json"
+if [ -f "$_cvc_known_issues_path" ]; then
+  if jq -e '.issues | type == "array"' "$_cvc_known_issues_path" >/dev/null 2>&1; then
+    _cvc_known_issue_count=$(jq '.issues | length' "$_cvc_known_issues_path" 2>/dev/null || echo 0)
+    if [ "${_cvc_known_issue_count:-0}" -gt 0 ] 2>/dev/null; then
+      echo "=== KNOWN ISSUES ==="
+      echo "known_issues_path=$(basename "$_cvc_known_issues_path")"
+      echo "known_issue_count=${_cvc_known_issue_count}"
+      jq -r '
+        .issues[]
+        | "KNOWN_ISSUE: test=" + (.test // "-")
+          + " | file=" + (.file // "-")
+          + " | error=" + (.error // "-")
+          + " | first_seen_in=" + (.first_seen_in // "-")
+          + " | last_seen_in=" + (.last_seen_in // "-")
+          + " | times_seen=" + ((.times_seen // 1) | tostring)
+          + " | first_seen_round=" + ((.first_seen_round // 0) | tostring)
+          + " | last_seen_round=" + ((.last_seen_round // 0) | tostring)
+      ' "$_cvc_known_issues_path" 2>/dev/null || true
+      echo ""
+    fi
+  else
+    echo "=== KNOWN ISSUES ==="
+    echo "known_issues_error=malformed"
+    echo ""
+  fi
+fi
 
 # --- Verification History (compound for QA remediation rounds) ---
 # Extracts FAIL rows from phase-level and per-round VERIFICATION.md files
