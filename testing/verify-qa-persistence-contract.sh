@@ -220,6 +220,20 @@ else
   fail "20: vbw-qa.md missing guard against laundering fixable FAILs through process-exception paperwork"
 fi
 
+# 21. promote-todos must appear in commands/vibe.md for known-issues lifecycle
+if grep -q 'track-known-issues\.sh.*promote-todos' "$ROOT/commands/vibe.md"; then
+  pass "21: commands/vibe.md calls promote-todos for known-issues lifecycle"
+else
+  fail "21: commands/vibe.md missing promote-todos call — known issues won't auto-promote to STATE.md"
+fi
+
+# 22. promote-todos must appear in commands/qa.md for known-issues lifecycle
+if grep -q 'track-known-issues\.sh.*promote-todos' "$QA_CMD"; then
+  pass "22: commands/qa.md calls promote-todos for known-issues lifecycle"
+else
+  fail "22: commands/qa.md missing promote-todos call — known issues won't auto-promote to STATE.md"
+fi
+
 # ── Summary ──────────────────────────────────────────────────────────
 echo ""
 echo "==============================="

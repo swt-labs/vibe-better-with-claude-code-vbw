@@ -879,3 +879,25 @@ case "$CMD" in
     fi
     ;;
 esac
+
+# Known issues hint (skip for init/help/uninstall)
+case "$CMD" in
+  init|help|update|whats-new|uninstall) ;;
+  *)
+    if [ "$has_project" = true ] && [ -d "$PHASES_DIR" ]; then
+      _ki_total=0
+      while IFS= read -r _ki_dir; do
+        [ -d "$_ki_dir" ] || continue
+        _ki_file="$_ki_dir/known-issues.json"
+        if [ -f "$_ki_file" ]; then
+          _ki_count=$(jq -r '.issues | length' "$_ki_file" 2>/dev/null || echo "0")
+          _ki_total=$(( _ki_total + _ki_count ))
+        fi
+      done < <(find "$PHASES_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+      if [ "$_ki_total" -gt 0 ]; then
+        echo ""
+        echo "Note: $_ki_total known issue(s) deferred across phases — visible in /vbw:list-todos"
+      fi
+    fi
+    ;;
+esac

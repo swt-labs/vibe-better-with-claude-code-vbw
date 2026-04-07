@@ -6,6 +6,7 @@ set -euo pipefail
 # Usage:
 #   track-known-issues.sh sync-summaries <phase-dir>
 #   track-known-issues.sh sync-verification <phase-dir> <verification-path>
+#   track-known-issues.sh promote-todos <phase-dir>
 #   track-known-issues.sh status <phase-dir>
 #   track-known-issues.sh clear <phase-dir>
 
@@ -14,12 +15,12 @@ PHASE_DIR="${2:-}"
 VERIFICATION_PATH="${3:-}"
 
 usage() {
-  echo "usage: track-known-issues.sh <sync-summaries|sync-verification|status|clear> <phase-dir> [verification-path]" >&2
+  echo "usage: track-known-issues.sh <sync-summaries|sync-verification|promote-todos|status|clear> <phase-dir> [verification-path]" >&2
   exit 1
 }
 
 case "$CMD" in
-  sync-summaries|status|clear)
+  sync-summaries|status|clear|promote-todos)
     [ -n "$PHASE_DIR" ] || usage
     ;;
   sync-verification)
@@ -539,6 +540,163 @@ sync_verification() {
   write_registry "$final_json"
 }
 
+promote_todos() {
+  # Promote unresolved known issues to STATE.md ## Todos as [KNOWN-ISSUE] entries.
+  # Deduplicates by test name + file path against existing [KNOWN-ISSUE] lines.
+  local planning_dir="${VBW_PLANNING_DIR:-}"
+  if [ -z "$planning_dir" ]; then
+    # PHASE_DIR is like .vbw-planning/phases/03-slug/, so go up two levels
+    planning_dir=$(cd "$PHASE_DIR/../.." && pwd)
+  fi
+  local state_path="${planning_dir}/STATE.md"
+
+  if [ ! -f "$state_path" ]; then
+    echo "promoted_count=0"
+    echo "already_tracked_count=0"
+    echo "total_known_issues=0"
+    echo "promote_status=no_state_file"
+    return 0
+  fi
+
+  local issues_json
+  issues_json=$(load_registry_issues)
+  local total
+  total=$(printf '%s' "$issues_json" | jq 'length')
+
+  if [ "$total" -eq 0 ] 2>/dev/null; then
+    echo "promoted_count=0"
+    echo "already_tracked_count=0"
+    echo "total_known_issues=0"
+    echo "promote_status=empty_registry"
+    return 0
+  fi
+
+  # Read STATE.md content
+  local state_content
+  state_content=$(cat "$state_path")
+
+  # Extract the todos section for dedup and placeholder checking — two-pass approach mirroring list-todos.sh
+  # Captures ALL non-blank lines (not just bullets) so the None. placeholder is detected
+  local todos_section todo_anchor
+  # Pass 1: flat items directly under ## Todos (not inside ### subsections)
+  todos_section=$(printf '%s\n' "$state_content" | awk '
+    /^## Todos?$/ { found=1; next }
+    found && /^##/ { exit }
+    found && /^### / { sub_found=1; next }
+    found && sub_found && /^##/ { exit }
+    found && !sub_found && /[^ \t]/ { print }
+  ')
+  todo_anchor="## Todos"
+
+  if [ -z "$todos_section" ]; then
+    # Pass 2: legacy ### Pending Todos subsection (pre-migration STATE.md)
+    # Stop at ### Completed Todos or any ## heading — explicit boundary
+    todos_section=$(printf '%s\n' "$state_content" | awk '
+      /^### Pending Todos$/ { found=1; next }
+      found && /^### Completed Todos$/ { exit }
+      found && /^##/ { exit }
+      found && /[^ \t]/ { print }
+    ')
+    if [ -n "$todos_section" ]; then
+      todo_anchor="### Pending Todos"
+    fi
+  fi
+
+  local phase_num
+  phase_num=$(phase_number)
+  local today
+  today=$(date +%Y-%m-%d)
+
+  local promoted=0
+  local already=0
+  local new_entries=""
+
+  # Iterate issues and check for duplicates
+  local i=0
+  while [ "$i" -lt "$total" ]; do
+    local test_name file_path error_msg times_seen source_artifact
+    test_name=$(printf '%s' "$issues_json" | jq -r ".[$i].test // \"unknown\"")
+    file_path=$(printf '%s' "$issues_json" | jq -r ".[$i].file // \"unknown\"")
+    error_msg=$(printf '%s' "$issues_json" | jq -r ".[$i].error // \"unspecified error\"")
+    times_seen=$(printf '%s' "$issues_json" | jq -r ".[$i].times_seen // 1")
+    source_artifact=$(printf '%s' "$issues_json" | jq -r ".[$i].last_seen_in // \"\"")
+
+    # Truncate error message for todo readability (max 80 chars)
+    if [ "${#error_msg}" -gt 80 ]; then
+      error_msg="${error_msg:0:77}..."
+    fi
+
+    # Dedup by test+file pair regardless of tag prefix (matches [KNOWN-ISSUE], [HIGH], untagged, etc.)
+    local is_dup=false
+    local dedup_key="${test_name} (${file_path}):"
+    if printf '%s' "$todos_section" | grep -qF "$dedup_key"; then
+      is_dup=true
+    fi
+
+    if [ "$is_dup" = true ]; then
+      already=$((already + 1))
+    else
+      local source_ref=""
+      if [ -n "$source_artifact" ]; then
+        source_ref=" (see ${source_artifact})"
+      fi
+      new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"$'\n'
+      promoted=$((promoted + 1))
+    fi
+    i=$((i + 1))
+  done
+
+  if [ "$promoted" -eq 0 ]; then
+    echo "promoted_count=0"
+    echo "already_tracked_count=$already"
+    echo "total_known_issues=$total"
+    echo "promote_status=all_tracked"
+    return 0
+  fi
+
+  # Write updated STATE.md atomically
+  local tmp_file
+  tmp_file=$(mktemp "${state_path}.tmp.XXXXXX")
+
+  # Replace "None." placeholder in Todos section, or append to existing todos
+  # Build awk anchor pattern from todo_anchor (escaping for regex)
+  local awk_anchor awk_stop_pattern
+  awk_anchor=$(printf '%s' "$todo_anchor" | sed 's/[.[\*^$()+?{|]/\\&/g')
+  if [ "$todo_anchor" = "### Pending Todos" ]; then
+    # Legacy layout: stop explicitly at ### Completed Todos or any ## heading
+    # (^##) already catches ### headings since ### starts with ##; the
+    # explicit (^### Completed Todos$) documents the expected boundary)
+    awk_stop_pattern='(^### Completed Todos$)|(^##)'
+  else
+    awk_stop_pattern='^##'
+  fi
+
+  if printf '%s' "$todos_section" | grep -qE '^\s*None\.?\s*$'; then
+    # Replace the placeholder with new entries
+    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
+      $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
+      in_todos && $0 ~ ENVIRON["AWK_STOP"] { in_todos=0; print; next }
+      in_todos && /^[[:space:]]*None\.?[[:space:]]*$/ { print ENVIRON["ENTRIES"]; in_todos=0; next }
+      { print }
+    ' > "$tmp_file"
+  else
+    # Append new entries before the next section heading after the anchor
+    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
+      $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
+      in_todos && $0 ~ ENVIRON["AWK_STOP"] { print ENVIRON["ENTRIES"]; print ""; in_todos=0; print; next }
+      { print }
+      END { if (in_todos) { print ENVIRON["ENTRIES"] } }
+    ' > "$tmp_file"
+  fi
+
+  mv "$tmp_file" "$state_path"
+
+  echo "promoted_count=$promoted"
+  echo "already_tracked_count=$already"
+  echo "total_known_issues=$total"
+  echo "promote_status=promoted"
+}
+
 case "$CMD" in
   status)
     if [ ! -f "$REGISTRY_PATH" ]; then
@@ -558,5 +716,8 @@ case "$CMD" in
     ;;
   sync-verification)
     sync_verification
+    ;;
+  promote-todos)
+    promote_todos
     ;;
 esac
