@@ -7,10 +7,11 @@ set -euo pipefail
 # Types:
 #   plan          Next available PLAN path: {NN}-{MM}-PLAN.md
 #   summary       SUMMARY for given plan:   {NN}-{MM}-SUMMARY.md  (requires --plan-number)
-#   research      RESEARCH for given plan:  {NN}-{MM}-RESEARCH.md (requires --plan-number)
-#   context       Per-phase CONTEXT:        {NN}-CONTEXT.md
-#   uat           Per-phase UAT:            {NN}-UAT.md
-#   verification  Per-phase VERIFICATION:   {NN}-VERIFICATION.md
+#   research        Per-plan RESEARCH:        {NN}-{MM}-RESEARCH.md (requires --plan-number)
+#   phase-research  Phase-wide RESEARCH:      {NN}-RESEARCH.md
+#   context         Per-phase CONTEXT:        {NN}-CONTEXT.md
+#   uat             Per-phase UAT:            {NN}-UAT.md
+#   verification    Per-phase VERIFICATION:   {NN}-VERIFICATION.md
 #
 # For "plan" without --plan-number: computes next available plan number by scanning
 # existing *-PLAN.md files in the phase directory.
@@ -49,13 +50,13 @@ done
 
 # Validate type
 case "$TYPE" in
-  plan|summary|research|context|uat|verification) ;;
+  plan|summary|research|phase-research|context|uat|verification) ;;
   "")
     echo "usage: resolve-artifact-path.sh <type> <phase-dir> [--plan-number MM]" >&2
     exit 1
     ;;
   *)
-    echo "error: unknown type: $TYPE (expected: plan, summary, research, context, uat, verification)" >&2
+    echo "error: unknown type: $TYPE (expected: plan, summary, research, phase-research, context, uat, verification)" >&2
     exit 1
     ;;
 esac
@@ -83,6 +84,10 @@ PHASE_NUM=$(printf "%02d" "$((10#$PHASE_NUM))")
 
 # --- Per-phase types (no plan number needed) ---
 case "$TYPE" in
+  phase-research)
+    echo "${PHASE_NUM}-RESEARCH.md"
+    exit 0
+    ;;
   context)
     echo "${PHASE_NUM}-CONTEXT.md"
     exit 0

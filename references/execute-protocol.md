@@ -232,11 +232,12 @@ The existing individual script call sections (V3 Contract-Lite, V2 Hard Gates, C
 **Context compilation (REQ-11):** If control-plane.sh `full` action was used above and returned a `context_path`, use that path directly. Otherwise, if `config_context_compiler=true` from Context block above, before creating Dev tasks run:
 `bash "${VBW_PLUGIN_ROOT}/scripts/compile-context.sh" {phase} dev {phases_dir} {plan_path}`
 This produces `{phase-dir}/.context-dev.md` with phase goal and conventions.
-The plan_path argument is passed for context. **Per-plan research:** When loading context for a specific plan `{NN}-{MM}-PLAN.md`, resolve the research path:
-```bash
-RESEARCH_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" research "{phase-dir}" --plan-number {MM})
-```
-If `{phase-dir}/${RESEARCH_NAME}` exists, include it in the Dev task prompt alongside the compiled context. Fall back to `{phase-dir}/{NN}-RESEARCH.md` (legacy single-file format) if no per-plan research exists. Skill activation uses a plan-driven architecture:
+The plan_path argument is passed for context. **Research resolution:** For a specific plan `{NN}-{MM}-PLAN.md`, resolve research in this order:
+1. Per-plan research: `{phase-dir}/{NN}-{MM}-RESEARCH.md` (if the plan has its own research)
+2. Phase-wide research: resolve via `bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" phase-research "{phase-dir}"` → `{phase-dir}/{NN}-RESEARCH.md`
+3. Wildcard fallback: first `*-RESEARCH.md` in the phase directory
+
+Include the first match in the Dev task prompt alongside the compiled context. Phase-wide research (`{NN}-RESEARCH.md`) is the default — Plan mode creates it before Lead plans. Per-plan research (`{NN}-{MM}-RESEARCH.md`) is used only for plan-specific research added after initial planning. Skill activation uses a plan-driven architecture:
 - **Orchestrator skill selection:** When composing subagent task descriptions, the orchestrator evaluates installed skills (visible via `<available_skills>` in system context) — reading each skill's description to determine relevance to the specific task. Only relevant skills are included in the subagent prompt via `<skill_activation>` blocks at the prompt start. Irrelevant skills are omitted entirely.
 - **Lead (planning time):** Evaluates available skills and wires relevant ones into plans via `skills_used` frontmatter and `@`-references to SKILL.md files.
 - **Dev/QA/Scout/Docs (execution time):** Reads the plan's `skills_used` list and calls `Skill(skill-name)` for each listed skill before beginning work. If a skill in system context is missing from `skills_used`, activates it too (soft fallback). No written YES/NO evaluation required.

@@ -103,4 +103,26 @@ for f in "$PHASE_DIR"/[Cc][Oo][Nn][Tt][Ee][Xx][Tt]-[0-9]*.[mM][dD]; do
   echo "renamed: $BASENAME -> $(basename "$TARGET")"
 done
 
+# --- Brownfield migration: {NN}-01-RESEARCH.md → {NN}-RESEARCH.md ---
+# Plan mode previously created phase-wide research with plan-specific naming.
+# Migrate {NN}-01-RESEARCH.md to phase-wide {NN}-RESEARCH.md when:
+#   - {NN}-01-RESEARCH.md exists
+#   - {NN}-RESEARCH.md does NOT exist
+#   - No other per-plan research ({NN}-02-RESEARCH.md, etc.) exists
+PHASE_DIR_BASE=$(basename "$PHASE_DIR")
+PHASE_NUM_NRM=$(echo "$PHASE_DIR_BASE" | sed 's/^\([0-9]*\).*/\1/')
+if [ -n "$PHASE_NUM_NRM" ]; then
+  PHASE_NUM_NRM=$(printf "%02d" "$((10#$PHASE_NUM_NRM))")
+  OLD_RESEARCH="$PHASE_DIR/${PHASE_NUM_NRM}-01-RESEARCH.md"
+  NEW_RESEARCH="$PHASE_DIR/${PHASE_NUM_NRM}-RESEARCH.md"
+  if [ -f "$OLD_RESEARCH" ] && [ ! -f "$NEW_RESEARCH" ]; then
+    # Check that no other per-plan research files exist (02+)
+    OTHER_RESEARCH=$(find "$PHASE_DIR" -maxdepth 1 -name "${PHASE_NUM_NRM}-[0-9][0-9]*-RESEARCH.md" ! -name "${PHASE_NUM_NRM}-01-RESEARCH.md" 2>/dev/null | head -1)
+    if [ -z "$OTHER_RESEARCH" ]; then
+      mv "$OLD_RESEARCH" "$NEW_RESEARCH"
+      echo "renamed: $(basename "$OLD_RESEARCH") -> $(basename "$NEW_RESEARCH")"
+    fi
+  fi
+fi
+
 exit 0
