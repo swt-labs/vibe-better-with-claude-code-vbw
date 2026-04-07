@@ -2,8 +2,8 @@
 name: vbw:report
 category: supporting
 disable-model-invocation: true
-description: Collect diagnostics, classify bug or feature, and file a GitHub issue using the repo's issue template format.
-argument-hint: "<problem description>"
+description: Collect diagnostic context, classify bug or feature, and file a GitHub issue.
+argument-hint: "[problem description]"
 allowed-tools: Read, Bash, Glob, Grep, mcp__github__issue_write
 ---
 
@@ -25,7 +25,18 @@ VBW version:
 
 ## Parse Arguments
 
-`$ARGUMENTS` is the **problem description**. If empty, ask the user to describe the problem before proceeding — a description is required for filing.
+`$ARGUMENTS` is the **problem description**.
+
+- Everything in `$ARGUMENTS` is the description text.
+- The description is optional. If it is empty, still collect diagnostics and file the issue using default placeholder text.
+- If no description is provided, classify the issue as `bug` by default.
+
+## Scope
+
+This command collects diagnostics and files a GitHub issue — nothing else.
+
+- Do not write files, save memories, create todos, update STATE.md, modify CLAUDE.md, or take any action beyond collecting diagnostics and filing the issue.
+- The `Bash` tool is for running `collect-diagnostics.sh` and the `gh` issue-filing flow (including temp file scaffolding) described in this protocol. Do not use it for any other purpose.
 
 ## Steps
 
@@ -35,17 +46,27 @@ VBW version:
     ```
     Capture the full output.
 
-2. **Classify the issue.** Read the problem description and classify it as `bug` or `feature`:
+2. **Display the report.** Show the diagnostic output verbatim inside a fenced code block. Do not paraphrase or reformat — the section headers and structure are designed for maintainer readability. If a problem description was provided, prepend it above the diagnostics:
+
+    ```
+    ## Problem Description
+    {user's problem description from $ARGUMENTS}
+
+    ## Diagnostic Report
+    ```
+    Then the fenced code block with the script output.
+
+3. **Classify the issue.** Read the problem description and classify it as `bug` or `feature`:
 
     - **Bug**: the description reports something broken, an error, unexpected behavior, a crash, a regression, or a mismatch between expected and actual behavior.
     - **Feature**: the description requests something missing, a workflow improvement, a new capability, or a change to existing behavior that is not broken.
-    - When the description is ambiguous, classify as `bug`.
+    - When the description is ambiguous or empty, classify as `bug`.
 
-3. **Compose the issue body and title.**
+4. **Compose and file the issue.**
 
-    Derive a concise issue title from the problem description — summarize to ~10 words. Do not use the raw description verbatim as the title.
+    a. Derive a concise issue title from the problem description — summarize to ~10 words. Do not use the raw description verbatim as the title. If no description is provided, use `"Bug report from /vbw:report"` for bugs or `"Feature request from /vbw:report"` for features.
 
-    Compose the body using the template that matches the classification. Each section header must be bold on its own line, with content on the next line and a blank line between sections.
+    b. Compose the body using the template that matches the classification. Each section header must be bold on its own line, with content on the next line and a blank line between sections.
 
     <examples>
     <example>
@@ -56,7 +77,7 @@ VBW version:
     {the /vbw:* command from the description, or "Not specified"}
 
     **What happened**
-    {problem description from $ARGUMENTS}
+    {problem description from $ARGUMENTS, or "Not provided — please edit this section"}
 
     **What you expected**
     {inferred from description, or "Not provided — please edit this section"}
@@ -80,7 +101,7 @@ VBW version:
 
     ```
     **Problem**
-    {problem description from $ARGUMENTS}
+    {problem description from $ARGUMENTS, or "Not provided — please edit this section"}
 
     **Proposed solution**
     {inferred from description, or "Not provided — please edit this section"}
@@ -94,7 +115,9 @@ VBW version:
     </example>
     </examples>
 
-4. **File the issue.** Show the composed title and body as a brief preview, then file immediately using this fallback chain. Stop at the first method that succeeds:
+    c. Show the composed title and body as a brief preview so the user can see what will be filed.
+
+    d. File the issue immediately using this fallback chain. Stop at the first method that succeeds:
 
     Set the label based on classification: `bug` for bugs, `enhancement` for features.
 
@@ -160,3 +183,5 @@ VBW version:
     Copy the composed issue body above and paste it into the issue form.
     ```
     Use `?template=bug_report.md` for bugs or `?template=feature_request.md` for features.
+
+    Stop here. Do not take any further action.

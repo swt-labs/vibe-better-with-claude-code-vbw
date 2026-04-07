@@ -210,7 +210,7 @@ collect() {
   if command -v gh >/dev/null 2>&1; then
     echo "gh CLI: PASS ($(gh --version 2>/dev/null | head -1))"
   else
-    echo "gh CLI: FAIL (not installed — needed for --file-issue)"
+    echo "gh CLI: FAIL (not installed — needed for issue filing)"
   fi
 }
 
