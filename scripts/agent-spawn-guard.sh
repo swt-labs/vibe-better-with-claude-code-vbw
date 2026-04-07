@@ -37,6 +37,7 @@ MODE=$(echo "$MARKER_STATUS" | jq -r '.mode // ""' 2>/dev/null) || exit 0
 DELEGATION_MODE=$(echo "$MARKER_STATUS" | jq -r '.delegation_mode // ""' 2>/dev/null) || exit 0
 EXPECTED_TEAM_NAME=$(echo "$MARKER_STATUS" | jq -r '.team_name // ""' 2>/dev/null) || exit 0
 MARKER_REASON=$(echo "$MARKER_STATUS" | jq -r '.reason // ""' 2>/dev/null) || exit 0
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null) || exit 0
 
 EXEC_STATE_FILE="$PROJECT_ROOT/.vbw-planning/.execution-state.json"
 EXEC_ACTIVE=false
@@ -88,6 +89,20 @@ case "$DELEGATION_MODE" in
     if [ -n "$TEAM_NAME" ]; then
       echo "Blocked: execute delegation mode '$DELEGATION_MODE' cannot attach team_name '$TEAM_NAME'. Use true team mode or explicit non-team execution." >&2
       exit 2
+    fi
+    if [ "$TOOL_NAME" = "TaskCreate" ]; then
+      ACTIVE_COUNT_FILE="$PROJECT_ROOT/.vbw-planning/.active-agent-count"
+      ACTIVE_COUNT=0
+      if [ -f "$ACTIVE_COUNT_FILE" ]; then
+        ACTIVE_COUNT=$(cat "$ACTIVE_COUNT_FILE" 2>/dev/null | tr -d '[:space:]')
+      fi
+      if ! printf '%s' "$ACTIVE_COUNT" | grep -Eq '^[0-9]+$'; then
+        ACTIVE_COUNT=0
+      fi
+      if [ "$ACTIVE_COUNT" -gt 0 ]; then
+        echo "Blocked: execute delegation mode '$DELEGATION_MODE' must serialize non-team TaskCreate spawns. Wait for the current teammate to finish before starting another." >&2
+        exit 2
+      fi
     fi
     if [ "$RUN_IN_BACKGROUND" = "true" ]; then
       echo "Blocked: execute delegation mode '$DELEGATION_MODE' cannot simulate team mode with background Agent spawns. Use explicit non-team execution (wait for each agent) or switch to true team mode." >&2

@@ -78,19 +78,29 @@ run_guard() {
   local run_in_background="$3"
   local agent_name="${4-dev-01}"
   local working_dir="${5:-$project_dir}"
+  local tool_name="${6:-Agent}"
+  local active_count="${7:-}"
 
   local input
   input=$(jq -n \
+    --arg tool_name "$tool_name" \
     --arg team_name "$team_name" \
     --arg agent_name "$agent_name" \
     --argjson run_in_background "$run_in_background" \
     '{
+      tool_name: $tool_name,
       tool_input: {
         team_name: $team_name,
         name: $agent_name,
         run_in_background: $run_in_background
       }
     }')
+
+  if [ -n "$active_count" ]; then
+    printf '%s\n' "$active_count" > "$project_dir/.vbw-planning/.active-agent-count"
+  else
+    rm -f "$project_dir/.vbw-planning/.active-agent-count" 2>/dev/null || true
+  fi
 
   (cd "$working_dir" && VBW_PLANNING_DIR="$project_dir/.vbw-planning" bash "$GUARD" <<< "$input") 2>&1
   return ${PIPESTATUS[0]}
@@ -246,6 +256,68 @@ test_non_team_mode_allows_foreground_spawn() {
   cleanup
 }
 test_non_team_mode_allows_foreground_spawn
+
+test_non_team_mode_allows_first_taskcreate_when_no_agent_active() {
+  setup_project
+  write_execution_state "corr-123"
+  write_marker execute subagent "" "corr-123"
+
+  if run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "TaskCreate" "0" >/dev/null 2>&1; then
+    pass "Execute subagent mode allows first TaskCreate when no agent is active"
+  else
+    fail "Execute subagent mode unexpectedly blocked first TaskCreate"
+  fi
+  cleanup
+}
+test_non_team_mode_allows_first_taskcreate_when_no_agent_active
+
+test_non_team_mode_blocks_overlapping_taskcreate() {
+  setup_project
+  write_execution_state "corr-123"
+  write_marker execute subagent "" "corr-123"
+
+  local output rc
+  output=$(run_guard "$PROJECT" "" false "dev-02" "$PROJECT" "TaskCreate" "1" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'must serialize non-team TaskCreate spawns'; then
+    pass "Execute subagent mode blocks overlapping TaskCreate spawns"
+  else
+    fail "Execute subagent mode should block overlapping TaskCreate (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_non_team_mode_blocks_overlapping_taskcreate
+
+test_direct_mode_blocks_overlapping_taskcreate() {
+  setup_project
+  write_execution_state "corr-123"
+  write_marker execute direct "" "corr-123"
+
+  local output rc
+  output=$(run_guard "$PROJECT" "" false "dev-03" "$PROJECT" "TaskCreate" "1" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'must serialize non-team TaskCreate spawns'; then
+    pass "Execute direct mode blocks overlapping TaskCreate spawns"
+  else
+    fail "Execute direct mode should block overlapping TaskCreate (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_direct_mode_blocks_overlapping_taskcreate
+
+test_team_mode_taskcreate_still_requires_team_metadata() {
+  setup_project
+  write_execution_state "corr-123"
+  write_marker execute team "vbw-phase-01" "corr-123"
+
+  local output rc
+  output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "TaskCreate" "0" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'requires team-scoped agent spawns'; then
+    pass "Team mode TaskCreate still requires team metadata"
+  else
+    fail "Team mode TaskCreate should still require team metadata (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_team_mode_taskcreate_still_requires_team_metadata
 
 test_non_team_mode_blocks_team_name() {
   setup_project
