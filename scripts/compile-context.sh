@@ -81,7 +81,20 @@ resolve_research_file() {
       return
     fi
   fi
-  # Fall back to any *-RESEARCH.md (legacy single-file or first per-plan match)
+  # Try phase-wide research: extract {NN} from phase dir basename, check {NN}-RESEARCH.md
+  local phase_base
+  phase_base=$(basename "$phase_dir")
+  local phase_num
+  phase_num=$(echo "$phase_base" | sed 's/^\([0-9]*\).*/\1/')
+  if [ -n "$phase_num" ]; then
+    phase_num=$(printf "%02d" "$((10#$phase_num))")
+    local phase_wide_research="${phase_dir}/${phase_num}-RESEARCH.md"
+    if [ -f "$phase_wide_research" ]; then
+      echo "$phase_wide_research"
+      return
+    fi
+  fi
+  # Fall back to any *-RESEARCH.md (first match)
   find "$phase_dir" -maxdepth 1 -name "*-RESEARCH.md" -print -quit 2>/dev/null || true
 }
 if [ -z "$PHASE_DIR" ]; then
