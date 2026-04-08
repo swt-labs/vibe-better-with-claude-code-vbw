@@ -284,6 +284,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
     KNOWN_ISSUES_STATUS=$(printf '%s\n' "$KNOWN_ISSUES_META" | awk -F= '/^known_issues_status=/{print $2; exit}')
     if [ -n "$VERIF_FILE" ] && { [ "$KNOWN_ISSUES_STATUS" = "missing" ] || [ "$KNOWN_ISSUES_STATUS" = "malformed" ]; }; then
       bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/track-known-issues.sh sync-verification "$PDIR" "$VERIF_FILE" 2>/dev/null || true
+      bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/track-known-issues.sh promote-todos "$PDIR" 2>/dev/null || true
     fi
     ```
   - Before trusting any PASS artifact, re-run the deterministic QA gate for the target phase:

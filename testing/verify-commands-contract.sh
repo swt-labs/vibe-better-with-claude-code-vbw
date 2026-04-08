@@ -301,6 +301,13 @@ else
   fail "verify: missing known-issues restore from existing verification artifact"
 fi
 
+if grep -q 'sync-verification "\$PDIR" "\$VERIF_FILE"' "$VERIFY_FILE" \
+  && grep -q 'promote-todos "\$PDIR"' "$VERIFY_FILE"; then
+  pass "verify: restore path re-promotes known issues into STATE.md todos after sync-verification"
+else
+  fail "verify: missing promote-todos after known-issues restore in verify recovery path"
+fi
+
 if grep -q 'qa-remediation-state\.sh advance' "$QA_FILE"; then
   pass "qa: round-scoped PROCEED_TO_UAT persists remediation advance"
 else
