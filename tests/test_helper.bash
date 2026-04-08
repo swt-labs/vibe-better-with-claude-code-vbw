@@ -51,6 +51,13 @@ cleanup_vbw_caches_under_temp_dir() {
   done < <(find "$TEST_TEMP_DIR" \( -type d -o -type f \) \( -name .git -o -name .vbw-planning \) -print 2>/dev/null)
 }
 
+# Create minimal VBW workspace in a directory so find_vbw_root resolves there
+create_test_vbw_workspace() {
+  local dir="$1"
+  mkdir -p "$dir/.vbw-planning"
+  echo '{}' > "$dir/.vbw-planning/config.json"
+}
+
 # Create minimal config.json for tests
 create_test_config() {
   local dir="${1:-.vbw-planning}"
