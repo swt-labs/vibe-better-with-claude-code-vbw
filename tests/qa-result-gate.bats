@@ -2870,6 +2870,55 @@ VERIF
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
+@test "done-stage round PASS does not resurrect stale phase-level known issues after registry clears" {
+  create_verif "write-verification.sh" "PASS" "## Pre-existing Issues
+| Test | File | Error |
+|------|------|-------|
+| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | stale phase-level issue |"
+  init_git_repo
+  round_anchor_commit=$(commit_repo_file "src/Baseline.swift" "baseline")
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "src/Fix.swift"
+  - "README.md"
+  - "01-test-phase/01-SUMMARY.md"
+deviations: []
+---
+
+## Summary
+Round 01 documented the remediation outcome.
+SUMMARY
+  mkdir -p src
+  echo "real code fix" > "$TEST_DIR/src/Fix.swift"
+  echo "round pass docs" > "$TEST_DIR/README.md"
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Round 01 documented the remediation outcome.' > "$PHASE_DIR/01-SUMMARY.md"
+  git -C "$TEST_DIR" add src/Fix.swift README.md 01-test-phase/01-SUMMARY.md
+  git -C "$TEST_DIR" commit -m "round pass summary evidence" --quiet
+  current_commit=$(git -C "$TEST_DIR" rev-parse HEAD)
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Need a real fix"}
+---
+PLAN
+  printf 'stage=done\nround=01\nround_started_at_commit=%s\n' "$round_anchor_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - R01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after remediation.' > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
 @test "tests-only code-fix round can satisfy remediation evidence" {
   init_git_repo
   baseline_commit=$(commit_repo_file "tests/BaselineTests.swift" "baseline test fixture")
@@ -3490,11 +3539,29 @@ EOF
 | FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |"
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
-  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" '  - "src/Fix.swift"'
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "src/Fix.swift"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"FIGIRegistryServiceTests","file":"Tests/FIGIRegistryServiceTests.swift","error":"compositeFigi missing","disposition":"resolved","rationale":"The round fixed the carried known issue and QA confirmed it no longer blocks the phase"}'
+---
+
+## Summary
+Resolved the carried known issue and verified that it no longer blocks the phase.
+SUMMARY
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
 round: 01
 title: Known-issues-only remediation round
+known_issues_input:
+  - '{"test":"FIGIRegistryServiceTests","file":"Tests/FIGIRegistryServiceTests.swift","error":"compositeFigi missing"}'
+known_issue_resolutions:
+  - '{"test":"FIGIRegistryServiceTests","file":"Tests/FIGIRegistryServiceTests.swift","error":"compositeFigi missing","disposition":"resolved","rationale":"The round fixed the carried known issue and QA confirmed it no longer blocks the phase"}'
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -3508,6 +3575,106 @@ plans_verified:
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | MH-01 | must_have | Known issues cleared | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "known-issues-only remediation round without carried issue coverage fails closed" {
+  create_verif "write-verification.sh" "PASS" "## Pre-existing Issues
+| Test | File | Error |
+|------|------|-------|
+| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+---
+
+## Summary
+Cleared the round without explicitly addressing the carried known issue.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Missing carried known-issue coverage must fail closed
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Round passed | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "known-issues-only remediation round can accept non-blocking process-exceptions and proceed" {
+  create_verif "write-verification.sh" "PASS" "## Pre-existing Issues
+| Test | File | Error |
+|------|------|-------|
+| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"FIGIRegistryServiceTests","file":"Tests/FIGIRegistryServiceTests.swift","error":"compositeFigi missing","disposition":"accepted-process-exception","rationale":"Pre-existing and non-blocking for this phase"}'
+---
+
+## Summary
+Documented the carried known issue as an accepted non-blocking process-exception.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Known-issues-only process-exception round
+known_issues_input:
+  - '{"test":"FIGIRegistryServiceTests","file":"Tests/FIGIRegistryServiceTests.swift","error":"compositeFigi missing"}'
+known_issue_resolutions:
+  - '{"test":"FIGIRegistryServiceTests","file":"Tests/FIGIRegistryServiceTests.swift","error":"compositeFigi missing","disposition":"accepted-process-exception","rationale":"Pre-existing and non-blocking for this phase"}'
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Known issue accepted as non-blocking | PASS | Done |
 VERIF
 
   run bash "$SCRIPT" "$PHASE_DIR"
@@ -4035,6 +4202,56 @@ VERIF
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "documentation-only remediation summary file can satisfy round-local evidence in git repos" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
+  create_source_fail_verif "FAIL-01" "Documented process exception still needs round-local evidence" "$baseline_commit"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+---
+
+## Summary
+Documented the accepted process-exception for the current round.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Documentation-only process-exception round
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "This issue cannot be fixed retroactively in the current round"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Process exception documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
 @test "missing files_modified falls back to commit paths for metadata-only detection" {

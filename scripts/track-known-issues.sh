@@ -208,23 +208,45 @@ new_issue_object() {
   local error="$3"
   local source_path="$4"
   local round="$5"
+  local disposition="${6:-}"
 
-  jq -cn \
-    --arg test "$test" \
-    --arg file "$file" \
-    --arg error "$error" \
-    --arg source_path "$source_path" \
-    --argjson round "$round" \
-    '{
-      test: $test,
-      file: $file,
-      error: $error,
-      first_seen_in: $source_path,
-      last_seen_in: $source_path,
-      first_seen_round: $round,
-      last_seen_round: $round,
-      times_seen: 1
-    }'
+  if [ -n "$disposition" ]; then
+    jq -cn \
+      --arg test "$test" \
+      --arg file "$file" \
+      --arg error "$error" \
+      --arg source_path "$source_path" \
+      --arg disposition "$disposition" \
+      --argjson round "$round" \
+      '{
+        test: $test,
+        file: $file,
+        error: $error,
+        first_seen_in: $source_path,
+        last_seen_in: $source_path,
+        first_seen_round: $round,
+        last_seen_round: $round,
+        times_seen: 1,
+        disposition: $disposition
+      }'
+  else
+    jq -cn \
+      --arg test "$test" \
+      --arg file "$file" \
+      --arg error "$error" \
+      --arg source_path "$source_path" \
+      --argjson round "$round" \
+      '{
+        test: $test,
+        file: $file,
+        error: $error,
+        first_seen_in: $source_path,
+        last_seen_in: $source_path,
+        first_seen_round: $round,
+        last_seen_round: $round,
+        times_seen: 1
+      }'
+  fi
 }
 
 parse_frontmatter_issue_json() {
@@ -364,6 +386,66 @@ round_for_verification_path() {
   else
     echo 0
   fi
+}
+
+round_for_phase_artifact_path() {
+  local source_rel="$1"
+  local base
+  base=$(basename "$source_rel")
+  if [[ "$base" =~ ^R([0-9]+)- ]]; then
+    printf '%d' "$((10#${BASH_REMATCH[1]}))"
+  else
+    echo 0
+  fi
+}
+
+extract_summary_known_issue_outcomes_json() {
+  local summary_file="$1"
+  local source_rel="$2"
+  local round="$3"
+  local tmp_json
+  local item
+  tmp_json=$(mktemp)
+
+  while IFS= read -r item; do
+    item=$(trim "$item")
+    [ -n "$item" ] || continue
+    if ! printf '%s' "$item" | jq -e '
+      type == "object"
+      and (.test | type == "string")
+      and (.file | type == "string")
+      and (.error | type == "string")
+      and (.disposition == "accepted-process-exception")
+    ' >/dev/null 2>&1; then
+      continue
+    fi
+
+    test=$(printf '%s' "$item" | jq -r '.test')
+    file=$(printf '%s' "$item" | jq -r '.file')
+    error=$(printf '%s' "$item" | jq -r '.error')
+    disposition=$(printf '%s' "$item" | jq -r '.disposition')
+    new_issue_object \
+      "$(strip_code_ticks "$test")" \
+      "$(strip_code_ticks "$file")" \
+      "$(strip_code_ticks "$error")" \
+      "$source_rel" \
+      "$round" \
+      "$disposition"
+  done < <(extract_frontmatter_array_items "$summary_file" known_issue_outcomes) > "$tmp_json"
+
+  jq -s 'map(select(type == "object")) | unique_by(.test, .file) | sort_by(.test, .file)' "$tmp_json"
+  rm -f "$tmp_json"
+}
+
+extract_latest_summary_known_issue_outcomes_json() {
+  local summary_file=""
+  local source_rel=""
+  local round="0"
+  summary_file=$(find "$PHASE_DIR/remediation/qa" -maxdepth 2 -type f -name 'R*-SUMMARY.md' 2>/dev/null | (sort -V 2>/dev/null || sort) | tail -1)
+  [ -n "$summary_file" ] || { echo '[]'; return 0; }
+  source_rel=$(relative_to_phase "$summary_file")
+  round=$(round_for_phase_artifact_path "$source_rel")
+  extract_summary_known_issue_outcomes_json "$summary_file" "$source_rel" "$round"
 }
 
 extract_verification_issues_json() {
@@ -558,10 +640,12 @@ promote_todos() {
     return 0
   fi
 
-  local issues_json
+  local issues_json accepted_outcomes_json promotable_json
   issues_json=$(load_registry_issues)
+  accepted_outcomes_json=$(extract_latest_summary_known_issue_outcomes_json)
+  promotable_json=$(merge_issue_sets "$issues_json" "$accepted_outcomes_json")
   local total
-  total=$(printf '%s' "$issues_json" | jq 'length')
+  total=$(printf '%s' "$promotable_json" | jq 'length')
 
   if [ "$total" -eq 0 ] 2>/dev/null; then
     echo "promoted_count=0"
@@ -614,12 +698,13 @@ promote_todos() {
   # Iterate issues and check for duplicates
   local i=0
   while [ "$i" -lt "$total" ]; do
-    local test_name file_path error_msg times_seen source_artifact
-    test_name=$(printf '%s' "$issues_json" | jq -r ".[$i].test // \"unknown\"")
-    file_path=$(printf '%s' "$issues_json" | jq -r ".[$i].file // \"unknown\"")
-    error_msg=$(printf '%s' "$issues_json" | jq -r ".[$i].error // \"unspecified error\"")
-    times_seen=$(printf '%s' "$issues_json" | jq -r ".[$i].times_seen // 1")
-    source_artifact=$(printf '%s' "$issues_json" | jq -r ".[$i].last_seen_in // \"\"")
+    local test_name file_path error_msg times_seen source_artifact disposition
+    test_name=$(printf '%s' "$promotable_json" | jq -r ".[$i].test // \"unknown\"")
+    file_path=$(printf '%s' "$promotable_json" | jq -r ".[$i].file // \"unknown\"")
+    error_msg=$(printf '%s' "$promotable_json" | jq -r ".[$i].error // \"unspecified error\"")
+    times_seen=$(printf '%s' "$promotable_json" | jq -r ".[$i].times_seen // 1")
+    source_artifact=$(printf '%s' "$promotable_json" | jq -r ".[$i].last_seen_in // \"\"")
+    disposition=$(printf '%s' "$promotable_json" | jq -r ".[$i].disposition // \"\"")
 
     # Truncate error message for todo readability (max 80 chars)
     if [ "${#error_msg}" -gt 80 ]; then
@@ -640,7 +725,11 @@ promote_todos() {
       if [ -n "$source_artifact" ]; then
         source_ref=" (see ${source_artifact})"
       fi
-      new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"$'\n'
+      if [ "$disposition" = "accepted-process-exception" ]; then
+        new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"$'\n'
+      else
+        new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"$'\n'
+      fi
       promoted=$((promoted + 1))
     fi
     i=$((i + 1))

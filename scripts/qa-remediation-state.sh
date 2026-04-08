@@ -223,10 +223,12 @@ start_new_round() {
 emit_metadata() {
   local round round_dir source_verification_path round_started_at_commit
   local source_fail_count known_issues_path known_issues_status known_issues_count
-  local phase_verification_path phase_pre_existing_issue_count
+  local phase_verification_path phase_pre_existing_issue_count current_round_verification_path current_stage
   local known_issues_meta input_mode
   round=$(canonicalize_round "$(get_round)")
   round_dir="$PHASE_DIR/remediation/qa/round-${round}"
+  current_round_verification_path="$round_dir/R${round}-VERIFICATION.md"
+  current_stage=$(get_stage)
   round_started_at_commit=$(get_round_started_at_commit)
   source_verification_path=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" plan-input "$PHASE_DIR" 2>/dev/null || true)
   if [ -n "$source_verification_path" ] && [ ! -f "$source_verification_path" ]; then
@@ -263,7 +265,8 @@ emit_metadata() {
     input_mode="verification"
   elif [ "${known_issues_count:-0}" -gt 0 ] 2>/dev/null; then
     input_mode="known-issues"
-  elif [ "${phase_pre_existing_issue_count:-0}" -gt 0 ] 2>/dev/null; then
+  elif [ "${phase_pre_existing_issue_count:-0}" -gt 0 ] 2>/dev/null \
+    && { [ "$current_stage" != "done" ] || [ ! -f "$current_round_verification_path" ]; }; then
     input_mode="known-issues"
   fi
   echo "round=${round}"

@@ -174,6 +174,32 @@ EOF
   [[ "$output" == *"input_mode=known-issues"* ]]
 }
 
+@test "get does not resurrect stale phase verification known issues after current round verification exists" {
+  write_phase_verification "PASS" $'## Pre-existing Issues\n| Test | File | Error |\n|------|------|-------|\n| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |'
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=done\nround=01\nround_started_at_commit=abc123\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+
+## Must-Have Checks
+| # | ID | Truth/Condition | Status | Evidence |
+|---|-----|-----------------|--------|----------|
+| 1 | MH-01 | Round verification cleared the backlog | PASS | Done |
+EOF
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_count=0"* ]]
+  [[ "$output" == *"phase_pre_existing_issue_count=1"* ]]
+  [[ "$output" == *"input_mode=none"* ]]
+}
+
 @test "init captures round_started_at_commit from current git HEAD" {
   init_git_repo
   head_commit=$(commit_repo_file "src/base.txt" "baseline")

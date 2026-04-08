@@ -116,6 +116,38 @@ write_verification_with_issues() {
   } > "$PHASE_DIR/$relative_path"
 }
 
+write_round_summary_with_known_issue_outcomes() {
+  local relative_path="$1"
+  local outcomes_json="$2"
+  mkdir -p "$(dirname "$PHASE_DIR/$relative_path")"
+  {
+    echo '---'
+    echo 'phase: 03'
+    echo 'round: 01'
+    echo 'title: Round summary with known issue outcomes'
+    echo 'type: remediation'
+    echo 'status: complete'
+    echo 'completed: 2026-04-08'
+    echo 'tasks_completed: 1'
+    echo 'tasks_total: 1'
+    echo 'commit_hashes: []'
+    echo 'files_modified:'
+    printf '  - "%s"\n' "03-test-phase/${relative_path}"
+    echo 'deviations: []'
+    echo 'known_issue_outcomes:'
+    while IFS= read -r outcome; do
+      [ -n "$outcome" ] || continue
+      printf "  - '%s'\n" "$outcome"
+    done <<< "$outcomes_json"
+    echo '---'
+    echo
+    echo '## Task 1: Document known issue outcomes'
+    echo
+    echo '### What Was Built'
+    echo '- Captured the carried known-issue disposition for this round'
+  } > "$PHASE_DIR/$relative_path"
+}
+
 @test "track-known-issues: sync-summaries creates registry and de-duplicates by test+file" {
   write_summary_with_preexisting "03-01-SUMMARY.md" "03-01" $'TransferMatchingServiceTests (Tests/TransferMatchingServiceTests.swift): debugTestConfiguration missing\nFIGIRegistryServiceTests.swift: compositeFigi missing'
   write_summary_with_preexisting "03-02-SUMMARY.md" "03-02" $'TransferMatchingServiceTests (Tests/TransferMatchingServiceTests.swift): newer duplicate error text'
@@ -429,4 +461,18 @@ write_known_issues_registry() {
   # Both entries present
   grep -q "testFoo " "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "testFooBar" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos includes accepted non-blocking round outcomes when registry is empty" {
+  write_state_md_with_todos "None."
+  echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-01/R01-SUMMARY.md" '{"test":"OptionAdjustmentE2ETests (all 10)","file":"OptionAdjustmentE2ETests.swift","error":"Signal Trap","disposition":"accepted-process-exception","rationale":"Pre-existing SwiftData crash accepted for this phase"}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  grep -q "\[KNOWN-ISSUE\] OptionAdjustmentE2ETests (all 10) (OptionAdjustmentE2ETests.swift): Signal Trap" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "(see remediation/qa/round-01/R01-SUMMARY.md)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
