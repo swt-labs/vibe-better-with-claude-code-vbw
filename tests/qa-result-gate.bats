@@ -4254,6 +4254,70 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "round-02 docs-only remediation summary path can satisfy round-local evidence in git repos" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<EOF
+---
+writer: write-verification.sh
+result: FAIL
+plans_verified:
+  - R01
+verified_at_commit: ${baseline_commit}
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| RDEV-01 | must_have | Process-exception still needs documentation | FAIL | Missing |
+EOF
+
+  printf 'stage=verify\nround=02\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'SUMMARY'
+---
+plan: R02
+status: complete
+commit_hashes: []
+files_modified:
+  - "remediation/qa/round-02/R02-SUMMARY.md"
+deviations: []
+---
+
+## Summary
+Documented the carried process-exception in the round-local remediation summary.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'PLAN'
+---
+round: 02
+title: Documentation-only process-exception round 02
+fail_classifications:
+  - {id: "RDEV-01", type: "process-exception", rationale: "The issue is real but non-fixable for this phase and must be documented in the round-local artifact"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Process exception documented in round-02 summary | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" != *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
 @test "missing files_modified falls back to commit paths for metadata-only detection" {
   init_git_repo
   baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
