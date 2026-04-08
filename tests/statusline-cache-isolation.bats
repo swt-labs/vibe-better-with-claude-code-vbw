@@ -79,8 +79,10 @@ teardown() {
   mkdir -p "$repo_a" "$repo_b"
   git -C "$repo_a" init -q
   git -C "$repo_a" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo_a"
   git -C "$repo_b" init -q
   git -C "$repo_b" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo_b"
 
   local cache_a_path
   cache_a_path="$(vbw_cache_prefix_for_root "$repo_a" "$ORIG_UID")-fast"
@@ -169,6 +171,7 @@ JSON
   mkdir -p "$repo"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo"
 
   cd "$repo"
   local branch
@@ -185,6 +188,7 @@ JSON
   mkdir -p "$repo"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo"
 
   echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
 
@@ -208,6 +212,7 @@ JSON
   mkdir -p "$repo"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo"
   git -C "$repo" remote add origin "https://github.com/example/detached-remote-repo.git"
   git -C "$repo" checkout --detach -q
 
