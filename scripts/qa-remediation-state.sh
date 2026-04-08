@@ -211,6 +211,13 @@ materialize_round_known_issues_snapshot() {
   local source_rel=""
   local issue_count="0"
 
+  if [ -f "$snapshot_path" ] && jq -e 'type == "object" and (.issues | type == "array")' "$snapshot_path" >/dev/null 2>&1; then
+    issue_count=$(jq '.issues | length' "$snapshot_path" 2>/dev/null || echo 0)
+    printf 'snapshot_path=%s\n' "$snapshot_path"
+    printf 'snapshot_count=%s\n' "$issue_count"
+    return 0
+  fi
+
   if [ "$live_registry_status" = "present" ] && [ -f "$live_registry_path" ]; then
     issues_json=$(jq -c '.issues // []' "$live_registry_path" 2>/dev/null || echo '[]')
   elif [ -n "$source_verification_path" ] && [ -f "$source_verification_path" ]; then

@@ -3677,6 +3677,10 @@ plans_verified:
 | MH-01 | must_have | Known issue accepted as non-blocking | PASS | Done |
 VERIF
 
+  bash "$REPO_ROOT/scripts/qa-remediation-state.sh" get "$PHASE_DIR" >/dev/null
+  bash "$REPO_ROOT/scripts/track-known-issues.sh" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" >/dev/null
+  [ ! -f "$PHASE_DIR/known-issues.json" ]
+
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
@@ -3833,6 +3837,10 @@ plans_verified:
 |----|----------|-------------|--------|----------|
 | MH-01 | must_have | The round documented a carried known issue | PASS | Done |
 VERIF
+
+  bash "$REPO_ROOT/scripts/qa-remediation-state.sh" get "$PHASE_DIR" >/dev/null
+  bash "$REPO_ROOT/scripts/track-known-issues.sh" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" >/dev/null
+  [ ! -f "$PHASE_DIR/known-issues.json" ]
 
   run bash "$SCRIPT" "$PHASE_DIR"
 

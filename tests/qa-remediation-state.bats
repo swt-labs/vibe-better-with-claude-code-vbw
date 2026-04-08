@@ -287,6 +287,36 @@ EOF
   [ -d "$PHASE_DIR/remediation/qa/round-01" ]
 }
 
+@test "get preserves an existing round-local known-issues snapshot after sync-verification clears the live registry" {
+  write_phase_verification "PASS" $'## Pre-existing Issues\n| Test | File | Error |\n|------|------|-------|\n| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |'
+  write_known_issues_file
+
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" get-or-init "$PHASE_DIR" >/dev/null
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+
+## Must-Have Checks
+| # | ID | Truth/Condition | Status | Evidence |
+|---|-----|-----------------|--------|----------|
+| 1 | MH-01 | Round verification cleared the blocking backlog | PASS | Done |
+EOF
+  bash "$SCRIPTS_DIR/track-known-issues.sh" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" >/dev/null
+  [ ! -f "$PHASE_DIR/known-issues.json" ]
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_path=$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json"* ]]
+  [[ "$output" == *"known_issues_count=1"* ]]
+  [[ "$output" == *"input_mode=known-issues"* ]]
+  [ -f "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" ]
+}
+
 # --- advance command ---
 
 @test "advance chain: plan -> execute -> verify -> done" {
