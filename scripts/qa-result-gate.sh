@@ -497,24 +497,47 @@ paths_include_process_exception_evidence() {
   return 1
 }
 
-paths_are_allowed_worktree_evidence_artifacts() {
+path_is_allowed_worktree_evidence_artifact() {
   local phase_dir="${1:-}"
+  local path="${2:-}"
+  path=$(normalize_recorded_path "$path")
+  [ -n "$path" ] || return 1
+  if [ -n "$phase_dir" ]; then
+    path=$(canonicalize_phase_path "$path" "$phase_dir")
+  fi
+  if path_is_qa_remediation_round_artifact "$path"; then
+    return 0
+  fi
+  path_is_original_plan_artifact "$path" "$phase_dir"
+}
+
+resolve_corroborated_recorded_paths() {
+  local phase_dir="${1:-}"
+  local recorded_paths="${2:-}"
+  local committed_paths="${3:-}"
+  local worktree_paths="${4:-}"
   local path=""
+
   while IFS= read -r path; do
-    path=$(normalize_recorded_path "$path")
     [ -n "$path" ] || continue
-    if [ -n "$phase_dir" ]; then
-      path=$(canonicalize_phase_path "$path" "$phase_dir")
-    fi
-    if path_is_qa_remediation_round_artifact "$path"; then
+    if printf '%s\n' "$committed_paths" | grep -Fx -- "$path" >/dev/null 2>&1; then
+      printf '%s\n' "$path"
       continue
     fi
-    if path_is_original_plan_artifact "$path" "$phase_dir"; then
-      continue
+    if path_is_allowed_worktree_evidence_artifact "$phase_dir" "$path" \
+      && printf '%s\n' "$worktree_paths" | grep -Fx -- "$path" >/dev/null 2>&1; then
+      printf '%s\n' "$path"
     fi
-    return 1
-  done
-  return 0
+  done <<< "$recorded_paths" | (sort -u 2>/dev/null || sort -u)
+}
+
+recorded_paths_are_fully_corroborated() {
+  local recorded_paths="${1:-}"
+  local corroborated_paths="${2:-}"
+  local recorded_count corroborated_count
+  recorded_count=$(printf '%s\n' "$recorded_paths" | awk 'NF { count++ } END { print count + 0 }')
+  corroborated_count=$(printf '%s\n' "$corroborated_paths" | awk 'NF { count++ } END { print count + 0 }')
+  [ "$recorded_count" -eq "$corroborated_count" ] 2>/dev/null
 }
 
 commit_hashes_to_changed_files() {
@@ -1388,13 +1411,8 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
           ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
           break
         fi
-        _mo_effective_files=$(intersect_canonical_paths "$_mo_recorded_files" "$ROUND_ACTUAL_DIFF_PATHS_CANONICAL")
-        if [ -z "$_mo_effective_files" ] \
-          && [ -n "$ROUND_WORKTREE_PATHS_CANONICAL" ] \
-          && paths_are_allowed_worktree_evidence_artifacts "$PHASE_DIR" <<< "$_mo_recorded_files"; then
-          _mo_effective_files=$(intersect_canonical_paths "$_mo_recorded_files" "$ROUND_WORKTREE_PATHS_CANONICAL")
-        fi
-        if [ -z "$_mo_effective_files" ]; then
+        _mo_effective_files=$(resolve_corroborated_recorded_paths "$PHASE_DIR" "$_mo_recorded_files" "$ROUND_ACTUAL_DIFF_PATHS_CANONICAL" "$ROUND_WORKTREE_PATHS_CANONICAL")
+        if [ -z "$_mo_effective_files" ] || ! recorded_paths_are_fully_corroborated "$_mo_recorded_files" "$_mo_effective_files"; then
           ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
           break
         fi

@@ -1812,7 +1812,7 @@ VERIF
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     "  - \"$PHASE_DIR/01-01-PLAN.md\"
-  - \"$PHASE_DIR/01-01-SUMMARY.md\""
+  - \"01-test-phase/remediation/qa/round-01/R01-SUMMARY.md\""
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -2284,7 +2284,7 @@ VERIF
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     '  - "01-01-PLAN.md"
-  - ".vbw-planning/phases/01-test-phase/01-01-SUMMARY.md"'
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -4473,6 +4473,164 @@ VERIF
   [[ "$output" != *"qa_gate_round_change_evidence_unavailable=true"* ]]
   [[ "$output" != *"qa_gate_source_verification_missing=true"* ]]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "committed and worktree evidence can combine for a process-exception round" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
+  create_source_fail_verif "FAIL-01" "Mixed-source process-exception evidence still needs round-local corroboration" "$baseline_commit"
+  commit_repo_file "README.md" "committed support note" >/dev/null
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "README.md"
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+---
+
+## Summary
+Committed support docs plus the dirty round-local remediation summary together prove the round.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Mixed-source process-exception round
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "The issue is real but non-fixable for this phase"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Mixed committed and worktree evidence corroborates the round | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "committed and worktree evidence can combine for a plan-amendment round" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-0101 | must_have | Original plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
+  commit_repo_file "README.md" "committed release note" >/dev/null
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  echo "updated original plan" > "$PHASE_DIR/01-01-PLAN.md"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "README.md"
+  - "01-01-PLAN.md"
+deviations: []
+---
+
+## Summary
+Committed support docs plus the dirty original plan amendment together prove the round.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Mixed-source plan-amendment round
+fail_classifications:
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "The original plan was updated with the actual approach", source_plan: "01-01-PLAN.md"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Mixed committed and worktree evidence corroborates the plan amendment | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "unrelated worktree README cannot hitchhike on a valid remediation summary artifact" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
+  create_source_fail_verif "FAIL-01" "Unrelated dirty docs must not piggyback on a valid remediation artifact" "$baseline_commit"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  echo "uncommitted docs churn" > "$TEST_DIR/README.md"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "README.md"
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+---
+
+## Summary
+One valid remediation artifact plus unrelated dirty README churn must still fail closed.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Hitchhiking docs must fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "The issue is real but non-fixable for this phase"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Unrelated dirty docs cannot satisfy the full recorded set | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
 @test "missing files_modified falls back to commit paths for metadata-only detection" {
