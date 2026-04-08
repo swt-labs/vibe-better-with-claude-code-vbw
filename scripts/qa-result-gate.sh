@@ -1088,20 +1088,6 @@ json_object_array_length() {
   printf '%s' "$json_array" | jq 'length' 2>/dev/null || echo 0
 }
 
-json_object_array_covers_keys() {
-  local required_json="${1:-[]}"
-  local candidate_json="${2:-[]}"
-  local test_name=""
-  local file_path=""
-
-  while IFS=$'\t' read -r test_name file_path; do
-    [ -n "$test_name" ] || continue
-    printf '%s' "$candidate_json" | jq -e --arg test "$test_name" --arg file "$file_path" '.[] | select(.test == $test and .file == $file)' >/dev/null 2>&1 || return 1
-  done < <(printf '%s' "$required_json" | jq -r '.[] | [.test, .file] | @tsv' 2>/dev/null)
-
-  return 0
-}
-
 json_object_array_covers_full_issue_objects() {
   local required_json="${1:-[]}"
   local candidate_json="${2:-[]}"
@@ -1566,9 +1552,9 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       ROUND_KNOWN_ISSUES_VALID=false
     elif [ "$ROUND_CARRIED_KNOWN_ISSUE_COUNT" -gt 0 ] 2>/dev/null && ! json_object_array_covers_full_issue_objects "$ROUND_CARRIED_KNOWN_ISSUES_JSON" "$ROUND_KNOWN_ISSUE_INPUTS_JSON"; then
       ROUND_KNOWN_ISSUES_VALID=false
-    elif ! json_object_array_covers_keys "$ROUND_KNOWN_ISSUE_INPUTS_JSON" "$ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON"; then
+    elif ! json_object_array_covers_full_issue_objects "$ROUND_KNOWN_ISSUE_INPUTS_JSON" "$ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON"; then
       ROUND_KNOWN_ISSUES_VALID=false
-    elif ! json_object_array_covers_keys "$ROUND_KNOWN_ISSUE_INPUTS_JSON" "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON"; then
+    elif ! json_object_array_covers_full_issue_objects "$ROUND_KNOWN_ISSUE_INPUTS_JSON" "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON"; then
       ROUND_KNOWN_ISSUES_VALID=false
     elif ! json_object_array_dispositions_match "$ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON" "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON"; then
       ROUND_KNOWN_ISSUES_VALID=false

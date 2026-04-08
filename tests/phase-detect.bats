@@ -1811,16 +1811,6 @@ fail_classifications:
   - {id: "FAIL-01", type: "process-exception", rationale: "Fixture documents a structurally valid remediated round"}
 ---
 EOF
-  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md <<'EOF'
----
-plan: R01
-status: complete
-files_modified:
-  - README.md
-  - .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md
-deviations: []
----
-EOF
   # Round VERIFICATION.md has PASS
   round_anchor_commit="$(git rev-parse HEAD)"
   cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md <<'EOF'
