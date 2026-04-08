@@ -227,6 +227,7 @@ JSON
   mkdir -p "$repo"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo"
   touch "/tmp/vbw-0.0.0-${uid}-fast"
   touch "/tmp/vbw-0.0.0-${uid}-slow"
   touch "/tmp/vbw-0.0.0-${uid}-ok"
