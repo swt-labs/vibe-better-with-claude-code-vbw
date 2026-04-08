@@ -164,6 +164,26 @@ path_is_recorded_non_code_artifact() {
   esac
 }
 
+path_is_implementation_asset_artifact() {
+  local path="${1:-}"
+  local base="${path##*/}"
+  case "$path" in
+    docs/*|*/docs/*)
+      return 1
+      ;;
+  esac
+  case "$path" in
+    assets/*|*/assets/*|asset/*|*/asset/*|resources/*|*/resources/*|resource/*|*/resource/*|public/*|*/public/*|static/*|*/static/*|*/Assets.xcassets/*|Assets.xcassets/*)
+      case "$base" in
+        *.png|*.jpg|*.jpeg|*.gif|*.svg|*.webp|*.txt|Contents.json)
+          return 0
+          ;;
+      esac
+      ;;
+  esac
+  return 1
+}
+
 path_is_documentation_artifact() {
   local path="${1:-}"
   local base="${path##*/}"
@@ -172,6 +192,9 @@ path_is_documentation_artifact() {
       return 0
       ;;
   esac
+  if path_is_implementation_asset_artifact "$path"; then
+    return 1
+  fi
   case "$base" in
     AGENTS.md|README|README.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|LICENSE|LICENSE.*|*.md|*.mdx|*.txt|*.rst|*.adoc|*.asciidoc|*.pdf|*.png|*.jpg|*.jpeg|*.gif|*.svg|*.webp)
       return 0

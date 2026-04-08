@@ -2960,6 +2960,125 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "asset-only code-fix round can satisfy remediation evidence" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "baseline")
+  create_source_fail_verif "FAIL-01" "A product asset update can be the real fix" "$baseline_commit"
+  commit_repo_file "assets/logo.png" "binary-ish asset placeholder" >/dev/null
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "assets/logo.png"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Asset-only code fix
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "The shipped asset is the actual implementation surface for this fix"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Asset-only code fix verified | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "resource-text code-fix round can satisfy remediation evidence" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "baseline")
+  create_source_fail_verif "FAIL-01" "A shipped resource text file can be the real fix" "$baseline_commit"
+  commit_repo_file "resources/copy/onboarding.txt" "updated product copy" >/dev/null
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "resources/copy/onboarding.txt"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Resource-text code fix
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "The shipped resource text is the actual implementation surface for this fix"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Resource-text code fix verified | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "docs svg churn still fails closed for code-fix rounds" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "baseline")
+  create_source_fail_verif "FAIL-01" "Docs-only assets must not satisfy a code fix" "$baseline_commit"
+  commit_repo_file "docs/diagram.svg" "updated documentation diagram" >/dev/null
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "docs/diagram.svg"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Docs-only asset churn must fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "The real implementation surface must change, not docs-only collateral"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Docs-only asset churn does not satisfy the code-fix contract | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
 @test "repo-hygiene dotfile does not satisfy code-fix evidence" {
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
