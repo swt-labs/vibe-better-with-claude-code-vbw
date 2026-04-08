@@ -1581,7 +1581,7 @@ VERIF
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+    '  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -1619,7 +1619,7 @@ VERIF
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+    '  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -1657,7 +1657,7 @@ VERIF
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+    '  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -1692,7 +1692,7 @@ VERIF
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+    '  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -1852,7 +1852,7 @@ VERIF
   printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - ".vbw-planning/phases/01-test-phase/01-01-SUMMARY.md"'
+    '  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -2235,7 +2235,7 @@ plan: R01
 status: complete
 commit_hashes: []
 files_modified:
-  - `./.vbw-planning/phases/01-test-phase/01-01-SUMMARY.md`
+  - `./01-test-phase/remediation/qa/round-01/R01-SUMMARY.md`
 deviations: []
 ---
 
@@ -4534,6 +4534,106 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "committed docs SUMMARY basename does not count as process-exception evidence" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
+  create_source_fail_verif "FAIL-01" "A docs summary basename alone must not satisfy process-exception evidence" "$baseline_commit"
+  commit_repo_file "docs/vendor-SUMMARY.md" "committed docs summary note" >/dev/null
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "docs/vendor-SUMMARY.md"
+deviations: []
+---
+
+## Summary
+Committed docs with a remediation-looking basename must still fail closed.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Basename-only docs summary must fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "The issue is real but non-fixable for this phase"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Basename-only docs summary does not satisfy process-exception evidence | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "committed notes PLAN basename does not count as process-exception evidence" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "src/Baseline.swift" "verified code state")
+  create_source_fail_verif "FAIL-01" "A notes plan basename alone must not satisfy process-exception evidence" "$baseline_commit"
+  commit_repo_file "notes/foo-PLAN.md" "committed notes plan" >/dev/null
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "notes/foo-PLAN.md"
+deviations: []
+---
+
+## Summary
+Committed notes with a plan-looking basename must still fail closed.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Basename-only notes plan must fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "The issue is real but non-fixable for this phase"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Basename-only notes plan does not satisfy process-exception evidence | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
 @test "committed and worktree evidence can combine for a plan-amendment round" {
   init_git_repo
   baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
@@ -4704,7 +4804,7 @@ VERIF
 
   # Metadata-only files_modified
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - ".vbw-planning/phases/01-test/01-01-SUMMARY.md"'
+    '  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
 
   # Two plans in the round dir but verification only covers one
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'

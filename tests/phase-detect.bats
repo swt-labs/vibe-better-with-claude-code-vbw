@@ -1690,11 +1690,21 @@ plan: R01
 status: complete
 files_modified:
   - README.md
-  - .vbw-planning/phases/01-test/01-SUMMARY.md
+  - .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md
 deviations: []
 ---
 EOF
   round_anchor_commit="$(git rev-parse HEAD)"
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md <<'EOF'
+---
+plan: R01
+status: complete
+files_modified:
+  - README.md
+  - .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md
+deviations: []
+---
+EOF
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Documented historical process exception.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   echo "remediation notes" > README.md
   git add README.md .vbw-planning/phases/01-test/01-SUMMARY.md
@@ -1817,12 +1827,22 @@ plan: R01
 status: complete
 files_modified:
   - README.md
-  - .vbw-planning/phases/01-test/01-SUMMARY.md
+  - .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md
 deviations: []
 ---
 EOF
   # Round VERIFICATION.md has PASS
   round_anchor_commit="$(git rev-parse HEAD)"
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md <<'EOF'
+---
+plan: R01
+status: complete
+files_modified:
+  - README.md
+  - .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md
+deviations: []
+---
+EOF
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Round 01 documented the historical process exception.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   echo "round pass docs" > README.md
   git add README.md .vbw-planning/phases/01-test/01-SUMMARY.md
@@ -1907,12 +1927,22 @@ plan: R02
 status: complete
 files_modified:
   - README.md
-  - .vbw-planning/phases/01-test/01-SUMMARY.md
+  - .vbw-planning/phases/01-test/remediation/qa/round-02/R02-SUMMARY.md
 deviations: []
 ---
 EOF
   # Round-02 VERIFICATION.md has PASS
   round_anchor_commit="$(git rev-parse HEAD)"
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-02/R02-SUMMARY.md <<'EOF'
+---
+plan: R02
+status: complete
+files_modified:
+  - README.md
+  - .vbw-planning/phases/01-test/remediation/qa/round-02/R02-SUMMARY.md
+deviations: []
+---
+EOF
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Round 02 documented the historical process exception.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   echo "round two docs" > README.md
   git add README.md .vbw-planning/phases/01-test/01-SUMMARY.md

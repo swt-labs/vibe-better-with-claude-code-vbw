@@ -225,13 +225,17 @@ path_is_code_fix_support_artifact() {
 }
 
 path_is_process_exception_evidence_artifact() {
-  local path="${1:-}"
-  case "$path" in
-    .vbw-planning/*|.claude/*)
-      return 0
-      ;;
-  esac
-  path_is_recorded_non_code_artifact "$path"
+  local phase_dir="${1:-}"
+  local path="${2:-}"
+  path=$(normalize_recorded_path "$path")
+  [ -n "$path" ] || return 1
+  if [ -n "$phase_dir" ]; then
+    path=$(canonicalize_phase_path "$path" "$phase_dir")
+  fi
+  if path_is_qa_remediation_round_artifact "$path"; then
+    return 0
+  fi
+  path_is_original_plan_artifact "$path" "$phase_dir"
 }
 
 path_is_qa_remediation_round_artifact() {
@@ -487,10 +491,7 @@ paths_include_process_exception_evidence() {
   while IFS= read -r path; do
     path=$(normalize_recorded_path "$path")
     [ -n "$path" ] || continue
-    if [ -n "$phase_dir" ]; then
-      path=$(canonicalize_phase_path "$path" "$phase_dir")
-    fi
-    if path_is_process_exception_evidence_artifact "$path"; then
+    if path_is_process_exception_evidence_artifact "$phase_dir" "$path"; then
       return 0
     fi
   done
