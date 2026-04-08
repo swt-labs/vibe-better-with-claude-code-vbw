@@ -3683,6 +3683,82 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "mixed input_mode both round can satisfy fail and carried known-issue contracts together" {
+  create_source_fail_verif "FAIL-01" "A carried process-exception still needs explicit round coverage"
+  cat > "$PHASE_DIR/known-issues.json" <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "KnownIssueTests",
+      "file": "Tests/KnownIssueTests.swift",
+      "error": "known backlog item",
+      "first_seen_in": "01-01-SUMMARY.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"KnownIssueTests","file":"Tests/KnownIssueTests.swift","error":"known backlog item","disposition":"accepted-process-exception","rationale":"Non-blocking for this phase once explicitly documented"}'
+---
+
+## Summary
+Resolved the original FAIL via process-exception handling and documented the carried known issue as accepted non-blocking.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Mixed fail plus carried-known-issue round
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "The original deviation is real but non-fixable for this phase"}
+known_issues_input:
+  - '{"test":"KnownIssueTests","file":"Tests/KnownIssueTests.swift","error":"known backlog item"}'
+known_issue_resolutions:
+  - '{"test":"KnownIssueTests","file":"Tests/KnownIssueTests.swift","error":"known backlog item","disposition":"accepted-process-exception","rationale":"Non-blocking for this phase once explicitly documented"}'
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Original FAIL and carried known issue both covered by the round contract | PASS | Done |
+VERIF
+
+  run bash "$REPO_ROOT/scripts/qa-remediation-state.sh" get "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"input_mode=both"* ]]
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
 @test "metadata-only round with partial fail classification coverage → REMEDIATION_REQUIRED" {
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |

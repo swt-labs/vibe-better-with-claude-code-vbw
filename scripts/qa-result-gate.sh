@@ -1445,6 +1445,9 @@ ROUND_KNOWN_ISSUE_INPUTS_JSON='[]'
 ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON='[]'
 ROUND_KNOWN_ISSUE_OUTCOMES_JSON='[]'
 ROUND_KNOWN_ISSUE_INPUT_COUNT=0
+ROUND_KNOWN_ISSUE_RESOLUTION_COUNT=0
+ROUND_KNOWN_ISSUE_OUTCOME_COUNT=0
+ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED="false"
 ROUND_KNOWN_ISSUES_VALID=true
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   ROUND_CLASSIFICATION_TYPES=$(collect_fail_classification_types_in_dir "$PLAN_SCOPE_DIR")
@@ -1476,10 +1479,18 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON=$(collect_frontmatter_json_object_array_in_dir "$PLAN_SCOPE_DIR" plan known_issue_resolutions resolution)
   ROUND_KNOWN_ISSUE_OUTCOMES_JSON=$(collect_frontmatter_json_object_array_in_dir "$SUMMARY_SCOPE_DIR" summary known_issue_outcomes outcome)
   ROUND_KNOWN_ISSUE_INPUT_COUNT=$(json_object_array_length "$ROUND_KNOWN_ISSUE_INPUTS_JSON")
+  ROUND_KNOWN_ISSUE_RESOLUTION_COUNT=$(json_object_array_length "$ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON")
+  ROUND_KNOWN_ISSUE_OUTCOME_COUNT=$(json_object_array_length "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON")
 
   if [ "$ROUND_KNOWN_ISSUE_INPUT_COUNT" -gt 0 ] 2>/dev/null \
+    || [ "$ROUND_KNOWN_ISSUE_RESOLUTION_COUNT" -gt 0 ] 2>/dev/null \
+    || [ "$ROUND_KNOWN_ISSUE_OUTCOME_COUNT" -gt 0 ] 2>/dev/null \
     || [ "${ROUND_INPUT_MODE:-none}" = "known-issues" ] \
     || [ "${ROUND_INPUT_MODE:-none}" = "both" ]; then
+    ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED="true"
+  fi
+
+  if [ "$ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED" = "true" ]; then
     if [ "$ROUND_KNOWN_ISSUE_INPUT_COUNT" -eq 0 ] 2>/dev/null; then
       ROUND_KNOWN_ISSUES_VALID=false
     elif ! json_object_array_covers_keys "$ROUND_KNOWN_ISSUE_INPUTS_JSON" "$ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON"; then
@@ -1543,7 +1554,7 @@ case "$RESULT" in
       echo "qa_gate_round_change_evidence_empty=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] \
-      && { [ "${ROUND_INPUT_MODE:-none}" = "known-issues" ] || [ "${ROUND_INPUT_MODE:-none}" = "both" ]; } \
+      && [ "$ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED" = "true" ] \
       && [ "$ROUND_KNOWN_ISSUES_VALID" != "true" ]; then
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$ROUND_CLASSIFICATIONS_VALID" != "true" ]; then
