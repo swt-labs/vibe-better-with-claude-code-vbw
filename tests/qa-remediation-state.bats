@@ -140,7 +140,7 @@ EOF
   [[ "$output" == *$'plan\n'* ]]
   [[ "$output" == *"source_verification_path="* ]]
   [[ "$output" == *"source_fail_count=0"* ]]
-  [[ "$output" == *"known_issues_path=$PHASE_DIR/known-issues.json"* ]]
+  [[ "$output" == *"known_issues_path=$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json"* ]]
   [[ "$output" == *"known_issues_count=1"* ]]
   [[ "$output" == *"input_mode=known-issues"* ]]
 }
@@ -161,6 +161,43 @@ EOF
   [[ "$output" == *"input_mode=both"* ]]
 }
 
+@test "get-or-init materializes carried backlog snapshot and emits both when registry is missing but source verification still has pre-existing issues" {
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'EOF'
+---
+phase: 01
+tier: standard
+result: FAIL
+passed: 0
+failed: 1
+total: 1
+date: 2026-04-06
+writer: write-verification.sh
+plans_verified:
+  - 01
+---
+
+## Must-Have Checks
+| # | ID | Truth/Condition | Status | Evidence |
+|---|-----|-----------------|--------|----------|
+| 1 | MH-01 | Fixture check | FAIL | Missing |
+
+## Pre-existing Issues
+| Test | File | Error |
+|------|------|-------|
+| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |
+EOF
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get-or-init "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "plan" ]
+  [[ "$output" == *"known_issues_path=$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json"* ]]
+  [[ "$output" == *"known_issues_count=1"* ]]
+  [[ "$output" == *"source_fail_count=1"* ]]
+  [[ "$output" == *"input_mode=both"* ]]
+  [ -f "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" ]
+}
+
 @test "get infers known-issues input mode from phase verification after registry is cleared" {
   write_phase_verification "PASS" $'## Pre-existing Issues\n| Test | File | Error |\n|------|------|-------|\n| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |'
   mkdir -p "$PHASE_DIR/remediation/qa"
@@ -169,7 +206,8 @@ EOF
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"known_issues_count=0"* ]]
+  [[ "$output" == *"known_issues_path=$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json"* ]]
+  [[ "$output" == *"known_issues_count=1"* ]]
   [[ "$output" == *"phase_pre_existing_issue_count=1"* ]]
   [[ "$output" == *"input_mode=known-issues"* ]]
 }

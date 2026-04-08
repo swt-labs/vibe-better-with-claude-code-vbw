@@ -1055,6 +1055,28 @@ json_object_array_covers_keys() {
   return 0
 }
 
+json_object_array_covers_full_issue_objects() {
+  local required_json="${1:-[]}"
+  local candidate_json="${2:-[]}"
+  local test_name=""
+  local file_path=""
+  local error_msg=""
+
+  while IFS=$'\t' read -r test_name file_path error_msg; do
+    [ -n "$test_name" ] || continue
+    printf '%s' "$candidate_json" | jq -e --arg test "$test_name" --arg file "$file_path" --arg error "$error_msg" '.[] | select(.test == $test and .file == $file and .error == $error)' >/dev/null 2>&1 || return 1
+  done < <(printf '%s' "$required_json" | jq -r '.[] | [.test, .file, .error] | @tsv' 2>/dev/null)
+
+  return 0
+}
+
+load_known_issue_registry_json() {
+  local registry_path="${1:-}"
+  [ -n "$registry_path" ] || { echo '[]'; return 0; }
+  [ -f "$registry_path" ] || { echo '[]'; return 0; }
+  jq -c 'select(type == "object" and (.issues | type == "array")) | .issues' "$registry_path" 2>/dev/null || echo '[]'
+}
+
 json_object_array_dispositions_match() {
   local expected_json="${1:-[]}"
   local actual_json="${2:-[]}"
@@ -1285,11 +1307,13 @@ ROUND_ACTUAL_DIFF_PATHS_AVAILABLE="false"
 ROUND_ACTUAL_DIFF_PATHS_CANONICAL=""
 ROUND_WORKTREE_PATHS_CANONICAL=""
 ROUND_INPUT_MODE="none"
+ROUND_KNOWN_ISSUE_BACKLOG_PATH=""
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   _qa_remediation_state=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null || true)
   SOURCE_VERIFICATION_PATH=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^source_verification_path=/{print $2; exit}')
   ROUND_STARTED_AT_COMMIT=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^round_started_at_commit=/{print $2; exit}')
   ROUND_INPUT_MODE=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^input_mode=/{print $2; exit}')
+  ROUND_KNOWN_ISSUE_BACKLOG_PATH=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^known_issues_path=/{print $2; exit}')
   if [ -z "$SOURCE_VERIFICATION_PATH" ] || [ ! -r "$SOURCE_VERIFICATION_PATH" ]; then
     ROUND_SOURCE_VERIFICATION_MISSING="true"
   fi
@@ -1444,9 +1468,11 @@ ROUND_CLASSIFICATIONS_VALID=true
 ROUND_KNOWN_ISSUE_INPUTS_JSON='[]'
 ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON='[]'
 ROUND_KNOWN_ISSUE_OUTCOMES_JSON='[]'
+ROUND_CARRIED_KNOWN_ISSUES_JSON='[]'
 ROUND_KNOWN_ISSUE_INPUT_COUNT=0
 ROUND_KNOWN_ISSUE_RESOLUTION_COUNT=0
 ROUND_KNOWN_ISSUE_OUTCOME_COUNT=0
+ROUND_CARRIED_KNOWN_ISSUE_COUNT=0
 ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED="false"
 ROUND_KNOWN_ISSUES_VALID=true
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
@@ -1478,13 +1504,16 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   ROUND_KNOWN_ISSUE_INPUTS_JSON=$(collect_frontmatter_json_object_array_in_dir "$PLAN_SCOPE_DIR" plan known_issues_input issue)
   ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON=$(collect_frontmatter_json_object_array_in_dir "$PLAN_SCOPE_DIR" plan known_issue_resolutions resolution)
   ROUND_KNOWN_ISSUE_OUTCOMES_JSON=$(collect_frontmatter_json_object_array_in_dir "$SUMMARY_SCOPE_DIR" summary known_issue_outcomes outcome)
+  ROUND_CARRIED_KNOWN_ISSUES_JSON=$(load_known_issue_registry_json "$ROUND_KNOWN_ISSUE_BACKLOG_PATH")
   ROUND_KNOWN_ISSUE_INPUT_COUNT=$(json_object_array_length "$ROUND_KNOWN_ISSUE_INPUTS_JSON")
   ROUND_KNOWN_ISSUE_RESOLUTION_COUNT=$(json_object_array_length "$ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON")
   ROUND_KNOWN_ISSUE_OUTCOME_COUNT=$(json_object_array_length "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON")
+  ROUND_CARRIED_KNOWN_ISSUE_COUNT=$(json_object_array_length "$ROUND_CARRIED_KNOWN_ISSUES_JSON")
 
   if [ "$ROUND_KNOWN_ISSUE_INPUT_COUNT" -gt 0 ] 2>/dev/null \
     || [ "$ROUND_KNOWN_ISSUE_RESOLUTION_COUNT" -gt 0 ] 2>/dev/null \
     || [ "$ROUND_KNOWN_ISSUE_OUTCOME_COUNT" -gt 0 ] 2>/dev/null \
+    || [ "$ROUND_CARRIED_KNOWN_ISSUE_COUNT" -gt 0 ] 2>/dev/null \
     || [ "${ROUND_INPUT_MODE:-none}" = "known-issues" ] \
     || [ "${ROUND_INPUT_MODE:-none}" = "both" ]; then
     ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED="true"
@@ -1492,6 +1521,8 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
 
   if [ "$ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED" = "true" ]; then
     if [ "$ROUND_KNOWN_ISSUE_INPUT_COUNT" -eq 0 ] 2>/dev/null; then
+      ROUND_KNOWN_ISSUES_VALID=false
+    elif [ "$ROUND_CARRIED_KNOWN_ISSUE_COUNT" -gt 0 ] 2>/dev/null && ! json_object_array_covers_full_issue_objects "$ROUND_CARRIED_KNOWN_ISSUES_JSON" "$ROUND_KNOWN_ISSUE_INPUTS_JSON"; then
       ROUND_KNOWN_ISSUES_VALID=false
     elif ! json_object_array_covers_keys "$ROUND_KNOWN_ISSUE_INPUTS_JSON" "$ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON"; then
       ROUND_KNOWN_ISSUES_VALID=false

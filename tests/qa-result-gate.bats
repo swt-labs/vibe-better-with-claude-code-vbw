@@ -3759,6 +3759,87 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "carried known-issue contract fails closed when known_issues_input covers only a subset of the backlog" {
+  create_source_fail_verif "FAIL-01" "The round must account for the full carried backlog"
+  cat > "$PHASE_DIR/known-issues.json" <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "KnownIssueTestsA",
+      "file": "Tests/KnownIssueTestsA.swift",
+      "error": "first backlog item",
+      "first_seen_in": "01-01-SUMMARY.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    },
+    {
+      "test": "KnownIssueTestsB",
+      "file": "Tests/KnownIssueTestsB.swift",
+      "error": "second backlog item",
+      "first_seen_in": "01-01-SUMMARY.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"KnownIssueTestsA","file":"Tests/KnownIssueTestsA.swift","error":"first backlog item","disposition":"accepted-process-exception","rationale":"Only the first known issue was documented"}'
+---
+
+## Summary
+Only a subset of the carried backlog was covered.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Partial carried backlog coverage must fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "The original FAIL is non-fixable for this phase"}
+known_issues_input:
+  - '{"test":"KnownIssueTestsA","file":"Tests/KnownIssueTestsA.swift","error":"first backlog item"}'
+known_issue_resolutions:
+  - '{"test":"KnownIssueTestsA","file":"Tests/KnownIssueTestsA.swift","error":"first backlog item","disposition":"accepted-process-exception","rationale":"Only the first known issue was documented"}'
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | The round documented a carried known issue | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
 @test "metadata-only round with partial fail classification coverage → REMEDIATION_REQUIRED" {
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
