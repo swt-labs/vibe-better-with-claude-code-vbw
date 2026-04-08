@@ -3,12 +3,15 @@
 # Output format:
 #   ID
 
-function tolower_str(s,    i, c, out) {
+function tolower_str(s,    i, c, out, upper, lower, pos) {
+  upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  lower = "abcdefghijklmnopqrstuvwxyz"
   out = ""
   for (i = 1; i <= length(s); i++) {
     c = substr(s, i, 1)
-    if (c >= "A" && c <= "Z")
-      c = sprintf("%c", index("ABCDEFGHIJKLMNOPQRSTUVWXYZ", c) + 96)
+    pos = index(upper, c)
+    if (pos > 0)
+      c = substr(lower, pos, 1)
     out = out c
   }
   return out
