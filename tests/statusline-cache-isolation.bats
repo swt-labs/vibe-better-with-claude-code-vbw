@@ -321,6 +321,9 @@ JSON
 @test "statusline works in non-git directory" {
   local noGitDir="$TEST_TEMP_DIR/not-a-repo"
   mkdir -p "$noGitDir"
+  # Create VBW workspace so find_vbw_root resolves here (not the VBW project
+  # root whose config may have statusline_hide_limits=true, suppressing L3)
+  create_test_vbw_workspace "$noGitDir"
   cd "$noGitDir"
   local output
   output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
