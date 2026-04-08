@@ -26,9 +26,8 @@ if [ -z "$VBW_PLUGIN_ROOT" ]; then
   fi
 fi
 if [ -z "$VBW_PLUGIN_ROOT" ]; then
-  for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
-    [ -f "$f" ] && VBW_PLUGIN_ROOT="${f%/scripts/hook-wrapper.sh}" && break
-  done
+  f=$( (unsetopt nomatch 2>/dev/null || true; ls -d /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh 2>/dev/null) | head -1)
+  [ -n "$f" ] && [ -f "$f" ] && VBW_PLUGIN_ROOT="${f%/scripts/hook-wrapper.sh}"
 fi
 if [ -z "$VBW_PLUGIN_ROOT" ]; then
   PLUGIN_DIR_PATH=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)
