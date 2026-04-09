@@ -714,10 +714,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    ```
   Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `source_fail_count`, `known_issues_path`, `known_issues_count`, `input_mode`, `verification_path`
 
-2. **Loop (max 3 rounds):**
-   ```
-   while round <= 3:
-   ```
+2. **Loop (until PROCEED_TO_UAT or user intervention):**
 
    **stage=plan:** Create `R{RR}-PLAN.md` in `{round_dir}`:
   - Read `source_verification_path` from `qa-remediation-state.sh get` metadata for failed checks when `source_fail_count>0`
@@ -779,13 +776,6 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
       - **When `qa_gate_metadata_only_override=true`** (routing will be `REMEDIATION_REQUIRED`): Display `⚠ QA remediation round made no implementation changes — only planning/documentation updates. The round still depends on a code-fix path (or omitted fail_classifications), so the original failures cannot be considered resolved without code changes. ${qa_gate_phase_deviation_count} phase deviations remain recorded.` This override is the deterministic safety net for rounds that still depend on code changes. Pure plan-amendment rounds can pass when the original plan was actually updated, and pure process-exception rounds still need planning/remediation-artifact evidence — delivered docs/README changes alone do not count. The next round's `stage=plan` MUST classify each FAIL as code-fix, plan-amendment, or process-exception per the Deviation Classification rules above.
       - **When `qa_gate_round_change_evidence_empty=true`** (routing will be `REMEDIATION_REQUIRED`): Display `⚠ QA remediation round recorded no change evidence — both files_modified and commit_hashes were empty. A PASS without any recorded changed files or commits cannot resolve prior FAILs.` The next round must produce real code/plan changes or capture justified remediation evidence instead of an empty summary.
       - **When `qa_gate_round_change_evidence_unavailable=true`** (routing will be `REMEDIATION_REQUIRED`): Display `⚠ QA remediation round recorded change evidence that could not be verified as current-round work. Either the recorded files did not match any committed or current round-local remediation-artifact changes after the source verification commit, or the referenced commit_hashes could not be proven to belong to this round, so the actual changed files could not be trusted.` Restore explicit files_modified entries and/or round-local commit evidence anchored to the remediation round before treating the failures as resolved.
-
-3. **After max rounds (3):** If QA still fails, display:
-   ```
-   ⚠ QA remediation exhausted (3 rounds). Remaining failures:
-   {list failed checks from VERIFICATION.md}
-   ```
-   Proceed to Step 5 (output) with `QA: FAIL` — do NOT enter UAT.
 
 ### Step 4.5: Human acceptance testing (UAT)
 

@@ -525,12 +525,24 @@ EOF
   grep -q "^round=01$" "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 }
 
-@test "needs-round exceeding max rounds exits with code 2" {
+@test "needs-round can increment beyond round 03" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-03"
   printf 'stage=done\nround=03\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
-  [ "$status" -eq 2 ]
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round=04$"
+  [ -d "$PHASE_DIR/remediation/qa/round-04" ]
+}
+
+@test "needs-round can increment from round 09 to 10" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-09"
+  printf 'stage=done\nround=09\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round=10$"
+  [ -d "$PHASE_DIR/remediation/qa/round-10" ]
 }
 
 # --- verification_path metadata ---
