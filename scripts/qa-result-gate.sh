@@ -263,14 +263,8 @@ path_is_process_exception_evidence_artifact() {
 
 path_is_qa_remediation_round_artifact() {
   local path="${1:-}"
-  case "$path" in
-    remediation/qa/round-*/R[0-9]*-PLAN.md|remediation/qa/round-*/R[0-9]*-SUMMARY.md|*/remediation/qa/round-*/R[0-9]*-PLAN.md|*/remediation/qa/round-*/R[0-9]*-SUMMARY.md)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
+  # Match remediation/qa/round-NN/RNN-{PLAN,SUMMARY}.md with digits-only round IDs
+  [[ "$path" =~ (^|/)remediation/qa/round-[0-9]+/R[0-9]+-(PLAN|SUMMARY)\.md$ ]]
 }
 
 resolve_existing_path_target() {
@@ -358,8 +352,11 @@ resolve_original_plan_artifact_path() {
 
   [ "$candidate_dir" = "$phase_dir_abs" ] || return 1
 
+  # Exclude remediation round plans (digits-only round IDs like R01, R100)
+  if [[ "$candidate_base" =~ ^R[0-9]+(-.*)?-PLAN\.md$ ]]; then
+    return 1
+  fi
   case "$candidate_base" in
-    R[0-9]*-PLAN.md|R[0-9]*-*-PLAN.md) return 1 ;;
     *-PLAN.md|PLAN.md) ;;
     *) return 1 ;;
   esac

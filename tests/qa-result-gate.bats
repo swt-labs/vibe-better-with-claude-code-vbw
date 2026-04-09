@@ -5199,3 +5199,43 @@ VERIF
   # The error field prevents confusion between the two same-test/same-file issues
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
+
+# --- three-digit round artifact support (issue #361) ---
+
+@test "gate recognizes round-100 artifacts with three-digit round numbers" {
+  create_source_fail_verif "FAIL-01" "Must-have check still failing"
+  create_plan "01-01"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-100"
+  printf 'stage=verify\nround=100\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-100" "100" \
+    '  - ".vbw-planning/phases/01-test-phase/01-01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-100/R100-PLAN.md" <<'PLAN'
+---
+round: 100
+title: Three-digit round plan
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Fix needed"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-100/R100-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R100
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Feature works | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Gate should process R100 artifacts without error (not reject them as unrecognized)
+  [[ "$output" != *"unrecognized"* ]]
+}
