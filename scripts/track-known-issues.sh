@@ -491,6 +491,7 @@ merge_issue_sets() {
               else (($old.times_seen // 1) + 1)
               end
             )
+          | if ($new.disposition // "") != "" then .disposition = $new.disposition else . end
         end;
       ($existing | mapify(.)) as $existing_map
       | reduce $incoming[] as $issue (
@@ -524,6 +525,7 @@ replace_issue_set() {
               else (($old.times_seen // 1) + 1)
               end
             )
+          | if ($new.disposition // "") != "" then .disposition = $new.disposition else . end
         end;
       ($existing | mapify(.)) as $existing_map
       | [ $incoming[] | merge_issue($existing_map[issue_key]; .) ]
@@ -703,6 +705,7 @@ promote_todos() {
   local promoted=0
   local already=0
   local new_entries=""
+  local disposition_updates=""
 
   # Iterate issues and check for duplicates
   local i=0
@@ -722,18 +725,33 @@ promote_todos() {
 
     # Dedup by test+file pair regardless of tag prefix (matches [KNOWN-ISSUE], [HIGH], untagged, etc.)
     local is_dup=false
+    local needs_disposition_update=false
     local dedup_key="${test_name} (${file_path}): ${error_msg}"
+    local existing_line=""
     if printf '%s' "$todos_section" | grep -qF "$dedup_key"; then
       is_dup=true
+      # Check if existing line needs a disposition update
+      if [ "$disposition" = "accepted-process-exception" ]; then
+        existing_line=$(printf '%s' "$todos_section" | grep -F "$dedup_key" | head -1)
+        if ! printf '%s' "$existing_line" | grep -qF "accepted as process-exception"; then
+          needs_disposition_update=true
+        fi
+      fi
     fi
 
-    if [ "$is_dup" = true ]; then
+    local source_ref=""
+    if [ -n "$source_artifact" ]; then
+      source_ref=" (see ${source_artifact})"
+    fi
+
+    if [ "$is_dup" = true ] && [ "$needs_disposition_update" = true ]; then
+      # Already tracked but disposition changed — rewrite the line
+      local new_line="- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"
+      disposition_updates="${disposition_updates}${existing_line}"$'\x1f'"${new_line}"$'\n'
+      promoted=$((promoted + 1))
+    elif [ "$is_dup" = true ]; then
       already=$((already + 1))
     else
-      local source_ref=""
-      if [ -n "$source_artifact" ]; then
-        source_ref=" (see ${source_artifact})"
-      fi
       if [ "$disposition" = "accepted-process-exception" ]; then
         new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"$'\n'
       else
@@ -743,6 +761,16 @@ promote_todos() {
     fi
     i=$((i + 1))
   done
+
+  # Apply disposition updates (rewrite existing lines in-place)
+  if [ -n "$disposition_updates" ]; then
+    while IFS=$'\x1f' read -r old_line new_line; do
+      [ -n "$old_line" ] || continue
+      state_content=$(printf '%s\n' "$state_content" | OLD_LINE="$old_line" NEW_LINE="$new_line" awk '
+        { if (index($0, ENVIRON["OLD_LINE"]) > 0) print ENVIRON["NEW_LINE"]; else print }
+      ')
+    done <<< "$disposition_updates"
+  fi
 
   if [ "$promoted" -eq 0 ]; then
     echo "promoted_count=0"
@@ -756,35 +784,36 @@ promote_todos() {
   local tmp_file
   tmp_file=$(mktemp "${state_path}.tmp.XXXXXX")
 
-  # Replace "None." placeholder in Todos section, or append to existing todos
-  # Build awk anchor pattern from todo_anchor (escaping for regex)
-  local awk_anchor awk_stop_pattern
-  awk_anchor=$(printf '%s' "$todo_anchor" | sed 's/[.[\*^$()+?{|]/\\&/g')
-  if [ "$todo_anchor" = "### Pending Todos" ]; then
-    # Legacy layout: stop explicitly at ### Completed Todos or any ## heading
-    # (^##) already catches ### headings since ### starts with ##; the
-    # explicit (^### Completed Todos$) documents the expected boundary)
-    awk_stop_pattern='(^### Completed Todos$)|(^##)'
+  if [ -z "$new_entries" ]; then
+    # Disposition-only updates — state_content already has the rewrites applied
+    printf '%s\n' "$state_content" > "$tmp_file"
   else
-    awk_stop_pattern='^##'
-  fi
+    # New entries to add — build awk anchor pattern from todo_anchor
+    local awk_anchor awk_stop_pattern
+    awk_anchor=$(printf '%s' "$todo_anchor" | sed 's/[.[\*^$()+?{|]/\\&/g')
+    if [ "$todo_anchor" = "### Pending Todos" ]; then
+      awk_stop_pattern='(^### Completed Todos$)|(^##)'
+    else
+      awk_stop_pattern='^##'
+    fi
 
-  if printf '%s' "$todos_section" | grep -qE '^\s*None\.?\s*$'; then
-    # Replace the placeholder with new entries
-    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
-      $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
-      in_todos && $0 ~ ENVIRON["AWK_STOP"] { in_todos=0; print; next }
-      in_todos && /^[[:space:]]*None\.?[[:space:]]*$/ { print ENVIRON["ENTRIES"]; in_todos=0; next }
-      { print }
-    ' > "$tmp_file"
-  else
-    # Append new entries before the next section heading after the anchor
-    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
-      $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
-      in_todos && $0 ~ ENVIRON["AWK_STOP"] { print ENVIRON["ENTRIES"]; print ""; in_todos=0; print; next }
-      { print }
-      END { if (in_todos) { print ENVIRON["ENTRIES"] } }
-    ' > "$tmp_file"
+    if printf '%s' "$todos_section" | grep -qE '^\s*None\.?\s*$'; then
+      # Replace the placeholder with new entries
+      printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
+        $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
+        in_todos && $0 ~ ENVIRON["AWK_STOP"] { in_todos=0; print; next }
+        in_todos && /^[[:space:]]*None\.?[[:space:]]*$/ { print ENVIRON["ENTRIES"]; in_todos=0; next }
+        { print }
+      ' > "$tmp_file"
+    else
+      # Append new entries before the next section heading after the anchor
+      printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
+        $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
+        in_todos && $0 ~ ENVIRON["AWK_STOP"] { print ENVIRON["ENTRIES"]; print ""; in_todos=0; print; next }
+        { print }
+        END { if (in_todos) { print ENVIRON["ENTRIES"] } }
+      ' > "$tmp_file"
+    fi
   fi
 
   mv "$tmp_file" "$state_path"

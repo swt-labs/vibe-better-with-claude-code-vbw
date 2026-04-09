@@ -505,3 +505,23 @@ write_known_issues_registry() {
   grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "(see remediation/qa/round-01/R01-SUMMARY.md)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
+
+@test "track-known-issues: promote-todos updates already-tracked issue with accepted disposition" {
+  # Issue already tracked in STATE.md without disposition annotation
+  write_state_md_with_todos "- [KNOWN-ISSUE] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap (phase 03, seen 1x) (added 2026-04-01)"
+  # Same issue in registry
+  write_known_issues_registry "03" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","last_seen_in":"03-01-SUMMARY.md","last_seen_round":1,"times_seen":1}'
+  # Round summary now accepts it as process-exception
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-02/R02-SUMMARY.md" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","disposition":"accepted-process-exception","rationale":"Pre-existing SwiftData crash accepted for this phase"}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  # The existing line should be rewritten with the accepted annotation
+  grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # The old un-annotated line should be gone
+  ! grep -q "\[KNOWN-ISSUE\] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap (phase 03, seen 1x) (added 2026-04-01)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
