@@ -2270,6 +2270,114 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "Git-backed docs-only remediation artifact worktree fallback proceeds to UAT" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | Documentation needs update | FAIL | Missing docs |" "$baseline_commit"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # Create round artifacts in worktree (NOT committed) — these are the docs-only files_modified
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+  - "01-test-phase/remediation/qa/round-01/R01-PLAN.md"
+deviations: []
+---
+
+## Task 1: Documentation-only remediation round
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Docs-only round with remediation artifacts
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Documentation-only change recorded in remediation artifacts"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Docs updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "Git-backed docs-only remediation artifact worktree fallback proceeds to UAT" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | Documentation needs update | FAIL | Missing docs |" "$baseline_commit"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # Create round artifacts in worktree (NOT committed) — these are the docs-only files_modified
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+  - "01-test-phase/remediation/qa/round-01/R01-PLAN.md"
+deviations: []
+---
+
+## Task 1: Documentation-only remediation round
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Docs-only round with remediation artifacts
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Documentation-only change recorded in remediation artifacts"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Docs updated | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
 @test "plan-amendment accepts short original plan filename" {
   init_git_repo
   baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
