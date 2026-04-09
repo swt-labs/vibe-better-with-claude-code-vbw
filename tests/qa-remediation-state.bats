@@ -545,6 +545,16 @@ EOF
   [ -d "$PHASE_DIR/remediation/qa/round-10" ]
 }
 
+@test "needs-round can increment from round 99 to 100" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-99"
+  printf 'stage=done\nround=99\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round=100$"
+  [ -d "$PHASE_DIR/remediation/qa/round-100" ]
+}
+
 # --- verification_path metadata ---
 
 @test "emit_metadata includes verification_path on init" {
