@@ -289,7 +289,8 @@ fi
 
 if grep -q 'KNOWN_ISSUES_STATUS=' "$VERIFY_FILE" \
   && grep -q 'KNOWN_ISSUES_STATUS=malformed' "$VERIFY_FILE" \
-  && grep -q 'unresolved or unreadable tracked known issues' "$VERIFY_FILE"; then
+  && grep -q 'unreadable tracked known issues' "$VERIFY_FILE" \
+  && grep -q 'unresolved tracked known issues' "$VERIFY_FILE"; then
   pass "verify: skip-qa guard blocks malformed known-issues registries"
 else
   fail "verify: missing malformed known-issues fail-closed guard in skip-qa path"
@@ -299,6 +300,13 @@ if grep -q 'sync-verification "\$PDIR" "\$VERIF_FILE"' "$VERIFY_FILE"; then
   pass "verify: restores known-issues registry from existing verification artifacts before gating"
 else
   fail "verify: missing known-issues restore from existing verification artifact"
+fi
+
+if grep -q 'sync-verification "\$PDIR" "\$VERIF_FILE"' "$VERIFY_FILE" \
+  && grep -q 'promote-todos "\$PDIR"' "$VERIFY_FILE"; then
+  pass "verify: restore path re-promotes known issues into STATE.md todos after sync-verification"
+else
+  fail "verify: missing promote-todos after known-issues restore in verify recovery path"
 fi
 
 if grep -q 'qa-remediation-state\.sh advance' "$QA_FILE"; then
