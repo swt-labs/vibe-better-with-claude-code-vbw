@@ -1043,7 +1043,7 @@ extract_frontmatter_json_object_array() {
     return 0
   fi
 
-  jq -sc 'unique_by(.test, .file) | sort_by(.test, .file)' "$tmp_file"
+  jq -sc 'unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_file"
   rm -f "$tmp_file"
 }
 
@@ -1079,7 +1079,7 @@ collect_frontmatter_json_object_array_in_dir() {
     return 0
   fi
 
-  jq -sc 'unique_by(.test, .file) | sort_by(.test, .file)' "$tmp_file"
+  jq -sc 'unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_file"
   rm -f "$tmp_file"
 }
 
@@ -1676,8 +1676,19 @@ case "$RESULT" in
       echo "qa_gate_known_issues_override=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$KNOWN_ISSUES_STATUS" = "present" ] && [ "$KNOWN_ISSUES_COUNT" -gt 0 ] 2>/dev/null; then
-      echo "qa_gate_known_issues_override=true"
-      echo "qa_gate_routing=REMEDIATION_REQUIRED"
+      # Known issues exist in the registry. If this remediation round properly
+      # addressed all of them (contract valid, outcomes recorded, none unresolved),
+      # allow proceeding rather than blocking on stale registry entries.
+      if [ "$ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED" = "true" ] \
+         && [ "$ROUND_KNOWN_ISSUES_VALID" = "true" ] \
+         && [ "$ROUND_KNOWN_ISSUE_OUTCOME_COUNT" -gt 0 ] 2>/dev/null \
+         && ! json_object_array_has_disposition "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON" "unresolved"; then
+        echo "qa_gate_known_issues_all_addressed=true"
+        echo "qa_gate_routing=PROCEED_TO_UAT"
+      else
+        echo "qa_gate_known_issues_override=true"
+        echo "qa_gate_routing=REMEDIATION_REQUIRED"
+      fi
     else
       # 5. Clean PASS
       echo "qa_gate_routing=PROCEED_TO_UAT"

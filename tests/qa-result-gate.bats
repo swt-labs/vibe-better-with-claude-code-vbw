@@ -3851,6 +3851,9 @@ plans_verified:
 VERIF
 
   bash "$REPO_ROOT/scripts/qa-remediation-state.sh" get "$PHASE_DIR" >/dev/null
+  # Sync phase-level verification first (creates known-issues registry from Pre-existing Issues)
+  bash "$REPO_ROOT/scripts/track-known-issues.sh" sync-verification "$PHASE_DIR" "$PHASE_DIR/VERIFICATION.md" >/dev/null
+  # Then sync round verification (preserves existing registry when incoming is empty)
   bash "$REPO_ROOT/scripts/track-known-issues.sh" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" >/dev/null
 
   run bash "$SCRIPT" "$PHASE_DIR"
@@ -3928,6 +3931,9 @@ VERIF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"input_mode=both"* ]]
+
+  # Sync round verification before gate (matches production flow)
+  bash "$REPO_ROOT/scripts/track-known-issues.sh" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" >/dev/null
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
