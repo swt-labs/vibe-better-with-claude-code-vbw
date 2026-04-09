@@ -76,6 +76,7 @@ restore_known_issues_from_verification_if_needed() {
   case "${known_status:-missing}" in
     missing|malformed)
       bash "$_SCRIPT_DIR_PD/track-known-issues.sh" sync-verification "$phase_dir" "$verification_file" >/dev/null 2>&1 || true
+      bash "$_SCRIPT_DIR_PD/track-known-issues.sh" promote-todos "$phase_dir" >/dev/null 2>&1 || true
       ;;
   esac
 }
