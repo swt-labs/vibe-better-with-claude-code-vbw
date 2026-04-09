@@ -264,7 +264,7 @@ path_is_process_exception_evidence_artifact() {
 path_is_qa_remediation_round_artifact() {
   local path="${1:-}"
   case "$path" in
-    remediation/qa/round-*/R[0-9][0-9]-PLAN.md|remediation/qa/round-*/R[0-9][0-9]-SUMMARY.md|*/remediation/qa/round-*/R[0-9][0-9]-PLAN.md|*/remediation/qa/round-*/R[0-9][0-9]-SUMMARY.md)
+    remediation/qa/round-*/R[0-9]*-PLAN.md|remediation/qa/round-*/R[0-9]*-SUMMARY.md|*/remediation/qa/round-*/R[0-9]*-PLAN.md|*/remediation/qa/round-*/R[0-9]*-SUMMARY.md)
       return 0
       ;;
     *)
@@ -359,7 +359,7 @@ resolve_original_plan_artifact_path() {
   [ "$candidate_dir" = "$phase_dir_abs" ] || return 1
 
   case "$candidate_base" in
-    R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md) return 1 ;;
+    R[0-9]*-PLAN.md|R[0-9]*-*-PLAN.md) return 1 ;;
     *-PLAN.md|PLAN.md) ;;
     *) return 1 ;;
   esac
