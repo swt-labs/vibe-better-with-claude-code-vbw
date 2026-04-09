@@ -303,7 +303,14 @@ QA verification summary (pre-extracted from VERIFICATION.md):
     KNOWN_ISSUES_STATUS=$(printf '%s\n' "$KNOWN_ISSUES_META" | awk -F= '/^known_issues_status=/{print $2; exit}')
     KNOWN_ISSUES_COUNT=$(printf '%s\n' "$KNOWN_ISSUES_META" | awk -F= '/^known_issues_count=/{print $2; exit}')
     ```
-    If `KNOWN_ISSUES_STATUS=malformed` or `KNOWN_ISSUES_COUNT > 0`, STOP: "Phase {NN} still has unresolved or unreadable tracked known issues. Run `/vbw:vibe` to continue QA remediation before UAT."
+    If `KNOWN_ISSUES_STATUS=malformed`, STOP: "Phase {NN} has unreadable tracked known issues. Run `/vbw:vibe` to continue QA remediation before UAT."
+    If `KNOWN_ISSUES_COUNT > 0`, run the qa-result-gate for this phase to check whether all known issues were addressed by the latest remediation round:
+    ```bash
+    _gate_output=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/qa-result-gate.sh "$PDIR" 2>/dev/null || true)
+    _gate_routing=$(printf '%s\n' "$_gate_output" | awk -F= '/^qa_gate_routing=/{print $2; exit}')
+    _gate_all_addressed=$(printf '%s\n' "$_gate_output" | awk -F= '/^qa_gate_known_issues_all_addressed=/{print $2; exit}')
+    ```
+    If `_gate_all_addressed=true` and `_gate_routing=PROCEED_TO_UAT`, the known issues were resolved or accepted as non-blocking — proceed to UAT. Otherwise STOP: "Phase {NN} still has unresolved tracked known issues. Run `/vbw:vibe` to continue QA remediation before UAT."
 
 ## Steps
 

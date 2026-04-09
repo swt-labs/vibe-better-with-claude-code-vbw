@@ -5020,3 +5020,182 @@ VERIF
   [[ "$output" == *"qa_gate_plan_coverage="* ]]
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
+
+@test "known-issues gate blocks when live registry has new issue not covered by round outcomes" {
+  # Phase verification lists Alpha and Beta as known issues
+  create_verif "write-verification.sh" "PASS" "## Pre-existing Issues
+| Test | File | Error |
+|------|------|-------|
+| AlphaTests | Tests/AlphaTests.swift | alpha failure |
+| BetaTests | Tests/BetaTests.swift | beta failure |"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # Round plan and summary cover both Alpha and Beta
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"AlphaTests","file":"Tests/AlphaTests.swift","error":"alpha failure","disposition":"accepted-process-exception","rationale":"Non-blocking"}'
+  - '{"test":"BetaTests","file":"Tests/BetaTests.swift","error":"beta failure","disposition":"accepted-process-exception","rationale":"Non-blocking"}'
+---
+
+## Summary
+Addressed both carried known issues as accepted non-blocking process-exceptions.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Known-issues-only round
+known_issues_input:
+  - '{"test":"AlphaTests","file":"Tests/AlphaTests.swift","error":"alpha failure"}'
+  - '{"test":"BetaTests","file":"Tests/BetaTests.swift","error":"beta failure"}'
+known_issue_resolutions:
+  - '{"test":"AlphaTests","file":"Tests/AlphaTests.swift","error":"alpha failure","disposition":"accepted-process-exception","rationale":"Non-blocking"}'
+  - '{"test":"BetaTests","file":"Tests/BetaTests.swift","error":"beta failure","disposition":"accepted-process-exception","rationale":"Non-blocking"}'
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Known issues covered | PASS | Done |
+VERIF
+
+  # Create round snapshot directly with Alpha + Beta (simulates what was known when round started)
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" <<'SNAP'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {"test":"AlphaTests","file":"Tests/AlphaTests.swift","error":"alpha failure","first_seen_in":"VERIFICATION.md","last_seen_in":"VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1},
+    {"test":"BetaTests","file":"Tests/BetaTests.swift","error":"beta failure","first_seen_in":"VERIFICATION.md","last_seen_in":"VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1}
+  ]
+}
+SNAP
+
+  # Live registry has grown: Gamma appeared during round execution
+  cat > "$PHASE_DIR/known-issues.json" <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "AlphaTests",
+      "file": "Tests/AlphaTests.swift",
+      "error": "alpha failure",
+      "first_seen_in": "VERIFICATION.md",
+      "last_seen_in": "VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    },
+    {
+      "test": "BetaTests",
+      "file": "Tests/BetaTests.swift",
+      "error": "beta failure",
+      "first_seen_in": "VERIFICATION.md",
+      "last_seen_in": "VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    },
+    {
+      "test": "GammaTests",
+      "file": "Tests/GammaTests.swift",
+      "error": "gamma regression",
+      "first_seen_in": "remediation/qa/round-01/R01-VERIFICATION.md",
+      "last_seen_in": "remediation/qa/round-01/R01-VERIFICATION.md",
+      "first_seen_round": 1,
+      "last_seen_round": 1,
+      "times_seen": 1
+    }
+  ]
+}
+EOF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=3"* ]]
+  # Must block because GammaTests is in the live registry but not covered by outcomes
+  [[ "$output" == *"qa_gate_known_issues_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "disposition match distinguishes issues with same test+file but different errors" {
+  create_verif "write-verification.sh" "PASS" "## Pre-existing Issues
+| Test | File | Error |
+|------|------|-------|
+| AlphaTests | Tests/AlphaTests.swift | timeout error |
+| AlphaTests | Tests/AlphaTests.swift | assertion error |"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # Round outcomes match both issues but with SWAPPED dispositions relative to the plan
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"AlphaTests","file":"Tests/AlphaTests.swift","error":"timeout error","disposition":"resolved","rationale":"Fixed the timeout"}'
+  - '{"test":"AlphaTests","file":"Tests/AlphaTests.swift","error":"assertion error","disposition":"accepted-process-exception","rationale":"Known limitation"}'
+---
+
+## Summary
+Addressed both carried known issues.
+SUMMARY
+
+  # Plan has DIFFERENT disposition assignment (swapped from summary) for the two errors
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Known-issues-only round
+known_issues_input:
+  - '{"test":"AlphaTests","file":"Tests/AlphaTests.swift","error":"timeout error"}'
+  - '{"test":"AlphaTests","file":"Tests/AlphaTests.swift","error":"assertion error"}'
+known_issue_resolutions:
+  - '{"test":"AlphaTests","file":"Tests/AlphaTests.swift","error":"timeout error","disposition":"accepted-process-exception","rationale":"Known limitation"}'
+  - '{"test":"AlphaTests","file":"Tests/AlphaTests.swift","error":"assertion error","disposition":"resolved","rationale":"Fixed the assertion"}'
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Both issues covered | PASS | Done |
+VERIF
+
+  # Sync verification to create registry
+  bash "$REPO_ROOT/scripts/track-known-issues.sh" sync-verification "$PHASE_DIR" "$PHASE_DIR/VERIFICATION.md" >/dev/null
+  bash "$REPO_ROOT/scripts/track-known-issues.sh" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" >/dev/null
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Dispositions don't match: plan says timeout→accepted-process-exception but summary says timeout→resolved
+  # The error field prevents confusion between the two same-test/same-file issues
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}

@@ -1115,12 +1115,13 @@ json_object_array_dispositions_match() {
   local actual_json="${2:-[]}"
   local test_name=""
   local file_path=""
+  local error_msg=""
   local disposition=""
 
-  while IFS=$'\t' read -r test_name file_path disposition; do
+  while IFS=$'\t' read -r test_name file_path error_msg disposition; do
     [ -n "$test_name" ] || continue
-    printf '%s' "$actual_json" | jq -e --arg test "$test_name" --arg file "$file_path" --arg disposition "$disposition" '.[] | select(.test == $test and .file == $file and .disposition == $disposition)' >/dev/null 2>&1 || return 1
-  done < <(printf '%s' "$expected_json" | jq -r '.[] | [.test, .file, .disposition] | @tsv' 2>/dev/null)
+    printf '%s' "$actual_json" | jq -e --arg test "$test_name" --arg file "$file_path" --arg error "$error_msg" --arg disposition "$disposition" '.[] | select(.test == $test and .file == $file and .error == $error and .disposition == $disposition)' >/dev/null 2>&1 || return 1
+  done < <(printf '%s' "$expected_json" | jq -r '.[] | [.test, .file, .error, .disposition] | @tsv' 2>/dev/null)
 
   return 0
 }
@@ -1665,6 +1666,22 @@ case "$RESULT" in
       elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
         echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
         echo "qa_gate_routing=QA_RERUN_REQUIRED"
+      elif [ "$KNOWN_ISSUES_STATUS" = "present" ] && [ "$KNOWN_ISSUES_COUNT" -gt 0 ] 2>/dev/null; then
+        # Metadata-only round claims clean, but known issues exist in registry.
+        # Apply the same coverage guard as the non-metadata-only known-issues path:
+        # outcomes must cover every live registry entry, not just the carried snapshot.
+        _live_registry_json=$(load_known_issue_registry_json "$PHASE_DIR/known-issues.json")
+        if [ "$ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED" = "true" ] \
+           && [ "$ROUND_KNOWN_ISSUES_VALID" = "true" ] \
+           && [ "$ROUND_KNOWN_ISSUE_OUTCOME_COUNT" -gt 0 ] 2>/dev/null \
+           && ! json_object_array_has_disposition "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON" "unresolved" \
+           && json_object_array_covers_full_issue_objects "$_live_registry_json" "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON"; then
+          echo "qa_gate_known_issues_all_addressed=true"
+          echo "qa_gate_routing=PROCEED_TO_UAT"
+        else
+          echo "qa_gate_known_issues_override=true"
+          echo "qa_gate_routing=REMEDIATION_REQUIRED"
+        fi
       else
         echo "qa_gate_routing=PROCEED_TO_UAT"
       fi
@@ -1677,12 +1694,15 @@ case "$RESULT" in
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$KNOWN_ISSUES_STATUS" = "present" ] && [ "$KNOWN_ISSUES_COUNT" -gt 0 ] 2>/dev/null; then
       # Known issues exist in the registry. If this remediation round properly
-      # addressed all of them (contract valid, outcomes recorded, none unresolved),
+      # addressed all of them (contract valid, outcomes recorded, none unresolved,
+      # AND outcomes cover every live registry entry — not just carried snapshot),
       # allow proceeding rather than blocking on stale registry entries.
+      _live_registry_json=$(load_known_issue_registry_json "$PHASE_DIR/known-issues.json")
       if [ "$ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED" = "true" ] \
          && [ "$ROUND_KNOWN_ISSUES_VALID" = "true" ] \
          && [ "$ROUND_KNOWN_ISSUE_OUTCOME_COUNT" -gt 0 ] 2>/dev/null \
-         && ! json_object_array_has_disposition "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON" "unresolved"; then
+         && ! json_object_array_has_disposition "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON" "unresolved" \
+         && json_object_array_covers_full_issue_objects "$_live_registry_json" "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON"; then
         echo "qa_gate_known_issues_all_addressed=true"
         echo "qa_gate_routing=PROCEED_TO_UAT"
       else
