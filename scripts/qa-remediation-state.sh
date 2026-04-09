@@ -168,7 +168,7 @@ extract_pre_existing_issues_json_from_verification() {
     new_issue_object "$test_name" "$file_path" "$error_msg" "$source_rel" "$round"
   done > "$tmp_json"
 
-  jq -s 'map(select(type == "object")) | unique_by(.test, .file) | sort_by(.test, .file)' "$tmp_json"
+  jq -s 'map(select(type == "object")) | unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_json"
   rm -f "$tmp_json"
 }
 
@@ -191,7 +191,7 @@ write_known_issue_snapshot() {
       {
         schema_version: 1,
         phase: $phase,
-        issues: ($issues | sort_by(.test, .file))
+        issues: ($issues | sort_by(.test, .file, .error))
       }
     ' > "$tmp_file"
   mv "$tmp_file" "$snapshot_path"

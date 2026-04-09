@@ -306,7 +306,9 @@ plans_verified:
 | 1 | MH-01 | Round verification cleared the blocking backlog | PASS | Done |
 EOF
   bash "$SCRIPTS_DIR/track-known-issues.sh" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" >/dev/null
-  [ ! -f "$PHASE_DIR/known-issues.json" ]
+  # sync-verification preserves existing registry when incoming is empty.
+  # Manually remove the live registry to test round-local snapshot fallback.
+  rm -f "$PHASE_DIR/known-issues.json"
 
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
 

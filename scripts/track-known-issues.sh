@@ -351,7 +351,7 @@ extract_summary_issues_json() {
     fi
   done < <(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' \( -name '*-SUMMARY.md' -o -name 'SUMMARY.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort)) > "$tmp_json"
 
-  jq -s 'map(select(type == "object")) | unique_by(.test, .file) | sort_by(.test, .file)' "$tmp_json"
+  jq -s 'map(select(type == "object")) | unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_json"
   rm -f "$tmp_json"
 }
 
@@ -433,7 +433,7 @@ extract_summary_known_issue_outcomes_json() {
       "$disposition"
   done < <(extract_frontmatter_array_items "$summary_file" known_issue_outcomes) > "$tmp_json"
 
-  jq -s 'map(select(type == "object")) | unique_by(.test, .file) | sort_by(.test, .file)' "$tmp_json"
+  jq -s 'map(select(type == "object")) | unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_json"
   rm -f "$tmp_json"
 }
 
@@ -465,7 +465,7 @@ extract_verification_issues_json() {
     new_issue_object "$test" "$file" "$error" "$source_rel" "$round"
   done > "$tmp_json"
 
-  jq -s 'map(select(type == "object")) | unique_by(.test, .file) | sort_by(.test, .file)' "$tmp_json"
+  jq -s 'map(select(type == "object")) | unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_json"
   rm -f "$tmp_json"
 }
 
@@ -476,7 +476,7 @@ merge_issue_sets() {
   jq -cn \
     --argjson existing "$existing_json" \
     --argjson incoming "$incoming_json" '
-      def issue_key: (.test + "\u001f" + .file);
+      def issue_key: (.test + "\u001f" + .file + "\u001f" + (.error // ""));
       def mapify($items): reduce $items[] as $item ({}; .[($item | issue_key)] = $item);
       def merge_issue($old; $new):
         if $old == null then
@@ -498,7 +498,7 @@ merge_issue_sets() {
           .[($issue | issue_key)] = merge_issue(.[($issue | issue_key)]; $issue)
         )
       | [.[]]
-      | sort_by(.test, .file)
+      | sort_by(.test, .file, .error)
     '
 }
 
@@ -509,7 +509,7 @@ replace_issue_set() {
   jq -cn \
     --argjson existing "$existing_json" \
     --argjson incoming "$incoming_json" '
-      def issue_key: (.test + "\u001f" + .file);
+      def issue_key: (.test + "\u001f" + .file + "\u001f" + (.error // ""));
       def mapify($items): reduce $items[] as $item ({}; .[($item | issue_key)] = $item);
       def merge_issue($old; $new):
         if $old == null then
@@ -527,7 +527,7 @@ replace_issue_set() {
         end;
       ($existing | mapify(.)) as $existing_map
       | [ $incoming[] | merge_issue($existing_map[issue_key]; .) ]
-      | sort_by(.test, .file)
+      | sort_by(.test, .file, .error)
     '
 }
 
@@ -549,7 +549,7 @@ write_registry() {
       {
         schema_version: 1,
         phase: $phase,
-        issues: ($issues | sort_by(.test, .file))
+        issues: ($issues | sort_by(.test, .file, .error))
       }
     ' > "$tmp_file"
   mv "$tmp_file" "$REGISTRY_PATH"
@@ -604,6 +604,15 @@ sync_verification() {
     # Round-scoped verification is authoritative for unresolved known issues.
     if [ "$existing_state" = "malformed" ]; then
       existing_json='[]'
+    fi
+    local incoming_count
+    incoming_count=$(printf '%s' "$incoming_json" | jq 'length' 2>/dev/null || echo 0)
+    if [ "$incoming_count" -eq 0 ] && [ "$existing_state" = "present" ]; then
+      # Empty incoming from round verification means "no data about pre-existing
+      # issues" (QA omitted the section or it was empty). Preserve existing
+      # registry rather than deleting it — the existing state is authoritative.
+      status_output "$existing_state" "$(printf '%s' "$existing_json" | jq 'length')"
+      return 0
     fi
     final_json=$(replace_issue_set "$existing_json" "$incoming_json")
     write_registry "$final_json"
@@ -713,7 +722,7 @@ promote_todos() {
 
     # Dedup by test+file pair regardless of tag prefix (matches [KNOWN-ISSUE], [HIGH], untagged, etc.)
     local is_dup=false
-    local dedup_key="${test_name} (${file_path}):"
+    local dedup_key="${test_name} (${file_path}): ${error_msg}"
     if printf '%s' "$todos_section" | grep -qF "$dedup_key"; then
       is_dup=true
     fi

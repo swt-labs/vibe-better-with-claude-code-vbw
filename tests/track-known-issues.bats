@@ -148,9 +148,9 @@ write_round_summary_with_known_issue_outcomes() {
   } > "$PHASE_DIR/$relative_path"
 }
 
-@test "track-known-issues: sync-summaries creates registry and de-duplicates by test+file" {
+@test "track-known-issues: sync-summaries creates registry and de-duplicates by test+file+error" {
   write_summary_with_preexisting "03-01-SUMMARY.md" "03-01" $'TransferMatchingServiceTests (Tests/TransferMatchingServiceTests.swift): debugTestConfiguration missing\nFIGIRegistryServiceTests.swift: compositeFigi missing'
-  write_summary_with_preexisting "03-02-SUMMARY.md" "03-02" $'TransferMatchingServiceTests (Tests/TransferMatchingServiceTests.swift): newer duplicate error text'
+  write_summary_with_preexisting "03-02-SUMMARY.md" "03-02" $'TransferMatchingServiceTests (Tests/TransferMatchingServiceTests.swift): debugTestConfiguration missing'
 
   run bash "$SCRIPT" sync-summaries "$PHASE_DIR"
 
@@ -207,9 +207,20 @@ write_round_summary_with_known_issue_outcomes() {
   [ "$output" = "FIGIRegistryServiceTests" ]
 }
 
-@test "track-known-issues: round verification with no issues clears registry" {
+@test "track-known-issues: round verification with no issues preserves existing registry" {
   write_summary_with_preexisting "03-01-SUMMARY.md" "03-01" 'TransferMatchingServiceTests.swift: debugTestConfiguration missing'
   bash "$SCRIPT" sync-summaries "$PHASE_DIR" >/dev/null
+  write_verification_with_issues "remediation/qa/round-01/R01-VERIFICATION.md" ''
+
+  run bash "$SCRIPT" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_status=present"* ]]
+  [[ "$output" == *"known_issues_count=1"* ]]
+  [ -f "$PHASE_DIR/known-issues.json" ]
+}
+
+@test "track-known-issues: round verification with no prior registry and no issues stays empty" {
   write_verification_with_issues "remediation/qa/round-01/R01-VERIFICATION.md" ''
 
   run bash "$SCRIPT" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
@@ -218,6 +229,24 @@ write_round_summary_with_known_issue_outcomes() {
   [[ "$output" == *"known_issues_status=missing"* ]]
   [[ "$output" == *"known_issues_count=0"* ]]
   [ ! -f "$PHASE_DIR/known-issues.json" ]
+}
+
+@test "track-known-issues: issues differing only by error are kept distinct" {
+  local ver_path="remediation/qa/round-01/R01-VERIFICATION.md"
+  local issue_rows
+  issue_rows=$'TestCrash\tCrashTests.swift\tsignal trap\nTestCrash\tCrashTests.swift\tnull pointer'
+  write_verification_with_issues "$ver_path" "$issue_rows"
+
+  run bash "$SCRIPT" sync-verification "$PHASE_DIR" "$PHASE_DIR/$ver_path"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_count=2"* ]]
+  run jq -r '.issues | length' "$PHASE_DIR/known-issues.json"
+  [ "$output" = "2" ]
+  run jq -r '.issues[0].error' "$PHASE_DIR/known-issues.json"
+  [ "$output" = "null pointer" ]
+  run jq -r '.issues[1].error' "$PHASE_DIR/known-issues.json"
+  [ "$output" = "signal trap" ]
 }
 
 @test "track-known-issues: status reports malformed registry" {
