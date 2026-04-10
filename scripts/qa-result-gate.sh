@@ -164,6 +164,26 @@ path_is_recorded_non_code_artifact() {
   esac
 }
 
+path_is_implementation_asset_artifact() {
+  local path="${1:-}"
+  local base="${path##*/}"
+  case "$path" in
+    docs/*|*/docs/*)
+      return 1
+      ;;
+  esac
+  case "$path" in
+    assets/*|*/assets/*|asset/*|*/asset/*|resources/*|*/resources/*|resource/*|*/resource/*|public/*|*/public/*|static/*|*/static/*|*/Assets.xcassets/*|Assets.xcassets/*)
+      case "$base" in
+        *.png|*.jpg|*.jpeg|*.gif|*.svg|*.webp|*.txt|Contents.json)
+          return 0
+          ;;
+      esac
+      ;;
+  esac
+  return 1
+}
+
 path_is_documentation_artifact() {
   local path="${1:-}"
   local base="${path##*/}"
@@ -172,6 +192,9 @@ path_is_documentation_artifact() {
       return 0
       ;;
   esac
+  if path_is_implementation_asset_artifact "$path"; then
+    return 1
+  fi
   case "$base" in
     AGENTS.md|README|README.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|LICENSE|LICENSE.*|*.md|*.mdx|*.txt|*.rst|*.adoc|*.asciidoc|*.pdf|*.png|*.jpg|*.jpeg|*.gif|*.svg|*.webp)
       return 0
@@ -225,13 +248,23 @@ path_is_code_fix_support_artifact() {
 }
 
 path_is_process_exception_evidence_artifact() {
+  local phase_dir="${1:-}"
+  local path="${2:-}"
+  path=$(normalize_recorded_path "$path")
+  [ -n "$path" ] || return 1
+  if [ -n "$phase_dir" ]; then
+    path=$(canonicalize_phase_path "$path" "$phase_dir")
+  fi
+  if path_is_qa_remediation_round_artifact "$path"; then
+    return 0
+  fi
+  path_is_original_plan_artifact "$path" "$phase_dir"
+}
+
+path_is_qa_remediation_round_artifact() {
   local path="${1:-}"
-  case "$path" in
-    .vbw-planning/*|.claude/*)
-      return 0
-      ;;
-  esac
-  path_is_recorded_non_code_artifact "$path"
+  # Match remediation/qa/round-NN/RNN-{PLAN,SUMMARY}.md with digits-only round IDs
+  [[ "$path" =~ (^|/)remediation/qa/round-[0-9]+/R[0-9]+-(PLAN|SUMMARY)\.md$ ]]
 }
 
 resolve_existing_path_target() {
@@ -319,8 +352,11 @@ resolve_original_plan_artifact_path() {
 
   [ "$candidate_dir" = "$phase_dir_abs" ] || return 1
 
+  # Exclude remediation round plans (digits-only round IDs like R01, R100)
+  if [[ "$candidate_base" =~ ^R[0-9]+(-.*)?-PLAN\.md$ ]]; then
+    return 1
+  fi
   case "$candidate_base" in
-    R[0-9][0-9]-PLAN.md|R[0-9][0-9]-*-PLAN.md) return 1 ;;
     *-PLAN.md|PLAN.md) ;;
     *) return 1 ;;
   esac
@@ -475,14 +511,54 @@ paths_include_process_exception_evidence() {
   while IFS= read -r path; do
     path=$(normalize_recorded_path "$path")
     [ -n "$path" ] || continue
-    if [ -n "$phase_dir" ]; then
-      path=$(canonicalize_phase_path "$path" "$phase_dir")
-    fi
-    if path_is_process_exception_evidence_artifact "$path"; then
+    if path_is_process_exception_evidence_artifact "$phase_dir" "$path"; then
       return 0
     fi
   done
   return 1
+}
+
+path_is_allowed_worktree_evidence_artifact() {
+  local phase_dir="${1:-}"
+  local path="${2:-}"
+  path=$(normalize_recorded_path "$path")
+  [ -n "$path" ] || return 1
+  if [ -n "$phase_dir" ]; then
+    path=$(canonicalize_phase_path "$path" "$phase_dir")
+  fi
+  if path_is_qa_remediation_round_artifact "$path"; then
+    return 0
+  fi
+  path_is_original_plan_artifact "$path" "$phase_dir"
+}
+
+resolve_corroborated_recorded_paths() {
+  local phase_dir="${1:-}"
+  local recorded_paths="${2:-}"
+  local committed_paths="${3:-}"
+  local worktree_paths="${4:-}"
+  local path=""
+
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    if printf '%s\n' "$committed_paths" | grep -Fx -- "$path" >/dev/null 2>&1; then
+      printf '%s\n' "$path"
+      continue
+    fi
+    if path_is_allowed_worktree_evidence_artifact "$phase_dir" "$path" \
+      && printf '%s\n' "$worktree_paths" | grep -Fx -- "$path" >/dev/null 2>&1; then
+      printf '%s\n' "$path"
+    fi
+  done <<< "$recorded_paths" | (sort -u 2>/dev/null || sort -u)
+}
+
+recorded_paths_are_fully_corroborated() {
+  local recorded_paths="${1:-}"
+  local corroborated_paths="${2:-}"
+  local recorded_count corroborated_count
+  recorded_count=$(printf '%s\n' "$recorded_paths" | awk 'NF { count++ } END { print count + 0 }')
+  corroborated_count=$(printf '%s\n' "$corroborated_paths" | awk 'NF { count++ } END { print count + 0 }')
+  [ "$recorded_count" -eq "$corroborated_count" ] 2>/dev/null
 }
 
 commit_hashes_to_changed_files() {
@@ -541,6 +617,13 @@ git_diff_paths_since_commit() {
   [ -n "$anchor_commit" ] || return 0
   git -C "$repo_root" cat-file -e "${anchor_commit}^{commit}" 2>/dev/null || return 0
   git -C "$repo_root" diff --name-only "$anchor_commit"..HEAD 2>/dev/null || true
+}
+
+git_current_worktree_paths() {
+  local repo_root="${1:-}"
+  [ -n "$repo_root" ] || return 0
+  git -C "$repo_root" diff --name-only HEAD 2>/dev/null || true
+  git -C "$repo_root" ls-files --others --exclude-standard 2>/dev/null || true
 }
 
 commit_is_ancestor_or_same() {
@@ -907,6 +990,146 @@ classification_ids_cover_source_fail_ids() {
   return 0
 }
 
+extract_frontmatter_json_object_array() {
+  local file_path="${1:-}"
+  local key_name="${2:-}"
+  local kind="${3:-issue}"
+  local item=""
+  local tmp_file=""
+  [ -f "$file_path" ] || { echo '[]'; return 0; }
+  [ -n "$key_name" ] || { echo '[]'; return 0; }
+
+  tmp_file=$(mktemp)
+  while IFS= read -r item; do
+    item=$(printf '%s' "$item" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    [ -n "$item" ] || continue
+    case "$kind" in
+      issue)
+        printf '%s' "$item" | jq -ce '
+          select(
+            type == "object"
+            and (.test | type == "string")
+            and (.file | type == "string")
+            and (.error | type == "string")
+          )
+        ' >> "$tmp_file" 2>/dev/null || true
+        ;;
+      resolution|outcome)
+        printf '%s' "$item" | jq -ce '
+          select(
+            type == "object"
+            and (.test | type == "string")
+            and (.file | type == "string")
+            and (.error | type == "string")
+            and (.disposition | type == "string")
+            and (.rationale | type == "string")
+            and (
+              .disposition == "resolved"
+              or .disposition == "accepted-process-exception"
+              or .disposition == "unresolved"
+            )
+          )
+        ' >> "$tmp_file" 2>/dev/null || true
+        ;;
+    esac
+  done < <(extract_frontmatter_array_items "$file_path" "$key_name")
+
+  if [ ! -s "$tmp_file" ]; then
+    rm -f "$tmp_file"
+    echo '[]'
+    return 0
+  fi
+
+  jq -sc 'unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_file"
+  rm -f "$tmp_file"
+}
+
+collect_frontmatter_json_object_array_in_dir() {
+  local scan_dir="${1:-}"
+  local file_glob_mode="${2:-plan}"
+  local key_name="${3:-}"
+  local kind="${4:-issue}"
+  local scan_file=""
+  local tmp_file=""
+  [ -d "$scan_dir" ] || { echo '[]'; return 0; }
+  [ -n "$key_name" ] || { echo '[]'; return 0; }
+
+  tmp_file=$(mktemp)
+  case "$file_glob_mode" in
+    summary)
+      while IFS= read -r scan_file; do
+        [ -f "$scan_file" ] || continue
+        extract_frontmatter_json_object_array "$scan_file" "$key_name" "$kind" | jq -c '.[]' >> "$tmp_file" 2>/dev/null || true
+      done < <(find "$scan_dir" -maxdepth 1 ! -name '.*' \( -name '*-SUMMARY.md' -o -name 'SUMMARY.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+      ;;
+    *)
+      while IFS= read -r scan_file; do
+        [ -f "$scan_file" ] || continue
+        extract_frontmatter_json_object_array "$scan_file" "$key_name" "$kind" | jq -c '.[]' >> "$tmp_file" 2>/dev/null || true
+      done < <(find "$scan_dir" -maxdepth 1 ! -name '.*' \( -name '*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+      ;;
+  esac
+
+  if [ ! -s "$tmp_file" ]; then
+    rm -f "$tmp_file"
+    echo '[]'
+    return 0
+  fi
+
+  jq -sc 'unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_file"
+  rm -f "$tmp_file"
+}
+
+json_object_array_length() {
+  local json_array="${1:-[]}"
+  printf '%s' "$json_array" | jq 'length' 2>/dev/null || echo 0
+}
+
+json_object_array_covers_full_issue_objects() {
+  local required_json="${1:-[]}"
+  local candidate_json="${2:-[]}"
+  local test_name=""
+  local file_path=""
+  local error_msg=""
+
+  while IFS=$'\t' read -r test_name file_path error_msg; do
+    [ -n "$test_name" ] || continue
+    printf '%s' "$candidate_json" | jq -e --arg test "$test_name" --arg file "$file_path" --arg error "$error_msg" '.[] | select(.test == $test and .file == $file and .error == $error)' >/dev/null 2>&1 || return 1
+  done < <(printf '%s' "$required_json" | jq -r '.[] | [.test, .file, .error] | @tsv' 2>/dev/null)
+
+  return 0
+}
+
+load_known_issue_registry_json() {
+  local registry_path="${1:-}"
+  [ -n "$registry_path" ] || { echo '[]'; return 0; }
+  [ -f "$registry_path" ] || { echo '[]'; return 0; }
+  jq -c 'select(type == "object" and (.issues | type == "array")) | .issues' "$registry_path" 2>/dev/null || echo '[]'
+}
+
+json_object_array_dispositions_match() {
+  local expected_json="${1:-[]}"
+  local actual_json="${2:-[]}"
+  local test_name=""
+  local file_path=""
+  local error_msg=""
+  local disposition=""
+
+  while IFS=$'\t' read -r test_name file_path error_msg disposition; do
+    [ -n "$test_name" ] || continue
+    printf '%s' "$actual_json" | jq -e --arg test "$test_name" --arg file "$file_path" --arg error "$error_msg" --arg disposition "$disposition" '.[] | select(.test == $test and .file == $file and .error == $error and .disposition == $disposition)' >/dev/null 2>&1 || return 1
+  done < <(printf '%s' "$expected_json" | jq -r '.[] | [.test, .file, .error, .disposition] | @tsv' 2>/dev/null)
+
+  return 0
+}
+
+json_object_array_has_disposition() {
+  local json_array="${1:-[]}"
+  local disposition="${2:-}"
+  [ -n "$disposition" ] || return 1
+  printf '%s' "$json_array" | jq -e --arg disposition "$disposition" '.[] | select(.disposition == $disposition)' >/dev/null 2>&1
+}
+
 if [ -z "$PHASE_DIR" ]; then
   echo "qa_gate_writer=missing"
   echo "qa_gate_result=missing"
@@ -1113,16 +1336,22 @@ ROUND_STARTED_AFTER_SOURCE="true"
 ROUND_ACTUAL_DIFF_PATHS=""
 ROUND_ACTUAL_DIFF_PATHS_AVAILABLE="false"
 ROUND_ACTUAL_DIFF_PATHS_CANONICAL=""
+ROUND_WORKTREE_PATHS_CANONICAL=""
 ROUND_INPUT_MODE="none"
+ROUND_KNOWN_ISSUE_BACKLOG_PATH=""
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   _qa_remediation_state=$(bash "$SCRIPT_DIR/qa-remediation-state.sh" get "$PHASE_DIR" 2>/dev/null || true)
   SOURCE_VERIFICATION_PATH=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^source_verification_path=/{print $2; exit}')
   ROUND_STARTED_AT_COMMIT=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^round_started_at_commit=/{print $2; exit}')
   ROUND_INPUT_MODE=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^input_mode=/{print $2; exit}')
+  ROUND_KNOWN_ISSUE_BACKLOG_PATH=$(printf '%s\n' "${_qa_remediation_state:-}" | awk -F= '/^known_issues_path=/{print $2; exit}')
   if [ -z "$SOURCE_VERIFICATION_PATH" ] || [ ! -r "$SOURCE_VERIFICATION_PATH" ]; then
     ROUND_SOURCE_VERIFICATION_MISSING="true"
   fi
   if [ "${ROUND_INPUT_MODE:-none}" = "known-issues" ] && [ -z "$SOURCE_VERIFICATION_PATH" ]; then
+    ROUND_SOURCE_VERIFICATION_MISSING="false"
+  fi
+  if [ "${_gate_stage:-none}" = "done" ] && [ "${ROUND_INPUT_MODE:-none}" = "none" ] && [ -z "$SOURCE_VERIFICATION_PATH" ]; then
     ROUND_SOURCE_VERIFICATION_MISSING="false"
   fi
   if [ -n "$SOURCE_VERIFICATION_PATH" ] && [ -r "$SOURCE_VERIFICATION_PATH" ]; then
@@ -1137,6 +1366,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
     ROUND_ACTUAL_DIFF_PATHS_AVAILABLE="true"
     ROUND_ACTUAL_DIFF_PATHS=$(git_diff_paths_since_commit "$GIT_ROOT" "$ROUND_STARTED_AT_COMMIT" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))
     ROUND_ACTUAL_DIFF_PATHS_CANONICAL=$(printf '%s\n' "$ROUND_ACTUAL_DIFF_PATHS" | canonicalize_recorded_paths "$PHASE_DIR")
+    ROUND_WORKTREE_PATHS_CANONICAL=$(git_current_worktree_paths "$GIT_ROOT" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u) | canonicalize_recorded_paths "$PHASE_DIR")
   fi
 fi
 
@@ -1189,8 +1419,8 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
           ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
           break
         fi
-        _mo_effective_files=$(intersect_canonical_paths "$_mo_recorded_files" "$ROUND_ACTUAL_DIFF_PATHS_CANONICAL")
-        if [ -z "$_mo_effective_files" ]; then
+        _mo_effective_files=$(resolve_corroborated_recorded_paths "$PHASE_DIR" "$_mo_recorded_files" "$ROUND_ACTUAL_DIFF_PATHS_CANONICAL" "$ROUND_WORKTREE_PATHS_CANONICAL")
+        if [ -z "$_mo_effective_files" ] || ! recorded_paths_are_fully_corroborated "$_mo_recorded_files" "$_mo_effective_files"; then
           ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
           break
         fi
@@ -1261,6 +1491,16 @@ ROUND_PLAN_AMENDMENT_COUNT=0
 ROUND_PLAN_AMENDMENT_SOURCE_PLANS=""
 ROUND_PLAN_AMENDMENT_SOURCE_PLAN_COUNT=0
 ROUND_CLASSIFICATIONS_VALID=true
+ROUND_KNOWN_ISSUE_INPUTS_JSON='[]'
+ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON='[]'
+ROUND_KNOWN_ISSUE_OUTCOMES_JSON='[]'
+ROUND_CARRIED_KNOWN_ISSUES_JSON='[]'
+ROUND_KNOWN_ISSUE_INPUT_COUNT=0
+ROUND_KNOWN_ISSUE_RESOLUTION_COUNT=0
+ROUND_KNOWN_ISSUE_OUTCOME_COUNT=0
+ROUND_CARRIED_KNOWN_ISSUE_COUNT=0
+ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED="false"
+ROUND_KNOWN_ISSUES_VALID=true
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   ROUND_CLASSIFICATION_TYPES=$(collect_fail_classification_types_in_dir "$PLAN_SCOPE_DIR")
   ROUND_CLASSIFICATION_IDS=$(collect_fail_classification_ids_in_dir "$PLAN_SCOPE_DIR" | (sort -u 2>/dev/null || sort -u))
@@ -1275,7 +1515,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
     ROUND_CLASSIFICATIONS_VALID=false
   elif [ "$ROUND_CLASSIFICATION_TYPE_COUNT" -gt 0 ] 2>/dev/null && ! fail_classification_types_are_valid <<< "$ROUND_CLASSIFICATION_TYPES"; then
     ROUND_CLASSIFICATIONS_VALID=false
-  elif [ "$METADATA_ONLY_ROUND" = "true" ] && [ "$ROUND_CLASSIFICATION_ID_COUNT" -eq 0 ] 2>/dev/null; then
+  elif [ "$METADATA_ONLY_ROUND" = "true" ] && [ "$SOURCE_FAIL_ROW_COUNT" -gt 0 ] 2>/dev/null && [ "$ROUND_CLASSIFICATION_ID_COUNT" -eq 0 ] 2>/dev/null; then
     ROUND_CLASSIFICATIONS_VALID=false
   elif [ "$SOURCE_FAIL_ROW_COUNT" -gt 0 ] 2>/dev/null && {
     [ "$ROUND_CLASSIFICATION_TYPE_COUNT" -ne "$SOURCE_FAIL_ROW_COUNT" ] 2>/dev/null \
@@ -1285,6 +1525,44 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   fi
   if [ -z "$GIT_ROOT" ] && { [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null || [ "$ROUND_PLAN_AMENDMENT_COUNT" -gt 0 ] 2>/dev/null; }; then
     ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
+  fi
+
+  ROUND_KNOWN_ISSUE_INPUTS_JSON=$(collect_frontmatter_json_object_array_in_dir "$PLAN_SCOPE_DIR" plan known_issues_input issue)
+  ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON=$(collect_frontmatter_json_object_array_in_dir "$PLAN_SCOPE_DIR" plan known_issue_resolutions resolution)
+  ROUND_KNOWN_ISSUE_OUTCOMES_JSON=$(collect_frontmatter_json_object_array_in_dir "$SUMMARY_SCOPE_DIR" summary known_issue_outcomes outcome)
+  ROUND_CARRIED_KNOWN_ISSUES_JSON=$(load_known_issue_registry_json "$ROUND_KNOWN_ISSUE_BACKLOG_PATH")
+  ROUND_KNOWN_ISSUE_INPUT_COUNT=$(json_object_array_length "$ROUND_KNOWN_ISSUE_INPUTS_JSON")
+  ROUND_KNOWN_ISSUE_RESOLUTION_COUNT=$(json_object_array_length "$ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON")
+  ROUND_KNOWN_ISSUE_OUTCOME_COUNT=$(json_object_array_length "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON")
+  ROUND_CARRIED_KNOWN_ISSUE_COUNT=$(json_object_array_length "$ROUND_CARRIED_KNOWN_ISSUES_JSON")
+
+  if [ "$ROUND_KNOWN_ISSUE_INPUT_COUNT" -gt 0 ] 2>/dev/null \
+    || [ "$ROUND_KNOWN_ISSUE_RESOLUTION_COUNT" -gt 0 ] 2>/dev/null \
+    || [ "$ROUND_KNOWN_ISSUE_OUTCOME_COUNT" -gt 0 ] 2>/dev/null \
+    || [ "$ROUND_CARRIED_KNOWN_ISSUE_COUNT" -gt 0 ] 2>/dev/null \
+    || [ "${ROUND_INPUT_MODE:-none}" = "known-issues" ] \
+    || [ "${ROUND_INPUT_MODE:-none}" = "both" ]; then
+    ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED="true"
+  fi
+
+  if [ "$ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED" = "true" ]; then
+    if [ "$ROUND_KNOWN_ISSUE_INPUT_COUNT" -eq 0 ] 2>/dev/null; then
+      ROUND_KNOWN_ISSUES_VALID=false
+    elif [ "$ROUND_CARRIED_KNOWN_ISSUE_COUNT" -gt 0 ] 2>/dev/null && ! json_object_array_covers_full_issue_objects "$ROUND_CARRIED_KNOWN_ISSUES_JSON" "$ROUND_KNOWN_ISSUE_INPUTS_JSON"; then
+      ROUND_KNOWN_ISSUES_VALID=false
+    elif ! json_object_array_covers_full_issue_objects "$ROUND_KNOWN_ISSUE_INPUTS_JSON" "$ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON"; then
+      ROUND_KNOWN_ISSUES_VALID=false
+    elif ! json_object_array_covers_full_issue_objects "$ROUND_KNOWN_ISSUE_INPUTS_JSON" "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON"; then
+      ROUND_KNOWN_ISSUES_VALID=false
+    elif ! json_object_array_dispositions_match "$ROUND_KNOWN_ISSUE_RESOLUTIONS_JSON" "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON"; then
+      ROUND_KNOWN_ISSUES_VALID=false
+    elif json_object_array_has_disposition "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON" "unresolved" && [ "$KNOWN_ISSUES_COUNT" -eq 0 ] 2>/dev/null; then
+      ROUND_KNOWN_ISSUES_VALID=false
+    fi
+  fi
+
+  if [ "$ROUND_KNOWN_ISSUE_INPUT_COUNT" -gt 0 ] 2>/dev/null && [ "$SOURCE_FAIL_ROW_COUNT" -eq 0 ] 2>/dev/null && [ -z "$SOURCE_VERIFICATION_PATH" ]; then
+    ROUND_SOURCE_VERIFICATION_MISSING="false"
   fi
 fi
 
@@ -1331,6 +1609,10 @@ case "$RESULT" in
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$ROUND_CHANGE_EVIDENCE_EMPTY" = "true" ]; then
       echo "qa_gate_round_change_evidence_empty=true"
+      echo "qa_gate_routing=REMEDIATION_REQUIRED"
+    elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] \
+      && [ "$ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED" = "true" ] \
+      && [ "$ROUND_KNOWN_ISSUES_VALID" != "true" ]; then
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$ROUND_CLASSIFICATIONS_VALID" != "true" ]; then
       if [ "$METADATA_ONLY_ROUND" = "true" ]; then
@@ -1381,6 +1663,22 @@ case "$RESULT" in
       elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
         echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
         echo "qa_gate_routing=QA_RERUN_REQUIRED"
+      elif [ "$KNOWN_ISSUES_STATUS" = "present" ] && [ "$KNOWN_ISSUES_COUNT" -gt 0 ] 2>/dev/null; then
+        # Metadata-only round claims clean, but known issues exist in registry.
+        # Apply the same coverage guard as the non-metadata-only known-issues path:
+        # outcomes must cover every live registry entry, not just the carried snapshot.
+        _live_registry_json=$(load_known_issue_registry_json "$PHASE_DIR/known-issues.json")
+        if [ "$ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED" = "true" ] \
+           && [ "$ROUND_KNOWN_ISSUES_VALID" = "true" ] \
+           && [ "$ROUND_KNOWN_ISSUE_OUTCOME_COUNT" -gt 0 ] 2>/dev/null \
+           && ! json_object_array_has_disposition "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON" "unresolved" \
+           && json_object_array_covers_full_issue_objects "$_live_registry_json" "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON"; then
+          echo "qa_gate_known_issues_all_addressed=true"
+          echo "qa_gate_routing=PROCEED_TO_UAT"
+        else
+          echo "qa_gate_known_issues_override=true"
+          echo "qa_gate_routing=REMEDIATION_REQUIRED"
+        fi
       else
         echo "qa_gate_routing=PROCEED_TO_UAT"
       fi
@@ -1392,8 +1690,22 @@ case "$RESULT" in
       echo "qa_gate_known_issues_override=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$KNOWN_ISSUES_STATUS" = "present" ] && [ "$KNOWN_ISSUES_COUNT" -gt 0 ] 2>/dev/null; then
-      echo "qa_gate_known_issues_override=true"
-      echo "qa_gate_routing=REMEDIATION_REQUIRED"
+      # Known issues exist in the registry. If this remediation round properly
+      # addressed all of them (contract valid, outcomes recorded, none unresolved,
+      # AND outcomes cover every live registry entry — not just carried snapshot),
+      # allow proceeding rather than blocking on stale registry entries.
+      _live_registry_json=$(load_known_issue_registry_json "$PHASE_DIR/known-issues.json")
+      if [ "$ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED" = "true" ] \
+         && [ "$ROUND_KNOWN_ISSUES_VALID" = "true" ] \
+         && [ "$ROUND_KNOWN_ISSUE_OUTCOME_COUNT" -gt 0 ] 2>/dev/null \
+         && ! json_object_array_has_disposition "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON" "unresolved" \
+         && json_object_array_covers_full_issue_objects "$_live_registry_json" "$ROUND_KNOWN_ISSUE_OUTCOMES_JSON"; then
+        echo "qa_gate_known_issues_all_addressed=true"
+        echo "qa_gate_routing=PROCEED_TO_UAT"
+      else
+        echo "qa_gate_known_issues_override=true"
+        echo "qa_gate_routing=REMEDIATION_REQUIRED"
+      fi
     else
       # 5. Clean PASS
       echo "qa_gate_routing=PROCEED_TO_UAT"

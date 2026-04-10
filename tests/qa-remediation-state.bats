@@ -140,7 +140,7 @@ EOF
   [[ "$output" == *$'plan\n'* ]]
   [[ "$output" == *"source_verification_path="* ]]
   [[ "$output" == *"source_fail_count=0"* ]]
-  [[ "$output" == *"known_issues_path=$PHASE_DIR/known-issues.json"* ]]
+  [[ "$output" == *"known_issues_path=$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json"* ]]
   [[ "$output" == *"known_issues_count=1"* ]]
   [[ "$output" == *"input_mode=known-issues"* ]]
 }
@@ -161,6 +161,43 @@ EOF
   [[ "$output" == *"input_mode=both"* ]]
 }
 
+@test "get-or-init materializes carried backlog snapshot and emits both when registry is missing but source verification still has pre-existing issues" {
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'EOF'
+---
+phase: 01
+tier: standard
+result: FAIL
+passed: 0
+failed: 1
+total: 1
+date: 2026-04-06
+writer: write-verification.sh
+plans_verified:
+  - 01
+---
+
+## Must-Have Checks
+| # | ID | Truth/Condition | Status | Evidence |
+|---|-----|-----------------|--------|----------|
+| 1 | MH-01 | Fixture check | FAIL | Missing |
+
+## Pre-existing Issues
+| Test | File | Error |
+|------|------|-------|
+| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |
+EOF
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get-or-init "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "plan" ]
+  [[ "$output" == *"known_issues_path=$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json"* ]]
+  [[ "$output" == *"known_issues_count=1"* ]]
+  [[ "$output" == *"source_fail_count=1"* ]]
+  [[ "$output" == *"input_mode=both"* ]]
+  [ -f "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" ]
+}
+
 @test "get infers known-issues input mode from phase verification after registry is cleared" {
   write_phase_verification "PASS" $'## Pre-existing Issues\n| Test | File | Error |\n|------|------|-------|\n| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |'
   mkdir -p "$PHASE_DIR/remediation/qa"
@@ -169,9 +206,36 @@ EOF
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"known_issues_count=0"* ]]
+  [[ "$output" == *"known_issues_path=$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json"* ]]
+  [[ "$output" == *"known_issues_count=1"* ]]
   [[ "$output" == *"phase_pre_existing_issue_count=1"* ]]
   [[ "$output" == *"input_mode=known-issues"* ]]
+}
+
+@test "get does not resurrect stale phase verification known issues after current round verification exists" {
+  write_phase_verification "PASS" $'## Pre-existing Issues\n| Test | File | Error |\n|------|------|-------|\n| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |'
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=done\nround=01\nround_started_at_commit=abc123\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+
+## Must-Have Checks
+| # | ID | Truth/Condition | Status | Evidence |
+|---|-----|-----------------|--------|----------|
+| 1 | MH-01 | Round verification cleared the backlog | PASS | Done |
+EOF
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_count=0"* ]]
+  [[ "$output" == *"phase_pre_existing_issue_count=1"* ]]
+  [[ "$output" == *"input_mode=none"* ]]
 }
 
 @test "init captures round_started_at_commit from current git HEAD" {
@@ -221,6 +285,38 @@ EOF
   echo "$output" | grep -q "^plan_path=.*remediation/qa/round-01/R01-PLAN.md$"
   [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]
   [ -d "$PHASE_DIR/remediation/qa/round-01" ]
+}
+
+@test "get preserves an existing round-local known-issues snapshot after sync-verification clears the live registry" {
+  write_phase_verification "PASS" $'## Pre-existing Issues\n| Test | File | Error |\n|------|------|-------|\n| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |'
+  write_known_issues_file
+
+  bash "$SCRIPTS_DIR/qa-remediation-state.sh" get-or-init "$PHASE_DIR" >/dev/null
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+
+## Must-Have Checks
+| # | ID | Truth/Condition | Status | Evidence |
+|---|-----|-----------------|--------|----------|
+| 1 | MH-01 | Round verification cleared the blocking backlog | PASS | Done |
+EOF
+  bash "$SCRIPTS_DIR/track-known-issues.sh" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" >/dev/null
+  # sync-verification preserves existing registry when incoming is empty.
+  # Manually remove the live registry to test round-local snapshot fallback.
+  rm -f "$PHASE_DIR/known-issues.json"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_path=$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json"* ]]
+  [[ "$output" == *"known_issues_count=1"* ]]
+  [[ "$output" == *"input_mode=known-issues"* ]]
+  [ -f "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" ]
 }
 
 # --- advance command ---
@@ -288,6 +384,33 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "^round=03$"
   [ -d "$PHASE_DIR/remediation/qa/round-03" ]
+}
+
+@test "needs-round does not re-seed known-issues mode from stale phase verification after round 01 cleared the backlog" {
+  write_phase_verification "PASS" $'## Pre-existing Issues\n| Test | File | Error |\n|------|------|-------|\n| FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |'
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=done\nround=01\nround_started_at_commit=abc123\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'EOF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+
+## Must-Have Checks
+| # | ID | Truth/Condition | Status | Evidence |
+|---|-----|-----------------|--------|----------|
+| 1 | MH-01 | Round verification cleared the backlog | PASS | Done |
+EOF
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round=02"* ]]
+  [[ "$output" == *"known_issues_count=0"* ]]
+  [[ "$output" == *"phase_pre_existing_issue_count=1"* ]]
+  [[ "$output" == *"input_mode=none"* ]]
 }
 
 @test "needs-round refreshes round_started_at_commit to current HEAD" {
@@ -402,12 +525,34 @@ EOF
   grep -q "^round=01$" "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 }
 
-@test "needs-round exceeding max rounds exits with code 2" {
+@test "needs-round can increment beyond round 03" {
   mkdir -p "$PHASE_DIR/remediation/qa/round-03"
   printf 'stage=done\nround=03\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
-  [ "$status" -eq 2 ]
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round=04$"
+  [ -d "$PHASE_DIR/remediation/qa/round-04" ]
+}
+
+@test "needs-round can increment from round 09 to 10" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-09"
+  printf 'stage=done\nround=09\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round=10$"
+  [ -d "$PHASE_DIR/remediation/qa/round-10" ]
+}
+
+@test "needs-round can increment from round 99 to 100" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-99"
+  printf 'stage=done\nround=99\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round=100$"
+  [ -d "$PHASE_DIR/remediation/qa/round-100" ]
 }
 
 # --- verification_path metadata ---

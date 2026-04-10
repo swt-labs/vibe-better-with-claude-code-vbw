@@ -502,7 +502,8 @@ load test_helper
 }
 
 @test "verify command skip-qa still blocks on unresolved known issues" {
-  grep -q 'unresolved or unreadable tracked known issues' "$PROJECT_ROOT/commands/verify.md"
+  grep -q 'unresolved tracked known issues' "$PROJECT_ROOT/commands/verify.md"
+  grep -q 'unreadable tracked known issues' "$PROJECT_ROOT/commands/verify.md"
 }
 
 # =============================================================================
