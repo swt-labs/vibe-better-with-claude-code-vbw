@@ -25,10 +25,20 @@ if [ -z "$VBW_PLUGIN_ROOT" ]; then
     [ -n "$FALLBACK_DIR" ] && [ -f "${VBW_CACHE_ROOT}/${FALLBACK_DIR}/scripts/hook-wrapper.sh" ] && VBW_PLUGIN_ROOT="${VBW_CACHE_ROOT}/${FALLBACK_DIR}"
   fi
 fi
+SESSION_LINK="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}"
+if [ -z "$VBW_PLUGIN_ROOT" ] && [ -f "${SESSION_LINK}/scripts/hook-wrapper.sh" ]; then
+  VBW_PLUGIN_ROOT="${SESSION_LINK}"
+fi
 if [ -z "$VBW_PLUGIN_ROOT" ]; then
-  for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
-    [ -f "$f" ] && VBW_PLUGIN_ROOT="${f%/scripts/hook-wrapper.sh}" && break
-  done
+  ANY_LINK=$(command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*' -print 2>/dev/null | LC_ALL=C sort | while IFS= read -r link; do
+    if [ -f "$link/scripts/hook-wrapper.sh" ]; then
+      printf '%s\n' "$link"
+      break
+    fi
+  done || true)
+  if [ -n "$ANY_LINK" ]; then
+    VBW_PLUGIN_ROOT="$ANY_LINK"
+  fi
 fi
 if [ -z "$VBW_PLUGIN_ROOT" ]; then
   PLUGIN_DIR_PATH=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1)

@@ -46,13 +46,14 @@ RESULTS=$(awk '
     # Strip common decorators (checkmarks, emoji, bullets)
     gsub(/^[^a-zA-Z{]+/, "", val)
     gsub(/[^a-zA-Z}]+$/, "", val)
-    # Normalize to lowercase using portable loop
+    # Normalize to lowercase using portable character mapping (locale-safe)
+    upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    lower = "abcdefghijklmnopqrstuvwxyz"
     lval = ""
     for (i = 1; i <= length(val); i++) {
       c = substr(val, i, 1)
-      if (c >= "A" && c <= "Z") {
-        c = sprintf("%c", index("ABCDEFGHIJKLMNOPQRSTUVWXYZ", c) + 96)
-      }
+      pos = index(upper, c)
+      if (pos > 0) c = substr(lower, pos, 1)
       lval = lval c
     }
     val = lval

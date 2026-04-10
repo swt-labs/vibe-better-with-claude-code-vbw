@@ -7,11 +7,14 @@ set -euo pipefail
 # references) but NOT in the Bash tool's shell environment or !` backtick subprocesses.
 # Model-executed bash commands that reference ${CLAUDE_PLUGIN_ROOT} expand to empty.
 #
-# Fix: Each command file resolves the plugin root ONCE at load time (via !` backtick with
-# a fallback ls chain), creates a per-session symlink at a deterministic path:
+# Fix: Each command file resolves the plugin root ONCE at load time, creates a
+# per-session symlink at a deterministic path:
 #   /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}
-# Subsequent load-time references construct this same path independently via echo — no
-# shared mutable temp file is involved.
+# Resolution order for the symlink steps is:
+#   1. exact current-session symlink path (SESSION_LINK)
+#   2. generic symlink discovery via `find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*'`
+# Subsequent load-time references construct the same deterministic session path
+# independently via echo — no shared mutable temp file is involved.
 #
 # Safe contexts (all refs must be in one of these):
 #   - echo /tmp/.vbw-plugin-root-link-... (deterministic path construction — standard reader)
@@ -329,27 +332,43 @@ else
   fail "$sha1_session_count SHA1 session key derivation(s) still present in commands"
 fi
 
-# Check 13: All command preambles include symlink fallback for plugin root resolution
-# The hooks.json resolution pattern includes a glob over /tmp/.vbw-plugin-root-link-*
-# as a fallback. Commands must also include this fallback to resolve the plugin root
-# when CLAUDE_PLUGIN_ROOT is unset and marketplace cache is empty.
+# Check 13: All command preambles include exact current-session symlink fallback
 for rel in "${TARGET_COMMANDS[@]}"; do
   file="$COMMANDS_DIR/$rel"
   [ -f "$file" ] || continue
   is_tracked_repo_file "$file" || continue
   base="$(basename "$rel" .md)"
-  if grep -qF '/tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh' "$file"; then
-    pass "$base: preamble includes symlink glob fallback"
+  if grep -qF '[ -f "${SESSION_LINK}/scripts/hook-wrapper.sh" ]' "$file"; then
+    pass "$base: preamble includes exact current-session symlink fallback"
   else
-    fail "$base: preamble MISSING symlink glob fallback (/tmp/.vbw-plugin-root-link-*)"
+    fail "$base: preamble missing exact current-session symlink fallback"
   fi
 done
 
-# Check 13b: execute-protocol.md includes symlink glob fallback
-if grep -qF '/tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh' "$EXECUTE_PROTOCOL"; then
-  pass "execute-protocol: includes symlink glob fallback"
+# Check 13b: All command preambles include generic find-based symlink fallback
+for rel in "${TARGET_COMMANDS[@]}"; do
+  file="$COMMANDS_DIR/$rel"
+  [ -f "$file" ] || continue
+  is_tracked_repo_file "$file" || continue
+  base="$(basename "$rel" .md)"
+  if grep -qF "command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*'" "$file"; then
+    pass "$base: preamble includes find-based symlink fallback"
+  else
+    fail "$base: preamble missing find-based symlink fallback"
+  fi
+done
+
+# Check 13c: execute-protocol.md includes exact-session and find-based fallback
+if grep -qF '[ -f "${SESSION_LINK}/scripts/hook-wrapper.sh" ]' "$EXECUTE_PROTOCOL"; then
+  pass "execute-protocol: includes exact current-session symlink fallback"
 else
-  fail "execute-protocol: MISSING symlink glob fallback"
+  fail "execute-protocol: missing exact current-session symlink fallback"
+fi
+
+if grep -qF "command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*'" "$EXECUTE_PROTOCOL"; then
+  pass "execute-protocol: includes find-based symlink fallback"
+else
+  fail "execute-protocol: missing find-based symlink fallback"
 fi
 
 # Check 14: All command preambles use robust grep -oE for ps extraction (not fragile sed)
@@ -432,7 +451,7 @@ echo "All drift detection checks passed."
 # --- Phase 4: Behavioral verification of resolution mechanisms ---
 echo ""
 echo "=== Behavioral Resolution Verification ==="
-echo "(Exercises symlink glob fallback, grep -oE extraction, and no-match safety in controlled sandboxes)"
+echo "(Exercises exact-session fallback, find-based symlink discovery, and grep -oE extraction in controlled sandboxes)"
 
 PASS=0
 FAIL=0
@@ -442,9 +461,7 @@ BTEST_CLEANUP_LIST=()
 btest_cleanup() { for item in "${BTEST_CLEANUP_LIST[@]}"; do rm -rf "$item" 2>/dev/null; done; }
 trap btest_cleanup EXIT
 
-# Check 15: Symlink-following resolution via [ -f ] on a valid symlink target
-# Scoped to our fixture so ambient session symlinks don't interfere.
-# Glob expansion is separately tested by Check 15c.
+# Check 15: exact session-link fallback resolves a valid symlink target
 BTEST_DIR=$(mktemp -d)
 BTEST_CLEANUP_LIST+=("$BTEST_DIR")
 mkdir -p "$BTEST_DIR/scripts"
@@ -453,54 +470,54 @@ BTEST_LINK="/tmp/.vbw-plugin-root-link-test-behavioral-$$"
 ln -s "$BTEST_DIR" "$BTEST_LINK"
 BTEST_CLEANUP_LIST+=("$BTEST_LINK")
 resolved=""
-for f in /tmp/.vbw-plugin-root-link-test-behavioral-$$/scripts/hook-wrapper.sh; do
-  [ -f "$f" ] && resolved="${f%/scripts/hook-wrapper.sh}" && break
-done
+SESSION_LINK="$BTEST_LINK"
+[ -f "$SESSION_LINK/scripts/hook-wrapper.sh" ] && resolved="$SESSION_LINK"
 rm -f "$BTEST_LINK"
 rm -rf "$BTEST_DIR"
 if [ "$resolved" = "$BTEST_LINK" ]; then
-  pass "symlink-following resolution via [ -f ] on valid symlink target"
+  pass "exact session-link fallback resolves valid symlink target"
 else
-  fail "symlink-following resolution: got '$resolved' instead of fixture '$BTEST_LINK'"
+  fail "exact session-link fallback: got '$resolved' instead of fixture '$BTEST_LINK'"
 fi
 
-# Check 15b: Symlink glob fallback skips stale symlinks (target does not exist)
-BTEST_STALE="/tmp/.vbw-plugin-root-link-test-stale-$$"
-ln -s "/nonexistent/path/$$" "$BTEST_STALE"
-BTEST_CLEANUP_LIST+=("$BTEST_STALE")
+# Check 15b: find-based fallback returns empty when no symlinks exist in the search root
+BTEST_FIND_ROOT=$(mktemp -d)
+BTEST_CLEANUP_LIST+=("$BTEST_FIND_ROOT")
 resolved=""
-# Only check this specific stale symlink — not the generic * pattern
-for f in "$BTEST_STALE/scripts/hook-wrapper.sh"; do
-  [ -f "$f" ] && resolved="${f%/scripts/hook-wrapper.sh}" && break
-done
-rm -f "$BTEST_STALE"
+resolved=$(command find "$BTEST_FIND_ROOT" -maxdepth 1 -type l -name '.vbw-plugin-root-link-*' -print 2>/dev/null | LC_ALL=C sort | head -1 || true)
+rm -rf "$BTEST_FIND_ROOT"
 if [ -z "$resolved" ]; then
-  pass "symlink glob fallback correctly skips stale symlinks"
+  pass "find-based fallback returns empty when no symlinks exist"
 else
-  fail "symlink glob fallback incorrectly resolved stale symlink to: $resolved"
+  fail "find-based fallback unexpectedly resolved: $resolved"
 fi
 
-# Check 15c: Mixed stale + valid symlinks — glob resolves the valid one
-BTEST_STALE_MIX="/tmp/.vbw-plugin-root-link-test-mix-stale-$$"
-ln -s "/nonexistent/path/$$" "$BTEST_STALE_MIX"
+# Check 15c: find-based fallback skips stale symlinks and discovers a later valid symlink
+BTEST_FIND_ROOT=$(mktemp -d)
+BTEST_CLEANUP_LIST+=("$BTEST_FIND_ROOT")
+BTEST_STALE_MIX="$BTEST_FIND_ROOT/.vbw-plugin-root-link-test-stale-$$"
 BTEST_CLEANUP_LIST+=("$BTEST_STALE_MIX")
+ln -s "/nonexistent/path/$$" "$BTEST_STALE_MIX"
 BTEST_VALID_DIR=$(mktemp -d)
 BTEST_CLEANUP_LIST+=("$BTEST_VALID_DIR")
 mkdir -p "$BTEST_VALID_DIR/scripts"
 echo "#!/bin/bash" > "$BTEST_VALID_DIR/scripts/hook-wrapper.sh"
-BTEST_VALID_MIX="/tmp/.vbw-plugin-root-link-test-mix-valid-$$"
+BTEST_VALID_MIX="$BTEST_FIND_ROOT/.vbw-plugin-root-link-test-valid-$$"
 ln -s "$BTEST_VALID_DIR" "$BTEST_VALID_MIX"
 BTEST_CLEANUP_LIST+=("$BTEST_VALID_MIX")
 resolved=""
-for f in /tmp/.vbw-plugin-root-link-test-mix-*-$$/scripts/hook-wrapper.sh; do
-  [ -f "$f" ] && resolved="${f%/scripts/hook-wrapper.sh}" && break
-done
+resolved=$(command find "$BTEST_FIND_ROOT" -maxdepth 1 -type l -name '.vbw-plugin-root-link-*' -print 2>/dev/null | LC_ALL=C sort | while IFS= read -r link; do
+  if [ -f "$link/scripts/hook-wrapper.sh" ]; then
+    printf '%s\n' "$link"
+    break
+  fi
+done || true)
 rm -f "$BTEST_STALE_MIX" "$BTEST_VALID_MIX"
-rm -rf "$BTEST_VALID_DIR"
+rm -rf "$BTEST_VALID_DIR" "$BTEST_FIND_ROOT"
 if [ "$resolved" = "$BTEST_VALID_MIX" ]; then
-  pass "mixed stale+valid symlinks: glob resolves the valid one"
+  pass "find-based fallback skips stale symlinks and discovers a later valid symlink"
 else
-  fail "mixed stale+valid symlinks: resolved to '$resolved' instead of '$BTEST_VALID_MIX'"
+  fail "find-based fallback resolved to '$resolved' instead of '$BTEST_VALID_MIX'"
 fi
 
 # Check 16: grep -oE extracts --plugin-dir value from ps-style output
@@ -521,15 +538,13 @@ else
   fail "prefix stripping failed: expected '/Users/test/my-plugin', got '$D'"
 fi
 
-# Check 17: Unmatched glob with nullglob off falls through safely (bash 3.2 default)
-resolved=""
-for f in /tmp/.vbw-plugin-root-link-nonexistent-pattern-$$/scripts/hook-wrapper.sh; do
-  [ -f "$f" ] && resolved="${f%/scripts/hook-wrapper.sh}" && break
-done
-if [ -z "$resolved" ]; then
-  pass "unmatched glob with nullglob off falls through safely"
+# Check 17: no command preamble or execute doc retains the old shell-expanded symlink glob fallback
+old_glob_uses=$(grep -R -n '/tmp/.vbw-plugin-root-link-\*/scripts/hook-wrapper.sh' "$COMMANDS_DIR" "$EXECUTE_PROTOCOL" 2>/dev/null || true)
+if [ -z "$old_glob_uses" ]; then
+  pass "command preambles and execute-protocol no longer use shell-expanded symlink globs"
 else
-  fail "unmatched glob incorrectly resolved to: $resolved"
+  fail "found old shell-expanded symlink glob fallback"
+  echo "$old_glob_uses" | while IFS= read -r line; do echo "      $line"; done
 fi
 
 echo ""
@@ -599,31 +614,27 @@ for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
   fi
 done
 
-# Check 20: helper-based readers include the symlink glob step (step 5 of the
-# 6-step cascade). vibe.md has no helper and is validated via its guarded live
-# reads in Check 18.
+# Check 20: helper-based readers include the exact-session and find-based fallback
+# steps. vibe.md has no helper and is validated via its preamble.
 for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
   file="$COMMANDS_DIR/$rel"
   base="$(basename "$rel" .md)"
   if [ "$rel" = "vibe.md" ]; then
-    if grep -q '/tmp/.vbw-plugin-root-link-\*/scripts/hook-wrapper.sh' "$file"; then
-      pass "$base: guarded live-read path still includes symlink glob fallback in the preamble"
+    if grep -qF '[ -f "${SESSION_LINK}/scripts/hook-wrapper.sh" ]' "$file" \
+      && grep -qF "command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*'" "$file"; then
+      pass "$base: preamble includes exact-session and find-based fallback"
     else
-      fail "$base: missing symlink glob fallback in preamble"
+      fail "$base: missing exact-session or find-based fallback in preamble"
     fi
     continue
   fi
-  # Count _refresh_phase_detect function definitions
   func_count=$(grep -c '_refresh_phase_detect()' "$file" || true)
-  # Count symlink glob steps inside the file (after first function definition)
-  glob_count=$(grep -c '/tmp/.vbw-plugin-root-link-\*/scripts/hook-wrapper.sh' "$file" || true)
-  # The preamble line also has a glob, so subtract 1 for commands with a preamble glob
-  preamble_glob=$(head -25 "$file" | grep -c '/tmp/.vbw-plugin-root-link-\*/scripts/hook-wrapper.sh' || true)
-  helper_globs=$((glob_count - preamble_glob))
-  if [ "$helper_globs" -ge "$func_count" ]; then
-    pass "$base: _refresh_phase_detect() includes symlink glob step"
+  session_link_count=$(grep -cF '[ -f "$SESSION_LINK/scripts/hook-wrapper.sh" ]' "$file" || true)
+  find_fallback_count=$(grep -cF "command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*'" "$file" || true)
+  if [ "$session_link_count" -ge "$func_count" ] && [ "$find_fallback_count" -ge "$func_count" ]; then
+    pass "$base: _refresh_phase_detect() includes exact-session and find-based fallback"
   else
-    fail "$base: _refresh_phase_detect() missing symlink glob step ($helper_globs globs for $func_count functions)"
+    fail "$base: _refresh_phase_detect() missing exact-session or find-based fallback ($session_link_count session checks, $find_fallback_count find fallbacks for $func_count functions)"
   fi
 done
 
