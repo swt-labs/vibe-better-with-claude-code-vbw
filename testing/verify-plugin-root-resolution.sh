@@ -12,7 +12,7 @@ set -euo pipefail
 #   /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}
 # Resolution order for the symlink steps is:
 #   1. exact current-session symlink path (SESSION_LINK)
-#   2. generic symlink discovery via `find /tmp -maxdepth 1 -type l -name '.vbw-plugin-root-link-*'`
+#   2. generic symlink discovery via `find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*'`
 # Subsequent load-time references construct the same deterministic session path
 # independently via echo — no shared mutable temp file is involved.
 #
