@@ -351,7 +351,7 @@ for rel in "${TARGET_COMMANDS[@]}"; do
   [ -f "$file" ] || continue
   is_tracked_repo_file "$file" || continue
   base="$(basename "$rel" .md)"
-  if grep -qF "command find /tmp -maxdepth 1 -type l -name '.vbw-plugin-root-link-*'" "$file"; then
+  if grep -qF "command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*'" "$file"; then
     pass "$base: preamble includes find-based symlink fallback"
   else
     fail "$base: preamble missing find-based symlink fallback"
@@ -365,7 +365,7 @@ else
   fail "execute-protocol: missing exact current-session symlink fallback"
 fi
 
-if grep -qF "command find /tmp -maxdepth 1 -type l -name '.vbw-plugin-root-link-*'" "$EXECUTE_PROTOCOL"; then
+if grep -qF "command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*'" "$EXECUTE_PROTOCOL"; then
   pass "execute-protocol: includes find-based symlink fallback"
 else
   fail "execute-protocol: missing find-based symlink fallback"
@@ -492,9 +492,12 @@ else
   fail "find-based fallback unexpectedly resolved: $resolved"
 fi
 
-# Check 15c: find-based fallback discovers a valid symlink in the search root
+# Check 15c: find-based fallback skips stale symlinks and discovers a later valid symlink
 BTEST_FIND_ROOT=$(mktemp -d)
 BTEST_CLEANUP_LIST+=("$BTEST_FIND_ROOT")
+BTEST_STALE_MIX="$BTEST_FIND_ROOT/.vbw-plugin-root-link-test-stale-$$"
+BTEST_CLEANUP_LIST+=("$BTEST_STALE_MIX")
+ln -s "/nonexistent/path/$$" "$BTEST_STALE_MIX"
 BTEST_VALID_DIR=$(mktemp -d)
 BTEST_CLEANUP_LIST+=("$BTEST_VALID_DIR")
 mkdir -p "$BTEST_VALID_DIR/scripts"
@@ -503,11 +506,16 @@ BTEST_VALID_MIX="$BTEST_FIND_ROOT/.vbw-plugin-root-link-test-valid-$$"
 ln -s "$BTEST_VALID_DIR" "$BTEST_VALID_MIX"
 BTEST_CLEANUP_LIST+=("$BTEST_VALID_MIX")
 resolved=""
-resolved=$(command find "$BTEST_FIND_ROOT" -maxdepth 1 -type l -name '.vbw-plugin-root-link-*' -print 2>/dev/null | LC_ALL=C sort | head -1 || true)
-rm -f "$BTEST_VALID_MIX"
+resolved=$(command find "$BTEST_FIND_ROOT" -maxdepth 1 -type l -name '.vbw-plugin-root-link-*' -print 2>/dev/null | LC_ALL=C sort | while IFS= read -r link; do
+  if [ -f "$link/scripts/hook-wrapper.sh" ]; then
+    printf '%s\n' "$link"
+    break
+  fi
+done || true)
+rm -f "$BTEST_STALE_MIX" "$BTEST_VALID_MIX"
 rm -rf "$BTEST_VALID_DIR" "$BTEST_FIND_ROOT"
 if [ "$resolved" = "$BTEST_VALID_MIX" ]; then
-  pass "find-based fallback discovers valid symlink"
+  pass "find-based fallback skips stale symlinks and discovers a later valid symlink"
 else
   fail "find-based fallback resolved to '$resolved' instead of '$BTEST_VALID_MIX'"
 fi
@@ -613,7 +621,7 @@ for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
   base="$(basename "$rel" .md)"
   if [ "$rel" = "vibe.md" ]; then
     if grep -qF '[ -f "${SESSION_LINK}/scripts/hook-wrapper.sh" ]' "$file" \
-      && grep -qF "command find /tmp -maxdepth 1 -type l -name '.vbw-plugin-root-link-*'" "$file"; then
+      && grep -qF "command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*'" "$file"; then
       pass "$base: preamble includes exact-session and find-based fallback"
     else
       fail "$base: missing exact-session or find-based fallback in preamble"
@@ -622,7 +630,7 @@ for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
   fi
   func_count=$(grep -c '_refresh_phase_detect()' "$file" || true)
   session_link_count=$(grep -cF '[ -f "$SESSION_LINK/scripts/hook-wrapper.sh" ]' "$file" || true)
-  find_fallback_count=$(grep -cF "command find /tmp -maxdepth 1 -type l -name '.vbw-plugin-root-link-*'" "$file" || true)
+  find_fallback_count=$(grep -cF "command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*'" "$file" || true)
   if [ "$session_link_count" -ge "$func_count" ] && [ "$find_fallback_count" -ge "$func_count" ]; then
     pass "$base: _refresh_phase_detect() includes exact-session and find-based fallback"
   else

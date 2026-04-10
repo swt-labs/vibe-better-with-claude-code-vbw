@@ -30,8 +30,13 @@ if [ -z "$VBW_PLUGIN_ROOT" ] && [ -f "${SESSION_LINK}/scripts/hook-wrapper.sh" ]
   VBW_PLUGIN_ROOT="${SESSION_LINK}"
 fi
 if [ -z "$VBW_PLUGIN_ROOT" ]; then
-  ANY_LINK=$(command find /tmp -maxdepth 1 -type l -name '.vbw-plugin-root-link-*' -print 2>/dev/null | LC_ALL=C sort | head -1 || true)
-  if [ -n "$ANY_LINK" ] && [ -f "$ANY_LINK/scripts/hook-wrapper.sh" ]; then
+  ANY_LINK=$(command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*' -print 2>/dev/null | LC_ALL=C sort | while IFS= read -r link; do
+    if [ -f "$link/scripts/hook-wrapper.sh" ]; then
+      printf '%s\n' "$link"
+      break
+    fi
+  done || true)
+  if [ -n "$ANY_LINK" ]; then
     VBW_PLUGIN_ROOT="$ANY_LINK"
   fi
 fi
