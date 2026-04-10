@@ -297,8 +297,6 @@ get_round_dir() {
   echo "$PHASE_DIR/remediation/qa/round-${round}"
 }
 
-MAX_ROUNDS=3
-
 validate_stage() {
   local stage="$1"
   for s in "${STAGES[@]}"; do
@@ -345,10 +343,6 @@ start_new_round() {
     exit 1
   fi
   next_round=$(( 10#$current_round + 1 ))
-  if [ "$next_round" -gt "$MAX_ROUNDS" ]; then
-    echo "Error: max QA remediation rounds ($MAX_ROUNDS) exceeded" >&2
-    exit 2
-  fi
   next_round_padded=$(printf '%02d' "$next_round")
   mkdir -p "$PHASE_DIR/remediation/qa/round-${next_round_padded}"
   round_started_at_commit=$(capture_round_started_at_commit)
