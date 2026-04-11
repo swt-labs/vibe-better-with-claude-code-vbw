@@ -716,9 +716,15 @@ done < <(grep -RhoE '\$\{CLAUDE_PLUGIN_ROOT\}/[A-Za-z0-9._/*{}-]+' "$COMMANDS_DI
 # ── UAT Remediation step 4 must use TodoWrite (not generic "task list") ──
 echo ""
 echo "--- UAT Remediation TodoWrite disambiguation ---"
-# Scope the check to the UAT Remediation section (between its header and the next ### Mode:)
+# Extract the UAT Remediation section body (between its header and the next ### Mode:)
 # Match step 4's heading specifically — not just any "TodoWrite progress list" in the section
-uat_section="$(sed -n '/^### Mode: UAT Remediation/,/^### Mode:/p' "$COMMANDS_DIR/vibe.md")"
+uat_section="$(
+  awk '
+    /^### Mode: UAT Remediation$/ { in_section=1; next }
+    in_section && /^### Mode:/ { exit }
+    in_section { print }
+  ' "$COMMANDS_DIR/vibe.md"
+)"
 if printf '%s' "$uat_section" | grep -q '\*\*TodoWrite progress list (NON-NEGOTIABLE'; then
   pass "UAT Remediation step 4 explicitly references TodoWrite"
 else
