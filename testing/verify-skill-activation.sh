@@ -48,7 +48,7 @@ fail() {
 
 expected_skill_contract_sites() {
   case "$(basename "$1")" in
-    vibe.md) echo 7 ;;
+    vibe.md) echo 8 ;;
     debug.md) echo 2 ;;
     research.md|fix.md|qa.md|execute-protocol.md) echo 1 ;;
     map.md) echo 2 ;;
@@ -660,6 +660,12 @@ for contract_file in "${COMMAND_SKILL_CONTRACT_FILES[@]}"; do
     pass "$contract_name: bans silent omission wording"
   fi
 done
+
+if ! grep -q 'Same as Add Phase step 5' "$ROOT/commands/vibe.md"; then
+  pass "vibe.md: insert-phase Scout contract is local, not shorthand"
+else
+  fail "vibe.md: insert-phase Scout contract still relies on Add Phase shorthand"
+fi
 
 # Layer 1: All 7 agents have conditional skill activation section
 for agent_file in vbw-lead.md vbw-dev.md vbw-qa.md vbw-scout.md vbw-debugger.md vbw-architect.md vbw-docs.md; do
