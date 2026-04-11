@@ -248,9 +248,9 @@ The plan_path argument is passed for context. **Research resolution:** For a spe
 3. Wildcard fallback: first `*-RESEARCH.md` in the phase directory
 
 Include the first match in the Dev task prompt alongside the compiled context. Phase-wide research (`{NN}-RESEARCH.md`) is the default — Plan mode creates it before Lead plans. Per-plan research (`{NN}-{MM}-RESEARCH.md`) is used only for plan-specific research added after initial planning. Skill activation uses a plan-driven architecture:
-- **Orchestrator skill selection:** When composing subagent task descriptions, the orchestrator evaluates installed skills (visible via `<available_skills>` in system context) — reading each skill's description to determine relevance to the specific task. Only relevant skills are included in the subagent prompt via `<skill_activation>` blocks at the prompt start. Irrelevant skills are omitted entirely.
+- **Orchestrator skill selection:** When composing subagent task descriptions, the orchestrator evaluates installed skills (visible via `<available_skills>` in system context) — reading each skill's description to determine relevance to the specific task. Every spawned prompt that performs this evaluation must begin with exactly one explicit outcome block: `<skill_activation>` when one or more installed skills apply, or `<skill_no_activation>` when none do. Silent omission of both blocks is invalid.
 - **Lead (planning time):** Evaluates available skills and wires relevant ones into plans via `skills_used` frontmatter and `@`-references to SKILL.md files.
-- **Dev/QA/Scout/Docs (execution time):** Reads the plan's `skills_used` list and calls `Skill(skill-name)` for each listed skill before beginning work. If a skill in system context is missing from `skills_used`, activates it too (soft fallback). No written YES/NO evaluation required.
+- **Dev/QA/Scout/Docs (execution time):** Treats `<skill_activation>` and `<skill_no_activation>` as explicit orchestrator outcomes for spawn-time skill evaluation. Plan-driven `skills_used` activation remains authoritative where those agents already rely on it.
 - **Ad-hoc paths (`/vbw:fix`, `/vbw:debug`, `/vbw:research`):** Debugger/Dev/Scout checks installed skills in system context — no plan exists, so no `skills_used` frontmatter to reference. Agent activates relevant skills based on description evaluation.
 - **Architect (scoping time):** Evaluates installed skills in system context. Activates relevant skills before producing requirements and roadmap artifacts.
 - **Runtime skill hooks preserved:** `skill-hook-dispatch.sh` dispatches skill-defined PostToolUse/PreToolUse hooks at runtime. This is separate from skill *activation* and is unaffected by the plan-driven model.
@@ -299,7 +299,7 @@ QA_MAX_TURNS=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-agent-max-turns.sh" qa .
 if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
 ```
 
-**Skill activation for Dev/QA tasks:** Before composing task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to the tasks being executed. If any skills are relevant, include a `<skill_activation>` block as the FIRST line of every Dev and QA task description. Only include skills whose description matches the task at hand. If no skills are relevant, omit the block entirely.
+**Skill activation for Dev/QA tasks:** Before composing task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to the tasks being executed. Every spawned prompt that performs this evaluation MUST begin with exactly one explicit outcome block: use `<skill_activation>` as the FIRST line when one or more installed skills apply, or `<skill_no_activation>` as the FIRST line when none apply. Silent omission of both blocks is invalid. Only include skills whose description matches the task at hand.
 
 **MCP tool evaluation for Dev tasks:** Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to the tasks (build tools, documentation servers, domain-specific APIs), note them in the Dev task description so the Dev agent knows which MCP tools to use.
 
@@ -307,7 +307,10 @@ For each uncompleted plan, create the teammate task using the live teammate spaw
 ```yaml
 subject: "Execute {NN-MM}: {plan-title}"
 description: |
+  <!-- When skills apply: -->
   <skill_activation>Call Skill('{relevant-skill-1}'). Call Skill('{relevant-skill-2}').</skill_activation>
+  <!-- OR when no skills apply: -->
+  <skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>
   Execute all tasks in {PLAN_PATH}.
   Effort: {DEV_EFFORT}. Working directory: {worktree_path (from execution-state.json for this plan) if worktree_isolation is enabled and worktree_path is set, else {pwd}}.
   {If worktree_isolation enabled and WTARGET non-empty: "Worktree targeting: {WTARGET}"}

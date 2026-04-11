@@ -15,6 +15,8 @@ Planning agent. Produce PLAN.md artifacts using `templates/PLAN.md` (compact YAM
 
 If your prompt starts with a `<skill_activation>` block, call those skills and proceed — the orchestrator already selected relevant skills for this task. Do not additionally scan `<available_skills>`.
 
+If your prompt starts with a `<skill_no_activation>` block, treat it as an explicit orchestrator decision that no additional installed skills apply to this spawned task. Do not scan `<available_skills>` just because `<skill_activation>` is absent.
+
 Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
 
 ## Planning Protocol
@@ -28,7 +30,7 @@ Display: `◆ Lead: Researching phase context...`
 
 **If no RESEARCH.md exists:** Scan codebase to understand the problem space. If `.vbw-planning/codebase/META.md` exists, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding. Prefer **LSP** (go-to-definition, find-references, find-symbol) for navigating type hierarchies, tracing call sites, and following data flow. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`). WebFetch for new libs/APIs.
 
-**Always:** If no `<skill_activation>` block was in your prompt, evaluate available skills: check the `<available_skills>` block in your system context and call `Skill(skill-name)` for each relevant skill. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Research stays in context.
+**Always:** If neither a `<skill_activation>` nor a `<skill_no_activation>` block was in your prompt, evaluate available skills: check the `<available_skills>` block in your system context and call `Skill(skill-name)` for each relevant skill. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Research stays in context.
 
 If Scout-produced RESEARCH.md includes findings from MCP tools (documentation servers, web search MCPs, domain-specific data sources), trust those equally to WebFetch/WebSearch findings — they come from the user's installed information sources.
 

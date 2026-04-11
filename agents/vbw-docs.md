@@ -15,6 +15,8 @@ Documentation agent. Specialized for creating and updating project documentation
 
 If your prompt starts with a `<skill_activation>` block, call those skills and proceed — the orchestrator already selected relevant skills for this task. Do not additionally scan `<available_skills>`.
 
+If your prompt starts with a `<skill_no_activation>` block, treat it as an explicit orchestrator decision that no additional installed skills apply to this spawned task. Do not scan `<available_skills>` just because `<skill_activation>` is absent. If a plan exists, still honor its `skills_used` frontmatter during Stage 1.
+
 Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
 
 ## Documentation Protocol
@@ -22,7 +24,7 @@ Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system co
 ### Stage 1: Load Plan
 Read PLAN.md from disk (source of truth). Read `@`-referenced context. Parse tasks.
 
-**Skill activation** before Task 1 (skip if `<skill_activation>` was already in your prompt — those skills are already loaded): Call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter. If no plan exists (ad-hoc docs task), check `<available_skills>` and activate relevant skills.
+**Skill activation** before Task 1: Call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter. If no plan exists and neither `<skill_activation>` nor `<skill_no_activation>` was already in your prompt (true ad-hoc docs mode), check `<available_skills>` and activate relevant skills. When either explicit outcome block is present, do not rescan `<available_skills>` for extra skills.
 
 ### Stage 2: Execute Tasks
 Per task: 1) Write or update documentation files. 2) Validate formatting and links. 3) Stage files individually, commit doc changes. 4) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 5) Record hash for SUMMARY.md.

@@ -6,11 +6,32 @@ set -euo pipefail
 # Checks:
 # - vbw-dev.md references skills_used activation
 # - vbw-lead.md references skill evaluation and wiring
+# - orchestrator spawn contracts emit explicit activation OR explicit no-activation blocks
 # - hooks.json does NOT contain skill-evaluation-gate.sh or skill-eval-prompt-gate.sh
 # - All agents with explicit tools: allowlists include Skill
 # - execute-protocol.md documents plan-driven approach
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+COMMAND_SKILL_CONTRACT_FILES=(
+  "$ROOT/commands/vibe.md"
+  "$ROOT/commands/research.md"
+  "$ROOT/commands/map.md"
+  "$ROOT/commands/fix.md"
+  "$ROOT/commands/debug.md"
+  "$ROOT/commands/qa.md"
+  "$ROOT/references/execute-protocol.md"
+)
+
+AGENT_SKILL_CONTRACT_FILES=(
+  "$ROOT/agents/vbw-lead.md"
+  "$ROOT/agents/vbw-dev.md"
+  "$ROOT/agents/vbw-qa.md"
+  "$ROOT/agents/vbw-scout.md"
+  "$ROOT/agents/vbw-debugger.md"
+  "$ROOT/agents/vbw-architect.md"
+  "$ROOT/agents/vbw-docs.md"
+)
 
 PASS=0
 FAIL=0
@@ -23,6 +44,82 @@ pass() {
 fail() {
   echo "FAIL  $1"
   FAIL=$((FAIL + 1))
+}
+
+expected_skill_contract_sites() {
+  case "$(basename "$1")" in
+    vibe.md) echo 8 ;;
+    debug.md) echo 2 ;;
+    research.md|fix.md|qa.md|execute-protocol.md) echo 1 ;;
+    map.md) echo 2 ;;
+    *) echo 0 ;;
+  esac
+}
+
+collect_skill_contract_site_lines() {
+  local file="$1"
+  grep -nE 'evaluate installed skills visible in your system context|Skill activation for Dev/QA tasks' "$file" 2>/dev/null | cut -d: -f1 || true
+}
+
+verify_skill_contract_sites() {
+  local file="$1"
+  local file_name expected_count total_lines start_line end_line site_number
+  local segment
+  local site_lines=()
+
+  file_name=$(basename "$file")
+  expected_count=$(expected_skill_contract_sites "$file")
+  total_lines=$(wc -l < "$file" | tr -d ' ')
+
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    site_lines+=("$line")
+  done < <(collect_skill_contract_site_lines "$file")
+
+  if [ "${#site_lines[@]}" -eq "$expected_count" ]; then
+    pass "$file_name: found $expected_count explicit skill-evaluation site(s)"
+  else
+    fail "$file_name: expected $expected_count explicit skill-evaluation site(s), found ${#site_lines[@]}"
+  fi
+
+  site_number=1
+  while [ "$site_number" -le "${#site_lines[@]}" ]; do
+    start_line="${site_lines[$((site_number - 1))]}"
+    if [ "$site_number" -lt "${#site_lines[@]}" ]; then
+      end_line=$(( ${site_lines[$site_number]} - 1 ))
+    else
+      end_line="$total_lines"
+    fi
+    segment=$(sed -n "${start_line},${end_line}p" "$file")
+
+    if grep -q '<skill_activation>' <<< "$segment" \
+      && grep -q 'Call Skill(' <<< "$segment"; then
+      pass "$file_name: site $site_number has local activation path"
+    else
+      fail "$file_name: site $site_number missing local activation path"
+    fi
+
+    if grep -q '<skill_no_activation>' <<< "$segment" \
+      && grep -q 'No installed skills apply\. Reason:' <<< "$segment"; then
+      pass "$file_name: site $site_number has local no-activation path"
+    else
+      fail "$file_name: site $site_number missing local no-activation path"
+    fi
+
+    if grep -q 'exactly one explicit' <<< "$segment"; then
+      pass "$file_name: site $site_number states explicit one-of-two outcome contract"
+    else
+      fail "$file_name: site $site_number missing explicit one-of-two outcome wording"
+    fi
+
+    if grep -q 'omit the skill_activation block entirely\|omit the block entirely' <<< "$segment"; then
+      fail "$file_name: site $site_number still allows silent omission"
+    else
+      pass "$file_name: site $site_number rejects silent omission"
+    fi
+
+    site_number=$((site_number + 1))
+  done
 }
 
 echo "=== Skill Activation Pipeline Verification (plan-driven model) ==="
@@ -49,10 +146,10 @@ else
   fail "vbw-dev.md: still has 'protocol violation' enforcement language"
 fi
 
-if grep -q 'skip if.*skill_activation.*was already' "$DEV_AGENT"; then
+if grep -q 'skill_activation' "$DEV_AGENT" && grep -q 'skill_no_activation' "$DEV_AGENT"; then
   pass "vbw-dev.md: has orchestrator-aware conditional in deeper protocol"
 else
-  fail "vbw-dev.md: missing orchestrator-aware conditional in deeper protocol"
+  fail "vbw-dev.md: missing orchestrator-aware conditional (must reference both skill_activation and skill_no_activation)"
 fi
 
 # --- vbw-lead.md checks ---
@@ -76,6 +173,12 @@ if grep -q 'Skill completeness check' "$LEAD_AGENT"; then
   pass "vbw-lead.md: has skill completeness gate in self-review"
 else
   fail "vbw-lead.md: missing skill completeness gate in self-review"
+fi
+
+if grep -q 'skill_no_activation' "$LEAD_AGENT"; then
+  pass "vbw-lead.md: recognizes explicit no-activation block"
+else
+  fail "vbw-lead.md: missing explicit no-activation handling"
 fi
 
 if ! grep -q 'write YES or NO' "$LEAD_AGENT"; then
@@ -165,6 +268,18 @@ else
   fail "execute-protocol.md: missing skill-hook-dispatch.sh documentation"
 fi
 
+if grep -q 'skill_no_activation' "$PROTOCOL"; then
+  pass "execute-protocol.md: documents explicit no-activation outcome"
+else
+  fail "execute-protocol.md: missing explicit no-activation outcome"
+fi
+
+if ! grep -q 'No written YES/NO evaluation required' "$PROTOCOL"; then
+  pass "execute-protocol.md: legacy silent-decision wording removed"
+else
+  fail "execute-protocol.md: still says no written YES/NO evaluation is required"
+fi
+
 if ! grep -q 'three-layer' "$PROTOCOL"; then
   pass "execute-protocol.md: old three-layer documentation removed"
 else
@@ -187,6 +302,12 @@ else
   fail "vbw-qa.md: missing Skill() reference"
 fi
 
+if grep -q 'skill_no_activation' "$QA_AGENT"; then
+  pass "vbw-qa.md: recognizes explicit no-activation block"
+else
+  fail "vbw-qa.md: missing explicit no-activation handling"
+fi
+
 if grep -q 'available_skills' "$QA_AGENT"; then
   pass "vbw-qa.md: references available_skills for ad-hoc fallback"
 else
@@ -207,6 +328,24 @@ else
   fail "vbw-scout.md: missing available_skills reference for ad-hoc path"
 fi
 
+if grep -q 'skill_no_activation' "$SCOUT_AGENT"; then
+  pass "vbw-scout.md: recognizes explicit no-activation block"
+else
+  fail "vbw-scout.md: missing explicit no-activation handling"
+fi
+
+if ! grep -q 'may still honor' "$SCOUT_AGENT"; then
+  pass "vbw-scout.md: no permissive may-still-honor wording on no-activation path"
+else
+  fail "vbw-scout.md: still uses permissive may-still-honor wording on no-activation path"
+fi
+
+if grep -q 'still honor any `skills_used` frontmatter' "$SCOUT_AGENT"; then
+  pass "vbw-scout.md: preserves plan-driven skills_used behavior on no-activation path"
+else
+  fail "vbw-scout.md: missing mandatory skills_used preservation on no-activation path"
+fi
+
 DEBUGGER_AGENT="$ROOT/agents/vbw-debugger.md"
 
 if grep -q 'available_skills' "$DEBUGGER_AGENT"; then
@@ -219,6 +358,18 @@ if grep -q 'Skill(skill-name)' "$DEBUGGER_AGENT"; then
   pass "vbw-debugger.md: references Skill() activation"
 else
   fail "vbw-debugger.md: missing Skill() reference"
+fi
+
+if grep -q 'skill_no_activation' "$DEBUGGER_AGENT"; then
+  pass "vbw-debugger.md: recognizes explicit no-activation block"
+else
+  fail "vbw-debugger.md: missing explicit no-activation handling"
+fi
+
+if grep -q 'only in standalone/ad-hoc mode when neither `<skill_activation>` nor `<skill_no_activation>` was provided' "$DEBUGGER_AGENT"; then
+  pass "vbw-debugger.md: downstream skill activation is gated to true ad-hoc mode"
+else
+  fail "vbw-debugger.md: downstream skill activation can still bypass explicit no-activation"
 fi
 
 ARCHITECT_AGENT="$ROOT/agents/vbw-architect.md"
@@ -235,6 +386,18 @@ else
   fail "vbw-architect.md: missing Skill() reference"
 fi
 
+if grep -q 'skill_no_activation' "$ARCHITECT_AGENT"; then
+  pass "vbw-architect.md: recognizes explicit no-activation block"
+else
+  fail "vbw-architect.md: missing explicit no-activation handling"
+fi
+
+if grep -q 'only in standalone/ad-hoc mode when neither `<skill_activation>` nor `<skill_no_activation>` was provided' "$ARCHITECT_AGENT"; then
+  pass "vbw-architect.md: downstream skill activation is gated to true ad-hoc mode"
+else
+  fail "vbw-architect.md: downstream skill activation can still bypass explicit no-activation"
+fi
+
 DOCS_AGENT="$ROOT/agents/vbw-docs.md"
 
 if grep -q 'skills_used' "$DOCS_AGENT"; then
@@ -247,6 +410,12 @@ if grep -q 'Skill(skill-name)' "$DOCS_AGENT"; then
   pass "vbw-docs.md: references Skill() activation"
 else
   fail "vbw-docs.md: missing Skill() reference"
+fi
+
+if grep -q 'skill_no_activation' "$DOCS_AGENT"; then
+  pass "vbw-docs.md: recognizes explicit no-activation block"
+else
+  fail "vbw-docs.md: missing explicit no-activation handling"
 fi
 
 if grep -q 'available_skills' "$DOCS_AGENT"; then
@@ -458,6 +627,46 @@ fi
 echo ""
 echo "=== 3-Layer Skill Activation Pipeline ==="
 
+echo ""
+echo "=== Explicit Skill Outcome Contract ==="
+
+for contract_file in "${COMMAND_SKILL_CONTRACT_FILES[@]}"; do
+  contract_name=$(basename "$contract_file")
+  if grep -q 'skill_no_activation' "$contract_file"; then
+    pass "$contract_name: contains explicit no-activation outcome"
+  else
+    fail "$contract_name: missing explicit no-activation outcome"
+  fi
+done
+
+for contract_file in "${COMMAND_SKILL_CONTRACT_FILES[@]}"; do
+  verify_skill_contract_sites "$contract_file"
+done
+
+for agent_file in "${AGENT_SKILL_CONTRACT_FILES[@]}"; do
+  agent_name=$(basename "$agent_file")
+  if grep -q 'skill_no_activation' "$agent_file"; then
+    pass "$agent_name: handles explicit no-activation outcome"
+  else
+    fail "$agent_name: missing explicit no-activation handling"
+  fi
+done
+
+for contract_file in "${COMMAND_SKILL_CONTRACT_FILES[@]}"; do
+  contract_name=$(basename "$contract_file")
+  if grep -q 'omit the skill_activation block entirely\|omit the block entirely' "$contract_file"; then
+    fail "$contract_name: still allows silent omission of skill outcome blocks"
+  else
+    pass "$contract_name: bans silent omission wording"
+  fi
+done
+
+if ! grep -q 'Same as Add Phase step 5' "$ROOT/commands/vibe.md"; then
+  pass "vibe.md: insert-phase Scout contract is local, not shorthand"
+else
+  fail "vibe.md: insert-phase Scout contract still relies on Add Phase shorthand"
+fi
+
 # Layer 1: All 7 agents have conditional skill activation section
 for agent_file in vbw-lead.md vbw-dev.md vbw-qa.md vbw-scout.md vbw-debugger.md vbw-architect.md vbw-docs.md; do
   AGENT_PATH="$ROOT/agents/$agent_file"
@@ -572,11 +781,11 @@ else
   fail "execute-protocol.md: still references generate-skill-activation.sh"
 fi
 
-# Positive: orchestrator-composed skill_activation in Scout/Lead spawn templates
-if grep -q 'skill_activation' "$VIBE_CMD" && grep -q 'skill_activation' "$RESEARCH_CMD"; then
-  pass "vibe.md + research.md: orchestrator-composed skill_activation for Scout/Lead spawns"
+# Positive: orchestrator-composed explicit skill outcomes in Scout/Lead spawn templates
+if grep -q 'skill_activation' "$VIBE_CMD" && grep -q 'skill_no_activation' "$VIBE_CMD" && grep -q 'skill_activation' "$RESEARCH_CMD" && grep -q 'skill_no_activation' "$RESEARCH_CMD"; then
+  pass "vibe.md + research.md: orchestrator-composed explicit positive and negative skill outcomes"
 else
-  fail "vibe.md or research.md: missing skill_activation in Scout/Lead spawn templates"
+  fail "vibe.md or research.md: missing explicit positive or negative skill outcomes"
 fi
 
 # Positive: intelligent selection language in vibe.md

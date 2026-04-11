@@ -40,7 +40,7 @@ Config: Pre-injected by SessionStart hook.
     DEV_MAX_TURNS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh dev .vbw-planning/config.json turbo)
     ```
 
-    Before composing the Dev task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific fix. If any skills are relevant, the Dev prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
+    Before composing the Dev task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific fix. The spawned prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. Only include skills whose description matches the task at hand.
 
     Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this fix (build tools, documentation servers, domain-specific APIs), note them in the Dev task description.
 

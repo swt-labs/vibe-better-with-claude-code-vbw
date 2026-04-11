@@ -179,7 +179,7 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
 
       The guarded `sync-summaries` backfill above is for resumed phase-level QA only. It closes the interruption window where execution completed and `SUMMARY.md` files exist, but the earlier session ended before the post-build QA handoff created `{phase-dir}/known-issues.json`.
 
-    - Before composing the QA task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to verifying this phase's work. If any skills are relevant, the QA prompt MUST start with `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>`. Only include skills whose description matches the verification task. If no skills are relevant, omit the skill_activation block entirely.
+    - Before composing the QA task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to verifying this phase's work. The QA prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. Only include skills whose description matches the verification task.
 
     - Also evaluate available MCP tools in your system context. If any MCP servers provide build, test, documentation, or domain-specific capabilities relevant to verification, note them in the QA task context.
 

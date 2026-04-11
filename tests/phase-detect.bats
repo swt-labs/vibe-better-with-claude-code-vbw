@@ -5,6 +5,7 @@ load test_helper
 setup() {
   setup_temp_dir
   create_test_config
+  export CLAUDE_SESSION_ID="phase-detect-${BATS_TEST_NUMBER:-0}-$$-$RANDOM"
   cd "$TEST_TEMP_DIR"
   git init --quiet
   git config user.email "test@test.com"
@@ -13,6 +14,10 @@ setup() {
 }
 
 teardown() {
+  rm -f "/tmp/.vbw-phase-detect-${CLAUDE_SESSION_ID:-default}.txt" 2>/dev/null || true
+  rm -rf "/tmp/.vbw-phase-detect-live-${CLAUDE_SESSION_ID:-default}.lock" 2>/dev/null || true
+  rm -rf "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}" 2>/dev/null || true
+  unset CLAUDE_SESSION_ID
   cd "$PROJECT_ROOT"
   teardown_temp_dir
 }

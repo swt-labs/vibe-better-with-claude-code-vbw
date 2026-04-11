@@ -43,10 +43,10 @@ Current project:
     if [ $? -ne 0 ]; then echo "$SCOUT_MAX_TURNS" >&2; exit 1; fi
      ```
    - Display: `◆ Spawning Scout (${SCOUT_MODEL})...`
-   - Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. If any skills are relevant, the Scout prompt MUST start with a `<skill_activation>` block. Only include skills whose description matches the task at hand. If no skills are relevant, omit the skill_activation block entirely.
+    - Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. The spawned prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>` when one or more installed skills apply, or `<skill_no_activation>` when none apply. Silent omission of both blocks is invalid. Only include skills whose description matches the task at hand.
    - Also evaluate available MCP tools in your system context. If any MCP servers provide documentation, search, or data retrieval capabilities relevant to this research topic (e.g., Apple Docs for Apple APIs, web search MCPs for multi-source queries), note them in the Scout's task context so it prioritizes those tools over generic WebSearch/WebFetch where applicable.
   - Spawn vbw-scout as subagent(s) via Task tool. **Set `subagent_type: "vbw:vbw-scout"` and `model: "${SCOUT_MODEL}"` in the Task tool invocation. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
-```
+```text
 <skill_activation>
 Call Skill('{relevant-skill-1}').
 Call Skill('{relevant-skill-2}').
@@ -63,8 +63,19 @@ Project context: {tech stack, constraints from PROJECT.md if relevant}.
 Write your complete findings to the output_path file.
 </output_format>
 ```
-  - If save path is unknown yet (user hasn't confirmed), omit `<output_path>` — Scout returns findings in response, and the orchestrator writes them after user confirms a path.
-  - Parallel: up to 4 simultaneous Tasks, each with `subagent_type: "vbw:vbw-scout"`, same `model: "${SCOUT_MODEL}"` and the same maxTurns conditional (pass when non-empty, omit when empty).
+  When no installed skills apply, use this variant instead:
+```text
+<skill_no_activation>
+Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.
+</skill_no_activation>
+
+<task_context>
+Research: {topic or sub-topic}.
+...
+</task_context>
+```
+    - If save path is unknown yet (user hasn't confirmed), omit `<output_path>` — Scout returns findings in response, and the orchestrator writes them after user confirms a path.
+    - Parallel: up to 4 simultaneous Tasks, each with `subagent_type: "vbw:vbw-scout"`, same `model: "${SCOUT_MODEL}"` and the same maxTurns conditional (pass when non-empty, omit when empty).
 4. **Synthesize:** Single: present directly. Parallel: merge, note contradictions, rank by confidence.
 5. **Persist:** Ask "Save findings? (y/n)". If yes, ask for save path (default: `.vbw-planning/phases/{phase-dir}/RESEARCH.md` or `.vbw-planning/RESEARCH.md`). If Scout already wrote the file (output_path was included in prompt), confirm it exists. If Scout returned findings in response (no output_path), write findings to the confirmed path.
 ```
