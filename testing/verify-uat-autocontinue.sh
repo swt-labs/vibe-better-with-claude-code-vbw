@@ -21,11 +21,11 @@ fail() {
   FAIL=$((FAIL + 1))
 }
 
-# 1. verify.md contains remediation_continue signal
-if grep -q 'remediation_continue=true' "$ROOT/commands/verify.md"; then
-  pass "verify.md contains remediation_continue signal"
+# 1. verify.md contains remediation_continue signal with issues payload
+if grep -q 'remediation_continue=true.*issues=' "$ROOT/commands/verify.md"; then
+  pass "verify.md contains remediation_continue signal with issues payload"
 else
-  fail "verify.md missing remediation_continue signal"
+  fail "verify.md missing remediation_continue=true issues={N} signal"
 fi
 
 # 2. verify.md has orchestrated vs standalone mode split
