@@ -287,7 +287,16 @@ fi
 Display: "⚠ Renamed misnamed plan files to `{NN}-PLAN.md` convention."
 Then re-run phase-detect.sh and use updated output for routing below.
 
-**State-driven routing prohibition (NON-NEGOTIABLE):** When state detection routes to a mode, call its confirmation gate (AskUserQuestion — see Confirmation Gate section below) in the same turn, then execute the mode inline after the user responds. Do NOT use TaskCreate, TaskUpdate, or any task management tool for state-driven routing — these add overhead and delay execution. State routing is deterministic: the pre-computed data in the Context section above provides all routing information. Do not spawn tasks or read protocol files for routing decisions. After confirmation (when required by the routing table), execute the mode inline.
+**State-driven routing prohibition (NON-NEGOTIABLE):** When state detection routes to a mode, call its confirmation gate (AskUserQuestion — see Confirmation Gate section below) in the same turn, then execute the mode inline after the user responds. Do NOT use TaskCreate, TaskUpdate, or any task management tool for state-driven routing — these add overhead and delay execution. State routing is deterministic: the pre-computed data in the Context section above provides all routing information. Do not spawn tasks or read protocol files for routing decisions. After confirmation (when required by the routing table), execute the mode inline. Modes that spawn agents (Scout, Lead, Dev) do so within their step-by-step flow — this is delegation of work units within a stage, not delegation of the stage pipeline itself.
+
+<examples>
+<example type="anti-pattern" label="WRONG — delegating the stage pipeline via TaskCreate">
+State detects needs_uat_remediation → TaskCreate("Research"), TaskCreate("Plan"), TaskCreate("Execute") with blocking dependencies → stages run as separate delegated tasks, breaking state management and losing orchestrator control between stages
+</example>
+<example type="correct" label="RIGHT — inline orchestration with agent spawning per stage">
+State detects needs_uat_remediation → enters mode inline → step 4 creates TodoWrite progress list (Research, Plan, Execute) → step 6 spawns Scout for research stage via Task tool → advances state → spawns Lead for plan stage → advances → spawns Dev for execute stage → chains into re-verification
+</example>
+</examples>
 
 | Priority | Condition | Mode | Confirmation |
 | --- | --- | --- | --- |
@@ -367,6 +376,8 @@ Before entering Verify mode (UAT), check `qa_status` from phase-detect output:
 
 **QA Remediation mode (needs_qa_remediation) — cross-session recovery:**
 When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persisted stage. This is the cross-session recovery path — the inline execution path is in execute-protocol.md Step 4. This state also covers completed phases with no UAT yet when phase-level QA already wrote a PASS artifact but unresolved tracked known issues still force remediation before UAT can begin.
+
+**Execution model:** This mode runs inline — the orchestrator manages stage transitions and spawns agents for the actual work within each stage. Do not decompose the stages into TaskCreate items — they are sequential steps of this conversation, not delegated tasks.
 
 1. Read current state: `bash {plugin-root}/scripts/qa-remediation-state.sh get-or-init {phase-dir}`
   Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `source_fail_count`, `known_issues_path`, `known_issues_count`, `input_mode`, `verification_path`
@@ -648,6 +659,8 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 
 **Guard:** Initialized, target phase has `*-UAT.md` with `status: issues_found`.
 
+**Execution model:** This mode runs inline — the orchestrator manages stage transitions (steps 1-5) and spawns agents for the actual work within each stage (step 6). The three stages (research, plan, execute) are sequential steps of this conversation, not delegated tasks — do not decompose them into TaskCreate items.
+
 **Chain state tracking:** This mode uses `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh` to persist the current stage of the remediation chain on disk. This ensures correct resumption after compaction or session restart — the chain does NOT rely on prompt memory alone.
 
 **Steps:**
@@ -674,10 +687,10 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - If a stage was already persisted (resume after compaction/restart), the script returns the stage word + plan metadata with no side effects.
    - If no stage existed (first entry into remediation), the script initializes the stage file, creates `remediation/uat/round-01/` directory, pre-seeds the phase `{NN}-CONTEXT.md`, and returns the stage word + plan metadata + `---CONTEXT---` separator with the full pre-seeded context content — **use this directly as your remediation context. Do NOT separately read UAT.md or `{NN}-CONTEXT.md` files.**
    - If the returned stage is `done`: UAT remediation already completed for this phase. Display "Remediation already completed. Run `/vbw:vibe` to re-verify." STOP.
-   **Task list (NON-NEGOTIABLE ordering and state):** Immediately after resolving the stage, create a task list with items in **exactly this order** for the major path: (1) Research, (2) Plan, (3) Execute. For the minor path: (1) Fix. **Item numbering must match stage order** — Research is always #1, Plan #2, Execute #3. Never reorder items.
+   **TodoWrite progress list (NON-NEGOTIABLE ordering and state):** Immediately after resolving the stage, create a TodoWrite progress list with items in **exactly this order** for the major path: (1) Research, (2) Plan, (3) Execute. For the minor path: (1) Fix. **Item numbering must match stage order** — Research is always #1, Plan #2, Execute #3. Never reorder items. This is a progress display for the user — agent spawning for each stage is handled in step 6 below.
    - **Initial creation:** If the resolved stage is `research`, mark Research as in-progress, Plan and Execute as not-started. If the resolved stage is `plan` (resume case), mark Research as completed, Plan as in-progress, Execute as not-started. If `execute`, mark Research and Plan as completed, Execute as in-progress.
-   - **Same-session progression:** When a stage completes and you advance to the next stage within the same session (e.g., research completes → advance → start plan), immediately update the task list: mark the completed stage as completed and the new stage as in-progress. Do NOT defer task list updates or recreate the list from scratch.
-   - **Final stage:** When the last stage completes, mark ALL tasks as completed before presenting the summary.
+   - **Same-session progression:** When a stage completes and you advance to the next stage within the same session (e.g., research completes → advance → start plan), immediately update the TodoWrite progress list: mark the completed stage as completed and the new stage as in-progress. Do NOT defer updates or recreate the list from scratch.
+   - **Final stage:** When the last stage completes, mark ALL TodoWrite items as completed before presenting the summary.
 5. **Recurrence analysis and priority ranking:**
   Use `round=RR` from step 4 as the **current remediation round** for stage management.
 
@@ -689,7 +702,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 
   **Post-route enrichment:** When inspecting earlier archived UAT artifacts for recurrence, read only the archived artifacts for this phase (flat `*-UAT-round-*.md` or round-dir `remediation/uat/round-*/R*-UAT.md`) and **exclude the active step-2 UAT artifact itself from the scan**. Build `FAILED_IN_ROUNDS` from the matching archived rounds plus `active_uat_round`. If no earlier matches exist, default each current issue to `FAILED_IN_ROUNDS={active_uat_round}` — **never** default to `RR` when the active artifact is a previous-round UAT.
 
-  **Phase-level escalation:** When `RR >= 3`, force ALL issues through `research → plan → execute` regardless of severity. If the persisted stage from step 4 is `fix`, replace the quick-fix task list with the major-path task list (`Research`, `Plan`, `Execute`) before continuing.
+  **Phase-level escalation:** When `RR >= 3`, force ALL issues through `research → plan → execute` regardless of severity. If the persisted stage from step 4 is `fix`, replace the quick-fix TodoWrite progress list with the major-path TodoWrite progress list (`Research`, `Plan`, `Execute`) before continuing.
 
   **Per-test priority ranking:** Rank issues by `failure_count` descending — tests that failed the most recorded UAT rounds get investigated and fixed FIRST. When presenting issues to Scout (research stage) and Lead (plan stage), reorder by `failure_count` descending and annotate:
   - `⚠ RECURRING (failed in N recorded rounds): ID|SEVERITY|DESCRIPTION` for tests with `failure_count >= 2`

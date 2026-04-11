@@ -713,6 +713,24 @@ while IFS= read -r ref; do
   fi
 done < <(grep -RhoE '\$\{CLAUDE_PLUGIN_ROOT\}/[A-Za-z0-9._/*{}-]+' "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md 2>/dev/null | sort -u)
 
+# ── UAT Remediation step 4 must use TodoWrite (not generic "task list") ──
+echo ""
+echo "--- UAT Remediation TodoWrite disambiguation ---"
+# Extract the UAT Remediation section body (between its header and the next ### Mode:)
+# Match step 4's heading specifically — not just any "TodoWrite progress list" in the section
+uat_section="$(
+  awk '
+    /^### Mode: UAT Remediation$/ { in_section=1; next }
+    in_section && /^### Mode:/ { exit }
+    in_section { print }
+  ' "$COMMANDS_DIR/vibe.md"
+)"
+if printf '%s' "$uat_section" | grep -q '\*\*TodoWrite progress list (NON-NEGOTIABLE'; then
+  pass "UAT Remediation step 4 explicitly references TodoWrite"
+else
+  fail "UAT Remediation step 4 missing 'TodoWrite progress list' heading — risk of TaskCreate conflation (see issue #367)"
+fi
+
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"
