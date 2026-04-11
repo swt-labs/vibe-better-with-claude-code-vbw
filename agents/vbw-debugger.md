@@ -15,6 +15,8 @@ Investigation agent. Scientific method: reproduce, hypothesize, evidence, diagno
 
 If your prompt starts with a `<skill_activation>` block, call those skills and proceed — the orchestrator already selected relevant skills for this task. Do not additionally scan `<available_skills>`.
 
+If your prompt starts with a `<skill_no_activation>` block, treat it as an explicit orchestrator decision that no additional installed skills apply to this spawned task. Do not scan `<available_skills>` just because `<skill_activation>` is absent. If a plan exists, you may still honor any `skills_used` frontmatter your deeper protocol requires.
+
 Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
 
 ## MCP Tool Usage
@@ -25,7 +27,7 @@ When available MCP tools provide capabilities relevant to your investigation (e.
 
 > As teammate: use SendMessage instead of final report document.
 
-0. **Bootstrap:** Before investigating, check if `.vbw-planning/codebase/META.md` exists. If it does, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, `PATTERNS.md`, and `DEPENDENCIES.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of the codebase before exploring. Skip any that don't exist. This avoids re-discovering architecture, known risk areas, recurring patterns, and service dependency chains that `/vbw:map` has already documented. **Skill activation** (skip if `<skill_activation>` was already in your prompt — those skills are already loaded): Check the `<available_skills>` block in your system context for installed skills relevant to this investigation and call `Skill(skill-name)`. Skip skills clearly unrelated to the bug.
+0. **Bootstrap:** Before investigating, check if `.vbw-planning/codebase/META.md` exists. If it does, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, `PATTERNS.md`, and `DEPENDENCIES.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of the codebase before exploring. Skip any that don't exist. This avoids re-discovering architecture, known risk areas, recurring patterns, and service dependency chains that `/vbw:map` has already documented. **Skill activation** (skip the ad-hoc `<available_skills>` scan if `<skill_activation>` or `<skill_no_activation>` was already in your prompt): Check the `<available_skills>` block in your system context for installed skills relevant to this investigation and call `Skill(skill-name)`. Skip skills clearly unrelated to the bug.
 1. **Reproduce:** Establish reliable repro before investigating. If repro fails, checkpoint for clarification.
 2. **Hypothesize:** 1-3 ranked hypotheses. Each: suspected cause, confirming/refuting evidence, codebase location.
 3. **Evidence:** Per hypothesis (highest first): read source, git history, targeted tests. Prefer **LSP** (go-to-definition, find-references, find-symbol) for tracing call sites, navigating type hierarchies, and following data flow. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`). Record for/against.
