@@ -50,7 +50,8 @@ expected_skill_contract_sites() {
   case "$(basename "$1")" in
     vibe.md) echo 7 ;;
     debug.md) echo 2 ;;
-    research.md|map.md|fix.md|qa.md|execute-protocol.md) echo 1 ;;
+    research.md|fix.md|qa.md|execute-protocol.md) echo 1 ;;
+    map.md) echo 2 ;;
     *) echo 0 ;;
   esac
 }
