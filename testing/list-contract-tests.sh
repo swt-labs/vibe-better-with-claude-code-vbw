@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # list-contract-tests.sh — Single source of truth for the contract test registry.
 #
 # Output: tab-separated name<TAB>relative-path pairs, one per line.
