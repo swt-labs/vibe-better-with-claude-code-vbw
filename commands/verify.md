@@ -627,7 +627,7 @@ _uat_state_exists=false
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
   ```
-  This increments the round counter, creates the next round directory, and resets stage to `research`.
+  This increments the round counter, creates the next round directory, and resets stage to `research`. Parse the `round=` line from the script output to get the next round number (the script outputs `research`, `round={next-round}`, `round_dir={path}` on separate lines — match by key name, not line position). Note: `remediation_continue=true round={next-round}` — this signals the caller (`/vbw:vibe`) to auto-continue into the next remediation round. When verify.md runs standalone via `/vbw:verify`, this signal has no effect.
 - If `status=complete`: Remediation verified successfully. Mark remediation as verified (do NOT delete the state file — `current_uat()` needs it to locate the round-dir UAT):
   ```bash
   # Mark remediation as verified — preserves round/layout so current_uat() can still find the active round-scoped UAT
@@ -677,5 +677,7 @@ fi
 - `planning_tracking=commit`: commits `.vbw-planning/` + `CLAUDE.md` when changed (includes UAT report)
 - `planning_tracking=manual|ignore`: no-op
 - `auto_push=always`: push happens inside the boundary commit command when upstream exists
+
+When executed inline from `/vbw:vibe`, the calling mode handles auto-continuation based on `remediation_continue`. The `suggest-next.sh` output and severity-based suggestions above serve as the standalone `/vbw:verify` fallback.
 
 Run `bash "$(echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default})/scripts/suggest-next.sh" verify {result} {phase}` and display.
