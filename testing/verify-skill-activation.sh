@@ -46,6 +46,81 @@ fail() {
   FAIL=$((FAIL + 1))
 }
 
+expected_skill_contract_sites() {
+  case "$(basename "$1")" in
+    vibe.md) echo 7 ;;
+    debug.md) echo 2 ;;
+    research.md|map.md|fix.md|qa.md|execute-protocol.md) echo 1 ;;
+    *) echo 0 ;;
+  esac
+}
+
+collect_skill_contract_site_lines() {
+  local file="$1"
+  grep -nE 'evaluate installed skills visible in your system context|Skill activation for Dev/QA tasks' "$file" 2>/dev/null | cut -d: -f1 || true
+}
+
+verify_skill_contract_sites() {
+  local file="$1"
+  local file_name expected_count total_lines start_line end_line site_number
+  local segment
+  local site_lines=()
+
+  file_name=$(basename "$file")
+  expected_count=$(expected_skill_contract_sites "$file")
+  total_lines=$(wc -l < "$file" | tr -d ' ')
+
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    site_lines+=("$line")
+  done < <(collect_skill_contract_site_lines "$file")
+
+  if [ "${#site_lines[@]}" -eq "$expected_count" ]; then
+    pass "$file_name: found $expected_count explicit skill-evaluation site(s)"
+  else
+    fail "$file_name: expected $expected_count explicit skill-evaluation site(s), found ${#site_lines[@]}"
+  fi
+
+  site_number=1
+  while [ "$site_number" -le "${#site_lines[@]}" ]; do
+    start_line="${site_lines[$((site_number - 1))]}"
+    if [ "$site_number" -lt "${#site_lines[@]}" ]; then
+      end_line=$(( ${site_lines[$site_number]} - 1 ))
+    else
+      end_line="$total_lines"
+    fi
+    segment=$(sed -n "${start_line},${end_line}p" "$file")
+
+    if printf '%s' "$segment" | grep -q '<skill_activation>' \
+      && printf '%s' "$segment" | grep -q 'Call Skill('; then
+      pass "$file_name: site $site_number has local activation path"
+    else
+      fail "$file_name: site $site_number missing local activation path"
+    fi
+
+    if printf '%s' "$segment" | grep -q '<skill_no_activation>' \
+      && printf '%s' "$segment" | grep -q 'No installed skills apply\. Reason:'; then
+      pass "$file_name: site $site_number has local no-activation path"
+    else
+      fail "$file_name: site $site_number missing local no-activation path"
+    fi
+
+    if printf '%s' "$segment" | grep -q 'exactly one explicit'; then
+      pass "$file_name: site $site_number states explicit one-of-two outcome contract"
+    else
+      fail "$file_name: site $site_number missing explicit one-of-two outcome wording"
+    fi
+
+    if printf '%s' "$segment" | grep -q 'omit the skill_activation block entirely\|omit the block entirely'; then
+      fail "$file_name: site $site_number still allows silent omission"
+    else
+      pass "$file_name: site $site_number rejects silent omission"
+    fi
+
+    site_number=$((site_number + 1))
+  done
+}
+
 echo "=== Skill Activation Pipeline Verification (plan-driven model) ==="
 
 # --- vbw-dev.md checks ---
@@ -537,6 +612,10 @@ for contract_file in "${COMMAND_SKILL_CONTRACT_FILES[@]}"; do
   else
     fail "$contract_name: missing explicit no-activation outcome"
   fi
+done
+
+for contract_file in "${COMMAND_SKILL_CONTRACT_FILES[@]}"; do
+  verify_skill_contract_sites "$contract_file"
 done
 
 for agent_file in "${AGENT_SKILL_CONTRACT_FILES[@]}"; do
