@@ -24,11 +24,12 @@ SH
 
 create_stub_workspace() {
   local root="$1"
-  local file
+  local name path
   mkdir -p "$root/testing" "$root/scripts" "$root/tests" "$root/bin"
   cp "$PROJECT_ROOT/testing/run-all.sh" "$root/testing/run-all.sh"
   cp "$PROJECT_ROOT/testing/list-bats-files.sh" "$root/testing/list-bats-files.sh"
   cp "$PROJECT_ROOT/testing/run-bats-shard.sh" "$root/testing/run-bats-shard.sh"
+  cp "$PROJECT_ROOT/testing/list-contract-tests.sh" "$root/testing/list-contract-tests.sh"
 
   cat > "$root/bin/bats" <<'SH'
 #!/usr/bin/env bash
@@ -42,43 +43,14 @@ done
 SH
   chmod +x "$root/bin/bats"
 
-  for file in \
-    testing/run-lint.sh \
-    scripts/verify-init-todo.sh \
-    scripts/verify-claude-bootstrap.sh \
-    testing/verify-bash-scripts-contract.sh \
-    testing/verify-commands-contract.sh \
-    testing/verify-no-inline-exec-spans.sh \
-    testing/verify-plugin-root-resolution.sh \
-    testing/verify-hook-event-name.sh \
-    testing/verify-plan-filename-convention.sh \
-    testing/verify-skill-activation.sh \
-    testing/verify-permission-mode-contract.sh \
-    testing/verify-delegation-guard.sh \
-    testing/verify-agent-spawn-guard.sh \
-    testing/verify-summary-status-contract.sh \
-    testing/verify-summary-utils-contract.sh \
-    testing/verify-exec-state-reconciliation.sh \
-    testing/verify-statusline-qa-lifecycle.sh \
-    testing/verify-statusline-429-backoff.sh \
-    testing/verify-uat-recurrence.sh \
-    testing/verify-uat-autocontinue.sh \
-    testing/verify-human-only-uat-contract.sh \
-    testing/verify-lead-research-conditional.sh \
-    testing/verify-lsp-setup.sh \
-    testing/verify-lsp-first-policy.sh \
-    testing/verify-claude-md-staleness.sh \
-    testing/verify-dev-recovery-guidance.sh \
-    testing/verify-live-validation-policy.sh \
-    testing/verify-ghost-team-cleanup.sh \
-    testing/verify-ci-workflow-contract.sh \
-    testing/verify-discord-release-workflow-contract.sh \
-    testing/verify-prefer-teams-canonicalization.sh \
-    testing/verify-qa-persistence-contract.sh \
-    testing/verify-discussion-engine-contract.sh \
-    scripts/verify-vibe.sh; do
-    create_stub_script "$root/$file"
-  done
+  # Lint stub
+  create_stub_script "$root/testing/run-lint.sh"
+
+  # Contract test stubs — discovered from the shared registry
+  while IFS=$'\t' read -r name path; do
+    [[ -z "$name" ]] && continue
+    create_stub_script "$root/$path"
+  done < <(bash "$PROJECT_ROOT/testing/list-contract-tests.sh")
 
   touch "$root/tests/alpha.bats" "$root/tests/beta.bats" "$root/tests/statusline-cache-isolation.bats"
 }
@@ -140,12 +112,15 @@ link_run_all_system_tools() {
   printf '%s\n' "$output" > "$output_file"
 
   local pass_line fail_begin_line fail_total_line fail_end_line lint_summary_line summary_line
+  local total_contracts expected_passed
+  total_contracts=$(bash "$PROJECT_ROOT/testing/list-contract-tests.sh" | wc -l | tr -d ' ')
+  expected_passed=$((total_contracts - 1))
   pass_line=$(grep -n '^PASS: qa-persistence-contract$' "$output_file" | cut -d: -f1)
   fail_begin_line=$(grep -n '^--- begin lsp-first-policy output ---$' "$output_file" | cut -d: -f1)
   fail_total_line=$(grep -n '^TOTAL: 48 PASS, 1 FAIL$' "$output_file" | cut -d: -f1)
   fail_end_line=$(grep -n '^--- end lsp-first-policy output ---$' "$output_file" | cut -d: -f1)
   lint_summary_line=$(grep -n '^Lint checks: 1/1 passed$' "$output_file" | cut -d: -f1)
-  summary_line=$(grep -n '^Contract checks: 32/33 passed$' "$output_file" | cut -d: -f1)
+  summary_line=$(grep -n "^Contract checks: ${expected_passed}/${total_contracts} passed$" "$output_file" | cut -d: -f1)
 
   [ -n "$pass_line" ]
   [ -n "$fail_begin_line" ]

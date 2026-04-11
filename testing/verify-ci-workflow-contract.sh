@@ -7,6 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORKFLOW="$ROOT/.github/workflows/ci.yml"
 RUN_ALL="$ROOT/testing/run-all.sh"
 LIST_BATS="$ROOT/testing/list-bats-files.sh"
+LIST_CONTRACT_TESTS="$ROOT/testing/list-contract-tests.sh"
 
 PASS=0
 FAIL=0
@@ -30,12 +31,8 @@ job_block() {
   ' "$WORKFLOW"
 }
 
-extract_run_all_contract_names() {
-  grep 'run_job contract ' "$RUN_ALL" | sed 's/.*run_job contract "\([^"]*\)".*/\1/' | (sort 2>/dev/null || cat)
-}
-
-extract_ci_contract_names() {
-  grep 'run_check "' "$WORKFLOW" | sed 's/.*run_check "\([^"]*\)".*/\1/' | (sort 2>/dev/null || cat)
+extract_discovery_names() {
+  bash "$LIST_CONTRACT_TESTS" 2>/dev/null | cut -f1 | (sort 2>/dev/null || cat)
 }
 
 echo "=== CI Workflow Contract Verification ==="
@@ -75,18 +72,43 @@ else
   fail "run-all: does not default to CI shard count (4 workers)"
 fi
 
-if grep -q 'bash testing/verify-ci-workflow-contract.sh' <<< "$CONTRACT_BLOCK"; then
-  pass "ci.yml: contract-tests job includes verify-ci-workflow-contract.sh"
+if grep -q 'list-contract-tests.sh' <<< "$CONTRACT_BLOCK"; then
+  pass "ci.yml: contract-tests job uses shared list-contract-tests.sh discovery"
 else
-  fail "ci.yml: contract-tests job missing verify-ci-workflow-contract.sh"
+  fail "ci.yml: contract-tests job does not use shared list-contract-tests.sh discovery"
 fi
 
-RUN_ALL_CONTRACTS="$(extract_run_all_contract_names)"
-CI_CONTRACTS="$(extract_ci_contract_names)"
-if [ "$RUN_ALL_CONTRACTS" = "$CI_CONTRACTS" ]; then
-  pass "ci.yml: contract-tests job matches testing/run-all.sh contract set"
+if grep -q 'list-contract-tests.sh' "$RUN_ALL"; then
+  pass "run-all.sh: uses shared list-contract-tests.sh discovery"
 else
-  fail "ci.yml: contract-tests job does not match testing/run-all.sh contract set"
+  fail "run-all.sh: does not use shared list-contract-tests.sh discovery"
+fi
+
+DISCOVERY_NAMES="$(extract_discovery_names)"
+if [ -n "$DISCOVERY_NAMES" ]; then
+  pass "list-contract-tests.sh: produces non-empty output"
+else
+  fail "list-contract-tests.sh: produces no output"
+fi
+
+if echo "$DISCOVERY_NAMES" | grep -q 'ci-workflow-contract'; then
+  pass "list-contract-tests.sh: includes ci-workflow-contract (self-referential)"
+else
+  fail "list-contract-tests.sh: missing ci-workflow-contract entry"
+fi
+
+MISSING_FILES=0
+while IFS=$'\t' read -r name path; do
+  [[ -z "$name" ]] && continue
+  if [ ! -f "$ROOT/$path" ]; then
+    echo "  MISSING: $name -> $path"
+    MISSING_FILES=$((MISSING_FILES + 1))
+  fi
+done < <(bash "$LIST_CONTRACT_TESTS" 2>/dev/null)
+if [ "$MISSING_FILES" -eq 0 ]; then
+  pass "list-contract-tests.sh: all discovered paths exist"
+else
+  fail "list-contract-tests.sh: $MISSING_FILES discovered path(s) do not exist"
 fi
 
 if grep -q 'needs: \[bats-tests, bats-serial, contract-tests, lint\]' <<< "$TEST_BLOCK"; then
