@@ -105,6 +105,7 @@ create_test_config() {
   "rolling_summary": false,
   "require_phase_discussion": false,
   "auto_uat": false,
+  "max_remediation_rounds": 5,
   "debug_logging": false,
   "statusline_hide_limits": false,
   "statusline_hide_limits_for_api_key": false,

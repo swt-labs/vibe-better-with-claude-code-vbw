@@ -6,6 +6,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LIST_BATS_FILES="$ROOT/testing/list-bats-files.sh"
+LIST_CONTRACT_TESTS="$ROOT/testing/list-contract-tests.sh"
 
 TMPDIR_JOBS="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR_JOBS"' EXIT
@@ -34,39 +35,17 @@ run_job() {
 # --- Launch shell lint ---
 run_job lint "shell-lint"                bash "$ROOT/testing/run-lint.sh"
 
-# --- Launch contract checks ---
-run_job contract "init-todo"                bash "$ROOT/scripts/verify-init-todo.sh"
-run_job contract "claude-bootstrap"         bash "$ROOT/scripts/verify-claude-bootstrap.sh"
-run_job contract "bash-scripts-contract"    bash "$ROOT/testing/verify-bash-scripts-contract.sh"
-run_job contract "commands-contract"        bash "$ROOT/testing/verify-commands-contract.sh"
-run_job contract "no-inline-exec-spans"     bash "$ROOT/testing/verify-no-inline-exec-spans.sh"
-run_job contract "plugin-root-resolution"   bash "$ROOT/testing/verify-plugin-root-resolution.sh"
-run_job contract "hook-event-name"          bash "$ROOT/testing/verify-hook-event-name.sh"
-run_job contract "plan-filename-convention" bash "$ROOT/testing/verify-plan-filename-convention.sh"
-run_job contract "skill-activation"         bash "$ROOT/testing/verify-skill-activation.sh"
-run_job contract "permission-mode-contract" bash "$ROOT/testing/verify-permission-mode-contract.sh"
-run_job contract "delegation-guard"         bash "$ROOT/testing/verify-delegation-guard.sh"
-run_job contract "agent-spawn-guard"        bash "$ROOT/testing/verify-agent-spawn-guard.sh"
-run_job contract "summary-status-contract"  bash "$ROOT/testing/verify-summary-status-contract.sh"
-run_job contract "summary-utils-contract"   bash "$ROOT/testing/verify-summary-utils-contract.sh"
-run_job contract "exec-state-reconciliation" bash "$ROOT/testing/verify-exec-state-reconciliation.sh"
-run_job contract "statusline-qa-lifecycle"  bash "$ROOT/testing/verify-statusline-qa-lifecycle.sh"
-run_job contract "statusline-429-backoff"   bash "$ROOT/testing/verify-statusline-429-backoff.sh"
-run_job contract "uat-recurrence"           bash "$ROOT/testing/verify-uat-recurrence.sh"
-run_job contract "human-only-uat-contract"  bash "$ROOT/testing/verify-human-only-uat-contract.sh"
-run_job contract "lead-research-conditional" bash "$ROOT/testing/verify-lead-research-conditional.sh"
-run_job contract "lsp-setup"                bash "$ROOT/testing/verify-lsp-setup.sh"
-run_job contract "lsp-first-policy"         bash "$ROOT/testing/verify-lsp-first-policy.sh"
-run_job contract "claude-md-staleness"      bash "$ROOT/testing/verify-claude-md-staleness.sh"
-run_job contract "dev-recovery-guidance"    bash "$ROOT/testing/verify-dev-recovery-guidance.sh"
-run_job contract "live-validation-policy"   bash "$ROOT/testing/verify-live-validation-policy.sh"
-run_job contract "ghost-team-cleanup"       bash "$ROOT/testing/verify-ghost-team-cleanup.sh"
-run_job contract "ci-workflow-contract"     bash "$ROOT/testing/verify-ci-workflow-contract.sh"
-run_job contract "discord-release-workflow" bash "$ROOT/testing/verify-discord-release-workflow-contract.sh"
-run_job contract "prefer-teams-canonicalization" bash "$ROOT/testing/verify-prefer-teams-canonicalization.sh"
-run_job contract "qa-persistence-contract"  bash "$ROOT/testing/verify-qa-persistence-contract.sh"
-run_job contract "discussion-engine-contract" bash "$ROOT/testing/verify-discussion-engine-contract.sh"
-run_job contract "verify-vibe"              bash "$ROOT/scripts/verify-vibe.sh"
+# --- Launch contract checks (discovered from shared registry) ---
+CONTRACT_TESTS_OUTPUT="$(bash "$LIST_CONTRACT_TESTS")"
+if [[ -z "$CONTRACT_TESTS_OUTPUT" ]]; then
+  echo "ERROR: No contract tests discovered from $LIST_CONTRACT_TESTS"
+  exit 1
+fi
+
+while IFS=$'\t' read -r name path; do
+  [[ -z "$name" ]] && continue
+  run_job contract "$name" bash "$ROOT/$path"
+done <<< "$CONTRACT_TESTS_OUTPUT"
 
 # --- Launch bats workers concurrently with contract checks ---
 BATS_WORKERS="${BATS_WORKERS:-4}"
