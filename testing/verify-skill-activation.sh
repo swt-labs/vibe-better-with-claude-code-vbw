@@ -146,10 +146,10 @@ else
   fail "vbw-dev.md: still has 'protocol violation' enforcement language"
 fi
 
-if grep -Eq 'skill_activation.*skill_no_activation|explicit outcome block' "$DEV_AGENT"; then
+if grep -q 'skill_activation' "$DEV_AGENT" && grep -q 'skill_no_activation' "$DEV_AGENT"; then
   pass "vbw-dev.md: has orchestrator-aware conditional in deeper protocol"
 else
-  fail "vbw-dev.md: missing orchestrator-aware conditional in deeper protocol"
+  fail "vbw-dev.md: missing orchestrator-aware conditional (must reference both skill_activation and skill_no_activation)"
 fi
 
 # --- vbw-lead.md checks ---

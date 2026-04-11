@@ -307,10 +307,10 @@ For each uncompleted plan, create the teammate task using the live teammate spaw
 ```yaml
 subject: "Execute {NN-MM}: {plan-title}"
 description: |
-  {Use exactly one opening block:
+  <!-- When skills apply: -->
   <skill_activation>Call Skill('{relevant-skill-1}'). Call Skill('{relevant-skill-2}').</skill_activation>
-  OR
-  <skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>}
+  <!-- OR when no skills apply: -->
+  <skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>
   Execute all tasks in {PLAN_PATH}.
   Effort: {DEV_EFFORT}. Working directory: {worktree_path (from execution-state.json for this plan) if worktree_isolation is enabled and worktree_path is set, else {pwd}}.
   {If worktree_isolation enabled and WTARGET non-empty: "Worktree targeting: {WTARGET}"}

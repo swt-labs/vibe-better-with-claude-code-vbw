@@ -47,18 +47,10 @@ Current project:
    - Also evaluate available MCP tools in your system context. If any MCP servers provide documentation, search, or data retrieval capabilities relevant to this research topic (e.g., Apple Docs for Apple APIs, web search MCPs for multi-source queries), note them in the Scout's task context so it prioritizes those tools over generic WebSearch/WebFetch where applicable.
   - Spawn vbw-scout as subagent(s) via Task tool. **Set `subagent_type: "vbw:vbw-scout"` and `model: "${SCOUT_MODEL}"` in the Task tool invocation. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
 ```text
-Use exactly one of these opening blocks:
-
 <skill_activation>
 Call Skill('{relevant-skill-1}').
 Call Skill('{relevant-skill-2}').
 </skill_activation>
-
-OR
-
-<skill_no_activation>
-Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.
-</skill_no_activation>
 
 <task_context>
 Research: {topic or sub-topic}.
@@ -70,6 +62,17 @@ Project context: {tech stack, constraints from PROJECT.md if relevant}.
 <output_format>
 Write your complete findings to the output_path file.
 </output_format>
+```
+  When no installed skills apply, use this variant instead:
+```text
+<skill_no_activation>
+Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.
+</skill_no_activation>
+
+<task_context>
+Research: {topic or sub-topic}.
+...
+</task_context>
 ```
     - If save path is unknown yet (user hasn't confirmed), omit `<output_path>` — Scout returns findings in response, and the orchestrator writes them after user confirms a path.
     - Parallel: up to 4 simultaneous Tasks, each with `subagent_type: "vbw:vbw-scout"`, same `model: "${SCOUT_MODEL}"` and the same maxTurns conditional (pass when non-empty, omit when empty).
