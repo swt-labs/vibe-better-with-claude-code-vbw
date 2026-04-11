@@ -52,7 +52,7 @@ PHASE_DIR="${2:-}"
 SEVERITY_ARG="${3:-}"
 
 if [ -z "$CMD" ] || [ -z "$PHASE_DIR" ]; then
-  echo "Usage: uat-remediation-state.sh <get|advance|reset|init> <phase-dir> [severity]" >&2
+  echo "Usage: uat-remediation-state.sh <get|advance|reset|init|get-or-init|needs-round|current-round> <phase-dir> [severity]" >&2
   exit 1
 fi
 
