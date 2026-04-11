@@ -92,27 +92,27 @@ verify_skill_contract_sites() {
     fi
     segment=$(sed -n "${start_line},${end_line}p" "$file")
 
-    if printf '%s' "$segment" | grep -q '<skill_activation>' \
-      && printf '%s' "$segment" | grep -q 'Call Skill('; then
+    if grep -q '<skill_activation>' <<< "$segment" \
+      && grep -q 'Call Skill(' <<< "$segment"; then
       pass "$file_name: site $site_number has local activation path"
     else
       fail "$file_name: site $site_number missing local activation path"
     fi
 
-    if printf '%s' "$segment" | grep -q '<skill_no_activation>' \
-      && printf '%s' "$segment" | grep -q 'No installed skills apply\. Reason:'; then
+    if grep -q '<skill_no_activation>' <<< "$segment" \
+      && grep -q 'No installed skills apply\. Reason:' <<< "$segment"; then
       pass "$file_name: site $site_number has local no-activation path"
     else
       fail "$file_name: site $site_number missing local no-activation path"
     fi
 
-    if printf '%s' "$segment" | grep -q 'exactly one explicit'; then
+    if grep -q 'exactly one explicit' <<< "$segment"; then
       pass "$file_name: site $site_number states explicit one-of-two outcome contract"
     else
       fail "$file_name: site $site_number missing explicit one-of-two outcome wording"
     fi
 
-    if printf '%s' "$segment" | grep -q 'omit the skill_activation block entirely\|omit the block entirely'; then
+    if grep -q 'omit the skill_activation block entirely\|omit the block entirely' <<< "$segment"; then
       fail "$file_name: site $site_number still allows silent omission"
     else
       pass "$file_name: site $site_number rejects silent omission"
