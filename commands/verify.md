@@ -627,7 +627,7 @@ _uat_state_exists=false
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
   ```
-  This increments the round counter, creates the next round directory, and resets stage to `research`. Parse the `round=` line from the script output to get the next round number (the script outputs `research`, `round={next-round}`, `round_dir={path}` on separate lines — match by key name, not line position). Note: `remediation_continue=true round={next-round} issues={N}` (where `{N}` is the issue count from finalization above) — this signals the caller (`/vbw:vibe`) to auto-continue into the next remediation round. When verify.md runs standalone via `/vbw:verify`, this signal has no effect.
+  This increments the round counter, creates the next round directory, and resets stage to `research`. Parse the `round=` line from the script output to get the next round number (the script outputs `research`, `round={next-round}`, `round_dir={path}` on separate lines — match by key name, not line position). After running `needs-round`, emit this signal for the calling orchestrator: record that `remediation_continue=true round={next-round} issues={N}` (where `{N}` is the issue count from finalization above). When verify.md runs standalone via `/vbw:verify` (not called from vibe.md), omit this signal.
 - If `status=complete`: Remediation verified successfully. Mark remediation as verified (do NOT delete the state file — `current_uat()` needs it to locate the round-dir UAT):
   ```bash
   # Mark remediation as verified — preserves round/layout so current_uat() can still find the active round-scoped UAT

@@ -1019,7 +1019,7 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
      in config.json.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
-   Do NOT re-enter remediation. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh vibe` and STOP.
+   Do NOT re-enter remediation. STOP.
 
    **If `{next-round} <= _max_rounds`:** Display the transition banner and re-enter UAT Remediation mode inline:
    ```text
