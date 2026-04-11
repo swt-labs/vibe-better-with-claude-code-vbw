@@ -1014,9 +1014,9 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
    **If `{next-round} > _max_rounds`:** Display the cap-reached banner and STOP:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     ⚠ Maximum remediation rounds ({_max_rounds}) reached
-     Run /vbw:vibe to manually continue if needed, or adjust
-     max_remediation_rounds in config.json.
+     Reached maximum remediation rounds ({_max_rounds}).
+     Review issues manually or adjust max_remediation_rounds
+     in config.json.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
    Do NOT re-enter remediation. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh vibe` and STOP.
@@ -1024,9 +1024,10 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
    **If `{next-round} <= _max_rounds`:** Display the transition banner and re-enter UAT Remediation mode inline:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     ↻ Continuing to UAT Remediation Round {next-round}
+     Re-verification found {N} issue(s). Continuing to Round {next-round}.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
+   Where `{N}` is the issue count from the `remediation_continue` signal (`issues={N}`).
    Re-enter UAT Remediation mode (above) for the same `PHASE_DIR`. The remediation state is already set to `research` for the new round by `needs-round`. The UAT Remediation mode's step 4 (`get-or-init`) will resume correctly from the `research` stage.
 
    **Continuation loop behavior:** The re-entered UAT Remediation mode chains into Verify mode after its execute stage completes (existing behavior). If that verification again finds issues, verify.md emits `remediation_continue=true` again, and this step 4 re-checks the round cap. This creates the auto-continuation loop, bounded by `max_remediation_rounds`. The Step 7 fallback summary remains the escape hatch when context window limits prevent continuation mid-loop.
