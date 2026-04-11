@@ -1002,14 +1002,20 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 1. Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/commands/verify.md` protocol. When entering from `needs_reverification` or `auto_uat` routing, the pre-computed verify context (verify_scope, uat_path, uat_resume) is already available from the Context section above — use it unless the `needs_reverification` flow above just refreshed verify context and resume metadata after `prepare-reverification.sh`, in which case use that refreshed output instead. **Error guard:** If the active verify block contains `verify_context_error=true` or `verify_context=unavailable`, display: "⚠ Verify context compilation failed. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh .vbw-planning/phases/{NN}-{slug}` manually to debug." STOP. Do NOT improvise by scanning PLAN/SUMMARY files manually in this routed path.
 2. Execute the verify.md steps inline in this conversation. Specifically: generate test scenarios (verify.md Step 4), then run the CHECKPOINT loop (verify.md Step 5) presenting one test at a time via AskUserQuestion and waiting for the user's response before proceeding to the next test. Use the pre-computed "Verify context" block from this command's Context section — it contains the PLAN/SUMMARY aggregation and UAT resume metadata for the target phase. Pass this data through to the verify protocol steps so they do NOT read individual PLAN/SUMMARY files or scan-parse UAT.md for resume state.
 3. Display results per verify.md output format.
-4. **UAT Remediation Auto-Continuation:** This step only applies when verify.md emitted `remediation_continue=true` (which happens when `verify_scope=remediation` AND `status=issues_found`). If `remediation_continue` was not set (first-time UAT, complete result, or standalone verify), skip this step entirely — the command ends after step 3.
+4. **UAT Remediation Auto-Continuation:** This step only applies when verify.md emitted `remediation_continue=true` (which happens when `verify_scope=remediation` AND `status=issues_found` AND running in orchestrated mode from vibe.md). If `remediation_continue` was not set (first-time UAT, complete result, or standalone verify), skip this step entirely — the command ends after step 3.
 
-   **Round cap check:** Read the maximum allowed rounds from config:
+   **Advance state and check round cap:** Call `needs-round` to advance the remediation state to the next round:
+   ```bash
+   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
+   ```
+   Parse `round={next-round}` from the script output (the script outputs `research`, `round={next-round}`, `round_dir={path}` on separate lines — match by key name, not line position).
+
+   Read the maximum allowed rounds from config:
    ```bash
    _max_rounds=$(jq -r '.max_remediation_rounds // 5' .vbw-planning/config.json 2>/dev/null)
    _max_rounds="${_max_rounds:-5}"
    ```
-   Compare `{next-round}` (from the `remediation_continue` signal) against `_max_rounds`. Use numeric comparison (strip leading zeros: `10#${next-round}` and `10#${_max_rounds}`).
+   Compare `{next-round}` against `_max_rounds`. Use numeric comparison (strip leading zeros: `10#${next-round}` and `10#${_max_rounds}`).
 
    **If `{next-round} > _max_rounds`:** Display the cap-reached banner and STOP:
    ```text
@@ -1028,7 +1034,7 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
    Where `{N}` is the issue count from the `remediation_continue` signal (`issues={N}`).
-   Re-enter UAT Remediation mode (above) for the same `PHASE_DIR`. The remediation state is already set to `research` for the new round by `needs-round`. The UAT Remediation mode's step 4 (`get-or-init`) will resume correctly from the `research` stage.
+   Re-enter UAT Remediation mode (above) for the same `PHASE_DIR`. The `needs-round` call above already set the remediation state to `research` for the new round. The UAT Remediation mode's step 4 (`get-or-init`) will resume correctly from the `research` stage.
 
    **Continuation loop behavior:** The re-entered UAT Remediation mode chains into Verify mode after its execute stage completes (existing behavior). If that verification again finds issues, verify.md emits `remediation_continue=true` again, and this step 4 re-checks the round cap. This creates the auto-continuation loop, bounded by `max_remediation_rounds`. The Step 7 fallback summary remains the escape hatch when context window limits prevent continuation mid-loop.
 

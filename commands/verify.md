@@ -623,11 +623,15 @@ _uat_state_exists=false
 ```
 **If `_uat_state_exists=false`:** Skip this entire block — this is a first-time UAT, not a re-verification after remediation.
 **If `_uat_state_exists=true` AND `verify_scope=remediation`:**
-- If `status=issues_found`: Advance to the next remediation round:
+- If `status=issues_found`: Handle based on calling context:
+
+  **Orchestrated mode** (called from vibe.md — you are executing inside vibe.md's Verify mode): Do NOT call `needs-round`. The caller will advance state after checking the round cap. Emit this signal for the calling orchestrator: `remediation_continue=true issues={N}` (where `{N}` is the issue count from finalization above).
+
+  **Standalone mode** (running via `/vbw:verify` directly — not called from vibe.md): Call `needs-round` to advance state for the next manual invocation:
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
   ```
-  This increments the round counter, creates the next round directory, and resets stage to `research`. Parse the `round=` line from the script output to get the next round number (the script outputs `research`, `round={next-round}`, `round_dir={path}` on separate lines — match by key name, not line position). After running `needs-round`, emit this signal for the calling orchestrator: record that `remediation_continue=true round={next-round} issues={N}` (where `{N}` is the issue count from finalization above). When verify.md runs standalone via `/vbw:verify` (not called from vibe.md), omit this signal.
+  This increments the round counter, creates the next round directory, and resets stage to `research`. Do NOT emit the `remediation_continue` signal — standalone verify has no caller to receive it.
 - If `status=complete`: Remediation verified successfully. Mark remediation as verified (do NOT delete the state file — `current_uat()` needs it to locate the round-dir UAT):
   ```bash
   # Mark remediation as verified — preserves round/layout so current_uat() can still find the active round-scoped UAT
