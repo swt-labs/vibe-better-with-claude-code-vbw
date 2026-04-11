@@ -1004,20 +1004,16 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 3. Display results per verify.md output format.
 4. **UAT Remediation Auto-Continuation:** This step only applies when verify.md emitted `remediation_continue=true` (which happens when `verify_scope=remediation` AND `status=issues_found` AND running in orchestrated mode from vibe.md). If `remediation_continue` was not set (first-time UAT, complete result, or standalone verify), skip this step entirely — the command ends after step 3.
 
-   **Advance state and check round cap:** Call `needs-round` to advance the remediation state to the next round:
-   ```bash
-   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
-   ```
-   Parse `round={next-round}` from the script output (the script outputs `research`, `round={next-round}`, `round_dir={path}` on separate lines — match by key name, not line position).
+   **Check round cap, then advance state:** Read the current round number (read-only, no state mutation) and compare against the configured maximum before advancing:
 
-   Read the maximum allowed rounds from config:
    ```bash
+   _current_round=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh current-round "{phase-dir}")
    _max_rounds=$(jq -r '.max_remediation_rounds // 5' .vbw-planning/config.json 2>/dev/null)
    _max_rounds="${_max_rounds:-5}"
+   _next_round=$(( 10#${_current_round} + 1 ))
    ```
-   Compare `{next-round}` against `_max_rounds`. Use numeric comparison (strip leading zeros: `10#${next-round}` and `10#${_max_rounds}`).
 
-   **If `{next-round} > _max_rounds`:** Display the cap-reached banner and STOP:
+   **If `_next_round > _max_rounds`:** Display the cap-reached banner and STOP. Do NOT call `needs-round` — no state mutation occurs:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      Reached maximum remediation rounds ({_max_rounds}).
@@ -1027,14 +1023,20 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
    ```
    Do NOT re-enter remediation. STOP.
 
-   **If `{next-round} <= _max_rounds`:** Display the transition banner and re-enter UAT Remediation mode inline:
+   **If `_next_round <= _max_rounds`:** Advance state by calling `needs-round`:
+   ```bash
+   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
+   ```
+   Parse `round={next-round}` from the script output (the script outputs `research`, `round={next-round}`, `round_dir={path}` on separate lines — match by key name, not line position).
+
+   Display the transition banner and re-enter UAT Remediation mode inline:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      Re-verification found {N} issue(s). Continuing to Round {next-round}.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
    Where `{N}` is the issue count from the `remediation_continue` signal (`issues={N}`).
-   Re-enter UAT Remediation mode (above) for the same `PHASE_DIR`. The `needs-round` call above already set the remediation state to `research` for the new round. The UAT Remediation mode's step 4 (`get-or-init`) will resume correctly from the `research` stage.
+   Re-enter UAT Remediation mode (above) for the same `PHASE_DIR`. The `needs-round` call above set the remediation state to `research` for the new round. The UAT Remediation mode's step 4 (`get-or-init`) will resume correctly from the `research` stage.
 
    **Continuation loop behavior:** The re-entered UAT Remediation mode chains into Verify mode after its execute stage completes (existing behavior). If that verification again finds issues, verify.md emits `remediation_continue=true` again, and this step 4 re-checks the round cap. This creates the auto-continuation loop, bounded by `max_remediation_rounds`. The Step 7 fallback summary remains the escape hatch when context window limits prevent continuation mid-loop.
 

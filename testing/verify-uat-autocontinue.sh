@@ -80,6 +80,17 @@ else
   pass "verify.md orchestrated mode correctly defers needs-round to caller"
 fi
 
+# 9. vibe.md Step 4: cap check (current-round) appears BEFORE needs-round call
+# Structural ordering: the LLM must read the current round and check the cap
+# before calling needs-round, which mutates state.
+_cap_line=$(grep -n 'current-round' "$ROOT/commands/vibe.md" | head -1 | cut -d: -f1)
+_needs_line=$(grep -n 'uat-remediation-state.sh needs-round' "$ROOT/commands/vibe.md" | head -1 | cut -d: -f1)
+if [ -n "$_cap_line" ] && [ -n "$_needs_line" ] && [ "$_cap_line" -lt "$_needs_line" ]; then
+  pass "vibe.md: cap check (current-round) appears before needs-round call"
+else
+  fail "vibe.md: cap check must appear BEFORE needs-round call in Step 4 (cap@${_cap_line:-?} vs needs@${_needs_line:-?})"
+fi
+
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"

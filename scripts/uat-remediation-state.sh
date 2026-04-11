@@ -10,7 +10,8 @@
 #   uat-remediation-state.sh reset       <phase-dir>             → removes state file
 #   uat-remediation-state.sh init        <phase-dir> <severity>  → initializes for severity
 #   uat-remediation-state.sh get-or-init <phase-dir> <severity>  → returns existing stage or initializes
-#   uat-remediation-state.sh needs-round <phase-dir>             → starts a new remediation round
+#   uat-remediation-state.sh needs-round    <phase-dir>             → starts a new remediation round
+#   uat-remediation-state.sh current-round <phase-dir>             → prints current round number (read-only)
 #
 # get-or-init is the preferred entry point for orchestrators:
 #   - If a stage file already exists (resume case), returns the persisted stage — no init side effects.
@@ -425,6 +426,10 @@ case "$CMD" in
       exit 1
     fi
     start_new_round
+    ;;
+
+  current-round)
+    get_round
     ;;
 
   init)
