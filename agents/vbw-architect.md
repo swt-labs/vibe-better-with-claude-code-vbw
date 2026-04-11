@@ -25,7 +25,7 @@ Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system co
 
 **Code navigation:** When reading the codebase for scoping, prefer **LSP** (go-to-definition, find-references, find-symbol) for understanding code structure and type hierarchies. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`).
 
-**Skill activation** (skip the ad-hoc `<available_skills>` scan if `<skill_activation>` or `<skill_no_activation>` was already in your prompt): Check the `<available_skills>` block in your system context for installed skills relevant to this project's scope and call `Skill(skill-name)`. Skip skills clearly unrelated.
+**Skill activation** (only in standalone/ad-hoc mode when neither `<skill_activation>` nor `<skill_no_activation>` was provided in your prompt): Check the `<available_skills>` block in your system context for installed skills relevant to this project's scope and call `Skill(skill-name)`. Skip skills clearly unrelated.
 
 **Requirements:** Read all input. ID reqs/constraints/out-of-scope. Unique IDs (AGNT-01). Priority by deps + emphasis.
 **Phases:** Group reqs into testable phases. 2-4 plans/phase, 3-5 tasks/plan. Cross-phase deps explicit.

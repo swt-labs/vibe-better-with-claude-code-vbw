@@ -333,6 +333,18 @@ else
   fail "vbw-scout.md: missing explicit no-activation handling"
 fi
 
+if ! grep -q 'may still honor' "$SCOUT_AGENT"; then
+  pass "vbw-scout.md: no permissive may-still-honor wording on no-activation path"
+else
+  fail "vbw-scout.md: still uses permissive may-still-honor wording on no-activation path"
+fi
+
+if grep -q 'still honor any `skills_used` frontmatter' "$SCOUT_AGENT"; then
+  pass "vbw-scout.md: preserves plan-driven skills_used behavior on no-activation path"
+else
+  fail "vbw-scout.md: missing mandatory skills_used preservation on no-activation path"
+fi
+
 DEBUGGER_AGENT="$ROOT/agents/vbw-debugger.md"
 
 if grep -q 'available_skills' "$DEBUGGER_AGENT"; then
@@ -353,6 +365,12 @@ else
   fail "vbw-debugger.md: missing explicit no-activation handling"
 fi
 
+if grep -q 'only in standalone/ad-hoc mode when neither `<skill_activation>` nor `<skill_no_activation>` was provided' "$DEBUGGER_AGENT"; then
+  pass "vbw-debugger.md: downstream skill activation is gated to true ad-hoc mode"
+else
+  fail "vbw-debugger.md: downstream skill activation can still bypass explicit no-activation"
+fi
+
 ARCHITECT_AGENT="$ROOT/agents/vbw-architect.md"
 
 if grep -q 'available_skills' "$ARCHITECT_AGENT"; then
@@ -371,6 +389,12 @@ if grep -q 'skill_no_activation' "$ARCHITECT_AGENT"; then
   pass "vbw-architect.md: recognizes explicit no-activation block"
 else
   fail "vbw-architect.md: missing explicit no-activation handling"
+fi
+
+if grep -q 'only in standalone/ad-hoc mode when neither `<skill_activation>` nor `<skill_no_activation>` was provided' "$ARCHITECT_AGENT"; then
+  pass "vbw-architect.md: downstream skill activation is gated to true ad-hoc mode"
+else
+  fail "vbw-architect.md: downstream skill activation can still bypass explicit no-activation"
 fi
 
 DOCS_AGENT="$ROOT/agents/vbw-docs.md"
