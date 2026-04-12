@@ -35,6 +35,7 @@ normalize_uat_status() {
   local raw="${1:-}"
   case "$raw" in
     all_pass|passed|pass|all_passed|verified|no_issues) echo "complete" ;;
+    failed) echo "issues_found" ;;
     *) echo "$raw" ;;
   esac
 }
@@ -48,9 +49,9 @@ normalize_uat_status() {
 # to contain 'status:'.
 #
 # UAT files: the extracted value is passed through normalize_uat_status() to
-# map LLM synonyms (all_pass, passed, verified, etc.) to canonical values.
-# SUMMARY files are unaffected — their valid statuses (complete, partial,
-# failed) never match any normalization rule.
+# map LLM synonyms (all_pass, passed, verified, failed, etc.) to canonical
+# values. SUMMARY files use their own extraction path in summary-utils.sh
+# which never calls normalize_uat_status(), so these mappings are UAT-only.
 extract_status_value() {
   local file="$1"
   local result

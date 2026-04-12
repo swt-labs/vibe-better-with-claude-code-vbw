@@ -159,7 +159,11 @@ teardown() {
   [ "$(normalize_uat_status "issues_found")" = "issues_found" ]
   [ "$(normalize_uat_status "in_progress")" = "in_progress" ]
   [ "$(normalize_uat_status "pending")" = "pending" ]
-  [ "$(normalize_uat_status "failed")" = "failed" ]
+}
+
+@test "normalize_uat_status: failed maps to issues_found" {
+  result=$(normalize_uat_status "failed")
+  [ "$result" = "issues_found" ]
 }
 
 @test "normalize_uat_status: empty input returns empty" {
