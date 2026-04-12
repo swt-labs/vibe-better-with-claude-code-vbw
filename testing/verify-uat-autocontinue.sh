@@ -122,6 +122,23 @@ else
   fail "verify.md missing skipped=ready_for_verify or flat-layout archived basename handling"
 fi
 
+# 14. vibe.md and verify.md fail-close on empty cap-check helper output
+# Both command files must instruct the LLM to STOP (no state mutation) when
+# _cap_reached or _cap_decision is empty — matching the fail-close hardening
+# in phase-detect.sh and prepare-reverification.sh.
+if grep -q '_cap_reached.*empty\|_cap_decision.*empty' "$ROOT/commands/vibe.md" \
+  && grep -q 'no state mutation on error' "$ROOT/commands/vibe.md"; then
+  pass "vibe.md fail-closes on empty/malformed cap-check helper output"
+else
+  fail "vibe.md missing fail-close guard for empty cap-check helper output"
+fi
+if grep -q '_cap_reached.*empty\|_cap_decision.*empty' "$ROOT/commands/verify.md" \
+  && grep -q 'no state mutation on error' "$ROOT/commands/verify.md"; then
+  pass "verify.md fail-closes on empty/malformed cap-check helper output"
+else
+  fail "verify.md missing fail-close guard for empty cap-check helper output"
+fi
+
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"
