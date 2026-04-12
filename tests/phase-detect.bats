@@ -2631,7 +2631,53 @@ EOF
   [ "$status" -eq 0 ]
   # When round UAT is complete (tests passed), must NOT trigger another remediation round
   ! echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  # Phase exits remediation routing entirely — routes to standard verification
+  echo "$output" | grep -q "next_phase_state=needs_verification"
   # State file should NOT be modified — no round advancement
   grep -q '^stage=done$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
   grep -q '^round=01$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+}
+
+@test "phase-detect: stage=done + legacy layout routes to needs_uat_remediation with correct paths" {
+  # Scenario: Legacy brownfield project uses .uat-remediation-stage at phase root
+  # and stores round UATs under remediation/round-NN/ (no /uat/ prefix).
+  # The auto-advance must create remediation/round-02 (legacy), NOT remediation/uat/round-02.
+  mkdir -p .vbw-planning/phases/01-feature/remediation/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-feature/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  # Round 01 UAT at legacy path — re-verification found issues
+  cat > .vbw-planning/phases/01-feature/remediation/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+round: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  # Legacy state file at phase root (no /uat/ prefix)
+  printf 'stage=done\nround=01\n' > .vbw-planning/phases/01-feature/.uat-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  # State file should advance to round 02, stage=research, layout=legacy
+  grep -q '^stage=research$' .vbw-planning/phases/01-feature/.uat-remediation-stage
+  grep -q '^round=02$' .vbw-planning/phases/01-feature/.uat-remediation-stage
+  grep -q '^layout=legacy$' .vbw-planning/phases/01-feature/.uat-remediation-stage
+  # Legacy layout: create remediation/round-02 (NOT remediation/uat/round-02)
+  [ -d .vbw-planning/phases/01-feature/remediation/round-02 ]
+  [ ! -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
 }

@@ -439,17 +439,34 @@ if [ -d "$PHASES_DIR" ]; then
           if [ -n "$_round_uat" ]; then
             _round_uat_status=$(extract_status_value "$_round_uat")
           fi
+          # Read layout before the routing decision — apply the same path-based
+          # default as the execute→done transition above.
+          if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
+            _cur_layout=$(grep '^layout=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+            if [ -z "$_cur_layout" ]; then
+              case "$_rem_state_file" in
+                */remediation/.uat-remediation-stage|*/.uat-remediation-stage)
+                  _cur_layout="legacy" ;;
+                *)
+                  _cur_layout="round-dir" ;;
+              esac
+            fi
+          else
+            _cur_layout="round-dir"
+          fi
           case "$_round_uat_status" in
             issues_found)
               # Re-verification already happened and found issues.
               # Auto-advance to next round's research stage.
               _next_rr=$(printf '%02d' $(( 10#${_cur_rr} + 1 )))
               if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
-                _cur_layout=$(grep '^layout=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-                _cur_layout="${_cur_layout:-round-dir}"
                 printf 'stage=research\nround=%s\nlayout=%s\n' "$_next_rr" "$_cur_layout" > "$_rem_state_file"
               fi
-              mkdir -p "${TARGET_DIR}remediation/uat/round-${_next_rr}" 2>/dev/null || true
+              if [ "$_cur_layout" = "legacy" ]; then
+                mkdir -p "${TARGET_DIR}remediation/round-${_next_rr}" 2>/dev/null || true
+              else
+                mkdir -p "${TARGET_DIR}remediation/uat/round-${_next_rr}" 2>/dev/null || true
+              fi
               NEXT_PHASE_STATE="needs_uat_remediation"
               ;;
             *)
