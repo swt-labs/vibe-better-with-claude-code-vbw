@@ -462,6 +462,21 @@ for mode in "### Mode: Add Phase" "### Mode: Insert Phase" "### Mode: Remove Pha
 done
 
 echo ""
+echo "=== Add Phase Numbering Verification ==="
+
+add_phase_block=$(mode_block "### Mode: Add Phase")
+if printf '%s\n' "$add_phase_block" | grep -Fq '6. Update ROADMAP.md:' \
+  && printf '%s\n' "$add_phase_block" | grep -Fq '7. If `.vbw-planning/CONTEXT.md` exists, rewrite it to reflect the updated milestone decomposition' \
+  && printf '%s\n' "$add_phase_block" | grep -Fq '8. Update STATE.md phase total:' \
+  && printf '%s\n' "$add_phase_block" | grep -Fq '9. **Phase mutation commit boundary (conditional):**' \
+  && printf '%s\n' "$add_phase_block" | grep -Fq '10. Present:' \
+  && ! printf '%s\n' "$add_phase_block" | grep -Fq '1. Update ROADMAP.md:'; then
+  pass "vibe: Add Phase keeps one ordered parent step list"
+else
+  fail "vibe: Add Phase restarts ordered steps instead of continuing 6-10"
+fi
+
+echo ""
 echo "=== QA Result Gate Contract ==="
 
 QA_FILE="$COMMANDS_DIR/qa.md"

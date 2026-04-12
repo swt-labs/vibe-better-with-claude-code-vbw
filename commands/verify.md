@@ -375,11 +375,23 @@ QA verification summary (pre-extracted from VERIFICATION.md):
 - If the active target phase needs re-verification:
   - For auto-detected routing, use `next_phase_state=needs_reverification` from Context above.
   - For an explicit target phase, ignore the auto-detected `next_phase_state` and only enter this step when the explicit target's own current UAT status is `issues_found` and its UAT remediation stage is `done` or `verify`.
+  - Treat `prepare-reverification.sh` output as: `archived=kept|in-round-dir|<original-uat-basename>` plus `skipped=already_archived|ready_for_verify|cap_reached`.
   - Run `prepare-reverification.sh {phase-dir}` to archive the old UAT and reset remediation stage
   - If the script outputs `skipped=already_archived`, display: `UAT already archived. Starting fresh re-verification.`
+  - If the script outputs `skipped=ready_for_verify`, display: `Round {NN} remediation complete. Starting fresh re-verification.`
+  - If the script outputs `skipped=cap_reached`, parse `max_rounds={N}` from the script output and display:
+    ```text
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      Reached maximum UAT remediation rounds ({N}).
+      Review issues manually or adjust max_uat_remediation_rounds
+      in config.json.
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ```
+    STOP — do not continue to Step 3 or enter a fresh verify loop.
   - If the script fails (non-zero exit), display the error message and **STOP** — do not continue to Step 3
   - If `archived=kept`: display: `Phase UAT preserved. Starting fresh re-verification in round dir.`
-  - Otherwise display: `Archived previous UAT → {round_file}. Starting fresh re-verification.`
+  - If `archived=in-round-dir`: display: `Archived previous UAT → {round_file}. Starting fresh re-verification.`
+  - Otherwise, when `archived=` is the original phase-root UAT basename (flat/legacy layout), display: `Archived previous UAT → {round_file}. Starting fresh re-verification.`
   - Immediately refresh verify context and UAT resume metadata:
     ```bash
     bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh "{phase-dir}"
@@ -627,11 +639,29 @@ _uat_state_exists=false
 
   **Orchestrated mode** (called from vibe.md — you are executing inside vibe.md's Verify mode): Do NOT call `needs-round`. The caller will advance state after checking the round cap. Emit this signal for the calling orchestrator: `remediation_continue=true issues={N}` (where `{N}` is the issue count from finalization above).
 
-  **Standalone mode** (running via `/vbw:verify` directly — not called from vibe.md): Call `needs-round` to advance state for the next manual invocation:
+  **Standalone mode** (running via `/vbw:verify` directly — not called from vibe.md): Check the shared UAT remediation round-cap contract before mutating state:
   ```bash
-  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
+  _current_round=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh current-round "{phase-dir}")
+  _cap_decision=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-uat-remediation-round-limit.sh --next-round-decision .vbw-planning/config.json "${_current_round}" 2>/dev/null)
+  _next_round=$(printf '%s\n' "$_cap_decision" | awk -F= '/^next_round=/{print $2; exit}')
+  _max_rounds=$(printf '%s\n' "$_cap_decision" | awk -F= '/^max_rounds=/{print $2; exit}')
+  _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
   ```
-  This increments the round counter, creates the next round directory, and resets stage to `research`. Do NOT emit the `remediation_continue` signal — standalone verify has no caller to receive it.
+  - If `_cap_reached` is empty or `_cap_decision` is empty: the round-cap helper failed or returned malformed output. Display: "⚠ Could not determine UAT remediation round cap. Run `/vbw:verify` to retry." STOP. Do NOT call `needs-round` — no state mutation on error paths.
+  - If `_cap_reached=true`, display:
+    ```text
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      Reached maximum UAT remediation rounds ({_max_rounds}).
+      Review issues manually or adjust max_uat_remediation_rounds
+      in config.json.
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ```
+    STOP — do not call `needs-round`.
+  - Otherwise call:
+    ```bash
+    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
+    ```
+    This increments the round counter, creates the next round directory, and resets stage to `research`. Do NOT emit the `remediation_continue` signal — standalone verify has no caller to receive it.
 - If `status=complete`: Remediation verified successfully. Mark remediation as verified (do NOT delete the state file — `current_uat()` needs it to locate the round-dir UAT):
   ```bash
   # Mark remediation as verified — preserves round/layout so current_uat() can still find the active round-scoped UAT

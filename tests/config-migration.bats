@@ -416,6 +416,11 @@ EOF
   run jq -s '.[0] as $d | .[1] as $c | [$d | keys[] | select($c[.] == null)] | length' "$CONFIG_DIR/defaults.json" "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
   [ "$output" = "0" ]
+
+  # Verify the injected default for max_uat_remediation_rounds is false (AC #3/#14)
+  run jq '.max_uat_remediation_rounds' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
 }
 
 @test "migration --print-added returns number of inserted defaults" {
@@ -434,10 +439,107 @@ EOF
   [ "$output" = "$EXPECTED_ADDED" ]
 }
 
-@test "EXPECTED_FLAG_COUNT is 41 after max_remediation_rounds config addition" {
+@test "EXPECTED_FLAG_COUNT remains 41 after max_uat_remediation_rounds rename" {
   # Verify session-start.sh has EXPECTED_FLAG_COUNT=41
   SCRIPT_COUNT=$(grep 'EXPECTED_FLAG_COUNT=' "$SCRIPTS_DIR/session-start.sh" | grep -oE '[0-9]+' | head -1)
   [ "$SCRIPT_COUNT" = "41" ]
+}
+
+@test "migration renames legacy max_remediation_rounds to max_uat_remediation_rounds and preserves 5" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "effort": "balanced",
+  "max_remediation_rounds": 5
+}
+EOF
+
+  run_migration
+
+  run jq -r '.max_uat_remediation_rounds' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "5" ]
+
+  run jq -r 'has("max_remediation_rounds")' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+}
+
+@test "migration preserves oversized legacy remediation cap exactly" {
+  local huge_cap="9223372036854775808"
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<EOF
+{
+  "effort": "balanced",
+  "max_remediation_rounds": ${huge_cap}
+}
+EOF
+
+  run_migration
+
+  run jq -r '.max_uat_remediation_rounds' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$huge_cap" ]
+}
+
+@test "migration ignores nested remediation cap keys and preserves oversized top-level new value" {
+  local huge_cap="9223372036854775808"
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<EOF
+{
+  "effort": "balanced",
+  "nested": {
+    "max_uat_remediation_rounds": 7,
+    "max_remediation_rounds": 6
+  },
+  "max_uat_remediation_rounds": ${huge_cap},
+  "max_remediation_rounds": 5
+}
+EOF
+
+  run_migration
+
+  run jq -r '.max_uat_remediation_rounds' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$huge_cap" ]
+
+  run jq -r 'has("max_remediation_rounds")' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+}
+
+@test "migration normalizes malformed legacy remediation cap to false" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "effort": "balanced",
+  "max_remediation_rounds": "oops"
+}
+EOF
+
+  run_migration
+
+  run jq -r '.max_uat_remediation_rounds' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+}
+
+@test "migration keeps normalized new remediation cap and removes legacy key when both exist" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "effort": "balanced",
+  "max_uat_remediation_rounds": "bad",
+  "max_remediation_rounds": 7
+}
+EOF
+
+  run_migration
+
+  run jq -r '.max_uat_remediation_rounds' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r 'has("max_remediation_rounds")' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
 }
 
 @test "discussion_mode defaults to questions after migration" {

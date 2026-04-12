@@ -91,6 +91,48 @@ MAJOR_STAGES=("research" "plan" "execute" "done")
 # Minor-only chain order
 MINOR_STAGES=("fix" "done")
 
+extract_phase_num() {
+  local phase_basename phase_num
+  phase_basename=$(basename "$PHASE_DIR")
+  phase_num=$(printf '%s\n' "$phase_basename" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
+  printf '%s' "$phase_num"
+}
+
+infer_legacy_current_round() {
+  local phase_num archived_rounds current_round
+
+  phase_num=$(extract_phase_num)
+  if [ -z "$phase_num" ] || ! type count_uat_rounds >/dev/null 2>&1; then
+    echo "01"
+    return 0
+  fi
+
+  archived_rounds=$(count_uat_rounds "$PHASE_DIR" "$phase_num")
+  if printf '%s\n' "$archived_rounds" | grep -qE '^[0-9]+$' && [ "$archived_rounds" -gt 0 ] 2>/dev/null; then
+    current_round=$((archived_rounds + 1))
+    printf '%02d\n' "$current_round"
+    return 0
+  fi
+
+  echo "01"
+}
+
+resolve_legacy_round() {
+  local stored_round="$1"
+  local inferred_round stored_num
+
+  stored_num=$(echo "$stored_round" | sed 's/^0*//')
+  stored_num="${stored_num:-0}"
+
+  if [ "$stored_num" -gt 1 ] 2>/dev/null; then
+    printf '%02d\n' "$stored_num"
+    return 0
+  fi
+
+  inferred_round=$(infer_legacy_current_round)
+  echo "$inferred_round"
+}
+
 get_stage() {
   if [ -f "$STATE_FILE" ]; then
     # New format: key=value pairs — extract stage value
@@ -117,15 +159,25 @@ get_stage() {
 }
 
 get_round() {
+  local _val=""
+
   if [ -f "$STATE_FILE" ]; then
-    local _val
     _val=$(grep '^round=' "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-    echo "${_val:-01}"
+    if [ -n "$_val" ]; then
+      if [ "$(get_layout)" = "legacy" ]; then
+        resolve_legacy_round "$_val"
+      else
+        echo "$_val"
+      fi
+    elif [ "$(get_layout)" = "legacy" ]; then
+      resolve_legacy_round ""
+    else
+      echo "01"
+    fi
   else
     if [ -f "$LEGACY_STATE_FILE" ]; then
-      local _val
       _val=$(grep '^round=' "$LEGACY_STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
-      echo "${_val:-01}"
+      resolve_legacy_round "$_val"
     else
       echo "01"
     fi
@@ -451,9 +503,10 @@ case "$CMD" in
     if [ "$existing" != "none" ]; then
       # If resuming from legacy state file, migrate to new format
       if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_STATE_FILE" ]; then
-        mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+        _resume_round=$(get_round)
+        mkdir -p "$PHASE_DIR/remediation/uat/round-${_resume_round}"
         # layout=legacy: phase-root artifacts are current work (migrated from old format)
-        printf 'stage=%s\nround=01\nlayout=legacy\n' "$existing" > "$STATE_FILE"
+        printf 'stage=%s\nround=%s\nlayout=legacy\n' "$existing" "$_resume_round" > "$STATE_FILE"
         rm -f "$LEGACY_STATE_FILE"
       fi
       echo "$existing"
