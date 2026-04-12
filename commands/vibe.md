@@ -1101,10 +1101,10 @@ Missing name: STOP "Usage: `/vbw:vibe --add <phase-name>`"
    - Use Scout findings to write an informed phase goal and success criteria in ROADMAP.md.
    - On failure: log warning, write phase goal from $ARGUMENTS alone. Do not block.
    - **This eliminates duplicate research** — Plan mode step 3 checks for existing RESEARCH.md and skips Scout if found.
-1. Update ROADMAP.md: append phase list entry, append Phase Details section (using Scout findings if available), add progress row.
-2. If `.vbw-planning/CONTEXT.md` exists, rewrite it to reflect the updated milestone decomposition (phase count/grouping, ordering, scope coverage, and requirement mapping). Preserve project-level key decisions and deferred ideas where still valid.
-3. Update STATE.md phase total: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/update-phase-total.sh .vbw-planning`
-4. **Phase mutation commit boundary (conditional):**
+6. Update ROADMAP.md: append phase list entry, append Phase Details section (using Scout findings if available), add progress row.
+7. If `.vbw-planning/CONTEXT.md` exists, rewrite it to reflect the updated milestone decomposition (phase count/grouping, ordering, scope coverage, and requirement mapping). Preserve project-level key decisions and deferred ideas where still valid.
+8. Update STATE.md phase total: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/update-phase-total.sh .vbw-planning`
+9. **Phase mutation commit boundary (conditional):**
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
@@ -1114,7 +1114,7 @@ Missing name: STOP "Usage: `/vbw:vibe --add <phase-name>`"
    fi
    ```
    Behavior: `planning_tracking=commit` commits `.vbw-planning/` if changed. Other modes no-op.
-5. Present: Phase Banner with position, goal. Checklist for roadmap update + dir creation. Next Up: `/vbw:vibe --discuss` or `/vbw:vibe --plan`.
+10. Present: Phase Banner with position, goal. Checklist for roadmap update + dir creation. Next Up: `/vbw:vibe --discuss` or `/vbw:vibe --plan`.
 
 ### Mode: Insert Phase
 

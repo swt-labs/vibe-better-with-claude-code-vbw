@@ -110,6 +110,43 @@ EOF
   [[ "$output" == *"layout=flat"* ]]
 }
 
+@test "flat layout: legacy single-word state archives from inferred current round" {
+  create_issues_uat
+  echo "done" > "$PHASE_DIR/.uat-remediation-stage"
+  touch "$PHASE_DIR/03-UAT-round-01.md"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$PHASE_DIR/03-UAT.md" ]
+  [ -f "$PHASE_DIR/03-UAT-round-02.md" ]
+  grep -q "^stage=research$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=03$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+}
+
+@test "flat layout: legacy single-word state uses inferred current round for cap checks" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": 2
+}
+EOF
+
+  create_issues_uat
+  echo "done" > "$PHASE_DIR/.uat-remediation-stage"
+  touch "$PHASE_DIR/03-UAT-round-01.md"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skipped=cap_reached"* ]]
+  [[ "$output" == *"next_round=03"* ]]
+  [ -f "$PHASE_DIR/03-UAT.md" ]
+  [ ! -f "$PHASE_DIR/03-UAT-round-02.md" ]
+  [ -f "$PHASE_DIR/.uat-remediation-stage" ]
+}
+
 @test "legacy remediation state file with key-value stage is accepted" {
   create_issues_uat
 
