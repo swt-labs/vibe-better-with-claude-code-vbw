@@ -416,6 +416,11 @@ EOF
   run jq -s '.[0] as $d | .[1] as $c | [$d | keys[] | select($c[.] == null)] | length' "$CONFIG_DIR/defaults.json" "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
   [ "$output" = "0" ]
+
+  # Verify the injected default for max_uat_remediation_rounds is false (AC #3/#14)
+  run jq '.max_uat_remediation_rounds' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
 }
 
 @test "migration --print-added returns number of inserted defaults" {

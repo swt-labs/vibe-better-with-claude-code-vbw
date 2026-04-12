@@ -1084,7 +1084,7 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
    Where `{N}` is the issue count from the `remediation_continue` signal (`issues={N}`).
    Re-enter UAT Remediation mode (above) for the same `PHASE_DIR`. The `needs-round` call above set the remediation state to `research` for the new round. The UAT Remediation mode's step 4 (`get-or-init`) will resume correctly from the `research` stage.
 
-  **Continuation loop behavior:** The re-entered UAT Remediation mode chains into Verify mode after its execute stage completes (existing behavior). If that verification again finds issues, verify.md emits `remediation_continue=true` again, and this step 4 re-checks the UAT remediation round cap. This creates the auto-continuation loop, bounded only when `max_uat_remediation_rounds` resolves to a positive integer. The Step 7 fallback summary remains the escape hatch when context window limits prevent continuation mid-loop.
+  **Continuation loop behavior:** The re-entered UAT Remediation mode chains into Verify mode after its execute stage completes (existing behavior). If that verification again finds issues, verify.md emits `remediation_continue=true` again, and this step 4 re-checks the UAT remediation round cap. This creates the auto-continuation loop, bounded only when `max_uat_remediation_rounds` resolves to a positive integer. The fallback remediation summary section remains the escape hatch when context window limits prevent continuation mid-loop.
 
 ### Mode: Add Phase
 
