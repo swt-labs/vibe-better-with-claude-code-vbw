@@ -1059,6 +1059,8 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
    _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
    ```
 
+   **If `_cap_reached` is empty or `_cap_decision` is empty:** The round-cap helper failed or returned malformed output. Display: "⚠ Could not determine UAT remediation round cap. Run `/vbw:verify` manually to retry." STOP. Do NOT call `needs-round` — no state mutation on error paths.
+
    **If `_cap_reached=true`:** Display the cap-reached banner and STOP. Do NOT call `needs-round` — no state mutation occurs:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

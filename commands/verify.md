@@ -647,6 +647,7 @@ _uat_state_exists=false
   _max_rounds=$(printf '%s\n' "$_cap_decision" | awk -F= '/^max_rounds=/{print $2; exit}')
   _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
   ```
+  - If `_cap_reached` is empty or `_cap_decision` is empty: the round-cap helper failed or returned malformed output. Display: "⚠ Could not determine UAT remediation round cap. Run `/vbw:verify` to retry." STOP. Do NOT call `needs-round` — no state mutation on error paths.
   - If `_cap_reached=true`, display:
     ```text
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
