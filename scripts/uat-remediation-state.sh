@@ -94,7 +94,7 @@ MINOR_STAGES=("fix" "done")
 extract_phase_num() {
   local phase_basename phase_num
   phase_basename=$(basename "$PHASE_DIR")
-  phase_num=$(echo "$phase_basename" | sed 's/^\([0-9][0-9]*\).*/\1/')
+  phase_num=$(printf '%s\n' "$phase_basename" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
   printf '%s' "$phase_num"
 }
 
