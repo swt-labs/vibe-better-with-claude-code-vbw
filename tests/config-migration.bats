@@ -459,6 +459,23 @@ EOF
   [ "$output" = "false" ]
 }
 
+@test "migration preserves oversized legacy remediation cap exactly" {
+  local huge_cap="9223372036854775808"
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<EOF
+{
+  "effort": "balanced",
+  "max_remediation_rounds": ${huge_cap}
+}
+EOF
+
+  run_migration
+
+  run jq -r '.max_uat_remediation_rounds' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$huge_cap" ]
+}
+
 @test "migration normalizes malformed legacy remediation cap to false" {
   cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
 {

@@ -44,6 +44,20 @@ EOF
   [ "$output" = "5" ]
 }
 
+@test "resolver preserves oversized positive integer exactly" {
+  local huge_cap="9223372036854775808"
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<EOF
+{
+  "max_uat_remediation_rounds": ${huge_cap}
+}
+EOF
+
+  run run_resolver "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$huge_cap" ]
+}
+
 @test "resolver treats false and zero as unlimited" {
   cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
 {
@@ -119,6 +133,10 @@ EOF
   [ "$status" -eq 0 ]
   [ "$output" = "5" ]
 
+  run run_resolver --normalize-json 9223372036854775808
+  [ "$status" -eq 0 ]
+  [ "$output" = "9223372036854775808" ]
+
   run run_resolver --normalize-json '"oops"'
   [ "$status" -eq 0 ]
   [ "$output" = "false" ]
@@ -136,6 +154,10 @@ EOF
   run run_resolver --validate-input 007
   [ "$status" -eq 0 ]
   [ "$output" = "7" ]
+
+  run run_resolver --validate-input 9223372036854775808
+  [ "$status" -eq 0 ]
+  [ "$output" = "9223372036854775808" ]
 }
 
 @test "validate-input rejects malformed interactive values" {

@@ -26,6 +26,18 @@ usage() {
   echo "Usage: resolve-uat-remediation-round-limit.sh [config-path] | --normalize-json <json-literal> | --validate-input <value>" >&2
 }
 
+canonicalize_decimal_string() {
+  local raw="${1:-}"
+  local stripped
+
+  stripped=$(printf '%s' "$raw" | sed 's/^0*//')
+  if [ -z "$stripped" ]; then
+    echo "false"
+  else
+    echo "$stripped"
+  fi
+}
+
 normalize_json_literal() {
   local raw="${1:-}"
 
@@ -41,11 +53,7 @@ normalize_json_literal() {
   esac
 
   if [[ "$raw" =~ ^[0-9]+$ ]]; then
-    if [ "$raw" -eq 0 ] 2>/dev/null; then
-      echo "false"
-    else
-      echo "$((10#$raw))"
-    fi
+    canonicalize_decimal_string "$raw"
     return 0
   fi
 
@@ -70,11 +78,7 @@ validate_input_value() {
   esac
 
   if [[ "$normalized" =~ ^[0-9]+$ ]]; then
-    if [ "$normalized" -eq 0 ] 2>/dev/null; then
-      echo "false"
-    else
-      echo "$((10#$normalized))"
-    fi
+    canonicalize_decimal_string "$normalized"
     return 0
   fi
 
@@ -84,6 +88,16 @@ validate_input_value() {
 read_json_literal() {
   local config_path="$1"
   local key="$2"
+  local line raw
+
+  line=$(grep -E "\"${key}\"[[:space:]]*:" "$config_path" | head -1 || true)
+  if [ -n "$line" ]; then
+    raw=$(printf '%s\n' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*,?[[:space:]]*$//')
+    if [ -n "$raw" ]; then
+      printf '%s\n' "$raw"
+      return 0
+    fi
+  fi
 
   jq -c --arg key "$key" 'if has($key) then .[$key] else empty end' "$config_path" 2>/dev/null
 }
