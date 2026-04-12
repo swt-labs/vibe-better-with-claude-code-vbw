@@ -466,16 +466,22 @@ if [ -d "$PHASES_DIR" ]; then
                   NEXT_PHASE_STATE="needs_reverification"
                   ;;
                 *)
-                  _next_rr=$(printf '%02d' $(( 10#${_cur_rr} + 1 )))
-                  if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
-                    printf 'stage=research\nround=%s\nlayout=%s\n' "$_next_rr" "$_cur_layout" > "$_rem_state_file"
-                  fi
-                  if [ "$_cur_layout" = "legacy" ]; then
-                    mkdir -p "${TARGET_DIR}remediation/round-${_next_rr}" 2>/dev/null || true
+                  _cap_decision=$(bash "$_SCRIPT_DIR_PD/resolve-uat-remediation-round-limit.sh" --next-round-decision "$PLANNING_DIR/config.json" "$_cur_rr" 2>/dev/null || true)
+                  _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
+                  if [ "$_cap_reached" = "true" ]; then
+                    NEXT_PHASE_STATE="needs_reverification"
                   else
-                    mkdir -p "${TARGET_DIR}remediation/uat/round-${_next_rr}" 2>/dev/null || true
+                    _next_rr=$(printf '%02d' $(( 10#${_cur_rr} + 1 )))
+                    if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
+                      printf 'stage=research\nround=%s\nlayout=%s\n' "$_next_rr" "$_cur_layout" > "$_rem_state_file"
+                    fi
+                    if [ "$_cur_layout" = "legacy" ]; then
+                      mkdir -p "${TARGET_DIR}remediation/round-${_next_rr}" 2>/dev/null || true
+                    else
+                      mkdir -p "${TARGET_DIR}remediation/uat/round-${_next_rr}" 2>/dev/null || true
+                    fi
+                    NEXT_PHASE_STATE="needs_uat_remediation"
                   fi
-                  NEXT_PHASE_STATE="needs_uat_remediation"
                   ;;
               esac
               ;;

@@ -167,3 +167,64 @@ EOF
     [ "$status" -eq 1 ]
   done
 }
+
+@test "next-round decision reports cap reached for exact finite boundary" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": 1
+}
+EOF
+
+  run run_resolver --next-round-decision "$TEST_TEMP_DIR/.vbw-planning/config.json" 01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"current_round=01"* ]]
+  [[ "$output" == *"next_round=02"* ]]
+  [[ "$output" == *"max_rounds=1"* ]]
+  [[ "$output" == *"cap_reached=true"* ]]
+  [[ "$output" == *"unlimited=false"* ]]
+}
+
+@test "next-round decision reports under-cap finite path" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": 3
+}
+EOF
+
+  run run_resolver --next-round-decision "$TEST_TEMP_DIR/.vbw-planning/config.json" 01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"cap_reached=false"* ]]
+  [[ "$output" == *"max_rounds=3"* ]]
+}
+
+@test "next-round decision treats unlimited cases as uncapped" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": false
+}
+EOF
+
+  run run_resolver --next-round-decision "$TEST_TEMP_DIR/.vbw-planning/config.json" 09
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"cap_reached=false"* ]]
+  [[ "$output" == *"unlimited=true"* ]]
+  [[ "$output" == *"max_rounds="* ]]
+}
+
+@test "next-round decision falls back to legacy finite cap" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "max_remediation_rounds": 2
+}
+EOF
+
+  run run_resolver --next-round-decision "$TEST_TEMP_DIR/.vbw-planning/config.json" 01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"max_rounds=2"* ]]
+  [[ "$output" == *"cap_reached=false"* ]]
+}
+
+@test "next-round decision rejects malformed current round input" {
+  run run_resolver --next-round-decision "$TEST_TEMP_DIR/.vbw-planning/config.json" round-01
+  [ "$status" -eq 1 ]
+}

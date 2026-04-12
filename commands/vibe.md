@@ -325,6 +325,15 @@ When `next_phase_state=needs_reverification`, execute these steps inline in the 
 1. Run: `bash {plugin-root}/scripts/prepare-reverification.sh {phase-dir}`
 2. **Error guard:** If the script fails (non-zero exit), display the error message and **STOP** — do not attempt to enter Verify mode with stale/missing context.
 3. Parse output: `archived=kept|in-round-dir|already_archived|ready_for_verify`, `round_file=...`, `phase=NN`, `layout=...`
+  If `skipped=cap_reached`: display the UAT remediation cap banner and STOP. Use `max_rounds={N}` from the script output:
+  ```text
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    Reached maximum UAT remediation rounds ({N}).
+    Review issues manually or adjust max_uat_remediation_rounds
+    in config.json.
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ```
+  Do NOT refresh verify context or enter Verify mode.
 4. If `archived=kept`: display "Phase UAT preserved. Starting fresh re-verification in round dir."
    If `archived=in-round-dir`: display "Archived previous UAT → {round_file}. Starting fresh re-verification."
    If `skipped=already_archived`: display "UAT already archived. Starting fresh re-verification."
@@ -1042,13 +1051,13 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 
    ```bash
    _current_round=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh current-round "{phase-dir}")
-   _max_rounds=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-uat-remediation-round-limit.sh .vbw-planning/config.json 2>/dev/null || true)
-   _next_round=$(( 10#${_current_round} + 1 ))
+   _cap_decision=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-uat-remediation-round-limit.sh --next-round-decision .vbw-planning/config.json "${_current_round}" 2>/dev/null)
+   _next_round=$(printf '%s\n' "$_cap_decision" | awk -F= '/^next_round=/{print $2; exit}')
+   _max_rounds=$(printf '%s\n' "$_cap_decision" | awk -F= '/^max_rounds=/{print $2; exit}')
+   _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
    ```
 
-   **If `_max_rounds` is empty:** The UAT remediation round cap is unlimited (`max_uat_remediation_rounds=false`, `0`, absent, or malformed). Skip the cap-stop branch and continue directly to `needs-round`.
-
-   **If `_max_rounds` is non-empty and `_next_round > _max_rounds`:** Display the cap-reached banner and STOP. Do NOT call `needs-round` — no state mutation occurs:
+   **If `_cap_reached=true`:** Display the cap-reached banner and STOP. Do NOT call `needs-round` — no state mutation occurs:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      Reached maximum UAT remediation rounds ({_max_rounds}).
@@ -1058,7 +1067,7 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
    ```
    Do NOT re-enter remediation. STOP.
 
-   **If `_max_rounds` is empty or `_next_round <= _max_rounds`:** Advance state by calling `needs-round`:
+   **If `_cap_reached` is not true:** The UAT remediation round cap is either unlimited or still under the configured limit. Advance state by calling `needs-round`:
    ```bash
    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
    ```

@@ -268,3 +268,55 @@ EOF
   grep -q "^stage=research$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
   grep -q "^round=02$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 }
+
+@test "round-dir layout: cap reached leaves current round untouched" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": 1
+}
+EOF
+
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
+---
+phase: "03"
+status: issues_found
+---
+# UAT — Remediation Round 01
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skipped=cap_reached"* ]]
+  [[ "$output" == *"max_rounds=1"* ]]
+  grep -q "^stage=done$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=01$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ ! -d "$PHASE_DIR/remediation/uat/round-02" ]
+  [ -f "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" ]
+}
+
+@test "flat layout: cap reached does not archive or advance state" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": 1
+}
+EOF
+
+  create_issues_uat
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  printf 'stage=done\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skipped=cap_reached"* ]]
+  [[ "$output" == *"max_rounds=1"* ]]
+  [ -f "$PHASE_DIR/03-UAT.md" ]
+  [ ! -f "$PHASE_DIR/03-UAT-round-02.md" ]
+  grep -q "^stage=done$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=01$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+}

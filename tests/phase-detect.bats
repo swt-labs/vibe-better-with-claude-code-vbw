@@ -681,6 +681,34 @@ EOF
   grep -q '^stage=done$' .vbw-planning/phases/01-legacy/remediation/.uat-remediation-stage
 }
 
+@test "phase-detect does not auto-advance UAT remediation past finite cap on rerun" {
+  cat > .vbw-planning/config.json <<'EOF'
+{
+  "effort": "balanced",
+  "max_uat_remediation_rounds": 1
+}
+EOF
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  grep -q '^stage=done$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=01$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  [ ! -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
+}
+
 @test "corrupt QA remediation stage does not route as active remediation" {
   mkdir -p .vbw-planning/phases/01-test/remediation/qa
   touch .vbw-planning/phases/01-test/01-01-PLAN.md

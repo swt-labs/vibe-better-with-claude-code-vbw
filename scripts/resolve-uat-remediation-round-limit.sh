@@ -15,6 +15,10 @@ set -u
 #     -> validates explicit /vbw:config input. Emits canonical JSON literal
 #        false or positive integer. Exit 1 on invalid interactive input.
 #
+#   bash scripts/resolve-uat-remediation-round-limit.sh --next-round-decision <config-path> <current-round>
+#     -> emits key=value lines describing whether round N+1 is allowed:
+#        current_round, next_round, max_rounds, cap_reached, unlimited
+#
 # Semantics:
 #   - new key max_uat_remediation_rounds wins over legacy max_remediation_rounds
 #   - absent key => unlimited
@@ -23,7 +27,7 @@ set -u
 #   - malformed persisted values => unlimited
 
 usage() {
-  echo "Usage: resolve-uat-remediation-round-limit.sh [config-path] | --normalize-json <json-literal> | --validate-input <value>" >&2
+  echo "Usage: resolve-uat-remediation-round-limit.sh [config-path] | --normalize-json <json-literal> | --validate-input <value> | --next-round-decision <config-path> <current-round>" >&2
 }
 
 canonicalize_decimal_string() {
@@ -102,6 +106,28 @@ read_json_literal() {
   jq -c --arg key "$key" 'if has($key) then .[$key] else empty end' "$config_path" 2>/dev/null
 }
 
+decimal_gt() {
+  local left="${1:-0}"
+  local right="${2:-0}"
+  local greater
+
+  left=$(printf '%s' "$left" | sed 's/^0*//')
+  right=$(printf '%s' "$right" | sed 's/^0*//')
+  [ -z "$left" ] && left="0"
+  [ -z "$right" ] && right="0"
+
+  if [ "${#left}" -gt "${#right}" ]; then
+    return 0
+  fi
+
+  if [ "${#left}" -lt "${#right}" ]; then
+    return 1
+  fi
+
+  greater=$(printf '%s\n%s\n' "$left" "$right" | LC_ALL=C sort | tail -1)
+  [ "$greater" = "$left" ] && [ "$left" != "$right" ]
+}
+
 resolve_from_config() {
   local config_path="${1:-.vbw-planning/config.json}"
   local raw canonical
@@ -141,6 +167,35 @@ resolve_from_config() {
   echo ""
 }
 
+next_round_decision() {
+  local config_path="$1"
+  local current_round_raw="$2"
+  local current_round next_round max_rounds cap_reached="false"
+
+  if ! [[ "$current_round_raw" =~ ^[0-9]+$ ]]; then
+    echo "Error: current round must be a numeric value" >&2
+    return 1
+  fi
+
+  current_round=$(printf '%02d' "$((10#$current_round_raw))")
+  next_round=$(printf '%02d' "$((10#$current_round_raw + 1))")
+  max_rounds=$(resolve_from_config "$config_path")
+
+  if [ -n "$max_rounds" ] && decimal_gt "$next_round" "$max_rounds"; then
+    cap_reached="true"
+  fi
+
+  printf 'current_round=%s\n' "$current_round"
+  printf 'next_round=%s\n' "$next_round"
+  printf 'max_rounds=%s\n' "$max_rounds"
+  printf 'cap_reached=%s\n' "$cap_reached"
+  if [ -n "$max_rounds" ]; then
+    echo "unlimited=false"
+  else
+    echo "unlimited=true"
+  fi
+}
+
 case "${1:-}" in
   --normalize-json)
     shift
@@ -149,6 +204,14 @@ case "${1:-}" in
   --validate-input)
     shift
     validate_input_value "${1:-}" || exit 1
+    ;;
+  --next-round-decision)
+    shift
+    if [ "$#" -ne 2 ]; then
+      usage
+      exit 1
+    fi
+    next_round_decision "$1" "$2" || exit 1
     ;;
   --help|-h)
     usage

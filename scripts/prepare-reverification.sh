@@ -40,6 +40,22 @@ _SCRIPT_DIR_PR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=uat-utils.sh
 . "$_SCRIPT_DIR_PR/uat-utils.sh"
 
+resolve_config_path() {
+  local phase_dir="${1%/}"
+
+  case "$phase_dir" in
+    */.vbw-planning/phases/*)
+      printf '%s/config.json\n' "${phase_dir%%/phases/*}"
+      ;;
+    .vbw-planning/phases/*)
+      printf '.vbw-planning/config.json\n'
+      ;;
+    *)
+      printf '.vbw-planning/config.json\n'
+      ;;
+  esac
+}
+
 # Find the UAT file
 UAT_FILE=$(current_uat "$PHASE_DIR")
 
@@ -109,6 +125,8 @@ if [ -n "$_active_stage_file" ] && [ -f "$_active_stage_file" ]; then
   fi
 fi
 
+CONFIG_PATH=$(resolve_config_path "$PHASE_DIR")
+
 # For round-dir UATs already in their round directory, skip mv archival
 case "$UAT_FILE" in
   */remediation/uat/round-*/R*-UAT.md)
@@ -124,6 +142,19 @@ case "$UAT_FILE" in
     fi
     PHASE_NUM=$(basename "${PHASE_DIR%/}" | sed 's/^\([0-9]*\).*/\1/')
     if [ "$_uat_round" = "$_cur_round" ]; then
+      _cap_decision=$(bash "$_SCRIPT_DIR_PR/resolve-uat-remediation-round-limit.sh" --next-round-decision "$CONFIG_PATH" "$_cur_round" 2>/dev/null) || {
+        echo "Error: could not resolve UAT remediation round cap for current round $_cur_round" >&2
+        exit 1
+      }
+      _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
+      if [ "$_cap_reached" = "true" ]; then
+        echo "skipped=cap_reached"
+        echo "phase=$PHASE_NUM"
+        echo "layout=$_LAYOUT"
+        printf '%s\n' "$_cap_decision"
+        exit 0
+      fi
+
       # Current round's UAT has issues — advance to next round
       bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" needs-round "${PHASE_DIR%/}" >/dev/null
       rm -f "${PHASE_DIR}.uat-remediation-stage"
@@ -177,6 +208,24 @@ fi
 
 # Flat/legacy layout: archive to numbered round file
 MAX_ROUND=$(count_uat_rounds "$PHASE_DIR" "$PHASE_NUM")
+CURRENT_ROUND="01"
+if [ -n "$_active_stage_file" ] && [ -f "$_active_stage_file" ]; then
+  _current_round_val=$(grep '^round=' "$_active_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+  CURRENT_ROUND="${_current_round_val:-01}"
+fi
+
+_cap_decision=$(bash "$_SCRIPT_DIR_PR/resolve-uat-remediation-round-limit.sh" --next-round-decision "$CONFIG_PATH" "$CURRENT_ROUND" 2>/dev/null) || {
+  echo "Error: could not resolve UAT remediation round cap for current round $CURRENT_ROUND" >&2
+  exit 1
+}
+_cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
+if [ "$_cap_reached" = "true" ]; then
+  echo "skipped=cap_reached"
+  echo "phase=$PHASE_NUM"
+  echo "layout=$_LAYOUT"
+  printf '%s\n' "$_cap_decision"
+  exit 0
+fi
 
 NEXT_ROUND=$((MAX_ROUND + 1))
 ROUND_PADDED=$(printf '%02d' "$NEXT_ROUND")
