@@ -476,6 +476,32 @@ EOF
   [ "$output" = "$huge_cap" ]
 }
 
+@test "migration ignores nested remediation cap keys and preserves oversized top-level new value" {
+  local huge_cap="9223372036854775808"
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<EOF
+{
+  "effort": "balanced",
+  "nested": {
+    "max_uat_remediation_rounds": 7,
+    "max_remediation_rounds": 6
+  },
+  "max_uat_remediation_rounds": ${huge_cap},
+  "max_remediation_rounds": 5
+}
+EOF
+
+  run_migration
+
+  run jq -r '.max_uat_remediation_rounds' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$huge_cap" ]
+
+  run jq -r 'has("max_remediation_rounds")' "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+}
+
 @test "migration normalizes malformed legacy remediation cap to false" {
   cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
 {

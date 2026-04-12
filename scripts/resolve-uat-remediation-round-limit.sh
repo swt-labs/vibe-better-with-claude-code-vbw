@@ -15,6 +15,10 @@ set -u
 #     -> validates explicit /vbw:config input. Emits canonical JSON literal
 #        false or positive integer. Exit 1 on invalid interactive input.
 #
+#   bash scripts/resolve-uat-remediation-round-limit.sh --read-top-level-literal <config-path> <key>
+#     -> emits the exact top-level JSON literal for <key>, preserving oversized
+#        integers exactly as written. Emits nothing when the top-level key is absent.
+#
 #   bash scripts/resolve-uat-remediation-round-limit.sh --next-round-decision <config-path> <current-round>
 #     -> emits key=value lines describing whether round N+1 is allowed:
 #        current_round, next_round, max_rounds, cap_reached, unlimited
@@ -27,7 +31,7 @@ set -u
 #   - malformed persisted values => unlimited
 
 usage() {
-  echo "Usage: resolve-uat-remediation-round-limit.sh [config-path] | --normalize-json <json-literal> | --validate-input <value> | --next-round-decision <config-path> <current-round>" >&2
+  echo "Usage: resolve-uat-remediation-round-limit.sh [config-path] | --normalize-json <json-literal> | --validate-input <value> | --read-top-level-literal <config-path> <key> | --next-round-decision <config-path> <current-round>" >&2
 }
 
 canonicalize_decimal_string() {
@@ -92,18 +96,180 @@ validate_input_value() {
 read_json_literal() {
   local config_path="$1"
   local key="$2"
-  local line raw
 
-  line=$(grep -E "\"${key}\"[[:space:]]*:" "$config_path" | head -1 || true)
-  if [ -n "$line" ]; then
-    raw=$(printf '%s\n' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*,?[[:space:]]*$//')
-    if [ -n "$raw" ]; then
-      printf '%s\n' "$raw"
-      return 0
-    fi
-  fi
+  awk -v target="$key" '
+    function skip_ws(   ch) {
+      while (pos <= len) {
+        ch = substr(txt, pos, 1)
+        if (ch ~ /[ \t\r\n]/) {
+          pos++
+        } else {
+          break
+        }
+      }
+    }
 
-  jq -c --arg key "$key" 'if has($key) then .[$key] else empty end' "$config_path" 2>/dev/null
+    function parse_string(   ch, out) {
+      if (substr(txt, pos, 1) != "\"") {
+        parse_failed = 1
+        return ""
+      }
+
+      pos++
+      out = ""
+      while (pos <= len) {
+        ch = substr(txt, pos, 1)
+        if (ch == "\\") {
+          out = out ch substr(txt, pos + 1, 1)
+          pos += 2
+          continue
+        }
+        if (ch == "\"") {
+          pos++
+          return out
+        }
+        out = out ch
+        pos++
+      }
+
+      parse_failed = 1
+      return ""
+    }
+
+    function parse_value(   ch, start, nesting, in_string, escaped) {
+      start = pos
+      ch = substr(txt, pos, 1)
+
+      if (ch == "\"") {
+        pos++
+        escaped = 0
+        while (pos <= len) {
+          ch = substr(txt, pos, 1)
+          if (escaped) {
+            escaped = 0
+            pos++
+            continue
+          }
+          if (ch == "\\") {
+            escaped = 1
+            pos++
+            continue
+          }
+          if (ch == "\"") {
+            pos++
+            return substr(txt, start, pos - start)
+          }
+          pos++
+        }
+        parse_failed = 1
+        return substr(txt, start, pos - start)
+      }
+
+      if (ch == "{" || ch == "[") {
+        nesting = 1
+        in_string = 0
+        escaped = 0
+        pos++
+        while (pos <= len && nesting > 0) {
+          ch = substr(txt, pos, 1)
+          if (in_string) {
+            if (escaped) {
+              escaped = 0
+            } else if (ch == "\\") {
+              escaped = 1
+            } else if (ch == "\"") {
+              in_string = 0
+            }
+            pos++
+            continue
+          }
+
+          if (ch == "\"") {
+            in_string = 1
+            pos++
+            continue
+          }
+
+          if (ch == "{" || ch == "[") {
+            nesting++
+          } else if (ch == "}" || ch == "]") {
+            nesting--
+          }
+          pos++
+        }
+
+        if (nesting != 0) {
+          parse_failed = 1
+        }
+        return substr(txt, start, pos - start)
+      }
+
+      while (pos <= len) {
+        ch = substr(txt, pos, 1)
+        if (ch ~ /[ \t\r\n,}]/) {
+          break
+        }
+        pos++
+      }
+
+      return substr(txt, start, pos - start)
+    }
+
+    {
+      txt = txt $0 ORS
+    }
+
+    END {
+      len = length(txt)
+      pos = 1
+      parse_failed = 0
+
+      skip_ws()
+      if (substr(txt, pos, 1) != "{") {
+        exit 0
+      }
+
+      pos++
+      while (pos <= len) {
+        skip_ws()
+        if (substr(txt, pos, 1) == "}") {
+          exit 0
+        }
+
+        current_key = parse_string()
+        if (parse_failed) {
+          exit 0
+        }
+
+        skip_ws()
+        if (substr(txt, pos, 1) != ":") {
+          exit 0
+        }
+
+        pos++
+        skip_ws()
+        current_value = parse_value()
+        if (parse_failed) {
+          exit 0
+        }
+
+        if (current_key == target) {
+          print current_value
+          exit 0
+        }
+
+        skip_ws()
+        if (substr(txt, pos, 1) == ",") {
+          pos++
+          continue
+        }
+        if (substr(txt, pos, 1) == "}") {
+          exit 0
+        }
+        exit 0
+      }
+    }
+  ' "$config_path"
 }
 
 decimal_gt() {
@@ -204,6 +370,14 @@ case "${1:-}" in
   --validate-input)
     shift
     validate_input_value "${1:-}" || exit 1
+    ;;
+  --read-top-level-literal)
+    shift
+    if [ "$#" -ne 2 ]; then
+      usage
+      exit 1
+    fi
+    read_json_literal "$1" "$2"
     ;;
   --next-round-decision)
     shift

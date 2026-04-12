@@ -357,3 +357,42 @@ EOF
   grep -q "^stage=done$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
   grep -q "^round=01$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 }
+
+@test "round-dir layout: cap lookup uses repo-local config when phase path contains an earlier /phases/ segment" {
+  local nested_root="$TEST_TEMP_DIR/phases/nested-repo"
+  local nested_phase="$nested_root/.vbw-planning/phases/03-test-phase"
+
+  mkdir -p "$nested_phase/remediation/uat/round-01"
+  mkdir -p "$nested_root/.vbw-planning"
+
+  cat > "$nested_root/.vbw-planning/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": 1
+}
+EOF
+
+  cat > "$TEST_TEMP_DIR/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": false
+}
+EOF
+
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$nested_phase/remediation/uat/.uat-remediation-stage"
+  cat > "$nested_phase/remediation/uat/round-01/R01-UAT.md" <<'EOF'
+---
+phase: "03"
+status: issues_found
+---
+# UAT — Remediation Round 01
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$nested_phase"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skipped=cap_reached"* ]]
+  [[ "$output" == *"max_rounds=1"* ]]
+  grep -q "^stage=done$" "$nested_phase/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=01$" "$nested_phase/remediation/uat/.uat-remediation-stage"
+  [ ! -d "$nested_phase/remediation/uat/round-02" ]
+}

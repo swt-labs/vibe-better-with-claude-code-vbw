@@ -42,10 +42,12 @@ _SCRIPT_DIR_PR="$(cd "$(dirname "$0")" && pwd)"
 
 resolve_config_path() {
   local phase_dir="${1%/}"
+  local planning_dir
 
   case "$phase_dir" in
     */.vbw-planning/phases/*)
-      printf '%s/config.json\n' "${phase_dir%%/phases/*}"
+      planning_dir=$(dirname "$(dirname "$phase_dir")")
+      printf '%s/config.json\n' "$planning_dir"
       ;;
     .vbw-planning/phases/*)
       printf '.vbw-planning/config.json\n'

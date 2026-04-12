@@ -58,6 +58,23 @@ EOF
   [ "$output" = "$huge_cap" ]
 }
 
+@test "resolver ignores nested new key and preserves oversized top-level new key" {
+  local huge_cap="9223372036854775808"
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<EOF
+{
+  "nested": {
+    "max_uat_remediation_rounds": 7
+  },
+  "max_uat_remediation_rounds": ${huge_cap}
+}
+EOF
+
+  run run_resolver "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$huge_cap" ]
+}
+
 @test "resolver treats false and zero as unlimited" {
   cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
 {
@@ -90,6 +107,20 @@ EOF
   run run_resolver "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
   [ "$output" = "5" ]
+}
+
+@test "resolver ignores nested legacy key when top-level legacy key is absent" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "nested": {
+    "max_remediation_rounds": 5
+  }
+}
+EOF
+
+  run run_resolver "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
 }
 
 @test "resolver treats malformed persisted values as unlimited" {

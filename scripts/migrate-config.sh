@@ -82,18 +82,8 @@ normalize_uat_round_cap_json() {
 
 read_uat_round_cap_raw() {
   local key="$1"
-  local line raw
 
-  line=$(grep -E "\"${key}\"[[:space:]]*:" "$CONFIG_FILE" | head -1 || true)
-  if [ -n "$line" ]; then
-    raw=$(printf '%s\n' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*,?[[:space:]]*$//')
-    if [ -n "$raw" ]; then
-      printf '%s\n' "$raw"
-      return 0
-    fi
-  fi
-
-  jq -c --arg key "$key" 'if has($key) then .[$key] else empty end' "$CONFIG_FILE" 2>/dev/null
+  bash "$SCRIPT_DIR/resolve-uat-remediation-round-limit.sh" --read-top-level-literal "$CONFIG_FILE" "$key" 2>/dev/null
 }
 
 # Rename legacy key: agent_teams -> prefer_teams
@@ -211,7 +201,7 @@ if jq -e 'has("max_uat_remediation_rounds")' "$CONFIG_FILE" >/dev/null 2>&1; the
     exit 1
   fi
 elif jq -e 'has("max_remediation_rounds")' "$CONFIG_FILE" >/dev/null 2>&1; then
-  UAT_CAP_RAW=$(jq -c '.max_remediation_rounds' "$CONFIG_FILE" 2>/dev/null || echo "null")
+  UAT_CAP_RAW=$(read_uat_round_cap_raw "max_remediation_rounds" || echo "null")
   UAT_CAP_CANONICAL=$(normalize_uat_round_cap_json "$UAT_CAP_RAW")
   if ! apply_update ". + {max_uat_remediation_rounds: ${UAT_CAP_CANONICAL}} | del(.max_remediation_rounds)"; then
     echo "ERROR: Config migration failed while renaming max_remediation_rounds." >&2
