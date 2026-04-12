@@ -375,8 +375,10 @@ QA verification summary (pre-extracted from VERIFICATION.md):
 - If the active target phase needs re-verification:
   - For auto-detected routing, use `next_phase_state=needs_reverification` from Context above.
   - For an explicit target phase, ignore the auto-detected `next_phase_state` and only enter this step when the explicit target's own current UAT status is `issues_found` and its UAT remediation stage is `done` or `verify`.
+  - Treat `prepare-reverification.sh` output as: `archived=kept|in-round-dir|<original-uat-basename>` plus `skipped=already_archived|ready_for_verify|cap_reached`.
   - Run `prepare-reverification.sh {phase-dir}` to archive the old UAT and reset remediation stage
   - If the script outputs `skipped=already_archived`, display: `UAT already archived. Starting fresh re-verification.`
+  - If the script outputs `skipped=ready_for_verify`, display: `Round {NN} remediation complete. Starting fresh re-verification.`
   - If the script outputs `skipped=cap_reached`, parse `max_rounds={N}` from the script output and display:
     ```text
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -388,7 +390,8 @@ QA verification summary (pre-extracted from VERIFICATION.md):
     STOP — do not continue to Step 3 or enter a fresh verify loop.
   - If the script fails (non-zero exit), display the error message and **STOP** — do not continue to Step 3
   - If `archived=kept`: display: `Phase UAT preserved. Starting fresh re-verification in round dir.`
-  - Otherwise display: `Archived previous UAT → {round_file}. Starting fresh re-verification.`
+  - If `archived=in-round-dir`: display: `Archived previous UAT → {round_file}. Starting fresh re-verification.`
+  - Otherwise, when `archived=` is the original phase-root UAT basename (flat/legacy layout), display: `Archived previous UAT → {round_file}. Starting fresh re-verification.`
   - Immediately refresh verify context and UAT resume metadata:
     ```bash
     bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh "{phase-dir}"

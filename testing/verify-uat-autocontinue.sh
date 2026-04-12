@@ -105,6 +105,23 @@ else
   fail "vibe.md: cap check must appear BEFORE needs-round call in Step 4 (cap@${_cap_line:-?} vs needs@${_needs_line:-?})"
 fi
 
+# 12. vibe.md documents the real prepare-reverification archived/skipped contract
+if grep -q 'archived=kept|in-round-dir|<original-uat-basename>' "$ROOT/commands/vibe.md" \
+  && grep -q 'skipped=already_archived|ready_for_verify|cap_reached' "$ROOT/commands/vibe.md"; then
+  pass "vibe.md documents the real prepare-reverification archived/skipped contract"
+else
+  fail "vibe.md missing the real prepare-reverification archived/skipped contract"
+fi
+
+# 13. verify.md explicitly handles skipped=ready_for_verify and flat-layout archived basenames
+if grep -q 'skipped=ready_for_verify' "$ROOT/commands/verify.md" \
+  && grep -q 'archived=in-round-dir' "$ROOT/commands/verify.md" \
+  && grep -q 'original phase-root UAT basename' "$ROOT/commands/verify.md"; then
+  pass "verify.md explicitly handles skipped=ready_for_verify and flat-layout archived basenames"
+else
+  fail "verify.md missing skipped=ready_for_verify or flat-layout archived basename handling"
+fi
+
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"

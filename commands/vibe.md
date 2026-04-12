@@ -324,7 +324,7 @@ Persisted QA remediation / known-issues backlog is the authoritative plain `/vbw
 When `next_phase_state=needs_reverification`, execute these steps inline in the same turn — do NOT create tasks, read protocol files, or perform any intermediate planning:
 1. Run: `bash {plugin-root}/scripts/prepare-reverification.sh {phase-dir}`
 2. **Error guard:** If the script fails (non-zero exit), display the error message and **STOP** — do not attempt to enter Verify mode with stale/missing context.
-3. Parse output: `archived=kept|in-round-dir|already_archived|ready_for_verify`, `round_file=...`, `phase=NN`, `layout=...`
+3. Parse output: `archived=kept|in-round-dir|<original-uat-basename>`, `skipped=already_archived|ready_for_verify|cap_reached`, `round_file=...`, `phase=NN`, `layout=...`
   If `skipped=cap_reached`: display the UAT remediation cap banner and STOP. Use `max_rounds={N}` from the script output:
   ```text
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -338,6 +338,7 @@ When `next_phase_state=needs_reverification`, execute these steps inline in the 
    If `archived=in-round-dir`: display "Archived previous UAT → {round_file}. Starting fresh re-verification."
    If `skipped=already_archived`: display "UAT already archived. Starting fresh re-verification."
    If `skipped=ready_for_verify`: display "Round {NN} remediation complete. Starting fresh re-verification."
+    Otherwise, when `archived=` is the original phase-root UAT basename (flat/legacy layout), display "Archived previous UAT → {round_file}. Starting fresh re-verification."
 5. Refresh verify context and UAT resume metadata for that phase:
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context-for-uat.sh "{phase-dir}"
@@ -809,7 +810,8 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
 - **Chain into re-verification (NON-NEGOTIABLE):** After the execute stage advances to `done`, the remediation round is complete but NOT verified. Immediately prepare for re-verification and chain into Verify mode in the same turn:
   - Run: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/prepare-reverification.sh "$PHASE_DIR"`
   - **Error guard:** If the script fails (non-zero exit), display the error message and **STOP** — do not attempt to enter Verify mode with stale/missing context.
-  - Parse output: `archived=kept|in-round-dir`, `skipped=already_archived|ready_for_verify`, `round_file=...`, `phase=NN`, `layout=...`
+  - Parse output: `archived=kept|in-round-dir|<original-uat-basename>`, `skipped=already_archived|ready_for_verify|cap_reached`, `round_file=...`, `phase=NN`, `layout=...`
+  - If `skipped=cap_reached`: display the same UAT remediation cap banner as the top-level re-verification flow and STOP. Use `max_rounds={N}` from the script output.
   - If `archived=kept`: display "Phase UAT preserved. Starting re-verification in round dir."
     If `skipped=ready_for_verify`: display "Round {NN} remediation complete. Starting re-verification."
     If `skipped=already_archived`: display "UAT already archived. Starting re-verification."
