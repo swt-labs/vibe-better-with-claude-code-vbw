@@ -2505,3 +2505,133 @@ EOF
   echo "$output" | grep -q "first_qa_attention_slug=02-remediating"
   echo "$output" | grep -q "qa_attention_status=verify"
 }
+
+# ---------- #369: cross-session reverification routing ----------
+
+@test "phase-detect: stage=done + round UAT with issues_found routes to needs_uat_remediation" {
+  # Scenario: UAT remediation round 02 completed, re-verification found issues,
+  # but the session ended before auto-continuing to round 03. The next session
+  # should recognise the round UAT and route to remediation, not re-verify.
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-02
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-feature/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  # Round 01 UAT (prior round, already remediated)
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+round: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  # Round 02 UAT — re-verification happened, still has issues
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-02/R02-UAT.md <<'EOF'
+---
+phase: 01
+round: 02
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+- **Issue:** fix did not resolve
+  - Description: test still fails
+  - Severity: major
+EOF
+  # Remediation state: round 02 done
+  printf 'stage=done\nround=02\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  # State file should be auto-advanced to round 03, stage=research
+  grep -q '^stage=research$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=03$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  # Round 03 directory should be created
+  [ -d .vbw-planning/phases/01-feature/remediation/uat/round-03 ]
+}
+
+@test "phase-detect: stage=done + no round UAT routes to needs_reverification" {
+  # Scenario: UAT remediation round 02 completed execution, but re-verification
+  # has NOT happened yet. Should route to needs_reverification so it can run.
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-02
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-feature/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  touch .vbw-planning/phases/01-feature/remediation/uat/round-02/R02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/remediation/uat/round-02/R02-SUMMARY.md
+  # Remediation state: round 02 done, but NO R02-UAT.md
+  printf 'stage=done\nround=02\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  # State file should NOT be modified
+  grep -q '^stage=done$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=02$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+}
+
+@test "phase-detect: stage=done + round UAT with complete status does NOT trigger remediation" {
+  # Scenario: UAT remediation round 01 completed, re-verification passed.
+  # Phase-detect sees no active UAT issues since round UAT is complete,
+  # so it exits the remediation routing block. Must NOT start another round.
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-feature/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  # Round 01 UAT — re-verification passed (all tests passed)
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+round: 01
+status: complete
+issues: 0
+---
+## Tests
+### P01-T1: sample test
+- **Result:** pass
+EOF
+  # Remediation state: round 01 done
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  [ "$status" -eq 0 ]
+  # When round UAT is complete (tests passed), must NOT trigger another remediation round
+  ! echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  # State file should NOT be modified — no round advancement
+  grep -q '^stage=done$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=01$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+}

@@ -423,7 +423,41 @@ if [ -d "$PHASES_DIR" ]; then
           fi
           _rem_stage="done"
         fi
-        if [ "$_rem_stage" = "done" ] || [ "$_rem_stage" = "verify" ]; then
+        if [ "$_rem_stage" = "done" ]; then
+          # Check if re-verification already happened for this round.
+          # If a round-scoped UAT exists with issues, skip re-verification
+          # and route directly to the next remediation round.
+          _round_uat=""
+          _round_uat_status=""
+          # Round-dir layout
+          if [ -f "${TARGET_DIR}remediation/uat/round-${_cur_rr}/R${_cur_rr}-UAT.md" ]; then
+            _round_uat="${TARGET_DIR}remediation/uat/round-${_cur_rr}/R${_cur_rr}-UAT.md"
+          # Legacy layout
+          elif [ -f "${TARGET_DIR}remediation/round-${_cur_rr}/R${_cur_rr}-UAT.md" ]; then
+            _round_uat="${TARGET_DIR}remediation/round-${_cur_rr}/R${_cur_rr}-UAT.md"
+          fi
+          if [ -n "$_round_uat" ]; then
+            _round_uat_status=$(extract_status_value "$_round_uat")
+          fi
+          case "$_round_uat_status" in
+            issues_found)
+              # Re-verification already happened and found issues.
+              # Auto-advance to next round's research stage.
+              _next_rr=$(printf '%02d' $(( 10#${_cur_rr} + 1 )))
+              if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
+                _cur_layout=$(grep '^layout=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+                _cur_layout="${_cur_layout:-round-dir}"
+                printf 'stage=research\nround=%s\nlayout=%s\n' "$_next_rr" "$_cur_layout" > "$_rem_state_file"
+              fi
+              mkdir -p "${TARGET_DIR}remediation/uat/round-${_next_rr}" 2>/dev/null || true
+              NEXT_PHASE_STATE="needs_uat_remediation"
+              ;;
+            *)
+              # No round UAT yet, or UAT passed — needs re-verification
+              NEXT_PHASE_STATE="needs_reverification"
+              ;;
+          esac
+        elif [ "$_rem_stage" = "verify" ]; then
           NEXT_PHASE_STATE="needs_reverification"
         else
           NEXT_PHASE_STATE="needs_uat_remediation"
