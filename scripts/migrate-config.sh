@@ -220,7 +220,6 @@ elif jq -e 'has("max_remediation_rounds")' "$CONFIG_FILE" >/dev/null 2>&1; then
 fi
 
 # Generic brownfield merge: add any keys missing from defaults.json.
-  UAT_CAP_RAW=$(read_uat_round_cap_raw "max_remediation_rounds" || echo "null")
 TMP=$(mktemp)
 if jq --slurpfile defaults "$DEFAULTS_FILE" '$defaults[0] + .' "$CONFIG_FILE" > "$TMP" 2>/dev/null; then
   mv "$TMP" "$CONFIG_FILE"
