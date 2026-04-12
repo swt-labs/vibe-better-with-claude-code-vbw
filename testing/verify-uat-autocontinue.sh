@@ -36,7 +36,7 @@ else
 fi
 
 # 3. vibe.md contains cap-reached banner
-if grep -q 'Reached maximum remediation rounds' "$ROOT/commands/vibe.md"; then
+if grep -q 'Reached maximum UAT remediation rounds' "$ROOT/commands/vibe.md"; then
   pass "vibe.md contains cap-reached banner"
 else
   fail "vibe.md missing cap-reached banner"
@@ -56,21 +56,28 @@ else
   fail "vibe.md missing needs-round call in auto-continuation path"
 fi
 
-# 6. vibe.md reads max_remediation_rounds from config
-if grep -q 'max_remediation_rounds' "$ROOT/commands/vibe.md"; then
-  pass "vibe.md reads max_remediation_rounds from config"
+# 6. vibe.md resolves the UAT cap via helper + renamed key
+if grep -q 'resolve-uat-remediation-round-limit.sh' "$ROOT/commands/vibe.md" && grep -q 'max_uat_remediation_rounds' "$ROOT/commands/vibe.md"; then
+  pass "vibe.md resolves the UAT remediation round cap via helper"
 else
-  fail "vibe.md missing max_remediation_rounds config read"
+  fail "vibe.md missing helper-backed max_uat_remediation_rounds handling"
 fi
 
-# 7. defaults.json contains max_remediation_rounds
-if jq -e '.max_remediation_rounds' "$ROOT/config/defaults.json" >/dev/null 2>&1; then
-  pass "defaults.json contains max_remediation_rounds"
+# 7. defaults.json contains max_uat_remediation_rounds=false
+if jq -e '.max_uat_remediation_rounds == false' "$ROOT/config/defaults.json" >/dev/null 2>&1; then
+  pass "defaults.json contains max_uat_remediation_rounds=false"
 else
-  fail "defaults.json missing max_remediation_rounds"
+  fail "defaults.json missing max_uat_remediation_rounds=false"
 fi
 
-# 8. verify.md orchestrated mode does NOT invoke needs-round
+# 8. vibe.md uses UAT-specific wording for the cap help text
+if grep -q 'UAT remediation round cap' "$ROOT/commands/vibe.md" && grep -q 'adjust max_uat_remediation_rounds' "$ROOT/commands/vibe.md"; then
+  pass "vibe.md uses UAT-specific round-cap wording"
+else
+  fail "vibe.md missing UAT-specific round-cap wording"
+fi
+
+# 9. verify.md orchestrated mode does NOT invoke needs-round
 # (needs-round is called by vibe.md after cap check, not by verify.md in orchestrated mode)
 # Check that the orchestrated block doesn't contain a bash code block with needs-round
 orchestrated_block=$(sed -n '/Orchestrated mode/,/Standalone mode/p' "$ROOT/commands/verify.md")
@@ -80,7 +87,7 @@ else
   pass "verify.md orchestrated mode correctly defers needs-round to caller"
 fi
 
-# 9. vibe.md Step 4: cap check (current-round) appears BEFORE needs-round call
+# 10. vibe.md Step 4: cap check (current-round) appears BEFORE needs-round call
 # Structural ordering: the LLM must read the current round and check the cap
 # before calling needs-round, which mutates state.
 _cap_line=$(grep -n 'uat-remediation-state.sh current-round' "$ROOT/commands/vibe.md" | head -1 | cut -d: -f1)

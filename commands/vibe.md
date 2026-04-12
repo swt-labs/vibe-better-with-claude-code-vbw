@@ -1017,26 +1017,27 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 3. Display results per verify.md output format.
 4. **UAT Remediation Auto-Continuation:** This step only applies when verify.md emitted `remediation_continue=true` (which happens when `verify_scope=remediation` AND `status=issues_found` AND running in orchestrated mode from vibe.md). If `remediation_continue` was not set (first-time UAT, complete result, or standalone verify), skip this step entirely — the command ends after step 3.
 
-   **Check round cap, then advance state:** Read the current round number (read-only, no state mutation) and compare against the configured maximum before advancing:
+   **Check the UAT remediation round cap, then advance state:** Read the current round number (read-only, no state mutation) and compare against the configured maximum before advancing:
 
    ```bash
    _current_round=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh current-round "{phase-dir}")
-   _max_rounds=$(jq -r '.max_remediation_rounds // 5' .vbw-planning/config.json 2>/dev/null)
-   _max_rounds="${_max_rounds:-5}"
+   _max_rounds=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-uat-remediation-round-limit.sh .vbw-planning/config.json 2>/dev/null || true)
    _next_round=$(( 10#${_current_round} + 1 ))
    ```
 
-   **If `_next_round > _max_rounds`:** Display the cap-reached banner and STOP. Do NOT call `needs-round` — no state mutation occurs:
+   **If `_max_rounds` is empty:** The UAT remediation round cap is unlimited (`max_uat_remediation_rounds=false`, `0`, absent, or malformed). Skip the cap-stop branch and continue directly to `needs-round`.
+
+   **If `_max_rounds` is non-empty and `_next_round > _max_rounds`:** Display the cap-reached banner and STOP. Do NOT call `needs-round` — no state mutation occurs:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     Reached maximum remediation rounds ({_max_rounds}).
-     Review issues manually or adjust max_remediation_rounds
+     Reached maximum UAT remediation rounds ({_max_rounds}).
+     Review issues manually or adjust max_uat_remediation_rounds
      in config.json.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
    Do NOT re-enter remediation. STOP.
 
-   **If `_next_round <= _max_rounds`:** Advance state by calling `needs-round`:
+   **If `_max_rounds` is empty or `_next_round <= _max_rounds`:** Advance state by calling `needs-round`:
    ```bash
    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
    ```
@@ -1051,7 +1052,7 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
    Where `{N}` is the issue count from the `remediation_continue` signal (`issues={N}`).
    Re-enter UAT Remediation mode (above) for the same `PHASE_DIR`. The `needs-round` call above set the remediation state to `research` for the new round. The UAT Remediation mode's step 4 (`get-or-init`) will resume correctly from the `research` stage.
 
-   **Continuation loop behavior:** The re-entered UAT Remediation mode chains into Verify mode after its execute stage completes (existing behavior). If that verification again finds issues, verify.md emits `remediation_continue=true` again, and this step 4 re-checks the round cap. This creates the auto-continuation loop, bounded by `max_remediation_rounds`. The Step 7 fallback summary remains the escape hatch when context window limits prevent continuation mid-loop.
+  **Continuation loop behavior:** The re-entered UAT Remediation mode chains into Verify mode after its execute stage completes (existing behavior). If that verification again finds issues, verify.md emits `remediation_continue=true` again, and this step 4 re-checks the UAT remediation round cap. This creates the auto-continuation loop, bounded only when `max_uat_remediation_rounds` resolves to a positive integer. The Step 7 fallback summary remains the escape hatch when context window limits prevent continuation mid-loop.
 
 ### Mode: Add Phase
 
@@ -1070,10 +1071,10 @@ Missing name: STOP "Usage: `/vbw:vibe --add <phase-name>`"
    - Use Scout findings to write an informed phase goal and success criteria in ROADMAP.md.
    - On failure: log warning, write phase goal from $ARGUMENTS alone. Do not block.
    - **This eliminates duplicate research** — Plan mode step 3 checks for existing RESEARCH.md and skips Scout if found.
-6. Update ROADMAP.md: append phase list entry, append Phase Details section (using Scout findings if available), add progress row.
-7. If `.vbw-planning/CONTEXT.md` exists, rewrite it to reflect the updated milestone decomposition (phase count/grouping, ordering, scope coverage, and requirement mapping). Preserve project-level key decisions and deferred ideas where still valid.
-8. Update STATE.md phase total: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/update-phase-total.sh .vbw-planning`
-9. **Phase mutation commit boundary (conditional):**
+1. Update ROADMAP.md: append phase list entry, append Phase Details section (using Scout findings if available), add progress row.
+2. If `.vbw-planning/CONTEXT.md` exists, rewrite it to reflect the updated milestone decomposition (phase count/grouping, ordering, scope coverage, and requirement mapping). Preserve project-level key decisions and deferred ideas where still valid.
+3. Update STATE.md phase total: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/update-phase-total.sh .vbw-planning`
+4. **Phase mutation commit boundary (conditional):**
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
@@ -1083,7 +1084,7 @@ Missing name: STOP "Usage: `/vbw:vibe --add <phase-name>`"
    fi
    ```
    Behavior: `planning_tracking=commit` commits `.vbw-planning/` if changed. Other modes no-op.
-10. Present: Phase Banner with position, goal. Checklist for roadmap update + dir creation. Next Up: `/vbw:vibe --discuss` or `/vbw:vibe --plan`.
+5. Present: Phase Banner with position, goal. Checklist for roadmap update + dir creation. Next Up: `/vbw:vibe --discuss` or `/vbw:vibe --plan`.
 
 ### Mode: Insert Phase
 

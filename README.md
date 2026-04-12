@@ -570,6 +570,7 @@ Quick reference for every key in `config/defaults.json`, in order. Click the sec
 | `rolling_summary` | `false` | [Cross-phase context](#cross-phase-context) |
 | `require_phase_discussion` | `false` | [Agent behavior](#agent-behavior) |
 | `auto_uat` | `false` | [Autonomy levels](#autonomy-levels) |
+| `max_uat_remediation_rounds` | `false` | [Autonomy levels](#autonomy-levels) |
 | `statusline_hide_limits` | `false` | [Display](#display) |
 | `statusline_hide_limits_for_api_key` | `false` | [Display](#display) |
 | `statusline_hide_agent_in_tmux` | `false` | [Display](#display) |
@@ -649,6 +650,26 @@ Autonomy interacts with effort profiles. At `cautious`, plan approval expands to
 ```text
 /vbw:config auto_uat true
 ```
+
+**`max_uat_remediation_rounds`** — Controls only the UAT remediation auto-continuation loop after re-verification finds issues. It does **not** apply to QA remediation. The injected default is `false`, which means unlimited rounds. If the key is missing or the persisted value is malformed, VBW also fails open to unlimited.
+
+Finite cap example:
+
+```json
+{
+  "max_uat_remediation_rounds": 3
+}
+```
+
+Unlimited example:
+
+```json
+{
+  "max_uat_remediation_rounds": false
+}
+```
+
+`0` is also treated as unlimited.
 
 ### Commits, push, and planning artifacts
 

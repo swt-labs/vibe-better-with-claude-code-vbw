@@ -184,7 +184,7 @@ ROUND_FILE="${PHASE_NUM}-UAT-round-${ROUND_PADDED}.md"
 
 # Warn if we've been through many rounds — signal the user may want a different approach
 if [ "$NEXT_ROUND" -ge 3 ]; then
-  echo "reverification_warning=This phase has been through $MAX_ROUND remediation rounds. Consider a different approach if issues persist."
+  echo "reverification_warning=This phase has been through $MAX_ROUND UAT remediation rounds. Consider a different approach if issues persist."
 fi
 
 mv "$UAT_FILE" "${PHASE_DIR}${ROUND_FILE}"

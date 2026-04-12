@@ -224,6 +224,20 @@ Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scri
 
 Validate setting + value. Update config.json. Display ✓ with ➜.
 
+If `setting=max_uat_remediation_rounds`, validate the value before writing:
+
+```bash
+CANONICAL_VALUE=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-uat-remediation-round-limit.sh --validate-input "$2" 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "${CANONICAL_VALUE:-}" ]; then
+  echo "⚠ Invalid max_uat_remediation_rounds '$2'. Valid values: false, 0, or a positive integer"
+  exit 0
+fi
+
+jq ".max_uat_remediation_rounds = ${CANONICAL_VALUE}" .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+echo "✓ max_uat_remediation_rounds ➜ ${CANONICAL_VALUE}"
+exit 0
+```
+
 If `setting=planning_tracking`, after writing config run:
 
 ```bash
@@ -342,7 +356,7 @@ echo "✓ Model override: $AGENT ➜ $MODEL"
 Note: `auto_commit` controls source-task commits during Execute mode. Planning artifact commit behavior is controlled by `planning_tracking`.
 
 | Setting | Type | Values | Default |
-|---------|------|--------|---------|
+| ------- | ---- | ------ | ------- |
 | effort | string | thorough/balanced/fast/turbo | balanced |
 | autonomy | string | cautious/standard/confident/pure-vibe | standard |
 | auto_commit | boolean | true/false | true |
@@ -374,6 +388,7 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | monorepo_routing | boolean | true/false | true |
 | require_phase_discussion | boolean | true/false | false |
 | auto_uat | boolean | true/false | false |
+| max_uat_remediation_rounds | boolean/number | false, 0, or positive integer | false |
 | rolling_summary | boolean | true/false | false |
 | debug_logging | boolean | true/false | false |
 | subagent_skill_xml_mode | string | off/names_only/full | names_only |
@@ -416,6 +431,33 @@ You can also provide per-effort overrides using an object instead of a number:
   "agent_max_turns": {
     "dev": { "thorough": 120, "balanced": 75, "fast": 50, "turbo": false }
   }
+}
+```
+
+### max_uat_remediation_rounds
+
+Controls only the UAT remediation auto-continuation loop after re-verification finds issues. It does **not** apply to QA remediation.
+
+Accepted values:
+- `false` — unlimited UAT remediation rounds
+- `0` — unlimited UAT remediation rounds
+- positive integer — finite UAT remediation round cap
+
+Injected default is `false`, and runtime fallback is also unlimited when the persisted value is absent or malformed. `/vbw:config` rejects malformed interactive input instead of writing it.
+
+Finite cap example:
+
+```json
+{
+  "max_uat_remediation_rounds": 3
+}
+```
+
+Unlimited example:
+
+```json
+{
+  "max_uat_remediation_rounds": false
 }
 ```
 
