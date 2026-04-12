@@ -457,17 +457,27 @@ if [ -d "$PHASES_DIR" ]; then
           case "$_round_uat_status" in
             issues_found)
               # Re-verification already happened and found issues.
-              # Auto-advance to next round's research stage.
-              _next_rr=$(printf '%02d' $(( 10#${_cur_rr} + 1 )))
-              if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
-                printf 'stage=research\nround=%s\nlayout=%s\n' "$_next_rr" "$_cur_layout" > "$_rem_state_file"
-              fi
-              if [ "$_cur_layout" = "legacy" ]; then
-                mkdir -p "${TARGET_DIR}remediation/round-${_next_rr}" 2>/dev/null || true
-              else
-                mkdir -p "${TARGET_DIR}remediation/uat/round-${_next_rr}" 2>/dev/null || true
-              fi
-              NEXT_PHASE_STATE="needs_uat_remediation"
+              # Auto-advance to next round's research stage, but only if the
+              # current round read from state is a valid numeric value.
+              case "$_cur_rr" in
+                ''|*[!0-9]*)
+                  # Malformed/corrupt round value; avoid arithmetic expansion
+                  # and fall back to explicit re-verification routing.
+                  NEXT_PHASE_STATE="needs_reverification"
+                  ;;
+                *)
+                  _next_rr=$(printf '%02d' $(( 10#${_cur_rr} + 1 )))
+                  if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
+                    printf 'stage=research\nround=%s\nlayout=%s\n' "$_next_rr" "$_cur_layout" > "$_rem_state_file"
+                  fi
+                  if [ "$_cur_layout" = "legacy" ]; then
+                    mkdir -p "${TARGET_DIR}remediation/round-${_next_rr}" 2>/dev/null || true
+                  else
+                    mkdir -p "${TARGET_DIR}remediation/uat/round-${_next_rr}" 2>/dev/null || true
+                  fi
+                  NEXT_PHASE_STATE="needs_uat_remediation"
+                  ;;
+              esac
               ;;
             *)
               # No round UAT yet, or UAT passed — needs re-verification
