@@ -149,13 +149,20 @@ case "$UAT_FILE" in
         exit 1
       }
       _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
-      if [ "$_cap_reached" = "true" ]; then
-        echo "skipped=cap_reached"
-        echo "phase=$PHASE_NUM"
-        echo "layout=$_LAYOUT"
-        printf '%s\n' "$_cap_decision"
-        exit 0
-      fi
+      case "${_cap_reached:-}" in
+        true)
+          echo "skipped=cap_reached"
+          echo "phase=$PHASE_NUM"
+          echo "layout=$_LAYOUT"
+          printf '%s\n' "$_cap_decision"
+          exit 0
+          ;;
+        false) ;; # continue to advance
+        *)
+          echo "Error: malformed round-limit helper output — missing or invalid cap_reached key" >&2
+          exit 1
+          ;;
+      esac
 
       # Current round's UAT has issues — advance to next round
       bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" needs-round "${PHASE_DIR%/}" >/dev/null
@@ -216,13 +223,20 @@ _cap_decision=$(bash "$_SCRIPT_DIR_PR/resolve-uat-remediation-round-limit.sh" --
   exit 1
 }
 _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
-if [ "$_cap_reached" = "true" ]; then
-  echo "skipped=cap_reached"
-  echo "phase=$PHASE_NUM"
-  echo "layout=$_LAYOUT"
-  printf '%s\n' "$_cap_decision"
-  exit 0
-fi
+case "${_cap_reached:-}" in
+  true)
+    echo "skipped=cap_reached"
+    echo "phase=$PHASE_NUM"
+    echo "layout=$_LAYOUT"
+    printf '%s\n' "$_cap_decision"
+    exit 0
+    ;;
+  false) ;; # continue to advance
+  *)
+    echo "Error: malformed round-limit helper output — missing or invalid cap_reached key" >&2
+    exit 1
+    ;;
+esac
 
 NEXT_ROUND=$((MAX_ROUND + 1))
 ROUND_PADDED=$(printf '%02d' "$NEXT_ROUND")
