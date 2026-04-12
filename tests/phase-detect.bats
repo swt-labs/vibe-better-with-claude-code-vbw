@@ -709,6 +709,62 @@ EOF
   [ ! -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
 }
 
+@test "phase-detect auto-advances UAT remediation when cap is explicitly false" {
+  cat > .vbw-planning/config.json <<'EOF'
+{
+  "effort": "balanced",
+  "max_uat_remediation_rounds": false
+}
+EOF
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  grep -q '^stage=research$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=02$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  [ -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
+}
+
+@test "phase-detect auto-advances UAT remediation when cap is explicitly zero" {
+  cat > .vbw-planning/config.json <<'EOF'
+{
+  "effort": "balanced",
+  "max_uat_remediation_rounds": 0
+}
+EOF
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/phase-detect.sh"
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  grep -q '^stage=research$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=02$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  [ -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
+}
+
 @test "phase-detect does not auto-advance UAT remediation when cap helper exits nonzero" {
   mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
   touch .vbw-planning/phases/01-feature/01-01-PLAN.md
