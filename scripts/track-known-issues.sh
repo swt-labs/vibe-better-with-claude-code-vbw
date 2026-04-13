@@ -774,7 +774,7 @@ promote_todos() {
       # Base64-encode full_error_msg to prevent newlines from breaking field separator parsing
       local encoded_error
       encoded_error=$(printf '%s' "$full_error_msg" | base64 | tr -d '\n')
-      promoted_details="${promoted_details}${ref_hash}"$'\x1f'"${test_name}"$'\x1f'"${file_path}"$'\x1f'"${encoded_error}"$'\x1f'"${times_seen}"$'\x1f'"${source_artifact}"$'\x1f'"${disposition}"$'\n'
+      promoted_details="${promoted_details}${ref_hash}"$'\x1f'"${test_name}"$'\x1f'"${file_path}"$'\x1f'"${encoded_error}"$'\x1f'"${times_seen}"$'\x1f'"${source_artifact}"$'\x1f'"${disposition}"$'\x1f'"${error_msg}"$'\n'
       promoted=$((promoted + 1))
     fi
     i=$((i + 1))
@@ -845,14 +845,16 @@ promote_todos() {
   fi
   if [ -n "$detail_script" ] && [ -f "$detail_script" ]; then
     local details_path="${planning_dir}/todo-details.json"
-    while IFS=$'\x1f' read -r hash p_test p_file p_error p_times p_source p_disp; do
+    while IFS=$'\x1f' read -r hash p_test p_file p_error p_times p_source p_disp p_summary_error; do
       [ -n "$hash" ] || continue
-      # Decode base64-encoded error message
+      # Decode base64-encoded full error message (used in context)
       p_error=$(printf '%s' "$p_error" | base64 -d 2>/dev/null) || p_error="(decode error)"
+      # Use truncated error_msg for summary (matches STATE.md bullet text)
+      local summary_error="${p_summary_error:-$p_error}"
 
       local detail_json
       detail_json=$(jq -n \
-        --arg summary "${p_test} (${p_file}): ${p_error}" \
+        --arg summary "${p_test} (${p_file}): ${summary_error}" \
         --arg context "Known issue from phase ${phase_num}. Test: ${p_test}. File: ${p_file}. Error: ${p_error}. Seen ${p_times} time(s). Source: ${p_source:-unknown}. Disposition: ${p_disp:-unresolved}." \
         --arg file "$p_file" \
         --arg added "$today" \
