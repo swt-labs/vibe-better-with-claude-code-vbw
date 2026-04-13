@@ -38,10 +38,7 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
    - `"no-match"`: Display the `display` value. Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos empty` and display. Exit.
    - `"ok"`: Continue to step 4.
 
-4. **Display list:** Show the `display` value from the script output, followed by:
-   ```text
-   Reply with a number to select, `remove N` to delete, or `q` to exit.
-   ```
+4. **Display list:** Show the `display` value from the script output exactly as returned (do not append any additional prompt text).
 
 5. **Handle selection:** Use AskUserQuestion with a freeform question (no `options` array) to prompt: "Reply with a number to select, `remove N` to delete, or `q` to exit:" Parse the response. Accept these input forms:
    - **A number** (1-N): selects a todo to act on. Proceed to Step 6.

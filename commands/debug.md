@@ -29,12 +29,12 @@ Recent commits:
 - No $ARGUMENTS: STOP "Usage: /vbw:debug \"description of the bug or error message\""
 
 ## Steps
-1. **Parse + effort:** If $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag from the arguments. Store remaining text as the bug description. If a ref was found, load extended detail:
+1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`) from $ARGUMENTS and store them separately for Step 2 routing. If the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
     ```bash
     bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/todo-details.sh" get <hash>
     ```
     Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for use in Step 4. If `status` is `"not_found"` or `"error"`, log to `## Recent Activity` with format `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded`, then continue without detail.
-  If no ref suffix, entire $ARGUMENTS = bug description.
+  If no ref suffix, $ARGUMENTS minus flags = bug description.
   Map effort: thorough=high, balanced/fast=medium, turbo=low.
   Keep effort profile as `EFFORT_PROFILE` (thorough|balanced|fast|turbo).
   Read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/effort-profile-{profile}.md`.
