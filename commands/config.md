@@ -93,7 +93,13 @@ Which setting would you like to change?
 Type a number (1-5):
 ```
 
-Parse the user's freeform response to determine which setting was selected.
+Parse the user's freeform response using these rules:
+- Accept only a single digit `1`, `2`, `3`, `4`, or `5`, with optional leading/trailing whitespace.
+- Treat anything else as invalid (punctuation like `2.`, words like `two`, mixed text like `option 2`, multiple numbers, empty input, or out-of-range values like `0` or `6`).
+- If invalid, show `Invalid selection. Please type a single number from 1 to 5.` and AskUserQuestion again with the same question text.
+- Repeat until a valid selection is obtained.
+
+Map: 1 = Effort, 2 = Autonomy, 3 = Planning tracking, 4 = Auto push, 5 = Model Profile.
 
 **Step 2.5:** If "Model Profile" was selected (5), AskUserQuestion with 2 options:
 - Use preset profile (quality/balanced/budget)

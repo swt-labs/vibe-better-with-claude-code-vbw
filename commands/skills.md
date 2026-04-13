@@ -70,7 +70,15 @@ Available skills for installation:
 Type numbers to install (comma-separated), or 'skip' to continue:
 ```
 
-Parse the user's freeform response for selected numbers. If the user types "skip", proceed without installing.
+Parse the user's freeform response using these rules:
+- Accept comma-separated digits corresponding to the numbered items (e.g., `1,3` or `2, 4, 5`).
+- Accept the word `skip` (case-insensitive) to proceed without installing.
+- Trim whitespace around each token. Ignore empty tokens from trailing commas.
+- Reject out-of-range numbers (less than 1 or greater than the list count), non-numeric tokens (other than `skip`), duplicate numbers, and empty input.
+- If invalid, show `Invalid selection. Type numbers (comma-separated) to install, or 'skip' to continue.` and AskUserQuestion again with the same question text.
+- Repeat until a valid selection or `skip` is obtained.
+
+If the user typed `skip`, proceed without installing (jump to Step 6 output).
 
 ### Step 5b: Choose installation scope
 
@@ -78,7 +86,7 @@ AskUserQuestion (single select) — "Where should these skills be installed?":
 - **Project (Recommended)** — "Installed to `./.claude/skills/`, scoped to this project only."
 - **Global** — "Installed to `~/.agents/skills/`, available in all projects."
 
-Store the choice as SCOPE. If "Skip" was selected in Step 5: skip this step.
+Store the choice as SCOPE. If the user typed `skip` in Step 5: skip this step.
 
 ### Step 6: Install selected
 
