@@ -248,6 +248,12 @@ QA verification summary (pre-extracted from VERIFICATION.md):
 ## Guard
 
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+- **Debug session override:** If `$ARGUMENTS` does NOT contain an explicit phase number OR `$ARGUMENTS` contains `--session`, check for an active debug session before any phase-related guards:
+  ```bash
+  eval "$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/debug-session-state.sh get-or-latest .vbw-planning 2>/dev/null)" 2>/dev/null || true
+  ```
+  If `active_session != none` AND session `status` is `uat_pending` or `uat_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → skip ALL remaining guards and jump directly to `<debug_session_uat>` below.
+  If phases exist (`phase_count > 0`) AND `$ARGUMENTS` does NOT contain `--session`, skip this override — standard phase UAT takes priority.
 - **Phase-detect error guard (NON-NEGOTIABLE):** If Phase state (from Context above) contains `phase_detect_error=true`, display: "⚠ Phase detection failed. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh` manually to debug." STOP. Do NOT fall back to phase-dir scanning or ad-hoc `VERIFICATION.md` checks when phase-detect failed.
 - **Verify-context error guard (NON-NEGOTIABLE):** If the pre-computed verify context block contains `verify_context_error=true` or `verify_context=unavailable`, display: "⚠ Verify context compilation failed. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh .vbw-planning/phases/{NN}-{slug}` manually to debug." STOP. Do NOT improvise by reading individual PLAN/SUMMARY files unless the user explicitly targeted a different phase number (see Step 1).
 - **Brownfield normalization:** If Phase state (from Context above) contains `misnamed_plans=true`, normalize all phase directories before proceeding:
@@ -335,6 +341,81 @@ QA verification summary (pre-extracted from VERIFICATION.md):
     _gate_all_addressed=$(printf '%s\n' "$_gate_output" | awk -F= '/^qa_gate_known_issues_all_addressed=/{print $2; exit}')
     ```
     If `_gate_all_addressed=true` and `_gate_routing=PROCEED_TO_UAT`, the known issues were resolved or accepted as non-blocking — proceed to UAT. Otherwise STOP: "Phase {NN} still has unresolved tracked known issues. Run `/vbw:vibe` to continue QA remediation before UAT."
+
+## Debug Session Routing
+
+<debug_session_uat>
+**Before entering phase-scoped UAT**, check for an active debug session. This handles standalone debug fixes that went through `/vbw:qa` and are now ready for user acceptance.
+
+```bash
+eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh get-or-latest .vbw-planning)"
+```
+
+**Routing decision:**
+- If `$ARGUMENTS` contains an explicit phase number AND no `--session` flag → skip debug-session routing, use standard phase UAT flow below.
+- If `active_session != none` AND session `status` is `uat_pending` or `uat_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → enter debug-session UAT mode (below). If `phase_count > 0` and no `--session` flag, skip debug-session routing — standard phase UAT takes priority.
+- Otherwise → skip debug-session routing, continue to standard phase UAT Steps.
+
+**Debug-session UAT mode:**
+When routed here, skip the standard phase-resolution Steps entirely. Instead:
+
+1. Read the debug session's UAT context:
+   ```bash
+   UAT_CONTEXT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/compile-debug-session-context.sh "$session_file" uat)
+   ```
+
+2. Increment the UAT round:
+   ```bash
+   eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh increment-uat .vbw-planning)"
+   ```
+
+3. Generate 1-3 UAT checkpoints from the session context. These must require HUMAN judgment:
+   - Reproduce the original bug — is it fixed?
+   - Check related workflows — any regressions visible?
+   - Verify the fix from the user's perspective
+
+4. Present checkpoints one at a time using the same CHECKPOINT + AskUserQuestion pattern from Step 5 below. Apply the same response mapping rules (Step 6) and issue handling (Step 7).
+
+5. After all checkpoints, persist the UAT round to the session file:
+   ```bash
+   UAT_RESULT_JSON=$(cat <<'ENDJSON'
+   {
+     "mode": "uat",
+     "round": {uat_round},
+     "result": "{pass|issues_found}",
+     "checkpoints": [
+       {"id": "{checkpoint-id}", "description": "{checkpoint description}", "result": "pass|skip|issue", "user_response": "{verbatim user response}"}
+     ],
+     "issues": [
+       {"id": "{issue-id}", "description": "{issue description}", "severity": "{critical|major|minor}"}
+     ]
+   }
+   ENDJSON
+   )
+   echo "$UAT_RESULT_JSON" | bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/write-debug-session.sh "$session_file"
+   ```
+
+6. Update session status based on results:
+   - All checkpoints pass (no issues) → `bash .../debug-session-state.sh set-status .vbw-planning complete`
+   - Any issues found → `bash .../debug-session-state.sh set-status .vbw-planning uat_failed`
+
+7. Present debug-session UAT result:
+   ```text
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Debug UAT: Round {uat_round}
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     Session:  {session_id}
+     Result:   {✓ COMPLETE | ✗ ISSUES FOUND}
+     Passed:   {N}
+     Issues:   {N}
+
+   ```
+   - If COMPLETE: `➜ Debug session complete. The fix is verified.`
+   - If ISSUES: `➜ Next: /vbw:debug --resume -- Address UAT issues`
+
+   STOP after presenting. Do not continue to the standard phase UAT steps.
+</debug_session_uat>
 
 ## Steps
 

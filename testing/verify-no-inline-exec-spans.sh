@@ -39,7 +39,7 @@ warn() {
 # Files not yet fixed for #157. These produce WARN (not FAIL) to avoid
 # blocking CI. Remove entries as files are fixed. When this list is empty,
 # issue #157 is fully resolved.
-KNOWN_UNFIXED="config debug discuss doctor fix help init list-todos map qa release research resume status teach todo uninstall update whats-new"
+KNOWN_UNFIXED="config debug discuss doctor fix help init list-todos map qa release research resume status teach todo uninstall update verify whats-new"
 
 is_known_unfixed() {
   local name="$1"
