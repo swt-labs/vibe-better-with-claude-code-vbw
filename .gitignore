@@ -20,7 +20,6 @@ node_modules/
 .claude
 
 # Agents prompt instructions
-.github/copilot-instructions.md
 .github/agents
 .github/hooks
 .github/references
