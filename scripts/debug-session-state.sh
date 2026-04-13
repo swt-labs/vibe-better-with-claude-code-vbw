@@ -53,19 +53,40 @@ read_field() {
   sed -n '/^---$/,/^---$/p' "$file" | grep "^${field}:" | head -1 | sed "s/^${field}:[[:space:]]*//"
 }
 
-# Update frontmatter field in a session file (sed-safe: escapes /, &, \ in value)
+# Update a frontmatter field in a session file, scoped to the YAML frontmatter block only.
+# Uses awk to restrict replacement to lines between the opening and closing --- delimiters.
 update_field() {
   local file="$1" field="$2" value="$3"
-  if grep -q "^${field}:" "$file" 2>/dev/null; then
-    local escaped_value
-    escaped_value=$(printf '%s' "$value" | sed 's/[\/&\\]/\\&/g')
-    sed "s/^${field}:.*/${field}: ${escaped_value}/" "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+  if ! grep -q "^${field}:" "$file" 2>/dev/null; then
+    # Field not present at all — skip
+    if [ "$field" != "updated" ]; then
+      local now
+      now=$(date '+%Y-%m-%d %H:%M:%S')
+      update_field "$file" "updated" "$now"
+    fi
+    return
   fi
+
+  awk -v field="$field" -v value="$value" '
+    BEGIN { in_fm = 0; delim = 0 }
+    $0 == "---" {
+      delim++
+      if (delim == 1) in_fm = 1
+      else if (delim == 2) in_fm = 0
+      print; next
+    }
+    in_fm && $0 ~ ("^" field ":") {
+      print field ": " value
+      next
+    }
+    { print }
+  ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+
   # Always update the 'updated' timestamp
   if [ "$field" != "updated" ]; then
     local now
     now=$(date '+%Y-%m-%d %H:%M:%S')
-    sed "s/^updated:.*/updated: ${now}/" "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+    update_field "$file" "updated" "$now"
   fi
 }
 

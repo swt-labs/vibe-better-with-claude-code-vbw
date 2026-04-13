@@ -51,14 +51,28 @@ fi
 
 NOW=$(date '+%Y-%m-%d %H:%M:%S')
 
-# Update frontmatter field (sed-safe: escapes /, &, \ in value)
+# Update frontmatter field, scoped to the YAML frontmatter block only.
+# Uses awk to restrict replacement to lines between the opening and closing --- delimiters.
 update_frontmatter() {
   local field="$1" value="$2"
-  if grep -q "^${field}:" "$SESSION_FILE" 2>/dev/null; then
-    local escaped_value
-    escaped_value=$(printf '%s' "$value" | sed 's/[\/&\\]/\\&/g')
-    sed "s/^${field}:.*/${field}: ${escaped_value}/" "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
+  if ! grep -q "^${field}:" "$SESSION_FILE" 2>/dev/null; then
+    return
   fi
+
+  awk -v field="$field" -v value="$value" '
+    BEGIN { in_fm = 0; delim = 0 }
+    $0 == "---" {
+      delim++
+      if (delim == 1) in_fm = 1
+      else if (delim == 2) in_fm = 0
+      print; next
+    }
+    in_fm && $0 ~ ("^" field ":") {
+      print field ": " value
+      next
+    }
+    { print }
+  ' "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
 }
 
 # Replace content of a section (from ## Heading to next ## or EOF)
@@ -235,10 +249,11 @@ case "$MODE" in
     # Archive current sections to Remediation History if this is a remediation round
     archive_remediation_round
 
-    # Write sections
+    # Write sections — always replace Investigation and Plan to prevent stale content
+    # after remediation archival (even if the new payload omits them, clear the section)
     replace_section "Issue" "$ISSUE"
-    [ -n "$INVESTIGATION" ] && replace_section "Investigation" "$INVESTIGATION"
-    [ -n "$PLAN" ] && replace_section "Plan" "$PLAN"
+    replace_section "Investigation" "${INVESTIGATION:-_No investigation details provided._}"
+    replace_section "Plan" "${PLAN:-_No plan provided._}"
 
     # Build implementation section
     IMPL_CONTENT=""

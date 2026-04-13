@@ -46,8 +46,7 @@ Resolve or create the debug session before any investigation. Order of precedenc
    eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh get-or-latest .vbw-planning)"
    ```
    - If `active_session=none`: STOP "No active debug session to resume. Start one with: /vbw:debug \"bug description\""
-   - If `active_session=fallback`: inform user which session was auto-selected.
-   - If multiple unresolved sessions exist and no `.active-session` pointer, STOP with disambiguation error listing sessions via `list`.
+   - If `active_session=fallback`: inform user which session was auto-selected (no `.active-session` pointer was set, so the latest unresolved session was chosen automatically).
 
 3. **New session (no --resume, no --session):** Create a fresh session from $ARGUMENTS.
    ```bash

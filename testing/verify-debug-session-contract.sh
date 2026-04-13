@@ -278,7 +278,7 @@ else
   fail "suggest-next.sh qa/verify debug handlers not guarded by phase_count=0"
 fi
 
-# — Portable sed usage (CM3-02) —
+# — Frontmatter-scoped field updates via awk (CM3-02, Copilot-C1-02/03) —
 
 if ! grep -q "sed -i ''" "$ROOT/scripts/debug-session-state.sh" 2>/dev/null; then
   pass "debug-session-state.sh uses portable sed (no BSD-only -i '')"
@@ -286,10 +286,22 @@ else
   fail "debug-session-state.sh uses non-portable sed -i ''"
 fi
 
+if grep -q 'in_fm' "$ROOT/scripts/debug-session-state.sh" 2>/dev/null; then
+  pass "debug-session-state.sh uses awk-based frontmatter-scoped field updates"
+else
+  fail "debug-session-state.sh missing awk-based frontmatter scoping"
+fi
+
 if ! grep -q "sed -i ''" "$ROOT/scripts/write-debug-session.sh" 2>/dev/null; then
   pass "write-debug-session.sh uses portable sed (no BSD-only -i '')"
 else
   fail "write-debug-session.sh uses non-portable sed -i ''"
+fi
+
+if grep -q 'in_fm' "$ROOT/scripts/write-debug-session.sh" 2>/dev/null; then
+  pass "write-debug-session.sh uses awk-based frontmatter-scoped field updates"
+else
+  fail "write-debug-session.sh missing awk-based frontmatter scoping"
 fi
 
 # — Command next-step text includes --session (CM4-01, CM4-02) —
