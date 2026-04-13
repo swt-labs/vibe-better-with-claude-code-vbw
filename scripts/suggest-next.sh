@@ -594,12 +594,26 @@ case "$CMD" in
               case "$effective_result" in
                 pass)
                   suggest "/vbw:verify -- Run UAT on the debug fix"
+                  _qa_debug_handled=true
                   ;;
                 fail|partial)
                   suggest "/vbw:debug --resume -- Address QA failures"
+                  _qa_debug_handled=true
+                  ;;
+                *)
+                  # No result passed — suggest based on session status
+                  case "$_qa_ds_status" in
+                    qa_pending|fix_applied)
+                      suggest "/vbw:qa -- Run QA on the debug fix"
+                      _qa_debug_handled=true
+                      ;;
+                    uat_pending)
+                      suggest "/vbw:verify -- Run UAT on the debug fix"
+                      _qa_debug_handled=true
+                      ;;
+                  esac
                   ;;
               esac
-              _qa_debug_handled=true
               ;;
             qa_failed)
               suggest "/vbw:debug --resume -- Address QA failures"
