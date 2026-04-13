@@ -21,6 +21,7 @@ node_modules/
 
 # Agents prompt instructions
 .github/copilot-instructions.md
+!.github/copilot-instructions.md
 .github/agents
 .github/hooks
 .github/references
