@@ -348,6 +348,20 @@ else
   fail "debug.md resume missing UAT failure context injection"
 fi
 
+# — Resume paths pass correct mode to compile-debug-session-context.sh (CM8-01) —
+
+if grep -q 'compile-debug-session-context\.sh.*qa' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md qa_failed resume passes 'qa' mode to compile-debug-session-context.sh"
+else
+  fail "debug.md qa_failed resume missing 'qa' mode argument"
+fi
+
+if grep -q 'compile-debug-session-context\.sh.*uat' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md uat_failed resume passes 'uat' mode to compile-debug-session-context.sh"
+else
+  fail "debug.md uat_failed resume missing 'uat' mode argument"
+fi
+
 # — Summary —
 
 echo ""
