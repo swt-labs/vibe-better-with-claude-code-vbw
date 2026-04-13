@@ -24,6 +24,8 @@ Recent commits:
 !`git log --oneline -10 2>/dev/null || echo "No git history"`
 ```
 
+Store the plugin root path output above as `VBW_PLUGIN_ROOT` for use in script invocations below.
+
 ## Guard
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
 - No $ARGUMENTS: STOP "Usage: /vbw:debug \"description of the bug or error message\""
@@ -72,7 +74,7 @@ Recent commits:
         if [ $? -ne 0 ]; then echo "$DEBUGGER_MAX_TURNS" >&2; exit 1; fi
         ```
     - Display: `◆ Spawning Debugger (${DEBUGGER_MODEL})...`
-    - **Pre-TeamCreate cleanup:** `bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/clean-stale-teams.sh" 2>/dev/null || true`
+    - **Pre-TeamCreate cleanup:** `bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true`
     - Create team via TeamCreate: `team_name="vbw-debug-{timestamp}"`, `description="Debug: {one-line-bug-summary}"`
     - Before composing task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this bug investigation. Each Debugger task prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. Only include skills whose description matches the investigation at hand (e.g., debugging skills, platform-specific skills for the affected stack).
     - Also evaluate available MCP tools in your system context. If any MCP servers provide debugging, build, test, documentation, or domain-specific capabilities relevant to this investigation, note them in each Debugger's task context so it can use those tools during investigation.
@@ -81,7 +83,7 @@ Recent commits:
     - Wait for completion. Synthesize: strongest evidence + highest confidence wins. Multiple confirmed = contributing factors.
     - Collect pre-existing issues from all debugger responses. De-duplicate by test name and file (keep first error message when the same test+file pair has different messages) — if multiple debuggers report the same pre-existing failure, include it only once.
     - Winning hypothesis with fix: apply + commit `fix({scope}): {description}`
-    - **HARD GATE — Shutdown before presenting results:** Send `shutdown_request` to each teammate, wait for `shutdown_response` (approved=true) delivered via SendMessage tool call (NOT plain text). If a teammate responds in plain text instead of calling SendMessage, re-send the `shutdown_request`. If rejected, re-request (max 3 attempts per teammate — then proceed). Call TeamDelete. **Post-TeamDelete residual cleanup:** `bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/clean-stale-teams.sh" 2>/dev/null || true`. Verify: after TeamDelete, there must be ZERO active teammates. If teardown stalls, advise the user to run `/vbw:doctor --cleanup`. Only THEN present results to user. Failure to shut down leaves agents running and consuming API credits.
+    - **HARD GATE — Shutdown before presenting results:** Send `shutdown_request` to each teammate, wait for `shutdown_response` (approved=true) delivered via SendMessage tool call (NOT plain text). If a teammate responds in plain text instead of calling SendMessage, re-send the `shutdown_request`. If rejected, re-request (max 3 attempts per teammate — then proceed). Call TeamDelete. **Post-TeamDelete residual cleanup:** `bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true`. Verify: after TeamDelete, there must be ZERO active teammates. If teardown stalls, advise the user to run `/vbw:doctor --cleanup`. Only THEN present results to user. Failure to shut down leaves agents running and consuming API credits.
 
     **Path B: Standard** (all other cases):
     - Resolve Debugger model:
