@@ -588,7 +588,7 @@ case "$CMD" in
         eval "$_qa_ds_output" 2>/dev/null || true
         # shellcheck disable=SC2154
         if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
-          _qa_ds_status=$(grep -m1 '^status:' "$session_file" 2>/dev/null | sed 's/^status:[[:space:]]*//' || true)
+          _qa_ds_status="${status:-}"
           case "$_qa_ds_status" in
             qa_pending|uat_pending|fix_applied)
               case "$effective_result" in
@@ -716,7 +716,7 @@ case "$CMD" in
         eval "$_verify_ds_output" 2>/dev/null || true
         # shellcheck disable=SC2154
         if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
-          _verify_ds_status=$(grep -m1 '^status:' "$session_file" 2>/dev/null | sed 's/^status:[[:space:]]*//' || true)
+          _verify_ds_status="${status:-}"
           if [ "$_verify_ds_status" = "uat_failed" ]; then
             suggest "/vbw:debug --resume -- Address UAT issues"
             _verify_debug_handled=true
@@ -762,7 +762,7 @@ case "$CMD" in
         eval "$_ds_output" 2>/dev/null || true
         # shellcheck disable=SC2154
         if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
-          _ds_status=$(grep -m1 '^status:' "$session_file" 2>/dev/null | sed 's/^status:[[:space:]]*//' || true)
+          _ds_status="${status:-}"
         fi
       fi
     fi

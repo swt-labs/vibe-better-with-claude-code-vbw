@@ -216,6 +216,10 @@ uat_last_result: pending
 
 ## Investigation
 
+### Hypotheses
+
+### Root Cause
+
 ## Plan
 
 ## Implementation

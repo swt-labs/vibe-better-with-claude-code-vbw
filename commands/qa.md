@@ -99,7 +99,7 @@ fi`
 
 ## Guard
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
-- **Debug session override:** If `$ARGUMENTS` does NOT contain an explicit phase number, check for an active debug session before any phase-related guards:
+- **Debug session override:** If `$ARGUMENTS` does NOT contain an explicit phase number OR `$ARGUMENTS` contains `--session`, check for an active debug session before any phase-related guards:
   ```bash
   eval "$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/debug-session-state.sh get-or-latest .vbw-planning 2>/dev/null)" 2>/dev/null || true
   ```
