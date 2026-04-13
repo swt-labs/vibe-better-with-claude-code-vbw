@@ -187,11 +187,13 @@ archive_remediation_round() {
   plan=$(extract_section "Plan" "$SESSION_FILE")
   impl=$(extract_section "Implementation" "$SESSION_FILE")
 
-  # Only archive if there's actual content (not just template placeholders)
+  # Only archive if there's substantive content beyond template headings/placeholders.
+  # Strip markdown headings and blank lines; check if anything remains.
   local has_content=false
-  case "$inv" in *[a-zA-Z0-9]*) has_content=true ;; esac
-  case "$plan" in *[a-zA-Z0-9]*) has_content=true ;; esac
-  case "$impl" in *[a-zA-Z0-9]*) has_content=true ;; esac
+  for _sec in "$inv" "$plan" "$impl"; do
+    _stripped=$(printf '%s\n' "$_sec" | grep -v '^#\|^[[:space:]]*$' || true)
+    case "$_stripped" in *[a-zA-Z0-9]*) has_content=true; break ;; esac
+  done
   $has_content || return 0
 
   # Build archive entry
@@ -323,10 +325,10 @@ case "$MODE" in
         QA_ENTRY+=$'\n'"| Check | Status | Evidence |"$'\n'
         QA_ENTRY+="| ----- | ------ | -------- |"$'\n'
         for i in $(seq 0 $((CHECKS_TOTAL - 1))); do
-          D_ID=$(echo "$json" | jq -r ".checks[$i].id // \"C$((i+1))\"" | sed 's/|/\\|/g')
-          D_DESC=$(echo "$json" | jq -r ".checks[$i].description // \"Check $((i+1))\"" | sed 's/|/\\|/g')
-          D_STATUS=$(echo "$json" | jq -r ".checks[$i].status // \"—\"" | sed 's/|/\\|/g')
-          D_EVIDENCE=$(echo "$json" | jq -r ".checks[$i].evidence // \"—\"" | sed 's/|/\\|/g')
+          D_ID=$(echo "$json" | jq -r ".checks[$i].id // \"C$((i+1))\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
+          D_DESC=$(echo "$json" | jq -r ".checks[$i].description // \"Check $((i+1))\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
+          D_STATUS=$(echo "$json" | jq -r ".checks[$i].status // \"—\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
+          D_EVIDENCE=$(echo "$json" | jq -r ".checks[$i].evidence // \"—\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
           QA_ENTRY+="| $D_ID: $D_DESC | $D_STATUS | $D_EVIDENCE |"$'\n'
         done
       fi
@@ -348,9 +350,9 @@ case "$MODE" in
         QA_ENTRY+=$'\n'"| Check | Status | Detail |"$'\n'
         QA_ENTRY+="| ----- | ------ | ------ |"$'\n'
         for i in $(seq 0 $((DETAIL_COUNT - 1))); do
-          D_NAME=$(echo "$json" | jq -r ".details[$i].name // \"Check $((i+1))\"" | sed 's/|/\\|/g')
-          D_STATUS=$(echo "$json" | jq -r ".details[$i].status // \"—\"" | sed 's/|/\\|/g')
-          D_DETAIL=$(echo "$json" | jq -r ".details[$i].detail // \"—\"" | sed 's/|/\\|/g')
+          D_NAME=$(echo "$json" | jq -r ".details[$i].name // \"Check $((i+1))\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
+          D_STATUS=$(echo "$json" | jq -r ".details[$i].status // \"—\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
+          D_DETAIL=$(echo "$json" | jq -r ".details[$i].detail // \"—\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
           QA_ENTRY+="| $D_NAME | $D_STATUS | $D_DETAIL |"$'\n'
         done
       fi
