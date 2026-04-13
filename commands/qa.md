@@ -224,7 +224,7 @@ When routed here, skip the standard phase-resolution Steps entirely. Instead:
      Failed:   {list or "None"}
 
    ```
-   - If PASS: `➜ Next: /vbw:verify -- Run UAT on the debug fix`
+   - If PASS: `➜ Next: /vbw:verify --session -- Run UAT on the debug fix`
    - If FAIL/PARTIAL: `➜ Next: /vbw:debug --resume -- Address QA failures and re-investigate`
 
    STOP after presenting. Do not continue to the standard phase QA steps.

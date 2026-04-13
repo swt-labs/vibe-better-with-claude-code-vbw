@@ -284,6 +284,27 @@ else
   fail "write-debug-session.sh uses non-portable sed -i ''"
 fi
 
+# — Command next-step text includes --session (CM4-01, CM4-02) —
+
+if grep -q '\-\-session.*Verify the debug fix' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md next-step for qa_pending includes --session"
+else
+  fail "debug.md next-step for qa_pending missing --session flag"
+fi
+
+if grep -q '\-\-session.*Run UAT on the debug fix' "$ROOT/commands/qa.md" 2>/dev/null; then
+  pass "qa.md next-step for PASS includes --session"
+else
+  fail "qa.md next-step for PASS missing --session flag"
+fi
+
+if grep -q 'uat_pending.*\-\-session' "$ROOT/commands/debug.md" 2>/dev/null || \
+   grep -q '\-\-session.*uat_pending' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md resume routing for uat_pending includes --session"
+else
+  fail "debug.md resume routing for uat_pending missing --session flag"
+fi
+
 # — Summary —
 
 echo ""

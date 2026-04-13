@@ -55,9 +55,9 @@ Resolve or create the debug session before any investigation. Order of precedenc
 
 Store the resolved `session_id` and `session_file` for use in Steps below.
 
-If resuming a session with `status=qa_pending`: skip investigation, display current session state, and suggest `/vbw:qa` instead.
+If resuming a session with `status=qa_pending`: skip investigation, display current session state, and suggest `/vbw:qa --session` instead.
 If resuming a session with `status=qa_failed`: load failure context via `compile-debug-session-context.sh`, update status to `investigating` via `write-debug-session.sh` (mode=status), then continue investigation from Step 3 using the QA failure details as the new investigation focus.
-If resuming a session with `status=uat_pending`: skip investigation, display current session state, and suggest `/vbw:verify` instead.
+If resuming a session with `status=uat_pending`: skip investigation, display current session state, and suggest `/vbw:verify --session` instead.
 If resuming a session with `status=uat_failed`: load failure context via `compile-debug-session-context.sh`, update status to `investigating` via `write-debug-session.sh` (mode=status), then continue investigation from Step 3 using the UAT failure details as the new investigation focus.
 If resuming a session with `status=complete`: STOP "This debug session is already complete. Start a new one with: /vbw:debug \"bug description\""
 </debug_session_routing>
@@ -205,7 +205,7 @@ This is **display-only**. Do NOT edit STATE.md, do NOT add todos, do NOT invoke 
 Session-aware next step (based on what happened during investigation):
 
 - If a fix was committed and session status is `qa_pending`:
-  `➜ Next: /vbw:qa -- Verify the debug fix`
+  `➜ Next: /vbw:qa --session -- Verify the debug fix`
 - If investigation completed but no fix was applied (session status is `investigating`):
   `➜ Next: /vbw:debug --resume -- Continue investigation and apply fix`
 - If session was not created (error or guard stopped execution):
