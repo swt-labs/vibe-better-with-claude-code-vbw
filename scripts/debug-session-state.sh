@@ -213,9 +213,8 @@ get_active_session_path() {
     local file_status
     file_status=$(read_field "$session_path" "status")
     if [ "$file_status" = "complete" ]; then
-      if safe_move_session "$session_path" "$COMPLETED_DIR" > /dev/null; then
-        rm -f "$ACTIVE_FILE"
-      fi
+      safe_move_session "$session_path" "$COMPLETED_DIR" > /dev/null 2>&1 || true
+      rm -f "$ACTIVE_FILE"
       return
     fi
     echo "$session_path"
@@ -225,10 +224,11 @@ get_active_session_path() {
   local legacy_path="$DEBUG_DIR/$session_name"
   if [ -f "$legacy_path" ] && [ ! -L "$legacy_path" ]; then
     local migrated
-    migrated=$(migrate_legacy_session "$legacy_path")
-    # Only return path if it landed in active/ (completed sessions are not active)
-    if [[ "$migrated" == "$ACTIVE_DIR/"* ]]; then
-      echo "$migrated"
+    if migrated=$(migrate_legacy_session "$legacy_path"); then
+      # Only return path if it landed in active/ (completed sessions are not active)
+      if [[ "$migrated" == "$ACTIVE_DIR/"* ]]; then
+        echo "$migrated"
+      fi
     fi
     return
   fi
@@ -252,7 +252,7 @@ find_latest_unresolved() {
   local legacy_f
   for legacy_f in "$DEBUG_DIR"/*.md; do
     [ -f "$legacy_f" ] && [ ! -L "$legacy_f" ] || continue
-    migrate_legacy_session "$legacy_f" > /dev/null
+    migrate_legacy_session "$legacy_f" > /dev/null 2>&1 || true
   done
   # Only scan active/ — completed sessions are excluded by definition
   if [ ! -d "$ACTIVE_DIR" ]; then
@@ -414,7 +414,10 @@ ENDSESSION
       # Check legacy flat location and migrate
       legacy_path="$DEBUG_DIR/$SESSION_NAME"
       if [ -f "$legacy_path" ] && [ ! -L "$legacy_path" ]; then
-        SESSION_PATH=$(migrate_legacy_session "$legacy_path")
+        if ! SESSION_PATH=$(migrate_legacy_session "$legacy_path"); then
+          echo "Error: could not migrate legacy session: $SESSION_NAME" >&2
+          exit 1
+        fi
       else
         SESSION_PATH=""
       fi
@@ -508,7 +511,7 @@ ENDSESSION
     # Migrate legacy flat-path sessions first
     for f in "$DEBUG_DIR"/*.md; do
       [ -f "$f" ] && [ ! -L "$f" ] || continue
-      migrate_legacy_session "$f" > /dev/null
+      migrate_legacy_session "$f" > /dev/null 2>&1 || true
     done
     COUNT=0
     HEALED_FILES=""
@@ -522,8 +525,10 @@ ENDSESSION
         # Self-heal: if active/ session has complete status, move to completed/
         if [ "$local_status" = "complete" ]; then
           local_fname=$(basename "$f")
-          if safe_move_session "$f" "$COMPLETED_DIR" > /dev/null; then
+          heal_location="active"
+          if safe_move_session "$f" "$COMPLETED_DIR" > /dev/null 2>&1; then
             HEALED_FILES="${HEALED_FILES}${local_fname}:"
+            heal_location="completed"
           fi
           if [ -f "$ACTIVE_FILE" ]; then
             pointer=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
@@ -531,7 +536,7 @@ ENDSESSION
               rm -f "$ACTIVE_FILE"
             fi
           fi
-          echo "session=${local_id}|${local_status}|${local_title}|completed"
+          echo "session=${local_id}|${local_status}|${local_title}|${heal_location}"
           COUNT=$((COUNT + 1))
           continue
         fi
