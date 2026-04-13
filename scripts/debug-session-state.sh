@@ -211,9 +211,11 @@ get_active_session_path() {
     return
   fi
   # Check completed/ (session was completed but pointer not cleared)
+  # Do not return completed/ path — completed sessions are not active.
+  # Clear stale pointer so next call doesn't repeat the lookup.
   local completed_path="$COMPLETED_DIR/$session_name"
   if [ -f "$completed_path" ] && [ ! -L "$completed_path" ]; then
-    echo "$completed_path"
+    rm -f "$ACTIVE_FILE"
     return
   fi
   # Stale pointer, missing, or symlink — do not follow

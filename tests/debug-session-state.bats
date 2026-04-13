@@ -452,6 +452,26 @@ EOF
   [ ! -f "$VBW_PLANNING_DIR/debugging/$session_name" ]
 }
 
+@test "get returns none for stale pointer to completed session" {
+  # Create a session via normal flow, then complete it
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "stale-ptr")"
+  local fname
+  fname=$(basename "$session_file")
+  bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$VBW_PLANNING_DIR" complete > /dev/null
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+
+  # Simulate stale pointer (e.g., from earlier buggy run or race condition)
+  echo "$fname" > "$VBW_PLANNING_DIR/debugging/.active-session"
+
+  # get should detect pointer targets completed/ and return none
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=none"* ]]
+  # Stale pointer should be cleaned up
+  [ ! -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+}
+
 @test "list does not double-count self-healed sessions" {
   # Place one session with complete status in active/ (will be self-healed)
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "double-a")"
