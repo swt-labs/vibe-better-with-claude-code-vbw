@@ -194,7 +194,6 @@ get_active_session_path() {
       mkdir -p "$COMPLETED_DIR"
       mv "$session_path" "$COMPLETED_DIR/$session_name"
       rm -f "$ACTIVE_FILE"
-      echo "$COMPLETED_DIR/$session_name"
       return
     fi
     echo "$session_path"
@@ -205,7 +204,10 @@ get_active_session_path() {
   if [ -f "$legacy_path" ] && [ ! -L "$legacy_path" ]; then
     local migrated
     migrated=$(migrate_legacy_session "$legacy_path")
-    echo "$migrated"
+    # Only return path if it landed in active/ (completed sessions are not active)
+    if [[ "$migrated" == "$ACTIVE_DIR/"* ]]; then
+      echo "$migrated"
+    fi
     return
   fi
   # Check completed/ (session was completed but pointer not cleared)
@@ -489,6 +491,7 @@ ENDSESSION
       migrate_legacy_session "$f" > /dev/null
     done
     COUNT=0
+    HEALED_FILES=""
     # List active sessions
     if [ -d "$ACTIVE_DIR" ]; then
       for f in "$ACTIVE_DIR"/*.md; do
@@ -501,6 +504,7 @@ ENDSESSION
           local_fname=$(basename "$f")
           mkdir -p "$COMPLETED_DIR"
           mv "$f" "$COMPLETED_DIR/$local_fname"
+          HEALED_FILES="${HEALED_FILES}${local_fname}:"
           if [ -f "$ACTIVE_FILE" ]; then
             pointer=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
             if [ "$pointer" = "$local_fname" ]; then
@@ -519,6 +523,11 @@ ENDSESSION
     if [ -d "$COMPLETED_DIR" ]; then
       for f in "$COMPLETED_DIR"/*.md; do
         [ -f "$f" ] && [ ! -L "$f" ] || continue
+        # Skip files already counted during self-heal from active/
+        local_fname=$(basename "$f")
+        case "$HEALED_FILES" in
+          *"${local_fname}:"*) continue ;;
+        esac
         local_id=$(read_field "$f" "session_id")
         local_status=$(read_field "$f" "status")
         local_title=$(read_field "$f" "title")

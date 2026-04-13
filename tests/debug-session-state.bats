@@ -380,6 +380,114 @@ teardown() {
   [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
 }
 
+@test "get returns none after self-heal of completed session in active" {
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "selfheal-get")"
+  local fname
+  fname=$(basename "$session_file")
+
+  # Simulate write-debug-session.sh setting complete without set-status
+  awk 'BEGIN{in_fm=0} /^---$/{in_fm=!in_fm} in_fm && /^status:/{print "status: complete";next} {print}' \
+    "$session_file" > "${session_file}.tmp" && mv "${session_file}.tmp" "$session_file"
+
+  # get should self-heal and return none (completed session is not active)
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=none"* ]]
+  # File moved to completed/, pointer cleared
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+}
+
+@test "get-or-latest falls back after self-heal of completed session" {
+  # Create session A (will be completed)
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "fallback-a")"
+  local fname_a session_file_a
+  fname_a=$(basename "$session_file")
+  session_file_a="$session_file"
+
+  # Create session B (remains active)
+  sleep 1  # ensure different timestamp
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "fallback-b")"
+  local fname_b
+  fname_b=$(basename "$session_file")
+
+  # Set pointer back to A, then make A complete
+  echo "$fname_a" > "$VBW_PLANNING_DIR/debugging/.active-session"
+  awk 'BEGIN{in_fm=0} /^---$/{in_fm=!in_fm} in_fm && /^status:/{print "status: complete";next} {print}' \
+    "$session_file_a" > "${session_file_a}.tmp" && mv "${session_file_a}.tmp" "$session_file_a"
+
+  # get-or-latest should self-heal A, then fall back to B
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=fallback"* ]]
+  [[ "$output" == *"fallback-b"* ]]
+}
+
+@test "get returns none after legacy migration of completed session" {
+  # Create a legacy flat-path session with complete status
+  local session_name="20240101-120000-legacy-done.md"
+  mkdir -p "$VBW_PLANNING_DIR/debugging"
+  cat > "$VBW_PLANNING_DIR/debugging/$session_name" << 'EOF'
+---
+session_id: 20240101-120000-legacy-done
+title: legacy-done
+status: complete
+created: 2024-01-01 12:00:00
+updated: 2024-01-01 12:00:00
+qa_round: 0
+qa_last_result: pending
+uat_round: 0
+uat_last_result: pending
+---
+# Legacy session
+EOF
+  echo "$session_name" > "$VBW_PLANNING_DIR/debugging/.active-session"
+
+  # get should migrate to completed/ and return none
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=none"* ]]
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/$session_name" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/$session_name" ]
+}
+
+@test "list does not double-count self-healed sessions" {
+  # Place one session with complete status in active/ (will be self-healed)
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "double-a")"
+  local fname_a
+  fname_a=$(basename "$session_file")
+  awk 'BEGIN{in_fm=0} /^---$/{in_fm=!in_fm} in_fm && /^status:/{print "status: complete";next} {print}' \
+    "$session_file" > "${session_file}.tmp" && mv "${session_file}.tmp" "$session_file"
+
+  # Place one session already in completed/
+  mkdir -p "$VBW_PLANNING_DIR/debugging/completed"
+  local session_name_b="20240101-120000-double-b.md"
+  cat > "$VBW_PLANNING_DIR/debugging/completed/$session_name_b" << 'EOF'
+---
+session_id: 20240101-120000-double-b
+title: double-b
+status: complete
+created: 2024-01-01 12:00:00
+updated: 2024-01-01 12:00:00
+qa_round: 0
+qa_last_result: pending
+uat_round: 0
+uat_last_result: pending
+---
+# Already completed
+EOF
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" list "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  # Exactly 2 sessions, not 3
+  [[ "$output" == *"session_count=2"* ]]
+  # Each session appears exactly once
+  local count
+  count=$(echo "$output" | grep -c "^session=")
+  [ "$count" -eq 2 ]
+}
+
 # ── unknown command ──────────────────────────────────────
 
 @test "unknown command fails with error" {

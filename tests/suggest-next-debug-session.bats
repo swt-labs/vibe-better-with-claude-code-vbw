@@ -17,9 +17,13 @@ teardown() {
 create_debug_session() {
   local status_val="$1"
   local slug="${2:-test-bug}"
-  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/debugging/active"
+  local subdir="active"
+  if [ "$status_val" = "complete" ]; then
+    subdir="completed"
+  fi
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/debugging/$subdir"
   local session_id="20250101-120000-${slug}"
-  local session_file="$TEST_TEMP_DIR/.vbw-planning/debugging/active/${session_id}.md"
+  local session_file="$TEST_TEMP_DIR/.vbw-planning/debugging/$subdir/${session_id}.md"
 
   cat > "$session_file" <<EOF
 ---
@@ -55,7 +59,10 @@ Test issue.
 ## UAT
 EOF
 
-  echo "${session_id}.md" > "$TEST_TEMP_DIR/.vbw-planning/debugging/.active-session"
+  # Only set active pointer for non-complete sessions (set-status complete clears it)
+  if [ "$status_val" != "complete" ]; then
+    echo "${session_id}.md" > "$TEST_TEMP_DIR/.vbw-planning/debugging/.active-session"
+  fi
 }
 
 @test "suggest-next debug with investigating session suggests resume" {
@@ -96,11 +103,13 @@ EOF
   [[ "$output" == *"UAT issues"* ]]
 }
 
-@test "suggest-next debug with complete session suggests status" {
+@test "suggest-next debug with complete session suggests fix" {
+  # Complete sessions live in completed/ with no active pointer —
+  # suggest-next sees no active session and suggests starting new work
   create_debug_session "complete"
   run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:status"* ]]
+  [[ "$output" == *"/vbw:fix"* ]]
 }
 
 @test "suggest-next debug with no session suggests fix" {

@@ -59,13 +59,12 @@ get_suggestion() {
   # Step 3: UAT Pass
   echo '{"mode":"uat","round":1,"result":"pass","checkpoints":[{"description":"Button click works","result":"pass","user_response":"Verified"}],"summary":"All checkpoints pass."}' \
     | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
-  echo '{"mode":"status","status":"complete"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  # Use set-status for complete transition (handles move to completed/ and pointer cleanup)
+  bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$PLANNING_DIR" complete > /dev/null
 
-  # Verify final state
-  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
-  [ "$status" = "complete" ]
-  # Self-healing moves completed session to debugging/completed/ — update path
-  SESSION_FILE="$session_file"
+  # set-status complete moves session from active/ to completed/
+  SESSION_FILE="$PLANNING_DIR/debugging/completed/$(basename "$SESSION_FILE")"
+  [ -f "$SESSION_FILE" ]
   [[ "$SESSION_FILE" == *"/debugging/completed/"* ]]
 
   # Verify file has all sections populated
@@ -163,12 +162,13 @@ get_suggestion() {
   echo '{"mode":"status","status":"uat_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
   echo '{"mode":"uat","round":2,"result":"pass","checkpoints":[{"description":"Mobile layout","result":"pass"},{"description":"Desktop layout","result":"pass"},{"description":"Tablet","result":"skip"}],"summary":"All good."}' \
     | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
-  echo '{"mode":"status","status":"complete"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
 
-  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
-  [ "$status" = "complete" ]
-  # Self-healing moves completed session to debugging/completed/ — update path
-  SESSION_FILE="$session_file"
+  # Use set-status for complete transition (handles move to completed/ and pointer cleanup)
+  bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$PLANNING_DIR" complete > /dev/null
+
+  # set-status complete moves session from active/ to completed/
+  SESSION_FILE="$PLANNING_DIR/debugging/completed/$(basename "$SESSION_FILE")"
+  [ -f "$SESSION_FILE" ]
   [[ "$SESSION_FILE" == *"/debugging/completed/"* ]]
 
   # Remediation history should exist
@@ -211,10 +211,10 @@ get_suggestion() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"/vbw:debug --resume"* ]]
 
-  # Complete
-  echo '{"mode":"status","status":"complete"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
-  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
-  [ "$status" = "complete" ]
+  # Complete — use set-status for proper move to completed/
+  bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$PLANNING_DIR" complete > /dev/null
+  # Verify session moved to completed/
+  [ -f "$PLANNING_DIR/debugging/completed/$(basename "$SESSION_FILE")" ]
 }
 
 # ── compile-debug-session-context produces usable output ──
