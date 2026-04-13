@@ -52,7 +52,7 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
 
 7. **Pick up todo and present workflows:** Use the `section` and `state_path` values from the script output. Perform these operations in order:
    (a) Remove the todo's `line` value from the todo section in STATE.md. If no todos remain, replace with "None."
-    (b) Log under `## Activity Log` (or the first heading beginning with `## Activity`) with format `- {YYYY-MM-DD}: Picked up todo: {text}`.
+   (b) Log under `## Activity Log` (or the first heading beginning with `## Activity`) with format `- {YYYY-MM-DD}: Picked up todo: {text}`.
    (c) Strip metadata from the todo text: remove any trailing `(added YYYY-MM-DD)` date tag and any `(ref:HASH)` tag. Store the cleaned text as `CLEANED_TEXT`. Store the ref hash (if non-null) as `REF`.
    (d) Display as plain text (do NOT use AskUserQuestion):
    ```text
