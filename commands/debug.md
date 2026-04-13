@@ -35,7 +35,7 @@ Store the plugin root path output above as `VBW_PLUGIN_ROOT` for use in script i
 <debug_session_routing>
 Resolve or create the debug session before any investigation. Order of precedence:
 
-1. **Explicit `--session <id>`:** Resume the named session.
+1. **Explicit `--session <id>`:** Extract `SESSION_ID` — the token immediately following `--session` in $ARGUMENTS. If `--session` is present but no id follows it, STOP: `"--session requires a session id."` Resume the named session:
    ```bash
    eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh resume .vbw-planning "$SESSION_ID")"
    ```
@@ -48,9 +48,10 @@ Resolve or create the debug session before any investigation. Order of precedenc
    - If `active_session=none`: STOP "No active debug session to resume. Start one with: /vbw:debug \"bug description\""
    - If `active_session=fallback`: inform user which session was auto-selected (no `.active-session` pointer was set, so the latest unresolved session was chosen automatically).
 
-3. **New session (no --resume, no --session):** Create a fresh session from $ARGUMENTS.
+3. **New session (no --resume, no --session):** Create a fresh session from $ARGUMENTS. Strip known flags (`--competing`, `--parallel`, `--serial`) and any `(ref:HASH)` suffix from $ARGUMENTS before computing the slug — these are routing/ref metadata, not part of the bug description.
    ```bash
-   SLUG=$(printf '%s' "$ARGUMENTS" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
+   BUG_DESC=$(printf '%s' "$ARGUMENTS" | sed -E 's/[[:space:]]*\(ref:[^)]+\)//g' | sed -E 's/(^|[[:space:]])--(competing|parallel|serial)([[:space:]]|$)/ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | tr -s '[:space:]' ' ')
+   SLUG=$(printf '%s' "$BUG_DESC" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
    eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh start .vbw-planning "$SLUG")"
    ```
 
