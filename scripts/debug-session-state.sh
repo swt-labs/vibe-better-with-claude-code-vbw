@@ -53,11 +53,13 @@ read_field() {
   sed -n '/^---$/,/^---$/p' "$file" | grep "^${field}:" | head -1 | sed "s/^${field}:[[:space:]]*//"
 }
 
-# Update frontmatter field in a session file
+# Update frontmatter field in a session file (sed-safe: escapes /, &, \ in value)
 update_field() {
   local file="$1" field="$2" value="$3"
   if grep -q "^${field}:" "$file" 2>/dev/null; then
-    sed -i '' "s/^${field}:.*/${field}: ${value}/" "$file"
+    local escaped_value
+    escaped_value=$(printf '%s' "$value" | sed 's/[\/&\\]/\\&/g')
+    sed -i '' "s/^${field}:.*/${field}: ${escaped_value}/" "$file"
   fi
   # Always update the 'updated' timestamp
   if [ "$field" != "updated" ]; then

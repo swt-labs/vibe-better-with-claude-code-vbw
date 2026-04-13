@@ -36,6 +36,14 @@ teardown() {
   [[ "$output" == *"requires 'issue'"* ]]
 }
 
+@test "investigation mode handles title with sed metacharacters" {
+  run bash -c 'echo '"'"'{"mode":"investigation","issue":"Fix crash in src/lib/parser.sh & helpers","hypotheses":[],"root_cause":"test","plan":"test","changed_files":[],"commit":"abc"}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"'
+  [ "$status" -eq 0 ]
+
+  # Title with / and & should be written correctly
+  grep -q "Fix crash in src/lib/parser.sh & helpers" "$SESSION_FILE"
+}
+
 # ── qa mode (array format) ───────────────────────────────
 
 @test "qa mode handles checks as array of objects" {

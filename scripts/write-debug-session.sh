@@ -51,11 +51,13 @@ fi
 
 NOW=$(date '+%Y-%m-%d %H:%M:%S')
 
-# Update frontmatter field
+# Update frontmatter field (sed-safe: escapes /, &, \ in value)
 update_frontmatter() {
   local field="$1" value="$2"
   if grep -q "^${field}:" "$SESSION_FILE" 2>/dev/null; then
-    sed -i '' "s/^${field}:.*/${field}: ${value}/" "$SESSION_FILE"
+    local escaped_value
+    escaped_value=$(printf '%s' "$value" | sed 's/[\/&\\]/\\&/g')
+    sed -i '' "s/^${field}:.*/${field}: ${escaped_value}/" "$SESSION_FILE"
   fi
 }
 
