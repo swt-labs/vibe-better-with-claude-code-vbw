@@ -306,6 +306,10 @@ ENDSESSION
       echo "Error: session file not found: $SESSION_PATH" >&2
       exit 1
     fi
+    if [ -L "$SESSION_PATH" ]; then
+      echo "Error: refusing to resume symlink session file: $SESSION_PATH" >&2
+      exit 1
+    fi
     echo "$SESSION_NAME" > "$ACTIVE_FILE"
     echo "active_session=true"
     print_session_metadata "$SESSION_PATH"
@@ -366,7 +370,7 @@ ENDSESSION
     fi
     COUNT=0
     for f in "$DEBUG_DIR"/*.md; do
-      [ -f "$f" ] || continue
+      [ -f "$f" ] && [ ! -L "$f" ] || continue
       local_id=$(read_field "$f" "session_id")
       local_status=$(read_field "$f" "status")
       local_title=$(read_field "$f" "title")
