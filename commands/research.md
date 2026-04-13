@@ -35,7 +35,7 @@ Current project:
     ```bash
     bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/todo-details.sh" get <hash>
     ```
-    Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for Step 3. If `status` is `"not_found"` or `"error"`, log to `## Recent Activity` with format `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded`, then continue without detail.
+    Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for Step 3. If `status` is `"not_found"` or `"error"`, and `.vbw-planning/STATE.md` exists, append `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` under the `## Recent Activity` section in `.vbw-planning/STATE.md`; if that file does not exist, skip logging. In all cases, continue without detail.
   If no ref suffix, $ARGUMENTS minus flags = topic.
   `--parallel` controls Scout fan-out (Step 2) and must not be included in the topic text passed to Scout.
 2. **Scope:** Single question = 1 Scout. Multi-faceted or --parallel = 2-4 sub-topics.
