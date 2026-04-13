@@ -570,7 +570,11 @@ ENDSESSION
       local_id=$(read_field "$f" "session_id")
       local_status=$(read_field "$f" "status")
       local_title=$(read_field "$f" "title")
-      echo "session=${local_id}|${local_status}|${local_title}|active"
+      local_location="active"
+      if [ "$local_status" = "complete" ]; then
+        local_location="completed"
+      fi
+      echo "session=${local_id}|${local_status}|${local_title}|${local_location}"
       COUNT=$((COUNT + 1))
     done
     if [ "$COUNT" -eq 0 ]; then
