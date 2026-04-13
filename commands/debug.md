@@ -35,11 +35,11 @@ Store the plugin root path output above as `VBW_PLUGIN_ROOT` for use in script i
     ```bash
     bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/todo-details.sh" get <hash>
     ```
-  Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for use in Step 4. If `status` is `"not_found"` or `"error"`, and `.vbw-planning/STATE.md` exists, append `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` under the `## Activity Log` section (or the first heading beginning with `## Activity`) in `.vbw-planning/STATE.md`; if that file does not exist, skip logging. In all cases, continue without detail.
-  If no ref suffix, $ARGUMENTS minus flags = bug description.
-  Map effort: thorough=high, balanced/fast=medium, turbo=low.
-  Keep effort profile as `EFFORT_PROFILE` (thorough|balanced|fast|turbo).
-  Read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/effort-profile-{profile}.md`.
+    Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for use in Step 4. If `status` is `"not_found"` or `"error"`, and `.vbw-planning/STATE.md` exists, append `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` under the `## Activity Log` section (or the first heading beginning with `## Activity`) in `.vbw-planning/STATE.md`; if that file does not exist, skip logging. In all cases, continue without detail.
+    If no ref suffix, $ARGUMENTS minus flags = bug description.
+    Map effort: thorough=high, balanced/fast=medium, turbo=low.
+    Keep effort profile as `EFFORT_PROFILE` (thorough|balanced|fast|turbo).
+    Read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/effort-profile-{profile}.md`.
 
 2. **Classify ambiguity:** 2+ signals = ambiguous.
   Keywords: "intermittent/sometimes/random/unclear/inconsistent/flaky/sporadic/nondeterministic",
