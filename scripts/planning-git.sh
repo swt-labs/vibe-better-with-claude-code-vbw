@@ -71,6 +71,7 @@ ensure_transient_ignore() {
 # Logging & markers
 .hook-errors.log
 .hook-debug.log
+.skill-decisions.log
 .compaction-marker
 .session-log.jsonl
 .session-log.jsonl.tmp
