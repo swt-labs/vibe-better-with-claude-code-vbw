@@ -394,16 +394,17 @@ else
   fail "debug-session-state.sh missing migrate_legacy_session function"
 fi
 
-if grep -q 'COMPLETED_DIR' "$STATE_SCRIPT" 2>/dev/null && \
-   grep -q 'complete' "$STATE_SCRIPT" 2>/dev/null && \
-   grep -q 'mv ' "$STATE_SCRIPT" 2>/dev/null; then
-  pass "debug-session-state.sh set-status moves complete sessions to COMPLETED_DIR"
+# Verify the set-status branch specifically handles complete → mv to COMPLETED_DIR
+if awk '/set-status\)/,/;;/' "$STATE_SCRIPT" | grep -q '"\$STATUS" = "complete"' && \
+   awk '/set-status\)/,/;;/' "$STATE_SCRIPT" | grep -q 'mv.*\$COMPLETED_DIR'; then
+  pass "debug-session-state.sh set-status branch moves complete sessions to COMPLETED_DIR"
 else
-  fail "debug-session-state.sh set-status does not move complete sessions to COMPLETED_DIR"
+  fail "debug-session-state.sh set-status branch does not move complete sessions to COMPLETED_DIR"
 fi
 
 # list command should output location field (active or completed)
-if grep -q '|active\|active\||completed\||completed' "$STATE_SCRIPT" 2>/dev/null; then
+if grep -E '\|active"?|\|completed"?' "$STATE_SCRIPT" >/dev/null 2>&1 && \
+   awk '/list\)/,/;;/' "$STATE_SCRIPT" | grep -qE '\|active|\|completed'; then
   pass "debug-session-state.sh list outputs location field"
 else
   fail "debug-session-state.sh list missing location field in output"
