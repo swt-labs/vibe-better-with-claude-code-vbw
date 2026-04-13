@@ -67,7 +67,7 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
 
      ➜ Run: /vbw:{command} {cleaned text} (ref:HASH)
      ```
-     Before building the suggested command, strip metadata from the todo text: remove any trailing `(added YYYY-MM-DD)` date tag and any `(ref:HASH)` tag. Append `(ref:HASH)` suffix only once, only if the item has a non-null `ref` field. This passes the detail reference to the executing command so it can load the extended context.
+     Before building the suggested command, strip metadata from the todo text: remove any trailing `(added YYYY-MM-DD)` date tag and any `(ref:HASH)` tag. Append `(ref:HASH)` suffix only once, only if the item has a non-null `ref` field **and** the selected action is `/vbw:fix` or `/vbw:vibe` (the commands that consume it). For `/vbw:debug` and `/vbw:research`, omit the ref suffix — those commands do not parse it.
      Do NOT execute the command. STOP after displaying the suggested command.
    - **Remove:** Remove the `line` value from the todo section in STATE.md. If no todos remain, replace with "None." If the item has a non-null `ref` field, also run `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" remove <ref>` to clean up the detail entry. If the detail removal fails, display "⚠ Todo removed but detail cleanup failed for ref `HASH` — run `/vbw:doctor` to clean up." rather than silently swallowing the error. Log to `## Recent Activity` with format `- {YYYY-MM-DD}: Removed todo: {text}`. Confirm: "✓ Todo removed." Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos` and display.
    - **Back:** Return to step 4.
