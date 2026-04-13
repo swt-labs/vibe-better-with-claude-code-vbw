@@ -143,10 +143,10 @@ get_active_session_path() {
     return
   fi
   local session_path="$DEBUG_DIR/$session_name"
-  if [ -f "$session_path" ]; then
+  if [ -f "$session_path" ] && [ ! -L "$session_path" ]; then
     echo "$session_path"
   fi
-  # Stale pointer — file doesn't exist
+  # Stale pointer, missing, or symlink — do not follow
 }
 
 # Find latest unresolved session (status != complete)
@@ -157,8 +157,8 @@ find_latest_unresolved() {
   # Collect files into array, explicitly sorted by name (which contains timestamp)
   local files=() f
   while IFS= read -r f; do
-    [ -f "$f" ] && files+=("$f")
-  done < <(LC_ALL=C printf '%s\n' "$DEBUG_DIR"/*.md | sort)
+    [ -f "$f" ] && [ ! -L "$f" ] && files+=("$f")
+  done < <(printf '%s\n' "$DEBUG_DIR"/*.md | LC_ALL=C sort)
   # Iterate from end (latest timestamp first) to find latest unresolved
   local i status
   for (( i=${#files[@]}-1; i>=0; i-- )); do

@@ -25,8 +25,8 @@ if [ -z "$SESSION_FILE" ]; then
   exit 1
 fi
 
-if [ ! -f "$SESSION_FILE" ]; then
-  echo "Error: session file not found: $SESSION_FILE" >&2
+if [ ! -f "$SESSION_FILE" ] || [ -L "$SESSION_FILE" ]; then
+  echo "Error: session file not found or is a symlink: $SESSION_FILE" >&2
   exit 1
 fi
 
