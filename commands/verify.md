@@ -248,6 +248,11 @@ QA verification summary (pre-extracted from VERIFICATION.md):
 ## Guard
 
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+- **Debug session override:** If `$ARGUMENTS` does NOT contain an explicit phase number, check for an active debug session before any phase-related guards:
+  ```bash
+  eval "$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/debug-session-state.sh get-or-latest .vbw-planning 2>/dev/null)" 2>/dev/null || true
+  ```
+  If `active_session != none` AND session `status` is `uat_pending` or `uat_failed` → skip ALL remaining guards and jump directly to `<debug_session_uat>` below.
 - **Phase-detect error guard (NON-NEGOTIABLE):** If Phase state (from Context above) contains `phase_detect_error=true`, display: "⚠ Phase detection failed. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh` manually to debug." STOP. Do NOT fall back to phase-dir scanning or ad-hoc `VERIFICATION.md` checks when phase-detect failed.
 - **Verify-context error guard (NON-NEGOTIABLE):** If the pre-computed verify context block contains `verify_context_error=true` or `verify_context=unavailable`, display: "⚠ Verify context compilation failed. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-verify-context.sh .vbw-planning/phases/{NN}-{slug}` manually to debug." STOP. Do NOT improvise by reading individual PLAN/SUMMARY files unless the user explicitly targeted a different phase number (see Step 1).
 - **Brownfield normalization:** If Phase state (from Context above) contains `misnamed_plans=true`, normalize all phase directories before proceeding:
@@ -376,6 +381,7 @@ When routed here, skip the standard phase-resolution Steps entirely. Instead:
    {
      "mode": "uat",
      "round": {uat_round},
+     "result": "{pass|issues_found}",
      "checkpoints": [
        {"id": "{checkpoint-id}", "description": "{checkpoint description}", "result": "pass|skip|issue", "user_response": "{verbatim user response}"}
      ],

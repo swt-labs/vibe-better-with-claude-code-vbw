@@ -146,6 +146,36 @@ else
   fail "vbw-qa.md missing debug session QA section"
 fi
 
+# — Guard ordering checks (R2-01, R2-02) —
+
+if grep -q "Debug session override" "$QA_CMD" 2>/dev/null; then
+  pass "qa.md has debug session override in Guard"
+else
+  fail "qa.md missing debug session override in Guard"
+fi
+
+if grep -q "Debug session override" "$VERIFY_CMD" 2>/dev/null; then
+  pass "verify.md has debug session override in Guard"
+else
+  fail "verify.md missing debug session override in Guard"
+fi
+
+# — UAT template completeness (R2-03) —
+
+if grep -q '"result"' "$VERIFY_CMD" 2>/dev/null && grep -q 'pass|issues_found' "$VERIFY_CMD" 2>/dev/null; then
+  pass "verify.md UAT template includes result field"
+else
+  fail "verify.md UAT template missing result field"
+fi
+
+# — Agent status alignment (R2-04) —
+
+if grep -q 'qa_pending' "$DEBUGGER_AGENT" 2>/dev/null && ! grep -q 'fix_applied' "$DEBUGGER_AGENT" 2>/dev/null; then
+  pass "vbw-debugger.md uses qa_pending (not fix_applied) for post-fix status"
+else
+  fail "vbw-debugger.md should use qa_pending for post-fix status, not fix_applied"
+fi
+
 # — Summary —
 
 echo ""

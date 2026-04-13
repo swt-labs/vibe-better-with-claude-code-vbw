@@ -65,7 +65,7 @@ The JSON payload must include:
 **Hypothesis preservation (NON-NEGOTIABLE):** Include every hypothesis you considered — not just the winner. Each rejected hypothesis must include `evidence_against` explaining why it was ruled out. This creates a diagnostic audit trail that prevents re-investigation of dead ends on `--resume`.
 
 **Status transitions:** After writing the session file:
-- If you committed a fix: update status to `fix_applied` via `debug-session-state.sh set-status`
+- If you committed a fix: update status to `qa_pending` via `debug-session-state.sh set-status`
 - If investigation is complete but no fix yet: leave status as `investigating`
 
 When `session_file` is NOT provided, operate in the default standalone mode (Step 7 document report, no session persistence).
