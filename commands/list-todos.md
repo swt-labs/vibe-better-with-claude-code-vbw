@@ -40,7 +40,7 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
 
 4. **Display list:** Show the `display` value from the script output, followed by:
    ```text
-   Reply with a number to select, or `q` to exit.
+   Reply with a number to select, `remove N` to delete, or `q` to exit.
    ```
 
 5. **Handle selection:** Use AskUserQuestion with a freeform question (no `options` array) to prompt: "Reply with a number to select, `remove N` to delete, or `q` to exit:" Parse the response. Accept these input forms:
