@@ -1,7 +1,7 @@
 # Copilot cloud agent instructions for VBW
 
 ## Start here
-- Read `/home/runner/work/vibe-better-with-claude-code-vbw/vibe-better-with-claude-code-vbw/README.md` first, then `/home/runner/work/vibe-better-with-claude-code-vbw/vibe-better-with-claude-code-vbw/CONTRIBUTING.md`, then the relevant files under `commands/`, `scripts/`, `testing/`, `hooks/`, `templates/`, or `references/`.
+- Read `README.md` first, then `CONTRIBUTING.md`, then the relevant files under `commands/`, `scripts/`, `testing/`, `hooks/`, `templates/`, or `references/`.
 - This repo is a Claude Code plugin implemented mostly as bash plus command markdown. There is no normal app build; most changes are to shell scripts, slash-command markdown, hook wiring, templates, and tests.
 - Keep changes surgical. Many behaviors are enforced by contract tests that grep for exact phrases, tool names, filenames, and command structure.
 
@@ -24,7 +24,7 @@
 - Shared lint entrypoint: `bash testing/run-lint.sh`
 - CI parity notes:
   - `testing/run-all.sh` expects `jq`, `shellcheck`, and `bats`.
-  - CI runs lint, contract checks, bats shards, and serial bats separately; see `/home/runner/work/vibe-better-with-claude-code-vbw/vibe-better-with-claude-code-vbw/.github/workflows/ci.yml`.
+  - CI runs lint, contract checks, bats shards, and serial bats separately; see `.github/workflows/ci.yml`.
 - For command or shell changes, also run the most relevant targeted `testing/verify-*.sh` script(s).
 
 ## Known onboarding quirks / errors encountered
