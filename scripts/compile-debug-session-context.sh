@@ -37,10 +37,18 @@ if [ ! -f "$SESSION_FILE" ]; then
   exit 1
 fi
 
-# Read frontmatter field
+# Read frontmatter field (awk-based, fail-open under pipefail)
 read_field() {
   local field="$1"
-  sed -n '/^---$/,/^---$/p' "$SESSION_FILE" | grep "^${field}:" | head -1 | sed "s/^${field}:[[:space:]]*//"
+  awk -v field="$field" '
+    /^---$/ { if (!started) { started=1; in_fm=1; next } if (in_fm) exit }
+    in_fm && index($0, field ":") == 1 {
+      val = substr($0, length(field) + 2)
+      sub(/^[[:space:]]*/, "", val)
+      print val
+      exit
+    }
+  ' "$SESSION_FILE"
 }
 
 # Extract section content between ## Heading and next ## or EOF

@@ -47,10 +47,18 @@ validate_status() {
   return 1
 }
 
-# Read frontmatter field from a session file
+# Read frontmatter field from a session file (awk-based, fail-open under pipefail)
 read_field() {
   local file="$1" field="$2"
-  sed -n '/^---$/,/^---$/p' "$file" | grep "^${field}:" | head -1 | sed "s/^${field}:[[:space:]]*//"
+  awk -v field="$field" '
+    /^---$/ { if (!started) { started=1; in_fm=1; next } if (in_fm) exit }
+    in_fm && index($0, field ":") == 1 {
+      val = substr($0, length(field) + 2)
+      sub(/^[[:space:]]*/, "", val)
+      print val
+      exit
+    }
+  ' "$file"
 }
 
 # Update a frontmatter field in a session file, scoped to the YAML frontmatter block only.
@@ -210,8 +218,8 @@ ENDSESSION
     # Set active pointer
     echo "${SESSION_ID}.md" > "$ACTIVE_FILE"
 
-    echo "session_id=$SESSION_ID"
-    echo "session_file=$SESSION_FILE"
+    printf 'session_id=%q\n' "$SESSION_ID"
+    printf 'session_file=%q\n' "$SESSION_FILE"
     ;;
 
   get)
