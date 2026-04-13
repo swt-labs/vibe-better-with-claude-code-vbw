@@ -706,6 +706,7 @@ promote_todos() {
   local already=0
   local new_entries=""
   local disposition_updates=""
+  local promoted_details=""
 
   # Iterate issues and check for duplicates
   local i=0
@@ -766,6 +767,8 @@ promote_todos() {
       else
         new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today}) (ref:${ref_hash})"$'\n'
       fi
+      # Collect detail for newly promoted items
+      promoted_details="${promoted_details}${ref_hash}"$'\x1f'"${test_name}"$'\x1f'"${file_path}"$'\x1f'"${error_msg}"$'\x1f'"${times_seen}"$'\x1f'"${source_artifact}"$'\x1f'"${disposition}"$'\n'
       promoted=$((promoted + 1))
     fi
     i=$((i + 1))
@@ -836,36 +839,19 @@ promote_todos() {
   fi
   if [ -n "$detail_script" ] && [ -f "$detail_script" ]; then
     local details_path="${planning_dir}/todo-details.json"
-    local j=0
-    while [ "$j" -lt "$total" ]; do
-      local p_test p_file p_error p_times p_source p_disp
-      p_test=$(printf '%s' "$promotable_json" | jq -r ".[$j].test // \"unknown\"")
-      p_file=$(printf '%s' "$promotable_json" | jq -r ".[$j].file // \"unknown\"")
-      p_error=$(printf '%s' "$promotable_json" | jq -r ".[$j].error // \"unspecified error\"")
-      p_times=$(printf '%s' "$promotable_json" | jq -r ".[$j].times_seen // 1")
-      p_source=$(printf '%s' "$promotable_json" | jq -r ".[$j].last_seen_in // \"\"")
-      p_disp=$(printf '%s' "$promotable_json" | jq -r ".[$j].disposition // \"\"")
-
-      # Truncate error for dedup key consistency with todo line
-      if [ "${#p_error}" -gt 80 ]; then
-        p_error="${p_error:0:77}..."
-      fi
-
-      local dedup_key_j="${p_test} (${p_file}): ${p_error}"
-      local hash
-      hash=$(printf '%s' "$dedup_key_j" | shasum | cut -c1-8)
+    while IFS=$'\x1f' read -r hash p_test p_file p_error p_times p_source p_disp; do
+      [ -n "$hash" ] || continue
 
       local detail_json
       detail_json=$(jq -n \
-        --arg summary "$dedup_key_j" \
+        --arg summary "${p_test} (${p_file}): ${p_error}" \
         --arg context "Known issue from phase ${phase_num}. Test: ${p_test}. File: ${p_file}. Error: ${p_error}. Seen ${p_times} time(s). Source: ${p_source:-unknown}. Disposition: ${p_disp:-unresolved}." \
         --arg file "$p_file" \
         --arg added "$today" \
         '{summary: $summary, context: $context, files: [$file], added: $added, source: "known-issue"}')
 
       bash "$detail_script" add "$hash" "$detail_json" "$details_path" >/dev/null 2>&1 || true
-      j=$((j + 1))
-    done
+    done <<< "$promoted_details"
   fi
 
   echo "promoted_count=$promoted"

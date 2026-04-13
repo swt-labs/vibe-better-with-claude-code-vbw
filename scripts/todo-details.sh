@@ -119,7 +119,11 @@ cmd_get() {
   if [ -z "$hash" ]; then
     error_json "Usage: todo-details.sh get <hash>"
   fi
-
+  # Validate hash format (8 hex chars)
+  if ! [[ "$hash" =~ ^[a-f0-9]{8}$ ]]; then
+    printf '{"status":"not_found","hash":"%s"}\n' "$hash"
+    return 0
+  fi
   if ! registry_exists || ! registry_is_valid; then
     printf '{"status":"not_found","hash":"%s"}\n' "$hash"
     return 0
@@ -140,6 +144,12 @@ cmd_remove() {
 
   if [ -z "$hash" ]; then
     error_json "Usage: todo-details.sh remove <hash>"
+  fi
+
+  # Validate hash format (8 hex chars)
+  if ! [[ "$hash" =~ ^[a-f0-9]{8}$ ]]; then
+    printf '{"status":"ok","action":"noop","hash":"%s"}\n' "$hash"
+    return 0
   fi
 
   if ! registry_exists; then
@@ -200,10 +210,10 @@ cmd_gc() {
     error_json "Malformed todo-details.json"
   fi
 
-  # Extract all ref hashes from STATE.md ## Todos section
+  # Extract all ref hashes from STATE.md Todos section (supports both ## Todos and ### Pending Todos)
   local state_refs
   state_refs=$(awk '
-    /^## Todos$/ { found=1; next }
+    /^##+ (Pending )?Todos$/ { found=1; next }
     found && /^##/ { exit }
     found { print }
   ' "$state_path" | grep -oE '\(ref:[a-f0-9]{8}\)' | sed 's/(ref://;s/)//' || true)
