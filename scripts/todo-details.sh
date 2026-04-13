@@ -42,7 +42,7 @@ MAX_CONTEXT_LENGTH=2000
 # --- Error helpers ---
 error_json() {
   local msg="$1"
-  printf '{"status":"error","message":"%s"}\n' "$msg"
+  jq -n --arg m "$msg" '{"status":"error","message":$m}'
   exit 0
 }
 
@@ -79,6 +79,11 @@ write_registry() {
 cmd_add() {
   local hash="${1:-}"
   local detail_json="${2:-}"
+
+  # Support stdin: if detail arg is "-", read JSON from stdin
+  if [ "$detail_json" = "-" ]; then
+    detail_json=$(cat)
+  fi
 
   if [ -z "$hash" ] || [ -z "$detail_json" ]; then
     error_json "Usage: todo-details.sh add <hash> <json-detail>"
@@ -121,7 +126,7 @@ cmd_get() {
   fi
   # Validate hash format (8 hex chars)
   if ! [[ "$hash" =~ ^[a-f0-9]{8}$ ]]; then
-    printf '{"status":"not_found","hash":"%s"}\n' "$hash"
+    jq -n --arg h "$hash" '{"status":"not_found","hash":$h}'
     return 0
   fi
   if ! registry_exists || ! registry_is_valid; then
@@ -148,7 +153,7 @@ cmd_remove() {
 
   # Validate hash format (8 hex chars)
   if ! [[ "$hash" =~ ^[a-f0-9]{8}$ ]]; then
-    printf '{"status":"ok","action":"noop","hash":"%s"}\n' "$hash"
+    jq -n --arg h "$hash" '{"status":"ok","action":"noop","hash":$h}'
     return 0
   fi
 

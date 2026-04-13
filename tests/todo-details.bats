@@ -235,6 +235,35 @@ EOF
 
 # --- error handling ---
 
+@test "add accepts JSON from stdin when detail arg is dash" {
+  cd "$TEST_TEMP_DIR"
+  printf '{"schema_version":1,"items":{}}\n' > "$DETAILS_PATH"
+
+  # Build JSON with apostrophes via jq (handles all escaping) and write to temp file
+  jq -n '{"summary":"User'\''s repro doesn'\''t work","context":"The user'\''s test doesn'\''t pass","files":[],"added":"2026-04-12","source":"user"}' > "$TEST_TEMP_DIR/detail.json"
+
+  run bash -c "bash \"$SCRIPTS_DIR/todo-details.sh\" add abcd1234 - \"$DETAILS_PATH\" < \"$TEST_TEMP_DIR/detail.json\""
+  [ "$status" -eq 0 ]
+
+  local stored
+  stored=$(jq -r '.items.abcd1234.summary' "$DETAILS_PATH")
+  [ "$stored" = "User's repro doesn't work" ]
+}
+
+@test "error output is valid JSON when message contains special characters" {
+  cd "$TEST_TEMP_DIR"
+
+  # Pass a hash containing double quotes and backslashes (will fail validation)
+  run bash "$SCRIPTS_DIR/todo-details.sh" get 'a"b\c' "$DETAILS_PATH"
+  [ "$status" -eq 0 ]
+
+  # Output must parse as valid JSON
+  echo "$output" | jq empty
+  local result_status
+  result_status=$(echo "$output" | jq -r '.status')
+  [ "$result_status" = "not_found" ]
+}
+
 @test "handles malformed JSON registry gracefully" {
   cd "$TEST_TEMP_DIR"
   echo "not json" > "$DETAILS_PATH"
