@@ -58,7 +58,10 @@ Run `npx skills find "<query>"`. Display results with `(registry)` tag. If npx u
 
 ### Step 5: Offer installation
 
-Combine curated + registry, deduplicate, rank (curated first). Present as a numbered list in the AskUserQuestion text (do NOT use `options` array — a single freeform question avoids the 4-option limit):
+Combine curated + registry, deduplicate, rank (curated first).
+
+- If the combined list is empty: STOP here. Do NOT AskUserQuestion. The Step 3 / Step 4 output already explains the no-results state (for example, all recommended skills already installed, no stack detected, or no registry results).
+- If the combined list is non-empty: present it as a numbered list in the AskUserQuestion text (do NOT use `options` array — a single freeform question avoids the 4-option limit):
 
 Question text:
 ```
