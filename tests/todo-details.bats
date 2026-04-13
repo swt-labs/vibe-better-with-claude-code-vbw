@@ -209,6 +209,30 @@ EOF
   [ "$count" = "2" ]
 }
 
+@test "gc handles legacy Pending Todos heading" {
+  cd "$TEST_TEMP_DIR"
+  local state_path="$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  cat > "$state_path" <<'EOF'
+# State
+### Pending Todos
+- Bug A (ref:aaaa1111)
+- Bug C (ref:cccc3333)
+EOF
+
+  printf '{"schema_version":1,"items":{"aaaa1111":{"summary":"A","context":"","files":[],"added":"2026-04-12","source":"user"},"bbbb2222":{"summary":"B","context":"","files":[],"added":"2026-04-12","source":"user"},"cccc3333":{"summary":"C","context":"","files":[],"added":"2026-04-12","source":"user"}}}\n' > "$DETAILS_PATH"
+
+  run bash "$SCRIPTS_DIR/todo-details.sh" gc "$state_path" "$DETAILS_PATH"
+  [ "$status" -eq 0 ]
+
+  # bbbb2222 should be removed (not in STATE.md), aaaa1111 and cccc3333 preserved
+  local count
+  count=$(jq '.items | length' "$DETAILS_PATH")
+  [ "$count" = "2" ]
+  [ "$(jq -r '.items | has("aaaa1111")' "$DETAILS_PATH")" = "true" ]
+  [ "$(jq -r '.items | has("cccc3333")' "$DETAILS_PATH")" = "true" ]
+  [ "$(jq -r '.items | has("bbbb2222")' "$DETAILS_PATH")" = "false" ]
+}
+
 # --- error handling ---
 
 @test "handles malformed JSON registry gracefully" {
