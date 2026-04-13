@@ -215,11 +215,11 @@ cmd_gc() {
     error_json "Malformed todo-details.json"
   fi
 
-  # Extract all ref hashes from STATE.md Todos section (supports both ## Todos and ### Pending Todos)
+  # Extract all ref hashes from STATE.md Todos section (supports both ## Todos and legacy ### Pending Todos)
   local state_refs
   state_refs=$(awk '
-    /^##+ (Pending )?Todos$/ { found=1; next }
-    found && /^##/ { exit }
+    /^(##|###) (Pending )?Todos$/ { found=1; next }
+    found && /^##[^#]/ { exit }
     found { print }
   ' "$state_path" | grep -oE '\(ref:[a-f0-9]{8}\)' | sed 's/(ref://;s/)//' || true)
 
