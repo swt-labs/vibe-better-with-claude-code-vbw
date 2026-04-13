@@ -131,6 +131,25 @@ validate_session_name() {
   return 0
 }
 
+# Safely move a session file to a target directory.
+# Fails with an error if the destination already exists (prevents data loss from overwrites).
+# Usage: safe_move_session <source_path> <target_dir>
+# Echoes the new path on success.
+safe_move_session() {
+  local src="$1"
+  local target_dir="$2"
+  local fname
+  fname=$(basename "$src")
+  local dest="$target_dir/$fname"
+  if [ -e "$dest" ] || [ -L "$dest" ]; then
+    echo "Error: destination already exists, refusing to overwrite: $dest" >&2
+    return 1
+  fi
+  mkdir -p "$target_dir"
+  mv "$src" "$dest"
+  echo "$dest"
+}
+
 # Migrate a legacy flat-path session to the correct subdirectory based on its status.
 # Moves complete sessions to completed/, all others to active/.
 # Returns the new path. No-op if the file is already in a subdirectory.
@@ -153,8 +172,11 @@ migrate_legacy_session() {
   else
     target_dir="$ACTIVE_DIR"
   fi
-  mkdir -p "$target_dir"
-  mv "$file" "$target_dir/$fname"
+  local new_path
+  if ! new_path=$(safe_move_session "$file" "$target_dir"); then
+    echo "$file"
+    return 1
+  fi
   # Update .active-session pointer if it referenced this file
   if [ -f "$ACTIVE_FILE" ]; then
     local pointer
@@ -167,7 +189,7 @@ migrate_legacy_session() {
       # get_active_session_path() will find it there
     fi
   fi
-  echo "$target_dir/$fname"
+  echo "$new_path"
 }
 
 # Get active session file path (returns empty if none/stale)
@@ -191,9 +213,9 @@ get_active_session_path() {
     local file_status
     file_status=$(read_field "$session_path" "status")
     if [ "$file_status" = "complete" ]; then
-      mkdir -p "$COMPLETED_DIR"
-      mv "$session_path" "$COMPLETED_DIR/$session_name"
-      rm -f "$ACTIVE_FILE"
+      if safe_move_session "$session_path" "$COMPLETED_DIR" > /dev/null; then
+        rm -f "$ACTIVE_FILE"
+      fi
       return
     fi
     echo "$session_path"
@@ -407,9 +429,7 @@ ENDSESSION
     fi
     # If found in completed/, move back to active/ (re-activating)
     if [[ "$SESSION_PATH" == "$COMPLETED_DIR/"* ]]; then
-      mkdir -p "$ACTIVE_DIR"
-      mv "$SESSION_PATH" "$ACTIVE_DIR/$SESSION_NAME"
-      SESSION_PATH="$ACTIVE_DIR/$SESSION_NAME"
+      SESSION_PATH=$(safe_move_session "$SESSION_PATH" "$ACTIVE_DIR") || exit 1
       update_field "$SESSION_PATH" "status" "investigating"
     fi
     echo "$SESSION_NAME" > "$ACTIVE_FILE"
@@ -435,9 +455,7 @@ ENDSESSION
       fname=$(basename "$SESSION_PATH")
       current_dir=$(dirname "$SESSION_PATH")
       if [ "$current_dir" != "$COMPLETED_DIR" ]; then
-        mkdir -p "$COMPLETED_DIR"
-        mv "$SESSION_PATH" "$COMPLETED_DIR/$fname"
-        SESSION_PATH="$COMPLETED_DIR/$fname"
+        SESSION_PATH=$(safe_move_session "$SESSION_PATH" "$COMPLETED_DIR") || exit 1
       fi
       # Clear active pointer if it references this session
       if [ -f "$ACTIVE_FILE" ]; then
@@ -504,9 +522,9 @@ ENDSESSION
         # Self-heal: if active/ session has complete status, move to completed/
         if [ "$local_status" = "complete" ]; then
           local_fname=$(basename "$f")
-          mkdir -p "$COMPLETED_DIR"
-          mv "$f" "$COMPLETED_DIR/$local_fname"
-          HEALED_FILES="${HEALED_FILES}${local_fname}:"
+          if safe_move_session "$f" "$COMPLETED_DIR" > /dev/null; then
+            HEALED_FILES="${HEALED_FILES}${local_fname}:"
+          fi
           if [ -f "$ACTIVE_FILE" ]; then
             pointer=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
             if [ "$pointer" = "$local_fname" ]; then

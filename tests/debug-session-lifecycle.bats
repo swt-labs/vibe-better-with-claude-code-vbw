@@ -66,6 +66,7 @@ get_suggestion() {
   SESSION_FILE="$PLANNING_DIR/debugging/completed/$(basename "$SESSION_FILE")"
   [ -f "$SESSION_FILE" ]
   [[ "$SESSION_FILE" == *"/debugging/completed/"* ]]
+  grep -q '^status: complete$' "$SESSION_FILE"
 
   # Verify file has all sections populated
   grep -q "## Issue" "$SESSION_FILE"
@@ -170,6 +171,7 @@ get_suggestion() {
   SESSION_FILE="$PLANNING_DIR/debugging/completed/$(basename "$SESSION_FILE")"
   [ -f "$SESSION_FILE" ]
   [[ "$SESSION_FILE" == *"/debugging/completed/"* ]]
+  grep -q '^status: complete$' "$SESSION_FILE"
 
   # Remediation history should exist
   grep -q "## Remediation History" "$SESSION_FILE"
