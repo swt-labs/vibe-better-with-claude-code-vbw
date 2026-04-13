@@ -58,7 +58,19 @@ Run `npx skills find "<query>"`. Display results with `(registry)` tag. If npx u
 
 ### Step 5: Offer installation
 
-Combine curated + registry, deduplicate, rank (curated first). AskUserQuestion multiSelect, max 4 options + "Skip". If >4: show top 4, suggest --search for more.
+Combine curated + registry, deduplicate, rank (curated first). Present as a numbered list in the AskUserQuestion text (do NOT use `options` array — a single freeform question avoids the 4-option limit):
+
+Question text:
+```
+Available skills for installation:
+1. {skill-name} — {brief description}
+2. {skill-name} — {brief description}
+...N. {skill-name} — {brief description}
+
+Type numbers to install (comma-separated), or 'skip' to continue:
+```
+
+Parse the user's freeform response for selected numbers. If the user types "skip", proceed without installing.
 
 ### Step 5b: Choose installation scope
 

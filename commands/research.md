@@ -31,7 +31,8 @@ Current project:
 
 ## Steps
 
-1. **Parse:** Topic (required). --parallel: spawn multiple Scouts on sub-topics.
+1. **Parse:** If $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag from the arguments. Store remaining text as the topic. If a ref was found, load extended detail by running `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" get <hash>` (where `PLUGIN_ROOT` is the resolved plugin root from Context). Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for Step 3. If `status` is `"not_found"` or `"error"`, continue without detail.
+  If no ref suffix, entire $ARGUMENTS = topic. --parallel: spawn multiple Scouts on sub-topics.
 2. **Scope:** Single question = 1 Scout. Multi-faceted or --parallel = 2-4 sub-topics.
 3. **Spawn Scout:**
    - Resolve Scout model:
@@ -55,6 +56,7 @@ Call Skill('{relevant-skill-2}').
 <task_context>
 Research: {topic or sub-topic}.
 Project context: {tech stack, constraints from PROJECT.md if relevant}.
+Extended context from todo detail (include only if detail was loaded in Step 1): {detail.context}. Related files: {detail.files, comma-separated}.
 </task_context>
 
 <output_path>{resolved save path}</output_path>
