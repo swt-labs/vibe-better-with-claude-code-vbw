@@ -58,7 +58,30 @@ Run `npx skills find "<query>"`. Display results with `(registry)` tag. If npx u
 
 ### Step 5: Offer installation
 
-Combine curated + registry, deduplicate, rank (curated first). AskUserQuestion multiSelect, max 4 options + "Skip". If >4: show top 4, suggest --search for more.
+Combine curated + registry, deduplicate, rank (curated first).
+
+- If the combined list is empty: STOP here. Do NOT AskUserQuestion. The Step 3 / Step 4 output already explains the no-results state (for example, all recommended skills already installed, no stack detected, or no registry results).
+- If the combined list is non-empty: present it as a numbered list in the AskUserQuestion text (do NOT use `options` array — a single freeform question avoids the 4-option limit):
+
+Question text:
+```
+Available skills for installation:
+1. {skill-name} — {brief description}
+2. {skill-name} — {brief description}
+...N. {skill-name} — {brief description}
+
+Type numbers to install (comma-separated), or 'skip' to continue:
+```
+
+Parse the user's freeform response using these rules:
+- Accept comma-separated digits corresponding to the numbered items (e.g., `1,3` or `2, 4, 5`).
+- Accept the word `skip` (case-insensitive) to proceed without installing.
+- Trim whitespace around each token. Ignore empty tokens from trailing commas.
+- Reject out-of-range numbers (less than 1 or greater than the list count), non-numeric tokens (other than `skip`), duplicate numbers, and empty input.
+- If invalid, show `Invalid selection. Type numbers (comma-separated) to install, or 'skip' to continue.` and AskUserQuestion again with the same question text.
+- Repeat until a valid selection or `skip` is obtained.
+
+If the user typed `skip`, STOP here after displaying `○ No skills selected for installation.` Do not ask Step 5b and do not enter Step 6.
 
 ### Step 5b: Choose installation scope
 
@@ -66,11 +89,11 @@ AskUserQuestion (single select) — "Where should these skills be installed?":
 - **Project (Recommended)** — "Installed to `./.claude/skills/`, scoped to this project only."
 - **Global** — "Installed to `~/.agents/skills/`, available in all projects."
 
-Store the choice as SCOPE. If "Skip" was selected in Step 5: skip this step.
+Store the choice as SCOPE. If the user typed `skip` in Step 5: skip this step.
 
 ### Step 6: Install selected
 
-`npx skills add <skill> -y` (project scope) or `npx skills add <skill> -g -y` (global scope) per selection, based on SCOPE from Step 5b. Display ✓ or ✗ per skill. "➜ Skills take effect immediately — no restart needed."
+`npx skills add <skill> -y` (project scope) or `npx skills add <skill> -g -y` (global scope) per selection, based on SCOPE from Step 5b. This step runs only when one or more skills were selected in Step 5. Display ✓ or ✗ per skill. "➜ Skills take effect immediately — no restart needed."
 
 ## Output Format
 

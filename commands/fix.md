@@ -29,7 +29,8 @@ Config: Pre-injected by SessionStart hook.
     ```bash
     bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/todo-details.sh get <hash>
     ```
-    Parse the JSON output. If `status` is `"ok"`, store the `detail.context` and `detail.files` values for use in step 4. If `status` is `"not_found"` or `"error"`, log to `## Recent Activity`: `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` and continue without detail.
+  Parse the JSON output. If `status` is `"ok"`, store the `detail.context` and `detail.files` values for use in step 4. If `status` is `"not_found"` or `"error"`, and `.vbw-planning/STATE.md` exists, append `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` under the `## Activity Log` section (or the first heading beginning with `## Activity`) in `.vbw-planning/STATE.md`; if that file does not exist, skip logging. In all cases, continue without detail.
+    **Post-parse validation:** If the fix description is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the fix context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:fix \"description of what to fix\""`.
 
 2. **State:** Use `.vbw-planning/STATE.md`.
 
