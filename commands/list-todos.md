@@ -43,7 +43,7 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
    Reply with a number to select, or `q` to exit.
    ```
 
-5. **Handle selection:** Wait for user to reply. Accept these input forms:
+5. **Handle selection:** Use AskUserQuestion with a freeform question (no `options` array) to prompt: "Reply with a number to select, `remove N` to delete, or `q` to exit:" Parse the response. Accept these input forms:
    - **A number** (1-N): selects a todo to act on. Proceed to Step 6.
    - **`remove N`** or **`delete N`**: If N is out of range (less than 1 or greater than item count), display "Invalid selection — only items 1-{count} exist." and re-prompt. Otherwise, removes the Nth todo without acting on it. Use the `section` and `state_path` values from the script output. Remove the `line` value of the Nth item from the todo section in STATE.md. If no todos remain, replace with "None." If the item has a non-null `ref` field, also run `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" remove <ref>` and capture the JSON output — if `status` is not `"ok"`, display "⚠ Todo removed but detail cleanup failed for ref `HASH` — run `/vbw:doctor` to clean up." Log to `## Recent Activity` with format `- {YYYY-MM-DD}: Removed todo: {text}`. Display "✓ Todo removed." Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos` and display. Return to Step 2 (re-run list script to refresh display and items).
    - **`q`**: display "Done." STOP.
