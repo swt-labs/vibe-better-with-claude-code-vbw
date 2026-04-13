@@ -37,6 +37,7 @@ Store the plugin root path output above as `VBW_PLUGIN_ROOT` for use in script i
     ```
     Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for use in Step 4. If `status` is `"not_found"` or `"error"`, and `.vbw-planning/STATE.md` exists, append `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` under the `## Activity Log` section (or the first heading beginning with `## Activity`) in `.vbw-planning/STATE.md`; if that file does not exist, skip logging. In all cases, continue without detail.
     If no ref suffix, $ARGUMENTS minus flags = bug description.
+    **Post-parse validation:** If the bug description is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the investigation context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:debug \"description of the bug or error message\" [--competing|--parallel|--serial]"`.
     Map effort: thorough=high, balanced/fast=medium, turbo=low.
     Keep effort profile as `EFFORT_PROFILE` (thorough|balanced|fast|turbo).
     Read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/references/effort-profile-{profile}.md`.
