@@ -578,9 +578,11 @@ case "$CMD" in
     ;;
 
   qa)
-    # Check for active standalone debug session (phase_count=0 only)
+    # Check for active standalone debug session (phase_count=0 only —
+    # when phases exist, qa.md itself handles debug-session next-step text
+    # inline, so we must not hijack phase QA suggestions here)
     _qa_debug_handled=false
-    if [ -d "$PLANNING_DIR/debugging" ]; then
+    if [ "${phase_count:-0}" -eq 0 ] && [ -d "$PLANNING_DIR/debugging" ]; then
       _qa_ds_output=$("$SCRIPT_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null) || true
       if [ -n "$_qa_ds_output" ]; then
         eval "$_qa_ds_output" 2>/dev/null || true
@@ -591,11 +593,7 @@ case "$CMD" in
             qa_pending|uat_pending|fix_applied)
               case "$effective_result" in
                 pass)
-                  if [ "${phase_count:-0}" -gt 0 ]; then
-                    suggest "/vbw:verify --session -- Run UAT on the debug fix"
-                  else
-                    suggest "/vbw:verify -- Run UAT on the debug fix"
-                  fi
+                  suggest "/vbw:verify -- Run UAT on the debug fix"
                   ;;
                 fail|partial)
                   suggest "/vbw:debug --resume -- Address QA failures"
@@ -708,9 +706,11 @@ case "$CMD" in
     ;;
 
   verify)
-    # Check for active debug session with uat_failed status
+    # Check for active debug session with uat_failed status (phase_count=0 only —
+    # when phases exist, verify.md itself handles debug-session next-step text
+    # inline, so we must not hijack phase verify suggestions here)
     _verify_debug_handled=false
-    if [ -d "$PLANNING_DIR/debugging" ]; then
+    if [ "${phase_count:-0}" -eq 0 ] && [ -d "$PLANNING_DIR/debugging" ]; then
       _verify_ds_output=$("$SCRIPT_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null) || true
       if [ -n "$_verify_ds_output" ]; then
         eval "$_verify_ds_output" 2>/dev/null || true

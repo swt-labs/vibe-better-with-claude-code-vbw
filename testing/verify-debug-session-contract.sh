@@ -270,6 +270,14 @@ else
   fail "suggest-next.sh missing --session flag logic"
 fi
 
+# — suggest-next.sh qa/verify debug handlers guard on phase_count=0 (CM7-01) —
+
+if grep -q 'phase_count.*0.*debugging' "$ROOT/scripts/suggest-next.sh" 2>/dev/null; then
+  pass "suggest-next.sh qa/verify debug handlers guard on phase_count=0"
+else
+  fail "suggest-next.sh qa/verify debug handlers not guarded by phase_count=0"
+fi
+
 # — Portable sed usage (CM3-02) —
 
 if ! grep -q "sed -i ''" "$ROOT/scripts/debug-session-state.sh" 2>/dev/null; then
