@@ -64,6 +64,9 @@ get_suggestion() {
   # Verify final state
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
   [ "$status" = "complete" ]
+  # Self-healing moves completed session to debugging/completed/ — update path
+  SESSION_FILE="$session_file"
+  [[ "$SESSION_FILE" == *"/debugging/completed/"* ]]
 
   # Verify file has all sections populated
   grep -q "## Issue" "$SESSION_FILE"
@@ -164,6 +167,9 @@ get_suggestion() {
 
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
   [ "$status" = "complete" ]
+  # Self-healing moves completed session to debugging/completed/ — update path
+  SESSION_FILE="$session_file"
+  [[ "$SESSION_FILE" == *"/debugging/completed/"* ]]
 
   # Remediation history should exist
   grep -q "## Remediation History" "$SESSION_FILE"

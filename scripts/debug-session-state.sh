@@ -187,6 +187,16 @@ get_active_session_path() {
   # Search active/ first (canonical location)
   local session_path="$ACTIVE_DIR/$session_name"
   if [ -f "$session_path" ] && [ ! -L "$session_path" ]; then
+    # Self-heal: if active/ session has complete status, move to completed/
+    local file_status
+    file_status=$(read_field "$session_path" "status")
+    if [ "$file_status" = "complete" ]; then
+      mkdir -p "$COMPLETED_DIR"
+      mv "$session_path" "$COMPLETED_DIR/$session_name"
+      rm -f "$ACTIVE_FILE"
+      echo "$COMPLETED_DIR/$session_name"
+      return
+    fi
     echo "$session_path"
     return
   fi
@@ -479,6 +489,21 @@ ENDSESSION
         local_id=$(read_field "$f" "session_id")
         local_status=$(read_field "$f" "status")
         local_title=$(read_field "$f" "title")
+        # Self-heal: if active/ session has complete status, move to completed/
+        if [ "$local_status" = "complete" ]; then
+          local_fname=$(basename "$f")
+          mkdir -p "$COMPLETED_DIR"
+          mv "$f" "$COMPLETED_DIR/$local_fname"
+          if [ -f "$ACTIVE_FILE" ]; then
+            pointer=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
+            if [ "$pointer" = "$local_fname" ]; then
+              rm -f "$ACTIVE_FILE"
+            fi
+          fi
+          echo "session=${local_id}|${local_status}|${local_title}|completed"
+          COUNT=$((COUNT + 1))
+          continue
+        fi
         echo "session=${local_id}|${local_status}|${local_title}|active"
         COUNT=$((COUNT + 1))
       done

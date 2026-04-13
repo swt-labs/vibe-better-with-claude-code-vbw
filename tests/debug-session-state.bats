@@ -348,6 +348,28 @@ teardown() {
   [[ "$output" == *"active_session=true"* ]]
 }
 
+@test "list self-heals complete sessions stranded in active directory" {
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "stranded-done")"
+  local fname
+  fname=$(basename "$session_file")
+
+  # Simulate write-debug-session.sh setting complete without set-status (frontmatter only)
+  awk 'BEGIN{in_fm=0} /^---$/{in_fm=!in_fm} in_fm && /^status:/{print "status: complete";next} {print}' \
+    "$session_file" > "${session_file}.tmp" && mv "${session_file}.tmp" "$session_file"
+
+  # File should still be in active/ (no set-status was called)
+  [ -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
+
+  # list should self-heal: detect complete in active/ and move to completed/
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" list "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"|completed"* ]]
+
+  # File should be physically moved
+  [ ! -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+}
+
 # ── unknown command ──────────────────────────────────────
 
 @test "unknown command fails with error" {

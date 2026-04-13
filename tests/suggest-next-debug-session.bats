@@ -17,9 +17,9 @@ teardown() {
 create_debug_session() {
   local status_val="$1"
   local slug="${2:-test-bug}"
-  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/debugging"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/debugging/active"
   local session_id="20250101-120000-${slug}"
-  local session_file="$TEST_TEMP_DIR/.vbw-planning/debugging/${session_id}.md"
+  local session_file="$TEST_TEMP_DIR/.vbw-planning/debugging/active/${session_id}.md"
 
   cat > "$session_file" <<EOF
 ---
