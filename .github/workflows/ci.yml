@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
       - uses: actions/checkout@v4
 
@@ -40,7 +40,7 @@ jobs:
       - name: Run bats shard
         env:
           SHARD: ${{ matrix.shard }}
-          TOTAL_SHARDS: 4
+          TOTAL_SHARDS: 8
         run: |
           files=()
           while IFS= read -r file; do

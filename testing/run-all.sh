@@ -48,7 +48,7 @@ while IFS=$'\t' read -r name path; do
 done <<< "$CONTRACT_TESTS_OUTPUT"
 
 # --- Launch bats workers concurrently with contract checks ---
-BATS_WORKERS="${BATS_WORKERS:-4}"
+BATS_WORKERS="${BATS_WORKERS:-12}"
 case "$BATS_WORKERS" in
   ''|*[!0-9]*)
     echo "Invalid BATS_WORKERS=$BATS_WORKERS — falling back to CI shard count (4 workers)."
