@@ -13,6 +13,7 @@ teardown() {
 }
 
 run_logger() {
+  create_test_vbw_workspace "$TEST_TEMP_DIR"
   cd "$TEST_TEMP_DIR" && printf '%s' "$1" | bash "$SCRIPTS_DIR/skill-decision-logger.sh"
 }
 

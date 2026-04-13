@@ -15,20 +15,14 @@ fi
 INPUT=$(cat 2>/dev/null) || exit 0
 [ -z "$INPUT" ] && exit 0
 
-find_project_root() {
-  local dir="$PWD"
-  while [ "$dir" != "/" ]; do
-    if [ -d "$dir/.vbw-planning" ]; then
-      printf '%s\n' "$dir"
-      return 0
-    fi
-    dir=$(dirname "$dir")
-  done
-  return 1
-}
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P 2>/dev/null) || exit 0
+[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] || exit 0
+# shellcheck source=scripts/lib/vbw-config-root.sh
+. "$SCRIPT_DIR/lib/vbw-config-root.sh" || exit 0
 
-PROJECT_ROOT=$(find_project_root) || exit 0
-LOG_DIR="$PROJECT_ROOT/.vbw-planning"
+find_vbw_root >/dev/null 2>&1 || exit 0
+LOG_DIR="${VBW_PLANNING_DIR:-}"
+[ -n "$LOG_DIR" ] || exit 0
 LOG_FILE="$LOG_DIR/.skill-decisions.log"
 
 # Extract the prompt from the tool input — try .tool_input.prompt first,
@@ -86,8 +80,8 @@ extract_tag_content() {
       esac
     fi
   done <<< "$PROMPT"
-  # Trim leading/trailing whitespace and collapse internal whitespace
-  result=$(printf '%s' "$result" | sed 's/^ *//; s/ *$//')
+  # Collapse internal whitespace and trim leading/trailing
+  result=$(printf '%s' "$result" | tr -s '[:space:]' ' ' | sed 's/^ *//; s/ *$//')
   printf '%s' "$result"
 }
 
