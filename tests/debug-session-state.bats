@@ -25,9 +25,10 @@ teardown() {
   # Active pointer should exist
   [ -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
 
-  # Session file should exist
+  # Session file should exist in active/ subdirectory
   eval "$output"
   [ -f "$session_file" ]
+  [[ "$session_file" == *"/debugging/active/"* ]]
 
   # Session file should have correct frontmatter
   grep -q '^status: investigating$' "$session_file"
@@ -144,11 +145,17 @@ teardown() {
 @test "set-status transitions through valid states" {
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "status-test")"
 
-  for s in fix_applied qa_pending qa_failed uat_pending uat_failed complete; do
+  # Test non-complete statuses in loop (complete moves file and clears pointer)
+  for s in fix_applied qa_pending qa_failed uat_pending uat_failed; do
     run bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$VBW_PLANNING_DIR" "$s"
     [ "$status" -eq 0 ]
     [[ "$output" == *"status=$s"* ]]
   done
+
+  # Test complete separately — it moves to completed/ and clears pointer
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$VBW_PLANNING_DIR" complete
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=complete"* ]]
 }
 
 @test "set-status rejects invalid status" {
@@ -235,14 +242,110 @@ teardown() {
   [[ "$output" == *"no_sessions=true"* ]]
 }
 
-@test "list shows sessions with status" {
+@test "list shows sessions with status and location" {
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "list-test")"
 
   run bash "$SCRIPTS_DIR/debug-session-state.sh" list "$VBW_PLANNING_DIR"
   [ "$status" -eq 0 ]
   [[ "$output" == *"session="* ]]
   [[ "$output" == *"investigating"* ]]
+  [[ "$output" == *"|active"* ]]
   [[ "$output" == *"session_count=1"* ]]
+}
+
+# ── active/completed directory layout ────────────────────
+
+@test "set-status complete moves session to completed directory" {
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "complete-move")"
+  local fname
+  fname=$(basename "$session_file")
+
+  # Session starts in active/
+  [ -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
+
+  bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$VBW_PLANNING_DIR" complete > /dev/null
+
+  # Session moved to completed/
+  [ ! -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+  grep -q '^status: complete$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
+}
+
+@test "set-status complete clears active pointer" {
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "pointer-clear")"
+  [ -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+
+  bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$VBW_PLANNING_DIR" complete > /dev/null
+
+  [ ! -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+}
+
+@test "legacy flat-path session migrated on get-or-latest" {
+  # Manually create a session in the legacy flat location
+  mkdir -p "$VBW_PLANNING_DIR/debugging"
+  local session_id="20250101-120000-legacy-bug"
+  local legacy_file="$VBW_PLANNING_DIR/debugging/${session_id}.md"
+  printf '%s\n' '---' "session_id: ${session_id}" 'title: legacy-bug' 'status: investigating' 'created: 2025-01-01 12:00:00' 'updated: 2025-01-01 12:00:00' 'qa_round: 0' 'qa_last_result: pending' 'uat_round: 0' 'uat_last_result: pending' '---' '' '# Debug Session: legacy-bug' > "$legacy_file"
+  echo "${session_id}.md" > "$VBW_PLANNING_DIR/debugging/.active-session"
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=true"* ]]
+
+  # Legacy file should be migrated to active/
+  [ ! -f "$legacy_file" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/active/${session_id}.md" ]
+}
+
+@test "legacy complete session migrated to completed on list" {
+  # Manually create a complete session in the legacy flat location
+  mkdir -p "$VBW_PLANNING_DIR/debugging"
+  local session_id="20250101-120000-legacy-done"
+  local legacy_file="$VBW_PLANNING_DIR/debugging/${session_id}.md"
+  printf '%s\n' '---' "session_id: ${session_id}" 'title: legacy-done' 'status: complete' 'created: 2025-01-01 12:00:00' 'updated: 2025-01-01 12:00:00' 'qa_round: 1' 'qa_last_result: pass' 'uat_round: 1' 'uat_last_result: pass' '---' '' '# Debug Session: legacy-done' > "$legacy_file"
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" list "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"|completed"* ]]
+
+  # Legacy file should be migrated to completed/
+  [ ! -f "$legacy_file" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/${session_id}.md" ]
+}
+
+@test "list shows sessions from both active and completed" {
+  # Create an active session
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "active-bug")"
+  local active_file="$session_file"
+
+  # Create another session and complete it
+  sleep 1
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "done-bug")"
+  bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$VBW_PLANNING_DIR" complete > /dev/null
+
+  # Resume the first session to make it active again
+  local active_name
+  active_name=$(basename "$active_file")
+  bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "$active_name" > /dev/null
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" list "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"|active"* ]]
+  [[ "$output" == *"|completed"* ]]
+  [[ "$output" == *"session_count=2"* ]]
+}
+
+@test "resume finds session in completed directory" {
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "resume-done")"
+  local fname
+  fname=$(basename "$session_file")
+
+  bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$VBW_PLANNING_DIR" complete > /dev/null
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "$fname"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=true"* ]]
 }
 
 # ── unknown command ──────────────────────────────────────

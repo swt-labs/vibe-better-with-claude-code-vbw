@@ -20,7 +20,8 @@
 #   uat_last_result: pending | pass | issues_found
 #
 # Active pointer: <planning-dir>/debugging/.active-session (contains session filename)
-# Session files:  <planning-dir>/debugging/{YYYYMMDD-HHMMSS}-{slug}.md
+# Session files:  <planning-dir>/debugging/active/{YYYYMMDD-HHMMSS}-{slug}.md   (in-progress)
+#                 <planning-dir>/debugging/completed/{YYYYMMDD-HHMMSS}-{slug}.md (finished)
 
 set -euo pipefail
 
@@ -33,6 +34,8 @@ if [ -z "$CMD" ] || [ -z "$PLANNING_DIR" ]; then
 fi
 
 DEBUG_DIR="$PLANNING_DIR/debugging"
+ACTIVE_DIR="$DEBUG_DIR/active"
+COMPLETED_DIR="$DEBUG_DIR/completed"
 ACTIVE_FILE="$DEBUG_DIR/.active-session"
 
 # Valid status values
@@ -128,6 +131,45 @@ validate_session_name() {
   return 0
 }
 
+# Migrate a legacy flat-path session to the correct subdirectory based on its status.
+# Moves complete sessions to completed/, all others to active/.
+# Returns the new path. No-op if the file is already in a subdirectory.
+migrate_legacy_session() {
+  local file="$1"
+  local dir
+  dir=$(dirname "$file")
+  # Only migrate files directly in DEBUG_DIR (not already in active/ or completed/)
+  if [ "$dir" != "$DEBUG_DIR" ]; then
+    echo "$file"
+    return
+  fi
+  local fname
+  fname=$(basename "$file")
+  local file_status
+  file_status=$(read_field "$file" "status")
+  local target_dir
+  if [ "$file_status" = "complete" ]; then
+    target_dir="$COMPLETED_DIR"
+  else
+    target_dir="$ACTIVE_DIR"
+  fi
+  mkdir -p "$target_dir"
+  mv "$file" "$target_dir/$fname"
+  # Update .active-session pointer if it referenced this file
+  if [ -f "$ACTIVE_FILE" ]; then
+    local pointer
+    pointer=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
+    if [ "$pointer" = "$fname" ]; then
+      if [ "$file_status" = "complete" ]; then
+        rm -f "$ACTIVE_FILE"
+      fi
+      # If not complete, pointer still valid — file is now in active/ and
+      # get_active_session_path() will find it there
+    fi
+  fi
+  echo "$target_dir/$fname"
+}
+
 # Get active session file path (returns empty if none/stale)
 get_active_session_path() {
   if [ ! -f "$ACTIVE_FILE" ]; then
@@ -142,9 +184,25 @@ get_active_session_path() {
     rm -f "$ACTIVE_FILE"  # Clear corrupted pointer
     return
   fi
-  local session_path="$DEBUG_DIR/$session_name"
+  # Search active/ first (canonical location)
+  local session_path="$ACTIVE_DIR/$session_name"
   if [ -f "$session_path" ] && [ ! -L "$session_path" ]; then
     echo "$session_path"
+    return
+  fi
+  # Check legacy flat location and migrate if found
+  local legacy_path="$DEBUG_DIR/$session_name"
+  if [ -f "$legacy_path" ] && [ ! -L "$legacy_path" ]; then
+    local migrated
+    migrated=$(migrate_legacy_session "$legacy_path")
+    echo "$migrated"
+    return
+  fi
+  # Check completed/ (session was completed but pointer not cleared)
+  local completed_path="$COMPLETED_DIR/$session_name"
+  if [ -f "$completed_path" ] && [ ! -L "$completed_path" ]; then
+    echo "$completed_path"
+    return
   fi
   # Stale pointer, missing, or symlink — do not follow
 }
@@ -154,11 +212,21 @@ find_latest_unresolved() {
   if [ ! -d "$DEBUG_DIR" ]; then
     return
   fi
+  # Migrate any legacy flat-path sessions first
+  local legacy_f
+  for legacy_f in "$DEBUG_DIR"/*.md; do
+    [ -f "$legacy_f" ] && [ ! -L "$legacy_f" ] || continue
+    migrate_legacy_session "$legacy_f" > /dev/null
+  done
+  # Only scan active/ — completed sessions are excluded by definition
+  if [ ! -d "$ACTIVE_DIR" ]; then
+    return
+  fi
   # Collect files into array, explicitly sorted by name (which contains timestamp)
   local files=() f
   while IFS= read -r f; do
     [ -f "$f" ] && [ ! -L "$f" ] && files+=("$f")
-  done < <(printf '%s\n' "$DEBUG_DIR"/*.md | LC_ALL=C sort)
+  done < <(printf '%s\n' "$ACTIVE_DIR"/*.md | LC_ALL=C sort)
   # Iterate from end (latest timestamp first) to find latest unresolved
   local i status
   for (( i=${#files[@]}-1; i>=0; i-- )); do
@@ -201,10 +269,10 @@ case "$CMD" in
       SLUG="debug"
     fi
 
-    mkdir -p "$DEBUG_DIR"
+    mkdir -p "$ACTIVE_DIR"
     TIMESTAMP=$(date '+%Y%m%d-%H%M%S')
     SESSION_ID="${TIMESTAMP}-${SLUG}"
-    SESSION_FILE="$DEBUG_DIR/${SESSION_ID}.md"
+    SESSION_FILE="$ACTIVE_DIR/${SESSION_ID}.md"
     NOW=$(date '+%Y-%m-%d %H:%M:%S')
 
     # Check for collision (extremely unlikely with second-precision timestamps)
@@ -301,9 +369,22 @@ ENDSESSION
       *.md) ;;
       *) SESSION_NAME="${SESSION_NAME}.md" ;;
     esac
-    SESSION_PATH="$DEBUG_DIR/$SESSION_NAME"
+    SESSION_PATH="$ACTIVE_DIR/$SESSION_NAME"
+    # Search active/ first, then completed/, then legacy flat dir
     if [ ! -f "$SESSION_PATH" ]; then
-      echo "Error: session file not found: $SESSION_PATH" >&2
+      SESSION_PATH="$COMPLETED_DIR/$SESSION_NAME"
+    fi
+    if [ ! -f "$SESSION_PATH" ]; then
+      # Check legacy flat location and migrate
+      legacy_path="$DEBUG_DIR/$SESSION_NAME"
+      if [ -f "$legacy_path" ] && [ ! -L "$legacy_path" ]; then
+        SESSION_PATH=$(migrate_legacy_session "$legacy_path")
+      else
+        SESSION_PATH=""
+      fi
+    fi
+    if [ -z "$SESSION_PATH" ] || [ ! -f "$SESSION_PATH" ]; then
+      echo "Error: session file not found: $SESSION_NAME" >&2
       exit 1
     fi
     if [ -L "$SESSION_PATH" ]; then
@@ -328,6 +409,23 @@ ENDSESSION
       exit 1
     fi
     update_field "$SESSION_PATH" "status" "$STATUS"
+    # Auto-move to completed/ when status transitions to complete
+    if [ "$STATUS" = "complete" ]; then
+      fname=$(basename "$SESSION_PATH")
+      current_dir=$(dirname "$SESSION_PATH")
+      if [ "$current_dir" != "$COMPLETED_DIR" ]; then
+        mkdir -p "$COMPLETED_DIR"
+        mv "$SESSION_PATH" "$COMPLETED_DIR/$fname"
+        SESSION_PATH="$COMPLETED_DIR/$fname"
+      fi
+      # Clear active pointer if it references this session
+      if [ -f "$ACTIVE_FILE" ]; then
+        pointer=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
+        if [ "$pointer" = "$fname" ]; then
+          rm -f "$ACTIVE_FILE"
+        fi
+      fi
+    fi
     echo "status=$STATUS"
     echo "session_file=$SESSION_PATH"
     ;;
@@ -368,15 +466,34 @@ ENDSESSION
       echo "no_sessions=true"
       exit 0
     fi
-    COUNT=0
+    # Migrate legacy flat-path sessions first
     for f in "$DEBUG_DIR"/*.md; do
       [ -f "$f" ] && [ ! -L "$f" ] || continue
-      local_id=$(read_field "$f" "session_id")
-      local_status=$(read_field "$f" "status")
-      local_title=$(read_field "$f" "title")
-      echo "session=${local_id}|${local_status}|${local_title}"
-      COUNT=$((COUNT + 1))
+      migrate_legacy_session "$f" > /dev/null
     done
+    COUNT=0
+    # List active sessions
+    if [ -d "$ACTIVE_DIR" ]; then
+      for f in "$ACTIVE_DIR"/*.md; do
+        [ -f "$f" ] && [ ! -L "$f" ] || continue
+        local_id=$(read_field "$f" "session_id")
+        local_status=$(read_field "$f" "status")
+        local_title=$(read_field "$f" "title")
+        echo "session=${local_id}|${local_status}|${local_title}|active"
+        COUNT=$((COUNT + 1))
+      done
+    fi
+    # List completed sessions
+    if [ -d "$COMPLETED_DIR" ]; then
+      for f in "$COMPLETED_DIR"/*.md; do
+        [ -f "$f" ] && [ ! -L "$f" ] || continue
+        local_id=$(read_field "$f" "session_id")
+        local_status=$(read_field "$f" "status")
+        local_title=$(read_field "$f" "title")
+        echo "session=${local_id}|${local_status}|${local_title}|completed"
+        COUNT=$((COUNT + 1))
+      done
+    fi
     if [ "$COUNT" -eq 0 ]; then
       echo "no_sessions=true"
     fi
