@@ -98,6 +98,18 @@ update_field() {
   fi
 }
 
+# Validate a session name is safe (no path traversal, no slashes)
+# Expected format: {YYYYMMDD}-{HHMMSS}-{slug}.md or the basename without .md
+validate_session_name() {
+  local name="$1"
+  case "$name" in
+    */* | *..* | "")
+      echo "Error: invalid session name (path traversal rejected): $name" >&2
+      return 1 ;;
+  esac
+  return 0
+}
+
 # Get active session file path (returns empty if none/stale)
 get_active_session_path() {
   if [ ! -f "$ACTIVE_FILE" ]; then
@@ -106,6 +118,10 @@ get_active_session_path() {
   local session_name
   session_name=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
   if [ -z "$session_name" ]; then
+    return
+  fi
+  if ! validate_session_name "$session_name"; then
+    rm -f "$ACTIVE_FILE"  # Clear corrupted pointer
     return
   fi
   local session_path="$DEBUG_DIR/$session_name"
@@ -258,6 +274,7 @@ ENDSESSION
     fi
     # Accept with or without .md extension
     SESSION_NAME="$SESSION_ID"
+    validate_session_name "$SESSION_NAME" || exit 1
     case "$SESSION_NAME" in
       *.md) ;;
       *) SESSION_NAME="${SESSION_NAME}.md" ;;
