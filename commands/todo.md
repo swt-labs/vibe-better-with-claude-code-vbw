@@ -27,7 +27,7 @@ allowed-tools: Read, Edit, Bash
 4. **Capture extended detail (conditional).** Check whether the description from step 2 contains any of these: file paths, reproduction steps, stack traces, code references, error messages, or multi-sentence design rationale. Only evaluate the current `$ARGUMENTS` text — do not scan prior conversation history.
    - **If triggered:** The todo has rich context worth preserving for later execution.
      1. Extract a brief one-line summary (first sentence or the user's explicit title) — this is already the `STATE.md` bullet text from step 3.
-     2. Compute a hash: `echo "<summary text>" | shasum | cut -c1-8`
+     2. Compute a hash: `printf '%s' "<summary text>" | shasum | cut -c1-8`
      3. Build a JSON detail object: `{"summary": "<brief summary>", "context": "<full description, max 2000 chars>", "files": ["<any file paths mentioned>"], "added": "<YYYY-MM-DD>", "source": "user"}`
      4. Store it — pipe JSON via heredoc to avoid shell-quoting issues with apostrophes or special characters in user text:
         ```bash
@@ -37,7 +37,7 @@ allowed-tools: Read, Edit, Bash
         ```
      5. Append `(ref:<hash>)` to the todo line in `STATE.md` (after the `(added ...)` date tag).
    - **If not triggered** (simple one-liner with no structural context): skip — no ref tag, no detail storage. Brief bullets keep STATE.md scannable and token-efficient for context compilation. The detail file preserves context that would otherwise be lost when the todo is executed in a later session.
-5. **Confirm:** Display ✓ + formatted item + Next Up (/vbw:status). If detail was captured, also display: "📎 Extended detail saved (ref:HASH)."
+5. **Confirm:** Display ✓ + formatted item + Next Up (/vbw:status). If detail was captured, also display: "Extended detail saved (ref:HASH)."
 
 ## Output Format
 

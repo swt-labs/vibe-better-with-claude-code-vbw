@@ -17,7 +17,7 @@ set -euo pipefail
 #     "count": N,
 #     "filter": "high"|"low"|"normal"|null,
 #     "display": "formatted numbered list",
-#     "items": [ { "num": 1, "line": "raw line", "text": "...", "priority": "high"|"normal"|"low", "date": "YYYY-MM-DD", "age": "3d ago" }, ... ] }
+#     "items": [ { "num": 1, "line": "raw line", "text": "...", "priority": "high"|"normal"|"low", "date": "YYYY-MM-DD", "age": "3d ago", "ref": "abcd1234"|null }, ... ] }
 #
 # Exit codes: always 0 (fail-open for agent consumption)
 
