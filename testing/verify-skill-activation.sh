@@ -118,6 +118,12 @@ verify_skill_contract_sites() {
       pass "$file_name: site $site_number rejects silent omission"
     fi
 
+    if grep -q 'state the skill outcome in your response\|states the skill evaluation outcome' <<< "$segment"; then
+      pass "$file_name: site $site_number has visible-reporting instruction"
+    else
+      fail "$file_name: site $site_number missing visible-reporting instruction"
+    fi
+
     site_number=$((site_number + 1))
   done
 }
@@ -284,6 +290,12 @@ if ! grep -q 'three-layer' "$PROTOCOL"; then
   pass "execute-protocol.md: old three-layer documentation removed"
 else
   fail "execute-protocol.md: still has three-layer documentation"
+fi
+
+if grep -q 'states the skill evaluation outcome' "$PROTOCOL"; then
+  pass "execute-protocol.md: documents visible skill reporting contract"
+else
+  fail "execute-protocol.md: missing visible skill reporting documentation"
 fi
 
 # --- Agent activation instruction checks ---
@@ -892,6 +904,43 @@ for _role_check in "vbw-scout:commands/vibe.md" "vbw-scout:commands/research.md"
     fail "$_sat_file: missing subagent_type for $_sat_role"
   fi
 done
+
+echo ""
+echo "=== Skill Decision Logging Hook ==="
+
+HOOKS_JSON="$ROOT/hooks/hooks.json"
+
+# Validate structural wiring: PreToolUse event, Agent|TaskCreate matcher, timeout 3, correct script
+if jq -e '
+  .hooks.PreToolUse[]
+  | select(.matcher == "Agent|TaskCreate")
+  | .hooks[]
+  | select(.command | contains("skill-decision-logger.sh"))
+  | select(.timeout == 3)
+' "$HOOKS_JSON" >/dev/null 2>&1; then
+  pass "hooks.json: skill-decision-logger.sh wired under PreToolUse Agent|TaskCreate (timeout=3)"
+else
+  fail "hooks.json: skill-decision-logger.sh not correctly wired (expected PreToolUse → Agent|TaskCreate → timeout=3)"
+fi
+
+if [ -f "$ROOT/scripts/skill-decision-logger.sh" ]; then
+  pass "scripts/skill-decision-logger.sh: exists"
+else
+  fail "scripts/skill-decision-logger.sh: missing"
+fi
+
+if [ -x "$ROOT/scripts/skill-decision-logger.sh" ]; then
+  pass "scripts/skill-decision-logger.sh: is executable"
+else
+  fail "scripts/skill-decision-logger.sh: not executable"
+fi
+
+# The logger must always exit 0 (fail-open, never block agent spawn)
+if grep -q 'exit 0' "$ROOT/scripts/skill-decision-logger.sh"; then
+  pass "scripts/skill-decision-logger.sh: exits 0 (fail-open)"
+else
+  fail "scripts/skill-decision-logger.sh: missing exit 0 (must be fail-open)"
+fi
 
 echo ""
 echo "==============================="
