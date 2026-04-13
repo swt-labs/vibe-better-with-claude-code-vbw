@@ -215,6 +215,39 @@ else
   fail "debug-session-lifecycle.bats missing"
 fi
 
+# — suggest-next.sh qa path handles standalone debug sessions (CM2-01) —
+
+if grep -q 'phase_count.*0.*debugging' "$ROOT/scripts/suggest-next.sh" 2>/dev/null || \
+   grep -q '_qa_debug_handled' "$ROOT/scripts/suggest-next.sh" 2>/dev/null; then
+  pass "suggest-next.sh qa branch has standalone debug-session detection"
+else
+  fail "suggest-next.sh qa branch missing standalone debug-session detection"
+fi
+
+# — qa.md routing decision includes phase_count=0 guard (CM2-02) —
+
+if grep -q 'phase_count=0.*Phase state' "$ROOT/commands/qa.md" 2>/dev/null; then
+  pass "qa.md debug-session routing decision includes phase_count=0 guard"
+else
+  fail "qa.md debug-session routing decision missing phase_count=0 guard"
+fi
+
+# — verify.md routing decision includes phase_count=0 guard (CM2-02) —
+
+if grep -q 'phase_count=0.*Phase state' "$ROOT/commands/verify.md" 2>/dev/null; then
+  pass "verify.md debug-session routing decision includes phase_count=0 guard"
+else
+  fail "verify.md debug-session routing decision missing phase_count=0 guard"
+fi
+
+# — suggest-next-debug-session.bats covers qa context (CM2-03) —
+
+if grep -q 'suggest-next qa.*pass.*debug session' "$ROOT/tests/suggest-next-debug-session.bats" 2>/dev/null; then
+  pass "suggest-next-debug-session.bats covers qa pass with debug session"
+else
+  fail "suggest-next-debug-session.bats missing qa pass with debug session test"
+fi
+
 # — Summary —
 
 echo ""

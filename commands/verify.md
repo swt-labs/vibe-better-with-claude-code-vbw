@@ -353,7 +353,7 @@ eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/s
 
 **Routing decision:**
 - If `$ARGUMENTS` contains an explicit phase number AND no `--session` flag → skip debug-session routing, use standard phase UAT flow below.
-- If `active_session != none` AND session `status` is `uat_pending` or `uat_failed` → enter debug-session UAT mode (below).
+- If `active_session != none` AND session `status` is `uat_pending` or `uat_failed` AND `phase_count=0` (from Phase state context) → enter debug-session UAT mode (below). If `phase_count > 0`, skip debug-session routing — standard phase UAT takes priority regardless of active session status.
 - Otherwise → skip debug-session routing, continue to standard phase UAT Steps.
 
 **Debug-session UAT mode:**

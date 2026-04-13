@@ -578,6 +578,38 @@ case "$CMD" in
     ;;
 
   qa)
+    # Check for active standalone debug session (phase_count=0 only)
+    _qa_debug_handled=false
+    if [ "${phase_count:-0}" -eq 0 ] && [ -d "$PLANNING_DIR/debugging" ]; then
+      _qa_ds_output=$("$SCRIPT_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null) || true
+      if [ -n "$_qa_ds_output" ]; then
+        eval "$_qa_ds_output" 2>/dev/null || true
+        # shellcheck disable=SC2154
+        if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
+          _qa_ds_status=$(grep -m1 '^status:' "$session_file" 2>/dev/null | sed 's/^status:[[:space:]]*//' || true)
+          case "$_qa_ds_status" in
+            qa_pending|uat_pending|fix_applied)
+              case "$effective_result" in
+                pass)
+                  suggest "/vbw:verify -- Run UAT on the debug fix"
+                  ;;
+                fail|partial)
+                  suggest "/vbw:debug --resume -- Address QA failures"
+                  ;;
+              esac
+              _qa_debug_handled=true
+              ;;
+            qa_failed)
+              suggest "/vbw:debug --resume -- Address QA failures"
+              _qa_debug_handled=true
+              ;;
+          esac
+        fi
+      fi
+    fi
+    if [ "$_qa_debug_handled" = true ]; then
+      :
+    else
     case "$effective_result" in
       pass)
         # Suggest UAT verification when:
@@ -663,6 +695,7 @@ case "$CMD" in
         suggest "/vbw:vibe -- Continue building"
         ;;
     esac
+    fi
     ;;
 
   fix)

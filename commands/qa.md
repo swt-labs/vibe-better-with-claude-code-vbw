@@ -139,7 +139,7 @@ eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/s
 
 **Routing decision:**
 - If `$ARGUMENTS` contains an explicit phase number AND no `--session` flag → skip debug-session routing, use standard phase QA flow below.
-- If `active_session != none` AND session `status` is `qa_pending` or `qa_failed` → enter debug-session QA mode (below).
+- If `active_session != none` AND session `status` is `qa_pending` or `qa_failed` AND `phase_count=0` (from Phase state context) → enter debug-session QA mode (below). If `phase_count > 0`, skip debug-session routing — standard phase QA takes priority regardless of active session status.
 - If `active_session != none` but session `status` is NOT `qa_pending`/`qa_failed` → skip debug-session routing. Session is in a different lifecycle stage.
 - If `active_session = none` → skip debug-session routing, continue to standard phase QA.
 
