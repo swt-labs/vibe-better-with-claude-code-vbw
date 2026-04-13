@@ -120,12 +120,12 @@ find_latest_unresolved() {
   if [ ! -d "$DEBUG_DIR" ]; then
     return
   fi
-  # Collect files into array, sort reverse by name (which contains timestamp)
+  # Collect files into array, explicitly sorted by name (which contains timestamp)
   local files=() f
-  for f in "$DEBUG_DIR"/*.md; do
+  while IFS= read -r f; do
     [ -f "$f" ] && files+=("$f")
-  done
-  # Sort reverse: iterate from end of sorted array
+  done < <(LC_ALL=C printf '%s\n' "$DEBUG_DIR"/*.md | sort)
+  # Iterate from end (latest timestamp first) to find latest unresolved
   local i status
   for (( i=${#files[@]}-1; i>=0; i-- )); do
     f="${files[$i]}"

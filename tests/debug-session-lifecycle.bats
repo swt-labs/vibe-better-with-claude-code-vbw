@@ -137,7 +137,7 @@ get_suggestion() {
   echo '{"mode":"status","status":"uat_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
 
   # UAT finds issues
-  echo '{"mode":"uat","round":1,"result":"issues_found","checkpoints":[{"description":"Mobile layout","result":"issue","user_response":"Broken on iPhone"},{"description":"Desktop layout","result":"pass"},{"description":"Tablet","result":"skip","user_response":"No tablet to test"}],"issues":[{"description":"Mobile flex wraps incorrectly","severity":"high"}]}' \
+  echo '{"mode":"uat","round":1,"result":"issues_found","checkpoints":[{"description":"Mobile layout","result":"issue","user_response":"Broken on iPhone"},{"description":"Desktop layout","result":"pass"},{"description":"Tablet","result":"skip","user_response":"No tablet to test"}],"issues":[{"description":"Mobile flex wraps incorrectly","severity":"major"}]}' \
     | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
   echo '{"mode":"status","status":"uat_failed"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
 
@@ -244,7 +244,7 @@ get_suggestion() {
   echo '{"mode":"qa","round":1,"result":"PASS","checks":[{"id":"c1","description":"Margin correct","status":"pass","evidence":"OK"}],"summary":"Pass."}' \
     | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
   echo '{"mode":"status","status":"uat_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
-  echo '{"mode":"uat","round":1,"result":"issues_found","checkpoints":[{"description":"Header alignment","result":"issue","user_response":"Still off by 2px"}],"issues":[{"description":"Header offset","severity":"medium"}]}' \
+  echo '{"mode":"uat","round":1,"result":"issues_found","checkpoints":[{"description":"Header alignment","result":"issue","user_response":"Still off by 2px"}],"issues":[{"description":"Header offset","severity":"major"}]}' \
     | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
   echo '{"mode":"status","status":"uat_failed"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
 

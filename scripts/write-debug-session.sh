@@ -317,10 +317,10 @@ case "$MODE" in
         QA_ENTRY+=$'\n'"| Check | Status | Evidence |"$'\n'
         QA_ENTRY+="| ----- | ------ | -------- |"$'\n'
         for i in $(seq 0 $((CHECKS_TOTAL - 1))); do
-          D_ID=$(echo "$json" | jq -r ".checks[$i].id // \"C$((i+1))\"")
-          D_DESC=$(echo "$json" | jq -r ".checks[$i].description // \"Check $((i+1))\"")
-          D_STATUS=$(echo "$json" | jq -r ".checks[$i].status // \"—\"")
-          D_EVIDENCE=$(echo "$json" | jq -r ".checks[$i].evidence // \"—\"")
+          D_ID=$(echo "$json" | jq -r ".checks[$i].id // \"C$((i+1))\"" | sed 's/|/\\|/g')
+          D_DESC=$(echo "$json" | jq -r ".checks[$i].description // \"Check $((i+1))\"" | sed 's/|/\\|/g')
+          D_STATUS=$(echo "$json" | jq -r ".checks[$i].status // \"—\"" | sed 's/|/\\|/g')
+          D_EVIDENCE=$(echo "$json" | jq -r ".checks[$i].evidence // \"—\"" | sed 's/|/\\|/g')
           QA_ENTRY+="| $D_ID: $D_DESC | $D_STATUS | $D_EVIDENCE |"$'\n'
         done
       fi
@@ -342,9 +342,9 @@ case "$MODE" in
         QA_ENTRY+=$'\n'"| Check | Status | Detail |"$'\n'
         QA_ENTRY+="| ----- | ------ | ------ |"$'\n'
         for i in $(seq 0 $((DETAIL_COUNT - 1))); do
-          D_NAME=$(echo "$json" | jq -r ".details[$i].name // \"Check $((i+1))\"")
-          D_STATUS=$(echo "$json" | jq -r ".details[$i].status // \"—\"")
-          D_DETAIL=$(echo "$json" | jq -r ".details[$i].detail // \"—\"")
+          D_NAME=$(echo "$json" | jq -r ".details[$i].name // \"Check $((i+1))\"" | sed 's/|/\\|/g')
+          D_STATUS=$(echo "$json" | jq -r ".details[$i].status // \"—\"" | sed 's/|/\\|/g')
+          D_DETAIL=$(echo "$json" | jq -r ".details[$i].detail // \"—\"" | sed 's/|/\\|/g')
           QA_ENTRY+="| $D_NAME | $D_STATUS | $D_DETAIL |"$'\n'
         done
       fi
