@@ -402,12 +402,12 @@ else
   fail "debug-session-state.sh set-status branch does not move complete sessions to COMPLETED_DIR"
 fi
 
-# list command should output location field (active or completed)
-if grep -E '\|active"?|\|completed"?' "$STATE_SCRIPT" >/dev/null 2>&1 && \
-   awk '/list\)/,/;;/' "$STATE_SCRIPT" | grep -qE '\|active|\|completed'; then
-  pass "debug-session-state.sh list outputs location field"
+# list command should output both location fields for dual-directory listings
+if awk '/list\)/,/;;/' "$STATE_SCRIPT" | grep -q '|active' && \
+   awk '/list\)/,/;;/' "$STATE_SCRIPT" | grep -q '|completed'; then
+  pass "debug-session-state.sh list outputs both active and completed location fields"
 else
-  fail "debug-session-state.sh list missing location field in output"
+  fail "debug-session-state.sh list missing location field in output (must include both |active and |completed)"
 fi
 
 # — Summary —
