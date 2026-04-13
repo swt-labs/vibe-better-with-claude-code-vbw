@@ -228,9 +228,11 @@ get_active_session_path() {
       # Only return path if it landed in active/ (completed sessions are not active)
       if [[ "$migrated" == "$ACTIVE_DIR/"* ]]; then
         echo "$migrated"
+        return
       fi
+      # Migrated to completed/ — fall through to clear stale pointer
     fi
-    return
+    # Migration failed or session landed in completed/ — fall through
   fi
   # Check completed/ (session was completed but pointer not cleared)
   # Do not return completed/ path — completed sessions are not active.
