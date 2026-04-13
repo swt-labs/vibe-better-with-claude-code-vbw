@@ -65,7 +65,7 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
      ```text
      ✓ Todo picked up.
 
-     ➜ Run: /vbw:{command} {cleaned text} (ref:HASH)
+     ➜ Run: /vbw:{command} {cleaned text} [(ref:HASH) if fix/vibe and ref exists]
      ```
      Before building the suggested command, strip metadata from the todo text: remove any trailing `(added YYYY-MM-DD)` date tag and any `(ref:HASH)` tag. Append `(ref:HASH)` suffix only once, only if the item has a non-null `ref` field **and** the selected action is `/vbw:fix` or `/vbw:vibe` (the commands that consume it). For `/vbw:debug` and `/vbw:research`, omit the ref suffix — those commands do not parse it.
      Do NOT execute the command. STOP after displaying the suggested command.

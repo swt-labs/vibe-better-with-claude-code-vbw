@@ -719,6 +719,9 @@ promote_todos() {
     source_artifact=$(printf '%s' "$promotable_json" | jq -r ".[$i].last_seen_in // \"\"")
     disposition=$(printf '%s' "$promotable_json" | jq -r ".[$i].disposition // \"\"")
 
+    # Preserve full error for detail context before truncating for STATE.md readability
+    local full_error_msg="$error_msg"
+
     # Truncate error message for todo readability (max 80 chars)
     if [ "${#error_msg}" -gt 80 ]; then
       error_msg="${error_msg:0:77}..."
@@ -767,8 +770,8 @@ promote_todos() {
       else
         new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today}) (ref:${ref_hash})"$'\n'
       fi
-      # Collect detail for newly promoted items
-      promoted_details="${promoted_details}${ref_hash}"$'\x1f'"${test_name}"$'\x1f'"${file_path}"$'\x1f'"${error_msg}"$'\x1f'"${times_seen}"$'\x1f'"${source_artifact}"$'\x1f'"${disposition}"$'\n'
+      # Collect detail for newly promoted items (use full_error_msg for rich context)
+      promoted_details="${promoted_details}${ref_hash}"$'\x1f'"${test_name}"$'\x1f'"${file_path}"$'\x1f'"${full_error_msg}"$'\x1f'"${times_seen}"$'\x1f'"${source_artifact}"$'\x1f'"${disposition}"$'\n'
       promoted=$((promoted + 1))
     fi
     i=$((i + 1))

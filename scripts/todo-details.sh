@@ -231,7 +231,7 @@ cmd_gc() {
   local orphaned=()
   local key
   for key in $registry_keys; do
-    if ! printf '%s\n' "$state_refs" | grep -qF "$key"; then
+    if ! printf '%s\n' "$state_refs" | grep -qxF "$key"; then
       orphaned+=("$key")
     fi
   done
