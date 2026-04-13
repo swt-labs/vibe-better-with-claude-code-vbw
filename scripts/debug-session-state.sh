@@ -111,16 +111,16 @@ print_session_metadata() {
   local session_name
   session_name=$(basename "$session_path")
   local session_id="${session_name%.md}"
-  echo "session_id=$session_id"
-  echo "session_file=$session_path"
-  echo "status=$(read_field "$session_path" "status")"
-  echo "title=$(read_field "$session_path" "title")"
-  echo "qa_round=$(read_field "$session_path" "qa_round")"
-  echo "qa_last_result=$(read_field "$session_path" "qa_last_result")"
-  echo "uat_round=$(read_field "$session_path" "uat_round")"
-  echo "uat_last_result=$(read_field "$session_path" "uat_last_result")"
-  echo "created=$(read_field "$session_path" "created")"
-  echo "updated=$(read_field "$session_path" "updated")"
+  printf 'session_id=%q\n' "$session_id"
+  printf 'session_file=%q\n' "$session_path"
+  printf 'status=%q\n' "$(read_field "$session_path" "status")"
+  printf 'title=%q\n' "$(read_field "$session_path" "title")"
+  printf 'qa_round=%q\n' "$(read_field "$session_path" "qa_round")"
+  printf 'qa_last_result=%q\n' "$(read_field "$session_path" "qa_last_result")"
+  printf 'uat_round=%q\n' "$(read_field "$session_path" "uat_round")"
+  printf 'uat_last_result=%q\n' "$(read_field "$session_path" "uat_last_result")"
+  printf 'created=%q\n' "$(read_field "$session_path" "created")"
+  printf 'updated=%q\n' "$(read_field "$session_path" "updated")"
 }
 
 case "$CMD" in

@@ -62,9 +62,11 @@ update_frontmatter() {
 # Replace content of a section (from ## Heading to next ## or EOF)
 replace_section() {
   local heading="$1" content="$2"
-  local tmpfile
+  local tmpfile content_file
   tmpfile=$(mktemp)
-  awk -v heading="$heading" -v content="$content" '
+  content_file=$(mktemp)
+  printf '%s\n' "$content" > "$content_file"
+  awk -v heading="$heading" -v cfile="$content_file" '
     BEGIN { in_section = 0; printed = 0 }
     /^## / {
       if (in_section) {
@@ -74,7 +76,8 @@ replace_section() {
       if ($0 == "## " heading) {
         print $0
         print ""
-        print content
+        while ((getline line < cfile) > 0) print line
+        close(cfile)
         print ""
         in_section = 1
         next
@@ -87,19 +90,23 @@ replace_section() {
       }
     }
   ' "$SESSION_FILE" > "$tmpfile"
+  rm -f "$content_file"
   mv "$tmpfile" "$SESSION_FILE"
 }
 
 # Append content under a section heading (before the next ## or at EOF)
 append_to_section() {
   local heading="$1" content="$2"
-  local tmpfile
+  local tmpfile content_file
   tmpfile=$(mktemp)
-  awk -v heading="$heading" -v content="$content" '
+  content_file=$(mktemp)
+  printf '%s\n' "$content" > "$content_file"
+  awk -v heading="$heading" -v cfile="$content_file" '
     BEGIN { in_section = 0; appended = 0 }
     /^## / {
       if (in_section && !appended) {
-        print content
+        while ((getline line < cfile) > 0) print line
+        close(cfile)
         print ""
         appended = 1
       }
@@ -111,11 +118,13 @@ append_to_section() {
     { print }
     END {
       if (in_section && !appended) {
-        print content
+        while ((getline line < cfile) > 0) print line
+        close(cfile)
         print ""
       }
     }
   ' "$SESSION_FILE" > "$tmpfile"
+  rm -f "$content_file"
   mv "$tmpfile" "$SESSION_FILE"
 }
 
@@ -214,27 +223,59 @@ case "$MODE" in
     # Build QA round entry
     QA_ENTRY="### Round $ROUND — $RESULT"$'\n'
 
-    CHECKS_PASSED=$(echo "$json" | jq -r '.checks.passed // 0')
-    CHECKS_FAILED=$(echo "$json" | jq -r '.checks.failed // 0')
-    CHECKS_TOTAL=$(echo "$json" | jq -r '.checks.total // 0')
-    QA_ENTRY+=$'\n'"**Checks:** $CHECKS_PASSED/$CHECKS_TOTAL passed"
+    # Detect checks format: array of objects OR summary object
+    CHECKS_TYPE=$(echo "$json" | jq -r '.checks | type // "null"')
 
-    if [ "$CHECKS_FAILED" -gt 0 ]; then
-      QA_ENTRY+=", $CHECKS_FAILED failed"
-    fi
-    QA_ENTRY+=$'\n'
+    if [ "$CHECKS_TYPE" = "array" ]; then
+      # Array format from qa.md: [{id, description, status, evidence}, ...]
+      CHECKS_TOTAL=$(echo "$json" | jq '.checks | length')
+      CHECKS_PASSED=$(echo "$json" | jq '[.checks[] | select(.status == "PASS" or .status == "pass")] | length')
+      CHECKS_FAILED=$((CHECKS_TOTAL - CHECKS_PASSED))
 
-    # Add details if present
-    DETAIL_COUNT=$(echo "$json" | jq '.details | length // 0')
-    if [ "$DETAIL_COUNT" -gt 0 ]; then
-      QA_ENTRY+=$'\n'"| Check | Status | Detail |"$'\n'
-      QA_ENTRY+="| ----- | ------ | ------ |"$'\n'
-      for i in $(seq 0 $((DETAIL_COUNT - 1))); do
-        D_NAME=$(echo "$json" | jq -r ".details[$i].name // \"Check $((i+1))\"")
-        D_STATUS=$(echo "$json" | jq -r ".details[$i].status // \"—\"")
-        D_DETAIL=$(echo "$json" | jq -r ".details[$i].detail // \"—\"")
-        QA_ENTRY+="| $D_NAME | $D_STATUS | $D_DETAIL |"$'\n'
-      done
+      QA_ENTRY+=$'\n'"**Checks:** $CHECKS_PASSED/$CHECKS_TOTAL passed"
+      if [ "$CHECKS_FAILED" -gt 0 ]; then
+        QA_ENTRY+=", $CHECKS_FAILED failed"
+      fi
+      QA_ENTRY+=$'\n'
+
+      # Build details table from checks array
+      if [ "$CHECKS_TOTAL" -gt 0 ]; then
+        QA_ENTRY+=$'\n'"| Check | Status | Evidence |"$'\n'
+        QA_ENTRY+="| ----- | ------ | -------- |"$'\n'
+        for i in $(seq 0 $((CHECKS_TOTAL - 1))); do
+          D_ID=$(echo "$json" | jq -r ".checks[$i].id // \"C$((i+1))\"")
+          D_DESC=$(echo "$json" | jq -r ".checks[$i].description // \"Check $((i+1))\"")
+          D_STATUS=$(echo "$json" | jq -r ".checks[$i].status // \"—\"")
+          D_EVIDENCE=$(echo "$json" | jq -r ".checks[$i].evidence // \"—\"")
+          QA_ENTRY+="| $D_ID: $D_DESC | $D_STATUS | $D_EVIDENCE |"$'\n'
+        done
+      fi
+    elif [ "$CHECKS_TYPE" = "object" ]; then
+      # Legacy summary object format: {passed, failed, total}
+      CHECKS_PASSED=$(echo "$json" | jq -r '.checks.passed // 0')
+      CHECKS_FAILED=$(echo "$json" | jq -r '.checks.failed // 0')
+      CHECKS_TOTAL=$(echo "$json" | jq -r '.checks.total // 0')
+
+      QA_ENTRY+=$'\n'"**Checks:** $CHECKS_PASSED/$CHECKS_TOTAL passed"
+      if [ "$CHECKS_FAILED" -gt 0 ]; then
+        QA_ENTRY+=", $CHECKS_FAILED failed"
+      fi
+      QA_ENTRY+=$'\n'
+
+      # Add details from .details array if present (legacy format)
+      DETAIL_COUNT=$(echo "$json" | jq '.details | length // 0')
+      if [ "$DETAIL_COUNT" -gt 0 ]; then
+        QA_ENTRY+=$'\n'"| Check | Status | Detail |"$'\n'
+        QA_ENTRY+="| ----- | ------ | ------ |"$'\n'
+        for i in $(seq 0 $((DETAIL_COUNT - 1))); do
+          D_NAME=$(echo "$json" | jq -r ".details[$i].name // \"Check $((i+1))\"")
+          D_STATUS=$(echo "$json" | jq -r ".details[$i].status // \"—\"")
+          D_DETAIL=$(echo "$json" | jq -r ".details[$i].detail // \"—\"")
+          QA_ENTRY+="| $D_NAME | $D_STATUS | $D_DETAIL |"$'\n'
+        done
+      fi
+    else
+      QA_ENTRY+=$'\n'"**Checks:** No check data provided"$'\n'
     fi
 
     SUMMARY=$(echo "$json" | jq -r '.summary // empty')
@@ -295,8 +336,20 @@ case "$MODE" in
     if [ "$ISSUE_COUNT" -gt 0 ]; then
       UAT_ENTRY+=$'\n'"**Issues found:**"$'\n'
       for i in $(seq 0 $((ISSUE_COUNT - 1))); do
-        ISSUE_DESC=$(echo "$json" | jq -r ".issues[$i] // \"Issue $((i+1))\"")
-        UAT_ENTRY+="- $ISSUE_DESC"$'\n'
+        # Handle both object format {id, description, severity} and plain string format
+        ISSUE_TYPE=$(echo "$json" | jq -r ".issues[$i] | type")
+        if [ "$ISSUE_TYPE" = "object" ]; then
+          ISSUE_DESC=$(echo "$json" | jq -r ".issues[$i].description // \"Issue $((i+1))\"")
+          ISSUE_SEV=$(echo "$json" | jq -r ".issues[$i].severity // empty")
+          if [ -n "$ISSUE_SEV" ]; then
+            UAT_ENTRY+="- [$ISSUE_SEV] $ISSUE_DESC"$'\n'
+          else
+            UAT_ENTRY+="- $ISSUE_DESC"$'\n'
+          fi
+        else
+          ISSUE_DESC=$(echo "$json" | jq -r ".issues[$i] // \"Issue $((i+1))\"")
+          UAT_ENTRY+="- $ISSUE_DESC"$'\n'
+        fi
       done
     fi
 

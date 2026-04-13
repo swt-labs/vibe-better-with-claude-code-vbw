@@ -55,8 +55,10 @@ Resolve or create the debug session before any investigation. Order of precedenc
 
 Store the resolved `session_id` and `session_file` for use in Steps below.
 
-If resuming a session with `status=qa_pending` or `status=qa_failed`: skip investigation, display current session state, and suggest `/vbw:qa` instead.
-If resuming a session with `status=uat_pending` or `status=uat_failed`: skip investigation, display current session state, and suggest `/vbw:verify` instead.
+If resuming a session with `status=qa_pending`: skip investigation, display current session state, and suggest `/vbw:qa` instead.
+If resuming a session with `status=qa_failed`: load failure context via `compile-debug-session-context.sh`, update status to `investigating` via `write-debug-session.sh` (mode=status), then continue investigation from Step 3 using the QA failure details as the new investigation focus.
+If resuming a session with `status=uat_pending`: skip investigation, display current session state, and suggest `/vbw:verify` instead.
+If resuming a session with `status=uat_failed`: load failure context via `compile-debug-session-context.sh`, update status to `investigating` via `write-debug-session.sh` (mode=status), then continue investigation from Step 3 using the UAT failure details as the new investigation focus.
 If resuming a session with `status=complete`: STOP "This debug session is already complete. Start a new one with: /vbw:debug \"bug description\""
 </debug_session_routing>
 

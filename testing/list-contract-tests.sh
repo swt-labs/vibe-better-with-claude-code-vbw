@@ -44,4 +44,5 @@ printf '%s\t%s\n' \
   prefer-teams-canonicalization testing/verify-prefer-teams-canonicalization.sh \
   qa-persistence-contract      testing/verify-qa-persistence-contract.sh \
   discussion-engine-contract   testing/verify-discussion-engine-contract.sh \
+  debug-session-contract       testing/verify-debug-session-contract.sh \
   verify-vibe                  scripts/verify-vibe.sh

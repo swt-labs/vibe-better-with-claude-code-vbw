@@ -1,0 +1,110 @@
+#!/usr/bin/env bats
+
+load test_helper
+
+setup() {
+  setup_temp_dir
+  create_test_config
+  echo '# Project' > "$TEST_TEMP_DIR/.vbw-planning/PROJECT.md"
+  cd "$TEST_TEMP_DIR"
+}
+
+teardown() {
+  teardown_temp_dir
+}
+
+# Helper: create a debug session with a given status
+create_debug_session() {
+  local status_val="$1"
+  local slug="${2:-test-bug}"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/debugging"
+  local session_id="20250101-120000-${slug}"
+  local session_file="$TEST_TEMP_DIR/.vbw-planning/debugging/${session_id}.md"
+
+  cat > "$session_file" <<EOF
+---
+session_id: ${session_id}
+title: ${slug}
+status: ${status_val}
+created: 2025-01-01 12:00:00
+updated: 2025-01-01 12:01:00
+qa_round: 0
+qa_last_result: pending
+uat_round: 0
+uat_last_result: pending
+---
+
+# Debug Session: ${slug}
+
+## Issue
+
+Test issue.
+
+## Investigation
+
+## Plan
+
+## Implementation
+
+### Changed Files
+
+### Commit
+
+## QA
+
+## UAT
+EOF
+
+  echo "${session_id}.md" > "$TEST_TEMP_DIR/.vbw-planning/debugging/.active-session"
+}
+
+@test "suggest-next debug with investigating session suggests resume" {
+  create_debug_session "investigating"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+  [[ "$output" == *"Continue investigation"* ]]
+}
+
+@test "suggest-next debug with qa_pending session suggests qa" {
+  create_debug_session "qa_pending"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:qa"* ]]
+}
+
+@test "suggest-next debug with qa_failed session suggests resume" {
+  create_debug_session "qa_failed"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+  [[ "$output" == *"QA failures"* ]]
+}
+
+@test "suggest-next debug with uat_pending session suggests verify" {
+  create_debug_session "uat_pending"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:verify"* ]]
+}
+
+@test "suggest-next debug with uat_failed session suggests resume" {
+  create_debug_session "uat_failed"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+  [[ "$output" == *"UAT issues"* ]]
+}
+
+@test "suggest-next debug with complete session suggests status" {
+  create_debug_session "complete"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:status"* ]]
+}
+
+@test "suggest-next debug with no session suggests fix" {
+  run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:fix"* ]]
+}
