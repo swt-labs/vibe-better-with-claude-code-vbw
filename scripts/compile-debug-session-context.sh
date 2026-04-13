@@ -51,11 +51,16 @@ read_field() {
   ' "$SESSION_FILE"
 }
 
-# Extract section content between ## Heading and next ## or EOF
+# Known top-level session section headings — must stay aligned with write-debug-session.sh.
+# Only these headings are treated as section boundaries; user-pasted ## headings inside
+# section content are preserved verbatim.
+KNOWN_SECTIONS_RE='^## (Issue|Investigation|Plan|Implementation|QA|UAT|Remediation History)$'
+
+# Extract section content between a canonical ## Heading and the next canonical heading or EOF
 extract_section() {
   local heading="$1"
-  awk -v heading="$heading" '
-    /^## / {
+  awk -v heading="$heading" -v bre="$KNOWN_SECTIONS_RE" '
+    $0 ~ bre {
       if (in_section) exit
       if ($0 == "## " heading) { in_section = 1; next }
     }
