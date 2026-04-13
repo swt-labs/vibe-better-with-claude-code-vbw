@@ -36,8 +36,8 @@ LOG_FILE="$LOG_DIR/.skill-decisions.log"
 PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // .tool_input.description // ""' 2>/dev/null) || exit 0
 [ -z "$PROMPT" ] && exit 0
 
-# Extract agent name from tool input
-AGENT_NAME=$(echo "$INPUT" | jq -r '.tool_input.agent // .tool_input.name // "unknown"' 2>/dev/null) || AGENT_NAME="unknown"
+# Extract agent name from tool input (try agent, name, then subagent_type)
+AGENT_NAME=$(echo "$INPUT" | jq -r '.tool_input.agent // .tool_input.name // .tool_input.subagent_type // "unknown"' 2>/dev/null) || AGENT_NAME="unknown"
 
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) || TIMESTAMP="unknown"
 SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"

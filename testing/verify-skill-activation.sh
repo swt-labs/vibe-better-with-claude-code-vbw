@@ -910,10 +910,17 @@ echo "=== Skill Decision Logging Hook ==="
 
 HOOKS_JSON="$ROOT/hooks/hooks.json"
 
-if grep -q 'skill-decision-logger.sh' "$HOOKS_JSON"; then
-  pass "hooks.json: skill-decision-logger.sh is wired"
+# Validate structural wiring: PreToolUse event, Agent|TaskCreate matcher, timeout 3, correct script
+if jq -e '
+  .hooks.PreToolUse[]
+  | select(.matcher == "Agent|TaskCreate")
+  | .hooks[]
+  | select(.command | contains("skill-decision-logger.sh"))
+  | select(.timeout == 3)
+' "$HOOKS_JSON" >/dev/null 2>&1; then
+  pass "hooks.json: skill-decision-logger.sh wired under PreToolUse Agent|TaskCreate (timeout=3)"
 else
-  fail "hooks.json: skill-decision-logger.sh is not wired"
+  fail "hooks.json: skill-decision-logger.sh not correctly wired (expected PreToolUse → Agent|TaskCreate → timeout=3)"
 fi
 
 if [ -f "$ROOT/scripts/skill-decision-logger.sh" ]; then

@@ -98,3 +98,15 @@ run_logger() {
   run bash -c "echo 'not json at all' | bash '$SCRIPTS_DIR/skill-decision-logger.sh'"
   [ "$status" -eq 0 ]
 }
+
+@test "skill-decision-logger: subagent_type-only input captures agent identity" {
+  local input
+  input=$(jq -n -c '{tool_input: {prompt: "<skill_no_activation>No skills needed for this task.</skill_no_activation>\n\nFix the bug.", subagent_type: "vbw:vbw-dev"}}')
+  run_logger "$input"
+  local log="$TEST_TEMP_DIR/.vbw-planning/.skill-decisions.log"
+  [ -f "$log" ]
+  run jq -r '.agent' "$log"
+  [ "$output" = "vbw:vbw-dev" ]
+  run jq -r '.decision' "$log"
+  [ "$output" = "no_activation" ]
+}
