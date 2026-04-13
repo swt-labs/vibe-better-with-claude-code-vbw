@@ -98,13 +98,31 @@ update_field() {
   fi
 }
 
-# Validate a session name is safe (no path traversal, no slashes)
-# Expected format: {YYYYMMDD}-{HHMMSS}-{slug}.md or the basename without .md
+# Validate a session name is safe and well-formed.
+# Expected format: {YYYYMMDD}-{HHMMSS}-{slug}.md (or basename without .md).
+# Rejects path traversal, non-.md files, and names that don't match the timestamp-slug pattern.
 validate_session_name() {
   local name="$1"
+  # Strip .md suffix for pattern check (callers may pass with or without)
+  local base="${name%.md}"
   case "$name" in
     */* | *..* | "")
       echo "Error: invalid session name (path traversal rejected): $name" >&2
+      return 1 ;;
+  esac
+  # Must end in .md (or be the bare basename that will have .md appended)
+  case "$name" in
+    *.md) ;; # explicit .md — good
+    *.*) # has a different extension
+      echo "Error: invalid session name (must be .md): $name" >&2
+      return 1 ;;
+  esac
+  # Must match YYYYMMDD-HHMMSS-slug pattern
+  # shellcheck disable=SC2254
+  case "$base" in
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]-*) ;; # valid
+    *)
+      echo "Error: invalid session name (expected YYYYMMDD-HHMMSS-slug format): $name" >&2
       return 1 ;;
   esac
   return 0

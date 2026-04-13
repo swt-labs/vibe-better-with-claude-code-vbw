@@ -75,16 +75,21 @@ update_frontmatter() {
   ' "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
 }
 
-# Replace content of a section (from ## Heading to next ## or EOF)
+# Known top-level session section headings (used as boundaries by replace/append/extract).
+# Only these lines are treated as section delimiters — user-pasted ## headings inside
+# section content are preserved verbatim and do not prematurely end a section.
+KNOWN_SECTIONS_RE='^## (Issue|Investigation|Plan|Implementation|QA|UAT|Remediation History)$'
+
+# Replace content of a section (from ## Heading to next known top-level section or EOF)
 replace_section() {
   local heading="$1" content="$2"
   local tmpfile content_file
   tmpfile=$(mktemp)
   content_file=$(mktemp)
   printf '%s\n' "$content" > "$content_file"
-  awk -v heading="$heading" -v cfile="$content_file" '
+  awk -v heading="$heading" -v cfile="$content_file" -v bre="$KNOWN_SECTIONS_RE" '
     BEGIN { in_section = 0; printed = 0 }
-    /^## / {
+    $0 ~ bre {
       if (in_section) {
         in_section = 0
         printed = 1
@@ -110,16 +115,16 @@ replace_section() {
   mv "$tmpfile" "$SESSION_FILE"
 }
 
-# Append content under a section heading (before the next ## or at EOF)
+# Append content under a section heading (before the next known top-level section or at EOF)
 append_to_section() {
   local heading="$1" content="$2"
   local tmpfile content_file
   tmpfile=$(mktemp)
   content_file=$(mktemp)
   printf '%s\n' "$content" > "$content_file"
-  awk -v heading="$heading" -v cfile="$content_file" '
+  awk -v heading="$heading" -v cfile="$content_file" -v bre="$KNOWN_SECTIONS_RE" '
     BEGIN { in_section = 0; appended = 0 }
-    /^## / {
+    $0 ~ bre {
       if (in_section && !appended) {
         while ((getline line < cfile) > 0) print line
         close(cfile)
@@ -144,12 +149,13 @@ append_to_section() {
   mv "$tmpfile" "$SESSION_FILE"
 }
 
-# Extract content of a section (from ## Heading to next ## or EOF), excluding the heading itself
+# Extract content of a section (from ## Heading to next known top-level section or EOF),
+# excluding the heading itself.
 # Strips leading and trailing blank lines (BSD-compatible)
 extract_section() {
   local heading="$1" file="$2"
-  awk -v heading="$heading" '
-    /^## / {
+  awk -v heading="$heading" -v bre="$KNOWN_SECTIONS_RE" '
+    $0 ~ bre {
       if (in_section) exit
       if ($0 == "## " heading) { in_section = 1; next }
     }

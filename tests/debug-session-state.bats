@@ -119,9 +119,24 @@ teardown() {
 }
 
 @test "resume fails for nonexistent session" {
-  run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "nonexistent"
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "20990101-000000-no-such-session.md"
   [ "$status" -eq 1 ]
   [[ "$output" == *"not found"* ]]
+}
+
+@test "resume rejects malformed session names" {
+  # Path traversal
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "../etc/passwd"
+  [ "$status" -eq 1 ]
+
+  # No timestamp prefix
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "nonexistent"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"YYYYMMDD-HHMMSS-slug"* ]]
+
+  # Wrong extension
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "20990101-000000-foo.txt"
+  [ "$status" -eq 1 ]
 }
 
 # ── set-status ───────────────────────────────────────────
