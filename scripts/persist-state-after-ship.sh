@@ -299,4 +299,19 @@ generate_root_state() {
 
 generate_root_state > "$OUTPUT_PATH"
 
+# Garbage-collect orphaned todo-details entries after STATE.md rebuild
+PLANNING_DIR=$(dirname "$OUTPUT_PATH")
+DETAIL_SCRIPT="${PLANNING_DIR}/../scripts/todo-details.sh"
+# Try plugin root resolution for the detail script
+if [ ! -x "$DETAIL_SCRIPT" ]; then
+  SESSION_KEY="${CLAUDE_SESSION_ID:-default}"
+  LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
+  if [ -x "${LINK}/scripts/todo-details.sh" ]; then
+    DETAIL_SCRIPT="${LINK}/scripts/todo-details.sh"
+  fi
+fi
+if [ -x "$DETAIL_SCRIPT" ]; then
+  bash "$DETAIL_SCRIPT" gc "$OUTPUT_PATH" >/dev/null 2>&1 || true
+fi
+
 exit 0

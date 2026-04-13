@@ -45,7 +45,9 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
 
 5. **Handle selection:** Wait for user to reply with a number. If invalid: "Invalid selection. Reply with a number (1-N) or `q` to exit."
 
-6. **Show selected todo:** Display the full `text` from the matching `items` entry.
+6. **Show selected todo:** Display the full `text` from the matching `items` entry. If the item has a non-null `ref` field, load extended detail by running `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" get <ref>`. Parse the JSON output:
+   - If `status` is `"ok"`: display the `detail.context` value below the todo text, prefixed with "**Detail:**". If `detail.files` is non-empty, also display "**Related files:** file1, file2, ...".
+   - If `status` is `"not_found"` or `"error"`: display "⚠ Detail for this todo could not be loaded — continuing with summary only." and proceed without detail.
 
 7. **Offer actions:** Use AskUserQuestion:
    - header: "Action"
@@ -63,10 +65,11 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
      ```text
      ✓ Todo picked up.
 
-     ➜ Run: /vbw:{command} {todo text}
+     ➜ Run: /vbw:{command} {todo text} (ref:HASH)
      ```
+     Include the `(ref:HASH)` suffix only if the item has a non-null `ref` field. This passes the detail reference to the executing command so it can load the extended context.
      Do NOT execute the command. STOP after displaying the suggested command.
-   - **Remove:** Remove the `line` value from the todo section in STATE.md. If no todos remain, replace with "None." Log to `## Recent Activity` with format `- {YYYY-MM-DD}: Removed todo: {text}`. Confirm: "✓ Todo removed." Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos` and display.
+   - **Remove:** Remove the `line` value from the todo section in STATE.md. If no todos remain, replace with "None." If the item has a non-null `ref` field, also run `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" remove <ref>` to clean up the detail entry. If the detail removal fails, display "⚠ Todo removed but detail cleanup failed for ref `HASH` — run `/vbw:doctor` to clean up." rather than silently swallowing the error. Log to `## Recent Activity` with format `- {YYYY-MM-DD}: Removed todo: {text}`. Confirm: "✓ Todo removed." Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos` and display.
    - **Back:** Return to step 4.
 
 ## Output Format

@@ -57,6 +57,8 @@ check "BOOT-01" "bootstrap script executes" bash "$BOOTSTRAP" "$BOOTSTRAP_STATE"
 check "BOOT-02" "bootstrap output has ## Todos section" grep -q '^## Todos$' "$BOOTSTRAP_STATE"
 check "BOOT-03" "bootstrap output has no ### Pending Todos (flat)" test ! "$(grep -c '^### Pending Todos$' "$BOOTSTRAP_STATE")" -gt 0
 check "BOOT-04" "bootstrap output initializes empty todo placeholder" grep -q '^None\.$' "$BOOTSTRAP_STATE"
+check "BOOT-05" "bootstrap creates todo-details.json alongside STATE.md" test -f "$TMP_DIR/todo-details.json"
+check "BOOT-06" "todo-details.json has valid schema" bash -c 'jq -e ".schema_version == 1 and (.items | length) == 0" "$1" >/dev/null' _ "$TMP_DIR/todo-details.json"
 
 echo ""
 echo "==============================="

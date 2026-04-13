@@ -25,7 +25,11 @@ Config: Pre-injected by SessionStart hook.
 - No $ARGUMENTS: STOP "Usage: /vbw:fix \"description of what to fix\""
 
 ## Steps
-1. **Parse:** Entire $ARGUMENTS (minus flags) = fix description.
+1. **Parse:** Entire $ARGUMENTS (minus flags) = fix description. If the description contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag from the description before further processing. If a ref was found, load extended detail:
+    ```bash
+    bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/todo-details.sh get <hash>
+    ```
+    Parse the JSON output. If `status` is `"ok"`, store the `detail.context` and `detail.files` values for use in step 4. If `status` is `"not_found"` or `"error"`, log to `## Recent Activity`: `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` and continue without detail.
 
 2. **State:** Use `.vbw-planning/STATE.md`.
 
@@ -51,6 +55,10 @@ Config: Pre-injected by SessionStart hook.
     ```text
     Quick fix (Turbo mode). Effort: low.
     Task: {fix description}.
+    {If detail was loaded in step 1, include on next lines:
+    "Extended context (from todo detail):
+    {detail.context value}
+    Related files: {detail.files, comma-separated, or omit if empty}"}
     If `.vbw-planning/codebase/META.md` exists, read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before implementing.
     Implement directly. One atomic commit: fix(quick): {brief description}.
     No SUMMARY.md or PLAN.md needed.
