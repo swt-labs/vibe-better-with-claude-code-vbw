@@ -29,7 +29,7 @@ Config: Pre-injected by SessionStart hook.
     ```bash
     bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/todo-details.sh get <hash>
     ```
-    Parse the JSON output. If `status` is `"ok"`, store the `detail.context` and `detail.files` values for use in step 4. If `status` is `"not_found"` or `"error"`, and `.vbw-planning/STATE.md` exists, append `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` under the `## Recent Activity` section in `.vbw-planning/STATE.md`; if that file does not exist, skip logging. In all cases, continue without detail.
+  Parse the JSON output. If `status` is `"ok"`, store the `detail.context` and `detail.files` values for use in step 4. If `status` is `"not_found"` or `"error"`, and `.vbw-planning/STATE.md` exists, append `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` under the `## Activity Log` section (or the first heading beginning with `## Activity`) in `.vbw-planning/STATE.md`; if that file does not exist, skip logging. In all cases, continue without detail.
 
 2. **State:** Use `.vbw-planning/STATE.md`.
 
