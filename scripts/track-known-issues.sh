@@ -746,7 +746,12 @@ promote_todos() {
 
     if [ "$is_dup" = true ] && [ "$needs_disposition_update" = true ]; then
       # Already tracked but disposition changed — rewrite the line
-      local new_line="- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"
+      # Preserve any existing ref tag from the original line
+      local existing_ref=""
+      if [[ "$existing_line" =~ \(ref:([a-f0-9]{8})\) ]]; then
+        existing_ref=" (ref:${BASH_REMATCH[1]})"
+      fi
+      local new_line="- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})${existing_ref}"
       disposition_updates="${disposition_updates}${existing_line}"$'\x1f'"${new_line}"$'\n'
       promoted=$((promoted + 1))
     elif [ "$is_dup" = true ]; then
@@ -823,8 +828,13 @@ promote_todos() {
   mv "$tmp_file" "$state_path"
 
   # Store extended detail for each promoted issue in todo-details.json
-  local detail_script="${PLUGIN_ROOT:-}/scripts/todo-details.sh"
-  if [ -x "$detail_script" ]; then
+  local detail_script=""
+  local session_key="${CLAUDE_SESSION_ID:-default}"
+  local link="/tmp/.vbw-plugin-root-link-${session_key}"
+  if [ -f "${link}/scripts/todo-details.sh" ]; then
+    detail_script="${link}/scripts/todo-details.sh"
+  fi
+  if [ -n "$detail_script" ] && [ -f "$detail_script" ]; then
     local details_path="${planning_dir}/todo-details.json"
     local j=0
     while [ "$j" -lt "$total" ]; do

@@ -275,8 +275,8 @@ main() {
     display_text="${text#\[HIGH\] }"
     display_text="${display_text#\[low\] }"
     display_text="${display_text#\[KNOWN-ISSUE\] }"
-    display_text=$(echo "$display_text" | sed 's/ *(added [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\})$//')
     display_text=$(echo "$display_text" | sed 's/ *(ref:[a-f0-9]\{8\})$//')
+    display_text=$(echo "$display_text" | sed 's/ *(added [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\})$//')
 
     # Show 📎 indicator for todos with extended detail
     local ref_indicator=""

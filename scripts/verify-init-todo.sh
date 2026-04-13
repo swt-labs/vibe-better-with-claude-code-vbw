@@ -61,6 +61,23 @@ check "BOOT-05" "bootstrap creates todo-details.json alongside STATE.md" test -f
 check "BOOT-06" "todo-details.json has valid schema" bash -c 'jq -e ".schema_version == 1 and (.items | length) == 0" "$1" >/dev/null' _ "$TMP_DIR/todo-details.json"
 
 echo ""
+echo "=== List-Todos Ref Handling ==="
+LIST_TMP="$(mktemp -d "${TMPDIR:-/tmp}/vbw-list-ref.XXXXXX")"
+trap 'rm -rf "$TMP_DIR" "$LIST_TMP"' EXIT
+mkdir -p "$LIST_TMP/.vbw-planning"
+cat > "$LIST_TMP/.vbw-planning/STATE.md" << 'HEREDOC'
+# State
+## Todos
+- [HIGH] Fix the widget (added 2025-04-10) (ref:abc12345)
+HEREDOC
+
+check "LIST-04" "list-todos.sh parses ref tag into JSON ref field" \
+  bash -c 'cd "$1" && VBW_PLANNING_DIR=.vbw-planning bash "$2/scripts/list-todos.sh" 2>/dev/null | jq -e ".items[0].ref == \"abc12345\"" >/dev/null' _ "$LIST_TMP" "$ROOT"
+
+check "LIST-05" "list-todos.sh strips ref tag from display text" \
+  bash -c 'cd "$1" && VBW_PLANNING_DIR=.vbw-planning bash "$2/scripts/list-todos.sh" 2>/dev/null | jq -e "(.display | test(\"ref:abc12345\") | not)" >/dev/null' _ "$LIST_TMP" "$ROOT"
+
+echo ""
 echo "==============================="
 echo "TOTAL: $TOTAL_PASS PASS, $TOTAL_FAIL FAIL"
 echo "==============================="
