@@ -320,6 +320,26 @@ else
   fail "vbw-qa.md missing debug-session QA exception from write-verification.sh"
 fi
 
+# — Resume-context handoff injects FAILURE_CONTEXT into debugger prompt (CM6-01) —
+
+if grep -q 'FAILURE_CONTEXT.*compile-debug-session-context' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md resume captures FAILURE_CONTEXT from compile-debug-session-context.sh"
+else
+  fail "debug.md resume missing FAILURE_CONTEXT capture from compile-debug-session-context.sh"
+fi
+
+if grep -q 'Previous QA failed.*FAILURE_CONTEXT' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md resume injects QA failure context into debugger prompt"
+else
+  fail "debug.md resume missing QA failure context injection"
+fi
+
+if grep -q 'Previous UAT failed.*FAILURE_CONTEXT' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md resume injects UAT failure context into debugger prompt"
+else
+  fail "debug.md resume missing UAT failure context injection"
+fi
+
 # — Summary —
 
 echo ""

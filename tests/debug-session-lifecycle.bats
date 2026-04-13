@@ -210,3 +210,49 @@ get_suggestion() {
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
   [ "$status" = "complete" ]
 }
+
+# ── compile-debug-session-context produces usable output ──
+
+@test "compile-debug-session-context extracts QA failure context for resume handoff" {
+  SESSION_FILE=$(start_session)
+
+  # Populate investigation + QA failure
+  echo '{"mode":"investigation","issue":"Crash on save","hypotheses":[{"description":"Race condition","status":"confirmed","evidence_for":"Thread dump","evidence_against":"","conclusion":"Confirmed"}],"root_cause":"Missing lock","plan":"Add mutex","changed_files":["src/save.sh"],"commit":"fff000"}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"qa_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"qa","round":1,"result":"FAIL","checks":[{"id":"c1","description":"Lock acquired before write","status":"fail","evidence":"No lock call in save path"}],"summary":"Missing lock acquisition."}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"qa_failed"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+
+  # Compile QA context
+  run bash "$SCRIPTS_DIR/compile-debug-session-context.sh" "$SESSION_FILE" qa
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Debug Session QA Context"* ]]
+  [[ "$output" == *"Crash on save"* ]]
+  [[ "$output" == *"Missing lock"* ]]
+  [[ "$output" == *"Prior QA Rounds"* ]]
+  [[ "$output" == *"FAIL"* ]]
+}
+
+@test "compile-debug-session-context extracts UAT failure context for resume handoff" {
+  SESSION_FILE=$(start_session)
+
+  # Populate through QA pass + UAT failure
+  echo '{"mode":"investigation","issue":"UI misalignment","hypotheses":[],"root_cause":"Wrong margin","plan":"Fix CSS","changed_files":["style.css"],"commit":"eee111"}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"qa_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"qa","round":1,"result":"PASS","checks":[{"id":"c1","description":"Margin correct","status":"pass","evidence":"OK"}],"summary":"Pass."}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"uat_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"uat","round":1,"result":"issues_found","checkpoints":[{"description":"Header alignment","result":"issue","user_response":"Still off by 2px"}],"issues":[{"description":"Header offset","severity":"medium"}]}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"uat_failed"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+
+  # Compile UAT context
+  run bash "$SCRIPTS_DIR/compile-debug-session-context.sh" "$SESSION_FILE" uat
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Debug Session UAT Context"* ]]
+  [[ "$output" == *"UI misalignment"* ]]
+  [[ "$output" == *"Prior UAT Rounds"* ]]
+  [[ "$output" == *"issues_found"* ]]
+}
