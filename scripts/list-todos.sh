@@ -160,7 +160,7 @@ parse_todo_line() {
 
   # Extract detail ref hash from (ref:<8-hex-chars>)
   ref=""
-  if [[ "$text" =~ \(ref:([a-f0-9]{8})\) ]]; then
+  if [[ "$text" =~ \(ref:([a-f0-9]{8})\)[[:space:]]*$ ]]; then
     ref="${BASH_REMATCH[1]}"
   fi
 
@@ -278,12 +278,12 @@ main() {
     display_text=$(printf '%s\n' "$display_text" | sed 's/ *(ref:[a-f0-9]\{8\})$//')
     display_text=$(printf '%s\n' "$display_text" | sed 's/ *(added [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\})$//')
 
-    # Show 📎 indicator for todos with extended detail
+    # Show [detail] indicator for todos with extended detail
     local ref_indicator=""
     local item_ref
     item_ref=$(echo "$row" | base64 -d | jq -r '.ref // ""')
     if [ -n "$item_ref" ]; then
-      ref_indicator=" 📎"
+      ref_indicator=" [detail]"
     fi
 
     age_suffix=""

@@ -771,7 +771,10 @@ promote_todos() {
         new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today}) (ref:${ref_hash})"$'\n'
       fi
       # Collect detail for newly promoted items (use full_error_msg for rich context)
-      promoted_details="${promoted_details}${ref_hash}"$'\x1f'"${test_name}"$'\x1f'"${file_path}"$'\x1f'"${full_error_msg}"$'\x1f'"${times_seen}"$'\x1f'"${source_artifact}"$'\x1f'"${disposition}"$'\n'
+      # Base64-encode full_error_msg to prevent newlines from breaking field separator parsing
+      local encoded_error
+      encoded_error=$(printf '%s' "$full_error_msg" | base64 | tr -d '\n')
+      promoted_details="${promoted_details}${ref_hash}"$'\x1f'"${test_name}"$'\x1f'"${file_path}"$'\x1f'"${encoded_error}"$'\x1f'"${times_seen}"$'\x1f'"${source_artifact}"$'\x1f'"${disposition}"$'\n'
       promoted=$((promoted + 1))
     fi
     i=$((i + 1))
@@ -844,6 +847,8 @@ promote_todos() {
     local details_path="${planning_dir}/todo-details.json"
     while IFS=$'\x1f' read -r hash p_test p_file p_error p_times p_source p_disp; do
       [ -n "$hash" ] || continue
+      # Decode base64-encoded error message
+      p_error=$(printf '%s' "$p_error" | base64 -d 2>/dev/null) || p_error="(decode error)"
 
       local detail_json
       detail_json=$(jq -n \

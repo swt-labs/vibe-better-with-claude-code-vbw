@@ -52,7 +52,7 @@ registry_exists() {
 }
 
 registry_is_valid() {
-  [ -f "$REGISTRY_PATH" ] && jq -e '.schema_version and .items' "$REGISTRY_PATH" >/dev/null 2>&1
+  [ -f "$REGISTRY_PATH" ] && jq -e '.schema_version == 1 and (.items | type == "object")' "$REGISTRY_PATH" >/dev/null 2>&1
 }
 
 ensure_registry() {
@@ -101,12 +101,12 @@ cmd_add() {
 
   ensure_registry
 
-  # Truncate context field if over limit
+  # Truncate context field if over limit (guard against missing/non-string context)
   local context_len
-  context_len=$(printf '%s' "$detail_json" | jq -r '.context // "" | length')
+  context_len=$(printf '%s' "$detail_json" | jq -r 'if .context then (.context | tostring | length) else 0 end' 2>/dev/null) || context_len=0
   if [ "$context_len" -gt "$MAX_CONTEXT_LENGTH" ]; then
     detail_json=$(printf '%s' "$detail_json" | jq --argjson max "$MAX_CONTEXT_LENGTH" \
-      '.context = (.context[:$max] + " (truncated)")')
+      '.context = (.context | tostring | .[:$max] + " (truncated)")' 2>/dev/null) || true
   fi
 
   # Upsert: merge detail into items keyed by hash
