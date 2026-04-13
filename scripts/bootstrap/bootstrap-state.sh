@@ -278,4 +278,10 @@ fi
   echo "- ${STARTED}: Created ${MILESTONE_NAME} milestone (${PHASE_COUNT} phases)"
 } > "$OUTPUT_PATH"
 
+# Initialize empty todo-details.json alongside STATE.md
+DETAILS_PATH="$(dirname "$OUTPUT_PATH")/todo-details.json"
+if [ ! -f "$DETAILS_PATH" ]; then
+  printf '{"schema_version":1,"items":{}}\n' > "$DETAILS_PATH"
+fi
+
 exit 0

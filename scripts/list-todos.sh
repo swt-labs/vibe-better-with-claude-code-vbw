@@ -17,7 +17,7 @@ set -euo pipefail
 #     "count": N,
 #     "filter": "high"|"low"|"normal"|null,
 #     "display": "formatted numbered list",
-#     "items": [ { "num": 1, "line": "raw line", "text": "...", "priority": "high"|"normal"|"low", "date": "YYYY-MM-DD", "age": "3d ago" }, ... ] }
+#     "items": [ { "num": 1, "line": "raw line", "text": "...", "priority": "high"|"normal"|"low", "date": "YYYY-MM-DD", "age": "3d ago", "ref": "abcd1234"|null }, ... ] }
 #
 # Exit codes: always 0 (fail-open for agent consumption)
 
@@ -136,7 +136,7 @@ relative_age() {
 # --- Parse a single todo line ---
 parse_todo_line() {
   local line="$1"
-  local text priority date_str age
+  local text priority date_str age ref
 
   # Strip leading "- "
   text="${line#- }"
@@ -158,14 +158,20 @@ parse_todo_line() {
     date_str="${BASH_REMATCH[1]}"
   fi
 
+  # Extract detail ref hash from (ref:<8-hex-chars>)
+  ref=""
+  if [[ "$text" =~ \(ref:([a-f0-9]{8})\)[[:space:]]*$ ]]; then
+    ref="${BASH_REMATCH[1]}"
+  fi
+
   # Compute age
   age=""
   if [ -n "$date_str" ]; then
     age=$(relative_age "$date_str")
   fi
 
-  # Output as tab-separated: priority\tdate\tage\ttext
-  printf '%s\t%s\t%s\t%s\n' "$priority" "$date_str" "$age" "$text"
+  # Output as tab-separated: priority\tdate\tage\tref\ttext
+  printf '%s\t%s\t%s\t%s\t%s\n' "$priority" "$date_str" "$age" "$ref" "$text"
 }
 
 # --- Main ---
@@ -208,11 +214,12 @@ main() {
     local parsed
     parsed=$(parse_todo_line "$line")
 
-    local pri date_val age text
+    local pri date_val age ref text
     pri=$(echo "$parsed" | cut -f1)
     date_val=$(echo "$parsed" | cut -f2)
     age=$(echo "$parsed" | cut -f3)
-    text=$(echo "$parsed" | cut -f4-)
+    ref=$(echo "$parsed" | cut -f4)
+    text=$(echo "$parsed" | cut -f5-)
 
     # Apply filter
     if [ -n "$filter_lower" ] && [ "$filter_lower" != "$pri" ]; then
@@ -223,8 +230,8 @@ main() {
     num=$((num + 1))
     items_json=$(echo "$items_json" | jq --argjson n "$num" \
       --arg l "$line" --arg t "$text" --arg p "$pri" \
-      --arg d "$date_val" --arg a "$age" \
-      '. + [{num:$n, line:$l, text:$t, priority:$p, date:$d, age:$a}]')
+      --arg d "$date_val" --arg a "$age" --arg r "$ref" \
+      '. + [{num:$n, line:$l, text:$t, priority:$p, date:$d, age:$a, ref:(if $r == "" then null else $r end)}]')
   done <<< "$todo_lines"
 
   local filtered_count
@@ -264,18 +271,27 @@ main() {
       known-issue) pri_tag="[KNOWN-ISSUE] " ;;
     esac
 
-    # Strip priority prefix and date suffix for clean display
+    # Strip priority prefix, date suffix, and ref tag for clean display
     display_text="${text#\[HIGH\] }"
     display_text="${display_text#\[low\] }"
     display_text="${display_text#\[KNOWN-ISSUE\] }"
-    display_text=$(echo "$display_text" | sed 's/ *(added [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\})$//')
+    display_text=$(printf '%s\n' "$display_text" | sed 's/ *(ref:[a-f0-9]\{8\})$//')
+    display_text=$(printf '%s\n' "$display_text" | sed 's/ *(added [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\})$//')
+
+    # Show [detail] indicator for todos with extended detail
+    local ref_indicator=""
+    local item_ref
+    item_ref=$(echo "$row" | base64 -d | jq -r '.ref // ""')
+    if [ -n "$item_ref" ]; then
+      ref_indicator=" [detail]"
+    fi
 
     age_suffix=""
     if [ -n "$age" ]; then
       age_suffix=" ($age)"
     fi
 
-    display="${display}${display_num}. ${pri_tag}${display_text}${age_suffix}"$'\n'
+    display="${display}${display_num}. ${pri_tag}${display_text}${age_suffix}${ref_indicator}"$'\n'
   done
 
   # Assemble final JSON via jq

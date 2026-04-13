@@ -706,6 +706,7 @@ promote_todos() {
   local already=0
   local new_entries=""
   local disposition_updates=""
+  local promoted_details=""
 
   # Iterate issues and check for duplicates
   local i=0
@@ -717,6 +718,9 @@ promote_todos() {
     times_seen=$(printf '%s' "$promotable_json" | jq -r ".[$i].times_seen // 1")
     source_artifact=$(printf '%s' "$promotable_json" | jq -r ".[$i].last_seen_in // \"\"")
     disposition=$(printf '%s' "$promotable_json" | jq -r ".[$i].disposition // \"\"")
+
+    # Preserve full error for detail context before truncating for STATE.md readability
+    local full_error_msg="$error_msg"
 
     # Truncate error message for todo readability (max 80 chars)
     if [ "${#error_msg}" -gt 80 ]; then
@@ -746,17 +750,31 @@ promote_todos() {
 
     if [ "$is_dup" = true ] && [ "$needs_disposition_update" = true ]; then
       # Already tracked but disposition changed — rewrite the line
-      local new_line="- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"
+      # Preserve any existing ref tag from the original line
+      local existing_ref=""
+      if [[ "$existing_line" =~ \(ref:([a-f0-9]{8})\) ]]; then
+        existing_ref=" (ref:${BASH_REMATCH[1]})"
+      fi
+      local new_line="- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})${existing_ref}"
       disposition_updates="${disposition_updates}${existing_line}"$'\x1f'"${new_line}"$'\n'
       promoted=$((promoted + 1))
     elif [ "$is_dup" = true ]; then
       already=$((already + 1))
     else
+      # Compute ref hash for todo-details linkage
+      local ref_hash
+      ref_hash=$(printf '%s' "${test_name} (${file_path}): ${error_msg}" | shasum | cut -c1-8)
+
       if [ "$disposition" = "accepted-process-exception" ]; then
-        new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"$'\n'
+        new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today}) (ref:${ref_hash})"$'\n'
       else
-        new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"$'\n'
+        new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today}) (ref:${ref_hash})"$'\n'
       fi
+      # Collect detail for newly promoted items (use full_error_msg for rich context)
+      # Base64-encode full_error_msg to prevent newlines from breaking field separator parsing
+      local encoded_error
+      encoded_error=$(printf '%s' "$full_error_msg" | base64 | tr -d '\n')
+      promoted_details="${promoted_details}${ref_hash}"$'\x1f'"${test_name}"$'\x1f'"${file_path}"$'\x1f'"${encoded_error}"$'\x1f'"${times_seen}"$'\x1f'"${source_artifact}"$'\x1f'"${disposition}"$'\x1f'"${error_msg}"$'\n'
       promoted=$((promoted + 1))
     fi
     i=$((i + 1))
@@ -817,6 +835,34 @@ promote_todos() {
   fi
 
   mv "$tmp_file" "$state_path"
+
+  # Store extended detail for each promoted issue in todo-details.json
+  local detail_script=""
+  local session_key="${CLAUDE_SESSION_ID:-default}"
+  local link="/tmp/.vbw-plugin-root-link-${session_key}"
+  if [ -f "${link}/scripts/todo-details.sh" ]; then
+    detail_script="${link}/scripts/todo-details.sh"
+  fi
+  if [ -n "$detail_script" ] && [ -f "$detail_script" ]; then
+    local details_path="${planning_dir}/todo-details.json"
+    while IFS=$'\x1f' read -r hash p_test p_file p_error p_times p_source p_disp p_summary_error; do
+      [ -n "$hash" ] || continue
+      # Decode base64-encoded full error message (used in context)
+      p_error=$(printf '%s' "$p_error" | base64 -d 2>/dev/null) || p_error="(decode error)"
+      # Use truncated error_msg for summary (matches STATE.md bullet text)
+      local summary_error="${p_summary_error:-$p_error}"
+
+      local detail_json
+      detail_json=$(jq -n \
+        --arg summary "${p_test} (${p_file}): ${summary_error}" \
+        --arg context "Known issue from phase ${phase_num}. Test: ${p_test}. File: ${p_file}. Error: ${p_error}. Seen ${p_times} time(s). Source: ${p_source:-unknown}. Disposition: ${p_disp:-unresolved}." \
+        --arg file "$p_file" \
+        --arg added "$today" \
+        '{summary: $summary, context: $context, files: [$file], added: $added, source: "known-issue"}')
+
+      bash "$detail_script" add "$hash" "$detail_json" "$details_path" >/dev/null 2>&1 || true
+    done <<< "$promoted_details"
+  fi
 
   echo "promoted_count=$promoted"
   echo "already_tracked_count=$already"

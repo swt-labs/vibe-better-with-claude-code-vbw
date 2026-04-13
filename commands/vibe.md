@@ -227,6 +227,8 @@ fi`
 
 ## Input Parsing
 
+**Pre-parse: ref tag extraction.** Before evaluating paths below, check if $ARGUMENTS ends with a `(ref:HASH)` suffix (8 hex characters). If found, extract the hash and strip the ref tag (including any leading space) from $ARGUMENTS. The cleaned arguments are used for all subsequent parsing — the ref must not interfere with flag detection, keyword routing, or mode selection. Store the extracted hash for later use. **Do not load detail here** — detail is loaded on-demand by action-bearing modes only (Execute mode step 3). If no ref tag is found, there is no hash to store.
+
 Three input paths, evaluated in order:
 
 ### Path 1: Flag detection
@@ -1032,6 +1034,11 @@ Before reading:
    - `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} dev {phases_dir} {plan_path}`
    - `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} qa {phases_dir}`
    Include compiled context paths in Dev and QA task descriptions. When referencing `.context-dev.md`, describe it as: "compiled context — includes milestone scope decisions (decomposition rationale, scope boundaries, cross-phase key decisions) and phase operational context (goal, conventions, active plan, research findings, changed files, code slices)." When referencing `.context-qa.md`, describe it as: "compiled context — includes milestone scope decisions and phase verification context (success criteria, requirements, conventions to check)."
+   If a ref hash was extracted during Input Parsing, load extended detail now:
+   ```bash
+   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/todo-details.sh get <hash>
+   ```
+   Parse the JSON output. If `status` is `"ok"`, include the detail in the Dev task description: "Extended context (from todo detail): {detail.context value}. Related files: {detail.files, comma-separated, or omit if empty}." If `status` is `"not_found"` or `"error"`, continue without detail — do not block. This provides the executing agent with the rich context that motivated the work item.
 
 Then Read the protocol file and execute Steps 2-5 as written.
 

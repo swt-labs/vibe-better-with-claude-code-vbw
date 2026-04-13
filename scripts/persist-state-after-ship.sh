@@ -299,4 +299,16 @@ generate_root_state() {
 
 generate_root_state > "$OUTPUT_PATH"
 
+# Garbage-collect orphaned todo-details entries after STATE.md rebuild
+DETAIL_SCRIPT=""
+SESSION_KEY="${CLAUDE_SESSION_ID:-default}"
+LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
+TODO_DETAILS_REGISTRY="$(dirname "$OUTPUT_PATH")/todo-details.json"
+if [ -f "${LINK}/scripts/todo-details.sh" ]; then
+  DETAIL_SCRIPT="${LINK}/scripts/todo-details.sh"
+fi
+if [ -n "$DETAIL_SCRIPT" ] && [ -f "$DETAIL_SCRIPT" ]; then
+  bash "$DETAIL_SCRIPT" gc "$OUTPUT_PATH" "$TODO_DETAILS_REGISTRY" >/dev/null 2>&1 || true
+fi
+
 exit 0
