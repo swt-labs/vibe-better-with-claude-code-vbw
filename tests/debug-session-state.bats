@@ -335,7 +335,7 @@ teardown() {
   [[ "$output" == *"session_count=2"* ]]
 }
 
-@test "resume finds session in completed directory" {
+@test "resume moves completed session back to active directory" {
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "resume-done")"
   local fname
   fname=$(basename "$session_file")
@@ -344,6 +344,16 @@ teardown() {
   [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
 
   run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "$fname"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=true"* ]]
+  # Resume should move file back to active/ and reset status
+  [[ "$output" == *"status=investigating"* ]]
+  [ -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+  # Pointer should reference the active session
+  [ -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+  # Subsequent get-or-latest should find it
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$VBW_PLANNING_DIR"
   [ "$status" -eq 0 ]
   [[ "$output" == *"active_session=true"* ]]
 }

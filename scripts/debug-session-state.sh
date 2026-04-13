@@ -401,6 +401,13 @@ ENDSESSION
       echo "Error: refusing to resume symlink session file: $SESSION_PATH" >&2
       exit 1
     fi
+    # If found in completed/, move back to active/ (re-activating)
+    if [[ "$SESSION_PATH" == "$COMPLETED_DIR/"* ]]; then
+      mkdir -p "$ACTIVE_DIR"
+      mv "$SESSION_PATH" "$ACTIVE_DIR/$SESSION_NAME"
+      SESSION_PATH="$ACTIVE_DIR/$SESSION_NAME"
+      update_field "$SESSION_PATH" "status" "investigating"
+    fi
     echo "$SESSION_NAME" > "$ACTIVE_FILE"
     echo "active_session=true"
     print_session_metadata "$SESSION_PATH"
