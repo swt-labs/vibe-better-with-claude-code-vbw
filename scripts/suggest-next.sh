@@ -580,7 +580,7 @@ case "$CMD" in
   qa)
     # Check for active standalone debug session (phase_count=0 only)
     _qa_debug_handled=false
-    if [ "${phase_count:-0}" -eq 0 ] && [ -d "$PLANNING_DIR/debugging" ]; then
+    if [ -d "$PLANNING_DIR/debugging" ]; then
       _qa_ds_output=$("$SCRIPT_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null) || true
       if [ -n "$_qa_ds_output" ]; then
         eval "$_qa_ds_output" 2>/dev/null || true
@@ -591,7 +591,11 @@ case "$CMD" in
             qa_pending|uat_pending|fix_applied)
               case "$effective_result" in
                 pass)
-                  suggest "/vbw:verify -- Run UAT on the debug fix"
+                  if [ "${phase_count:-0}" -gt 0 ]; then
+                    suggest "/vbw:verify --session -- Run UAT on the debug fix"
+                  else
+                    suggest "/vbw:verify -- Run UAT on the debug fix"
+                  fi
                   ;;
                 fail|partial)
                   suggest "/vbw:debug --resume -- Address QA failures"
@@ -704,6 +708,23 @@ case "$CMD" in
     ;;
 
   verify)
+    # Check for active debug session with uat_failed status
+    _verify_debug_handled=false
+    if [ -d "$PLANNING_DIR/debugging" ]; then
+      _verify_ds_output=$("$SCRIPT_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null) || true
+      if [ -n "$_verify_ds_output" ]; then
+        eval "$_verify_ds_output" 2>/dev/null || true
+        # shellcheck disable=SC2154
+        if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
+          _verify_ds_status=$(grep -m1 '^status:' "$session_file" 2>/dev/null | sed 's/^status:[[:space:]]*//' || true)
+          if [ "$_verify_ds_status" = "uat_failed" ]; then
+            suggest "/vbw:debug --resume -- Address UAT issues"
+            _verify_debug_handled=true
+          fi
+        fi
+      fi
+    fi
+    if [ "$_verify_debug_handled" = false ]; then
     case "$effective_result" in
       pass)
         if [ "$all_done" = true ]; then
@@ -729,6 +750,7 @@ case "$CMD" in
         suggest "/vbw:vibe -- Continue building"
         ;;
     esac
+    fi
     ;;
 
   debug)
@@ -746,13 +768,21 @@ case "$CMD" in
     fi
     case "$_ds_status" in
       qa_pending|fix_applied)
-        suggest "/vbw:qa -- Verify the debug fix"
+        if [ "${phase_count:-0}" -gt 0 ]; then
+          suggest "/vbw:qa --session -- Verify the debug fix"
+        else
+          suggest "/vbw:qa -- Verify the debug fix"
+        fi
         ;;
       qa_failed)
         suggest "/vbw:debug --resume -- Address QA failures"
         ;;
       uat_pending)
-        suggest "/vbw:verify -- Run UAT on the debug fix"
+        if [ "${phase_count:-0}" -gt 0 ]; then
+          suggest "/vbw:verify --session -- Run UAT on the debug fix"
+        else
+          suggest "/vbw:verify -- Run UAT on the debug fix"
+        fi
         ;;
       uat_failed)
         suggest "/vbw:debug --resume -- Address UAT issues"

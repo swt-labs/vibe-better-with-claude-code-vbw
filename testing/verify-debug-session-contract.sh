@@ -224,20 +224,20 @@ else
   fail "suggest-next.sh qa branch missing standalone debug-session detection"
 fi
 
-# — qa.md routing decision includes phase_count=0 guard (CM2-02) —
+# — qa.md routing decision supports --session flag alongside phase_count (CM2-02, CM3-01) —
 
-if grep -q 'phase_count=0.*Phase state' "$ROOT/commands/qa.md" 2>/dev/null; then
-  pass "qa.md debug-session routing decision includes phase_count=0 guard"
+if grep -q 'phase_count=0.*--session' "$ROOT/commands/qa.md" 2>/dev/null; then
+  pass "qa.md debug-session routing decision supports --session flag"
 else
-  fail "qa.md debug-session routing decision missing phase_count=0 guard"
+  fail "qa.md debug-session routing decision missing --session flag support"
 fi
 
-# — verify.md routing decision includes phase_count=0 guard (CM2-02) —
+# — verify.md routing decision supports --session flag alongside phase_count (CM2-02, CM3-01) —
 
-if grep -q 'phase_count=0.*Phase state' "$ROOT/commands/verify.md" 2>/dev/null; then
-  pass "verify.md debug-session routing decision includes phase_count=0 guard"
+if grep -q 'phase_count=0.*--session' "$ROOT/commands/verify.md" 2>/dev/null; then
+  pass "verify.md debug-session routing decision supports --session flag"
 else
-  fail "verify.md debug-session routing decision missing phase_count=0 guard"
+  fail "verify.md debug-session routing decision missing --session flag support"
 fi
 
 # — suggest-next-debug-session.bats covers qa context (CM2-03) —
@@ -246,6 +246,42 @@ if grep -q 'suggest-next qa.*pass.*debug session' "$ROOT/tests/suggest-next-debu
   pass "suggest-next-debug-session.bats covers qa pass with debug session"
 else
   fail "suggest-next-debug-session.bats missing qa pass with debug session test"
+fi
+
+# — Guard sections support --session escape hatch (CM3-01) —
+
+if grep -q '\-\-session' "$ROOT/commands/qa.md" 2>/dev/null; then
+  pass "qa.md guard mentions --session flag"
+else
+  fail "qa.md guard missing --session flag"
+fi
+
+if grep -q '\-\-session' "$ROOT/commands/verify.md" 2>/dev/null; then
+  pass "verify.md guard mentions --session flag"
+else
+  fail "verify.md guard missing --session flag"
+fi
+
+# — suggest-next.sh appends --session when phases exist (CM3-01) —
+
+if grep -q '\-\-session' "$ROOT/scripts/suggest-next.sh" 2>/dev/null; then
+  pass "suggest-next.sh has --session flag logic"
+else
+  fail "suggest-next.sh missing --session flag logic"
+fi
+
+# — Portable sed usage (CM3-02) —
+
+if ! grep -q "sed -i ''" "$ROOT/scripts/debug-session-state.sh" 2>/dev/null; then
+  pass "debug-session-state.sh uses portable sed (no BSD-only -i '')"
+else
+  fail "debug-session-state.sh uses non-portable sed -i ''"
+fi
+
+if ! grep -q "sed -i ''" "$ROOT/scripts/write-debug-session.sh" 2>/dev/null; then
+  pass "write-debug-session.sh uses portable sed (no BSD-only -i '')"
+else
+  fail "write-debug-session.sh uses non-portable sed -i ''"
 fi
 
 # — Summary —

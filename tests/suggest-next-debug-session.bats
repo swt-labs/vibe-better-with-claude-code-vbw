@@ -132,7 +132,7 @@ EOF
   [[ "$output" == *"/vbw:debug --resume"* ]]
 }
 
-@test "suggest-next qa pass with debug session but phases exist falls through" {
+@test "suggest-next qa pass with debug session and phases exist suggests verify with --session" {
   create_debug_session "uat_pending"
   # Create a phase directory so phase_count > 0
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
@@ -140,9 +140,9 @@ EOF
   echo '# Summary' > "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-SUMMARY.md"
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
   [ "$status" -eq 0 ]
-  # Should NOT contain debug-session-specific /vbw:verify suggestion
-  # (phase logic takes over when phases exist)
-  [[ "$output" != *"Run UAT on the debug fix"* ]]
+  # Should suggest verify with --session flag when phases exist
+  [[ "$output" == *"/vbw:verify --session"* ]]
+  [[ "$output" == *"Run UAT on the debug fix"* ]]
 }
 
 @test "suggest-next qa pass with complete debug session ignores session" {

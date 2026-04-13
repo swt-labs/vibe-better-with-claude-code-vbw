@@ -59,13 +59,13 @@ update_field() {
   if grep -q "^${field}:" "$file" 2>/dev/null; then
     local escaped_value
     escaped_value=$(printf '%s' "$value" | sed 's/[\/&\\]/\\&/g')
-    sed -i '' "s/^${field}:.*/${field}: ${escaped_value}/" "$file"
+    sed "s/^${field}:.*/${field}: ${escaped_value}/" "$file" > "$file.tmp" && mv "$file.tmp" "$file"
   fi
   # Always update the 'updated' timestamp
   if [ "$field" != "updated" ]; then
     local now
     now=$(date '+%Y-%m-%d %H:%M:%S')
-    sed -i '' "s/^updated:.*/updated: ${now}/" "$file"
+    sed "s/^updated:.*/updated: ${now}/" "$file" > "$file.tmp" && mv "$file.tmp" "$file"
   fi
 }
 

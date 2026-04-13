@@ -57,7 +57,7 @@ update_frontmatter() {
   if grep -q "^${field}:" "$SESSION_FILE" 2>/dev/null; then
     local escaped_value
     escaped_value=$(printf '%s' "$value" | sed 's/[\/&\\]/\\&/g')
-    sed -i '' "s/^${field}:.*/${field}: ${escaped_value}/" "$SESSION_FILE"
+    sed "s/^${field}:.*/${field}: ${escaped_value}/" "$SESSION_FILE" > "$SESSION_FILE.tmp" && mv "$SESSION_FILE.tmp" "$SESSION_FILE"
   fi
 }
 
