@@ -81,7 +81,7 @@ Parse the user's freeform response using these rules:
 - If invalid, show `Invalid selection. Type numbers (comma-separated) to install, or 'skip' to continue.` and AskUserQuestion again with the same question text.
 - Repeat until a valid selection or `skip` is obtained.
 
-If the user typed `skip`, proceed without installing (jump to Step 6 output).
+If the user typed `skip`, STOP here after displaying `○ No skills selected for installation.` Do not ask Step 5b and do not enter Step 6.
 
 ### Step 5b: Choose installation scope
 
@@ -93,7 +93,7 @@ Store the choice as SCOPE. If the user typed `skip` in Step 5: skip this step.
 
 ### Step 6: Install selected
 
-`npx skills add <skill> -y` (project scope) or `npx skills add <skill> -g -y` (global scope) per selection, based on SCOPE from Step 5b. Display ✓ or ✗ per skill. "➜ Skills take effect immediately — no restart needed."
+`npx skills add <skill> -y` (project scope) or `npx skills add <skill> -g -y` (global scope) per selection, based on SCOPE from Step 5b. This step runs only when one or more skills were selected in Step 5. Display ✓ or ✗ per skill. "➜ Skills take effect immediately — no restart needed."
 
 ## Output Format
 
