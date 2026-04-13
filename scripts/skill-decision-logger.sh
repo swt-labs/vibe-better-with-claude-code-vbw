@@ -46,14 +46,55 @@ SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
 DECISION=""
 REASON=""
 
+# Extract content between XML-style tags, handling multi-line blocks
+extract_tag_content() {
+  local tag="$1"
+  local open_tag="<${tag}>"
+  local close_tag="</${tag}>"
+  local collecting=false
+  local result=""
+  while IFS= read -r line; do
+    if [ "$collecting" = true ]; then
+      case "$line" in
+        *"$close_tag"*)
+          local before="${line%%"$close_tag"*}"
+          [ -n "$before" ] && result="${result} ${before}"
+          break
+          ;;
+        *)
+          result="${result} ${line}"
+          ;;
+      esac
+    else
+      case "$line" in
+        *"$open_tag"*)
+          collecting=true
+          local after="${line#*"$open_tag"}"
+          case "$after" in
+            *"$close_tag"*)
+              # Single-line case: both open and close on same line
+              result="${after%%"$close_tag"*}"
+              break
+              ;;
+            *)
+              [ -n "$after" ] && result="$after"
+              ;;
+          esac
+          ;;
+      esac
+    fi
+  done <<< "$PROMPT"
+  # Trim leading/trailing whitespace and collapse internal whitespace
+  result=$(printf '%s' "$result" | sed 's/^ *//; s/ *$//')
+  printf '%s' "$result"
+}
+
 if printf '%s' "$PROMPT" | grep -q '<skill_activation>'; then
   DECISION="activation"
-  # Extract content between <skill_activation> and </skill_activation>
-  REASON=$(printf '%s' "$PROMPT" | sed -n 's/.*<skill_activation>\(.*\)<\/skill_activation>.*/\1/p' | head -1)
+  REASON=$(extract_tag_content "skill_activation")
 elif printf '%s' "$PROMPT" | grep -q '<skill_no_activation>'; then
   DECISION="no_activation"
-  # Extract content between <skill_no_activation> and </skill_no_activation>
-  REASON=$(printf '%s' "$PROMPT" | sed -n 's/.*<skill_no_activation>\(.*\)<\/skill_no_activation>.*/\1/p' | head -1)
+  REASON=$(extract_tag_content "skill_no_activation")
 fi
 
 # Only log if a skill decision block was found
