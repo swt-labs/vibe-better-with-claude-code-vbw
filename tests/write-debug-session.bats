@@ -99,6 +99,49 @@ teardown() {
   grep -q "Simple string issue" "$SESSION_FILE"
 }
 
+@test "uat mode handles skip result and user_response" {
+  run bash -c 'echo '"'"'{"mode":"uat","round":1,"result":"pass","checkpoints":[{"description":"Skipped check","result":"skip","user_response":"Not applicable to this flow"},{"description":"Passed check","result":"pass","user_response":"Looks good"}]}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"'
+  [ "$status" -eq 0 ]
+
+  grep -q '\[-\] Skipped check (\*\*SKIPPED\*\*)' "$SESSION_FILE"
+  grep -q '\[x\] Passed check' "$SESSION_FILE"
+  grep -q '> Not applicable to this flow' "$SESSION_FILE"
+  grep -q '> Looks good' "$SESSION_FILE"
+}
+
+@test "uat mode handles issue result on checkpoint" {
+  run bash -c 'echo '"'"'{"mode":"uat","round":1,"result":"issues_found","checkpoints":[{"description":"Broken flow","result":"issue","user_response":"Crashes on click"}]}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"'
+  [ "$status" -eq 0 ]
+
+  grep -q 'Broken flow (\*\*ISSUE\*\*)' "$SESSION_FILE"
+  grep -q '> Crashes on click' "$SESSION_FILE"
+}
+
+# ── remediation history ──────────────────────────────────
+
+@test "investigation mode archives previous round on remediation" {
+  # First investigation
+  echo '{"mode":"investigation","issue":"Bug report","hypotheses":[],"root_cause":"Original cause","plan":"Original plan","changed_files":["src/a.sh"],"commit":"abc123"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+
+  # Simulate QA round (sets qa_round > 0 so archival triggers)
+  echo '{"mode":"qa","round":1,"result":"FAIL","checks":[{"id":"c1","description":"test","status":"fail","evidence":"broken"}],"summary":"Failed."}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+
+  # Second investigation (remediation round)
+  run bash -c 'echo '"'"'{"mode":"investigation","issue":"Bug report v2","hypotheses":[],"root_cause":"New cause","plan":"New plan","changed_files":["src/b.sh"],"commit":"def456"}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"'
+  [ "$status" -eq 0 ]
+
+  # Current sections should have new content
+  grep -q "New cause" "$SESSION_FILE"
+  grep -q "New plan" "$SESSION_FILE"
+  grep -q "src/b.sh" "$SESSION_FILE"
+
+  # Remediation History should have archived old content
+  grep -q "## Remediation History" "$SESSION_FILE"
+  grep -q "### Round 1" "$SESSION_FILE"
+  grep -q "Original cause" "$SESSION_FILE"
+  grep -q "Original plan" "$SESSION_FILE"
+}
+
 @test "uat mode fails with invalid result" {
   run bash -c 'echo '"'"'{"mode":"uat","round":1,"result":"bad"}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"'
   [ "$status" -eq 1 ]

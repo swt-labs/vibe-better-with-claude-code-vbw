@@ -182,6 +182,8 @@ uat_last_result: pending
 ## QA
 
 ## UAT
+
+## Remediation History
 ENDSESSION
 
     # Set active pointer

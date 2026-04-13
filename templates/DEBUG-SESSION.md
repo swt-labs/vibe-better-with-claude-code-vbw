@@ -56,3 +56,7 @@ uat_last_result: pending
 ## UAT
 
 {UAT rounds are appended here by the UAT workflow.}
+
+## Remediation History
+
+{Previous investigation/plan/implementation rounds are archived here when the session re-enters investigation after QA or UAT failure.}

@@ -176,6 +176,45 @@ else
   fail "vbw-debugger.md should use qa_pending for post-fix status, not fix_applied"
 fi
 
+# — Template remediation history section (CM1-02) —
+
+TEMPLATE="$ROOT/templates/DEBUG-SESSION.md"
+if grep -q '## Remediation History' "$TEMPLATE" 2>/dev/null; then
+  pass "DEBUG-SESSION.md template has Remediation History section"
+else
+  fail "DEBUG-SESSION.md template missing Remediation History section"
+fi
+
+# — Guard phase_count condition (CM1-01) —
+
+if grep -q 'phase_count=0' "$QA_CMD" 2>/dev/null || grep -q 'phase_count' "$QA_CMD" 2>/dev/null; then
+  pass "qa.md debug session guard checks phase_count"
+else
+  fail "qa.md debug session guard does not check phase_count"
+fi
+
+if grep -q 'phase_count=0' "$VERIFY_CMD" 2>/dev/null || grep -q 'phase_count' "$VERIFY_CMD" 2>/dev/null; then
+  pass "verify.md debug session guard checks phase_count"
+else
+  fail "verify.md debug session guard does not check phase_count"
+fi
+
+# — Writer handles skip and user_response (CM1-03) —
+
+if grep -q 'skip' "$WRITER" 2>/dev/null && grep -q 'user_response' "$WRITER" 2>/dev/null; then
+  pass "write-debug-session.sh handles skip result and user_response"
+else
+  fail "write-debug-session.sh missing skip or user_response handling"
+fi
+
+# — Lifecycle integration test exists (CM1-04) —
+
+if [ -f "$ROOT/tests/debug-session-lifecycle.bats" ]; then
+  pass "debug-session-lifecycle.bats end-to-end test exists"
+else
+  fail "debug-session-lifecycle.bats missing"
+fi
+
 # — Summary —
 
 echo ""

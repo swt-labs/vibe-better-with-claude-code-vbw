@@ -130,6 +130,60 @@ append_to_section() {
   mv "$tmpfile" "$SESSION_FILE"
 }
 
+# Extract content of a section (from ## Heading to next ## or EOF), excluding the heading itself
+# Strips leading and trailing blank lines (BSD-compatible)
+extract_section() {
+  local heading="$1" file="$2"
+  awk -v heading="$heading" '
+    /^## / {
+      if (in_section) exit
+      if ($0 == "## " heading) { in_section = 1; next }
+    }
+    in_section {
+      # Buffer lines, only print non-trailing-blank content
+      buf[++n] = $0
+    }
+    END {
+      # Find first and last non-empty lines
+      start = 0; end = 0
+      for (i = 1; i <= n; i++) { if (buf[i] != "") { start = i; break } }
+      for (i = n; i >= 1; i--) { if (buf[i] != "") { end = i; break } }
+      for (i = start; i <= end; i++) print buf[i]
+    }
+  ' "$file"
+}
+
+# Archive current Investigation/Plan/Implementation to Remediation History
+# Called before overwriting during remediation rounds (qa_round > 0)
+archive_remediation_round() {
+  local qa_round
+  qa_round=$(awk '/^---$/{c++; next} c==1 && /^qa_round:/{sub(/^qa_round:[[:space:]]*/, ""); print; exit}' "$SESSION_FILE")
+  qa_round="${qa_round:-0}"
+  [ "$qa_round" -gt 0 ] 2>/dev/null || return 0
+
+  # Extract current sections
+  local inv plan impl
+  inv=$(extract_section "Investigation" "$SESSION_FILE")
+  plan=$(extract_section "Plan" "$SESSION_FILE")
+  impl=$(extract_section "Implementation" "$SESSION_FILE")
+
+  # Only archive if there's actual content (not just template placeholders)
+  local has_content=false
+  case "$inv" in *[a-zA-Z0-9]*) has_content=true ;; esac
+  case "$plan" in *[a-zA-Z0-9]*) has_content=true ;; esac
+  case "$impl" in *[a-zA-Z0-9]*) has_content=true ;; esac
+  $has_content || return 0
+
+  # Build archive entry
+  local archive_entry
+  archive_entry="### Round $qa_round — $NOW"$'\n'
+  [ -n "$inv" ] && archive_entry+=$'\n'"#### Investigation"$'\n\n'"$inv"$'\n'
+  [ -n "$plan" ] && archive_entry+=$'\n'"#### Plan"$'\n\n'"$plan"$'\n'
+  [ -n "$impl" ] && archive_entry+=$'\n'"#### Implementation"$'\n\n'"$impl"$'\n'
+
+  append_to_section "Remediation History" "$archive_entry"
+}
+
 case "$MODE" in
   investigation)
     # Required: issue
@@ -177,6 +231,9 @@ case "$MODE" in
     fi
 
     COMMIT=$(echo "$json" | jq -r '.commit // "No commit yet."')
+
+    # Archive current sections to Remediation History if this is a remediation round
+    archive_remediation_round
 
     # Write sections
     replace_section "Issue" "$ISSUE"
@@ -325,11 +382,15 @@ case "$MODE" in
       for i in $(seq 0 $((CP_COUNT - 1))); do
         CP_DESC=$(echo "$json" | jq -r ".checkpoints[$i].description // \"Checkpoint $((i+1))\"")
         CP_RESULT=$(echo "$json" | jq -r ".checkpoints[$i].result // \"pending\"")
+        CP_RESPONSE=$(echo "$json" | jq -r ".checkpoints[$i].user_response // empty")
         case "$CP_RESULT" in
           pass) UAT_ENTRY+="- [x] $CP_DESC"$'\n' ;;
+          skip) UAT_ENTRY+="- [-] $CP_DESC (**SKIPPED**)"$'\n' ;;
+          issue) UAT_ENTRY+="- [ ] $CP_DESC (**ISSUE**)"$'\n' ;;
           fail) UAT_ENTRY+="- [ ] $CP_DESC (**FAILED**)"$'\n' ;;
           *) UAT_ENTRY+="- [ ] $CP_DESC"$'\n' ;;
         esac
+        [ -n "$CP_RESPONSE" ] && UAT_ENTRY+="  > $CP_RESPONSE"$'\n'
       done
     fi
 

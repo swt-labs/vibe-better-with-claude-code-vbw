@@ -99,11 +99,12 @@ fi`
 
 ## Guard
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
-- **Debug session override:** If `$ARGUMENTS` does NOT contain an explicit phase number, check for an active debug session before any phase-related guards:
+- **Debug session override:** If `$ARGUMENTS` does NOT contain an explicit phase number AND Phase state (from Context above) shows `phase_count=0`, check for an active debug session before any phase-related guards:
   ```bash
   eval "$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/debug-session-state.sh get-or-latest .vbw-planning 2>/dev/null)" 2>/dev/null || true
   ```
   If `active_session != none` AND session `status` is `qa_pending` or `qa_failed` → skip ALL remaining guards and jump directly to `<debug_session_qa>` below.
+  If phases exist (`phase_count > 0`), skip this override entirely — standard phase QA takes priority. Users can explicitly target a debug session with `--session`.
 - **Brownfield normalization:** If Phase state (from Context above) contains `misnamed_plans=true`, normalize all phase directories before proceeding:
   ```bash
   NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
