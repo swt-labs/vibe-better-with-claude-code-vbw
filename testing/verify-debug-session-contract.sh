@@ -305,6 +305,21 @@ else
   fail "debug.md resume routing for uat_pending missing --session flag"
 fi
 
+# — QA agent persistence contract separates phase-scoped from debug-session (CM5-01) —
+
+if grep -q 'Phase-Scoped QA' "$ROOT/agents/vbw-qa.md" 2>/dev/null; then
+  pass "vbw-qa.md persistence section scoped to phase QA"
+else
+  fail "vbw-qa.md persistence section not scoped to phase QA"
+fi
+
+if grep -q 'Debug-session QA exception' "$ROOT/agents/vbw-qa.md" 2>/dev/null || \
+   grep -q 'debug-session QA.*do NOT use.*write-verification' "$ROOT/agents/vbw-qa.md" 2>/dev/null; then
+  pass "vbw-qa.md explicitly exempts debug-session QA from write-verification.sh"
+else
+  fail "vbw-qa.md missing debug-session QA exception from write-verification.sh"
+fi
+
 # — Summary —
 
 echo ""
