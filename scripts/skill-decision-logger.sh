@@ -33,11 +33,13 @@ LOG_FILE="$LOG_DIR/.skill-decisions.log"
 
 # Extract the prompt from the tool input — try .tool_input.prompt first,
 # then .tool_input.description (TaskCreate uses prompt, Agent uses description)
-PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // .tool_input.description // ""' 2>/dev/null) || exit 0
+# Use array filter to skip null and empty strings
+PROMPT=$(echo "$INPUT" | jq -r '[.tool_input.prompt, .tool_input.description] | map(select(. != null and . != "")) | first // ""' 2>/dev/null) || exit 0
 [ -z "$PROMPT" ] && exit 0
 
 # Extract agent name from tool input (try agent, name, then subagent_type)
-AGENT_NAME=$(echo "$INPUT" | jq -r '.tool_input.agent // .tool_input.name // .tool_input.subagent_type // "unknown"' 2>/dev/null) || AGENT_NAME="unknown"
+# Use array filter to skip null and empty strings
+AGENT_NAME=$(echo "$INPUT" | jq -r '[.tool_input.agent, .tool_input.name, .tool_input.subagent_type] | map(select(. != null and . != "")) | first // "unknown"' 2>/dev/null) || AGENT_NAME="unknown"
 
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) || TIMESTAMP="unknown"
 SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"

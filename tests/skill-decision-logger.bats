@@ -110,3 +110,33 @@ run_logger() {
   run jq -r '.decision' "$log"
   [ "$output" = "no_activation" ]
 }
+
+@test "skill-decision-logger: blank agent falls through to subagent_type" {
+  local input
+  input=$(jq -n -c '{tool_input: {prompt: "<skill_activation>Call Skill(find-docs).</skill_activation>\nDo research.", agent: "", subagent_type: "vbw:vbw-scout"}}')
+  run_logger "$input"
+  local log="$TEST_TEMP_DIR/.vbw-planning/.skill-decisions.log"
+  [ -f "$log" ]
+  run jq -r '.agent' "$log"
+  [ "$output" = "vbw:vbw-scout" ]
+}
+
+@test "skill-decision-logger: blank prompt falls through to description" {
+  local input
+  input=$(jq -n -c '{tool_input: {prompt: "", description: "<skill_no_activation>Not needed.</skill_no_activation>\nDo the task.", agent: "vbw-dev"}}')
+  run_logger "$input"
+  local log="$TEST_TEMP_DIR/.vbw-planning/.skill-decisions.log"
+  [ -f "$log" ]
+  run jq -r '.decision' "$log"
+  [ "$output" = "no_activation" ]
+}
+
+@test "skill-decision-logger: all agent fields blank yields unknown" {
+  local input
+  input=$(jq -n -c '{tool_input: {prompt: "<skill_activation>Call Skill(x).</skill_activation>", agent: "", name: "", subagent_type: ""}}')
+  run_logger "$input"
+  local log="$TEST_TEMP_DIR/.vbw-planning/.skill-decisions.log"
+  [ -f "$log" ]
+  run jq -r '.agent' "$log"
+  [ "$output" = "unknown" ]
+}
