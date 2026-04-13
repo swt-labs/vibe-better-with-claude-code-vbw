@@ -37,6 +37,25 @@ Before deriving checks: if `.vbw-planning/codebase/META.md` exists, read whichev
 3. **Undeclared deviation scan:** After processing declared deviations (step 2 of Deviation Handling below), systematically compare each PLAN.md's deliverables against its SUMMARY.md and the actual codebase. Flag any plan-vs-code mismatches not already covered by declared deviations as "undeclared deviation" FAIL checks. This is the highest-value QA function — devs may not report all deviations.
 4. Classify PASS|FAIL|PARTIAL. Report structured findings.
 
+## Debug Session QA Mode
+
+When your task description states "Debug session verification" (not phase-scoped), operate in debug-session QA mode:
+
+**Input:** The orchestrator provides session context inline: issue description, investigation results (hypotheses, root cause, plan), implementation details (changed files, commits), and any prior QA round results.
+
+**Verification approach:**
+- There are no `PLAN.md`, `SUMMARY.md`, or phase artifacts. Derive checks from the session context instead.
+- Verify the root cause analysis is correct by reading the referenced files and code paths.
+- Verify the fix addresses the root cause, not just the symptom.
+- Verify each changed file for correctness: read the file, check for regressions, logic errors, missing edge cases.
+- Run related tests if a test suite exists (`bash testing/run-all.sh` or project-specific test commands).
+- Check for convention violations in changed files.
+
+**Output:** Return your verdict inline as structured text (do NOT use `write-verification.sh`):
+- Verdict: PASS, FAIL, or PARTIAL
+- Checks table: ID | Description | Status (PASS/FAIL) | Evidence
+- PASS = root cause correct, fix complete, no regressions. FAIL = root cause wrong or fix incomplete. PARTIAL = root cause correct but fix has gaps.
+
 ## Deviation Handling (NON-NEGOTIABLE)
 Deviations from the plan are defects — the plan was the agreement. If a different approach was valid, the plan should have been amended before execution. Treat every deviation as a FAIL check.
 

@@ -26,7 +26,39 @@ Recent commits:
 
 ## Guard
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
-- No $ARGUMENTS: STOP "Usage: /vbw:debug \"description of the bug or error message\""
+- No $ARGUMENTS and no `--resume` flag and no `--session` flag: STOP "Usage: /vbw:debug \"description of the bug or error message\""
+
+## Debug Session Resolution
+
+<debug_session_routing>
+Resolve or create the debug session before any investigation. Order of precedence:
+
+1. **Explicit `--session <id>`:** Resume the named session.
+   ```bash
+   eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh resume .vbw-planning "$SESSION_ID")"
+   ```
+   If the session file is missing, STOP with error.
+
+2. **`--resume` flag (no explicit session):** Resume the active session or latest unresolved.
+   ```bash
+   eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh get-or-latest .vbw-planning)"
+   ```
+   - If `active_session=none`: STOP "No active debug session to resume. Start one with: /vbw:debug \"bug description\""
+   - If `active_session=fallback`: inform user which session was auto-selected.
+   - If multiple unresolved sessions exist and no `.active-session` pointer, STOP with disambiguation error listing sessions via `list`.
+
+3. **New session (no --resume, no --session):** Create a fresh session from $ARGUMENTS.
+   ```bash
+   SLUG=$(printf '%s' "$ARGUMENTS" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
+   eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh start .vbw-planning "$SLUG")"
+   ```
+
+Store the resolved `session_id` and `session_file` for use in Steps below.
+
+If resuming a session with `status=qa_pending` or `status=qa_failed`: skip investigation, display current session state, and suggest `/vbw:qa` instead.
+If resuming a session with `status=uat_pending` or `status=uat_failed`: skip investigation, display current session state, and suggest `/vbw:verify` instead.
+If resuming a session with `status=complete`: STOP "This debug session is already complete. Start a new one with: /vbw:debug \"bug description\""
+</debug_session_routing>
 
 ## Steps
 1. **Parse + effort:** Entire $ARGUMENTS = bug description.
@@ -100,7 +132,47 @@ Recent commits:
         If investigation reveals pre-existing failures unrelated to this bug, list them in your response under a "Pre-existing Issues" heading with test name, file, and failure message.
         ```
 
-5. **Clear delegation marker + Present:** Clear the marker first:
+5. **Persist to debug session + Clear delegation marker + Present:**
+
+    <debug_session_persistence>
+    After investigation completes (Path A or Path B), persist results to the debug session file using `write-debug-session.sh`:
+
+    Build the investigation JSON payload:
+    ```bash
+    INVESTIGATION_JSON=$(cat <<'ENDJSON'
+    {
+      "mode": "investigation",
+      "title": "{one-line bug summary}",
+      "issue": "{bug description from user}",
+      "hypotheses": [
+        {
+          "description": "{hypothesis description}",
+          "status": "confirmed|rejected",
+          "evidence_for": "{supporting evidence}",
+          "evidence_against": "{contradicting evidence}",
+          "conclusion": "{why chosen or rejected}"
+        }
+      ],
+      "root_cause": "{confirmed root cause with file references}",
+      "plan": "{chosen fix approach}",
+      "implementation": "{summary of changes}",
+      "changed_files": ["{file1}", "{file2}"],
+      "commit": "{commit hash and message, or 'No commit yet.'}"
+    }
+    ENDJSON
+    )
+    echo "$INVESTIGATION_JSON" | bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/write-debug-session.sh "$session_file"
+    ```
+
+    If a fix was applied and committed, set status to `qa_pending`:
+    ```bash
+    bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh set-status .vbw-planning qa_pending
+    ```
+
+    If investigation completed but no fix was applied (analysis only), set status to `fix_applied` is wrong — keep as `investigating` and advise user to apply the fix.
+    </debug_session_persistence>
+
+    Clear the marker:
     ```bash
     bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/delegated-workflow.sh clear
     ```
@@ -127,4 +199,13 @@ Recent commits:
 ```
 This is **display-only**. Do NOT edit STATE.md, do NOT add todos, do NOT invoke /vbw:todo, and do NOT enter an interactive loop. The user decides whether to track these. If no discovered issues: omit the section entirely. After displaying discovered issues, STOP. Do not take further action.
 
-➜ Next: /vbw:status -- View project status
+<debug_session_next_step>
+Session-aware next step (based on what happened during investigation):
+
+- If a fix was committed and session status is `qa_pending`:
+  `➜ Next: /vbw:qa -- Verify the debug fix`
+- If investigation completed but no fix was applied (session status is `investigating`):
+  `➜ Next: /vbw:debug --resume -- Continue investigation and apply fix`
+- If session was not created (error or guard stopped execution):
+  `➜ Next: /vbw:status -- View project status`
+</debug_session_next_step>

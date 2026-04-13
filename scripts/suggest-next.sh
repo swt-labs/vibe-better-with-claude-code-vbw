@@ -699,8 +699,43 @@ case "$CMD" in
     ;;
 
   debug)
-    suggest "/vbw:fix -- Apply the fix"
-    suggest "/vbw:vibe -- Continue building"
+    # Check for active debug session to give session-aware suggestions
+    _ds_status=""
+    if [ -d "$PLANNING_DIR/debugging" ]; then
+      _ds_output=$("$SCRIPT_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null) || true
+      if [ -n "$_ds_output" ]; then
+        eval "$_ds_output" 2>/dev/null || true
+        # shellcheck disable=SC2154
+        if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
+          _ds_status=$(grep -m1 '^status:' "$session_file" 2>/dev/null | sed 's/^status:[[:space:]]*//' || true)
+        fi
+      fi
+    fi
+    case "$_ds_status" in
+      qa_pending|fix_applied)
+        suggest "/vbw:qa -- Verify the debug fix"
+        ;;
+      qa_failed)
+        suggest "/vbw:debug --resume -- Address QA failures"
+        ;;
+      uat_pending)
+        suggest "/vbw:verify -- Run UAT on the debug fix"
+        ;;
+      uat_failed)
+        suggest "/vbw:debug --resume -- Address UAT issues"
+        ;;
+      complete)
+        suggest "/vbw:status -- View project status"
+        ;;
+      investigating)
+        suggest "/vbw:debug --resume -- Continue investigation"
+        suggest "/vbw:fix -- Apply the fix"
+        ;;
+      *)
+        suggest "/vbw:fix -- Apply the fix"
+        suggest "/vbw:vibe -- Continue building"
+        ;;
+    esac
     ;;
 
   config)

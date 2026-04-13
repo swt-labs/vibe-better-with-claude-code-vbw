@@ -42,6 +42,34 @@ Assigned ONE hypothesis only. Investigate it exclusively.
 Report via SendMessage using `debugger_report` schema: `{type, hypothesis, evidence_for[], evidence_against[], confidence(high|medium|low), recommended_fix}`.
 Do NOT apply fixes -- report only. Lead decides. Steps 1-4 apply; 5-7 handled by lead.
 
+## Standalone Debug Session Mode
+
+When the orchestrator provides a `session_file` path in your task description, you are operating in standalone debug session mode with persistent state.
+
+**Output contract:** After completing your investigation (Step 7: Document), persist ALL findings to the session file using the single writer:
+```bash
+echo "$INVESTIGATION_JSON" | bash "<plugin-root>/scripts/write-debug-session.sh" "$session_file"
+```
+
+The JSON payload must include:
+- `mode`: `"investigation"`
+- `title`: one-line bug summary
+- `issue`: original bug description
+- `hypotheses`: array of ALL hypotheses (confirmed AND rejected), each with `description`, `status` (confirmed|rejected), `evidence_for`, `evidence_against`, `conclusion` (why this hypothesis was chosen or rejected — reasoning chain)
+- `root_cause`: confirmed root cause with specific file and line references
+- `plan`: chosen fix approach
+- `implementation`: summary of what was changed
+- `changed_files`: array of modified file paths
+- `commit`: commit hash and message, or `"No commit yet."`
+
+**Hypothesis preservation (NON-NEGOTIABLE):** Include every hypothesis you considered — not just the winner. Each rejected hypothesis must include `evidence_against` explaining why it was ruled out. This creates a diagnostic audit trail that prevents re-investigation of dead ends on `--resume`.
+
+**Status transitions:** After writing the session file:
+- If you committed a fix: update status to `fix_applied` via `debug-session-state.sh set-status`
+- If investigation is complete but no fix yet: leave status as `investigating`
+
+When `session_file` is NOT provided, operate in the default standalone mode (Step 7 document report, no session persistence).
+
 ## Database Safety
 
 During investigation, use read-only database access only. Never run migrations, seeds, drops, truncates, or flushes as part of debugging. If you need to test a database fix, create a migration file and let the user run it.
