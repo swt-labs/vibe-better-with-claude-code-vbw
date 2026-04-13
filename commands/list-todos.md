@@ -38,39 +38,33 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
    - `"no-match"`: Display the `display` value. Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos empty` and display. Exit.
    - `"ok"`: Continue to step 4.
 
-4. **Display list:** Show the `display` value from the script output, followed by:
-   ```text
-   Reply with a number to select, or `q` to exit.
-   ```
+4. **Display list:** Show the `display` value from the script output exactly as returned (do not append any additional prompt text).
 
-5. **Handle selection:** Wait for user to reply with a number. If invalid: "Invalid selection. Reply with a number (1-N) or `q` to exit."
+5. **Handle selection:** Use AskUserQuestion with a freeform question (no `options` array) to prompt: "Reply with a number to select, `remove N` to delete, or `q` to exit:" Parse the response. Accept these input forms:
+   - **A number** (1-N): Parse N and validate that it is within range. If N is less than 1 or greater than item count, display "Invalid selection — only items 1-{count} exist." and re-prompt via AskUserQuestion. Otherwise, select the Nth todo and proceed to Step 6.
+   - **`remove N`** or **`delete N`**: If N is out of range (less than 1 or greater than item count), display "Invalid selection — only items 1-{count} exist." and re-prompt. Otherwise, removes the Nth todo without acting on it. Use the `section` and `state_path` values from the script output. Remove the `line` value of the Nth item from the todo section in STATE.md. If no todos remain, replace with "None." If the item has a non-null `ref` field, also run `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" remove <ref>` and capture the JSON output — if `status` is not `"ok"`, display "⚠ Todo removed but detail cleanup failed for ref `HASH` — run `/vbw:doctor` to clean up." Log under `## Activity Log` (or the first heading beginning with `## Activity`) with format `- {YYYY-MM-DD}: Removed todo: {text}`. Display "✓ Todo removed." Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos` and display. Return to Step 2 (re-run list script to refresh display and items).
+   - **`q`**: display "Done." STOP.
+   - **Anything else**: display "Invalid selection. Reply with a number (1-N), `remove N`, or `q` to exit." and re-prompt via AskUserQuestion.
 
 6. **Show selected todo:** Display the full `text` from the matching `items` entry. If the item has a non-null `ref` field, load extended detail by running `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" get <ref>`. Parse the JSON output:
    - If `status` is `"ok"`: display the `detail.context` value below the todo text, prefixed with "**Detail:**". If `detail.files` is non-empty, also display "**Related files:** file1, file2, ...".
    - If `status` is `"not_found"` or `"error"`: display "⚠ Detail for this todo could not be loaded — continuing with summary only." and proceed without detail.
 
-7. **Offer actions:** Use AskUserQuestion:
-   - header: "Action"
-   - question: "What would you like to do with this todo?"
-   - options:
-     - "/vbw:fix — Quick fix, one commit, no ceremony"
-     - "/vbw:debug — Investigate with scientific method"
-     - "/vbw:vibe — Full lifecycle (plan → execute → verify)"
-     - "/vbw:research — Research only, no code changes"
-     - "Remove — Delete from todo list"
-     - "Back — Return to list"
+7. **Pick up todo and present workflows:** Use the `section` and `state_path` values from the script output. Perform these operations in order:
+   (a) Remove the todo's `line` value from the todo section in STATE.md. If no todos remain, replace with "None."
+   (b) Log under `## Activity Log` (or the first heading beginning with `## Activity`) with format `- {YYYY-MM-DD}: Picked up todo: {text}`.
+   (c) Strip metadata from the todo text: remove any trailing `(added YYYY-MM-DD)` date tag and any `(ref:HASH)` tag. Store the cleaned text as `CLEANED_TEXT`. Store the ref hash (if non-null) as `REF`.
+   (d) Display as plain text (do NOT use AskUserQuestion):
+   ```text
+   ✓ Todo picked up.
 
-8. **Execute action:** Use the `section` and `state_path` values from the script output for edit operations.
-   - **/vbw:fix, /vbw:debug, /vbw:vibe, /vbw:research:** Remove the `line` value from the todo section in STATE.md. If no todos remain, replace with "None." Log to `## Recent Activity` with format `- {YYYY-MM-DD}: Picked up todo via /vbw:{command}: {text}`. Then display:
-     ```text
-     ✓ Todo picked up.
-
-     ➜ Run: /vbw:{command} {cleaned text} [(ref:HASH) if fix/vibe and ref exists]
-     ```
-     Before building the suggested command, strip metadata from the todo text: remove any trailing `(added YYYY-MM-DD)` date tag and any `(ref:HASH)` tag. Append `(ref:HASH)` suffix only once, only if the item has a non-null `ref` field **and** the selected action is `/vbw:fix` or `/vbw:vibe` (the commands that consume it). For `/vbw:debug` and `/vbw:research`, omit the ref suffix — those commands do not parse it.
-     Do NOT execute the command. STOP after displaying the suggested command.
-   - **Remove:** Remove the `line` value from the todo section in STATE.md. If no todos remain, replace with "None." If the item has a non-null `ref` field, also run `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" remove <ref>` to clean up the detail entry and capture the JSON output. If the output's `status` field is not `"ok"`, display "⚠ Todo removed but detail cleanup failed for ref `HASH` — run `/vbw:doctor` to clean up." rather than silently swallowing the error. Log to `## Recent Activity` with format `- {YYYY-MM-DD}: Removed todo: {text}`. Confirm: "✓ Todo removed." Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos` and display.
-   - **Back:** Return to step 4.
+   ➜ Pick a workflow:
+       /vbw:fix CLEANED_TEXT [ (ref:REF) if present ]       — Quick fix, one commit
+       /vbw:debug CLEANED_TEXT [ (ref:REF) if present ]     — Investigate with scientific method
+       /vbw:vibe CLEANED_TEXT [ (ref:REF) if present ]      — Full lifecycle (plan → execute → verify)
+       /vbw:research CLEANED_TEXT [ (ref:REF) if present ]  — Research only, no code changes
+   ```
+   Include the `(ref:REF)` suffix on ALL four commands if the item has a non-null `ref` field. Omit the suffix entirely if `ref` is null. Do NOT execute any command — STOP after displaying.
 
 ## Output Format
 

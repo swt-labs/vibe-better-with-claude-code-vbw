@@ -80,14 +80,28 @@ echo "  Lead: $LEAD_DISPLAY | Dev: $DEV_DISPLAY | QA: $QA_DISPLAY | Scout: $SCOU
 
 Note: Core infrastructure flags (v2_hard_contracts, v2_hard_gates, v2_typed_protocol, v2_role_isolation, v3_event_log, v3_delta_context, v3_context_cache, v3_plan_research_persist, v3_schema_validation, v3_contract_lite, v3_lock_lite) have graduated to always-on behavior. The remaining flags are configurable under unprefixed names (see Settings Reference below). Brownfield configs with old `v2_`/`v3_` prefixed keys are auto-migrated by `migrate-config.sh`.
 
-**Step 2:** AskUserQuestion with up to 5 commonly changed settings (mark current values):
-- Effort: thorough | balanced | fast | turbo
-- Autonomy: cautious | standard | confident | pure-vibe
-- Planning tracking: manual | ignore | commit
-- Auto push: never | after_phase | always
-- Model Profile
+**Step 2:** AskUserQuestion — present settings as a numbered list in the question text (do NOT use `options` array — a single freeform question avoids the 4-option limit):
 
-**Step 2.5:** If "Model Profile" was selected, AskUserQuestion with 2 options:
+Question text:
+```
+Which setting would you like to change?
+1. Effort — current: {effort value}  (thorough | balanced | fast | turbo)
+2. Autonomy — current: {autonomy value}  (cautious | standard | confident | pure-vibe)
+3. Planning tracking — current: {tracking value}  (manual | ignore | commit)
+4. Auto push — current: {auto_push value}  (never | after_phase | always)
+5. Model Profile
+Type a number (1-5):
+```
+
+Parse the user's freeform response using these rules:
+- Accept only a single digit `1`, `2`, `3`, `4`, or `5`, with optional leading/trailing whitespace.
+- Treat anything else as invalid (punctuation like `2.`, words like `two`, mixed text like `option 2`, multiple numbers, empty input, or out-of-range values like `0` or `6`).
+- If invalid, show `Invalid selection. Please type a single number from 1 to 5.` and AskUserQuestion again with the same question text.
+- Repeat until a valid selection is obtained.
+
+Map: 1 = Effort, 2 = Autonomy, 3 = Planning tracking, 4 = Auto push, 5 = Model Profile.
+
+**Step 2.5:** If "Model Profile" was selected (5), AskUserQuestion with 2 options:
 - Use preset profile (quality/balanced/budget)
 - Configure each agent individually (6 questions)
 
