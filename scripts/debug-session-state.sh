@@ -527,9 +527,9 @@ ENDSESSION
         [ -f "$f" ] && [ ! -L "$f" ] || continue
         # Skip files already counted during self-heal from active/
         local_fname=$(basename "$f")
-        case "$HEALED_FILES" in
-          *"${local_fname}:"*) continue ;;
-        esac
+        if [ -n "$HEALED_FILES" ] && printf '%s' "$HEALED_FILES" | grep -qF "${local_fname}:"; then
+          continue
+        fi
         local_id=$(read_field "$f" "session_id")
         local_status=$(read_field "$f" "status")
         local_title=$(read_field "$f" "title")
