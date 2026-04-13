@@ -254,15 +254,21 @@ find_latest_unresolved() {
     [ -f "$legacy_f" ] && [ ! -L "$legacy_f" ] || continue
     migrate_legacy_session "$legacy_f" > /dev/null 2>&1 || true
   done
-  # Only scan active/ — completed sessions are excluded by definition
-  if [ ! -d "$ACTIVE_DIR" ]; then
+  # Collect candidates from active/ and any unmigrated legacy files in DEBUG_DIR/
+  local files=() f
+  if [ -d "$ACTIVE_DIR" ]; then
+    while IFS= read -r f; do
+      [ -f "$f" ] && [ ! -L "$f" ] && files+=("$f")
+    done < <(printf '%s\n' "$ACTIVE_DIR"/*.md | LC_ALL=C sort)
+  fi
+  # Include any legacy files that couldn't be migrated (destination collision)
+  for f in "$DEBUG_DIR"/*.md; do
+    [ -f "$f" ] && [ ! -L "$f" ] || continue
+    files+=("$f")
+  done
+  if [ ${#files[@]} -eq 0 ]; then
     return
   fi
-  # Collect files into array, explicitly sorted by name (which contains timestamp)
-  local files=() f
-  while IFS= read -r f; do
-    [ -f "$f" ] && [ ! -L "$f" ] && files+=("$f")
-  done < <(printf '%s\n' "$ACTIVE_DIR"/*.md | LC_ALL=C sort)
   # Iterate from end (latest timestamp first) to find latest unresolved
   local i status
   for (( i=${#files[@]}-1; i>=0; i-- )); do
@@ -560,6 +566,15 @@ ENDSESSION
         COUNT=$((COUNT + 1))
       done
     fi
+    # Include any legacy files that couldn't be migrated (destination collision)
+    for f in "$DEBUG_DIR"/*.md; do
+      [ -f "$f" ] && [ ! -L "$f" ] || continue
+      local_id=$(read_field "$f" "session_id")
+      local_status=$(read_field "$f" "status")
+      local_title=$(read_field "$f" "title")
+      echo "session=${local_id}|${local_status}|${local_title}|legacy"
+      COUNT=$((COUNT + 1))
+    done
     if [ "$COUNT" -eq 0 ]; then
       echo "no_sessions=true"
     fi
