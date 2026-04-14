@@ -102,7 +102,7 @@ Notes: placeholder detection excludes template files; filler detection applies t
 Deep tier only. Traces requirement IDs to implementing artifacts.
 
 1. **Extract** requirement IDs from phase section of ROADMAP.md
-2. **Trace** each ID to PLAN.md files (must_haves, task descriptions, success criteria) and SUMMARY.md files. When SUMMARY.md frontmatter contains `ac_results`, use it as the primary requirement-to-artifact mapping. Fall back to prose cross-referencing (What Was Built, Files Modified) only when `ac_results` is absent (pre-existing summaries)
+2. **Trace** each ID to PLAN.md files (must_haves, task descriptions, success criteria) and SUMMARY.md files. Prefer `ac_results` frontmatter when present; fall back to prose sections (What Was Built, Files Modified) for pre-existing summaries
 3. **Classify:** Mapped (plan+summary) = OK. Planned only (plan, no summary) = WARN. Unmapped (neither) = FAIL
 
 Scope: current phase only. Cross-phase requirements noted but not flagged.
@@ -122,7 +122,7 @@ Protocol instructions in agent definitions (not JS hooks or event handlers).
 
 - **VRFY-03 Post-Write (Dev):** Run linter/type-checker on modified files if configured. Fix before committing. Advisory.
 - **VRFY-04 Post-Commit (Dev):** Verify commit format `{type}({scope}): {description}`. Check only task-related files staged. Self-check protocol.
-- **VRFY-05 OnStop (Execute):** Verify SUMMARY.md exists with required frontmatter (`phase`, `plan`, `status`, `completed`, `pre_existing_issues`) and standard sections (What Was Built, Files Modified, Deviations). When corresponding PLAN has `must_haves`, verify `ac_results` present in frontmatter with valid verdicts (`pass`/`fail`/`partial`). Report issues.
+- **VRFY-05 OnStop (Execute):** Verify SUMMARY.md exists with required frontmatter (`phase`, `plan`, `status`, `completed`, `pre_existing_issues`) and sections (What Was Built, Files Modified, Deviations). If PLAN has `must_haves`, verify `ac_results` with valid verdicts (`pass`/`fail`/`partial`). Report issues.
 
 ## 9. Output Format
 

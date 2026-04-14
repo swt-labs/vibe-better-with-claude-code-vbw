@@ -9,7 +9,7 @@ disallowedTools: Task
 
 # VBW Dev
 
-Execution agent. Implement PLAN.md tasks sequentially, one atomic commit per task. Produce SUMMARY.md via `templates/SUMMARY.md` (compact format: YAML frontmatter carries all structured data — including `pre_existing_issues` when DEVN-05 applies and `ac_results` when the plan has `must_haves` — and the body stays terse with only `## What Was Built` and `## Files Modified` sections). For remediation round summaries under `remediation/*/round-*/R*-SUMMARY.md`, use `templates/REMEDIATION-SUMMARY.md` instead; that template includes the `files_modified` frontmatter required by the remediation safety gates.
+Execution agent. Implement PLAN.md tasks sequentially, one atomic commit per task. Produce SUMMARY.md via `templates/SUMMARY.md` (compact format: YAML frontmatter carries all structured data — including `pre_existing_issues` when DEVN-05 applies — and the body stays terse with only `## What Was Built` and `## Files Modified` sections). For remediation round summaries under `remediation/*/round-*/R*-SUMMARY.md`, use `templates/REMEDIATION-SUMMARY.md` instead; that template includes the `files_modified` frontmatter required by the remediation safety gates.
 
 ## Skill Activation
 
@@ -52,7 +52,7 @@ If `type="checkpoint:*"`, stop and return checkpoint.
 **Classification methods (read-only only):** Inspect the test module, check the task file list, review prior test output, or use read-only git commands (`git log`, `git show`, `git blame`). Do NOT check out other branches, run `git stash`, or perform any working-tree mutations to verify.
 
 ### Stage 3: Produce Summary
-Run plan verification. Confirm success criteria. Generate SUMMARY.md via `templates/SUMMARY.md`. `ac_results` frontmatter: populate from plan `must_haves` per template. Verdicts: `pass`/`fail`/`partial` (lowercase enum). Omit `ac_results` if plan has no `must_haves`. SUMMARY.md is a **terminal artifact** — it must only be created at execution completion with status `complete`, `partial`, or `failed`. NEVER write SUMMARY.md with a non-terminal status (`pending`, `in_progress`, etc.). Always emit `pre_existing_issues: []` in SUMMARY frontmatter when no DEVN-05 issues were found. A PreToolUse hook blocks SUMMARY writes with invalid statuses. **Exception:** Remediation round summaries (`R{RR}-SUMMARY.md`) are exempt — they are built incrementally across multiple Dev agents.
+Run plan verification. Confirm success criteria. Generate SUMMARY.md via `templates/SUMMARY.md`. If plan has `must_haves`, add `ac_results` per template (`pass`/`fail`/`partial` verdicts). SUMMARY.md is a **terminal artifact** — it must only be created at execution completion with status `complete`, `partial`, or `failed`. NEVER write SUMMARY.md with a non-terminal status (`pending`, `in_progress`, etc.). Always emit `pre_existing_issues: []` in SUMMARY frontmatter when no DEVN-05 issues were found. A PreToolUse hook blocks SUMMARY writes with invalid statuses. **Exception:** Remediation round summaries (`R{RR}-SUMMARY.md`) are exempt — they are built incrementally across multiple Dev agents.
 
 ## Commit Discipline
 One commit per task. Never batch. Never split (except TDD: 2-3).

@@ -112,7 +112,7 @@ if [ -f "$PLAN_PATH" ]; then
     else
       # Validate verdict values are pass/fail/partial
       _VS_VERDICTS=$(sed -n '/^---$/,/^---$/{ /^ *verdict:/{ s/^ *verdict:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$FILE_PATH" 2>/dev/null)
-      for _VS_V in $_VS_VERDICTS; do
+      for _VS_V in $_VS_VERDICTS; do  # unquoted intentional: verdicts are single-word enums
         case "$_VS_V" in
           pass|fail|partial) ;;
           *) MISSING="${MISSING}Invalid ac_results verdict '${_VS_V}' (must be pass/fail/partial). " ;;
