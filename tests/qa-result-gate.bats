@@ -5248,7 +5248,7 @@ VERIF
   PHASE_DIR="$TEST_DIR/.vbw-planning/phases/01-test-phase"
   mkdir -p "$PHASE_DIR"
   # Create baseline commit, then add .vbw-planning/ to .gitignore
-  baseline_commit=$(commit_repo_file "README.md" "project root")
+  commit_repo_file "README.md" "project root" >/dev/null
   printf '.vbw-planning/\n' >> "$TEST_DIR/.gitignore"
   git -C "$TEST_DIR" add .gitignore
   git -C "$TEST_DIR" commit -q -m "ignore planning dir"
@@ -5256,7 +5256,6 @@ VERIF
   after_ignore_commit=$(git -C "$TEST_DIR" rev-parse HEAD)
 
   # Create the original plan file on disk (gitignored, not tracked)
-  mkdir -p "$PHASE_DIR"
   printf 'Original plan content\n' > "$PHASE_DIR/01-01-PLAN.md"
 
   # Source verification with FAIL
@@ -5305,7 +5304,7 @@ VERIF
 
 @test "non-metadata gitignored path still blocks gate (ignored-evidence scoped to metadata only)" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "README.md" "project root")
+  commit_repo_file "README.md" "project root" >/dev/null
   # Gitignore a non-metadata directory
   printf 'build/\n' >> "$TEST_DIR/.gitignore"
   git -C "$TEST_DIR" add .gitignore
@@ -5358,7 +5357,7 @@ VERIF
   # Put PHASE_DIR under .vbw-planning/ to match production layout
   PHASE_DIR="$TEST_DIR/.vbw-planning/phases/01-test-phase"
   mkdir -p "$PHASE_DIR"
-  baseline_commit=$(commit_repo_file "README.md" "project root")
+  commit_repo_file "README.md" "project root" >/dev/null
   # Gitignore both .vbw-planning/ and build/
   printf '.vbw-planning/\nbuild/\n' >> "$TEST_DIR/.gitignore"
   git -C "$TEST_DIR" add .gitignore
