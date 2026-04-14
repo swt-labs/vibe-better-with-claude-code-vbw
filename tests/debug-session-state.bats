@@ -308,10 +308,13 @@ teardown() {
 
   run bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$VBW_PLANNING_DIR"
   [ "$status" -eq 0 ]
-  # The legacy file should still be discoverable even though migration failed
+  # The session should still be discoverable
   [[ "$output" == *"session_id=${session_id}"* ]]
-  # Legacy file should still exist (migration failed, not moved)
-  [ -f "$legacy_file" ]
+  # Collision resolution: complete file moved to completed/, legacy migrated to active/
+  [ -f "$VBW_PLANNING_DIR/debugging/active/${session_id}.md" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/${session_id}.md" ]
+  # Legacy file should no longer exist (successfully migrated after collision resolution)
+  [ ! -f "$legacy_file" ]
 }
 
 @test "legacy complete session migrated to completed on list" {

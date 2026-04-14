@@ -257,7 +257,18 @@ find_latest_unresolved() {
   for legacy_f in "$DEBUG_DIR"/*.md; do
     [ -f "$legacy_f" ] && [ ! -L "$legacy_f" ] || continue
     if ! migrate_legacy_session "$legacy_f" > /dev/null 2>&1; then
-      echo "Warning: could not migrate legacy session $(basename "$legacy_f")" >&2
+      # Collision? If the blocking file in active/ is complete, resolve it
+      local collision_file
+      collision_file="$ACTIVE_DIR/$(basename "$legacy_f")"
+      if [ -f "$collision_file" ] && [ "$(read_field "$collision_file" "status")" = "complete" ]; then
+        safe_move_session "$collision_file" "$COMPLETED_DIR" > /dev/null 2>&1 || true
+        # Retry migration now that collision is cleared
+        if ! migrate_legacy_session "$legacy_f" > /dev/null 2>&1; then
+          echo "Warning: could not migrate legacy session $(basename "$legacy_f")" >&2
+        fi
+      else
+        echo "Warning: could not migrate legacy session $(basename "$legacy_f")" >&2
+      fi
     fi
   done
   # Collect candidates from active/ and any unmigrated legacy files
@@ -527,7 +538,16 @@ ENDSESSION
     for f in "$DEBUG_DIR"/*.md; do
       [ -f "$f" ] && [ ! -L "$f" ] || continue
       if ! migrate_legacy_session "$f" > /dev/null 2>&1; then
-        echo "Warning: could not migrate legacy session $(basename "$f")" >&2
+        # Collision? If the blocking file in active/ is complete, resolve it
+        _collision_file="$ACTIVE_DIR/$(basename "$f")"
+        if [ -f "$_collision_file" ] && [ "$(read_field "$_collision_file" "status")" = "complete" ]; then
+          safe_move_session "$_collision_file" "$COMPLETED_DIR" > /dev/null 2>&1 || true
+          if ! migrate_legacy_session "$f" > /dev/null 2>&1; then
+            echo "Warning: could not migrate legacy session $(basename "$f")" >&2
+          fi
+        else
+          echo "Warning: could not migrate legacy session $(basename "$f")" >&2
+        fi
       fi
     done
     COUNT=0
