@@ -354,6 +354,22 @@ teardown() {
   [ -f "$VBW_PLANNING_DIR/debugging/completed/${session_id}.md" ]
 }
 
+@test "list emits warning to stderr when legacy migration fails" {
+  mkdir -p "$VBW_PLANNING_DIR/debugging/active"
+  local session_id="20250101-140000-list-warn"
+  local legacy_file="$VBW_PLANNING_DIR/debugging/${session_id}.md"
+  # Create a legacy flat-path session
+  printf '%s\n' '---' "session_id: ${session_id}" 'title: list-warn' 'status: investigating' 'created: 2025-01-01 14:00:00' 'updated: 2025-01-01 14:00:00' 'qa_round: 0' 'qa_last_result: pending' 'uat_round: 0' 'uat_last_result: pending' '---' '' '# Debug Session: list-warn' > "$legacy_file"
+  # Collision file in active/ with non-complete status — cannot be resolved
+  printf '%s\n' '---' "session_id: ${session_id}" 'title: active-blocker' 'status: investigating' '---' > "$VBW_PLANNING_DIR/debugging/active/${session_id}.md"
+
+  # Capture stderr for warning assertion
+  local stderr_file="$VBW_PLANNING_DIR/stderr-list.tmp"
+  run bash -c "bash '$SCRIPTS_DIR/debug-session-state.sh' list '$VBW_PLANNING_DIR' 2>'$stderr_file'"
+  [ "$status" -eq 0 ]
+  [[ "$(cat "$stderr_file")" == *"Warning: could not migrate legacy session"* ]]
+}
+
 @test "list shows sessions from both active and completed" {
   # Create an active session
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "active-bug")"
