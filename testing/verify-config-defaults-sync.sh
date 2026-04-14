@@ -39,7 +39,10 @@ if [ -z "$md_settings" ]; then
 fi
 
 # Extract keys from defaults.json
-json_keys=$(jq -r 'keys[]' "$DEFAULTS_JSON")
+if ! json_keys=$(jq -r 'keys[]' "$DEFAULTS_JSON"); then
+  fail "Could not extract keys from defaults.json; file is missing, unreadable, or invalid JSON"
+  json_keys=""
+fi
 if [ -z "$json_keys" ]; then
   fail "No keys could be extracted from defaults.json"
 fi
