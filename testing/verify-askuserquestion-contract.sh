@@ -8,7 +8,8 @@ set -euo pipefail
 # numbered-list-in-question-text workaround with explicit guard language.
 #
 # Checks:
-# 1. No pipe-delimited option lists with >4 items in AskUserQuestion context
+# 1. No option lists with >4 items in AskUserQuestion context (pipe-delimited
+#    or JSON array format)
 # 2. Numbered-list AskUserQuestion workarounds include guard language
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -50,21 +51,22 @@ echo "=== AskUserQuestion maxItems Contract Verification ==="
 # --------------------------------------------------------------------------
 
 echo ""
-echo "--- Check 1: No >4 pipe-delimited option lists ---"
+echo "--- Check 1: No >4 option lists ---"
 
 for file in "$COMMANDS_DIR"/*.md; do
   [ -f "$file" ] || continue
   base="$(basename "$file" .md)"
 
-  # Count lines with >4 pipe-delimited quoted options (outside code fences)
+  # Count lines with >4 options in either format (outside code fences):
+  # - Pipe-delimited: "a" | "b" | "c" | "d" | "e"
+  # - JSON array:     Options: ["a", "b", "c", "d", "e"]
   violations=$(extract_body "$file" | awk '
     /^```/ { in_fence = !in_fence; next }
     in_fence { next }
     /^\|/ { next }  # skip markdown table rows
 
     {
-      # Count pipe-separated quoted segments: "..." | "..."
-      # Split on | and count segments that contain a quoted string
+      # Check 1a: pipe-separated quoted segments: "..." | "..."
       n = split($0, parts, /\|/)
       quoted_count = 0
       for (i = 1; i <= n; i++) {
@@ -74,16 +76,36 @@ for file in "$COMMANDS_DIR"/*.md; do
       }
       if (quoted_count > 4) {
         print NR ": " $0
+        next
+      }
+
+      # Check 1b: JSON array options: Options: ["...", "...", ...]
+      if ($0 ~ /Options:[[:space:]]*\[/) {
+        # Extract content between [ and ]
+        arr = $0
+        sub(/.*Options:[[:space:]]*\[/, "", arr)
+        sub(/\].*/, "", arr)
+        # Count comma-separated quoted items
+        m = split(arr, items, /,/)
+        arr_count = 0
+        for (j = 1; j <= m; j++) {
+          if (items[j] ~ /"[^"]*"/) {
+            arr_count++
+          }
+        }
+        if (arr_count > 4) {
+          print NR ": " $0
+        }
       }
     }
   ')
 
   if [ -n "$violations" ]; then
     while IFS= read -r violation; do
-      fail "$base: >4 pipe-delimited options (line $violation)"
+      fail "$base: >4 options (line $violation)"
     done <<<"$violations"
   else
-    pass "$base: no >4 pipe-delimited option lists"
+    pass "$base: no >4 option lists"
   fi
 done
 
