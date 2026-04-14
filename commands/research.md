@@ -92,7 +92,7 @@ Research: {topic or sub-topic}.
      RESEARCH_SLUG=$(printf '%s' "{topic}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
      eval "$(bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/research-session-state.sh" start .vbw-planning "$RESEARCH_SLUG")"
      ```
-     Use `$research_file` as the save path. After writing findings, mark complete:
+     Use `$research_file` as the save path. Preserve the existing YAML frontmatter block (lines between the opening and closing `---` markers) — update the `title` and `confidence` fields to match your findings, then write research content below the frontmatter closing marker. After writing findings, mark complete:
      ```bash
      bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/research-session-state.sh" complete .vbw-planning "$research_id"
      ```

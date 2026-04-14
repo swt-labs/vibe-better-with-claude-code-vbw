@@ -63,8 +63,13 @@ check_staleness() {
     }
   ' "$file")
 
-  if [ -z "$base_commit" ] || [ "$base_commit" = "unknown" ]; then
+  if [ -z "$base_commit" ]; then
     return 2  # No base_commit = treat as stale
+  fi
+
+  if [ "$base_commit" = "unknown" ]; then
+    echo "unknown" >&2  # Migrated file — original commit not tracked
+    return 1  # Warn but still inject (migrated files should be usable)
   fi
 
   # Verify the commit exists
