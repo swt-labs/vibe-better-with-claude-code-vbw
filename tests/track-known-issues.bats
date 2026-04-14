@@ -580,7 +580,7 @@ write_known_issues_registry() {
   write_round_summary_with_known_issue_outcomes "remediation/qa/round-01/R01-SUMMARY.md" \
     '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","disposition":"accepted-process-exception","rationale":"Accepted for this phase"}'
 
-  # R02 resolves the same issue (disposition: resolved is filtered out by the parser)
+  # R02 resolves the same issue (enters accumulator via "all" filter, filtered post-merge)
   mkdir -p "$PHASE_DIR/remediation/qa/round-02"
   printf '%s\n' \
     '---' \
