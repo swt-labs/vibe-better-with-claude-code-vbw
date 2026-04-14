@@ -364,8 +364,18 @@ ENDSESSION
         created_ts=$(date '+%Y-%m-%d %H:%M:%S')  # fallback
       fi
 
-      # Inject frontmatter if the file doesn't already have it
-      if ! head -1 "$NEW_PATH" | grep -q '^---$'; then
+      # Determine whether the file has well-formed frontmatter (opening AND
+      # closing ---). If only the opening delimiter exists, treat as no
+      # frontmatter and prepend a full block.
+      has_frontmatter=false
+      if head -1 "$NEW_PATH" | grep -q '^---$'; then
+        # Count --- delimiters; well-formed needs at least 2
+        if awk '/^---$/ { c++ } c >= 2 { exit 0 } END { exit (c < 2) }' "$NEW_PATH" 2>/dev/null; then
+          has_frontmatter=true
+        fi
+      fi
+
+      if [ "$has_frontmatter" = "false" ]; then
         # Extract title from first heading, fallback to slug
         extracted_title=$(grep -m 1 '^#' "$NEW_PATH" | sed -E 's/^#+[[:space:]]*//' || true)
         [ -z "$extracted_title" ] && extracted_title="$slug"
