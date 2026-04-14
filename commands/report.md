@@ -159,7 +159,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     **Method 2 — GitHub MCP server (if available):**
 
-    If `gh` is not installed or not authenticated, check if `mcp__github__issue_write` is available in your tool list. If it is, first read the diagnostic report from the temp file (`cat "$DIAG_FILE"`) and then clean it up (`rm -f "$DIAG_FILE"`). Compose the full body by combining the non-diagnostic sections with the diagnostic output in a code fence under `**Additional context**`. Call the tool with:
+    If `gh` is not installed or not authenticated, check if `mcp__github__issue_write` is available in your tool list. If it is, first read the diagnostic report from the temp file (`cat "$DIAG_FILE"`). Compose the full body by combining the non-diagnostic sections with the diagnostic output in a code fence under `**Additional context**`. Call the tool with:
     - `method`: `create`
     - `owner`: `swt-labs`
     - `repo`: `vibe-better-with-claude-code-vbw`
@@ -167,6 +167,8 @@ This command collects diagnostics and files a GitHub issue — nothing else.
     - `body`: The composed body (with full diagnostic report from the temp file)
     - `labels`: `["bug"]` or `["enhancement"]` based on classification
     - `assignees`: `["dpearson2699"]`
+
+    After the MCP call succeeds, clean up the temp file: `rm -f "$DIAG_FILE"`.
 
     **Method 3 — Install `gh` CLI, authenticate, then file:**
 
