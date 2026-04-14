@@ -323,7 +323,7 @@ EOF
 
   local migrated_file
   migrated_file=$(find "$VBW_PLANNING_DIR/research" -name "*.md" | head -1)
-  grep -q '^title: My Custom Title$' "$migrated_file"
+  grep -q '^title: "My Custom Title"$' "$migrated_file"
 }
 
 # ── validate_session_name ────────────────────────────────

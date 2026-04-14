@@ -273,7 +273,14 @@ ENDSESSION
       LATEST="$f"
     done
     if [ -z "$LATEST" ]; then
-      echo "research_file="
+      printf 'research_id=\n'
+      printf 'research_file=\n'
+      printf 'research_title=\n'
+      printf 'research_status=\n'
+      printf 'research_confidence=\n'
+      printf 'research_base_commit=\n'
+      printf 'research_created=\n'
+      printf 'research_updated=\n'
       exit 0
     fi
     print_session_metadata "$LATEST"
@@ -331,10 +338,11 @@ ENDSESSION
           created_ts=$(date '+%Y-%m-%d %H:%M:%S')  # fallback
         fi
 
-        # Prepend frontmatter
+        # YAML-safe title: quote to protect special chars (#, :, etc.)
+        safe_title=$(printf '%s' "$extracted_title" | sed 's/\\/\\\\/g; s/"/\\"/g')
         {
           printf '%s\n' '---'
-          printf 'title: %s\n' "$extracted_title"
+          printf 'title: "%s"\n' "$safe_title"
           printf 'type: standalone-research\n'
           printf 'status: complete\n'
           printf 'confidence: medium\n'
