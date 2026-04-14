@@ -46,7 +46,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
     bash <plugin-root>/scripts/collect-diagnostics.sh "<plugin-root>" "$(pwd)" | tee "$DIAG_FILE"
     echo "DIAG_FILE=$DIAG_FILE"
     ```
-    The diagnostic output appears in this tool result for display (step 2) and classification (step 3). The temp file path is session-scoped via `CLAUDE_SESSION_ID` (set by VBW hooks) with a literal `default` fallback — deterministic across separate Bash invocations within a session and unique across concurrent sessions. Note the `DIAG_FILE=...` path printed at the end for use in step 4.
+    The diagnostic output appears in this tool result for display (step 2) and classification (step 3). The temp file path is session-scoped via `CLAUDE_SESSION_ID` (set by VBW hooks) — deterministic across separate Bash invocations within a session and unique across concurrent sessions. When `CLAUDE_SESSION_ID` is unset, the literal `default` fallback keeps the path deterministic but shared across concurrent sessions (acceptable since this only applies when VBW hooks are inactive). Note the `DIAG_FILE=...` path printed at the end for use in step 4.
 
 2. **Display the report.** Show the diagnostic output verbatim inside a fenced code block. Do not paraphrase or reformat — the section headers and structure are designed for maintainer readability. If a problem description was provided, prepend it above the diagnostics:
 
