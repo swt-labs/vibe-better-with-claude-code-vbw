@@ -134,7 +134,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
     DIAG_FILE=<path from step 1>
     ISSUE_BODY_FILE=$(mktemp /tmp/vbw-issue-body.XXXXXX.md)
     ISSUE_TITLE_FILE=$(mktemp /tmp/vbw-issue-title.XXXXXX.txt)
-    trap 'rm -f "$ISSUE_BODY_FILE" "$ISSUE_TITLE_FILE" "$DIAG_FILE"' EXIT
+    trap 'rm -f "$ISSUE_BODY_FILE" "$ISSUE_TITLE_FILE"' EXIT
 
     cat > "$ISSUE_TITLE_FILE" << 'ISSUE_TITLE_EOF'
     <composed title>
@@ -155,6 +155,9 @@ This command collects diagnostics and files a GitHub issue — nothing else.
       --title "$(cat "$ISSUE_TITLE_FILE")" \
       --label <bug or enhancement> \
       --body-file "$ISSUE_BODY_FILE"
+
+    # Clean up diagnostic temp file only after successful filing
+    rm -f "$DIAG_FILE"
     ```
 
     **Method 2 — GitHub MCP server (if available):**
