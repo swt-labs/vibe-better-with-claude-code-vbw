@@ -43,6 +43,7 @@ printf '%s\t%s\n' \
   discord-release-workflow     testing/verify-discord-release-workflow-contract.sh \
   prefer-teams-canonicalization testing/verify-prefer-teams-canonicalization.sh \
   qa-persistence-contract      testing/verify-qa-persistence-contract.sh \
+  report-template-contract     testing/verify-report-template-contract.sh \
   discussion-engine-contract   testing/verify-discussion-engine-contract.sh \
   debug-session-contract       testing/verify-debug-session-contract.sh \
   askuserquestion-contract     testing/verify-askuserquestion-contract.sh \
