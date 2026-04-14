@@ -374,6 +374,50 @@ else
   fail "debug.md uat_failed resume missing 'uat' mode argument"
 fi
 
+# — Active/completed directory layout (issue #386) —
+
+if grep -q 'ACTIVE_DIR=' "$STATE_SCRIPT" 2>/dev/null; then
+  pass "debug-session-state.sh defines ACTIVE_DIR"
+else
+  fail "debug-session-state.sh missing ACTIVE_DIR definition"
+fi
+
+if grep -q 'COMPLETED_DIR=' "$STATE_SCRIPT" 2>/dev/null; then
+  pass "debug-session-state.sh defines COMPLETED_DIR"
+else
+  fail "debug-session-state.sh missing COMPLETED_DIR definition"
+fi
+
+if grep -q 'migrate_legacy_session' "$STATE_SCRIPT" 2>/dev/null; then
+  pass "debug-session-state.sh has migrate_legacy_session function"
+else
+  fail "debug-session-state.sh missing migrate_legacy_session function"
+fi
+
+# Verify the set-status branch specifically handles complete → move to COMPLETED_DIR
+if awk '/set-status\)/,/;;/' "$STATE_SCRIPT" | grep -q '"\$STATUS" = "complete"' && \
+   awk '/set-status\)/,/;;/' "$STATE_SCRIPT" | grep -q 'safe_move_session.*\$COMPLETED_DIR'; then
+  pass "debug-session-state.sh set-status branch moves complete sessions to COMPLETED_DIR"
+else
+  fail "debug-session-state.sh set-status branch does not move complete sessions to COMPLETED_DIR"
+fi
+
+# list command should output both location fields for dual-directory listings
+if awk '/list\)/,/;;/' "$STATE_SCRIPT" | grep -q '|active' && \
+   awk '/list\)/,/;;/' "$STATE_SCRIPT" | grep -q '|completed'; then
+  pass "debug-session-state.sh list outputs both active and completed location fields"
+else
+  fail "debug-session-state.sh list missing location field in output (must include both |active and |completed)"
+fi
+
+# safe_move_session helper with destination-exists guard
+if grep -q 'safe_move_session()' "$STATE_SCRIPT" 2>/dev/null && \
+   awk '/safe_move_session\(\)/,/^}/' "$STATE_SCRIPT" | grep -q 'return 1'; then
+  pass "debug-session-state.sh has safe_move_session helper with collision guard"
+else
+  fail "debug-session-state.sh missing safe_move_session helper or collision guard"
+fi
+
 # — Summary —
 
 echo ""
