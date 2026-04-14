@@ -4,7 +4,7 @@ category: supporting
 disable-model-invocation: true
 description: Investigate a bug using the Debugger agent's scientific method protocol.
 argument-hint: "<bug description or error message>"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, Agent, TeamCreate, TaskCreate, SendMessage, TeamDelete, Skill, LSP
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, Agent, TeamCreate, TaskCreate, SendMessage, TeamDelete, Skill, LSP, AskUserQuestion
 ---
 
 # VBW Debug: $ARGUMENTS
@@ -48,22 +48,24 @@ Resolve or create the debug session before any investigation. Order of precedenc
    - If `active_session=none`: STOP "No active debug session to resume. Start one with: /vbw:debug \"bug description\""
    - If `active_session=fallback`: inform user which session was auto-selected (no `.active-session` pointer was set, so the latest unresolved session was chosen automatically).
 
-3. **New session (no --resume, no --session):** Create a fresh session from $ARGUMENTS. Strip known flags (`--competing`, `--parallel`, `--serial`) and any `(ref:HASH)` suffix from $ARGUMENTS before computing the slug — these are routing/ref metadata, not part of the bug description.
+3. **New session (no --resume, no --session):** Create a fresh session from $ARGUMENTS. Strip known flags (`--competing`, `--parallel`, `--serial`, `--yolo`) and any `(ref:HASH)` suffix from $ARGUMENTS before computing the slug — these are routing/ref metadata, not part of the bug description. If `--yolo` is present, store `YOLO_MODE=true`; otherwise `YOLO_MODE=false`.
    ```bash
-   BUG_DESC=$(printf '%s' "$ARGUMENTS" | sed -E 's/[[:space:]]*\(ref:[^)]+\)//g' | sed -E 's/(^|[[:space:]])--(competing|parallel|serial)([[:space:]]|$)/ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | tr -s '[:space:]' ' ')
+   YOLO_MODE=false
+   if printf '%s' "$ARGUMENTS" | grep -qE '(^|[[:space:]])--yolo([[:space:]]|$)'; then YOLO_MODE=true; fi
+   BUG_DESC=$(printf '%s' "$ARGUMENTS" | sed -E 's/[[:space:]]*\(ref:[^)]+\)//g' | sed -E 's/(^|[[:space:]])--(competing|parallel|serial|yolo)([[:space:]]|$)/ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | tr -s '[:space:]' ' ')
    SLUG=$(printf '%s' "$BUG_DESC" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
    eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh start .vbw-planning "$SLUG")"
    ```
 
 Store the resolved `session_id` and `session_file` for use in Steps below.
 
-If resuming a session with `status=qa_pending`: skip investigation, display current session state, and suggest `/vbw:qa --session` instead.
+If resuming a session with `status=qa_pending` or `status=fix_applied`: skip investigation, jump directly to `<debug_inline_qa>` below to run QA inline.
 If resuming a session with `status=qa_failed`: load failure context:
   ```bash
   FAILURE_CONTEXT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/compile-debug-session-context.sh "$session_file" qa 2>/dev/null || echo "")
   ```
   Update status to `investigating` via `write-debug-session.sh` (mode=status), then continue investigation from Step 3. When composing the debugger task prompt in Step 4, prepend the compiled `FAILURE_CONTEXT` to the bug report so the debugger has the specific failed QA checks and findings. Use this format in the task prompt: `Previous QA failed. Failure context:\n{FAILURE_CONTEXT}\n\nOriginal bug report: {description}`.
-If resuming a session with `status=uat_pending`: skip investigation, display current session state, and suggest `/vbw:verify --session` instead.
+If resuming a session with `status=uat_pending`: skip investigation, jump directly to `<debug_inline_uat>` below to run UAT inline.
 If resuming a session with `status=uat_failed`: load failure context:
   ```bash
   FAILURE_CONTEXT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/compile-debug-session-context.sh "$session_file" uat 2>/dev/null || echo "")
@@ -73,7 +75,7 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
 </debug_session_routing>
 
 ## Steps
-1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`) from $ARGUMENTS and store them separately for Step 2 routing. If the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
+1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`, `--yolo`) from $ARGUMENTS and store them separately for Step 2 routing. If `--yolo` was present in the new-session parse, `YOLO_MODE=true`. If the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
     ```bash
     bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/todo-details.sh" get <hash>
     ```
@@ -233,11 +235,222 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
 ```
 This is **display-only**. Do NOT edit STATE.md, do NOT add todos, do NOT invoke /vbw:todo, and do NOT enter an interactive loop. The user decides whether to track these. If no discovered issues: omit the section entirely. After displaying discovered issues, STOP. Do not take further action.
 
-<debug_session_next_step>
-Session-aware next step (based on what happened during investigation):
+If no fix was committed (session status is still `investigating`): STOP with `➜ Next: /vbw:debug --resume -- Continue investigation and apply fix`. Do not enter inline QA.
 
-- If a fix was committed and session status is `qa_pending`:
-  `➜ Next: /vbw:qa --session -- Verify the debug fix`
+If a fix was committed and session status is `qa_pending`: proceed to `<debug_inline_qa>` below.
+
+<debug_inline_qa>
+**Inline QA — runs automatically after a fix is committed.**
+
+Read the `auto_uat` config:
+```bash
+AUTO_UAT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/read-config.sh .vbw-planning/config.json auto_uat 2>/dev/null || echo "false")
+```
+
+**Prompt gate:** If `AUTO_UAT` is not `"true"` AND `YOLO_MODE` is not `true`, call AskUserQuestion:
+```yaml
+question: "Fix committed. Run QA verification now?"
+header: "Debug Session"
+multiSelect: false
+options:
+  - label: "Yes"
+    description: "Run QA verification inline"
+  - label: "No"
+    description: "I'll run /vbw:qa --session later"
+```
+If the user selects "No": STOP with `➜ Next: /vbw:qa --session -- Verify the debug fix`.
+If the user selects "Yes" or provides freeform acceptance: proceed.
+
+If `AUTO_UAT` is `"true"` OR `YOLO_MODE` is `true`: skip the prompt and proceed directly.
+
+**QA orchestration (absorbed from /vbw:qa debug-session mode):**
+
+1. Compile QA context:
+   ```bash
+   QA_CONTEXT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/compile-debug-session-context.sh "$session_file" qa)
+   ```
+
+2. Increment QA round:
+   ```bash
+   eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh increment-qa .vbw-planning)"
+   ```
+
+3. Resolve tier from effort profile: turbo=skip (exit "QA skipped in turbo mode — proceeding to UAT"), fast=quick, balanced=standard, thorough=deep. Store as `ACTIVE_TIER`.
+
+4. Resolve QA model and max turns:
+   ```bash
+   QA_MODEL=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh qa .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
+   if [ $? -ne 0 ]; then echo "$QA_MODEL" >&2; exit 1; fi
+   QA_MAX_TURNS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh qa .vbw-planning/config.json "$QA_EFFORT_PROFILE")
+   if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
+   ```
+
+5. Spawn vbw-qa as subagent via Task tool for debug-session verification. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`.**
+
+   Task description for debug-session QA:
+   ```text
+   Debug session verification. Tier: {ACTIVE_TIER}. Round: {qa_round}.
+
+   This is a debug-session QA round, NOT a phase-scoped verification. You are verifying
+   a standalone debug fix — there are no phase PLAN.md or SUMMARY.md files.
+
+   Session context (issue, investigation, plan, implementation, prior QA rounds):
+   {QA_CONTEXT}
+
+   Verification targets:
+   - The root cause identified in the investigation is correct
+   - The fix addresses the root cause (not just the symptom)
+   - Changed files are correct and complete
+   - No regressions introduced in modified files
+   - Related tests pass
+
+   Output your verdict as PASS, FAIL, or PARTIAL with a checks table.
+   Do NOT use write-verification.sh — return your verdict inline as structured text.
+   Format each check as: ID | Description | Status (PASS/FAIL) | Evidence
+   ```
+
+6. Process the QA result:
+   - Parse the verdict (PASS/FAIL/PARTIAL) from the QA agent's response.
+   - Write the QA round to the session file:
+     ```bash
+     QA_RESULT_JSON='{"mode":"qa","round":{qa_round},"result":"{PASS|FAIL|PARTIAL}","checks":[{"id":"{check-id}","description":"{check description}","status":"{PASS|FAIL}","evidence":"{evidence}"}]}'
+     echo "$QA_RESULT_JSON" | bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/write-debug-session.sh "$session_file"
+     ```
+   - Update session status based on result:
+     - PASS → `bash .../debug-session-state.sh set-status .vbw-planning uat_pending`
+     - FAIL or PARTIAL → `bash .../debug-session-state.sh set-status .vbw-planning qa_failed`
+
+7. Present debug-session QA result:
+   Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
+   ```text
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Debug QA: Round {qa_round}
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     Session:  {session_id}
+     Tier:     {quick|standard|deep}
+     Result:   {✓ PASS | ✗ FAIL | ◆ PARTIAL}
+     Checks:   {passed}/{total}
+     Failed:   {list or "None"}
+
+   ```
+
+**QA failure handling:** If FAIL or PARTIAL:
+- Display: `QA found issues. Re-investigating...`
+- Load failure context: `FAILURE_CONTEXT=$(bash .../compile-debug-session-context.sh "$session_file" qa 2>/dev/null || echo "")`
+- Update status to `investigating` via `write-debug-session.sh` (mode=status)
+- Re-enter investigation from Step 3 with the failure context prepended to the bug report (same pattern as `--resume` from `qa_failed`). After the next fix commit, inline QA fires again automatically.
+
+**QA pass:** If PASS, proceed to `<debug_inline_uat>` below.
+</debug_inline_qa>
+
+<debug_inline_uat>
+**Inline UAT — runs automatically after QA passes.**
+
+**Prompt gate:** If `AUTO_UAT` is not `"true"` AND `YOLO_MODE` is not `true`, call AskUserQuestion:
+```yaml
+question: "QA passed. Run UAT verification now?"
+header: "Debug Session"
+multiSelect: false
+options:
+  - label: "Yes"
+    description: "Run UAT checkpoints inline"
+  - label: "No"
+    description: "I'll run /vbw:verify --session later"
+```
+If the user selects "No": STOP with `➜ Next: /vbw:verify --session -- Run UAT on the debug fix`.
+If the user selects "Yes" or provides freeform acceptance: proceed.
+
+If `AUTO_UAT` is `"true"` OR `YOLO_MODE` is `true`: skip the prompt and proceed directly.
+
+**UAT orchestration (absorbed from /vbw:verify debug-session mode):**
+
+1. Compile UAT context:
+   ```bash
+   UAT_CONTEXT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/compile-debug-session-context.sh "$session_file" uat)
+   ```
+
+2. Increment UAT round:
+   ```bash
+   eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh increment-uat .vbw-planning)"
+   ```
+
+3. Generate 1-3 UAT checkpoints from the session context. These must require HUMAN judgment:
+   - Reproduce the original bug — is it fixed?
+   - Check related workflows — any regressions visible?
+   - Verify the fix from the user's perspective
+
+   **Guardrails:** Never ask the user to run automated checks (tests, lint, build commands) — those belong in QA. If the fix is purely internal (test-infra, script-only, non-user-facing), fall back to a single lightweight checkpoint: "Does the app still work as expected from your perspective?" rather than generating inapplicable user-facing scenarios.
+
+4. Present checkpoints one at a time using CHECKPOINT + AskUserQuestion:
+
+   Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
+   ```text
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     CHECKPOINT {NN}/{total} — Debug Fix Verification
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   {scenario description}
+   ```
+
+   Then call AskUserQuestion:
+   ```yaml
+   question: "Expected: {expected result}"
+   header: "UAT"
+   multiSelect: false
+   options:
+     - label: "Pass"
+       description: "Behavior matches expected result"
+     - label: "Skip"
+       description: "Cannot test right now — skip this checkpoint"
+   ```
+
+   **STOP and wait for the user to respond.** Process one checkpoint at a time.
+
+5. Response mapping (same rules as /vbw:verify):
+   - "Pass" → record as passed
+   - "Skip" → record as skipped
+   - Freeform text via "Other" → treat as issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic=minor, default=major)
+
+6. After all checkpoints, persist the UAT round:
+   ```bash
+   UAT_RESULT_JSON='{"mode":"uat","round":{uat_round},"result":"{pass|issues_found}","checkpoints":[{"id":"{id}","description":"{desc}","result":"pass|skip|issue","user_response":"{verbatim}"}],"issues":[{"id":"{id}","description":"{desc}","severity":"{level}"}]}'
+   echo "$UAT_RESULT_JSON" | bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/write-debug-session.sh "$session_file"
+   ```
+
+7. Update session status:
+   - All checkpoints pass (no issues) → `bash .../debug-session-state.sh set-status .vbw-planning complete`
+   - Any issues found → `bash .../debug-session-state.sh set-status .vbw-planning uat_failed`
+
+8. Present debug-session UAT result:
+   Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
+   ```text
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Debug UAT: Round {uat_round}
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     Session:  {session_id}
+     Result:   {✓ COMPLETE | ✗ ISSUES FOUND}
+     Passed:   {N}
+     Issues:   {N}
+
+   ```
+
+**UAT failure handling:** If issues found:
+- Display: `UAT found issues. Re-investigating...`
+- Load failure context: `FAILURE_CONTEXT=$(bash .../compile-debug-session-context.sh "$session_file" uat 2>/dev/null || echo "")`
+- Update status to `investigating` via `write-debug-session.sh` (mode=status)
+- Re-enter investigation from Step 3 with the failure context prepended (same pattern as `--resume` from `uat_failed`). After the next fix commit, the inline QA → UAT chain fires again automatically.
+
+**UAT pass:** If all checkpoints pass:
+- Move session to completed: the `complete` status set above handles this.
+- Display: `➜ Debug session complete. The fix is verified.`
+- STOP.
+</debug_inline_uat>
+
+<debug_session_next_step>
+Session-aware next step (only shown when the inline flow did not run):
+
 - If investigation completed but no fix was applied (session status is `investigating`):
   `➜ Next: /vbw:debug --resume -- Continue investigation and apply fix`
 - If session was not created (error or guard stopped execution):

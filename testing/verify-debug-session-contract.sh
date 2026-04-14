@@ -262,12 +262,12 @@ else
   fail "verify.md guard missing --session flag"
 fi
 
-# — suggest-next.sh appends --session when phases exist (CM3-01) —
+# — suggest-next.sh routes debug sessions to /vbw:debug --resume (CM3-01) —
 
-if grep -q '\-\-session' "$ROOT/scripts/suggest-next.sh" 2>/dev/null; then
-  pass "suggest-next.sh has --session flag logic"
+if grep -q 'vbw:debug --resume' "$ROOT/scripts/suggest-next.sh" 2>/dev/null; then
+  pass "suggest-next.sh routes debug sessions to /vbw:debug --resume"
 else
-  fail "suggest-next.sh missing --session flag logic"
+  fail "suggest-next.sh missing /vbw:debug --resume routing for debug sessions"
 fi
 
 # — suggest-next.sh qa/verify debug handlers guard on phase_count=0 (CM7-01) —
@@ -304,12 +304,24 @@ else
   fail "write-debug-session.sh missing awk-based frontmatter scoping"
 fi
 
-# — Command next-step text includes --session (CM4-01, CM4-02) —
+# — Command inline QA/UAT lifecycle (CM4-01, CM4-02) —
 
-if grep -q '\-\-session.*Verify the debug fix' "$ROOT/commands/debug.md" 2>/dev/null; then
-  pass "debug.md next-step for qa_pending includes --session"
+if grep -q 'debug_inline_qa' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md has inline QA section (debug_inline_qa)"
 else
-  fail "debug.md next-step for qa_pending missing --session flag"
+  fail "debug.md missing inline QA section (debug_inline_qa)"
+fi
+
+if grep -q 'debug_inline_uat' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md has inline UAT section (debug_inline_uat)"
+else
+  fail "debug.md missing inline UAT section (debug_inline_uat)"
+fi
+
+if grep -q 'AskUserQuestion' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md frontmatter includes AskUserQuestion tool"
+else
+  fail "debug.md frontmatter missing AskUserQuestion tool"
 fi
 
 if grep -q '\-\-session.*Run UAT on the debug fix' "$ROOT/commands/qa.md" 2>/dev/null; then
@@ -318,11 +330,10 @@ else
   fail "qa.md next-step for PASS missing --session flag"
 fi
 
-if grep -q 'uat_pending.*\-\-session' "$ROOT/commands/debug.md" 2>/dev/null || \
-   grep -q '\-\-session.*uat_pending' "$ROOT/commands/debug.md" 2>/dev/null; then
-  pass "debug.md resume routing for uat_pending includes --session"
+if grep -q 'qa_pending.*debug_inline_qa\|fix_applied.*debug_inline_qa' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md resume routing for qa_pending/fix_applied enters inline QA"
 else
-  fail "debug.md resume routing for uat_pending missing --session flag"
+  fail "debug.md resume routing for qa_pending/fix_applied missing inline QA entry"
 fi
 
 # — QA agent persistence contract separates phase-scoped from debug-session (CM5-01) —

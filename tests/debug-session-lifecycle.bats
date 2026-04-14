@@ -188,18 +188,19 @@ get_suggestion() {
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
   [ "$status" = "investigating" ]
 
-  # After fix → qa_pending: suggest-next for debug should recommend QA
+  # After fix → qa_pending: suggest-next for debug should recommend inline QA via resume
   echo '{"mode":"status","status":"qa_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
   run bash "$SCRIPTS_DIR/suggest-next.sh" debug
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:qa"* ]]
+  [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Continue to QA verification"* ]]
 
-  # After QA pass → uat_pending: suggest-next for qa pass should recommend verify
+  # After QA pass → uat_pending: suggest-next for qa pass should recommend inline UAT via resume
   echo '{"mode":"status","status":"uat_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
-  [[ "$output" == *"Run UAT on the debug fix"* ]]
+  [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Continue to UAT verification"* ]]
 
   # After QA fail → qa_failed: suggest-next for qa fail should recommend debug resume
   echo '{"mode":"status","status":"qa_failed"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
