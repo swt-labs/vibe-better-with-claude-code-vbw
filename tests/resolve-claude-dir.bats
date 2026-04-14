@@ -7,7 +7,7 @@ load test_helper
 setup() {
   setup_temp_dir
   # Save original values
-  export ORIG_HOME="$HOME"
+  export ORIG_HOME="${_ORIG_HOME:-$HOME}"
   export ORIG_CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-}"
 }
 

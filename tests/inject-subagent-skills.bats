@@ -6,7 +6,7 @@ load test_helper
 
 setup() {
   setup_temp_dir
-  export ORIG_HOME="$HOME"
+  export ORIG_HOME="${_ORIG_HOME:-$HOME}"
   export ORIG_CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-}"
   export HOME="$TEST_TEMP_DIR"
   export CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/.claude-config"
