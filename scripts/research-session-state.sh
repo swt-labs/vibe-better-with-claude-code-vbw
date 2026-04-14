@@ -63,7 +63,7 @@ update_field() {
     f && index($0, field ":") == 1 { found=1; exit }
     END { exit !found }
   ' "$file" 2>/dev/null; then
-    return
+    return 1
   fi
 
   awk -v field="$field" -v value="$value" '
@@ -206,7 +206,10 @@ ENDSESSION
       echo "Error: session file not found: $SESSION_FILE" >&2
       exit 1
     fi
-    update_field "$SESSION_FILE" "status" "complete"
+    if ! update_field "$SESSION_FILE" "status" "complete"; then
+      echo "Error: failed to update status field in session: $SESSION_FILE" >&2
+      exit 1
+    fi
     echo "complete"
     ;;
 
@@ -264,7 +267,14 @@ ENDSESSION
 
   latest)
     if [ ! -d "$RESEARCH_DIR" ]; then
-      echo "research_file=" 
+      printf 'research_id=\n'
+      printf 'research_file=\n'
+      printf 'research_title=\n'
+      printf 'research_status=\n'
+      printf 'research_confidence=\n'
+      printf 'research_base_commit=\n'
+      printf 'research_created=\n'
+      printf 'research_updated=\n'
       exit 0
     fi
     LATEST=""
