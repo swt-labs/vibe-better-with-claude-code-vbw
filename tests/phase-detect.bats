@@ -786,7 +786,7 @@ exit 23
 EOF
   chmod +x "$shim_dir/resolve-uat-remediation-round-limit.sh"
 
-  run bash "$shim_dir/phase-detect.sh"
+  run_phase_detect "$shim_dir"
 
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_reverification"
@@ -816,7 +816,7 @@ printf 'current_round=01\nnext_round=02\n'
 EOF
   chmod +x "$shim_dir/resolve-uat-remediation-round-limit.sh"
 
-  run bash "$shim_dir/phase-detect.sh"
+  run_phase_detect "$shim_dir"
 
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_reverification"

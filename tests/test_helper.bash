@@ -34,9 +34,10 @@ teardown_temp_dir() {
 # the subprocess to produce zero output. Retrying handles this reliably.
 # Sets BATS globals: $output, $status (same as `run`).
 run_phase_detect() {
+  local _pd_script_dir="${1:-$SCRIPTS_DIR}"
   local _pd_attempt=0
   while [ $_pd_attempt -lt 3 ]; do
-    run bash "$SCRIPTS_DIR/phase-detect.sh"
+    run bash "$_pd_script_dir/phase-detect.sh"
     [ -n "$output" ] && return 0
     _pd_attempt=$((_pd_attempt + 1))
     sleep 0.1
