@@ -16,6 +16,8 @@ setup_temp_dir() {
   export VBW_AGENT_PID_LOCK_DIR="$TEST_TEMP_DIR/.vbw-agent-pid-lock"
   # Isolate HOME and git config to prevent cross-worker contention under parallel execution
   export _ORIG_HOME="${HOME:-}"
+  export _ORIG_GIT_CONFIG_NOSYSTEM="${GIT_CONFIG_NOSYSTEM:-}"
+  export _ORIG_GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-}"
   export HOME="$TEST_TEMP_DIR"
   export GIT_CONFIG_NOSYSTEM=1
   export GIT_CONFIG_GLOBAL="$TEST_TEMP_DIR/.gitconfig"
@@ -26,7 +28,17 @@ setup_temp_dir() {
 teardown_temp_dir() {
   [ -n "${TEST_TEMP_DIR:-}" ] && rm -rf "$TEST_TEMP_DIR"
   HOME="$_ORIG_HOME"
-  unset VBW_AGENT_PID_LOCK_DIR GIT_CONFIG_NOSYSTEM GIT_CONFIG_GLOBAL _ORIG_HOME
+  if [ -n "$_ORIG_GIT_CONFIG_NOSYSTEM" ]; then
+    GIT_CONFIG_NOSYSTEM="$_ORIG_GIT_CONFIG_NOSYSTEM"
+  else
+    unset GIT_CONFIG_NOSYSTEM
+  fi
+  if [ -n "$_ORIG_GIT_CONFIG_GLOBAL" ]; then
+    GIT_CONFIG_GLOBAL="$_ORIG_GIT_CONFIG_GLOBAL"
+  else
+    unset GIT_CONFIG_GLOBAL
+  fi
+  unset VBW_AGENT_PID_LOCK_DIR _ORIG_HOME _ORIG_GIT_CONFIG_NOSYSTEM _ORIG_GIT_CONFIG_GLOBAL
 }
 
 # Run phase-detect.sh with retry on empty output.
