@@ -660,3 +660,50 @@ write_known_issues_registry() {
   grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "(see remediation/qa/round-01/R01-SUMMARY.md)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
+
+@test "track-known-issues: promote-todos ignores invalid disposition in later round during aggregation" {
+  # R01 accepts an issue, R02 has a misspelled disposition for the same issue.
+  # The parser's IN() validation rejects the invalid disposition, so R01's
+  # accepted-process-exception survives because the invalid entry never enters the accumulator.
+  write_state_md_with_todos "None."
+  echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
+
+  # R01 accepts the issue
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-01/R01-SUMMARY.md" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","disposition":"accepted-process-exception","rationale":"Accepted for this phase"}'
+
+  # R02 has the same issue with a misspelled disposition
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf '%s\n' \
+    '---' \
+    'phase: 03' \
+    'round: 02' \
+    'title: Fix round' \
+    'type: remediation' \
+    'status: complete' \
+    'completed: 2026-04-09' \
+    'tasks_completed: 1' \
+    'tasks_total: 1' \
+    'commit_hashes: []' \
+    'files_modified:' \
+    '  - "src/Fix.swift"' \
+    'deviations: []' \
+    "known_issue_outcomes:" \
+    "  - '{\"test\":\"SignalTrapTests\",\"file\":\"SignalTrapTests.swift\",\"error\":\"SwiftData signal trap\",\"disposition\":\"reoslved\",\"rationale\":\"Typo disposition\"}'" \
+    '---' \
+    '' \
+    '## Task 1: Fix' \
+    '' \
+    '### What Was Built' \
+    '- Attempted fix' \
+    > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # The invalid disposition "reoslved" is rejected by the IN() filter, so R01's
+  # accepted-process-exception survives and the issue is promoted
+  [[ "$output" == *"promoted_count=1"* ]]
+  grep -q "\[KNOWN-ISSUE\] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
