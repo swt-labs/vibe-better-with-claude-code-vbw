@@ -132,7 +132,8 @@ SUMMARY
   scaffold_consistent_workspace
 
   # Change STATE.md to say phase 1 but phase 1 is already complete — active should be 2
-  sed -i '' 's/Phase: 2 of 3/Phase: 1 of 3/' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  sed -i.bak 's/Phase: 2 of 3/Phase: 1 of 3/' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  rm -f "$TEST_TEMP_DIR/.vbw-planning/STATE.md.bak"
 
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
   [ "$status" -eq 0 ]
@@ -154,7 +155,8 @@ SUMMARY
   scaffold_consistent_workspace
 
   # Mark phase 2 as [x] in roadmap but it has no SUMMARY.md
-  sed -i '' 's/\- \[ \] Phase 2: Backend API/- [x] Phase 2: Backend API/' "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
+  sed -i.bak 's/\- \[ \] Phase 2: Backend API/- [x] Phase 2: Backend API/' "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
+  rm -f "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md.bak"
 
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
   [ "$status" -eq 0 ]
@@ -172,7 +174,8 @@ SUMMARY
   scaffold_consistent_workspace
 
   # Phase 1 is complete (has SUMMARY with status:complete) but mark as [ ] in roadmap
-  sed -i '' 's/\- \[x\] Phase 1: Setup/- [ ] Phase 1: Setup/' "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
+  sed -i.bak 's/\- \[x\] Phase 1: Setup/- [ ] Phase 1: Setup/' "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
+  rm -f "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md.bak"
 
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
   [ "$status" -eq 0 ]
