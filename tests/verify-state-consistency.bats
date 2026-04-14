@@ -1020,3 +1020,59 @@ EOF
   # (only the roadmap_vs_summaries check is affected, and only in archive mode)
   [ "$c2_pass" = "true" ]
 }
+
+# ---------------------------------------------------------------------------
+# Unrecognized status enum detection
+# ---------------------------------------------------------------------------
+
+@test "exec_state unrecognized top-level status detected" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json" <<'EOF'
+{
+  "phase": 2,
+  "status": "banana",
+  "plans": []
+}
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"unrecognized"* ]]
+  [[ "$c3_detail" == *"banana"* ]]
+}
+
+@test "exec_state unrecognized per-plan status detected" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json" <<'EOF'
+{
+  "phase": 2,
+  "status": "running",
+  "plans": [
+    {"id": "02-01", "status": "exploded"}
+  ]
+}
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"unrecognized"* ]]
+  [[ "$c3_detail" == *"exploded"* ]]
+}

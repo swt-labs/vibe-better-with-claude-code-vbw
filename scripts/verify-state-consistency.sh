@@ -405,6 +405,20 @@ run_check_exec_state_vs_filesystem() {
     check_exec_state_vs_filesystem_pass=false
   fi
 
+  # Unrecognized top-level status
+  case "$es_status" in
+    complete|running|ready|paused|blocked) ;; # known statuses
+    *)
+      local msg="unrecognized top-level status '$es_status'"
+      if [ -n "$details" ]; then
+        details="$details; $msg"
+      else
+        details="$msg"
+      fi
+      check_exec_state_vs_filesystem_pass=false
+      ;;
+  esac
+
   # Per-plan status verification
   local plan_count plan_id plan_status plan_mismatches=""
   plan_count=$(jq -r '.plans | length // 0' "$EXEC_STATE_FILE" 2>/dev/null || echo 0)
@@ -431,6 +445,9 @@ run_check_exec_state_vs_filesystem() {
           if [ -f "$target_dir/${plan_id}-SUMMARY.md" ]; then
             plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' status=$plan_status but ${plan_id}-SUMMARY.md already exists (stale status)"
           fi
+          ;;
+        *)
+          plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' has unrecognized status '$plan_status'"
           ;;
       esac
     fi
