@@ -394,3 +394,116 @@ EOF
   mode=$(echo "$output" | jq -r '.mode')
   [ "$mode" = "advisory" ]
 }
+
+@test "state_vs_filesystem passes with non-contiguous phase dirs" {
+  cd "$TEST_TEMP_DIR"
+  local root="$TEST_TEMP_DIR/.vbw-planning"
+
+  # STATE says Phase 3 of 2 — only 2 phase dirs but numbered 01 and 03
+  cat > "$root/STATE.md" <<'EOF'
+# State
+**Project:** My Test Project
+**Milestone:** MVP
+Phase: 3 of 2 (Build)
+Plans: 1/1
+Progress: 50%
+Status: running
+EOF
+
+  cat > "$root/PROJECT.md" <<'EOF'
+# My Test Project
+Core value proposition for testing.
+EOF
+
+  cat > "$root/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] Phase 1: Setup
+- [ ] Phase 3: Build
+
+### Phase 1: Setup
+### Phase 3: Build
+EOF
+
+  # Non-contiguous: 01 and 03 (no 02)
+  mkdir -p "$root/phases/01-setup"
+  echo "# Plan" > "$root/phases/01-setup/01-01-PLAN.md"
+  cat > "$root/phases/01-setup/01-01-SUMMARY.md" <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
+
+  mkdir -p "$root/phases/03-build"
+  echo "# Plan" > "$root/phases/03-build/03-01-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode advisory
+  [ "$status" -eq 0 ]
+
+  # Active phase num is 3 (from 03-build prefix), STATE says phase 3 — should match
+  local phase_pass
+  phase_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
+  [ "$phase_pass" = "true" ]
+}
+
+@test "exec_state plan with only generic SUMMARY.md fails" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+  local root="$TEST_TEMP_DIR/.vbw-planning"
+
+  # Create exec state with a completed plan "02-01"
+  cat > "$root/.execution-state.json" <<'JSON'
+{
+  "phase": 2,
+  "status": "running",
+  "plans": [
+    {"id": "02-01", "status": "complete"}
+  ]
+}
+JSON
+
+  # Only generic SUMMARY.md exists, not plan-specific 02-01-SUMMARY.md
+  cat > "$root/phases/02-backend-api/SUMMARY.md" <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local exec_pass
+  exec_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$exec_pass" = "false" ]
+}
+
+@test "exec_state pending plan with no PLAN.md fails" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+  local root="$TEST_TEMP_DIR/.vbw-planning"
+
+  # Create exec state with a pending plan "02-02" that has no PLAN.md
+  cat > "$root/.execution-state.json" <<'JSON'
+{
+  "phase": 2,
+  "status": "running",
+  "plans": [
+    {"id": "02-01", "status": "running"},
+    {"id": "02-02", "status": "pending"}
+  ]
+}
+JSON
+
+  # Only 02-01-PLAN.md exists — no 02-02-PLAN.md and no generic PLAN.md
+  # (scaffold already created 02-01-PLAN.md; remove generic if any)
+  rm -f "$root/phases/02-backend-api/PLAN.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local exec_pass
+  exec_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$exec_pass" = "false" ]
+}

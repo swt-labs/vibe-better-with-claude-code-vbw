@@ -126,23 +126,28 @@ parse_state_project_name() {
 }
 
 # --- Helper: find active phase dir (first incomplete phase) ------------------
-find_active_phase_position() {
+find_active_phase_num() {
   local phases_dir="$1"
-  ACTIVE_PHASE_POS=""
+  ACTIVE_PHASE_NUM=""
   [ -d "$phases_dir" ] || return 1
-  local idx=0 dir plans complete
+  local dir plans complete raw_num
   while IFS= read -r dir; do
     [ -n "$dir" ] || continue
-    idx=$((idx + 1))
     plans=$(count_phase_plans "$dir")
     complete=$(count_complete_summaries "$dir")
     if [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ]; then
-      ACTIVE_PHASE_POS="$idx"
+      raw_num=$(resolve_phase_number_from_phase_dir "$dir")
+      ACTIVE_PHASE_NUM=$(echo "$raw_num" | sed 's/^0*//')
+      ACTIVE_PHASE_NUM="${ACTIVE_PHASE_NUM:-0}"
       return 0
     fi
   done < <(list_canonical_phase_dirs "$phases_dir")
-  # All phases complete — active is last+1 or last
-  ACTIVE_PHASE_POS="$idx"
+  # All phases complete — resolve the last dir's number
+  if [ -n "$dir" ]; then
+    raw_num=$(resolve_phase_number_from_phase_dir "$dir")
+    ACTIVE_PHASE_NUM=$(echo "$raw_num" | sed 's/^0*//')
+    ACTIVE_PHASE_NUM="${ACTIVE_PHASE_NUM:-0}"
+  fi
   return 0
 }
 
@@ -169,9 +174,9 @@ run_check_state_vs_filesystem() {
     check_state_vs_filesystem_pass=false
   fi
 
-  find_active_phase_position "$PHASES_DIR"
-  if [ -n "$ACTIVE_PHASE_POS" ] && [ "$STATE_PHASE_CURRENT" != "$ACTIVE_PHASE_POS" ]; then
-    local msg="active phase mismatch: STATE.md says phase $STATE_PHASE_CURRENT, filesystem active is $ACTIVE_PHASE_POS"
+  find_active_phase_num "$PHASES_DIR"
+  if [ -n "$ACTIVE_PHASE_NUM" ] && [ "$STATE_PHASE_CURRENT" != "$ACTIVE_PHASE_NUM" ]; then
+    local msg="active phase mismatch: STATE.md says phase $STATE_PHASE_CURRENT, filesystem active phase is $ACTIVE_PHASE_NUM"
     if [ -n "$details" ]; then
       details="$details; $msg"
     else
@@ -332,16 +337,15 @@ run_check_exec_state_vs_filesystem() {
     if [ -n "$plan_id" ] && [ -n "$plan_status" ]; then
       case "$plan_status" in
         complete|partial|failed)
-          # Check that a SUMMARY.md exists for this plan
-          local summary_found=false summary_file
-          for summary_file in "$target_dir/${plan_id}-SUMMARY.md" "$target_dir/SUMMARY.md"; do
-            if [ -f "$summary_file" ]; then
-              summary_found=true
-              break
-            fi
-          done
-          if [ "$summary_found" = "false" ]; then
-            plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' status=$plan_status but no SUMMARY.md found"
+          # Require plan-specific SUMMARY.md — generic SUMMARY.md does not satisfy
+          if [ ! -f "$target_dir/${plan_id}-SUMMARY.md" ]; then
+            plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' status=$plan_status but no ${plan_id}-SUMMARY.md found"
+          fi
+          ;;
+        pending|running)
+          # Active/pending plans should have a corresponding PLAN.md
+          if [ ! -f "$target_dir/${plan_id}-PLAN.md" ] && [ ! -f "$target_dir/PLAN.md" ]; then
+            plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' status=$plan_status but no PLAN.md found"
           fi
           ;;
       esac
