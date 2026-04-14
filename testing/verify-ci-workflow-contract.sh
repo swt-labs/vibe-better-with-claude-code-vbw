@@ -66,10 +66,12 @@ else
   fail "ci.yml/testing: CI and local runner do not share deterministic serial bats discovery"
 fi
 
-if grep -q 'BATS_WORKERS="${BATS_WORKERS:-4}"' "$RUN_ALL"; then
-  pass "run-all: defaults to CI shard count (4 workers)"
+# Local default (12) intentionally differs from CI shard count (8) — local machines
+# have more cores so more workers are efficient. Validate BATS_WORKERS has a numeric default.
+if grep -qE 'BATS_WORKERS="\$\{BATS_WORKERS:-[0-9]+\}"' "$RUN_ALL"; then
+  pass "run-all: BATS_WORKERS has a numeric default"
 else
-  fail "run-all: does not default to CI shard count (4 workers)"
+  fail "run-all: BATS_WORKERS missing numeric default"
 fi
 
 if grep -q 'list-contract-tests.sh' <<< "$CONTRACT_BLOCK"; then
