@@ -286,6 +286,32 @@ EOF
   grep -q '^confidence: high$' "$migrated_file"
 }
 
+@test "migrate backfills missing fields even when body contains matching tokens" {
+  cat > "$VBW_PLANNING_DIR/RESEARCH-bodytoken.md" << 'EOF'
+---
+title: Body Token Test
+confidence: high
+---
+
+# Body Token Test
+This body mentions status: active and base_commit: abc123 in prose.
+EOF
+
+  run bash "$SCRIPTS_DIR/research-session-state.sh" migrate "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"migrated=1"* ]]
+
+  local migrated_file
+  migrated_file=$(find "$VBW_PLANNING_DIR/research" -name "*bodytoken*" | head -1)
+  # Frontmatter should have the injected fields (not confused by body content)
+  # Read only frontmatter to verify
+  local fm_status fm_base_commit
+  fm_status=$(awk '/^---$/ { if (!s) { s=1; next } if (s) exit } s && /^status:/ { sub(/^status:[[:space:]]*/, ""); print }' "$migrated_file")
+  fm_base_commit=$(awk '/^---$/ { if (!s) { s=1; next } if (s) exit } s && /^base_commit:/ { sub(/^base_commit:[[:space:]]*/, ""); print }' "$migrated_file")
+  [ "$fm_status" = "complete" ]
+  [ "$fm_base_commit" = "unknown" ]
+}
+
 @test "migrate extracts title from heading when no frontmatter" {
   cat > "$VBW_PLANNING_DIR/RESEARCH-titled.md" << 'EOF'
 # My Custom Title

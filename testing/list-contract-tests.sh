@@ -46,4 +46,5 @@ printf '%s\t%s\n' \
   discussion-engine-contract   testing/verify-discussion-engine-contract.sh \
   debug-session-contract       testing/verify-debug-session-contract.sh \
   askuserquestion-contract     testing/verify-askuserquestion-contract.sh \
+  research-storage-contract    testing/verify-research-storage-contract.sh \
   verify-vibe                  scripts/verify-vibe.sh

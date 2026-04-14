@@ -345,8 +345,13 @@ ENDSESSION
         # inject_field: add a field before the closing --- if not already present
         inject_field() {
           local target="$1" fname="$2" fval="$3"
-          if grep -q "^${fname}:" "$target" 2>/dev/null; then
-            return  # Field already exists
+          # Check if field exists within frontmatter only (not body)
+          if awk -v field="$fname" '
+            /^---$/ { if (!s) { s=1; f=1; next } if (f) exit }
+            f && index($0, field ":") == 1 { found=1; exit }
+            END { exit !found }
+          ' "$target" 2>/dev/null; then
+            return  # Field already exists in frontmatter
           fi
           # Insert field before the closing --- (second occurrence)
           awk -v field="$fname" -v value="$fval" '
