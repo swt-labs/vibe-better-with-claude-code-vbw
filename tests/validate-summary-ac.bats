@@ -333,3 +333,31 @@ SUMMARY
   [ "$status" -eq 0 ]
   [[ "$output" != *"ac_results"* ]]
 }
+
+@test "validate-summary-ac: no advisory for remediation summary even with must_haves in plan" {
+  cat > .vbw-planning/phases/01-test/01-01-REMEDIATION-PLAN.md <<'PLAN'
+---
+must_haves:
+  - "Fix renders correctly"
+---
+PLAN
+
+  cat > .vbw-planning/phases/01-test/01-01-REMEDIATION-SUMMARY.md <<'SUMMARY'
+---
+phase: 1
+plan: 1
+status: complete
+---
+## What Was Built
+A fix
+
+## Files Modified
+- src/widget.ts
+SUMMARY
+
+  local input
+  input=$(jq -n --arg fp "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-01-REMEDIATION-SUMMARY.md" '{"tool_input":{"file_path":$fp}}')
+  run bash -c "echo '$input' | bash '$SCRIPTS_DIR/validate-summary.sh'"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"ac_results"* ]]
+}

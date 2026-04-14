@@ -98,6 +98,10 @@ if ! grep -q "## Files Modified" "$FILE_PATH"; then
 fi
 
 # Conditional ac_results check: only when corresponding PLAN has must_haves
+# Skip remediation summaries — they use a different template without ac_results
+case "$(basename "$FILE_PATH")" in
+  *REMEDIATION*) ;;
+  *)
 PLAN_PATH=$(echo "$FILE_PATH" | sed 's/SUMMARY\.md$/PLAN.md/')
 if [ -f "$PLAN_PATH" ]; then
   # Check if plan has non-empty must_haves (block-style dash items OR flow-style non-empty arrays)
@@ -122,6 +126,8 @@ if [ -f "$PLAN_PATH" ]; then
     fi
   fi
 fi
+  ;;
+esac
 
 if [ -n "$MISSING" ]; then
   jq -n --arg msg "$MISSING" '{
