@@ -644,15 +644,15 @@ git_ignored_metadata_worktree_paths() {
   local repo_root="${1:-}"
   local path
   [ -n "$repo_root" ] || return 0
-  # Pre-filter with grep to avoid iterating all gitignored files (e.g.,
-  # node_modules/) in a bash loop — only candidate metadata prefixes pass.
+  # Use pathspec to limit git's scan to metadata prefixes only, avoiding
+  # enumeration of large ignored trees like node_modules/.
   while IFS= read -r path; do
     [ -n "$path" ] || continue
     if path_is_metadata_artifact "$path"; then
       printf '%s\n' "$path"
     fi
-  done < <(git -C "$repo_root" ls-files --others --ignored --exclude-standard 2>/dev/null \
-    | grep -E '^\.(vbw-planning|claude)/' || true)
+  done < <(git -C "$repo_root" ls-files --others --ignored --exclude-standard \
+    -- .vbw-planning .claude 2>/dev/null || true)
 }
 
 commit_is_ancestor_or_same() {
