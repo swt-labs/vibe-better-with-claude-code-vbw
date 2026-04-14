@@ -343,9 +343,9 @@ run_check_exec_state_vs_filesystem() {
           fi
           ;;
         pending|running)
-          # Active/pending plans should have a corresponding PLAN.md
-          if [ ! -f "$target_dir/${plan_id}-PLAN.md" ] && [ ! -f "$target_dir/PLAN.md" ]; then
-            plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' status=$plan_status but no PLAN.md found"
+          # Require plan-specific PLAN.md — generic PLAN.md does not satisfy
+          if [ ! -f "$target_dir/${plan_id}-PLAN.md" ]; then
+            plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' status=$plan_status but no ${plan_id}-PLAN.md found"
           fi
           ;;
       esac

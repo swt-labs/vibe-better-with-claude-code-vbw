@@ -507,3 +507,34 @@ JSON
   exec_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
   [ "$exec_pass" = "false" ]
 }
+
+@test "exec_state pending plan with generic PLAN.md but no numbered plan fails" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+  local root="$TEST_TEMP_DIR/.vbw-planning"
+
+  # Create exec state with pending plan "02-02"
+  cat > "$root/.execution-state.json" <<'JSON'
+{
+  "phase": 2,
+  "status": "running",
+  "plans": [
+    {"id": "02-01", "status": "running"},
+    {"id": "02-02", "status": "pending"}
+  ]
+}
+JSON
+
+  # Generic PLAN.md exists but no 02-02-PLAN.md — should still fail
+  echo "# Generic plan" > "$root/phases/02-backend-api/PLAN.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local exec_pass
+  exec_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$exec_pass" = "false" ]
+
+  # Verify the detail mentions the specific plan
+  echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail' | grep -q "02-02"
+}
