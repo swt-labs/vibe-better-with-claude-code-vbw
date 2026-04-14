@@ -256,6 +256,36 @@ EOF
   grep -q '^title: Has Frontmatter$' "$migrated_file"
 }
 
+@test "migrate backfills missing status and base_commit in existing frontmatter" {
+  cat > "$VBW_PLANNING_DIR/RESEARCH-partial-fm.md" << 'EOF'
+---
+title: Partial Frontmatter
+confidence: high
+---
+
+# Partial Frontmatter
+Has frontmatter but missing status and base_commit fields.
+EOF
+
+  run bash "$SCRIPTS_DIR/research-session-state.sh" migrate "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"migrated=1"* ]]
+
+  local migrated_file
+  migrated_file=$(find "$VBW_PLANNING_DIR/research" -name "*partial-fm*" | head -1)
+  # Should have frontmatter
+  head -1 "$migrated_file" | grep -q '^---$'
+  # Should have backfilled status
+  grep -q '^status: complete$' "$migrated_file"
+  # Should have backfilled base_commit
+  grep -q '^base_commit: unknown$' "$migrated_file"
+  # Should have backfilled type
+  grep -q '^type: standalone-research$' "$migrated_file"
+  # Original fields should be preserved
+  grep -q '^title: Partial Frontmatter$' "$migrated_file"
+  grep -q '^confidence: high$' "$migrated_file"
+}
+
 @test "migrate extracts title from heading when no frontmatter" {
   cat > "$VBW_PLANNING_DIR/RESEARCH-titled.md" << 'EOF'
 # My Custom Title

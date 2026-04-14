@@ -341,7 +341,29 @@ ENDSESSION
           cat "$NEW_PATH"
         } > "$NEW_PATH.tmp" && mv "$NEW_PATH.tmp" "$NEW_PATH"
       else
-        # File has frontmatter — ensure status is complete
+        # File has frontmatter — backfill missing required fields and ensure status=complete
+        # inject_field: add a field before the closing --- if not already present
+        inject_field() {
+          local target="$1" fname="$2" fval="$3"
+          if grep -q "^${fname}:" "$target" 2>/dev/null; then
+            return  # Field already exists
+          fi
+          # Insert field before the closing --- (second occurrence)
+          awk -v field="$fname" -v value="$fval" '
+            BEGIN { delim = 0 }
+            $0 == "---" {
+              delim++
+              if (delim == 2) { print field ": " value }
+            }
+            { print }
+          ' "$target" > "$target.tmp" && mv "$target.tmp" "$target"
+        }
+
+        inject_field "$NEW_PATH" "status" "complete"
+        inject_field "$NEW_PATH" "base_commit" "unknown"
+        inject_field "$NEW_PATH" "type" "standalone-research"
+
+        # Now update status to complete (in case it existed with a different value)
         existing_status=$(read_field "$NEW_PATH" "status")
         if [ "$existing_status" != "complete" ]; then
           update_field "$NEW_PATH" "status" "complete"
