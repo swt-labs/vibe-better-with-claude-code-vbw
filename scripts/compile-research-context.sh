@@ -81,9 +81,9 @@ check_staleness() {
     return 2  # Invalid commit = treat as stale
   fi
 
-  # Count commits since base_commit, excluding .vbw-planning/ changes
+  # Count commits since base_commit, using the standard product-code pathspec
   local commit_count
-  commit_count=$(git log --oneline "${base_commit}..HEAD" -- :/ ':!.vbw-planning' 2>/dev/null | wc -l | tr -d ' ')
+  commit_count=$(git log --oneline "${base_commit}..HEAD" -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null | wc -l | tr -d ' ')
 
   if [ "$commit_count" -eq 0 ]; then
     return 0  # Fresh
