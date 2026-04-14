@@ -45,4 +45,5 @@ printf '%s\t%s\n' \
   qa-persistence-contract      testing/verify-qa-persistence-contract.sh \
   discussion-engine-contract   testing/verify-discussion-engine-contract.sh \
   debug-session-contract       testing/verify-debug-session-contract.sh \
+  askuserquestion-contract     testing/verify-askuserquestion-contract.sh \
   verify-vibe                  scripts/verify-vibe.sh
