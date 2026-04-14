@@ -53,7 +53,7 @@ echo "=== AskUserQuestion maxItems Contract Verification ==="
 echo ""
 echo "--- Check 1: No >4 option lists ---"
 
-for file in "$COMMANDS_DIR"/*.md; do
+for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
   [ -f "$file" ] || continue
   base="$(basename "$file" .md)"
 
@@ -124,7 +124,7 @@ done
 echo ""
 echo "--- Check 2: Numbered-list workarounds include guard language ---"
 
-for file in "$COMMANDS_DIR"/*.md; do
+for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
   [ -f "$file" ] || continue
   base="$(basename "$file" .md)"
 
@@ -132,7 +132,7 @@ for file in "$COMMANDS_DIR"/*.md; do
 
   # Check if the command uses the numbered-list AskUserQuestion workaround pattern
   has_numbered_list_pattern=false
-  if printf '%s\n' "$body" | grep -qi 'numbered list.*AskUserQuestion\|AskUserQuestion.*numbered list'; then
+  if printf '%s\n' "$body" | grep -Eqi 'numbered list.*AskUserQuestion|AskUserQuestion.*numbered list'; then
     # Only trigger on lines that say to present choices as a numbered list
     # in the AskUserQuestion text (the workaround pattern)
     if printf '%s\n' "$body" | grep -Eqi 'present.*(as a |as )numbered list.*(in|for).*AskUserQuestion|numbered list in the (AskUserQuestion|question) text'; then
@@ -142,7 +142,7 @@ for file in "$COMMANDS_DIR"/*.md; do
 
   if [ "$has_numbered_list_pattern" = true ]; then
     # Verify guard language exists somewhere in the body
-    if printf '%s\n' "$body" | grep -qi 'do NOT use.*options.*array\|no.*options.*array'; then
+    if printf '%s\n' "$body" | grep -Eqi 'do NOT use.*options.*array|no.*options.*array'; then
       pass "$base: numbered-list workaround has guard language"
     else
       fail "$base: uses numbered-list AskUserQuestion workaround but missing guard language (e.g., 'do NOT use \`options\` array')"
