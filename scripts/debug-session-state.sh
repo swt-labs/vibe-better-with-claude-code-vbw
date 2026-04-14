@@ -261,7 +261,12 @@ find_latest_unresolved() {
       local collision_file
       collision_file="$ACTIVE_DIR/$(basename "$legacy_f")"
       if [ -f "$collision_file" ] && [ ! -L "$collision_file" ] && [ "$(read_field "$collision_file" "status")" = "complete" ]; then
-        safe_move_session "$collision_file" "$COMPLETED_DIR" > /dev/null 2>&1 || true
+        if safe_move_session "$collision_file" "$COMPLETED_DIR" > /dev/null 2>&1; then
+          # Clear stale pointer if it referenced the moved file
+          if [ -f "$ACTIVE_FILE" ] && [ "$(cat "$ACTIVE_FILE")" = "$(basename "$collision_file")" ]; then
+            rm -f "$ACTIVE_FILE"
+          fi
+        fi
         # Retry migration now that collision is cleared
         if ! migrate_legacy_session "$legacy_f" > /dev/null 2>&1; then
           echo "Warning: could not migrate legacy session $(basename "$legacy_f")" >&2
@@ -548,7 +553,12 @@ ENDSESSION
         # Collision? If the blocking file in active/ is complete, resolve it
         _collision_file="$ACTIVE_DIR/$(basename "$f")"
         if [ -f "$_collision_file" ] && [ ! -L "$_collision_file" ] && [ "$(read_field "$_collision_file" "status")" = "complete" ]; then
-          safe_move_session "$_collision_file" "$COMPLETED_DIR" > /dev/null 2>&1 || true
+          if safe_move_session "$_collision_file" "$COMPLETED_DIR" > /dev/null 2>&1; then
+            # Clear stale pointer if it referenced the moved file
+            if [ -f "$ACTIVE_FILE" ] && [ "$(cat "$ACTIVE_FILE")" = "$(basename "$_collision_file")" ]; then
+              rm -f "$ACTIVE_FILE"
+            fi
+          fi
           if ! migrate_legacy_session "$f" > /dev/null 2>&1; then
             echo "Warning: could not migrate legacy session $(basename "$f")" >&2
           fi
