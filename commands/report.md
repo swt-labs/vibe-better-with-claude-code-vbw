@@ -42,7 +42,9 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
 1. **Collect diagnostics and persist to temp file.** Run the diagnostic collection script from the resolved plugin root. Pass the plugin root path as the first argument and the working directory as the second. Persist the output to a temp file so it can be embedded verbatim in the issue body later, even if context compaction occurs between this step and the filing step:
     ```bash
+    set -o pipefail
     DIAG_FILE="/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt"
+    ( umask 077; : > "$DIAG_FILE" )
     bash <plugin-root>/scripts/collect-diagnostics.sh "<plugin-root>" "$(pwd)" | tee "$DIAG_FILE"
     echo "DIAG_FILE=$DIAG_FILE"
     ```
@@ -147,9 +149,13 @@ This command collects diagnostics and files a GitHub issue — nothing else.
     ISSUE_BODY_EOF
 
     # Append the full diagnostic report from the temp file
-    printf '```\n' >> "$ISSUE_BODY_FILE"
-    cat "$DIAG_FILE" >> "$ISSUE_BODY_FILE"
-    printf '```\n' >> "$ISSUE_BODY_FILE"
+    if [ -s "$DIAG_FILE" ]; then
+      printf '```\n' >> "$ISSUE_BODY_FILE"
+      cat "$DIAG_FILE" >> "$ISSUE_BODY_FILE"
+      printf '```\n' >> "$ISSUE_BODY_FILE"
+    else
+      printf '\n_Diagnostic report unavailable — temp file missing or empty._\n' >> "$ISSUE_BODY_FILE"
+    fi
 
     if gh issue create --repo swt-labs/vibe-better-with-claude-code-vbw \
       --title "$(cat "$ISSUE_TITLE_FILE")" \
@@ -161,7 +167,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     **Method 2 — GitHub MCP server (if available):**
 
-    If `gh` is not installed or not authenticated, check if `mcp__github__issue_write` is available in your tool list. If it is, first read the diagnostic report from the temp file (`cat "$DIAG_FILE"`). Compose the full body by combining the non-diagnostic sections with the diagnostic output in a code fence under `**Additional context**`. Call the tool with:
+    If `gh` is not installed or not authenticated, check if `mcp__github__issue_write` is available in your tool list. If it is, first re-derive the temp file path (`DIAG_FILE="/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt"`) and read the diagnostic report (`cat "$DIAG_FILE"`). Compose the full body by combining the non-diagnostic sections with the diagnostic output in a code fence under `**Additional context**`. Call the tool with:
     - `method`: `create`
     - `owner`: `swt-labs`
     - `repo`: `vibe-better-with-claude-code-vbw`
@@ -191,7 +197,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     **Method 4 — Manual fallback (last resort):**
 
-    If all of the above fail (install refused, auth failed, network error, etc.), read the diagnostic report from the temp file (`cat "$DIAG_FILE"`), clean it up (`rm -f "$DIAG_FILE"`), and display the composed issue title, body (with full diagnostics), and a link:
+    If all of the above fail (install refused, auth failed, network error, etc.), re-derive the temp file path (`DIAG_FILE="/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt"`), read the diagnostic report (`cat "$DIAG_FILE"`), clean it up (`rm -f "$DIAG_FILE"`), and display the composed issue title, body (with full diagnostics), and a link:
     ```
     ⚠ Could not file issue automatically.
     File manually: https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=<bug_report.md or feature_request.md>
