@@ -216,8 +216,9 @@ run_check_roadmap_vs_summaries() {
     while IFS= read -r d; do
       [ -n "$d" ] || continue
       d_num=$(basename "$d" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
-      # Remove leading zeros for comparison
-      d_num=$((d_num + 0))
+      # Remove leading zeros for comparison (sed, not arithmetic — avoids octal for 08/09)
+      d_num=$(printf '%s' "$d_num" | sed 's/^0*//')
+      d_num=${d_num:-0}
       if [ "$d_num" -eq "$phase_num" ]; then
         phase_dir="$d"
         break
@@ -284,7 +285,8 @@ run_check_exec_state_vs_filesystem() {
   while IFS= read -r d; do
     [ -n "$d" ] || continue
     d_num=$(basename "$d" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
-    d_num=$((d_num + 0))
+    d_num=$(printf '%s' "$d_num" | sed 's/^0*//')
+    d_num=${d_num:-0}
     if [ "$d_num" -eq "$es_phase" ]; then
       target_dir="$d"
       break
