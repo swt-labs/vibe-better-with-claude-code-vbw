@@ -263,7 +263,7 @@ find_latest_unresolved() {
       if [ -f "$collision_file" ] && [ ! -L "$collision_file" ] && [ "$(read_field "$collision_file" "status")" = "complete" ]; then
         if safe_move_session "$collision_file" "$COMPLETED_DIR" > /dev/null 2>&1; then
           # Clear stale pointer if it referenced the moved file
-          if [ -f "$ACTIVE_FILE" ] && [ "$(cat "$ACTIVE_FILE")" = "$(basename "$collision_file")" ]; then
+          if [ -f "$ACTIVE_FILE" ] && [ "$(tr -d '[:space:]' < "$ACTIVE_FILE")" = "$(basename "$collision_file")" ]; then
             rm -f "$ACTIVE_FILE"
           fi
         fi
@@ -555,7 +555,7 @@ ENDSESSION
         if [ -f "$_collision_file" ] && [ ! -L "$_collision_file" ] && [ "$(read_field "$_collision_file" "status")" = "complete" ]; then
           if safe_move_session "$_collision_file" "$COMPLETED_DIR" > /dev/null 2>&1; then
             # Clear stale pointer if it referenced the moved file
-            if [ -f "$ACTIVE_FILE" ] && [ "$(cat "$ACTIVE_FILE")" = "$(basename "$_collision_file")" ]; then
+            if [ -f "$ACTIVE_FILE" ] && [ "$(tr -d '[:space:]' < "$ACTIVE_FILE")" = "$(basename "$_collision_file")" ]; then
               rm -f "$ACTIVE_FILE"
             fi
           fi
