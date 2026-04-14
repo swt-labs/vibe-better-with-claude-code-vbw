@@ -85,7 +85,7 @@ update_field() {
   if [ "$field" != "updated" ]; then
     local now
     now=$(date '+%Y-%m-%d %H:%M:%S')
-    update_field "$file" "updated" "$now"
+    update_field "$file" "updated" "$now" || inject_field "$file" "updated" "$now"
   fi
 }
 
