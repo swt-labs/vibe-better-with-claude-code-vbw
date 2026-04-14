@@ -140,6 +140,7 @@ else
   echo "has_codebase_map=false"
   echo "brownfield=false"
   echo "execution_state=none"
+  _pd_normal_exit=true
   exit 0
 fi
 

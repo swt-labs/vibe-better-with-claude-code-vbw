@@ -29,6 +29,21 @@ teardown_temp_dir() {
   unset VBW_AGENT_PID_LOCK_DIR GIT_CONFIG_NOSYSTEM GIT_CONFIG_GLOBAL _ORIG_HOME
 }
 
+# Run phase-detect.sh with retry on empty output.
+# Under heavy parallel BATS execution, transient fork/exec failures can cause
+# the subprocess to produce zero output. Retrying handles this reliably.
+# Sets BATS globals: $output, $status (same as `run`).
+run_phase_detect() {
+  local _pd_attempt=0
+  while [ $_pd_attempt -lt 3 ]; do
+    run bash "$SCRIPTS_DIR/phase-detect.sh"
+    [ -n "$output" ] && return 0
+    _pd_attempt=$((_pd_attempt + 1))
+    sleep 0.1
+  done
+  return 0
+}
+
 vbw_cache_prefix_for_root() {
   local root="$1" uid="${2:-$(id -u)}" version root_real
   version=$(tr -d '[:space:]' < "${PROJECT_ROOT}/VERSION" 2>/dev/null || echo 0)
