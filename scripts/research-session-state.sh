@@ -405,30 +405,33 @@ ENDSESSION
         correct_updated="${correct_updated:-$created_ts}"
 
         # Fill blank-but-present fields with defaults (inject_field skips
-        # fields that exist even if their value is empty)
+        # fields that exist even if their value is empty).
+        # Guard update_field with || inject_field fallback: if the field key
+        # exists but update_field fails (e.g. malformed frontmatter without
+        # closing ---), fall back to inject_field which is more tolerant.
         _defaults="status:complete base_commit:unknown type:standalone-research confidence:medium linked_sessions:[]"
         for _pair in $_defaults; do
           _field="${_pair%%:*}"
           _val=$(read_field "$NEW_PATH" "$_field")
           if [ -z "$_val" ]; then
-            update_field "$NEW_PATH" "$_field" "${_pair#*:}"
+            update_field "$NEW_PATH" "$_field" "${_pair#*:}" || inject_field "$NEW_PATH" "$_field" "${_pair#*:}"
           fi
         done
         # Handle created separately (default is mtime, not a static string)
         if [ -z "$(read_field "$NEW_PATH" "created")" ]; then
-          update_field "$NEW_PATH" "created" "$created_ts"
+          update_field "$NEW_PATH" "created" "$created_ts" || inject_field "$NEW_PATH" "created" "$created_ts"
         fi
 
         # Ensure status is complete (update_field used instead of inject_field
         # to handle the case where status exists with a non-complete value)
         existing_status=$(read_field "$NEW_PATH" "status")
         if [ "$existing_status" != "complete" ]; then
-          update_field "$NEW_PATH" "status" "complete"
+          update_field "$NEW_PATH" "status" "complete" || true
         fi
 
         # Restore 'updated' to its pre-mutation value. update_field does not
         # cascade when the target field IS 'updated', so this is safe.
-        update_field "$NEW_PATH" "updated" "$correct_updated"
+        update_field "$NEW_PATH" "updated" "$correct_updated" || true
       fi
 
       MIGRATED=$((MIGRATED + 1))
