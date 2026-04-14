@@ -131,6 +131,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     If `gh` is installed and authenticated, file via temp files for safe quoting. The body heredoc contains everything except the diagnostic report. The diagnostic content is appended from the temp file created in step 1:
     ```bash
+    DIAG_FILE=<path from step 1>
     ISSUE_BODY_FILE=$(mktemp /tmp/vbw-issue-body.XXXXXX.md)
     ISSUE_TITLE_FILE=$(mktemp /tmp/vbw-issue-title.XXXXXX.txt)
     trap 'rm -f "$ISSUE_BODY_FILE" "$ISSUE_TITLE_FILE" "$DIAG_FILE"' EXIT
@@ -158,7 +159,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     **Method 2 — GitHub MCP server (if available):**
 
-    If `gh` is not installed or not authenticated, check if `mcp__github__issue_write` is available in your tool list. If it is, first read the diagnostic report from the temp file (`cat "$DIAG_FILE"`), then compose the full body by combining the non-diagnostic sections with the diagnostic output in a code fence under `**Additional context**`. Call the tool with:
+    If `gh` is not installed or not authenticated, check if `mcp__github__issue_write` is available in your tool list. If it is, first read the diagnostic report from the temp file (`cat "$DIAG_FILE"`) and then clean it up (`rm -f "$DIAG_FILE"`). Compose the full body by combining the non-diagnostic sections with the diagnostic output in a code fence under `**Additional context**`. Call the tool with:
     - `method`: `create`
     - `owner`: `swt-labs`
     - `repo`: `vibe-better-with-claude-code-vbw`
@@ -186,7 +187,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     **Method 4 — Manual fallback (last resort):**
 
-    If all of the above fail (install refused, auth failed, network error, etc.), read the diagnostic report from the temp file (`cat "$DIAG_FILE"`) and display the composed issue title, body (with full diagnostics), and a link:
+    If all of the above fail (install refused, auth failed, network error, etc.), read the diagnostic report from the temp file (`cat "$DIAG_FILE"`), clean it up (`rm -f "$DIAG_FILE"`), and display the composed issue title, body (with full diagnostics), and a link:
     ```
     ⚠ Could not file issue automatically.
     File manually: https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=<bug_report.md or feature_request.md>
