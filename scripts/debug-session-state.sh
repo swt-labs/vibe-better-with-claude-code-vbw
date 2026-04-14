@@ -256,17 +256,51 @@ find_latest_unresolved() {
   local legacy_f
   for legacy_f in "$DEBUG_DIR"/*.md; do
     [ -f "$legacy_f" ] && [ ! -L "$legacy_f" ] || continue
-    migrate_legacy_session "$legacy_f" > /dev/null 2>&1 || true
+    if ! migrate_legacy_session "$legacy_f" > /dev/null 2>&1; then
+      # Collision? If the blocking file in active/ is complete, resolve it
+      local collision_file
+      collision_file="$ACTIVE_DIR/$(basename "$legacy_f")"
+      if [ -f "$collision_file" ] && [ ! -L "$collision_file" ] && [ "$(read_field "$collision_file" "status")" = "complete" ]; then
+        if safe_move_session "$collision_file" "$COMPLETED_DIR" > /dev/null 2>&1; then
+          # Clear stale pointer if it referenced the moved file
+          if [ -f "$ACTIVE_FILE" ] && [ "$(tr -d '[:space:]' < "$ACTIVE_FILE")" = "$(basename "$collision_file")" ]; then
+            rm -f "$ACTIVE_FILE"
+          fi
+        fi
+        # Retry migration now that collision is cleared
+        if ! migrate_legacy_session "$legacy_f" > /dev/null 2>&1; then
+          echo "Warning: could not migrate legacy session $(basename "$legacy_f")" >&2
+        fi
+      else
+        echo "Warning: could not migrate legacy session $(basename "$legacy_f")" >&2
+      fi
+    fi
   done
-  # Only scan active/ — unmigrated legacy files cannot be activated (pointer won't resolve)
-  if [ ! -d "$ACTIVE_DIR" ]; then
-    return
+  # Collect candidates from active/ and any unmigrated legacy files
+  local all_candidates=() f
+  if [ -d "$ACTIVE_DIR" ]; then
+    for f in "$ACTIVE_DIR"/*.md; do
+      [ -f "$f" ] && [ ! -L "$f" ] && all_candidates+=("$f")
+    done
   fi
-  # Collect files into array, explicitly sorted by name (which contains timestamp)
-  local files=() f
-  while IFS= read -r f; do
-    [ -f "$f" ] && [ ! -L "$f" ] && files+=("$f")
-  done < <(printf '%s\n' "$ACTIVE_DIR"/*.md | LC_ALL=C sort)
+  for legacy_f in "$DEBUG_DIR"/*.md; do
+    [ -f "$legacy_f" ] && [ ! -L "$legacy_f" ] || continue
+    # Skip if active/ already has a non-symlink file with this basename —
+    # that file was already considered in the active/ scan above and is canonical.
+    local _active_dup
+    _active_dup="$ACTIVE_DIR/$(basename "$legacy_f")"
+    if [ -f "$_active_dup" ] && [ ! -L "$_active_dup" ]; then
+      continue
+    fi
+    all_candidates+=("$legacy_f")
+  done
+  # Sort all candidates by basename (timestamp-based filename) for correct ordering
+  local files=() _basename path
+  if [ ${#all_candidates[@]} -gt 0 ]; then
+    while IFS=$'\t' read -r _basename path; do
+      [ -n "$path" ] && files+=("$path")
+    done < <(for c in "${all_candidates[@]}"; do printf '%s\t%s\n' "$(basename "$c")" "$c"; done | LC_ALL=C sort -t$'\t' -k1,1)
+  fi
   # Iterate from end (latest timestamp first) to find latest unresolved
   local i status
   for (( i=${#files[@]}-1; i>=0; i-- )); do
@@ -389,7 +423,7 @@ ENDSESSION
       fi
       echo "active_session=fallback"
       # Update the pointer to this session
-      echo "$(basename "$SESSION_PATH")" > "$ACTIVE_FILE"
+      basename "$SESSION_PATH" > "$ACTIVE_FILE"
     else
       echo "active_session=true"
     fi
@@ -515,7 +549,23 @@ ENDSESSION
     # Migrate legacy flat-path sessions first
     for f in "$DEBUG_DIR"/*.md; do
       [ -f "$f" ] && [ ! -L "$f" ] || continue
-      migrate_legacy_session "$f" > /dev/null 2>&1 || true
+      if ! migrate_legacy_session "$f" > /dev/null 2>&1; then
+        # Collision? If the blocking file in active/ is complete, resolve it
+        _collision_file="$ACTIVE_DIR/$(basename "$f")"
+        if [ -f "$_collision_file" ] && [ ! -L "$_collision_file" ] && [ "$(read_field "$_collision_file" "status")" = "complete" ]; then
+          if safe_move_session "$_collision_file" "$COMPLETED_DIR" > /dev/null 2>&1; then
+            # Clear stale pointer if it referenced the moved file
+            if [ -f "$ACTIVE_FILE" ] && [ "$(tr -d '[:space:]' < "$ACTIVE_FILE")" = "$(basename "$_collision_file")" ]; then
+              rm -f "$ACTIVE_FILE"
+            fi
+          fi
+          if ! migrate_legacy_session "$f" > /dev/null 2>&1; then
+            echo "Warning: could not migrate legacy session $(basename "$f")" >&2
+          fi
+        else
+          echo "Warning: could not migrate legacy session $(basename "$f")" >&2
+        fi
+      fi
     done
     COUNT=0
     HEALED_FILES=""
