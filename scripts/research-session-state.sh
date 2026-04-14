@@ -387,7 +387,8 @@ ENDSESSION
           cat "$NEW_PATH"
         } > "$NEW_PATH.tmp" && mv "$NEW_PATH.tmp" "$NEW_PATH"
       else
-        # File has frontmatter — backfill all missing template fields
+        # File has frontmatter — backfill all missing template fields.
+        # inject_field only adds absent keys; it won't overwrite existing values.
         inject_field "$NEW_PATH" "status" "complete"
         inject_field "$NEW_PATH" "base_commit" "unknown"
         inject_field "$NEW_PATH" "type" "standalone-research"
@@ -396,11 +397,38 @@ ENDSESSION
         inject_field "$NEW_PATH" "updated" "$created_ts"
         inject_field "$NEW_PATH" "linked_sessions" "[]"
 
-        # Now update status to complete (in case it existed with a different value)
+        # Capture the correct 'updated' value BEFORE any update_field calls.
+        # update_field cascades a wall-clock write to 'updated' on every
+        # non-'updated' field change, which would clobber the original or
+        # just-injected value.
+        correct_updated=$(read_field "$NEW_PATH" "updated")
+        correct_updated="${correct_updated:-$created_ts}"
+
+        # Fill blank-but-present fields with defaults (inject_field skips
+        # fields that exist even if their value is empty)
+        _defaults="status:complete base_commit:unknown type:standalone-research confidence:medium linked_sessions:[]"
+        for _pair in $_defaults; do
+          _field="${_pair%%:*}"
+          _val=$(read_field "$NEW_PATH" "$_field")
+          if [ -z "$_val" ]; then
+            update_field "$NEW_PATH" "$_field" "${_pair#*:}"
+          fi
+        done
+        # Handle created separately (default is mtime, not a static string)
+        if [ -z "$(read_field "$NEW_PATH" "created")" ]; then
+          update_field "$NEW_PATH" "created" "$created_ts"
+        fi
+
+        # Ensure status is complete (update_field used instead of inject_field
+        # to handle the case where status exists with a non-complete value)
         existing_status=$(read_field "$NEW_PATH" "status")
         if [ "$existing_status" != "complete" ]; then
           update_field "$NEW_PATH" "status" "complete"
         fi
+
+        # Restore 'updated' to its pre-mutation value. update_field does not
+        # cascade when the target field IS 'updated', so this is safe.
+        update_field "$NEW_PATH" "updated" "$correct_updated"
       fi
 
       MIGRATED=$((MIGRATED + 1))
