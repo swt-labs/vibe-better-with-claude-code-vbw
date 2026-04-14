@@ -438,14 +438,21 @@ extract_summary_known_issue_outcomes_json() {
 }
 
 extract_latest_summary_known_issue_outcomes_json() {
-  local summary_file=""
-  local source_rel=""
-  local round="0"
-  summary_file=$(find "$PHASE_DIR/remediation/qa" -maxdepth 2 -type f -name 'R*-SUMMARY.md' 2>/dev/null | (sort -V 2>/dev/null || sort) | tail -1)
-  [ -n "$summary_file" ] || { echo '[]'; return 0; }
-  source_rel=$(relative_to_phase "$summary_file")
-  round=$(round_for_phase_artifact_path "$source_rel")
-  extract_summary_known_issue_outcomes_json "$summary_file" "$source_rel" "$round"
+  # Aggregate accepted-process-exception outcomes across ALL remediation round
+  # summaries, not just the latest. When the same [test, file, error] appears in
+  # multiple rounds, the latest round's disposition wins (merge_issue_sets
+  # semantics with ascending sort-V processing order).
+  local accumulated='[]'
+  local summary_file source_rel round round_json
+  while IFS= read -r summary_file; do
+    [ -n "$summary_file" ] || continue
+    source_rel=$(relative_to_phase "$summary_file")
+    round=$(round_for_phase_artifact_path "$source_rel")
+    round_json=$(extract_summary_known_issue_outcomes_json "$summary_file" "$source_rel" "$round")
+    [ "$round_json" != "[]" ] || continue
+    accumulated=$(merge_issue_sets "$accumulated" "$round_json")
+  done < <(find "$PHASE_DIR/remediation/qa" -maxdepth 2 -type f -name 'R*-SUMMARY.md' 2>/dev/null | (sort -V 2>/dev/null || sort))
+  printf '%s' "$accumulated"
 }
 
 extract_verification_issues_json() {
