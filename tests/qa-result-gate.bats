@@ -5239,3 +5239,174 @@ VERIF
   # Gate should process R100 artifacts without error (not reject them as unrecognized)
   [[ "$output" != *"unrecognized"* ]]
 }
+
+# --- Gitignored planning directory evidence tests (issue #376) ---
+
+@test "plan-amendment with gitignored .vbw-planning/ passes gate via ignored-metadata evidence" {
+  init_git_repo
+  # Put PHASE_DIR under .vbw-planning/ to match production layout
+  PHASE_DIR="$TEST_DIR/.vbw-planning/phases/01-test-phase"
+  mkdir -p "$PHASE_DIR"
+  # Create baseline commit, then add .vbw-planning/ to .gitignore
+  baseline_commit=$(commit_repo_file "README.md" "project root")
+  printf '.vbw-planning/\n' >> "$TEST_DIR/.gitignore"
+  git -C "$TEST_DIR" add .gitignore
+  git -C "$TEST_DIR" commit -q -m "ignore planning dir"
+  local after_ignore_commit
+  after_ignore_commit=$(git -C "$TEST_DIR" rev-parse HEAD)
+
+  # Create the original plan file on disk (gitignored, not tracked)
+  mkdir -p "$PHASE_DIR"
+  printf 'Original plan content\n' > "$PHASE_DIR/01-01-PLAN.md"
+
+  # Source verification with FAIL
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | Plan needs amendment | FAIL | Missing |" "$after_ignore_commit"
+
+  # Update plan file to simulate the amendment
+  printf 'Amended plan with deviations_allowed widened\n' > "$PHASE_DIR/01-01-PLAN.md"
+
+  # Set up remediation round
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$after_ignore_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test-phase/01-01-PLAN.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Widen deviations_allowed for commit-attribution race
+fail_classifications:
+  - {id: "FAIL-01", type: "plan-amendment", rationale: "Retroactively widen plan envelope", source_plan: "01-01-PLAN.md"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Plan amended | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  [[ "$output" == *"qa_gate_planning_ignored_evidence=true"* ]]
+}
+
+@test "non-metadata gitignored path still blocks gate (ignored-evidence scoped to metadata only)" {
+  init_git_repo
+  baseline_commit=$(commit_repo_file "README.md" "project root")
+  # Gitignore a non-metadata directory
+  printf 'build/\n' >> "$TEST_DIR/.gitignore"
+  git -C "$TEST_DIR" add .gitignore
+  git -C "$TEST_DIR" commit -q -m "ignore build dir"
+  local after_ignore_commit
+  after_ignore_commit=$(git -C "$TEST_DIR" rev-parse HEAD)
+
+  # Create gitignored non-metadata file on disk
+  mkdir -p "$TEST_DIR/build"
+  printf 'compiled output\n' > "$TEST_DIR/build/output.js"
+
+  create_source_fail_verif "FAIL-01" "Build artifact check still needs remediation" "$after_ignore_commit"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$after_ignore_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "build/output.js"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix build artifact
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Build output corrected"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Build output correct | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "mixed metadata and non-metadata gitignored paths block gate (partial corroboration insufficient)" {
+  init_git_repo
+  # Put PHASE_DIR under .vbw-planning/ to match production layout
+  PHASE_DIR="$TEST_DIR/.vbw-planning/phases/01-test-phase"
+  mkdir -p "$PHASE_DIR"
+  baseline_commit=$(commit_repo_file "README.md" "project root")
+  # Gitignore both .vbw-planning/ and build/
+  printf '.vbw-planning/\nbuild/\n' >> "$TEST_DIR/.gitignore"
+  git -C "$TEST_DIR" add .gitignore
+  git -C "$TEST_DIR" commit -q -m "ignore dirs"
+  local after_ignore_commit
+  after_ignore_commit=$(git -C "$TEST_DIR" rev-parse HEAD)
+
+  # Create both files on disk (both gitignored)
+  printf 'Amended plan\n' > "$PHASE_DIR/01-01-PLAN.md"
+  mkdir -p "$TEST_DIR/build"
+  printf 'compiled output\n' > "$TEST_DIR/build/output.js"
+
+  create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | Plan and build need fixing | FAIL | Missing |" "$after_ignore_commit"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$after_ignore_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - ".vbw-planning/phases/01-test-phase/01-01-PLAN.md"
+  - "build/output.js"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Mixed amendment and build fix
+fail_classifications:
+  - {id: "FAIL-01", type: "plan-amendment", rationale: "Widen plan", source_plan: "01-01-PLAN.md"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Mixed fix applied | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
