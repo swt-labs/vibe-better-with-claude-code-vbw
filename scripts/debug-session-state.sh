@@ -290,9 +290,9 @@ find_latest_unresolved() {
     all_candidates+=("$legacy_f")
   done
   # Sort all candidates by basename (timestamp-based filename) for correct ordering
-  local files=() path
+  local files=() _basename path
   if [ ${#all_candidates[@]} -gt 0 ]; then
-    while IFS=$'\t' read -r _ path; do
+    while IFS=$'\t' read -r _basename path; do
       [ -n "$path" ] && files+=("$path")
     done < <(for c in "${all_candidates[@]}"; do printf '%s\t%s\n' "$(basename "$c")" "$c"; done | LC_ALL=C sort -t$'\t' -k1,1)
   fi
