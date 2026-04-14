@@ -280,6 +280,13 @@ find_latest_unresolved() {
   fi
   for legacy_f in "$DEBUG_DIR"/*.md; do
     [ -f "$legacy_f" ] && [ ! -L "$legacy_f" ] || continue
+    # Skip if active/ already has a non-symlink file with this basename —
+    # that file was already considered in the active/ scan above and is canonical.
+    local _active_dup
+    _active_dup="$ACTIVE_DIR/$(basename "$legacy_f")"
+    if [ -f "$_active_dup" ] && [ ! -L "$_active_dup" ]; then
+      continue
+    fi
     all_candidates+=("$legacy_f")
   done
   # Sort all candidates by basename (timestamp-based filename) for correct ordering
@@ -411,7 +418,7 @@ ENDSESSION
       fi
       echo "active_session=fallback"
       # Update the pointer to this session
-      echo "$(basename "$SESSION_PATH")" > "$ACTIVE_FILE"
+      basename "$SESSION_PATH" > "$ACTIVE_FILE"
     else
       echo "active_session=true"
     fi
