@@ -569,8 +569,10 @@ write_known_issues_registry() {
   grep -q "(see remediation/qa/round-01/R01-SUMMARY.md)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
-@test "track-known-issues: promote-todos uses latest round disposition when same issue appears in multiple rounds" {
-  # R01 accepts issue as process-exception, R02 resolves it → latest (resolved) wins, not promoted
+@test "track-known-issues: promote-todos preserves earlier acceptance when later round has non-accepted disposition" {
+  # R01 accepts issue as process-exception, R02 resolves it → resolved is filtered by parser,
+  # so R01's accepted-process-exception survives (only accepted-process-exception dispositions
+  # enter the aggregator; resolved/unresolved dispositions are excluded by the single-file parser)
   write_state_md_with_todos "None."
   echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
 
@@ -616,4 +618,47 @@ write_known_issues_registry() {
   [[ "$output" == *"promoted_count=1"* ]]
   grep -q "\[KNOWN-ISSUE\] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos aggregates when later round has explicit empty known_issue_outcomes" {
+  # Like the multi-round test but R02 has known_issue_outcomes: [] explicitly instead of omitting the key
+  write_state_md_with_todos "None."
+  echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
+
+  # R01 summary with accepted-process-exception outcome
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-01/R01-SUMMARY.md" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","disposition":"accepted-process-exception","rationale":"Pre-existing crash accepted for this phase"}'
+
+  # R02 summary with explicit empty known_issue_outcomes array
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf '%s\n' \
+    '---' \
+    'phase: 03' \
+    'round: 02' \
+    'title: Code fix round' \
+    'type: remediation' \
+    'status: complete' \
+    'completed: 2026-04-09' \
+    'tasks_completed: 1' \
+    'tasks_total: 1' \
+    'commit_hashes: []' \
+    'files_modified:' \
+    '  - "src/Fix.swift"' \
+    'deviations: []' \
+    'known_issue_outcomes: []' \
+    '---' \
+    '' \
+    '## Task 1: Code fix' \
+    '' \
+    '### What Was Built' \
+    '- Fixed unrelated code issue' \
+    > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  grep -q "\[KNOWN-ISSUE\] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "(see remediation/qa/round-01/R01-SUMMARY.md)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
