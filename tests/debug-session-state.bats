@@ -323,8 +323,11 @@ teardown() {
   local legacy_file="$VBW_PLANNING_DIR/debugging/${session_id}.md"
   # Create a legacy flat-path session (investigating = unresolved)
   printf '%s\n' '---' "session_id: ${session_id}" 'title: noncomp-collision' 'status: investigating' 'created: 2025-01-01 13:00:00' 'updated: 2025-01-01 13:00:00' 'qa_round: 0' 'qa_last_result: pending' 'uat_round: 0' 'uat_last_result: pending' '---' '' '# Debug Session: noncomp-collision' > "$legacy_file"
-  # Collision file in active/ with non-complete status — cannot be resolved
-  printf '%s\n' '---' "session_id: ${session_id}" 'title: active-investigating' 'status: investigating' 'created: 2025-01-01 13:00:00' 'updated: 2025-01-01 13:00:00' 'qa_round: 0' 'qa_last_result: pending' 'uat_round: 0' 'uat_last_result: pending' '---' '' '# Debug Session: active-investigating' > "$VBW_PLANNING_DIR/debugging/active/${session_id}.md"
+  # Place a symlink in active/ with the colliding name.  The symlink blocks
+  # migration (destination exists) AND is skipped by the active/ candidate scan
+  # (which filters symlinks with [ ! -L ]).  This proves the ONLY way the
+  # session can be discovered is via the fallback $DEBUG_DIR/*.md scan.
+  ln -s /dev/null "$VBW_PLANNING_DIR/debugging/active/${session_id}.md"
 
   # Capture stderr for warning assertion
   local stderr_file="$VBW_PLANNING_DIR/stderr.tmp"
@@ -332,7 +335,7 @@ teardown() {
   [ "$status" -eq 0 ]
   # Session is discoverable via fallback scan of DEBUG_DIR/*.md
   [[ "$output" == *"session_id=${session_id}"* ]]
-  # Legacy file remains (migration permanently failed)
+  # Legacy file remains (migration permanently failed due to symlink collision)
   [ -f "$legacy_file" ]
   # Warning was emitted to stderr
   [[ "$(cat "$stderr_file")" == *"Warning: could not migrate legacy session"* ]]
