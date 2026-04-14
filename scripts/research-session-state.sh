@@ -58,7 +58,11 @@ read_field() {
 # Update a frontmatter field in a file (scoped to YAML frontmatter block)
 update_field() {
   local file="$1" field="$2" value="$3"
-  if ! grep -q "^${field}:" "$file" 2>/dev/null; then
+  if ! awk -v field="$field" '
+    /^---$/ { if (!s) { s=1; f=1; next } if (f) exit }
+    f && index($0, field ":") == 1 { found=1; exit }
+    END { exit !found }
+  ' "$file" 2>/dev/null; then
     return
   fi
 
@@ -320,9 +324,11 @@ ENDSESSION
 
         # Use file mtime for created/updated timestamps
         if stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH" > /dev/null 2>&1; then
-          created_ts=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH")
+          created_ts=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH")  # macOS/BSD
+        elif stat -c '%Y' "$NEW_PATH" > /dev/null 2>&1; then
+          created_ts=$(date -d "@$(stat -c '%Y' "$NEW_PATH")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')  # GNU/Linux
         else
-          created_ts=$(date '+%Y-%m-%d %H:%M:%S')
+          created_ts=$(date '+%Y-%m-%d %H:%M:%S')  # fallback
         fi
 
         # Prepend frontmatter

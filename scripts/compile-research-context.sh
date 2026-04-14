@@ -121,7 +121,11 @@ emit_research() {
           exit
         }
       ' "$file" | head -c 8)
-      echo "⚠ ${commit_count_str} commits have landed since this research was created (${base_commit_short}..HEAD). Verify findings against current code."
+      if [ "$commit_count_str" = "unknown" ] || [ "$base_commit_short" = "unknown" ]; then
+        echo "⚠ Staleness unknown — this research was migrated without a base commit. Verify findings against current code."
+      else
+        echo "⚠ ${commit_count_str} commits have landed since this research was created (${base_commit_short}..HEAD). Verify findings against current code."
+      fi
       echo ""
       echo "[research] Using research with staleness warning: $(basename "$file") (${commit_count_str} commits since)" >&2
       cat "$file"
