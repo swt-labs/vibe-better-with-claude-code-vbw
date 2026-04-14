@@ -1,6 +1,7 @@
 #!/bin/bash
 set -u
-trap 'exit 0' EXIT
+_pd_normal_exit=false
+trap '[ "$_pd_normal_exit" = true ] || { echo "qa_status=none"; echo "execution_state=none"; }; exit 0' EXIT
 # Pre-compute all project state for implement.md and other commands.
 # Output: key=value pairs on stdout, one per line. Exit 0 always.
 
@@ -1063,6 +1064,7 @@ if [ "$UAT_ISSUES_PHASE" != "none" ] && [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_
   fi
 fi
 
+_pd_normal_exit=true
 echo "phase_count=$PHASE_COUNT"
 echo "next_phase=$NEXT_PHASE"
 echo "next_phase_slug=$NEXT_PHASE_SLUG"

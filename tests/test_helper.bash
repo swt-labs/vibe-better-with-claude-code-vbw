@@ -25,7 +25,7 @@ setup_temp_dir() {
 # Clean up temp directory
 teardown_temp_dir() {
   [ -n "${TEST_TEMP_DIR:-}" ] && rm -rf "$TEST_TEMP_DIR"
-  HOME="${_ORIG_HOME:-/tmp}"
+  HOME="$_ORIG_HOME"
   unset VBW_AGENT_PID_LOCK_DIR GIT_CONFIG_NOSYSTEM GIT_CONFIG_GLOBAL _ORIG_HOME
 }
 
