@@ -9,7 +9,7 @@ set -euo pipefail
 # Checks:
 # 1. Every key in defaults.json has a row in the config.md table
 # 2. Every setting name in the config.md table exists in defaults.json
-# 3. For boolean/string settings with simple defaults, the default value matches
+# 3. Default values match (scalars compared directly, arrays/objects via compact JSON; shorthand-only keys skipped)
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG_MD="$ROOT/commands/config.md"
