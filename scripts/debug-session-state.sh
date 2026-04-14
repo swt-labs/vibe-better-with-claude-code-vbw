@@ -260,18 +260,24 @@ find_latest_unresolved() {
       echo "Warning: could not migrate legacy session $(basename "$legacy_f")" >&2
     fi
   done
-  # Scan active/ for migrated sessions
-  local files=() f
+  # Collect candidates from active/ and any unmigrated legacy files
+  local all_candidates=() f
   if [ -d "$ACTIVE_DIR" ]; then
-    while IFS= read -r f; do
-      [ -f "$f" ] && [ ! -L "$f" ] && files+=("$f")
-    done < <(printf '%s\n' "$ACTIVE_DIR"/*.md | LC_ALL=C sort)
+    for f in "$ACTIVE_DIR"/*.md; do
+      [ -f "$f" ] && [ ! -L "$f" ] && all_candidates+=("$f")
+    done
   fi
-  # Include any legacy files that couldn't be migrated (destination collision)
   for legacy_f in "$DEBUG_DIR"/*.md; do
     [ -f "$legacy_f" ] && [ ! -L "$legacy_f" ] || continue
-    files+=("$legacy_f")
+    all_candidates+=("$legacy_f")
   done
+  # Sort all candidates by basename (timestamp-based filename) for correct ordering
+  local files=()
+  if [ ${#all_candidates[@]} -gt 0 ]; then
+    while IFS=$'\t' read -r _ path; do
+      [ -n "$path" ] && files+=("$path")
+    done < <(for c in "${all_candidates[@]}"; do printf '%s\t%s\n' "$(basename "$c")" "$c"; done | LC_ALL=C sort -t$'\t' -k1,1)
+  fi
   # Iterate from end (latest timestamp first) to find latest unresolved
   local i status
   for (( i=${#files[@]}-1; i>=0; i-- )); do
