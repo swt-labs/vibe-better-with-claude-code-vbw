@@ -83,3 +83,4 @@
 1	compile-verify-context-for-uat.bats
 1	compile-context-skills.bats
 1	code-slices.bats
+1	validate-summary-ac.bats
