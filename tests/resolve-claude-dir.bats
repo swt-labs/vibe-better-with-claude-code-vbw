@@ -21,6 +21,10 @@ teardown() {
 
 # --- resolve-claude-dir.sh tests ---
 
+@test "ORIG_HOME captures real HOME, not temp dir" {
+  [ "$ORIG_HOME" != "$TEST_TEMP_DIR" ]
+}
+
 @test "resolve-claude-dir.sh defaults to HOME/.claude when CLAUDE_CONFIG_DIR unset" {
   unset CLAUDE_CONFIG_DIR
   export HOME="$TEST_TEMP_DIR"
