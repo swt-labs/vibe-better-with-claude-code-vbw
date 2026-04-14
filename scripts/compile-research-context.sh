@@ -9,7 +9,8 @@
 #
 # Output:
 #   stdout: Research file content (with optional staleness warning), or empty
-#   stderr: File path when matched, skip messages when stale/no-match
+#   stderr: Informational research-selection messages (for example selected
+#           research, staleness warnings, or stale/no-match skip messages)
 #
 # Exit: Always 0 (caller uses empty stdout to detect no-research)
 
@@ -127,11 +128,12 @@ emit_research() {
       ' "$file" | head -c 8)
       if [ "$commit_count_str" = "unknown" ] || [ "$base_commit_short" = "unknown" ]; then
         echo "⚠ Staleness unknown — this research was migrated without a base commit. Verify findings against current code."
+        echo "[research] Using research with staleness warning: $(basename "$file") (base_commit unknown; staleness not computed)" >&2
       else
         echo "⚠ ${commit_count_str} commits have landed since this research was created (${base_commit_short}..HEAD). Verify findings against current code."
+        echo "[research] Using research with staleness warning: $(basename "$file") (${commit_count_str} commits since)" >&2
       fi
       echo ""
-      echo "[research] Using research with staleness warning: $(basename "$file") (${commit_count_str} commits since)" >&2
       cat "$file"
       ;;
     2|*)

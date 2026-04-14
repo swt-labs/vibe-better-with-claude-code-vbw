@@ -11,7 +11,7 @@ setup() {
   git -C "$TEST_TEMP_DIR" config user.email "test@test.com" 2>/dev/null || true
   git -C "$TEST_TEMP_DIR" config user.name "Test" 2>/dev/null || true
   touch "$TEST_TEMP_DIR/dummy"
-  git -C "$TEST_TEMP_DIR" add dummy .vbw-planning 2>/dev/null || true
+  git -C "$TEST_TEMP_DIR" add dummy 2>/dev/null || true
   git -C "$TEST_TEMP_DIR" commit -m "init" --quiet 2>/dev/null || true
 }
 
