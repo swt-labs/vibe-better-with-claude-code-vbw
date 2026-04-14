@@ -102,7 +102,7 @@ Notes: placeholder detection excludes template files; filler detection applies t
 Deep tier only. Traces requirement IDs to implementing artifacts.
 
 1. **Extract** requirement IDs from phase section of ROADMAP.md
-2. **Trace** each ID to PLAN.md files (must_haves, task descriptions, success criteria) and SUMMARY.md files. Prefer `ac_results` frontmatter when present; fall back to prose sections (What Was Built, Files Modified) for pre-existing summaries
+2. **Trace** each ID to PLAN.md files (must_haves, task descriptions, success criteria) and SUMMARY.md files. Prefer `ac_results` frontmatter when present; fall back to prose sections (What Was Built, Files Modified) for pre-existing summaries.
 3. **Classify:** Mapped (plan+summary) = OK. Planned only (plan, no summary) = WARN. Unmapped (neither) = FAIL
 
 Scope: current phase only. Cross-phase requirements noted but not flagged.
