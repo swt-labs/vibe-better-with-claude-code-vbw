@@ -256,17 +256,22 @@ find_latest_unresolved() {
   local legacy_f
   for legacy_f in "$DEBUG_DIR"/*.md; do
     [ -f "$legacy_f" ] && [ ! -L "$legacy_f" ] || continue
-    migrate_legacy_session "$legacy_f" > /dev/null 2>&1 || true
+    if ! migrate_legacy_session "$legacy_f" > /dev/null 2>&1; then
+      echo "Warning: could not migrate legacy session $(basename "$legacy_f")" >&2
+    fi
   done
-  # Only scan active/ — unmigrated legacy files cannot be activated (pointer won't resolve)
-  if [ ! -d "$ACTIVE_DIR" ]; then
-    return
-  fi
-  # Collect files into array, explicitly sorted by name (which contains timestamp)
+  # Scan active/ for migrated sessions
   local files=() f
-  while IFS= read -r f; do
-    [ -f "$f" ] && [ ! -L "$f" ] && files+=("$f")
-  done < <(printf '%s\n' "$ACTIVE_DIR"/*.md | LC_ALL=C sort)
+  if [ -d "$ACTIVE_DIR" ]; then
+    while IFS= read -r f; do
+      [ -f "$f" ] && [ ! -L "$f" ] && files+=("$f")
+    done < <(printf '%s\n' "$ACTIVE_DIR"/*.md | LC_ALL=C sort)
+  fi
+  # Include any legacy files that couldn't be migrated (destination collision)
+  for legacy_f in "$DEBUG_DIR"/*.md; do
+    [ -f "$legacy_f" ] && [ ! -L "$legacy_f" ] || continue
+    files+=("$legacy_f")
+  done
   # Iterate from end (latest timestamp first) to find latest unresolved
   local i status
   for (( i=${#files[@]}-1; i>=0; i-- )); do
@@ -515,7 +520,9 @@ ENDSESSION
     # Migrate legacy flat-path sessions first
     for f in "$DEBUG_DIR"/*.md; do
       [ -f "$f" ] && [ ! -L "$f" ] || continue
-      migrate_legacy_session "$f" > /dev/null 2>&1 || true
+      if ! migrate_legacy_session "$f" > /dev/null 2>&1; then
+        echo "Warning: could not migrate legacy session $(basename "$f")" >&2
+      fi
     done
     COUNT=0
     HEALED_FILES=""

@@ -297,6 +297,23 @@ teardown() {
   [ -f "$VBW_PLANNING_DIR/debugging/active/${session_id}.md" ]
 }
 
+@test "get-or-latest discovers unmigrated legacy session on migration collision" {
+  mkdir -p "$VBW_PLANNING_DIR/debugging/active"
+  local session_id="20250101-120000-collision-bug"
+  local legacy_file="$VBW_PLANNING_DIR/debugging/${session_id}.md"
+  # Create a legacy flat-path session (investigating = unresolved)
+  printf '%s\n' '---' "session_id: ${session_id}" 'title: collision-bug' 'status: investigating' 'created: 2025-01-01 12:00:00' 'updated: 2025-01-01 12:00:00' 'qa_round: 0' 'qa_last_result: pending' 'uat_round: 0' 'uat_last_result: pending' '---' '' '# Debug Session: collision-bug' > "$legacy_file"
+  # Pre-create a collision file in active/ to make migration fail
+  printf '%s\n' '---' "session_id: ${session_id}" 'title: collision-existing' 'status: complete' '---' > "$VBW_PLANNING_DIR/debugging/active/${session_id}.md"
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  # The legacy file should still be discoverable even though migration failed
+  [[ "$output" == *"session_id=${session_id}"* ]]
+  # Legacy file should still exist (migration failed, not moved)
+  [ -f "$legacy_file" ]
+}
+
 @test "legacy complete session migrated to completed on list" {
   # Manually create a complete session in the legacy flat location
   mkdir -p "$VBW_PLANNING_DIR/debugging"
