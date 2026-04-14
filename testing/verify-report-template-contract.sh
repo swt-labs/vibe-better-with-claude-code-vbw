@@ -61,6 +61,24 @@ else
   fail "report: expected >= 2 </example> tags, found $example_close"
 fi
 
+if [ "$example_open" -eq "$example_close" ]; then
+  pass "report: <example> tags are balanced ($example_open open, $example_close close)"
+else
+  fail "report: <example> tags unbalanced ($example_open open vs $example_close close)"
+fi
+
+if [ -n "$bug_block" ]; then
+  pass "report: bug example block extracted (non-empty)"
+else
+  fail "report: bug example block is empty — <example> with 'Classification: bug' may be missing or malformed"
+fi
+
+if [ -n "$feature_block" ]; then
+  pass "report: feature example block extracted (non-empty)"
+else
+  fail "report: feature example block is empty — <example> with 'Classification: feature' may be missing or malformed"
+fi
+
 # --- Bug report section header alignment ---
 
 echo ""
@@ -110,16 +128,27 @@ echo "--- Classification criteria ---"
 
 report_body=$(awk '/^---$/{d++; next} d>=2' "$REPORT")
 
-if printf '%s\n' "$report_body" | grep -i 'bug' | grep -qiE 'broken|error|unexpected|crash|regression'; then
-  pass "classification: bug criteria include behavioral keywords"
-else
-  fail "classification: bug criteria missing behavioral keywords (broken/error/unexpected/crash/regression)"
-fi
+bug_criteria_line=$(printf '%s\n' "$report_body" | grep -i 'bug' | grep -iE 'broken|error|unexpected|crash|regression' || true)
+for kw in broken error unexpected crash regression; do
+  if printf '%s' "$bug_criteria_line" | grep -qiF "$kw"; then
+    pass "classification: bug criteria contain keyword '$kw'"
+  else
+    fail "classification: bug criteria missing keyword '$kw'"
+  fi
+done
 
-if printf '%s\n' "$report_body" | grep -i 'feature' | grep -qiE 'missing|improvement|new capability|change'; then
-  pass "classification: feature criteria include behavioral keywords"
+feature_criteria_line=$(printf '%s\n' "$report_body" | grep -i 'feature' | grep -iE 'missing|improvement|new capability|change' || true)
+for kw in missing improvement change; do
+  if printf '%s' "$feature_criteria_line" | grep -qiF "$kw"; then
+    pass "classification: feature criteria contain keyword '$kw'"
+  else
+    fail "classification: feature criteria missing keyword '$kw'"
+  fi
+done
+if printf '%s' "$feature_criteria_line" | grep -qi 'new capability'; then
+  pass "classification: feature criteria contain keyword 'new capability'"
 else
-  fail "classification: feature criteria missing behavioral keywords (missing/improvement/new capability/change)"
+  fail "classification: feature criteria missing keyword 'new capability'"
 fi
 
 # --- Label routing ---
