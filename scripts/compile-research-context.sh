@@ -16,8 +16,7 @@
 set -euo pipefail
 
 # ── Staleness thresholds (tunable) ───────────────────────
-STALE_WARN_THRESHOLD=10   # 1..WARN = inject with warning
-STALE_SKIP_THRESHOLD=11   # SKIP+ = skip entirely
+STALE_WARN_THRESHOLD=10   # 1..WARN = inject with warning; >WARN = skip entirely
 
 PLANNING_DIR="${1:-}"
 if [ -z "$PLANNING_DIR" ]; then
@@ -82,12 +81,9 @@ check_staleness() {
   elif [ "$commit_count" -le "$STALE_WARN_THRESHOLD" ]; then
     echo "$commit_count" >&2  # Pass count via stderr for warning message
     return 1  # Warn but inject
-  elif [ "$commit_count" -ge "$STALE_SKIP_THRESHOLD" ]; then
-    echo "$commit_count" >&2  # Pass count via stderr for skip message
-    return 2  # Too stale
   else
-    echo "$commit_count" >&2
-    return 1  # Between warn and skip — still warn
+    echo "$commit_count" >&2  # Pass count via stderr for skip message
+    return 2  # Too stale (> STALE_WARN_THRESHOLD)
   fi
 }
 
