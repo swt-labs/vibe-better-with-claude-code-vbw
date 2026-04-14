@@ -153,7 +153,7 @@ EOF
 
 @test "phase-detect outputs config_auto_uat=true when set" {
   cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"config_auto_uat=true"* ]]
 }
@@ -164,7 +164,7 @@ EOF
   tmp=$(mktemp)
   jq '.auto_uat = false' "$TEST_TEMP_DIR/.vbw-planning/config.json" > "$tmp" && mv "$tmp" "$TEST_TEMP_DIR/.vbw-planning/config.json"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"config_auto_uat=false"* ]]
 }
@@ -172,7 +172,7 @@ EOF
 @test "phase-detect has_unverified_phases=true when phase has SUMMARY but no UAT" {
   cd "$TEST_TEMP_DIR"
   # setup() already creates 01-setup with SUMMARY but no UAT
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # auto_uat=true (from setup) + unverified → needs_verification overrides all_done
   [[ "$output" == *"next_phase_state=needs_verification"* ]]
@@ -184,7 +184,7 @@ EOF
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
   printf -- '---\nphase: 01\nstatus: passed\n---\nAll good.\n' > "$dir/01-UAT.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"next_phase_state=needs_verification"* ]]
   [[ "$output" == *"has_unverified_phases=false"* ]]
@@ -196,7 +196,7 @@ EOF
   # Only a SOURCE-UAT file exists (not a real UAT)
   printf -- '---\nstatus: issues_found\n---\nIssues.\n' > "$dir/01-SOURCE-UAT.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"has_unverified_phases=true"* ]]
 }
@@ -209,7 +209,7 @@ EOF
   # Phase 02 still needs work (unplanned)
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # auto_uat=true + unverified → needs_verification overrides needs_plan_and_execute
   [[ "$output" == *"next_phase_state=needs_verification"* ]]
@@ -228,7 +228,7 @@ EOF
   # Phase 02 still needs work
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/02-polish"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"next_phase_state=needs_plan_and_execute"* ]]
   [[ "$output" == *"has_unverified_phases=false"* ]]
@@ -241,7 +241,7 @@ EOF
   printf -- '---\nphase: 01\nplan: 01-02\ntitle: More Setup\n---\n' > "$dir/01-02-PLAN.md"
   # 01-01 has a SUMMARY from setup(), 01-02 does not
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Phase 01 is partially built, should NOT be flagged as unverified
   [[ "$output" == *"has_unverified_phases=false"* ]]
@@ -252,7 +252,7 @@ EOF
 @test "phase-detect needs_verification override fires when auto_uat=true and has_unverified" {
   cd "$TEST_TEMP_DIR"
   # setup(): auto_uat=true, phase 01 fully built, no UAT
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"next_phase_state=needs_verification"* ]]
   [[ "$output" == *"next_phase=01"* ]]
@@ -265,7 +265,7 @@ EOF
   tmp=$(mktemp)
   jq '.auto_uat = false' "$TEST_TEMP_DIR/.vbw-planning/config.json" > "$tmp" && mv "$tmp" "$TEST_TEMP_DIR/.vbw-planning/config.json"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Without auto_uat, should fall through to all_done (only phase is fully built)
   [[ "$output" == *"next_phase_state=all_done"* ]]
@@ -283,7 +283,7 @@ EOF
   printf -- '---\nphase: 02\nplan: 02-01\ntitle: Feature\n---\n' > "$dir2/02-01-PLAN.md"
   printf -- '---\nstatus: complete\ndeviations: 0\n---\nDone.\n' > "$dir2/02-01-SUMMARY.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # needs_reverification should NOT be overridden by needs_verification
   [[ "$output" == *"next_phase_state=needs_reverification"* ]]
@@ -301,7 +301,7 @@ EOF
   printf -- '---\nphase: 02\nplan: 02-01\ntitle: Feature\n---\n' > "$dir2/02-01-PLAN.md"
   printf -- '---\nstatus: complete\ndeviations: 0\n---\nDone.\n' > "$dir2/02-01-SUMMARY.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # needs_uat_remediation should NOT be overridden
   [[ "$output" == *"next_phase_state=needs_uat_remediation"* ]]
@@ -349,7 +349,7 @@ EOF
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
   printf -- '---\nphase: 01\nstatus: draft\n---\nIn progress.\n' > "$dir/01-UAT.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # UAT exists but is draft — should still be unverified
   [[ "$output" == *"has_unverified_phases=true"* ]]
@@ -360,7 +360,7 @@ EOF
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
   printf -- '---\nphase: 01\nstatus: complete\n---\nAll passed.\n' > "$dir/01-UAT.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"has_unverified_phases=false"* ]]
 }
@@ -370,7 +370,7 @@ EOF
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
   printf -- '---\nphase: 01\nstatus: issues_found\n---\nIssues.\n' > "$dir/01-UAT.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"has_unverified_phases=false"* ]]
 }
@@ -454,7 +454,7 @@ EOF
   # UAT file with NO frontmatter — status: passed appears in body only
   printf 'UAT notes\nstatus: passed\nNo frontmatter above.\n' > "$dir/01-UAT.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Body fallback detects status: passed → phase is verified
   [[ "$output" == *"has_unverified_phases=false"* ]]
@@ -466,7 +466,7 @@ EOF
   # UAT file WITH proper frontmatter
   printf -- '---\nphase: 01\nstatus: passed\n---\nAll good.\n' > "$dir/01-UAT.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"has_unverified_phases=false"* ]]
 }
@@ -653,7 +653,7 @@ EOF
   # Remediation is complete
   printf 'done' > "$dir/.uat-remediation-stage"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"next_phase_state=needs_reverification"* ]]
 }
@@ -665,7 +665,7 @@ EOF
   # Remediation in progress (plan stage — creating plans, not yet executing)
   printf 'plan' > "$dir/.uat-remediation-stage"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"next_phase_state=needs_uat_remediation"* ]]
 }
@@ -676,7 +676,7 @@ EOF
   printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
   # No .uat-remediation-stage file
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"next_phase_state=needs_uat_remediation"* ]]
 }
@@ -684,7 +684,7 @@ EOF
 @test "phase-detect outputs first_unverified_phase and slug" {
   cd "$TEST_TEMP_DIR"
   # Phase 01 from setup() has SUMMARY but no UAT → unverified
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"first_unverified_phase=01"* ]]
   [[ "$output" == *"first_unverified_slug=01-setup"* ]]
@@ -702,7 +702,7 @@ EOF
   printf -- '---\nstatus: complete\ndeviations: 0\n---\nDone.\n' > "$dir2/02-01-SUMMARY.md"
   printf -- '---\nphase: 02\nresult: pass\n---\nOK.\n' > "$dir2/02-VERIFICATION.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"first_unverified_phase=02"* ]]
   [[ "$output" == *"first_unverified_slug=02-polish"* ]]
@@ -713,7 +713,7 @@ EOF
   local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
   printf -- '---\nphase: 01\nstatus: passed\n---\nAll good.\n' > "$dir/01-UAT.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"first_unverified_phase="* ]]
   # Should NOT have a value
@@ -868,7 +868,7 @@ EOF
   cd "$TEST_TEMP_DIR"
   # Plain setup: phase 01 built, no UAT, no remediation
   # first_unverified_phase should be populated from scan
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"first_unverified_phase=01"* ]]
   [[ "$output" == *"has_unverified_phases=true"* ]]
@@ -1044,7 +1044,7 @@ EOF
   # UAT file with NO frontmatter — only indented status: line (should NOT match)
   printf '## Issue Details\n  status: needs_review\nThe component works.\n' > "$dir/01-UAT.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Indented status: should NOT be detected → phase is unverified
   [[ "$output" == *"has_unverified_phases=true"* ]]
@@ -1056,7 +1056,7 @@ EOF
   # UAT file with NO frontmatter — unindented status: line (body fallback)
   printf 'status: passed\nAll tests pass.\n' > "$dir/01-UAT.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"has_unverified_phases=false"* ]]
 }
@@ -1112,7 +1112,7 @@ EOF
   printf -- '---\nplan: 02-01\ntitle: Feature\n---\n' > "$dir2/02-01-PLAN.md"
   printf -- '---\nstatus: complete\ndeviations: 0\n---\nDone.\n' > "$dir2/02-01-SUMMARY.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # P4 (needs_reverification) must fire, not P7 (auto_uat + has_unverified)
   [[ "$output" == *"next_phase_state=needs_reverification"* ]]
@@ -1137,7 +1137,7 @@ EOF
   printf 'done' > "$dir/.uat-remediation-stage"
 
   # phase-detect should report count=3
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"uat_round_count=3"* ]]
 
@@ -1163,7 +1163,7 @@ EOF
   printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/uat/round-01/R01-PLAN.md"
   printf -- '---\nstatus: in-progress\ntasks_completed: 1\ntasks_total: 5\n---\n\n## Task 1: Done\n' > "$dir/remediation/uat/round-01/R01-SUMMARY.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Must NOT advance to needs_reverification — summary is not terminal
   [[ "$output" == *"next_phase_state=needs_uat_remediation"* ]]
@@ -1179,7 +1179,7 @@ EOF
   printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/uat/round-01/R01-PLAN.md"
   printf -- '---\nstatus: complete\ntasks_completed: 5\ntasks_total: 5\n---\n\nAll done.\n' > "$dir/remediation/uat/round-01/R01-SUMMARY.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Terminal status — should advance
   [[ "$output" == *"next_phase_state=needs_reverification"* ]]
@@ -1195,7 +1195,7 @@ EOF
   printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/uat/round-01/R01-PLAN.md"
   printf -- '---\nstatus: partial\ntasks_completed: 3\ntasks_total: 5\n---\n\nPartial.\n' > "$dir/remediation/uat/round-01/R01-SUMMARY.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [[ "$output" == *"next_phase_state=needs_reverification"* ]]
 }
