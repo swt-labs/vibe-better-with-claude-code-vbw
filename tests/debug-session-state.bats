@@ -317,6 +317,27 @@ teardown() {
   [ ! -f "$legacy_file" ]
 }
 
+@test "get-or-latest discovers legacy session via fallback when collision is non-complete" {
+  mkdir -p "$VBW_PLANNING_DIR/debugging/active"
+  local session_id="20250101-130000-noncomp-collision"
+  local legacy_file="$VBW_PLANNING_DIR/debugging/${session_id}.md"
+  # Create a legacy flat-path session (investigating = unresolved)
+  printf '%s\n' '---' "session_id: ${session_id}" 'title: noncomp-collision' 'status: investigating' 'created: 2025-01-01 13:00:00' 'updated: 2025-01-01 13:00:00' 'qa_round: 0' 'qa_last_result: pending' 'uat_round: 0' 'uat_last_result: pending' '---' '' '# Debug Session: noncomp-collision' > "$legacy_file"
+  # Collision file in active/ with non-complete status — cannot be resolved
+  printf '%s\n' '---' "session_id: ${session_id}" 'title: active-investigating' 'status: investigating' 'created: 2025-01-01 13:00:00' 'updated: 2025-01-01 13:00:00' 'qa_round: 0' 'qa_last_result: pending' 'uat_round: 0' 'uat_last_result: pending' '---' '' '# Debug Session: active-investigating' > "$VBW_PLANNING_DIR/debugging/active/${session_id}.md"
+
+  # Capture stderr for warning assertion
+  local stderr_file="$VBW_PLANNING_DIR/stderr.tmp"
+  run bash -c "bash '$SCRIPTS_DIR/debug-session-state.sh' get-or-latest '$VBW_PLANNING_DIR' 2>'$stderr_file'"
+  [ "$status" -eq 0 ]
+  # Session is discoverable via fallback scan of DEBUG_DIR/*.md
+  [[ "$output" == *"session_id=${session_id}"* ]]
+  # Legacy file remains (migration permanently failed)
+  [ -f "$legacy_file" ]
+  # Warning was emitted to stderr
+  [[ "$(cat "$stderr_file")" == *"Warning: could not migrate legacy session"* ]]
+}
+
 @test "legacy complete session migrated to completed on list" {
   # Manually create a complete session in the legacy flat location
   mkdir -p "$VBW_PLANNING_DIR/debugging"
