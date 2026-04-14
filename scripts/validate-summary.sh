@@ -97,6 +97,31 @@ if ! grep -q "## Files Modified" "$FILE_PATH"; then
   MISSING="${MISSING}Missing '## Files Modified'. "
 fi
 
+# Conditional ac_results check: only when corresponding PLAN has must_haves
+PLAN_PATH=$(echo "$FILE_PATH" | sed 's/SUMMARY\.md$/PLAN.md/')
+if [ -f "$PLAN_PATH" ]; then
+  # Check if plan has non-empty must_haves (any subtype with a list item)
+  _VS_HAS_MH=""
+  if sed -n '/^must_haves:/,/^[^ ]/p' "$PLAN_PATH" 2>/dev/null | grep -q '^ *- '; then
+    _VS_HAS_MH=true
+  fi
+  if [ "$_VS_HAS_MH" = true ]; then
+    # Extract frontmatter and check for ac_results
+    if ! sed -n '/^---$/,/^---$/p' "$FILE_PATH" 2>/dev/null | grep -q '^ac_results:'; then
+      MISSING="${MISSING}Missing 'ac_results' in frontmatter (plan has must_haves). "
+    else
+      # Validate verdict values are pass/fail/partial
+      _VS_VERDICTS=$(sed -n '/^---$/,/^---$/{ /^ *verdict:/{ s/^ *verdict:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$FILE_PATH" 2>/dev/null)
+      for _VS_V in $_VS_VERDICTS; do
+        case "$_VS_V" in
+          pass|fail|partial) ;;
+          *) MISSING="${MISSING}Invalid ac_results verdict '${_VS_V}' (must be pass/fail/partial). " ;;
+        esac
+      done
+    fi
+  fi
+fi
+
 if [ -n "$MISSING" ]; then
   jq -n --arg msg "$MISSING" '{
     "hookSpecificOutput": {

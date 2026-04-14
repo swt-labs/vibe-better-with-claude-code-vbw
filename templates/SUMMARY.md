@@ -12,6 +12,11 @@ deviations:
   - "{deviation-description}"
 # Authoritative no-known-issues signal. When present, consumers must not fall back to a legacy body section.
 pre_existing_issues: []
+# Acceptance criteria reconciliation. Omit ac_results entirely when plan has no must_haves.
+ac_results:
+  - criterion: "{from must_haves: truths[] text, artifacts[] path+provides, or key_links[] from→to}"
+    verdict: "{pass|fail|partial}"
+    evidence: "{commit hash, file path, or test name}"
 ---
 
 {one-line-substantive-summary}
