@@ -49,12 +49,23 @@ Config: Pre-injected by SessionStart hook.
 
     Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this fix (build tools, documentation servers, domain-specific APIs), note them in the Dev task description.
 
+    **Discover research context** (optional, from prior `/vbw:research`):
+    ```bash
+    RESEARCH_CONTEXT=$(bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/compile-research-context.sh" .vbw-planning "{fix description from Step 1}" 2>/dev/null || echo "")
+    ```
+    Replace `{fix description from Step 1}` with the actual parsed fix description. If `RESEARCH_CONTEXT` is non-empty, include it in the Dev task prompt below. If empty, omit the `<standalone_research_context>` block entirely — the fix workflow proceeds as today.
+
     Spawn vbw-dev as subagent via Task tool with `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"`.
     If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`.
     If `DEV_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited):
 
     ```text
     Quick fix (Turbo mode). Effort: low.
+    Standalone research context (include ONLY if RESEARCH_CONTEXT was non-empty — omit this entire block otherwise):
+    <standalone_research_context>
+    Prior research findings from /vbw:research. Advisory — verify all claims against the current codebase before relying on them.
+    {RESEARCH_CONTEXT}
+    </standalone_research_context>
     Task: {fix description}.
     {If detail was loaded in step 1, include on next lines:
     "Extended context (from todo detail):
