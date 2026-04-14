@@ -48,7 +48,7 @@ fail() {
 
 expected_skill_contract_sites() {
   case "$(basename "$1")" in
-    vibe.md) echo 8 ;;
+    vibe.md) echo 10 ;;
     debug.md) echo 2 ;;
     research.md|fix.md|qa.md|execute-protocol.md) echo 1 ;;
     map.md) echo 2 ;;
