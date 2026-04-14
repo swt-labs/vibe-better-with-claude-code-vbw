@@ -429,6 +429,8 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
   - After writing the plan, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
 
 - **stage=execute:** Spawn a Dev subagent per `R{RR}-PLAN.md`:
+  - Before composing the Dev task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. The Dev prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none apply — {reason}") so the user has visibility before the agent is spawned. Only include skills whose description matches the task at hand.
+  - Also evaluate available MCP tools in your system context. If any MCP servers provide build, test, or domain-specific capabilities relevant to the remediation tasks, note them in the Dev's task context.
   - Always subagent — NO team creation for QA remediation (NON-NEGOTIABLE)
   - Dev fixes code, commits, writes `R{RR}-SUMMARY.md` in `{round_dir}` using `templates/REMEDIATION-SUMMARY.md` (NOT `templates/SUMMARY.md`)
     - The remediation summary frontmatter MUST include aggregated `commit_hashes`, `files_modified`, and `deviations`
@@ -438,6 +440,8 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 
 - **stage=verify:** Re-run QA:
   - Run `compile-verify-context.sh --remediation-only {phase-dir}` to get compounded verification history plus the current round's plan/summary context only
+  - Before composing the QA task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to verifying this remediation round's work. The QA prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none apply — {reason}") so the user has visibility before the agent is spawned. Only include skills whose description matches the verification task.
+  - Also evaluate available MCP tools in your system context. If any MCP servers provide build, test, documentation, or domain-specific capabilities relevant to verification, note them in the QA task context.
   - Spawn QA agent as subagent — writes to `{verification_path}` (from `qa-remediation-state.sh get` metadata)
     - The output path is `{round_dir}/R{RR}-VERIFICATION.md` — NOT the phase-level file
     - Phase-level VERIFICATION.md stays frozen as the original QA FAIL result
