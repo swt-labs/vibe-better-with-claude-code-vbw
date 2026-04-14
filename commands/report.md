@@ -40,11 +40,13 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
 ## Steps
 
-1. **Collect diagnostics.** Run the diagnostic collection script from the resolved plugin root. Pass the plugin root path as the first argument and the working directory as the second:
+1. **Collect diagnostics and persist to temp file.** Run the diagnostic collection script from the resolved plugin root. Pass the plugin root path as the first argument and the working directory as the second. Persist the output to a temp file so it can be embedded verbatim in the issue body later, even if context compaction occurs between this step and the filing step:
     ```bash
-    bash <plugin-root>/scripts/collect-diagnostics.sh "<plugin-root>" "$(pwd)"
+    DIAG_FILE=$(mktemp /tmp/vbw-diag-report.XXXXXX.txt)
+    bash <plugin-root>/scripts/collect-diagnostics.sh "<plugin-root>" "$(pwd)" | tee "$DIAG_FILE"
+    echo "DIAG_FILE=$DIAG_FILE"
     ```
-    Capture the full output.
+    The diagnostic output appears in this tool result for display (step 2) and classification (step 3). The `DIAG_FILE=...` path printed at the end is needed in step 4 — note it for use in the filing step.
 
 2. **Display the report.** Show the diagnostic output verbatim inside a fenced code block. Do not paraphrase or reformat — the section headers and structure are designed for maintainer readability. If a problem description was provided, prepend it above the diagnostics:
 
@@ -63,6 +65,8 @@ This command collects diagnostics and files a GitHub issue — nothing else.
     - When the description is ambiguous or empty, classify as `bug`.
 
 4. **Compose and file the issue.**
+
+    The **Additional context** section contains the full diagnostic report collected in step 1. This diagnostic content is appended from the temp file (`$DIAG_FILE`) created in step 1 — do not reproduce the diagnostic output from memory. Write only the `**Additional context**` header in the body; the bash script handles appending the diagnostic content from the temp file.
 
     a. Derive a concise issue title from the problem description — summarize to ~10 words. Do not use the raw description verbatim as the title. If no description is provided, use `"Bug report from /vbw:report"` for bugs or `"Feature request from /vbw:report"` for features.
 
@@ -92,7 +96,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
     - Model: Not specified
 
     **Additional context**
-    {full diagnostic report output in a fenced code block}
+    {diagnostic report — appended from temp file in the filing step, not written here}
     ```
     </example>
 
@@ -110,7 +114,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
     Not provided — please edit this section
 
     **Additional context**
-    {full diagnostic report output in a fenced code block}
+    {diagnostic report — appended from temp file in the filing step, not written here}
     ```
     </example>
     </examples>
@@ -125,19 +129,26 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     Check: `gh auth status 2>/dev/null`
 
-    If `gh` is installed and authenticated, file via temp files for safe quoting:
+    If `gh` is installed and authenticated, file via temp files for safe quoting. The body heredoc contains everything except the diagnostic report. The diagnostic content is appended from the temp file created in step 1:
     ```bash
     ISSUE_BODY_FILE=$(mktemp /tmp/vbw-issue-body.XXXXXX.md)
     ISSUE_TITLE_FILE=$(mktemp /tmp/vbw-issue-title.XXXXXX.txt)
-    trap 'rm -f "$ISSUE_BODY_FILE" "$ISSUE_TITLE_FILE"' EXIT
+    trap 'rm -f "$ISSUE_BODY_FILE" "$ISSUE_TITLE_FILE" "$DIAG_FILE"' EXIT
 
     cat > "$ISSUE_TITLE_FILE" << 'ISSUE_TITLE_EOF'
     <composed title>
     ISSUE_TITLE_EOF
 
     cat > "$ISSUE_BODY_FILE" << 'ISSUE_BODY_EOF'
-    <composed body content>
+    <composed body sections WITHOUT the diagnostic report>
+
+    **Additional context**
     ISSUE_BODY_EOF
+
+    # Append the full diagnostic report from the temp file
+    printf '```\n' >> "$ISSUE_BODY_FILE"
+    cat "$DIAG_FILE" >> "$ISSUE_BODY_FILE"
+    printf '```\n' >> "$ISSUE_BODY_FILE"
 
     gh issue create --repo swt-labs/vibe-better-with-claude-code-vbw \
       --title "$(cat "$ISSUE_TITLE_FILE")" \
@@ -147,12 +158,12 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     **Method 2 — GitHub MCP server (if available):**
 
-    If `gh` is not installed or not authenticated, check if `mcp__github__issue_write` is available in your tool list. If it is, call it with:
+    If `gh` is not installed or not authenticated, check if `mcp__github__issue_write` is available in your tool list. If it is, first read the diagnostic report from the temp file (`cat "$DIAG_FILE"`), then compose the full body by combining the non-diagnostic sections with the diagnostic output in a code fence under `**Additional context**`. Call the tool with:
     - `method`: `create`
     - `owner`: `swt-labs`
     - `repo`: `vibe-better-with-claude-code-vbw`
     - `title`: The composed title
-    - `body`: The composed body
+    - `body`: The composed body (with full diagnostic report from the temp file)
     - `labels`: `["bug"]` or `["enhancement"]` based on classification
     - `assignees`: `["dpearson2699"]`
 
@@ -175,7 +186,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     **Method 4 — Manual fallback (last resort):**
 
-    If all of the above fail (install refused, auth failed, network error, etc.), display the composed issue title, body, and a link:
+    If all of the above fail (install refused, auth failed, network error, etc.), read the diagnostic report from the temp file (`cat "$DIAG_FILE"`) and display the composed issue title, body (with full diagnostics), and a link:
     ```
     ⚠ Could not file issue automatically.
     File manually: https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new?template=<bug_report.md or feature_request.md>
