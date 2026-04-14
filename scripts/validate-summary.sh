@@ -99,8 +99,9 @@ fi
 
 # Conditional ac_results check: only when corresponding PLAN has must_haves
 # Skip remediation summaries — they use a different template without ac_results
+# Matches both template-named (*REMEDIATION*) and runtime-named (R01-SUMMARY.md) files
 case "$(basename "$FILE_PATH")" in
-  *REMEDIATION*) ;;
+  *REMEDIATION*|R[0-9]*-SUMMARY.md) ;;
   *)
 PLAN_PATH=$(echo "$FILE_PATH" | sed 's/SUMMARY\.md$/PLAN.md/')
 if [ -f "$PLAN_PATH" ]; then
