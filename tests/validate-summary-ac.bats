@@ -302,3 +302,34 @@ SUMMARY
   [ "$status" -eq 0 ]
   [[ "$output" != *"ac_results"* ]]
 }
+
+@test "validate-summary-ac: no advisory when empty must_haves followed by flow-style top-level key" {
+  cat > .vbw-planning/phases/01-test/01-01-PLAN.md <<'PLAN'
+---
+must_haves:
+  truths: []
+  artifacts: []
+  key_links: []
+outputs: ["report.md"]
+---
+PLAN
+
+  cat > .vbw-planning/phases/01-test/01-01-SUMMARY.md <<'SUMMARY'
+---
+phase: 1
+plan: 1
+status: complete
+---
+## What Was Built
+A widget
+
+## Files Modified
+- src/widget.ts
+SUMMARY
+
+  local input
+  input=$(jq -n --arg fp "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-01-SUMMARY.md" '{"tool_input":{"file_path":$fp}}')
+  run bash -c "echo '$input' | bash '$SCRIPTS_DIR/validate-summary.sh'"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"ac_results"* ]]
+}

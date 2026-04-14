@@ -101,8 +101,9 @@ fi
 PLAN_PATH=$(echo "$FILE_PATH" | sed 's/SUMMARY\.md$/PLAN.md/')
 if [ -f "$PLAN_PATH" ]; then
   # Check if plan has non-empty must_haves (block-style dash items OR flow-style non-empty arrays)
+  # Pipe through grep '^ ' to keep only indented children (BSD sed compatible)
   _VS_HAS_MH=""
-  if sed -n '/^must_haves:/,/^[^ ]/p' "$PLAN_PATH" 2>/dev/null | grep -qE '^ *- |: *\[[^]]+\]'; then
+  if sed -n '/^must_haves:/,/^[^ ]/p' "$PLAN_PATH" 2>/dev/null | grep '^ ' | grep -qE '^ *- |: *\[[^]]+\]'; then
     _VS_HAS_MH=true
   fi
   if [ "$_VS_HAS_MH" = true ]; then
