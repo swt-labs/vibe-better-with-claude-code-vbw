@@ -359,7 +359,8 @@ ENDSESSION
       if stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH" > /dev/null 2>&1; then
         created_ts=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH")  # macOS/BSD
       elif stat -c '%Y' "$NEW_PATH" > /dev/null 2>&1; then
-        created_ts=$(date -d "@$(stat -c '%Y' "$NEW_PATH")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')  # GNU/Linux
+        _epoch=$(stat -c '%Y' "$NEW_PATH")
+        created_ts=$(date -d "@$_epoch" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date -r "$_epoch" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')  # GNU/Linux / mixed coreutils
       else
         created_ts=$(date '+%Y-%m-%d %H:%M:%S')  # fallback
       fi
@@ -419,8 +420,8 @@ ENDSESSION
         # Guard update_field with || inject_field fallback: if the field key
         # exists but update_field fails (e.g. malformed frontmatter without
         # closing ---), fall back to inject_field which is more tolerant.
-        _defaults="status:complete base_commit:unknown type:standalone-research confidence:medium linked_sessions:[]"
-        for _pair in $_defaults; do
+        _defaults=("status:complete" "base_commit:unknown" "type:standalone-research" "confidence:medium" "linked_sessions:[]")
+        for _pair in "${_defaults[@]}"; do
           _field="${_pair%%:*}"
           _val=$(read_field "$NEW_PATH" "$_field")
           if [ -z "$_val" ]; then
