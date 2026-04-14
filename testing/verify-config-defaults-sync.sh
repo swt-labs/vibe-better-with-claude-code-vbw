@@ -61,17 +61,19 @@ for setting in $md_settings; do
 done
 
 # --- Check 3: Default values match for simple types ---
-# Skip object/array types where table uses shorthand representations.
+# For object/array types, use compact JSON for comparison where the table
+# uses JSON-like notation, or skip where the table uses shorthand.
 echo ""
-echo "--- Check: default values match for simple types ---"
+echo "--- Check: default values match ---"
 
-COMPLEX_KEYS="custom_profiles model_overrides agent_max_turns qa_skip_agents"
+# Settings whose table representation uses non-JSON shorthand
+SHORTHAND_KEYS="agent_max_turns"
 
 for key in $json_keys; do
-  # Skip complex types
+  # Skip shorthand keys (table format differs fundamentally from JSON)
   skip=false
-  for ck in $COMPLEX_KEYS; do
-    if [ "$key" = "$ck" ]; then
+  for sk in $SHORTHAND_KEYS; do
+    if [ "$key" = "$sk" ]; then
       skip=true
       break
     fi
@@ -79,8 +81,6 @@ for key in $json_keys; do
   if $skip; then
     continue
   fi
-
-  json_val=$(jq -r --arg k "$key" '.[$k]' "$DEFAULTS_JSON")
 
   # Extract the default column (4th field) from the matching config.md row
   md_row=$(grep -E "^\| ${key} \|" "$CONFIG_MD" || true)
@@ -90,6 +90,14 @@ for key in $json_keys; do
   fi
 
   md_default=$(echo "$md_row" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $5); print $5}')
+
+  # Use compact JSON for object/array types, raw output for scalars
+  json_type=$(jq -r --arg k "$key" '.[$k] | type' "$DEFAULTS_JSON")
+  if [ "$json_type" = "object" ] || [ "$json_type" = "array" ]; then
+    json_val=$(jq -c --arg k "$key" '.[$k]' "$DEFAULTS_JSON")
+  else
+    json_val=$(jq -r --arg k "$key" '.[$k]' "$DEFAULTS_JSON")
+  fi
 
   if [ "$json_val" = "$md_default" ]; then
     pass "'$key' default matches: $json_val"
