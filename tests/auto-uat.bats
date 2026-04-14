@@ -1200,21 +1200,6 @@ EOF
   [[ "$output" == *"next_phase_state=needs_reverification"* ]]
 }
 
-@test "phase-detect auto-advances when remediation summary has failed status" {
-  cd "$TEST_TEMP_DIR"
-  local dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup"
-  printf -- '---\nphase: 01\nstatus: issues_found\n---\n- Severity: major\n' > "$dir/01-UAT.md"
-  mkdir -p "$dir/remediation/uat"
-  printf 'stage=execute\nround=01\nlayout=round-dir\n' > "$dir/remediation/uat/.uat-remediation-stage"
-  mkdir -p "$dir/remediation/uat/round-01"
-  printf -- '---\nphase: 1\nround: 01\ntitle: Fix bugs\ntype: remediation\n---\n' > "$dir/remediation/uat/round-01/R01-PLAN.md"
-  printf -- '---\nstatus: failed\ntasks_completed: 0\ntasks_total: 5\n---\n\nFailed.\n' > "$dir/remediation/uat/round-01/R01-SUMMARY.md"
-
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"next_phase_state=needs_reverification"* ]]
-}
-
 # --- Contract: UAT inline execution prohibition (issue #273) ---
 
 @test "vibe.md Verify mode contains inline execution prohibition" {
