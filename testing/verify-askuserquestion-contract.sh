@@ -33,7 +33,7 @@ extract_body() {
   local file="$1"
   awk '
     BEGIN { delim=0 }
-    /^---$/ { delim++; next }
+    /^---$/ && delim < 2 { delim++; next }
     delim >= 2 { print }
   ' "$file"
 }
