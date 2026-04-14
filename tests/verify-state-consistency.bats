@@ -861,3 +861,79 @@ SUMMARY
 
   echo "$output" | jq -r '.failed_checks[]' | grep -q "missing_state_md"
 }
+
+# ---------------------------------------------------------------------------
+# Reverse plan check: on-disk plans not in .execution-state.json
+# ---------------------------------------------------------------------------
+
+@test "exec_state reverse check detects on-disk plan not in JSON plans array" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Create execution-state that only mentions one plan
+  cat > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json" <<'EOF'
+{
+  "phase": 2,
+  "status": "running",
+  "plans": [
+    {"id": "02-01", "status": "running"}
+  ]
+}
+EOF
+
+  # Add a second plan on disk that is NOT in .plans[]
+  echo "# Plan" > "$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api/extra-plan-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"extra-plan"* ]]
+  [[ "$c3_detail" == *"not found in .execution-state.json"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# Archive mode: unparseable project name
+# ---------------------------------------------------------------------------
+
+@test "archive mode fails on unparseable PROJECT.md project name" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Remove the heading from PROJECT.md so project name can't be parsed
+  echo "No heading here" > "$TEST_TEMP_DIR/.vbw-planning/PROJECT.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  local c5_pass
+  c5_pass=$(echo "$output" | jq -r '.checks.project_vs_state.pass')
+  [ "$c5_pass" = "false" ]
+
+  local c5_detail
+  c5_detail=$(echo "$output" | jq -r '.checks.project_vs_state.detail')
+  [[ "$c5_detail" == *"unparseable"* ]]
+}
+
+@test "advisory mode skips on unparseable PROJECT.md project name" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  echo "No heading here" > "$TEST_TEMP_DIR/.vbw-planning/PROJECT.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c5_pass
+  c5_pass=$(echo "$output" | jq -r '.checks.project_vs_state.pass')
+  [ "$c5_pass" = "true" ]
+
+  local c5_detail
+  c5_detail=$(echo "$output" | jq -r '.checks.project_vs_state.detail')
+  [[ "$c5_detail" == *"skip"* ]]
+}

@@ -443,6 +443,33 @@ run_check_exec_state_vs_filesystem() {
     check_exec_state_vs_filesystem_pass=false
   fi
 
+  # Reverse check: on-disk plan artifacts not represented in .plans[]
+  if [ "$plan_count" -gt 0 ]; then
+    local disk_plans_missing=""
+    local plan_file plan_base disk_plan_id found_in_json
+    while IFS= read -r plan_file; do
+      [ -n "$plan_file" ] || continue
+      plan_base=$(basename "$plan_file")
+      # Extract plan ID from filename: {plan_id}-PLAN.md
+      disk_plan_id=$(printf '%s' "$plan_base" | sed 's/-PLAN\.md$//')
+      [ -n "$disk_plan_id" ] || continue
+      # Check if this plan ID exists in .plans[]
+      found_in_json=$(jq -r --arg pid "$disk_plan_id" '.plans[]? | select(.id == $pid) | .id' "$EXEC_STATE_FILE" 2>/dev/null || true)
+      if [ -z "$found_in_json" ]; then
+        disk_plans_missing="${disk_plans_missing:+$disk_plans_missing, }on-disk plan '$disk_plan_id' not found in .execution-state.json .plans[]"
+      fi
+    done < <(find "$target_dir" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | sort)
+
+    if [ -n "$disk_plans_missing" ]; then
+      if [ -n "$details" ]; then
+        details="$details; $disk_plans_missing"
+      else
+        details="$disk_plans_missing"
+      fi
+      check_exec_state_vs_filesystem_pass=false
+    fi
+  fi
+
   if [ "$check_exec_state_vs_filesystem_pass" = "false" ]; then
     check_exec_state_vs_filesystem_detail="$details"
   fi
@@ -519,12 +546,22 @@ run_check_project_vs_state() {
   state_name="$STATE_PROJECT_NAME"
 
   if [ -z "$project_name" ]; then
-    check_project_vs_state_detail="skip: could not parse project name from PROJECT.md"
+    if [ "$MODE" = "archive" ]; then
+      check_project_vs_state_pass=false
+      check_project_vs_state_detail="unparseable project name from PROJECT.md"
+    else
+      check_project_vs_state_detail="skip: could not parse project name from PROJECT.md"
+    fi
     return
   fi
 
   if [ -z "$state_name" ]; then
-    check_project_vs_state_detail="skip: could not parse project name from STATE.md"
+    if [ "$MODE" = "archive" ]; then
+      check_project_vs_state_pass=false
+      check_project_vs_state_detail="unparseable project name from STATE.md"
+    else
+      check_project_vs_state_detail="skip: could not parse project name from STATE.md"
+    fi
     return
   fi
 
