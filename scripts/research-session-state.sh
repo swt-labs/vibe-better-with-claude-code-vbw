@@ -89,6 +89,28 @@ update_field() {
   fi
 }
 
+# Inject a frontmatter field if it doesn't already exist
+inject_field() {
+  local target="$1" fname="$2" fval="$3"
+  # Check if field exists within frontmatter only (not body)
+  if awk -v field="$fname" '
+    /^---$/ { if (!s) { s=1; f=1; next } if (f) exit }
+    f && index($0, field ":") == 1 { found=1; exit }
+    END { exit !found }
+  ' "$target" 2>/dev/null; then
+    return  # Field already exists in frontmatter
+  fi
+  # Insert field before the closing --- (second occurrence)
+  awk -v field="$fname" -v value="$fval" '
+    BEGIN { delim = 0 }
+    $0 == "---" {
+      delim++
+      if (delim == 2) { print field ": " value }
+    }
+    { print }
+  ' "$target" > "$target.tmp" && mv "$target.tmp" "$target"
+}
+
 # Validate session name format: YYYYMMDD-HHMMSS-slug.md
 validate_session_name() {
   local name="$1"
@@ -366,28 +388,6 @@ ENDSESSION
         } > "$NEW_PATH.tmp" && mv "$NEW_PATH.tmp" "$NEW_PATH"
       else
         # File has frontmatter — backfill missing required fields and ensure status=complete
-        # inject_field: add a field before the closing --- if not already present
-        inject_field() {
-          local target="$1" fname="$2" fval="$3"
-          # Check if field exists within frontmatter only (not body)
-          if awk -v field="$fname" '
-            /^---$/ { if (!s) { s=1; f=1; next } if (f) exit }
-            f && index($0, field ":") == 1 { found=1; exit }
-            END { exit !found }
-          ' "$target" 2>/dev/null; then
-            return  # Field already exists in frontmatter
-          fi
-          # Insert field before the closing --- (second occurrence)
-          awk -v field="$fname" -v value="$fval" '
-            BEGIN { delim = 0 }
-            $0 == "---" {
-              delim++
-              if (delim == 2) { print field ": " value }
-            }
-            { print }
-          ' "$target" > "$target.tmp" && mv "$target.tmp" "$target"
-        }
-
         inject_field "$NEW_PATH" "status" "complete"
         inject_field "$NEW_PATH" "base_commit" "unknown"
         inject_field "$NEW_PATH" "type" "standalone-research"
