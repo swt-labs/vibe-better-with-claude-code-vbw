@@ -2438,7 +2438,11 @@ EOF
 
   run bash "$SCRIPTS_DIR/phase-detect.sh"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "qa_status=pending"
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
 }
 
 @test "first_qa_attention targets stale QA even when terminal UAT exists" {
