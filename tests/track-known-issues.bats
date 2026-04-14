@@ -569,10 +569,10 @@ write_known_issues_registry() {
   grep -q "(see remediation/qa/round-01/R01-SUMMARY.md)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
-@test "track-known-issues: promote-todos preserves earlier acceptance when later round has non-accepted disposition" {
-  # R01 accepts issue as process-exception, R02 resolves it → resolved is filtered by parser,
-  # so R01's accepted-process-exception survives (only accepted-process-exception dispositions
-  # enter the aggregator; resolved/unresolved dispositions are excluded by the single-file parser)
+@test "track-known-issues: promote-todos later resolved disposition overrides earlier acceptance and prevents promotion" {
+  # R01 accepts issue as process-exception, R02 resolves it → both dispositions
+  # enter the aggregator via "all" filter, merge_issue_sets gives R02's "resolved"
+  # priority, and the post-merge filter excludes non-accepted-process-exception entries
   write_state_md_with_todos "None."
   echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
 

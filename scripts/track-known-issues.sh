@@ -444,7 +444,7 @@ extract_summary_known_issue_outcomes_json() {
   rm -f "$tmp_json"
 }
 
-extract_latest_summary_known_issue_outcomes_json() {
+aggregate_summary_known_issue_outcomes_json() {
   # Aggregate accepted-process-exception outcomes across ALL remediation round
   # summaries, not just the latest. When the same [test, file, error] appears in
   # multiple rounds, the latest round's disposition wins (merge_issue_sets
@@ -671,7 +671,7 @@ promote_todos() {
 
   local issues_json accepted_outcomes_json promotable_json
   issues_json=$(load_registry_issues)
-  accepted_outcomes_json=$(extract_latest_summary_known_issue_outcomes_json)
+  accepted_outcomes_json=$(aggregate_summary_known_issue_outcomes_json)
   promotable_json=$(merge_issue_sets "$issues_json" "$accepted_outcomes_json")
   local total
   total=$(printf '%s' "$promotable_json" | jq 'length')
