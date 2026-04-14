@@ -42,7 +42,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
 1. **Collect diagnostics and persist to temp file.** Run the diagnostic collection script from the resolved plugin root. Pass the plugin root path as the first argument and the working directory as the second. Persist the output to a temp file so it can be embedded verbatim in the issue body later, even if context compaction occurs between this step and the filing step:
     ```bash
-    set -o pipefail
+    set -eo pipefail
     DIAG_FILE="/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt"
     ( umask 077; : > "$DIAG_FILE" )
     bash <plugin-root>/scripts/collect-diagnostics.sh "<plugin-root>" "$(pwd)" | tee "$DIAG_FILE"
@@ -50,7 +50,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
     ```
     The diagnostic output appears in this tool result for display (step 2) and classification (step 3). The temp file path is session-scoped via `CLAUDE_SESSION_ID` (set by VBW hooks) — deterministic across separate Bash invocations within a session and unique across concurrent sessions. When `CLAUDE_SESSION_ID` is unset, the literal `default` fallback keeps the path deterministic but shared across concurrent sessions (acceptable since this only applies when VBW hooks are inactive). Note the `DIAG_FILE=...` path printed at the end for use in step 4.
 
-2. **Display the report.** Show the diagnostic output verbatim inside a fenced code block. Do not paraphrase or reformat — the section headers and structure are designed for maintainer readability. If a problem description was provided, prepend it above the diagnostics:
+2. **Display the report.** Show the diagnostic output inside a fenced code block. Use only the `collect-diagnostics.sh` output (the content before the `DIAG_FILE=...` line) — do not include the `DIAG_FILE=` path line in the displayed report. Do not paraphrase or reformat — the section headers and structure are designed for maintainer readability. If a problem description was provided, prepend it above the diagnostics:
 
     ```
     ## Problem Description
@@ -68,7 +68,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
 4. **Compose and file the issue.**
 
-    The **Additional context** section contains the full diagnostic report collected in step 1. This diagnostic content is appended from the temp file (`$DIAG_FILE`) created in step 1 — do not reproduce the diagnostic output from memory. Write only the `**Additional context**` header in the body; the bash script handles appending the diagnostic content from the temp file.
+    The **Additional context** section contains the full diagnostic report collected in step 1. Always source this diagnostic content from the temp file (`$DIAG_FILE`) created in step 1 — do not reproduce the diagnostic output from memory. For Method 1 (`gh` CLI flow), write only the `**Additional context**` header in the body because the bash script appends the diagnostic content from `$DIAG_FILE`. For Methods 2 (MCP) and 4 (manual), compose the full `**Additional context**` section by reading the diagnostics from `$DIAG_FILE`.
 
     a. Derive a concise issue title from the problem description — summarize to ~10 words. Do not use the raw description verbatim as the title. If no description is provided, use `"Bug report from /vbw:report"` for bugs or `"Feature request from /vbw:report"` for features.
 
