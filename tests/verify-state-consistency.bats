@@ -937,3 +937,86 @@ EOF
   c5_detail=$(echo "$output" | jq -r '.checks.project_vs_state.detail')
   [[ "$c5_detail" == *"skip"* ]]
 }
+
+# ---------------------------------------------------------------------------
+# Reverse plan check with empty .plans[] array
+# ---------------------------------------------------------------------------
+
+@test "exec_state reverse check runs when plans array is empty" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Create execution-state with empty plans array but on-disk plan exists
+  cat > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json" <<'EOF'
+{
+  "phase": 2,
+  "status": "running",
+  "plans": []
+}
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  # Should detect on-disk plan not in .plans[] AND "running but no plans"
+  [[ "$c3_detail" == *"not found in .execution-state.json"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# ROADMAP references phase with no matching directory
+# ---------------------------------------------------------------------------
+
+@test "roadmap references phase with no matching dir fails in archive mode" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Add a phantom phase to ROADMAP that has no directory
+  cat >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+### Phase 4: Phantom
+- [ ] Phase 4: Phantom
+EOF
+
+  # Also update STATE.md to reflect 4 phases so other checks don't interfere
+  sed -i.bak 's/Phase: 2 of 3/Phase: 2 of 4/' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  rm -f "$TEST_TEMP_DIR/.vbw-planning/STATE.md.bak"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  local c2_pass
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  [ "$c2_pass" = "false" ]
+
+  local c2_detail
+  c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
+  [[ "$c2_detail" == *"no matching phase directory"* ]]
+}
+
+@test "roadmap references phase with no matching dir skips in advisory mode" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Add a phantom phase to ROADMAP that has no directory
+  cat >> "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+### Phase 4: Phantom
+- [ ] Phase 4: Phantom
+EOF
+
+  sed -i.bak 's/Phase: 2 of 3/Phase: 2 of 4/' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  rm -f "$TEST_TEMP_DIR/.vbw-planning/STATE.md.bak"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c2_pass
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  # Advisory mode: missing phase dir doesn't add a mismatch, so this could still pass
+  # (only the roadmap_vs_summaries check is affected, and only in archive mode)
+  [ "$c2_pass" = "true" ]
+}

@@ -282,7 +282,10 @@ run_check_roadmap_vs_summaries() {
     done < <(list_canonical_phase_dirs "$PHASES_DIR")
 
     if [ -z "$phase_dir" ]; then
-      continue  # phase dir not found — skip this entry
+      if [ "$MODE" = "archive" ]; then
+        mismatches="${mismatches:+$mismatches, }phase $phase_num referenced in ROADMAP.md but no matching phase directory"
+      fi
+      continue
     fi
 
     plans=$(count_phase_plans "$phase_dir")
@@ -444,30 +447,29 @@ run_check_exec_state_vs_filesystem() {
   fi
 
   # Reverse check: on-disk plan artifacts not represented in .plans[]
-  if [ "$plan_count" -gt 0 ]; then
-    local disk_plans_missing=""
-    local plan_file plan_base disk_plan_id found_in_json
-    while IFS= read -r plan_file; do
-      [ -n "$plan_file" ] || continue
-      plan_base=$(basename "$plan_file")
-      # Extract plan ID from filename: {plan_id}-PLAN.md
-      disk_plan_id=$(printf '%s' "$plan_base" | sed 's/-PLAN\.md$//')
-      [ -n "$disk_plan_id" ] || continue
-      # Check if this plan ID exists in .plans[]
-      found_in_json=$(jq -r --arg pid "$disk_plan_id" '.plans[]? | select(.id == $pid) | .id' "$EXEC_STATE_FILE" 2>/dev/null || true)
-      if [ -z "$found_in_json" ]; then
-        disk_plans_missing="${disk_plans_missing:+$disk_plans_missing, }on-disk plan '$disk_plan_id' not found in .execution-state.json .plans[]"
-      fi
-    done < <(find "$target_dir" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | sort)
-
-    if [ -n "$disk_plans_missing" ]; then
-      if [ -n "$details" ]; then
-        details="$details; $disk_plans_missing"
-      else
-        details="$disk_plans_missing"
-      fi
-      check_exec_state_vs_filesystem_pass=false
+  # Runs regardless of plan_count — an empty .plans[] with on-disk plans is drift
+  local disk_plans_missing=""
+  local plan_file plan_base disk_plan_id found_in_json
+  while IFS= read -r plan_file; do
+    [ -n "$plan_file" ] || continue
+    plan_base=$(basename "$plan_file")
+    # Extract plan ID from filename: {plan_id}-PLAN.md
+    disk_plan_id=$(printf '%s' "$plan_base" | sed 's/-PLAN\.md$//')
+    [ -n "$disk_plan_id" ] || continue
+    # Check if this plan ID exists in .plans[]
+    found_in_json=$(jq -r --arg pid "$disk_plan_id" '.plans[]? | select(.id == $pid) | .id' "$EXEC_STATE_FILE" 2>/dev/null || true)
+    if [ -z "$found_in_json" ]; then
+      disk_plans_missing="${disk_plans_missing:+$disk_plans_missing, }on-disk plan '$disk_plan_id' not found in .execution-state.json .plans[]"
     fi
+  done < <(find "$target_dir" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | sort)
+
+  if [ -n "$disk_plans_missing" ]; then
+    if [ -n "$details" ]; then
+      details="$details; $disk_plans_missing"
+    else
+      details="$disk_plans_missing"
+    fi
+    check_exec_state_vs_filesystem_pass=false
   fi
 
   if [ "$check_exec_state_vs_filesystem_pass" = "false" ]; then
