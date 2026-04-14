@@ -479,6 +479,11 @@ run_check_exec_state_vs_filesystem() {
     fi
   done < <(find "$target_dir" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | sort)
 
+  # Also check for bare legacy PLAN.md not represented in .plans[]
+  if [ -f "$target_dir/PLAN.md" ] && [ "$plan_count" -eq 0 ]; then
+    disk_plans_missing="${disk_plans_missing:+$disk_plans_missing, }on-disk bare PLAN.md not represented in .execution-state.json .plans[]"
+  fi
+
   if [ -n "$disk_plans_missing" ]; then
     if [ -n "$details" ]; then
       details="$details; $disk_plans_missing"
