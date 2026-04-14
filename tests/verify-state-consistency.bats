@@ -591,3 +591,133 @@ EOF
   verdict=$(echo "$output" | jq -r '.verdict')
   [ "$verdict" = "skip" ]
 }
+
+# ---------------------------------------------------------------------------
+# Malformed artifact handling (archive vs advisory)
+# ---------------------------------------------------------------------------
+
+@test "archive mode fails on malformed STATE.md Phase line" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Corrupt the Phase line so it can't be parsed
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# State
+**Project:** Test Project
+**Milestone:** MVP
+Phase: GARBAGE not a number
+Plans: 0/0
+Progress: 0%
+Status: ready
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  local verdict
+  verdict=$(echo "$output" | jq -r '.verdict')
+  [ "$verdict" = "fail" ]
+
+  # state_vs_filesystem and state_vs_roadmap should both fail
+  echo "$output" | jq -r '.failed_checks[]' | grep -q "state_vs_filesystem"
+  echo "$output" | jq -r '.failed_checks[]' | grep -q "state_vs_roadmap"
+
+  local c1_detail
+  c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
+  [[ "$c1_detail" == *"unparseable"* ]]
+}
+
+@test "advisory mode skips on malformed STATE.md Phase line" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Corrupt the Phase line
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# State
+**Project:** Test Project
+**Milestone:** MVP
+Phase: GARBAGE not a number
+Plans: 0/0
+Progress: 0%
+Status: ready
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c1_detail
+  c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
+  [[ "$c1_detail" == *"skip"* ]]
+
+  local c1_pass
+  c1_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
+  [ "$c1_pass" = "true" ]
+}
+
+@test "archive mode fails on invalid execution-state JSON" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Write invalid JSON
+  echo "NOT JSON {{{" > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"invalid"* ]]
+}
+
+@test "advisory mode skips on invalid execution-state JSON" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  echo "NOT JSON {{{" > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "true" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"skip"* ]]
+}
+
+@test "exec_state pending plan with existing SUMMARY.md detects stale status" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Create an execution-state with a pending plan that already has a SUMMARY
+  cat > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json" <<'EOF'
+{
+  "phase": 2,
+  "status": "running",
+  "plans": [
+    {"id": "stale-plan", "status": "pending"}
+  ]
+}
+EOF
+
+  # Create the plan file (required for pending) AND a summary (stale)
+  touch "$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api/stale-plan-PLAN.md"
+  touch "$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api/stale-plan-SUMMARY.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"stale status"* ]]
+}

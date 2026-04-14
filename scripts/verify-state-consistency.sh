@@ -169,7 +169,12 @@ find_active_phase_num() {
 # =============================================================================
 run_check_state_vs_filesystem() {
   if ! parse_state_phase "$STATE_FILE"; then
-    check_state_vs_filesystem_detail="skip: could not parse Phase line from STATE.md"
+    if [ "$MODE" = "archive" ]; then
+      check_state_vs_filesystem_pass=false
+      check_state_vs_filesystem_detail="unparseable Phase line in STATE.md"
+    else
+      check_state_vs_filesystem_detail="skip: could not parse Phase line from STATE.md"
+    fi
     return
   fi
 
@@ -278,7 +283,12 @@ run_check_exec_state_vs_filesystem() {
 
   # Validate JSON
   if ! jq empty "$EXEC_STATE_FILE" 2>/dev/null; then
-    check_exec_state_vs_filesystem_detail="skip: .execution-state.json is not valid JSON"
+    if [ "$MODE" = "archive" ]; then
+      check_exec_state_vs_filesystem_pass=false
+      check_exec_state_vs_filesystem_detail="invalid .execution-state.json (not valid JSON)"
+    else
+      check_exec_state_vs_filesystem_detail="skip: .execution-state.json is not valid JSON"
+    fi
     return
   fi
 
@@ -287,7 +297,12 @@ run_check_exec_state_vs_filesystem() {
   es_status=$(jq -r '.status // empty' "$EXEC_STATE_FILE" 2>/dev/null || true)
 
   if [ -z "$es_phase" ] || [ -z "$es_status" ]; then
-    check_exec_state_vs_filesystem_detail="skip: .execution-state.json missing phase or status"
+    if [ "$MODE" = "archive" ]; then
+      check_exec_state_vs_filesystem_pass=false
+      check_exec_state_vs_filesystem_detail=".execution-state.json missing phase or status"
+    else
+      check_exec_state_vs_filesystem_detail="skip: .execution-state.json missing phase or status"
+    fi
     return
   fi
 
@@ -360,6 +375,10 @@ run_check_exec_state_vs_filesystem() {
           if [ ! -f "$target_dir/${plan_id}-PLAN.md" ]; then
             plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' status=$plan_status but no ${plan_id}-PLAN.md found"
           fi
+          # Stale status: pending/running plan already has a SUMMARY.md
+          if [ -f "$target_dir/${plan_id}-SUMMARY.md" ]; then
+            plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' status=$plan_status but ${plan_id}-SUMMARY.md already exists (stale status)"
+          fi
           ;;
       esac
     fi
@@ -385,7 +404,12 @@ run_check_exec_state_vs_filesystem() {
 # =============================================================================
 run_check_state_vs_roadmap() {
   if ! parse_state_phase "$STATE_FILE"; then
-    check_state_vs_roadmap_detail="skip: could not parse Phase line from STATE.md"
+    if [ "$MODE" = "archive" ]; then
+      check_state_vs_roadmap_pass=false
+      check_state_vs_roadmap_detail="unparseable Phase line in STATE.md"
+    else
+      check_state_vs_roadmap_detail="skip: could not parse Phase line from STATE.md"
+    fi
     return
   fi
 
