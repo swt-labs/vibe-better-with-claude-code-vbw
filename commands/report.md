@@ -42,10 +42,11 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
 1. **Collect diagnostics and persist to temp file.** Run the diagnostic collection script from the resolved plugin root. Pass the plugin root path as the first argument and the working directory as the second. Persist the output to a temp file so it can be embedded verbatim in the issue body later, even if context compaction occurs between this step and the filing step:
     ```bash
-    DIAG_FILE="/tmp/vbw-diag-report-latest.txt"
+    DIAG_FILE="/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-$$}.txt"
     bash <plugin-root>/scripts/collect-diagnostics.sh "<plugin-root>" "$(pwd)" | tee "$DIAG_FILE"
+    echo "DIAG_FILE=$DIAG_FILE"
     ```
-    The diagnostic output appears in this tool result for display (step 2) and classification (step 3). The temp file path is always `/tmp/vbw-diag-report-latest.txt` — a fixed, deterministic path that step 4 can reference directly without needing to carry the path through model context.
+    The diagnostic output appears in this tool result for display (step 2) and classification (step 3). The temp file path is session-scoped via `CLAUDE_SESSION_ID` (set by VBW hooks) with a PID fallback — deterministic within a session but unique across concurrent sessions. Note the `DIAG_FILE=...` path printed at the end for use in step 4.
 
 2. **Display the report.** Show the diagnostic output verbatim inside a fenced code block. Do not paraphrase or reformat — the section headers and structure are designed for maintainer readability. If a problem description was provided, prepend it above the diagnostics:
 
@@ -130,7 +131,7 @@ This command collects diagnostics and files a GitHub issue — nothing else.
 
     If `gh` is installed and authenticated, file via temp files for safe quoting. The body heredoc contains everything except the diagnostic report. The diagnostic content is appended from the temp file created in step 1:
     ```bash
-    DIAG_FILE="/tmp/vbw-diag-report-latest.txt"
+    DIAG_FILE="/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-$$}.txt"
     ISSUE_BODY_FILE=$(mktemp /tmp/vbw-issue-body.XXXXXX.md)
     ISSUE_TITLE_FILE=$(mktemp /tmp/vbw-issue-title.XXXXXX.txt)
     trap 'rm -f "$ISSUE_BODY_FILE" "$ISSUE_TITLE_FILE"' EXIT
