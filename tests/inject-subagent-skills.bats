@@ -28,6 +28,10 @@ teardown() {
 
 # --- inject-subagent-skills.sh removal verification ---
 
+@test "ORIG_HOME captures real HOME, not temp dir" {
+  [ "$ORIG_HOME" != "$TEST_TEMP_DIR" ]
+}
+
 @test "inject-subagent-skills: script is deleted" {
   [ ! -f "$SCRIPTS_DIR/inject-subagent-skills.sh" ]
 }
