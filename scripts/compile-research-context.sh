@@ -42,7 +42,11 @@ while [ $# -gt 0 ]; do
       shift 2
       ;;
     *)
-      DESCRIPTION="$1"
+      if [ -n "$DESCRIPTION" ]; then
+        DESCRIPTION="${DESCRIPTION} $1"
+      else
+        DESCRIPTION="$1"
+      fi
       shift
       ;;
   esac
