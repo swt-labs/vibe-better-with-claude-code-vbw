@@ -67,16 +67,29 @@ if [ -z "$PLANNING_DIR" ]; then
   PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 fi
 
-# Make absolute
+# Make absolute — resolve relative paths against repo root, not cwd
 case "$PLANNING_DIR" in
   /*) ;; # already absolute
-  *)  PLANNING_DIR="$(pwd)/$PLANNING_DIR" ;;
+  *)  repo_root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+      PLANNING_DIR="$repo_root/$PLANNING_DIR" ;;
 esac
 
 # --- Early exit: no project state -------------------------------------------
-if [ ! -d "$PLANNING_DIR" ] || [ ! -f "$PLANNING_DIR/STATE.md" ]; then
-  jq -n --arg mode "$MODE" '{verdict:"skip",mode:$mode,reason:"no project state",checks:{},failed_checks:[]}'
+if [ ! -d "$PLANNING_DIR" ]; then
+  jq -n --arg mode "$MODE" '{verdict:"skip",mode:$mode,reason:"no planning directory",checks:{},failed_checks:[]}'
   exit 0
+fi
+if [ ! -f "$PLANNING_DIR/STATE.md" ]; then
+  if [ "$MODE" = "archive" ]; then
+    jq -n '{verdict:"fail",mode:"archive",checks:{},failed_checks:["missing_state_md"]}'
+    exit 2
+  fi
+  jq -n '{verdict:"skip",mode:"advisory",reason:"no STATE.md",checks:{},failed_checks:[]}'
+  exit 0
+fi
+if [ ! -f "$PLANNING_DIR/ROADMAP.md" ] && [ "$MODE" = "archive" ]; then
+  jq -n '{verdict:"fail",mode:"archive",checks:{},failed_checks:["missing_roadmap_md"]}'
+  exit 2
 fi
 
 PHASES_DIR="$PLANNING_DIR/phases"

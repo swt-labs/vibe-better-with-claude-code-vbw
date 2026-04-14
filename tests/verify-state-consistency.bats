@@ -538,3 +538,56 @@ JSON
   # Verify the detail mentions the specific plan
   echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail' | grep -q "02-02"
 }
+
+@test "archive mode fails when STATE.md is missing" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  create_test_config
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  local verdict
+  verdict=$(echo "$output" | jq -r '.verdict')
+  [ "$verdict" = "fail" ]
+
+  echo "$output" | jq -r '.failed_checks[]' | grep -q "missing_state_md"
+}
+
+@test "archive mode fails when ROADMAP.md is missing" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  create_test_config
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# State
+**Project:** My Test Project
+**Milestone:** MVP
+Phase: 1 of 1 (Setup)
+Plans: 0/0
+Progress: 0%
+Status: ready
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  local verdict
+  verdict=$(echo "$output" | jq -r '.verdict')
+  [ "$verdict" = "fail" ]
+
+  echo "$output" | jq -r '.failed_checks[]' | grep -q "missing_roadmap_md"
+}
+
+@test "advisory mode skips when STATE.md is missing" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  create_test_config
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local verdict
+  verdict=$(echo "$output" | jq -r '.verdict')
+  [ "$verdict" = "skip" ]
+}
