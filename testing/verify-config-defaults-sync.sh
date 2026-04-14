@@ -33,7 +33,7 @@ echo "=== Config Defaults Sync Contract (Issue #373) ==="
 # Extract setting names from the markdown table.
 # Table rows look like: | setting_name | type | values | default |
 # Skip the header row (Setting) and separator row (------).
-md_settings=$(grep -E '^\| [a-z_]+ \|' "$CONFIG_MD" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}')
+md_settings=$(grep -E '^\| [a-z0-9_]+ \|' "$CONFIG_MD" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}')
 
 # Extract keys from defaults.json
 json_keys=$(jq -r 'keys[]' "$DEFAULTS_JSON")
