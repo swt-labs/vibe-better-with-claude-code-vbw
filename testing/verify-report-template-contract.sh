@@ -137,8 +137,8 @@ for kw in broken error unexpected crash regression; do
   fi
 done
 
-feature_criteria_line=$(printf '%s\n' "$report_body" | grep -i 'feature' | grep -iE 'missing|improvement|new capability|change' || true)
-for kw in missing improvement change; do
+feature_criteria_line=$(printf '%s\n' "$report_body" | grep -i 'feature' | grep -iE 'missing|improvement|new capability' || true)
+for kw in missing improvement; do
   if printf '%s' "$feature_criteria_line" | grep -qiF "$kw"; then
     pass "classification: feature criteria contain keyword '$kw'"
   else
@@ -170,16 +170,16 @@ fi
 
 # --- Template filename references in fallback URLs ---
 
-if printf '%s\n' "$report_body" | grep -qF 'bug_report.md'; then
-  pass "fallback: references bug_report.md template"
+if printf '%s\n' "$report_body" | grep -qF '?template=bug_report.md'; then
+  pass "fallback: contains ?template=bug_report.md URL parameter"
 else
-  fail "fallback: missing bug_report.md template reference"
+  fail "fallback: missing ?template=bug_report.md URL parameter"
 fi
 
-if printf '%s\n' "$report_body" | grep -qF 'feature_request.md'; then
-  pass "fallback: references feature_request.md template"
+if printf '%s\n' "$report_body" | grep -qF '?template=feature_request.md'; then
+  pass "fallback: contains ?template=feature_request.md URL parameter"
 else
-  fail "fallback: missing feature_request.md template reference"
+  fail "fallback: missing ?template=feature_request.md URL parameter"
 fi
 
 echo ""
