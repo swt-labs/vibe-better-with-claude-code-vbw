@@ -380,6 +380,7 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | skill_suggestions | boolean | true/false | true |
 | auto_install_skills | boolean | true/false | false |
 | discovery_questions | boolean | true/false | true |
+| discussion_mode | string | questions/assumptions/auto | questions |
 | visual_format | string | unicode/ascii | unicode |
 | max_tasks_per_plan | number | 1-7 | 5 |
 | prefer_teams | string | always/auto/never | auto |
@@ -390,6 +391,7 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | model_profile | string | quality/balanced/budget | quality |
 | model_overrides | object | agent-to-model map | {} |
 | agent_max_turns | object | per-agent turns (number), 0/false = unlimited | scout=15, qa=25, architect=30, debugger=80, lead=50, dev=75 |
+| qa_skip_agents | array | array of agent role names | ["docs"] |
 | context_compiler | boolean | true/false | true |
 | token_budgets | boolean | true/false | true |
 | two_phase_completion | boolean | true/false | true |
@@ -397,15 +399,15 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | smart_routing | boolean | true/false | true |
 | validation_gates | boolean | true/false | true |
 | snapshot_resume | boolean | true/false | true |
-| lease_locks | boolean | true/false | false |
-| event_recovery | boolean | true/false | false |
+| lease_locks | boolean | true/false | true |
+| event_recovery | boolean | true/false | true |
+| worktree_isolation | string | off/on | off |
 | monorepo_routing | boolean | true/false | true |
 | require_phase_discussion | boolean | true/false | false |
 | auto_uat | boolean | true/false | false |
 | max_uat_remediation_rounds | boolean/number | false, 0, or positive integer | false |
 | rolling_summary | boolean | true/false | false |
 | debug_logging | boolean | true/false | false |
-| subagent_skill_xml_mode | string | off/names_only/full | names_only |
 | statusline_hide_limits | boolean | true/false | false |
 | statusline_hide_limits_for_api_key | boolean | true/false | false |
 | statusline_hide_agent_in_tmux | boolean | true/false | false |
