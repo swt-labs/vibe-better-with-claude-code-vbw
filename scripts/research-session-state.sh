@@ -196,6 +196,7 @@ ENDSESSION
       *.md) ;;
       *) SESSION_NAME="${SESSION_NAME}.md" ;;
     esac
+    validate_session_name "$SESSION_NAME" || exit 1
     SESSION_FILE="$RESEARCH_DIR/$SESSION_NAME"
     if [ ! -f "$SESSION_FILE" ]; then
       echo "Error: session file not found: $SESSION_FILE" >&2
@@ -247,6 +248,7 @@ ENDSESSION
       *.md) ;;
       *) SESSION_NAME="${SESSION_NAME}.md" ;;
     esac
+    validate_session_name "$SESSION_NAME" || exit 1
     SESSION_FILE="$RESEARCH_DIR/$SESSION_NAME"
     if [ ! -f "$SESSION_FILE" ]; then
       echo "Error: research file not found: $SESSION_FILE" >&2
@@ -308,6 +310,43 @@ ENDSESSION
       fi
 
       mv "$f" "$NEW_PATH"
+
+      # Inject frontmatter if the file doesn't already have it
+      if ! head -1 "$NEW_PATH" | grep -q '^---$'; then
+        # Extract title from first heading, fallback to slug
+        extracted_title=$(grep -m 1 '^#' "$NEW_PATH" | sed -E 's/^#+[[:space:]]*//' || true)
+        [ -z "$extracted_title" ] && extracted_title="$slug"
+
+        # Use file mtime for created/updated timestamps
+        if stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH" > /dev/null 2>&1; then
+          created_ts=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH")
+        else
+          created_ts=$(date '+%Y-%m-%d %H:%M:%S')
+        fi
+
+        # Prepend frontmatter
+        {
+          printf '%s\n' '---'
+          printf 'title: %s\n' "$extracted_title"
+          printf 'type: standalone-research\n'
+          printf 'status: complete\n'
+          printf 'confidence: medium\n'
+          printf 'created: %s\n' "$created_ts"
+          printf 'updated: %s\n' "$created_ts"
+          printf 'base_commit: unknown\n'
+          printf 'linked_sessions: []\n'
+          printf '%s\n' '---'
+          printf '\n'
+          cat "$NEW_PATH"
+        } > "$NEW_PATH.tmp" && mv "$NEW_PATH.tmp" "$NEW_PATH"
+      else
+        # File has frontmatter — ensure status is complete
+        existing_status=$(read_field "$NEW_PATH" "status")
+        if [ "$existing_status" != "complete" ]; then
+          update_field "$NEW_PATH" "status" "complete"
+        fi
+      fi
+
       MIGRATED=$((MIGRATED + 1))
       echo "[research] Migrated $fname → research/$NEW_NAME" >&2
     done

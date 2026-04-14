@@ -197,6 +197,14 @@ EOF
   [ -d "$VBW_PLANNING_DIR/research" ]
   file_count=$(find "$VBW_PLANNING_DIR/research" -name "*.md" | wc -l | tr -d ' ')
   [ "$file_count" -eq 1 ]
+
+  # Migrated file should have frontmatter injected
+  local migrated_file
+  migrated_file=$(find "$VBW_PLANNING_DIR/research" -name "*.md" | head -1)
+  head -1 "$migrated_file" | grep -q '^---$'
+  grep -q '^status: complete$' "$migrated_file"
+  grep -q '^type: standalone-research$' "$migrated_file"
+  grep -q '^base_commit: unknown$' "$migrated_file"
 }
 
 @test "migrate handles no files gracefully" {
@@ -217,6 +225,72 @@ EOF
   # Original files should still be there
   [ -f "$VBW_PLANNING_DIR/STATE.md" ]
   [ -f "$VBW_PLANNING_DIR/OTHER-topic.md" ]
+}
+
+@test "migrate preserves existing frontmatter and sets status complete" {
+  cat > "$VBW_PLANNING_DIR/RESEARCH-has-fm.md" << 'EOF'
+---
+title: Has Frontmatter
+type: standalone-research
+status: active
+confidence: high
+base_commit: abc123
+---
+
+# Has Frontmatter
+Some findings.
+EOF
+
+  run bash "$SCRIPTS_DIR/research-session-state.sh" migrate "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"migrated=1"* ]]
+
+  local migrated_file
+  migrated_file=$(find "$VBW_PLANNING_DIR/research" -name "*.md" | head -1)
+  # Should still start with frontmatter
+  head -1 "$migrated_file" | grep -q '^---$'
+  # Status should be updated to complete
+  grep -q '^status: complete$' "$migrated_file"
+  # Original fields should be preserved
+  grep -q '^base_commit: abc123$' "$migrated_file"
+  grep -q '^title: Has Frontmatter$' "$migrated_file"
+}
+
+@test "migrate extracts title from heading when no frontmatter" {
+  cat > "$VBW_PLANNING_DIR/RESEARCH-titled.md" << 'EOF'
+# My Custom Title
+Some content here.
+EOF
+
+  run bash "$SCRIPTS_DIR/research-session-state.sh" migrate "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+
+  local migrated_file
+  migrated_file=$(find "$VBW_PLANNING_DIR/research" -name "*.md" | head -1)
+  grep -q '^title: My Custom Title$' "$migrated_file"
+}
+
+# ── validate_session_name ────────────────────────────────
+
+@test "get rejects invalid session name with path traversal" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/research-session-state.sh" get "$VBW_PLANNING_DIR" "../../etc/passwd"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"invalid session name"* ]]
+}
+
+@test "complete rejects invalid session name with path traversal" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/research-session-state.sh" complete "$VBW_PLANNING_DIR" "../foo"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"invalid session name"* ]]
+}
+
+@test "get rejects malformed session name format" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/research-session-state.sh" get "$VBW_PLANNING_DIR" "not-valid-format"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"invalid session name"* ]]
 }
 
 # ── start triggers opportunistic migration ───────────────

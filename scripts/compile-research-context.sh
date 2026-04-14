@@ -75,7 +75,7 @@ check_staleness() {
 
   # Count commits since base_commit, excluding .vbw-planning/ changes
   local commit_count
-  commit_count=$(git log --oneline "${base_commit}..HEAD" -- . ':!.vbw-planning' 2>/dev/null | wc -l | tr -d ' ')
+  commit_count=$(git log --oneline "${base_commit}..HEAD" -- :/ ':!.vbw-planning' 2>/dev/null | wc -l | tr -d ' ')
 
   if [ "$commit_count" -eq 0 ]; then
     return 0  # Fresh
@@ -152,21 +152,9 @@ if [ -z "$RESEARCH_LIST" ]; then
   exit 0
 fi
 
-# Count files
-FILE_COUNT=$(echo "$RESEARCH_LIST" | wc -l | tr -d ' ')
-
-if [ "$FILE_COUNT" -eq 1 ]; then
-  # Single completed file — use it as candidate
-  CANDIDATE_FILE=$(echo "$RESEARCH_LIST" | sed 's/.*"file":"//' | sed 's/".*//')
-  if [ -f "$CANDIDATE_FILE" ]; then
-    emit_research "$CANDIDATE_FILE"
-  fi
-  exit 0
-fi
-
-# Multiple files — need keyword matching against description
+# Keyword matching against description (required for all file counts)
 if [ -z "$DESCRIPTION" ]; then
-  # No description to match against — output nothing
+  # No description to match against — output nothing (no recency fallback)
   exit 0
 fi
 
@@ -182,8 +170,8 @@ BEST_FILE=""
 BEST_SCORE=0
 
 while IFS= read -r line; do
-  file=$(echo "$line" | sed 's/.*"file":"//' | sed 's/".*//')
-  title=$(echo "$line" | sed 's/.*"title":"//' | sed 's/".*//')
+  file=$(echo "$line" | jq -r '.file')
+  title=$(echo "$line" | jq -r '.title')
   title_lower=$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]')
 
   score=0

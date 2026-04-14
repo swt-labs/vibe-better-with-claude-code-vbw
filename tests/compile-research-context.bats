@@ -86,23 +86,34 @@ ENDCONTENT
 
 # ── Single file discovery ────────────────────────────────
 
-@test "returns single completed research without description" {
+@test "outputs nothing for single completed research without description" {
   cd "$TEST_TEMP_DIR"
   create_research_file "only-topic" "only-topic"
 
   run bash "$SCRIPTS_DIR/compile-research-context.sh" "$VBW_PLANNING_DIR"
   [ "$status" -eq 0 ]
-  # Should contain the research content
-  [[ "$output" == *"Research findings about"* ]]
+  # No description = no match = no output (AC#6: no recency fallback)
+  [ -z "$output" ]
 }
 
-@test "returns single completed research with description" {
+@test "returns single completed research with 2+ keyword match" {
   cd "$TEST_TEMP_DIR"
   create_research_file "api-design" "api-design"
 
+  # 2+ keywords match: "api" and "design" both appear in title
   run bash "$SCRIPTS_DIR/compile-research-context.sh" "$VBW_PLANNING_DIR" "api design issue"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Research findings about"* ]]
+}
+
+@test "outputs nothing for single file with only 1 keyword match" {
+  cd "$TEST_TEMP_DIR"
+  create_research_file "api-design" "api-design"
+
+  # Only 1 keyword matches: "api" matches but "crash" does not
+  run bash "$SCRIPTS_DIR/compile-research-context.sh" "$VBW_PLANNING_DIR" "api crash report"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 # ── Keyword matching ─────────────────────────────────────
