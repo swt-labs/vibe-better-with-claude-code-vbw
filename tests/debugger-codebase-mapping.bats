@@ -510,7 +510,7 @@ STATE
 
 @test "debug.md Path B prompt includes codebase bootstrap instruction" {
   # The Path B prompt template block must include codebase bootstrap
-  grep -A20 'Path B.*Standard' "$PROJECT_ROOT/commands/debug.md" | grep -q '.vbw-planning/codebase/'
+  grep -A35 'Path B.*Standard' "$PROJECT_ROOT/commands/debug.md" | grep -q '.vbw-planning/codebase/'
 }
 
 @test "debug.md Path B prompt mentions .vbw-planning/codebase/" {
@@ -660,7 +660,7 @@ STATE
 }
 
 @test "debug.md Path B gates on META.md not just directory existence" {
-  grep -A20 'Path B.*Standard' "$PROJECT_ROOT/commands/debug.md" | grep -q 'META.md'
+  grep -A35 'Path B.*Standard' "$PROJECT_ROOT/commands/debug.md" | grep -q 'META.md'
 }
 
 @test "debug.md includes whichever exist qualifier in spawn prompts" {

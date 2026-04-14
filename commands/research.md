@@ -85,11 +85,24 @@ Research: {topic or sub-topic}.
     - If save path is unknown yet (user hasn't confirmed), omit `<output_path>` — Scout returns findings in response, and the orchestrator writes them after user confirms a path.
     - Parallel: up to 4 simultaneous Tasks, each with `subagent_type: "vbw:vbw-scout"`, same `model: "${SCOUT_MODEL}"` and the same maxTurns conditional (pass when non-empty, omit when empty).
 4. **Synthesize:** Single: present directly. Parallel: merge, note contradictions, rank by confidence.
-5. **Persist:** Ask "Save findings? (y/n)". If yes, ask for save path (default: `.vbw-planning/phases/{phase-dir}/RESEARCH.md` or `.vbw-planning/RESEARCH.md`). If Scout already wrote the file (output_path was included in prompt), confirm it exists. If Scout returned findings in response (no output_path), write findings to the confirmed path.
+5. **Persist:** Ask "Save findings? (y/n)". If yes, determine save path:
+   - **Phase-scoped** (an active VBW phase exists in `.vbw-planning/phases/`): default to `.vbw-planning/phases/{phase-dir}/RESEARCH.md` (existing behavior, unchanged).
+   - **Standalone** (no active phase): create a standalone research session:
+     ```bash
+     RESEARCH_SLUG=$(printf '%s' "{topic}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
+     eval "$(bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/research-session-state.sh" start .vbw-planning "$RESEARCH_SLUG")"
+     ```
+     Use `$research_file` as the save path. Preserve the existing YAML frontmatter block (lines between the opening and closing `---` markers) — update the `title` and `confidence` fields to match your findings, then write research content below the frontmatter closing marker. After writing findings, mark complete:
+     ```bash
+     bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/research-session-state.sh" complete .vbw-planning "$research_id"
+     ```
+   If Scout already wrote the file (output_path was included in prompt), confirm it exists. If Scout returned findings in response (no output_path), write findings to the confirmed path.
 ```
 ➜ Next Up
   /vbw:vibe --plan {NN} -- Plan using research findings
   /vbw:vibe --discuss {NN} -- Discuss phase approach
+  /vbw:debug "description mentioning {topic}" -- auto-discovers this research
+  /vbw:fix "description mentioning {topic}" -- auto-discovers this research
 ```
 
 ## Output Format
