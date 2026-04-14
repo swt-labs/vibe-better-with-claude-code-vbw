@@ -66,9 +66,10 @@ for setting in $md_settings; do
   fi
 done
 
-# --- Check 3: Default values match for simple types ---
-# For object/array types, use compact JSON for comparison where the table
-# uses JSON-like notation, or skip where the table uses shorthand.
+# --- Check 3: Default values match across supported table representations ---
+# Compare scalar defaults directly and array/object defaults via compact JSON
+# when the table uses JSON-like notation; skip only keys whose table values
+# use non-JSON shorthand representations.
 echo ""
 echo "--- Check: default values match ---"
 
@@ -88,7 +89,8 @@ for key in $json_keys; do
     continue
   fi
 
-  # Extract the default column (4th field) from the matching config.md row
+  # Extract the default column from the matching config.md row.
+  # With awk -F'|', the leading pipe is field 1, so the 4th visible table column is $5.
   md_row=$(grep -E "^\| ${key} \|" "$CONFIG_MD" || true)
   if [ -z "$md_row" ]; then
     # Already caught by Check 1, skip value comparison
