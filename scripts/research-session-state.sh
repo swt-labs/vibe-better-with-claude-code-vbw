@@ -355,20 +355,20 @@ ENDSESSION
 
       mv "$f" "$NEW_PATH"
 
+      # Compute file mtime for created/updated timestamps (used by both branches)
+      if stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH" > /dev/null 2>&1; then
+        created_ts=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH")  # macOS/BSD
+      elif stat -c '%Y' "$NEW_PATH" > /dev/null 2>&1; then
+        created_ts=$(date -d "@$(stat -c '%Y' "$NEW_PATH")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')  # GNU/Linux
+      else
+        created_ts=$(date '+%Y-%m-%d %H:%M:%S')  # fallback
+      fi
+
       # Inject frontmatter if the file doesn't already have it
       if ! head -1 "$NEW_PATH" | grep -q '^---$'; then
         # Extract title from first heading, fallback to slug
         extracted_title=$(grep -m 1 '^#' "$NEW_PATH" | sed -E 's/^#+[[:space:]]*//' || true)
         [ -z "$extracted_title" ] && extracted_title="$slug"
-
-        # Use file mtime for created/updated timestamps
-        if stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH" > /dev/null 2>&1; then
-          created_ts=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH")  # macOS/BSD
-        elif stat -c '%Y' "$NEW_PATH" > /dev/null 2>&1; then
-          created_ts=$(date -d "@$(stat -c '%Y' "$NEW_PATH")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')  # GNU/Linux
-        else
-          created_ts=$(date '+%Y-%m-%d %H:%M:%S')  # fallback
-        fi
 
         # YAML-safe title: quote to protect special chars (#, :, etc.)
         safe_title=$(printf '%s' "$extracted_title" | sed 's/\\/\\\\/g; s/"/\\"/g')
@@ -387,10 +387,14 @@ ENDSESSION
           cat "$NEW_PATH"
         } > "$NEW_PATH.tmp" && mv "$NEW_PATH.tmp" "$NEW_PATH"
       else
-        # File has frontmatter — backfill missing required fields and ensure status=complete
+        # File has frontmatter — backfill all missing template fields
         inject_field "$NEW_PATH" "status" "complete"
         inject_field "$NEW_PATH" "base_commit" "unknown"
         inject_field "$NEW_PATH" "type" "standalone-research"
+        inject_field "$NEW_PATH" "confidence" "medium"
+        inject_field "$NEW_PATH" "created" "$created_ts"
+        inject_field "$NEW_PATH" "updated" "$created_ts"
+        inject_field "$NEW_PATH" "linked_sessions" "[]"
 
         # Now update status to complete (in case it existed with a different value)
         existing_status=$(read_field "$NEW_PATH" "status")

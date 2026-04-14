@@ -286,6 +286,45 @@ EOF
   grep -q '^confidence: high$' "$migrated_file"
 }
 
+@test "migrate backfills all template fields in partial frontmatter" {
+  cat > "$VBW_PLANNING_DIR/RESEARCH-allfields.md" << 'EOF'
+---
+title: Only Title
+---
+
+# Only Title
+Content with only title in frontmatter.
+EOF
+
+  run bash "$SCRIPTS_DIR/research-session-state.sh" migrate "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"migrated=1"* ]]
+
+  local migrated_file
+  migrated_file=$(find "$VBW_PLANNING_DIR/research" -name "*allfields*" | head -1)
+  # All 7 template fields should be present
+  grep -q '^status: complete$' "$migrated_file"
+  grep -q '^base_commit: unknown$' "$migrated_file"
+  grep -q '^type: standalone-research$' "$migrated_file"
+  grep -q '^confidence: medium$' "$migrated_file"
+  grep -q '^created: ' "$migrated_file"
+  grep -q '^updated: ' "$migrated_file"
+  grep -q '^linked_sessions: \[\]$' "$migrated_file"
+  # Original title preserved
+  grep -q '^title: Only Title$' "$migrated_file"
+
+  # Verify get returns non-blank values for all fields
+  local session_id="${migrated_file##*/}"
+  session_id="${session_id%.md}"
+  run bash "$SCRIPTS_DIR/research-session-state.sh" get "$VBW_PLANNING_DIR" "$session_id"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"research_status=complete"* ]]
+  [[ "$output" == *"research_confidence=medium"* ]]
+  # created and updated should not be empty
+  [[ "$output" != *"research_created=''"* ]]
+  [[ "$output" != *"research_updated=''"* ]]
+}
+
 @test "migrate backfills missing fields even when body contains matching tokens" {
   cat > "$VBW_PLANNING_DIR/RESEARCH-bodytoken.md" << 'EOF'
 ---
