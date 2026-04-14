@@ -282,9 +282,7 @@ run_check_roadmap_vs_summaries() {
     done < <(list_canonical_phase_dirs "$PHASES_DIR")
 
     if [ -z "$phase_dir" ]; then
-      if [ "$MODE" = "archive" ]; then
-        mismatches="${mismatches:+$mismatches, }phase $phase_num referenced in ROADMAP.md but no matching phase directory"
-      fi
+      mismatches="${mismatches:+$mismatches, }phase $phase_num referenced in ROADMAP.md but no matching phase directory"
       continue
     fi
 

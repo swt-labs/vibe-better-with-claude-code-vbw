@@ -998,7 +998,7 @@ EOF
   [[ "$c2_detail" == *"no matching phase directory"* ]]
 }
 
-@test "roadmap references phase with no matching dir skips in advisory mode" {
+@test "roadmap references phase with no matching dir fails in advisory mode too" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
 
@@ -1016,9 +1016,12 @@ EOF
 
   local c2_pass
   c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
-  # Advisory mode: missing phase dir doesn't add a mismatch, so this could still pass
-  # (only the roadmap_vs_summaries check is affected, and only in archive mode)
-  [ "$c2_pass" = "true" ]
+  # Missing phase dir is drift — should be flagged in advisory mode too
+  [ "$c2_pass" = "false" ]
+
+  local c2_detail
+  c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
+  [[ "$c2_detail" == *"no matching phase directory"* ]]
 }
 
 # ---------------------------------------------------------------------------
