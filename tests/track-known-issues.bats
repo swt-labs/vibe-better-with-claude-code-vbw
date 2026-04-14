@@ -609,15 +609,13 @@ write_known_issues_registry() {
   run bash "$SCRIPT" promote-todos "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  # The R02 "resolved" disposition is not accepted-process-exception, so the single-file parser
-  # filters it out. merge_issue_sets propagates non-empty disposition from R02, overriding R01.
-  # But since R02's "resolved" entry never enters the accumulator (filtered by the parser),
-  # R01's accepted-process-exception survives. This is correct: only summaries that explicitly
-  # carry accepted-process-exception contribute. A "resolved" in a later round means the issue
-  # was fixed but the acceptance from R01 still stands for promote-todos purposes.
-  [[ "$output" == *"promoted_count=1"* ]]
-  grep -q "\[KNOWN-ISSUE\] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
-  grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # R02's "resolved" disposition enters the accumulator (parser uses "all" filter during
+  # aggregation), merge_issue_sets propagates R02's non-empty disposition over R01's
+  # accepted-process-exception. The post-merge filter then excludes the now-"resolved"
+  # entry. Result: nothing is promoted because the issue was resolved in a later round.
+  [[ "$output" == *"promoted_count=0"* ]]
+  # STATE.md should still have the placeholder — no promotion occurred
+  grep -q "None\." "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
 @test "track-known-issues: promote-todos aggregates when later round has explicit empty known_issue_outcomes" {

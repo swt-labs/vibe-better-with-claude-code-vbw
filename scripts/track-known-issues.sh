@@ -403,6 +403,7 @@ extract_summary_known_issue_outcomes_json() {
   local summary_file="$1"
   local source_rel="$2"
   local round="$3"
+  local disposition_filter="${4:-accepted-process-exception}"
   local tmp_json
   local item
   tmp_json=$(mktemp)
@@ -410,12 +411,12 @@ extract_summary_known_issue_outcomes_json() {
   while IFS= read -r item; do
     item=$(trim "$item")
     [ -n "$item" ] || continue
-    if ! printf '%s' "$item" | jq -e '
+    if ! printf '%s' "$item" | jq -e --arg filter "$disposition_filter" '
       type == "object"
       and (.test | type == "string")
       and (.file | type == "string")
       and (.error | type == "string")
-      and (.disposition == "accepted-process-exception")
+      and ($filter == "all" or .disposition == $filter)
     ' >/dev/null 2>&1; then
       continue
     fi
@@ -448,10 +449,14 @@ extract_latest_summary_known_issue_outcomes_json() {
     [ -n "$summary_file" ] || continue
     source_rel=$(relative_to_phase "$summary_file")
     round=$(round_for_phase_artifact_path "$source_rel")
-    round_json=$(extract_summary_known_issue_outcomes_json "$summary_file" "$source_rel" "$round")
+    round_json=$(extract_summary_known_issue_outcomes_json "$summary_file" "$source_rel" "$round" "all")
     [ "$round_json" != "[]" ] || continue
     accumulated=$(merge_issue_sets "$accumulated" "$round_json")
   done < <(find "$PHASE_DIR/remediation/qa" -maxdepth 2 -type f -name 'R*-SUMMARY.md' 2>/dev/null | (sort -V 2>/dev/null || sort))
+  # After merging all rounds, filter to only accepted-process-exception dispositions.
+  # This ensures a later round's "resolved" disposition overrides an earlier acceptance
+  # via merge_issue_sets, then the resolved entry is excluded from the final output.
+  accumulated=$(printf '%s' "$accumulated" | jq '[.[] | select(.disposition == "accepted-process-exception")]')
   printf '%s' "$accumulated"
 }
 
