@@ -232,8 +232,9 @@ ENDSESSION
         *) echo "Error: invalid status filter '$STATUS_FILTER'. Use: active, complete, all" >&2; exit 1 ;;
       esac
 
-      printf '{"id":"%s","title":"%s","status":"%s","created":"%s","base_commit":"%s","file":"%s"}\n' \
-        "$fid" "$ftitle" "$fstatus" "$fcreated" "$fbase" "$f"
+      jq -cn --arg id "$fid" --arg title "$ftitle" --arg status "$fstatus" \
+        --arg created "$fcreated" --arg base_commit "$fbase" --arg file "$f" \
+        '{id:$id,title:$title,status:$status,created:$created,base_commit:$base_commit,file:$file}'
     done
     ;;
 

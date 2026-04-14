@@ -69,11 +69,19 @@ else
   fail "templates/STANDALONE-RESEARCH.md missing"
 fi
 
-for field in title type status confidence base_commit linked_sessions; do
+for field in title type status confidence created updated base_commit linked_sessions; do
   if grep -q "^${field}:" "$TEMPLATE" 2>/dev/null; then
     pass "template has '$field' frontmatter field"
   else
     fail "template missing '$field' frontmatter field"
+  fi
+done
+
+for section in "## Summary" "## Findings" "## Relevant Patterns" "## Risks" "## Recommendations"; do
+  if grep -q "^${section}" "$TEMPLATE" 2>/dev/null; then
+    pass "template has '$section' section"
+  else
+    fail "template missing '$section' section"
   fi
 done
 
