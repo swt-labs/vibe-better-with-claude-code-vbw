@@ -136,7 +136,7 @@ case "$CMD" in
     fi
 
     # Migrate any stale root-level files first (idempotent)
-    if compgen -G "$PLANNING_DIR/RESEARCH-"*.md > /dev/null 2>&1; then
+    if compgen -G "$PLANNING_DIR/RESEARCH-*.md" > /dev/null 2>&1; then
       # Re-invoke ourselves with migrate (avoids code duplication)
       bash "$0" migrate "$PLANNING_DIR" 2>/dev/null || true
     fi

@@ -15,7 +15,7 @@ setup() {
   git config user.email "test@test.com"
   git config user.name "Test"
   touch dummy
-  git add dummy .vbw-planning
+  git add dummy
   git commit -m "init" --quiet
 }
 
