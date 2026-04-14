@@ -14,13 +14,19 @@ setup_temp_dir() {
   TEST_TEMP_DIR=$(mktemp -d)
   export TEST_TEMP_DIR
   export VBW_AGENT_PID_LOCK_DIR="$TEST_TEMP_DIR/.vbw-agent-pid-lock"
+  # Isolate HOME and git config to prevent cross-worker contention under parallel execution
+  export _ORIG_HOME="${HOME:-}"
+  export HOME="$TEST_TEMP_DIR"
+  export GIT_CONFIG_NOSYSTEM=1
+  export GIT_CONFIG_GLOBAL="$TEST_TEMP_DIR/.gitconfig"
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
 }
 
 # Clean up temp directory
 teardown_temp_dir() {
   [ -n "${TEST_TEMP_DIR:-}" ] && rm -rf "$TEST_TEMP_DIR"
-  unset VBW_AGENT_PID_LOCK_DIR
+  HOME="${_ORIG_HOME:-/tmp}"
+  unset VBW_AGENT_PID_LOCK_DIR GIT_CONFIG_NOSYSTEM GIT_CONFIG_GLOBAL _ORIG_HOME
 }
 
 vbw_cache_prefix_for_root() {
