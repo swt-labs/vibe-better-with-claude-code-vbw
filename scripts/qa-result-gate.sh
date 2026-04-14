@@ -537,6 +537,7 @@ resolve_corroborated_recorded_paths() {
   local recorded_paths="${2:-}"
   local committed_paths="${3:-}"
   local worktree_paths="${4:-}"
+  local ignored_worktree_paths="${5:-}"
   local path=""
 
   while IFS= read -r path; do
@@ -547,6 +548,15 @@ resolve_corroborated_recorded_paths() {
     fi
     if path_is_allowed_worktree_evidence_artifact "$phase_dir" "$path" \
       && printf '%s\n' "$worktree_paths" | grep -Fx -- "$path" >/dev/null 2>&1; then
+      printf '%s\n' "$path"
+      continue
+    fi
+    # Fallback: gitignored metadata artifacts present on disk (e.g.,
+    # .vbw-planning/ paths when planning_tracking=ignore).
+    if [ -n "$ignored_worktree_paths" ] \
+      && path_is_metadata_artifact "$path" \
+      && path_is_allowed_worktree_evidence_artifact "$phase_dir" "$path" \
+      && printf '%s\n' "$ignored_worktree_paths" | grep -Fx -- "$path" >/dev/null 2>&1; then
       printf '%s\n' "$path"
     fi
   done <<< "$recorded_paths" | (sort -u 2>/dev/null || sort -u)
@@ -624,6 +634,25 @@ git_current_worktree_paths() {
   [ -n "$repo_root" ] || return 0
   git -C "$repo_root" diff --name-only HEAD 2>/dev/null || true
   git -C "$repo_root" ls-files --others --exclude-standard 2>/dev/null || true
+}
+
+# Return gitignored files that exist on disk and are metadata artifacts.
+# Used as a third evidence source when planning_tracking=ignore puts
+# .vbw-planning/ in .gitignore — the normal diff/worktree sets exclude
+# these paths, but they are valid evidence for plan-amendment rounds.
+git_ignored_metadata_worktree_paths() {
+  local repo_root="${1:-}"
+  local path
+  [ -n "$repo_root" ] || return 0
+  # Use pathspec to limit git's scan to metadata prefixes only, avoiding
+  # enumeration of large ignored trees like node_modules/.
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    if path_is_metadata_artifact "$path"; then
+      printf '%s\n' "$path"
+    fi
+  done < <(git -C "$repo_root" ls-files --others --ignored --exclude-standard \
+    -- .vbw-planning .claude 2>/dev/null || true)
 }
 
 commit_is_ancestor_or_same() {
@@ -1337,6 +1366,7 @@ ROUND_ACTUAL_DIFF_PATHS=""
 ROUND_ACTUAL_DIFF_PATHS_AVAILABLE="false"
 ROUND_ACTUAL_DIFF_PATHS_CANONICAL=""
 ROUND_WORKTREE_PATHS_CANONICAL=""
+ROUND_IGNORED_WORKTREE_PATHS_CANONICAL=""
 ROUND_INPUT_MODE="none"
 ROUND_KNOWN_ISSUE_BACKLOG_PATH=""
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
@@ -1367,6 +1397,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
     ROUND_ACTUAL_DIFF_PATHS=$(git_diff_paths_since_commit "$GIT_ROOT" "$ROUND_STARTED_AT_COMMIT" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))
     ROUND_ACTUAL_DIFF_PATHS_CANONICAL=$(printf '%s\n' "$ROUND_ACTUAL_DIFF_PATHS" | canonicalize_recorded_paths "$PHASE_DIR")
     ROUND_WORKTREE_PATHS_CANONICAL=$(git_current_worktree_paths "$GIT_ROOT" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u) | canonicalize_recorded_paths "$PHASE_DIR")
+    ROUND_IGNORED_WORKTREE_PATHS_CANONICAL=$(git_ignored_metadata_worktree_paths "$GIT_ROOT" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u) | canonicalize_recorded_paths "$PHASE_DIR")
   fi
 fi
 
@@ -1378,6 +1409,7 @@ ROUND_SUMMARY_MISSING="false"
 ROUND_PLAN_MISSING="false"
 ROUND_CHANGE_EVIDENCE_UNAVAILABLE="false"
 ROUND_CHANGE_EVIDENCE_EMPTY="false"
+ROUND_IGNORED_EVIDENCE_USED="false"
 ROUND_SUMMARY_NONTERMINAL="false"
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   # Scan round SUMMARY.md files_modified for non-metadata paths. When
@@ -1419,10 +1451,17 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
           ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
           break
         fi
-        _mo_effective_files=$(resolve_corroborated_recorded_paths "$PHASE_DIR" "$_mo_recorded_files" "$ROUND_ACTUAL_DIFF_PATHS_CANONICAL" "$ROUND_WORKTREE_PATHS_CANONICAL")
+        _mo_effective_files=$(resolve_corroborated_recorded_paths "$PHASE_DIR" "$_mo_recorded_files" "$ROUND_ACTUAL_DIFF_PATHS_CANONICAL" "$ROUND_WORKTREE_PATHS_CANONICAL" "$ROUND_IGNORED_WORKTREE_PATHS_CANONICAL")
         if [ -z "$_mo_effective_files" ] || ! recorded_paths_are_fully_corroborated "$_mo_recorded_files" "$_mo_effective_files"; then
           ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
           break
+        fi
+        # Detect whether gitignored-metadata evidence was needed for corroboration
+        if [ "$ROUND_IGNORED_EVIDENCE_USED" != "true" ] && [ -n "$ROUND_IGNORED_WORKTREE_PATHS_CANONICAL" ]; then
+          _mo_without_ignored=$(resolve_corroborated_recorded_paths "$PHASE_DIR" "$_mo_recorded_files" "$ROUND_ACTUAL_DIFF_PATHS_CANONICAL" "$ROUND_WORKTREE_PATHS_CANONICAL" "")
+          if ! recorded_paths_are_fully_corroborated "$_mo_recorded_files" "$_mo_without_ignored"; then
+            ROUND_IGNORED_EVIDENCE_USED="true"
+          fi
         fi
       else
         _mo_effective_files="$_mo_recorded_files"
@@ -1574,6 +1613,9 @@ echo "qa_gate_deviation_count=$DEVIATION_COUNT"
 echo "qa_gate_known_issue_count=$KNOWN_ISSUES_COUNT"
 echo "qa_gate_plan_count=$PLAN_COUNT"
 echo "qa_gate_plans_verified_count=$PLANS_VERIFIED_COUNT"
+if [ "$ROUND_IGNORED_EVIDENCE_USED" = "true" ]; then
+  echo "qa_gate_planning_ignored_evidence=true"
+fi
 
 # 3. Writer provenance check
 if [ -z "$WRITER" ] || [ "$WRITER" != "write-verification.sh" ]; then
