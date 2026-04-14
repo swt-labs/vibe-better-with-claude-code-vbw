@@ -100,9 +100,9 @@ fi
 # Conditional ac_results check: only when corresponding PLAN has must_haves
 PLAN_PATH=$(echo "$FILE_PATH" | sed 's/SUMMARY\.md$/PLAN.md/')
 if [ -f "$PLAN_PATH" ]; then
-  # Check if plan has non-empty must_haves (any subtype with a list item)
+  # Check if plan has non-empty must_haves (block-style dash items OR flow-style non-empty arrays)
   _VS_HAS_MH=""
-  if sed -n '/^must_haves:/,/^[^ ]/p' "$PLAN_PATH" 2>/dev/null | grep -q '^ *- '; then
+  if sed -n '/^must_haves:/,/^[^ ]/p' "$PLAN_PATH" 2>/dev/null | grep -qE '^ *- |: *\[[^]]+\]'; then
     _VS_HAS_MH=true
   fi
   if [ "$_VS_HAS_MH" = true ]; then
