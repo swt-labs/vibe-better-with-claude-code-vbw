@@ -286,6 +286,97 @@ EOF
   grep -q '^confidence: high$' "$migrated_file"
 }
 
+@test "migrate backfills all template fields in partial frontmatter" {
+  cat > "$VBW_PLANNING_DIR/RESEARCH-allfields.md" << 'EOF'
+---
+title: Only Title
+---
+
+# Only Title
+Content with only title in frontmatter.
+EOF
+
+  run bash "$SCRIPTS_DIR/research-session-state.sh" migrate "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"migrated=1"* ]]
+
+  local migrated_file
+  migrated_file=$(find "$VBW_PLANNING_DIR/research" -name "*allfields*" | head -1)
+  # All 7 template fields should be present
+  grep -q '^status: complete$' "$migrated_file"
+  grep -q '^base_commit: unknown$' "$migrated_file"
+  grep -q '^type: standalone-research$' "$migrated_file"
+  grep -q '^confidence: medium$' "$migrated_file"
+  grep -q '^created: ' "$migrated_file"
+  grep -q '^updated: ' "$migrated_file"
+  grep -q '^linked_sessions: \[\]$' "$migrated_file"
+  # Original title preserved
+  grep -q '^title: Only Title$' "$migrated_file"
+
+  # Verify get returns non-blank values for all fields
+  local session_id="${migrated_file##*/}"
+  session_id="${session_id%.md}"
+  run bash "$SCRIPTS_DIR/research-session-state.sh" get "$VBW_PLANNING_DIR" "$session_id"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"research_status=complete"* ]]
+  [[ "$output" == *"research_confidence=medium"* ]]
+  # created and updated should not be empty
+  [[ "$output" != *"research_created=''"* ]]
+  [[ "$output" != *"research_updated=''"* ]]
+}
+
+@test "migrate preserves existing updated timestamp when status changes" {
+  cat > "$VBW_PLANNING_DIR/RESEARCH-upd-preserve.md" << 'EOF'
+---
+title: Updated Preserve
+status: active
+updated: 2023-06-15 10:30:00
+---
+
+# Updated Preserve
+Legacy file with explicit updated timestamp.
+EOF
+
+  run bash "$SCRIPTS_DIR/research-session-state.sh" migrate "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"migrated=1"* ]]
+
+  local migrated_file
+  migrated_file=$(find "$VBW_PLANNING_DIR/research" -name "*upd-preserve*" | head -1)
+  # Status should be updated to complete
+  grep -q '^status: complete$' "$migrated_file"
+  # Updated should preserve the original value, not wall-clock time
+  grep -q '^updated: 2023-06-15 10:30:00$' "$migrated_file"
+}
+
+@test "migrate fills blank-but-present frontmatter values with defaults" {
+  cat > "$VBW_PLANNING_DIR/RESEARCH-blank-vals.md" << 'EOF'
+---
+title: Blank Values
+confidence:
+base_commit:
+---
+
+# Blank Values
+File with blank frontmatter values.
+EOF
+
+  run bash "$SCRIPTS_DIR/research-session-state.sh" migrate "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"migrated=1"* ]]
+
+  local migrated_file
+  migrated_file=$(find "$VBW_PLANNING_DIR/research" -name "*blank-vals*" | head -1)
+  # Blank values should be filled with defaults
+  local fm_confidence fm_base
+  fm_confidence=$(awk '/^---$/ { if (!s) { s=1; next } if (s) exit } s && /^confidence:/ { sub(/^confidence:[[:space:]]*/, ""); print }' "$migrated_file")
+  fm_base=$(awk '/^---$/ { if (!s) { s=1; next } if (s) exit } s && /^base_commit:/ { sub(/^base_commit:[[:space:]]*/, ""); print }' "$migrated_file")
+  [ "$fm_confidence" = "medium" ]
+  [ "$fm_base" = "unknown" ]
+  # Title should be preserved
+  grep -q '^title: Blank Values$' "$migrated_file"
+}
+
 @test "migrate backfills missing fields even when body contains matching tokens" {
   cat > "$VBW_PLANNING_DIR/RESEARCH-bodytoken.md" << 'EOF'
 ---

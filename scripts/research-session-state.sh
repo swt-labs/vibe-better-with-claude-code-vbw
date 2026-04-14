@@ -355,20 +355,31 @@ ENDSESSION
 
       mv "$f" "$NEW_PATH"
 
-      # Inject frontmatter if the file doesn't already have it
-      if ! head -1 "$NEW_PATH" | grep -q '^---$'; then
+      # Compute file mtime for created/updated timestamps (used by both branches)
+      if stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH" > /dev/null 2>&1; then
+        created_ts=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH")  # macOS/BSD
+      elif stat -c '%Y' "$NEW_PATH" > /dev/null 2>&1; then
+        _epoch=$(stat -c '%Y' "$NEW_PATH")
+        created_ts=$(date -d "@$_epoch" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date -r "$_epoch" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')  # GNU/Linux / mixed coreutils
+      else
+        created_ts=$(date '+%Y-%m-%d %H:%M:%S')  # fallback
+      fi
+
+      # Determine whether the file has well-formed frontmatter (opening AND
+      # closing ---). If only the opening delimiter exists, treat as no
+      # frontmatter and prepend a full block.
+      has_frontmatter=false
+      if head -1 "$NEW_PATH" | grep -q '^---$'; then
+        # Count --- delimiters; well-formed needs at least 2
+        if awk '/^---$/ { c++ } c >= 2 { exit 0 } END { exit (c < 2) }' "$NEW_PATH" 2>/dev/null; then
+          has_frontmatter=true
+        fi
+      fi
+
+      if [ "$has_frontmatter" = "false" ]; then
         # Extract title from first heading, fallback to slug
         extracted_title=$(grep -m 1 '^#' "$NEW_PATH" | sed -E 's/^#+[[:space:]]*//' || true)
         [ -z "$extracted_title" ] && extracted_title="$slug"
-
-        # Use file mtime for created/updated timestamps
-        if stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH" > /dev/null 2>&1; then
-          created_ts=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$NEW_PATH")  # macOS/BSD
-        elif stat -c '%Y' "$NEW_PATH" > /dev/null 2>&1; then
-          created_ts=$(date -d "@$(stat -c '%Y' "$NEW_PATH")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')  # GNU/Linux
-        else
-          created_ts=$(date '+%Y-%m-%d %H:%M:%S')  # fallback
-        fi
 
         # YAML-safe title: quote to protect special chars (#, :, etc.)
         safe_title=$(printf '%s' "$extracted_title" | sed 's/\\/\\\\/g; s/"/\\"/g')
@@ -387,16 +398,51 @@ ENDSESSION
           cat "$NEW_PATH"
         } > "$NEW_PATH.tmp" && mv "$NEW_PATH.tmp" "$NEW_PATH"
       else
-        # File has frontmatter — backfill missing required fields and ensure status=complete
+        # File has frontmatter — backfill all missing template fields.
+        # inject_field only adds absent keys; it won't overwrite existing values.
         inject_field "$NEW_PATH" "status" "complete"
         inject_field "$NEW_PATH" "base_commit" "unknown"
         inject_field "$NEW_PATH" "type" "standalone-research"
+        inject_field "$NEW_PATH" "confidence" "medium"
+        inject_field "$NEW_PATH" "created" "$created_ts"
+        inject_field "$NEW_PATH" "updated" "$created_ts"
+        inject_field "$NEW_PATH" "linked_sessions" "[]"
 
-        # Now update status to complete (in case it existed with a different value)
+        # Capture the correct 'updated' value BEFORE any update_field calls.
+        # update_field cascades a wall-clock write to 'updated' on every
+        # non-'updated' field change, which would clobber the original or
+        # just-injected value.
+        correct_updated=$(read_field "$NEW_PATH" "updated")
+        correct_updated="${correct_updated:-$created_ts}"
+
+        # Fill blank-but-present fields with defaults (inject_field skips
+        # fields that exist even if their value is empty).
+        # Guard update_field with || inject_field fallback: if the field key
+        # exists but update_field fails (e.g. malformed frontmatter without
+        # closing ---), fall back to inject_field which is more tolerant.
+        _defaults=("status:complete" "base_commit:unknown" "type:standalone-research" "confidence:medium" "linked_sessions:[]")
+        for _pair in "${_defaults[@]}"; do
+          _field="${_pair%%:*}"
+          _val=$(read_field "$NEW_PATH" "$_field")
+          if [ -z "$_val" ]; then
+            update_field "$NEW_PATH" "$_field" "${_pair#*:}" || inject_field "$NEW_PATH" "$_field" "${_pair#*:}"
+          fi
+        done
+        # Handle created separately (default is mtime, not a static string)
+        if [ -z "$(read_field "$NEW_PATH" "created")" ]; then
+          update_field "$NEW_PATH" "created" "$created_ts" || inject_field "$NEW_PATH" "created" "$created_ts"
+        fi
+
+        # Ensure status is complete (update_field used instead of inject_field
+        # to handle the case where status exists with a non-complete value)
         existing_status=$(read_field "$NEW_PATH" "status")
         if [ "$existing_status" != "complete" ]; then
-          update_field "$NEW_PATH" "status" "complete"
+          update_field "$NEW_PATH" "status" "complete" || true
         fi
+
+        # Restore 'updated' to its pre-mutation value. update_field does not
+        # cascade when the target field IS 'updated', so this is safe.
+        update_field "$NEW_PATH" "updated" "$correct_updated" || true
       fi
 
       MIGRATED=$((MIGRATED + 1))
