@@ -128,24 +128,34 @@ echo "--- Classification criteria ---"
 
 report_body=$(awk '/^---$/{d++; next} d>=2' "$REPORT")
 
-bug_criteria_line=$(printf '%s\n' "$report_body" | grep -i 'bug' | grep -iE 'broken|error|unexpected|crash|regression' || true)
+# Extract the classification criteria block: the numbered step that begins
+# with "Classify the issue" through the next numbered step.  Searching a
+# bounded section (rather than per-line grep) keeps the check resilient to
+# line wrapping and reformatting — per Copilot review feedback.
+classify_section=$(printf '%s\n' "$report_body" | awk '
+  /^[0-9]+\..*[Cc]lassify/ { found=1 }
+  found && /^[0-9]+\./ && !/[Cc]lassify/ { exit }
+  found { print }
+')
+
+# Bug criteria: each keyword must appear somewhere in the classification block
 for kw in broken error unexpected crash regression; do
-  if printf '%s' "$bug_criteria_line" | grep -qiF "$kw"; then
+  if printf '%s' "$classify_section" | grep -qiF "$kw"; then
     pass "classification: bug criteria contain keyword '$kw'"
   else
     fail "classification: bug criteria missing keyword '$kw'"
   fi
 done
 
-feature_criteria_line=$(printf '%s\n' "$report_body" | grep -i 'feature' | grep -iE 'missing|improvement|new capability' || true)
+# Feature criteria: each keyword must appear somewhere in the classification block
 for kw in missing improvement; do
-  if printf '%s' "$feature_criteria_line" | grep -qiF "$kw"; then
+  if printf '%s' "$classify_section" | grep -qiF "$kw"; then
     pass "classification: feature criteria contain keyword '$kw'"
   else
     fail "classification: feature criteria missing keyword '$kw'"
   fi
 done
-if printf '%s' "$feature_criteria_line" | grep -qi 'new capability'; then
+if printf '%s' "$classify_section" | grep -qi 'new capability'; then
   pass "classification: feature criteria contain keyword 'new capability'"
 else
   fail "classification: feature criteria missing keyword 'new capability'"
