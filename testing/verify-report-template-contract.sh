@@ -75,6 +75,13 @@ while IFS= read -r header; do
   fi
 done < <(grep -oE '\*\*[^*]+\*\*' "$BUG_TEMPLATE")
 
+bug_header_count=$(grep -cE '\*\*[^*]+\*\*' "$BUG_TEMPLATE" || true)
+if [ "$bug_header_count" -ge 1 ]; then
+  pass "bug template: has $bug_header_count section headers (non-empty)"
+else
+  fail "bug template: no section headers found in bug_report.md — template may be empty"
+fi
+
 # --- Feature request section header alignment ---
 
 echo ""
@@ -88,6 +95,13 @@ while IFS= read -r header; do
     fail "feature example: missing $header from feature_request.md template"
   fi
 done < <(grep -oE '\*\*[^*]+\*\*' "$FEATURE_TEMPLATE")
+
+feature_header_count=$(grep -cE '\*\*[^*]+\*\*' "$FEATURE_TEMPLATE" || true)
+if [ "$feature_header_count" -ge 1 ]; then
+  pass "feature template: has $feature_header_count section headers (non-empty)"
+else
+  fail "feature template: no section headers found in feature_request.md — template may be empty"
+fi
 
 # --- Classification criteria presence ---
 
@@ -134,7 +148,7 @@ else
 fi
 
 if printf '%s\n' "$report_body" | grep -qF 'feature_request.md'; then
-  pass "fallback: references feature_request.md template reference"
+  pass "fallback: references feature_request.md template"
 else
   fail "fallback: missing feature_request.md template reference"
 fi
