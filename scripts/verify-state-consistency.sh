@@ -74,11 +74,6 @@ case "$PLANNING_DIR" in
       PLANNING_DIR="$repo_root/$PLANNING_DIR" ;;
 esac
 
-# --- Early exit: no project state -------------------------------------------
-if [ ! -d "$PLANNING_DIR" ]; then
-  jq -n --arg mode "$MODE" '{verdict:"skip",mode:$mode,reason:"no planning directory",checks:{},failed_checks:[]}'
-  exit 0
-fi
 # Helper for early-exit JSON with per-check structure
 early_exit_json() {
   local verdict="$1" mode="$2" failed_check="$3" reason="${4:-}"
@@ -97,17 +92,23 @@ early_exit_json() {
         state_vs_roadmap:{pass:true,detail:"not evaluated"},
         project_vs_state:{pass:true,detail:"not evaluated"}
       },
-      failed_checks:[$failed],
+      failed_checks:(if $failed == "" then [] else [$failed] end),
       reason:($reason | if . == "" then null else . end)
     }'
 }
+
+# --- Early exit: no project state -------------------------------------------
+if [ ! -d "$PLANNING_DIR" ]; then
+  early_exit_json "skip" "$MODE" "" "no planning directory"
+  exit 0
+fi
 
 if [ ! -f "$PLANNING_DIR/STATE.md" ]; then
   if [ "$MODE" = "archive" ]; then
     early_exit_json "fail" "archive" "missing_state_md"
     exit 2
   fi
-  jq -n '{verdict:"skip",mode:"advisory",reason:"no STATE.md",checks:{},failed_checks:[]}'
+  early_exit_json "skip" "advisory" "" "no STATE.md"
   exit 0
 fi
 if [ ! -f "$PLANNING_DIR/ROADMAP.md" ] && [ "$MODE" = "archive" ]; then

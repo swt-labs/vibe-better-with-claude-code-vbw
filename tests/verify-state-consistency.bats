@@ -91,6 +91,15 @@ SUMMARY
   local verdict
   verdict=$(echo "$output" | jq -r '.verdict')
   [ "$verdict" = "skip" ]
+
+  # Advisory skip paths must still emit per-check JSON structure
+  local c1_detail
+  c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
+  [ "$c1_detail" = "not evaluated" ]
+
+  local fc_count
+  fc_count=$(echo "$output" | jq '.failed_checks | length')
+  [ "$fc_count" -eq 0 ]
 }
 
 @test "missing STATE.md returns verdict skip" {
@@ -590,6 +599,15 @@ EOF
   local verdict
   verdict=$(echo "$output" | jq -r '.verdict')
   [ "$verdict" = "skip" ]
+
+  # Advisory skip paths must still emit per-check JSON structure
+  local c1_detail
+  c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
+  [ "$c1_detail" = "not evaluated" ]
+
+  local fc_count
+  fc_count=$(echo "$output" | jq '.failed_checks | length')
+  [ "$fc_count" -eq 0 ]
 }
 
 # ---------------------------------------------------------------------------
