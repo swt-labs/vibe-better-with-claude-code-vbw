@@ -79,16 +79,39 @@ if [ ! -d "$PLANNING_DIR" ]; then
   jq -n --arg mode "$MODE" '{verdict:"skip",mode:$mode,reason:"no planning directory",checks:{},failed_checks:[]}'
   exit 0
 fi
+# Helper for early-exit JSON with per-check structure
+early_exit_json() {
+  local verdict="$1" mode="$2" failed_check="$3" reason="${4:-}"
+  jq -n \
+    --arg verdict "$verdict" \
+    --arg mode "$mode" \
+    --arg failed "$failed_check" \
+    --arg reason "$reason" \
+    '{
+      verdict:$verdict,
+      mode:$mode,
+      checks:{
+        state_vs_filesystem:{pass:true,detail:"not evaluated"},
+        roadmap_vs_summaries:{pass:true,detail:"not evaluated"},
+        exec_state_vs_filesystem:{pass:true,detail:"not evaluated"},
+        state_vs_roadmap:{pass:true,detail:"not evaluated"},
+        project_vs_state:{pass:true,detail:"not evaluated"}
+      },
+      failed_checks:[$failed],
+      reason:($reason | if . == "" then null else . end)
+    }'
+}
+
 if [ ! -f "$PLANNING_DIR/STATE.md" ]; then
   if [ "$MODE" = "archive" ]; then
-    jq -n '{verdict:"fail",mode:"archive",checks:{},failed_checks:["missing_state_md"]}'
+    early_exit_json "fail" "archive" "missing_state_md"
     exit 2
   fi
   jq -n '{verdict:"skip",mode:"advisory",reason:"no STATE.md",checks:{},failed_checks:[]}'
   exit 0
 fi
 if [ ! -f "$PLANNING_DIR/ROADMAP.md" ] && [ "$MODE" = "archive" ]; then
-  jq -n '{verdict:"fail",mode:"archive",checks:{},failed_checks:["missing_roadmap_md"]}'
+  early_exit_json "fail" "archive" "missing_roadmap_md"
   exit 2
 fi
 
@@ -179,7 +202,12 @@ run_check_state_vs_filesystem() {
   fi
 
   if [ ! -d "$PHASES_DIR" ]; then
-    check_state_vs_filesystem_detail="skip: no phases directory"
+    if [ "$MODE" = "archive" ]; then
+      check_state_vs_filesystem_pass=false
+      check_state_vs_filesystem_detail="no phases directory"
+    else
+      check_state_vs_filesystem_detail="skip: no phases directory"
+    fi
     return
   fi
 
@@ -218,7 +246,12 @@ run_check_roadmap_vs_summaries() {
   fi
 
   if [ ! -d "$PHASES_DIR" ]; then
-    check_roadmap_vs_summaries_detail="skip: no phases directory"
+    if [ "$MODE" = "archive" ]; then
+      check_roadmap_vs_summaries_pass=false
+      check_roadmap_vs_summaries_detail="no phases directory"
+    else
+      check_roadmap_vs_summaries_detail="skip: no phases directory"
+    fi
     return
   fi
 
@@ -307,7 +340,12 @@ run_check_exec_state_vs_filesystem() {
   fi
 
   if [ ! -d "$PHASES_DIR" ]; then
-    check_exec_state_vs_filesystem_detail="skip: no phases directory"
+    if [ "$MODE" = "archive" ]; then
+      check_exec_state_vs_filesystem_pass=false
+      check_exec_state_vs_filesystem_detail="no phases directory"
+    else
+      check_exec_state_vs_filesystem_detail="skip: no phases directory"
+    fi
     return
   fi
 
@@ -345,6 +383,17 @@ run_check_exec_state_vs_filesystem() {
 
   if [ "$es_status" = "running" ] && [ "$plans" -eq 0 ]; then
     local msg="status is 'running' but phase $es_phase has no plans"
+    if [ -n "$details" ]; then
+      details="$details; $msg"
+    else
+      details="$msg"
+    fi
+    check_exec_state_vs_filesystem_pass=false
+  fi
+
+  # Stale top-level status: running but all plans already complete
+  if [ "$es_status" = "running" ] && [ "$plans" -gt 0 ] && [ "$complete" -ge "$plans" ]; then
+    local msg="status is 'running' but all plans in phase $es_phase are complete ($complete/$plans)"
     if [ -n "$details" ]; then
       details="$details; $msg"
     else

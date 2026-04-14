@@ -721,3 +721,143 @@ EOF
   c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
   [[ "$c3_detail" == *"stale status"* ]]
 }
+
+# ---------------------------------------------------------------------------
+# Missing phases directory (archive vs advisory)
+# ---------------------------------------------------------------------------
+
+@test "archive mode fails when phases directory is missing" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  create_test_config
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# State
+**Project:** Test Project
+**Milestone:** MVP
+Phase: 1 of 2 (Setup)
+Plans: 0/0
+Progress: 0%
+Status: ready
+EOF
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+- [ ] Phase 1: Setup
+- [ ] Phase 2: Build
+### Phase 1: Setup
+### Phase 2: Build
+EOF
+
+  # No phases/ directory created
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  local verdict
+  verdict=$(echo "$output" | jq -r '.verdict')
+  [ "$verdict" = "fail" ]
+
+  # Multiple checks should fail due to missing phases dir
+  local c1_pass
+  c1_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
+  [ "$c1_pass" = "false" ]
+}
+
+@test "advisory mode skips when phases directory is missing" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  create_test_config
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# State
+**Project:** Test Project
+**Milestone:** MVP
+Phase: 1 of 2 (Setup)
+Plans: 0/0
+Progress: 0%
+Status: ready
+EOF
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+- [ ] Phase 1: Setup
+- [ ] Phase 2: Build
+### Phase 1: Setup
+### Phase 2: Build
+EOF
+
+  # No phases/ directory
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c1_detail
+  c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
+  [[ "$c1_detail" == *"skip"* ]]
+
+  local c1_pass
+  c1_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
+  [ "$c1_pass" = "true" ]
+}
+
+# ---------------------------------------------------------------------------
+# Stale top-level execution status
+# ---------------------------------------------------------------------------
+
+@test "exec_state top-level running with all plans complete detects stale status" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Create execution-state saying "running" but all plans are complete
+  cat > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json" <<'EOF'
+{
+  "phase": 2,
+  "status": "running",
+  "plans": [
+    {"id": "done-plan", "status": "complete"}
+  ]
+}
+EOF
+
+  # Plan has a PLAN.md and completed SUMMARY.md
+  touch "$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api/done-plan-PLAN.md"
+  touch "$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api/done-plan-SUMMARY.md"
+  # Also complete the scaffold's default plan so all plans in phase 2 are done
+  cat > "$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api/02-01-SUMMARY.md" <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"all plans"* ]]
+  [[ "$c3_detail" == *"complete"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# Early archive exit JSON structure
+# ---------------------------------------------------------------------------
+
+@test "archive missing STATE.md emits per-check structure in JSON" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  create_test_config
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  # Should have per-check entries (not empty checks:{})
+  local c1_detail
+  c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
+  [ "$c1_detail" = "not evaluated" ]
+
+  echo "$output" | jq -r '.failed_checks[]' | grep -q "missing_state_md"
+}
