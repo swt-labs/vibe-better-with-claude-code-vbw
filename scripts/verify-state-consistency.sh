@@ -406,7 +406,7 @@ run_check_exec_state_vs_filesystem() {
 
   # Unrecognized top-level status
   case "$es_status" in
-    complete|running|ready|paused|blocked) ;; # known statuses
+    complete|running|ready|paused|blocked|failed|pending) ;; # known statuses
     *)
       local msg="unrecognized top-level status '$es_status'"
       if [ -n "$details" ]; then
@@ -480,7 +480,7 @@ run_check_exec_state_vs_filesystem() {
   done < <(find "$target_dir" -maxdepth 1 -name '*-PLAN.md' 2>/dev/null | sort)
 
   # Also check for bare legacy PLAN.md not represented in .plans[]
-  if [ -f "$target_dir/PLAN.md" ] && [ "$plan_count" -eq 0 ]; then
+  if [ -f "$target_dir/PLAN.md" ]; then
     disk_plans_missing="${disk_plans_missing:+$disk_plans_missing, }on-disk bare PLAN.md not represented in .execution-state.json .plans[]"
   fi
 

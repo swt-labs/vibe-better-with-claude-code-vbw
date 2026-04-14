@@ -1015,6 +1015,29 @@ EOF
   [[ "$c3_detail" == *"bare PLAN.md"* ]]
 }
 
+@test "exec_state reverse check flags bare PLAN.md alongside named plans" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  # Add a stale bare PLAN.md alongside the numbered plan
+  echo "# Legacy plan" > "$phase_dir/PLAN.md"
+
+  # Need exec state so check 3 actually runs
+  printf '{"phase":2,"status":"running","plans":[{"id":"02-01","status":"running"}]}\n' > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"bare PLAN.md"* ]]
+}
+
 # ---------------------------------------------------------------------------
 # ROADMAP references phase with no matching directory
 # ---------------------------------------------------------------------------
@@ -1125,4 +1148,52 @@ EOF
   c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
   [[ "$c3_detail" == *"unrecognized"* ]]
   [[ "$c3_detail" == *"exploded"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# Valid top-level statuses from recover-state.sh
+# ---------------------------------------------------------------------------
+
+@test "exec_state accepts failed as valid top-level status" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json" <<'EOF'
+{
+  "phase": 2,
+  "status": "failed",
+  "plans": [
+    {"id": "02-01", "status": "failed"}
+  ]
+}
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  # Should NOT contain "unrecognized" for top-level status
+  [[ "$c3_detail" != *"unrecognized top-level"* ]]
+}
+
+@test "exec_state accepts pending as valid top-level status" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json" <<'EOF'
+{
+  "phase": 2,
+  "status": "pending",
+  "plans": []
+}
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  # Should NOT contain "unrecognized" for top-level status
+  [[ "$c3_detail" != *"unrecognized top-level"* ]]
 }
