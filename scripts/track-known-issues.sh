@@ -416,7 +416,13 @@ extract_summary_known_issue_outcomes_json() {
       and (.test | type == "string")
       and (.file | type == "string")
       and (.error | type == "string")
-      and ($filter == "all" or .disposition == $filter)
+      and (
+        if $filter == "all" then
+          .disposition | type == "string" and IN("accepted-process-exception","resolved","unresolved")
+        else
+          .disposition == $filter
+        end
+      )
     ' >/dev/null 2>&1; then
       continue
     fi
