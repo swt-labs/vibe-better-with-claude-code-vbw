@@ -1,7 +1,63 @@
 #!/bin/bash
 # summary-utils.sh -- shared helpers for status-aware SUMMARY.md checking
 # Source this from scripts that need status-based completion detection.
-# All functions are portable bash (3.2+), no external dependencies beyond awk.
+# All functions are portable bash (3.2+) with no external process dependencies
+# on the hot path. This keeps summary counting stable under heavily parallel
+# BATS runs where frequent fork/exec can intermittently fail.
+
+trim_summary_value() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+extract_summary_status() {
+  local f="$1"
+  local line value
+  local in_fm=false
+  local saw_content=false
+  local bom=$'\357\273\277'
+
+  [ -f "$f" ] || return 0
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+
+    if [ "$saw_content" = false ]; then
+      line="${line#"$bom"}"
+      value=$(trim_summary_value "$line")
+      if [ -z "$value" ]; then
+        continue
+      fi
+      saw_content=true
+      if [[ "$line" =~ ^---[[:space:]]*$ ]]; then
+        in_fm=true
+        continue
+      fi
+      return 0
+    fi
+
+    if [ "$in_fm" = true ]; then
+      if [[ "$line" =~ ^---[[:space:]]*$ ]]; then
+        return 0
+      fi
+      if [[ "$line" =~ ^[[:space:]]*status: ]]; then
+        value="${line#*:}"
+        value=$(trim_summary_value "$value")
+        case "$value" in
+          \"*\") value="${value#\"}"; value="${value%\"}" ;;
+          \'*\') value="${value#\'}"; value="${value%\'}" ;;
+        esac
+        value=$(trim_summary_value "$value")
+        printf '%s\n' "$value"
+        return 0
+      fi
+    fi
+  done < "$f"
+
+  return 0
+}
 
 # is_summary_complete FILE_PATH
 # Returns 0 if SUMMARY exists and has terminal-complete status, 1 otherwise.
@@ -9,20 +65,9 @@
 # "partial" and "failed" are terminal but NOT complete.
 is_summary_complete() {
   local f="$1"
-  [ -f "$f" ] || return 1
   local status
-  status=$(awk '
-    BEGIN { in_fm=0 }
-    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-    in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && /^status:/ {
-      sub(/^status:[[:space:]]*/, "")
-      gsub(/[\r"'"'"']/, "")
-      gsub(/[[:space:]]/, "")
-      print
-      exit
-    }
-  ' "$f" 2>/dev/null)
+  [ -f "$f" ] || return 1
+  status=$(extract_summary_status "$f")
   case "$status" in
     complete|completed) return 0 ;;
     *) return 1 ;;
@@ -33,20 +78,9 @@ is_summary_complete() {
 # Returns 0 if SUMMARY exists and has any terminal status (complete|completed|partial|failed).
 is_summary_terminal() {
   local f="$1"
-  [ -f "$f" ] || return 1
   local status
-  status=$(awk '
-    BEGIN { in_fm=0 }
-    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-    in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && /^status:/ {
-      sub(/^status:[[:space:]]*/, "")
-      gsub(/[\r"'"'"']/, "")
-      gsub(/[[:space:]]/, "")
-      print
-      exit
-    }
-  ' "$f" 2>/dev/null)
+  [ -f "$f" ] || return 1
+  status=$(extract_summary_status "$f")
   case "$status" in
     complete|completed|partial|failed) return 0 ;;
     *) return 1 ;;
@@ -77,18 +111,7 @@ count_done_summaries() {
   local f st
   for f in "$dir"/*-SUMMARY.md "$dir"/SUMMARY.md; do
     [ -f "$f" ] || continue
-    st=$(awk '
-      BEGIN { in_fm=0 }
-      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-      in_fm && /^---[[:space:]]*$/ { exit }
-      in_fm && /^status:/ {
-        sub(/^status:[[:space:]]*/, "")
-        gsub(/[\r"'"'"']/, "")
-        gsub(/[[:space:]]/, "")
-        print
-        exit
-      }
-    ' "$f" 2>/dev/null)
+    st=$(extract_summary_status "$f")
     case "$st" in complete|completed|partial) count=$((count + 1)) ;; esac
   done
   echo "$count"

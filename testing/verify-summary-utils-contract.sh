@@ -187,6 +187,67 @@ else
   fail "is_summary_complete: status: \"complete\" (quoted) -> expected 0, got 1"
 fi
 
+# Leading blank lines before frontmatter -> true
+cat > "$TMPDIR_BASE/leadingblank.md" <<'EOF'
+
+---
+phase: 01
+plan: 01
+status: complete
+---
+
+Done.
+EOF
+
+if is_summary_complete "$TMPDIR_BASE/leadingblank.md"; then
+  pass "is_summary_complete: leading blank line before frontmatter -> 0"
+else
+  fail "is_summary_complete: leading blank line before frontmatter -> expected 0, got 1"
+fi
+
+# UTF-8 BOM before frontmatter -> true
+printf '\357\273\277---\nphase: 01\nplan: 01\nstatus: complete\n---\n\nDone.\n' > "$TMPDIR_BASE/bom.md"
+
+if is_summary_complete "$TMPDIR_BASE/bom.md"; then
+  pass "is_summary_complete: UTF-8 BOM before frontmatter -> 0"
+else
+  fail "is_summary_complete: UTF-8 BOM before frontmatter -> expected 0, got 1"
+fi
+
+# Whitespace-padded status value -> true
+cat > "$TMPDIR_BASE/padded.md" <<'EOF'
+---
+phase: 01
+plan: 01
+status:    complete   
+---
+
+Done.
+EOF
+
+if is_summary_complete "$TMPDIR_BASE/padded.md"; then
+  pass "is_summary_complete: whitespace-padded status -> 0"
+else
+  fail "is_summary_complete: whitespace-padded status -> expected 0, got 1"
+fi
+
+# Quoted whitespace-padded status value -> true
+cat > "$TMPDIR_BASE/quoted-padded.md" <<'EOF'
+---
+phase: 01
+plan: 01
+status: "  complete  "
+---
+
+Done.
+EOF
+
+if is_summary_complete "$TMPDIR_BASE/quoted-padded.md"; then
+  pass "is_summary_complete: quoted whitespace-padded status -> 0"
+else
+  fail "is_summary_complete: quoted whitespace-padded status -> expected 0, got 1"
+fi
+
 # CRLF line endings -> true
 printf -- '---\r\nphase: 01\r\nstatus: complete\r\n---\r\n\r\nDone.\r\n' > "$TMPDIR_BASE/crlf.md"
 
@@ -253,6 +314,30 @@ if is_summary_terminal "$TMPDIR_BASE/crlf.md"; then
   pass "is_summary_terminal: CRLF line endings -> 0"
 else
   fail "is_summary_terminal: CRLF line endings -> expected 0, got 1"
+fi
+
+if is_summary_terminal "$TMPDIR_BASE/leadingblank.md"; then
+  pass "is_summary_terminal: leading blank line before frontmatter -> 0"
+else
+  fail "is_summary_terminal: leading blank line before frontmatter -> expected 0, got 1"
+fi
+
+if is_summary_terminal "$TMPDIR_BASE/bom.md"; then
+  pass "is_summary_terminal: UTF-8 BOM before frontmatter -> 0"
+else
+  fail "is_summary_terminal: UTF-8 BOM before frontmatter -> expected 0, got 1"
+fi
+
+if is_summary_terminal "$TMPDIR_BASE/padded.md"; then
+  pass "is_summary_terminal: whitespace-padded status -> 0"
+else
+  fail "is_summary_terminal: whitespace-padded status -> expected 0, got 1"
+fi
+
+if is_summary_terminal "$TMPDIR_BASE/quoted-padded.md"; then
+  pass "is_summary_terminal: quoted whitespace-padded status -> 0"
+else
+  fail "is_summary_terminal: quoted whitespace-padded status -> expected 0, got 1"
 fi
 
 # ===== count_complete_summaries =====
