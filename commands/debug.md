@@ -244,13 +244,13 @@ If a fix was committed and session status is `qa_pending`: proceed to `<debug_in
 
 Read the `auto_uat` config:
 ```bash
-AUTO_UAT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/read-config.sh .vbw-planning/config.json auto_uat 2>/dev/null || echo "false")
+AUTO_UAT=$(jq -r '.auto_uat // "false"' .vbw-planning/config.json 2>/dev/null || echo "false")
 ```
 
 Resolve effort profile if not already set (needed for tier resolution and max-turns):
 ```bash
 if [ -z "${EFFORT_PROFILE:-}" ]; then
-  EFFORT_PROFILE=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/read-config.sh .vbw-planning/config.json effort_profile 2>/dev/null || echo "balanced")
+  EFFORT_PROFILE=$(jq -r '.effort // "balanced"' .vbw-planning/config.json 2>/dev/null || echo "balanced")
 fi
 ```
 
@@ -263,9 +263,9 @@ options:
   - label: "Yes"
     description: "Run QA verification inline"
   - label: "No"
-    description: "I'll run /vbw:qa --session later"
+    description: "Skip — I'll resume later with /vbw:debug --resume"
 ```
-If the user selects "No": STOP with `➞ Next: /vbw:debug --resume -- Continue to QA verification`.
+If the user selects "No": STOP with `➜ Next: /vbw:debug --resume -- Continue to QA verification`.
 If the user selects "Yes" or provides freeform acceptance: proceed.
 
 If `AUTO_UAT` is `"true"` OR `YOLO_MODE` is `true`: skip the prompt and proceed directly.
@@ -354,6 +354,13 @@ If `AUTO_UAT` is `"true"` OR `YOLO_MODE` is `true`: skip the prompt and proceed 
 <debug_inline_uat>
 **Inline UAT — runs automatically after QA passes.**
 
+Resolve `AUTO_UAT` if not already set (needed when entering via `--resume` from `uat_pending`):
+```bash
+if [ -z "${AUTO_UAT:-}" ]; then
+  AUTO_UAT=$(jq -r '.auto_uat // "false"' .vbw-planning/config.json 2>/dev/null || echo "false")
+fi
+```
+
 **Prompt gate:** If `AUTO_UAT` is not `"true"` AND `YOLO_MODE` is not `true`, call AskUserQuestion:
 ```yaml
 question: "QA passed. Run UAT verification now?"
@@ -363,9 +370,9 @@ options:
   - label: "Yes"
     description: "Run UAT checkpoints inline"
   - label: "No"
-    description: "I'll run /vbw:verify --session later"
+    description: "Skip — I'll resume later with /vbw:debug --resume"
 ```
-If the user selects "No": STOP with `➞ Next: /vbw:debug --resume -- Continue to UAT verification`.
+If the user selects "No": STOP with `➜ Next: /vbw:debug --resume -- Continue to UAT verification`.
 If the user selects "Yes" or provides freeform acceptance: proceed.
 
 If `AUTO_UAT` is `"true"` OR `YOLO_MODE` is `true`: skip the prompt and proceed directly.
