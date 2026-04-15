@@ -306,7 +306,17 @@ fi
    - Parse the verdict (PASS/FAIL/PARTIAL) from the QA agent's response.
    - Write the QA round to the session file:
      ```bash
-     QA_RESULT_JSON='{"mode":"qa","round":{qa_round},"result":"{PASS|FAIL|PARTIAL}","checks":[{"id":"{check-id}","description":"{check description}","status":"{PASS|FAIL}","evidence":"{evidence}"}]}'
+     QA_RESULT_JSON=$(cat <<'ENDJSON'
+     {
+       "mode": "qa",
+       "round": {qa_round},
+       "result": "{PASS|FAIL|PARTIAL}",
+       "checks": [
+         {"id": "{check-id}", "description": "{check description}", "status": "{PASS|FAIL}", "evidence": "{evidence}"}
+       ]
+     }
+     ENDJSON
+     )
      echo "$QA_RESULT_JSON" | bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/write-debug-session.sh "$session_file"
      ```
    - Update session status based on result:
@@ -417,7 +427,20 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
 
 6. After all checkpoints, persist the UAT round:
    ```bash
-   UAT_RESULT_JSON='{"mode":"uat","round":{uat_round},"result":"{pass|issues_found}","checkpoints":[{"id":"{id}","description":"{desc}","result":"pass|skip|issue","user_response":"{verbatim}"}],"issues":[{"id":"{id}","description":"{desc}","severity":"{level}"}]}'
+   UAT_RESULT_JSON=$(cat <<'ENDJSON'
+   {
+     "mode": "uat",
+     "round": {uat_round},
+     "result": "{pass|issues_found}",
+     "checkpoints": [
+       {"id": "{id}", "description": "{desc}", "result": "pass|skip|issue", "user_response": "{verbatim}"}
+     ],
+     "issues": [
+       {"id": "{id}", "description": "{desc}", "severity": "{level}"}
+     ]
+   }
+   ENDJSON
+   )
    echo "$UAT_RESULT_JSON" | bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/write-debug-session.sh "$session_file"
    ```
 
