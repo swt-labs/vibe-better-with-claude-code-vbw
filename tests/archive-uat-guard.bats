@@ -43,7 +43,7 @@ status: issues_found
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_phase=08"
@@ -66,7 +66,7 @@ status: complete
 All passed.
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=false"
 }
@@ -74,7 +74,7 @@ EOF
 @test "phase-detect reports milestone_uat_issues=false when no milestones exist" {
   mkdir -p .vbw-planning/phases
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=false"
 }
@@ -108,7 +108,7 @@ status: issues_found
   - Severity: critical
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_slug=02-latest"
@@ -132,7 +132,7 @@ status: issues_found
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Active phases have work → milestone UAT scan should not fire
   echo "$output" | grep -q "milestone_uat_issues=false"
@@ -156,7 +156,7 @@ status: issues_found
 - Severity: minor
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_major_or_higher=false"
@@ -177,7 +177,7 @@ status: issues_found
 Some issue without severity
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_major_or_higher=true"
@@ -198,7 +198,7 @@ status: issues_found
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_phase_dir=.vbw-planning/milestones/01-foundation/phases/08-cost-basis"
 }
@@ -232,7 +232,7 @@ status: complete
 All passed.
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_slug=01-old"
@@ -266,7 +266,7 @@ status: issues_found
   - Severity: critical
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_slug=10-new"
@@ -286,7 +286,7 @@ status: issues_found
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "has_shipped_milestones=true"
   echo "$output" | grep -q "milestone_uat_issues=true"
@@ -330,7 +330,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_phase_dirs=.*phases/01-core$"
@@ -352,7 +352,7 @@ status: issues_found
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_slug=legacy-archive"
@@ -414,7 +414,7 @@ status: issues_found
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_slug=01 legacy"
@@ -453,7 +453,7 @@ Status: issues_found
 Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_issues_phase=01"
 }
@@ -486,7 +486,7 @@ EOF
   mkdir -p .vbw-planning/phases
   echo "# Project" > .vbw-planning/PROJECT.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Count output keys — must emit all 33 keys even with empty milestones dir
   key_count=$(echo "$output" | grep -c '=')
@@ -502,7 +502,7 @@ EOF
   echo "# Shipped" > .vbw-planning/milestones/01-foundation/SHIPPED.md
   echo "# Project" > .vbw-planning/PROJECT.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   key_count=$(echo "$output" | grep -c '=')
   [ "$key_count" -ge 35 ]
@@ -515,7 +515,7 @@ EOF
   mkdir -p .vbw-planning/phases
   echo "# Project" > .vbw-planning/PROJECT.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   key_count=$(echo "$output" | grep -c '=')
   [ "$key_count" -ge 35 ]
@@ -574,7 +574,7 @@ status: issues_found
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_count=3"
@@ -611,7 +611,7 @@ status: issues_found
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_count=1"
@@ -636,7 +636,7 @@ status: issues_found
 EOF
   echo "phases/01-remediate-migration" > .vbw-planning/milestones/01-foundation/phases/05-migration/.remediated
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=false"
   echo "$output" | grep -q "milestone_uat_count=0"
@@ -667,7 +667,7 @@ status: issues_found
 Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   phase_dirs=$(echo "$output" | grep '^milestone_uat_phase_dirs=' | sed 's/^[^=]*=//')
@@ -677,7 +677,7 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q '^marked_count=2$'
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=false"
 
