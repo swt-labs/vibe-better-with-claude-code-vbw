@@ -348,7 +348,7 @@ fi
 </debug_inline_qa>
 
 <debug_inline_uat>
-**Inline UAT — runs automatically after QA passes.**
+**Inline UAT — prompt-gated by default (`auto_uat`); runs automatically when `auto_uat=true`.**
 
 Resolve `AUTO_UAT` if not already set (needed when entering via `--resume` from `uat_pending`):
 ```bash
