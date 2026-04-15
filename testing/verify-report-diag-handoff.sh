@@ -154,6 +154,20 @@ else
   fail "DIAG_FILE path: Method 1 code block missing /tmp/vbw-diag-report-\${CLAUDE_SESSION_ID:-default}.txt"
 fi
 
+# Verify the session-scoped path appears in Method 2 section
+if printf '%s\n' "$method2_section" | grep -qF '/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt'; then
+  pass "DIAG_FILE path: Method 2 section uses session-scoped path"
+else
+  fail "DIAG_FILE path: Method 2 section missing /tmp/vbw-diag-report-\${CLAUDE_SESSION_ID:-default}.txt"
+fi
+
+# Verify the session-scoped path appears in Method 4 section
+if printf '%s\n' "$method4_section" | grep -qF '/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt'; then
+  pass "DIAG_FILE path: Method 4 section uses session-scoped path"
+else
+  fail "DIAG_FILE path: Method 4 section missing /tmp/vbw-diag-report-\${CLAUDE_SESSION_ID:-default}.txt"
+fi
+
 echo ""
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"
