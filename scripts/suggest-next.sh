@@ -715,8 +715,45 @@ case "$CMD" in
     ;;
 
   fix)
-    suggest "/vbw:qa -- Verify the fix"
-    suggest "/vbw:vibe -- Continue building"
+    # Check for an active debug session only for non-phase work
+    # (phase_count=0), so phase-scoped fix suggestions remain unchanged.
+    _fix_debug_handled=false
+    if [ "${phase_count:-0}" -eq 0 ] && [ -d "$PLANNING_DIR/debugging" ]; then
+      _fix_ds_output=$("$SCRIPT_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null) || true
+      if [ -n "$_fix_ds_output" ]; then
+        eval "$_fix_ds_output" 2>/dev/null || true
+        # shellcheck disable=SC2154
+        if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
+          _fix_ds_status="${status:-}"
+          case "$_fix_ds_status" in
+            qa_pending|fix_applied)
+              suggest "/vbw:debug --resume -- Address remaining issues"
+              _fix_debug_handled=true
+              ;;
+            qa_failed)
+              suggest "/vbw:debug --resume -- Address QA failures"
+              _fix_debug_handled=true
+              ;;
+            uat_pending)
+              suggest "/vbw:verify -- Run UAT on the debug fix"
+              _fix_debug_handled=true
+              ;;
+            uat_failed)
+              suggest "/vbw:debug --resume -- Address UAT issues"
+              _fix_debug_handled=true
+              ;;
+            investigating)
+              suggest "/vbw:debug --resume -- Continue investigation"
+              _fix_debug_handled=true
+              ;;
+          esac
+        fi
+      fi
+    fi
+    if [ "$_fix_debug_handled" = false ]; then
+      suggest "/vbw:qa -- Verify the fix"
+      suggest "/vbw:vibe -- Continue building"
+    fi
     ;;
 
   verify)
