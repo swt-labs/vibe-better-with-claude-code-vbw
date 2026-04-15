@@ -975,7 +975,10 @@ When `worktree_isolation="off"`: skip this block silently.
 
 **Advisory state-consistency verification:** After state updates, run:
 ```bash
-bash "${VBW_PLUGIN_ROOT}/scripts/verify-state-consistency.sh" .vbw-planning --mode advisory
+VERIFY_SCRIPT="${VBW_PLUGIN_ROOT}/scripts/verify-state-consistency.sh"
+if [ -f "$VERIFY_SCRIPT" ]; then
+  bash "$VERIFY_SCRIPT" .vbw-planning --mode advisory 2>/dev/null || true
+fi
 ```
 If the JSON output's `verdict` is `"fail"`, surface a warning listing the `failed_checks` in the phase completion output. This is non-blocking — the reactive state updater handles most drift, but crashes, compaction, or manual edits can cause silent misalignment that propagates to the next phase. This catch-net surfaces those issues early. If the script is unavailable or errors, continue normally.
 
