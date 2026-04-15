@@ -1206,7 +1206,7 @@ After the UAT gate passes, run:
 ```bash
 bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/verify-state-consistency.sh .vbw-planning --mode archive
 ```
-If exit code is 2: STOP. State misalignment at archive means the archived milestone record may be unreliable — phase counts, completion markers, or project metadata could be inconsistent. Surface the JSON output's `failed_checks` array so the user can fix the drift before retrying.
+If exit code is non-zero: STOP. If exit code is 2, state misalignment at archive means the archived milestone record may be unreliable — phase counts, completion markers, or project metadata could be inconsistent. Surface the JSON output's `failed_checks` array so the user can fix the drift before retrying. For any other non-zero exit, treat the verifier as failed unexpectedly and do not proceed with archive.
 
 **Pre-gate audit (unless --skip-audit or --force):**
 Run 7-point audit matrix:

@@ -36,6 +36,11 @@ if [ -f "$SCRIPT_DIR/phase-state-utils.sh" ]; then
   . "$SCRIPT_DIR/phase-state-utils.sh"
 fi
 
+if [ -f "$SCRIPT_DIR/uat-utils.sh" ]; then
+  # shellcheck source=uat-utils.sh
+  . "$SCRIPT_DIR/uat-utils.sh"
+fi
+
 # --- Argument parsing -------------------------------------------------------
 MODE="advisory"
 PLANNING_DIR=""
@@ -195,6 +200,21 @@ parse_state_project_name() {
   STATE_PROJECT_NAME=$(grep -m1 '^\*\*Project:\*\*' "$state_file" 2>/dev/null | sed 's/.*\*\*Project:\*\*[[:space:]]*//' || true)
 }
 
+# --- Helper: check if a phase has unresolved UAT issues ---------------------
+# Mirrors the logic in state-updater.sh so the verifier's notion of "active"
+# matches what STATE.md/ROADMAP.md are actually driven by.
+phase_has_uat_issues() {
+  local phase_dir="$1"
+  # Requires uat-utils.sh (current_uat, extract_status_value)
+  type current_uat >/dev/null 2>&1 || return 1
+  type extract_status_value >/dev/null 2>&1 || return 1
+  local uat_file status_val
+  uat_file=$(current_uat "$phase_dir")
+  [ -f "$uat_file" ] || return 1
+  status_val=$(extract_status_value "$uat_file")
+  [ "$status_val" = "issues_found" ]
+}
+
 # --- Helper: find active phase dir (first incomplete phase) ------------------
 find_active_phase_num() {
   local phases_dir="$1"
@@ -206,7 +226,7 @@ find_active_phase_num() {
     [ -n "$dir" ] || continue
     plans=$(count_phase_plans "$dir")
     complete=$(count_complete_summaries "$dir")
-    if [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ]; then
+    if [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ] || phase_has_uat_issues "$dir"; then
       raw_num=$(resolve_phase_number_from_phase_dir "$dir")
       ACTIVE_PHASE_NUM=$(echo "$raw_num" | sed 's/^0*//')
       ACTIVE_PHASE_NUM="${ACTIVE_PHASE_NUM:-0}"
@@ -347,7 +367,10 @@ run_check_roadmap_vs_summaries() {
 
     # Not marked complete but all plans are done
     if [ "$checked" = "false" ] && [ "$plans" -gt 0 ] && [ "$complete" -ge "$plans" ]; then
-      mismatches="${mismatches:+$mismatches, }phase $phase_num marked [ ] but all plans complete ($complete/$plans)"
+      # UAT issues keep the phase unchecked even when all plans are complete
+      if ! phase_has_uat_issues "$phase_dir"; then
+        mismatches="${mismatches:+$mismatches, }phase $phase_num marked [ ] but all plans complete ($complete/$plans)"
+      fi
     fi
   done < <(grep -iE '^\- \[(x| )\] Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
 
