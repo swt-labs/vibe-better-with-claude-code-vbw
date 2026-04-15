@@ -390,6 +390,11 @@ run_check_roadmap_vs_summaries() {
       mismatches="${mismatches:+$mismatches, }phase $phase_num marked [x] but incomplete ($complete/$plans done)"
     fi
 
+    # Marked complete in roadmap but phase has unresolved UAT issues
+    if [ "$checked" = "true" ] && [ -n "$phase_dir" ] && phase_has_uat_issues "$phase_dir"; then
+      mismatches="${mismatches:+$mismatches, }phase $phase_num marked [x] but has unresolved UAT issues"
+    fi
+
     # Not marked complete but all plans are done
     if [ "$checked" = "false" ] && [ "$plans" -gt 0 ] && [ "$complete" -ge "$plans" ]; then
       # UAT issues keep the phase unchecked even when all plans are complete

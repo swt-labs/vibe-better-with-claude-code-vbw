@@ -2117,11 +2117,11 @@ EOF
   [ "$c2_pass" = "true" ]
 }
 
-@test "roadmap_vs_summaries: checked phase with UAT issues is not a verifier concern" {
+@test "roadmap_vs_summaries: checked phase with UAT issues is flagged as drift" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
 
-  # Phase 1 has UAT issues but roadmap says [x] — that's wrong
+  # Phase 1 has UAT issues but roadmap says [x] — verifier should flag this
   cat > "$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/01-UAT.md" <<'EOF'
 ---
 status: issues_found
@@ -2132,10 +2132,10 @@ EOF
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
   [ "$status" -eq 0 ]
 
-  # The existing [x] Phase 1 in scaffold should still pass because
-  # the check only flags [ ] when all plans complete (not [x] when UAT issues exist).
-  # The [x] + UAT case is a state-updater responsibility, not a verifier concern.
-  local verdict
-  verdict=$(echo "$output" | jq -r '.verdict')
-  [ "$verdict" = "pass" ] || [ "$verdict" = "fail" ]
+  # The [x] + UAT issues combination is drift — state-updater should have unchecked it
+  local c2_pass c2_detail
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
+  [ "$c2_pass" = "false" ]
+  echo "$c2_detail" | grep -q "unresolved UAT issues"
 }
