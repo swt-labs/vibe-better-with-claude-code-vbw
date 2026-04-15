@@ -279,6 +279,9 @@ run_check_roadmap_vs_summaries() {
   while IFS= read -r line; do
     phase_num=$(echo "$line" | sed -n 's/^- \[.\] Phase \([0-9][0-9]*\):.*/\1/p')
     [ -n "$phase_num" ] || continue
+    # Remove leading zeros (sed, not arithmetic — avoids octal for 08/09)
+    phase_num=$(printf '%s' "$phase_num" | sed 's/^0*//')
+    phase_num=${phase_num:-0}
 
     # Duplicate detection
     case " $seen_phases " in
@@ -395,6 +398,10 @@ run_check_exec_state_vs_filesystem() {
       return
       ;;
   esac
+
+  # Remove leading zeros (sed, not arithmetic — avoids octal for 08/09)
+  es_phase=$(printf '%s' "$es_phase" | sed 's/^0*//')
+  es_phase=${es_phase:-0}
 
   if [ ! -d "$PHASES_DIR" ]; then
     if [ "$MODE" = "archive" ]; then
