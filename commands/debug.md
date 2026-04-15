@@ -259,7 +259,11 @@ fi
    QA_CONTEXT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/compile-debug-session-context.sh "$session_file" qa)
    ```
 
-2. Resolve tier from effort profile: fast=quick, balanced=standard, thorough=deep. Store as `ACTIVE_TIER`. If turbo: set session status to `uat_pending` via `debug-session-state.sh set-status .vbw-planning uat_pending`, then jump directly to `<debug_inline_uat>` below — skip all remaining QA steps (do not increment QA round).
+2. Resolve tier from effort profile: fast=quick, balanced=standard, thorough=deep. Store as `ACTIVE_TIER`. If turbo:
+   ```bash
+   bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh set-status .vbw-planning uat_pending
+   ```
+   Then jump directly to `<debug_inline_uat>` below — skip all remaining QA steps (do not increment QA round).
 
 3. Increment QA round:
    ```bash
