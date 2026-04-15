@@ -86,20 +86,32 @@ esac
 # Helper for early-exit JSON with per-check structure
 early_exit_json() {
   local verdict="$1" mode="$2" failed_check="$3" reason="${4:-}"
+  local check_pass="true"
+  local detail="not evaluated"
+  if [ "$verdict" = "fail" ]; then
+    check_pass="false"
+    if [ -n "$reason" ]; then
+      detail="not evaluated: $reason"
+    else
+      detail="not evaluated: precondition failure"
+    fi
+  fi
   jq -n \
     --arg verdict "$verdict" \
     --arg mode "$mode" \
     --arg failed "$failed_check" \
     --arg reason "$reason" \
+    --argjson check_pass "$( [ "$check_pass" = "true" ] && echo true || echo false )" \
+    --arg detail "$detail" \
     '{
       verdict:$verdict,
       mode:$mode,
       checks:{
-        state_vs_filesystem:{pass:true,detail:"not evaluated"},
-        roadmap_vs_summaries:{pass:true,detail:"not evaluated"},
-        exec_state_vs_filesystem:{pass:true,detail:"not evaluated"},
-        state_vs_roadmap:{pass:true,detail:"not evaluated"},
-        project_vs_state:{pass:true,detail:"not evaluated"}
+        state_vs_filesystem:{pass:$check_pass,detail:$detail},
+        roadmap_vs_summaries:{pass:$check_pass,detail:$detail},
+        exec_state_vs_filesystem:{pass:$check_pass,detail:$detail},
+        state_vs_roadmap:{pass:$check_pass,detail:$detail},
+        project_vs_state:{pass:$check_pass,detail:$detail}
       },
       failed_checks:(if $failed == "" then [] else [$failed] end),
       reason:($reason | if . == "" then null else . end)
@@ -118,14 +130,14 @@ fi
 
 if [ ! -f "$PLANNING_DIR/STATE.md" ]; then
   if [ "$MODE" = "archive" ]; then
-    early_exit_json "fail" "archive" "missing_state_md"
+    early_exit_json "fail" "archive" "missing_state_md" "no STATE.md"
     exit 2
   fi
   early_exit_json "fail" "advisory" "missing_state_md" "no STATE.md"
   exit 0
 fi
 if [ ! -f "$PLANNING_DIR/ROADMAP.md" ] && [ "$MODE" = "archive" ]; then
-  early_exit_json "fail" "archive" "missing_roadmap_md"
+  early_exit_json "fail" "archive" "missing_roadmap_md" "no ROADMAP.md"
   exit 2
 fi
 

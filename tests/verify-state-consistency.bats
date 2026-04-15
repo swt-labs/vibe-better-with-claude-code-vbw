@@ -108,9 +108,11 @@ SUMMARY
   [ "$verdict" = "fail" ]
 
   # Advisory fail paths must still emit per-check JSON structure
-  local c1_detail
+  local c1_detail c1_pass
   c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
-  [ "$c1_detail" = "not evaluated" ]
+  c1_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
+  [ "$c1_pass" = "false" ]
+  [[ "$c1_detail" == *"not evaluated"* ]]
 
   local fc_count
   fc_count=$(echo "$output" | jq '.failed_checks | length')
@@ -636,9 +638,11 @@ EOF
   [ "$verdict" = "fail" ]
 
   # Advisory fail paths must still emit per-check JSON structure
-  local c1_detail
+  local c1_detail c1_pass
   c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
-  [ "$c1_detail" = "not evaluated" ]
+  c1_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
+  [ "$c1_pass" = "false" ]
+  [[ "$c1_detail" == *"not evaluated"* ]]
 
   local fc_count
   fc_count=$(echo "$output" | jq '.failed_checks | length')
@@ -908,9 +912,11 @@ SUMMARY
   [ "$status" -eq 2 ]
 
   # Should have per-check entries (not empty checks:{})
-  local c1_detail
+  local c1_detail c1_pass
   c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
-  [ "$c1_detail" = "not evaluated" ]
+  c1_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
+  [ "$c1_pass" = "false" ]
+  [[ "$c1_detail" == *"not evaluated"* ]]
 
   echo "$output" | jq -r '.failed_checks[]' | grep -q "missing_state_md"
 }
