@@ -44,7 +44,7 @@ teardown_temp_dir() {
 # Run phase-detect.sh with retry on empty output.
 # Under heavy parallel BATS execution, transient fork/exec failures can cause
 # the subprocess to produce zero output. Retries with exponential backoff
-# (0.1s doubling → 0.1, 0.2, 0.4, 0.8, 1.6s ≈ 3.1s total) handle this
+# (0.1s doubling → sleeps of 0.1, 0.2, 0.4, 0.8s ≈ 1.5s total) handle this
 # reliably. Returns 1 if all retries produce empty output.
 # Sets BATS globals: $output, $status (same as `run`).
 run_phase_detect() {
