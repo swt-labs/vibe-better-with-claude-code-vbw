@@ -1637,3 +1637,43 @@ ROADMAP
   # Phase 2 should NOT be flagged as incomplete since partial counts as done
   [[ "$c2_detail" != *"phase 2"*"incomplete"* ]] || [[ "$c2_detail" != *"Phase 2"*"incomplete"* ]]
 }
+
+# ---------------------------------------------------------------------------
+# Stale exec-state phase (points at old, still-existing phase)
+# ---------------------------------------------------------------------------
+
+@test "exec_state_vs_filesystem flags stale phase pointing at old phase" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Scaffold has 3 phases; phase 2 is active (incomplete) by default.
+  # Set exec state to phase 1 with status "running" — stale, since the
+  # active phase on disk is 2.
+  printf '{"phase":1,"status":"running","plans":[{"id":"01-01","status":"running"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass c3_detail
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [ "$c3_pass" = "false" ]
+  [[ "$c3_detail" == *"does not match active phase"* ]]
+}
+
+@test "exec_state_vs_filesystem passes when phase matches active phase" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Phase 2 is active (incomplete) by default in scaffold
+  printf '{"phase":2,"status":"running","plans":[{"id":"02-01","status":"running"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "true" ]
+}

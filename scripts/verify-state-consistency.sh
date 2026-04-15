@@ -386,6 +386,17 @@ run_check_exec_state_vs_filesystem() {
     return
   fi
 
+  # Cross-check: exec-state phase vs actual active phase on disk.
+  # When es_status is "complete", the exec-state is expected to reference a
+  # finished phase while the active phase has moved on — that is normal.
+  # Drift is only meaningful when the exec state claims work is still running
+  # on a phase that is not the current active phase.
+  if [ "$es_status" != "complete" ] && find_active_phase_num "$PHASES_DIR" 2>/dev/null && [ -n "$ACTIVE_PHASE_NUM" ] && [ "$ACTIVE_PHASE_NUM" != "$es_phase" ]; then
+    local actual_active_num="$ACTIVE_PHASE_NUM"
+    details="exec-state phase ($es_phase) does not match active phase on disk ($actual_active_num)"
+    check_exec_state_vs_filesystem_pass=false
+  fi
+
   # Status coherence: complete but incomplete plans
   local plans complete
   plans=$(count_phase_plans "$target_dir")
