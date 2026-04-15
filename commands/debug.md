@@ -35,7 +35,7 @@ Store the plugin root path output above as `VBW_PLUGIN_ROOT` for use in script i
 <debug_session_routing>
 Resolve or create the debug session before any investigation. Order of precedence:
 
-1. **Explicit `--session <id>`:** Extract `SESSION_ID` — the token immediately following `--session` in $ARGUMENTS. If `--session` is present but no id follows it, STOP: `"--session requires a session id."` Resume the named session:
+1. **Explicit `--session <id>`:** Extract `SESSION_ID` — the token immediately following `--session` in $ARGUMENTS. If `--session` is present but no id follows it, STOP: `"--session requires a session id."` Parse `--yolo` if present: `YOLO_MODE=false; if printf '%s' "$ARGUMENTS" | grep -qE '(^|[[:space:]])--yolo([[:space:]]|$)'; then YOLO_MODE=true; fi`. Resume the named session:
    ```bash
    eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh resume .vbw-planning "$SESSION_ID")"
    ```
