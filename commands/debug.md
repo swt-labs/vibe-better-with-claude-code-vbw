@@ -231,11 +231,11 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
     ⚠ testName (path/to/file): error message
   Suggest: /vbw:todo <description> to track
 ```
-This is **display-only**. Do NOT edit STATE.md, do NOT add todos, do NOT invoke /vbw:todo, and do NOT enter an interactive loop. The user decides whether to track these. If no discovered issues: omit the section entirely. After displaying discovered issues, STOP. Do not take further action.
+This is **display-only**. Do NOT edit STATE.md, do NOT add todos, do NOT invoke /vbw:todo, and do NOT enter an interactive loop. The user decides whether to track these. If no discovered issues: omit the section entirely.
 
 If no fix was committed (session status is still `investigating`): STOP with `➜ Next: /vbw:debug --resume -- Continue investigation and apply fix`. Do not enter inline QA.
 
-If a fix was committed and session status is `qa_pending`: proceed to `<debug_inline_qa>` below.
+If a fix was committed and session status is `qa_pending`: proceed to `<debug_inline_qa>` below (even if discovered issues were displayed above — they are informational only and do not gate the QA lifecycle).
 
 <debug_inline_qa>
 **Inline QA — runs automatically after a fix is committed.**
@@ -359,7 +359,8 @@ options:
     description: "Skip — I'll resume later with /vbw:debug --resume"
 ```
 If the user selects "No": STOP with `➜ Next: /vbw:debug --resume -- Continue to UAT verification`.
-If the user selects "Yes" or provides freeform acceptance: proceed.
+If the user selects "Yes": proceed.
+If the user provides freeform input: proceed only when the response is clearly affirmative (e.g., "yes", "y", "sure", "go ahead"). If the response is negative or deferring (e.g., "no", "not now", "later", "skip"): treat as "No" and STOP. If ambiguous: ask a brief follow-up to confirm before proceeding.
 
 If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
 

@@ -336,7 +336,7 @@ else
   fail "debug.md resume routing for qa_pending/fix_applied missing inline QA entry"
 fi
 
-if sed -n '/status=uat_pending/,/debug_inline_uat/p' "$ROOT/commands/debug.md" 2>/dev/null | grep -q 'debug_inline_uat'; then
+if grep -q 'status=uat_pending.*debug_inline_uat' "$ROOT/commands/debug.md" 2>/dev/null; then
   pass "debug.md resume routing for uat_pending enters inline UAT"
 else
   fail "debug.md resume routing for uat_pending missing inline UAT entry"
