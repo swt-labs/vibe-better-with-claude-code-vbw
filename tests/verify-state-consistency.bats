@@ -1385,3 +1385,73 @@ EOF
   verdict=$(echo "$output" | jq -r '.verdict')
   [ "$verdict" = "pass" ] || [ "$verdict" = "fail" ]
 }
+
+# ---------------------------------------------------------------------------
+# F-01: Missing PROJECT.md fails in archive mode
+# ---------------------------------------------------------------------------
+
+@test "project_vs_state fails in archive mode when PROJECT.md missing" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  rm -f "$TEST_TEMP_DIR/.vbw-planning/PROJECT.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  local verdict
+  verdict=$(echo "$output" | jq -r '.verdict')
+  [ "$verdict" = "fail" ]
+
+  local failed
+  failed=$(echo "$output" | jq -r '.failed_checks[]')
+  [[ "$failed" == *"project_vs_state"* ]]
+
+  local c5_pass c5_detail
+  c5_pass=$(echo "$output" | jq -r '.checks.project_vs_state.pass')
+  c5_detail=$(echo "$output" | jq -r '.checks.project_vs_state.detail')
+  [ "$c5_pass" = "false" ]
+  [[ "$c5_detail" == *"missing PROJECT.md"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# F-02: exec_state complete with zero plan artifacts
+# ---------------------------------------------------------------------------
+
+@test "exec_state_vs_filesystem fails when complete but zero plan artifacts" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Set exec state to complete for phase 2
+  printf '{"phase":2,"status":"complete"}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  # Remove all plan/summary artifacts from phase 2, leave directory
+  rm -f "$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api/"*-PLAN.md
+  rm -f "$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api/"*-SUMMARY.md
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass c3_detail
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [ "$c3_pass" = "false" ]
+  [[ "$c3_detail" == *"no plan artifacts"* ]]
+}
+
+@test "exec_state_vs_filesystem passes when complete with all plans complete" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Set exec state to complete for phase 1 (scaffold already has complete plan/summary)
+  printf '{"phase":1,"status":"complete","plans":[{"id":"01-01","status":"complete"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "true" ]
+}

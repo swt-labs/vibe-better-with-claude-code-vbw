@@ -378,7 +378,10 @@ run_check_exec_state_vs_filesystem() {
   plans=$(count_phase_plans "$target_dir")
   complete=$(count_complete_summaries "$target_dir")
 
-  if [ "$es_status" = "complete" ] && [ "$plans" -gt 0 ] && [ "$complete" -lt "$plans" ]; then
+  if [ "$es_status" = "complete" ] && [ "$plans" -eq 0 ]; then
+    details="status is 'complete' but phase $es_phase has no plan artifacts"
+    check_exec_state_vs_filesystem_pass=false
+  elif [ "$es_status" = "complete" ] && [ "$plans" -gt 0 ] && [ "$complete" -lt "$plans" ]; then
     details="status is 'complete' but phase $es_phase has incomplete plans ($complete/$plans)"
     check_exec_state_vs_filesystem_pass=false
   fi
@@ -605,7 +608,12 @@ run_check_state_vs_roadmap() {
 # =============================================================================
 run_check_project_vs_state() {
   if [ ! -f "$PROJECT_FILE" ]; then
-    check_project_vs_state_detail="skip: no PROJECT.md"
+    if [ "$MODE" = "archive" ]; then
+      check_project_vs_state_pass=false
+      check_project_vs_state_detail="missing PROJECT.md"
+    else
+      check_project_vs_state_detail="skip: no PROJECT.md"
+    fi
     return
   fi
 
