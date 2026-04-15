@@ -574,6 +574,12 @@ run_check_exec_state_vs_filesystem() {
     plan_status=$(jq -r ".plans[$i].status // empty" "$EXEC_STATE_FILE" 2>/dev/null || true)
 
     if [ -n "$plan_id" ] && [ -n "$plan_status" ]; then
+      # Validate plan_id against safe filename pattern to prevent path traversal
+      if ! printf '%s' "$plan_id" | grep -qE '^[A-Za-z0-9._-]+$'; then
+        plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' has invalid id (must match ^[A-Za-z0-9._-]+$)"
+        i=$((i + 1))
+        continue
+      fi
       case "$plan_status" in
 
         complete|partial|failed)
