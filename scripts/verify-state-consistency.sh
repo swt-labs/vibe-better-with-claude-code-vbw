@@ -53,8 +53,11 @@ REQUIRED_FUNCTIONS=(
   list_canonical_phase_dirs
   count_phase_plans
   count_complete_summaries
+  count_terminal_summaries
   extract_summary_status
   is_valid_summary_status
+  current_uat
+  extract_status_value
 )
 MISSING_FUNCTIONS=()
 for fn in "${REQUIRED_FUNCTIONS[@]}"; do
