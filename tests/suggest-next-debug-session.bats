@@ -179,7 +179,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
   [ "$status" -eq 0 ]
   [[ "$output" == *"--resume"* ]]
-  [[ "$output" == *"remaining issues"* ]]
+  [[ "$output" == *"QA failures"* ]]
 }
 
 @test "suggest-next fix with fix_applied debug session suggests resume" {

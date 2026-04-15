@@ -726,8 +726,12 @@ case "$CMD" in
         if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
           _fix_ds_status="${status:-}"
           case "$_fix_ds_status" in
-            qa_pending|qa_failed|fix_applied)
+            qa_pending|fix_applied)
               suggest "/vbw:debug --resume -- Address remaining issues"
+              _fix_debug_handled=true
+              ;;
+            qa_failed)
+              suggest "/vbw:debug --resume -- Address QA failures"
               _fix_debug_handled=true
               ;;
             uat_pending)
