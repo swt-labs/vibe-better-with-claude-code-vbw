@@ -5580,3 +5580,51 @@ VERIF
   [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
+
+@test "mixed code-fix + plan-amendment round with unavailable evidence still blocks → REMEDIATION_REQUIRED" {
+  create_source_fail_verif "FAIL-01" "Code needs fixing"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes:
+  - deadbeef
+deviations: []
+---
+
+## Task 1: Fix code and amend plan
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix code and amend plan
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Production code must change"}
+  - {id: "FAIL-02", type: "plan-amendment", rationale: "Plan needs updating", source_plan: "01-01-PLAN.md"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Code fixed and plan amended | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Mixed round with code-fix present: change-evidence early-exit fires
+  # because ROUND_CODE_FIX_COUNT > 0, preserving the blocking behavior
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
