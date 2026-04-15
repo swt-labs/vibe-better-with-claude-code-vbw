@@ -132,17 +132,17 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
 
   # Check if the command uses the numbered-list AskUserQuestion workaround pattern
   has_numbered_list_pattern=false
-  if printf '%s\n' "$body" | grep -Eqi 'numbered list.*AskUserQuestion|AskUserQuestion.*numbered list'; then
+  if grep -Eqi 'numbered list.*AskUserQuestion|AskUserQuestion.*numbered list' <<< "$body"; then
     # Only trigger on lines that say to present choices as a numbered list
     # in the AskUserQuestion text (the workaround pattern)
-    if printf '%s\n' "$body" | grep -Eqi 'present.*(as a |as )numbered list.*(in|for).*AskUserQuestion|numbered list in the (AskUserQuestion|question) text'; then
+    if grep -Eqi 'present.*(as a |as )numbered list.*(in|for).*AskUserQuestion|numbered list in the (AskUserQuestion|question) text' <<< "$body"; then
       has_numbered_list_pattern=true
     fi
   fi
 
   if [ "$has_numbered_list_pattern" = true ]; then
     # Verify guard language exists somewhere in the body
-    if printf '%s\n' "$body" | grep -Eqi 'do NOT use.*options.*array|no.*options.*array'; then
+    if grep -Eqi 'do NOT use.*options.*array|no.*options.*array' <<< "$body"; then
       pass "$base: numbered-list workaround has guard language"
     else
       fail "$base: uses numbered-list AskUserQuestion workaround but missing guard language (e.g., 'do NOT use \`options\` array')"
