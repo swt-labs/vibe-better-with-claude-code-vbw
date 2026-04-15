@@ -61,6 +61,13 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+# Validate MODE — reject typos that could silently bypass archive gating
+case "$MODE" in
+  archive|advisory) ;;
+  *) echo "verify-state-consistency: unknown mode '$MODE', defaulting to archive" >&2
+     MODE="archive" ;;
+esac
+
 # Resolve planning dir from workspace root if not provided
 if [ -z "$PLANNING_DIR" ]; then
   find_vbw_root "$SCRIPT_DIR" 2>/dev/null || true

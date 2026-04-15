@@ -77,6 +77,21 @@ SUMMARY
   [ "$failed" -eq 0 ]
 }
 
+@test "unknown --mode value defaults to archive" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local json_output
+  json_output=$(bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode typo 2>/dev/null)
+  local rc=$?
+  # Archive mode with consistent workspace should pass (exit 0)
+  [ "$rc" -eq 0 ]
+
+  local mode
+  mode=$(echo "$json_output" | jq -r '.mode')
+  [ "$mode" = "archive" ]
+}
+
 # ============================================================
 # No project state
 # ============================================================
