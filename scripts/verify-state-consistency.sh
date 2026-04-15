@@ -76,11 +76,11 @@ if [ -z "$PLANNING_DIR" ]; then
   PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 fi
 
-# Make absolute — resolve relative paths against repo root, not cwd
+# Make absolute — resolve relative paths against VBW workspace root, falling back to cwd
 case "$PLANNING_DIR" in
   /*) ;; # already absolute
-  *)  repo_root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-      PLANNING_DIR="$repo_root/$PLANNING_DIR" ;;
+  *)  planning_root="${VBW_CONFIG_ROOT:-$(pwd)}"
+      PLANNING_DIR="$planning_root/$PLANNING_DIR" ;;
 esac
 
 # Helper for early-exit JSON with per-check structure
@@ -164,7 +164,7 @@ check_project_vs_state_detail="ok"
 # --- Helper: parse STATE.md phase line ---------------------------------------
 # Normalize a status string: strip quotes, leading/trailing whitespace, and \r
 normalize_status() {
-  printf '%s' "$1" | tr -d '\r"' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+  printf '%s' "$1" | tr -d "\r\"'" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
 
 # Extracts "N of M" from "Phase: N of M (...)" — tolerates missing parenthesized name.
