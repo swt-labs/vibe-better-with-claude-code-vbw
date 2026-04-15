@@ -13,7 +13,7 @@ is_summary_complete() {
   local status
   status=$(awk '
     BEGIN { in_fm=0 }
-    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    !in_fm && /^---[[:space:]]*$/ { in_fm=1; next }
     in_fm && /^---[[:space:]]*$/ { exit }
     in_fm && /^status:/ {
       sub(/^status:[[:space:]]*/, "")
@@ -37,7 +37,7 @@ is_summary_terminal() {
   local status
   status=$(awk '
     BEGIN { in_fm=0 }
-    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    !in_fm && /^---[[:space:]]*$/ { in_fm=1; next }
     in_fm && /^---[[:space:]]*$/ { exit }
     in_fm && /^status:/ {
       sub(/^status:[[:space:]]*/, "")
@@ -79,7 +79,7 @@ count_done_summaries() {
     [ -f "$f" ] || continue
     st=$(awk '
       BEGIN { in_fm=0 }
-      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      !in_fm && /^---[[:space:]]*$/ { in_fm=1; next }
       in_fm && /^---[[:space:]]*$/ { exit }
       in_fm && /^status:/ {
         sub(/^status:[[:space:]]*/, "")

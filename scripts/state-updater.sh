@@ -32,7 +32,12 @@ else
   }
   count_phase_plans() {
     local dir="$1"
-    find "$dir" -maxdepth 1 ! -name '.*' \( -name '[0-9]*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | wc -l | tr -d ' '
+    local count=0
+    local f
+    for f in "$dir"/[0-9]*-PLAN.md "$dir"/PLAN.md; do
+      [ -f "$f" ] && count=$((count + 1))
+    done
+    echo "$count"
   }
   phase_dir_display_name() {
     local dir="$1"

@@ -22,8 +22,16 @@ list_child_dirs_sorted() {
   local parent="$1"
   [ -d "$parent" ] || return 0
 
-  find "$parent" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null |
-    (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
+  # Collect via bash glob (avoids find pipeline under parallel fd contention).
+  # Then sort with version sort (printf is a builtin → much less fd-sensitive
+  # than find, which traverses the filesystem and can fail under exhaustion).
+  local dirs=() d
+  for d in "$parent"/*/; do
+    [ -d "$d" ] && dirs+=("${d%/}")
+  done
+  [ ${#dirs[@]} -gt 0 ] || return 0
+  printf '%s\n' "${dirs[@]}" | sort -V 2>/dev/null || \
+    printf '%s\n' "${dirs[@]}" | awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-
 }
 
 phase_relative_path() {
@@ -52,7 +60,7 @@ verification_writer() {
   [ -f "$verification_file" ] || return 0
   awk '
     BEGIN { in_fm=0 }
-    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    !in_fm && /^---[[:space:]]*$/ { in_fm=1; next }
     in_fm && /^---[[:space:]]*$/ { exit }
     in_fm && /^writer:/ { sub(/^writer:[[:space:]]*/, ""); print; exit }
   ' "$verification_file" 2>/dev/null
@@ -713,7 +721,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
           if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
             _qa_done_result=$(awk '
               BEGIN { in_fm=0 }
-              NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+              !in_fm && /^---[[:space:]]*$/ { in_fm=1; next }
               in_fm && /^---[[:space:]]*$/ { exit }
               in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
             ' "$_uv_verif" 2>/dev/null) || _qa_done_result=""
@@ -732,7 +740,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
                 # Staleness check for remediated path
                 _vac_rem=$(awk '
                   BEGIN { in_fm=0 }
-                  NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+                  !in_fm && /^---[[:space:]]*$/ { in_fm=1; next }
                   in_fm && /^---[[:space:]]*$/ { exit }
                   in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
                 ' "$_uv_verif" 2>/dev/null) || _vac_rem=""
@@ -766,7 +774,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
         elif [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
           _qa_result=$(awk '
             BEGIN { in_fm=0 }
-            NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+            !in_fm && /^---[[:space:]]*$/ { in_fm=1; next }
             in_fm && /^---[[:space:]]*$/ { exit }
             in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
           ' "$_uv_verif" 2>/dev/null) || _qa_result=""
@@ -788,7 +796,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
               # Staleness check: if code changed since QA verified, treat as pending
               _vac=$(awk '
                 BEGIN { in_fm=0 }
-                NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+                !in_fm && /^---[[:space:]]*$/ { in_fm=1; next }
                 in_fm && /^---[[:space:]]*$/ { exit }
                 in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
               ' "$_uv_verif" 2>/dev/null) || _vac=""
@@ -871,7 +879,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     if [ "$_qa_attention" = "none" ] && [ -n "$_qa_verif_scan" ] && [ -f "$_qa_verif_scan" ]; then
       _qa_result_scan=$(awk '
         BEGIN { in_fm=0 }
-        NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+        !in_fm && /^---[[:space:]]*$/ { in_fm=1; next }
         in_fm && /^---[[:space:]]*$/ { exit }
         in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
       ' "$_qa_verif_scan" 2>/dev/null) || _qa_result_scan=""
@@ -892,7 +900,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
             PROCEED_TO_UAT)
           _vac_scan=$(awk '
             BEGIN { in_fm=0 }
-            NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+            !in_fm && /^---[[:space:]]*$/ { in_fm=1; next }
             in_fm && /^---[[:space:]]*$/ { exit }
             in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
           ' "$_qa_verif_scan" 2>/dev/null) || _vac_scan=""
@@ -1349,7 +1357,7 @@ _pd_build_uat_issue_lines() {
   if [ "$_pd_base_count" -eq 0 ]; then
     _pd_fm_issues=$(awk '
       BEGIN { in_fm=0 }
-      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      !in_fm && /^---[[:space:]]*$/ { in_fm=1; next }
       in_fm && /^---[[:space:]]*$/ { exit }
       in_fm && /^[[:space:]]*issues[[:space:]]*:/ {
         val=$0; sub(/^[^:]*:[[:space:]]*/, "", val); gsub(/[[:space:]]+$/, "", val)

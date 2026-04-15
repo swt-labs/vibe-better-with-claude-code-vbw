@@ -187,6 +187,15 @@ else
   fail "is_summary_complete: status: \"complete\" (quoted) -> expected 0, got 1"
 fi
 
+# CRLF line endings -> true
+printf -- '---\r\nphase: 01\r\nstatus: complete\r\n---\r\n\r\nDone.\r\n' > "$TMPDIR_BASE/crlf.md"
+
+if is_summary_complete "$TMPDIR_BASE/crlf.md"; then
+  pass "is_summary_complete: CRLF line endings -> 0"
+else
+  fail "is_summary_complete: CRLF line endings -> expected 0, got 1"
+fi
+
 # ===== is_summary_terminal =====
 
 echo ""
@@ -238,6 +247,12 @@ if is_summary_terminal "$TMPDIR_BASE/nofm.md"; then
   fail "is_summary_terminal: no frontmatter -> expected 1, got 0"
 else
   pass "is_summary_terminal: no frontmatter -> 1"
+fi
+
+if is_summary_terminal "$TMPDIR_BASE/crlf.md"; then
+  pass "is_summary_terminal: CRLF line endings -> 0"
+else
+  fail "is_summary_terminal: CRLF line endings -> expected 0, got 1"
 fi
 
 # ===== count_complete_summaries =====
