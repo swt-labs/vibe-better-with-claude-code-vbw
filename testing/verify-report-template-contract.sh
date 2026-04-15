@@ -86,7 +86,7 @@ echo "--- Bug report template alignment ---"
 
 while IFS= read -r header; do
   [ -z "$header" ] && continue
-  if grep -qF "$header" <<< "$bug_block"; then
+  if grep -qF -- "$header" <<< "$bug_block"; then
     pass "bug example: contains $header"
   else
     fail "bug example: missing $header from bug_report.md template"
@@ -107,7 +107,7 @@ echo "--- Feature request template alignment ---"
 
 while IFS= read -r header; do
   [ -z "$header" ] && continue
-  if grep -qF "$header" <<< "$feature_block"; then
+  if grep -qF -- "$header" <<< "$feature_block"; then
     pass "feature example: contains $header"
   else
     fail "feature example: missing $header from feature_request.md template"

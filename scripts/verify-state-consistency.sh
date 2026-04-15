@@ -43,6 +43,26 @@ if [ -f "$SCRIPT_DIR/uat-utils.sh" ]; then
   . "$SCRIPT_DIR/uat-utils.sh"
 fi
 
+# --- Dependency preflight ----------------------------------------------------
+# Required functions from sourced utility scripts. If any are missing (e.g. a
+# source path is wrong or a lib file was deleted), emit a structured failure
+# rather than silently producing misleading results.
+# Note: Only list functions from *sourced* files, not those defined later in
+# this script (e.g. phase_has_uat_issues).
+REQUIRED_FUNCTIONS=(
+  list_canonical_phase_dirs
+  count_phase_plans
+  count_complete_summaries
+  extract_summary_status
+  is_valid_summary_status
+)
+MISSING_FUNCTIONS=()
+for fn in "${REQUIRED_FUNCTIONS[@]}"; do
+  if ! type "$fn" >/dev/null 2>&1; then
+    MISSING_FUNCTIONS+=("$fn")
+  fi
+done
+
 # --- Argument parsing -------------------------------------------------------
 MODE="advisory"
 PLANNING_DIR=""
@@ -141,6 +161,16 @@ early_exit_json() {
       reason:($reason | if . == "" then null else . end)
     }'
 }
+
+# --- Prerequisite: required utility functions --------------------------------
+if [ ${#MISSING_FUNCTIONS[@]} -gt 0 ]; then
+  missing_list=$(IFS=', '; echo "${MISSING_FUNCTIONS[*]}")
+  early_exit_json "fail" "$MODE" "missing_deps" "required utility functions not available: $missing_list"
+  if [ "$MODE" = "archive" ]; then
+    exit 2
+  fi
+  exit 0
+fi
 
 # --- Early exit: no project state -------------------------------------------
 if [ ! -d "$PLANNING_DIR" ]; then
@@ -627,7 +657,17 @@ run_check_exec_state_vs_filesystem() {
 
   # Per-plan status verification
   local plan_count plan_id plan_status plan_mismatches=""
-  plan_count=$(jq -r '.plans | length // 0' "$EXEC_STATE_FILE" 2>/dev/null || echo 0)
+  local plans_type
+  plans_type=$(jq -r '.plans | type // "null"' "$EXEC_STATE_FILE" 2>/dev/null || echo "null")
+
+  if [ "$plans_type" != "array" ] && [ "$plans_type" != "null" ]; then
+    plan_mismatches=".plans is type '$plans_type' (expected array)"
+  fi
+
+  plan_count=0
+  if [ "$plans_type" = "array" ]; then
+    plan_count=$(jq -r '.plans | length // 0' "$EXEC_STATE_FILE" 2>/dev/null || echo 0)
+  fi
 
   local i=0
   while [ "$i" -lt "$plan_count" ]; do
@@ -707,8 +747,12 @@ run_check_exec_state_vs_filesystem() {
     # Extract plan ID from filename: {plan_id}-PLAN.md
     disk_plan_id=$(printf '%s' "$plan_base" | sed 's/-PLAN\.md$//')
     [ -n "$disk_plan_id" ] || continue
-    # Check if this plan ID exists in .plans[]
-    found_in_json=$(jq -r --arg pid "$disk_plan_id" '.plans[]? | select(.id == $pid) | .id' "$EXEC_STATE_FILE" 2>/dev/null || true)
+    # Check if this plan ID exists in .plans[] (only when .plans is an array)
+    if [ "$plans_type" = "array" ]; then
+      found_in_json=$(jq -r --arg pid "$disk_plan_id" '.plans[]? | select(.id == $pid) | .id' "$EXEC_STATE_FILE" 2>/dev/null || true)
+    else
+      found_in_json=""
+    fi
     if [ -z "$found_in_json" ]; then
       disk_plans_missing="${disk_plans_missing:+$disk_plans_missing, }on-disk plan '$disk_plan_id' not found in .execution-state.json .plans[]"
     fi
@@ -726,7 +770,11 @@ run_check_exec_state_vs_filesystem() {
     sum_base=$(basename "$sum_file")
     disk_sum_id=$(printf '%s' "$sum_base" | sed 's/-SUMMARY\.md$//')
     [ -n "$disk_sum_id" ] || continue
-    found_in_json=$(jq -r --arg pid "$disk_sum_id" '.plans[]? | select(.id == $pid) | .id' "$EXEC_STATE_FILE" 2>/dev/null || true)
+    if [ "$plans_type" = "array" ]; then
+      found_in_json=$(jq -r --arg pid "$disk_sum_id" '.plans[]? | select(.id == $pid) | .id' "$EXEC_STATE_FILE" 2>/dev/null || true)
+    else
+      found_in_json=""
+    fi
     if [ -z "$found_in_json" ]; then
       disk_plans_missing="${disk_plans_missing:+$disk_plans_missing, }on-disk summary '$disk_sum_id' not found in .execution-state.json .plans[]"
     fi
