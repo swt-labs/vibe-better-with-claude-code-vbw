@@ -209,7 +209,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
   [ "$status" -eq 0 ]
   [[ "$output" == *"--resume"* ]]
-  [[ "$output" == *"Continue debugging"* ]]
+  [[ "$output" == *"Continue investigation"* ]]
 }
 
 @test "suggest-next fix with no debug session suggests qa" {

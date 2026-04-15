@@ -743,7 +743,7 @@ case "$CMD" in
               _fix_debug_handled=true
               ;;
             investigating)
-              suggest "/vbw:debug --resume -- Continue debugging"
+              suggest "/vbw:debug --resume -- Continue investigation"
               _fix_debug_handled=true
               ;;
           esac
