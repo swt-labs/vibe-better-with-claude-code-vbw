@@ -70,9 +70,12 @@ case "$MODE" in
      MODE="archive" ;;
 esac
 
+# Resolve VBW workspace root (fail-open) so VBW_CONFIG_ROOT is available for
+# relative path resolution even when PLANNING_DIR is passed as an argument.
+find_vbw_root "$SCRIPT_DIR" 2>/dev/null || true
+
 # Resolve planning dir from workspace root if not provided
 if [ -z "$PLANNING_DIR" ]; then
-  find_vbw_root "$SCRIPT_DIR" 2>/dev/null || true
   PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 fi
 
