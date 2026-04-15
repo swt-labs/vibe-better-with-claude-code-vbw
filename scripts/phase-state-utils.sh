@@ -6,20 +6,28 @@ list_canonical_phase_dirs() {
   local parent="$1"
   [ -d "$parent" ] || return 0
 
-  find "$parent" -mindepth 1 -maxdepth 1 -type d 2>/dev/null |
-    while IFS= read -r dir; do
-      [ -n "$dir" ] || continue
-      base=$(basename "$dir")
-      case "$base" in
-        [0-9]*-*) echo "$dir" ;;
-      esac
-    done |
-    (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
+  # Collect phase dirs via bash glob (avoids find pipeline under parallel
+  # fd contention). Only match NN-slug pattern (canonical phase dirs).
+  local dirs=() d base
+  for d in "$parent"/*/; do
+    [ -d "$d" ] || continue
+    base="${d%/}"
+    base="${base##*/}"
+    case "$base" in [0-9]*-*) dirs+=("${d%/}") ;; esac
+  done
+  [ ${#dirs[@]} -gt 0 ] || return 0
+  printf '%s\n' "${dirs[@]}" | sort -V 2>/dev/null || \
+    printf '%s\n' "${dirs[@]}" | awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-
 }
 
 count_phase_plans() {
   local dir="$1"
-  find "$dir" -maxdepth 1 ! -name '.*' \( -name '[0-9]*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | wc -l | tr -d ' '
+  local count=0
+  local f
+  for f in "$dir"/[0-9]*-PLAN.md "$dir"/PLAN.md; do
+    [ -f "$f" ] && count=$((count + 1))
+  done
+  echo "$count"
 }
 
 phase_dir_display_name() {
