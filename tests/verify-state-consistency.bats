@@ -121,6 +121,9 @@ SUMMARY
   # Use the real jq (from the test runner's PATH) to parse the output
   verdict=$(echo "$output" | jq -r '.verdict')
   [ "$verdict" = "fail" ]
+  local mode_val
+  mode_val=$(echo "$output" | jq -r '.mode')
+  [ "$mode_val" = "archive" ]
   echo "$output" | jq -e '.failed_checks | index("missing_jq")' >/dev/null
 }
 
@@ -144,6 +147,9 @@ SUMMARY
   local verdict
   verdict=$(echo "$output" | jq -r '.verdict')
   [ "$verdict" = "fail" ]
+  local mode_val
+  mode_val=$(echo "$output" | jq -r '.mode')
+  [ "$mode_val" = "advisory" ]
 }
 
 # ============================================================

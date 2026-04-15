@@ -977,7 +977,7 @@ When `worktree_isolation="off"`: skip this block silently.
 ```bash
 VERIFY_SCRIPT="${VBW_PLUGIN_ROOT}/scripts/verify-state-consistency.sh"
 if [ -f "$VERIFY_SCRIPT" ]; then
-  _vsc_out=$(bash "$VERIFY_SCRIPT" .vbw-planning --mode advisory 2>/dev/null) || true
+  _vsc_out="$(bash "$VERIFY_SCRIPT" .vbw-planning --mode advisory 2>/dev/null || true)"
   if [ -n "$_vsc_out" ] && echo "$_vsc_out" | jq -e '.verdict == "fail"' >/dev/null 2>&1; then
     echo "VBW state-consistency warning: $(echo "$_vsc_out" | jq -c '.failed_checks')" >&2
   fi
