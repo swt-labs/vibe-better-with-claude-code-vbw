@@ -216,28 +216,28 @@ phase_has_uat_issues() {
 }
 
 # --- Helper: find active phase dir (first incomplete phase) ------------------
+# Uses ordinal position (1-based index in sorted dir list) to match
+# state-updater.sh's Phase: N of M semantics, not directory prefixes.
 find_active_phase_num() {
   local phases_dir="$1"
   ACTIVE_PHASE_NUM=""
   [ -d "$phases_dir" ] || return 1
-  local plans complete raw_num
+  local plans complete phase_idx
   local dir=""
+  phase_idx=0
   while IFS= read -r dir; do
     [ -n "$dir" ] || continue
+    phase_idx=$((phase_idx + 1))
     plans=$(count_phase_plans "$dir")
     complete=$(count_complete_summaries "$dir")
     if [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ] || phase_has_uat_issues "$dir"; then
-      raw_num=$(resolve_phase_number_from_phase_dir "$dir")
-      ACTIVE_PHASE_NUM=$(echo "$raw_num" | sed 's/^0*//')
-      ACTIVE_PHASE_NUM="${ACTIVE_PHASE_NUM:-0}"
+      ACTIVE_PHASE_NUM="$phase_idx"
       return 0
     fi
   done < <(list_canonical_phase_dirs "$phases_dir")
-  # All phases complete — resolve the last dir's number
-  if [ -n "$dir" ]; then
-    raw_num=$(resolve_phase_number_from_phase_dir "$dir")
-    ACTIVE_PHASE_NUM=$(echo "$raw_num" | sed 's/^0*//')
-    ACTIVE_PHASE_NUM="${ACTIVE_PHASE_NUM:-0}"
+  # All phases complete — use the last ordinal position
+  if [ "$phase_idx" -gt 0 ]; then
+    ACTIVE_PHASE_NUM="$phase_idx"
   fi
   return 0
 }

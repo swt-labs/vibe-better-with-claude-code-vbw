@@ -445,12 +445,13 @@ EOF
   cd "$TEST_TEMP_DIR"
   local root="$TEST_TEMP_DIR/.vbw-planning"
 
-  # STATE says Phase 3 of 2 — only 2 phase dirs but numbered 01 and 03
+  # STATE says Phase 2 of 2 — only 2 phase dirs but numbered 01 and 03
+  # Verifier uses ordinal position (2nd dir = phase 2), not prefix (03)
   cat > "$root/STATE.md" <<'EOF'
 # State
 **Project:** My Test Project
 **Milestone:** MVP
-Phase: 3 of 2 (Build)
+Phase: 2 of 2 (Build)
 Plans: 1/1
 Progress: 50%
 Status: running
@@ -487,7 +488,7 @@ SUMMARY
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode advisory
   [ "$status" -eq 0 ]
 
-  # Active phase num is 3 (from 03-build prefix), STATE says phase 3 — should match
+  # Active phase is ordinal 2 (second dir), STATE says phase 2 — should match
   local phase_pass
   phase_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
   [ "$phase_pass" = "true" ]
@@ -1946,7 +1947,7 @@ EOF
   [ "$c2_pass" = "true" ]
 }
 
-@test "roadmap_vs_summaries: checked phase with UAT issues flags drift" {
+@test "roadmap_vs_summaries: checked phase with UAT issues is not a verifier concern" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
 
