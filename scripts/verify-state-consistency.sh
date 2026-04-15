@@ -162,6 +162,11 @@ check_project_vs_state_pass=true
 check_project_vs_state_detail="ok"
 
 # --- Helper: parse STATE.md phase line ---------------------------------------
+# Normalize a status string: strip quotes, leading/trailing whitespace, and \r
+normalize_status() {
+  printf '%s' "$1" | tr -d '\r"' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
 # Extracts "N of M" from "Phase: N of M (...)" — tolerates missing parenthesized name.
 parse_state_phase() {
   local state_file="$1"
@@ -499,6 +504,7 @@ run_check_exec_state_vs_filesystem() {
     for sf in "$target_dir"/*-SUMMARY.md; do
       [ -f "$sf" ] || continue
       sf_status=$(extract_summary_status "$sf")
+      sf_status=$(normalize_status "$sf_status")
       # Normalize brownfield "completed" → "complete"
       [ "$sf_status" = "completed" ] && sf_status="complete"
       [ "$sf_status" = "failed" ] && failed_count=$((failed_count + 1))
@@ -581,6 +587,7 @@ run_check_exec_state_vs_filesystem() {
           else
             local sum_status
             sum_status=$(extract_summary_status "$target_dir/${plan_id}-SUMMARY.md")
+            sum_status=$(normalize_status "$sum_status")
             # Normalize brownfield "completed" → "complete"
             [ "$sum_status" = "completed" ] && sum_status="complete"
             if [ -z "$sum_status" ] || ! is_valid_summary_status "$sum_status"; then
