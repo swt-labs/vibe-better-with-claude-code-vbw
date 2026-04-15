@@ -341,6 +341,19 @@ run_check_exec_state_vs_filesystem() {
     return
   fi
 
+  # Validate phase is numeric before arithmetic comparison
+  case "$es_phase" in
+    *[!0-9]*)
+      if [ "$MODE" = "archive" ]; then
+        check_exec_state_vs_filesystem_pass=false
+        check_exec_state_vs_filesystem_detail=".execution-state.json phase is not numeric: '$es_phase'"
+      else
+        check_exec_state_vs_filesystem_detail="skip: .execution-state.json phase is not numeric: '$es_phase'"
+      fi
+      return
+      ;;
+  esac
+
   if [ ! -d "$PHASES_DIR" ]; then
     if [ "$MODE" = "archive" ]; then
       check_exec_state_vs_filesystem_pass=false
@@ -468,6 +481,7 @@ run_check_exec_state_vs_filesystem() {
 
     if [ -n "$plan_id" ] && [ -n "$plan_status" ]; then
       case "$plan_status" in
+
         complete|partial|failed)
           # Require plan-specific SUMMARY.md — generic SUMMARY.md does not satisfy
           if [ ! -f "$target_dir/${plan_id}-SUMMARY.md" ]; then
@@ -498,6 +512,8 @@ run_check_exec_state_vs_filesystem() {
           plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' has unrecognized status '$plan_status'"
           ;;
       esac
+    else
+      plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan entry $i has malformed fields (id='${plan_id:-}', status='${plan_status:-}')"
     fi
     i=$((i + 1))
   done

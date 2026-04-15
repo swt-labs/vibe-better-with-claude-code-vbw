@@ -1455,3 +1455,94 @@ EOF
   c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
   [ "$c3_pass" = "true" ]
 }
+
+# ---------------------------------------------------------------------------
+# F-02: Non-numeric phase value in .execution-state.json
+# ---------------------------------------------------------------------------
+
+@test "exec_state_vs_filesystem fails in archive when phase is non-numeric" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  printf '{"phase":"banana","status":"running"}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  local c3_pass c3_detail
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [ "$c3_pass" = "false" ]
+  [[ "$c3_detail" == *"not numeric"* ]]
+}
+
+@test "exec_state_vs_filesystem skips in advisory when phase is non-numeric" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  printf '{"phase":"banana","status":"running"}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"not numeric"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# F-01: Malformed plan entries in .execution-state.json
+# ---------------------------------------------------------------------------
+
+@test "exec_state_vs_filesystem flags plan entry missing status" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  printf '{"phase":2,"status":"running","plans":[{"id":"02-01"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass c3_detail
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [ "$c3_pass" = "false" ]
+  [[ "$c3_detail" == *"malformed"* ]]
+}
+
+@test "exec_state_vs_filesystem flags plan entry missing id" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  printf '{"phase":2,"status":"running","plans":[{"status":"complete"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass c3_detail
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [ "$c3_pass" = "false" ]
+  [[ "$c3_detail" == *"malformed"* ]]
+}
+
+@test "exec_state_vs_filesystem flags plan entry missing both id and status" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  printf '{"phase":2,"status":"running","plans":[{}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass c3_detail
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [ "$c3_pass" = "false" ]
+  [[ "$c3_detail" == *"malformed"* ]]
+}
