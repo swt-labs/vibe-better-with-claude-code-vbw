@@ -1197,3 +1197,120 @@ EOF
   # Should NOT contain "unrecognized" for top-level status
   [[ "$c3_detail" != *"unrecognized top-level"* ]]
 }
+
+# ---------------------------------------------------------------------------
+# Top-level status coherence: failed / pending
+# ---------------------------------------------------------------------------
+
+@test "exec_state fails when top-level failed but no failed plans on disk" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  # Create a "complete" summary for plan 02-01
+  printf -- '---\nstatus: complete\n---\n# Summary\n' > "$phase_dir/02-01-SUMMARY.md"
+
+  printf '{"phase":2,"status":"failed","plans":[{"id":"02-01","status":"failed"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"no failed plans"* ]]
+}
+
+@test "exec_state passes when top-level failed matches on-disk failed summary" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  printf -- '---\nstatus: failed\n---\n# Summary\n' > "$phase_dir/02-01-SUMMARY.md"
+
+  printf '{"phase":2,"status":"failed","plans":[{"id":"02-01","status":"failed"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" != *"no failed plans"* ]]
+}
+
+@test "exec_state fails when top-level pending but phase has finalized plans" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  printf -- '---\nstatus: complete\n---\n# Summary\n' > "$phase_dir/02-01-SUMMARY.md"
+
+  printf '{"phase":2,"status":"pending","plans":[]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"pending"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# Per-plan summary frontmatter cross-reference
+# ---------------------------------------------------------------------------
+
+@test "exec_state detects per-plan summary frontmatter mismatch" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  # JSON says complete, but summary frontmatter says failed
+  printf -- '---\nstatus: failed\n---\n# Summary\n' > "$phase_dir/02-01-SUMMARY.md"
+
+  printf '{"phase":2,"status":"running","plans":[{"id":"02-01","status":"complete"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"SUMMARY.md status"* ]]
+}
+
+@test "exec_state detects per-plan summary with no valid frontmatter" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  # Summary with no frontmatter at all
+  printf '# Summary\nSome content\n' > "$phase_dir/02-01-SUMMARY.md"
+
+  printf '{"phase":2,"status":"running","plans":[{"id":"02-01","status":"complete"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "false" ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [[ "$c3_detail" == *"no valid frontmatter status"* ]]
+}

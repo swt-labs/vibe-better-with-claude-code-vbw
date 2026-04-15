@@ -404,6 +404,40 @@ run_check_exec_state_vs_filesystem() {
     check_exec_state_vs_filesystem_pass=false
   fi
 
+  # Stale top-level status: failed but no failed plans on disk
+  if [ "$es_status" = "failed" ]; then
+    local failed_count=0 sf sf_status
+    for sf in "$target_dir"/*-SUMMARY.md; do
+      [ -f "$sf" ] || continue
+      sf_status=$(extract_summary_status "$sf")
+      [ "$sf_status" = "failed" ] && failed_count=$((failed_count + 1))
+    done
+    if [ "$failed_count" -eq 0 ]; then
+      local msg="status is 'failed' but no failed plans found on disk in phase $es_phase"
+      if [ -n "$details" ]; then
+        details="$details; $msg"
+      else
+        details="$msg"
+      fi
+      check_exec_state_vs_filesystem_pass=false
+    fi
+  fi
+
+  # Stale top-level status: pending but phase has finalized plans
+  if [ "$es_status" = "pending" ]; then
+    local terminal
+    terminal=$(count_terminal_summaries "$target_dir")
+    if [ "$terminal" -gt 0 ]; then
+      local msg="status is 'pending' but phase $es_phase has finalized plans on disk ($terminal terminal)"
+      if [ -n "$details" ]; then
+        details="$details; $msg"
+      else
+        details="$msg"
+      fi
+      check_exec_state_vs_filesystem_pass=false
+    fi
+  fi
+
   # Unrecognized top-level status
   case "$es_status" in
     complete|running|ready|paused|blocked|failed|pending) ;; # known statuses
@@ -433,6 +467,14 @@ run_check_exec_state_vs_filesystem() {
           # Require plan-specific SUMMARY.md — generic SUMMARY.md does not satisfy
           if [ ! -f "$target_dir/${plan_id}-SUMMARY.md" ]; then
             plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' status=$plan_status but no ${plan_id}-SUMMARY.md found"
+          else
+            local sum_status
+            sum_status=$(extract_summary_status "$target_dir/${plan_id}-SUMMARY.md")
+            if [ -z "$sum_status" ] || ! is_valid_summary_status "$sum_status"; then
+              plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' has ${plan_id}-SUMMARY.md but no valid frontmatter status"
+            elif [ "$sum_status" != "$plan_status" ]; then
+              plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' JSON status=$plan_status but SUMMARY.md status=$sum_status"
+            fi
           fi
           ;;
         pending|running)
