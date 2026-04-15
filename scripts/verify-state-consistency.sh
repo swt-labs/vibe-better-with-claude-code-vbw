@@ -91,6 +91,20 @@ case "$PLANNING_DIR" in
       PLANNING_DIR="$planning_root/$PLANNING_DIR" ;;
 esac
 
+# --- Prerequisite: jq must be available --------------------------------------
+# All JSON output (early-exit and final) is built with jq. Without it, archive
+# mode could reach VERDICT=pass → exit 0 with no JSON, silently bypassing the
+# archive gate. Emit a hardcoded JSON payload (no jq dependency) and exit.
+if ! command -v jq >/dev/null 2>&1; then
+  cat <<'NOJQ'
+{"verdict":"fail","mode":"archive","checks":{"state_vs_filesystem":{"pass":false,"detail":"not evaluated: jq not found"},"roadmap_vs_summaries":{"pass":false,"detail":"not evaluated: jq not found"},"exec_state_vs_filesystem":{"pass":false,"detail":"not evaluated: jq not found"},"state_vs_roadmap":{"pass":false,"detail":"not evaluated: jq not found"},"project_vs_state":{"pass":false,"detail":"not evaluated: jq not found"}},"failed_checks":["missing_jq"],"reason":"jq not found"}
+NOJQ
+  if [ "$MODE" = "archive" ]; then
+    exit 2
+  fi
+  exit 0
+fi
+
 # Helper for early-exit JSON with per-check structure
 early_exit_json() {
   local verdict="$1" mode="$2" failed_check="$3" reason="${4:-}"

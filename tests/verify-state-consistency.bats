@@ -93,6 +93,60 @@ SUMMARY
 }
 
 # ============================================================
+# Prerequisite: jq guard
+# ============================================================
+
+@test "missing jq in archive mode exits 2 with hardcoded JSON" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Create a wrapper that hides jq from the script
+  local fake_bin="$TEST_TEMP_DIR/fake-bin"
+  mkdir -p "$fake_bin"
+  # Symlink everything except jq from PATH
+  for cmd in bash cat sed grep printf tr head tail find sort wc dirname basename cd readlink mktemp rm; do
+    local cmd_path
+    cmd_path=$(command -v "$cmd" 2>/dev/null) || true
+    if [ -n "$cmd_path" ] && [ ! -e "$fake_bin/$cmd" ]; then
+      ln -s "$cmd_path" "$fake_bin/$cmd"
+    fi
+  done
+
+  # Run with restricted PATH that lacks jq
+  run env PATH="$fake_bin" bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  # Verify the hardcoded JSON payload
+  local verdict
+  # Use the real jq (from the test runner's PATH) to parse the output
+  verdict=$(echo "$output" | jq -r '.verdict')
+  [ "$verdict" = "fail" ]
+  echo "$output" | jq -e '.failed_checks | index("missing_jq")' >/dev/null
+}
+
+@test "missing jq in advisory mode exits 0 with hardcoded JSON" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local fake_bin="$TEST_TEMP_DIR/fake-bin"
+  mkdir -p "$fake_bin"
+  for cmd in bash cat sed grep printf tr head tail find sort wc dirname basename cd readlink mktemp rm; do
+    local cmd_path
+    cmd_path=$(command -v "$cmd" 2>/dev/null) || true
+    if [ -n "$cmd_path" ] && [ ! -e "$fake_bin/$cmd" ]; then
+      ln -s "$cmd_path" "$fake_bin/$cmd"
+    fi
+  done
+
+  run env PATH="$fake_bin" bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local verdict
+  verdict=$(echo "$output" | jq -r '.verdict')
+  [ "$verdict" = "fail" ]
+}
+
+# ============================================================
 # No project state
 # ============================================================
 
