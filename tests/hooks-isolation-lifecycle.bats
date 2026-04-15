@@ -138,6 +138,12 @@ load test_helper
   [ "$status" -eq 0 ]
 }
 
+@test "security-filter allows file when parent dir contains .git substring" {
+  INPUT='{"tool_input":{"file_path":"/home/user/repo.git/HEAD"}}'
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
+  [ "$status" -eq 0 ]
+}
+
 # --- Task 3: Session config cache ---
 
 @test "session config cache file is written at session start" {
