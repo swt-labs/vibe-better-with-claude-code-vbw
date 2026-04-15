@@ -43,8 +43,10 @@ PLANNING_DIR=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --mode)
-      shift
-      MODE="${1:-advisory}"
+      if [ $# -gt 1 ]; then
+        shift
+        MODE="$1"
+      fi
       ;;
     --mode=*)
       MODE="${1#--mode=}"

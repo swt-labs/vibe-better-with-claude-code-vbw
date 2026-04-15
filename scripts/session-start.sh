@@ -1066,7 +1066,7 @@ if [ "$_vg_enabled" = "true" ] && [ -f "$SCRIPT_DIR/verify-state-consistency.sh"
   _sc_verdict=$(echo "$_sc_json" | jq -r '.verdict // "skip"' 2>/dev/null || echo "skip")
   if [ "$_sc_verdict" = "fail" ]; then
     _sc_failed=$(echo "$_sc_json" | jq -r '.failed_checks | join(", ")' 2>/dev/null || echo "unknown")
-    CTX="$CTX WARNING: State drift detected (${_sc_failed}). Run /vbw:doctor to investigate."
+    CTX="$CTX WARNING: State drift detected (${_sc_failed}). Investigate affected planning artifacts before continuing."
   fi
 fi
 
