@@ -403,7 +403,7 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
 
    **STOP and wait for the user to respond.** Process one checkpoint at a time.
 
-5. Response mapping (same rules as /vbw:verify):
+5. Response mapping (same rules as /vbw:verify; AskUserQuestion automatically provides a freeform "Other" option):
    - "Pass" → record as passed
    - "Skip" → record as skipped
    - Freeform text via "Other" → treat as issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic=minor, default=major)
