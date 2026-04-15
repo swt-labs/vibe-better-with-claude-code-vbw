@@ -63,7 +63,7 @@ echo "--- Method 1: success-only cleanup ---"
 # Within that block, verify rm -f "$DIAG_FILE" is between
 # "if gh issue create" and "fi".
 method1_block=$(printf '%s\n' "$report_body" | awk '
-  /Method 1/ { in_method=1 }
+  /\*\*Method 1/ { in_method=1 }
   in_method && /```bash/ { in_code=1; next }
   in_method && in_code && /^[[:space:]]*```[[:space:]]*$/ { exit }
   in_code { print }
