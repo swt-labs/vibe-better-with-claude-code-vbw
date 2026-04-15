@@ -4,10 +4,12 @@ set -u
 # verify-state-consistency.sh — Cross-file state consistency verification.
 #
 # Checks that STATE.md, ROADMAP.md, PROJECT.md, .execution-state.json, and
-# the phase filesystem agree with each other. Designed for three integration
+# the phase filesystem agree with each other. Used at these integration
 # points:
 #   - Archive (--mode archive): hard gate, exit 2 on any failure
-#   - Phase completion / session start (--mode advisory): exit 0 always
+#   - Session start (--mode advisory): exit 0 always
+#   - Execute-time advisory (--mode advisory): exit 0 always
+#   - Doctor (--mode advisory): exit 0 always
 #
 # Usage: verify-state-consistency.sh [planning_dir] [--mode archive|advisory]
 # Output: JSON object on stdout with per-check pass/fail and a verdict.
