@@ -2417,7 +2417,11 @@ EOF
 
   run_phase_detect
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "qa_status=pending"
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
 }
 
 @test "qa_status is pending for brownfield remediated verification after later commit" {

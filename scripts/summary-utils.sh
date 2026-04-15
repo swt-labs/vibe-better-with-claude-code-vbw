@@ -1,7 +1,7 @@
 #!/bin/bash
 # summary-utils.sh -- shared helpers for status-aware SUMMARY.md checking
 # Source this from scripts that need status-based completion detection.
-# All functions are portable bash (3.2+), no external dependencies beyond sed.
+# All functions are portable bash (3.2+), no external dependencies beyond awk.
 
 # is_summary_complete FILE_PATH
 # Returns 0 if SUMMARY exists and has terminal-complete status, 1 otherwise.
@@ -11,7 +11,18 @@ is_summary_complete() {
   local f="$1"
   [ -f "$f" ] || return 1
   local status
-  status=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
+  status=$(awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^status:/ {
+      sub(/^status:[[:space:]]*/, "")
+      gsub(/[\r"'"'"']/, "")
+      gsub(/[[:space:]]/, "")
+      print
+      exit
+    }
+  ' "$f" 2>/dev/null)
   case "$status" in
     complete|completed) return 0 ;;
     *) return 1 ;;
@@ -24,7 +35,18 @@ is_summary_terminal() {
   local f="$1"
   [ -f "$f" ] || return 1
   local status
-  status=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
+  status=$(awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^status:/ {
+      sub(/^status:[[:space:]]*/, "")
+      gsub(/[\r"'"'"']/, "")
+      gsub(/[[:space:]]/, "")
+      print
+      exit
+    }
+  ' "$f" 2>/dev/null)
   case "$status" in
     complete|completed|partial|failed) return 0 ;;
     *) return 1 ;;
@@ -55,7 +77,18 @@ count_done_summaries() {
   local f st
   for f in "$dir"/*-SUMMARY.md "$dir"/SUMMARY.md; do
     [ -f "$f" ] || continue
-    st=$(tr -d '\r' < "$f" 2>/dev/null | sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' | head -1 | tr -d '[:space:]')
+    st=$(awk '
+      BEGIN { in_fm=0 }
+      NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+      in_fm && /^---[[:space:]]*$/ { exit }
+      in_fm && /^status:/ {
+        sub(/^status:[[:space:]]*/, "")
+        gsub(/[\r"'"'"']/, "")
+        gsub(/[[:space:]]/, "")
+        print
+        exit
+      }
+    ' "$f" 2>/dev/null)
     case "$st" in complete|completed|partial) count=$((count + 1)) ;; esac
   done
   echo "$count"
