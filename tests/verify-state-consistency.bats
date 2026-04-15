@@ -1038,6 +1038,49 @@ EOF
   [[ "$c3_detail" == *"bare PLAN.md"* ]]
 }
 
+@test "exec_state reverse check detects orphaned SUMMARY.md not in plans array" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  printf '{"phase":2,"status":"running","plans":[{"id":"02-01","status":"running"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  # Create an orphaned summary whose plan ID is not in .plans[]
+  printf -- '---\nstatus: complete\n---\n# Summary\nOrphan.\n' > "$phase_dir/orphan-01-SUMMARY.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass c3_detail
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [ "$c3_pass" = "false" ]
+  [[ "$c3_detail" == *"orphan-01"* ]]
+  [[ "$c3_detail" == *"not found in .execution-state.json"* ]]
+}
+
+@test "exec_state reverse check flags bare SUMMARY.md not in plans array" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  printf '{"phase":2,"status":"running","plans":[{"id":"02-01","status":"running"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  # Create a bare SUMMARY.md in the phase dir
+  printf -- '---\nstatus: complete\n---\n# Summary\nBare.\n' > "$phase_dir/SUMMARY.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass c3_detail
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [ "$c3_pass" = "false" ]
+  [[ "$c3_detail" == *"bare SUMMARY.md"* ]]
+}
+
 # ---------------------------------------------------------------------------
 # ROADMAP references phase with no matching directory
 # ---------------------------------------------------------------------------

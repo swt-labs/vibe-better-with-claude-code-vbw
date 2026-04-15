@@ -575,6 +575,24 @@ run_check_exec_state_vs_filesystem() {
     disk_plans_missing="${disk_plans_missing:+$disk_plans_missing, }on-disk bare PLAN.md not represented in .execution-state.json .plans[]"
   fi
 
+  # Reverse check for SUMMARY.md files: orphaned summaries not tracked in .plans[]
+  local sum_file sum_base disk_sum_id
+  while IFS= read -r sum_file; do
+    [ -n "$sum_file" ] || continue
+    sum_base=$(basename "$sum_file")
+    disk_sum_id=$(printf '%s' "$sum_base" | sed 's/-SUMMARY\.md$//')
+    [ -n "$disk_sum_id" ] || continue
+    found_in_json=$(jq -r --arg pid "$disk_sum_id" '.plans[]? | select(.id == $pid) | .id' "$EXEC_STATE_FILE" 2>/dev/null || true)
+    if [ -z "$found_in_json" ]; then
+      disk_plans_missing="${disk_plans_missing:+$disk_plans_missing, }on-disk summary '$disk_sum_id' not found in .execution-state.json .plans[]"
+    fi
+  done < <(find "$target_dir" -maxdepth 1 -name '*-SUMMARY.md' 2>/dev/null | sort)
+
+  # Also check for bare legacy SUMMARY.md not represented in .plans[]
+  if [ -f "$target_dir/SUMMARY.md" ]; then
+    disk_plans_missing="${disk_plans_missing:+$disk_plans_missing, }on-disk bare SUMMARY.md not represented in .execution-state.json .plans[]"
+  fi
+
   if [ -n "$disk_plans_missing" ]; then
     if [ -n "$details" ]; then
       details="$details; $disk_plans_missing"
