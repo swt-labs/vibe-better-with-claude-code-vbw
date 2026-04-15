@@ -28,11 +28,7 @@ P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
 PD=""
 _PD_START_TS=$(date +%s 2>/dev/null || echo 0)
 _phase_detect_cache_fresh() {
-  local m=""
-  [ -f "$P" ] || return 1
-  m=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo "")
-  [ -n "$m" ] || return 1
-  [ "$m" -ge "$_PD_START_TS" ] 2>/dev/null
+  [ -f "$P" ] && [ -s "$P" ]
 }
 i=0
 while [ $i -lt 100 ]; do
@@ -85,11 +81,7 @@ P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
 PD=""
 _PD_START_TS=$(date +%s 2>/dev/null || echo 0)
 _phase_detect_cache_fresh() {
-  local m=""
-  [ -f "$P" ] || return 1
-  m=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo "")
-  [ -n "$m" ] || return 1
-  [ "$m" -ge "$_PD_START_TS" ] 2>/dev/null
+  [ -f "$P" ] && [ -s "$P" ]
 }
 i=0
 while [ $i -lt 100 ]; do
@@ -146,11 +138,7 @@ P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
 PD=""
 _PD_START_TS=$(date +%s 2>/dev/null || echo 0)
 _phase_detect_cache_fresh() {
-  local m=""
-  [ -f "$P" ] || return 1
-  m=$(stat -c %Y "$P" 2>/dev/null || stat -f %m "$P" 2>/dev/null || echo "")
-  [ -n "$m" ] || return 1
-  [ "$m" -ge "$_PD_START_TS" ] 2>/dev/null
+  [ -f "$P" ] && [ -s "$P" ]
 }
 i=0
 while [ $i -lt 100 ]; do
