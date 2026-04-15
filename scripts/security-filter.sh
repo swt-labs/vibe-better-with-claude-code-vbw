@@ -20,7 +20,9 @@ if [ -z "$FILE_PATH" ]; then
 fi
 
 # Sensitive file patterns
-if echo "$FILE_PATH" | grep -qE '\.env$|\.env\.|\.pem$|\.key$|\.cert$|\.p12$|\.pfx$|credentials\.json$|secrets\.json$|service-account.*\.json$|node_modules/|\.git/|dist/|build/'; then
+# Directory patterns use (^|/) anchoring so they match only as path components,
+# not as substrings of unrelated directory names (e.g. "corvex-build/" != "build/").
+if echo "$FILE_PATH" | grep -qE '\.env$|\.env\.|\.pem$|\.key$|\.cert$|\.p12$|\.pfx$|credentials\.json$|secrets\.json$|service-account.*\.json$|(^|/)node_modules/|(^|/)\.git/|(^|/)dist/|(^|/)build/'; then
   echo "Blocked: sensitive file ($FILE_PATH)" >&2
   exit 2
 fi

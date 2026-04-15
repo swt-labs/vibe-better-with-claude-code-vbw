@@ -82,6 +82,62 @@ load test_helper
   echo "$output" | grep -q "sensitive file"
 }
 
+# --- Directory pattern path-component anchoring (issue #402) ---
+
+@test "security-filter blocks build/ as path component (relative)" {
+  INPUT='{"tool_input":{"file_path":"build/output.js"}}'
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
+  [ "$status" -eq 2 ]
+}
+
+@test "security-filter blocks build/ as path component (absolute)" {
+  INPUT='{"tool_input":{"file_path":"/home/user/project/build/output.js"}}'
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
+  [ "$status" -eq 2 ]
+}
+
+@test "security-filter blocks dist/ as path component" {
+  INPUT='{"tool_input":{"file_path":"dist/bundle.js"}}'
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
+  [ "$status" -eq 2 ]
+}
+
+@test "security-filter blocks node_modules/ as path component" {
+  INPUT='{"tool_input":{"file_path":"node_modules/lodash/index.js"}}'
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
+  [ "$status" -eq 2 ]
+}
+
+@test "security-filter blocks .git/ as path component" {
+  INPUT='{"tool_input":{"file_path":".git/config"}}'
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
+  [ "$status" -eq 2 ]
+}
+
+@test "security-filter allows file when parent dir contains build substring" {
+  INPUT='{"tool_input":{"file_path":"/home/user/corvex-build/src/app.js"}}'
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
+  [ "$status" -eq 0 ]
+}
+
+@test "security-filter allows file named build-something" {
+  INPUT='{"tool_input":{"file_path":"build-orbstack.sh"}}'
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
+  [ "$status" -eq 0 ]
+}
+
+@test "security-filter allows file when parent dir contains dist substring" {
+  INPUT='{"tool_input":{"file_path":"/home/user/redistribution/src/main.js"}}'
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
+  [ "$status" -eq 0 ]
+}
+
+@test "security-filter allows file when parent dir contains node_modules substring" {
+  INPUT='{"tool_input":{"file_path":"/home/user/my-node_modules-archive/readme.md"}}'
+  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
+  [ "$status" -eq 0 ]
+}
+
 # --- Task 3: Session config cache ---
 
 @test "session config cache file is written at session start" {
