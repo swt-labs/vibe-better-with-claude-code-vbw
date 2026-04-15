@@ -35,24 +35,22 @@ Store the plugin root path output above as `VBW_PLUGIN_ROOT` for use in script i
 <debug_session_routing>
 Resolve or create the debug session before any investigation. Order of precedence:
 
-1. **Explicit `--session <id>`:** Extract `SESSION_ID` — the token immediately following `--session` in $ARGUMENTS. If `--session` is present but no id follows it, STOP: `"--session requires a session id."` Parse `--yolo` if present: `YOLO_MODE=false; if printf '%s' "$ARGUMENTS" | grep -qE '(^|[[:space:]])--yolo([[:space:]]|$)'; then YOLO_MODE=true; fi`. Resume the named session:
+1. **Explicit `--session <id>`:** Extract `SESSION_ID` — the token immediately following `--session` in $ARGUMENTS. If `--session` is present but no id follows it, STOP: `"--session requires a session id."` Resume the named session:
    ```bash
    eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh resume .vbw-planning "$SESSION_ID")"
    ```
    If the session file is missing, STOP with error.
 
-2. **`--resume` flag (no explicit session):** Resume the active session or latest unresolved. Parse `--yolo` if present: `YOLO_MODE=false; if printf '%s' "$ARGUMENTS" | grep -qE '(^|[[:space:]])--yolo([[:space:]]|$)'; then YOLO_MODE=true; fi`.
+2. **`--resume` flag (no explicit session):** Resume the active session or latest unresolved.
    ```bash
    eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh get-or-latest .vbw-planning)"
    ```
    - If `active_session=none`: STOP "No active debug session to resume. Start one with: /vbw:debug \"bug description\""
    - If `active_session=fallback`: inform user which session was auto-selected (no `.active-session` pointer was set, so the latest unresolved session was chosen automatically).
 
-3. **New session (no --resume, no --session):** Create a fresh session from $ARGUMENTS. Strip known flags (`--competing`, `--parallel`, `--serial`, `--yolo`) and any `(ref:HASH)` suffix from $ARGUMENTS before computing the slug — these are routing/ref metadata, not part of the bug description. If `--yolo` is present, store `YOLO_MODE=true`; otherwise `YOLO_MODE=false`.
+3. **New session (no --resume, no --session):** Create a fresh session from $ARGUMENTS. Strip known flags (`--competing`, `--parallel`, `--serial`) and any `(ref:HASH)` suffix from $ARGUMENTS before computing the slug — these are routing/ref metadata, not part of the bug description.
    ```bash
-   YOLO_MODE=false
-   if printf '%s' "$ARGUMENTS" | grep -qE '(^|[[:space:]])--yolo([[:space:]]|$)'; then YOLO_MODE=true; fi
-   BUG_DESC=$(printf '%s' "$ARGUMENTS" | sed -E 's/[[:space:]]*\(ref:[^)]+\)//g' | sed -E 's/(^|[[:space:]])--(competing|parallel|serial|yolo)([[:space:]]|$)/ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | tr -s '[:space:]' ' ')
+   BUG_DESC=$(printf '%s' "$ARGUMENTS" | sed -E 's/[[:space:]]*\(ref:[^)]+\)//g' | sed -E 's/(^|[[:space:]])--(competing|parallel|serial)([[:space:]]|$)/ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | tr -s '[:space:]' ' ')
    SLUG=$(printf '%s' "$BUG_DESC" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
    eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh start .vbw-planning "$SLUG")"
    ```
@@ -75,7 +73,7 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
 </debug_session_routing>
 
 ## Steps
-1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`, `--yolo`) from $ARGUMENTS and store them separately for Step 2 routing. If `--yolo` was present (set during routing for `--session <id>`, `--resume`, or new-session parse), `YOLO_MODE` is already `true`. If the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
+1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`) from $ARGUMENTS and store them separately for Step 2 routing. If the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
     ```bash
     bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/todo-details.sh" get <hash>
     ```
@@ -254,22 +252,6 @@ if [ -z "${EFFORT_PROFILE:-}" ]; then
 fi
 ```
 
-**Prompt gate:** If `AUTO_UAT` is not `"true"` AND `YOLO_MODE` is not `true`, call AskUserQuestion:
-```yaml
-question: "Fix committed. Run QA verification now?"
-header: "Debug Session"
-multiSelect: false
-options:
-  - label: "Yes"
-    description: "Run QA verification inline"
-  - label: "No"
-    description: "Skip — I'll resume later with /vbw:debug --resume"
-```
-If the user selects "No": STOP with `➜ Next: /vbw:debug --resume -- Continue to QA verification`.
-If the user selects "Yes" or provides freeform acceptance: proceed.
-
-If `AUTO_UAT` is `"true"` OR `YOLO_MODE` is `true`: skip the prompt and proceed directly.
-
 **QA orchestration (absorbed from /vbw:qa debug-session mode):**
 
 1. Compile QA context:
@@ -361,7 +343,7 @@ if [ -z "${AUTO_UAT:-}" ]; then
 fi
 ```
 
-**Prompt gate:** If `AUTO_UAT` is not `"true"` AND `YOLO_MODE` is not `true`, call AskUserQuestion:
+**Prompt gate:** If `AUTO_UAT` is not `"true"`, call AskUserQuestion:
 ```yaml
 question: "QA passed. Run UAT verification now?"
 header: "Debug Session"
@@ -375,7 +357,7 @@ options:
 If the user selects "No": STOP with `➜ Next: /vbw:debug --resume -- Continue to UAT verification`.
 If the user selects "Yes" or provides freeform acceptance: proceed.
 
-If `AUTO_UAT` is `"true"` OR `YOLO_MODE` is `true`: skip the prompt and proceed directly.
+If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
 
 **UAT orchestration (absorbed from /vbw:verify debug-session mode):**
 
