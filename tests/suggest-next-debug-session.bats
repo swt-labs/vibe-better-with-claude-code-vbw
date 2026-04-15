@@ -135,6 +135,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
   [ "$status" -eq 0 ]
   [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Continue to QA verification"* ]]
 }
 
 @test "suggest-next qa fail with active debug session suggests resume" {

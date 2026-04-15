@@ -593,8 +593,16 @@ case "$CMD" in
             qa_pending|uat_pending|fix_applied)
               case "$effective_result" in
                 pass)
-                  suggest "/vbw:debug --resume -- Continue to UAT verification"
-                  _qa_debug_handled=true
+                  case "$_qa_ds_status" in
+                    qa_pending|fix_applied)
+                      suggest "/vbw:debug --resume -- Continue to QA verification"
+                      _qa_debug_handled=true
+                      ;;
+                    uat_pending)
+                      suggest "/vbw:debug --resume -- Continue to UAT verification"
+                      _qa_debug_handled=true
+                      ;;
+                  esac
                   ;;
                 fail|partial)
                   suggest "/vbw:debug --resume -- Address QA failures"
