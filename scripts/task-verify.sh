@@ -21,11 +21,13 @@ if [ -n "$INPUT" ]; then
   fi
 fi
 
-# Analysis-only tasks (e.g., debugger hypothesis investigation) explicitly
-# opt out of the commit requirement via an [analysis-only] tag.
+# Tasks can opt out of the commit requirement via subject tags.
+# [analysis-only] — debugger hypothesis investigation, read-only analysis
+# [no-commit]     — any task that legitimately produces no git commit
+#                   (assessments, linking, branch ops, config, research, etc.)
 # Checked early — before commit fetching — so these never hit the "no recent
 # commits" block even when no code changes exist in the repo.
-if echo "$TASK_SUBJECT" | grep -qi '\[analysis-only\]'; then
+if echo "$TASK_SUBJECT" | grep -qiE '\[(analysis-only|no-commit)\]'; then
   exit 0
 fi
 

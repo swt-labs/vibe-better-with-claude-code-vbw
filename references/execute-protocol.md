@@ -322,6 +322,8 @@ description: |
 activeForm: "Executing {NN-MM}"
 ```
 
+**Non-commit tasks:** If a task does not produce a git commit (assessment, research, linking, branch creation, configuration), include `[no-commit]` in the task subject (e.g., `"Assess sortTableData coverage [no-commit]"`). This tells the TaskCompleted hook to skip commit verification. Without this tag, the hook blocks task completion when no matching commit is found.
+
 Display: `◆ Spawning Dev teammate (${DEV_MODEL})...`
 
 **CRITICAL:** Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"` on the live spawn call when spawning Dev teammates. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If `DEV_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).

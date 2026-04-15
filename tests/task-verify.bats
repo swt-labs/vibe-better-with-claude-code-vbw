@@ -157,6 +157,30 @@ run_task_verify() {
   [ "$status" -eq 0 ]
 }
 
+@test "no-commit tag bypasses check" {
+  cd "$TEST_TEMP_DIR"
+  run run_task_verify "Link Sentry issues to JIRA ticket CVX-5919 [no-commit]"
+  [ "$status" -eq 0 ]
+}
+
+@test "no-commit tag bypasses even with no recent commits" {
+  cd "$TEST_TEMP_DIR"
+  run run_task_verify "Create feature branch fix/CVX-5919 [no-commit]"
+  [ "$status" -eq 0 ]
+}
+
+@test "no-commit tag is case-insensitive" {
+  cd "$TEST_TEMP_DIR"
+  run run_task_verify "Assess sortTableData [No-Commit]"
+  [ "$status" -eq 0 ]
+}
+
+@test "no-commit tag at start of subject bypasses check" {
+  cd "$TEST_TEMP_DIR"
+  run run_task_verify "[no-commit] Research codebase patterns"
+  [ "$status" -eq 0 ]
+}
+
 @test "role-only subject bypasses check" {
   cd "$TEST_TEMP_DIR"
   run run_task_verify "dev-01"
