@@ -43,7 +43,7 @@ step1_block=$(printf '%s\n' "$report_body" | awk '
 echo ""
 echo "--- Step 1: diagnostic persistence ---"
 
-if printf '%s\n' "$step1_block" | grep -qF 'tee "$DIAG_FILE"'; then
+if grep -qF 'tee "$DIAG_FILE"' <<< "$step1_block"; then
   pass "step 1: contains tee \"\$DIAG_FILE\" for diagnostic persistence"
 else
   fail "step 1: missing tee \"\$DIAG_FILE\" in step 1 code block — diagnostics must be persisted to temp file"
@@ -64,7 +64,7 @@ method1_block=$(printf '%s\n' "$report_body" | awk '
 echo ""
 echo "--- Method 1: temp-file append ---"
 
-if printf '%s\n' "$method1_block" | grep -qF 'cat "$DIAG_FILE" >> "$ISSUE_BODY_FILE"'; then
+if grep -qF 'cat "$DIAG_FILE" >> "$ISSUE_BODY_FILE"' <<< "$method1_block"; then
   pass "method 1: contains cat \"\$DIAG_FILE\" >> \"\$ISSUE_BODY_FILE\" append pattern"
 else
   fail "method 1: missing cat \"\$DIAG_FILE\" >> \"\$ISSUE_BODY_FILE\" in Method 1 code block"
@@ -90,7 +90,7 @@ while IFS= read -r line; do
     *'rm -f "$DIAG_FILE"'*) rm_line=$lineno ;;
   esac
   # Match standalone fi (possibly with leading whitespace)
-  if printf '%s' "$line" | grep -qxE '[[:space:]]*fi[[:space:]]*'; then
+  if grep -qxE '[[:space:]]*fi[[:space:]]*' <<< "$line"; then
     if [ -n "$if_line" ] && [ -n "$rm_line" ]; then
       fi_line=$lineno
       break
@@ -117,7 +117,7 @@ method2_section=$(printf '%s\n' "$report_body" | awk '
   found { print }
 ')
 
-if printf '%s\n' "$method2_section" | grep -qF 'cat "$DIAG_FILE"'; then
+if grep -qF 'cat "$DIAG_FILE"' <<< "$method2_section"; then
   pass "method 2: references cat \"\$DIAG_FILE\" for reading diagnostics"
 else
   fail "method 2: missing cat \"\$DIAG_FILE\" — must read diagnostics from temp file"
@@ -129,7 +129,7 @@ method4_section=$(printf '%s\n' "$report_body" | awk '
   found { print }
 ')
 
-if printf '%s\n' "$method4_section" | grep -qF 'cat "$DIAG_FILE"'; then
+if grep -qF 'cat "$DIAG_FILE"' <<< "$method4_section"; then
   pass "method 4: references cat \"\$DIAG_FILE\" for reading diagnostics"
 else
   fail "method 4: missing cat \"\$DIAG_FILE\" — must read diagnostics from temp file"
@@ -141,28 +141,28 @@ echo ""
 echo "--- DIAG_FILE path: session-scoped ---"
 
 # Verify the session-scoped path appears in the step 1 code block
-if printf '%s\n' "$step1_block" | grep -qF '/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt'; then
+if grep -qF '/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt' <<< "$step1_block"; then
   pass "DIAG_FILE path: step 1 code block uses session-scoped path"
 else
   fail "DIAG_FILE path: step 1 code block missing /tmp/vbw-diag-report-\${CLAUDE_SESSION_ID:-default}.txt"
 fi
 
 # Verify the session-scoped path appears in the Method 1 code block
-if printf '%s\n' "$method1_block" | grep -qF '/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt'; then
+if grep -qF '/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt' <<< "$method1_block"; then
   pass "DIAG_FILE path: Method 1 code block uses session-scoped path"
 else
   fail "DIAG_FILE path: Method 1 code block missing /tmp/vbw-diag-report-\${CLAUDE_SESSION_ID:-default}.txt"
 fi
 
 # Verify the session-scoped path appears in Method 2 section
-if printf '%s\n' "$method2_section" | grep -qF '/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt'; then
+if grep -qF '/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt' <<< "$method2_section"; then
   pass "DIAG_FILE path: Method 2 section uses session-scoped path"
 else
   fail "DIAG_FILE path: Method 2 section missing /tmp/vbw-diag-report-\${CLAUDE_SESSION_ID:-default}.txt"
 fi
 
 # Verify the session-scoped path appears in Method 4 section
-if printf '%s\n' "$method4_section" | grep -qF '/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt'; then
+if grep -qF '/tmp/vbw-diag-report-${CLAUDE_SESSION_ID:-default}.txt' <<< "$method4_section"; then
   pass "DIAG_FILE path: Method 4 section uses session-scoped path"
 else
   fail "DIAG_FILE path: Method 4 section missing /tmp/vbw-diag-report-\${CLAUDE_SESSION_ID:-default}.txt"

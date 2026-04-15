@@ -973,6 +973,18 @@ When `worktree_isolation="off"`: skip this block silently.
 **Update STATE.md:** phase position, plan completion counts, effort used.
 **Update ROADMAP.md:** mark completed plans.
 
+**Advisory state-consistency verification:** After state updates, run:
+```bash
+VERIFY_SCRIPT="${VBW_PLUGIN_ROOT}/scripts/verify-state-consistency.sh"
+if [ -f "$VERIFY_SCRIPT" ]; then
+  _vsc_out="$(bash "$VERIFY_SCRIPT" .vbw-planning --mode advisory 2>/dev/null || true)"
+  if [ -n "$_vsc_out" ] && echo "$_vsc_out" | jq -e '.verdict == "fail"' >/dev/null 2>&1; then
+    echo "VBW state-consistency warning: $(echo "$_vsc_out" | jq -c '.failed_checks')" >&2
+  fi
+fi
+```
+If the captured output's `verdict` is `"fail"`, the warning above surfaces the `failed_checks` in the phase completion output. This is non-blocking — the reactive state updater handles most drift, but crashes, compaction, or manual edits can cause silent misalignment that propagates to the next phase. This catch-net surfaces those issues early. If the script is unavailable or errors, continue normally.
+
 **Planning artifact boundary commit (conditional):**
 ```bash
 PG_SCRIPT="${VBW_PLUGIN_ROOT}/scripts/planning-git.sh"

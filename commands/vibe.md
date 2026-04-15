@@ -1201,6 +1201,13 @@ bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/archive-ua
 ```
 If exit code is 2: STOP. Unresolved UAT (active or milestone) blocks archive regardless of `--skip-audit` or `--force`.
 
+**Hard state-consistency gate (always, non-bypassable):**
+After the UAT gate passes, run:
+```bash
+bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/verify-state-consistency.sh .vbw-planning --mode archive
+```
+If exit code is non-zero: STOP. If exit code is 2, state misalignment at archive means the archived milestone record may be unreliable — phase counts, completion markers, or project metadata could be inconsistent. Surface the JSON output's `failed_checks` array so the user can fix the drift before retrying. For any other non-zero exit, treat the verifier as failed unexpectedly and do not proceed with archive.
+
 **Pre-gate audit (unless --skip-audit or --force):**
 Run 7-point audit matrix:
 1. Roadmap completeness: every phase has real goal (not TBD/empty)

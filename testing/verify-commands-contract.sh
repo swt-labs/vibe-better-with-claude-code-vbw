@@ -130,7 +130,7 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
     pass "$base: name matches filename"
   fi
 
-  if ! printf '%s\n' "$FRONTMATTER" | grep -q '^allowed-tools:'; then
+  if ! grep -q '^allowed-tools:' <<< "$FRONTMATTER"; then
     fail "$base: missing allowed-tools field"
   else
     pass "$base: allowed-tools present"
@@ -175,7 +175,7 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
 
   # ACTIVE-file milestone indirection was removed (architecture simplification).
   # Commands should NOT reference .vbw-planning/ACTIVE anymore.
-  if printf '%s\n' "$body_no_context" | grep -qi '\.vbw-planning/ACTIVE'; then
+  if grep -qi '\.vbw-planning/ACTIVE' <<< "$body_no_context"; then
     fail "$base: references .vbw-planning/ACTIVE — milestone indirection was removed"
   else
     pass "$base: no stale ACTIVE file references"
@@ -448,13 +448,13 @@ for mode in "### Mode: Add Phase" "### Mode: Insert Phase" "### Mode: Remove Pha
   block=$(mode_block "$mode")
   label=${mode#"### Mode: "}
 
-  if printf '%s\n' "$block" | grep -q 'If `\.vbw-planning/CONTEXT\.md` exists, rewrite it to reflect the updated milestone decomposition'; then
+  if grep -q 'If `\.vbw-planning/CONTEXT\.md` exists, rewrite it to reflect the updated milestone decomposition' <<< "$block"; then
     pass "vibe: $label refreshes milestone CONTEXT.md"
   else
     fail "vibe: $label missing milestone CONTEXT refresh instruction"
   fi
 
-  if printf '%s\n' "$block" | grep -q 'Preserve project-level key decisions and deferred ideas where still valid\.'; then
+  if grep -q 'Preserve project-level key decisions and deferred ideas where still valid\.' <<< "$block"; then
     pass "vibe: $label preserves milestone decisions and deferred ideas"
   else
     fail "vibe: $label missing preservation instruction for milestone CONTEXT refresh"
@@ -740,7 +740,7 @@ uat_section="$(
     in_section { print }
   ' "$COMMANDS_DIR/vibe.md"
 )"
-if printf '%s' "$uat_section" | grep -q '\*\*TodoWrite progress list (NON-NEGOTIABLE'; then
+if grep -q '\*\*TodoWrite progress list (NON-NEGOTIABLE' <<< "$uat_section"; then
   pass "UAT Remediation step 4 explicitly references TodoWrite"
 else
   fail "UAT Remediation step 4 missing 'TodoWrite progress list' heading — risk of TaskCreate conflation (see issue #367)"

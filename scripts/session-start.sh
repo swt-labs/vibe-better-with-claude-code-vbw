@@ -1059,6 +1059,17 @@ CTX="$CTX Progress: ${progress_pct}%."
 CTX="$CTX Config: effort=${config_effort}, autonomy=${config_autonomy}, auto_commit=${config_auto_commit}, planning_tracking=${config_planning_tracking}, auto_push=${config_auto_push}, verification=${config_verification}, prefer_teams=${config_prefer_teams}, max_tasks=${config_max_tasks}."
 CTX="$CTX Next: ${NEXT_ACTION}."
 
+# --- Advisory state-consistency check (gated by validation_gates) ---
+_vg_enabled=$(jq -r '.validation_gates // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+if [ "$_vg_enabled" = "true" ] && [ -f "$SCRIPT_DIR/verify-state-consistency.sh" ]; then
+  _sc_json=$(bash "$SCRIPT_DIR/verify-state-consistency.sh" "$PLANNING_DIR" --mode advisory 2>/dev/null || true)
+  _sc_verdict=$(echo "$_sc_json" | jq -r '.verdict // "skip"' 2>/dev/null || echo "skip")
+  if [ "$_sc_verdict" = "fail" ]; then
+    _sc_failed=$(echo "$_sc_json" | jq -r '.failed_checks | join(", ")' 2>/dev/null || echo "unknown")
+    CTX="$CTX WARNING: State drift detected (${_sc_failed}). Investigate affected planning artifacts before continuing."
+  fi
+fi
+
 # --- GSD co-installation warning ---
 GSD_WARNING=""
 if [ -d "${CLAUDE_DIR}/commands/gsd" ] || [ -d ".planning" ]; then
