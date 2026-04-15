@@ -171,7 +171,7 @@ find_active_phase_num() {
   while IFS= read -r dir; do
     [ -n "$dir" ] || continue
     plans=$(count_phase_plans "$dir")
-    complete=$(count_complete_summaries "$dir")
+    complete=$(count_done_summaries "$dir")
     if [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ]; then
       raw_num=$(resolve_phase_number_from_phase_dir "$dir")
       ACTIVE_PHASE_NUM=$(echo "$raw_num" | sed 's/^0*//')
@@ -288,7 +288,7 @@ run_check_roadmap_vs_summaries() {
     fi
 
     plans=$(count_phase_plans "$phase_dir")
-    complete=$(count_complete_summaries "$phase_dir")
+    complete=$(count_done_summaries "$phase_dir")
 
     # Marked complete in roadmap but not all plans done
     if [ "$checked" = "true" ] && { [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ]; }; then
@@ -389,7 +389,7 @@ run_check_exec_state_vs_filesystem() {
   # Status coherence: complete but incomplete plans
   local plans complete
   plans=$(count_phase_plans "$target_dir")
-  complete=$(count_complete_summaries "$target_dir")
+  complete=$(count_done_summaries "$target_dir")
 
   if [ "$es_status" = "complete" ] && [ "$plans" -eq 0 ]; then
     details="status is 'complete' but phase $es_phase has no plan artifacts"

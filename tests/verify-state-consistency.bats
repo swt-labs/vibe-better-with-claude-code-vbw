@@ -1589,3 +1589,51 @@ EOF
   verdict=$(echo "$output" | jq -r '.verdict')
   [ "$verdict" = "pass" ] || [ "$verdict" = "fail" ]
 }
+
+# ---------------------------------------------------------------------------
+# Partial summary counts as done (not incomplete)
+# ---------------------------------------------------------------------------
+
+@test "exec_state complete with partial summary does not flag drift" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  printf -- '---\nstatus: partial\n---\n# Summary\nPartially done.\n' > "$phase_dir/02-01-SUMMARY.md"
+
+  # Exec state plan entry also says partial — consistent with summary
+  printf '{"phase":2,"status":"complete","plans":[{"id":"02-01","status":"partial"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "true" ]
+}
+
+@test "roadmap_vs_summaries treats partial as done" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Phase 2 marked [x] in ROADMAP (complete)
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  printf -- '---\nstatus: partial\n---\n# Summary\nPartially done.\n' > "$phase_dir/02-01-SUMMARY.md"
+
+  # Mark phase 2 as [x] in ROADMAP
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'ROADMAP'
+# Roadmap
+- [x] Phase 1: Setup
+- [x] Phase 2: Backend API
+- [ ] Phase 3: Frontend
+ROADMAP
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c2_detail
+  c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
+  # Phase 2 should NOT be flagged as incomplete since partial counts as done
+  [[ "$c2_detail" != *"phase 2"*"incomplete"* ]] || [[ "$c2_detail" != *"Phase 2"*"incomplete"* ]]
+}
