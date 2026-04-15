@@ -275,13 +275,13 @@ If `AUTO_UAT` is `"true"` OR `YOLO_MODE` is `true`: skip the prompt and proceed 
    eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh increment-qa .vbw-planning)"
    ```
 
-3. Resolve tier from effort profile: turbo=skip (exit "QA skipped in turbo mode — proceeding to UAT"), fast=quick, balanced=standard, thorough=deep. Store as `ACTIVE_TIER`.
+3. Resolve tier from effort profile: fast=quick, balanced=standard, thorough=deep. Store as `ACTIVE_TIER`. If turbo: set session status to `uat_pending` via `debug-session-state.sh set-status .vbw-planning uat_pending`, then jump directly to `<debug_inline_uat>` below — skip all remaining QA steps.
 
 4. Resolve QA model and max turns:
    ```bash
    QA_MODEL=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh qa .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
    if [ $? -ne 0 ]; then echo "$QA_MODEL" >&2; exit 1; fi
-   QA_MAX_TURNS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh qa .vbw-planning/config.json "$QA_EFFORT_PROFILE")
+   QA_MAX_TURNS=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh qa .vbw-planning/config.json "$EFFORT_PROFILE")
    if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
    ```
 
