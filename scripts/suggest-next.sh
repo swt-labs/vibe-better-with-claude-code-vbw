@@ -715,9 +715,8 @@ case "$CMD" in
     ;;
 
   fix)
-    # Check for active debug session (phase_count=0 only —
-    # when phases exist, fix.md itself handles debug-session next-step text
-    # inline, so we must not hijack phase fix suggestions here)
+    # Check for an active debug session only for non-phase work
+    # (phase_count=0), so phase-scoped fix suggestions remain unchanged.
     _fix_debug_handled=false
     if [ "${phase_count:-0}" -eq 0 ] && [ -d "$PLANNING_DIR/debugging" ]; then
       _fix_ds_output=$("$SCRIPT_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null) || true
