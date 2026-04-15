@@ -119,7 +119,7 @@ resolve_phase_number_from_phase_dir() {
   uat_file=$(find "$dir" -maxdepth 1 ! -name '.*' -name '*-UAT.md' ! -name '*-SOURCE-UAT.md' 2>/dev/null | (sort -V 2>/dev/null || sort) | head -1)
   if [ -n "$uat_file" ] && [ -f "$uat_file" ]; then
     num=$(awk '
-      !in_fm && /^---[[:space:]]*$/ { in_fm = 1; next }
+      NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
       in_fm && /^---[[:space:]]*$/ { exit }
       in_fm {
         lower = tolower($0)
@@ -148,7 +148,7 @@ resolve_phase_number_from_phase_dir() {
   fi
   if [ -n "$uat_file" ] && [ -f "$uat_file" ]; then
     num=$(awk '
-      !in_fm && /^---[[:space:]]*$/ { in_fm = 1; next }
+      NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
       in_fm && /^---[[:space:]]*$/ { exit }
       in_fm {
         lower = tolower($0)

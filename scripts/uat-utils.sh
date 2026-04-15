@@ -58,7 +58,7 @@ extract_status_value() {
   # Try frontmatter first
   result=$(awk '
     BEGIN { in_fm = 0 }
-    !in_fm && /^---[[:space:]]*$/ { in_fm = 1; next }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
     in_fm && /^---[[:space:]]*$/ { exit }
     in_fm && tolower($0) ~ /^[[:space:]]*status[[:space:]]*:/ {
       value = $0
