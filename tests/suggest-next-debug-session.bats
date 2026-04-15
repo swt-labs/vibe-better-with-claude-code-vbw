@@ -73,11 +73,12 @@ EOF
   [[ "$output" == *"Continue investigation"* ]]
 }
 
-@test "suggest-next debug with qa_pending session suggests qa" {
+@test "suggest-next debug with qa_pending session suggests resume for inline QA" {
   create_debug_session "qa_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:qa"* ]]
+  [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Continue to QA verification"* ]]
 }
 
 @test "suggest-next debug with qa_failed session suggests resume" {
@@ -88,11 +89,12 @@ EOF
   [[ "$output" == *"QA failures"* ]]
 }
 
-@test "suggest-next debug with uat_pending session suggests verify" {
+@test "suggest-next debug with uat_pending session suggests resume for inline UAT" {
   create_debug_session "uat_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Continue to UAT verification"* ]]
 }
 
 @test "suggest-next debug with uat_failed session suggests resume" {
@@ -120,18 +122,20 @@ EOF
 
 # --- qa context with active debug sessions ---
 
-@test "suggest-next qa pass with uat_pending debug session suggests verify" {
+@test "suggest-next qa pass with uat_pending debug session suggests resume for inline UAT" {
   create_debug_session "uat_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Continue to UAT verification"* ]]
 }
 
-@test "suggest-next qa pass with qa_pending debug session suggests verify" {
+@test "suggest-next qa pass with qa_pending debug session suggests resume for inline QA" {
   create_debug_session "qa_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Continue to QA verification"* ]]
 }
 
 @test "suggest-next qa fail with active debug session suggests resume" {
@@ -162,4 +166,79 @@ EOF
   # complete session should not trigger debug-session suggestions
   [[ "$output" != *"Run UAT on the debug fix"* ]]
   [[ "$output" != *"--resume"* ]]
+}
+
+# --- fix context with active debug sessions ---
+
+@test "suggest-next fix with qa_pending debug session suggests resume" {
+  create_debug_session "qa_pending"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+  [[ "$output" == *"remaining issues"* ]]
+}
+
+@test "suggest-next fix with qa_failed debug session suggests resume" {
+  create_debug_session "qa_failed"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+  [[ "$output" == *"QA failures"* ]]
+}
+
+@test "suggest-next fix with fix_applied debug session suggests resume" {
+  create_debug_session "fix_applied"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+}
+
+@test "suggest-next fix with uat_pending debug session suggests verify" {
+  create_debug_session "uat_pending"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"UAT"* ]]
+}
+
+@test "suggest-next fix with uat_failed debug session suggests resume" {
+  create_debug_session "uat_failed"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+  [[ "$output" == *"UAT issues"* ]]
+}
+
+@test "suggest-next fix with investigating debug session suggests resume" {
+  create_debug_session "investigating"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+  [[ "$output" == *"Continue investigation"* ]]
+}
+
+@test "suggest-next fix with no debug session suggests qa" {
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:qa"* ]]
+}
+
+@test "suggest-next fix with complete debug session suggests qa" {
+  create_debug_session "complete"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:qa"* ]]
+  [[ "$output" != *"--resume"* ]]
+}
+
+@test "suggest-next fix with debug session and phases exist defers to default" {
+  create_debug_session "qa_pending"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
+  echo '# Plan' > "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-PLAN.md"
+  echo '# Summary' > "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-SUMMARY.md"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  # When phases exist, debug-session handler is skipped
+  [[ "$output" != *"--resume"* ]]
+  [[ "$output" == *"/vbw:qa"* ]]
 }
