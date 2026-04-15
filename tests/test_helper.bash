@@ -49,7 +49,9 @@ teardown_temp_dir() {
 # Output is considered complete when it contains "next_phase_state=" — a field
 # present in every normal code path of phase-detect.sh but absent from the
 # trap-only fallback.
-# Returns 1 if all 5 attempts produce empty or incomplete output.
+# Returns 1 and sets status=1 if all 5 attempts produce empty or incomplete
+# output, so callers' `[ "$status" -eq 0 ]` assertions fail with a clear
+# diagnostic rather than a confusing content mismatch.
 # Sets BATS globals: $output, $status (same as `run`).
 run_phase_detect() {
   local _pd_script_dir="${1:-$SCRIPTS_DIR}"
@@ -65,7 +67,9 @@ run_phase_detect() {
     fi
     _pd_attempt=$((_pd_attempt + 1))
   done
-  echo "run_phase_detect: all 5 retries returned empty or incomplete output" >&2
+  output="run_phase_detect: all 5 retries returned empty or incomplete output"
+  status=1
+  echo "$output" >&2
   return 1
 }
 
