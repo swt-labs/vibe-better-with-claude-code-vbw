@@ -1314,3 +1314,74 @@ EOF
   c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
   [[ "$c3_detail" == *"no valid frontmatter status"* ]]
 }
+
+# ---------------------------------------------------------------------------
+# Brownfield "completed" frontmatter normalization
+# ---------------------------------------------------------------------------
+
+@test "exec_state accepts brownfield completed frontmatter" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  # Legacy "completed" (with d) — brownfield synonym for "complete"
+  printf -- '---\nstatus: completed\n---\n# Summary\n' > "$phase_dir/02-01-SUMMARY.md"
+
+  printf '{"phase":2,"status":"running","plans":[{"id":"02-01","status":"complete"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_detail
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  # Should NOT flag "no valid frontmatter" or "SUMMARY.md status" for brownfield "completed"
+  [[ "$c3_detail" != *"no valid frontmatter status"* ]]
+  [[ "$c3_detail" != *"SUMMARY.md status"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# ROADMAP edge cases: headings-only / checklist-only
+# ---------------------------------------------------------------------------
+
+@test "state_vs_roadmap handles headings-only ROADMAP" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Overwrite ROADMAP with only section headings, no checklist items
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+### Phase 1: Setup
+### Phase 2: Backend API
+### Phase 3: Frontend
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  # Must not crash with "integer expression expected"
+  local verdict
+  verdict=$(echo "$output" | jq -r '.verdict')
+  [ "$verdict" = "pass" ] || [ "$verdict" = "fail" ]
+}
+
+@test "state_vs_roadmap handles checklist-only ROADMAP" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Overwrite ROADMAP with only checklist items, no section headings
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+- [ ] Phase 2: Backend API
+- [ ] Phase 3: Frontend
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  # Must not crash with "integer expression expected"
+  local verdict
+  verdict=$(echo "$output" | jq -r '.verdict')
+  [ "$verdict" = "pass" ] || [ "$verdict" = "fail" ]
+}

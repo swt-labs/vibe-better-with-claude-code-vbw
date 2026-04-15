@@ -410,6 +410,8 @@ run_check_exec_state_vs_filesystem() {
     for sf in "$target_dir"/*-SUMMARY.md; do
       [ -f "$sf" ] || continue
       sf_status=$(extract_summary_status "$sf")
+      # Normalize brownfield "completed" → "complete"
+      [ "$sf_status" = "completed" ] && sf_status="complete"
       [ "$sf_status" = "failed" ] && failed_count=$((failed_count + 1))
     done
     if [ "$failed_count" -eq 0 ]; then
@@ -470,6 +472,8 @@ run_check_exec_state_vs_filesystem() {
           else
             local sum_status
             sum_status=$(extract_summary_status "$target_dir/${plan_id}-SUMMARY.md")
+            # Normalize brownfield "completed" → "complete"
+            [ "$sum_status" = "completed" ] && sum_status="complete"
             if [ -z "$sum_status" ] || ! is_valid_summary_status "$sum_status"; then
               plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' has ${plan_id}-SUMMARY.md but no valid frontmatter status"
             elif [ "$sum_status" != "$plan_status" ]; then
@@ -560,8 +564,8 @@ run_check_state_vs_roadmap() {
   fi
 
   local roadmap_checklist_count roadmap_section_count
-  roadmap_checklist_count=$(grep -cE '^\- \[.\] Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || echo 0)
-  roadmap_section_count=$(grep -cE '^### Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || echo 0)
+  roadmap_checklist_count=$(grep -cE '^\- \[.\] Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
+  roadmap_section_count=$(grep -cE '^### Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
 
   local details="" failed=false
 
