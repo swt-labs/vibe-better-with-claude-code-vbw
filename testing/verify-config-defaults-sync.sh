@@ -51,7 +51,7 @@ fi
 echo ""
 echo "--- Check: defaults.json keys present in config.md table ---"
 for key in $json_keys; do
-  if echo "$md_settings" | grep -qx "$key"; then
+  if grep -qx "$key" <<< "$md_settings"; then
     pass "defaults.json key '$key' found in config.md table"
   else
     fail "defaults.json key '$key' MISSING from config.md table"
@@ -62,7 +62,7 @@ done
 echo ""
 echo "--- Check: config.md table settings exist in defaults.json ---"
 for setting in $md_settings; do
-  if echo "$json_keys" | grep -qx "$setting"; then
+  if grep -qx "$setting" <<< "$json_keys"; then
     pass "config.md setting '$setting' found in defaults.json"
   else
     fail "config.md setting '$setting' NOT in defaults.json (stale/graduated?)"
