@@ -358,6 +358,8 @@ options:
   - label: "No"
     description: "Skip — I'll resume later with /vbw:debug --resume"
 ```
+**AskUserQuestion is a tool call (NON-NEGOTIABLE):** You MUST invoke AskUserQuestion via the tool_use mechanism — never emit the question parameters as text, YAML, or any other inline format in your response body. If AskUserQuestion appears in your text output instead of as a tool call, the prompt will not be presented to the user and the session will end prematurely. **STOP HERE.** Wait for the AskUserQuestion response before processing the answer.
+
 If the user selects "No": STOP with `➜ Next: /vbw:debug --resume -- Continue to UAT verification`.
 If the user selects "Yes": proceed.
 If the user provides freeform input: proceed only when the response is clearly affirmative (e.g., "yes", "y", "sure", "go ahead"). If the response is negative or deferring (e.g., "no", "not now", "later", "skip"): treat as "No" and STOP. If ambiguous: ask a brief follow-up to confirm before proceeding.
@@ -406,7 +408,7 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
        description: "Cannot test right now — skip this checkpoint"
    ```
 
-   **STOP and wait for the user to respond.** Process one checkpoint at a time.
+   **AskUserQuestion is a tool call (NON-NEGOTIABLE):** You MUST invoke AskUserQuestion via the tool_use mechanism — never emit the question parameters as text, YAML, or any other inline format in your response body. If AskUserQuestion appears in your text output instead of as a tool call, the checkpoint will not be presented to the user and the session will end prematurely. **STOP HERE and wait for the user to respond.** Process one checkpoint at a time.
 
 5. Response mapping (same rules as /vbw:verify; AskUserQuestion automatically provides a freeform "Other" option):
    - "Pass" → record as passed
