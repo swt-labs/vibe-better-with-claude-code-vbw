@@ -86,7 +86,7 @@ echo "--- Bug report template alignment ---"
 
 while IFS= read -r header; do
   [ -z "$header" ] && continue
-  if printf '%s' "$bug_block" | grep -qF "$header"; then
+  if grep -qF "$header" <<< "$bug_block"; then
     pass "bug example: contains $header"
   else
     fail "bug example: missing $header from bug_report.md template"
@@ -107,7 +107,7 @@ echo "--- Feature request template alignment ---"
 
 while IFS= read -r header; do
   [ -z "$header" ] && continue
-  if printf '%s' "$feature_block" | grep -qF "$header"; then
+  if grep -qF "$header" <<< "$feature_block"; then
     pass "feature example: contains $header"
   else
     fail "feature example: missing $header from feature_request.md template"
@@ -140,7 +140,7 @@ classify_section=$(printf '%s\n' "$report_body" | awk '
 
 # Bug criteria: each keyword must appear somewhere in the classification block
 for kw in broken error unexpected crash regression; do
-  if printf '%s' "$classify_section" | grep -qiF "$kw"; then
+  if grep -qiF "$kw" <<< "$classify_section"; then
     pass "classification: bug criteria contain keyword '$kw'"
   else
     fail "classification: bug criteria missing keyword '$kw'"
@@ -149,13 +149,13 @@ done
 
 # Feature criteria: each keyword must appear somewhere in the classification block
 for kw in missing improvement; do
-  if printf '%s' "$classify_section" | grep -qiF "$kw"; then
+  if grep -qiF "$kw" <<< "$classify_section"; then
     pass "classification: feature criteria contain keyword '$kw'"
   else
     fail "classification: feature criteria missing keyword '$kw'"
   fi
 done
-if printf '%s' "$classify_section" | grep -qi 'new capability'; then
+if grep -qi 'new capability' <<< "$classify_section"; then
   pass "classification: feature criteria contain keyword 'new capability'"
 else
   fail "classification: feature criteria missing keyword 'new capability'"
@@ -166,13 +166,13 @@ fi
 echo ""
 echo "--- Label routing ---"
 
-if printf '%s\n' "$report_body" | grep -qE -- '--label bug|"bug"|\[\"bug\"\]|label.*bug'; then
+if grep -qE -- '--label bug|"bug"|\[\"bug\"\]|label.*bug' <<< "$report_body"; then
   pass "label routing: bug label present"
 else
   fail "label routing: missing bug label in filing methods"
 fi
 
-if printf '%s\n' "$report_body" | grep -qE -- '--label enhancement|"enhancement"|\[\"enhancement\"\]|label.*enhancement'; then
+if grep -qE -- '--label enhancement|"enhancement"|\[\"enhancement\"\]|label.*enhancement' <<< "$report_body"; then
   pass "label routing: enhancement label present"
 else
   fail "label routing: missing enhancement label in filing methods"
@@ -180,13 +180,13 @@ fi
 
 # --- Template filename references in fallback URLs ---
 
-if printf '%s\n' "$report_body" | grep -qF '?template=bug_report.md'; then
+if grep -qF '?template=bug_report.md' <<< "$report_body"; then
   pass "fallback: contains ?template=bug_report.md URL parameter"
 else
   fail "fallback: missing ?template=bug_report.md URL parameter"
 fi
 
-if printf '%s\n' "$report_body" | grep -qF '?template=feature_request.md'; then
+if grep -qF '?template=feature_request.md' <<< "$report_body"; then
   pass "fallback: contains ?template=feature_request.md URL parameter"
 else
   fail "fallback: missing ?template=feature_request.md URL parameter"
