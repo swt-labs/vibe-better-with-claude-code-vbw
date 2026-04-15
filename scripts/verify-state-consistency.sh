@@ -456,6 +456,21 @@ run_check_exec_state_vs_filesystem() {
     fi
   fi
 
+  # Non-terminal statuses (ready/paused/blocked): stale if all plans already complete
+  case "$es_status" in
+    ready|paused|blocked)
+      if [ "$plans" -gt 0 ] && [ "$complete" -ge "$plans" ]; then
+        local msg="status is '$es_status' but all plans in phase $es_phase are complete ($complete/$plans)"
+        if [ -n "$details" ]; then
+          details="$details; $msg"
+        else
+          details="$msg"
+        fi
+        check_exec_state_vs_filesystem_pass=false
+      fi
+      ;;
+  esac
+
   # Unrecognized top-level status
   case "$es_status" in
     complete|running|ready|paused|blocked|failed|pending) ;; # known statuses
