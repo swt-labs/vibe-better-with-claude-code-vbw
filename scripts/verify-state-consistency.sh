@@ -340,7 +340,8 @@ run_check_roadmap_vs_summaries() {
   local seen_phases=""
 
   while IFS= read -r line; do
-    phase_num=$(echo "$line" | sed -n 's/^- \[.\] Phase \([0-9][0-9]*\):.*/\1/p')
+    # Accept both plain "- [ ] Phase N:" and bootstrap link "- [ ] [Phase N:"
+    phase_num=$(echo "$line" | sed -n 's/^- \[.\] \[\{0,1\}Phase \([0-9][0-9]*\):.*/\1/p')
     [ -n "$phase_num" ] || continue
     # Remove leading zeros (sed, not arithmetic — avoids octal for 08/09)
     phase_num=$(printf '%s' "$phase_num" | sed 's/^0*//')
@@ -394,7 +395,7 @@ run_check_roadmap_vs_summaries() {
         mismatches="${mismatches:+$mismatches, }phase $phase_num marked [ ] but all plans complete ($complete/$plans)"
       fi
     fi
-  done < <(grep -iE '^\- \[(x| )\] Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
+  done < <(grep -iE '^\- \[(x| )\] (\[)?Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
 
   # Reverse check: every phase dir should have a matching ROADMAP entry
   local rd rd_num
@@ -521,10 +522,12 @@ run_check_exec_state_vs_filesystem() {
   complete=$(count_complete_summaries "$target_dir")
 
   if [ "$es_status" = "complete" ] && [ "$plans" -eq 0 ]; then
-    details="status is 'complete' but phase $es_phase has no plan artifacts"
+    local msg="status is 'complete' but phase $es_phase has no plan artifacts"
+    if [ -n "$details" ]; then details="$details; $msg"; else details="$msg"; fi
     check_exec_state_vs_filesystem_pass=false
   elif [ "$es_status" = "complete" ] && [ "$plans" -gt 0 ] && [ "$complete" -lt "$plans" ]; then
-    details="status is 'complete' but phase $es_phase has incomplete plans ($complete/$plans)"
+    local msg="status is 'complete' but phase $es_phase has incomplete plans ($complete/$plans)"
+    if [ -n "$details" ]; then details="$details; $msg"; else details="$msg"; fi
     check_exec_state_vs_filesystem_pass=false
   fi
 
@@ -758,8 +761,10 @@ run_check_state_vs_roadmap() {
   fi
 
   local roadmap_checklist_count roadmap_section_count
-  roadmap_checklist_count=$(grep -cE '^\- \[.\] Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
-  roadmap_section_count=$(grep -cE '^### Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
+  # Accept both plain "- [ ] Phase N:" and bootstrap link "- [ ] [Phase N:"
+  roadmap_checklist_count=$(grep -cE '^\- \[.\] (\[)?Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
+  # Accept ### or ## section headings (bootstrap may use ## instead of ###)
+  roadmap_section_count=$(grep -cE '^#{2,3} (\[)?Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
 
   local details="" failed=false
 

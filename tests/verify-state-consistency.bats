@@ -1996,6 +1996,60 @@ ROADMAP
 }
 
 # ============================================================
+# Bootstrap link-format ROADMAP tests
+# ============================================================
+
+@test "roadmap_vs_summaries parses bootstrap link-format ROADMAP correctly" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Overwrite ROADMAP with bootstrap link format (- [ ] [Phase N: Name](#anchor))
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] [Phase 1: Setup](#phase-1-setup)
+- [ ] [Phase 2: Backend API](#phase-2-backend-api)
+- [ ] [Phase 3: Frontend](#phase-3-frontend)
+
+## Phase 1: Setup
+## Phase 2: Backend API
+## Phase 3: Frontend
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c2_pass
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  [ "$c2_pass" = "true" ]
+}
+
+@test "state_vs_roadmap phase count matches with bootstrap link-format ROADMAP" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Bootstrap link format with ## headings
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] [Phase 1: Setup](#phase-1-setup)
+- [ ] [Phase 2: Backend API](#phase-2-backend-api)
+- [ ] [Phase 3: Frontend](#phase-3-frontend)
+
+## Phase 1: Setup
+## Phase 2: Backend API
+## Phase 3: Frontend
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c4_pass
+  c4_pass=$(echo "$output" | jq -r '.checks.state_vs_roadmap.pass')
+  [ "$c4_pass" = "true" ]
+}
+
+# ============================================================
 # UAT-awareness tests
 # ============================================================
 
