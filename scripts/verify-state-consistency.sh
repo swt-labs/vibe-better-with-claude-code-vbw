@@ -197,7 +197,8 @@ find_active_phase_num() {
   local phases_dir="$1"
   ACTIVE_PHASE_NUM=""
   [ -d "$phases_dir" ] || return 1
-  local dir plans complete raw_num
+  local plans complete raw_num
+  local dir=""
   while IFS= read -r dir; do
     [ -n "$dir" ] || continue
     plans=$(count_phase_plans "$dir")
