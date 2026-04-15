@@ -287,7 +287,7 @@ run_check_roadmap_vs_summaries() {
     seen_phases="$seen_phases $phase_num"
 
     checked=false
-    if echo "$line" | grep -q '^\- \[x\]'; then
+    if echo "$line" | grep -qi '^\- \[x\]'; then
       checked=true
     fi
 
@@ -323,7 +323,7 @@ run_check_roadmap_vs_summaries() {
     if [ "$checked" = "false" ] && [ "$plans" -gt 0 ] && [ "$complete" -ge "$plans" ]; then
       mismatches="${mismatches:+$mismatches, }phase $phase_num marked [ ] but all plans complete ($complete/$plans)"
     fi
-  done < <(grep -E '^\- \[(x| )\] Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
+  done < <(grep -iE '^\- \[(x| )\] Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
 
   # Reverse check: every phase dir should have a matching ROADMAP entry
   local rd rd_num

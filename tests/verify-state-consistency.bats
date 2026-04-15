@@ -212,6 +212,22 @@ SUMMARY
   echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q "phase 1 marked \[ \] but all plans complete"
 }
 
+@test "roadmap_vs_summaries handles uppercase [X] checkbox" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Replace [x] with [X] for phase 1 (which is complete)
+  sed -i.bak 's/\- \[x\] Phase 1: Setup/- [X] Phase 1: Setup/' "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md"
+  rm -f "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md.bak"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c2_pass
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  [ "$c2_pass" = "true" ]
+}
+
 # ============================================================
 # Check 3: .execution-state.json ↔ filesystem
 # ============================================================
