@@ -75,7 +75,7 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
 </debug_session_routing>
 
 ## Steps
-1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`, `--yolo`) from $ARGUMENTS and store them separately for Step 2 routing. If `--yolo` was present in the new-session parse, `YOLO_MODE=true`. If the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
+1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`, `--yolo`) from $ARGUMENTS and store them separately for Step 2 routing. If `--yolo` was present (set during routing for `--session <id>`, `--resume`, or new-session parse), `YOLO_MODE` is already `true`. If the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
     ```bash
     bash "`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/todo-details.sh" get <hash>
     ```

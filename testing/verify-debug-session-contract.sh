@@ -336,6 +336,12 @@ else
   fail "debug.md resume routing for qa_pending/fix_applied missing inline QA entry"
 fi
 
+if grep -q 'uat_pending.*debug_inline_uat' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md resume routing for uat_pending enters inline UAT"
+else
+  fail "debug.md resume routing for uat_pending missing inline UAT entry"
+fi
+
 # — QA agent persistence contract separates phase-scoped from debug-session (CM5-01) —
 
 if grep -q 'Phase-Scoped QA' "$ROOT/agents/vbw-qa.md" 2>/dev/null; then
