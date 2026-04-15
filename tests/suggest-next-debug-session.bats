@@ -163,3 +163,77 @@ EOF
   [[ "$output" != *"Run UAT on the debug fix"* ]]
   [[ "$output" != *"--resume"* ]]
 }
+
+# --- fix context with active debug sessions ---
+
+@test "suggest-next fix with qa_pending debug session suggests resume" {
+  create_debug_session "qa_pending"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+  [[ "$output" == *"remaining issues"* ]]
+}
+
+@test "suggest-next fix with qa_failed debug session suggests resume" {
+  create_debug_session "qa_failed"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+  [[ "$output" == *"remaining issues"* ]]
+}
+
+@test "suggest-next fix with fix_applied debug session suggests resume" {
+  create_debug_session "fix_applied"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+}
+
+@test "suggest-next fix with uat_pending debug session suggests qa" {
+  create_debug_session "uat_pending"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:qa"* ]]
+}
+
+@test "suggest-next fix with uat_failed debug session suggests resume" {
+  create_debug_session "uat_failed"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+  [[ "$output" == *"UAT issues"* ]]
+}
+
+@test "suggest-next fix with investigating debug session suggests resume" {
+  create_debug_session "investigating"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--resume"* ]]
+  [[ "$output" == *"Continue debugging"* ]]
+}
+
+@test "suggest-next fix with no debug session suggests qa" {
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:qa"* ]]
+}
+
+@test "suggest-next fix with complete debug session suggests qa" {
+  create_debug_session "complete"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:qa"* ]]
+  [[ "$output" != *"--resume"* ]]
+}
+
+@test "suggest-next fix with debug session and phases exist defers to default" {
+  create_debug_session "qa_pending"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
+  echo '# Plan' > "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-PLAN.md"
+  echo '# Summary' > "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-SUMMARY.md"
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  # When phases exist, debug-session handler is skipped
+  [[ "$output" != *"--resume"* ]]
+  [[ "$output" == *"/vbw:qa"* ]]
+}
