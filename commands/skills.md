@@ -51,10 +51,10 @@ From `suggestions[]` in Context JSON (recommended but not installed). Display in
 
 ### Step 4: Dynamic registry search
 
-**4a.** If `find_skills_available` is false: AskUserQuestion to install find-skills (`npx skills add vercel-labs/skills --skill find-skills -g -y`). Declined → skip to Step 5.
+**4a.** If `find_skills_available` is false: AskUserQuestion to install find-skills (`npx -y -p skills skill add https://github.com/vercel-labs/skills/tree/main/skills/find-skills -g`). Declined → skip to Step 5.
 
 **4b.** Search when: --search passed (search for query) | no --search but unmapped stack items (auto-search each) | all mapped → skip.
-Run `npx skills find "<query>"`. Display results with `(registry)` tag. If npx unavailable: "⚠ skills CLI not found."
+Run `npx -y -p skills skill search "<query>"`. Display results with `(registry)` tag. If npx unavailable: "⚠ skills CLI not found."
 
 ### Step 5: Offer installation
 
@@ -87,13 +87,13 @@ If the user typed `skip`, STOP here after displaying `○ No skills selected for
 
 AskUserQuestion (single select) — "Where should these skills be installed?":
 - **Project (Recommended)** — "Installed to `./.claude/skills/`, scoped to this project only."
-- **Global** — "Installed to `~/.agents/skills/`, available in all projects."
+- **Global** — "Installed to `~/.claude/skills/`, available in all projects."
 
 Store the choice as SCOPE. If the user typed `skip` in Step 5: skip this step.
 
 ### Step 6: Install selected
 
-`npx skills add <skill> -y` (project scope) or `npx skills add <skill> -g -y` (global scope) per selection, based on SCOPE from Step 5b. This step runs only when one or more skills were selected in Step 5. Display ✓ or ✗ per skill. "➜ Skills take effect immediately — no restart needed."
+`npx -y -p skills skill add <skill>` (project scope) or `npx -y -p skills skill add <skill> -g` (global scope) per selection, based on SCOPE from Step 5b. This step runs only when one or more skills were selected in Step 5. Display ✓ or ✗ per skill. "➜ Skills take effect immediately — no restart needed."
 
 ## Output Format
 

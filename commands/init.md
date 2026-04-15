@@ -243,7 +243,7 @@ If any settings.json changes or plugins installed: display `(restart Claude Code
 **2d. find-skills bootstrap:** Check `find_skills_available` from detect-stack JSON.
 - `true`: display "✓ Skills.sh registry — available"
 - `false`: AskUserQuestion: "○ Skills.sh Registry\n\nVBW can search the Skills.sh registry (~2000 community skills) to find\nskills matching your project. This requires the find-skills meta-skill.\nInstall it now?" Options: "Install (Recommended)" / "Skip"
-  - Approved: `npx skills add vercel-labs/skills --skill find-skills -g -y`
+  - Approved: `npx -y -p skills skill add https://github.com/vercel-labs/skills/tree/main/skills/find-skills -g`
   - Declined: "○ Skipped. Run /vbw:skills later to search the registry."
 
 ### Step 3: Convergence — augment and search
@@ -259,9 +259,9 @@ If any settings.json changes or plugins installed: display `(restart Claude Code
 
 If greenfield: write `{"conventions": []}`. Display: `○ Conventions — none yet (add with /vbw:teach)`
 
-**3c. Parallel registry search** (if find-skills available): run `npx skills find "<stack-item>"` for ALL detected_stack items **in parallel** (multiple concurrent Bash calls). Deduplicate against installed skills. If detected_stack empty, search by project type. Display results with `(registry)` tag.
+**3c. Parallel registry search** (if find-skills available): run `npx -y -p skills skill search "<stack-item>"` for ALL detected_stack items **in parallel** (multiple concurrent Bash calls). Deduplicate against installed skills. If detected_stack empty, search by project type. Display results with `(registry)` tag.
 
-**3d. Unified skill prompt:** Combine curated (from 2b) + registry (from 3c) results into single AskUserQuestion multiSelect. Tag `(curated)` or `(registry)`. Max 4 options + "Skip". Install selected: `npx skills add <skill> -g -y`.
+**3d. Unified skill prompt:** Combine curated (from 2b) + registry (from 3c) results into single AskUserQuestion multiSelect. Tag `(curated)` or `(registry)`. Max 4 options + "Skip". Install selected: `npx -y -p skills skill add <skill> -g`.
 
 ### Step 3.5: Generate bootstrap CLAUDE.md
 
