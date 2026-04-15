@@ -171,7 +171,7 @@ find_active_phase_num() {
   while IFS= read -r dir; do
     [ -n "$dir" ] || continue
     plans=$(count_phase_plans "$dir")
-    complete=$(count_done_summaries "$dir")
+    complete=$(count_complete_summaries "$dir")
     if [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ]; then
       raw_num=$(resolve_phase_number_from_phase_dir "$dir")
       ACTIVE_PHASE_NUM=$(echo "$raw_num" | sed 's/^0*//')
@@ -258,10 +258,20 @@ run_check_roadmap_vs_summaries() {
 
   local mismatches=""
   local phase_num checked plans complete phase_dir
+  local seen_phases=""
 
   while IFS= read -r line; do
     phase_num=$(echo "$line" | sed -n 's/^- \[.\] Phase \([0-9][0-9]*\):.*/\1/p')
     [ -n "$phase_num" ] || continue
+
+    # Duplicate detection
+    case " $seen_phases " in
+      *" $phase_num "*)
+        mismatches="${mismatches:+$mismatches, }duplicate ROADMAP checklist entry for phase $phase_num"
+        ;;
+    esac
+    seen_phases="$seen_phases $phase_num"
+
     checked=false
     if echo "$line" | grep -q '^\- \[x\]'; then
       checked=true
@@ -288,7 +298,7 @@ run_check_roadmap_vs_summaries() {
     fi
 
     plans=$(count_phase_plans "$phase_dir")
-    complete=$(count_done_summaries "$phase_dir")
+    complete=$(count_complete_summaries "$phase_dir")
 
     # Marked complete in roadmap but not all plans done
     if [ "$checked" = "true" ] && { [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ]; }; then
@@ -300,6 +310,19 @@ run_check_roadmap_vs_summaries() {
       mismatches="${mismatches:+$mismatches, }phase $phase_num marked [ ] but all plans complete ($complete/$plans)"
     fi
   done < <(grep -E '^\- \[(x| )\] Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
+
+  # Reverse check: every phase dir should have a matching ROADMAP entry
+  local rd rd_num
+  while IFS= read -r rd; do
+    [ -n "$rd" ] || continue
+    rd_num=$(basename "$rd" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
+    rd_num=$(printf '%s' "$rd_num" | sed 's/^0*//')
+    rd_num=${rd_num:-0}
+    case " $seen_phases " in
+      *" $rd_num "*) ;; # found in roadmap
+      *) mismatches="${mismatches:+$mismatches, }phase directory $rd_num exists on disk but no matching ROADMAP checklist entry" ;;
+    esac
+  done < <(list_canonical_phase_dirs "$PHASES_DIR")
 
   if [ -n "$mismatches" ]; then
     check_roadmap_vs_summaries_pass=false
@@ -400,7 +423,7 @@ run_check_exec_state_vs_filesystem() {
   # Status coherence: complete but incomplete plans
   local plans complete
   plans=$(count_phase_plans "$target_dir")
-  complete=$(count_done_summaries "$target_dir")
+  complete=$(count_complete_summaries "$target_dir")
 
   if [ "$es_status" = "complete" ] && [ "$plans" -eq 0 ]; then
     details="status is 'complete' but phase $es_phase has no plan artifacts"
@@ -509,6 +532,10 @@ run_check_exec_state_vs_filesystem() {
       case "$plan_status" in
 
         complete|partial|failed)
+          # Require plan artifact still present on disk
+          if [ ! -f "$target_dir/${plan_id}-PLAN.md" ]; then
+            plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' status=$plan_status but no ${plan_id}-PLAN.md found (plan artifact missing)"
+          fi
           # Require plan-specific SUMMARY.md — generic SUMMARY.md does not satisfy
           if [ ! -f "$target_dir/${plan_id}-SUMMARY.md" ]; then
             plan_mismatches="${plan_mismatches:+$plan_mismatches, }plan '$plan_id' status=$plan_status but no ${plan_id}-SUMMARY.md found"

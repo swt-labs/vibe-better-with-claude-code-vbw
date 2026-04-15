@@ -1637,7 +1637,7 @@ EOF
 # Partial summary counts as done (not incomplete)
 # ---------------------------------------------------------------------------
 
-@test "exec_state complete with partial summary does not flag drift" {
+@test "exec_state complete with partial summary flags incomplete" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
 
@@ -1645,22 +1645,25 @@ EOF
   printf -- '---\nstatus: partial\n---\n# Summary\nPartially done.\n' > "$phase_dir/02-01-SUMMARY.md"
 
   # Exec state plan entry also says partial — consistent with summary
+  # But top-level "complete" conflicts: partial doesn't count as complete
   printf '{"phase":2,"status":"complete","plans":[{"id":"02-01","status":"partial"}]}\n' \
     > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
 
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
   [ "$status" -eq 0 ]
 
-  local c3_pass
+  local c3_pass c3_detail
   c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
-  [ "$c3_pass" = "true" ]
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [ "$c3_pass" = "false" ]
+  [[ "$c3_detail" == *"incomplete"* ]]
 }
 
-@test "roadmap_vs_summaries treats partial as done" {
+@test "roadmap_vs_summaries flags partial as incomplete" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
 
-  # Phase 2 marked [x] in ROADMAP (complete)
+  # Phase 2 marked [x] in ROADMAP (complete) but only has partial summary
   local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
   printf -- '---\nstatus: partial\n---\n# Summary\nPartially done.\n' > "$phase_dir/02-01-SUMMARY.md"
 
@@ -1675,10 +1678,12 @@ ROADMAP
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
   [ "$status" -eq 0 ]
 
-  local c2_detail
+  local c2_pass c2_detail
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
   c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
-  # Phase 2 should NOT be flagged as incomplete since partial counts as done
-  [[ "$c2_detail" != *"phase 2"*"incomplete"* ]] || [[ "$c2_detail" != *"Phase 2"*"incomplete"* ]]
+  [ "$c2_pass" = "false" ]
+  [[ "$c2_detail" == *"phase 2"* ]]
+  [[ "$c2_detail" == *"incomplete"* ]]
 }
 
 # ---------------------------------------------------------------------------
@@ -1719,4 +1724,115 @@ ROADMAP
   local c3_pass
   c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
   [ "$c3_pass" = "true" ]
+}
+
+# ---------------------------------------------------------------------------
+# F-02: Completed plan with missing PLAN.md
+# ---------------------------------------------------------------------------
+
+@test "exec_state complete plan with missing PLAN.md flags drift" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  printf -- '---\nstatus: complete\n---\n# Summary\nDone.\n' > "$phase_dir/02-01-SUMMARY.md"
+  rm -f "$phase_dir/02-01-PLAN.md"
+
+  printf '{"phase":2,"status":"complete","plans":[{"id":"02-01","status":"complete"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass c3_detail
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [ "$c3_pass" = "false" ]
+  [[ "$c3_detail" == *"02-01"* ]]
+  [[ "$c3_detail" == *"PLAN.md"* ]]
+  [[ "$c3_detail" == *"missing"* ]]
+}
+
+@test "exec_state partial plan with missing PLAN.md flags drift" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/02-backend-api"
+  printf -- '---\nstatus: partial\n---\n# Summary\nPartial.\n' > "$phase_dir/02-01-SUMMARY.md"
+  rm -f "$phase_dir/02-01-PLAN.md"
+
+  printf '{"phase":2,"status":"running","plans":[{"id":"02-01","status":"partial"}]}\n' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c3_pass c3_detail
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
+  [ "$c3_pass" = "false" ]
+  [[ "$c3_detail" == *"02-01"* ]]
+  [[ "$c3_detail" == *"PLAN.md"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# F-03: Duplicate roadmap markers and missing roadmap entries
+# ---------------------------------------------------------------------------
+
+@test "roadmap_vs_summaries detects duplicate phase entries" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'ROADMAP'
+# Roadmap
+- [x] Phase 1: Setup
+- [ ] Phase 2: Backend API
+- [ ] Phase 2: Backend API (dup)
+- [ ] Phase 3: Frontend
+ROADMAP
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c2_pass c2_detail
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
+  [ "$c2_pass" = "false" ]
+  [[ "$c2_detail" == *"duplicate"* ]]
+  [[ "$c2_detail" == *"phase 2"* ]]
+}
+
+@test "roadmap_vs_summaries detects phase dir missing from roadmap" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  # Write ROADMAP with only phases 1 and 3 — phase 2 dir still exists
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'ROADMAP'
+# Roadmap
+- [x] Phase 1: Setup
+- [ ] Phase 3: Frontend
+ROADMAP
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c2_pass c2_detail
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
+  [ "$c2_pass" = "false" ]
+  [[ "$c2_detail" == *"phase"* ]]
+  [[ "$c2_detail" == *"2"* ]]
+  [[ "$c2_detail" == *"no matching ROADMAP"* ]]
+}
+
+@test "roadmap_vs_summaries passes when roadmap and dirs fully aligned" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c2_pass
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  [ "$c2_pass" = "true" ]
 }
