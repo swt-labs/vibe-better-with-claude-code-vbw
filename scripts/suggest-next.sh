@@ -593,8 +593,16 @@ case "$CMD" in
             qa_pending|uat_pending|fix_applied)
               case "$effective_result" in
                 pass)
-                  suggest "/vbw:verify -- Run UAT on the debug fix"
-                  _qa_debug_handled=true
+                  case "$_qa_ds_status" in
+                    qa_pending|fix_applied)
+                      suggest "/vbw:debug --resume -- Continue to QA verification"
+                      _qa_debug_handled=true
+                      ;;
+                    uat_pending)
+                      suggest "/vbw:debug --resume -- Continue to UAT verification"
+                      _qa_debug_handled=true
+                      ;;
+                  esac
                   ;;
                 fail|partial)
                   suggest "/vbw:debug --resume -- Address QA failures"
@@ -604,11 +612,11 @@ case "$CMD" in
                   # No result passed — suggest based on session status
                   case "$_qa_ds_status" in
                     qa_pending|fix_applied)
-                      suggest "/vbw:qa -- Run QA on the debug fix"
+                      suggest "/vbw:debug --resume -- Continue to QA verification"
                       _qa_debug_handled=true
                       ;;
                     uat_pending)
-                      suggest "/vbw:verify -- Run UAT on the debug fix"
+                      suggest "/vbw:debug --resume -- Continue to UAT verification"
                       _qa_debug_handled=true
                       ;;
                   esac
@@ -819,21 +827,13 @@ case "$CMD" in
     fi
     case "$_ds_status" in
       qa_pending|fix_applied)
-        if [ "${phase_count:-0}" -gt 0 ]; then
-          suggest "/vbw:qa --session -- Verify the debug fix"
-        else
-          suggest "/vbw:qa -- Verify the debug fix"
-        fi
+        suggest "/vbw:debug --resume -- Continue to QA verification"
         ;;
       qa_failed)
         suggest "/vbw:debug --resume -- Address QA failures"
         ;;
       uat_pending)
-        if [ "${phase_count:-0}" -gt 0 ]; then
-          suggest "/vbw:verify --session -- Run UAT on the debug fix"
-        else
-          suggest "/vbw:verify -- Run UAT on the debug fix"
-        fi
+        suggest "/vbw:debug --resume -- Continue to UAT verification"
         ;;
       uat_failed)
         suggest "/vbw:debug --resume -- Address UAT issues"

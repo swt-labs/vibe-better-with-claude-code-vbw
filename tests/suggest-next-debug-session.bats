@@ -73,11 +73,12 @@ EOF
   [[ "$output" == *"Continue investigation"* ]]
 }
 
-@test "suggest-next debug with qa_pending session suggests qa" {
+@test "suggest-next debug with qa_pending session suggests resume for inline QA" {
   create_debug_session "qa_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:qa"* ]]
+  [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Continue to QA verification"* ]]
 }
 
 @test "suggest-next debug with qa_failed session suggests resume" {
@@ -88,11 +89,12 @@ EOF
   [[ "$output" == *"QA failures"* ]]
 }
 
-@test "suggest-next debug with uat_pending session suggests verify" {
+@test "suggest-next debug with uat_pending session suggests resume for inline UAT" {
   create_debug_session "uat_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" debug pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Continue to UAT verification"* ]]
 }
 
 @test "suggest-next debug with uat_failed session suggests resume" {
@@ -120,18 +122,20 @@ EOF
 
 # --- qa context with active debug sessions ---
 
-@test "suggest-next qa pass with uat_pending debug session suggests verify" {
+@test "suggest-next qa pass with uat_pending debug session suggests resume for inline UAT" {
   create_debug_session "uat_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Continue to UAT verification"* ]]
 }
 
-@test "suggest-next qa pass with qa_pending debug session suggests verify" {
+@test "suggest-next qa pass with qa_pending debug session suggests resume for inline QA" {
   create_debug_session "qa_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Continue to QA verification"* ]]
 }
 
 @test "suggest-next qa fail with active debug session suggests resume" {
