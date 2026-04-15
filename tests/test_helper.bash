@@ -41,20 +41,36 @@ teardown_temp_dir() {
   unset VBW_AGENT_PID_LOCK_DIR _ORIG_HOME _ORIG_GIT_CONFIG_NOSYSTEM _ORIG_GIT_CONFIG_GLOBAL
 }
 
-# Run phase-detect.sh with retry on empty output.
-# Under heavy parallel BATS execution, transient fork/exec failures can cause
-# the subprocess to produce zero output. Retrying handles this reliably.
+# Run phase-detect.sh with retry on empty or incomplete output.
+# Under heavy parallel BATS execution, transient fork/exec or pipe failures can
+# cause the subprocess to produce zero output or only the EXIT-trap fallback
+# (qa_status=none + execution_state=none). Retries with exponential backoff
+# (sleeps of 0.1, 0.2, 0.4, 0.8s ≈ 1.5s total) handle both cases.
+# Output is considered complete when it contains "next_phase_state=" — a field
+# present in every normal code path of phase-detect.sh but absent from the
+# trap-only fallback.
+# Returns 1 and sets status=1 if all 5 attempts produce empty or incomplete
+# output, so callers' `[ "$status" -eq 0 ]` assertions fail with a clear
+# diagnostic rather than a confusing content mismatch.
 # Sets BATS globals: $output, $status (same as `run`).
 run_phase_detect() {
   local _pd_script_dir="${1:-$SCRIPTS_DIR}"
+  local _pd_sleeps=(0.1 0.2 0.4 0.8)
   local _pd_attempt=0
-  while [ $_pd_attempt -lt 3 ]; do
+  while [ $_pd_attempt -lt 5 ]; do
     run bash "$_pd_script_dir/phase-detect.sh"
-    [ -n "$output" ] && return 0
+    if [ -n "$output" ] && [[ "$output" == *"next_phase_state="* ]]; then
+      return 0
+    fi
+    if [ $_pd_attempt -lt 4 ]; then
+      sleep "${_pd_sleeps[$_pd_attempt]}"
+    fi
     _pd_attempt=$((_pd_attempt + 1))
-    sleep 0.1
   done
-  return 0
+  output="run_phase_detect: all 5 retries returned empty or incomplete output"
+  status=1
+  echo "$output" >&2
+  return 1
 }
 
 vbw_cache_prefix_for_root() {
