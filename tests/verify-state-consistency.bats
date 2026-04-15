@@ -81,7 +81,7 @@ SUMMARY
 # No project state
 # ============================================================
 
-@test "missing .vbw-planning returns verdict skip" {
+@test "missing .vbw-planning returns verdict fail in advisory" {
   cd "$TEST_TEMP_DIR"
   rm -rf "$TEST_TEMP_DIR/.vbw-planning"
 
@@ -90,19 +90,19 @@ SUMMARY
 
   local verdict
   verdict=$(echo "$output" | jq -r '.verdict')
-  [ "$verdict" = "skip" ]
+  [ "$verdict" = "fail" ]
 
-  # Advisory skip paths must still emit per-check JSON structure
+  # Advisory fail paths must still emit per-check JSON structure
   local c1_detail
   c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
   [ "$c1_detail" = "not evaluated" ]
 
   local fc_count
   fc_count=$(echo "$output" | jq '.failed_checks | length')
-  [ "$fc_count" -eq 0 ]
+  [ "$fc_count" -eq 1 ]
 }
 
-@test "missing STATE.md returns verdict skip" {
+@test "missing STATE.md returns verdict fail in advisory" {
   cd "$TEST_TEMP_DIR"
   rm -f "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 
@@ -111,7 +111,7 @@ SUMMARY
 
   local verdict
   verdict=$(echo "$output" | jq -r '.verdict')
-  [ "$verdict" = "skip" ]
+  [ "$verdict" = "fail" ]
 }
 
 # ============================================================
@@ -310,6 +310,10 @@ EOF
   local detail
   detail=$(echo "$output" | jq -r '.checks.project_vs_state.detail')
   [ "$detail" = "skip: no PROJECT.md" ]
+
+  local pass
+  pass=$(echo "$output" | jq -r '.checks.project_vs_state.pass')
+  [ "$pass" = "true" ]
 }
 
 # ============================================================
@@ -588,7 +592,7 @@ EOF
   echo "$output" | jq -r '.failed_checks[]' | grep -q "missing_roadmap_md"
 }
 
-@test "advisory mode skips when STATE.md is missing" {
+@test "advisory mode warns when STATE.md is missing" {
   cd "$TEST_TEMP_DIR"
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
   create_test_config
@@ -598,16 +602,16 @@ EOF
 
   local verdict
   verdict=$(echo "$output" | jq -r '.verdict')
-  [ "$verdict" = "skip" ]
+  [ "$verdict" = "fail" ]
 
-  # Advisory skip paths must still emit per-check JSON structure
+  # Advisory fail paths must still emit per-check JSON structure
   local c1_detail
   c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
   [ "$c1_detail" = "not evaluated" ]
 
   local fc_count
   fc_count=$(echo "$output" | jq '.failed_checks | length')
-  [ "$fc_count" -eq 0 ]
+  [ "$fc_count" -eq 1 ]
 }
 
 # ---------------------------------------------------------------------------
@@ -645,7 +649,7 @@ EOF
   [[ "$c1_detail" == *"unparseable"* ]]
 }
 
-@test "advisory mode skips on malformed STATE.md Phase line" {
+@test "advisory mode reports failure on malformed STATE.md Phase line" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
 
@@ -669,7 +673,7 @@ EOF
 
   local c1_pass
   c1_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
-  [ "$c1_pass" = "true" ]
+  [ "$c1_pass" = "false" ]
 }
 
 @test "archive mode fails on invalid execution-state JSON" {
@@ -691,7 +695,7 @@ EOF
   [[ "$c3_detail" == *"invalid"* ]]
 }
 
-@test "advisory mode skips on invalid execution-state JSON" {
+@test "advisory mode reports failure on invalid execution-state JSON" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
 
@@ -702,7 +706,7 @@ EOF
 
   local c3_pass
   c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
-  [ "$c3_pass" = "true" ]
+  [ "$c3_pass" = "false" ]
 
   local c3_detail
   c3_detail=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.detail')
@@ -781,7 +785,7 @@ EOF
   [ "$c1_pass" = "false" ]
 }
 
-@test "advisory mode skips when phases directory is missing" {
+@test "advisory mode reports failure when phases directory is missing" {
   cd "$TEST_TEMP_DIR"
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
   create_test_config
@@ -814,7 +818,7 @@ EOF
 
   local c1_pass
   c1_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
-  [ "$c1_pass" = "true" ]
+  [ "$c1_pass" = "false" ]
 }
 
 # ---------------------------------------------------------------------------
@@ -938,7 +942,7 @@ EOF
   [[ "$c5_detail" == *"unparseable"* ]]
 }
 
-@test "advisory mode skips on unparseable PROJECT.md project name" {
+@test "advisory mode reports failure on unparseable PROJECT.md project name" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
 
@@ -949,7 +953,7 @@ EOF
 
   local c5_pass
   c5_pass=$(echo "$output" | jq -r '.checks.project_vs_state.pass')
-  [ "$c5_pass" = "true" ]
+  [ "$c5_pass" = "false" ]
 
   local c5_detail
   c5_detail=$(echo "$output" | jq -r '.checks.project_vs_state.detail')

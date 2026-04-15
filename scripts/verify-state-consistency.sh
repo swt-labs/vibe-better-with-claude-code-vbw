@@ -99,7 +99,11 @@ early_exit_json() {
 
 # --- Early exit: no project state -------------------------------------------
 if [ ! -d "$PLANNING_DIR" ]; then
-  early_exit_json "skip" "$MODE" "" "no planning directory"
+  if [ "$MODE" = "archive" ]; then
+    early_exit_json "fail" "archive" "missing_planning_dir" "no planning directory"
+    exit 2
+  fi
+  early_exit_json "fail" "advisory" "missing_planning_dir" "no planning directory"
   exit 0
 fi
 
@@ -108,7 +112,7 @@ if [ ! -f "$PLANNING_DIR/STATE.md" ]; then
     early_exit_json "fail" "archive" "missing_state_md"
     exit 2
   fi
-  early_exit_json "skip" "advisory" "" "no STATE.md"
+  early_exit_json "fail" "advisory" "missing_state_md" "no STATE.md"
   exit 0
 fi
 if [ ! -f "$PLANNING_DIR/ROADMAP.md" ] && [ "$MODE" = "archive" ]; then
@@ -124,7 +128,7 @@ EXEC_STATE_FILE="$PLANNING_DIR/.execution-state.json"
 
 # --- Check result accumulators -----------------------------------------------
 # Each check sets check_NAME_pass (true/false) and check_NAME_detail (string).
-# Checks that can't parse their input degrade to "skip" (pass=true, detail explains).
+# Checks that can't parse their input set pass=false with a "skip: ..." detail message.
 check_state_vs_filesystem_pass=true
 check_state_vs_filesystem_detail="ok"
 check_roadmap_vs_summaries_pass=true
@@ -197,6 +201,7 @@ run_check_state_vs_filesystem() {
       check_state_vs_filesystem_pass=false
       check_state_vs_filesystem_detail="unparseable Phase line in STATE.md"
     else
+      check_state_vs_filesystem_pass=false
       check_state_vs_filesystem_detail="skip: could not parse Phase line from STATE.md"
     fi
     return
@@ -207,6 +212,7 @@ run_check_state_vs_filesystem() {
       check_state_vs_filesystem_pass=false
       check_state_vs_filesystem_detail="no phases directory"
     else
+      check_state_vs_filesystem_pass=false
       check_state_vs_filesystem_detail="skip: no phases directory"
     fi
     return
@@ -251,6 +257,7 @@ run_check_roadmap_vs_summaries() {
       check_roadmap_vs_summaries_pass=false
       check_roadmap_vs_summaries_detail="no phases directory"
     else
+      check_roadmap_vs_summaries_pass=false
       check_roadmap_vs_summaries_detail="skip: no phases directory"
     fi
     return
@@ -345,6 +352,7 @@ run_check_exec_state_vs_filesystem() {
       check_exec_state_vs_filesystem_pass=false
       check_exec_state_vs_filesystem_detail="invalid .execution-state.json (not valid JSON)"
     else
+      check_exec_state_vs_filesystem_pass=false
       check_exec_state_vs_filesystem_detail="skip: .execution-state.json is not valid JSON"
     fi
     return
@@ -359,6 +367,7 @@ run_check_exec_state_vs_filesystem() {
       check_exec_state_vs_filesystem_pass=false
       check_exec_state_vs_filesystem_detail=".execution-state.json missing phase or status"
     else
+      check_exec_state_vs_filesystem_pass=false
       check_exec_state_vs_filesystem_detail="skip: .execution-state.json missing phase or status"
     fi
     return
@@ -371,6 +380,7 @@ run_check_exec_state_vs_filesystem() {
         check_exec_state_vs_filesystem_pass=false
         check_exec_state_vs_filesystem_detail=".execution-state.json phase is not numeric: '$es_phase'"
       else
+        check_exec_state_vs_filesystem_pass=false
         check_exec_state_vs_filesystem_detail="skip: .execution-state.json phase is not numeric: '$es_phase'"
       fi
       return
@@ -382,6 +392,7 @@ run_check_exec_state_vs_filesystem() {
       check_exec_state_vs_filesystem_pass=false
       check_exec_state_vs_filesystem_detail="no phases directory"
     else
+      check_exec_state_vs_filesystem_pass=false
       check_exec_state_vs_filesystem_detail="skip: no phases directory"
     fi
     return
@@ -643,6 +654,7 @@ run_check_state_vs_roadmap() {
       check_state_vs_roadmap_pass=false
       check_state_vs_roadmap_detail="unparseable Phase line in STATE.md"
     else
+      check_state_vs_roadmap_pass=false
       check_state_vs_roadmap_detail="skip: could not parse Phase line from STATE.md"
     fi
     return
@@ -714,6 +726,7 @@ run_check_project_vs_state() {
       check_project_vs_state_pass=false
       check_project_vs_state_detail="unparseable project name from PROJECT.md"
     else
+      check_project_vs_state_pass=false
       check_project_vs_state_detail="skip: could not parse project name from PROJECT.md"
     fi
     return
@@ -724,6 +737,7 @@ run_check_project_vs_state() {
       check_project_vs_state_pass=false
       check_project_vs_state_detail="unparseable project name from STATE.md"
     else
+      check_project_vs_state_pass=false
       check_project_vs_state_detail="skip: could not parse project name from STATE.md"
     fi
     return
