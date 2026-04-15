@@ -1817,6 +1817,62 @@ ROADMAP
   [[ "$c3_detail" == *"PLAN.md"* ]]
 }
 
+@test "exec_state gapped dirs uses prefix not ordinal for active phase" {
+  cd "$TEST_TEMP_DIR"
+  local root="$TEST_TEMP_DIR/.vbw-planning"
+  mkdir -p "$root/phases"
+
+  cat > "$root/STATE.md" <<'EOF'
+# State
+**Project:** My Test Project
+**Milestone:** MVP
+Phase: 2 of 2 (Build)
+Plans: 1/1
+Progress: 50%
+Status: running
+EOF
+
+  cat > "$root/PROJECT.md" <<'EOF'
+# My Test Project
+Core value proposition for testing.
+EOF
+
+  cat > "$root/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] Phase 1: Setup
+- [ ] Phase 3: Build
+
+### Phase 1: Setup
+### Phase 3: Build
+EOF
+
+  # Non-contiguous: 01 and 03 (no 02)
+  mkdir -p "$root/phases/01-setup"
+  echo "# Plan" > "$root/phases/01-setup/01-01-PLAN.md"
+  cat > "$root/phases/01-setup/01-01-SUMMARY.md" <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
+
+  mkdir -p "$root/phases/03-build"
+  echo "# Plan" > "$root/phases/03-build/03-01-PLAN.md"
+
+  # exec-state uses prefix number 3 (not ordinal 2) for dir 03-build
+  printf '{"phase":3,"status":"running","plans":[{"id":"03-01","status":"running"}]}\n' \
+    > "$root/.execution-state.json"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode advisory
+  [ "$status" -eq 0 ]
+
+  # The exec-state cross-check should pass because prefix 3 matches dir 03-build
+  local c3_pass
+  c3_pass=$(echo "$output" | jq -r '.checks.exec_state_vs_filesystem.pass')
+  [ "$c3_pass" = "true" ]
+}
+
 # ---------------------------------------------------------------------------
 # F-03: Duplicate roadmap markers and missing roadmap entries
 # ---------------------------------------------------------------------------

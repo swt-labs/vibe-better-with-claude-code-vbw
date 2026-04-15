@@ -218,26 +218,34 @@ phase_has_uat_issues() {
 # --- Helper: find active phase dir (first incomplete phase) ------------------
 # Uses ordinal position (1-based index in sorted dir list) to match
 # state-updater.sh's Phase: N of M semantics, not directory prefixes.
+# Sets ACTIVE_PHASE_NUM (ordinal position for STATE.md comparison) and
+# ACTIVE_PHASE_PREFIX (directory prefix number for .execution-state.json comparison).
 find_active_phase_num() {
   local phases_dir="$1"
   ACTIVE_PHASE_NUM=""
+  ACTIVE_PHASE_PREFIX=""
   [ -d "$phases_dir" ] || return 1
-  local plans complete phase_idx
+  local plans complete phase_idx prefix_num
   local dir=""
   phase_idx=0
   while IFS= read -r dir; do
     [ -n "$dir" ] || continue
     phase_idx=$((phase_idx + 1))
+    prefix_num=$(basename "$dir" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
+    prefix_num=$(printf '%s' "$prefix_num" | sed 's/^0*//')
+    prefix_num=${prefix_num:-0}
     plans=$(count_phase_plans "$dir")
     complete=$(count_complete_summaries "$dir")
     if [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ] || phase_has_uat_issues "$dir"; then
       ACTIVE_PHASE_NUM="$phase_idx"
+      ACTIVE_PHASE_PREFIX="$prefix_num"
       return 0
     fi
   done < <(list_canonical_phase_dirs "$phases_dir")
   # All phases complete — use the last ordinal position
   if [ "$phase_idx" -gt 0 ]; then
     ACTIVE_PHASE_NUM="$phase_idx"
+    ACTIVE_PHASE_PREFIX="$prefix_num"
   fi
   return 0
 }
@@ -485,9 +493,11 @@ run_check_exec_state_vs_filesystem() {
   # finished phase while the active phase has moved on — that is normal.
   # Drift is only meaningful when the exec state claims work is still running
   # on a phase that is not the current active phase.
-  if [ "$es_status" != "complete" ] && find_active_phase_num "$PHASES_DIR" 2>/dev/null && [ -n "$ACTIVE_PHASE_NUM" ] && [ "$ACTIVE_PHASE_NUM" != "$es_phase" ]; then
-    local actual_active_num="$ACTIVE_PHASE_NUM"
-    details="exec-state phase ($es_phase) does not match active phase on disk ($actual_active_num)"
+  # Compare using directory prefix (ACTIVE_PHASE_PREFIX), not ordinal position
+  # (ACTIVE_PHASE_NUM), because .execution-state.json stores the prefix number.
+  if [ "$es_status" != "complete" ] && find_active_phase_num "$PHASES_DIR" 2>/dev/null && [ -n "$ACTIVE_PHASE_PREFIX" ] && [ "$ACTIVE_PHASE_PREFIX" != "$es_phase" ]; then
+    local actual_active_prefix="$ACTIVE_PHASE_PREFIX"
+    details="exec-state phase ($es_phase) does not match active phase on disk (prefix $actual_active_prefix)"
     check_exec_state_vs_filesystem_pass=false
   fi
 
