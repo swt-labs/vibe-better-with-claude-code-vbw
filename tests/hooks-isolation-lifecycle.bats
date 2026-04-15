@@ -127,13 +127,13 @@ load test_helper
 }
 
 @test "security-filter allows file when parent dir contains dist substring" {
-  INPUT='{"tool_input":{"file_path":"/home/user/redistribution/src/main.js"}}'
+  INPUT='{"tool_input":{"file_path":"/home/user/my-dist/bundle.js"}}'
   run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
   [ "$status" -eq 0 ]
 }
 
 @test "security-filter allows file when parent dir contains node_modules substring" {
-  INPUT='{"tool_input":{"file_path":"/home/user/my-node_modules-archive/readme.md"}}'
+  INPUT='{"tool_input":{"file_path":"/home/user/old-node_modules/lodash/index.js"}}'
   run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
   [ "$status" -eq 0 ]
 }
