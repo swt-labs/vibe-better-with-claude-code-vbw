@@ -189,11 +189,12 @@ EOF
   [[ "$output" == *"--resume"* ]]
 }
 
-@test "suggest-next fix with uat_pending debug session suggests qa" {
+@test "suggest-next fix with uat_pending debug session suggests verify" {
   create_debug_session "uat_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:qa"* ]]
+  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"UAT"* ]]
 }
 
 @test "suggest-next fix with uat_failed debug session suggests resume" {

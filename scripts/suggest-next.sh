@@ -735,7 +735,7 @@ case "$CMD" in
               _fix_debug_handled=true
               ;;
             uat_pending)
-              suggest "/vbw:qa -- Verify the fix"
+              suggest "/vbw:verify -- Run UAT on the debug fix"
               _fix_debug_handled=true
               ;;
             uat_failed)
