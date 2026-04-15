@@ -41,7 +41,7 @@ Resolve or create the debug session before any investigation. Order of precedenc
    ```
    If the session file is missing, STOP with error.
 
-2. **`--resume` flag (no explicit session):** Resume the active session or latest unresolved.
+2. **`--resume` flag (no explicit session):** Resume the active session or latest unresolved. Parse `--yolo` if present: `YOLO_MODE=false; if printf '%s' "$ARGUMENTS" | grep -qE '(^|[[:space:]])--yolo([[:space:]]|$)'; then YOLO_MODE=true; fi`.
    ```bash
    eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh get-or-latest .vbw-planning)"
    ```
@@ -247,6 +247,13 @@ Read the `auto_uat` config:
 AUTO_UAT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/read-config.sh .vbw-planning/config.json auto_uat 2>/dev/null || echo "false")
 ```
 
+Resolve effort profile if not already set (needed for tier resolution and max-turns):
+```bash
+if [ -z "${EFFORT_PROFILE:-}" ]; then
+  EFFORT_PROFILE=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/read-config.sh .vbw-planning/config.json effort_profile 2>/dev/null || echo "balanced")
+fi
+```
+
 **Prompt gate:** If `AUTO_UAT` is not `"true"` AND `YOLO_MODE` is not `true`, call AskUserQuestion:
 ```yaml
 question: "Fix committed. Run QA verification now?"
@@ -258,7 +265,7 @@ options:
   - label: "No"
     description: "I'll run /vbw:qa --session later"
 ```
-If the user selects "No": STOP with `➜ Next: /vbw:qa --session -- Verify the debug fix`.
+If the user selects "No": STOP with `➞ Next: /vbw:debug --resume -- Continue to QA verification`.
 If the user selects "Yes" or provides freeform acceptance: proceed.
 
 If `AUTO_UAT` is `"true"` OR `YOLO_MODE` is `true`: skip the prompt and proceed directly.
@@ -270,12 +277,12 @@ If `AUTO_UAT` is `"true"` OR `YOLO_MODE` is `true`: skip the prompt and proceed 
    QA_CONTEXT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/compile-debug-session-context.sh "$session_file" qa)
    ```
 
-2. Increment QA round:
+2. Resolve tier from effort profile: fast=quick, balanced=standard, thorough=deep. Store as `ACTIVE_TIER`. If turbo: set session status to `uat_pending` via `debug-session-state.sh set-status .vbw-planning uat_pending`, then jump directly to `<debug_inline_uat>` below — skip all remaining QA steps (do not increment QA round).
+
+3. Increment QA round:
    ```bash
    eval "$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/debug-session-state.sh increment-qa .vbw-planning)"
    ```
-
-3. Resolve tier from effort profile: fast=quick, balanced=standard, thorough=deep. Store as `ACTIVE_TIER`. If turbo: set session status to `uat_pending` via `debug-session-state.sh set-status .vbw-planning uat_pending`, then jump directly to `<debug_inline_uat>` below — skip all remaining QA steps.
 
 4. Resolve QA model and max turns:
    ```bash
@@ -358,7 +365,7 @@ options:
   - label: "No"
     description: "I'll run /vbw:verify --session later"
 ```
-If the user selects "No": STOP with `➜ Next: /vbw:verify --session -- Run UAT on the debug fix`.
+If the user selects "No": STOP with `➞ Next: /vbw:debug --resume -- Continue to UAT verification`.
 If the user selects "Yes" or provides freeform acceptance: proceed.
 
 If `AUTO_UAT` is `"true"` OR `YOLO_MODE` is `true`: skip the prompt and proceed directly.
