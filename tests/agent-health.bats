@@ -144,7 +144,7 @@ EOF
 
   # Create health file with dead PID
   local dead_pid
-  dead_pid=$(get_dead_pid)
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
   echo "{\"pid\":\"$dead_pid\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   # Run idle — should detect dead PID and clear owner
@@ -175,7 +175,7 @@ EOF
 EOF
 
   local dead_pid
-  dead_pid=$(get_dead_pid)
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
   echo "{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-stop-001\",\"agent_type\":\"vbw:vbw-dev\",\"name\":\"dev-01\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   run bash -c "echo '{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-stop-001\",\"agent_type\":\"vbw:vbw-dev\",\"name\":\"dev-01\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
@@ -207,7 +207,7 @@ EOF
   echo "{\"pid\":\"$LIVE_PID\",\"agent_id\":\"agent-live\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   local dead_pid
-  dead_pid=$(get_dead_pid)
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
   echo "{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-dead\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   run bash -c "echo '{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-dead\",\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
@@ -322,7 +322,7 @@ EOF
   echo "{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-map-duo\",\"pid\":\"$LIVE_PID\"}" | bash "$SCRIPTS_DIR/agent-health.sh" idle >/dev/null
 
   local dead_pid
-  dead_pid=$(get_dead_pid)
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
   run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-01\",\"pid\":\"$dead_pid\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle | jq -r '.hookSpecificOutput.additionalContext'"
   [[ "$output" == *"task-phase"* ]]
 
@@ -362,7 +362,7 @@ EOF
 EOF
 
   local dead_pid
-  dead_pid=$(get_dead_pid)
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
   run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-01\",\"pid\":\"$dead_pid\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle | jq -r '.hookSpecificOutput.additionalContext'"
   [[ "$output" == *"still tracked"* ]]
 

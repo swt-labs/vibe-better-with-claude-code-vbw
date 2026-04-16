@@ -189,9 +189,9 @@ simulate_session_stop() {
   # Generate guaranteed-dead PIDs instead of hardcoded values that may
   # collide with live processes under parallel BATS execution
   local dead1 dead2 dead3
-  dead1=$(get_dead_pid)
-  dead2=$(get_dead_pid)
-  dead3=$(get_dead_pid)
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead3=$(get_dead_pid) || fail "get_dead_pid failed"
   printf '%s\n%s\n%s\n' "$dead1" "$dead2" "$dead3" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
@@ -208,8 +208,8 @@ simulate_session_stop() {
   local alive_pid=$!
 
   local dead1 dead2
-  dead1=$(get_dead_pid)
-  dead2=$(get_dead_pid)
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
   printf '%s\n%s\n%s\n' "${alive_pid}" "$dead1" "$dead2" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
@@ -242,7 +242,7 @@ simulate_session_stop() {
   cd "$TEST_TEMP_DIR"
   # Simulate interrupted prune that left a stale temp file with a dead PID
   local stale_pid
-  stale_pid=$(get_dead_pid)
+  stale_pid=$(get_dead_pid) || fail "get_dead_pid failed"
   echo "$stale_pid" > ".vbw-planning/.agent-pids.tmp"
 
   # Put a live PID in the real file
@@ -250,7 +250,7 @@ simulate_session_stop() {
   local alive_pid=$!
 
   local dead1
-  dead1=$(get_dead_pid)
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
   printf '%s\n%s\n' "${alive_pid}" "$dead1" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
@@ -271,9 +271,9 @@ simulate_session_stop() {
   cd "$TEST_TEMP_DIR"
   # Simulate stale lock from a crashed process
   local stale_lock_pid dead1 dead2
-  stale_lock_pid=$(get_dead_pid)
-  dead1=$(get_dead_pid)
-  dead2=$(get_dead_pid)
+  stale_lock_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
   mkdir -p "$VBW_AGENT_PID_LOCK_DIR"
   echo "$stale_lock_pid" > "$VBW_AGENT_PID_LOCK_DIR/pid"
 
@@ -293,8 +293,8 @@ simulate_session_stop() {
   cd "$TEST_TEMP_DIR"
   # Simulate stale lock dir with no pid file (edge case: lock created but pid write failed)
   local dead1 dead2
-  dead1=$(get_dead_pid)
-  dead2=$(get_dead_pid)
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
   mkdir -p "$VBW_AGENT_PID_LOCK_DIR"
 
   printf '%s\n%s\n' "$dead1" "$dead2" > ".vbw-planning/.agent-pids"

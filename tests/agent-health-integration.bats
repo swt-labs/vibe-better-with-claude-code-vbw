@@ -67,7 +67,7 @@ EOF
 
   # Create health file with dead PID
   local dead_pid
-  dead_pid=$(get_dead_pid)
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
   echo "{\"pid\":\"$dead_pid\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   # Verify health file created

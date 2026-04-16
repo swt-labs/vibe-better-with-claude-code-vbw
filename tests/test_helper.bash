@@ -41,9 +41,10 @@ teardown_temp_dir() {
   unset VBW_AGENT_PID_LOCK_DIR _ORIG_HOME _ORIG_GIT_CONFIG_NOSYSTEM _ORIG_GIT_CONFIG_GLOBAL
 }
 
-# Generate a PID that is guaranteed dead. Spawns a short-lived process,
-# kills it, waits for it to exit, and returns its PID. Avoids hardcoded
-# PIDs that may collide with live processes under parallel BATS execution.
+# Generate a PID that is guaranteed dead. Spawns a process intended to stay
+# alive until killed, kills it, waits for it to exit, and returns its PID.
+# Avoids hardcoded PIDs that may collide with live processes under parallel
+# BATS execution.
 get_dead_pid() {
   local p
   sleep 999 &
