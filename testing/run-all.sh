@@ -49,7 +49,12 @@ run_job() {
 initialize_run_all_state() {
   local repo_identity
 
-  repo_identity="$(git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null || printf '%s/.git' "$ROOT")"
+  repo_identity="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null || printf '%s/.git' "$ROOT")"
+  case "$repo_identity" in
+    /*) ;;
+    *) repo_identity="$ROOT/$repo_identity" ;;
+  esac
+  repo_identity="$(cd "$repo_identity" 2>/dev/null && pwd || printf '%s' "$repo_identity")"
   RUN_ALL_REPO_KEY="$(printf '%s' "$repo_identity" | jq -sRr @uri 2>/dev/null || true)"
   RUN_ALL_STATE_DIR="$RUN_ALL_STATE_ROOT"
   if [ -n "$RUN_ALL_REPO_KEY" ]; then

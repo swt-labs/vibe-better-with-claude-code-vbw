@@ -60,6 +60,19 @@ SH
   touch "$root/tests/alpha.bats" "$root/tests/beta.bats" "$root/tests/statusline-cache-isolation.bats"
 }
 
+create_stub_git_worktree_pair() {
+  local primary_root="$1"
+  local linked_root="$2"
+
+  git -C "$primary_root" init -q
+  git -C "$primary_root" config user.email test@example.com
+  git -C "$primary_root" config user.name 'Test User'
+  git -C "$primary_root" add .
+  git -C "$primary_root" commit -q -m 'test: seed stub workspace'
+  git -C "$primary_root" branch linked-worktree
+  git -C "$primary_root" worktree add "$linked_root" linked-worktree >/dev/null
+}
+
 create_failing_stub_script() {
   local path="$1"
   mkdir -p "$(dirname "$path")"
@@ -106,6 +119,7 @@ wait_for_file_contains() {
 
 @test "default local worker count auto-tunes when a real peer suite overlaps" {
   local root="$TEST_TEMP_DIR/stub-repo-auto-tune"
+  local linked_root="$TEST_TEMP_DIR/stub-repo-auto-tune-worktree"
   local state_dir="$TEST_TEMP_DIR/run-all-state"
   local release_file="$TEST_TEMP_DIR/release-first-run"
   local first_output="$TEST_TEMP_DIR/first-run.log"
@@ -113,13 +127,14 @@ wait_for_file_contains() {
   local second_bats_log="$TEST_TEMP_DIR/second-bats.log"
   local first_pid
   create_stub_workspace "$root"
+  create_stub_git_worktree_pair "$root" "$linked_root"
   export PATH="$root/bin:$PATH"
 
   env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
   first_pid=$!
   wait_for_file_contains 'Launched' "$first_output"
 
-  run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$root' && bash testing/run-all.sh"
+  run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
 
   touch "$release_file"
@@ -130,6 +145,7 @@ wait_for_file_contains() {
 
 @test "explicit BATS_WORKERS overrides auto-tuning during real overlap" {
   local root="$TEST_TEMP_DIR/stub-repo-pinned-workers"
+  local linked_root="$TEST_TEMP_DIR/stub-repo-pinned-workers-worktree"
   local state_dir="$TEST_TEMP_DIR/run-all-state-pinned"
   local release_file="$TEST_TEMP_DIR/release-pinned-run"
   local first_output="$TEST_TEMP_DIR/pinned-first-run.log"
@@ -137,13 +153,14 @@ wait_for_file_contains() {
   local second_bats_log="$TEST_TEMP_DIR/pinned-second-bats.log"
   local first_pid
   create_stub_workspace "$root"
+  create_stub_git_worktree_pair "$root" "$linked_root"
   export PATH="$root/bin:$PATH"
 
   env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
   first_pid=$!
   wait_for_file_contains 'Launched' "$first_output"
 
-  run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$root' && bash testing/run-all.sh"
+  run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
 
   touch "$release_file"
