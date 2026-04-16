@@ -29,6 +29,7 @@ else
   extract_summary_status() { echo ""; }
   count_complete_summaries() { echo "0"; }
   count_done_summaries() { echo "0"; }
+  is_summary_complete() { return 1; }
 fi
 if [ -f "$SCRIPT_DIR/phase-state-utils.sh" ]; then
   # shellcheck source=phase-state-utils.sh
