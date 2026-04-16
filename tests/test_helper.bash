@@ -41,6 +41,23 @@ teardown_temp_dir() {
   unset VBW_AGENT_PID_LOCK_DIR _ORIG_HOME _ORIG_GIT_CONFIG_NOSYSTEM _ORIG_GIT_CONFIG_GLOBAL
 }
 
+# Generate a PID that is guaranteed dead. Spawns a process intended to stay
+# alive until killed, kills it, waits for it to exit, and returns its PID.
+# Avoids hardcoded PIDs that may collide with live processes under parallel
+# BATS execution.
+get_dead_pid() {
+  local p
+  sleep 999 &
+  p=$!
+  [[ -n "$p" ]] || return 1
+  kill "$p" 2>/dev/null || kill -9 "$p" 2>/dev/null || true
+  wait "$p" 2>/dev/null || true
+  if kill -0 "$p" 2>/dev/null; then
+    return 1
+  fi
+  echo "$p"
+}
+
 # Run phase-detect.sh with retry on empty or incomplete output.
 # Under heavy parallel BATS execution, transient fork/exec or pipe failures can
 # cause the subprocess to produce zero output or only the EXIT-trap fallback

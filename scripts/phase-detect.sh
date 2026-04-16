@@ -22,8 +22,16 @@ list_child_dirs_sorted() {
   local parent="$1"
   [ -d "$parent" ] || return 0
 
-  find "$parent" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null |
-    (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
+  # Collect via bash glob (avoids find pipeline under parallel fd contention).
+  # Then sort with version sort (printf is a builtin → much less fd-sensitive
+  # than find, which traverses the filesystem and can fail under exhaustion).
+  local dirs=() d
+  for d in "$parent"/*/; do
+    [ -d "$d" ] && dirs+=("${d%/}")
+  done
+  [ ${#dirs[@]} -gt 0 ] || return 0
+  printf '%s\n' "${dirs[@]}" | sort -V 2>/dev/null || \
+    printf '%s\n' "${dirs[@]}" | awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-
 }
 
 phase_relative_path() {

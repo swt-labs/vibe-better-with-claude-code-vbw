@@ -25,9 +25,11 @@ if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
   # shellcheck source=summary-utils.sh
   . "$SCRIPT_DIR/summary-utils.sh"
 else
-  # Safe default: report zero completions when helpers unavailable
+  # Safe default: report no parsed completions and suppress incomplete-summary warnings when helpers are unavailable
+  extract_summary_status() { echo ""; }
   count_complete_summaries() { echo "0"; }
   count_done_summaries() { echo "0"; }
+  is_summary_complete() { return 0; }
 fi
 if [ -f "$SCRIPT_DIR/phase-state-utils.sh" ]; then
   # shellcheck source=phase-state-utils.sh
@@ -35,18 +37,25 @@ if [ -f "$SCRIPT_DIR/phase-state-utils.sh" ]; then
 else
   count_phase_plans() {
     local dir="$1"
-    find "$dir" -maxdepth 1 ! -name '.*' \( -name '[0-9]*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | wc -l | tr -d ' '
+    local count=0
+    local f
+    for f in "$dir"/[0-9]*-PLAN.md "$dir"/PLAN.md; do
+      [ -f "$f" ] && count=$((count + 1))
+    done
+    echo "$count"
   }
   list_canonical_phase_dirs() {
     local parent="$1"
     [ -d "$parent" ] || return 0
-    find "$parent" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null |
-      while IFS= read -r dir; do
-        [ -n "$dir" ] || continue
-        base=$(basename "$dir")
-        case "$base" in [0-9]*-*) echo "$dir" ;; esac
-      done |
-      (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
+    local dirs=() d base
+    for d in "$parent"/*/; do
+      [ -d "$d" ] || continue
+      base="${d%/}"; base="${base##*/}"
+      case "$base" in [0-9]*-*) dirs+=("${d%/}") ;; esac
+    done
+    [ ${#dirs[@]} -gt 0 ] || return 0
+    printf '%s\n' "${dirs[@]}" | sort -V 2>/dev/null || \
+      printf '%s\n' "${dirs[@]}" | awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-
   }
   find_phase_dir_by_ref() {
     local planning_dir="$1" phase_ref="$2"
@@ -713,7 +722,7 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
       STRICT_COMPLETE=0
       for _ss_sf in "$PHASE_DIR"/*-SUMMARY.md "$PHASE_DIR"/SUMMARY.md; do
         [ -f "$_ss_sf" ] || continue
-        _ss_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_ss_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+        _ss_st=$(extract_summary_status "$_ss_sf")
         case "$_ss_st" in
           complete|completed) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)); STRICT_COMPLETE=$((STRICT_COMPLETE + 1)) ;;
           partial) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)) ;;
@@ -729,7 +738,7 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
         _completed_json="[]"
         for _sf in "$PHASE_DIR"/*-SUMMARY.md "$PHASE_DIR"/SUMMARY.md; do
           [ -f "$_sf" ] || continue
-          _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+          _sf_st=$(extract_summary_status "$_sf")
           case "$_sf_st" in
             complete|completed|partial)
               _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')

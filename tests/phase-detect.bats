@@ -2417,7 +2417,39 @@ EOF
 
   run_phase_detect
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "qa_status=pending"
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
+}
+
+@test "summary with leading blank line still counts as complete for pending QA routing" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  cat > .vbw-planning/phases/01-test/01-SUMMARY.md <<'EOF'
+
+---
+status: complete
+---
+EOF
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  printf '%s\n' \
+    '---' \
+    'result: PASS' \
+    'writer: ' \
+    '---' \
+    '# Verification' \
+    'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
 }
 
 @test "qa_status is pending for brownfield remediated verification after later commit" {

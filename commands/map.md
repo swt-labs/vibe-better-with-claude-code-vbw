@@ -74,10 +74,12 @@ If monorepo + --package: scope to that package.
 ### Step 3: Execute mapping (tier-branched)
 
 **Step 3-solo:** Orchestrator analyzes each domain sequentially, writes to `.vbw-planning/codebase/`:
+
 - Domain 1 (Tech Stack): STACK.md + DEPENDENCIES.md
 - Domain 2 (Architecture): ARCHITECTURE.md + STRUCTURE.md
 - Domain 3 (Quality): CONVENTIONS.md + TESTING.md
 - Domain 4 (Concerns): CONCERNS.md
+
 Display ✓ per domain. After all 7 docs written, skip Step 3.5, go to Step 4.
 
 ---
@@ -108,7 +110,9 @@ Mode: {MAPPING_MODE}. After writing all 3 files, send a `scout_findings` message
 **Scout model (effort-gated):** Fast/Turbo: `Model: haiku`. Thorough/Balanced: inherit session model.
 **Scout turn budget (effort-gated):** Resolve with `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-max-turns.sh scout .vbw-planning/config.json "{effort}"`. If `SCOUT_MAX_TURNS` is non-empty, pass `maxTurns: ${SCOUT_MAX_TURNS}` to each Scout TaskCreate. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 **Skill pre-evaluation:** Before composing Scout task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to codebase mapping. The spawned prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none apply — {reason}") so the user has visibility before the agent is spawned.
-**MCP tools:** If MCP tools relevant to codebase analysis are available (e.g., documentation servers for framework APIs discovered during mapping), note them in the Scout task prompt so Scouts can use them alongside local file analysis.
+
+**MCP tools:** If code-analysis MCP tools are available (architecture extraction, dependency graphs, call hierarchy, symbol search), note the specific tools in each Scout's task prompt so Scouts can leverage them alongside Glob/Read/Grep.
+
 Wait for all findings. Proceed to Step 3.5.
 
 ---
@@ -119,7 +123,7 @@ Wait for all findings. Proceed to Step 3.5.
 - Scout 3 (Quality): `<output_paths>` = `.vbw-planning/codebase/CONVENTIONS.md`, `.vbw-planning/codebase/TESTING.md`
 - Scout 4 (Concerns): `<output_paths>` = `.vbw-planning/codebase/CONCERNS.md`
 
-Security: PreToolUse hook handles enforcement. **Scout model:** same as duo. **Scout turn budget:** same as duo (pass `maxTurns: ${SCOUT_MAX_TURNS}` when non-empty, omit when empty). **Skill pre-evaluation:** Before composing Scout task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to codebase mapping. The spawned prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none apply — {reason}") so the user has visibility before the agent is spawned. **MCP tools:** same as duo.
+Security: PreToolUse hook handles enforcement. **Scout model:** same as duo. **Scout turn budget:** same as duo (pass `maxTurns: ${SCOUT_MAX_TURNS}` when non-empty, omit when empty). **Skill pre-evaluation:** Before composing Scout task descriptions, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to codebase mapping. The spawned prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none apply — {reason}") so the user has visibility before the agent is spawned. **MCP tools:** If code-analysis MCP tools are available (architecture extraction, dependency graphs, call hierarchy, symbol search), note the specific tools in each Scout's task prompt so Scouts can leverage them alongside Glob/Read/Grep.
 
 **Scout communication (effort-gated):**
 
@@ -145,7 +149,7 @@ Read all 7 docs. Produce:
 
 **HARD GATE — Shutdown before presenting results:** Solo: no team, skip. Duo/Quad: send `shutdown_request` to each teammate, wait for `shutdown_response` (approved=true) delivered via SendMessage tool call (NOT plain text). If a teammate responds in plain text instead of calling SendMessage, re-send the `shutdown_request`. If rejected, re-request (max 3 attempts per teammate — then proceed). Call TeamDelete. **Post-TeamDelete residual cleanup:** `bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true`. Verify: after TeamDelete, there must be ZERO active teammates. If teardown stalls, advise the user to run `/vbw:doctor --cleanup`. Only THEN proceed to META.md and user output. Failure to shut down leaves agents running and consuming API credits.
 
-Write META.md: mapped_at, git_hash, file_count, document list, mode, monorepo flag, mapping_tier.
+Write META.md: mapped_at, git_hash, file_count, document list, mode, monorepo flag, mapping_tier, mcp_tools_used (tool names or "none").
 
 Display per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md: Phase Banner (Codebase Mapped, Mode, Tier), ✓ per document, Key Findings (◆), Next Up block.
 

@@ -66,7 +66,9 @@ teardown() {
 EOF
 
   # Create health file with dead PID
-  echo '{"pid":"99999","agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  local dead_pid
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  echo "{\"pid\":\"$dead_pid\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   # Verify health file created
   [ -f "$HEALTH_DIR/dev.json" ]
@@ -77,7 +79,7 @@ EOF
   # Verify orphan recovery message
   [[ "$output" == *"Orphan recovery"* ]]
   [[ "$output" == *"task-orphan"* ]]
-  [[ "$output" == *"PID 99999 is dead"* ]]
+  [[ "$output" == *"PID $dead_pid is dead"* ]]
 
   # Verify task owner cleared
   run jq -r '.owner' "$TASKS_DIR/task-orphan.json"
