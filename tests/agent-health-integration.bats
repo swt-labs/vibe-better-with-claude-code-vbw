@@ -17,17 +17,17 @@ teardown() {
 @test "agent-health integration: lifecycle start → idle → stop" {
   cd "$TEST_TEMP_DIR"
 
-  # Start a background process to get a live PID
-  sleep 30 &
-  LIVE_PID=$!
+  local live_pid
+  assign_live_pid live_pid || fail "assign_live_pid failed"
+  kill -0 "$live_pid" 2>/dev/null || fail "live pid fixture is not alive"
 
   # Simulate SubagentStart hook
-  echo "{\"pid\":\"$LIVE_PID\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  echo "{\"pid\":\"$live_pid\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   # Verify health file created
   [ -f "$HEALTH_DIR/dev.json" ]
   run jq -r '.pid' "$HEALTH_DIR/dev.json"
-  [ "$output" = "$LIVE_PID" ]
+  [ "$output" = "$live_pid" ]
   run jq -r '.idle_count' "$HEALTH_DIR/dev.json"
   [ "$output" = "0" ]
 
@@ -43,9 +43,6 @@ teardown() {
 
   # Verify health file removed
   [ ! -f "$HEALTH_DIR/dev.json" ]
-
-  # Cleanup background process
-  kill $LIVE_PID 2>/dev/null || true
 }
 
 # Integration Test 2: Orphan recovery (idle with dead PID clears task owner)
@@ -93,12 +90,12 @@ EOF
 @test "agent-health integration: stuck agent detection" {
   cd "$TEST_TEMP_DIR"
 
-  # Start background process
-  sleep 30 &
-  LIVE_PID=$!
+  local live_pid
+  assign_live_pid live_pid || fail "assign_live_pid failed"
+  kill -0 "$live_pid" 2>/dev/null || fail "live pid fixture is not alive"
 
   # Simulate SubagentStart
-  echo "{\"pid\":\"$LIVE_PID\",\"agent_type\":\"vbw-qa\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  echo "{\"pid\":\"$live_pid\",\"agent_type\":\"vbw-qa\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   # First idle: idle_count = 1
   run bash -c "echo '{\"agent_type\":\"vbw-qa\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle | jq -r '.hookSpecificOutput.additionalContext'"
@@ -118,7 +115,4 @@ EOF
   [[ "$output" == *"idle_count=3"* ]]
   run jq -r '.idle_count' "$HEALTH_DIR/qa.json"
   [ "$output" = "3" ]
-
-  # Cleanup
-  kill $LIVE_PID 2>/dev/null || true
 }
