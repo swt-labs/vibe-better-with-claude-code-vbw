@@ -57,9 +57,19 @@ teardown() {
   [ "$status" -eq 0 ]
   [ "$output" = "opus" ]
 
-  # Verify cache file exists
-  CONFIG_HASH=$(md5 -q "$TEST_TEMP_DIR/.vbw-planning/config.json" 2>/dev/null | cut -c1-8 || cksum "$TEST_TEMP_DIR/.vbw-planning/config.json" | awk '{print $1}')
-  PROFILES_HASH=$(md5 -q "$CONFIG_DIR/model-profiles.json" 2>/dev/null | cut -c1-8 || cksum "$CONFIG_DIR/model-profiles.json" | awk '{print $1}')
+  # Verify cache file exists — use the same hash priority as the script:
+  # md5sum (Linux) → md5 (macOS) → cksum (fallback)
+  _fingerprint() {
+    if command -v md5sum >/dev/null 2>&1; then
+      md5sum "$1" | awk '{print $1}' | cut -c1-8
+    elif command -v md5 >/dev/null 2>&1; then
+      md5 -q "$1" | cut -c1-8
+    else
+      cksum "$1" | awk '{print $1}'
+    fi
+  }
+  CONFIG_HASH=$(_fingerprint "$TEST_TEMP_DIR/.vbw-planning/config.json")
+  PROFILES_HASH=$(_fingerprint "$CONFIG_DIR/model-profiles.json")
   PATH_HASH=$(vbw_hash_path "$TEST_TEMP_DIR/.vbw-planning/config.json|$CONFIG_DIR/model-profiles.json")
   [ -f "/tmp/vbw-model-dev-${PATH_HASH}-${CONFIG_HASH}-${PROFILES_HASH}" ]
 }
