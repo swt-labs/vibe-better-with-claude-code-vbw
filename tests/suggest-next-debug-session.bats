@@ -197,8 +197,8 @@ EOF
   create_debug_session "uat_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"--resume"* ]]
-  [[ "$output" == *"UAT"* ]]
+  [[ "$output" == *"/vbw:debug --resume"* ]]
+  [[ "$output" == *"Run UAT
 }
 
 @test "suggest-next fix with uat_failed debug session suggests resume" {
