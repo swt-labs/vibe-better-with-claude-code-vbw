@@ -640,3 +640,61 @@ STATE
   recovered_phase=$(jq -r '.phase' .vbw-planning/.execution-state.json 2>/dev/null)
   [ "$recovered_phase" = "1" ]
 }
+
+# --- Edge-case tests: recover-state uses shared summary-utils parser ---
+
+@test "recover-state: parses SUMMARY with CRLF line endings" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.event_recovery = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+
+  echo "title: Build UI" > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf -- '---\r\nstatus: complete\r\n---\r\n# Summary\r\n' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+
+  run bash "$SCRIPTS_DIR/recover-state.sh" 1 ".vbw-planning/phases"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.plans[0].status == "complete"' >/dev/null
+}
+
+@test "recover-state: parses SUMMARY with quoted status value" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.event_recovery = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+
+  echo "title: Build UI" > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf -- '---\nstatus: "complete"\n---\n# Summary\n' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+
+  run bash "$SCRIPTS_DIR/recover-state.sh" 1 ".vbw-planning/phases"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.plans[0].status == "complete"' >/dev/null
+}
+
+@test "recover-state: parses SUMMARY with whitespace-padded status" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.event_recovery = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+
+  echo "title: Build UI" > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf -- '---\nstatus:   complete   \n---\n# Summary\n' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+
+  run bash "$SCRIPTS_DIR/recover-state.sh" 1 ".vbw-planning/phases"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.plans[0].status == "complete"' >/dev/null
+}
+
+@test "recover-state: parses SUMMARY with leading blank line and BOM" {
+  cd "$TEST_TEMP_DIR"
+  local tmp
+  tmp=$(mktemp)
+  jq '.event_recovery = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
+
+  echo "title: Build UI" > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '\xef\xbb\xbf\n---\nstatus: complete\n---\n# Summary\n' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+
+  run bash "$SCRIPTS_DIR/recover-state.sh" 1 ".vbw-planning/phases"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.plans[0].status == "complete"' >/dev/null
+}
