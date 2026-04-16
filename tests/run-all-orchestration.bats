@@ -79,9 +79,42 @@ link_run_all_system_tools() {
   local root="$1"
   local tool_name
 
-  for tool_name in bash cat dirname find grep jq ls mktemp rm sort; do
+  for tool_name in bash cat dirname find grep jq ls mkdir mktemp rm sort; do
     link_runtime_tool "$root" "$tool_name"
   done
+}
+
+@test "default local worker count auto-tunes when concurrent suites are active" {
+  local root="$TEST_TEMP_DIR/stub-repo-auto-tune"
+  local state_dir="$TEST_TEMP_DIR/run-all-state"
+  create_stub_workspace "$root"
+  export BATS_LOG="$TEST_TEMP_DIR/bats-auto.log"
+  export PATH="$root/bin:$PATH"
+
+  mkdir -p "$state_dir"
+  : > "$state_dir/suite.$$.existing.token"
+  : > "$state_dir/suite.$PPID.existing.token"
+
+  run env RUN_ALL_STATE_DIR="$state_dir" bash -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q 'Auto-tuned BATS_WORKERS from 8 to 3 for 3 concurrent local test suite(s)'
+}
+
+@test "explicit BATS_WORKERS overrides auto-tuning" {
+  local root="$TEST_TEMP_DIR/stub-repo-pinned-workers"
+  local state_dir="$TEST_TEMP_DIR/run-all-state-pinned"
+  create_stub_workspace "$root"
+  export BATS_LOG="$TEST_TEMP_DIR/bats-pinned.log"
+  export PATH="$root/bin:$PATH"
+
+  mkdir -p "$state_dir"
+  : > "$state_dir/suite.$$.existing.token"
+  : > "$state_dir/suite.$PPID.existing.token"
+
+  run env RUN_ALL_STATE_DIR="$state_dir" BATS_WORKERS=7 bash -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *'Auto-tuned BATS_WORKERS'* ]]
+  echo "$output" | grep -q '7 bats workers'
 }
 
 @test "invalid BATS_WORKERS falls back and keeps serial bats files out of worker batches" {

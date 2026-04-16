@@ -8,6 +8,8 @@ Run all checks:
 
 - `bash testing/run-all.sh` — runs CI-parity shell lint, contract checks, and bats using the same 4 shard layout and serial-bats split as CI (`jq`, `shellcheck`, and `bats` required locally)
 
+   Local runs start from an 8-worker bats budget and auto-throttle that budget when multiple local `run-all.sh` suites overlap. To pin a different worker count explicitly, use `BATS_WORKERS=N bash testing/run-all.sh`.
+
 Reproduce an individual CI bats shard locally:
 
 - `files=(); while IFS= read -r file; do files+=("$file"); done < <(bash testing/list-bats-files.sh --shardable)`

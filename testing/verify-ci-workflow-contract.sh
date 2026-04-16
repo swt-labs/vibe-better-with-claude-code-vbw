@@ -66,8 +66,9 @@ else
   fail "ci.yml/testing: CI and local runner do not share deterministic serial bats discovery"
 fi
 
-# Local default (12) intentionally differs from CI shard count (8) — local machines
-# have more cores so more workers are efficient. Validate BATS_WORKERS has a numeric default.
+# Local runner starts from a numeric default and may auto-tune downward when
+# concurrent local suites are active. Validate that the base BATS_WORKERS
+# default remains numeric.
 if grep -qE 'BATS_WORKERS="\$\{BATS_WORKERS:-[0-9]+\}"' "$RUN_ALL"; then
   pass "run-all: BATS_WORKERS has a numeric default"
 else

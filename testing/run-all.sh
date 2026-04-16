@@ -9,7 +9,17 @@ LIST_BATS_FILES="$ROOT/testing/list-bats-files.sh"
 LIST_CONTRACT_TESTS="$ROOT/testing/list-contract-tests.sh"
 
 TMPDIR_JOBS="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR_JOBS"' EXIT
+RUN_ALL_STATE_DIR="${RUN_ALL_STATE_DIR:-${TMPDIR:-/tmp}/vbw-run-all-suites}"
+RUN_ALL_TOKEN=""
+
+cleanup_run_all() {
+  rm -rf "$TMPDIR_JOBS"
+  if [ -n "$RUN_ALL_TOKEN" ]; then
+    rm -f "$RUN_ALL_TOKEN"
+  fi
+}
+
+trap cleanup_run_all EXIT
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "ERROR: jq is required for CI-parity local verification (install with: brew install jq)."
@@ -32,6 +42,64 @@ run_job() {
   JOB_PIDS+=("$!")
 }
 
+prune_run_all_tokens() {
+  local entry token_name pid
+
+  [ -d "$RUN_ALL_STATE_DIR" ] || return 0
+
+  while IFS= read -r entry; do
+    [ -n "$entry" ] || continue
+    token_name="${entry##*/}"
+    pid="${token_name#suite.}"
+    pid="${pid%%.*}"
+    case "$pid" in
+      ''|*[!0-9]*)
+        rm -f "$entry"
+        continue
+        ;;
+    esac
+    if ! kill -0 "$pid" 2>/dev/null; then
+      rm -f "$entry"
+    fi
+  done < <(find "$RUN_ALL_STATE_DIR" -maxdepth 1 -type f -name 'suite.*.token' -print 2>/dev/null)
+}
+
+count_run_all_tokens() {
+  local count=0 entry
+
+  [ -d "$RUN_ALL_STATE_DIR" ] || {
+    echo 0
+    return 0
+  }
+
+  while IFS= read -r entry; do
+    [ -n "$entry" ] || continue
+    count=$((count + 1))
+  done < <(find "$RUN_ALL_STATE_DIR" -maxdepth 1 -type f -name 'suite.*.token' -print 2>/dev/null)
+
+  echo "$count"
+}
+
+register_run_all_token() {
+  mkdir -p "$RUN_ALL_STATE_DIR" 2>/dev/null || return 1
+  prune_run_all_tokens
+  RUN_ALL_TOKEN="$(mktemp "$RUN_ALL_STATE_DIR/suite.$$.XXXXXX.token" 2>/dev/null)" || {
+    RUN_ALL_TOKEN=""
+    return 1
+  }
+}
+
+auto_tune_bats_workers() {
+  local requested="$1" active_suites="$2" tuned="$1"
+
+  if [ "$active_suites" -gt 1 ]; then
+    tuned=$(((requested + active_suites - 1) / active_suites))
+    [ "$tuned" -lt 2 ] && tuned=2
+  fi
+
+  echo "$tuned"
+}
+
 # --- Launch shell lint ---
 run_job lint "shell-lint"                bash "$ROOT/testing/run-lint.sh"
 
@@ -48,7 +116,11 @@ while IFS=$'\t' read -r name path; do
 done <<< "$CONTRACT_TESTS_OUTPUT"
 
 # --- Launch bats workers concurrently with contract checks ---
-BATS_WORKERS="${BATS_WORKERS:-12}"
+BATS_WORKERS_FROM_ENV=true
+if [ -z "${BATS_WORKERS+x}" ]; then
+  BATS_WORKERS_FROM_ENV=false
+fi
+BATS_WORKERS="${BATS_WORKERS:-8}"
 case "$BATS_WORKERS" in
   ''|*[!0-9]*)
     echo "Invalid BATS_WORKERS=$BATS_WORKERS — falling back to CI shard count (4 workers)."
@@ -59,6 +131,18 @@ case "$BATS_WORKERS" in
     BATS_WORKERS=4
     ;;
 esac
+ACTIVE_RUN_ALL_SUITES=0
+if register_run_all_token; then
+  ACTIVE_RUN_ALL_SUITES="$(count_run_all_tokens)"
+fi
+
+if [ "$BATS_WORKERS_FROM_ENV" = false ] && [ "${GITHUB_ACTIONS:-false}" != "true" ]; then
+  tuned_bats_workers="$(auto_tune_bats_workers "$BATS_WORKERS" "$ACTIVE_RUN_ALL_SUITES")"
+  if [ "$tuned_bats_workers" -ne "$BATS_WORKERS" ]; then
+    echo "Auto-tuned BATS_WORKERS from $BATS_WORKERS to $tuned_bats_workers for $ACTIVE_RUN_ALL_SUITES concurrent local test suite(s). Override with BATS_WORKERS=N."
+    BATS_WORKERS="$tuned_bats_workers"
+  fi
+fi
 bats_launched=false
 bats_missing=false
 if ! command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; then
