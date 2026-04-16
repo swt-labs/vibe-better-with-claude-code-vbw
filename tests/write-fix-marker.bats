@@ -116,6 +116,23 @@ teardown() {
   grep -q "first.txt" "$planning/.last-fix-commit"
 }
 
+@test "sanitizes newlines in description to single line" {
+  local desc_with_newlines=$'line one\nline two\nline three'
+  run bash "$SCRIPTS_DIR/write-fix-marker.sh" "$PLANNING_DIR" "$desc_with_newlines"
+  [ "$status" -eq 0 ]
+  # Description must be a single line (no embedded newlines)
+  local desc_line
+  desc_line=$(grep '^description=' "$PLANNING_DIR/.last-fix-commit")
+  # Count lines — should be exactly 1
+  local line_count
+  line_count=$(echo "$desc_line" | wc -l | tr -d ' ')
+  [ "$line_count" -eq 1 ]
+  # All three parts should be present (joined with spaces)
+  [[ "$desc_line" == *"line one"* ]]
+  [[ "$desc_line" == *"line two"* ]]
+  [[ "$desc_line" == *"line three"* ]]
+}
+
 # ── fix.md integration contract ──────────────────────────
 
 @test "fix.md calls write-fix-marker.sh before suggest-next.sh in both success paths" {
@@ -131,15 +148,31 @@ teardown() {
   marker_count=$(echo "$marker_lines" | wc -l | tr -d ' ')
   [ "$marker_count" -ge 2 ]
 
-  # Each marker call must precede a suggest-next call
+  # Each marker call must be followed by a suggest-next call before the next
+  # marker call, so we verify ordering within the same success block rather
+  # than allowing any later suggest-next anywhere in the file to satisfy it.
+  local marker_array=()
+  local m_line
   for m_line in $marker_lines; do
-    local found_after=false
+    marker_array+=("$m_line")
+  done
+
+  local i next_marker s_line found_in_block
+  for i in "${!marker_array[@]}"; do
+    m_line="${marker_array[$i]}"
+    next_marker=""
+    if [ $((i + 1)) -lt "${#marker_array[@]}" ]; then
+      next_marker="${marker_array[$((i + 1))]}"
+    fi
+
+    found_in_block=false
     for s_line in $suggest_lines; do
-      if [ "$s_line" -gt "$m_line" ]; then
-        found_after=true
+      if [ "$s_line" -gt "$m_line" ] && { [ -z "$next_marker" ] || [ "$s_line" -lt "$next_marker" ]; }; then
+        found_in_block=true
         break
       fi
     done
-    [ "$found_after" = true ]
+
+    [ "$found_in_block" = true ]
   done
 }

@@ -41,7 +41,7 @@ if [ "$marker_mtime" -le 0 ] || [ "$now" -le 0 ]; then
 fi
 
 age=$(( now - marker_mtime ))
-if [ "$age" -gt 86400 ]; then
+if [ "$age" -lt 0 ] || [ "$age" -gt 86400 ]; then
   echo "fix_context=empty"
   exit 0
 fi

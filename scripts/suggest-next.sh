@@ -767,7 +767,7 @@ case "$CMD" in
         _now=$(date +%s 2>/dev/null || echo 0)
         if [ "$_marker_mtime" -gt 0 ] && [ "$_now" -gt 0 ]; then
           _marker_age=$(( _now - _marker_mtime ))
-          [ "$_marker_age" -le 86400 ] && _marker_stale=false
+          [ "$_marker_age" -ge 0 ] && [ "$_marker_age" -le 86400 ] && _marker_stale=false
         fi
         if [ "$_marker_stale" = false ]; then
           suggest "/vbw:verify -- Run UAT on the fix"

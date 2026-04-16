@@ -81,3 +81,20 @@ enable_auto_uat() {
   [[ "$output" == *"Verify the fix"* ]]
   [[ "$output" == *"Continue building"* ]]
 }
+
+@test "fix does not suggest UAT when marker has future timestamp" {
+  enable_auto_uat
+  create_fix_marker
+  # Set marker timestamp 2 hours in the future (clock skew scenario)
+  if [[ "$OSTYPE" == darwin* ]]; then
+    touch -t "$(date -v+2H '+%Y%m%d%H%M.%S')" "$TEST_TEMP_DIR/.vbw-planning/.last-fix-commit"
+  else
+    touch -d "2 hours" "$TEST_TEMP_DIR/.vbw-planning/.last-fix-commit"
+  fi
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Run UAT on the fix"* ]]
+  # Should still have other suggestions
+  [[ "$output" == *"Verify the fix"* ]]
+  [[ "$output" == *"Continue building"* ]]
+}

@@ -107,6 +107,24 @@ create_marker() {
   [[ "${lines[0]}" == "fix_context=empty" ]]
 }
 
+@test "outputs fix_context=empty when marker has future timestamp" {
+  echo "fix" > fix.sh
+  git add fix.sh
+  git commit -q -m "fix: future"
+  create_marker
+
+  # Set marker timestamp 2 hours in the future (clock skew scenario)
+  if [[ "$OSTYPE" == darwin* ]]; then
+    touch -t "$(date -v+2H '+%Y%m%d%H%M.%S')" "$PLANNING_DIR/.last-fix-commit"
+  else
+    touch -d "2 hours" "$PLANNING_DIR/.last-fix-commit"
+  fi
+
+  run bash "$SCRIPTS_DIR/compile-fix-commit-context.sh" "$PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == "fix_context=empty" ]]
+}
+
 # ── integration: write then compile ──────────────────────
 
 @test "write-then-compile round trip produces valid context" {

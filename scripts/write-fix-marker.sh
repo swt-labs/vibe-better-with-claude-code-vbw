@@ -43,6 +43,9 @@ if [ -z "$DESCRIPTION" ]; then
   DESCRIPTION="$commit_message"
 fi
 
+# Sanitize description to single line (newlines/CRs would corrupt key=value format)
+DESCRIPTION=$(printf '%s' "$DESCRIPTION" | tr '\n\r' '  ')
+
 # Write marker file (overwrite any existing marker)
 marker_file="$PLANNING_DIR/.last-fix-commit"
 {
