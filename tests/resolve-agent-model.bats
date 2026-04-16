@@ -59,5 +59,26 @@ teardown() {
 
   # Verify cache file exists
   MTIME=$(stat -c %Y "$TEST_TEMP_DIR/.vbw-planning/config.json" 2>/dev/null || stat -f %m "$TEST_TEMP_DIR/.vbw-planning/config.json" 2>/dev/null)
-  [ -f "/tmp/vbw-model-dev-${MTIME}" ]
+  PROFILES_MTIME=$(stat -c %Y "$CONFIG_DIR/model-profiles.json" 2>/dev/null || stat -f %m "$CONFIG_DIR/model-profiles.json" 2>/dev/null)
+  CACHE_HASH=$(vbw_hash_path "$TEST_TEMP_DIR/.vbw-planning/config.json|$CONFIG_DIR/model-profiles.json")
+  [ -f "/tmp/vbw-model-dev-${MTIME}-${PROFILES_MTIME}-${CACHE_HASH}" ]
+}
+
+@test "cache is isolated by config path even when mtimes match" {
+  local alt_dir="$TEST_TEMP_DIR-alt"
+  mkdir -p "$alt_dir/.vbw-planning"
+  cp "$TEST_TEMP_DIR/.vbw-planning/config.json" "$alt_dir/.vbw-planning/config.json"
+
+  jq '.model_profile = "balanced"' "$alt_dir/.vbw-planning/config.json" > "$alt_dir/.vbw-planning/config.json.tmp"
+  mv "$alt_dir/.vbw-planning/config.json.tmp" "$alt_dir/.vbw-planning/config.json"
+
+  touch -t 202601010101 "$TEST_TEMP_DIR/.vbw-planning/config.json" "$alt_dir/.vbw-planning/config.json"
+
+  run bash "$SCRIPTS_DIR/resolve-agent-model.sh" dev "$TEST_TEMP_DIR/.vbw-planning/config.json" "$CONFIG_DIR/model-profiles.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "opus" ]
+
+  run bash "$SCRIPTS_DIR/resolve-agent-model.sh" dev "$alt_dir/.vbw-planning/config.json" "$CONFIG_DIR/model-profiles.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "sonnet" ]
 }
