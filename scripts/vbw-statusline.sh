@@ -119,26 +119,15 @@ else
   }
 fi
 
+if [ -f "$_SL_SCRIPT_DIR/verification-freshness.sh" ]; then
+  # shellcheck source=verification-freshness.sh
+  . "$_SL_SCRIPT_DIR/verification-freshness.sh"
+else
+  verification_is_stale() { return 0; }
+fi
+
 qa_verification_stale() {
-  local verif_file="$1"
-  [ -n "$verif_file" ] && [ -f "$verif_file" ] || return 1
-  local _vac _dirty _cur_commit _cur_commit_ts _verif_mtime
-  _dirty=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
-  [ -n "$_dirty" ] && return 0
-  _vac=$(awk '
-    BEGIN { in_fm=0 }
-    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-    in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
-  ' "$verif_file" 2>/dev/null) || _vac=""
-  if [ -n "$_vac" ]; then
-    _cur_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
-    [ -n "$_cur_commit" ] && [ "$_cur_commit" != "$_vac" ] && return 0
-    return 1
-  fi
-  _cur_commit_ts=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
-  _verif_mtime=$(perl -e 'print +(stat shift)[9]' "$verif_file" 2>/dev/null || echo "")
-  [ -n "$_cur_commit_ts" ] && [ -n "$_verif_mtime" ] && [ "$_cur_commit_ts" -ge "$_verif_mtime" ]
+  verification_is_stale "$1"
 }
 
 cache_fresh() {

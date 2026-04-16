@@ -17,6 +17,12 @@ fi
 if [ -f "$_SCRIPT_DIR_PD/phase-state-utils.sh" ]; then
   . "$_SCRIPT_DIR_PD/phase-state-utils.sh"
 fi
+if [ -f "$_SCRIPT_DIR_PD/verification-freshness.sh" ]; then
+  . "$_SCRIPT_DIR_PD/verification-freshness.sh"
+else
+  extract_verified_at_commit() { :; }
+  verification_is_stale() { return 0; }
+fi
 
 list_child_dirs_sorted() {
   local parent="$1"
@@ -90,6 +96,58 @@ restore_known_issues_from_verification_if_needed() {
   esac
 }
 
+verification_result_value() {
+  local verification_file="$1"
+  [ -n "$verification_file" ] && [ -f "$verification_file" ] || return 0
+  awk '
+    BEGIN { in_fm=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
+  ' "$verification_file" 2>/dev/null || true
+}
+
+phase_verification_state() {
+  local phase_dir="$1"
+  local verification_file="$2"
+  local success_state="$3"
+  local qa_result qa_gate_routing
+
+  [ -n "$verification_file" ] && [ -f "$verification_file" ] || {
+    printf '%s\n' "pending"
+    return 0
+  }
+
+  qa_result=$(verification_result_value "$verification_file")
+  qa_result=$(printf '%s' "$qa_result" | tr '[:lower:]' '[:upper:]')
+  case "$qa_result" in
+    PASS)
+      qa_gate_routing=$(qa_gate_routing_for_phase "$phase_dir")
+      case "${qa_gate_routing:-}" in
+        REMEDIATION_REQUIRED)
+          printf '%s\n' "failed"
+          ;;
+        QA_RERUN_REQUIRED|"")
+          printf '%s\n' "pending"
+          ;;
+        PROCEED_TO_UAT)
+          if verification_is_stale "$verification_file"; then
+            printf '%s\n' "pending"
+          else
+            printf '%s\n' "$success_state"
+          fi
+          ;;
+      esac
+      ;;
+    FAIL|PARTIAL)
+      printf '%s\n' "failed"
+      ;;
+    *)
+      printf '%s\n' "pending"
+      ;;
+  esac
+}
+
 # --- jq availability ---
 JQ_AVAILABLE=false
 if command -v jq &>/dev/null; then
@@ -148,6 +206,7 @@ else
   echo "has_codebase_map=false"
   echo "brownfield=false"
   echo "execution_state=none"
+  echo "phase_detect_complete=true"
   _pd_normal_exit=true
   exit 0
 fi
@@ -717,113 +776,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
           if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
             restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
           fi
-          # Cross-validate: ensure VERIFICATION.md also shows PASS
-          if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
-            _qa_done_result=$(awk '
-              BEGIN { in_fm=0 }
-              NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-              in_fm && /^---[[:space:]]*$/ { exit }
-              in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
-            ' "$_uv_verif" 2>/dev/null) || _qa_done_result=""
-            _qa_done_result=$(printf '%s' "$_qa_done_result" | tr '[:lower:]' '[:upper:]')
-            case "$_qa_done_result" in
-              PASS)
-                _qa_done_gate_routing=$(qa_gate_routing_for_phase "$_uv_dir")
-                case "${_qa_done_gate_routing:-}" in
-                  REMEDIATION_REQUIRED)
-                    QA_STATUS="failed"
-                    ;;
-                  QA_RERUN_REQUIRED|"")
-                    QA_STATUS="pending"
-                    ;;
-                  PROCEED_TO_UAT)
-                # Staleness check for remediated path
-                _vac_rem=$(awk '
-                  BEGIN { in_fm=0 }
-                  NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-                  in_fm && /^---[[:space:]]*$/ { exit }
-                  in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
-                ' "$_uv_verif" 2>/dev/null) || _vac_rem=""
-                _qa_dirty_now_rem=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
-                if [ -n "$_qa_dirty_now_rem" ]; then
-                  QA_STATUS="pending"
-                elif [ -n "$_vac_rem" ]; then
-                  _cur_commit_rem=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
-                  if [ -n "$_cur_commit_rem" ] && [ "$_cur_commit_rem" != "$_vac_rem" ]; then
-                    QA_STATUS="pending"
-                  else
-                    QA_STATUS="remediated"
-                  fi
-                else
-                  _cur_commit_ts_rem=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
-                  _verif_mtime_rem=$(perl -e 'print +(stat shift)[9]' "$_uv_verif" 2>/dev/null || echo "")
-                  if [ -n "$_cur_commit_ts_rem" ] && [ -n "$_verif_mtime_rem" ] && [ "$_cur_commit_ts_rem" -ge "$_verif_mtime_rem" ]; then
-                    QA_STATUS="pending"
-                  else
-                    QA_STATUS="remediated"
-                  fi
-                fi
-                    ;;
-                esac
-                ;;
-              *) QA_STATUS="failed" ;;
-            esac
-          else
-            QA_STATUS="pending"
-          fi
+          QA_STATUS=$(phase_verification_state "$_uv_dir" "$_uv_verif" "remediated")
         elif [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
-          _qa_result=$(awk '
-            BEGIN { in_fm=0 }
-            NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-            in_fm && /^---[[:space:]]*$/ { exit }
-            in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
-          ' "$_uv_verif" 2>/dev/null) || _qa_result=""
-          _qa_result=$(printf '%s' "$_qa_result" | tr '[:lower:]' '[:upper:]')
-          case "$_qa_result" in
-            PASS)
-              _qa_gate_routing=$(qa_gate_routing_for_phase "$_uv_dir")
-              case "${_qa_gate_routing:-}" in
-                REMEDIATION_REQUIRED)
-                  QA_STATUS="failed"
-                  ;;
-                QA_RERUN_REQUIRED|"")
-                  QA_STATUS="pending"
-                  ;;
-                PROCEED_TO_UAT)
-                  ;;
-              esac
-              if [ "$QA_STATUS" != "failed" ] && [ "$QA_STATUS" != "pending" ]; then
-              # Staleness check: if code changed since QA verified, treat as pending
-              _vac=$(awk '
-                BEGIN { in_fm=0 }
-                NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-                in_fm && /^---[[:space:]]*$/ { exit }
-                in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
-              ' "$_uv_verif" 2>/dev/null) || _vac=""
-              _qa_dirty_now=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
-              if [ -n "$_qa_dirty_now" ]; then
-                QA_STATUS="pending"
-              elif [ -n "$_vac" ]; then
-                _cur_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
-                if [ -n "$_cur_commit" ] && [ "$_cur_commit" != "$_vac" ]; then
-                  QA_STATUS="pending"
-                else
-                  QA_STATUS="passed"
-                fi
-              else
-                _cur_commit_ts=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
-                _verif_mtime=$(perl -e 'print +(stat shift)[9]' "$_uv_verif" 2>/dev/null || echo "")
-                if [ -n "$_cur_commit_ts" ] && [ -n "$_verif_mtime" ] && [ "$_cur_commit_ts" -ge "$_verif_mtime" ]; then
-                  QA_STATUS="pending"
-                else
-                  QA_STATUS="passed"
-                fi
-              fi
-              fi
-              ;;
-            FAIL|PARTIAL) QA_STATUS="failed" ;;
-            *) QA_STATUS="pending" ;;
-          esac
+          QA_STATUS=$(phase_verification_state "$_uv_dir" "$_uv_verif" "passed")
         else
           QA_STATUS="pending"
         fi
@@ -876,58 +831,8 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
       restore_known_issues_from_verification_if_needed "$_qa_dir" "$_qa_verif_scan"
     fi
 
-    if [ "$_qa_attention" = "none" ] && [ -n "$_qa_verif_scan" ] && [ -f "$_qa_verif_scan" ]; then
-      _qa_result_scan=$(awk '
-        BEGIN { in_fm=0 }
-        NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-        in_fm && /^---[[:space:]]*$/ { exit }
-        in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
-      ' "$_qa_verif_scan" 2>/dev/null) || _qa_result_scan=""
-      _qa_result_scan=$(printf '%s' "$_qa_result_scan" | tr '[:lower:]' '[:upper:]')
-      case "$_qa_result_scan" in
-        FAIL|PARTIAL)
-          _qa_attention="failed"
-          ;;
-        PASS)
-          _qa_gate_scan=$(qa_gate_routing_for_phase "$_qa_dir")
-          case "${_qa_gate_scan:-}" in
-            REMEDIATION_REQUIRED)
-              _qa_attention="failed"
-              ;;
-            QA_RERUN_REQUIRED|"")
-              _qa_attention="pending"
-              ;;
-            PROCEED_TO_UAT)
-          _vac_scan=$(awk '
-            BEGIN { in_fm=0 }
-            NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-            in_fm && /^---[[:space:]]*$/ { exit }
-            in_fm && /^verified_at_commit:/ { sub(/^verified_at_commit:[[:space:]]*/, ""); print; exit }
-          ' "$_qa_verif_scan" 2>/dev/null) || _vac_scan=""
-          _qa_dirty_scan=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || true)
-          if [ -n "$_qa_dirty_scan" ]; then
-            _qa_attention="pending"
-          elif [ -n "$_vac_scan" ]; then
-            _cur_commit_scan=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
-            if [ -n "$_cur_commit_scan" ] && [ "$_cur_commit_scan" != "$_vac_scan" ]; then
-              _qa_attention="pending"
-            fi
-          else
-            _cur_commit_ts_scan=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
-            _verif_mtime_scan=$(perl -e 'print +(stat shift)[9]' "$_qa_verif_scan" 2>/dev/null || echo "")
-            if [ -n "$_cur_commit_ts_scan" ] && [ -n "$_verif_mtime_scan" ] && [ "$_cur_commit_ts_scan" -ge "$_verif_mtime_scan" ]; then
-              _qa_attention="pending"
-            fi
-          fi
-              ;;
-          esac
-          ;;
-        *)
-          _qa_attention="pending"
-          ;;
-      esac
-    elif [ "$_qa_attention" = "none" ]; then
-      _qa_attention="pending"
+    if [ "$_qa_attention" = "none" ]; then
+      _qa_attention=$(phase_verification_state "$_qa_dir" "$_qa_verif_scan" "none")
     fi
 
     if [ "$_qa_attention" != "none" ]; then
@@ -1073,7 +978,6 @@ if [ "$UAT_ISSUES_PHASE" != "none" ] && [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_
   fi
 fi
 
-_pd_normal_exit=true
 echo "phase_count=$PHASE_COUNT"
 echo "next_phase=$NEXT_PHASE"
 echo "next_phase_slug=$NEXT_PHASE_SLUG"
@@ -1477,4 +1381,6 @@ if [ "$MILESTONE_UAT_ISSUES" = true ] && [ -n "$MILESTONE_UAT_PHASE_DIRS" ]; the
   echo "---MILESTONE_UAT_EXTRACT_END---"
 fi
 
+echo "phase_detect_complete=true"
+_pd_normal_exit=true
 exit 0
