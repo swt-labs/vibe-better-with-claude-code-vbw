@@ -112,7 +112,7 @@ link_run_all_system_tools() {
   local root="$1"
   local tool_name
 
-  for tool_name in bash cat dirname find git grep jq ls mkdir mktemp ps rm sort; do
+  for tool_name in bash cat dirname find git grep jq ls mkdir mktemp mv ps rm sort trort tr; do
     link_runtime_tool "$root" "$tool_name"
   done
 }
@@ -132,6 +132,17 @@ link_run_all_system_tools() {
 
   env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
   first_pid=$!
+
+  # Wait for the first suite's token to appear before launching the second,
+  # otherwise the second suite may not see the first as a concurrent peer.
+  local token_found=false
+  for _wait in $(seq 1 100); do
+    if compgen -G "$state_dir"/*/*.token >/dev/null 2>&1; then
+      token_found=true; break
+    fi
+    sleep 0.1
+  done
+  [[ "$token_found" = true ]] || { echo "first suite token never appeared"; return 1; }
 
   run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
@@ -157,6 +168,16 @@ link_run_all_system_tools() {
 
   env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
   first_pid=$!
+
+  # Wait for the first suite's token to appear before launching the second.
+  local token_found=false
+  for _wait in $(seq 1 100); do
+    if compgen -G "$state_dir"/*/*.token >/dev/null 2>&1; then
+      token_found=true; break
+    fi
+    sleep 0.1
+  done
+  [[ "$token_found" = true ]] || { echo "first suite token never appeared"; return 1; }
 
   run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]

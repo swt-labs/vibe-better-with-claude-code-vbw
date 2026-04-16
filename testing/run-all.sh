@@ -218,6 +218,7 @@ auto_tune_bats_workers() {
 }
 
 initialize_run_all_state
+register_run_all_token
 
 # --- Launch shell lint ---
 run_job lint "shell-lint"                bash "$ROOT/testing/run-lint.sh"
@@ -251,7 +252,7 @@ case "$BATS_WORKERS" in
     ;;
 esac
 ACTIVE_RUN_ALL_SUITES=0
-if register_run_all_token; then
+if [ -n "$RUN_ALL_TOKEN" ]; then
   ACTIVE_RUN_ALL_SUITES="$(count_run_all_tokens_with_grace)"
 fi
 
