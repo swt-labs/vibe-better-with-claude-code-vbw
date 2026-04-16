@@ -833,7 +833,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   done
 fi
 
-# --- QA attention detection for standalone /vbw:qa ---
+# --- QA attention detection for QA protocol ---
 # Unlike FIRST_UNVERIFIED_PHASE, this scan also covers built phases that already
 # have terminal UAT but whose QA verification is stale or failed.
 if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
@@ -856,7 +856,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
 
     _qa_attention="none"
     # Active remediation is handled by next_phase_state=needs_qa_remediation,
-    # except standalone /vbw:qa still needs a signal for verify-stage rounds
+    # except QA protocol still needs a signal for verify-stage rounds
     # when an earlier phase blocks the main orchestrator route.
     case "$_qa_stage" in
       plan|execute) continue ;;

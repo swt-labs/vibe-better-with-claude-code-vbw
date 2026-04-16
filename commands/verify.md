@@ -1,6 +1,7 @@
 ---
 name: vbw:verify
 category: monitoring
+hidden: true
 disable-model-invocation: true
 description: Run human acceptance testing on completed phase work. Presents CHECKPOINT prompts one at a time.
 argument-hint: "[phase-number] [--resume]"

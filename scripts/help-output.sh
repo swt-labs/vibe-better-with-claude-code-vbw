@@ -37,6 +37,7 @@ for file in "$COMMANDS_DIR"/*.md; do
   description=""
   category=""
   hint=""
+  hidden=""
   in_frontmatter=0
 
   while IFS= read -r line; do
@@ -53,11 +54,13 @@ for file in "$COMMANDS_DIR"/*.md; do
         description:*) description="${line#description: }" ; description="${description#description:}" ; description="${description# }" ; description="${description#\"}" ; description="${description%\"}" ;;
         category:*) category="${line#category: }" ; category="${category#category:}" ; category="${category# }" ;;
         argument-hint:*) hint="${line#argument-hint: }" ; hint="${hint#argument-hint:}" ; hint="${hint# }" ; hint="${hint#\"}" ; hint="${hint%\"}" ;;
+        hidden:*) hidden="${line#hidden: }" ; hidden="${hidden#hidden:}" ; hidden="${hidden# }" ;;
       esac
     fi
   done < "$file"
 
   [ -z "$name" ] && continue
+  [ "$hidden" = "true" ] && continue
 
   # Build display line: command padded to 42 chars + description
   if [ -n "$hint" ]; then

@@ -86,7 +86,7 @@ All `/vbw:*` commands will load from your local copy. Restart Claude Code to pic
 ```text
 .claude-plugin/    Plugin manifest (plugin.json)
 agents/            7 agent definitions with native tool permissions
-commands/          24 slash commands (commands/*.md)
+commands/          24 slash commands (22 user-visible, 2 hidden protocol files)
 config/            Default settings and stack-to-skill mappings
 hooks/             Plugin hooks (hooks.json)
 scripts/           Hook handler scripts

@@ -9,8 +9,8 @@ set -euo pipefail
 # - write-debug-session.sh implements all modes
 # - compile-debug-session-context.sh implements all modes
 # - debug.md has debug_session_routing section
-# - qa.md has debug_session_qa section
-# - verify.md has debug_session_uat section
+# - qa.md has debug_session_qa section (hidden protocol file)
+# - verify.md has debug_session_uat section (hidden protocol file)
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
