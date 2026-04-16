@@ -35,6 +35,11 @@ create_stub_workspace() {
 #!/usr/bin/env bash
 : "${BATS_LOG:?}"
 printf '%s\n' "$*" >> "$BATS_LOG"
+if [ -n "${BATS_HOLD_UNTIL_FILE:-}" ]; then
+  while [ ! -f "$BATS_HOLD_UNTIL_FILE" ]; do
+    sleep 0.1
+  done
+fi
 i=1
 for arg in "$@"; do
   printf 'ok %d %s\n' "$i" "$(basename "$arg")"
@@ -79,42 +84,90 @@ link_run_all_system_tools() {
   local root="$1"
   local tool_name
 
-  for tool_name in bash cat dirname find grep jq ls mkdir mktemp rm sort; do
+  for tool_name in bash cat dirname find git grep jq ls mkdir mktemp ps rm sort; do
     link_runtime_tool "$root" "$tool_name"
   done
 }
 
-@test "default local worker count auto-tunes when concurrent suites are active" {
-  local root="$TEST_TEMP_DIR/stub-repo-auto-tune"
-  local state_dir="$TEST_TEMP_DIR/run-all-state"
-  create_stub_workspace "$root"
-  export BATS_LOG="$TEST_TEMP_DIR/bats-auto.log"
-  export PATH="$root/bin:$PATH"
+wait_for_file_contains() {
+  local needle="$1"
+  local file="$2"
+  local attempt
 
-  mkdir -p "$state_dir"
-  : > "$state_dir/suite.$$.existing.token"
-  : > "$state_dir/suite.$PPID.existing.token"
+  for attempt in {1..100}; do
+    if [ -f "$file" ] && grep -q "$needle" "$file"; then
+      return 0
+    fi
+    sleep 0.1
+  done
 
-  run env RUN_ALL_STATE_DIR="$state_dir" bash -c "cd '$root' && bash testing/run-all.sh"
-  [ "$status" -eq 0 ]
-  echo "$output" | grep -q 'Auto-tuned BATS_WORKERS from 8 to 3 for 3 concurrent local test suite(s)'
+  return 1
 }
 
-@test "explicit BATS_WORKERS overrides auto-tuning" {
-  local root="$TEST_TEMP_DIR/stub-repo-pinned-workers"
-  local state_dir="$TEST_TEMP_DIR/run-all-state-pinned"
+@test "default local worker count auto-tunes when a real peer suite overlaps" {
+  local root="$TEST_TEMP_DIR/stub-repo-auto-tune"
+  local state_dir="$TEST_TEMP_DIR/run-all-state"
+  local release_file="$TEST_TEMP_DIR/release-first-run"
+  local first_output="$TEST_TEMP_DIR/first-run.log"
+  local first_bats_log="$TEST_TEMP_DIR/first-bats.log"
+  local second_bats_log="$TEST_TEMP_DIR/second-bats.log"
+  local first_pid
   create_stub_workspace "$root"
-  export BATS_LOG="$TEST_TEMP_DIR/bats-pinned.log"
   export PATH="$root/bin:$PATH"
 
-  mkdir -p "$state_dir"
-  : > "$state_dir/suite.$$.existing.token"
-  : > "$state_dir/suite.$PPID.existing.token"
+  env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
+  first_pid=$!
+  wait_for_file_contains 'Launched' "$first_output"
 
-  run env RUN_ALL_STATE_DIR="$state_dir" BATS_WORKERS=7 bash -c "cd '$root' && bash testing/run-all.sh"
+  run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
+
+  touch "$release_file"
+  wait "$first_pid"
+
+  echo "$output" | grep -q 'Auto-tuned BATS_WORKERS from 8 to 4 for 2 concurrent local test suite(s)'
+}
+
+@test "explicit BATS_WORKERS overrides auto-tuning during real overlap" {
+  local root="$TEST_TEMP_DIR/stub-repo-pinned-workers"
+  local state_dir="$TEST_TEMP_DIR/run-all-state-pinned"
+  local release_file="$TEST_TEMP_DIR/release-pinned-run"
+  local first_output="$TEST_TEMP_DIR/pinned-first-run.log"
+  local first_bats_log="$TEST_TEMP_DIR/pinned-first-bats.log"
+  local second_bats_log="$TEST_TEMP_DIR/pinned-second-bats.log"
+  local first_pid
+  create_stub_workspace "$root"
+  export PATH="$root/bin:$PATH"
+
+  env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
+  first_pid=$!
+  wait_for_file_contains 'Launched' "$first_output"
+
+  run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 0 ]
+
+  touch "$release_file"
+  wait "$first_pid"
+
   [[ "$output" != *'Auto-tuned BATS_WORKERS'* ]]
   echo "$output" | grep -q '7 bats workers'
+}
+
+@test "stray token file is ignored and does not self-throttle a lone suite" {
+  local root="$TEST_TEMP_DIR/stub-repo-stray-token"
+  local state_root="$TEST_TEMP_DIR/run-all-state-stray"
+  local repo_key
+  create_stub_workspace "$root"
+  export BATS_LOG="$TEST_TEMP_DIR/bats-stray.log"
+  export PATH="$root/bin:$PATH"
+
+  repo_key=$(printf '%s' "$root/.git" | jq -sRr @uri)
+  mkdir -p "$state_root/$repo_key"
+  printf '{"pid":"%s","repo_key":"%s"}\n' "$$" "$repo_key" > "$state_root/$repo_key/suite.$$.fake.token"
+
+  run env RUN_ALL_STATE_DIR="$state_root" bash -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *'Auto-tuned BATS_WORKERS'* ]]
 }
 
 @test "invalid BATS_WORKERS falls back and keeps serial bats files out of worker batches" {
