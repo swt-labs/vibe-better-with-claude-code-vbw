@@ -217,13 +217,13 @@ EOF
   [[ "$output" == *"Continue investigation"* ]]
 }
 
-@test "suggest-next fix with no debug session suggests qa" {
+@test "suggest-next fix with no debug session suggests vibe for QA" {
   run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
   [ "$status" -eq 0 ]
   [[ "$output" == *"/vbw:vibe"* ]]
 }
 
-@test "suggest-next fix with complete debug session suggests qa" {
+@test "suggest-next fix with complete debug session suggests vibe for QA" {
   create_debug_session "complete"
   run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
   [ "$status" -eq 0 ]
