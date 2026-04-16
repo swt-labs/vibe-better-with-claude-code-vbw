@@ -26,6 +26,7 @@ if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
   . "$SCRIPT_DIR/summary-utils.sh"
 else
   # Safe default: report zero completions when helpers unavailable
+  extract_summary_status() { echo ""; }
   count_complete_summaries() { echo "0"; }
   count_done_summaries() { echo "0"; }
 fi
