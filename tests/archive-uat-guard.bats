@@ -35,6 +35,39 @@ EOF
   [[ "$output" == *"Archive blocked: phase detection failed"* ]]
 }
 
+@test "archive-uat-guard blocks on empty phase-detect output" {
+  local shim_dir="$TEST_TEMP_DIR/archive-guard-phase-detect-empty"
+  mkdir -p "$shim_dir"
+  cp "$SCRIPTS_DIR/archive-uat-guard.sh" "$shim_dir/archive-uat-guard.sh"
+  cat > "$shim_dir/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  chmod +x "$shim_dir/archive-uat-guard.sh" "$shim_dir/phase-detect.sh"
+
+  run bash "$shim_dir/archive-uat-guard.sh"
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"Archive blocked: phase detection failed"* ]]
+}
+
+@test "archive-uat-guard blocks on incomplete phase-detect output without completion marker" {
+  local shim_dir="$TEST_TEMP_DIR/archive-guard-phase-detect-incomplete"
+  mkdir -p "$shim_dir"
+  cp "$SCRIPTS_DIR/archive-uat-guard.sh" "$shim_dir/archive-uat-guard.sh"
+  cat > "$shim_dir/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' 'planning_dir_exists=true' 'project_exists=true' 'next_phase_state=all_done'
+exit 0
+EOF
+  chmod +x "$shim_dir/archive-uat-guard.sh" "$shim_dir/phase-detect.sh"
+
+  run bash "$shim_dir/archive-uat-guard.sh"
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"Archive blocked: phase detection failed"* ]]
+}
+
 # --- phase-detect.sh: milestone UAT scanning ---
 
 @test "phase-detect detects unresolved UAT in latest shipped milestone when active phases empty" {

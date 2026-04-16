@@ -10,11 +10,14 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PHASE_DETECT_OUT=$(bash "$SCRIPT_DIR/phase-detect.sh" 2>/dev/null || true)
 
-[ -z "$PHASE_DETECT_OUT" ] && exit 0
-[ "$PHASE_DETECT_OUT" = "phase_detect_error=true" ] && {
+PHASE_DETECT_COMPLETE=$(printf '%s\n' "$PHASE_DETECT_OUT" | awk -F= '/^phase_detect_complete=/{print $2; exit}')
+
+if [ -z "$(printf '%s' "$PHASE_DETECT_OUT" | tr -d '[:space:]')" ] \
+  || [ "$PHASE_DETECT_OUT" = "phase_detect_error=true" ] \
+  || [ "${PHASE_DETECT_COMPLETE:-}" != "true" ]; then
   echo "Archive blocked: phase detection failed. Run phase-detect.sh manually and retry archive."
   exit 2
-}
+fi
 
 get_kv() {
   local key="$1"
