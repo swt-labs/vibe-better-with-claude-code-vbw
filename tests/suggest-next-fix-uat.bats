@@ -64,3 +64,20 @@ enable_auto_uat() {
   [[ "$output" == *"Verify the fix"* ]]
   [[ "$output" == *"Continue building"* ]]
 }
+
+@test "fix does not suggest UAT when marker is stale (>24h)" {
+  enable_auto_uat
+  create_fix_marker
+  # Backdate marker by 25 hours
+  if [[ "$OSTYPE" == darwin* ]]; then
+    touch -t "$(date -v-25H '+%Y%m%d%H%M.%S')" "$TEST_TEMP_DIR/.vbw-planning/.last-fix-commit"
+  else
+    touch -d "25 hours ago" "$TEST_TEMP_DIR/.vbw-planning/.last-fix-commit"
+  fi
+  run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Run UAT on the fix"* ]]
+  # Should still have other suggestions
+  [[ "$output" == *"Verify the fix"* ]]
+  [[ "$output" == *"Continue building"* ]]
+}
