@@ -94,3 +94,22 @@ teardown() {
   grep -q "alpha.txt" "$PLANNING_DIR/.last-fix-commit"
   grep -q "beta.txt" "$PLANNING_DIR/.last-fix-commit"
 }
+
+@test "records files for root commit" {
+  # Create a fresh repo with only one commit (root commit)
+  local root_dir="$TEST_TEMP_DIR/root-repo"
+  mkdir -p "$root_dir"
+  cd "$root_dir"
+  git init -q
+  git config user.email "test@test.com"
+  git config user.name "Test"
+  local planning="$root_dir/.vbw-planning"
+  mkdir -p "$planning"
+  echo "first" > first.txt
+  git add first.txt
+  git commit -q -m "initial fix"
+
+  run bash "$SCRIPTS_DIR/write-fix-marker.sh" "$planning"
+  [ "$status" -eq 0 ]
+  grep -q "first.txt" "$planning/.last-fix-commit"
+}

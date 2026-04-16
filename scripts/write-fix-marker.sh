@@ -33,7 +33,7 @@ fi
 commit_hash=$(git rev-parse --short HEAD 2>/dev/null) || exit 0
 commit_message=$(git log --format='%s' -1 2>/dev/null) || exit 0
 commit_timestamp=$(git log --format='%aI' -1 2>/dev/null) || exit 0
-changed_files=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null) || exit 0
+changed_files=$(git diff-tree --root --no-commit-id --name-only -r HEAD 2>/dev/null) || exit 0
 
 # Fall back to commit message if no description provided
 if [ -z "$DESCRIPTION" ]; then
