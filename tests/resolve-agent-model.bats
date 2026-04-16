@@ -58,10 +58,10 @@ teardown() {
   [ "$output" = "opus" ]
 
   # Verify cache file exists
-  MTIME=$(stat -c %Y "$TEST_TEMP_DIR/.vbw-planning/config.json" 2>/dev/null || stat -f %m "$TEST_TEMP_DIR/.vbw-planning/config.json" 2>/dev/null)
-  PROFILES_MTIME=$(stat -c %Y "$CONFIG_DIR/model-profiles.json" 2>/dev/null || stat -f %m "$CONFIG_DIR/model-profiles.json" 2>/dev/null)
-  CACHE_HASH=$(vbw_hash_path "$TEST_TEMP_DIR/.vbw-planning/config.json|$CONFIG_DIR/model-profiles.json")
-  [ -f "/tmp/vbw-model-dev-${MTIME}-${PROFILES_MTIME}-${CACHE_HASH}" ]
+  CONFIG_HASH=$(md5 -q "$TEST_TEMP_DIR/.vbw-planning/config.json" 2>/dev/null | cut -c1-8 || cksum "$TEST_TEMP_DIR/.vbw-planning/config.json" | awk '{print $1}')
+  PROFILES_HASH=$(md5 -q "$CONFIG_DIR/model-profiles.json" 2>/dev/null | cut -c1-8 || cksum "$CONFIG_DIR/model-profiles.json" | awk '{print $1}')
+  PATH_HASH=$(vbw_hash_path "$TEST_TEMP_DIR/.vbw-planning/config.json|$CONFIG_DIR/model-profiles.json")
+  [ -f "/tmp/vbw-model-dev-${PATH_HASH}-${CONFIG_HASH}-${PROFILES_HASH}" ]
 }
 
 @test "cache is isolated by config path even when mtimes match" {
@@ -79,6 +79,40 @@ teardown() {
   [ "$output" = "opus" ]
 
   run bash "$SCRIPTS_DIR/resolve-agent-model.sh" dev "$alt_dir/.vbw-planning/config.json" "$CONFIG_DIR/model-profiles.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "sonnet" ]
+}
+
+@test "cache invalidates for same-path config edits within the same second" {
+  touch -t 202601010101 "$TEST_TEMP_DIR/.vbw-planning/config.json"
+
+  run bash "$SCRIPTS_DIR/resolve-agent-model.sh" dev "$TEST_TEMP_DIR/.vbw-planning/config.json" "$CONFIG_DIR/model-profiles.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "opus" ]
+
+  jq '.model_profile = "balanced"' "$TEST_TEMP_DIR/.vbw-planning/config.json" > "$TEST_TEMP_DIR/.vbw-planning/config.json.tmp"
+  mv "$TEST_TEMP_DIR/.vbw-planning/config.json.tmp" "$TEST_TEMP_DIR/.vbw-planning/config.json"
+  touch -t 202601010101 "$TEST_TEMP_DIR/.vbw-planning/config.json"
+
+  run bash "$SCRIPTS_DIR/resolve-agent-model.sh" dev "$TEST_TEMP_DIR/.vbw-planning/config.json" "$CONFIG_DIR/model-profiles.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "sonnet" ]
+}
+
+@test "cache invalidates when profiles file changes within the same second" {
+  local profiles_copy="$TEST_TEMP_DIR/model-profiles.json"
+  cp "$CONFIG_DIR/model-profiles.json" "$profiles_copy"
+  touch -t 202601010101 "$profiles_copy"
+
+  run bash "$SCRIPTS_DIR/resolve-agent-model.sh" dev "$TEST_TEMP_DIR/.vbw-planning/config.json" "$profiles_copy"
+  [ "$status" -eq 0 ]
+  [ "$output" = "opus" ]
+
+  jq '.quality.dev = "sonnet"' "$profiles_copy" > "$profiles_copy.tmp"
+  mv "$profiles_copy.tmp" "$profiles_copy"
+  touch -t 202601010101 "$profiles_copy"
+
+  run bash "$SCRIPTS_DIR/resolve-agent-model.sh" dev "$TEST_TEMP_DIR/.vbw-planning/config.json" "$profiles_copy"
   [ "$status" -eq 0 ]
   [ "$output" = "sonnet" ]
 }

@@ -23,6 +23,18 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=lib/vbw-cache-key.sh
 . "$SCRIPT_DIR/lib/vbw-cache-key.sh"
 
+file_content_fingerprint() {
+  local file_path="$1"
+
+  if command -v md5sum >/dev/null 2>&1; then
+    md5sum "$file_path" | awk '{print $1}' | cut -c1-8
+  elif command -v md5 >/dev/null 2>&1; then
+    md5 -q "$file_path" | cut -c1-8
+  else
+    cksum "$file_path" | awk '{print $1}'
+  fi
+}
+
 # Argument parsing
 if [ $# -ne 3 ]; then
   echo "Usage: resolve-agent-model.sh <agent-name> <config-path> <profiles-path>" >&2
@@ -59,10 +71,10 @@ fi
 # Session-level cache: avoid repeated jq calls for the same agent + config pair.
 # Scope by both file mtimes and the config/profiles paths so parallel BATS workers
 # using different temp repos cannot collide on second-resolution mtimes alone.
-CONFIG_MTIME=$(stat -c %Y "$CONFIG_PATH" 2>/dev/null || stat -f %m "$CONFIG_PATH" 2>/dev/null || echo "0")
-PROFILES_MTIME=$(stat -c %Y "$PROFILES_PATH" 2>/dev/null || stat -f %m "$PROFILES_PATH" 2>/dev/null || echo "0")
-CACHE_HASH=$(vbw_hash_path "${CONFIG_PATH}|${PROFILES_PATH}")
-CACHE_FILE="/tmp/vbw-model-${AGENT}-${CONFIG_MTIME}-${PROFILES_MTIME}-${CACHE_HASH}"
+CONFIG_HASH=$(file_content_fingerprint "$CONFIG_PATH")
+PROFILES_HASH=$(file_content_fingerprint "$PROFILES_PATH")
+PATH_HASH=$(vbw_hash_path "${CONFIG_PATH}|${PROFILES_PATH}")
+CACHE_FILE="/tmp/vbw-model-${AGENT}-${PATH_HASH}-${CONFIG_HASH}-${PROFILES_HASH}"
 if [ -f "$CACHE_FILE" ]; then
   cat "$CACHE_FILE"
   exit 0
