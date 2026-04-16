@@ -48,8 +48,14 @@ get_dead_pid() {
   local p
   sleep 999 &
   p=$!
-  kill "$p" 2>/dev/null
+  [[ -n "$p" ]] || return 1
+  kill "$p" 2>/dev/null || kill -9 "$p" 2>/dev/null || true
   wait "$p" 2>/dev/null || true
+  if kill -0 "$p" 2>/dev/null; then
+    kill -9 "$p" 2>/dev/null || true
+    wait "$p" 2>/dev/null || true
+    kill -0 "$p" 2>/dev/null && return 1
+  fi
   echo "$p"
 }
 
