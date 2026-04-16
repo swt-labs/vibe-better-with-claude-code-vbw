@@ -35,7 +35,7 @@ teardown() {
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
 }
 
 @test "suggest-next qa pass with auto_uat=true suggests verify even at pure-vibe" {
@@ -47,7 +47,7 @@ teardown() {
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
 }
 
 @test "suggest-next qa pass with auto_uat=false at confident does not suggest verify" {
@@ -59,7 +59,7 @@ teardown() {
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
 
   [ "$status" -eq 0 ]
-  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [ "$(grep -cE '/vbw:vibe -- (Re-v|V)erify' <<< "$output")" -eq 0 ]
 }
 
 @test "suggest-next execute with auto_uat=true suggests verify even at confident" {
@@ -71,7 +71,7 @@ teardown() {
   run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
 }
 
 @test "suggest-next execute with auto_uat=false at confident does not suggest verify" {
@@ -83,7 +83,7 @@ teardown() {
   run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
 
   [ "$status" -eq 0 ]
-  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [ "$(grep -cE '/vbw:vibe -- (Re-v|V)erify' <<< "$output")" -eq 0 ]
 }
 
 @test "auto_uat defaults.json has auto_uat key set to false" {
@@ -133,7 +133,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # Should NOT suggest verify since UAT already exists and completed
-  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [ "$(grep -cE '/vbw:vibe -- (Re-v|V)erify' <<< "$output")" -eq 0 ]
 }
 
 @test "suggest-next qa pass honors legacy PLAN.md and SUMMARY.md artifacts" {
@@ -146,7 +146,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
 }
 
 # --- phase-detect auto_uat + has_unverified_phases tests ---
@@ -317,7 +317,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # Should suggest verify
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
   # Should NOT suggest continuing to next phase when auto_uat wants verify first
   [ "$(grep -cF 'Continue to' <<< "$output")" -eq 0 ]
   [ "$(grep -cF 'next phase' <<< "$output")" -eq 0 ]
@@ -337,7 +337,7 @@ EOF
   # auto_uat=false: cross-phase unverified detection doesn't fire
   # Active phase (02) has 0 plans → active-phase verify path also doesn't fire
   # Should suggest continue only
-  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [ "$(grep -cE '/vbw:vibe -- (Re-v|V)erify' <<< "$output")" -eq 0 ]
   [[ "$output" == *"/vbw:vibe"* ]]
 }
 
@@ -387,7 +387,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # Must suggest verify (for unverified Phase 01) even though active Phase 02 has UAT
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
 }
 
 @test "suggest-next qa pass with auto_uat=true mid-milestone suppresses continue" {
@@ -399,7 +399,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # Should suggest verify
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
   # Should NOT suggest continuing to next phase
   [ "$(grep -cF 'Continue to' <<< "$output")" -eq 0 ]
   [ "$(grep -cF 'next phase' <<< "$output")" -eq 0 ]
@@ -431,7 +431,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # Should NOT suggest verify since UAT already exists and passed
-  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [ "$(grep -cE '/vbw:vibe -- (Re-v|V)erify' <<< "$output")" -eq 0 ]
 }
 
 @test "suggest-next execute with auto_uat=true skips verify when UAT has passed status" {
@@ -443,7 +443,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # Should NOT suggest verify since UAT already exists and passed
-  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [ "$(grep -cE '/vbw:vibe -- (Re-v|V)erify' <<< "$output")" -eq 0 ]
 }
 
 # --- QA round 3: frontmatter-scoped status parsing (finding #1) ---
@@ -481,7 +481,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # Body fallback detects status: passed → no verify needed
-  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [ "$(grep -cE '/vbw:vibe -- (Re-v|V)erify' <<< "$output")" -eq 0 ]
 }
 
 # --- QA round 3: cross-phase verify contradiction (finding #2) ---
@@ -498,7 +498,7 @@ EOF
   [ "$status" -eq 0 ]
   # has_unverified_phases=false, active phase is unplanned (plans=0)
   # Should NOT suggest verify — nothing to verify
-  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [ "$(grep -cE '/vbw:vibe -- (Re-v|V)erify' <<< "$output")" -eq 0 ]
   # Should suggest continue to next phase
   [[ "$output" == *"/vbw:vibe"* ]]
 }
@@ -512,7 +512,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
 
   [ "$status" -eq 0 ]
-  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [ "$(grep -cE '/vbw:vibe -- (Re-v|V)erify' <<< "$output")" -eq 0 ]
   [[ "$output" == *"/vbw:vibe"* ]]
 }
 
@@ -527,7 +527,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # Should NOT suggest verify when remediation is active
-  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [ "$(grep -cE '/vbw:vibe -- (Re-v|V)erify' <<< "$output")" -eq 0 ]
   # Should suggest remediation
   [[ "$output" == *"/vbw:vibe"* ]] || [[ "$output" == *"/vbw:fix"* ]]
 }
@@ -540,7 +540,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
 
   [ "$status" -eq 0 ]
-  [ "$(grep -cF '/vbw:verify' <<< "$output")" -eq 0 ]
+  [ "$(grep -cE '/vbw:vibe -- (Re-v|V)erify' <<< "$output")" -eq 0 ]
   [[ "$output" == *"/vbw:vibe"* ]] || [[ "$output" == *"/vbw:fix"* ]]
 }
 
@@ -555,7 +555,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # Should suggest verify instead of continue
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
   [ "$(grep -cF 'Continue' <<< "$output")" -eq 0 ]
 }
 
@@ -566,7 +566,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" resume
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
 }
 
 @test "suggest-next status with auto_uat=false suggests continue normally" {
@@ -610,7 +610,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # auto_uat verify should take priority over discussion
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
   # Should NOT suggest discuss (verify suppresses continue which would hit discuss)
   [ "$(grep -cF '/vbw:discuss' <<< "$output")" -eq 0 ]
 }
@@ -833,7 +833,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # Should suggest re-verification
-  [[ "$output" == *"Re-verify"* ]] || [[ "$output" == *"re-verify"* ]] || [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"Re-verify"* ]] || [[ "$output" == *"re-verify"* ]] || [[ "$output" == *"/vbw:vibe"* ]]
 }
 
 @test "suggest-next qa pass suggests re-verify when needs_reverification" {
@@ -845,7 +845,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Re-verify"* ]] || [[ "$output" == *"re-verify"* ]] || [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"Re-verify"* ]] || [[ "$output" == *"re-verify"* ]] || [[ "$output" == *"/vbw:vibe"* ]]
 }
 
 @test "suggest-next verify suggestions include phase number when first_unverified_phase set" {
@@ -857,7 +857,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # Should include phase number in verify suggestion
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
   # The phase number 01 should appear near the verify suggestion
   [[ "$output" == *"01"* ]]
 }
@@ -1073,7 +1073,7 @@ EOF
 
   [ "$status" -eq 0 ]
   # SOURCE-UAT should NOT satisfy has_uat → verify should still be suggested
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"/vbw:vibe -- Verify"* ]]
 }
 
 # --- QA round 6: prepare-reverification double-run idempotency (finding #9) ---

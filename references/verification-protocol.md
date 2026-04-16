@@ -5,7 +5,7 @@ Authoritative spec for VBW's verification pipeline. QA agent persists results to
 ## 1. Contexts
 
 - **Post-build:** Auto after `/vbw:vibe` execute mode (unless `--skip-qa` or turbo)
-- **Standalone:** `/vbw:qa <phase>`
+- **On-demand:** Triggered by `/vbw:vibe` or `/vbw:debug`
 
 ## 1.5 Known-Issues Lifecycle (VRFY-KI)
 
@@ -52,7 +52,7 @@ Standard, plus:
 | `--effort=fast` / `QA_EFFORT=low` | Quick |
 | `--effort=balanced` / `QA_EFFORT=medium` | Standard |
 | `--effort=thorough` / `QA_EFFORT=high` | Deep |
-| Standalone `/vbw:qa` (no flag) | Standard |
+| On-demand QA (no flag) | Standard |
 | >15 requirements or last phase before ship | Deep (override) |
 
 Precedence: explicit `--tier` > context overrides > effort-based > default.

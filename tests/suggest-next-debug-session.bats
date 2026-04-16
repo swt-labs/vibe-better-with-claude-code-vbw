@@ -197,7 +197,7 @@ EOF
   create_debug_session "uat_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:verify"* ]]
+  [[ "$output" == *"--resume"* ]]
   [[ "$output" == *"UAT"* ]]
 }
 
@@ -220,14 +220,14 @@ EOF
 @test "suggest-next fix with no debug session suggests qa" {
   run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:qa"* ]]
+  [[ "$output" == *"/vbw:vibe"* ]]
 }
 
 @test "suggest-next fix with complete debug session suggests qa" {
   create_debug_session "complete"
   run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
   [ "$status" -eq 0 ]
-  [[ "$output" == *"/vbw:qa"* ]]
+  [[ "$output" == *"/vbw:vibe"* ]]
   [[ "$output" != *"--resume"* ]]
 }
 
@@ -240,5 +240,5 @@ EOF
   [ "$status" -eq 0 ]
   # When phases exist, debug-session handler is skipped
   [[ "$output" != *"--resume"* ]]
-  [[ "$output" == *"/vbw:qa"* ]]
+  [[ "$output" == *"/vbw:vibe"* ]]
 }
