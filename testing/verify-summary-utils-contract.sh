@@ -481,9 +481,9 @@ done
 # definitions that coexist with the sourced helper create split-brain parsing.
 for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh; do
   # Count function definitions of extract_summary_status()
-  def_count=$(grep -cE '^\s*extract_summary_status\s*\(\)' "$ROOT/scripts/$script" 2>/dev/null || echo "0")
+  def_count=$(grep -cE '^\s*extract_summary_status\s*\(\)' "$ROOT/scripts/$script" 2>/dev/null) || def_count=0
   # Count source lines for summary-utils.sh
-  source_count=$(grep -cE '^\s*\.\s+.*summary-utils\.sh' "$ROOT/scripts/$script" 2>/dev/null || echo "0")
+  source_count=$(grep -cE '^\s*\.\s+.*summary-utils\.sh' "$ROOT/scripts/$script" 2>/dev/null) || source_count=0
   # If the script sources summary-utils.sh AND defines extract_summary_status() more than once
   # (the fallback else-stub), that means there's an override in the sourced branch.
   # If it doesn't source summary-utils.sh, any definition is a standalone (not an override).
