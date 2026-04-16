@@ -760,6 +760,19 @@ case "$CMD" in
     fi
     if [ "$_fix_debug_handled" = false ]; then
       suggest "/vbw:vibe -- Verify the fix"
+      if [ "$cfg_auto_uat" = true ] && [ -f "$PLANNING_DIR/.last-fix-commit" ]; then
+        # Only suggest UAT if marker is fresh (<24h); fail-closed on stat/date errors
+        _marker_stale=true
+        _marker_mtime=$(stat -c '%Y' "$PLANNING_DIR/.last-fix-commit" 2>/dev/null || stat -f '%m' "$PLANNING_DIR/.last-fix-commit" 2>/dev/null || echo 0)
+        _now=$(date +%s 2>/dev/null || echo 0)
+        if [ "$_marker_mtime" -gt 0 ] && [ "$_now" -gt 0 ]; then
+          _marker_age=$(( _now - _marker_mtime ))
+          [ "$_marker_age" -ge 0 ] && [ "$_marker_age" -le 86400 ] && _marker_stale=false
+        fi
+        if [ "$_marker_stale" = false ]; then
+          suggest "/vbw:verify -- Run UAT on the fix"
+        fi
+      fi
       suggest "/vbw:vibe -- Continue building"
     fi
     ;;
