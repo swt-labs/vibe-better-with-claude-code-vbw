@@ -25,11 +25,11 @@ if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
   # shellcheck source=summary-utils.sh
   . "$SCRIPT_DIR/summary-utils.sh"
 else
-  # Safe default: report zero completions when helpers unavailable
+  # Safe default: report no parsed completions and suppress incomplete-summary warnings when helpers are unavailable
   extract_summary_status() { echo ""; }
   count_complete_summaries() { echo "0"; }
   count_done_summaries() { echo "0"; }
-  is_summary_complete() { return 1; }
+  is_summary_complete() { return 0; }
 fi
 if [ -f "$SCRIPT_DIR/phase-state-utils.sh" ]; then
   # shellcheck source=phase-state-utils.sh
