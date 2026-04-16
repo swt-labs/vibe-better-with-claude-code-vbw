@@ -87,7 +87,7 @@ If the user typed `skip`, STOP here after displaying `○ No skills selected for
 
 AskUserQuestion (single select) — "Where should these skills be installed?":
 - **Project (Recommended)** — "Installed to `./.claude/skills/`, scoped to this project only."
-- **Global** — "Installed to `~/.agents/skills/`, available in all projects."
+- **Global** — "Installed to `~/.claude/skills/`, available in all projects."
 
 Store the choice as SCOPE. If the user typed `skip` in Step 5: skip this step.
 
