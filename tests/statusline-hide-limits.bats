@@ -164,10 +164,18 @@ SH
 JSON
 
   cd "$repo"
+  # Isolate credential discovery: block env-var override and system Keychain lookup so
+  # AUTH_CLASS="api_key" is guaranteed regardless of the developer's system credentials.
+  export CLAUDE_CONFIG_DIR="$repo"
+  export VBW_SKIP_KEYCHAIN=1
+  export VBW_SKIP_AUTH_CLI=1
   export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
   unset VBW_OAUTH_TOKEN 2>/dev/null || true
   local output
   output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  unset CLAUDE_CONFIG_DIR
+  unset VBW_SKIP_KEYCHAIN
+  unset VBW_SKIP_AUTH_CLI
   unset CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
   cd "$PROJECT_ROOT"
 

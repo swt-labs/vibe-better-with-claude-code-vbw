@@ -4,11 +4,13 @@ REPO_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
 SCRIPT="$REPO_ROOT/testing/run-bats-shard.sh"
 LIST_SCRIPT="$REPO_ROOT/testing/list-bats-files.sh"
 
-@test "run-bats-shard prints modulo-selected files" {
+@test "run-bats-shard assigns files via greedy bin packing" {
   run bash "$SCRIPT" 1 4 --print-files \
     tests/a.bats tests/b.bats tests/c.bats tests/d.bats tests/e.bats tests/f.bats
 
   [ "$status" -eq 0 ]
+  # With equal-weight files (nonexistent → 0 tests, +1 baseline each),
+  # greedy packing assigns: a→0, b→1, c→2, d→3, e→0, f→1
   [ "$output" = $'tests/b.bats\ntests/f.bats' ]
 }
 

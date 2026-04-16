@@ -1,6 +1,7 @@
 #!/bin/bash
 set -u
-trap 'exit 0' EXIT
+_pd_normal_exit=false
+trap '[ "$_pd_normal_exit" = true ] || { echo "qa_status=none"; echo "execution_state=none"; }; exit 0' EXIT
 # Pre-compute all project state for implement.md and other commands.
 # Output: key=value pairs on stdout, one per line. Exit 0 always.
 
@@ -21,8 +22,16 @@ list_child_dirs_sorted() {
   local parent="$1"
   [ -d "$parent" ] || return 0
 
-  find "$parent" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null |
-    (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
+  # Collect via bash glob (avoids find pipeline under parallel fd contention).
+  # Then sort with version sort (printf is a builtin → much less fd-sensitive
+  # than find, which traverses the filesystem and can fail under exhaustion).
+  local dirs=() d
+  for d in "$parent"/*/; do
+    [ -d "$d" ] && dirs+=("${d%/}")
+  done
+  [ ${#dirs[@]} -gt 0 ] || return 0
+  printf '%s\n' "${dirs[@]}" | sort -V 2>/dev/null || \
+    printf '%s\n' "${dirs[@]}" | awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-
 }
 
 phase_relative_path() {
@@ -76,6 +85,7 @@ restore_known_issues_from_verification_if_needed() {
   case "${known_status:-missing}" in
     missing|malformed)
       bash "$_SCRIPT_DIR_PD/track-known-issues.sh" sync-verification "$phase_dir" "$verification_file" >/dev/null 2>&1 || true
+      bash "$_SCRIPT_DIR_PD/track-known-issues.sh" promote-todos "$phase_dir" >/dev/null 2>&1 || true
       ;;
   esac
 }
@@ -138,6 +148,7 @@ else
   echo "has_codebase_map=false"
   echo "brownfield=false"
   echo "execution_state=none"
+  _pd_normal_exit=true
   exit 0
 fi
 
@@ -422,7 +433,84 @@ if [ -d "$PHASES_DIR" ]; then
           fi
           _rem_stage="done"
         fi
-        if [ "$_rem_stage" = "done" ] || [ "$_rem_stage" = "verify" ]; then
+        if [ "$_rem_stage" = "done" ]; then
+          # Check if re-verification already happened for this round.
+          # If a round-scoped UAT exists with issues, skip re-verification
+          # and route directly to the next remediation round.
+          _round_uat=""
+          _round_uat_status=""
+          # Round-dir layout
+          if [ -f "${TARGET_DIR}remediation/uat/round-${_cur_rr}/R${_cur_rr}-UAT.md" ]; then
+            _round_uat="${TARGET_DIR}remediation/uat/round-${_cur_rr}/R${_cur_rr}-UAT.md"
+          # Legacy layout
+          elif [ -f "${TARGET_DIR}remediation/round-${_cur_rr}/R${_cur_rr}-UAT.md" ]; then
+            _round_uat="${TARGET_DIR}remediation/round-${_cur_rr}/R${_cur_rr}-UAT.md"
+          fi
+          if [ -n "$_round_uat" ]; then
+            _round_uat_status=$(extract_status_value "$_round_uat")
+          fi
+          # Read layout before the routing decision — apply the same path-based
+          # default as the execute→done transition above.
+          if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
+            _cur_layout=$(grep '^layout=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+            if [ -z "$_cur_layout" ]; then
+              case "$_rem_state_file" in
+                */remediation/.uat-remediation-stage|*/.uat-remediation-stage)
+                  _cur_layout="legacy" ;;
+                *)
+                  _cur_layout="round-dir" ;;
+              esac
+            fi
+          else
+            _cur_layout="round-dir"
+          fi
+          case "$_round_uat_status" in
+            issues_found)
+              # Re-verification already happened and found issues.
+              # Auto-advance to next round's research stage, but only if the
+              # current round read from state is a valid numeric value.
+              case "$_cur_rr" in
+                ''|*[!0-9]*)
+                  # Malformed/corrupt round value; avoid arithmetic expansion
+                  # and fall back to explicit re-verification routing.
+                  NEXT_PHASE_STATE="needs_reverification"
+                  ;;
+                *)
+                  _cap_decision=$(bash "$_SCRIPT_DIR_PD/resolve-uat-remediation-round-limit.sh" --next-round-decision "$PLANNING_DIR/config.json" "$_cur_rr" 2>/dev/null)
+                  _cap_status=$?
+                  _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
+                  case "${_cap_status}:${_cap_reached:-}" in
+                    0:true)
+                      NEXT_PHASE_STATE="needs_reverification"
+                      ;;
+                    0:false)
+                      _next_rr=$(printf '%02d' $(( 10#${_cur_rr} + 1 )))
+                      if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
+                        printf 'stage=research\nround=%s\nlayout=%s\n' "$_next_rr" "$_cur_layout" > "$_rem_state_file"
+                      fi
+                      if [ "$_cur_layout" = "legacy" ]; then
+                        mkdir -p "${TARGET_DIR}remediation/round-${_next_rr}" 2>/dev/null || true
+                      else
+                        mkdir -p "${TARGET_DIR}remediation/uat/round-${_next_rr}" 2>/dev/null || true
+                      fi
+                      NEXT_PHASE_STATE="needs_uat_remediation"
+                      ;;
+                    *)
+                      # Fail closed when the shared cap helper errors or emits a
+                      # malformed contract. Do not mutate remediation state on an
+                      # error path — route back into explicit re-verification.
+                      NEXT_PHASE_STATE="needs_reverification"
+                      ;;
+                  esac
+                  ;;
+              esac
+              ;;
+            *)
+              # No round UAT yet, or UAT passed — needs re-verification
+              NEXT_PHASE_STATE="needs_reverification"
+              ;;
+          esac
+        elif [ "$_rem_stage" = "verify" ]; then
           NEXT_PHASE_STATE="needs_reverification"
         else
           NEXT_PHASE_STATE="needs_uat_remediation"
@@ -985,6 +1073,7 @@ if [ "$UAT_ISSUES_PHASE" != "none" ] && [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_
   fi
 fi
 
+_pd_normal_exit=true
 echo "phase_count=$PHASE_COUNT"
 echo "next_phase=$NEXT_PHASE"
 echo "next_phase_slug=$NEXT_PHASE_SLUG"

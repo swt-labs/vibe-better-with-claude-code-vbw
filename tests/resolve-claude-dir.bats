@@ -7,7 +7,7 @@ load test_helper
 setup() {
   setup_temp_dir
   # Save original values
-  export ORIG_HOME="$HOME"
+  export ORIG_HOME="${_ORIG_HOME:-$HOME}"
   export ORIG_CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-}"
 }
 
@@ -20,6 +20,10 @@ teardown() {
 }
 
 # --- resolve-claude-dir.sh tests ---
+
+@test "ORIG_HOME captures real HOME, not temp dir" {
+  [ "$ORIG_HOME" != "$TEST_TEMP_DIR" ]
+}
 
 @test "resolve-claude-dir.sh defaults to HOME/.claude when CLAUDE_CONFIG_DIR unset" {
   unset CLAUDE_CONFIG_DIR

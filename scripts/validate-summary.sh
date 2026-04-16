@@ -97,6 +97,43 @@ if ! grep -q "## Files Modified" "$FILE_PATH"; then
   MISSING="${MISSING}Missing '## Files Modified'. "
 fi
 
+# Conditional ac_results check: only when corresponding PLAN has must_haves
+# Skip remediation summaries — they use a different template without ac_results
+# Matches both template-named (*REMEDIATION*) and runtime-named (R01-SUMMARY.md) files
+case "$(basename "$FILE_PATH")" in
+  *REMEDIATION*|R[0-9]*-SUMMARY.md) ;;
+  *)
+PLAN_PATH=$(echo "$FILE_PATH" | sed 's/SUMMARY\.md$/PLAN.md/')
+if [ -f "$PLAN_PATH" ]; then
+  # Check if plan has non-empty must_haves.
+  # Two forms: (1) inline flow-style on must_haves: line itself, e.g. must_haves: ["text"]
+  #            (2) indented children under block-style must_haves: key
+  # Flow-style: require at least one non-whitespace, non-] char inside brackets (rejects [] and [ ])
+  _VS_HAS_MH=""
+  if grep -qE '^must_haves:[[:space:]]*\[[^]]*[^][:space:]][^]]*\]' "$PLAN_PATH" 2>/dev/null; then
+    _VS_HAS_MH=true
+  elif sed -n '/^must_haves:/,/^[^ ]/p' "$PLAN_PATH" 2>/dev/null | grep '^ ' | grep -qE '^ *- |: *\[[^]]*[^][:space:]][^]]*\]'; then
+    _VS_HAS_MH=true
+  fi
+  if [ "$_VS_HAS_MH" = true ]; then
+    # Extract frontmatter and check for ac_results
+    if ! sed -n '/^---$/,/^---$/p' "$FILE_PATH" 2>/dev/null | grep -q '^ac_results:'; then
+      MISSING="${MISSING}Missing 'ac_results' in frontmatter (plan has must_haves). "
+    else
+      # Validate verdict values are pass/fail/partial
+      _VS_VERDICTS=$(sed -n '/^---$/,/^---$/{ /^ *verdict:/{ s/^ *verdict:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$FILE_PATH" 2>/dev/null)
+      for _VS_V in $_VS_VERDICTS; do  # unquoted intentional: verdicts are single-word enums
+        case "$_VS_V" in
+          pass|fail|partial) ;;
+          *) MISSING="${MISSING}Invalid ac_results verdict '${_VS_V}' (must be pass/fail/partial). " ;;
+        esac
+      done
+    fi
+  fi
+fi
+  ;;
+esac
+
 if [ -n "$MISSING" ]; then
   jq -n --arg msg "$MISSING" '{
     "hookSpecificOutput": {

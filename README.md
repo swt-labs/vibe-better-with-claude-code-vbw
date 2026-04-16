@@ -415,7 +415,7 @@ These are the commands you'll use every day. This is the job now.
 | :--- | :--- |
 | `/vbw:discuss [phase]` | Standalone discussion engine for exploring phase decisions before planning. Auto-calibrates between Builder and Architect modes based on conversation signals. Generates phase-specific gray areas, explores selected ones conversationally, and captures decisions to `{phase}-CONTEXT.md`. Same engine as `/vbw:vibe --discuss`. |
 | `/vbw:fix` | Quick task in Turbo mode. One commit, no ceremony. For when the fix is obvious and you don't need seven agents to add a missing comma. |
-| `/vbw:debug` | Systematic bug investigation via the Debugger agent. At Thorough effort with ambiguous bugs, spawns 3 parallel debugger teammates for competing hypothesis investigation. Hypothesis, evidence, root cause, fix. Like the scientific method, except it actually finds things. |
+| `/vbw:debug` | Systematic bug investigation via the Debugger agent. Persists findings to a debug session file so investigations survive across sessions — resume with `--resume` or target a specific session with `--session <id>`. At Thorough effort with ambiguous bugs, spawns 3 parallel debugger teammates for competing hypothesis investigation. Route completed investigations through `/vbw:qa` and `/vbw:verify` for the full QA→UAT lifecycle without needing a phase. |
 | `/vbw:todo` | Add an item to a persistent backlog that survives across sessions. For all those "we should really..." thoughts that usually die in a terminal tab. |
 | `/vbw:list-todos` | Browse pending todos, filter by priority, and pick one to act on. Computes ages, formats a numbered list, and offers routing to `/vbw:fix`, `/vbw:debug`, `/vbw:vibe`, or `/vbw:research`. |
 | `/vbw:pause` | Save session notes for next time. State auto-persists in `.vbw-planning/` -- pause just lets you leave a sticky note for future you. |
@@ -570,6 +570,7 @@ Quick reference for every key in `config/defaults.json`, in order. Click the sec
 | `rolling_summary` | `false` | [Cross-phase context](#cross-phase-context) |
 | `require_phase_discussion` | `false` | [Agent behavior](#agent-behavior) |
 | `auto_uat` | `false` | [Autonomy levels](#autonomy-levels) |
+| `max_uat_remediation_rounds` | `false` | [Autonomy levels](#autonomy-levels) |
 | `statusline_hide_limits` | `false` | [Display](#display) |
 | `statusline_hide_limits_for_api_key` | `false` | [Display](#display) |
 | `statusline_hide_agent_in_tmux` | `false` | [Display](#display) |
@@ -649,6 +650,26 @@ Autonomy interacts with effort profiles. At `cautious`, plan approval expands to
 ```text
 /vbw:config auto_uat true
 ```
+
+**`max_uat_remediation_rounds`** — Controls only the UAT remediation auto-continuation loop after re-verification finds issues. It does **not** apply to QA remediation. The injected default is `false`, which means unlimited rounds. If the key is missing or the persisted value is malformed, VBW also fails open to unlimited.
+
+Finite cap example:
+
+```json
+{
+  "max_uat_remediation_rounds": 3
+}
+```
+
+Unlimited example:
+
+```json
+{
+  "max_uat_remediation_rounds": false
+}
+```
+
+`0` is also treated as unlimited.
 
 ### Commits, push, and planning artifacts
 

@@ -116,9 +116,41 @@ write_verification_with_issues() {
   } > "$PHASE_DIR/$relative_path"
 }
 
-@test "track-known-issues: sync-summaries creates registry and de-duplicates by test+file" {
+write_round_summary_with_known_issue_outcomes() {
+  local relative_path="$1"
+  local outcomes_json="$2"
+  mkdir -p "$(dirname "$PHASE_DIR/$relative_path")"
+  {
+    echo '---'
+    echo 'phase: 03'
+    echo 'round: 01'
+    echo 'title: Round summary with known issue outcomes'
+    echo 'type: remediation'
+    echo 'status: complete'
+    echo 'completed: 2026-04-08'
+    echo 'tasks_completed: 1'
+    echo 'tasks_total: 1'
+    echo 'commit_hashes: []'
+    echo 'files_modified:'
+    printf '  - "%s"\n' "03-test-phase/${relative_path}"
+    echo 'deviations: []'
+    echo 'known_issue_outcomes:'
+    while IFS= read -r outcome; do
+      [ -n "$outcome" ] || continue
+      printf "  - '%s'\n" "$outcome"
+    done <<< "$outcomes_json"
+    echo '---'
+    echo
+    echo '## Task 1: Document known issue outcomes'
+    echo
+    echo '### What Was Built'
+    echo '- Captured the carried known-issue disposition for this round'
+  } > "$PHASE_DIR/$relative_path"
+}
+
+@test "track-known-issues: sync-summaries creates registry and de-duplicates by test+file+error" {
   write_summary_with_preexisting "03-01-SUMMARY.md" "03-01" $'TransferMatchingServiceTests (Tests/TransferMatchingServiceTests.swift): debugTestConfiguration missing\nFIGIRegistryServiceTests.swift: compositeFigi missing'
-  write_summary_with_preexisting "03-02-SUMMARY.md" "03-02" $'TransferMatchingServiceTests (Tests/TransferMatchingServiceTests.swift): newer duplicate error text'
+  write_summary_with_preexisting "03-02-SUMMARY.md" "03-02" $'TransferMatchingServiceTests (Tests/TransferMatchingServiceTests.swift): debugTestConfiguration missing'
 
   run bash "$SCRIPT" sync-summaries "$PHASE_DIR"
 
@@ -175,9 +207,20 @@ write_verification_with_issues() {
   [ "$output" = "FIGIRegistryServiceTests" ]
 }
 
-@test "track-known-issues: round verification with no issues clears registry" {
+@test "track-known-issues: round verification with no issues preserves existing registry" {
   write_summary_with_preexisting "03-01-SUMMARY.md" "03-01" 'TransferMatchingServiceTests.swift: debugTestConfiguration missing'
   bash "$SCRIPT" sync-summaries "$PHASE_DIR" >/dev/null
+  write_verification_with_issues "remediation/qa/round-01/R01-VERIFICATION.md" ''
+
+  run bash "$SCRIPT" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_status=present"* ]]
+  [[ "$output" == *"known_issues_count=1"* ]]
+  [ -f "$PHASE_DIR/known-issues.json" ]
+}
+
+@test "track-known-issues: round verification with no prior registry and no issues stays empty" {
   write_verification_with_issues "remediation/qa/round-01/R01-VERIFICATION.md" ''
 
   run bash "$SCRIPT" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
@@ -186,6 +229,24 @@ write_verification_with_issues() {
   [[ "$output" == *"known_issues_status=missing"* ]]
   [[ "$output" == *"known_issues_count=0"* ]]
   [ ! -f "$PHASE_DIR/known-issues.json" ]
+}
+
+@test "track-known-issues: issues differing only by error are kept distinct" {
+  local ver_path="remediation/qa/round-01/R01-VERIFICATION.md"
+  local issue_rows
+  issue_rows=$'TestCrash\tCrashTests.swift\tsignal trap\nTestCrash\tCrashTests.swift\tnull pointer'
+  write_verification_with_issues "$ver_path" "$issue_rows"
+
+  run bash "$SCRIPT" sync-verification "$PHASE_DIR" "$PHASE_DIR/$ver_path"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known_issues_count=2"* ]]
+  run jq -r '.issues | length' "$PHASE_DIR/known-issues.json"
+  [ "$output" = "2" ]
+  run jq -r '.issues[0].error' "$PHASE_DIR/known-issues.json"
+  [ "$output" = "null pointer" ]
+  run jq -r '.issues[1].error' "$PHASE_DIR/known-issues.json"
+  [ "$output" = "signal trap" ]
 }
 
 @test "track-known-issues: status reports malformed registry" {
@@ -429,4 +490,220 @@ write_known_issues_registry() {
   # Both entries present
   grep -q "testFoo " "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "testFooBar" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos includes accepted non-blocking round outcomes when registry is empty" {
+  write_state_md_with_todos "None."
+  echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-01/R01-SUMMARY.md" '{"test":"OptionAdjustmentE2ETests (all 10)","file":"OptionAdjustmentE2ETests.swift","error":"Signal Trap","disposition":"accepted-process-exception","rationale":"Pre-existing SwiftData crash accepted for this phase"}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  grep -q "\[KNOWN-ISSUE\] OptionAdjustmentE2ETests (all 10) (OptionAdjustmentE2ETests.swift): Signal Trap" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "(see remediation/qa/round-01/R01-SUMMARY.md)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos updates already-tracked issue with accepted disposition" {
+  # Issue already tracked in STATE.md without disposition annotation
+  write_state_md_with_todos "- [KNOWN-ISSUE] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap (phase 03, seen 1x) (added 2026-04-01)"
+  # Same issue in registry
+  write_known_issues_registry "03" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","last_seen_in":"03-01-SUMMARY.md","last_seen_round":1,"times_seen":1}'
+  # Round summary now accepts it as process-exception
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-02/R02-SUMMARY.md" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","disposition":"accepted-process-exception","rationale":"Pre-existing SwiftData crash accepted for this phase"}'
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  # The existing line should be rewritten with the accepted annotation
+  grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # The old un-annotated line should be gone
+  ! grep -q "\[KNOWN-ISSUE\] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap (phase 03, seen 1x) (added 2026-04-01)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos aggregates accepted outcomes across multiple remediation rounds" {
+  # R01 accepts an issue, R02 has no known_issue_outcomes → promote-todos must still see R01's acceptance
+  write_state_md_with_todos "None."
+  echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
+
+  # R01 summary with accepted-process-exception outcome
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-01/R01-SUMMARY.md" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","disposition":"accepted-process-exception","rationale":"Pre-existing crash accepted for this phase"}'
+
+  # R02 summary with no known_issue_outcomes (separate code fix, no carried issues)
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf '%s\n' \
+    '---' \
+    'phase: 03' \
+    'round: 02' \
+    'title: Code fix round' \
+    'type: remediation' \
+    'status: complete' \
+    'completed: 2026-04-09' \
+    'tasks_completed: 1' \
+    'tasks_total: 1' \
+    'commit_hashes: []' \
+    'files_modified:' \
+    '  - "src/Fix.swift"' \
+    'deviations: []' \
+    '---' \
+    '' \
+    '## Task 1: Code fix' \
+    '' \
+    '### What Was Built' \
+    '- Fixed unrelated code issue' \
+    > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  grep -q "\[KNOWN-ISSUE\] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  # Source artifact should reference R01, not R02
+  grep -q "(see remediation/qa/round-01/R01-SUMMARY.md)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos later resolved disposition overrides earlier acceptance and prevents promotion" {
+  # R01 accepts issue as process-exception, R02 resolves it → both dispositions
+  # enter the aggregator via "all" filter, merge_issue_sets gives R02's "resolved"
+  # priority, and the post-merge filter excludes non-accepted-process-exception entries
+  write_state_md_with_todos "None."
+  echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
+
+  # R01 accepts the issue
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-01/R01-SUMMARY.md" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","disposition":"accepted-process-exception","rationale":"Accepted for this phase"}'
+
+  # R02 resolves the same issue (enters accumulator via "all" filter, filtered post-merge)
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf '%s\n' \
+    '---' \
+    'phase: 03' \
+    'round: 02' \
+    'title: Fix round' \
+    'type: remediation' \
+    'status: complete' \
+    'completed: 2026-04-09' \
+    'tasks_completed: 1' \
+    'tasks_total: 1' \
+    'commit_hashes: []' \
+    'files_modified:' \
+    '  - "src/Fix.swift"' \
+    'deviations: []' \
+    "known_issue_outcomes:" \
+    "  - '{\"test\":\"SignalTrapTests\",\"file\":\"SignalTrapTests.swift\",\"error\":\"SwiftData signal trap\",\"disposition\":\"resolved\",\"rationale\":\"Fixed the crash\"}'" \
+    '---' \
+    '' \
+    '## Task 1: Fix crash' \
+    '' \
+    '### What Was Built' \
+    '- Fixed the SwiftData signal trap' \
+    > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # R02's "resolved" disposition enters the accumulator (parser uses "all" filter during
+  # aggregation), merge_issue_sets propagates R02's non-empty disposition over R01's
+  # accepted-process-exception. The post-merge filter then excludes the now-"resolved"
+  # entry. Result: nothing is promoted because the issue was resolved in a later round.
+  [[ "$output" == *"promoted_count=0"* ]]
+  # STATE.md should still have the placeholder — no promotion occurred
+  grep -q "None\." "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos aggregates when later round has explicit empty known_issue_outcomes" {
+  # Like the multi-round test but R02 has known_issue_outcomes: [] explicitly instead of omitting the key
+  write_state_md_with_todos "None."
+  echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
+
+  # R01 summary with accepted-process-exception outcome
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-01/R01-SUMMARY.md" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","disposition":"accepted-process-exception","rationale":"Pre-existing crash accepted for this phase"}'
+
+  # R02 summary with explicit empty known_issue_outcomes array
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf '%s\n' \
+    '---' \
+    'phase: 03' \
+    'round: 02' \
+    'title: Code fix round' \
+    'type: remediation' \
+    'status: complete' \
+    'completed: 2026-04-09' \
+    'tasks_completed: 1' \
+    'tasks_total: 1' \
+    'commit_hashes: []' \
+    'files_modified:' \
+    '  - "src/Fix.swift"' \
+    'deviations: []' \
+    'known_issue_outcomes: []' \
+    '---' \
+    '' \
+    '## Task 1: Code fix' \
+    '' \
+    '### What Was Built' \
+    '- Fixed unrelated code issue' \
+    > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=1"* ]]
+  grep -q "\[KNOWN-ISSUE\] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "(see remediation/qa/round-01/R01-SUMMARY.md)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos ignores invalid disposition in later round during aggregation" {
+  # R01 accepts an issue, R02 has a misspelled disposition for the same issue.
+  # The parser's IN() validation rejects the invalid disposition, so R01's
+  # accepted-process-exception survives because the invalid entry never enters the accumulator.
+  write_state_md_with_todos "None."
+  echo '{"schema_version":1,"phase":"03","issues":[]}' > "$PHASE_DIR/known-issues.json"
+
+  # R01 accepts the issue
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-01/R01-SUMMARY.md" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","disposition":"accepted-process-exception","rationale":"Accepted for this phase"}'
+
+  # R02 has the same issue with a misspelled disposition
+  mkdir -p "$PHASE_DIR/remediation/qa/round-02"
+  printf '%s\n' \
+    '---' \
+    'phase: 03' \
+    'round: 02' \
+    'title: Fix round' \
+    'type: remediation' \
+    'status: complete' \
+    'completed: 2026-04-09' \
+    'tasks_completed: 1' \
+    'tasks_total: 1' \
+    'commit_hashes: []' \
+    'files_modified:' \
+    '  - "src/Fix.swift"' \
+    'deviations: []' \
+    "known_issue_outcomes:" \
+    "  - '{\"test\":\"SignalTrapTests\",\"file\":\"SignalTrapTests.swift\",\"error\":\"SwiftData signal trap\",\"disposition\":\"reoslved\",\"rationale\":\"Typo disposition\"}'" \
+    '---' \
+    '' \
+    '## Task 1: Fix' \
+    '' \
+    '### What Was Built' \
+    '- Attempted fix' \
+    > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # The invalid disposition "reoslved" is rejected by the IN() filter, so R01's
+  # accepted-process-exception survives and the issue is promoted
+  [[ "$output" == *"promoted_count=1"* ]]
+  grep -q "\[KNOWN-ISSUE\] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }

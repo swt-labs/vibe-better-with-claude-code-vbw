@@ -208,23 +208,45 @@ new_issue_object() {
   local error="$3"
   local source_path="$4"
   local round="$5"
+  local disposition="${6:-}"
 
-  jq -cn \
-    --arg test "$test" \
-    --arg file "$file" \
-    --arg error "$error" \
-    --arg source_path "$source_path" \
-    --argjson round "$round" \
-    '{
-      test: $test,
-      file: $file,
-      error: $error,
-      first_seen_in: $source_path,
-      last_seen_in: $source_path,
-      first_seen_round: $round,
-      last_seen_round: $round,
-      times_seen: 1
-    }'
+  if [ -n "$disposition" ]; then
+    jq -cn \
+      --arg test "$test" \
+      --arg file "$file" \
+      --arg error "$error" \
+      --arg source_path "$source_path" \
+      --arg disposition "$disposition" \
+      --argjson round "$round" \
+      '{
+        test: $test,
+        file: $file,
+        error: $error,
+        first_seen_in: $source_path,
+        last_seen_in: $source_path,
+        first_seen_round: $round,
+        last_seen_round: $round,
+        times_seen: 1,
+        disposition: $disposition
+      }'
+  else
+    jq -cn \
+      --arg test "$test" \
+      --arg file "$file" \
+      --arg error "$error" \
+      --arg source_path "$source_path" \
+      --argjson round "$round" \
+      '{
+        test: $test,
+        file: $file,
+        error: $error,
+        first_seen_in: $source_path,
+        last_seen_in: $source_path,
+        first_seen_round: $round,
+        last_seen_round: $round,
+        times_seen: 1
+      }'
+  fi
 }
 
 parse_frontmatter_issue_json() {
@@ -329,7 +351,7 @@ extract_summary_issues_json() {
     fi
   done < <(find "$PHASE_DIR" -maxdepth 1 ! -name '.*' \( -name '*-SUMMARY.md' -o -name 'SUMMARY.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort)) > "$tmp_json"
 
-  jq -s 'map(select(type == "object")) | unique_by(.test, .file) | sort_by(.test, .file)' "$tmp_json"
+  jq -s 'map(select(type == "object")) | unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_json"
   rm -f "$tmp_json"
 }
 
@@ -366,6 +388,84 @@ round_for_verification_path() {
   fi
 }
 
+round_for_phase_artifact_path() {
+  local source_rel="$1"
+  local base
+  base=$(basename "$source_rel")
+  if [[ "$base" =~ ^R([0-9]+)- ]]; then
+    printf '%d' "$((10#${BASH_REMATCH[1]}))"
+  else
+    echo 0
+  fi
+}
+
+extract_summary_known_issue_outcomes_json() {
+  local summary_file="$1"
+  local source_rel="$2"
+  local round="$3"
+  local disposition_filter="${4:-accepted-process-exception}"
+  local tmp_json
+  local item
+  tmp_json=$(mktemp)
+
+  while IFS= read -r item; do
+    item=$(trim "$item")
+    [ -n "$item" ] || continue
+    if ! printf '%s' "$item" | jq -e --arg filter "$disposition_filter" '
+      type == "object"
+      and (.test | type == "string")
+      and (.file | type == "string")
+      and (.error | type == "string")
+      and (
+        if $filter == "all" then
+          .disposition | type == "string" and IN("accepted-process-exception","resolved","unresolved")
+        else
+          .disposition == $filter
+        end
+      )
+    ' >/dev/null 2>&1; then
+      continue
+    fi
+
+    test=$(printf '%s' "$item" | jq -r '.test')
+    file=$(printf '%s' "$item" | jq -r '.file')
+    error=$(printf '%s' "$item" | jq -r '.error')
+    disposition=$(printf '%s' "$item" | jq -r '.disposition')
+    new_issue_object \
+      "$(strip_code_ticks "$test")" \
+      "$(strip_code_ticks "$file")" \
+      "$(strip_code_ticks "$error")" \
+      "$source_rel" \
+      "$round" \
+      "$disposition"
+  done < <(extract_frontmatter_array_items "$summary_file" known_issue_outcomes) > "$tmp_json"
+
+  jq -s 'map(select(type == "object")) | unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_json"
+  rm -f "$tmp_json"
+}
+
+aggregate_summary_known_issue_outcomes_json() {
+  # Aggregate accepted-process-exception outcomes across ALL remediation round
+  # summaries, not just the latest. When the same [test, file, error] appears in
+  # multiple rounds, the latest round's disposition wins (merge_issue_sets
+  # semantics with ascending sort-V processing order).
+  local accumulated='[]'
+  local summary_file source_rel round round_json
+  while IFS= read -r summary_file; do
+    [ -n "$summary_file" ] || continue
+    source_rel=$(relative_to_phase "$summary_file")
+    round=$(round_for_phase_artifact_path "$source_rel")
+    round_json=$(extract_summary_known_issue_outcomes_json "$summary_file" "$source_rel" "$round" "all")
+    [ "$round_json" != "[]" ] || continue
+    accumulated=$(merge_issue_sets "$accumulated" "$round_json")
+  done < <(find "$PHASE_DIR/remediation/qa" -maxdepth 2 -type f -name 'R*-SUMMARY.md' 2>/dev/null | (sort -V 2>/dev/null || sort))
+  # After merging all rounds, filter to only accepted-process-exception dispositions.
+  # This ensures a later round's "resolved" disposition overrides an earlier acceptance
+  # via merge_issue_sets, then the resolved entry is excluded from the final output.
+  accumulated=$(printf '%s' "$accumulated" | jq '[.[] | select(.disposition == "accepted-process-exception")]')
+  printf '%s' "$accumulated"
+}
+
 extract_verification_issues_json() {
   local verification_file="$1"
   local source_rel="$2"
@@ -383,7 +483,7 @@ extract_verification_issues_json() {
     new_issue_object "$test" "$file" "$error" "$source_rel" "$round"
   done > "$tmp_json"
 
-  jq -s 'map(select(type == "object")) | unique_by(.test, .file) | sort_by(.test, .file)' "$tmp_json"
+  jq -s 'map(select(type == "object")) | unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_json"
   rm -f "$tmp_json"
 }
 
@@ -394,7 +494,7 @@ merge_issue_sets() {
   jq -cn \
     --argjson existing "$existing_json" \
     --argjson incoming "$incoming_json" '
-      def issue_key: (.test + "\u001f" + .file);
+      def issue_key: (.test + "\u001f" + .file + "\u001f" + (.error // ""));
       def mapify($items): reduce $items[] as $item ({}; .[($item | issue_key)] = $item);
       def merge_issue($old; $new):
         if $old == null then
@@ -409,6 +509,7 @@ merge_issue_sets() {
               else (($old.times_seen // 1) + 1)
               end
             )
+          | if ($new.disposition // "") != "" then .disposition = $new.disposition else . end
         end;
       ($existing | mapify(.)) as $existing_map
       | reduce $incoming[] as $issue (
@@ -416,7 +517,7 @@ merge_issue_sets() {
           .[($issue | issue_key)] = merge_issue(.[($issue | issue_key)]; $issue)
         )
       | [.[]]
-      | sort_by(.test, .file)
+      | sort_by(.test, .file, .error)
     '
 }
 
@@ -427,7 +528,7 @@ replace_issue_set() {
   jq -cn \
     --argjson existing "$existing_json" \
     --argjson incoming "$incoming_json" '
-      def issue_key: (.test + "\u001f" + .file);
+      def issue_key: (.test + "\u001f" + .file + "\u001f" + (.error // ""));
       def mapify($items): reduce $items[] as $item ({}; .[($item | issue_key)] = $item);
       def merge_issue($old; $new):
         if $old == null then
@@ -442,10 +543,11 @@ replace_issue_set() {
               else (($old.times_seen // 1) + 1)
               end
             )
+          | if ($new.disposition // "") != "" then .disposition = $new.disposition else . end
         end;
       ($existing | mapify(.)) as $existing_map
       | [ $incoming[] | merge_issue($existing_map[issue_key]; .) ]
-      | sort_by(.test, .file)
+      | sort_by(.test, .file, .error)
     '
 }
 
@@ -467,7 +569,7 @@ write_registry() {
       {
         schema_version: 1,
         phase: $phase,
-        issues: ($issues | sort_by(.test, .file))
+        issues: ($issues | sort_by(.test, .file, .error))
       }
     ' > "$tmp_file"
   mv "$tmp_file" "$REGISTRY_PATH"
@@ -523,6 +625,15 @@ sync_verification() {
     if [ "$existing_state" = "malformed" ]; then
       existing_json='[]'
     fi
+    local incoming_count
+    incoming_count=$(printf '%s' "$incoming_json" | jq 'length' 2>/dev/null || echo 0)
+    if [ "$incoming_count" -eq 0 ] && [ "$existing_state" = "present" ]; then
+      # Empty incoming from round verification means "no data about pre-existing
+      # issues" (QA omitted the section or it was empty). Preserve existing
+      # registry rather than deleting it — the existing state is authoritative.
+      status_output "$existing_state" "$(printf '%s' "$existing_json" | jq 'length')"
+      return 0
+    fi
     final_json=$(replace_issue_set "$existing_json" "$incoming_json")
     write_registry "$final_json"
     return 0
@@ -558,10 +669,12 @@ promote_todos() {
     return 0
   fi
 
-  local issues_json
+  local issues_json accepted_outcomes_json promotable_json
   issues_json=$(load_registry_issues)
+  accepted_outcomes_json=$(aggregate_summary_known_issue_outcomes_json)
+  promotable_json=$(merge_issue_sets "$issues_json" "$accepted_outcomes_json")
   local total
-  total=$(printf '%s' "$issues_json" | jq 'length')
+  total=$(printf '%s' "$promotable_json" | jq 'length')
 
   if [ "$total" -eq 0 ] 2>/dev/null; then
     echo "promoted_count=0"
@@ -610,16 +723,22 @@ promote_todos() {
   local promoted=0
   local already=0
   local new_entries=""
+  local disposition_updates=""
+  local promoted_details=""
 
   # Iterate issues and check for duplicates
   local i=0
   while [ "$i" -lt "$total" ]; do
-    local test_name file_path error_msg times_seen source_artifact
-    test_name=$(printf '%s' "$issues_json" | jq -r ".[$i].test // \"unknown\"")
-    file_path=$(printf '%s' "$issues_json" | jq -r ".[$i].file // \"unknown\"")
-    error_msg=$(printf '%s' "$issues_json" | jq -r ".[$i].error // \"unspecified error\"")
-    times_seen=$(printf '%s' "$issues_json" | jq -r ".[$i].times_seen // 1")
-    source_artifact=$(printf '%s' "$issues_json" | jq -r ".[$i].last_seen_in // \"\"")
+    local test_name file_path error_msg times_seen source_artifact disposition
+    test_name=$(printf '%s' "$promotable_json" | jq -r ".[$i].test // \"unknown\"")
+    file_path=$(printf '%s' "$promotable_json" | jq -r ".[$i].file // \"unknown\"")
+    error_msg=$(printf '%s' "$promotable_json" | jq -r ".[$i].error // \"unspecified error\"")
+    times_seen=$(printf '%s' "$promotable_json" | jq -r ".[$i].times_seen // 1")
+    source_artifact=$(printf '%s' "$promotable_json" | jq -r ".[$i].last_seen_in // \"\"")
+    disposition=$(printf '%s' "$promotable_json" | jq -r ".[$i].disposition // \"\"")
+
+    # Preserve full error for detail context before truncating for STATE.md readability
+    local full_error_msg="$error_msg"
 
     # Truncate error message for todo readability (max 80 chars)
     if [ "${#error_msg}" -gt 80 ]; then
@@ -628,23 +747,66 @@ promote_todos() {
 
     # Dedup by test+file pair regardless of tag prefix (matches [KNOWN-ISSUE], [HIGH], untagged, etc.)
     local is_dup=false
-    local dedup_key="${test_name} (${file_path}):"
+    local needs_disposition_update=false
+    local dedup_key="${test_name} (${file_path}): ${error_msg}"
+    local existing_line=""
     if printf '%s' "$todos_section" | grep -qF "$dedup_key"; then
       is_dup=true
+      # Check if existing line needs a disposition update
+      if [ "$disposition" = "accepted-process-exception" ]; then
+        existing_line=$(printf '%s' "$todos_section" | grep -F "$dedup_key" | head -1)
+        if ! printf '%s' "$existing_line" | grep -qF "accepted as process-exception"; then
+          needs_disposition_update=true
+        fi
+      fi
     fi
 
-    if [ "$is_dup" = true ]; then
+    local source_ref=""
+    if [ -n "$source_artifact" ]; then
+      source_ref=" (see ${source_artifact})"
+    fi
+
+    if [ "$is_dup" = true ] && [ "$needs_disposition_update" = true ]; then
+      # Already tracked but disposition changed — rewrite the line
+      # Preserve any existing ref tag from the original line
+      local existing_ref=""
+      if [[ "$existing_line" =~ \(ref:([a-f0-9]{8})\) ]]; then
+        existing_ref=" (ref:${BASH_REMATCH[1]})"
+      fi
+      local new_line="- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})${existing_ref}"
+      disposition_updates="${disposition_updates}${existing_line}"$'\x1f'"${new_line}"$'\n'
+      promoted=$((promoted + 1))
+    elif [ "$is_dup" = true ]; then
       already=$((already + 1))
     else
-      local source_ref=""
-      if [ -n "$source_artifact" ]; then
-        source_ref=" (see ${source_artifact})"
+      # Compute ref hash for todo-details linkage
+      local ref_hash
+      ref_hash=$(printf '%s' "${test_name} (${file_path}): ${error_msg}" | shasum | cut -c1-8)
+
+      if [ "$disposition" = "accepted-process-exception" ]; then
+        new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today}) (ref:${ref_hash})"$'\n'
+      else
+        new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today}) (ref:${ref_hash})"$'\n'
       fi
-      new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})"$'\n'
+      # Collect detail for newly promoted items (use full_error_msg for rich context)
+      # Base64-encode full_error_msg to prevent newlines from breaking field separator parsing
+      local encoded_error
+      encoded_error=$(printf '%s' "$full_error_msg" | base64 | tr -d '\n')
+      promoted_details="${promoted_details}${ref_hash}"$'\x1f'"${test_name}"$'\x1f'"${file_path}"$'\x1f'"${encoded_error}"$'\x1f'"${times_seen}"$'\x1f'"${source_artifact}"$'\x1f'"${disposition}"$'\x1f'"${error_msg}"$'\n'
       promoted=$((promoted + 1))
     fi
     i=$((i + 1))
   done
+
+  # Apply disposition updates (rewrite existing lines in-place)
+  if [ -n "$disposition_updates" ]; then
+    while IFS=$'\x1f' read -r old_line new_line; do
+      [ -n "$old_line" ] || continue
+      state_content=$(printf '%s\n' "$state_content" | OLD_LINE="$old_line" NEW_LINE="$new_line" awk '
+        { if (index($0, ENVIRON["OLD_LINE"]) > 0) print ENVIRON["NEW_LINE"]; else print }
+      ')
+    done <<< "$disposition_updates"
+  fi
 
   if [ "$promoted" -eq 0 ]; then
     echo "promoted_count=0"
@@ -658,38 +820,67 @@ promote_todos() {
   local tmp_file
   tmp_file=$(mktemp "${state_path}.tmp.XXXXXX")
 
-  # Replace "None." placeholder in Todos section, or append to existing todos
-  # Build awk anchor pattern from todo_anchor (escaping for regex)
-  local awk_anchor awk_stop_pattern
-  awk_anchor=$(printf '%s' "$todo_anchor" | sed 's/[.[\*^$()+?{|]/\\&/g')
-  if [ "$todo_anchor" = "### Pending Todos" ]; then
-    # Legacy layout: stop explicitly at ### Completed Todos or any ## heading
-    # (^##) already catches ### headings since ### starts with ##; the
-    # explicit (^### Completed Todos$) documents the expected boundary)
-    awk_stop_pattern='(^### Completed Todos$)|(^##)'
+  if [ -z "$new_entries" ]; then
+    # Disposition-only updates — state_content already has the rewrites applied
+    printf '%s\n' "$state_content" > "$tmp_file"
   else
-    awk_stop_pattern='^##'
-  fi
+    # New entries to add — build awk anchor pattern from todo_anchor
+    local awk_anchor awk_stop_pattern
+    awk_anchor=$(printf '%s' "$todo_anchor" | sed 's/[.[\*^$()+?{|]/\\&/g')
+    if [ "$todo_anchor" = "### Pending Todos" ]; then
+      awk_stop_pattern='(^### Completed Todos$)|(^##)'
+    else
+      awk_stop_pattern='^##'
+    fi
 
-  if printf '%s' "$todos_section" | grep -qE '^\s*None\.?\s*$'; then
-    # Replace the placeholder with new entries
-    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
-      $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
-      in_todos && $0 ~ ENVIRON["AWK_STOP"] { in_todos=0; print; next }
-      in_todos && /^[[:space:]]*None\.?[[:space:]]*$/ { print ENVIRON["ENTRIES"]; in_todos=0; next }
-      { print }
-    ' > "$tmp_file"
-  else
-    # Append new entries before the next section heading after the anchor
-    printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
-      $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
-      in_todos && $0 ~ ENVIRON["AWK_STOP"] { print ENVIRON["ENTRIES"]; print ""; in_todos=0; print; next }
-      { print }
-      END { if (in_todos) { print ENVIRON["ENTRIES"] } }
-    ' > "$tmp_file"
+    if printf '%s' "$todos_section" | grep -qE '^\s*None\.?\s*$'; then
+      # Replace the placeholder with new entries
+      printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
+        $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
+        in_todos && $0 ~ ENVIRON["AWK_STOP"] { in_todos=0; print; next }
+        in_todos && /^[[:space:]]*None\.?[[:space:]]*$/ { print ENVIRON["ENTRIES"]; in_todos=0; next }
+        { print }
+      ' > "$tmp_file"
+    else
+      # Append new entries before the next section heading after the anchor
+      printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
+        $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
+        in_todos && $0 ~ ENVIRON["AWK_STOP"] { print ENVIRON["ENTRIES"]; print ""; in_todos=0; print; next }
+        { print }
+        END { if (in_todos) { print ENVIRON["ENTRIES"] } }
+      ' > "$tmp_file"
+    fi
   fi
 
   mv "$tmp_file" "$state_path"
+
+  # Store extended detail for each promoted issue in todo-details.json
+  local detail_script=""
+  local session_key="${CLAUDE_SESSION_ID:-default}"
+  local link="/tmp/.vbw-plugin-root-link-${session_key}"
+  if [ -f "${link}/scripts/todo-details.sh" ]; then
+    detail_script="${link}/scripts/todo-details.sh"
+  fi
+  if [ -n "$detail_script" ] && [ -f "$detail_script" ]; then
+    local details_path="${planning_dir}/todo-details.json"
+    while IFS=$'\x1f' read -r hash p_test p_file p_error p_times p_source p_disp p_summary_error; do
+      [ -n "$hash" ] || continue
+      # Decode base64-encoded full error message (used in context)
+      p_error=$(printf '%s' "$p_error" | base64 -d 2>/dev/null) || p_error="(decode error)"
+      # Use truncated error_msg for summary (matches STATE.md bullet text)
+      local summary_error="${p_summary_error:-$p_error}"
+
+      local detail_json
+      detail_json=$(jq -n \
+        --arg summary "${p_test} (${p_file}): ${summary_error}" \
+        --arg context "Known issue from phase ${phase_num}. Test: ${p_test}. File: ${p_file}. Error: ${p_error}. Seen ${p_times} time(s). Source: ${p_source:-unknown}. Disposition: ${p_disp:-unresolved}." \
+        --arg file "$p_file" \
+        --arg added "$today" \
+        '{summary: $summary, context: $context, files: [$file], added: $added, source: "known-issue"}')
+
+      bash "$detail_script" add "$hash" "$detail_json" "$details_path" >/dev/null 2>&1 || true
+    done <<< "$promoted_details"
+  fi
 
   echo "promoted_count=$promoted"
   echo "already_tracked_count=$already"

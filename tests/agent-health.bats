@@ -143,7 +143,9 @@ run_health_via_wrapper() {
 EOF
 
   # Create health file with dead PID
-  echo '{"pid":"99999","agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  local dead_pid
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  echo "{\"pid\":\"$dead_pid\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   # Run idle — should detect dead PID and clear owner
   run bash -c "echo '{\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle | jq -r '.hookSpecificOutput.additionalContext'"
@@ -172,9 +174,11 @@ EOF
 }
 EOF
 
-  echo '{"pid":"99998","agent_id":"agent-stop-001","agent_type":"vbw:vbw-dev","name":"dev-01"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  local dead_pid
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  echo "{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-stop-001\",\"agent_type\":\"vbw:vbw-dev\",\"name\":\"dev-01\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
-  run bash -c "echo '{\"pid\":\"99998\",\"agent_id\":\"agent-stop-001\",\"agent_type\":\"vbw:vbw-dev\",\"name\":\"dev-01\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
+  run bash -c "echo '{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-stop-001\",\"agent_type\":\"vbw:vbw-dev\",\"name\":\"dev-01\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
   [[ "$output" == *"task-stop"* ]]
 
   run jq -r '.owner' "$TASKS_DIR/task-stop.json"
@@ -201,9 +205,12 @@ EOF
   LIVE_PID=$!
 
   echo "{\"pid\":\"$LIVE_PID\",\"agent_id\":\"agent-live\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
-  echo '{"pid":"99997","agent_id":"agent-dead","agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
-  run bash -c "echo '{\"pid\":\"99997\",\"agent_id\":\"agent-dead\",\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
+  local dead_pid
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  echo "{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-dead\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+
+  run bash -c "echo '{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-dead\",\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
   [[ "$output" == *"another live teammate"* ]]
 
   run jq -r '.owner' "$TASKS_DIR/task-shared.json"
@@ -314,7 +321,9 @@ EOF
 
   echo "{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-map-duo\",\"pid\":\"$LIVE_PID\"}" | bash "$SCRIPTS_DIR/agent-health.sh" idle >/dev/null
 
-  run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-01\",\"pid\":\"99995\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle | jq -r '.hookSpecificOutput.additionalContext'"
+  local dead_pid
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-01\",\"pid\":\"$dead_pid\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle | jq -r '.hookSpecificOutput.additionalContext'"
   [[ "$output" == *"task-phase"* ]]
 
   run jq -r '.owner' "$TASKS_DIR/vbw-phase-01/task-phase.json"
@@ -352,7 +361,9 @@ EOF
 }
 EOF
 
-  run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-01\",\"pid\":\"99994\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle | jq -r '.hookSpecificOutput.additionalContext'"
+  local dead_pid
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  run bash -c "echo '{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-phase-01\",\"pid\":\"$dead_pid\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle | jq -r '.hookSpecificOutput.additionalContext'"
   [[ "$output" == *"still tracked"* ]]
 
   run jq -r '.owner' "$TASKS_DIR/vbw-phase-01/task-shared-nopid.json"

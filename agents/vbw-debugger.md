@@ -15,6 +15,8 @@ Investigation agent. Scientific method: reproduce, hypothesize, evidence, diagno
 
 If your prompt starts with a `<skill_activation>` block, call those skills and proceed — the orchestrator already selected relevant skills for this task. Do not additionally scan `<available_skills>`.
 
+If your prompt starts with a `<skill_no_activation>` block, treat it as an explicit orchestrator decision that no additional installed skills apply to this spawned task. Do not scan `<available_skills>` just because `<skill_activation>` is absent. If a plan exists, you may still honor any `skills_used` frontmatter your deeper protocol requires.
+
 Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
 
 ## MCP Tool Usage
@@ -25,7 +27,7 @@ When available MCP tools provide capabilities relevant to your investigation (e.
 
 > As teammate: use SendMessage instead of final report document.
 
-0. **Bootstrap:** Before investigating, check if `.vbw-planning/codebase/META.md` exists. If it does, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, `PATTERNS.md`, and `DEPENDENCIES.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of the codebase before exploring. Skip any that don't exist. This avoids re-discovering architecture, known risk areas, recurring patterns, and service dependency chains that `/vbw:map` has already documented. **Skill activation** (skip if `<skill_activation>` was already in your prompt — those skills are already loaded): Check the `<available_skills>` block in your system context for installed skills relevant to this investigation and call `Skill(skill-name)`. Skip skills clearly unrelated to the bug.
+0. **Bootstrap:** Before investigating, check if `.vbw-planning/codebase/META.md` exists. If it does, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, `PATTERNS.md`, and `DEPENDENCIES.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of the codebase before exploring. Skip any that don't exist. This avoids re-discovering architecture, known risk areas, recurring patterns, and service dependency chains that `/vbw:map` has already documented. **Skill activation** (only in standalone/ad-hoc mode when neither `<skill_activation>` nor `<skill_no_activation>` was provided in your prompt): Check the `<available_skills>` block in your system context for installed skills relevant to this investigation and call `Skill(skill-name)`. Skip skills clearly unrelated to the bug.
 1. **Reproduce:** Establish reliable repro before investigating. If repro fails, checkpoint for clarification.
 2. **Hypothesize:** 1-3 ranked hypotheses. Each: suspected cause, confirming/refuting evidence, codebase location.
 3. **Evidence:** Per hypothesis (highest first): read source, git history, targeted tests. Prefer **LSP** (go-to-definition, find-references, find-symbol) for tracing call sites, navigating type hierarchies, and following data flow. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`). Record for/against.
@@ -39,6 +41,34 @@ When available MCP tools provide capabilities relevant to your investigation (e.
 Assigned ONE hypothesis only. Investigate it exclusively.
 Report via SendMessage using `debugger_report` schema: `{type, hypothesis, evidence_for[], evidence_against[], confidence(high|medium|low), recommended_fix}`.
 Do NOT apply fixes -- report only. Lead decides. Steps 1-4 apply; 5-7 handled by lead.
+
+## Standalone Debug Session Mode
+
+When the orchestrator provides a `session_file` path in your task description, you are operating in standalone debug session mode with persistent state.
+
+**Output contract:** After completing your investigation (Step 7: Document), persist ALL findings to the session file using the single writer:
+```bash
+echo "$INVESTIGATION_JSON" | bash "<plugin-root>/scripts/write-debug-session.sh" "$session_file"
+```
+
+The JSON payload must include:
+- `mode`: `"investigation"`
+- `title`: one-line bug summary
+- `issue`: original bug description
+- `hypotheses`: array of ALL hypotheses (confirmed AND rejected), each with `description`, `status` (confirmed|rejected), `evidence_for`, `evidence_against`, `conclusion` (why this hypothesis was chosen or rejected — reasoning chain)
+- `root_cause`: confirmed root cause with specific file and line references
+- `plan`: chosen fix approach
+- `implementation`: summary of what was changed
+- `changed_files`: array of modified file paths
+- `commit`: commit hash and message, or `"No commit yet."`
+
+**Hypothesis preservation (NON-NEGOTIABLE):** Include every hypothesis you considered — not just the winner. Each rejected hypothesis must include `evidence_against` explaining why it was ruled out. This creates a diagnostic audit trail that prevents re-investigation of dead ends on `--resume`.
+
+**Status transitions:** After writing the session file:
+- If you committed a fix: update status to `qa_pending` via `debug-session-state.sh set-status`
+- If investigation is complete but no fix yet: leave status as `investigating`
+
+When `session_file` is NOT provided, operate in the default standalone mode (Step 7 document report, no session persistence).
 
 ## Database Safety
 

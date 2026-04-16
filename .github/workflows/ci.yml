@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
       - uses: actions/checkout@v4
 
@@ -40,7 +40,7 @@ jobs:
       - name: Run bats shard
         env:
           SHARD: ${{ matrix.shard }}
-          TOTAL_SHARDS: 4
+          TOTAL_SHARDS: 8
         run: |
           files=()
           while IFS= read -r file; do
@@ -99,38 +99,17 @@ jobs:
             PIDS+=("$!")
           }
 
-          run_check "init-todo"                "bash scripts/verify-init-todo.sh"
-          run_check "claude-bootstrap"         "bash scripts/verify-claude-bootstrap.sh"
-          run_check "bash-scripts-contract"    "bash testing/verify-bash-scripts-contract.sh"
-          run_check "commands-contract"        "bash testing/verify-commands-contract.sh"
-          run_check "no-inline-exec-spans"     "bash testing/verify-no-inline-exec-spans.sh"
-          run_check "plugin-root-resolution"   "bash testing/verify-plugin-root-resolution.sh"
-          run_check "hook-event-name"          "bash testing/verify-hook-event-name.sh"
-          run_check "plan-filename-convention" "bash testing/verify-plan-filename-convention.sh"
-          run_check "skill-activation"         "bash testing/verify-skill-activation.sh"
-          run_check "permission-mode-contract" "bash testing/verify-permission-mode-contract.sh"
-          run_check "delegation-guard"         "bash testing/verify-delegation-guard.sh"
-          run_check "agent-spawn-guard"        "bash testing/verify-agent-spawn-guard.sh"
-          run_check "summary-status-contract"  "bash testing/verify-summary-status-contract.sh"
-          run_check "summary-utils-contract"   "bash testing/verify-summary-utils-contract.sh"
-          run_check "exec-state-reconciliation" "bash testing/verify-exec-state-reconciliation.sh"
-          run_check "statusline-qa-lifecycle"  "bash testing/verify-statusline-qa-lifecycle.sh"
-          run_check "statusline-429-backoff"   "bash testing/verify-statusline-429-backoff.sh"
-          run_check "uat-recurrence"           "bash testing/verify-uat-recurrence.sh"
-          run_check "human-only-uat-contract"  "bash testing/verify-human-only-uat-contract.sh"
-          run_check "lead-research-conditional" "bash testing/verify-lead-research-conditional.sh"
-          run_check "lsp-setup"                "bash testing/verify-lsp-setup.sh"
-          run_check "lsp-first-policy"         "bash testing/verify-lsp-first-policy.sh"
-          run_check "claude-md-staleness"      "bash testing/verify-claude-md-staleness.sh"
-          run_check "dev-recovery-guidance"    "bash testing/verify-dev-recovery-guidance.sh"
-          run_check "live-validation-policy"   "bash testing/verify-live-validation-policy.sh"
-          run_check "ghost-team-cleanup"       "bash testing/verify-ghost-team-cleanup.sh"
-          run_check "ci-workflow-contract"     "bash testing/verify-ci-workflow-contract.sh"
-          run_check "discord-release-workflow" "bash testing/verify-discord-release-workflow-contract.sh"
-          run_check "prefer-teams-canonicalization" "bash testing/verify-prefer-teams-canonicalization.sh"
-          run_check "qa-persistence-contract"  "bash testing/verify-qa-persistence-contract.sh"
-          run_check "discussion-engine-contract" "bash testing/verify-discussion-engine-contract.sh"
-          run_check "verify-vibe"              "bash scripts/verify-vibe.sh"
+          # Discover contract tests from shared registry (single source of truth)
+          DISCOVERY_OUTPUT=$(bash testing/list-contract-tests.sh)
+          if [[ -z "$DISCOVERY_OUTPUT" ]]; then
+            echo "ERROR: No contract tests discovered from testing/list-contract-tests.sh"
+            exit 1
+          fi
+
+          while IFS=$'\t' read -r name path; do
+            [[ -z "$name" ]] && continue
+            run_check "$name" "bash $path"
+          done <<< "$DISCOVERY_OUTPUT"
 
           failures=0
           for i in "${!PIDS[@]}"; do

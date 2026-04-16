@@ -110,6 +110,43 @@ EOF
   [[ "$output" == *"layout=flat"* ]]
 }
 
+@test "flat layout: legacy single-word state archives from inferred current round" {
+  create_issues_uat
+  echo "done" > "$PHASE_DIR/.uat-remediation-stage"
+  touch "$PHASE_DIR/03-UAT-round-01.md"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$PHASE_DIR/03-UAT.md" ]
+  [ -f "$PHASE_DIR/03-UAT-round-02.md" ]
+  grep -q "^stage=research$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=03$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+}
+
+@test "flat layout: legacy single-word state uses inferred current round for cap checks" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": 2
+}
+EOF
+
+  create_issues_uat
+  echo "done" > "$PHASE_DIR/.uat-remediation-stage"
+  touch "$PHASE_DIR/03-UAT-round-01.md"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skipped=cap_reached"* ]]
+  [[ "$output" == *"next_round=03"* ]]
+  [ -f "$PHASE_DIR/03-UAT.md" ]
+  [ ! -f "$PHASE_DIR/03-UAT-round-02.md" ]
+  [ -f "$PHASE_DIR/.uat-remediation-stage" ]
+}
+
 @test "legacy remediation state file with key-value stage is accepted" {
   create_issues_uat
 
@@ -267,4 +304,95 @@ EOF
   # State advanced to next round (round-02, stage=research)
   grep -q "^stage=research$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
   grep -q "^round=02$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+}
+
+@test "round-dir layout: cap reached leaves current round untouched" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": 1
+}
+EOF
+
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
+---
+phase: "03"
+status: issues_found
+---
+# UAT — Remediation Round 01
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skipped=cap_reached"* ]]
+  [[ "$output" == *"max_rounds=1"* ]]
+  grep -q "^stage=done$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=01$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ ! -d "$PHASE_DIR/remediation/uat/round-02" ]
+  [ -f "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" ]
+}
+
+@test "flat layout: cap reached does not archive or advance state" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": 1
+}
+EOF
+
+  create_issues_uat
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  printf 'stage=done\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skipped=cap_reached"* ]]
+  [[ "$output" == *"max_rounds=1"* ]]
+  [ -f "$PHASE_DIR/03-UAT.md" ]
+  [ ! -f "$PHASE_DIR/03-UAT-round-02.md" ]
+  grep -q "^stage=done$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=01$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+}
+
+@test "round-dir layout: cap lookup uses repo-local config when phase path contains an earlier /phases/ segment" {
+  local nested_root="$TEST_TEMP_DIR/phases/nested-repo"
+  local nested_phase="$nested_root/.vbw-planning/phases/03-test-phase"
+
+  mkdir -p "$nested_phase/remediation/uat/round-01"
+  mkdir -p "$nested_root/.vbw-planning"
+
+  cat > "$nested_root/.vbw-planning/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": 1
+}
+EOF
+
+  cat > "$TEST_TEMP_DIR/config.json" <<'EOF'
+{
+  "max_uat_remediation_rounds": false
+}
+EOF
+
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > "$nested_phase/remediation/uat/.uat-remediation-stage"
+  cat > "$nested_phase/remediation/uat/round-01/R01-UAT.md" <<'EOF'
+---
+phase: "03"
+status: issues_found
+---
+# UAT — Remediation Round 01
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$nested_phase"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skipped=cap_reached"* ]]
+  [[ "$output" == *"max_rounds=1"* ]]
+  grep -q "^stage=done$" "$nested_phase/remediation/uat/.uat-remediation-stage"
+  grep -q "^round=01$" "$nested_phase/remediation/uat/.uat-remediation-stage"
+  [ ! -d "$nested_phase/remediation/uat/round-02" ]
 }

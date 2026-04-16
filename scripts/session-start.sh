@@ -35,18 +35,25 @@ if [ -f "$SCRIPT_DIR/phase-state-utils.sh" ]; then
 else
   count_phase_plans() {
     local dir="$1"
-    find "$dir" -maxdepth 1 ! -name '.*' \( -name '[0-9]*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | wc -l | tr -d ' '
+    local count=0
+    local f
+    for f in "$dir"/[0-9]*-PLAN.md "$dir"/PLAN.md; do
+      [ -f "$f" ] && count=$((count + 1))
+    done
+    echo "$count"
   }
   list_canonical_phase_dirs() {
     local parent="$1"
     [ -d "$parent" ] || return 0
-    find "$parent" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null |
-      while IFS= read -r dir; do
-        [ -n "$dir" ] || continue
-        base=$(basename "$dir")
-        case "$base" in [0-9]*-*) echo "$dir" ;; esac
-      done |
-      (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
+    local dirs=() d base
+    for d in "$parent"/*/; do
+      [ -d "$d" ] || continue
+      base="${d%/}"; base="${base##*/}"
+      case "$base" in [0-9]*-*) dirs+=("${d%/}") ;; esac
+    done
+    [ ${#dirs[@]} -gt 0 ] || return 0
+    printf '%s\n' "${dirs[@]}" | sort -V 2>/dev/null || \
+      printf '%s\n' "${dirs[@]}" | awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-
   }
   find_phase_dir_by_ref() {
     local planning_dir="$1" phase_ref="$2"
@@ -248,7 +255,7 @@ fi
 
 # Auto-migrate config if .vbw-planning exists.
 # Version marker retained here for backwards test compatibility.
-EXPECTED_FLAG_COUNT=40
+EXPECTED_FLAG_COUNT=41
 if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ]; then
   if ! bash "$SCRIPT_DIR/migrate-config.sh" "$PLANNING_DIR/config.json" >/dev/null 2>&1; then
     echo "WARNING: Config migration failed (jq error). Config may be missing flags (expected=$EXPECTED_FLAG_COUNT)." >&2
@@ -1058,6 +1065,17 @@ CTX="$CTX Phase: ${phase_pos}/${phase_total} (${phase_name}) -- ${phase_status}.
 CTX="$CTX Progress: ${progress_pct}%."
 CTX="$CTX Config: effort=${config_effort}, autonomy=${config_autonomy}, auto_commit=${config_auto_commit}, planning_tracking=${config_planning_tracking}, auto_push=${config_auto_push}, verification=${config_verification}, prefer_teams=${config_prefer_teams}, max_tasks=${config_max_tasks}."
 CTX="$CTX Next: ${NEXT_ACTION}."
+
+# --- Advisory state-consistency check (gated by validation_gates) ---
+_vg_enabled=$(jq -r '.validation_gates // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+if [ "$_vg_enabled" = "true" ] && [ -f "$SCRIPT_DIR/verify-state-consistency.sh" ]; then
+  _sc_json=$(bash "$SCRIPT_DIR/verify-state-consistency.sh" "$PLANNING_DIR" --mode advisory 2>/dev/null || true)
+  _sc_verdict=$(echo "$_sc_json" | jq -r '.verdict // "skip"' 2>/dev/null || echo "skip")
+  if [ "$_sc_verdict" = "fail" ]; then
+    _sc_failed=$(echo "$_sc_json" | jq -r '.failed_checks | join(", ")' 2>/dev/null || echo "unknown")
+    CTX="$CTX WARNING: State drift detected (${_sc_failed}). Investigate affected planning artifacts before continuing."
+  fi
+fi
 
 # --- GSD co-installation warning ---
 GSD_WARNING=""

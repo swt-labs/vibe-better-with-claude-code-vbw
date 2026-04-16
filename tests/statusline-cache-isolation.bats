@@ -7,6 +7,8 @@ STATUSLINE="$SCRIPTS_DIR/vbw-statusline.sh"
 
 setup() {
   setup_temp_dir
+  # Prevent find_vbw_root cache from leaking between tests
+  unset VBW_CONFIG_ROOT VBW_PLANNING_DIR
   export ORIG_UID=$(id -u)
   export TEST_CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/claude-config"
   export CLAUDE_CONFIG_DIR="$TEST_CLAUDE_CONFIG_DIR"
@@ -34,6 +36,7 @@ teardown() {
   mkdir -p "$repo"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo"
 
   cd "$repo"
   echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
@@ -50,8 +53,10 @@ teardown() {
   mkdir -p "$repo1" "$repo2"
   git -C "$repo1" init -q
   git -C "$repo1" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo1"
   git -C "$repo2" init -q
   git -C "$repo2" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo2"
 
   local cache1 cache2
   cache1=$(vbw_cache_prefix_for_root "$repo1" "$ORIG_UID")
@@ -74,8 +79,10 @@ teardown() {
   mkdir -p "$repo_a" "$repo_b"
   git -C "$repo_a" init -q
   git -C "$repo_a" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo_a"
   git -C "$repo_b" init -q
   git -C "$repo_b" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo_b"
 
   local cache_a_path
   cache_a_path="$(vbw_cache_prefix_for_root "$repo_a" "$ORIG_UID")-fast"
@@ -164,6 +171,7 @@ JSON
   mkdir -p "$repo"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo"
 
   cd "$repo"
   local branch
@@ -180,6 +188,7 @@ JSON
   mkdir -p "$repo"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo"
 
   echo '{}' | bash "$STATUSLINE" >/dev/null 2>&1
 
@@ -203,6 +212,7 @@ JSON
   mkdir -p "$repo"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo"
   git -C "$repo" remote add origin "https://github.com/example/detached-remote-repo.git"
   git -C "$repo" checkout --detach -q
 
@@ -222,6 +232,7 @@ JSON
   mkdir -p "$repo"
   git -C "$repo" init -q
   git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  create_test_vbw_workspace "$repo"
   touch "/tmp/vbw-0.0.0-${uid}-fast"
   touch "/tmp/vbw-0.0.0-${uid}-slow"
   touch "/tmp/vbw-0.0.0-${uid}-ok"
@@ -316,6 +327,9 @@ JSON
 @test "statusline works in non-git directory" {
   local noGitDir="$TEST_TEMP_DIR/not-a-repo"
   mkdir -p "$noGitDir"
+  # Create VBW workspace so find_vbw_root resolves here (not the VBW project
+  # root whose config may have statusline_hide_limits=true, suppressing L3)
+  create_test_vbw_workspace "$noGitDir"
   cd "$noGitDir"
   local output
   output=$(echo '{}' | bash "$STATUSLINE" 2>&1)

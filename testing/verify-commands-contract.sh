@@ -130,7 +130,7 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
     pass "$base: name matches filename"
   fi
 
-  if ! printf '%s\n' "$FRONTMATTER" | grep -q '^allowed-tools:'; then
+  if ! grep -q '^allowed-tools:' <<< "$FRONTMATTER"; then
     fail "$base: missing allowed-tools field"
   else
     pass "$base: allowed-tools present"
@@ -175,7 +175,7 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
 
   # ACTIVE-file milestone indirection was removed (architecture simplification).
   # Commands should NOT reference .vbw-planning/ACTIVE anymore.
-  if printf '%s\n' "$body_no_context" | grep -qi '\.vbw-planning/ACTIVE'; then
+  if grep -qi '\.vbw-planning/ACTIVE' <<< "$body_no_context"; then
     fail "$base: references .vbw-planning/ACTIVE — milestone indirection was removed"
   else
     pass "$base: no stale ACTIVE file references"
@@ -289,7 +289,8 @@ fi
 
 if grep -q 'KNOWN_ISSUES_STATUS=' "$VERIFY_FILE" \
   && grep -q 'KNOWN_ISSUES_STATUS=malformed' "$VERIFY_FILE" \
-  && grep -q 'unresolved or unreadable tracked known issues' "$VERIFY_FILE"; then
+  && grep -q 'unreadable tracked known issues' "$VERIFY_FILE" \
+  && grep -q 'unresolved tracked known issues' "$VERIFY_FILE"; then
   pass "verify: skip-qa guard blocks malformed known-issues registries"
 else
   fail "verify: missing malformed known-issues fail-closed guard in skip-qa path"
@@ -299,6 +300,13 @@ if grep -q 'sync-verification "\$PDIR" "\$VERIF_FILE"' "$VERIFY_FILE"; then
   pass "verify: restores known-issues registry from existing verification artifacts before gating"
 else
   fail "verify: missing known-issues restore from existing verification artifact"
+fi
+
+if grep -q 'sync-verification "\$PDIR" "\$VERIF_FILE"' "$VERIFY_FILE" \
+  && grep -q 'promote-todos "\$PDIR"' "$VERIFY_FILE"; then
+  pass "verify: restore path re-promotes known issues into STATE.md todos after sync-verification"
+else
+  fail "verify: missing promote-todos after known-issues restore in verify recovery path"
 fi
 
 if grep -q 'qa-remediation-state\.sh advance' "$QA_FILE"; then
@@ -440,18 +448,33 @@ for mode in "### Mode: Add Phase" "### Mode: Insert Phase" "### Mode: Remove Pha
   block=$(mode_block "$mode")
   label=${mode#"### Mode: "}
 
-  if printf '%s\n' "$block" | grep -q 'If `\.vbw-planning/CONTEXT\.md` exists, rewrite it to reflect the updated milestone decomposition'; then
+  if grep -q 'If `\.vbw-planning/CONTEXT\.md` exists, rewrite it to reflect the updated milestone decomposition' <<< "$block"; then
     pass "vibe: $label refreshes milestone CONTEXT.md"
   else
     fail "vibe: $label missing milestone CONTEXT refresh instruction"
   fi
 
-  if printf '%s\n' "$block" | grep -q 'Preserve project-level key decisions and deferred ideas where still valid\.'; then
+  if grep -q 'Preserve project-level key decisions and deferred ideas where still valid\.' <<< "$block"; then
     pass "vibe: $label preserves milestone decisions and deferred ideas"
   else
     fail "vibe: $label missing preservation instruction for milestone CONTEXT refresh"
   fi
 done
+
+echo ""
+echo "=== Add Phase Numbering Verification ==="
+
+add_phase_block=$(mode_block "### Mode: Add Phase")
+if printf '%s\n' "$add_phase_block" | grep -Fq '6. Update ROADMAP.md:' \
+  && printf '%s\n' "$add_phase_block" | grep -Fq '7. If `.vbw-planning/CONTEXT.md` exists, rewrite it to reflect the updated milestone decomposition' \
+  && printf '%s\n' "$add_phase_block" | grep -Fq '8. Update STATE.md phase total:' \
+  && printf '%s\n' "$add_phase_block" | grep -Fq '9. **Phase mutation commit boundary (conditional):**' \
+  && printf '%s\n' "$add_phase_block" | grep -Fq '10. Present:' \
+  && ! printf '%s\n' "$add_phase_block" | grep -Fq '1. Update ROADMAP.md:'; then
+  pass "vibe: Add Phase keeps one ordered parent step list"
+else
+  fail "vibe: Add Phase restarts ordered steps instead of continuing 6-10"
+fi
 
 echo ""
 echo "=== QA Result Gate Contract ==="
@@ -704,6 +727,24 @@ while IFS= read -r ref; do
     fail "reference missing target: $ref -> $rel"
   fi
 done < <(grep -RhoE '\$\{CLAUDE_PLUGIN_ROOT\}/[A-Za-z0-9._/*{}-]+' "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md 2>/dev/null | sort -u)
+
+# ── UAT Remediation step 4 must use TodoWrite (not generic "task list") ──
+echo ""
+echo "--- UAT Remediation TodoWrite disambiguation ---"
+# Extract the UAT Remediation section body (between its header and the next ### Mode:)
+# Match step 4's heading specifically — not just any "TodoWrite progress list" in the section
+uat_section="$(
+  awk '
+    /^### Mode: UAT Remediation$/ { in_section=1; next }
+    in_section && /^### Mode:/ { exit }
+    in_section { print }
+  ' "$COMMANDS_DIR/vibe.md"
+)"
+if grep -q '\*\*TodoWrite progress list (NON-NEGOTIABLE' <<< "$uat_section"; then
+  pass "UAT Remediation step 4 explicitly references TodoWrite"
+else
+  fail "UAT Remediation step 4 missing 'TodoWrite progress list' heading — risk of TaskCreate conflation (see issue #367)"
+fi
 
 echo ""
 echo "==============================="

@@ -13,7 +13,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
 
 Plugin root:
 ```
-!`VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"; R=""; if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi; if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi; if [ -z "$R" ]; then V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1); [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"; fi; if [ -z "$R" ]; then L=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1); [ -n "$L" ] && [ -f "${VBW_CACHE_ROOT}/${L}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${L}"; fi; if [ -z "$R" ]; then for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f "$f" ] && R="${f%/scripts/hook-wrapper.sh}" && break; done; fi; if [ -z "$R" ]; then D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1); D="${D#--plugin-dir }"; [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"; fi; if [ -z "$R" ] || [ ! -d "$R" ]; then echo "VBW: plugin root resolution failed" >&2; exit 1; fi; SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"; bash "$REAL_R/scripts/ensure-plugin-root-link.sh" "$LINK" "$REAL_R" >/dev/null 2>&1 || { echo "VBW: plugin root link failed" >&2; exit 1; }; echo "$LINK"`
+!`VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"; SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; SESSION_LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; R=""; if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi; if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi; if [ -z "$R" ]; then V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1); [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"; fi; if [ -z "$R" ]; then L=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1); [ -n "$L" ] && [ -f "${VBW_CACHE_ROOT}/${L}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${L}"; fi; if [ -z "$R" ] && [ -f "${SESSION_LINK}/scripts/hook-wrapper.sh" ]; then R="${SESSION_LINK}"; fi; if [ -z "$R" ]; then ANY_LINK=$(command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*' -print 2>/dev/null | LC_ALL=C sort | while IFS= read -r link; do if [ -f "$link/scripts/hook-wrapper.sh" ]; then printf '%s\n' "$link"; break; fi; done || true); [ -n "$ANY_LINK" ] && R="$ANY_LINK"; fi; if [ -z "$R" ]; then D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1); D="${D#--plugin-dir }"; [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"; fi; if [ -z "$R" ] || [ ! -d "$R" ]; then echo "VBW: plugin root resolution failed" >&2; exit 1; fi; LINK="${SESSION_LINK}"; REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"; bash "$REAL_R/scripts/ensure-plugin-root-link.sh" "$LINK" "$REAL_R" >/dev/null 2>&1 || { echo "VBW: plugin root link failed" >&2; exit 1; }; echo "$LINK"`
 ```
 
 Config:
@@ -80,14 +80,28 @@ echo "  Lead: $LEAD_DISPLAY | Dev: $DEV_DISPLAY | QA: $QA_DISPLAY | Scout: $SCOU
 
 Note: Core infrastructure flags (v2_hard_contracts, v2_hard_gates, v2_typed_protocol, v2_role_isolation, v3_event_log, v3_delta_context, v3_context_cache, v3_plan_research_persist, v3_schema_validation, v3_contract_lite, v3_lock_lite) have graduated to always-on behavior. The remaining flags are configurable under unprefixed names (see Settings Reference below). Brownfield configs with old `v2_`/`v3_` prefixed keys are auto-migrated by `migrate-config.sh`.
 
-**Step 2:** AskUserQuestion with up to 5 commonly changed settings (mark current values):
-- Effort: thorough | balanced | fast | turbo
-- Autonomy: cautious | standard | confident | pure-vibe
-- Planning tracking: manual | ignore | commit
-- Auto push: never | after_phase | always
-- Model Profile
+**Step 2:** AskUserQuestion — present settings as a numbered list in the question text (do NOT use `options` array — a single freeform question avoids the 4-option limit):
 
-**Step 2.5:** If "Model Profile" was selected, AskUserQuestion with 2 options:
+Question text:
+```
+Which setting would you like to change?
+1. Effort — current: {effort value}  (thorough | balanced | fast | turbo)
+2. Autonomy — current: {autonomy value}  (cautious | standard | confident | pure-vibe)
+3. Planning tracking — current: {tracking value}  (manual | ignore | commit)
+4. Auto push — current: {auto_push value}  (never | after_phase | always)
+5. Model Profile
+Type a number (1-5):
+```
+
+Parse the user's freeform response using these rules:
+- Accept only a single digit `1`, `2`, `3`, `4`, or `5`, with optional leading/trailing whitespace.
+- Treat anything else as invalid (punctuation like `2.`, words like `two`, mixed text like `option 2`, multiple numbers, empty input, or out-of-range values like `0` or `6`).
+- If invalid, show `Invalid selection. Please type a single number from 1 to 5.` and AskUserQuestion again with the same question text.
+- Repeat until a valid selection is obtained.
+
+Map: 1 = Effort, 2 = Autonomy, 3 = Planning tracking, 4 = Auto push, 5 = Model Profile.
+
+**Step 2.5:** If "Model Profile" was selected (5), AskUserQuestion with 2 options:
 - Use preset profile (quality/balanced/budget)
 - Configure each agent individually (6 questions)
 
@@ -224,6 +238,20 @@ Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scri
 
 Validate setting + value. Update config.json. Display ✓ with ➜.
 
+If `setting=max_uat_remediation_rounds`, validate the value before writing:
+
+```bash
+CANONICAL_VALUE=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-uat-remediation-round-limit.sh --validate-input "$2" 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "${CANONICAL_VALUE:-}" ]; then
+  echo "⚠ Invalid max_uat_remediation_rounds '$2'. Valid values: false, 0, or a positive integer"
+  exit 0
+fi
+
+jq ".max_uat_remediation_rounds = ${CANONICAL_VALUE}" .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+echo "✓ max_uat_remediation_rounds ➜ ${CANONICAL_VALUE}"
+exit 0
+```
+
 If `setting=planning_tracking`, after writing config run:
 
 ```bash
@@ -342,7 +370,7 @@ echo "✓ Model override: $AGENT ➜ $MODEL"
 Note: `auto_commit` controls source-task commits during Execute mode. Planning artifact commit behavior is controlled by `planning_tracking`.
 
 | Setting | Type | Values | Default |
-|---------|------|--------|---------|
+| ------- | ---- | ------ | ------- |
 | effort | string | thorough/balanced/fast/turbo | balanced |
 | autonomy | string | cautious/standard/confident/pure-vibe | standard |
 | auto_commit | boolean | true/false | true |
@@ -352,6 +380,7 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | skill_suggestions | boolean | true/false | true |
 | auto_install_skills | boolean | true/false | false |
 | discovery_questions | boolean | true/false | true |
+| discussion_mode | string | questions/assumptions/auto | questions |
 | visual_format | string | unicode/ascii | unicode |
 | max_tasks_per_plan | number | 1-7 | 5 |
 | prefer_teams | string | always/auto/never | auto |
@@ -362,6 +391,7 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | model_profile | string | quality/balanced/budget | quality |
 | model_overrides | object | agent-to-model map | {} |
 | agent_max_turns | object | per-agent turns (number), 0/false = unlimited | scout=15, qa=25, architect=30, debugger=80, lead=50, dev=75 |
+| qa_skip_agents | array | array of agent role names | ["docs"] |
 | context_compiler | boolean | true/false | true |
 | token_budgets | boolean | true/false | true |
 | two_phase_completion | boolean | true/false | true |
@@ -369,14 +399,15 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | smart_routing | boolean | true/false | true |
 | validation_gates | boolean | true/false | true |
 | snapshot_resume | boolean | true/false | true |
-| lease_locks | boolean | true/false | false |
-| event_recovery | boolean | true/false | false |
+| lease_locks | boolean | true/false | true |
+| event_recovery | boolean | true/false | true |
+| worktree_isolation | string | off/on | off |
 | monorepo_routing | boolean | true/false | true |
 | require_phase_discussion | boolean | true/false | false |
 | auto_uat | boolean | true/false | false |
+| max_uat_remediation_rounds | boolean/number | false, 0, or positive integer | false |
 | rolling_summary | boolean | true/false | false |
 | debug_logging | boolean | true/false | false |
-| subagent_skill_xml_mode | string | off/names_only/full | names_only |
 | statusline_hide_limits | boolean | true/false | false |
 | statusline_hide_limits_for_api_key | boolean | true/false | false |
 | statusline_hide_agent_in_tmux | boolean | true/false | false |
@@ -416,6 +447,33 @@ You can also provide per-effort overrides using an object instead of a number:
   "agent_max_turns": {
     "dev": { "thorough": 120, "balanced": 75, "fast": 50, "turbo": false }
   }
+}
+```
+
+### max_uat_remediation_rounds
+
+Controls only the UAT remediation auto-continuation loop after re-verification finds issues. It does **not** apply to QA remediation.
+
+Accepted values:
+- `false` — unlimited UAT remediation rounds
+- `0` — unlimited UAT remediation rounds
+- positive integer — finite UAT remediation round cap
+
+Injected default is `false`, and runtime fallback is also unlimited when the persisted value is absent or malformed. `/vbw:config` rejects malformed interactive input instead of writing it.
+
+Finite cap example:
+
+```json
+{
+  "max_uat_remediation_rounds": 3
+}
+```
+
+Unlimited example:
+
+```json
+{
+  "max_uat_remediation_rounds": false
 }
 ```
 

@@ -40,6 +40,24 @@ _SCRIPT_DIR_PR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=uat-utils.sh
 . "$_SCRIPT_DIR_PR/uat-utils.sh"
 
+resolve_config_path() {
+  local phase_dir="${1%/}"
+  local planning_dir
+
+  case "$phase_dir" in
+    */.vbw-planning/phases/*)
+      planning_dir=$(dirname "$(dirname "$phase_dir")")
+      printf '%s/config.json\n' "$planning_dir"
+      ;;
+    .vbw-planning/phases/*)
+      printf '.vbw-planning/config.json\n'
+      ;;
+    *)
+      printf '.vbw-planning/config.json\n'
+      ;;
+  esac
+}
+
 # Find the UAT file
 UAT_FILE=$(current_uat "$PHASE_DIR")
 
@@ -109,21 +127,43 @@ if [ -n "$_active_stage_file" ] && [ -f "$_active_stage_file" ]; then
   fi
 fi
 
+CONFIG_PATH=$(resolve_config_path "$PHASE_DIR")
+CURRENT_ROUND=$(bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" current-round "${PHASE_DIR%/}" 2>/dev/null) || {
+  echo "Error: could not resolve current UAT remediation round for ${PHASE_DIR%/}" >&2
+  exit 1
+}
+CURRENT_ROUND="${CURRENT_ROUND:-01}"
+CURRENT_ROUND_NUM=$(echo "$CURRENT_ROUND" | sed 's/^0*//')
+CURRENT_ROUND_NUM="${CURRENT_ROUND_NUM:-1}"
+
 # For round-dir UATs already in their round directory, skip mv archival
 case "$UAT_FILE" in
   */remediation/uat/round-*/R*-UAT.md)
     # Extract round number from the UAT filename (e.g., R01 → 1, R02 → 2)
     _uat_round_raw=$(basename "$UAT_FILE" | sed 's/^R0*\([0-9]*\)-UAT\.md$/\1/')
     _uat_round="${_uat_round_raw:-0}"
-    # Read current round from state file (strip leading zeros for numeric compare)
-    _cur_round="1"
-    if [ -n "$_active_stage_file" ] && [ -f "$_active_stage_file" ]; then
-      _cr_val=$(grep '^round=' "$_active_stage_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-      _cur_round=$(echo "${_cr_val:-01}" | sed 's/^0*//')
-      _cur_round="${_cur_round:-1}"
-    fi
     PHASE_NUM=$(basename "${PHASE_DIR%/}" | sed 's/^\([0-9]*\).*/\1/')
-    if [ "$_uat_round" = "$_cur_round" ]; then
+    if [ "$_uat_round" = "$CURRENT_ROUND_NUM" ]; then
+      _cap_decision=$(bash "$_SCRIPT_DIR_PR/resolve-uat-remediation-round-limit.sh" --next-round-decision "$CONFIG_PATH" "$CURRENT_ROUND" 2>/dev/null) || {
+        echo "Error: could not resolve UAT remediation round cap for current round $CURRENT_ROUND" >&2
+        exit 1
+      }
+      _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
+      case "${_cap_reached:-}" in
+        true)
+          echo "skipped=cap_reached"
+          echo "phase=$PHASE_NUM"
+          echo "layout=$_LAYOUT"
+          printf '%s\n' "$_cap_decision"
+          exit 0
+          ;;
+        false) ;; # continue to advance
+        *)
+          echo "Error: malformed round-limit helper output — missing or invalid cap_reached key" >&2
+          exit 1
+          ;;
+      esac
+
       # Current round's UAT has issues — advance to next round
       bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" needs-round "${PHASE_DIR%/}" >/dev/null
       rm -f "${PHASE_DIR}.uat-remediation-stage"
@@ -178,16 +218,39 @@ fi
 # Flat/legacy layout: archive to numbered round file
 MAX_ROUND=$(count_uat_rounds "$PHASE_DIR" "$PHASE_NUM")
 
+_cap_decision=$(bash "$_SCRIPT_DIR_PR/resolve-uat-remediation-round-limit.sh" --next-round-decision "$CONFIG_PATH" "$CURRENT_ROUND" 2>/dev/null) || {
+  echo "Error: could not resolve UAT remediation round cap for current round $CURRENT_ROUND" >&2
+  exit 1
+}
+_cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
+case "${_cap_reached:-}" in
+  true)
+    echo "skipped=cap_reached"
+    echo "phase=$PHASE_NUM"
+    echo "layout=$_LAYOUT"
+    printf '%s\n' "$_cap_decision"
+    exit 0
+    ;;
+  false) ;; # continue to advance
+  *)
+    echo "Error: malformed round-limit helper output — missing or invalid cap_reached key" >&2
+    exit 1
+    ;;
+esac
+
 NEXT_ROUND=$((MAX_ROUND + 1))
 ROUND_PADDED=$(printf '%02d' "$NEXT_ROUND")
 ROUND_FILE="${PHASE_NUM}-UAT-round-${ROUND_PADDED}.md"
 
 # Warn if we've been through many rounds — signal the user may want a different approach
 if [ "$NEXT_ROUND" -ge 3 ]; then
-  echo "reverification_warning=This phase has been through $MAX_ROUND remediation rounds. Consider a different approach if issues persist."
+  echo "reverification_warning=This phase has been through $MAX_ROUND UAT remediation rounds. Consider a different approach if issues persist."
 fi
 
 mv "$UAT_FILE" "${PHASE_DIR}${ROUND_FILE}"
+mkdir -p "${PHASE_DIR}remediation/uat"
+printf 'stage=%s\nround=%s\nlayout=round-dir\n' "$_REM_STAGE" "$CURRENT_ROUND" > "$_new_stage_file"
+rm -f "$_legacy_remed_stage_file" "${PHASE_DIR}.uat-remediation-stage"
 bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" needs-round "${PHASE_DIR%/}" >/dev/null
 
 # Clean up legacy state file if present (new-location state file persists with updated round)

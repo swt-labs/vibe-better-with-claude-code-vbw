@@ -186,8 +186,13 @@ simulate_session_stop() {
 
 @test "prune removes all dead PIDs and deletes the file" {
   cd "$TEST_TEMP_DIR"
-  # Write fake dead PIDs
-  printf '99991\n99992\n99993\n' > ".vbw-planning/.agent-pids"
+  # Generate guaranteed-dead PIDs instead of hardcoded values that may
+  # collide with live processes under parallel BATS execution
+  local dead1 dead2 dead3
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead3=$(get_dead_pid) || fail "get_dead_pid failed"
+  printf '%s\n%s\n%s\n' "$dead1" "$dead2" "$dead3" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
   [ "$status" -eq 0 ]
@@ -202,7 +207,10 @@ simulate_session_stop() {
   sleep 30 &
   local alive_pid=$!
 
-  printf "${alive_pid}\n99994\n99995\n" > ".vbw-planning/.agent-pids"
+  local dead1 dead2
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
+  printf '%s\n%s\n%s\n' "${alive_pid}" "$dead1" "$dead2" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
   [ "$status" -eq 0 ]
@@ -213,9 +221,9 @@ simulate_session_stop() {
   [ "$status" -eq 0 ]
 
   # Dead PIDs should be gone
-  run grep "^99994$" ".vbw-planning/.agent-pids"
+  run grep "^${dead1}$" ".vbw-planning/.agent-pids"
   [ "$status" -ne 0 ]
-  run grep "^99995$" ".vbw-planning/.agent-pids"
+  run grep "^${dead2}$" ".vbw-planning/.agent-pids"
   [ "$status" -ne 0 ]
 
   kill "$alive_pid" 2>/dev/null || true
@@ -233,13 +241,17 @@ simulate_session_stop() {
 @test "prune ignores leftover .agent-pids.tmp from interrupted prune" {
   cd "$TEST_TEMP_DIR"
   # Simulate interrupted prune that left a stale temp file with a dead PID
-  echo "12345" > ".vbw-planning/.agent-pids.tmp"
+  local stale_pid
+  stale_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  echo "$stale_pid" > ".vbw-planning/.agent-pids.tmp"
 
   # Put a live PID in the real file
   sleep 30 &
   local alive_pid=$!
 
-  printf "${alive_pid}\n99996\n" > ".vbw-planning/.agent-pids"
+  local dead1
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  printf '%s\n%s\n' "${alive_pid}" "$dead1" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
   [ "$status" -eq 0 ]
@@ -258,10 +270,14 @@ simulate_session_stop() {
 @test "prune recovers from stale lock left by crashed process" {
   cd "$TEST_TEMP_DIR"
   # Simulate stale lock from a crashed process
+  local stale_lock_pid dead1 dead2
+  stale_lock_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
   mkdir -p "$VBW_AGENT_PID_LOCK_DIR"
-  echo "99999" > "$VBW_AGENT_PID_LOCK_DIR/pid"
+  echo "$stale_lock_pid" > "$VBW_AGENT_PID_LOCK_DIR/pid"
 
-  printf '99997\n99998\n' > ".vbw-planning/.agent-pids"
+  printf '%s\n%s\n' "$dead1" "$dead2" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
   [ "$status" -eq 0 ]
@@ -276,9 +292,12 @@ simulate_session_stop() {
 @test "prune recovers from stale lock directory with no pid file" {
   cd "$TEST_TEMP_DIR"
   # Simulate stale lock dir with no pid file (edge case: lock created but pid write failed)
+  local dead1 dead2
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
   mkdir -p "$VBW_AGENT_PID_LOCK_DIR"
 
-  printf '99997\n99998\n' > ".vbw-planning/.agent-pids"
+  printf '%s\n%s\n' "$dead1" "$dead2" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
   [ "$status" -eq 0 ]

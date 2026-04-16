@@ -124,6 +124,25 @@ teardown() {
   [ "$output" = "research" ]
 }
 
+@test "current-round infers current legacy round from archived flat UATs" {
+  echo "done" > "$PHASE_DIR/.uat-remediation-stage"
+  touch "$PHASE_DIR/01-UAT-round-01.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" current-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [ "$output" = "02" ]
+}
+
+@test "current-round prefers inferred legacy round over stale migrated round metadata" {
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  printf 'stage=done\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  touch "$PHASE_DIR/01-UAT-round-01.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" current-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [ "$output" = "02" ]
+}
+
 @test "legacy plan stage still advances to execute" {
   # Backward compat: existing .uat-remediation-stage files with "plan"
   echo "plan" > "$PHASE_DIR/.uat-remediation-stage"
@@ -543,6 +562,17 @@ EOF
   [ -d "$PHASE_DIR/remediation/uat/round-01" ]
 }
 
+@test "get-or-init migrates legacy state to inferred current round when archived UATs exist" {
+  echo "done" > "$PHASE_DIR/.uat-remediation-stage"
+  touch "$PHASE_DIR/01-UAT-round-01.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "done" ]
+  grep -q "^round=02$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ -d "$PHASE_DIR/remediation/uat/round-02" ]
+}
+
 @test "legacy migration enables phase-root fallback for research_path" {
   echo "research" > "$PHASE_DIR/.uat-remediation-stage"
   touch "$PHASE_DIR/01-RESEARCH.md"
@@ -631,6 +661,18 @@ EOF
   grep -q "^layout=round-dir$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
   # Legacy state file cleaned up
   [ ! -f "$PHASE_DIR/.uat-remediation-stage" ]
+}
+
+@test "needs-round from legacy-only state advances from inferred current round" {
+  echo "done" > "$PHASE_DIR/.uat-remediation-stage"
+  touch "$PHASE_DIR/01-UAT-round-01.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "research" ]
+  echo "$output" | grep -q "^round=03$"
+  [ -d "$PHASE_DIR/remediation/uat/round-03" ]
+  grep -q "^round=03$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 }
 
 @test "get-or-init plan_path empty when plan does not exist in round dir" {

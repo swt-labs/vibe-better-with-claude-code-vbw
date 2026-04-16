@@ -94,6 +94,7 @@ EOF
     '.snapshots/'
     '.hook-errors.log'
     '.hook-debug.log'
+    '.skill-decisions.log'
     '.compaction-marker'
     '.session-log.jsonl'
     '.session-log.jsonl.tmp'

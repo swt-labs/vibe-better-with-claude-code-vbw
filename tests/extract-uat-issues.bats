@@ -446,7 +446,7 @@ issues: 1
   - Severity: major'
 
   cd "$TEST_TEMP_DIR"
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   echo "$output" | grep -q "uat_issues_count=1"

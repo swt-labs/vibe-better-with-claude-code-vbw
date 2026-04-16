@@ -6,7 +6,7 @@ load test_helper
 
 setup() {
   setup_temp_dir
-  export ORIG_HOME="$HOME"
+  export ORIG_HOME="${_ORIG_HOME:-$HOME}"
   export ORIG_CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-}"
   export HOME="$TEST_TEMP_DIR"
   export CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/.claude-config"
@@ -27,6 +27,10 @@ teardown() {
 }
 
 # --- inject-subagent-skills.sh removal verification ---
+
+@test "ORIG_HOME captures real HOME, not temp dir" {
+  [ "$ORIG_HOME" != "$TEST_TEMP_DIR" ]
+}
 
 @test "inject-subagent-skills: script is deleted" {
   [ ! -f "$SCRIPTS_DIR/inject-subagent-skills.sh" ]

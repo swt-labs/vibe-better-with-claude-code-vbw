@@ -5,6 +5,7 @@ load test_helper
 setup() {
   setup_temp_dir
   create_test_config
+  export CLAUDE_SESSION_ID="phase-detect-${BATS_TEST_NUMBER:-0}-$$-$RANDOM"
   cd "$TEST_TEMP_DIR"
   git init --quiet
   git config user.email "test@test.com"
@@ -13,46 +14,50 @@ setup() {
 }
 
 teardown() {
+  rm -f "/tmp/.vbw-phase-detect-${CLAUDE_SESSION_ID:-default}.txt" 2>/dev/null || true
+  rm -rf "/tmp/.vbw-phase-detect-live-${CLAUDE_SESSION_ID:-default}.lock" 2>/dev/null || true
+  rm -rf "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}" 2>/dev/null || true
+  unset CLAUDE_SESSION_ID
   cd "$PROJECT_ROOT"
   teardown_temp_dir
 }
 
 @test "detects no planning directory" {
   rm -rf .vbw-planning
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "planning_dir_exists=false"
 }
 
 @test "detects planning directory exists" {
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "planning_dir_exists=true"
 }
 
 @test "detects no project when PROJECT.md missing" {
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "project_exists=false"
 }
 
 @test "detects project exists" {
   echo "# My Project" > .vbw-planning/PROJECT.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "project_exists=true"
 }
 
 @test "detects zero phases" {
   mkdir -p .vbw-planning/phases
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "phase_count=0"
 }
 
 @test "detects phases needing plan" {
   mkdir -p .vbw-planning/phases/01-test/
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
 }
@@ -60,7 +65,7 @@ teardown() {
 @test "detects phases needing execution" {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_execute"
 }
@@ -69,13 +74,13 @@ teardown() {
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=all_done"
 }
 
 @test "reads config values" {
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "config_effort=balanced"
   echo "$output" | grep -q "config_autonomy=standard"
@@ -100,7 +105,7 @@ status: issues_found
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   echo "$output" | grep -q "next_phase=01"
@@ -131,7 +136,7 @@ issues: 1
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_issues_count=1"
   echo "$output" | grep -q "uat_file=01-UAT.md"
@@ -142,7 +147,7 @@ EOF
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-01-PLAN.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   ! echo "$output" | grep -q "^---UAT_EXTRACT_START---$"
   echo "$output" | grep -q "uat_file=none"
@@ -170,7 +175,7 @@ issues: 1
   - Severity: critical
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_file=remediation/uat/round-01/R01-UAT.md"
   echo "$output" | grep -q "uat_issues_count=1"
@@ -194,7 +199,7 @@ issues: 1
 Some text without parseable test headers.
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   echo "$output" | grep -q "uat_file=01-UAT.md"
@@ -225,7 +230,7 @@ EOF
   [ "$status" -eq 0 ]
   expected="$output"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   marker=$(printf '%s\n' "$output" | awk '/^---MILESTONE_UAT_EXTRACT_START---$/{f=1; next} /^---MILESTONE_UAT_EXTRACT_END---$/{exit} f{print}' | awk '/^milestone_phase_dir=/{next} /^---$/{exit} {print}')
   [ "$marker" = "$expected" ]
@@ -257,7 +262,7 @@ EOF
   # Create an active phases dir that is empty (forces all_done → milestone recovery)
   mkdir -p .vbw-planning/phases/
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "^---MILESTONE_UAT_EXTRACT_START---$"
   echo "$output" | grep -q "^---MILESTONE_UAT_EXTRACT_END---$"
@@ -315,7 +320,7 @@ issues: 1
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   echo "$output" | grep -q "uat_issues_count=1"
@@ -381,7 +386,7 @@ EOF
   [ "$status" -eq 0 ]
   expected="$output"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   marker=$(printf '%s\n' "$output" | awk '/^---MILESTONE_UAT_EXTRACT_START---$/{f=1; next} /^---MILESTONE_UAT_EXTRACT_END---$/{exit} f{print}' | awk '/^milestone_phase_dir=/{next} /^---$/{exit} {print}')
   [ "$marker" = "$expected" ]
@@ -410,7 +415,7 @@ issues: 1
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_phase_dir=.vbw-planning/milestones/m01-test/phases/setup-api"
@@ -458,7 +463,7 @@ issues: 1
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_phase_dir=.vbw-planning/milestones/m01-test/phases/setup-api"
@@ -490,7 +495,7 @@ issues: 1
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "uat_phase=03 uat_issues_total=1 uat_round=1 uat_file=R01-UAT.md"
@@ -516,7 +521,7 @@ status: issues_found
   - Severity: minor
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   echo "$output" | grep -q "uat_issues_major_or_higher=false"
@@ -541,7 +546,7 @@ status: issues_found
   - **Severity:** major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   echo "$output" | grep -q "uat_issues_major_or_higher=true"
@@ -562,7 +567,7 @@ status: complete
 All tests passed.
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_issues_phase=none"
   echo "$output" | grep -q "next_phase=01"
@@ -580,7 +585,7 @@ status: issues_found
   - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_issues_phase=none"
   # Should route to needs_plan_and_execute, not needs_uat_remediation
@@ -601,7 +606,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_issues_phase=none"
   echo "$output" | grep -q "next_phase_state=needs_execute"
@@ -616,7 +621,7 @@ EOF
   # Non-canonical — should NOT count
   touch .vbw-planning/phases/01-test/not-a-PLAN.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Only 1 canonical plan, 0 summaries → needs_execute (not needs_plan_and_execute)
   echo "$output" | grep -q "next_phase_state=needs_execute"
@@ -632,7 +637,7 @@ phase: 01
 status: issues_found
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   echo "$output" | grep -q "next_phase=01"
@@ -651,7 +656,7 @@ status: issues_found
 EOF
   printf 'stage=done\nround=01\nlayout=legacy\n' > .vbw-planning/phases/01-legacy/.uat-remediation-stage
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"next_phase_state=needs_reverification"* ]]
@@ -669,11 +674,155 @@ status: issues_found
 EOF
   printf 'stage=execute\nround=01\nlayout=legacy\n' > .vbw-planning/phases/01-legacy/remediation/.uat-remediation-stage
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"next_phase_state=needs_reverification"* ]]
   grep -q '^stage=done$' .vbw-planning/phases/01-legacy/remediation/.uat-remediation-stage
+}
+
+@test "phase-detect does not auto-advance UAT remediation past finite cap on rerun" {
+  cat > .vbw-planning/config.json <<'EOF'
+{
+  "effort": "balanced",
+  "max_uat_remediation_rounds": 1
+}
+EOF
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run_phase_detect
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  grep -q '^stage=done$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=01$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  [ ! -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
+}
+
+@test "phase-detect auto-advances UAT remediation when cap is explicitly false" {
+  cat > .vbw-planning/config.json <<'EOF'
+{
+  "effort": "balanced",
+  "max_uat_remediation_rounds": false
+}
+EOF
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run_phase_detect
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  grep -q '^stage=research$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=02$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  [ -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
+}
+
+@test "phase-detect auto-advances UAT remediation when cap is explicitly zero" {
+  cat > .vbw-planning/config.json <<'EOF'
+{
+  "effort": "balanced",
+  "max_uat_remediation_rounds": 0
+}
+EOF
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  run_phase_detect
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  grep -q '^stage=research$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=02$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  [ -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
+}
+
+@test "phase-detect does not auto-advance UAT remediation when cap helper exits nonzero" {
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  local shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-helper-fail"
+  cp -R "$SCRIPTS_DIR" "$shim_dir"
+  cat > "$shim_dir/resolve-uat-remediation-round-limit.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 23
+EOF
+  chmod +x "$shim_dir/resolve-uat-remediation-round-limit.sh"
+
+  run_phase_detect "$shim_dir"
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  grep -q '^stage=done$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=01$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  [ ! -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
+}
+
+@test "phase-detect does not auto-advance UAT remediation when cap helper output is malformed" {
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+---
+- Severity: major
+EOF
+
+  local shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-helper-malformed"
+  cp -R "$SCRIPTS_DIR" "$shim_dir"
+  cat > "$shim_dir/resolve-uat-remediation-round-limit.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'current_round=01\nnext_round=02\n'
+EOF
+  chmod +x "$shim_dir/resolve-uat-remediation-round-limit.sh"
+
+  run_phase_detect "$shim_dir"
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  grep -q '^stage=done$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=01$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  [ ! -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
 }
 
 @test "corrupt QA remediation stage does not route as active remediation" {
@@ -682,7 +831,7 @@ EOF
   printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
   printf 'stage=garbage\nround=01\n' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   ! echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
   echo "$output" | grep -q "qa_status=pending"
@@ -695,7 +844,7 @@ EOF
   # Dotfile — should NOT count (ls glob ignores dotfiles)
   touch ".vbw-planning/phases/01-test/.01-02-PLAN.md"
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # 1 plan, 1 summary → all_done (dotfile plan not counted)
   echo "$output" | grep -q "next_phase_state=all_done"
@@ -706,7 +855,7 @@ EOF
   mkdir -p .vbw-planning/milestones/foundation
   echo "# Shipped" > .vbw-planning/milestones/foundation/SHIPPED.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "has_shipped_milestones=true"
 }
@@ -714,7 +863,7 @@ EOF
 @test "outputs has_shipped_milestones=false when no shipped milestones" {
   mkdir -p .vbw-planning/phases
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "has_shipped_milestones=false"
 }
@@ -723,7 +872,7 @@ EOF
   mkdir -p .vbw-planning/milestones/default
   mkdir -p .vbw-planning/milestones/default/phases/01-legacy-phase
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "needs_milestone_rename=false"
   [ ! -d .vbw-planning/milestones/default ]
@@ -732,7 +881,7 @@ EOF
 @test "outputs needs_milestone_rename=false when no milestones/default/" {
   mkdir -p .vbw-planning/phases
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "needs_milestone_rename=false"
 }
@@ -740,7 +889,7 @@ EOF
 @test "does not output active_milestone (removed)" {
   mkdir -p .vbw-planning/phases
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   ! echo "$output" | grep -q "active_milestone="
 }
@@ -750,7 +899,7 @@ EOF
   mkdir -p .vbw-planning/milestones/old/phases/01-milestone-phase/
   echo "old" > .vbw-planning/ACTIVE
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "phase_count=1"
   echo "$output" | grep -q "phases_dir=.vbw-planning/phases"
@@ -775,7 +924,7 @@ status: issues_found
 EOF
   done
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Phase 11 should be selected first (numeric), not 100 (lexicographic)
   echo "$output" | grep -q "uat_issues_phase=11"
@@ -785,7 +934,7 @@ EOF
 # --- require_phase_discussion tests ---
 
 @test "outputs config_require_phase_discussion=false by default" {
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "config_require_phase_discussion=false"
 }
@@ -794,7 +943,7 @@ EOF
   local tmp
   tmp=$(mktemp)
   jq '.require_phase_discussion = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "config_require_phase_discussion=true"
 }
@@ -805,7 +954,7 @@ EOF
   jq '.require_phase_discussion = true' .vbw-planning/config.json > "$tmp" && mv "$tmp" .vbw-planning/config.json
   mkdir -p .vbw-planning/phases/01-test/
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_discussion"
   echo "$output" | grep -q "next_phase=01"
@@ -818,7 +967,7 @@ EOF
   mkdir -p .vbw-planning/phases/01-test/
   touch .vbw-planning/phases/01-test/01-CONTEXT.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
 }
@@ -826,7 +975,7 @@ EOF
 @test "needs_plan_and_execute when require_phase_discussion=false even without CONTEXT.md" {
   mkdir -p .vbw-planning/phases/01-test/
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
 }
@@ -839,7 +988,7 @@ EOF
   # Phase has a plan already — discussion should not be required
   touch .vbw-planning/phases/01-test/01-01-PLAN.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_execute"
 }
@@ -856,7 +1005,7 @@ EOF
   printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-first/01-01-SUMMARY.md
   # Phase 2 has no context
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_discussion"
   echo "$output" | grep -q "next_phase=02"
@@ -885,7 +1034,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Active phases all_done (not needs_discussion — all are planned)
   echo "$output" | grep -q "next_phase_state=all_done"
@@ -900,7 +1049,7 @@ EOF
   mkdir -p .vbw-planning/phases/misc-notes/
   mkdir -p .vbw-planning/phases/01-real/
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "phase_count=1"
   echo "$output" | grep -q "next_phase=01"
@@ -916,7 +1065,7 @@ EOF
   # Non-canonical — should NOT satisfy the CONTEXT.md check
   touch .vbw-planning/phases/01-test/NOTES-CONTEXT.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_discussion"
 }
@@ -929,7 +1078,7 @@ EOF
   # Canonical phase-prefixed CONTEXT.md
   touch .vbw-planning/phases/01-test/01-CONTEXT.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
 }
@@ -950,7 +1099,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_issues_phase=none"
   echo "$output" | grep -q "next_phase_state=all_done"
@@ -981,7 +1130,7 @@ status: issues_found
 - Severity: critical
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_issues_phase=02"
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
@@ -1011,7 +1160,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Phase 02 SOURCE-UAT should NOT trigger remediation
   echo "$output" | grep -q "uat_issues_phase=none"
@@ -1038,7 +1187,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=false"
 }
@@ -1072,7 +1221,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=all_done"
   echo "$output" | grep -q "milestone_uat_issues=false"
@@ -1097,7 +1246,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "milestone_uat_issues=true"
   echo "$output" | grep -q "milestone_uat_slug=v1"
@@ -1134,7 +1283,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # First phase with issues is the routing target
   echo "$output" | grep -q "uat_issues_phase=02"
@@ -1156,7 +1305,7 @@ status: issues_found
 - Severity: minor
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_issues_phase=01"
   echo "$output" | grep -q "uat_issues_phases=01"
@@ -1174,7 +1323,7 @@ status: complete
 All tests passed.
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_issues_phase=none"
   echo "$output" | grep -q "uat_issues_phases=$"
@@ -1211,7 +1360,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Phase 02 mid-remediation should take priority over Phase 03 UAT
   echo "$output" | grep -q "next_phase=02"
@@ -1236,7 +1385,7 @@ status: issues_found
 - Severity: critical
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Phase 01 unplanned should take priority over Phase 02 UAT
   echo "$output" | grep -q "next_phase=01"
@@ -1263,7 +1412,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Phase 02 mid-execution should take priority over Phase 03 UAT
   echo "$output" | grep -q "next_phase=02"
@@ -1291,7 +1440,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Phase 01 should route to needs_discussion, not needs_plan_and_execute
   echo "$output" | grep -q "next_phase=01"
@@ -1318,7 +1467,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # Discussion done (CONTEXT exists) — should route to needs_plan_and_execute
   echo "$output" | grep -q "next_phase=01"
@@ -1339,7 +1488,7 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_round_count=0"
 }
@@ -1363,14 +1512,14 @@ status: issues_found
 - Severity: major
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_round_count=5"
 }
 
 @test "uat_round_count=0 when no planning directory" {
   rm -rf .vbw-planning
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_round_count=0"
 }
@@ -1389,7 +1538,7 @@ EOF
   # Round files exist from previous remediation cycles
   printf 'round 1\n' > .vbw-planning/phases/01-test/01-UAT-round-01.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   # No active UAT issues → round count stays 0 (no routing target)
   echo "$output" | grep -q "uat_round_count=0"
@@ -1419,7 +1568,7 @@ status: issues_found
 EOF
 
   create_test_config
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
 
   # Stage must NOT advance to done — should remain needs_uat_remediation (execute)
@@ -1457,7 +1606,7 @@ EOF
 CONF
 
   echo "# My Project" > .vbw-planning/PROJECT.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
 
   # all_pass should be normalized to complete → phase is verified for UAT,
@@ -1489,7 +1638,7 @@ EOF
 CONF
 
   echo "# My Project" > .vbw-planning/PROJECT.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
 
   echo "$output" | grep -q "has_unverified_phases=false"
@@ -1500,7 +1649,7 @@ CONF
 @test "qa_status defaults to none when no phases" {
   mkdir -p .vbw-planning/phases
   echo "# My Project" > .vbw-planning/PROJECT.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=none"
   echo "$output" | grep -q "qa_round=00"
@@ -1511,7 +1660,7 @@ CONF
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   echo "# My Project" > .vbw-planning/PROJECT.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=pending"
 }
@@ -1523,7 +1672,7 @@ CONF
   echo "# My Project" > .vbw-planning/PROJECT.md
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'All passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=passed"
 }
@@ -1553,7 +1702,7 @@ CONF
   ]
 }
 EOF
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=failed"
 }
@@ -1582,7 +1731,7 @@ EOF
 | FIGIRegistryServiceTests | Tests/FIGIRegistryServiceTests.swift | compositeFigi missing |
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
 
   [ "$status" -eq 0 ]
   [ -f .vbw-planning/phases/01-test/known-issues.json ]
@@ -1596,7 +1745,7 @@ EOF
   echo "# My Project" > .vbw-planning/PROJECT.md
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'All passed.' > .vbw-planning/phases/01-test/VERIFICATION.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=passed"
 }
@@ -1609,7 +1758,7 @@ EOF
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Wave 1 failed.' > .vbw-planning/phases/01-test/01-VERIFICATION-wave1.md
   printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Wave 2 passed.' > .vbw-planning/phases/01-test/01-VERIFICATION-wave2.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=passed"
 }
@@ -1620,7 +1769,7 @@ EOF
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed checks.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
   echo "# My Project" > .vbw-planning/PROJECT.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=failed"
 }
@@ -1632,7 +1781,7 @@ EOF
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
   printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   echo "# My Project" > .vbw-planning/PROJECT.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=remediating"
   echo "$output" | grep -q "qa_round=01"
@@ -1645,7 +1794,7 @@ EOF
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
   printf '%s\n%s\n' 'stage=plan' 'round=02' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   echo "# My Project" > .vbw-planning/PROJECT.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=remediating"
 }
@@ -1657,7 +1806,7 @@ EOF
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
   printf '%s\n%s\n' 'stage=verify' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   echo "# My Project" > .vbw-planning/PROJECT.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=remediating"
 }
@@ -1684,17 +1833,17 @@ fail_classifications:
   - {id: "FAIL-01", type: "process-exception", rationale: "Fixture documents a structurally valid remediated round"}
 ---
 EOF
+  round_anchor_commit="$(git rev-parse HEAD)"
   cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md <<'EOF'
 ---
 plan: R01
 status: complete
 files_modified:
   - README.md
-  - .vbw-planning/phases/01-test/01-SUMMARY.md
+  - .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md
 deviations: []
 ---
 EOF
-  round_anchor_commit="$(git rev-parse HEAD)"
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Documented historical process exception.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   echo "remediation notes" > README.md
   git add README.md .vbw-planning/phases/01-test/01-SUMMARY.md
@@ -1702,7 +1851,7 @@ EOF
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n%s\n%s\n' 'stage=done' 'round=01' "round_started_at_commit=${round_anchor_commit}" > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - R01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after remediation.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=remediated"
 }
@@ -1759,7 +1908,7 @@ EOF
   ]
 }
 EOF
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=failed"
 }
@@ -1772,7 +1921,7 @@ EOF
   printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   echo "# My Project" > .vbw-planning/PROJECT.md
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Still failing after remediation.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=failed"
 }
@@ -1783,7 +1932,7 @@ EOF
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   echo "# My Project" > .vbw-planning/PROJECT.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=pending"
 }
@@ -1811,18 +1960,18 @@ fail_classifications:
   - {id: "FAIL-01", type: "process-exception", rationale: "Fixture documents a structurally valid remediated round"}
 ---
 EOF
+  # Round VERIFICATION.md has PASS
+  round_anchor_commit="$(git rev-parse HEAD)"
   cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md <<'EOF'
 ---
 plan: R01
 status: complete
 files_modified:
   - README.md
-  - .vbw-planning/phases/01-test/01-SUMMARY.md
+  - .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md
 deviations: []
 ---
 EOF
-  # Round VERIFICATION.md has PASS
-  round_anchor_commit="$(git rev-parse HEAD)"
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Round 01 documented the historical process exception.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   echo "round pass docs" > README.md
   git add README.md .vbw-planning/phases/01-test/01-SUMMARY.md
@@ -1830,7 +1979,7 @@ EOF
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n%s\n%s\n' 'stage=done' 'round=01' "round_started_at_commit=${round_anchor_commit}" > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - R01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after fix.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=remediated"
 }
@@ -1845,7 +1994,7 @@ EOF
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Original failure.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
   # Round VERIFICATION.md also FAIL
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Still failing.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=failed"
 }
@@ -1860,7 +2009,7 @@ EOF
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
   # No round VERIFICATION.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=pending"
 }
@@ -1907,12 +2056,22 @@ plan: R02
 status: complete
 files_modified:
   - README.md
-  - .vbw-planning/phases/01-test/01-SUMMARY.md
+  - .vbw-planning/phases/01-test/remediation/qa/round-02/R02-SUMMARY.md
 deviations: []
 ---
 EOF
   # Round-02 VERIFICATION.md has PASS
   round_anchor_commit="$(git rev-parse HEAD)"
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-02/R02-SUMMARY.md <<'EOF'
+---
+plan: R02
+status: complete
+files_modified:
+  - README.md
+  - .vbw-planning/phases/01-test/remediation/qa/round-02/R02-SUMMARY.md
+deviations: []
+---
+EOF
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Round 02 documented the historical process exception.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   echo "round two docs" > README.md
   git add README.md .vbw-planning/phases/01-test/01-SUMMARY.md
@@ -1920,7 +2079,7 @@ EOF
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n%s\n%s\n' 'stage=done' 'round=02' "round_started_at_commit=${round_anchor_commit}" > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - R02' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after round 2.' > .vbw-planning/phases/01-test/remediation/qa/round-02/R02-VERIFICATION.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=remediated"
 }
@@ -1976,7 +2135,7 @@ EOF
   printf '%s\n%s\n%s\n' 'stage=done' 'round=01' "round_started_at_commit=${round_anchor_commit}" > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - R01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed after remediation.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [ ! -f .vbw-planning/phases/01-test/known-issues.json ]
   ! echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
@@ -1991,7 +2150,7 @@ EOF
   # Phase-level with PASS (brownfield fallback target)
   current_commit="$(git rev-parse HEAD)"
   printf '%s\n' '---' 'result: PASS' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   # Must not crash — exits 0
   [ "$status" -eq 0 ]
 }
@@ -2003,7 +2162,7 @@ EOF
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
   printf '%s\n%s\n' 'stage=plan' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   echo "# My Project" > .vbw-planning/PROJECT.md
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
 }
@@ -2023,7 +2182,7 @@ EOF
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
   printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
   echo "$output" | grep -q "next_phase=02"
@@ -2053,7 +2212,7 @@ EOF
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
   printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
   echo "$output" | grep -q "next_phase=01"
@@ -2088,7 +2247,7 @@ EOF
 }
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
   echo "$output" | grep -q "next_phase=02"
@@ -2123,7 +2282,7 @@ EOF
 }
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
@@ -2144,7 +2303,7 @@ EOF
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
   printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
   echo "$output" | grep -q "next_phase=02"
@@ -2173,9 +2332,13 @@ EOF
   git add app.py
   git commit -m "new app" --quiet
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "qa_status=pending"
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
 }
 
 @test "qa_status is pending for brownfield PASS verification after later commit" {
@@ -2193,9 +2356,13 @@ EOF
   git add app.py
   git commit -m "after qa" --quiet
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "qa_status=pending"
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
 }
 
 @test "qa_status is pending when PASS verification has uncommitted product changes" {
@@ -2219,9 +2386,13 @@ EOF
 
   echo "print(\"dirty\")" > app.py
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "qa_status=pending"
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
 }
 
 @test "qa_status is pending when structured phase PASS fails qa-result-gate" {
@@ -2244,9 +2415,41 @@ EOF
     '# Verification' \
     'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "qa_status=pending"
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
+}
+
+@test "summary with leading blank line still counts as complete for pending QA routing" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  cat > .vbw-planning/phases/01-test/01-SUMMARY.md <<'EOF'
+
+---
+status: complete
+---
+EOF
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  printf '%s\n' \
+    '---' \
+    'result: PASS' \
+    'writer: ' \
+    '---' \
+    '# Verification' \
+    'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
 }
 
 @test "qa_status is pending for brownfield remediated verification after later commit" {
@@ -2265,9 +2468,13 @@ EOF
   git add app.py
   git commit -m "after remediated qa" --quiet
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "qa_status=pending"
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
 }
 
 @test "first_qa_attention targets stale QA even when terminal UAT exists" {
@@ -2301,7 +2508,7 @@ EOF
   git add app.py
   git commit -m "after stale qa with uat" --quiet
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "next_phase_slug=01-test"
@@ -2327,7 +2534,7 @@ status: complete
 All tests passed.
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
@@ -2366,7 +2573,7 @@ status: complete
 All tests passed.
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   [ -f .vbw-planning/phases/01-test/known-issues.json ]
   echo "$output" | grep -q "next_phase=01"
@@ -2401,7 +2608,7 @@ EOF
 }
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "next_phase_slug=01-test"
@@ -2464,7 +2671,7 @@ status: complete
 All tests passed.
 EOF
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
@@ -2482,11 +2689,187 @@ EOF
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/02-remediating/02-VERIFICATION.md
   printf '%s\n%s\n' 'stage=verify' 'round=01' > .vbw-planning/phases/02-remediating/remediation/qa/.qa-remediation-stage
 
-  run bash "$SCRIPTS_DIR/phase-detect.sh"
+  run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase=02"
   echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
   echo "$output" | grep -q "first_qa_attention_phase=02"
   echo "$output" | grep -q "first_qa_attention_slug=02-remediating"
   echo "$output" | grep -q "qa_attention_status=verify"
+}
+
+# ---------- #369: cross-session reverification routing ----------
+
+@test "phase-detect: stage=done + round UAT with issues_found routes to needs_uat_remediation" {
+  # Scenario: UAT remediation round 02 completed, re-verification found issues,
+  # but the session ended before auto-continuing to round 03. The next session
+  # should recognise the round UAT and route to remediation, not re-verify.
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-02
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-feature/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  # Round 01 UAT (prior round, already remediated)
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+round: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  # Round 02 UAT — re-verification happened, still has issues
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-02/R02-UAT.md <<'EOF'
+---
+phase: 01
+round: 02
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+- **Issue:** fix did not resolve
+  - Description: test still fails
+  - Severity: major
+EOF
+  # Remediation state: round 02 done
+  printf 'stage=done\nround=02\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  # State file should be auto-advanced to round 03, stage=research
+  grep -q '^stage=research$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=03$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  # Round 03 directory should be created
+  [ -d .vbw-planning/phases/01-feature/remediation/uat/round-03 ]
+}
+
+@test "phase-detect: stage=done + no round UAT routes to needs_reverification" {
+  # Scenario: UAT remediation round 02 completed execution, but re-verification
+  # has NOT happened yet. Should route to needs_reverification so it can run.
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-02
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-feature/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  touch .vbw-planning/phases/01-feature/remediation/uat/round-02/R02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/remediation/uat/round-02/R02-SUMMARY.md
+  # Remediation state: round 02 done, but NO R02-UAT.md
+  printf 'stage=done\nround=02\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  # State file should NOT be modified
+  grep -q '^stage=done$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=02$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+}
+
+@test "phase-detect: stage=done + round UAT with complete status does NOT trigger remediation" {
+  # Scenario: UAT remediation round 01 completed, re-verification passed.
+  # Phase-detect sees no active UAT issues since round UAT is complete,
+  # so it exits the remediation routing block. Must NOT start another round.
+  mkdir -p .vbw-planning/phases/01-feature/remediation/uat/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-feature/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  # Round 01 UAT — re-verification passed (all tests passed)
+  cat > .vbw-planning/phases/01-feature/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+round: 01
+status: complete
+issues: 0
+---
+## Tests
+### P01-T1: sample test
+- **Result:** pass
+EOF
+  # Remediation state: round 01 done
+  printf 'stage=done\nround=01\nlayout=round-dir\n' > .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  # When round UAT is complete (tests passed), must NOT trigger another remediation round
+  ! echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  # Phase exits remediation routing entirely — routes to standard verification
+  echo "$output" | grep -q "next_phase_state=needs_verification"
+  # State file should NOT be modified — no round advancement
+  grep -q '^stage=done$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+  grep -q '^round=01$' .vbw-planning/phases/01-feature/remediation/uat/.uat-remediation-stage
+}
+
+@test "phase-detect: stage=done + legacy layout routes to needs_uat_remediation with correct paths" {
+  # Scenario: Legacy brownfield project uses .uat-remediation-stage at phase root
+  # and stores round UATs under remediation/round-NN/ (no /uat/ prefix).
+  # The auto-advance must create remediation/round-02 (legacy), NOT remediation/uat/round-02.
+  mkdir -p .vbw-planning/phases/01-feature/remediation/round-01
+  touch .vbw-planning/phases/01-feature/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-feature/01-01-SUMMARY.md
+  cat > .vbw-planning/phases/01-feature/01-UAT.md <<'EOF'
+---
+phase: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  # Round 01 UAT at legacy path — re-verification found issues
+  cat > .vbw-planning/phases/01-feature/remediation/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+round: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: sample test
+- **Result:** issue
+EOF
+  # Legacy state file at phase root (no /uat/ prefix)
+  printf 'stage=done\nround=01\n' > .vbw-planning/phases/01-feature/.uat-remediation-stage
+
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase_state=needs_uat_remediation"
+  # State file should advance to round 02, stage=research, layout=legacy
+  grep -q '^stage=research$' .vbw-planning/phases/01-feature/.uat-remediation-stage
+  grep -q '^round=02$' .vbw-planning/phases/01-feature/.uat-remediation-stage
+  grep -q '^layout=legacy$' .vbw-planning/phases/01-feature/.uat-remediation-stage
+  # Legacy layout: create remediation/round-02 (NOT remediation/uat/round-02)
+  [ -d .vbw-planning/phases/01-feature/remediation/round-02 ]
+  [ ! -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
 }

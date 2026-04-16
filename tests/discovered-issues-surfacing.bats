@@ -502,7 +502,8 @@ load test_helper
 }
 
 @test "verify command skip-qa still blocks on unresolved known issues" {
-  grep -q 'unresolved or unreadable tracked known issues' "$PROJECT_ROOT/commands/verify.md"
+  grep -q 'unresolved tracked known issues' "$PROJECT_ROOT/commands/verify.md"
+  grep -q 'unreadable tracked known issues' "$PROJECT_ROOT/commands/verify.md"
 }
 
 # =============================================================================
@@ -574,7 +575,8 @@ load test_helper
 @test "all discovered issues sections include STOP after display" {
   local failed=""
   # verify.md is excluded — its discovered issues flow into remediation, no STOP needed
-  for file in commands/fix.md commands/debug.md commands/qa.md; do
+  # debug.md is excluded — its discovered issues flow into inline QA when status is qa_pending
+  for file in commands/fix.md commands/qa.md; do
     if grep -q 'Discovered Issues' "$PROJECT_ROOT/$file"; then
       if ! grep -qi 'STOP.*Do not take further action' "$PROJECT_ROOT/$file"; then
         failed="${failed} ${file}"
