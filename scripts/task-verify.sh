@@ -1,10 +1,22 @@
 #!/bin/bash
 set -u
-# TaskCompleted hook: Verify a recent git commit exists for the completed task
-# Exit 2 = block completion, Exit 0 = allow
+# TaskCompleted hook: Advisory commit verification for execute tasks
+# Exit 0 always — commit matching is advisory, never blocking
 # Exit 0 on ANY error (fail-open: never block legitimate work)
 
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+
+emit_task_verify_advisory() {
+  local msg="$1"
+  command -v jq &>/dev/null || return 0
+
+  jq -n --arg msg "$msg" '{
+    "hookSpecificOutput": {
+      "hookEventName": "TaskCompleted",
+      "additionalContext": ("TaskCompleted advisory: " + $msg)
+    }
+  }'
+}
 
 # Only apply to VBW contexts
 [ ! -d "$PLANNING_DIR" ] && exit 0
@@ -21,13 +33,9 @@ if [ -n "$INPUT" ]; then
   fi
 fi
 
-# Tasks can opt out of the commit requirement via subject tags.
-# [analysis-only] — debugger hypothesis investigation, read-only analysis
-# [no-commit]     — any task that legitimately produces no git commit
-#                   (assessments, linking, branch ops, config, research, etc.)
-# Checked early — before commit fetching — so these never hit the "no recent
-# commits" block even when no code changes exist in the repo.
-if echo "$TASK_SUBJECT" | grep -qiE '\[(analysis-only|no-commit)\]'; then
+# Analysis-only tasks (e.g., debugger hypothesis investigation) explicitly
+# opt out of commit verification.
+if echo "$TASK_SUBJECT" | grep -qi '\[analysis-only\]'; then
   exit 0
 fi
 
@@ -35,6 +43,15 @@ fi
 # tasks. Don't block completion on commit-keyword matching for these.
 TASK_SUBJECT_CANON=$(echo "$TASK_SUBJECT" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 if echo "$TASK_SUBJECT_CANON" | grep -qE '^@?(team-)?(vbw-)?(lead|dev|qa|scout|debugger|architect)(-[0-9]+)?$'; then
+  exit 0
+fi
+
+# No task context available — fail open.
+[ -z "$TASK_SUBJECT" ] && exit 0
+
+# Only canonical execute-protocol Dev tasks are expected to produce commits.
+# Manual/non-code/external tasks should never be blocked by this heuristic.
+if ! echo "$TASK_SUBJECT" | grep -qiE '^execute[[:space:]]+[0-9]{2}-[0-9]{2}:[[:space:]]+'; then
   exit 0
 fi
 
@@ -49,8 +66,8 @@ fi
 RECENT_COMMITS=$(git log --oneline -20 --format="%ct %s" 2>/dev/null) || exit 0
 
 if [ -z "$RECENT_COMMITS" ]; then
-  echo "No commits found in repository" >&2
-  exit 2
+  emit_task_verify_advisory "Execute task '$TASK_SUBJECT' completed without any git history to verify against. Completion was allowed because commit verification is advisory for execute tasks."
+  exit 0
 fi
 
 # Filter to commits within last 2 hours
@@ -68,12 +85,7 @@ while IFS= read -r line; do
 done <<< "$RECENT_COMMITS"
 
 if [ -z "$RECENT_MESSAGES" ]; then
-  echo "No recent commits found (last commit is over 2 hours old)" >&2
-  exit 2
-fi
-
-# If no task context available, fall back to original behavior (any recent commit = pass)
-if [ -z "$TASK_SUBJECT" ]; then
+  emit_task_verify_advisory "Execute task '$TASK_SUBJECT' completed without a recent commit in the configured window. Completion was allowed because commit verification is advisory for execute tasks."
   exit 0
 fi
 
@@ -113,17 +125,5 @@ if [ "$MATCH_COUNT" -ge "$MIN_MATCHES" ]; then
   exit 0
 fi
 
-echo "No recent commit found matching task: '$TASK_SUBJECT' (matched $MATCH_COUNT/$KEYWORD_COUNT keywords, needed $MIN_MATCHES)" >&2
-
-# Circuit breaker: if this same subject has already been blocked once, allow it
-# on the second attempt. This prevents infinite hook loops where the agent
-# responds to the block, triggering another turn, which triggers the hook again.
-SEEN_FILE="$PLANNING_DIR/.task-verify-seen"
-SUBJECT_HASH=$(printf '%s' "$TASK_SUBJECT" | md5 2>/dev/null || printf '%s' "$TASK_SUBJECT" | md5sum 2>/dev/null | cut -d' ' -f1 || printf '%s' "$TASK_SUBJECT" | cksum 2>/dev/null | cut -d' ' -f1 || echo "${#TASK_SUBJECT}-${TASK_SUBJECT%% *}")
-if [ -f "$SEEN_FILE" ] && grep -qFx "$SUBJECT_HASH" "$SEEN_FILE" 2>/dev/null; then
-  echo "Circuit breaker: allowing repeat-blocked task (same subject blocked before)" >&2
-  exit 0
-fi
-# Record this subject as blocked
-echo "$SUBJECT_HASH" >> "$SEEN_FILE" 2>/dev/null || true
-exit 2
+emit_task_verify_advisory "Execute task '$TASK_SUBJECT' completed without a recent matching commit (matched $MATCH_COUNT/$KEYWORD_COUNT keywords, needed $MIN_MATCHES). Completion was allowed because commit verification is advisory for execute tasks."
+exit 0

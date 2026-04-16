@@ -322,7 +322,7 @@ description: |
 activeForm: "Executing {NN-MM}"
 ```
 
-**Non-commit tasks:** If a task does not produce a git commit (assessment, research, linking, branch creation, configuration), include `[no-commit]` in the task subject (e.g., `"Assess sortTableData coverage [no-commit]"`). This tells the TaskCompleted hook to skip commit verification. Without this tag, the hook blocks task completion when no matching commit is found.
+**TaskCompleted advisory scope:** Commit verification is advisory and only applies to canonical execute-task subjects (`Execute {NN-MM}: {plan-title}`). Manual, research, setup, and other non-execute tasks are allowed to complete without commit matching.
 
 Display: `◆ Spawning Dev teammate (${DEV_MODEL})...`
 
@@ -386,7 +386,7 @@ Use targeted `message` not `broadcast`. Reserve broadcast for critical blocking 
 - Wave transition: update `"wave"` when first wave N+1 task starts
 - Use `jq` for atomic updates
 
-Hooks handle continuous verification: PostToolUse validates SUMMARY.md, TaskCompleted verifies commits, TeammateIdle runs quality gate.
+Hooks handle continuous verification: PostToolUse validates SUMMARY.md, TaskCompleted emits advisory execute-task commit checks, TeammateIdle runs quality gate.
 
 **Event Log — plan lifecycle (REQ-16, graduated, always-on):**
 - At plan start: `bash "${VBW_PLUGIN_ROOT}/scripts/log-event.sh" plan_start {phase} {plan} 2>/dev/null || true`
