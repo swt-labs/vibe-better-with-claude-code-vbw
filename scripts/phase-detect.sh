@@ -72,6 +72,52 @@ normalize_qa_remediation_stage() {
   esac
 }
 
+trim_phase_detect_value() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+state_file_kv_value() {
+  local file_path="$1"
+  local key_name="$2"
+  local line value
+
+  [ -f "$file_path" ] || return 0
+  [ -n "$key_name" ] || return 0
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    case "$line" in
+      "$key_name"=*)
+        value="${line#"$key_name="}"
+        trim_phase_detect_value "$value"
+        return 0
+        ;;
+    esac
+  done < "$file_path"
+
+  return 0
+}
+
+state_file_scalar_value() {
+  local file_path="$1"
+  local line value
+
+  [ -f "$file_path" ] || return 0
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    value=$(trim_phase_detect_value "$line")
+    [ -n "$value" ] || continue
+    printf '%s\n' "$value"
+    return 0
+  done < "$file_path"
+
+  return 0
+}
+
 verification_writer() {
   local verification_file="$1"
   [ -f "$verification_file" ] || return 0
@@ -437,24 +483,17 @@ if [ -d "$PHASES_DIR" ]; then
         if [ -f "${TARGET_DIR}remediation/uat/.uat-remediation-stage" ]; then
           _rem_state_file="${TARGET_DIR}remediation/uat/.uat-remediation-stage"
           # New round-dir state file (key=value format)
-          _rem_stage=$(grep '^stage=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          _rem_stage=$(state_file_kv_value "$_rem_state_file" stage)
           _rem_stage="${_rem_stage:-none}"
         elif [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
           _rem_state_file="${TARGET_DIR}remediation/.uat-remediation-stage"
-          if grep -q '^stage=' "$_rem_state_file" 2>/dev/null; then
-            _rem_stage=$(grep '^stage=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-          else
-            _rem_stage=$(tr -d '[:space:]' < "$_rem_state_file")
-          fi
+          _rem_stage=$(state_file_kv_value "$_rem_state_file" stage)
+          [ -n "$_rem_stage" ] || _rem_stage=$(state_file_scalar_value "$_rem_state_file")
           _rem_stage="${_rem_stage:-none}"
         elif [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
           _rem_state_file="${TARGET_DIR}.uat-remediation-stage"
-          # Legacy state file (single-word or key=value)
-          if grep -q '^stage=' "$_rem_state_file" 2>/dev/null; then
-            _rem_stage=$(grep '^stage=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-          else
-            _rem_stage=$(tr -d '[:space:]' < "$_rem_state_file")
-          fi
+          _rem_stage=$(state_file_kv_value "$_rem_state_file" stage)
+          [ -n "$_rem_stage" ] || _rem_stage=$(state_file_scalar_value "$_rem_state_file")
           _rem_stage="${_rem_stage:-none}"
         fi
         # Pre-compute plan/summary counts (needed for state routing AND stale-stage reconciliation)
@@ -472,7 +511,7 @@ if [ -d "$PHASES_DIR" ]; then
         # Read current round for scoped counting
         _cur_rr="01"
         if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
-          _cr_val=$(grep '^round=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          _cr_val=$(state_file_kv_value "$_rem_state_file" round)
           _cur_rr="${_cr_val:-01}"
         fi
         # Count round-dir plans/summaries for current round only
@@ -489,8 +528,8 @@ if [ -d "$PHASES_DIR" ]; then
         if [ "$_rem_stage" = "execute" ] && [ "$_total_plans" -gt 0 ] && [ "$_total_summaries" -ge "$_total_plans" ]; then
           # Write back to the same remediation state file we read.
           if [ -n "$_rem_state_file" ] && grep -q '^stage=' "$_rem_state_file" 2>/dev/null; then
-            _cur_round=$(grep '^round=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
-            _cur_layout=$(grep '^layout=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+            _cur_round=$(state_file_kv_value "$_rem_state_file" round)
+            _cur_layout=$(state_file_kv_value "$_rem_state_file" layout)
             case "$_rem_state_file" in
               */remediation/.uat-remediation-stage|*/.uat-remediation-stage)
                 printf 'stage=done\nround=%s\nlayout=%s\n' "${_cur_round:-01}" "${_cur_layout:-legacy}" > "$_rem_state_file"
@@ -523,7 +562,7 @@ if [ -d "$PHASES_DIR" ]; then
           # Read layout before the routing decision — apply the same path-based
           # default as the execute→done transition above.
           if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
-            _cur_layout=$(grep '^layout=' "$_rem_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+            _cur_layout=$(state_file_kv_value "$_rem_state_file" layout)
             if [ -z "$_cur_layout" ]; then
               case "$_rem_state_file" in
                 */remediation/.uat-remediation-stage|*/.uat-remediation-stage)
@@ -698,13 +737,13 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     _qr_rem_file="${_qr_dir}remediation/qa/.qa-remediation-stage"
     [ -f "$_qr_rem_file" ] || continue
 
-    _qr_stage=$(grep '^stage=' "$_qr_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+    _qr_stage=$(state_file_kv_value "$_qr_rem_file" stage)
     _qr_stage=$(normalize_qa_remediation_stage "${_qr_stage:-none}")
     case "$_qr_stage" in
       none|done) continue ;;
     esac
 
-    _qr_round=$(grep '^round=' "$_qr_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+    _qr_round=$(state_file_kv_value "$_qr_rem_file" round)
     _qr_round="${_qr_round:-01}"
     _qr_dirname=$(basename "$_qr_dir")
     QA_REMEDIATING_PHASE=$(echo "$_qr_dirname" | sed 's/^\([0-9]*\).*/\1/')
@@ -728,9 +767,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     _qa_rem_round="00"
     _qa_rem_file="${_uv_dir}remediation/qa/.qa-remediation-stage"
     if [ -f "$_qa_rem_file" ]; then
-      _qa_rem_stage=$(grep '^stage=' "$_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      _qa_rem_stage=$(state_file_kv_value "$_qa_rem_file" stage)
       _qa_rem_stage=$(normalize_qa_remediation_stage "${_qa_rem_stage:-none}")
-      _qa_rem_round=$(grep '^round=' "$_qa_rem_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      _qa_rem_round=$(state_file_kv_value "$_qa_rem_file" round)
       _qa_rem_round="${_qa_rem_round:-01}"
     fi
 
@@ -815,9 +854,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     _qa_round_scan="00"
     _qa_rem_file_scan="${_qa_dir}remediation/qa/.qa-remediation-stage"
     if [ -f "$_qa_rem_file_scan" ]; then
-      _qa_stage=$(grep '^stage=' "$_qa_rem_file_scan" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      _qa_stage=$(state_file_kv_value "$_qa_rem_file_scan" stage)
       _qa_stage=$(normalize_qa_remediation_stage "${_qa_stage:-none}")
-      _qa_round_scan=$(grep '^round=' "$_qa_rem_file_scan" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+      _qa_round_scan=$(state_file_kv_value "$_qa_rem_file_scan" round)
       _qa_round_scan="${_qa_round_scan:-01}"
     fi
 
