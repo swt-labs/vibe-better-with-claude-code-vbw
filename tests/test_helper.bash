@@ -58,6 +58,18 @@ get_dead_pid() {
   echo "$p"
 }
 
+# Assign a PID that is guaranteed alive for the duration of the current Bats
+# test shell. Intentionally uses the top-level shell PID (`$$`) rather than a
+# disposable background child, `$BASHPID` in command substitution, or an
+# external `bash -c 'echo $$'` shell, all of which can produce short-lived PIDs
+# that reintroduce liveness flakes.
+assign_live_pid() {
+  local var_name="${1:-}"
+  [ -n "$var_name" ] || return 1
+  kill -0 "$$" 2>/dev/null || return 1
+  printf -v "$var_name" '%s' "$$"
+}
+
 # Run phase-detect.sh with retry on empty or incomplete output.
 # Under heavy parallel BATS execution, transient late failures can produce
 # partial output that already includes early routing keys like
