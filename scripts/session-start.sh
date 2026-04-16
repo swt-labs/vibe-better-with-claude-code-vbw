@@ -720,7 +720,7 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
       STRICT_COMPLETE=0
       for _ss_sf in "$PHASE_DIR"/*-SUMMARY.md "$PHASE_DIR"/SUMMARY.md; do
         [ -f "$_ss_sf" ] || continue
-        _ss_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_ss_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+        _ss_st=$(extract_summary_status "$_ss_sf")
         case "$_ss_st" in
           complete|completed) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)); STRICT_COMPLETE=$((STRICT_COMPLETE + 1)) ;;
           partial) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)) ;;
@@ -736,7 +736,7 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
         _completed_json="[]"
         for _sf in "$PHASE_DIR"/*-SUMMARY.md "$PHASE_DIR"/SUMMARY.md; do
           [ -f "$_sf" ] || continue
-          _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+          _sf_st=$(extract_summary_status "$_sf")
           case "$_sf_st" in
             complete|completed|partial)
               _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')

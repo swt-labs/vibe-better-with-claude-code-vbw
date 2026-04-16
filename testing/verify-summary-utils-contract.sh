@@ -458,8 +458,8 @@ fi
 echo ""
 echo "--- Integration: runtime scripts source summary-utils.sh ---"
 
-# Verify all 5 runtime scripts that should source summary-utils.sh actually reference it
-for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh; do
+# Verify all 6 runtime scripts that should source summary-utils.sh actually reference it
+for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh; do
   if grep -q 'summary-utils\.sh' "$ROOT/scripts/$script" 2>/dev/null; then
     pass "integration: $script references summary-utils.sh"
   else
@@ -468,7 +468,7 @@ for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-
 done
 
 # Verify no runtime script still sources the deprecated lib/summary-status.sh
-for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh; do
+for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh; do
   if grep -q 'lib/summary-status\.sh' "$ROOT/scripts/$script" 2>/dev/null; then
     fail "integration: $script still references deprecated lib/summary-status.sh"
   else
@@ -479,7 +479,7 @@ done
 # Verify no consumer script overrides extract_summary_status() after sourcing summary-utils.sh.
 # Fallback stubs in else-blocks (for when summary-utils.sh is missing) are allowed — only
 # definitions that coexist with the sourced helper create split-brain parsing.
-for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh; do
+for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh; do
   # Count function definitions of extract_summary_status()
   def_count=$(grep -cE '^[[:space:]]*extract_summary_status[[:space:]]*\(\)' "$ROOT/scripts/$script" 2>/dev/null) || def_count=0
   # Count source lines for summary-utils.sh (matches both `. file` and `source file`)
