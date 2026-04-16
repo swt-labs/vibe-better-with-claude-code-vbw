@@ -203,9 +203,9 @@ simulate_session_stop() {
 
 @test "prune keeps alive PIDs and removes dead ones" {
   cd "$TEST_TEMP_DIR"
-  # Start a real background process to get a live PID
-  sleep 30 &
-  local alive_pid=$!
+  local alive_pid
+  assign_live_pid alive_pid || fail "assign_live_pid failed"
+  kill -0 "$alive_pid" 2>/dev/null || fail "live pid fixture is not alive"
 
   local dead1 dead2
   dead1=$(get_dead_pid) || fail "get_dead_pid failed"
@@ -225,8 +225,6 @@ simulate_session_stop() {
   [ "$status" -ne 0 ]
   run grep "^${dead2}$" ".vbw-planning/.agent-pids"
   [ "$status" -ne 0 ]
-
-  kill "$alive_pid" 2>/dev/null || true
 }
 
 @test "prune is a no-op when .agent-pids does not exist" {
@@ -246,8 +244,9 @@ simulate_session_stop() {
   echo "$stale_pid" > ".vbw-planning/.agent-pids.tmp"
 
   # Put a live PID in the real file
-  sleep 30 &
-  local alive_pid=$!
+  local alive_pid
+  assign_live_pid alive_pid || fail "assign_live_pid failed"
+  kill -0 "$alive_pid" 2>/dev/null || fail "live pid fixture is not alive"
 
   local dead1
   dead1=$(get_dead_pid) || fail "get_dead_pid failed"
@@ -263,8 +262,6 @@ simulate_session_stop() {
 
   # Temp file should be cleaned up
   [ ! -f ".vbw-planning/.agent-pids.tmp" ]
-
-  kill "$alive_pid" 2>/dev/null || true
 }
 
 @test "prune recovers from stale lock left by crashed process" {

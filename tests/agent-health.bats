@@ -89,11 +89,10 @@ run_health_via_wrapper() {
 # Test 2: idle increments count
 @test "agent-health: idle increments count" {
   cd "$TEST_TEMP_DIR"
-  # Create health file with a long-lived PID (PID 1 on Linux/macOS is init)
-  # For test purposes, we'll use a background sleep process
-  sleep 30 &
-  SLEEP_PID=$!
-  echo "{\"pid\":\"$SLEEP_PID\",\"agent_type\":\"vbw-qa\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  local live_pid
+  assign_live_pid live_pid || fail "assign_live_pid failed"
+  kill -0 "$live_pid" 2>/dev/null || fail "live pid fixture is not alive"
+  echo "{\"pid\":\"$live_pid\",\"agent_type\":\"vbw-qa\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   # Run idle
   echo '{"agent_type":"vbw-qa"}' | bash "$SCRIPTS_DIR/agent-health.sh" idle >/dev/null
@@ -101,17 +100,15 @@ run_health_via_wrapper() {
   # Check idle count
   run jq -r '.idle_count' "$HEALTH_DIR/qa.json"
   [ "$output" = "1" ]
-
-  # Cleanup
-  kill $SLEEP_PID 2>/dev/null || true
 }
 
 # Test 3: idle stuck advisory at count >= 3
 @test "agent-health: idle stuck advisory" {
   cd "$TEST_TEMP_DIR"
-  sleep 30 &
-  SLEEP_PID=$!
-  echo "{\"pid\":\"$SLEEP_PID\",\"agent_type\":\"vbw-scout\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  local live_pid
+  assign_live_pid live_pid || fail "assign_live_pid failed"
+  kill -0 "$live_pid" 2>/dev/null || fail "live pid fixture is not alive"
+  echo "{\"pid\":\"$live_pid\",\"agent_type\":\"vbw-scout\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   # Run idle 3 times
   for i in 1 2 3; do
@@ -122,8 +119,6 @@ run_health_via_wrapper() {
   run bash -c "echo '{\"agent_type\":\"vbw-scout\"}' | bash '$SCRIPTS_DIR/agent-health.sh' idle | jq -r '.hookSpecificOutput.additionalContext'"
   [[ "$output" == *"stuck"* ]]
   [[ "$output" == *"idle_count=4"* ]]
-
-  kill $SLEEP_PID 2>/dev/null || true
 }
 
 # Test 4: orphan recovery clears owner
@@ -201,10 +196,11 @@ EOF
 }
 EOF
 
-  sleep 30 &
-  LIVE_PID=$!
+  local live_pid
+  assign_live_pid live_pid || fail "assign_live_pid failed"
+  kill -0 "$live_pid" 2>/dev/null || fail "live pid fixture is not alive"
 
-  echo "{\"pid\":\"$LIVE_PID\",\"agent_id\":\"agent-live\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  echo "{\"pid\":\"$live_pid\",\"agent_id\":\"agent-live\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   local dead_pid
   dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
@@ -216,7 +212,6 @@ EOF
   run jq -r '.owner' "$TASKS_DIR/task-shared.json"
   [ "$output" = "dev" ]
 
-  kill $LIVE_PID 2>/dev/null || true
   rm -rf "$TASKS_DIR"
 }
 
@@ -234,9 +229,10 @@ EOF
 # Test 5: stop removes health file
 @test "agent-health: stop removes health file" {
   cd "$TEST_TEMP_DIR"
-  sleep 30 &
-  SLEEP_PID=$!
-  echo "{\"pid\":\"$SLEEP_PID\",\"agent_type\":\"vbw-qa\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  local live_pid
+  assign_live_pid live_pid || fail "assign_live_pid failed"
+  kill -0 "$live_pid" 2>/dev/null || fail "live pid fixture is not alive"
+  echo "{\"pid\":\"$live_pid\",\"agent_type\":\"vbw-qa\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
   # Verify file exists
   [ -f "$HEALTH_DIR/qa.json" ]
@@ -246,8 +242,6 @@ EOF
 
   # Verify file removed
   [ ! -f "$HEALTH_DIR/qa.json" ]
-
-  kill $SLEEP_PID 2>/dev/null || true
 }
 
 @test "agent-health: start ignores bare native agent_type even in a VBW session" {
@@ -316,10 +310,11 @@ EOF
 }
 EOF
 
-  sleep 30 &
-  LIVE_PID=$!
+  local live_pid
+  assign_live_pid live_pid || fail "assign_live_pid failed"
+  kill -0 "$live_pid" 2>/dev/null || fail "live pid fixture is not alive"
 
-  echo "{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-map-duo\",\"pid\":\"$LIVE_PID\"}" | bash "$SCRIPTS_DIR/agent-health.sh" idle >/dev/null
+  echo "{\"teammate_name\":\"dev-01\",\"team_name\":\"vbw-map-duo\",\"pid\":\"$live_pid\"}" | bash "$SCRIPTS_DIR/agent-health.sh" idle >/dev/null
 
   local dead_pid
   dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
@@ -330,8 +325,6 @@ EOF
   [ "$output" = "" ]
   run jq -r '.owner' "$TASKS_DIR/vbw-map-duo/task-map.json"
   [ "$output" = "dev" ]
-
-  kill $LIVE_PID 2>/dev/null || true
 }
 
 @test "agent-health: orphan recovery preserves role-owned task when same-team teammate has no pid" {
