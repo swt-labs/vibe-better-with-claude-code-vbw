@@ -113,3 +113,31 @@ teardown() {
   [ "$status" -eq 0 ]
   grep -q "first.txt" "$planning/.last-fix-commit"
 }
+
+# ── fix.md integration contract ──────────────────────────
+
+@test "fix.md calls write-fix-marker.sh before suggest-next.sh in both success paths" {
+  local fix_md="$PROJECT_ROOT/commands/fix.md"
+  # Both success paths must call write-fix-marker.sh before suggest-next.sh
+  # Extract line numbers for each call pattern
+  local marker_lines suggest_lines
+  marker_lines=$(grep -n 'write-fix-marker\.sh' "$fix_md" | cut -d: -f1)
+  suggest_lines=$(grep -n 'suggest-next\.sh' "$fix_md" | cut -d: -f1)
+
+  # Must have at least 2 marker calls (one per success path)
+  local marker_count
+  marker_count=$(echo "$marker_lines" | wc -l | tr -d ' ')
+  [ "$marker_count" -ge 2 ]
+
+  # Each marker call must precede a suggest-next call
+  for m_line in $marker_lines; do
+    local found_after=false
+    for s_line in $suggest_lines; do
+      if [ "$s_line" -gt "$m_line" ]; then
+        found_after=true
+        break
+      fi
+    done
+    [ "$found_after" = true ]
+  done
+}
