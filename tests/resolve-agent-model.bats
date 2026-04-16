@@ -75,7 +75,7 @@ teardown() {
 }
 
 @test "cache is isolated by config path even when mtimes match" {
-  local alt_dir="$TEST_TEMP_DIR-alt"
+  local alt_dir="$TEST_TEMP_DIR/alt"
   mkdir -p "$alt_dir/.vbw-planning"
   cp "$TEST_TEMP_DIR/.vbw-planning/config.json" "$alt_dir/.vbw-planning/config.json"
 
