@@ -1010,7 +1010,7 @@ See **[Model Profiles Reference](references/model-profiles.md)** for preset defi
 ```text
 .claude-plugin/    Plugin manifest (plugin.json)
 agents/            7 agent definitions with native tool permissions
-commands/          24 slash commands (commands/*.md)
+commands/          24 slash commands (22 user-visible, 2 hidden protocol files)
 config/            Default settings and stack-to-skill mappings
 hooks/             Plugin hooks for continuous verification
 scripts/           Hook handler scripts (security, validation, QA gates)
