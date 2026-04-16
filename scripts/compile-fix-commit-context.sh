@@ -31,21 +31,19 @@ if [ ! -f "$marker_file" ]; then
   exit 0
 fi
 
-# Check staleness (24 hours = 86400 seconds)
-if command -v stat &>/dev/null; then
-  if [[ "$OSTYPE" == darwin* ]]; then
-    marker_mtime=$(stat -f '%m' "$marker_file" 2>/dev/null) || marker_mtime=0
-  else
-    marker_mtime=$(stat -c '%Y' "$marker_file" 2>/dev/null) || marker_mtime=0
-  fi
-  now=$(date +%s 2>/dev/null) || now=0
-  if [ "$marker_mtime" -gt 0 ] && [ "$now" -gt 0 ]; then
-    age=$(( now - marker_mtime ))
-    if [ "$age" -gt 86400 ]; then
-      echo "fix_context=empty"
-      exit 0
-    fi
-  fi
+# Check staleness (24 hours = 86400 seconds); fail-closed on stat/date errors
+marker_mtime=$(stat -c '%Y' "$marker_file" 2>/dev/null || stat -f '%m' "$marker_file" 2>/dev/null || echo 0)
+now=$(date +%s 2>/dev/null || echo 0)
+
+if [ "$marker_mtime" -le 0 ] || [ "$now" -le 0 ]; then
+  echo "fix_context=empty"
+  exit 0
+fi
+
+age=$(( now - marker_mtime ))
+if [ "$age" -gt 86400 ]; then
+  echo "fix_context=empty"
+  exit 0
 fi
 
 # Read marker fields

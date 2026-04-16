@@ -5,6 +5,9 @@
 # suggest-next.sh and verify.md can detect recent fix work and offer
 # UAT without requiring PLAN/SUMMARY artifacts.
 #
+# Marker format: key=value lines. The "files" field is a multi-line
+# continuation — each changed file appears on its own line after files=.
+#
 # Usage:
 #   write-fix-marker.sh [planning-dir] [description]
 #
@@ -29,8 +32,8 @@ if ! command -v git &>/dev/null; then
   exit 0
 fi
 
-# Read HEAD commit info
-commit_hash=$(git rev-parse --short HEAD 2>/dev/null) || exit 0
+# Read HEAD commit info (full hash for unambiguous downstream lookups)
+commit_hash=$(git rev-parse HEAD 2>/dev/null) || exit 0
 commit_message=$(git log --format='%s' -1 2>/dev/null) || exit 0
 commit_timestamp=$(git log --format='%aI' -1 2>/dev/null) || exit 0
 changed_files=$(git diff-tree --root --no-commit-id --name-only -r HEAD 2>/dev/null) || exit 0

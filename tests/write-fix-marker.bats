@@ -77,7 +77,9 @@ teardown() {
 
 @test "exits 0 with default planning dir when called with no args" {
   # No .vbw-planning in cwd, so it exits gracefully
-  cd /tmp
+  local empty_cwd="$TEST_TEMP_DIR/no-default-planning"
+  mkdir -p "$empty_cwd"
+  cd "$empty_cwd"
   run bash "$SCRIPTS_DIR/write-fix-marker.sh"
   [ "$status" -eq 0 ]
 }
