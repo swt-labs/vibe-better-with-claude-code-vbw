@@ -760,6 +760,9 @@ case "$CMD" in
     fi
     if [ "$_fix_debug_handled" = false ]; then
       suggest "/vbw:vibe -- Verify the fix"
+      if [ "$cfg_auto_uat" = true ] && [ -f "$PLANNING_DIR/.last-fix-commit" ]; then
+        suggest "/vbw:verify -- Run UAT on the fix"
+      fi
       suggest "/vbw:vibe -- Continue building"
     fi
     ;;
