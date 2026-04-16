@@ -193,7 +193,7 @@ EOF
   [[ "$output" == *"--resume"* ]]
 }
 
-@test "suggest-next fix with uat_pending debug session suggests verify" {
+@test "suggest-next fix with uat_pending debug session suggests resume for inline UAT" {
   create_debug_session "uat_pending"
   run bash "$SCRIPTS_DIR/suggest-next.sh" fix pass
   [ "$status" -eq 0 ]

@@ -832,8 +832,8 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" execute pass
 
   [ "$status" -eq 0 ]
-  # Should suggest re-verification
-  [[ "$output" == *"Re-verify"* ]] || [[ "$output" == *"re-verify"* ]] || [[ "$output" == *"/vbw:vibe"* ]]
+  # Should suggest re-verification via /vbw:vibe
+  [[ "$output" == *"Re-verify"* ]] || [[ "$output" == *"re-verify"* ]] || [[ "$output" == *"/vbw:vibe -- Re-verify"* ]] || [[ "$output" == *"/vbw:vibe -- re-verify"* ]]
 }
 
 @test "suggest-next qa pass suggests re-verify when needs_reverification" {
@@ -845,7 +845,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" qa pass
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Re-verify"* ]] || [[ "$output" == *"re-verify"* ]] || [[ "$output" == *"/vbw:vibe"* ]]
+  [[ "$output" == *"Re-verify"* ]] || [[ "$output" == *"re-verify"* ]] || [[ "$output" == *"/vbw:vibe -- Re-verify"* ]] || [[ "$output" == *"/vbw:vibe -- re-verify"* ]]
 }
 
 @test "suggest-next verify suggestions include phase number when first_unverified_phase set" {
