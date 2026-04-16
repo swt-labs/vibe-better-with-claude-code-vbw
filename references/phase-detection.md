@@ -1,6 +1,6 @@
 # VBW Phase Auto-Detection Protocol
 
-Single source of truth for detecting the target phase when the user omits the phase number from a command. Referenced by `${VBW_PLUGIN_ROOT}/commands/vibe.md`, `${VBW_PLUGIN_ROOT}/commands/qa.md`.
+Single source of truth for detecting the target phase when the user omits the phase number from a command. Referenced by `${VBW_PLUGIN_ROOT}/commands/vibe.md` and the QA protocol (`qa.md`, hidden from `/help`).
 
 ## Overview
 
@@ -50,7 +50,7 @@ When `require_phase_discussion=true` in config, the lifecycle command (`/vbw:vib
 
 **Matching logic:** Plan file `NN-PLAN.md` corresponds to summary file `NN-SUMMARY.md` (same numeric prefix).
 
-### QA Command (`/vbw:qa`)
+### QA Protocol (`qa.md`)
 
 **Goal:** Find the next phase that is built but not yet verified.
 
@@ -66,7 +66,7 @@ When `require_phase_discussion=true` in config, the lifecycle command (`/vbw:vib
    - `qa_attention_status=pending` → `next_phase_state=needs_verification` (so `/vbw:vibe` re-runs QA inline before any archive flow)
    - `qa_attention_status=failed|verify` → `next_phase_state=needs_qa_remediation`
 7. If found: use that phase
-8. If all built phases are verified: report "All phases verified. Specify a phase to re-verify: `/vbw:qa N`" and STOP
+8. If all built phases are verified: report "All phases verified." and STOP
 
 ### Lifecycle Command (`/vbw:vibe`)
 
