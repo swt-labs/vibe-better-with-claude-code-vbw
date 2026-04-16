@@ -16,7 +16,23 @@ RUN_ALL_REPO_KEY=""
 RUN_ALL_PROCESS_START=""
 RUN_ALL_PROCESS_COMMAND=""
 
+declare -a JOB_NAMES=()
+declare -a JOB_PIDS=()
+declare -a JOB_TYPES=()  # "lint", "contract", or "bats"
+declare -a JOB_EXIT_CODES=()
+declare -a serial_bats_files=()
+
 cleanup_run_all() {
+  local job_pid
+
+  for job_pid in "${JOB_PIDS[@]}"; do
+    [ -n "$job_pid" ] || continue
+    kill "$job_pid" 2>/dev/null || true
+  done
+  for job_pid in "${JOB_PIDS[@]}"; do
+    [ -n "$job_pid" ] || continue
+    wait "$job_pid" 2>/dev/null || true
+  done
   rm -rf "$TMPDIR_JOBS"
   if [ -n "$RUN_ALL_TOKEN" ]; then
     rm -f "$RUN_ALL_TOKEN"
@@ -29,13 +45,6 @@ if ! command -v jq >/dev/null 2>&1; then
   echo "ERROR: jq is required for CI-parity local verification (install with: brew install jq)."
   exit 1
 fi
-
-# --- Shared parallel job infrastructure ---
-declare -a JOB_NAMES=()
-declare -a JOB_PIDS=()
-declare -a JOB_TYPES=()  # "lint", "contract", or "bats"
-declare -a JOB_EXIT_CODES=()
-declare -a serial_bats_files=()
 
 run_job() {
   local type="$1" name="$2"
@@ -149,13 +158,32 @@ count_run_all_tokens() {
   echo "$count"
 }
 
+count_run_all_tokens_with_grace() {
+  local attempt current_count observed_count=0
+
+  for attempt in 1 2 3 4; do
+    current_count="$(count_run_all_tokens)"
+    if [ "$current_count" -gt "$observed_count" ]; then
+      observed_count="$current_count"
+    fi
+    if [ "$observed_count" -gt 1 ] || [ "$attempt" -eq 4 ]; then
+      break
+    fi
+    sleep 0.05
+  done
+
+  echo "$observed_count"
+}
+
 register_run_all_token() {
+  local final_token
+
   [ -n "$RUN_ALL_REPO_KEY" ] || return 1
   [ -n "$RUN_ALL_PROCESS_START" ] || return 1
   [ -n "$RUN_ALL_PROCESS_COMMAND" ] || return 1
   mkdir -p "$RUN_ALL_STATE_DIR" 2>/dev/null || return 1
   prune_run_all_tokens
-  RUN_ALL_TOKEN="$(mktemp "$RUN_ALL_STATE_DIR/suite.$$.XXXXXX.token" 2>/dev/null)" || {
+  RUN_ALL_TOKEN="$(mktemp "$RUN_ALL_STATE_DIR/suite.$$.XXXXXX.token.tmp" 2>/dev/null)" || {
     RUN_ALL_TOKEN=""
     return 1
   }
@@ -169,6 +197,13 @@ register_run_all_token() {
     RUN_ALL_TOKEN=""
     return 1
   fi
+  final_token="${RUN_ALL_TOKEN%.tmp}"
+  if ! mv "$RUN_ALL_TOKEN" "$final_token"; then
+    rm -f "$RUN_ALL_TOKEN"
+    RUN_ALL_TOKEN=""
+    return 1
+  fi
+  RUN_ALL_TOKEN="$final_token"
 }
 
 auto_tune_bats_workers() {
@@ -217,7 +252,7 @@ case "$BATS_WORKERS" in
 esac
 ACTIVE_RUN_ALL_SUITES=0
 if register_run_all_token; then
-  ACTIVE_RUN_ALL_SUITES="$(count_run_all_tokens)"
+  ACTIVE_RUN_ALL_SUITES="$(count_run_all_tokens_with_grace)"
 fi
 
 if [ "$BATS_WORKERS_FROM_ENV" = false ] && [ "${GITHUB_ACTIONS:-false}" != "true" ]; then

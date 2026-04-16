@@ -84,6 +84,21 @@ SH
   chmod +x "$path"
 }
 
+create_blocking_lint_script() {
+  local path="$1"
+  mkdir -p "$(dirname "$path")"
+  cat > "$path" <<'SH'
+#!/usr/bin/env bash
+: "${LINT_PID_FILE:?}"
+printf '%s\n' "$$" > "$LINT_PID_FILE"
+trap 'exit 0' TERM INT
+while :; do
+  sleep 0.1
+done
+SH
+  chmod +x "$path"
+}
+
 link_runtime_tool() {
   local root="$1"
   local tool_name="$2"
@@ -102,21 +117,6 @@ link_run_all_system_tools() {
   done
 }
 
-wait_for_file_contains() {
-  local needle="$1"
-  local file="$2"
-  local attempt
-
-  for attempt in {1..100}; do
-    if [ -f "$file" ] && grep -q "$needle" "$file"; then
-      return 0
-    fi
-    sleep 0.1
-  done
-
-  return 1
-}
-
 @test "default local worker count auto-tunes when a real peer suite overlaps" {
   local root="$TEST_TEMP_DIR/stub-repo-auto-tune"
   local linked_root="$TEST_TEMP_DIR/stub-repo-auto-tune-worktree"
@@ -132,7 +132,6 @@ wait_for_file_contains() {
 
   env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
   first_pid=$!
-  wait_for_file_contains 'Launched' "$first_output"
 
   run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
@@ -158,7 +157,6 @@ wait_for_file_contains() {
 
   env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
   first_pid=$!
-  wait_for_file_contains 'Launched' "$first_output"
 
   run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
@@ -185,6 +183,28 @@ wait_for_file_contains() {
   run env RUN_ALL_STATE_DIR="$state_root" bash -c "cd '$root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
   [[ "$output" != *'Auto-tuned BATS_WORKERS'* ]]
+}
+
+@test "run-all cleanup reaps background jobs on early failure" {
+  local root="$TEST_TEMP_DIR/stub-repo-early-fail"
+  local host_bash
+  local lint_pid
+  create_stub_workspace "$root"
+  create_blocking_lint_script "$root/testing/run-lint.sh"
+  cat > "$root/testing/list-contract-tests.sh" <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+  chmod +x "$root/testing/list-contract-tests.sh"
+  link_run_all_system_tools "$root"
+  host_bash="$(command -v bash)"
+
+  run env PATH="$root/bin" LINT_PID_FILE="$TEST_TEMP_DIR/lint.pid" "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+  echo "$output" | grep -q 'No contract tests discovered'
+
+  lint_pid="$(cat "$TEST_TEMP_DIR/lint.pid")"
+  ! kill -0 "$lint_pid" 2>/dev/null
 }
 
 @test "invalid BATS_WORKERS falls back and keeps serial bats files out of worker batches" {
