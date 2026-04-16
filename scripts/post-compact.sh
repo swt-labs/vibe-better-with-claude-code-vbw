@@ -356,7 +356,7 @@ if [ -z "$ROLE" ] || [ "$ROLE" = "unknown" ]; then
   # Fall back to phase-detect for non-execution modes
   if [ -z "$ACTIVE_MODE" ] && [ -f "$SCRIPT_DIR/phase-detect.sh" ]; then
     PD_OUT=$(bash "$SCRIPT_DIR/phase-detect.sh" 2>/dev/null) || PD_OUT=""
-    if [ -n "$PD_OUT" ]; then
+    if [ -n "$PD_OUT" ] && [ "$PD_OUT" != "phase_detect_error=true" ]; then
       PD_STATE=$(echo "$PD_OUT" | grep -m1 '^next_phase_state=' | sed 's/^[^=]*=//')
       PD_PHASE=$(echo "$PD_OUT" | grep -m1 '^next_phase=' | sed 's/^[^=]*=//')
       PD_PROJECT=$(echo "$PD_OUT" | grep -m1 '^project_exists=' | sed 's/^[^=]*=//')

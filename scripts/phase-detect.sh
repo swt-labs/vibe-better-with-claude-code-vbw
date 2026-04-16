@@ -1,7 +1,18 @@
 #!/bin/bash
 set -u
 _pd_normal_exit=false
-trap '[ "$_pd_normal_exit" = true ] || { echo "qa_status=none"; echo "execution_state=none"; }; exit 0' EXIT
+_pd_output_file=$(mktemp "${TMPDIR:-/tmp}/vbw-phase-detect.XXXXXX")
+exec 3>&1
+exec >"$_pd_output_file"
+trap '
+  if [ "$_pd_normal_exit" = true ]; then
+    cat "$_pd_output_file" >&3
+  else
+    printf "%s\n" "phase_detect_error=true" >&3
+  fi
+  rm -f "$_pd_output_file"
+  exit 0
+' EXIT
 # Pre-compute all project state for implement.md and other commands.
 # Output: key=value pairs on stdout, one per line. Exit 0 always.
 
@@ -294,6 +305,7 @@ UAT_ISSUES_COUNT=0
 UAT_ROUND_COUNT=0
 UAT_ISSUES_FILE=""
 UAT_ISSUES_RELATIVE_FILE="none"
+PHASE_DIRS=()
 
 if [ -d "$PHASES_DIR" ]; then
   # Collect phase directories in numeric order (prevents 100 sorting before 11)

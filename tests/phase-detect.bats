@@ -851,6 +851,24 @@ EOF
   echo "$output" | grep -q "phase_detect_complete=true"
 }
 
+@test "phase-detect emits only phase_detect_error=true on late failure" {
+  local shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-late-failure"
+  cp -R "$SCRIPTS_DIR" "$shim_dir"
+  awk '
+    /echo "milestone_uat_issues=\$MILESTONE_UAT_ISSUES"/ && !injected {
+      print "exit 23"
+      injected=1
+    }
+    { print }
+  ' "$SCRIPTS_DIR/phase-detect.sh" > "$shim_dir/phase-detect.sh"
+  chmod +x "$shim_dir/phase-detect.sh"
+
+  run bash "$shim_dir/phase-detect.sh"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "phase_detect_error=true" ]
+}
+
 @test "phase-detect treats git freshness probe failure as pending QA when terminal UAT exists" {
   mkdir -p .vbw-planning/phases/01-test
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md

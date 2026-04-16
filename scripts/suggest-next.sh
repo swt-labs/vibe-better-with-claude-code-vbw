@@ -122,7 +122,7 @@ if [ -d "$PLANNING_DIR" ]; then
 
   # Canonical post-archive UAT recovery state from phase-detect.sh
   _pd_out=$(bash "$SCRIPT_DIR/phase-detect.sh" 2>/dev/null || true)
-  if [ -n "$_pd_out" ]; then
+  if [ -n "$_pd_out" ] && [ "$_pd_out" != "phase_detect_error=true" ]; then
     _pd_milestone_uat=$(echo "$_pd_out" | grep -m1 '^milestone_uat_issues=' | sed 's/^[^=]*=//' || true)
     _pd_milestone_phase=$(echo "$_pd_out" | grep -m1 '^milestone_uat_phase=' | sed 's/^[^=]*=//' || true)
     _pd_milestone_slug=$(echo "$_pd_out" | grep -m1 '^milestone_uat_slug=' | sed 's/^[^=]*=//' || true)

@@ -18,6 +18,23 @@ teardown() {
   teardown_temp_dir
 }
 
+@test "archive-uat-guard blocks when phase detection fails" {
+  local shim_dir="$TEST_TEMP_DIR/archive-guard-phase-detect-error"
+  mkdir -p "$shim_dir"
+  cp "$SCRIPTS_DIR/archive-uat-guard.sh" "$shim_dir/archive-uat-guard.sh"
+  cat > "$shim_dir/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "phase_detect_error=true"
+exit 1
+EOF
+  chmod +x "$shim_dir/archive-uat-guard.sh" "$shim_dir/phase-detect.sh"
+
+  run bash "$shim_dir/archive-uat-guard.sh"
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"Archive blocked: phase detection failed"* ]]
+}
+
 # --- phase-detect.sh: milestone UAT scanning ---
 
 @test "phase-detect detects unresolved UAT in latest shipped milestone when active phases empty" {
