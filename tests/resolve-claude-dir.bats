@@ -111,6 +111,11 @@ teardown() {
   # Should find test-skill in custom dir
   echo "$output" | jq -e '.installed.global' >/dev/null
   [[ "$output" == *"test-skill"* ]]
+
+  # global_skills_dir should reflect the custom CLAUDE_CONFIG_DIR
+  local gsd
+  gsd=$(echo "$output" | jq -r '.global_skills_dir')
+  [[ "$gsd" == "$CLAUDE_CONFIG_DIR/skills" ]]
 }
 
 @test "detect-stack.sh uses default HOME/.claude when CLAUDE_CONFIG_DIR unset" {
@@ -123,6 +128,11 @@ teardown() {
 
   echo "$output" | jq -e '.installed.global' >/dev/null
   [[ "$output" == *"default-skill"* ]]
+
+  # global_skills_dir should reflect the default HOME/.claude
+  local gsd
+  gsd=$(echo "$output" | jq -r '.global_skills_dir')
+  [[ "$gsd" == "$HOME/.claude/skills" ]]
 }
 
 # --- hook-wrapper.sh tests ---
