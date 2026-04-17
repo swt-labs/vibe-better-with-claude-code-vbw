@@ -29,5 +29,5 @@
 
 ## Known onboarding quirks / errors encountered
 - `bash testing/run-all.sh` currently fails in a fresh environment if `bats` is missing, even when lint and contract checks pass. Workaround: install `bats-core` before relying on full CI-parity local verification, or at minimum run the relevant non-bats checks explicitly.
-- `bash testing/verify-statusline-qa-lifecycle.sh` currently exits with status `141` after printing passing output because `run_statusline_l1()` pipes `vbw-statusline.sh` into `head -1`, which can trigger an expected SIGPIPE. Workaround: treat exit `141` as this known standalone-test quirk, or run the check via `testing/run-all.sh` and inspect the emitted output.
+- `bash testing/verify-statusline-qa-lifecycle.sh` should now exit cleanly. If it fails, treat it as a real regression rather than an expected SIGPIPE quirk.
 - Keep `.github/copilot-instructions.md` tracked in git. Do not add it back to `.gitignore`.
