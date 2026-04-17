@@ -2668,7 +2668,11 @@ exit 23
 EOF
   chmod +x "$fake_sort_dir/sort"
 
-  run env PATH="$fake_sort_dir:$PATH" bash "$SCRIPTS_DIR/phase-detect.sh"
+  local original_path
+  original_path="$PATH"
+  PATH="$fake_sort_dir:$PATH"
+  run_phase_detect
+  PATH="$original_path"
 
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "phase_detect_complete=true"
