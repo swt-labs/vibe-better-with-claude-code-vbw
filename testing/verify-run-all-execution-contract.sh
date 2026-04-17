@@ -28,10 +28,12 @@ if [[ ! -f "$TARGET" ]]; then
 fi
 
 # CONTRIBUTING.md must contain the no-tail guidance specifically for run-all.sh
-if grep -Eiq 'run-all\.sh' "$TARGET" && grep -Eiq 'do not pipe.*tail|do not pipe.*tee' "$TARGET"; then
-  pass "CONTRIBUTING.md: contains no-pipe/no-tail directive for run-all.sh"
+# Extract the run-all.sh paragraph and verify the no-pipe wording is co-located
+run_all_block=$(grep -i 'run-all\.sh' "$TARGET" | grep -Eiq 'do not pipe.*tail|do not pipe.*tee' && echo "found")
+if [[ "$run_all_block" == "found" ]]; then
+  pass "CONTRIBUTING.md: run-all.sh line contains no-pipe/no-tail directive"
 else
-  fail "CONTRIBUTING.md: missing no-pipe/no-tail directive for run-all.sh"
+  fail "CONTRIBUTING.md: no line mentions both run-all.sh and no-pipe/no-tail directive"
 fi
 
 if grep -Eiq 'tail -20|tail -40' "$TARGET"; then
