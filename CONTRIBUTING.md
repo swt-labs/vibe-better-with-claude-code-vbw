@@ -80,6 +80,40 @@ All `/vbw:*` commands will load from your local copy. Restart Claude Code to pic
 > **Important:** `--plugin-dir` loads whatever is on disk in your VBW clone, which means whatever branch is currently checked out. Make sure you're on the branch with your changes before launching Claude Code — if you're on `main`, you'll be testing the unchanged version.
 > **Known limitation:** Plugin hooks (the 21 event handlers in `hooks.json`) resolve scripts from the marketplace cache via the symlink. This means hooks will run (unlike before the symlink existed), but they execute from your local clone — changes to hook scripts take effect immediately without a cache refresh. The git pre-push hook is a separate mechanism — see [Version Management](#version-management).
 
+### Set your local debug target repo
+
+VBW debugging docs use a **private local pointer file** instead of hard-coding a maintainer's consumer repo path.
+
+Create this file in your VBW clone:
+
+```text
+.claude/vbw-debug-target.txt
+```
+
+Put the absolute path to your primary VBW consumer/test repo on the first non-empty line:
+
+```text
+/absolute/path/to/your-test-repo
+```
+
+This file stays private because `.claude/` is gitignored in this repo.
+
+Resolution order for debug-target lookup:
+
+1. `VBW_DEBUG_TARGET_REPO` env var (one-off override)
+2. `./.claude/vbw-debug-target.txt` in the VBW clone (preferred persistent local config)
+3. `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/vbw/debug-target.txt` (user-global fallback)
+
+Useful checks:
+
+```bash
+bash scripts/resolve-debug-target.sh repo
+bash scripts/resolve-debug-target.sh planning-dir
+bash scripts/resolve-debug-target.sh claude-project-dir
+```
+
+If the resolver exits non-zero, configure one of the sources above before debugging VBW behavior.
+
 ## Project Structure
 
 ```text
