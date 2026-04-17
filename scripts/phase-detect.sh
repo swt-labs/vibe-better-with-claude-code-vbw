@@ -11,7 +11,7 @@ if _pd_output_file=$(mktemp "${TMPDIR:-/tmp}/vbw-phase-detect.XXXXXX" 2>/dev/nul
     exit 0
   fi
 else
-  rm -f "$_pd_output_file"
+  [ -n "$_pd_output_file" ] && rm -f "$_pd_output_file"
   printf "%s\n" "phase_detect_error=true" >&3
   exit 0
 fi
@@ -21,7 +21,7 @@ trap '
   else
     printf "%s\n" "phase_detect_error=true" >&3
   fi
-  rm -f "$_pd_output_file"
+  [ -n "$_pd_output_file" ] && rm -f "$_pd_output_file"
   exit 0
 ' EXIT
 # Pre-compute all project state for implement.md and other commands.
