@@ -412,6 +412,9 @@ Note: `auto_commit` controls source-task commits during Execute mode. Planning a
 | statusline_hide_limits_for_api_key | boolean | true/false | false |
 | statusline_hide_agent_in_tmux | boolean | true/false | false |
 | statusline_collapse_agent_in_tmux | boolean | true/false | false |
+| caveman_style | string | none/lite/full/ultra/auto | none |
+| caveman_commit | boolean | true/false | false |
+| caveman_review | boolean | true/false | false |
 
 ### Statusline switches
 

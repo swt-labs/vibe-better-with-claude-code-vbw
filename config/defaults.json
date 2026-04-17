@@ -46,5 +46,8 @@
   "statusline_hide_limits_for_api_key": false,
   "statusline_hide_agent_in_tmux": false,
   "statusline_collapse_agent_in_tmux": false,
-  "debug_logging": false
+  "debug_logging": false,
+  "caveman_style": "none",
+  "caveman_commit": false,
+  "caveman_review": false
 }

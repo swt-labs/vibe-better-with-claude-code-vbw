@@ -164,6 +164,16 @@ if [ -f "$MILESTONE_CONTEXT_PATH" ]; then
   MILESTONE_CONTEXT_SECTION=$(sed '1{/^# /d;}' "$MILESTONE_CONTEXT_PATH" 2>/dev/null || true)
 fi
 
+# Caveman config
+CAVEMAN_STYLE="none"
+CAVEMAN_COMMIT="false"
+CAVEMAN_REVIEW="false"
+if [ -f "$CONFIG_PATH" ] && command -v jq &>/dev/null; then
+  CAVEMAN_STYLE=$(jq -r '.caveman_style // "none"' "$CONFIG_PATH" 2>/dev/null || echo "none")
+  CAVEMAN_COMMIT=$(jq -r 'if .caveman_commit == null then false else .caveman_commit end' "$CONFIG_PATH" 2>/dev/null || echo "false")
+  CAVEMAN_REVIEW=$(jq -r 'if .caveman_review == null then false else .caveman_review end' "$CONFIG_PATH" 2>/dev/null || echo "false")
+fi
+
 # Record start time for metrics
 if [ "$V3_METRICS_ENABLED" = "true" ]; then
   START_TIME=$(date +%s 2>/dev/null || echo "0")
@@ -247,6 +257,36 @@ emit_codebase_mapping_hint() {
   fi
 }
 
+# --- Caveman language directive helper ---
+# Usage: emit_caveman_directive [commit|review]
+# Emits caveman language instructions for context files.
+# Pass "commit" to include commit message rules, "review" for review format rules.
+emit_caveman_directive() {
+  if [ "$CAVEMAN_STYLE" = "none" ] || [ "$CAVEMAN_STYLE" = "false" ]; then
+    return
+  fi
+  local _level="$CAVEMAN_STYLE"
+  if [ "$_level" = "auto" ]; then
+    # shellcheck source=scripts/lib/resolve-caveman-level.sh
+    . "${SCRIPT_DIR}/lib/resolve-caveman-level.sh"
+    resolve_caveman_level "auto" "$PLANNING_DIR"
+    _level="$RESOLVED_CAVEMAN_LEVEL"
+  fi
+  if [ "$_level" = "none" ]; then
+    return
+  fi
+  echo ""
+  echo "### Caveman Language (${_level})"
+  echo "Respond in ${_level} caveman language. Follow rules in \`references/caveman-language.md\`."
+  local _extra="$1"
+  if [ "$_extra" = "commit" ] && [ "$CAVEMAN_COMMIT" = "true" ]; then
+    echo "Write commit messages per \`references/caveman-commit.md\`."
+  fi
+  if [ "$_extra" = "review" ] && [ "$CAVEMAN_REVIEW" = "true" ]; then
+    echo "Format code review output per \`references/caveman-review.md\`."
+  fi
+}
+
 # --- Role-specific output ---
 case "$ROLE" in
   lead)
@@ -320,6 +360,7 @@ case "$ROLE" in
         # the mapping hint would trigger redundant reads.
         emit_codebase_mapping_hint ARCHITECTURE CONCERNS STRUCTURE
       fi
+      emit_caveman_directive commit
     } > "${PHASE_DIR}/.context-lead.md"
     ;;
 
@@ -397,6 +438,7 @@ case "$ROLE" in
         echo "### Research Findings"
         cat "$RESEARCH_FILE"
       fi
+      emit_caveman_directive commit
     } > "${PHASE_DIR}/.context-dev.md"
     ;;
 
@@ -438,6 +480,7 @@ case "$ROLE" in
       fi
       # --- Codebase mapping hint (issue #79) ---
       emit_codebase_mapping_hint TESTING CONCERNS ARCHITECTURE
+      emit_caveman_directive review
     } > "${PHASE_DIR}/.context-qa.md"
     ;;
 
@@ -495,6 +538,7 @@ case "$ROLE" in
           done
         fi
       fi
+      emit_caveman_directive
     } > "${PHASE_DIR}/.context-scout.md"
     ;;
 
@@ -580,6 +624,7 @@ case "$ROLE" in
           done
         fi
       fi
+      emit_caveman_directive
     } > "${PHASE_DIR}/.context-debugger.md"
     ;;
 
@@ -628,6 +673,7 @@ case "$ROLE" in
         echo "### Research Findings"
         cat "$RESEARCH_FILE"
       fi
+      emit_caveman_directive
     } > "${PHASE_DIR}/.context-architect.md"
     ;;
 

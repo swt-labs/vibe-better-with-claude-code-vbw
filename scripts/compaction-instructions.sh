@@ -209,6 +209,20 @@ case "$AGENT_ROLE" in
     ;;
 esac
 
+# Inject caveman language directive (survives compaction)
+_caveman_cfg="$PLANNING_DIR/config.json"
+if [ -f "$_caveman_cfg" ] && command -v jq &>/dev/null; then
+  _caveman_style=$(jq -r '.caveman_style // "none"' "$_caveman_cfg" 2>/dev/null || echo "none")
+  if [ "$_caveman_style" != "none" ] && [ "$_caveman_style" != "false" ]; then
+    _caveman_level="$_caveman_style"
+    if [ "$_caveman_level" = "auto" ]; then
+      # At compaction time, default auto to full since context is already high
+      _caveman_level="full"
+    fi
+    PRIORITIES="$PRIORITIES. CAVEMAN MODE (${_caveman_level}): After compaction, respond using ${_caveman_level} caveman language per references/caveman-language.md."
+  fi
+fi
+
 # Add compact trigger context
 if [ "$TRIGGER" = "manual" ]; then
   PRIORITIES="$PRIORITIES. User requested compaction."

@@ -852,6 +852,38 @@ VBW spawns specialized agents for planning, development, and verification. Model
 - **`rolling_summary`** — When `true` and the project is past Phase 1, VBW compiles a condensed digest of all completed prior phases (what was built, files modified, deviations, commit hashes) into `ROLLING-CONTEXT.md`. This digest is injected into agent context via the context compiler, so Phase 3's Dev and Lead agents have awareness of what Phases 1–2 decided, built, and deviated from — without re-reading every prior SUMMARY.md. Adds ~50KB to agent context per phase. Useful for multi-phase projects where cross-phase continuity matters; unnecessary for single-phase work.
 - **`event_recovery`** — When `true`, enables automatic event-sourced state recovery on session start. If `.execution-state.json` is stale (older than `event-log.jsonl`) or missing after a crash, VBW automatically calls `recover-state.sh` to reconstruct phase/plan status from the event log and SUMMARY.md files.
 
+### Caveman language mode
+
+Token-compressed communication. Strips articles, filler, hedging, and pleasantries from agent responses to reduce token usage without losing technical substance. Code blocks, URLs, paths, and structure are preserved exactly.
+
+| Setting | Type | Default | Values |
+| :--- | :--- | :--- | :--- |
+| `caveman_style` | string | `none` | `none` / `lite` / `full` / `ultra` / `auto` |
+| `caveman_commit` | boolean | `false` | `true` / `false` |
+| `caveman_review` | boolean | `false` | `true` / `false` |
+
+**Levels:**
+
+| Level | Effect |
+| :--- | :--- |
+| **none** | Normal prose. No compression. |
+| **lite** | Drop articles and filler words. Keep sentence structure. |
+| **full** | Fragments OK. Drop hedging, connectives, redundant phrasing. Merge duplicate bullets. |
+| **ultra** | Telegraphic. Max compression. One word where three worked. |
+| **auto** | Escalates based on context usage: <50% → none, 50-69% → lite, 70-84% → full, ≥85% → ultra. |
+
+```text
+/vbw:config caveman_style full
+/vbw:config caveman_commit true
+/vbw:config caveman_review true
+```
+
+- **`caveman_commit`** — When `true`, commit message descriptions use caveman language. Conventional Commits format (`type(scope): description`) still applies.
+- **`caveman_review`** — When `true`, QA findings use terse `L<line>: severity problem. fix.` format with severity prefixes.
+- **`/vbw:compress <file>`** — Compress a natural language file (`.md`, `.txt`) into caveman format. Creates a `.original.md` backup. Useful for compressing `CLAUDE.md`, planning artifacts, or any prose-heavy file.
+
+Language rules adapted from [caveman](https://github.com/JuliusBrussee/caveman) by Julius Brussee (MIT license).
+
 ### Runtime features
 
 These flags control optional runtime subsystems — execution integrity, observability, and crash recovery. All default to `true`. Disable any flag to skip that subsystem entirely (scripts exit 0 immediately when their flag is `false`).
