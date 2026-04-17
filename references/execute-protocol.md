@@ -987,6 +987,8 @@ fi
 ```
 If the captured output's `verdict` is `"fail"`, the warning above surfaces the `failed_checks` in the phase completion output. This is non-blocking — the reactive state updater handles most drift, but crashes, compaction, or manual edits can cause silent misalignment that propagates to the next phase. This catch-net surfaces those issues early. If the script is unavailable or errors, continue normally.
 
+**Caveman commit messages (conditional):** If `caveman_commit` is `true` in config, write commit messages using the rules in `references/caveman-commit.md`. The conventional commit format (`type(scope): description`) still applies — caveman language applies to the description text only.
+
 **Planning artifact boundary commit (conditional):**
 ```bash
 PG_SCRIPT="${VBW_PLUGIN_ROOT}/scripts/planning-git.sh"

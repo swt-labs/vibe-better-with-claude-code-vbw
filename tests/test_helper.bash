@@ -190,7 +190,10 @@ create_test_config() {
   "statusline_hide_limits": false,
   "statusline_hide_limits_for_api_key": false,
   "statusline_hide_agent_in_tmux": false,
-  "statusline_collapse_agent_in_tmux": false
+  "statusline_collapse_agent_in_tmux": false,
+  "caveman_style": "none",
+  "caveman_commit": false,
+  "caveman_review": false
 }
 CONF
 }

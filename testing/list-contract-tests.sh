@@ -51,4 +51,5 @@ printf '%s\t%s\n' \
   askuserquestion-contract     testing/verify-askuserquestion-contract.sh \
   research-storage-contract    testing/verify-research-storage-contract.sh \
   config-defaults-sync         testing/verify-config-defaults-sync.sh \
+  caveman-contract             testing/verify-caveman-contract.sh \
   verify-vibe                  scripts/verify-vibe.sh

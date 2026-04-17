@@ -257,7 +257,7 @@ fi
 
 # Auto-migrate config if .vbw-planning exists.
 # Version marker retained here for backwards test compatibility.
-EXPECTED_FLAG_COUNT=41
+EXPECTED_FLAG_COUNT=44
 if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ]; then
   if ! bash "$SCRIPT_DIR/migrate-config.sh" "$PLANNING_DIR/config.json" >/dev/null 2>&1; then
     echo "WARNING: Config migration failed (jq error). Config may be missing flags (expected=$EXPECTED_FLAG_COUNT)." >&2
@@ -406,7 +406,8 @@ if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ] && command -v jq
     "VBW_AUTONOMY=\(.autonomy // "standard")",
     "VBW_PLANNING_TRACKING=\(.planning_tracking // "manual")",
     "VBW_AUTO_PUSH=\(.auto_push // "never")",
-    "VBW_CONTEXT_COMPILER=\(if .context_compiler == null then true else .context_compiler end)"
+    "VBW_CONTEXT_COMPILER=\(if .context_compiler == null then true else .context_compiler end)",
+    "VBW_CAVEMAN_STYLE=\(.caveman_style // "none")"
   ' "$PLANNING_DIR/config.json" > "$VBW_CONFIG_CACHE" 2>/dev/null || true
 fi
 
@@ -936,6 +937,9 @@ config_auto_push="never"
 config_verification="standard"
 config_prefer_teams="auto"
 config_max_tasks="5"
+config_caveman_style="none"
+config_caveman_commit="false"
+config_caveman_review="false"
 if [ -f "$CONFIG_FILE" ]; then
   config_effort=$(jq -r '.effort // "balanced"' "$CONFIG_FILE" 2>/dev/null)
   config_autonomy=$(jq -r '.autonomy // "standard"' "$CONFIG_FILE" 2>/dev/null)
@@ -945,6 +949,9 @@ if [ -f "$CONFIG_FILE" ]; then
   config_verification=$(jq -r '.verification_tier // "standard"' "$CONFIG_FILE" 2>/dev/null)
   config_prefer_teams=$(bash "$SCRIPT_DIR/normalize-prefer-teams.sh" "$CONFIG_FILE" 2>/dev/null)
   config_max_tasks=$(jq -r '.max_tasks_per_plan // 5' "$CONFIG_FILE" 2>/dev/null)
+  config_caveman_style=$(jq -r '.caveman_style // "none"' "$CONFIG_FILE" 2>/dev/null)
+  config_caveman_commit=$(jq -r 'if .caveman_commit == null then false else .caveman_commit end' "$CONFIG_FILE" 2>/dev/null)
+  config_caveman_review=$(jq -r 'if .caveman_review == null then false else .caveman_review end' "$CONFIG_FILE" 2>/dev/null)
 fi
 
 # --- Parse STATE.md ---
@@ -1069,6 +1076,30 @@ CTX="$CTX Shipped milestones: ${has_shipped}."
 CTX="$CTX Phase: ${phase_pos}/${phase_total} (${phase_name}) -- ${phase_status}."
 CTX="$CTX Progress: ${progress_pct}%."
 CTX="$CTX Config: effort=${config_effort}, autonomy=${config_autonomy}, auto_commit=${config_auto_commit}, planning_tracking=${config_planning_tracking}, auto_push=${config_auto_push}, verification=${config_verification}, prefer_teams=${config_prefer_teams}, max_tasks=${config_max_tasks}."
+if [ "$config_caveman_style" != "none" ] && [ "$config_caveman_style" != "false" ]; then
+  CTX="${CTX%.} caveman=${config_caveman_style}."
+fi
+
+# --- Caveman language directive ---
+if [ "$config_caveman_style" != "none" ] && [ "$config_caveman_style" != "false" ]; then
+  _caveman_level="$config_caveman_style"
+  if [ "$_caveman_level" = "auto" ]; then
+    # shellcheck source=scripts/lib/resolve-caveman-level.sh
+    . "$SCRIPT_DIR/lib/resolve-caveman-level.sh"
+    resolve_caveman_level "auto" "$PLANNING_DIR"
+    _caveman_level="$RESOLVED_CAVEMAN_LEVEL"
+  fi
+  if [ "$_caveman_level" != "none" ]; then
+    CTX="$CTX CAVEMAN MODE (${_caveman_level}): Respond using ${_caveman_level} caveman language. See references/caveman-language.md for rules."
+    if [ "$config_caveman_commit" = "true" ]; then
+      CTX="$CTX Write commit messages per references/caveman-commit.md."
+    fi
+    if [ "$config_caveman_review" = "true" ]; then
+      CTX="$CTX Format code review output per references/caveman-review.md."
+    fi
+  fi
+fi
+
 CTX="$CTX Next: ${NEXT_ACTION}."
 
 # --- Advisory state-consistency check (gated by validation_gates) ---
