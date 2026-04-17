@@ -150,6 +150,14 @@ if [ -f "$MILESTONE_CONTEXT_PATH" ]; then
   HASH_INPUT="${HASH_INPUT}:milestone=${MILESTONE_SUM}"
 fi
 
+# Caveman config fingerprint (invalidate cache when caveman settings change)
+if command -v jq &>/dev/null && [ -f "$CONFIG_PATH" ]; then
+  _caveman_style=$(jq -r '.caveman_style // "none"' "$CONFIG_PATH" 2>/dev/null || echo "none")
+  _caveman_commit=$(jq -r 'if .caveman_commit == null then false else .caveman_commit end' "$CONFIG_PATH" 2>/dev/null || echo "false")
+  _caveman_review=$(jq -r 'if .caveman_review == null then false else .caveman_review end' "$CONFIG_PATH" 2>/dev/null || echo "false")
+  HASH_INPUT="${HASH_INPUT}:caveman=${_caveman_style}:caveman_commit=${_caveman_commit}:caveman_review=${_caveman_review}"
+fi
+
 # --- Compute final hash ---
 HASH=$(printf '%s' "$HASH_INPUT" | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "")
 
