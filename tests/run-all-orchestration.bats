@@ -142,7 +142,7 @@ link_run_all_system_tools() {
     fi
     sleep 0.1
   done
-  [[ "$token_found" = true ]] || { echo "first suite token never appeared"; return 1; }
+  [[ "$token_found" = true ]] || { echo "first suite token never appeared"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
 
   run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
@@ -177,7 +177,7 @@ link_run_all_system_tools() {
     fi
     sleep 0.1
   done
-  [[ "$token_found" = true ]] || { echo "first suite token never appeared"; return 1; }
+  [[ "$token_found" = true ]] || { echo "first suite token never appeared"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
 
   run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]

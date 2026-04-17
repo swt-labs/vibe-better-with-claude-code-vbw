@@ -35,7 +35,7 @@ cleanup_run_all() {
   done
   rm -rf "$TMPDIR_JOBS"
   if [ -n "$RUN_ALL_TOKEN" ]; then
-    rm -f "$RUN_ALL_TOKEN"
+    rm -f "$RUN_ALL_TOKEN" >/dev/null 2>&1 || true
   fi
 }
 
