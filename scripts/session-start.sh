@@ -984,7 +984,8 @@ NEXT_ACTION=""
 
 # Use phase-detect.sh as the canonical source for phase and milestone UAT routing.
 PHASE_DETECT_OUT=$(bash "$SCRIPT_DIR/phase-detect.sh" 2>/dev/null || true)
-if [ "$PHASE_DETECT_OUT" != "phase_detect_error=true" ]; then
+_PD_COMPLETE=$(printf '%s\n' "$PHASE_DETECT_OUT" | awk -F= '/^phase_detect_complete=/{print $2; exit}')
+if [ "$PHASE_DETECT_OUT" != "phase_detect_error=true" ] && [ "${_PD_COMPLETE:-}" = "true" ]; then
   PD_NEXT_PHASE_STATE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^next_phase_state=' | sed 's/^[^=]*=//' || true)
   PD_NEXT_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^next_phase=' | sed 's/^[^=]*=//' || true)
   PD_UAT_ISSUES_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^uat_issues_phase=' | sed 's/^[^=]*=//' || true)
