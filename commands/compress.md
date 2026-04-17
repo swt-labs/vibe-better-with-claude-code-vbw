@@ -10,7 +10,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 # VBW Compress: $ARGUMENTS
 
 ## Guard
-- No $ARGUMENTS: STOP "Usage: /vbw:compress path/to/file.md"
+- No $ARGUMENTS: STOP "Usage: /vbw:compress path/to/file.{md|txt} (or extensionless file)"
 
 ## Steps
 
@@ -28,8 +28,14 @@ If the guard fails, STOP with the error message.
 
 2. **Create backup:**
 ```bash
-BACKUP="${TARGET%.md}.original.md"
-[ "$TARGET" = "$BACKUP" ] && BACKUP="${TARGET}.original.md"
+case "$TARGET" in
+  *.*) BACKUP="${TARGET%.*}.original.${TARGET##*.}";;
+  *)   BACKUP="${TARGET}.original";;
+esac
+if [ -e "$BACKUP" ]; then
+  _i=1; while [ -e "${BACKUP%.*}.${_i}.${BACKUP##*.}" ] 2>/dev/null; do _i=$((_i+1)); done
+  case "$BACKUP" in *.*) BACKUP="${BACKUP%.*}.${_i}.${BACKUP##*.}";; *) BACKUP="${BACKUP}.${_i}";; esac
+fi
 cp "$TARGET" "$BACKUP"
 echo "Backup: $BACKUP"
 ```
