@@ -46,8 +46,51 @@ else
   verification_is_stale() { return 0; }
 fi
 
+list_child_dirs_sorted_fallback() {
+  local dirs=("$@")
+  local sorted=()
+  local candidate candidate_name candidate_prefix candidate_num
+  local existing existing_name existing_prefix existing_num
+  local insert_at idx
+
+  [ ${#dirs[@]} -gt 0 ] || return 0
+
+  for candidate in "${dirs[@]}"; do
+    candidate_name="${candidate##*/}"
+    candidate_prefix="${candidate_name%%[^0-9]*}"
+    if [ -z "$candidate_prefix" ]; then
+      sorted+=("$candidate")
+      continue
+    fi
+
+    candidate_num=$((10#$candidate_prefix))
+    insert_at=${#sorted[@]}
+
+    for idx in "${!sorted[@]}"; do
+      existing="${sorted[$idx]}"
+      existing_name="${existing##*/}"
+      existing_prefix="${existing_name%%[^0-9]*}"
+      if [ -z "$existing_prefix" ]; then
+        continue
+      fi
+
+      existing_num=$((10#$existing_prefix))
+      if [ "$candidate_num" -lt "$existing_num" ] || { [ "$candidate_num" -eq "$existing_num" ] && [[ "$candidate" < "$existing" ]]; }; then
+        insert_at=$idx
+        break
+      fi
+    done
+
+    sorted=("${sorted[@]:0:$insert_at}" "$candidate" "${sorted[@]:$insert_at}")
+  done
+
+  printf '%s\n' "${sorted[@]}"
+}
+
 list_child_dirs_sorted() {
   local parent="$1"
+  local sorted_output=""
+
   [ -d "$parent" ] || return 0
 
   # Collect via bash glob (avoids find pipeline under parallel fd contention).
@@ -57,9 +100,23 @@ list_child_dirs_sorted() {
   for d in "$parent"/*/; do
     [ -d "$d" ] && dirs+=("${d%/}")
   done
-  [ ${#dirs[@]} -gt 0 ] || return 0
-  printf '%s\n' "${dirs[@]}" | sort -V 2>/dev/null || \
-    printf '%s\n' "${dirs[@]}" | awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-
+  case ${#dirs[@]} in
+    0) return 0 ;;
+    1)
+      printf '%s\n' "${dirs[0]}"
+      return 0
+      ;;
+  esac
+
+  sorted_output=$(printf '%s\n' "${dirs[@]}" | sort -V 2>/dev/null || true)
+  if [ -n "$sorted_output" ]; then
+    printf '%s\n' "$sorted_output"
+    return 0
+  fi
+
+  # Fail closed to a deterministic non-empty fallback rather than silently
+  # returning no phase dirs when sort helper execution degrades under load.
+  list_child_dirs_sorted_fallback "${dirs[@]}"
 }
 
 phase_relative_path() {
@@ -963,36 +1020,30 @@ fi
 # phases into QA remediation.
 if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; then
   _QA_ATT_DIR="$PHASES_DIR/$FIRST_QA_ATTENTION_SLUG/"
-  _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
-  _QA_ATT_UAT_STATUS=""
-  if [ -f "$_QA_ATT_UAT" ]; then
-    _QA_ATT_UAT_STATUS=$(extract_status_value "$_QA_ATT_UAT")
-  fi
+  case "$QA_ATTENTION_STATUS" in
+    failed|verify)
+      NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+      NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+      if [ -d "$_QA_ATT_DIR" ]; then
+        NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+        NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+      fi
+      NEXT_PHASE_STATE="needs_qa_remediation"
+      if [ "$QA_ATTENTION_STATUS" = "failed" ]; then
+        QA_STATUS="failed"
+      else
+        QA_STATUS="remediating"
+      fi
+      ;;
+    pending)
+      _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
+      _QA_ATT_UAT_STATUS=""
+      if [ -f "$_QA_ATT_UAT" ]; then
+        _QA_ATT_UAT_STATUS=$(extract_status_value "$_QA_ATT_UAT")
+      fi
 
-  case "$_QA_ATT_UAT_STATUS" in
-    complete|passed)
-      case "$QA_ATTENTION_STATUS" in
-        failed)
-          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
-          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
-          if [ -d "$_QA_ATT_DIR" ]; then
-            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
-            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
-          fi
-          NEXT_PHASE_STATE="needs_qa_remediation"
-          QA_STATUS="failed"
-          ;;
-        verify)
-          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
-          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
-          if [ -d "$_QA_ATT_DIR" ]; then
-            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
-            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
-          fi
-          NEXT_PHASE_STATE="needs_qa_remediation"
-          QA_STATUS="remediating"
-          ;;
-        pending)
+      case "$_QA_ATT_UAT_STATUS" in
+        complete|passed)
           NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
           NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
           if [ -d "$_QA_ATT_DIR" ]; then
@@ -1001,30 +1052,6 @@ if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; t
           fi
           NEXT_PHASE_STATE="needs_verification"
           QA_STATUS="pending"
-          ;;
-      esac
-      ;;
-    "")
-      case "$QA_ATTENTION_STATUS" in
-        failed)
-          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
-          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
-          if [ -d "$_QA_ATT_DIR" ]; then
-            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
-            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
-          fi
-          NEXT_PHASE_STATE="needs_qa_remediation"
-          QA_STATUS="failed"
-          ;;
-        verify)
-          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
-          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
-          if [ -d "$_QA_ATT_DIR" ]; then
-            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
-            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
-          fi
-          NEXT_PHASE_STATE="needs_qa_remediation"
-          QA_STATUS="remediating"
           ;;
       esac
       ;;

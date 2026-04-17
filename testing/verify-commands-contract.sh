@@ -187,6 +187,44 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
 done
 
 echo ""
+echo "=== skills.md Step 5b Verification ==="
+
+SKILLS_FILE="$COMMANDS_DIR/skills.md"
+if [ ! -f "$SKILLS_FILE" ]; then
+  fail "skills: command file not found"
+else
+  skills_step_5b="$({
+    awk '
+      /^### Step 5b: Choose installation scope$/ { in_block=1; next }
+      in_block && /^### / { exit }
+      in_block { print }
+    ' "$SKILLS_FILE"
+  } || true)"
+
+  if [ -z "$skills_step_5b" ]; then
+    fail "skills: missing Step 5b block"
+  else
+    if grep -Fq -- '- **Global** — "Installed to `<global_skills_dir>/`, available in all projects."' <<< "$skills_step_5b"; then
+      pass "skills: Step 5b Global option uses <global_skills_dir>/ placeholder"
+    else
+      fail "skills: Step 5b Global option missing <global_skills_dir>/ placeholder"
+    fi
+
+    if grep -Fq 'Use the `global_skills_dir` value from the Stack detection Context JSON as the display path.' <<< "$skills_step_5b"; then
+      pass "skills: Step 5b explains global_skills_dir display source"
+    else
+      fail "skills: Step 5b missing global_skills_dir Stack detection Context JSON guidance"
+    fi
+
+    if grep -Fq '~/.agents/skills/' <<< "$skills_step_5b"; then
+      fail "skills: Step 5b still exposes ~/.agents/skills/ display path"
+    else
+      pass "skills: Step 5b does not expose ~/.agents/skills/ display path"
+    fi
+  fi
+fi
+
+echo ""
 echo "=== Milestone Context Verification ==="
 
 # Commands that reference milestone-scoped paths in their Steps section must have
