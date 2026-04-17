@@ -1075,7 +1075,10 @@ CTX="VBW project detected."
 CTX="$CTX Shipped milestones: ${has_shipped}."
 CTX="$CTX Phase: ${phase_pos}/${phase_total} (${phase_name}) -- ${phase_status}."
 CTX="$CTX Progress: ${progress_pct}%."
-CTX="$CTX Config: effort=${config_effort}, autonomy=${config_autonomy}, auto_commit=${config_auto_commit}, planning_tracking=${config_planning_tracking}, auto_push=${config_auto_push}, verification=${config_verification}, prefer_teams=${config_prefer_teams}, max_tasks=${config_max_tasks}, caveman=${config_caveman_style}."
+CTX="$CTX Config: effort=${config_effort}, autonomy=${config_autonomy}, auto_commit=${config_auto_commit}, planning_tracking=${config_planning_tracking}, auto_push=${config_auto_push}, verification=${config_verification}, prefer_teams=${config_prefer_teams}, max_tasks=${config_max_tasks}."
+if [ "$config_caveman_style" != "none" ] && [ "$config_caveman_style" != "false" ]; then
+  CTX="${CTX%.} caveman=${config_caveman_style}."
+fi
 
 # --- Caveman language directive ---
 if [ "$config_caveman_style" != "none" ] && [ "$config_caveman_style" != "false" ]; then
