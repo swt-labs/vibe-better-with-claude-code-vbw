@@ -123,6 +123,7 @@ Less good candidates:
 1. **Fork the repo** and create a feature branch from `main` (e.g., `fix/hook-path` or `feat/new-command`). **Never commit directly to `main`** — `main` has branch protection and direct pushes will be rejected.
 2. **Test locally** with `claude-vbw` or `claude --plugin-dir "<path-to-vbw-clone>"` against a real project before submitting.
    - Run automated checks: `bash testing/run-all.sh` (runs CI-parity shell lint, contract checks, and bats locally; requires `jq`, `shellcheck`, and `bats` installed)
+   - Run `testing/run-all.sh` directly — do not pipe it through `| tail -20`, `| tail -40`, `| tee`, or similar wrappers, especially from concurrent worktrees. Tail pipelines buffer until EOF, hide live progress, and can make a healthy long-running suite look hung while also obscuring the real exit status.
 3. **Keep commits atomic** -- one logical change per commit.
 4. **Match the existing tone** in command descriptions and user-facing text. VBW is direct, dry, and self-aware. It doesn't use corporate language or unnecessary enthusiasm.
 5. **Follow code style:**
