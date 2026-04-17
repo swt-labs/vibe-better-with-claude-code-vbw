@@ -23,11 +23,11 @@ fail() {
 
 echo "=== run-all Execution Contract Verification ==="
 
-# AGENTS.md must contain the no-tail guidance
-if grep -Eiq 'do not pipe.*tail|do not pipe.*tee' "$AGENTS_MD"; then
-  pass "AGENTS.md: contains no-pipe/no-tail directive for run-all"
+# AGENTS.md must contain the no-tail guidance specifically for run-all.sh
+if grep -Eiq 'run-all\.sh' "$AGENTS_MD" && grep -Eiq 'do not pipe.*tail|do not pipe.*tee' "$AGENTS_MD"; then
+  pass "AGENTS.md: contains no-pipe/no-tail directive for run-all.sh"
 else
-  fail "AGENTS.md: missing no-pipe/no-tail directive for run-all"
+  fail "AGENTS.md: missing no-pipe/no-tail directive for run-all.sh"
 fi
 
 if grep -Eiq 'tail -20|tail -40' "$AGENTS_MD"; then
