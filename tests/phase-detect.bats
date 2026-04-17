@@ -2629,6 +2629,86 @@ EOF
   echo "$output" | grep -q "qa_attention_status=failed"
 }
 
+@test "all_done routes to QA remediation when phase sorting helper fails" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: complete
+---
+All tests passed.
+EOF
+
+  local fake_sort_dir
+  fake_sort_dir="$TEST_TEMP_DIR/fake-sort"
+  mkdir -p "$fake_sort_dir"
+  cat > "$fake_sort_dir/sort" <<'EOF'
+#!/usr/bin/env bash
+exit 23
+EOF
+  chmod +x "$fake_sort_dir/sort"
+
+  run env PATH="$fake_sort_dir:$PATH" bash "$SCRIPTS_DIR/phase-detect.sh"
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "phase_detect_complete=true"
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_slug=01-test"
+  echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  echo "$output" | grep -q "first_qa_attention_phase=01"
+  echo "$output" | grep -q "qa_attention_status=failed"
+}
+
+@test "all_done routes to QA remediation when failed QA attention sees degraded UAT reread" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: complete
+---
+All tests passed.
+EOF
+
+  local shim_dir
+  shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-uat-reread-degraded"
+  cp -R "$SCRIPTS_DIR" "$shim_dir"
+  cat >> "$shim_dir/uat-utils.sh" <<'EOF'
+
+extract_status_value() {
+  local file="${1:-}"
+  case "$file" in
+    *-UAT.md)
+      printf '%s\n' 'in_progress'
+      ;;
+    *)
+      printf '%s\n' ''
+      ;;
+  esac
+}
+EOF
+
+  run_phase_detect "$shim_dir"
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_slug=01-test"
+  echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  echo "$output" | grep -q "first_qa_attention_phase=01"
+  echo "$output" | grep -q "qa_attention_status=failed"
+}
+
 @test "terminal UAT QA-attention restore rebuilds missing registry before routing" {
   mkdir -p .vbw-planning/phases/01-test
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
