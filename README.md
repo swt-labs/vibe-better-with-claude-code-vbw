@@ -420,7 +420,7 @@ These are the commands you'll use every day. This is the job now.
 | `/vbw:resume` | Restore project context from `.vbw-planning/` ground truth. Reads state, roadmap, plans, and summaries directly -- no prior `/vbw:pause` needed. |
 | `/vbw:skills` | Browse and install community skills from skills.sh based on your project's tech stack. Detects your stack, suggests relevant skills, and installs them with one command. |
 | `/vbw:config` | View and toggle VBW settings: effort profiles, autonomy levels (cautious/standard/confident/pure-vibe), plain-language summaries (`plain_summary`), skill suggestions, auto-install behavior, and skill-hook wiring. Detects profile drift and offers to save as new profile. |
-| `/vbw:compress` | Compress a natural language file (`.md`, `.txt`) into caveman format. Creates a `.original.md` backup. Requires `caveman_style` to be set. |
+| `/vbw:compress` | Compress a natural language file (`.md`, `.txt`) into caveman format. Creates a `.original.md` backup. Uses caveman language rules for token-efficient compression. |
 | `/vbw:profile` | Switch between work profiles or create custom ones. 4 built-in presets (default, prototype, production, yolo) change effort, autonomy, and verification in one command. Interactive profile creation for custom workflows. |
 | `/vbw:report` | Collect diagnostic context and file a GitHub issue. Captures VBW version, environment, hook errors, session logs, config, and project state. |
 | `/vbw:teach` | View, add, or manage project conventions. Auto-detected from codebase during init, manually teachable anytime. Shows what VBW already knows and warns about conflicts before adding. Conventions are injected into agent context via CLAUDE.md and verified by QA. |
