@@ -3676,7 +3676,7 @@ EOF
   run bash "$shim_dir/qa-result-gate.sh" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_known_issue_count=0"* ]]
+  [[ "$output" == *"qa_gate_known_issue_count=1"* ]]
   [[ "$output" == *"qa_gate_known_issues_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
@@ -3723,6 +3723,7 @@ EOF
   VBW_TEST_TRACK_KNOWN_ISSUES="$REPO_ROOT/scripts/track-known-issues.sh" run bash "$shim_dir/qa-result-gate.sh" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=1"* ]]
   [[ "$output" == *"qa_gate_known_issues_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
@@ -3769,6 +3770,7 @@ EOF
   VBW_TEST_TRACK_KNOWN_ISSUES="$REPO_ROOT/scripts/track-known-issues.sh" run bash "$shim_dir/qa-result-gate.sh" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=1"* ]]
   [[ "$output" == *"qa_gate_known_issues_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }

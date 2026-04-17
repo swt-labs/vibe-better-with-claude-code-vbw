@@ -1270,6 +1270,19 @@ if [ -f "$SCRIPT_DIR/track-known-issues.sh" ]; then
   esac
 fi
 
+if [ "$KNOWN_ISSUES_STATUS" = "probe_error" ]; then
+  _known_issues_registry_json=$(load_known_issue_registry_json "$PHASE_DIR/known-issues.json")
+  _known_issues_registry_count=$(json_object_array_length "${_known_issues_registry_json:-[]}")
+  case "${_known_issues_registry_count:-}" in
+    ''|*[!0-9]*)
+      KNOWN_ISSUES_COUNT=0
+      ;;
+    *)
+      KNOWN_ISSUES_COUNT="$_known_issues_registry_count"
+      ;;
+  esac
+fi
+
 # Count non-placeholder deviations across SUMMARY.md files in a given directory.
 # Uses the same AWK extraction logic as execute-protocol.md Step 4.
 # Arguments: $1 = directory to scan for SUMMARY.md files
