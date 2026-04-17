@@ -57,7 +57,7 @@ Skills:
 
 **CRITICAL: Complete ENTIRE step (including writing settings.json) BEFORE Step 1. Use AskUserQuestion for prompts. Wait for answers. Write settings.json. Only then proceed.**
 
-**Resolve config directory:** Try in order: env var `CLAUDE_CONFIG_DIR` (if set and directory exists), `~/.config/claude-code` (if exists), otherwise `~/.claude`. Store result as `CLAUDE_DIR`. Use it for all config paths in this command.
+**Resolve config directory:** Try in order: env var `CLAUDE_CONFIG_DIR` (if set, even if directory does not yet exist), `~/.config/claude-code` (if exists), otherwise `~/.claude`. Store result as `CLAUDE_DIR`. Use it for all config paths in this command.
 
 Read `CLAUDE_DIR/settings.json` (create `{}` if missing).
 
