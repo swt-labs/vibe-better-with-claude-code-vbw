@@ -236,9 +236,9 @@ while IFS=$'\t' read -r name path; do
 done <<< "$CONTRACT_TESTS_OUTPUT"
 
 # --- Launch bats workers concurrently with contract checks ---
-BATS_WORKERS_FROM_ENV=true
-if [ -z "${BATS_WORKERS+x}" ]; then
-  BATS_WORKERS_FROM_ENV=false
+BATS_WORKERS_FROM_ENV=false
+if [ -n "${BATS_WORKERS:-}" ]; then
+  BATS_WORKERS_FROM_ENV=true
 fi
 BATS_WORKERS="${BATS_WORKERS:-8}"
 case "$BATS_WORKERS" in
