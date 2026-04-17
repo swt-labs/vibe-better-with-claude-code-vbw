@@ -7,12 +7,12 @@ if _pd_output_file=$(mktemp "${TMPDIR:-/tmp}/vbw-phase-detect.XXXXXX" 2>/dev/nul
    [ -n "$_pd_output_file" ] && [ -f "$_pd_output_file" ]; then
   if ! exec >"$_pd_output_file"; then
     rm -f "$_pd_output_file"
-    printf "%s\n" "phase_detect_error=true" >&3
+    _pd_output_file=
     exit 0
   fi
 else
   [ -n "$_pd_output_file" ] && rm -f "$_pd_output_file"
-  printf "%s\n" "phase_detect_error=true" >&3
+  _pd_output_file=
   exit 0
 fi
 trap '
