@@ -213,8 +213,8 @@ restore_known_issues_from_verification_if_needed() {
 
   known_meta=$(bash "$_SCRIPT_DIR_PD/track-known-issues.sh" status "$phase_dir" 2>/dev/null || true)
   known_status=$(printf '%s\n' "$known_meta" | awk -F= '/^known_issues_status=/{print $2; exit}')
-  case "${known_status:-missing}" in
-    missing|malformed)
+  case "${known_status:-}" in
+    missing)
       bash "$_SCRIPT_DIR_PD/track-known-issues.sh" sync-verification "$phase_dir" "$verification_file" >/dev/null 2>&1 || true
       bash "$_SCRIPT_DIR_PD/track-known-issues.sh" promote-todos "$phase_dir" >/dev/null 2>&1 || true
       ;;

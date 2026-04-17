@@ -3635,6 +3635,146 @@ EOF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
+@test "PASS with known-issues status probe failure fails closed to remediation" {
+  create_verif "write-verification.sh" "PASS"
+  cat > "$PHASE_DIR/known-issues.json" <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "01-01-SUMMARY.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+
+  local shim_dir
+  shim_dir="$TEST_DIR/scripts-known-issues-probe-fail"
+  cp -R "$REPO_ROOT/scripts" "$shim_dir"
+  cat > "$shim_dir/track-known-issues.sh" <<EOF
+#!/usr/bin/env bash
+cmd="\${1:-}"
+case "\$cmd" in
+  status)
+    exit 23
+    ;;
+  *)
+    exec "$REPO_ROOT/scripts/track-known-issues.sh" "\$@"
+    ;;
+esac
+EOF
+  chmod +x "$shim_dir/track-known-issues.sh"
+
+  run bash "$shim_dir/qa-result-gate.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=1"* ]]
+  [[ "$output" == *"qa_gate_known_issues_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "PASS with partial known-issues status payload missing count fails closed to remediation" {
+  create_verif "write-verification.sh" "PASS"
+  cat > "$PHASE_DIR/known-issues.json" <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "01-01-SUMMARY.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+
+  local shim_dir
+  shim_dir="$TEST_DIR/scripts-known-issues-partial-payload-missing-count"
+  cp -R "$REPO_ROOT/scripts" "$shim_dir"
+  cat > "$shim_dir/track-known-issues.sh" <<'EOF'
+#!/usr/bin/env bash
+cmd="${1:-}"
+case "$cmd" in
+  status)
+    printf 'known_issues_status=present\n'
+    exit 0
+    ;;
+  *)
+    exec "$VBW_TEST_TRACK_KNOWN_ISSUES" "$@"
+    ;;
+esac
+EOF
+  chmod +x "$shim_dir/track-known-issues.sh"
+
+  VBW_TEST_TRACK_KNOWN_ISSUES="$REPO_ROOT/scripts/track-known-issues.sh" run bash "$shim_dir/qa-result-gate.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=1"* ]]
+  [[ "$output" == *"qa_gate_known_issues_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "PASS with partial known-issues status payload non-numeric count fails closed to remediation" {
+  create_verif "write-verification.sh" "PASS"
+  cat > "$PHASE_DIR/known-issues.json" <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "01-01-SUMMARY.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+
+  local shim_dir
+  shim_dir="$TEST_DIR/scripts-known-issues-partial-payload-bad-count"
+  cp -R "$REPO_ROOT/scripts" "$shim_dir"
+  cat > "$shim_dir/track-known-issues.sh" <<'EOF'
+#!/usr/bin/env bash
+cmd="${1:-}"
+case "$cmd" in
+  status)
+    printf 'known_issues_status=present\nknown_issues_count=abc\n'
+    exit 0
+    ;;
+  *)
+    exec "$VBW_TEST_TRACK_KNOWN_ISSUES" "$@"
+    ;;
+esac
+EOF
+  chmod +x "$shim_dir/track-known-issues.sh"
+
+  VBW_TEST_TRACK_KNOWN_ISSUES="$REPO_ROOT/scripts/track-known-issues.sh" run bash "$shim_dir/qa-result-gate.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=1"* ]]
+  [[ "$output" == *"qa_gate_known_issues_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
 @test "remediation round PASS with malformed known-issues registry fails closed" {
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
