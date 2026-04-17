@@ -76,8 +76,11 @@ PROFILES_HASH=$(file_content_fingerprint "$PROFILES_PATH")
 PATH_HASH=$(vbw_hash_path "${CONFIG_PATH}|${PROFILES_PATH}")
 CACHE_FILE="/tmp/vbw-model-${AGENT}-${PATH_HASH}-${CONFIG_HASH}-${PROFILES_HASH}"
 if [ -f "$CACHE_FILE" ]; then
-  cat "$CACHE_FILE"
-  exit 0
+  _cached=$(cat "$CACHE_FILE")
+  case "$_cached" in
+    opus|sonnet|haiku) echo "$_cached"; exit 0 ;;
+  esac
+  # Cache is corrupt or empty — fall through to recompute
 fi
 
 # Read model_profile from config.json (default to "quality")
