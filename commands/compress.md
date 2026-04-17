@@ -20,8 +20,12 @@ TARGET="$ARGUMENTS"
 if [ ! -f "$TARGET" ]; then echo "ERROR: File not found: $TARGET"; exit 1; fi
 SIZE=$(wc -c < "$TARGET" | tr -d ' ')
 if [ "$SIZE" -gt 512000 ]; then echo "ERROR: File too large (${SIZE} bytes, max 500KB)"; exit 1; fi
-EXT="${TARGET##*.}"
-case "$EXT" in md|txt|"$TARGET") ;; *) echo "ERROR: Only .md, .txt, or extensionless files supported"; exit 1;; esac
+BASENAME="${TARGET##*/}"
+case "$BASENAME" in
+  *.*) EXT="${BASENAME##*.}" ;;
+  *)   EXT="" ;;
+esac
+case "$EXT" in md|txt|"") ;; *) echo "ERROR: Only .md, .txt, or extensionless files supported"; exit 1;; esac
 echo "OK: $TARGET ($SIZE bytes)"
 ```
 If the guard fails, STOP with the error message.

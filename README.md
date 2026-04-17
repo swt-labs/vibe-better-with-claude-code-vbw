@@ -868,7 +868,7 @@ Token-compressed communication. Strips articles, filler, hedging, and pleasantri
 | Level | Effect |
 | :--- | :--- |
 | **none** | Normal prose. No compression. |
-| **lite** | Drop articles and filler words. Keep sentence structure. |
+| **lite** | Drop filler and hedging. Keep articles and sentence structure. |
 | **full** | Fragments OK. Drop hedging, connectives, redundant phrasing. Merge duplicate bullets. |
 | **ultra** | Telegraphic. Max compression. One word where three worked. |
 | **auto** | Escalates based on context usage: <50% → none, 50-69% → lite, 70-84% → full, ≥85% → ultra. |
