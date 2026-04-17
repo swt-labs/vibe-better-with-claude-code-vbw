@@ -17,6 +17,34 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+tracked_markdown_files() {
+  local rel
+  git -C "$ROOT" ls-files -- 'commands/*.md' 'references/*.md' 'internal/*.md' | while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    printf '%s\n' "$ROOT/$rel"
+  done
+}
+
+tracked_command_markdown_files() {
+  local rel
+  git -C "$ROOT" ls-files -- 'commands/*.md' | while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    printf '%s\n' "$ROOT/$rel"
+  done
+}
+
+TRACKED_MARKDOWN_FILES=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  TRACKED_MARKDOWN_FILES+=("$file")
+done < <(tracked_markdown_files)
+
+TRACKED_COMMAND_MARKDOWN_FILES=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  TRACKED_COMMAND_MARKDOWN_FILES+=("$file")
+done < <(tracked_command_markdown_files)
+
 PASS=0
 FAIL=0
 WARN=0
@@ -51,54 +79,49 @@ is_known_unfixed() {
 
 echo "=== Inline Execution Span Verification (Issue #157) ==="
 
-# Scan all command, reference, and internal files
-for dir in "$ROOT/commands" "$ROOT/references" "$ROOT/internal"; do
-  [ -d "$dir" ] || continue
-  dir_label="$(basename "$dir")"
+# Scan all tracked command, reference, and internal files
+for file in "${TRACKED_MARKDOWN_FILES[@]}"; do
+  rel_file="${file#$ROOT/}"
+  dir_label="${rel_file%%/*}"
+  base="$(basename "$file" .md)"
 
-  for file in "$dir"/*.md; do
-    [ -f "$file" ] || continue
-    base="$(basename "$file" .md)"
+  # Use awk to find `!`<command> execution spans NOT inside fenced code blocks.
+  # Pattern: backtick-bang-backtick immediately followed by a command (echo, cat, ls, etc.)
+  # Excludes documentation mentions like "fenced `!` blocks" (no command follows).
+  # Fenced blocks start/end with ``` at line start.
+  inline_hits=$(awk '
+    BEGIN { in_fence = 0 }
+    /^```/ {
+      in_fence = !in_fence
+      next
+    }
+    !in_fence && /`!`[a-zA-Z$]/ {
+      print NR": "$0
+    }
+  ' "$file")
 
-    # Use awk to find `!`<command> execution spans NOT inside fenced code blocks.
-    # Pattern: backtick-bang-backtick immediately followed by a command (echo, cat, ls, etc.)
-    # Excludes documentation mentions like "fenced `!` blocks" (no command follows).
-    # Fenced blocks start/end with ``` at line start.
-    inline_hits=$(awk '
-      BEGIN { in_fence = 0 }
-      /^```/ {
-        in_fence = !in_fence
-        next
-      }
-      !in_fence && /`!`[a-zA-Z$]/ {
-        print NR": "$0
-      }
-    ' "$file")
-
-    if [ -n "$inline_hits" ]; then
-      hit_count=$(printf '%s\n' "$inline_hits" | wc -l | tr -d ' ')
-      if is_known_unfixed "$base"; then
-        warn "$dir_label/$base: $hit_count inline \`!\` span(s) — known unfixed (#157)"
-      else
-        fail "$dir_label/$base: $hit_count inline \`!\` span(s) found (dead syntax — CC does not execute inline spans)"
-        printf '%s\n' "$inline_hits" | head -5 | sed 's/^/     /'
-        if [ "$hit_count" -gt 5 ]; then
-          echo "     ... and $((hit_count - 5)) more"
-        fi
-      fi
+  if [ -n "$inline_hits" ]; then
+    hit_count=$(printf '%s\n' "$inline_hits" | wc -l | tr -d ' ')
+    if is_known_unfixed "$base"; then
+      warn "$dir_label/$base: $hit_count inline \`!\` span(s) — known unfixed (#157)"
     else
-      pass "$dir_label/$base: no inline \`!\` spans"
+      fail "$dir_label/$base: $hit_count inline \`!\` span(s) found (dead syntax — CC does not execute inline spans)"
+      printf '%s\n' "$inline_hits" | head -5 | sed 's/^/     /'
+      if [ "$hit_count" -gt 5 ]; then
+        echo "     ... and $((hit_count - 5)) more"
+      fi
     fi
-  done
+  else
+    pass "$dir_label/$base: no inline \`!\` spans"
+  fi
 done
 
 echo ""
 echo "=== Fenced Precompute Block Integrity ==="
 
-# Verify that command files with fenced !` blocks have them intact.
+# Verify that tracked command files with fenced !` blocks have them intact.
 # These are the blocks that CC template processor actually executes.
-for file in "$ROOT/commands"/*.md; do
-  [ -f "$file" ] || continue
+for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
   base="$(basename "$file" .md)"
 
   fenced_exec_count=$(awk '

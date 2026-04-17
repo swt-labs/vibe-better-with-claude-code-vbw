@@ -78,7 +78,6 @@ claude --plugin-dir /absolute/path/to/vibe-better-with-claude-code-vbw
 All `/vbw:*` commands will load from your local copy. Restart Claude Code to pick up changes after editing VBW files.
 
 > **Important:** `--plugin-dir` loads whatever is on disk in your VBW clone, which means whatever branch is currently checked out. Make sure you're on the branch with your changes before launching Claude Code — if you're on `main`, you'll be testing the unchanged version.
-
 > **Known limitation:** Plugin hooks (the 21 event handlers in `hooks.json`) resolve scripts from the marketplace cache via the symlink. This means hooks will run (unlike before the symlink existed), but they execute from your local clone — changes to hook scripts take effect immediately without a cache refresh. The git pre-push hook is a separate mechanism — see [Version Management](#version-management).
 
 ## Project Structure
@@ -86,7 +85,7 @@ All `/vbw:*` commands will load from your local copy. Restart Claude Code to pic
 ```text
 .claude-plugin/    Plugin manifest (plugin.json)
 agents/            7 agent definitions with native tool permissions
-commands/          24 slash commands (22 user-visible, 2 hidden protocol files)
+commands/          25 slash commands (23 user-visible, 2 hidden protocol files)
 config/            Default settings and stack-to-skill mappings
 hooks/             Plugin hooks (hooks.json)
 scripts/           Hook handler scripts
