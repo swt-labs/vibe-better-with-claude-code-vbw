@@ -124,6 +124,13 @@ teardown() {
   [ "$RESOLVED_CAVEMAN_LEVEL" = "full" ]
 }
 
+@test "resolve-caveman-level: auto handles legacy 2-field context-usage format" {
+  echo "70|1000000" > "$TEST_TEMP_DIR/.vbw-planning/.context-usage"
+  . "$SCRIPTS_DIR/lib/resolve-caveman-level.sh"
+  resolve_caveman_level "auto" "$TEST_TEMP_DIR/.vbw-planning"
+  [ "$RESOLVED_CAVEMAN_LEVEL" = "full" ]
+}
+
 # ---------------------------------------------------------------------------
 # compile-context.sh — caveman directive injection
 # ---------------------------------------------------------------------------

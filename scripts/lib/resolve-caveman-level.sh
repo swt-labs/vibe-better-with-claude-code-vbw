@@ -23,9 +23,20 @@ resolve_caveman_level() {
     return 0
   fi
 
-  # Format: session_id|used_pct|context_window_size
-  local used_pct
-  used_pct=$(awk -F'|' '{print $2}' "$usage_file" 2>/dev/null)
+  # Supported formats:
+  #   session_id|used_pct|context_window_size  (3-field)
+  #   used_pct|context_window_size              (legacy 2-field)
+  local used_pct field_count
+  field_count=$(awk -F'|' '{print NF}' "$usage_file" 2>/dev/null)
+
+  if [[ "$field_count" == "3" ]]; then
+    used_pct=$(awk -F'|' '{print $2}' "$usage_file" 2>/dev/null)
+  elif [[ "$field_count" == "2" ]]; then
+    used_pct=$(awk -F'|' '{print $1}' "$usage_file" 2>/dev/null)
+  else
+    RESOLVED_CAVEMAN_LEVEL="none"
+    return 0
+  fi
 
   # Validate numeric
   if [[ -z "$used_pct" ]] || ! [[ "$used_pct" =~ ^[0-9]+$ ]]; then
