@@ -49,11 +49,5 @@ npm-debug.log*
 a_non_prod_files/
 .vbw-worktrees/
 
-# Local Debugging
-diag-session-key.md
-diag-emulate-marketplace.sh
-diag-parse-session.sh
-diag-parse-key.sh
-diag-session-key.sh
 package.json
 package-lock.json
