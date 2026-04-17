@@ -9,7 +9,7 @@ LIST_BATS_FILES="$ROOT/testing/list-bats-files.sh"
 LIST_CONTRACT_TESTS="$ROOT/testing/list-contract-tests.sh"
 
 TMPDIR_JOBS="$(mktemp -d)"
-RUN_ALL_STATE_ROOT="${RUN_ALL_STATE_DIR:-${TMPDIR:-/tmp}/vbw-run-all-suites}"
+RUN_ALL_STATE_ROOT="${RUN_ALL_STATE_DIR:-${TMPDIR:-/tmp}/vbw-run-all-suites-${UID:-$(id -u)}}"
 RUN_ALL_STATE_DIR=""
 RUN_ALL_TOKEN=""
 RUN_ALL_REPO_KEY=""
@@ -86,23 +86,23 @@ run_all_token_is_valid() {
 
   case "$pid" in
     ''|*[!0-9]*)
-      rm -f "$entry"
+      rm -f "$entry" 2>/dev/null || true
       return 1
       ;;
   esac
 
   if [ -z "$repo_key" ] || [ -z "$process_start" ] || [ -z "$process_command" ]; then
-    rm -f "$entry"
+    rm -f "$entry" 2>/dev/null || true
     return 1
   fi
 
   if [ "$repo_key" != "$RUN_ALL_REPO_KEY" ]; then
-    rm -f "$entry"
+    rm -f "$entry" 2>/dev/null || true
     return 1
   fi
 
   if ! kill -0 "$pid" 2>/dev/null; then
-    rm -f "$entry"
+    rm -f "$entry" 2>/dev/null || true
     return 1
   fi
 
@@ -110,12 +110,12 @@ run_all_token_is_valid() {
   current_command="$(ps -o command= -p "$pid" 2>/dev/null || true)"
 
   if [ -z "$current_start" ] || [ -z "$current_command" ]; then
-    rm -f "$entry"
+    rm -f "$entry" 2>/dev/null || true
     return 1
   fi
 
   if [ "$process_start" != "$current_start" ] || [ "$process_command" != "$current_command" ]; then
-    rm -f "$entry"
+    rm -f "$entry" 2>/dev/null || true
     return 1
   fi
 
@@ -125,7 +125,7 @@ run_all_token_is_valid() {
       ;;
   esac
 
-  rm -f "$entry"
+  rm -f "$entry" 2>/dev/null || true
   return 1
 }
 
