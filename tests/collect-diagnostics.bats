@@ -44,7 +44,8 @@ run_collector() {
 
 @test "collect-diagnostics: redacts home directory paths" {
   run_collector
-  [[ "$output" != *"$HOME"* ]] || [[ "$HOME" == "$TEST_TEMP_DIR" ]]
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"$TEST_TEMP_DIR"* ]]
 }
 
 @test "collect-diagnostics: redacts API key patterns" {

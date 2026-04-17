@@ -222,8 +222,17 @@ collect() {
     . "$PLUGIN_ROOT/scripts/lib/vbw-cache-key.sh"
     _diag_ver=$(cat "$PLUGIN_ROOT/VERSION" 2>/dev/null | tr -d '[:space:]')
     _diag_uid=$(id -u)
-    _diag_config_cache=$(vbw_cache_prefix "${_diag_ver:-0}" "$_diag_uid" "${VBW_CONFIG_ROOT:-$(pwd -P 2>/dev/null || pwd)}")-config.env
-    _diag_update_cache="/tmp/vbw-update-check-${_diag_uid}-$(vbw_hash_path "$PLUGIN_ROOT")"
+    local _diag_config_root _diag_scripts_dir
+    if [ -n "${VBW_CONFIG_ROOT:-}" ]; then
+      _diag_config_root=$(cd "${VBW_CONFIG_ROOT}" 2>/dev/null && pwd -P)
+    else
+      _diag_config_root=$(cd "${PROJECT_DIR}" 2>/dev/null && pwd -P)
+    fi
+    [ -n "${_diag_config_root:-}" ] || _diag_config_root="${VBW_CONFIG_ROOT:-$PROJECT_DIR}"
+    _diag_scripts_dir=$(cd "$PLUGIN_ROOT/scripts" 2>/dev/null && pwd -P)
+    [ -n "${_diag_scripts_dir:-}" ] || _diag_scripts_dir="$PLUGIN_ROOT/scripts"
+    _diag_config_cache=$(vbw_cache_prefix "${_diag_ver:-0}" "$_diag_uid" "$_diag_config_root")-config.env
+    _diag_update_cache="/tmp/vbw-update-check-${_diag_uid}-$(vbw_hash_path "$_diag_scripts_dir")"
     echo "config_cache_exists: $([ -f "$_diag_config_cache" ] && echo "YES" || echo "NO")"
     echo "update_cache_exists: $([ -f "$_diag_update_cache" ] && echo "YES" || echo "NO")"
   else
