@@ -2631,15 +2631,29 @@ EOF
 
 @test "all_done routes to QA remediation when phase sorting helper fails" {
   mkdir -p .vbw-planning/phases/01-test
+  mkdir -p .vbw-planning/phases/02-clean
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  echo "# Plan" > .vbw-planning/phases/02-clean/02-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-clean/02-SUMMARY.md
   echo "# My Project" > .vbw-planning/PROJECT.md
 
+  current_commit="$(git rev-parse HEAD)"
+
   printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 02' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/02-clean/02-VERIFICATION.md
 
   cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
 ---
 phase: 01
+status: complete
+---
+All tests passed.
+EOF
+
+  cat > .vbw-planning/phases/02-clean/02-UAT.md <<'EOF'
+---
+phase: 02
 status: complete
 ---
 All tests passed.
@@ -2658,6 +2672,7 @@ EOF
 
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "phase_detect_complete=true"
+  echo "$output" | grep -q "phase_count=2"
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "next_phase_slug=01-test"
   echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
