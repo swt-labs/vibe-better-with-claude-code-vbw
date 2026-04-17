@@ -23,10 +23,12 @@ declare -a JOB_EXIT_CODES=()
 declare -a serial_bats_files=()
 
 cleanup_run_all() {
-  local job_pid
+  local job_pid ppid_of_job
 
   for job_pid in "${JOB_PIDS[@]}"; do
     [ -n "$job_pid" ] || continue
+    ppid_of_job=$(ps -o ppid= -p "$job_pid" 2>/dev/null | tr -d '[:space:]') || continue
+    [ "$ppid_of_job" = "$$" ] || continue
     kill "$job_pid" 2>/dev/null || true
   done
   for job_pid in "${JOB_PIDS[@]}"; do
@@ -120,7 +122,7 @@ run_all_token_is_valid() {
   fi
 
   case "$current_command" in
-    *"testing/run-all.sh"*)
+    *"run-all.sh"*)
       return 0
       ;;
   esac
