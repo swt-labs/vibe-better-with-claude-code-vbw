@@ -130,7 +130,7 @@ link_run_all_system_tools() {
   create_stub_git_worktree_pair "$root" "$linked_root"
   export PATH="$root/bin:$PATH"
 
-  env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
+  env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
   first_pid=$!
 
   # Wait for the first suite's token to appear before launching the second,
@@ -144,7 +144,7 @@ link_run_all_system_tools() {
   done
   [[ "$token_found" = true ]] || { echo "first suite token never appeared"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
 
-  run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$linked_root' && bash testing/run-all.sh"
+  run env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
 
   touch "$release_file"
@@ -166,7 +166,7 @@ link_run_all_system_tools() {
   create_stub_git_worktree_pair "$root" "$linked_root"
   export PATH="$root/bin:$PATH"
 
-  env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
+  env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
   first_pid=$!
 
   # Wait for the first suite's token to appear before launching the second.
@@ -179,7 +179,7 @@ link_run_all_system_tools() {
   done
   [[ "$token_found" = true ]] || { echo "first suite token never appeared"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
 
-  run env RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$linked_root' && bash testing/run-all.sh"
+  run env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
 
   touch "$release_file"
@@ -201,7 +201,7 @@ link_run_all_system_tools() {
   mkdir -p "$state_root/$repo_key"
   printf '{"pid":"%s","repo_key":"%s"}\n' "$$" "$repo_key" > "$state_root/$repo_key/suite.$$.fake.token"
 
-  run env RUN_ALL_STATE_DIR="$state_root" bash -c "cd '$root' && bash testing/run-all.sh"
+  run env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_root" bash -c "cd '$root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
   [[ "$output" != *'Auto-tuned BATS_WORKERS'* ]]
 }
