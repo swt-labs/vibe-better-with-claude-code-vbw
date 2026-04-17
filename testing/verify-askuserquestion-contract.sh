@@ -15,6 +15,20 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMMANDS_DIR="$ROOT/commands"
 
+tracked_command_markdown_files() {
+  local rel
+  git -C "$ROOT" ls-files -- 'commands/*.md' 'internal/*.md' | while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    printf '%s\n' "$ROOT/$rel"
+  done
+}
+
+TRACKED_COMMAND_MARKDOWN_FILES=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  TRACKED_COMMAND_MARKDOWN_FILES+=("$file")
+done < <(tracked_command_markdown_files)
+
 PASS=0
 FAIL=0
 
@@ -53,8 +67,7 @@ echo "=== AskUserQuestion maxItems Contract Verification ==="
 echo ""
 echo "--- Check 1: No >4 option lists ---"
 
-for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
-  [ -f "$file" ] || continue
+for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
   base="$(basename "$file" .md)"
 
   # Count lines with >4 options in either format (outside code fences):
@@ -124,8 +137,7 @@ done
 echo ""
 echo "--- Check 2: Numbered-list workarounds include guard language ---"
 
-for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
-  [ -f "$file" ] || continue
+for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
   base="$(basename "$file" .md)"
 
   body=$(extract_body "$file")

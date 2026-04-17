@@ -37,6 +37,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMMANDS_DIR="$ROOT/commands"
 REFERENCES_DIR="$ROOT/references"
+EXECUTE_PROTOCOL="$REFERENCES_DIR/execute-protocol.md"
 
 PASS=0
 FAIL=0
@@ -55,6 +56,29 @@ is_tracked_repo_file() {
   local abs="$1"
   git -C "$ROOT" ls-files --error-unmatch "${abs#$ROOT/}" >/dev/null 2>&1
 }
+
+tracked_files_for_pattern() {
+  local rel
+  git -C "$ROOT" ls-files -- "$@" | while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    printf '%s\n' "$ROOT/$rel"
+  done
+}
+
+TRACKED_COMMAND_FILES=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  TRACKED_COMMAND_FILES+=("$file")
+done < <(tracked_files_for_pattern 'commands/*.md')
+
+TRACKED_REFERENCE_FILES=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  TRACKED_REFERENCE_FILES+=("$file")
+done < <(tracked_files_for_pattern 'references/*.md')
+
+TRACKED_COMMAND_REFERENCE_FILES=("${TRACKED_COMMAND_FILES[@]}" "${TRACKED_REFERENCE_FILES[@]}")
+TRACKED_COMMAND_EXECUTE_PROTOCOL_FILES=("${TRACKED_COMMAND_FILES[@]}" "$EXECUTE_PROTOCOL")
 
 echo "=== Plugin Root Inline Resolution Verification ==="
 
@@ -185,11 +209,10 @@ echo "=== Runtime Resolver Safety Verification ==="
 PASS=0
 FAIL=0
 
-EXECUTE_PROTOCOL="$REFERENCES_DIR/execute-protocol.md"
 PHASE_DETECTION="$REFERENCES_DIR/phase-detection.md"
 
 # Check 1: No direct $(cat /tmp/.vbw-plugin-root) execution path
-if grep -R -n '\$(cat /tmp/.vbw-plugin-root)' "$COMMANDS_DIR" "$REFERENCES_DIR" >/tmp/.vbw-plugin-runtime-grep 2>/dev/null; then
+if grep -n '\$(cat /tmp/.vbw-plugin-root)' "${TRACKED_COMMAND_REFERENCE_FILES[@]}" >/tmp/.vbw-plugin-runtime-grep 2>/dev/null; then
   fail "runtime docs contain direct \$(cat /tmp/.vbw-plugin-root) execution path"
   while IFS= read -r line; do echo "      $line"; done </tmp/.vbw-plugin-runtime-grep
 else
@@ -197,7 +220,7 @@ else
 fi
 
 # Check 2: No legacy cat /tmp/.vbw-plugin-root reader pattern (eliminated)
-if grep -R -n 'cat /tmp/.vbw-plugin-root' "$COMMANDS_DIR" | grep -v 'vbw-plugin-root-link-' >/tmp/.vbw-plugin-legacy-cat 2>/dev/null; then
+if grep -n 'cat /tmp/.vbw-plugin-root' "${TRACKED_COMMAND_FILES[@]}" 2>/dev/null | grep -v 'vbw-plugin-root-link-' >/tmp/.vbw-plugin-legacy-cat; then
   fail "commands still use legacy cat /tmp/.vbw-plugin-root reader"
   while IFS= read -r line; do echo "      $line"; done </tmp/.vbw-plugin-legacy-cat
 else
@@ -205,7 +228,7 @@ else
 fi
 
 # Check 3: No legacy temp file write (printf to /tmp/.vbw-plugin-root)
-if grep -R -n "printf.*> /tmp/.vbw-plugin-root" "$COMMANDS_DIR" >/tmp/.vbw-plugin-legacy-write 2>/dev/null; then
+if grep -n "printf.*> /tmp/.vbw-plugin-root" "${TRACKED_COMMAND_FILES[@]}" >/tmp/.vbw-plugin-legacy-write 2>/dev/null; then
   fail "commands still write to legacy /tmp/.vbw-plugin-root temp file"
   while IFS= read -r line; do echo "      $line"; done </tmp/.vbw-plugin-legacy-write
 else
@@ -213,7 +236,7 @@ else
 fi
 
 # Check 4: Canonical no-space link path exists in resolver preambles
-canonical_count=$(grep -R -c 'LINK="/tmp/.vbw-plugin-root-link-' "$COMMANDS_DIR" "$REFERENCES_DIR" 2>/dev/null | awk -F: '{s+=$NF} END{print s+0}')
+canonical_count=$(grep -c 'LINK="/tmp/.vbw-plugin-root-link-' "${TRACKED_COMMAND_REFERENCE_FILES[@]}" 2>/dev/null | awk -F: '{s+=$NF} END{print s+0}')
 if [ "$canonical_count" -ge 1 ]; then
   pass "resolver preambles emit canonical no-space link path"
 else
@@ -236,7 +259,7 @@ for file in "$COMMANDS_DIR"/*.md; do
 done
 
 # Check 6: Deterministic reader pattern uses CLAUDE_SESSION_ID
-reader_without_session=$(grep -R -n 'echo /tmp/.vbw-plugin-root-link-' "$COMMANDS_DIR" | grep -v 'CLAUDE_SESSION_ID' || true)
+reader_without_session=$(grep -n 'echo /tmp/.vbw-plugin-root-link-' "${TRACKED_COMMAND_FILES[@]}" 2>/dev/null | grep -v 'CLAUDE_SESSION_ID' || true)
 if [ -z "$reader_without_session" ]; then
   pass "all readers use CLAUDE_SESSION_ID for session isolation"
 else
@@ -325,7 +348,7 @@ for rel in "${TARGET_COMMANDS[@]}"; do
 done
 
 # Check 12: no SHA1 session key derivation in commands (reverted pattern)
-sha1_session_count=$({ grep -R -c 'SESSION_BASE.*shasum\|shasum.*SESSION' "$COMMANDS_DIR" 2>/dev/null || true; } | awk -F: '{s+=$NF} END{print s+0}')
+sha1_session_count=$({ grep -c 'SESSION_BASE.*shasum\|shasum.*SESSION' "${TRACKED_COMMAND_FILES[@]}" 2>/dev/null || true; } | awk -F: '{s+=$NF} END{print s+0}')
 if [ "$sha1_session_count" -eq 0 ]; then
   pass "no SHA1 session key derivation in commands"
 else
@@ -539,7 +562,7 @@ else
 fi
 
 # Check 17: no command preamble or execute doc retains the old shell-expanded symlink glob fallback
-old_glob_uses=$(grep -R -n '/tmp/.vbw-plugin-root-link-\*/scripts/hook-wrapper.sh' "$COMMANDS_DIR" "$EXECUTE_PROTOCOL" 2>/dev/null || true)
+old_glob_uses=$(grep -n '/tmp/.vbw-plugin-root-link-\*/scripts/hook-wrapper.sh' "${TRACKED_COMMAND_EXECUTE_PROTOCOL_FILES[@]}" 2>/dev/null || true)
 if [ -z "$old_glob_uses" ]; then
   pass "command preambles and execute-protocol no longer use shell-expanded symlink globs"
 else
