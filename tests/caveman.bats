@@ -195,6 +195,33 @@ set_caveman_config() {
   ! grep -q "caveman-commit" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-qa.md"
 }
 
+@test "compile-context: caveman directive injected for scout (no extra arg)" {
+  create_compile_context_fixtures
+  set_caveman_config "full" false false
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-context.sh" 01 scout .vbw-planning/phases
+  [ "$status" -eq 0 ]
+  grep -q "Caveman Language" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-scout.md"
+}
+
+@test "compile-context: caveman directive injected for debugger (no extra arg)" {
+  create_compile_context_fixtures
+  set_caveman_config "full" false false
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-context.sh" 01 debugger .vbw-planning/phases
+  [ "$status" -eq 0 ]
+  grep -q "Caveman Language" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-debugger.md"
+}
+
+@test "compile-context: caveman directive injected for architect (no extra arg)" {
+  create_compile_context_fixtures
+  set_caveman_config "full" false false
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-context.sh" 01 architect .vbw-planning/phases
+  [ "$status" -eq 0 ]
+  grep -q "Caveman Language" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test-phase/.context-architect.md"
+}
+
 # ---------------------------------------------------------------------------
 # compaction-instructions.sh — caveman preservation in PRIORITIES
 # ---------------------------------------------------------------------------

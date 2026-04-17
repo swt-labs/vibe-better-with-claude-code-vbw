@@ -278,7 +278,7 @@ emit_caveman_directive() {
   echo ""
   echo "### Caveman Language (${_level})"
   echo "Respond in ${_level} caveman language. Follow rules in \`references/caveman-language.md\`."
-  local _extra="$1"
+  local _extra="${1:-}"
   if [ "$_extra" = "commit" ] && [ "$CAVEMAN_COMMIT" = "true" ]; then
     echo "Write commit messages per \`references/caveman-commit.md\`."
   fi
