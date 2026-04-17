@@ -5,8 +5,9 @@
 #
 # Contract:
 # - verification_is_stale FILE returns 0 when the verification should be treated
-#   as stale/pending, 1 when it is fresh, and sets
+#   as stale/pending, 1 when it is fresh or the file is missing, and sets
 #   VERIFICATION_FRESHNESS_REASON to a short diagnostic token.
+# - When FILE is empty or does not exist, returns 1 with reason "missing_file".
 # - Any git/provenance error fails closed to stale. Under heavy parallel test
 #   load, transient git subprocess failures must not be misclassified as fresh.
 
@@ -26,7 +27,10 @@ verification_is_stale() {
   local _dirty _vac _cur_commit _cur_commit_ts _verif_mtime
 
   VERIFICATION_FRESHNESS_REASON=""
-  [ -n "$verif_file" ] && [ -f "$verif_file" ] || return 1
+  if [ -z "$verif_file" ] || [ ! -f "$verif_file" ]; then
+    VERIFICATION_FRESHNESS_REASON="missing_file"
+    return 1
+  fi
 
   if ! _dirty=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null); then
     VERIFICATION_FRESHNESS_REASON="git_status_failed"
