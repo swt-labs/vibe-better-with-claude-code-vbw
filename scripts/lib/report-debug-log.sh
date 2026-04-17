@@ -19,9 +19,9 @@ collect_debug_log_diagnostics() {
     return 0
   fi
 
-  local real_name
-  real_name=$(readlink "$debug_log" 2>/dev/null || basename "$debug_log")
-  echo "debug_log: $(basename "$real_name")"
+  local real_path
+  real_path=$(readlink "$debug_log" 2>/dev/null || echo "$debug_log")
+  echo "debug_log: $real_path"
   echo "debug_log_lines: $(wc -l < "$debug_log" 2>/dev/null | tr -d ' ')"
 
   # Plugin loading evidence

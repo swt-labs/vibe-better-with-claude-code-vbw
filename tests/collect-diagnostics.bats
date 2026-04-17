@@ -85,6 +85,9 @@ EOF
   [[ "$output" == *"hook_successes: 2"* ]]
   [[ "$output" == *"hook_error_lines: 0"* ]]
   [[ "$output" == *"plugin_loading_lines:"* ]]
+  # debug_log should show a path, not just a filename
+  [[ "$output" == *"debug_log: "* ]]
+  [[ "$output" != *"debug_log: test-session.txt"* ]]  # must be a path, not bare filename
 }
 
 # --- New section: Session Artifacts ---
