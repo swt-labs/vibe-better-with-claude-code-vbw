@@ -218,7 +218,7 @@ auto_tune_bats_workers() {
 }
 
 initialize_run_all_state
-register_run_all_token
+register_run_all_token || true
 
 # --- Launch shell lint ---
 run_job lint "shell-lint"                bash "$ROOT/testing/run-lint.sh"
