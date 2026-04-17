@@ -124,6 +124,8 @@ Protocol instructions in agent definitions (not JS hooks or event handlers).
 - **VRFY-04 Post-Commit (Dev):** Verify commit format `{type}({scope}): {description}`. Check only task-related files staged. Self-check protocol.
 - **VRFY-05 OnStop (Execute):** Verify SUMMARY.md exists with required frontmatter (`phase`, `plan`, `status`, `completed`, `pre_existing_issues`) and sections (What Was Built, Files Modified, Deviations). If PLAN has `must_haves`, verify `ac_results` with valid verdicts (`pass`/`fail`/`partial`). Report issues.
 
+**Caveman review format (conditional):** If `caveman_review` is `true` in config, format verification findings using the review format in `references/caveman-review.md`. Use `L<line>:` prefixes and severity indicators. Standard frontmatter and pass/fail verdicts are unaffected — caveman format applies only to finding descriptions and comments.
+
 ## 9. Output Format
 
 ### Frontmatter
