@@ -88,7 +88,9 @@ for file in "${TRACKED_MARKDOWN_FILES[@]}"; do
   base="$(basename "$file" .md)"
 
   # Use awk to find `!`<command> execution spans NOT inside fenced code blocks.
-  # Pattern: backtick-bang-backtick immediately followed by a command (echo, cat, ls, etc.)
+  # Pattern: backtick-bang-backtick immediately followed by any non-space token,
+  # which catches embedded command/path constructions like echo, /tmp/..., "./foo",
+  # etc.
   # Excludes documentation mentions like "fenced `!` blocks" (no command follows).
   # Fenced blocks start/end with ``` at line start.
   inline_hits=$(awk '
@@ -97,7 +99,7 @@ for file in "${TRACKED_MARKDOWN_FILES[@]}"; do
       in_fence = !in_fence
       next
     }
-    !in_fence && /`!`[a-zA-Z$]/ {
+    !in_fence && /`!`[^[:space:]`]/ {
       print NR": "$0
     }
   ' "$file")
