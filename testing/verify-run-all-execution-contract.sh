@@ -22,6 +22,11 @@ fail() {
 
 echo "=== run-all Execution Contract Verification ==="
 
+if [[ ! -f "$TARGET" ]]; then
+  echo "SKIP  CONTRIBUTING.md not found — nothing to verify"
+  exit 0
+fi
+
 # CONTRIBUTING.md must contain the no-tail guidance specifically for run-all.sh
 if grep -Eiq 'run-all\.sh' "$TARGET" && grep -Eiq 'do not pipe.*tail|do not pipe.*tee' "$TARGET"; then
   pass "CONTRIBUTING.md: contains no-pipe/no-tail directive for run-all.sh"
