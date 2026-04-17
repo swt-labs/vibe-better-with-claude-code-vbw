@@ -13,6 +13,20 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+tracked_command_reference_files() {
+  local rel
+  git -C "$ROOT" ls-files -- 'commands/*.md' 'references/*.md' | while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    printf '%s\n' "$ROOT/$rel"
+  done
+}
+
+TRACKED_COMMAND_REFERENCE_FILES=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  TRACKED_COMMAND_REFERENCE_FILES+=("$file")
+done < <(tracked_command_reference_files)
+
 COMMAND_SKILL_CONTRACT_FILES=(
   "$ROOT/commands/vibe.md"
   "$ROOT/commands/research.md"
@@ -619,7 +633,7 @@ done
 # --- maxTurns conditional omission: all commands that spawn agents ---
 
 # Every command that references maxTurns: ${...} must also have "omit" or "do NOT include"
-_MAX_TURNS_COMMANDS=$(grep -rl 'maxTurns.*\${' "$ROOT/commands/" "$ROOT/references/" 2>/dev/null || true)
+_MAX_TURNS_COMMANDS=$(grep -l 'maxTurns.*\${' "${TRACKED_COMMAND_REFERENCE_FILES[@]}" 2>/dev/null || true)
 _MT_FAIL=0
 for _cmd_file in $_MAX_TURNS_COMMANDS; do
   _cmd_name=$(basename "$_cmd_file")
@@ -886,7 +900,7 @@ echo ""
 echo "=== Subagent Type Verification ==="
 
 # Count subagent_type occurrences across commands and references
-_SAT_TOTAL=$(grep -r 'subagent_type.*vbw:' "$ROOT/commands/" "$ROOT/references/" 2>/dev/null | wc -l | tr -d ' ')
+_SAT_TOTAL=$(grep -h 'subagent_type.*vbw:' "${TRACKED_COMMAND_REFERENCE_FILES[@]}" 2>/dev/null | wc -l | tr -d ' ')
 
 if [ "$_SAT_TOTAL" -ge 16 ]; then
   pass "subagent_type: ${_SAT_TOTAL} spawn points specify subagent_type (>= 16 expected)"
