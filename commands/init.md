@@ -33,7 +33,7 @@ Project files:
 ```
 Skills:
 ```
-!`for _d in "${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude"; do [ -z "$_d" ] && continue; [ -d "$_d/skills/" ] && ls "$_d/skills/" 2>/dev/null && break; done || echo "No global skills"`
+!`if [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then _cd="$CLAUDE_CONFIG_DIR"; elif [ -d "$HOME/.config/claude-code" ]; then _cd="$HOME/.config/claude-code"; else _cd="$HOME/.claude"; fi; ls "$_cd/skills/" 2>/dev/null || echo "No global skills"`
 ```
 ```
 !`ls .claude/skills/ 2>/dev/null || echo "No project skills"`

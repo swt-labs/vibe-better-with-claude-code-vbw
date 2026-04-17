@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 # Tests for discovered issues surfacing across commands and agents
-# Issue #98: Pre-existing test failures silently dropped by /vbw:fix, /vbw:debug, /vbw:qa
+# Issue #98: Pre-existing test failures silently dropped by /vbw:fix, /vbw:debug, QA protocol
 
 load test_helper
 

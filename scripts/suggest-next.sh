@@ -484,7 +484,7 @@ case "$CMD" in
         else
           suggest "/vbw:fix -- Fix the failing checks"
         fi
-        suggest "/vbw:qa -- Re-run verification after fixing"
+        suggest "/vbw:vibe -- Re-run verification after fixing"
         ;;
       partial)
         if [ -n "$failing_plan_ids" ]; then
@@ -508,9 +508,9 @@ case "$CMD" in
           if [ -n "$first_unverified_phase" ]; then
             _uv_label="$first_unverified_phase"
             [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
-            suggest "/vbw:verify $first_unverified_phase -- Walk through $_uv_label changes before continuing"
+            suggest "/vbw:vibe -- Verify $_uv_label before continuing"
           else
-            suggest "/vbw:verify -- Walk through changes before continuing"
+            suggest "/vbw:vibe -- Verify completed work before continuing"
           fi
         fi
         if [ "$all_done" = true ] || [ "$next_phase_state" = "needs_reverification" ]; then
@@ -521,10 +521,10 @@ case "$CMD" in
               suggest "/vbw:vibe --archive -- All phases complete, zero deviations"
             else
               suggest "/vbw:vibe --archive -- Archive completed work ($deviation_count deviation(s) logged)"
-              suggest "/vbw:qa -- Review before archiving"
+              suggest "/vbw:vibe -- Review before archiving"
             fi
           elif [ "$deviation_count" -gt 0 ]; then
-            suggest "/vbw:qa -- Review remediation scope before resuming new work"
+            suggest "/vbw:vibe -- Review remediation scope before resuming new work"
           else
             :
           fi
@@ -564,7 +564,7 @@ case "$CMD" in
           fi
         fi
         if [ "$RESULT" = "skipped" ]; then
-          suggest "/vbw:qa -- Verify completed work"
+          suggest "/vbw:vibe -- Verify completed work"
         fi
         ;;
     esac
@@ -647,9 +647,9 @@ case "$CMD" in
           if [ -n "$first_unverified_phase" ]; then
             _uv_label="$first_unverified_phase"
             [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
-            suggest "/vbw:verify $first_unverified_phase -- Walk through $_uv_label changes manually"
+            suggest "/vbw:vibe -- Verify $_uv_label before continuing"
           else
-            suggest "/vbw:verify -- Walk through changes manually"
+            suggest "/vbw:vibe -- Verify completed work"
           fi
         fi
         if [ "$all_done" = true ] || [ "$next_phase_state" = "needs_reverification" ]; then
@@ -744,7 +744,7 @@ case "$CMD" in
               _fix_debug_handled=true
               ;;
             uat_pending)
-              suggest "/vbw:verify -- Run UAT on the debug fix"
+              suggest "/vbw:debug --resume -- Run UAT on the debug fix"
               _fix_debug_handled=true
               ;;
             uat_failed)
@@ -760,7 +760,20 @@ case "$CMD" in
       fi
     fi
     if [ "$_fix_debug_handled" = false ]; then
-      suggest "/vbw:qa -- Verify the fix"
+      suggest "/vbw:vibe -- Verify the fix"
+      if [ "$cfg_auto_uat" = true ] && [ -f "$PLANNING_DIR/.last-fix-commit" ]; then
+        # Only suggest UAT if marker is fresh (<24h); fail-closed on stat/date errors
+        _marker_stale=true
+        _marker_mtime=$(stat -c '%Y' "$PLANNING_DIR/.last-fix-commit" 2>/dev/null || stat -f '%m' "$PLANNING_DIR/.last-fix-commit" 2>/dev/null || echo 0)
+        _now=$(date +%s 2>/dev/null || echo 0)
+        if [ "$_marker_mtime" -gt 0 ] && [ "$_now" -gt 0 ]; then
+          _marker_age=$(( _now - _marker_mtime ))
+          [ "$_marker_age" -ge 0 ] && [ "$_marker_age" -le 86400 ] && _marker_stale=false
+        fi
+        if [ "$_marker_stale" = false ]; then
+          suggest "/vbw:verify -- Run UAT on the fix"
+        fi
+      fi
       suggest "/vbw:vibe -- Continue building"
     fi
     ;;
@@ -872,9 +885,9 @@ case "$CMD" in
       if [ -n "$first_unverified_phase" ]; then
         _uv_label="$first_unverified_phase"
         [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
-        suggest "/vbw:verify $first_unverified_phase -- Verify $_uv_label before continuing"
+        suggest "/vbw:vibe -- Verify $_uv_label before continuing"
       else
-        suggest "/vbw:verify -- Verify completed phases before continuing"
+        suggest "/vbw:vibe -- Verify completed phases before continuing"
       fi
     elif [ "$all_done" = true ]; then
       if ! suggest_milestone_recovery; then
@@ -896,9 +909,9 @@ case "$CMD" in
       if [ -n "$first_unverified_phase" ]; then
         _uv_label="$first_unverified_phase"
         [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
-        suggest "/vbw:verify $first_unverified_phase -- Verify $_uv_label before continuing"
+        suggest "/vbw:vibe -- Verify $_uv_label before continuing"
       else
-        suggest "/vbw:verify -- Verify completed phases before continuing"
+        suggest "/vbw:vibe -- Verify completed phases before continuing"
       fi
     elif [ -n "$next_unbuilt" ] || [ -n "$next_unplanned" ]; then
       target="${next_unbuilt:-$next_unplanned}"
@@ -948,9 +961,9 @@ case "$CMD" in
       if [ -n "$first_unverified_phase" ]; then
         _uv_label="$first_unverified_phase"
         [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
-        suggest "/vbw:verify $first_unverified_phase -- Verify $_uv_label before continuing"
+        suggest "/vbw:vibe -- Verify $_uv_label before continuing"
       else
-        suggest "/vbw:verify -- Verify completed phases before continuing"
+        suggest "/vbw:vibe -- Verify completed phases before continuing"
       fi
     elif [ -n "$current_uat_issues_phase" ]; then
       if [ "$current_uat_major_or_higher" = true ]; then
@@ -970,9 +983,9 @@ case "$CMD" in
       if [ -n "$first_unverified_phase" ]; then
         _uv_label="$first_unverified_phase"
         [ -n "$first_unverified_slug" ] && _uv_label="$first_unverified_phase ($(fmt_phase_name "${first_unverified_slug#*-}"))"
-        suggest "/vbw:verify $first_unverified_phase -- Verify $_uv_label before continuing"
+        suggest "/vbw:vibe -- Verify $_uv_label before continuing"
       else
-        suggest "/vbw:verify -- Verify completed phases before continuing"
+        suggest "/vbw:vibe -- Verify completed phases before continuing"
       fi
     elif [ -n "$next_unbuilt" ] || [ -n "$next_unplanned" ]; then
       target="${next_unbuilt:-$next_unplanned}"

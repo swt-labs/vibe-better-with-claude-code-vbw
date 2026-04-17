@@ -1,14 +1,12 @@
 #!/usr/bin/env bats
 
-# Tests for issue #94: TaskCompleted hook false-positive blocks Dev agents
-# after work is done, creating infinite loop.
+# Tests for TaskCompleted commit verification behavior.
 #
 # Covers:
-# - Keyword matcher correctly matches team-mode task subjects against
-#   conventional commit messages
-# - Repetition circuit breaker allows completion after repeated blocks
-# - Existing behavior preserved (no-commit block, analysis-only bypass,
-#   role-only bypass)
+# - Execute-protocol tasks still verify against recent commits
+# - Manual/non-execute tasks are never blocked by commit heuristics
+# - Execute-task mismatches become advisory instead of blocking
+# - Existing analysis-only and role-only bypasses still work
 
 load test_helper
 
@@ -16,12 +14,10 @@ setup() {
   setup_temp_dir
   create_test_config
 
-  # Create a minimal git repo inside TEST_TEMP_DIR
   cd "$TEST_TEMP_DIR"
   git init -q
   git config user.email "test@test.com"
   git config user.name "Test"
-  # Seed commit so git log works
   echo "init" > init.txt
   git add init.txt
   git commit -q -m "chore: initial commit"
@@ -31,7 +27,6 @@ teardown() {
   teardown_temp_dir
 }
 
-# Helper: add a recent commit with given message
 add_commit() {
   local msg="$1"
   echo "$RANDOM" >> "$TEST_TEMP_DIR/dummy.txt"
@@ -39,14 +34,31 @@ add_commit() {
   git commit -q -m "$msg"
 }
 
-# Helper: run task-verify.sh with a given task subject via stdin JSON
+add_old_commit() {
+  local msg="$1"
+  echo "$RANDOM" >> "$TEST_TEMP_DIR/dummy.txt"
+  git add dummy.txt
+  GIT_AUTHOR_DATE="2020-01-01T00:00:00" GIT_COMMITTER_DATE="2020-01-01T00:00:00" \
+    git commit -q -m "$msg"
+}
+
 run_task_verify() {
   local subject="$1"
   echo "{\"task_subject\": \"$subject\"}" | bash "$SCRIPTS_DIR/task-verify.sh"
 }
 
+run_task_verify_json() {
+  local json="$1"
+  printf '%s\n' "$json" | bash "$SCRIPTS_DIR/task-verify.sh"
+}
+
+assert_task_verify_advisory() {
+  echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "TaskCompleted"' >/dev/null
+  echo "$output" | jq -r '.hookSpecificOutput.additionalContext'
+}
+
 # =============================================================================
-# Bug #94: Team-mode task subjects don't match conventional commit messages
+# Execute tasks still get checked when matching evidence exists
 # =============================================================================
 
 @test "team-mode subject 'Execute 07-01: Create StockLotDetailView' matches commit 'feat(07-01): create StockLotDetailView'" {
@@ -55,6 +67,7 @@ run_task_verify() {
 
   run run_task_verify "Execute 07-01: Create StockLotDetailView"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "team-mode subject 'Execute 07-02: Wire navigation to StockLotDetailView' matches commit 'feat(07-02): wire NavigationLink to StockLotDetailView'" {
@@ -63,88 +76,88 @@ run_task_verify() {
 
   run run_task_verify "Execute 07-02: Wire navigation to StockLotDetailView"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "team-mode subject with 'Execute' prefix matches commit (prefix filtered as stop word)" {
   cd "$TEST_TEMP_DIR"
-  # Commit message has domain keywords but NOT "execute" or the plan ID format
   add_commit "refactor(03-01): update authentication middleware"
 
   run run_task_verify "Execute 03-01: Update authentication middleware"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
-@test "short task subject 'Execute 07-01: Fix bug' matches commit with domain keywords" {
+@test "short execute task subject with no usable keywords still allows" {
   cd "$TEST_TEMP_DIR"
   add_commit "fix(07-01): resolve the bug in auth"
 
-  # "fix" and "bug" are ≤3 chars → filtered. "execute" is a stop word.
-  # Without domain keywords, fail-open (exit 0) should apply.
   run run_task_verify "Execute 07-01: Fix bug"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 # =============================================================================
-# Bug #94: Repetition circuit breaker — prevents infinite hook loop
+# Issue #422: manual and non-commit tasks must not be blocked
 # =============================================================================
 
-@test "first block for a subject exits 2 (normal block)" {
+@test "manual non-execute task with unrelated recent commit allows on first attempt" {
   cd "$TEST_TEMP_DIR"
-  # Commit that does NOT match the subject at all
   add_commit "docs: update README"
-  rm -f "$TEST_TEMP_DIR/.vbw-planning/.task-verify-seen"
 
-  run run_task_verify "Implement quantum flux capacitor"
-  [ "$status" -eq 2 ]
-}
-
-@test "second block for same subject exits 0 (circuit breaker fires)" {
-  cd "$TEST_TEMP_DIR"
-  # Commit that does NOT match the subject
-  add_commit "docs: update README"
-  rm -f "$TEST_TEMP_DIR/.vbw-planning/.task-verify-seen"
-
-  # First attempt — blocks
-  run run_task_verify "Implement quantum flux capacitor"
-  [ "$status" -eq 2 ]
-
-  # Second attempt — circuit breaker should allow
-  run run_task_verify "Implement quantum flux capacitor"
+  run run_task_verify "Link Sentry issues to JIRA ticket CVX-5919"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
-@test "circuit breaker is per-subject — different subject still blocks" {
+@test "manual non-execute task with no recent commits allows on first attempt" {
   cd "$TEST_TEMP_DIR"
-  add_commit "docs: update README"
-  rm -f "$TEST_TEMP_DIR/.vbw-planning/.task-verify-seen"
+  rm -rf .git
+  git init -q
+  git config user.email "test@test.com"
+  git config user.name "Test"
+  echo "init" > init.txt
+  git add init.txt
+  GIT_AUTHOR_DATE="2020-01-01T00:00:00" GIT_COMMITTER_DATE="2020-01-01T00:00:00" \
+    git commit -q -m "chore: ancient seed"
 
-  # Block first subject
-  run run_task_verify "Implement quantum flux capacitor"
-  [ "$status" -eq 2 ]
-
-  # Different subject should still block (not benefit from first subject's counter)
-  run run_task_verify "Build time machine"
-  [ "$status" -eq 2 ]
-}
-
-# =============================================================================
-# Existing behavior preserved: legitimate blocks still work
-# =============================================================================
-
-@test "no recent commits blocks with exit 2" {
-  cd "$TEST_TEMP_DIR"
-  rm -f "$TEST_TEMP_DIR/.vbw-planning/.task-verify-seen"
-  # The initial commit is recent enough, but doesn't match
-  run run_task_verify "Implement something entirely different"
-  [ "$status" -eq 2 ]
-}
-
-@test "matching commit allows with exit 0" {
-  cd "$TEST_TEMP_DIR"
-  add_commit "feat(auth): implement login flow with OAuth2"
-
-  run run_task_verify "Implement login flow"
+  run run_task_verify "Create feature branch from iw3_11_patches"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "execute task with no recent commits emits advisory and allows completion" {
+  cd "$TEST_TEMP_DIR"
+  rm -rf .git
+  git init -q
+  git config user.email "test@test.com"
+  git config user.name "Test"
+  echo "init" > init.txt
+  git add init.txt
+  GIT_AUTHOR_DATE="2020-01-01T00:00:00" GIT_COMMITTER_DATE="2020-01-01T00:00:00" \
+    git commit -q -m "feat(07-01): create StockLotDetailView"
+
+  run run_task_verify "Execute 07-01: Create StockLotDetailView"
+  [ "$status" -eq 0 ]
+  assert_task_verify_advisory | grep -q "recent commit in the configured window"
+}
+
+@test "execute task with mismatched recent commit emits advisory and allows completion" {
+  cd "$TEST_TEMP_DIR"
+  add_commit "fix(auth): guard null undefined dereferences in login-adjacent code"
+
+  run run_task_verify "Execute 07-01: Fix validation removeIn null DOM access"
+  [ "$status" -eq 0 ]
+  assert_task_verify_advisory | grep -q "recent matching commit"
+}
+
+@test "execute task with matching commit allows with no advisory output" {
+  cd "$TEST_TEMP_DIR"
+  add_commit "feat(07-01): implement login flow with OAuth2"
+
+  run run_task_verify "Execute 07-01: Implement login flow"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 # =============================================================================
@@ -155,25 +168,36 @@ run_task_verify() {
   cd "$TEST_TEMP_DIR"
   run run_task_verify "[analysis-only] Investigate race condition"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "analysis-only tag in task_description fallback bypasses check" {
+  cd "$TEST_TEMP_DIR"
+  run run_task_verify_json '{"task_description": "Investigate memory leak [analysis-only]"}'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "role-only subject bypasses check" {
   cd "$TEST_TEMP_DIR"
   run run_task_verify "dev-01"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "role-only subject with vbw prefix bypasses check" {
   cd "$TEST_TEMP_DIR"
   run run_task_verify "vbw-dev"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "empty task subject allows (fail-open)" {
   cd "$TEST_TEMP_DIR"
   add_commit "some commit"
-  run bash -c 'echo "{}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
+  run run_task_verify_json '{}'
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "no .vbw-planning dir allows (non-VBW context)" {

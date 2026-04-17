@@ -113,7 +113,7 @@ Agent Teams are [experimental with known limitations](https://code.claude.com/do
 
 - **Session resumption.** Agent Teams teammates don't survive `/resume`. VBW's `/vbw:resume` reads ground truth directly from `.vbw-planning/` -- STATE.md, ROADMAP.md, PLAN.md and SUMMARY.md files -- without requiring a prior `/vbw:pause`. It detects interrupted builds via `.execution-state.json`, reconciles stale execution state by detecting tasks completed between sessions via SUMMARY.md files, and suggests the right next action.
 
-- **Task status lag.** Teammates sometimes forget to mark tasks complete. VBW's `TaskCompleted` hook verifies task-related commits exist via keyword matching, with a circuit breaker that allows completion after a repeated false-positive block (prevents infinite hook loops). The `TeammateIdle` hook runs a tiered SUMMARY.md gate — all summaries present passes immediately, conventional commit format only grants a 1-plan grace period, and 2+ missing summaries block regardless.
+- **Task status lag.** Teammates sometimes forget to mark tasks complete. VBW's `TaskCompleted` hook treats commit matching as an advisory signal for execute-protocol tasks instead of a universal blocking gate, so manual or non-code tasks do not get stranded at `in_progress` when no commit exists or the wording diverges. The `TeammateIdle` hook runs a tiered SUMMARY.md gate — all summaries present passes immediately, conventional commit format only grants a 1-plan grace period, and 2+ missing summaries block regardless.
 
 - **Shutdown coordination.** VBW defines `shutdown_request`/`shutdown_response` schemas in the typed communication protocol. After phase work completes, the orchestrator sends `shutdown_request` to every teammate, waits for acknowledgment, then calls `TeamDelete`. All 6 team-participating agents (Dev, QA, Scout, Lead, Debugger, Docs) have explicit shutdown handlers with mechanical SendMessage tool-call instructions. Architect is planning-only and excluded from the shutdown protocol. If shutdown stalls or agents linger, `/vbw:doctor --cleanup` detects and cleans stale teams, orphan processes, and dangling PIDs.
 
@@ -238,7 +238,7 @@ VBW operates on a simple loop that will feel familiar to anyone who's ever shipp
                                     │
                                     ▼
                      ┌──────────────────────────────┐
-                     │  /vbw:qa [phase]             │
+                     │  /vbw:vibe (auto-detects)    │
                      │  Three-tier verification     │
                      │  Goal-backward methodology   │
                      │  Outputs: VERIFICATION.md    │
@@ -386,7 +386,7 @@ Closed your terminal? Switched branches? Came back after a weekend of pretending
 >
 > **If you accidentally `/clear`**, run `/vbw:resume` immediately. It restores project context from ground truth files in `.vbw-planning/` — state, roadmap, plans, summaries — and tells you exactly where to pick up.
 >
-> **For advanced users:** The [full command reference](#commands) below has 25 commands for granular control — `/vbw:vibe` with flags for explicit mode selection (`--plan`, `--execute`, `--discuss`, `--assumptions`), `/vbw:discuss` for standalone phase discussions, `/vbw:qa` for on-demand verification, `/vbw:debug` for systematic bug investigation, and more. But you never *need* the flags. `/vbw:vibe` with no arguments handles the entire lifecycle on its own.
+> **For advanced users:** The [full command reference](#commands) below has 22 commands for granular control — `/vbw:vibe` with flags for explicit mode selection (`--plan`, `--execute`, `--discuss`, `--assumptions`), `/vbw:discuss` for standalone phase discussions, `/vbw:debug` for systematic bug investigation, and more. But you never *need* the flags. `/vbw:vibe` with no arguments handles the entire lifecycle on its own.
 
 ---
 
@@ -406,8 +406,6 @@ These are the commands you'll use every day. This is the job now.
 | Command | Description |
 | :--- | :--- |
 | `/vbw:status` | Progress dashboard showing all phases, completion bars, velocity metrics, and suggested next action. Add `--metrics` for token consumption breakdown per agent. |
-| `/vbw:qa [phase]` | Deep verification on demand. Three tiers (Quick, Standard, Deep) with goal-backward methodology. Continuous QA runs automatically via hooks during builds -- this command is for thorough, on-demand verification. Produces VERIFICATION.md. Phase is auto-detected when omitted. |
-| `/vbw:verify [phase]` | Human-only acceptance testing with per-test CHECKPOINT prompts. Presents success criteria one at a time, keeps automated/programmatic checks in QA, supports resume if interrupted, and produces UAT.md. |
 
 ### Supporting -- The Safety Net
 
@@ -415,7 +413,7 @@ These are the commands you'll use every day. This is the job now.
 | :--- | :--- |
 | `/vbw:discuss [phase]` | Standalone discussion engine for exploring phase decisions before planning. Auto-calibrates between Builder and Architect modes based on conversation signals. Generates phase-specific gray areas, explores selected ones conversationally, and captures decisions to `{phase}-CONTEXT.md`. Same engine as `/vbw:vibe --discuss`. |
 | `/vbw:fix` | Quick task in Turbo mode. One commit, no ceremony. For when the fix is obvious and you don't need seven agents to add a missing comma. |
-| `/vbw:debug` | Systematic bug investigation via the Debugger agent. Persists findings to a debug session file so investigations survive across sessions — resume with `--resume` or target a specific session with `--session <id>`. At Thorough effort with ambiguous bugs, spawns 3 parallel debugger teammates for competing hypothesis investigation. Route completed investigations through `/vbw:qa` and `/vbw:verify` for the full QA→UAT lifecycle without needing a phase. |
+| `/vbw:debug` | Systematic bug investigation via the Debugger agent. Persists findings to a debug session file so investigations survive across sessions — resume with `--resume` or target a specific session with `--session <id>`. At Thorough effort with ambiguous bugs, spawns 3 parallel debugger teammates for competing hypothesis investigation. Completed investigations auto-chain QA and UAT verification inline when resumed. |
 | `/vbw:todo` | Add an item to a persistent backlog that survives across sessions. For all those "we should really..." thoughts that usually die in a terminal tab. |
 | `/vbw:list-todos` | Browse pending todos, filter by priority, and pick one to act on. Computes ages, formats a numbered list, and offers routing to `/vbw:fix`, `/vbw:debug`, `/vbw:vibe`, or `/vbw:research`. |
 | `/vbw:pause` | Save session notes for next time. State auto-persists in `.vbw-planning/` -- pause just lets you leave a sticky note for future you. |
@@ -491,7 +489,7 @@ Here's when each one shows up to work:
   │    SubagentStart ── Writes agent marker (role normalization, concurrency-safe)│
   │    SubagentStop ─── Validates SUMMARY.md, cleans markers, corruption recovery│
   │    TeammateIdle ─── Tiered SUMMARY.md gate (1-plan grace, 2+ gap blocks)     │
-  │    TaskCompleted ── Verifies task-related commit via keyword matching         │
+  │    TaskCompleted ── Advisory execute-task commit verification                  │
   │                                                                               │
   │  Security                                                                     │
   │    PreToolUse ──── Blocks destructive Bash commands (migrate:fresh, db:drop,  │
@@ -645,7 +643,7 @@ Autonomy interacts with effort profiles. At `cautious`, plan approval expands to
 | Plan approval (Balanced) | Required | Off | Off | Off |
 | UAT after QA | Run | Run | Skip | Skip |
 
-**`auto_uat`** — When `true`, VBW automatically runs UAT verification after QA passes during the `/vbw:vibe` execution flow, regardless of autonomy level. Normally, UAT only runs at `cautious` and `standard` autonomy. With `auto_uat` enabled, UAT runs inline at every level, including `confident` and `pure-vibe`. When running standalone `/vbw:qa`, the "Next Up" block will suggest `/vbw:verify` instead.
+**`auto_uat`** — When `true`, VBW automatically runs UAT verification after QA passes during the `/vbw:vibe` execution flow, regardless of autonomy level. Normally, UAT only runs at `cautious` and `standard` autonomy. With `auto_uat` enabled, UAT runs inline at every level, including `confident` and `pure-vibe`.
 
 ```text
 /vbw:config auto_uat true
@@ -1012,7 +1010,7 @@ See **[Model Profiles Reference](references/model-profiles.md)** for preset defi
 ```text
 .claude-plugin/    Plugin manifest (plugin.json)
 agents/            7 agent definitions with native tool permissions
-commands/          24 slash commands (commands/*.md)
+commands/          24 slash commands (22 user-visible, 2 hidden protocol files)
 config/            Default settings and stack-to-skill mappings
 hooks/             Plugin hooks for continuous verification
 scripts/           Hook handler scripts (security, validation, QA gates)

@@ -398,23 +398,19 @@ simulate_session_stop() {
 }
 
 # =============================================================================
-# Full Chain: task-verify circuit breaker → agent-stop → session-stop
+# Full Chain: advisory task-verify → agent-stop → session-stop
 # =============================================================================
 
-@test "full chain: circuit breaker state created during task-verify, cleaned by session-stop" {
+@test "full chain: advisory task-verify does not create circuit breaker state" {
   cd "$TEST_TEMP_DIR"
 
-  # A commit that won't match the subject → triggers circuit breaker
+  # A mismatched execute task should emit advisory output, not create state.
   echo "$RANDOM" >> dummy.txt && git add dummy.txt && git commit -q -m "docs: update README"
 
-  # First task-verify call: blocks (exit 2), creates .task-verify-seen
-  run bash -c 'echo "{\"task_subject\": \"Implement widget renderer\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
-  [ "$status" -eq 2 ]
-  [ -f ".vbw-planning/.task-verify-seen" ]
-
-  # Second call: circuit breaker fires (exit 0)
-  run bash -c 'echo "{\"task_subject\": \"Implement widget renderer\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
+  run bash -c 'echo "{\"task_subject\": \"Execute 07-01: Implement widget renderer\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
   [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "TaskCompleted"' >/dev/null
+  [ ! -f ".vbw-planning/.task-verify-seen" ]
 
   # Now simulate agent shutdown + session stop
   local pid
@@ -431,7 +427,7 @@ simulate_session_stop() {
   [ -f ".vbw-planning/.vbw-session" ]
 }
 
-@test "full chain: multi-agent start → task-verify blocks → circuit breaker → stops → session cleanup" {
+@test "full chain: multi-agent start → advisory mismatch → matching execute task → session cleanup" {
   cd "$TEST_TEMP_DIR"
 
   # Start two agents
@@ -444,19 +440,18 @@ simulate_session_stop() {
   run cat ".vbw-planning/.active-agent-count"
   [ "$output" = "2" ]
 
-  # Dev-01 finishes task — no matching commit → blocks
+  # Dev-01 finishes task — no matching commit → advisory only
   echo "$RANDOM" >> dummy.txt && git add dummy.txt && git commit -q -m "docs: unrelated change"
   run bash -c 'echo "{\"task_subject\": \"Execute 07-01: Create detail view\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
-  [ "$status" -eq 2 ]
-
-  # Retry (simulating Claude Code re-queue) → circuit breaker allows
-  run bash -c 'echo "{\"task_subject\": \"Execute 07-01: Create detail view\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
   [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "TaskCompleted"' >/dev/null
+  [ ! -f ".vbw-planning/.task-verify-seen" ]
 
   # Dev-02 finishes task with matching commit → no block
   echo "$RANDOM" >> dummy.txt && git add dummy.txt && git commit -q -m "feat(07-02): wire navigation to detail view"
   run bash -c 'echo "{\"task_subject\": \"Execute 07-02: Wire navigation to detail view\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 
   # Both agents stop
   simulate_agent_stop "$pid1"

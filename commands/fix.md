@@ -91,6 +91,7 @@ Config: Pre-injected by SessionStart hook.
       Files: {changed files}
     ```
 
+    Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/write-fix-marker.sh .vbw-planning 2>/dev/null || true` silently — this persists fix context for inline QA/UAT.
     Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-next.sh fix` and display.
 
     Committed, with discovered issues (Dev reported pre-existing failures):
@@ -113,7 +114,8 @@ Config: Pre-injected by SessionStart hook.
     This is **display-only**. Do NOT edit STATE.md, do NOT add todos, do NOT
     invoke /vbw:todo, and do NOT enter an interactive loop. The user decides
     whether to track these. If no discovered issues: omit the section entirely.
-    After displaying discovered issues, STOP. Do not take further action.
+    After displaying discovered issues, **STOP. Do not take further action** on discovered issues (no auto-fix, no auto-track, no investigation)—just display them.
+    Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/write-fix-marker.sh .vbw-planning 2>/dev/null || true` silently — this persists fix context for inline QA/UAT.
     Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-next.sh fix` and display.
 
     Dev stopped:

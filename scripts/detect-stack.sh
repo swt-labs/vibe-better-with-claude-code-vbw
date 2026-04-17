@@ -204,6 +204,7 @@ jq -n \
   --arg recommended "$RECOMMENDED_SKILLS" \
   --arg suggestions "$SUGGESTIONS" \
   --argjson find_skills "$FIND_SKILLS" \
+  --arg global_skills_dir "$CLAUDE_DIR/skills" \
   '{
     detected_stack: ($detected | split(",") | map(select(. != ""))),
     installed: {
@@ -213,5 +214,6 @@ jq -n \
     },
     recommended_skills: ($recommended | split(",") | map(select(. != ""))),
     suggestions: ($suggestions | split(",") | map(select(. != ""))),
-    find_skills_available: $find_skills
+    find_skills_available: $find_skills,
+    global_skills_dir: $global_skills_dir
   }'
