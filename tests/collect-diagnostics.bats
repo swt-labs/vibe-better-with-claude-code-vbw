@@ -158,6 +158,16 @@ EOF
   [[ "$output" == *"registry_entry: vbw@vbw-marketplace"* ]]
 }
 
+@test "collect-diagnostics: falls back to vbw-prefixed registry entries when exact key is absent" {
+  if ! command -v jq >/dev/null 2>&1; then
+    skip "jq not available"
+  fi
+  echo '{"plugins":{"vbw@alt-marketplace":[{"scope":"user"}],"other-plugin":[{"scope":"user"}]}}' > "$CLAUDE_CONFIG_DIR/plugins/installed_plugins.json"
+  run_collector
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"registry_entry: vbw@alt-marketplace"* ]]
+}
+
 # --- Graceful degradation ---
 
 @test "collect-diagnostics: degrades gracefully with missing optional files" {

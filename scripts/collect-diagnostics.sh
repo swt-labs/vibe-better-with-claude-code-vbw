@@ -277,9 +277,26 @@ collect() {
 
   if [ -f "$mp_installed" ]; then
     if command -v jq >/dev/null 2>&1; then
-      local vbw_reg
-      vbw_reg=$(jq -r '.plugins // {} | keys[] | select(test("vbw";"i"))' "$mp_installed" 2>/dev/null | head -1)
-      echo "registry_entry: ${vbw_reg:-(not found)}"
+      local vbw_reg vbw_reg_fallback
+      vbw_reg=$(jq -r '
+        .plugins // {}
+        | if has("vbw@vbw-marketplace") then
+            "vbw@vbw-marketplace"
+          else
+            empty
+          end
+      ' "$mp_installed" 2>/dev/null)
+      if [ -n "$vbw_reg" ]; then
+        echo "registry_entry: $vbw_reg"
+      else
+        vbw_reg_fallback=$(jq -r '
+          .plugins // {}
+          | keys
+          | map(select(test("^vbw@")))
+          | if length > 0 then join(", ") else empty end
+        ' "$mp_installed" 2>/dev/null)
+        echo "registry_entry: ${vbw_reg_fallback:-(not found)}"
+      fi
     else
       echo "registry_entry: (jq unavailable — cannot parse)"
     fi
