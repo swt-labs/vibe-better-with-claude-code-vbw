@@ -1,11 +1,22 @@
 #!/bin/bash
 set -u
 _pd_normal_exit=false
-_pd_output_file=$(mktemp "${TMPDIR:-/tmp}/vbw-phase-detect.XXXXXX")
+_pd_output_file=
 exec 3>&1
-exec >"$_pd_output_file"
+if _pd_output_file=$(mktemp "${TMPDIR:-/tmp}/vbw-phase-detect.XXXXXX" 2>/dev/null) &&
+   [ -n "$_pd_output_file" ] && [ -f "$_pd_output_file" ]; then
+  if ! exec >"$_pd_output_file"; then
+    rm -f "$_pd_output_file"
+    printf "%s\n" "phase_detect_error=true" >&3
+    exit 0
+  fi
+else
+  rm -f "$_pd_output_file"
+  printf "%s\n" "phase_detect_error=true" >&3
+  exit 0
+fi
 trap '
-  if [ "$_pd_normal_exit" = true ]; then
+  if [ "$_pd_normal_exit" = true ] && [ -n "$_pd_output_file" ] && [ -f "$_pd_output_file" ]; then
     cat "$_pd_output_file" >&3
   else
     printf "%s\n" "phase_detect_error=true" >&3
