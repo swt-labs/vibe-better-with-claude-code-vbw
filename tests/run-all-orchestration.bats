@@ -35,6 +35,11 @@ create_stub_workspace() {
 #!/usr/bin/env bash
 : "${BATS_LOG:?}"
 printf '%s\n' "$*" >> "$BATS_LOG"
+if [ -n "${BATS_HOLD_UNTIL_FILE:-}" ]; then
+  while [ ! -f "$BATS_HOLD_UNTIL_FILE" ]; do
+    sleep 0.1
+  done
+fi
 i=1
 for arg in "$@"; do
   printf 'ok %d %s\n' "$i" "$(basename "$arg")"
@@ -55,6 +60,19 @@ SH
   touch "$root/tests/alpha.bats" "$root/tests/beta.bats" "$root/tests/statusline-cache-isolation.bats"
 }
 
+create_stub_git_worktree_pair() {
+  local primary_root="$1"
+  local linked_root="$2"
+
+  git -C "$primary_root" init -q
+  git -C "$primary_root" config user.email test@example.com
+  git -C "$primary_root" config user.name 'Test User'
+  git -C "$primary_root" add .
+  git -C "$primary_root" commit -q -m 'test: seed stub workspace'
+  git -C "$primary_root" branch linked-worktree
+  git -C "$primary_root" worktree add -q "$linked_root" linked-worktree >/dev/null 2>&1
+}
+
 create_failing_stub_script() {
   local path="$1"
   mkdir -p "$(dirname "$path")"
@@ -62,6 +80,21 @@ create_failing_stub_script() {
 #!/usr/bin/env bash
 echo "TOTAL: 48 PASS, 1 FAIL"
 exit 1
+SH
+  chmod +x "$path"
+}
+
+create_blocking_lint_script() {
+  local path="$1"
+  mkdir -p "$(dirname "$path")"
+  cat > "$path" <<'SH'
+#!/usr/bin/env bash
+: "${LINT_PID_FILE:?}"
+printf '%s\n' "$$" > "$LINT_PID_FILE"
+trap 'exit 0' TERM INT
+while :; do
+  sleep 0.1
+done
 SH
   chmod +x "$path"
 }
@@ -79,9 +112,120 @@ link_run_all_system_tools() {
   local root="$1"
   local tool_name
 
-  for tool_name in bash cat dirname find grep jq ls mktemp rm sort; do
+  for tool_name in bash cat dirname find git grep jq ls mkdir mktemp mv ps rm sleep sort tr; do
     link_runtime_tool "$root" "$tool_name"
   done
+}
+
+@test "default local worker count auto-tunes when a real peer suite overlaps" {
+  local root="$TEST_TEMP_DIR/stub-repo-auto-tune"
+  local linked_root="$TEST_TEMP_DIR/stub-repo-auto-tune-worktree"
+  local state_dir="$TEST_TEMP_DIR/run-all-state"
+  local release_file="$TEST_TEMP_DIR/release-first-run"
+  local first_output="$TEST_TEMP_DIR/first-run.log"
+  local first_bats_log="$TEST_TEMP_DIR/first-bats.log"
+  local second_bats_log="$TEST_TEMP_DIR/second-bats.log"
+  local first_pid
+  create_stub_workspace "$root"
+  create_stub_git_worktree_pair "$root" "$linked_root"
+  export PATH="$root/bin:$PATH"
+
+  env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
+  first_pid=$!
+
+  # Wait for the first suite's token to appear before launching the second,
+  # otherwise the second suite may not see the first as a concurrent peer.
+  local token_found=false
+  for _wait in $(seq 1 100); do
+    if compgen -G "$state_dir"/*/*.token >/dev/null 2>&1; then
+      token_found=true; break
+    fi
+    sleep 0.1
+  done
+  [[ "$token_found" = true ]] || { echo "first suite token never appeared"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
+
+  run env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$linked_root' && bash testing/run-all.sh"
+  [ "$status" -eq 0 ]
+
+  touch "$release_file"
+  wait "$first_pid"
+
+  echo "$output" | grep -q 'Auto-tuned BATS_WORKERS from 8 to 4 for 2 concurrent local test suite(s)'
+}
+
+@test "explicit BATS_WORKERS overrides auto-tuning during real overlap" {
+  local root="$TEST_TEMP_DIR/stub-repo-pinned-workers"
+  local linked_root="$TEST_TEMP_DIR/stub-repo-pinned-workers-worktree"
+  local state_dir="$TEST_TEMP_DIR/run-all-state-pinned"
+  local release_file="$TEST_TEMP_DIR/release-pinned-run"
+  local first_output="$TEST_TEMP_DIR/pinned-first-run.log"
+  local first_bats_log="$TEST_TEMP_DIR/pinned-first-bats.log"
+  local second_bats_log="$TEST_TEMP_DIR/pinned-second-bats.log"
+  local first_pid
+  create_stub_workspace "$root"
+  create_stub_git_worktree_pair "$root" "$linked_root"
+  export PATH="$root/bin:$PATH"
+
+  env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
+  first_pid=$!
+
+  # Wait for the first suite's token to appear before launching the second.
+  local token_found=false
+  for _wait in $(seq 1 100); do
+    if compgen -G "$state_dir"/*/*.token >/dev/null 2>&1; then
+      token_found=true; break
+    fi
+    sleep 0.1
+  done
+  [[ "$token_found" = true ]] || { echo "first suite token never appeared"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
+
+  run env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$linked_root' && bash testing/run-all.sh"
+  [ "$status" -eq 0 ]
+
+  touch "$release_file"
+  wait "$first_pid"
+
+  [[ "$output" != *'Auto-tuned BATS_WORKERS'* ]]
+  echo "$output" | grep -q '7 bats workers'
+}
+
+@test "stray token file is ignored and does not self-throttle a lone suite" {
+  local root="$TEST_TEMP_DIR/stub-repo-stray-token"
+  local state_root="$TEST_TEMP_DIR/run-all-state-stray"
+  local repo_key
+  create_stub_workspace "$root"
+  export BATS_LOG="$TEST_TEMP_DIR/bats-stray.log"
+  export PATH="$root/bin:$PATH"
+
+  repo_key=$(printf '%s' "$root/.git" | jq -sRr @uri)
+  mkdir -p "$state_root/$repo_key"
+  printf '{"pid":"%s","repo_key":"%s"}\n' "$$" "$repo_key" > "$state_root/$repo_key/suite.$$.fake.token"
+
+  run env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_root" bash -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *'Auto-tuned BATS_WORKERS'* ]]
+}
+
+@test "run-all cleanup reaps background jobs on early failure" {
+  local root="$TEST_TEMP_DIR/stub-repo-early-fail"
+  local host_bash
+  local lint_pid
+  create_stub_workspace "$root"
+  create_blocking_lint_script "$root/testing/run-lint.sh"
+  cat > "$root/testing/list-contract-tests.sh" <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+  chmod +x "$root/testing/list-contract-tests.sh"
+  link_run_all_system_tools "$root"
+  host_bash="$(command -v bash)"
+
+  run env PATH="$root/bin" LINT_PID_FILE="$TEST_TEMP_DIR/lint.pid" "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+  echo "$output" | grep -q 'No contract tests discovered'
+
+  lint_pid="$(cat "$TEST_TEMP_DIR/lint.pid")"
+  ! kill -0 "$lint_pid" 2>/dev/null
 }
 
 @test "invalid BATS_WORKERS falls back and keeps serial bats files out of worker batches" {
