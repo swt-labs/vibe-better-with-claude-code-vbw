@@ -456,6 +456,27 @@ SUMMARY
   [[ "$output" == *"qa_gate_writer=missing"* ]]
 }
 
+@test "phase-root PASS with missing writer and deviations → QA_RERUN_REQUIRED" {
+  cat > "$PHASE_DIR/01-PLAN.md" <<'PLAN'
+# Plan
+PLAN
+  cat > "$PHASE_DIR/01-SUMMARY.md" <<'SUMMARY'
+---
+status: complete
+deviations:
+  - Changed API approach
+---
+SUMMARY
+  create_verif "OMIT" "PASS"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_writer=missing"* ]]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
 @test "missing VERIFICATION.md → QA_RERUN_REQUIRED" {
   # Don't create any file
   run bash "$SCRIPT" "$PHASE_DIR"
