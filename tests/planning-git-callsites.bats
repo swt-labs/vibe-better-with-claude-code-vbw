@@ -39,10 +39,10 @@ load test_helper
 @test "planning-git callsites use deterministic pre-resolved root path counts" {
   local c
 
-  c=$(grep -c 'PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/config.md")
+  c=$(grep -c 'PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/config.md")
   [ "$c" -eq 1 ]
 
-  c=$(grep -c 'PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/init.md")
+  c=$(grep -c 'PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/init.md")
   [ "$c" -eq 2 ]
 
   c=$(grep -c 'PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"' "$PROJECT_ROOT/commands/vibe.md")

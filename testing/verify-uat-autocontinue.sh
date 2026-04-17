@@ -78,7 +78,7 @@ else
 fi
 
 # 9. verify.md standalone mode uses the shared helper before needs-round
-if grep -q 'resolve-uat-remediation-round-limit.sh --next-round-decision' "$ROOT/commands/verify.md"; then
+if grep -Eq 'resolve-uat-remediation-round-limit\.sh"? --next-round-decision' "$ROOT/commands/verify.md"; then
   pass "verify.md standalone mode uses the shared cap decision helper"
 else
   fail "verify.md standalone mode missing shared cap decision helper"

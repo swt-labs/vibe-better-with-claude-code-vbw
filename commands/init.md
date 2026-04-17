@@ -23,6 +23,8 @@ Plugin root:
 !`VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"; SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; SESSION_LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; R=""; if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi; if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi; if [ -z "$R" ]; then V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1); [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"; fi; if [ -z "$R" ]; then L=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1); [ -n "$L" ] && [ -f "${VBW_CACHE_ROOT}/${L}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${L}"; fi; if [ -z "$R" ] && [ -f "${SESSION_LINK}/scripts/hook-wrapper.sh" ]; then R="${SESSION_LINK}"; fi; if [ -z "$R" ]; then ANY_LINK=$(command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*' -print 2>/dev/null | LC_ALL=C sort | while IFS= read -r link; do if [ -f "$link/scripts/hook-wrapper.sh" ]; then printf '%s\n' "$link"; break; fi; done || true); [ -n "$ANY_LINK" ] && R="$ANY_LINK"; fi; if [ -z "$R" ]; then D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1); D="${D#--plugin-dir }"; [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"; fi; if [ -z "$R" ] || [ ! -d "$R" ]; then echo "VBW: plugin root resolution failed" >&2; exit 1; fi; LINK="${SESSION_LINK}"; REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"; bash "$REAL_R/scripts/ensure-plugin-root-link.sh" "$LINK" "$REAL_R" >/dev/null 2>&1 || { echo "VBW: plugin root link failed" >&2; exit 1; }; echo "$LINK"`
 ```
 
+Store the plugin root path output above as `{plugin-root}` for use in script invocations below. Replace `{plugin-root}` with the literal `Plugin root` value from Context whenever a step below references a script, template, command, or reference file.
+
 Existing state:
 ```
 !`ls -la .vbw-planning 2>/dev/null || echo "No .vbw-planning directory"`
@@ -122,22 +124,22 @@ See `docs/migration-gsd-to-vbw.md` for full field descriptions and usage example
      - Create directory: `mkdir -p .vbw-planning/gsd-archive`
      - Copy contents: `cp -r .planning/* .vbw-planning/gsd-archive/`
      - Display: "◆ Generating index..."
-     - Run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/generate-gsd-index.sh`
+      - Run: `bash "{plugin-root}/scripts/generate-gsd-index.sh"`
      - Display: "✓ GSD project archived to .vbw-planning/gsd-archive/ (indexed)"
      - Set GSD_IMPORTED=true flag for later steps
      - Proceed to Step 1
 
 ### Step 1: Scaffold directory
 
-Read each template from ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/templates/` and write to .vbw-planning/:
+Read each template from `{plugin-root}/templates/` and write to .vbw-planning/:
 
 | Target | Source |
 |--------|--------|
-| .vbw-planning/PROJECT.md | `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/templates/PROJECT.md |
-| .vbw-planning/REQUIREMENTS.md | `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/templates/REQUIREMENTS.md |
-| .vbw-planning/ROADMAP.md | `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/templates/ROADMAP.md |
-| .vbw-planning/STATE.md | `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/templates/STATE.md |
-| .vbw-planning/config.json | `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/defaults.json |
+| .vbw-planning/PROJECT.md | `{plugin-root}/templates/PROJECT.md` |
+| .vbw-planning/REQUIREMENTS.md | `{plugin-root}/templates/REQUIREMENTS.md` |
+| .vbw-planning/ROADMAP.md | `{plugin-root}/templates/ROADMAP.md` |
+| .vbw-planning/STATE.md | `{plugin-root}/templates/STATE.md` |
+| .vbw-planning/config.json | `{plugin-root}/config/defaults.json` |
 
 Create `.vbw-planning/phases/`. Ensure config.json includes `"prefer_teams": "auto"` and `"model_profile": "quality"`.
 
@@ -162,7 +164,7 @@ jq '.planning_tracking = "'"$PLANNING_TRACKING"'" | .auto_push = "'"$AUTO_PUSH"'
 Then align git ignore behavior with config:
 
 ```bash
-PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"
+PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
 if [ -f "$PG_SCRIPT" ]; then
   bash "$PG_SCRIPT" sync-ignore .vbw-planning/config.json
 else
@@ -173,7 +175,7 @@ fi
 ### Step 1.5: Install git hooks
 
 1. `git rev-parse --git-dir` — if not a git repo, display "○ Git hooks skipped (not a git repository)" and skip
-2. Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/install-hooks.sh`, display based on output:
+2. Run `bash "{plugin-root}/scripts/install-hooks.sh"`, display based on output:
    - Contains "Installed": `✓ Git hooks installed (pre-push)`
    - Contains "already installed": `✓ Git hooks (already installed)`
 
@@ -200,11 +202,11 @@ Set GSD_ISOLATION_ENABLED=true for Step 3.5.
 - Store SOURCE_FILE_COUNT. Check for test files, CI/CD, Docker, monorepo indicators.
 - Add Codebase Profile to STATE.md.
 
-**2b.** Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/detect-stack.sh "$(pwd)"`. Save full JSON. Display: `✓ Stack: {comma-separated detected_stack items}`
+**2b.** Run `bash "{plugin-root}/scripts/detect-stack.sh" "$(pwd)"`. Save full JSON. Display: `✓ Stack: {comma-separated detected_stack items}`
 
 **2.5. LSP setup (language servers + Claude plugins):**
 
-Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-lsp.sh` with the `detected_stack` JSON array from Step 2b and `CLAUDE_DIR/settings.json` path. Capture the JSON output.
+Run `bash "{plugin-root}/scripts/resolve-lsp.sh"` with the `detected_stack` JSON array from Step 2b and `CLAUDE_DIR/settings.json` path. Capture the JSON output.
 
 If `env_needed=false` AND all plugins have `plugin_enabled=true`: display `✓ LSP — already configured`, skip to 2c.
 
@@ -237,7 +239,7 @@ If any settings.json changes or plugins installed: display `(restart Claude Code
 
 **2c. Codebase mapping (adaptive):**
 - Greenfield (BROWNFIELD=false): skip. Display: `○ Greenfield — skipping codebase mapping`
-- SOURCE_FILE_COUNT < 200: run map **inline** — read ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/commands/map.md` and follow directly
+- SOURCE_FILE_COUNT < 200: run map **inline** — read `{plugin-root}/commands/map.md` and follow directly
 - SOURCE_FILE_COUNT >= 200: run map **inline** (blocking) — display: `◆ Codebase mapping started ({SOURCE_FILE_COUNT} files)`. **Do NOT run in background.** The map MUST complete before proceeding to Step 3.
 
 **2d. find-skills bootstrap:** Check `find_skills_available` from detect-stack JSON.
@@ -254,7 +256,7 @@ If any settings.json changes or plugins installed: display `(restart Claude Code
 
 **3b2. Auto-detect conventions:** If `.vbw-planning/codebase/PATTERNS.md` exists:
 - Read PATTERNS.md, ARCHITECTURE.md, STACK.md, CONCERNS.md
-- Extract conventions per ``!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/commands/teach.md` (Step R2)
+- Extract conventions per `{plugin-root}/commands/teach.md` (Step R2)
 - Write `.vbw-planning/conventions.json`. Display: `✓ {count} conventions auto-detected from codebase`
 
 If greenfield: write `{"conventions": []}`. Display: `○ Conventions — none yet (add with /vbw:teach)`
@@ -333,7 +335,7 @@ Run inference scripts based on the detected scenario, display results, and confi
 - Skip to Step 7 (discovery questions will be asked inline)
 
 **6b. Brownfield branch** (SCENARIO=BROWNFIELD):
-- Run inference: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/infer-project-context.sh .vbw-planning/codebase/ "$(pwd)"`
+- Run inference: `bash "{plugin-root}/scripts/infer-project-context.sh" .vbw-planning/codebase/ "$(pwd)"`
 - Capture JSON output to `.vbw-planning/inference.json` via Bash
 - Parse the JSON and display inferred fields:
   ```
@@ -347,9 +349,9 @@ Run inference scripts based on the detected scenario, display results, and confi
 - For null fields, display: `{field}: (not detected)` — always show every field
 
 **6c. GSD Migration branch** (SCENARIO=GSD_MIGRATION):
-- Run GSD inference: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/infer-gsd-summary.sh .vbw-planning/gsd-archive/`
+- Run GSD inference: `bash "{plugin-root}/scripts/infer-gsd-summary.sh" .vbw-planning/gsd-archive/`
 - Capture JSON output to `.vbw-planning/gsd-inference.json` via Bash
-- If `.vbw-planning/codebase/` exists, also run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/infer-project-context.sh .vbw-planning/codebase/ "$(pwd)"`
+- If `.vbw-planning/codebase/` exists, also run: `bash "{plugin-root}/scripts/infer-project-context.sh" .vbw-planning/codebase/ "$(pwd)"`
   - Capture to `.vbw-planning/inference.json`
 - Display merged results:
   ```
@@ -416,14 +418,14 @@ If SKIP_INFERENCE=false (confirmed/corrected inference data):
   2. "What phases do you envision?" (pre-fill from GSD recent_phases if available)
 
 **7b. Generate PROJECT.md:**
-- Run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/bootstrap/bootstrap-project.sh .vbw-planning/PROJECT.md "$NAME" "$DESCRIPTION"`
+- Run: `bash "{plugin-root}/scripts/bootstrap/bootstrap-project.sh" .vbw-planning/PROJECT.md "$NAME" "$DESCRIPTION"`
 - Display: `✓ PROJECT.md`
 
 **7c. Generate REQUIREMENTS.md:**
 - Create `.vbw-planning/discovery.json` with format: `{"answered": [...], "inferred": [...]}`
   - `answered`: array of requirement strings from user answers
   - `inferred`: array of `{"text": "...", "priority": "Must-have"}` from inference features
-- Run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/bootstrap/bootstrap-requirements.sh .vbw-planning/REQUIREMENTS.md .vbw-planning/discovery.json`
+- Run: `bash "{plugin-root}/scripts/bootstrap/bootstrap-requirements.sh" .vbw-planning/REQUIREMENTS.md .vbw-planning/discovery.json`
 - Display: `✓ REQUIREMENTS.md`
 
 **7d. Generate ROADMAP.md:**
@@ -431,19 +433,19 @@ If SKIP_INFERENCE=false (confirmed/corrected inference data):
   - Build from user-provided phase names/goals
   - Link requirements from discovery data
   - Generate success criteria from phase goals
-- Run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/bootstrap/bootstrap-roadmap.sh .vbw-planning/ROADMAP.md "$NAME" .vbw-planning/phases.json`
+- Run: `bash "{plugin-root}/scripts/bootstrap/bootstrap-roadmap.sh" .vbw-planning/ROADMAP.md "$NAME" .vbw-planning/phases.json`
 - Display: `✓ ROADMAP.md`
 
 **7e. Generate STATE.md:**
 - Determine MILESTONE_NAME: use NAME or first milestone from GSD inference
 - Determine PHASE_COUNT from phases.json length
-- Run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/bootstrap/bootstrap-state.sh .vbw-planning/STATE.md "$NAME" "$MILESTONE_NAME" "$PHASE_COUNT"`
+- Run: `bash "{plugin-root}/scripts/bootstrap/bootstrap-state.sh" .vbw-planning/STATE.md "$NAME" "$MILESTONE_NAME" "$PHASE_COUNT"`
 - Display: `✓ STATE.md`
 
 **7f. Generate/update CLAUDE.md:**
 - Extract `CORE_VALUE` from `.vbw-planning/PROJECT.md` (`grep -m1 '^\*\*Core value:\*\*' .vbw-planning/PROJECT.md | sed 's/^\*\*Core value:\*\* *//'`)
 - If root CLAUDE.md exists: pass it as EXISTING_PATH to preserve non-VBW content
-- Run: `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/bootstrap/bootstrap-claude.sh CLAUDE.md "$NAME" "$CORE_VALUE" "CLAUDE.md"`
+- Run: `bash "{plugin-root}/scripts/bootstrap/bootstrap-claude.sh" CLAUDE.md "$NAME" "$CORE_VALUE" "CLAUDE.md"`
   - If CLAUDE.md does not exist yet, omit the last argument
 - Display: `✓ CLAUDE.md`
 
@@ -454,7 +456,7 @@ If SKIP_INFERENCE=false (confirmed/corrected inference data):
 **7h. Planning commit boundary (conditional):**
 - Run:
   ```bash
-  PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"
+  PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
   if [ -f "$PG_SCRIPT" ]; then
     bash "$PG_SCRIPT" commit-boundary "bootstrap project files" .vbw-planning/config.json
   else

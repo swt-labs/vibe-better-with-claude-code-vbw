@@ -373,13 +373,13 @@ else
   fail "verify: missing promote-todos after known-issues restore in verify recovery path"
 fi
 
-if grep -q 'qa-remediation-state\.sh advance' "$QA_FILE"; then
+if grep -Eq 'qa-remediation-state\.sh"? advance' "$QA_FILE"; then
   pass "qa: round-scoped PROCEED_TO_UAT persists remediation advance"
 else
   fail "qa: missing round-scoped qa-remediation-state advance before standalone QA success presentation"
 fi
 
-if grep -q 'qa-remediation-state\.sh needs-round' "$QA_FILE"; then
+if grep -Eq 'qa-remediation-state\.sh"? needs-round' "$QA_FILE"; then
   pass "qa: round-scoped REMEDIATION_REQUIRED persists next-round state"
 else
   fail "qa: missing round-scoped qa-remediation-state needs-round before standalone remediation handoff"
@@ -470,10 +470,10 @@ else
   fail "verify: misnamed-plan refresh missing shared UAT scope resolver"
 fi
 
-if grep -q 'uat-remediation-state\.sh get-or-init "{phase-dir}" major' "$VERIFY_FILE" \
+if grep -Eq 'uat-remediation-state\.sh"? get-or-init "{phase-dir}" major' "$VERIFY_FILE" \
   && grep -q 'remediation/uat/round-{RR}/R{RR}-UAT.md' "$VERIFY_FILE" \
   && grep -q 'remediation/round-{RR}/R{RR}-UAT.md' "$VERIFY_FILE" \
-  && grep -q 'extract-uat-resume\.sh "{phase-dir}"' "$VERIFY_FILE"; then
+  && grep -Eq 'extract-uat-resume\.sh"? "{phase-dir}"' "$VERIFY_FILE"; then
   pass "verify: remediation re-verification refreshes and validates round-scoped uat_path for round-dir and legacy layouts"
 else
   fail "verify: remediation re-verification missing refreshed round-scoped uat_path validation"
@@ -545,7 +545,7 @@ echo "=== QA Result Gate Contract ==="
 
 QA_FILE="$COMMANDS_DIR/qa.md"
 
-if grep -q 'qa-remediation-state\.sh get' "$QA_FILE"; then
+if grep -Eq 'qa-remediation-state\.sh"? get' "$QA_FILE"; then
   pass "qa: resolves remediation state before choosing verification output path"
 else
   fail "qa: missing qa-remediation-state.sh get — standalone QA may overwrite phase-level verification"
@@ -569,7 +569,7 @@ else
   fail "qa: missing verify/done output guard and plan/execute stop for persisted verification_path"
 fi
 
-if grep -q 'resolve-verification-path\.sh current' "$QA_FILE"; then
+if grep -Eq 'resolve-verification-path\.sh"? current' "$QA_FILE"; then
   pass "qa: resolves authoritative verification path for done-stage remediation"
 else
   fail "qa: missing authoritative done-stage verification path resolution"
@@ -602,8 +602,8 @@ else
 fi
 
 if grep -q 'qa-result-gate\.sh' "$QA_FILE" \
-  && grep -q 'qa-remediation-state\.sh advance' "$QA_FILE" \
-  && grep -q 'qa-remediation-state\.sh needs-round' "$QA_FILE"; then
+  && grep -Eq 'qa-remediation-state\.sh"? advance' "$QA_FILE" \
+  && grep -Eq 'qa-remediation-state\.sh"? needs-round' "$QA_FILE"; then
   pass "qa: standalone remediation QA reruns deterministic gate before trusting round-scoped PASS artifacts"
 else
   fail "qa: missing deterministic gate reconciliation for standalone remediation QA"
