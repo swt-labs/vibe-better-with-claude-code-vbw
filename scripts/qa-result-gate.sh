@@ -1235,17 +1235,40 @@ KNOWN_ISSUES_COUNT=0
 if [ -f "$SCRIPT_DIR/track-known-issues.sh" ]; then
   _known_issues_meta=$(bash "$SCRIPT_DIR/track-known-issues.sh" status "$PHASE_DIR" 2>/dev/null || true)
   _known_issues_status=$(printf '%s\n' "${_known_issues_meta:-}" | awk -F= '/^known_issues_status=/{print $2; exit}')
+  _known_issues_count_raw=$(printf '%s\n' "${_known_issues_meta:-}" | awk -F= '/^known_issues_count=/{print $2; exit}')
   case "${_known_issues_status:-}" in
     present|missing|malformed)
-      KNOWN_ISSUES_STATUS="$_known_issues_status"
+      case "${_known_issues_count_raw:-}" in
+        '')
+          if [ "$_known_issues_status" = "present" ]; then
+            KNOWN_ISSUES_STATUS="probe_error"
+            KNOWN_ISSUES_COUNT=0
+          else
+            KNOWN_ISSUES_STATUS="$_known_issues_status"
+            KNOWN_ISSUES_COUNT=0
+          fi
+          ;;
+        *[!0-9]*)
+          KNOWN_ISSUES_STATUS="probe_error"
+          KNOWN_ISSUES_COUNT=0
+          ;;
+        *)
+          if [ "$_known_issues_status" != "present" ] && [ "$_known_issues_count_raw" -gt 0 ] 2>/dev/null; then
+            KNOWN_ISSUES_STATUS="probe_error"
+            KNOWN_ISSUES_COUNT=0
+          else
+            KNOWN_ISSUES_STATUS="$_known_issues_status"
+            KNOWN_ISSUES_COUNT="$_known_issues_count_raw"
+          fi
+          ;;
+      esac
       ;;
     *)
       KNOWN_ISSUES_STATUS="probe_error"
+      KNOWN_ISSUES_COUNT=0
       ;;
   esac
-  KNOWN_ISSUES_COUNT=$(printf '%s\n' "${_known_issues_meta:-}" | awk -F= '/^known_issues_count=/{print $2; exit}')
 fi
-KNOWN_ISSUES_COUNT="${KNOWN_ISSUES_COUNT:-0}"
 
 # Count non-placeholder deviations across SUMMARY.md files in a given directory.
 # Uses the same AWK extraction logic as execute-protocol.md Step 4.
