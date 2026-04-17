@@ -156,6 +156,11 @@ if command -v jq &>/dev/null && [ -f "$CONFIG_PATH" ]; then
   _caveman_commit=$(jq -r 'if .caveman_commit == null then false else .caveman_commit end' "$CONFIG_PATH" 2>/dev/null || echo "false")
   _caveman_review=$(jq -r 'if .caveman_review == null then false else .caveman_review end' "$CONFIG_PATH" 2>/dev/null || echo "false")
   HASH_INPUT="${HASH_INPUT}:caveman=${_caveman_style}:caveman_commit=${_caveman_commit}:caveman_review=${_caveman_review}"
+  # Auto mode resolves level from .context-usage — include its content in cache hash
+  if [ "$_caveman_style" = "auto" ]; then
+    _context_usage_sum=$(fingerprint_file "$PLANNING_DIR/.context-usage" "nousage")
+    HASH_INPUT="${HASH_INPUT}:context_usage=${_context_usage_sum}"
+  fi
 fi
 
 # --- Compute final hash ---
