@@ -45,7 +45,7 @@ else
   fail "AGENTS.md missing resolve-debug-target.sh guidance"
 fi
 
-if grep -E '/Users/dpearson|ios-options-wheel-tracker|-Users-dpearson-' "$AGENTS_MD" >/dev/null 2>&1; then
+if grep -E '(/Users/[^/[:space:]]+|~/repos/[^[:space:]]+|projects/-Users-[^/[:space:]]+)' "$AGENTS_MD" >/dev/null 2>&1; then
   fail "AGENTS.md still contains maintainer-specific debug target paths"
 else
   pass "AGENTS.md contains no maintainer-specific debug target paths"
