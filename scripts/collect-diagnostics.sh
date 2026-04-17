@@ -241,7 +241,8 @@ collect() {
     entry_count=$(ls -d "$cache_dir"/*/ 2>/dev/null | wc -l | tr -d ' ')
     echo "cache_entries: $entry_count"
     for d in "$cache_dir"/*/; do
-      [ -d "$d" ] 2>/dev/null && echo "  $(basename "$d")$([ -L "${d%/}" ] && echo " (symlink)" || echo "")"
+      [ -d "$d" ] 2>/dev/null || continue
+      echo "  $(basename "$d")$([ -L "${d%/}" ] && echo " (symlink)" || echo "")"
     done 2>/dev/null
   else
     echo "cache_entries: (cache dir not found)"

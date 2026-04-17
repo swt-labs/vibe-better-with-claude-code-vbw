@@ -83,6 +83,7 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"hook_lookups: 2"* ]]
   [[ "$output" == *"hook_successes: 2"* ]]
+  [[ "$output" == *"hook_error_lines: 0"* ]]
   [[ "$output" == *"plugin_loading_lines:"* ]]
 }
 
@@ -118,6 +119,12 @@ EOF
 @test "collect-diagnostics: shows welcome_marker status" {
   run_collector
   [[ "$output" == *"welcome_marker:"* ]]
+}
+
+@test "collect-diagnostics: shows config_cache and update_cache status" {
+  run_collector
+  [[ "$output" == *"config_cache_exists:"* ]]
+  [[ "$output" == *"update_cache_exists:"* ]]
 }
 
 # --- New section: Marketplace Status ---
