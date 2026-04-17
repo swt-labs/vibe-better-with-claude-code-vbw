@@ -59,7 +59,7 @@ verification_is_stale() {
     VERIFICATION_FRESHNESS_REASON="git_log_failed"
     return 0
   fi
-  _verif_mtime=$(perl -e 'print +(stat shift)[9]' "$verif_file" 2>/dev/null || true)
+  _verif_mtime=$(stat -c %Y "$verif_file" 2>/dev/null || stat -f %m "$verif_file" 2>/dev/null || true)
   if [ -z "$_cur_commit_ts" ] || [ -z "$_verif_mtime" ]; then
     VERIFICATION_FRESHNESS_REASON="freshness_baseline_unavailable"
     return 0
