@@ -200,7 +200,7 @@ collect() {
 
   # Hook resolution source
   local hook_cache hook_cpr hook_tmp=""
-  hook_cache=$(ls -1 "$claude_dir"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | sort -V 2>/dev/null | tail -1 || true)
+  hook_cache=$(ls -1 "$claude_dir"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1 || true)
   hook_cpr="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}"
   for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
     [ -f "$f" ] 2>/dev/null && hook_tmp="$f" && break
