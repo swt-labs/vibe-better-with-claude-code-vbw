@@ -46,6 +46,7 @@ npm-debug.log*
 # Non-production files
 a_non_prod_files/
 .vbw-worktrees/
+docs/vbw-agentic-workflow-presentation-source.md
 
 package.json
 package-lock.json
