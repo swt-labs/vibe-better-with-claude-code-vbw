@@ -40,6 +40,7 @@ printf '%s\t%s\n' \
   live-validation-policy       testing/verify-live-validation-policy.sh \
   ghost-team-cleanup           testing/verify-ghost-team-cleanup.sh \
   ci-workflow-contract         testing/verify-ci-workflow-contract.sh \
+  run-all-execution-contract   testing/verify-run-all-execution-contract.sh \
   discord-release-workflow     testing/verify-discord-release-workflow-contract.sh \
   prefer-teams-canonicalization testing/verify-prefer-teams-canonicalization.sh \
   qa-persistence-contract      testing/verify-qa-persistence-contract.sh \
