@@ -19,10 +19,26 @@ collect_debug_log_diagnostics() {
     return 0
   fi
 
-  local real_path
-  real_path=$(readlink "$debug_log" 2>/dev/null || echo "$debug_log")
+  local real_path link_target debug_dir resolved_debug_dir debug_log_lines
+  real_path="$debug_log"
+  link_target=$(readlink "$debug_log" 2>/dev/null || true)
+  if [ -n "$link_target" ]; then
+    if [[ "$link_target" = /* ]]; then
+      real_path="$link_target"
+    else
+      debug_dir=$(dirname "$debug_log")
+      resolved_debug_dir=$(cd -P "$debug_dir" 2>/dev/null && pwd -P)
+      if [ -n "$resolved_debug_dir" ]; then
+        real_path="${resolved_debug_dir}/${link_target}"
+      else
+        real_path="${debug_dir}/${link_target}"
+      fi
+    fi
+  fi
   echo "debug_log: $real_path"
-  echo "debug_log_lines: $(wc -l < "$debug_log" 2>/dev/null | tr -d ' ')"
+  debug_log_lines=$(wc -l < "$debug_log" 2>/dev/null | tr -d ' ')
+  : "${debug_log_lines:=0}"
+  echo "debug_log_lines: $debug_log_lines"
 
   # Plugin loading evidence
   local plugin_lines
