@@ -1234,10 +1234,17 @@ KNOWN_ISSUES_STATUS="missing"
 KNOWN_ISSUES_COUNT=0
 if [ -f "$SCRIPT_DIR/track-known-issues.sh" ]; then
   _known_issues_meta=$(bash "$SCRIPT_DIR/track-known-issues.sh" status "$PHASE_DIR" 2>/dev/null || true)
-  KNOWN_ISSUES_STATUS=$(printf '%s\n' "${_known_issues_meta:-}" | awk -F= '/^known_issues_status=/{print $2; exit}')
+  _known_issues_status=$(printf '%s\n' "${_known_issues_meta:-}" | awk -F= '/^known_issues_status=/{print $2; exit}')
+  case "${_known_issues_status:-}" in
+    present|missing|malformed)
+      KNOWN_ISSUES_STATUS="$_known_issues_status"
+      ;;
+    *)
+      KNOWN_ISSUES_STATUS="probe_error"
+      ;;
+  esac
   KNOWN_ISSUES_COUNT=$(printf '%s\n' "${_known_issues_meta:-}" | awk -F= '/^known_issues_count=/{print $2; exit}')
 fi
-KNOWN_ISSUES_STATUS="${KNOWN_ISSUES_STATUS:-missing}"
 KNOWN_ISSUES_COUNT="${KNOWN_ISSUES_COUNT:-0}"
 
 # Count non-placeholder deviations across SUMMARY.md files in a given directory.
@@ -1705,6 +1712,9 @@ case "$RESULT" in
       elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
         echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
         echo "qa_gate_routing=QA_RERUN_REQUIRED"
+      elif [ "$KNOWN_ISSUES_STATUS" = "malformed" ] || [ "$KNOWN_ISSUES_STATUS" = "probe_error" ]; then
+        echo "qa_gate_known_issues_override=true"
+        echo "qa_gate_routing=REMEDIATION_REQUIRED"
       elif [ "$KNOWN_ISSUES_STATUS" = "present" ] && [ "$KNOWN_ISSUES_COUNT" -gt 0 ] 2>/dev/null; then
         # Metadata-only round claims clean, but known issues exist in registry.
         # Apply the same coverage guard as the non-metadata-only known-issues path:
@@ -1728,7 +1738,7 @@ case "$RESULT" in
       # 5b. PASS but incomplete plan coverage → QA skipped some plans
       echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
       echo "qa_gate_routing=QA_RERUN_REQUIRED"
-    elif [ "$KNOWN_ISSUES_STATUS" = "malformed" ]; then
+    elif [ "$KNOWN_ISSUES_STATUS" = "malformed" ] || [ "$KNOWN_ISSUES_STATUS" = "probe_error" ]; then
       echo "qa_gate_known_issues_override=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$KNOWN_ISSUES_STATUS" = "present" ] && [ "$KNOWN_ISSUES_COUNT" -gt 0 ] 2>/dev/null; then
