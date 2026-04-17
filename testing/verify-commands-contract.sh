@@ -13,6 +13,20 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMMANDS_DIR="$ROOT/commands"
 
+tracked_command_markdown_files() {
+  local rel
+  git -C "$ROOT" ls-files -- 'commands/*.md' 'internal/*.md' | while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    printf '%s\n' "$ROOT/$rel"
+  done
+}
+
+TRACKED_COMMAND_MARKDOWN_FILES=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  TRACKED_COMMAND_MARKDOWN_FILES+=("$file")
+done < <(tracked_command_markdown_files)
+
 PASS=0
 FAIL=0
 
@@ -103,8 +117,7 @@ check_allowed_tool_match() {
 echo "=== Command Contract Verification ==="
 
 # Scan both commands/ (consumer-facing) and internal/ (maintainer-only)
-for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
-  [ -f "$file" ] || continue
+for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
   base="$(basename "$file" .md)"
 
   if [ "$(head -1 "$file" 2>/dev/null || true)" != "---" ]; then
@@ -165,8 +178,7 @@ echo "=== Milestone Context Verification ==="
 # 1. The ACTIVE milestone shell interpolation in their Context section, OR
 # 2. Bash in allowed-tools (so the agent can read ACTIVE at runtime)
 # Without either, the agent has no way to discover the active milestone slug.
-for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
-  [ -f "$file" ] || continue
+for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
   base="$(basename "$file" .md)"
 
   # Extract body after frontmatter, excluding Context section (which contains the fix itself)
@@ -650,8 +662,7 @@ echo "=== Allowed-Tools Consistency Verification ==="
 # tools in their allowed-tools frontmatter. Keep these checks exact-pattern and
 # low-noise: match real tool-call syntax or explicit tool names, not generic
 # prose about "skills" or "search".
-for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
-  [ -f "$file" ] || continue
+for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
   base="$(basename "$file" .md)"
 
   FRONTMATTER="$(extract_frontmatter "$file")"
@@ -726,7 +737,7 @@ while IFS= read -r ref; do
   else
     fail "reference missing target: $ref -> $rel"
   fi
-done < <(grep -RhoE '\$\{CLAUDE_PLUGIN_ROOT\}/[A-Za-z0-9._/*{}-]+' "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md 2>/dev/null | sort -u)
+done < <(grep -RhoE '\$\{CLAUDE_PLUGIN_ROOT\}/[A-Za-z0-9._/*{}-]+' "${TRACKED_COMMAND_MARKDOWN_FILES[@]}" 2>/dev/null | sort -u)
 
 # ── UAT Remediation step 4 must use TodoWrite (not generic "task list") ──
 echo ""
