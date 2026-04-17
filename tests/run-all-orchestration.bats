@@ -112,7 +112,7 @@ link_run_all_system_tools() {
   local root="$1"
   local tool_name
 
-  for tool_name in bash cat dirname find git grep jq ls mkdir mktemp mv ps rm sort tr; do
+  for tool_name in bash cat dirname find git grep jq ls mkdir mktemp mv ps rm sleep sort tr; do
     link_runtime_tool "$root" "$tool_name"
   done
 }
