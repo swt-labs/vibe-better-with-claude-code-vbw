@@ -10,6 +10,14 @@
 
 set -u
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Source debug-log helper (provides collect_debug_log_diagnostics)
+# shellcheck source=lib/report-debug-log.sh
+if [ -f "$SCRIPT_DIR/lib/report-debug-log.sh" ]; then
+  . "$SCRIPT_DIR/lib/report-debug-log.sh"
+fi
+
 PLUGIN_ROOT="${1:-}"
 PROJECT_DIR="${2:-$(pwd)}"
 
@@ -163,6 +171,110 @@ collect() {
     tail -10 "$PROJECT_DIR/.vbw-planning/.hook-debug.log" 2>/dev/null || echo "(read error)"
   else
     echo "(no .hook-debug.log found)"
+  fi
+  echo ""
+
+  # --- Debug Log Summary ---
+  if type collect_debug_log_diagnostics &>/dev/null; then
+    collect_debug_log_diagnostics
+  else
+    echo "--- Debug Log Summary ---"
+    echo "(helper not available)"
+    echo ""
+  fi
+
+  # --- Session Artifacts ---
+  echo "--- Session Artifacts ---"
+  local claude_dir="${CLAUDE_CONFIG_DIR:-${HOME:-/tmp}/.claude}"
+  local session_id="${CLAUDE_SESSION_ID:-}"
+  local session_key="${session_id:-default}"
+  local session_link="/tmp/.vbw-plugin-root-link-${session_key}"
+
+  echo "session_id: ${session_id:-(unset)}"
+  echo "session_link: $session_link"
+  if [ -L "$session_link" ]; then
+    echo "session_link_exists: YES -> $(readlink "$session_link" 2>/dev/null)"
+  else
+    echo "session_link_exists: NO"
+  fi
+
+  # Hook resolution source
+  local hook_cache hook_cpr hook_tmp=""
+  hook_cache=$(ls -1 "$claude_dir"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | sort -V 2>/dev/null | tail -1 || true)
+  hook_cpr="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}"
+  for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do
+    [ -f "$f" ] 2>/dev/null && hook_tmp="$f" && break
+  done 2>/dev/null
+  if [ -f "${hook_cache:-}" ]; then
+    echo "hook_resolution: CACHE"
+  elif [ -f "${hook_cpr:-}" ]; then
+    echo "hook_resolution: PLUGIN_ROOT"
+  elif [ -n "$hook_tmp" ]; then
+    echo "hook_resolution: TMP_LINK"
+  else
+    echo "hook_resolution: NONE"
+  fi
+
+  # Config cache / update cache presence
+  if [ -n "$PLUGIN_ROOT" ] && [ -f "$PLUGIN_ROOT/VERSION" ] && [ -f "$PLUGIN_ROOT/scripts/lib/vbw-cache-key.sh" ]; then
+    local _diag_ver _diag_uid _diag_config_cache _diag_update_cache
+    # shellcheck source=lib/vbw-cache-key.sh
+    . "$PLUGIN_ROOT/scripts/lib/vbw-cache-key.sh"
+    _diag_ver=$(cat "$PLUGIN_ROOT/VERSION" 2>/dev/null | tr -d '[:space:]')
+    _diag_uid=$(id -u)
+    _diag_config_cache=$(vbw_cache_prefix "${_diag_ver:-0}" "$_diag_uid" "${VBW_CONFIG_ROOT:-$(pwd -P 2>/dev/null || pwd)}")-config.env
+    _diag_update_cache="/tmp/vbw-update-check-${_diag_uid}-$(vbw_hash_path "$PLUGIN_ROOT")"
+    echo "config_cache_exists: $([ -f "$_diag_config_cache" ] && echo "YES" || echo "NO")"
+    echo "update_cache_exists: $([ -f "$_diag_update_cache" ] && echo "YES" || echo "NO")"
+  else
+    echo "config_cache_exists: (unavailable)"
+    echo "update_cache_exists: (unavailable)"
+  fi
+
+  # Welcome marker
+  echo "welcome_marker: $([ -f "$claude_dir/.vbw-welcomed" ] && echo "YES" || echo "NO")"
+
+  # Cache entry summary
+  local cache_dir="${claude_dir}/plugins/cache/vbw-marketplace/vbw"
+  if [ -d "$cache_dir" ]; then
+    local entry_count
+    entry_count=$(ls -d "$cache_dir"/*/ 2>/dev/null | wc -l | tr -d ' ')
+    echo "cache_entries: $entry_count"
+    for d in "$cache_dir"/*/; do
+      [ -d "$d" ] 2>/dev/null && echo "  $(basename "$d")$([ -L "${d%/}" ] && echo " (symlink)" || echo "")"
+    done 2>/dev/null
+  else
+    echo "cache_entries: (cache dir not found)"
+  fi
+  echo ""
+
+  # --- Marketplace Status ---
+  echo "--- Marketplace Status ---"
+  local mp_cache_root="${claude_dir}/plugins/cache/vbw-marketplace/vbw"
+  local mp_local_link="${mp_cache_root}/local"
+  local mp_installed="${claude_dir}/plugins/installed_plugins.json"
+
+  echo "cache_root: $mp_cache_root"
+  echo "cache_root_exists: $([ -d "$mp_cache_root" ] && echo "YES" || echo "NO")"
+
+  if [ -L "$mp_local_link" ]; then
+    echo "local_link: SYMLINK -> $(readlink "$mp_local_link" 2>/dev/null)"
+  elif [ -d "$mp_local_link" ]; then
+    echo "local_link: REAL_DIR"
+  else
+    echo "local_link: NOT_PRESENT"
+  fi
+
+  if [ -f "$mp_installed" ]; then
+    if command -v jq >/dev/null 2>&1; then
+      local vbw_reg
+      vbw_reg=$(jq -r '.plugins // {} | keys[] | select(test("vbw";"i"))' "$mp_installed" 2>/dev/null | head -1)
+      echo "registry_entry: ${vbw_reg:-(not found)}"
+    else
+      echo "registry_entry: (jq unavailable — cannot parse)"
+    fi
+  else
+    echo "registry_entry: (installed_plugins.json not found)"
   fi
   echo ""
 
