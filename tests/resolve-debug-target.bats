@@ -11,6 +11,7 @@ setup() {
 
   mkdir -p "$FAKE_PLUGIN_ROOT/.claude" "$CLAUDE_CONFIG_DIR/vbw" "$TARGET_A" "$TARGET_B"
 
+  FAKE_PLUGIN_ROOT="$(cd "$FAKE_PLUGIN_ROOT" && pwd -P)"
   TARGET_A="$(cd "$TARGET_A" && pwd -P)"
   TARGET_B="$(cd "$TARGET_B" && pwd -P)"
 
@@ -42,6 +43,23 @@ teardown() {
   [ "$output" = "$TARGET_B" ]
 }
 
+@test "resolve-debug-target: relative env override is rejected before cwd-sensitive fallback" {
+  printf '%s\n' "$TARGET_A" > "$FAKE_PLUGIN_ROOT/.claude/vbw-debug-target.txt"
+  export VBW_DEBUG_TARGET_REPO="../consumer-b"
+
+  run bash "$SCRIPT" repo --plugin-root "$FAKE_PLUGIN_ROOT"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"VBW_DEBUG_TARGET_REPO"* ]]
+  [[ "$output" == *"must be an absolute path"* ]]
+
+  run bash -c 'cd / && bash "$1" repo --plugin-root "$2"' _ "$SCRIPT" "$FAKE_PLUGIN_ROOT"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"VBW_DEBUG_TARGET_REPO"* ]]
+  [[ "$output" == *"must be an absolute path"* ]]
+}
+
 @test "resolve-debug-target: global fallback works when repo-local file is absent" {
   printf '%s\n' "$TARGET_A" > "$CLAUDE_CONFIG_DIR/vbw/debug-target.txt"
 
@@ -49,6 +67,26 @@ teardown() {
 
   [ "$status" -eq 0 ]
   [ "$output" = "$TARGET_A" ]
+}
+
+@test "resolve-debug-target: relative repo-local file is rejected" {
+  printf '%s\n' '../consumer-a' > "$FAKE_PLUGIN_ROOT/.claude/vbw-debug-target.txt"
+
+  run bash "$SCRIPT" repo --plugin-root "$FAKE_PLUGIN_ROOT"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"$FAKE_PLUGIN_ROOT/.claude/vbw-debug-target.txt"* ]]
+  [[ "$output" == *"must be an absolute path"* ]]
+}
+
+@test "resolve-debug-target: relative global fallback is rejected" {
+  printf '%s\n' '../consumer-a' > "$CLAUDE_CONFIG_DIR/vbw/debug-target.txt"
+
+  run bash "$SCRIPT" repo --plugin-root "$FAKE_PLUGIN_ROOT"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"$CLAUDE_CONFIG_DIR/vbw/debug-target.txt"* ]]
+  [[ "$output" == *"must be an absolute path"* ]]
 }
 
 @test "resolve-debug-target: planning-dir appends .vbw-planning" {

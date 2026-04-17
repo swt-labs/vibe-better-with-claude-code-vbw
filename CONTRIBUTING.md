@@ -100,9 +100,11 @@ This file stays private because `.claude/` is gitignored in this repo.
 
 Resolution order for debug-target lookup:
 
-1. `VBW_DEBUG_TARGET_REPO` env var (one-off override)
-2. `./.claude/vbw-debug-target.txt` in the VBW clone (preferred persistent local config)
-3. `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/vbw/debug-target.txt` (user-global fallback)
+1. `VBW_DEBUG_TARGET_REPO` env var (one-off override, absolute path only)
+2. `./.claude/vbw-debug-target.txt` in the VBW clone (preferred persistent local config, absolute path only)
+3. `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/vbw/debug-target.txt` (user-global fallback, absolute path only)
+
+Relative paths are rejected so the resolver behaves the same no matter which directory calls it.
 
 Useful checks:
 
@@ -113,6 +115,8 @@ bash scripts/resolve-debug-target.sh claude-project-dir
 ```
 
 If the resolver exits non-zero, configure one of the sources above before debugging VBW behavior.
+
+Root instructions in this repo have one canonical source: `AGENTS.md`. The tracked root `CLAUDE.md` is a symlink to `AGENTS.md` for Claude Code compatibility.
 
 ## Project Structure
 

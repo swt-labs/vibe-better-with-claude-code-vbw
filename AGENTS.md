@@ -21,6 +21,7 @@ Preferred setup in the VBW repo clone:
 ```
 
 The first non-empty, non-comment line must be the absolute path to the contributor's primary VBW consumer/test repo.
+Relative paths are rejected so the resolver produces the same result regardless of the caller's current working directory.
 
 Example local file content:
 
@@ -29,9 +30,9 @@ Example local file content:
 ```
 
 Resolution order:
-1. `VBW_DEBUG_TARGET_REPO` env var (one-off override)
-2. `./.claude/vbw-debug-target.txt` in the VBW repo clone (preferred persistent local config)
-3. `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/vbw/debug-target.txt` (user-global fallback)
+1. `VBW_DEBUG_TARGET_REPO` env var (one-off override, absolute path only)
+2. `./.claude/vbw-debug-target.txt` in the VBW repo clone (preferred persistent local config, absolute path only)
+3. `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/vbw/debug-target.txt` (user-global fallback, absolute path only)
 4. If none are configured, **ask the user for the target repo path** — do not guess.
 
 Use the shared resolver when debugging:

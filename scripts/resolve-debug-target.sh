@@ -25,11 +25,43 @@ if [ $# -gt 0 ]; then
   shift
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 
 usage() {
   echo "Usage: resolve-debug-target.sh [repo|planning-dir|encoded-path|claude-project-dir|source|all] [--plugin-root PATH]" >&2
+}
+
+trim_value() {
+  local value="$1"
+
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+
+  printf '%s' "$value"
+}
+
+validate_target_repo() {
+  local target_repo="$1"
+  local target_source="$2"
+
+  if [ -z "$target_repo" ]; then
+    echo "Configured VBW debug target repo from $target_source is empty." >&2
+    exit 1
+  fi
+
+  case "$target_repo" in
+    /*) ;;
+    *)
+      echo "Configured VBW debug target repo from $target_source must be an absolute path: $target_repo" >&2
+      exit 1
+      ;;
+  esac
+
+  if [ ! -d "$target_repo" ]; then
+    echo "Configured VBW debug target repo from $target_source does not exist or is not a directory: $target_repo" >&2
+    exit 1
+  fi
 }
 
 while [ $# -gt 0 ]; do
@@ -51,6 +83,13 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+if [ ! -d "$PLUGIN_ROOT" ]; then
+  echo "Error: --plugin-root directory not found: $PLUGIN_ROOT" >&2
+  exit 1
+fi
+
+PLUGIN_ROOT="$(cd "$PLUGIN_ROOT" && pwd -P)"
+
 # shellcheck source=resolve-claude-dir.sh
 . "$SCRIPT_DIR/resolve-claude-dir.sh"
 
@@ -63,6 +102,7 @@ read_target_file() {
     /^[[:space:]]*#/ { next }
     /^[[:space:]]*$/ { next }
     {
+      sub(/^[[:space:]]+/, "", $0)
       sub(/[[:space:]]+$/, "", $0)
       print
       exit
@@ -75,8 +115,8 @@ GLOBAL_FILE="$CLAUDE_DIR/vbw/debug-target.txt"
 TARGET_REPO=""
 TARGET_SOURCE=""
 
-if [ -n "${VBW_DEBUG_TARGET_REPO:-}" ]; then
-  TARGET_REPO="$VBW_DEBUG_TARGET_REPO"
+if [ "${VBW_DEBUG_TARGET_REPO+x}" = "x" ]; then
+  TARGET_REPO="$(trim_value "$VBW_DEBUG_TARGET_REPO")"
   TARGET_SOURCE="VBW_DEBUG_TARGET_REPO"
 elif TARGET_REPO="$(read_target_file "$LOCAL_FILE" 2>/dev/null || true)" && [ -n "$TARGET_REPO" ]; then
   TARGET_SOURCE="$LOCAL_FILE"
@@ -88,10 +128,7 @@ else
   exit 1
 fi
 
-if [ ! -d "$TARGET_REPO" ]; then
-  echo "Configured VBW debug target repo does not exist or is not a directory: $TARGET_REPO" >&2
-  exit 1
-fi
+validate_target_repo "$TARGET_REPO" "$TARGET_SOURCE"
 
 TARGET_REPO="$(cd "$TARGET_REPO" && pwd -P)"
 ENCODED_PATH="${TARGET_REPO//\//-}"

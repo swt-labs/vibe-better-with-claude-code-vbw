@@ -16,8 +16,8 @@ fail() {
 }
 
 AGENTS_MD="$ROOT/AGENTS.md"
+CLAUDE_MD="$ROOT/CLAUDE.md"
 CONTRIB="$ROOT/CONTRIBUTING.md"
-IGNORE="$ROOT/.gitignore"
 
 echo "=== Debug Target Docs Contract Verification ==="
 
@@ -25,6 +25,12 @@ if [ -f "$AGENTS_MD" ]; then
   pass "AGENTS.md exists"
 else
   fail "AGENTS.md missing"
+fi
+
+if git -C "$ROOT" ls-files --error-unmatch -- AGENTS.md >/dev/null 2>&1; then
+  pass "AGENTS.md is tracked"
+else
+  fail "AGENTS.md is not tracked"
 fi
 
 if grep -q 'vbw-debug-target.txt' "$AGENTS_MD" 2>/dev/null; then
@@ -51,10 +57,46 @@ else
   fail "CONTRIBUTING.md missing local debug target setup"
 fi
 
-if grep -q '^AGENTS\.md$' "$IGNORE" 2>/dev/null; then
+if git -C "$ROOT" check-ignore --no-index -q -- AGENTS.md; then
   fail ".gitignore still ignores AGENTS.md"
 else
   pass ".gitignore allows AGENTS.md to be tracked"
+fi
+
+if git -C "$ROOT" ls-files --error-unmatch -- CLAUDE.md >/dev/null 2>&1; then
+  pass "CLAUDE.md is tracked"
+else
+  fail "CLAUDE.md is not tracked"
+fi
+
+if [ -L "$CLAUDE_MD" ]; then
+  pass "CLAUDE.md is a symlink"
+else
+  fail "CLAUDE.md is not a symlink"
+fi
+
+if [ -L "$CLAUDE_MD" ] && [ "$(readlink "$CLAUDE_MD")" = "AGENTS.md" ]; then
+  pass "CLAUDE.md points to AGENTS.md"
+else
+  fail "CLAUDE.md does not point to AGENTS.md"
+fi
+
+if [ "$(git -C "$ROOT" ls-files -s -- CLAUDE.md 2>/dev/null | awk 'NR == 1 { print $1 }')" = "120000" ]; then
+  pass "CLAUDE.md is tracked as a symlink"
+else
+  fail "CLAUDE.md is not tracked with symlink mode"
+fi
+
+if git -C "$ROOT" check-ignore --no-index -q -- CLAUDE.md; then
+  fail ".gitignore still ignores CLAUDE.md"
+else
+  pass ".gitignore allows CLAUDE.md to be tracked"
+fi
+
+if git -C "$ROOT" check-ignore --no-index -q -- .claude/vbw-debug-target.txt; then
+  pass ".claude/vbw-debug-target.txt remains gitignored"
+else
+  fail ".claude/vbw-debug-target.txt is no longer gitignored"
 fi
 
 echo ""
