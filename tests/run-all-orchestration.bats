@@ -70,7 +70,7 @@ create_stub_git_worktree_pair() {
   git -C "$primary_root" add .
   git -C "$primary_root" commit -q -m 'test: seed stub workspace'
   git -C "$primary_root" branch linked-worktree
-  git -C "$primary_root" worktree add "$linked_root" linked-worktree >/dev/null
+  git -C "$primary_root" worktree add -q "$linked_root" linked-worktree >/dev/null 2>&1
 }
 
 create_failing_stub_script() {
