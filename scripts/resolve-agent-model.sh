@@ -69,8 +69,8 @@ if [ ! -f "$PROFILES_PATH" ]; then
 fi
 
 # Session-level cache: avoid repeated jq calls for the same agent + config pair.
-# Scope by both file mtimes and the config/profiles paths so parallel BATS workers
-# using different temp repos cannot collide on second-resolution mtimes alone.
+# Scope by content fingerprints and path hash so parallel BATS workers
+# using different temp repos cannot collide.
 CONFIG_HASH=$(file_content_fingerprint "$CONFIG_PATH")
 PROFILES_HASH=$(file_content_fingerprint "$PROFILES_PATH")
 PATH_HASH=$(vbw_hash_path "${CONFIG_PATH}|${PROFILES_PATH}")
