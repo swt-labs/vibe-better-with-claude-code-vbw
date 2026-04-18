@@ -21,13 +21,15 @@ setup_unrelated_git_repo_with_message() {
   local commit_message="$2"
 
   mkdir -p "$repo_dir"
-  cd "$repo_dir" || return 1
-  git init -q
-  git config user.name "VBW Test"
-  git config user.email "vbw-tests@example.com"
-  echo "initial" > unrelated.txt
-  git add unrelated.txt
-  git commit -qm "$commit_message"
+  (
+    cd "$repo_dir" || exit 1
+    git init -q
+    git config user.name "VBW Test"
+    git config user.email "vbw-tests@example.com"
+    echo "initial" > unrelated.txt
+    git add unrelated.txt
+    git commit -qm "$commit_message"
+  )
 }
 
 create_nested_control_plane_workspace() {
