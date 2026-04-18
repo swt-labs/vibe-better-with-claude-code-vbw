@@ -51,6 +51,35 @@ setup_unrelated_git_repo() {
   git commit -qm "init"
 }
 
+create_nested_context_workspace() {
+  NESTED_REPO_ROOT="$TEST_TEMP_DIR/mono"
+  NESTED_WORKSPACE_ROOT="$NESTED_REPO_ROOT/apps/proj"
+  NESTED_PLANNING_DIR="$NESTED_WORKSPACE_ROOT/.vbw-planning"
+  NESTED_PHASE_DIR="$NESTED_PLANNING_DIR/phases/02-test-phase"
+  NESTED_PLAN_PATH="$NESTED_PHASE_DIR/02-01-PLAN.md"
+
+  mkdir -p "$NESTED_PHASE_DIR"
+  create_test_config "mono/apps/proj/.vbw-planning"
+  cat > "$NESTED_PLANNING_DIR/ROADMAP.md" <<'EOF'
+# Nested Test Roadmap
+## Phase 2: Nested Test Phase
+**Goal:** Nested test goal
+**Reqs:** REQ-01
+**Success:** Tests pass
+EOF
+  cat > "$NESTED_PLAN_PATH" <<'EOF'
+---
+phase: 2
+plan: 1
+title: "Nested Test Plan"
+wave: 1
+depends_on: []
+must_haves: ["test"]
+---
+# Nested Test Plan
+EOF
+}
+
 @test "cache-context.sh produces consistent hash for same inputs" {
   run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$TEST_TEMP_DIR/.vbw-planning/config.json" "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
   [ "$status" -eq 0 ]
@@ -245,6 +274,82 @@ EOF
   rm -rf "$unrelated_repo"
 
   [ "$HASH1" != "$HASH2" ]
+}
+
+@test "cache-context.sh: nested workspace committed content changes alter hash off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_nested_context_workspace
+
+  cd "$NESTED_REPO_ROOT" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+
+  echo 'v1' > "$NESTED_WORKSPACE_ROOT/sample.txt"
+  git add apps/proj
+  git commit -qm 'init nested workspace'
+
+  echo 'v2' > "$NESTED_WORKSPACE_ROOT/sample.txt"
+  git add apps/proj/sample.txt
+  git commit -qm 'update nested sample v2'
+
+  setup_unrelated_git_repo "$unrelated_repo"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$NESTED_PLANNING_DIR/config.json" "$NESTED_PLAN_PATH"
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  cd "$NESTED_REPO_ROOT" || return 1
+  echo 'v3' > "$NESTED_WORKSPACE_ROOT/sample.txt"
+  git add apps/proj/sample.txt
+  git commit -qm 'update nested sample v3'
+
+  cd "$unrelated_repo" || return 1
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$NESTED_PLANNING_DIR/config.json" "$NESTED_PLAN_PATH"
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" != "$HASH2" ]
+}
+
+@test "cache-context.sh: nested workspace hash ignores sibling repo noise off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_nested_context_workspace
+
+  cd "$NESTED_REPO_ROOT" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+
+  echo 'v1' > "$NESTED_WORKSPACE_ROOT/sample.txt"
+  git add apps/proj
+  git commit -qm 'init nested workspace'
+
+  echo 'v2' > "$NESTED_WORKSPACE_ROOT/sample.txt"
+  git add apps/proj/sample.txt
+  git commit -qm 'update nested sample v2'
+
+  setup_unrelated_git_repo "$unrelated_repo"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$NESTED_PLANNING_DIR/config.json" "$NESTED_PLAN_PATH"
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  cd "$NESTED_REPO_ROOT" || return 1
+  echo 'shared change' > shared.txt
+  git add shared.txt
+  git commit -qm 'update sibling noise'
+
+  cd "$unrelated_repo" || return 1
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$NESTED_PLANNING_DIR/config.json" "$NESTED_PLAN_PATH"
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" = "$HASH2" ]
 }
 
 @test "cache-context.sh: milestone context fingerprint changes hash when CONTEXT.md changes" {

@@ -105,6 +105,7 @@ fi
 CACHE_DIR="$PLANNING_DIR/.cache/context"
 TARGET_ROOT=$(vbw_resolve_target_root "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PLANNING_DIR" || true)
 TARGET_GIT_ROOT=$(vbw_resolve_target_git_root "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PLANNING_DIR" || true)
+WORKSPACE_SUBPATH=$(vbw_workspace_subpath_from_git_root "$TARGET_ROOT" "$TARGET_GIT_ROOT" 2>/dev/null || true)
 
 fingerprint_file() {
   local path="$1" missing_label="$2"
@@ -138,8 +139,13 @@ fi
 # Changed files list (git diff for delta awareness)
 if [ -n "$TARGET_GIT_ROOT" ]; then
   CHANGED_SUM=$({
-    git -C "$TARGET_GIT_ROOT" diff HEAD 2>/dev/null || true
-    git -C "$TARGET_GIT_ROOT" ls-files --others --exclude-standard 2>/dev/null | while IFS= read -r file; do
+    if [ -n "$WORKSPACE_SUBPATH" ]; then
+      git -C "$TARGET_GIT_ROOT" diff HEAD -- "$WORKSPACE_SUBPATH" 2>/dev/null || true
+      git -C "$TARGET_GIT_ROOT" ls-files --others --exclude-standard -- "$WORKSPACE_SUBPATH" 2>/dev/null || true
+    else
+      git -C "$TARGET_GIT_ROOT" diff HEAD 2>/dev/null || true
+      git -C "$TARGET_GIT_ROOT" ls-files --others --exclude-standard 2>/dev/null || true
+    fi | while IFS= read -r file; do
       [ -n "$file" ] || continue
       echo "UNTRACKED:$file"
       if [ -f "$TARGET_GIT_ROOT/$file" ]; then

@@ -29,6 +29,40 @@ setup_unrelated_git_repo() {
   git commit -qm "init"
 }
 
+create_nested_control_plane_workspace() {
+  NESTED_REPO_ROOT="$TEST_TEMP_DIR/mono"
+  NESTED_WORKSPACE_ROOT="$NESTED_REPO_ROOT/apps/proj"
+  NESTED_PLANNING_DIR="$NESTED_WORKSPACE_ROOT/.vbw-planning"
+  NESTED_PHASE_DIR="$NESTED_PLANNING_DIR/phases/01-test"
+  NESTED_PLAN_PATH="$NESTED_WORKSPACE_ROOT/test-plan.md"
+
+  mkdir -p "$NESTED_PHASE_DIR"
+  create_test_config "mono/apps/proj/.vbw-planning"
+  cat > "$NESTED_PLAN_PATH" << 'PLAN'
+---
+phase: 1
+plan: 1
+title: Test Plan
+wave: 1
+depends_on: []
+skills_used: []
+must_haves:
+  - "Feature A works"
+---
+
+# Plan
+
+### Task 1: Do something
+**Files:** `sample.txt`
+PLAN
+  cat > "$NESTED_PLANNING_DIR/ROADMAP.md" << 'ROAD'
+## Phase 1: Test Phase
+**Goal:** Test goal
+**Reqs:** REQ-01
+**Success:** Tests pass
+ROAD
+}
+
 create_test_plan() {
   cat > "$TEST_TEMP_DIR/test-plan.md" << 'PLAN'
 ---
@@ -187,6 +221,31 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.steps[] | select(.name == "context") | .status == "pass"'
   grep -q 'Test goal' "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/.context-lead.md"
+}
+
+@test "control-plane: compile honors explicit nested target planning dir off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_nested_control_plane_workspace
+  cd "$NESTED_REPO_ROOT" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+  echo 'v1 body' > "$NESTED_WORKSPACE_ROOT/sample.txt"
+  git add apps/proj
+  git commit -qm 'init nested workspace'
+
+  setup_unrelated_git_repo "$unrelated_repo"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" compile 1 1 1 \
+    --role=dev \
+    --phase-dir="$NESTED_PHASE_DIR" \
+    --plan-path="$NESTED_PLAN_PATH"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "context") | .status == "pass"'
+  grep -q 'Test goal' "$NESTED_PHASE_DIR/.context-dev.md"
+  grep -q 'v1 body' "$NESTED_PHASE_DIR/.context-dev.md"
 }
 
 # --- full action tests ---

@@ -133,3 +133,56 @@ vbw_resolve_repo_path() {
       ;;
   esac
 }
+
+vbw_workspace_subpath_from_git_root() {
+  local workspace_root="${1%/}" git_root="${2%/}"
+
+  [ -n "$workspace_root" ] || return 1
+  [ -n "$git_root" ] || return 1
+
+  if [ "$workspace_root" = "$git_root" ]; then
+    printf '\n'
+    return 0
+  fi
+
+  case "$workspace_root/" in
+    "$git_root"/*)
+      printf '%s\n' "${workspace_root#"$git_root"/}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+vbw_git_path_to_workspace_path() {
+  local git_path="$1" workspace_root="$2" git_root="$3" workspace_subpath
+
+  [ -n "$git_path" ] || return 1
+
+  case "$git_path" in
+    /*)
+      printf '%s\n' "$git_path"
+      return 0
+      ;;
+  esac
+
+  workspace_subpath=$(vbw_workspace_subpath_from_git_root "$workspace_root" "$git_root" 2>/dev/null || true)
+
+  if [ -z "$workspace_subpath" ]; then
+    printf '%s\n' "$git_path"
+    return 0
+  fi
+
+  case "$git_path" in
+    "$workspace_subpath"/*)
+      printf '%s\n' "${git_path#"$workspace_subpath"/}"
+      ;;
+    "$workspace_subpath")
+      printf '.\n'
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
