@@ -281,7 +281,10 @@ def cmd_wait_ci(args: argparse.Namespace) -> None:
             print(result)
             if result.startswith("CI_FAILURE"):
                 sys.exit(2)
-            return
+            # NO_CHECKS is not a terminal success — CI may not have registered yet.
+            # Keep polling until checks appear, CI_GREEN, CI_FAILURE, or timeout.
+            if not result.startswith("NO_CHECKS"):
+                return
 
         elapsed = time.monotonic() - start
         if elapsed >= args.timeout:

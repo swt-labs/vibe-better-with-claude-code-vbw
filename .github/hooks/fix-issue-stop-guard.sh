@@ -28,7 +28,12 @@ if [ "${FIX_ISSUE_HOOK_DEBUG:-}" = "1" ]; then
     debug_dir="/tmp/fix-issue-stop-hook-debug"
     mkdir -p "$debug_dir" 2>/dev/null || true
     chmod 700 "$debug_dir" 2>/dev/null || true
-    debug_file="$debug_dir/$(date +%s%N).json"
+    # Use mktemp for portable uniqueness. `date +%s%N` prints a literal "N" on
+    # macOS/BSD `date` (no nanosecond support), which collapses concurrent Stop
+    # events fired in the same second onto the same filename and overwrites
+    # earlier debug snapshots.
+    debug_file=$(mktemp "$debug_dir/debug.XXXXXX.json" 2>/dev/null) || \
+      debug_file="$debug_dir/debug.$(date +%s).$$.$RANDOM.json"
     {
       printf '{\n'
       printf '  "pid": %s,\n' "$$"
@@ -165,15 +170,23 @@ validate_pr() {
   _block_pr="$pr_number"
   _block_worktree="$worktree_dir"
 
-  local cd_target="$worktree_dir"
-  if [ ! -d "$cd_target" ]; then
-    cd_target="."
+  # Fail closed when the recorded worktree is missing or unreadable. The previous
+  # fallback to "." silently validated against whatever directory the hook was
+  # launched from (typically an unrelated repo), which could let completion pass
+  # with CI/review state from the wrong codebase.
+  if [ ! -d "$worktree_dir" ]; then
+    block "Worktree directory '${worktree_dir}' does not exist. Recreate or reselect the fix-issue worktree, then retry completion."
+  fi
+  if [ ! -r "$worktree_dir" ] || [ ! -x "$worktree_dir" ]; then
+    block "Worktree directory '${worktree_dir}' is not accessible (needs read+execute). Fix its permissions or reselect the fix-issue worktree, then retry completion."
   fi
 
   local head_sha=""
-  if pushd "$cd_target" >/dev/null 2>&1; then
+  if pushd "$worktree_dir" >/dev/null 2>&1; then
     head_sha=$(git rev-parse HEAD 2>/dev/null || true)
     popd >/dev/null 2>&1 || true
+  else
+    block "Unable to enter worktree directory '${worktree_dir}' to validate PR #${pr_number}. Recreate or reselect the fix-issue worktree, then retry completion."
   fi
   _block_sha="$head_sha"
 
