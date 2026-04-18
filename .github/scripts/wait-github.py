@@ -325,13 +325,15 @@ def cmd_wait_ci(args: argparse.Namespace) -> None:
         extra = []
         if etag:
             extra = ["-H", f"If-None-Match: {etag}"]
-        status, new_headers, body = gh_api(
+        status, new_headers, new_body = gh_api(
             endpoint, include_headers=True, extra_args=extra,
         )
 
         if status == 304:
-            continue  # No change — free request
+            continue  # No change — free request, preserve previous body
 
+        # 200 = content changed — update body and ETag.
+        body = new_body
         if new_headers.get("etag"):
             etag = new_headers["etag"]
 

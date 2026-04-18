@@ -283,6 +283,9 @@ validate_pr() {
     local latest_push_at reviews_json latest_copilot_review copilot_review_at
     local review_epoch push_epoch date_cmd
     latest_push_at=$(latest_branch_push_at "$branch" "$head_sha")
+    if [ -z "$latest_push_at" ]; then
+      block "Unable to determine the latest push timestamp for branch ${branch} at head commit ${head_sha}. Fix GitHub CLI/API access and retry so the hook can verify that a fresh Copilot review exists after the latest push."
+    fi
     if [ -n "$latest_push_at" ]; then
       latest_copilot_review=$(latest_matching_copilot_review "$pr_number" "$head_sha")
       if [ -z "$latest_copilot_review" ] || [ "$latest_copilot_review" = "null" ]; then
@@ -329,7 +332,14 @@ enumerate_open_pr_worktrees() {
         ;;
       '') wt_path=""; wt_branch="" ;;
     esac
-  done < <(git worktree list --porcelain 2>/dev/null || true)
+  done < <(git worktree list --porcelain 2>/dev/null)
+  # If git worktree list failed (e.g. not in a git repo), the subshell
+  # exit code is lost by the process substitution.  Validate we got
+  # at least the bare worktree (always present in a valid repo).
+  if ! git worktree list --porcelain >/dev/null 2>&1; then
+    printf 'BLOCK: git worktree list failed; cannot enumerate worktrees.\n' >&2
+    return 1
+  fi
 }
 
 # --- Infer the active worktree from the thread's transcript.

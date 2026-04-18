@@ -127,7 +127,9 @@ Execute these phases in order.
    current_upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || echo "")
    if [ "$current_upstream" != "$desired_upstream" ]; then
        git branch --unset-upstream 2>/dev/null || true
-       git push -u origin "$branch" || exit 1
+       if git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+           git branch --set-upstream-to="origin/$branch" "$branch" || exit 1
+       fi
    fi
    ```
 
