@@ -138,7 +138,11 @@ latest_matching_copilot_review() {
   local head_sha="$2"
   local reviews_json
 
-  reviews_json=$(gh api "repos/${OWNER}/${REPO}/pulls/${pr_number}/reviews?per_page=100" 2>/dev/null || echo '[]')
+  # Paginate: the REST reviews API is oldest-first and capped at 100 per
+  # page, so on PRs with >100 reviews the newest Copilot review would be
+  # missed without --paginate. jq -s flattens the per-page arrays into a
+  # single list before filtering for the matching fresh review.
+  reviews_json=$(gh api --paginate "repos/${OWNER}/${REPO}/pulls/${pr_number}/reviews?per_page=100" 2>/dev/null | jq -s 'add // []' 2>/dev/null || echo '[]')
   printf '%s' "$reviews_json" | jq -c --arg head_sha "$head_sha" '
     [ .[]
       | select((.user.login // "") | startswith("copilot-pull-request-reviewer"))
@@ -235,7 +239,14 @@ validate_pr() {
     # Paginate so repos with >30 check runs don't appear green due to
     # truncation. `--paginate` emits one JSON object per page; flatten
     # with jq -s and pull every .check_runs[] into a single array.
-    check_runs_json=$(gh api --paginate "repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100" 2>/dev/null | jq -s '[.[].check_runs[]?]' 2>/dev/null || echo '[]')
+    # Fail closed: a transient gh/jq/network error must block completion
+    # ("unknown CI state") rather than be silently coerced to `[]`, which
+    # previously let the gate pass on a zero-check count.
+    if check_runs_json=$(gh api --paginate "repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100" 2>/dev/null | jq -s '[.[].check_runs[]?]' 2>/dev/null); then
+      :
+    else
+      block "Could not query remote check-runs for commit ${head_sha}. Remote CI status is unknown, so completion is blocked until check-runs can be fetched successfully." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
+    fi
     total_checks=$(printf '%s' "$check_runs_json" | jq 'length')
     if [ "$total_checks" -gt 0 ]; then
       failed=$(printf '%s' "$check_runs_json" | jq '[.[] | select(.conclusion != null and .conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral")] | length')

@@ -36,7 +36,13 @@ If you spot a genuine bug in unmodified code while reviewing, you may report it 
 
 ## No Dismissals
 
-Do NOT classify findings as "pre-existing" or "not related to this PR" and skip them. If you can see a bug — even if it existed before this PR — report it with full severity. Tag it with the appropriate relevance (`contract`, `regression`, or `observation`) so the orchestrator can decide how to handle it, but **never omit or downgrade a finding because it's pre-existing.** The only valid reason to omit a finding is if it's factually wrong (the code is actually correct).
+Report every bug you can substantiate. Classification controls how the orchestrator routes a finding, **not** whether you report it:
+
+- `contract` — the change fails to satisfy an acceptance criterion in the linked issue. These block this PR.
+- `regression` — the change introduces a new bug in code it touched, or breaks downstream behavior that depends on the touched code. These block this PR.
+- `observation` — a genuine bug you verified in untouched or pre-existing code that is outside the scope of this PR. These do not block this PR, but the orchestrator will file a separate tracked issue for each one. Do **not** treat `observation` as a polite way to suppress a finding — every observation must still include the same evidence, reproduction details, and severity you would give a contract or regression finding.
+
+Do NOT hand-wave a verified bug as "pre-existing" or "not related" and skip it. Do NOT downgrade a contract or regression finding to `observation` to avoid blocking the PR. The only valid reason to omit a finding is that it is factually wrong — the code is actually correct.
 
 <investigate_before_answering>
 Never speculate about code you have not opened. If a file is referenced in the diff or issue, you MUST read it before reporting findings about it. Make sure to investigate and read relevant files BEFORE drawing conclusions about the codebase. Never make claims about code behavior before verifying by reading the actual source.
