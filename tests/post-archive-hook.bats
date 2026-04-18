@@ -106,3 +106,35 @@ EOF
   run cat "$TEST_TEMP_DIR/hook-args.txt"
   [ "$output" = $'slug=01-demo\narchive=.vbw-planning/milestones/01-demo\ntag=' ]
 }
+
+@test "post-archive-hook: absolute config path anchors relative hook off-root" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p scripts/hooks "$TEST_TEMP_DIR/outside"
+  cat > scripts/hooks/post-archive.sh <<EOF
+#!/usr/bin/env bash
+printf 'slug=%s\narchive=%s\ntag=%s\n' "\$1" "\$2" "\$3" > "$TEST_TEMP_DIR/hook-args.txt"
+EOF
+
+  jq '.hooks = {"post_archive": "scripts/hooks/post-archive.sh"}' .vbw-planning/config.json > .vbw-planning/config.json.tmp
+  mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+
+  run bash -c "cd '$TEST_TEMP_DIR/outside' && bash '$SCRIPTS_DIR/post-archive-hook.sh' '01-demo' '.vbw-planning/milestones/01-demo' 'milestone/01-demo' '$TEST_TEMP_DIR/.vbw-planning/config.json'"
+
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_TEMP_DIR/hook-args.txt" ]
+
+  run cat "$TEST_TEMP_DIR/hook-args.txt"
+  [ "$output" = $'slug=01-demo\narchive=.vbw-planning/milestones/01-demo\ntag=milestone/01-demo' ]
+}
+
+@test "post-archive-hook: invalid archive context writes no milestone event" {
+  cd "$TEST_TEMP_DIR"
+
+  run bash "$SCRIPTS_DIR/post-archive-hook.sh" \
+    "" \
+    ".vbw-planning/milestones/01-demo" \
+    "milestone/01-demo"
+
+  [ "$status" -eq 0 ]
+  [ ! -f .vbw-planning/.events/event-log.jsonl ]
+}
