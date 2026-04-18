@@ -193,11 +193,11 @@ if [[ "$ROLE" =~ ^(dev|scout|debugger)$ ]] && [ -f "${SCRIPT_DIR}/delta-files.sh
         [ -n "$file" ] || continue
         vbw_is_safe_relative_path "$file" || continue
         local_path=$(vbw_resolve_repo_path "$TARGET_ROOT" "$file") || continue
-        echo "FILE:$file"
+        printf 'FILE:%s\n' "$file"
         if [ -f "$local_path" ]; then
           shasum -a 256 "$local_path" 2>/dev/null || true
         else
-          echo "missing"
+          printf 'missing\n'
         fi
       done | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nodeltacontent")
       HASH_INPUT="${HASH_INPUT}:delta-list=${DELTA_LIST_SUM}:delta-content=${DELTA_CONTENT_SUM}"
