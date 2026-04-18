@@ -18,7 +18,7 @@ import json
 import subprocess
 import sys
 import time
-from typing import Any, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 # ---------------------------------------------------------------------------
 # Shared utilities
@@ -40,8 +40,8 @@ def gh_api(
     endpoint: str,
     *,
     include_headers: bool = False,
-    extra_args: list[str] | None = None,
-) -> tuple[int | None, dict[str, str], str]:
+    extra_args: Optional[List[str]] = None,
+) -> Tuple[Optional[int], Dict[str, str], str]:
     """Call gh api and return (status_code, headers_dict, body_string).
 
     When include_headers=False, status_code is None and headers is empty.
@@ -104,12 +104,12 @@ REVIEWER_LOGINS = frozenset([
 Review = dict[str, Any]
 
 
-def normalize_sha(value: str | None) -> str:
+def normalize_sha(value: Optional[str]) -> str:
     """Normalize a commit SHA or prefix for comparison."""
     return (value or "").strip().lower()
 
 
-def commit_matches(review_commit_id: str | None, head_sha: str | None) -> bool:
+def commit_matches(review_commit_id: Optional[str], head_sha: Optional[str]) -> bool:
     """Return True when a review commit matches the requested SHA.
 
     The workflow intends to pass the full 40-character HEAD SHA, but the wait
@@ -129,7 +129,7 @@ def commit_matches(review_commit_id: str | None, head_sha: str | None) -> bool:
     )
 
 
-def parse_review_list(body: str) -> list[Review]:
+def parse_review_list(body: str) -> List[Review]:
     """Parse a GitHub reviews payload into a flat list of review dicts.
 
     `gh api --paginate --slurp` returns a JSON array of pages, where each page
@@ -144,7 +144,7 @@ def parse_review_list(body: str) -> list[Review]:
         return []
 
     payload_list = cast(list[Any], payload)
-    reviews: list[Review] = []
+    reviews: List[Review] = []
     if payload_list and all(isinstance(page, list) for page in payload_list):
         paged_payload = cast(list[list[Any]], payload_list)
         for page in paged_payload:
@@ -164,12 +164,12 @@ def find_fresh_review(
     reviews: list[Review],
     push_ts: str,
     head_sha: str,
-) -> tuple[str | None, Review | None]:
+) -> Tuple[Optional[str], Optional[Review]]:
     """Find the latest Copilot review for the current pushed commit.
 
     Returns (state, review_json) or (None, None).
     """
-    fresh: Review | None = None
+    fresh: Optional[Review] = None
     for review in reviews:
         user = review.get("user")
         if isinstance(user, dict):
@@ -196,7 +196,7 @@ def find_fresh_review(
     return None, None
 
 
-def fetch_all_reviews(repo: str, pr: int) -> list[Review]:
+def fetch_all_reviews(repo: str, pr: int) -> List[Review]:
     """Fetch all review pages for a PR and return a flat list of reviews."""
     endpoint = f"repos/{repo}/pulls/{pr}/reviews?per_page=100"
     _, _, body = gh_api(endpoint, extra_args=["--paginate", "--slurp"])
@@ -303,7 +303,7 @@ def cmd_wait_ci(args: argparse.Namespace) -> None:
             etag = new_headers["etag"]
 
 
-def _evaluate_check_runs(body: str, sha: str) -> str | None:
+def _evaluate_check_runs(body: str, sha: str) -> Optional[str]:
     """Evaluate check-run JSON. Returns a result string or None if still pending."""
     try:
         data = json.loads(body)
@@ -340,7 +340,7 @@ def _evaluate_check_runs(body: str, sha: str) -> str | None:
     return None  # Still pending
 
 
-def _pending_check_names(body: str) -> list[str]:
+def _pending_check_names(body: str) -> List[str]:
     """Extract names of pending check runs from JSON body."""
     try:
         data = json.loads(body)

@@ -13,7 +13,7 @@ event_name=$(printf '%s' "$INPUT" | jq -r '.hookEventName // empty')
 emit_start_context() {
   json_compact -n \
     --arg event "$1" \
-    --arg context "Local Copilot execution policy: avoid shell heredocs for GitHub issue/PR/comment bodies. Use gh CLI with --body-file or structured --input instead. Do not run python/python3 in shell for discovery or one-off scripting; use the Pylance RunCodeSnippet tool instead. If a shell approach is blocked, switch to the safer tool path silently instead of narrating terminal-wrapper failures." \
+    --arg context "Local Copilot execution policy: avoid shell heredocs for GitHub issue/PR/comment bodies. Use gh CLI with --body-file or structured --input instead. Do not run python/python3 in shell for discovery or one-off scripting unless the command invokes an allowlisted workflow helper such as .github/scripts/wait-github.py; otherwise use the Pylance RunCodeSnippet tool instead. If a shell approach is blocked, switch to the safer tool path silently instead of narrating terminal-wrapper failures." \
     '{
       hookSpecificOutput: {
         hookEventName: $event,

@@ -133,6 +133,22 @@ latest_branch_push_at() {
   gh api "repos/${OWNER}/${REPO}/events" --jq '[.[] | select(.type == "PushEvent" and .payload.ref == "refs/heads/'"${branch}"'")] | first | .created_at // empty' 2>/dev/null || true
 }
 
+latest_matching_copilot_review() {
+  local pr_number="$1"
+  local head_sha="$2"
+  local reviews_json
+
+  reviews_json=$(gh api "repos/${OWNER}/${REPO}/pulls/${pr_number}/reviews?per_page=100" 2>/dev/null || echo '[]')
+  printf '%s' "$reviews_json" | jq -c --arg head_sha "$head_sha" '
+    [ .[]
+      | select((.user.login // "") | startswith("copilot-pull-request-reviewer"))
+      | select((.commit_id // "") == $head_sha)
+    ]
+    | sort_by(.submitted_at)
+    | last // empty
+  ' 2>/dev/null || true
+}
+
 # --- validate_pr: run all readiness gates against one PR. On any failure
 # calls block() (which exits 0 with decision:block). Returns 0 if all gates
 # pass.
@@ -238,18 +254,11 @@ validate_pr() {
     local review_epoch push_epoch date_cmd
     latest_push_at=$(latest_branch_push_at "$branch" "$head_sha")
     if [ -n "$latest_push_at" ]; then
-      reviews_json=$(gh api graphql -f query='
-        { repository(owner:"'"${OWNER}"'",name:"'"${REPO}"'") {
-            pullRequest(number:'"${pr_number}"') {
-              reviews(last:10) { nodes { author { login } state submittedAt } }
-            }
-          }
-        }' 2>/dev/null | jq '.data.repository.pullRequest.reviews.nodes // []' || echo '[]')
-      latest_copilot_review=$(printf '%s' "$reviews_json" | jq -r '[.[] | select((.author.login // "") | startswith("copilot-pull-request-reviewer"))] | sort_by(.submittedAt) | last // empty')
+      latest_copilot_review=$(latest_matching_copilot_review "$pr_number" "$head_sha")
       if [ -z "$latest_copilot_review" ] || [ "$latest_copilot_review" = "null" ]; then
-        block "No Copilot review found on PR #${pr_number}. Request a Copilot review (step 25/30) and wait for it to complete before finishing."
+        block "No Copilot review found on PR #${pr_number} for current head commit ${head_sha}. Request a Copilot review (step 25/30) and wait for it to complete before finishing."
       fi
-      copilot_review_at=$(printf '%s' "$latest_copilot_review" | jq -r '.submittedAt // empty')
+      copilot_review_at=$(printf '%s' "$latest_copilot_review" | jq -r '.submitted_at // empty')
       if [ -n "$copilot_review_at" ]; then
         if command -v gdate >/dev/null 2>&1; then date_cmd="gdate"; else date_cmd="date"; fi
         review_epoch=$($date_cmd -d "$copilot_review_at" +%s 2>/dev/null || $date_cmd -j -f "%Y-%m-%dT%H:%M:%SZ" "$copilot_review_at" +%s 2>/dev/null || echo 0)
