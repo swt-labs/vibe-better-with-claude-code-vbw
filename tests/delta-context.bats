@@ -108,7 +108,7 @@ EOF
 EOF
 
   setup_unrelated_git_repo "$unrelated_repo"
-  echo "modified" >> unrelated.txt
+  echo "modified" >> "$unrelated_repo/unrelated.txt"
 
   run bash "$SCRIPTS_DIR/delta-files.sh" "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase" \
     "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
