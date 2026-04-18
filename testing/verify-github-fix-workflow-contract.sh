@@ -126,7 +126,7 @@ test_stop_guard_block_reasons_include_worktree() {
   if [ -z "$pr_blocks_without_worktree" ]; then
     pass "all PR-referencing block reasons include worktree path in reason string"
   else
-    fail "block reasons referencing PR should include (worktree:) in the reason string: $pr_blocks_without_worktree"
+    fail "block reasons referencing PR should mention the worktree path in the first quoted reason string: $pr_blocks_without_worktree"
   fi
 }
 test_stop_guard_block_reasons_include_worktree
