@@ -26,6 +26,23 @@ if [ -n "${VBW_PLANNING_DIR:-}" ] || [ $# -ge 3 ] || [ $# -ge 4 ]; then
   TARGET_SCOPE_EXPLICIT=1
 fi
 
+resolve_preferred_planning_dir() {
+  local explicit_planning_dir
+
+  explicit_planning_dir=$(vbw_resolve_target_planning_dir "1" "$CONFIG_PATH_INPUT" "$PLAN_PATH_INPUT" 2>/dev/null || true)
+  if [ -n "$explicit_planning_dir" ]; then
+    printf '%s\n' "$explicit_planning_dir"
+    return 0
+  fi
+
+  if [ -n "${VBW_PLANNING_DIR:-}" ]; then
+    printf '%s\n' "$VBW_PLANNING_DIR"
+    return 0
+  fi
+
+  vbw_resolve_target_planning_dir "$TARGET_SCOPE_EXPLICIT" "$CONFIG_PATH_INPUT" "$PLAN_PATH_INPUT" 2>/dev/null || printf '%s\n' '.vbw-planning'
+}
+
 resolve_existing_dir() {
   local path="$1"
   if [ -d "$path" ]; then
@@ -52,49 +69,7 @@ resolve_existing_file() {
   fi
 }
 
-resolve_planning_dir_from_plan() {
-  local current next
-
-  current=$(dirname "$1")
-  while :; do
-    if [ "$(basename "$current")" = ".vbw-planning" ] || {
-      [ -f "$current/config.json" ] && [ -d "$current/phases" ]
-    }; then
-      echo "$current"
-      return 0
-    fi
-
-    if [ "$current" = "/" ]; then
-      break
-    fi
-
-    next=$(dirname "$current")
-    [ "$next" = "$current" ] && break
-    current="$next"
-  done
-
-  return 1
-}
-
-resolve_planning_dir() {
-  if [ -n "${VBW_PLANNING_DIR:-}" ]; then
-    echo "$VBW_PLANNING_DIR"
-    return 0
-  fi
-
-  if [ -n "$CONFIG_PATH_INPUT" ] && [ -f "$CONFIG_PATH_INPUT" ]; then
-    dirname "$CONFIG_PATH_INPUT"
-    return 0
-  fi
-
-  if [ -n "$PLAN_PATH_INPUT" ] && [ -f "$PLAN_PATH_INPUT" ]; then
-    resolve_planning_dir_from_plan "$PLAN_PATH_INPUT" && return 0
-  fi
-
-  echo ".vbw-planning"
-}
-
-PLANNING_DIR=$(resolve_planning_dir)
+PLANNING_DIR=$(resolve_preferred_planning_dir)
 PLANNING_DIR=$(resolve_existing_dir "$PLANNING_DIR")
 CONFIG_PATH="${CONFIG_PATH_INPUT:-$PLANNING_DIR/config.json}"
 CONFIG_PATH=$(resolve_existing_file "$CONFIG_PATH")

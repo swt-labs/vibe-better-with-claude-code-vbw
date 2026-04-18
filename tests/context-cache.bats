@@ -80,6 +80,34 @@ must_haves: ["test"]
 EOF
 }
 
+create_alternate_context_workspace() {
+  ALT_WORKSPACE_ROOT="$TEST_TEMP_DIR/alternate-workspace"
+  ALT_PLANNING_DIR="$ALT_WORKSPACE_ROOT/.vbw-planning"
+  ALT_PHASE_DIR="$ALT_PLANNING_DIR/phases/02-alt-phase"
+  ALT_PLAN_PATH="$ALT_PHASE_DIR/02-01-PLAN.md"
+
+  mkdir -p "$ALT_PHASE_DIR"
+  create_test_config "alternate-workspace/.vbw-planning"
+  cat > "$ALT_PLANNING_DIR/ROADMAP.md" <<'EOF'
+# Alternate Roadmap
+## Phase 2: Alternate Phase
+**Goal:** Alternate goal
+**Success:** Alternate success
+**Reqs:** REQ-99
+EOF
+  cat > "$ALT_PLAN_PATH" <<'EOF'
+---
+phase: 2
+plan: 1
+title: "Alternate Plan"
+wave: 1
+depends_on: []
+must_haves: ["alternate"]
+---
+# Alternate Plan
+EOF
+}
+
 @test "cache-context.sh produces consistent hash for same inputs" {
   run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$TEST_TEMP_DIR/.vbw-planning/config.json" "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
   [ "$status" -eq 0 ]
@@ -224,6 +252,36 @@ EOF
   HASH2=$(echo "$output" | cut -d' ' -f2)
   # Hash must differ when rolling context content changes
   [ "$HASH1" != "$HASH2" ]
+}
+
+@test "cache-context.sh: explicit config and plan beat conflicting VBW_PLANNING_DIR" {
+  create_alternate_context_workspace
+
+  cd "$TEST_TEMP_DIR" || return 1
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  run env VBW_PLANNING_DIR="$ALT_PLANNING_DIR" \
+    bash "$SCRIPTS_DIR/cache-context.sh" 02 dev .vbw-planning/config.json \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  [ "$HASH1" = "$HASH2" ]
+}
+
+@test "compile-context.sh: explicit phase and plan beat conflicting VBW_PLANNING_DIR" {
+  create_alternate_context_workspace
+
+  cd "$TEST_TEMP_DIR" || return 1
+  run env VBW_PLANNING_DIR="$ALT_PLANNING_DIR" \
+    bash "$SCRIPTS_DIR/compile-context.sh" 02 lead .vbw-planning/phases \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md
+  [ "$status" -eq 0 ]
+  grep -q 'Test goal' .vbw-planning/phases/02-test-phase/.context-lead.md
+  ! grep -q 'Alternate goal' .vbw-planning/phases/02-test-phase/.context-lead.md
 }
 
 @test "cache-context.sh: delta content hash follows target repo off-root across committed content changes" {

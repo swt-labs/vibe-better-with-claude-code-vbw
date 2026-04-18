@@ -63,6 +63,39 @@ PLAN
 ROAD
 }
 
+create_alternate_control_plane_workspace() {
+  ALT_WORKSPACE_ROOT="$TEST_TEMP_DIR/alternate-workspace"
+  ALT_PLANNING_DIR="$ALT_WORKSPACE_ROOT/.vbw-planning"
+  ALT_PHASE_DIR="$ALT_PLANNING_DIR/phases/01-alt"
+  ALT_PLAN_PATH="$ALT_WORKSPACE_ROOT/alt-plan.md"
+
+  mkdir -p "$ALT_PHASE_DIR"
+  create_test_config "alternate-workspace/.vbw-planning"
+  cat > "$ALT_PLAN_PATH" << 'PLAN'
+---
+phase: 1
+plan: 1
+title: Alternate Plan
+wave: 1
+depends_on: []
+skills_used: []
+must_haves:
+  - "Alternate feature works"
+---
+
+# Alternate Plan
+
+### Task 1: Alternate task
+**Files:** `alt.txt`
+PLAN
+  cat > "$ALT_PLANNING_DIR/ROADMAP.md" << 'ROAD'
+## Phase 1: Alternate Phase
+**Goal:** Goal from B
+**Reqs:** REQ-99
+**Success:** Alternate tests pass
+ROAD
+}
+
 create_test_plan() {
   cat > "$TEST_TEMP_DIR/test-plan.md" << 'PLAN'
 ---
@@ -295,6 +328,31 @@ EOF
   [ -f "$target_contract" ]
   [ -f "$target_context" ]
   [ ! -e "$unrelated_repo/.vbw-planning/.contracts/1-1.json" ]
+}
+
+@test "control-plane: explicit phase and plan beat conflicting VBW_PLANNING_DIR off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+  local canonical_root
+  local target_contract
+
+  create_test_plan
+  create_roadmap
+  create_alternate_control_plane_workspace
+  setup_unrelated_git_repo "$unrelated_repo"
+  canonical_root=$(cd "$TEST_TEMP_DIR" && pwd -P)
+  target_contract="$canonical_root/.vbw-planning/.contracts/1-1.json"
+  cd "$unrelated_repo" || return 1
+
+  run env VBW_PLANNING_DIR="$ALT_PLANNING_DIR" \
+    bash "$SCRIPTS_DIR/control-plane.sh" full 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --role=dev \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e --arg p "$target_contract" '.contract_path == $p'
+  grep -q 'Test goal' "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/.context-dev.md"
+  ! grep -q 'Goal from B' "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/.context-dev.md"
+  [ ! -e "$ALT_PLANNING_DIR/.contracts/1-1.json" ]
 }
 
 # --- gate failure tests ---

@@ -24,14 +24,29 @@ if [ -n "${VBW_PLANNING_DIR:-}" ] || [ $# -ge 3 ] || [ $# -ge 4 ]; then
   TARGET_SCOPE_EXPLICIT=1
 fi
 
-TARGET_ROOT=$(vbw_resolve_target_root "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PHASES_DIR_INPUT" "${VBW_PLANNING_DIR:-}" || true)
+resolve_preferred_planning_dir() {
+  local explicit_planning_dir
 
-if [ -n "${VBW_PLANNING_DIR:-}" ]; then
-  PLANNING_DIR="$VBW_PLANNING_DIR"
-elif [ -n "$TARGET_ROOT" ] && [ -d "$TARGET_ROOT/.vbw-planning" ]; then
+  explicit_planning_dir=$(vbw_resolve_target_planning_dir "1" "$PLAN_PATH" "$PHASES_DIR_INPUT" 2>/dev/null || true)
+  if [ -n "$explicit_planning_dir" ]; then
+    printf '%s\n' "$explicit_planning_dir"
+    return 0
+  fi
+
+  if [ -n "${VBW_PLANNING_DIR:-}" ]; then
+    printf '%s\n' "$VBW_PLANNING_DIR"
+    return 0
+  fi
+
+  vbw_resolve_target_planning_dir "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PHASES_DIR_INPUT" 2>/dev/null || printf '%s\n' '.vbw-planning'
+}
+
+PLANNING_DIR=$(resolve_preferred_planning_dir)
+PLANNING_DIR=$(vbw_candidate_dir_for_path "$PLANNING_DIR" 2>/dev/null || printf '%s\n' "$PLANNING_DIR")
+TARGET_ROOT=$(vbw_resolve_target_root "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PHASES_DIR_INPUT" "$PLANNING_DIR" || true)
+
+if [ -n "$TARGET_ROOT" ] && [ -d "$TARGET_ROOT/.vbw-planning" ] && [ ! -d "$PLANNING_DIR" ]; then
   PLANNING_DIR="$TARGET_ROOT/.vbw-planning"
-else
-  PLANNING_DIR=".vbw-planning"
 fi
 
 PHASES_DIR="${PHASES_DIR_INPUT:-${PLANNING_DIR}/phases}"
