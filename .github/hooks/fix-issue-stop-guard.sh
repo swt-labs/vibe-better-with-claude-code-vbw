@@ -106,6 +106,8 @@ canonicalize_dir() {
 latest_branch_push_at() {
   local branch="$1"
   local head_sha="$2"
+  local ref_owner="${3:-$OWNER}"
+  local ref_repo="${4:-$REPO}"
   local branch_ref_json branch_head_oid branch_pushed_at
 
   branch_ref_json=$(gh api graphql \
@@ -123,8 +125,8 @@ latest_branch_push_at() {
           }\
         }\
       }' \
-    -f owner="$OWNER" \
-    -f repo="$REPO" \
+    -f owner="$ref_owner" \
+    -f repo="$ref_repo" \
     -f ref="refs/heads/${branch}" 2>/dev/null || true)
 
   branch_head_oid=$(printf '%s' "$branch_ref_json" | jq -r '.data.repository.ref.target.oid // empty' 2>/dev/null || true)
@@ -135,7 +137,7 @@ latest_branch_push_at() {
     return 0
   fi
 
-  gh api "repos/${OWNER}/${REPO}/events" --jq '[.[] | select(.type == "PushEvent" and .payload.ref == "refs/heads/'"${branch}"'")] | first | .created_at // empty' 2>/dev/null || true
+  gh api "repos/${ref_owner}/${ref_repo}/events" --jq '[.[] | select(.type == "PushEvent" and .payload.ref == "refs/heads/'"${branch}"'")] | first | .created_at // empty' 2>/dev/null || true
 }
 
 latest_matching_copilot_review() {
@@ -166,6 +168,8 @@ validate_pr() {
   local worktree_dir="$2"
   local branch="$3"
   local pr_is_draft="$4"
+  local head_owner="${5:-$OWNER}"
+  local head_repo="${6:-$REPO}"
 
   _block_pr="$pr_number"
   _block_worktree="$worktree_dir"
@@ -282,7 +286,7 @@ validate_pr() {
   if [ -n "$head_sha" ]; then
     local latest_push_at reviews_json latest_copilot_review copilot_review_at
     local review_epoch push_epoch date_cmd
-    latest_push_at=$(latest_branch_push_at "$branch" "$head_sha")
+    latest_push_at=$(latest_branch_push_at "$branch" "$head_sha" "$head_owner" "$head_repo")
     if [ -z "$latest_push_at" ]; then
       block "Unable to determine the latest push timestamp for branch ${branch} (worktree: ${worktree_dir}) at head commit ${head_sha}. Fix GitHub CLI/API access and retry so the hook can verify that a fresh Copilot review exists after the latest push."
     fi
@@ -307,10 +311,10 @@ validate_pr() {
 }
 
 # --- Enumerate every local open-PR worktree.
-# Emits one "pr|branch|worktree|draft" line per candidate. Skips main and
+# Emits one "pr|branch|worktree|draft|head_owner|head_repo" line per candidate. Skips main and
 # worktrees whose branches have no open PR.
 enumerate_open_pr_worktrees() {
-  local wt_path="" wt_branch="" wt_pr_json wt_pr wt_draft wt_canon
+  local wt_path="" wt_branch="" wt_pr_json wt_pr wt_draft wt_canon wt_head_owner wt_head_repo
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       worktree\ *) wt_path="${line#worktree }" ;;
@@ -319,16 +323,18 @@ enumerate_open_pr_worktrees() {
         if [ -z "$wt_path" ] || [ -z "$wt_branch" ] || [ "$wt_branch" = "main" ]; then
           continue
         fi
-        if ! wt_pr_json=$(gh pr list --repo "${OWNER}/${REPO}" --head "$wt_branch" --state open --json number,isDraft --limit 1 2>/dev/null); then
+        if ! wt_pr_json=$(gh pr list --repo "${OWNER}/${REPO}" --head "$wt_branch" --state open --json number,isDraft,headRepository,headRepositoryOwner,isCrossRepository --limit 1 2>/dev/null); then
           printf 'BLOCK: unable to query open PRs for branch "%s" in %s/%s; fix gh authentication/configuration and retry.\n' "$wt_branch" "$OWNER" "$REPO" >&2
           return 1
         fi
         wt_pr=$(printf '%s' "$wt_pr_json" | jq -r '.[0].number // empty')
         [ -z "$wt_pr" ] && continue
         wt_draft=$(printf '%s' "$wt_pr_json" | jq -r '.[0].isDraft // false')
+        wt_head_owner=$(printf '%s' "$wt_pr_json" | jq -r '.[0].headRepositoryOwner.login // empty')
+        wt_head_repo=$(printf '%s' "$wt_pr_json" | jq -r '.[0].headRepository.name // empty')
         wt_canon="$(canonicalize_dir "$wt_path" 2>/dev/null || true)"
         [ -z "$wt_canon" ] && continue
-        printf '%s|%s|%s|%s\n' "$wt_pr" "$wt_branch" "$wt_canon" "$wt_draft"
+        printf '%s|%s|%s|%s|%s|%s\n' "$wt_pr" "$wt_branch" "$wt_canon" "$wt_draft" "$wt_head_owner" "$wt_head_repo"
         ;;
       '') wt_path=""; wt_branch="" ;;
     esac
@@ -393,9 +399,11 @@ if [ -n "$SESSION_ID" ]; then
     s_pr=$(jq -r '.pr_number // empty' "$STATE_FILE" 2>/dev/null || true)
     s_branch=$(jq -r '.branch // empty' "$STATE_FILE" 2>/dev/null || true)
     s_worktree=$(jq -r '.worktree_path // empty' "$STATE_FILE" 2>/dev/null || true)
+    s_head_owner=$(jq -r '.fork_owner // empty' "$STATE_FILE" 2>/dev/null || true)
+    s_head_repo=$(jq -r '.fork_repo // empty' "$STATE_FILE" 2>/dev/null || true)
     if [ -n "$s_pr" ] && [ -n "$s_branch" ] && [ -n "$s_worktree" ]; then
       s_draft=$(gh pr view "$s_pr" --repo "${OWNER}/${REPO}" --json isDraft --jq '.isDraft' 2>/dev/null || echo "false")
-      validate_pr "$s_pr" "$s_worktree" "$s_branch" "$s_draft"
+      validate_pr "$s_pr" "$s_worktree" "$s_branch" "$s_draft" "$s_head_owner" "$s_head_repo"
       # All gates passed → remove state file and allow.
       rm -f "$STATE_FILE" 2>/dev/null || true
       allow
@@ -423,7 +431,9 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
     i_branch=$(printf '%s' "$inferred" | awk -F'|' '{print $2}')
     i_worktree=$(printf '%s' "$inferred" | awk -F'|' '{print $3}')
     i_draft=$(printf '%s' "$inferred" | awk -F'|' '{print $4}')
-    validate_pr "$i_pr" "$i_worktree" "$i_branch" "$i_draft"
+    i_head_owner=$(printf '%s' "$inferred" | awk -F'|' '{print $5}')
+    i_head_repo=$(printf '%s' "$inferred" | awk -F'|' '{print $6}')
+    validate_pr "$i_pr" "$i_worktree" "$i_branch" "$i_draft" "$i_head_owner" "$i_head_repo"
     allow
   fi
 fi
@@ -434,7 +444,9 @@ if [ "$CANDIDATE_COUNT" = "1" ]; then
   c_branch=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | head -n1 | awk -F'|' '{print $2}')
   c_worktree=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | head -n1 | awk -F'|' '{print $3}')
   c_draft=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | head -n1 | awk -F'|' '{print $4}')
-  validate_pr "$c_pr" "$c_worktree" "$c_branch" "$c_draft"
+  c_head_owner=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | head -n1 | awk -F'|' '{print $5}')
+  c_head_repo=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | head -n1 | awk -F'|' '{print $6}')
+  validate_pr "$c_pr" "$c_worktree" "$c_branch" "$c_draft" "$c_head_owner" "$c_head_repo"
   allow
 fi
 
@@ -443,9 +455,9 @@ fi
 # uniquely identify one AND no state file was found. Blocks so no thread can
 # complete while any local PR is unready; the block message makes it explicit
 # that the hook could not target a specific PR.
-while IFS='|' read -r s_pr s_branch s_worktree s_draft; do
+while IFS='|' read -r s_pr s_branch s_worktree s_draft s_head_owner s_head_repo; do
   [ -z "$s_pr" ] && continue
-  validate_pr "$s_pr" "$s_worktree" "$s_branch" "$s_draft"
+  validate_pr "$s_pr" "$s_worktree" "$s_branch" "$s_draft" "$s_head_owner" "$s_head_repo"
 done <<< "$CANDIDATES"
 
 allow

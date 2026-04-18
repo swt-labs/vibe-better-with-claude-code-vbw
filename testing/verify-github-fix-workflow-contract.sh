@@ -197,6 +197,58 @@ test_wait_github_treats_non_success_completed_checks_as_failures
 
 echo ""
 echo "==============================="
+echo "--- Fork-aware push timestamp resolution (issue #480) ---"
+
+test_latest_branch_push_at_accepts_four_params() {
+  echo "  [contract] latest_branch_push_at accepts ref_owner and ref_repo params"
+  local stop_guard=".github/hooks/fix-issue-stop-guard.sh"
+  if grep -q 'local ref_owner=.*{3:-' "$stop_guard" \
+    && grep -q 'local ref_repo=.*{4:-' "$stop_guard"; then
+    pass "latest_branch_push_at accepts ref_owner (\$3) and ref_repo (\$4)"
+  else
+    fail "latest_branch_push_at must accept ref_owner (\$3) and ref_repo (\$4) for fork-aware push resolution"
+  fi
+}
+test_latest_branch_push_at_accepts_four_params
+
+test_enumerate_queries_fork_metadata() {
+  echo "  [contract] enumerate_open_pr_worktrees queries headRepository and headRepositoryOwner"
+  local stop_guard=".github/hooks/fix-issue-stop-guard.sh"
+  if grep -q 'headRepository' "$stop_guard" \
+    && grep -q 'headRepositoryOwner' "$stop_guard"; then
+    pass "enumerate_open_pr_worktrees queries fork metadata fields"
+  else
+    fail "enumerate_open_pr_worktrees must query headRepository and headRepositoryOwner for fork-aware push resolution"
+  fi
+}
+test_enumerate_queries_fork_metadata
+
+test_validate_pr_accepts_fork_params() {
+  echo "  [contract] validate_pr accepts head_owner and head_repo params"
+  local stop_guard=".github/hooks/fix-issue-stop-guard.sh"
+  if grep -q 'local head_owner=.*{5:-' "$stop_guard" \
+    && grep -q 'local head_repo=.*{6:-' "$stop_guard"; then
+    pass "validate_pr accepts head_owner (\$5) and head_repo (\$6)"
+  else
+    fail "validate_pr must accept head_owner (\$5) and head_repo (\$6) for fork-aware push resolution"
+  fi
+}
+test_validate_pr_accepts_fork_params
+
+test_record_state_accepts_fork_args() {
+  echo "  [contract] fix-issue-record-state.sh accepts optional fork_owner and fork_repo args"
+  local record_script=".github/scripts/fix-issue-record-state.sh"
+  if grep -q 'fork_owner' "$record_script" \
+    && grep -q 'fork_repo' "$record_script"; then
+    pass "fix-issue-record-state.sh handles fork_owner and fork_repo"
+  else
+    fail "fix-issue-record-state.sh must accept optional fork_owner and fork_repo arguments"
+  fi
+}
+test_record_state_accepts_fork_args
+
+echo ""
+echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"
 echo "==============================="
 
