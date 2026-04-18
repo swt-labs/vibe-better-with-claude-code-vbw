@@ -38,6 +38,12 @@ issue_number="$4"
 fork_owner="${5:-}"
 fork_repo="${6:-}"
 
+if { [ -n "$fork_owner" ] && [ -z "$fork_repo" ]; } || { [ -z "$fork_owner" ] && [ -n "$fork_repo" ]; }; then
+  printf 'fix-issue-record-state: fork_owner and fork_repo must both be provided or both be omitted\n' >&2
+  printf 'usage: %s <pr_number> <branch> <worktree_path> <issue_number> [fork_owner] [fork_repo]\n' "$0" >&2
+  exit 1
+fi
+
 require_non_negative_integer() {
   local field_name="$1"
   local value="$2"
