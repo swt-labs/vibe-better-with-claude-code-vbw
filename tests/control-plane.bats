@@ -16,6 +16,89 @@ teardown() {
   teardown_temp_dir
 }
 
+setup_unrelated_git_repo_with_message() {
+  local repo_dir="$1"
+  local commit_message="$2"
+
+  mkdir -p "$repo_dir"
+  (
+    cd "$repo_dir" || exit 1
+    git init -q
+    git config user.name "VBW Test"
+    git config user.email "vbw-tests@example.com"
+    echo "initial" > unrelated.txt
+    git add unrelated.txt
+    git commit -qm "$commit_message"
+  )
+}
+
+create_nested_control_plane_workspace() {
+  NESTED_REPO_ROOT="$TEST_TEMP_DIR/mono"
+  NESTED_WORKSPACE_ROOT="$NESTED_REPO_ROOT/apps/proj"
+  NESTED_PLANNING_DIR="$NESTED_WORKSPACE_ROOT/.vbw-planning"
+  NESTED_PHASE_DIR="$NESTED_PLANNING_DIR/phases/01-test"
+  NESTED_PLAN_PATH="$NESTED_WORKSPACE_ROOT/test-plan.md"
+
+  mkdir -p "$NESTED_PHASE_DIR"
+  create_test_config "mono/apps/proj/.vbw-planning"
+  cat > "$NESTED_PLAN_PATH" << 'PLAN'
+---
+phase: 1
+plan: 1
+title: Test Plan
+wave: 1
+depends_on: []
+skills_used: []
+must_haves:
+  - "Feature A works"
+---
+
+# Plan
+
+### Task 1: Do something
+**Files:** `sample.txt`
+PLAN
+  cat > "$NESTED_PLANNING_DIR/ROADMAP.md" << 'ROAD'
+## Phase 1: Test Phase
+**Goal:** Test goal
+**Reqs:** REQ-01
+**Success:** Tests pass
+ROAD
+}
+
+create_alternate_control_plane_workspace() {
+  ALT_WORKSPACE_ROOT="$TEST_TEMP_DIR/alternate-workspace"
+  ALT_PLANNING_DIR="$ALT_WORKSPACE_ROOT/.vbw-planning"
+  ALT_PHASE_DIR="$ALT_PLANNING_DIR/phases/01-alt"
+  ALT_PLAN_PATH="$ALT_WORKSPACE_ROOT/alt-plan.md"
+
+  mkdir -p "$ALT_PHASE_DIR"
+  create_test_config "alternate-workspace/.vbw-planning"
+  cat > "$ALT_PLAN_PATH" << 'PLAN'
+---
+phase: 1
+plan: 1
+title: Alternate Plan
+wave: 1
+depends_on: []
+skills_used: []
+must_haves:
+  - "Alternate feature works"
+---
+
+# Alternate Plan
+
+### Task 1: Alternate task
+**Files:** `alt.txt`
+PLAN
+  cat > "$ALT_PLANNING_DIR/ROADMAP.md" << 'ROAD'
+## Phase 1: Alternate Phase
+**Goal:** Goal from B
+**Reqs:** REQ-99
+**Success:** Alternate tests pass
+ROAD
+}
+
 create_test_plan() {
   cat > "$TEST_TEMP_DIR/test-plan.md" << 'PLAN'
 ---
@@ -46,6 +129,39 @@ create_roadmap() {
 **Reqs:** REQ-01
 **Success:** Tests pass
 ROAD
+}
+
+create_guarded_plan() {
+  cat > "$TEST_TEMP_DIR/test-plan.md" << 'PLAN'
+---
+phase: 1
+plan: 1
+title: Guarded Plan
+wave: 1
+depends_on: []
+skills_used: []
+must_haves:
+  - "Feature A works"
+forbidden_paths:
+  - ".env"
+---
+
+# Plan
+
+### Task 1: Do something
+**Files:** `src/a.js`
+PLAN
+}
+
+init_target_repo_with_commit() {
+  local commit_message="$1"
+
+  cd "$TEST_TEMP_DIR" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+  git add .
+  git commit -qm "$commit_message"
 }
 
 enable_flags() {
@@ -117,6 +233,50 @@ enable_flags() {
   jq -e '.expires_at' ".vbw-planning/.locks/1-1-T1.lock"
 }
 
+@test "control-plane: pre-task off-root creates lock in target planning dir" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_test_plan
+  create_roadmap
+  enable_flags '.lease_locks = true'
+  setup_unrelated_git_repo "$unrelated_repo"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" pre-task 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test" \
+    --task-id=1-1-T1 \
+    --claimed-files=src/a.js
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "lease_acquire") | .status == "pass"'
+  [ -f "$TEST_TEMP_DIR/.vbw-planning/.locks/1-1-T1.lock" ]
+  [ ! -e "$unrelated_repo/.vbw-planning/.locks/1-1-T1.lock" ]
+}
+
+@test "control-plane: pre-task off-root uses target staged files for protected-file gate" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_guarded_plan
+  create_roadmap
+  enable_flags '.lease_locks = true'
+  init_target_repo_with_commit 'fix(test): valid target baseline'
+  echo 'SECRET=1' > "$TEST_TEMP_DIR/.env"
+  git add .env
+
+  setup_unrelated_git_repo_with_message "$unrelated_repo" 'fix(test): unrelated repo clean'
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" pre-task 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test" \
+    --task-id=1-1-T1 \
+    --claimed-files=src/a.js
+  [ "$status" -eq 1 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "gate_protected_file") | .status == "fail"'
+  [ -f "$TEST_TEMP_DIR/.vbw-planning/.locks/1-1-T1.lock" ]
+  [ ! -e "$unrelated_repo/.vbw-planning/.locks/1-1-T1.lock" ]
+}
+
 # --- post-task tests ---
 
 @test "control-plane: post-task releases lease" {
@@ -130,6 +290,47 @@ enable_flags() {
   echo "$output" | jq -e '.steps[] | select(.name == "lease_release") | .status == "pass"'
   # Lock file should be removed
   [ ! -f ".vbw-planning/.locks/1-1-T1.lock" ]
+}
+
+@test "control-plane: post-task off-root releases target lock" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_test_plan
+  create_roadmap
+  enable_flags '.lease_locks = true'
+  init_target_repo_with_commit 'fix(test): valid target commit'
+  echo '{"task_id":"1-1-T1","pid":"999","timestamp":"2024-01-01T00:00:00Z","files":["src/a.js"]}' > "$TEST_TEMP_DIR/.vbw-planning/.locks/1-1-T1.lock"
+
+  setup_unrelated_git_repo_with_message "$unrelated_repo" 'fix(test): unrelated repo clean'
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" post-task 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test" \
+    --task-id=1-1-T1
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "lease_release") | .status == "pass"'
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.locks/1-1-T1.lock" ]
+  [ ! -e "$unrelated_repo/.vbw-planning/.locks/1-1-T1.lock" ]
+}
+
+@test "control-plane: post-task off-root uses target commit for commit-hygiene gate" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_test_plan
+  create_roadmap
+  enable_flags '.lease_locks = true'
+  init_target_repo_with_commit 'bad commit message'
+
+  setup_unrelated_git_repo_with_message "$unrelated_repo" 'fix(test): unrelated repo clean'
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" post-task 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test" \
+    --task-id=1-1-T1
+  [ "$status" -eq 1 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "gate_commit_hygiene") | .status == "fail"'
 }
 
 # --- compile tests ---
@@ -154,6 +355,53 @@ enable_flags() {
   echo "$output" | jq -e '.context_path' | grep -q "context-dev.md"
 }
 
+@test "control-plane: compile honors explicit target planning dir off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_test_plan
+  create_roadmap
+  cat > "$TEST_TEMP_DIR/.vbw-planning/REQUIREMENTS.md" <<'EOF'
+## Requirements
+- [REQ-01] Test requirement
+EOF
+
+  setup_unrelated_git_repo "$unrelated_repo"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" compile 1 1 1 \
+    --role=lead \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test" \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "context") | .status == "pass"'
+  grep -q 'Test goal' "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/.context-lead.md"
+}
+
+@test "control-plane: compile honors explicit nested target planning dir off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_nested_control_plane_workspace
+  cd "$NESTED_REPO_ROOT" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+  echo 'v1 body' > "$NESTED_WORKSPACE_ROOT/sample.txt"
+  git add apps/proj
+  git commit -qm 'init nested workspace'
+
+  setup_unrelated_git_repo "$unrelated_repo"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" compile 1 1 1 \
+    --role=dev \
+    --phase-dir="$NESTED_PHASE_DIR" \
+    --plan-path="$NESTED_PLAN_PATH"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "context") | .status == "pass"'
+  grep -q 'Test goal' "$NESTED_PHASE_DIR/.context-dev.md"
+  grep -q 'v1 body' "$NESTED_PHASE_DIR/.context-dev.md"
+}
+
 # --- full action tests ---
 
 @test "control-plane: full action runs contract then compile" {
@@ -170,6 +418,62 @@ enable_flags() {
   # Both artifacts exist
   [ -f ".vbw-planning/.contracts/1-1.json" ]
   [ -f ".vbw-planning/phases/01-test/.context-dev.md" ]
+}
+
+@test "control-plane: full honors explicit target planning dir off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+  local canonical_root
+  local actual_context
+  local target_contract
+  local target_context
+
+  create_test_plan
+  create_roadmap
+  setup_unrelated_git_repo "$unrelated_repo"
+  canonical_root=$(cd "$TEST_TEMP_DIR" && pwd -P)
+  target_contract="$canonical_root/.vbw-planning/.contracts/1-1.json"
+  target_context="$canonical_root/.vbw-planning/phases/01-test/.context-dev.md"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" full 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --role=dev \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "contract") | .status == "pass"'
+  echo "$output" | jq -e '.steps[] | select(.name == "context") | .status == "pass"'
+  echo "$output" | jq -e --arg p "$target_contract" '.contract_path == $p'
+  actual_context=$(echo "$output" | jq -r '.context_path')
+  actual_context="$(cd "$(dirname "$actual_context")" && pwd -P)/$(basename "$actual_context")"
+  [ "$actual_context" = "$target_context" ]
+  [ -f "$target_contract" ]
+  [ -f "$target_context" ]
+  [ ! -e "$unrelated_repo/.vbw-planning/.contracts/1-1.json" ]
+}
+
+@test "control-plane: explicit phase and plan beat conflicting VBW_PLANNING_DIR off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+  local canonical_root
+  local target_contract
+
+  create_test_plan
+  create_roadmap
+  create_alternate_control_plane_workspace
+  setup_unrelated_git_repo "$unrelated_repo"
+  canonical_root=$(cd "$TEST_TEMP_DIR" && pwd -P)
+  target_contract="$canonical_root/.vbw-planning/.contracts/1-1.json"
+  cd "$unrelated_repo" || return 1
+
+  run env VBW_PLANNING_DIR="$ALT_PLANNING_DIR" \
+    bash "$SCRIPTS_DIR/control-plane.sh" full 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --role=dev \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e --arg p "$target_contract" '.contract_path == $p'
+  grep -q 'Test goal' "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/.context-dev.md"
+  ! grep -q 'Goal from B' "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/.context-dev.md"
+  [ ! -e "$ALT_PLANNING_DIR/.contracts/1-1.json" ]
 }
 
 # --- gate failure tests ---
