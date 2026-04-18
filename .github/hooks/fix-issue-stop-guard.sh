@@ -261,7 +261,7 @@ validate_pr() {
     if check_runs_json=$(gh api --paginate "repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100" 2>/dev/null | jq -s '[.[].check_runs[]?]' 2>/dev/null); then
       :
     else
-      block "Could not query remote check-runs for commit ${head_sha}. Remote CI status is unknown, so completion is blocked until check-runs can be fetched successfully." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
+      block "Could not query remote check-runs for PR #${pr_number} (worktree: ${worktree_dir}) at commit ${head_sha}. Remote CI status is unknown, so completion is blocked until check-runs can be fetched successfully." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
     fi
     total_checks=$(printf '%s' "$check_runs_json" | jq 'length')
     if [ "$total_checks" -gt 0 ]; then
@@ -269,11 +269,11 @@ validate_pr() {
       pending=$(printf '%s' "$check_runs_json" | jq '[.[] | select(.status == "queued" or .status == "in_progress")] | length')
       if [ "$failed" -gt 0 ]; then
         failed_names=$(printf '%s' "$check_runs_json" | jq -r '[.[] | select(.conclusion != null and .conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral")] | map(.name + " (" + .conclusion + ")") | join(", ")')
-        block "Remote CI failed on commit ${head_sha}. Failing checks: ${failed_names}. Diagnose and fix the CI failures before completing." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
+        block "Remote CI failed on PR #${pr_number} (worktree: ${worktree_dir}) at commit ${head_sha}. Failing checks: ${failed_names}. Diagnose and fix the CI failures before completing." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
       fi
       if [ "$pending" -gt 0 ]; then
         pending_names=$(printf '%s' "$check_runs_json" | jq -r '[.[] | select(.status == "queued" or .status == "in_progress")] | map(.name + " (" + .status + ")") | join(", ")')
-        block "Remote CI still running on commit ${head_sha}. Pending checks: ${pending_names}. Wait for CI to complete before finishing." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
+        block "Remote CI still running on PR #${pr_number} (worktree: ${worktree_dir}) at commit ${head_sha}. Pending checks: ${pending_names}. Wait for CI to complete before finishing." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
       fi
     fi
   fi
