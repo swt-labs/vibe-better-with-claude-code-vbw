@@ -43,8 +43,13 @@ Config: Pre-injected by SessionStart hook.
 
 4. **Spawn Dev:** Resolve model first:
     ```bash
-  DEV_MODEL=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-  DEV_MAX_TURNS=$(bash "{plugin-root}/scripts/resolve-agent-max-turns.sh" dev .vbw-planning/config.json turbo)
+  if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" turbo); then
+    echo "$AGENT_SETTINGS" >&2
+    exit 1
+  fi
+  eval "$AGENT_SETTINGS"
+  DEV_MODEL="$RESOLVED_MODEL"
+  DEV_MAX_TURNS="$RESOLVED_MAX_TURNS"
     ```
 
     Before composing the Dev task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific fix. The spawned prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none apply — {reason}") so the user has visibility before the agent is spawned. Only include skills whose description matches the task at hand.
