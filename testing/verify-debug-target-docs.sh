@@ -18,6 +18,7 @@ fail() {
 AGENTS_MD="$ROOT/AGENTS.md"
 CLAUDE_MD="$ROOT/CLAUDE.md"
 CONTRIB="$ROOT/CONTRIBUTING.md"
+TESTING_README="$ROOT/testing/README.md"
 
 echo "=== Debug Target Docs Contract Verification ==="
 
@@ -61,6 +62,24 @@ if grep -q 'vbw-debug-target.txt' "$CONTRIB" 2>/dev/null; then
   pass "CONTRIBUTING.md documents local debug target setup"
 else
   fail "CONTRIBUTING.md missing local debug target setup"
+fi
+
+if [ -f "$TESTING_README" ]; then
+  pass "testing/README.md exists"
+else
+  fail "testing/README.md missing"
+fi
+
+if grep -E '(/Users/[^/[:space:]]+|~/repos/[^[:space:]]+|projects/-Users-[^/[:space:]]+)' "$TESTING_README" >/dev/null 2>&1; then
+  fail "testing/README.md still contains maintainer-specific local path examples"
+else
+  pass "testing/README.md contains no maintainer-specific local path examples"
+fi
+
+if grep -Fq '/absolute/path/to/your-test-repo' "$TESTING_README" 2>/dev/null; then
+  pass "testing/README.md uses a publish-safe placeholder example"
+else
+  fail "testing/README.md missing a publish-safe placeholder example"
 fi
 
 if grep -q 'resolve-claude-dir.sh' "$CONTRIB" 2>/dev/null; then
