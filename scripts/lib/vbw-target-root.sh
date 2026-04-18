@@ -50,6 +50,16 @@ vbw_walk_up_for_workspace_root() {
   return 1
 }
 
+vbw_git_show_toplevel() {
+  local candidate_dir="$1"
+  local git_root
+
+  git -C "$candidate_dir" rev-parse --is-inside-work-tree &>/dev/null || return 1
+  git_root=$(git -C "$candidate_dir" rev-parse --show-toplevel 2>/dev/null || true)
+  [ -n "$git_root" ] || return 1
+  printf '%s\n' "$git_root"
+}
+
 vbw_resolve_target_root() {
   local explicit_scope="$1"
   shift || true
@@ -65,8 +75,7 @@ vbw_resolve_target_root() {
       return 0
     fi
 
-    if git -C "$candidate_dir" rev-parse --is-inside-work-tree &>/dev/null; then
-      git -C "$candidate_dir" rev-parse --show-toplevel 2>/dev/null || return 0
+    if vbw_git_show_toplevel "$candidate_dir" 2>/dev/null; then
       return 0
     fi
   done
@@ -78,8 +87,7 @@ vbw_resolve_target_root() {
       return 0
     fi
 
-    if command -v git &>/dev/null && git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
-      git rev-parse --show-toplevel 2>/dev/null || return 0
+    if command -v git &>/dev/null && vbw_git_show_toplevel "$pwd_dir" 2>/dev/null; then
       return 0
     fi
   fi
@@ -124,14 +132,12 @@ vbw_resolve_target_git_root() {
     candidate_dir=$(vbw_candidate_dir_for_path "$candidate" 2>/dev/null || true)
     [ -n "$candidate_dir" ] || continue
 
-    if git -C "$candidate_dir" rev-parse --is-inside-work-tree &>/dev/null; then
-      git -C "$candidate_dir" rev-parse --show-toplevel 2>/dev/null || return 0
+    if vbw_git_show_toplevel "$candidate_dir" 2>/dev/null; then
       return 0
     fi
   done
 
-  if [ "$explicit_scope" != "1" ] && command -v git &>/dev/null && git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
-    git rev-parse --show-toplevel 2>/dev/null || return 0
+  if [ "$explicit_scope" != "1" ] && command -v git &>/dev/null && vbw_git_show_toplevel "$(pwd -P 2>/dev/null || pwd)" 2>/dev/null; then
     return 0
   fi
 

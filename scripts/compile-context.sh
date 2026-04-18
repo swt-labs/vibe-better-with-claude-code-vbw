@@ -333,7 +333,7 @@ emit_delta_changed_files_section() {
 }
 
 emit_delta_code_slices_section() {
-  local delta_files="$1" source_root="$2" f source_path
+  local delta_files="$1" source_root="$2" f source_path slice_lines
 
   echo ""
   echo "### Code Slices"
@@ -341,16 +341,16 @@ emit_delta_code_slices_section() {
     [ -n "$f" ] || continue
     source_path=$(vbw_resolve_repo_path "$source_root" "$f")
     if [ -f "$source_path" ]; then
-      LINES=$(wc -l < "$source_path" 2>/dev/null | tr -d ' ' || echo "0")
-      if [ "$LINES" -le 50 ]; then
+      slice_lines=$(wc -l < "$source_path" 2>/dev/null | tr -d ' ' || echo "0")
+      if [ "$slice_lines" -le 50 ]; then
         echo ""
-        echo "#### \`$f\` (${LINES} lines)"
+        echo "#### \`$f\` (${slice_lines} lines)"
         echo '```'
         cat "$source_path" 2>/dev/null || true
         echo '```'
       else
         echo ""
-        echo "#### \`$f\` (${LINES} lines, first 30 shown)"
+        echo "#### \`$f\` (${slice_lines} lines, first 30 shown)"
         echo '```'
         head -30 "$source_path" 2>/dev/null || true
         echo '```'
