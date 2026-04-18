@@ -6,6 +6,11 @@ set -u
 # Sources: git diff, plan's files_modified, prior SUMMARY.md files_modified.
 # Outputs empty list on any error (graceful fallback).
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=scripts/lib/vbw-target-root.sh
+. "${SCRIPT_DIR}/lib/vbw-target-root.sh"
+
 PHASE_DIR="${1:-.}"
 PLAN_PATH="${2:-}"
 PHASE_DIR_EXPLICIT=0
@@ -19,31 +24,12 @@ if [ $# -ge 2 ]; then
   PLAN_PATH_EXPLICIT=1
 fi
 
-resolve_git_root_for_delta() {
-  local candidate candidate_dir
+TARGET_SCOPE_EXPLICIT=0
+if [ "$PHASE_DIR_EXPLICIT" -eq 1 ] || [ "$PLAN_PATH_EXPLICIT" -eq 1 ]; then
+  TARGET_SCOPE_EXPLICIT=1
+fi
 
-  for candidate in "$PLAN_PATH" "$PHASE_DIR"; do
-    [ -n "$candidate" ] || continue
-    [ -e "$candidate" ] || continue
-
-    candidate_dir="$candidate"
-    [ -d "$candidate_dir" ] || candidate_dir=$(dirname "$candidate_dir")
-
-    if git -C "$candidate_dir" rev-parse --is-inside-work-tree &>/dev/null; then
-      git -C "$candidate_dir" rev-parse --show-toplevel 2>/dev/null || return 0
-      return 0
-    fi
-  done
-
-  if [ "$PHASE_DIR_EXPLICIT" -ne 1 ] && [ "$PLAN_PATH_EXPLICIT" -ne 1 ] && command -v git &>/dev/null && git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
-    git rev-parse --show-toplevel 2>/dev/null || return 0
-    return 0
-  fi
-
-  return 1
-}
-
-TARGET_GIT_ROOT=$(resolve_git_root_for_delta || true)
+TARGET_GIT_ROOT=$(vbw_resolve_target_git_root "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PHASE_DIR" || true)
 
 # --- Strategy 1: git diff from last tag/merge-base ---
 if [ -n "$TARGET_GIT_ROOT" ]; then

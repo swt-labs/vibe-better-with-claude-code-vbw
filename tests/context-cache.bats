@@ -197,6 +197,57 @@ setup_unrelated_git_repo() {
   [ "$HASH1" != "$HASH2" ]
 }
 
+@test "cache-context.sh: delta content hash follows target repo off-root across committed content changes" {
+  local unrelated_repo
+  unrelated_repo=$(mktemp -d "${TMPDIR:-/tmp}/vbw-unrelated.XXXXXX")
+
+  setup_unrelated_git_repo "$unrelated_repo"
+
+  cd "$TEST_TEMP_DIR" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+
+  cat > .vbw-planning/phases/02-test-phase/02-01-SUMMARY.md <<'EOF'
+# Summary
+## Files Modified
+- sample.txt
+## Deviations
+EOF
+
+  echo 'v1' > sample.txt
+  git add .vbw-planning/config.json .vbw-planning/ROADMAP.md \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md \
+    .vbw-planning/phases/02-test-phase/02-01-SUMMARY.md sample.txt
+  git commit -qm 'init target repo'
+  git tag v0
+
+  echo 'v2' > sample.txt
+  git add sample.txt
+  git commit -qm 'update sample v2'
+
+  cd "$unrelated_repo" || return 1
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$TEST_TEMP_DIR/.vbw-planning/config.json" \
+    "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  HASH1=$(echo "$output" | cut -d' ' -f2)
+
+  cd "$TEST_TEMP_DIR" || return 1
+  echo 'v3' > sample.txt
+  git add sample.txt
+  git commit -qm 'update sample v3'
+
+  cd "$unrelated_repo" || return 1
+  run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$TEST_TEMP_DIR/.vbw-planning/config.json" \
+    "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  HASH2=$(echo "$output" | cut -d' ' -f2)
+
+  rm -rf "$unrelated_repo"
+
+  [ "$HASH1" != "$HASH2" ]
+}
+
 @test "cache-context.sh: milestone context fingerprint changes hash when CONTEXT.md changes" {
   cd "$TEST_TEMP_DIR"
   echo "# Milestone Context v1" > .vbw-planning/CONTEXT.md

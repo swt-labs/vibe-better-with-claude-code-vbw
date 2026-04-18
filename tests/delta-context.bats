@@ -96,6 +96,29 @@ EOF
   ! echo "$output" | grep -q "unrelated.txt"
 }
 
+@test "compile-context.sh resolves code slices against explicit target root off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-SUMMARY.md" <<'EOF'
+# Summary
+## Files Modified
+- sample.txt
+## Deviations
+EOF
+  echo 'sample body' > "$TEST_TEMP_DIR/sample.txt"
+
+  setup_unrelated_git_repo "$unrelated_repo"
+
+  cd "$unrelated_repo" || return 1
+  run env VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" \
+    bash "$SCRIPTS_DIR/compile-context.sh" 02 dev \
+    "$TEST_TEMP_DIR/.vbw-planning/phases" \
+    "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  grep -q '#### `sample.txt`' "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/.context-dev.md"
+  grep -q 'sample body' "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/.context-dev.md"
+}
+
 @test "compile-context.sh includes delta files when v3_delta_context=true" {
   cd "$TEST_TEMP_DIR"
 

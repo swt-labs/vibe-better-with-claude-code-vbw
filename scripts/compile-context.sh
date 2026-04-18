@@ -134,6 +134,11 @@ fi
 V3_CACHE_ENABLED=true
 CACHE_HASH=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=scripts/lib/vbw-target-root.sh
+. "${SCRIPT_DIR}/lib/vbw-target-root.sh"
+
+TARGET_ROOT=$(vbw_resolve_target_root "1" "$PLAN_PATH" "$PHASE_DIR" "$PLANNING_DIR" || true)
 CONFIG_PATH="${PLANNING_DIR}/config.json"
 
 V3_DELTA_ENABLED=true
@@ -287,6 +292,44 @@ emit_caveman_directive() {
   fi
 }
 
+emit_delta_changed_files_section() {
+  local delta_files="$1" f
+
+  echo ""
+  echo "### Changed Files (Delta)"
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    echo "- \`$f\`"
+  done <<< "$delta_files"
+}
+
+emit_delta_code_slices_section() {
+  local delta_files="$1" source_root="$2" f source_path
+
+  echo ""
+  echo "### Code Slices"
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    source_path=$(vbw_resolve_repo_path "$source_root" "$f")
+    if [ -f "$source_path" ]; then
+      LINES=$(wc -l < "$source_path" 2>/dev/null | tr -d ' ' || echo "0")
+      if [ "$LINES" -le 50 ]; then
+        echo ""
+        echo "#### \`$f\` (${LINES} lines)"
+        echo '```'
+        cat "$source_path" 2>/dev/null || true
+        echo '```'
+      else
+        echo ""
+        echo "#### \`$f\` (${LINES} lines, first 30 shown)"
+        echo '```'
+        head -30 "$source_path" 2>/dev/null || true
+        echo '```'
+      fi
+    fi
+  done <<< "$delta_files"
+}
+
 # --- Role-specific output ---
 case "$ROLE" in
   lead)
@@ -396,33 +439,9 @@ case "$ROLE" in
       if [ "$V3_DELTA_ENABLED" = "true" ] && [ -f "${SCRIPT_DIR}/delta-files.sh" ]; then
         DELTA_FILES=$(bash "${SCRIPT_DIR}/delta-files.sh" "$PHASE_DIR" "$PLAN_PATH" 2>/dev/null || true)
         if [ -n "$DELTA_FILES" ]; then
-          echo ""
-          echo "### Changed Files (Delta)"
-          echo "$DELTA_FILES" | while IFS= read -r f; do
-            echo "- \`$f\`"
-          done
+          emit_delta_changed_files_section "$DELTA_FILES"
           # --- V3: Code Slices (REQ-08) ---
-          echo ""
-          echo "### Code Slices"
-          echo "$DELTA_FILES" | while IFS= read -r f; do
-            [ -z "$f" ] && continue
-            if [ -f "$f" ]; then
-              LINES=$(wc -l < "$f" 2>/dev/null | tr -d ' ' || echo "0")
-              if [ "$LINES" -le 50 ]; then
-                echo ""
-                echo "#### \`$f\` (${LINES} lines)"
-                echo '```'
-                cat "$f" 2>/dev/null || true
-                echo '```'
-              else
-                echo ""
-                echo "#### \`$f\` (${LINES} lines, first 30 shown)"
-                echo '```'
-                head -30 "$f" 2>/dev/null || true
-                echo '```'
-              fi
-            fi
-          done
+          emit_delta_code_slices_section "$DELTA_FILES" "$TARGET_ROOT"
         fi
         # Include active plan content for focused context
         if [ -n "$PLAN_PATH" ] && [ -f "$PLAN_PATH" ]; then
@@ -531,11 +550,7 @@ case "$ROLE" in
       if [ "$V3_DELTA_ENABLED" = "true" ] && [ -f "${SCRIPT_DIR}/delta-files.sh" ]; then
         DELTA_FILES=$(bash "${SCRIPT_DIR}/delta-files.sh" "$PHASE_DIR" "$PLAN_PATH" 2>/dev/null || true)
         if [ -n "$DELTA_FILES" ]; then
-          echo ""
-          echo "### Changed Files (Delta)"
-          echo "$DELTA_FILES" | while IFS= read -r f; do
-            echo "- \`$f\`"
-          done
+          emit_delta_changed_files_section "$DELTA_FILES"
         fi
       fi
       emit_caveman_directive
@@ -596,32 +611,8 @@ case "$ROLE" in
       if [ "$V3_DELTA_ENABLED" = "true" ] && [ -f "${SCRIPT_DIR}/delta-files.sh" ]; then
         DELTA_FILES=$(bash "${SCRIPT_DIR}/delta-files.sh" "$PHASE_DIR" "$PLAN_PATH" 2>/dev/null || true)
         if [ -n "$DELTA_FILES" ]; then
-          echo ""
-          echo "### Changed Files (Delta)"
-          echo "$DELTA_FILES" | while IFS= read -r f; do
-            echo "- \`$f\`"
-          done
-          echo ""
-          echo "### Code Slices"
-          echo "$DELTA_FILES" | while IFS= read -r f; do
-            [ -z "$f" ] && continue
-            if [ -f "$f" ]; then
-              LINES=$(wc -l < "$f" 2>/dev/null | tr -d ' ' || echo "0")
-              if [ "$LINES" -le 50 ]; then
-                echo ""
-                echo "#### \`$f\` (${LINES} lines)"
-                echo '```'
-                cat "$f" 2>/dev/null || true
-                echo '```'
-              else
-                echo ""
-                echo "#### \`$f\` (${LINES} lines, first 30 shown)"
-                echo '```'
-                head -30 "$f" 2>/dev/null || true
-                echo '```'
-              fi
-            fi
-          done
+          emit_delta_changed_files_section "$DELTA_FILES"
+          emit_delta_code_slices_section "$DELTA_FILES" "$TARGET_ROOT"
         fi
       fi
       emit_caveman_directive
