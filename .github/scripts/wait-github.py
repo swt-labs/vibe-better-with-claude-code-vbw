@@ -333,16 +333,18 @@ def _evaluate_check_runs(body: str, sha: str) -> Optional[str]:
         return f"NO_CHECKS — no check runs found on {sha}"
 
     # If the API says there are more check runs than we received, we're
-    # looking at a truncated page. Do not declare CI_GREEN based on an
-    # incomplete view — keep polling (caller will retry) and surface the
-    # mismatch on stderr so the operator can increase per_page if needed.
+    # looking at a truncated page. per_page=100 is the max for this endpoint,
+    # so if total_count exceeds 100 continued polling will never produce a
+    # complete single-page result. Treat as a terminal error.
     if len(check_runs) < total:
-        print(
-            f"[warn] check-runs page truncated: got {len(check_runs)} of {total} "
-            f"for {sha}; waiting for full page",
-            file=sys.stderr,
+        message = (
+            f"CI_ERROR — check-runs response truncated for {sha}: got "
+            f"{len(check_runs)} of {total}. This endpoint requires pagination "
+            f"to evaluate all check runs; update the caller to paginate and "
+            f"aggregate results instead of polling a single page."
         )
-        return None
+        print(f"[error] {message}", file=sys.stderr)
+        return message
 
     allowed_completed_conclusions = {"success", "neutral", "skipped"}
     failed = [

@@ -189,6 +189,9 @@ validate_pr() {
     block "Unable to enter worktree directory '${worktree_dir}' to validate PR #${pr_number}. Recreate or reselect the fix-issue worktree, then retry completion."
   fi
   _block_sha="$head_sha"
+  if [ -z "$head_sha" ]; then
+    block "Unable to resolve HEAD in worktree '${worktree_dir}' for PR #${pr_number}. Ensure this fix-issue worktree is a valid git checkout (with a readable .git directory and commit history), or recreate/reselect the worktree, then retry completion."
+  fi
 
   # Gate 1: draft
   if [ "$pr_is_draft" = "true" ]; then
