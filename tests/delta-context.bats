@@ -178,6 +178,33 @@ EOF
   rm -rf "$unrelated_repo"
 }
 
+@test "compile-context.sh resolves planning metadata from explicit target paths off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Test Roadmap
+## Phase 2: Test Phase
+**Goal:** Test goal
+**Reqs:** REQ-01
+**Success:** Tests pass
+EOF
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/REQUIREMENTS.md" <<'EOF'
+## Requirements
+- [REQ-01] Test requirement
+EOF
+
+  setup_unrelated_git_repo "$unrelated_repo"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/compile-context.sh" 02 lead \
+    "$TEST_TEMP_DIR/.vbw-planning/phases" \
+    "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  grep -q 'Test goal' "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/.context-lead.md"
+  grep -q 'Test requirement' "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/.context-lead.md"
+}
+
 @test "compile-context.sh includes delta files when v3_delta_context=true" {
   cd "$TEST_TEMP_DIR"
 

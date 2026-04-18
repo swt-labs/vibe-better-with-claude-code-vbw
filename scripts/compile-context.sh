@@ -12,9 +12,29 @@ fi
 
 PHASE="$1"
 ROLE="$2"
-PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
-PHASES_DIR="${3:-${PLANNING_DIR}/phases}"
+PHASES_DIR_INPUT="${3:-}"
 PLAN_PATH="${4:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=scripts/lib/vbw-target-root.sh
+. "${SCRIPT_DIR}/lib/vbw-target-root.sh"
+
+TARGET_SCOPE_EXPLICIT=0
+if [ -n "${VBW_PLANNING_DIR:-}" ] || [ $# -ge 3 ] || [ $# -ge 4 ]; then
+  TARGET_SCOPE_EXPLICIT=1
+fi
+
+TARGET_ROOT=$(vbw_resolve_target_root "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PHASES_DIR_INPUT" "${VBW_PLANNING_DIR:-}" || true)
+
+if [ -n "${VBW_PLANNING_DIR:-}" ]; then
+  PLANNING_DIR="$VBW_PLANNING_DIR"
+elif [ -n "$TARGET_ROOT" ] && [ -d "$TARGET_ROOT/.vbw-planning" ]; then
+  PLANNING_DIR="$TARGET_ROOT/.vbw-planning"
+else
+  PLANNING_DIR=".vbw-planning"
+fi
+
+PHASES_DIR="${PHASES_DIR_INPUT:-${PLANNING_DIR}/phases}"
 
 # Milestone path guard: refuse to compile context for archived milestone directories.
 # Execution must happen in active phases (.vbw-planning/phases/), not archived milestones.
@@ -133,12 +153,6 @@ fi
 # --- V3: Context cache check (REQ-07) ---
 V3_CACHE_ENABLED=true
 CACHE_HASH=""
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# shellcheck source=scripts/lib/vbw-target-root.sh
-. "${SCRIPT_DIR}/lib/vbw-target-root.sh"
-
-TARGET_ROOT=$(vbw_resolve_target_root "1" "$PLAN_PATH" "$PHASE_DIR" "$PLANNING_DIR" || true)
 CONFIG_PATH="${PLANNING_DIR}/config.json"
 
 V3_DELTA_ENABLED=true

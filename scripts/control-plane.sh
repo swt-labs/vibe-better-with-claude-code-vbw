@@ -9,8 +9,9 @@ set -u
 # Delegates to existing scripts — does not reimplement their logic.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
-CONFIG_PATH="${PLANNING_DIR}/config.json"
+
+# shellcheck source=scripts/lib/vbw-target-root.sh
+. "${SCRIPT_DIR}/lib/vbw-target-root.sh"
 
 # --- Usage ---
 usage() {
@@ -62,6 +63,23 @@ for arg in "$@"; do
     --claimed-files=*) CLAIMED_FILES="${arg#--claimed-files=}" ;;
   esac
 done
+
+TARGET_SCOPE_EXPLICIT=0
+if [ -n "${VBW_PLANNING_DIR:-}" ] || [ -n "$PLAN_PATH" ] || [ -n "$PHASE_DIR" ]; then
+  TARGET_SCOPE_EXPLICIT=1
+fi
+
+TARGET_ROOT=$(vbw_resolve_target_root "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PHASE_DIR" "${VBW_PLANNING_DIR:-}" || true)
+
+if [ -n "${VBW_PLANNING_DIR:-}" ]; then
+  PLANNING_DIR="$VBW_PLANNING_DIR"
+elif [ -n "$TARGET_ROOT" ] && [ -d "$TARGET_ROOT/.vbw-planning" ]; then
+  PLANNING_DIR="$TARGET_ROOT/.vbw-planning"
+else
+  PLANNING_DIR=".vbw-planning"
+fi
+
+CONFIG_PATH="${PLANNING_DIR}/config.json"
 
 # --- Config / flag resolution ---
 CONTEXT_COMPILER=false

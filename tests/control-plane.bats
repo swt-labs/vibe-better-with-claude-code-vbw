@@ -16,6 +16,19 @@ teardown() {
   teardown_temp_dir
 }
 
+setup_unrelated_git_repo() {
+  local repo_dir="$1"
+
+  mkdir -p "$repo_dir"
+  cd "$repo_dir" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+  echo "initial" > unrelated.txt
+  git add unrelated.txt
+  git commit -qm "init"
+}
+
 create_test_plan() {
   cat > "$TEST_TEMP_DIR/test-plan.md" << 'PLAN'
 ---
@@ -152,6 +165,28 @@ enable_flags() {
   run bash "$SCRIPTS_DIR/control-plane.sh" compile 1 1 1 --role=dev --phase-dir=.vbw-planning/phases/01-test --plan-path=test-plan.md
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.context_path' | grep -q "context-dev.md"
+}
+
+@test "control-plane: compile honors explicit target planning dir off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_test_plan
+  create_roadmap
+  cat > "$TEST_TEMP_DIR/.vbw-planning/REQUIREMENTS.md" <<'EOF'
+## Requirements
+- [REQ-01] Test requirement
+EOF
+
+  setup_unrelated_git_repo "$unrelated_repo"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" compile 1 1 1 \
+    --role=lead \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test" \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "context") | .status == "pass"'
+  grep -q 'Test goal' "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/.context-lead.md"
 }
 
 # --- full action tests ---
