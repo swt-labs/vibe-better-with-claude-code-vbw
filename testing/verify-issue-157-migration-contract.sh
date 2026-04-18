@@ -89,7 +89,7 @@ else
 fi
 
 if contains "$FIX_FILE" 'bash "{plugin-root}/scripts/todo-details.sh" get <hash>' \
-  && contains "$FIX_FILE" 'bash "{plugin-root}/scripts/resolve-agent-model.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json"' \
+  && contains "$FIX_FILE" 'bash "{plugin-root}/scripts/resolve-agent-settings.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" turbo' \
   && contains "$FIX_FILE" 'bash "{plugin-root}/scripts/suggest-next.sh" fix'; then
   pass "fix: uses safe {plugin-root} helper callsites"
 else
@@ -114,10 +114,10 @@ fi
 
 if contains "$QA_FILE" 'bash "{plugin-root}/scripts/qa-result-gate.sh"' \
   && contains "$QA_FILE" 'bash "{plugin-root}/scripts/track-known-issues.sh" promote-todos' \
-  && contains "$QA_FILE" 'bash "{plugin-root}/scripts/resolve-agent-model.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json"'; then
-  pass "qa: uses safe {plugin-root} gate, known-issues, and model-resolution callsites"
+  && contains "$QA_FILE" 'bash "{plugin-root}/scripts/resolve-agent-settings.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$QA_EFFORT_PROFILE"'; then
+  pass "qa: uses safe {plugin-root} gate, known-issues, and agent-settings callsites"
 else
-  fail "qa: missing migrated {plugin-root} gate/known-issues/model callsites"
+  fail "qa: missing migrated {plugin-root} gate/known-issues/agent-settings callsites"
 fi
 
 if contains "$VERIFY_FILE" 'bash "{plugin-root}/scripts/compile-verify-context-for-uat.sh"' \
@@ -174,7 +174,7 @@ else
 fi
 
 if contains "$RESEARCH_FILE" 'bash "{plugin-root}/scripts/todo-details.sh" get <hash>' \
-  && contains "$RESEARCH_FILE" 'bash "{plugin-root}/scripts/resolve-agent-model.sh" scout .vbw-planning/config.json "{plugin-root}/config/model-profiles.json"' \
+  && contains "$RESEARCH_FILE" 'bash "{plugin-root}/scripts/resolve-agent-settings.sh" scout .vbw-planning/config.json "{plugin-root}/config/model-profiles.json"' \
   && contains "$RESEARCH_FILE" 'bash "{plugin-root}/scripts/research-session-state.sh" start .vbw-planning "$RESEARCH_SLUG"'; then
   pass "research: uses safe {plugin-root} script callsites"
 else
