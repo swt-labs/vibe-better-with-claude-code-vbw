@@ -50,6 +50,8 @@ export VBW_PLANNING_DIR="$PLANNING_DIR"
 [ -n "$MILESTONE_SLUG" ] || exit 0
 [ -n "$ARCHIVE_PATH" ] || exit 0
 
+ARCHIVE_PATH=$(resolve_from_base "$ARCHIVE_PATH" "$PROJECT_ROOT")
+
 LOG_EVENT_SCRIPT="$SCRIPT_DIR/log-event.sh"
 if [ -f "$LOG_EVENT_SCRIPT" ]; then
   bash "$LOG_EVENT_SCRIPT" milestone_shipped archive \

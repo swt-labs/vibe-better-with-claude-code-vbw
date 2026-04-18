@@ -99,6 +99,32 @@ JSON
   [ "$delta" -eq -2 ]
 }
 
+@test "token-baseline: ignores archive lifecycle pseudo-phase" {
+  cd "$TEST_TEMP_DIR"
+  echo '{"ts":"2026-02-13T10:00:00Z","event_id":"e1","event":"task_started","phase":1}' >> .vbw-planning/.events/event-log.jsonl
+  echo '{"ts":"2026-02-13T10:00:01Z","event_id":"e2","event":"milestone_shipped","phase":"archive","data":{"slug":"01-demo","archive_path":"/tmp/demo/.vbw-planning/milestones/01-demo","tag":"milestone/01-demo"}}' >> .vbw-planning/.events/event-log.jsonl
+  echo '{"ts":"2026-02-13T10:00:00Z","event":"token_overage","phase":1,"data":{"role":"dev","lines_total":"500","lines_max":"800","lines_truncated":"100"}}' >> .vbw-planning/.metrics/run-metrics.jsonl
+
+  run bash scripts/token-baseline.sh measure
+  [ "$status" -eq 0 ]
+  archive_present=$(echo "$output" | jq '.phases | has("archive")')
+  [ "$archive_present" = "false" ]
+
+  mkdir -p .vbw-planning/.baselines
+  cat > .vbw-planning/.baselines/token-baseline.json <<'JSON'
+{"timestamp":"2026-02-10T00:00:00Z","phases":{"1":{"overages":1,"truncated_chars":100,"tasks":1,"escalations_legacy":0,"overages_per_task":1},"archive":{"overages":0,"truncated_chars":0,"tasks":0,"escalations_legacy":0,"overages_per_task":0}},"totals":{"overages":1,"truncated_chars":100,"tasks":1,"escalations_legacy":0,"overages_per_task":1},"budget_utilization":{}}
+JSON
+
+  run bash scripts/token-baseline.sh compare
+  [ "$status" -eq 0 ]
+  archive_change=$(echo "$output" | jq '.phase_changes | has("archive")')
+  [ "$archive_change" = "false" ]
+
+  run bash scripts/token-baseline.sh report
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"| archive |"* ]]
+}
+
 @test "token-baseline: compare exits 0 when no baseline exists" {
   cd "$TEST_TEMP_DIR"
   echo '{"ts":"2026-02-13T10:00:00Z","event":"token_overage","phase":1,"data":{"role":"dev","lines_total":"500","lines_max":"800","lines_truncated":"100"}}' >> .vbw-planning/.metrics/run-metrics.jsonl

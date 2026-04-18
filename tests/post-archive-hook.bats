@@ -13,6 +13,7 @@ teardown() {
 
 @test "post-archive-hook: no config key no-ops and writes milestone event" {
   cd "$TEST_TEMP_DIR"
+  root_real=$(pwd -P)
 
   run bash "$SCRIPTS_DIR/post-archive-hook.sh" \
     "01-demo" \
@@ -23,7 +24,7 @@ teardown() {
   [ -f .vbw-planning/.events/event-log.jsonl ]
 
   run jq -r '.event + ":" + .phase + ":" + .data.slug + ":" + .data.archive_path + ":" + .data.tag' .vbw-planning/.events/event-log.jsonl
-  [ "$output" = "milestone_shipped:archive:01-demo:.vbw-planning/milestones/01-demo:milestone/01-demo" ]
+  [ "$output" = "milestone_shipped:archive:01-demo:$root_real/.vbw-planning/milestones/01-demo:milestone/01-demo" ]
 }
 
 @test "post-archive-hook: missing hook file warns and succeeds" {
@@ -42,6 +43,7 @@ teardown() {
 
 @test "post-archive-hook: resolves project-relative hook path" {
   cd "$TEST_TEMP_DIR"
+  root_real=$(pwd -P)
   mkdir -p scripts/hooks
   cat > scripts/hooks/post-archive.sh <<EOF
 #!/usr/bin/env bash
@@ -60,7 +62,8 @@ EOF
   [ -f "$TEST_TEMP_DIR/hook-args.txt" ]
 
   run cat "$TEST_TEMP_DIR/hook-args.txt"
-  [ "$output" = $'slug=01-demo\narchive=.vbw-planning/milestones/01-demo\ntag=milestone/01-demo' ]
+  expected=$(printf 'slug=%s\narchive=%s\ntag=%s' "01-demo" "$root_real/.vbw-planning/milestones/01-demo" "milestone/01-demo")
+  [ "$output" = "$expected" ]
 }
 
 @test "post-archive-hook: hook failure warns and still succeeds" {
@@ -87,6 +90,7 @@ EOF
 
 @test "post-archive-hook: preserves empty tag argument" {
   cd "$TEST_TEMP_DIR"
+  root_real=$(pwd -P)
   mkdir -p scripts/hooks
   cat > scripts/hooks/post-archive.sh <<EOF
 #!/usr/bin/env bash
@@ -104,11 +108,13 @@ EOF
   [ "$status" -eq 0 ]
 
   run cat "$TEST_TEMP_DIR/hook-args.txt"
-  [ "$output" = $'slug=01-demo\narchive=.vbw-planning/milestones/01-demo\ntag=' ]
+  expected=$(printf 'slug=%s\narchive=%s\ntag=%s' "01-demo" "$root_real/.vbw-planning/milestones/01-demo" "")
+  [ "$output" = "$expected" ]
 }
 
 @test "post-archive-hook: absolute config path anchors relative hook off-root" {
   cd "$TEST_TEMP_DIR"
+  root_real=$(pwd -P)
   mkdir -p scripts/hooks "$TEST_TEMP_DIR/outside"
   cat > scripts/hooks/post-archive.sh <<EOF
 #!/usr/bin/env bash
@@ -124,7 +130,8 @@ EOF
   [ -f "$TEST_TEMP_DIR/hook-args.txt" ]
 
   run cat "$TEST_TEMP_DIR/hook-args.txt"
-  [ "$output" = $'slug=01-demo\narchive=.vbw-planning/milestones/01-demo\ntag=milestone/01-demo' ]
+  expected=$(printf 'slug=%s\narchive=%s\ntag=%s' "01-demo" "$root_real/.vbw-planning/milestones/01-demo" "milestone/01-demo")
+  [ "$output" = "$expected" ]
 }
 
 @test "post-archive-hook: invalid archive context writes no milestone event" {
