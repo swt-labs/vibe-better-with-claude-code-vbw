@@ -1605,7 +1605,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   }; then
     ROUND_CLASSIFICATIONS_VALID=false
   fi
-  if [ -z "$GIT_ROOT" ] && { [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null || [ "$ROUND_PLAN_AMENDMENT_COUNT" -gt 0 ] 2>/dev/null; }; then
+  if [ -z "$GIT_ROOT" ] && [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null; then
     ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
   fi
 
@@ -1689,10 +1689,10 @@ case "$RESULT" in
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$ROUND_PLAN_MISSING" = "true" ]; then
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
-    elif [ "$ROUND_CHANGE_EVIDENCE_UNAVAILABLE" = "true" ]; then
+    elif [ "$ROUND_CHANGE_EVIDENCE_UNAVAILABLE" = "true" ] && [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null; then
       echo "qa_gate_round_change_evidence_unavailable=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
-    elif [ "$ROUND_CHANGE_EVIDENCE_EMPTY" = "true" ]; then
+    elif [ "$ROUND_CHANGE_EVIDENCE_EMPTY" = "true" ] && [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null; then
       echo "qa_gate_round_change_evidence_empty=true"
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] \
