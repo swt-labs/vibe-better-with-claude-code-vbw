@@ -30,7 +30,7 @@ Run individual checks:
 
 For slash-command behavior, test in a separate sandbox repo (not this plugin repo), for example:
 
-- `/Users/dpearson/repos/vibe-better-testing-repo`
+- `/absolute/path/to/your-test-repo`
 
 Recommended flow:
 
