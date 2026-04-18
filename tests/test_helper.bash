@@ -18,7 +18,17 @@ setup_temp_dir() {
   export _ORIG_HOME="${HOME:-}"
   export _ORIG_GIT_CONFIG_NOSYSTEM="${GIT_CONFIG_NOSYSTEM:-}"
   export _ORIG_GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-}"
+  if [ "${CLAUDE_CONFIG_DIR+x}" = "x" ]; then
+    export _ORIG_CLAUDE_CONFIG_DIR_WAS_SET=1
+    export _ORIG_CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR}"
+  else
+    export _ORIG_CLAUDE_CONFIG_DIR_WAS_SET=0
+    unset _ORIG_CLAUDE_CONFIG_DIR 2>/dev/null || true
+  fi
   export HOME="$TEST_TEMP_DIR"
+  # Scripts that source resolve-claude-dir.sh prefer CLAUDE_CONFIG_DIR over HOME,
+  # so clear inherited host config unless a test opts back in explicitly.
+  unset CLAUDE_CONFIG_DIR 2>/dev/null || true
   export GIT_CONFIG_NOSYSTEM=1
   export GIT_CONFIG_GLOBAL="$TEST_TEMP_DIR/.gitconfig"
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
@@ -28,6 +38,11 @@ setup_temp_dir() {
 teardown_temp_dir() {
   [ -n "${TEST_TEMP_DIR:-}" ] && rm -rf "$TEST_TEMP_DIR"
   HOME="$_ORIG_HOME"
+  if [ "${_ORIG_CLAUDE_CONFIG_DIR_WAS_SET:-0}" = "1" ]; then
+    export CLAUDE_CONFIG_DIR="${_ORIG_CLAUDE_CONFIG_DIR-}"
+  else
+    unset CLAUDE_CONFIG_DIR 2>/dev/null || true
+  fi
   if [ -n "$_ORIG_GIT_CONFIG_NOSYSTEM" ]; then
     GIT_CONFIG_NOSYSTEM="$_ORIG_GIT_CONFIG_NOSYSTEM"
   else
@@ -38,7 +53,7 @@ teardown_temp_dir() {
   else
     unset GIT_CONFIG_GLOBAL
   fi
-  unset VBW_AGENT_PID_LOCK_DIR _ORIG_HOME _ORIG_GIT_CONFIG_NOSYSTEM _ORIG_GIT_CONFIG_GLOBAL
+  unset VBW_AGENT_PID_LOCK_DIR _ORIG_HOME _ORIG_CLAUDE_CONFIG_DIR _ORIG_CLAUDE_CONFIG_DIR_WAS_SET _ORIG_GIT_CONFIG_NOSYSTEM _ORIG_GIT_CONFIG_GLOBAL
 }
 
 # Generate a PID that is guaranteed dead. Spawns a process intended to stay
