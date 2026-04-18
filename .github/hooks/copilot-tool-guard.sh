@@ -92,7 +92,7 @@ if [ "$matches_python" -eq 1 ]; then
   done
 fi
 
-[ "$matches_heredoc" -eq 1 ] || [ "$matches_python" -eq 1 ] || exit 0
+[ "$matches_heredoc" -eq 1 ] || [ "$matches_python" -eq 1 ] || { echo '{}'; exit 0; }
 
 reason_parts=()
 context_parts=()

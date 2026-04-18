@@ -68,7 +68,7 @@ for root in "${candidate_roots[@]}"; do
     if command -v gstat >/dev/null 2>&1; then
       m=$(gstat -c '%Y' "$f" 2>/dev/null || echo 0)
     else
-      m=$(stat -f '%m' "$f" 2>/dev/null || stat -c '%Y' "$f" 2>/dev/null || echo 0)
+      m=$(stat -c '%Y' "$f" 2>/dev/null || stat -f '%m' "$f" 2>/dev/null || echo 0)
     fi
     age=$(( now - m ))
     if [ "$age" -le 120 ] && [ "$m" -gt "$best_mtime" ]; then
