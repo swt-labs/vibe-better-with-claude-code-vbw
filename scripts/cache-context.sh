@@ -116,13 +116,17 @@ if [ -n "$TARGET_GIT_ROOT" ]; then
   CHANGED_SUM=$({
     if [ -n "$WORKSPACE_SUBPATH" ]; then
       git -C "$TARGET_GIT_ROOT" diff HEAD -- "$WORKSPACE_SUBPATH" 2>/dev/null || true
-      git -C "$TARGET_GIT_ROOT" ls-files --others --exclude-standard -- "$WORKSPACE_SUBPATH" 2>/dev/null || true
     else
       git -C "$TARGET_GIT_ROOT" diff HEAD 2>/dev/null || true
-      git -C "$TARGET_GIT_ROOT" ls-files --others --exclude-standard 2>/dev/null || true
+    fi
+    # Hash untracked files separately to avoid labeling diff output as UNTRACKED
+    if [ -n "$WORKSPACE_SUBPATH" ]; then
+      git -C "$TARGET_GIT_ROOT" ls-files --others --exclude-standard -- "$WORKSPACE_SUBPATH" 2>/dev/null
+    else
+      git -C "$TARGET_GIT_ROOT" ls-files --others --exclude-standard 2>/dev/null
     fi | while IFS= read -r file; do
       [ -n "$file" ] || continue
-      echo "UNTRACKED:$file"
+      printf 'UNTRACKED:%s\n' "$file"
       if [ -f "$TARGET_GIT_ROOT/$file" ]; then
         shasum -a 256 "$TARGET_GIT_ROOT/$file" 2>/dev/null || true
       fi
