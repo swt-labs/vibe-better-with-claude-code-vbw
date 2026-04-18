@@ -400,6 +400,7 @@ MOCK
 
 @test "hook-wrapper: falls back to CLAUDE_PLUGIN_ROOT when cache is empty" {
   cd "$TEST_TEMP_DIR"
+  local claude_dir="$TEST_TEMP_DIR/empty-claude"
   # Set up: no cache, but CLAUDE_PLUGIN_ROOT points to real scripts
   mkdir -p "$TEST_TEMP_DIR/fake-plugin/scripts"
   cp "$SCRIPTS_DIR/hook-wrapper.sh" "$TEST_TEMP_DIR/fake-plugin/scripts/"
@@ -411,24 +412,26 @@ exit 0
 MOCK
   chmod +x "$TEST_TEMP_DIR/fake-plugin/scripts/mock-ok.sh"
 
-  # HOME points to empty dir (no cache), CLAUDE_PLUGIN_ROOT points to fake plugin
-  run bash -c "export HOME='$TEST_TEMP_DIR/empty-home'; export CLAUDE_PLUGIN_ROOT='$TEST_TEMP_DIR/fake-plugin'; bash '$TEST_TEMP_DIR/fake-plugin/scripts/hook-wrapper.sh' mock-ok.sh"
+  # hook-wrapper resolves CLAUDE_CONFIG_DIR before HOME, so set it explicitly
+  # to keep inherited worker env from redirecting cache resolution.
+  run bash -c "export HOME='$TEST_TEMP_DIR/empty-home'; export CLAUDE_CONFIG_DIR='$claude_dir'; export CLAUDE_PLUGIN_ROOT='$TEST_TEMP_DIR/fake-plugin'; bash '$TEST_TEMP_DIR/fake-plugin/scripts/hook-wrapper.sh' mock-ok.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"OK from plugin root"* ]]
 }
 
 @test "hook-wrapper: prefers cache over CLAUDE_PLUGIN_ROOT when both exist" {
   cd "$TEST_TEMP_DIR"
+  local claude_dir="$TEST_TEMP_DIR/.claude"
   # Set up cache with a script
-  mkdir -p "$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts"
-  cp "$SCRIPTS_DIR/hook-wrapper.sh" "$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
-  cp "$SCRIPTS_DIR/resolve-claude-dir.sh" "$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
-  cat > "$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/mock-source.sh" <<'MOCK'
+  mkdir -p "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts"
+  cp "$SCRIPTS_DIR/hook-wrapper.sh" "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
+  cp "$SCRIPTS_DIR/resolve-claude-dir.sh" "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
+  cat > "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/mock-source.sh" <<'MOCK'
 #!/bin/bash
 echo "FROM_CACHE"
 exit 0
 MOCK
-  chmod +x "$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/mock-source.sh"
+  chmod +x "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/mock-source.sh"
 
   # Also set up CLAUDE_PLUGIN_ROOT with a different script
   mkdir -p "$TEST_TEMP_DIR/fake-plugin/scripts"
@@ -440,7 +443,7 @@ MOCK
   chmod +x "$TEST_TEMP_DIR/fake-plugin/scripts/mock-source.sh"
 
   # Cache should win
-  run bash -c "export HOME='$TEST_TEMP_DIR'; export CLAUDE_PLUGIN_ROOT='$TEST_TEMP_DIR/fake-plugin'; bash '$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/hook-wrapper.sh' mock-source.sh"
+  run bash -c "export HOME='$TEST_TEMP_DIR'; export CLAUDE_CONFIG_DIR='$claude_dir'; export CLAUDE_PLUGIN_ROOT='$TEST_TEMP_DIR/fake-plugin'; bash '$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/hook-wrapper.sh' mock-source.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"FROM_CACHE"* ]]
 }
@@ -465,15 +468,16 @@ MOCK
   # Verify that the hook-wrapper exit-code logic preserves exit 2
   # (This tests the actual hook-wrapper.sh, not the mock)
   cd "$TEST_TEMP_DIR"
+  local claude_dir="$TEST_TEMP_DIR/.claude"
 
   # Create a fake plugin cache with the real hook-wrapper and security-filter
-  mkdir -p "$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts"
-  cp "$SCRIPTS_DIR/hook-wrapper.sh" "$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
-  cp "$SCRIPTS_DIR/security-filter.sh" "$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
-  cp "$SCRIPTS_DIR/resolve-claude-dir.sh" "$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
+  mkdir -p "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts"
+  cp "$SCRIPTS_DIR/hook-wrapper.sh" "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
+  cp "$SCRIPTS_DIR/security-filter.sh" "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
+  cp "$SCRIPTS_DIR/resolve-claude-dir.sh" "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
 
   INPUT='{"tool_name":"Read","tool_input":{"file_path":".env"}}'
-  run bash -c "export HOME='$TEST_TEMP_DIR'; echo '$INPUT' | bash '$TEST_TEMP_DIR/.claude/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/hook-wrapper.sh' security-filter.sh"
+  run bash -c "export HOME='$TEST_TEMP_DIR'; export CLAUDE_CONFIG_DIR='$claude_dir'; echo '$INPUT' | bash '$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/hook-wrapper.sh' security-filter.sh"
   [ "$status" -eq 2 ]
 }
 
