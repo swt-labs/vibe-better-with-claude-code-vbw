@@ -20,6 +20,7 @@ printf '%s\t%s\n' \
   issue-157-migration          testing/verify-issue-157-migration-contract.sh \
   plugin-root-resolution       testing/verify-plugin-root-resolution.sh \
   hook-event-name              testing/verify-hook-event-name.sh \
+  github-fix-workflow-contract testing/verify-github-fix-workflow-contract.sh \
   plan-filename-convention     testing/verify-plan-filename-convention.sh \
   skill-activation             testing/verify-skill-activation.sh \
   permission-mode-contract     testing/verify-permission-mode-contract.sh \

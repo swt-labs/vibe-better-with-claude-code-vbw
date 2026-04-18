@@ -66,7 +66,7 @@ fi
 
 # Allowlist: specific Python scripts that are part of the agent toolchain
 PYTHON_ALLOWLIST=(
-  '.github/scripts/wait-copilot-review.py'
+  '.github/scripts/wait-github.py'
 )
 if [ "$matches_python" -eq 1 ]; then
   for allowed in "${PYTHON_ALLOWLIST[@]}"; do

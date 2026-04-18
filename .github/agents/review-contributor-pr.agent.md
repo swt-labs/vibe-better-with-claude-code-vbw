@@ -89,9 +89,7 @@ Execute these phases in order.
                wt_path=""
                ;;
        esac
-   done <<EOF
-   $(git worktree list --porcelain 2>/dev/null)
-   EOF
+    done < <(git worktree list --porcelain 2>/dev/null)
 
    if [ "$current_toplevel" = "$target_worktree" ] && [ "$current_branch" = "$branch" ]; then
        cd "$target_worktree" || exit 1

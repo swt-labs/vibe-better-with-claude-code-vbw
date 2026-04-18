@@ -24,6 +24,18 @@ from typing import Any, cast
 # Shared utilities
 # ---------------------------------------------------------------------------
 
+
+class GhApiError(RuntimeError):
+    """Raised when `gh api` exits non-zero."""
+
+    def __init__(self, endpoint: str, returncode: int, stderr: str):
+        self.endpoint = endpoint
+        self.returncode = returncode
+        self.stderr = stderr
+        super().__init__(
+            f"gh api failed for {endpoint} with exit code {returncode}: {stderr}"
+        )
+
 def gh_api(
     endpoint: str,
     *,
@@ -41,6 +53,10 @@ def gh_api(
         cmd.extend(extra_args)
 
     result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or result.stdout.strip() or "unknown gh api error"
+        raise GhApiError(endpoint, result.returncode, stderr)
+
     raw = result.stdout
 
     if not include_headers:
@@ -300,7 +316,13 @@ def _evaluate_check_runs(body: str, sha: str) -> str | None:
     if total == 0:
         return f"NO_CHECKS — no check runs found on {sha}"
 
-    failed = [cr for cr in check_runs if cr.get("conclusion") == "failure"]
+    allowed_completed_conclusions = {"success", "neutral", "skipped"}
+    failed = [
+        cr
+        for cr in check_runs
+        if cr.get("status") == "completed"
+        and cr.get("conclusion") not in allowed_completed_conclusions
+    ]
     pending = [cr for cr in check_runs if cr.get("status") != "completed"]
 
     if failed:
@@ -336,42 +358,50 @@ def _pending_check_names(body: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="ETag-based polling for GitHub PR events",
-    )
-    subparsers = parser.add_subparsers(dest="command")
+    try:
+        parser = argparse.ArgumentParser(
+            description="ETag-based polling for GitHub PR events",
+        )
+        subparsers = parser.add_subparsers(dest="command")
 
-    # wait-review
-    review_parser = subparsers.add_parser(
-        "wait-review",
-        help="Wait for a fresh Copilot PR review",
-    )
-    review_parser.add_argument("--pr", required=True, type=int, help="PR number")
-    review_parser.add_argument("--repo", required=True, help="owner/repo")
-    review_parser.add_argument("--push-ts", required=True, help="ISO8601 timestamp captured immediately before the triggering push")
-    review_parser.add_argument("--head-sha", required=True, help="Exact commit SHA or unique prefix that the review must target")
-    review_parser.add_argument("--timeout", type=int, default=600, help="Max seconds to wait (default: 600)")
-    review_parser.add_argument("--poll-interval", type=int, default=5, help="Seconds between polls (default: 5)")
+        # wait-review
+        review_parser = subparsers.add_parser(
+            "wait-review",
+            help="Wait for a fresh Copilot PR review",
+        )
+        review_parser.add_argument("--pr", required=True, type=int, help="PR number")
+        review_parser.add_argument("--repo", required=True, help="owner/repo")
+        review_parser.add_argument("--push-ts", required=True, help="ISO8601 timestamp captured immediately before the triggering push")
+        review_parser.add_argument("--head-sha", required=True, help="Exact commit SHA or unique prefix that the review must target")
+        review_parser.add_argument("--timeout", type=int, default=600, help="Max seconds to wait (default: 600)")
+        review_parser.add_argument("--poll-interval", type=int, default=5, help="Seconds between polls (default: 5)")
 
-    # wait-ci
-    ci_parser = subparsers.add_parser(
-        "wait-ci",
-        help="Wait for CI check runs to complete on a commit",
-    )
-    ci_parser.add_argument("--repo", required=True, help="owner/repo")
-    ci_parser.add_argument("--sha", required=True, help="Commit SHA to check")
-    ci_parser.add_argument("--timeout", type=int, default=900, help="Max seconds to wait (default: 900)")
-    ci_parser.add_argument("--poll-interval", type=int, default=10, help="Seconds between polls (default: 10)")
+        # wait-ci
+        ci_parser = subparsers.add_parser(
+            "wait-ci",
+            help="Wait for CI check runs to complete on a commit",
+        )
+        ci_parser.add_argument("--repo", required=True, help="owner/repo")
+        ci_parser.add_argument("--sha", required=True, help="Commit SHA to check")
+        ci_parser.add_argument("--timeout", type=int, default=900, help="Max seconds to wait (default: 900)")
+        ci_parser.add_argument("--poll-interval", type=int, default=10, help="Seconds between polls (default: 10)")
 
-    args = parser.parse_args()
+        args = parser.parse_args()
 
-    if args.command == "wait-review":
-        cmd_wait_review(args)
-    elif args.command == "wait-ci":
-        cmd_wait_ci(args)
-    else:
-        parser.print_help()
-        sys.exit(1)
+        if args.command == "wait-review":
+            cmd_wait_review(args)
+        elif args.command == "wait-ci":
+            cmd_wait_ci(args)
+        else:
+            parser.print_help()
+            sys.exit(1)
+    except GhApiError as exc:
+        print(
+            f"GH_API_ERROR endpoint={exc.endpoint} exit_code={exc.returncode}",
+            file=sys.stderr,
+        )
+        print(exc.stderr, file=sys.stderr)
+        sys.exit(3)
 
 
 if __name__ == "__main__":

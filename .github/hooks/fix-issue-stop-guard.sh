@@ -19,38 +19,40 @@ REPO="vibe-better-with-claude-code-vbw"
 # Capture hook stdin JSON for best-effort worktree/branch targeting.
 INPUT=$(cat)
 
-# --- Diagnostic capture (step 1 of per-thread targeting rollout) ---
-# Dump stdin + env for one-shot analysis of what VS Code GitHub Copilot
-# actually passes to Stop hooks. Used to pick a stable thread identifier
-# before we build per-thread state wiring. Keeps only the last 10 dumps to
-# avoid filling /tmp. Remove or gate behind FIX_ISSUE_HOOK_DEBUG after
-# the identifier source is confirmed.
-{
-  debug_dir="/tmp/fix-issue-stop-hook-debug"
-  mkdir -p "$debug_dir" 2>/dev/null || true
-  debug_file="$debug_dir/$(date +%s%N).json"
+# --- Diagnostic capture ---
+# Opt-in only: local debug snapshots can include stdin and partially-redacted
+# environment data, so only emit them when FIX_ISSUE_HOOK_DEBUG=1.
+if [ "${FIX_ISSUE_HOOK_DEBUG:-}" = "1" ]; then
   {
-    printf '{\n'
-    printf '  "pid": %s,\n' "$$"
-    printf '  "ppid": %s,\n' "${PPID:-0}"
-    printf '  "cwd": %s,\n' "$(pwd -P | jq -R .)"
-    printf '  "stdin": %s,\n' "$(printf '%s' "$INPUT" | jq -Rs . 2>/dev/null || printf '""')"
-    printf '  "env": '
-    env | awk -F= '
-      {
-        key=$1
-        val=substr($0, length(key)+2)
-        if (key ~ /(TOKEN|SECRET|PASSWORD|CREDENTIAL|_KEY$|_PAT$|_AUTH$|API_KEY|ACCESS_KEY)/ ) {
-          val="[REDACTED]"
+    umask 077
+    debug_dir="/tmp/fix-issue-stop-hook-debug"
+    mkdir -p "$debug_dir" 2>/dev/null || true
+    chmod 700 "$debug_dir" 2>/dev/null || true
+    debug_file="$debug_dir/$(date +%s%N).json"
+    {
+      printf '{\n'
+      printf '  "pid": %s,\n' "$$"
+      printf '  "ppid": %s,\n' "${PPID:-0}"
+      printf '  "cwd": %s,\n' "$(pwd -P | jq -R .)"
+      printf '  "stdin": %s,\n' "$(printf '%s' "$INPUT" | jq -Rs . 2>/dev/null || printf '""')"
+      printf '  "env": '
+      env | awk -F= '
+        {
+          key=$1
+          val=substr($0, length(key)+2)
+          if (key ~ /(TOKEN|SECRET|PASSWORD|CREDENTIAL|_KEY$|_PAT$|_AUTH$|API_KEY|ACCESS_KEY)/ ) {
+            val="[REDACTED]"
+          }
+          print key "=" val
         }
-        print key "=" val
-      }
-    ' | jq -Rs 'split("\n") | map(select(length > 0))' 2>/dev/null || printf '[]'
-    printf '\n}\n'
-  } > "$debug_file" 2>/dev/null || true
-  # Prune: keep last 10
-  ls -1t "$debug_dir"/*.json 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
-} 2>/dev/null || true
+      ' | jq -Rs 'split("\n") | map(select(length > 0))' 2>/dev/null || printf '[]'
+      printf '\n}\n'
+    } > "$debug_file" 2>/dev/null || true
+    chmod 600 "$debug_file" 2>/dev/null || true
+    # Prune: keep last 10
+    ls -1t "$debug_dir"/*.json 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
+  } 2>/dev/null || true
+fi
 
 # --- Helpers ---
 # block() emits structured data so the agent can recover without re-deriving
@@ -94,6 +96,41 @@ canonicalize_dir() {
   [ -n "$path" ] || return 1
   [ -d "$path" ] || return 1
   (cd "$path" 2>/dev/null && pwd -P)
+}
+
+latest_branch_push_at() {
+  local branch="$1"
+  local head_sha="$2"
+  local branch_ref_json branch_head_oid branch_pushed_at
+
+  branch_ref_json=$(gh api graphql \
+    -f query='\
+      query($owner: String!, $repo: String!, $ref: String!) {\
+        repository(owner: $owner, name: $repo) {\
+          ref(qualifiedName: $ref) {\
+            target {\
+              __typename\
+              ... on Commit {\
+                oid\
+                pushedDate\
+              }\
+            }\
+          }\
+        }\
+      }' \
+    -f owner="$OWNER" \
+    -f repo="$REPO" \
+    -f ref="refs/heads/${branch}" 2>/dev/null || true)
+
+  branch_head_oid=$(printf '%s' "$branch_ref_json" | jq -r '.data.repository.ref.target.oid // empty' 2>/dev/null || true)
+  branch_pushed_at=$(printf '%s' "$branch_ref_json" | jq -r '.data.repository.ref.target.pushedDate // empty' 2>/dev/null || true)
+
+  if [ -n "$branch_pushed_at" ] && [ "$branch_head_oid" = "$head_sha" ]; then
+    printf '%s\n' "$branch_pushed_at"
+    return 0
+  fi
+
+  gh api "repos/${OWNER}/${REPO}/events" --jq '[.[] | select(.type == "PushEvent" and .payload.ref == "refs/heads/'"${branch}"'")] | first | .created_at // empty' 2>/dev/null || true
 }
 
 # --- validate_pr: run all readiness gates against one PR. On any failure
@@ -199,8 +236,7 @@ validate_pr() {
   if [ -n "$head_sha" ]; then
     local latest_push_at reviews_json latest_copilot_review copilot_review_at
     local review_epoch push_epoch date_cmd
-    latest_push_at=$(gh api "repos/${OWNER}/${REPO}/events" --jq '[.[] | select(.type == "PushEvent" and .payload.ref == "refs/heads/'"${branch}"'")] | first | .created_at // empty' 2>/dev/null || true)
-    [ -z "$latest_push_at" ] && latest_push_at=$(gh api "repos/${OWNER}/${REPO}/commits/${head_sha}" --jq '.commit.committer.date // empty' 2>/dev/null || true)
+    latest_push_at=$(latest_branch_push_at "$branch" "$head_sha")
     if [ -n "$latest_push_at" ]; then
       reviews_json=$(gh api graphql -f query='
         { repository(owner:"'"${OWNER}"'",name:"'"${REPO}"'") {
