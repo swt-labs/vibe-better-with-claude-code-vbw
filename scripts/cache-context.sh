@@ -186,8 +186,9 @@ if [[ "$ROLE" =~ ^(dev|scout|debugger)$ ]] && [ -f "${0%/*}/delta-files.sh" ]; t
     if [ -n "$DELTA_FILES" ]; then
       DELTA_LIST_SUM=$(printf '%s\n' "$DELTA_FILES" | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nodelta")
       DELTA_CONTENT_SUM=$(printf '%s\n' "$DELTA_FILES" | while IFS= read -r file; do
-        local_path=$(vbw_resolve_repo_path "$TARGET_ROOT" "$file")
         [ -n "$file" ] || continue
+        vbw_is_safe_relative_path "$file" || continue
+        local_path=$(vbw_resolve_repo_path "$TARGET_ROOT" "$file") || continue
         echo "FILE:$file"
         if [ -f "$local_path" ]; then
           shasum -a 256 "$local_path" 2>/dev/null || true

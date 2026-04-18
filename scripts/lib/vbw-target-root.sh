@@ -144,6 +144,15 @@ vbw_resolve_target_git_root() {
   return 1
 }
 
+## vbw_is_safe_relative_path — reject absolute paths and .. traversal
+vbw_is_safe_relative_path() {
+  local path="${1:-}"
+  case "$path" in
+    ""|/*|..|../*|*/../*|*/..) return 1 ;;
+  esac
+  return 0
+}
+
 vbw_resolve_repo_path() {
   local root="$1" path="$2"
 
@@ -152,18 +161,16 @@ vbw_resolve_repo_path() {
     return 0
   fi
 
-  case "$path" in
-    /*)
-      printf '%s\n' "$path"
-      ;;
-    *)
-      if [ -n "$root" ]; then
-        printf '%s/%s\n' "$root" "$path"
-      else
-        printf '%s\n' "$path"
-      fi
-      ;;
-  esac
+  # Reject absolute paths and directory traversal
+  if ! vbw_is_safe_relative_path "$path"; then
+    return 1
+  fi
+
+  if [ -n "$root" ]; then
+    printf '%s/%s\n' "$root" "$path"
+  else
+    printf '%s\n' "$path"
+  fi
 }
 
 vbw_workspace_subpath_from_git_root() {

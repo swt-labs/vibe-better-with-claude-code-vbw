@@ -339,7 +339,8 @@ emit_delta_code_slices_section() {
   echo "### Code Slices"
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    source_path=$(vbw_resolve_repo_path "$source_root" "$f")
+    vbw_is_safe_relative_path "$f" || continue
+    source_path=$(vbw_resolve_repo_path "$source_root" "$f") || continue
     if [ -f "$source_path" ]; then
       slice_lines=$(wc -l < "$source_path" 2>/dev/null | tr -d ' ' || echo "0")
       if [ "$slice_lines" -le 50 ]; then
