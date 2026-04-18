@@ -394,8 +394,11 @@ if [ -n "$SESSION_ID" ]; then
 fi
 
 # Enumerate open-PR worktrees once for tiers 2-4.
-CANDIDATES=$(enumerate_open_pr_worktrees)
-CANDIDATE_COUNT=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | wc -l | tr -d ' ')
+if CANDIDATES=$(enumerate_open_pr_worktrees); then
+  CANDIDATE_COUNT=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | wc -l | tr -d ' ')
+else
+  block "Unable to enumerate open PR worktrees; cannot safely validate fix-issue completion."
+fi
 
 # No open-PR worktrees at all → nothing to gate. Let through.
 if [ "$CANDIDATE_COUNT" = "0" ]; then

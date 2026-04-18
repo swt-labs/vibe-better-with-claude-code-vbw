@@ -63,8 +63,22 @@ def gh_api(
             f"failed to execute gh api: {exc}. Ensure GitHub CLI (`gh`) is installed and available on PATH.",
         ) from exc
     if result.returncode != 0:
-        stderr = result.stderr.strip() or result.stdout.strip() or "unknown gh api error"
-        raise GhApiError(endpoint, result.returncode, stderr)
+        # gh api exits non-zero for HTTP 304 (Not Modified) when using
+        # conditional requests (If-None-Match).  When include_headers is
+        # True the caller expects to inspect the status code, so parse the
+        # output first and only raise if it's not a 304.
+        if include_headers and "HTTP/" in (result.stdout or ""):
+            first_line = result.stdout.split("\n", 1)[0]
+            parts = first_line.split(None, 2)
+            if len(parts) >= 2 and parts[1] == "304":
+                # Fall through to normal header/body parsing below.
+                pass
+            else:
+                stderr = result.stderr.strip() or result.stdout.strip() or "unknown gh api error"
+                raise GhApiError(endpoint, result.returncode, stderr)
+        else:
+            stderr = result.stderr.strip() or result.stdout.strip() or "unknown gh api error"
+            raise GhApiError(endpoint, result.returncode, stderr)
 
     raw = result.stdout
 
@@ -290,8 +304,11 @@ def cmd_wait_ci(args: argparse.Namespace) -> None:
             print(result)
             if result.startswith("CI_FAILURE"):
                 sys.exit(2)
+            if result.startswith("CI_ERROR"):
+                sys.exit(1)
             # NO_CHECKS is not a terminal success — CI may not have registered yet.
-            # Keep polling until checks appear, CI_GREEN, CI_FAILURE, or timeout.
+            # Keep polling until checks appear, CI_GREEN, CI_FAILURE, CI_ERROR,
+            # or timeout.
             if not result.startswith("NO_CHECKS"):
                 return
 
