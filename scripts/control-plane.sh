@@ -223,6 +223,9 @@ step_lease_acquire() {
   local result
   if [ -n "$CLAIMED_FILES" ]; then
     while IFS= read -r claimed_file; do
+      # Trim leading/trailing whitespace to avoid spurious mismatches in lease-lock.sh
+      claimed_file="${claimed_file#"${claimed_file%%[![:space:]]*}"}"
+      claimed_file="${claimed_file%"${claimed_file##*[![:space:]]}"}"
       [ -n "$claimed_file" ] || continue
       files_args+=("$claimed_file")
     done < <(printf '%s' "$CLAIMED_FILES" | tr ',' '\n')
