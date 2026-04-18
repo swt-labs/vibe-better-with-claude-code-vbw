@@ -15,6 +15,31 @@ teardown() {
   teardown_temp_dir
 }
 
+create_alternate_contract_workspace() {
+  ALT_WORKSPACE_ROOT="$TEST_TEMP_DIR/alternate-workspace"
+  ALT_PLANNING_DIR="$ALT_WORKSPACE_ROOT/.vbw-planning"
+  ALT_PHASE_DIR="$ALT_PLANNING_DIR/phases/01-alt"
+
+  mkdir -p "$ALT_PHASE_DIR"
+  create_test_config "alternate-workspace/.vbw-planning"
+  cat > "$ALT_PHASE_DIR/01-01-PLAN.md" << 'PLAN'
+---
+phase: 1
+plan: 1
+title: Alternate Plan
+wave: 1
+depends_on: []
+must_haves:
+  - "Alternate feature works"
+---
+
+# Alternate Plan
+
+### Task 1: Alternate task
+**Files:** `alt.js`
+PLAN
+}
+
 create_plan_file() {
   cat > "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-01-PLAN.md" << 'PLAN'
 ---
@@ -95,6 +120,44 @@ PLAN
   bash "$SCRIPTS_DIR/generate-contract.sh" ".vbw-planning/phases/01-test/01-01-PLAN.md" >/dev/null
   HASH2=$(jq -r '.contract_hash' ".vbw-planning/.contracts/1-1.json")
   [ "$HASH1" = "$HASH2" ]
+}
+
+@test "generate-contract: off-root absolute plan path writes contract to target planning dir" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+  local canonical_root
+  local target_contract
+
+  create_plan_file
+  setup_unrelated_git_repo "$unrelated_repo"
+  canonical_root=$(cd "$TEST_TEMP_DIR" && pwd -P)
+  target_contract="$canonical_root/.vbw-planning/.contracts/1-1.json"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/generate-contract.sh" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$target_contract" ]
+  [ -f "$target_contract" ]
+  [ ! -e "$unrelated_repo/.vbw-planning/.contracts/1-1.json" ]
+}
+
+@test "generate-contract: explicit plan path beats conflicting VBW_PLANNING_DIR" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+  local canonical_root
+  local target_contract
+
+  create_plan_file
+  create_alternate_contract_workspace
+  setup_unrelated_git_repo "$unrelated_repo"
+  canonical_root=$(cd "$TEST_TEMP_DIR" && pwd -P)
+  target_contract="$canonical_root/.vbw-planning/.contracts/1-1.json"
+  cd "$unrelated_repo" || return 1
+
+  run env VBW_PLANNING_DIR="$ALT_PLANNING_DIR" \
+    bash "$SCRIPTS_DIR/generate-contract.sh" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$target_contract" ]
+  [ -f "$target_contract" ]
+  [ ! -e "$ALT_PLANNING_DIR/.contracts/1-1.json" ]
 }
 
 # --- validate-contract.sh tests ---

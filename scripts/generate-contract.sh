@@ -17,11 +17,34 @@ if [ $# -lt 1 ]; then
   exit 0
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=scripts/lib/vbw-target-root.sh
+. "${SCRIPT_DIR}/lib/vbw-target-root.sh"
+
 PLAN_PATH="$1"
 [ ! -f "$PLAN_PATH" ] && exit 0
 
-PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
-CONFIG_PATH="${CONFIG_PATH:-${PLANNING_DIR}/config.json}"
+resolve_preferred_planning_dir() {
+  local explicit_planning_dir
+
+  explicit_planning_dir=$(vbw_resolve_target_planning_dir "1" "$PLAN_PATH" 2>/dev/null || true)
+  if [ -n "$explicit_planning_dir" ]; then
+    printf '%s\n' "$explicit_planning_dir"
+    return 0
+  fi
+
+  if [ -n "${VBW_PLANNING_DIR:-}" ]; then
+    printf '%s\n' "$VBW_PLANNING_DIR"
+    return 0
+  fi
+
+  printf '%s\n' '.vbw-planning'
+}
+
+PLANNING_DIR=$(resolve_preferred_planning_dir)
+PLANNING_DIR=$(vbw_candidate_dir_for_path "$PLANNING_DIR" 2>/dev/null || printf '%s\n' "$PLANNING_DIR")
+CONFIG_PATH="${PLANNING_DIR}/config.json"
 
 # Extract phase and plan from frontmatter
 PHASE=$(awk '/^---$/{n++; next} n==1 && /^phase:/{gsub(/"/,"",$2); print $2; exit}' "$PLAN_PATH" 2>/dev/null) || exit 0

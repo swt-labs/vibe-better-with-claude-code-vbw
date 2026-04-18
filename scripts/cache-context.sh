@@ -14,10 +14,73 @@ fi
 
 PHASE="$1"
 ROLE="$2"
-PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
-CONFIG_PATH="${3:-$PLANNING_DIR/config.json}"
-PLAN_PATH="${4:-}"
+CONFIG_PATH_INPUT="${3:-}"
+PLAN_PATH_INPUT="${4:-}"
+TARGET_SCOPE_EXPLICIT=0
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=scripts/lib/vbw-target-root.sh
+. "${SCRIPT_DIR}/lib/vbw-target-root.sh"
+
+if [ -n "${VBW_PLANNING_DIR:-}" ] || [ $# -ge 3 ] || [ $# -ge 4 ]; then
+  TARGET_SCOPE_EXPLICIT=1
+fi
+
+resolve_preferred_planning_dir() {
+  local explicit_planning_dir
+
+  explicit_planning_dir=$(vbw_resolve_target_planning_dir "1" "$CONFIG_PATH_INPUT" "$PLAN_PATH_INPUT" 2>/dev/null || true)
+  if [ -n "$explicit_planning_dir" ]; then
+    printf '%s\n' "$explicit_planning_dir"
+    return 0
+  fi
+
+  if [ -n "${VBW_PLANNING_DIR:-}" ]; then
+    printf '%s\n' "$VBW_PLANNING_DIR"
+    return 0
+  fi
+
+  vbw_resolve_target_planning_dir "$TARGET_SCOPE_EXPLICIT" "$CONFIG_PATH_INPUT" "$PLAN_PATH_INPUT" 2>/dev/null || printf '%s\n' '.vbw-planning'
+}
+
+resolve_existing_dir() {
+  local path="$1"
+  if [ -d "$path" ]; then
+    (
+      cd "$path" 2>/dev/null && pwd -P 2>/dev/null
+    ) || printf '%s\n' "$path"
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+resolve_existing_file() {
+  local path="$1" dir base
+  if [ -f "$path" ]; then
+    dir=$(dirname "$path")
+    base=$(basename "$path")
+    if dir=$(cd "$dir" 2>/dev/null && pwd -P 2>/dev/null); then
+      printf '%s/%s\n' "$dir" "$base"
+    else
+      printf '%s\n' "$path"
+    fi
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+PLANNING_DIR=$(resolve_preferred_planning_dir)
+PLANNING_DIR=$(resolve_existing_dir "$PLANNING_DIR")
+CONFIG_PATH="${CONFIG_PATH_INPUT:-$PLANNING_DIR/config.json}"
+CONFIG_PATH=$(resolve_existing_file "$CONFIG_PATH")
+PLAN_PATH="$PLAN_PATH_INPUT"
+if [ -n "$PLAN_PATH" ]; then
+  PLAN_PATH=$(resolve_existing_file "$PLAN_PATH")
+fi
 CACHE_DIR="$PLANNING_DIR/.cache/context"
+TARGET_ROOT=$(vbw_resolve_target_root "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PLANNING_DIR" || true)
+TARGET_GIT_ROOT=$(vbw_resolve_target_git_root "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PLANNING_DIR" || true)
+WORKSPACE_SUBPATH=$(vbw_workspace_subpath_from_git_root "$TARGET_ROOT" "$TARGET_GIT_ROOT" 2>/dev/null || true)
 
 fingerprint_file() {
   local path="$1" missing_label="$2"
@@ -49,14 +112,23 @@ if [ -n "$PLAN_PATH" ] && [ -f "$PLAN_PATH" ]; then
 fi
 
 # Changed files list (git diff for delta awareness)
-if command -v git &>/dev/null && git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
+if [ -n "$TARGET_GIT_ROOT" ]; then
   CHANGED_SUM=$({
-    git diff HEAD 2>/dev/null || true
-    git ls-files --others --exclude-standard 2>/dev/null | while IFS= read -r file; do
+    if [ -n "$WORKSPACE_SUBPATH" ]; then
+      git -C "$TARGET_GIT_ROOT" diff HEAD -- "$WORKSPACE_SUBPATH" 2>/dev/null || true
+    else
+      git -C "$TARGET_GIT_ROOT" diff HEAD 2>/dev/null || true
+    fi
+    # Hash untracked files separately to avoid labeling diff output as UNTRACKED
+    if [ -n "$WORKSPACE_SUBPATH" ]; then
+      git -C "$TARGET_GIT_ROOT" ls-files --others --exclude-standard -- "$WORKSPACE_SUBPATH" 2>/dev/null
+    else
+      git -C "$TARGET_GIT_ROOT" ls-files --others --exclude-standard 2>/dev/null
+    fi | while IFS= read -r file; do
       [ -n "$file" ] || continue
-      echo "UNTRACKED:$file"
-      if [ -f "$file" ]; then
-        shasum -a 256 "$file" 2>/dev/null || true
+      printf 'UNTRACKED:%s\n' "$file"
+      if [ -f "$TARGET_GIT_ROOT/$file" ]; then
+        shasum -a 256 "$TARGET_GIT_ROOT/$file" 2>/dev/null || true
       fi
     done
   } | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nogit")
@@ -111,19 +183,21 @@ if [[ "$ROLE" =~ ^(lead|dev|scout|debugger|architect)$ ]]; then
 fi
 
 # Delta fingerprint (roles that include changed files / code slices)
-if [[ "$ROLE" =~ ^(dev|scout|debugger)$ ]] && [ -f "${0%/*}/delta-files.sh" ]; then
+if [[ "$ROLE" =~ ^(dev|scout|debugger)$ ]] && [ -f "${SCRIPT_DIR}/delta-files.sh" ]; then
   PHASE_DIR_CACHE=$(resolve_phase_dir_for_cache)
   if [ -n "$PHASE_DIR_CACHE" ] && [ -d "$PHASE_DIR_CACHE" ]; then
-    DELTA_FILES=$(bash "${0%/*}/delta-files.sh" "$PHASE_DIR_CACHE" "$PLAN_PATH" 2>/dev/null || true)
+    DELTA_FILES=$(bash "${SCRIPT_DIR}/delta-files.sh" "$PHASE_DIR_CACHE" "$PLAN_PATH" 2>/dev/null || true)
     if [ -n "$DELTA_FILES" ]; then
       DELTA_LIST_SUM=$(printf '%s\n' "$DELTA_FILES" | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nodelta")
       DELTA_CONTENT_SUM=$(printf '%s\n' "$DELTA_FILES" | while IFS= read -r file; do
         [ -n "$file" ] || continue
-        echo "FILE:$file"
-        if [ -f "$file" ]; then
-          shasum -a 256 "$file" 2>/dev/null || true
+        vbw_is_safe_relative_path "$file" || continue
+        local_path=$(vbw_resolve_repo_path "$TARGET_ROOT" "$file") || continue
+        printf 'FILE:%s\n' "$file"
+        if [ -f "$local_path" ]; then
+          shasum -a 256 "$local_path" 2>/dev/null || true
         else
-          echo "missing"
+          printf 'missing\n'
         fi
       done | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nodeltacontent")
       HASH_INPUT="${HASH_INPUT}:delta-list=${DELTA_LIST_SUM}:delta-content=${DELTA_CONTENT_SUM}"
