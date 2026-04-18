@@ -19,12 +19,6 @@ node_modules/
 # Claude Code local settings
 .claude
 
-# Agents prompt instructions
-.github/agents
-.github/hooks
-.github/references
-.github/scripts
-
 # OS
 .DS_Store
 Thumbs.db
