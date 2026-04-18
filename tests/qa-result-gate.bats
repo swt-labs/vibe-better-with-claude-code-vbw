@@ -2045,7 +2045,9 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  # No code-fix classifications → change-evidence early-exit is skipped;
+  # routing still blocks via the metadata-only handler's process-exception
+  # evidence check (no recorded paths → no evidence).
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
@@ -2139,7 +2141,9 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_round_change_evidence_empty=true"* ]]
+  # No code-fix classifications → change-evidence early-exit is skipped;
+  # routing still blocks via the metadata-only handler's process-exception
+  # evidence check (empty paths → no evidence).
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
@@ -3457,7 +3461,9 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  # No code-fix classifications → change-evidence early-exit is skipped;
+  # routing still blocks via plan-amendment source-plan path coverage check
+  # (unrecorded plan edit not in ROUND_ALL_RECORDED_PATHS).
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
@@ -4381,7 +4387,9 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_round_change_evidence_empty=true"* ]]
+  # No code-fix classifications → change-evidence early-exit is skipped;
+  # routing still blocks via the metadata-only handler's process-exception
+  # evidence check (empty paths → no evidence).
   [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
   [[ "$output" != *"qa_gate_phase_deviation_count="* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
@@ -5075,7 +5083,9 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  # No code-fix classifications → change-evidence early-exit is skipped;
+  # routing still blocks via the metadata-only handler's process-exception
+  # evidence check (worktree-only paths don't satisfy recorded set).
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
@@ -5567,6 +5577,215 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
+  # No code-fix classifications → change-evidence early-exit is skipped;
+  # routing still blocks via plan-amendment source-plan path coverage check
+  # (gitignored paths can't be corroborated, so recorded paths are empty).
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+# --- Plan-amendment-only rounds should not be blocked by change-evidence checks (GH-424) ---
+
+@test "plan-amendment-only round without git repo → PROCEED_TO_UAT when source plan recorded" {
+  create_source_fail_verif "FAIL-01" "Plan needs amendment"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  # Create the original plan that was amended
+  cat > "$PHASE_DIR/01-01-PLAN.md" <<'PLAN'
+---
+plan: 01-01
+title: Original plan
+---
+## Objective
+Original approach.
+PLAN
+
+  # Summary records only metadata paths (the amended plan file)
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    "  - \"$PHASE_DIR/01-01-PLAN.md\"
+  - \"01-test-phase/remediation/qa/round-01/R01-SUMMARY.md\""
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Amend original plan with actual approach
+fail_classifications:
+  - {id: "FAIL-01", type: "plan-amendment", rationale: "Original plan updated with actual approach", source_plan: "01-01-PLAN.md"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Plan amended with rationale | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Plan-amendment-only round with no git repo: change-evidence checks are
+  # skipped (no code-fix), falls through to metadata-only handler which
+  # validates source plan references and allows PROCEED_TO_UAT.
+  [[ "$output" != *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "plan-amendment-only round with empty commit_hashes → PROCEED_TO_UAT when source plan recorded" {
+  create_source_fail_verif "FAIL-01" "Plan needs amendment"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/01-01-PLAN.md" <<'PLAN'
+---
+plan: 01-01
+title: Original plan
+---
+## Objective
+Original approach.
+PLAN
+
+  # Empty commit_hashes, files_modified records only planning artifacts
+  {
+    echo "---"
+    echo "plan: R01"
+    echo "status: complete"
+    echo "commit_hashes: []"
+    echo "files_modified:"
+    echo "  - \"$PHASE_DIR/01-01-PLAN.md\""
+    echo "  - \"01-test-phase/remediation/qa/round-01/R01-SUMMARY.md\""
+    echo "deviations: []"
+    echo "---"
+    echo ""
+    echo "## Summary"
+    echo "Amended original plan."
+  } > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Amend original plan
+fail_classifications:
+  - {id: "FAIL-01", type: "plan-amendment", rationale: "Plan updated", source_plan: "01-01-PLAN.md"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Plan amended | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_round_change_evidence_empty=true"* ]]
+  [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "code-fix round with unavailable change evidence still blocks → REMEDIATION_REQUIRED" {
+  create_source_fail_verif "FAIL-01" "Code needs fixing"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes:
+  - deadbeef
+deviations: []
+---
+
+## Task 1: Fix code
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix production code
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Production code must change"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Code fixed | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # code-fix classification preserves the change-evidence early-exit behavior
+  [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "mixed code-fix + plan-amendment round with unavailable evidence still blocks → REMEDIATION_REQUIRED" {
+  create_source_fail_verif "FAIL-01" "Code needs fixing"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes:
+  - deadbeef
+deviations: []
+---
+
+## Task 1: Fix code and amend plan
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix code and amend plan
+fail_classifications:
+  - {id: "FAIL-01", type: "code-fix", rationale: "Production code must change"}
+  - {id: "FAIL-02", type: "plan-amendment", rationale: "Plan needs updating", source_plan: "01-01-PLAN.md"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Code fixed and plan amended | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Mixed round with code-fix present: change-evidence early-exit fires
+  # because ROUND_CODE_FIX_COUNT > 0, preserving the blocking behavior
   [[ "$output" == *"qa_gate_round_change_evidence_unavailable=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
