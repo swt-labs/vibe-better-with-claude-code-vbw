@@ -163,10 +163,13 @@ When routed here, skip the standard phase-resolution Steps entirely. Instead:
 
 4. Resolve QA model:
    ```bash
-  QA_MODEL=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-   if [ $? -ne 0 ]; then echo "$QA_MODEL" >&2; exit 1; fi
-  QA_MAX_TURNS=$(bash "{plugin-root}/scripts/resolve-agent-max-turns.sh" qa .vbw-planning/config.json "$QA_EFFORT_PROFILE")
-   if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
+  if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$QA_EFFORT_PROFILE"); then
+    echo "$AGENT_SETTINGS" >&2
+    exit 1
+  fi
+  eval "$AGENT_SETTINGS"
+  QA_MODEL="$RESOLVED_MODEL"
+  QA_MAX_TURNS="$RESOLVED_MAX_TURNS"
    ```
 
 5. Spawn vbw-qa as subagent via Task tool for debug-session verification. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`.**
@@ -250,10 +253,13 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
     - Resolve QA model:
 
         ```bash
-        QA_MODEL=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-        if [ $? -ne 0 ]; then echo "$QA_MODEL" >&2; exit 1; fi
-        QA_MAX_TURNS=$(bash "{plugin-root}/scripts/resolve-agent-max-turns.sh" qa .vbw-planning/config.json "$QA_EFFORT_PROFILE")
-        if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
+        if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$QA_EFFORT_PROFILE"); then
+          echo "$AGENT_SETTINGS" >&2
+          exit 1
+        fi
+        eval "$AGENT_SETTINGS"
+        QA_MODEL="$RESOLVED_MODEL"
+        QA_MAX_TURNS="$RESOLVED_MAX_TURNS"
         ```
 
     - Display: `◆ Spawning QA agent (${QA_MODEL})...`

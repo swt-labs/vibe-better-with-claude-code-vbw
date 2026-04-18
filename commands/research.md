@@ -45,11 +45,13 @@ Current project:
 3. **Spawn Scout:**
    - Resolve Scout model:
      ```bash
-    RESEARCH_EFFORT=$(jq -r '.effort // "balanced"' .vbw-planning/config.json 2>/dev/null)
-    SCOUT_MODEL=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" scout .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-     if [ $? -ne 0 ]; then echo "$SCOUT_MODEL" >&2; exit 1; fi
-    SCOUT_MAX_TURNS=$(bash "{plugin-root}/scripts/resolve-agent-max-turns.sh" scout .vbw-planning/config.json "$RESEARCH_EFFORT")
-    if [ $? -ne 0 ]; then echo "$SCOUT_MAX_TURNS" >&2; exit 1; fi
+    if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" scout .vbw-planning/config.json "{plugin-root}/config/model-profiles.json"); then
+      echo "$AGENT_SETTINGS" >&2
+      exit 1
+    fi
+    eval "$AGENT_SETTINGS"
+    SCOUT_MODEL="$RESOLVED_MODEL"
+    SCOUT_MAX_TURNS="$RESOLVED_MAX_TURNS"
      ```
    - Display: `◆ Spawning Scout (${SCOUT_MODEL})...`
     - Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. The spawned prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>` when one or more installed skills apply, or `<skill_no_activation>` when none apply. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none apply — {reason}") so the user has visibility before the agent is spawned. Only include skills whose description matches the task at hand.

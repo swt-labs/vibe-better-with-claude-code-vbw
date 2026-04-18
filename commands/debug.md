@@ -111,10 +111,13 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
     - Generate 3 hypotheses (cause, codebase area, confirming evidence)
     - Resolve Debugger model:
         ```bash
-        DEBUGGER_MODEL=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-        if [ $? -ne 0 ]; then echo "$DEBUGGER_MODEL" >&2; exit 1; fi
-        DEBUGGER_MAX_TURNS=$(bash "{plugin-root}/scripts/resolve-agent-max-turns.sh" debugger .vbw-planning/config.json "$EFFORT_PROFILE")
-        if [ $? -ne 0 ]; then echo "$DEBUGGER_MAX_TURNS" >&2; exit 1; fi
+        if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$EFFORT_PROFILE"); then
+          echo "$AGENT_SETTINGS" >&2
+          exit 1
+        fi
+        eval "$AGENT_SETTINGS"
+        DEBUGGER_MODEL="$RESOLVED_MODEL"
+        DEBUGGER_MAX_TURNS="$RESOLVED_MAX_TURNS"
         ```
     - Display: `◆ Spawning Debugger (${DEBUGGER_MODEL})...`
     - **Pre-TeamCreate cleanup:** `bash "{plugin-root}/scripts/clean-stale-teams.sh" 2>/dev/null || true`
@@ -136,10 +139,13 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
     **Path B: Standard** (all other cases):
     - Resolve Debugger model:
         ```bash
-        DEBUGGER_MODEL=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-        if [ $? -ne 0 ]; then echo "$DEBUGGER_MODEL" >&2; exit 1; fi
-        DEBUGGER_MAX_TURNS=$(bash "{plugin-root}/scripts/resolve-agent-max-turns.sh" debugger .vbw-planning/config.json "$EFFORT_PROFILE")
-        if [ $? -ne 0 ]; then echo "$DEBUGGER_MAX_TURNS" >&2; exit 1; fi
+        if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$EFFORT_PROFILE"); then
+          echo "$AGENT_SETTINGS" >&2
+          exit 1
+        fi
+        eval "$AGENT_SETTINGS"
+        DEBUGGER_MODEL="$RESOLVED_MODEL"
+        DEBUGGER_MAX_TURNS="$RESOLVED_MAX_TURNS"
         ```
     - Display: `◆ Spawning Debugger (${DEBUGGER_MODEL})...`
     - Before composing the Debugger task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this bug investigation. The Debugger prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none apply — {reason}") so the user has visibility before the agent is spawned. Only include skills whose description matches the investigation at hand (e.g., debugging skills, platform-specific skills for the affected stack).
@@ -272,10 +278,13 @@ fi
 
 4. Resolve QA model and max turns:
    ```bash
-  QA_MODEL=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-   if [ $? -ne 0 ]; then echo "$QA_MODEL" >&2; exit 1; fi
-  QA_MAX_TURNS=$(bash "{plugin-root}/scripts/resolve-agent-max-turns.sh" qa .vbw-planning/config.json "$EFFORT_PROFILE")
-   if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
+  if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$EFFORT_PROFILE"); then
+    echo "$AGENT_SETTINGS" >&2
+    exit 1
+  fi
+  eval "$AGENT_SETTINGS"
+  QA_MODEL="$RESOLVED_MODEL"
+  QA_MAX_TURNS="$RESOLVED_MAX_TURNS"
    ```
 
 5. Spawn vbw-qa as subagent via Task tool for debug-session verification. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`.**
