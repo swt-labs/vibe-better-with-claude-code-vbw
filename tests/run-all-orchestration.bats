@@ -27,6 +27,7 @@ create_stub_workspace() {
   local name path
   mkdir -p "$root/testing" "$root/scripts" "$root/tests" "$root/bin"
   cp "$PROJECT_ROOT/testing/run-all.sh" "$root/testing/run-all.sh"
+  cp "$PROJECT_ROOT/testing/run-all-state-utils.sh" "$root/testing/run-all-state-utils.sh"
   cp "$PROJECT_ROOT/testing/list-bats-files.sh" "$root/testing/list-bats-files.sh"
   cp "$PROJECT_ROOT/testing/run-bats-shard.sh" "$root/testing/run-bats-shard.sh"
   cp "$PROJECT_ROOT/testing/list-contract-tests.sh" "$root/testing/list-contract-tests.sh"
@@ -117,6 +118,70 @@ link_run_all_system_tools() {
   done
 }
 
+wait_for_active_run_all_peer() {
+  local workspace="$1"
+  local state_root="$2"
+  local attempts="${3:-100}"
+  local host_bash
+
+  host_bash="$(command -v bash)"
+
+  "$host_bash" -c '
+    set -euo pipefail
+
+    workspace="$1"
+    state_root="$2"
+    attempts="$3"
+
+    ROOT="$workspace"
+    RUN_ALL_STATE_ROOT="$state_root"
+    RUN_ALL_STATE_DIR=""
+    RUN_ALL_TOKEN=""
+    RUN_ALL_REPO_KEY=""
+    RUN_ALL_PROCESS_START=""
+    RUN_ALL_PROCESS_COMMAND=""
+
+    # shellcheck source=testing/run-all-state-utils.sh
+    source "$ROOT/testing/run-all-state-utils.sh"
+    initialize_run_all_state
+
+    attempt=0
+    stable_countable_reads=0
+    while [ "$attempt" -lt "$attempts" ]; do
+      current_count="$(count_run_all_tokens_with_grace)"
+      if [ "$current_count" -ge 1 ]; then
+        stable_countable_reads=$((stable_countable_reads + 1))
+        if [ "$stable_countable_reads" -ge 2 ]; then
+          echo "active_run_all_suites=$current_count"
+          echo "stable_countable_reads=$stable_countable_reads"
+          exit 0
+        fi
+      else
+        stable_countable_reads=0
+      fi
+      attempt=$((attempt + 1))
+      sleep 0.1
+    done
+
+    echo "Timed out waiting for the first suite to become stably countable as an active peer."
+    echo "workspace=$workspace"
+    echo "state_root=$state_root"
+    echo "repo_key=$RUN_ALL_REPO_KEY"
+    echo "state_dir=$RUN_ALL_STATE_DIR"
+    echo "stable_countable_reads=$stable_countable_reads"
+    if [ -d "$RUN_ALL_STATE_DIR" ]; then
+      while IFS= read -r entry; do
+        [ -n "$entry" ] || continue
+        echo "token=$entry"
+        echo "$(cat "$entry" 2>/dev/null || true)"
+      done < <(find "$RUN_ALL_STATE_DIR" -maxdepth 1 -type f -name "suite.*.token" -print | sort)
+    else
+      echo "state_dir_missing=true"
+    fi
+    exit 1
+  ' _ "$workspace" "$state_root" "$attempts"
+}
+
 @test "default local worker count auto-tunes when a real peer suite overlaps" {
   local root="$TEST_TEMP_DIR/stub-repo-auto-tune"
   local linked_root="$TEST_TEMP_DIR/stub-repo-auto-tune-worktree"
@@ -130,27 +195,27 @@ link_run_all_system_tools() {
   create_stub_git_worktree_pair "$root" "$linked_root"
   export PATH="$root/bin:$PATH"
 
-  env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
+  env -u BATS_WORKERS GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
   first_pid=$!
 
-  # Wait for the first suite's token to appear before launching the second,
-  # otherwise the second suite may not see the first as a concurrent peer.
-  local token_found=false
-  for _wait in $(seq 1 100); do
-    if compgen -G "$state_dir"/*/*.token >/dev/null 2>&1; then
-      token_found=true; break
-    fi
-    sleep 0.1
-  done
-  [[ "$token_found" = true ]] || { echo "first suite token never appeared"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
+  # Wait for the same active-peer invariant run-all.sh uses before launching the
+  # second suite; token-file existence alone races ahead of token validation.
+  run wait_for_active_run_all_peer "$linked_root" "$state_dir"
+  [ "$status" -eq 0 ] || { echo "$output"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
 
-  run env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$linked_root' && bash testing/run-all.sh"
+  # Full-suite stress runs may set BATS_WORKERS in the parent environment; unset
+  # it here so this scenario still exercises the default-worker auto-tune path.
+  run env -u BATS_WORKERS GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
 
   touch "$release_file"
   wait "$first_pid"
 
-  echo "$output" | grep -q 'Auto-tuned BATS_WORKERS from 8 to 4 for 2 concurrent local test suite(s)'
+  if ! echo "$output" | grep -q 'Auto-tuned BATS_WORKERS from 8 to 4 for 2 concurrent local test suite(s)'; then
+    echo "second suite output never reported auto-tuning despite a stably countable peer"
+    echo "$output"
+    return 1
+  fi
 }
 
 @test "explicit BATS_WORKERS overrides auto-tuning during real overlap" {
@@ -166,26 +231,23 @@ link_run_all_system_tools() {
   create_stub_git_worktree_pair "$root" "$linked_root"
   export PATH="$root/bin:$PATH"
 
-  env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
+  env -u BATS_WORKERS GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
   first_pid=$!
 
-  # Wait for the first suite's token to appear before launching the second.
-  local token_found=false
-  for _wait in $(seq 1 100); do
-    if compgen -G "$state_dir"/*/*.token >/dev/null 2>&1; then
-      token_found=true; break
-    fi
-    sleep 0.1
-  done
-  [[ "$token_found" = true ]] || { echo "first suite token never appeared"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
+  run wait_for_active_run_all_peer "$linked_root" "$state_dir"
+  [ "$status" -eq 0 ] || { echo "$output"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
 
-  run env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$linked_root' && bash testing/run-all.sh"
+  run env -u BATS_WORKERS GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$linked_root' && bash testing/run-all.sh"
   [ "$status" -eq 0 ]
 
   touch "$release_file"
   wait "$first_pid"
 
-  [[ "$output" != *'Auto-tuned BATS_WORKERS'* ]]
+  if [[ "$output" == *'Auto-tuned BATS_WORKERS'* ]]; then
+    echo "second suite output unexpectedly auto-tuned despite explicit BATS_WORKERS"
+    echo "$output"
+    return 1
+  fi
   echo "$output" | grep -q '7 bats workers'
 }
 
