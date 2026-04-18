@@ -138,6 +138,7 @@ Key conventions:
 - **Agents** in `agents/` use YAML frontmatter for tool permissions enforced by the platform.
 - **Hooks** in `hooks/hooks.json` self-resolve scripts via `ls | sort -V | tail -1` against the plugin cache.
 - **Plugin root resolution:** `CLAUDE_PLUGIN_ROOT` is a template-engine variable only — it works for `@${CLAUDE_PLUGIN_ROOT}/...` file inclusions but is **not** available as a shell env var inside `!` backtick fenced blocks. Each command's preamble resolves the plugin root via a priority cascade (env var → `local` symlink → versioned cache → generic cache fallback → session symlink glob → process tree) and creates a deterministic key (session id when present; otherwise `pwd` hash), e.g. `/tmp/.vbw-plugin-root-link-${SESSION_KEY}`. Reader callsites construct this path deterministically — no shared mutable temp file is used. Run `bash scripts/dev-setup.sh` to set up the local symlink — see [Quick setup](#quick-setup).
+- **Template expansion semantics:** Claude Code executes standalone one-line `` !`command` `` directives and fenced `` !`command` `` blocks, but it does **not** execute `!` spans when they are embedded inside prose, paths, or larger strings. Do not build command paths like ``bash `!`echo /tmp/...`` or sentence fragments around embedded `!` spans. Precompute dynamic values in one fenced block or helper script, then reference the resolved output in the body text.
 
 ## What to Contribute
 

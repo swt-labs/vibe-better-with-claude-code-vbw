@@ -14,7 +14,10 @@ Working directory:
 ```
 !`pwd`
 ```
-Version: `!`cat VERSION 2>/dev/null || echo "none"``
+Version:
+```text
+!`cat VERSION 2>/dev/null || echo "none"`
+```
 
 ## Checks
 

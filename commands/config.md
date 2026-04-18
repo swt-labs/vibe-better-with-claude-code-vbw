@@ -16,6 +16,8 @@ Plugin root:
 !`VBW_CACHE_ROOT="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/vbw-marketplace/vbw"; SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; SESSION_LINK="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; R=""; if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/hook-wrapper.sh" ]; then R="${CLAUDE_PLUGIN_ROOT}"; fi; if [ -z "$R" ] && [ -f "${VBW_CACHE_ROOT}/local/scripts/hook-wrapper.sh" ]; then R="${VBW_CACHE_ROOT}/local"; fi; if [ -z "$R" ]; then V=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1); [ -n "$V" ] && [ -f "${VBW_CACHE_ROOT}/${V}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${V}"; fi; if [ -z "$R" ]; then L=$(find "${VBW_CACHE_ROOT}" -maxdepth 1 -mindepth 1 2>/dev/null | awk -F/ '{print $NF}' | sort | tail -1); [ -n "$L" ] && [ -f "${VBW_CACHE_ROOT}/${L}/scripts/hook-wrapper.sh" ] && R="${VBW_CACHE_ROOT}/${L}"; fi; if [ -z "$R" ] && [ -f "${SESSION_LINK}/scripts/hook-wrapper.sh" ]; then R="${SESSION_LINK}"; fi; if [ -z "$R" ]; then ANY_LINK=$(command find -H /tmp -maxdepth 1 -name '.vbw-plugin-root-link-*' -print 2>/dev/null | LC_ALL=C sort | while IFS= read -r link; do if [ -f "$link/scripts/hook-wrapper.sh" ]; then printf '%s\n' "$link"; break; fi; done || true); [ -n "$ANY_LINK" ] && R="$ANY_LINK"; fi; if [ -z "$R" ]; then D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1); D="${D#--plugin-dir }"; [ -n "$D" ] && [ -f "$D/scripts/hook-wrapper.sh" ] && R="$D"; fi; if [ -z "$R" ] || [ ! -d "$R" ]; then echo "VBW: plugin root resolution failed" >&2; exit 1; fi; LINK="${SESSION_LINK}"; REAL_R=$(cd "$R" 2>/dev/null && pwd -P) || REAL_R="$R"; bash "$REAL_R/scripts/ensure-plugin-root-link.sh" "$LINK" "$REAL_R" >/dev/null 2>&1 || { echo "VBW: plugin root link failed" >&2; exit 1; }; echo "$LINK"`
 ```
 
+Store the plugin root path output above as `{plugin-root}` for use in script and config lookups below. Replace `{plugin-root}` with the literal `Plugin root` value from Context whenever a step below references a script or file in the installed plugin.
+
 Config:
 ```
 !`cat .vbw-planning/config.json 2>/dev/null || echo "No config found -- run /vbw:init first"`
@@ -32,7 +34,7 @@ If no .vbw-planning/ dir: STOP "Run /vbw:init first." (check `.vbw-planning/conf
 Before any read/write behavior below, run:
 
 ```bash
-MIGRATED_COUNT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/migrate-config.sh --print-added .vbw-planning/config.json 2>/dev/null)
+MIGRATED_COUNT=$(bash "{plugin-root}/scripts/migrate-config.sh" --print-added .vbw-planning/config.json 2>/dev/null)
 if [ $? -ne 0 ] || [ -z "${MIGRATED_COUNT:-}" ]; then
   echo "⚠ Config migration failed (invalid JSON). Fix .vbw-planning/config.json, then retry /vbw:config"
   exit 0
@@ -56,12 +58,12 @@ echo ""
 echo "Model Profile: $PROFILE"
 echo "Agent Models:"
 # Resolve each agent model
-LEAD=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh lead .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-DEV=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh dev .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-QA=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh qa .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-SCOUT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh scout .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-DEBUGGER=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh debugger .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-ARCHITECT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh architect .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
+LEAD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" lead .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+DEV=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+QA=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+SCOUT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" scout .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+DEBUGGER=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+ARCHITECT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" architect .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
 # Check for overrides and mark with asterisk
 LEAD_DISPLAY=$LEAD
 DEV_DISPLAY=$DEV
@@ -116,15 +118,15 @@ Store selection in variable `PROFILE_METHOD`.
 Calculate OLD_COST before making changes (cost weights: opus=100, sonnet=20, haiku=2):
 ```bash
 CURRENT_PROFILE=$(jq -r '.model_profile // "quality"' .vbw-planning/config.json)
-PROFILES_PATH="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json"
+PROFILES_PATH="{plugin-root}/config/model-profiles.json"
 
 # Get current models (before changes)
-LEAD_OLD=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh lead .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-DEV_OLD=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh dev .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-QA_OLD=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh qa .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-SCOUT_OLD=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh scout .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-DEBUGGER_OLD=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh debugger .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-ARCHITECT_OLD=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh architect .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
+LEAD_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" lead .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+DEV_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+QA_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+SCOUT_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" scout .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+DEBUGGER_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+ARCHITECT_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" architect .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
 
 # Calculate cost based on model
 get_model_cost() {
@@ -141,10 +143,10 @@ OLD_COST=$(( $(get_model_cost "$LEAD_OLD") + $(get_model_cost "$DEV_OLD") + $(ge
 
 Get current models for Lead, Dev, QA, Scout:
 ```bash
-CURRENT_LEAD=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh lead .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-CURRENT_DEV=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh dev .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-CURRENT_QA=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh qa .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-CURRENT_SCOUT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh scout .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
+CURRENT_LEAD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" lead .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+CURRENT_DEV=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+CURRENT_QA=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+CURRENT_SCOUT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" scout .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
 ```
 
 AskUserQuestion with 4 questions:
@@ -159,8 +161,8 @@ Store selections in variables `LEAD_MODEL`, `DEV_MODEL`, `QA_MODEL`, `SCOUT_MODE
 
 Get current models for Debugger and Architect:
 ```bash
-CURRENT_DEBUGGER=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh debugger .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
-CURRENT_ARCHITECT=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh architect .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
+CURRENT_DEBUGGER=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+CURRENT_ARCHITECT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" architect .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
 ```
 
 AskUserQuestion with 2 questions:
@@ -232,7 +234,7 @@ fi
 - If mismatch: AskUserQuestion "Settings no longer match '{profile}'. Save as new profile?" → "Save" (route to /vbw:profile save) or "No" (set active_profile to "custom")
 - Skip if no profile-tracked settings changed or already "custom"
 
-Run `bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/suggest-next.sh config` and display.
+Run `bash "{plugin-root}/scripts/suggest-next.sh" config` and display.
 
 ### With arguments: `<setting> <value>`
 
@@ -241,7 +243,7 @@ Validate setting + value. Update config.json. Display ✓ with ➜.
 If `setting=max_uat_remediation_rounds`, validate the value before writing:
 
 ```bash
-CANONICAL_VALUE=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-uat-remediation-round-limit.sh --validate-input "$2" 2>/dev/null)
+CANONICAL_VALUE=$(bash "{plugin-root}/scripts/resolve-uat-remediation-round-limit.sh" --validate-input "$2" 2>/dev/null)
 if [ $? -ne 0 ] || [ -z "${CANONICAL_VALUE:-}" ]; then
   echo "⚠ Invalid max_uat_remediation_rounds '$2'. Valid values: false, 0, or a positive integer"
   exit 0
@@ -255,7 +257,7 @@ exit 0
 If `setting=planning_tracking`, after writing config run:
 
 ```bash
-  PG_SCRIPT="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/planning-git.sh"
+  PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
   if [ -f "$PG_SCRIPT" ]; then
     bash "$PG_SCRIPT" sync-ignore .vbw-planning/config.json
   else
@@ -282,7 +284,7 @@ Validates profile name (quality/balanced/budget), shows before/after cost estima
 
 ```bash
 PROFILE="$1"
-PROFILES_PATH="`!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json"
+PROFILES_PATH="{plugin-root}/config/model-profiles.json"
 
 # Validate profile
 if ! jq -e ".$PROFILE" "$PROFILES_PATH" >/dev/null 2>&1; then
@@ -351,7 +353,7 @@ case "$MODEL" in
 esac
 
 # Get current model for this agent
-OLD_MODEL=$(bash `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/scripts/resolve-agent-model.sh "$AGENT" .vbw-planning/config.json `!`echo /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`/config/model-profiles.json)
+OLD_MODEL=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" "$AGENT" .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
 
 echo "Set $AGENT model override: $MODEL (was: $OLD_MODEL)"
 

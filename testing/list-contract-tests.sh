@@ -17,6 +17,7 @@ printf '%s\t%s\n' \
   bash-scripts-contract        testing/verify-bash-scripts-contract.sh \
   commands-contract            testing/verify-commands-contract.sh \
   no-inline-exec-spans         testing/verify-no-inline-exec-spans.sh \
+  issue-157-migration          testing/verify-issue-157-migration-contract.sh \
   plugin-root-resolution       testing/verify-plugin-root-resolution.sh \
   hook-event-name              testing/verify-hook-event-name.sh \
   plan-filename-convention     testing/verify-plan-filename-convention.sh \

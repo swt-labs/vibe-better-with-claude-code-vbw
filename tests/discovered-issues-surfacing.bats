@@ -422,7 +422,7 @@ load test_helper
 }
 
 @test "qa command phase-level remediation-required initializes remediation state" {
-  sed -n '/Follow `QA_GATE_ROUTING` literally:/,/QA_RERUN_REQUIRED/p' "$PROJECT_ROOT/commands/qa.md" | grep -q 'qa-remediation-state.sh init'
+  sed -n '/Follow `QA_GATE_ROUTING` literally:/,/QA_RERUN_REQUIRED/p' "$PROJECT_ROOT/commands/qa.md" | grep -Eq 'qa-remediation-state\.sh"? init'
 }
 
 @test "qa command spawn prompt reinforces pre-existing reporting" {
