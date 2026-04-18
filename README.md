@@ -354,7 +354,7 @@ Yes, the same command again. When Phase 1 finishes, run it again for Phase 2. An
 /vbw:vibe --archive
 ```
 
-When all phases are built, archive the work. VBW runs a completion audit, archives state to `.vbw-planning/milestones/`, tags the git release, and updates project docs. In hook-enabled/archive-flow execution, unresolved UAT is script-blocked (active or milestone) and is not bypassed by `--skip-audit`/`--force`. You shipped. With actual verification. Your future self won't want to set the codebase on fire. Probably.
+When all phases are built, archive the work. VBW runs a completion audit, archives state to `.vbw-planning/milestones/`, tags the git release, and updates project docs. In hook-enabled/archive-flow execution, unresolved UAT is script-blocked (active or milestone) and is not bypassed by `--skip-audit`/`--force`. If `hooks.post_archive` is configured, VBW runs it after successful archive completion; missing or failing user hooks warn but do not block shipping. You shipped. With actual verification. Your future self won't want to set the codebase on fire. Probably.
 
 That's it. `init` → `vibe` (repeat) → `vibe --archive`. Two commands for an entire development lifecycle.
 
@@ -578,6 +578,22 @@ Quick reference for every key in `config/defaults.json`, in order. Click the sec
 | `bash_guard` | `true`* | [Safety](#safety) |
 
 *`bash_guard` is not in `defaults.json` — it's read directly from project config with a default of `true` when absent.
+
+### Optional extension hooks
+
+Not every opt-in extension point lives in `config/defaults.json` or appears in `/vbw:config`. Sparse extension keys may be absent in brownfield repos and are treated as valid no-ops until you opt in.
+
+`hooks.post_archive` is one of these sparse config keys. Add it manually to `.vbw-planning/config.json` when you want a script to run after `/vbw:vibe --archive` completes successfully:
+
+```json
+{
+  "hooks": {
+    "post_archive": "scripts/hooks/post-archive.sh"
+  }
+}
+```
+
+Paths may be absolute or project-relative. VBW invokes the hook via `bash` with three positional arguments: milestone slug, archive path, and tag (empty when `--no-tag` was used). If `hooks.post_archive` is absent, archive no-ops through the dispatcher. If the configured hook is missing or fails, VBW warns and continues the archive flow.
 
 ### Effort profiles
 

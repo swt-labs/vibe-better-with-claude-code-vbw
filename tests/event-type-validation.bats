@@ -29,6 +29,15 @@ teardown() {
   [ "$output" = "1" ]
 }
 
+@test "event-types: accepts internal milestone_shipped event type" {
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/log-event.sh" milestone_shipped archive slug=01-demo archive_path=.vbw-planning/milestones/01-demo tag=milestone/01-demo
+  [ "$status" -eq 0 ]
+  [ -f .vbw-planning/.events/event-log.jsonl ]
+  run jq -r '.event + ":" + .phase' .vbw-planning/.events/event-log.jsonl
+  [ "$output" = "milestone_shipped:archive" ]
+}
+
 @test "event-types: rejects unknown event type" {
   cd "$TEST_TEMP_DIR"
   run bash -c "bash '$SCRIPTS_DIR/log-event.sh' bogus_event 1 2>&1"

@@ -41,7 +41,7 @@ case "$EVENT_TYPE" in
   phase_planned|task_created|task_claimed|task_started|artifact_written|gate_passed|gate_failed|task_completed_candidate|task_completed_confirmed|task_blocked|task_reassigned|shutdown_sent|shutdown_received)
     ;;
   # Additional metric/internal types
-  token_overage|token_cap_escalated|file_conflict|smart_route|contract_revision|cache_hit|task_completion_rejected|snapshot_restored|state_recovered|message_rejected)
+  token_overage|token_cap_escalated|file_conflict|smart_route|contract_revision|cache_hit|task_completion_rejected|snapshot_restored|state_recovered|message_rejected|milestone_shipped)
     ;;
   *)
     echo "[log-event] WARNING: unknown event type '${EVENT_TYPE}' rejected" >&2
