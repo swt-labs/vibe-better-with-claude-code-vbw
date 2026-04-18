@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 # Tests for discovered issues surfacing across commands and agents
-# Issue #98: Pre-existing test failures silently dropped by /vbw:fix, /vbw:debug, /vbw:qa
+# Issue #98: Pre-existing test failures silently dropped by /vbw:fix, /vbw:debug, QA protocol
 
 load test_helper
 
@@ -422,7 +422,7 @@ load test_helper
 }
 
 @test "qa command phase-level remediation-required initializes remediation state" {
-  sed -n '/Follow `QA_GATE_ROUTING` literally:/,/QA_RERUN_REQUIRED/p' "$PROJECT_ROOT/commands/qa.md" | grep -q 'qa-remediation-state.sh init'
+  sed -n '/Follow `QA_GATE_ROUTING` literally:/,/QA_RERUN_REQUIRED/p' "$PROJECT_ROOT/commands/qa.md" | grep -Eq 'qa-remediation-state\.sh"? init'
 }
 
 @test "qa command spawn prompt reinforces pre-existing reporting" {

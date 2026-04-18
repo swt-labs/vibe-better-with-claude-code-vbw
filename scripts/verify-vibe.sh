@@ -13,13 +13,20 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 VIBE="$ROOT/commands/vibe.md"
 PROTOCOL="$ROOT/references/execute-protocol.md"
-COMMANDS_DIR="$ROOT/commands"
 README="$ROOT/README.md"
 CLAUDE_MD="$ROOT/CLAUDE.md"
 HELP="$ROOT/commands/help.md"
 SUGGEST="$ROOT/scripts/suggest-next.sh"
 MKT_ROOT="$ROOT/marketplace.json"
 MKT_PLUGIN="$ROOT/.claude-plugin/marketplace.json"
+
+tracked_repo_file_exists() {
+  git -C "$ROOT" ls-files --error-unmatch "$1" >/dev/null 2>&1
+}
+
+tracked_markdown_count() {
+  git -C "$ROOT" ls-files -- "$@" | wc -l | tr -d ' '
+}
 
 # Counters
 TOTAL_PASS=0
@@ -134,7 +141,7 @@ group_start "GROUP 3: Execution Protocol (REQ-16, REQ-17)"
 
 # REQ-16: execute-protocol.md in references/ (not commands/)
 check "REQ-16" "execute-protocol.md exists in references/" test -f "$PROTOCOL"
-check_absent "REQ-16" "execute-protocol.md NOT in commands/" test -f "$COMMANDS_DIR/execute-protocol.md"
+check_absent "REQ-16" "execute-protocol.md NOT in commands/" tracked_repo_file_exists "commands/execute-protocol.md"
 
 # REQ-16: No command frontmatter (no name: line)
 check_absent "REQ-16" "execute-protocol.md has no name: frontmatter" grep -q "^name:" "$PROTOCOL"
@@ -157,13 +164,12 @@ group_start "GROUP 4: Command Surface (REQ-18 to REQ-20)"
 # REQ-18: 9 absorbed commands do NOT exist
 ABSORBED=(implement plan execute assumptions add-phase insert-phase remove-phase archive audit)
 for cmd in "${ABSORBED[@]}"; do
-  check_absent "REQ-18" "commands/${cmd}.md does not exist" test -f "$COMMANDS_DIR/${cmd}.md"
+  check_absent "REQ-18" "commands/${cmd}.md does not exist" tracked_repo_file_exists "commands/${cmd}.md"
 done
 
-# REQ-18: Exact file count
-# shellcheck disable=SC2010
-CMD_COUNT=$(ls "$COMMANDS_DIR" | grep -c '\.md$')
-check "REQ-18" "commands/ has exactly 24 .md files (found $CMD_COUNT)" test "$CMD_COUNT" -eq 24
+# REQ-18: Exact tracked file count (ignore ignored/untracked local command artifacts)
+CMD_COUNT=$(tracked_markdown_count 'commands/*.md')
+check "REQ-18" "commands/ has exactly 25 .md files (found $CMD_COUNT)" test "$CMD_COUNT" -eq 25
 
 # REQ-20: No stale "29 commands" in key files
 check_absent "REQ-20" "README.md has no '29 commands'" grep -q "29 commands" "$README"

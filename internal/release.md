@@ -15,8 +15,14 @@ Working directory:
 ```
 !`pwd`
 ```
-Version: `!`cat VERSION 2>/dev/null || echo "No VERSION file"``
-Current branch: `!`git branch --show-current 2>/dev/null || echo "detached"``
+Version:
+```text
+!`cat VERSION 2>/dev/null || echo "No VERSION file"`
+```
+Current branch:
+```text
+!`git branch --show-current 2>/dev/null || echo "detached"`
+```
 Git status:
 ```
 !`git status --short 2>/dev/null || echo "Not a git repository"`

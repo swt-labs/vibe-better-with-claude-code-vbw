@@ -20,7 +20,10 @@ Conventions:
 ```
 !`cat .vbw-planning/conventions.json 2>/dev/null || echo "No conventions found"`
 ```
-Codebase map: `!`ls .vbw-planning/codebase/INDEX.md 2>/dev/null && echo "EXISTS" || echo "NONE"``
+Codebase map:
+```text
+!`ls .vbw-planning/codebase/INDEX.md 2>/dev/null && echo "EXISTS" || echo "NONE"`
+```
 
 ## Guard
 

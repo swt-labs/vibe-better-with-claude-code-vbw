@@ -322,6 +322,8 @@ description: |
 activeForm: "Executing {NN-MM}"
 ```
 
+**TaskCompleted advisory scope:** Commit verification is advisory and only applies to canonical execute-task subjects (`Execute {NN-MM}: {plan-title}`). Manual, research, setup, and other non-execute tasks are allowed to complete without commit matching.
+
 Display: `◆ Spawning Dev teammate (${DEV_MODEL})...`
 
 **CRITICAL:** Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"` on the live spawn call when spawning Dev teammates. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If `DEV_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
@@ -384,7 +386,7 @@ Use targeted `message` not `broadcast`. Reserve broadcast for critical blocking 
 - Wave transition: update `"wave"` when first wave N+1 task starts
 - Use `jq` for atomic updates
 
-Hooks handle continuous verification: PostToolUse validates SUMMARY.md, TaskCompleted verifies commits, TeammateIdle runs quality gate.
+Hooks handle continuous verification: PostToolUse validates SUMMARY.md, TaskCompleted emits advisory execute-task commit checks, TeammateIdle runs quality gate.
 
 **Event Log — plan lifecycle (REQ-16, graduated, always-on):**
 - At plan start: `bash "${VBW_PLUGIN_ROOT}/scripts/log-event.sh" plan_start {phase} {plan} 2>/dev/null || true`
@@ -972,6 +974,20 @@ When `worktree_isolation="off"`: skip this block silently.
 **Mark complete:** Set .execution-state.json `"status"` to `"complete"` (statusline auto-deletes on next refresh).
 **Update STATE.md:** phase position, plan completion counts, effort used.
 **Update ROADMAP.md:** mark completed plans.
+
+**Advisory state-consistency verification:** After state updates, run:
+```bash
+VERIFY_SCRIPT="${VBW_PLUGIN_ROOT}/scripts/verify-state-consistency.sh"
+if [ -f "$VERIFY_SCRIPT" ]; then
+  _vsc_out="$(bash "$VERIFY_SCRIPT" .vbw-planning --mode advisory 2>/dev/null || true)"
+  if [ -n "$_vsc_out" ] && echo "$_vsc_out" | jq -e '.verdict == "fail"' >/dev/null 2>&1; then
+    echo "VBW state-consistency warning: $(echo "$_vsc_out" | jq -c '.failed_checks')" >&2
+  fi
+fi
+```
+If the captured output's `verdict` is `"fail"`, the warning above surfaces the `failed_checks` in the phase completion output. This is non-blocking — the reactive state updater handles most drift, but crashes, compaction, or manual edits can cause silent misalignment that propagates to the next phase. This catch-net surfaces those issues early. If the script is unavailable or errors, continue normally.
+
+**Caveman commit messages (conditional):** If `caveman_commit` is `true` in config, write commit messages using the rules in `references/caveman-commit.md`. The conventional commit format (`type(scope): description`) still applies — caveman language applies to the description text only.
 
 **Planning artifact boundary commit (conditional):**
 ```bash

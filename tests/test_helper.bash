@@ -18,7 +18,17 @@ setup_temp_dir() {
   export _ORIG_HOME="${HOME:-}"
   export _ORIG_GIT_CONFIG_NOSYSTEM="${GIT_CONFIG_NOSYSTEM:-}"
   export _ORIG_GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-}"
+  if [ "${CLAUDE_CONFIG_DIR+x}" = "x" ]; then
+    export _ORIG_CLAUDE_CONFIG_DIR_WAS_SET=1
+    export _ORIG_CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR}"
+  else
+    export _ORIG_CLAUDE_CONFIG_DIR_WAS_SET=0
+    unset _ORIG_CLAUDE_CONFIG_DIR 2>/dev/null || true
+  fi
   export HOME="$TEST_TEMP_DIR"
+  # Scripts that source resolve-claude-dir.sh prefer CLAUDE_CONFIG_DIR over HOME,
+  # so clear inherited host config unless a test opts back in explicitly.
+  unset CLAUDE_CONFIG_DIR 2>/dev/null || true
   export GIT_CONFIG_NOSYSTEM=1
   export GIT_CONFIG_GLOBAL="$TEST_TEMP_DIR/.gitconfig"
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
@@ -28,6 +38,11 @@ setup_temp_dir() {
 teardown_temp_dir() {
   [ -n "${TEST_TEMP_DIR:-}" ] && rm -rf "$TEST_TEMP_DIR"
   HOME="$_ORIG_HOME"
+  if [ "${_ORIG_CLAUDE_CONFIG_DIR_WAS_SET:-0}" = "1" ]; then
+    export CLAUDE_CONFIG_DIR="${_ORIG_CLAUDE_CONFIG_DIR-}"
+  else
+    unset CLAUDE_CONFIG_DIR 2>/dev/null || true
+  fi
   if [ -n "$_ORIG_GIT_CONFIG_NOSYSTEM" ]; then
     GIT_CONFIG_NOSYSTEM="$_ORIG_GIT_CONFIG_NOSYSTEM"
   else
@@ -38,17 +53,47 @@ teardown_temp_dir() {
   else
     unset GIT_CONFIG_GLOBAL
   fi
-  unset VBW_AGENT_PID_LOCK_DIR _ORIG_HOME _ORIG_GIT_CONFIG_NOSYSTEM _ORIG_GIT_CONFIG_GLOBAL
+  unset VBW_AGENT_PID_LOCK_DIR _ORIG_HOME _ORIG_CLAUDE_CONFIG_DIR _ORIG_CLAUDE_CONFIG_DIR_WAS_SET _ORIG_GIT_CONFIG_NOSYSTEM _ORIG_GIT_CONFIG_GLOBAL
+}
+
+# Generate a PID that is guaranteed dead. Spawns a process intended to stay
+# alive until killed, kills it, waits for it to exit, and returns its PID.
+# Avoids hardcoded PIDs that may collide with live processes under parallel
+# BATS execution.
+get_dead_pid() {
+  local p
+  sleep 999 &
+  p=$!
+  [[ -n "$p" ]] || return 1
+  kill "$p" 2>/dev/null || kill -9 "$p" 2>/dev/null || true
+  wait "$p" 2>/dev/null || true
+  if kill -0 "$p" 2>/dev/null; then
+    return 1
+  fi
+  echo "$p"
+}
+
+# Assign a PID that is guaranteed alive for the duration of the current Bats
+# test shell. Intentionally uses the top-level shell PID (`$$`) rather than a
+# disposable background child, `$BASHPID` in command substitution, or an
+# external `bash -c 'echo $$'` shell, all of which can produce short-lived PIDs
+# that reintroduce liveness flakes.
+assign_live_pid() {
+  local var_name="${1:-}"
+  [ -n "$var_name" ] || return 1
+  kill -0 "$$" 2>/dev/null || return 1
+  printf -v "$var_name" '%s' "$$"
 }
 
 # Run phase-detect.sh with retry on empty or incomplete output.
-# Under heavy parallel BATS execution, transient fork/exec or pipe failures can
-# cause the subprocess to produce zero output or only the EXIT-trap fallback
-# (qa_status=none + execution_state=none). Retries with exponential backoff
-# (sleeps of 0.1, 0.2, 0.4, 0.8s ≈ 1.5s total) handle both cases.
-# Output is considered complete when it contains "next_phase_state=" — a field
-# present in every normal code path of phase-detect.sh but absent from the
-# trap-only fallback.
+# Under heavy parallel BATS execution, transient late failures can produce
+# partial output that already includes early routing keys like
+# "next_phase_state=" but did not reach the true end of phase-detect.sh.
+# Retries with exponential backoff (sleeps of 0.1, 0.2, 0.4, 0.8s ≈ 1.5s total)
+# handle empty, trap-only, and partial-output cases.
+# Output is considered complete only when it includes the explicit
+# "phase_detect_complete=true" marker, which phase-detect.sh emits only on its
+# normal full-output path.
 # Returns 1 and sets status=1 if all 5 attempts produce empty or incomplete
 # output, so callers' `[ "$status" -eq 0 ]` assertions fail with a clear
 # diagnostic rather than a confusing content mismatch.
@@ -59,7 +104,7 @@ run_phase_detect() {
   local _pd_attempt=0
   while [ $_pd_attempt -lt 5 ]; do
     run bash "$_pd_script_dir/phase-detect.sh"
-    if [ -n "$output" ] && [[ "$output" == *"next_phase_state="* ]]; then
+    if [ -n "$output" ] && [[ "$output" == *"phase_detect_complete=true"* ]]; then
       return 0
     fi
     if [ $_pd_attempt -lt 4 ]; then
@@ -160,7 +205,10 @@ create_test_config() {
   "statusline_hide_limits": false,
   "statusline_hide_limits_for_api_key": false,
   "statusline_hide_agent_in_tmux": false,
-  "statusline_collapse_agent_in_tmux": false
+  "statusline_collapse_agent_in_tmux": false,
+  "caveman_style": "none",
+  "caveman_commit": false,
+  "caveman_review": false
 }
 CONF
 }

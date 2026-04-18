@@ -5,7 +5,7 @@ Authoritative spec for VBW's verification pipeline. QA agent persists results to
 ## 1. Contexts
 
 - **Post-build:** Auto after `/vbw:vibe` execute mode (unless `--skip-qa` or turbo)
-- **Standalone:** `/vbw:qa <phase>`
+- **On-demand:** Triggered by `/vbw:vibe`, `/vbw:debug`, or the hidden internal `/vbw:qa` protocol command
 
 ## 1.5 Known-Issues Lifecycle (VRFY-KI)
 
@@ -52,7 +52,7 @@ Standard, plus:
 | `--effort=fast` / `QA_EFFORT=low` | Quick |
 | `--effort=balanced` / `QA_EFFORT=medium` | Standard |
 | `--effort=thorough` / `QA_EFFORT=high` | Deep |
-| Standalone `/vbw:qa` (no flag) | Standard |
+| On-demand QA via `/vbw:vibe`, `/vbw:debug`, or hidden `/vbw:qa` (no flag) | Standard |
 | >15 requirements or last phase before ship | Deep (override) |
 
 Precedence: explicit `--tier` > context overrides > effort-based > default.
@@ -123,6 +123,8 @@ Protocol instructions in agent definitions (not JS hooks or event handlers).
 - **VRFY-03 Post-Write (Dev):** Run linter/type-checker on modified files if configured. Fix before committing. Advisory.
 - **VRFY-04 Post-Commit (Dev):** Verify commit format `{type}({scope}): {description}`. Check only task-related files staged. Self-check protocol.
 - **VRFY-05 OnStop (Execute):** Verify SUMMARY.md exists with required frontmatter (`phase`, `plan`, `status`, `completed`, `pre_existing_issues`) and sections (What Was Built, Files Modified, Deviations). If PLAN has `must_haves`, verify `ac_results` with valid verdicts (`pass`/`fail`/`partial`). Report issues.
+
+**Caveman review format (conditional):** If `caveman_review` is `true` in config, format verification findings using the review format in `references/caveman-review.md`. Use `L<line>:` prefixes and severity indicators. Standard frontmatter and pass/fail verdicts are unaffected — caveman format applies only to finding descriptions and comments.
 
 ## 9. Output Format
 

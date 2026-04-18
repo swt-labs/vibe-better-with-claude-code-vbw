@@ -27,6 +27,7 @@ create_stub_workspace() {
   local name path
   mkdir -p "$root/testing" "$root/scripts" "$root/tests" "$root/bin"
   cp "$PROJECT_ROOT/testing/run-all.sh" "$root/testing/run-all.sh"
+  cp "$PROJECT_ROOT/testing/run-all-state-utils.sh" "$root/testing/run-all-state-utils.sh"
   cp "$PROJECT_ROOT/testing/list-bats-files.sh" "$root/testing/list-bats-files.sh"
   cp "$PROJECT_ROOT/testing/run-bats-shard.sh" "$root/testing/run-bats-shard.sh"
   cp "$PROJECT_ROOT/testing/list-contract-tests.sh" "$root/testing/list-contract-tests.sh"
@@ -35,6 +36,11 @@ create_stub_workspace() {
 #!/usr/bin/env bash
 : "${BATS_LOG:?}"
 printf '%s\n' "$*" >> "$BATS_LOG"
+if [ -n "${BATS_HOLD_UNTIL_FILE:-}" ]; then
+  while [ ! -f "$BATS_HOLD_UNTIL_FILE" ]; do
+    sleep 0.1
+  done
+fi
 i=1
 for arg in "$@"; do
   printf 'ok %d %s\n' "$i" "$(basename "$arg")"
@@ -55,6 +61,19 @@ SH
   touch "$root/tests/alpha.bats" "$root/tests/beta.bats" "$root/tests/statusline-cache-isolation.bats"
 }
 
+create_stub_git_worktree_pair() {
+  local primary_root="$1"
+  local linked_root="$2"
+
+  git -C "$primary_root" init -q
+  git -C "$primary_root" config user.email test@example.com
+  git -C "$primary_root" config user.name 'Test User'
+  git -C "$primary_root" add .
+  git -C "$primary_root" commit -q -m 'test: seed stub workspace'
+  git -C "$primary_root" branch linked-worktree
+  git -C "$primary_root" worktree add -q "$linked_root" linked-worktree >/dev/null 2>&1
+}
+
 create_failing_stub_script() {
   local path="$1"
   mkdir -p "$(dirname "$path")"
@@ -62,6 +81,21 @@ create_failing_stub_script() {
 #!/usr/bin/env bash
 echo "TOTAL: 48 PASS, 1 FAIL"
 exit 1
+SH
+  chmod +x "$path"
+}
+
+create_blocking_lint_script() {
+  local path="$1"
+  mkdir -p "$(dirname "$path")"
+  cat > "$path" <<'SH'
+#!/usr/bin/env bash
+: "${LINT_PID_FILE:?}"
+printf '%s\n' "$$" > "$LINT_PID_FILE"
+trap 'exit 0' TERM INT
+while :; do
+  sleep 0.1
+done
 SH
   chmod +x "$path"
 }
@@ -79,9 +113,181 @@ link_run_all_system_tools() {
   local root="$1"
   local tool_name
 
-  for tool_name in bash cat dirname find grep jq ls mktemp rm sort; do
+  for tool_name in bash cat dirname find git grep jq ls mkdir mktemp mv ps rm sleep sort tr; do
     link_runtime_tool "$root" "$tool_name"
   done
+}
+
+wait_for_active_run_all_peer() {
+  local workspace="$1"
+  local state_root="$2"
+  local attempts="${3:-100}"
+  local host_bash
+
+  host_bash="$(command -v bash)"
+
+  "$host_bash" -c '
+    set -euo pipefail
+
+    workspace="$1"
+    state_root="$2"
+    attempts="$3"
+
+    ROOT="$workspace"
+    RUN_ALL_STATE_ROOT="$state_root"
+    RUN_ALL_STATE_DIR=""
+    RUN_ALL_TOKEN=""
+    RUN_ALL_REPO_KEY=""
+    RUN_ALL_PROCESS_START=""
+    RUN_ALL_PROCESS_COMMAND=""
+
+    # shellcheck source=testing/run-all-state-utils.sh
+    source "$ROOT/testing/run-all-state-utils.sh"
+    initialize_run_all_state
+
+    attempt=0
+    stable_countable_reads=0
+    while [ "$attempt" -lt "$attempts" ]; do
+      current_count="$(count_run_all_tokens_with_grace)"
+      if [ "$current_count" -ge 1 ]; then
+        stable_countable_reads=$((stable_countable_reads + 1))
+        if [ "$stable_countable_reads" -ge 2 ]; then
+          echo "active_run_all_suites=$current_count"
+          echo "stable_countable_reads=$stable_countable_reads"
+          exit 0
+        fi
+      else
+        stable_countable_reads=0
+      fi
+      attempt=$((attempt + 1))
+      sleep 0.1
+    done
+
+    echo "Timed out waiting for the first suite to become stably countable as an active peer."
+    echo "workspace=$workspace"
+    echo "state_root=$state_root"
+    echo "repo_key=$RUN_ALL_REPO_KEY"
+    echo "state_dir=$RUN_ALL_STATE_DIR"
+    echo "stable_countable_reads=$stable_countable_reads"
+    if [ -d "$RUN_ALL_STATE_DIR" ]; then
+      while IFS= read -r entry; do
+        [ -n "$entry" ] || continue
+        echo "token=$entry"
+        echo "$(cat "$entry" 2>/dev/null || true)"
+      done < <(find "$RUN_ALL_STATE_DIR" -maxdepth 1 -type f -name "suite.*.token" -print | sort)
+    else
+      echo "state_dir_missing=true"
+    fi
+    exit 1
+  ' _ "$workspace" "$state_root" "$attempts"
+}
+
+@test "default local worker count auto-tunes when a real peer suite overlaps" {
+  local root="$TEST_TEMP_DIR/stub-repo-auto-tune"
+  local linked_root="$TEST_TEMP_DIR/stub-repo-auto-tune-worktree"
+  local state_dir="$TEST_TEMP_DIR/run-all-state"
+  local release_file="$TEST_TEMP_DIR/release-first-run"
+  local first_output="$TEST_TEMP_DIR/first-run.log"
+  local first_bats_log="$TEST_TEMP_DIR/first-bats.log"
+  local second_bats_log="$TEST_TEMP_DIR/second-bats.log"
+  local first_pid
+  create_stub_workspace "$root"
+  create_stub_git_worktree_pair "$root" "$linked_root"
+  export PATH="$root/bin:$PATH"
+
+  env -u BATS_WORKERS GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
+  first_pid=$!
+
+  # Wait for the same active-peer invariant run-all.sh uses before launching the
+  # second suite; token-file existence alone races ahead of token validation.
+  run wait_for_active_run_all_peer "$linked_root" "$state_dir"
+  [ "$status" -eq 0 ] || { echo "$output"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
+
+  # Full-suite stress runs may set BATS_WORKERS in the parent environment; unset
+  # it here so this scenario still exercises the default-worker auto-tune path.
+  run env -u BATS_WORKERS GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" bash -c "cd '$linked_root' && bash testing/run-all.sh"
+  [ "$status" -eq 0 ]
+
+  touch "$release_file"
+  wait "$first_pid"
+
+  if ! echo "$output" | grep -q 'Auto-tuned BATS_WORKERS from 8 to 4 for 2 concurrent local test suite(s)'; then
+    echo "second suite output never reported auto-tuning despite a stably countable peer"
+    echo "$output"
+    return 1
+  fi
+}
+
+@test "explicit BATS_WORKERS overrides auto-tuning during real overlap" {
+  local root="$TEST_TEMP_DIR/stub-repo-pinned-workers"
+  local linked_root="$TEST_TEMP_DIR/stub-repo-pinned-workers-worktree"
+  local state_dir="$TEST_TEMP_DIR/run-all-state-pinned"
+  local release_file="$TEST_TEMP_DIR/release-pinned-run"
+  local first_output="$TEST_TEMP_DIR/pinned-first-run.log"
+  local first_bats_log="$TEST_TEMP_DIR/pinned-first-bats.log"
+  local second_bats_log="$TEST_TEMP_DIR/pinned-second-bats.log"
+  local first_pid
+  create_stub_workspace "$root"
+  create_stub_git_worktree_pair "$root" "$linked_root"
+  export PATH="$root/bin:$PATH"
+
+  env -u BATS_WORKERS GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$first_bats_log" BATS_HOLD_UNTIL_FILE="$release_file" bash -c "cd '$root' && bash testing/run-all.sh" >"$first_output" 2>&1 &
+  first_pid=$!
+
+  run wait_for_active_run_all_peer "$linked_root" "$state_dir"
+  [ "$status" -eq 0 ] || { echo "$output"; touch "$release_file"; wait "$first_pid" 2>/dev/null || true; return 1; }
+
+  run env -u BATS_WORKERS GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_dir" BATS_LOG="$second_bats_log" BATS_WORKERS=7 bash -c "cd '$linked_root' && bash testing/run-all.sh"
+  [ "$status" -eq 0 ]
+
+  touch "$release_file"
+  wait "$first_pid"
+
+  if [[ "$output" == *'Auto-tuned BATS_WORKERS'* ]]; then
+    echo "second suite output unexpectedly auto-tuned despite explicit BATS_WORKERS"
+    echo "$output"
+    return 1
+  fi
+  echo "$output" | grep -q '7 bats workers'
+}
+
+@test "stray token file is ignored and does not self-throttle a lone suite" {
+  local root="$TEST_TEMP_DIR/stub-repo-stray-token"
+  local state_root="$TEST_TEMP_DIR/run-all-state-stray"
+  local repo_key
+  create_stub_workspace "$root"
+  export BATS_LOG="$TEST_TEMP_DIR/bats-stray.log"
+  export PATH="$root/bin:$PATH"
+
+  repo_key=$(printf '%s' "$root/.git" | jq -sRr @uri)
+  mkdir -p "$state_root/$repo_key"
+  printf '{"pid":"%s","repo_key":"%s"}\n' "$$" "$repo_key" > "$state_root/$repo_key/suite.$$.fake.token"
+
+  run env GITHUB_ACTIONS=false RUN_ALL_STATE_DIR="$state_root" bash -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *'Auto-tuned BATS_WORKERS'* ]]
+}
+
+@test "run-all cleanup reaps background jobs on early failure" {
+  local root="$TEST_TEMP_DIR/stub-repo-early-fail"
+  local host_bash
+  local lint_pid
+  create_stub_workspace "$root"
+  create_blocking_lint_script "$root/testing/run-lint.sh"
+  cat > "$root/testing/list-contract-tests.sh" <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+  chmod +x "$root/testing/list-contract-tests.sh"
+  link_run_all_system_tools "$root"
+  host_bash="$(command -v bash)"
+
+  run env PATH="$root/bin" LINT_PID_FILE="$TEST_TEMP_DIR/lint.pid" "$host_bash" -c "cd '$root' && bash testing/run-all.sh"
+  [ "$status" -eq 1 ]
+  echo "$output" | grep -q 'No contract tests discovered'
+
+  lint_pid="$(cat "$TEST_TEMP_DIR/lint.pid")"
+  ! kill -0 "$lint_pid" 2>/dev/null
 }
 
 @test "invalid BATS_WORKERS falls back and keeps serial bats files out of worker batches" {

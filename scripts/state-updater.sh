@@ -22,17 +22,24 @@ else
   list_canonical_phase_dirs() {
     local parent="$1"
     [ -d "$parent" ] || return 0
-    find "$parent" -mindepth 1 -maxdepth 1 -type d 2>/dev/null |
-      while IFS= read -r dir; do
-        [ -n "$dir" ] || continue
-        base=$(basename "$dir")
-        case "$base" in [0-9]*-*) echo "$dir" ;; esac
-      done |
-      (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
+    local dirs=() d base
+    for d in "$parent"/*/; do
+      [ -d "$d" ] || continue
+      base="${d%/}"; base="${base##*/}"
+      case "$base" in [0-9]*-*) dirs+=("${d%/}") ;; esac
+    done
+    [ ${#dirs[@]} -gt 0 ] || return 0
+    printf '%s\n' "${dirs[@]}" | sort -V 2>/dev/null || \
+      printf '%s\n' "${dirs[@]}" | awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-
   }
   count_phase_plans() {
     local dir="$1"
-    find "$dir" -maxdepth 1 ! -name '.*' \( -name '[0-9]*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | wc -l | tr -d ' '
+    local count=0
+    local f
+    for f in "$dir"/[0-9]*-PLAN.md "$dir"/PLAN.md; do
+      [ -f "$f" ] && count=$((count + 1))
+    done
+    echo "$count"
   }
   phase_dir_display_name() {
     local dir="$1"
@@ -73,10 +80,10 @@ update_state_md() {
     pct=0
   fi
 
-  local tmp="${state_md}.tmp.$$"
+  local tmp="${state_md}.tmp.$$.${RANDOM:-0}"
   sed "s/^Plans: .*/Plans: ${summary_count}\/${plan_count}/" "$state_md" | \
     sed "s/^Progress: .*/Progress: ${pct}%/" > "$tmp" 2>/dev/null && \
-    mv "$tmp" "$state_md" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+    [ -s "$tmp" ] && mv "$tmp" "$state_md" 2>/dev/null || rm -f "$tmp" 2>/dev/null
 }
 
 slug_to_name() {
@@ -135,7 +142,7 @@ update_roadmap() {
   fi
 
   # Start with a working copy
-  local tmp="${roadmap}.tmp.$$"
+  local tmp="${roadmap}.tmp.$$.${RANDOM:-0}"
   cp "$roadmap" "$tmp" 2>/dev/null || return 0
 
   # Update extended progress table row (| num - name | done | status | date |)
@@ -146,9 +153,9 @@ update_roadmap() {
     existing_name=$(grep -E "^\| *${phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
   fi
   if [ -n "$existing_name" ]; then
-    local tmp_ext="${roadmap}.tmp_ext.$$"
+    local tmp_ext="${roadmap}.tmp_ext.$$.${RANDOM:-0}"
     sed "s/^| *${phase_num} - .*/| ${phase_num} - ${existing_name} | ${summary_count}\/${plan_count} | ${status} | ${date_str} |/" "$tmp" > "$tmp_ext" 2>/dev/null && \
-      mv "$tmp_ext" "$tmp" 2>/dev/null || rm -f "$tmp_ext" 2>/dev/null
+      [ -s "$tmp_ext" ] && mv "$tmp_ext" "$tmp" 2>/dev/null || rm -f "$tmp_ext" 2>/dev/null
   fi
 
   # Update simple progress table format (| 01 | ● Done |)
@@ -163,19 +170,19 @@ update_roadmap() {
       planned)       simple_status="○ Planned" ;;
       *)             simple_status="$status" ;;
     esac
-    local tmp_simple="${roadmap}.tmp_s.$$"
+    local tmp_simple="${roadmap}.tmp_s.$$.${RANDOM:-0}"
     sed "s/^| *0*${phase_num} *|.*/| ${padded_num} | ${simple_status} |/" "$tmp" > "$tmp_simple" 2>/dev/null && \
-      mv "$tmp_simple" "$tmp" 2>/dev/null || rm -f "$tmp_simple" 2>/dev/null
+      [ -s "$tmp_simple" ] && mv "$tmp_simple" "$tmp" 2>/dev/null || rm -f "$tmp_simple" 2>/dev/null
   fi
 
   # Check/uncheck checkbox based on status
-  local tmp2="${roadmap}.tmp2.$$"
+  local tmp2="${roadmap}.tmp2.$$.${RANDOM:-0}"
   if [ "$status" = "complete" ]; then
     sed "s/^- \[ \] Phase ${phase_num}:/- [x] Phase ${phase_num}:/" "$tmp" > "$tmp2" 2>/dev/null && \
-      mv "$tmp2" "$tmp" 2>/dev/null || rm -f "$tmp2" 2>/dev/null
+      [ -s "$tmp2" ] && mv "$tmp2" "$tmp" 2>/dev/null || rm -f "$tmp2" 2>/dev/null
   elif [ "$status" = "uat issues" ]; then
     sed "s/^- \[[xX]\] Phase ${phase_num}:/- [ ] Phase ${phase_num}:/" "$tmp" > "$tmp2" 2>/dev/null && \
-      mv "$tmp2" "$tmp" 2>/dev/null || rm -f "$tmp2" 2>/dev/null
+      [ -s "$tmp2" ] && mv "$tmp2" "$tmp" 2>/dev/null || rm -f "$tmp2" 2>/dev/null
   fi
 
   mv "$tmp" "$roadmap" 2>/dev/null || rm -f "$tmp" 2>/dev/null
@@ -205,15 +212,15 @@ update_model_profile() {
   # Check if Model Profile line already exists
   if grep -q "^- \*\*Model Profile:\*\*" "$state_md" 2>/dev/null; then
     # Update existing line
-    local tmp="${state_md}.tmp.$$"
+    local tmp="${state_md}.tmp.$$.${RANDOM:-0}"
     sed "s/^- \*\*Model Profile:\*\*.*/- **Model Profile:** ${model_profile}/" "$state_md" > "$tmp" 2>/dev/null && \
-      mv "$tmp" "$state_md" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+      [ -s "$tmp" ] && mv "$tmp" "$state_md" 2>/dev/null || rm -f "$tmp" 2>/dev/null
   else
     # Insert after Test Coverage line
-    local tmp="${state_md}.tmp.$$"
+    local tmp="${state_md}.tmp.$$.${RANDOM:-0}"
     sed "/^- \*\*Test Coverage:\*\*/a\\
 - **Model Profile:** ${model_profile}" "$state_md" > "$tmp" 2>/dev/null && \
-      mv "$tmp" "$state_md" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+      [ -s "$tmp" ] && mv "$tmp" "$state_md" 2>/dev/null || rm -f "$tmp" 2>/dev/null
   fi
 }
 
@@ -275,16 +282,16 @@ advance_phase() {
 
   [ "$total" -eq 0 ] && return 0
 
-  local tmp="${state_md}.tmp.$$"
+  local tmp="${state_md}.tmp.$$.${RANDOM:-0}"
   if [ "$all_done" = true ]; then
     sed "s/^Status: .*/Status: complete/" "$state_md" > "$tmp" 2>/dev/null && \
-      mv "$tmp" "$state_md" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+      [ -s "$tmp" ] && mv "$tmp" "$state_md" 2>/dev/null || rm -f "$tmp" 2>/dev/null
   elif [ -n "$next_num" ]; then
     local next_status="ready"
     [ "$next_has_uat" = true ] && next_status="needs_remediation"
     sed "s/^Phase: .*/Phase: ${next_num} of ${total} (${next_name})/" "$state_md" | \
       sed "s/^Status: .*/Status: ${next_status}/" > "$tmp" 2>/dev/null && \
-      mv "$tmp" "$state_md" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+      [ -s "$tmp" ] && mv "$tmp" "$state_md" 2>/dev/null || rm -f "$tmp" 2>/dev/null
   fi
 }
 
@@ -298,9 +305,9 @@ if echo "$FILE_PATH" | grep -qE 'phases/[^/]+/([0-9]+(-[0-9]+)?-PLAN|PLAN)\.md$'
   # Status: ready → active when a plan is written
   _sm="$(planning_root_from_phase_dir "$(dirname "$FILE_PATH")")/STATE.md"
   if [ -f "$_sm" ] && grep -q '^Status: ready' "$_sm" 2>/dev/null; then
-    _tmp="${_sm}.tmp.$$"
+    _tmp="${_sm}.tmp.$$.${RANDOM:-0}"
     sed 's/^Status: ready/Status: active/' "$_sm" > "$_tmp" 2>/dev/null && \
-      mv "$_tmp" "$_sm" 2>/dev/null || rm -f "$_tmp" 2>/dev/null
+      [ -s "$_tmp" ] && mv "$_tmp" "$_sm" 2>/dev/null || rm -f "$_tmp" 2>/dev/null
   fi
 fi
 
@@ -374,7 +381,7 @@ esac
 
 # Update execution-state as best-effort only (never gates STATE/ROADMAP updates)
 if [ -f "$STATE_FILE" ] && [ -n "$PLAN" ]; then
-  TEMP_FILE="${STATE_FILE}.tmp"
+  TEMP_FILE="${STATE_FILE}.tmp.$$.${RANDOM:-0}"
   jq --arg phase "$PHASE" --arg plan "$PLAN" --arg status "$STATUS" --arg summary_id "$SUMMARY_ID" '
     def as_num: (try tonumber catch null);
     if (.plans | type) == "array" then
@@ -391,7 +398,7 @@ if [ -f "$STATE_FILE" ] && [ -n "$PLAN" ]; then
     else
       .
     end
-  ' "$STATE_FILE" > "$TEMP_FILE" 2>/dev/null && mv "$TEMP_FILE" "$STATE_FILE" 2>/dev/null || rm -f "$TEMP_FILE" 2>/dev/null
+  ' "$STATE_FILE" > "$TEMP_FILE" 2>/dev/null && [ -s "$TEMP_FILE" ] && mv "$TEMP_FILE" "$STATE_FILE" 2>/dev/null || rm -f "$TEMP_FILE" 2>/dev/null
 fi
 
 update_state_md "$(dirname "$FILE_PATH")"

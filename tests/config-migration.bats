@@ -66,10 +66,10 @@ EOF
   [ "$status" -eq 0 ]
   [ "$output" = "3" ]
 
-  # Verify all defaults.json keys are present (41 defaults keys)
+  # Verify all defaults.json keys are present (44 defaults keys)
   run jq 'keys | length' "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
-  [ "$output" = "41" ]
+  [ "$output" = "44" ]
 
   # Verify existing values were preserved
   run jq -r '.context_compiler' "$TEST_TEMP_DIR/.vbw-planning/config.json"
@@ -119,10 +119,10 @@ EOF
   # Both runs should produce identical result
   [ "$AFTER_FIRST" = "$AFTER_SECOND" ]
 
-  # Verify flag count is correct (41 total, graduated flags removed)
+  # Verify flag count is correct (44 total, graduated flags removed)
   run jq 'keys | length' "$TEST_TEMP_DIR/.vbw-planning/config.json"
   [ "$status" -eq 0 ]
-  [ "$output" = "41" ]
+  [ "$output" = "44" ]
 }
 
 @test "migration detects malformed JSON" {
@@ -439,10 +439,10 @@ EOF
   [ "$output" = "$EXPECTED_ADDED" ]
 }
 
-@test "EXPECTED_FLAG_COUNT remains 41 after max_uat_remediation_rounds rename" {
-  # Verify session-start.sh has EXPECTED_FLAG_COUNT=41
+@test "EXPECTED_FLAG_COUNT remains 44 after max_uat_remediation_rounds rename" {
+  # Verify session-start.sh has EXPECTED_FLAG_COUNT=44
   SCRIPT_COUNT=$(grep 'EXPECTED_FLAG_COUNT=' "$SCRIPTS_DIR/session-start.sh" | grep -oE '[0-9]+' | head -1)
-  [ "$SCRIPT_COUNT" = "41" ]
+  [ "$SCRIPT_COUNT" = "44" ]
 }
 
 @test "migration renames legacy max_remediation_rounds to max_uat_remediation_rounds and preserves 5" {

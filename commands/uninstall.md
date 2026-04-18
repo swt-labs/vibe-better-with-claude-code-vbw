@@ -15,8 +15,14 @@ Settings:
 ```
 !`for _d in "${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude"; do [ -z "$_d" ] && continue; [ -f "$_d/settings.json" ] && cat "$_d/settings.json" 2>/dev/null && break; done || echo "{}"`
 ```
-Planning dir: `!`ls -d .vbw-planning 2>/dev/null && echo "EXISTS" || echo "NONE"``
-CLAUDE.md: `!`ls CLAUDE.md 2>/dev/null && echo "EXISTS" || echo "NONE"``
+Planning dir:
+```text
+!`ls -d .vbw-planning 2>/dev/null && echo "EXISTS" || echo "NONE"`
+```
+CLAUDE.md:
+```text
+!`ls CLAUDE.md 2>/dev/null && echo "EXISTS" || echo "NONE"`
+```
 
 ## Steps
 

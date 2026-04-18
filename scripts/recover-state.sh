@@ -13,13 +13,9 @@ _RS_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f "$_RS_SCRIPT_DIR/summary-utils.sh" ]; then
   # shellcheck source=summary-utils.sh
   . "$_RS_SCRIPT_DIR/summary-utils.sh"
-  # Bridge wrappers: recover-state.sh call sites use these names
+  # Bridge wrapper: recover-state.sh call sites use this name
   is_plan_finalized() { is_summary_terminal "$1"; }
-  extract_summary_status() {
-    local f="$1"
-    [ -f "$f" ] || return 1
-    sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$f" 2>/dev/null | head -1 | tr -d '[:space:]'
-  }
+  # extract_summary_status() is provided by summary-utils.sh — do not override
 else
   # Safe default: treat plans as not finalized when helpers unavailable
   is_plan_finalized() { return 1; }

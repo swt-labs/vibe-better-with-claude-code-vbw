@@ -186,8 +186,13 @@ simulate_session_stop() {
 
 @test "prune removes all dead PIDs and deletes the file" {
   cd "$TEST_TEMP_DIR"
-  # Write fake dead PIDs
-  printf '99991\n99992\n99993\n' > ".vbw-planning/.agent-pids"
+  # Generate guaranteed-dead PIDs instead of hardcoded values that may
+  # collide with live processes under parallel BATS execution
+  local dead1 dead2 dead3
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead3=$(get_dead_pid) || fail "get_dead_pid failed"
+  printf '%s\n%s\n%s\n' "$dead1" "$dead2" "$dead3" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
   [ "$status" -eq 0 ]
@@ -198,11 +203,14 @@ simulate_session_stop() {
 
 @test "prune keeps alive PIDs and removes dead ones" {
   cd "$TEST_TEMP_DIR"
-  # Start a real background process to get a live PID
-  sleep 30 &
-  local alive_pid=$!
+  local alive_pid
+  assign_live_pid alive_pid || fail "assign_live_pid failed"
+  kill -0 "$alive_pid" 2>/dev/null || fail "live pid fixture is not alive"
 
-  printf "${alive_pid}\n99994\n99995\n" > ".vbw-planning/.agent-pids"
+  local dead1 dead2
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
+  printf '%s\n%s\n%s\n' "${alive_pid}" "$dead1" "$dead2" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
   [ "$status" -eq 0 ]
@@ -213,12 +221,10 @@ simulate_session_stop() {
   [ "$status" -eq 0 ]
 
   # Dead PIDs should be gone
-  run grep "^99994$" ".vbw-planning/.agent-pids"
+  run grep "^${dead1}$" ".vbw-planning/.agent-pids"
   [ "$status" -ne 0 ]
-  run grep "^99995$" ".vbw-planning/.agent-pids"
+  run grep "^${dead2}$" ".vbw-planning/.agent-pids"
   [ "$status" -ne 0 ]
-
-  kill "$alive_pid" 2>/dev/null || true
 }
 
 @test "prune is a no-op when .agent-pids does not exist" {
@@ -233,13 +239,18 @@ simulate_session_stop() {
 @test "prune ignores leftover .agent-pids.tmp from interrupted prune" {
   cd "$TEST_TEMP_DIR"
   # Simulate interrupted prune that left a stale temp file with a dead PID
-  echo "12345" > ".vbw-planning/.agent-pids.tmp"
+  local stale_pid
+  stale_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  echo "$stale_pid" > ".vbw-planning/.agent-pids.tmp"
 
   # Put a live PID in the real file
-  sleep 30 &
-  local alive_pid=$!
+  local alive_pid
+  assign_live_pid alive_pid || fail "assign_live_pid failed"
+  kill -0 "$alive_pid" 2>/dev/null || fail "live pid fixture is not alive"
 
-  printf "${alive_pid}\n99996\n" > ".vbw-planning/.agent-pids"
+  local dead1
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  printf '%s\n%s\n' "${alive_pid}" "$dead1" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
   [ "$status" -eq 0 ]
@@ -251,17 +262,19 @@ simulate_session_stop() {
 
   # Temp file should be cleaned up
   [ ! -f ".vbw-planning/.agent-pids.tmp" ]
-
-  kill "$alive_pid" 2>/dev/null || true
 }
 
 @test "prune recovers from stale lock left by crashed process" {
   cd "$TEST_TEMP_DIR"
   # Simulate stale lock from a crashed process
+  local stale_lock_pid dead1 dead2
+  stale_lock_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
   mkdir -p "$VBW_AGENT_PID_LOCK_DIR"
-  echo "99999" > "$VBW_AGENT_PID_LOCK_DIR/pid"
+  echo "$stale_lock_pid" > "$VBW_AGENT_PID_LOCK_DIR/pid"
 
-  printf '99997\n99998\n' > ".vbw-planning/.agent-pids"
+  printf '%s\n%s\n' "$dead1" "$dead2" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
   [ "$status" -eq 0 ]
@@ -276,9 +289,12 @@ simulate_session_stop() {
 @test "prune recovers from stale lock directory with no pid file" {
   cd "$TEST_TEMP_DIR"
   # Simulate stale lock dir with no pid file (edge case: lock created but pid write failed)
+  local dead1 dead2
+  dead1=$(get_dead_pid) || fail "get_dead_pid failed"
+  dead2=$(get_dead_pid) || fail "get_dead_pid failed"
   mkdir -p "$VBW_AGENT_PID_LOCK_DIR"
 
-  printf '99997\n99998\n' > ".vbw-planning/.agent-pids"
+  printf '%s\n%s\n' "$dead1" "$dead2" > ".vbw-planning/.agent-pids"
 
   run bash "$SCRIPTS_DIR/agent-pid-tracker.sh" prune
   [ "$status" -eq 0 ]
@@ -382,23 +398,19 @@ simulate_session_stop() {
 }
 
 # =============================================================================
-# Full Chain: task-verify circuit breaker → agent-stop → session-stop
+# Full Chain: advisory task-verify → agent-stop → session-stop
 # =============================================================================
 
-@test "full chain: circuit breaker state created during task-verify, cleaned by session-stop" {
+@test "full chain: advisory task-verify does not create circuit breaker state" {
   cd "$TEST_TEMP_DIR"
 
-  # A commit that won't match the subject → triggers circuit breaker
+  # A mismatched execute task should emit advisory output, not create state.
   echo "$RANDOM" >> dummy.txt && git add dummy.txt && git commit -q -m "docs: update README"
 
-  # First task-verify call: blocks (exit 2), creates .task-verify-seen
-  run bash -c 'echo "{\"task_subject\": \"Implement widget renderer\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
-  [ "$status" -eq 2 ]
-  [ -f ".vbw-planning/.task-verify-seen" ]
-
-  # Second call: circuit breaker fires (exit 0)
-  run bash -c 'echo "{\"task_subject\": \"Implement widget renderer\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
+  run bash -c 'echo "{\"task_subject\": \"Execute 07-01: Implement widget renderer\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
   [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "TaskCompleted"' >/dev/null
+  [ ! -f ".vbw-planning/.task-verify-seen" ]
 
   # Now simulate agent shutdown + session stop
   local pid
@@ -415,7 +427,7 @@ simulate_session_stop() {
   [ -f ".vbw-planning/.vbw-session" ]
 }
 
-@test "full chain: multi-agent start → task-verify blocks → circuit breaker → stops → session cleanup" {
+@test "full chain: multi-agent start → advisory mismatch → matching execute task → session cleanup" {
   cd "$TEST_TEMP_DIR"
 
   # Start two agents
@@ -428,19 +440,18 @@ simulate_session_stop() {
   run cat ".vbw-planning/.active-agent-count"
   [ "$output" = "2" ]
 
-  # Dev-01 finishes task — no matching commit → blocks
+  # Dev-01 finishes task — no matching commit → advisory only
   echo "$RANDOM" >> dummy.txt && git add dummy.txt && git commit -q -m "docs: unrelated change"
   run bash -c 'echo "{\"task_subject\": \"Execute 07-01: Create detail view\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
-  [ "$status" -eq 2 ]
-
-  # Retry (simulating Claude Code re-queue) → circuit breaker allows
-  run bash -c 'echo "{\"task_subject\": \"Execute 07-01: Create detail view\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
   [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "TaskCompleted"' >/dev/null
+  [ ! -f ".vbw-planning/.task-verify-seen" ]
 
   # Dev-02 finishes task with matching commit → no block
   echo "$RANDOM" >> dummy.txt && git add dummy.txt && git commit -q -m "feat(07-02): wire navigation to detail view"
   run bash -c 'echo "{\"task_subject\": \"Execute 07-02: Wire navigation to detail view\"}" | bash "'"$SCRIPTS_DIR"'/task-verify.sh"'
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 
   # Both agents stop
   simulate_agent_stop "$pid1"

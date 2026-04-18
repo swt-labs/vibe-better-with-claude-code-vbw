@@ -138,7 +138,18 @@ cleanup_statusline_cache() {
 
 run_statusline_l1() {
   local dir="$1"
-  (cd "$dir" && CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 bash "$ROOT/scripts/vbw-statusline.sh" <<< '{}' | head -1 | perl -pe 's/\e\[[0-9;]*m//g; s/\e\]8;;.*?\a//g; s/\e\]8;;\a//g')
+  local raw_output sanitized_output first_line
+
+  # Avoid an early-closing reader (for example `head -1`) under `pipefail`.
+  # As documented in verify-plan-filename-convention.sh, that pattern can
+  # SIGPIPE the upstream writer and fail the contract even when assertions pass.
+  if ! raw_output=$(cd "$dir" && CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 bash "$ROOT/scripts/vbw-statusline.sh" <<< '{}'); then
+    raw_output=""
+  fi
+
+  sanitized_output=$(printf '%s\n' "$raw_output" | perl -pe 's/\e\[[0-9;]*m//g; s/\e\]8;;.*?\a//g; s/\e\]8;;\a//g')
+  first_line=${sanitized_output%%$'\n'*}
+  printf '%s\n' "$first_line"
 }
 
 # Test 9: No VERIFICATION.md, no UAT → QA: --

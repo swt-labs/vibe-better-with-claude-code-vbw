@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # verify-human-only-uat-contract.sh — Prevent drift between execute-time UAT
-# generation and standalone /vbw:verify UAT generation rules.
+# generation and verify.md UAT generation rules.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EXEC_PROTO="$ROOT/references/execute-protocol.md"

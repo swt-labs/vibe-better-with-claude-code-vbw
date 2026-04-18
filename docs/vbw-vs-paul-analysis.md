@@ -218,10 +218,10 @@ PAUL requires explicit `/paul:handoff` to persist state. VBW auto-persists every
 | **Verification protocol** | Goal-backward methodology: starts from desired outcomes, derives testable conditions, verifies against artifacts |
 | **Three-tier QA** | Quick (5-10 checks), Standard (15-25), Deep (30+) — each tier verifies progressively deeper against criteria |
 | **Requirement mapping (VRFY-08)** | Deep tier traces requirement IDs to implementing artifacts — OK/WARN/FAIL per requirement |
-| **UAT (`/vbw:verify`)** | Human acceptance testing with per-test CHECKPOINT prompts, pass/fail/partial verdicts, resume support |
+| **UAT (verify.md protocol)** | Human acceptance testing with per-test CHECKPOINT prompts, pass/fail/partial verdicts, resume support |
 | **Archive UAT guard** | Unresolved UAT issues block archiving — hard gate, not bypassable |
 
-PAUL uses BDD-style AC in PLAN.md and reports pass/fail in SUMMARY.md. VBW uses structured `must_haves` in PLAN.md frontmatter, runs automated verification via the QA agent, and then runs human acceptance testing via `/vbw:verify`. The AC are verified at two levels (automated + human) rather than one.
+PAUL uses BDD-style AC in PLAN.md and reports pass/fail in SUMMARY.md. VBW uses structured `must_haves` in PLAN.md frontmatter, runs automated verification via the QA agent, and then runs human acceptance testing via the UAT protocol (verify.md). The AC are verified at two levels (automated + human) rather than one.
 
 **Verdict:** VBW exceeds PAUL. Automated + human verification vs manual UNIFY reporting.
 
@@ -304,7 +304,7 @@ Beyond addressing every PAUL differentiator, VBW includes substantial capabiliti
 | **Database safety guard** | 40+ destructive command patterns blocked across all major frameworks | None |
 | **Parallel execution with isolation** | Agent Teams + worktree isolation + lease locks + file guards | Explicitly rejected — in-session only |
 | **Three-tier automated QA** | Goal-backward verification at Quick/Standard/Deep tiers with 5-30+ checks | Manual UNIFY reconciliation |
-| **Human acceptance testing (UAT)** | `/vbw:verify` with per-test CHECKPOINT prompts, severity classification, resume support | `/paul:verify` exists but is guide-based, not structured |
+| **Human acceptance testing (UAT)** | VBW's UAT protocol (verify.md) with per-test CHECKPOINT prompts, severity classification, resume support | `/paul:verify` exists but is guide-based, not structured |
 | **UAT remediation pipeline** | Automatic detection of unresolved UAT → discuss → plan → execute chain, including milestone recovery | None |
 | **Token budget enforcement** | Per-role caps, per-task complexity scoring, escalation tracking | None — token awareness is philosophical, not implemented |
 | **Event-sourced state recovery** | 13 event types in `event-log.jsonl` + `recover-state.sh` for crash recovery | None |

@@ -13,6 +13,36 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMMANDS_DIR="$ROOT/commands"
 
+tracked_command_markdown_files() {
+  local rel
+  git -C "$ROOT" ls-files -- 'commands/*.md' 'internal/*.md' | while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    printf '%s\n' "$ROOT/$rel"
+  done
+}
+
+tracked_active_scan_files() {
+  local rel
+  git -C "$ROOT" ls-files -- scripts references agents templates \
+    | awk -F/ '($1 == "scripts" || $1 == "references" || $1 == "agents" || $1 == "templates") && NF <= 3 && ($NF ~ /\.sh$/ || $NF ~ /\.md$/) { print }' \
+    | while IFS= read -r rel; do
+      [ -n "$rel" ] || continue
+      printf '%s\n' "$ROOT/$rel"
+    done
+}
+
+TRACKED_COMMAND_MARKDOWN_FILES=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  TRACKED_COMMAND_MARKDOWN_FILES+=("$file")
+done < <(tracked_command_markdown_files)
+
+TRACKED_ACTIVE_SCAN_FILES=()
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  TRACKED_ACTIVE_SCAN_FILES+=("$file")
+done < <(tracked_active_scan_files)
+
 PASS=0
 FAIL=0
 
@@ -103,8 +133,7 @@ check_allowed_tool_match() {
 echo "=== Command Contract Verification ==="
 
 # Scan both commands/ (consumer-facing) and internal/ (maintainer-only)
-for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
-  [ -f "$file" ] || continue
+for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
   base="$(basename "$file" .md)"
 
   if [ "$(head -1 "$file" 2>/dev/null || true)" != "---" ]; then
@@ -130,7 +159,7 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
     pass "$base: name matches filename"
   fi
 
-  if ! printf '%s\n' "$FRONTMATTER" | grep -q '^allowed-tools:'; then
+  if ! grep -q '^allowed-tools:' <<< "$FRONTMATTER"; then
     fail "$base: missing allowed-tools field"
   else
     pass "$base: allowed-tools present"
@@ -158,6 +187,44 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
 done
 
 echo ""
+echo "=== skills.md Step 5b Verification ==="
+
+SKILLS_FILE="$COMMANDS_DIR/skills.md"
+if [ ! -f "$SKILLS_FILE" ]; then
+  fail "skills: command file not found"
+else
+  skills_step_5b="$({
+    awk '
+      /^### Step 5b: Choose installation scope$/ { in_block=1; next }
+      in_block && /^### / { exit }
+      in_block { print }
+    ' "$SKILLS_FILE"
+  } || true)"
+
+  if [ -z "$skills_step_5b" ]; then
+    fail "skills: missing Step 5b block"
+  else
+    if grep -Fq -- '- **Global** — "Installed to `<global_skills_dir>/`, available in all projects."' <<< "$skills_step_5b"; then
+      pass "skills: Step 5b Global option uses <global_skills_dir>/ placeholder"
+    else
+      fail "skills: Step 5b Global option missing <global_skills_dir>/ placeholder"
+    fi
+
+    if grep -Fq 'Use the `global_skills_dir` value from the Stack detection Context JSON as the display path.' <<< "$skills_step_5b"; then
+      pass "skills: Step 5b explains global_skills_dir display source"
+    else
+      fail "skills: Step 5b missing global_skills_dir Stack detection Context JSON guidance"
+    fi
+
+    if grep -Fq '~/.agents/skills/' <<< "$skills_step_5b"; then
+      fail "skills: Step 5b still exposes ~/.agents/skills/ display path"
+    else
+      pass "skills: Step 5b does not expose ~/.agents/skills/ display path"
+    fi
+  fi
+fi
+
+echo ""
 echo "=== Milestone Context Verification ==="
 
 # Commands that reference milestone-scoped paths in their Steps section must have
@@ -165,8 +232,7 @@ echo "=== Milestone Context Verification ==="
 # 1. The ACTIVE milestone shell interpolation in their Context section, OR
 # 2. Bash in allowed-tools (so the agent can read ACTIVE at runtime)
 # Without either, the agent has no way to discover the active milestone slug.
-for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
-  [ -f "$file" ] || continue
+for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
   base="$(basename "$file" .md)"
 
   # Extract body after frontmatter, excluding Context section (which contains the fix itself)
@@ -175,7 +241,7 @@ for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
 
   # ACTIVE-file milestone indirection was removed (architecture simplification).
   # Commands should NOT reference .vbw-planning/ACTIVE anymore.
-  if printf '%s\n' "$body_no_context" | grep -qi '\.vbw-planning/ACTIVE'; then
+  if grep -qi '\.vbw-planning/ACTIVE' <<< "$body_no_context"; then
     fail "$base: references .vbw-planning/ACTIVE — milestone indirection was removed"
   else
     pass "$base: no stale ACTIVE file references"
@@ -187,24 +253,22 @@ echo "=== Stale ACTIVE Reference Verification (scripts + references) ==="
 
 # Scan scripts and references for any runtime usage of .vbw-planning/ACTIVE
 # (session-start.sh is allowed — it only deletes the stale file)
-for scan_dir in "$ROOT/scripts" "$ROOT/references" "$ROOT/agents" "$ROOT/templates"; do
-  [ -d "$scan_dir" ] || continue
-  dir_label="$(basename "$scan_dir")"
-  while IFS= read -r -d '' scan_file; do
-    scan_base="$(basename "$scan_file")"
+for scan_file in "${TRACKED_ACTIVE_SCAN_FILES[@]}"; do
+  rel_scan_file="${scan_file#$ROOT/}"
+  dir_label="${rel_scan_file%%/*}"
+  scan_base="$(basename "$scan_file")"
 
-    # session-start.sh is allowed to reference ACTIVE (rm -f cleanup migration)
-    if [[ "$scan_base" == "session-start.sh" ]]; then
-      pass "$dir_label/$scan_base: ACTIVE reference allowed (cleanup migration)"
-      continue
-    fi
+  # session-start.sh is allowed to reference ACTIVE (rm -f cleanup migration)
+  if [[ "$scan_base" == "session-start.sh" ]]; then
+    pass "$dir_label/$scan_base: ACTIVE reference allowed (cleanup migration)"
+    continue
+  fi
 
-    if grep -qi '\.vbw-planning/ACTIVE' "$scan_file" 2>/dev/null; then
-      fail "$dir_label/$scan_base: references .vbw-planning/ACTIVE — milestone indirection was removed"
-    else
-      pass "$dir_label/$scan_base: no stale ACTIVE file references"
-    fi
-  done < <(find "$scan_dir" -maxdepth 2 -type f \( -name '*.sh' -o -name '*.md' \) -print0 2>/dev/null)
+  if grep -qi '\.vbw-planning/ACTIVE' "$scan_file" 2>/dev/null; then
+    fail "$dir_label/$scan_base: references .vbw-planning/ACTIVE — milestone indirection was removed"
+  else
+    pass "$dir_label/$scan_base: no stale ACTIVE file references"
+  fi
 done
 
 echo ""
@@ -309,13 +373,13 @@ else
   fail "verify: missing promote-todos after known-issues restore in verify recovery path"
 fi
 
-if grep -q 'qa-remediation-state\.sh advance' "$QA_FILE"; then
+if grep -Eq 'qa-remediation-state\.sh"? advance' "$QA_FILE"; then
   pass "qa: round-scoped PROCEED_TO_UAT persists remediation advance"
 else
   fail "qa: missing round-scoped qa-remediation-state advance before standalone QA success presentation"
 fi
 
-if grep -q 'qa-remediation-state\.sh needs-round' "$QA_FILE"; then
+if grep -Eq 'qa-remediation-state\.sh"? needs-round' "$QA_FILE"; then
   pass "qa: round-scoped REMEDIATION_REQUIRED persists next-round state"
 else
   fail "qa: missing round-scoped qa-remediation-state needs-round before standalone remediation handoff"
@@ -406,10 +470,10 @@ else
   fail "verify: misnamed-plan refresh missing shared UAT scope resolver"
 fi
 
-if grep -q 'uat-remediation-state\.sh get-or-init "{phase-dir}" major' "$VERIFY_FILE" \
+if grep -Eq 'uat-remediation-state\.sh"? get-or-init "{phase-dir}" major' "$VERIFY_FILE" \
   && grep -q 'remediation/uat/round-{RR}/R{RR}-UAT.md' "$VERIFY_FILE" \
   && grep -q 'remediation/round-{RR}/R{RR}-UAT.md' "$VERIFY_FILE" \
-  && grep -q 'extract-uat-resume\.sh "{phase-dir}"' "$VERIFY_FILE"; then
+  && grep -Eq 'extract-uat-resume\.sh"? "{phase-dir}"' "$VERIFY_FILE"; then
   pass "verify: remediation re-verification refreshes and validates round-scoped uat_path for round-dir and legacy layouts"
 else
   fail "verify: remediation re-verification missing refreshed round-scoped uat_path validation"
@@ -448,13 +512,13 @@ for mode in "### Mode: Add Phase" "### Mode: Insert Phase" "### Mode: Remove Pha
   block=$(mode_block "$mode")
   label=${mode#"### Mode: "}
 
-  if printf '%s\n' "$block" | grep -q 'If `\.vbw-planning/CONTEXT\.md` exists, rewrite it to reflect the updated milestone decomposition'; then
+  if grep -q 'If `\.vbw-planning/CONTEXT\.md` exists, rewrite it to reflect the updated milestone decomposition' <<< "$block"; then
     pass "vibe: $label refreshes milestone CONTEXT.md"
   else
     fail "vibe: $label missing milestone CONTEXT refresh instruction"
   fi
 
-  if printf '%s\n' "$block" | grep -q 'Preserve project-level key decisions and deferred ideas where still valid\.'; then
+  if grep -q 'Preserve project-level key decisions and deferred ideas where still valid\.' <<< "$block"; then
     pass "vibe: $label preserves milestone decisions and deferred ideas"
   else
     fail "vibe: $label missing preservation instruction for milestone CONTEXT refresh"
@@ -481,7 +545,7 @@ echo "=== QA Result Gate Contract ==="
 
 QA_FILE="$COMMANDS_DIR/qa.md"
 
-if grep -q 'qa-remediation-state\.sh get' "$QA_FILE"; then
+if grep -Eq 'qa-remediation-state\.sh"? get' "$QA_FILE"; then
   pass "qa: resolves remediation state before choosing verification output path"
 else
   fail "qa: missing qa-remediation-state.sh get — standalone QA may overwrite phase-level verification"
@@ -505,7 +569,7 @@ else
   fail "qa: missing verify/done output guard and plan/execute stop for persisted verification_path"
 fi
 
-if grep -q 'resolve-verification-path\.sh current' "$QA_FILE"; then
+if grep -Eq 'resolve-verification-path\.sh"? current' "$QA_FILE"; then
   pass "qa: resolves authoritative verification path for done-stage remediation"
 else
   fail "qa: missing authoritative done-stage verification path resolution"
@@ -538,8 +602,8 @@ else
 fi
 
 if grep -q 'qa-result-gate\.sh' "$QA_FILE" \
-  && grep -q 'qa-remediation-state\.sh advance' "$QA_FILE" \
-  && grep -q 'qa-remediation-state\.sh needs-round' "$QA_FILE"; then
+  && grep -Eq 'qa-remediation-state\.sh"? advance' "$QA_FILE" \
+  && grep -Eq 'qa-remediation-state\.sh"? needs-round' "$QA_FILE"; then
   pass "qa: standalone remediation QA reruns deterministic gate before trusting round-scoped PASS artifacts"
 else
   fail "qa: missing deterministic gate reconciliation for standalone remediation QA"
@@ -650,8 +714,7 @@ echo "=== Allowed-Tools Consistency Verification ==="
 # tools in their allowed-tools frontmatter. Keep these checks exact-pattern and
 # low-noise: match real tool-call syntax or explicit tool names, not generic
 # prose about "skills" or "search".
-for file in "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md; do
-  [ -f "$file" ] || continue
+for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
   base="$(basename "$file" .md)"
 
   FRONTMATTER="$(extract_frontmatter "$file")"
@@ -726,7 +789,7 @@ while IFS= read -r ref; do
   else
     fail "reference missing target: $ref -> $rel"
   fi
-done < <(grep -RhoE '\$\{CLAUDE_PLUGIN_ROOT\}/[A-Za-z0-9._/*{}-]+' "$COMMANDS_DIR"/*.md "$ROOT/internal"/*.md 2>/dev/null | sort -u)
+done < <(grep -RhoE '\$\{CLAUDE_PLUGIN_ROOT\}/[A-Za-z0-9._/*{}-]+' "${TRACKED_COMMAND_MARKDOWN_FILES[@]}" 2>/dev/null | sort -u)
 
 # ── UAT Remediation step 4 must use TodoWrite (not generic "task list") ──
 echo ""
@@ -740,7 +803,7 @@ uat_section="$(
     in_section { print }
   ' "$COMMANDS_DIR/vibe.md"
 )"
-if printf '%s' "$uat_section" | grep -q '\*\*TodoWrite progress list (NON-NEGOTIABLE'; then
+if grep -q '\*\*TodoWrite progress list (NON-NEGOTIABLE' <<< "$uat_section"; then
   pass "UAT Remediation step 4 explicitly references TodoWrite"
 else
   fail "UAT Remediation step 4 missing 'TodoWrite progress list' heading — risk of TaskCreate conflation (see issue #367)"
