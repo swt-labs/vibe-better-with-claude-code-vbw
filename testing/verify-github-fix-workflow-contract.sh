@@ -115,6 +115,32 @@ test_stop_guard_matches_review_commit_to_head_sha() {
 }
 test_stop_guard_matches_review_commit_to_head_sha
 
+test_stop_guard_block_reasons_include_worktree() {
+  # All block() calls that reference a PR number should include the worktree path
+  # in the human-readable reason text (issue #478).
+  local pr_blocks_without_worktree
+  pr_blocks_without_worktree=$(grep -n 'block ".*PR #' "$STOP_GUARD" \
+    | grep -v 'worktree' || true)
+  if [ -z "$pr_blocks_without_worktree" ]; then
+    pass "all PR-referencing block reasons include worktree path"
+  else
+    fail "block reasons referencing PR should include worktree path: $pr_blocks_without_worktree"
+  fi
+}
+test_stop_guard_block_reasons_include_worktree
+
+test_fix_issue_agent_has_ambient_context_antipattern() {
+  local agent_file="${ROOT}/.github/agents/fix-issue.agent.md"
+  if grep -qF 'Anti-pattern: following ambient terminal context' "$agent_file" \
+    && grep -qF 'sole source of truth' "$agent_file" \
+    && grep -qF 'Cross-thread contamination guard' "$agent_file"; then
+    pass "fix-issue agent has ambient context anti-pattern and cross-thread contamination guards"
+  else
+    fail "fix-issue agent should contain ambient context anti-pattern warning and cross-thread contamination guard"
+  fi
+}
+test_fix_issue_agent_has_ambient_context_antipattern
+
 test_wait_github_fails_fast_on_gh_errors() {
   setup_tmpdir
   cat > "$TMPDIR_BASE/gh" <<'EOF'
