@@ -342,7 +342,12 @@ enumerate_open_pr_worktrees() {
             local upstream_owner=""
             upstream_owner=$(cd "$wt_path" 2>/dev/null && git remote get-url "$upstream_remote" 2>/dev/null | sed -n 's|.*github\.com[:/]\([^/]*\)/.*|\1|p' || true)
             if [ -n "$upstream_owner" ] && [ -n "$upstream_branch" ]; then
-              wt_pr_json=$(gh pr list --repo "${OWNER}/${REPO}" --head "${upstream_owner}:${upstream_branch}" --state open --json number,isDraft,headRepository,headRepositoryOwner,headRefName --limit 1 2>/dev/null || true)
+              local wt_pr_status=0
+              wt_pr_json=$(gh pr list --repo "${OWNER}/${REPO}" --head "${upstream_owner}:${upstream_branch}" --state open --json number,isDraft,headRepository,headRepositoryOwner,headRefName --limit 1 2>/dev/null) || wt_pr_status=$?
+              if [ "$wt_pr_status" -ne 0 ]; then
+                printf 'BLOCK: unable to query open PRs for upstream branch "%s:%s" (worktree: %s) in %s/%s; fix gh authentication/configuration and retry.\n' "$upstream_owner" "$upstream_branch" "$wt_path" "$OWNER" "$REPO" >&2
+                return 1
+              fi
               wt_pr=$(printf '%s' "$wt_pr_json" | jq -r '.[0].number // empty')
             fi
           fi
