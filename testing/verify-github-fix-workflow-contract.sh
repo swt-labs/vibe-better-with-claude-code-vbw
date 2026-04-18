@@ -119,12 +119,14 @@ test_stop_guard_block_reasons_include_worktree() {
   # All block() calls that reference a PR number should include the worktree path
   # in the human-readable reason text (issue #478).
   local pr_blocks_without_worktree
+  # Verify the first quoted argument (reason string) mentions the worktree.
+  # Some blocks say "(worktree: ...)" after PR#, others say "worktree '...'" before PR#.
   pr_blocks_without_worktree=$(grep -n 'block ".*PR #' "$STOP_GUARD" \
-    | grep -v 'worktree' || true)
+    | grep -vE 'block "[^"]*worktree[^"]*PR #|block "[^"]*PR #[^"]*worktree' || true)
   if [ -z "$pr_blocks_without_worktree" ]; then
-    pass "all PR-referencing block reasons include worktree path"
+    pass "all PR-referencing block reasons include worktree path in reason string"
   else
-    fail "block reasons referencing PR should include worktree path: $pr_blocks_without_worktree"
+    fail "block reasons referencing PR should include (worktree:) in the reason string: $pr_blocks_without_worktree"
   fi
 }
 test_stop_guard_block_reasons_include_worktree
