@@ -260,9 +260,8 @@ step_gate() {
     # Try to find contract from phase/plan
     contract="${PLANNING_DIR}/.contracts/${PHASE}-${PLAN}.json"
   fi
-  local result exit_code
+  local result
   result=$(run_child_in_target_context "hard-gate.sh" "$gate_type" "$PHASE" "$PLAN" "$TASK" "$contract" 2>/dev/null) || true
-  exit_code=$?
   local gate_result
   gate_result=$(echo "$result" | jq -r '.result // "unknown"' 2>/dev/null) || gate_result="unknown"
 

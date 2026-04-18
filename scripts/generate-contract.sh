@@ -25,11 +25,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLAN_PATH="$1"
 [ ! -f "$PLAN_PATH" ] && exit 0
 
-TARGET_SCOPE_EXPLICIT=0
-if [ -n "${VBW_PLANNING_DIR:-}" ] || [ -n "${CONFIG_PATH:-}" ] || [ -n "$PLAN_PATH" ]; then
-  TARGET_SCOPE_EXPLICIT=1
-fi
-
 resolve_preferred_planning_dir() {
   local explicit_planning_dir
 
@@ -44,7 +39,7 @@ resolve_preferred_planning_dir() {
     return 0
   fi
 
-  vbw_resolve_target_planning_dir "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" 2>/dev/null || printf '%s\n' '.vbw-planning'
+  printf '%s\n' '.vbw-planning'
 }
 
 PLANNING_DIR=$(resolve_preferred_planning_dir)
