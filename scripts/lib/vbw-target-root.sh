@@ -87,6 +87,32 @@ vbw_resolve_target_root() {
   return 1
 }
 
+vbw_resolve_target_planning_dir() {
+  local explicit_scope="$1"
+  shift || true
+
+  local candidate candidate_dir target_root
+
+  for candidate in "$@"; do
+    [ -n "$candidate" ] || continue
+    candidate_dir=$(vbw_candidate_dir_for_path "$candidate" 2>/dev/null || true)
+    [ -n "$candidate_dir" ] || continue
+
+    if [ "$(basename "$candidate_dir")" = ".vbw-planning" ]; then
+      printf '%s\n' "$candidate_dir"
+      return 0
+    fi
+  done
+
+  target_root=$(vbw_resolve_target_root "$explicit_scope" "$@" 2>/dev/null || true)
+  if [ -n "$target_root" ] && [ -d "$target_root/.vbw-planning" ]; then
+    printf '%s/.vbw-planning\n' "$target_root"
+    return 0
+  fi
+
+  return 1
+}
+
 vbw_resolve_target_git_root() {
   local explicit_scope="$1"
   shift || true

@@ -15,6 +15,19 @@ teardown() {
   teardown_temp_dir
 }
 
+setup_unrelated_git_repo() {
+  local repo_dir="$1"
+
+  mkdir -p "$repo_dir"
+  cd "$repo_dir" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+  echo "initial" > unrelated.txt
+  git add unrelated.txt
+  git commit -qm "init"
+}
+
 create_plan_file() {
   cat > "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-01-PLAN.md" << 'PLAN'
 ---
@@ -95,6 +108,24 @@ PLAN
   bash "$SCRIPTS_DIR/generate-contract.sh" ".vbw-planning/phases/01-test/01-01-PLAN.md" >/dev/null
   HASH2=$(jq -r '.contract_hash' ".vbw-planning/.contracts/1-1.json")
   [ "$HASH1" = "$HASH2" ]
+}
+
+@test "generate-contract: off-root absolute plan path writes contract to target planning dir" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+  local canonical_root
+  local target_contract
+
+  create_plan_file
+  setup_unrelated_git_repo "$unrelated_repo"
+  canonical_root=$(cd "$TEST_TEMP_DIR" && pwd -P)
+  target_contract="$canonical_root/.vbw-planning/.contracts/1-1.json"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/generate-contract.sh" "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$target_contract" ]
+  [ -f "$target_contract" ]
+  [ ! -e "$unrelated_repo/.vbw-planning/.contracts/1-1.json" ]
 }
 
 # --- validate-contract.sh tests ---

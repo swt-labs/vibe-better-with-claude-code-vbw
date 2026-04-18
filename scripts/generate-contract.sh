@@ -17,10 +17,25 @@ if [ $# -lt 1 ]; then
   exit 0
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=scripts/lib/vbw-target-root.sh
+. "${SCRIPT_DIR}/lib/vbw-target-root.sh"
+
 PLAN_PATH="$1"
 [ ! -f "$PLAN_PATH" ] && exit 0
 
-PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+TARGET_SCOPE_EXPLICIT=0
+if [ -n "${VBW_PLANNING_DIR:-}" ] || [ -n "${CONFIG_PATH:-}" ] || [ -n "$PLAN_PATH" ]; then
+  TARGET_SCOPE_EXPLICIT=1
+fi
+
+if [ -n "${VBW_PLANNING_DIR:-}" ]; then
+  PLANNING_DIR=$(vbw_candidate_dir_for_path "$VBW_PLANNING_DIR" 2>/dev/null || echo "$VBW_PLANNING_DIR")
+else
+  PLANNING_DIR=$(vbw_resolve_target_planning_dir "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "${CONFIG_PATH:-}" 2>/dev/null || echo ".vbw-planning")
+fi
+
 CONFIG_PATH="${CONFIG_PATH:-${PLANNING_DIR}/config.json}"
 
 # Extract phase and plan from frontmatter

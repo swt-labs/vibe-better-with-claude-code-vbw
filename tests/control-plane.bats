@@ -266,6 +266,37 @@ EOF
   [ -f ".vbw-planning/phases/01-test/.context-dev.md" ]
 }
 
+@test "control-plane: full honors explicit target planning dir off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+  local canonical_root
+  local actual_context
+  local target_contract
+  local target_context
+
+  create_test_plan
+  create_roadmap
+  setup_unrelated_git_repo "$unrelated_repo"
+  canonical_root=$(cd "$TEST_TEMP_DIR" && pwd -P)
+  target_contract="$canonical_root/.vbw-planning/.contracts/1-1.json"
+  target_context="$canonical_root/.vbw-planning/phases/01-test/.context-dev.md"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" full 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --role=dev \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "contract") | .status == "pass"'
+  echo "$output" | jq -e '.steps[] | select(.name == "context") | .status == "pass"'
+  echo "$output" | jq -e --arg p "$target_contract" '.contract_path == $p'
+  actual_context=$(echo "$output" | jq -r '.context_path')
+  actual_context="$(cd "$(dirname "$actual_context")" && pwd -P)/$(basename "$actual_context")"
+  [ "$actual_context" = "$target_context" ]
+  [ -f "$target_contract" ]
+  [ -f "$target_context" ]
+  [ ! -e "$unrelated_repo/.vbw-planning/.contracts/1-1.json" ]
+}
+
 # --- gate failure tests ---
 
 @test "control-plane: gate failure returns exit 1" {

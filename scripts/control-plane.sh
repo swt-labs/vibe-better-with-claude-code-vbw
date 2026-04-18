@@ -154,7 +154,8 @@ step_contract() {
     return 0
   fi
   local result
-  result=$(bash "$SCRIPT_DIR/generate-contract.sh" "$PLAN_PATH" 2>/dev/null) || {
+  result=$(VBW_PLANNING_DIR="$PLANNING_DIR" CONFIG_PATH="$CONFIG_PATH" \
+    bash "$SCRIPT_DIR/generate-contract.sh" "$PLAN_PATH" 2>/dev/null) || {
     record_step "contract" "fail" "generate-contract.sh error"
     echo "control-plane: contract generation failed" >&2
     return 0
@@ -243,7 +244,8 @@ step_context() {
   local phases_dir="${PHASE_DIR%/*}"
   [ -z "$phases_dir" ] && phases_dir="${PLANNING_DIR}/phases"
   local result
-  result=$(bash "$SCRIPT_DIR/compile-context.sh" "$PHASE" "$ROLE" "$phases_dir" "$PLAN_PATH" 2>/dev/null) || {
+  result=$(VBW_PLANNING_DIR="$PLANNING_DIR" CONFIG_PATH="$CONFIG_PATH" \
+    bash "$SCRIPT_DIR/compile-context.sh" "$PHASE" "$ROLE" "$phases_dir" "$PLAN_PATH" 2>/dev/null) || {
     record_step "context" "fail" "compile-context.sh error"
     echo "control-plane: context compilation failed" >&2
     return 0
