@@ -29,6 +29,20 @@ setup_unrelated_git_repo() {
   git commit -qm "init"
 }
 
+setup_unrelated_git_repo_with_message() {
+  local repo_dir="$1"
+  local commit_message="$2"
+
+  mkdir -p "$repo_dir"
+  cd "$repo_dir" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+  echo "initial" > unrelated.txt
+  git add unrelated.txt
+  git commit -qm "$commit_message"
+}
+
 create_nested_control_plane_workspace() {
   NESTED_REPO_ROOT="$TEST_TEMP_DIR/mono"
   NESTED_WORKSPACE_ROOT="$NESTED_REPO_ROOT/apps/proj"
@@ -128,6 +142,39 @@ create_roadmap() {
 ROAD
 }
 
+create_guarded_plan() {
+  cat > "$TEST_TEMP_DIR/test-plan.md" << 'PLAN'
+---
+phase: 1
+plan: 1
+title: Guarded Plan
+wave: 1
+depends_on: []
+skills_used: []
+must_haves:
+  - "Feature A works"
+forbidden_paths:
+  - ".env"
+---
+
+# Plan
+
+### Task 1: Do something
+**Files:** `src/a.js`
+PLAN
+}
+
+init_target_repo_with_commit() {
+  local commit_message="$1"
+
+  cd "$TEST_TEMP_DIR" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+  git add .
+  git commit -qm "$commit_message"
+}
+
 enable_flags() {
   local flags="$1"
   cd "$TEST_TEMP_DIR"
@@ -197,6 +244,50 @@ enable_flags() {
   jq -e '.expires_at' ".vbw-planning/.locks/1-1-T1.lock"
 }
 
+@test "control-plane: pre-task off-root creates lock in target planning dir" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_test_plan
+  create_roadmap
+  enable_flags '.lease_locks = true'
+  setup_unrelated_git_repo "$unrelated_repo"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" pre-task 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test" \
+    --task-id=1-1-T1 \
+    --claimed-files=src/a.js
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "lease_acquire") | .status == "pass"'
+  [ -f "$TEST_TEMP_DIR/.vbw-planning/.locks/1-1-T1.lock" ]
+  [ ! -e "$unrelated_repo/.vbw-planning/.locks/1-1-T1.lock" ]
+}
+
+@test "control-plane: pre-task off-root uses target staged files for protected-file gate" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_guarded_plan
+  create_roadmap
+  enable_flags '.lease_locks = true'
+  init_target_repo_with_commit 'fix(test): valid target baseline'
+  echo 'SECRET=1' > "$TEST_TEMP_DIR/.env"
+  git add .env
+
+  setup_unrelated_git_repo_with_message "$unrelated_repo" 'fix(test): unrelated repo clean'
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" pre-task 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test" \
+    --task-id=1-1-T1 \
+    --claimed-files=src/a.js
+  [ "$status" -eq 1 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "gate_protected_file") | .status == "fail"'
+  [ -f "$TEST_TEMP_DIR/.vbw-planning/.locks/1-1-T1.lock" ]
+  [ ! -e "$unrelated_repo/.vbw-planning/.locks/1-1-T1.lock" ]
+}
+
 # --- post-task tests ---
 
 @test "control-plane: post-task releases lease" {
@@ -210,6 +301,47 @@ enable_flags() {
   echo "$output" | jq -e '.steps[] | select(.name == "lease_release") | .status == "pass"'
   # Lock file should be removed
   [ ! -f ".vbw-planning/.locks/1-1-T1.lock" ]
+}
+
+@test "control-plane: post-task off-root releases target lock" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_test_plan
+  create_roadmap
+  enable_flags '.lease_locks = true'
+  init_target_repo_with_commit 'fix(test): valid target commit'
+  echo '{"task_id":"1-1-T1","pid":"999","timestamp":"2024-01-01T00:00:00Z","files":["src/a.js"]}' > "$TEST_TEMP_DIR/.vbw-planning/.locks/1-1-T1.lock"
+
+  setup_unrelated_git_repo_with_message "$unrelated_repo" 'fix(test): unrelated repo clean'
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" post-task 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test" \
+    --task-id=1-1-T1
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "lease_release") | .status == "pass"'
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.locks/1-1-T1.lock" ]
+  [ ! -e "$unrelated_repo/.vbw-planning/.locks/1-1-T1.lock" ]
+}
+
+@test "control-plane: post-task off-root uses target commit for commit-hygiene gate" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  create_test_plan
+  create_roadmap
+  enable_flags '.lease_locks = true'
+  init_target_repo_with_commit 'bad commit message'
+
+  setup_unrelated_git_repo_with_message "$unrelated_repo" 'fix(test): unrelated repo clean'
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/control-plane.sh" post-task 1 1 1 \
+    --plan-path="$TEST_TEMP_DIR/test-plan.md" \
+    --phase-dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-test" \
+    --task-id=1-1-T1
+  [ "$status" -eq 1 ]
+  echo "$output" | jq -e '.steps[] | select(.name == "gate_commit_hygiene") | .status == "fail"'
 }
 
 # --- compile tests ---

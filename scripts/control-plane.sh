@@ -89,6 +89,8 @@ resolve_preferred_planning_dir() {
 PLANNING_DIR=$(resolve_preferred_planning_dir)
 PLANNING_DIR=$(vbw_candidate_dir_for_path "$PLANNING_DIR" 2>/dev/null || printf '%s\n' "$PLANNING_DIR")
 TARGET_ROOT=$(vbw_resolve_target_root "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PHASE_DIR" "$PLANNING_DIR" || true)
+TARGET_GIT_ROOT=$(vbw_resolve_target_git_root "$TARGET_SCOPE_EXPLICIT" "$PLAN_PATH" "$PHASE_DIR" "$PLANNING_DIR" || true)
+WORKSPACE_SUBPATH=$(vbw_workspace_subpath_from_git_root "$TARGET_ROOT" "$TARGET_GIT_ROOT" 2>/dev/null || true)
 
 if [ -n "$TARGET_ROOT" ] && [ -d "$TARGET_ROOT/.vbw-planning" ] && [ ! -d "$PLANNING_DIR" ]; then
   PLANNING_DIR="$TARGET_ROOT/.vbw-planning"
@@ -159,6 +161,30 @@ emit_result() {
   exit "$exit_code"
 }
 
+run_child_in_target_context() {
+  local script_name="$1"
+  shift
+
+  if [ -n "$TARGET_ROOT" ] && [ -d "$TARGET_ROOT" ]; then
+    (
+      cd "$TARGET_ROOT" || exit 1
+      VBW_PLANNING_DIR="$PLANNING_DIR" \
+      CONFIG_PATH="$CONFIG_PATH" \
+      VBW_TARGET_ROOT="$TARGET_ROOT" \
+      VBW_TARGET_GIT_ROOT="$TARGET_GIT_ROOT" \
+      VBW_WORKSPACE_SUBPATH="$WORKSPACE_SUBPATH" \
+      bash "$SCRIPT_DIR/$script_name" "$@"
+    )
+  else
+    VBW_PLANNING_DIR="$PLANNING_DIR" \
+    CONFIG_PATH="$CONFIG_PATH" \
+    VBW_TARGET_ROOT="$TARGET_ROOT" \
+    VBW_TARGET_GIT_ROOT="$TARGET_GIT_ROOT" \
+    VBW_WORKSPACE_SUBPATH="$WORKSPACE_SUBPATH" \
+    bash "$SCRIPT_DIR/$script_name" "$@"
+  fi
+}
+
 # --- Step functions ---
 CONTRACT_PATH_OUT=""
 
@@ -169,8 +195,7 @@ step_contract() {
     return 0
   fi
   local result
-  result=$(VBW_PLANNING_DIR="$PLANNING_DIR" CONFIG_PATH="$CONFIG_PATH" \
-    bash "$SCRIPT_DIR/generate-contract.sh" "$PLAN_PATH" 2>/dev/null) || {
+  result=$(run_child_in_target_context "generate-contract.sh" "$PLAN_PATH" 2>/dev/null) || {
     record_step "contract" "fail" "generate-contract.sh error"
     echo "control-plane: contract generation failed" >&2
     return 0
@@ -186,25 +211,43 @@ step_contract() {
 
 step_lease_acquire() {
   local tid="${TASK_ID:-${PHASE}-${PLAN}-T${TASK}}"
-  local files_args=""
-  if [ -n "$CLAIMED_FILES" ]; then
-    files_args=$(echo "$CLAIMED_FILES" | tr ',' ' ')
-  fi
+  local files_args=()
   local result
-  result=$(bash "$SCRIPT_DIR/lease-lock.sh" acquire "$tid" --ttl=300 $files_args 2>/dev/null) || {
-    record_step "lease_acquire" "fail" "lease-lock.sh error"
-    echo "control-plane: lease acquisition failed" >&2
-    return 0
-  }
+  if [ -n "$CLAIMED_FILES" ]; then
+    while IFS= read -r claimed_file; do
+      [ -n "$claimed_file" ] || continue
+      files_args+=("$claimed_file")
+    done < <(printf '%s' "$CLAIMED_FILES" | tr ',' '\n')
+  fi
+
+  if [ "${#files_args[@]}" -gt 0 ]; then
+    result=$(run_child_in_target_context "lease-lock.sh" acquire "$tid" --ttl=300 "${files_args[@]}" 2>/dev/null) || {
+      record_step "lease_acquire" "fail" "lease-lock.sh error"
+      echo "control-plane: lease acquisition failed" >&2
+      return 0
+    }
+  else
+    result=$(run_child_in_target_context "lease-lock.sh" acquire "$tid" --ttl=300 2>/dev/null) || {
+      record_step "lease_acquire" "fail" "lease-lock.sh error"
+      echo "control-plane: lease acquisition failed" >&2
+      return 0
+    }
+  fi
+
   if [ "$result" = "conflict_blocked" ]; then
     # Retry once after 2s delay (per plan: auto-repair on lease conflict)
     sleep 2
-    result=$(bash "$SCRIPT_DIR/lease-lock.sh" acquire "$tid" --ttl=300 $files_args 2>/dev/null) || result="error"
+    if [ "${#files_args[@]}" -gt 0 ]; then
+      result=$(run_child_in_target_context "lease-lock.sh" acquire "$tid" --ttl=300 "${files_args[@]}" 2>/dev/null) || result="error"
+    else
+      result=$(run_child_in_target_context "lease-lock.sh" acquire "$tid" --ttl=300 2>/dev/null) || result="error"
+    fi
     if [ "$result" = "conflict_blocked" ] || [ "$result" = "error" ]; then
       record_step "lease_acquire" "fail" "conflict blocked after retry"
       return 1
     fi
   fi
+
   record_step "lease_acquire" "pass" "$result"
   return 0
 }
@@ -218,7 +261,7 @@ step_gate() {
     contract="${PLANNING_DIR}/.contracts/${PHASE}-${PLAN}.json"
   fi
   local result exit_code
-  result=$(bash "$SCRIPT_DIR/hard-gate.sh" "$gate_type" "$PHASE" "$PLAN" "$TASK" "$contract" 2>/dev/null) || true
+  result=$(run_child_in_target_context "hard-gate.sh" "$gate_type" "$PHASE" "$PLAN" "$TASK" "$contract" 2>/dev/null) || true
   exit_code=$?
   local gate_result
   gate_result=$(echo "$result" | jq -r '.result // "unknown"' 2>/dev/null) || gate_result="unknown"
@@ -226,7 +269,7 @@ step_gate() {
   if [ "$gate_result" = "fail" ]; then
     # Attempt auto-repair
     local repair_result
-    repair_result=$(bash "$SCRIPT_DIR/auto-repair.sh" "$gate_type" "$PHASE" "$PLAN" "$TASK" "$contract" 2>/dev/null) || true
+    repair_result=$(run_child_in_target_context "auto-repair.sh" "$gate_type" "$PHASE" "$PLAN" "$TASK" "$contract" 2>/dev/null) || true
     local repaired
     repaired=$(echo "$repair_result" | jq -r '.repaired // false' 2>/dev/null) || repaired="false"
     if [ "$repaired" = "true" ]; then
@@ -244,7 +287,7 @@ step_gate() {
 step_lease_release() {
   local tid="${TASK_ID:-${PHASE}-${PLAN}-T${TASK}}"
   local result
-  result=$(bash "$SCRIPT_DIR/lease-lock.sh" release "$tid" 2>/dev/null) || result="error"
+  result=$(run_child_in_target_context "lease-lock.sh" release "$tid" 2>/dev/null) || result="error"
   record_step "lease_release" "pass" "$result"
   return 0
 }
@@ -259,8 +302,7 @@ step_context() {
   local phases_dir="${PHASE_DIR%/*}"
   [ -z "$phases_dir" ] && phases_dir="${PLANNING_DIR}/phases"
   local result
-  result=$(VBW_PLANNING_DIR="$PLANNING_DIR" CONFIG_PATH="$CONFIG_PATH" \
-    bash "$SCRIPT_DIR/compile-context.sh" "$PHASE" "$ROLE" "$phases_dir" "$PLAN_PATH" 2>/dev/null) || {
+  result=$(run_child_in_target_context "compile-context.sh" "$PHASE" "$ROLE" "$phases_dir" "$PLAN_PATH" 2>/dev/null) || {
     record_step "context" "fail" "compile-context.sh error"
     echo "control-plane: context compilation failed" >&2
     return 0
