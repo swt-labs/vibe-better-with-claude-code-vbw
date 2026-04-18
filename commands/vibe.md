@@ -26,7 +26,6 @@ Pre-computed state (via phase-detect.sh):
 L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"
 P="/tmp/.vbw-phase-detect-${SESSION_KEY}.txt"
 PD=""
-_PD_START_TS=$(date +%s 2>/dev/null || echo 0)
 _phase_detect_cache_fresh() {
   [ -f "$P" ] && [ -s "$P" ]
 }
