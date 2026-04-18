@@ -289,7 +289,7 @@ validate_pr() {
     local review_epoch push_epoch date_cmd
     latest_push_at=$(latest_branch_push_at "$head_ref_name" "$head_sha" "$head_owner" "$head_repo")
     if [ -z "$latest_push_at" ]; then
-      block "Unable to determine the latest push timestamp for branch ${branch} (worktree: ${worktree_dir}) at head commit ${head_sha}. Fix GitHub CLI/API access and retry so the hook can verify that a fresh Copilot review exists after the latest push."
+      block "Unable to determine the latest push timestamp for head ref ${head_ref_name} (local branch alias: ${branch}, worktree: ${worktree_dir}) at head commit ${head_sha}. Fix GitHub CLI/API access and retry so the hook can verify that a fresh Copilot review exists after the latest push."
     fi
     if [ -n "$latest_push_at" ]; then
       latest_copilot_review=$(latest_matching_copilot_review "$pr_number" "$head_sha")
@@ -329,6 +329,24 @@ enumerate_open_pr_worktrees() {
           return 1
         fi
         wt_pr=$(printf '%s' "$wt_pr_json" | jq -r '.[0].number // empty')
+        # If no PR found for the local branch name, try the upstream ref.
+        # Adopted fork PRs use a local alias (e.g. pr/<author>/<num>) that
+        # won't match the PR's headRefName. Derive the remote branch from
+        # the upstream tracking ref and retry with --head "<owner>:<branch>".
+        if [ -z "$wt_pr" ]; then
+          local upstream_ref=""
+          upstream_ref=$(cd "$wt_path" 2>/dev/null && git rev-parse --abbrev-ref "${wt_branch}@{upstream}" 2>/dev/null || true)
+          if [ -n "$upstream_ref" ]; then
+            local upstream_remote="${upstream_ref%%/*}"
+            local upstream_branch="${upstream_ref#*/}"
+            local upstream_owner=""
+            upstream_owner=$(cd "$wt_path" 2>/dev/null && git remote get-url "$upstream_remote" 2>/dev/null | sed -n 's|.*github\.com[:/]\([^/]*\)/.*|\1|p' || true)
+            if [ -n "$upstream_owner" ] && [ -n "$upstream_branch" ]; then
+              wt_pr_json=$(gh pr list --repo "${OWNER}/${REPO}" --head "${upstream_owner}:${upstream_branch}" --state open --json number,isDraft,headRepository,headRepositoryOwner,headRefName --limit 1 2>/dev/null || true)
+              wt_pr=$(printf '%s' "$wt_pr_json" | jq -r '.[0].number // empty')
+            fi
+          fi
+        fi
         [ -z "$wt_pr" ] && continue
         wt_draft=$(printf '%s' "$wt_pr_json" | jq -r '.[0].isDraft // false')
         wt_head_owner=$(printf '%s' "$wt_pr_json" | jq -r '.[0].headRepositoryOwner.login // empty')
