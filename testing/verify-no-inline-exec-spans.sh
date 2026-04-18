@@ -92,10 +92,10 @@ for file in "${TRACKED_MARKDOWN_FILES[@]}"; do
   # which catches embedded command/path constructions like echo, /tmp/..., "./foo",
   # etc.
   # Excludes documentation mentions like "fenced `!` blocks" (no command follows).
-  # Fenced blocks start/end with ``` at line start.
+  # Fenced blocks start/end with ``` allowing optional list-item indentation.
   inline_hits=$(awk '
     BEGIN { in_fence = 0 }
-    /^```/ {
+    /^[[:space:]]*```/ {
       in_fence = !in_fence
       next
     }
@@ -130,11 +130,11 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
 
   fenced_exec_count=$(awk '
     BEGIN { in_fence = 0; count = 0 }
-    /^```/ {
+    /^[[:space:]]*```/ {
       in_fence = !in_fence
       next
     }
-    in_fence && /^!`/ { count++ }
+    in_fence && /^[[:space:]]*!`/ { count++ }
     END { print count }
   ' "$file")
 
