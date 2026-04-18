@@ -48,9 +48,9 @@ resolve_existing_dir() {
   if [ -d "$path" ]; then
     (
       cd "$path" 2>/dev/null && pwd -P 2>/dev/null
-    ) || echo "$path"
+    ) || printf '%s\n' "$path"
   else
-    echo "$path"
+    printf '%s\n' "$path"
   fi
 }
 
@@ -60,12 +60,12 @@ resolve_existing_file() {
     dir=$(dirname "$path")
     base=$(basename "$path")
     if dir=$(cd "$dir" 2>/dev/null && pwd -P 2>/dev/null); then
-      echo "$dir/$base"
+      printf '%s/%s\n' "$dir" "$base"
     else
-      echo "$path"
+      printf '%s\n' "$path"
     fi
   else
-    echo "$path"
+    printf '%s\n' "$path"
   fi
 }
 
@@ -183,7 +183,7 @@ if [[ "$ROLE" =~ ^(lead|dev|scout|debugger|architect)$ ]]; then
 fi
 
 # Delta fingerprint (roles that include changed files / code slices)
-if [[ "$ROLE" =~ ^(dev|scout|debugger)$ ]] && [ -f "${0%/*}/delta-files.sh" ]; then
+if [[ "$ROLE" =~ ^(dev|scout|debugger)$ ]] && [ -f "${SCRIPT_DIR}/delta-files.sh" ]; then
   PHASE_DIR_CACHE=$(resolve_phase_dir_for_cache)
   if [ -n "$PHASE_DIR_CACHE" ] && [ -d "$PHASE_DIR_CACHE" ]; then
     DELTA_FILES=$(bash "${SCRIPT_DIR}/delta-files.sh" "$PHASE_DIR_CACHE" "$PLAN_PATH" 2>/dev/null || true)

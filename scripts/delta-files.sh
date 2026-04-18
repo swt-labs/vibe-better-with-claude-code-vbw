@@ -57,7 +57,7 @@ if [ -n "$TARGET_GIT_ROOT" ]; then
   fi
 
   if [ -n "$CHANGED" ] || [ -n "$STAGED" ]; then
-    { echo "$CHANGED"; echo "$STAGED"; } | emit_workspace_relative_delta_paths
+    { printf '%s\n' "$CHANGED"; printf '%s\n' "$STAGED"; } | emit_workspace_relative_delta_paths
     exit 0
   fi
 
