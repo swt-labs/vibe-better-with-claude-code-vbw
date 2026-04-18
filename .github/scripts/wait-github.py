@@ -263,7 +263,11 @@ def cmd_wait_review(args: argparse.Namespace) -> None:
 
 def cmd_wait_ci(args: argparse.Namespace) -> None:
     """Wait for CI check runs to complete on a commit."""
-    endpoint = f"repos/{args.repo}/commits/{args.sha}/check-runs"
+    # Request the maximum page size so a commit with many check runs does
+    # not silently pass because only the first page (default 30) looks
+    # green. `_evaluate_check_runs` also detects truncation and keeps
+    # polling when total_count > returned items, so this is defensive.
+    endpoint = f"repos/{args.repo}/commits/{args.sha}/check-runs?per_page=100"
     start = time.monotonic()
 
     # Initial fetch with ETag capture.
@@ -315,6 +319,18 @@ def _evaluate_check_runs(body: str, sha: str) -> Optional[str]:
 
     if total == 0:
         return f"NO_CHECKS — no check runs found on {sha}"
+
+    # If the API says there are more check runs than we received, we're
+    # looking at a truncated page. Do not declare CI_GREEN based on an
+    # incomplete view — keep polling (caller will retry) and surface the
+    # mismatch on stderr so the operator can increase per_page if needed.
+    if len(check_runs) < total:
+        print(
+            f"[warn] check-runs page truncated: got {len(check_runs)} of {total} "
+            f"for {sha}; waiting for full page",
+            file=sys.stderr,
+        )
+        return None
 
     allowed_completed_conclusions = {"success", "neutral", "skipped"}
     failed = [

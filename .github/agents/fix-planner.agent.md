@@ -148,7 +148,7 @@ If you are invoked as a subagent, incorporate brownfield considerations, risky a
 
 If the plan was saved successfully, spawn an *Explore* subagent with this prompt:
 
-> First, use #tool:vscode/resolve_memory_file_uri to resolve the path for `/memories/session/plan.md`, then read the plan at the resolved URI. Also read the prompting best practices reference at `.github/references/prompting-best-practices-for-vbw.md`. Audit every step in the plan that involves writing or modifying LLM-consumed content against the best practices. For each violation or gap, report:
+> First, use #tool:vscode/resolveMemoryFileUri to resolve the path for `/memories/session/plan.md`, then read the plan at the resolved URI. Also read the prompting best practices reference at `.github/references/prompting-best-practices-for-vbw.md`. Audit every step in the plan that involves writing or modifying LLM-consumed content against the best practices. For each violation or gap, report:
 > - **Step reference**: which plan step
 > - **Best practice**: which section number and title from the reference
 > - **Issue**: what the plan gets wrong or omits

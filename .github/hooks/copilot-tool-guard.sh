@@ -2,6 +2,16 @@
 
 set -euo pipefail
 
+# If jq is unavailable (not installed, broken, or transiently missing), emit
+# minimal pass-through output and exit 0 rather than failing the Copilot
+# session/tool call. Every code path below depends on jq, so no other work
+# is safe without it.
+if ! command -v jq >/dev/null 2>&1; then
+  cat >/dev/null
+  echo '{}'
+  exit 0
+fi
+
 INPUT=$(cat)
 
 json_compact() {

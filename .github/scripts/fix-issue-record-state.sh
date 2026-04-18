@@ -92,20 +92,27 @@ fi
 state_file="/tmp/fix-issue-vbw-state-${session_id}.json"
 updated_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 
-jq -n \
-  --arg session_id "$session_id" \
-  --argjson pr_number "$pr_number" \
-  --arg branch "$branch" \
-  --arg worktree_path "$worktree_path" \
-  --argjson issue_number "$issue_number" \
-  --arg updated_at "$updated_at" \
-  '{
-    session_id: $session_id,
-    pr_number: $pr_number,
-    branch: $branch,
-    worktree_path: $worktree_path,
-    issue_number: $issue_number,
-    updated_at: $updated_at
-  }' > "$state_file"
+# Write the state file privately. The file contains session id / branch /
+# worktree / issue metadata — on multi-user systems a permissive umask
+# could leave it world-readable, so lock it down before and after write.
+(
+  umask 077
+  jq -n \
+    --arg session_id "$session_id" \
+    --argjson pr_number "$pr_number" \
+    --arg branch "$branch" \
+    --arg worktree_path "$worktree_path" \
+    --argjson issue_number "$issue_number" \
+    --arg updated_at "$updated_at" \
+    '{
+      session_id: $session_id,
+      pr_number: $pr_number,
+      branch: $branch,
+      worktree_path: $worktree_path,
+      issue_number: $issue_number,
+      updated_at: $updated_at
+    }' > "$state_file"
+)
+chmod 600 "$state_file" 2>/dev/null || true
 
 printf 'fix-issue-record-state: wrote %s\n' "$state_file"
