@@ -49,6 +49,7 @@ printf '%s\t%s\n' \
   report-diag-handoff          testing/verify-report-diag-handoff.sh \
   discussion-engine-contract   testing/verify-discussion-engine-contract.sh \
   debug-session-contract       testing/verify-debug-session-contract.sh \
+  debug-target-docs            testing/verify-debug-target-docs.sh \
   askuserquestion-contract     testing/verify-askuserquestion-contract.sh \
   research-storage-contract    testing/verify-research-storage-contract.sh \
   config-defaults-sync         testing/verify-config-defaults-sync.sh \

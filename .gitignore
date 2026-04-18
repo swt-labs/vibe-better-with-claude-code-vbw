@@ -24,8 +24,6 @@ node_modules/
 .github/hooks
 .github/references
 .github/scripts
-AGENTS.md
-CLAUDE.md
 
 # OS
 .DS_Store
