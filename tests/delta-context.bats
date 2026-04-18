@@ -96,6 +96,32 @@ EOF
   ! echo "$output" | grep -q "unrelated.txt"
 }
 
+@test "delta-files.sh uses recent commits for young untagged target repos off-root" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  cd "$TEST_TEMP_DIR" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+
+  echo 'v1' > sample.txt
+  git add .vbw-planning/config.json .vbw-planning/ROADMAP.md \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md sample.txt
+  git commit -qm 'init target repo'
+
+  echo 'v2' > sample.txt
+  git add sample.txt
+  git commit -qm 'update sample v2'
+
+  setup_unrelated_git_repo "$unrelated_repo"
+  cd "$unrelated_repo" || return 1
+
+  run bash "$SCRIPTS_DIR/delta-files.sh" "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase" \
+    "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -qx "sample.txt"
+}
+
 @test "compile-context.sh resolves code slices against explicit target root off-root" {
   local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
 
@@ -117,6 +143,39 @@ EOF
   [ "$status" -eq 0 ]
   grep -q '#### `sample.txt`' "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/.context-dev.md"
   grep -q 'sample body' "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/.context-dev.md"
+}
+
+@test "compile-context.sh resolves young untagged git delta code slices off-root" {
+  local unrelated_repo
+  unrelated_repo=$(mktemp -d "${TMPDIR:-/tmp}/vbw-unrelated.XXXXXX")
+
+  cd "$TEST_TEMP_DIR" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+
+  echo 'v1 body' > sample.txt
+  git add .vbw-planning/config.json .vbw-planning/ROADMAP.md \
+    .vbw-planning/phases/02-test-phase/02-01-PLAN.md sample.txt
+  git commit -qm 'init target repo'
+
+  echo 'v2 body' > sample.txt
+  git add sample.txt
+  git commit -qm 'update sample v2'
+
+  setup_unrelated_git_repo "$unrelated_repo"
+  cd "$unrelated_repo" || return 1
+
+  run env VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" \
+    bash "$SCRIPTS_DIR/compile-context.sh" 02 dev \
+    "$TEST_TEMP_DIR/.vbw-planning/phases" \
+    "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  grep -q -- '- `sample.txt`' "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/.context-dev.md"
+  grep -q '#### `sample.txt`' "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/.context-dev.md"
+  grep -q 'v2 body' "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/.context-dev.md"
+
+  rm -rf "$unrelated_repo"
 }
 
 @test "compile-context.sh includes delta files when v3_delta_context=true" {

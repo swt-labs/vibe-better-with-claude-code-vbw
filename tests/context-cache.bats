@@ -220,7 +220,6 @@ EOF
     .vbw-planning/phases/02-test-phase/02-01-PLAN.md \
     .vbw-planning/phases/02-test-phase/02-01-SUMMARY.md sample.txt
   git commit -qm 'init target repo'
-  git tag v0
 
   echo 'v2' > sample.txt
   git add sample.txt

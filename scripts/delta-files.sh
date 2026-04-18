@@ -49,8 +49,10 @@ if [ -n "$TARGET_GIT_ROOT" ]; then
     exit 0
   fi
 
-  # Fallback: last 5 commits
-  git -C "$TARGET_GIT_ROOT" diff --name-only HEAD~5..HEAD 2>/dev/null | sort -u | grep -v '^$' || true
+  # Fallback: files touched in the last 5 commits.
+  # Use log-based enumeration instead of HEAD~5..HEAD so young untagged repos
+  # with fewer than five commits still produce a bounded repo-relative delta.
+  git -C "$TARGET_GIT_ROOT" log --name-only --format= --max-count=5 HEAD 2>/dev/null | sort -u | grep -v '^$' || true
   exit 0
 fi
 
