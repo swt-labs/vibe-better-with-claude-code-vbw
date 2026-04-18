@@ -96,9 +96,15 @@ CONFIG_PATH="$2"
 PROFILES_PATH="$3"
 EFFORT_INPUT="${4:-}"
 
-MODEL=$(bash "$SCRIPT_DIR/resolve-agent-model.sh" "$AGENT" "$CONFIG_PATH" "$PROFILES_PATH")
+if ! MODEL=$(bash "$SCRIPT_DIR/resolve-agent-model.sh" "$AGENT" "$CONFIG_PATH" "$PROFILES_PATH" 2>&1); then
+  printf '%s\n' "$MODEL"
+  exit 1
+fi
 EFFECTIVE_EFFORT=$(resolve_effective_effort "$CONFIG_PATH" "$EFFORT_INPUT")
-MAX_TURNS=$(bash "$SCRIPT_DIR/resolve-agent-max-turns.sh" "$AGENT" "$CONFIG_PATH" "$EFFECTIVE_EFFORT")
+if ! MAX_TURNS=$(bash "$SCRIPT_DIR/resolve-agent-max-turns.sh" "$AGENT" "$CONFIG_PATH" "$EFFECTIVE_EFFORT" 2>&1); then
+  printf '%s\n' "$MAX_TURNS"
+  exit 1
+fi
 
 emit_assignment RESOLVED_AGENT "$AGENT"
 emit_assignment RESOLVED_MODEL "$MODEL"

@@ -65,3 +65,9 @@ teardown() {
   run bash "$SCRIPTS_DIR/resolve-agent-settings.sh" invalid "$TEST_TEMP_DIR/.vbw-planning/config.json" "$CONFIG_DIR/model-profiles.json" balanced
   [ "$status" -eq 1 ]
 }
+
+@test "resolve-agent-settings surfaces model resolver errors" {
+  run bash "$SCRIPTS_DIR/resolve-agent-settings.sh" dev "$TEST_TEMP_DIR/.vbw-planning/missing.json" "$CONFIG_DIR/model-profiles.json" balanced
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Config not found at $TEST_TEMP_DIR/.vbw-planning/missing.json"* ]]
+}
