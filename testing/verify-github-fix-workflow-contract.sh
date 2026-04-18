@@ -8,6 +8,7 @@ TOOL_GUARD="$ROOT/.github/hooks/copilot-tool-guard.sh"
 STOP_GUARD="$ROOT/.github/hooks/fix-issue-stop-guard.sh"
 WAIT_GITHUB="$ROOT/.github/scripts/wait-github.py"
 RECORD_STATE="$ROOT/.github/scripts/fix-issue-record-state.sh"
+AGENT_MD="$ROOT/.github/agents/fix-issue.agent.md"
 REVIEW_AGENT="$ROOT/.github/agents/review-contributor-pr.agent.md"
 
 PASS=0
@@ -247,7 +248,52 @@ test_record_state_accepts_fork_args() {
 }
 test_record_state_accepts_fork_args
 
-echo ""
+test_enumerate_emits_head_ref_name() {
+  echo "  [contract] enumerate_open_pr_worktrees includes headRefName in --json and emits 7-field pipe output"
+  local stop_guard="$STOP_GUARD"
+  if grep -q 'headRefName' "$stop_guard" \
+    && grep -Eq "printf.*%s\|%s\|%s\|%s\|%s\|%s\|%s" "$stop_guard"; then
+    pass "enumerate emits headRefName as field 7"
+  else
+    fail "enumerate_open_pr_worktrees must fetch headRefName and emit 7-field pipe output"
+  fi
+}
+test_enumerate_emits_head_ref_name
+
+test_validate_pr_accepts_head_ref_name() {
+  echo "  [contract] validate_pr accepts head_ref_name (\$7) for push timestamp branch resolution"
+  local stop_guard="$STOP_GUARD"
+  if grep -q 'local head_ref_name=.*{7:-' "$stop_guard" \
+    && grep -q 'latest_branch_push_at.*head_ref_name' "$stop_guard"; then
+    pass "validate_pr uses head_ref_name for push timestamp query"
+  else
+    fail "validate_pr must accept head_ref_name (\$7) and use it in latest_branch_push_at"
+  fi
+}
+test_validate_pr_accepts_head_ref_name
+
+test_record_state_accepts_head_ref_name() {
+  echo "  [contract] fix-issue-record-state.sh accepts optional head_ref_name arg"
+  local record_script="$RECORD_STATE"
+  if grep -q 'head_ref_name' "$record_script"; then
+    pass "fix-issue-record-state.sh handles head_ref_name"
+  else
+    fail "fix-issue-record-state.sh must accept optional head_ref_name argument"
+  fi
+}
+test_record_state_accepts_head_ref_name
+
+test_step_23a_documents_fork_args() {
+  echo "  [contract] step 23a in agent instructions documents fork_owner, fork_repo, and head_ref_name args"
+  local agent_md="$AGENT_MD"
+  if grep -q 'fork_owner.*fork_repo.*head_ref_name' "$agent_md" \
+    || grep -q '\[fork_owner\].*\[fork_repo\].*\[head_ref_name\]' "$agent_md"; then
+    pass "step 23a documents all optional args"
+  else
+    fail "step 23a must document fork_owner, fork_repo, and head_ref_name arguments"
+  fi
+}
+test_step_23a_documents_fork_args
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"
 echo "==============================="

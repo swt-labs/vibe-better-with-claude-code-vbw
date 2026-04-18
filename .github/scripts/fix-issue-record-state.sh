@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 # Record fix-issue state for the Stop hook's Tier 1 targeting path.
 #
-# Usage: fix-issue-record-state.sh <pr_number> <branch> <worktree_path> <issue_number> [fork_owner] [fork_repo]
+# Usage: fix-issue-record-state.sh <pr_number> <branch> <worktree_path> <issue_number> [fork_owner] [fork_repo] [head_ref_name]
 #
 # Discovers the current VS Code Copilot session_id by finding the most
 # recently modified transcript JSONL under the Copilot workspace storage
 # (mtime within 120 seconds) and writes
 # /tmp/fix-issue-vbw-state-<session_id>.json containing:
 #   { session_id, pr_number, branch, worktree_path, issue_number, updated_at,
-#     fork_owner?, fork_repo? }
+#     fork_owner?, fork_repo?, head_ref_name? }
 #
 # The optional fork_owner and fork_repo arguments should be provided when the
 # PR originates from a fork. They tell the Stop hook to query the fork repo
-# (not the base repo) for push timestamps.
+# (not the base repo) for push timestamps. The optional head_ref_name argument
+# stores the remote branch name on the head repo (which may differ from the
+# local branch alias for fork PRs).
 #
 # The Stop hook (.github/hooks/fix-issue-stop-guard.sh) reads this file to
 # validate only the thread's own PR. The file is deleted by the Stop hook
@@ -26,8 +28,8 @@
 
 set -euo pipefail
 
-if [ "$#" -lt 4 ] || [ "$#" -gt 6 ]; then
-  printf 'usage: %s <pr_number> <branch> <worktree_path> <issue_number> [fork_owner] [fork_repo]\n' "$0" >&2
+if [ "$#" -lt 4 ] || [ "$#" -gt 7 ]; then
+  printf 'usage: %s <pr_number> <branch> <worktree_path> <issue_number> [fork_owner] [fork_repo] [head_ref_name]\n' "$0" >&2
   exit 1
 fi
 
@@ -37,10 +39,11 @@ worktree_path="$3"
 issue_number="$4"
 fork_owner="${5:-}"
 fork_repo="${6:-}"
+head_ref_name="${7:-}"
 
 if { [ -n "$fork_owner" ] && [ -z "$fork_repo" ]; } || { [ -z "$fork_owner" ] && [ -n "$fork_repo" ]; }; then
   printf 'fix-issue-record-state: fork_owner and fork_repo must both be provided or both be omitted\n' >&2
-  printf 'usage: %s <pr_number> <branch> <worktree_path> <issue_number> [fork_owner] [fork_repo]\n' "$0" >&2
+  printf 'usage: %s <pr_number> <branch> <worktree_path> <issue_number> [fork_owner] [fork_repo] [head_ref_name]\n' "$0" >&2
   exit 1
 fi
 
@@ -114,6 +117,10 @@ updated_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
   if [ -n "$fork_owner" ] && [ -n "$fork_repo" ]; then
     fork_args=(--arg fork_owner "$fork_owner" --arg fork_repo "$fork_repo")
   fi
+  head_ref_args=()
+  if [ -n "$head_ref_name" ]; then
+    head_ref_args=(--arg head_ref_name "$head_ref_name")
+  fi
   jq -n \
     --arg session_id "$session_id" \
     --argjson pr_number "$pr_number" \
@@ -122,6 +129,7 @@ updated_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
     --argjson issue_number "$issue_number" \
     --arg updated_at "$updated_at" \
     "${fork_args[@]}" \
+    "${head_ref_args[@]}" \
     '{
       session_id: $session_id,
       pr_number: $pr_number,
@@ -129,7 +137,8 @@ updated_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
       worktree_path: $worktree_path,
       issue_number: $issue_number,
       updated_at: $updated_at
-    } + (if $ARGS.named | has("fork_owner") then {fork_owner: $ARGS.named.fork_owner, fork_repo: $ARGS.named.fork_repo} else {} end)' > "$state_file"
+    } + (if $ARGS.named | has("fork_owner") then {fork_owner: $ARGS.named.fork_owner, fork_repo: $ARGS.named.fork_repo} else {} end)
+    + (if $ARGS.named | has("head_ref_name") then {head_ref_name: $ARGS.named.head_ref_name} else {} end)' > "$state_file"
 )
 chmod 600 "$state_file" 2>/dev/null || true
 

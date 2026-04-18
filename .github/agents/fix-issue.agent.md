@@ -449,8 +449,10 @@ Start with cross-model round M = 1. **Repeat the following steps, incrementing M
 23a. **Record Stop-hook thread state (NON-NEGOTIABLE).** Immediately after the PR number is known — whether you created it in step 23 or adopted an existing one in step 3c — run:
 
     ```bash
-    bash .github/scripts/fix-issue-record-state.sh <pr_number> <branch> <worktree-absolute-path> <issue_number>
+    bash .github/scripts/fix-issue-record-state.sh <pr_number> <branch> <worktree-absolute-path> <issue_number> [fork_owner] [fork_repo] [head_ref_name]
     ```
+
+    For adopted fork PRs (step 3c), pass the fork owner, fork repo name, and the **remote** branch name (`PR_BRANCH`, not the local alias `CHECKOUT_BRANCH`) as the last three arguments. This ensures the Stop hook queries `refs/heads/<head_ref_name>` on the fork repo for push timestamps, rather than using the local alias branch name which does not exist on the fork.
 
     This writes `/tmp/fix-issue-vbw-state-<session_id>.json` so the local Stop hook (`.github/hooks/fix-issue-stop-guard.sh`) can target this thread's specific PR via Tier 1 lookup instead of falling back to transcript inference or strict multi-worktree validation. Re-run this helper whenever the `(pr, branch, worktree)` tuple changes (for example, if you retarget the PR or move to a different worktree). The Stop hook deletes the state file automatically when all gates pass.
 
@@ -741,7 +743,7 @@ If any item is missing, do not present the work as done.
 
 ## Stop Hook Recovery
 
-When the stop hook blocks you, it returns structured data in `hookSpecificOutput`. **Extract and use these fields directly** — do not re-derive them:
+When the stop hook blocks you, it returns structured data in `hookSpecificOutput`. **Extract and use these fields directly** — do not re-derive them (see the anti-pattern warning below for verification steps before acting on them):
 
 - `commit_sha`: Full 40-character SHA of the commit that was checked. Use this for all GitHub API calls.
 - `worktree_path`: Absolute path to the worktree. Always `cd` here before running git commands.
