@@ -38,6 +38,19 @@ teardown() {
   teardown_temp_dir
 }
 
+setup_unrelated_git_repo() {
+  local repo_dir="$1"
+
+  mkdir -p "$repo_dir"
+  cd "$repo_dir" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+  echo "initial" > unrelated.txt
+  git add unrelated.txt
+  git commit -qm "init"
+}
+
 @test "cache-context.sh produces consistent hash for same inputs" {
   run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$TEST_TEMP_DIR/.vbw-planning/config.json" "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
   [ "$status" -eq 0 ]
@@ -139,17 +152,29 @@ teardown() {
 }
 
 @test "cache-context.sh: rolling summary fingerprint excluded when flag is false" {
-  # Default config has rolling_summary=false
-  # Create a ROLLING-CONTEXT.md and verify it doesn't affect the hash
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  # Default config has rolling_summary=false.
+  # Run from an unrelated git repo to prove explicit config/plan inputs ignore
+  # both ambient repo dirtiness and rolling-context content changes.
+  setup_unrelated_git_repo "$unrelated_repo"
+
   echo "# Rolling Context" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
+  cd "$unrelated_repo" || return 1
+
   run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$TEST_TEMP_DIR/.vbw-planning/config.json" \
     "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
   [ "$status" -eq 0 ]
   HASH1=$(echo "$output" | cut -d' ' -f2)
+
   echo "# Different Content" > "$TEST_TEMP_DIR/.vbw-planning/ROLLING-CONTEXT.md"
+  echo "modified" >> unrelated.txt
+
   run bash "$SCRIPTS_DIR/cache-context.sh" 02 dev "$TEST_TEMP_DIR/.vbw-planning/config.json" \
     "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
+  [ "$status" -eq 0 ]
   HASH2=$(echo "$output" | cut -d' ' -f2)
+
   # Hash should be stable when flag is false (rolling context ignored)
   [ "$HASH1" = "$HASH2" ]
 }

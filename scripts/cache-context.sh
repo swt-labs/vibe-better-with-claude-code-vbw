@@ -14,10 +14,115 @@ fi
 
 PHASE="$1"
 ROLE="$2"
-PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
-CONFIG_PATH="${3:-$PLANNING_DIR/config.json}"
-PLAN_PATH="${4:-}"
+CONFIG_PATH_INPUT="${3:-}"
+PLAN_PATH_INPUT="${4:-}"
+TARGET_SCOPE_EXPLICIT=0
+if [ -n "${VBW_PLANNING_DIR:-}" ] || [ $# -ge 3 ] || [ $# -ge 4 ]; then
+  TARGET_SCOPE_EXPLICIT=1
+fi
+
+resolve_existing_dir() {
+  local path="$1"
+  if [ -d "$path" ]; then
+    (
+      cd "$path" 2>/dev/null && pwd -P 2>/dev/null
+    ) || echo "$path"
+  else
+    echo "$path"
+  fi
+}
+
+resolve_existing_file() {
+  local path="$1" dir base
+  if [ -f "$path" ]; then
+    dir=$(dirname "$path")
+    base=$(basename "$path")
+    if dir=$(cd "$dir" 2>/dev/null && pwd -P 2>/dev/null); then
+      echo "$dir/$base"
+    else
+      echo "$path"
+    fi
+  else
+    echo "$path"
+  fi
+}
+
+resolve_planning_dir_from_plan() {
+  local current next
+
+  current=$(dirname "$1")
+  while :; do
+    if [ "$(basename "$current")" = ".vbw-planning" ] || {
+      [ -f "$current/config.json" ] && [ -d "$current/phases" ]
+    }; then
+      echo "$current"
+      return 0
+    fi
+
+    if [ "$current" = "/" ]; then
+      break
+    fi
+
+    next=$(dirname "$current")
+    [ "$next" = "$current" ] && break
+    current="$next"
+  done
+
+  return 1
+}
+
+resolve_planning_dir() {
+  if [ -n "${VBW_PLANNING_DIR:-}" ]; then
+    echo "$VBW_PLANNING_DIR"
+    return 0
+  fi
+
+  if [ -n "$CONFIG_PATH_INPUT" ] && [ -f "$CONFIG_PATH_INPUT" ]; then
+    dirname "$CONFIG_PATH_INPUT"
+    return 0
+  fi
+
+  if [ -n "$PLAN_PATH_INPUT" ] && [ -f "$PLAN_PATH_INPUT" ]; then
+    resolve_planning_dir_from_plan "$PLAN_PATH_INPUT" && return 0
+  fi
+
+  echo ".vbw-planning"
+}
+
+resolve_git_root_for_cache() {
+  local candidate candidate_dir
+
+  for candidate in "$PLAN_PATH" "$PLANNING_DIR"; do
+    [ -n "$candidate" ] || continue
+    [ -e "$candidate" ] || continue
+
+    candidate_dir="$candidate"
+    [ -d "$candidate_dir" ] || candidate_dir=$(dirname "$candidate_dir")
+
+    if git -C "$candidate_dir" rev-parse --is-inside-work-tree &>/dev/null; then
+      git -C "$candidate_dir" rev-parse --show-toplevel 2>/dev/null || return 0
+      return 0
+    fi
+  done
+
+  if [ "$TARGET_SCOPE_EXPLICIT" -ne 1 ] && command -v git &>/dev/null && git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
+    git rev-parse --show-toplevel 2>/dev/null || return 0
+    return 0
+  fi
+
+  return 1
+}
+
+PLANNING_DIR=$(resolve_planning_dir)
+PLANNING_DIR=$(resolve_existing_dir "$PLANNING_DIR")
+CONFIG_PATH="${CONFIG_PATH_INPUT:-$PLANNING_DIR/config.json}"
+CONFIG_PATH=$(resolve_existing_file "$CONFIG_PATH")
+PLAN_PATH="$PLAN_PATH_INPUT"
+if [ -n "$PLAN_PATH" ]; then
+  PLAN_PATH=$(resolve_existing_file "$PLAN_PATH")
+fi
 CACHE_DIR="$PLANNING_DIR/.cache/context"
+TARGET_GIT_ROOT=$(resolve_git_root_for_cache || true)
 
 fingerprint_file() {
   local path="$1" missing_label="$2"
@@ -49,14 +154,14 @@ if [ -n "$PLAN_PATH" ] && [ -f "$PLAN_PATH" ]; then
 fi
 
 # Changed files list (git diff for delta awareness)
-if command -v git &>/dev/null && git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
+if [ -n "$TARGET_GIT_ROOT" ]; then
   CHANGED_SUM=$({
-    git diff HEAD 2>/dev/null || true
-    git ls-files --others --exclude-standard 2>/dev/null | while IFS= read -r file; do
+    git -C "$TARGET_GIT_ROOT" diff HEAD 2>/dev/null || true
+    git -C "$TARGET_GIT_ROOT" ls-files --others --exclude-standard 2>/dev/null | while IFS= read -r file; do
       [ -n "$file" ] || continue
       echo "UNTRACKED:$file"
-      if [ -f "$file" ]; then
-        shasum -a 256 "$file" 2>/dev/null || true
+      if [ -f "$TARGET_GIT_ROOT/$file" ]; then
+        shasum -a 256 "$TARGET_GIT_ROOT/$file" 2>/dev/null || true
       fi
     done
   } | shasum -a 256 2>/dev/null | cut -d' ' -f1 || echo "nogit")

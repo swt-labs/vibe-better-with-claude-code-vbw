@@ -28,6 +28,19 @@ teardown() {
   teardown_temp_dir
 }
 
+setup_unrelated_git_repo() {
+  local repo_dir="$1"
+
+  mkdir -p "$repo_dir"
+  cd "$repo_dir" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+  echo "initial" > unrelated.txt
+  git add unrelated.txt
+  git commit -qm "init"
+}
+
 @test "delta-files.sh outputs changed files in git repo" {
   cd "$PROJECT_ROOT"
   run bash "$SCRIPTS_DIR/delta-files.sh" "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase"
@@ -61,6 +74,26 @@ EOF
   run bash "$SCRIPTS_DIR/delta-files.sh" ".vbw-planning/phases/02-test-phase"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "scripts/test.sh"
+}
+
+@test "delta-files.sh uses the target phase path instead of ambient git repo state" {
+  local unrelated_repo="$TEST_TEMP_DIR/unrelated-git"
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-SUMMARY.md" <<'EOF'
+# Summary
+## Files Modified
+- scripts/test.sh
+## Deviations
+EOF
+
+  setup_unrelated_git_repo "$unrelated_repo"
+  echo "modified" >> unrelated.txt
+
+  run bash "$SCRIPTS_DIR/delta-files.sh" "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase" \
+    "$TEST_TEMP_DIR/.vbw-planning/phases/02-test-phase/02-01-PLAN.md"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -qx "scripts/test.sh"
+  ! echo "$output" | grep -q "unrelated.txt"
 }
 
 @test "compile-context.sh includes delta files when v3_delta_context=true" {
