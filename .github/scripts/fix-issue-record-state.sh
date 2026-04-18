@@ -31,6 +31,21 @@ branch="$2"
 worktree_path="$3"
 issue_number="$4"
 
+require_non_negative_integer() {
+  local field_name="$1"
+  local value="$2"
+
+  case "$value" in
+    ''|*[!0-9]*)
+      printf 'fix-issue-record-state: %s must be a non-negative integer (got %s)\n' "$field_name" "$value" >&2
+      exit 1
+      ;;
+  esac
+}
+
+require_non_negative_integer "pr_number" "$pr_number"
+require_non_negative_integer "issue_number" "$issue_number"
+
 case "$(uname -s)" in
   Darwin) storage_root="$HOME/Library/Application Support/Code - Insiders/User/workspaceStorage" ;;
   Linux)  storage_root="$HOME/.config/Code - Insiders/User/workspaceStorage" ;;
