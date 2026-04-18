@@ -610,6 +610,13 @@ for rel in "${PHASE_DETECT_COMMANDS[@]}"; do
   fi
 done
 
+vibe_link_repair_count=$(grep -cF 'bash "$REAL_R/scripts/ensure-plugin-root-link.sh" "$L" "$REAL_R"' "$COMMANDS_DIR/vibe.md" || true)
+if [ "${vibe_link_repair_count:-0}" -ge 3 ]; then
+  pass "vibe.md: guarded readers repair the session link before live refresh"
+else
+  fail "vibe.md: expected guarded readers to repair the session link before live refresh"
+fi
+
 # Check 19: targeted commands no longer use link-order-dependent wait-loop fallback
 # Old race-prone form (same line or adjacent lines):
 #   if [ -z "$PD" ] || [ "$PD" = "phase_detect_error=true" ] || [ -L "$L" ]; then

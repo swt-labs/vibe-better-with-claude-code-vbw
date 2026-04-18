@@ -136,6 +136,7 @@ _stamp_file_pattern() {
 
 setup() {
   TMP_TEST_DIRS=()
+  TMP_TEST_PATHS=()
 }
 
 _new_tmp_test_dir() {
@@ -145,7 +146,15 @@ _new_tmp_test_dir() {
   printf '%s' "$d"
 }
 
+_track_tmp_test_path() {
+  TMP_TEST_PATHS+=("$1")
+}
+
 teardown() {
+  local p
+  for p in "${TMP_TEST_PATHS[@]}"; do
+    [ -n "$p" ] && rm -rf "$p"
+  done
   local d
   for d in "${TMP_TEST_DIRS[@]}"; do
     [ -n "$d" ] && rm -rf "$d"
@@ -193,6 +202,21 @@ _simulate_phase_detect_reader() {
   else
     echo "phase_detect_error=true"
   fi
+}
+
+_extract_vibe_phase_state_block() {
+  local out="$1"
+
+  awk '
+    /^Pre-computed state \(via phase-detect\.sh\):$/ { capture=1; next }
+    capture && !in_block && /^```$/ { in_block=1; next }
+    in_block && /^```$/ { exit }
+    in_block {
+      sub(/^!`/, "", $0)
+      sub(/`$/, "", $0)
+      print
+    }
+  ' "$PROJECT_ROOT/commands/vibe.md" > "$out"
 }
 
 @test "commands with phase-detect run it atomically in preamble" {
@@ -305,6 +329,73 @@ EOF
   out=$(_simulate_phase_detect_reader "$link" "$cache" "$root")
   [[ "$out" == *"next_phase_state=fresh_live"* ]]
   [[ "$out" != *"phase_detect_error=true"* ]]
+}
+
+@test "extracted vibe phase-state block repairs sentinel cache without pre-existing link" {
+  local td root script session link cache
+  td=$(_new_tmp_test_dir)
+
+  root="$td/root"
+  script="$td/vibe-phase-state.sh"
+  session="vibe-phase-live-$$-$RANDOM"
+  link="/tmp/.vbw-plugin-root-link-${session}"
+  cache="/tmp/.vbw-phase-detect-${session}.txt"
+  mkdir -p "$root/scripts"
+
+  cat > "$root/scripts/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' 'next_phase_state=fresh_live' 'phase_detect_complete=true'
+EOF
+  : > "$root/scripts/hook-wrapper.sh"
+  cp "$PROJECT_ROOT/scripts/ensure-plugin-root-link.sh" "$root/scripts/ensure-plugin-root-link.sh"
+  chmod +x "$root/scripts/phase-detect.sh" "$root/scripts/ensure-plugin-root-link.sh"
+
+  printf '%s\n' 'phase_detect_error=true' > "$cache"
+  touch -t 209912312359 "$cache"
+
+  _track_tmp_test_path "$link"
+  _track_tmp_test_path "$cache"
+  _extract_vibe_phase_state_block "$script"
+  [ -s "$script" ]
+
+  run env CLAUDE_SESSION_ID="$session" CLAUDE_PLUGIN_ROOT="$root" bash "$script"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"next_phase_state=fresh_live"* ]]
+  [[ "$output" != *"phase_detect_error=true"* ]]
+  [ -L "$link" ]
+}
+
+@test "extracted vibe phase-state block fails closed when live refresh returns error sentinel" {
+  local td root script session link cache
+  td=$(_new_tmp_test_dir)
+
+  root="$td/root"
+  script="$td/vibe-phase-state.sh"
+  session="vibe-phase-fail-$$-$RANDOM"
+  link="/tmp/.vbw-plugin-root-link-${session}"
+  cache="/tmp/.vbw-phase-detect-${session}.txt"
+  mkdir -p "$root/scripts"
+
+  cat > "$root/scripts/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "phase_detect_error=true"
+EOF
+  : > "$root/scripts/hook-wrapper.sh"
+  cp "$PROJECT_ROOT/scripts/ensure-plugin-root-link.sh" "$root/scripts/ensure-plugin-root-link.sh"
+  chmod +x "$root/scripts/phase-detect.sh" "$root/scripts/ensure-plugin-root-link.sh"
+
+  printf '%s\n' 'phase_detect_error=true' > "$cache"
+  touch -t 209912312359 "$cache"
+
+  _track_tmp_test_path "$link"
+  _track_tmp_test_path "$cache"
+  _extract_vibe_phase_state_block "$script"
+  [ -s "$script" ]
+
+  run env CLAUDE_SESSION_ID="$session" CLAUDE_PLUGIN_ROOT="$root" bash "$script"
+  [ "$status" -eq 0 ]
+  [ "$output" = "phase_detect_error=true" ]
+  [ -L "$link" ]
 }
 
 @test "reader refreshes without pre-existing link when fallback root is available" {
