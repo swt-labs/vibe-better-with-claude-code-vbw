@@ -761,7 +761,11 @@ When the stop hook blocks you, it returns structured data in `hookSpecificOutput
 3. **Tier 3 — single candidate.** If only one local worktree has an open PR, it is validated.
 4. **Tier 4 — strict fallback.** If multiple open-PR worktrees exist AND the transcript did not uniquely identify one AND no state file was found, the hook validates every local open-PR worktree and blocks on the first failure. This tier exists so no thread can silently complete while any local PR is unready.
 
-If you are blocked at Tier 4, the block message names which PR failed and why. If that PR is unrelated to your current task, the correct recovery is still to run step 23a for your own thread (so the next Stop targets via Tier 1) and address the unrelated PR's state in its own thread.
+**Cross-thread contamination guard (NON-NEGOTIABLE).** If the hook blocks naming a PR that is NOT the one you are working on, you are seeing Tier 4's broadcast behavior — it validated another thread's PR because your thread has no state file yet. The correct recovery is:
+1. **Do NOT fix, resolve, review, or operate on the other thread's PR.** That PR belongs to a different agent thread. Touching it causes cross-thread contamination — you will make changes the other thread doesn't expect, and your own PR's work stalls.
+2. **Run step 23a immediately** for YOUR PR (the one you've been implementing throughout this session). This creates the Tier 1 state file so all subsequent Stop hooks target only your PR.
+3. **Re-invoke completion.** The hook will now use Tier 1 and validate only your PR.
+4. If you don't yet have a PR number (still pre-Phase 4), you cannot run step 23a — instead, continue your workflow. The hook will keep blocking via Tier 4 until you reach step 23a, but that is expected and not a problem to solve by working on someone else's PR.
 
 **Recovery procedure when blocked for pending CI:**
 1. Extract `commit_sha`, `worktree_path`, and `recovery_command` from the block output.

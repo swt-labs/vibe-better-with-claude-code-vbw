@@ -214,7 +214,7 @@ validate_pr() {
     }' 2>/dev/null || true)
   pr_state_json=$(printf '%s' "$pr_state_raw" | jq '.data.repository.pullRequest // empty' 2>/dev/null || true)
   if [ -z "$pr_state_json" ] || [ "$pr_state_json" = "null" ]; then
-    block "Could not query PR #${pr_number} review state from GitHub. Retry once GitHub API access is healthy before completing."
+    block "Could not query PR #${pr_number} (worktree: ${worktree_dir}) review state from GitHub. Retry once GitHub API access is healthy before completing."
   fi
 
   merge_state=$(printf '%s' "$pr_state_json" | jq -r '.mergeStateStatus // empty')
@@ -284,7 +284,7 @@ validate_pr() {
     local review_epoch push_epoch date_cmd
     latest_push_at=$(latest_branch_push_at "$branch" "$head_sha")
     if [ -z "$latest_push_at" ]; then
-      block "Unable to determine the latest push timestamp for branch ${branch} at head commit ${head_sha}. Fix GitHub CLI/API access and retry so the hook can verify that a fresh Copilot review exists after the latest push."
+      block "Unable to determine the latest push timestamp for branch ${branch} (worktree: ${worktree_dir}) at head commit ${head_sha}. Fix GitHub CLI/API access and retry so the hook can verify that a fresh Copilot review exists after the latest push."
     fi
     if [ -n "$latest_push_at" ]; then
       latest_copilot_review=$(latest_matching_copilot_review "$pr_number" "$head_sha")
