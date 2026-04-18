@@ -7,21 +7,50 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LIST_BATS_FILES="$ROOT/testing/list-bats-files.sh"
 LIST_CONTRACT_TESTS="$ROOT/testing/list-contract-tests.sh"
+RUN_ALL_STATE_UTILS="$ROOT/testing/run-all-state-utils.sh"
 
 TMPDIR_JOBS="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR_JOBS"' EXIT
+RUN_ALL_STATE_ROOT="${RUN_ALL_STATE_DIR:-${TMPDIR:-/tmp}/vbw-run-all-suites-${UID:-$(id -u)}}"
+RUN_ALL_STATE_DIR=""
+RUN_ALL_TOKEN=""
+RUN_ALL_REPO_KEY=""
+RUN_ALL_PROCESS_START=""
+RUN_ALL_PROCESS_COMMAND=""
 
-if ! command -v jq >/dev/null 2>&1; then
-  echo "ERROR: jq is required for CI-parity local verification (install with: brew install jq)."
-  exit 1
-fi
+# shellcheck source=testing/run-all-state-utils.sh
+source "$RUN_ALL_STATE_UTILS"
 
-# --- Shared parallel job infrastructure ---
 declare -a JOB_NAMES=()
 declare -a JOB_PIDS=()
 declare -a JOB_TYPES=()  # "lint", "contract", or "bats"
 declare -a JOB_EXIT_CODES=()
 declare -a serial_bats_files=()
+
+cleanup_run_all() {
+  local job_pid ppid_of_job
+
+  for job_pid in "${JOB_PIDS[@]}"; do
+    [ -n "$job_pid" ] || continue
+    ppid_of_job=$(ps -o ppid= -p "$job_pid" 2>/dev/null | tr -d '[:space:]') || continue
+    [ "$ppid_of_job" = "$$" ] || continue
+    kill "$job_pid" 2>/dev/null || true
+  done
+  for job_pid in "${JOB_PIDS[@]}"; do
+    [ -n "$job_pid" ] || continue
+    wait "$job_pid" 2>/dev/null || true
+  done
+  rm -rf "$TMPDIR_JOBS"
+  if [ -n "$RUN_ALL_TOKEN" ]; then
+    rm -f "$RUN_ALL_TOKEN" >/dev/null 2>&1 || true
+  fi
+}
+
+trap cleanup_run_all EXIT
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ERROR: jq is required for CI-parity local verification (install with: brew install jq)."
+  exit 1
+fi
 
 run_job() {
   local type="$1" name="$2"
@@ -31,6 +60,20 @@ run_job() {
   "$@" > "$TMPDIR_JOBS/$name.out" 2>&1 &
   JOB_PIDS+=("$!")
 }
+
+auto_tune_bats_workers() {
+  local requested="$1" active_suites="$2" tuned="$1"
+
+  if [ "$active_suites" -gt 1 ]; then
+    tuned=$(((requested + active_suites - 1) / active_suites))
+    [ "$tuned" -lt 2 ] && tuned=2
+  fi
+
+  echo "$tuned"
+}
+
+initialize_run_all_state
+register_run_all_token || true
 
 # --- Launch shell lint ---
 run_job lint "shell-lint"                bash "$ROOT/testing/run-lint.sh"
@@ -48,7 +91,11 @@ while IFS=$'\t' read -r name path; do
 done <<< "$CONTRACT_TESTS_OUTPUT"
 
 # --- Launch bats workers concurrently with contract checks ---
-BATS_WORKERS="${BATS_WORKERS:-12}"
+BATS_WORKERS_FROM_ENV=false
+if [ -n "${BATS_WORKERS:-}" ]; then
+  BATS_WORKERS_FROM_ENV=true
+fi
+BATS_WORKERS="${BATS_WORKERS:-8}"
 case "$BATS_WORKERS" in
   ''|*[!0-9]*)
     echo "Invalid BATS_WORKERS=$BATS_WORKERS — falling back to CI shard count (4 workers)."
@@ -59,6 +106,18 @@ case "$BATS_WORKERS" in
     BATS_WORKERS=4
     ;;
 esac
+ACTIVE_RUN_ALL_SUITES=0
+if [ -n "$RUN_ALL_TOKEN" ]; then
+  ACTIVE_RUN_ALL_SUITES="$(count_run_all_tokens_with_grace)"
+fi
+
+if [ "$BATS_WORKERS_FROM_ENV" = false ] && [ "${GITHUB_ACTIONS:-false}" != "true" ]; then
+  tuned_bats_workers="$(auto_tune_bats_workers "$BATS_WORKERS" "$ACTIVE_RUN_ALL_SUITES")"
+  if [ "$tuned_bats_workers" -ne "$BATS_WORKERS" ]; then
+    echo "Auto-tuned BATS_WORKERS from $BATS_WORKERS to $tuned_bats_workers for $ACTIVE_RUN_ALL_SUITES concurrent local test suite(s). Override with BATS_WORKERS=N."
+    BATS_WORKERS="$tuned_bats_workers"
+  fi
+fi
 bats_launched=false
 bats_missing=false
 if ! command -v bats &>/dev/null && ls "$ROOT/tests/"*.bats &>/dev/null 2>&1; then

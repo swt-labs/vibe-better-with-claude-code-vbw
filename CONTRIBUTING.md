@@ -78,15 +78,52 @@ claude --plugin-dir /absolute/path/to/vibe-better-with-claude-code-vbw
 All `/vbw:*` commands will load from your local copy. Restart Claude Code to pick up changes after editing VBW files.
 
 > **Important:** `--plugin-dir` loads whatever is on disk in your VBW clone, which means whatever branch is currently checked out. Make sure you're on the branch with your changes before launching Claude Code — if you're on `main`, you'll be testing the unchanged version.
-
 > **Known limitation:** Plugin hooks (the 21 event handlers in `hooks.json`) resolve scripts from the marketplace cache via the symlink. This means hooks will run (unlike before the symlink existed), but they execute from your local clone — changes to hook scripts take effect immediately without a cache refresh. The git pre-push hook is a separate mechanism — see [Version Management](#version-management).
+
+### Set your local debug target repo
+
+VBW debugging docs use a **private local pointer file** instead of hard-coding a maintainer's consumer repo path.
+
+Create this file in your VBW clone:
+
+```text
+.claude/vbw-debug-target.txt
+```
+
+Put the absolute path to your primary VBW consumer/test repo on the first non-empty line:
+
+```text
+/absolute/path/to/your-test-repo
+```
+
+This file stays private because `.claude/` is gitignored in this repo.
+
+Resolution order for debug-target lookup:
+
+1. `VBW_DEBUG_TARGET_REPO` env var (one-off override, absolute path only)
+2. `./.claude/vbw-debug-target.txt` in the VBW clone (preferred persistent local config, absolute path only)
+3. `<claude-config-dir>/vbw/debug-target.txt` (user-global fallback, absolute path only; `<claude-config-dir>` is resolved by `scripts/resolve-claude-dir.sh`: `CLAUDE_CONFIG_DIR` if set, else `$HOME/.config/claude-code` when that directory exists, else `$HOME/.claude`)
+
+Relative paths are rejected so the resolver behaves the same no matter which directory calls it.
+
+Useful checks:
+
+```bash
+bash scripts/resolve-debug-target.sh repo
+bash scripts/resolve-debug-target.sh planning-dir
+bash scripts/resolve-debug-target.sh claude-project-dir
+```
+
+If the resolver exits non-zero, configure one of the sources above before debugging VBW behavior.
+
+Root instructions in this repo have one canonical source: `AGENTS.md`. The tracked root `CLAUDE.md` is a symlink to `AGENTS.md` for Claude Code compatibility.
 
 ## Project Structure
 
 ```text
 .claude-plugin/    Plugin manifest (plugin.json)
 agents/            7 agent definitions with native tool permissions
-commands/          24 slash commands (commands/*.md)
+commands/          25 slash commands (23 user-visible, 2 hidden protocol files)
 config/            Default settings and stack-to-skill mappings
 hooks/             Plugin hooks (hooks.json)
 scripts/           Hook handler scripts
@@ -101,6 +138,7 @@ Key conventions:
 - **Agents** in `agents/` use YAML frontmatter for tool permissions enforced by the platform.
 - **Hooks** in `hooks/hooks.json` self-resolve scripts via `ls | sort -V | tail -1` against the plugin cache.
 - **Plugin root resolution:** `CLAUDE_PLUGIN_ROOT` is a template-engine variable only — it works for `@${CLAUDE_PLUGIN_ROOT}/...` file inclusions but is **not** available as a shell env var inside `!` backtick fenced blocks. Each command's preamble resolves the plugin root via a priority cascade (env var → `local` symlink → versioned cache → generic cache fallback → session symlink glob → process tree) and creates a deterministic key (session id when present; otherwise `pwd` hash), e.g. `/tmp/.vbw-plugin-root-link-${SESSION_KEY}`. Reader callsites construct this path deterministically — no shared mutable temp file is used. Run `bash scripts/dev-setup.sh` to set up the local symlink — see [Quick setup](#quick-setup).
+- **Template expansion semantics:** Claude Code executes standalone one-line `` !`command` `` directives and fenced `` !`command` `` blocks, but it does **not** execute `!` spans when they are embedded inside prose, paths, or larger strings. Do not build command paths like ``bash `!`echo /tmp/...`` or sentence fragments around embedded `!` spans. Precompute dynamic values in one fenced block or helper script, then reference the resolved output in the body text.
 
 ## What to Contribute
 
@@ -123,6 +161,7 @@ Less good candidates:
 1. **Fork the repo** and create a feature branch from `main` (e.g., `fix/hook-path` or `feat/new-command`). **Never commit directly to `main`** — `main` has branch protection and direct pushes will be rejected.
 2. **Test locally** with `claude-vbw` or `claude --plugin-dir "<path-to-vbw-clone>"` against a real project before submitting.
    - Run automated checks: `bash testing/run-all.sh` (runs CI-parity shell lint, contract checks, and bats locally; requires `jq`, `shellcheck`, and `bats` installed)
+   - Run `testing/run-all.sh` directly — do not pipe it through `| tail -20`, `| tail -40`, `| tee`, or similar wrappers, especially from concurrent worktrees. Tail pipelines buffer until EOF, hide live progress, and can make a healthy long-running suite look hung while also obscuring the real exit status.
 3. **Keep commits atomic** -- one logical change per commit.
 4. **Match the existing tone** in command descriptions and user-facing text. VBW is direct, dry, and self-aware. It doesn't use corporate language or unnecessary enthusiasm.
 5. **Follow code style:**

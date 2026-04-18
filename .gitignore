@@ -19,13 +19,6 @@ node_modules/
 # Claude Code local settings
 .claude
 
-# Agents prompt instructions
-.github/agents
-.github/hooks
-.github/references
-AGENTS.md
-CLAUDE.md
-
 # OS
 .DS_Store
 Thumbs.db
@@ -47,12 +40,7 @@ npm-debug.log*
 # Non-production files
 a_non_prod_files/
 .vbw-worktrees/
+docs/vbw-agentic-workflow-presentation-source.md
 
-# Local Debugging
-diag-session-key.md
-diag-emulate-marketplace.sh
-diag-parse-session.sh
-diag-parse-key.sh
-diag-session-key.sh
 package.json
 package-lock.json

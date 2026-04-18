@@ -187,6 +187,76 @@ else
   fail "is_summary_complete: status: \"complete\" (quoted) -> expected 0, got 1"
 fi
 
+# Leading blank lines before frontmatter -> true
+cat > "$TMPDIR_BASE/leadingblank.md" <<'EOF'
+
+---
+phase: 01
+plan: 01
+status: complete
+---
+
+Done.
+EOF
+
+if is_summary_complete "$TMPDIR_BASE/leadingblank.md"; then
+  pass "is_summary_complete: leading blank line before frontmatter -> 0"
+else
+  fail "is_summary_complete: leading blank line before frontmatter -> expected 0, got 1"
+fi
+
+# UTF-8 BOM before frontmatter -> true
+printf '\357\273\277---\nphase: 01\nplan: 01\nstatus: complete\n---\n\nDone.\n' > "$TMPDIR_BASE/bom.md"
+
+if is_summary_complete "$TMPDIR_BASE/bom.md"; then
+  pass "is_summary_complete: UTF-8 BOM before frontmatter -> 0"
+else
+  fail "is_summary_complete: UTF-8 BOM before frontmatter -> expected 0, got 1"
+fi
+
+# Whitespace-padded status value -> true
+cat > "$TMPDIR_BASE/padded.md" <<'EOF'
+---
+phase: 01
+plan: 01
+status:    complete   
+---
+
+Done.
+EOF
+
+if is_summary_complete "$TMPDIR_BASE/padded.md"; then
+  pass "is_summary_complete: whitespace-padded status -> 0"
+else
+  fail "is_summary_complete: whitespace-padded status -> expected 0, got 1"
+fi
+
+# Quoted whitespace-padded status value -> true
+cat > "$TMPDIR_BASE/quoted-padded.md" <<'EOF'
+---
+phase: 01
+plan: 01
+status: "  complete  "
+---
+
+Done.
+EOF
+
+if is_summary_complete "$TMPDIR_BASE/quoted-padded.md"; then
+  pass "is_summary_complete: quoted whitespace-padded status -> 0"
+else
+  fail "is_summary_complete: quoted whitespace-padded status -> expected 0, got 1"
+fi
+
+# CRLF line endings -> true
+printf -- '---\r\nphase: 01\r\nstatus: complete\r\n---\r\n\r\nDone.\r\n' > "$TMPDIR_BASE/crlf.md"
+
+if is_summary_complete "$TMPDIR_BASE/crlf.md"; then
+  pass "is_summary_complete: CRLF line endings -> 0"
+else
+  fail "is_summary_complete: CRLF line endings -> expected 0, got 1"
+fi
+
 # ===== is_summary_terminal =====
 
 echo ""
@@ -238,6 +308,36 @@ if is_summary_terminal "$TMPDIR_BASE/nofm.md"; then
   fail "is_summary_terminal: no frontmatter -> expected 1, got 0"
 else
   pass "is_summary_terminal: no frontmatter -> 1"
+fi
+
+if is_summary_terminal "$TMPDIR_BASE/crlf.md"; then
+  pass "is_summary_terminal: CRLF line endings -> 0"
+else
+  fail "is_summary_terminal: CRLF line endings -> expected 0, got 1"
+fi
+
+if is_summary_terminal "$TMPDIR_BASE/leadingblank.md"; then
+  pass "is_summary_terminal: leading blank line before frontmatter -> 0"
+else
+  fail "is_summary_terminal: leading blank line before frontmatter -> expected 0, got 1"
+fi
+
+if is_summary_terminal "$TMPDIR_BASE/bom.md"; then
+  pass "is_summary_terminal: UTF-8 BOM before frontmatter -> 0"
+else
+  fail "is_summary_terminal: UTF-8 BOM before frontmatter -> expected 0, got 1"
+fi
+
+if is_summary_terminal "$TMPDIR_BASE/padded.md"; then
+  pass "is_summary_terminal: whitespace-padded status -> 0"
+else
+  fail "is_summary_terminal: whitespace-padded status -> expected 0, got 1"
+fi
+
+if is_summary_terminal "$TMPDIR_BASE/quoted-padded.md"; then
+  pass "is_summary_terminal: quoted whitespace-padded status -> 0"
+else
+  fail "is_summary_terminal: quoted whitespace-padded status -> expected 0, got 1"
 fi
 
 # ===== count_complete_summaries =====
@@ -358,8 +458,8 @@ fi
 echo ""
 echo "--- Integration: runtime scripts source summary-utils.sh ---"
 
-# Verify all 5 runtime scripts that should source summary-utils.sh actually reference it
-for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh; do
+# Verify all 6 runtime scripts that should source summary-utils.sh actually reference it
+for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh; do
   if grep -q 'summary-utils\.sh' "$ROOT/scripts/$script" 2>/dev/null; then
     pass "integration: $script references summary-utils.sh"
   else
@@ -368,11 +468,29 @@ for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-
 done
 
 # Verify no runtime script still sources the deprecated lib/summary-status.sh
-for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh; do
+for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh; do
   if grep -q 'lib/summary-status\.sh' "$ROOT/scripts/$script" 2>/dev/null; then
     fail "integration: $script still references deprecated lib/summary-status.sh"
   else
     pass "integration: $script does not reference deprecated lib/summary-status.sh"
+  fi
+done
+
+# Verify no consumer script overrides extract_summary_status() after sourcing summary-utils.sh.
+# Fallback stubs in else-blocks (for when summary-utils.sh is missing) are allowed — only
+# definitions that coexist with the sourced helper create split-brain parsing.
+for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh; do
+  # Count function definitions of extract_summary_status()
+  def_count=$(grep -cE '^[[:space:]]*extract_summary_status[[:space:]]*\(\)' "$ROOT/scripts/$script" 2>/dev/null) || def_count=0
+  # Count source lines for summary-utils.sh (matches both `. file` and `source file`)
+  source_count=$(grep -cE '^[[:space:]]*(\.|source)[[:space:]]+.*summary-utils\.sh' "$ROOT/scripts/$script" 2>/dev/null) || source_count=0
+  # If the script sources summary-utils.sh AND defines extract_summary_status() more than once
+  # (the fallback else-stub), that means there's an override in the sourced branch.
+  # If it doesn't source summary-utils.sh, any definition is a standalone (not an override).
+  if [ "$source_count" -gt 0 ] && [ "$def_count" -gt 1 ]; then
+    fail "integration: $script overrides extract_summary_status() after sourcing summary-utils.sh"
+  else
+    pass "integration: $script does not override extract_summary_status()"
   fi
 done
 

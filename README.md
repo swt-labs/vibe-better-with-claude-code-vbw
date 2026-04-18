@@ -113,7 +113,7 @@ Agent Teams are [experimental with known limitations](https://code.claude.com/do
 
 - **Session resumption.** Agent Teams teammates don't survive `/resume`. VBW's `/vbw:resume` reads ground truth directly from `.vbw-planning/` -- STATE.md, ROADMAP.md, PLAN.md and SUMMARY.md files -- without requiring a prior `/vbw:pause`. It detects interrupted builds via `.execution-state.json`, reconciles stale execution state by detecting tasks completed between sessions via SUMMARY.md files, and suggests the right next action.
 
-- **Task status lag.** Teammates sometimes forget to mark tasks complete. VBW's `TaskCompleted` hook verifies task-related commits exist via keyword matching, with a circuit breaker that allows completion after a repeated false-positive block (prevents infinite hook loops). The `TeammateIdle` hook runs a tiered SUMMARY.md gate — all summaries present passes immediately, conventional commit format only grants a 1-plan grace period, and 2+ missing summaries block regardless.
+- **Task status lag.** Teammates sometimes forget to mark tasks complete. VBW's `TaskCompleted` hook treats commit matching as an advisory signal for execute-protocol tasks instead of a universal blocking gate, so manual or non-code tasks do not get stranded at `in_progress` when no commit exists or the wording diverges. The `TeammateIdle` hook runs a tiered SUMMARY.md gate — all summaries present passes immediately, conventional commit format only grants a 1-plan grace period, and 2+ missing summaries block regardless.
 
 - **Shutdown coordination.** VBW defines `shutdown_request`/`shutdown_response` schemas in the typed communication protocol. After phase work completes, the orchestrator sends `shutdown_request` to every teammate, waits for acknowledgment, then calls `TeamDelete`. All 6 team-participating agents (Dev, QA, Scout, Lead, Debugger, Docs) have explicit shutdown handlers with mechanical SendMessage tool-call instructions. Architect is planning-only and excluded from the shutdown protocol. If shutdown stalls or agents linger, `/vbw:doctor --cleanup` detects and cleans stale teams, orphan processes, and dangling PIDs.
 
@@ -238,7 +238,7 @@ VBW operates on a simple loop that will feel familiar to anyone who's ever shipp
                                     │
                                     ▼
                      ┌──────────────────────────────┐
-                     │  /vbw:qa [phase]             │
+                     │  /vbw:vibe (auto-detects)    │
                      │  Three-tier verification     │
                      │  Goal-backward methodology   │
                      │  Outputs: VERIFICATION.md    │
@@ -386,7 +386,7 @@ Closed your terminal? Switched branches? Came back after a weekend of pretending
 >
 > **If you accidentally `/clear`**, run `/vbw:resume` immediately. It restores project context from ground truth files in `.vbw-planning/` — state, roadmap, plans, summaries — and tells you exactly where to pick up.
 >
-> **For advanced users:** The [full command reference](#commands) below has 25 commands for granular control — `/vbw:vibe` with flags for explicit mode selection (`--plan`, `--execute`, `--discuss`, `--assumptions`), `/vbw:discuss` for standalone phase discussions, `/vbw:qa` for on-demand verification, `/vbw:debug` for systematic bug investigation, and more. But you never *need* the flags. `/vbw:vibe` with no arguments handles the entire lifecycle on its own.
+> **For advanced users:** The [full command reference](#commands) below has 23 commands for granular control — `/vbw:vibe` with flags for explicit mode selection (`--plan`, `--execute`, `--discuss`, `--assumptions`), `/vbw:discuss` for standalone phase discussions, `/vbw:debug` for systematic bug investigation, and more. But you never *need* the flags. `/vbw:vibe` with no arguments handles the entire lifecycle on its own.
 
 ---
 
@@ -406,8 +406,6 @@ These are the commands you'll use every day. This is the job now.
 | Command | Description |
 | :--- | :--- |
 | `/vbw:status` | Progress dashboard showing all phases, completion bars, velocity metrics, and suggested next action. Add `--metrics` for token consumption breakdown per agent. |
-| `/vbw:qa [phase]` | Deep verification on demand. Three tiers (Quick, Standard, Deep) with goal-backward methodology. Continuous QA runs automatically via hooks during builds -- this command is for thorough, on-demand verification. Produces VERIFICATION.md. Phase is auto-detected when omitted. |
-| `/vbw:verify [phase]` | Human-only acceptance testing with per-test CHECKPOINT prompts. Presents success criteria one at a time, keeps automated/programmatic checks in QA, supports resume if interrupted, and produces UAT.md. |
 
 ### Supporting -- The Safety Net
 
@@ -415,13 +413,14 @@ These are the commands you'll use every day. This is the job now.
 | :--- | :--- |
 | `/vbw:discuss [phase]` | Standalone discussion engine for exploring phase decisions before planning. Auto-calibrates between Builder and Architect modes based on conversation signals. Generates phase-specific gray areas, explores selected ones conversationally, and captures decisions to `{phase}-CONTEXT.md`. Same engine as `/vbw:vibe --discuss`. |
 | `/vbw:fix` | Quick task in Turbo mode. One commit, no ceremony. For when the fix is obvious and you don't need seven agents to add a missing comma. |
-| `/vbw:debug` | Systematic bug investigation via the Debugger agent. Persists findings to a debug session file so investigations survive across sessions — resume with `--resume` or target a specific session with `--session <id>`. At Thorough effort with ambiguous bugs, spawns 3 parallel debugger teammates for competing hypothesis investigation. Route completed investigations through `/vbw:qa` and `/vbw:verify` for the full QA→UAT lifecycle without needing a phase. |
+| `/vbw:debug` | Systematic bug investigation via the Debugger agent. Persists findings to a debug session file so investigations survive across sessions — resume with `--resume` or target a specific session with `--session <id>`. At Thorough effort with ambiguous bugs, spawns 3 parallel debugger teammates for competing hypothesis investigation. Completed investigations auto-chain QA and UAT verification inline when resumed. |
 | `/vbw:todo` | Add an item to a persistent backlog that survives across sessions. For all those "we should really..." thoughts that usually die in a terminal tab. |
 | `/vbw:list-todos` | Browse pending todos, filter by priority, and pick one to act on. Computes ages, formats a numbered list, and offers routing to `/vbw:fix`, `/vbw:debug`, `/vbw:vibe`, or `/vbw:research`. |
 | `/vbw:pause` | Save session notes for next time. State auto-persists in `.vbw-planning/` -- pause just lets you leave a sticky note for future you. |
 | `/vbw:resume` | Restore project context from `.vbw-planning/` ground truth. Reads state, roadmap, plans, and summaries directly -- no prior `/vbw:pause` needed. |
 | `/vbw:skills` | Browse and install community skills from skills.sh based on your project's tech stack. Detects your stack, suggests relevant skills, and installs them with one command. |
 | `/vbw:config` | View and toggle VBW settings: effort profiles, autonomy levels (cautious/standard/confident/pure-vibe), plain-language summaries (`plain_summary`), skill suggestions, auto-install behavior, and skill-hook wiring. Detects profile drift and offers to save as new profile. |
+| `/vbw:compress` | Compress a natural language file (`.md`, `.txt`) into caveman format. Creates an `.original` backup preserving the original extension. Uses caveman language rules for token-efficient compression. |
 | `/vbw:profile` | Switch between work profiles or create custom ones. 4 built-in presets (default, prototype, production, yolo) change effort, autonomy, and verification in one command. Interactive profile creation for custom workflows. |
 | `/vbw:report` | Collect diagnostic context and file a GitHub issue. Captures VBW version, environment, hook errors, session logs, config, and project state. |
 | `/vbw:teach` | View, add, or manage project conventions. Auto-detected from codebase during init, manually teachable anytime. Shows what VBW already knows and warns about conflicts before adding. Conventions are injected into agent context via CLAUDE.md and verified by QA. |
@@ -491,7 +490,7 @@ Here's when each one shows up to work:
   │    SubagentStart ── Writes agent marker (role normalization, concurrency-safe)│
   │    SubagentStop ─── Validates SUMMARY.md, cleans markers, corruption recovery│
   │    TeammateIdle ─── Tiered SUMMARY.md gate (1-plan grace, 2+ gap blocks)     │
-  │    TaskCompleted ── Verifies task-related commit via keyword matching         │
+  │    TaskCompleted ── Advisory execute-task commit verification                  │
   │                                                                               │
   │  Security                                                                     │
   │    PreToolUse ──── Blocks destructive Bash commands (migrate:fresh, db:drop,  │
@@ -645,7 +644,7 @@ Autonomy interacts with effort profiles. At `cautious`, plan approval expands to
 | Plan approval (Balanced) | Required | Off | Off | Off |
 | UAT after QA | Run | Run | Skip | Skip |
 
-**`auto_uat`** — When `true`, VBW automatically runs UAT verification after QA passes during the `/vbw:vibe` execution flow, regardless of autonomy level. Normally, UAT only runs at `cautious` and `standard` autonomy. With `auto_uat` enabled, UAT runs inline at every level, including `confident` and `pure-vibe`. When running standalone `/vbw:qa`, the "Next Up" block will suggest `/vbw:verify` instead.
+**`auto_uat`** — When `true`, VBW automatically runs UAT verification after QA passes during the `/vbw:vibe` execution flow, regardless of autonomy level. Normally, UAT only runs at `cautious` and `standard` autonomy. With `auto_uat` enabled, UAT runs inline at every level, including `confident` and `pure-vibe`.
 
 ```text
 /vbw:config auto_uat true
@@ -854,6 +853,38 @@ VBW spawns specialized agents for planning, development, and verification. Model
 - **`rolling_summary`** — When `true` and the project is past Phase 1, VBW compiles a condensed digest of all completed prior phases (what was built, files modified, deviations, commit hashes) into `ROLLING-CONTEXT.md`. This digest is injected into agent context via the context compiler, so Phase 3's Dev and Lead agents have awareness of what Phases 1–2 decided, built, and deviated from — without re-reading every prior SUMMARY.md. Adds ~50KB to agent context per phase. Useful for multi-phase projects where cross-phase continuity matters; unnecessary for single-phase work.
 - **`event_recovery`** — When `true`, enables automatic event-sourced state recovery on session start. If `.execution-state.json` is stale (older than `event-log.jsonl`) or missing after a crash, VBW automatically calls `recover-state.sh` to reconstruct phase/plan status from the event log and SUMMARY.md files.
 
+### Caveman language mode
+
+Token-compressed communication. Strips articles, filler, hedging, and pleasantries from agent responses to reduce token usage without losing technical substance. Code blocks, URLs, paths, and structure are preserved exactly.
+
+| Setting | Type | Default | Values |
+| :--- | :--- | :--- | :--- |
+| `caveman_style` | string | `none` | `none` / `lite` / `full` / `ultra` / `auto` |
+| `caveman_commit` | boolean | `false` | `true` / `false` |
+| `caveman_review` | boolean | `false` | `true` / `false` |
+
+**Levels:**
+
+| Level | Effect |
+| :--- | :--- |
+| **none** | Normal prose. No compression. |
+| **lite** | Drop filler and hedging. Keep articles and sentence structure. |
+| **full** | Fragments OK. Drop hedging, connectives, redundant phrasing. Merge duplicate bullets. |
+| **ultra** | Telegraphic. Max compression. One word where three worked. |
+| **auto** | Escalates based on context usage: <50% → none, 50-69% → lite, 70-84% → full, ≥85% → ultra. |
+
+```text
+/vbw:config caveman_style full
+/vbw:config caveman_commit true
+/vbw:config caveman_review true
+```
+
+- **`caveman_commit`** — When `true`, commit message descriptions use caveman language. Conventional Commits format (`type(scope): description`) still applies.
+- **`caveman_review`** — When `true`, QA findings use terse `L<line>: severity problem. fix.` format with severity prefixes.
+- **`/vbw:compress <file>`** — Compress a natural language file (`.md`, `.txt`) into caveman format. Creates an `.original` backup preserving the original extension. Useful for compressing `CLAUDE.md`, planning artifacts, or any prose-heavy file.
+
+Language rules adapted from [caveman](https://github.com/JuliusBrussee/caveman) by Julius Brussee (MIT license).
+
 ### Runtime features
 
 These flags control optional runtime subsystems — execution integrity, observability, and crash recovery. All default to `true`. Disable any flag to skip that subsystem entirely (scripts exit 0 immediately when their flag is `false`).
@@ -1012,7 +1043,7 @@ See **[Model Profiles Reference](references/model-profiles.md)** for preset defi
 ```text
 .claude-plugin/    Plugin manifest (plugin.json)
 agents/            7 agent definitions with native tool permissions
-commands/          24 slash commands (commands/*.md)
+commands/          25 slash commands (23 user-visible, 2 hidden protocol files)
 config/            Default settings and stack-to-skill mappings
 hooks/             Plugin hooks for continuous verification
 scripts/           Hook handler scripts (security, validation, QA gates)

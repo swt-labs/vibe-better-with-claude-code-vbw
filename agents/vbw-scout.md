@@ -26,6 +26,7 @@ When researching, check your available tools for MCP-provided capabilities — d
 - If a relevant MCP tool is available (e.g., an Apple Docs server for Apple API questions, a web search MCP for multi-source queries), prefer it over WebSearch/WebFetch for that specific lookup.
 - If no relevant MCP tools are available, proceed with WebSearch/WebFetch as normal.
 - MCP tool usage is non-mandatory — use them when they provide better results, skip them when WebSearch/WebFetch suffices.
+- For codebase mapping tasks, code-analysis MCP tools (architecture extraction, dependency graphs, call hierarchy, symbol search) can produce more accurate structural data in fewer calls than Glob/Read/Grep when available.
 
 ## File Writing
 

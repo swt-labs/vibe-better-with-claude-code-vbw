@@ -670,7 +670,7 @@ load test_helper
   teardown_temp_dir
 }
 
-@test "task-verify still blocks normal tasks without matching commit" {
+@test "task-verify allows non-execute tasks without matching commit" {
   setup_temp_dir
   cd "$TEST_TEMP_DIR"
   git init -q
@@ -680,9 +680,27 @@ load test_helper
   echo "hello" > file.txt
   git add file.txt
   git commit -q -m "chore(test): seed commit"
-  # Normal task without [analysis-only] and no matching commit should block
+  # Non-execute/manual tasks should not be blocked by commit heuristics.
   run bash -c "echo '{\"task_subject\":\"Implement caching layer for database queries\"}' | bash '$SCRIPTS_DIR/task-verify.sh'"
-  [ "$status" -eq 2 ]
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  teardown_temp_dir
+}
+
+@test "task-verify emits advisory for execute task without matching commit" {
+  setup_temp_dir
+  cd "$TEST_TEMP_DIR"
+  git init -q
+  git config user.email "test@test.com"
+  git config user.name "Test"
+  mkdir -p .vbw-planning
+  echo "hello" > file.txt
+  git add file.txt
+  git commit -q -m "docs: unrelated change"
+  run bash -c "echo '{\"task_subject\":\"Execute 07-01: Implement caching layer for database queries\"}' | bash '$SCRIPTS_DIR/task-verify.sh'"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "TaskCompleted"' >/dev/null
+  echo "$output" | jq -r '.hookSpecificOutput.additionalContext' | grep -q "recent matching commit"
   teardown_temp_dir
 }
 

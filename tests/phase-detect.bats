@@ -825,6 +825,93 @@ EOF
   [ ! -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
 }
 
+@test "run_phase_detect rejects partial output without completion marker" {
+  local shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-incomplete"
+  mkdir -p "$shim_dir"
+  cat > "$shim_dir/phase-detect.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "planning_dir_exists=true"
+echo "next_phase_state=needs_execute"
+echo "qa_status=pending"
+echo "execution_state=none"
+exit 0
+EOF
+  chmod +x "$shim_dir/phase-detect.sh"
+
+  run_phase_detect "$shim_dir" || true
+
+  [ "$status" -eq 1 ]
+  echo "$output" | grep -q "run_phase_detect: all 5 retries returned empty or incomplete output"
+}
+
+@test "phase-detect emits completion marker on normal output" {
+  run_phase_detect
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "phase_detect_complete=true"
+}
+
+@test "phase-detect emits only phase_detect_error=true on late failure" {
+  local shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-late-failure"
+  cp -R "$SCRIPTS_DIR" "$shim_dir"
+  awk '
+    /echo "milestone_uat_issues=\$MILESTONE_UAT_ISSUES"/ && !injected {
+      print "exit 23"
+      injected=1
+    }
+    { print }
+  ' "$SCRIPTS_DIR/phase-detect.sh" > "$shim_dir/phase-detect.sh"
+  chmod +x "$shim_dir/phase-detect.sh"
+
+  run bash "$shim_dir/phase-detect.sh"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "phase_detect_error=true" ]
+}
+
+@test "phase-detect treats git freshness probe failure as pending QA when terminal UAT exists" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'All passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: complete
+---
+All tests passed.
+EOF
+
+  local real_git fake_git_dir
+  real_git="$(command -v git)"
+  fake_git_dir="$TEST_TEMP_DIR/fake-git"
+  mkdir -p "$fake_git_dir"
+  cat > "$fake_git_dir/git" <<EOF
+#!/usr/bin/env bash
+case "\$1" in
+  status|log)
+    exit 77
+    ;;
+esac
+exec "$real_git" "\$@"
+EOF
+  chmod +x "$fake_git_dir/git"
+
+  run env PATH="$fake_git_dir:$PATH" bash "$SCRIPTS_DIR/phase-detect.sh"
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "phase_detect_complete=true"
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_slug=01-test"
+  echo "$output" | grep -q "next_phase_state=needs_verification"
+  echo "$output" | grep -q "first_qa_attention_phase=01"
+  echo "$output" | grep -q "first_qa_attention_slug=01-test"
+  echo "$output" | grep -q "qa_attention_status=pending"
+  echo "$output" | grep -q "qa_status=pending"
+}
+
 @test "corrupt QA remediation stage does not route as active remediation" {
   mkdir -p .vbw-planning/phases/01-test/remediation/qa
   touch .vbw-planning/phases/01-test/01-01-PLAN.md
@@ -2291,6 +2378,121 @@ EOF
   echo "$output" | grep -q "qa_attention_status=failed"
 }
 
+@test "known-issues status probe failure still emits failed QA-attention for later backlog" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  mkdir -p .vbw-planning/phases/01-unplanned
+
+  mkdir -p .vbw-planning/phases/02-known-issues
+  echo "# Plan" > .vbw-planning/phases/02-known-issues/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-known-issues/02-SUMMARY.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 02' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/02-known-issues/02-VERIFICATION.md
+  cat > .vbw-planning/phases/02-known-issues/known-issues.json <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "02",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "02-01-SUMMARY.md",
+      "last_seen_in": "02-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+
+  local shim_dir
+  shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-known-issues-probe-fail"
+  cp -R "$SCRIPTS_DIR" "$shim_dir"
+  cat > "$shim_dir/track-known-issues.sh" <<EOF
+#!/usr/bin/env bash
+cmd="\${1:-}"
+case "\$cmd" in
+  status)
+    exit 23
+    ;;
+  *)
+    exec "$SCRIPTS_DIR/track-known-issues.sh" "\$@"
+    ;;
+esac
+EOF
+  chmod +x "$shim_dir/track-known-issues.sh"
+
+  run_phase_detect "$shim_dir"
+
+  [ "$status" -eq 0 ]
+  [ -f .vbw-planning/phases/02-known-issues/known-issues.json ]
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+  echo "$output" | grep -q "first_qa_attention_phase=02"
+  echo "$output" | grep -q "first_qa_attention_slug=02-known-issues"
+  echo "$output" | grep -q "qa_attention_status=failed"
+}
+
+@test "partial known-issues status payload still emits failed QA-attention for later backlog" {
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  mkdir -p .vbw-planning/phases/01-unplanned
+
+  mkdir -p .vbw-planning/phases/02-known-issues
+  echo "# Plan" > .vbw-planning/phases/02-known-issues/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-known-issues/02-SUMMARY.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 02' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/02-known-issues/02-VERIFICATION.md
+  cat > .vbw-planning/phases/02-known-issues/known-issues.json <<'EOF'
+{
+  "schema_version": 1,
+  "phase": "02",
+  "issues": [
+    {
+      "test": "FIGIRegistryServiceTests",
+      "file": "Tests/FIGIRegistryServiceTests.swift",
+      "error": "compositeFigi missing",
+      "first_seen_in": "02-01-SUMMARY.md",
+      "last_seen_in": "02-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 2
+    }
+  ]
+}
+EOF
+
+  local shim_dir
+  shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-known-issues-partial-payload"
+  cp -R "$SCRIPTS_DIR" "$shim_dir"
+  cat > "$shim_dir/track-known-issues.sh" <<'EOF'
+#!/usr/bin/env bash
+cmd="${1:-}"
+case "$cmd" in
+  status)
+    printf 'known_issues_status=present\n'
+    exit 0
+    ;;
+  *)
+    exec "$VBW_TEST_TRACK_KNOWN_ISSUES" "$@"
+    ;;
+esac
+EOF
+  chmod +x "$shim_dir/track-known-issues.sh"
+
+  VBW_TEST_TRACK_KNOWN_ISSUES="$SCRIPTS_DIR/track-known-issues.sh" run_phase_detect "$shim_dir"
+
+  [ "$status" -eq 0 ]
+  [ -f .vbw-planning/phases/02-known-issues/known-issues.json ]
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_plan_and_execute"
+  echo "$output" | grep -q "first_qa_attention_phase=02"
+  echo "$output" | grep -q "first_qa_attention_slug=02-known-issues"
+  echo "$output" | grep -q "qa_attention_status=failed"
+}
+
 @test "later active QA remediation outranks earlier mid-execution phase" {
   echo "# My Project" > .vbw-planning/PROJECT.md
 
@@ -2417,7 +2619,39 @@ EOF
 
   run_phase_detect
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "qa_status=pending"
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
+}
+
+@test "summary with leading blank line still counts as complete for pending QA routing" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  cat > .vbw-planning/phases/01-test/01-SUMMARY.md <<'EOF'
+
+---
+status: complete
+---
+EOF
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  printf '%s\n' \
+    '---' \
+    'result: PASS' \
+    'writer: ' \
+    '---' \
+    '# Verification' \
+    'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "qa_status=pending" || {
+    echo "# DIAG: full phase-detect.sh output follows" >&3
+    echo "$output" >&3
+    false
+  }
 }
 
 @test "qa_status is pending for brownfield remediated verification after later commit" {
@@ -2505,6 +2739,105 @@ EOF
   run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  echo "$output" | grep -q "first_qa_attention_phase=01"
+  echo "$output" | grep -q "qa_attention_status=failed"
+}
+
+@test "all_done routes to QA remediation when phase sorting helper fails" {
+  mkdir -p .vbw-planning/phases/01-test
+  mkdir -p .vbw-planning/phases/02-clean
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  echo "# Plan" > .vbw-planning/phases/02-clean/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/02-clean/02-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  current_commit="$(git rev-parse HEAD)"
+
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 02' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Passed.' > .vbw-planning/phases/02-clean/02-VERIFICATION.md
+
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: complete
+---
+All tests passed.
+EOF
+
+  cat > .vbw-planning/phases/02-clean/02-UAT.md <<'EOF'
+---
+phase: 02
+status: complete
+---
+All tests passed.
+EOF
+
+  local fake_sort_dir
+  fake_sort_dir="$TEST_TEMP_DIR/fake-sort"
+  mkdir -p "$fake_sort_dir"
+  cat > "$fake_sort_dir/sort" <<'EOF'
+#!/usr/bin/env bash
+exit 23
+EOF
+  chmod +x "$fake_sort_dir/sort"
+
+  local original_path
+  original_path="$PATH"
+  PATH="$fake_sort_dir:$PATH"
+  run_phase_detect
+  PATH="$original_path"
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "phase_detect_complete=true"
+  echo "$output" | grep -q "phase_count=2"
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_slug=01-test"
+  echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  echo "$output" | grep -q "first_qa_attention_phase=01"
+  echo "$output" | grep -q "qa_attention_status=failed"
+}
+
+@test "all_done routes to QA remediation when failed QA attention sees degraded UAT reread" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Failed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+
+  cat > .vbw-planning/phases/01-test/01-UAT.md <<'EOF'
+---
+phase: 01
+status: complete
+---
+All tests passed.
+EOF
+
+  local shim_dir
+  shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-uat-reread-degraded"
+  cp -R "$SCRIPTS_DIR" "$shim_dir"
+  cat >> "$shim_dir/uat-utils.sh" <<'EOF'
+
+extract_status_value() {
+  local file="${1:-}"
+  case "$file" in
+    *-UAT.md)
+      printf '%s\n' 'in_progress'
+      ;;
+    *)
+      printf '%s\n' ''
+      ;;
+  esac
+}
+EOF
+
+  run_phase_detect "$shim_dir"
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_slug=01-test"
   echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
   echo "$output" | grep -q "first_qa_attention_phase=01"
   echo "$output" | grep -q "qa_attention_status=failed"

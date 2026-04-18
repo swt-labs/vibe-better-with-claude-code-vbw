@@ -17,8 +17,10 @@ printf '%s\t%s\n' \
   bash-scripts-contract        testing/verify-bash-scripts-contract.sh \
   commands-contract            testing/verify-commands-contract.sh \
   no-inline-exec-spans         testing/verify-no-inline-exec-spans.sh \
+  issue-157-migration          testing/verify-issue-157-migration-contract.sh \
   plugin-root-resolution       testing/verify-plugin-root-resolution.sh \
   hook-event-name              testing/verify-hook-event-name.sh \
+  github-fix-workflow-contract testing/verify-github-fix-workflow-contract.sh \
   plan-filename-convention     testing/verify-plan-filename-convention.sh \
   skill-activation             testing/verify-skill-activation.sh \
   permission-mode-contract     testing/verify-permission-mode-contract.sh \
@@ -40,6 +42,7 @@ printf '%s\t%s\n' \
   live-validation-policy       testing/verify-live-validation-policy.sh \
   ghost-team-cleanup           testing/verify-ghost-team-cleanup.sh \
   ci-workflow-contract         testing/verify-ci-workflow-contract.sh \
+  run-all-execution-contract   testing/verify-run-all-execution-contract.sh \
   discord-release-workflow     testing/verify-discord-release-workflow-contract.sh \
   prefer-teams-canonicalization testing/verify-prefer-teams-canonicalization.sh \
   qa-persistence-contract      testing/verify-qa-persistence-contract.sh \
@@ -47,7 +50,9 @@ printf '%s\t%s\n' \
   report-diag-handoff          testing/verify-report-diag-handoff.sh \
   discussion-engine-contract   testing/verify-discussion-engine-contract.sh \
   debug-session-contract       testing/verify-debug-session-contract.sh \
+  debug-target-docs            testing/verify-debug-target-docs.sh \
   askuserquestion-contract     testing/verify-askuserquestion-contract.sh \
   research-storage-contract    testing/verify-research-storage-contract.sh \
   config-defaults-sync         testing/verify-config-defaults-sync.sh \
+  caveman-contract             testing/verify-caveman-contract.sh \
   verify-vibe                  scripts/verify-vibe.sh

@@ -25,9 +25,11 @@ if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
   # shellcheck source=summary-utils.sh
   . "$SCRIPT_DIR/summary-utils.sh"
 else
-  # Safe default: report zero completions when helpers unavailable
+  # Safe default: report no parsed completions and suppress incomplete-summary warnings when helpers are unavailable
+  extract_summary_status() { echo ""; }
   count_complete_summaries() { echo "0"; }
   count_done_summaries() { echo "0"; }
+  is_summary_complete() { return 0; }
 fi
 if [ -f "$SCRIPT_DIR/phase-state-utils.sh" ]; then
   # shellcheck source=phase-state-utils.sh
@@ -35,18 +37,25 @@ if [ -f "$SCRIPT_DIR/phase-state-utils.sh" ]; then
 else
   count_phase_plans() {
     local dir="$1"
-    find "$dir" -maxdepth 1 ! -name '.*' \( -name '[0-9]*-PLAN.md' -o -name 'PLAN.md' \) 2>/dev/null | wc -l | tr -d ' '
+    local count=0
+    local f
+    for f in "$dir"/[0-9]*-PLAN.md "$dir"/PLAN.md; do
+      [ -f "$f" ] && count=$((count + 1))
+    done
+    echo "$count"
   }
   list_canonical_phase_dirs() {
     local parent="$1"
     [ -d "$parent" ] || return 0
-    find "$parent" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null |
-      while IFS= read -r dir; do
-        [ -n "$dir" ] || continue
-        base=$(basename "$dir")
-        case "$base" in [0-9]*-*) echo "$dir" ;; esac
-      done |
-      (sort -V 2>/dev/null || awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-)
+    local dirs=() d base
+    for d in "$parent"/*/; do
+      [ -d "$d" ] || continue
+      base="${d%/}"; base="${base##*/}"
+      case "$base" in [0-9]*-*) dirs+=("${d%/}") ;; esac
+    done
+    [ ${#dirs[@]} -gt 0 ] || return 0
+    printf '%s\n' "${dirs[@]}" | sort -V 2>/dev/null || \
+      printf '%s\n' "${dirs[@]}" | awk -F/ '{n=$NF; gsub(/[^0-9].*/,"",n); if (n == "") n=0; print (n+0)"\t"$0}' | sort -n -k1,1 -k2,2 | cut -f2-
   }
   find_phase_dir_by_ref() {
     local planning_dir="$1" phase_ref="$2"
@@ -248,7 +257,7 @@ fi
 
 # Auto-migrate config if .vbw-planning exists.
 # Version marker retained here for backwards test compatibility.
-EXPECTED_FLAG_COUNT=41
+EXPECTED_FLAG_COUNT=44
 if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ]; then
   if ! bash "$SCRIPT_DIR/migrate-config.sh" "$PLANNING_DIR/config.json" >/dev/null 2>&1; then
     echo "WARNING: Config migration failed (jq error). Config may be missing flags (expected=$EXPECTED_FLAG_COUNT)." >&2
@@ -397,7 +406,8 @@ if [ -d "$PLANNING_DIR" ] && [ -f "$PLANNING_DIR/config.json" ] && command -v jq
     "VBW_AUTONOMY=\(.autonomy // "standard")",
     "VBW_PLANNING_TRACKING=\(.planning_tracking // "manual")",
     "VBW_AUTO_PUSH=\(.auto_push // "never")",
-    "VBW_CONTEXT_COMPILER=\(if .context_compiler == null then true else .context_compiler end)"
+    "VBW_CONTEXT_COMPILER=\(if .context_compiler == null then true else .context_compiler end)",
+    "VBW_CAVEMAN_STYLE=\(.caveman_style // "none")"
   ' "$PLANNING_DIR/config.json" > "$VBW_CONFIG_CACHE" 2>/dev/null || true
 fi
 
@@ -713,7 +723,7 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
       STRICT_COMPLETE=0
       for _ss_sf in "$PHASE_DIR"/*-SUMMARY.md "$PHASE_DIR"/SUMMARY.md; do
         [ -f "$_ss_sf" ] || continue
-        _ss_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_ss_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+        _ss_st=$(extract_summary_status "$_ss_sf")
         case "$_ss_st" in
           complete|completed) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)); STRICT_COMPLETE=$((STRICT_COMPLETE + 1)) ;;
           partial) SUMMARY_COUNT=$((SUMMARY_COUNT + 1)) ;;
@@ -729,7 +739,7 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
         _completed_json="[]"
         for _sf in "$PHASE_DIR"/*-SUMMARY.md "$PHASE_DIR"/SUMMARY.md; do
           [ -f "$_sf" ] || continue
-          _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
+          _sf_st=$(extract_summary_status "$_sf")
           case "$_sf_st" in
             complete|completed|partial)
               _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
@@ -927,6 +937,9 @@ config_auto_push="never"
 config_verification="standard"
 config_prefer_teams="auto"
 config_max_tasks="5"
+config_caveman_style="none"
+config_caveman_commit="false"
+config_caveman_review="false"
 if [ -f "$CONFIG_FILE" ]; then
   config_effort=$(jq -r '.effort // "balanced"' "$CONFIG_FILE" 2>/dev/null)
   config_autonomy=$(jq -r '.autonomy // "standard"' "$CONFIG_FILE" 2>/dev/null)
@@ -936,6 +949,9 @@ if [ -f "$CONFIG_FILE" ]; then
   config_verification=$(jq -r '.verification_tier // "standard"' "$CONFIG_FILE" 2>/dev/null)
   config_prefer_teams=$(bash "$SCRIPT_DIR/normalize-prefer-teams.sh" "$CONFIG_FILE" 2>/dev/null)
   config_max_tasks=$(jq -r '.max_tasks_per_plan // 5' "$CONFIG_FILE" 2>/dev/null)
+  config_caveman_style=$(jq -r '.caveman_style // "none"' "$CONFIG_FILE" 2>/dev/null)
+  config_caveman_commit=$(jq -r 'if .caveman_commit == null then false else .caveman_commit end' "$CONFIG_FILE" 2>/dev/null)
+  config_caveman_review=$(jq -r 'if .caveman_review == null then false else .caveman_review end' "$CONFIG_FILE" 2>/dev/null)
 fi
 
 # --- Parse STATE.md ---
@@ -975,13 +991,16 @@ NEXT_ACTION=""
 
 # Use phase-detect.sh as the canonical source for phase and milestone UAT routing.
 PHASE_DETECT_OUT=$(bash "$SCRIPT_DIR/phase-detect.sh" 2>/dev/null || true)
-PD_NEXT_PHASE_STATE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^next_phase_state=' | sed 's/^[^=]*=//' || true)
-PD_NEXT_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^next_phase=' | sed 's/^[^=]*=//' || true)
-PD_UAT_ISSUES_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^uat_issues_phase=' | sed 's/^[^=]*=//' || true)
-PD_MILESTONE_UAT_ISSUES=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_issues=' | sed 's/^[^=]*=//' || true)
-PD_MILESTONE_UAT_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_phase=' | sed 's/^[^=]*=//' || true)
-PD_MILESTONE_UAT_SLUG=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_slug=' | sed 's/^[^=]*=//' || true)
-PD_HAS_SHIPPED=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^has_shipped_milestones=' | sed 's/^[^=]*=//' || true)
+_PD_COMPLETE=$(printf '%s\n' "$PHASE_DETECT_OUT" | awk -F= '/^phase_detect_complete=/{print $2; exit}')
+if [ "$PHASE_DETECT_OUT" != "phase_detect_error=true" ] && [ "${_PD_COMPLETE:-}" = "true" ]; then
+  PD_NEXT_PHASE_STATE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^next_phase_state=' | sed 's/^[^=]*=//' || true)
+  PD_NEXT_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^next_phase=' | sed 's/^[^=]*=//' || true)
+  PD_UAT_ISSUES_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^uat_issues_phase=' | sed 's/^[^=]*=//' || true)
+  PD_MILESTONE_UAT_ISSUES=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_issues=' | sed 's/^[^=]*=//' || true)
+  PD_MILESTONE_UAT_PHASE=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_phase=' | sed 's/^[^=]*=//' || true)
+  PD_MILESTONE_UAT_SLUG=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^milestone_uat_slug=' | sed 's/^[^=]*=//' || true)
+  PD_HAS_SHIPPED=$(echo "$PHASE_DETECT_OUT" | grep -m1 '^has_shipped_milestones=' | sed 's/^[^=]*=//' || true)
+fi
 
 PD_NEXT_PHASE_STATE=${PD_NEXT_PHASE_STATE:-unknown}
 PD_NEXT_PHASE=${PD_NEXT_PHASE:-none}
@@ -1057,7 +1076,42 @@ CTX="$CTX Shipped milestones: ${has_shipped}."
 CTX="$CTX Phase: ${phase_pos}/${phase_total} (${phase_name}) -- ${phase_status}."
 CTX="$CTX Progress: ${progress_pct}%."
 CTX="$CTX Config: effort=${config_effort}, autonomy=${config_autonomy}, auto_commit=${config_auto_commit}, planning_tracking=${config_planning_tracking}, auto_push=${config_auto_push}, verification=${config_verification}, prefer_teams=${config_prefer_teams}, max_tasks=${config_max_tasks}."
+if [ "$config_caveman_style" != "none" ] && [ "$config_caveman_style" != "false" ]; then
+  CTX="${CTX%.} caveman=${config_caveman_style}."
+fi
+
+# --- Caveman language directive ---
+if [ "$config_caveman_style" != "none" ] && [ "$config_caveman_style" != "false" ]; then
+  _caveman_level="$config_caveman_style"
+  if [ "$_caveman_level" = "auto" ]; then
+    # shellcheck source=scripts/lib/resolve-caveman-level.sh
+    . "$SCRIPT_DIR/lib/resolve-caveman-level.sh"
+    resolve_caveman_level "auto" "$PLANNING_DIR"
+    _caveman_level="$RESOLVED_CAVEMAN_LEVEL"
+  fi
+  if [ "$_caveman_level" != "none" ]; then
+    CTX="$CTX CAVEMAN MODE (${_caveman_level}): Respond using ${_caveman_level} caveman language. See references/caveman-language.md for rules."
+    if [ "$config_caveman_commit" = "true" ]; then
+      CTX="$CTX Write commit messages per references/caveman-commit.md."
+    fi
+    if [ "$config_caveman_review" = "true" ]; then
+      CTX="$CTX Format code review output per references/caveman-review.md."
+    fi
+  fi
+fi
+
 CTX="$CTX Next: ${NEXT_ACTION}."
+
+# --- Advisory state-consistency check (gated by validation_gates) ---
+_vg_enabled=$(jq -r '.validation_gates // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+if [ "$_vg_enabled" = "true" ] && [ -f "$SCRIPT_DIR/verify-state-consistency.sh" ]; then
+  _sc_json=$(bash "$SCRIPT_DIR/verify-state-consistency.sh" "$PLANNING_DIR" --mode advisory 2>/dev/null || true)
+  _sc_verdict=$(echo "$_sc_json" | jq -r '.verdict // "skip"' 2>/dev/null || echo "skip")
+  if [ "$_sc_verdict" = "fail" ]; then
+    _sc_failed=$(echo "$_sc_json" | jq -r '.failed_checks | join(", ")' 2>/dev/null || echo "unknown")
+    CTX="$CTX WARNING: State drift detected (${_sc_failed}). Investigate affected planning artifacts before continuing."
+  fi
+fi
 
 # --- GSD co-installation warning ---
 GSD_WARNING=""

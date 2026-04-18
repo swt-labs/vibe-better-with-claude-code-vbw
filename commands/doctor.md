@@ -14,7 +14,10 @@ Working directory:
 ```
 !`pwd`
 ```
-Version: `!`cat VERSION 2>/dev/null || echo "none"``
+Version:
+```text
+!`cat VERSION 2>/dev/null || echo "none"`
+```
 
 ## Checks
 
@@ -86,6 +89,14 @@ If `.vbw-planning/` exists (project initialized):
 
 If user invoked with `--cleanup`: run `bash scripts/check-claude-md-staleness.sh --fix 2>&1` and report result. The fix must refresh only VBW-owned sections in place, preserve all other `CLAUDE.md` content verbatim, and add `## Code Intelligence` only when no Code Intelligence heading/guidance already exists.
 
+### 17. State consistency
+If `.vbw-planning/` exists:
+- Run `bash scripts/verify-state-consistency.sh .vbw-planning --mode advisory 2>/dev/null`
+- Parse JSON output with jq: `.verdict`
+- PASS if verdict is `"pass"`
+- WARN if verdict is `"fail"` — show `.failed_checks` array
+- SKIP if no `.vbw-planning/` directory (not bootstrapped)
+
 ## Output Format
 
 ```
@@ -107,15 +118,16 @@ VBW Doctor v{version}
  14. Stale markers        {PASS|WARN} {markers}
  15. Watchdog status      {PASS|WARN}
  16. CLAUDE.md sections   {PASS|WARN|SKIP}
+ 17. State consistency    {PASS|WARN|SKIP}
 
-Result: {N}/16 passed, {W} warnings, {F} failures
+Result: {N}/17 passed, {W} warnings, {F} failures
 ```
 
 Use checkmark for PASS, warning triangle for WARN, X for FAIL.
 
 ### Cleanup
 
-If any WARN from checks 11-14 or 16:
+If any WARN from checks 11-14, 16, or 17:
 - Show cleanup preview listing all findings
 - Display: "Run `/vbw:doctor --cleanup` to apply cleanup"
 

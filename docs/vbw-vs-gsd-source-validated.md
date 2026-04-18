@@ -277,7 +277,7 @@ This is more structured than a general "log deviations" instruction.
 | **Verification methodology** | Goal-backward | Goal-backward |
 | **Artifact verification** | SUMMARY.md + VERIFICATION.md | SUMMARY.md + VERIFICATION.md |
 | **Verification reference** | `verification-protocol.md` | `verification-patterns.md` (16.5KB, 4-level framework) |
-| **Human acceptance testing** | `/vbw:verify` with per-test CHECKPOINTs | `verify-work.md` with conversational UAT |
+| **Human acceptance testing** | VBW's UAT protocol (verify.md) with per-test CHECKPOINTs | `verify-work.md` with conversational UAT |
 | **Gap auto-closure** | UAT issues → discuss → plan → execute pipeline | UAT issues → parallel debug agents → auto-plan gaps |
 | **Hook enforcement** | `qa-gate.sh` (exit 2) + `hard-gate.sh` (exit 2) | None (instruction-level) |
 

@@ -569,7 +569,7 @@ fi
 # Avoid pipe into grep -qi under pipefail — GNU grep on Linux exits non-zero on
 # SIGPIPE when the downstream reader closes early, causing false failures.
 CTX_LINES=$(grep -B5 -A5 'compile-verify-context' "$SCRIPT_DIR/commands/verify.md" 2>/dev/null || true)
-if [ -n "$CTX_LINES" ] && printf '%s\n' "$CTX_LINES" | grep -qi 'normalization\|stale'; then
+if [ -n "$CTX_LINES" ] && grep -qi 'normalization\|stale' <<< "$CTX_LINES"; then
   pass "verify.md has post-normalization verify context regeneration"
 else
   fail "verify.md missing post-normalization verify context refresh"

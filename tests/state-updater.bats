@@ -224,11 +224,25 @@ SUMMARY
   run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
   [ "$status" -eq 0 ]
 
-  grep -q '^Plans: 1/1$' .vbw-planning/STATE.md
-  grep -q '^Progress: 100%$' .vbw-planning/STATE.md
-  grep -q '^Phase: 2 of 2 (Core)$' .vbw-planning/STATE.md
-  grep -q '^- \[x\] Phase 1: Setup$' .vbw-planning/ROADMAP.md
-  grep -Eq '^\| 1 - Setup \| 1/1 \| complete \| [0-9]{4}-[0-9]{2}-[0-9]{2} \|$' .vbw-planning/ROADMAP.md
+  run grep -q '^Plans: 1/1$' .vbw-planning/STATE.md
+  if [ "$status" -ne 0 ]; then echo "STATE.md contents:" >&2; cat .vbw-planning/STATE.md >&2; fi
+  [ "$status" -eq 0 ]
+
+  run grep -q '^Progress: 100%$' .vbw-planning/STATE.md
+  if [ "$status" -ne 0 ]; then echo "STATE.md contents:" >&2; cat .vbw-planning/STATE.md >&2; fi
+  [ "$status" -eq 0 ]
+
+  run grep -q '^Phase: 2 of 2 (Core)$' .vbw-planning/STATE.md
+  if [ "$status" -ne 0 ]; then echo "STATE.md contents:" >&2; cat .vbw-planning/STATE.md >&2; fi
+  [ "$status" -eq 0 ]
+
+  run grep -q '^- \[x\] Phase 1: Setup$' .vbw-planning/ROADMAP.md
+  if [ "$status" -ne 0 ]; then echo "ROADMAP.md contents:" >&2; cat .vbw-planning/ROADMAP.md >&2; fi
+  [ "$status" -eq 0 ]
+
+  run grep -Eq '^\| 1 - Setup \| 1/1 \| complete \| [0-9]{4}-[0-9]{2}-[0-9]{2} \|$' .vbw-planning/ROADMAP.md
+  if [ "$status" -ne 0 ]; then echo "ROADMAP.md contents:" >&2; cat .vbw-planning/ROADMAP.md >&2; fi
+  [ "$status" -eq 0 ]
 }
 
 @test "advance_phase sets needs_remediation when next phase has UAT issues" {
