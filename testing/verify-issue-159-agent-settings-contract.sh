@@ -80,7 +80,11 @@ else
   fail "debug: missing consolidated debugger/qa agent settings helper"
 fi
 
-if contains "$VIBE_FILE" 'resolve-agent-settings.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json' \
+if contains "$VIBE_FILE" 'if ! SCOUT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json); then' \
+  && contains "$VIBE_FILE" 'SCOUT_MODEL="$RESOLVED_MODEL"' \
+  && contains "$VIBE_FILE" 'SCOUT_MAX_TURNS="$RESOLVED_MAX_TURNS"' \
+  && contains "$VIBE_FILE" 'model: "$SCOUT_MODEL"' \
+  && contains "$VIBE_FILE" 'If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, omit maxTurns.' \
   && contains "$VIBE_FILE" 'resolve-agent-settings.sh lead .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"' \
   && contains "$VIBE_FILE" 'resolve-agent-settings.sh dev .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"' \
   && omits "$VIBE_FILE" 'resolve-agent-model.sh lead' \
@@ -89,9 +93,9 @@ if contains "$VIBE_FILE" 'resolve-agent-settings.sh scout .vbw-planning/config.j
   && omits "$VIBE_FILE" 'resolve-agent-max-turns.sh dev' \
   && omits "$VIBE_FILE" 'resolve-agent-model.sh scout' \
   && omits "$VIBE_FILE" 'resolve-agent-max-turns.sh scout'; then
-  pass "vibe: uses consolidated scoped agent settings helper"
+  pass "vibe: uses consolidated helper with explicit scout mapping"
 else
-  fail "vibe: missing consolidated scoped agent settings helper"
+  fail "vibe: missing consolidated helper wiring for scout settings"
 fi
 
 echo ""
