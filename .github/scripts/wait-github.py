@@ -13,6 +13,8 @@ Usage:
     python3 wait-github.py wait-ci --repo owner/repo --sha abc123
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import subprocess
@@ -52,7 +54,14 @@ def gh_api(
     if extra_args:
         cmd.extend(extra_args)
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+    except OSError as exc:
+        raise GhApiError(
+            endpoint,
+            127,
+            f"failed to execute gh api: {exc}. Ensure GitHub CLI (`gh`) is installed and available on PATH.",
+        ) from exc
     if result.returncode != 0:
         stderr = result.stderr.strip() or result.stdout.strip() or "unknown gh api error"
         raise GhApiError(endpoint, result.returncode, stderr)

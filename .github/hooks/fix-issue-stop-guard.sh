@@ -313,7 +313,10 @@ enumerate_open_pr_worktrees() {
         if [ -z "$wt_path" ] || [ -z "$wt_branch" ] || [ "$wt_branch" = "main" ]; then
           continue
         fi
-        wt_pr_json=$(gh pr list --repo "${OWNER}/${REPO}" --head "$wt_branch" --state open --json number,isDraft --limit 1 2>/dev/null || echo '[]')
+        if ! wt_pr_json=$(gh pr list --repo "${OWNER}/${REPO}" --head "$wt_branch" --state open --json number,isDraft --limit 1 2>/dev/null); then
+          printf 'BLOCK: unable to query open PRs for branch "%s" in %s/%s; fix gh authentication/configuration and retry.\n' "$wt_branch" "$OWNER" "$REPO" >&2
+          return 1
+        fi
         wt_pr=$(printf '%s' "$wt_pr_json" | jq -r '.[0].number // empty')
         [ -z "$wt_pr" ] && continue
         wt_draft=$(printf '%s' "$wt_pr_json" | jq -r '.[0].isDraft // false')

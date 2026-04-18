@@ -44,6 +44,7 @@ case "$tool_name_lc" in
   bash|execute|shell|terminal|run_in_terminal|runinterminal)
     ;;
   *)
+    echo '{}'
     exit 0
     ;;
 esac
@@ -54,7 +55,7 @@ command_text=$(printf '%s' "$INPUT" | jq -r '
   // empty
 ')
 
-[ -n "$command_text" ] || exit 0
+[ -n "$command_text" ] || { echo '{}'; exit 0; }
 
 # Strip quoted strings so patterns inside string arguments don't false-positive.
 # e.g. echo "requires python3 installed" or echo "use <<EOF for heredocs"
@@ -80,7 +81,11 @@ PYTHON_ALLOWLIST=(
 )
 if [ "$matches_python" -eq 1 ]; then
   for allowed in "${PYTHON_ALLOWLIST[@]}"; do
-    if printf '%s\n' "$command_text" | grep -qF "$allowed"; then
+    # Require the allowlisted script to appear as the first non-flag argument
+    # after the python interpreter. This prevents bypass via e.g.
+    # `python3 -c '...' .github/scripts/wait-github.py` where the path
+    # is an argument to arbitrary code rather than the script being executed.
+    if printf '%s\n' "$command_text" | grep -qE "python3?[[:space:]]+((-[^[:space:]]+[[:space:]]+)*)?${allowed//./\\.}([[:space:]]|\$)"; then
       matches_python=0
       break
     fi
