@@ -252,7 +252,7 @@ test_enumerate_emits_head_ref_name() {
   echo "  [contract] enumerate_open_pr_worktrees includes headRefName in --json and emits 7-field pipe output"
   local stop_guard="$STOP_GUARD"
   if grep -q 'headRefName' "$stop_guard" \
-    && grep -Eq "printf.*%s\|%s\|%s\|%s\|%s\|%s\|%s" "$stop_guard"; then
+    && grep -Fq "%s|%s|%s|%s|%s|%s|%s" "$stop_guard"; then
     pass "enumerate emits headRefName as field 7"
   else
     fail "enumerate_open_pr_worktrees must fetch headRefName and emit 7-field pipe output"
