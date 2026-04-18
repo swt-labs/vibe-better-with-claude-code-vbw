@@ -81,6 +81,13 @@ else
   pass "CONTRIBUTING.md documents the canonical debug-target global fallback path"
 fi
 
+if grep -Fq "grep -El 'hook.*error|hook.*fail'" "$AGENTS_MD" 2>/dev/null \
+  && grep -Fq "grep -Erl 'bootstrap-state|state-updater'" "$AGENTS_MD" 2>/dev/null; then
+  pass "AGENTS.md uses portable grep -E examples for debug-log searches"
+else
+  fail "AGENTS.md debug-log search examples are missing portable grep -E usage"
+fi
+
 if git -C "$ROOT" check-ignore --no-index -q -- AGENTS.md; then
   fail ".gitignore still ignores AGENTS.md"
 else

@@ -86,10 +86,10 @@ ls "$CLAUDE_PROJECT_DIR"/*.jsonl
 grep -l 'vbw' "$CLAUDE_PROJECT_DIR"/*.jsonl
 
 # Find hook errors in debug logs
-grep -l 'hook.*error\|hook.*fail' "$CLAUDE_CONFIG_ROOT"/debug/*.txt
+grep -El 'hook.*error|hook.*fail' "$CLAUDE_CONFIG_ROOT"/debug/*.txt
 
 # Search for a specific tool invocation across sessions
-grep -rl 'bootstrap-state\|state-updater' "$CLAUDE_PROJECT_DIR"/*.jsonl
+grep -Erl 'bootstrap-state|state-updater' "$CLAUDE_PROJECT_DIR"/*.jsonl
 
 # Check what a subagent did in a specific session
 cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl

@@ -5,6 +5,7 @@ setup() {
   SCRIPT="$REPO_ROOT/scripts/resolve-debug-target.sh"
   ORIG_HOME="$HOME"
   ORIG_CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR-__UNSET__}"
+  ORIG_VBW_DEBUG_TARGET_REPO="${VBW_DEBUG_TARGET_REPO-__UNSET__}"
   TEST_ROOT="$(mktemp -d)"
   FAKE_PLUGIN_ROOT="$TEST_ROOT/plugin"
   CLAUDE_CONFIG_DIR="$TEST_ROOT/claude-config"
@@ -18,6 +19,7 @@ setup() {
   TARGET_B="$(cd "$TARGET_B" && pwd -P)"
 
   export CLAUDE_CONFIG_DIR
+  unset VBW_DEBUG_TARGET_REPO
 }
 
 teardown() {
@@ -28,6 +30,12 @@ teardown() {
     unset CLAUDE_CONFIG_DIR
   else
     export CLAUDE_CONFIG_DIR="$ORIG_CLAUDE_CONFIG_DIR"
+  fi
+
+  if [ "$ORIG_VBW_DEBUG_TARGET_REPO" = "__UNSET__" ]; then
+    unset VBW_DEBUG_TARGET_REPO
+  else
+    export VBW_DEBUG_TARGET_REPO="$ORIG_VBW_DEBUG_TARGET_REPO"
   fi
 }
 
