@@ -195,7 +195,7 @@ validate_pr() {
 
   # Gate 1: draft
   if [ "$pr_is_draft" = "true" ]; then
-    block "PR #${pr_number} is still a draft. Mark it as ready for review (step 25) before completing."
+    block "PR #${pr_number} (worktree: ${worktree_dir}) is still a draft. Mark it as ready for review (step 25) before completing."
   fi
 
   # Gate 2: merge state + review decision + unresolved threads
@@ -224,15 +224,15 @@ validate_pr() {
 
   case "$merge_state" in
     BEHIND)
-      block "PR #${pr_number} is out of date with main (merge state: behind). Merge origin/main into ${branch} or update the branch on GitHub before completing."
+      block "PR #${pr_number} (worktree: ${worktree_dir}) is out of date with main (merge state: behind). Merge origin/main into ${branch} or update the branch on GitHub before completing."
       ;;
     DIRTY)
-      block "PR #${pr_number} has merge conflicts with main (merge state: dirty). Merge origin/main and resolve the conflicts before completing."
+      block "PR #${pr_number} (worktree: ${worktree_dir}) has merge conflicts with main (merge state: dirty). Merge origin/main and resolve the conflicts before completing."
       ;;
   esac
 
   if [ "$review_decision" = "CHANGES_REQUESTED" ]; then
-    block "PR #${pr_number} still has an active CHANGES_REQUESTED review decision. Address the requested changes and obtain an updated review before completing."
+    block "PR #${pr_number} (worktree: ${worktree_dir}) still has an active CHANGES_REQUESTED review decision. Address the requested changes and obtain an updated review before completing."
   fi
 
   if [ "$unresolved_thread_count" -gt 0 ]; then
@@ -246,7 +246,7 @@ validate_pr() {
       | join(", ")')
     unresolved_suffix=""
     [ -n "$unresolved_examples" ] && unresolved_suffix=" Examples: ${unresolved_examples}."
-    block "PR #${pr_number} still has ${unresolved_thread_count} unresolved review thread(s). Resolve the outstanding review threads before completing.${unresolved_suffix}"
+    block "PR #${pr_number} (worktree: ${worktree_dir}) still has ${unresolved_thread_count} unresolved review thread(s). Resolve the outstanding review threads before completing.${unresolved_suffix}"
   fi
 
   # Gate 3: remote CI
@@ -289,7 +289,7 @@ validate_pr() {
     if [ -n "$latest_push_at" ]; then
       latest_copilot_review=$(latest_matching_copilot_review "$pr_number" "$head_sha")
       if [ -z "$latest_copilot_review" ] || [ "$latest_copilot_review" = "null" ]; then
-        block "No Copilot review found on PR #${pr_number} for current head commit ${head_sha}. Request a Copilot review (step 25/30) and wait for it to complete before finishing."
+        block "No Copilot review found on PR #${pr_number} (worktree: ${worktree_dir}) for current head commit ${head_sha}. Request a Copilot review (step 25/30) and wait for it to complete before finishing."
       fi
       copilot_review_at=$(printf '%s' "$latest_copilot_review" | jq -r '.submitted_at // empty')
       if [ -n "$copilot_review_at" ]; then
@@ -297,7 +297,7 @@ validate_pr() {
         review_epoch=$($date_cmd -d "$copilot_review_at" +%s 2>/dev/null || $date_cmd -j -f "%Y-%m-%dT%H:%M:%SZ" "$copilot_review_at" +%s 2>/dev/null || echo 0)
         push_epoch=$($date_cmd -d "$latest_push_at" +%s 2>/dev/null || $date_cmd -j -f "%Y-%m-%dT%H:%M:%SZ" "$latest_push_at" +%s 2>/dev/null || echo 0)
         if [ "$review_epoch" -lt "$push_epoch" ]; then
-          block "Copilot review on PR #${pr_number} is stale (submitted before the latest push). Request a fresh Copilot review and wait for it to arrive before completing."
+          block "Copilot review on PR #${pr_number} (worktree: ${worktree_dir}) is stale (submitted before the latest push). Request a fresh Copilot review and wait for it to arrive before completing."
         fi
       fi
     fi

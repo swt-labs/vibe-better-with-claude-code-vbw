@@ -748,6 +748,12 @@ When the stop hook blocks you, it returns structured data in `hookSpecificOutput
 - `pr_number`: The PR number being checked.
 - `recovery_command`: When present, a ready-made command for deterministic re-checks (for example CI status on the exact checked SHA). Copy-paste it rather than constructing your own.
 
+**Anti-pattern: following ambient terminal context (NON-NEGOTIABLE).** When multiple worktrees exist, the terminal may show paths, branch names, or PR numbers from *unrelated* worktrees. These are noise — do not follow them. The `pr_number` and `worktree_path` in the hook's structured output are the sole source of truth. Before running any git command or GitHub API call during recovery, verify you are operating on the correct PR:
+1. Use `worktree_path` from `hookSpecificOutput` — `cd` there before any git operation.
+2. Use `pr_number` from `hookSpecificOutput` for all GitHub API queries.
+3. If `worktree_path` is empty (rare), resolve it from `pr_number`: `gh pr view <pr_number> -R swt-labs/vibe-better-with-claude-code-vbw --json headRefName --jq '.headRefName'`, then match that branch against `git worktree list --porcelain`.
+4. **Never** pick a worktree based on what is visible in terminal output, recent `cd` history, or branch names that look similar to the blocked PR number. Similar-looking PR numbers across concurrent worktrees (e.g., #427 vs #477) cause misidentification when the agent follows terminal context instead of the hook's explicit fields.
+
 **Targeting cascade** (how the hook picks which PR to validate):
 
 1. **Tier 1 — explicit state file.** If step 23a ran, `/tmp/fix-issue-vbw-state-<session_id>.json` exists and the hook validates exactly this thread's PR. The state file is deleted automatically when all gates pass.
