@@ -449,8 +449,10 @@ Start with cross-model round M = 1. **Repeat the following steps, incrementing M
 23a. **Record Stop-hook thread state (NON-NEGOTIABLE).** Immediately after the PR number is known — whether you created it in step 23 or adopted an existing one in step 3c — run:
 
     ```bash
-    bash .github/scripts/fix-issue-record-state.sh <pr_number> <branch> <worktree-absolute-path> <issue_number>
+    bash .github/scripts/fix-issue-record-state.sh <pr_number> <branch> <worktree-absolute-path> <issue_number> [fork_owner] [fork_repo] [head_ref_name]
     ```
+
+    For adopted fork PRs (step 3c), pass the fork owner, fork repo name, and the **remote** branch name (`PR_BRANCH`, not the local alias `CHECKOUT_BRANCH`) as the last three arguments. This ensures the Stop hook queries `refs/heads/<head_ref_name>` on the fork repo for push timestamps, rather than using the local alias branch name which does not exist on the fork.
 
     This writes `/tmp/fix-issue-vbw-state-<session_id>.json` so the local Stop hook (`.github/hooks/fix-issue-stop-guard.sh`) can target this thread's specific PR via Tier 1 lookup instead of falling back to transcript inference or strict multi-worktree validation. Re-run this helper whenever the `(pr, branch, worktree)` tuple changes (for example, if you retarget the PR or move to a different worktree). The Stop hook deletes the state file automatically when all gates pass.
 
@@ -741,12 +743,18 @@ If any item is missing, do not present the work as done.
 
 ## Stop Hook Recovery
 
-When the stop hook blocks you, it returns structured data in `hookSpecificOutput`. **Extract and use these fields directly** — do not re-derive them:
+When the stop hook blocks you, it returns structured data in `hookSpecificOutput`. **Extract and use these fields directly** — do not re-derive them (see the anti-pattern warning below for verification steps before acting on them):
 
 - `commit_sha`: Full 40-character SHA of the commit that was checked. Use this for all GitHub API calls.
 - `worktree_path`: Absolute path to the worktree. Always `cd` here before running git commands.
 - `pr_number`: The PR number being checked.
 - `recovery_command`: When present, a ready-made command for deterministic re-checks (for example CI status on the exact checked SHA). Copy-paste it rather than constructing your own.
+
+**Anti-pattern: following ambient terminal context (NON-NEGOTIABLE).** When multiple worktrees exist, the terminal may show paths, branch names, or PR numbers from *unrelated* worktrees. These are noise — do not follow them. The `pr_number` and `worktree_path` in the hook's structured output are the sole source of truth. Before running any git command or GitHub API call during recovery, verify you are operating on the correct PR:
+1. Use `worktree_path` from `hookSpecificOutput` — `cd` there before any git operation.
+2. Use `pr_number` from `hookSpecificOutput` for all GitHub API queries.
+3. If `worktree_path` is empty (rare), resolve it from `pr_number`: `gh pr view <pr_number> -R swt-labs/vibe-better-with-claude-code-vbw --json headRefName --jq '.headRefName'`, then match that branch against `git worktree list --porcelain`.
+4. **Never** pick a worktree based on what is visible in terminal output, recent `cd` history, or branch names that look similar to the blocked PR number. Similar-looking PR numbers across concurrent worktrees (e.g., #427 vs #477) cause misidentification when the agent follows terminal context instead of the hook's explicit fields.
 
 **Targeting cascade** (how the hook picks which PR to validate):
 
@@ -755,7 +763,11 @@ When the stop hook blocks you, it returns structured data in `hookSpecificOutput
 3. **Tier 3 — single candidate.** If only one local worktree has an open PR, it is validated.
 4. **Tier 4 — strict fallback.** If multiple open-PR worktrees exist AND the transcript did not uniquely identify one AND no state file was found, the hook validates every local open-PR worktree and blocks on the first failure. This tier exists so no thread can silently complete while any local PR is unready.
 
-If you are blocked at Tier 4, the block message names which PR failed and why. If that PR is unrelated to your current task, the correct recovery is still to run step 23a for your own thread (so the next Stop targets via Tier 1) and address the unrelated PR's state in its own thread.
+**Cross-thread contamination guard (NON-NEGOTIABLE).** If the hook blocks naming a PR that is NOT the one you are working on, you are seeing Tier 4's broadcast behavior — it validated another thread's PR because your thread has no state file yet. The correct recovery is:
+1. **Do NOT fix, resolve, review, or operate on the other thread's PR.** That PR belongs to a different agent thread. Touching it causes cross-thread contamination — you will make changes the other thread doesn't expect, and your own PR's work stalls.
+2. **Run step 23a immediately** for YOUR PR (the one you've been implementing throughout this session). This creates the Tier 1 state file so all subsequent Stop hooks target only your PR.
+3. **Re-invoke completion.** The hook will now use Tier 1 and validate only your PR.
+4. If you don't yet have a PR number (still pre-Phase 4), you cannot run step 23a — instead, continue your workflow. The hook will keep blocking via Tier 4 until you reach step 23a, but that is expected and not a problem to solve by working on someone else's PR.
 
 **Recovery procedure when blocked for pending CI:**
 1. Extract `commit_sha`, `worktree_path`, and `recovery_command` from the block output.

@@ -8,6 +8,7 @@ TOOL_GUARD="$ROOT/.github/hooks/copilot-tool-guard.sh"
 STOP_GUARD="$ROOT/.github/hooks/fix-issue-stop-guard.sh"
 WAIT_GITHUB="$ROOT/.github/scripts/wait-github.py"
 RECORD_STATE="$ROOT/.github/scripts/fix-issue-record-state.sh"
+AGENT_MD="$ROOT/.github/agents/fix-issue.agent.md"
 REVIEW_AGENT="$ROOT/.github/agents/review-contributor-pr.agent.md"
 
 PASS=0
@@ -115,6 +116,34 @@ test_stop_guard_matches_review_commit_to_head_sha() {
 }
 test_stop_guard_matches_review_commit_to_head_sha
 
+test_stop_guard_block_reasons_include_worktree() {
+  # All block() calls that reference a PR number should include the worktree path
+  # in the human-readable reason text (issue #478).
+  local pr_blocks_without_worktree
+  # Verify the first quoted argument (reason string) mentions the worktree.
+  # Some blocks say "(worktree: ...)" after PR#, others say "worktree '...'" before PR#.
+  pr_blocks_without_worktree=$(grep -n 'block ".*PR #' "$STOP_GUARD" \
+    | grep -vE 'block "[^"]*worktree[^"]*PR #|block "[^"]*PR #[^"]*worktree' || true)
+  if [ -z "$pr_blocks_without_worktree" ]; then
+    pass "all PR-referencing block reasons include worktree path in reason string"
+  else
+    fail "block reasons referencing PR should mention the worktree path in the first quoted reason string: $pr_blocks_without_worktree"
+  fi
+}
+test_stop_guard_block_reasons_include_worktree
+
+test_fix_issue_agent_has_ambient_context_antipattern() {
+  local agent_file="${ROOT}/.github/agents/fix-issue.agent.md"
+  if grep -qF 'Anti-pattern: following ambient terminal context' "$agent_file" \
+    && grep -qF 'sole source of truth' "$agent_file" \
+    && grep -qF 'Cross-thread contamination guard' "$agent_file"; then
+    pass "fix-issue agent has ambient context anti-pattern and cross-thread contamination guards"
+  else
+    fail "fix-issue agent should contain ambient context anti-pattern warning and cross-thread contamination guard"
+  fi
+}
+test_fix_issue_agent_has_ambient_context_antipattern
+
 test_wait_github_fails_fast_on_gh_errors() {
   setup_tmpdir
   cat > "$TMPDIR_BASE/gh" <<'EOF'
@@ -168,6 +197,103 @@ EOF
 test_wait_github_treats_non_success_completed_checks_as_failures
 
 echo ""
+echo "==============================="
+echo "--- Fork-aware push timestamp resolution (issue #480) ---"
+
+test_latest_branch_push_at_accepts_four_params() {
+  echo "  [contract] latest_branch_push_at accepts ref_owner and ref_repo params"
+  local stop_guard="$STOP_GUARD"
+  if grep -q 'local ref_owner=.*{3:-' "$stop_guard" \
+    && grep -q 'local ref_repo=.*{4:-' "$stop_guard"; then
+    pass "latest_branch_push_at accepts ref_owner (\$3) and ref_repo (\$4)"
+  else
+    fail "latest_branch_push_at must accept ref_owner (\$3) and ref_repo (\$4) for fork-aware push resolution"
+  fi
+}
+test_latest_branch_push_at_accepts_four_params
+
+test_enumerate_queries_fork_metadata() {
+  echo "  [contract] enumerate_open_pr_worktrees queries headRepository and headRepositoryOwner"
+  local stop_guard="$STOP_GUARD"
+  if grep -q 'headRepository' "$stop_guard" \
+    && grep -q 'headRepositoryOwner' "$stop_guard"; then
+    pass "enumerate_open_pr_worktrees queries fork metadata fields"
+  else
+    fail "enumerate_open_pr_worktrees must query headRepository and headRepositoryOwner for fork-aware push resolution"
+  fi
+}
+test_enumerate_queries_fork_metadata
+
+test_validate_pr_accepts_fork_params() {
+  echo "  [contract] validate_pr accepts head_owner and head_repo params"
+  local stop_guard="$STOP_GUARD"
+  if grep -q 'local head_owner=.*{5:-' "$stop_guard" \
+    && grep -q 'local head_repo=.*{6:-' "$stop_guard"; then
+    pass "validate_pr accepts head_owner (\$5) and head_repo (\$6)"
+  else
+    fail "validate_pr must accept head_owner (\$5) and head_repo (\$6) for fork-aware push resolution"
+  fi
+}
+test_validate_pr_accepts_fork_params
+
+test_record_state_accepts_fork_args() {
+  echo "  [contract] fix-issue-record-state.sh accepts optional fork_owner and fork_repo args"
+  local record_script="$RECORD_STATE"
+  if grep -q 'fork_owner' "$record_script" \
+    && grep -q 'fork_repo' "$record_script"; then
+    pass "fix-issue-record-state.sh handles fork_owner and fork_repo"
+  else
+    fail "fix-issue-record-state.sh must accept optional fork_owner and fork_repo arguments"
+  fi
+}
+test_record_state_accepts_fork_args
+
+test_enumerate_emits_head_ref_name() {
+  echo "  [contract] enumerate_open_pr_worktrees includes headRefName in --json and emits 7-field pipe output"
+  local stop_guard="$STOP_GUARD"
+  if grep -q 'headRefName' "$stop_guard" \
+    && grep -Fq "%s|%s|%s|%s|%s|%s|%s" "$stop_guard"; then
+    pass "enumerate emits headRefName as field 7"
+  else
+    fail "enumerate_open_pr_worktrees must fetch headRefName and emit 7-field pipe output"
+  fi
+}
+test_enumerate_emits_head_ref_name
+
+test_validate_pr_accepts_head_ref_name() {
+  echo "  [contract] validate_pr accepts head_ref_name (\$7) for push timestamp branch resolution"
+  local stop_guard="$STOP_GUARD"
+  if grep -q 'local head_ref_name=.*{7:-' "$stop_guard" \
+    && grep -q 'latest_branch_push_at.*head_ref_name' "$stop_guard"; then
+    pass "validate_pr uses head_ref_name for push timestamp query"
+  else
+    fail "validate_pr must accept head_ref_name (\$7) and use it in latest_branch_push_at"
+  fi
+}
+test_validate_pr_accepts_head_ref_name
+
+test_record_state_accepts_head_ref_name() {
+  echo "  [contract] fix-issue-record-state.sh accepts optional head_ref_name arg"
+  local record_script="$RECORD_STATE"
+  if grep -q 'head_ref_name' "$record_script"; then
+    pass "fix-issue-record-state.sh handles head_ref_name"
+  else
+    fail "fix-issue-record-state.sh must accept optional head_ref_name argument"
+  fi
+}
+test_record_state_accepts_head_ref_name
+
+test_step_23a_documents_fork_args() {
+  echo "  [contract] step 23a in agent instructions documents fork_owner, fork_repo, and head_ref_name args"
+  local agent_md="$AGENT_MD"
+  if grep -q 'fork_owner.*fork_repo.*head_ref_name' "$agent_md" \
+    || grep -q '\[fork_owner\].*\[fork_repo\].*\[head_ref_name\]' "$agent_md"; then
+    pass "step 23a documents all optional args"
+  else
+    fail "step 23a must document fork_owner, fork_repo, and head_ref_name arguments"
+  fi
+}
+test_step_23a_documents_fork_args
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"
 echo "==============================="

@@ -106,6 +106,8 @@ canonicalize_dir() {
 latest_branch_push_at() {
   local branch="$1"
   local head_sha="$2"
+  local ref_owner="${3:-$OWNER}"
+  local ref_repo="${4:-$REPO}"
   local branch_ref_json branch_head_oid branch_pushed_at
 
   branch_ref_json=$(gh api graphql \
@@ -123,8 +125,8 @@ latest_branch_push_at() {
           }\
         }\
       }' \
-    -f owner="$OWNER" \
-    -f repo="$REPO" \
+    -f owner="$ref_owner" \
+    -f repo="$ref_repo" \
     -f ref="refs/heads/${branch}" 2>/dev/null || true)
 
   branch_head_oid=$(printf '%s' "$branch_ref_json" | jq -r '.data.repository.ref.target.oid // empty' 2>/dev/null || true)
@@ -135,7 +137,7 @@ latest_branch_push_at() {
     return 0
   fi
 
-  gh api "repos/${OWNER}/${REPO}/events" --jq '[.[] | select(.type == "PushEvent" and .payload.ref == "refs/heads/'"${branch}"'")] | first | .created_at // empty' 2>/dev/null || true
+  gh api "repos/${ref_owner}/${ref_repo}/events" --jq '[.[] | select(.type == "PushEvent" and .payload.ref == "refs/heads/'"${branch}"'")] | first | .created_at // empty' 2>/dev/null || true
 }
 
 latest_matching_copilot_review() {
@@ -166,6 +168,9 @@ validate_pr() {
   local worktree_dir="$2"
   local branch="$3"
   local pr_is_draft="$4"
+  local head_owner="${5:-$OWNER}"
+  local head_repo="${6:-$REPO}"
+  local head_ref_name="${7:-$branch}"
 
   _block_pr="$pr_number"
   _block_worktree="$worktree_dir"
@@ -195,7 +200,7 @@ validate_pr() {
 
   # Gate 1: draft
   if [ "$pr_is_draft" = "true" ]; then
-    block "PR #${pr_number} is still a draft. Mark it as ready for review (step 25) before completing."
+    block "PR #${pr_number} (worktree: ${worktree_dir}) is still a draft. Mark it as ready for review (step 25) before completing."
   fi
 
   # Gate 2: merge state + review decision + unresolved threads
@@ -214,7 +219,7 @@ validate_pr() {
     }' 2>/dev/null || true)
   pr_state_json=$(printf '%s' "$pr_state_raw" | jq '.data.repository.pullRequest // empty' 2>/dev/null || true)
   if [ -z "$pr_state_json" ] || [ "$pr_state_json" = "null" ]; then
-    block "Could not query PR #${pr_number} review state from GitHub. Retry once GitHub API access is healthy before completing."
+    block "Could not query PR #${pr_number} (worktree: ${worktree_dir}) review state from GitHub. Retry once GitHub API access is healthy before completing."
   fi
 
   merge_state=$(printf '%s' "$pr_state_json" | jq -r '.mergeStateStatus // empty')
@@ -224,15 +229,15 @@ validate_pr() {
 
   case "$merge_state" in
     BEHIND)
-      block "PR #${pr_number} is out of date with main (merge state: behind). Merge origin/main into ${branch} or update the branch on GitHub before completing."
+      block "PR #${pr_number} (worktree: ${worktree_dir}) is out of date with main (merge state: behind). Merge origin/main into ${branch} or update the branch on GitHub before completing."
       ;;
     DIRTY)
-      block "PR #${pr_number} has merge conflicts with main (merge state: dirty). Merge origin/main and resolve the conflicts before completing."
+      block "PR #${pr_number} (worktree: ${worktree_dir}) has merge conflicts with main (merge state: dirty). Merge origin/main and resolve the conflicts before completing."
       ;;
   esac
 
   if [ "$review_decision" = "CHANGES_REQUESTED" ]; then
-    block "PR #${pr_number} still has an active CHANGES_REQUESTED review decision. Address the requested changes and obtain an updated review before completing."
+    block "PR #${pr_number} (worktree: ${worktree_dir}) still has an active CHANGES_REQUESTED review decision. Address the requested changes and obtain an updated review before completing."
   fi
 
   if [ "$unresolved_thread_count" -gt 0 ]; then
@@ -246,7 +251,7 @@ validate_pr() {
       | join(", ")')
     unresolved_suffix=""
     [ -n "$unresolved_examples" ] && unresolved_suffix=" Examples: ${unresolved_examples}."
-    block "PR #${pr_number} still has ${unresolved_thread_count} unresolved review thread(s). Resolve the outstanding review threads before completing.${unresolved_suffix}"
+    block "PR #${pr_number} (worktree: ${worktree_dir}) still has ${unresolved_thread_count} unresolved review thread(s). Resolve the outstanding review threads before completing.${unresolved_suffix}"
   fi
 
   # Gate 3: remote CI
@@ -261,7 +266,7 @@ validate_pr() {
     if check_runs_json=$(gh api --paginate "repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100" 2>/dev/null | jq -s '[.[].check_runs[]?]' 2>/dev/null); then
       :
     else
-      block "Could not query remote check-runs for commit ${head_sha}. Remote CI status is unknown, so completion is blocked until check-runs can be fetched successfully." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
+      block "Could not query remote check-runs for PR #${pr_number} (worktree: ${worktree_dir}) at commit ${head_sha}. Remote CI status is unknown, so completion is blocked until check-runs can be fetched successfully." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
     fi
     total_checks=$(printf '%s' "$check_runs_json" | jq 'length')
     if [ "$total_checks" -gt 0 ]; then
@@ -269,11 +274,11 @@ validate_pr() {
       pending=$(printf '%s' "$check_runs_json" | jq '[.[] | select(.status == "queued" or .status == "in_progress")] | length')
       if [ "$failed" -gt 0 ]; then
         failed_names=$(printf '%s' "$check_runs_json" | jq -r '[.[] | select(.conclusion != null and .conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral")] | map(.name + " (" + .conclusion + ")") | join(", ")')
-        block "Remote CI failed on commit ${head_sha}. Failing checks: ${failed_names}. Diagnose and fix the CI failures before completing." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
+        block "Remote CI failed on PR #${pr_number} (worktree: ${worktree_dir}) at commit ${head_sha}. Failing checks: ${failed_names}. Diagnose and fix the CI failures before completing." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
       fi
       if [ "$pending" -gt 0 ]; then
         pending_names=$(printf '%s' "$check_runs_json" | jq -r '[.[] | select(.status == "queued" or .status == "in_progress")] | map(.name + " (" + .status + ")") | join(", ")')
-        block "Remote CI still running on commit ${head_sha}. Pending checks: ${pending_names}. Wait for CI to complete before finishing." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
+        block "Remote CI still running on PR #${pr_number} (worktree: ${worktree_dir}) at commit ${head_sha}. Pending checks: ${pending_names}. Wait for CI to complete before finishing." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
       fi
     fi
   fi
@@ -282,14 +287,14 @@ validate_pr() {
   if [ -n "$head_sha" ]; then
     local latest_push_at reviews_json latest_copilot_review copilot_review_at
     local review_epoch push_epoch date_cmd
-    latest_push_at=$(latest_branch_push_at "$branch" "$head_sha")
+    latest_push_at=$(latest_branch_push_at "$head_ref_name" "$head_sha" "$head_owner" "$head_repo")
     if [ -z "$latest_push_at" ]; then
-      block "Unable to determine the latest push timestamp for branch ${branch} at head commit ${head_sha}. Fix GitHub CLI/API access and retry so the hook can verify that a fresh Copilot review exists after the latest push."
+      block "Unable to determine the latest push timestamp for head ref ${head_ref_name} (local branch alias: ${branch}, worktree: ${worktree_dir}) at head commit ${head_sha}. Fix GitHub CLI/API access and retry so the hook can verify that a fresh Copilot review exists after the latest push."
     fi
     if [ -n "$latest_push_at" ]; then
       latest_copilot_review=$(latest_matching_copilot_review "$pr_number" "$head_sha")
       if [ -z "$latest_copilot_review" ] || [ "$latest_copilot_review" = "null" ]; then
-        block "No Copilot review found on PR #${pr_number} for current head commit ${head_sha}. Request a Copilot review (step 25/30) and wait for it to complete before finishing."
+        block "No Copilot review found on PR #${pr_number} (worktree: ${worktree_dir}) for current head commit ${head_sha}. Request a Copilot review (step 25/30) and wait for it to complete before finishing."
       fi
       copilot_review_at=$(printf '%s' "$latest_copilot_review" | jq -r '.submitted_at // empty')
       if [ -n "$copilot_review_at" ]; then
@@ -297,7 +302,7 @@ validate_pr() {
         review_epoch=$($date_cmd -d "$copilot_review_at" +%s 2>/dev/null || $date_cmd -j -f "%Y-%m-%dT%H:%M:%SZ" "$copilot_review_at" +%s 2>/dev/null || echo 0)
         push_epoch=$($date_cmd -d "$latest_push_at" +%s 2>/dev/null || $date_cmd -j -f "%Y-%m-%dT%H:%M:%SZ" "$latest_push_at" +%s 2>/dev/null || echo 0)
         if [ "$review_epoch" -lt "$push_epoch" ]; then
-          block "Copilot review on PR #${pr_number} is stale (submitted before the latest push). Request a fresh Copilot review and wait for it to arrive before completing."
+          block "Copilot review on PR #${pr_number} (worktree: ${worktree_dir}) is stale (submitted before the latest push). Request a fresh Copilot review and wait for it to arrive before completing."
         fi
       fi
     fi
@@ -307,10 +312,10 @@ validate_pr() {
 }
 
 # --- Enumerate every local open-PR worktree.
-# Emits one "pr|branch|worktree|draft" line per candidate. Skips main and
+# Emits one "pr|branch|worktree|draft|head_owner|head_repo|head_ref_name" line per candidate. Skips main and
 # worktrees whose branches have no open PR.
 enumerate_open_pr_worktrees() {
-  local wt_path="" wt_branch="" wt_pr_json wt_pr wt_draft wt_canon
+  local wt_path="" wt_branch="" wt_pr_json wt_pr wt_draft wt_canon wt_head_owner wt_head_repo wt_head_ref
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       worktree\ *) wt_path="${line#worktree }" ;;
@@ -319,16 +324,42 @@ enumerate_open_pr_worktrees() {
         if [ -z "$wt_path" ] || [ -z "$wt_branch" ] || [ "$wt_branch" = "main" ]; then
           continue
         fi
-        if ! wt_pr_json=$(gh pr list --repo "${OWNER}/${REPO}" --head "$wt_branch" --state open --json number,isDraft --limit 1 2>/dev/null); then
+        if ! wt_pr_json=$(gh pr list --repo "${OWNER}/${REPO}" --head "$wt_branch" --state open --json number,isDraft,headRepository,headRepositoryOwner,headRefName --limit 1 2>/dev/null); then
           printf 'BLOCK: unable to query open PRs for branch "%s" in %s/%s; fix gh authentication/configuration and retry.\n' "$wt_branch" "$OWNER" "$REPO" >&2
           return 1
         fi
         wt_pr=$(printf '%s' "$wt_pr_json" | jq -r '.[0].number // empty')
+        # If no PR found for the local branch name, try the upstream ref.
+        # Adopted fork PRs use a local alias (e.g. pr/<author>/<num>) that
+        # won't match the PR's headRefName. Derive the remote branch from
+        # the upstream tracking ref and retry with --head "<owner>:<branch>".
+        if [ -z "$wt_pr" ]; then
+          local upstream_ref=""
+          upstream_ref=$(cd "$wt_path" 2>/dev/null && git rev-parse --abbrev-ref "${wt_branch}@{upstream}" 2>/dev/null || true)
+          if [ -n "$upstream_ref" ]; then
+            local upstream_remote="${upstream_ref%%/*}"
+            local upstream_branch="${upstream_ref#*/}"
+            local upstream_owner=""
+            upstream_owner=$(cd "$wt_path" 2>/dev/null && git remote get-url "$upstream_remote" 2>/dev/null | sed -n 's|.*github\.com[:/]\([^/]*\)/.*|\1|p' || true)
+            if [ -n "$upstream_owner" ] && [ -n "$upstream_branch" ]; then
+              local wt_pr_status=0
+              wt_pr_json=$(gh pr list --repo "${OWNER}/${REPO}" --head "${upstream_owner}:${upstream_branch}" --state open --json number,isDraft,headRepository,headRepositoryOwner,headRefName --limit 1 2>/dev/null) || wt_pr_status=$?
+              if [ "$wt_pr_status" -ne 0 ]; then
+                printf 'BLOCK: unable to query open PRs for upstream branch "%s:%s" (worktree: %s) in %s/%s; fix gh authentication/configuration and retry.\n' "$upstream_owner" "$upstream_branch" "$wt_path" "$OWNER" "$REPO" >&2
+                return 1
+              fi
+              wt_pr=$(printf '%s' "$wt_pr_json" | jq -r '.[0].number // empty')
+            fi
+          fi
+        fi
         [ -z "$wt_pr" ] && continue
         wt_draft=$(printf '%s' "$wt_pr_json" | jq -r '.[0].isDraft // false')
+        wt_head_owner=$(printf '%s' "$wt_pr_json" | jq -r '.[0].headRepositoryOwner.login // empty')
+        wt_head_repo=$(printf '%s' "$wt_pr_json" | jq -r '.[0].headRepository.name // empty')
+        wt_head_ref=$(printf '%s' "$wt_pr_json" | jq -r '.[0].headRefName // empty')
         wt_canon="$(canonicalize_dir "$wt_path" 2>/dev/null || true)"
         [ -z "$wt_canon" ] && continue
-        printf '%s|%s|%s|%s\n' "$wt_pr" "$wt_branch" "$wt_canon" "$wt_draft"
+        printf '%s|%s|%s|%s|%s|%s|%s\n' "$wt_pr" "$wt_branch" "$wt_canon" "$wt_draft" "$wt_head_owner" "$wt_head_repo" "$wt_head_ref"
         ;;
       '') wt_path=""; wt_branch="" ;;
     esac
@@ -393,9 +424,12 @@ if [ -n "$SESSION_ID" ]; then
     s_pr=$(jq -r '.pr_number // empty' "$STATE_FILE" 2>/dev/null || true)
     s_branch=$(jq -r '.branch // empty' "$STATE_FILE" 2>/dev/null || true)
     s_worktree=$(jq -r '.worktree_path // empty' "$STATE_FILE" 2>/dev/null || true)
+    s_head_owner=$(jq -r '.fork_owner // empty' "$STATE_FILE" 2>/dev/null || true)
+    s_head_repo=$(jq -r '.fork_repo // empty' "$STATE_FILE" 2>/dev/null || true)
+    s_head_ref=$(jq -r '.head_ref_name // empty' "$STATE_FILE" 2>/dev/null || true)
     if [ -n "$s_pr" ] && [ -n "$s_branch" ] && [ -n "$s_worktree" ]; then
       s_draft=$(gh pr view "$s_pr" --repo "${OWNER}/${REPO}" --json isDraft --jq '.isDraft' 2>/dev/null || echo "false")
-      validate_pr "$s_pr" "$s_worktree" "$s_branch" "$s_draft"
+      validate_pr "$s_pr" "$s_worktree" "$s_branch" "$s_draft" "$s_head_owner" "$s_head_repo" "$s_head_ref"
       # All gates passed → remove state file and allow.
       rm -f "$STATE_FILE" 2>/dev/null || true
       allow
@@ -423,7 +457,10 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
     i_branch=$(printf '%s' "$inferred" | awk -F'|' '{print $2}')
     i_worktree=$(printf '%s' "$inferred" | awk -F'|' '{print $3}')
     i_draft=$(printf '%s' "$inferred" | awk -F'|' '{print $4}')
-    validate_pr "$i_pr" "$i_worktree" "$i_branch" "$i_draft"
+    i_head_owner=$(printf '%s' "$inferred" | awk -F'|' '{print $5}')
+    i_head_repo=$(printf '%s' "$inferred" | awk -F'|' '{print $6}')
+    i_head_ref=$(printf '%s' "$inferred" | awk -F'|' '{print $7}')
+    validate_pr "$i_pr" "$i_worktree" "$i_branch" "$i_draft" "$i_head_owner" "$i_head_repo" "$i_head_ref"
     allow
   fi
 fi
@@ -434,7 +471,10 @@ if [ "$CANDIDATE_COUNT" = "1" ]; then
   c_branch=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | head -n1 | awk -F'|' '{print $2}')
   c_worktree=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | head -n1 | awk -F'|' '{print $3}')
   c_draft=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | head -n1 | awk -F'|' '{print $4}')
-  validate_pr "$c_pr" "$c_worktree" "$c_branch" "$c_draft"
+  c_head_owner=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | head -n1 | awk -F'|' '{print $5}')
+  c_head_repo=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | head -n1 | awk -F'|' '{print $6}')
+  c_head_ref=$(printf '%s\n' "$CANDIDATES" | awk 'NF' | head -n1 | awk -F'|' '{print $7}')
+  validate_pr "$c_pr" "$c_worktree" "$c_branch" "$c_draft" "$c_head_owner" "$c_head_repo" "$c_head_ref"
   allow
 fi
 
@@ -443,9 +483,9 @@ fi
 # uniquely identify one AND no state file was found. Blocks so no thread can
 # complete while any local PR is unready; the block message makes it explicit
 # that the hook could not target a specific PR.
-while IFS='|' read -r s_pr s_branch s_worktree s_draft; do
+while IFS='|' read -r s_pr s_branch s_worktree s_draft s_head_owner s_head_repo s_head_ref; do
   [ -z "$s_pr" ] && continue
-  validate_pr "$s_pr" "$s_worktree" "$s_branch" "$s_draft"
+  validate_pr "$s_pr" "$s_worktree" "$s_branch" "$s_draft" "$s_head_owner" "$s_head_repo" "$s_head_ref"
 done <<< "$CANDIDATES"
 
 allow
