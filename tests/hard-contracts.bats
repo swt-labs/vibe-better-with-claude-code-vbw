@@ -15,19 +15,6 @@ teardown() {
   teardown_temp_dir
 }
 
-setup_unrelated_git_repo() {
-  local repo_dir="$1"
-
-  mkdir -p "$repo_dir"
-  cd "$repo_dir" || return 1
-  git init -q
-  git config user.name "VBW Test"
-  git config user.email "vbw-tests@example.com"
-  echo "initial" > unrelated.txt
-  git add unrelated.txt
-  git commit -qm "init"
-}
-
 create_alternate_contract_workspace() {
   ALT_WORKSPACE_ROOT="$TEST_TEMP_DIR/alternate-workspace"
   ALT_PLANNING_DIR="$ALT_WORKSPACE_ROOT/.vbw-planning"

@@ -276,3 +276,17 @@ create_test_config() {
 }
 CONF
 }
+
+# Shared git repo fixture for off-root / isolation tests
+setup_unrelated_git_repo() {
+  local repo_dir="$1"
+
+  mkdir -p "$repo_dir"
+  cd "$repo_dir" || return 1
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-tests@example.com"
+  echo "initial" > unrelated.txt
+  git add unrelated.txt
+  git commit -qm "init"
+}

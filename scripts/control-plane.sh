@@ -64,6 +64,14 @@ for arg in "$@"; do
   esac
 done
 
+# Canonicalize relative paths so they survive cwd changes in run_child_in_target_context
+if [ -n "$PLAN_PATH" ] && [ -e "$PLAN_PATH" ]; then
+  PLAN_PATH=$(cd "$(dirname "$PLAN_PATH")" && printf '%s/%s\n' "$(pwd -P)" "$(basename "$PLAN_PATH")")
+fi
+if [ -n "$PHASE_DIR" ] && [ -d "$PHASE_DIR" ]; then
+  PHASE_DIR=$(cd "$PHASE_DIR" && pwd -P)
+fi
+
 TARGET_SCOPE_EXPLICIT=0
 if [ -n "${VBW_PLANNING_DIR:-}" ] || [ -n "$PLAN_PATH" ] || [ -n "$PHASE_DIR" ]; then
   TARGET_SCOPE_EXPLICIT=1
