@@ -134,6 +134,28 @@ EOF
   [ "$output" = "$expected" ]
 }
 
+@test "post-archive-hook: runs user hook from project root when invoked in subdir" {
+  cd "$TEST_TEMP_DIR"
+  root_real=$(pwd -P)
+  mkdir -p scripts/hooks subdir
+  cat > scripts/hooks/post-archive.sh <<EOF
+#!/usr/bin/env bash
+printf 'pwd=%s\nslug=%s\narchive=%s\ntag=%s\nroot_file=%s\n' "\$(pwd -P)" "\$1" "\$2" "\$3" "\$(if [ -f scripts/hooks/post-archive.sh ]; then echo yes; else echo no; fi)" > "$TEST_TEMP_DIR/hook-context.txt"
+EOF
+
+  jq '.hooks = {"post_archive": "scripts/hooks/post-archive.sh"}' .vbw-planning/config.json > .vbw-planning/config.json.tmp
+  mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+
+  run bash -c "cd '$TEST_TEMP_DIR/subdir' && bash '$SCRIPTS_DIR/post-archive-hook.sh' '01-demo' '.vbw-planning/milestones/01-demo' 'milestone/01-demo'"
+
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_TEMP_DIR/hook-context.txt" ]
+
+  run cat "$TEST_TEMP_DIR/hook-context.txt"
+  expected=$(printf 'pwd=%s\nslug=%s\narchive=%s\ntag=%s\nroot_file=%s' "$root_real" "01-demo" "$root_real/.vbw-planning/milestones/01-demo" "milestone/01-demo" "yes")
+  [ "$output" = "$expected" ]
+}
+
 @test "post-archive-hook: invalid archive context writes no milestone event" {
   cd "$TEST_TEMP_DIR"
 

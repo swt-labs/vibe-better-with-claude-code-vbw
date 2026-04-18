@@ -85,7 +85,10 @@ if [ ! -f "$HOOK_PATH" ]; then
   exit 0
 fi
 
-if ! bash "$HOOK_PATH" "$MILESTONE_SLUG" "$ARCHIVE_PATH" "$TAG"; then
+if ! (
+  cd "$PROJECT_ROOT" 2>/dev/null &&
+    bash "$HOOK_PATH" "$MILESTONE_SLUG" "$ARCHIVE_PATH" "$TAG"
+); then
   warn "configured post_archive hook failed at $HOOK_PATH; continuing archive"
 fi
 
