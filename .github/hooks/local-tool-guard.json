@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bash .github/hooks/copilot-tool-guard.sh",
+        "timeout": 10
+      }
+    ],
+    "SubagentStart": [
+      {
+        "type": "command",
+        "command": "bash .github/hooks/copilot-tool-guard.sh",
+        "timeout": 10
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "bash .github/hooks/copilot-tool-guard.sh",
+        "timeout": 10
+      }
+    ]
+  }
+}
