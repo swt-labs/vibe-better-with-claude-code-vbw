@@ -80,10 +80,13 @@ else
   fail "debug: missing consolidated debugger/qa agent settings helper"
 fi
 
-if contains "$VIBE_FILE" 'if ! SCOUT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json); then' \
+if contains "$VIBE_FILE" 'SCOUT_MODEL=""' \
+  && contains "$VIBE_FILE" 'SCOUT_MAX_TURNS=""' \
+  && contains "$VIBE_FILE" 'Warning: failed to resolve Scout agent settings; continuing without explicit Scout model/maxTurns.' \
+  && contains "$VIBE_FILE" 'if ! SCOUT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json); then' \
   && contains "$VIBE_FILE" 'SCOUT_MODEL="$RESOLVED_MODEL"' \
   && contains "$VIBE_FILE" 'SCOUT_MAX_TURNS="$RESOLVED_MAX_TURNS"' \
-  && contains "$VIBE_FILE" 'model: "$SCOUT_MODEL"' \
+  && contains "$VIBE_FILE" 'If `SCOUT_MODEL` is non-empty, also pass `model: "${SCOUT_MODEL}"`. If `SCOUT_MODEL` is empty, omit model so the default applies.' \
   && contains "$VIBE_FILE" 'If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, omit maxTurns.' \
   && contains "$VIBE_FILE" 'resolve-agent-settings.sh lead .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"' \
   && contains "$VIBE_FILE" 'resolve-agent-settings.sh dev .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"' \
@@ -93,9 +96,9 @@ if contains "$VIBE_FILE" 'if ! SCOUT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-
   && omits "$VIBE_FILE" 'resolve-agent-max-turns.sh dev' \
   && omits "$VIBE_FILE" 'resolve-agent-model.sh scout' \
   && omits "$VIBE_FILE" 'resolve-agent-max-turns.sh scout'; then
-  pass "vibe: uses consolidated helper with explicit scout mapping"
+  pass "vibe: uses consolidated helper with graceful scout fallback"
 else
-  fail "vibe: missing consolidated helper wiring for scout settings"
+  fail "vibe: missing graceful consolidated scout settings wiring"
 fi
 
 echo ""

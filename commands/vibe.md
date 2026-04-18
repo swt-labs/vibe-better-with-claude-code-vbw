@@ -545,21 +545,23 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 - **B2: REQUIREMENTS.md (Discovery)** -- Behavior depends on DISCOVERY_DEPTH:
   - **B2.1: Domain Research (if not skip):** If DISCOVERY_DEPTH != skip:
     1. Extract domain from user's project description (the $NAME or $DESCRIPTION from B1)
-    2. Resolve Scout agent settings by evaluating the helper output, then map the resolved values into the variables used below:
+    2. Resolve Scout agent settings before spawn. If helper resolution fails, warn and continue without explicit Scout model/maxTurns so domain research can still fall back gracefully:
        ```bash
+       SCOUT_MODEL=""
+       SCOUT_MAX_TURNS=""
        if ! SCOUT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json); then
-         echo "$SCOUT_SETTINGS" >&2
-         exit 1
+         echo "Warning: failed to resolve Scout agent settings; continuing without explicit Scout model/maxTurns." >&2
+       else
+         eval "$SCOUT_SETTINGS"
+         SCOUT_MODEL="$RESOLVED_MODEL"
+         SCOUT_MAX_TURNS="$RESOLVED_MAX_TURNS"
        fi
-       eval "$SCOUT_SETTINGS"
-       SCOUT_MODEL="$RESOLVED_MODEL"
-       SCOUT_MAX_TURNS="$RESOLVED_MAX_TURNS"
        ```
        Use these variables when you execute the Task invocation in step 6.
     3. Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. The Scout prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none apply — {reason}") so the user has visibility before the agent is spawned. Only include skills whose description matches the task at hand.
     4. Also evaluate available MCP tools in your system context. If any MCP servers provide documentation, search, or data retrieval capabilities relevant to this research topic, note them in the Scout's task context so it prioritizes those tools over generic WebSearch/WebFetch where applicable.
     5. Spawn Scout agent via Task tool with prompt: "Research the {domain} domain. Write your findings directly to the output path. <output_path>.vbw-planning/domain-research.md</output_path> Structure as four sections: ## Table Stakes (features every {domain} app has), ## Common Pitfalls (what projects get wrong), ## Architecture Patterns (how similar apps are structured), ## Competitor Landscape (existing products). Use WebSearch (or relevant MCP tools if available). Be concise (2-3 bullets per section)."
-    6. Set `subagent_type: "vbw:vbw-scout"`, `model: "${SCOUT_MODEL}"` and `timeout: 120000` in Task tool invocation. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
+    6. Set `subagent_type: "vbw:vbw-scout"` and `timeout: 120000` in the Task tool invocation. If `SCOUT_MODEL` is non-empty, also pass `model: "${SCOUT_MODEL}"`. If `SCOUT_MODEL` is empty, omit model so the default applies. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
     7. On success: Read `.vbw-planning/domain-research.md` (Scout wrote it directly). Extract brief summary (3-5 lines max). Display to user: "◆ Domain Research: {brief summary}\n\n✓ Research complete. Now let's explore your specific needs..."
     8. On failure: Log warning "⚠ Domain research timed out, proceeding with general questions". Set RESEARCH_AVAILABLE=false, continue.
   - **B2.2: Discussion Engine** -- Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/references/discussion-engine.md` and follow its protocol.
@@ -1136,17 +1138,19 @@ Missing name: STOP "Usage: `/vbw:vibe --add <phase-name>`"
 3. Next number: highest in ROADMAP.md + 1, zero-padded.
 4. Create dir: `mkdir -p .vbw-planning/phases/{NN}-{slug}/`
 5. **Problem research (conditional):** If $ARGUMENTS contain a problem description (bug report, feature request, multi-sentence intent) rather than just a bare phase name:
-  - Resolve Scout agent settings before spawning Scout:
+  - Resolve Scout agent settings before spawning Scout. If helper resolution fails, warn and continue without explicit Scout model/maxTurns so this optional research step stays fail-open:
     ```bash
+    SCOUT_MODEL=""
+    SCOUT_MAX_TURNS=""
     if ! SCOUT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json); then
-      echo "$SCOUT_SETTINGS" >&2
-      exit 1
+      echo "Warning: failed to resolve Scout agent settings; continuing without explicit Scout model/maxTurns." >&2
+    else
+      eval "$SCOUT_SETTINGS"
+      SCOUT_MODEL="$RESOLVED_MODEL"
+      SCOUT_MAX_TURNS="$RESOLVED_MAX_TURNS"
     fi
-    eval "$SCOUT_SETTINGS"
-    SCOUT_MODEL="$RESOLVED_MODEL"
-    SCOUT_MAX_TURNS="$RESOLVED_MAX_TURNS"
     ```
-  - Spawn Scout agent (with `subagent_type: "vbw:vbw-scout"`) to research the problem in the codebase. Pass `model: "$SCOUT_MODEL"` to the Task invocation. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, omit maxTurns. Pass `<output_path>{phase-dir}/{NN}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes its findings directly using its Write tool.
+  - Spawn Scout agent (with `subagent_type: "vbw:vbw-scout"`) to research the problem in the codebase. If `SCOUT_MODEL` is non-empty, pass `model: "$SCOUT_MODEL"` to the Task invocation. If `SCOUT_MODEL` is empty, omit model so the default applies. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, omit maxTurns. Pass `<output_path>{phase-dir}/{NN}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes its findings directly using its Write tool.
     - Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and determine if it is relevant to this specific task. The Scout prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each relevant skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills apply, or `<skill_no_activation>Evaluated installed skills for this task. No installed skills apply. Reason: {brief task-specific reason}.</skill_no_activation>` when none apply. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none apply — {reason}") so the user has visibility before the agent is spawned. Only include skills whose description matches the task at hand.
     - Also evaluate available MCP tools — if any MCP servers provide documentation, search, or data retrieval capabilities relevant to this research, note them in the Scout's task context.
     - After Scout completes, confirm the file exists (read first line).
