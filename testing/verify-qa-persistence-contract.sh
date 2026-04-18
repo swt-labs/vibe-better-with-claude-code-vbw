@@ -84,7 +84,7 @@ else
   fail "6: commands/qa.md does not pass persistence info to QA"
 fi
 
-if grep -q 'track-known-issues\.sh sync-summaries' "$QA_CMD"; then
+if grep -Eq 'track-known-issues\.sh"? sync-summaries' "$QA_CMD"; then
   pass "6b: commands/qa.md backfills summary-known-issues before first phase-level QA run"
 else
   fail "6b: commands/qa.md missing summary-known-issues backfill before phase-level QA"

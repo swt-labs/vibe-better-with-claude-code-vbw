@@ -3,17 +3,19 @@ set -euo pipefail
 
 # verify-no-inline-exec-spans.sh — Contract test for issue #157
 #
-# CC template processor executes fenced `!` blocks but NOT inline `!`cmd`
-# spans. Inline spans are dead syntax — the model simulates them rather
-# than executing them. This test ensures no command or reference file
-# contains inline `!` spans outside fenced code blocks.
+# CC template processor executes standalone one-line `!` directives and
+# fenced `!` blocks, but it does NOT execute `!` spans when they are
+# embedded inside prose, paths, assignments, or larger strings. This test
+# ensures no command or reference file contains embedded inline `!` spans
+# outside fenced code blocks.
 #
 # What's allowed:
 #   - Fenced blocks: ```\n!`command`\n``` (these execute via CC template processor)
 #   - Literal paths: /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/...
 #
 # What's NOT allowed:
-#   - Inline spans: `!`echo /tmp/...` in body text (dead syntax, never executes)
+#   - Embedded inline spans: `!`echo /tmp/...` in body text or path construction
+#   - Prose/path patterns like ``bash `!`echo /tmp/...`` that rely on embedded `!`
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -67,7 +69,7 @@ warn() {
 # Files not yet fixed for #157. These produce WARN (not FAIL) to avoid
 # blocking CI. Remove entries as files are fixed. When this list is empty,
 # issue #157 is fully resolved.
-KNOWN_UNFIXED="config debug discuss doctor fix help init list-todos map qa release research resume status teach todo uninstall update verify whats-new"
+KNOWN_UNFIXED=""
 
 is_known_unfixed() {
   local name="$1"
@@ -86,16 +88,18 @@ for file in "${TRACKED_MARKDOWN_FILES[@]}"; do
   base="$(basename "$file" .md)"
 
   # Use awk to find `!`<command> execution spans NOT inside fenced code blocks.
-  # Pattern: backtick-bang-backtick immediately followed by a command (echo, cat, ls, etc.)
+  # Pattern: backtick-bang-backtick immediately followed by any non-space token,
+  # which catches embedded command/path constructions like echo, /tmp/..., "./foo",
+  # etc.
   # Excludes documentation mentions like "fenced `!` blocks" (no command follows).
-  # Fenced blocks start/end with ``` at line start.
+  # Fenced blocks start/end with ``` allowing optional list-item indentation.
   inline_hits=$(awk '
     BEGIN { in_fence = 0 }
-    /^```/ {
+    /^[[:space:]]*```/ {
       in_fence = !in_fence
       next
     }
-    !in_fence && /`!`[a-zA-Z$]/ {
+    !in_fence && /`!`[^[:space:]`]/ {
       print NR": "$0
     }
   ' "$file")
@@ -103,9 +107,9 @@ for file in "${TRACKED_MARKDOWN_FILES[@]}"; do
   if [ -n "$inline_hits" ]; then
     hit_count=$(printf '%s\n' "$inline_hits" | wc -l | tr -d ' ')
     if is_known_unfixed "$base"; then
-      warn "$dir_label/$base: $hit_count inline \`!\` span(s) — known unfixed (#157)"
+      warn "$dir_label/$base: $hit_count embedded \`!\` span(s) — known unfixed (#157)"
     else
-      fail "$dir_label/$base: $hit_count inline \`!\` span(s) found (dead syntax — CC does not execute inline spans)"
+      fail "$dir_label/$base: $hit_count embedded \`!\` span(s) found (unsupported inline/path/prose syntax in Claude Code)"
       printf '%s\n' "$inline_hits" | head -5 | sed 's/^/     /'
       if [ "$hit_count" -gt 5 ]; then
         echo "     ... and $((hit_count - 5)) more"
@@ -126,11 +130,11 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
 
   fenced_exec_count=$(awk '
     BEGIN { in_fence = 0; count = 0 }
-    /^```/ {
+    /^[[:space:]]*```/ {
       in_fence = !in_fence
       next
     }
-    in_fence && /^!`/ { count++ }
+    in_fence && /^[[:space:]]*!`/ { count++ }
     END { print count }
   ' "$file")
 
