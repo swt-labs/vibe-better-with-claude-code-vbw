@@ -102,7 +102,7 @@ Resolution order for debug-target lookup:
 
 1. `VBW_DEBUG_TARGET_REPO` env var (one-off override, absolute path only)
 2. `./.claude/vbw-debug-target.txt` in the VBW clone (preferred persistent local config, absolute path only)
-3. `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/vbw/debug-target.txt` (user-global fallback, absolute path only)
+3. `<claude-config-dir>/vbw/debug-target.txt` (user-global fallback, absolute path only; `<claude-config-dir>` is resolved by `scripts/resolve-claude-dir.sh`: `CLAUDE_CONFIG_DIR` if set, else `$HOME/.config/claude-code` when that directory exists, else `$HOME/.claude`)
 
 Relative paths are rejected so the resolver behaves the same no matter which directory calls it.
 

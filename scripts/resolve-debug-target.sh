@@ -4,7 +4,9 @@
 # Resolution order:
 #   1. VBW_DEBUG_TARGET_REPO env var (one-off override)
 #   2. <plugin-root>/.claude/vbw-debug-target.txt (preferred local config)
-#   3. ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/vbw/debug-target.txt (user-global fallback)
+#   3. ${CLAUDE_DIR}/vbw/debug-target.txt (user-global fallback; CLAUDE_DIR is
+#      resolved by resolve-claude-dir.sh using CLAUDE_CONFIG_DIR when set and
+#      the canonical Claude config-directory defaults otherwise)
 #
 # File format: first non-empty, non-comment line is the absolute path to the
 # contributor's primary VBW consumer/test repo.
@@ -95,10 +97,11 @@ PLUGIN_ROOT="$(cd "$PLUGIN_ROOT" && pwd -P)"
 
 read_target_file() {
   local file_path="$1"
+  local line=""
 
   [ -f "$file_path" ] || return 1
 
-  awk '
+  line="$({ awk '
     /^[[:space:]]*#/ { next }
     /^[[:space:]]*$/ { next }
     {
@@ -107,7 +110,15 @@ read_target_file() {
       print
       exit
     }
-  ' "$file_path"
+  ' "$file_path"; } )"
+
+  if [ -z "$line" ]; then
+    echo "Configured VBW debug target file is empty or has only comments: $file_path" >&2
+    echo "Expected the first non-empty, non-comment line to be an absolute path to the contributor's primary VBW consumer/test repo." >&2
+    return 2
+  fi
+
+  printf '%s\n' "$line"
 }
 
 LOCAL_FILE="$PLUGIN_ROOT/.claude/vbw-debug-target.txt"
@@ -118,14 +129,28 @@ TARGET_SOURCE=""
 if [ "${VBW_DEBUG_TARGET_REPO+x}" = "x" ]; then
   TARGET_REPO="$(trim_value "$VBW_DEBUG_TARGET_REPO")"
   TARGET_SOURCE="VBW_DEBUG_TARGET_REPO"
-elif TARGET_REPO="$(read_target_file "$LOCAL_FILE" 2>/dev/null || true)" && [ -n "$TARGET_REPO" ]; then
-  TARGET_SOURCE="$LOCAL_FILE"
-elif TARGET_REPO="$(read_target_file "$GLOBAL_FILE" 2>/dev/null || true)" && [ -n "$TARGET_REPO" ]; then
-  TARGET_SOURCE="$GLOBAL_FILE"
 else
-  echo "No VBW debug target repo configured." >&2
-  echo "Set VBW_DEBUG_TARGET_REPO, create $LOCAL_FILE, or create $GLOBAL_FILE." >&2
-  exit 1
+  if TARGET_REPO="$(read_target_file "$LOCAL_FILE")"; then
+    TARGET_SOURCE="$LOCAL_FILE"
+  else
+    READ_RC=$?
+    if [ "$READ_RC" -eq 2 ]; then
+      exit 1
+    fi
+
+    if TARGET_REPO="$(read_target_file "$GLOBAL_FILE")"; then
+      TARGET_SOURCE="$GLOBAL_FILE"
+    else
+      READ_RC=$?
+      if [ "$READ_RC" -eq 2 ]; then
+        exit 1
+      fi
+
+      echo "No VBW debug target repo configured." >&2
+      echo "Set VBW_DEBUG_TARGET_REPO, create $LOCAL_FILE, or create $GLOBAL_FILE." >&2
+      exit 1
+    fi
+  fi
 fi
 
 validate_target_repo "$TARGET_REPO" "$TARGET_SOURCE"

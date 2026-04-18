@@ -32,7 +32,7 @@ Example local file content:
 Resolution order:
 1. `VBW_DEBUG_TARGET_REPO` env var (one-off override, absolute path only)
 2. `./.claude/vbw-debug-target.txt` in the VBW repo clone (preferred persistent local config, absolute path only)
-3. `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/vbw/debug-target.txt` (user-global fallback, absolute path only)
+3. `<claude-config-dir>/vbw/debug-target.txt` (user-global fallback, absolute path only; `<claude-config-dir>` is resolved by `scripts/resolve-claude-dir.sh`: `CLAUDE_CONFIG_DIR` if set, else `$HOME/.config/claude-code` when that directory exists, else `$HOME/.claude`)
 4. If none are configured, **ask the user for the target repo path** — do not guess.
 
 Use the shared resolver when debugging:
@@ -46,7 +46,9 @@ CLAUDE_PROJECT_DIR=$(bash scripts/resolve-debug-target.sh claude-project-dir)
 
 If the resolver exits non-zero, stop guessing and ask the user to configure a debug target.
 
-### Claude Code Log Locations (`${CLAUDE_CONFIG_DIR:-$HOME/.claude}`)
+### Claude Code Log Locations (canonical Claude config root)
+
+In the paths below, `<claude-config-dir>` means the same Claude config root resolved by `scripts/resolve-claude-dir.sh`: `CLAUDE_CONFIG_DIR` if set, else `$HOME/.config/claude-code` when that directory exists, else `$HOME/.claude`.
 
 After resolving the target repo, derive the encoded Claude project path by replacing `/` with `-` in the absolute target-repo path. For an absolute path, the result begins with `-`.
 
@@ -61,20 +63,21 @@ When debugging, search these directories for evidence of what actually happened:
 | Path | Contents | Use When |
 | ------ | ---------- | ---------- |
 | `<target-repo>/.vbw-planning/` | Project state (phases, milestones, config, `STATE.md`) | Ground the investigation in actual workflow state |
-| `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/{encoded-path}/*.jsonl` | Session transcripts | Replaying what the LLM said/did in a session |
-| `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/{encoded-path}/{session-id}/subagents/agent-*.jsonl` | Subagent transcripts | Checking what VBW agent team members did |
-| `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/{encoded-path}/{session-id}/tool-results/` | Tool output snapshots | Seeing exact tool outputs from a session |
-| `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/debug/{session-id}.txt` | Debug logs (`[DEBUG]`/`[WARN]`) | Startup issues, plugin loading, hook execution failures |
-| `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/sessions/{pid}.json` | Active session metadata | Mapping a PID to a session ID |
-| `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/session-env/{session-id}/` | Hook-exported env vars | Verifying `CLAUDE_SESSION_ID` and other env vars |
-| `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/tasks/{session-id}/` | Task/subagent lock files | Checking for stuck or concurrent task issues |
-| `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json` | User-level Claude Code settings and hooks | Verifying hook definitions, permissions, MCP config |
+| `<claude-config-dir>/projects/{encoded-path}/*.jsonl` | Session transcripts | Replaying what the LLM said/did in a session |
+| `<claude-config-dir>/projects/{encoded-path}/{session-id}/subagents/agent-*.jsonl` | Subagent transcripts | Checking what VBW agent team members did |
+| `<claude-config-dir>/projects/{encoded-path}/{session-id}/tool-results/` | Tool output snapshots | Seeing exact tool outputs from a session |
+| `<claude-config-dir>/debug/{session-id}.txt` | Debug logs (`[DEBUG]`/`[WARN]`) | Startup issues, plugin loading, hook execution failures |
+| `<claude-config-dir>/sessions/{pid}.json` | Active session metadata | Mapping a PID to a session ID |
+| `<claude-config-dir>/session-env/{session-id}/` | Hook-exported env vars | Verifying `CLAUDE_SESSION_ID` and other env vars |
+| `<claude-config-dir>/tasks/{session-id}/` | Task/subagent lock files | Checking for stuck or concurrent task issues |
+| `<claude-config-dir>/settings.json` | User-level Claude Code settings and hooks | Verifying hook definitions, permissions, MCP config |
 
 ### Common search patterns
 
 ```bash
 TARGET_REPO=$(bash scripts/resolve-debug-target.sh repo)
 CLAUDE_PROJECT_DIR=$(bash scripts/resolve-debug-target.sh claude-project-dir)
+CLAUDE_CONFIG_ROOT="$(dirname "$(dirname "$CLAUDE_PROJECT_DIR")")"
 
 # Find sessions for the configured target repo
 ls "$CLAUDE_PROJECT_DIR"/*.jsonl
@@ -83,7 +86,7 @@ ls "$CLAUDE_PROJECT_DIR"/*.jsonl
 grep -l 'vbw' "$CLAUDE_PROJECT_DIR"/*.jsonl
 
 # Find hook errors in debug logs
-grep -l 'hook.*error\|hook.*fail' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/debug"/*.txt
+grep -l 'hook.*error\|hook.*fail' "$CLAUDE_CONFIG_ROOT"/debug/*.txt
 
 # Search for a specific tool invocation across sessions
 grep -rl 'bootstrap-state\|state-updater' "$CLAUDE_PROJECT_DIR"/*.jsonl

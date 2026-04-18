@@ -45,6 +45,12 @@ else
   fail "AGENTS.md missing resolve-debug-target.sh guidance"
 fi
 
+if grep -q 'resolve-claude-dir.sh' "$AGENTS_MD" 2>/dev/null; then
+  pass "AGENTS.md references canonical Claude config resolution"
+else
+  fail "AGENTS.md missing canonical Claude config resolution guidance"
+fi
+
 if grep -E '(/Users/[^/[:space:]]+|~/repos/[^[:space:]]+|projects/-Users-[^/[:space:]]+)' "$AGENTS_MD" >/dev/null 2>&1; then
   fail "AGENTS.md still contains maintainer-specific debug target paths"
 else
@@ -55,6 +61,24 @@ if grep -q 'vbw-debug-target.txt' "$CONTRIB" 2>/dev/null; then
   pass "CONTRIBUTING.md documents local debug target setup"
 else
   fail "CONTRIBUTING.md missing local debug target setup"
+fi
+
+if grep -q 'resolve-claude-dir.sh' "$CONTRIB" 2>/dev/null; then
+  pass "CONTRIBUTING.md references canonical Claude config resolution"
+else
+  fail "CONTRIBUTING.md missing canonical Claude config resolution guidance"
+fi
+
+if grep -Fq '${CLAUDE_CONFIG_DIR:-$HOME/.claude}/vbw/debug-target.txt' "$AGENTS_MD" 2>/dev/null; then
+  fail "AGENTS.md still documents the stale debug-target global fallback path"
+else
+  pass "AGENTS.md documents the canonical debug-target global fallback path"
+fi
+
+if grep -Fq '${CLAUDE_CONFIG_DIR:-$HOME/.claude}/vbw/debug-target.txt' "$CONTRIB" 2>/dev/null; then
+  fail "CONTRIBUTING.md still documents the stale debug-target global fallback path"
+else
+  pass "CONTRIBUTING.md documents the canonical debug-target global fallback path"
 fi
 
 if git -C "$ROOT" check-ignore --no-index -q -- AGENTS.md; then

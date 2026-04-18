@@ -3,6 +3,8 @@
 setup() {
   REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
   SCRIPT="$REPO_ROOT/scripts/resolve-debug-target.sh"
+  ORIG_HOME="$HOME"
+  ORIG_CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR-__UNSET__}"
   TEST_ROOT="$(mktemp -d)"
   FAKE_PLUGIN_ROOT="$TEST_ROOT/plugin"
   CLAUDE_CONFIG_DIR="$TEST_ROOT/claude-config"
@@ -21,7 +23,12 @@ setup() {
 teardown() {
   rm -rf "$TEST_ROOT"
   unset VBW_DEBUG_TARGET_REPO
-  unset CLAUDE_CONFIG_DIR
+  export HOME="$ORIG_HOME"
+  if [ "$ORIG_CLAUDE_CONFIG_DIR" = "__UNSET__" ]; then
+    unset CLAUDE_CONFIG_DIR
+  else
+    export CLAUDE_CONFIG_DIR="$ORIG_CLAUDE_CONFIG_DIR"
+  fi
 }
 
 @test "resolve-debug-target: repo-local file resolves repo path" {
@@ -69,6 +76,18 @@ teardown() {
   [ "$output" = "$TARGET_A" ]
 }
 
+@test "resolve-debug-target: global fallback uses HOME/.config/claude-code when CLAUDE_CONFIG_DIR is unset" {
+  unset CLAUDE_CONFIG_DIR
+  export HOME="$TEST_ROOT/home"
+  mkdir -p "$HOME/.config/claude-code/vbw"
+  printf '%s\n' "$TARGET_A" > "$HOME/.config/claude-code/vbw/debug-target.txt"
+
+  run bash "$SCRIPT" repo --plugin-root "$FAKE_PLUGIN_ROOT"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$TARGET_A" ]
+}
+
 @test "resolve-debug-target: relative repo-local file is rejected" {
   printf '%s\n' '../consumer-a' > "$FAKE_PLUGIN_ROOT/.claude/vbw-debug-target.txt"
 
@@ -87,6 +106,33 @@ teardown() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"$CLAUDE_CONFIG_DIR/vbw/debug-target.txt"* ]]
   [[ "$output" == *"must be an absolute path"* ]]
+}
+
+@test "resolve-debug-target: blank repo-local file is a hard error even when global fallback exists" {
+  cat > "$FAKE_PLUGIN_ROOT/.claude/vbw-debug-target.txt" <<'EOF'
+# comment only
+
+EOF
+  printf '%s\n' "$TARGET_A" > "$CLAUDE_CONFIG_DIR/vbw/debug-target.txt"
+
+  run bash "$SCRIPT" repo --plugin-root "$FAKE_PLUGIN_ROOT"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"$FAKE_PLUGIN_ROOT/.claude/vbw-debug-target.txt"* ]]
+  [[ "$output" == *"first non-empty, non-comment line"* ]]
+}
+
+@test "resolve-debug-target: blank global fallback is a hard error" {
+  cat > "$CLAUDE_CONFIG_DIR/vbw/debug-target.txt" <<'EOF'
+# comment only
+
+EOF
+
+  run bash "$SCRIPT" repo --plugin-root "$FAKE_PLUGIN_ROOT"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"$CLAUDE_CONFIG_DIR/vbw/debug-target.txt"* ]]
+  [[ "$output" == *"first non-empty, non-comment line"* ]]
 }
 
 @test "resolve-debug-target: planning-dir appends .vbw-planning" {
