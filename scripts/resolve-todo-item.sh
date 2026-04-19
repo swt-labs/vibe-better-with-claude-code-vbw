@@ -14,7 +14,7 @@ if [ -z "$N" ]; then
 fi
 
 if ! [[ "$N" =~ ^[0-9]+$ ]]; then
-  printf '{"status":"error","message":"Not a number: %s"}\n' "$N"
+  jq -n --arg message "Not a number: $N" '{status: "error", message: $message}'
   exit 1
 fi
 
@@ -40,4 +40,4 @@ fi
 # Extract the Nth item (0-indexed in jq)
 IDX=$((N - 1))
 printf '%s' "$OUTPUT" | jq -c --argjson num "$N" \
-  '.items['"$IDX"'] | {status: "ok", num: $num, text: .text, ref: (.ref // ""), line: .line, description: (if .ref then (.text + " (ref:" + .ref + ")") else .text end)}'
+  '.items['"$IDX"'] | {status: "ok", num: $num, text: .text, ref: .ref, line: .line, description: (if .ref then (.text + " (ref:" + .ref + ")") else .text end)}'
