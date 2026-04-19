@@ -42,7 +42,7 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
 
 5. **Handle selection:** The todo list is high-cardinality (the user may have many todos), so freeform input is the intentional primary path — do not enumerate todo numbers as AskUserQuestion options. Use AskUserQuestion with a freeform question and a single explicit bounded option:
    - Question text: "Type a todo number to select it, or `remove N` / `delete N` to delete one:"
-   - Options array: `["Quit"]`
+   - Options: ["Quit"]
 
    Parse the response:
    - **`Quit`** (the explicit bounded option): display "Done." STOP.
