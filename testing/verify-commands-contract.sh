@@ -541,6 +541,35 @@ else
 fi
 
 echo ""
+echo "=== Archive Hook Wiring Verification ==="
+
+archive_block=$(mode_block "### Mode: Archive")
+
+if printf '%s\n' "$archive_block" | grep -Fq '9b. Post-archive hook (non-blocking): after successful archive completion, run:'; then
+  pass "vibe: Archive mode includes explicit post-archive hook step"
+else
+  fail "vibe: Archive mode missing explicit post-archive hook step"
+fi
+
+if printf '%s\n' "$archive_block" | grep -Fq 'bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/post-archive-hook.sh "{SLUG}" ".vbw-planning/milestones/{SLUG}" "{tag}" .vbw-planning/config.json'; then
+  pass "vibe: Archive mode wires post-archive hook with slug/archive/tag/config arguments"
+else
+  fail "vibe: Archive mode missing post-archive hook argument contract"
+fi
+
+archive_regen_line=$(printf '%s\n' "$archive_block" | awk '/9\. Regenerate CLAUDE\.md:/{print NR; exit}')
+archive_hook_line=$(printf '%s\n' "$archive_block" | awk '/9b\. Post-archive hook \(non-blocking\):/{print NR; exit}')
+archive_present_line=$(printf '%s\n' "$archive_block" | awk '/10\. Present:/{print NR; exit}')
+
+if [ -n "$archive_regen_line" ] && [ -n "$archive_hook_line" ] && [ -n "$archive_present_line" ] \
+  && [ "$archive_regen_line" -lt "$archive_hook_line" ] \
+  && [ "$archive_hook_line" -lt "$archive_present_line" ]; then
+  pass "vibe: Archive post-archive hook remains between CLAUDE regeneration and final presentation"
+else
+  fail "vibe: Archive post-archive hook ordering drifted outside the successful archive sequence"
+fi
+
+echo ""
 echo "=== QA Result Gate Contract ==="
 
 QA_FILE="$COMMANDS_DIR/qa.md"
