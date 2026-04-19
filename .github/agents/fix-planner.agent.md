@@ -142,7 +142,40 @@ If you are invoked as a subagent, incorporate brownfield considerations, risky a
     - the full plan inline
     - an instruction that the parent agent must use this inline plan directly and must not block on reading a saved memory file
 
-## 4.5. Prompt Engineering Audit
+## 4.5. Plan Audit Loop
+
+After persisting (or assembling inline) the plan, run an iterative audit-fix cycle until the plan passes cleanly. This loop catches logical gaps, overclaims, underspecified scopes, and weak verification before the plan reaches execution.
+
+**Loop procedure:**
+
+1. Spawn a subagent with the audit prompt below.
+2. If the audit returns findings, revise the plan to address each one. Update the saved plan via #tool:vscode/memory when available; otherwise revise the inline plan.
+3. After revisions, spawn a **new** audit subagent (do not reuse the previous one) to re-audit the revised plan.
+4. Repeat steps 2–3 until an audit returns **zero findings**.
+5. When the audit is clean, proceed to step 4.6 (if applicable) or step 5.
+
+**Cap**: Stop after 3 audit rounds regardless — additional rounds burn subagent context tokens with diminishing returns, and residual findings are usually judgment calls rather than correctness issues. If findings persist after 3 rounds, note the unresolved items in the plan under a `## Unresolved audit findings` section and proceed.
+
+**Audit prompt** (spawn as subagent — use *Explore* agent):
+
+If the plan was saved, use this prompt:
+
+> First, use #tool:vscode/resolveMemoryFileUri to resolve the path for `/memories/session/plan.md`, then read the plan at the resolved URI.
+>
+> You are a principal-level engineer who is having an absolutely terrible week. Your VP just told you that your promotion case hinges on the quality of plans coming out of your org. You are now reviewing this plan as if your career depends on catching every gap, overclaim, and hand-wave — because it does. The board will see this plan. It needs to be bulletproof.
+>
+> Audit the plan against the actual codebase. For every claim the plan makes about existing code behavior, verify it by reading the referenced files. For each finding, report:
+> - **Location**: which plan step or section
+> - **Severity**: MAJOR (blocks correct execution) or MINOR (imprecise but non-blocking)
+> - **Issue**: what the plan gets wrong, overclaims, underspecifies, or omits
+> - **Evidence**: the actual code/test/file content that contradicts or is missing from the plan
+> - **Recommendation**: specific correction with enough detail to act on
+>
+> If the plan is accurate and complete, state "CLEAN — no findings" explicitly. Do not manufacture findings to justify your review. Do not suggest enhancements or scope expansions — only flag accuracy and completeness issues with the existing plan. But do not let anything slide either — your promotion depends on it.
+
+If the plan was NOT saved because #tool:vscode/memory was unavailable, paste the full inline plan directly into the subagent prompt instead of telling it to read session memory.
+
+## 4.6. Prompt Engineering Audit
 
 **Trigger condition:** The plan involves changes to LLM-consumed markdown artifacts — any of these paths: `commands/*.md`, `agents/vbw-*.md`, `templates/*.md`, `references/*.md`, `scripts/bootstrap-claude.sh`, `scripts/check-claude-md-staleness.sh`, `scripts/compile-context.sh`, `scripts/compile-*.sh`, or any hook handler that produces LLM-consumed text output. **Skip this phase** if the plan only touches bash script logic, config/JSON schemas, test infrastructure, or hook plumbing.
 
@@ -161,11 +194,11 @@ If the plan was NOT saved because #tool:vscode/memory was unavailable, spawn the
 **Process the audit results:**
 - If the audit returns violations, revise the plan to address each one. Update the saved plan via #tool:vscode/memory when that tool is available; otherwise revise the inline plan you return and state that the revision was not persisted in session memory in this run.
 - If the audit is clean, proceed without changes.
-- Do not re-audit after corrections — one audit pass is sufficient.
+- Do not re-audit after corrections — one audit pass is sufficient for the prompt engineering check (the structural audit loop in 4.5 already iterated to convergence).
 
 ## 5. Refinement
 
-If invoked as a subagent, skip this phase and return once the plan is saved and the path has been returned.
+If invoked as a subagent, skip this phase and return once the plan is saved, audited clean, and the path has been returned.
 
 If working directly with the user, on input after showing the plan:
 - Changes requested → revise and present updated plan. Update the plan via #tool:vscode/memory when available; otherwise keep the inline fallback plan in sync and say it was not persisted in this run
