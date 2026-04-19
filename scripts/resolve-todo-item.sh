@@ -26,34 +26,18 @@ OUTPUT=$(bash "$SCRIPT_DIR/list-todos.sh" 2>/dev/null) || {
 
 STATUS=$(printf '%s' "$OUTPUT" | jq -r '.status // "error"')
 if [ "$STATUS" != "ok" ]; then
-  MSG=$(printf '%s' "$OUTPUT" | jq -r '.message // "Unknown error"')
-  printf '{"status":"error","message":"%s"}\n' "$MSG"
+  MSG=$(printf '%s' "$OUTPUT" | jq -r '.message // .display // "Unknown error"')
+  jq -n --arg message "$MSG" '{status: "error", message: $message}'
   exit 1
 fi
 
 COUNT=$(printf '%s' "$OUTPUT" | jq '.items | length')
 if [ "$N" -lt 1 ] || [ "$N" -gt "$COUNT" ]; then
-  printf '{"status":"error","message":"Invalid selection — only items 1-%d exist."}\n' "$COUNT"
+  jq -n --arg message "Invalid selection — only items 1-${COUNT} exist." '{status: "error", message: $message}'
   exit 1
 fi
 
 # Extract the Nth item (0-indexed in jq)
 IDX=$((N - 1))
-ITEM=$(printf '%s' "$OUTPUT" | jq -c ".items[$IDX]")
-TEXT=$(printf '%s' "$ITEM" | jq -r '.text')
-REF=$(printf '%s' "$ITEM" | jq -r '.ref // empty')
-LINE=$(printf '%s' "$ITEM" | jq -r '.line')
-
-# Build output — include ref suffix if present
-if [ -n "$REF" ]; then
-  DESC="${TEXT} (ref:${REF})"
-else
-  DESC="$TEXT"
-fi
-
-printf '{"status":"ok","num":%d,"text":"%s","ref":"%s","line":"%s","description":"%s"}\n' \
-  "$N" \
-  "$(printf '%s' "$TEXT" | sed 's/"/\\"/g')" \
-  "$REF" \
-  "$(printf '%s' "$LINE" | sed 's/"/\\"/g')" \
-  "$(printf '%s' "$DESC" | sed 's/"/\\"/g')"
+printf '%s' "$OUTPUT" | jq -c --argjson num "$N" \
+  '.items['"$IDX"'] | {status: "ok", num: $num, text: .text, ref: (.ref // ""), line: .line, description: (if .ref then (.text + " (ref:" + .ref + ")") else .text end)}'
