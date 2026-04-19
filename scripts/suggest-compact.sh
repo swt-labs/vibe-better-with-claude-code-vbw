@@ -11,7 +11,13 @@ set -u
 #   mode: execute|plan|verify|qa|discuss
 #
 # Reads:
-#   .vbw-planning/.context-usage   — "session_id|used_pct|context_window_size" (cached by statusline; legacy 2-field "used_pct|context_window_size" also accepted)
+#   .vbw-planning/.context-usage   — statusline cache written as
+#                                    "session_id|used_pct|context_window_size"
+#                                    This guard only trusts authenticated
+#                                    same-session 3-field entries. Legacy
+#                                    2-field "used_pct|context_window_size"
+#                                    entries are treated as unauthenticated
+#                                    and skipped conservatively.
 #   .vbw-planning/config.json      — compaction_threshold, autonomy, effort
 #   Plugin root reference files     — measured per mode
 #   .vbw-planning/ project files    — measured per mode
@@ -252,6 +258,19 @@ esac
 TOTAL_BYTES=$((FIXED_BYTES + VARIABLE_BYTES))
 EST_COST=$(( TOTAL_BYTES / CHARS_PER_TOKEN + BASELINE_OVERHEAD ))
 
+# Only authenticated session IDs can authorize a pre-flight warning.
+# `unknown` is a writer-side placeholder from vbw-statusline.sh, not proof that
+# the cache belongs to the current session.
+authoritative_session_id() {
+  local sid="${1:-}"
+
+  [ -n "$sid" ] || return 1
+  [ "$sid" = "unknown" ] && return 1
+  [[ "$sid" =~ [^a-zA-Z0-9._-] ]] && return 1
+
+  return 0
+}
+
 # Read cached context usage from statusline
 if [ ! -f "$USAGE_FILE" ]; then
   # No cached data yet (first command in session) — can't guard, skip silently
@@ -260,21 +279,24 @@ fi
 
 IFS='|' read -r FIELD1 FIELD2 FIELD3 < "$USAGE_FILE" 2>/dev/null || exit 0
 
-# Parse format: new 3-field "SESSION_ID|PCT|CTX_SIZE" or legacy 2-field "PCT|CTX_SIZE"
+# Parse format: authenticated 3-field "SESSION_ID|PCT|CTX_SIZE"
+# or legacy 2-field "PCT|CTX_SIZE". This guard now prefers false negatives to
+# false-positive warnings, so unauthenticated cache formats skip silently.
 if [ -n "${FIELD3:-}" ] && [[ "${FIELD2:-}" =~ ^[0-9]+$ ]] && [[ "${FIELD3:-}" =~ ^[0-9]+$ ]]; then
-  # 3-field format: validate session freshness
+  # 3-field format: require an authenticated same-session cache entry
   FILE_SID="$FIELD1"
   USED_PCT="$FIELD2"
   CTX_SIZE="$FIELD3"
-  CURRENT_SID="${CLAUDE_SESSION_ID:-unknown}"
+  CURRENT_SID="${CLAUDE_SESSION_ID:-}"
+  authoritative_session_id "$FILE_SID" || exit 0
+  authoritative_session_id "$CURRENT_SID" || exit 0
   if [ "$FILE_SID" != "$CURRENT_SID" ]; then
     # Stale data from a different session — skip guard (#238)
     exit 0
   fi
 elif [[ "${FIELD1:-}" =~ ^[0-9]+$ ]] && [[ "${FIELD2:-}" =~ ^[0-9]+$ ]] && [ -z "${FIELD3:-}" ]; then
-  # Legacy 2-field format: no session check (backward compat)
-  USED_PCT="$FIELD1"
-  CTX_SIZE="$FIELD2"
+  # Legacy 2-field format is unauthenticated, so skip the warning guard.
+  exit 0
 else
   # Unrecognized format
   exit 0
