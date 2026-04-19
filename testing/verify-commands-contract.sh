@@ -274,7 +274,7 @@ else
   fail "ask-user-question: missing decision gate example"
 fi
 
-if [ -f "$ASK_USER_QUESTION_REF" ] && ! grep -Eq 'github\.com/.*issues|fixes #[0-9]+|see #[0-9]+|issue #[0-9]+|parent.*#[0-9]+' "$ASK_USER_QUESTION_REF"; then
+if [ -f "$ASK_USER_QUESTION_REF" ] && ! grep -Eiq 'github\.com/.*issues|fixes #[0-9]+|see #[0-9]+|issue #[0-9]+|parent.*#[0-9]+' "$ASK_USER_QUESTION_REF"; then
   pass "ask-user-question: no volatile upstream issue links"
 else
   fail "ask-user-question: contains volatile upstream issue links"
