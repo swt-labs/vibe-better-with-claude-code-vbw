@@ -551,6 +551,24 @@ else
   fail "vibe: Archive mode missing explicit post-archive hook step"
 fi
 
+if printf '%s\n' "$archive_block" | grep -Fq 'MILESTONE_SLUG=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/derive-milestone-slug.sh .vbw-planning)'; then
+  pass "vibe: Archive mode derives milestone slug via derive-milestone-slug.sh"
+else
+  fail "vibe: Archive mode missing deterministic milestone slug derivation"
+fi
+
+if printf '%s\n' "$archive_block" | grep -Fq 'Parse args: --tag=vN.N.N (custom tag), --no-tag (skip), --force (skip non-UAT audit).'; then
+  pass "vibe: Archive mode still defines --tag as a custom git tag"
+else
+  fail "vibe: Archive mode no longer defines --tag as a custom git tag"
+fi
+
+if printf '%s\n' "$archive_block" | grep -Fq 'Override with `--tag` if provided.'; then
+  fail "vibe: Archive mode still lets --tag override milestone slug"
+else
+  pass "vibe: Archive mode keeps milestone slug separate from custom --tag"
+fi
+
 if printf '%s\n' "$archive_block" | grep -Fq 'bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/post-archive-hook.sh "{SLUG}" ".vbw-planning/milestones/{SLUG}" "{tag}" .vbw-planning/config.json'; then
   pass "vibe: Archive mode wires post-archive hook with slug/archive/tag/config arguments"
 else
