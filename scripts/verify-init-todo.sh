@@ -50,7 +50,7 @@ check "LIST-03" "list-todos command STOPs with restart guidance when plugin root
 echo ""
 echo "=== List-Todos Interaction Contract ==="
 check "LIST-06" "list-todos Step 5 exposes Quit as explicit bounded option" \
-  grep -q '"Quit"' "$LIST_CMD"
+  grep -qE 'Options:[[:space:]]*\["Quit"\]' "$LIST_CMD"
 check "LIST-07" "list-todos Step 5 documents freeform for number selection" \
   grep -qi 'todo number to select\|number.*to select' "$LIST_CMD"
 check "LIST-08" "list-todos Step 5 documents freeform for remove N / delete N" \
