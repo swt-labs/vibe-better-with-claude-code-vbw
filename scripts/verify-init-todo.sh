@@ -59,6 +59,8 @@ check "LIST-09" "list-todos does not use old faux-menu q exit" \
   bash -c '! grep -qE "^[[:space:]]+-[[:space:]]+\*\*\`q\`\*\*" "$1"' _ "$LIST_CMD"
 check "LIST-10" "list-todos does not have faux structured options (Enter a number, remove N)" \
   bash -c '! grep -qiE "^[[:space:]]*Options( array)?:.*(Enter a number|remove N|delete N|\"Enter a number\"|\"remove N\"|\"delete N\")" "$1"' _ "$LIST_CMD"
+check "LIST-11" "list-todos includes few-shot example for AskUserQuestion tool call" \
+  grep -q 'AskUserQuestion(' "$LIST_CMD"
 
 echo ""
 echo "=== Bootstrap Output Contracts ==="
