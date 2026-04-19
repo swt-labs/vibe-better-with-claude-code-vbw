@@ -99,6 +99,11 @@ write_normalized_content_file() {
   normalize_content "$content" > "$file"
 }
 
+# Normalize free-form block bodies before embedding them under nested markdown headings.
+normalize_block_body() {
+  normalize_content "$1"
+}
+
 # Escape multiline values for markdown tables without relying on sed implementation quirks.
 escape_table_cell() {
   awk '
@@ -258,12 +263,14 @@ case "$MODE" in
     fi
 
     ROOT_CAUSE=$(echo "$json" | jq -r '.root_cause // empty')
+    ROOT_CAUSE=$(normalize_block_body "$ROOT_CAUSE")
     if [ -n "$ROOT_CAUSE" ]; then
       INVESTIGATION+=$'\n'"### Root Cause"$'\n\n'"$ROOT_CAUSE"
     fi
 
     PLAN=$(echo "$json" | jq -r '.plan // empty')
     IMPL=$(echo "$json" | jq -r '.implementation // empty')
+    IMPL=$(normalize_block_body "$IMPL")
 
     # Build Changed Files list
     CHANGED_FILES=""
@@ -384,6 +391,7 @@ case "$MODE" in
     fi
 
     SUMMARY=$(echo "$json" | jq -r '.summary // empty')
+    SUMMARY=$(normalize_block_body "$SUMMARY")
     [ -n "$SUMMARY" ] && QA_ENTRY+=$'\n'"$SUMMARY"$'\n'
 
     append_to_section "QA" "$QA_ENTRY"
@@ -429,6 +437,7 @@ case "$MODE" in
         CP_DESC=$(echo "$json" | jq -r ".checkpoints[$i].description // \"Checkpoint $((i+1))\"")
         CP_RESULT=$(echo "$json" | jq -r ".checkpoints[$i].result // \"pending\"")
         CP_RESPONSE=$(echo "$json" | jq -r ".checkpoints[$i].user_response // empty")
+        CP_RESPONSE=$(normalize_content "$CP_RESPONSE")
         case "$CP_RESULT" in
           pass) UAT_ENTRY+="- [x] $CP_DESC"$'\n' ;;
           skip) UAT_ENTRY+="- [-] $CP_DESC (**SKIPPED**)"$'\n' ;;
@@ -449,6 +458,7 @@ case "$MODE" in
         ISSUE_TYPE=$(echo "$json" | jq -r ".issues[$i] | type")
         if [ "$ISSUE_TYPE" = "object" ]; then
           ISSUE_DESC=$(echo "$json" | jq -r ".issues[$i].description // \"Issue $((i+1))\"")
+          ISSUE_DESC=$(normalize_content "$ISSUE_DESC")
           ISSUE_SEV=$(echo "$json" | jq -r ".issues[$i].severity // empty")
           if [ -n "$ISSUE_SEV" ]; then
             UAT_ENTRY+="- [$ISSUE_SEV] $ISSUE_DESC"$'\n'
@@ -457,12 +467,14 @@ case "$MODE" in
           fi
         else
           ISSUE_DESC=$(echo "$json" | jq -r ".issues[$i] // \"Issue $((i+1))\"")
+          ISSUE_DESC=$(normalize_content "$ISSUE_DESC")
           UAT_ENTRY+="- $ISSUE_DESC"$'\n'
         fi
       done
     fi
 
     SUMMARY=$(echo "$json" | jq -r '.summary // empty')
+    SUMMARY=$(normalize_block_body "$SUMMARY")
     [ -n "$SUMMARY" ] && UAT_ENTRY+=$'\n'"$SUMMARY"$'\n'
 
     append_to_section "UAT" "$UAT_ENTRY"
