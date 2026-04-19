@@ -49,18 +49,18 @@ check "LIST-03" "list-todos command STOPs with restart guidance when plugin root
 
 echo ""
 echo "=== List-Todos Interaction Contract ==="
-check "LIST-06" "list-todos Step 5 uses freeform AskUserQuestion with no options array" \
-  grep -qi 'do NOT pass an.*options.*array\|no.*options.*array' "$LIST_CMD"
-check "LIST-07" "list-todos Step 5 documents freeform for number selection" \
-  grep -qi 'todo number to select\|number.*to select' "$LIST_CMD"
-check "LIST-08" "list-todos Step 5 documents freeform for remove N / delete N" \
-  grep -qi 'remove N.*delete N\|delete N.*remove N' "$LIST_CMD"
-check "LIST-09" "list-todos does not present q as a selectable menu option" \
-  bash -c '! grep -qiE "^[[:space:]]+-[[:space:]]+\*\*\`q\`\*\*[[:space:]]*($|—[[:space:]]*[Qq]uit|:[[:space:]]*[Ee]xit)" "$1"' _ "$LIST_CMD"
-check "LIST-10" "list-todos does not have faux structured options (Enter a number, remove N)" \
-  bash -c '! grep -qiE "^[[:space:]]*Options( array)?:.*(Enter a number|remove N|delete N|\"Enter a number\"|\"remove N\"|\"delete N\")" "$1"' _ "$LIST_CMD"
-check "LIST-11" "list-todos includes few-shot AskUserQuestion example without options" \
-  grep -q 'AskUserQuestion(' "$LIST_CMD"
+check "LIST-06" "list-todos displays slash command usage hints" \
+  grep -qi '/vbw:vibe N\|/vbw:fix N\|/vbw:debug N' "$LIST_CMD"
+check "LIST-07" "list-todos documents remove N action" \
+  grep -qi 'remove N' "$LIST_CMD"
+check "LIST-08" "list-todos does not reference AskUserQuestion tool" \
+  bash -c '! grep -qE "(^|[^[:alnum:]_])AskUserQuestion([^[:alnum:]_]|$)" "$1"' _ "$LIST_CMD"
+check "LIST-09" "list-todos instructs STOP after displaying hints" \
+  grep -qi 'STOP' "$LIST_CMD"
+check "LIST-10" "list-todos allowed-tools does not include AskUserQuestion" \
+  bash -c '! grep -qi "AskUserQuestion" "$(head -10 "$1")"' _ "$LIST_CMD"
+check "LIST-11" "list-todos describes display-and-stop pattern" \
+  grep -qi 'Display action hints and STOP' "$LIST_CMD"
 
 echo ""
 echo "=== Bootstrap Output Contracts ==="

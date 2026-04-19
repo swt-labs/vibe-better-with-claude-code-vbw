@@ -2,9 +2,9 @@
 name: vbw:list-todos
 category: supporting
 disable-model-invocation: true
-description: List pending todos from STATE.md and select one to act on.
+description: List pending todos from STATE.md with action hints.
 argument-hint: [priority filter]
-allowed-tools: Read, Edit, Bash, AskUserQuestion
+allowed-tools: Read, Edit, Bash
 ---
 
 # VBW List Todos $ARGUMENTS
@@ -40,44 +40,18 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
 
 4. **Display list:** Show the `display` value from the script output exactly as returned (do not append any additional prompt text).
 
-5. **Handle selection:** The todo list is high-cardinality (the user may have many todos), so present a single freeform AskUserQuestion with no `options` array — this avoids the platform's 4-option limit and prevents Claude Code from fabricating menu items. Embed all choices in the question text itself:
+5. **Display action hints and STOP.** Do NOT prompt the user for input — display the following as plain text after the todo list, then STOP:
 
-   **Exact tool call (follow this literally — do NOT pass an `options` array):**
-   ```
-   AskUserQuestion({
-     questions: [
-       {
-         question: "Type a todo number to select it, `remove N` / `delete N` to delete one, or `q` to quit:"
-       }
-     ]
-   })
-   ```
-
-   Parse the user's freeform response:
-   - **`q`** or **`quit`** (case-insensitive): display "Done." STOP.
-   - **A number** (1-N): Parse N and validate that it is within range. If N is less than 1 or greater than item count, display "Invalid selection — only items 1-{count} exist." and re-prompt via AskUserQuestion (same question, no options). Otherwise, select the Nth todo and proceed to Step 6.
-   - **`remove N`** or **`delete N`**: If N is out of range (less than 1 or greater than item count), display "Invalid selection — only items 1-{count} exist." and re-prompt. Otherwise, removes the Nth todo without acting on it. Use the `section` and `state_path` values from the script output. Remove the `line` value of the Nth item from the todo section in STATE.md. If no todos remain, replace with "None." If the item has a non-null `ref` field, also run `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" remove <ref>` and capture the JSON output — if `status` is not `"ok"`, display "⚠ Todo removed but detail cleanup failed for ref `HASH` — run `/vbw:doctor` to clean up." Log under `## Activity Log` (or the first heading beginning with `## Activity`) with format `- {YYYY-MM-DD}: Removed todo: {text}`. Display "✓ Todo removed." Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos` and display. Return to Step 2 (re-run list script to refresh display and items).
-   - **Anything else**: display "Unrecognized input. Type a todo number (1-N), `remove N`, `delete N`, or `q` to quit." and re-prompt via AskUserQuestion (same question, no options).
-
-6. **Show selected todo:** Display the full `text` from the matching `items` entry. If the item has a non-null `ref` field, load extended detail by running `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" get <ref>`. Parse the JSON output:
-   - If `status` is `"ok"`: display the `detail.context` value below the todo text, prefixed with "**Detail:**". If `detail.files` is non-empty, also display "**Related files:** file1, file2, ...".
-   - If `status` is `"not_found"` or `"error"`: display "⚠ Detail for this todo could not be loaded — continuing with summary only." and proceed without detail.
-
-7. **Pick up todo and present workflows:** Use the `section` and `state_path` values from the script output. Perform these operations in order:
-   (a) Remove the todo's `line` value from the todo section in STATE.md. If no todos remain, replace with "None."
-   (b) Log under `## Activity Log` (or the first heading beginning with `## Activity`) with format `- {YYYY-MM-DD}: Picked up todo: {text}`.
-   (c) Strip metadata from the todo text: remove any trailing `(added YYYY-MM-DD)` date tag and any `(ref:HASH)` tag. Store the cleaned text as `CLEANED_TEXT`. Store the ref hash (if non-null) as `REF`.
-   (d) Display as plain text (do NOT use AskUserQuestion):
    ```text
-   ✓ Todo picked up.
-
-   ➜ Pick a workflow:
-       /vbw:fix CLEANED_TEXT [ (ref:REF) if present ]       — Quick fix, one commit
-       /vbw:debug CLEANED_TEXT [ (ref:REF) if present ]     — Investigate with scientific method
-       /vbw:vibe CLEANED_TEXT [ (ref:REF) if present ]      — Full lifecycle (plan → execute → verify)
-       /vbw:research CLEANED_TEXT [ (ref:REF) if present ]  — Research only, no code changes
+   ➜ To act on a todo:
+       /vbw:vibe N      — full lifecycle (plan → execute → verify)
+       /vbw:fix N       — quick fix, one commit
+       /vbw:debug N     — investigate with scientific method
+       /vbw:research N  — research only, no code changes
+       remove N         — delete from todo list
    ```
-   Include the `(ref:REF)` suffix on ALL four commands if the item has a non-null `ref` field. Omit the suffix entirely if `ref` is null. Do NOT execute any command — STOP after displaying.
+
+   If the user says **`remove N`** or **`delete N`** as a follow-up message (not via a slash command): validate N is in range (1 to item count). If out of range, display "Invalid selection — only items 1-{count} exist." and STOP. Otherwise, remove the Nth todo: use the `section` and `state_path` values from the script output. Remove the `line` value of the Nth item from the todo section in STATE.md. If no todos remain, replace with "None." If the item has a non-null `ref` field, also run `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" remove <ref>` and capture the JSON output — if `status` is not `"ok"`, display "⚠ Todo removed but detail cleanup failed for ref `HASH` — run `/vbw:doctor` to clean up." Log under `## Activity Log` (or the first heading beginning with `## Activity`) with format `- {YYYY-MM-DD}: Removed todo: {text}`. Display "✓ Todo removed." Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos` and display. STOP.
 
 ## Output Format
 

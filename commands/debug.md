@@ -30,6 +30,14 @@ Store the plugin root path output above as `{plugin-root}` for use in script inv
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
 - No $ARGUMENTS and no `--resume` flag and no `--session` flag: STOP "Usage: /vbw:debug \"description of the bug or error message\""
 
+## Resolve todo number
+
+If $ARGUMENTS is a bare integer (matches `^[0-9]+$` with no other text or flags), resolve the todo item:
+```bash
+bash "{plugin-root}/scripts/resolve-todo-item.sh" <N>
+```
+Parse the JSON output. If `status` is `"ok"`, replace $ARGUMENTS with the `description` value (which includes the `(ref:HASH)` suffix if present) and continue. If `status` is `"error"`, STOP with the `message` value.
+
 ## Debug Session Resolution
 
 <debug_session_routing>
