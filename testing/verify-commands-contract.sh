@@ -187,6 +187,138 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
 done
 
 echo ""
+echo "=== AskUserQuestion Contract Verification ==="
+
+ASK_USER_QUESTION_REF="$ROOT/references/ask-user-question.md"
+VIBE_COMMAND_FILE="$COMMANDS_DIR/vibe.md"
+VIBE_CONFIRMATION_BLOCK="$({
+  awk '
+    /^### Confirmation Gate$/ { in_block=1; print; next }
+    in_block && /^## / { exit }
+    in_block { print }
+  ' "$VIBE_COMMAND_FILE"
+} || true)"
+
+if [ -f "$ASK_USER_QUESTION_REF" ]; then
+  pass "ask-user-question: shared reference exists"
+else
+  fail "ask-user-question: shared reference missing"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq 'Source note:' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: source note present"
+else
+  fail "ask-user-question: missing source note"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq 'Last reviewed:' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: last reviewed metadata present"
+else
+  fail "ask-user-question: missing last reviewed metadata"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq 'Keep headers short' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents short-header rule"
+else
+  fail "ask-user-question: missing short-header rule"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Eq '2[-–]4 options' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents 2-4 option sweet spot"
+else
+  fail "ask-user-question: missing 2-4 option guidance"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Eq '1[-–]4 questions' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents 1-4 question guidance"
+else
+  fail "ask-user-question: missing 1-4 question guidance"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq '`Other` path' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents built-in Other path"
+else
+  fail "ask-user-question: missing built-in Other path guidance"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq 'high-cardinality or unbounded' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents intentional freeform boundary"
+else
+  fail "ask-user-question: missing intentional freeform boundary"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq '### Example — structured single-select' "$ASK_USER_QUESTION_REF" \
+  && grep -Fq '### Example — intentional freeform' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: includes structured and freeform examples"
+else
+  fail "ask-user-question: missing structured/freeform example coverage"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq '### Freeform handoff' "$ASK_USER_QUESTION_REF" \
+  && grep -Fq 'stop using AskUserQuestion' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents freeform handoff rule"
+else
+  fail "ask-user-question: missing freeform handoff rule"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq '## Anti-patterns' "$ASK_USER_QUESTION_REF" \
+  && grep -Fq 'Fake bounded menus' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: includes anti-patterns section"
+else
+  fail "ask-user-question: missing anti-patterns section"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq '### Example — decision gate' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: includes decision gate example"
+else
+  fail "ask-user-question: missing decision gate example"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && ! grep -Eiq 'github\.com/.*issues|fixes #[0-9]+|see #[0-9]+|issue #[0-9]+|parent.*#[0-9]+' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: no volatile upstream issue links"
+else
+  fail "ask-user-question: contains volatile upstream issue links"
+fi
+
+if grep -Fq '@${CLAUDE_PLUGIN_ROOT}/references/ask-user-question.md' "$VIBE_COMMAND_FILE"; then
+  pass "vibe: loads shared AskUserQuestion reference"
+else
+  fail "vibe: missing shared AskUserQuestion reference include"
+fi
+
+if [ -n "$VIBE_CONFIRMATION_BLOCK" ]; then
+  pass "vibe: confirmation gate block extracted for boundary checks"
+else
+  fail "vibe: could not extract confirmation gate block"
+fi
+
+if grep -Fq 'references/ask-user-question.md' <<< "$VIBE_CONFIRMATION_BLOCK"; then
+  pass "vibe: confirmation gate points to shared AskUserQuestion reference"
+else
+  fail "vibe: confirmation gate missing shared AskUserQuestion reference"
+fi
+
+if grep -Fq '**Exception:** `--yolo` skips all confirmation gates.' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  && grep -Fq '**Exception:** Flags skip confirmation (explicit intent).' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  && grep -Fq '| Routing state | Recommended | Alternatives |' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  && grep -Fq '**Discussion-aware alternatives:**' <<< "$VIBE_CONFIRMATION_BLOCK"; then
+  pass "vibe: confirmation gate keeps vibe-local routing behavior"
+else
+  fail "vibe: confirmation gate lost vibe-local routing constructs"
+fi
+
+if grep -Eq '2[-–]4 options|1[-–]4 questions|freeform|high-cardinality' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq '`Other` path' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq 'Keep headers short' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq 'dialog obscures' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq 'For simple yes/no confirmations without a table entry' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq '**AskUserQuestion parameters:**' <<< "$VIBE_CONFIRMATION_BLOCK"; then
+  fail "vibe: confirmation gate still carries generic AskUserQuestion contract guidance"
+else
+  pass "vibe: confirmation gate keeps generic AskUserQuestion contract guidance out of vibe-local prose"
+fi
+
+echo ""
 echo "=== skills.md Step 5b Verification ==="
 
 SKILLS_FILE="$COMMANDS_DIR/skills.md"
