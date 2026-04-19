@@ -79,16 +79,20 @@ update_frontmatter() {
 # Only these lines are treated as section delimiters — user-pasted ## headings inside
 # section content are preserved verbatim and do not prematurely end a section.
 KNOWN_SECTIONS_RE='^## (Issue|Investigation|Plan|Implementation|QA|UAT|Remediation History)$'
+BLANK_LINE_RE='^[[:space:]]*$'
 
 # Strip leading and trailing blank lines while preserving intentional internal spacing.
 normalize_content() {
-  printf '%s' "$1" | awk '
+  printf '%s' "$1" | awk -v blank_re="$BLANK_LINE_RE" '
+    function is_blank(line) {
+      return line ~ blank_re
+    }
     { buf[++n] = $0 }
     END {
       start = 1
-      while (start <= n && buf[start] == "") start++
+      while (start <= n && is_blank(buf[start])) start++
       end = n
-      while (end >= start && buf[end] == "") end--
+      while (end >= start && is_blank(buf[end])) end--
       for (i = start; i <= end; i++) print buf[i]
     }
   '
@@ -182,7 +186,10 @@ append_to_section() {
 # Strips leading and trailing blank lines (BSD-compatible)
 extract_section() {
   local heading="$1" file="$2"
-  awk -v heading="$heading" -v bre="$KNOWN_SECTIONS_RE" '
+  awk -v heading="$heading" -v bre="$KNOWN_SECTIONS_RE" -v blank_re="$BLANK_LINE_RE" '
+    function is_blank(line) {
+      return line ~ blank_re
+    }
     $0 ~ bre {
       if (in_section) exit
       if ($0 == "## " heading) { in_section = 1; next }
@@ -194,8 +201,8 @@ extract_section() {
     END {
       # Find first and last non-empty lines
       start = 0; end = 0
-      for (i = 1; i <= n; i++) { if (buf[i] != "") { start = i; break } }
-      for (i = n; i >= 1; i--) { if (buf[i] != "") { end = i; break } }
+      for (i = 1; i <= n; i++) { if (!is_blank(buf[i])) { start = i; break } }
+      for (i = n; i >= 1; i--) { if (!is_blank(buf[i])) { end = i; break } }
       for (i = start; i <= end; i++) print buf[i]
     }
   ' "$file"

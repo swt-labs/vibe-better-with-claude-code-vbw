@@ -198,9 +198,9 @@ assert_no_repeated_blank_lines() {
 
 @test "write-debug-session normalizes blank lines across repeated lifecycle transitions" {
   SESSION_FILE=$(start_session)
-  ROOT_CAUSE_PADDING=$'\n\nRoot cause paragraph one\n\nRoot cause paragraph two\n\n'
-  QA_SUMMARY_PADDING=$'\n\nQA summary paragraph one\n\nQA summary paragraph two\n\n'
-  UAT_SUMMARY_PADDING=$'\n\nUAT summary paragraph one\n\nUAT summary paragraph two\n\n'
+  ROOT_CAUSE_PADDING=$' \n\t \nRoot cause paragraph one\n\nRoot cause paragraph two\n \t \n\t\n'
+  QA_SUMMARY_PADDING=$'\t\n  \nQA summary paragraph one\n\nQA summary paragraph two\n \t\n\t \n'
+  UAT_SUMMARY_PADDING=$'  \n\t\nUAT summary paragraph one\n\nUAT summary paragraph two\n\t \n  \n'
 
   jq -n \
     --arg root_cause "$ROOT_CAUSE_PADDING" \
@@ -260,6 +260,39 @@ assert_no_repeated_blank_lines() {
     END {
       if (!found) {
         print "Root Cause heading not found"
+        exit 1
+      }
+    }
+  ' "$SESSION_FILE"
+  [ "$status" -eq 0 ]
+  run awk '
+    /^## Remediation History$/ {
+      getline
+      if ($0 != "") {
+        print "expected exactly one blank line after Remediation History heading"
+        exit 1
+      }
+      getline
+      if ($0 !~ /^### Round 1 — /) {
+        print "unexpected remediation round heading: " $0
+        exit 1
+      }
+      getline
+      if ($0 != "") {
+        print "expected exactly one blank line after remediation round heading"
+        exit 1
+      }
+      getline
+      if ($0 != "#### Investigation") {
+        print "unexpected remediation subsection heading: " $0
+        exit 1
+      }
+      found = 1
+      exit 0
+    }
+    END {
+      if (!found) {
+        print "Remediation History section not found"
         exit 1
       }
     }
