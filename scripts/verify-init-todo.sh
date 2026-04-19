@@ -58,7 +58,7 @@ check "LIST-08" "list-todos Step 5 documents freeform for remove N / delete N" \
 check "LIST-09" "list-todos does not use old faux-menu q exit" \
   bash -c '! grep -qE "^\s+-\s+\*\*\`q\`\*\*" "$1"' _ "$LIST_CMD"
 check "LIST-10" "list-todos does not have faux structured options (Enter a number, remove N)" \
-  bash -c '! grep -qiE "options.*(Enter a number|remove N|delete N)" "$1"' _ "$LIST_CMD"
+  bash -c '! grep -qiE "options.*(Enter a number|remove N|delete N)" "$1" && ! grep -qiE "\"Enter a number\"|\"remove N\"|\"delete N\"" "$1"' _ "$LIST_CMD"
 
 echo ""
 echo "=== Bootstrap Output Contracts ==="
