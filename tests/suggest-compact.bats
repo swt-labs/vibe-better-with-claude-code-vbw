@@ -485,6 +485,22 @@ write_legacy_usage() {
   [ -z "$output" ]
 }
 
+@test "suggest-compact: unknown 43 percent cache skips silently" {
+  write_unknown_usage 43
+  unset CLAUDE_SESSION_ID
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: unknown 58 percent cache skips silently" {
+  write_unknown_usage 58
+  unset CLAUDE_SESSION_ID
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
 @test "suggest-compact: 3-field format with low usage no warn" {
   write_authenticated_usage 30 my-session
   CLAUDE_SESSION_ID="my-session" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
