@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# resolve-todo-item.sh — resolve a todo number to its text and ref
+# resolve-todo-item.sh — resolve a todo number to its item details
 # Usage: bash resolve-todo-item.sh <N>
-# Output: JSON object with status, text, ref, line fields
+# Output: JSON object with status, num, text, ref, line, description fields
 # Requires: jq, list-todos.sh in same scripts/ directory
 set -euo pipefail
 
@@ -17,6 +17,8 @@ if ! [[ "$N" =~ ^[0-9]+$ ]]; then
   jq -n --arg message "Not a number: $N" '{status: "error", message: $message}'
   exit 1
 fi
+
+N=$((10#$N))
 
 # Run list-todos.sh to get current items
 OUTPUT=$(bash "$SCRIPT_DIR/list-todos.sh" 2>/dev/null) || {
