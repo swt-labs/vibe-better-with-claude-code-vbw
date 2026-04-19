@@ -154,8 +154,6 @@ After persisting (or assembling inline) the plan, run an iterative audit-fix cyc
 4. Repeat steps 2–3 until an audit returns **zero findings**.
 5. When the audit is clean, proceed to step 4.6 (if applicable) or step 5.
 
-**Cap**: Stop after 3 audit rounds regardless — additional rounds burn subagent context tokens with diminishing returns, and residual findings are usually judgment calls rather than correctness issues. If findings persist after 3 rounds, note the unresolved items in the plan under a `## Unresolved audit findings` section and proceed.
-
 **Audit prompt** (spawn as subagent — use *Explore* agent):
 
 If the plan was saved, use this prompt:
