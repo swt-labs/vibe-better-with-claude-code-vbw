@@ -223,13 +223,13 @@ else
   fail "ask-user-question: missing short-header rule"
 fi
 
-if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Eq '2.?4 options' "$ASK_USER_QUESTION_REF"; then
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Eq '2[-–]4 options' "$ASK_USER_QUESTION_REF"; then
   pass "ask-user-question: documents 2-4 option sweet spot"
 else
   fail "ask-user-question: missing 2-4 option guidance"
 fi
 
-if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Eq '1.?4 questions' "$ASK_USER_QUESTION_REF"; then
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Eq '1[-–]4 questions' "$ASK_USER_QUESTION_REF"; then
   pass "ask-user-question: documents 1-4 question guidance"
 else
   fail "ask-user-question: missing 1-4 question guidance"
@@ -307,7 +307,7 @@ else
   fail "vibe: confirmation gate lost vibe-local routing constructs"
 fi
 
-if grep -Eq '2.?4 options|1.?4 questions|freeform|high-cardinality' <<< "$VIBE_CONFIRMATION_BLOCK" \
+if grep -Eq '2[-–]4 options|1[-–]4 questions|freeform|high-cardinality' <<< "$VIBE_CONFIRMATION_BLOCK" \
   || grep -Fq '`Other` path' <<< "$VIBE_CONFIRMATION_BLOCK" \
   || grep -Fq 'Keep headers short' <<< "$VIBE_CONFIRMATION_BLOCK" \
   || grep -Fq 'dialog obscures' <<< "$VIBE_CONFIRMATION_BLOCK" \
