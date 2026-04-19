@@ -49,17 +49,17 @@ check "LIST-03" "list-todos command STOPs with restart guidance when plugin root
 
 echo ""
 echo "=== List-Todos Interaction Contract ==="
-check "LIST-06" "list-todos Step 5 exposes Quit as explicit bounded option" \
-  grep -qE 'Options:[[:space:]]*\["Quit"\]' "$LIST_CMD"
+check "LIST-06" "list-todos Step 5 uses freeform AskUserQuestion with no options array" \
+  grep -qi 'do NOT pass an.*options.*array\|no.*options.*array' "$LIST_CMD"
 check "LIST-07" "list-todos Step 5 documents freeform for number selection" \
   grep -qi 'todo number to select\|number.*to select' "$LIST_CMD"
 check "LIST-08" "list-todos Step 5 documents freeform for remove N / delete N" \
   grep -qi 'remove N.*delete N\|delete N.*remove N' "$LIST_CMD"
-check "LIST-09" "list-todos does not use old faux-menu q exit" \
-  bash -c '! grep -qE "^[[:space:]]+-[[:space:]]+\*\*\`q\`\*\*" "$1"' _ "$LIST_CMD"
+check "LIST-09" "list-todos does not present q as a selectable menu option" \
+  bash -c '! grep -qiE "^[[:space:]]+-[[:space:]]+\*\*\`q\`\*\*[[:space:]]*($|—[[:space:]]*[Qq]uit|:[[:space:]]*[Ee]xit)" "$1"' _ "$LIST_CMD"
 check "LIST-10" "list-todos does not have faux structured options (Enter a number, remove N)" \
   bash -c '! grep -qiE "^[[:space:]]*Options( array)?:.*(Enter a number|remove N|delete N|\"Enter a number\"|\"remove N\"|\"delete N\")" "$1"' _ "$LIST_CMD"
-check "LIST-11" "list-todos includes few-shot example for AskUserQuestion tool call" \
+check "LIST-11" "list-todos includes few-shot AskUserQuestion example without options" \
   grep -q 'AskUserQuestion(' "$LIST_CMD"
 
 echo ""
