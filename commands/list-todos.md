@@ -40,11 +40,15 @@ allowed-tools: Read, Edit, Bash, AskUserQuestion
 
 4. **Display list:** Show the `display` value from the script output exactly as returned (do not append any additional prompt text).
 
-5. **Handle selection:** Use AskUserQuestion with a freeform question (no `options` array) to prompt: "Reply with a number to select, `remove N` to delete, or `q` to exit:" Parse the response. Accept these input forms:
-   - **A number** (1-N): Parse N and validate that it is within range. If N is less than 1 or greater than item count, display "Invalid selection — only items 1-{count} exist." and re-prompt via AskUserQuestion. Otherwise, select the Nth todo and proceed to Step 6.
+5. **Handle selection:** The todo list is high-cardinality (the user may have many todos), so freeform input is the intentional primary path — do not enumerate todo numbers as AskUserQuestion options. Use AskUserQuestion with a freeform question and a single explicit bounded option:
+   - Question text: "Type a todo number to select it, or `remove N` / `delete N` to delete one:"
+   - Options array: `["Quit"]`
+
+   Parse the response:
+   - **`Quit`** (the explicit bounded option): display "Done." STOP.
+   - **A number** (1-N): Parse N and validate that it is within range. If N is less than 1 or greater than item count, display "Invalid selection — only items 1-{count} exist." and re-prompt via AskUserQuestion (same question and options). Otherwise, select the Nth todo and proceed to Step 6.
    - **`remove N`** or **`delete N`**: If N is out of range (less than 1 or greater than item count), display "Invalid selection — only items 1-{count} exist." and re-prompt. Otherwise, removes the Nth todo without acting on it. Use the `section` and `state_path` values from the script output. Remove the `line` value of the Nth item from the todo section in STATE.md. If no todos remain, replace with "None." If the item has a non-null `ref` field, also run `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" remove <ref>` and capture the JSON output — if `status` is not `"ok"`, display "⚠ Todo removed but detail cleanup failed for ref `HASH` — run `/vbw:doctor` to clean up." Log under `## Activity Log` (or the first heading beginning with `## Activity`) with format `- {YYYY-MM-DD}: Removed todo: {text}`. Display "✓ Todo removed." Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos` and display. Return to Step 2 (re-run list script to refresh display and items).
-   - **`q`**: display "Done." STOP.
-   - **Anything else**: display "Invalid selection. Reply with a number (1-N), `remove N`, or `q` to exit." and re-prompt via AskUserQuestion.
+   - **Anything else** (including `q`, `quit`, or unrecognized text): display "Unrecognized input. Type a todo number (1-N) or `remove N` to delete, or choose Quit." and re-prompt via AskUserQuestion (same question and options).
 
 6. **Show selected todo:** Display the full `text` from the matching `items` entry. If the item has a non-null `ref` field, load extended detail by running `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" get <ref>`. Parse the JSON output:
    - If `status` is `"ok"`: display the `detail.context` value below the todo text, prefixed with "**Detail:**". If `detail.files` is non-empty, also display "**Related files:** file1, file2, ...".

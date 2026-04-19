@@ -48,6 +48,17 @@ check "LIST-03" "list-todos command STOPs with restart guidance when plugin root
   bash -c 'grep -qi "root not found\|none resolves" "$1" && grep -qi "restart" "$1"' _ "$LIST_CMD"
 
 echo ""
+echo "=== List-Todos Interaction Contract ==="
+check "LIST-06" "list-todos Step 5 exposes Quit as explicit bounded option" \
+  grep -q '"Quit"' "$LIST_CMD"
+check "LIST-07" "list-todos Step 5 documents freeform for number selection" \
+  grep -qi 'todo number to select\|number.*to select' "$LIST_CMD"
+check "LIST-08" "list-todos Step 5 documents freeform for remove N / delete N" \
+  grep -qi 'remove N.*delete N\|delete N.*remove N' "$LIST_CMD"
+check "LIST-09" "list-todos does not use old faux-menu q exit" \
+  bash -c '! grep -qE "^\s+-\s+\*\*\`q\`\*\*" "$1"' _ "$LIST_CMD"
+
+echo ""
 echo "=== Bootstrap Output Contracts ==="
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/vbw-init-todo.XXXXXX")"
 trap 'rm -rf "$TMP_DIR"' EXIT
