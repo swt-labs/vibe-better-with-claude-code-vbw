@@ -27,21 +27,27 @@ Config: Pre-injected by SessionStart hook.
 - No $ARGUMENTS: STOP "Usage: /vbw:fix \"description of what to fix\""
 
 ## Steps
-1. **Parse:** Entire $ARGUMENTS (minus flags) = fix description. If the description contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag from the description before further processing. If a ref was found, load extended detail:
+1. **Resolve todo number:** If $ARGUMENTS is a bare integer (matches `^[0-9]+$` with no other text or flags), resolve the todo item:
+    ```bash
+  bash "{plugin-root}/scripts/resolve-todo-item.sh" <N>
+    ```
+    Parse the JSON output. If `status` is `"ok"`, replace $ARGUMENTS with the `description` value (which includes the `(ref:HASH)` suffix if present) and continue to Step 2. If `status` is `"error"`, STOP with the `message` value.
+
+2. **Parse:** Entire $ARGUMENTS (minus flags) = fix description. If the description contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag from the description before further processing. If a ref was found, load extended detail:
     ```bash
   bash "{plugin-root}/scripts/todo-details.sh" get <hash>
     ```
   Parse the JSON output. If `status` is `"ok"`, store the `detail.context` and `detail.files` values for use in step 4. If `status` is `"not_found"` or `"error"`, and `.vbw-planning/STATE.md` exists, append `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` under the `## Activity Log` section (or the first heading beginning with `## Activity`) in `.vbw-planning/STATE.md`; if that file does not exist, skip logging. In all cases, continue without detail.
     **Post-parse validation:** If the fix description is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the fix context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:fix \"description of what to fix\""`.
 
-2. **State:** Use `.vbw-planning/STATE.md`.
+3. **State:** Use `.vbw-planning/STATE.md`.
 
-3. **Set delegation marker:** Before spawning Dev, activate the delegation guard so the orchestrator cannot accidentally write product files directly:
+4. **Set delegation marker:** Before spawning Dev, activate the delegation guard so the orchestrator cannot accidentally write product files directly:
     ```bash
   bash "{plugin-root}/scripts/delegated-workflow.sh" set fix turbo
     ```
 
-4. **Spawn Dev:** Resolve model first:
+5. **Spawn Dev:** Resolve model first:
     ```bash
   if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" turbo); then
     echo "$AGENT_SETTINGS" >&2
@@ -85,7 +91,7 @@ Config: Pre-injected by SessionStart hook.
     If ambiguous or requires architectural decisions, STOP and report back.
     ```
 
-5. **Clear delegation marker + Verify + present:** Clear the marker first, then check results:
+6. **Clear delegation marker + Verify + present:** Clear the marker first, then check results:
     ```bash
   bash "{plugin-root}/scripts/delegated-workflow.sh" clear
     ```

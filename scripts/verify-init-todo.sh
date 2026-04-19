@@ -48,6 +48,21 @@ check "LIST-03" "list-todos command STOPs with restart guidance when plugin root
   bash -c 'grep -qi "root not found\|none resolves" "$1" && grep -qi "restart" "$1"' _ "$LIST_CMD"
 
 echo ""
+echo "=== List-Todos Interaction Contract ==="
+check "LIST-06" "list-todos displays slash command usage hints" \
+  grep -qi '/vbw:vibe N\|/vbw:fix N\|/vbw:debug N' "$LIST_CMD"
+check "LIST-07" "list-todos documents remove N action" \
+  grep -qi 'remove N' "$LIST_CMD"
+check "LIST-08" "list-todos does not reference AskUserQuestion tool" \
+  bash -c '! grep -qE "(^|[^[:alnum:]_])AskUserQuestion([^[:alnum:]_]|$)" "$1"' _ "$LIST_CMD"
+check "LIST-09" "list-todos instructs STOP after displaying hints" \
+  grep -qi 'STOP' "$LIST_CMD"
+check "LIST-10" "list-todos allowed-tools does not include AskUserQuestion" \
+  bash -c '! grep -qi "AskUserQuestion" "$(head -10 "$1")"' _ "$LIST_CMD"
+check "LIST-11" "list-todos describes display-and-stop pattern" \
+  grep -qi 'Display action hints and STOP' "$LIST_CMD"
+
+echo ""
 echo "=== Bootstrap Output Contracts ==="
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/vbw-init-todo.XXXXXX")"
 trap 'rm -rf "$TMP_DIR"' EXIT

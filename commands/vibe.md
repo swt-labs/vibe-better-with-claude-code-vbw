@@ -366,6 +366,12 @@ fi`
 
 ## Input Parsing
 
+**Pre-parse: todo number resolution.** If $ARGUMENTS is a bare integer (matches `^[0-9]+$` with no other text or flags), try resolving it as a todo item first:
+```bash
+bash "{plugin-root}/scripts/resolve-todo-item.sh" <N>
+```
+If `status` is `"ok"`, replace $ARGUMENTS with the `description` value (which includes the `(ref:HASH)` suffix if present) and continue to ref tag extraction below. If `status` is `"error"`, fall through — treat the bare integer as a phase number for existing Path 1 behavior.
+
 **Pre-parse: ref tag extraction.** Before evaluating paths below, check if $ARGUMENTS ends with a `(ref:HASH)` suffix (8 hex characters). If found, extract the hash and strip the ref tag (including any leading space) from $ARGUMENTS. The cleaned arguments are used for all subsequent parsing — the ref must not interfere with flag detection, keyword routing, or mode selection. Store the extracted hash for later use. **Do not load detail here** — detail is loaded on-demand by action-bearing modes only (Execute mode step 3). If no ref tag is found, there is no hash to store.
 
 Three input paths, evaluated in order:
