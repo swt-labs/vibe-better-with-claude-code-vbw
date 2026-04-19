@@ -254,6 +254,32 @@ else
   fail "ask-user-question: missing structured/freeform example coverage"
 fi
 
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq '### Freeform handoff' "$ASK_USER_QUESTION_REF" \
+  && grep -Fq 'stop using AskUserQuestion' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents freeform handoff rule"
+else
+  fail "ask-user-question: missing freeform handoff rule"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq '## Anti-patterns' "$ASK_USER_QUESTION_REF" \
+  && grep -Fq 'Fake bounded menus' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: includes anti-patterns section"
+else
+  fail "ask-user-question: missing anti-patterns section"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq '### Example — decision gate' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: includes decision gate example"
+else
+  fail "ask-user-question: missing decision gate example"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && ! grep -Eq 'github\.com/.*issues|fixes #[0-9]+|see #[0-9]+|issue #[0-9]+|parent.*#[0-9]+' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: no volatile upstream issue links"
+else
+  fail "ask-user-question: contains volatile upstream issue links"
+fi
+
 if grep -Fq '@${CLAUDE_PLUGIN_ROOT}/references/ask-user-question.md' "$VIBE_COMMAND_FILE"; then
   pass "vibe: loads shared AskUserQuestion reference"
 else
