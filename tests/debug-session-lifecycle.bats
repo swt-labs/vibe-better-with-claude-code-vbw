@@ -30,6 +30,24 @@ get_suggestion() {
   bash "$SCRIPTS_DIR/suggest-next.sh" debug 2>/dev/null || true
 }
 
+# Helper: assert generated markdown does not accumulate repeated blank lines
+assert_no_repeated_blank_lines() {
+  local file="$1"
+  run awk '
+    BEGIN { blank_run = 0 }
+    /^[[:space:]]*$/ {
+      blank_run++
+      if (blank_run > 1) {
+        printf "repeated blank lines ending at line %d\n", NR
+        exit 1
+      }
+      next
+    }
+    { blank_run = 0 }
+  ' "$file"
+  [ "$status" -eq 0 ]
+}
+
 # ── Happy path lifecycle ─────────────────────────────────
 
 @test "full lifecycle: debug → QA pass → UAT pass → complete" {
@@ -176,6 +194,139 @@ get_suggestion() {
   # Remediation history should exist
   grep -q "## Remediation History" "$SESSION_FILE"
   grep -q "CSS flex" "$SESSION_FILE"  # archived from round 1
+}
+
+@test "write-debug-session normalizes blank lines across repeated lifecycle transitions" {
+  SESSION_FILE=$(start_session)
+  ROOT_CAUSE_PADDING=$' \n\t \nRoot cause paragraph one\n\nRoot cause paragraph two\n \t \n\t\n'
+  QA_SUMMARY_PADDING=$'\t\n  \nQA summary paragraph one\n\nQA summary paragraph two\n \t\n\t \n'
+  UAT_SUMMARY_PADDING=$'  \n\t\nUAT summary paragraph one\n\nUAT summary paragraph two\n\t \n  \n'
+
+  jq -n \
+    --arg root_cause "$ROOT_CAUSE_PADDING" \
+    '{mode:"investigation", issue:"Spacing repro", hypotheses:[], root_cause:$root_cause, plan:"Normalize spacing", changed_files:["scripts/write-debug-session.sh"], commit:"aaa111"}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"qa_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  jq -n \
+    --arg summary "$QA_SUMMARY_PADDING" \
+    '{mode:"qa", round:1, result:"FAIL", checks:[{id:"c1", description:"first qa", status:"fail", evidence:"e1"}], summary:$summary}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"qa_failed"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+
+  echo '{"mode":"status","status":"investigating"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  jq -n \
+    --arg root_cause "$ROOT_CAUSE_PADDING" \
+    '{mode:"investigation", issue:"Spacing repro remediation", hypotheses:[], root_cause:$root_cause, plan:"Normalize spacing", changed_files:["scripts/write-debug-session.sh"], commit:"bbb222"}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"qa_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  jq -n \
+    --arg summary "$QA_SUMMARY_PADDING" \
+    '{mode:"qa", round:2, result:"PASS", checks:[{id:"c2", description:"second qa", status:"pass", evidence:"e2"}], summary:$summary}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"uat_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  jq -n \
+    --arg summary "$UAT_SUMMARY_PADDING" \
+    '{mode:"uat", round:1, result:"issues_found", checkpoints:[{description:"checkpoint 1", result:"issue", user_response:"needs fix"}], issues:[{description:"uat issue", severity:"major"}], summary:$summary}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+
+  grep -q "### Round 2 — PASS" "$SESSION_FILE"
+  grep -q "## UAT" "$SESSION_FILE"
+  grep -q "## Remediation History" "$SESSION_FILE"
+  run awk '
+    /^### Root Cause$/ {
+      getline
+      if ($0 != "") {
+        print "expected exactly one blank line after Root Cause heading"
+        exit 1
+      }
+      getline
+      if ($0 != "Root cause paragraph one") {
+        print "unexpected first root cause paragraph: " $0
+        exit 1
+      }
+      getline
+      if ($0 != "") {
+        print "expected preserved paragraph break inside root cause"
+        exit 1
+      }
+      getline
+      if ($0 != "Root cause paragraph two") {
+        print "unexpected second root cause paragraph: " $0
+        exit 1
+      }
+      found = 1
+      exit 0
+    }
+    END {
+      if (!found) {
+        print "Root Cause heading not found"
+        exit 1
+      }
+    }
+  ' "$SESSION_FILE"
+  [ "$status" -eq 0 ]
+  run awk '
+    /^## Remediation History$/ {
+      getline
+      if ($0 != "") {
+        print "expected exactly one blank line after Remediation History heading"
+        exit 1
+      }
+      getline
+      if ($0 !~ /^### Round 1 — /) {
+        print "unexpected remediation round heading: " $0
+        exit 1
+      }
+      getline
+      if ($0 != "") {
+        print "expected exactly one blank line after remediation round heading"
+        exit 1
+      }
+      getline
+      if ($0 != "#### Investigation") {
+        print "unexpected remediation subsection heading: " $0
+        exit 1
+      }
+      found = 1
+      exit 0
+    }
+    END {
+      if (!found) {
+        print "Remediation History section not found"
+        exit 1
+      }
+    }
+  ' "$SESSION_FILE"
+  [ "$status" -eq 0 ]
+  run awk '
+    $0 == "QA summary paragraph one" {
+      if (previous != "") {
+        print "expected exactly one blank line before QA summary"
+        exit 1
+      }
+      getline
+      if ($0 != "") {
+        print "expected preserved paragraph break inside QA summary"
+        exit 1
+      }
+      getline
+      if ($0 != "QA summary paragraph two") {
+        print "unexpected second QA summary paragraph: " $0
+        exit 1
+      }
+      found = 1
+      exit 0
+    }
+    { previous = $0 }
+    END {
+      if (!found) {
+        print "QA summary paragraph not found"
+        exit 1
+      }
+    }
+  ' "$SESSION_FILE"
+  [ "$status" -eq 0 ]
+  assert_no_repeated_blank_lines "$SESSION_FILE"
 }
 
 # ── suggest-next lifecycle chain ─────────────────────────
