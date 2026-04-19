@@ -1400,7 +1400,7 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
    ```bash
    MILESTONE_SLUG=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/derive-milestone-slug.sh .vbw-planning)
    ```
-   This reads ROADMAP.md phase names and outputs a numbered kebab-case slug (e.g., `01-setup-api-layer`). Override with `--tag` if provided. **Never use a hardcoded slug like "default" — always use the script output.**
+  This reads ROADMAP.md phase names and outputs a numbered kebab-case slug (e.g., `01-setup-api-layer`). Keep this milestone slug separate from any custom git tag passed via `--tag`. **Never use a hardcoded slug like "default" — always use the script output.**
 2. Parse args: --tag=vN.N.N (custom tag), --no-tag (skip), --force (skip non-UAT audit).
 3. Compute summary: from ROADMAP (phases), SUMMARY.md files (tasks/commits/deviations), REQUIREMENTS.md (satisfied count).
 4. **Rolling summary (conditional):** If `rolling_summary=true` in config:
@@ -1430,6 +1430,11 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
 7. Git branch merge: if `milestone/{SLUG}` branch exists, merge --no-ff. Conflict -> abort, warn. No branch -> skip.
 8. Git tag: unless --no-tag, `git tag -a {tag} -m "Shipped milestone: {name}"`. Default: `milestone/{SLUG}`.
 9. Regenerate CLAUDE.md: update Active Context, remove shipped refs. Preserve non-VBW content — only replace VBW-managed sections, keep user's own sections intact.
+9b. Post-archive hook (non-blocking): after successful archive completion, run:
+   ```bash
+   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/post-archive-hook.sh "{SLUG}" ".vbw-planning/milestones/{SLUG}" "{tag}" .vbw-planning/config.json
+   ```
+   Use the tag selected in step 8, or an empty third argument when `--no-tag` was used. Repos without `hooks.post_archive` configured no-op through the dispatcher. Any warnings are non-blocking.
 10. Present: Phase Banner with metrics (phases, tasks, commits, requirements, deviations), archive path, tag, branch status, memory status. Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh vibe`.
 
 ### Pure-Vibe Phase Loop

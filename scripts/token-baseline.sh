@@ -91,11 +91,11 @@ count_escalations_legacy() {
 get_phases() {
   local phases=""
   if [ -f "$EVENTS_FILE" ]; then
-    phases=$(jq -s '[.[].phase] | unique | sort | .[]' "$EVENTS_FILE" 2>/dev/null || echo "")
+    phases=$(jq -r -s '[.[] | .phase | select((type == "number") or (type == "string" and test("^[0-9]+$")))] | map(tostring) | unique | sort_by(tonumber) | .[]' "$EVENTS_FILE" 2>/dev/null || echo "")
   fi
   if [ -f "$METRICS_FILE" ]; then
     local metric_phases
-    metric_phases=$(jq -s '[.[].phase] | unique | sort | .[]' "$METRICS_FILE" 2>/dev/null || echo "")
+    metric_phases=$(jq -r -s '[.[] | .phase | select((type == "number") or (type == "string" and test("^[0-9]+$")))] | map(tostring) | unique | sort_by(tonumber) | .[]' "$METRICS_FILE" 2>/dev/null || echo "")
     if [ -n "$metric_phases" ]; then
       if [ -n "$phases" ]; then
         phases=$(printf '%s\n%s' "$phases" "$metric_phases" | sort -n | uniq)
@@ -253,8 +253,8 @@ build_comparison() {
   # Detect phase changes (new/removed phases)
   local phase_changes="{}"
   local baseline_phases current_phases
-  baseline_phases=$(echo "$baseline" | jq -r '.phases | keys[]' 2>/dev/null || echo "")
-  current_phases=$(echo "$current" | jq -r '.phases | keys[]' 2>/dev/null || echo "")
+  baseline_phases=$(echo "$baseline" | jq -r '.phases | keys[] | select(test("^[0-9]+$"))' 2>/dev/null || echo "")
+  current_phases=$(echo "$current" | jq -r '.phases | keys[] | select(test("^[0-9]+$"))' 2>/dev/null || echo "")
 
   for bp in $baseline_phases; do
     if ! echo "$current_phases" | grep -qw "$bp"; then
@@ -310,7 +310,7 @@ build_report() {
   echo "|-------|----------|-----------------|-------|---------------|"
 
   local phase_keys
-  phase_keys=$(echo "$measurement" | jq -r '.phases | keys[] | tonumber' 2>/dev/null | sort -n || echo "")
+  phase_keys=$(echo "$measurement" | jq -r '.phases | keys[] | select(test("^[0-9]+$")) | tonumber' 2>/dev/null | sort -n || echo "")
   local t_ov t_tr t_ta t_opt
   t_ov=$(echo "$measurement" | jq -r '.totals.overages // 0' 2>/dev/null)
   t_tr=$(echo "$measurement" | jq -r '.totals.truncated_chars // .totals.truncated_lines // 0' 2>/dev/null)
