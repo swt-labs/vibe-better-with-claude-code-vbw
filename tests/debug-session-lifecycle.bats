@@ -30,6 +30,24 @@ get_suggestion() {
   bash "$SCRIPTS_DIR/suggest-next.sh" debug 2>/dev/null || true
 }
 
+# Helper: assert generated markdown does not accumulate repeated blank lines
+assert_no_repeated_blank_lines() {
+  local file="$1"
+  run awk '
+    BEGIN { blank_run = 0 }
+    /^[[:space:]]*$/ {
+      blank_run++
+      if (blank_run > 1) {
+        printf "repeated blank lines ending at line %d\n", NR
+        exit 1
+      }
+      next
+    }
+    { blank_run = 0 }
+  ' "$file"
+  [ "$status" -eq 0 ]
+}
+
 # ── Happy path lifecycle ─────────────────────────────────
 
 @test "full lifecycle: debug → QA pass → UAT pass → complete" {
@@ -176,6 +194,32 @@ get_suggestion() {
   # Remediation history should exist
   grep -q "## Remediation History" "$SESSION_FILE"
   grep -q "CSS flex" "$SESSION_FILE"  # archived from round 1
+}
+
+@test "write-debug-session normalizes blank lines across repeated lifecycle transitions" {
+  SESSION_FILE=$(start_session)
+
+  echo '{"mode":"investigation","issue":"Spacing repro","hypotheses":[],"root_cause":"Writer boundary issue","plan":"Normalize spacing","changed_files":["scripts/write-debug-session.sh"],"commit":"aaa111"}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"qa_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"qa","round":1,"result":"FAIL","checks":[{"id":"c1","description":"first qa","status":"fail","evidence":"e1"}],"summary":"round1"}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"qa_failed"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+
+  echo '{"mode":"status","status":"investigating"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"investigation","issue":"Spacing repro remediation","hypotheses":[],"root_cause":"Writer boundary issue","plan":"Normalize spacing","changed_files":["scripts/write-debug-session.sh"],"commit":"bbb222"}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"qa_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"qa","round":2,"result":"PASS","checks":[{"id":"c2","description":"second qa","status":"pass","evidence":"e2"}],"summary":"round2"}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"status","status":"uat_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+  echo '{"mode":"uat","round":1,"result":"issues_found","checkpoints":[{"description":"checkpoint 1","result":"issue","user_response":"needs fix"}],"issues":[{"description":"uat issue","severity":"major"}],"summary":"uat1"}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+
+  grep -q "### Round 2 — PASS" "$SESSION_FILE"
+  grep -q "## UAT" "$SESSION_FILE"
+  grep -q "## Remediation History" "$SESSION_FILE"
+  assert_no_repeated_blank_lines "$SESSION_FILE"
 }
 
 # ── suggest-next lifecycle chain ─────────────────────────

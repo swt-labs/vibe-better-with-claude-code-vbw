@@ -80,13 +80,46 @@ update_frontmatter() {
 # section content are preserved verbatim and do not prematurely end a section.
 KNOWN_SECTIONS_RE='^## (Issue|Investigation|Plan|Implementation|QA|UAT|Remediation History)$'
 
+# Strip leading and trailing blank lines while preserving intentional internal spacing.
+normalize_content() {
+  printf '%s' "$1" | awk '
+    { buf[++n] = $0 }
+    END {
+      start = 1
+      while (start <= n && buf[start] == "") start++
+      end = n
+      while (end >= start && buf[end] == "") end--
+      for (i = start; i <= end; i++) print buf[i]
+    }
+  '
+}
+
+write_normalized_content_file() {
+  local content="$1" file="$2"
+  normalize_content "$content" > "$file"
+}
+
+# Escape multiline values for markdown tables without relying on sed implementation quirks.
+escape_table_cell() {
+  awk '
+    BEGIN { first = 1 }
+    {
+      sub(/\r$/, "", $0)
+      gsub(/\|/, "\\|", $0)
+      if (!first) printf "<br>"
+      printf "%s", $0
+      first = 0
+    }
+  '
+}
+
 # Replace content of a section (from ## Heading to next known top-level section or EOF)
 replace_section() {
   local heading="$1" content="$2"
   local tmpfile content_file
   tmpfile=$(mktemp)
   content_file=$(mktemp)
-  printf '%s\n' "$content" > "$content_file"
+  write_normalized_content_file "$content" "$content_file"
   awk -v heading="$heading" -v cfile="$content_file" -v bre="$KNOWN_SECTIONS_RE" '
     BEGIN { in_section = 0; printed = 0 }
     $0 ~ bre {
@@ -97,9 +130,13 @@ replace_section() {
       if ($0 == "## " heading) {
         print $0
         print ""
-        while ((getline line < cfile) > 0) print line
+        content_printed = 0
+        while ((getline line < cfile) > 0) {
+          print line
+          content_printed = 1
+        }
         close(cfile)
-        print ""
+        if (content_printed) print ""
         in_section = 1
         next
       }
@@ -118,35 +155,21 @@ replace_section() {
 # Append content under a section heading (before the next known top-level section or at EOF)
 append_to_section() {
   local heading="$1" content="$2"
-  local tmpfile content_file
-  tmpfile=$(mktemp)
-  content_file=$(mktemp)
-  printf '%s\n' "$content" > "$content_file"
-  awk -v heading="$heading" -v cfile="$content_file" -v bre="$KNOWN_SECTIONS_RE" '
-    BEGIN { in_section = 0; appended = 0 }
-    $0 ~ bre {
-      if (in_section && !appended) {
-        while ((getline line < cfile) > 0) print line
-        close(cfile)
-        print ""
-        appended = 1
-      }
-      in_section = 0
-      if ($0 == "## " heading) {
-        in_section = 1
-      }
-    }
-    { print }
-    END {
-      if (in_section && !appended) {
-        while ((getline line < cfile) > 0) print line
-        close(cfile)
-        print ""
-      }
-    }
-  ' "$SESSION_FILE" > "$tmpfile"
-  rm -f "$content_file"
-  mv "$tmpfile" "$SESSION_FILE"
+  local current_section normalized_new combined_content
+
+  current_section=$(extract_section "$heading" "$SESSION_FILE")
+  current_section=$(normalize_content "$current_section")
+  normalized_new=$(normalize_content "$content")
+
+  if [ -n "$current_section" ] && [ -n "$normalized_new" ]; then
+    combined_content="${current_section}"$'\n\n'"${normalized_new}"
+  elif [ -n "$normalized_new" ]; then
+    combined_content="$normalized_new"
+  else
+    combined_content="$current_section"
+  fi
+
+  replace_section "$heading" "$combined_content"
 }
 
 # Extract content of a section (from ## Heading to next known top-level section or EOF),
@@ -325,10 +348,10 @@ case "$MODE" in
         QA_ENTRY+=$'\n'"| Check | Status | Evidence |"$'\n'
         QA_ENTRY+="| ----- | ------ | -------- |"$'\n'
         for i in $(seq 0 $((CHECKS_TOTAL - 1))); do
-          D_ID=$(echo "$json" | jq -r ".checks[$i].id // \"C$((i+1))\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
-          D_DESC=$(echo "$json" | jq -r ".checks[$i].description // \"Check $((i+1))\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
-          D_STATUS=$(echo "$json" | jq -r ".checks[$i].status // \"—\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
-          D_EVIDENCE=$(echo "$json" | jq -r ".checks[$i].evidence // \"—\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
+          D_ID=$(echo "$json" | jq -r ".checks[$i].id // \"C$((i+1))\"" | escape_table_cell)
+          D_DESC=$(echo "$json" | jq -r ".checks[$i].description // \"Check $((i+1))\"" | escape_table_cell)
+          D_STATUS=$(echo "$json" | jq -r ".checks[$i].status // \"—\"" | escape_table_cell)
+          D_EVIDENCE=$(echo "$json" | jq -r ".checks[$i].evidence // \"—\"" | escape_table_cell)
           QA_ENTRY+="| $D_ID: $D_DESC | $D_STATUS | $D_EVIDENCE |"$'\n'
         done
       fi
@@ -350,9 +373,9 @@ case "$MODE" in
         QA_ENTRY+=$'\n'"| Check | Status | Detail |"$'\n'
         QA_ENTRY+="| ----- | ------ | ------ |"$'\n'
         for i in $(seq 0 $((DETAIL_COUNT - 1))); do
-          D_NAME=$(echo "$json" | jq -r ".details[$i].name // \"Check $((i+1))\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
-          D_STATUS=$(echo "$json" | jq -r ".details[$i].status // \"—\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
-          D_DETAIL=$(echo "$json" | jq -r ".details[$i].detail // \"—\"" | sed ':a;N;$!ba;s/\r\n/<br>/g;s/\r/<br>/g;s/\n/<br>/g;s/|/\\|/g')
+          D_NAME=$(echo "$json" | jq -r ".details[$i].name // \"Check $((i+1))\"" | escape_table_cell)
+          D_STATUS=$(echo "$json" | jq -r ".details[$i].status // \"—\"" | escape_table_cell)
+          D_DETAIL=$(echo "$json" | jq -r ".details[$i].detail // \"—\"" | escape_table_cell)
           QA_ENTRY+="| $D_NAME | $D_STATUS | $D_DETAIL |"$'\n'
         done
       fi
