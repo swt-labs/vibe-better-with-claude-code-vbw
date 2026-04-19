@@ -630,7 +630,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 
 ### Confirmation Gate
 
-Every mode triggers confirmation before executing. Follow the shared interaction contract in `references/ask-user-question.md`, then use the AskUserQuestion tool with the question from the routing table's Confirmation column (marked with `→ AskUserQuestion:`). This section stays local to `/vbw:vibe`: it defines when confirmation is skipped, which routing copy to use, and which alternatives belong to each route. For simple yes/no confirmations without a table entry, offer the affirmative action as recommended and a "Skip" or "Not now" alternative.
+Every mode triggers confirmation before executing. Follow the shared interaction contract in `references/ask-user-question.md`, then use the AskUserQuestion tool with the question from the routing table's Confirmation column (marked with `→ AskUserQuestion:`). This section stays local to `/vbw:vibe`: it defines when confirmation is skipped, which routing copy to use, and which alternatives belong to each route.
 - **Exception:** `--yolo` skips all confirmation gates. Error guards (missing roadmap, uninitialized project) still halt.
 - **Exception:** Flags skip confirmation (explicit intent).
 

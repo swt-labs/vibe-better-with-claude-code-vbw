@@ -191,6 +191,13 @@ echo "=== AskUserQuestion Contract Verification ==="
 
 ASK_USER_QUESTION_REF="$ROOT/references/ask-user-question.md"
 VIBE_COMMAND_FILE="$COMMANDS_DIR/vibe.md"
+VIBE_CONFIRMATION_BLOCK="$({
+  awk '
+    /^### Confirmation Gate$/ { in_block=1; print; next }
+    in_block && /^## / { exit }
+    in_block { print }
+  ' "$VIBE_COMMAND_FILE"
+} || true)"
 
 if [ -f "$ASK_USER_QUESTION_REF" ]; then
   pass "ask-user-question: shared reference exists"
@@ -253,22 +260,36 @@ else
   fail "vibe: missing shared AskUserQuestion reference include"
 fi
 
-if grep -Fq '**AskUserQuestion parameters:**' "$VIBE_COMMAND_FILE"; then
-  fail "vibe: still carries duplicated AskUserQuestion parameter block"
+if [ -n "$VIBE_CONFIRMATION_BLOCK" ]; then
+  pass "vibe: confirmation gate block extracted for boundary checks"
 else
-  pass "vibe: no duplicated AskUserQuestion parameter block"
+  fail "vibe: could not extract confirmation gate block"
 fi
 
-if grep -Fq 'dialog obscures trailing text' "$VIBE_COMMAND_FILE"; then
-  fail "vibe: still duplicates generic AskUserQuestion spacing guidance"
+if grep -Fq 'references/ask-user-question.md' <<< "$VIBE_CONFIRMATION_BLOCK"; then
+  pass "vibe: confirmation gate points to shared AskUserQuestion reference"
 else
-  pass "vibe: spacing guidance now lives in shared reference"
+  fail "vibe: confirmation gate missing shared AskUserQuestion reference"
 fi
 
-if grep -Fq 'AskUserQuestion with 2-3 contextual options' "$VIBE_COMMAND_FILE"; then
-  fail "vibe: still duplicates numeric structured-choice guidance in intent routing"
+if grep -Fq '**Exception:** `--yolo` skips all confirmation gates.' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  && grep -Fq '**Exception:** Flags skip confirmation (explicit intent).' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  && grep -Fq '| Routing state | Recommended | Alternatives |' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  && grep -Fq '**Discussion-aware alternatives:**' <<< "$VIBE_CONFIRMATION_BLOCK"; then
+  pass "vibe: confirmation gate keeps vibe-local routing behavior"
 else
-  pass "vibe: intent routing no longer hardcodes generic 2-3 option guidance"
+  fail "vibe: confirmation gate lost vibe-local routing constructs"
+fi
+
+if grep -Eq '2.?4 options|1.?4 questions|freeform|high-cardinality' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq '`Other` path' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq 'Keep headers short' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq 'dialog obscures' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq 'For simple yes/no confirmations without a table entry' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq '**AskUserQuestion parameters:**' <<< "$VIBE_CONFIRMATION_BLOCK"; then
+  fail "vibe: confirmation gate still carries generic AskUserQuestion contract guidance"
+else
+  pass "vibe: confirmation gate keeps generic AskUserQuestion contract guidance out of vibe-local prose"
 fi
 
 echo ""
