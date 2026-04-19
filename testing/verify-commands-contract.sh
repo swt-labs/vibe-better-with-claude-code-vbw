@@ -187,6 +187,91 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
 done
 
 echo ""
+echo "=== AskUserQuestion Contract Verification ==="
+
+ASK_USER_QUESTION_REF="$ROOT/references/ask-user-question.md"
+VIBE_COMMAND_FILE="$COMMANDS_DIR/vibe.md"
+
+if [ -f "$ASK_USER_QUESTION_REF" ]; then
+  pass "ask-user-question: shared reference exists"
+else
+  fail "ask-user-question: shared reference missing"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq 'Source note:' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: source note present"
+else
+  fail "ask-user-question: missing source note"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq 'Last reviewed:' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: last reviewed metadata present"
+else
+  fail "ask-user-question: missing last reviewed metadata"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq 'Keep headers short' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents short-header rule"
+else
+  fail "ask-user-question: missing short-header rule"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Eq '2.?4 options' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents 2-4 option sweet spot"
+else
+  fail "ask-user-question: missing 2-4 option guidance"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Eq '1.?4 questions' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents 1-4 question guidance"
+else
+  fail "ask-user-question: missing 1-4 question guidance"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq '`Other` path' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents built-in Other path"
+else
+  fail "ask-user-question: missing built-in Other path guidance"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq 'high-cardinality or unbounded' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: documents intentional freeform boundary"
+else
+  fail "ask-user-question: missing intentional freeform boundary"
+fi
+
+if [ -f "$ASK_USER_QUESTION_REF" ] && grep -Fq '### Example — structured single-select' "$ASK_USER_QUESTION_REF" \
+  && grep -Fq '### Example — intentional freeform' "$ASK_USER_QUESTION_REF"; then
+  pass "ask-user-question: includes structured and freeform examples"
+else
+  fail "ask-user-question: missing structured/freeform example coverage"
+fi
+
+if grep -Fq '@${CLAUDE_PLUGIN_ROOT}/references/ask-user-question.md' "$VIBE_COMMAND_FILE"; then
+  pass "vibe: loads shared AskUserQuestion reference"
+else
+  fail "vibe: missing shared AskUserQuestion reference include"
+fi
+
+if grep -Fq '**AskUserQuestion parameters:**' "$VIBE_COMMAND_FILE"; then
+  fail "vibe: still carries duplicated AskUserQuestion parameter block"
+else
+  pass "vibe: no duplicated AskUserQuestion parameter block"
+fi
+
+if grep -Fq 'dialog obscures trailing text' "$VIBE_COMMAND_FILE"; then
+  fail "vibe: still duplicates generic AskUserQuestion spacing guidance"
+else
+  pass "vibe: spacing guidance now lives in shared reference"
+fi
+
+if grep -Fq 'AskUserQuestion with 2-3 contextual options' "$VIBE_COMMAND_FILE"; then
+  fail "vibe: still duplicates numeric structured-choice guidance in intent routing"
+else
+  pass "vibe: intent routing no longer hardcodes generic 2-3 option guidance"
+fi
+
+echo ""
 echo "=== skills.md Step 5b Verification ==="
 
 SKILLS_FILE="$COMMANDS_DIR/skills.md"

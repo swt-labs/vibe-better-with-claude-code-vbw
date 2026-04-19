@@ -198,7 +198,7 @@ check "REQ-21" "vibe.md has keyword-based intent matching" grep -q "keywords" "$
 
 # REQ-22: Ambiguous intents handled
 check "REQ-22" "vibe.md handles ambiguous intents" grep -q "Ambiguous" "$VIBE"
-check "REQ-22" "vibe.md offers 2-3 options for ambiguity" grep -q "2-3.*options" "$VIBE"
+check "REQ-22" "vibe.md routes ambiguity to contextual AskUserQuestion flow" grep -q "Ambiguous -> AskUserQuestion with contextual options" "$VIBE"
 
 group_end "NL Parsing"
 

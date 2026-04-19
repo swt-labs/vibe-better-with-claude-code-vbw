@@ -9,6 +9,10 @@ disable-model-invocation: true
 
 # VBW Vibe: $ARGUMENTS
 
+## Shared interaction contract
+
+@${CLAUDE_PLUGIN_ROOT}/references/ask-user-question.md
+
 ## Context
 
 Working directory:
@@ -400,9 +404,9 @@ If $ARGUMENTS present but no flags detected, interpret user intent:
 - Verification keywords (verify, test, uat, check my work, acceptance test, walk through) -> Verify mode
 - Phase mutation keywords (add, insert, remove, skip, drop, new phase) -> relevant Phase Mutation mode
 - Completion keywords (done, ship, archive, wrap up, finish, complete) -> Archive mode
-- Ambiguous -> AskUserQuestion with 2-3 contextual options
+- Ambiguous -> AskUserQuestion with contextual options
 
-ALWAYS call AskUserQuestion to confirm interpreted intent before executing.
+Confirm the interpreted intent with AskUserQuestion before executing.
 
 ### Path 3: State detection (no args)
 
@@ -626,11 +630,11 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 
 ### Confirmation Gate
 
-Every mode triggers confirmation before executing. **Use the AskUserQuestion tool** to present the question from the routing table's Confirmation column (marked with `→ AskUserQuestion:`), providing the recommended option and alternatives from the table below where listed. Do not render the confirmation as prose text or run a no-op command — the AskUserQuestion tool must be invoked so the user can respond via the interactive UI. For simple yes/no confirmations without a table entry, offer the affirmative action as recommended and a "Skip" or "Not now" alternative.
+Every mode triggers confirmation before executing. Follow the shared interaction contract in `references/ask-user-question.md`, then use the AskUserQuestion tool with the question from the routing table's Confirmation column (marked with `→ AskUserQuestion:`). This section stays local to `/vbw:vibe`: it defines when confirmation is skipped, which routing copy to use, and which alternatives belong to each route. For simple yes/no confirmations without a table entry, offer the affirmative action as recommended and a "Skip" or "Not now" alternative.
 - **Exception:** `--yolo` skips all confirmation gates. Error guards (missing roadmap, uninitialized project) still halt.
 - **Exception:** Flags skip confirmation (explicit intent).
 
-**Discussion-aware alternatives (NON-NEGOTIABLE):** Alternatives must reflect whether discussion has already happened for the target phase. Never offer "discuss this phase" as if discussion never happened — when `{NN}-CONTEXT.md` exists, use continuation-aware wording like "Start a discussion" (which enters the Discussion Engine's continuation mode, building on existing context rather than repeating it).
+**Discussion-aware alternatives:** Alternatives must reflect whether discussion has already happened for the target phase. Never offer "discuss this phase" as if discussion never happened — when `{NN}-CONTEXT.md` exists, use continuation-aware wording like "Start a discussion" (which enters the Discussion Engine's continuation mode, building on existing context rather than repeating it).
 
 | Routing state | Recommended | Alternatives |
 | --- | --- | --- |
@@ -638,8 +642,6 @@ Every mode triggers confirmation before executing. **Use the AskUserQuestion too
 | `needs_plan_and_execute` | "Plan and execute phase {NN}" | "Plan only (review before executing)", "Start a discussion (explore gray areas before planning)" |
 | `needs_execute` | "Execute phase {NN}" | "Review plans first", "Start a discussion (revisit scope before executing)" |
 | `milestone_uat_issues` | "Create remediation phases" | "Start fresh with new work", "Not now" |
-
-**AskUserQuestion parameters:** Set the recommended option's `isRecommended` flag. Output 3–4 blank lines before the AskUserQuestion call (the dialog obscures trailing text).
 
 ## Modes
 
@@ -1021,7 +1023,6 @@ This mode handles the case where a milestone was archived before UAT issues were
    - **"Create remediation phases"** (set `isRecommended` when `milestone_uat_major_or_higher=true`): Create one remediation phase per affected milestone phase. Auto-populate each phase goal from the UAT issue descriptions. Route to Plan mode for the first created phase.
    - **"Start fresh with new work"**: Acknowledge the stale UAT issues, mark them as acknowledged (`.remediated`) so they don't re-trigger archive blocking, then proceed as if all_done. The user can define new work via `/vbw:vibe` with arguments.
    - **"Not now"**: Skip milestone UAT recovery without marking anything. The unresolved UAT issues will re-trigger on the next `/vbw:vibe` invocation.
-   Output 3–4 blank lines before the AskUserQuestion call (the dialog obscures trailing text).
    **`--yolo` exception:** If `--yolo` was passed, skip the AskUserQuestion and auto-select "Create remediation phases" (the recommended action).
 3. If the user chooses remediation: create remediation phases via script — one per affected milestone phase:
    ```bash
