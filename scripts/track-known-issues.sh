@@ -205,7 +205,7 @@ write_suppressions() {
     return 0
   fi
 
-  tmp_file=$(mktemp "${SUPPRESSION_PATH}.tmp.XXXXXX")
+  tmp_file=$(mktemp "${SUPPRESSION_PATH}.tmp.XXXXXX" 2>/dev/null) || return 1
   jq -n \
     --arg phase "$(phase_number)" \
     --argjson suppressions "$suppressions_json" '
@@ -214,8 +214,21 @@ write_suppressions() {
         phase: $phase,
         suppressions: ($suppressions | sort_by(.test, .file, .error))
       }
-    ' > "$tmp_file"
-  mv "$tmp_file" "$SUPPRESSION_PATH"
+    ' > "$tmp_file" || { rm -f "$tmp_file"; return 1; }
+  mv "$tmp_file" "$SUPPRESSION_PATH" || { rm -f "$tmp_file"; return 1; }
+}
+
+suppression_store_available() {
+  local probe_file
+
+  if [ -f "$SUPPRESSION_PATH" ]; then
+    suppression_store_is_valid
+    return $?
+  fi
+
+  probe_file=$(mktemp "${SUPPRESSION_PATH}.probe.XXXXXX" 2>/dev/null) || return 1
+  rm -f "$probe_file" 2>/dev/null || true
+  return 0
 }
 
 canonical_signature_json() {
@@ -784,13 +797,13 @@ sync_verification() {
 apply_suppressions() {
   local issues_json="$1"
 
-  if [ ! -f "$SUPPRESSION_PATH" ]; then
-    printf '%s' "$issues_json"
+  if ! suppression_store_available; then
+    echo 'SUPPRESSION_UNAVAILABLE'
     return 0
   fi
 
-  if ! suppression_store_is_valid; then
-    echo 'SUPPRESSION_UNAVAILABLE'
+  if [ ! -f "$SUPPRESSION_PATH" ]; then
+    printf '%s' "$issues_json"
     return 0
   fi
 
@@ -855,7 +868,10 @@ suppress_issue() {
     | sort_by(.test, .file, .error)
   ')
 
-  write_suppressions "$updated_json"
+  if ! write_suppressions "$updated_json"; then
+    jq -n --arg message 'Known-issue suppression store is unavailable. The todo was removed, but it may be re-promoted.' '{status:"error", code:"suppression_unavailable", message:$message}'
+    return 0
+  fi
   jq -n --arg path "$SUPPRESSION_PATH" '{status:"ok", action:"suppressed", suppression_path:$path}'
 }
 

@@ -583,7 +583,7 @@ cleanup_detail_if_safe() {
   local ref result status_val
 
   ref=$(printf '%s' "$item_json" | jq -r '.ref // empty')
-  if [ -z "$ref" ] || [ "$cleanup_policy" != "safe" ] || [ "$detail_status" = "none" ]; then
+  if [ -z "$ref" ] || [ "$detail_status" = "none" ]; then
     ok_json --arg status "ok" --arg action "skipped" '{status:$status, action:$action}'
     return 0
   fi
@@ -594,6 +594,11 @@ cleanup_detail_if_safe() {
       --arg code "detail_cleanup_skipped" \
       --arg message "Todo detail cleanup was skipped for ref ${ref} because the detail load status was ${detail_status}. The todo was removed, but the sidecar registry was left untouched." \
       '{status:$status, code:$code, message:$message}'
+    return 0
+  fi
+
+  if [ "$cleanup_policy" != "safe" ]; then
+    ok_json --arg status "ok" --arg action "skipped" '{status:$status, action:$action}'
     return 0
   fi
 

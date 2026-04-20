@@ -744,6 +744,21 @@ write_known_issues_registry() {
   grep -q '^None\.$' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
+@test "track-known-issues: promote-todos fails safe when suppression storage is unavailable" {
+  write_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","last_seen_in":"03-01-SUMMARY.md","last_seen_round":1,"times_seen":1,"source_kind":"registry"}'
+
+  chmod u-w "$PHASE_DIR"
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+  chmod u+w "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=0"* ]]
+  [[ "$output" == *"promote_status=suppression_unavailable"* ]]
+  grep -q '^None\.$' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
 @test "track-known-issues: promote-todos does not collapse distinct long errors with same visible prefix" {
   local long_prefix
   local err_one

@@ -347,3 +347,25 @@ EOF
   run bash -c 'awk "/^## Todos?$/{f=1;next} f&&/^##/{exit} f" "$1" | grep -q "\[KNOWN-ISSUE\].*TestCrash (CrashTests.swift): signal trap"' -- "$VBW_PLANNING_DIR/STATE.md"
   [ "$status" -ne 0 ]
 }
+
+@test "todo-lifecycle: pickup returns partial warning when detail load errored and cleanup is keep" {
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- Broken detail item (added 2026-04-01) (ref:deadbeef)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+  bash "$DETAILS_SCRIPT" add deadbeef '{"summary":"Broken detail item","context":"extra detail","files":["a.sh"],"added":"2026-04-01","source":"session"}' "$VBW_PLANNING_DIR/todo-details.json" >/dev/null
+
+  ITEM_JSON=$(bash "$LIST_SCRIPT" | jq -c '.items[0]')
+  run bash -lc 'printf "%s" "$1" | bash "$2" pickup /vbw:fix error keep' -- "$ITEM_JSON" "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "partial" ]
+  [[ "$(echo "$output" | jq -r '.warning')" == *'sidecar registry was left untouched'* ]]
+  run bash "$DETAILS_SCRIPT" get deadbeef "$VBW_PLANNING_DIR/todo-details.json"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+}
