@@ -492,6 +492,18 @@ else
   fail "todo.md missing PLUGIN_ROOT resolver step before helper writes"
 fi
 
+resolver_line=$(grep -nF 'Store the resolved path as `PLUGIN_ROOT`' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
+add_line=$(grep -nF 'bash "${PLUGIN_ROOT}/scripts/todo-details.sh" add HASH -' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
+if [ -n "$resolver_line" ] && [ -n "$add_line" ]; then
+  if [ "$resolver_line" -lt "$add_line" ]; then
+    pass "todo.md places the PLUGIN_ROOT resolver before helper add usage"
+  else
+    fail "todo.md places helper add usage before the PLUGIN_ROOT resolver"
+  fi
+else
+  fail "todo.md ordering check missing resolver or helper add anchor"
+fi
+
 for needle in \
   'The `local/` subdirectory under the plugin cache root' \
   'The numerically highest versioned directory under the plugin cache root' \
