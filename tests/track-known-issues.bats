@@ -759,6 +759,20 @@ write_known_issues_registry() {
   grep -q '^None\.$' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
+@test "track-known-issues: lookup-signature resolves a unique legacy registry issue" {
+  write_known_issues_registry "03" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","last_seen_in":"03-VERIFICATION.md","last_seen_round":1,"times_seen":1,"source_kind":"registry"}'
+
+  QUERY=$(jq -cn '{test:"SignalTrapTests",file:"SignalTrapTests.swift",error:"SwiftData signal trap",disposition:"unresolved",source_path:"03-VERIFICATION.md"}')
+  run bash -lc 'printf "%s" "$1" | bash "$2" lookup-signature "$3"' -- "$QUERY" "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [ "$(echo "$output" | jq -r '.signature.test')" = "SignalTrapTests" ]
+  [ "$(echo "$output" | jq -r '.signature.file')" = "SignalTrapTests.swift" ]
+  [ "$(echo "$output" | jq -r '.signature.error')" = "SwiftData signal trap" ]
+}
+
 @test "track-known-issues: promote-todos does not collapse distinct long errors with same visible prefix" {
   local long_prefix
   local err_one

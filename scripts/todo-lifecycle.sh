@@ -548,15 +548,78 @@ normalize_phase_dir() {
   esac
 }
 
+phase_dir_for_number() {
+  local phase_num="$1"
+  find "${PLANNING_DIR%/}/phases" -maxdepth 1 -type d -name "${phase_num}-*" 2>/dev/null | head -1
+}
+
+lookup_legacy_known_issue_signature() {
+  local item_json="$1"
+  local display_text issue_text phase_num phase_dir source_path disposition query_json lookup_result lookup_status
+  local parsed_test parsed_file parsed_error
+
+  display_text=$(printf '%s' "$item_json" | jq -r '.display_identity // .text // empty')
+  issue_text="${display_text#\[KNOWN-ISSUE\] }"
+  issue_text=$(printf '%s' "$issue_text" | sed 's/ *(added [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\})$//')
+
+  disposition="unresolved"
+  if printf '%s' "$issue_text" | grep -q 'accepted as process-exception for this phase'; then
+    disposition="accepted-process-exception"
+    issue_text=$(printf '%s' "$issue_text" | sed 's/ — accepted as process-exception for this phase//')
+  fi
+
+  source_path=$(printf '%s' "$issue_text" | sed -n 's/.*(see \([^)]*\)).*/\1/p')
+  issue_text=$(printf '%s' "$issue_text" | sed 's/ *(see [^)]*)//')
+
+  phase_num=$(printf '%s' "$issue_text" | sed -n 's/.*(phase \([0-9][0-9]*\), seen [0-9][0-9]*x).*/\1/p')
+  issue_text=$(printf '%s' "$issue_text" | sed 's/ *(phase [0-9][0-9]*, seen [0-9][0-9]*x)//')
+
+  if ! [[ "$issue_text" =~ ^(.+)[[:space:]]+\(([^()]+)\):[[:space:]]*(.+)$ ]]; then
+    error_json "suppression_missing_signature" "Known-issue suppression metadata is unavailable. The todo was removed, but it may be re-promoted."
+    return 0
+  fi
+
+  parsed_test="${BASH_REMATCH[1]}"
+  parsed_file="${BASH_REMATCH[2]}"
+  parsed_error="${BASH_REMATCH[3]}"
+  phase_dir=$(phase_dir_for_number "$phase_num")
+  if [ -z "$phase_dir" ]; then
+    error_json "suppression_missing_phase" "Known-issue suppression metadata is incomplete. The todo was removed, but it may be re-promoted."
+    return 0
+  fi
+
+  query_json=$(jq -cn \
+    --arg test "$parsed_test" \
+    --arg file "$parsed_file" \
+    --arg error "$parsed_error" \
+    --arg disposition "$disposition" \
+    --arg source_path "$source_path" \
+    '{test:$test, file:$file, error:$error, disposition:$disposition, source_path:$source_path}')
+
+  lookup_result=$(printf '%s' "$query_json" | bash "$SCRIPT_DIR/track-known-issues.sh" lookup-signature "$phase_dir" 2>/dev/null || true)
+  lookup_status=$(printf '%s' "$lookup_result" | jq -r '.status // "error"' 2>/dev/null || echo 'error')
+  if [ "$lookup_status" != "ok" ]; then
+    printf '%s\n' "$lookup_result"
+    return 0
+  fi
+
+  printf '%s\n' "$lookup_result"
+}
+
 suppress_known_issue() {
   local item_json="$1"
   local command_label="$2"
-  local signature_json phase_dir output_json status_val
+  local signature_json phase_dir output_json status_val lookup_result lookup_status
 
   signature_json=$(printf '%s' "$item_json" | jq -c '.known_issue_signature // null')
   if [ "$signature_json" = "null" ]; then
-    error_json "suppression_missing_signature" "Known-issue suppression metadata is unavailable. The todo was removed, but it may be re-promoted."
-    return 0
+    lookup_result=$(lookup_legacy_known_issue_signature "$item_json")
+    lookup_status=$(printf '%s' "$lookup_result" | jq -r '.status // "error"' 2>/dev/null || echo 'error')
+    if [ "$lookup_status" != "ok" ]; then
+      printf '%s\n' "$lookup_result"
+      return 0
+    fi
+    signature_json=$(printf '%s' "$lookup_result" | jq -c '.signature')
   fi
 
   phase_dir=$(printf '%s' "$signature_json" | jq -r '.phase_dir // empty')

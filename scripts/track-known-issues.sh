@@ -9,6 +9,7 @@ set -euo pipefail
 #   track-known-issues.sh promote-todos <phase-dir>
 #   track-known-issues.sh suppress <phase-dir>   # signature JSON on stdin
 #   track-known-issues.sh unsuppress <phase-dir> # signature JSON on stdin
+#   track-known-issues.sh lookup-signature <phase-dir> # lookup JSON on stdin
 #   track-known-issues.sh status <phase-dir>
 #   track-known-issues.sh clear <phase-dir>
 
@@ -17,12 +18,12 @@ PHASE_DIR="${2:-}"
 VERIFICATION_PATH="${3:-}"
 
 usage() {
-  echo "usage: track-known-issues.sh <sync-summaries|sync-verification|promote-todos|suppress|unsuppress|status|clear> <phase-dir> [verification-path]" >&2
+  echo "usage: track-known-issues.sh <sync-summaries|sync-verification|promote-todos|suppress|unsuppress|lookup-signature|status|clear> <phase-dir> [verification-path]" >&2
   exit 1
 }
 
 case "$CMD" in
-  sync-summaries|status|clear|promote-todos|suppress|unsuppress)
+  sync-summaries|status|clear|promote-todos|suppress|unsuppress|lookup-signature)
     [ -n "$PHASE_DIR" ] || usage
     ;;
   sync-verification)
@@ -616,6 +617,106 @@ aggregate_summary_known_issue_outcomes_json() {
   printf '%s' "$accumulated"
 }
 
+lookup_signature() {
+  local query_json issues_json candidates_json exact_json prefix_json error_hint prefix_hint disposition_hint source_path_hint
+  query_json="$(cat)"
+
+  if ! printf '%s' "$query_json" | jq -e '
+    type == "object"
+    and (.test | type == "string")
+    and (.file | type == "string")
+  ' >/dev/null 2>&1; then
+    jq -n --arg message 'Known-issue signature lookup query is invalid.' '{status:"error", code:"invalid_query", message:$message}'
+    return 0
+  fi
+
+  issues_json=$(merge_issue_sets "$(load_registry_issues)" "$(aggregate_summary_known_issue_outcomes_json)")
+  error_hint=$(printf '%s' "$query_json" | jq -r '.error // ""')
+  disposition_hint=$(printf '%s' "$query_json" | jq -r '.disposition // ""')
+  source_path_hint=$(printf '%s' "$query_json" | jq -r '.source_path // ""')
+
+  candidates_json=$(printf '%s' "$issues_json" | jq -c \
+    --arg test "$(printf '%s' "$query_json" | jq -r '.test')" \
+    --arg file "$(printf '%s' "$query_json" | jq -r '.file')" \
+    --arg disposition_hint "$disposition_hint" \
+    --arg source_path_hint "$source_path_hint" '
+      [ .[]
+        | select(.test == $test and .file == $file)
+        | if $disposition_hint == "accepted-process-exception" then
+            select((.disposition // "") == $disposition_hint)
+          else . end
+        | if $source_path_hint != "" then
+            select((.last_seen_in // "") == $source_path_hint or (.first_seen_in // "") == $source_path_hint)
+          else . end
+      ]
+    ')
+
+  exact_json=$(printf '%s' "$candidates_json" | jq -c --arg error_hint "$error_hint" '[ .[] | select((.error // "") == $error_hint) ]')
+  if [ "$(printf '%s' "$exact_json" | jq 'length')" -eq 1 ]; then
+    printf '%s' "$exact_json" | jq -c --arg phase "$(phase_number)" --arg phase_dir "$PHASE_DIR" '
+      .[0]
+      | {
+          phase: $phase,
+          phase_dir: $phase_dir,
+          test: .test,
+          file: .file,
+          error: .error,
+          source_kind: (.source_kind // (if (.disposition // "") == "accepted-process-exception" then "accepted-process-exception" else "registry" end)),
+          disposition: (.disposition // "unresolved"),
+          source_path: (.last_seen_in // .first_seen_in // null)
+        }
+      | {status:"ok", signature:.}
+    '
+    return 0
+  fi
+
+  prefix_hint="${error_hint%...}"
+  if [ -n "$prefix_hint" ]; then
+    prefix_json=$(printf '%s' "$candidates_json" | jq -c --arg prefix_hint "$prefix_hint" '[ .[] | select((.error // "") | startswith($prefix_hint)) ]')
+    if [ "$(printf '%s' "$prefix_json" | jq 'length')" -eq 1 ]; then
+      printf '%s' "$prefix_json" | jq -c --arg phase "$(phase_number)" --arg phase_dir "$PHASE_DIR" '
+        .[0]
+        | {
+            phase: $phase,
+            phase_dir: $phase_dir,
+            test: .test,
+            file: .file,
+            error: .error,
+            source_kind: (.source_kind // (if (.disposition // "") == "accepted-process-exception" then "accepted-process-exception" else "registry" end)),
+            disposition: (.disposition // "unresolved"),
+            source_path: (.last_seen_in // .first_seen_in // null)
+          }
+        | {status:"ok", signature:.}
+      '
+      return 0
+    fi
+  fi
+
+  if [ "$(printf '%s' "$candidates_json" | jq 'length')" -eq 1 ]; then
+    printf '%s' "$candidates_json" | jq -c --arg phase "$(phase_number)" --arg phase_dir "$PHASE_DIR" '
+      .[0]
+      | {
+          phase: $phase,
+          phase_dir: $phase_dir,
+          test: .test,
+          file: .file,
+          error: .error,
+          source_kind: (.source_kind // (if (.disposition // "") == "accepted-process-exception" then "accepted-process-exception" else "registry" end)),
+          disposition: (.disposition // "unresolved"),
+          source_path: (.last_seen_in // .first_seen_in // null)
+        }
+      | {status:"ok", signature:.}
+    '
+    return 0
+  fi
+
+  if [ "$(printf '%s' "$candidates_json" | jq 'length')" -gt 1 ]; then
+    jq -n --arg message 'Known-issue signature lookup is ambiguous for this legacy todo.' '{status:"error", code:"ambiguous_signature", message:$message}'
+  else
+    jq -n --arg message 'Known-issue signature lookup found no structured match for this legacy todo.' '{status:"error", code:"signature_not_found", message:$message}'
+  fi
+}
+
 extract_verification_issues_json() {
   local verification_file="$1"
   local source_rel="$2"
@@ -1182,6 +1283,9 @@ case "$CMD" in
     ;;
   unsuppress)
     unsuppress_issue
+    ;;
+  lookup-signature)
+    lookup_signature
     ;;
   promote-todos)
     promote_todos

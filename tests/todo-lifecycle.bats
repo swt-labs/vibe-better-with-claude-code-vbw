@@ -348,6 +348,38 @@ EOF
   [ "$status" -ne 0 ]
 }
 
+@test "todo-lifecycle: remove suppresses legacy ref-less known-issue todos via structured lookup" {
+  local phase_dir="$VBW_PLANNING_DIR/phases/03-test-phase"
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- [KNOWN-ISSUE] TestCrash (CrashTests.swift): signal trap (phase 03, seen 1x) (added 2026-04-01)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+
+  cat > "$phase_dir/known-issues.json" <<'EOF'
+{"schema_version":1,"phase":"03","issues":[{"test":"TestCrash","file":"CrashTests.swift","error":"signal trap","first_seen_in":"03-VERIFICATION.md","last_seen_in":"03-VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1,"source_kind":"registry"}]}
+EOF
+
+  ITEM_JSON=$(bash "$LIST_SCRIPT" | jq -c '.items[0]')
+  [ "$(echo "$ITEM_JSON" | jq -r '.ref')" = "null" ]
+  [ "$(echo "$ITEM_JSON" | jq -r '.known_issue_signature')" = "null" ]
+
+  run bash -lc 'printf "%s" "$1" | bash "$2" remove none keep' -- "$ITEM_JSON" "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [ -f "$phase_dir/known-issue-suppressions.json" ]
+
+  run bash "$TRACK_SCRIPT" promote-todos "$phase_dir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'promoted_count=0'* ]]
+  run bash -c 'awk "/^## Todos?$/{f=1;next} f&&/^##/{exit} f" "$1" | grep -q "\[KNOWN-ISSUE\].*TestCrash (CrashTests.swift): signal trap"' -- "$VBW_PLANNING_DIR/STATE.md"
+  [ "$status" -ne 0 ]
+}
+
 @test "todo-lifecycle: pickup returns partial warning when detail load errored and cleanup is keep" {
   cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
 # Project State
