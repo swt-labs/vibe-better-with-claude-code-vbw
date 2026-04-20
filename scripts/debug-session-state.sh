@@ -417,8 +417,14 @@ ENDSESSION
 
 start_with_source_todo() {
   local slug_input="$1"
-  local source_todo_json session_output session_id session_file
+  local source_todo_json session_output session_id session_file previous_active_pointer had_previous_pointer=0
   source_todo_json=$(cat)
+
+  previous_active_pointer=""
+  if [ -f "$ACTIVE_FILE" ]; then
+    previous_active_pointer=$(cat "$ACTIVE_FILE" 2>/dev/null || true)
+    had_previous_pointer=1
+  fi
 
   if ! session_output=$(create_session "$slug_input"); then
     return 1
@@ -428,7 +434,11 @@ start_with_source_todo() {
 
   if ! printf '%s' "$source_todo_json" | bash "$SCRIPT_DIR/write-debug-session.sh" "$session_file" >/dev/null; then
     rm -f "$session_file"
-    rm -f "$ACTIVE_FILE"
+    if [ "$had_previous_pointer" -eq 1 ]; then
+      printf '%s\n' "$previous_active_pointer" > "$ACTIVE_FILE"
+    else
+      rm -f "$ACTIVE_FILE"
+    fi
     echo "Error: failed to persist Source Todo for new debug session" >&2
     return 1
   fi

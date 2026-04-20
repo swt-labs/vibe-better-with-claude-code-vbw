@@ -75,6 +75,21 @@ teardown() {
   [ -z "$output" ]
 }
 
+@test "start-with-source-todo restores the prior active pointer on writer failure" {
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "first-bug")"
+  local first_session_name
+  first_session_name=$(basename "$session_file")
+
+  run bash -lc 'printf %s "$1" | bash "$2" start-with-source-todo "$3" "source-todo-failure"' -- \
+    'not-json' \
+    "$SCRIPTS_DIR/debug-session-state.sh" \
+    "$VBW_PLANNING_DIR"
+  [ "$status" -eq 1 ]
+  [ -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+  [ "$(cat "$VBW_PLANNING_DIR/debugging/.active-session")" = "$first_session_name" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/active/$first_session_name" ]
+}
+
 # ── get ──────────────────────────────────────────────────
 
 @test "get returns none when no active session" {

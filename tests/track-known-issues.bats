@@ -743,3 +743,23 @@ write_known_issues_registry() {
   [[ "$output" == *"promote_status=empty_registry"* ]]
   grep -q '^None\.$' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
+
+@test "track-known-issues: promote-todos does not collapse distinct long errors with same visible prefix" {
+  local long_prefix
+  local err_one
+  local err_two
+  long_prefix=$(printf 'prefix%.0s' {1..20})
+  err_one="${long_prefix}-first-distinct-tail"
+  err_two="${long_prefix}-second-distinct-tail"
+
+  write_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    "$(jq -cn --arg error "$err_one" '{test:"SameTest",file:"Same.swift",error:$error,last_seen_in:"03-01-SUMMARY.md",last_seen_round:1,times_seen:1,source_kind:"registry"}')" \
+    "$(jq -cn --arg error "$err_two" '{test:"SameTest",file:"Same.swift",error:$error,last_seen_in:"03-02-SUMMARY.md",last_seen_round:2,times_seen:1,source_kind:"registry"}')"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=2"* ]]
+  [ "$(grep -c '\[KNOWN-ISSUE\] SameTest (Same.swift):' "$TEST_TEMP_DIR/.vbw-planning/STATE.md")" -eq 2 ]
+}

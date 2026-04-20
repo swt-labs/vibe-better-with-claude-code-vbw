@@ -996,19 +996,30 @@ promote_todos() {
     ref_hash=$(printf '%s' "${phase_num}|${test_name}|${file_path}|${full_error_msg}" | shasum | cut -c1-8)
 
     # Truncate error message for todo readability (max 80 chars)
+    local was_truncated=false
     if [ "${#error_msg}" -gt 80 ]; then
       error_msg="${error_msg:0:77}..."
+      was_truncated=true
     fi
 
-    # Dedup by test+file pair regardless of tag prefix (matches [KNOWN-ISSUE], [HIGH], untagged, etc.)
+    # Dedup/update by canonical full identity first via promoted ref hash.
+    # Only fall back to a ref-less legacy line match when the visible error text
+    # is not truncated, so distinct issues that share the same first 77 chars do
+    # not collapse into one displayed todo.
     local is_dup=false
     local needs_disposition_update=false
     local needs_ref_update=false
-    local dedup_key="${test_name} (${file_path}): ${error_msg}"
     local existing_line=""
-    if printf '%s' "$todos_section" | grep -qF "$dedup_key"; then
+    if printf '%s' "$todos_section" | grep -qF "(ref:${ref_hash})"; then
       is_dup=true
-      existing_line=$(printf '%s' "$todos_section" | grep -F "$dedup_key" | head -1)
+      existing_line=$(printf '%s' "$todos_section" | grep -F "(ref:${ref_hash})" | head -1)
+    elif [ "$was_truncated" = false ] && printf '%s' "$todos_section" | grep -qF "${test_name} (${file_path}): ${full_error_msg}"; then
+      is_dup=true
+      existing_line=$(printf '%s' "$todos_section" | grep -F "${test_name} (${file_path}): ${full_error_msg}" | head -1)
+      needs_ref_update=true
+    fi
+
+    if [ "$is_dup" = true ]; then
       # Check if existing line needs a disposition update
       if [ "$disposition" = "accepted-process-exception" ]; then
         if ! printf '%s' "$existing_line" | grep -qF "accepted as process-exception"; then

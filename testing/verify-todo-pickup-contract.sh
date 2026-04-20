@@ -71,9 +71,9 @@ require_absent "list-todos no longer advertises /vbw:research N" '/vbw:research 
 # debug command surface
 require_grep "debug uses snapshot-backed todo resolver" 'resolve-todo-item\.sh" <N> --session-snapshot --require-unfiltered --validate-live' "$DEBUG_CMD"
 require_grep "debug writes detail warning through lifecycle helper" 'todo-lifecycle\.sh" detail-warning' "$DEBUG_CMD"
-require_grep "debug persists Source Todo via write-debug-session" 'SOURCE_TODO_JSON.*write-debug-session\.sh|mode":"source-todo' "$DEBUG_CMD"
+require_grep "debug delegates Source Todo persistence to debug-session-state helper" 'debug-session-state\.sh" start-with-source-todo' "$DEBUG_CMD"
 require_grep "debug pickup uses lifecycle helper" 'todo-lifecycle\.sh" pickup /vbw:debug' "$DEBUG_CMD"
-require_grep "debug rollback clears active session on source-todo failure" 'debug-session-state\.sh" clear-active' "$DEBUG_CMD"
+require_grep "debug documents helper-owned Source Todo rollback boundary" 'helper owns session creation, `## Source Todo` persistence, and rollback' "$DEBUG_CMD"
 
 # fix command surface
 require_grep "fix uses snapshot-backed todo resolver" 'resolve-todo-item\.sh" <N> --session-snapshot --require-unfiltered --validate-live' "$FIX_CMD"
