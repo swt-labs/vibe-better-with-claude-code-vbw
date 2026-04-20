@@ -57,6 +57,12 @@ read_stdin() {
   cat
 }
 
+make_temp_with_suffix() {
+  local target_path="$1"
+  local suffix="$2"
+  mktemp "${target_path}.${suffix}.XXXXXX" 2>/dev/null
+}
+
 snapshot_validate_schema() {
   local json_input="$1"
   printf '%s' "$json_input" | jq -e '
@@ -337,7 +343,7 @@ append_activity_line_to_file() {
   local file_path="$1"
   local activity_line="$2"
   local tmp_file heading_line next_heading
-  tmp_file=$(mktemp "${file_path}.activity.XXXXXX")
+  tmp_file=$(make_temp_with_suffix "$file_path" activity) || return 1
 
   heading_line=$(grep -nE '^## (Recent Activity|Activity Log|Activity)$' "$file_path" 2>/dev/null | head -1 | cut -d: -f1 || true)
   if [ -n "$heading_line" ]; then
@@ -351,17 +357,35 @@ append_activity_line_to_file() {
             print activity_line
           }
         }
-      ' "$file_path" > "$tmp_file"
+      ' "$file_path" > "$tmp_file" || {
+        rm -f "$tmp_file"
+        return 1
+      }
     else
-      cat "$file_path" > "$tmp_file"
-      printf '\n%s\n' "$activity_line" >> "$tmp_file"
+      cat "$file_path" > "$tmp_file" || {
+        rm -f "$tmp_file"
+        return 1
+      }
+      printf '\n%s\n' "$activity_line" >> "$tmp_file" || {
+        rm -f "$tmp_file"
+        return 1
+      }
     fi
   else
-    cat "$file_path" > "$tmp_file"
-    printf '\n## Activity Log\n\n%s\n' "$activity_line" >> "$tmp_file"
+    cat "$file_path" > "$tmp_file" || {
+      rm -f "$tmp_file"
+      return 1
+    }
+    printf '\n## Activity Log\n\n%s\n' "$activity_line" >> "$tmp_file" || {
+      rm -f "$tmp_file"
+      return 1
+    }
   fi
 
-  mv "$tmp_file" "$file_path"
+  mv "$tmp_file" "$file_path" || {
+    rm -f "$tmp_file"
+    return 1
+  }
 }
 
 append_activity_entry() {
@@ -385,7 +409,10 @@ detail_warning() {
     ok_json --arg status "ok" --arg action "skipped" '{status:$status, action:$action}'
     return 0
   fi
-  append_activity_entry "$state_path" "Detail for ref ${ref_hash} could not be loaded"
+  if ! append_activity_entry "$state_path" "Detail for ref ${ref_hash} could not be loaded"; then
+    error_json "activity_write_failed" "Could not record the detail warning in STATE.md. Rerun /vbw:list-todos or inspect STATE.md manually."
+    return 0
+  fi
   ok_json --arg status "ok" --arg action "logged" --arg state_path "$state_path" '{status:$status, action:$action, state_path:$state_path}'
 }
 
@@ -553,23 +580,45 @@ rewrite_state_for_item() {
     return 0
   fi
 
-  direct_count=$(extract_section_lines "$state_path" "$section_name" 2>/dev/null | sed '/^$/d' | wc -l | tr -d ' ')
-  tmp_file=$(mktemp "${state_path}.rewrite.XXXXXX")
+  if ! direct_count=$(extract_section_lines "$state_path" "$section_name" 2>/dev/null | sed '/^$/d' | wc -l | tr -d ' '); then
+    error_json "rewrite_prepare_failed" "Could not inspect the current todo section in STATE.md. Rerun /vbw:list-todos."
+    return 0
+  fi
+  tmp_file=$(make_temp_with_suffix "$state_path" rewrite) || {
+    error_json "rewrite_prepare_failed" "Could not prepare a temporary STATE.md rewrite. Rerun /vbw:list-todos."
+    return 0
+  }
 
   if [ "$direct_count" -le 1 ] 2>/dev/null; then
     awk -v target="$line_no" '
       NR == target { print "None."; next }
       { print }
-    ' "$state_path" > "$tmp_file"
+    ' "$state_path" > "$tmp_file" || {
+      rm -f "$tmp_file"
+      error_json "rewrite_prepare_failed" "Could not stage the updated todo section. Rerun /vbw:list-todos."
+      return 0
+    }
   else
     awk -v target="$line_no" '
       NR == target { next }
       { print }
-    ' "$state_path" > "$tmp_file"
+    ' "$state_path" > "$tmp_file" || {
+      rm -f "$tmp_file"
+      error_json "rewrite_prepare_failed" "Could not stage the updated todo section. Rerun /vbw:list-todos."
+      return 0
+    }
   fi
 
-  append_activity_entry "$tmp_file" "$activity_message"
-  mv "$tmp_file" "$state_path"
+  if ! append_activity_entry "$tmp_file" "$activity_message"; then
+    rm -f "$tmp_file"
+    error_json "activity_write_failed" "Could not append the activity breadcrumb to STATE.md. Rerun /vbw:list-todos."
+    return 0
+  fi
+  if ! mv "$tmp_file" "$state_path"; then
+    rm -f "$tmp_file"
+    error_json "rewrite_finalize_failed" "Could not finalize the STATE.md rewrite. Rerun /vbw:list-todos."
+    return 0
+  fi
 
   ok_json --arg status "ok" --arg state_path "$state_path" '{status:$status, state_path:$state_path}'
 }
