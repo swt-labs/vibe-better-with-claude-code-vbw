@@ -35,7 +35,7 @@ Current project:
 
 1. **Parse:** Strip any `--parallel` flag from $ARGUMENTS and store it separately for Step 2 routing. If the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the topic. If a ref was found, load extended detail:
     ```bash
-    bash "{plugin-root}/scripts/todo-details.sh" get {hash}
+    bash "{plugin-root}/scripts/todo-details.sh" get <hash>
     ```
     Command shape: `bash "{plugin-root}/scripts/todo-details.sh" get <hash>`.
     Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for Step 3. If `status` is `"not_found"` or `"error"`, run:

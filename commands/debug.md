@@ -72,7 +72,7 @@ Resolve or create the debug session before any investigation. Order of precedenc
    ```bash
    BUG_DESC=$(printf '%s' "$ARGUMENTS" | sed -E 's/[[:space:]]*\(ref:[^)]+\)//g' | sed -E 's/(^|[[:space:]])--(competing|parallel|serial)([[:space:]]|$)/ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | tr -s '[:space:]' ' ')
    SLUG=$(printf '%s' "$BUG_DESC" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
-  printf '%s' "$SOURCE_TODO_JSON" | bash "{plugin-root}/scripts/debug-session-state.sh" start-with-source-todo .vbw-planning "$SLUG"
+  eval "$(printf '%s' "$SOURCE_TODO_JSON" | bash "{plugin-root}/scripts/debug-session-state.sh" start-with-source-todo .vbw-planning "$SLUG")"
    ```
   Build `SOURCE_TODO_JSON` deterministically before this call. It must include at minimum the normalized todo text, raw todo line, ref (or `none`), detail-load status, related files, and persisted detail context when available. The helper owns session creation, `## Source Todo` persistence, and rollback on source-todo write failure.
 

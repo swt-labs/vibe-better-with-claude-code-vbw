@@ -154,6 +154,10 @@ relative_age() {
   fi
 }
 
+decode_base64() {
+  printf '%s' "$1" | base64 -d 2>/dev/null || printf '%s' "$1" | base64 -D 2>/dev/null
+}
+
 # --- Parse a single todo line ---
 parse_todo_line() {
   local line="$1"
@@ -366,11 +370,12 @@ main() {
   local display_num=0
   for row in $(echo "$items_json" | jq -r '.[] | @base64'); do
     display_num=$((display_num + 1))
-    local text age pri pri_tag display_text age_suffix
+    local decoded_row text age pri pri_tag display_text age_suffix
 
-    text=$(echo "$row" | base64 -d | jq -r '.text')
-    age=$(echo "$row" | base64 -d | jq -r '.age')
-    pri=$(echo "$row" | base64 -d | jq -r '.priority')
+    decoded_row=$(decode_base64 "$row")
+    text=$(printf '%s' "$decoded_row" | jq -r '.text')
+    age=$(printf '%s' "$decoded_row" | jq -r '.age')
+    pri=$(printf '%s' "$decoded_row" | jq -r '.priority')
 
     pri_tag=""
     case "$pri" in
@@ -379,12 +384,12 @@ main() {
       known-issue) pri_tag="[KNOWN-ISSUE] " ;;
     esac
 
-    display_text=$(echo "$row" | base64 -d | jq -r '.normalized_text')
+    display_text=$(printf '%s' "$decoded_row" | jq -r '.normalized_text')
 
     # Show [detail] indicator for todos with extended detail
     local ref_indicator=""
     local item_ref
-    item_ref=$(echo "$row" | base64 -d | jq -r '.ref // ""')
+    item_ref=$(printf '%s' "$decoded_row" | jq -r '.ref // ""')
     if [ -n "$item_ref" ]; then
       ref_indicator=" [detail]"
     fi

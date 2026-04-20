@@ -50,15 +50,6 @@ read_stdin() {
   cat
 }
 
-snapshot_requirements_filter() {
-  local require_unfiltered="$1"
-  if [ "$require_unfiltered" = "true" ]; then
-    echo "Current list view is filtered — rerun unfiltered /vbw:list-todos before using this numbered todo command."
-  else
-    echo "Todo snapshot missing or invalid — rerun /vbw:list-todos first."
-  fi
-}
-
 snapshot_validate_schema() {
   local json_input="$1"
   printf '%s' "$json_input" | jq -e '
@@ -377,14 +368,15 @@ snapshot_select() {
 
   idx=$((selection - 1))
   printf '%s' "$snapshot" | jq -c --argjson idx "$idx" --argjson num "$selection" '
-    .items[$idx]
+    . as $snapshot
+    | .items[$idx]
     | . + {
         status: "ok",
         selection_source: "snapshot",
         num: $num,
-        snapshot_filter: (.snapshot_filter // null),
-        snapshot_state_path: .state_path,
-        snapshot_section: .section
+        snapshot_filter: ($snapshot.filter // null),
+        snapshot_state_path: ($snapshot.state_path // null),
+        snapshot_section: ($snapshot.section // null)
       }
   '
 }

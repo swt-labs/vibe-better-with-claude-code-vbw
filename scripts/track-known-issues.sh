@@ -141,6 +141,10 @@ trim() {
   printf '%s' "${1:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
 
+decode_base64() {
+  printf '%s' "$1" | base64 -d 2>/dev/null || printf '%s' "$1" | base64 -D 2>/dev/null
+}
+
 strip_code_ticks() {
   local value
   value=$(trim "${1:-}")
@@ -1246,7 +1250,7 @@ promote_todos() {
   if [ -n "$detail_script" ] && [ -f "$detail_script" ]; then
     while IFS=$'\x1f' read -r hash p_test p_file p_error p_times p_source p_disp p_summary_error; do
       [ -n "$hash" ] || continue
-      p_error=$(printf '%s' "$p_error" | base64 -d 2>/dev/null) || p_error="(decode error)"
+      p_error=$(decode_base64 "$p_error" 2>/dev/null) || p_error="(decode error)"
       local summary_error="${p_summary_error:-$p_error}"
       upsert_known_issue_detail "$hash" "$p_test" "$p_file" "$p_error" "$p_times" "$p_source" "$p_disp" "$summary_error"
     done <<< "$promoted_details"
