@@ -32,6 +32,8 @@ Execute these steps in order. Do not skip steps.
 
 1. **Search existing issues** (open and closed) via #tool:github/list_issues and #tool:github/search_issues to avoid duplicates.
 2. **If an issue exists**, use it as the tracking source of truth. Read the full issue body — you will need its acceptance criteria later. Note the issue number.
+
+    **Contract split (NON-NEGOTIABLE).** The issue is the public verification contract for QA, PR text, and reviewer communication. A saved planner-authored or user-authored plan is the execution guide for implementation order, dependencies, and risky areas. Keep them aligned. If a user-authored plan introduces must-have acceptance criteria or scope boundaries that are not already captured in the issue, update the issue with a sanitized version before QA begins. Do not copy local absolute path prefixes (for example `/Users/.../`) or other PII into GitHub.
 3. **If no issue exists**, create one via #tool:github/issue_write (method: `create`) using the structure from `.github/ISSUE_TEMPLATE/` (bug_report for bugs, feature_request for enhancements). Assign to the authenticated user (your GitHub username) and apply at least one label (`bug`, `enhancement`, or a domain label).
 
    **Issue body requirements (NON-NEGOTIABLE).** The issue body is the verification contract for the entire workflow — the QA agent will use it to scope its review. Every issue you create must include:
@@ -140,22 +142,29 @@ Execute these steps in order. Do not skip steps.
 ### Phase 1.5: Plan the Fix
 
 <handoff_plan_gate>
-Before invoking the planner, check whether this conversation already contains a plan from `fix-planner-vbw`. This happens when the user started in the planner agent and used the "Start Fix Workflow" handoff button to reach this agent. Detect it by checking TWO conditions:
-1. The conversation history contains a response from `fix-planner-vbw` (the handoff prompt or preceding planner output is visible in the thread).
-2. That response confirms EITHER (a) the plan was saved — it names an actual path the memory tool wrote to, OR (b) memory write was unavailable and the full plan is provided inline in the response.
+Before invoking the planner, check whether this conversation already contains an execution-ready plan for THIS issue. There are two valid sources:
+1. **Planner handoff** — the conversation history contains a response from `fix-planner-vbw` (the handoff prompt or preceding planner output is visible in the thread), and that response confirms EITHER (a) the plan was saved — it names an actual path the memory tool wrote to, OR (b) memory write was unavailable and the full plan is provided inline in the response.
+2. **User-authored execution contract** — the conversation history contains a user message with a detailed implementation plan for this issue, and the thread also contains either the full plan inline or a direct user instruction to "save this plan", "use this plan", or "execute the saved plan".
 
-If BOTH conditions are met, reuse the handed-off plan:
-- **Saved plan**: If #tool:vscode/memory is not exposed yet and #tool:activate_vs_code_interaction is available, call #tool:activate_vs_code_interaction first to expose the deferred VS Code tools. Then read the plan from the confirmed path via #tool:vscode/memory. Use that full plan as the execution guide.
-- **Inline fallback**: Use the full inline plan from the planner response as the execution guide.
+If either source exists, reuse that plan instead of spawning the planner for a fresh initial plan:
+- **Planner handoff**: If #tool:vscode/memory is not exposed yet and #tool:activate_vs_code_interaction is available, call #tool:activate_vs_code_interaction first to expose the deferred VS Code tools. Then read the plan from the confirmed path via #tool:vscode/memory and use it as the execution guide.
+- **User-authored plan**: Save the plan to `/memories/session/plan.md` exactly as written before any summarization, sanitization, or planner invocation. Do not reorder, trim, normalize, or paraphrase it. If `/memories/session/plan.md` already exists and does not exactly match the user-authored plan in this thread, replace its contents so the saved file matches the user's text exactly. After saving, read `/memories/session/plan.md` back and treat that saved file as the source execution guide.
+- **Inline fallback**: Use the full inline plan as the execution guide only when memory write is genuinely unavailable in this run.
 
-Then skip the rest of Phase 1.5 and proceed directly to Phase 2.
+If the user explicitly told you to execute the saved/presented plan, do NOT stop after saving it — continue the workflow.
 
-Do NOT treat generic existence of `/memories/session/plan.md` as proof of a handoff — session memory may contain stale plans from prior tasks. The handoff is only valid when the planner output is visible in THIS conversation thread.
+The issue remains the public verification contract. If the reused plan introduces must-have acceptance criteria or scope boundaries that the issue does not already capture, sanitize that material (strip local absolute path prefixes like `/Users/.../` and other PII) and update the issue or add a clarifying issue comment before QA begins.
+
+If the source was a user-authored plan, you must still invoke `fix-planner-vbw` — but only in audit mode. Tell it to read `/memories/session/plan.md`, QA-evaluate that saved plan against the issue and codebase, and follow its existing audit loop against that same saved path. It must not replan from scratch or fork a second canonical plan file. If the original plan is sufficient, keep using `/memories/session/plan.md` unchanged. If refinement is needed, amend `/memories/session/plan.md` in place through the planner's established audit/update flow so the canonical execution guide stays at one path.
+
+Then skip the rest of Phase 1.5 and proceed directly to Phase 2. For user-authored plans, Phase 2 begins only after the audit-mode planner returns.
+
+Do NOT treat generic existence of `/memories/session/plan.md` as proof of a valid plan — session memory may contain stale plans from prior tasks. The plan is only valid when its source (planner or user-authored) is visible in THIS conversation thread.
 
 This gate applies only to the initial Phase 1.5 plan. Later planner invocations (Phase 3 step 14b for QA findings, Phase 3.5 step 19 for cross-model findings, Phase 4.5 step 27c for Copilot findings) are unaffected and remain unconditional.
 </handoff_plan_gate>
 
-**If no handoff plan exists**, invoke the `fix-planner-vbw` sub-agent with the issue number, full issue body, and any known root-cause clues. Instruct it to use `#tool:searchSubagent` for targeted lookups and escalate to *Explore* subagents for multi-step analysis when nested subagents are available; otherwise it should perform discovery directly with read/search tools.
+**If no existing execution plan exists**, invoke the `fix-planner-vbw` sub-agent with the issue number, full issue body, and any known root-cause clues. Instruct it to use `#tool:searchSubagent` for targeted lookups and escalate to *Explore* subagents for multi-step analysis when nested subagents are available; otherwise it should perform discovery directly with read/search tools.
 
 The planner should save its output to `/memories/session/plan.md` when #tool:vscode/memory is available and return the actual path the memory tool confirmed it wrote to. Preferred path: if the planner confirms a saved plan path and #tool:vscode/memory is not exposed yet while #tool:activate_vs_code_interaction is available, call #tool:activate_vs_code_interaction first to expose the deferred VS Code tools. Then read the saved plan from that confirmed path using #tool:vscode/memory before proceeding. Fallback: if the planner reports that memory write was unavailable in this run and returns the full plan inline, use that inline plan as the execution guide instead of blocking on a saved memory file. In the fallback case, the resolved URI is informational only — do not treat it as proof the plan was persisted. Do not rely on a short summary when a saved or inline full plan is available. If the plan identifies missing context or risky assumptions, resolve those before creating the worktree or editing files.
 
@@ -314,6 +323,7 @@ Start with round N = 1. **Repeat the following steps, incrementing N each round:
     - The issue number and branch name (no PR exists yet during QA)
     - The **worktree absolute path** where the changes live (so the sub-agent reads files from the correct location, not the main repo checkout)
     - The **full issue body** — especially the acceptance criteria and scope boundary. This is the verification contract. Tell the QA agent: "The acceptance criteria in the issue are your primary verification targets. Findings must relate to whether this change correctly and completely satisfies these criteria, or introduces regressions in code touched by the change."
+    - If a validated execution plan exists, include it as supplemental context for risky invariants or intentionally tricky behaviors, but tell the QA agent it does **NOT** replace or narrow the issue contract. If the plan and issue differ, the issue body wins.
     - Explicit instruction that this round is a **full-contract review of the current branch state**, not a review of only the latest remediation commit. Tell the QA agent: "Treat any 'latest commit', 'what changed since round N', or 'especially these files' framing as orientation only. Unless I explicitly say 'delta-only review', you must still re-verify the full issue contract against the current branch state."
     - Instruction to review commits, read changed files in full, and act as devil's advocate — but scoped to the issue contract
     - Instruction to classify each finding as **critical**, **high**, **medium**, or **low** severity
