@@ -183,16 +183,24 @@ cmd_remove() {
   fi
 
   local had_key="no"
+  local registry_warning=""
+  local canonical_status="missing"
   if registry_exists; then
-    if ! registry_is_valid; then
-      error_json "Malformed todo-details.json"
+    if registry_is_valid; then
+      had_key=$(jq --arg h "$hash" 'if .items[$h] then "yes" else "no" end' -r "$REGISTRY_PATH")
+
+      local updated
+      updated=$(jq --arg h "$hash" 'del(.items[$h])' "$REGISTRY_PATH")
+      write_registry "$updated"
+      if [ "$had_key" = "yes" ]; then
+        canonical_status="removed"
+      else
+        canonical_status="noop"
+      fi
+    else
+      canonical_status="malformed"
+      registry_warning="Malformed todo-details.json; skipped canonical cleanup"
     fi
-
-    had_key=$(jq --arg h "$hash" 'if .items[$h] then "yes" else "no" end' -r "$REGISTRY_PATH")
-
-    local updated
-    updated=$(jq --arg h "$hash" 'del(.items[$h])' "$REGISTRY_PATH")
-    write_registry "$updated"
   fi
 
   local had_legacy="no"
@@ -203,10 +211,25 @@ cmd_remove() {
     had_legacy="yes"
   fi
 
+  local legacy_removed_json=false
+  if [ "$had_legacy" = "yes" ]; then
+    legacy_removed_json=true
+  fi
+
   if [ "$had_key" = "yes" ] || [ "$had_legacy" = "yes" ]; then
-    printf '{"status":"ok","action":"removed","hash":"%s"}\n' "$hash"
+    if [ -n "$registry_warning" ]; then
+      printf '{"status":"ok","action":"removed","hash":"%s","warning":"%s","canonical_status":"%s","legacy_removed":%s}\n' \
+        "$hash" "$registry_warning" "$canonical_status" "$legacy_removed_json"
+    else
+      printf '{"status":"ok","action":"removed","hash":"%s"}\n' "$hash"
+    fi
   else
-    printf '{"status":"ok","action":"noop","hash":"%s","message":"Key not found"}\n' "$hash"
+    if [ -n "$registry_warning" ]; then
+      printf '{"status":"ok","action":"noop","hash":"%s","message":"Key not found","warning":"%s","canonical_status":"%s","legacy_removed":%s}\n' \
+        "$hash" "$registry_warning" "$canonical_status" "$legacy_removed_json"
+    else
+      printf '{"status":"ok","action":"noop","hash":"%s","message":"Key not found"}\n' "$hash"
+    fi
   fi
 }
 

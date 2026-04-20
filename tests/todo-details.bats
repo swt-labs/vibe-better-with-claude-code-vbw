@@ -186,6 +186,26 @@ EOF
   [ "$(echo "$output" | jq -r '.status')" = "not_found" ]
 }
 
+@test "remove deletes legacy fallback even when canonical registry is malformed" {
+  cd "$TEST_TEMP_DIR"
+  printf 'not json\n' > "$DETAILS_PATH"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/todo-details"
+  cat > "$TEST_TEMP_DIR/.vbw-planning/todo-details/deadbeef.json" <<'EOF'
+{"summary":"Legacy only","context":"Cleanup should still happen","files":[],"added":"2026-04-12","source":"user"}
+EOF
+
+  run bash "$SCRIPTS_DIR/todo-details.sh" remove "deadbeef" "$DETAILS_PATH"
+  [ "$status" -eq 0 ]
+
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [ "$(echo "$output" | jq -r '.action')" = "removed" ]
+  [ "$(echo "$output" | jq -r '.canonical_status')" = "malformed" ]
+  [ "$(echo "$output" | jq -r '.legacy_removed')" = "true" ]
+  [[ "$(echo "$output" | jq -r '.warning')" == *'Malformed todo-details.json'* ]]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/todo-details/deadbeef.json" ]
+  [ "$(cat "$DETAILS_PATH")" = "not json" ]
+}
+
 # --- list subcommand ---
 
 @test "list returns all entries" {
