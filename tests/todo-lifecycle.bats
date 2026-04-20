@@ -101,6 +101,69 @@ select_snapshot_item() {
   [ "$(echo "$output" | jq -r '.normalized_text')" = "Refactor auth module" ]
 }
 
+@test "todo-lifecycle: validate-item fails closed when duplicate occurrence count changes" {
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- Duplicate task (added 2026-04-01)
+- Duplicate task (added 2026-04-01)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+
+  save_snapshot
+  ITEM_JSON=$(select_snapshot_item 2)
+
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- Duplicate task (added 2026-04-01)
+- Duplicate task (added 2026-04-01)
+- Duplicate task (added 2026-04-01)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+
+  run bash -lc 'printf "%s" "$1" | bash "$2" validate-item' -- "$ITEM_JSON" "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "error" ]
+  [ "$(echo "$output" | jq -r '.code')" = "selection_stale" ]
+}
+
+@test "todo-lifecycle: validate-item fails closed when raw displayed line changes" {
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- [HIGH] Change me (added 2026-04-01)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+
+  save_snapshot
+  ITEM_JSON=$(select_snapshot_item 1)
+
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- Change me (added 2026-04-01)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+
+  run bash -lc 'printf "%s" "$1" | bash "$2" validate-item' -- "$ITEM_JSON" "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "error" ]
+  [ "$(echo "$output" | jq -r '.code')" = "selection_stale" ]
+}
+
 @test "todo-lifecycle: remove uses filtered snapshot metadata and preserves Recent Activity heading" {
   write_state_with_recent_activity
   save_snapshot high
@@ -173,6 +236,70 @@ EOF
   [ "$(echo "$output" | jq -r '.status')" = "partial" ]
   [[ "$(echo "$output" | jq -r '.warning')" == *'sidecar registry was left untouched'* ]]
   grep -q '^None\.$' "$VBW_PLANNING_DIR/STATE.md"
+}
+
+@test "todo-lifecycle: remove with detail_status ok and safe cleanup removes sidecar entry" {
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- Remove me safely (added 2026-04-01) (ref:deadbeef)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+  bash "$DETAILS_SCRIPT" add deadbeef '{"summary":"Remove me safely","context":"extra detail","files":["a.sh"],"added":"2026-04-01","source":"session"}' "$VBW_PLANNING_DIR/todo-details.json" >/dev/null
+
+  ITEM_JSON=$(bash "$LIST_SCRIPT" | jq -c '.items[0]')
+  run bash -lc 'printf "%s" "$1" | bash "$2" remove ok safe' -- "$ITEM_JSON" "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  run bash "$DETAILS_SCRIPT" get deadbeef "$VBW_PLANNING_DIR/todo-details.json"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "not_found" ]
+}
+
+@test "todo-lifecycle: remove with detail_status ok and keep preserves sidecar entry" {
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- Keep my detail (added 2026-04-01) (ref:deadbeef)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+  bash "$DETAILS_SCRIPT" add deadbeef '{"summary":"Keep my detail","context":"extra detail","files":["a.sh"],"added":"2026-04-01","source":"session"}' "$VBW_PLANNING_DIR/todo-details.json" >/dev/null
+
+  ITEM_JSON=$(bash "$LIST_SCRIPT" | jq -c '.items[0]')
+  run bash -lc 'printf "%s" "$1" | bash "$2" remove ok keep' -- "$ITEM_JSON" "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  run bash "$DETAILS_SCRIPT" get deadbeef "$VBW_PLANNING_DIR/todo-details.json"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+}
+
+@test "todo-lifecycle: remove reports partial cleanup when detail load errored" {
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- Error detail item (added 2026-04-01) (ref:deadbeef)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+  bash "$DETAILS_SCRIPT" add deadbeef '{"summary":"Error detail item","context":"extra detail","files":["a.sh"],"added":"2026-04-01","source":"session"}' "$VBW_PLANNING_DIR/todo-details.json" >/dev/null
+
+  ITEM_JSON=$(bash "$LIST_SCRIPT" | jq -c '.items[0]')
+  run bash -lc 'printf "%s" "$1" | bash "$2" remove error safe' -- "$ITEM_JSON" "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "partial" ]
+  [[ "$(echo "$output" | jq -r '.warning')" == *'sidecar registry was left untouched'* ]]
+  run bash "$DETAILS_SCRIPT" get deadbeef "$VBW_PLANNING_DIR/todo-details.json"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
 }
 
 @test "todo-lifecycle: pickup suppresses known-issue re-promotion" {

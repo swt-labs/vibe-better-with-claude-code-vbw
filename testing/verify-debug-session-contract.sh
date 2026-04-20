@@ -63,7 +63,7 @@ else
   fail "debug-session-state.sh missing"
 fi
 
-for cmd in start get get-or-latest resume set-status increment-qa increment-uat clear-active list; do
+for cmd in start start-with-source-todo get get-or-latest resume set-status increment-qa increment-uat clear-active list; do
   if grep -q "\"$cmd\"\\|'$cmd'\\|${cmd})" "$STATE_SCRIPT" 2>/dev/null; then
     pass "state script handles command: $cmd"
   else

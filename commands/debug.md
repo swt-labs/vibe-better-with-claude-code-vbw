@@ -72,20 +72,9 @@ Resolve or create the debug session before any investigation. Order of precedenc
    ```bash
    BUG_DESC=$(printf '%s' "$ARGUMENTS" | sed -E 's/[[:space:]]*\(ref:[^)]+\)//g' | sed -E 's/(^|[[:space:]])--(competing|parallel|serial)([[:space:]]|$)/ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | tr -s '[:space:]' ' ')
    SLUG=$(printf '%s' "$BUG_DESC" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
-  eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" start .vbw-planning "$SLUG")"
+  printf '%s' "$SOURCE_TODO_JSON" | bash "{plugin-root}/scripts/debug-session-state.sh" start-with-source-todo .vbw-planning "$SLUG"
    ```
-  If `TODO_SELECTED=true`, persist the fixed top-level `## Source Todo` section immediately after session creation and before any pickup cleanup:
-  ```bash
-  echo "$SOURCE_TODO_JSON" | bash "{plugin-root}/scripts/write-debug-session.sh" "$session_file"
-  ```
-  The source-todo payload must include at minimum the normalized todo text, raw todo line, ref (or `none`), detail-load status, related files, and persisted detail context when available.
-
-  If the source-todo write fails after the session was created, roll back the just-created session artifact and clear the active-session pointer before returning:
-  ```bash
-  rm -f "$session_file"
-  bash "{plugin-root}/scripts/debug-session-state.sh" clear-active .vbw-planning
-  ```
-  Then STOP with the writer error. The backlog todo must remain untouched.
+  Build `SOURCE_TODO_JSON` deterministically before this call. It must include at minimum the normalized todo text, raw todo line, ref (or `none`), detail-load status, related files, and persisted detail context when available. The helper owns session creation, `## Source Todo` persistence, and rollback on source-todo write failure.
 
   Only after the source-todo write succeeds, and only when `TODO_SELECTED=true`, pipe `TODO_SELECTED_JSON` into:
   ```bash

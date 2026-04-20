@@ -99,4 +99,6 @@ EOF
   [ "$(echo "$output" | jq -r '.items[1].display_identity')" = "[HIGH] Refactor auth module" ]
   [ "$(echo "$output" | jq -r '.items[1].command_text')" = "Refactor auth module" ]
   [ "$(echo "$output" | jq -r '.items[1].section')" = "## Todos" ]
+  [ "$(echo "$output" | jq -r '.items[0].identity_occurrence')" = "1" ]
+  [ "$(echo "$output" | jq -r '.items[0].identity_total')" = "1" ]
 }

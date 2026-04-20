@@ -258,6 +258,26 @@ parse_todo_line() {
     }'
 }
 
+annotate_identity_occurrence() {
+  local items_json="$1"
+  printf '%s' "$items_json" | jq -c '
+    def identity($item): {
+      normalized_text: ($item.normalized_text // ""),
+      ref: ($item.ref // null),
+      known_issue_signature: ($item.known_issue_signature // null)
+    };
+
+    . as $items
+    | [range(0; length) as $i |
+        $items[$i] as $item
+        | $item + {
+            identity_occurrence: ([range(0; $i + 1) | $items[.] | select(identity(.) == identity($item))] | length),
+            identity_total: ([ $items[] | select(identity(.) == identity($item)) ] | length)
+          }
+      ]
+  '
+}
+
 # --- Main ---
 main() {
   local filter_lower=""
@@ -287,6 +307,7 @@ main() {
   todo_lines=$(echo "$raw_output" | tail -n +2)
 
   # Parse all todos into a JSON array via jq
+  local all_items_json="[]"
   local items_json="[]"
   local num=0
   local section_index=0
@@ -300,6 +321,15 @@ main() {
 
     local parsed pri
     parsed=$(parse_todo_line "$line" "$section_index" "$state_path" "$section_name")
+    all_items_json=$(echo "$all_items_json" | jq --argjson item "$parsed" '. + [$item]')
+  done <<< "$todo_lines"
+
+  all_items_json=$(annotate_identity_occurrence "$all_items_json")
+
+  while IFS= read -r row; do
+    [ -n "$row" ] || continue
+    local parsed pri
+    parsed="$row"
     pri=$(echo "$parsed" | jq -r '.priority')
 
     # Apply filter
@@ -310,7 +340,7 @@ main() {
     # num tracks filtered position (matches display numbering)
     num=$((num + 1))
     items_json=$(echo "$items_json" | jq --argjson n "$num" --argjson item "$parsed" '. + [($item + {num:$n})]')
-  done <<< "$todo_lines"
+  done < <(printf '%s' "$all_items_json" | jq -c '.[]')
 
   local filtered_count
   filtered_count=$(echo "$items_json" | jq 'length')

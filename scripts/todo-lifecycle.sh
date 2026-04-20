@@ -250,6 +250,46 @@ parse_todo_line_json() {
     }'
 }
 
+annotate_identity_occurrence() {
+  local items_json="$1"
+  printf '%s' "$items_json" | jq -c '
+    def identity($item): {
+      normalized_text: ($item.normalized_text // ""),
+      ref: ($item.ref // null),
+      known_issue_signature: ($item.known_issue_signature // null)
+    };
+
+    . as $items
+    | [range(0; length) as $i |
+        $items[$i] as $item
+        | $item + {
+            identity_occurrence: ([range(0; $i + 1) | $items[.] | select(identity(.) == identity($item))] | length),
+            identity_total: ([ $items[] | select(identity(.) == identity($item)) ] | length)
+          }
+      ]
+  '
+}
+
+section_items_json() {
+  local state_path="$1"
+  local section_name="$2"
+  local current_lines items_json
+
+  current_lines=$(extract_section_lines "$state_path" "$section_name" 2>/dev/null || true)
+  items_json='[]'
+
+  while IFS=$'\t' read -r current_line_no current_line; do
+    [ -n "$current_line_no" ] || continue
+    local section_index item_json
+    section_index=$(printf '%s' "$items_json" | jq 'length + 1')
+    item_json=$(parse_todo_line_json "$current_line" "$section_index" "$state_path" "$section_name")
+    item_json=$(printf '%s' "$item_json" | jq -c --argjson line_no "$current_line_no" '. + {line_no: $line_no}')
+    items_json=$(printf '%s' "$items_json" | jq --argjson item "$item_json" '. + [$item]')
+  done <<< "$current_lines"
+
+  annotate_identity_occurrence "$items_json"
+}
+
 extract_section_lines() {
   local state_path="$1"
   local section_name="$2"
@@ -345,17 +385,19 @@ snapshot_select() {
 
 validate_item_against_live() {
   local item_json="$1"
-  local state_path section_name section_index expected_normalized expected_ref expected_signature current_lines current_line_json current_line_count
+  local state_path section_name expected_normalized expected_ref expected_signature expected_line expected_occurrence expected_total current_items_json candidate_count candidate_json current_signature
 
   state_path=$(printf '%s' "$item_json" | jq -r '.state_path // empty')
   section_name=$(printf '%s' "$item_json" | jq -r '.section // empty')
-  section_index=$(printf '%s' "$item_json" | jq -r '.section_index // empty')
   expected_normalized=$(printf '%s' "$item_json" | jq -r '.normalized_text // empty')
   expected_ref=$(printf '%s' "$item_json" | jq -r '.ref // empty')
   expected_signature=$(printf '%s' "$item_json" | jq -c '.known_issue_signature // null')
   expected_signature=$(canonical_signature_json "$expected_signature")
+  expected_line=$(printf '%s' "$item_json" | jq -r '.line // empty')
+  expected_occurrence=$(printf '%s' "$item_json" | jq -r '.identity_occurrence // empty')
+  expected_total=$(printf '%s' "$item_json" | jq -r '.identity_total // empty')
 
-  if [ -z "$state_path" ] || [ -z "$section_name" ] || [ -z "$section_index" ]; then
+  if [ -z "$state_path" ] || [ -z "$section_name" ] || [ -z "$expected_occurrence" ] || [ -z "$expected_total" ]; then
     error_json "invalid_item" "Todo selection payload is missing required metadata. Rerun /vbw:list-todos."
     return 0
   fi
@@ -365,42 +407,55 @@ validate_item_against_live() {
     return 0
   fi
 
-  current_lines=$(extract_section_lines "$state_path" "$section_name" 2>/dev/null || true)
-  current_line_count=$(printf '%s\n' "$current_lines" | sed '/^$/d' | wc -l | tr -d ' ')
+  current_items_json=$(section_items_json "$state_path" "$section_name")
+  candidate_count=$(printf '%s' "$current_items_json" | jq \
+    --arg normalized_text "$expected_normalized" \
+    --arg ref "$expected_ref" \
+    --argjson signature "$expected_signature" \
+    --argjson occurrence "$expected_occurrence" '
+      [ .[]
+        | select(.normalized_text == $normalized_text)
+        | select((.ref // "") == $ref)
+        | select((.known_issue_signature // null) == $signature)
+        | select(.identity_occurrence == $occurrence)
+      ] | length
+    ')
 
-  if [ "$section_index" -lt 1 ] || [ "$section_index" -gt "$current_line_count" ] 2>/dev/null; then
+  if [ "$candidate_count" -ne 1 ] 2>/dev/null; then
     error_json "selection_stale" "Todo selection no longer matches live backlog. Rerun /vbw:list-todos."
     return 0
   fi
 
-  local current_pair current_line_no current_line
-  current_pair=$(printf '%s\n' "$current_lines" | sed -n "${section_index}p")
-  current_line_no=$(printf '%s' "$current_pair" | cut -f1)
-  current_line=$(printf '%s' "$current_pair" | cut -f2-)
-  current_line_json=$(parse_todo_line_json "$current_line" "$section_index" "$state_path" "$section_name")
-  current_line_json=$(printf '%s' "$current_line_json" | jq -c --argjson line_no "$current_line_no" '. + {line_no: $line_no}')
+  candidate_json=$(printf '%s' "$current_items_json" | jq -c \
+    --arg normalized_text "$expected_normalized" \
+    --arg ref "$expected_ref" \
+    --argjson signature "$expected_signature" \
+    --argjson occurrence "$expected_occurrence" '
+      [ .[]
+        | select(.normalized_text == $normalized_text)
+        | select((.ref // "") == $ref)
+        | select((.known_issue_signature // null) == $signature)
+        | select(.identity_occurrence == $occurrence)
+      ][0]
+    ')
 
-  local current_normalized current_ref current_signature
-  current_normalized=$(printf '%s' "$current_line_json" | jq -r '.normalized_text // empty')
-  current_ref=$(printf '%s' "$current_line_json" | jq -r '.ref // empty')
-  current_signature=$(printf '%s' "$current_line_json" | jq -c '.known_issue_signature // null')
-
-  if [ "$current_normalized" != "$expected_normalized" ]; then
+  current_signature=$(printf '%s' "$candidate_json" | jq -c '.known_issue_signature // null')
+  if [ "$expected_signature" != "$current_signature" ]; then
     error_json "selection_stale" "Todo selection no longer matches live backlog. Rerun /vbw:list-todos."
     return 0
   fi
 
-  if [ "$current_ref" != "$expected_ref" ]; then
+  if [ "$(printf '%s' "$candidate_json" | jq -r '.identity_total')" != "$expected_total" ]; then
     error_json "selection_stale" "Todo selection no longer matches live backlog. Rerun /vbw:list-todos."
     return 0
   fi
 
-  if [ "$expected_signature" != "null" ] && [ "$expected_signature" != "$current_signature" ]; then
+  if [ -n "$expected_line" ] && [ "$(printf '%s' "$candidate_json" | jq -r '.line // empty')" != "$expected_line" ]; then
     error_json "selection_stale" "Todo selection no longer matches live backlog. Rerun /vbw:list-todos."
     return 0
   fi
 
-  printf '%s\n' "$current_line_json"
+  printf '%s\n' "$candidate_json"
 }
 
 validate_item_cmd() {
