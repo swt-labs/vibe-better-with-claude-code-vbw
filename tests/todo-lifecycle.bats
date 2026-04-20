@@ -101,6 +101,23 @@ select_snapshot_item() {
   [[ "$output" == *'STATE.md not found'* ]]
 }
 
+@test "todo-lifecycle: snapshot path sanitizes CLAUDE_SESSION_ID" {
+  write_state_with_recent_activity
+  export CLAUDE_SESSION_ID='../unsafe session id'
+
+  run bash "$LIST_SCRIPT"
+  [ "$status" -eq 0 ]
+  run bash -lc 'printf "%s" "$1" | bash "$2" snapshot-save' -- "$output" "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [[ "$(echo "$output" | jq -r '.path')" == /tmp/.vbw-last-list-view-* ]]
+  [[ "$(echo "$output" | jq -r '.path')" != *'../'* ]]
+
+  run bash "$SCRIPT" snapshot-show
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+}
+
 @test "todo-lifecycle: snapshot-select preserves filtered numbering and section index" {
   write_state_with_recent_activity
   save_snapshot high

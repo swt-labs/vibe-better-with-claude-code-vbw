@@ -21,7 +21,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
-SESSION_KEY="${CLAUDE_SESSION_ID:-default}"
+RAW_SESSION_KEY="${CLAUDE_SESSION_ID:-default}"
+SESSION_KEY="$(printf '%s' "$RAW_SESSION_KEY" | tr -c 'A-Za-z0-9_.-' '_')"
+SESSION_KEY="${SESSION_KEY:-default}"
 SNAPSHOT_PATH="/tmp/.vbw-last-list-view-${SESSION_KEY}.json"
 DETAILS_PATH="${PLANNING_DIR}/todo-details.json"
 CMD="${1:-}"
@@ -74,6 +76,7 @@ snapshot_validate_schema() {
 
 snapshot_save() {
   local json_input
+  local tmp_file
   json_input=$(read_stdin)
 
   if ! printf '%s' "$json_input" | jq empty >/dev/null 2>&1; then
@@ -86,7 +89,23 @@ snapshot_save() {
     return 0
   fi
 
-  printf '%s' "$json_input" | jq -cS '.' > "$SNAPSHOT_PATH"
+  tmp_file=$(mktemp "${SNAPSHOT_PATH}.tmp.XXXXXX" 2>/dev/null) || {
+    error_json "snapshot_write_failed" "Todo snapshot could not be created. Rerun /vbw:list-todos."
+    return 0
+  }
+
+  if ! printf '%s' "$json_input" | jq -cS '.' > "$tmp_file"; then
+    rm -f "$tmp_file"
+    error_json "snapshot_write_failed" "Todo snapshot could not be written. Rerun /vbw:list-todos."
+    return 0
+  fi
+
+  chmod 600 "$tmp_file" 2>/dev/null || true
+  if ! mv "$tmp_file" "$SNAPSHOT_PATH"; then
+    rm -f "$tmp_file"
+    error_json "snapshot_write_failed" "Todo snapshot could not be finalized. Rerun /vbw:list-todos."
+    return 0
+  fi
   ok_json --arg status "ok" --arg path "$SNAPSHOT_PATH" '{status:$status, path:$path}'
 }
 
