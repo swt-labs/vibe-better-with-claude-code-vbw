@@ -37,12 +37,24 @@ check "TODO-01" "todo command anchors insertion on ## Todos" grep -q 'Find `## T
 check "TODO-02" "todo command does not reference Pending Todos" test ! "$(grep -c 'Pending Todos' "$TODO_CMD")" -gt 0
 check "TODO-03" "todo command avoids preflight plugin-root resolver shell block" test ! "$(grep -c 'VBW_CACHE_ROOT=' "$TODO_CMD")" -gt 0
 check "TODO-04" "todo command explains write-access requirement in restricted modes" grep -qi 'write access.*restricted\|restricted.*write access' "$TODO_CMD"
-check "LIST-01" "list-todos command avoids preflight plugin-root resolver shell block" test ! "$(grep -c 'VBW_CACHE_ROOT=' "$LIST_CMD")" -gt 0
-check "LIST-02" "list-todos command explains restricted-mode requirement" grep -qi 'restricted mode\|restricted.*permission' "$LIST_CMD"
 # TODO-05: Contract: file contains a STOP for missing STATE.md with restart guidance.
 # Heading-agnostic — greps the whole file for the stop-message keywords.
 check "TODO-05" "todo command STOPs with restart guidance when STATE.md missing" \
   bash -c 'grep -q "STATE\.md not found\|STATE\.md does not exist" "$1" && grep -qi "restart" "$1"' _ "$TODO_CMD"
+check "TODO-06" "todo command defines inline PLUGIN_ROOT resolution for helper writes" \
+  bash -c 'grep -Fq "Resolve plugin root." "$1" && grep -Fq "Store the resolved path as `PLUGIN_ROOT`" "$1"' _ "$TODO_CMD"
+check "TODO-07" "todo command uses canonical helper path via PLUGIN_ROOT" \
+  grep -Fq 'bash "${PLUGIN_ROOT}/scripts/todo-details.sh" add HASH -' "$TODO_CMD"
+check "TODO-08" "todo command never hard-codes the session symlink helper path" \
+  bash -c '! grep -Fq "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/todo-details.sh" "$1"' _ "$TODO_CMD"
+check "TODO-09" "todo command requires parsed helper JSON with status ok before ref append" \
+  bash -c 'grep -Fq "parsed stdout is valid JSON with" "$1" && grep -Fq "status=\"ok\"" "$1" && grep -Fq "(ref:HASH)" "$1"' _ "$TODO_CMD"
+check "TODO-10" "todo command requires status ok before Extended detail saved confirmation" \
+  bash -c 'grep -Fq "parsed stdout is valid JSON with" "$1" && grep -Fq "Extended detail saved (ref:HASH)." "$1"' _ "$TODO_CMD"
+check "TODO-11" "todo command forbids direct per-file fallback writes" \
+  grep -Fq '.vbw-planning/todo-details/HASH.json' "$TODO_CMD"
+check "LIST-01" "list-todos command avoids preflight plugin-root resolver shell block" test ! "$(grep -c 'VBW_CACHE_ROOT=' "$LIST_CMD")" -gt 0
+check "LIST-02" "list-todos command explains restricted-mode requirement" grep -qi 'restricted mode\|restricted.*permission' "$LIST_CMD"
 # LIST-03: Contract: file contains a STOP for failed plugin root resolution with restart guidance.
 check "LIST-03" "list-todos command STOPs with restart guidance when plugin root fails" \
   bash -c 'grep -qi "root not found\|none resolves" "$1" && grep -qi "restart" "$1"' _ "$LIST_CMD"

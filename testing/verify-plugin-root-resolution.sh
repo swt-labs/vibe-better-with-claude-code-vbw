@@ -471,6 +471,67 @@ fi
 
 echo "All drift detection checks passed."
 
+# --- Phase 3c: todo.md non-preamble helper resolution contract ---
+echo ""
+echo "=== Todo Command Non-Preamble Resolver Contract ==="
+
+PASS=0
+FAIL=0
+
+TODO_CMD="$COMMANDS_DIR/todo.md"
+
+if grep -Fq 'bash "${PLUGIN_ROOT}/scripts/todo-details.sh" add HASH -' "$TODO_CMD"; then
+  pass "todo.md uses canonical helper add command shape via PLUGIN_ROOT"
+else
+  fail "todo.md missing canonical helper add command shape via PLUGIN_ROOT"
+fi
+
+if grep -Fq 'Store the resolved path as `PLUGIN_ROOT`' "$TODO_CMD"; then
+  pass "todo.md defines a PLUGIN_ROOT resolver step before helper writes"
+else
+  fail "todo.md missing PLUGIN_ROOT resolver step before helper writes"
+fi
+
+for needle in \
+  'The `local/` subdirectory under the plugin cache root' \
+  'The numerically highest versioned directory under the plugin cache root' \
+  'Any other (non-versioned) subdirectory under the plugin cache root' \
+  'The session symlink `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}`' \
+  'Extract `--plugin-dir <path>` from the process tree (`ps axww`)'
+do
+  if grep -Fq "$needle" "$TODO_CMD"; then
+    pass "todo.md resolver documents fallback tier: $needle"
+  else
+    fail "todo.md resolver missing fallback tier: $needle"
+  fi
+done
+
+if grep -Fq '/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/todo-details.sh' "$TODO_CMD"; then
+  fail "todo.md still hard-codes the session symlink helper path"
+else
+  pass "todo.md no longer hard-codes the session symlink helper path"
+fi
+
+case " $NON_PREAMBLE_COMMANDS " in
+  *" todo.md "*)
+    pass "todo.md remains in the non-preamble allowlist"
+    ;;
+  *)
+    fail "todo.md missing from the non-preamble allowlist"
+    ;;
+esac
+
+echo ""
+echo "==============================="
+echo "TOTAL: $PASS PASS, $FAIL FAIL"
+echo "==============================="
+
+if [ "$FAIL" -gt 0 ]; then
+  exit 1
+fi
+
+echo "Todo command non-preamble resolver contract checks passed."
+
 # --- Phase 4: Behavioral verification of resolution mechanisms ---
 echo ""
 echo "=== Behavioral Resolution Verification ==="

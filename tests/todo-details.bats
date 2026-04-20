@@ -41,6 +41,19 @@ teardown() {
   [ "$version" = "1" ]
 }
 
+@test "add writes only canonical registry and does not create legacy fallback file" {
+  cd "$TEST_TEMP_DIR"
+  rm -f "$DETAILS_PATH"
+  rm -rf "$TEST_TEMP_DIR/.vbw-planning/todo-details"
+
+  local detail='{"summary":"Canonical only","context":"Stored in registry only","files":[],"added":"2026-04-12","source":"user"}'
+  run bash "$SCRIPTS_DIR/todo-details.sh" add "feedcafe" "$detail" "$DETAILS_PATH"
+  [ "$status" -eq 0 ]
+
+  [ -f "$DETAILS_PATH" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/todo-details/feedcafe.json" ]
+}
+
 @test "add upserts existing entry" {
   cd "$TEST_TEMP_DIR"
   printf '{"schema_version":1,"items":{"a1b2c3d4":{"summary":"Old","context":"Old context","files":[],"added":"2026-01-01","source":"user"}}}\n' > "$DETAILS_PATH"
@@ -112,6 +125,21 @@ teardown() {
   [ "$result_status" = "not_found" ]
 }
 
+@test "get falls back to legacy per-file detail when canonical registry entry is missing" {
+  cd "$TEST_TEMP_DIR"
+  rm -f "$DETAILS_PATH"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/todo-details"
+  cat > "$TEST_TEMP_DIR/.vbw-planning/todo-details/a1b2c3d4.json" <<'EOF'
+{"summary":"Legacy summary","context":"Legacy context","files":["legacy.ts"],"added":"2026-04-12","source":"user"}
+EOF
+
+  run bash "$SCRIPTS_DIR/todo-details.sh" get "a1b2c3d4" "$DETAILS_PATH"
+  [ "$status" -eq 0 ]
+
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [ "$(echo "$output" | jq -r '.detail.summary')" = "Legacy summary" ]
+}
+
 # --- remove subcommand ---
 
 @test "remove deletes existing entry" {
@@ -137,6 +165,25 @@ teardown() {
   local kept
   kept=$(jq -r '.items.other.summary' "$DETAILS_PATH")
   [ "$kept" = "Keep" ]
+}
+
+@test "remove deletes legacy fallback alongside canonical registry entry" {
+  cd "$TEST_TEMP_DIR"
+  printf '{"schema_version":1,"items":{"deadbeef":{"summary":"Canonical","context":"Registry copy","files":[],"added":"2026-04-12","source":"user"}}}\n' > "$DETAILS_PATH"
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/todo-details"
+  cat > "$TEST_TEMP_DIR/.vbw-planning/todo-details/deadbeef.json" <<'EOF'
+{"summary":"Legacy","context":"Legacy copy","files":[],"added":"2026-04-12","source":"user"}
+EOF
+
+  run bash "$SCRIPTS_DIR/todo-details.sh" remove "deadbeef" "$DETAILS_PATH"
+  [ "$status" -eq 0 ]
+
+  [ "$(jq -r '.items | has("deadbeef")' "$DETAILS_PATH")" = "false" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/todo-details/deadbeef.json" ]
+
+  run bash "$SCRIPTS_DIR/todo-details.sh" get "deadbeef" "$DETAILS_PATH"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "not_found" ]
 }
 
 # --- list subcommand ---
