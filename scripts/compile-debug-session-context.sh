@@ -54,7 +54,7 @@ read_field() {
 # Known top-level session section headings — must stay aligned with write-debug-session.sh.
 # Only these headings are treated as section boundaries; user-pasted ## headings inside
 # section content are preserved verbatim.
-KNOWN_SECTIONS_RE='^## (Issue|Investigation|Plan|Implementation|QA|UAT|Remediation History)$'
+KNOWN_SECTIONS_RE='^## (Issue|Source Todo|Investigation|Plan|Implementation|QA|UAT|Remediation History)$'
 
 # Extract section content between a canonical ## Heading and the next canonical heading or EOF
 extract_section() {
@@ -78,6 +78,7 @@ UAT_LAST=$(read_field "uat_last_result")
 
 # Extract sections
 ISSUE_CONTENT=$(extract_section "Issue")
+SOURCE_TODO_CONTENT=$(extract_section "Source Todo")
 INVESTIGATION_CONTENT=$(extract_section "Investigation")
 PLAN_CONTENT=$(extract_section "Plan")
 IMPL_CONTENT=$(extract_section "Implementation")
@@ -97,6 +98,10 @@ case "$CONTEXT_MODE" in
 ## Issue Summary
 
 ${ISSUE_CONTENT:-No issue description recorded.}
+
+## Source Todo
+
+${SOURCE_TODO_CONTENT:-No source todo recorded.}
 
 ## Root Cause & Investigation
 
@@ -132,6 +137,10 @@ ENDCONTEXT
 ## Issue Summary
 
 ${ISSUE_CONTENT:-No issue description recorded.}
+
+## Source Todo
+
+${SOURCE_TODO_CONTENT:-No source todo recorded.}
 
 ## Implementation
 

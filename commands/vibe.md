@@ -366,13 +366,37 @@ fi`
 
 ## Input Parsing
 
-**Pre-parse: todo number resolution.** If $ARGUMENTS is a bare integer (matches `^[0-9]+$` with no other text or flags), try resolving it as a todo item first:
+**Pre-parse: todo number resolution.** If $ARGUMENTS is a bare integer (matches `^[0-9]+$` with no other text or flags), inspect the persisted session snapshot from the latest `/vbw:list-todos` invocation before deciding whether this integer is a todo or a phase target:
 ```bash
-bash "{plugin-root}/scripts/resolve-todo-item.sh" <N>
+bash "{plugin-root}/scripts/todo-lifecycle.sh" snapshot-show
 ```
-If `status` is `"ok"`, replace $ARGUMENTS with the `description` value (which includes the `(ref:HASH)` suffix if present) and continue to ref tag extraction below. If `status` is `"error"`, fall through — treat the bare integer as a phase number for existing Path 1 behavior.
+- If the snapshot is present and `filter=null`, resolve the integer as a todo selection via:
+  ```bash
+  bash "{plugin-root}/scripts/resolve-todo-item.sh" <N> --session-snapshot --require-unfiltered --validate-live
+  ```
+  If `status` is `"ok"`, preserve `TODO_SELECTED=true`, store the full payload as `TODO_SELECTED_JSON`, replace $ARGUMENTS with the item's `command_text`, and keep the resolved `ref`/`state_path` metadata for later pickup. If the resolved `state_path` points under `.vbw-planning/milestones/`, STOP with: `This todo came from archived milestone state. Restore the writable root STATE.md first by restarting so session-start.sh can run migration, or run 'bash scripts/migrate-orphaned-state.sh .vbw-planning'.` Do not continue using the archived description as live work input.
+- If the snapshot is present and `filter` is non-null, do **not** treat the integer as a claimable backlog todo. Preserve the existing bare phase-number path instead. If the integer later fails to resolve as a valid phase target, fail closed with: `Current list view is filtered — rerun unfiltered /vbw:list-todos before using /vbw:vibe N as a todo pickup.`
+- If the snapshot is missing or malformed, preserve the existing bare phase-number path. Do **not** silently fall back to live unfiltered backlog resolution for todo pickup.
 
-**Pre-parse: ref tag extraction.** Before evaluating paths below, check if $ARGUMENTS ends with a `(ref:HASH)` suffix (8 hex characters). If found, extract the hash and strip the ref tag (including any leading space) from $ARGUMENTS. The cleaned arguments are used for all subsequent parsing — the ref must not interfere with flag detection, keyword routing, or mode selection. Store the extracted hash for later use. **Do not load detail here** — detail is loaded on-demand by action-bearing modes only (Execute mode step 3). If no ref tag is found, there is no hash to store.
+If `TODO_SELECTED_JSON` exists and its `ref` is non-null, eagerly load detail during Input Parsing — before routing commits to the todo-derived request:
+```bash
+bash "{plugin-root}/scripts/todo-details.sh" get {hash}
+```
+If `status` is `"ok"`, store `DETAIL_STATUS=ok`, `detail.context`, and `detail.files` for later use. If `status` is `"not_found"` or `"error"`, record the matching `DETAIL_STATUS` value and run:
+```bash
+bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
+```
+Continue without detail.
+
+**Pre-parse: ref tag extraction.** Before evaluating paths below, check if $ARGUMENTS ends with a `(ref:HASH)` suffix (8 hex characters). If found, extract the hash and strip the ref tag (including any leading space) from $ARGUMENTS. The cleaned arguments are used for all subsequent parsing — the ref must not interfere with flag detection, keyword routing, or mode selection. Store the extracted hash for later use. If `TODO_SELECTED_JSON` already exists from the numbered-todo path above, reuse its resolved ref/detail metadata and do not reload detail here. For non-todo manual `(ref:HASH)` inputs, defer detail loading until an action-bearing mode actually needs it. If no ref tag is found, there is no hash to store.
+
+**Todo pickup boundary (non-negotiable):** A numbered todo selected through `TODO_SELECTED_JSON` may only be claimed once routing has actually committed to the todo-derived request and any AskUserQuestion confirmation gate has completed successfully. If routing falls back to a phase-number path, stops on a guard, or the user declines confirmation, leave the todo untouched. Manual text and manual `(ref:HASH)` inputs never trigger pickup.
+
+When the chosen route does commit to the todo-derived request, claim it exactly once before entering the chosen mode body by piping `TODO_SELECTED_JSON` into:
+```bash
+bash "{plugin-root}/scripts/todo-lifecycle.sh" pickup /vbw:vibe {DETAIL_STATUS} {`safe` when DETAIL_STATUS=ok, otherwise `keep`}
+```
+If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface the helper's `warning` value so cleanup state stays explicit.
 
 Three input paths, evaluated in order:
 
@@ -1208,11 +1232,13 @@ Before reading:
    - `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} dev {phases_dir} {plan_path}`
    - `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} qa {phases_dir}`
    Include compiled context paths in Dev and QA task descriptions. When referencing `.context-dev.md`, describe it as: "compiled context — includes milestone scope decisions (decomposition rationale, scope boundaries, cross-phase key decisions) and phase operational context (goal, conventions, active plan, research findings, changed files, code slices)." When referencing `.context-qa.md`, describe it as: "compiled context — includes milestone scope decisions and phase verification context (success criteria, requirements, conventions to check)."
-   If a ref hash was extracted during Input Parsing, load extended detail now:
+  If `TODO_SELECTED_JSON` already exists from the numbered-todo path and `DETAIL_STATUS=ok`, reuse the already-loaded detail in the Dev task description: `Extended context (from todo detail): {detail.context value}. Related files: {detail.files, comma-separated, or omit if empty}.`
+
+  Otherwise, if a ref hash was extracted during Input Parsing, load extended detail now:
    ```bash
-   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/todo-details.sh get <hash>
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/todo-details.sh get {hash}
    ```
-   Parse the JSON output. If `status` is `"ok"`, include the detail in the Dev task description: "Extended context (from todo detail): {detail.context value}. Related files: {detail.files, comma-separated, or omit if empty}." If `status` is `"not_found"` or `"error"`, continue without detail — do not block. This provides the executing agent with the rich context that motivated the work item.
+  Parse the JSON output. If `status` is `"ok"`, include the detail in the Dev task description: `Extended context (from todo detail): {detail.context value}. Related files: {detail.files, comma-separated, or omit if empty}.` If `status` is `"not_found"` or `"error"`, run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/todo-lifecycle.sh detail-warning {hash}` and continue without detail — do not block. This provides the executing agent with the rich context that motivated the work item.
 
 Then Read the protocol file and execute Steps 2-5 as written.
 

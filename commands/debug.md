@@ -32,11 +32,23 @@ Store the plugin root path output above as `{plugin-root}` for use in script inv
 
 ## Resolve todo number
 
-If $ARGUMENTS is a bare integer (matches `^[0-9]+$` with no other text or flags), resolve the todo item:
+If $ARGUMENTS is a bare integer (matches `^[0-9]+$` with no other text or flags), preserve the original numeric-selection marker before rewriting anything. Resolve the todo item against the persisted unfiltered `/vbw:list-todos` snapshot and validate that the live backlog still matches the snapshotted identity:
 ```bash
-bash "{plugin-root}/scripts/resolve-todo-item.sh" <N>
+bash "{plugin-root}/scripts/resolve-todo-item.sh" <N> --session-snapshot --require-unfiltered --validate-live
 ```
-Parse the JSON output. If `status` is `"ok"`, replace $ARGUMENTS with the `description` value (which includes the `(ref:HASH)` suffix if present) and continue. If `status` is `"error"`, STOP with the `message` value.
+Parse the JSON output. If `status` is `"ok"`, store the full payload as `TODO_SELECTED_JSON`, preserve `TODO_SELECTED=true`, and replace $ARGUMENTS with the item's `command_text` value. If the resolved `state_path` points under `.vbw-planning/milestones/`, STOP with: `This todo came from archived milestone state. Restore the writable root STATE.md first by restarting so session-start.sh can run migration, or run 'bash scripts/migrate-orphaned-state.sh .vbw-planning'.` Do not continue using the archived description as live work input.
+
+If the selected item has a non-null `ref`, load detail immediately — before session creation:
+```bash
+bash "{plugin-root}/scripts/todo-details.sh" get {hash}
+```
+If `status` is `"ok"`, store `DETAIL_STATUS=ok`, `detail.context`, and `detail.files` for later use. If `status` is `"not_found"` or `"error"`, record the matching `DETAIL_STATUS` value and run:
+```bash
+bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
+```
+Continue without detail.
+
+If `status` is `"error"`, STOP with the resolver's `message` value.
 
 ## Debug Session Resolution
 
@@ -62,6 +74,24 @@ Resolve or create the debug session before any investigation. Order of precedenc
    SLUG=$(printf '%s' "$BUG_DESC" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
   eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" start .vbw-planning "$SLUG")"
    ```
+  If `TODO_SELECTED=true`, persist the fixed top-level `## Source Todo` section immediately after session creation and before any pickup cleanup:
+  ```bash
+  echo "$SOURCE_TODO_JSON" | bash "{plugin-root}/scripts/write-debug-session.sh" "$session_file"
+  ```
+  The source-todo payload must include at minimum the normalized todo text, raw todo line, ref (or `none`), detail-load status, related files, and persisted detail context when available.
+
+  If the source-todo write fails after the session was created, roll back the just-created session artifact and clear the active-session pointer before returning:
+  ```bash
+  rm -f "$session_file"
+  bash "{plugin-root}/scripts/debug-session-state.sh" clear-active .vbw-planning
+  ```
+  Then STOP with the writer error. The backlog todo must remain untouched.
+
+  Only after the source-todo write succeeds, and only when `TODO_SELECTED=true`, pipe `TODO_SELECTED_JSON` into:
+  ```bash
+  bash "{plugin-root}/scripts/todo-lifecycle.sh" pickup /vbw:debug {DETAIL_STATUS} {`safe` when DETAIL_STATUS=ok, otherwise `keep`}
+  ```
+  If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface its `warning` value with the final result so cleanup state stays explicit.
 
 Store the resolved `session_id` and `session_file` for use in Steps below.
 
@@ -81,11 +111,15 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
 </debug_session_routing>
 
 ## Steps
-1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`) from $ARGUMENTS and store them separately for Step 2 routing. If the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
+1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`) from $ARGUMENTS and store them separately for Step 2 routing. If `TODO_SELECTED_JSON` already exists from the numeric-selection path above, reuse its `command_text` as the bug description, reuse its `ref`, and reuse the already-loaded `DETAIL_STATUS`, `detail.context`, and `detail.files` values — do not call `todo-details.sh` a second time. Otherwise, if the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
     ```bash
-    bash "{plugin-root}/scripts/todo-details.sh" get <hash>
+    bash "{plugin-root}/scripts/todo-details.sh" get {hash}
     ```
-    Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for use in Step 4. If `status` is `"not_found"` or `"error"`, and `.vbw-planning/STATE.md` exists, append `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` under the `## Activity Log` section (or the first heading beginning with `## Activity`) in `.vbw-planning/STATE.md`; if that file does not exist, skip logging. In all cases, continue without detail.
+  Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for use in Step 4. If `status` is `"not_found"` or `"error"`, run:
+  ```bash
+  bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
+  ```
+  In all cases, continue without detail.
     If no ref suffix, $ARGUMENTS minus flags = bug description.
     **Post-parse validation:** If the bug description is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the investigation context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:debug \"description of the bug or error message\" [--competing|--parallel|--serial]"`.
     Map effort: thorough=high, balanced/fast=medium, turbo=low.

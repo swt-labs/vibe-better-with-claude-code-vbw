@@ -7,6 +7,8 @@ set -euo pipefail
 #   track-known-issues.sh sync-summaries <phase-dir>
 #   track-known-issues.sh sync-verification <phase-dir> <verification-path>
 #   track-known-issues.sh promote-todos <phase-dir>
+#   track-known-issues.sh suppress <phase-dir>   # signature JSON on stdin
+#   track-known-issues.sh unsuppress <phase-dir> # signature JSON on stdin
 #   track-known-issues.sh status <phase-dir>
 #   track-known-issues.sh clear <phase-dir>
 
@@ -15,12 +17,12 @@ PHASE_DIR="${2:-}"
 VERIFICATION_PATH="${3:-}"
 
 usage() {
-  echo "usage: track-known-issues.sh <sync-summaries|sync-verification|promote-todos|status|clear> <phase-dir> [verification-path]" >&2
+  echo "usage: track-known-issues.sh <sync-summaries|sync-verification|promote-todos|suppress|unsuppress|status|clear> <phase-dir> [verification-path]" >&2
   exit 1
 }
 
 case "$CMD" in
-  sync-summaries|status|clear|promote-todos)
+  sync-summaries|status|clear|promote-todos|suppress|unsuppress)
     [ -n "$PHASE_DIR" ] || usage
     ;;
   sync-verification)
@@ -40,6 +42,7 @@ if [ ! -d "$PHASE_DIR" ]; then
 fi
 
 REGISTRY_PATH="${PHASE_DIR%/}/known-issues.json"
+SUPPRESSION_PATH="${PHASE_DIR%/}/known-issue-suppressions.json"
 
 extract_frontmatter_array_items() {
   local file_path="${1:-}"
@@ -174,6 +177,134 @@ registry_is_valid() {
   ' "$REGISTRY_PATH" >/dev/null 2>&1
 }
 
+suppression_store_is_valid() {
+  [ -f "$SUPPRESSION_PATH" ] || return 1
+  jq -e '
+    type == "object"
+    and (.schema_version | type == "number")
+    and (.phase | type == "string")
+    and (.suppressions | type == "array")
+  ' "$SUPPRESSION_PATH" >/dev/null 2>&1
+}
+
+load_suppressions() {
+  if suppression_store_is_valid; then
+    jq -c '.suppressions // []' "$SUPPRESSION_PATH"
+  else
+    echo '[]'
+  fi
+}
+
+write_suppressions() {
+  local suppressions_json="$1"
+  local count tmp_file
+  count=$(printf '%s' "$suppressions_json" | jq 'length')
+
+  if [ "$count" -eq 0 ] 2>/dev/null; then
+    rm -f "$SUPPRESSION_PATH"
+    return 0
+  fi
+
+  tmp_file=$(mktemp "${SUPPRESSION_PATH}.tmp.XXXXXX")
+  jq -n \
+    --arg phase "$(phase_number)" \
+    --argjson suppressions "$suppressions_json" '
+      {
+        schema_version: 1,
+        phase: $phase,
+        suppressions: ($suppressions | sort_by(.test, .file, .error))
+      }
+    ' > "$tmp_file"
+  mv "$tmp_file" "$SUPPRESSION_PATH"
+}
+
+canonical_signature_json() {
+  local signature_json="$1"
+  printf '%s' "$signature_json" | jq -cS '
+    if type != "object" then null else {
+      phase: (.phase // null),
+      phase_dir: (.phase_dir // null),
+      test: (.test // null),
+      file: (.file // null),
+      error: (.error // null),
+      source_kind: (.source_kind // null),
+      disposition: (.disposition // null),
+      source_path: (.source_path // null),
+      via: (.via // null),
+      suppressed_at: (.suppressed_at // null)
+    } end
+  ' 2>/dev/null || echo 'null'
+}
+
+detail_registry_path() {
+  local planning_dir="${VBW_PLANNING_DIR:-}"
+  if [ -z "$planning_dir" ]; then
+    planning_dir=$(cd "$PHASE_DIR/../.." && pwd)
+  fi
+  printf '%s/todo-details.json\n' "$planning_dir"
+}
+
+upsert_known_issue_detail() {
+  local ref_hash="$1"
+  local test_name="$2"
+  local file_path="$3"
+  local full_error_msg="$4"
+  local times_seen="$5"
+  local source_artifact="$6"
+  local disposition="$7"
+  local summary_error="$8"
+  local detail_script details_path detail_json source_kind signature_json today
+
+  details_path=$(detail_registry_path)
+  detail_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/todo-details.sh"
+  [ -f "$detail_script" ] || return 0
+  today=$(date +%Y-%m-%d)
+
+  source_kind="registry"
+  if [ "$disposition" = "accepted-process-exception" ]; then
+    source_kind="accepted-process-exception"
+  fi
+
+  signature_json=$(jq -cn \
+    --arg phase "$(phase_number)" \
+    --arg phase_dir "$PHASE_DIR" \
+    --arg test "$test_name" \
+    --arg file "$file_path" \
+    --arg error "$full_error_msg" \
+    --arg source_kind "$source_kind" \
+    --arg disposition "${disposition:-unresolved}" \
+    --arg source_path "$source_artifact" '
+      {
+        phase: $phase,
+        phase_dir: $phase_dir,
+        test: $test,
+        file: $file,
+        error: $error,
+        source_kind: $source_kind,
+        disposition: $disposition,
+        source_path: $source_path
+      }
+    ')
+
+  detail_json=$(jq -n \
+    --arg summary "${test_name} (${file_path}): ${summary_error}" \
+    --arg context "Known issue from phase $(phase_number). Test: ${test_name}. File: ${file_path}. Error: ${full_error_msg}. Seen ${times_seen} time(s). Source: ${source_artifact:-unknown}. Disposition: ${disposition:-unresolved}." \
+    --arg file "$file_path" \
+    --arg added "$today" \
+    --argjson signature "$signature_json" '
+      {
+        summary: $summary,
+        context: $context,
+        files: [$file],
+        added: $added,
+        source: "known-issue",
+        known_issue_signature: $signature
+      }
+    ')
+
+  bash "$detail_script" add "$ref_hash" "$detail_json" "$details_path" >/dev/null 2>&1 || true
+}
+
 canonical_json() {
   printf '%s' "${1:-[]}" | jq -cS '.' 2>/dev/null
 }
@@ -209,6 +340,7 @@ new_issue_object() {
   local source_path="$4"
   local round="$5"
   local disposition="${6:-}"
+  local source_kind="${7:-registry}"
 
   if [ -n "$disposition" ]; then
     jq -cn \
@@ -217,6 +349,7 @@ new_issue_object() {
       --arg error "$error" \
       --arg source_path "$source_path" \
       --arg disposition "$disposition" \
+      --arg source_kind "$source_kind" \
       --argjson round "$round" \
       '{
         test: $test,
@@ -227,7 +360,8 @@ new_issue_object() {
         first_seen_round: $round,
         last_seen_round: $round,
         times_seen: 1,
-        disposition: $disposition
+        disposition: $disposition,
+        source_kind: $source_kind
       }'
   else
     jq -cn \
@@ -235,6 +369,7 @@ new_issue_object() {
       --arg file "$file" \
       --arg error "$error" \
       --arg source_path "$source_path" \
+      --arg source_kind "$source_kind" \
       --argjson round "$round" \
       '{
         test: $test,
@@ -244,7 +379,8 @@ new_issue_object() {
         last_seen_in: $source_path,
         first_seen_round: $round,
         last_seen_round: $round,
-        times_seen: 1
+        times_seen: 1,
+        source_kind: $source_kind
       }'
   fi
 }
@@ -437,7 +573,8 @@ extract_summary_known_issue_outcomes_json() {
       "$(strip_code_ticks "$error")" \
       "$source_rel" \
       "$round" \
-      "$disposition"
+      "$disposition" \
+      "accepted-process-exception"
   done < <(extract_frontmatter_array_items "$summary_file" known_issue_outcomes) > "$tmp_json"
 
   jq -s 'map(select(type == "object")) | unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_json"
@@ -510,6 +647,7 @@ merge_issue_sets() {
               end
             )
           | if ($new.disposition // "") != "" then .disposition = $new.disposition else . end
+          | if ($new.source_kind // "") != "" then .source_kind = $new.source_kind else . end
         end;
       ($existing | mapify(.)) as $existing_map
       | reduce $incoming[] as $issue (
@@ -544,6 +682,7 @@ replace_issue_set() {
               end
             )
           | if ($new.disposition // "") != "" then .disposition = $new.disposition else . end
+          | if ($new.source_kind // "") != "" then .source_kind = $new.source_kind else . end
         end;
       ($existing | mapify(.)) as $existing_map
       | [ $incoming[] | merge_issue($existing_map[issue_key]; .) ]
@@ -651,6 +790,111 @@ sync_verification() {
   write_registry "$final_json"
 }
 
+apply_suppressions() {
+  local issues_json="$1"
+
+  if [ ! -f "$SUPPRESSION_PATH" ]; then
+    printf '%s' "$issues_json"
+    return 0
+  fi
+
+  if ! suppression_store_is_valid; then
+    echo 'SUPPRESSION_UNAVAILABLE'
+    return 0
+  fi
+
+  local suppressions_json
+  suppressions_json=$(load_suppressions)
+  jq -cn --argjson issues "$issues_json" --argjson suppressions "$suppressions_json" '
+    [
+      $issues[] as $issue
+      | select(
+          ([
+            $suppressions[]
+            | select(
+                (.test == $issue.test)
+                and (.file == $issue.file)
+                and (.error == $issue.error)
+              )
+          ] | length) == 0
+        )
+    ]
+  '
+}
+
+suppress_issue() {
+  local signature_json now existing_json updated_json
+  signature_json="$(cat)"
+
+  if ! printf '%s' "$signature_json" | jq -e '
+    type == "object"
+    and (.test | type == "string")
+    and (.file | type == "string")
+    and (.error | type == "string")
+  ' >/dev/null 2>&1; then
+    jq -n --arg message 'Known-issue suppression signature is invalid.' '{status:"error", code:"invalid_signature", message:$message}'
+    return 0
+  fi
+
+  if [ -f "$SUPPRESSION_PATH" ] && ! suppression_store_is_valid; then
+    jq -n --arg message 'Known-issue suppression store is unavailable. The todo was removed, but it may be re-promoted.' '{status:"error", code:"suppression_unavailable", message:$message}'
+    return 0
+  fi
+
+  existing_json=$(load_suppressions)
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+  signature_json=$(printf '%s' "$signature_json" | jq -c --arg phase "$(phase_number)" --arg phase_dir "$PHASE_DIR" --arg now "$now" '
+    {
+      phase: ($phase),
+      phase_dir: (.phase_dir // $phase_dir),
+      test: .test,
+      file: .file,
+      error: .error,
+      source_kind: (.source_kind // null),
+      disposition: (.disposition // null),
+      source_path: (.source_path // null),
+      via: (.via // null),
+      suppressed_at: $now
+    }
+  ')
+
+  updated_json=$(jq -cn --argjson existing "$existing_json" --argjson incoming "$signature_json" '
+    [ $existing[] | select(.test != $incoming.test or .file != $incoming.file or .error != $incoming.error) ]
+    + [ $incoming ]
+    | sort_by(.test, .file, .error)
+  ')
+
+  write_suppressions "$updated_json"
+  jq -n --arg path "$SUPPRESSION_PATH" '{status:"ok", action:"suppressed", suppression_path:$path}'
+}
+
+unsuppress_issue() {
+  local signature_json existing_json updated_json
+  signature_json="$(cat)"
+
+  if ! printf '%s' "$signature_json" | jq -e '
+    type == "object"
+    and (.test | type == "string")
+    and (.file | type == "string")
+    and (.error | type == "string")
+  ' >/dev/null 2>&1; then
+    jq -n --arg message 'Known-issue suppression signature is invalid.' '{status:"error", code:"invalid_signature", message:$message}'
+    return 0
+  fi
+
+  if [ -f "$SUPPRESSION_PATH" ] && ! suppression_store_is_valid; then
+    jq -n --arg message 'Known-issue suppression store is unavailable.' '{status:"error", code:"suppression_unavailable", message:$message}'
+    return 0
+  fi
+
+  existing_json=$(load_suppressions)
+  updated_json=$(jq -cn --argjson existing "$existing_json" --argjson incoming "$signature_json" '
+    [ $existing[] | select(.test != $incoming.test or .file != $incoming.file or .error != $incoming.error) ]
+  ')
+  write_suppressions "$updated_json"
+  jq -n --arg path "$SUPPRESSION_PATH" '{status:"ok", action:"unsuppressed", suppression_path:$path}'
+}
+
 promote_todos() {
   # Promote unresolved known issues to STATE.md ## Todos as [KNOWN-ISSUE] entries.
   # Deduplicates by test name + file path against existing [KNOWN-ISSUE] lines.
@@ -673,6 +917,14 @@ promote_todos() {
   issues_json=$(load_registry_issues)
   accepted_outcomes_json=$(aggregate_summary_known_issue_outcomes_json)
   promotable_json=$(merge_issue_sets "$issues_json" "$accepted_outcomes_json")
+  promotable_json=$(apply_suppressions "$promotable_json")
+  if [ "$promotable_json" = "SUPPRESSION_UNAVAILABLE" ]; then
+    echo "promoted_count=0"
+    echo "already_tracked_count=0"
+    echo "total_known_issues=0"
+    echo "promote_status=suppression_unavailable"
+    return 0
+  fi
   local total
   total=$(printf '%s' "$promotable_json" | jq 'length')
 
@@ -723,22 +975,25 @@ promote_todos() {
   local promoted=0
   local already=0
   local new_entries=""
-  local disposition_updates=""
+  local line_updates=""
   local promoted_details=""
 
   # Iterate issues and check for duplicates
   local i=0
   while [ "$i" -lt "$total" ]; do
-    local test_name file_path error_msg times_seen source_artifact disposition
+    local test_name file_path error_msg times_seen source_artifact disposition source_kind
     test_name=$(printf '%s' "$promotable_json" | jq -r ".[$i].test // \"unknown\"")
     file_path=$(printf '%s' "$promotable_json" | jq -r ".[$i].file // \"unknown\"")
     error_msg=$(printf '%s' "$promotable_json" | jq -r ".[$i].error // \"unspecified error\"")
     times_seen=$(printf '%s' "$promotable_json" | jq -r ".[$i].times_seen // 1")
     source_artifact=$(printf '%s' "$promotable_json" | jq -r ".[$i].last_seen_in // \"\"")
     disposition=$(printf '%s' "$promotable_json" | jq -r ".[$i].disposition // \"\"")
+    source_kind=$(printf '%s' "$promotable_json" | jq -r ".[$i].source_kind // \"registry\"")
 
     # Preserve full error for detail context before truncating for STATE.md readability
     local full_error_msg="$error_msg"
+    local ref_hash
+    ref_hash=$(printf '%s' "${phase_num}|${test_name}|${file_path}|${full_error_msg}" | shasum | cut -c1-8)
 
     # Truncate error message for todo readability (max 80 chars)
     if [ "${#error_msg}" -gt 80 ]; then
@@ -748,16 +1003,20 @@ promote_todos() {
     # Dedup by test+file pair regardless of tag prefix (matches [KNOWN-ISSUE], [HIGH], untagged, etc.)
     local is_dup=false
     local needs_disposition_update=false
+    local needs_ref_update=false
     local dedup_key="${test_name} (${file_path}): ${error_msg}"
     local existing_line=""
     if printf '%s' "$todos_section" | grep -qF "$dedup_key"; then
       is_dup=true
+      existing_line=$(printf '%s' "$todos_section" | grep -F "$dedup_key" | head -1)
       # Check if existing line needs a disposition update
       if [ "$disposition" = "accepted-process-exception" ]; then
-        existing_line=$(printf '%s' "$todos_section" | grep -F "$dedup_key" | head -1)
         if ! printf '%s' "$existing_line" | grep -qF "accepted as process-exception"; then
           needs_disposition_update=true
         fi
+      fi
+      if ! printf '%s' "$existing_line" | grep -qE '\(ref:[a-f0-9]{8}\)'; then
+        needs_ref_update=true
       fi
     fi
 
@@ -766,23 +1025,27 @@ promote_todos() {
       source_ref=" (see ${source_artifact})"
     fi
 
-    if [ "$is_dup" = true ] && [ "$needs_disposition_update" = true ]; then
-      # Already tracked but disposition changed — rewrite the line
-      # Preserve any existing ref tag from the original line
-      local existing_ref=""
+    if [ "$is_dup" = true ] && { [ "$needs_disposition_update" = true ] || [ "$needs_ref_update" = true ]; }; then
+      local new_line existing_ref
+      existing_ref=" (ref:${ref_hash})"
       if [[ "$existing_line" =~ \(ref:([a-f0-9]{8})\) ]]; then
         existing_ref=" (ref:${BASH_REMATCH[1]})"
+        ref_hash="${BASH_REMATCH[1]}"
       fi
-      local new_line="- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})${existing_ref}"
-      disposition_updates="${disposition_updates}${existing_line}"$'\x1f'"${new_line}"$'\n'
+      if [ "$disposition" = "accepted-process-exception" ]; then
+        new_line="- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})${existing_ref}"
+      else
+        new_line="- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today})${existing_ref}"
+      fi
+      line_updates="${line_updates}${existing_line}"$'\x1f'"${new_line}"$'\n'
+      promoted_details="${promoted_details}${ref_hash}"$'\x1f'"${test_name}"$'\x1f'"${file_path}"$'\x1f'"$(printf '%s' "$full_error_msg" | base64 | tr -d '\n')"$'\x1f'"${times_seen}"$'\x1f'"${source_artifact}"$'\x1f'"${disposition}"$'\x1f'"${error_msg}"$'\n'
       promoted=$((promoted + 1))
     elif [ "$is_dup" = true ]; then
+      if [[ "$existing_line" =~ \(ref:([a-f0-9]{8})\) ]]; then
+        promoted_details="${promoted_details}${BASH_REMATCH[1]}"$'\x1f'"${test_name}"$'\x1f'"${file_path}"$'\x1f'"$(printf '%s' "$full_error_msg" | base64 | tr -d '\n')"$'\x1f'"${times_seen}"$'\x1f'"${source_artifact}"$'\x1f'"${disposition}"$'\x1f'"${error_msg}"$'\n'
+      fi
       already=$((already + 1))
     else
-      # Compute ref hash for todo-details linkage
-      local ref_hash
-      ref_hash=$(printf '%s' "${test_name} (${file_path}): ${error_msg}" | shasum | cut -c1-8)
-
       if [ "$disposition" = "accepted-process-exception" ]; then
         new_entries="${new_entries}- [KNOWN-ISSUE] ${test_name} (${file_path}): ${error_msg} — accepted as process-exception for this phase (phase ${phase_num}, seen ${times_seen}x)${source_ref} (added ${today}) (ref:${ref_hash})"$'\n'
       else
@@ -798,14 +1061,14 @@ promote_todos() {
     i=$((i + 1))
   done
 
-  # Apply disposition updates (rewrite existing lines in-place)
-  if [ -n "$disposition_updates" ]; then
+  # Apply line updates (rewrite existing lines in-place)
+  if [ -n "$line_updates" ]; then
     while IFS=$'\x1f' read -r old_line new_line; do
       [ -n "$old_line" ] || continue
       state_content=$(printf '%s\n' "$state_content" | OLD_LINE="$old_line" NEW_LINE="$new_line" awk '
         { if (index($0, ENVIRON["OLD_LINE"]) > 0) print ENVIRON["NEW_LINE"]; else print }
       ')
-    done <<< "$disposition_updates"
+    done <<< "$line_updates"
   fi
 
   if [ "$promoted" -eq 0 ]; then
@@ -862,23 +1125,11 @@ promote_todos() {
     detail_script="${link}/scripts/todo-details.sh"
   fi
   if [ -n "$detail_script" ] && [ -f "$detail_script" ]; then
-    local details_path="${planning_dir}/todo-details.json"
     while IFS=$'\x1f' read -r hash p_test p_file p_error p_times p_source p_disp p_summary_error; do
       [ -n "$hash" ] || continue
-      # Decode base64-encoded full error message (used in context)
       p_error=$(printf '%s' "$p_error" | base64 -d 2>/dev/null) || p_error="(decode error)"
-      # Use truncated error_msg for summary (matches STATE.md bullet text)
       local summary_error="${p_summary_error:-$p_error}"
-
-      local detail_json
-      detail_json=$(jq -n \
-        --arg summary "${p_test} (${p_file}): ${summary_error}" \
-        --arg context "Known issue from phase ${phase_num}. Test: ${p_test}. File: ${p_file}. Error: ${p_error}. Seen ${p_times} time(s). Source: ${p_source:-unknown}. Disposition: ${p_disp:-unresolved}." \
-        --arg file "$p_file" \
-        --arg added "$today" \
-        '{summary: $summary, context: $context, files: [$file], added: $added, source: "known-issue"}')
-
-      bash "$detail_script" add "$hash" "$detail_json" "$details_path" >/dev/null 2>&1 || true
+      upsert_known_issue_detail "$hash" "$p_test" "$p_file" "$p_error" "$p_times" "$p_source" "$p_disp" "$summary_error"
     done <<< "$promoted_details"
   fi
 
@@ -907,6 +1158,12 @@ case "$CMD" in
     ;;
   sync-verification)
     sync_verification
+    ;;
+  suppress)
+    suppress_issue
+    ;;
+  unsuppress)
+    unsuppress_issue
     ;;
   promote-todos)
     promote_todos

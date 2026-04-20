@@ -27,17 +27,22 @@ Config: Pre-injected by SessionStart hook.
 - No $ARGUMENTS: STOP "Usage: /vbw:fix \"description of what to fix\""
 
 ## Steps
-1. **Resolve todo number:** If $ARGUMENTS is a bare integer (matches `^[0-9]+$` with no other text or flags), resolve the todo item:
+1. **Resolve todo number:** If $ARGUMENTS is a bare integer (matches `^[0-9]+$` with no other text or flags), preserve the original numeric-selection marker before rewriting anything. Resolve the todo item against the persisted session snapshot of the last `/vbw:list-todos` view:
     ```bash
-  bash "{plugin-root}/scripts/resolve-todo-item.sh" <N>
+  bash "{plugin-root}/scripts/resolve-todo-item.sh" <N> --session-snapshot --require-unfiltered --validate-live
     ```
-    Parse the JSON output. If `status` is `"ok"`, replace $ARGUMENTS with the `description` value (which includes the `(ref:HASH)` suffix if present) and continue to Step 2. If `status` is `"error"`, STOP with the `message` value.
+    Parse the JSON output. If `status` is `"ok"`, store the full payload as `TODO_SELECTED_JSON`, preserve `TODO_SELECTED=true`, and replace $ARGUMENTS with the item's `command_text` value (not the old duplicated `description` form). If the resolved `state_path` points under `.vbw-planning/milestones/`, STOP with: `This todo came from archived milestone state. Restore the writable root STATE.md first by restarting so session-start.sh can run migration, or run 'bash scripts/migrate-orphaned-state.sh .vbw-planning'.` Do not continue using the archived description as live work input. If `status` is `"error"`, STOP with the `message` value.
 
-2. **Parse:** Entire $ARGUMENTS (minus flags) = fix description. If the description contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag from the description before further processing. If a ref was found, load extended detail:
+2. **Parse:** Entire $ARGUMENTS (minus flags) = fix description. If `TODO_SELECTED_JSON` exists, treat its `command_text` as the fix description and its `ref` as the already-resolved ref before any additional parsing. Otherwise, if the description contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag from the description before further processing. If a ref was found, load extended detail:
     ```bash
-  bash "{plugin-root}/scripts/todo-details.sh" get <hash>
+  bash "{plugin-root}/scripts/todo-details.sh" get {hash}
     ```
-  Parse the JSON output. If `status` is `"ok"`, store the `detail.context` and `detail.files` values for use in step 4. If `status` is `"not_found"` or `"error"`, and `.vbw-planning/STATE.md` exists, append `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` under the `## Activity Log` section (or the first heading beginning with `## Activity`) in `.vbw-planning/STATE.md`; if that file does not exist, skip logging. In all cases, continue without detail.
+  Command shape: `bash "{plugin-root}/scripts/todo-details.sh" get <hash>`.
+  Parse the JSON output. If `status` is `"ok"`, store the `detail.context` and `detail.files` values for use in step 5 and record `DETAIL_STATUS=ok`. If `status` is `"not_found"` or `"error"`, record `DETAIL_STATUS` to match and run:
+    ```bash
+    bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
+    ```
+    In all cases, continue without detail.
     **Post-parse validation:** If the fix description is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the fix context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:fix \"description of what to fix\""`.
 
 3. **State:** Use `.vbw-planning/STATE.md`.
@@ -46,6 +51,12 @@ Config: Pre-injected by SessionStart hook.
     ```bash
   bash "{plugin-root}/scripts/delegated-workflow.sh" set fix turbo
     ```
+
+   - **Immediate todo pickup (numeric selections only):** If `TODO_SELECTED=true`, claim the todo now — after fix has passed its own parse/guard steps, and before Dev is spawned. Pipe `TODO_SELECTED_JSON` into:
+     ```bash
+     bash "{plugin-root}/scripts/todo-lifecycle.sh" pickup /vbw:fix {DETAIL_STATUS} {`safe` when DETAIL_STATUS=ok, otherwise `keep`}
+     ```
+     If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface its `warning` value in the final result so cleanup state is explicit. This pickup path only applies to true numeric todo selections — never to manual text or manual `(ref:HASH)` inputs.
 
 5. **Spawn Dev:** Resolve model first:
     ```bash

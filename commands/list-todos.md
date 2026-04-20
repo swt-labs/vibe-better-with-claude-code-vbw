@@ -32,26 +32,58 @@ allowed-tools: Read, Edit, Bash
 
 2. **Load todos:** Run `bash "${PLUGIN_ROOT}/scripts/list-todos.sh" {priority-filter}` (omit filter arg if none provided). Parse the JSON output.
 
-3. **Handle status:**
+3. **Persist the exact last-view snapshot:** Before any branching on status, pipe the exact JSON output from step 2 into:
+    ```bash
+    bash "${PLUGIN_ROOT}/scripts/todo-lifecycle.sh" snapshot-save
+    ```
+    If snapshot persistence returns `status="error"`, STOP with the helper's `message` value. Each new `/vbw:list-todos` invocation replaces the previous session snapshot.
+
+4. **Handle status:**
    - `"error"`: STOP with the `message` value.
    - `"empty"`: Display the `display` value. Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos empty` and display. Exit.
    - `"no-match"`: Display the `display` value. Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos empty` and display. Exit.
-   - `"ok"`: Continue to step 4.
+    - `"ok"`: Continue to step 5.
 
-4. **Display list:** Show the `display` value from the script output exactly as returned (do not append any additional prompt text).
+5. **Display list:** Show the `display` value from the script output exactly as returned (do not append any additional prompt text).
 
-5. **Display action hints and STOP.** Do NOT prompt the user for input — display the following as plain text after the todo list, then STOP:
+6. **Display action hints and STOP.** Do NOT prompt the user for input — display one of the following as plain text after the todo list, then STOP:
 
-   ```text
-   ➜ To act on a todo:
-       /vbw:vibe N      — full lifecycle (plan → execute → verify)
-       /vbw:fix N       — quick fix, one commit
-       /vbw:debug N     — investigate with scientific method
-       /vbw:research N  — research only, no code changes
-       remove N         — delete from todo list
-   ```
+    - **Unfiltered view (`filter=null`):**
+       ```text
+       ➜ To act on a todo:
+             /vbw:vibe N      — full lifecycle (plan → execute → verify)
+             /vbw:fix N       — quick fix, one commit
+             /vbw:debug N     — investigate with scientific method
+             remove N         — delete from todo list
+       ```
+    - **Filtered view (`filter` is non-null):**
+       ```text
+       ➜ Filtered view:
+             remove N         — delete from this displayed list
+             delete N         — same as remove N
+          /vbw:list-todos  — rerun unfiltered /vbw:list-todos before using /vbw:vibe N, /vbw:fix N, or /vbw:debug N
+       ```
 
-   If the user says **`remove N`** or **`delete N`** as a follow-up message (not via a slash command): validate N is in range (1 to item count). If out of range, display "Invalid selection — only items 1-{count} exist." and STOP. Otherwise, remove the Nth todo: use the `section` and `state_path` values from the script output. Remove the `line` value of the Nth item from the todo section in STATE.md. If no todos remain, replace with "None." If the item has a non-null `ref` field, also run `bash "${PLUGIN_ROOT}/scripts/todo-details.sh" remove <ref>` and capture the JSON output — if `status` is not `"ok"`, display "⚠ Todo removed but detail cleanup failed for ref `HASH` — run `/vbw:doctor` to clean up." Log under `## Activity Log` (or the first heading beginning with `## Activity`) with format `- {YYYY-MM-DD}: Removed todo: {text}`. Display "✓ Todo removed." Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos` and display. STOP.
+    If the user says **`remove N`** or **`delete N`** as a follow-up message (not via a slash command):
+    - Resolve `N` against the persisted session snapshot, not a fresh rerun:
+       ```bash
+       bash "${PLUGIN_ROOT}/scripts/resolve-todo-item.sh" <N> --session-snapshot
+       ```
+       If the resolver returns `status="error"`, STOP with its `message` value.
+    - If the resolved item has a non-null `ref`, load detail status first:
+       ```bash
+       bash "${PLUGIN_ROOT}/scripts/todo-details.sh" get <ref>
+       ```
+       Record the result as `detail_status=ok|not_found|error`.
+       If the item has no ref, use `detail_status=none`.
+    - Pipe the selected item JSON from the resolver into the shared helper:
+       ```bash
+       bash "${PLUGIN_ROOT}/scripts/todo-lifecycle.sh" remove <detail_status> safe
+       ```
+       If the helper returns `status="error"`, STOP with its `message` value.
+       If the helper returns `status="partial"`, display `✓ Todo removed.` and then display its `warning` value.
+       If the helper returns `status="ok"`, display `✓ Todo removed.`
+    - Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos` and display. STOP.
 
 ## Output Format
 

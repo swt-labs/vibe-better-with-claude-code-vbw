@@ -18,6 +18,21 @@ teardown() {
 
 # ── investigation mode ───────────────────────────────────
 
+@test "source-todo mode writes the fixed top-level Source Todo section" {
+  run bash -c 'echo '"'"'{"mode":"source-todo","text":"Investigate parser crash","raw_line":"- [HIGH] Investigate parser crash (added 2026-04-01) (ref:abcd1234)","ref":"abcd1234","detail_status":"ok","related_files":["src/parser.sh","tests/parser.bats"],"detail_context":"Parser crash context"}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"mode=source-todo"* ]]
+
+  grep -q '^## Source Todo$' "$SESSION_FILE"
+  grep -q '\*\*Text:\*\* Investigate parser crash' "$SESSION_FILE"
+  grep -q '\*\*Raw Line:\*\* - \[HIGH\] Investigate parser crash' "$SESSION_FILE"
+  grep -q '\*\*Ref:\*\* abcd1234' "$SESSION_FILE"
+  grep -q '\*\*Detail Status:\*\* ok' "$SESSION_FILE"
+  grep -q 'src/parser.sh' "$SESSION_FILE"
+  grep -q 'tests/parser.bats' "$SESSION_FILE"
+  grep -q 'Parser crash context' "$SESSION_FILE"
+}
+
 @test "investigation mode writes issue and hypotheses" {
   run bash -c 'echo '"'"'{"mode":"investigation","issue":"Button crashes on click","hypotheses":[{"description":"Null ref","status":"confirmed","evidence_for":"Stack trace","evidence_against":"None","conclusion":"Root cause"}],"root_cause":"Null ref in handler","plan":"Add guard","changed_files":["src/button.sh"],"commit":"abc123"}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"'
   [ "$status" -eq 0 ]

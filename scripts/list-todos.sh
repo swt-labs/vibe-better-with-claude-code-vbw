@@ -15,14 +15,34 @@ set -euo pipefail
 #     "state_path": "...",
 #     "section": "## Todos"|"### Pending Todos",
 #     "count": N,
-#     "filter": "high"|"low"|"normal"|null,
+#     "filter": "high"|"low"|"normal"|"known-issue"|null,
 #     "display": "formatted numbered list",
-#     "items": [ { "num": 1, "line": "raw line", "text": "...", "priority": "high"|"normal"|"low", "date": "YYYY-MM-DD", "age": "3d ago", "ref": "abcd1234"|null }, ... ] }
+#     "items": [
+#       {
+#         "num": 1,
+#         "section_index": 2,
+#         "line": "raw line",
+#         "text": "full todo text with tags/date/ref",
+#         "display_identity": "display text without date/ref",
+#         "normalized_text": "tag-free text for matching/logging",
+#         "command_text": "tag-free text for command routing",
+#         "priority": "high"|"normal"|"low"|"known-issue",
+#         "date": "YYYY-MM-DD"|null,
+#         "age": "3d ago"|null,
+#         "ref": "abcd1234"|null,
+#         "state_path": "...",
+#         "section": "## Todos"|"### Pending Todos",
+#         "known_issue_signature": { ... }|null
+#       },
+#       ...
+#     ] }
 #
 # Exit codes: always 0 (fail-open for agent consumption)
 
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 FILTER="${1:-}"
+DETAILS_PATH="${PLANNING_DIR}/todo-details.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- Resolve STATE.md for todos (project-level data lives at root) ---
 resolve_state_path() {
@@ -77,6 +97,7 @@ extract_todos() {
     # Legacy fallback: ### Pending Todos subsection (pre-migration STATE.md)
     lines=$(awk '
       /^### Pending Todos$/ { found=1; next }
+      found && /^### Completed Todos$/ { exit }
       found && /^##/ { exit }
       found && /^- / { print }
     ' "$file")
@@ -136,7 +157,10 @@ relative_age() {
 # --- Parse a single todo line ---
 parse_todo_line() {
   local line="$1"
-  local text priority date_str age ref
+  local section_index="$2"
+  local state_path="$3"
+  local section_name="$4"
+  local text priority date_str age ref display_identity normalized_text command_text detail_json known_issue_signature source
 
   # Strip leading "- "
   text="${line#- }"
@@ -170,8 +194,68 @@ parse_todo_line() {
     age=$(relative_age "$date_str")
   fi
 
-  # Output as tab-separated: priority\tdate\tage\tref\ttext
-  printf '%s\t%s\t%s\t%s\t%s\n' "$priority" "$date_str" "$age" "$ref" "$text"
+  display_identity="$text"
+  display_identity=$(printf '%s\n' "$display_identity" | sed 's/ *(ref:[a-f0-9]\{8\})$//')
+  display_identity=$(printf '%s\n' "$display_identity" | sed 's/ *(added [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\})$//')
+
+  normalized_text="$display_identity"
+  normalized_text="${normalized_text#\[HIGH\] }"
+  normalized_text="${normalized_text#\[low\] }"
+  normalized_text="${normalized_text#\[KNOWN-ISSUE\] }"
+  command_text="$normalized_text"
+
+  detail_json='{}'
+  known_issue_signature='null'
+  source='null'
+  if [ -n "$ref" ] && [ -f "$DETAILS_PATH" ]; then
+    detail_json=$(bash "$SCRIPT_DIR/todo-details.sh" get "$ref" "$DETAILS_PATH" 2>/dev/null | jq -c '.detail // {}' 2>/dev/null || echo '{}')
+    known_issue_signature=$(printf '%s' "$detail_json" | jq -c '
+      .known_issue_signature // null
+      | if type == "object" then {
+          phase: (.phase // null),
+          phase_dir: (.phase_dir // null),
+          test: (.test // null),
+          file: (.file // null),
+          error: (.error // null),
+          source_kind: (.source_kind // null),
+          disposition: (.disposition // null),
+          source_path: (.source_path // null)
+        } else null end
+    ' 2>/dev/null || echo 'null')
+    source=$(printf '%s' "$detail_json" | jq -c '.source // null' 2>/dev/null || echo 'null')
+  fi
+
+  jq -cn \
+    --arg line "$line" \
+    --arg text "$text" \
+    --arg display_identity "$display_identity" \
+    --arg normalized_text "$normalized_text" \
+    --arg command_text "$command_text" \
+    --arg priority "$priority" \
+    --arg date "$date_str" \
+    --arg age "$age" \
+    --arg ref "$ref" \
+    --arg state_path "$state_path" \
+    --arg section "$section_name" \
+    --argjson section_index "$section_index" \
+    --argjson known_issue_signature "$known_issue_signature" \
+    --argjson source "$source" \
+    '{
+      line:$line,
+      text:$text,
+      display_identity:$display_identity,
+      normalized_text:$normalized_text,
+      command_text:$command_text,
+      priority:$priority,
+      date:(if $date == "" then null else $date end),
+      age:(if $age == "" then null else $age end),
+      ref:(if $ref == "" then null else $ref end),
+      state_path:$state_path,
+      section:$section,
+      section_index:$section_index,
+      known_issue_signature:$known_issue_signature,
+      source:$source
+    }'
 }
 
 # --- Main ---
@@ -205,21 +289,18 @@ main() {
   # Parse all todos into a JSON array via jq
   local items_json="[]"
   local num=0
+  local section_index=0
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     # Skip empty/whitespace-only todo lines (bare "- " with no text)
     local stripped="${line#- }"
     stripped="${stripped#"${stripped%%[![:space:]]*}"}"
     [ -z "$stripped" ] && continue
-    local parsed
-    parsed=$(parse_todo_line "$line")
+    section_index=$((section_index + 1))
 
-    local pri date_val age ref text
-    pri=$(echo "$parsed" | cut -f1)
-    date_val=$(echo "$parsed" | cut -f2)
-    age=$(echo "$parsed" | cut -f3)
-    ref=$(echo "$parsed" | cut -f4)
-    text=$(echo "$parsed" | cut -f5-)
+    local parsed pri
+    parsed=$(parse_todo_line "$line" "$section_index" "$state_path" "$section_name")
+    pri=$(echo "$parsed" | jq -r '.priority')
 
     # Apply filter
     if [ -n "$filter_lower" ] && [ "$filter_lower" != "$pri" ]; then
@@ -228,10 +309,7 @@ main() {
 
     # num tracks filtered position (matches display numbering)
     num=$((num + 1))
-    items_json=$(echo "$items_json" | jq --argjson n "$num" \
-      --arg l "$line" --arg t "$text" --arg p "$pri" \
-      --arg d "$date_val" --arg a "$age" --arg r "$ref" \
-      '. + [{num:$n, line:$l, text:$t, priority:$p, date:$d, age:$a, ref:(if $r == "" then null else $r end)}]')
+    items_json=$(echo "$items_json" | jq --argjson n "$num" --argjson item "$parsed" '. + [($item + {num:$n})]')
   done <<< "$todo_lines"
 
   local filtered_count
@@ -271,12 +349,7 @@ main() {
       known-issue) pri_tag="[KNOWN-ISSUE] " ;;
     esac
 
-    # Strip priority prefix, date suffix, and ref tag for clean display
-    display_text="${text#\[HIGH\] }"
-    display_text="${display_text#\[low\] }"
-    display_text="${display_text#\[KNOWN-ISSUE\] }"
-    display_text=$(printf '%s\n' "$display_text" | sed 's/ *(ref:[a-f0-9]\{8\})$//')
-    display_text=$(printf '%s\n' "$display_text" | sed 's/ *(added [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\})$//')
+    display_text=$(echo "$row" | base64 -d | jq -r '.normalized_text')
 
     # Show [detail] indicator for todos with extended detail
     local ref_indicator=""

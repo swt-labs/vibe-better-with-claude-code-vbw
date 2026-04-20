@@ -374,6 +374,23 @@ uat_last_result: pending
 
 {Bug description pending from Debugger investigation.}
 
+## Source Todo
+
+### Selected Todo
+
+- **Text:** none
+- **Raw Line:** none
+- **Ref:** none
+- **Detail Status:** none
+
+### Related Files
+
+None recorded.
+
+### Detail Context
+
+No persisted detail context.
+
 ## Investigation
 
 ### Hypotheses

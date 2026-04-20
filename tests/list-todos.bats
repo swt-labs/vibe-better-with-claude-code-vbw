@@ -85,3 +85,18 @@ EOF
   pri=$(echo "$output" | jq -r '.items[0].priority')
   [ "$pri" = "high" ]
 }
+
+@test "emits stable mutation metadata for each displayed todo" {
+  cd "$TEST_TEMP_DIR"
+  create_state_with_todos ".vbw-planning/STATE.md"
+
+  run bash "$SCRIPTS_DIR/list-todos.sh"
+  [ "$status" -eq 0 ]
+
+  [ "$(echo "$output" | jq -r '.items[0].section_index')" = "1" ]
+  [ "$(echo "$output" | jq -r '.items[1].section_index')" = "2" ]
+  [ "$(echo "$output" | jq -r '.items[0].normalized_text')" = "Fix bug in parser" ]
+  [ "$(echo "$output" | jq -r '.items[1].display_identity')" = "[HIGH] Refactor auth module" ]
+  [ "$(echo "$output" | jq -r '.items[1].command_text')" = "Refactor auth module" ]
+  [ "$(echo "$output" | jq -r '.items[1].section')" = "## Todos" ]
+}

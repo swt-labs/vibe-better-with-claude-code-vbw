@@ -399,12 +399,14 @@ write_known_issues_registry() {
   run bash "$SCRIPT" promote-todos "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"promoted_count=0"* ]]
-  [[ "$output" == *"already_tracked_count=1"* ]]
-  # Only one [KNOWN-ISSUE] line (no duplicate)
+  # Existing ref-less lines are healed in place with a stable ref/signature payload.
+  [[ "$output" == *"promoted_count=1"* ]]
+  [[ "$output" == *"already_tracked_count=0"* ]]
+  # Only one [KNOWN-ISSUE] line (no duplicate) and the healed line now carries a ref.
   local count
   count=$(grep -c "\[KNOWN-ISSUE\]" "$TEST_TEMP_DIR/.vbw-planning/STATE.md")
   [ "$count" -eq 1 ]
+  grep -q '(ref:' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
 @test "track-known-issues: promote-todos replaces None placeholder" {
@@ -706,4 +708,38 @@ write_known_issues_registry() {
   [[ "$output" == *"promoted_count=1"* ]]
   grep -q "\[KNOWN-ISSUE\] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos honors suppression store across registry and accepted outcomes" {
+  write_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","last_seen_in":"03-01-SUMMARY.md","last_seen_round":1,"times_seen":1,"source_kind":"registry"}'
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-01/R01-SUMMARY.md" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","disposition":"accepted-process-exception","rationale":"Accepted for this phase"}'
+
+  jq -n --arg phase_dir "$PHASE_DIR" '
+    {
+      schema_version: 1,
+      phase: "03",
+      suppressions: [
+        {
+          phase: "03",
+          phase_dir: $phase_dir,
+          test: "SignalTrapTests",
+          file: "SignalTrapTests.swift",
+          error: "SwiftData signal trap",
+          source_kind: "registry",
+          disposition: "unresolved",
+          source_path: "03-01-SUMMARY.md"
+        }
+      ]
+    }
+  ' > "$PHASE_DIR/known-issue-suppressions.json"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=0"* ]]
+  [[ "$output" == *"promote_status=empty_registry"* ]]
+  grep -q '^None\.$' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
