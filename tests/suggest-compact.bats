@@ -49,6 +49,37 @@ teardown() {
   teardown_temp_dir
 }
 
+AUTH_SID="test-session-auth"
+
+write_authenticated_usage() {
+  local pct="$1"
+  local second="${2:-}"
+  local third="${3:-}"
+  local size sid
+
+  if [ -n "$second" ] && [[ "$second" =~ ^[0-9]+$ ]]; then
+    size="$second"
+    sid="${third:-$AUTH_SID}"
+  else
+    sid="${second:-$AUTH_SID}"
+    size="${third:-200000}"
+  fi
+
+  printf '%s|%s|%s\n' "$sid" "$pct" "$size" > .vbw-planning/.context-usage
+}
+
+write_unknown_usage() {
+  local pct="$1"
+  local size="${2:-200000}"
+  printf 'unknown|%s|%s\n' "$pct" "$size" > .vbw-planning/.context-usage
+}
+
+write_legacy_usage() {
+  local pct="$1"
+  local size="${2:-200000}"
+  printf '%s|%s\n' "$pct" "$size" > .vbw-planning/.context-usage
+}
+
 # =============================================================================
 # No output when preconditions not met
 # =============================================================================
@@ -64,23 +95,23 @@ teardown() {
 # =============================================================================
 
 @test "suggest-compact: silent when context at 30% (200K window)" {
-  echo "30|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  write_authenticated_usage 30
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
 
 @test "suggest-compact: silent when context at 50%" {
-  echo "50|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  write_authenticated_usage 50
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
 
 @test "suggest-compact: silent when context at 70% for light command" {
   # 70% of 200K = 60K remaining; discuss NEEDED=2875 — plenty of room
-  echo "70|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" discuss
+  write_authenticated_usage 70
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" discuss
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -91,8 +122,8 @@ teardown() {
 
 @test "suggest-compact: warns when context at 95% for execute mode" {
   # 95% of 200K = 10K remaining; execute NEEDED=12190 → warns
-  echo "95|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  write_authenticated_usage 95
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
   [[ "$output" == *"95%"* ]]
@@ -101,16 +132,16 @@ teardown() {
 
 @test "suggest-compact: warns when context at 99% for any mode" {
   # 99% of 200K = 2K remaining; even lightest mode (verify NEEDED=2070) warns
-  echo "99|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
+  write_authenticated_usage 99
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
   [ "$status" -eq 0 ]
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
 
 @test "suggest-compact: warns when context at 94% for execute mode" {
   # 94% → 12K remaining; execute NEEDED=12190 → barely warns (12000 < 12190)
-  echo "94|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  write_authenticated_usage 94
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
@@ -120,28 +151,28 @@ teardown() {
 # =============================================================================
 
 @test "suggest-compact: recommends /compact for standard autonomy" {
-  echo "95|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  write_authenticated_usage 95
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [[ "$output" == *"RECOMMENDED"* ]]
   [[ "$output" == *"/compact"* ]]
 }
 
 @test "suggest-compact: auto-triggers for confident autonomy" {
-  echo "95|200000" > .vbw-planning/.context-usage
+  write_authenticated_usage 95
   jq '.autonomy = "confident"' .vbw-planning/config.json > .vbw-planning/config.json.tmp \
     && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [[ "$output" == *"ACTION REQUIRED"* ]]
   [[ "$output" == *"confident"* ]]
 }
 
 @test "suggest-compact: auto-triggers for pure-vibe autonomy" {
-  echo "95|200000" > .vbw-planning/.context-usage
+  write_authenticated_usage 95
   jq '.autonomy = "pure-vibe"' .vbw-planning/config.json > .vbw-planning/config.json.tmp \
     && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [[ "$output" == *"ACTION REQUIRED"* ]]
   [[ "$output" == *"pure-vibe"* ]]
@@ -155,12 +186,12 @@ teardown() {
   # 94% → 12K remaining
   # execute NEEDED=12190 → warns (12000 < 12190)
   # plan NEEDED=2760 → OK (12000 > 2760)
-  echo "94|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" plan
+  write_authenticated_usage 94
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" plan
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
@@ -169,12 +200,12 @@ teardown() {
   # 94% → 12K remaining
   # verify NEEDED=2070 → OK
   # execute NEEDED=12190 → warns
-  echo "94|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
+  write_authenticated_usage 94
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
@@ -185,8 +216,8 @@ teardown() {
 
 @test "suggest-compact: phase plans increase execute cost" {
   # At 93% without plans: remaining=14000, execute NEEDED=12190 → OK
-  echo "93|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  write_authenticated_usage 93
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 
@@ -194,7 +225,7 @@ teardown() {
   # 14000 < 15640 → warns
   mkdir -p .vbw-planning/phases/01-setup
   printf '%*s' 15000 '' > .vbw-planning/phases/01-setup/01-PLAN.md
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
@@ -205,8 +236,8 @@ teardown() {
   # 6000 < 7475 → warns
   printf '%*s' 5000 '' > .vbw-planning/STATE.md
   printf '%*s' 5000 '' > .vbw-planning/ROADMAP.md
-  echo "97|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" qa
+  write_authenticated_usage 97
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" qa
   [ "$status" -eq 0 ]
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
@@ -218,10 +249,10 @@ teardown() {
 @test "suggest-compact: respects compaction_threshold from config" {
   # 60% of 200K = 120K used; execute EST_COST=10600; projected=130600
   # threshold 130000 → 130600 > 130K → warns
-  echo "60|200000" > .vbw-planning/.context-usage
+  write_authenticated_usage 60
   jq '.compaction_threshold = 130000' .vbw-planning/config.json > .vbw-planning/config.json.tmp \
     && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
@@ -229,10 +260,10 @@ teardown() {
 @test "suggest-compact: no warn when below compaction_threshold" {
   # 40% of 200K = 80K used; discuss EST_COST=2500; projected=82500
   # threshold 130000 → 82500 < 130K → OK
-  echo "40|200000" > .vbw-planning/.context-usage
+  write_authenticated_usage 40
   jq '.compaction_threshold = 130000' .vbw-planning/config.json > .vbw-planning/config.json.tmp \
     && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" discuss
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" discuss
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -264,23 +295,23 @@ teardown() {
 
 @test "suggest-compact: handles missing config.json gracefully" {
   rm -f .vbw-planning/config.json
-  echo "95|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  write_authenticated_usage 95
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
 
 @test "suggest-compact: defaults to execute mode when no mode given" {
-  echo "95|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh"
+  write_authenticated_usage 95
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"execute"* ]]
 }
 
 @test "suggest-compact: unknown mode uses fallback cost" {
   # unknown: NEEDED=8625. 96% → 8000 remaining → warns (8000 < 8625)
-  echo "96|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" unknown_mode
+  write_authenticated_usage 96
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" unknown_mode
   [ "$status" -eq 0 ]
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
@@ -290,8 +321,8 @@ teardown() {
 # =============================================================================
 
 @test "suggest-compact: warns at 100% usage" {
-  echo "100|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" discuss
+  write_authenticated_usage 100
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" discuss
   [ "$status" -eq 0 ]
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
@@ -301,8 +332,8 @@ teardown() {
 # =============================================================================
 
 @test "suggest-compact: output shows byte breakdown" {
-  echo "95|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  write_authenticated_usage 95
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [[ "$output" == *"B fixed"* ]]
   [[ "$output" == *"project files"* ]]
@@ -377,9 +408,9 @@ teardown() {
 
   # At 99% → remaining = 2000. Without SOURCE-UAT exclusion, the huge
   # SOURCE-UAT would inflate the cost and trigger a warning.
-  echo "99|200000" > .vbw-planning/.context-usage
+  write_authenticated_usage 99
 
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
   [ "$status" -eq 0 ]
   # With the fix, SOURCE-UAT bytes are subtracted, so the cost should
   # be based on only the canonical UAT (2000B) not the 50000B SOURCE-UAT
@@ -393,14 +424,14 @@ teardown() {
   printf '%*s' 1000 '' > .vbw-planning/phases/01-setup/01-UAT.md
 
   # 96% of 200K → remaining = 8000 tokens. verify without SOURCE-UAT is fine.
-  echo "96|200000" > .vbw-planning/.context-usage
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
+  write_authenticated_usage 96
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 
   # Now add a huge SOURCE-UAT — should still be fine (excluded from sum)
   printf '%*s' 100000 '' > .vbw-planning/phases/01-setup/01-SOURCE-UAT.md
-  run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" verify
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -439,24 +470,39 @@ teardown() {
   [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
 }
 
-@test "suggest-compact: legacy 2-field format still works (backward compat)" {
-  echo "95|200000" > .vbw-planning/.context-usage
+@test "suggest-compact: legacy 2-field format skips silently" {
+  write_legacy_usage 95
   run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
-  [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
+  [ -z "$output" ]
 }
 
-@test "suggest-compact: missing CLAUDE_SESSION_ID defaults to unknown on both sides" {
-  # Both writer and reader default to "unknown" — should match and proceed
-  echo "unknown|95|200000" > .vbw-planning/.context-usage
+@test "suggest-compact: unknown session placeholder is not authoritative" {
+  write_unknown_usage 95
   unset CLAUDE_SESSION_ID
   run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
-  [[ "$output" == *"PRE-FLIGHT CONTEXT GUARD"* ]]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: unknown 43 percent cache skips silently" {
+  write_unknown_usage 43
+  unset CLAUDE_SESSION_ID
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: unknown 58 percent cache skips silently" {
+  write_unknown_usage 58
+  unset CLAUDE_SESSION_ID
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "suggest-compact: 3-field format with low usage no warn" {
-  echo "my-session|30|200000" > .vbw-planning/.context-usage
+  write_authenticated_usage 30 my-session
   CLAUDE_SESSION_ID="my-session" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [ -z "$output" ]
@@ -474,6 +520,61 @@ teardown() {
   # 30% of 200K = 60000 used tokens + EST_COST → below 165000 → no warn
   echo "my-session|30|200000" > .vbw-planning/.context-usage
   CLAUDE_SESSION_ID="my-session" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: missing CLAUDE_SESSION_ID skips high-pressure cache" {
+  write_authenticated_usage 95 test-session-auth
+  unset CLAUDE_SESSION_ID
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: empty CLAUDE_SESSION_ID skips high-pressure cache" {
+  write_authenticated_usage 95 test-session-auth
+  CLAUDE_SESSION_ID="" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: invalid cache session ID skips silently" {
+  write_authenticated_usage 95 200000 "bad session"
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: invalid current session ID skips silently" {
+  write_authenticated_usage 95
+  CLAUDE_SESSION_ID="bad session" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: malformed 3-field used percentage skips silently" {
+  echo "$AUTH_SID|abc|200000" > .vbw-planning/.context-usage
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: malformed 3-field context size skips silently" {
+  echo "$AUTH_SID|95|abc" > .vbw-planning/.context-usage
+  CLAUDE_SESSION_ID="$AUTH_SID" run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "suggest-compact: statusline unknown cache stays silent in suggest-compact" {
+  mkdir -p .vbw-planning
+  unset CLAUDE_SESSION_ID
+  echo '{"context_window":{"used_percentage":95,"remaining_percentage":5,"context_window_size":200000,"current_usage":{"input_tokens":10000,"output_tokens":5000,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}},"cost":{"total_cost_usd":0,"total_duration_ms":0,"total_api_duration_ms":0,"total_lines_added":0,"total_lines_removed":0},"model":{"display_name":"Claude"},"version":"1.0"}' \
+    | bash "$SCRIPTS_DIR/vbw-statusline.sh" > /dev/null 2>&1
+  [ -f .vbw-planning/.context-usage ]
+
+  run bash "$SCRIPTS_DIR/suggest-compact.sh" execute
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
