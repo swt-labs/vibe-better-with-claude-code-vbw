@@ -1093,14 +1093,13 @@ promote_todos() {
   # Iterate issues and check for duplicates
   local i=0
   while [ "$i" -lt "$total" ]; do
-    local test_name file_path error_msg times_seen source_artifact disposition source_kind
+    local test_name file_path error_msg times_seen source_artifact disposition
     test_name=$(printf '%s' "$promotable_json" | jq -r ".[$i].test // \"unknown\"")
     file_path=$(printf '%s' "$promotable_json" | jq -r ".[$i].file // \"unknown\"")
     error_msg=$(printf '%s' "$promotable_json" | jq -r ".[$i].error // \"unspecified error\"")
     times_seen=$(printf '%s' "$promotable_json" | jq -r ".[$i].times_seen // 1")
     source_artifact=$(printf '%s' "$promotable_json" | jq -r ".[$i].last_seen_in // \"\"")
     disposition=$(printf '%s' "$promotable_json" | jq -r ".[$i].disposition // \"\"")
-    source_kind=$(printf '%s' "$promotable_json" | jq -r ".[$i].source_kind // \"registry\"")
 
     # Preserve full error for detail context before truncating for STATE.md readability
     local full_error_msg="$error_msg"

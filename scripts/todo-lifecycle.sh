@@ -537,11 +537,10 @@ cleanup_detail_if_safe() {
 rewrite_state_for_item() {
   local item_json="$1"
   local activity_message="$2"
-  local state_path section_name section_index line_no direct_count tmp_file
+  local state_path section_name line_no direct_count tmp_file
 
   state_path=$(printf '%s' "$item_json" | jq -r '.state_path // empty')
   section_name=$(printf '%s' "$item_json" | jq -r '.section // empty')
-  section_index=$(printf '%s' "$item_json" | jq -r '.section_index // empty')
   line_no=$(printf '%s' "$item_json" | jq -r '.line_no // empty')
 
   if [ -z "$state_path" ] || [ -z "$section_name" ] || [ -z "$line_no" ]; then
