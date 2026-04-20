@@ -26,6 +26,7 @@ SNAPSHOT_PATH="/tmp/.vbw-last-list-view-${SESSION_KEY}.json"
 DETAILS_PATH="${PLANNING_DIR}/todo-details.json"
 CMD="${1:-}"
 shift || true
+DETAILS_CACHE_JSON=""
 
 json_out() {
   jq -cn "$@"
@@ -145,7 +146,10 @@ load_detail_for_ref() {
     echo '{}'
     return
   fi
-  bash "$SCRIPT_DIR/todo-details.sh" get "$ref" "$DETAILS_PATH" 2>/dev/null | jq -c '.detail // {}' 2>/dev/null || echo '{}'
+  if [ -z "$DETAILS_CACHE_JSON" ]; then
+    DETAILS_CACHE_JSON=$(cat "$DETAILS_PATH" 2>/dev/null || echo '{}')
+  fi
+  printf '%s' "$DETAILS_CACHE_JSON" | jq -c --arg ref "$ref" '.items[$ref] // {}' 2>/dev/null || echo '{}'
 }
 
 canonical_signature_json() {

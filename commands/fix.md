@@ -37,7 +37,7 @@ Config: Pre-injected by SessionStart hook.
     ```bash
   bash "{plugin-root}/scripts/todo-details.sh" get {hash}
     ```
-  Command shape: `bash "{plugin-root}/scripts/todo-details.sh" get <hash>`.
+  Command shape: `bash "{plugin-root}/scripts/todo-details.sh" get {hash}`.
   Parse the JSON output. If `status` is `"ok"`, store the `detail.context` and `detail.files` values for use in step 5 and record `DETAIL_STATUS=ok`. If `status` is `"not_found"` or `"error"`, record `DETAIL_STATUS` to match and run:
     ```bash
     bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
@@ -54,9 +54,9 @@ Config: Pre-injected by SessionStart hook.
 
    - **Immediate todo pickup (numeric selections only):** If `TODO_SELECTED=true`, claim the todo now — after fix has passed its own parse/guard steps, and before Dev is spawned. Pipe `TODO_SELECTED_JSON` into:
      ```bash
-     bash "{plugin-root}/scripts/todo-lifecycle.sh" pickup /vbw:fix {DETAIL_STATUS} {`safe` when DETAIL_STATUS=ok, otherwise `keep`}
+    bash "{plugin-root}/scripts/todo-lifecycle.sh" pickup /vbw:fix {DETAIL_STATUS} {cleanup_policy}
      ```
-     If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface its `warning` value in the final result so cleanup state is explicit. This pickup path only applies to true numeric todo selections — never to manual text or manual `(ref:HASH)` inputs.
+    Use `safe` for `{cleanup_policy}` when `DETAIL_STATUS=ok`; otherwise use `keep`. If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface its `warning` value in the final result so cleanup state is explicit. This pickup path only applies to true numeric todo selections — never to manual text or manual `(ref:HASH)` inputs.
 
 5. **Spawn Dev:** Resolve model first:
     ```bash

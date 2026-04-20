@@ -394,9 +394,9 @@ Continue without detail.
 
 When the chosen route does commit to the todo-derived request, claim it exactly once before entering the chosen mode body by piping `TODO_SELECTED_JSON` into:
 ```bash
-bash "{plugin-root}/scripts/todo-lifecycle.sh" pickup /vbw:vibe {DETAIL_STATUS} {`safe` when DETAIL_STATUS=ok, otherwise `keep`}
+bash "{plugin-root}/scripts/todo-lifecycle.sh" pickup /vbw:vibe {DETAIL_STATUS} {cleanup_policy}
 ```
-If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface the helper's `warning` value so cleanup state stays explicit.
+Set `{cleanup_policy}` to `safe` when `DETAIL_STATUS=ok`; otherwise set it to `keep`. If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface the helper's `warning` value so cleanup state stays explicit.
 
 Three input paths, evaluated in order:
 

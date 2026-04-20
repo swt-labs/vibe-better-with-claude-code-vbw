@@ -42,7 +42,7 @@ set -euo pipefail
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 FILTER="${1:-}"
 DETAILS_PATH="${PLANNING_DIR}/todo-details.json"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DETAILS_CACHE_JSON=""
 
 # --- Resolve STATE.md for todos (project-level data lives at root) ---
 resolve_state_path() {
@@ -154,8 +154,21 @@ relative_age() {
   fi
 }
 
-decode_base64() {
-  printf '%s' "$1" | base64 -d 2>/dev/null || printf '%s' "$1" | base64 -D 2>/dev/null
+load_details_cache() {
+  if [ -n "$DETAILS_CACHE_JSON" ]; then
+    return 0
+  fi
+  if [ ! -f "$DETAILS_PATH" ]; then
+    DETAILS_CACHE_JSON='{}'
+    return 0
+  fi
+  DETAILS_CACHE_JSON=$(cat "$DETAILS_PATH" 2>/dev/null || echo '{}')
+}
+
+load_detail_for_ref() {
+  local ref="$1"
+  load_details_cache
+  printf '%s' "$DETAILS_CACHE_JSON" | jq -c --arg ref "$ref" '.items[$ref] // {}' 2>/dev/null || echo '{}'
 }
 
 # --- Parse a single todo line ---
@@ -212,7 +225,7 @@ parse_todo_line() {
   known_issue_signature='null'
   source='null'
   if [ -n "$ref" ] && [ -f "$DETAILS_PATH" ]; then
-    detail_json=$(bash "$SCRIPT_DIR/todo-details.sh" get "$ref" "$DETAILS_PATH" 2>/dev/null | jq -c '.detail // {}' 2>/dev/null || echo '{}')
+    detail_json=$(load_detail_for_ref "$ref")
     known_issue_signature=$(printf '%s' "$detail_json" | jq -c '
       .known_issue_signature // null
       | if type == "object" then {
@@ -311,10 +324,10 @@ main() {
   todo_lines=$(echo "$raw_output" | tail -n +2)
 
   # Parse all todos into a JSON array via jq
-  local all_items_json="[]"
-  local items_json="[]"
-  local num=0
+  local all_items_json items_json
   local section_index=0
+  local all_items_ndjson
+  all_items_ndjson=$(mktemp)
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     # Skip empty/whitespace-only todo lines (bare "- " with no text)
@@ -323,28 +336,21 @@ main() {
     [ -z "$stripped" ] && continue
     section_index=$((section_index + 1))
 
-    local parsed pri
+    local parsed
     parsed=$(parse_todo_line "$line" "$section_index" "$state_path" "$section_name")
-    all_items_json=$(echo "$all_items_json" | jq --argjson item "$parsed" '. + [$item]')
+    printf '%s\n' "$parsed" >> "$all_items_ndjson"
   done <<< "$todo_lines"
 
+  all_items_json=$(jq -sc '.' "$all_items_ndjson")
+  rm -f "$all_items_ndjson"
   all_items_json=$(annotate_identity_occurrence "$all_items_json")
-
-  while IFS= read -r row; do
-    [ -n "$row" ] || continue
-    local parsed pri
-    parsed="$row"
-    pri=$(echo "$parsed" | jq -r '.priority')
-
-    # Apply filter
-    if [ -n "$filter_lower" ] && [ "$filter_lower" != "$pri" ]; then
-      continue
-    fi
-
-    # num tracks filtered position (matches display numbering)
-    num=$((num + 1))
-    items_json=$(echo "$items_json" | jq --argjson n "$num" --argjson item "$parsed" '. + [($item + {num:$n})]')
-  done < <(printf '%s' "$all_items_json" | jq -c '.[]')
+  items_json=$(printf '%s' "$all_items_json" | jq -c --arg filter "$filter_lower" '
+    [ .[]
+      | if $filter == "" then . else select(.priority == $filter) end
+    ]
+    | to_entries
+    | map(.value + {num:(.key + 1)})
+  ')
 
   local filtered_count
   filtered_count=$(echo "$items_json" | jq 'length')
@@ -366,41 +372,18 @@ main() {
   fi
 
   # Build display string from items
-  local display=""
-  local display_num=0
-  for row in $(echo "$items_json" | jq -r '.[] | @base64'); do
-    display_num=$((display_num + 1))
-    local decoded_row text age pri pri_tag display_text age_suffix
-
-    decoded_row=$(decode_base64 "$row")
-    text=$(printf '%s' "$decoded_row" | jq -r '.text')
-    age=$(printf '%s' "$decoded_row" | jq -r '.age')
-    pri=$(printf '%s' "$decoded_row" | jq -r '.priority')
-
-    pri_tag=""
-    case "$pri" in
-      high) pri_tag="[HIGH] " ;;
-      low) pri_tag="[low] " ;;
-      known-issue) pri_tag="[KNOWN-ISSUE] " ;;
-    esac
-
-    display_text=$(printf '%s' "$decoded_row" | jq -r '.normalized_text')
-
-    # Show [detail] indicator for todos with extended detail
-    local ref_indicator=""
-    local item_ref
-    item_ref=$(printf '%s' "$decoded_row" | jq -r '.ref // ""')
-    if [ -n "$item_ref" ]; then
-      ref_indicator=" [detail]"
-    fi
-
-    age_suffix=""
-    if [ -n "$age" ]; then
-      age_suffix=" ($age)"
-    fi
-
-    display="${display}${display_num}. ${pri_tag}${display_text}${age_suffix}${ref_indicator}"$'\n'
-  done
+  local display
+  display=$(printf '%s' "$items_json" | jq -r '
+    .[] |
+      (
+        (if .priority == "high" then "[HIGH] " elif .priority == "low" then "[low] " elif .priority == "known-issue" then "[KNOWN-ISSUE] " else "" end)
+        + .normalized_text
+        + (if .age then " (" + .age + ")" else "" end)
+        + (if .ref then " [detail]" else "" end)
+      ) as $body
+      | "\(.num). \($body)"
+  ')
+  [ -n "$display" ] && display="${display}"$'\n'
 
   # Assemble final JSON via jq
   echo "$items_json" | jq --arg st "ok" --arg sp "$state_path" \
