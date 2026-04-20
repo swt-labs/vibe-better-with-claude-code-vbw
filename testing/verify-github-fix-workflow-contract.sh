@@ -9,6 +9,7 @@ STOP_GUARD="$ROOT/.github/hooks/fix-issue-stop-guard.sh"
 WAIT_GITHUB="$ROOT/.github/scripts/wait-github.py"
 RECORD_STATE="$ROOT/.github/scripts/fix-issue-record-state.sh"
 AGENT_MD="$ROOT/.github/agents/fix-issue.agent.md"
+PLANNER_AGENT="$ROOT/.github/agents/fix-planner.agent.md"
 REVIEW_AGENT="$ROOT/.github/agents/review-contributor-pr.agent.md"
 
 PASS=0
@@ -143,6 +144,32 @@ test_fix_issue_agent_has_ambient_context_antipattern() {
   fi
 }
 test_fix_issue_agent_has_ambient_context_antipattern
+
+test_fix_issue_agent_reuses_user_authored_plans() {
+  if grep -qF 'User-authored execution contract' "$AGENT_MD" \
+    && grep -qF 'Save the plan to `/memories/session/plan.md` exactly as written' "$AGENT_MD" \
+    && grep -qF 'replace its contents so the saved file matches the user' "$AGENT_MD" \
+    && grep -qF 'do NOT stop after saving it — continue the workflow' "$AGENT_MD" \
+    && grep -qF 'follow its existing audit loop against that same saved path' "$AGENT_MD" \
+    && grep -qF 'strip local absolute path prefixes like `/Users/.../` and other PII' "$AGENT_MD"; then
+    pass "fix-issue agent saves user-authored plans verbatim and audits the same saved path"
+  else
+    fail "fix-issue agent should save user-authored plans exactly as written, continue after saving, and audit the same saved plan path instead of forking a new one"
+  fi
+}
+test_fix_issue_agent_reuses_user_authored_plans
+
+test_fix_planner_agent_supports_existing_plan_audit_mode() {
+  if grep -qF 'When the caller supplies an existing saved or inline plan and asks you to validate, audit, or refine it' "$PLANNER_AGENT" \
+    && grep -qF 'Do not discard it and replan from scratch' "$PLANNER_AGENT" \
+    && grep -qF 'amend that same saved plan path in place' "$PLANNER_AGENT" \
+    && grep -qF 'If the caller asked you to audit an existing saved plan and that plan is already sufficient, do not rewrite it' "$PLANNER_AGENT"; then
+    pass "fix-planner agent supports in-place audit mode for existing plans"
+  else
+    fail "fix-planner agent should audit existing saved plans in place instead of forking a separate refined path"
+  fi
+}
+test_fix_planner_agent_supports_existing_plan_audit_mode
 
 test_wait_github_fails_fast_on_gh_errors() {
   setup_tmpdir

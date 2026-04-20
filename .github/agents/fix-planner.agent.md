@@ -23,6 +23,8 @@ Your SOLE responsibility is planning. NEVER edit files or implement the fix your
 - Treat the actual runtime tool list as authoritative. This agent is declared with #tool:vscode/memory, but some GPT-5.4 and other deferred-tool runs initially expose only #tool:vscode/resolveMemoryFileUri plus #tool:activate_vs_code_interaction. If #tool:vscode/memory is absent and #tool:activate_vs_code_interaction is available, call #tool:activate_vs_code_interaction first, then re-check for #tool:vscode/memory before concluding memory write is unavailable. When #tool:vscode/memory remains absent after activation, do not claim the plan was saved and do not instruct others to read a nonexistent saved file.
 - STOP if you consider using editing tools — plans are for others to execute. The only write tool you may use is #tool:vscode/memory for persisting the plan when that tool is actually exposed in the current run. If it is unavailable, return the plan inline instead of using editing tools as a workaround.
 - Treat the issue body as the source-of-truth contract. The plan is the execution guide, not a replacement for the acceptance criteria.
+- When the caller supplies an existing saved or inline plan and asks you to validate, audit, or refine it, treat that plan as the draft execution guide. Read it first. Preserve its accepted decisions unless the issue or codebase contradict them. Do not discard it and replan from scratch.
+- When the caller says a saved user-authored plan must first be persisted exactly as written, treat that saved file as the canonical starting point for the audit. If the saved plan is already sufficient, keep using its existing path unchanged. If refinement is needed, amend that same saved plan path in place through the established persist + audit loop. Do not fork a second canonical plan path unless the caller explicitly overrides the workflow and asks for one.
 - If you are interacting directly with the user in chat, use #tool:vscode/askQuestions to clarify requirements and validate assumptions before finalizing the plan.
 - When invoked as a subagent, do not ask the user follow-up questions. Capture ambiguities, assumptions, and recommended defaults inside the plan instead.
 - Prefer focused context gathering. If the task spans multiple independent areas, use 2-3 *Explore* subagents in parallel when nested subagents are enabled. If nested subagents are unavailable or *Explore* is not accessible, use #tool:search and #tool:read directly.
@@ -84,6 +86,7 @@ Cycle through these phases based on how the agent is being used. If you are work
 
 ## 1. Discovery
 
+- If the caller supplied an existing saved or inline plan, read it first and treat it as the draft execution guide to audit against the issue and codebase.
 - Read the issue body and identify the affected areas of the codebase.
 - Gather context, analogous existing features, and likely root-cause locations.
 - Use #tool:searchSubagent for targeted lookups (find files by pattern, locate definitions, keyword searches). For multi-step analysis that requires chaining reads and synthesizing understanding, escalate to an *Explore* subagent.
@@ -126,12 +129,20 @@ If you are invoked as a subagent, incorporate brownfield considerations, risky a
 
 ## 4. Persist
 
-- If #tool:vscode/memory is exposed in the current run, save the plan to `/memories/session/plan.md` via #tool:vscode/memory.
-- If #tool:vscode/memory is NOT exposed in the current run, do NOT pretend the save succeeded. Use #tool:vscode/resolveMemoryFileUri to resolve the target URI, then keep the full plan in your response as inline fallback output. The resolved URI is informational only in this fallback path — it does not prove a file was written.
+- If the caller supplied an existing saved plan path to audit, keep using that same path as the selected target path. Otherwise use `/memories/session/plan.md` unless the caller explicitly requested a different path.
+- If the caller asked you to audit an existing saved plan and that plan is already sufficient, do not rewrite it just to satisfy persistence. Return the reviewed original path as the execution guide unchanged.
+- If #tool:vscode/memory is exposed in the current run, save the plan to the selected target path via #tool:vscode/memory.
+- If #tool:vscode/memory is NOT exposed in the current run, do NOT pretend the save succeeded. Use #tool:vscode/resolveMemoryFileUri to resolve the selected target URI, then keep the full plan in your response as inline fallback output. The resolved URI is informational only in this fallback path — it does not prove a file was written.
 - If you are interacting directly with the user:
   - when the plan was saved, show the scannable plan in chat after saving it
   - when memory write was unavailable, show the scannable plan in chat and state clearly that it could not be saved in this run
 - If you are invoked as a subagent, return only one of these two shapes:
+ - If you are invoked as a subagent while auditing an existing saved plan and it remains sufficient, you may return this third shape instead:
+  - **Existing saved plan remains sufficient**:
+    - confirmation that the saved plan was reviewed and remains the execution guide unchanged
+    - the exact existing saved path that was audited
+    - an instruction that the parent agent should keep using that saved path directly
+ - Otherwise return only one of these two shapes:
   - **Saved path available**:
     - confirmation that the plan was saved
     - the **actual path** from the memory tool's response (do not hardcode `/memories/session/plan.md` — return whatever path the tool confirms it wrote to)
@@ -156,6 +167,8 @@ After persisting (or assembling inline) the plan, run an iterative audit-fix cyc
 
 **Audit prompt** (spawn as subagent — use *Explore* agent):
 
+If the plan was saved to a non-default path, substitute that path anywhere the prompts below mention `/memories/session/plan.md`.
+
 If the plan was saved, use this prompt:
 
 > First, use #tool:vscode/resolveMemoryFileUri to resolve the path for `/memories/session/plan.md`, then read the plan at the resolved URI.
@@ -176,6 +189,8 @@ If the plan was NOT saved because #tool:vscode/memory was unavailable, paste the
 ## 4.6. Prompt Engineering Audit
 
 **Trigger condition:** The plan involves changes to LLM-consumed markdown artifacts — any of these paths: `commands/*.md`, `agents/vbw-*.md`, `templates/*.md`, `references/*.md`, `scripts/bootstrap-claude.sh`, `scripts/check-claude-md-staleness.sh`, `scripts/compile-context.sh`, `scripts/compile-*.sh`, or any hook handler that produces LLM-consumed text output. **Skip this phase** if the plan only touches bash script logic, config/JSON schemas, test infrastructure, or hook plumbing.
+
+If the plan was saved to a non-default path, substitute that path anywhere the prompts below mention `/memories/session/plan.md`.
 
 If the plan was saved successfully, spawn an *Explore* subagent with this prompt:
 
