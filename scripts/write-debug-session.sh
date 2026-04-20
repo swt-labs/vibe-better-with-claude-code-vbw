@@ -252,7 +252,7 @@ case "$MODE" in
     DETAIL_CONTEXT=$(echo "$json" | jq -r '.detail_context // empty')
 
     RELATED_FILES=""
-    FILE_COUNT=$(echo "$json" | jq '.related_files | length // 0')
+    FILE_COUNT=$(echo "$json" | jq '(.related_files // []) | if type == "array" then length else 0 end')
     if [ "$FILE_COUNT" -gt 0 ]; then
       for i in $(seq 0 $((FILE_COUNT - 1))); do
         FILE_PATH=$(echo "$json" | jq -r ".related_files[$i] // empty")

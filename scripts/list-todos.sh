@@ -41,8 +41,14 @@ set -euo pipefail
 
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 FILTER="${1:-}"
+# shellcheck disable=SC2034  # consumed by sourced todo-item-metadata helpers
 DETAILS_PATH="${PLANNING_DIR}/todo-details.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC2034  # consumed by sourced todo-item-metadata helpers
 DETAILS_CACHE_JSON=""
+
+# shellcheck source=scripts/lib/todo-item-metadata.sh
+. "$SCRIPT_DIR/lib/todo-item-metadata.sh"
 
 # --- Resolve STATE.md for todos (project-level data lives at root) ---
 resolve_state_path() {
@@ -116,185 +122,6 @@ extract_todos() {
   echo "$lines"
 }
 
-# --- Compute relative age from YYYY-MM-DD ---
-relative_age() {
-  local date_str="$1"
-  local now days
-
-  # Validate date format
-  if ! [[ "$date_str" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
-    echo ""
-    return
-  fi
-
-  now=$(date +%s)
-  local then_ts
-  then_ts=$(date -j -f "%Y-%m-%d" "$date_str" +%s 2>/dev/null) || {
-    # Linux fallback
-    then_ts=$(date -d "$date_str" +%s 2>/dev/null) || { echo ""; return; }
-  }
-
-  days=$(( (now - then_ts) / 86400 ))
-
-  if [ "$days" -lt 0 ]; then
-    echo ""
-    return
-  elif [ "$days" -eq 0 ]; then
-    echo "today"
-  elif [ "$days" -eq 1 ]; then
-    echo "1d ago"
-  elif [ "$days" -lt 30 ]; then
-    echo "${days}d ago"
-  elif [ "$days" -lt 365 ]; then
-    local months=$(( days / 30 ))
-    echo "${months}mo ago"
-  else
-    local years=$(( days / 365 ))
-    echo "${years}y ago"
-  fi
-}
-
-load_details_cache() {
-  if [ -n "$DETAILS_CACHE_JSON" ]; then
-    return 0
-  fi
-  if [ ! -f "$DETAILS_PATH" ]; then
-    DETAILS_CACHE_JSON='{}'
-    return 0
-  fi
-  DETAILS_CACHE_JSON=$(cat "$DETAILS_PATH" 2>/dev/null || echo '{}')
-}
-
-load_detail_for_ref() {
-  local ref="$1"
-  load_details_cache
-  printf '%s' "$DETAILS_CACHE_JSON" | jq -c --arg ref "$ref" '.items[$ref] // {}' 2>/dev/null || echo '{}'
-}
-
-# --- Parse a single todo line ---
-parse_todo_line() {
-  local line="$1"
-  local section_index="$2"
-  local state_path="$3"
-  local section_name="$4"
-  local text priority date_str age ref display_identity normalized_text command_text detail_json known_issue_signature source
-
-  # Strip leading "- "
-  text="${line#- }"
-
-  # Extract priority/category
-  if [[ "$text" == "[HIGH] "* ]]; then
-    priority="high"
-  elif [[ "$text" == "[low] "* ]]; then
-    priority="low"
-  elif [[ "$text" == "[KNOWN-ISSUE] "* ]]; then
-    priority="known-issue"
-  else
-    priority="normal"
-  fi
-
-  # Extract date from (added YYYY-MM-DD)
-  date_str=""
-  if [[ "$text" =~ \(added\ ([0-9]{4}-[0-9]{2}-[0-9]{2})\) ]]; then
-    date_str="${BASH_REMATCH[1]}"
-  fi
-
-  # Extract detail ref hash from (ref:<8-hex-chars>)
-  ref=""
-  if [[ "$text" =~ \(ref:([a-f0-9]{8})\)[[:space:]]*$ ]]; then
-    ref="${BASH_REMATCH[1]}"
-  fi
-
-  # Compute age
-  age=""
-  if [ -n "$date_str" ]; then
-    age=$(relative_age "$date_str")
-  fi
-
-  display_identity="$text"
-  display_identity=$(printf '%s\n' "$display_identity" | sed 's/ *(ref:[a-f0-9]\{8\})$//')
-  display_identity=$(printf '%s\n' "$display_identity" | sed 's/ *(added [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\})$//')
-
-  normalized_text="$display_identity"
-  normalized_text="${normalized_text#\[HIGH\] }"
-  normalized_text="${normalized_text#\[low\] }"
-  normalized_text="${normalized_text#\[KNOWN-ISSUE\] }"
-  command_text="$normalized_text"
-
-  detail_json='{}'
-  known_issue_signature='null'
-  source='null'
-  if [ -n "$ref" ] && [ -f "$DETAILS_PATH" ]; then
-    detail_json=$(load_detail_for_ref "$ref")
-    known_issue_signature=$(printf '%s' "$detail_json" | jq -c '
-      .known_issue_signature // null
-      | if type == "object" then {
-          phase: (.phase // null),
-          phase_dir: (.phase_dir // null),
-          test: (.test // null),
-          file: (.file // null),
-          error: (.error // null),
-          source_kind: (.source_kind // null),
-          disposition: (.disposition // null),
-          source_path: (.source_path // null)
-        } else null end
-    ' 2>/dev/null || echo 'null')
-    source=$(printf '%s' "$detail_json" | jq -c '.source // null' 2>/dev/null || echo 'null')
-  fi
-
-  jq -cn \
-    --arg line "$line" \
-    --arg text "$text" \
-    --arg display_identity "$display_identity" \
-    --arg normalized_text "$normalized_text" \
-    --arg command_text "$command_text" \
-    --arg priority "$priority" \
-    --arg date "$date_str" \
-    --arg age "$age" \
-    --arg ref "$ref" \
-    --arg state_path "$state_path" \
-    --arg section "$section_name" \
-    --argjson section_index "$section_index" \
-    --argjson known_issue_signature "$known_issue_signature" \
-    --argjson source "$source" \
-    '{
-      line:$line,
-      text:$text,
-      display_identity:$display_identity,
-      normalized_text:$normalized_text,
-      command_text:$command_text,
-      priority:$priority,
-      date:(if $date == "" then null else $date end),
-      age:(if $age == "" then null else $age end),
-      ref:(if $ref == "" then null else $ref end),
-      state_path:$state_path,
-      section:$section,
-      section_index:$section_index,
-      known_issue_signature:$known_issue_signature,
-      source:$source
-    }'
-}
-
-annotate_identity_occurrence() {
-  local items_json="$1"
-  printf '%s' "$items_json" | jq -c '
-    def identity($item): {
-      normalized_text: ($item.normalized_text // ""),
-      ref: ($item.ref // null),
-      known_issue_signature: ($item.known_issue_signature // null)
-    };
-
-    . as $items
-    | [range(0; length) as $i |
-        $items[$i] as $item
-        | $item + {
-            identity_occurrence: ([range(0; $i + 1) | $items[.] | select(identity(.) == identity($item))] | length),
-            identity_total: ([ $items[] | select(identity(.) == identity($item)) ] | length)
-          }
-      ]
-  '
-}
-
 # --- Main ---
 main() {
   local filter_lower=""
@@ -337,13 +164,13 @@ main() {
     section_index=$((section_index + 1))
 
     local parsed
-    parsed=$(parse_todo_line "$line" "$section_index" "$state_path" "$section_name")
+    parsed=$(todo_item_parse_line_json "$line" "$section_index" "$state_path" "$section_name")
     printf '%s\n' "$parsed" >> "$all_items_ndjson"
   done <<< "$todo_lines"
 
   all_items_json=$(jq -sc '.' "$all_items_ndjson")
   rm -f "$all_items_ndjson"
-  all_items_json=$(annotate_identity_occurrence "$all_items_json")
+  all_items_json=$(todo_item_annotate_identity_occurrence "$all_items_json")
   items_json=$(printf '%s' "$all_items_json" | jq -c --arg filter "$filter_lower" '
     [ .[]
       | if $filter == "" then . else select(.priority == $filter) end

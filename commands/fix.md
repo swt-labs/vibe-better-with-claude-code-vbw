@@ -35,9 +35,9 @@ Config: Pre-injected by SessionStart hook.
 
 2. **Parse:** Entire $ARGUMENTS (minus flags) = fix description. If `TODO_SELECTED_JSON` exists, treat its `command_text` as the fix description and its `ref` as the already-resolved ref before any additional parsing. Otherwise, if the description contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag from the description before further processing. If a ref was found, load extended detail:
     ```bash
-  bash "{plugin-root}/scripts/todo-details.sh" get {hash}
+  bash "{plugin-root}/scripts/todo-details.sh" get <hash>
     ```
-  Command shape: `bash "{plugin-root}/scripts/todo-details.sh" get {hash}`.
+  Command shape: `bash "{plugin-root}/scripts/todo-details.sh" get <hash>`.
   Parse the JSON output. If `status` is `"ok"`, store the `detail.context` and `detail.files` values for use in step 5 and record `DETAIL_STATUS=ok`. If `status` is `"not_found"` or `"error"`, record `DETAIL_STATUS` to match and run:
     ```bash
     bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}

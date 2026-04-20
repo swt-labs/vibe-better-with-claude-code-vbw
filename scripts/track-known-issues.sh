@@ -1189,7 +1189,7 @@ promote_todos() {
     while IFS=$'\x1f' read -r old_line new_line; do
       [ -n "$old_line" ] || continue
       state_content=$(printf '%s\n' "$state_content" | OLD_LINE="$old_line" NEW_LINE="$new_line" awk '
-        { if (index($0, ENVIRON["OLD_LINE"]) > 0) print ENVIRON["NEW_LINE"]; else print }
+        { if ($0 == ENVIRON["OLD_LINE"]) print ENVIRON["NEW_LINE"]; else print }
       ')
     done <<< "$line_updates"
   fi
