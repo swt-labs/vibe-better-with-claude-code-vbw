@@ -207,7 +207,7 @@ write_round_summary_with_known_issue_outcomes() {
   [ "$output" = "FIGIRegistryServiceTests" ]
 }
 
-@test "track-known-issues: round verification with no issues preserves existing registry" {
+@test "track-known-issues: round verification with no issues clears existing registry" {
   write_summary_with_preexisting "03-01-SUMMARY.md" "03-01" 'TransferMatchingServiceTests.swift: debugTestConfiguration missing'
   bash "$SCRIPT" sync-summaries "$PHASE_DIR" >/dev/null
   write_verification_with_issues "remediation/qa/round-01/R01-VERIFICATION.md" ''
@@ -215,9 +215,9 @@ write_round_summary_with_known_issue_outcomes() {
   run bash "$SCRIPT" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"known_issues_status=present"* ]]
-  [[ "$output" == *"known_issues_count=1"* ]]
-  [ -f "$PHASE_DIR/known-issues.json" ]
+  [[ "$output" == *"known_issues_status=missing"* ]]
+  [[ "$output" == *"known_issues_count=0"* ]]
+  [ ! -f "$PHASE_DIR/known-issues.json" ]
 }
 
 @test "track-known-issues: round verification with no prior registry and no issues stays empty" {

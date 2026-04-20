@@ -764,15 +764,6 @@ sync_verification() {
     if [ "$existing_state" = "malformed" ]; then
       existing_json='[]'
     fi
-    local incoming_count
-    incoming_count=$(printf '%s' "$incoming_json" | jq 'length' 2>/dev/null || echo 0)
-    if [ "$incoming_count" -eq 0 ] && [ "$existing_state" = "present" ]; then
-      # Empty incoming from round verification means "no data about pre-existing
-      # issues" (QA omitted the section or it was empty). Preserve existing
-      # registry rather than deleting it — the existing state is authoritative.
-      status_output "$existing_state" "$(printf '%s' "$existing_json" | jq 'length')"
-      return 0
-    fi
     final_json=$(replace_issue_set "$existing_json" "$incoming_json")
     write_registry "$final_json"
     return 0

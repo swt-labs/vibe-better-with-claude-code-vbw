@@ -64,9 +64,15 @@ snapshot_validate_schema() {
   printf '%s' "$json_input" | jq -e '
     type == "object"
     and (.status | type == "string")
-    and (.state_path? | type == "string" or .state_path == null)
-    and (.section? | type == "string" or .section == null)
-    and (.items | type == "array")
+    and (
+      if .status == "error" then
+        (.message | type == "string")
+      else
+        (.state_path? | type == "string" or .state_path == null)
+        and (.section? | type == "string" or .section == null)
+        and (.items | type == "array")
+      end
+    )
   ' >/dev/null 2>&1
 }
 

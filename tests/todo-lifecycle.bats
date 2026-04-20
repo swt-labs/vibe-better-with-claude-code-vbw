@@ -88,6 +88,19 @@ select_snapshot_item() {
   [[ "$output" == *'snapshot_missing'* ]]
 }
 
+@test "todo-lifecycle: snapshot-save preserves list error payloads without masking them" {
+  ERROR_JSON='{"status":"error","message":"STATE.md not found at .vbw-planning/STATE.md. Run /vbw:init to set up your project."}'
+
+  run bash -lc 'printf "%s" "$1" | bash "$2" snapshot-save' -- "$ERROR_JSON" "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+
+  run bash "$SCRIPT" snapshot-show
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "error" ]
+  [[ "$output" == *'STATE.md not found'* ]]
+}
+
 @test "todo-lifecycle: snapshot-select preserves filtered numbering and section index" {
   write_state_with_recent_activity
   save_snapshot high
