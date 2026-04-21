@@ -90,6 +90,38 @@ teardown() {
   [ -f "$VBW_PLANNING_DIR/debugging/active/$first_session_name" ]
 }
 
+@test "start-with-selected-todo builds Source Todo from selected todo without detail" {
+  run bash -lc 'printf %s "$1" | bash "$2" start-with-selected-todo "$3" "selected-todo-no-detail" none' -- \
+    '{"command_text":"Investigate parser crash","normalized_text":"Investigate parser crash","line":"- [HIGH] Investigate parser crash (added 2026-04-01) (ref:abcd1234)","ref":"abcd1234"}' \
+    "$SCRIPTS_DIR/debug-session-state.sh" \
+    "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  eval "$output"
+  [ -f "$session_file" ]
+  grep -q '\*\*Text:\*\* Investigate parser crash' "$session_file"
+  grep -q '\*\*Raw Line:\*\* - \[HIGH\] Investigate parser crash' "$session_file"
+  grep -q '\*\*Ref:\*\* abcd1234' "$session_file"
+  grep -q '\*\*Detail Status:\*\* none' "$session_file"
+  grep -q 'None recorded\.' "$session_file"
+  grep -q 'No persisted detail context\.' "$session_file"
+}
+
+@test "start-with-selected-todo builds Source Todo from selected todo and detail helper output" {
+  run env TODO_DETAIL_RESULT_JSON='{"status":"ok","detail":{"context":"Persisted detail context","files":["src/parser.sh","tests/parser.bats"]}}' \
+    bash -lc 'printf %s "$1" | bash "$2" start-with-selected-todo "$3" "selected-todo-with-detail" ok' -- \
+    '{"command_text":"Investigate parser crash","line":"- Investigate parser crash (ref:abcd1234)","ref":"abcd1234"}' \
+    "$SCRIPTS_DIR/debug-session-state.sh" \
+    "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  eval "$output"
+  [ -f "$session_file" ]
+  grep -q '\*\*Text:\*\* Investigate parser crash' "$session_file"
+  grep -q '\*\*Detail Status:\*\* ok' "$session_file"
+  grep -q 'src/parser.sh' "$session_file"
+  grep -q 'tests/parser.bats' "$session_file"
+  grep -q 'Persisted detail context' "$session_file"
+}
+
 # ── get ──────────────────────────────────────────────────
 
 @test "get returns none when no active session" {

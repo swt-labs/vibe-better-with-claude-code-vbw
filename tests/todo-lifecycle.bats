@@ -118,6 +118,47 @@ select_snapshot_item() {
   [ "$(echo "$output" | jq -r '.status')" = "ok" ]
 }
 
+@test "todo-lifecycle: list-with-snapshot returns full metadata and writes the exact snapshot" {
+  write_state_with_recent_activity
+
+  run bash "$LIST_SCRIPT" high
+  [ "$status" -eq 0 ]
+  EXPECTED_JSON="$output"
+
+  run bash "$SCRIPT" list-with-snapshot high
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -cS '.')" = "$(printf '%s' "$EXPECTED_JSON" | jq -cS '.')" ]
+  [ "$(printf '%s' "$output" | jq -r '.items[0].command_text')" = "Refactor auth module" ]
+  [ "$(printf '%s' "$output" | jq -r '.items[0].section_index')" = "2" ]
+
+  run bash "$SCRIPT" snapshot-show
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -cS '.')" = "$(printf '%s' "$EXPECTED_JSON" | jq -cS '.')" ]
+}
+
+@test "todo-lifecycle: validate-item returns status ok for a matching live selection" {
+  write_state_with_recent_activity
+  save_snapshot
+  ITEM_JSON=$(select_snapshot_item 1)
+
+  run bash -lc 'printf "%s" "$1" | bash "$2" validate-item' -- "$ITEM_JSON" "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [ "$(echo "$output" | jq -r '.normalized_text')" = "Fix parser bug" ]
+}
+
+@test "resolve-todo-item: validate-live returns status ok for a matching selection" {
+  write_state_with_recent_activity
+
+  run bash "$SCRIPT" list-with-snapshot
+  [ "$status" -eq 0 ]
+
+  run bash "$RESOLVE_SCRIPT" 1 --session-snapshot --validate-live
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [ "$(echo "$output" | jq -r '.selection_source')" = "snapshot" ]
+}
+
 @test "todo-lifecycle: snapshot-select preserves filtered numbering and section index" {
   write_state_with_recent_activity
   save_snapshot high

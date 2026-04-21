@@ -4,6 +4,7 @@ set -euo pipefail
 # todo-lifecycle.sh — shared deterministic todo snapshot, validation, and mutation helper.
 #
 # Commands:
+#   list-with-snapshot [filter]   Run list-todos.sh, persist last-view snapshot, return original JSON
 #   snapshot-save                 Read list-todos JSON from stdin and persist last-view snapshot
 #   snapshot-show                 Print persisted snapshot JSON
 #   snapshot-select <N> [--require-unfiltered]
@@ -50,7 +51,7 @@ ok_json() {
 }
 
 usage() {
-  error_json "usage" "Usage: todo-lifecycle.sh <snapshot-save|snapshot-show|snapshot-select|validate-item|detail-warning|pickup|remove> [args]"
+  error_json "usage" "Usage: todo-lifecycle.sh <list-with-snapshot|snapshot-save|snapshot-show|snapshot-select|validate-item|detail-warning|pickup|remove> [args]"
 }
 
 read_stdin() {
@@ -113,6 +114,20 @@ snapshot_save() {
     return 0
   fi
   ok_json --arg status "ok" --arg path "$SNAPSHOT_PATH" '{status:$status, path:$path}'
+}
+
+list_with_snapshot() {
+  local output_json snapshot_result snapshot_status
+
+  output_json=$(bash "$SCRIPT_DIR/list-todos.sh" "$@" 2>/dev/null || true)
+  snapshot_result=$(snapshot_save <<< "$output_json")
+  snapshot_status=$(printf '%s' "$snapshot_result" | jq -r '.status // "error"' 2>/dev/null || echo 'error')
+  if [ "$snapshot_status" != "ok" ]; then
+    printf '%s\n' "$snapshot_result"
+    return 0
+  fi
+
+  printf '%s\n' "$output_json"
 }
 
 snapshot_show() {
@@ -330,13 +345,19 @@ validate_item_against_live() {
 }
 
 validate_item_cmd() {
-  local item_json
+  local item_json validated_json validated_status
   item_json=$(read_stdin)
   if ! printf '%s' "$item_json" | jq empty >/dev/null 2>&1; then
     error_json "invalid_item" "Todo selection payload is invalid. Rerun /vbw:list-todos."
     return 0
   fi
-  validate_item_against_live "$item_json"
+  validated_json=$(validate_item_against_live "$item_json")
+  validated_status=$(printf '%s' "$validated_json" | jq -r '.status // "ok"' 2>/dev/null || echo 'error')
+  if [ "$validated_status" = "error" ]; then
+    printf '%s\n' "$validated_json"
+    return 0
+  fi
+  printf '%s' "$validated_json" | jq -c '. + {status:"ok"}'
 }
 
 append_activity_line_to_file() {
@@ -700,6 +721,9 @@ mutate_item() {
 }
 
 case "$CMD" in
+  list-with-snapshot)
+    list_with_snapshot "$@"
+    ;;
   snapshot-save)
     snapshot_save
     ;;
