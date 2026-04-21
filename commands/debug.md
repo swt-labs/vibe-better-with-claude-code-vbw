@@ -42,11 +42,11 @@ If the selected item has a non-null `ref`, load detail immediately — before se
 ```bash
 bash "{plugin-root}/scripts/todo-details.sh" get {hash}
 ```
-If `status` is `"ok"`, store `DETAIL_STATUS=ok`, `detail.context`, and `detail.files` for later use. If `status` is `"not_found"` or `"error"`, record the matching `DETAIL_STATUS` value and run:
+If `status` is `"ok"`, store `DETAIL_STATUS=ok`, store the exact helper stdout as `TODO_DETAIL_RESULT_JSON`, and store `detail.context` plus `detail.files` for later use. If `status` is `"not_found"` or `"error"`, clear `TODO_DETAIL_RESULT_JSON`, record the matching `DETAIL_STATUS` value, and run:
 ```bash
 bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
 ```
-Continue without detail.
+Continue without detail. If the selected item has no ref, use `DETAIL_STATUS=none` and `TODO_DETAIL_RESULT_JSON=""`.
 
 If `status` is `"error"`, STOP with the resolver's `message` value.
 
@@ -72,9 +72,29 @@ Resolve or create the debug session before any investigation. Order of precedenc
    ```bash
    BUG_DESC=$(printf '%s' "$ARGUMENTS" | sed -E 's/[[:space:]]*\(ref:[^)]+\)//g' | sed -E 's/(^|[[:space:]])--(competing|parallel|serial)([[:space:]]|$)/ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | tr -s '[:space:]' ' ')
    SLUG=$(printf '%s' "$BUG_DESC" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
-  eval "$(printf '%s' "$SOURCE_TODO_JSON" | bash "{plugin-root}/scripts/debug-session-state.sh" start-with-source-todo .vbw-planning "$SLUG")"
+   if [ "${TODO_SELECTED:-false}" = "true" ]; then
+     eval "$(printf '%s' "$TODO_SELECTED_JSON" | TODO_DETAIL_RESULT_JSON="${TODO_DETAIL_RESULT_JSON:-}" bash "{plugin-root}/scripts/debug-session-state.sh" start-with-selected-todo .vbw-planning "$SLUG" "${DETAIL_STATUS:-none}")"
+   else
+     MANUAL_REF="${REF_HASH:-none}"
+     MANUAL_DETAIL_CONTEXT=""
+     MANUAL_DETAIL_FILES='[]'
+     if [ "${DETAIL_STATUS:-none}" = "ok" ] && [ -n "${TODO_DETAIL_RESULT_JSON:-}" ]; then
+       MANUAL_DETAIL_CONTEXT=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -r '.detail.context // empty' 2>/dev/null || echo "")
+       MANUAL_DETAIL_FILES=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -c '(.detail.files // []) | if type == "array" then . else [] end' 2>/dev/null || printf '[]')
+     fi
+     eval "$(jq -cn \
+       --arg mode "source-todo" \
+       --arg text "$BUG_DESC" \
+       --arg raw_line "none" \
+       --arg ref "$MANUAL_REF" \
+       --arg detail_status "${DETAIL_STATUS:-none}" \
+       --argjson related_files "$MANUAL_DETAIL_FILES" \
+       --arg detail_context "$MANUAL_DETAIL_CONTEXT" \
+       '{mode:$mode, text:$text, raw_line:$raw_line, ref:$ref, detail_status:$detail_status, related_files:$related_files, detail_context:$detail_context}' \
+       | bash "{plugin-root}/scripts/debug-session-state.sh" start-with-source-todo .vbw-planning "$SLUG")"
+   fi
    ```
-  Build `SOURCE_TODO_JSON` deterministically before this call. It must include at minimum the normalized todo text, raw todo line, ref (or `none`), detail-load status, related files, and persisted detail context when available. The helper owns session creation, `## Source Todo` persistence, and rollback on source-todo write failure.
+   The selected-todo helper owns the numbered `/vbw:list-todos` source-todo payload normalization, `## Source Todo` persistence, and rollback on write failure. Keep manual/freeform debug starts on the existing `start-with-source-todo` path.
 
   Only after the source-todo write succeeds, and only when `TODO_SELECTED=true`, pipe `TODO_SELECTED_JSON` into:
   ```bash
@@ -100,20 +120,20 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
 </debug_session_routing>
 
 ## Steps
-1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`) from $ARGUMENTS and store them separately for Step 2 routing. If `TODO_SELECTED_JSON` already exists from the numeric-selection path above, reuse its `command_text` as the bug description, reuse its `ref`, and reuse the already-loaded `DETAIL_STATUS`, `detail.context`, and `detail.files` values — do not call `todo-details.sh` a second time. Otherwise, if the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
-    ```bash
-    bash "{plugin-root}/scripts/todo-details.sh" get {hash}
-    ```
-  Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for use in Step 4. If `status` is `"not_found"` or `"error"`, run:
-  ```bash
-  bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
-  ```
-  In all cases, continue without detail.
-    If no ref suffix, $ARGUMENTS minus flags = bug description.
-    **Post-parse validation:** If the bug description is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the investigation context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:debug \"description of the bug or error message\" [--competing|--parallel|--serial]"`.
-    Map effort: thorough=high, balanced/fast=medium, turbo=low.
-    Keep effort profile as `EFFORT_PROFILE` (thorough|balanced|fast|turbo).
-    Read `{plugin-root}/references/effort-profile-{profile}.md`.
+1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`) from $ARGUMENTS and store them separately for Step 2 routing. If `TODO_SELECTED_JSON` already exists from the numeric-selection path above, reuse its `command_text` as the bug description, reuse its `ref`, and reuse the already-loaded `DETAIL_STATUS`, `TODO_DETAIL_RESULT_JSON`, `detail.context`, and `detail.files` values — do not call `todo-details.sh` a second time. Otherwise, if the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash as `REF_HASH` and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
+   ```bash
+   bash "{plugin-root}/scripts/todo-details.sh" get {hash}
+   ```
+   Parse the JSON output. If `status` is `"ok"`, store `DETAIL_STATUS=ok`, store the exact helper stdout as `TODO_DETAIL_RESULT_JSON`, and store `detail.context` plus `detail.files` for use in Step 4. If `status` is `"not_found"` or `"error"`, clear `TODO_DETAIL_RESULT_JSON`, record the matching `DETAIL_STATUS` value, and run:
+   ```bash
+   bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
+   ```
+   In all cases, continue without detail.
+   If no ref suffix, $ARGUMENTS minus flags = bug description, `DETAIL_STATUS=none`, and `TODO_DETAIL_RESULT_JSON=""`.
+   **Post-parse validation:** If the bug description is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the investigation context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:debug \"description of the bug or error message\" [--competing|--parallel|--serial]"`.
+   Map effort: thorough=high, balanced/fast=medium, turbo=low.
+   Keep effort profile as `EFFORT_PROFILE` (thorough|balanced|fast|turbo).
+   Read `{plugin-root}/references/effort-profile-{profile}.md`.
 
 2. **Classify ambiguity:** 2+ signals = ambiguous.
   Keywords: "intermittent/sometimes/random/unclear/inconsistent/flaky/sporadic/nondeterministic",
@@ -122,20 +142,20 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
   `--serial` = never.
 
 3. **Routing decision + delegation marker:** Read prefer_teams config:
-    ```bash
-  PREFER_TEAMS=$(bash "{plugin-root}/scripts/normalize-prefer-teams.sh" .vbw-planning/config.json 2>/dev/null || echo "auto")
-    ```
+   ```bash
+   PREFER_TEAMS=$(bash "{plugin-root}/scripts/normalize-prefer-teams.sh" .vbw-planning/config.json 2>/dev/null || echo "auto")
+   ```
 
-    Before spawning any agent, activate the delegation guard:
-    ```bash
-    bash "{plugin-root}/scripts/delegated-workflow.sh" set debug "$EFFORT_PROFILE"
-    ```
+   Before spawning any agent, activate the delegation guard:
+   ```bash
+   bash "{plugin-root}/scripts/delegated-workflow.sh" set debug "$EFFORT_PROFILE"
+   ```
 
-    Decision tree:
+   Decision tree:
 
-    - `prefer_teams='always'`: Use Path A (team) for ALL bugs, regardless of effort or ambiguity
-    - `prefer_teams='auto'`: Use Path A (team) only if effort=high AND ambiguous, else Path B
-    - `prefer_teams='never'`: Always use Path B (single debugger, no team). Overrides effort and ambiguity.
+   - `prefer_teams='always'`: Use Path A (team) for ALL bugs, regardless of effort or ambiguity
+   - `prefer_teams='auto'`: Use Path A (team) only if effort=high AND ambiguous, else Path B
+   - `prefer_teams='never'`: Always use Path B (single debugger, no team). Overrides effort and ambiguity.
 
 4. **Spawn investigation:**
     **Path A: Competing Hypotheses** (prefer_teams='always' OR (prefer_teams!='never' AND effort=high AND ambiguous)):
@@ -292,23 +312,23 @@ fi
 **QA orchestration (absorbed from /vbw:qa debug-session mode):**
 
 1. Compile QA context:
-   ```bash
+  ```bash
   QA_CONTEXT=$(bash "{plugin-root}/scripts/compile-debug-session-context.sh" "$session_file" qa)
-   ```
+  ```
 
-2. Resolve tier from effort profile: fast=quick, balanced=standard, thorough=deep. Store as `ACTIVE_TIER`. If turbo:
-   ```bash
+1. Resolve tier from effort profile: fast=quick, balanced=standard, thorough=deep. Store as `ACTIVE_TIER`. If turbo:
+  ```bash
   bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning uat_pending
-   ```
+  ```
    Then jump directly to `<debug_inline_uat>` below — skip all remaining QA steps (do not increment QA round).
 
-3. Increment QA round:
-   ```bash
+1. Increment QA round:
+  ```bash
   eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" increment-qa .vbw-planning)"
-   ```
+  ```
 
-4. Resolve QA model and max turns:
-   ```bash
+1. Resolve QA model and max turns:
+  ```bash
   if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$EFFORT_PROFILE"); then
     echo "$AGENT_SETTINGS" >&2
     exit 1
@@ -316,9 +336,9 @@ fi
   eval "$AGENT_SETTINGS"
   QA_MODEL="$RESOLVED_MODEL"
   QA_MAX_TURNS="$RESOLVED_MAX_TURNS"
-   ```
+  ```
 
-5. Spawn vbw-qa as subagent via Task tool for debug-session verification. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`.**
+1. Spawn vbw-qa as subagent via Task tool for debug-session verification. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`.**
 
    Task description for debug-session QA:
    ```text
@@ -342,28 +362,30 @@ fi
    Format each check as: ID | Description | Status (PASS/FAIL) | Evidence
    ```
 
-6. Process the QA result:
-   - Parse the verdict (PASS/FAIL/PARTIAL) from the QA agent's response.
-   - Write the QA round to the session file:
-     ```bash
-     QA_RESULT_JSON=$(cat <<'ENDJSON'
-     {
-       "mode": "qa",
-       "round": {qa_round},
-       "result": "{PASS|FAIL|PARTIAL}",
-       "checks": [
-         {"id": "{check-id}", "description": "{check description}", "status": "{PASS|FAIL}", "evidence": "{evidence}"}
-       ]
-     }
-     ENDJSON
-     )
-    echo "$QA_RESULT_JSON" | bash "{plugin-root}/scripts/write-debug-session.sh" "$session_file"
-     ```
-   - Update session status based on result:
-     - PASS → `bash .../debug-session-state.sh set-status .vbw-planning uat_pending`
-     - FAIL or PARTIAL → `bash .../debug-session-state.sh set-status .vbw-planning qa_failed`
+2. Process the QA result:
+   Parse the verdict (PASS/FAIL/PARTIAL) from the QA agent's response.
 
-7. Present debug-session QA result:
+   Write the QA round to the session file:
+   ```bash
+   QA_RESULT_JSON=$(cat <<'ENDJSON'
+   {
+     "mode": "qa",
+     "round": {qa_round},
+     "result": "{PASS|FAIL|PARTIAL}",
+     "checks": [
+       {"id": "{check-id}", "description": "{check description}", "status": "{PASS|FAIL}", "evidence": "{evidence}"}
+     ]
+   }
+   ENDJSON
+   )
+   echo "$QA_RESULT_JSON" | bash "{plugin-root}/scripts/write-debug-session.sh" "$session_file"
+   ```
+
+   Update session status based on result:
+   - PASS → `bash .../debug-session-state.sh set-status .vbw-planning uat_pending`
+   - FAIL or PARTIAL → `bash .../debug-session-state.sh set-status .vbw-planning qa_failed`
+
+3. Present debug-session QA result:
    Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -419,23 +441,23 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
 **UAT orchestration (absorbed from /vbw:verify debug-session mode):**
 
 1. Compile UAT context:
-   ```bash
+  ```bash
   UAT_CONTEXT=$(bash "{plugin-root}/scripts/compile-debug-session-context.sh" "$session_file" uat)
-   ```
+  ```
 
-2. Increment UAT round:
-   ```bash
+1. Increment UAT round:
+  ```bash
   eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" increment-uat .vbw-planning)"
-   ```
+  ```
 
-3. Generate 1-3 UAT checkpoints from the session context. These must require HUMAN judgment:
+1. Generate 1-3 UAT checkpoints from the session context. These must require HUMAN judgment:
    - Reproduce the original bug — is it fixed?
    - Check related workflows — any regressions visible?
    - Verify the fix from the user's perspective
 
    **Guardrails:** Never ask the user to run automated checks (tests, lint, build commands) — those belong in QA. If the fix is purely internal (test-infra, script-only, non-user-facing), fall back to a single lightweight checkpoint: "Does the app still work as expected from your perspective?" rather than generating inapplicable user-facing scenarios.
 
-4. Present checkpoints one at a time using CHECKPOINT + AskUserQuestion:
+2. Present checkpoints one at a time using CHECKPOINT + AskUserQuestion:
 
    Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
    ```text
@@ -460,12 +482,12 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
 
    **AskUserQuestion is a tool call (NON-NEGOTIABLE):** You MUST invoke AskUserQuestion via the tool_use mechanism — never emit the question parameters as text, YAML, or any other inline format in your response body. If AskUserQuestion appears in your text output instead of as a tool call, the checkpoint will not be presented to the user and the session will end prematurely. **STOP HERE and wait for the user to respond.** Process one checkpoint at a time.
 
-5. Response mapping (same rules as /vbw:verify; AskUserQuestion automatically provides a freeform "Other" option):
+3. Response mapping (same rules as /vbw:verify; AskUserQuestion automatically provides a freeform "Other" option):
    - "Pass" → record as passed
    - "Skip" → record as skipped
    - Freeform text via "Other" → treat as issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic=minor, default=major)
 
-6. After all checkpoints, persist the UAT round:
+4. After all checkpoints, persist the UAT round:
    ```bash
    UAT_RESULT_JSON=$(cat <<'ENDJSON'
    {
@@ -481,14 +503,14 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
    }
    ENDJSON
    )
-  echo "$UAT_RESULT_JSON" | bash "{plugin-root}/scripts/write-debug-session.sh" "$session_file"
+   echo "$UAT_RESULT_JSON" | bash "{plugin-root}/scripts/write-debug-session.sh" "$session_file"
    ```
 
-7. Update session status:
+5. Update session status:
    - All checkpoints pass (no issues) → `bash .../debug-session-state.sh set-status .vbw-planning complete`
    - Any issues found → `bash .../debug-session-state.sh set-status .vbw-planning uat_failed`
 
-8. Present debug-session UAT result:
+6. Present debug-session UAT result:
    Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -571,7 +571,7 @@ case "$MODE" in
     ;;
 
   *)
-    echo "Error: unknown mode '$MODE'. Valid: investigation, qa, uat, status" >&2
+    echo "Error: unknown mode '$MODE'. Valid: source-todo, investigation, qa, uat, status" >&2
     exit 1
     ;;
 esac

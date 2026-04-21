@@ -4,6 +4,7 @@ set -euo pipefail
 # todo-lifecycle.sh — shared deterministic todo snapshot, validation, and mutation helper.
 #
 # Commands:
+#   list-with-snapshot [filter]   Run list-todos.sh, persist last-view snapshot, return original JSON
 #   snapshot-save                 Read list-todos JSON from stdin and persist last-view snapshot
 #   snapshot-show                 Print persisted snapshot JSON
 #   snapshot-select <N> [--require-unfiltered]
@@ -50,7 +51,7 @@ ok_json() {
 }
 
 usage() {
-  error_json "usage" "Usage: todo-lifecycle.sh <snapshot-save|snapshot-show|snapshot-select|validate-item|detail-warning|pickup|remove> [args]"
+  error_json "usage" "Usage: todo-lifecycle.sh <list-with-snapshot|snapshot-save|snapshot-show|snapshot-select|validate-item|detail-warning|pickup|remove> [args]"
 }
 
 read_stdin() {
@@ -66,15 +67,84 @@ make_temp_with_suffix() {
 snapshot_validate_schema() {
   local json_input="$1"
   printf '%s' "$json_input" | jq -e '
+    def non_empty_string: type == "string" and length > 0;
+    def positive_integer: type == "number" and floor == . and . > 0;
+    def valid_section: . == "## Todos" or . == "### Pending Todos";
+    def maybe_filter: . == null or (type == "string" and length > 0);
+    def maybe_ref: . == null or (type == "string" and test("^[a-f0-9]{8}$"));
+    def maybe_known_issue_signature:
+      . == null
+      or (
+        type == "object"
+        and ((keys_unsorted - ["phase", "phase_dir", "test", "file", "error", "source_kind", "disposition", "source_path"]) | length == 0)
+        and ([.phase, .phase_dir, .test, .file, .error, .source_kind, .disposition, .source_path] | all(. == null or (type == "string")))
+      );
+    def valid_item($state_path; $section):
+      type == "object"
+      and (.state_path | non_empty_string)
+      and (.state_path == $state_path)
+      and (.section | valid_section)
+      and (.section == $section)
+      and (.line | non_empty_string)
+      and (.normalized_text | non_empty_string)
+      and (.section_index | positive_integer)
+      and (.num | positive_integer)
+      and (.identity_occurrence | positive_integer)
+      and (.identity_total | positive_integer)
+      and (.ref | maybe_ref)
+      and (.known_issue_signature | maybe_known_issue_signature);
+    def identity_of:
+      {
+        normalized_text: (.normalized_text // ""),
+        ref: (.ref // null),
+        known_issue_signature: (.known_issue_signature // null)
+      };
+    def item_nums_are_sequential:
+      . as $items
+      | to_entries
+      | all(.value.num == (.key + 1));
+    def unfiltered_identity_ordinals_match:
+      . as $items
+      | to_entries
+      | all(
+          (.key + 1) as $num
+          | (.value | identity_of) as $id
+          | (.value.identity_occurrence == ([range(0; $num) as $j | $items[$j] | select(identity_of == $id)] | length))
+            and (.value.identity_total == ([ $items[] | select(identity_of == $id) ] | length))
+        );
+
     type == "object"
     and (.status | type == "string")
     and (
       if .status == "error" then
         (.message | type == "string")
+        and (if has("filter") then (.filter | maybe_filter) else true end)
+        and (if has("items") then (.items | type == "array") else true end)
+      elif .status == "empty" then
+        (has("state_path") and (.state_path | non_empty_string))
+        and (has("section") and .section == null)
+        and (has("count") and .count == 0)
+        and (has("filter") and (.filter | maybe_filter))
+        and (has("items") and (.items | type == "array") and (.items | length == 0))
+      elif .status == "no-match" then
+        (has("state_path") and (.state_path | non_empty_string))
+        and (has("section") and (.section | valid_section))
+        and (has("count") and .count == 0)
+        and (has("filter") and (.filter | type == "string" and length > 0))
+        and (has("items") and (.items | type == "array") and (.items | length == 0))
+      elif .status == "ok" then
+        . as $snapshot
+        | (has("state_path") and (.state_path | non_empty_string))
+          and (has("section") and (.section | valid_section))
+          and (has("count") and (.count | positive_integer))
+          and (has("filter") and (.filter | maybe_filter))
+          and (has("items") and (.items | type == "array") and (.items | length > 0))
+          and (.count == (.items | length))
+          and ([.items[] | valid_item($snapshot.state_path; $snapshot.section)] | all)
+          and (.items | item_nums_are_sequential)
+          and (if .filter == null then (.items | unfiltered_identity_ordinals_match) else true end)
       else
-        (.state_path? | type == "string" or .state_path == null)
-        and (.section? | type == "string" or .section == null)
-        and (.items | type == "array")
+        false
       end
     )
   ' >/dev/null 2>&1
@@ -113,6 +183,20 @@ snapshot_save() {
     return 0
   fi
   ok_json --arg status "ok" --arg path "$SNAPSHOT_PATH" '{status:$status, path:$path}'
+}
+
+list_with_snapshot() {
+  local output_json snapshot_result snapshot_status
+
+  output_json=$(bash "$SCRIPT_DIR/list-todos.sh" "$@" 2>/dev/null || true)
+  snapshot_result=$(snapshot_save <<< "$output_json")
+  snapshot_status=$(printf '%s' "$snapshot_result" | jq -r '.status // "error"' 2>/dev/null || echo 'error')
+  if [ "$snapshot_status" != "ok" ]; then
+    printf '%s\n' "$snapshot_result"
+    return 0
+  fi
+
+  printf '%s\n' "$output_json"
 }
 
 snapshot_show() {
@@ -330,13 +414,19 @@ validate_item_against_live() {
 }
 
 validate_item_cmd() {
-  local item_json
+  local item_json validated_json validated_status
   item_json=$(read_stdin)
   if ! printf '%s' "$item_json" | jq empty >/dev/null 2>&1; then
     error_json "invalid_item" "Todo selection payload is invalid. Rerun /vbw:list-todos."
     return 0
   fi
-  validate_item_against_live "$item_json"
+  validated_json=$(validate_item_against_live "$item_json")
+  validated_status=$(printf '%s' "$validated_json" | jq -r '.status // "ok"' 2>/dev/null || echo 'error')
+  if [ "$validated_status" = "error" ]; then
+    printf '%s\n' "$validated_json"
+    return 0
+  fi
+  printf '%s' "$validated_json" | jq -c '. + {status:"ok"}'
 }
 
 append_activity_line_to_file() {
@@ -700,6 +790,9 @@ mutate_item() {
 }
 
 case "$CMD" in
+  list-with-snapshot)
+    list_with_snapshot "$@"
+    ;;
   snapshot-save)
     snapshot_save
     ;;

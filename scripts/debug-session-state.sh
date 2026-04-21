@@ -4,6 +4,8 @@
 # Usage:
 #   debug-session-state.sh start           <planning-dir> <slug>         → creates session, prints session_id
 #   debug-session-state.sh start-with-source-todo <planning-dir> <slug>  → creates session, writes Source Todo from stdin, rolls back on failure
+#   debug-session-state.sh start-with-selected-todo <planning-dir> <slug> <detail-status>
+#                                                               → creates session from selected todo JSON + detail helper output
 #   debug-session-state.sh get             <planning-dir>                → prints active session metadata
 #   debug-session-state.sh get-or-latest   <planning-dir>                → active session or latest unresolved
 #   debug-session-state.sh resume          <planning-dir> <session-id>   → sets active pointer to session
@@ -42,6 +44,7 @@ ACTIVE_FILE="$DEBUG_DIR/.active-session"
 
 # Valid status values
 VALID_STATUSES="investigating fix_applied qa_pending qa_failed uat_pending uat_failed complete"
+VALID_DETAIL_STATUSES="ok not_found error none"
 
 validate_status() {
   local s="$1"
@@ -49,6 +52,15 @@ validate_status() {
     [ "$s" = "$v" ] && return 0
   done
   echo "Error: invalid status '$s'. Valid: $VALID_STATUSES" >&2
+  return 1
+}
+
+validate_detail_status() {
+  local s="$1"
+  for v in $VALID_DETAIL_STATUSES; do
+    [ "$s" = "$v" ] && return 0
+  done
+  echo "Error: invalid detail status '$s'. Valid: $VALID_DETAIL_STATUSES" >&2
   return 1
 }
 
@@ -415,6 +427,57 @@ ENDSESSION
   printf 'session_file=%q\n' "$session_file"
 }
 
+build_source_todo_from_selected() {
+  local detail_status="$1"
+  local selected_json detail_result_json text raw_line ref related_files detail_context detail_result_status
+
+  validate_detail_status "$detail_status" || return 1
+
+  selected_json=$(cat)
+  if ! printf '%s' "$selected_json" | jq empty >/dev/null 2>&1; then
+    echo "Error: invalid selected todo JSON" >&2
+    return 1
+  fi
+
+  detail_result_json="${TODO_DETAIL_RESULT_JSON:-}"
+  if [ -n "$detail_result_json" ] && ! printf '%s' "$detail_result_json" | jq empty >/dev/null 2>&1; then
+    echo "Error: invalid TODO_DETAIL_RESULT_JSON payload" >&2
+    return 1
+  fi
+
+  text=$(printf '%s' "$selected_json" | jq -r '.command_text // .normalized_text // .text // "none"')
+  raw_line=$(printf '%s' "$selected_json" | jq -r '.line // .text // "none"')
+  ref=$(printf '%s' "$selected_json" | jq -r '.ref // "none"')
+  related_files='[]'
+  detail_context=''
+
+  if [ "$detail_status" = "ok" ]; then
+    if [ -z "$detail_result_json" ]; then
+      echo "Error: detail status ok requires TODO_DETAIL_RESULT_JSON" >&2
+      return 1
+    fi
+
+    detail_result_status=$(printf '%s' "$detail_result_json" | jq -r '.status // empty')
+    if [ "$detail_result_status" != "ok" ]; then
+      echo "Error: detail status ok requires todo-details.sh get output with status=ok" >&2
+      return 1
+    fi
+
+    related_files=$(printf '%s' "$detail_result_json" | jq -c '(.detail.files // []) | if type == "array" then . else [] end')
+    detail_context=$(printf '%s' "$detail_result_json" | jq -r '.detail.context // empty')
+  fi
+
+  jq -cn \
+    --arg mode "source-todo" \
+    --arg text "$text" \
+    --arg raw_line "$raw_line" \
+    --arg ref "$ref" \
+    --arg detail_status "$detail_status" \
+    --argjson related_files "$related_files" \
+    --arg detail_context "$detail_context" \
+    '{mode:$mode, text:$text, raw_line:$raw_line, ref:$ref, detail_status:$detail_status, related_files:$related_files, detail_context:$detail_context}'
+}
+
 start_with_source_todo() {
   local slug_input="$1"
   local source_todo_json session_output session_id session_file previous_active_pointer had_previous_pointer=0
@@ -446,6 +509,21 @@ start_with_source_todo() {
   printf '%s\n' "$session_output"
 }
 
+start_with_selected_todo() {
+  local slug_input="$1"
+  local detail_status="${2:-none}"
+  local selected_json source_todo_json
+
+  validate_detail_status "$detail_status" || return 1
+
+  selected_json=$(cat)
+  if ! source_todo_json=$(build_source_todo_from_selected "$detail_status" <<< "$selected_json"); then
+    return 1
+  fi
+
+  printf '%s' "$source_todo_json" | start_with_source_todo "$slug_input"
+}
+
 case "$CMD" in
   start)
     SLUG="${3:-}"
@@ -463,6 +541,16 @@ case "$CMD" in
       exit 1
     fi
     start_with_source_todo "$SLUG"
+    ;;
+
+  start-with-selected-todo)
+    SLUG="${3:-}"
+    DETAIL_STATUS="${4:-none}"
+    if [ -z "$SLUG" ]; then
+      echo "Usage: debug-session-state.sh start-with-selected-todo <planning-dir> <slug> <detail-status>" >&2
+      exit 1
+    fi
+    start_with_selected_todo "$SLUG" "$DETAIL_STATUS"
     ;;
 
   get)
@@ -698,7 +786,7 @@ case "$CMD" in
 
   *)
     echo "Error: unknown command '$CMD'" >&2
-    echo "Commands: start, get, get-or-latest, resume, set-status, increment-qa, increment-uat, clear-active, list" >&2
+    echo "Commands: start, start-with-source-todo, start-with-selected-todo, get, get-or-latest, resume, set-status, increment-qa, increment-uat, clear-active, list" >&2
     exit 1
     ;;
 esac
