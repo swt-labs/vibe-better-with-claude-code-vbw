@@ -16,6 +16,23 @@ uat_last_result: pending
 
 {Bug description as reported by the user. Include error messages, affected commands, reproduction steps.}
 
+## Source Todo
+
+### Selected Todo
+
+- **Text:** {Normalized todo text, or none}
+- **Raw Line:** {Original STATE.md bullet line, or none}
+- **Ref:** {8-char ref hash, or none}
+- **Detail Status:** {ok | not_found | error | none}
+
+### Related Files
+
+{Bulleted list of related files when available, otherwise `None recorded.`}
+
+### Detail Context
+
+{Persisted todo detail context when available. Omit invented content; use `No persisted detail context.` when no detail was loaded.}
+
 ## Investigation
 
 ### Hypotheses

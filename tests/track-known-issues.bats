@@ -207,7 +207,7 @@ write_round_summary_with_known_issue_outcomes() {
   [ "$output" = "FIGIRegistryServiceTests" ]
 }
 
-@test "track-known-issues: round verification with no issues preserves existing registry" {
+@test "track-known-issues: round verification with no issues clears existing registry" {
   write_summary_with_preexisting "03-01-SUMMARY.md" "03-01" 'TransferMatchingServiceTests.swift: debugTestConfiguration missing'
   bash "$SCRIPT" sync-summaries "$PHASE_DIR" >/dev/null
   write_verification_with_issues "remediation/qa/round-01/R01-VERIFICATION.md" ''
@@ -215,9 +215,9 @@ write_round_summary_with_known_issue_outcomes() {
   run bash "$SCRIPT" sync-verification "$PHASE_DIR" "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"known_issues_status=present"* ]]
-  [[ "$output" == *"known_issues_count=1"* ]]
-  [ -f "$PHASE_DIR/known-issues.json" ]
+  [[ "$output" == *"known_issues_status=missing"* ]]
+  [[ "$output" == *"known_issues_count=0"* ]]
+  [ ! -f "$PHASE_DIR/known-issues.json" ]
 }
 
 @test "track-known-issues: round verification with no prior registry and no issues stays empty" {
@@ -399,12 +399,14 @@ write_known_issues_registry() {
   run bash "$SCRIPT" promote-todos "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"promoted_count=0"* ]]
-  [[ "$output" == *"already_tracked_count=1"* ]]
-  # Only one [KNOWN-ISSUE] line (no duplicate)
+  # Existing ref-less lines are healed in place with a stable ref/signature payload.
+  [[ "$output" == *"promoted_count=1"* ]]
+  [[ "$output" == *"already_tracked_count=0"* ]]
+  # Only one [KNOWN-ISSUE] line (no duplicate) and the healed line now carries a ref.
   local count
   count=$(grep -c "\[KNOWN-ISSUE\]" "$TEST_TEMP_DIR/.vbw-planning/STATE.md")
   [ "$count" -eq 1 ]
+  grep -q '(ref:' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
 @test "track-known-issues: promote-todos replaces None placeholder" {
@@ -706,4 +708,87 @@ write_known_issues_registry() {
   [[ "$output" == *"promoted_count=1"* ]]
   grep -q "\[KNOWN-ISSUE\] SignalTrapTests (SignalTrapTests.swift): SwiftData signal trap" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "accepted as process-exception" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos honors suppression store across registry and accepted outcomes" {
+  write_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","last_seen_in":"03-01-SUMMARY.md","last_seen_round":1,"times_seen":1,"source_kind":"registry"}'
+  write_round_summary_with_known_issue_outcomes "remediation/qa/round-01/R01-SUMMARY.md" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","disposition":"accepted-process-exception","rationale":"Accepted for this phase"}'
+
+  jq -n --arg phase_dir "$PHASE_DIR" '
+    {
+      schema_version: 1,
+      phase: "03",
+      suppressions: [
+        {
+          phase: "03",
+          phase_dir: $phase_dir,
+          test: "SignalTrapTests",
+          file: "SignalTrapTests.swift",
+          error: "SwiftData signal trap",
+          source_kind: "registry",
+          disposition: "unresolved",
+          source_path: "03-01-SUMMARY.md"
+        }
+      ]
+    }
+  ' > "$PHASE_DIR/known-issue-suppressions.json"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=0"* ]]
+  [[ "$output" == *"promote_status=empty_registry"* ]]
+  grep -q '^None\.$' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: promote-todos fails safe when suppression storage is unavailable" {
+  write_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","last_seen_in":"03-01-SUMMARY.md","last_seen_round":1,"times_seen":1,"source_kind":"registry"}'
+
+  chmod u-w "$PHASE_DIR"
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+  chmod u+w "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=0"* ]]
+  [[ "$output" == *"promote_status=suppression_unavailable"* ]]
+  grep -q '^None\.$' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-known-issues: lookup-signature resolves a unique legacy registry issue" {
+  write_known_issues_registry "03" \
+    '{"test":"SignalTrapTests","file":"SignalTrapTests.swift","error":"SwiftData signal trap","last_seen_in":"03-VERIFICATION.md","last_seen_round":1,"times_seen":1,"source_kind":"registry"}'
+
+  QUERY=$(jq -cn '{test:"SignalTrapTests",file:"SignalTrapTests.swift",error:"SwiftData signal trap",disposition:"unresolved",source_path:"03-VERIFICATION.md"}')
+  run bash -lc 'printf "%s" "$1" | bash "$2" lookup-signature "$3"' -- "$QUERY" "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [ "$(echo "$output" | jq -r '.signature.test')" = "SignalTrapTests" ]
+  [ "$(echo "$output" | jq -r '.signature.file')" = "SignalTrapTests.swift" ]
+  [ "$(echo "$output" | jq -r '.signature.error')" = "SwiftData signal trap" ]
+}
+
+@test "track-known-issues: promote-todos does not collapse distinct long errors with same visible prefix" {
+  local long_prefix
+  local err_one
+  local err_two
+  long_prefix=$(printf 'prefix%.0s' {1..20})
+  err_one="${long_prefix}-first-distinct-tail"
+  err_two="${long_prefix}-second-distinct-tail"
+
+  write_state_md_with_todos "None."
+  write_known_issues_registry "03" \
+    "$(jq -cn --arg error "$err_one" '{test:"SameTest",file:"Same.swift",error:$error,last_seen_in:"03-01-SUMMARY.md",last_seen_round:1,times_seen:1,source_kind:"registry"}')" \
+    "$(jq -cn --arg error "$err_two" '{test:"SameTest",file:"Same.swift",error:$error,last_seen_in:"03-02-SUMMARY.md",last_seen_round:2,times_seen:1,source_kind:"registry"}')"
+
+  run bash "$SCRIPT" promote-todos "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"promoted_count=2"* ]]
+  [ "$(grep -c '\[KNOWN-ISSUE\] SameTest (Same.swift):' "$TEST_TEMP_DIR/.vbw-planning/STATE.md")" -eq 2 ]
 }

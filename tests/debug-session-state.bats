@@ -49,6 +49,47 @@ teardown() {
   [ "$status" -eq 1 ]
 }
 
+@test "start-with-source-todo writes Source Todo and keeps session active on success" {
+  run bash -lc 'printf %s "$1" | bash "$2" start-with-source-todo "$3" "source-todo-success"' -- \
+    '{"mode":"source-todo","text":"Investigate parser crash","raw_line":"- Investigate parser crash (ref:abcd1234)","ref":"abcd1234","detail_status":"ok","related_files":["src/parser.sh"],"detail_context":"Persisted detail"}' \
+    "$SCRIPTS_DIR/debug-session-state.sh" \
+    "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  eval "$output"
+  [ -f "$session_file" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+  grep -q '^## Source Todo$' "$session_file"
+  grep -q 'Investigate parser crash' "$session_file"
+  grep -q 'Persisted detail' "$session_file"
+}
+
+@test "start-with-source-todo rolls back the new session on writer failure" {
+  run bash -lc 'printf %s "$1" | bash "$2" start-with-source-todo "$3" "source-todo-failure"' -- \
+    'not-json' \
+    "$SCRIPTS_DIR/debug-session-state.sh" \
+    "$VBW_PLANNING_DIR"
+  [ "$status" -eq 1 ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+  run find "$VBW_PLANNING_DIR/debugging/active" -maxdepth 1 -type f -name '*.md'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "start-with-source-todo restores the prior active pointer on writer failure" {
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "first-bug")"
+  local first_session_name
+  first_session_name=$(basename "$session_file")
+
+  run bash -lc 'printf %s "$1" | bash "$2" start-with-source-todo "$3" "source-todo-failure"' -- \
+    'not-json' \
+    "$SCRIPTS_DIR/debug-session-state.sh" \
+    "$VBW_PLANNING_DIR"
+  [ "$status" -eq 1 ]
+  [ -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+  [ "$(cat "$VBW_PLANNING_DIR/debugging/.active-session")" = "$first_session_name" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/active/$first_session_name" ]
+}
+
 # ── get ──────────────────────────────────────────────────
 
 @test "get returns none when no active session" {
