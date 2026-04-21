@@ -39,7 +39,8 @@ check "INIT-02" "template has no ### Pending Todos subsection (flat)" test ! "$(
 check "TODO-01" "todo command anchors insertion on ## Todos" grep -q 'Find `## Todos`' "$TODO_CMD"
 check "TODO-02" "todo command does not reference Pending Todos" test ! "$(grep -c 'Pending Todos' "$TODO_CMD")" -gt 0
 check "TODO-03" "todo command avoids preflight plugin-root resolver shell block" test ! "$(grep -c 'VBW_CACHE_ROOT=' "$TODO_CMD")" -gt 0
-check "TODO-04" "todo command explains Bash + write-access requirement in restricted modes" grep -qi 'bash.*write access\|write access.*bash' "$TODO_CMD"
+check "TODO-04" "todo command explains Bash + write-access requirement in restricted modes" \
+  bash -c 'grep -qi "restricted" "$1" && grep -qi "bash" "$1" && grep -qi "write access" "$1"' _ "$TODO_CMD"
 # TODO-05: Contract: file contains a STOP for missing STATE.md with restart guidance.
 # Heading-agnostic — greps the whole file for the stop-message keywords.
 check "TODO-05" "todo command STOPs with restart guidance when STATE.md missing" \
