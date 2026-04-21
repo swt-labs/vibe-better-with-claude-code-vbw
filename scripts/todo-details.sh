@@ -11,7 +11,10 @@ set -euo pipefail
 # Usage:
 #   todo-details.sh add <hash> <json-detail> [registry-path]  Upsert a detail entry
 #   todo-details.sh get <hash> [registry-path]                 Retrieve detail for a hash
-#   todo-details.sh remove <hash> [registry-path]              Delete an entry
+#                                                             Falls back to legacy
+#                                                             .vbw-planning/todo-details/<hash>.json
+#   todo-details.sh remove <hash> [registry-path]              Delete an entry and legacy
+#                                                             fallback file if present
 #   todo-details.sh list [registry-path]                       Dump all entries
 #   todo-details.sh gc <state-path> [registry-path]            Remove orphaned entries
 #
@@ -63,6 +66,22 @@ ensure_registry() {
     # Reset malformed registry to empty state (fail-open: prefer data loss over blocking)
     printf '{"schema_version":1,"items":{}}\n' > "$REGISTRY_PATH"
   fi
+}
+
+planning_dir_for_registry() {
+  dirname "$REGISTRY_PATH"
+}
+
+legacy_detail_path() {
+  local hash="$1"
+  printf '%s/todo-details/%s.json\n' "$(planning_dir_for_registry)" "$hash"
+}
+
+legacy_detail_is_valid() {
+  local hash="$1"
+  local path
+  path=$(legacy_detail_path "$hash")
+  [ -f "$path" ] && jq -e 'type == "object"' "$path" >/dev/null 2>&1
 }
 
 # --- Atomic write ---
@@ -129,19 +148,25 @@ cmd_get() {
     jq -n --arg h "$hash" '{"status":"not_found","hash":$h}'
     return 0
   fi
-  if ! registry_exists || ! registry_is_valid; then
-    printf '{"status":"not_found","hash":"%s"}\n' "$hash"
+  local entry="null"
+  if registry_exists && registry_is_valid; then
+    entry=$(jq --arg h "$hash" '.items[$h] // null' "$REGISTRY_PATH")
+  fi
+
+  if [ "$entry" != "null" ]; then
+    printf '{"status":"ok","hash":"%s","detail":%s}\n' "$hash" "$entry"
     return 0
   fi
 
-  local entry
-  entry=$(jq --arg h "$hash" '.items[$h] // null' "$REGISTRY_PATH")
-
-  if [ "$entry" = "null" ]; then
-    printf '{"status":"not_found","hash":"%s"}\n' "$hash"
-  else
-    printf '{"status":"ok","hash":"%s","detail":%s}\n' "$hash" "$entry"
+  local legacy_path legacy_entry
+  legacy_path=$(legacy_detail_path "$hash")
+  if legacy_detail_is_valid "$hash"; then
+    legacy_entry=$(cat "$legacy_path")
+    printf '{"status":"ok","hash":"%s","detail":%s}\n' "$hash" "$legacy_entry"
+    return 0
   fi
+
+  printf '{"status":"not_found","hash":"%s"}\n' "$hash"
 }
 
 cmd_remove() {
@@ -157,26 +182,54 @@ cmd_remove() {
     return 0
   fi
 
-  if ! registry_exists; then
-    printf '{"status":"ok","action":"noop","message":"No registry file"}\n'
-    return 0
+  local had_key="no"
+  local registry_warning=""
+  local canonical_status="missing"
+  if registry_exists; then
+    if registry_is_valid; then
+      had_key=$(jq --arg h "$hash" 'if .items[$h] then "yes" else "no" end' -r "$REGISTRY_PATH")
+
+      local updated
+      updated=$(jq --arg h "$hash" 'del(.items[$h])' "$REGISTRY_PATH")
+      write_registry "$updated"
+      if [ "$had_key" = "yes" ]; then
+        canonical_status="removed"
+      else
+        canonical_status="noop"
+      fi
+    else
+      canonical_status="malformed"
+      registry_warning="Malformed todo-details.json; skipped canonical cleanup"
+    fi
   fi
 
-  if ! registry_is_valid; then
-    error_json "Malformed todo-details.json"
+  local had_legacy="no"
+  local legacy_path
+  legacy_path=$(legacy_detail_path "$hash")
+  if [ -f "$legacy_path" ]; then
+    rm -f "$legacy_path"
+    had_legacy="yes"
   fi
 
-  local had_key
-  had_key=$(jq --arg h "$hash" 'if .items[$h] then "yes" else "no" end' -r "$REGISTRY_PATH")
+  local legacy_removed_json=false
+  if [ "$had_legacy" = "yes" ]; then
+    legacy_removed_json=true
+  fi
 
-  local updated
-  updated=$(jq --arg h "$hash" 'del(.items[$h])' "$REGISTRY_PATH")
-  write_registry "$updated"
-
-  if [ "$had_key" = "yes" ]; then
-    printf '{"status":"ok","action":"removed","hash":"%s"}\n' "$hash"
+  if [ "$had_key" = "yes" ] || [ "$had_legacy" = "yes" ]; then
+    if [ -n "$registry_warning" ]; then
+      printf '{"status":"ok","action":"removed","hash":"%s","warning":"%s","canonical_status":"%s","legacy_removed":%s}\n' \
+        "$hash" "$registry_warning" "$canonical_status" "$legacy_removed_json"
+    else
+      printf '{"status":"ok","action":"removed","hash":"%s"}\n' "$hash"
+    fi
   else
-    printf '{"status":"ok","action":"noop","hash":"%s","message":"Key not found"}\n' "$hash"
+    if [ -n "$registry_warning" ]; then
+      printf '{"status":"ok","action":"noop","hash":"%s","message":"Key not found","warning":"%s","canonical_status":"%s","legacy_removed":%s}\n' \
+        "$hash" "$registry_warning" "$canonical_status" "$legacy_removed_json"
+    else
+      printf '{"status":"ok","action":"noop","hash":"%s","message":"Key not found"}\n' "$hash"
+    fi
   fi
 }
 
