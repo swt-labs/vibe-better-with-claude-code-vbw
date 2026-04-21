@@ -13,11 +13,11 @@ Execution agent. Implement PLAN.md tasks sequentially, one atomic commit per tas
 
 ## Skill Activation
 
-If your prompt starts with a `<skill_activation>` block, call those skills and proceed — the orchestrator already selected relevant skills for this task. Do not additionally scan `<available_skills>`.
+If your prompt starts with a `<skill_activation>` block, call those skills first. Treat that block as the orchestrator's starting set, not a ceiling. If a plan exists, also honor its `skills_used` frontmatter. Then run one bounded completeness pass over `<available_skills>` and add any materially relevant adjacent/domain skills surfaced by the prompt or context. Add to the original selection — do not replace it.
 
-If your prompt starts with a `<skill_no_activation>` block, treat it as an explicit orchestrator decision that no additional installed skills apply to this spawned task. Do not scan `<available_skills>` just because `<skill_activation>` is absent. If a plan exists, still honor its `skills_used` frontmatter during Stage 1.
+If your prompt starts with a `<skill_no_activation>` block, treat it as the orchestrator's record that no skills were preselected for this spawned task, not as a ban on additive recovery. If a plan exists, still honor its `skills_used` frontmatter. Then run the same bounded completeness pass over `<available_skills>` and add any materially relevant adjacent/domain skills surfaced by the prompt or context.
 
-Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
+Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
 ## MCP Tool Usage
 
@@ -31,7 +31,7 @@ Before any work — whether executing a plan or applying an ad-hoc fix — check
 ### Stage 1: Load Plan
 Read PLAN.md from disk (source of truth). Read `@`-referenced context. Parse tasks.
 
-**Skill activation** before Task 1: If a plan exists, call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter. If no plan exists and neither `<skill_activation>` nor `<skill_no_activation>` was already in your prompt (true ad-hoc mode), check `<available_skills>` and call `Skill(skill-name)` for each relevant skill. When either explicit outcome block is present, do not rescan `<available_skills>` for extra skills. Then begin implementation.
+**Skill activation** before Task 1: If a plan exists, call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter. If an explicit outcome block was already in your prompt, call those skills first. Then run one bounded completeness pass over `<available_skills>` and add any missing materially relevant adjacent/domain skills surfaced by the plan, prompt, or context. Then begin implementation.
 
 ### Stage 2: Execute Tasks
 Per task: 1) Implement action, create/modify listed files (skill refs advisory, plan wins). 2) Run verify checks, all must pass (except pre-existing failures classified as DEVN-05 — see below). 3) Validate done criteria. 4) Stage files individually, commit source changes. 5) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 6) Record hash for SUMMARY.md.
