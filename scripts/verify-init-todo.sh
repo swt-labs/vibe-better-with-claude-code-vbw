@@ -13,6 +13,7 @@ TEMPLATE="$ROOT/templates/STATE.md"
 TODO_CMD="$ROOT/commands/todo.md"
 LIST_CMD="$ROOT/commands/list-todos.md"
 BOOTSTRAP="$ROOT/scripts/bootstrap/bootstrap-state.sh"
+TODO_HARDCODED_HELPER_NEEDLE='/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/todo-details.sh'
 
 TOTAL_PASS=0
 TOTAL_FAIL=0
@@ -46,7 +47,7 @@ check "TODO-06" "todo command defines inline PLUGIN_ROOT resolution for helper w
 check "TODO-07" "todo command uses canonical helper path via PLUGIN_ROOT" \
   grep -Fq 'bash "${PLUGIN_ROOT}/scripts/todo-details.sh" add HASH -' "$TODO_CMD"
 check "TODO-08" "todo command never hard-codes the session symlink helper path" \
-  bash -c '! grep -Fq "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/todo-details.sh" "$1"' _ "$TODO_CMD"
+  bash -c '! grep -Fq "$2" "$1"' _ "$TODO_CMD" "$TODO_HARDCODED_HELPER_NEEDLE"
 check "TODO-09" "todo command requires parsed helper JSON with status ok before ref append" \
   bash -c 'grep -Fq "parsed stdout is valid JSON with" "$1" && grep -Fq "status=\"ok\"" "$1" && grep -Fq "(ref:HASH)" "$1"' _ "$TODO_CMD"
 check "TODO-10" "todo command requires status ok before Extended detail saved confirmation" \

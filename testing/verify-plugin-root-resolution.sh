@@ -469,7 +469,7 @@ if [ "$FAIL" -gt 0 ]; then
   exit 1
 fi
 
-echo "All drift detection checks passed."
+echo "All preamble coverage drift detection checks passed."
 
 # --- Phase 3c: todo.md non-preamble helper resolution contract ---
 echo ""
