@@ -486,6 +486,12 @@ else
   fail "todo.md missing canonical helper add command shape via PLUGIN_ROOT"
 fi
 
+if grep -Fq 'bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json' "$TODO_CMD"; then
+  pass "todo.md uses canonical planning-git command shape via PLUGIN_ROOT"
+else
+  fail "todo.md missing canonical planning-git command shape via PLUGIN_ROOT"
+fi
+
 if grep -Fq 'Store the resolved path as `PLUGIN_ROOT`' "$TODO_CMD"; then
   pass "todo.md defines a PLUGIN_ROOT resolver step before helper writes"
 else
@@ -494,6 +500,7 @@ fi
 
 resolver_line=$(grep -nF 'Store the resolved path as `PLUGIN_ROOT`' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
 add_line=$(grep -nF 'bash "${PLUGIN_ROOT}/scripts/todo-details.sh" add HASH -' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
+planning_line=$(grep -nF 'bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
 if [ -n "$resolver_line" ] && [ -n "$add_line" ]; then
   if [ "$resolver_line" -lt "$add_line" ]; then
     pass "todo.md places the PLUGIN_ROOT resolver before helper add usage"
@@ -502,6 +509,16 @@ if [ -n "$resolver_line" ] && [ -n "$add_line" ]; then
   fi
 else
   fail "todo.md ordering check missing resolver or helper add anchor"
+fi
+
+if [ -n "$resolver_line" ] && [ -n "$planning_line" ]; then
+  if [ "$resolver_line" -lt "$planning_line" ]; then
+    pass "todo.md places the PLUGIN_ROOT resolver before planning-git usage"
+  else
+    fail "todo.md places planning-git usage before the PLUGIN_ROOT resolver"
+  fi
+else
+  fail "todo.md ordering check missing resolver or planning-git anchor"
 fi
 
 for needle in \
@@ -522,6 +539,12 @@ if grep -Fq '/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/to
   fail "todo.md still hard-codes the session symlink helper path"
 else
   pass "todo.md no longer hard-codes the session symlink helper path"
+fi
+
+if grep -Fq '/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh' "$TODO_CMD"; then
+  fail "todo.md still hard-codes the session symlink planning-git path"
+else
+  pass "todo.md no longer hard-codes the session symlink planning-git path"
 fi
 
 case " $NON_PREAMBLE_COMMANDS " in

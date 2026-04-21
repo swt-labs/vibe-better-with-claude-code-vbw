@@ -710,7 +710,7 @@ Controls whether `.vbw-planning/` artifacts are committed, gitignored, or left f
 | :--- | :--- | :--- |
 | **`manual`** | Default. No commits, no gitignore. Planning files accumulate as untracked in `git status`. You manage them yourself. | When you want full control, or aren't sure yet. |
 | **`ignore`** | Adds `.vbw-planning/` to `.gitignore` during `/vbw:init`. Planning files exist locally but never enter version control. Clean `git status`. | Solo projects, prototyping, or when planning history doesn't matter. |
-| **`commit`** | Auto-commits `.vbw-planning/` artifacts at lifecycle boundaries — after bootstrap, after planning, after archive. Commit format: `chore(vbw): {action}`. Transient files (`.execution-state.json`, `.contracts/`, `.locks/`, `.token-state/`, compiled context) are excluded via `.vbw-planning/.gitignore`. | Teams that want an audit trail of planning decisions in version control. |
+| **`commit`** | Auto-commits `.vbw-planning/` artifacts (and `CLAUDE.md` when present) at helper-backed planning boundaries — for example after bootstrap, planning/discussion checkpoints, todo additions, and archive. Commit format: `chore(vbw): {action}`. Transient files (`.execution-state.json`, `.contracts/`, `.locks/`, `.token-state/`, compiled context) are excluded via `.vbw-planning/.gitignore`. | Teams that want an audit trail of planning decisions in version control. |
 
 #### `auto_push`
 

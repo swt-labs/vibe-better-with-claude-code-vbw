@@ -14,6 +14,8 @@ TODO_CMD="$ROOT/commands/todo.md"
 LIST_CMD="$ROOT/commands/list-todos.md"
 BOOTSTRAP="$ROOT/scripts/bootstrap/bootstrap-state.sh"
 TODO_HARDCODED_HELPER_NEEDLE='/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/todo-details.sh'
+TODO_HARDCODED_PLANNING_GIT_NEEDLE='/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh'
+TODO_PLANNING_GIT_CMD='bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json'
 
 TOTAL_PASS=0
 TOTAL_FAIL=0
@@ -37,7 +39,7 @@ check "INIT-02" "template has no ### Pending Todos subsection (flat)" test ! "$(
 check "TODO-01" "todo command anchors insertion on ## Todos" grep -q 'Find `## Todos`' "$TODO_CMD"
 check "TODO-02" "todo command does not reference Pending Todos" test ! "$(grep -c 'Pending Todos' "$TODO_CMD")" -gt 0
 check "TODO-03" "todo command avoids preflight plugin-root resolver shell block" test ! "$(grep -c 'VBW_CACHE_ROOT=' "$TODO_CMD")" -gt 0
-check "TODO-04" "todo command explains write-access requirement in restricted modes" grep -qi 'write access.*restricted\|restricted.*write access' "$TODO_CMD"
+check "TODO-04" "todo command explains Bash + write-access requirement in restricted modes" grep -qi 'bash.*write access\|write access.*bash' "$TODO_CMD"
 # TODO-05: Contract: file contains a STOP for missing STATE.md with restart guidance.
 # Heading-agnostic — greps the whole file for the stop-message keywords.
 check "TODO-05" "todo command STOPs with restart guidance when STATE.md missing" \
@@ -54,6 +56,29 @@ check "TODO-10" "todo command requires status ok before Extended detail saved co
   bash -c 'grep -Fq "parsed stdout is valid JSON with" "$1" && grep -Fq "Extended detail saved (ref:HASH)." "$1"' _ "$TODO_CMD"
 check "TODO-11" "todo command forbids direct per-file fallback writes" \
   grep -Fq '.vbw-planning/todo-details/HASH.json' "$TODO_CMD"
+check "TODO-12" "todo command uses planning git boundary helper via PLUGIN_ROOT" \
+  grep -Fq "$TODO_PLANNING_GIT_CMD" "$TODO_CMD"
+check "TODO-13" "todo command never hard-codes the session symlink planning-git path" \
+  bash -c '! grep -Fq "$2" "$1"' _ "$TODO_CMD" "$TODO_HARDCODED_PLANNING_GIT_NEEDLE"
+check "TODO-14" "todo command forbids bespoke git staging or commit instructions" \
+  bash -c '! grep -qE "(^|[^[:alnum:]_])git (add|commit|push)([^[:alnum:]_]|$)" "$1"' _ "$TODO_CMD"
+check "TODO-15" "todo command reuses the planning-git unavailable warning" \
+  grep -Fq 'VBW: planning-git.sh unavailable; skipping planning git boundary commit' "$TODO_CMD"
+
+write_line=$(grep -nF '3. **Add plain todo to STATE.md:**' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
+ref_line=$(grep -nF 'edit the exact todo line you just added in `STATE.md` to append `(ref:HASH)`' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
+detail_failure_line=$(grep -nF "If the helper's stdout is not valid JSON or the parsed \`status\` is anything other than \`ok\`" "$TODO_CMD" | head -1 | cut -d: -f1 || true)
+planning_line=$(grep -nF "$TODO_PLANNING_GIT_CMD" "$TODO_CMD" | head -1 | cut -d: -f1 || true)
+confirm_line=$(grep -nF '7. **Confirm:**' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
+
+check "TODO-16" "planning boundary step appears after the plain todo write step" \
+  bash -c '[ -n "$1" ] && [ -n "$2" ] && [ "$1" -lt "$2" ]' _ "$write_line" "$planning_line"
+check "TODO-17" "planning boundary step appears after rich-detail ref append instructions" \
+  bash -c '[ -n "$1" ] && [ -n "$2" ] && [ "$1" -lt "$2" ]' _ "$ref_line" "$planning_line"
+check "TODO-18" "planning boundary step appears after the rich-detail failure branch" \
+  bash -c '[ -n "$1" ] && [ -n "$2" ] && [ "$1" -lt "$2" ]' _ "$detail_failure_line" "$planning_line"
+check "TODO-19" "planning boundary step appears before final confirmation" \
+  bash -c '[ -n "$1" ] && [ -n "$2" ] && [ "$1" -lt "$2" ]' _ "$planning_line" "$confirm_line"
 check "LIST-01" "list-todos command avoids preflight plugin-root resolver shell block" test ! "$(grep -c 'VBW_CACHE_ROOT=' "$LIST_CMD")" -gt 0
 check "LIST-02" "list-todos command explains restricted-mode requirement" grep -qi 'restricted mode\|restricted.*permission' "$LIST_CMD"
 # LIST-03: Contract: file contains a STOP for failed plugin root resolution with restart guidance.
