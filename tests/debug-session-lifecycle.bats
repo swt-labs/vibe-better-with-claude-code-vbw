@@ -376,6 +376,9 @@ assert_no_repeated_blank_lines() {
 @test "compile-debug-session-context extracts QA failure context for resume handoff" {
   SESSION_FILE=$(start_session)
 
+  echo '{"mode":"source-todo","text":"Investigate save crash","raw_line":"- Investigate save crash (ref:abcd1234)","ref":"abcd1234","detail_status":"ok","related_files":["src/save.sh"],"detail_context":"Original todo detail context"}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+
   # Populate investigation + QA failure
   echo '{"mode":"investigation","issue":"Crash on save","hypotheses":[{"description":"Race condition","status":"confirmed","evidence_for":"Thread dump","evidence_against":"","conclusion":"Confirmed"}],"root_cause":"Missing lock","plan":"Add mutex","changed_files":["src/save.sh"],"commit":"fff000"}' \
     | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
@@ -389,6 +392,9 @@ assert_no_repeated_blank_lines() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"Debug Session QA Context"* ]]
   [[ "$output" == *"Crash on save"* ]]
+  [[ "$output" == *"Source Todo"* ]]
+  [[ "$output" == *"Investigate save crash"* ]]
+  [[ "$output" == *"Original todo detail context"* ]]
   [[ "$output" == *"Missing lock"* ]]
   [[ "$output" == *"Prior QA Rounds"* ]]
   [[ "$output" == *"FAIL"* ]]
@@ -396,6 +402,9 @@ assert_no_repeated_blank_lines() {
 
 @test "compile-debug-session-context extracts UAT failure context for resume handoff" {
   SESSION_FILE=$(start_session)
+
+  echo '{"mode":"source-todo","text":"Investigate UI misalignment","raw_line":"- Investigate UI misalignment (ref:beefcafe)","ref":"beefcafe","detail_status":"ok","related_files":["style.css"],"detail_context":"Todo detail for UI issue"}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
 
   # Populate through QA pass + UAT failure
   echo '{"mode":"investigation","issue":"UI misalignment","hypotheses":[],"root_cause":"Wrong margin","plan":"Fix CSS","changed_files":["style.css"],"commit":"eee111"}' \
@@ -413,6 +422,9 @@ assert_no_repeated_blank_lines() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"Debug Session UAT Context"* ]]
   [[ "$output" == *"UI misalignment"* ]]
+  [[ "$output" == *"Source Todo"* ]]
+  [[ "$output" == *"Investigate UI misalignment"* ]]
+  [[ "$output" == *"Todo detail for UI issue"* ]]
   [[ "$output" == *"Prior UAT Rounds"* ]]
   [[ "$output" == *"issues_found"* ]]
 }

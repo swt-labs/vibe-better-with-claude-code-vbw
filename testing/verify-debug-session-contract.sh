@@ -37,7 +37,7 @@ else
   fail "DEBUG-SESSION.md template missing"
 fi
 
-for section in "## Issue" "## Investigation" "## Plan" "## Implementation" "## QA" "## UAT"; do
+for section in "## Issue" "## Source Todo" "## Investigation" "## Plan" "## Implementation" "## QA" "## UAT"; do
   if grep -q "^${section}" "$TEMPLATE" 2>/dev/null; then
     pass "template has section: $section"
   else
@@ -63,7 +63,7 @@ else
   fail "debug-session-state.sh missing"
 fi
 
-for cmd in start get get-or-latest resume set-status increment-qa increment-uat clear-active list; do
+for cmd in start start-with-source-todo get get-or-latest resume set-status increment-qa increment-uat clear-active list; do
   if grep -q "\"$cmd\"\\|'$cmd'\\|${cmd})" "$STATE_SCRIPT" 2>/dev/null; then
     pass "state script handles command: $cmd"
   else
@@ -81,7 +81,7 @@ else
   fail "write-debug-session.sh missing"
 fi
 
-for mode in investigation qa uat status; do
+for mode in source-todo investigation qa uat status; do
   if grep -q "$mode" "$WRITER" 2>/dev/null; then
     pass "writer script handles mode: $mode"
   else
@@ -97,6 +97,12 @@ if [ -f "$COMPILER" ]; then
   pass "compile-debug-session-context.sh exists"
 else
   fail "compile-debug-session-context.sh missing"
+fi
+
+if grep -q 'Source Todo' "$COMPILER" 2>/dev/null; then
+  pass "context compiler emits Source Todo content"
+else
+  fail "context compiler missing Source Todo content"
 fi
 
 for mode in qa uat; do

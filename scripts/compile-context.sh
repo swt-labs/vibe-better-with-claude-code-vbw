@@ -611,7 +611,11 @@ case "$ROLE" in
       echo ""
       echo "### Recent Activity"
       if [ -f "$PLANNING_DIR/STATE.md" ]; then
-        ACTIVITY=$(sed -n '/^## Activity/,/^## [A-Z]/p' "$PLANNING_DIR/STATE.md" 2>/dev/null | sed '$d' | tail -n +2) || true
+        ACTIVITY=$(awk '
+          /^## (Recent Activity|Activity Log|Activity)$/ { found=1; next }
+          found && /^## / { exit }
+          found { print }
+        ' "$PLANNING_DIR/STATE.md" 2>/dev/null) || true
         if [ -n "$ACTIVITY" ]; then
           echo "$ACTIVITY"
         else

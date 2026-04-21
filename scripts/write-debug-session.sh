@@ -3,12 +3,14 @@
 #
 # Single writer for all debug-session updates. Modes:
 #   investigation  — writes Issue, Investigation, Plan, Implementation sections
+#   source-todo    — writes the fixed top-level Source Todo section
 #   qa             — appends a QA round entry under ## QA
 #   uat            — appends a UAT round entry under ## UAT
 #   status         — updates frontmatter status and optional title
 #
 # Usage:
 #   echo '{"mode":"investigation","issue":"...","hypotheses":[...],...}' | write-debug-session.sh <session-file>
+#   echo '{"mode":"source-todo","text":"...","raw_line":"...","ref":"abcd1234","detail_status":"ok","related_files":["..."],"detail_context":"..."}' | write-debug-session.sh <session-file>
 #   echo '{"mode":"qa","round":1,"result":"PASS|FAIL|PARTIAL","checks":{...},"details":[...]}' | write-debug-session.sh <session-file>
 #   echo '{"mode":"uat","round":1,"result":"pass|issues_found","checkpoints":[...],"issues":[...]}' | write-debug-session.sh <session-file>
 #   echo '{"mode":"status","status":"qa_pending","title":"optional new title"}' | write-debug-session.sh <session-file>
@@ -78,7 +80,7 @@ update_frontmatter() {
 # Known top-level session section headings (used as boundaries by replace/append/extract).
 # Only these lines are treated as section delimiters — user-pasted ## headings inside
 # section content are preserved verbatim and do not prematurely end a section.
-KNOWN_SECTIONS_RE='^## (Issue|Investigation|Plan|Implementation|QA|UAT|Remediation History)$'
+KNOWN_SECTIONS_RE='^## (Issue|Source Todo|Investigation|Plan|Implementation|QA|UAT|Remediation History)$'
 BLANK_LINE_RE='^[[:space:]]*$'
 
 # Strip leading and trailing blank lines while preserving intentional internal spacing.
@@ -242,6 +244,47 @@ archive_remediation_round() {
 }
 
 case "$MODE" in
+  source-todo)
+    TEXT=$(echo "$json" | jq -r '.text // "none"')
+    RAW_LINE=$(echo "$json" | jq -r '.raw_line // "none"')
+    REF=$(echo "$json" | jq -r '.ref // "none"')
+    DETAIL_STATUS=$(echo "$json" | jq -r '.detail_status // "none"')
+    DETAIL_CONTEXT=$(echo "$json" | jq -r '.detail_context // empty')
+
+    RELATED_FILES=""
+    FILE_COUNT=$(echo "$json" | jq '(.related_files // []) | if type == "array" then length else 0 end')
+    if [ "$FILE_COUNT" -gt 0 ]; then
+      for i in $(seq 0 $((FILE_COUNT - 1))); do
+        FILE_PATH=$(echo "$json" | jq -r ".related_files[$i] // empty")
+        [ -n "$FILE_PATH" ] && RELATED_FILES+="- ${FILE_PATH}"$'\n'
+      done
+    fi
+
+    SOURCE_TODO_CONTENT="### Selected Todo"$'\n\n'
+    SOURCE_TODO_CONTENT+="- **Text:** ${TEXT}"$'\n'
+    SOURCE_TODO_CONTENT+="- **Raw Line:** ${RAW_LINE}"$'\n'
+    SOURCE_TODO_CONTENT+="- **Ref:** ${REF}"$'\n'
+    SOURCE_TODO_CONTENT+="- **Detail Status:** ${DETAIL_STATUS}"$'\n\n'
+    SOURCE_TODO_CONTENT+="### Related Files"$'\n\n'
+    if [ -n "$RELATED_FILES" ]; then
+      SOURCE_TODO_CONTENT+="$RELATED_FILES"
+    else
+      SOURCE_TODO_CONTENT+="None recorded."$'\n'
+    fi
+    SOURCE_TODO_CONTENT+=$'\n'"### Detail Context"$'\n\n'
+    if [ -n "$DETAIL_CONTEXT" ]; then
+      SOURCE_TODO_CONTENT+="$(normalize_block_body "$DETAIL_CONTEXT")"
+    else
+      SOURCE_TODO_CONTENT+="No persisted detail context."
+    fi
+
+    replace_section "Source Todo" "$SOURCE_TODO_CONTENT"
+    update_frontmatter "updated" "$NOW"
+
+    echo "mode=source-todo"
+    echo "session_file=$SESSION_FILE"
+    ;;
+
   investigation)
     # Required: issue
     ISSUE=$(echo "$json" | jq -r '.issue // empty')

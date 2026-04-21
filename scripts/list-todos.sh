@@ -15,14 +15,40 @@ set -euo pipefail
 #     "state_path": "...",
 #     "section": "## Todos"|"### Pending Todos",
 #     "count": N,
-#     "filter": "high"|"low"|"normal"|null,
+#     "filter": "high"|"low"|"normal"|"known-issue"|null,
 #     "display": "formatted numbered list",
-#     "items": [ { "num": 1, "line": "raw line", "text": "...", "priority": "high"|"normal"|"low", "date": "YYYY-MM-DD", "age": "3d ago", "ref": "abcd1234"|null }, ... ] }
+#     "items": [
+#       {
+#         "num": 1,
+#         "section_index": 2,
+#         "line": "raw line",
+#         "text": "full todo text with tags/date/ref",
+#         "display_identity": "display text without date/ref",
+#         "normalized_text": "tag-free text for matching/logging",
+#         "command_text": "tag-free text for command routing",
+#         "priority": "high"|"normal"|"low"|"known-issue",
+#         "date": "YYYY-MM-DD"|null,
+#         "age": "3d ago"|null,
+#         "ref": "abcd1234"|null,
+#         "state_path": "...",
+#         "section": "## Todos"|"### Pending Todos",
+#         "known_issue_signature": { ... }|null
+#       },
+#       ...
+#     ] }
 #
 # Exit codes: always 0 (fail-open for agent consumption)
 
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 FILTER="${1:-}"
+# shellcheck disable=SC2034  # consumed by sourced todo-item-metadata helpers
+DETAILS_PATH="${PLANNING_DIR}/todo-details.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC2034  # consumed by sourced todo-item-metadata helpers
+DETAILS_CACHE_JSON=""
+
+# shellcheck source=scripts/lib/todo-item-metadata.sh
+. "$SCRIPT_DIR/lib/todo-item-metadata.sh"
 
 # --- Resolve STATE.md for todos (project-level data lives at root) ---
 resolve_state_path() {
@@ -77,6 +103,7 @@ extract_todos() {
     # Legacy fallback: ### Pending Todos subsection (pre-migration STATE.md)
     lines=$(awk '
       /^### Pending Todos$/ { found=1; next }
+      found && /^### Completed Todos$/ { exit }
       found && /^##/ { exit }
       found && /^- / { print }
     ' "$file")
@@ -95,83 +122,16 @@ extract_todos() {
   echo "$lines"
 }
 
-# --- Compute relative age from YYYY-MM-DD ---
-relative_age() {
-  local date_str="$1"
-  local now days
-
-  # Validate date format
-  if ! [[ "$date_str" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
-    echo ""
-    return
-  fi
-
-  now=$(date +%s)
-  local then_ts
-  then_ts=$(date -j -f "%Y-%m-%d" "$date_str" +%s 2>/dev/null) || {
-    # Linux fallback
-    then_ts=$(date -d "$date_str" +%s 2>/dev/null) || { echo ""; return; }
-  }
-
-  days=$(( (now - then_ts) / 86400 ))
-
-  if [ "$days" -lt 0 ]; then
-    echo ""
-    return
-  elif [ "$days" -eq 0 ]; then
-    echo "today"
-  elif [ "$days" -eq 1 ]; then
-    echo "1d ago"
-  elif [ "$days" -lt 30 ]; then
-    echo "${days}d ago"
-  elif [ "$days" -lt 365 ]; then
-    local months=$(( days / 30 ))
-    echo "${months}mo ago"
-  else
-    local years=$(( days / 365 ))
-    echo "${years}y ago"
-  fi
-}
-
-# --- Parse a single todo line ---
-parse_todo_line() {
-  local line="$1"
-  local text priority date_str age ref
-
-  # Strip leading "- "
-  text="${line#- }"
-
-  # Extract priority/category
-  if [[ "$text" == "[HIGH] "* ]]; then
-    priority="high"
-  elif [[ "$text" == "[low] "* ]]; then
-    priority="low"
-  elif [[ "$text" == "[KNOWN-ISSUE] "* ]]; then
-    priority="known-issue"
-  else
-    priority="normal"
-  fi
-
-  # Extract date from (added YYYY-MM-DD)
-  date_str=""
-  if [[ "$text" =~ \(added\ ([0-9]{4}-[0-9]{2}-[0-9]{2})\) ]]; then
-    date_str="${BASH_REMATCH[1]}"
-  fi
-
-  # Extract detail ref hash from (ref:<8-hex-chars>)
-  ref=""
-  if [[ "$text" =~ \(ref:([a-f0-9]{8})\)[[:space:]]*$ ]]; then
-    ref="${BASH_REMATCH[1]}"
-  fi
-
-  # Compute age
-  age=""
-  if [ -n "$date_str" ]; then
-    age=$(relative_age "$date_str")
-  fi
-
-  # Output as tab-separated: priority\tdate\tage\tref\ttext
-  printf '%s\t%s\t%s\t%s\t%s\n' "$priority" "$date_str" "$age" "$ref" "$text"
+emit_error_json() {
+  local state_path="$1"
+  local section_name="$2"
+  local filter_lower="$3"
+  local message="$4"
+  jq -n --arg sp "$state_path" --arg sec "$section_name" --arg f "${filter_lower:-null}" --arg msg "$message" '
+    {status:"error", state_path:$sp, section:$sec, count:0,
+      filter:(if $f == "null" then null else $f end),
+      display:$msg, message:$msg, items:[]}
+  '
 }
 
 # --- Main ---
@@ -203,39 +163,60 @@ main() {
   todo_lines=$(echo "$raw_output" | tail -n +2)
 
   # Parse all todos into a JSON array via jq
-  local items_json="[]"
-  local num=0
+  local all_items_json items_json
+  local section_index=0
+  local all_items_ndjson
+  all_items_ndjson=$(mktemp 2>/dev/null) || {
+    emit_error_json "$state_path" "$section_name" "$filter_lower" "Could not prepare todo listing output. Rerun /vbw:list-todos."
+    exit 0
+  }
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     # Skip empty/whitespace-only todo lines (bare "- " with no text)
     local stripped="${line#- }"
     stripped="${stripped#"${stripped%%[![:space:]]*}"}"
     [ -z "$stripped" ] && continue
+    section_index=$((section_index + 1))
+
     local parsed
-    parsed=$(parse_todo_line "$line")
-
-    local pri date_val age ref text
-    pri=$(echo "$parsed" | cut -f1)
-    date_val=$(echo "$parsed" | cut -f2)
-    age=$(echo "$parsed" | cut -f3)
-    ref=$(echo "$parsed" | cut -f4)
-    text=$(echo "$parsed" | cut -f5-)
-
-    # Apply filter
-    if [ -n "$filter_lower" ] && [ "$filter_lower" != "$pri" ]; then
-      continue
+    if ! parsed=$(todo_item_parse_line_json "$line" "$section_index" "$state_path" "$section_name"); then
+      rm -f "$all_items_ndjson"
+      emit_error_json "$state_path" "$section_name" "$filter_lower" "Could not parse one of the current todos. Rerun /vbw:list-todos."
+      exit 0
     fi
-
-    # num tracks filtered position (matches display numbering)
-    num=$((num + 1))
-    items_json=$(echo "$items_json" | jq --argjson n "$num" \
-      --arg l "$line" --arg t "$text" --arg p "$pri" \
-      --arg d "$date_val" --arg a "$age" --arg r "$ref" \
-      '. + [{num:$n, line:$l, text:$t, priority:$p, date:$d, age:$a, ref:(if $r == "" then null else $r end)}]')
+    if ! printf '%s\n' "$parsed" >> "$all_items_ndjson"; then
+      rm -f "$all_items_ndjson"
+      emit_error_json "$state_path" "$section_name" "$filter_lower" "Could not stage todo listing output. Rerun /vbw:list-todos."
+      exit 0
+    fi
   done <<< "$todo_lines"
 
+  all_items_json=$(jq -sc '.' "$all_items_ndjson" 2>/dev/null) || {
+    rm -f "$all_items_ndjson"
+    emit_error_json "$state_path" "$section_name" "$filter_lower" "Could not build the todo listing. Rerun /vbw:list-todos."
+    exit 0
+  }
+  rm -f "$all_items_ndjson"
+  all_items_json=$(todo_item_annotate_identity_occurrence "$all_items_json") || {
+    emit_error_json "$state_path" "$section_name" "$filter_lower" "Could not annotate todo identity metadata. Rerun /vbw:list-todos."
+    exit 0
+  }
+  items_json=$(printf '%s' "$all_items_json" | jq -c --arg filter "$filter_lower" '
+    [ .[]
+      | if $filter == "" then . else select(.priority == $filter) end
+    ]
+    | to_entries
+    | map(.value + {num:(.key + 1)})
+  ' 2>/dev/null) || {
+    emit_error_json "$state_path" "$section_name" "$filter_lower" "Could not filter todo items. Rerun /vbw:list-todos."
+    exit 0
+  }
+
   local filtered_count
-  filtered_count=$(echo "$items_json" | jq 'length')
+  filtered_count=$(echo "$items_json" | jq 'length' 2>/dev/null) || {
+    emit_error_json "$state_path" "$section_name" "$filter_lower" "Could not count todo items. Rerun /vbw:list-todos."
+    exit 0
+  }
 
   if [ "$filtered_count" -eq 0 ]; then
     local msg
@@ -254,45 +235,21 @@ main() {
   fi
 
   # Build display string from items
-  local display=""
-  local display_num=0
-  for row in $(echo "$items_json" | jq -r '.[] | @base64'); do
-    display_num=$((display_num + 1))
-    local text age pri pri_tag display_text age_suffix
-
-    text=$(echo "$row" | base64 -d | jq -r '.text')
-    age=$(echo "$row" | base64 -d | jq -r '.age')
-    pri=$(echo "$row" | base64 -d | jq -r '.priority')
-
-    pri_tag=""
-    case "$pri" in
-      high) pri_tag="[HIGH] " ;;
-      low) pri_tag="[low] " ;;
-      known-issue) pri_tag="[KNOWN-ISSUE] " ;;
-    esac
-
-    # Strip priority prefix, date suffix, and ref tag for clean display
-    display_text="${text#\[HIGH\] }"
-    display_text="${display_text#\[low\] }"
-    display_text="${display_text#\[KNOWN-ISSUE\] }"
-    display_text=$(printf '%s\n' "$display_text" | sed 's/ *(ref:[a-f0-9]\{8\})$//')
-    display_text=$(printf '%s\n' "$display_text" | sed 's/ *(added [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\})$//')
-
-    # Show [detail] indicator for todos with extended detail
-    local ref_indicator=""
-    local item_ref
-    item_ref=$(echo "$row" | base64 -d | jq -r '.ref // ""')
-    if [ -n "$item_ref" ]; then
-      ref_indicator=" [detail]"
-    fi
-
-    age_suffix=""
-    if [ -n "$age" ]; then
-      age_suffix=" ($age)"
-    fi
-
-    display="${display}${display_num}. ${pri_tag}${display_text}${age_suffix}${ref_indicator}"$'\n'
-  done
+  local display
+  display=$(printf '%s' "$items_json" | jq -r '
+    .[] |
+      (
+        (if .priority == "high" then "[HIGH] " elif .priority == "low" then "[low] " elif .priority == "known-issue" then "[KNOWN-ISSUE] " else "" end)
+        + .normalized_text
+        + (if .age then " (" + .age + ")" else "" end)
+        + (if .ref then " [detail]" else "" end)
+      ) as $body
+      | "\(.num). \($body)"
+  ' 2>/dev/null) || {
+    emit_error_json "$state_path" "$section_name" "$filter_lower" "Could not render the todo listing. Rerun /vbw:list-todos."
+    exit 0
+  }
+  [ -n "$display" ] && display="${display}"$'\n'
 
   # Assemble final JSON via jq
   echo "$items_json" | jq --arg st "ok" --arg sp "$state_path" \
@@ -300,7 +257,10 @@ main() {
     --arg f "${filter_lower:-null}" --arg d "$display" \
     '{status:$st, state_path:$sp, section:$sec, count:$c,
       filter:(if $f == "null" then null else $f end),
-      display:$d, items:.}'
+      display:$d, items:.}' 2>/dev/null || {
+    emit_error_json "$state_path" "$section_name" "$filter_lower" "Could not finalize the todo listing. Rerun /vbw:list-todos."
+    exit 0
+  }
 }
 
 main

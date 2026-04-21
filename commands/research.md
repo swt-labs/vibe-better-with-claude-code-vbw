@@ -37,7 +37,12 @@ Current project:
     ```bash
     bash "{plugin-root}/scripts/todo-details.sh" get <hash>
     ```
-    Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for Step 3. If `status` is `"not_found"` or `"error"`, and `.vbw-planning/STATE.md` exists, append `- {YYYY-MM-DD}: Detail for ref HASH could not be loaded` under the `## Activity Log` section (or the first heading beginning with `## Activity`) in `.vbw-planning/STATE.md`; if that file does not exist, skip logging. In all cases, continue without detail.
+    Command shape: `bash "{plugin-root}/scripts/todo-details.sh" get <hash>`.
+    Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for Step 3. If `status` is `"not_found"` or `"error"`, run:
+    ```bash
+    bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
+    ```
+    Ignore missing-root-state cases — the helper already degrades gracefully. In all cases, continue without detail.
     If no ref suffix, $ARGUMENTS minus flags = topic.
     **Post-parse validation:** If the topic is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the research context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:research <topic> [--parallel]"`.
     `--parallel` controls Scout fan-out (Step 2) and must not be included in the topic text passed to Scout.

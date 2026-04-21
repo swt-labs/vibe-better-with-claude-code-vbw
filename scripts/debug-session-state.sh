@@ -3,6 +3,7 @@
 #
 # Usage:
 #   debug-session-state.sh start           <planning-dir> <slug>         → creates session, prints session_id
+#   debug-session-state.sh start-with-source-todo <planning-dir> <slug>  → creates session, writes Source Todo from stdin, rolls back on failure
 #   debug-session-state.sh get             <planning-dir>                → prints active session metadata
 #   debug-session-state.sh get-or-latest   <planning-dir>                → active session or latest unresolved
 #   debug-session-state.sh resume          <planning-dir> <session-id>   → sets active pointer to session
@@ -27,6 +28,7 @@ set -euo pipefail
 
 CMD="${1:-}"
 PLANNING_DIR="${2:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ -z "$CMD" ] || [ -z "$PLANNING_DIR" ]; then
   echo "Usage: debug-session-state.sh <command> <planning-dir> [args...]" >&2
@@ -330,49 +332,61 @@ print_session_metadata() {
   printf 'updated=%q\n' "$(read_field "$session_path" "updated")"
 }
 
-case "$CMD" in
-  start)
-    SLUG="${3:-}"
-    if [ -z "$SLUG" ]; then
-      echo "Usage: debug-session-state.sh start <planning-dir> <slug>" >&2
-      exit 1
-    fi
-    # Sanitize slug: lowercase, replace spaces/special chars with dashes
-    SLUG=$(printf '%s' "$SLUG" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
-    if [ -z "$SLUG" ]; then
-      SLUG="debug"
-    fi
+create_session() {
+  local slug_input="$1"
+  local slug_sanitized timestamp now session_id session_file
 
-    mkdir -p "$ACTIVE_DIR"
-    TIMESTAMP=$(date '+%Y%m%d-%H%M%S')
-    SESSION_ID="${TIMESTAMP}-${SLUG}"
-    SESSION_FILE="$ACTIVE_DIR/${SESSION_ID}.md"
-    NOW=$(date '+%Y-%m-%d %H:%M:%S')
+  slug_sanitized=$(printf '%s' "$slug_input" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
+  if [ -z "$slug_sanitized" ]; then
+    slug_sanitized="debug"
+  fi
 
-    # Check for collision (extremely unlikely with second-precision timestamps)
-    if [ -f "$SESSION_FILE" ]; then
-      echo "Error: session file already exists: $SESSION_FILE" >&2
-      exit 1
-    fi
+  mkdir -p "$ACTIVE_DIR"
+  timestamp=$(date '+%Y%m%d-%H%M%S')
+  session_id="${timestamp}-${slug_sanitized}"
+  session_file="$ACTIVE_DIR/${session_id}.md"
+  now=$(date '+%Y-%m-%d %H:%M:%S')
 
-    cat > "$SESSION_FILE" << ENDSESSION
+  if [ -f "$session_file" ]; then
+    echo "Error: session file already exists: $session_file" >&2
+    return 1
+  fi
+
+  cat > "$session_file" << ENDSESSION
 ---
-session_id: ${SESSION_ID}
-title: ${SLUG}
+session_id: ${session_id}
+title: ${slug_sanitized}
 status: investigating
-created: ${NOW}
-updated: ${NOW}
+created: ${now}
+updated: ${now}
 qa_round: 0
 qa_last_result: pending
 uat_round: 0
 uat_last_result: pending
 ---
 
-# Debug Session: ${SLUG}
+# Debug Session: ${slug_sanitized}
 
 ## Issue
 
 {Bug description pending from Debugger investigation.}
+
+## Source Todo
+
+### Selected Todo
+
+- **Text:** none
+- **Raw Line:** none
+- **Ref:** none
+- **Detail Status:** none
+
+### Related Files
+
+None recorded.
+
+### Detail Context
+
+No persisted detail context.
 
 ## Investigation
 
@@ -395,11 +409,60 @@ uat_last_result: pending
 ## Remediation History
 ENDSESSION
 
-    # Set active pointer
-    echo "${SESSION_ID}.md" > "$ACTIVE_FILE"
+  echo "${session_id}.md" > "$ACTIVE_FILE"
 
-    printf 'session_id=%q\n' "$SESSION_ID"
-    printf 'session_file=%q\n' "$SESSION_FILE"
+  printf 'session_id=%q\n' "$session_id"
+  printf 'session_file=%q\n' "$session_file"
+}
+
+start_with_source_todo() {
+  local slug_input="$1"
+  local source_todo_json session_output session_id session_file previous_active_pointer had_previous_pointer=0
+  source_todo_json=$(cat)
+
+  previous_active_pointer=""
+  if [ -f "$ACTIVE_FILE" ]; then
+    previous_active_pointer=$(cat "$ACTIVE_FILE" 2>/dev/null || true)
+    had_previous_pointer=1
+  fi
+
+  if ! session_output=$(create_session "$slug_input"); then
+    return 1
+  fi
+
+  eval "$session_output"
+
+  if ! printf '%s' "$source_todo_json" | bash "$SCRIPT_DIR/write-debug-session.sh" "$session_file" >/dev/null; then
+    rm -f "$session_file"
+    if [ "$had_previous_pointer" -eq 1 ]; then
+      printf '%s\n' "$previous_active_pointer" > "$ACTIVE_FILE"
+    else
+      rm -f "$ACTIVE_FILE"
+    fi
+    echo "Error: failed to persist Source Todo for new debug session" >&2
+    return 1
+  fi
+
+  printf '%s\n' "$session_output"
+}
+
+case "$CMD" in
+  start)
+    SLUG="${3:-}"
+    if [ -z "$SLUG" ]; then
+      echo "Usage: debug-session-state.sh start <planning-dir> <slug>" >&2
+      exit 1
+    fi
+    create_session "$SLUG"
+    ;;
+
+  start-with-source-todo)
+    SLUG="${3:-}"
+    if [ -z "$SLUG" ]; then
+      echo "Usage: debug-session-state.sh start-with-source-todo <planning-dir> <slug>" >&2
+      exit 1
+    fi
+    start_with_source_todo "$SLUG"
     ;;
 
   get)
