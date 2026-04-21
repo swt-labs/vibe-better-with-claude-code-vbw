@@ -195,6 +195,7 @@ teardown() {
   run bash -c 'echo '"'"'{"mode":"source_todo","text":"Investigate parser crash"}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"'
   [ "$status" -eq 1 ]
   [[ "$output" == *"unknown mode 'source_todo'"* ]]
+  [[ "$output" == *"Valid: source-todo, investigation, qa, uat, status"* ]]
 }
 
 @test "fails on missing session file" {
