@@ -124,7 +124,7 @@ snapshot_validate_schema() {
         (has("state_path") and (.state_path | non_empty_string))
         and (has("section") and .section == null)
         and (has("count") and .count == 0)
-        and (has("filter") and .filter == null)
+        and (has("filter") and (.filter | maybe_filter))
         and (has("items") and (.items | type == "array") and (.items | length == 0))
       elif .status == "no-match" then
         (has("state_path") and (.state_path | non_empty_string))

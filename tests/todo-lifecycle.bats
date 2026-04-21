@@ -47,6 +47,18 @@ None.
 EOF
 }
 
+write_state_with_no_todos() {
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+None.
+
+## Blockers
+None.
+EOF
+}
+
 write_legacy_state() {
   cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
 # Project State
@@ -176,6 +188,25 @@ assert_snapshot_invalid_everywhere() {
   run bash "$SCRIPT" snapshot-show
   [ "$status" -eq 0 ]
   [ "$(echo "$output" | jq -r '.status')" = "empty" ]
+}
+
+@test "todo-lifecycle: list-with-snapshot preserves valid filtered empty snapshots" {
+  write_state_with_no_todos
+
+  run bash "$SCRIPT" list-with-snapshot high
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "empty" ]
+  [ "$(echo "$output" | jq -r '.section')" = "null" ]
+  [ "$(echo "$output" | jq -r '.count')" = "0" ]
+  [ "$(echo "$output" | jq -r '.filter')" = "high" ]
+  [ "$(echo "$output" | jq -r '.display')" = "No pending todos." ]
+  [ "$(echo "$output" | jq -r '.items | length')" = "0" ]
+
+  EXPECTED_JSON="$output"
+
+  run bash "$SCRIPT" snapshot-show
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -cS '.')" = "$(printf '%s' "$EXPECTED_JSON" | jq -cS '.')" ]
 }
 
 @test "todo-lifecycle: snapshot-show accepts valid no-match snapshot payloads" {
