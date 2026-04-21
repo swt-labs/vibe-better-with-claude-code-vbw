@@ -13,11 +13,11 @@ Planning agent. Produce PLAN.md artifacts using `templates/PLAN.md` (compact YAM
 
 ## Skill Activation
 
-If your prompt starts with a `<skill_activation>` block, call those skills and proceed — the orchestrator already selected relevant skills for this task. Do not additionally scan `<available_skills>`.
+If your prompt starts with a `<skill_activation>` block, call those skills first. Treat that block as the orchestrator's starting set, not a ceiling. If a plan exists, also honor its `skills_used` frontmatter. Then run one bounded completeness pass over `<available_skills>` and add any materially relevant adjacent/domain skills surfaced by the prompt or context. Add to the original selection — do not replace it.
 
-If your prompt starts with a `<skill_no_activation>` block, treat it as an explicit orchestrator decision that no additional installed skills apply to this spawned task. Do not scan `<available_skills>` just because `<skill_activation>` is absent.
+If your prompt starts with a `<skill_no_activation>` block, treat it as the orchestrator's record that no skills were preselected for this spawned task, not as a ban on additive recovery. If a plan exists, still honor its `skills_used` frontmatter. Then run the same bounded completeness pass over `<available_skills>` and add any materially relevant adjacent/domain skills surfaced by the prompt or context.
 
-Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
+Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
 ## Planning Protocol
 
@@ -30,7 +30,7 @@ Display: `◆ Lead: Researching phase context...`
 
 **If no RESEARCH.md exists:** Scan codebase to understand the problem space. If `.vbw-planning/codebase/META.md` exists, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding. Prefer **LSP** (go-to-definition, find-references, find-symbol) for navigating type hierarchies, tracing call sites, and following data flow. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`). WebFetch for new libs/APIs.
 
-**Always:** If neither a `<skill_activation>` nor a `<skill_no_activation>` block was in your prompt, evaluate available skills: check the `<available_skills>` block in your system context and call `Skill(skill-name)` for each relevant skill. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Research stays in context.
+**Always:** Determine the full planning skill set. If your prompt already contains a `<skill_activation>` block, start there. If it contains `<skill_no_activation>`, treat that as "no skills were preselected" rather than a ban. Then run one bounded completeness pass over `<available_skills>` and activate all materially relevant skills for the phase, including adjacent/supporting domain skills surfaced by the phase goal, research, logs, error text, or stack context. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. Research stays in context.
 
 If Scout-produced RESEARCH.md includes findings from MCP tools (documentation servers, web search MCPs, domain-specific data sources), trust those equally to WebFetch/WebSearch findings — they come from the user's installed information sources.
 
@@ -52,7 +52,7 @@ Display: `  ✓ Plan {NN}: {title} ({N} tasks, wave {W})`
 Display: `◆ Lead: Self-reviewing plans...`
 Check: requirements coverage, no circular deps, **no same-wave file conflicts** (critical — same-wave plans modify disjoint file sets), success criteria union = phase goals, 3-5 tasks/plan, context refs present, skill `@` refs match `skills_used`, must_haves testable (specific file/command/grep), cross_phase_deps ref only earlier phases, **wave 1 has 2+ plans when phase has 3+ plans** (maximize parallelism). Fix inline. Standalone review: skip to here.
 
-**Skill completeness check:** Verify each plan's `skills_used` includes all relevant skills from `<available_skills>` (or from the `<skill_activation>` block if one was provided in your prompt). If a relevant skill is missing from any plan's `skills_used`, add it now.
+**Skill completeness check:** Verify each plan's `skills_used` includes all materially relevant skills from `<available_skills>` or the inherited outcome block, including adjacent/supporting domain skills surfaced by the phase goal, research, logs, error text, or stack context. If a relevant skill is missing from any plan's `skills_used`, add it now.
 Display: `✓ Lead: Self-review complete -- {issues found and fixed | no issues found}`
 
 ### Stage 4: Output

@@ -12,11 +12,11 @@ Verification agent. Goal-backward: derive testable conditions from must_haves, c
 
 ## Skill Activation
 
-If your prompt starts with a `<skill_activation>` block, call those skills and proceed — the orchestrator already selected relevant skills for this task. Do not additionally scan `<available_skills>`.
+If your prompt starts with a `<skill_activation>` block, call those skills first. Treat that block as the orchestrator's starting set, not a ceiling. If a plan exists, also honor its `skills_used` frontmatter. Then run one bounded completeness pass over `<available_skills>` and add any materially relevant adjacent/domain skills surfaced by the prompt or context. Add to the original selection — do not replace it.
 
-If your prompt starts with a `<skill_no_activation>` block, treat it as an explicit orchestrator decision that no additional installed skills apply to this spawned task. Do not scan `<available_skills>` just because `<skill_activation>` is absent. If a plan exists, still honor its `skills_used` frontmatter during Goal-Backward step 1.
+If your prompt starts with a `<skill_no_activation>` block, treat it as the orchestrator's record that no skills were preselected for this spawned task, not as a ban on additive recovery. If a plan exists, still honor its `skills_used` frontmatter. Then run the same bounded completeness pass over `<available_skills>` and add any materially relevant adjacent/domain skills surfaced by the prompt or context.
 
-Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
+Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
 ## MCP Tool Usage
 
@@ -31,7 +31,7 @@ Before deriving checks: if `.vbw-planning/codebase/META.md` exists, read whichev
 
 ## Goal-Backward
 1. Read plan: objective, must_haves, success_criteria, `@`-refs, CONVENTIONS.md.
-   **Skill activation** (skip the ad-hoc `<available_skills>` scan if `<skill_activation>` or `<skill_no_activation>` was already in your prompt): Call `Skill(skill-name)` for each skill in the plan's `skills_used` frontmatter. If no plan exists and neither explicit outcome block was provided (standalone QA), check `<available_skills>` and activate relevant skills.
+   **Skill activation** before Goal-Backward checks: Call `Skill(skill-name)` for each skill in the plan's `skills_used` frontmatter when a plan exists. If an explicit outcome block was already in your prompt, call those skills first. Then run one bounded completeness pass over `<available_skills>` and add any missing materially relevant adjacent/domain skills surfaced by the plan, prompt, or verification context.
 2. Derive checks per truth/artifact/key_link. Execute, collect evidence. Prefer **LSP** (go-to-definition, find-references, find-symbol) for tracing call sites, verifying wiring, and cross-file dependencies. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`).
    **Test gap detection:** For each plan, compare its specified deliverables (test files, test classes, test cases listed in `must_haves` or task descriptions) against what actually exists on disk. A planned test file that was never created, or a specified test case that doesn't exist, is an undeclared deviation — flag it as a FAIL check.
 3. **Undeclared deviation scan:** After processing declared deviations (step 2 of Deviation Handling below), systematically compare each PLAN.md's deliverables against its SUMMARY.md and the actual codebase. Flag any plan-vs-code mismatches not already covered by declared deviations as "undeclared deviation" FAIL checks. This is the highest-value QA function — devs may not report all deviations.

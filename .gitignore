@@ -17,7 +17,7 @@ node_modules/
 .env.*.local
 
 # Claude Code local settings
-.claude
+.claude/vbw-debug-target.txt
 
 # OS
 .DS_Store

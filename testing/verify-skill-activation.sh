@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# verify-skill-activation.sh — Verify plan-driven skill activation pipeline
+# verify-skill-activation.sh — Verify additive skill activation pipeline
 #
 # Checks:
 # - vbw-dev.md references skills_used activation
 # - vbw-lead.md references skill evaluation and wiring
 # - orchestrator spawn contracts emit explicit activation OR explicit no-activation blocks
+# - spawned-agent prompts treat orchestrator selection as a starting set, not a ceiling
+# - command prompts select all materially helpful skills, including adjacent/domain skills
 # - hooks.json does NOT contain skill-evaluation-gate.sh or skill-eval-prompt-gate.sh
 # - All agents with explicit tools: allowlists include Skill
 # - execute-protocol.md documents plan-driven approach
@@ -63,8 +65,9 @@ fail() {
 expected_skill_contract_sites() {
   case "$(basename "$1")" in
     vibe.md) echo 10 ;;
-    debug.md) echo 2 ;;
-    research.md|fix.md|qa.md|execute-protocol.md) echo 1 ;;
+    debug.md) echo 3 ;;
+    qa.md) echo 2 ;;
+    research.md|fix.md|execute-protocol.md) echo 1 ;;
     map.md) echo 2 ;;
     *) echo 0 ;;
   esac
@@ -114,7 +117,7 @@ verify_skill_contract_sites() {
     fi
 
     if grep -q '<skill_no_activation>' <<< "$segment" \
-      && grep -q 'No installed skills apply\. Reason:' <<< "$segment"; then
+      && grep -q 'No skills were preselected at orchestration time\. Reason:' <<< "$segment"; then
       pass "$file_name: site $site_number has local no-activation path"
     else
       fail "$file_name: site $site_number missing local no-activation path"
@@ -136,6 +139,25 @@ verify_skill_contract_sites() {
       pass "$file_name: site $site_number has visible-reporting instruction"
     else
       fail "$file_name: site $site_number missing visible-reporting instruction"
+    fi
+
+    if grep -q 'materially helpful' <<< "$segment" \
+      && grep -q 'single most direct skill' <<< "$segment"; then
+      pass "$file_name: site $site_number uses additive-selection wording"
+    else
+      fail "$file_name: site $site_number missing additive-selection wording"
+    fi
+
+    if grep -qi 'swiftdata' <<< "$segment"; then
+      pass "$file_name: site $site_number includes the SwiftData-style adjacent-skill example"
+    else
+      fail "$file_name: site $site_number missing the SwiftData-style adjacent-skill example"
+    fi
+
+    if grep -q 'Only include skills whose description matches\|No installed skills apply' <<< "$segment"; then
+      fail "$file_name: site $site_number still contains old narrowing/no-rescan wording"
+    else
+      pass "$file_name: site $site_number removed old narrowing/no-rescan wording"
     fi
 
     site_number=$((site_number + 1))
@@ -366,7 +388,7 @@ else
   fail "vbw-scout.md: still uses permissive may-still-honor wording on no-activation path"
 fi
 
-if grep -q 'still honor any `skills_used` frontmatter' "$SCOUT_AGENT"; then
+if grep -Eq 'still honor( its| any)? `skills_used` frontmatter' "$SCOUT_AGENT"; then
   pass "vbw-scout.md: preserves plan-driven skills_used behavior on no-activation path"
 else
   fail "vbw-scout.md: missing mandatory skills_used preservation on no-activation path"
@@ -380,10 +402,10 @@ else
   fail "vbw-debugger.md: missing available_skills reference"
 fi
 
-if grep -q 'Skill(skill-name)' "$DEBUGGER_AGENT"; then
-  pass "vbw-debugger.md: references Skill() activation"
+if grep -q 'bounded completeness pass' "$DEBUGGER_AGENT"; then
+  pass "vbw-debugger.md: includes bounded additive completeness pass"
 else
-  fail "vbw-debugger.md: missing Skill() reference"
+  fail "vbw-debugger.md: missing bounded additive completeness pass"
 fi
 
 if grep -q 'skill_no_activation' "$DEBUGGER_AGENT"; then
@@ -392,10 +414,10 @@ else
   fail "vbw-debugger.md: missing explicit no-activation handling"
 fi
 
-if grep -q 'only in standalone/ad-hoc mode when neither `<skill_activation>` nor `<skill_no_activation>` was provided' "$DEBUGGER_AGENT"; then
-  pass "vbw-debugger.md: downstream skill activation is gated to true ad-hoc mode"
+if grep -q 'starting set, not a ceiling' "$DEBUGGER_AGENT"; then
+  pass "vbw-debugger.md: treats orchestrator selection as a starting set"
 else
-  fail "vbw-debugger.md: downstream skill activation can still bypass explicit no-activation"
+  fail "vbw-debugger.md: missing starting-set additive wording"
 fi
 
 ARCHITECT_AGENT="$ROOT/agents/vbw-architect.md"
@@ -406,10 +428,10 @@ else
   fail "vbw-architect.md: missing available_skills reference"
 fi
 
-if grep -q 'Skill(skill-name)' "$ARCHITECT_AGENT"; then
-  pass "vbw-architect.md: references Skill() activation"
+if grep -q 'bounded completeness pass' "$ARCHITECT_AGENT"; then
+  pass "vbw-architect.md: includes bounded additive completeness pass"
 else
-  fail "vbw-architect.md: missing Skill() reference"
+  fail "vbw-architect.md: missing bounded additive completeness pass"
 fi
 
 if grep -q 'skill_no_activation' "$ARCHITECT_AGENT"; then
@@ -418,10 +440,10 @@ else
   fail "vbw-architect.md: missing explicit no-activation handling"
 fi
 
-if grep -q 'only in standalone/ad-hoc mode when neither `<skill_activation>` nor `<skill_no_activation>` was provided' "$ARCHITECT_AGENT"; then
-  pass "vbw-architect.md: downstream skill activation is gated to true ad-hoc mode"
+if grep -q 'starting set, not a ceiling' "$ARCHITECT_AGENT"; then
+  pass "vbw-architect.md: treats orchestrator selection as a starting set"
 else
-  fail "vbw-architect.md: downstream skill activation can still bypass explicit no-activation"
+  fail "vbw-architect.md: missing starting-set additive wording"
 fi
 
 DOCS_AGENT="$ROOT/agents/vbw-docs.md"
@@ -594,6 +616,57 @@ for agent_file in vbw-dev.md vbw-qa.md vbw-docs.md vbw-lead.md vbw-scout.md vbw-
     fail "$agent_file: missing <available_skills> reference"
   fi
 done
+
+echo ""
+echo "=== Additive Agent Skill Model ==="
+
+for agent_file in vbw-dev.md vbw-qa.md vbw-docs.md vbw-lead.md vbw-scout.md vbw-architect.md vbw-debugger.md; do
+  AGENT_PATH="$ROOT/agents/$agent_file"
+
+  if grep -q 'starting set, not a ceiling' "$AGENT_PATH"; then
+    pass "$agent_file: treats orchestrator selection as a starting set"
+  else
+    fail "$agent_file: missing starting-set additive wording"
+  fi
+
+  if grep -q 'bounded completeness pass' "$AGENT_PATH"; then
+    pass "$agent_file: includes bounded completeness pass"
+  else
+    fail "$agent_file: missing bounded completeness pass"
+  fi
+
+  if grep -q 'no skills were preselected for this spawned task' "$AGENT_PATH"; then
+    pass "$agent_file: no-activation block is treated as no initial preselection"
+  else
+    fail "$agent_file: no-activation path still reads like a hard ban"
+  fi
+
+  if grep -Eq 'Do not additionally scan `<available_skills>`|Do not scan `<available_skills>`|do not rescan `<available_skills>`' "$AGENT_PATH"; then
+    fail "$agent_file: still contains old no-rescan ceiling wording"
+  else
+    pass "$agent_file: old no-rescan ceiling wording removed"
+  fi
+done
+
+echo ""
+echo "=== Adjacent Skill Example Coverage ==="
+
+for contract_file in "${COMMAND_SKILL_CONTRACT_FILES[@]}"; do
+  contract_name=$(basename "$contract_file")
+  if grep -qi 'swiftdata' "$contract_file"; then
+    pass "$contract_name: includes adjacent-skill example"
+  else
+    fail "$contract_name: missing adjacent-skill example"
+  fi
+done
+
+README_FILE="$ROOT/README.md"
+if grep -q 'Additive runtime activation' "$README_FILE" \
+  && grep -q 'visible `Skills:` line' "$README_FILE"; then
+  pass "README.md: documents additive spawned-agent skill activation"
+else
+  fail "README.md: missing additive spawned-agent skill activation note"
+fi
 
 # --- execute-protocol.md no longer documents emit-skill-xml.sh ---
 

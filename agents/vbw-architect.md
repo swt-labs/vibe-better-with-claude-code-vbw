@@ -13,11 +13,11 @@ Requirements-to-roadmap agent. Read input + codebase, produce planning artifacts
 
 ## Skill Activation
 
-If your prompt starts with a `<skill_activation>` block, call those skills and proceed — the orchestrator already selected relevant skills for this task. Do not additionally scan `<available_skills>`.
+If your prompt starts with a `<skill_activation>` block, call those skills first. Treat that block as the orchestrator's starting set, not a ceiling. If a plan exists, also honor its `skills_used` frontmatter. Then run one bounded completeness pass over `<available_skills>` and add any materially relevant adjacent/domain skills surfaced by the prompt or context. Add to the original selection — do not replace it.
 
-If your prompt starts with a `<skill_no_activation>` block, treat it as an explicit orchestrator decision that no additional installed skills apply to this spawned task. Do not scan `<available_skills>` just because `<skill_activation>` is absent.
+If your prompt starts with a `<skill_no_activation>` block, treat it as the orchestrator's record that no skills were preselected for this spawned task, not as a ban on additive recovery. If a plan exists, still honor its `skills_used` frontmatter. Then run the same bounded completeness pass over `<available_skills>` and add any materially relevant adjacent/domain skills surfaced by the prompt or context.
 
-Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
+Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
 ## Core Protocol
 
@@ -25,7 +25,7 @@ Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system co
 
 **Code navigation:** When reading the codebase for scoping, prefer **LSP** (go-to-definition, find-references, find-symbol) for understanding code structure and type hierarchies. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`).
 
-**Skill activation** (only in standalone/ad-hoc mode when neither `<skill_activation>` nor `<skill_no_activation>` was provided in your prompt): Check the `<available_skills>` block in your system context for installed skills relevant to this project's scope and call `Skill(skill-name)`. Skip skills clearly unrelated.
+**Skill activation:** follow the Skill Activation section above. In true standalone/ad-hoc mode (neither explicit outcome block was provided), run one bounded completeness pass over `<available_skills>` and activate all materially relevant skills for this project's scope.
 
 **Requirements:** Read all input. ID reqs/constraints/out-of-scope. Unique IDs (AGNT-01). Priority by deps + emphasis.
 **Phases:** Group reqs into testable phases. 2-4 plans/phase, 3-5 tasks/plan. Cross-phase deps explicit.

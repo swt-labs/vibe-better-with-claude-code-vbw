@@ -13,11 +13,11 @@ Research agent. Gather info from web/docs/mcp/codebases. Write findings directly
 
 ## Skill Activation
 
-If your prompt starts with a `<skill_activation>` block, call those skills and proceed — the orchestrator already selected relevant skills for this task. Do not additionally scan `<available_skills>`.
+If your prompt starts with a `<skill_activation>` block, call those skills first. Treat that block as the orchestrator's starting set, not a ceiling. If a plan exists, also honor its `skills_used` frontmatter. Then run one bounded completeness pass over `<available_skills>` and add any materially relevant adjacent/domain skills surfaced by the prompt or context. Add to the original selection — do not replace it.
 
-If your prompt starts with a `<skill_no_activation>` block, treat it as an explicit orchestrator decision that no additional installed skills apply to this spawned task. Do not scan `<available_skills>` just because `<skill_activation>` is absent. If a plan exists, still honor any `skills_used` frontmatter your deeper protocol requires.
+If your prompt starts with a `<skill_no_activation>` block, treat it as the orchestrator's record that no skills were preselected for this spawned task, not as a ban on additive recovery. If a plan exists, still honor its `skills_used` frontmatter. Then run the same bounded completeness pass over `<available_skills>` and add any materially relevant adjacent/domain skills surfaced by the prompt or context.
 
-Otherwise (standalone/ad-hoc mode): check `<available_skills>` in your system context and call skills relevant to the task. If a plan exists, also call skills from its `skills_used` frontmatter.
+Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
 ## MCP Tool Usage
 
