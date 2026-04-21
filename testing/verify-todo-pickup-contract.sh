@@ -57,12 +57,14 @@ require_grep "list-todos.sh emits command_text metadata" 'command_text' "$LIST_S
 require_grep "resolve-todo-item.sh supports session snapshots" 'session-snapshot' "$RESOLVE_SCRIPT"
 require_grep "todo-lifecycle.sh supports pickup command" 'pickup\)' "$LIFECYCLE_SCRIPT"
 require_grep "todo-lifecycle.sh supports remove command" 'remove\)' "$LIFECYCLE_SCRIPT"
+require_grep "todo-lifecycle.sh supports list-with-snapshot" 'list-with-snapshot' "$LIFECYCLE_SCRIPT"
 require_grep "todo-lifecycle.sh supports snapshot-save" 'snapshot-save' "$LIFECYCLE_SCRIPT"
 require_grep "track-known-issues.sh supports suppress" 'suppress\)' "$TRACK_SCRIPT"
 require_grep "compile-context.sh reads Recent Activity" 'Recent Activity\|Activity Log\|Activity' "$COMPILE_SCRIPT"
 
 # list-todos command surface
-require_grep "list-todos persists last-view snapshot" 'todo-lifecycle\.sh" snapshot-save' "$LIST_CMD"
+require_grep "list-todos uses helper-backed snapshot capture" 'todo-lifecycle\.sh" list-with-snapshot' "$LIST_CMD"
+require_absent "list-todos no longer asks markdown to pipe JSON into snapshot-save" 'todo-lifecycle\.sh" snapshot-save' "$LIST_CMD"
 require_grep "list-todos remove uses snapshot resolver" 'resolve-todo-item\.sh" <N> --session-snapshot' "$LIST_CMD"
 require_grep "list-todos remove delegates to lifecycle helper" 'todo-lifecycle\.sh" remove' "$LIST_CMD"
 require_grep "list-todos filtered view rerun-unfiltered hint exists" 'rerun unfiltered /vbw:list-todos' "$LIST_CMD"
@@ -71,9 +73,10 @@ require_absent "list-todos no longer advertises /vbw:research N" '/vbw:research 
 # debug command surface
 require_grep "debug uses snapshot-backed todo resolver" 'resolve-todo-item\.sh" <N> --session-snapshot --require-unfiltered --validate-live' "$DEBUG_CMD"
 require_grep "debug writes detail warning through lifecycle helper" 'todo-lifecycle\.sh" detail-warning' "$DEBUG_CMD"
-require_grep "debug delegates Source Todo persistence to debug-session-state helper" 'debug-session-state\.sh" start-with-source-todo' "$DEBUG_CMD"
+require_grep "debug delegates numbered Source Todo persistence to selected-todo helper" 'debug-session-state\.sh" start-with-selected-todo' "$DEBUG_CMD"
+require_absent "debug no longer mentions manual SOURCE_TODO_JSON construction" 'SOURCE_TODO_JSON' "$DEBUG_CMD"
 require_grep "debug pickup uses lifecycle helper" 'todo-lifecycle\.sh" pickup /vbw:debug' "$DEBUG_CMD"
-require_grep "debug documents helper-owned Source Todo rollback boundary" 'helper owns session creation, `## Source Todo` persistence, and rollback' "$DEBUG_CMD"
+require_grep "debug documents helper-owned numbered Source Todo rollback boundary" 'selected-todo helper owns the numbered `/vbw:list-todos` source-todo payload normalization' "$DEBUG_CMD"
 
 # fix command surface
 require_grep "fix uses snapshot-backed todo resolver" 'resolve-todo-item\.sh" <N> --session-snapshot --require-unfiltered --validate-live' "$FIX_CMD"

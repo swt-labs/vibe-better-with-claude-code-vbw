@@ -185,6 +185,19 @@ teardown() {
   [[ "$output" == *"invalid JSON"* ]]
 }
 
+@test "fails when mode field is missing" {
+  run bash -c 'echo '"'"'{"status":"qa_pending"}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"'
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing required field 'mode'"* ]]
+}
+
+@test "rejects source_todo alias to keep source-todo contract strict" {
+  run bash -c 'echo '"'"'{"mode":"source_todo","text":"Investigate parser crash"}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"'
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unknown mode 'source_todo'"* ]]
+  [[ "$output" == *"Valid: source-todo, investigation, qa, uat, status"* ]]
+}
+
 @test "fails on missing session file" {
   run bash -c 'echo '"'"'{"mode":"status","status":"investigating"}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "/nonexistent/file.md"'
   [ "$status" -eq 1 ]

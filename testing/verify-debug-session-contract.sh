@@ -63,7 +63,7 @@ else
   fail "debug-session-state.sh missing"
 fi
 
-for cmd in start start-with-source-todo get get-or-latest resume set-status increment-qa increment-uat clear-active list; do
+for cmd in start start-with-source-todo start-with-selected-todo get get-or-latest resume set-status increment-qa increment-uat clear-active list; do
   if grep -q "\"$cmd\"\\|'$cmd'\\|${cmd})" "$STATE_SCRIPT" 2>/dev/null; then
     pass "state script handles command: $cmd"
   else
@@ -120,6 +120,12 @@ if grep -q "debug_session_routing" "$DEBUG_CMD" 2>/dev/null; then
   pass "debug.md has debug_session_routing section"
 else
   fail "debug.md missing debug_session_routing section"
+fi
+
+if grep -q 'start-with-selected-todo' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md uses start-with-selected-todo for numbered todo sessions"
+else
+  fail "debug.md missing start-with-selected-todo numbered todo integration"
 fi
 
 QA_CMD="$ROOT/commands/qa.md"
