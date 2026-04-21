@@ -30,23 +30,21 @@ allowed-tools: Read, Edit, Bash
    (e) Extract `--plugin-dir <path>` from the process tree (`ps axww`) and use that path if it contains `scripts/hook-wrapper.sh`.
    If none resolves to a valid directory, STOP: "Plugin root not found. The session startup hook may not have run. Try restarting your Claude session." Store the resolved path as `PLUGIN_ROOT` for subsequent steps.
 
-2. **Load todos:** Run `bash "${PLUGIN_ROOT}/scripts/list-todos.sh" {priority-filter}` (omit filter arg if none provided). Parse the JSON output.
+2. **Load todos through the snapshot helper:** Run:
+   ```bash
+   bash "${PLUGIN_ROOT}/scripts/todo-lifecycle.sh" list-with-snapshot {priority-filter}
+   ```
+   Omit the filter arg if none is provided. Parse the JSON output. This helper owns both the fresh `list-todos.sh` lookup and the exact last-view snapshot write. If snapshot persistence fails, it returns the helper error JSON instead of a partial success.
 
-3. **Persist the exact last-view snapshot:** Before any branching on status, pipe the exact JSON output from step 2 into:
-    ```bash
-    bash "${PLUGIN_ROOT}/scripts/todo-lifecycle.sh" snapshot-save
-    ```
-    If snapshot persistence returns `status="error"`, STOP with the helper's `message` value. Each new `/vbw:list-todos` invocation replaces the previous session snapshot.
-
-4. **Handle status:**
+3. **Handle status:**
    - `"error"`: STOP with the `message` value.
    - `"empty"`: Display the `display` value. Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos empty` and display. Exit.
    - `"no-match"`: Display the `display` value. Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos empty` and display. Exit.
-    - `"ok"`: Continue to step 5.
+   - `"ok"`: Continue to step 4.
 
-5. **Display list:** Show the `display` value from the script output exactly as returned (do not append any additional prompt text).
+4. **Display list:** Show the `display` value from the script output exactly as returned (do not append any additional prompt text).
 
-6. **Display action hints and STOP.** Do NOT prompt the user for input — display one of the following as plain text after the todo list, then STOP:
+5. **Display action hints and STOP.** Do NOT prompt the user for input — display one of the following as plain text after the todo list, then STOP:
 
     - **Unfiltered view (`filter=null`):**
        ```text

@@ -19,6 +19,12 @@ load test_helper
   [ "$count" -ge 6 ]
 }
 
+@test "todo command is the sanctioned non-preamble PLUGIN_ROOT planning-git callsite" {
+  run bash -c "grep -cF 'bash \"\${PLUGIN_ROOT}/scripts/planning-git.sh\" commit-boundary \"add todo item\" .vbw-planning/config.json' \"$PROJECT_ROOT/commands/todo.md\""
+  [ "$status" -eq 0 ]
+  [ "$output" -eq 1 ]
+}
+
 @test "planning-git callsites support VBW_PLUGIN_ROOT fallback" {
   local count
   count=$(grep -R -c 'VBW_PLUGIN_ROOT.*/scripts/planning-git.sh' "$PROJECT_ROOT/commands" "$PROJECT_ROOT/references" 2>/dev/null | awk -F: '{s+=$NF} END{print s}')

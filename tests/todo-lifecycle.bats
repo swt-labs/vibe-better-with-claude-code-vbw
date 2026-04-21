@@ -47,6 +47,18 @@ None.
 EOF
 }
 
+write_state_with_no_todos() {
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+None.
+
+## Blockers
+None.
+EOF
+}
+
 write_legacy_state() {
   cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
 # Project State
@@ -79,6 +91,29 @@ save_snapshot() {
 select_snapshot_item() {
   local selection="$1"
   bash "$RESOLVE_SCRIPT" "$selection" --session-snapshot
+}
+
+write_raw_snapshot() {
+  printf '%s' "$1" > "/tmp/.vbw-last-list-view-${CLAUDE_SESSION_ID}.json"
+}
+
+assert_snapshot_invalid_everywhere() {
+  local selection="${1:-1}"
+
+  run bash "$SCRIPT" snapshot-show
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "error" ]
+  [ "$(echo "$output" | jq -r '.code')" = "snapshot_invalid" ]
+
+  run bash "$SCRIPT" snapshot-select "$selection"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "error" ]
+  [ "$(echo "$output" | jq -r '.code')" = "snapshot_invalid" ]
+
+  run bash "$RESOLVE_SCRIPT" "$selection" --session-snapshot --require-unfiltered --validate-live
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "error" ]
+  [ "$(echo "$output" | jq -r '.code')" = "snapshot_invalid" ]
 }
 
 @test "todo-lifecycle: snapshot-show fails closed when missing" {
@@ -116,6 +151,106 @@ select_snapshot_item() {
   run bash "$SCRIPT" snapshot-show
   [ "$status" -eq 0 ]
   [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+}
+
+@test "todo-lifecycle: list-with-snapshot returns full metadata and writes the exact snapshot" {
+  write_state_with_recent_activity
+
+  run bash "$LIST_SCRIPT" high
+  [ "$status" -eq 0 ]
+  EXPECTED_JSON="$output"
+
+  run bash "$SCRIPT" list-with-snapshot high
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -cS '.')" = "$(printf '%s' "$EXPECTED_JSON" | jq -cS '.')" ]
+  [ "$(printf '%s' "$output" | jq -r '.items[0].command_text')" = "Refactor auth module" ]
+  [ "$(printf '%s' "$output" | jq -r '.items[0].section_index')" = "2" ]
+
+  run bash "$SCRIPT" snapshot-show
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -cS '.')" = "$(printf '%s' "$EXPECTED_JSON" | jq -cS '.')" ]
+}
+
+@test "todo-lifecycle: validate-item returns status ok for a matching live selection" {
+  write_state_with_recent_activity
+  save_snapshot
+  ITEM_JSON=$(select_snapshot_item 1)
+
+  run bash -lc 'printf "%s" "$1" | bash "$2" validate-item' -- "$ITEM_JSON" "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [ "$(echo "$output" | jq -r '.normalized_text')" = "Fix parser bug" ]
+}
+
+@test "todo-lifecycle: snapshot-show accepts valid empty snapshot payloads" {
+  write_raw_snapshot '{"status":"empty","state_path":".vbw-planning/STATE.md","section":null,"count":0,"filter":null,"display":"No pending todos.","items":[]}'
+
+  run bash "$SCRIPT" snapshot-show
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "empty" ]
+}
+
+@test "todo-lifecycle: list-with-snapshot preserves valid filtered empty snapshots" {
+  write_state_with_no_todos
+
+  run bash "$SCRIPT" list-with-snapshot high
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "empty" ]
+  [ "$(echo "$output" | jq -r '.section')" = "null" ]
+  [ "$(echo "$output" | jq -r '.count')" = "0" ]
+  [ "$(echo "$output" | jq -r '.filter')" = "high" ]
+  [ "$(echo "$output" | jq -r '.display')" = "No pending todos." ]
+  [ "$(echo "$output" | jq -r '.items | length')" = "0" ]
+
+  EXPECTED_JSON="$output"
+
+  run bash "$SCRIPT" snapshot-show
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -cS '.')" = "$(printf '%s' "$EXPECTED_JSON" | jq -cS '.')" ]
+}
+
+@test "todo-lifecycle: snapshot-show accepts valid no-match snapshot payloads" {
+  write_raw_snapshot '{"status":"no-match","state_path":".vbw-planning/STATE.md","section":"## Todos","count":0,"filter":"high","display":"No high-priority todos found.","items":[]}'
+
+  run bash "$SCRIPT" snapshot-show
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "no-match" ]
+}
+
+@test "todo-lifecycle: snapshot schema rejects bogus top-level status" {
+  write_raw_snapshot '{"status":"bogus","state_path":".vbw-planning/STATE.md","section":"## Todos","count":1,"filter":null,"items":[{"num":1,"section_index":1,"line":"- Test todo","normalized_text":"Test todo","state_path":".vbw-planning/STATE.md","section":"## Todos","line_no":12,"identity_occurrence":1,"identity_total":1,"ref":null,"known_issue_signature":null}]}'
+
+  assert_snapshot_invalid_everywhere
+}
+
+@test "todo-lifecycle: snapshot schema rejects ok snapshots missing filter" {
+  write_raw_snapshot '{"status":"ok","state_path":".vbw-planning/STATE.md","section":"## Todos","count":1,"items":[{"num":1,"section_index":1,"line":"- Test todo","normalized_text":"Test todo","state_path":".vbw-planning/STATE.md","section":"## Todos","line_no":12,"identity_occurrence":1,"identity_total":1,"ref":null,"known_issue_signature":null}]}'
+
+  assert_snapshot_invalid_everywhere
+}
+
+@test "todo-lifecycle: snapshot schema rejects no-match snapshots with null filter" {
+  write_raw_snapshot '{"status":"no-match","state_path":".vbw-planning/STATE.md","section":"## Todos","count":0,"filter":null,"display":"No matching todos.","items":[]}'
+
+  assert_snapshot_invalid_everywhere
+}
+
+@test "todo-lifecycle: snapshot schema rejects invalid item ref metadata" {
+  write_raw_snapshot '{"status":"ok","state_path":".vbw-planning/STATE.md","section":"## Todos","count":1,"filter":null,"items":[{"num":1,"section_index":1,"line":"- Test todo","normalized_text":"Test todo","state_path":".vbw-planning/STATE.md","section":"## Todos","line_no":12,"identity_occurrence":1,"identity_total":1,"ref":"not-a-ref","known_issue_signature":null}]}'
+
+  assert_snapshot_invalid_everywhere
+}
+
+@test "resolve-todo-item: validate-live returns status ok for a matching selection" {
+  write_state_with_recent_activity
+
+  run bash "$SCRIPT" list-with-snapshot
+  [ "$status" -eq 0 ]
+
+  run bash "$RESOLVE_SCRIPT" 1 --session-snapshot --validate-live
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [ "$(echo "$output" | jq -r '.selection_source')" = "snapshot" ]
 }
 
 @test "todo-lifecycle: snapshot-select preserves filtered numbering and section index" {

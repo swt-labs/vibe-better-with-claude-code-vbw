@@ -147,7 +147,7 @@ AskUserQuestion (single select):
 - "How should VBW planning artifacts be tracked in git?"
   - `manual` (default): don't auto-ignore or auto-commit planning files
   - `ignore`: keep `.vbw-planning/` ignored in root `.gitignore`
-  - `commit`: track `.vbw-planning/` + `CLAUDE.md` at lifecycle boundaries
+  - `commit`: track `.vbw-planning/` + `CLAUDE.md` at helper-backed planning boundaries (bootstrap, planning checkpoints, todo adds, archive)
 
 AskUserQuestion (single select):
 - "When should VBW push commits?"
