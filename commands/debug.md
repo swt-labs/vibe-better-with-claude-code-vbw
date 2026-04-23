@@ -100,7 +100,7 @@ Resolve or create the debug session before any investigation. Order of precedenc
   ```bash
   bash "{plugin-root}/scripts/todo-lifecycle.sh" pickup /vbw:debug {DETAIL_STATUS} {cleanup_policy}
   ```
-  Set `{cleanup_policy}` to `safe` when `DETAIL_STATUS=ok`; otherwise set it to `keep`. If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface its `warning` value with the final result so cleanup state stays explicit.
+  Set `{cleanup_policy}` to `safe` when `DETAIL_STATUS=ok`; otherwise set it to `keep`. If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface its `warning` value with the final result so cleanup state stays explicit. Capture the helper result immediately into explicit presentation variables so post-pickup messaging stays deterministic: `TODO_PICKUP_RESULT_JSON` for the exact helper stdout, `TODO_PICKUP_STATUS=ok|partial`, `TODO_PICKUP_WARNING` from `.warning // empty`, and `TODO_PICKUP_AUTO_NOTE="Selected todo was already picked up automatically by /vbw:debug."`.
 
 Store the resolved `session_id` and `session_file` for use in Steps below.
 
@@ -158,7 +158,13 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
    - `prefer_teams='never'`: Always use Path B (single debugger, no team). Overrides effort and ambiguity.
 
 4. **Spawn investigation:**
-    **Path A: Competing Hypotheses** (prefer_teams='always' OR (prefer_teams!='never' AND effort=high AND ambiguous)):
+  Before any debugger or team is spawned, capture the current HEAD exactly once:
+  ```bash
+  HEAD_BEFORE=$(git rev-parse HEAD 2>/dev/null || echo "")
+  ```
+  Treat `HEAD_BEFORE` as the pre-investigation baseline for Step 5. Do not use commit presence alone to infer whether this investigation created a new fix.
+
+  **Path A: Competing Hypotheses** (prefer_teams='always' OR (prefer_teams!='never' AND effort=high AND ambiguous)):
     - Generate 3 hypotheses (cause, codebase area, confirming evidence)
     - Resolve Debugger model:
         ```bash
@@ -180,9 +186,9 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
         RESEARCH_CONTEXT=$(bash "{plugin-root}/scripts/compile-research-context.sh" .vbw-planning "{bug description from Step 1}" 2>/dev/null || echo "")
         ```
         Replace `{bug description from Step 1}` with the actual parsed bug description. If `RESEARCH_CONTEXT` is non-empty, include it in each Debugger task prompt below. If empty, omit the `<standalone_research_context>` block entirely.
-    - Create 3 tasks via TaskCreate, each with: bug report, standalone research context (include ONLY if RESEARCH_CONTEXT was non-empty: `<standalone_research_context>Prior research findings from /vbw:research. Advisory — verify all claims against the current codebase before relying on them.\n{RESEARCH_CONTEXT}</standalone_research_context>`), extended context from todo detail if loaded in Step 1 (include `detail.context` and `detail.files` — omit this section entirely if no detail was loaded), ONE hypothesis only (no cross-contamination), working dir, codebase bootstrap instruction ("If `.vbw-planning/codebase/META.md` exists, read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before investigating"), instruction to report via `debugger_report` schema (see `{plugin-root}/references/handoff-schemas.md`), instruction: "If investigation reveals pre-existing failures unrelated to this bug, list them in your response under a 'Pre-existing Issues' heading with test name, file, and failure message." **Include `[analysis-only]` in each task subject** (e.g., "Hypothesis 1: race condition in sync handler [analysis-only]") so the TaskCompleted hook skips the commit-verification gate for report-only tasks.
+    - Create 3 tasks via TaskCreate, each with: bug report, standalone research context (include ONLY if RESEARCH_CONTEXT was non-empty: `<standalone_research_context>Prior research findings from /vbw:research. Advisory — verify all claims against the current codebase before relying on them.\n{RESEARCH_CONTEXT}</standalone_research_context>`), extended context from todo detail if loaded in Step 1 (include `detail.context` and `detail.files` — omit this section entirely if no detail was loaded), ONE hypothesis only (no cross-contamination), working dir, codebase bootstrap instruction ("If `.vbw-planning/codebase/META.md` exists, read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before investigating"), instruction to report via `debugger_report` schema (see `{plugin-root}/references/handoff-schemas.md`) including explicit `resolution_observation=already_fixed|needs_change|inconclusive`, instruction that `resolution_observation` is analysis-scoped only (teammates do not own the final command outcome or session status), instruction: "If investigation reveals pre-existing failures unrelated to this bug, list them in your response under a 'Pre-existing Issues' heading with test name, file, and failure message." **Include `[analysis-only]` in each task subject** (e.g., "Hypothesis 1: race condition in sync handler [analysis-only]") so the TaskCompleted hook skips the commit-verification gate for report-only tasks.
     - Spawn 3 vbw-debugger teammates, one task each. **Set `subagent_type: "vbw:vbw-debugger"` and `model: "${DEBUGGER_MODEL}"` on each Task spawn. If `DEBUGGER_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEBUGGER_MAX_TURNS}`. If `DEBUGGER_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
-    - Wait for completion. Synthesize: strongest evidence + highest confidence wins. Multiple confirmed = contributing factors.
+    - Wait for completion. Synthesize: strongest evidence + highest confidence wins. Multiple confirmed = contributing factors. After synthesis, choose one authoritative `RESOLUTION_OBSERVATION` value for the command from the teammate reports: `already_fixed` when the current branch already contains the fix and no new change is needed, `needs_change` when code changes were required or would still be required, `inconclusive` when the evidence is not yet strong enough.
     - Collect pre-existing issues from all debugger responses. De-duplicate by test name and file (keep first error message when the same test+file pair has different messages) — if multiple debuggers report the same pre-existing failure, include it only once.
     - Winning hypothesis with fix: apply + commit `fix({scope}): {description}`
     - **HARD GATE — Shutdown before presenting results:** Send `shutdown_request` to each teammate, wait for `shutdown_response` (approved=true) delivered via SendMessage tool call (NOT plain text). If a teammate responds in plain text instead of calling SendMessage, re-send the `shutdown_request`. If rejected, re-request (max 3 attempts per teammate — then proceed). Call TeamDelete. **Post-TeamDelete residual cleanup:** `bash "{plugin-root}/scripts/clean-stale-teams.sh" 2>/dev/null || true`. Verify: after TeamDelete, there must be ZERO active teammates. If teardown stalls, advise the user to run `/vbw:doctor --cleanup`. Only THEN present results to user. Failure to shut down leaves agents running and consuming API credits.
@@ -219,67 +225,84 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
         Working directory: {pwd}.
         If `.vbw-planning/codebase/META.md` exists, read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before investigating.
         Follow protocol: bootstrap (if codebase mapping exists), reproduce, hypothesize, gather evidence, diagnose, fix, verify, document.
+        Return a final report that includes an explicit `resolution_observation` field with exactly one of `already_fixed`, `needs_change`, or `inconclusive`. This field is analysis-scoped: use `already_fixed` only when the current branch already contains the fix and no new code change is needed; use `needs_change` when additional code changes were required or would still be required; use `inconclusive` when diagnosis is incomplete.
         If you apply a fix, commit with: fix({scope}): {description}.
         If investigation reveals pre-existing failures unrelated to this bug, list them in your response under a "Pre-existing Issues" heading with test name, file, and failure message.
         ```
 
 5. **Persist to debug session + Clear delegation marker + Present:**
 
-    <debug_session_persistence>
-    After investigation completes (Path A or Path B), persist results to the debug session file using `write-debug-session.sh`:
+   <debug_session_persistence>
+   After investigation completes (Path A or Path B), capture the post-investigation HEAD before classifying the outcome:
 
-    Build the investigation JSON payload:
-    ```bash
-    INVESTIGATION_JSON=$(cat <<'ENDJSON'
-    {
-      "mode": "investigation",
-      "title": "{one-line bug summary}",
-      "issue": "{bug description from user}",
-      "hypotheses": [
-        {
-          "description": "{hypothesis description}",
-          "status": "confirmed|rejected",
-          "evidence_for": "{supporting evidence}",
-          "evidence_against": "{contradicting evidence}",
-          "conclusion": "{why chosen or rejected}"
-        }
-      ],
-      "root_cause": "{confirmed root cause with file references}",
-      "plan": "{chosen fix approach}",
-      "implementation": "{summary of changes}",
-      "changed_files": ["{file1}", "{file2}"],
-      "commit": "{commit hash and message, or 'No commit yet.'}"
-    }
-    ENDJSON
-    )
-    echo "$INVESTIGATION_JSON" | bash "{plugin-root}/scripts/write-debug-session.sh" "$session_file"
-    ```
+   ```bash
+   HEAD_AFTER=$(git rev-parse HEAD 2>/dev/null || echo "")
+   ```
 
-    If a fix was applied and committed, set status to `qa_pending`:
-    ```bash
-    bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning qa_pending
-    ```
+   Resolve one authoritative analysis-scoped `RESOLUTION_OBSERVATION` before persisting anything. For Path A, use the synthesized `debugger_report.payload.resolution_observation` chosen from teammate evidence. For Path B, read the single debugger's explicit `resolution_observation` field from its final report. Normalize it to exactly one of `already_fixed`, `needs_change`, or `inconclusive`. Do **not** infer `already_fixed` from free-text phrasing or from commit presence alone.
 
-    If investigation completed but no fix was applied (analysis only), set status to `fix_applied` is wrong — keep as `investigating` and advise user to apply the fix.
-    </debug_session_persistence>
+   Then compute the command-local three-way outcome: new commit created now (`HEAD_BEFORE` != `HEAD_AFTER`) → `INVESTIGATION_OUTCOME=fixed_now`; no new commit now + `RESOLUTION_OBSERVATION=already_fixed` → `INVESTIGATION_OUTCOME=already_fixed`; no new commit now + `RESOLUTION_OBSERVATION=needs_change|inconclusive` → `INVESTIGATION_OUTCOME=no_fix_yet`.
 
-    Clear the marker:
-    ```bash
-    bash "{plugin-root}/scripts/delegated-workflow.sh" clear
-    ```
-    Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
-    ```text
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    Bug Investigation Complete
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Persist branch-specific investigation wording — do not collapse `already_fixed` and `no_fix_yet` into the same `"No fix applied"` text.
 
-      Mode:       {Path A: "Competing Hypotheses (3 parallel)" + hypothesis outcomes | Path B: "Standard (single debugger)"}
-      Issue:      {one-line summary}
-      Root Cause: {from report}
-      Fix:        {commit hash + message, or "No fix applied"}
+   Build the investigation JSON payload:
+   ```bash
+   INVESTIGATION_JSON=$(cat <<'ENDJSON'
+   {
+     "mode": "investigation",
+     "title": "{one-line bug summary}",
+     "issue": "{bug description from user}",
+     "hypotheses": [
+       {
+         "description": "{hypothesis description}",
+         "status": "confirmed|rejected",
+         "evidence_for": "{supporting evidence}",
+         "evidence_against": "{contradicting evidence}",
+         "conclusion": "{why chosen or rejected}"
+       }
+     ],
+     "root_cause": "{confirmed root cause with file references}",
+     "plan": "{chosen fix approach}",
+     "implementation": "{summary of changes, or branch-specific text: fixed_now = changes applied now; already_fixed = no new changes were required because the current branch already contained the fix; no_fix_yet = investigation completed without applying a new fix in this run}",
+     "changed_files": ["{file1}", "{file2}"],
+     "commit": "{fixed_now = commit hash and message; already_fixed = 'Already fixed before this investigation — no new commit created.'; no_fix_yet = 'No new commit created during this investigation.'}"
+   }
+   ENDJSON
+   )
+   echo "$INVESTIGATION_JSON" | bash "{plugin-root}/scripts/write-debug-session.sh" "$session_file"
+   ```
 
-      Files Modified: {list}
-    ```
+   Then update session state from `INVESTIGATION_OUTCOME`. For `fixed_now`, set status to `qa_pending`:
+   ```bash
+   bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning qa_pending
+   ```
+   For `already_fixed`, mark the investigation complete using the existing completed-session workflow:
+   ```bash
+   bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning complete
+   ```
+   For `no_fix_yet`, do **not** set `fix_applied`; keep the session status as `investigating`.
+   </debug_session_persistence>
+
+   Always clear the marker, regardless of outcome:
+   ```bash
+   bash "{plugin-root}/scripts/delegated-workflow.sh" clear
+   ```
+   Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
+   ```text
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Bug Investigation Complete
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     Mode:       {Path A: "Competing Hypotheses (3 parallel)" + hypothesis outcomes | Path B: "Standard (single debugger)"}
+     Issue:      {one-line summary}
+     Root Cause: {from report}
+     Outcome:    {fixed_now | already_fixed | no_fix_yet}
+     Resolution: {fixed_now = "Applied now in {commit hash + message}" | already_fixed = "Already fixed on the current branch — no new commit created" | no_fix_yet = "No new commit created — further implementation still required"}
+
+     Files Modified: {list}
+   ```
+
+   If `TODO_SELECTED=true` and pickup ran, any numbered list captured before pickup is stale because `STATE.md` has already changed. Use the stored `TODO_PICKUP_STATUS`, `TODO_PICKUP_WARNING`, and `TODO_PICKUP_AUTO_NOTE` values instead of inventing fresh numbered cleanup advice. Never tell the user to `remove N` for the selected todo; `/vbw:debug` already picked it up automatically. Never cite a remaining todo number unless you first refresh through the existing snapshot/resolver flow. Default low-token UX: unnumbered prose only — say `Selected todo was already picked up automatically.` and, when related backlog items may still exist, say `Rerun /vbw:list-todos for fresh numbering.` If `TODO_PICKUP_STATUS=partial` and `TODO_PICKUP_WARNING` is non-empty, surface that warning explicitly.
 
 **Discovered Issues:** If the Debugger reported pre-existing failures, out-of-scope bugs, or issues unrelated to the investigated bug, append after the result box. Cap the list at 20 entries; if more exist, show the first 20 and append `... and {N} more`:
 ```text
@@ -290,9 +313,11 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
 ```
 This is **display-only**. Do NOT edit STATE.md, do NOT add todos, do NOT invoke /vbw:todo, and do NOT enter an interactive loop. The user decides whether to track these. If no discovered issues: omit the section entirely.
 
-If no fix was committed (session status is still `investigating`): STOP with `➜ Next: /vbw:debug --resume -- Continue investigation and apply fix`. Do not enter inline QA.
+If `INVESTIGATION_OUTCOME=no_fix_yet` (session status is still `investigating`): STOP with `➜ Next: /vbw:debug --resume -- Continue investigation and apply fix`. Do not enter inline QA.
 
-If a fix was committed and session status is `qa_pending`: proceed to `<debug_inline_qa>` below (even if discovered issues were displayed above — they are informational only and do not gate the QA lifecycle).
+If `INVESTIGATION_OUTCOME=already_fixed`: STOP with `➜ Debug session complete. Investigation confirmed the fix was already present.` Do not enter inline QA.
+
+If `INVESTIGATION_OUTCOME=fixed_now` and session status is `qa_pending`: proceed to `<debug_inline_qa>` below (even if discovered issues were displayed above — they are informational only and do not gate the QA lifecycle).
 
 <debug_inline_qa>
 **Inline QA — runs automatically after a fix is committed.**

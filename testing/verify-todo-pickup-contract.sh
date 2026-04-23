@@ -77,6 +77,15 @@ require_grep "debug delegates numbered Source Todo persistence to selected-todo 
 require_absent "debug no longer mentions manual SOURCE_TODO_JSON construction" 'SOURCE_TODO_JSON' "$DEBUG_CMD"
 require_grep "debug pickup uses lifecycle helper" 'todo-lifecycle\.sh" pickup /vbw:debug' "$DEBUG_CMD"
 require_grep "debug documents helper-owned numbered Source Todo rollback boundary" 'selected-todo helper owns the numbered `/vbw:list-todos` source-todo payload normalization' "$DEBUG_CMD"
+require_grep "debug stores pickup status for post-pickup messaging" 'TODO_PICKUP_STATUS=ok[^[:space:]]*partial' "$DEBUG_CMD"
+require_grep "debug stores pickup warning for partial cleanup" 'TODO_PICKUP_WARNING' "$DEBUG_CMD"
+require_grep "debug stores automatic pickup note" 'TODO_PICKUP_AUTO_NOTE' "$DEBUG_CMD"
+require_grep "debug marks pre-pickup numbering as stale after pickup" 'numbered list captured before pickup is stale' "$DEBUG_CMD"
+require_grep "debug says selected todo was picked up automatically" 'picked up automatically' "$DEBUG_CMD"
+require_grep "debug forbids remove N advice after automatic pickup" 'Never tell the user to `remove N`' "$DEBUG_CMD"
+require_grep "debug requires refresh before citing remaining todo numbers" 'Never cite a remaining todo number unless you first refresh' "$DEBUG_CMD"
+require_grep "debug reruns list-todos for fresh numbering after pickup" 'Rerun /vbw:list-todos for fresh numbering' "$DEBUG_CMD"
+require_grep "debug explicitly surfaces partial pickup warnings" 'TODO_PICKUP_STATUS=partial' "$DEBUG_CMD"
 
 # fix command surface
 require_grep "fix uses snapshot-backed todo resolver" 'resolve-todo-item\.sh" <N> --session-snapshot --require-unfiltered --validate-live' "$FIX_CMD"
