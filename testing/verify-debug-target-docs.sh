@@ -40,6 +40,18 @@ else
   fail "AGENTS.md missing vbw-debug-target.txt guidance"
 fi
 
+if grep -Eq 'git-common-dir|\.git/info/vbw-debug-target\.txt' "$AGENTS_MD" 2>/dev/null; then
+  pass "AGENTS.md documents the git-common-dir debug target path"
+else
+  fail "AGENTS.md missing git-common-dir debug target guidance"
+fi
+
+if grep -Eq 'shared.*worktrees|worktrees.*share' "$AGENTS_MD" 2>/dev/null; then
+  pass "AGENTS.md explains worktree-shared debug target behavior"
+else
+  fail "AGENTS.md missing worktree-shared debug target explanation"
+fi
+
 if grep -q 'resolve-debug-target.sh' "$AGENTS_MD" 2>/dev/null; then
   pass "AGENTS.md references resolve-debug-target.sh"
 else
@@ -62,6 +74,18 @@ if grep -q 'vbw-debug-target.txt' "$CONTRIB" 2>/dev/null; then
   pass "CONTRIBUTING.md documents local debug target setup"
 else
   fail "CONTRIBUTING.md missing local debug target setup"
+fi
+
+if grep -Eq 'git-common-dir|\.git/info/vbw-debug-target\.txt' "$CONTRIB" 2>/dev/null; then
+  pass "CONTRIBUTING.md documents the git-common-dir debug target path"
+else
+  fail "CONTRIBUTING.md missing git-common-dir debug target guidance"
+fi
+
+if grep -Eq 'shared.*worktrees|worktrees.*share' "$CONTRIB" 2>/dev/null; then
+  pass "CONTRIBUTING.md explains worktree-shared debug target behavior"
+else
+  fail "CONTRIBUTING.md missing worktree-shared debug target explanation"
 fi
 
 if [ -f "$TESTING_README" ]; then
