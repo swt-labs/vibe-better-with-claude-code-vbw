@@ -24,6 +24,15 @@ fail() {
   FAIL=$((FAIL + 1))
 }
 
+finish() {
+  echo ""
+  echo "==============================="
+  echo "TOTAL: $PASS PASS, $FAIL FAIL"
+  echo "==============================="
+
+  [ "$FAIL" -eq 0 ] || exit 1
+}
+
 echo "=== README Config Reference Contract (Issue #513) ==="
 
 if [ ! -f "$README" ]; then
@@ -34,8 +43,12 @@ if [ ! -f "$DEFAULTS_JSON" ]; then
   fail "config/defaults.json missing"
 fi
 
+if [ "$FAIL" -gt 0 ]; then
+  finish
+fi
+
 extract_default_keys_in_source_order() {
-  grep -E '^  "[a-z0-9_]+": ' "$DEFAULTS_JSON" | sed -E 's/^  "([^"]+)": .*/\1/'
+  jq -r 'keys_unsorted[]' "$DEFAULTS_JSON"
 }
 
 extract_readme_default_rows() {
@@ -185,9 +198,4 @@ else
   fail "discussion_mode prose missing auto mode semantics"
 fi
 
-echo ""
-echo "==============================="
-echo "TOTAL: $PASS PASS, $FAIL FAIL"
-echo "==============================="
-
-[ "$FAIL" -eq 0 ] || exit 1
+finish
