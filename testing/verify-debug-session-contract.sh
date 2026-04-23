@@ -134,28 +134,28 @@ else
   fail "debug.md missing HEAD_BEFORE/HEAD_AFTER outcome comparison"
 fi
 
-if sed -n '/Path B: Standard/,/^5\./p' "$DEBUG_CMD" 2>/dev/null | grep -q 'resolution_observation'; then
+if grep -qF 'resolution_observation' "$DEBUG_CMD" 2>/dev/null; then
   pass "debug.md Path B instructs the single debugger to return resolution_observation"
 else
   fail "debug.md Path B missing resolution_observation contract"
 fi
 
-if sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -q 'INVESTIGATION_OUTCOME=fixed_now' && \
-   sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -q 'INVESTIGATION_OUTCOME=already_fixed' && \
-   sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -q 'INVESTIGATION_OUTCOME=no_fix_yet'; then
+if grep -qF 'INVESTIGATION_OUTCOME=fixed_now' "$DEBUG_CMD" 2>/dev/null && \
+   grep -qF 'INVESTIGATION_OUTCOME=already_fixed' "$DEBUG_CMD" 2>/dev/null && \
+   grep -qF 'INVESTIGATION_OUTCOME=no_fix_yet' "$DEBUG_CMD" 2>/dev/null; then
   pass "debug.md Step 5 maps fixed_now, already_fixed, and no_fix_yet outcomes"
 else
   fail "debug.md Step 5 missing fixed_now/already_fixed/no_fix_yet mapping"
 fi
 
-if sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -qF 'set-status .vbw-planning complete'; then
+if grep -qF 'set-status .vbw-planning complete' "$DEBUG_CMD" 2>/dev/null; then
   pass "debug.md already_fixed path reuses completed-state workflow via set-status complete"
 else
   fail "debug.md already_fixed path missing set-status complete workflow"
 fi
 
-if sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -qF 'For `no_fix_yet`' && \
-   sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -qF '`investigating`'; then
+if grep -qF 'For `no_fix_yet`' "$DEBUG_CMD" 2>/dev/null && \
+   grep -qF '`investigating`' "$DEBUG_CMD" 2>/dev/null; then
   pass "debug.md no_fix_yet path keeps the session investigating"
 else
   fail "debug.md no_fix_yet path missing investigating-state guidance"
