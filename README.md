@@ -546,6 +546,7 @@ Quick reference for every key in `config/defaults.json`, in order. Click the sec
 | `skill_suggestions` | `true` | [Skills and discovery](#skills-and-discovery) |
 | `auto_install_skills` | `false` | [Skills and discovery](#skills-and-discovery) |
 | `discovery_questions` | `true` | [Skills and discovery](#skills-and-discovery) |
+| `discussion_mode` | `"questions"` | [Skills and discovery](#skills-and-discovery) |
 | `context_compiler` | `true` | [Agent behavior](#agent-behavior) |
 | `visual_format` | `"unicode"` | [Display](#display) |
 | `max_tasks_per_plan` | `5` | [Agent behavior](#agent-behavior) |
@@ -577,6 +578,9 @@ Quick reference for every key in `config/defaults.json`, in order. Click the sec
 | `statusline_hide_agent_in_tmux` | `false` | [Display](#display) |
 | `statusline_collapse_agent_in_tmux` | `false` | [Display](#display) |
 | `debug_logging` | `false` | [Runtime features](#runtime-features) |
+| `caveman_style` | `"none"` | [Caveman language mode](#caveman-language-mode) |
+| `caveman_commit` | `false` | [Caveman language mode](#caveman-language-mode) |
+| `caveman_review` | `false` | [Caveman language mode](#caveman-language-mode) |
 | `bash_guard` | `true`* | [Safety](#safety) |
 
 *`bash_guard` is not in `defaults.json` — it's read directly from project config with a default of `true` when absent.
@@ -832,10 +836,12 @@ Lease locks are enabled by default because they add negligible overhead (one sma
 | `skill_suggestions` | boolean | `true` | `true` / `false` |
 | `auto_install_skills` | boolean | `false` | `true` / `false` |
 | `discovery_questions` | boolean | `true` | `true` / `false` |
+| `discussion_mode` | string | `questions` | `questions` / `assumptions` / `auto` |
 
 - **`skill_suggestions`** — When `true`, `/vbw:init` detects your tech stack and suggests relevant skills to install. When `false`, the entire skill suggestion flow is skipped during init.
 - **`auto_install_skills`** — When `true`, suggested skills are installed automatically without asking. When `false`, VBW shows the install commands but lets you run them yourself. Has no effect if `skill_suggestions` is `false`.
 - **`discovery_questions`** — When `true`, the discussion engine runs during bootstrap and `/vbw:discuss`, with depth controlled by your active profile (`default`→3–5 gray areas, `production`→4–6, `prototype`→2–3, `yolo`→skip). When `false`, skips the discussion engine entirely. Set this to `false` if you're bootstrapping projects where you already know what you want.
+- **`discussion_mode`** — Controls how the discussion engine starts. `questions` asks clarifying questions from scratch. `assumptions` uses existing codebase map data to propose evidence-backed assumptions first, then falls back to questions if no map exists. `auto` picks `assumptions` when `.vbw-planning/codebase/META.md` exists and otherwise uses `questions`.
 
 ### Model routing and cost
 
