@@ -71,6 +71,25 @@ for cmd in start start-with-source-todo start-with-selected-todo get get-or-late
   fi
 done
 
+PRINT_METADATA_BLOCK="$(awk '/print_session_metadata\(\)/,/^}/' "$STATE_SCRIPT" 2>/dev/null || true)"
+if grep -Fq "printf 'session_status=%q\\n'" <<< "$PRINT_METADATA_BLOCK"; then
+  pass "debug-session-state.sh metadata-read contract exports session_status"
+else
+  fail "debug-session-state.sh metadata-read contract missing session_status export"
+fi
+
+if grep -Fq "printf 'status=%q\\n'" <<< "$PRINT_METADATA_BLOCK"; then
+  fail "debug-session-state.sh metadata-read contract still exports bare status"
+else
+  pass "debug-session-state.sh metadata-read contract no longer exports bare status"
+fi
+
+if awk '/set-status\)/,/;;/' "$STATE_SCRIPT" | grep -Fq 'echo "status=$STATUS"'; then
+  pass "debug-session-state.sh set-status keeps status output contract"
+else
+  fail "debug-session-state.sh set-status output contract drifted from status=..."
+fi
+
 # — Writer script checks —
 
 WRITER="$ROOT/scripts/write-debug-session.sh"
@@ -154,6 +173,56 @@ else
   fail "debug.md already_fixed path missing set-status complete workflow"
 fi
 
+DEBUG_HINT_LINE="$(awk '/^argument-hint:/{print; exit}' "$DEBUG_CMD" 2>/dev/null || true)"
+if printf '%s\n' "$DEBUG_HINT_LINE" | grep -Eq 'bug description' \
+  && printf '%s\n' "$DEBUG_HINT_LINE" | grep -Eq 'todo number' \
+  && printf '%s\n' "$DEBUG_HINT_LINE" | grep -Fq -- '--resume' \
+  && printf '%s\n' "$DEBUG_HINT_LINE" | grep -Fq -- '--session ID'; then
+  pass "debug.md argument-hint advertises bug text, todo number, --resume, and --session"
+else
+  fail "debug.md argument-hint missing one or more supported entry points"
+fi
+
+DEBUG_USAGE_LINES="$(grep -F 'Usage:' "$DEBUG_CMD" 2>/dev/null || true)"
+DEBUG_USAGE_COUNT=$(printf '%s\n' "$DEBUG_USAGE_LINES" | grep -c 'Usage:' || true)
+if [ "$DEBUG_USAGE_COUNT" -ge 2 ] \
+  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '/vbw:debug <todo-number>' \
+  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '/vbw:debug --resume' \
+  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '/vbw:debug --session <id>' \
+  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '[--competing|--parallel|--serial]'; then
+  pass "debug.md keeps both expanded Usage strings with resume/session and ambiguity flags"
+else
+  fail "debug.md missing expanded Usage strings with resume/session and ambiguity flags"
+fi
+
+if grep -Fq 'No active debug session to resume. Use `/vbw:debug --session <id>` to open a specific session' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md resume stop message advertises session override and new-session entry points"
+else
+  fail "debug.md resume stop message still uses freeform-only guidance"
+fi
+
+if grep -Fq 'This debug session is already complete. Use `/vbw:debug --session <id>` to inspect another session' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md complete-session stop message advertises session override and new-session entry points"
+else
+  fail "debug.md complete-session stop message still uses freeform-only guidance"
+fi
+
+if grep -Fq 'Use `session_status` for lifecycle checks after `eval`; do not rely on a bare `status` variable.' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md names the safe debug-session helper contract explicitly"
+else
+  fail "debug.md missing explicit session_status helper contract"
+fi
+
+if grep -Fq 'session_status=qa_pending' "$DEBUG_CMD" 2>/dev/null \
+  && grep -Fq 'session_status=qa_failed' "$DEBUG_CMD" 2>/dev/null \
+  && grep -Fq 'session_status=uat_pending' "$DEBUG_CMD" 2>/dev/null \
+  && grep -Fq 'session_status=uat_failed' "$DEBUG_CMD" 2>/dev/null \
+  && grep -Fq 'session_status=complete' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md lifecycle routing keys off session_status for metadata-read helpers"
+else
+  fail "debug.md lifecycle routing not fully aligned to session_status contract"
+fi
+
 if grep -qF 'For `no_fix_yet`' "$DEBUG_CMD" 2>/dev/null && \
    grep -qF '`investigating`' "$DEBUG_CMD" 2>/dev/null; then
   pass "debug.md no_fix_yet path keeps the session investigating"
@@ -168,11 +237,27 @@ else
   fail "qa.md missing debug_session_qa section"
 fi
 
+if grep -Fq 'use `session_status` for lifecycle checks after `eval`.' "$QA_CMD" 2>/dev/null \
+  && grep -Fq 'use `session_status` for routing after `eval`.' "$QA_CMD" 2>/dev/null \
+  && grep -Fq 'exported `session_status` is `qa_pending` or `qa_failed`' "$QA_CMD" 2>/dev/null; then
+  pass "qa.md debug-session override uses the explicit session_status helper contract"
+else
+  fail "qa.md debug-session override missing explicit session_status helper contract"
+fi
+
 VERIFY_CMD="$ROOT/commands/verify.md"
 if grep -q "debug_session_uat" "$VERIFY_CMD" 2>/dev/null; then
   pass "verify.md has debug_session_uat section"
 else
   fail "verify.md missing debug_session_uat section"
+fi
+
+if grep -Fq 'use `session_status` for lifecycle checks after `eval`.' "$VERIFY_CMD" 2>/dev/null \
+  && grep -Fq 'use `session_status` for routing after `eval`.' "$VERIFY_CMD" 2>/dev/null \
+  && grep -Fq 'exported `session_status` is `uat_pending` or `uat_failed`' "$VERIFY_CMD" 2>/dev/null; then
+  pass "verify.md debug-session override uses the explicit session_status helper contract"
+else
+  fail "verify.md debug-session override missing explicit session_status helper contract"
 fi
 
 # — Agent integration checks —
@@ -381,7 +466,7 @@ else
   fail "debug.md resume routing for qa_pending/fix_applied missing inline QA entry"
 fi
 
-if grep -q 'status=uat_pending.*debug_inline_uat' "$ROOT/commands/debug.md" 2>/dev/null; then
+if grep -q 'session_status=uat_pending.*debug_inline_uat' "$ROOT/commands/debug.md" 2>/dev/null; then
   pass "debug.md resume routing for uat_pending enters inline UAT"
 else
   fail "debug.md resume routing for uat_pending missing inline UAT entry"
