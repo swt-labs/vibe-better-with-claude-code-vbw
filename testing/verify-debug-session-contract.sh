@@ -148,14 +148,14 @@ else
   fail "debug.md Step 5 missing fixed_now/already_fixed/no_fix_yet mapping"
 fi
 
-if sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -q 'set-status .vbw-planning complete'; then
+if sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -qF 'set-status .vbw-planning complete'; then
   pass "debug.md already_fixed path reuses completed-state workflow via set-status complete"
 else
   fail "debug.md already_fixed path missing set-status complete workflow"
 fi
 
-if sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -q 'For `no_fix_yet`' && \
-   sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -q '`investigating`'; then
+if sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -qF 'For `no_fix_yet`' && \
+   sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -qF '`investigating`'; then
   pass "debug.md no_fix_yet path keeps the session investigating"
 else
   fail "debug.md no_fix_yet path missing investigating-state guidance"
