@@ -44,6 +44,7 @@ CCR Smoke Test Progress:
 - [ ] Resolve real consumer repo path
 - [ ] Create or enter the consumer smoke worktree
 - [ ] Decide consumer worktree vs sandbox per flow
+- [ ] Run a no-side-effect CCR preflight
 - [ ] Run smoke command(s) with `ccr code`
 - [ ] Capture visible `Skills:` evidence when needed
 - [ ] Capture `.skill-decisions.log` deltas
@@ -109,6 +110,15 @@ Use a **sandbox repo** when the real consumer repo cannot exercise a phase-route
 
 When you split coverage this way, say so explicitly in the verification summary.
 
+### 4.5. Split routing coverage from completion coverage when the consumer repo is heavyweight
+
+If the real consumer repo needs repo-specific prerequisites before the target command can reach the behavior you need to verify — for example package installs, service startup, credentials, proprietary toolchains, or flaky network fetches — do not force a single smoke run to prove everything.
+
+- Use the **consumer smoke worktree** to verify provenance, routing, and that the command starts correctly in a real consumer repo.
+- Use a **sandbox repo** to verify command-layer completion behavior when the real consumer repo's prerequisites are likely to block completion for reasons unrelated to the plugin.
+- Report the split explicitly in the summary.
+- If the command never reaches the lifecycle point you needed to verify, report the real-consumer run as **inconclusive for completion behavior**, not as a plugin regression.
+
 ### 5. Always invoke `ccr code`, not plain `claude`
 
 Use the router entrypoint the user actually runs:
@@ -118,6 +128,23 @@ ccr code --help
 ```
 
 Do not assume the plain `claude` binary is the right executable in this environment.
+
+### 5.5. Run a no-side-effect preflight first
+
+Before a longer smoke run, verify the router, auth, and provider path with a trivial prompt from the same cwd and `--plugin-dir`, but **without** `--append-system-prompt`:
+
+```bash
+cd /absolute/path/to/consumer-smoke-worktree && \
+printf '%s\n' 'Smoke test preflight. Reply with OK. Do not modify files.' \
+  | ccr code -p --dangerously-skip-permissions --plugin-dir /absolute/path/to/candidate-plugin-checkout
+```
+
+Use this to catch problems early:
+- not logged in / expired auth
+- router or provider validation failures
+- wrong cwd or wrong `--plugin-dir`
+
+If the preflight fails, fix that first instead of starting the real smoke command.
 
 ### 6. Run `ccr code` from the consumer smoke worktree or sandbox
 
@@ -155,19 +182,28 @@ printf '%s\n' '/vbw:fix Investigate a SwiftData save failure during tests.' \
 
 Use `printf '%s\n'` instead of `echo` so punctuation and backslashes are preserved in a shell-portable way.
 
-### 8. Add a smoke-test system prompt
+### 8. Prefer inline smoke instructions; use `--append-system-prompt` only when proven compatible
 
-For normal smoke checks, append a short system prompt that reduces side effects and keeps output easy to inspect:
+Default to putting the smoke-test constraints directly into the piped prompt text. Some router/provider combinations reject extra system inputs and fail with errors such as `context_management: Extra inputs are not permitted`.
+
+Use inline prompt text first:
 
 ```text
 Smoke test only. Avoid code edits. Keep output concise. Focus on diagnosis and reporting.
 ```
 
-For routing-only probes, make the stop condition explicit:
+For routing-only probes, make the stop condition explicit in the prompt text:
 
 ```text
 Smoke test only. Stop after choosing skills and mode. Do not modify project files. Keep output concise.
 ```
+
+Only use `--append-system-prompt` if you already know the active router/provider accepts extra system inputs.
+
+If a run fails with a validation/provider error mentioning extra inputs, `context_management`, or rejected system prompts:
+- re-run immediately **without** `--append-system-prompt`
+- keep the smoke constraints inline for the rest of that run
+- do not treat that failure as evidence about the VBW command itself
 
 ### 9. Capture the right evidence
 
@@ -178,16 +214,17 @@ Always capture:
 Then capture the claim-matched evidence you actually need:
 - **Visible-selection claim** → capture a visible `Skills:` line
 - **Activation/logging claim** → capture `.vbw-planning/.skill-decisions.log` deltas
-- **Domain-skill claim** → capture task-specific keyword matches when relevant, such as `SwiftData` / `swiftdata`
+- **Domain-skill claim** → capture task-specific keyword matches when relevant, such as the framework, database, or failure term named in the prompt
 
 #### Standard smoke pattern
 
 ```bash
 cd /absolute/path/to/consumer-smoke-worktree && \
-printf '%s\n' '/vbw:research Research SwiftData persistence failures.' \
+printf '%s\n' \
+  'Smoke test only. Avoid code edits. Keep output concise. Focus on diagnosis and reporting.' \
+  '/vbw:research Research a persistence or startup failure during tests.' \
   | ccr code -p --dangerously-skip-permissions \
-      --plugin-dir /absolute/path/to/candidate-plugin-checkout \
-      --append-system-prompt 'Smoke test only. Avoid code edits. Keep output concise. Focus on diagnosis and reporting.'
+      --plugin-dir /absolute/path/to/candidate-plugin-checkout
 ```
 
 #### Visible `Skills:` capture pattern
@@ -196,10 +233,11 @@ If plain output does not surface the `Skills:` line, use this dedicated stream-c
 
 ```bash
 cd /absolute/path/to/consumer-smoke-worktree && \
-printf '%s\n' '/vbw:fix Investigate a SwiftData save or schema failure.' \
+printf '%s\n' \
+  'Smoke test only. Avoid code edits. Keep output concise. Focus on diagnosis and reporting.' \
+  '/vbw:fix Investigate a persistence or schema failure during tests.' \
   | ccr code -p --verbose --dangerously-skip-permissions \
       --plugin-dir /absolute/path/to/candidate-plugin-checkout \
-      --append-system-prompt 'Smoke test only. Avoid code edits. Keep output concise. Focus on diagnosis and reporting.' \
       --output-format stream-json --include-partial-messages
 ```
 
@@ -211,10 +249,11 @@ Use this when you only need mode/skill-selection behavior and do not want the wo
 
 ```bash
 cd /absolute/path/to/sandbox-repo && \
-printf '%s\n' '/vbw:vibe --execute 1' \
+printf '%s\n' \
+  'Smoke test only. Stop after choosing skills and mode. Do not modify project files. Keep output concise.' \
+  '/vbw:vibe --execute 1' \
   | ccr code -p --permission-mode plan --dangerously-skip-permissions \
-      --plugin-dir /absolute/path/to/candidate-plugin-checkout \
-      --append-system-prompt 'Smoke test only. Stop after choosing skills and mode. Do not modify project files. Keep output concise.'
+      --plugin-dir /absolute/path/to/candidate-plugin-checkout
 ```
 
 ### 10. Verify provenance before trusting the result
@@ -244,7 +283,9 @@ Expected smoke artifacts belong in the **consumer smoke worktree** or **sandbox*
 - **`resolve-debug-target.sh repo` fails and you need real consumer coverage** → ask for the consumer repo path instead of guessing.
 - **Need real consumer coverage** → create or reuse the consumer smoke worktree before running any `ccr code` command.
 - **Real consumer repo cannot exercise `/vbw:vibe` or `/vbw:qa`** → use a sandbox for those flows and keep the consumer smoke worktree for `/vbw:debug`, `/vbw:fix`, `/vbw:research`, and `/vbw:map`.
+- **Real consumer repo requires heavy repo-specific setup before the target behavior can complete** → split coverage: use the consumer smoke worktree for provenance/routing/startup and a sandbox repo for command-layer completion behavior.
 - **Plain `-p` invocation reports missing input** → switch to stdin and keep it that way.
+- **`--append-system-prompt` triggers a validation/provider error** → retry without it and move the smoke constraints inline into the piped prompt.
 - **Need visible `Skills:` output** → use stream-json + `--verbose` and grep the capture.
 - **Need routing proof without side effects** → use `--permission-mode plan` plus the routing-only smoke prompt.
 - **Base consumer repo checkout, candidate plugin checkout, or main plugin repo shows unexpected `.vbw-planning` changes** → stop and investigate provenance before writing the verification summary.
@@ -257,6 +298,7 @@ A smoke run is ready to cite only when all are true:
 - Required command outputs were captured for the claim being made.
 - Provenance evidence was captured.
 - `.skill-decisions.log` and/or visible `Skills:` evidence supports the specific claim being made.
+- For completion-path claims, the command actually reached the lifecycle point being claimed; if repo-specific prerequisites blocked earlier, the result is only routing/provenance coverage or an inconclusive completion check.
 - The base consumer repo checkout did not become the smoke cwd or collect smoke artifacts.
 - Any sandbox use is called out explicitly.
 - The plugin repo is not being misrepresented as the smoke-test cwd.

@@ -279,6 +279,12 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
    For `already_fixed`, mark the investigation complete using the existing completed-session workflow:
    ```bash
    bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning complete
+   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "complete debug session" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
    ```
    For `no_fix_yet`, do **not** set `fix_applied`; keep the session status as `investigating`.
    </debug_session_persistence>
@@ -534,7 +540,16 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
    ```
 
 5. Update session status:
-   - All checkpoints pass (no issues) → `bash .../debug-session-state.sh set-status .vbw-planning complete`
+   - All checkpoints pass (no issues):
+     ```bash
+     bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning complete
+     PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+     if [ -f "$PG_SCRIPT" ]; then
+       bash "$PG_SCRIPT" commit-boundary "complete debug session" .vbw-planning/config.json
+     else
+       echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+     fi
+     ```
    - Any issues found → `bash .../debug-session-state.sh set-status .vbw-planning uat_failed`
 
 6. Present debug-session UAT result:
