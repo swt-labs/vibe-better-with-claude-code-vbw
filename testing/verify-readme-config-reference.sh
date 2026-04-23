@@ -10,9 +10,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 README="$ROOT/README.md"
 DEFAULTS_JSON="$ROOT/config/defaults.json"
+TABLE_ROWS_TSV="$(mktemp "${TMPDIR:-/tmp}/verify-readme-config-reference.XXXXXX")"
 
 PASS=0
 FAIL=0
+
+cleanup() {
+  rm -f "$TABLE_ROWS_TSV"
+}
+
+trap cleanup EXIT
 
 pass() {
   echo "PASS  $1"
@@ -68,11 +75,35 @@ extract_readme_default_rows() {
     '
 }
 
+table_default_for_key() {
+  awk -F'\t' -v key="$1" '$1 == key { print $2; exit }' "$TABLE_ROWS_TSV"
+}
+
+table_section_for_key() {
+  awk -F'\t' -v key="$1" '$1 == key { print $3; exit }' "$TABLE_ROWS_TSV"
+}
+
+table_count_for_key() {
+  awk -F'\t' -v key="$1" '$1 == key { count++ } END { print count + 0 }' "$TABLE_ROWS_TSV"
+}
+
+table_unique_keys() {
+  awk -F'\t' '{ print $1 }' "$TABLE_ROWS_TSV" | awk '!seen[$0]++'
+}
+
 declare -a default_keys=()
-while IFS= read -r key; do
-  [ -n "$key" ] || continue
-  default_keys+=("$key")
-done < <(extract_default_keys_in_source_order)
+
+default_keys_output=""
+if ! default_keys_output="$(extract_default_keys_in_source_order 2>&1)"; then
+  fail "config/defaults.json could not be parsed by jq${default_keys_output:+: $default_keys_output}"
+else
+  while IFS= read -r key; do
+    [ -n "$key" ] || continue
+    default_keys+=("$key")
+  done <<EOF
+$default_keys_output
+EOF
+fi
 
 if [ "${#default_keys[@]}" -gt 0 ]; then
   pass "Extracted defaults.json keys in source-file order"
@@ -80,17 +111,16 @@ else
   fail "Could not extract defaults.json keys in source-file order"
 fi
 
+if [ "$FAIL" -gt 0 ]; then
+  finish
+fi
+
 declare -a table_keys=()
-declare -A table_defaults=()
-declare -A table_sections=()
-declare -A table_counts=()
 
 while IFS=$'\t' read -r key default_value section; do
   [ -n "${key:-}" ] || continue
   table_keys+=("$key")
-  table_defaults["$key"]="$default_value"
-  table_sections["$key"]="$section"
-  table_counts["$key"]=$(( ${table_counts["$key"]:-0} + 1 ))
+  printf '%s\t%s\t%s\n' "$key" "$default_value" "$section" >> "$TABLE_ROWS_TSV"
 done < <(extract_readme_default_rows)
 
 if [ "${#table_keys[@]}" -gt 0 ]; then
@@ -104,7 +134,7 @@ default_key_list="$(printf '%s\n' "${default_keys[@]}")"
 echo ""
 echo "--- Check: defaults.json keys appear exactly once in README table ---"
 for key in "${default_keys[@]}"; do
-  count="${table_counts[$key]:-0}"
+  count="$(table_count_for_key "$key")"
   if [ "$count" -eq 1 ]; then
     pass "README All defaults includes '$key' exactly once"
   else
@@ -114,7 +144,8 @@ done
 
 echo ""
 echo "--- Check: README All defaults has no unexpected keys ---"
-for key in "${!table_counts[@]}"; do
+while IFS= read -r key; do
+  [ -n "$key" ] || continue
   if grep -Fxq "$key" <<< "$default_key_list"; then
     pass "README key '$key' exists in defaults.json"
   elif [ "$key" = "bash_guard" ]; then
@@ -122,13 +153,13 @@ for key in "${!table_counts[@]}"; do
   else
     fail "README All defaults contains unexpected key '$key'"
   fi
-done
+done < <(table_unique_keys)
 
 echo ""
 echo "--- Check: README default values match defaults.json ---"
 for key in "${default_keys[@]}"; do
   if [ "$key" = "agent_max_turns" ]; then
-    if [ "${table_defaults[$key]:-}" = "{...}" ]; then
+    if [ "$(table_default_for_key "$key")" = "{...}" ]; then
       pass "README uses documented shorthand for agent_max_turns"
     else
       fail "README agent_max_turns default must use '{...}' shorthand"
@@ -136,12 +167,12 @@ for key in "${default_keys[@]}"; do
     continue
   fi
 
-  if [ "${table_counts[$key]:-0}" -ne 1 ]; then
+  if [ "$(table_count_for_key "$key")" -ne 1 ]; then
     continue
   fi
 
   expected_value="$(jq -c --arg k "$key" '.[$k]' "$DEFAULTS_JSON")"
-  actual_value="${table_defaults[$key]}"
+  actual_value="$(table_default_for_key "$key")"
 
   if [ "$expected_value" = "$actual_value" ]; then
     pass "README default for '$key' matches defaults.json"
@@ -163,7 +194,7 @@ fi
 echo ""
 echo "--- Check: caveman rows link to the caveman section ---"
 for key in caveman_style caveman_commit caveman_review; do
-  if [ "${table_sections[$key]:-}" = "[Caveman language mode](#caveman-language-mode)" ]; then
+  if [ "$(table_section_for_key "$key")" = "[Caveman language mode](#caveman-language-mode)" ]; then
     pass "README row '$key' links to the caveman section"
   else
     fail "README row '$key' must link to [Caveman language mode](#caveman-language-mode)"
