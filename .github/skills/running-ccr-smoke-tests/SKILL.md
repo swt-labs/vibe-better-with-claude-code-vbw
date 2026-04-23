@@ -123,6 +123,26 @@ Do not assume the plain `claude` binary is the right executable in this environm
 
 Before each smoke command, explicitly `cd` into the consumer smoke worktree or sandbox repo. Do not rely on ambient shell state.
 
+### 6.5. Shape sandbox repos for subagent-driven flows
+
+When the smoke target can spawn subagents or task worktrees (for example `/vbw:debug`, `/vbw:fix`, or any flow that asks the agent to inspect repo files), the sandbox repo shape matters:
+
+- Commit the **minimal seed fixtures** that define the bug premise before invoking `ccr code`.
+- If the smoke depends on a file being present, absent, or containing exact text, make that file part of `HEAD` first so subagent worktrees and git-based checks see the same evidence.
+- Keep runtime artifacts such as `.vbw-planning/` untracked unless the smoke specifically needs tracked planning state, but do not assume untracked repo fixtures will appear inside subagent worktrees.
+- For snapshot-backed numbered selection flows (for example `/vbw:list-todos` followed by `/vbw:debug 1`), keep both commands in the **same persistent session**. Separate one-shot `-p` invocations do not share the numbered snapshot.
+- When driving that persistent session through repeated `-p` calls, create the first call with `--session-id <uuid>` and continue later calls with `-r <uuid>` instead of repeating `--session-id`. Reusing `--session-id` on the follow-up call can fail with `Session ID ... is already in use.`
+
+Good sandbox shape for an already-fixed debug smoke:
+
+1. Create sandbox repo.
+2. Commit the fixture file whose content establishes the premise.
+3. Run `/vbw:init`.
+4. Add the todo.
+5. Run `/vbw:list-todos` and `/vbw:debug N` in the same session.
+
+For print-mode automation, that means: first call uses `--session-id`, second call uses `-r` for the same UUID.
+
 ### 7. Pipe the prompt through stdin
 
 If `ccr code -p "...prompt..."` reports an input error, switch to stdin and keep it that way for the run:
