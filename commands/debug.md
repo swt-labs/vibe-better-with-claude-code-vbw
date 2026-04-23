@@ -100,7 +100,7 @@ Resolve or create the debug session before any investigation. Order of precedenc
   ```bash
   bash "{plugin-root}/scripts/todo-lifecycle.sh" pickup /vbw:debug {DETAIL_STATUS} {cleanup_policy}
   ```
-  Set `{cleanup_policy}` to `safe` when `DETAIL_STATUS=ok`; otherwise set it to `keep`. If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface its `warning` value with the final result so cleanup state stays explicit. Capture the helper result immediately into explicit presentation variables so post-pickup messaging stays deterministic: `TODO_PICKUP_RESULT_JSON` for the exact helper stdout, `TODO_PICKUP_STATUS=ok|partial`, `TODO_PICKUP_WARNING` from `.warning // empty`, and `TODO_PICKUP_AUTO_NOTE="Selected todo was already picked up automatically by /vbw:debug."`.
+  Set `{cleanup_policy}` to `safe` when `DETAIL_STATUS=ok`; otherwise set it to `keep`. If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface its `warning` value with the final result so cleanup state stays explicit. Capture the helper result immediately into explicit presentation variables so post-pickup messaging stays deterministic: `TODO_PICKUP_RESULT_JSON` for the exact helper stdout, `TODO_PICKUP_STATUS=ok|partial`, `TODO_PICKUP_WARNING` from `.warning // empty`, and `TODO_PICKUP_AUTO_NOTE="Selected todo was already picked up automatically."`.
 
 Store the resolved `session_id` and `session_file` for use in Steps below.
 
@@ -302,7 +302,7 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
      Files Modified: {list}
    ```
 
-   If `TODO_SELECTED=true` and pickup ran, any numbered list captured before pickup is stale because `STATE.md` has already changed. Use the stored `TODO_PICKUP_STATUS`, `TODO_PICKUP_WARNING`, and `TODO_PICKUP_AUTO_NOTE` values instead of inventing fresh numbered cleanup advice. Never tell the user to `remove N` for the selected todo; `/vbw:debug` already picked it up automatically. Never cite a remaining todo number unless you first refresh through the existing snapshot/resolver flow. Default low-token UX: unnumbered prose only — say `Selected todo was already picked up automatically.` and, when related backlog items may still exist, say `Rerun /vbw:list-todos for fresh numbering.` If `TODO_PICKUP_STATUS=partial` and `TODO_PICKUP_WARNING` is non-empty, surface that warning explicitly.
+  If `TODO_SELECTED=true` and pickup ran, any numbered list captured before pickup is stale because `STATE.md` has already changed. Use the stored `TODO_PICKUP_STATUS`, `TODO_PICKUP_WARNING`, and `TODO_PICKUP_AUTO_NOTE` values instead of inventing fresh numbered cleanup advice. Never tell the user to `remove N` for the selected todo; `/vbw:debug` already picked it up automatically. Never cite a remaining todo number unless you first refresh through the existing snapshot/resolver flow. Default low-token UX: unnumbered prose only — emit `TODO_PICKUP_AUTO_NOTE` verbatim and, when related backlog items may still exist, say `Rerun /vbw:list-todos for fresh numbering.` If `TODO_PICKUP_STATUS=partial` and `TODO_PICKUP_WARNING` is non-empty, surface that warning explicitly.
 
 **Discovered Issues:** If the Debugger reported pre-existing failures, out-of-scope bugs, or issues unrelated to the investigated bug, append after the result box. Cap the list at 20 entries; if more exist, show the first 20 and append `... and {N} more`:
 ```text

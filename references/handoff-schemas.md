@@ -177,7 +177,7 @@ Diagnostic investigation report from the Debugger agent. Used in Teammate Mode w
 }
 ```
 `resolution_observation` is analysis-scoped and must be one of `already_fixed`, `needs_change`, or `inconclusive`. Use `already_fixed` only when evidence shows the current branch already contains the fix and no new code change is needed. Use `needs_change` when a code change was required or would still be required. Use `inconclusive` when the diagnosis is not yet strong enough. This field informs the orchestrator's synthesis; it does not let the Debugger own final session state.
-If no pre-existing issues were found, omit the field or pass an empty array.
+For `pre_existing_issues`, if no pre-existing issues were found, omit the field or pass an empty array.
 
 ## `qa_verdict` (QA -> Lead)
 
