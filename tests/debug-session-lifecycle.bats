@@ -63,7 +63,7 @@ assert_no_repeated_blank_lines() {
 
   # Verify suggest-next recommends QA
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
-  [ "$status" = "qa_pending" ]
+  [ "$session_status" = "qa_pending" ]
 
   # Step 2: QA Pass
   echo '{"mode":"qa","round":1,"result":"PASS","checks":[{"id":"c1","description":"Null check present","status":"pass","evidence":"src/button.sh:42"}],"summary":"All checks pass."}' \
@@ -72,7 +72,7 @@ assert_no_repeated_blank_lines() {
 
   # Verify state
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
-  [ "$status" = "uat_pending" ]
+  [ "$session_status" = "uat_pending" ]
 
   # Step 3: UAT Pass
   echo '{"mode":"uat","round":1,"result":"pass","checkpoints":[{"description":"Button click works","result":"pass","user_response":"Verified"}],"summary":"All checkpoints pass."}' \
@@ -134,7 +134,7 @@ assert_no_repeated_blank_lines() {
 
   # Verify qa_failed state
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
-  [ "$status" = "qa_failed" ]
+  [ "$session_status" = "qa_failed" ]
 
   # Step 3: Resume with new investigation (remediation)
   echo '{"mode":"status","status":"investigating"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
@@ -159,7 +159,7 @@ assert_no_repeated_blank_lines() {
   grep -c "### Round" "$SESSION_FILE" | grep -q "3"  # 2 QA + 1 remediation round marker
 
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
-  [ "$status" = "uat_pending" ]
+  [ "$session_status" = "uat_pending" ]
   [ "$qa_round" = "2" ]
 }
 
@@ -182,7 +182,7 @@ assert_no_repeated_blank_lines() {
   echo '{"mode":"status","status":"uat_failed"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
 
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
-  [ "$status" = "uat_failed" ]
+  [ "$session_status" = "uat_failed" ]
 
   # Verify checkpoint details are preserved
   grep -q 'ISSUE' "$SESSION_FILE"
@@ -356,7 +356,7 @@ assert_no_repeated_blank_lines() {
 
   # During investigation, suggest-next for debug recommends nothing special (investigating)
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$PLANNING_DIR" 2>/dev/null)"
-  [ "$status" = "investigating" ]
+  [ "$session_status" = "investigating" ]
 
   # After fix → qa_pending: suggest-next for debug should recommend inline QA via resume
   echo '{"mode":"status","status":"qa_pending"}' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"

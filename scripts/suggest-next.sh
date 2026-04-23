@@ -589,7 +589,7 @@ case "$CMD" in
         eval "$_qa_ds_output" 2>/dev/null || true
         # shellcheck disable=SC2154
         if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
-          _qa_ds_status="${status:-}"
+          _qa_ds_status="${session_status:-}"
           case "$_qa_ds_status" in
             qa_pending|uat_pending|fix_applied)
               case "$effective_result" in
@@ -733,7 +733,7 @@ case "$CMD" in
         eval "$_fix_ds_output" 2>/dev/null || true
         # shellcheck disable=SC2154
         if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
-          _fix_ds_status="${status:-}"
+          _fix_ds_status="${session_status:-}"
           case "$_fix_ds_status" in
             qa_pending|fix_applied)
               suggest "/vbw:debug --resume -- Address remaining issues"
@@ -789,7 +789,7 @@ case "$CMD" in
         eval "$_verify_ds_output" 2>/dev/null || true
         # shellcheck disable=SC2154
         if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
-          _verify_ds_status="${status:-}"
+          _verify_ds_status="${session_status:-}"
           if [ "$_verify_ds_status" = "uat_failed" ]; then
             suggest "/vbw:debug --resume -- Address UAT issues"
             _verify_debug_handled=true
@@ -835,7 +835,7 @@ case "$CMD" in
         eval "$_ds_output" 2>/dev/null || true
         # shellcheck disable=SC2154
         if [ "${active_session:-none}" != "none" ] && [ -n "${session_file:-}" ] && [ -f "$session_file" ]; then
-          _ds_status="${status:-}"
+          _ds_status="${session_status:-}"
         fi
       fi
     fi

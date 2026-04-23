@@ -334,7 +334,7 @@ print_session_metadata() {
   local session_id="${session_name%.md}"
   printf 'session_id=%q\n' "$session_id"
   printf 'session_file=%q\n' "$session_path"
-  printf 'status=%q\n' "$(read_field "$session_path" "status")"
+  printf 'session_status=%q\n' "$(read_field "$session_path" "status")"
   printf 'title=%q\n' "$(read_field "$session_path" "title")"
   printf 'qa_round=%q\n' "$(read_field "$session_path" "qa_round")"
   printf 'qa_last_result=%q\n' "$(read_field "$session_path" "qa_last_result")"

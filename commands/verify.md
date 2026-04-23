@@ -255,7 +255,8 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   ```bash
   eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" get-or-latest .vbw-planning 2>/dev/null)" 2>/dev/null || true
   ```
-  If `active_session != none` AND session `status` is `uat_pending` or `uat_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → skip ALL remaining guards and jump directly to `<debug_session_uat>` below.
+  The helper exports `active_session`, `session_id`, `session_file`, and `session_status`; use `session_status` for lifecycle checks after `eval`.
+  If `active_session != none` AND exported `session_status` is `uat_pending` or `uat_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → skip ALL remaining guards and jump directly to `<debug_session_uat>` below.
   If phases exist (`phase_count > 0`) AND `$ARGUMENTS` does NOT contain `--session`, skip this override — standard phase UAT takes priority.
 - **Phase-detect error guard (NON-NEGOTIABLE):** If Phase state (from Context above) contains `phase_detect_error=true`, display: "⚠ Phase detection failed. Run `bash \"{plugin-root}/scripts/phase-detect.sh\"` manually to debug." STOP. Do NOT fall back to phase-dir scanning or ad-hoc `VERIFICATION.md` checks when phase-detect failed.
 - **Verify-context error guard (NON-NEGOTIABLE):** If the pre-computed verify context block contains `verify_context_error=true` or `verify_context=unavailable`, display: "⚠ Verify context compilation failed. Run `bash "{plugin-root}/scripts/compile-verify-context.sh" .vbw-planning/phases/{NN}-{slug}` manually to debug." STOP. Do NOT improvise by reading individual PLAN/SUMMARY files unless the user explicitly targeted a different phase number (see Step 1).
@@ -354,9 +355,11 @@ QA verification summary (pre-extracted from VERIFICATION.md):
 eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" get-or-latest .vbw-planning)"
 ```
 
+The helper exports `active_session`, `session_id`, `session_file`, and `session_status`; use `session_status` for routing after `eval`.
+
 **Routing decision:**
 - If `$ARGUMENTS` contains an explicit phase number AND no `--session` flag → skip debug-session routing, use standard phase UAT flow below.
-- If `active_session != none` AND session `status` is `uat_pending` or `uat_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → enter debug-session UAT mode (below). If `phase_count > 0` and no `--session` flag, skip debug-session routing — standard phase UAT takes priority.
+- If `active_session != none` AND exported `session_status` is `uat_pending` or `uat_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → enter debug-session UAT mode (below). If `phase_count > 0` and no `--session` flag, skip debug-session routing — standard phase UAT takes priority.
 - Otherwise → skip debug-session routing, continue to standard phase UAT Steps.
 
 **Debug-session UAT mode:**
