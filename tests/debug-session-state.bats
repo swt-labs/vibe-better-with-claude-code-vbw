@@ -533,6 +533,112 @@ teardown() {
   [[ "$output" == *"active_session=true"* ]]
 }
 
+@test "get-or-latest recovers pointer to unresolved session stranded in completed directory" {
+  local session_name="20240101-120000-stranded-qa.md"
+  mkdir -p "$VBW_PLANNING_DIR/debugging/completed"
+  cat > "$VBW_PLANNING_DIR/debugging/completed/$session_name" << 'EOF'
+---
+session_id: 20240101-120000-stranded-qa
+title: stranded-qa
+status: qa_failed
+created: 2024-01-01 12:00:00
+updated: 2024-01-01 12:10:00
+qa_round: 1
+qa_last_result: fail
+uat_round: 0
+uat_last_result: pending
+---
+# Stranded session
+EOF
+  echo "$session_name" > "$VBW_PLANNING_DIR/debugging/.active-session"
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=true"* ]]
+  printf '%s\n' "$output" | grep -Eq '^session_status=qa_failed$'
+  [ -f "$VBW_PLANNING_DIR/debugging/active/$session_name" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/completed/$session_name" ]
+  [ "$(cat "$VBW_PLANNING_DIR/debugging/.active-session")" = "$session_name" ]
+}
+
+@test "get-or-latest fallback recovers unresolved session stranded in completed directory" {
+  local session_name="20240101-120000-stranded-uat.md"
+  mkdir -p "$VBW_PLANNING_DIR/debugging/completed"
+  cat > "$VBW_PLANNING_DIR/debugging/completed/$session_name" << 'EOF'
+---
+session_id: 20240101-120000-stranded-uat
+title: stranded-uat
+status: uat_pending
+created: 2024-01-01 12:00:00
+updated: 2024-01-01 12:10:00
+qa_round: 1
+qa_last_result: pass
+uat_round: 0
+uat_last_result: pending
+---
+# Stranded session
+EOF
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=fallback"* ]]
+  printf '%s\n' "$output" | grep -Eq '^session_status=uat_pending$'
+  [ -f "$VBW_PLANNING_DIR/debugging/active/$session_name" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/completed/$session_name" ]
+  [ "$(cat "$VBW_PLANNING_DIR/debugging/.active-session")" = "$session_name" ]
+}
+
+@test "resume preserves unresolved status for session stranded in completed directory" {
+  local session_name="20240101-120000-stranded-resume.md"
+  mkdir -p "$VBW_PLANNING_DIR/debugging/completed"
+  cat > "$VBW_PLANNING_DIR/debugging/completed/$session_name" << 'EOF'
+---
+session_id: 20240101-120000-stranded-resume
+title: stranded-resume
+status: qa_failed
+created: 2024-01-01 12:00:00
+updated: 2024-01-01 12:10:00
+qa_round: 2
+qa_last_result: fail
+uat_round: 0
+uat_last_result: pending
+---
+# Stranded session
+EOF
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "$session_name"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=true"* ]]
+  printf '%s\n' "$output" | grep -Eq '^session_status=qa_failed$'
+  [ -f "$VBW_PLANNING_DIR/debugging/active/$session_name" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/completed/$session_name" ]
+}
+
+@test "list self-heals unresolved sessions stranded in completed directory" {
+  local session_name="20240101-120000-list-stranded.md"
+  mkdir -p "$VBW_PLANNING_DIR/debugging/completed"
+  cat > "$VBW_PLANNING_DIR/debugging/completed/$session_name" << 'EOF'
+---
+session_id: 20240101-120000-list-stranded
+title: list-stranded
+status: investigating
+created: 2024-01-01 12:00:00
+updated: 2024-01-01 12:10:00
+qa_round: 0
+qa_last_result: pending
+uat_round: 0
+uat_last_result: pending
+---
+# Stranded session
+EOF
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" list "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"session=20240101-120000-list-stranded|investigating|list-stranded|active"* ]]
+  [ -f "$VBW_PLANNING_DIR/debugging/active/$session_name" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/completed/$session_name" ]
+}
+
 @test "list self-heals complete sessions stranded in active directory" {
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "stranded-done")"
   local fname

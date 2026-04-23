@@ -164,6 +164,55 @@ safe_move_session() {
   echo "$dest"
 }
 
+# Reconcile a session's physical location with its frontmatter status.
+# - complete sessions belong in completed/
+# - all other statuses belong in active/
+# Echoes the canonicalized path on success.
+reconcile_session_location() {
+  local file="$1"
+  [ -f "$file" ] && [ ! -L "$file" ] || return 1
+
+  local file_status target_dir current_dir fname moved pointer collision_file
+  file_status=$(read_field "$file" "status")
+  if [ "$file_status" = "complete" ]; then
+    target_dir="$COMPLETED_DIR"
+  else
+    target_dir="$ACTIVE_DIR"
+  fi
+
+  current_dir=$(dirname "$file")
+  if [ "$current_dir" = "$target_dir" ]; then
+    echo "$file"
+    return 0
+  fi
+
+  fname=$(basename "$file")
+  if moved=$(safe_move_session "$file" "$target_dir" 2>/dev/null); then
+    echo "$moved"
+    return 0
+  fi
+
+  if [ "$target_dir" = "$ACTIVE_DIR" ]; then
+    collision_file="$ACTIVE_DIR/$fname"
+    if [ -f "$collision_file" ] && [ ! -L "$collision_file" ] && [ "$(read_field "$collision_file" "status")" = "complete" ]; then
+      if safe_move_session "$collision_file" "$COMPLETED_DIR" > /dev/null 2>&1; then
+        if [ -f "$ACTIVE_FILE" ]; then
+          pointer=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
+          if [ "$pointer" = "$fname" ]; then
+            rm -f "$ACTIVE_FILE"
+          fi
+        fi
+        if moved=$(safe_move_session "$file" "$target_dir" 2>/dev/null); then
+          echo "$moved"
+          return 0
+        fi
+      fi
+    fi
+  fi
+
+  return 1
+}
+
 # Migrate a legacy flat-path session to the correct subdirectory based on its status.
 # Moves complete sessions to completed/, all others to active/.
 # Returns the new path. No-op if the file is already in a subdirectory.
@@ -223,15 +272,16 @@ get_active_session_path() {
   # Search active/ first (canonical location)
   local session_path="$ACTIVE_DIR/$session_name"
   if [ -f "$session_path" ] && [ ! -L "$session_path" ]; then
-    # Self-heal: if active/ session has complete status, move to completed/
-    local file_status
-    file_status=$(read_field "$session_path" "status")
-    if [ "$file_status" = "complete" ]; then
-      safe_move_session "$session_path" "$COMPLETED_DIR" > /dev/null 2>&1 || true
+    local reconciled
+    if reconciled=$(reconcile_session_location "$session_path"); then
+      if [[ "$reconciled" == "$ACTIVE_DIR/"* ]]; then
+        echo "$reconciled"
+        return
+      fi
       rm -f "$ACTIVE_FILE"
       return
     fi
-    echo "$session_path"
+    rm -f "$ACTIVE_FILE"
     return
   fi
   # Check legacy flat location and migrate if found
@@ -249,10 +299,15 @@ get_active_session_path() {
     # Migration failed or session landed in completed/ — fall through
   fi
   # Check completed/ (session was completed but pointer not cleared)
-  # Do not return completed/ path — completed sessions are not active.
-  # Clear stale pointer so next call doesn't repeat the lookup.
   local completed_path="$COMPLETED_DIR/$session_name"
   if [ -f "$completed_path" ] && [ ! -L "$completed_path" ]; then
+    local reconciled
+    if reconciled=$(reconcile_session_location "$completed_path"); then
+      if [[ "$reconciled" == "$ACTIVE_DIR/"* ]]; then
+        echo "$reconciled"
+        return
+      fi
+    fi
     rm -f "$ACTIVE_FILE"
     return
   fi
@@ -290,6 +345,21 @@ find_latest_unresolved() {
       fi
     fi
   done
+  # Self-heal canonical active/completed placement before selecting candidates.
+  if [ -d "$ACTIVE_DIR" ]; then
+    for f in "$ACTIVE_DIR"/*.md; do
+      [ -f "$f" ] && [ ! -L "$f" ] || continue
+      reconcile_session_location "$f" > /dev/null 2>&1 || true
+    done
+  fi
+  if [ -d "$COMPLETED_DIR" ]; then
+    for f in "$COMPLETED_DIR"/*.md; do
+      [ -f "$f" ] && [ ! -L "$f" ] || continue
+      if [ "$(read_field "$f" "status")" != "complete" ]; then
+        reconcile_session_location "$f" > /dev/null 2>&1 || true
+      fi
+    done
+  fi
   # Collect candidates from active/ and any unmigrated legacy files
   local all_candidates=() f
   if [ -d "$ACTIVE_DIR" ]; then
@@ -619,9 +689,16 @@ case "$CMD" in
       echo "Error: refusing to resume symlink session file: $SESSION_PATH" >&2
       exit 1
     fi
-    # If found in completed/, move back to active/ (re-activating)
-    if [[ "$SESSION_PATH" == "$COMPLETED_DIR/"* ]]; then
-      SESSION_PATH=$(safe_move_session "$SESSION_PATH" "$ACTIVE_DIR") || exit 1
+    session_file_status=$(read_field "$SESSION_PATH" "status")
+    if [ "$session_file_status" != "complete" ]; then
+      SESSION_PATH=$(reconcile_session_location "$SESSION_PATH") || exit 1
+    fi
+    # Explicit resume currently re-activates complete sessions, but preserves
+    # the stored status for unresolved sessions that were stranded in completed/.
+    if [ "$session_file_status" = "complete" ]; then
+      if [[ "$SESSION_PATH" == "$COMPLETED_DIR/"* ]]; then
+        SESSION_PATH=$(safe_move_session "$SESSION_PATH" "$ACTIVE_DIR") || exit 1
+      fi
       update_field "$SESSION_PATH" "status" "investigating"
     fi
     echo "$SESSION_NAME" > "$ACTIVE_FILE"
@@ -724,27 +801,22 @@ case "$CMD" in
     if [ -d "$ACTIVE_DIR" ]; then
       for f in "$ACTIVE_DIR"/*.md; do
         [ -f "$f" ] && [ ! -L "$f" ] || continue
-        local_id=$(read_field "$f" "session_id")
-        local_status=$(read_field "$f" "status")
-        local_title=$(read_field "$f" "title")
-        # Self-heal: if active/ session has complete status, move to completed/
-        if [ "$local_status" = "complete" ]; then
-          local_fname=$(basename "$f")
-          heal_location="active"
-          if safe_move_session "$f" "$COMPLETED_DIR" > /dev/null 2>&1; then
+        reconciled="$f"
+        if reconciled=$(reconcile_session_location "$f"); then
+          if [[ "$reconciled" == "$COMPLETED_DIR/"* ]]; then
+            local_fname=$(basename "$reconciled")
             HEALED_FILES="${HEALED_FILES}${local_fname}:"
-            heal_location="completed"
+            local_id=$(read_field "$reconciled" "session_id")
+            local_status=$(read_field "$reconciled" "status")
+            local_title=$(read_field "$reconciled" "title")
+            echo "session=${local_id}|${local_status}|${local_title}|completed"
+            COUNT=$((COUNT + 1))
+            continue
           fi
-          if [ -f "$ACTIVE_FILE" ]; then
-            pointer=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
-            if [ "$pointer" = "$local_fname" ]; then
-              rm -f "$ACTIVE_FILE"
-            fi
-          fi
-          echo "session=${local_id}|${local_status}|${local_title}|${heal_location}"
-          COUNT=$((COUNT + 1))
-          continue
         fi
+        local_id=$(read_field "$reconciled" "session_id")
+        local_status=$(read_field "$reconciled" "status")
+        local_title=$(read_field "$reconciled" "title")
         echo "session=${local_id}|${local_status}|${local_title}|active"
         COUNT=$((COUNT + 1))
       done
@@ -753,14 +825,25 @@ case "$CMD" in
     if [ -d "$COMPLETED_DIR" ]; then
       for f in "$COMPLETED_DIR"/*.md; do
         [ -f "$f" ] && [ ! -L "$f" ] || continue
+        reconciled="$f"
+        if reconciled=$(reconcile_session_location "$f"); then
+          if [[ "$reconciled" == "$ACTIVE_DIR/"* ]]; then
+            local_id=$(read_field "$reconciled" "session_id")
+            local_status=$(read_field "$reconciled" "status")
+            local_title=$(read_field "$reconciled" "title")
+            echo "session=${local_id}|${local_status}|${local_title}|active"
+            COUNT=$((COUNT + 1))
+            continue
+          fi
+        fi
         # Skip files already counted during self-heal from active/
-        local_fname=$(basename "$f")
+        local_fname=$(basename "$reconciled")
         if [ -n "$HEALED_FILES" ] && printf '%s' "$HEALED_FILES" | grep -qF "${local_fname}:"; then
           continue
         fi
-        local_id=$(read_field "$f" "session_id")
-        local_status=$(read_field "$f" "status")
-        local_title=$(read_field "$f" "title")
+        local_id=$(read_field "$reconciled" "session_id")
+        local_status=$(read_field "$reconciled" "status")
+        local_title=$(read_field "$reconciled" "title")
         echo "session=${local_id}|${local_status}|${local_title}|completed"
         COUNT=$((COUNT + 1))
       done
