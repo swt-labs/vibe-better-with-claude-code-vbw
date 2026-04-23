@@ -40,3 +40,5 @@ Recommended flow:
 4. Verify `.vbw-planning/STATE.md` contains:
    - `## Todos`
    - inserted todo item under `## Todos`
+
+If the smoke flow can spawn subagents or task worktrees, commit the minimal seed fixtures that establish the test premise before invoking the command. Example: if `/vbw:debug` is supposed to notice that `foo.txt` already contains the expected text, commit `foo.txt` first. Keep generated runtime state such as `.vbw-planning/` untracked unless the smoke explicitly requires tracked planning files.

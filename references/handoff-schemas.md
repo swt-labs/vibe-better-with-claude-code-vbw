@@ -168,6 +168,7 @@ Diagnostic investigation report from the Debugger agent. Used in Teammate Mode w
     "evidence_for": ["Thread dump shows concurrent access at auth.js:42", "Failure rate correlates with load"],
     "evidence_against": ["Single-threaded test passes consistently"],
     "confidence": "high",
+    "resolution_observation": "needs_change",
     "recommended_fix": "Add mutex lock around credential refresh in auth.js:40-50",
     "pre_existing_issues": [
       {"test": "testName", "file": "path/to/file", "error": "failure message"}
@@ -175,7 +176,8 @@ Diagnostic investigation report from the Debugger agent. Used in Teammate Mode w
   }
 }
 ```
-If no pre-existing issues were found, omit the field or pass an empty array.
+`resolution_observation` is analysis-scoped and must be one of `already_fixed`, `needs_change`, or `inconclusive`. Use `already_fixed` only when evidence shows the current branch already contains the fix and no new code change is needed. Use `needs_change` when a code change was required or would still be required. Use `inconclusive` when the diagnosis is not yet strong enough. This field informs the orchestrator's synthesis; it does not let the Debugger own final session state.
+For `pre_existing_issues`, if no pre-existing issues were found, omit the field or pass an empty array.
 
 ## `qa_verdict` (QA -> Lead)
 
@@ -220,7 +222,7 @@ Structured verification results.
 All items share: `id`, `category`, `description`, `status`, `evidence`. Category-specific optional fields enable richer VERIFICATION.md output:
 
 | Category | Optional Fields | Fallback |
-|---|---|---|
+| --- | --- | --- |
 | `must_have` | _(none)_ | 5-col: Truth/Condition, Status, Evidence |
 | `artifact` | `exists` (bool), `contains` (string) | 5-col when absent |
 | `key_link` | `from`, `to`, `via` (strings) | 5-col when absent |

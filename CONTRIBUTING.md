@@ -84,25 +84,41 @@ All `/vbw:*` commands will load from your local copy. Restart Claude Code to pic
 
 VBW debugging docs use a **private local pointer file** instead of hard-coding a maintainer's consumer repo path.
 
-Create this file in your VBW clone:
+Preferred setup is the clone-shared Git common-dir file:
+
+```text
+$(git rev-parse --git-common-dir)/info/vbw-debug-target.txt
+```
+
+In a standard non-worktree clone, that usually resolves to:
+
+```text
+.git/info/vbw-debug-target.txt
+```
+
+Set it from the VBW repo root with:
+
+```bash
+mkdir -p "$(git rev-parse --git-common-dir)/info"
+printf '%s\n' '/absolute/path/to/your-test-repo' > "$(git rev-parse --git-common-dir)/info/vbw-debug-target.txt"
+```
+
+This file stays private because it lives under the clone's Git metadata instead of the tracked working tree. All worktrees created from the same clone share it automatically.
+
+Legacy per-checkout fallback:
 
 ```text
 .claude/vbw-debug-target.txt
 ```
 
-Put the absolute path to your primary VBW consumer/test repo on the first non-empty line:
-
-```text
-/absolute/path/to/your-test-repo
-```
-
-This file stays private because `.claude/` is gitignored in this repo.
+That legacy file remains supported and gitignored, but it only applies to the checkout/worktree where you create it.
 
 Resolution order for debug-target lookup:
 
 1. `VBW_DEBUG_TARGET_REPO` env var (one-off override, absolute path only)
-2. `./.claude/vbw-debug-target.txt` in the VBW clone (preferred persistent local config, absolute path only)
-3. `<claude-config-dir>/vbw/debug-target.txt` (user-global fallback, absolute path only; `<claude-config-dir>` is resolved by `scripts/resolve-claude-dir.sh`: `CLAUDE_CONFIG_DIR` if set, else `$HOME/.config/claude-code` when that directory exists, else `$HOME/.claude`)
+2. `$(git rev-parse --git-common-dir)/info/vbw-debug-target.txt` in the current clone (preferred persistent local config, shared across worktrees)
+3. `./.claude/vbw-debug-target.txt` in the current checkout/worktree (legacy fallback, absolute path only)
+4. `<claude-config-dir>/vbw/debug-target.txt` (user-global fallback, absolute path only; `<claude-config-dir>` is resolved by `scripts/resolve-claude-dir.sh`: `CLAUDE_CONFIG_DIR` if set, else `$HOME/.config/claude-code` when that directory exists, else `$HOME/.claude`)
 
 Relative paths are rejected so the resolver behaves the same no matter which directory calls it.
 

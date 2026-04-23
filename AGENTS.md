@@ -14,10 +14,16 @@ When the user reports VBW misbehavior — pasting Claude Code session output, de
 
 ### Local debug target configuration (private, not committed)
 
-Preferred setup in the VBW repo clone:
+Preferred setup in the VBW clone's shared Git common dir:
 
 ```text
-.claude/vbw-debug-target.txt
+$(git rev-parse --git-common-dir)/info/vbw-debug-target.txt
+```
+
+In a standard non-worktree clone, this usually resolves to:
+
+```text
+.git/info/vbw-debug-target.txt
 ```
 
 The first non-empty, non-comment line must be the absolute path to the contributor's primary VBW consumer/test repo.
@@ -29,11 +35,22 @@ Example local file content:
 /absolute/path/to/your-test-repo
 ```
 
+This file lives under the clone's shared Git metadata, so it stays private and all worktrees created from that clone can read it automatically.
+
+Legacy fallback for a single checkout only:
+
+```text
+.claude/vbw-debug-target.txt
+```
+
+That legacy file remains supported and gitignored, but it is scoped to one checkout/worktree and will not be copied into new worktrees.
+
 Resolution order:
 1. `VBW_DEBUG_TARGET_REPO` env var (one-off override, absolute path only)
-2. `./.claude/vbw-debug-target.txt` in the VBW repo clone (preferred persistent local config, absolute path only)
-3. `<claude-config-dir>/vbw/debug-target.txt` (user-global fallback, absolute path only; `<claude-config-dir>` is resolved by `scripts/resolve-claude-dir.sh`: `CLAUDE_CONFIG_DIR` if set, else `$HOME/.config/claude-code` when that directory exists, else `$HOME/.claude`)
-4. If none are configured, **ask the user for the target repo path** — do not guess.
+2. `$(git rev-parse --git-common-dir)/info/vbw-debug-target.txt` in the current clone (preferred persistent local config, shared across worktrees)
+3. `./.claude/vbw-debug-target.txt` in the current checkout/worktree (legacy fallback, absolute path only)
+4. `<claude-config-dir>/vbw/debug-target.txt` (user-global fallback, absolute path only; `<claude-config-dir>` is resolved by `scripts/resolve-claude-dir.sh`: `CLAUDE_CONFIG_DIR` if set, else `$HOME/.config/claude-code` when that directory exists, else `$HOME/.claude`)
+5. If none are configured, **ask the user for the target repo path** — do not guess.
 
 Use the shared resolver when debugging:
 

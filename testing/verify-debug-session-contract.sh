@@ -128,6 +128,39 @@ else
   fail "debug.md missing start-with-selected-todo numbered todo integration"
 fi
 
+if grep -q 'HEAD_BEFORE' "$DEBUG_CMD" 2>/dev/null && grep -q 'HEAD_AFTER' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md compares HEAD_BEFORE and HEAD_AFTER for investigation outcomes"
+else
+  fail "debug.md missing HEAD_BEFORE/HEAD_AFTER outcome comparison"
+fi
+
+if grep -qF 'resolution_observation' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md Path B instructs the single debugger to return resolution_observation"
+else
+  fail "debug.md Path B missing resolution_observation contract"
+fi
+
+if grep -qF 'INVESTIGATION_OUTCOME=fixed_now' "$DEBUG_CMD" 2>/dev/null && \
+   grep -qF 'INVESTIGATION_OUTCOME=already_fixed' "$DEBUG_CMD" 2>/dev/null && \
+   grep -qF 'INVESTIGATION_OUTCOME=no_fix_yet' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md Step 5 maps fixed_now, already_fixed, and no_fix_yet outcomes"
+else
+  fail "debug.md Step 5 missing fixed_now/already_fixed/no_fix_yet mapping"
+fi
+
+if grep -qF 'set-status .vbw-planning complete' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md already_fixed path reuses completed-state workflow via set-status complete"
+else
+  fail "debug.md already_fixed path missing set-status complete workflow"
+fi
+
+if grep -qF 'For `no_fix_yet`' "$DEBUG_CMD" 2>/dev/null && \
+   grep -qF '`investigating`' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md no_fix_yet path keeps the session investigating"
+else
+  fail "debug.md no_fix_yet path missing investigating-state guidance"
+fi
+
 QA_CMD="$ROOT/commands/qa.md"
 if grep -q "debug_session_qa" "$QA_CMD" 2>/dev/null; then
   pass "qa.md has debug_session_qa section"

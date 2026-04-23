@@ -132,6 +132,10 @@ load test_helper
   sed -n '/Pre-Existing Failure Handling/,/^##/p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -q 'pre_existing_issues'
 }
 
+@test "debugger agent teammate mode mentions resolution_observation" {
+  sed -n '/## Teammate Mode/,/^##/p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -q 'resolution_observation'
+}
+
 @test "debugger agent references debugger_report schema" {
   sed -n '/Pre-Existing Failure Handling/,/^##/p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -q 'debugger_report'
 }
@@ -151,6 +155,15 @@ load test_helper
 
 @test "handoff schema debugger_report uses correct type in JSON" {
   sed -n '/## .debugger_report/,/^## /p' "$PROJECT_ROOT/references/handoff-schemas.md" | grep -q '"type": "debugger_report"'
+}
+
+@test "handoff schema debugger_report documents resolution_observation" {
+  sed -n '/## .debugger_report/,/^## /p' "$PROJECT_ROOT/references/handoff-schemas.md" | grep -q 'resolution_observation'
+}
+
+@test "handoff schema debugger_report documents already_fixed and needs_change values" {
+  sed -n '/## .debugger_report/,/^## /p' "$PROJECT_ROOT/references/handoff-schemas.md" | grep -q 'already_fixed'
+  sed -n '/## .debugger_report/,/^## /p' "$PROJECT_ROOT/references/handoff-schemas.md" | grep -q 'needs_change'
 }
 
 @test "handoff schema blocker_report section does not mention debugger" {
@@ -345,6 +358,7 @@ load test_helper
 @test "json schema debugger_report requires hypothesis and evidence fields" {
   jq -r '.schemas.debugger_report.payload_required[]' "$PROJECT_ROOT/config/schemas/message-schemas.json" | grep -q 'hypothesis'
   jq -r '.schemas.debugger_report.payload_required[]' "$PROJECT_ROOT/config/schemas/message-schemas.json" | grep -q 'evidence_for'
+  jq -r '.schemas.debugger_report.payload_required[]' "$PROJECT_ROOT/config/schemas/message-schemas.json" | grep -q 'resolution_observation'
 }
 
 @test "json schema debugger_report payload_optional includes pre_existing_issues" {

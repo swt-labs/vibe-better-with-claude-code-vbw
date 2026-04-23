@@ -3,8 +3,10 @@
 #
 # Resolution order:
 #   1. VBW_DEBUG_TARGET_REPO env var (one-off override)
-#   2. <plugin-root>/.claude/vbw-debug-target.txt (preferred local config)
-#   3. ${CLAUDE_DIR}/vbw/debug-target.txt (user-global fallback; CLAUDE_DIR is
+#   2. <git-common-dir>/info/vbw-debug-target.txt (preferred local config shared
+#      across worktrees created from the same clone)
+#   3. <plugin-root>/.claude/vbw-debug-target.txt (legacy per-checkout fallback)
+#   4. ${CLAUDE_DIR}/vbw/debug-target.txt (user-global fallback; CLAUDE_DIR is
 #      resolved by resolve-claude-dir.sh using CLAUDE_CONFIG_DIR when set and
 #      the canonical Claude config-directory defaults otherwise)
 #
@@ -15,8 +17,11 @@
 #   resolve-debug-target.sh [repo|planning-dir|encoded-path|claude-project-dir|source|all] [--plugin-root PATH]
 #
 # Notes:
-# - --plugin-root exists so tests and diagnostics can point at an explicit repo root
-#   without relying on the script's installed location.
+# - --plugin-root exists so tests and diagnostics can point at an explicit repo
+#   root without relying on the script's installed location.
+# - If --plugin-root is not inside a git checkout (for example some installed
+#   cache layouts), the shared git-common-dir lookup is skipped and the legacy
+#   per-checkout/global fallbacks still apply.
 # - The resolved target must exist as a directory. The script does not require
 #   .vbw-planning/ to exist because some debug flows may need to inspect pre-init repos.
 
@@ -41,6 +46,25 @@ trim_value() {
   value="${value%"${value##*[![:space:]]}"}"
 
   printf '%s' "$value"
+}
+
+resolve_git_common_dir() {
+  local raw_dir=""
+
+  raw_dir="$(git -C "$PLUGIN_ROOT" rev-parse --git-common-dir 2>/dev/null || true)"
+  [ -n "$raw_dir" ] || return 1
+
+  case "$raw_dir" in
+    /*) ;;
+    *) raw_dir="$PLUGIN_ROOT/$raw_dir" ;;
+  esac
+
+  [ -d "$raw_dir" ] || return 1
+
+  (
+    cd "$raw_dir"
+    pwd -P
+  )
 }
 
 validate_target_repo() {
@@ -121,6 +145,11 @@ read_target_file() {
   printf '%s\n' "$line"
 }
 
+COMMON_FILE=""
+if GIT_COMMON_DIR="$(resolve_git_common_dir)"; then
+  COMMON_FILE="$GIT_COMMON_DIR/info/vbw-debug-target.txt"
+fi
+
 LOCAL_FILE="$PLUGIN_ROOT/.claude/vbw-debug-target.txt"
 GLOBAL_FILE="$CLAUDE_DIR/vbw/debug-target.txt"
 TARGET_REPO=""
@@ -130,26 +159,33 @@ if [ "${VBW_DEBUG_TARGET_REPO+x}" = "x" ]; then
   TARGET_REPO="$(trim_value "$VBW_DEBUG_TARGET_REPO")"
   TARGET_SOURCE="VBW_DEBUG_TARGET_REPO"
 else
-  if TARGET_REPO="$(read_target_file "$LOCAL_FILE")"; then
-    TARGET_SOURCE="$LOCAL_FILE"
-  else
-    READ_RC=$?
-    if [ "$READ_RC" -eq 2 ]; then
-      exit 1
-    fi
+  candidate_files=()
 
-    if TARGET_REPO="$(read_target_file "$GLOBAL_FILE")"; then
-      TARGET_SOURCE="$GLOBAL_FILE"
+  if [ -n "$COMMON_FILE" ]; then
+    candidate_files+=("$COMMON_FILE")
+  fi
+  candidate_files+=("$LOCAL_FILE" "$GLOBAL_FILE")
+
+  for candidate_file in "${candidate_files[@]}"; do
+    if TARGET_REPO="$(read_target_file "$candidate_file")"; then
+      TARGET_SOURCE="$candidate_file"
+      break
     else
       READ_RC=$?
       if [ "$READ_RC" -eq 2 ]; then
         exit 1
       fi
-
-      echo "No VBW debug target repo configured." >&2
-      echo "Set VBW_DEBUG_TARGET_REPO, create $LOCAL_FILE, or create $GLOBAL_FILE." >&2
-      exit 1
     fi
+  done
+
+  if [ -z "$TARGET_SOURCE" ]; then
+    echo "No VBW debug target repo configured." >&2
+    if [ -n "$COMMON_FILE" ]; then
+      echo "Set VBW_DEBUG_TARGET_REPO, create $COMMON_FILE, create $LOCAL_FILE, or create $GLOBAL_FILE." >&2
+    else
+      echo "Set VBW_DEBUG_TARGET_REPO, create $LOCAL_FILE, or create $GLOBAL_FILE." >&2
+    fi
+    exit 1
   fi
 fi
 

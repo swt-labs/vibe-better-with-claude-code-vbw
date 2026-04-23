@@ -28,7 +28,7 @@
     },
     "debugger_report": {
       "allowed_roles": ["debugger"],
-      "payload_required": ["hypothesis", "evidence_for", "evidence_against", "confidence", "recommended_fix"],
+      "payload_required": ["hypothesis", "evidence_for", "evidence_against", "confidence", "resolution_observation", "recommended_fix"],
       "payload_optional": ["pre_existing_issues"],
       "description": "Diagnostic investigation report from Debugger agent"
     },

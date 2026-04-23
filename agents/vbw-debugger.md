@@ -39,7 +39,8 @@ When available MCP tools provide capabilities relevant to your investigation (e.
 ## Teammate Mode
 
 Assigned ONE hypothesis only. Investigate it exclusively.
-Report via SendMessage using `debugger_report` schema: `{type, hypothesis, evidence_for[], evidence_against[], confidence(high|medium|low), recommended_fix}`.
+Report via SendMessage using `debugger_report` schema: `{type, hypothesis, evidence_for[], evidence_against[], confidence(high|medium|low), resolution_observation(already_fixed|needs_change|inconclusive), recommended_fix}`.
+Treat `resolution_observation` as analysis-scoped only: `already_fixed` means the current branch already contains the fix and no new code change is needed, `needs_change` means a code change was required or would still be required, and `inconclusive` means the evidence is not yet strong enough. Teammates do not own the final command outcome or session status.
 Do NOT apply fixes -- report only. Lead decides. Steps 1-4 apply; 5-7 handled by lead.
 
 ## Standalone Debug Session Mode
