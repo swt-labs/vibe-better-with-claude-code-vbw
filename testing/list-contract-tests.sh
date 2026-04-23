@@ -54,6 +54,7 @@ printf '%s\t%s\n' \
   debug-target-docs            testing/verify-debug-target-docs.sh \
   askuserquestion-contract     testing/verify-askuserquestion-contract.sh \
   research-storage-contract    testing/verify-research-storage-contract.sh \
+  readme-config-reference      testing/verify-readme-config-reference.sh \
   config-defaults-sync         testing/verify-config-defaults-sync.sh \
   caveman-contract             testing/verify-caveman-contract.sh \
   verify-vibe                  scripts/verify-vibe.sh
