@@ -106,7 +106,8 @@ fi`
   ```bash
   eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" get-or-latest .vbw-planning 2>/dev/null)" 2>/dev/null || true
   ```
-  If `active_session != none` AND session `status` is `qa_pending` or `qa_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → skip ALL remaining guards and jump directly to `<debug_session_qa>` below.
+  The helper exports `active_session`, `session_id`, `session_file`, and `session_status`; use `session_status` for lifecycle checks after `eval`.
+  If `active_session != none` AND exported `session_status` is `qa_pending` or `qa_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → skip ALL remaining guards and jump directly to `<debug_session_qa>` below.
   If phases exist (`phase_count > 0`) AND `$ARGUMENTS` does NOT contain `--session`, skip this override — standard phase QA takes priority.
 - **Brownfield normalization:** If Phase state (from Context above) contains `misnamed_plans=true`, normalize all phase directories before proceeding:
   ```bash
@@ -134,16 +135,18 @@ fi`
 ## Debug Session Routing
 
 <debug_session_qa>
-**Before resolving phase target**, check for an active debug session. This handles the case where phase_count=0 but a debug session with `status=qa_pending` or `status=qa_failed` exists.
+**Before resolving phase target**, check for an active debug session. This handles the case where phase_count=0 but a debug session with `session_status=qa_pending` or `session_status=qa_failed` exists.
 
 ```bash
 eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" get-or-latest .vbw-planning)"
 ```
 
+The helper exports `active_session`, `session_id`, `session_file`, and `session_status`; use `session_status` for routing after `eval`.
+
 **Routing decision:**
 - If `$ARGUMENTS` contains an explicit phase number AND no `--session` flag → skip debug-session routing, use standard phase QA flow below.
-- If `active_session != none` AND session `status` is `qa_pending` or `qa_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → enter debug-session QA mode (below). If `phase_count > 0` and no `--session` flag, skip debug-session routing — standard phase QA takes priority.
-- If `active_session != none` but session `status` is NOT `qa_pending`/`qa_failed` → skip debug-session routing. Session is in a different lifecycle stage.
+- If `active_session != none` AND exported `session_status` is `qa_pending` or `qa_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → enter debug-session QA mode (below). If `phase_count > 0` and no `--session` flag, skip debug-session routing — standard phase QA takes priority.
+- If `active_session != none` but exported `session_status` is NOT `qa_pending`/`qa_failed` → skip debug-session routing. Session is in a different lifecycle stage.
 - If `active_session = none` → skip debug-session routing, continue to standard phase QA.
 
 **Debug-session QA mode:**
