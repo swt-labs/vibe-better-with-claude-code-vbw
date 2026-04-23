@@ -11,6 +11,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 README="$ROOT/README.md"
 DEFAULTS_JSON="$ROOT/config/defaults.json"
 TABLE_ROWS_TSV="$(mktemp "${TMPDIR:-/tmp}/verify-readme-config-reference.XXXXXX")"
+README_ONLY_EXCEPTIONS="bash_guard"
 
 PASS=0
 FAIL=0
@@ -91,6 +92,30 @@ table_unique_keys() {
   awk -F'\t' '{ print $1 }' "$TABLE_ROWS_TSV" | awk '!seen[$0]++'
 }
 
+is_readme_only_exception() {
+  local candidate="$1"
+  local exception
+
+  for exception in $README_ONLY_EXCEPTIONS; do
+    if [ "$candidate" = "$exception" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+filter_readme_only_exceptions() {
+  local key
+
+  while IFS= read -r key; do
+    [ -n "$key" ] || continue
+    if ! is_readme_only_exception "$key"; then
+      printf '%s\n' "$key"
+    fi
+  done
+}
+
 declare -a default_keys=()
 
 default_keys_output=""
@@ -143,13 +168,24 @@ for key in "${default_keys[@]}"; do
 done
 
 echo ""
+echo "--- Check: README-only exceptions appear exactly once ---"
+for key in $README_ONLY_EXCEPTIONS; do
+  count="$(table_count_for_key "$key")"
+  if [ "$count" -eq 1 ]; then
+    pass "README-only exception '$key' appears exactly once"
+  else
+    fail "README-only exception '$key' appears $count times (expected exactly once)"
+  fi
+done
+
+echo ""
 echo "--- Check: README All defaults has no unexpected keys ---"
 while IFS= read -r key; do
   [ -n "$key" ] || continue
   if grep -Fxq "$key" <<< "$default_key_list"; then
     pass "README key '$key' exists in defaults.json"
-  elif [ "$key" = "bash_guard" ]; then
-    pass "README-only key 'bash_guard' is the intentional exception"
+  elif is_readme_only_exception "$key"; then
+    pass "README-only key '$key' is the intentional exception"
   else
     fail "README All defaults contains unexpected key '$key'"
   fi
@@ -184,7 +220,7 @@ done
 echo ""
 echo "--- Check: README All defaults order matches defaults.json source order ---"
 expected_order="$(printf '%s\n' "${default_keys[@]}")"
-actual_order="$(printf '%s\n' "${table_keys[@]}" | grep -vx 'bash_guard' || true)"
+actual_order="$(printf '%s\n' "${table_keys[@]}" | filter_readme_only_exceptions || true)"
 if [ "$expected_order" = "$actual_order" ]; then
   pass "README All defaults order matches defaults.json source-file order"
 else
