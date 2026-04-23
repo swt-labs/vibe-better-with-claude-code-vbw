@@ -154,7 +154,8 @@ else
   fail "debug.md already_fixed path missing set-status complete workflow"
 fi
 
-if sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -q 'keep the session status as `investigating`'; then
+if sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -q 'For `no_fix_yet`' && \
+   sed -n '/<debug_session_persistence>/,/<debug_inline_qa>/p' "$DEBUG_CMD" 2>/dev/null | grep -q '`investigating`'; then
   pass "debug.md no_fix_yet path keeps the session investigating"
 else
   fail "debug.md no_fix_yet path missing investigating-state guidance"
