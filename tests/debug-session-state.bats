@@ -168,7 +168,7 @@ teardown() {
 
   run bash -lc '
     readonly status=0
-    helper_output=$("$1" get-or-latest "$2")
+    helper_output=$(bash "$1" get-or-latest "$2")
     printf "%s\n" "$helper_output" | grep -Eq "^session_status=investigating$"
     ! printf "%s\n" "$helper_output" | grep -Eq "^status="
     eval "$helper_output"
@@ -221,7 +221,7 @@ teardown() {
 
   run bash -lc '
     readonly status=0
-    helper_output=$("$1" resume "$2" "$3")
+    helper_output=$(bash "$1" resume "$2" "$3")
     printf "%s\n" "$helper_output" | grep -Eq "^session_status=investigating$"
     ! printf "%s\n" "$helper_output" | grep -Eq "^status="
     eval "$helper_output"
