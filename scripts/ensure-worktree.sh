@@ -22,6 +22,7 @@ current_toplevel=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 branch_worktree=""
 target_worktree_branch=""
 wt_path=""
+wt_branch=""
 
 target_worktree_occupied=false
 

@@ -75,7 +75,7 @@ Execute these steps in order. Do not skip steps.
 
     Expected upstream values:
     - **Same-repo PRs**: `origin/$PR_BRANCH` — `git push` pushes to the PR branch on origin.
-    - **Fork PRs**: `$FORK_OWNER/$PR_BRANCH` — `git push` pushes to the contributor's fork.
+    - **Fork PRs**: `$FORK_OWNER/$PR_BRANCH` — because the local branch name (`pr/<author>/<num>`) differs from the remote branch name, always push with an explicit refspec: `git push "$PUSH_REMOTE" HEAD:"$PR_BRANCH"`.
 
     If the upstream cannot be verified or set, stop and report the error to the user — do not proceed with commits that would require `git push`.
     **Downstream workflow adjustments when adopting a PR:**
@@ -491,7 +491,7 @@ Start with Copilot review round C = 1.
     ```bash
     gh api graphql -f query='mutation { resolveReviewThread(input:{threadId:"THREAD_NODE_ID"}) { thread { isResolved } } }'
     ```
-    After resolving all threads, verify zero unresolved Copilot threads remain using the step 27 query.
+    After resolving all threads, verify zero unresolved Copilot threads remain by re-running the step 27 query with `first:100` and paginating through all pages if `hasNextPage` is true.
 
 30. **Verify push, then re-request Copilot review.** Confirm all commits are pushed (`git log --oneline origin/<branch>..HEAD` shows 0 commits) and the PR head SHA equals `FIX_SHA` from step 28. Re-request via #tool:github/request_copilot_review. Increment C and loop back to step 26.
 
