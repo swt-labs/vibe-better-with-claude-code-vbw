@@ -23,10 +23,13 @@ branch_worktree=""
 target_worktree_branch=""
 wt_path=""
 
+target_worktree_occupied=false
+
 while IFS= read -r line; do
     case "$line" in
         worktree\ *)
             wt_path="${line#worktree }"
+            wt_branch=""
             ;;
         branch\ refs/heads/*)
             wt_branch="${line#branch refs/heads/}"
@@ -38,10 +41,19 @@ while IFS= read -r line; do
             fi
             ;;
         '')
+            # End of stanza — check for detached worktree at target path
+            if [ "$wt_path" = "$target_worktree" ] && [ -z "$wt_branch" ]; then
+                target_worktree_occupied=true
+            fi
             wt_path=""
+            wt_branch=""
             ;;
     esac
 done < <(git worktree list --porcelain 2>/dev/null)
+# Handle final stanza (porcelain output may not end with blank line)
+if [ "$wt_path" = "$target_worktree" ] && [ -z "$wt_branch" ] && [ -z "$target_worktree_branch" ]; then
+    target_worktree_occupied=true
+fi
 
 if [ "$current_toplevel" = "$target_worktree" ] && [ "$current_branch" = "$branch" ]; then
     cd "$target_worktree" || exit 1
@@ -57,6 +69,10 @@ elif [ -n "$branch_worktree" ]; then
     exit 1
 elif [ -n "$target_worktree_branch" ] && [ "$target_worktree_branch" != "$branch" ]; then
     echo "Target worktree path is already used by branch '$target_worktree_branch': $target_worktree" >&2
+    exit 1
+elif $target_worktree_occupied; then
+    echo "Target worktree path is occupied by a detached worktree: $target_worktree" >&2
+    echo "Remove it with 'git worktree remove $target_worktree' or check it out on the desired branch." >&2
     exit 1
 elif [ -e "$target_worktree" ]; then
     echo "Target worktree path exists but is not a registered worktree: $target_worktree" >&2
