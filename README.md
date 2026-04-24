@@ -707,6 +707,7 @@ VBW generates 15+ files in `.vbw-planning/` during bootstrap, planning, executio
 #### `planning_tracking`
 
 Controls whether `.vbw-planning/` artifacts are committed, gitignored, or left for you to manage.
+VBW writes `.vbw-planning/.gitignore` in all three modes so transient runtime files stay excluded; the selected mode only changes whether the whole planning directory is root-ignored and/or auto-committed.
 
 ```text
 /vbw:config planning_tracking commit
@@ -714,8 +715,8 @@ Controls whether `.vbw-planning/` artifacts are committed, gitignored, or left f
 
 | Value | What It Does | When To Use It |
 | :--- | :--- | :--- |
-| **`manual`** | Default. No commits, no gitignore. Planning files accumulate as untracked in `git status`. You manage them yourself. | When you want full control, or aren't sure yet. |
-| **`ignore`** | Adds `.vbw-planning/` to `.gitignore` during `/vbw:init`. Planning files exist locally but never enter version control. Clean `git status`. | Solo projects, prototyping, or when planning history doesn't matter. |
+| **`manual`** | Default. No auto-commits and no root ignore for the whole `.vbw-planning/` directory. Durable planning files accumulate as untracked in `git status`, while transient runtime files stay excluded via `.vbw-planning/.gitignore`. | When you want full control, or aren't sure yet. |
+| **`ignore`** | Adds `.vbw-planning/` to `.gitignore` during `/vbw:init` or `/vbw:config planning_tracking ignore`. Planning files exist locally but never enter version control. Clean `git status`. | Solo projects, prototyping, or when planning history doesn't matter. |
 | **`commit`** | Auto-commits `.vbw-planning/` artifacts (and `CLAUDE.md` when present) at helper-backed planning boundaries — for example after bootstrap, planning/discussion checkpoints, todo additions, and archive. Commit format: `chore(vbw): {action}`. Transient files (`.execution-state.json`, `.contracts/`, `.locks/`, `.token-state/`, compiled context) are excluded via `.vbw-planning/.gitignore`. | Teams that want an audit trail of planning decisions in version control. |
 
 #### `auto_push`
