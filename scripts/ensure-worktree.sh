@@ -10,7 +10,7 @@ set -euo pipefail
 
 branch="${1:?Usage: ensure-worktree.sh <branch-name>}"
 
-git_common_dir=$(git rev-parse --git-common-dir 2>/dev/null) || exit 1
+git_common_dir=$(git rev-parse --git-common-dir) || exit 1
 repo_root=$(cd "$git_common_dir/.." && pwd) || exit 1
 repo_name=$(basename "$repo_root")
 worktree_base="$(cd "$repo_root/.." && pwd)/${repo_name}-worktrees"

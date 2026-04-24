@@ -93,7 +93,7 @@ Before invoking the planner, check whether this conversation already contains an
 **If planner handoff exists** (conversation contains a `fix-planner-vbw` response that confirms a saved path or provides an inline plan):
 - Read the plan from the confirmed path via #tool:vscode/memory (activate deferred tools first if needed). Use it as the execution guide. Skip the rest of Phase 1.5 and proceed to Phase 2.
 
-**Elif User-authored execution contract exists** (conversation contains a user message with a detailed plan and instructions to save/use/execute it):
+**Else if User-authored execution contract exists** (conversation contains a user message with a detailed plan and instructions to save/use/execute it):
 - Save the plan to `/memories/session/plan.md` exactly as written before any summarization, sanitization, or planner invocation. If `/memories/session/plan.md` already exists and does not exactly match the user-authored plan in this thread, replace its contents so the saved file matches the user's text exactly.
 - If the user explicitly told you to execute the saved/presented plan, do NOT stop after saving it — continue the workflow.
 - Invoke `fix-planner-vbw` in **audit mode only**: tell it to read `/memories/session/plan.md`, QA-evaluate that saved plan against the issue and codebase, and follow its existing audit loop against that same saved path. It must not replan from scratch or fork a second canonical plan file. If refinement is needed, amend in place.
