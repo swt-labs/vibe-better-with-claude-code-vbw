@@ -65,10 +65,24 @@ tor    **Issue body requirements.** The issue body is the verification contract 
 
     **Use `CHECKOUT_BRANCH` as the branch name for step 4.** Do not generate a `fix-NNN-description` branch name. The worktree is created at the canonical location `../<repo-name>-worktrees/<flat-branch-name>/`.
 
-    **Upstream tracking.** The adoption script already configures upstream tracking — no additional setup is needed in step 4:
-    - **Same-repo PRs** (`IS_FORK == false`): upstream is set to `origin/$PR_BRANCH` — `git push` pushes to the PR branch on origin.
-    - **Fork PRs** (`IS_FORK == true`): upstream is set to `$FORK_OWNER/$PR_BRANCH` — `git push` pushes to the contributor's fork.
+    **Upstream tracking.** The adoption script is expected to configure upstream tracking, but you must verify it after entering the worktree before relying on plain `git push`:
+    ```bash
+    git rev-parse --abbrev-ref --symbolic-full-name '@{u}'
+    ```
+    If that command succeeds, proceed normally:
+    - **Same-repo PRs** (`IS_FORK == false`): expected upstream is `origin/$PR_BRANCH` — `git push` pushes to the PR branch on origin.
+    - **Fork PRs** (`IS_FORK == true`): expected upstream is `$FORK_OWNER/$PR_BRANCH` — `git push` pushes to the contributor's fork.
 
+    If `@{u}` is not set, configure it explicitly before continuing:
+    - **Same-repo PRs** (`IS_FORK == false`):
+      ```bash
+      git branch --set-upstream-to="origin/$PR_BRANCH" "$CHECKOUT_BRANCH"
+      ```
+    - **Fork PRs** (`IS_FORK == true`):
+      ```bash
+      git branch --set-upstream-to="$FORK_OWNER/$PR_BRANCH" "$CHECKOUT_BRANCH"
+      ```
+    If the upstream cannot be verified or set, stop and report the error to the user — do not proceed with commits that would require `git push`.
     **Downstream workflow adjustments when adopting a PR:**
     - **Phase 1.5 (Plan the Fix)**: Still required — the planner should account for the contributor's existing implementation as a starting point, not plan from scratch.
     - **Phase 2 step 4 (Worktree)**: Uses `PR_BRANCH` — the branch already exists locally from the fetch above.
