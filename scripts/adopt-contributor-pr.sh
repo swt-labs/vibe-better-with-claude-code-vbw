@@ -45,7 +45,7 @@ if [ "$IS_FORK" = "true" ]; then
     EXISTING_URL=$(git remote get-url "$FORK_OWNER" 2>/dev/null || echo "")
     # Normalize GitHub URLs: extract owner/repo to compare regardless of SSH/HTTPS/.git suffix
     normalize_github_url() {
-        printf '%s' "$1" | sed -E 's#^(https://github\.com/|git@github\.com:)##; s#\.git$##'
+        printf '%s' "$1" | sed -E 's#^(https://github\.com/|git@github\.com:|ssh://git@github\.com/|git://github\.com/)##; s#\.git$##'
     }
     if [ -z "$EXISTING_URL" ]; then
         git remote add "$FORK_OWNER" "$EXPECTED_URL"
