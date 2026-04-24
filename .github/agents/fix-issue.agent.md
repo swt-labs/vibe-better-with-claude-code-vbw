@@ -80,7 +80,7 @@ Execute these steps in order. Do not skip steps.
     If the upstream cannot be verified or set, stop and report the error to the user — do not proceed with commits that would require `git push`.
     **Downstream workflow adjustments when adopting a PR:**
     - **Phase 1.5 (Plan the Fix)**: Still required — the planner should account for the contributor's existing implementation as a starting point, not plan from scratch.
-    - **Phase 2 step 4 (Worktree)**: Uses `PR_BRANCH` — the branch already exists locally from the fetch above.
+    - **Phase 2 step 4 (Worktree)**: Uses `CHECKOUT_BRANCH` — the branch already exists locally from the fetch above. (For fork PRs this is the local branch like `pr/<author>/<num>`, not `PR_BRANCH`.)
     - **Phase 4 step 23 (Draft PR creation)**: **Skip entirely** — the PR already exists. All commits push to the PR branch and the existing PR updates automatically.
     - **Phase 4 step 32 (Summary)**: Reference the existing PR number.
     - **Phase 4.5 (Copilot Review)**: Operates on the existing PR — no changes needed.
