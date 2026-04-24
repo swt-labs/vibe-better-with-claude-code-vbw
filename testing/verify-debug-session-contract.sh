@@ -255,6 +255,20 @@ else
   fail "debug.md completion paths missing ordered planning boundary commit after set-status complete"
 fi
 
+if grep -Fq "already_fixed = 'Already fixed before this investigation — no new fix commit was required." "$DEBUG_CMD" 2>/dev/null \
+  && grep -Fq 'already_fixed = "Already fixed on the current branch — no new fix commit was required;' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md already_fixed wording distinguishes fix commits from planning-artifact commits"
+else
+  fail "debug.md already_fixed wording still blurs fix commits and planning-artifact commits"
+fi
+
+if grep -Fq "already_fixed = 'Already fixed before this investigation — no new commit created.'" "$DEBUG_CMD" 2>/dev/null \
+  || grep -Fq 'already_fixed = "Already fixed on the current branch — no new commit created"' "$DEBUG_CMD" 2>/dev/null; then
+  fail "debug.md still contains stale already_fixed wording that claims no commit was created"
+else
+  pass "debug.md removes stale already_fixed no-new-commit wording"
+fi
+
 if grep -qF 'For `no_fix_yet`' "$DEBUG_CMD" 2>/dev/null && \
    grep -qF '`investigating`' "$DEBUG_CMD" 2>/dev/null; then
   pass "debug.md no_fix_yet path keeps the session investigating"

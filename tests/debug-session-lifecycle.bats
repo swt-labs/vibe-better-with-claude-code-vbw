@@ -102,7 +102,7 @@ assert_no_repeated_blank_lines() {
   SESSION_FILE=$(start_session)
   [ -f "$SESSION_FILE" ]
 
-  echo '{"mode":"investigation","issue":"Guard already present","hypotheses":[{"description":"Fix landed earlier","status":"confirmed","evidence_for":"Current branch already includes the guard","evidence_against":"None","conclusion":"Bug was already fixed before this session"}],"root_cause":"Missing guard was fixed earlier in scripts/example.sh","plan":"No new changes required","implementation":"No new changes were required because the current branch already contained the fix.","changed_files":["scripts/example.sh"],"commit":"Already fixed before this investigation — no new commit created."}' \
+  echo '{"mode":"investigation","issue":"Guard already present","hypotheses":[{"description":"Fix landed earlier","status":"confirmed","evidence_for":"Current branch already includes the guard","evidence_against":"None","conclusion":"Bug was already fixed before this session"}],"root_cause":"Missing guard was fixed earlier in scripts/example.sh","plan":"No new changes required","implementation":"No new changes were required because the current branch already contained the fix.","changed_files":["scripts/example.sh"],"commit":"Already fixed before this investigation — no new fix commit was required. If planning_tracking=commit, this completion path may create a planning-artifact commit."}' \
     | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
 
   bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$PLANNING_DIR" complete > /dev/null
@@ -111,7 +111,7 @@ assert_no_repeated_blank_lines() {
   [ -f "$SESSION_FILE" ]
   [[ "$SESSION_FILE" == *"/debugging/completed/"* ]]
   grep -q '^status: complete$' "$SESSION_FILE"
-  grep -q 'Already fixed before this investigation — no new commit created\.' "$SESSION_FILE"
+  grep -q 'Already fixed before this investigation — no new fix commit was required\. If planning_tracking=commit, this completion path may create a planning-artifact commit\.' "$SESSION_FILE"
   grep -q 'No new changes were required because the current branch already contained the fix\.' "$SESSION_FILE"
   ! grep -q '### Round 1 — PASS' "$SESSION_FILE"
   ! grep -q '### Round 1 — pass' "$SESSION_FILE"
