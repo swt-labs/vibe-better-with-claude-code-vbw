@@ -36,7 +36,7 @@ Execute these steps in order. Do not skip steps.
     **Contract split (NON-NEGOTIABLE).** The issue is the public verification contract for QA, PR text, and reviewer communication. A saved planner-authored or user-authored plan is the execution guide for implementation order, dependencies, and risky areas. Keep them aligned. If a user-authored plan introduces must-have acceptance criteria or scope boundaries that are not already captured in the issue, update the issue with a sanitized version before QA begins. Do not copy local absolute path prefixes (for example `/Users/.../`) or other PII into GitHub.
 3. **If no issue exists**, create one via #tool:github/issue_write (method: `create`) using the structure from `.github/ISSUE_TEMPLATE/` (bug_report for bugs, feature_request for enhancements). Assign to the authenticated user (your GitHub username) and apply at least one label (`bug`, `enhancement`, or a domain label).
 
-   **Issue body requirements (NON-NEGOTIABLE).** The issue body is the verification contract for the entire workflow — the QA agent will use it to scope its review. Every issue you create must include:
+   **Issue body requirements.** The issue body is the verification contract for the entire workflow — the QA agent will use it to scope its review. Every issue you create must include:
 
    - **Problem statement**: Precise description of the bug or missing behavior, with reproduction evidence (commands, error output, file state). Not vague — include the exact symptom.
    - **Root cause analysis**: Your hypothesis for why this happens. Name the specific file(s), function(s), or logic path that is broken or missing.
@@ -55,76 +55,13 @@ Execute these steps in order. Do not skip steps.
 
 3c. **Detect PR handoff from `@review-contributor-pr`.** If this thread already contains a PR review analysis from `@review-contributor-pr` that recommended changes (verdict `REQUEST_CHANGES` or `REQUEST_CHANGES (reimplement recommended)`), **adopt the existing PR branch** instead of creating a new one. This mimics GitHub's "checkout PR" behavior — check out the contributor's branch, make fixes locally, and push back to it so the PR updates in place.
 
-    Extract the PR number from the review context, then fetch the PR metadata:
+    Extract the PR number from the review context, then run the adoption script:
     ```bash
     PR_NUM=<number from review context>
-    PR_JSON=$(gh pr view "$PR_NUM" -R swt-labs/vibe-better-with-claude-code-vbw --json headRefName,headRepository,isCrossRepository,maintainerCanModify,state,author)
-    PR_STATE=$(printf '%s' "$PR_JSON" | jq -r '.state')
-    PR_BRANCH=$(printf '%s' "$PR_JSON" | jq -r '.headRefName')
-    IS_FORK=$(printf '%s' "$PR_JSON" | jq -r '.isCrossRepository')
-    CAN_MODIFY=$(printf '%s' "$PR_JSON" | jq -r '.maintainerCanModify')
+    eval "$(bash scripts/adopt-contributor-pr.sh "$PR_NUM")"
     ```
 
-    **Validation gates** (stop and report to the user if any fail):
-    - `PR_STATE` must be `OPEN` — cannot push fixes to a closed or merged PR.
-    - If `IS_FORK == true` and `CAN_MODIFY == false` — the contributor's fork does not allow maintainer pushes. Ask the contributor to enable "Allow edits from maintainers", or tell the user you will implement from scratch on a new branch instead.
-
-    **Fetch the PR branch locally.** This mirrors the VS Code GitHub PR extension's `PullRequestGitHelper.fetchAndCheckout` logic — it safely handles both same-repo and fork PRs, avoids overwriting local branch state, and sets upstream tracking correctly.
-
-    ```bash
-    PR_AUTHOR=$(printf '%s' "$PR_JSON" | jq -r '.author.login')
-
-    if [ "$IS_FORK" = "true" ]; then
-        # Fork PRs: create a remote for the fork, fetch, and create a local tracking branch.
-        # Branch is named pr/<author>/<pr-number> to avoid collisions (matches extension convention).
-        FORK_OWNER=$(printf '%s' "$PR_JSON" | jq -r '.headRepository.owner.login')
-        FORK_REPO=$(printf '%s' "$PR_JSON" | jq -r '.headRepository.owner.login + "/" + .headRepository.name')
-        git remote add "$FORK_OWNER" "https://github.com/$FORK_REPO.git" 2>/dev/null || true
-
-        LOCAL_BRANCH="pr/${PR_AUTHOR}/${PR_NUM}"
-        # Ensure unique name if local branch already exists for a different PR
-        SUFFIX=1
-        while git show-ref --verify --quiet "refs/heads/$LOCAL_BRANCH" 2>/dev/null; do
-            LOCAL_BRANCH="pr/${PR_AUTHOR}/${PR_NUM}-${SUFFIX}"
-            SUFFIX=$((SUFFIX + 1))
-        done
-
-        git fetch "$FORK_OWNER" "${PR_BRANCH}:${LOCAL_BRANCH}"
-        git branch --set-upstream-to="$FORK_OWNER/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null || \
-            git branch -u "$FORK_OWNER/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null || true
-        CHECKOUT_BRANCH="$LOCAL_BRANCH"
-        PUSH_REMOTE="$FORK_OWNER"
-    else
-        # Same-repo PRs: fetch the branch and check out directly by name.
-        # If a local branch exists with the same name but different commit, create pr/<author>/<number> instead.
-        REMOTE_REF="refs/remotes/origin/$PR_BRANCH"
-        git fetch origin "$PR_BRANCH"
-        REMOTE_SHA=$(git rev-parse "$REMOTE_REF" 2>/dev/null || echo "")
-
-        if git show-ref --verify --quiet "refs/heads/$PR_BRANCH" 2>/dev/null; then
-            LOCAL_SHA=$(git rev-parse "refs/heads/$PR_BRANCH" 2>/dev/null || echo "")
-            if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
-                # Local branch diverged — don't overwrite. Create a new branch to be safe.
-                LOCAL_BRANCH="pr/${PR_AUTHOR}/${PR_NUM}"
-                SUFFIX=1
-                while git show-ref --verify --quiet "refs/heads/$LOCAL_BRANCH" 2>/dev/null; do
-                    LOCAL_BRANCH="pr/${PR_AUTHOR}/${PR_NUM}-${SUFFIX}"
-                    SUFFIX=$((SUFFIX + 1))
-                done
-                git branch "$LOCAL_BRANCH" "$REMOTE_SHA"
-                git branch --set-upstream-to="origin/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null || true
-                CHECKOUT_BRANCH="$LOCAL_BRANCH"
-            else
-                CHECKOUT_BRANCH="$PR_BRANCH"
-            fi
-        else
-            git branch "$PR_BRANCH" "$REMOTE_SHA"
-            git branch --set-upstream-to="origin/$PR_BRANCH" "$PR_BRANCH" 2>/dev/null || true
-            CHECKOUT_BRANCH="$PR_BRANCH"
-        fi
-        PUSH_REMOTE="origin"
-    fi
-    ```
+    This sets 5 variables: `CHECKOUT_BRANCH`, `PUSH_REMOTE`, `IS_FORK`, `PR_BRANCH`, `PR_AUTHOR` (plus `FORK_OWNER` and `FORK_REPO` for fork PRs). If the script exits non-zero, read its stderr and report the error to the user — do not proceed.
 
     **Use `CHECKOUT_BRANCH` as the branch name for step 4.** Do not generate a `fix-NNN-description` branch name. The worktree is created at the canonical location `../<repo-name>-worktrees/<flat-branch-name>/`.
 
@@ -142,26 +79,23 @@ Execute these steps in order. Do not skip steps.
 ### Phase 1.5: Plan the Fix
 
 <handoff_plan_gate>
-Before invoking the planner, check whether this conversation already contains an execution-ready plan for THIS issue. There are two valid sources:
-1. **Planner handoff** — the conversation history contains a response from `fix-planner-vbw` (the handoff prompt or preceding planner output is visible in the thread), and that response confirms EITHER (a) the plan was saved — it names an actual path the memory tool wrote to, OR (b) memory write was unavailable and the full plan is provided inline in the response.
-2. **User-authored execution contract** — the conversation history contains a user message with a detailed implementation plan for this issue, and the thread also contains either the full plan inline or a direct user instruction to "save this plan", "use this plan", or "execute the saved plan".
+Before invoking the planner, check whether this conversation already contains an execution-ready plan for THIS issue. Do NOT treat generic existence of `/memories/session/plan.md` as proof — session memory may contain stale plans from prior tasks. The plan is only valid when its source is visible in THIS conversation thread.
 
-If either source exists, reuse that plan instead of spawning the planner for a fresh initial plan:
-- **Planner handoff**: If #tool:vscode/memory is not exposed yet and #tool:activate_vs_code_interaction is available, call #tool:activate_vs_code_interaction first to expose the deferred VS Code tools. Then read the plan from the confirmed path via #tool:vscode/memory and use it as the execution guide.
-- **User-authored plan**: Save the plan to `/memories/session/plan.md` exactly as written before any summarization, sanitization, or planner invocation. Do not reorder, trim, normalize, or paraphrase it. If `/memories/session/plan.md` already exists and does not exactly match the user-authored plan in this thread, replace its contents so the saved file matches the user's text exactly. After saving, read `/memories/session/plan.md` back and treat that saved file as the source execution guide.
-- **Inline fallback**: Use the full inline plan as the execution guide only when memory write is genuinely unavailable in this run.
+**If planner handoff exists** (conversation contains a `fix-planner-vbw` response that confirms a saved path or provides an inline plan):
+- Read the plan from the confirmed path via #tool:vscode/memory (activate deferred tools first if needed). Use it as the execution guide. Skip the rest of Phase 1.5 and proceed to Phase 2.
 
-If the user explicitly told you to execute the saved/presented plan, do NOT stop after saving it — continue the workflow.
+**Elif User-authored execution contract exists** (conversation contains a user message with a detailed plan and instructions to save/use/execute it):
+- Save the plan to `/memories/session/plan.md` exactly as written before any summarization, sanitization, or planner invocation. If `/memories/session/plan.md` already exists and does not exactly match the user-authored plan in this thread, replace its contents so the saved file matches the user's text exactly.
+- If the user explicitly told you to execute the saved/presented plan, do NOT stop after saving it — continue the workflow.
+- Invoke `fix-planner-vbw` in **audit mode only**: tell it to read `/memories/session/plan.md`, QA-evaluate that saved plan against the issue and codebase, and follow its existing audit loop against that same saved path. It must not replan from scratch or fork a second canonical plan file. If refinement is needed, amend in place.
+- Phase 2 begins only after the audit-mode planner returns.
 
-The issue remains the public verification contract. If the reused plan introduces must-have acceptance criteria or scope boundaries that the issue does not already capture, sanitize that material (strip local absolute path prefixes like `/Users/.../` and other PII) and update the issue or add a clarifying issue comment before QA begins.
+**Else** (no existing plan):
+- Proceed past this gate to the planner invocation below.
 
-If the source was a user-authored plan, you must still invoke `fix-planner-vbw` — but only in audit mode. Tell it to read `/memories/session/plan.md`, QA-evaluate that saved plan against the issue and codebase, and follow its existing audit loop against that same saved path. It must not replan from scratch or fork a second canonical plan file. If the original plan is sufficient, keep using `/memories/session/plan.md` unchanged. If refinement is needed, amend `/memories/session/plan.md` in place through the planner's established audit/update flow so the canonical execution guide stays at one path.
+**For all cases**: The issue remains the public verification contract. If the reused plan introduces must-have acceptance criteria or scope boundaries not in the issue, sanitize that material (strip local absolute path prefixes like `/Users/.../` and other PII) and update the issue before QA begins. Inline fallback: use the full inline plan only when memory write is genuinely unavailable.
 
-Then skip the rest of Phase 1.5 and proceed directly to Phase 2. For user-authored plans, Phase 2 begins only after the audit-mode planner returns.
-
-Do NOT treat generic existence of `/memories/session/plan.md` as proof of a valid plan — session memory may contain stale plans from prior tasks. The plan is only valid when its source (planner or user-authored) is visible in THIS conversation thread.
-
-This gate applies only to the initial Phase 1.5 plan. Later planner invocations (Phase 3 step 14b for QA findings, Phase 3.5 step 19 for cross-model findings, Phase 4.5 step 27c for Copilot findings) are unaffected and remain unconditional.
+This gate applies only to the initial Phase 1.5 plan. Later planner invocations (Phase 3 step 14b, Phase 3.5 step 19, Phase 4.5 step 27c) are unaffected.
 </handoff_plan_gate>
 
 **If no existing execution plan exists**, invoke the `fix-planner-vbw` sub-agent with the issue number, full issue body, and any known root-cause clues. Instruct it to use `#tool:searchSubagent` for targeted lookups and escalate to *Explore* subagents for multi-step analysis when nested subagents are available; otherwise it should perform discovery directly with read/search tools.
@@ -170,84 +104,13 @@ The planner should save its output to `/memories/session/plan.md` when #tool:vsc
 
 ### Phase 2: Worktree, Branch & Implement
 
-4. **Create or enter the canonical worktree for the target branch**. Treat worktree selection as a small state machine, not a single branch-name check.
-
-     Use this exact approach:
+4. **Create or enter the canonical worktree for the target branch**:
      ```bash
-     branch="<branch-name>"
-     git_common_dir=$(git rev-parse --git-common-dir 2>/dev/null) || exit 1
-     repo_root=$(cd "$git_common_dir/.." && pwd) || exit 1
-    repo_name=$(basename "$repo_root")
-    worktree_base="$(cd "$repo_root/.." && pwd)/${repo_name}-worktrees"
-    worktree_name=$(printf '%s' "$branch" | tr '/' '-')
-    target_worktree="${worktree_base}/${worktree_name}"
-    legacy_worktree="${worktree_base}/${branch}"
-     current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-     current_toplevel=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
-     branch_worktree=""
-     target_worktree_branch=""
-     wt_path=""
-
-     while IFS= read -r line; do
-         case "$line" in
-             worktree\ *)
-                 wt_path="${line#worktree }"
-                 ;;
-             branch\ refs/heads/*)
-                 wt_branch="${line#branch refs/heads/}"
-                 if [ "$wt_branch" = "$branch" ]; then
-                     branch_worktree="$wt_path"
-                 fi
-                 if [ "$wt_path" = "$target_worktree" ]; then
-                     target_worktree_branch="$wt_branch"
-                 fi
-                 ;;
-             '')
-                 wt_path=""
-                 ;;
-         esac
-     done < <(git worktree list --porcelain 2>/dev/null)
-
-     if [ "$current_toplevel" = "$target_worktree" ] && [ "$current_branch" = "$branch" ]; then
-         cd "$target_worktree" || exit 1
-     elif [ "$current_toplevel" = "$legacy_worktree" ] && [ "$current_branch" = "$branch" ]; then
-         cd "$legacy_worktree" || exit 1
-     elif [ -n "$branch_worktree" ] && [ "$branch_worktree" = "$target_worktree" ]; then
-         cd "$target_worktree" || exit 1
-     elif [ -n "$branch_worktree" ] && [ "$branch_worktree" = "$legacy_worktree" ]; then
-         cd "$legacy_worktree" || exit 1
-     elif [ -n "$branch_worktree" ]; then
-         echo "Branch '$branch' is already checked out in a different worktree: $branch_worktree" >&2
-         echo "Expected canonical path: $target_worktree" >&2
-         exit 1
-     elif [ -n "$target_worktree_branch" ] && [ "$target_worktree_branch" != "$branch" ]; then
-         echo "Target worktree path is already used by branch '$target_worktree_branch': $target_worktree" >&2
-         exit 1
-     elif [ -e "$target_worktree" ]; then
-         echo "Target worktree path exists but is not a registered worktree: $target_worktree" >&2
-         echo "Clean it up manually before retrying." >&2
-         exit 1
-     else
-         mkdir -p "$worktree_base"
-         if git show-ref --verify --quiet "refs/heads/$branch"; then
-             git worktree add "$target_worktree" "$branch" || exit 1
-             cd "$target_worktree" || exit 1
-         else
-             git fetch origin || exit 1
-             git worktree add --detach "$target_worktree" origin/main || exit 1
-             cd "$target_worktree" || exit 1
-             git switch -c "$branch" --no-track || exit 1
-         fi
-     fi
-
-     desired_upstream="origin/$branch"
-     current_upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || echo "")
-     if [ "$current_upstream" != "$desired_upstream" ]; then
-         git branch --unset-upstream 2>/dev/null || true
-         git push -u origin "$branch" || exit 1
-     fi
-
+     WORKTREE_PATH=$(bash scripts/ensure-worktree.sh "<branch-name>")
+     cd "$WORKTREE_PATH"
      ```
+
+     If the script exits non-zero, read its stderr and report the error to the user. Do not proceed to step 5.
 
      **Rules:**
     - The canonical worktree location is `../<repo-name>-worktrees/<flat-branch-name>/`.
@@ -256,9 +119,13 @@ The planner should save its output to `/memories/session/plan.md` when #tool:vsc
      - If the branch already exists in a different worktree, stop and report the mismatch. Do not silently reuse or relocate it.
      - If the target path exists on disk but is not a registered worktree, stop and require manual cleanup.
      - **All subsequent work (steps 5–12) must be performed inside the canonical worktree**, not the main repo checkout. Every file edit, test run, commit, and push operates from the worktree working directory.
-    - **Terminal cwd isolation (NON-NEGOTIABLE).** Every terminal command — especially `bash testing/run-all.sh` — must run from the worktree, never the main repo checkout. Terminal sessions may default to the VS Code workspace root (the main repo). Always prefix commands with an explicit `cd` to the worktree absolute path: `cd /absolute/path/to/worktree && bash testing/run-all.sh ...`. Multiple fix-issue agents run concurrently in separate worktrees; running tests from the wrong directory causes cross-worktree contention and incorrect results.
-    - **Execution tool preference (NON-NEGOTIABLE).** For the authoritative `cd <worktree-absolute-path> && bash testing/run-all.sh` run, use the `execute` tool whenever it is available instead of a shared terminal session. The `execute` tool isolates process state per invocation, preserves the real exit code, and avoids shared-terminal cwd/history collisions when multiple fix workflows overlap. Only fall back to a terminal when the `execute` tool is unavailable.
-    - **Authoritative test execution (NON-NEGOTIABLE).** The pass/fail test command is `cd <worktree-absolute-path> && bash testing/run-all.sh` in the foreground. Do **not** wrap that authoritative run in `| tail`, `| tail -20`, `| tail -40`, `| tail -60`, `| tail -80`, `| tee ...`, `nohup`, background `&`, or shared temp-log redirects. `tail` pipelines buffer until EOF, hide live progress, can report the wrapper exit code instead of `run-all.sh`, and can make a long suite look idle or hung to the executor. If you need extra output after the run completes, inspect it in a separate follow-up step — not instead of the authoritative run.
+    - See test execution rules in `<conventions>` (terminal cwd isolation, execution tool preference, authoritative test execution).
+
+<mandate>
+**Root-cause-fix rule.** Every fix must address the underlying root cause and use the best architectural decision a senior engineer would make, not the smallest diff. Treat the reported bug or QA finding as a **symptom** — identify the failing invariant, ownership boundary, contract, or state transition before writing code.
+
+**Forbidden fix patterns:** one-off conditionals for the current reproducer, special-casing only the reported input, logic duplication, silent fallbacks that hide corruption, suppressing errors without restoring invariants, ad-hoc null checks, narrow guards, brittle local workarounds, or test-only tweaks that would fail on the next similar change.
+</mandate>
 
 5. **Implement the fix with appropriate tests** using the three-tier model:
    - **Bash scripts** (Tier 1): Write a failing BATS behavior test first, then implement the fix.
@@ -268,19 +135,17 @@ The planner should save its output to `/memories/session/plan.md` when #tool:vsc
 
    **When implementing changes to LLM-consumed markdown artifacts** — `commands/*.md`, `agents/vbw-*.md`, `templates/*.md`, `references/*.md`, `scripts/bootstrap-claude.sh`, `scripts/check-claude-md-staleness.sh`, `scripts/compile-context.sh`, `scripts/compile-*.sh`, or hook handlers that produce LLM-consumed text — read `.github/references/prompting-best-practices-for-vbw.md` before writing content. Use it as a style and structure reference to ground your implementation in established best practices.
 
-6. **Root-cause fixes only — architecture-first, no lazy patches.** Every fix must address the underlying root cause and use the best architectural decision a senior engineer would make, not the smallest diff.
-    - Treat the reported bug or QA finding as a **symptom**. Identify the failing invariant, ownership boundary, contract, or state transition before editing code.
+6. **Root-cause fixes only.** Apply the root-cause-fix rule and forbidden patterns from `<mandate>`. Additionally:
     - Prefer the most durable design even when it requires touching adjacent code, extracting shared logic, tightening interfaces, or refactoring the relevant area.
-    - **Forbidden fix patterns:** one-off conditionals for the current reproducer, special-casing only the reported input, logic duplication, silent fallbacks that hide corruption, suppressing errors without restoring invariants, or test-only tweaks that would fail on the next similar change.
     - If the correct fix is broader than the immediate diff, do the broader fix now. Do not preserve a brittle design just to keep the patch small.
     - Add or update tests that validate the generalized invariant/behavior, not just the exact failing example.
 
 7. **Consider existing installations** — if the change alters generated artifacts (CLAUDE.md sections, `.vbw-planning/` structure, config schema, hook behavior), handle the brownfield case. Examples: removing a CLAUDE.md section → add to `VBW_DEPRECATED_SECTIONS`; changing config keys → migration path in `migrate-config.sh`.
 
 8. **Run all tests and lint locally**: `cd <worktree-absolute-path> && bash testing/run-all.sh`. If `run-all.sh` exits non-zero, you cannot push. Period.
-   - **You own every failure in the output (NON-NEGOTIABLE).** "Pre-existing" and "not from my changes" are not valid reasons to skip a failure. The PR must pass CI to be merged — the branch protection rule doesn't care who introduced the failure. If a test or lint check fails, fix it before pushing, regardless of whether your changes caused it.
+   - **You own every failure in the output.** "Pre-existing" and "not from my changes" are not valid reasons to skip a failure. The PR must pass CI to be merged — the branch protection rule doesn't care who introduced the failure. If a test or lint check fails, fix it before pushing, regardless of whether your changes caused it.
    - **Test failures**: If a BATS test, contract check, or any test fails, diagnose it and fix it. If the failure is genuinely unrelated to your changes, fix it anyway in a separate `fix({scope}): fix pre-existing test failure` commit. If the fix is non-trivial (would require significant investigation beyond your current scope), use the autonomous escalation protocol below — you still cannot push while tests fail.
-   - **Flaky tests (NON-NEGOTIABLE).** Re-running a failing test and seeing it pass does NOT close the issue. A test that fails on any run is a flaky test — it will fail in CI too, randomly blocking merges. When you observe a test fail and then pass on retry:
+   - **Flaky tests.** Re-running a failing test and seeing it pass does NOT close the issue. A test that fails on any run is a flaky test — it will fail in CI too, randomly blocking merges. When you observe a test fail and then pass on retry:
      1. **Search for an existing issue first**: `gh issue list -R swt-labs/vibe-better-with-claude-code-vbw --search "<test name> in:title" --state open` (also check closed: `--state closed`). If an open issue already exists, add a comment with your failure output and PR number instead of filing a duplicate. If a closed issue exists, reopen it.
      2. If no existing issue, file a GitHub issue titled `Flaky test: <test name>` with the failure output, the file/line, and your diagnosis of the likely race condition or environmental sensitivity.
      3. You may continue your work (push, QA, etc.) since the suite does pass, but the issue or comment MUST be filed before you move on. Do not silently skip it.
@@ -337,11 +202,7 @@ Start with round N = 1. **Repeat the following steps, incrementing N each round:
 
     **Contract and regression findings** (tagged `contract` or `regression`):
     - These are the primary QA targets. Fix every one.
-    - For every legitimate issue, treat it as a **symptom**. Step back and identify the failing invariant, ownership boundary, contract, or state transition before writing a single line of code. Then implement the best durable fix for that class of problem — not just the instance reported.
-    - The acceptance bar is **"what would a senior engineer merge, knowing the code will evolve?"** — not **"what is the quickest patch that quiets this finding?"**
-    - Do not close a finding with a brittle local workaround, narrow guard, duplicated branch, ad-hoc null check, or error suppression unless that change is part of a broader root-cause fix that restores the correct architecture.
-    - **Forbidden fix patterns for QA findings:** one-off conditionals for the current reproducer, special-casing only the reported input, logic duplication, silent fallbacks that hide corruption, suppressing errors without restoring invariants, ad-hoc null checks, narrow guards, brittle local workarounds, or test-only tweaks that would fail on the next similar change.
-    - When multiple plausible fixes exist, choose the one that simplifies the design, preserves clear contracts, handles future adjacent changes cleanly, and reduces the chance of the same bug class recurring.
+    - Apply root-cause standards and ALL forbidden patterns from `<mandate>`. Treat the QA finding as a **symptom** — identify the failing invariant before writing code. When multiple fixes exist, choose the one that simplifies the design, preserves clear contracts, and reduces the chance of the same bug class recurring.
     - Add or update tests that validate the generalized invariant/behavior, not just the exact failing example.
 
     **Observation findings** (tagged `observation`):
@@ -405,11 +266,9 @@ Start with round N = 1. **Repeat the following steps, incrementing N each round:
     - Fewer than 2 **low** findings in the round
     - A round with only false positives (zero legitimate findings) also meets the exit condition
 
-    **Minimum 3 rounds (NON-NEGOTIABLE):** If N < 3, increment N and loop back to step 13 regardless of whether the exit condition is met. Early clean rounds do not short-circuit — a fresh sub-agent may catch issues the previous one missed.
+    **No minimum round count.** The loop exits as soon as the exit condition is met. If the first round is clean, proceed directly to Phase 3.5. Each round uses a fresh sub-agent invocation for unbiased review, so a clean round is meaningful evidence.
 
-    **No maximum round cap.** After round 3, the loop continues indefinitely until the exit condition is met. Do not stop at round 3 just because the minimum is reached.
-
-    **After round 3+:** If the exit condition is met, fix any remaining low findings from this round (they are still legitimate and must be fixed), then the QA loop is **done** — proceed to Phase 3.5.
+    **When the exit condition is met:** Fix any remaining low findings from this round (they are still legitimate and must be fixed), then the QA loop is **done** — proceed to Phase 3.5.
 
     **Anti-gaming (NON-NEGOTIABLE):** Do not classify low findings as false positives solely to meet the exit condition. A false positive means the code is **factually correct and the finding is wrong** — not that the issue is minor, unlikely, or cosmetic. Bulk-classifying an entire round of low findings as false positives to exit the loop is a workflow violation. If a low finding identifies a real issue — even an unlikely edge case — it is legitimate and must be fixed.
 
@@ -417,7 +276,15 @@ Start with round N = 1. **Repeat the following steps, incrementing N each round:
 
 ### Phase 3.5: Cross-Model Validation
 
-**PRECONDITION: Phase 3 has fully completed** — at least 3 rounds executed with the primary model's QA agent (`qa-investigator`) and the final round was clean.
+**PRECONDITION: Phase 3 has fully completed** — the primary model's QA agent (`qa-investigator`) exited clean.
+
+<cross_model_gate>
+**Model eligibility gate (evaluated before any cross-model round).** Cross-model QA is only valuable when the cross-model reviewer uses a fundamentally different model family. Determine your own model family and apply:
+
+- **Opus-class session** (Claude Opus, Claude Opus 4, or any Opus variant): **Proceed** with cross-model QA using `qa-investigator-gpt-54`. Opus can spawn GPT subagents, and the different model family provides genuine diverse perspective.
+- **GPT-class session** (GPT-4o, GPT-4.1, GPT-5, GPT-5.4, or any non-mini GPT): **Skip Phase 3.5 entirely** and proceed to Phase 4. You cannot spawn a subagent using a more expensive model than your own session, and `qa-investigator-gpt-54` is same-family — no diverse perspective is gained. Note in the summary that cross-model QA was skipped due to GPT-class session model.
+- **Any other session model** (Sonnet, Gemini, Haiku, etc.): **Skip Phase 3.5 entirely** and proceed to Phase 4. There is no guaranteed cheaper cross-model target that provides a different perspective. Note in the summary that cross-model QA was skipped due to session model ineligibility.
+</cross_model_gate>
 
 A clean QA pass with one model does not guarantee a second model won't catch different issues. This phase runs the same QA loop using `qa-investigator-gpt-54` (GPT-5.4) to cross-validate the change.
 
@@ -425,13 +292,13 @@ Start with cross-model round M = 1. **Repeat the following steps, incrementing M
 
 18. **Spawn the `qa-investigator-gpt-54` sub-agent** with the same prompt structure as step 13 (issue number, worktree path, full issue body, full-contract review instruction, severity classification, contract/regression/observation tagging, read-only reminder). Label it as **cross-model round M**.
 
-19. **Process findings identically to Phase 3** (steps 14–15). The same rules apply: fix every legitimate finding with a root-cause fix, classify false positives with reasoning, invoke the planner for critical/high/medium findings. Run `cd <worktree-absolute-path> && bash testing/run-all.sh` before committing if fixes were made. Create a commit for every round — `fix({scope}): address cross-model QA round M` — using `--allow-empty` if the round was clean. **After committing and pushing, perform the inter-round sync from step 15b** (fetch origin/main, check for new commits, merge with planner-assisted integration if files overlap).
+19. **Process findings identically to Phase 3** (steps 14–15). The same rules apply: fix every legitimate finding with a root-cause fix, classify false positives with reasoning, invoke the planner before fixing if any legitimate findings exist (any severity — same as step 14b). Run `cd <worktree-absolute-path> && bash testing/run-all.sh` before committing if fixes were made. Create a commit for every round — `fix({scope}): address cross-model QA round M` — using `--allow-empty` if the round was clean. **After committing and pushing, perform the inter-round sync from step 15b** (fetch origin/main, check for new commits, merge with planner-assisted integration if files overlap).
 
 20. **Check the exit condition.** The exit condition is the same as Phase 3:
     - Zero **critical**, **high**, or **medium** findings in the round, AND
     - Fewer than 2 **low** findings in the round
 
-    **Minimum 1 round (NON-NEGOTIABLE).** Cross-model validation must run at least once even if the first round is clean — the point is to get a different model's perspective.
+    **Minimum 1 round.** Cross-model validation must run at least once even if the first round is clean — the point is to get a different model's perspective.
 
     **After round 1+:** If the exit condition is met, fix any remaining low findings, then cross-model validation is **done** — proceed to Phase 4.
 
@@ -439,20 +306,20 @@ Start with cross-model round M = 1. **Repeat the following steps, incrementing M
 
 ### Phase 4: Draft PR & Completion
 
-**PRECONDITION: Both QA loops have fully completed — Phase 3 (primary model, at least 3 rounds) AND Phase 3.5 (cross-model GPT-5.4, at least 1 round) both exited clean.** Do not enter this phase until both conditions are met.
+<main_sync_procedure>
+**Standard main-sync procedure.** Used at designated merge points (steps 15b, 22, 24, 26, 31):
+1. `cd <worktree-absolute-path> && git fetch origin && git merge origin/main`
+2. If merge produced conflicts, resolve them first
+3. Run `cd <worktree-absolute-path> && bash testing/run-all.sh` to verify
+4. Push normally (no `--force`)
+5. If conflicts are too complex, abort (`git merge --abort`) and report to the user
 
-22. **Sync with `origin/main` before opening the PR.** `main` may have advanced during the QA loop. Fetch and merge to ensure the PR is mergeable:
-    ```bash
-    cd <worktree-absolute-path> && git fetch origin
-    git merge origin/main
-    ```
-    Whether the merge is clean or has conflicts, always run tests and push afterward:
-    - Run `cd <worktree-absolute-path> && bash testing/run-all.sh` to verify the merge
-    - If the merge produced conflicts, resolve them before running tests, then commit the merge
-    - Push normally (no `--force`)
-    - If conflicts are too complex, abort (`git merge --abort`) and report to the user
+**Do NOT merge main mid-round** (between spawning a QA sub-agent and processing its findings) or during Copilot review (Phase 4.5) — merging changes the code under review and can invalidate findings.
+</main_sync_procedure>
 
-    **Do NOT merge main mid-round (between spawning a QA sub-agent and processing its findings) or during Copilot review (Phase 4.5)** — merging changes the code under review and can invalidate findings. The designated merge points are steps 15b (inter-round sync), 22, 24, 26, and 31.
+**PRECONDITION: All applicable QA loops have fully completed — Phase 3 (primary model, exited clean) AND Phase 3.5 (cross-model GPT-5.4, at least 1 round — if the session model is Opus-class) both exited clean.** If Phase 3.5 was legitimately skipped due to the model eligibility gate, Phase 3 completion alone is sufficient. Do not enter this phase until all applicable conditions are met.
+
+22. **Sync with `origin/main` before opening the PR.** Perform the `<main_sync_procedure>`.
 
 23. **Open a draft pull request** (skip if adopting an existing PR from step 3c — the PR already exists and updates automatically when you push to the branch). Otherwise, open a draft PR into `main` via #tool:github/create_pull_request (owner: `swt-labs`, repo: `vibe-better-with-claude-code-vbw`, base: `main`, head: the feature branch name, draft: `true`). Link the tracking issue by including `Fixes #N` in the PR body.
 
@@ -486,23 +353,14 @@ This phase marks the PR as ready for review, waits for GitHub Copilot's automate
 
 Start with Copilot review round C = 1.
 
-24. **Sync with `origin/main` before marking the PR ready.** Fetch and merge so Copilot reviews a diff that includes the latest from main:
-    ```bash
-    cd <worktree-absolute-path> && git fetch origin
-    git merge origin/main
-    ```
-    Whether the merge is clean or has conflicts, always run tests and push afterward:
-    - Run `cd <worktree-absolute-path> && bash testing/run-all.sh` to verify the merge
-    - If the merge produced conflicts, resolve them before running tests, then commit the merge
+24. **Sync with `origin/main` before marking the PR ready.** Perform the `<main_sync_procedure>`. After the sync:
     - Capture the exact commit to be reviewed: `REVIEW_SHA=$(git rev-parse HEAD)`
-        - Capture the push timestamp immediately before the push: `PUSH_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)`
-    - Push normally (no `--force`)
+    - Capture the push timestamp immediately before the push: `PUSH_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)`
     - **Verify GitHub's PR head matches `REVIEW_SHA` before marking ready**:
       ```bash
       gh api repos/swt-labs/vibe-better-with-claude-code-vbw/pulls/PR_NUM --jq '.head.sha'
       ```
       If the PR head SHA does not equal `REVIEW_SHA`, do not mark ready yet — push again or stop and diagnose why the remote branch did not update.
-    - If conflicts are too complex, abort (`git merge --abort`) and report to the user
 
 25. **Mark the PR as ready for review** via #tool:github/update_pull_request (owner: `swt-labs`, repo: `vibe-better-with-claude-code-vbw`, pullNumber: the PR number, draft: `false`). This triggers GitHub Copilot's automatic PR review.
 
@@ -538,18 +396,13 @@ Start with Copilot review round C = 1.
 
     The script immediately checks for an existing fresh review, then polls every 5s with ETag conditional requests until a fresh review appears or 10 minutes elapse.
 
-    **How this works:**
-    - The REST API returns an `ETag` header with each response. Subsequent requests with `If-None-Match: <etag>` return `304 Not Modified` if nothing changed — these **do not count against your GitHub API rate limit**.
-    - This allows polling every 5 seconds at effectively zero cost, detecting the review within ~2.5s of it being submitted.
-    - The entire script runs as a single terminal command. The agent blocks on this one tool call until it returns.
-
     **Interpreting the output:**
     - `REVIEW_READY|state=APPROVED` — Copilot approved with no findings. Proceed to step 31.
     - `REVIEW_READY|state=CHANGES_REQUESTED` — Copilot has findings. Proceed to step 27.
     - `REVIEW_READY|state=COMMENTED` — Copilot left inline comments but did not formally request changes. **Treat identically to `CHANGES_REQUESTED`** — proceed to step 27 and evaluate every unresolved thread.
     - `TIMEOUT` — No fresh review after 10 minutes. Check if Copilot is stuck by querying the timeline for `copilot_work_started` without a subsequent `reviewed` event. If stuck, re-request via #tool:github/request_copilot_review and re-run this step.
 
-    **Freshness is the gate (NON-NEGOTIABLE).** Only a review authored by `copilot-pull-request-reviewer` (or `copilot-pull-request-reviewer[bot]`) counts for this round when BOTH conditions are true:
+    **Freshness gate.** Only a review authored by `copilot-pull-request-reviewer` (or `copilot-pull-request-reviewer[bot]`) counts for this round when BOTH conditions are true:
     1. `submitted_at` is AFTER the most recent push, and
     2. `commit_id` exactly matches the current PR head SHA (`REVIEW_SHA`).
 
@@ -621,28 +474,15 @@ Start with Copilot review round C = 1.
 
 29. **Reply to and resolve every Copilot review thread.** All Copilot conversation threads must be resolved before requesting a new review — GitHub blocks re-review requests while unresolved Copilot threads exist.
 
-    For each unresolved Copilot thread from step 27:
-    - **Reply** via #tool:github/add_reply_to_pull_request_comment with:
-      - The commit SHA that contains the fix
-      - A brief explanation of what was changed and why
-      - For false positives: the reasoning for why the code is correct as-is
-    - **Resolve** the thread via `gh api graphql`:
-      ```bash
-      gh api graphql -f query='mutation { resolveReviewThread(input:{threadId:"THREAD_NODE_ID"}) { thread { isResolved } } }'
-      ```
-
-    After resolving all threads, verify none remain unresolved:
+    For each unresolved Copilot thread from step 27: reply via #tool:github/add_reply_to_pull_request_comment (commit SHA + explanation), then resolve via `resolveReviewThread` mutation:
     ```bash
-    gh api graphql -f query='{ repository(owner:"swt-labs",name:"vibe-better-with-claude-code-vbw") { pullRequest(number:PR_NUM) { reviewThreads(first:50) { nodes { id isResolved comments(first:5) { nodes { author { login } } } } } } } }'
+    gh api graphql -f query='mutation { resolveReviewThread(input:{threadId:"THREAD_NODE_ID"}) { thread { isResolved } } }'
     ```
-    Filter to Copilot-authored threads with `isResolved == false`. If any remain, resolve them before proceeding.
+    After resolving all threads, verify zero unresolved Copilot threads remain using the step 27 query.
 
-30. **Verify push, then re-request Copilot review.**
-    - First, confirm all commits are pushed: `git log --oneline origin/<branch>..HEAD`. If this shows any commits, capture `PUSH_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)` immediately before a recovery `git push` — Copilot reviews the remote branch, not local state.
-    - Confirm the PR head SHA on GitHub still equals `FIX_SHA` from step 28. If it does not, do NOT request a review yet — the wrong commit would be reviewed.
-    - Re-request immediately via #tool:github/request_copilot_review (owner: `swt-labs`, repo: `vibe-better-with-claude-code-vbw`, pullNumber: the PR number). This is faster than waiting for the auto-triggered review from the push. Increment C and loop back to step 26.
+30. **Verify push, then re-request Copilot review.** Confirm all commits are pushed (`git log --oneline origin/<branch>..HEAD` shows 0 commits) and the PR head SHA equals `FIX_SHA` from step 28. Re-request via #tool:github/request_copilot_review. Increment C and loop back to step 26.
 
-    **Exit condition:** The loop exits when the **fresh** Copilot review for the current round (with `submittedAt` after the latest push) is `APPROVED` (or `COMMENTED` with zero inline comments) AND has zero unresolved Copilot-authored threads. Both conditions must be true on the same fresh review. There is no minimum round count — if the first review is clean, proceed immediately to step 31.
+    **Exit condition:** The loop exits when the **fresh** Copilot review (with `submittedAt` after the latest push) is `APPROVED` (or `COMMENTED` with zero inline comments) AND has zero unresolved Copilot-authored threads. No minimum round count.
 
 30b. **Check CI/CD status before exiting.** After the Copilot review exit condition is met, verify that all required GitHub Actions checks have passed on the latest pushed commit:
 
@@ -678,14 +518,14 @@ Start with Copilot review round C = 1.
       ```
                         Capture `REVIEW_SHA=$(git rev-parse HEAD)` and `PUSH_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)` immediately before the push, then verify the PR head SHA on GitHub equals `REVIEW_SHA` before requesting Copilot review. Only after that verification passes, request a Copilot review via #tool:github/request_copilot_review (owner: `swt-labs`, repo: `vibe-better-with-claude-code-vbw`, pullNumber: the PR number), then loop back to step 26 to wait for and analyze the review. If the review is clean, proceed to step 32. If it has findings, loop back to step 27 to read and fix them (re-entering the Copilot review loop at the current round count C).
     - **If `NEW_COMMITS` > 0 and merge produces conflicts**: Resolve them, run `cd <worktree-absolute-path> && bash testing/run-all.sh` to verify the resolution, then commit the merge and `git push`. Then **re-enter the QA loop with relaxed minimums**:
-      1. Re-run Phase 3 (primary QA, step 13) starting at N=1. **The minimum 3-round requirement does NOT apply** — exit as soon as the standard exit condition is met (zero critical/high/medium findings AND fewer than 2 low findings). If the first round is clean, exit immediately.
-      2. Re-run Phase 3.5 (cross-model QA, step 18) starting at M=1. **The minimum 1-round requirement does NOT apply** — exit as soon as the exit condition is met.
+      1. Re-run Phase 3 (primary QA, step 13) starting at N=1. Exit as soon as the standard exit condition is met. If the first round is clean, exit immediately.
+      2. Re-run Phase 3.5 (cross-model QA, step 18) starting at M=1 — **only if the session model is Opus-class** (same cross-model gate as the initial run). If Phase 3.5 was skipped initially, skip it here too. Exit as soon as the exit condition is met.
       3. Re-run Phase 4.5 (Copilot review, step 25). No minimum round count (same as normal).
       4. After the re-run Copilot review exits clean, proceed directly to step 32. **Do not repeat this sync check** — one conflict-resolution cycle is sufficient to prevent infinite loops.
 
 32. **Produce a summary:**
     - Number of primary QA rounds executed (Phase 3) and model used
-    - Number of cross-model QA rounds executed (Phase 3.5, GPT-5.4)
+    - Number of cross-model QA rounds executed (Phase 3.5, GPT-5.4), or note that Phase 3.5 was skipped with the reason (e.g., "skipped: GPT-class session model — cannot spawn more expensive cross-model subagent")
     - Number of Copilot PR review rounds executed (Phase 4.5) and findings fixed per round
     - CI/CD status: all required checks green (or note any that failed and were fixed)
     - Whether a post-review main sync was needed, and whether it triggered a conflict-resolution QA re-run
@@ -732,22 +572,17 @@ When the user reports PR review comments (from human reviewers or automated tool
 The fix is **not complete** until:
 
 - [ ] Initial fix commit exists and is pushed
-- [ ] Primary QA loop (Phase 3) ran at least 3 rounds, continuing until exit condition met (zero critical/high/medium findings AND fewer than 2 low findings)
-- [ ] Cross-model QA loop (Phase 3.5) ran at least 1 round with `qa-investigator-gpt-54` (GPT-5.4), continuing until exit condition met
-- [ ] Every legitimate finding from every round (both phases) is fixed — including low-severity ones in the final round of each phase
-- [ ] Fixes are in `fix({scope}): address QA round N` or `fix({scope}): address cross-model QA round M` commits
-- [ ] Each legitimate finding was resolved with a durable architectural/root-cause fix, not a symptom-only patch
-- [ ] All lint errors in touched files are resolved (zero lint warnings/errors in final `run-all.sh` output)
-- [ ] All QA-round commits are pushed to `origin`
+- [ ] Primary QA loop (Phase 3) exited clean
+- [ ] Cross-model QA loop (Phase 3.5) exited clean — OR legitimately skipped (non-Opus session model)
+- [ ] Every legitimate finding from all applicable phases is fixed with a durable root-cause fix (per `<mandate>`)
+- [ ] All QA/Copilot fixes committed (`fix({scope}): address {QA round N | cross-model QA round M | Copilot review round C}`) and pushed
+- [ ] All lint errors resolved (zero warnings/errors in final `run-all.sh`)
 - [ ] PR is open (non-draft) with linked issue
-- [ ] Copilot PR review loop (Phase 4.5) ran until clean — zero unresolved findings from Copilot
-- [ ] Copilot review fixes are in `fix({scope}): address Copilot review round C` commits
-- [ ] All required GitHub Actions checks are green on the latest pushed commit (step 30b)
-- [ ] Post-review main sync (Phase 4.6) completed — branch is up to date with `origin/main`
-- [ ] If post-review sync produced merge conflicts, conflict-resolution QA re-run completed (relaxed minimums)
-- [ ] No active `CHANGES_REQUESTED` review decision remains on the PR
-- [ ] No unresolved PR review threads remain (Copilot or human reviewers). Any addressed thread has been replied to and resolved.
-- [ ] Final summary includes: primary rounds, cross-model rounds, Copilot review rounds, CI status, post-review sync status, commit hashes, findings per round by severity and phase (fixed vs false positive), PR URL
+- [ ] Copilot PR review loop (Phase 4.5) exited clean — zero unresolved findings
+- [ ] All required GitHub Actions checks green (step 30b)
+- [ ] Post-review main sync (Phase 4.6) completed; conflict-resolution QA re-run completed if needed (respecting cross-model gate)
+- [ ] No active `CHANGES_REQUESTED` review or unresolved threads remain
+- [ ] Final summary includes: rounds per phase, CI status, sync status, commit hashes, findings per round by severity (fixed vs false positive), PR URL
 
 If any item is missing, do not present the work as done.
 
@@ -760,18 +595,13 @@ When the stop hook blocks you, it returns structured data in `hookSpecificOutput
 - `pr_number`: The PR number being checked.
 - `recovery_command`: When present, a ready-made command for deterministic re-checks (for example CI status on the exact checked SHA). Copy-paste it rather than constructing your own.
 
-**Anti-pattern: following ambient terminal context (NON-NEGOTIABLE).** When multiple worktrees exist, the terminal may show paths, branch names, or PR numbers from *unrelated* worktrees. These are noise — do not follow them. The `pr_number` and `worktree_path` in the hook's structured output are the sole source of truth. Before running any git command or GitHub API call during recovery, verify you are operating on the correct PR:
+**Anti-pattern: following ambient terminal context.** When multiple worktrees exist, the terminal may show paths, branch names, or PR numbers from *unrelated* worktrees. These are noise — do not follow them. The `pr_number` and `worktree_path` in the hook's structured output are the sole source of truth. Before running any git command or GitHub API call during recovery, verify you are operating on the correct PR:
 1. Use `worktree_path` from `hookSpecificOutput` — `cd` there before any git operation.
 2. Use `pr_number` from `hookSpecificOutput` for all GitHub API queries.
 3. If `worktree_path` is empty (rare), resolve it from `pr_number`: `gh pr view <pr_number> -R swt-labs/vibe-better-with-claude-code-vbw --json headRefName --jq '.headRefName'`, then match that branch against `git worktree list --porcelain`.
 4. **Never** pick a worktree based on what is visible in terminal output, recent `cd` history, or branch names that look similar to the blocked PR number. Similar-looking PR numbers across concurrent worktrees (e.g., #427 vs #477) cause misidentification when the agent follows terminal context instead of the hook's explicit fields.
 
-**Targeting cascade** (how the hook picks which PR to validate):
-
-1. **Tier 1 — explicit state file.** If step 23a ran, `/tmp/fix-issue-vbw-state-<session_id>.json` exists and the hook validates exactly this thread's PR. The state file is deleted automatically when all gates pass.
-2. **Tier 2 — transcript inference.** If no state file, the hook scans the thread's transcript JSONL for references to local worktree paths. If exactly one worktree is referenced, that worktree's PR is validated.
-3. **Tier 3 — single candidate.** If only one local worktree has an open PR, it is validated.
-4. **Tier 4 — strict fallback.** If multiple open-PR worktrees exist AND the transcript did not uniquely identify one AND no state file was found, the hook validates every local open-PR worktree and blocks on the first failure. This tier exists so no thread can silently complete while any local PR is unready.
+**Targeting cascade** (how the hook picks which PR to validate): See `.github/references/fix-issue-stop-hook-recovery.md` for Tiers 1–4.
 
 **Cross-thread contamination guard (NON-NEGOTIABLE).** If the hook blocks naming a PR that is NOT the one you are working on, you are seeing Tier 4's broadcast behavior — it validated another thread's PR because your thread has no state file yet. The correct recovery is:
 1. **Do NOT fix, resolve, review, or operate on the other thread's PR.** That PR belongs to a different agent thread. Touching it causes cross-thread contamination — you will make changes the other thread doesn't expect, and your own PR's work stalls.
@@ -779,19 +609,15 @@ When the stop hook blocks you, it returns structured data in `hookSpecificOutput
 3. **Re-invoke completion.** The hook will now use Tier 1 and validate only your PR.
 4. If you don't yet have a PR number (still pre-Phase 4), you cannot run step 23a — instead, continue your workflow. The hook will keep blocking via Tier 4 until you reach step 23a, but that is expected and not a problem to solve by working on someone else's PR.
 
-**Recovery procedure when blocked for pending CI:**
-1. Extract `commit_sha`, `worktree_path`, and `recovery_command` from the block output.
-2. Wait for CI by running the `recovery_command` periodically (it queries check runs for the exact commit).
-3. Do NOT run `git rev-parse HEAD` from the main repo directory — the hook already ran from the worktree and provided the correct SHA.
-4. Once all checks show `completed / success`, re-invoke and let the stop hook re-evaluate the remaining PR state. There is no same-SHA bypass — if another gate is still failing, the hook will continue to block until that state is cleared.
-
-**Recovery for other block reasons** (draft PR, behind/dirty PR, stale Copilot review, active `CHANGES_REQUESTED`, unresolved review threads, CI failure): follow the instructions in the `reason` field, using `worktree_path` for all file/git operations when it is present. Typical recovery is to merge `origin/main`, resolve conflicts, address the requested review feedback, resolve the outstanding review threads, or obtain an updated review — then re-run the workflow and let the hook re-check live GitHub state.
+**Recovery procedures:** See `.github/references/fix-issue-stop-hook-recovery.md` for CI-pending recovery, draft PR, behind/dirty PR, stale Copilot review, and other block reasons.
 </workflow>
 
 <conventions>
 - **Commits**: `{type}({scope}): {description}` — one atomic commit per task, stage files explicitly
 - **JSON parsing**: Always use `jq`, never grep/sed on JSON
-- **Test output**: Always run tests in the foreground from the worktree: `cd <worktree-absolute-path> && bash testing/run-all.sh`. Prefer the `execute` tool for that command whenever it is available; if you must use a terminal, still run the exact command directly. Do **not** pipe through `| tail`, `| tail -20`, `| tail -40`, `| tee`, or redirect to temp files — those wrappers hide live progress, can report the wrong exit code, and can make long suites look hung even when the runner is healthy. Terminal sessions may default to the main repo, not the worktree — an explicit `cd` prevents cross-worktree contention when multiple fix-issue agents run concurrently.
+- **Terminal cwd isolation (NON-NEGOTIABLE).** Every terminal command — especially `bash testing/run-all.sh` — must run from the worktree, never the main repo checkout. Always prefix commands with an explicit `cd` to the worktree absolute path: `cd /absolute/path/to/worktree && bash testing/run-all.sh ...`. Multiple fix-issue agents run concurrently in separate worktrees; running tests from the wrong directory causes cross-worktree contention and incorrect results.
+- **Execution tool preference.** For the authoritative `cd <worktree-absolute-path> && bash testing/run-all.sh` run, use the `execute` tool whenever it is available instead of a shared terminal session. The `execute` tool isolates process state per invocation, preserves the real exit code, and avoids shared-terminal cwd/history collisions when multiple fix workflows overlap. Only fall back to a terminal when the `execute` tool is unavailable.
+- **Authoritative test execution.** The pass/fail test command is `cd <worktree-absolute-path> && bash testing/run-all.sh` in the foreground. Do **not** wrap that authoritative run in `| tail`, `| tail -20`, `| tail -40`, `| tail -60`, `| tail -80`, `| tee ...`, `nohup`, background `&`, or shared temp-log redirects. `tail` pipelines buffer until EOF, hide live progress, can report the wrapper exit code instead of `run-all.sh`, and can make a long suite look idle or hung to the executor. If you need extra output after the run completes, inspect it in a separate follow-up step — not instead of the authoritative run.
 - **Architecture-first fixes**: Prefer durable design corrections and invariant-restoring refactors over local symptom patches
 - **BATS parallelism**: Tests run across `BATS_WORKERS` parallel shards (default 12). File-to-shard assignment uses greedy bin-packing weighted by `testing/shard-weights.txt` (measured execution times). If tests are added or timing shifts significantly, regenerate weights with `bash testing/measure-shard-weights.sh`. CI uses 8 shards via matrix strategy in `.github/workflows/ci.yml`.
 </conventions>
