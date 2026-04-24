@@ -97,6 +97,13 @@ else
             CHECKOUT_BRANCH="$LOCAL_BRANCH"
         else
             CHECKOUT_BRANCH="$PR_BRANCH"
+            # Ensure upstream tracking even when local branch already matches remote SHA
+            if ! git rev-parse --abbrev-ref "${CHECKOUT_BRANCH}@{u}" >/dev/null 2>&1; then
+                if ! git branch --set-upstream-to="origin/$PR_BRANCH" "$CHECKOUT_BRANCH" 2>/dev/null; then
+                    echo "Error: Failed to set upstream tracking for '$CHECKOUT_BRANCH' to 'origin/$PR_BRANCH'." >&2
+                    exit 1
+                fi
+            fi
         fi
     else
         git branch "$PR_BRANCH" "$REMOTE_SHA"
