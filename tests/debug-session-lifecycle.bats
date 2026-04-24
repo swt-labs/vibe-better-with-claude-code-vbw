@@ -111,10 +111,21 @@ assert_no_repeated_blank_lines() {
   [ -f "$SESSION_FILE" ]
   [[ "$SESSION_FILE" == *"/debugging/completed/"* ]]
   grep -q '^status: complete$' "$SESSION_FILE"
+  grep -q '^qa_last_result: skipped_no_fix_required$' "$SESSION_FILE"
+  grep -q '^uat_last_result: skipped_no_fix_required$' "$SESSION_FILE"
   grep -q 'Already fixed before this investigation — no new fix commit was required\. If planning_tracking=commit, this completion path may create a planning-artifact commit\.' "$SESSION_FILE"
   grep -q 'No new changes were required because the current branch already contained the fix\.' "$SESSION_FILE"
   ! grep -q '### Round 1 — PASS' "$SESSION_FILE"
   ! grep -q '### Round 1 — pass' "$SESSION_FILE"
+
+  run bash "$SCRIPTS_DIR/compile-debug-session-context.sh" "$SESSION_FILE" qa
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"**QA Round:** 0 (last result: skipped — no fix required)"* ]]
+
+  run bash "$SCRIPTS_DIR/compile-debug-session-context.sh" "$SESSION_FILE" uat
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"**UAT Round:** 0 (last result: skipped — no fix required)"* ]]
+  [[ "$output" == *"QA round 0: skipped — no fix required"* ]]
 }
 
 @test "explicit resume does not reopen completed already-fixed session" {

@@ -90,6 +90,42 @@ else
   fail "debug-session-state.sh set-status output contract drifted from status=..."
 fi
 
+if grep -Eq 'qa_last_result:[[:space:]]+pending \| skipped_no_fix_required \| pass \| fail' "$STATE_SCRIPT" 2>/dev/null; then
+  pass "debug-session-state.sh documents skipped_no_fix_required in qa_last_result vocabulary"
+else
+  fail "debug-session-state.sh missing skipped_no_fix_required in qa_last_result vocabulary"
+fi
+
+if grep -Eq 'uat_last_result:[[:space:]]+pending \| skipped_no_fix_required \| pass \| issues_found' "$STATE_SCRIPT" 2>/dev/null; then
+  pass "debug-session-state.sh documents skipped_no_fix_required in uat_last_result vocabulary"
+else
+  fail "debug-session-state.sh missing skipped_no_fix_required in uat_last_result vocabulary"
+fi
+
+if grep -q 'normalize_completed_no_verification_results()' "$STATE_SCRIPT" 2>/dev/null; then
+  pass "debug-session-state.sh has completed no-verification normalization helper"
+else
+  fail "debug-session-state.sh missing completed no-verification normalization helper"
+fi
+
+if awk '/set-status\)/,/;;/' "$STATE_SCRIPT" | grep -Fq 'normalize_completed_no_verification_results "$SESSION_PATH"'; then
+  pass "debug-session-state.sh set-status normalizes completed no-verification sessions before move"
+else
+  fail "debug-session-state.sh set-status missing completed no-verification normalization"
+fi
+
+if awk '/reconcile_session_location\(\)/,/^}/' "$STATE_SCRIPT" | grep -Fq 'normalize_completed_no_verification_results "$file"'; then
+  pass "debug-session-state.sh reconcile path normalizes completed no-verification sessions"
+else
+  fail "debug-session-state.sh reconcile path missing completed no-verification normalization"
+fi
+
+if awk '/migrate_legacy_session\(\)/,/^}/' "$STATE_SCRIPT" | grep -Fq 'normalize_completed_no_verification_results "$file"'; then
+  pass "debug-session-state.sh legacy migration normalizes completed no-verification sessions"
+else
+  fail "debug-session-state.sh legacy migration missing completed no-verification normalization"
+fi
+
 # — Writer script checks —
 
 WRITER="$ROOT/scripts/write-debug-session.sh"
@@ -107,6 +143,13 @@ for mode in source-todo investigation qa uat status; do
     fail "writer script missing mode: $mode"
   fi
 done
+
+INVESTIGATION_BLOCK="$(awk '/investigation\)/,/;;/' "$WRITER" 2>/dev/null || true)"
+if ! grep -Eq 'qa_last_result|uat_last_result' <<< "$INVESTIGATION_BLOCK"; then
+  pass "write-debug-session.sh investigation mode does not mutate QA/UAT result fields"
+else
+  fail "write-debug-session.sh investigation mode should not mutate QA/UAT result fields"
+fi
 
 # — Context compiler checks —
 
@@ -131,6 +174,20 @@ for mode in qa uat; do
     fail "context compiler missing mode: $mode"
   fi
 done
+
+if grep -Fq 'skipped — no fix required' "$COMPILER" 2>/dev/null; then
+  pass "context compiler has friendly label for skipped no-fix-required results"
+else
+  fail "context compiler missing friendly label for skipped no-fix-required results"
+fi
+
+if grep -Fq '**QA Round:** ${QA_ROUND} (last result: ${QA_LAST_DISPLAY})' "$COMPILER" 2>/dev/null \
+  && grep -Fq '**UAT Round:** ${UAT_ROUND} (last result: ${UAT_LAST_DISPLAY})' "$COMPILER" 2>/dev/null \
+  && grep -Fq 'QA round ${QA_ROUND}: ${QA_LAST_DISPLAY}' "$COMPILER" 2>/dev/null; then
+  pass "context compiler renders display-mapped QA/UAT result labels in all three summary sites"
+else
+  fail "context compiler still interpolates raw QA/UAT result labels in one or more summary sites"
+fi
 
 # — Command integration checks —
 

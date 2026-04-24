@@ -59,6 +59,21 @@ teardown() {
   grep -q "Fix crash in src/lib/parser.sh & helpers" "$SESSION_FILE"
 }
 
+@test "investigation mode does not mutate QA or UAT result fields" {
+  echo '{"mode":"qa","round":2,"result":"PASS","checks":[{"id":"C1","description":"Existing QA","status":"PASS","evidence":"ok"}]}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE" > /dev/null
+  echo '{"mode":"uat","round":1,"result":"issues_found","checkpoints":[{"description":"Existing UAT","result":"issue","user_response":"still broken"}],"issues":[{"description":"Known issue","severity":"major"}]}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE" > /dev/null
+
+  run bash -c 'echo '"'"'{"mode":"investigation","issue":"Fresh investigation","hypotheses":[],"root_cause":"New root cause","plan":"New plan","changed_files":["src/new.sh"],"commit":"def456"}'"'"' | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"'
+  [ "$status" -eq 0 ]
+
+  grep -q '^qa_round: 2$' "$SESSION_FILE"
+  grep -q '^qa_last_result: pass$' "$SESSION_FILE"
+  grep -q '^uat_round: 1$' "$SESSION_FILE"
+  grep -q '^uat_last_result: issues_found$' "$SESSION_FILE"
+}
+
 # ── qa mode (array format) ───────────────────────────────
 
 @test "qa mode handles checks as array of objects" {

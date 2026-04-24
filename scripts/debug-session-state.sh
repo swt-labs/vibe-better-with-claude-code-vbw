@@ -18,9 +18,9 @@
 # State fields in frontmatter:
 #   status:          investigating | fix_applied | qa_pending | qa_failed | uat_pending | uat_failed | complete
 #   qa_round:        integer (0 = no QA yet)
-#   qa_last_result:  pending | pass | fail
+#   qa_last_result:  pending | skipped_no_fix_required | pass | fail
 #   uat_round:       integer (0 = no UAT yet)
-#   uat_last_result: pending | pass | issues_found
+#   uat_last_result: pending | skipped_no_fix_required | pass | issues_found
 #
 # Active pointer: <planning-dir>/debugging/.active-session (contains session filename)
 # Session files:  <planning-dir>/debugging/active/{YYYYMMDD-HHMMSS}-{slug}.md   (in-progress)
@@ -41,6 +41,7 @@ DEBUG_DIR="$PLANNING_DIR/debugging"
 ACTIVE_DIR="$DEBUG_DIR/active"
 COMPLETED_DIR="$DEBUG_DIR/completed"
 ACTIVE_FILE="$DEBUG_DIR/.active-session"
+SKIPPED_NO_FIX_REQUIRED="skipped_no_fix_required"
 
 # Valid status values
 VALID_STATUSES="investigating fix_applied qa_pending qa_failed uat_pending uat_failed complete"
@@ -164,6 +165,54 @@ safe_move_session() {
   echo "$dest"
 }
 
+# Normalize terminal metadata for completed standalone debug sessions that never ran QA/UAT.
+# This is intentionally idempotent: it only rewrites sessions that are complete,
+# still have zero QA/UAT rounds, and still carry the template-default pending results.
+normalize_completed_no_verification_results() {
+  local file="$1"
+  [ -f "$file" ] && [ ! -L "$file" ] || return 1
+
+  local file_status qa_round uat_round qa_last_result uat_last_result now
+  file_status=$(read_field "$file" "status")
+  qa_round=$(read_field "$file" "qa_round")
+  uat_round=$(read_field "$file" "uat_round")
+  qa_last_result=$(read_field "$file" "qa_last_result")
+  uat_last_result=$(read_field "$file" "uat_last_result")
+
+  if [ "$file_status" != "complete" ] \
+    || [ "${qa_round:-0}" != "0" ] \
+    || [ "${uat_round:-0}" != "0" ] \
+    || [ "$qa_last_result" != "pending" ] \
+    || [ "$uat_last_result" != "pending" ]; then
+    return 0
+  fi
+
+  now=$(date '+%Y-%m-%d %H:%M:%S')
+  awk -v skipped="$SKIPPED_NO_FIX_REQUIRED" -v now="$now" '
+    BEGIN { in_fm = 0; delim = 0 }
+    $0 == "---" {
+      delim++
+      if (delim == 1) in_fm = 1
+      else if (delim == 2) in_fm = 0
+      print
+      next
+    }
+    in_fm && /^qa_last_result:/ {
+      print "qa_last_result: " skipped
+      next
+    }
+    in_fm && /^uat_last_result:/ {
+      print "uat_last_result: " skipped
+      next
+    }
+    in_fm && /^updated:/ {
+      print "updated: " now
+      next
+    }
+    { print }
+  ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+}
+
 # Reconcile a session's physical location with its frontmatter status.
 # - complete sessions belong in completed/
 # - all other statuses belong in active/
@@ -171,6 +220,7 @@ safe_move_session() {
 reconcile_session_location() {
   local file="$1"
   [ -f "$file" ] && [ ! -L "$file" ] || return 1
+  normalize_completed_no_verification_results "$file" || return 1
 
   local file_status target_dir current_dir fname moved pointer collision_file
   file_status=$(read_field "$file" "status")
@@ -225,6 +275,7 @@ migrate_legacy_session() {
     echo "$file"
     return
   fi
+  normalize_completed_no_verification_results "$file" || return 1
   local fname
   fname=$(basename "$file")
   local file_status
@@ -355,9 +406,7 @@ find_latest_unresolved() {
   if [ -d "$COMPLETED_DIR" ]; then
     for f in "$COMPLETED_DIR"/*.md; do
       [ -f "$f" ] && [ ! -L "$f" ] || continue
-      if [ "$(read_field "$f" "status")" != "complete" ]; then
-        reconcile_session_location "$f" > /dev/null 2>&1 || true
-      fi
+      reconcile_session_location "$f" > /dev/null 2>&1 || true
     done
   fi
   # Collect candidates from active/ and any unmigrated legacy files
@@ -723,6 +772,7 @@ case "$CMD" in
     update_field "$SESSION_PATH" "status" "$STATUS"
     # Auto-move to completed/ when status transitions to complete
     if [ "$STATUS" = "complete" ]; then
+      normalize_completed_no_verification_results "$SESSION_PATH" || exit 1
       fname=$(basename "$SESSION_PATH")
       current_dir=$(dirname "$SESSION_PATH")
       if [ "$current_dir" != "$COMPLETED_DIR" ]; then
