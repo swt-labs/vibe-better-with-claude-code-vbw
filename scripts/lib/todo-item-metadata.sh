@@ -7,6 +7,17 @@
 : "${DETAILS_PATH:=}"
 : "${DETAILS_CACHE_JSON:=}"
 
+todo_item_current_epoch() {
+  local override_epoch="${VBW_TODO_NOW_EPOCH:-}"
+
+  if [ -n "$override_epoch" ] && [[ "$override_epoch" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$override_epoch"
+    return
+  fi
+
+  date +%s
+}
+
 todo_item_relative_age() {
   local date_str="$1"
   local now days then_ts
@@ -16,7 +27,7 @@ todo_item_relative_age() {
     return
   fi
 
-  now=$(date +%s)
+  now=$(todo_item_current_epoch)
   then_ts=$(date -j -f "%Y-%m-%d" "$date_str" +%s 2>/dev/null) || {
     then_ts=$(date -d "$date_str" +%s 2>/dev/null) || { echo ""; return; }
   }

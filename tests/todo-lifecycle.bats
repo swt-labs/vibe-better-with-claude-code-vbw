@@ -2,22 +2,51 @@
 
 load test_helper
 
+snapshot_path_for_session_id() {
+  local raw_session_id="${1:-${CLAUDE_SESSION_ID:-default}}"
+  local session_key
+
+  session_key=$(printf '%s' "$raw_session_id" | tr -c 'A-Za-z0-9_.-' '_')
+  session_key="${session_key:-default}"
+  printf '/tmp/.vbw-last-list-view-%s.json\n' "$session_key"
+}
+
+fixed_todo_now_epoch() {
+  date -j -f "%Y-%m-%d %H:%M:%S" "2026-04-23 12:00:00" +%s 2>/dev/null || \
+    date -d "2026-04-23 12:00:00" +%s 2>/dev/null
+}
+
 setup() {
   setup_temp_dir
   create_test_config
+  if [ "${VBW_TODO_NOW_EPOCH+x}" = "x" ]; then
+    export _ORIG_VBW_TODO_NOW_EPOCH_WAS_SET=1
+    export _ORIG_VBW_TODO_NOW_EPOCH="$VBW_TODO_NOW_EPOCH"
+  else
+    export _ORIG_VBW_TODO_NOW_EPOCH_WAS_SET=0
+    unset _ORIG_VBW_TODO_NOW_EPOCH 2>/dev/null || true
+  fi
+  export VBW_TODO_NOW_EPOCH="$(fixed_todo_now_epoch)"
   export CLAUDE_SESSION_ID="todo-lifecycle-test"
-  rm -f "/tmp/.vbw-last-list-view-${CLAUDE_SESSION_ID}.json"
   export VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning"
   SCRIPT="$SCRIPTS_DIR/todo-lifecycle.sh"
   LIST_SCRIPT="$SCRIPTS_DIR/list-todos.sh"
   RESOLVE_SCRIPT="$SCRIPTS_DIR/resolve-todo-item.sh"
   TRACK_SCRIPT="$SCRIPTS_DIR/track-known-issues.sh"
   DETAILS_SCRIPT="$SCRIPTS_DIR/todo-details.sh"
+  export TEST_SNAPSHOT_PATH="$(snapshot_path_for_session_id "$CLAUDE_SESSION_ID")"
+  rm -f "$TEST_SNAPSHOT_PATH"
   mkdir -p "$VBW_PLANNING_DIR/phases/03-test-phase"
 }
 
 teardown() {
-  rm -f "/tmp/.vbw-last-list-view-${CLAUDE_SESSION_ID}.json" 2>/dev/null || true
+  rm -f "$TEST_SNAPSHOT_PATH" "$(snapshot_path_for_session_id)" 2>/dev/null || true
+  if [ "${_ORIG_VBW_TODO_NOW_EPOCH_WAS_SET:-0}" = "1" ]; then
+    export VBW_TODO_NOW_EPOCH="${_ORIG_VBW_TODO_NOW_EPOCH-}"
+  else
+    unset VBW_TODO_NOW_EPOCH 2>/dev/null || true
+  fi
+  unset TEST_SNAPSHOT_PATH _ORIG_VBW_TODO_NOW_EPOCH _ORIG_VBW_TODO_NOW_EPOCH_WAS_SET
   teardown_temp_dir
 }
 
@@ -94,7 +123,7 @@ select_snapshot_item() {
 }
 
 write_raw_snapshot() {
-  printf '%s' "$1" > "/tmp/.vbw-last-list-view-${CLAUDE_SESSION_ID}.json"
+  printf '%s' "$1" > "$(snapshot_path_for_session_id)"
 }
 
 assert_snapshot_invalid_everywhere() {
@@ -163,6 +192,7 @@ assert_snapshot_invalid_everywhere() {
   run bash "$SCRIPT" list-with-snapshot high
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq -cS '.')" = "$(printf '%s' "$EXPECTED_JSON" | jq -cS '.')" ]
+  [ "$(printf '%s' "$output" | jq -r '.items[0].age')" = "21d ago" ]
   [ "$(printf '%s' "$output" | jq -r '.items[0].command_text')" = "Refactor auth module" ]
   [ "$(printf '%s' "$output" | jq -r '.items[0].section_index')" = "2" ]
 
