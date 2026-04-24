@@ -2,22 +2,58 @@
 
 load test_helper
 
+snapshot_path_for_session_id() {
+  local raw_session_id="${1:-${CLAUDE_SESSION_ID:-default}}"
+  local session_key
+
+  session_key=$(printf '%s' "$raw_session_id" | tr -c 'A-Za-z0-9_.-' '_')
+  session_key="${session_key:-default}"
+  printf '/tmp/.vbw-last-list-view-%s.json\n' "$session_key"
+}
+
+fixed_todo_now_epoch() {
+  date -j -f "%Y-%m-%d %H:%M:%S" "2026-04-23 12:00:00" +%s 2>/dev/null || \
+    date -d "2026-04-23 12:00:00" +%s 2>/dev/null
+}
+
 setup() {
+  local fixed_now_epoch
+
   setup_temp_dir
   create_test_config
-  export CLAUDE_SESSION_ID="todo-lifecycle-test"
-  rm -f "/tmp/.vbw-last-list-view-${CLAUDE_SESSION_ID}.json"
+  if [ "${VBW_TODO_NOW_EPOCH+x}" = "x" ]; then
+    export _ORIG_VBW_TODO_NOW_EPOCH_WAS_SET=1
+    export _ORIG_VBW_TODO_NOW_EPOCH="$VBW_TODO_NOW_EPOCH"
+  else
+    export _ORIG_VBW_TODO_NOW_EPOCH_WAS_SET=0
+    unset _ORIG_VBW_TODO_NOW_EPOCH 2>/dev/null || true
+  fi
+  if ! fixed_now_epoch=$(fixed_todo_now_epoch) || [ -z "$fixed_now_epoch" ] || ! [[ "$fixed_now_epoch" =~ ^[0-9]+$ ]]; then
+    echo "todo-lifecycle.bats setup: could not derive fixed epoch for deterministic age assertions" >&2
+    return 1
+  fi
+  export VBW_TODO_NOW_EPOCH="$fixed_now_epoch"
+  export CLAUDE_SESSION_ID="todo-lifecycle-${BATS_TEST_NUMBER:-0}-$$-$RANDOM"
   export VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning"
   SCRIPT="$SCRIPTS_DIR/todo-lifecycle.sh"
   LIST_SCRIPT="$SCRIPTS_DIR/list-todos.sh"
   RESOLVE_SCRIPT="$SCRIPTS_DIR/resolve-todo-item.sh"
   TRACK_SCRIPT="$SCRIPTS_DIR/track-known-issues.sh"
   DETAILS_SCRIPT="$SCRIPTS_DIR/todo-details.sh"
+  export TEST_SNAPSHOT_PATH="$(snapshot_path_for_session_id "$CLAUDE_SESSION_ID")"
+  export EXTRA_SNAPSHOT_PATHS=""
+  rm -f "$TEST_SNAPSHOT_PATH"
   mkdir -p "$VBW_PLANNING_DIR/phases/03-test-phase"
 }
 
 teardown() {
-  rm -f "/tmp/.vbw-last-list-view-${CLAUDE_SESSION_ID}.json" 2>/dev/null || true
+  rm -f "$TEST_SNAPSHOT_PATH" "$(snapshot_path_for_session_id)" ${EXTRA_SNAPSHOT_PATHS:-} 2>/dev/null || true
+  if [ "${_ORIG_VBW_TODO_NOW_EPOCH_WAS_SET:-0}" = "1" ]; then
+    export VBW_TODO_NOW_EPOCH="${_ORIG_VBW_TODO_NOW_EPOCH-}"
+  else
+    unset VBW_TODO_NOW_EPOCH 2>/dev/null || true
+  fi
+  unset EXTRA_SNAPSHOT_PATHS TEST_SNAPSHOT_PATH _ORIG_VBW_TODO_NOW_EPOCH _ORIG_VBW_TODO_NOW_EPOCH_WAS_SET
   teardown_temp_dir
 }
 
@@ -94,7 +130,7 @@ select_snapshot_item() {
 }
 
 write_raw_snapshot() {
-  printf '%s' "$1" > "/tmp/.vbw-last-list-view-${CLAUDE_SESSION_ID}.json"
+  printf '%s' "$1" > "$(snapshot_path_for_session_id)"
 }
 
 assert_snapshot_invalid_everywhere() {
@@ -155,6 +191,8 @@ assert_snapshot_invalid_everywhere() {
 
 @test "todo-lifecycle: list-with-snapshot returns full metadata and writes the exact snapshot" {
   write_state_with_recent_activity
+  [ -n "$VBW_TODO_NOW_EPOCH" ]
+  [[ "$VBW_TODO_NOW_EPOCH" =~ ^[0-9]+$ ]]
 
   run bash "$LIST_SCRIPT" high
   [ "$status" -eq 0 ]
@@ -169,6 +207,48 @@ assert_snapshot_invalid_everywhere() {
   run bash "$SCRIPT" snapshot-show
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq -cS '.')" = "$(printf '%s' "$EXPECTED_JSON" | jq -cS '.')" ]
+}
+
+@test "todo-lifecycle: distinct session ids isolate snapshot files" {
+  local original_planning_dir="$VBW_PLANNING_DIR"
+  local session_a="todo-lifecycle-a-${BATS_TEST_NUMBER:-0}-$$-$RANDOM"
+  local session_b="todo-lifecycle-b-${BATS_TEST_NUMBER:-0}-$$-$RANDOM"
+  local planning_dir_a="$TEST_TEMP_DIR/session-a/.vbw-planning"
+  local planning_dir_b="$TEST_TEMP_DIR/session-b/.vbw-planning"
+  local snapshot_path_a snapshot_path_b output_a output_b snapshot_a snapshot_b
+
+  export VBW_PLANNING_DIR="$planning_dir_a"
+  mkdir -p "$VBW_PLANNING_DIR"
+  write_state_with_recent_activity
+
+  export VBW_PLANNING_DIR="$planning_dir_b"
+  mkdir -p "$VBW_PLANNING_DIR"
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- [HIGH] Different task (added 2026-04-10)
+
+## Recent Activity
+- 2026-04-10: Alternate note
+EOF
+
+  export VBW_PLANNING_DIR="$original_planning_dir"
+
+  snapshot_path_a=$(snapshot_path_for_session_id "$session_a")
+  snapshot_path_b=$(snapshot_path_for_session_id "$session_b")
+  EXTRA_SNAPSHOT_PATHS="$snapshot_path_a $snapshot_path_b"
+  [ "$snapshot_path_a" != "$snapshot_path_b" ]
+
+  output_a=$(CLAUDE_SESSION_ID="$session_a" VBW_PLANNING_DIR="$planning_dir_a" bash "$SCRIPT" list-with-snapshot high)
+  output_b=$(CLAUDE_SESSION_ID="$session_b" VBW_PLANNING_DIR="$planning_dir_b" bash "$SCRIPT" list-with-snapshot high)
+  snapshot_a=$(CLAUDE_SESSION_ID="$session_a" VBW_PLANNING_DIR="$planning_dir_a" bash "$SCRIPT" snapshot-show)
+  snapshot_b=$(CLAUDE_SESSION_ID="$session_b" VBW_PLANNING_DIR="$planning_dir_b" bash "$SCRIPT" snapshot-show)
+
+  [ "$(printf '%s' "$snapshot_a" | jq -cS '.')" = "$(printf '%s' "$output_a" | jq -cS '.')" ]
+  [ "$(printf '%s' "$snapshot_b" | jq -cS '.')" = "$(printf '%s' "$output_b" | jq -cS '.')" ]
+  [ "$(printf '%s' "$snapshot_a" | jq -r '.items[0].command_text')" = "Refactor auth module" ]
+  [ "$(printf '%s' "$snapshot_b" | jq -r '.items[0].command_text')" = "Different task" ]
 }
 
 @test "todo-lifecycle: validate-item returns status ok for a matching live selection" {
