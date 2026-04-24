@@ -82,10 +82,11 @@ fi
 
 if contains "$DEBUG_FILE" 'bash "{plugin-root}/scripts/debug-session-state.sh"' \
   && contains "$DEBUG_FILE" 'bash "{plugin-root}/scripts/write-debug-session.sh"' \
-  && contains "$DEBUG_FILE" '{plugin-root}/references/handoff-schemas.md'; then
-  pass "debug: uses safe {plugin-root} session and handoff references"
+  && contains "$DEBUG_FILE" '{plugin-root}/references/handoff-schemas.md' \
+  && contains "$DEBUG_FILE" 'PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"'; then
+  pass "debug: uses safe {plugin-root} session/handoff references plus deterministic planning-git path"
 else
-  fail "debug: missing migrated {plugin-root} session/handoff references"
+  fail "debug: missing migrated {plugin-root} session/handoff/planning-git references"
 fi
 
 if contains "$FIX_FILE" 'bash "{plugin-root}/scripts/todo-details.sh" get <hash>' \

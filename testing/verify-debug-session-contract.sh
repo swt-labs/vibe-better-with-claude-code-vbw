@@ -223,6 +223,52 @@ else
   fail "debug.md lifecycle routing not fully aligned to session_status contract"
 fi
 
+debug_complete_matches=$(grep -nF 'bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning complete' "$DEBUG_CMD" 2>/dev/null || true)
+debug_pg_matches=$(grep -nF 'PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"' "$DEBUG_CMD" 2>/dev/null || true)
+debug_commit_matches=$(grep -nF 'bash "$PG_SCRIPT" commit-boundary "complete debug session" .vbw-planning/config.json' "$DEBUG_CMD" 2>/dev/null || true)
+debug_warning_matches=$(grep -nF 'VBW: planning-git.sh unavailable; skipping planning git boundary commit' "$DEBUG_CMD" 2>/dev/null || true)
+
+debug_complete_first=$(printf '%s\n' "$debug_complete_matches" | sed -n '1s/:.*//p')
+debug_complete_second=$(printf '%s\n' "$debug_complete_matches" | sed -n '2s/:.*//p')
+debug_complete_third=$(printf '%s\n' "$debug_complete_matches" | sed -n '3s/:.*//p')
+
+debug_pg_first=$(printf '%s\n' "$debug_pg_matches" | sed -n '1s/:.*//p')
+debug_pg_second=$(printf '%s\n' "$debug_pg_matches" | sed -n '2s/:.*//p')
+debug_pg_third=$(printf '%s\n' "$debug_pg_matches" | sed -n '3s/:.*//p')
+
+debug_commit_first=$(printf '%s\n' "$debug_commit_matches" | sed -n '1s/:.*//p')
+debug_commit_second=$(printf '%s\n' "$debug_commit_matches" | sed -n '2s/:.*//p')
+debug_commit_third=$(printf '%s\n' "$debug_commit_matches" | sed -n '3s/:.*//p')
+
+debug_warning_first=$(printf '%s\n' "$debug_warning_matches" | sed -n '1s/:.*//p')
+debug_warning_second=$(printf '%s\n' "$debug_warning_matches" | sed -n '2s/:.*//p')
+debug_warning_third=$(printf '%s\n' "$debug_warning_matches" | sed -n '3s/:.*//p')
+
+if [ -n "$debug_complete_first" ] && [ -n "$debug_complete_second" ] && [ -z "$debug_complete_third" ] && \
+   [ -n "$debug_pg_first" ] && [ -n "$debug_pg_second" ] && [ -z "$debug_pg_third" ] && \
+   [ -n "$debug_commit_first" ] && [ -n "$debug_commit_second" ] && [ -z "$debug_commit_third" ] && \
+   [ -n "$debug_warning_first" ] && [ -n "$debug_warning_second" ] && [ -z "$debug_warning_third" ] && \
+   [ "$debug_complete_first" -lt "$debug_pg_first" ] && [ "$debug_pg_first" -lt "$debug_commit_first" ] && [ "$debug_commit_first" -lt "$debug_warning_first" ] && \
+   [ "$debug_complete_second" -lt "$debug_pg_second" ] && [ "$debug_pg_second" -lt "$debug_commit_second" ] && [ "$debug_commit_second" -lt "$debug_warning_second" ]; then
+  pass "debug.md completion paths run planning boundary commit immediately after set-status complete"
+else
+  fail "debug.md completion paths missing ordered planning boundary commit after set-status complete"
+fi
+
+if grep -Fq "already_fixed = 'Already fixed before this investigation — no new fix commit was required." "$DEBUG_CMD" 2>/dev/null \
+  && grep -Fq 'already_fixed = "Already fixed on the current branch — no new fix commit was required;' "$DEBUG_CMD" 2>/dev/null; then
+  pass "debug.md already_fixed wording distinguishes fix commits from planning-artifact commits"
+else
+  fail "debug.md already_fixed wording still blurs fix commits and planning-artifact commits"
+fi
+
+if grep -Fq "already_fixed = 'Already fixed before this investigation — no new commit created.'" "$DEBUG_CMD" 2>/dev/null \
+  || grep -Fq 'already_fixed = "Already fixed on the current branch — no new commit created"' "$DEBUG_CMD" 2>/dev/null; then
+  fail "debug.md still contains stale already_fixed wording that claims no commit was created"
+else
+  pass "debug.md removes stale already_fixed no-new-commit wording"
+fi
+
 if grep -qF 'For `no_fix_yet`' "$DEBUG_CMD" 2>/dev/null && \
    grep -qF '`investigating`' "$DEBUG_CMD" 2>/dev/null; then
   pass "debug.md no_fix_yet path keeps the session investigating"

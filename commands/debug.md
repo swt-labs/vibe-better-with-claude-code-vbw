@@ -266,7 +266,7 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
      "plan": "{chosen fix approach}",
      "implementation": "{summary of changes, or branch-specific text: fixed_now = changes applied now; already_fixed = no new changes were required because the current branch already contained the fix; no_fix_yet = investigation completed without applying a new fix in this run}",
      "changed_files": ["{file1}", "{file2}"],
-     "commit": "{fixed_now = commit hash and message; already_fixed = 'Already fixed before this investigation — no new commit created.'; no_fix_yet = 'No new commit created during this investigation.'}"
+     "commit": "{fixed_now = commit hash and message; already_fixed = 'Already fixed before this investigation — no new fix commit was required. If planning_tracking=commit, this completion path may create a planning-artifact commit.'; no_fix_yet = 'No new commit created during this investigation.'}"
    }
    ENDJSON
    )
@@ -280,6 +280,12 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
    For `already_fixed`, mark the investigation complete using the existing completed-session workflow:
    ```bash
    bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning complete
+   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+   if [ -f "$PG_SCRIPT" ]; then
+     bash "$PG_SCRIPT" commit-boundary "complete debug session" .vbw-planning/config.json
+   else
+     echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+   fi
    ```
    For `no_fix_yet`, do **not** set `fix_applied`; keep the session status as `investigating`.
    </debug_session_persistence>
@@ -298,7 +304,7 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
      Issue:      {one-line summary}
      Root Cause: {from report}
      Outcome:    {fixed_now | already_fixed | no_fix_yet}
-     Resolution: {fixed_now = "Applied now in {commit hash + message}" | already_fixed = "Already fixed on the current branch — no new commit created" | no_fix_yet = "No new commit created — further implementation still required"}
+     Resolution: {fixed_now = "Applied now in {commit hash + message}" | already_fixed = "Already fixed on the current branch — no new fix commit was required; this completion path may still create a planning-artifact commit when planning_tracking=commit" | no_fix_yet = "No new commit created — further implementation still required"}
 
      Files Modified: {list}
    ```
@@ -535,7 +541,16 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
    ```
 
 5. Update session status:
-   - All checkpoints pass (no issues) → `bash .../debug-session-state.sh set-status .vbw-planning complete`
+   - All checkpoints pass (no issues):
+     ```bash
+     bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning complete
+     PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
+     if [ -f "$PG_SCRIPT" ]; then
+       bash "$PG_SCRIPT" commit-boundary "complete debug session" .vbw-planning/config.json
+     else
+       echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
+     fi
+     ```
    - Any issues found → `bash .../debug-session-state.sh set-status .vbw-planning uat_failed`
 
 6. Present debug-session UAT result:
