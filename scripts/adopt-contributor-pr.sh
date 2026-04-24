@@ -43,10 +43,14 @@ if [ "$IS_FORK" = "true" ]; then
     FORK_REPO=$(printf '%s' "$PR_JSON" | jq -r '.headRepository.owner.login + "/" + .headRepository.name')
     EXPECTED_URL="https://github.com/$FORK_REPO.git"
     EXISTING_URL=$(git remote get-url "$FORK_OWNER" 2>/dev/null || echo "")
+    # Normalize GitHub URLs: extract owner/repo to compare regardless of SSH/HTTPS/.git suffix
+    normalize_github_url() {
+        printf '%s' "$1" | sed -E 's#^(https://github\.com/|git@github\.com:)##; s#\.git$##'
+    }
     if [ -z "$EXISTING_URL" ]; then
         git remote add "$FORK_OWNER" "$EXPECTED_URL"
-    elif [ "$EXISTING_URL" != "$EXPECTED_URL" ]; then
-        echo "Error: Remote '$FORK_OWNER' already exists with URL '$EXISTING_URL' (expected '$EXPECTED_URL')." >&2
+    elif [ "$(normalize_github_url "$EXISTING_URL")" != "$(normalize_github_url "$EXPECTED_URL")" ]; then
+        echo "Error: Remote '$FORK_OWNER' already exists with URL '$EXISTING_URL' (expected '$EXPECTED_URL' or equivalent)." >&2
         echo "Remove or rename the conflicting remote before retrying." >&2
         exit 1
     fi
