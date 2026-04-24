@@ -51,6 +51,18 @@ read_field() {
   ' "$SESSION_FILE"
 }
 
+display_result_label() {
+  local raw_value="${1:-}"
+  case "$raw_value" in
+    skipped_no_fix_required)
+      echo 'skipped — no fix required'
+      ;;
+    *)
+      echo "$raw_value"
+      ;;
+  esac
+}
+
 # Known top-level session section headings — must stay aligned with write-debug-session.sh.
 # Only these headings are treated as section boundaries; user-pasted ## headings inside
 # section content are preserved verbatim.
@@ -75,6 +87,8 @@ QA_ROUND=$(read_field "qa_round")
 QA_LAST=$(read_field "qa_last_result")
 UAT_ROUND=$(read_field "uat_round")
 UAT_LAST=$(read_field "uat_last_result")
+QA_LAST_DISPLAY=$(display_result_label "$QA_LAST")
+UAT_LAST_DISPLAY=$(display_result_label "$UAT_LAST")
 
 # Extract sections
 ISSUE_CONTENT=$(extract_section "Issue")
@@ -93,7 +107,7 @@ case "$CONTEXT_MODE" in
 **Session:** ${SESSION_ID}
 **Title:** ${TITLE}
 **Status:** ${STATUS}
-**QA Round:** ${QA_ROUND} (last result: ${QA_LAST})
+**QA Round:** ${QA_ROUND} (last result: ${QA_LAST_DISPLAY})
 
 ## Issue Summary
 
@@ -132,7 +146,7 @@ ENDCONTEXT
 **Session:** ${SESSION_ID}
 **Title:** ${TITLE}
 **Status:** ${STATUS}
-**UAT Round:** ${UAT_ROUND} (last result: ${UAT_LAST})
+**UAT Round:** ${UAT_ROUND} (last result: ${UAT_LAST_DISPLAY})
 
 ## Issue Summary
 
@@ -148,7 +162,7 @@ ${IMPL_CONTENT:-No implementation recorded.}
 
 ## Latest QA Result
 
-QA round ${QA_ROUND}: ${QA_LAST}
+QA round ${QA_ROUND}: ${QA_LAST_DISPLAY}
 ENDCONTEXT
 
     # Include QA details for UAT reference

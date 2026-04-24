@@ -383,6 +383,27 @@ teardown() {
   [ ! -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
   [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
   grep -q '^status: complete$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
+  grep -q '^qa_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
+  grep -q '^uat_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
+}
+
+@test "set-status complete preserves existing verified results" {
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "complete-preserve")"
+  local fname
+  fname=$(basename "$session_file")
+
+  echo '{"mode":"qa","round":1,"result":"PASS","checks":[{"id":"c1","description":"QA check","status":"PASS","evidence":"ok"}]}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$session_file" > /dev/null
+  echo '{"mode":"uat","round":1,"result":"pass","checkpoints":[{"description":"UAT check","result":"pass","user_response":"verified"}]}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$session_file" > /dev/null
+
+  bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$VBW_PLANNING_DIR" complete > /dev/null
+
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+  grep -q '^qa_round: 1$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
+  grep -q '^qa_last_result: pass$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
+  grep -q '^uat_round: 1$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
+  grep -q '^uat_last_result: pass$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
 }
 
 @test "set-status complete clears active pointer" {
@@ -469,6 +490,8 @@ teardown() {
   # Legacy file should be migrated to completed/
   [ ! -f "$legacy_file" ]
   [ -f "$VBW_PLANNING_DIR/debugging/completed/${session_id}.md" ]
+  grep -q '^qa_last_result: pass$' "$VBW_PLANNING_DIR/debugging/completed/${session_id}.md"
+  grep -q '^uat_last_result: pass$' "$VBW_PLANNING_DIR/debugging/completed/${session_id}.md"
 }
 
 @test "list emits warning to stderr when legacy migration fails" {
@@ -577,6 +600,8 @@ EOF
   printf '%s\n' "$output" | grep -Eq '^session_status=complete$'
   [ ! -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
   [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+  grep -q '^qa_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
+  grep -q '^uat_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
   [ ! -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
 }
 
@@ -706,6 +731,8 @@ EOF
   # File should be physically moved
   [ ! -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
   [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+  grep -q '^qa_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
+  grep -q '^uat_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
 }
 
 @test "get returns none after self-heal of completed session in active" {
@@ -724,6 +751,8 @@ EOF
   # File moved to completed/, pointer cleared
   [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
   [ ! -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
+  grep -q '^qa_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
+  grep -q '^uat_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$fname"
   [ ! -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
 }
 
@@ -750,6 +779,8 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"active_session=fallback"* ]]
   [[ "$output" == *"fallback-b"* ]]
+  grep -q '^qa_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$fname_a"
+  grep -q '^uat_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$fname_a"
 }
 
 @test "get returns none after legacy migration of completed session" {
@@ -778,6 +809,60 @@ EOF
   [[ "$output" == *"active_session=none"* ]]
   [ -f "$VBW_PLANNING_DIR/debugging/completed/$session_name" ]
   [ ! -f "$VBW_PLANNING_DIR/debugging/$session_name" ]
+  grep -q '^qa_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$session_name"
+  grep -q '^uat_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$session_name"
+}
+
+@test "get-or-latest normalizes canonical completed session with pending no-verification results" {
+  local session_name="20240101-120000-canonical-done.md"
+  mkdir -p "$VBW_PLANNING_DIR/debugging/completed"
+  cat > "$VBW_PLANNING_DIR/debugging/completed/$session_name" << 'EOF'
+---
+session_id: 20240101-120000-canonical-done
+title: canonical-done
+status: complete
+created: 2024-01-01 12:00:00
+updated: 2024-01-01 12:00:00
+qa_round: 0
+qa_last_result: pending
+uat_round: 0
+uat_last_result: pending
+---
+# Canonical completed session
+EOF
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=none"* ]]
+  grep -q '^qa_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$session_name"
+  grep -q '^uat_last_result: skipped_no_fix_required$' "$VBW_PLANNING_DIR/debugging/completed/$session_name"
+}
+
+@test "get-or-latest preserves verified results for canonical completed session" {
+  local session_name="20240101-120000-canonical-verified.md"
+  mkdir -p "$VBW_PLANNING_DIR/debugging/completed"
+  cat > "$VBW_PLANNING_DIR/debugging/completed/$session_name" << 'EOF'
+---
+session_id: 20240101-120000-canonical-verified
+title: canonical-verified
+status: complete
+created: 2024-01-01 12:00:00
+updated: 2024-01-01 12:00:00
+qa_round: 1
+qa_last_result: pass
+uat_round: 1
+uat_last_result: pass
+---
+# Canonical completed verified session
+EOF
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=none"* ]]
+  grep -q '^qa_round: 1$' "$VBW_PLANNING_DIR/debugging/completed/$session_name"
+  grep -q '^qa_last_result: pass$' "$VBW_PLANNING_DIR/debugging/completed/$session_name"
+  grep -q '^uat_round: 1$' "$VBW_PLANNING_DIR/debugging/completed/$session_name"
+  grep -q '^uat_last_result: pass$' "$VBW_PLANNING_DIR/debugging/completed/$session_name"
 }
 
 @test "get returns none for stale pointer to completed session" {

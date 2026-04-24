@@ -18,9 +18,9 @@
 # State fields in frontmatter:
 #   status:          investigating | fix_applied | qa_pending | qa_failed | uat_pending | uat_failed | complete
 #   qa_round:        integer (0 = no QA yet)
-#   qa_last_result:  pending | pass | fail
+#   qa_last_result:  pending | skipped_no_fix_required | pass | fail
 #   uat_round:       integer (0 = no UAT yet)
-#   uat_last_result: pending | pass | issues_found
+#   uat_last_result: pending | skipped_no_fix_required | pass | issues_found
 #
 # Active pointer: <planning-dir>/debugging/.active-session (contains session filename)
 # Session files:  <planning-dir>/debugging/active/{YYYYMMDD-HHMMSS}-{slug}.md   (in-progress)
@@ -41,6 +41,7 @@ DEBUG_DIR="$PLANNING_DIR/debugging"
 ACTIVE_DIR="$DEBUG_DIR/active"
 COMPLETED_DIR="$DEBUG_DIR/completed"
 ACTIVE_FILE="$DEBUG_DIR/.active-session"
+SKIPPED_NO_FIX_REQUIRED="skipped_no_fix_required"
 
 # Valid status values
 VALID_STATUSES="investigating fix_applied qa_pending qa_failed uat_pending uat_failed complete"
@@ -76,6 +77,82 @@ read_field() {
       exit
     }
   ' "$file"
+}
+
+DEBUG_SESSION_INSPECT_STATUS=""
+DEBUG_SESSION_INSPECT_QA_ROUND=""
+DEBUG_SESSION_INSPECT_UAT_ROUND=""
+DEBUG_SESSION_INSPECT_QA_LAST_RESULT=""
+DEBUG_SESSION_INSPECT_UAT_LAST_RESULT=""
+
+inspect_normalization_fields() {
+  local file="$1"
+  local old_ifs="$IFS"
+
+  IFS=$'\t' read -r \
+    DEBUG_SESSION_INSPECT_STATUS \
+    DEBUG_SESSION_INSPECT_QA_ROUND \
+    DEBUG_SESSION_INSPECT_UAT_ROUND \
+    DEBUG_SESSION_INSPECT_QA_LAST_RESULT \
+    DEBUG_SESSION_INSPECT_UAT_LAST_RESULT <<EOF
+$(awk '
+  BEGIN {
+    in_fm = 0
+    delim = 0
+    status = ""
+    qa_round = ""
+    uat_round = ""
+    qa_last_result = ""
+    uat_last_result = ""
+  }
+  $0 == "---" {
+    delim++
+    if (delim == 1) {
+      in_fm = 1
+      next
+    }
+    if (delim == 2) {
+      exit
+    }
+  }
+  !in_fm { next }
+  /^status:[[:space:]]*/ {
+    value = $0
+    sub(/^status:[[:space:]]*/, "", value)
+    status = value
+    next
+  }
+  /^qa_round:[[:space:]]*/ {
+    value = $0
+    sub(/^qa_round:[[:space:]]*/, "", value)
+    qa_round = value
+    next
+  }
+  /^uat_round:[[:space:]]*/ {
+    value = $0
+    sub(/^uat_round:[[:space:]]*/, "", value)
+    uat_round = value
+    next
+  }
+  /^qa_last_result:[[:space:]]*/ {
+    value = $0
+    sub(/^qa_last_result:[[:space:]]*/, "", value)
+    qa_last_result = value
+    next
+  }
+  /^uat_last_result:[[:space:]]*/ {
+    value = $0
+    sub(/^uat_last_result:[[:space:]]*/, "", value)
+    uat_last_result = value
+    next
+  }
+  END {
+    printf "%s\t%s\t%s\t%s\t%s\n", status, qa_round, uat_round, qa_last_result, uat_last_result
+  }
+' "$file")
+EOF
+
+  IFS="$old_ifs"
 }
 
 # Update a frontmatter field in a session file, scoped to the YAML frontmatter block only.
@@ -164,6 +241,61 @@ safe_move_session() {
   echo "$dest"
 }
 
+# Normalize terminal metadata for completed standalone debug sessions that never ran QA/UAT.
+# This is intentionally idempotent: it only rewrites sessions that are complete,
+# still have zero QA/UAT rounds, and still carry the template-default pending results.
+normalize_completed_no_verification_results() {
+  local file="$1"
+  local fields_state="${2:-}"
+  [ -f "$file" ] && [ ! -L "$file" ] || return 1
+
+  local file_status qa_round uat_round qa_last_result uat_last_result now
+  if [ "$fields_state" != "preloaded" ]; then
+    inspect_normalization_fields "$file" || return 1
+  fi
+  file_status="$DEBUG_SESSION_INSPECT_STATUS"
+  qa_round="$DEBUG_SESSION_INSPECT_QA_ROUND"
+  uat_round="$DEBUG_SESSION_INSPECT_UAT_ROUND"
+  qa_last_result="$DEBUG_SESSION_INSPECT_QA_LAST_RESULT"
+  uat_last_result="$DEBUG_SESSION_INSPECT_UAT_LAST_RESULT"
+
+  if [ "$file_status" != "complete" ] \
+    || [ "${qa_round:-0}" != "0" ] \
+    || [ "${uat_round:-0}" != "0" ] \
+    || [ "$qa_last_result" != "pending" ] \
+    || [ "$uat_last_result" != "pending" ]; then
+    return 0
+  fi
+
+  now=$(date '+%Y-%m-%d %H:%M:%S')
+  awk -v skipped="$SKIPPED_NO_FIX_REQUIRED" -v now="$now" '
+    BEGIN { in_fm = 0; delim = 0 }
+    $0 == "---" {
+      delim++
+      if (delim == 1) in_fm = 1
+      else if (delim == 2) in_fm = 0
+      print
+      next
+    }
+    in_fm && /^qa_last_result:/ {
+      print "qa_last_result: " skipped
+      next
+    }
+    in_fm && /^uat_last_result:/ {
+      print "uat_last_result: " skipped
+      next
+    }
+    in_fm && /^updated:/ {
+      print "updated: " now
+      next
+    }
+    { print }
+  ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+
+  DEBUG_SESSION_INSPECT_QA_LAST_RESULT="$SKIPPED_NO_FIX_REQUIRED"
+  DEBUG_SESSION_INSPECT_UAT_LAST_RESULT="$SKIPPED_NO_FIX_REQUIRED"
+}
+
 # Reconcile a session's physical location with its frontmatter status.
 # - complete sessions belong in completed/
 # - all other statuses belong in active/
@@ -171,9 +303,11 @@ safe_move_session() {
 reconcile_session_location() {
   local file="$1"
   [ -f "$file" ] && [ ! -L "$file" ] || return 1
+  inspect_normalization_fields "$file" || return 1
+  normalize_completed_no_verification_results "$file" preloaded || return 1
 
   local file_status target_dir current_dir fname moved pointer collision_file
-  file_status=$(read_field "$file" "status")
+  file_status="$DEBUG_SESSION_INSPECT_STATUS"
   if [ "$file_status" = "complete" ]; then
     target_dir="$COMPLETED_DIR"
   else
@@ -225,10 +359,12 @@ migrate_legacy_session() {
     echo "$file"
     return
   fi
+  inspect_normalization_fields "$file" || return 1
+  normalize_completed_no_verification_results "$file" preloaded || return 1
   local fname
   fname=$(basename "$file")
   local file_status
-  file_status=$(read_field "$file" "status")
+  file_status="$DEBUG_SESSION_INSPECT_STATUS"
   local target_dir
   if [ "$file_status" = "complete" ]; then
     target_dir="$COMPLETED_DIR"
@@ -355,9 +491,7 @@ find_latest_unresolved() {
   if [ -d "$COMPLETED_DIR" ]; then
     for f in "$COMPLETED_DIR"/*.md; do
       [ -f "$f" ] && [ ! -L "$f" ] || continue
-      if [ "$(read_field "$f" "status")" != "complete" ]; then
-        reconcile_session_location "$f" > /dev/null 2>&1 || true
-      fi
+      reconcile_session_location "$f" > /dev/null 2>&1 || true
     done
   fi
   # Collect candidates from active/ and any unmigrated legacy files
@@ -723,6 +857,7 @@ case "$CMD" in
     update_field "$SESSION_PATH" "status" "$STATUS"
     # Auto-move to completed/ when status transitions to complete
     if [ "$STATUS" = "complete" ]; then
+      normalize_completed_no_verification_results "$SESSION_PATH" || exit 1
       fname=$(basename "$SESSION_PATH")
       current_dir=$(dirname "$SESSION_PATH")
       if [ "$current_dir" != "$COMPLETED_DIR" ]; then
