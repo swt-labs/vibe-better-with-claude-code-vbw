@@ -39,7 +39,15 @@ fi
 if [ "$IS_FORK" = "true" ]; then
     FORK_OWNER=$(printf '%s' "$PR_JSON" | jq -r '.headRepository.owner.login')
     FORK_REPO=$(printf '%s' "$PR_JSON" | jq -r '.headRepository.owner.login + "/" + .headRepository.name')
-    git remote add "$FORK_OWNER" "https://github.com/$FORK_REPO.git" 2>/dev/null || true
+    EXPECTED_URL="https://github.com/$FORK_REPO.git"
+    EXISTING_URL=$(git remote get-url "$FORK_OWNER" 2>/dev/null || echo "")
+    if [ -z "$EXISTING_URL" ]; then
+        git remote add "$FORK_OWNER" "$EXPECTED_URL"
+    elif [ "$EXISTING_URL" != "$EXPECTED_URL" ]; then
+        echo "Error: Remote '$FORK_OWNER' already exists with URL '$EXISTING_URL' (expected '$EXPECTED_URL')." >&2
+        echo "Remove or rename the conflicting remote before retrying." >&2
+        exit 1
+    fi
 
     LOCAL_BRANCH="pr/${PR_AUTHOR}/${PR_NUM}"
     SUFFIX=1
@@ -54,13 +62,13 @@ if [ "$IS_FORK" = "true" ]; then
     CHECKOUT_BRANCH="$LOCAL_BRANCH"
     PUSH_REMOTE="$FORK_OWNER"
 
-    echo "CHECKOUT_BRANCH=$CHECKOUT_BRANCH"
-    echo "PUSH_REMOTE=$PUSH_REMOTE"
-    echo "IS_FORK=true"
-    echo "PR_BRANCH=$PR_BRANCH"
-    echo "PR_AUTHOR=$PR_AUTHOR"
-    echo "FORK_OWNER=$FORK_OWNER"
-    echo "FORK_REPO=$FORK_REPO"
+    printf '%s=%q\n' CHECKOUT_BRANCH "$CHECKOUT_BRANCH"
+    printf '%s=%q\n' PUSH_REMOTE "$PUSH_REMOTE"
+    printf '%s=%q\n' IS_FORK "true"
+    printf '%s=%q\n' PR_BRANCH "$PR_BRANCH"
+    printf '%s=%q\n' PR_AUTHOR "$PR_AUTHOR"
+    printf '%s=%q\n' FORK_OWNER "$FORK_OWNER"
+    printf '%s=%q\n' FORK_REPO "$FORK_REPO"
 else
     REMOTE_REF="refs/remotes/origin/$PR_BRANCH"
     git fetch origin "$PR_BRANCH"
@@ -88,9 +96,9 @@ else
     fi
     PUSH_REMOTE="origin"
 
-    echo "CHECKOUT_BRANCH=$CHECKOUT_BRANCH"
-    echo "PUSH_REMOTE=$PUSH_REMOTE"
-    echo "IS_FORK=false"
-    echo "PR_BRANCH=$PR_BRANCH"
-    echo "PR_AUTHOR=$PR_AUTHOR"
+    printf '%s=%q\n' CHECKOUT_BRANCH "$CHECKOUT_BRANCH"
+    printf '%s=%q\n' PUSH_REMOTE "$PUSH_REMOTE"
+    printf '%s=%q\n' IS_FORK "false"
+    printf '%s=%q\n' PR_BRANCH "$PR_BRANCH"
+    printf '%s=%q\n' PR_AUTHOR "$PR_AUTHOR"
 fi

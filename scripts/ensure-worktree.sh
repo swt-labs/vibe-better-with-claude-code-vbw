@@ -5,9 +5,8 @@ set -euo pipefail
 # Handles: existing worktrees, legacy slash-named worktrees, conflicts, creation.
 #
 # Usage: bash scripts/ensure-worktree.sh <branch-name>
-# Output on success: prints the absolute worktree path on stdout
-# Exit codes: 0 = success (cd'd into worktree), 1 = error (stderr has details)
-# After success, sets upstream to origin/<branch> if not already set.
+# Output on success: prints the absolute worktree path on stdout.
+# Exit codes: 0 = success (prints worktree path on stdout), 1 = error (stderr has details)
 
 branch="${1:?Usage: ensure-worktree.sh <branch-name>}"
 
@@ -74,13 +73,6 @@ else
         cd "$target_worktree" || exit 1
         git switch -c "$branch" --no-track || exit 1
     fi
-fi
-
-desired_upstream="origin/$branch"
-current_upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || echo "")
-if [ "$current_upstream" != "$desired_upstream" ]; then
-    git branch --unset-upstream 2>/dev/null || true
-    git push -u origin "$branch" || exit 1
 fi
 
 echo "$PWD"

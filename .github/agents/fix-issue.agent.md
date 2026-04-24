@@ -36,7 +36,7 @@ Execute these steps in order. Do not skip steps.
     **Contract split (NON-NEGOTIABLE).** The issue is the public verification contract for QA, PR text, and reviewer communication. A saved planner-authored or user-authored plan is the execution guide for implementation order, dependencies, and risky areas. Keep them aligned. If a user-authored plan introduces must-have acceptance criteria or scope boundaries that are not already captured in the issue, update the issue with a sanitized version before QA begins. Do not copy local absolute path prefixes (for example `/Users/.../`) or other PII into GitHub.
 3. **If no issue exists**, create one via #tool:github/issue_write (method: `create`) using the structure from `.github/ISSUE_TEMPLATE/` (bug_report for bugs, feature_request for enhancements). Assign to the authenticated user (your GitHub username) and apply at least one label (`bug`, `enhancement`, or a domain label).
 
-   **Issue body requirements.** The issue body is the verification contract for the entire workflow — the QA agent will use it to scope its review. Every issue you create must include:
+tor    **Issue body requirements.** The issue body is the verification contract for the entire workflow — the QA agent will use it to scope its review. Every issue you create must include:
 
    - **Problem statement**: Precise description of the bug or missing behavior, with reproduction evidence (commands, error output, file state). Not vague — include the exact symptom.
    - **Root cause analysis**: Your hypothesis for why this happens. Name the specific file(s), function(s), or logic path that is broken or missing.
@@ -65,9 +65,9 @@ Execute these steps in order. Do not skip steps.
 
     **Use `CHECKOUT_BRANCH` as the branch name for step 4.** Do not generate a `fix-NNN-description` branch name. The worktree is created at the canonical location `../<repo-name>-worktrees/<flat-branch-name>/`.
 
-    **Upstream tracking override.** After step 4 enters the worktree, override the upstream to point to the correct push target instead of letting step 4's default `git push -u origin` run:
-    - **Same-repo PRs** (`IS_FORK == false`): upstream is already set to `origin/$PR_BRANCH` — `git push` pushes to the PR branch on origin.
-    - **Fork PRs** (`IS_FORK == true`): upstream is already set to `$FORK_OWNER/$PR_BRANCH` — `git push` pushes to the contributor's fork.
+    **Upstream tracking.** The adoption script already configures upstream tracking — no additional setup is needed in step 4:
+    - **Same-repo PRs** (`IS_FORK == false`): upstream is set to `origin/$PR_BRANCH` — `git push` pushes to the PR branch on origin.
+    - **Fork PRs** (`IS_FORK == true`): upstream is set to `$FORK_OWNER/$PR_BRANCH` — `git push` pushes to the contributor's fork.
 
     **Downstream workflow adjustments when adopting a PR:**
     - **Phase 1.5 (Plan the Fix)**: Still required — the planner should account for the contributor's existing implementation as a starting point, not plan from scratch.
@@ -111,6 +111,10 @@ The planner should save its output to `/memories/session/plan.md` when #tool:vsc
      ```
 
      If the script exits non-zero, read its stderr and report the error to the user. Do not proceed to step 5.
+
+     **Set upstream tracking after entering the worktree.** The script does not push or set upstream — the caller must:
+     - **Normal issue branches**: `git push -u origin "<branch-name>"` on first push.
+     - **Adopted PR branches**: upstream was already set by `adopt-contributor-pr.sh` — no action needed.
 
      **Rules:**
     - The canonical worktree location is `../<repo-name>-worktrees/<flat-branch-name>/`.
