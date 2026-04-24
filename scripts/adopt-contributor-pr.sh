@@ -8,7 +8,8 @@ set -euo pipefail
 # Output: key=value pairs on stdout (eval-safe):
 #   CHECKOUT_BRANCH, PUSH_REMOTE, IS_FORK, PR_BRANCH, PR_AUTHOR
 #   For fork PRs also: FORK_OWNER, FORK_REPO
-# Exit codes: 0 = success, 1 = validation failure (stderr has details)
+# Exit codes: 0 = success, 1 = validation failure (stderr has details);
+#   non-validation failures from external commands may exit with other nonzero statuses.
 
 PR_NUM="${1:?Usage: adopt-contributor-pr.sh <PR_NUM>}"
 
