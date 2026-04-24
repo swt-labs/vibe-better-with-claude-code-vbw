@@ -56,9 +56,13 @@ if [ "$IS_FORK" = "true" ]; then
         SUFFIX=$((SUFFIX + 1))
     done
 
-    git fetch "$FORK_OWNER" "${PR_BRANCH}:${LOCAL_BRANCH}"
-    git branch --set-upstream-to="$FORK_OWNER/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null || \
-        git branch -u "$FORK_OWNER/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null || true
+    git fetch "$FORK_OWNER" \
+        "refs/heads/$PR_BRANCH:refs/remotes/$FORK_OWNER/$PR_BRANCH" \
+        "refs/heads/$PR_BRANCH:refs/heads/$LOCAL_BRANCH"
+    if ! git branch --set-upstream-to="$FORK_OWNER/$PR_BRANCH" "$LOCAL_BRANCH"; then
+        echo "Error: Failed to set upstream for '$LOCAL_BRANCH' to '$FORK_OWNER/$PR_BRANCH'." >&2
+        exit 1
+    fi
     CHECKOUT_BRANCH="$LOCAL_BRANCH"
     PUSH_REMOTE="$FORK_OWNER"
 
