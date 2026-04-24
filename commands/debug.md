@@ -3,7 +3,7 @@ name: vbw:debug
 category: supporting
 disable-model-invocation: true
 description: Investigate a bug using the Debugger agent's scientific method protocol.
-argument-hint: "<bug description or error message>"
+argument-hint: "bug description | todo number | --resume | --session ID"
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, Agent, TeamCreate, TaskCreate, SendMessage, TeamDelete, Skill, LSP, AskUserQuestion
 ---
 
@@ -28,7 +28,7 @@ Store the plugin root path output above as `{plugin-root}` for use in script inv
 
 ## Guard
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
-- No $ARGUMENTS and no `--resume` flag and no `--session` flag: STOP "Usage: /vbw:debug \"description of the bug or error message\""
+- No $ARGUMENTS and no `--resume` flag and no `--session` flag: STOP "Usage: `/vbw:debug \"description of the bug or error message\" [--competing|--parallel|--serial]` | `/vbw:debug <todo-number> [--competing|--parallel|--serial]` | `/vbw:debug --resume` | `/vbw:debug --session <id>`"
 
 ## Resolve todo number
 
@@ -65,8 +65,9 @@ Resolve or create the debug session before any investigation. Order of precedenc
    ```bash
   eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" get-or-latest .vbw-planning)"
    ```
-   - If `active_session=none`: STOP "No active debug session to resume. Start one with: /vbw:debug \"bug description\""
-   - If `active_session=fallback`: inform user which session was auto-selected (no `.active-session` pointer was set, so the latest unresolved session was chosen automatically).
+  If `active_session=none`, STOP "No active debug session to resume. Use `/vbw:debug --session <id>` to open a specific session, or start one with `/vbw:debug \"description of the bug or error message\"` or `/vbw:debug <todo-number>`."
+  If `active_session=fallback`, inform user which session was auto-selected (no `.active-session` pointer was set, so the latest unresolved session was chosen automatically).
+  For metadata-read helper calls (`resume`, `get-or-latest`), use `active_session`, `session_id`, `session_file`, and `session_status` after `eval`. Use `session_status` for lifecycle checks after `eval`; do not rely on a bare `status` variable.
 
 3. **New session (no --resume, no --session):** Create a fresh session from $ARGUMENTS. Strip known flags (`--competing`, `--parallel`, `--serial`) and any `(ref:HASH)` suffix from $ARGUMENTS before computing the slug — these are routing/ref metadata, not part of the bug description.
    ```bash
@@ -104,19 +105,19 @@ Resolve or create the debug session before any investigation. Order of precedenc
 
 Store the resolved `session_id` and `session_file` for use in Steps below.
 
-If resuming a session with `status=qa_pending` or `status=fix_applied`: skip investigation, jump directly to `<debug_inline_qa>` below to run QA inline.
-If resuming a session with `status=qa_failed`: load failure context:
+If resuming a session with `session_status=qa_pending` or `session_status=fix_applied`: skip investigation, jump directly to `<debug_inline_qa>` below to run QA inline.
+If resuming a session with `session_status=qa_failed`: load failure context:
   ```bash
   FAILURE_CONTEXT=$(bash "{plugin-root}/scripts/compile-debug-session-context.sh" "$session_file" qa 2>/dev/null || echo "")
   ```
   Update status to `investigating` via `write-debug-session.sh` (mode=status), then continue investigation from Step 3. When composing the debugger task prompt in Step 4, prepend the compiled `FAILURE_CONTEXT` to the bug report so the debugger has the specific failed QA checks and findings. Use this format in the task prompt: `Previous QA failed. Failure context:\n{FAILURE_CONTEXT}\n\nOriginal bug report: {description}`.
-If resuming a session with `status=uat_pending`: skip investigation, jump directly to `<debug_inline_uat>` below to run UAT inline.
-If resuming a session with `status=uat_failed`: load failure context:
+If resuming a session with `session_status=uat_pending`: skip investigation, jump directly to `<debug_inline_uat>` below to run UAT inline.
+If resuming a session with `session_status=uat_failed`: load failure context:
   ```bash
   FAILURE_CONTEXT=$(bash "{plugin-root}/scripts/compile-debug-session-context.sh" "$session_file" uat 2>/dev/null || echo "")
   ```
   Update status to `investigating` via `write-debug-session.sh` (mode=status), then continue investigation from Step 3. When composing the debugger task prompt in Step 4, prepend the compiled `FAILURE_CONTEXT` to the bug report so the debugger has the specific failed UAT issues and findings. Use this format in the task prompt: `Previous UAT failed. Failure context:\n{FAILURE_CONTEXT}\n\nOriginal bug report: {description}`.
-If resuming a session with `status=complete`: STOP "This debug session is already complete. Start a new one with: /vbw:debug \"bug description\""
+If resuming a session with `session_status=complete`: STOP "This debug session is already complete. Use `/vbw:debug --session <id>` to inspect another session, or start a new one with `/vbw:debug \"description of the bug or error message\"` or `/vbw:debug <todo-number>`."
 </debug_session_routing>
 
 ## Steps
@@ -130,7 +131,7 @@ If resuming a session with `status=complete`: STOP "This debug session is alread
    ```
    In all cases, continue without detail.
    If no ref suffix, $ARGUMENTS minus flags = bug description, `DETAIL_STATUS=none`, and `TODO_DETAIL_RESULT_JSON=""`.
-   **Post-parse validation:** If the bug description is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the investigation context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:debug \"description of the bug or error message\" [--competing|--parallel|--serial]"`.
+  **Post-parse validation:** If the bug description is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the investigation context. If no ref was found, or the ref detail failed to load, STOP: "Usage: `/vbw:debug \"description of the bug or error message\" [--competing|--parallel|--serial]` | `/vbw:debug <todo-number> [--competing|--parallel|--serial]` | `/vbw:debug --resume` | `/vbw:debug --session <id>`".
    Map effort: thorough=high, balanced/fast=medium, turbo=low.
    Keep effort profile as `EFFORT_PROFILE` (thorough|balanced|fast|turbo).
    Read `{plugin-root}/references/effort-profile-{profile}.md`.
