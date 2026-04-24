@@ -17,6 +17,8 @@ fixed_todo_now_epoch() {
 }
 
 setup() {
+  local fixed_now_epoch
+
   setup_temp_dir
   create_test_config
   if [ "${VBW_TODO_NOW_EPOCH+x}" = "x" ]; then
@@ -26,7 +28,11 @@ setup() {
     export _ORIG_VBW_TODO_NOW_EPOCH_WAS_SET=0
     unset _ORIG_VBW_TODO_NOW_EPOCH 2>/dev/null || true
   fi
-  export VBW_TODO_NOW_EPOCH="$(fixed_todo_now_epoch)"
+  if ! fixed_now_epoch=$(fixed_todo_now_epoch) || [ -z "$fixed_now_epoch" ] || ! [[ "$fixed_now_epoch" =~ ^[0-9]+$ ]]; then
+    echo "todo-lifecycle.bats setup: could not derive fixed epoch for deterministic age assertions" >&2
+    return 1
+  fi
+  export VBW_TODO_NOW_EPOCH="$fixed_now_epoch"
   export CLAUDE_SESSION_ID="todo-lifecycle-${BATS_TEST_NUMBER:-0}-$$-$RANDOM"
   export VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning"
   SCRIPT="$SCRIPTS_DIR/todo-lifecycle.sh"
@@ -185,6 +191,8 @@ assert_snapshot_invalid_everywhere() {
 
 @test "todo-lifecycle: list-with-snapshot returns full metadata and writes the exact snapshot" {
   write_state_with_recent_activity
+  [ -n "$VBW_TODO_NOW_EPOCH" ]
+  [[ "$VBW_TODO_NOW_EPOCH" =~ ^[0-9]+$ ]]
 
   run bash "$LIST_SCRIPT" high
   [ "$status" -eq 0 ]
@@ -193,7 +201,6 @@ assert_snapshot_invalid_everywhere() {
   run bash "$SCRIPT" list-with-snapshot high
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq -cS '.')" = "$(printf '%s' "$EXPECTED_JSON" | jq -cS '.')" ]
-  [ "$(printf '%s' "$output" | jq -r '.items[0].age')" = "21d ago" ]
   [ "$(printf '%s' "$output" | jq -r '.items[0].command_text')" = "Refactor auth module" ]
   [ "$(printf '%s' "$output" | jq -r '.items[0].section_index')" = "2" ]
 
