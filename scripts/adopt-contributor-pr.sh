@@ -58,7 +58,7 @@ if [ "$IS_FORK" = "true" ]; then
         SUFFIX=$((SUFFIX + 1))
     done
 
-    git fetch "$FORK_OWNER" "${PR_BRANCH}:${LOCAL_BRANCH}" "+${PR_BRANCH}:refs/remotes/${FORK_OWNER}/${PR_BRANCH}"
+    git fetch "$FORK_OWNER" "${PR_BRANCH}:${LOCAL_BRANCH}" "+${PR_BRANCH}:refs/remotes/${FORK_OWNER}/${PR_BRANCH}" 1>&2
     if ! git branch --set-upstream-to="$FORK_OWNER/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null && \
        ! git branch -u "$FORK_OWNER/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null; then
         echo "Error: Failed to set upstream tracking for '$LOCAL_BRANCH' to '$FORK_OWNER/$PR_BRANCH'." >&2
@@ -77,7 +77,7 @@ if [ "$IS_FORK" = "true" ]; then
     printf '%s=%q\n' FORK_REPO "$FORK_REPO"
 else
     REMOTE_REF="refs/remotes/origin/$PR_BRANCH"
-    git fetch origin "$PR_BRANCH"
+    git fetch origin "$PR_BRANCH" 1>&2
     REMOTE_SHA=$(git rev-parse "$REMOTE_REF" 2>/dev/null || echo "")
 
     if git show-ref --verify --quiet "refs/heads/$PR_BRANCH" 2>/dev/null; then
@@ -90,14 +90,20 @@ else
                 SUFFIX=$((SUFFIX + 1))
             done
             git branch "$LOCAL_BRANCH" "$REMOTE_SHA"
-            git branch --set-upstream-to="origin/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null || true
+            if ! git branch --set-upstream-to="origin/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null; then
+                echo "Error: Failed to set upstream tracking for '$LOCAL_BRANCH' to 'origin/$PR_BRANCH'." >&2
+                exit 1
+            fi
             CHECKOUT_BRANCH="$LOCAL_BRANCH"
         else
             CHECKOUT_BRANCH="$PR_BRANCH"
         fi
     else
         git branch "$PR_BRANCH" "$REMOTE_SHA"
-        git branch --set-upstream-to="origin/$PR_BRANCH" "$PR_BRANCH" 2>/dev/null || true
+        if ! git branch --set-upstream-to="origin/$PR_BRANCH" "$PR_BRANCH" 2>/dev/null; then
+            echo "Error: Failed to set upstream tracking for '$PR_BRANCH' to 'origin/$PR_BRANCH'." >&2
+            exit 1
+        fi
         CHECKOUT_BRANCH="$PR_BRANCH"
     fi
     PUSH_REMOTE="origin"

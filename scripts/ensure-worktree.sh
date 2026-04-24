@@ -81,13 +81,13 @@ elif [ -e "$target_worktree" ]; then
 else
     mkdir -p "$worktree_base"
     if git show-ref --verify --quiet "refs/heads/$branch"; then
-        git worktree add "$target_worktree" "$branch" || exit 1
+        git worktree add "$target_worktree" "$branch" 1>&2 || exit 1
         cd "$target_worktree" || exit 1
     else
-        git fetch origin || exit 1
-        git worktree add --detach "$target_worktree" origin/main || exit 1
+        git fetch origin 1>&2 || exit 1
+        git worktree add --detach "$target_worktree" origin/main 1>&2 || exit 1
         cd "$target_worktree" || exit 1
-        git switch -c "$branch" --no-track || exit 1
+        git switch -c "$branch" --no-track 1>&2 || exit 1
     fi
 fi
 
