@@ -265,7 +265,7 @@ If `setting=planning_tracking`, after writing config run:
   fi
 ```
 
-This keeps root `.gitignore` and `.vbw-planning/.gitignore` aligned with the selected tracking mode.
+This applies any mode-specific root `.gitignore` behavior and keeps `.vbw-planning/.gitignore` current for transient runtime files in every tracking mode.
 
 ### Skill-hook wiring: `skill_hook <skill> <event> <tools>`
 
