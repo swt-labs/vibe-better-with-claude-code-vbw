@@ -362,6 +362,15 @@ else
       fail "skills: Step 5 missing structured 2-4 candidate branch"
     fi
 
+    if grep -Fq 'For any bounded AskUserQuestion branch below that uses visible options, the built-in `Other` path is still part of that question:' <<< "$skills_step_5" \
+      && grep -Fq 'accept unambiguous visible option-by-number replies (for example `#1` / `#2`)' <<< "$skills_step_5" \
+      && grep -Fq 'accept hybrid replies anchored to one of those visible option numbers (for example `#2 for now`)' <<< "$skills_step_5" \
+      && grep -Fq 're-ask only when the follow-up is ambiguous or invalid for that same question.' <<< "$skills_step_5"; then
+      pass "skills: Step 5 bounded Other path accepts numbered and hybrid replies"
+    else
+      fail "skills: Step 5 missing bounded Other-path numbered/hybrid reply guidance"
+    fi
+
     if grep -Fq 'If none were selected, display `○ No skills selected for installation.` and STOP here. Do not ask Step 5b and do not enter Step 6.' <<< "$skills_step_5"; then
       pass "skills: Step 5 skips scope selection when bounded structured branch declines everything"
     else

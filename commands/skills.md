@@ -61,6 +61,7 @@ Run `npx skills find "<query>"`. Display results with `(registry)` tag. If npx u
 Combine curated + registry, deduplicate, rank (curated first).
 
 - If the combined list is empty: STOP here. Do NOT AskUserQuestion. The Step 3 / Step 4 output already explains the no-results state (for example, all recommended skills already installed, no stack detected, or no registry results).
+- For any bounded AskUserQuestion branch below that uses visible options, the built-in `Other` path is still part of that question: accept direct option intent (`install` / `skip`, `yes` / `no`), accept unambiguous visible option-by-number replies (for example `#1` / `#2`), accept hybrid replies anchored to one of those visible option numbers (for example `#2 for now`), and re-ask only when the follow-up is ambiguous or invalid for that same question.
 - If the combined list has exactly 1 candidate: keep it structured.
   - AskUserQuestion with a single bounded question.
   - Keep the header short.
@@ -68,7 +69,6 @@ Combine curated + registry, deduplicate, rank (curated first).
   - Options:
     - `Install {skill-name}` (Recommended)
     - `Skip for now`
-  - If the user takes the built-in `Other` path, treat it as plain-text follow-up for this one decision only: accept `install` / `yes` to select it, accept `skip` / `no` to decline it, otherwise re-ask the same question.
   - Declined → display `○ No skills selected for installation.` and STOP here. Do not ask Step 5b and do not enter Step 6.
 
 - If the combined list has 2–4 candidates: keep it structured because this stays within the AskUserQuestion sweet spot.
@@ -77,7 +77,6 @@ Combine curated + registry, deduplicate, rank (curated first).
   - Each question should show `{skill-name} — {brief description}` with two options:
     - `Install`
     - `Skip`
-  - If the user takes the built-in `Other` path for one of these bounded questions, treat it as plain-text follow-up for that question only: accept `install` / `yes` to select it, accept `skip` / `no` to leave it unselected, otherwise re-ask that same question.
   - Collect every selected skill in ranked order.
   - If none were selected, display `○ No skills selected for installation.` and STOP here. Do not ask Step 5b and do not enter Step 6.
 
