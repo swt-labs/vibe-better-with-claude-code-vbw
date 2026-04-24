@@ -59,8 +59,8 @@ if [ "$IS_FORK" = "true" ]; then
     done
 
     git fetch "$FORK_OWNER" "${PR_BRANCH}:${LOCAL_BRANCH}" "+${PR_BRANCH}:refs/remotes/${FORK_OWNER}/${PR_BRANCH}" 1>&2
-    if ! git branch --set-upstream-to="$FORK_OWNER/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null && \
-       ! git branch -u "$FORK_OWNER/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null; then
+    if ! git branch --set-upstream-to="$FORK_OWNER/$PR_BRANCH" "$LOCAL_BRANCH" >/dev/null 2>&1 && \
+       ! git branch -u "$FORK_OWNER/$PR_BRANCH" "$LOCAL_BRANCH" >/dev/null 2>&1; then
         echo "Error: Failed to set upstream tracking for '$LOCAL_BRANCH' to '$FORK_OWNER/$PR_BRANCH'." >&2
         echo "The remote-tracking ref may not exist. Check 'git remote -v' and retry." >&2
         exit 1
@@ -90,7 +90,7 @@ else
                 SUFFIX=$((SUFFIX + 1))
             done
             git branch "$LOCAL_BRANCH" "$REMOTE_SHA"
-            if ! git branch --set-upstream-to="origin/$PR_BRANCH" "$LOCAL_BRANCH" 2>/dev/null; then
+            if ! git branch --set-upstream-to="origin/$PR_BRANCH" "$LOCAL_BRANCH" >/dev/null 2>&1; then
                 echo "Error: Failed to set upstream tracking for '$LOCAL_BRANCH' to 'origin/$PR_BRANCH'." >&2
                 exit 1
             fi
@@ -99,7 +99,7 @@ else
             CHECKOUT_BRANCH="$PR_BRANCH"
             # Ensure upstream tracking even when local branch already matches remote SHA
             if ! git rev-parse --abbrev-ref "${CHECKOUT_BRANCH}@{u}" >/dev/null 2>&1; then
-                if ! git branch --set-upstream-to="origin/$PR_BRANCH" "$CHECKOUT_BRANCH" 2>/dev/null; then
+                if ! git branch --set-upstream-to="origin/$PR_BRANCH" "$CHECKOUT_BRANCH" >/dev/null 2>&1; then
                     echo "Error: Failed to set upstream tracking for '$CHECKOUT_BRANCH' to 'origin/$PR_BRANCH'." >&2
                     exit 1
                 fi
@@ -107,7 +107,7 @@ else
         fi
     else
         git branch "$PR_BRANCH" "$REMOTE_SHA"
-        if ! git branch --set-upstream-to="origin/$PR_BRANCH" "$PR_BRANCH" 2>/dev/null; then
+        if ! git branch --set-upstream-to="origin/$PR_BRANCH" "$PR_BRANCH" >/dev/null 2>&1; then
             echo "Error: Failed to set upstream tracking for '$PR_BRANCH' to 'origin/$PR_BRANCH'." >&2
             exit 1
         fi
