@@ -32,6 +32,44 @@ EOF
 
   run grep -qx '\.vbw-planning/' .gitignore
   [ "$status" -eq 0 ]
+
+  run grep -Fqx '.execution-state.json' .vbw-planning/.gitignore
+  [ "$status" -eq 0 ]
+}
+
+@test "sync-ignore writes transient planning ignore in manual mode without hiding durable planning artifacts" {
+  cat > .vbw-planning/config.json <<'EOF'
+{
+  "planning_tracking": "manual",
+  "auto_push": "never"
+}
+EOF
+
+  run bash "$SCRIPTS_DIR/planning-git.sh" sync-ignore .vbw-planning/config.json
+  [ "$status" -eq 0 ]
+
+  if [ -f .gitignore ]; then
+    run grep -qx '\.vbw-planning/' .gitignore
+    [ "$status" -ne 0 ]
+  fi
+
+  run grep -Fqx '.execution-state.json' .vbw-planning/.gitignore
+  [ "$status" -eq 0 ]
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+Tracked by user
+EOF
+
+  echo '12345' > .vbw-planning/.agent-pids
+  echo '{"status":"running"}' > .vbw-planning/.execution-state.json
+
+  run git status --short --untracked-files=all
+  [ "$status" -eq 0 ]
+  [[ "$output" == *".vbw-planning/STATE.md"* ]]
+  [[ "$output" != *".vbw-planning/.agent-pids"* ]]
+  [[ "$output" != *".vbw-planning/.execution-state.json"* ]]
 }
 
 @test "sync-ignore removes root ignore and writes transient planning ignore when commit mode" {

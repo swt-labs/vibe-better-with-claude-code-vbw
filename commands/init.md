@@ -145,8 +145,8 @@ Create `.vbw-planning/phases/`. Ensure config.json includes `"prefer_teams": "au
 
 AskUserQuestion (single select):
 - "How should VBW planning artifacts be tracked in git?"
-  - `manual` (default): don't auto-ignore or auto-commit planning files
-  - `ignore`: keep `.vbw-planning/` ignored in root `.gitignore`
+  - `manual` (default): don't auto-ignore the whole `.vbw-planning/` directory or auto-commit planning files
+  - `ignore`: keep the whole `.vbw-planning/` directory ignored in root `.gitignore`
   - `commit`: track `.vbw-planning/` + `CLAUDE.md` at helper-backed planning boundaries (bootstrap, planning checkpoints, todo adds, archive)
 
 AskUserQuestion (single select):
@@ -171,6 +171,8 @@ else
   echo "VBW: planning-git.sh unavailable; skipping .gitignore sync" >&2
 fi
 ```
+
+This applies any mode-specific root `.gitignore` behavior and keeps `.vbw-planning/.gitignore` current for transient runtime files in every tracking mode.
 
 ### Step 1.5: Install git hooks
 

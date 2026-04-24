@@ -141,10 +141,7 @@ case "$COMMAND" in
 
     read_config "$CONFIG_FILE"
     sync_root_ignore "$CFG_PLANNING_TRACKING"
-
-    if [ "$CFG_PLANNING_TRACKING" = "commit" ]; then
-      ensure_transient_ignore
-    fi
+    ensure_transient_ignore
     ;;
 
   commit-boundary)
