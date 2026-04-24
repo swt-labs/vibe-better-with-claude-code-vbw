@@ -79,6 +79,82 @@ read_field() {
   ' "$file"
 }
 
+DEBUG_SESSION_INSPECT_STATUS=""
+DEBUG_SESSION_INSPECT_QA_ROUND=""
+DEBUG_SESSION_INSPECT_UAT_ROUND=""
+DEBUG_SESSION_INSPECT_QA_LAST_RESULT=""
+DEBUG_SESSION_INSPECT_UAT_LAST_RESULT=""
+
+inspect_normalization_fields() {
+  local file="$1"
+  local old_ifs="$IFS"
+
+  IFS=$'\t' read -r \
+    DEBUG_SESSION_INSPECT_STATUS \
+    DEBUG_SESSION_INSPECT_QA_ROUND \
+    DEBUG_SESSION_INSPECT_UAT_ROUND \
+    DEBUG_SESSION_INSPECT_QA_LAST_RESULT \
+    DEBUG_SESSION_INSPECT_UAT_LAST_RESULT <<EOF
+$(awk '
+  BEGIN {
+    in_fm = 0
+    delim = 0
+    status = ""
+    qa_round = ""
+    uat_round = ""
+    qa_last_result = ""
+    uat_last_result = ""
+  }
+  $0 == "---" {
+    delim++
+    if (delim == 1) {
+      in_fm = 1
+      next
+    }
+    if (delim == 2) {
+      exit
+    }
+  }
+  !in_fm { next }
+  /^status:[[:space:]]*/ {
+    value = $0
+    sub(/^status:[[:space:]]*/, "", value)
+    status = value
+    next
+  }
+  /^qa_round:[[:space:]]*/ {
+    value = $0
+    sub(/^qa_round:[[:space:]]*/, "", value)
+    qa_round = value
+    next
+  }
+  /^uat_round:[[:space:]]*/ {
+    value = $0
+    sub(/^uat_round:[[:space:]]*/, "", value)
+    uat_round = value
+    next
+  }
+  /^qa_last_result:[[:space:]]*/ {
+    value = $0
+    sub(/^qa_last_result:[[:space:]]*/, "", value)
+    qa_last_result = value
+    next
+  }
+  /^uat_last_result:[[:space:]]*/ {
+    value = $0
+    sub(/^uat_last_result:[[:space:]]*/, "", value)
+    uat_last_result = value
+    next
+  }
+  END {
+    printf "%s\t%s\t%s\t%s\t%s\n", status, qa_round, uat_round, qa_last_result, uat_last_result
+  }
+' "$file")
+EOF
+
+  IFS="$old_ifs"
+}
+
 # Update a frontmatter field in a session file, scoped to the YAML frontmatter block only.
 # Uses awk to restrict replacement to lines between the opening and closing --- delimiters.
 update_field() {
@@ -170,14 +246,18 @@ safe_move_session() {
 # still have zero QA/UAT rounds, and still carry the template-default pending results.
 normalize_completed_no_verification_results() {
   local file="$1"
+  local fields_state="${2:-}"
   [ -f "$file" ] && [ ! -L "$file" ] || return 1
 
   local file_status qa_round uat_round qa_last_result uat_last_result now
-  file_status=$(read_field "$file" "status")
-  qa_round=$(read_field "$file" "qa_round")
-  uat_round=$(read_field "$file" "uat_round")
-  qa_last_result=$(read_field "$file" "qa_last_result")
-  uat_last_result=$(read_field "$file" "uat_last_result")
+  if [ "$fields_state" != "preloaded" ]; then
+    inspect_normalization_fields "$file" || return 1
+  fi
+  file_status="$DEBUG_SESSION_INSPECT_STATUS"
+  qa_round="$DEBUG_SESSION_INSPECT_QA_ROUND"
+  uat_round="$DEBUG_SESSION_INSPECT_UAT_ROUND"
+  qa_last_result="$DEBUG_SESSION_INSPECT_QA_LAST_RESULT"
+  uat_last_result="$DEBUG_SESSION_INSPECT_UAT_LAST_RESULT"
 
   if [ "$file_status" != "complete" ] \
     || [ "${qa_round:-0}" != "0" ] \
@@ -211,6 +291,9 @@ normalize_completed_no_verification_results() {
     }
     { print }
   ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+
+  DEBUG_SESSION_INSPECT_QA_LAST_RESULT="$SKIPPED_NO_FIX_REQUIRED"
+  DEBUG_SESSION_INSPECT_UAT_LAST_RESULT="$SKIPPED_NO_FIX_REQUIRED"
 }
 
 # Reconcile a session's physical location with its frontmatter status.
@@ -220,10 +303,11 @@ normalize_completed_no_verification_results() {
 reconcile_session_location() {
   local file="$1"
   [ -f "$file" ] && [ ! -L "$file" ] || return 1
-  normalize_completed_no_verification_results "$file" || return 1
+  inspect_normalization_fields "$file" || return 1
+  normalize_completed_no_verification_results "$file" preloaded || return 1
 
   local file_status target_dir current_dir fname moved pointer collision_file
-  file_status=$(read_field "$file" "status")
+  file_status="$DEBUG_SESSION_INSPECT_STATUS"
   if [ "$file_status" = "complete" ]; then
     target_dir="$COMPLETED_DIR"
   else
@@ -275,11 +359,12 @@ migrate_legacy_session() {
     echo "$file"
     return
   fi
-  normalize_completed_no_verification_results "$file" || return 1
+  inspect_normalization_fields "$file" || return 1
+  normalize_completed_no_verification_results "$file" preloaded || return 1
   local fname
   fname=$(basename "$file")
   local file_status
-  file_status=$(read_field "$file" "status")
+  file_status="$DEBUG_SESSION_INSPECT_STATUS"
   local target_dir
   if [ "$file_status" = "complete" ]; then
     target_dir="$COMPLETED_DIR"
