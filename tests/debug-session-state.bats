@@ -509,28 +509,75 @@ teardown() {
   [[ "$output" == *"session_count=2"* ]]
 }
 
-@test "resume moves completed session back to active directory" {
+@test "resume returns completed session metadata without reactivating it" {
   eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "resume-done")"
   local fname
   fname=$(basename "$session_file")
 
   bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$VBW_PLANNING_DIR" complete > /dev/null
   [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
 
   run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "$fname"
   [ "$status" -eq 0 ]
   [[ "$output" == *"active_session=true"* ]]
-  # Resume should move file back to active/ and reset status
-  printf '%s\n' "$output" | grep -Eq '^session_status=investigating$'
+  printf '%s\n' "$output" | grep -Eq '^session_status=complete$'
   ! printf '%s\n' "$output" | grep -Eq '^status='
-  [ -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
-  [ ! -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
-  # Pointer should reference the active session
-  [ -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
-  # Subsequent get-or-latest should find it
-  run bash "$SCRIPTS_DIR/debug-session-state.sh" get-or-latest "$VBW_PLANNING_DIR"
+  [ ! -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get "$VBW_PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=none"* ]]
+}
+
+@test "resume migrates legacy completed session without reactivating it" {
+  mkdir -p "$VBW_PLANNING_DIR/debugging"
+  local session_name="20240101-120000-legacy-resume-done.md"
+  cat > "$VBW_PLANNING_DIR/debugging/$session_name" << 'EOF'
+---
+session_id: 20240101-120000-legacy-resume-done
+title: legacy-resume-done
+status: complete
+created: 2024-01-01 12:00:00
+updated: 2024-01-01 12:00:00
+qa_round: 1
+qa_last_result: pass
+uat_round: 1
+uat_last_result: pass
+---
+# Legacy completed session
+EOF
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "$session_name"
   [ "$status" -eq 0 ]
   [[ "$output" == *"active_session=true"* ]]
+  printf '%s\n' "$output" | grep -Eq '^session_status=complete$'
+  [ ! -f "$VBW_PLANNING_DIR/debugging/$session_name" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/active/$session_name" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/$session_name" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+}
+
+@test "resume canonicalizes completed session stranded in active without reactivating it" {
+  eval "$(bash "$SCRIPTS_DIR/debug-session-state.sh" start "$VBW_PLANNING_DIR" "resume-stranded-done")"
+  local fname
+  fname=$(basename "$session_file")
+
+  awk 'BEGIN{in_fm=0} /^---$/{in_fm=!in_fm} in_fm && /^status:/{print "status: complete";next} {print}' \
+    "$session_file" > "${session_file}.tmp" && mv "${session_file}.tmp" "$session_file"
+
+  [ -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$VBW_PLANNING_DIR" "$fname"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=true"* ]]
+  printf '%s\n' "$output" | grep -Eq '^session_status=complete$'
+  [ ! -f "$VBW_PLANNING_DIR/debugging/active/$fname" ]
+  [ -f "$VBW_PLANNING_DIR/debugging/completed/$fname" ]
+  [ ! -f "$VBW_PLANNING_DIR/debugging/.active-session" ]
 }
 
 @test "get-or-latest recovers pointer to unresolved session stranded in completed directory" {

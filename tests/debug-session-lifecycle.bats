@@ -117,6 +117,31 @@ assert_no_repeated_blank_lines() {
   ! grep -q '### Round 1 — pass' "$SESSION_FILE"
 }
 
+@test "explicit resume does not reopen completed already-fixed session" {
+  SESSION_FILE=$(start_session)
+  [ -f "$SESSION_FILE" ]
+
+  echo '{"mode":"investigation","issue":"Guard already present","hypotheses":[{"description":"Fix landed earlier","status":"confirmed","evidence_for":"Current branch already includes the guard","evidence_against":"None","conclusion":"Bug was already fixed before this session"}],"root_cause":"Missing guard was fixed earlier in scripts/example.sh","plan":"No new changes required","implementation":"No new changes were required because the current branch already contained the fix.","changed_files":["scripts/example.sh"],"commit":"Already fixed before this investigation — no new fix commit was required. If planning_tracking=commit, this completion path may create a planning-artifact commit."}' \
+    | bash "$SCRIPTS_DIR/write-debug-session.sh" "$SESSION_FILE"
+
+  local session_name
+  session_name=$(basename "$SESSION_FILE")
+
+  bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$PLANNING_DIR" complete > /dev/null
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" resume "$PLANNING_DIR" "$session_name"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=true"* ]]
+  printf '%s\n' "$output" | grep -Eq '^session_status=complete$'
+  [ -f "$PLANNING_DIR/debugging/completed/$session_name" ]
+  [ ! -f "$PLANNING_DIR/debugging/active/$session_name" ]
+  [ ! -f "$PLANNING_DIR/debugging/.active-session" ]
+
+  run bash "$SCRIPTS_DIR/debug-session-state.sh" get "$PLANNING_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"active_session=none"* ]]
+}
+
 # ── Failure/remediation lifecycle ─────────────────────────
 
 @test "remediation lifecycle: QA fail → debug resume → QA pass" {

@@ -8,7 +8,7 @@
 #                                                               → creates session from selected todo JSON + detail helper output
 #   debug-session-state.sh get             <planning-dir>                → prints active session metadata
 #   debug-session-state.sh get-or-latest   <planning-dir>                → active session or latest unresolved
-#   debug-session-state.sh resume          <planning-dir> <session-id>   → sets active pointer to session
+#   debug-session-state.sh resume          <planning-dir> <session-id>   → resumes unresolved session or returns completed-session metadata without reopening
 #   debug-session-state.sh set-status      <planning-dir> <status>       → updates status field
 #   debug-session-state.sh increment-qa    <planning-dir>                → bumps qa_round, sets qa_last_result=pending
 #   debug-session-state.sh increment-uat   <planning-dir>                → bumps uat_round, sets uat_last_result=pending
@@ -689,19 +689,21 @@ case "$CMD" in
       echo "Error: refusing to resume symlink session file: $SESSION_PATH" >&2
       exit 1
     fi
+    SESSION_PATH=$(reconcile_session_location "$SESSION_PATH") || exit 1
     session_file_status=$(read_field "$SESSION_PATH" "status")
-    if [ "$session_file_status" != "complete" ]; then
-      SESSION_PATH=$(reconcile_session_location "$SESSION_PATH") || exit 1
-    fi
-    # Explicit resume currently re-activates complete sessions, but preserves
-    # the stored status for unresolved sessions that were stranded in completed/.
+    # Explicit targeting of a completed session is metadata-only: preserve the
+    # terminal lifecycle state so the command layer can stop cleanly instead of
+    # silently reopening the investigation.
     if [ "$session_file_status" = "complete" ]; then
-      if [[ "$SESSION_PATH" == "$COMPLETED_DIR/"* ]]; then
-        SESSION_PATH=$(safe_move_session "$SESSION_PATH" "$ACTIVE_DIR") || exit 1
+      if [ -f "$ACTIVE_FILE" ]; then
+        pointer=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
+        if [ "$pointer" = "$SESSION_NAME" ]; then
+          rm -f "$ACTIVE_FILE"
+        fi
       fi
-      update_field "$SESSION_PATH" "status" "investigating"
+    else
+      echo "$SESSION_NAME" > "$ACTIVE_FILE"
     fi
-    echo "$SESSION_NAME" > "$ACTIVE_FILE"
     echo "active_session=true"
     print_session_metadata "$SESSION_PATH"
     ;;
