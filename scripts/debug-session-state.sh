@@ -689,7 +689,6 @@ case "$CMD" in
       echo "Error: refusing to resume symlink session file: $SESSION_PATH" >&2
       exit 1
     fi
-    session_file_status=$(read_field "$SESSION_PATH" "status")
     SESSION_PATH=$(reconcile_session_location "$SESSION_PATH") || exit 1
     session_file_status=$(read_field "$SESSION_PATH" "status")
     # Explicit targeting of a completed session is metadata-only: preserve the
