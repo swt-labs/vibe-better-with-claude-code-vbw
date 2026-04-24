@@ -319,9 +319,68 @@ else
 fi
 
 echo ""
-echo "=== skills.md Step 5b Verification ==="
+echo "=== skills.md Step 5 Verification ==="
 
 SKILLS_FILE="$COMMANDS_DIR/skills.md"
+if [ ! -f "$SKILLS_FILE" ]; then
+  fail "skills: command file not found"
+else
+  skills_step_5="$({
+    awk '
+      /^### Step 5: Offer installation$/ { in_block=1; next }
+      in_block && /^### / { exit }
+      in_block { print }
+    ' "$SKILLS_FILE"
+  } || true)"
+
+  if [ -z "$skills_step_5" ]; then
+    fail "skills: missing Step 5 block"
+  else
+    if grep -Fq 'Combine curated + registry, deduplicate, rank (curated first).' <<< "$skills_step_5"; then
+      pass "skills: Step 5 preserves curated-first ranking"
+    else
+      fail "skills: Step 5 missing curated-first ranking guidance"
+    fi
+
+    if grep -Fq 'If the combined list is empty: STOP here. Do NOT AskUserQuestion.' <<< "$skills_step_5"; then
+      pass "skills: Step 5 stops immediately when no candidates exist"
+    else
+      fail "skills: Step 5 missing empty-list stop without AskUserQuestion"
+    fi
+
+    if grep -Fq 'If the combined list has exactly 1 candidate: keep it structured.' <<< "$skills_step_5" \
+      && grep -Fq 'AskUserQuestion with a single bounded question.' <<< "$skills_step_5"; then
+      pass "skills: Step 5 keeps single-candidate installs structured"
+    else
+      fail "skills: Step 5 missing structured single-candidate branch"
+    fi
+
+    if grep -Eq 'If the combined list has 2[-–]4 candidates: keep it structured' <<< "$skills_step_5" \
+      && grep -Eq 'Use AskUserQuestion with 1 question per skill \(2[-–]4 questions total\)' <<< "$skills_step_5"; then
+      pass "skills: Step 5 keeps bounded multi-candidate installs structured"
+    else
+      fail "skills: Step 5 missing structured 2-4 candidate branch"
+    fi
+
+    if grep -Fq 'If none were selected, display `○ No skills selected for installation.` and STOP here. Do not ask Step 5b and do not enter Step 6.' <<< "$skills_step_5"; then
+      pass "skills: Step 5 skips scope selection when bounded structured branch declines everything"
+    else
+      fail "skills: Step 5 missing no-selection stop before Step 5b"
+    fi
+
+    if grep -Fq 'If the combined list has more than 4 candidates: use intentional high-cardinality freeform input.' <<< "$skills_step_5" \
+      && grep -Fq 'do NOT use `options` array' <<< "$skills_step_5" \
+      && grep -Eq 'larger than the 2[-–]4 structured-choice sweet spot' <<< "$skills_step_5"; then
+      pass "skills: Step 5 keeps 5+ candidates on an intentional freeform path"
+    else
+      fail "skills: Step 5 missing explicit intentional freeform 5+ candidate branch"
+    fi
+  fi
+fi
+
+echo ""
+echo "=== skills.md Step 5b Verification ==="
+
 if [ ! -f "$SKILLS_FILE" ]; then
   fail "skills: command file not found"
 else
