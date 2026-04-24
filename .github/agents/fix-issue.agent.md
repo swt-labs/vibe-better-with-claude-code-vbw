@@ -134,7 +134,7 @@ The planner should save its output to `/memories/session/plan.md` when #tool:vsc
      - **All subsequent work (steps 5–12) must be performed inside the canonical worktree**, not the main repo checkout. Every file edit, test run, commit, and push operates from the worktree working directory.
     - See test execution rules in `<conventions>` (terminal cwd isolation, execution tool preference, authoritative test execution).
 
-<mandate>
+<mandate id="root-cause-fix">
 **Root-cause-fix rule.** Every fix must address the underlying root cause and use the best architectural decision a senior engineer would make, not the smallest diff. Treat the reported bug or QA finding as a **symptom** — identify the failing invariant, ownership boundary, contract, or state transition before writing code.
 
 **Forbidden fix patterns:** one-off conditionals for the current reproducer, special-casing only the reported input, logic duplication, silent fallbacks that hide corruption, suppressing errors without restoring invariants, ad-hoc null checks, narrow guards, brittle local workarounds, or test-only tweaks that would fail on the next similar change.
@@ -320,14 +320,14 @@ Start with cross-model round M = 1. **Repeat the following steps, incrementing M
 ### Phase 4: Draft PR & Completion
 
 <main_sync_procedure>
-**Standard main-sync procedure.** Used at designated merge points (steps 15b, 22, 24, 26, 31):
+**Standard main-sync procedure.** Used at designated merge points (steps 22, 24):
 1. `cd <worktree-absolute-path> && git fetch origin && git merge origin/main`
 2. If merge produced conflicts, resolve them first
 3. Run `cd <worktree-absolute-path> && bash testing/run-all.sh` to verify
 4. Push normally (no `--force`)
 5. If conflicts are too complex, abort (`git merge --abort`) and report to the user
 
-**Do NOT merge main mid-round** (between spawning a QA sub-agent and processing its findings) or during Copilot review (Phase 4.5) — merging changes the code under review and can invalidate findings.
+**Do NOT merge main outside these designated sync points.** In particular, do not merge main mid-round (between spawning a QA sub-agent and processing its findings), and do not merge main after a Copilot review request is already being processed until that review's findings have been handled — merging changes the code under review and can invalidate findings.
 </main_sync_procedure>
 
 **PRECONDITION: All applicable QA loops have fully completed — Phase 3 (primary model, exited clean) AND Phase 3.5 (cross-model GPT-5.4, at least 1 round — if the session model is Opus-class) both exited clean.** If Phase 3.5 was legitimately skipped due to the model eligibility gate, Phase 3 completion alone is sufficient. Do not enter this phase until all applicable conditions are met.
