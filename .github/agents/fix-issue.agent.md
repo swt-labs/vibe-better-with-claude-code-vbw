@@ -58,7 +58,8 @@ Execute these steps in order. Do not skip steps.
     Extract the PR number from the review context, then run the adoption script:
     ```bash
     PR_NUM=<number from review context>
-    eval "$(bash scripts/adopt-contributor-pr.sh "$PR_NUM")"
+    ADOPT_OUT=$(bash scripts/adopt-contributor-pr.sh "$PR_NUM") || { echo "Adoption failed"; exit 1; }
+    eval "$ADOPT_OUT"
     ```
 
     This sets 5 variables: `CHECKOUT_BRANCH`, `PUSH_REMOTE`, `IS_FORK`, `PR_BRANCH`, `PR_AUTHOR` (plus `FORK_OWNER` and `FORK_REPO` for fork PRs). If the script exits non-zero, read its stderr and report the error to the user — do not proceed.
@@ -116,7 +117,7 @@ The planner should save its output to `/memories/session/plan.md` when #tool:vsc
 4. **Create or enter the canonical worktree for the target branch**:
      ```bash
      WORKTREE_PATH=$(bash scripts/ensure-worktree.sh "<branch-name>")
-     cd "$WORKTREE_PATH"
+     cd "$WORKTREE_PATH" || { echo "Failed to enter worktree: $WORKTREE_PATH" >&2; exit 1; }
      ```
 
      If the script exits non-zero, read its stderr and report the error to the user. Do not proceed to step 5.
