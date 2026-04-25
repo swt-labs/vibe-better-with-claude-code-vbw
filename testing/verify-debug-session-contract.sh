@@ -192,6 +192,9 @@ fi
 # — Command integration checks —
 
 DEBUG_CMD="$ROOT/commands/debug.md"
+DEBUG_PATH_A_BLOCK="$(sed -n '/^[[:space:]]*\*\*Path A:/,/^[[:space:]]*\*\*Path B:/p' "$DEBUG_CMD" 2>/dev/null || true)"
+DEBUG_PATH_B_BLOCK="$(sed -n '/^[[:space:]]*\*\*Path B:/,/^5\./p' "$DEBUG_CMD" 2>/dev/null || true)"
+
 if grep -q "debug_session_routing" "$DEBUG_CMD" 2>/dev/null; then
   pass "debug.md has debug_session_routing section"
 else
@@ -210,48 +213,48 @@ else
   fail "debug.md missing HEAD_BEFORE/HEAD_AFTER outcome comparison"
 fi
 
-if grep -qF 'resolution_observation' "$DEBUG_CMD" 2>/dev/null; then
+if grep -qF 'resolution_observation' <<< "$DEBUG_PATH_B_BLOCK"; then
   pass "debug.md Path B instructs the single debugger to return resolution_observation"
 else
   fail "debug.md Path B missing resolution_observation contract"
 fi
 
-if grep -Fq 'You are a hypothesis investigator, not the implementation owner.' "$DEBUG_CMD" 2>/dev/null \
-  && grep -Fq 'Do NOT edit files, apply fixes, run mutating Bash, commit, request implementation approval, or claim ownership of the final session outcome.' "$DEBUG_CMD" 2>/dev/null \
-  && grep -Fq 'Stop after diagnosis plus evidence reporting via `debugger_report`.' "$DEBUG_CMD" 2>/dev/null; then
+if grep -Fq 'You are a hypothesis investigator, not the implementation owner.' <<< "$DEBUG_PATH_A_BLOCK" \
+  && grep -Fq 'Do NOT edit files, apply fixes, run mutating Bash, commit, request implementation approval, or claim ownership of the final session outcome.' <<< "$DEBUG_PATH_A_BLOCK" \
+  && grep -Fq 'Stop after diagnosis plus evidence reporting via `debugger_report`.' <<< "$DEBUG_PATH_A_BLOCK"; then
   pass "debug.md Path A investigator prompts are explicitly report-only"
 else
   fail "debug.md Path A investigator prompts missing explicit report-only contract"
 fi
 
-if grep -Fq 'Wait until ALL spawned hypothesis investigators have returned `debugger_report`.' "$DEBUG_CMD" 2>/dev/null; then
+if grep -Fq 'Wait until ALL spawned hypothesis investigators have returned `debugger_report`.' <<< "$DEBUG_PATH_A_BLOCK"; then
   pass "debug.md Path A waits for all spawned hypothesis investigators before synthesis"
 else
   fail "debug.md Path A missing all-spawned-investigators synthesis barrier"
 fi
 
-if grep -Fq 'Winning hypothesis with fix: apply + commit' "$DEBUG_CMD" 2>/dev/null; then
+if grep -Fq 'Winning hypothesis with fix: apply + commit' <<< "$DEBUG_PATH_A_BLOCK"; then
   fail "debug.md still contains winning-hypothesis apply shortcut"
 else
   pass "debug.md removes winning-hypothesis apply shortcut"
 fi
 
-if grep -Fq 'If `RESOLUTION_OBSERVATION=already_fixed` or `inconclusive`: do NOT spawn an implementation owner.' "$DEBUG_CMD" 2>/dev/null; then
+if grep -Fq 'If `RESOLUTION_OBSERVATION=already_fixed` or `inconclusive`: do NOT spawn an implementation owner.' <<< "$DEBUG_PATH_A_BLOCK"; then
   pass "debug.md Path A skips implementation owner for already_fixed and inconclusive"
 else
   fail "debug.md Path A missing already_fixed/inconclusive no-implementation-owner guard"
 fi
 
-if grep -Fq 'If `RESOLUTION_OBSERVATION=needs_change`: spawn ONE fresh post-synthesis implementation owner via TaskCreate with `subagent_type: "vbw:vbw-debugger"` and `model: "${DEBUGGER_MODEL}"`.' "$DEBUG_CMD" 2>/dev/null \
-  && grep -Fq 'This is a new debugger instance, not one of the earlier hypothesis investigators.' "$DEBUG_CMD" 2>/dev/null; then
+if grep -Fq 'If `RESOLUTION_OBSERVATION=needs_change`: spawn ONE fresh post-synthesis implementation owner via TaskCreate with `subagent_type: "vbw:vbw-debugger"` and `model: "${DEBUGGER_MODEL}"`.' <<< "$DEBUG_PATH_A_BLOCK" \
+  && grep -Fq 'This is a new debugger instance, not one of the earlier hypothesis investigators.' <<< "$DEBUG_PATH_A_BLOCK"; then
   pass "debug.md Path A uses a fresh vbw-debugger as the sole post-synthesis implementation owner"
 else
   fail "debug.md Path A missing fresh vbw-debugger implementation-owner contract"
 fi
 
-patha_teardown_line=$(grep -nF '**Teardown phase — HARD GATE before any implementation:**' "$DEBUG_CMD" 2>/dev/null | sed -n '1s/:.*//p')
-patha_zero_line=$(grep -nF 'Verify: after TeamDelete, there must be ZERO active teammates.' "$DEBUG_CMD" 2>/dev/null | sed -n '1s/:.*//p')
-patha_impl_line=$(grep -nF 'If `RESOLUTION_OBSERVATION=needs_change`: spawn ONE fresh post-synthesis implementation owner' "$DEBUG_CMD" 2>/dev/null | sed -n '1s/:.*//p')
+patha_teardown_line=$(printf '%s\n' "$DEBUG_PATH_A_BLOCK" | awk '/\*\*Teardown phase — HARD GATE before any implementation:\*\*/ { print NR; exit }')
+patha_zero_line=$(printf '%s\n' "$DEBUG_PATH_A_BLOCK" | awk '/Verify: after TeamDelete, there must be ZERO active teammates\./ { print NR; exit }')
+patha_impl_line=$(printf '%s\n' "$DEBUG_PATH_A_BLOCK" | awk '/If `RESOLUTION_OBSERVATION=needs_change`: spawn ONE fresh post-synthesis implementation owner/ { print NR; exit }')
 
 if [ -n "$patha_teardown_line" ] && [ -n "$patha_zero_line" ] && [ -n "$patha_impl_line" ] \
   && [ "$patha_teardown_line" -lt "$patha_zero_line" ] && [ "$patha_zero_line" -lt "$patha_impl_line" ]; then

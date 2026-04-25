@@ -5,6 +5,14 @@
 
 load test_helper
 
+path_a_debug_block() {
+  sed -n '/^[[:space:]]*\*\*Path A:/,/^[[:space:]]*\*\*Path B:/p' "$PROJECT_ROOT/commands/debug.md"
+}
+
+path_b_debug_block() {
+  sed -n '/^[[:space:]]*\*\*Path B:/,/^5\./p' "$PROJECT_ROOT/commands/debug.md"
+}
+
 # =============================================================================
 # Dev agent: DEVN-05 Pre-existing deviation code
 # =============================================================================
@@ -80,30 +88,30 @@ load test_helper
 
 @test "debug command Path B prompt instructs reporting pre-existing failures" {
   # Path B spawn prompt must mention pre-existing
-  sed -n '/Path B/,/^[0-9]\./p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'Pre-existing Issues'
+  path_b_debug_block | grep -q 'Pre-existing Issues'
 }
 
 @test "debug command Path A prompt instructs reporting pre-existing failures" {
   # Path A task creation must mention pre-existing
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'Pre-existing Issues'
+  path_a_debug_block | grep -q 'Pre-existing Issues'
 }
 
 @test "debug command Path A investigators are explicitly report-only" {
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'hypothesis investigator, not the implementation owner'
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'Do NOT edit files, apply fixes, run mutating Bash, commit, request implementation approval, or claim ownership of the final session outcome'
+  path_a_debug_block | grep -q 'hypothesis investigator, not the implementation owner'
+  path_a_debug_block | grep -q 'Do NOT edit files, apply fixes, run mutating Bash, commit, request implementation approval, or claim ownership of the final session outcome'
 }
 
 @test "debug command Path A waits for all spawned investigators before synthesis" {
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'ALL spawned hypothesis investigators have returned `debugger_report`'
+  path_a_debug_block | grep -q 'ALL spawned hypothesis investigators have returned `debugger_report`'
 }
 
 @test "debug command Path A already_fixed and inconclusive skip implementation owner" {
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'If `RESOLUTION_OBSERVATION=already_fixed` or `inconclusive`: do NOT spawn an implementation owner'
+  path_a_debug_block | grep -q 'If `RESOLUTION_OBSERVATION=already_fixed` or `inconclusive`: do NOT spawn an implementation owner'
 }
 
 @test "debug command Path A needs_change spawns a fresh vbw-debugger implementation owner" {
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'fresh post-synthesis implementation owner'
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'subagent_type: "vbw:vbw-debugger"'
+  path_a_debug_block | grep -q 'fresh post-synthesis implementation owner'
+  path_a_debug_block | grep -q 'subagent_type: "vbw:vbw-debugger"'
 }
 
 @test "debug command Path A removes winning hypothesis apply shortcut" {
@@ -127,11 +135,11 @@ load test_helper
 }
 
 @test "debug command Path A has de-duplication instruction" {
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -qi 'de-duplicate'
+  path_a_debug_block | grep -qi 'de-duplicate'
 }
 
 @test "debug command Path A dedup key includes file" {
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -qi 'test name and file'
+  path_a_debug_block | grep -qi 'test name and file'
 }
 
 # =============================================================================
