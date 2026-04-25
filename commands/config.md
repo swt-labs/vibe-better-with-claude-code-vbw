@@ -159,7 +159,7 @@ If `SETTING=auto_push`, AskUserQuestion with 1 question:
 
 Store the selected value in variable `VALUE`.
 
-After a core setting value is chosen, apply it with the same validation, write behavior, and side effects as the `/vbw:config <setting> <value>` path below, then continue to Step 4 for no-args tail behavior.
+After a core setting value is chosen, continue to Step 3 and apply it there with the same validation, write behavior, and side effects as the `/vbw:config <setting> <value>` path below. Step 4 remains the no-args tail behavior after that shared apply step.
 
 **Step 2.7:** If `CONFIG_SECTION = "Model profile"`, AskUserQuestion with 1 question:
 - header: `Models`
@@ -288,7 +288,7 @@ else
 fi
 ```
 
-**Step 3:** Apply changes to config.json. Display ✓ per changed setting with ➜. No changes: "✓ No changes made."
+**Step 3:** Apply changes to config.json. This is the shared apply step for no-args core-setting changes and preset-model-profile changes. Display ✓ per changed setting with ➜. No changes: "✓ No changes made."
 
 **Step 4: Profile drift detection** — if effort/autonomy/verification_tier changed:
 - Compare against active profile's expected values
