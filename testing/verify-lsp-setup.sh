@@ -136,13 +136,13 @@ fi
 
 # Verify generate_vbw_sections outputs the section
 BOOTSTRAP_OUTPUT=$(bash "$BOOTSTRAP" /tmp/test-lsp-verify.md "VerifyTest" "Test value" 2>/dev/null && cat /tmp/test-lsp-verify.md)
-if echo "$BOOTSTRAP_OUTPUT" | grep -q "## Code Intelligence"; then
+if grep -q "## Code Intelligence" <<< "$BOOTSTRAP_OUTPUT"; then
   pass "bootstrap-claude.sh generate_vbw_sections outputs ## Code Intelligence"
 else
   fail "bootstrap-claude.sh generate_vbw_sections missing ## Code Intelligence output"
 fi
 
-if echo "$BOOTSTRAP_OUTPUT" | grep -q "goToDefinition"; then
+if grep -q "goToDefinition" <<< "$BOOTSTRAP_OUTPUT"; then
   pass "bootstrap-claude.sh Code Intelligence section has LSP guidance content"
 else
   fail "bootstrap-claude.sh Code Intelligence section missing LSP guidance content"
