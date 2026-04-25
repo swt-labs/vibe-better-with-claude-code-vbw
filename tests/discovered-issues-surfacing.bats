@@ -88,6 +88,28 @@ load test_helper
   sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'Pre-existing Issues'
 }
 
+@test "debug command Path A investigators are explicitly report-only" {
+  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'hypothesis investigator, not the implementation owner'
+  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'Do NOT edit files, apply fixes, run mutating Bash, commit, request implementation approval, or claim ownership of the final session outcome'
+}
+
+@test "debug command Path A waits for all spawned investigators before synthesis" {
+  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'ALL spawned hypothesis investigators have returned `debugger_report`'
+}
+
+@test "debug command Path A already_fixed and inconclusive skip implementation owner" {
+  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'If `RESOLUTION_OBSERVATION=already_fixed` or `inconclusive`: do NOT spawn an implementation owner'
+}
+
+@test "debug command Path A needs_change spawns a fresh vbw-debugger implementation owner" {
+  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'fresh post-synthesis implementation owner'
+  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'subagent_type: "vbw:vbw-debugger"'
+}
+
+@test "debug command Path A removes winning hypothesis apply shortcut" {
+  ! grep -q 'Winning hypothesis with fix: apply + commit' "$PROJECT_ROOT/commands/debug.md"
+}
+
 @test "debug command has discovered issues output section" {
   grep -q 'Discovered Issues' "$PROJECT_ROOT/commands/debug.md"
 }
@@ -134,6 +156,15 @@ load test_helper
 
 @test "debugger agent teammate mode mentions resolution_observation" {
   sed -n '/## Teammate Mode/,/^##/p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -q 'resolution_observation'
+}
+
+@test "debugger agent teammate mode explicitly defers to /vbw:debug orchestrator" {
+  sed -n '/## Teammate Mode/,/^##/p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -q '/vbw:debug'
+  sed -n '/## Teammate Mode/,/^##/p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -q 'overrides any conflicting implementation language'
+}
+
+@test "debugger agent teammate mode ends at debugger_report" {
+  sed -n '/## Teammate Mode/,/^##/p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -q 'Teammate mode ends at diagnosis plus `debugger_report`'
 }
 
 @test "debugger agent references debugger_report schema" {
