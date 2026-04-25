@@ -82,35 +82,96 @@ echo "  Lead: $LEAD_DISPLAY | Dev: $DEV_DISPLAY | QA: $QA_DISPLAY | Scout: $SCOU
 
 Note: Core infrastructure flags (v2_hard_contracts, v2_hard_gates, v2_typed_protocol, v2_role_isolation, v3_event_log, v3_delta_context, v3_context_cache, v3_plan_research_persist, v3_schema_validation, v3_contract_lite, v3_lock_lite) have graduated to always-on behavior. The remaining flags are configurable under unprefixed names (see Settings Reference below). Brownfield configs with old `v2_`/`v3_` prefixed keys are auto-migrated by `migrate-config.sh`.
 
-**Step 2:** AskUserQuestion — present settings as a numbered list in the question text (do NOT use `options` array — a single freeform question avoids the 4-option limit):
+**Step 2:** AskUserQuestion with 1 question:
+- header: `Config`
+- question: `What would you like to adjust?`
+- options:
+  - `Core settings` — Effort, autonomy, planning tracking, auto push
+  - `Model profile` — Preset profile or per-agent overrides
+  - `Exit` — Leave config unchanged
 
-Question text:
-```
-Which setting would you like to change?
-1. Effort — current: {effort value}  (thorough | balanced | fast | turbo)
-2. Autonomy — current: {autonomy value}  (cautious | standard | confident | pure-vibe)
-3. Planning tracking — current: {tracking value}  (manual | ignore | commit)
-4. Auto push — current: {auto_push value}  (never | after_phase | always)
-5. Model Profile
-Type a number (1-5):
-```
+Store selection in variable `CONFIG_SECTION`.
 
-Parse the user's freeform response using these rules:
-- Accept only a single digit `1`, `2`, `3`, `4`, or `5`, with optional leading/trailing whitespace.
-- Treat anything else as invalid (punctuation like `2.`, words like `two`, mixed text like `option 2`, multiple numbers, empty input, or out-of-range values like `0` or `6`).
-- If invalid, show `Invalid selection. Please type a single number from 1 to 5.` and AskUserQuestion again with the same question text.
-- Repeat until a valid selection is obtained.
+For every bounded AskUserQuestion branch below that uses visible options, the built-in `Other` path is still part of that question:
+- accept direct option intent that clearly matches a visible choice
+- accept unambiguous visible option-by-number replies (for example `#1`, `option 2`, or `2` when it clearly maps to one visible option)
+- accept hybrid replies anchored to one visible option number (for example `#2 please`)
+- re-ask only when the reply is ambiguous or invalid for that same question
+- do NOT add an extra visible `Other` option — keep these prompts within the 2–4 option sweet spot
 
-Map: 1 = Effort, 2 = Autonomy, 3 = Planning tracking, 4 = Auto push, 5 = Model Profile.
+If `CONFIG_SECTION = "Exit"`:
+- Display `✓ No changes made.`
+- Run `bash "{plugin-root}/scripts/suggest-next.sh" config` and display.
+- STOP.
 
-**Step 2.5:** If "Model Profile" was selected (5), AskUserQuestion with 2 options:
-- Use preset profile (quality/balanced/budget)
-- Configure each agent individually (6 questions)
+**Step 2.5:** If `CONFIG_SECTION = "Core settings"`, AskUserQuestion with 1 question:
+- header: `Core`
+- question: `Which core setting do you want to change?`
+- options:
+  - `Effort` — current: {effort value}  (thorough | balanced | fast | turbo)
+  - `Autonomy` — current: {autonomy value}  (cautious | standard | confident | pure-vibe)
+  - `Planning tracking` — current: {tracking value}  (manual | ignore | commit)
+  - `Auto push` — current: {auto_push value}  (never | after_phase | always)
+
+Store selection in variable `SETTING_GROUP`.
+
+Map:
+- `Effort` → `SETTING=effort`
+- `Autonomy` → `SETTING=autonomy`
+- `Planning tracking` → `SETTING=planning_tracking`
+- `Auto push` → `SETTING=auto_push`
+
+**Step 2.6:** Ask the bounded value question for the selected core setting.
+
+If `SETTING=effort`, AskUserQuestion with 1 question:
+- header: `Effort`
+- question: `Choose effort level.`
+- options:
+  - `thorough` — Maximum planning and verification depth
+  - `balanced` — Default depth for most work
+  - `fast` — Lighter planning, quicker verification
+  - `turbo` — Minimal ceremony, fastest path
+
+If `SETTING=autonomy`, AskUserQuestion with 1 question:
+- header: `Autonomy`
+- question: `Choose autonomy level.`
+- options:
+  - `cautious` — Confirm more often
+  - `standard` — Default phase-by-phase flow
+  - `confident` — Fewer confirmations
+  - `pure-vibe` — Full auto loop through phases
+
+If `SETTING=planning_tracking`, AskUserQuestion with 1 question:
+- header: `Tracking`
+- question: `How should planning artifacts be tracked?`
+- options:
+  - `manual` — Leave planning files for manual git handling
+  - `ignore` — Keep `.vbw-planning/` out of git
+  - `commit` — Auto-commit planning artifacts
+
+If `SETTING=auto_push`, AskUserQuestion with 1 question:
+- header: `Auto push`
+- question: `When should VBW push automatically?`
+- options:
+  - `never` — Never push automatically
+  - `after_phase` — Push once after each phase
+  - `always` — Push after every commit
+
+Store the selected value in variable `VALUE`.
+
+After a core setting value is chosen, continue to Step 3 and apply it there with the same validation, write behavior, and side effects as the `/vbw:config <setting> <value>` path below. Step 4 remains the no-args tail behavior after that shared apply step.
+
+**Step 2.7:** If `CONFIG_SECTION = "Model profile"`, AskUserQuestion with 1 question:
+- header: `Models`
+- question: `How do you want to configure model behavior?`
+- options:
+  - `Use preset profile` — quality, balanced, or budget
+  - `Configure each agent individually` — 6 per-agent model questions
 
 Store selection in variable `PROFILE_METHOD`.
 
 **Branching:**
-- If `PROFILE_METHOD = "Use preset profile"`: AskUserQuestion with 3 options (quality | balanced | budget). Apply selected profile using model profile switching logic (lines 88-130).
+- If `PROFILE_METHOD = "Use preset profile"`: AskUserQuestion with 1 question and 3 options (`quality`, `balanced`, `budget`). Store the selected preset in `PROFILE`, then continue to Step 3 and apply it there using the `Model profile switching` logic below.
 - If `PROFILE_METHOD = "Configure each agent individually"`: Proceed to individual agent configuration flow (Round 1 below).
 
 **Individual Configuration - Round 1 (4 agents):**
@@ -227,7 +288,7 @@ else
 fi
 ```
 
-**Step 3:** Apply changes to config.json. Display ✓ per changed setting with ➜. No changes: "✓ No changes made."
+**Step 3:** Apply changes to config.json. This is the shared apply step for no-args core-setting changes and preset-model-profile changes. Display ✓ per changed setting with ➜. No changes: "✓ No changes made."
 
 **Step 4: Profile drift detection** — if effort/autonomy/verification_tier changed:
 - Compare against active profile's expected values
