@@ -140,8 +140,8 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
    ```bash
    DETAIL_HAS_SIGNAL=false
    if [ "${DETAIL_STATUS:-none}" = "ok" ] && [ -n "${TODO_DETAIL_RESULT_JSON:-}" ]; then
-     DETAIL_CONTEXT_FOR_ENRICHMENT=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -r '.detail.context // ""' 2>/dev/null || echo "")
-     DETAIL_FILE_COUNT_FOR_ENRICHMENT=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -r '(.detail.files // []) | if type == "array" then length else 0 end' 2>/dev/null || echo "0")
+    DETAIL_CONTEXT_FOR_ENRICHMENT=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -r '.detail.context // ""' 2>/dev/null || printf '')
+    DETAIL_FILE_COUNT_FOR_ENRICHMENT=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -r '(.detail.files // []) | if type == "array" then length else 0 end' 2>/dev/null || printf '0')
      if [ -n "$DETAIL_CONTEXT_FOR_ENRICHMENT" ] || [ "${DETAIL_FILE_COUNT_FOR_ENRICHMENT:-0}" -gt 0 ]; then
        DETAIL_HAS_SIGNAL=true
      fi
