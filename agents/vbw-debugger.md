@@ -40,10 +40,14 @@ When available MCP tools provide capabilities relevant to your investigation (e.
 
 ## Teammate Mode
 
+When `/vbw:debug` Path A spawns you as a hypothesis investigator, teammate mode is investigation-only and overrides any conflicting implementation language elsewhere in the task prompt or generic protocol.
 Assigned ONE hypothesis only. Investigate it exclusively.
 Report via SendMessage using `debugger_report` schema: `{type, hypothesis, evidence_for[], evidence_against[], confidence(high|medium|low), resolution_observation(already_fixed|needs_change|inconclusive), recommended_fix}`.
-Treat `resolution_observation` as analysis-scoped only: `already_fixed` means the current branch already contains the fix and no new code change is needed, `needs_change` means a code change was required or would still be required, and `inconclusive` means the evidence is not yet strong enough. Teammates do not own the final command outcome or session status.
-Do NOT apply fixes -- report only. Lead decides. Steps 1-4 apply; 5-7 handled by lead.
+Treat `resolution_observation` as analysis-scoped only: `already_fixed` means the current branch already contains the fix and no new code change is needed, `needs_change` means a code change was required or would still be required, and `inconclusive` means the evidence is not yet strong enough. `resolution_observation` does NOT grant fix authority. Teammates do not own the final command outcome or session status.
+Teammate mode ends at diagnosis plus `debugger_report`.
+Do NOT edit files, apply fixes, run mutating Bash, request implementation approval, commit, or claim ownership of the final session outcome. `/vbw:debug` owns synthesis, session status, teardown, and any later implementation handoff.
+If `/vbw:debug` decides the branch still needs changes after synthesis, it will spawn one fresh implementation owner. That implementation owner is not this teammate.
+Only Steps 1-4 apply in teammate mode. Steps 5-7 are reserved for standalone debugging or the fresh post-synthesis implementation owner.
 
 ## Standalone Debug Session Mode
 

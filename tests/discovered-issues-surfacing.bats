@@ -5,6 +5,14 @@
 
 load test_helper
 
+path_a_debug_block() {
+  sed -n '/^[[:space:]]*\*\*Path A:/,/^[[:space:]]*\*\*Path B:/p' "$PROJECT_ROOT/commands/debug.md"
+}
+
+path_b_debug_block() {
+  sed -n '/^[[:space:]]*\*\*Path B:/,/^5\./p' "$PROJECT_ROOT/commands/debug.md"
+}
+
 # =============================================================================
 # Dev agent: DEVN-05 Pre-existing deviation code
 # =============================================================================
@@ -80,12 +88,34 @@ load test_helper
 
 @test "debug command Path B prompt instructs reporting pre-existing failures" {
   # Path B spawn prompt must mention pre-existing
-  sed -n '/Path B/,/^[0-9]\./p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'Pre-existing Issues'
+  path_b_debug_block | grep -q 'Pre-existing Issues'
 }
 
 @test "debug command Path A prompt instructs reporting pre-existing failures" {
   # Path A task creation must mention pre-existing
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -q 'Pre-existing Issues'
+  path_a_debug_block | grep -q 'Pre-existing Issues'
+}
+
+@test "debug command Path A investigators are explicitly report-only" {
+  path_a_debug_block | grep -q 'hypothesis investigator, not the implementation owner'
+  path_a_debug_block | grep -q 'Do NOT edit files, apply fixes, run mutating Bash, commit, request implementation approval, or claim ownership of the final session outcome'
+}
+
+@test "debug command Path A waits for all spawned investigators before synthesis" {
+  path_a_debug_block | grep -q 'ALL spawned hypothesis investigators have returned `debugger_report`'
+}
+
+@test "debug command Path A already_fixed and inconclusive skip implementation owner" {
+  path_a_debug_block | grep -q 'If `RESOLUTION_OBSERVATION=already_fixed` or `inconclusive`: do NOT spawn an implementation owner'
+}
+
+@test "debug command Path A needs_change spawns a fresh vbw-debugger implementation owner" {
+  path_a_debug_block | grep -q 'fresh post-synthesis implementation owner'
+  path_a_debug_block | grep -q 'subagent_type: "vbw:vbw-debugger"'
+}
+
+@test "debug command Path A removes winning hypothesis apply shortcut" {
+  ! grep -q 'Winning hypothesis with fix: apply + commit' "$PROJECT_ROOT/commands/debug.md"
 }
 
 @test "debug command has discovered issues output section" {
@@ -105,11 +135,11 @@ load test_helper
 }
 
 @test "debug command Path A has de-duplication instruction" {
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -qi 'de-duplicate'
+  path_a_debug_block | grep -qi 'de-duplicate'
 }
 
 @test "debug command Path A dedup key includes file" {
-  sed -n '/Path A/,/Path B/p' "$PROJECT_ROOT/commands/debug.md" | grep -qi 'test name and file'
+  path_a_debug_block | grep -qi 'test name and file'
 }
 
 # =============================================================================
@@ -134,6 +164,15 @@ load test_helper
 
 @test "debugger agent teammate mode mentions resolution_observation" {
   sed -n '/## Teammate Mode/,/^##/p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -q 'resolution_observation'
+}
+
+@test "debugger agent teammate mode explicitly defers to /vbw:debug orchestrator" {
+  sed -n '/## Teammate Mode/,/^##/p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -q '/vbw:debug'
+  sed -n '/## Teammate Mode/,/^##/p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -q 'overrides any conflicting implementation language'
+}
+
+@test "debugger agent teammate mode ends at debugger_report" {
+  sed -n '/## Teammate Mode/,/^##/p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -q 'Teammate mode ends at diagnosis plus `debugger_report`'
 }
 
 @test "debugger agent references debugger_report schema" {
