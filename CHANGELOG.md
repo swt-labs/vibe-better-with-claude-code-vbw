@@ -2,6 +2,35 @@
 
 All notable changes to VBW will be documented in this file.
 
+## [1.35.1] - 2026-04-25
+
+### Changed
+
+- **`fix-issue`** -- Reduce agent verbosity by ~22% through inline bash extraction and pattern consolidation. (PR #523)
+- **`workflow`** -- Support user-authored plan reuse and in-place audits in agent and planner. (PR #497)
+- **`docs`** -- Revise smoke test guidelines for consumer repos. (ffc7f50c)
+- **`agents`** -- Revise plan audit process and add loop procedure for fix-planner. (932e04c9)
+
+### Fixed
+
+- **`debug`** -- Improve sparse todo skill selection with bounded enrichment and orchestrator/runtime logging. (PR #526)
+- **`debug-session`** -- Normalize completed no-verification results to `skipped_no_fix_required`. (PR #522)
+- **`debug`** -- Preserve completed explicit session state instead of silently reopening. (PR #520)
+- **`skills`** -- Clarify high-cardinality selection behavior for bounded vs. freeform prompts. (PR #519)
+- **`todo`** -- Stabilize list-with-snapshot flake with deterministic age metadata. (PR #518)
+- **`planning`** -- Sync transient planning ignores in all tracking modes. (PR #517)
+- **`debug`** -- Commit debug completion artifacts at planning-artifact boundary. (PR #516)
+- **`readme`** -- Sync config defaults reference for caveman and discussion_mode settings. (PR #515)
+- **`debug-session`** -- Rename metadata export to `session_status` and add stranded session recovery. (PR #514)
+- **`debug`** -- Clean up already-fixed outcome state. (PR #509)
+- **`skills`** -- Make spawned-agent skill activation additive. (PR #505)
+- **`todo-debug`** -- Harden todo-to-debug pickup with deterministic normalization. (PR #504)
+- **`todo`** -- Honor planning git boundary for backlog writes. (PR #503)
+- **`todo`** -- Restore canonical detail storage. (PR #500)
+- **`todo`** -- Make pickup immediate and snapshot-safe across commands. (PR #498)
+- **`compact`** -- Harden unauthenticated context cache handling. (PR #495)
+- **`debug`** -- Normalize debug session lifecycle spacing. (PR #493)
+
 ## [1.35.0] - 2026-04-19
 
 ### Added
