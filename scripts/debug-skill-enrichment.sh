@@ -37,15 +37,25 @@ append_unique_line() {
   local value="$2"
   local current=""
   [ -n "$value" ] || return 0
-  current=$(eval "printf '%s' \"\${$var_name-}\"")
-  if [ -n "$current" ] && printf '%s\n' "$current" | grep -Fqx "$value"; then
+  case "$var_name" in
+    TOKENS) current="${TOKENS:-}" ;;
+    MATCHED_FILES) current="${MATCHED_FILES:-}" ;;
+    MARKERS) current="${MARKERS:-}" ;;
+    *) return 1 ;;
+  esac
+  if [ -n "$current" ] && printf '%s\n' "$current" | grep -Fqx -- "$value"; then
     return 0
   fi
   if [ -n "$current" ]; then
-    eval "$var_name=\"\${$var_name}\"\$'\\n'\"\$value\""
+    current=$(printf '%s\n%s' "$current" "$value")
   else
-    eval "$var_name=\"\$value\""
+    current="$value"
   fi
+  case "$var_name" in
+    TOKENS) TOKENS="$current" ;;
+    MATCHED_FILES) MATCHED_FILES="$current" ;;
+    MARKERS) MARKERS="$current" ;;
+  esac
 }
 
 line_count() {
@@ -126,7 +136,7 @@ extract_tokens() {
 candidate_stream_for_token() {
   local token="$1"
   {
-    git ls-files 2>/dev/null | grep -i -F "$token" 2>/dev/null || true
+    git ls-files 2>/dev/null | grep -i -F -- "$token" 2>/dev/null || true
     git grep -I -l -F -- "$token" 2>/dev/null || true
   } | awk '!seen[$0]++' | head -n 5
 }

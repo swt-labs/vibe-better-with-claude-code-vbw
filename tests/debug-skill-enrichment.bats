@@ -44,3 +44,35 @@ teardown() {
   [ "$(echo "$output" | jq -r '.triggered')" = "false" ]
   [ "$(echo "$output" | jq '.matched_files | length')" -eq 0 ]
 }
+
+@test "debug-skill-enrichment: query tokens are treated as data, not shell code" {
+  local sentinel="/tmp/vbw-524-enrichment-sentinel-$$"
+  local query
+  local query_file="$TEST_TEMP_DIR/query.txt"
+  rm -f "$sentinel"
+  query="Investigate \$(touch\${IFS}${sentinel}) SplitTransferService"
+  printf '%s' "$query" > "$query_file"
+
+  run bash -c "cd '$TEST_TEMP_DIR/repo' && cat '$query_file' | bash '$SCRIPTS_DIR/debug-skill-enrichment.sh'"
+  [ "$status" -eq 0 ]
+  [ ! -f "$sentinel" ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [[ "$(echo "$output" | jq -r '.matched_files[0]')" == *"SplitTransferService.swift" ]]
+}
+
+@test "debug-skill-enrichment: leading-dash filename cue is treated as a pattern, not an option" {
+  mkdir -p "$TEST_TEMP_DIR/repo/Sources/Helpers"
+  cat > "$TEST_TEMP_DIR/repo/Sources/Helpers/-ReverseSplitHelper.swift" <<'EOF'
+import SwiftData
+struct ReverseSplitHelper {}
+EOF
+  (
+    cd "$TEST_TEMP_DIR/repo" || exit 1
+    git add Sources/Helpers/-ReverseSplitHelper.swift
+  )
+
+  run bash -c "cd '$TEST_TEMP_DIR/repo' && printf '%s' '-ReverseSplitHelper.swift crash path' | bash '$SCRIPTS_DIR/debug-skill-enrichment.sh'"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [[ "$(echo "$output" | jq -r '.matched_files[0]')" == *"-ReverseSplitHelper.swift" ]]
+}
