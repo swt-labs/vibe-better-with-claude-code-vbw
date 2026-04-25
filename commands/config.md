@@ -171,7 +171,7 @@ After a core setting value is chosen, continue to Step 3 and apply it there with
 Store selection in variable `PROFILE_METHOD`.
 
 **Branching:**
-- If `PROFILE_METHOD = "Use preset profile"`: AskUserQuestion with 1 question and 3 options (`quality`, `balanced`, `budget`). Apply the selected profile using the `Model profile switching` logic below.
+- If `PROFILE_METHOD = "Use preset profile"`: AskUserQuestion with 1 question and 3 options (`quality`, `balanced`, `budget`). Store the selected preset in `PROFILE`, then continue to Step 3 and apply it there using the `Model profile switching` logic below.
 - If `PROFILE_METHOD = "Configure each agent individually"`: Proceed to individual agent configuration flow (Round 1 below).
 
 **Individual Configuration - Round 1 (4 agents):**
