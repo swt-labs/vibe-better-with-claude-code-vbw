@@ -1055,6 +1055,13 @@ else
   fail "scripts/skill-decision-logger.sh: missing orchestrator/runtime discriminator"
 fi
 
+if grep -q 'malformed skill_activation block exits 0 and writes no log' "$ROOT/tests/skill-decision-logger.bats" \
+  && grep -q 'malformed skill_no_activation block exits 0 and writes no log' "$ROOT/tests/skill-decision-logger.bats"; then
+  pass "tests/skill-decision-logger.bats: covers malformed prompt-block fail-open behavior"
+else
+  fail "tests/skill-decision-logger.bats: missing malformed prompt-block fail-open coverage"
+fi
+
 DEBUG_CMD="$ROOT/commands/debug.md"
 
 if grep -Eq 'Pass 1:|\*\*Pass 1:\*\*' "$DEBUG_CMD" \
@@ -1069,6 +1076,13 @@ if grep -q 'bounded sparse-context enrichment' "$DEBUG_CMD" \
   pass "debug.md: documents bounded sparse-context enrichment"
 else
   fail "debug.md: missing bounded sparse-context enrichment contract"
+fi
+
+if grep -q 'Treat `DETAIL_STATUS=ok` as “lookup succeeded,” not automatically as “detail is useful.”' "$DEBUG_CMD" \
+  && grep -q 'non-empty `detail.context` or at least one related file' "$DEBUG_CMD"; then
+  pass "debug.md: empty detail does not suppress enrichment"
+else
+  fail "debug.md: missing empty-detail enrichment guard"
 fi
 
 if grep -q 'ModelContext' "$DEBUG_CMD" \

@@ -101,16 +101,24 @@ extract_tag_content() {
   printf '%s' "$result"
 }
 
+has_complete_tag() {
+  local tag="$1"
+  case "$PROMPT" in
+    *"<${tag}>"*"</${tag}>"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # Prompt-time orchestrator preselection: try .tool_input.prompt first,
 # then .tool_input.description (TaskCreate uses prompt, Agent uses description)
 if [ -z "$DECISION" ]; then
   PROMPT=$(echo "$INPUT" | jq -r '[.tool_input.prompt, .tool_input.description] | map(select(. != null and . != "")) | first // ""' 2>/dev/null) || PROMPT=""
   if [ -n "$PROMPT" ]; then
-    if printf '%s' "$PROMPT" | grep -q '<skill_activation>'; then
+    if has_complete_tag "skill_activation"; then
       DECISION="activation"
       KIND="orchestrator_preselection"
       REASON=$(extract_tag_content "skill_activation")
-    elif printf '%s' "$PROMPT" | grep -q '<skill_no_activation>'; then
+    elif has_complete_tag "skill_no_activation"; then
       DECISION="no_activation"
       KIND="orchestrator_preselection"
       REASON=$(extract_tag_content "skill_no_activation")

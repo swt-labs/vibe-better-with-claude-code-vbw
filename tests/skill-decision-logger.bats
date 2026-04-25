@@ -170,3 +170,19 @@ run_logger() {
   run jq -r '.skill' "$log"
   [ "$output" = "xcodebuildmcp-cli" ]
 }
+
+@test "skill-decision-logger: malformed skill_activation block exits 0 and writes no log" {
+  local input
+  input=$(jq -n -c '{tool_input: {prompt: "<skill_activation>Call Skill(find-docs).", agent: "vbw-dev"}}')
+  run_logger "$input"
+  local log="$TEST_TEMP_DIR/.vbw-planning/.skill-decisions.log"
+  [ ! -f "$log" ]
+}
+
+@test "skill-decision-logger: malformed skill_no_activation block exits 0 and writes no log" {
+  local input
+  input=$(jq -n -c '{tool_input: {prompt: "<skill_no_activation>Reason: sparse task.", agent: "vbw-dev"}}')
+  run_logger "$input"
+  local log="$TEST_TEMP_DIR/.vbw-planning/.skill-decisions.log"
+  [ ! -f "$log" ]
+}

@@ -136,18 +136,29 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
    Keep effort profile as `EFFORT_PROFILE` (thorough|balanced|fast|turbo).
    Read `{plugin-root}/references/effort-profile-{profile}.md`.
 
-   **Bounded sparse-context enrichment (detail-first, then tiny helper):** If `DETAIL_STATUS=ok`, skip this step — existing todo detail is the preferred signal. Otherwise, run one bounded enrichment pass before final skill preselection:
+   **Bounded sparse-context enrichment (detail-first, then tiny helper):** Treat `DETAIL_STATUS=ok` as “lookup succeeded,” not automatically as “detail is useful.” Skip enrichment only when the loaded detail has actual signal — a non-empty `detail.context` or at least one related file. Otherwise, keep treating the item as sparse and run one bounded enrichment pass before final skill preselection:
    ```bash
-   SPARSE_SKILL_ENRICHMENT_JSON=$(printf '%s' "$BUG_DESC" | bash "{plugin-root}/scripts/debug-skill-enrichment.sh")
-   SPARSE_SKILL_ENRICHMENT_STATUS=$(printf '%s' "$SPARSE_SKILL_ENRICHMENT_JSON" | jq -r '.status // "error"' 2>/dev/null || echo "error")
-   if [ "$SPARSE_SKILL_ENRICHMENT_STATUS" = "ok" ]; then
-     SPARSE_SKILL_ENRICHMENT_SUMMARY=$(printf '%s' "$SPARSE_SKILL_ENRICHMENT_JSON" | jq -r '.summary // empty' 2>/dev/null || echo "")
-     SPARSE_SKILL_ENRICHMENT_FILES=$(printf '%s' "$SPARSE_SKILL_ENRICHMENT_JSON" | jq -r '(.matched_files // []) | join(", ")' 2>/dev/null || echo "")
-     SPARSE_SKILL_ENRICHMENT_MARKERS=$(printf '%s' "$SPARSE_SKILL_ENRICHMENT_JSON" | jq -r '(.markers // []) | join(", ")' 2>/dev/null || echo "")
-   else
-     SPARSE_SKILL_ENRICHMENT_SUMMARY=""
-     SPARSE_SKILL_ENRICHMENT_FILES=""
-     SPARSE_SKILL_ENRICHMENT_MARKERS=""
+   DETAIL_HAS_SIGNAL=false
+   if [ "${DETAIL_STATUS:-none}" = "ok" ] && [ -n "${TODO_DETAIL_RESULT_JSON:-}" ]; then
+     DETAIL_CONTEXT_FOR_ENRICHMENT=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -r '.detail.context // ""' 2>/dev/null || echo "")
+     DETAIL_FILE_COUNT_FOR_ENRICHMENT=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -r '(.detail.files // []) | if type == "array" then length else 0 end' 2>/dev/null || echo "0")
+     if [ -n "$DETAIL_CONTEXT_FOR_ENRICHMENT" ] || [ "${DETAIL_FILE_COUNT_FOR_ENRICHMENT:-0}" -gt 0 ]; then
+       DETAIL_HAS_SIGNAL=true
+     fi
+   fi
+
+   SPARSE_SKILL_ENRICHMENT_STATUS="skipped"
+   SPARSE_SKILL_ENRICHMENT_SUMMARY=""
+   SPARSE_SKILL_ENRICHMENT_FILES=""
+   SPARSE_SKILL_ENRICHMENT_MARKERS=""
+   if [ "$DETAIL_HAS_SIGNAL" != "true" ]; then
+     SPARSE_SKILL_ENRICHMENT_JSON=$(printf '%s' "$BUG_DESC" | bash "{plugin-root}/scripts/debug-skill-enrichment.sh")
+     SPARSE_SKILL_ENRICHMENT_STATUS=$(printf '%s' "$SPARSE_SKILL_ENRICHMENT_JSON" | jq -r '.status // "error"' 2>/dev/null || echo "error")
+     if [ "$SPARSE_SKILL_ENRICHMENT_STATUS" = "ok" ]; then
+       SPARSE_SKILL_ENRICHMENT_SUMMARY=$(printf '%s' "$SPARSE_SKILL_ENRICHMENT_JSON" | jq -r '.summary // empty' 2>/dev/null || echo "")
+       SPARSE_SKILL_ENRICHMENT_FILES=$(printf '%s' "$SPARSE_SKILL_ENRICHMENT_JSON" | jq -r '(.matched_files // []) | join(", ")' 2>/dev/null || echo "")
+       SPARSE_SKILL_ENRICHMENT_MARKERS=$(printf '%s' "$SPARSE_SKILL_ENRICHMENT_JSON" | jq -r '(.markers // []) | join(", ")' 2>/dev/null || echo "")
+     fi
    fi
    ```
    The helper is allowed to return `no_signal` or `no_match`; treat those as bounded no-ops and continue. Prefer existing selected-todo metadata first, then this helper's 1-3 likely files / framework markers, then the raw description. Do not turn this into a broad repo scan.
