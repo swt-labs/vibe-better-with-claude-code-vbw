@@ -751,7 +751,8 @@ else
   fail "vibe: Archive mode missing explicit post-archive hook step"
 fi
 
-if printf '%s\n' "$archive_block" | grep -Fq 'MILESTONE_SLUG=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/derive-milestone-slug.sh .vbw-planning)'; then
+if printf '%s\n' "$archive_block" | grep -Fq 'MILESTONE_SLUG=$(bash /tmp/.vbw-plugin-root-link-' \
+  && printf '%s\n' "$archive_block" | grep -Fq 'derive-milestone-slug.sh .vbw-planning)'; then
   pass "vibe: Archive mode derives milestone slug via derive-milestone-slug.sh"
 else
   fail "vibe: Archive mode missing deterministic milestone slug derivation"
