@@ -128,9 +128,9 @@ cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
 
 ## Architecture
 
-- **Commands** (`commands/*.md`): 24 slash commands with YAML frontmatter. Command `name` values are explicitly prefixed (e.g. `name: vbw:init`) so slash commands appear as `/vbw:*`. The frontmatter `description` must be single-line (multi-line breaks plugin discovery).
+- **Commands** (`commands/*.md`): 25 slash commands with YAML frontmatter. Command `name` values are explicitly prefixed (e.g. `name: vbw:init`) so slash commands appear as `/vbw:*`. The frontmatter `description` must be single-line (multi-line breaks plugin discovery).
 - **Agents** (`agents/vbw-{role}.md`): 7 agents (Scout, Architect, Lead, Dev, QA, Debugger, Docs) with platform-enforced tool permissions via YAML `tools`/`disallowedTools`. Scout and QA are read-only (`permissionMode: plan`).
-- **Hooks** (`hooks/hooks.json`): 21 handlers across 11 event types (SessionStart, Stop, PreToolUse, PostToolUse, SubagentStart, SubagentStop, Notification, PreCompact, TaskCompleted, TeammateIdle, UserPromptSubmit). All route through `scripts/hook-wrapper.sh` which resolves from plugin cache via `ls | sort -V | tail -1` with a `CLAUDE_PLUGIN_ROOT` fallback for `--plugin-dir` installs, logs failures, and always exits 0 — no hook can break a session.
+- **Hooks** (`hooks/hooks.json`): 24 handlers across 11 event types (SessionStart, Stop, PreToolUse, PostToolUse, SubagentStart, SubagentStop, Notification, PreCompact, TaskCompleted, TeammateIdle, UserPromptSubmit). All route through `scripts/hook-wrapper.sh` which resolves from plugin cache via `ls | sort -V | tail -1` with a `CLAUDE_PLUGIN_ROOT` fallback for `--plugin-dir` installs, logs failures, and always exits 0 — no hook can break a session.
 - **Scripts** (`scripts/*.sh`): bash scripts for hook handlers, context compilation, state management, bootstrap, metrics, diagnostics, and codebase mapping. Target bash (not POSIX sh). Use `set -euo pipefail` for critical scripts, `set -u` minimum otherwise.
 - **References** (`references/*.md`): protocol docs loaded on-demand by commands (for example `execute-protocol.md` and `verification-protocol.md`).
 - **Templates** (`templates/*.md`): artifact templates (CONTEXT, PLAN, PROJECT, REQUIREMENTS, ROADMAP, SUMMARY, UAT, VERIFICATION, etc.).
