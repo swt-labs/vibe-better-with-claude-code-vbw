@@ -175,7 +175,7 @@ while IFS= read -r file; do
   [ -f "$file" ] || continue
   while IFS='|' read -r label pattern; do
     [ -n "$label" ] || continue
-    if grep -Eq "$pattern" "$file" 2>/dev/null; then
+    if grep -Eq "$pattern" -- "$file" 2>/dev/null; then
       append_unique_line MARKERS "$label"
       if [ "$(line_count "$MARKERS")" -ge 5 ]; then
         break

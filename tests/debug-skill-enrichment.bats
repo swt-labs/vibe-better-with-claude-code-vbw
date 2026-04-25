@@ -61,18 +61,18 @@ teardown() {
 }
 
 @test "debug-skill-enrichment: leading-dash filename cue is treated as a pattern, not an option" {
-  mkdir -p "$TEST_TEMP_DIR/repo/Sources/Helpers"
-  cat > "$TEST_TEMP_DIR/repo/Sources/Helpers/-ReverseSplitHelper.swift" <<'EOF'
+  cat > "$TEST_TEMP_DIR/repo/-ReverseSplitHelper.swift" <<'EOF'
 import SwiftData
 struct ReverseSplitHelper {}
 EOF
   (
     cd "$TEST_TEMP_DIR/repo" || exit 1
-    git add Sources/Helpers/-ReverseSplitHelper.swift
+    git add -- -ReverseSplitHelper.swift
   )
 
   run bash -c "cd '$TEST_TEMP_DIR/repo' && printf '%s' '-ReverseSplitHelper.swift crash path' | bash '$SCRIPTS_DIR/debug-skill-enrichment.sh'"
   [ "$status" -eq 0 ]
   [ "$(echo "$output" | jq -r '.status')" = "ok" ]
   [[ "$(echo "$output" | jq -r '.matched_files[0]')" == *"-ReverseSplitHelper.swift" ]]
+  echo "$output" | jq -e '.markers | index("import SwiftData")' >/dev/null
 }
