@@ -435,7 +435,7 @@ else
   fail "vbw-debugger.md teammate mode missing diagnosis-only boundary or analysis-only resolution language"
 fi
 
-if grep -Fq '/vbw:debug` owns synthesis, session status, teardown, and any later implementation handoff.' <<< "$DEBUGGER_TEAMMATE_BLOCK" \
+if grep -Fq '`/vbw:debug` owns synthesis, session status, teardown, and any later implementation handoff.' <<< "$DEBUGGER_TEAMMATE_BLOCK" \
   && grep -Fq 'That implementation owner is not this teammate.' <<< "$DEBUGGER_TEAMMATE_BLOCK"; then
   pass "vbw-debugger.md teammate mode reserves implementation ownership for a fresh post-synthesis owner"
 else
