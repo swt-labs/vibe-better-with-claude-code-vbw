@@ -86,9 +86,23 @@ git -C "$CONSUMER_REPO" worktree add --detach "$SMOKE_WORKTREE" HEAD
 cd "$SMOKE_WORKTREE"
 ```
 
+Before editing `prefer_teams`, make sure this smoke worktree already has `.vbw-planning/config.json`.
+If it does not, initialize **this smoke worktree** first using the candidate VBW checkout via `--plugin-dir`, then return to the steps below:
+
+```bash
+printf '%s\n' '/vbw:init' \
+  | ccr code -p --dangerously-skip-permissions \
+      --plugin-dir /absolute/path/to/vbw-candidate-worktree
+```
+
 Force Path A routing in the disposable consumer worktree only:
 
 ```bash
+if [ ! -f .vbw-planning/config.json ]; then
+  echo "Missing .vbw-planning/config.json in the smoke worktree. Initialize this worktree first with /vbw:init using the candidate plugin checkout via --plugin-dir." >&2
+  exit 1
+fi
+
 tmp=$(mktemp)
 jq '.prefer_teams = "always"' .vbw-planning/config.json > "$tmp"
 mv "$tmp" .vbw-planning/config.json
