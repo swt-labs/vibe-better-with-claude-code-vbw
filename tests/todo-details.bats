@@ -101,6 +101,18 @@ teardown() {
   [ "$summary" = "Test" ]
 }
 
+@test "get keeps status ok even when detail payload is structurally empty" {
+  cd "$TEST_TEMP_DIR"
+  printf '{"schema_version":1,"items":{"feedcafe":{"summary":"Sparse","context":"","files":[],"added":"2026-04-12","source":"user"}}}\n' > "$DETAILS_PATH"
+
+  run bash "$SCRIPTS_DIR/todo-details.sh" get "feedcafe" "$DETAILS_PATH"
+  [ "$status" -eq 0 ]
+
+  [ "$(echo "$output" | jq -r '.status')" = "ok" ]
+  [ "$(echo "$output" | jq -r '.detail.context')" = "" ]
+  [ "$(echo "$output" | jq '.detail.files | length')" -eq 0 ]
+}
+
 @test "get returns not_found for missing hash" {
   cd "$TEST_TEMP_DIR"
   printf '{"schema_version":1,"items":{}}\n' > "$DETAILS_PATH"

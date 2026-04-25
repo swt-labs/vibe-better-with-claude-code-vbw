@@ -1,10 +1,11 @@
 #!/bin/bash
 set -u
-# skill-decision-logger.sh — PreToolUse logger for skill evaluation decisions
+# skill-decision-logger.sh — fail-open logger for skill preselection + runtime skill use
 #
-# Parses the subagent prompt from the PreToolUse hook input for
-# <skill_activation> or <skill_no_activation> blocks, and appends
-# a one-line JSON entry to .vbw-planning/.skill-decisions.log.
+# Handles two payload families:
+# 1. Agent/TaskCreate PreToolUse payloads that contain prompt-time
+#    <skill_activation> or <skill_no_activation> blocks
+# 2. Skill tool payloads that record actual runtime `Skill` tool usage
 #
 # Always exits 0 — fail-open, never blocks agent spawn.
 
@@ -25,22 +26,37 @@ LOG_DIR="${VBW_PLANNING_DIR:-}"
 [ -n "$LOG_DIR" ] || exit 0
 LOG_FILE="$LOG_DIR/.skill-decisions.log"
 
-# Extract the prompt from the tool input — try .tool_input.prompt first,
-# then .tool_input.description (TaskCreate uses prompt, Agent uses description)
-# Use array filter to skip null and empty strings
-PROMPT=$(echo "$INPUT" | jq -r '[.tool_input.prompt, .tool_input.description] | map(select(. != null and . != "")) | first // ""' 2>/dev/null) || exit 0
-[ -z "$PROMPT" ] && exit 0
+# Extract tool name up front so runtime Skill events can log without prompt blocks.
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null) || TOOL_NAME=""
 
 # Extract agent name from tool input (try agent, name, then subagent_type)
 # Use array filter to skip null and empty strings
-AGENT_NAME=$(echo "$INPUT" | jq -r '[.tool_input.agent, .tool_input.name, .tool_input.subagent_type] | map(select(. != null and . != "")) | first // "unknown"' 2>/dev/null) || AGENT_NAME="unknown"
+AGENT_NAME=$(echo "$INPUT" | jq -r '[.tool_input.agent, .tool_input.name, .tool_input.subagent_type, .agent, .name, .subagent_type] | map(select(. != null and . != "")) | first // "unknown"' 2>/dev/null) || AGENT_NAME="unknown"
 
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) || TIMESTAMP="unknown"
 SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
 
+KIND=""
+SKILL_NAME=""
+
+# Runtime Skill tool usage: hook payload shape is typically
+# {"tool_name":"Skill","tool_input":{"skill":"swiftdata","args":"..."}}
+if [ "$TOOL_NAME" = "Skill" ]; then
+  SKILL_NAME=$(echo "$INPUT" | jq -r '.tool_input.skill // ""' 2>/dev/null) || SKILL_NAME=""
+  if [ -n "$SKILL_NAME" ]; then
+    DECISION="activation"
+    KIND="runtime_skill"
+    REASON="Call Skill(${SKILL_NAME})."
+    SKILL_ARGS=$(echo "$INPUT" | jq -r '.tool_input.args // ""' 2>/dev/null) || SKILL_ARGS=""
+    if [ -n "$SKILL_ARGS" ]; then
+      REASON="$REASON Args: $SKILL_ARGS"
+    fi
+  fi
+fi
+
 # Detect which skill block is present
-DECISION=""
-REASON=""
+DECISION="${DECISION:-}"
+REASON="${REASON:-}"
 
 # Extract content between XML-style tags, handling multi-line blocks
 extract_tag_content() {
@@ -85,12 +101,29 @@ extract_tag_content() {
   printf '%s' "$result"
 }
 
-if printf '%s' "$PROMPT" | grep -q '<skill_activation>'; then
-  DECISION="activation"
-  REASON=$(extract_tag_content "skill_activation")
-elif printf '%s' "$PROMPT" | grep -q '<skill_no_activation>'; then
-  DECISION="no_activation"
-  REASON=$(extract_tag_content "skill_no_activation")
+has_complete_tag() {
+  local tag="$1"
+  case "$PROMPT" in
+    *"<${tag}>"*"</${tag}>"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Prompt-time orchestrator preselection: try .tool_input.prompt first,
+# then .tool_input.description (TaskCreate uses prompt, Agent uses description)
+if [ -z "$DECISION" ]; then
+  PROMPT=$(echo "$INPUT" | jq -r '[.tool_input.prompt, .tool_input.description] | map(select(. != null and . != "")) | first // ""' 2>/dev/null) || PROMPT=""
+  if [ -n "$PROMPT" ]; then
+    if has_complete_tag "skill_activation"; then
+      DECISION="activation"
+      KIND="orchestrator_preselection"
+      REASON=$(extract_tag_content "skill_activation")
+    elif has_complete_tag "skill_no_activation"; then
+      DECISION="no_activation"
+      KIND="orchestrator_preselection"
+      REASON=$(extract_tag_content "skill_no_activation")
+    fi
+  fi
 fi
 
 # Only log if a skill decision block was found
@@ -106,9 +139,15 @@ jq -n -c \
   --arg ts "$TIMESTAMP" \
   --arg session "$SESSION_ID" \
   --arg agent "$AGENT_NAME" \
+  --arg kind "$KIND" \
   --arg decision "$DECISION" \
+  --arg skill "$SKILL_NAME" \
   --arg reason "$REASON" \
-  '{ts: $ts, session: $session, agent: $agent, decision: $decision, reason: $reason}' \
+  'if $skill == "" then
+     {ts: $ts, session: $session, agent: $agent, kind: $kind, decision: $decision, reason: $reason}
+   else
+     {ts: $ts, session: $session, agent: $agent, kind: $kind, decision: $decision, skill: $skill, reason: $reason}
+   end' \
   >> "$LOG_FILE" 2>/dev/null
 
 exit 0

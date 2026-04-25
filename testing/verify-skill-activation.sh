@@ -1010,6 +1010,18 @@ else
   fail "hooks.json: skill-decision-logger.sh not correctly wired (expected PreToolUse → Agent|TaskCreate → timeout=3)"
 fi
 
+if jq -e '
+  .hooks.PreToolUse[]
+  | select(.matcher == "Skill")
+  | .hooks[]
+  | select(.command | contains("skill-decision-logger.sh"))
+  | select(.timeout == 3)
+' "$HOOKS_JSON" >/dev/null 2>&1; then
+  pass "hooks.json: skill-decision-logger.sh wired under PreToolUse Skill (timeout=3)"
+else
+  fail "hooks.json: skill-decision-logger.sh missing runtime Skill hook wiring"
+fi
+
 if [ -f "$ROOT/scripts/skill-decision-logger.sh" ]; then
   pass "scripts/skill-decision-logger.sh: exists"
 else
@@ -1027,6 +1039,72 @@ if grep -q 'exit 0' "$ROOT/scripts/skill-decision-logger.sh"; then
   pass "scripts/skill-decision-logger.sh: exits 0 (fail-open)"
 else
   fail "scripts/skill-decision-logger.sh: missing exit 0 (must be fail-open)"
+fi
+
+if grep -q '\.tool_name // ""' "$ROOT/scripts/skill-decision-logger.sh" \
+  && grep -q '\.tool_input.skill' "$ROOT/scripts/skill-decision-logger.sh"; then
+  pass "scripts/skill-decision-logger.sh: parses runtime Skill tool payloads"
+else
+  fail "scripts/skill-decision-logger.sh: missing runtime Skill payload parsing"
+fi
+
+if grep -q 'runtime_skill' "$ROOT/scripts/skill-decision-logger.sh" \
+  && grep -q 'orchestrator_preselection' "$ROOT/scripts/skill-decision-logger.sh"; then
+  pass "scripts/skill-decision-logger.sh: distinguishes orchestrator vs runtime entries"
+else
+  fail "scripts/skill-decision-logger.sh: missing orchestrator/runtime discriminator"
+fi
+
+if grep -q 'malformed skill_activation block exits 0 and writes no log' "$ROOT/tests/skill-decision-logger.bats" \
+  && grep -q 'malformed skill_no_activation block exits 0 and writes no log' "$ROOT/tests/skill-decision-logger.bats"; then
+  pass "tests/skill-decision-logger.bats: covers malformed prompt-block fail-open behavior"
+else
+  fail "tests/skill-decision-logger.bats: missing malformed prompt-block fail-open coverage"
+fi
+
+DEBUG_CMD="$ROOT/commands/debug.md"
+
+if grep -Eq 'Pass 1:|\*\*Pass 1:\*\*' "$DEBUG_CMD" \
+  && grep -Eq 'Pass 2:|\*\*Pass 2:\*\*' "$DEBUG_CMD"; then
+  pass "debug.md: defines explicit two-pass skill-selection rubric"
+else
+  fail "debug.md: missing explicit two-pass skill-selection rubric"
+fi
+
+if grep -q 'bounded sparse-context enrichment' "$DEBUG_CMD" \
+  && grep -Eq '1-3 likely files|1–3 likely files' "$DEBUG_CMD"; then
+  pass "debug.md: documents bounded sparse-context enrichment"
+else
+  fail "debug.md: missing bounded sparse-context enrichment contract"
+fi
+
+if grep -q 'Treat `DETAIL_STATUS=ok` as “lookup succeeded,” not automatically as “detail is useful.”' "$DEBUG_CMD" \
+  && grep -q 'non-empty `detail.context` or at least one related file' "$DEBUG_CMD"; then
+  pass "debug.md: empty detail does not suppress enrichment"
+else
+  fail "debug.md: missing empty-detail enrichment guard"
+fi
+
+if grep -q 'ModelContext' "$DEBUG_CMD" \
+  && grep -q 'VersionedSchema' "$DEBUG_CMD" \
+  && grep -q 'core-data' "$DEBUG_CMD"; then
+  pass "debug.md: includes explicit SwiftData positive cues and Core Data negative cue"
+else
+  fail "debug.md: missing SwiftData positive cues or Core Data negative cue"
+fi
+
+if grep -q 'concrete working files or framework markers' "$DEBUGGER_AGENT" \
+  && grep -q 'activate `swiftdata` right away' "$DEBUGGER_AGENT"; then
+  pass "vbw-debugger.md: adds immediate early-evidence fallback rule"
+else
+  fail "vbw-debugger.md: missing immediate early-evidence fallback rule"
+fi
+
+if grep -q 'bounded sparse-input enrichment' "$PROTOCOL" \
+  && grep -q 'core-data' "$PROTOCOL"; then
+  pass "execute-protocol.md: mirrors sparse-input enrichment and persistence-skill guardrails"
+else
+  fail "execute-protocol.md: missing mirrored sparse-input enrichment guardrails"
 fi
 
 echo ""

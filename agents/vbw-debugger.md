@@ -19,6 +19,8 @@ If your prompt starts with a `<skill_no_activation>` block, treat it as the orch
 
 Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
+As soon as early investigation reveals concrete working files or framework markers that make a missing domain skill materially relevant, call that skill immediately instead of waiting for a later phase. Example: if the first file reads show `import SwiftData`, `ModelContext`, `FetchDescriptor`, or `VersionedSchema`, activate `swiftdata` right away. Keep this recovery bounded to the evidence you already surfaced — do not turn it into a roaming skill hunt.
+
 ## MCP Tool Usage
 
 When available MCP tools provide capabilities relevant to your investigation (e.g., build/test tools, debugging utilities, documentation servers, domain-specific APIs), use them. MCP tool usage is non-mandatory — use them when they provide better results than built-in tools, skip them otherwise.
