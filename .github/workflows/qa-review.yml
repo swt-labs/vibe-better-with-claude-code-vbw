@@ -8,6 +8,7 @@ on:
 
 # Paths that contain plugin logic — QA review is only required for PRs touching these.
 # Docs-only or config-only changes skip the QA round commit requirement automatically.
+# Maintainer-authored PRs by @dpearson2699 also skip this evidence gate.
 env:
   QA_PATHS: .github/workflows/ agents/ commands/ config/ hooks/ references/ scripts/ templates/ testing/ tests/
 
@@ -21,20 +22,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Detect release PR
-        id: release-pr
+      - name: Detect QA review skip conditions
+        id: qa-review-skip
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           if printf '%s\n' "$PR_TITLE" | grep -qE '^chore: release v[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=release_pr" >> "$GITHUB_OUTPUT"
             echo "Release PR detected — skipping QA review evidence check"
+          elif [ "$PR_AUTHOR" = "dpearson2699" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=maintainer_author" >> "$GITHUB_OUTPUT"
+            echo "PR author $PR_AUTHOR is exempt — skipping QA review evidence check"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=none" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Check if QA-relevant files changed
-        if: steps.release-pr.outputs.skip != 'true'
+        if: steps.qa-review-skip.outputs.skip != 'true'
         id: check-paths
         env:
           GH_TOKEN: ${{ github.token }}
@@ -57,7 +65,7 @@ jobs:
           fi
 
       - name: Check for QA round commits
-        if: steps.release-pr.outputs.skip != 'true' && steps.check-paths.outputs.qa_relevant == 'true'
+        if: steps.qa-review-skip.outputs.skip != 'true' && steps.check-paths.outputs.qa_relevant == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -77,6 +85,11 @@ jobs:
           echo "QA review evidence verified ($qa_count rounds)"
 
       - name: Release PR skip notice
-        if: steps.release-pr.outputs.skip == 'true'
+        if: steps.qa-review-skip.outputs.skip == 'true' && steps.qa-review-skip.outputs.skip_reason == 'release_pr'
         run: |
           echo "Skipping QA review evidence for release PR title format chore: release v{number}."
+
+      - name: Maintainer author skip notice
+        if: steps.qa-review-skip.outputs.skip == 'true' && steps.qa-review-skip.outputs.skip_reason == 'maintainer_author'
+        run: |
+          echo "Skipping QA review evidence for PR author @dpearson2699."

@@ -11,6 +11,9 @@ RECORD_STATE="$ROOT/.github/scripts/fix-issue-record-state.sh"
 AGENT_MD="$ROOT/.github/agents/fix-issue.agent.md"
 PLANNER_AGENT="$ROOT/.github/agents/fix-planner.agent.md"
 REVIEW_AGENT="$ROOT/.github/agents/review-contributor-pr.agent.md"
+QA_REVIEW_WORKFLOW="$ROOT/.github/workflows/qa-review.yml"
+CONTRIBUTING_DOC="$ROOT/CONTRIBUTING.md"
+PR_TEMPLATE="$ROOT/.github/PULL_REQUEST_TEMPLATE.md"
 
 PASS=0
 FAIL=0
@@ -170,6 +173,45 @@ test_fix_planner_agent_supports_existing_plan_audit_mode() {
   fi
 }
 test_fix_planner_agent_supports_existing_plan_audit_mode
+
+test_qa_review_workflow_has_maintainer_author_bypass() {
+  if grep -q 'github.event.pull_request.user.login' "$QA_REVIEW_WORKFLOW" \
+    && grep -q 'dpearson2699' "$QA_REVIEW_WORKFLOW" \
+    && grep -q 'maintainer_author' "$QA_REVIEW_WORKFLOW"; then
+    pass "qa-review workflow skips QA evidence for maintainer-authored PRs"
+  else
+    fail "qa-review workflow should detect maintainer-authored PRs by login and set a maintainer_author skip reason"
+  fi
+}
+test_qa_review_workflow_has_maintainer_author_bypass
+
+test_qa_review_workflow_has_explicit_maintainer_skip_notice() {
+  if grep -q 'Maintainer author skip notice' "$QA_REVIEW_WORKFLOW" \
+    && grep -q 'Skipping QA review evidence for PR author @dpearson2699.' "$QA_REVIEW_WORKFLOW"; then
+    pass "qa-review workflow emits an explicit maintainer skip notice"
+  else
+    fail "qa-review workflow should emit an explicit maintainer skip notice"
+  fi
+}
+test_qa_review_workflow_has_explicit_maintainer_skip_notice
+
+test_contributing_docs_do_not_advertise_maintainer_qa_exception() {
+  if ! grep -q '@dpearson2699' "$CONTRIBUTING_DOC"; then
+    pass "CONTRIBUTING.md does not advertise the maintainer QA exception"
+  else
+    fail "CONTRIBUTING.md should not publicly advertise the maintainer QA exception"
+  fi
+}
+test_contributing_docs_do_not_advertise_maintainer_qa_exception
+
+test_pr_template_does_not_advertise_maintainer_qa_exception() {
+  if ! grep -q '@dpearson2699' "$PR_TEMPLATE"; then
+    pass "PR template does not advertise the maintainer QA exception"
+  else
+    fail "PR template should not publicly advertise the maintainer QA exception"
+  fi
+}
+test_pr_template_does_not_advertise_maintainer_qa_exception
 
 test_wait_github_fails_fast_on_gh_errors() {
   setup_tmpdir
