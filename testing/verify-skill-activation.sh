@@ -1152,9 +1152,14 @@ for agent_file in "${AGENT_SKILL_CONTRACT_FILES[@]}"; do
 done
 
 # All 7 agent files have the runtime-local follow-up read line
+# Verify the runtime-local follow-up read nudge exists separately from the
+# top-level Skill Activation paragraph.  The top-level line contains
+# "read those specific files before reasoning or acting"; the runtime-local
+# line contains "read those specific files first."  We exclude the top-level
+# match so an agent missing the runtime-local line cannot false-positive.
 for agent_file in "${AGENT_SKILL_CONTRACT_FILES[@]}"; do
   agent_name=$(basename "$agent_file")
-  if grep -q 'read those specific files first\|read those specific files before reasoning or acting' "$agent_file"; then
+  if grep -v "before reasoning or acting" "$agent_file" | grep -q "read those specific files first"; then
     pass "$agent_name: has runtime-local follow-up read nudge"
   else
     fail "$agent_name: missing runtime-local follow-up read nudge"
