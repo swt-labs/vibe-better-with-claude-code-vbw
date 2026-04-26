@@ -1175,7 +1175,8 @@ else
 fi
 
 # vbw-scout.md: has second surface near File Writing
-if sed -n '/## File Writing/,/## /p' "$SCOUT_AGENT" | grep -q 'read those specific files first'; then
+# Use awk to extract content after "## File Writing" header up to the next "## " header
+if awk '/^## File Writing/{found=1; next} found && /^## /{exit} found' "$SCOUT_AGENT" | grep -q 'read those specific files first'; then
   pass "vbw-scout.md: has runtime-local follow-up read nudge near File Writing"
 else
   fail "vbw-scout.md: missing runtime-local follow-up read nudge near File Writing"
