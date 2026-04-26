@@ -160,6 +160,12 @@ verify_skill_contract_sites() {
       pass "$file_name: site $site_number removed old narrowing/no-rescan wording"
     fi
 
+    if grep -q 'do not scan entire skill folders or read unrelated references\|not entire skill folders or unrelated references' <<< "$segment"; then
+      pass "$file_name: site $site_number has skill follow-up read nudge"
+    else
+      fail "$file_name: site $site_number missing skill follow-up read nudge"
+    fi
+
     site_number=$((site_number + 1))
   done
 }
