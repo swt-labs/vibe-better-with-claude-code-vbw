@@ -1108,6 +1108,69 @@ else
 fi
 
 echo ""
+echo "=== Skill Follow-Up Read Nudge ==="
+
+# execute-protocol.md: overview block (Spawned agents bullet) has the nudge
+if grep -q 'do not scan entire skill folders or read unrelated references' "$PROTOCOL"; then
+  pass "execute-protocol.md: has skill follow-up read nudge"
+else
+  fail "execute-protocol.md: missing skill follow-up read nudge"
+fi
+
+# execute-protocol.md: both loci covered (overview + Skill activation for Dev/QA tasks)
+_EP_NUDGE_COUNT=$(grep -c 'scan entire skill folders or read unrelated references\|not entire skill folders or unrelated references' "$PROTOCOL")
+if [ "$_EP_NUDGE_COUNT" -ge 2 ]; then
+  pass "execute-protocol.md: follow-up read nudge in both loci ($_EP_NUDGE_COUNT sites)"
+else
+  fail "execute-protocol.md: follow-up read nudge in only $_EP_NUDGE_COUNT locus (expected 2)"
+fi
+
+# All command skill-contract files have the nudge
+for contract_file in "${COMMAND_SKILL_CONTRACT_FILES[@]}"; do
+  contract_name=$(basename "$contract_file")
+  if grep -q 'do not scan entire skill folders or read unrelated references' "$contract_file"; then
+    pass "$contract_name: has skill follow-up read nudge"
+  else
+    fail "$contract_name: missing skill follow-up read nudge"
+  fi
+done
+
+# All 7 agent files have the nudge in the top-level Skill Activation section
+for agent_file in "${AGENT_SKILL_CONTRACT_FILES[@]}"; do
+  agent_name=$(basename "$agent_file")
+  if grep -q 'do not scan entire skill folders or read unrelated references' "$agent_file"; then
+    pass "$agent_name: has skill follow-up read nudge (top-level)"
+  else
+    fail "$agent_name: missing skill follow-up read nudge (top-level)"
+  fi
+done
+
+# All 7 agent files have the runtime-local follow-up read line
+for agent_file in "${AGENT_SKILL_CONTRACT_FILES[@]}"; do
+  agent_name=$(basename "$agent_file")
+  if grep -q 'read those specific files first\|read those specific files before reasoning or acting' "$agent_file"; then
+    pass "$agent_name: has runtime-local follow-up read nudge"
+  else
+    fail "$agent_name: missing runtime-local follow-up read nudge"
+  fi
+done
+
+# debug.md: all 3 loci have the nudge
+_DEBUG_NUDGE_COUNT=$(grep -c 'do not scan entire skill folders or read unrelated references' "$DEBUG_CMD")
+if [ "$_DEBUG_NUDGE_COUNT" -eq 3 ]; then
+  pass "debug.md: follow-up read nudge in all 3 loci"
+else
+  fail "debug.md: follow-up read nudge in $_DEBUG_NUDGE_COUNT loci (expected 3)"
+fi
+
+# vbw-scout.md: has second surface near File Writing
+if sed -n '/## File Writing/,/## /p' "$SCOUT_AGENT" | grep -q 'read those specific files first'; then
+  pass "vbw-scout.md: has runtime-local follow-up read nudge near File Writing"
+else
+  fail "vbw-scout.md: missing runtime-local follow-up read nudge near File Writing"
+fi
+
+echo ""
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"
 echo "==============================="
