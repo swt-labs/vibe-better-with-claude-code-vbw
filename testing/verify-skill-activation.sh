@@ -1159,7 +1159,7 @@ done
 # match so an agent missing the runtime-local line cannot false-positive.
 for agent_file in "${AGENT_SKILL_CONTRACT_FILES[@]}"; do
   agent_name=$(basename "$agent_file")
-  if grep -v "before reasoning or acting" "$agent_file" | grep -q "read those specific files first"; then
+  if grep -v "before reasoning or acting" "$agent_file" | grep -c "read those specific files first" >/dev/null 2>&1; then
     pass "$agent_name: has runtime-local follow-up read nudge"
   else
     fail "$agent_name: missing runtime-local follow-up read nudge"
