@@ -76,6 +76,64 @@ trim() {
   printf '%s' "$value"
 }
 
+normalize_block_whitespace() {
+  tr '\r\n\t' '   ' | awk '
+    {
+      gsub(/[[:space:]]+/, " ")
+      sub(/^ /, "")
+      sub(/ $/, "")
+      print
+    }
+  '
+}
+
+extract_heading_block() {
+  local file="$1"
+  local heading="$2"
+  local end_regex="$3"
+
+  awk -v h="$heading" -v end_re="$end_regex" '
+    function trim_line(s) {
+      sub(/^[[:space:]]+/, "", s)
+      sub(/[[:space:]]+$/, "", s)
+      return s
+    }
+
+    {
+      line=$0
+      gsub(/\r/, "", line)
+      trimmed=trim_line(line)
+
+      if (trimmed == h) {
+        found=1
+        print line
+        next
+      }
+
+      if (found && trimmed ~ end_re) {
+        exit
+      }
+
+      if (found) {
+        print line
+      }
+    }
+  ' "$file"
+}
+
+block_contains_normalized() {
+  local block="$1"
+  local expected="$2"
+  local normalized_block=""
+  local normalized_expected=""
+
+  normalized_block=$(printf '%s' "$block" | normalize_block_whitespace)
+  normalized_expected=$(printf '%s' "$expected" | normalize_block_whitespace)
+  [ -n "$normalized_expected" ] || return 1
+
+  printf '%s\n' "$normalized_block" | grep -Fq -- "$normalized_expected"
+}
+
 has_allowed_tool() {
   local allowed="$1"
   local target="$2"
@@ -191,13 +249,7 @@ echo "=== AskUserQuestion Contract Verification ==="
 
 ASK_USER_QUESTION_REF="$ROOT/references/ask-user-question.md"
 VIBE_COMMAND_FILE="$COMMANDS_DIR/vibe.md"
-VIBE_CONFIRMATION_BLOCK="$({
-  awk '
-    /^### Confirmation Gate$/ { in_block=1; print; next }
-    in_block && /^## / { exit }
-    in_block { print }
-  ' "$VIBE_COMMAND_FILE"
-} || true)"
+VIBE_CONFIRMATION_BLOCK="$(extract_heading_block "$VIBE_COMMAND_FILE" "### Confirmation Gate" '^## ' || true)"
 
 if [ -f "$ASK_USER_QUESTION_REF" ]; then
   pass "ask-user-question: shared reference exists"
@@ -700,13 +752,42 @@ fi
 echo ""
 echo "=== Milestone Context Refresh Verification ==="
 mode_block() {
-  local heading="$1"
-  awk -v h="$heading" '
-    $0 == h { found=1; print; next }
-    found && /^### Mode: / { exit }
-    found { print }
-  ' "$VIBE_FILE"
+  extract_heading_block "$VIBE_FILE" "$1" '^### Mode: '
 }
+
+echo ""
+echo "=== Mode Block Helper Regression Verification ==="
+
+_mode_helper_tmp_dir="$(mktemp -d)"
+_mode_helper_fixture="$_mode_helper_tmp_dir/mode-block-fixture.md"
+printf '%s' $'### Mode: Archive   \r\n9b. Post-archive hook (non-blocking): after successful archive completion, run:\r\n  MILESTONE_SLUG=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/derive-milestone-slug.sh\r\n    .vbw-planning)\r\n### Mode: Next\r\nignored\r\n' > "$_mode_helper_fixture"
+_mode_helper_block="$(extract_heading_block "$_mode_helper_fixture" "### Mode: Archive" '^### Mode: ' || true)"
+
+if [ -n "$_mode_helper_block" ]; then
+  pass "mode-block helper extracts mode blocks with trailing-space/CRLF headings"
+else
+  fail "mode-block helper failed to extract mode block with trailing-space/CRLF heading"
+fi
+
+if block_contains_normalized "$_mode_helper_block" 'MILESTONE_SLUG=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/derive-milestone-slug.sh .vbw-planning)'; then
+  pass "mode-block helper matches wrapped milestone slug command after whitespace normalization"
+else
+  fail "mode-block helper missed wrapped milestone slug command after whitespace normalization"
+fi
+
+if printf '%s\n' "$_mode_helper_block" | grep -Fq 'ignored'; then
+  fail "mode-block helper did not stop at the next mode heading"
+else
+  pass "mode-block helper stops at the next mode heading"
+fi
+
+if block_contains_normalized "$_mode_helper_block" 'MILESTONE_SLUG=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/not-the-helper.sh .vbw-planning)'; then
+  fail "mode-block helper normalization produced a false positive for the wrong helper path"
+else
+  pass "mode-block helper normalization rejects wrong helper paths"
+fi
+
+rm -rf "$_mode_helper_tmp_dir"
 
 for mode in "### Mode: Add Phase" "### Mode: Insert Phase" "### Mode: Remove Phase"; do
   block=$(mode_block "$mode")
@@ -751,7 +832,7 @@ else
   fail "vibe: Archive mode missing explicit post-archive hook step"
 fi
 
-if printf '%s\n' "$archive_block" | tr '\n' ' ' | grep -Eq 'MILESTONE_SLUG=\$\(bash /tmp/\.vbw-plugin-root-link-\$\{CLAUDE_SESSION_ID:-default\}/scripts/derive-milestone-slug\.sh \.vbw-planning\)'; then
+if block_contains_normalized "$archive_block" 'MILESTONE_SLUG=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/derive-milestone-slug.sh .vbw-planning)'; then
   pass "vibe: Archive mode derives milestone slug via derive-milestone-slug.sh"
 else
   fail "vibe: Archive mode missing deterministic milestone slug derivation"
@@ -769,7 +850,7 @@ else
   pass "vibe: Archive mode keeps milestone slug separate from custom --tag"
 fi
 
-if printf '%s\n' "$archive_block" | grep -Fq 'bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/post-archive-hook.sh "{SLUG}" ".vbw-planning/milestones/{SLUG}" "{tag}" .vbw-planning/config.json'; then
+if block_contains_normalized "$archive_block" 'bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/post-archive-hook.sh "{SLUG}" ".vbw-planning/milestones/{SLUG}" "{tag}" .vbw-planning/config.json'; then
   pass "vibe: Archive mode wires post-archive hook with slug/archive/tag/config arguments"
 else
   fail "vibe: Archive mode missing post-archive hook argument contract"
