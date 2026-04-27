@@ -117,11 +117,13 @@ verify_runtime_skill_root_guard() {
   local home_dir="$temp_root/home"
   local helper="$ROOT/scripts/extract-skill-follow-up-files.sh"
   local global_project_dir="$temp_root/global-project"
+  local outside_dir="$temp_root/outside"
   local traversal_project_output traversal_global_output mixed_output
-  local confined_project_output confined_global_output
+  local confined_project_output confined_global_output no_links_output
+  local project_symlink_output global_symlink_output
 
   rm -rf "$temp_root"
-  mkdir -p "$project_dir/.claude/skills" "$global_project_dir" "$home_dir/.claude/skills"
+  mkdir -p "$project_dir/.claude/skills" "$global_project_dir" "$home_dir/.claude/skills" "$outside_dir"
 
   write_runtime_skill_fixture "$project_dir/.claude/skills" swiftdata local-good.md "Local good reference content"
   write_runtime_skill_fixture "$project_dir/.agents/skills" swiftdata agents-bad.md "Agents bad reference content"
@@ -149,6 +151,29 @@ EOF
     "references/global-normalized.md=Global normalized reference" \
     "docs/"
   write_runtime_skill_fixture "$home_dir/.claude/skills" other-skill global-secret.md "Global secret reference"
+
+  write_runtime_skill_fixture_with_body "$project_dir/.claude/skills" no-links-skill "$(cat <<'EOF'
+This skill has no markdown links.
+EOF
+)"
+
+  write_runtime_skill_fixture_with_body "$project_dir/.claude/skills" symlink-skill "$(cat <<'EOF'
+Skill details: [safe](references/local-good.md)
+Skill details: [symlink](references/linked-outside.md)
+EOF
+)" \
+    "references/local-good.md=Project symlink safe reference"
+  printf '%s\n' 'Project symlink outside content' > "$outside_dir/project-secret.md"
+  ln -s "$outside_dir/project-secret.md" "$project_dir/.claude/skills/symlink-skill/references/linked-outside.md"
+
+  write_runtime_skill_fixture_with_body "$home_dir/.claude/skills" global-symlink-skill "$(cat <<'EOF'
+Skill details: [safe](references/global-good.md)
+Skill details: [symlink](references/linked-outside.md)
+EOF
+)" \
+    "references/global-good.md=Global symlink safe reference"
+  printf '%s\n' 'Global symlink outside content' > "$outside_dir/global-secret.md"
+  ln -s "$outside_dir/global-secret.md" "$home_dir/.claude/skills/global-symlink-skill/references/linked-outside.md"
 
   traversal_project_output=$(HOME="$home_dir" CLAUDE_CONFIG_DIR="$home_dir/.claude" bash "$helper" --project-dir "$project_dir" ../../.agents/skills/swiftdata ../../.pi/skills/swiftdata 2>/dev/null || true)
   if [ -z "$traversal_project_output" ]; then
@@ -203,6 +228,39 @@ EOF
     fail "scripts/extract-skill-follow-up-files.sh: global SKILL.md traversal escaped into a sibling skill"
   else
     pass "scripts/extract-skill-follow-up-files.sh: global SKILL.md traversal cannot escape into a sibling skill"
+  fi
+
+  no_links_output=$(HOME="$home_dir" CLAUDE_CONFIG_DIR="$home_dir/.claude" bash "$helper" --project-dir "$project_dir" no-links-skill 2>/dev/null || true)
+  if [ -z "$no_links_output" ]; then
+    pass "scripts/extract-skill-follow-up-files.sh: skills with no markdown links exit cleanly with no output"
+  else
+    fail "scripts/extract-skill-follow-up-files.sh: no-link skills should emit no output"
+  fi
+
+  project_symlink_output=$(HOME="$home_dir" CLAUDE_CONFIG_DIR="$home_dir/.claude" bash "$helper" --project-dir "$project_dir" symlink-skill 2>/dev/null || true)
+  if [[ "$project_symlink_output" == *"symlink-skill/references/local-good.md"* ]]; then
+    pass "scripts/extract-skill-follow-up-files.sh: project symlink fixture still emits safe in-tree files"
+  else
+    fail "scripts/extract-skill-follow-up-files.sh: project symlink fixture lost the safe in-tree file"
+  fi
+
+  if [[ "$project_symlink_output" == *"linked-outside.md"* ]]; then
+    fail "scripts/extract-skill-follow-up-files.sh: project symlinked follow-up path escaped the active skill directory"
+  else
+    pass "scripts/extract-skill-follow-up-files.sh: project symlinked follow-up path is rejected"
+  fi
+
+  global_symlink_output=$(HOME="$home_dir" CLAUDE_CONFIG_DIR="$home_dir/.claude" bash "$helper" --project-dir "$global_project_dir" global-symlink-skill 2>/dev/null || true)
+  if [[ "$global_symlink_output" == *"global-symlink-skill/references/global-good.md"* ]]; then
+    pass "scripts/extract-skill-follow-up-files.sh: global symlink fixture still emits safe in-tree files"
+  else
+    fail "scripts/extract-skill-follow-up-files.sh: global symlink fixture lost the safe in-tree file"
+  fi
+
+  if [[ "$global_symlink_output" == *"linked-outside.md"* ]]; then
+    fail "scripts/extract-skill-follow-up-files.sh: global symlinked follow-up path escaped the active skill directory"
+  else
+    pass "scripts/extract-skill-follow-up-files.sh: global symlinked follow-up path is rejected"
   fi
 }
 

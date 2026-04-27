@@ -107,8 +107,12 @@ normalize_path() {
 
 extract_markdown_targets() {
   local skill_md="$1"
+  local markdown_links
 
-  grep -oE '\[[^][]+\]\([^)]+\)' "$skill_md" 2>/dev/null \
+  markdown_links=$(grep -oE '\[[^][]+\]\([^)]+\)' "$skill_md" 2>/dev/null || true)
+  [ -n "$markdown_links" ] || return 0
+
+  printf '%s\n' "$markdown_links" \
     | sed -E 's/^[^()]*\(([^)#]+)(#[^)]+)?\)$/\1/' \
     | while IFS= read -r target; do
         [ -n "$target" ] || continue
@@ -136,6 +140,7 @@ for skill in "${SKILLS[@]}"; do
     [ -n "$rel_target" ] || continue
     resolved_path="$skill_dir/$rel_target"
     [ -f "$resolved_path" ] || continue
+    [ ! -L "$resolved_path" ] || continue
     abs_path=$(normalize_path "$resolved_path") || continue
     [[ "$abs_path" == "$skill_dir_abs"/* ]] || continue
 

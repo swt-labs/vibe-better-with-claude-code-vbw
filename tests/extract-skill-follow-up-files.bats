@@ -194,6 +194,28 @@ write_custom_skill_fixture() {
   [ -z "$output" ]
 }
 
+@test "extract-skill-follow-up-files: skill with no markdown links exits 0 and emits nothing" {
+  local project_dir="$TEST_TEMP_DIR/project"
+  mkdir -p "$project_dir"
+
+  write_custom_skill_fixture "$project_dir/.claude/skills" "swiftdata" "$(cat <<'EOF'
+---
+name: fixture-skill
+description: Fixture skill
+---
+
+# Fixture Skill
+
+This skill intentionally has no markdown links.
+EOF
+)"
+
+  run bash "$SCRIPTS_DIR/extract-skill-follow-up-files.sh" --project-dir "$project_dir" swiftdata
+
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
 @test "extract-skill-follow-up-files: rejects project-local SKILL.md links that normalize outside the active skill directory" {
   local project_dir="$TEST_TEMP_DIR/project"
   mkdir -p "$project_dir"
@@ -299,6 +321,76 @@ EOF
   first_path="$project_dir_abs/.claude/skills/swiftdata/references/first.md"
   first_count=$(printf '%s\n' "$output" | awk -v needle="- $first_path" '$0 == needle { count++ } END { print count + 0 }')
   [ "$first_count" -eq 1 ]
+}
+
+@test "extract-skill-follow-up-files: rejects project-local symlinked follow-up files that resolve outside the active skill directory" {
+  local project_dir="$TEST_TEMP_DIR/project"
+  local project_dir_abs outside_file
+  mkdir -p "$project_dir"
+
+  write_custom_skill_fixture "$project_dir/.claude/skills" "swiftdata" "$(cat <<'EOF'
+---
+name: fixture-skill
+description: Fixture skill
+---
+
+# Fixture Skill
+
+## References
+
+- [Safe](references/first.md)
+- [Symlink Escape](references/linked-outside.md)
+EOF
+)" \
+    "references/first.md"
+
+  mkdir -p "$TEST_TEMP_DIR/outside"
+  outside_file="$TEST_TEMP_DIR/outside/project-secret.md"
+  printf '# secret\n' > "$outside_file"
+  ln -s "$outside_file" "$project_dir/.claude/skills/swiftdata/references/linked-outside.md"
+
+  run bash "$SCRIPTS_DIR/extract-skill-follow-up-files.sh" --project-dir "$project_dir" swiftdata
+
+  [ "$status" -eq 0 ]
+  project_dir_abs=$(cd "$project_dir" && pwd -P)
+  [[ "$output" == *"$project_dir_abs/.claude/skills/swiftdata/references/first.md"* ]]
+  [[ "$output" != *"linked-outside.md"* ]]
+}
+
+@test "extract-skill-follow-up-files: rejects global symlinked follow-up files that resolve outside the active skill directory" {
+  local project_dir="$TEST_TEMP_DIR/project"
+  local claude_dir_abs outside_file
+  mkdir -p "$project_dir"
+  export CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/.claude-config"
+  mkdir -p "$CLAUDE_CONFIG_DIR/skills"
+
+  write_custom_skill_fixture "$CLAUDE_CONFIG_DIR/skills" "find-docs" "$(cat <<'EOF'
+---
+name: fixture-skill
+description: Fixture skill
+---
+
+# Fixture Skill
+
+## References
+
+- [Safe](references/first.md)
+- [Symlink Escape](references/linked-outside.md)
+EOF
+)" \
+    "references/first.md"
+
+  mkdir -p "$TEST_TEMP_DIR/outside"
+  outside_file="$TEST_TEMP_DIR/outside/global-secret.md"
+  printf '# secret\n' > "$outside_file"
+  ln -s "$outside_file" "$CLAUDE_CONFIG_DIR/skills/find-docs/references/linked-outside.md"
+
+  run bash "$SCRIPTS_DIR/extract-skill-follow-up-files.sh" --project-dir "$project_dir" find-docs
+
+  [ "$status" -eq 0 ]
+  claude_dir_abs=$(cd "$CLAUDE_CONFIG_DIR" && pwd -P)
+  [[ "$output" == *"$claude_dir_abs/skills/find-docs/references/first.md"* ]]
+  [[ "$output" != *"linked-outside.md"* ]]
 }
 
 @test "extract-skill-follow-up-files: preserves valid skills when a whitespace-delimited list includes a traversal token" {
