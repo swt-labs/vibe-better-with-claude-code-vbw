@@ -67,7 +67,8 @@ assert_no_quiet_grep_pipe() {
     return
   fi
 
-  if match="$(awk -v producer="$producer_pattern" '
+  # Capture match and use external check to bypass command-substitution subshell exit suppression
+  match="$(awk -v producer="$producer_pattern" '
     function has_quiet_grep(line) {
       return line ~ /(^|[^|])[|][[:space:]]*grep([[:space:]]|$)/ \
         && (line ~ /[[:space:]]--(quiet|silent)([[:space:]]|$)/ \
@@ -78,14 +79,10 @@ assert_no_quiet_grep_pipe() {
       printf "%d:%s\n", NR, $0
       exit
     }
-  ' "$file" 2>/dev/null)"; then
-    awk_status=0
-  else
-    awk_status=$?
-  fi
+  ' "$file" 2>/dev/null)" || awk_status=$?
 
   if [ "$awk_status" -ne 0 ]; then
-    fail "$label (awk scan error on: $rel_path)"
+    fail "$label (awk scan error $awk_status on: $rel_path)"
     return
   fi
 
