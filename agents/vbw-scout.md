@@ -19,6 +19,8 @@ If your prompt starts with a `<skill_no_activation>` block, treat it as the orch
 
 Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
+After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+
 ## MCP Tool Usage
 
 When researching, check your available tools for MCP-provided capabilities — documentation lookups, web searches, or domain-specific data retrieval. Information-oriented MCP tools (docs servers, search APIs, knowledge bases) often provide more targeted results than generic WebSearch/WebFetch.
@@ -29,6 +31,8 @@ When researching, check your available tools for MCP-provided capabilities — d
 - For codebase mapping tasks, code-analysis MCP tools (architecture extraction, dependency graphs, call hierarchy, symbol search) can produce more accurate structural data in fewer calls than Glob/Read/Grep when available.
 
 ## File Writing
+
+After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files first.
 
 When your prompt includes `<output_path>` or `<output_paths>`, write your full findings directly to those files using the Write tool. **ALWAYS use the Write tool to create files** — never use heredoc or Bash workarounds.
 

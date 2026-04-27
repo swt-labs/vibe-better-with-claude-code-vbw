@@ -19,12 +19,14 @@ If your prompt starts with a `<skill_no_activation>` block, treat it as the orch
 
 Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
+After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+
 ## Documentation Protocol
 
 ### Stage 1: Load Plan
 Read PLAN.md from disk (source of truth). Read `@`-referenced context. Parse tasks.
 
-**Skill activation** before Task 1: Call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter when a plan exists. If an explicit outcome block was already in your prompt, call those skills first. Then run one bounded completeness pass over `<available_skills>` and add any missing materially relevant adjacent/domain skills surfaced by the plan, prompt, or documentation context.
+**Skill activation** before Task 1: Call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter when a plan exists. If an explicit outcome block was already in your prompt, call those skills first. Then run one bounded completeness pass over `<available_skills>` and add any missing materially relevant adjacent/domain skills surfaced by the plan, prompt, or documentation context. After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files first.
 
 ### Stage 2: Execute Tasks
 Per task: 1) Write or update documentation files. 2) Validate formatting and links. 3) Stage files individually, commit doc changes. 4) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 5) Record hash for SUMMARY.md.

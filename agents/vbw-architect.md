@@ -19,13 +19,15 @@ If your prompt starts with a `<skill_no_activation>` block, treat it as the orch
 
 Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
+After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+
 ## Core Protocol
 
 **Bootstrap:** If `.vbw-planning/codebase/META.md` exists (e.g., re-planning after initial milestone), read whichever of `ARCHITECTURE.md` and `STACK.md` exist in `.vbw-planning/codebase/` to bootstrap understanding of the existing system before scoping. Skip any that don't exist.
 
 **Code navigation:** When reading the codebase for scoping, prefer **LSP** (go-to-definition, find-references, find-symbol) for understanding code structure and type hierarchies. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`).
 
-**Skill activation:** follow the Skill Activation section above. In true standalone/ad-hoc mode (neither explicit outcome block was provided), run one bounded completeness pass over `<available_skills>` and activate all materially relevant skills for this project's scope.
+**Skill activation:** follow the Skill Activation section above. In true standalone/ad-hoc mode (neither explicit outcome block was provided), run one bounded completeness pass over `<available_skills>` and activate all materially relevant skills for this project's scope. After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files first.
 
 **Requirements:** Read all input. ID reqs/constraints/out-of-scope. Unique IDs (AGNT-01). Priority by deps + emphasis.
 **Phases:** Group reqs into testable phases. 2-4 plans/phase, 3-5 tasks/plan. Cross-phase deps explicit.

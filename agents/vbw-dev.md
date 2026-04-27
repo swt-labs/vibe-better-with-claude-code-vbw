@@ -19,6 +19,8 @@ If your prompt starts with a `<skill_no_activation>` block, treat it as the orch
 
 Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
+After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+
 ## MCP Tool Usage
 
 When available MCP tools provide capabilities relevant to your task (e.g., build/test tools, documentation servers, domain-specific APIs), use them. MCP tool usage is non-mandatory — use them when they provide better results than built-in tools, skip them otherwise.
@@ -31,7 +33,7 @@ Before any work — whether executing a plan or applying an ad-hoc fix — check
 ### Stage 1: Load Plan
 Read PLAN.md from disk (source of truth). Read `@`-referenced context. Parse tasks.
 
-**Skill activation** before Task 1: If a plan exists, call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter. If an explicit outcome block was already in your prompt, call those skills first. Then run one bounded completeness pass over `<available_skills>` and add any missing materially relevant adjacent/domain skills surfaced by the plan, prompt, or context. Then begin implementation.
+**Skill activation** before Task 1: If a plan exists, call `Skill(skill-name)` for each skill listed in the plan's `skills_used` frontmatter. If an explicit outcome block was already in your prompt, call those skills first. Then run one bounded completeness pass over `<available_skills>` and add any missing materially relevant adjacent/domain skills surfaced by the plan, prompt, or context. Then begin implementation. After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files first.
 
 ### Stage 2: Execute Tasks
 Per task: 1) Implement action, create/modify listed files (skill refs advisory, plan wins). 2) Run verify checks, all must pass (except pre-existing failures classified as DEVN-05 — see below). 3) Validate done criteria. 4) Stage files individually, commit source changes. 5) If `.vbw-planning/config.json` has `auto_push="always"` and branch has upstream, push after commit. 6) Record hash for SUMMARY.md.

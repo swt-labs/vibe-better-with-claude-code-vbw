@@ -856,9 +856,9 @@ else
   fail "vibe: Archive mode missing post-archive hook argument contract"
 fi
 
-archive_regen_line=$(printf '%s\n' "$archive_block" | awk '/9\. Regenerate CLAUDE\.md:/{print NR; exit}')
-archive_hook_line=$(printf '%s\n' "$archive_block" | awk '/9b\. Post-archive hook \(non-blocking\):/{print NR; exit}')
-archive_present_line=$(printf '%s\n' "$archive_block" | awk '/10\. Present:/{print NR; exit}')
+archive_regen_line=$(printf '%s\n' "$archive_block" | awk '/9\. Regenerate CLAUDE\.md:/ && !found1 {print NR; found1=1}')
+archive_hook_line=$(printf '%s\n' "$archive_block" | awk '/9b\. Post-archive hook \(non-blocking\):/ && !found2 {print NR; found2=1}')
+archive_present_line=$(printf '%s\n' "$archive_block" | awk '/10\. Present:/ && !found3 {print NR; found3=1}')
 
 if [ -n "$archive_regen_line" ] && [ -n "$archive_hook_line" ] && [ -n "$archive_present_line" ] \
   && [ "$archive_regen_line" -lt "$archive_hook_line" ] \
