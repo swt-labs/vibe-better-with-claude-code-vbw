@@ -27,6 +27,35 @@ fail() {
   FAIL=$((FAIL + 1))
 }
 
+contains_literal() {
+  local haystack="$1"
+  local needle="$2"
+
+  grep -Fq -- "$needle" <<< "$haystack"
+}
+
+matches_ere() {
+  local haystack="$1"
+  local pattern="$2"
+
+  grep -Eq -- "$pattern" <<< "$haystack"
+}
+
+first_matching_line_number() {
+  local text="$1"
+  local needle="$2"
+
+  awk -v needle="$needle" '
+    index($0, needle) && first == 0 {
+      first = NR
+    }
+
+    END {
+      if (first > 0) print first
+    }
+  ' <<< "$text"
+}
+
 # — Template checks —
 
 TEMPLATE="$ROOT/templates/DEBUG-SESSION.md"
@@ -84,7 +113,7 @@ else
   pass "debug-session-state.sh metadata-read contract no longer exports bare status"
 fi
 
-if awk '/set-status\)/,/;;/' "$STATE_SCRIPT" | grep -Fq 'echo "status=$STATUS"'; then
+if contains_literal "$(awk '/set-status\)/,/;;/' "$STATE_SCRIPT" 2>/dev/null || true)" 'echo "status=$STATUS"'; then
   pass "debug-session-state.sh set-status keeps status output contract"
 else
   fail "debug-session-state.sh set-status output contract drifted from status=..."
@@ -108,19 +137,19 @@ else
   fail "debug-session-state.sh missing completed no-verification normalization helper"
 fi
 
-if awk '/set-status\)/,/;;/' "$STATE_SCRIPT" | grep -Fq 'normalize_completed_no_verification_results "$SESSION_PATH"'; then
+if contains_literal "$(awk '/set-status\)/,/;;/' "$STATE_SCRIPT" 2>/dev/null || true)" 'normalize_completed_no_verification_results "$SESSION_PATH"'; then
   pass "debug-session-state.sh set-status normalizes completed no-verification sessions before move"
 else
   fail "debug-session-state.sh set-status missing completed no-verification normalization"
 fi
 
-if awk '/reconcile_session_location\(\)/,/^}/' "$STATE_SCRIPT" | grep -Fq 'normalize_completed_no_verification_results "$file"'; then
+if contains_literal "$(awk '/reconcile_session_location\(\)/,/^}/' "$STATE_SCRIPT" 2>/dev/null || true)" 'normalize_completed_no_verification_results "$file"'; then
   pass "debug-session-state.sh reconcile path normalizes completed no-verification sessions"
 else
   fail "debug-session-state.sh reconcile path missing completed no-verification normalization"
 fi
 
-if awk '/migrate_legacy_session\(\)/,/^}/' "$STATE_SCRIPT" | grep -Fq 'normalize_completed_no_verification_results "$file"'; then
+if contains_literal "$(awk '/migrate_legacy_session\(\)/,/^}/' "$STATE_SCRIPT" 2>/dev/null || true)" 'normalize_completed_no_verification_results "$file"'; then
   pass "debug-session-state.sh legacy migration normalizes completed no-verification sessions"
 else
   fail "debug-session-state.sh legacy migration missing completed no-verification normalization"
@@ -252,9 +281,9 @@ else
   fail "debug.md Path A missing fresh vbw-debugger implementation-owner contract"
 fi
 
-patha_teardown_line=$(printf '%s\n' "$DEBUG_PATH_A_BLOCK" | awk '/\*\*Teardown phase — HARD GATE before any implementation:\*\*/ { print NR; exit }')
-patha_zero_line=$(printf '%s\n' "$DEBUG_PATH_A_BLOCK" | awk '/Verify: after TeamDelete, there must be ZERO active teammates\./ { print NR; exit }')
-patha_impl_line=$(printf '%s\n' "$DEBUG_PATH_A_BLOCK" | awk '/If `RESOLUTION_OBSERVATION=needs_change`: spawn ONE fresh post-synthesis implementation owner/ { print NR; exit }')
+patha_teardown_line=$(first_matching_line_number "$DEBUG_PATH_A_BLOCK" '**Teardown phase — HARD GATE before any implementation:**')
+patha_zero_line=$(first_matching_line_number "$DEBUG_PATH_A_BLOCK" 'Verify: after TeamDelete, there must be ZERO active teammates.')
+patha_impl_line=$(first_matching_line_number "$DEBUG_PATH_A_BLOCK" 'If `RESOLUTION_OBSERVATION=needs_change`: spawn ONE fresh post-synthesis implementation owner')
 
 if [ -n "$patha_teardown_line" ] && [ -n "$patha_zero_line" ] && [ -n "$patha_impl_line" ] \
   && [ "$patha_teardown_line" -lt "$patha_zero_line" ] && [ "$patha_zero_line" -lt "$patha_impl_line" ]; then
@@ -278,10 +307,10 @@ else
 fi
 
 DEBUG_HINT_LINE="$(awk '/^argument-hint:/{print; exit}' "$DEBUG_CMD" 2>/dev/null || true)"
-if printf '%s\n' "$DEBUG_HINT_LINE" | grep -Eq 'bug description' \
-  && printf '%s\n' "$DEBUG_HINT_LINE" | grep -Eq 'todo number' \
-  && printf '%s\n' "$DEBUG_HINT_LINE" | grep -Fq -- '--resume' \
-  && printf '%s\n' "$DEBUG_HINT_LINE" | grep -Fq -- '--session ID'; then
+if contains_literal "$DEBUG_HINT_LINE" 'bug description' \
+  && contains_literal "$DEBUG_HINT_LINE" 'todo number' \
+  && contains_literal "$DEBUG_HINT_LINE" '--resume' \
+  && contains_literal "$DEBUG_HINT_LINE" '--session ID'; then
   pass "debug.md argument-hint advertises bug text, todo number, --resume, and --session"
 else
   fail "debug.md argument-hint missing one or more supported entry points"
@@ -290,10 +319,10 @@ fi
 DEBUG_USAGE_LINES="$(grep -F 'Usage:' "$DEBUG_CMD" 2>/dev/null || true)"
 DEBUG_USAGE_COUNT=$(printf '%s\n' "$DEBUG_USAGE_LINES" | grep -c 'Usage:' || true)
 if [ "$DEBUG_USAGE_COUNT" -ge 2 ] \
-  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '/vbw:debug <todo-number>' \
-  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '/vbw:debug --resume' \
-  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '/vbw:debug --session <id>' \
-  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '[--competing|--parallel|--serial]'; then
+  && contains_literal "$DEBUG_USAGE_LINES" '/vbw:debug <todo-number>' \
+  && contains_literal "$DEBUG_USAGE_LINES" '/vbw:debug --resume' \
+  && contains_literal "$DEBUG_USAGE_LINES" '/vbw:debug --session <id>' \
+  && contains_literal "$DEBUG_USAGE_LINES" '[--competing|--parallel|--serial]'; then
   pass "debug.md keeps both expanded Usage strings with resume/session and ambiguity flags"
 else
   fail "debug.md missing expanded Usage strings with resume/session and ambiguity flags"
@@ -621,7 +650,15 @@ else
   fail "debug.md missing inline UAT section (debug_inline_uat)"
 fi
 
-if sed -n '1,/^---$/p' "$ROOT/commands/debug.md" 2>/dev/null | grep -q 'AskUserQuestion'; then
+if contains_literal "$(awk '
+  BEGIN { delim=0 }
+  /^---$/ {
+    delim++
+    if (delim == 2) exit
+    next
+  }
+  delim == 1 { print }
+' "$ROOT/commands/debug.md" 2>/dev/null || true)" 'AskUserQuestion'; then
   pass "debug.md frontmatter includes AskUserQuestion tool"
 else
   fail "debug.md frontmatter missing AskUserQuestion tool"
@@ -715,16 +752,18 @@ else
 fi
 
 # Verify the set-status branch specifically handles complete → move to COMPLETED_DIR
-if awk '/set-status\)/,/;;/' "$STATE_SCRIPT" | grep -q '"\$STATUS" = "complete"' && \
-   awk '/set-status\)/,/;;/' "$STATE_SCRIPT" | grep -q 'safe_move_session.*\$COMPLETED_DIR'; then
+_set_status_block="$(awk '/set-status\)/,/;;/' "$STATE_SCRIPT" 2>/dev/null || true)"
+if matches_ere "$_set_status_block" '"\$STATUS" = "complete"' && \
+   matches_ere "$_set_status_block" 'safe_move_session.*\$COMPLETED_DIR'; then
   pass "debug-session-state.sh set-status branch moves complete sessions to COMPLETED_DIR"
 else
   fail "debug-session-state.sh set-status branch does not move complete sessions to COMPLETED_DIR"
 fi
 
 # list command should output both location fields for dual-directory listings
-if awk '/list\)/,/;;/' "$STATE_SCRIPT" | grep -q '|active' && \
-   awk '/list\)/,/;;/' "$STATE_SCRIPT" | grep -q '|completed'; then
+_list_block="$(awk '/list\)/,/;;/' "$STATE_SCRIPT" 2>/dev/null || true)"
+if contains_literal "$_list_block" '|active' && \
+   contains_literal "$_list_block" '|completed'; then
   pass "debug-session-state.sh list outputs both active and completed location fields"
 else
   fail "debug-session-state.sh list missing location field in output (must include both |active and |completed)"
@@ -732,7 +771,7 @@ fi
 
 # safe_move_session helper with destination-exists guard
 if grep -q 'safe_move_session()' "$STATE_SCRIPT" 2>/dev/null && \
-   awk '/safe_move_session\(\)/,/^}/' "$STATE_SCRIPT" | grep -q 'return 1'; then
+   contains_literal "$(awk '/safe_move_session\(\)/,/^}/' "$STATE_SCRIPT" 2>/dev/null || true)" 'return 1'; then
   pass "debug-session-state.sh has safe_move_session helper with collision guard"
 else
   fail "debug-session-state.sh missing safe_move_session helper or collision guard"

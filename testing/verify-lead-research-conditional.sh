@@ -90,13 +90,14 @@ fi
 # --- compile-context.sh: codebase mapping hint conditional on research ---
 
 LEAD_SECTION=$(sed -n '/^  lead)/,/^  ;;$/p' "$COMPILE")
-if echo "$LEAD_SECTION" | grep -B5 "emit_codebase_mapping_hint ARCHITECTURE CONCERNS STRUCTURE" | grep -q "else"; then
+LEAD_HINT_CONTEXT=$(grep -B5 "emit_codebase_mapping_hint ARCHITECTURE CONCERNS STRUCTURE" <<< "$LEAD_SECTION" || true)
+if grep -q "else" <<< "$LEAD_HINT_CONTEXT"; then
   pass "compile-context: hint is in else branch of research check"
 else
   fail "compile-context: hint not in else branch of research check"
 fi
 
-if echo "$LEAD_SECTION" | grep -q "no research exists"; then
+if grep -q "no research exists" <<< "$LEAD_SECTION"; then
   pass "compile-context: codebase mapping hint conditional on no-research"
 else
   fail "compile-context: codebase mapping hint not conditional on research"
