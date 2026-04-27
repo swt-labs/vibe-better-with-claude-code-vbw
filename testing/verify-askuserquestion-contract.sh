@@ -252,6 +252,29 @@ require_text_occurrence_count() {
   fi
 }
 
+require_backticked_labels() {
+  local desc="$1"
+  local text="$2"
+  shift 2
+
+  local missing=()
+  local label=""
+  local needle=""
+
+  for label in "$@"; do
+    needle="\`$label\`"
+    if ! grep -Fq -- "$needle" <<< "$text"; then
+      missing+=("$label")
+    fi
+  done
+
+  if [ "${#missing[@]}" -eq 0 ]; then
+    pass "$desc"
+  else
+    fail "$desc (missing labels: ${missing[*]})"
+  fi
+}
+
 echo "=== AskUserQuestion Contract Verification ==="
 
 # --------------------------------------------------------------------------
@@ -433,6 +456,8 @@ echo "--- Check 5: /vbw:list-todos freeform boundary ---"
 
 LIST_TODOS_FRONTMATTER="$(extract_frontmatter "$LIST_TODOS_COMMAND_FILE" || true)"
 LIST_TODOS_STEP_5="$(extract_regex_block "$LIST_TODOS_COMMAND_FILE" 'Display action hints and STOP' '^## ' || true)"
+LIST_TODOS_UNFILTERED_HINTS="$(extract_regex_block "$LIST_TODOS_COMMAND_FILE" 'Unfiltered view' 'Filtered view' || true)"
+LIST_TODOS_FILTERED_HINTS="$(extract_regex_block "$LIST_TODOS_COMMAND_FILE" 'Filtered view' 'If the user says' || true)"
 
 if grep -Fq 'AskUserQuestion' <<< "$LIST_TODOS_FRONTMATTER"; then
   fail "list-todos: frontmatter allowed-tools excludes AskUserQuestion"
@@ -447,13 +472,13 @@ else
 fi
 
 require_text_regex "list-todos: displays action hints and stops without prompting" 'Display action hints and STOP.*Do NOT prompt the user for input' "$LIST_TODOS_STEP_5"
-require_text_literal "list-todos: unfiltered hints preserve /vbw:vibe N" "/vbw:vibe N" "$LIST_TODOS_STEP_5"
-require_text_literal "list-todos: unfiltered hints preserve /vbw:fix N" "/vbw:fix N" "$LIST_TODOS_STEP_5"
-require_text_literal "list-todos: unfiltered hints preserve /vbw:debug N" "/vbw:debug N" "$LIST_TODOS_STEP_5"
-require_text_literal "list-todos: unfiltered hints preserve remove N" "remove N         — delete from todo list" "$LIST_TODOS_STEP_5"
-require_text_literal "list-todos: filtered hints preserve remove N" "remove N         — delete from this displayed list" "$LIST_TODOS_STEP_5"
-require_text_literal "list-todos: filtered hints preserve delete N" "delete N         — same as remove N" "$LIST_TODOS_STEP_5"
-require_text_literal "list-todos: filtered hints preserve rerun-unfiltered guard" "rerun unfiltered /vbw:list-todos before using /vbw:vibe N, /vbw:fix N, or /vbw:debug N" "$LIST_TODOS_STEP_5"
+require_text_literal "list-todos: unfiltered hints preserve /vbw:vibe N" "/vbw:vibe N" "$LIST_TODOS_UNFILTERED_HINTS"
+require_text_literal "list-todos: unfiltered hints preserve /vbw:fix N" "/vbw:fix N" "$LIST_TODOS_UNFILTERED_HINTS"
+require_text_literal "list-todos: unfiltered hints preserve /vbw:debug N" "/vbw:debug N" "$LIST_TODOS_UNFILTERED_HINTS"
+require_text_regex "list-todos: unfiltered hints preserve remove N" '(^|[[:space:]])remove N([[:space:]]|$)' "$LIST_TODOS_UNFILTERED_HINTS"
+require_text_regex "list-todos: filtered hints preserve remove N" '(^|[[:space:]])remove N([[:space:]]|$)' "$LIST_TODOS_FILTERED_HINTS"
+require_text_regex "list-todos: filtered hints preserve delete N" '(^|[[:space:]])delete N([[:space:]]|$)' "$LIST_TODOS_FILTERED_HINTS"
+require_text_literal "list-todos: filtered hints preserve rerun-unfiltered guard" "rerun unfiltered /vbw:list-todos before using /vbw:vibe N, /vbw:fix N, or /vbw:debug N" "$LIST_TODOS_FILTERED_HINTS"
 
 # --------------------------------------------------------------------------
 # Check 6: /vbw:config bounded structured flow
@@ -485,24 +510,11 @@ else
   fail "config: core setting selection remains bounded"
 fi
 
-if grep -Fq '`thorough` — Maximum planning and verification depth' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`balanced` — Default depth for most work' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`fast` — Lighter planning, quicker verification' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`turbo` — Minimal ceremony, fastest path' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`cautious` — Confirm more often' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`standard` — Default phase-by-phase flow' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`confident` — Fewer confirmations' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`pure-vibe` — Full auto loop through phases' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`manual` — Leave planning files for manual git handling' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`ignore` — Keep `.vbw-planning/` out of git' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`commit` — Auto-commit planning artifacts' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`never` — Never push automatically' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`after_phase` — Push once after each phase' <<< "$CONFIG_NO_ARGS_BLOCK" \
-  && grep -Fq '`always` — Push after every commit' <<< "$CONFIG_NO_ARGS_BLOCK"; then
-  pass "config: core values remain 3-4 option bounded choices"
-else
-  fail "config: core values remain 3-4 option bounded choices"
-fi
+require_backticked_labels "config: core values remain 3-4 option bounded choices" "$CONFIG_NO_ARGS_BLOCK" \
+  thorough balanced fast turbo \
+  cautious standard confident pure-vibe \
+  manual ignore commit \
+  never after_phase always
 
 if grep -Fq 'How do you want to configure model behavior?' <<< "$CONFIG_NO_ARGS_BLOCK" \
   && grep -Fq '`Use preset profile` — quality, balanced, or budget' <<< "$CONFIG_NO_ARGS_BLOCK" \
@@ -542,7 +554,10 @@ require_text_literal "skills: bounded branches accept hybrid number replies" 'ac
 require_text_literal "skills: no-selection stops before installation scope" 'Do not ask Step 5b and do not enter Step 6.' "$SKILLS_STEP_5"
 require_text_literal "skills: 5+ candidates use intentional high-cardinality freeform" "If the combined list has more than 4 candidates: use intentional high-cardinality freeform input." "$SKILLS_STEP_5"
 require_text_literal "skills: 5+ candidate branch forbids options array" 'do NOT use `options` array' "$SKILLS_STEP_5"
-require_text_literal "skills: 5+ candidate branch explains numeric/freeform boundary" "This list is larger than the 2–4 structured-choice sweet spot, so use numeric/freeform selection here." "$SKILLS_STEP_5"
+require_text_literal "skills: 5+ candidate branch presents numbered list in question text" "numbered list in the AskUserQuestion text" "$SKILLS_STEP_5"
+require_text_literal "skills: 5+ candidate parser accepts comma-separated digits" "Accept comma-separated digits" "$SKILLS_STEP_5"
+require_text_literal "skills: 5+ candidate parser accepts skip" 'Accept the word `skip`' "$SKILLS_STEP_5"
+require_text_literal "skills: 5+ candidate parser rejects invalid numeric/freeform input" "Reject out-of-range numbers" "$SKILLS_STEP_5"
 
 echo ""
 echo "==============================="
