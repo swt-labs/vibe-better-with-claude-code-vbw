@@ -31,7 +31,7 @@ contains_literal() {
   local haystack="$1"
   local needle="$2"
 
-  [[ "$haystack" == *"$needle"* ]]
+  grep -Fq -- "$needle" <<< "$haystack"
 }
 
 matches_ere() {
