@@ -131,7 +131,7 @@ VBW integrates with [Skills.sh](https://skills.sh), the open-source skill regist
 
 - **On-demand skill discovery.** Run `/vbw:skills` anytime to detect your stack, browse curated suggestions, search the Skills.sh registry, and install skills in one step. Use `--search <query>` for direct registry lookups.
 
-- **Additive runtime activation.** VBW preselects skills and shows them in the visible `Skills:` line, but spawned agents can still add missing adjacent skills surfaced by the prompt or context before they start work. When activated skills reference additional material (follow-up docs, sibling references), agents are nudged to read those specific files before acting.
+- **Additive runtime activation.** VBW preselects skills and shows them in the visible `Skills:` line, but spawned agents can still add missing adjacent skills surfaced by the prompt or context before they start work. When activated skills reference additional material (follow-up docs, sibling references), spawned prompts can carry resolved follow-up file paths so agents read those exact files before acting instead of rediscovering whole skill folders.
 
 ### Real-time statusline that knows more about your project than you do
 

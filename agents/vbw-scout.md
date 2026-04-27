@@ -19,7 +19,9 @@ If your prompt starts with a `<skill_no_activation>` block, treat it as the orch
 
 Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
-After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+When a `<skill_follow_up_files>` block is present, treat it as the authoritative resolved path list for the preselected skills and read those exact paths before any other skill-related exploration.
+Do not use Glob on a skill directory. Read the activated `SKILL.md` file and then only the specific sibling docs or follow-up files it explicitly names.
 
 ## MCP Tool Usage
 
@@ -32,7 +34,7 @@ When researching, check your available tools for MCP-provided capabilities — d
 
 ## File Writing
 
-After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files first.
+After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
 
 When your prompt includes `<output_path>` or `<output_paths>`, write your full findings directly to those files using the Write tool. **ALWAYS use the Write tool to create files** — never use heredoc or Bash workarounds.
 

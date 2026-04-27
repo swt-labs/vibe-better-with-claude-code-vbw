@@ -208,6 +208,25 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
     - **Pre-TeamCreate cleanup:** `bash "{plugin-root}/scripts/clean-stale-teams.sh" 2>/dev/null || true`
     - Create team via TeamCreate: `team_name="vbw-debug-{timestamp}"`, `description="Debug: {one-line-bug-summary}"`
     - Before composing task descriptions, evaluate installed skills visible in your system context using a two-pass rubric. **Pass 1:** derive technical domains from the chosen issue/todo text plus any structured metadata already available — error text, logs, selected-todo detail context/files, and any bounded sparse-context enrichment summary/files/markers from Step 1. Prefer that structured data before the raw description. If those signals mention or imply SwiftData markers such as `import SwiftData`, `@Model`, `ModelContext`, `ModelContainer`, `FetchDescriptor`, `VersionedSchema`, `SchemaMigrationPlan`, or `PersistentModel`, select `swiftdata`. Do NOT pull in `core-data` as a generic persistence fallback unless the actual evidence instead shows Core Data APIs such as `import CoreData`, `NSManagedObject`, `NSPersistentContainer`, `NSFetchRequest`, or `NSManagedObjectContext`. **Pass 2:** select all materially helpful installed skills that directly match those derived domains, plus only the narrowly adjacent support skills that materially help execution — not just the single most direct skill. Each Debugger task prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. If bounded sparse-context enrichment influenced the choice, cite that explicitly in the activation/no-activation reason so `.vbw-planning/.skill-decisions.log` records why. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+    - If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning each Path A Debugger. If the helper prints a `<skill_follow_up_files>` block, paste it immediately after the follow-up-read sentence in the spawned payload. Otherwise omit that block.
+    - Use this payload prefix as the FIRST lines of every Path A Debugger prompt (hypothesis investigators and any post-synthesis implementation owner):
+      ```text
+      <skill_activation>
+      Call Skill('{relevant-skill-1}').
+      Call Skill('{relevant-skill-2}').
+      </skill_activation>
+      After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+      <skill_follow_up_files>
+      {If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning and replace this block with the emitted absolute follow-up file paths. Omit this block when the helper prints nothing.}
+      </skill_follow_up_files>
+      ```
+      When no installed skills apply, use this prefix instead:
+      ```text
+      <skill_no_activation>
+      Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.
+      </skill_no_activation>
+      After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+      ```
     - Also evaluate available MCP tools in your system context. If any MCP servers provide debugging, build, test, documentation, or domain-specific capabilities relevant to this investigation, note them in each Debugger's task context so it can use those tools during investigation.
     - **Discover research context** (optional, from prior `/vbw:research`):
         ```bash
@@ -238,6 +257,26 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
         ```
     - Display: `◆ Spawning Debugger (${DEBUGGER_MODEL})...`
     - Before composing the Debugger task description, evaluate installed skills visible in your system context using a two-pass rubric. **Pass 1:** derive technical domains from the chosen issue/todo text plus any structured metadata already available — error text, logs, selected-todo detail context/files, and any bounded sparse-context enrichment summary/files/markers from Step 1. Prefer that structured data before the raw description. If those signals mention or imply SwiftData markers such as `import SwiftData`, `@Model`, `ModelContext`, `ModelContainer`, `FetchDescriptor`, `VersionedSchema`, `SchemaMigrationPlan`, or `PersistentModel`, select `swiftdata`. Do NOT pull in `core-data` as a generic persistence fallback unless the actual evidence instead shows Core Data APIs such as `import CoreData`, `NSManagedObject`, `NSPersistentContainer`, `NSFetchRequest`, or `NSManagedObjectContext`. **Pass 2:** select all materially helpful installed skills that directly match those derived domains, plus only the narrowly adjacent support skills that materially help execution — not just the single most direct skill. The Debugger prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. If bounded sparse-context enrichment influenced the choice, cite that explicitly in the activation/no-activation reason so `.vbw-planning/.skill-decisions.log` records why. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+    - If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning the Path B Debugger. If the helper prints a `<skill_follow_up_files>` block, paste it immediately after the follow-up-read sentence in the spawned payload. Otherwise omit that block.
+    - Preserve this existing Path B bootstrap contract in the spawned prompt: if `.vbw-planning/codebase/META.md` exists, read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from `.vbw-planning/codebase/` before investigating.
+    - Use this payload prefix as the FIRST lines of the Path B Debugger prompt:
+      ```text
+      <skill_activation>
+      Call Skill('{relevant-skill-1}').
+      Call Skill('{relevant-skill-2}').
+      </skill_activation>
+      After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+      <skill_follow_up_files>
+      {If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning and replace this block with the emitted absolute follow-up file paths. Omit this block when the helper prints nothing.}
+      </skill_follow_up_files>
+      ```
+      When no installed skills apply, use this prefix instead:
+      ```text
+      <skill_no_activation>
+      Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.
+      </skill_no_activation>
+      After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+      ```
     - Also evaluate available MCP tools in your system context. If any MCP servers provide debugging, build, test, documentation, or domain-specific capabilities relevant to this investigation, note them in the Debugger's task context so it can use those tools during investigation.
     - **Discover research context** (optional, from prior `/vbw:research`):
         ```bash
@@ -405,6 +444,28 @@ fi
 1. Spawn vbw-qa as subagent via Task tool for debug-session verification. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`.**
 
     Before composing the QA task description, evaluate installed skills visible in your system context using the same two-pass rubric. **Pass 1:** derive technical domains from the session context, error text, related files, changed files, and any bounded sparse-context enrichment summary/files/markers retained from Step 1. Prefer that structured data before generic stack guesses. If those signals mention or imply SwiftData markers such as `import SwiftData`, `@Model`, `ModelContext`, `ModelContainer`, `FetchDescriptor`, `VersionedSchema`, `SchemaMigrationPlan`, or `PersistentModel`, select `swiftdata`. Do NOT pull in `core-data` as a generic persistence fallback unless the actual evidence instead shows Core Data APIs such as `import CoreData`, `NSManagedObject`, `NSPersistentContainer`, `NSFetchRequest`, or `NSManagedObjectContext`. **Pass 2:** select all materially helpful installed skills that directly match those derived domains, plus only the narrowly adjacent support skills that materially help verification — not just the single most direct skill. The QA prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. If bounded sparse-context enrichment influenced the choice, cite that explicitly in the activation/no-activation reason so `.vbw-planning/.skill-decisions.log` records why. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+
+    If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning the inline debug-session QA agent. If the helper prints a `<skill_follow_up_files>` block, paste it immediately after the follow-up-read sentence in the spawned payload. Otherwise omit that block.
+
+  Use this payload prefix as the FIRST lines of the inline debug-session QA prompt:
+  ```text
+  <skill_activation>
+  Call Skill('{relevant-skill-1}').
+  Call Skill('{relevant-skill-2}').
+  </skill_activation>
+  After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+  <skill_follow_up_files>
+  {If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning and replace this block with the emitted absolute follow-up file paths. Omit this block when the helper prints nothing.}
+  </skill_follow_up_files>
+  ```
+
+  When no installed skills apply, use this prefix instead:
+  ```text
+  <skill_no_activation>
+  Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.
+  </skill_no_activation>
+  After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+  ```
 
    Task description for debug-session QA:
    ```text

@@ -19,7 +19,9 @@ If your prompt starts with a `<skill_no_activation>` block, treat it as the orch
 
 Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
-After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+When a `<skill_follow_up_files>` block is present, treat it as the authoritative resolved path list for the preselected skills and read those exact paths before any other skill-related exploration.
+Do not use Glob on a skill directory. Read the activated `SKILL.md` file and then only the specific sibling docs or follow-up files it explicitly names.
 
 ## Core Protocol
 
@@ -27,7 +29,7 @@ After calling `Skill(...)`, if the loaded instructions reference additional file
 
 **Code navigation:** When reading the codebase for scoping, prefer **LSP** (go-to-definition, find-references, find-symbol) for understanding code structure and type hierarchies. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`).
 
-**Skill activation:** follow the Skill Activation section above. In true standalone/ad-hoc mode (neither explicit outcome block was provided), run one bounded completeness pass over `<available_skills>` and activate all materially relevant skills for this project's scope. After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files first.
+**Skill activation:** follow the Skill Activation section above. In true standalone/ad-hoc mode (neither explicit outcome block was provided), run one bounded completeness pass over `<available_skills>` and activate all materially relevant skills for this project's scope. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
 
 **Requirements:** Read all input. ID reqs/constraints/out-of-scope. Unique IDs (AGNT-01). Priority by deps + emphasis.
 **Phases:** Group reqs into testable phases. 2-4 plans/phase, 3-5 tasks/plan. Cross-phase deps explicit.

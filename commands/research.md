@@ -60,6 +60,7 @@ Current project:
      ```
    - Display: `◆ Spawning Scout (${SCOUT_MODEL})...`
     - Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and select all materially helpful installed skills for this research task, including adjacent/supporting domain skills surfaced by the prompt, logs, error text, related files, or stack context — not just the single most direct skill. The spawned prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. Example: if the prompt or error mentions SwiftData, include `swiftdata` alongside relevant test/build/debug skills. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+     - If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning the Scout. If the helper prints a `<skill_follow_up_files>` block, paste it immediately after the follow-up-read sentence in the spawned payload. Otherwise omit that block.
    - Also evaluate available MCP tools in your system context. If any MCP servers provide documentation, search, or data retrieval capabilities relevant to this research topic (e.g., Apple Docs for Apple APIs, web search MCPs for multi-source queries), note them in the Scout's task context so it prioritizes those tools over generic WebSearch/WebFetch where applicable.
   - Spawn vbw-scout as subagent(s) via Task tool. **Set `subagent_type: "vbw:vbw-scout"` and `model: "${SCOUT_MODEL}"` in the Task tool invocation. If `SCOUT_MAX_TURNS` is non-empty, also pass `maxTurns: ${SCOUT_MAX_TURNS}`. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
 ```text
@@ -67,6 +68,10 @@ Current project:
 Call Skill('{relevant-skill-1}').
 Call Skill('{relevant-skill-2}').
 </skill_activation>
+After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+<skill_follow_up_files>
+{If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning and replace this block with the emitted absolute follow-up file paths. Omit this block when the helper prints nothing.}
+</skill_follow_up_files>
 
 <task_context>
 Research: {topic or sub-topic}.
@@ -85,6 +90,7 @@ Write your complete findings to the output_path file.
 <skill_no_activation>
 Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.
 </skill_no_activation>
+After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
 
 <task_context>
 Research: {topic or sub-topic}.

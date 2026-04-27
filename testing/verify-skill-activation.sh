@@ -49,6 +49,13 @@ AGENT_SKILL_CONTRACT_FILES=(
   "$ROOT/agents/vbw-docs.md"
 )
 
+SKILL_FOLLOW_UP_SENTENCE=$(cat <<'EOF'
+After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+EOF
+)
+
+SKILL_FOLLOW_UP_BLOCK_OPEN='<skill_follow_up_files>'
+
 PASS=0
 FAIL=0
 
@@ -76,6 +83,123 @@ expected_skill_contract_sites() {
 collect_skill_contract_site_lines() {
   local file="$1"
   grep -nE 'evaluate installed skills visible in your system context|Skill activation for Dev/QA tasks' "$file" 2>/dev/null | cut -d: -f1 || true
+}
+
+extract_text_block_from_segment() {
+  local file="$1"
+  local start_line="$2"
+  local end_line="$3"
+  local wanted_block="$4"
+
+  awk -v start="$start_line" -v end="$end_line" -v wanted="$wanted_block" '
+    NR < start || NR > end { next }
+    /^[[:space:]]*```text[[:space:]]*$/ { in_block=1; block_index++; next }
+    in_block && /^[[:space:]]*```[[:space:]]*$/ {
+      if (block_index == wanted) {
+        exit
+      }
+      in_block=0
+      next
+    }
+    in_block && block_index == wanted { print }
+  ' "$file"
+}
+
+extract_execute_protocol_payload_block() {
+  local file="$1"
+
+  awk '
+    /subject: "Execute \{NN-MM\}: \{plan-title\}"/ { in_example=1 }
+    in_example && /^description: \|$/ { in_desc=1; next }
+    in_desc && /^[^[:space:]]/ { exit }
+    in_desc { print }
+  ' "$file"
+}
+
+verify_payload_prefix_block() {
+  local file_name="$1"
+  local site_number="$2"
+  local variant="$3"
+  local block_content="$4"
+  local open_tag="$5"
+  local close_tag="$6"
+  local close_line sentence_line follow_up_block_line
+
+  if [ -n "$block_content" ] && grep -Fq "$open_tag" <<< "$block_content"; then
+    pass "$file_name: site $site_number has payload-local $variant"
+  else
+    fail "$file_name: site $site_number missing payload-local $variant"
+    return
+  fi
+
+  close_line=$(printf '%s\n' "$block_content" | awk -v tag="$close_tag" 'index($0, tag) { print NR; exit }')
+  if [ -n "$close_line" ]; then
+    sentence_line=$(printf '%s\n' "$block_content" | awk -v needle="$SKILL_FOLLOW_UP_SENTENCE" -v after="$close_line" 'NR > after && index($0, needle) { print NR; exit }')
+  else
+    sentence_line=""
+  fi
+
+  if [ -n "$close_line" ] && [ -n "$sentence_line" ] && [ "$sentence_line" -eq $((close_line + 1)) ]; then
+    pass "$file_name: site $site_number places the follow-up sentence immediately after $variant"
+  else
+    fail "$file_name: site $site_number does not place the follow-up sentence immediately after $variant"
+  fi
+
+  if [ "$variant" = "activation payload block" ]; then
+    follow_up_block_line=$(printf '%s\n' "$block_content" | awk -v needle="$SKILL_FOLLOW_UP_BLOCK_OPEN" -v after="$sentence_line" 'NR > after && index($0, needle) { print NR; exit }')
+    if [ -n "$sentence_line" ] && [ -n "$follow_up_block_line" ] && [ "$follow_up_block_line" -eq $((sentence_line + 1)) ]; then
+      pass "$file_name: site $site_number places the resolved follow-up file block immediately after the follow-up sentence"
+    else
+      fail "$file_name: site $site_number missing payload-local resolved follow-up file block"
+    fi
+
+    if grep -Fq 'extract-skill-follow-up-files.sh' <<< "$block_content"; then
+      pass "$file_name: site $site_number activation payload names the follow-up file resolver"
+    else
+      fail "$file_name: site $site_number activation payload missing extract-skill-follow-up-files.sh guidance"
+    fi
+  fi
+}
+
+verify_payload_local_skill_contract_sites() {
+  local file="$1"
+  local file_name expected_count total_lines start_line end_line site_number
+  local activation_block no_activation_block payload_block
+  local site_lines=()
+
+  file_name=$(basename "$file")
+  expected_count=$(expected_skill_contract_sites "$file")
+  total_lines=$(wc -l < "$file" | tr -d ' ')
+
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    site_lines+=("$line")
+  done < <(collect_skill_contract_site_lines "$file")
+
+  if [ "$file_name" = "execute-protocol.md" ]; then
+    payload_block=$(extract_execute_protocol_payload_block "$file")
+    verify_payload_prefix_block "$file_name" 1 "activation payload block" "$payload_block" '<skill_activation>' '</skill_activation>'
+    verify_payload_prefix_block "$file_name" 1 "no-activation payload block" "$payload_block" '<skill_no_activation>' '</skill_no_activation>'
+    return
+  fi
+
+  site_number=1
+  while [ "$site_number" -le "$expected_count" ]; do
+    start_line="${site_lines[$((site_number - 1))]}"
+    if [ "$site_number" -lt "${#site_lines[@]}" ]; then
+      end_line=$(( ${site_lines[$site_number]} - 1 ))
+    else
+      end_line="$total_lines"
+    fi
+
+    activation_block=$(extract_text_block_from_segment "$file" "$start_line" "$end_line" 1)
+    no_activation_block=$(extract_text_block_from_segment "$file" "$start_line" "$end_line" 2)
+
+    verify_payload_prefix_block "$file_name" "$site_number" "activation payload block" "$activation_block" '<skill_activation>' '</skill_activation>'
+    verify_payload_prefix_block "$file_name" "$site_number" "no-activation payload block" "$no_activation_block" '<skill_no_activation>' '</skill_no_activation>'
+
+    site_number=$((site_number + 1))
+  done
 }
 
 verify_skill_contract_sites() {
@@ -748,6 +872,10 @@ for contract_file in "${COMMAND_SKILL_CONTRACT_FILES[@]}"; do
   verify_skill_contract_sites "$contract_file"
 done
 
+for contract_file in "${COMMAND_SKILL_CONTRACT_FILES[@]}"; do
+  verify_payload_local_skill_contract_sites "$contract_file"
+done
+
 for agent_file in "${AGENT_SKILL_CONTRACT_FILES[@]}"; do
   agent_name=$(basename "$agent_file")
   if grep -q 'skill_no_activation' "$agent_file"; then
@@ -1034,6 +1162,25 @@ else
   fail "scripts/skill-decision-logger.sh: missing"
 fi
 
+if [ -f "$ROOT/scripts/extract-skill-follow-up-files.sh" ]; then
+  pass "scripts/extract-skill-follow-up-files.sh: exists"
+else
+  fail "scripts/extract-skill-follow-up-files.sh: missing"
+fi
+
+if grep -q '\.claude/skills' "$ROOT/scripts/extract-skill-follow-up-files.sh" \
+  && grep -q 'CLAUDE_DIR/skills' "$ROOT/scripts/extract-skill-follow-up-files.sh"; then
+  pass "scripts/extract-skill-follow-up-files.sh: covers project-local and global Claude skill roots"
+else
+  fail "scripts/extract-skill-follow-up-files.sh: missing project-local or global Claude skill roots"
+fi
+
+if grep -q '\.agents/skills\|\.pi/skills\|\$HOME/.agents/skills' "$ROOT/scripts/extract-skill-follow-up-files.sh"; then
+  fail "scripts/extract-skill-follow-up-files.sh: still references non-Claude lookalike skill roots"
+else
+  pass "scripts/extract-skill-follow-up-files.sh: rejects non-Claude lookalike skill roots"
+fi
+
 if [ -x "$ROOT/scripts/skill-decision-logger.sh" ]; then
   pass "scripts/skill-decision-logger.sh: is executable"
 else
@@ -1151,15 +1298,22 @@ for agent_file in "${AGENT_SKILL_CONTRACT_FILES[@]}"; do
   fi
 done
 
-# All 7 agent files have the runtime-local follow-up read line
-# Verify the runtime-local follow-up read nudge exists separately from the
-# top-level Skill Activation paragraph.  The top-level line contains
-# "read those specific files before reasoning or acting"; the runtime-local
-# line contains "read those specific files first."  We exclude the top-level
-# match so an agent missing the runtime-local line cannot false-positive.
 for agent_file in "${AGENT_SKILL_CONTRACT_FILES[@]}"; do
   agent_name=$(basename "$agent_file")
-  if grep -v "before reasoning or acting" "$agent_file" | grep -c "read those specific files first" >/dev/null 2>&1; then
+  if grep -q '<skill_follow_up_files>' "$agent_file"; then
+    pass "$agent_name: understands payload-local resolved follow-up file block"
+  else
+    fail "$agent_name: missing payload-local resolved follow-up file block guidance"
+  fi
+done
+
+# All 7 agent files have the runtime-local follow-up read line
+# The fallback layer now uses the full exact sentence in both the top-level
+# and runtime-local locations, so each agent file must contain the exact line
+# at least twice.
+for agent_file in "${AGENT_SKILL_CONTRACT_FILES[@]}"; do
+  agent_name=$(basename "$agent_file")
+  if [ "$(grep -Fc "$SKILL_FOLLOW_UP_SENTENCE" "$agent_file")" -ge 2 ]; then
     pass "$agent_name: has runtime-local follow-up read nudge"
   else
     fail "$agent_name: missing runtime-local follow-up read nudge"
@@ -1168,15 +1322,15 @@ done
 
 # debug.md: all 3 loci have the nudge
 _DEBUG_NUDGE_COUNT=$(grep -c 'do not scan entire skill folders or read unrelated references' "$DEBUG_CMD")
-if [ "$_DEBUG_NUDGE_COUNT" -eq 3 ]; then
-  pass "debug.md: follow-up read nudge in all 3 loci"
+if [ "$_DEBUG_NUDGE_COUNT" -ge 3 ]; then
+  pass "debug.md: follow-up read nudge present across the 3 debug skill sites (raw occurrences: $_DEBUG_NUDGE_COUNT)"
 else
-  fail "debug.md: follow-up read nudge in $_DEBUG_NUDGE_COUNT loci (expected 3)"
+  fail "debug.md: follow-up read nudge appears in only $_DEBUG_NUDGE_COUNT raw loci (expected at least 3)"
 fi
 
 # vbw-scout.md: has second surface near File Writing
 # Use awk to extract content after "## File Writing" header up to the next "## " header
-if awk '/^## File Writing/{found=1; next} found && /^## /{exit} found' "$SCOUT_AGENT" | grep -q 'read those specific files first'; then
+if awk '/^## File Writing/{found=1; next} found && /^## /{exit} found' "$SCOUT_AGENT" | grep -Fq "$SKILL_FOLLOW_UP_SENTENCE"; then
   pass "vbw-scout.md: has runtime-local follow-up read nudge near File Writing"
 else
   fail "vbw-scout.md: missing runtime-local follow-up read nudge near File Writing"

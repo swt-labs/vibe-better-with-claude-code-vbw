@@ -43,4 +43,11 @@ Recommended flow:
 
 If the smoke flow can spawn subagents or task worktrees, commit the minimal seed fixtures that establish the test premise before invoking the command. Example: if `/vbw:debug` is supposed to notice that `foo.txt` already contains the expected text, commit `foo.txt` first. Keep generated runtime state such as `.vbw-planning/` untracked unless the smoke explicitly requires tracked planning files.
 
+If a smoke test is verifying skill follow-up file behavior, seed the skill fixture only in a Claude Code-loaded skill root:
+
+- consumer repo or smoke worktree: `.claude/skills/<skill>/`
+- global Claude config: source `scripts/resolve-claude-dir.sh`, then use `${CLAUDE_DIR}/skills/<skill>/`
+
+Do not use `.agents/` or `.pi/` as positive fixtures. Those paths are lookalikes, not authoritative Claude Code skill roots, and should only be used as negative controls when proving they are ignored.
+
 For `/vbw:debug` Path A investigator-isolation checks specifically, use `testing/debug-path-a-isolation-smoke.md` as the manual runbook.
