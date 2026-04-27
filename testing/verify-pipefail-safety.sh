@@ -107,7 +107,7 @@ assert_no_quiet_grep_pipe \
 
 assert_no_match \
   "testing/verify-commands-contract.sh" \
-  'printf .*[[:space:]][|][[:space:]]*sed .*[[:space:]][|][[:space:]]*head -1' \
+  'printf .*[[:space:]][|][[:space:]]*sed .*[[:space:]][|][[:space:]]*head([[:space:]]+(-n[[:space:]]*1|-[[:space:]]*1))' \
   "commands-contract avoids printf-to-sed-to-head extraction pipelines"
 
 assert_no_quiet_grep_pipe \
