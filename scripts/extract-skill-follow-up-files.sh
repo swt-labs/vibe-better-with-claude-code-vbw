@@ -127,6 +127,7 @@ for skill in "${SKILLS[@]}"; do
   skill_dir=$(resolve_skill_dir "$skill" 2>/dev/null) || continue
   skill_md="$skill_dir/SKILL.md"
   [ -f "$skill_md" ] || continue
+  skill_dir_abs=$(normalize_path "$skill_dir") || continue
 
   skill_lines=""
   seen_paths=$'\n'
@@ -136,6 +137,7 @@ for skill in "${SKILLS[@]}"; do
     resolved_path="$skill_dir/$rel_target"
     [ -f "$resolved_path" ] || continue
     abs_path=$(normalize_path "$resolved_path") || continue
+    [[ "$abs_path" == "$skill_dir_abs"/* ]] || continue
 
     case "$seen_paths" in
       *$'\n'"$abs_path"$'\n'*)

@@ -15,8 +15,7 @@ write_skill_fixture() {
   local skill_name="$2"
   shift 2
 
-  mkdir -p "$base_dir/$skill_name/references"
-  cat > "$base_dir/$skill_name/SKILL.md" <<'EOF'
+  write_custom_skill_fixture "$base_dir" "$skill_name" "$(cat <<'EOF'
 ---
 name: fixture-skill
 description: Fixture skill
@@ -32,8 +31,24 @@ description: Fixture skill
 - [External](https://example.com/reference.md)
 - [Missing](references/missing.md)
 EOF
+)" "$@"
+}
+
+write_custom_skill_fixture() {
+  local base_dir="$1"
+  local skill_name="$2"
+  local skill_body="$3"
+  shift 3
+
+  mkdir -p "$base_dir/$skill_name/references"
+  printf '%s\n' "$skill_body" > "$base_dir/$skill_name/SKILL.md"
 
   for rel_path in "$@"; do
+    if [[ "$rel_path" == */ ]]; then
+      mkdir -p "$base_dir/$skill_name/$rel_path"
+      continue
+    fi
+
     mkdir -p "$(dirname "$base_dir/$skill_name/$rel_path")"
     printf '# %s\n' "$rel_path" > "$base_dir/$skill_name/$rel_path"
   done
@@ -177,6 +192,113 @@ EOF
 
   [ "$status" -eq 0 ]
   [ -z "$output" ]
+}
+
+@test "extract-skill-follow-up-files: rejects project-local SKILL.md links that normalize outside the active skill directory" {
+  local project_dir="$TEST_TEMP_DIR/project"
+  mkdir -p "$project_dir"
+
+  write_custom_skill_fixture "$project_dir/.claude/skills" "swiftdata" "$(cat <<'EOF'
+---
+name: fixture-skill
+description: Fixture skill
+---
+
+# Fixture Skill
+
+## References
+
+- [Safe](references/first.md)
+- [Normalized](docs/../references/second.md)
+- [Escape](../other-skill/references/secret.md)
+EOF
+)" \
+    "references/first.md" \
+    "references/second.md" \
+    "docs/"
+
+  mkdir -p "$project_dir/.claude/skills/other-skill/references"
+  printf '# secret\n' > "$project_dir/.claude/skills/other-skill/references/secret.md"
+
+  run bash "$SCRIPTS_DIR/extract-skill-follow-up-files.sh" --project-dir "$project_dir" swiftdata
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$project_dir/.claude/skills/swiftdata/references/first.md"* ]]
+  [[ "$output" == *"$project_dir/.claude/skills/swiftdata/references/second.md"* ]]
+  [[ "$output" != *"$project_dir/.claude/skills/other-skill/references/secret.md"* ]]
+}
+
+@test "extract-skill-follow-up-files: rejects global SKILL.md links that normalize outside the active skill directory" {
+  local project_dir="$TEST_TEMP_DIR/project"
+  mkdir -p "$project_dir"
+  export CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/.claude-config"
+  mkdir -p "$CLAUDE_CONFIG_DIR/skills"
+
+  write_custom_skill_fixture "$CLAUDE_CONFIG_DIR/skills" "find-docs" "$(cat <<'EOF'
+---
+name: fixture-skill
+description: Fixture skill
+---
+
+# Fixture Skill
+
+## References
+
+- [Safe](references/first.md)
+- [Normalized](docs/../references/second.md)
+- [Escape](../other-skill/references/secret.md)
+EOF
+)" \
+    "references/first.md" \
+    "references/second.md" \
+    "docs/"
+
+  mkdir -p "$CLAUDE_CONFIG_DIR/skills/other-skill/references"
+  printf '# secret\n' > "$CLAUDE_CONFIG_DIR/skills/other-skill/references/secret.md"
+
+  run bash "$SCRIPTS_DIR/extract-skill-follow-up-files.sh" --project-dir "$project_dir" find-docs
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$CLAUDE_CONFIG_DIR/skills/find-docs/references/first.md"* ]]
+  [[ "$output" == *"$CLAUDE_CONFIG_DIR/skills/find-docs/references/second.md"* ]]
+  [[ "$output" != *"$CLAUDE_CONFIG_DIR/skills/other-skill/references/secret.md"* ]]
+}
+
+@test "extract-skill-follow-up-files: preserves normalized in-tree links and dedupes equivalent paths" {
+  local project_dir="$TEST_TEMP_DIR/project"
+  local project_dir_abs
+  local first_path first_count
+  mkdir -p "$project_dir"
+
+  write_custom_skill_fixture "$project_dir/.claude/skills" "swiftdata" "$(cat <<'EOF'
+---
+name: fixture-skill
+description: Fixture skill
+---
+
+# Fixture Skill
+
+## References
+
+- [First](references/first.md)
+- [Duplicate First](./references/first.md)
+- [Normalized](docs/../references/second.md)
+EOF
+)" \
+    "references/first.md" \
+    "references/second.md" \
+    "docs/"
+
+  run bash "$SCRIPTS_DIR/extract-skill-follow-up-files.sh" --project-dir "$project_dir" swiftdata
+
+  [ "$status" -eq 0 ]
+  project_dir_abs=$(cd "$project_dir" && pwd -P)
+  [[ "$output" == *"$project_dir_abs/.claude/skills/swiftdata/references/first.md"* ]]
+  [[ "$output" == *"$project_dir_abs/.claude/skills/swiftdata/references/second.md"* ]]
+
+  first_path="$project_dir_abs/.claude/skills/swiftdata/references/first.md"
+  first_count=$(printf '%s\n' "$output" | awk -v needle="- $first_path" '$0 == needle { count++ } END { print count + 0 }')
+  [ "$first_count" -eq 1 ]
 }
 
 @test "extract-skill-follow-up-files: preserves valid skills when a whitespace-delimited list includes a traversal token" {

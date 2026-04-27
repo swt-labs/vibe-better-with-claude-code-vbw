@@ -78,9 +78,37 @@ write_runtime_skill_fixture() {
   local rel_name="$3"
   local body_text="$4"
 
+  write_runtime_skill_fixture_with_body "$base_dir" "$skill_name" "$(cat <<EOF
+Skill details: [${rel_name%.md}](references/${rel_name})
+EOF
+)" "references/$rel_name=$body_text"
+}
+
+write_runtime_skill_fixture_with_body() {
+  local base_dir="$1"
+  local skill_name="$2"
+  local skill_body="$3"
+  shift 3
+
   mkdir -p "$base_dir/$skill_name/references"
-  printf '%s\n' "Skill details: [${rel_name%.md}](references/${rel_name})" > "$base_dir/$skill_name/SKILL.md"
-  printf '%s\n' "$body_text" > "$base_dir/$skill_name/references/$rel_name"
+  printf '%s\n' "$skill_body" > "$base_dir/$skill_name/SKILL.md"
+
+  while [ "$#" -gt 0 ]; do
+    local fixture_spec="$1"
+    shift
+
+    case "$fixture_spec" in
+      */)
+        mkdir -p "$base_dir/$skill_name/$fixture_spec"
+        continue
+        ;;
+    esac
+
+    local rel_path="${fixture_spec%%=*}"
+    local body_text="${fixture_spec#*=}"
+    mkdir -p "$(dirname "$base_dir/$skill_name/$rel_path")"
+    printf '%s\n' "$body_text" > "$base_dir/$skill_name/$rel_path"
+  done
 }
 
 verify_runtime_skill_root_guard() {
@@ -88,15 +116,39 @@ verify_runtime_skill_root_guard() {
   local project_dir="$temp_root/project"
   local home_dir="$temp_root/home"
   local helper="$ROOT/scripts/extract-skill-follow-up-files.sh"
+  local global_project_dir="$temp_root/global-project"
   local traversal_project_output traversal_global_output mixed_output
+  local confined_project_output confined_global_output
 
   rm -rf "$temp_root"
-  mkdir -p "$project_dir/.claude/skills" "$home_dir/.claude/skills"
+  mkdir -p "$project_dir/.claude/skills" "$global_project_dir" "$home_dir/.claude/skills"
 
   write_runtime_skill_fixture "$project_dir/.claude/skills" swiftdata local-good.md "Local good reference content"
   write_runtime_skill_fixture "$project_dir/.agents/skills" swiftdata agents-bad.md "Agents bad reference content"
   write_runtime_skill_fixture "$project_dir/.pi/skills" swiftdata pi-bad.md "Pi bad reference content"
   write_runtime_skill_fixture "$home_dir/.agents/skills" swiftdata home-agents-bad.md "Home agents bad reference content"
+
+  write_runtime_skill_fixture_with_body "$project_dir/.claude/skills" confined-skill "$(cat <<'EOF'
+Skill details: [safe](references/local-good.md)
+Skill details: [normalized](docs/../references/normalized-good.md)
+Skill details: [escape](../other-skill/references/secret.md)
+EOF
+)" \
+    "references/local-good.md=Confined local reference" \
+    "references/normalized-good.md=Normalized local reference" \
+    "docs/" 
+  write_runtime_skill_fixture "$project_dir/.claude/skills" other-skill secret.md "Project secret reference"
+
+  write_runtime_skill_fixture_with_body "$home_dir/.claude/skills" global-skill "$(cat <<'EOF'
+Skill details: [safe](references/global-good.md)
+Skill details: [normalized](docs/../references/global-normalized.md)
+Skill details: [escape](../other-skill/references/global-secret.md)
+EOF
+)" \
+    "references/global-good.md=Global safe reference" \
+    "references/global-normalized.md=Global normalized reference" \
+    "docs/"
+  write_runtime_skill_fixture "$home_dir/.claude/skills" other-skill global-secret.md "Global secret reference"
 
   traversal_project_output=$(HOME="$home_dir" CLAUDE_CONFIG_DIR="$home_dir/.claude" bash "$helper" --project-dir "$project_dir" ../../.agents/skills/swiftdata ../../.pi/skills/swiftdata 2>/dev/null || true)
   if [ -z "$traversal_project_output" ]; then
@@ -123,6 +175,34 @@ verify_runtime_skill_root_guard() {
     fail "scripts/extract-skill-follow-up-files.sh: mixed valid+invalid runtime input still leaked a decoy root"
   else
     pass "scripts/extract-skill-follow-up-files.sh: mixed valid+invalid runtime input does not leak decoy roots"
+  fi
+
+  confined_project_output=$(HOME="$home_dir" CLAUDE_CONFIG_DIR="$home_dir/.claude" bash "$helper" --project-dir "$project_dir" confined-skill 2>/dev/null || true)
+  if [[ "$confined_project_output" == *"$project_dir/.claude/skills/confined-skill/references/local-good.md"* ]] \
+    && [[ "$confined_project_output" == *"$project_dir/.claude/skills/confined-skill/references/normalized-good.md"* ]]; then
+    pass "scripts/extract-skill-follow-up-files.sh: keeps normalized in-tree project follow-up links"
+  else
+    fail "scripts/extract-skill-follow-up-files.sh: lost a valid normalized in-tree project follow-up link"
+  fi
+
+  if [[ "$confined_project_output" == *"other-skill/references/secret.md"* ]]; then
+    fail "scripts/extract-skill-follow-up-files.sh: project SKILL.md traversal escaped into a sibling skill"
+  else
+    pass "scripts/extract-skill-follow-up-files.sh: project SKILL.md traversal cannot escape into a sibling skill"
+  fi
+
+  confined_global_output=$(HOME="$home_dir" CLAUDE_CONFIG_DIR="$home_dir/.claude" bash "$helper" --project-dir "$global_project_dir" global-skill 2>/dev/null || true)
+  if [[ "$confined_global_output" == *"$home_dir/.claude/skills/global-skill/references/global-good.md"* ]] \
+    && [[ "$confined_global_output" == *"$home_dir/.claude/skills/global-skill/references/global-normalized.md"* ]]; then
+    pass "scripts/extract-skill-follow-up-files.sh: keeps normalized in-tree global follow-up links"
+  else
+    fail "scripts/extract-skill-follow-up-files.sh: lost a valid normalized in-tree global follow-up link"
+  fi
+
+  if [[ "$confined_global_output" == *"other-skill/references/global-secret.md"* ]]; then
+    fail "scripts/extract-skill-follow-up-files.sh: global SKILL.md traversal escaped into a sibling skill"
+  else
+    pass "scripts/extract-skill-follow-up-files.sh: global SKILL.md traversal cannot escape into a sibling skill"
   fi
 }
 
