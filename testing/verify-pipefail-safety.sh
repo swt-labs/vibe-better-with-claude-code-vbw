@@ -26,15 +26,30 @@ assert_no_match() {
   local label="$3"
   local file="$ROOT/$rel_path"
   local match=""
-  local first_line=""
+  local grep_status=0
 
-  match="$(grep -nE "$pattern" "$file" 2>/dev/null || true)"
-  if [ -z "$match" ]; then
+  if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+    fail "$label (target missing or unreadable: $rel_path)"
+    return
+  fi
+
+  if match="$(grep -nE "$pattern" "$file" 2>/dev/null)"; then
+    grep_status=0
+  else
+    grep_status=$?
+  fi
+
+  if [ "$grep_status" -eq 1 ]; then
     pass "$label"
     return
   fi
 
-  first_line="${match%%$'\n'*}"
+  if [ "$grep_status" -ne 0 ]; then
+    fail "$label (grep error on: $rel_path)"
+    return
+  fi
+
+  local first_line="${match%%$'\n'*}"
   fail "$label (found: $first_line)"
 }
 
