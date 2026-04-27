@@ -537,6 +537,9 @@ echo ""
 echo "--- Check 7: /vbw:skills structured/freeform boundary ---"
 
 SKILLS_STEP_5="$(extract_regex_block "$SKILLS_COMMAND_FILE" '^### Step 5: Offer installation$' '^### ' || true)"
+SKILLS_ONE_CANDIDATE_BRANCH="$(extract_regex_block "$SKILLS_COMMAND_FILE" 'If the combined list has exactly 1 candidate' 'If the combined list has 2[-–]4 candidates' || true)"
+SKILLS_BOUNDED_MULTI_BRANCH="$(extract_regex_block "$SKILLS_COMMAND_FILE" 'If the combined list has 2[-–]4 candidates' 'If the combined list has more than 4 candidates' || true)"
+SKILLS_HIGH_CARDINALITY_BRANCH="$(extract_regex_block "$SKILLS_COMMAND_FILE" 'If the combined list has more than 4 candidates' '^### Step 5b:' || true)"
 
 if [ -n "$SKILLS_STEP_5" ]; then
   pass "skills: Step 5 block extracted"
@@ -544,20 +547,44 @@ else
   fail "skills: Step 5 block extracted"
 fi
 
+if [ -n "$SKILLS_ONE_CANDIDATE_BRANCH" ]; then
+  pass "skills: one-candidate branch extracted"
+else
+  fail "skills: one-candidate branch extracted"
+fi
+
+if [ -n "$SKILLS_BOUNDED_MULTI_BRANCH" ]; then
+  pass "skills: 2-4 candidate branch extracted"
+else
+  fail "skills: 2-4 candidate branch extracted"
+fi
+
+if [ -n "$SKILLS_HIGH_CARDINALITY_BRANCH" ]; then
+  pass "skills: 5+ candidate branch extracted"
+else
+  fail "skills: 5+ candidate branch extracted"
+fi
+
 require_text_literal "skills: empty candidate list stops without AskUserQuestion" "If the combined list is empty: STOP here. Do NOT AskUserQuestion." "$SKILLS_STEP_5"
-require_text_literal "skills: one candidate uses structured single bounded question" "If the combined list has exactly 1 candidate: keep it structured." "$SKILLS_STEP_5"
-require_text_literal "skills: one candidate asks a single bounded question" "AskUserQuestion with a single bounded question." "$SKILLS_STEP_5"
-require_text_regex "skills: 2-4 candidates stay structured" 'If the combined list has 2[-–]4 candidates: keep it structured' "$SKILLS_STEP_5"
-require_text_regex "skills: 2-4 candidates use per-skill AskUserQuestion prompts" 'Use AskUserQuestion with 1 question per skill \(2[-–]4 questions total\)' "$SKILLS_STEP_5"
+require_text_literal "skills: one candidate uses structured single bounded question" "If the combined list has exactly 1 candidate: keep it structured." "$SKILLS_ONE_CANDIDATE_BRANCH"
+require_text_literal "skills: one candidate asks a single bounded question" "AskUserQuestion with a single bounded question." "$SKILLS_ONE_CANDIDATE_BRANCH"
+require_text_literal "skills: one candidate preserves install option" 'Install {skill-name}' "$SKILLS_ONE_CANDIDATE_BRANCH"
+require_text_literal "skills: one candidate preserves skip option" 'Skip for now' "$SKILLS_ONE_CANDIDATE_BRANCH"
+forbid_text_regex "skills: one candidate branch excludes freeform parser anti-patterns" 'numbered list|comma-separated|high-cardinality|numeric/freeform|Type numbers|Accept comma-separated|Reject out-of-range|freeform response|do NOT use `options` array' "$SKILLS_ONE_CANDIDATE_BRANCH"
+require_text_regex "skills: 2-4 candidates stay structured" 'If the combined list has 2[-–]4 candidates: keep it structured' "$SKILLS_BOUNDED_MULTI_BRANCH"
+require_text_regex "skills: 2-4 candidates use per-skill AskUserQuestion prompts" 'Use AskUserQuestion with 1 question per skill \(2[-–]4 questions total\)' "$SKILLS_BOUNDED_MULTI_BRANCH"
+require_text_literal "skills: 2-4 candidates preserve install option" '`Install`' "$SKILLS_BOUNDED_MULTI_BRANCH"
+require_text_literal "skills: 2-4 candidates preserve skip option" '`Skip`' "$SKILLS_BOUNDED_MULTI_BRANCH"
+forbid_text_regex "skills: 2-4 candidate branch excludes freeform parser anti-patterns" 'numbered list|comma-separated|high-cardinality|numeric/freeform|Type numbers|Accept comma-separated|Reject out-of-range|freeform response|do NOT use `options` array' "$SKILLS_BOUNDED_MULTI_BRANCH"
 require_text_literal "skills: bounded branches acknowledge built-in Other path" 'the built-in `Other` path is still part of that question' "$SKILLS_STEP_5"
 require_text_literal "skills: bounded branches accept hybrid number replies" 'accept hybrid replies anchored to one of those visible option numbers' "$SKILLS_STEP_5"
 require_text_literal "skills: no-selection stops before installation scope" 'Do not ask Step 5b and do not enter Step 6.' "$SKILLS_STEP_5"
-require_text_literal "skills: 5+ candidates use intentional high-cardinality freeform" "If the combined list has more than 4 candidates: use intentional high-cardinality freeform input." "$SKILLS_STEP_5"
-require_text_literal "skills: 5+ candidate branch forbids options array" 'do NOT use `options` array' "$SKILLS_STEP_5"
-require_text_literal "skills: 5+ candidate branch presents numbered list in question text" "numbered list in the AskUserQuestion text" "$SKILLS_STEP_5"
-require_text_literal "skills: 5+ candidate parser accepts comma-separated digits" "Accept comma-separated digits" "$SKILLS_STEP_5"
-require_text_literal "skills: 5+ candidate parser accepts skip" 'Accept the word `skip`' "$SKILLS_STEP_5"
-require_text_literal "skills: 5+ candidate parser rejects invalid numeric/freeform input" "Reject out-of-range numbers" "$SKILLS_STEP_5"
+require_text_literal "skills: 5+ candidates use intentional high-cardinality freeform" "If the combined list has more than 4 candidates: use intentional high-cardinality freeform input." "$SKILLS_HIGH_CARDINALITY_BRANCH"
+require_text_literal "skills: 5+ candidate branch forbids options array" 'do NOT use `options` array' "$SKILLS_HIGH_CARDINALITY_BRANCH"
+require_text_literal "skills: 5+ candidate branch presents numbered list in question text" "numbered list in the AskUserQuestion text" "$SKILLS_HIGH_CARDINALITY_BRANCH"
+require_text_literal "skills: 5+ candidate parser accepts comma-separated digits" "Accept comma-separated digits" "$SKILLS_HIGH_CARDINALITY_BRANCH"
+require_text_literal "skills: 5+ candidate parser accepts skip" 'Accept the word `skip`' "$SKILLS_HIGH_CARDINALITY_BRANCH"
+require_text_literal "skills: 5+ candidate parser rejects invalid numeric/freeform input" "Reject out-of-range numbers" "$SKILLS_HIGH_CARDINALITY_BRANCH"
 
 echo ""
 echo "==============================="
