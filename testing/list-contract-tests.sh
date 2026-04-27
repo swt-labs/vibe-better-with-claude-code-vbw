@@ -16,6 +16,7 @@ printf '%s\t%s\n' \
   claude-bootstrap             scripts/verify-claude-bootstrap.sh \
   bash-scripts-contract        testing/verify-bash-scripts-contract.sh \
   commands-contract            testing/verify-commands-contract.sh \
+  pipefail-safety             testing/verify-pipefail-safety.sh \
   no-inline-exec-spans         testing/verify-no-inline-exec-spans.sh \
   issue-157-migration          testing/verify-issue-157-migration-contract.sh \
   plugin-root-resolution       testing/verify-plugin-root-resolution.sh \

@@ -87,6 +87,83 @@ normalize_block_whitespace() {
   '
 }
 
+contains_literal() {
+  local haystack="$1"
+  local needle="$2"
+
+  [[ "$haystack" == *"$needle"* ]]
+}
+
+frontmatter_first_scalar() {
+  local frontmatter="$1"
+  local field="$2"
+
+  awk -v field="$field" '
+    BEGIN {
+      pattern = "^" field ":[[:space:]]*"
+    }
+
+    $0 ~ pattern && first == "" {
+      line = $0
+      sub(pattern, "", line)
+      first = line
+    }
+
+    END {
+      if (first != "") print first
+    }
+  ' <<< "$frontmatter"
+}
+
+frontmatter_first_scalar_from_file() {
+  local file="$1"
+  local field="$2"
+  local frontmatter=""
+
+  frontmatter="$(extract_frontmatter "$file")"
+  frontmatter_first_scalar "$frontmatter" "$field"
+}
+
+frontmatter_continuation_lines() {
+  local frontmatter="$1"
+  local field="$2"
+
+  awk -v field="$field" '
+    BEGIN {
+      pattern = "^" field ":"
+    }
+
+    $0 ~ pattern {
+      collecting = 1
+      next
+    }
+
+    collecting && /^[[:space:]]/ {
+      print
+      next
+    }
+
+    collecting {
+      collecting = 0
+    }
+  ' <<< "$frontmatter"
+}
+
+first_matching_line_number() {
+  local text="$1"
+  local needle="$2"
+
+  awk -v needle="$needle" '
+    index($0, needle) && first == 0 {
+      first = NR
+    }
+
+    END {
+      if (first > 0) print first
+    }
+  ' <<< "$text"
+}
+
 extract_heading_block() {
   local file="$1"
   local heading="$2"
@@ -131,7 +208,7 @@ block_contains_normalized() {
   normalized_expected=$(printf '%s' "$expected" | normalize_block_whitespace)
   [ -n "$normalized_expected" ] || return 1
 
-  printf '%s\n' "$normalized_block" | grep -Fq -- "$normalized_expected"
+  contains_literal "$normalized_block" "$normalized_expected"
 }
 
 has_allowed_tool() {
@@ -205,7 +282,7 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
     continue
   fi
 
-  NAME_VALUE="$(printf '%s\n' "$FRONTMATTER" | sed -n 's/^name:[[:space:]]*//p' | head -1)"
+  NAME_VALUE="$(frontmatter_first_scalar "$FRONTMATTER" "name")"
   # Strip vbw: prefix if present — plugin auto-prefixes the namespace
   NAME_STEM="${NAME_VALUE#vbw:}"
 
@@ -229,13 +306,13 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
     continue
   fi
 
-  DESC_VALUE="$(printf '%s\n' "$FRONTMATTER" | sed -n 's/^description:[[:space:]]*//p' | head -1)"
+  DESC_VALUE="$(frontmatter_first_scalar "$FRONTMATTER" "description")"
   if [ -z "$DESC_VALUE" ]; then
     fail "$base: description is empty"
   elif [[ "$DESC_VALUE" == \|* || "$DESC_VALUE" == \>* ]]; then
     fail "$base: description must be single-line (block scalar found)"
   else
-    AFTER_DESC="$(printf '%s\n' "$FRONTMATTER" | awk '/^description:/{found=1; next} found && /^[[:space:]]/{print; next} found{exit}')"
+    AFTER_DESC="$(frontmatter_continuation_lines "$FRONTMATTER" "description")"
     if [ -n "$AFTER_DESC" ]; then
       fail "$base: description has continuation lines"
     else
@@ -775,7 +852,7 @@ else
   fail "mode-block helper missed wrapped milestone slug command after whitespace normalization"
 fi
 
-if printf '%s\n' "$_mode_helper_block" | grep -Fq 'ignored'; then
+if contains_literal "$_mode_helper_block" 'ignored'; then
   fail "mode-block helper did not stop at the next mode heading"
 else
   pass "mode-block helper stops at the next mode heading"
@@ -810,12 +887,12 @@ echo ""
 echo "=== Add Phase Numbering Verification ==="
 
 add_phase_block=$(mode_block "### Mode: Add Phase")
-if printf '%s\n' "$add_phase_block" | grep -Fq '6. Update ROADMAP.md:' \
-  && printf '%s\n' "$add_phase_block" | grep -Fq '7. If `.vbw-planning/CONTEXT.md` exists, rewrite it to reflect the updated milestone decomposition' \
-  && printf '%s\n' "$add_phase_block" | grep -Fq '8. Update STATE.md phase total:' \
-  && printf '%s\n' "$add_phase_block" | grep -Fq '9. **Phase mutation commit boundary (conditional):**' \
-  && printf '%s\n' "$add_phase_block" | grep -Fq '10. Present:' \
-  && ! printf '%s\n' "$add_phase_block" | grep -Fq '1. Update ROADMAP.md:'; then
+if contains_literal "$add_phase_block" '6. Update ROADMAP.md:' \
+  && contains_literal "$add_phase_block" '7. If `.vbw-planning/CONTEXT.md` exists, rewrite it to reflect the updated milestone decomposition' \
+  && contains_literal "$add_phase_block" '8. Update STATE.md phase total:' \
+  && contains_literal "$add_phase_block" '9. **Phase mutation commit boundary (conditional):**' \
+  && contains_literal "$add_phase_block" '10. Present:' \
+  && ! contains_literal "$add_phase_block" '1. Update ROADMAP.md:'; then
   pass "vibe: Add Phase keeps one ordered parent step list"
 else
   fail "vibe: Add Phase restarts ordered steps instead of continuing 6-10"
@@ -826,7 +903,7 @@ echo "=== Archive Hook Wiring Verification ==="
 
 archive_block=$(mode_block "### Mode: Archive")
 
-if printf '%s\n' "$archive_block" | grep -Fq '9b. Post-archive hook (non-blocking): after successful archive completion, run:'; then
+if contains_literal "$archive_block" '9b. Post-archive hook (non-blocking): after successful archive completion, run:'; then
   pass "vibe: Archive mode includes explicit post-archive hook step"
 else
   fail "vibe: Archive mode missing explicit post-archive hook step"
@@ -838,13 +915,13 @@ else
   fail "vibe: Archive mode missing deterministic milestone slug derivation"
 fi
 
-if printf '%s\n' "$archive_block" | grep -Fq 'Parse args: --tag=vN.N.N (custom tag), --no-tag (skip), --force (skip non-UAT audit).'; then
+if contains_literal "$archive_block" 'Parse args: --tag=vN.N.N (custom tag), --no-tag (skip), --force (skip non-UAT audit).'; then
   pass "vibe: Archive mode still defines --tag as a custom git tag"
 else
   fail "vibe: Archive mode no longer defines --tag as a custom git tag"
 fi
 
-if printf '%s\n' "$archive_block" | grep -Fq 'Override with `--tag` if provided.'; then
+if contains_literal "$archive_block" 'Override with `--tag` if provided.'; then
   fail "vibe: Archive mode still lets --tag override milestone slug"
 else
   pass "vibe: Archive mode keeps milestone slug separate from custom --tag"
@@ -856,9 +933,9 @@ else
   fail "vibe: Archive mode missing post-archive hook argument contract"
 fi
 
-archive_regen_line=$(printf '%s\n' "$archive_block" | awk '/9\. Regenerate CLAUDE\.md:/ && !found1 {print NR; found1=1}')
-archive_hook_line=$(printf '%s\n' "$archive_block" | awk '/9b\. Post-archive hook \(non-blocking\):/ && !found2 {print NR; found2=1}')
-archive_present_line=$(printf '%s\n' "$archive_block" | awk '/10\. Present:/ && !found3 {print NR; found3=1}')
+archive_regen_line=$(first_matching_line_number "$archive_block" '9. Regenerate CLAUDE.md:')
+archive_hook_line=$(first_matching_line_number "$archive_block" '9b. Post-archive hook (non-blocking):')
+archive_present_line=$(first_matching_line_number "$archive_block" '10. Present:')
 
 if [ -n "$archive_regen_line" ] && [ -n "$archive_hook_line" ] && [ -n "$archive_present_line" ] \
   && [ "$archive_regen_line" -lt "$archive_hook_line" ] \
@@ -1050,7 +1127,7 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
     continue
   fi
 
-  ALLOWED="$(printf '%s\n' "$FRONTMATTER" | sed -n 's/^allowed-tools:[[:space:]]*//p' | head -1)"
+  ALLOWED="$(frontmatter_first_scalar "$FRONTMATTER" "allowed-tools")"
   if [ -z "$ALLOWED" ]; then
     continue
   fi
@@ -1073,7 +1150,8 @@ for skill_cmd in debug fix map qa research vibe; do
   [ -f "$skill_file" ] || continue
 
   if grep -Fq 'Call Skill(' "$skill_file"; then
-    if grep -F 'allowed-tools:' "$skill_file" | grep -Fq 'Skill'; then
+    skill_allowed="$(frontmatter_first_scalar_from_file "$skill_file" "allowed-tools")"
+    if has_allowed_tool "$skill_allowed" "Skill"; then
       pass "$skill_cmd: regression guard confirms Skill allowlist"
     else
       fail "$skill_cmd: regression guard found Call Skill(...) but allowed-tools is missing Skill"
@@ -1083,7 +1161,8 @@ done
 
 INIT_FILE="$COMMANDS_DIR/init.md"
 if [ -f "$INIT_FILE" ] && grep -Fq 'WebSearch' "$INIT_FILE"; then
-  if grep -F 'allowed-tools:' "$INIT_FILE" | grep -Fq 'WebSearch'; then
+  init_allowed="$(frontmatter_first_scalar_from_file "$INIT_FILE" "allowed-tools")"
+  if has_allowed_tool "$init_allowed" "WebSearch"; then
     pass "init: regression guard confirms WebSearch allowlist"
   else
     fail "init: regression guard found WebSearch in body but allowed-tools is missing WebSearch"

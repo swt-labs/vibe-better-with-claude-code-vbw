@@ -27,6 +27,28 @@ fail() {
   FAIL=$((FAIL + 1))
 }
 
+contains_literal() {
+  local haystack="$1"
+  local needle="$2"
+
+  [[ "$haystack" == *"$needle"* ]]
+}
+
+first_matching_line_number() {
+  local text="$1"
+  local needle="$2"
+
+  awk -v needle="$needle" '
+    index($0, needle) && first == 0 {
+      first = NR
+    }
+
+    END {
+      if (first > 0) print first
+    }
+  ' <<< "$text"
+}
+
 # — Template checks —
 
 TEMPLATE="$ROOT/templates/DEBUG-SESSION.md"
@@ -252,9 +274,9 @@ else
   fail "debug.md Path A missing fresh vbw-debugger implementation-owner contract"
 fi
 
-patha_teardown_line=$(printf '%s\n' "$DEBUG_PATH_A_BLOCK" | awk '/\*\*Teardown phase — HARD GATE before any implementation:\*\*/ { print NR; exit }')
-patha_zero_line=$(printf '%s\n' "$DEBUG_PATH_A_BLOCK" | awk '/Verify: after TeamDelete, there must be ZERO active teammates\./ { print NR; exit }')
-patha_impl_line=$(printf '%s\n' "$DEBUG_PATH_A_BLOCK" | awk '/If `RESOLUTION_OBSERVATION=needs_change`: spawn ONE fresh post-synthesis implementation owner/ { print NR; exit }')
+patha_teardown_line=$(first_matching_line_number "$DEBUG_PATH_A_BLOCK" '**Teardown phase — HARD GATE before any implementation:**')
+patha_zero_line=$(first_matching_line_number "$DEBUG_PATH_A_BLOCK" 'Verify: after TeamDelete, there must be ZERO active teammates.')
+patha_impl_line=$(first_matching_line_number "$DEBUG_PATH_A_BLOCK" 'If `RESOLUTION_OBSERVATION=needs_change`: spawn ONE fresh post-synthesis implementation owner')
 
 if [ -n "$patha_teardown_line" ] && [ -n "$patha_zero_line" ] && [ -n "$patha_impl_line" ] \
   && [ "$patha_teardown_line" -lt "$patha_zero_line" ] && [ "$patha_zero_line" -lt "$patha_impl_line" ]; then
@@ -278,10 +300,10 @@ else
 fi
 
 DEBUG_HINT_LINE="$(awk '/^argument-hint:/{print; exit}' "$DEBUG_CMD" 2>/dev/null || true)"
-if printf '%s\n' "$DEBUG_HINT_LINE" | grep -Eq 'bug description' \
-  && printf '%s\n' "$DEBUG_HINT_LINE" | grep -Eq 'todo number' \
-  && printf '%s\n' "$DEBUG_HINT_LINE" | grep -Fq -- '--resume' \
-  && printf '%s\n' "$DEBUG_HINT_LINE" | grep -Fq -- '--session ID'; then
+if contains_literal "$DEBUG_HINT_LINE" 'bug description' \
+  && contains_literal "$DEBUG_HINT_LINE" 'todo number' \
+  && contains_literal "$DEBUG_HINT_LINE" '--resume' \
+  && contains_literal "$DEBUG_HINT_LINE" '--session ID'; then
   pass "debug.md argument-hint advertises bug text, todo number, --resume, and --session"
 else
   fail "debug.md argument-hint missing one or more supported entry points"
@@ -290,10 +312,10 @@ fi
 DEBUG_USAGE_LINES="$(grep -F 'Usage:' "$DEBUG_CMD" 2>/dev/null || true)"
 DEBUG_USAGE_COUNT=$(printf '%s\n' "$DEBUG_USAGE_LINES" | grep -c 'Usage:' || true)
 if [ "$DEBUG_USAGE_COUNT" -ge 2 ] \
-  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '/vbw:debug <todo-number>' \
-  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '/vbw:debug --resume' \
-  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '/vbw:debug --session <id>' \
-  && printf '%s\n' "$DEBUG_USAGE_LINES" | grep -Fq '[--competing|--parallel|--serial]'; then
+  && contains_literal "$DEBUG_USAGE_LINES" '/vbw:debug <todo-number>' \
+  && contains_literal "$DEBUG_USAGE_LINES" '/vbw:debug --resume' \
+  && contains_literal "$DEBUG_USAGE_LINES" '/vbw:debug --session <id>' \
+  && contains_literal "$DEBUG_USAGE_LINES" '[--competing|--parallel|--serial]'; then
   pass "debug.md keeps both expanded Usage strings with resume/session and ambiguity flags"
 else
   fail "debug.md missing expanded Usage strings with resume/session and ambiguity flags"

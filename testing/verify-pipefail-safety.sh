@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# verify-pipefail-safety.sh — Focused guard against early-closing verifier pipelines
+#
+# Related: #535
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+PASS=0
+FAIL=0
+
+pass() {
+  echo "PASS  $1"
+  PASS=$((PASS + 1))
+}
+
+fail() {
+  echo "FAIL  $1"
+  FAIL=$((FAIL + 1))
+}
+
+assert_no_match() {
+  local rel_path="$1"
+  local pattern="$2"
+  local label="$3"
+  local file="$ROOT/$rel_path"
+  local match=""
+  local first_line=""
+
+  match="$(grep -nE "$pattern" "$file" 2>/dev/null || true)"
+  if [ -z "$match" ]; then
+    pass "$label"
+    return
+  fi
+
+  first_line="${match%%$'\n'*}"
+  fail "$label (found: $first_line)"
+}
+
+echo "=== Pipefail safety verification ==="
+
+assert_no_match \
+  "testing/verify-commands-contract.sh" \
+  'printf .*[[:space:]][|][[:space:]]*grep -(Fq|Eq|q)' \
+  "commands-contract avoids printf-to-grep early-close pipelines"
+
+assert_no_match \
+  "testing/verify-commands-contract.sh" \
+  'printf .*[[:space:]][|][[:space:]]*awk .*(exit|print NR)' \
+  "commands-contract avoids printf-to-awk early-exit lookups"
+
+assert_no_match \
+  "testing/verify-commands-contract.sh" \
+  'printf .*[[:space:]][|][[:space:]]*sed .*[[:space:]][|][[:space:]]*head -1' \
+  "commands-contract avoids printf-to-sed-to-head extraction pipelines"
+
+assert_no_match \
+  "testing/verify-commands-contract.sh" \
+  'grep .*[[:space:]][|][[:space:]]*grep -(Fq|q)' \
+  "commands-contract avoids grep-to-grep early-close pipelines"
+
+assert_no_match \
+  "testing/verify-debug-session-contract.sh" \
+  'printf .*[[:space:]][|][[:space:]]*grep -(Fq|Eq|q)' \
+  "debug-session-contract avoids printf-to-grep early-close pipelines"
+
+assert_no_match \
+  "testing/verify-debug-session-contract.sh" \
+  'printf .*[[:space:]][|][[:space:]]*awk .*(exit|print NR)' \
+  "debug-session-contract avoids printf-to-awk early-exit lookups"
+
+echo ""
+echo "==============================="
+echo "TOTAL: $PASS PASS, $FAIL FAIL"
+echo "==============================="
+
+if [ "$FAIL" -gt 0 ]; then
+  exit 1
+fi
+
+echo "Pipefail safety checks passed."
