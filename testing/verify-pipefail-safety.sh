@@ -59,6 +59,7 @@ assert_no_quiet_grep_pipe() {
   local label="$3"
   local file="$ROOT/$rel_path"
   local match=""
+  local awk_status=0
   local first_line=""
 
   if [ ! -f "$file" ] || [ ! -r "$file" ]; then
@@ -66,7 +67,7 @@ assert_no_quiet_grep_pipe() {
     return
   fi
 
-  match="$(awk -v producer="$producer_pattern" '
+  if match="$(awk -v producer="$producer_pattern" '
     function has_quiet_grep(line) {
       return line ~ /(^|[^|])[|][[:space:]]*grep([[:space:]]|$)/ \
         && (line ~ /[[:space:]]--(quiet|silent)([[:space:]]|$)/ \
@@ -77,7 +78,16 @@ assert_no_quiet_grep_pipe() {
       printf "%d:%s\n", NR, $0
       exit
     }
-  ' "$file" 2>/dev/null || true)"
+  ' "$file" 2>/dev/null)"; then
+    awk_status=0
+  else
+    awk_status=$?
+  fi
+
+  if [ "$awk_status" -ne 0 ]; then
+    fail "$label (awk scan error on: $rel_path)"
+    return
+  fi
 
   if [ -z "$match" ]; then
     pass "$label"
