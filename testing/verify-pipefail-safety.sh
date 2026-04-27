@@ -52,8 +52,18 @@ assert_no_match \
 
 assert_no_match \
   "testing/verify-commands-contract.sh" \
+  'awk .*[[:space:]][|][[:space:]]*grep -(Fq|Eq|q)' \
+  "commands-contract avoids awk-to-grep early-close pipelines"
+
+assert_no_match \
+  "testing/verify-commands-contract.sh" \
   'printf .*[[:space:]][|][[:space:]]*sed .*[[:space:]][|][[:space:]]*head -1' \
   "commands-contract avoids printf-to-sed-to-head extraction pipelines"
+
+assert_no_match \
+  "testing/verify-commands-contract.sh" \
+  'sed .*[[:space:]][|][[:space:]]*grep -(Fq|Eq|q)' \
+  "commands-contract avoids sed-to-grep early-close pipelines"
 
 assert_no_match \
   "testing/verify-commands-contract.sh" \
@@ -69,6 +79,16 @@ assert_no_match \
   "testing/verify-debug-session-contract.sh" \
   'printf .*[[:space:]][|][[:space:]]*awk .*(exit|print NR)' \
   "debug-session-contract avoids printf-to-awk early-exit lookups"
+
+assert_no_match \
+  "testing/verify-debug-session-contract.sh" \
+  'awk .*[[:space:]][|][[:space:]]*grep -(Fq|Eq|q)' \
+  "debug-session-contract avoids awk-to-grep early-close pipelines"
+
+assert_no_match \
+  "testing/verify-debug-session-contract.sh" \
+  'sed .*[[:space:]][|][[:space:]]*grep -(Fq|Eq|q)' \
+  "debug-session-contract avoids sed-to-grep early-close pipelines"
 
 echo ""
 echo "==============================="
