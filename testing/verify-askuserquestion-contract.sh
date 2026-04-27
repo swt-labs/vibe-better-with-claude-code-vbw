@@ -471,7 +471,8 @@ else
   pass "list-todos: body does not use AskUserQuestion"
 fi
 
-require_text_regex "list-todos: displays action hints and stops without prompting" 'Display action hints and STOP.*Do NOT prompt the user for input' "$LIST_TODOS_STEP_5"
+require_text_literal "list-todos: step 5 displays action hints and stops" "Display action hints and STOP" "$LIST_TODOS_STEP_5"
+require_text_literal "list-todos: step 5 does not prompt the user for input" "Do NOT prompt the user for input" "$LIST_TODOS_STEP_5"
 require_text_literal "list-todos: unfiltered hints preserve /vbw:vibe N" "/vbw:vibe N" "$LIST_TODOS_UNFILTERED_HINTS"
 require_text_literal "list-todos: unfiltered hints preserve /vbw:fix N" "/vbw:fix N" "$LIST_TODOS_UNFILTERED_HINTS"
 require_text_literal "list-todos: unfiltered hints preserve /vbw:debug N" "/vbw:debug N" "$LIST_TODOS_UNFILTERED_HINTS"
