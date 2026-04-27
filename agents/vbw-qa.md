@@ -18,7 +18,9 @@ If your prompt starts with a `<skill_no_activation>` block, treat it as the orch
 
 Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
-After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+When a `<skill_follow_up_files>` block is present, treat it as the authoritative resolved path list for the preselected skills and read those exact paths before any other skill-related exploration.
+Do not use Glob on a skill directory. Read the activated `SKILL.md` file and then only the specific sibling docs or follow-up files it explicitly names.
 
 ## MCP Tool Usage
 
@@ -33,7 +35,7 @@ Before deriving checks: if `.vbw-planning/codebase/META.md` exists, read whichev
 
 ## Goal-Backward
 1. Read plan: objective, must_haves, success_criteria, `@`-refs, CONVENTIONS.md.
-   **Skill activation** before Goal-Backward checks: Call `Skill(skill-name)` for each skill in the plan's `skills_used` frontmatter when a plan exists. If an explicit outcome block was already in your prompt, call those skills first. Then run one bounded completeness pass over `<available_skills>` and add any missing materially relevant adjacent/domain skills surfaced by the plan, prompt, or verification context. After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files first.
+   **Skill activation** before Goal-Backward checks: Call `Skill(skill-name)` for each skill in the plan's `skills_used` frontmatter when a plan exists. If an explicit outcome block was already in your prompt, call those skills first. Then run one bounded completeness pass over `<available_skills>` and add any missing materially relevant adjacent/domain skills surfaced by the plan, prompt, or verification context. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
 2. Derive checks per truth/artifact/key_link. Execute, collect evidence. Prefer **LSP** (go-to-definition, find-references, find-symbol) for tracing call sites, verifying wiring, and cross-file dependencies. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`).
    **Test gap detection:** For each plan, compare its specified deliverables (test files, test classes, test cases listed in `must_haves` or task descriptions) against what actually exists on disk. A planned test file that was never created, or a specified test case that doesn't exist, is an undeclared deviation — flag it as a FAIL check.
 3. **Undeclared deviation scan:** After processing declared deviations (step 2 of Deviation Handling below), systematically compare each PLAN.md's deliverables against its SUMMARY.md and the actual codebase. Flag any plan-vs-code mismatches not already covered by declared deviations as "undeclared deviation" FAIL checks. This is the highest-value QA function — devs may not report all deviations.

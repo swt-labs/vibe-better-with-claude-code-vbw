@@ -14,6 +14,7 @@ Use this skill when validating VBW behavior with `ccr code` so future issue-fix 
 - Do **not** run the smoke test directly in the base consumer repo checkout.
 - Create or reuse a **disposable consumer smoke worktree** and run `ccr code` there, or use a **sandbox repo** when the real consumer repo cannot exercise the flow.
 - Use the candidate VBW checkout only as `--plugin-dir`.
+- If the smoke needs installed skill fixtures, seed them only under the consumer repo's `.claude/skills/<skill>/` tree or the global Claude config `skills/` directory after sourcing `scripts/resolve-claude-dir.sh` and using `${CLAUDE_DIR}`. Do **not** use `.agents/` or `.pi/` as positive fixtures.
 - When documenting results, say: **"smoke-tested from a consumer smoke worktree or sandbox while loading the candidate plugin checkout via `--plugin-dir`"**.
 - If the transcript path encodes the plugin repo or the base consumer repo checkout instead of the consumer smoke worktree/sandbox, treat the smoke result as suspect until proven otherwise.
 

@@ -19,7 +19,9 @@ If your prompt starts with a `<skill_no_activation>` block, treat it as the orch
 
 Otherwise (standalone/ad-hoc mode): if a plan exists, honor its `skills_used` frontmatter first. Then check `<available_skills>` in your system context and activate all materially relevant skills for the task, including adjacent/supporting domain skills surfaced by the prompt or context.
 
-After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+When a `<skill_follow_up_files>` block is present, treat it as the authoritative resolved path list for the preselected skills and read those exact paths before any other skill-related exploration.
+Do not use Glob on a skill directory. Read the activated `SKILL.md` file and then only the specific sibling docs or follow-up files it explicitly names.
 
 ## Planning Protocol
 
@@ -32,7 +34,7 @@ Display: `◆ Lead: Researching phase context...`
 
 **If no RESEARCH.md exists:** Scan codebase to understand the problem space. If `.vbw-planning/codebase/META.md` exists, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, and `STRUCTURE.md` exist in `.vbw-planning/codebase/` to bootstrap understanding. Prefer **LSP** (go-to-definition, find-references, find-symbol) for navigating type hierarchies, tracing call sites, and following data flow. If LSP is unavailable or errors, fall back immediately to **Grep/Glob** — do not retry LSP. Use Search/Grep/Glob for literal strings, comments, config values, filename discovery, and non-code assets where LSP doesn't apply (see `references/lsp-first-policy.md`). WebFetch for new libs/APIs.
 
-**Always:** Determine the full planning skill set. If your prompt already contains a `<skill_activation>` block, start there. If it contains `<skill_no_activation>`, treat that as "no skills were preselected" rather than a ban. Then run one bounded completeness pass over `<available_skills>` and activate all materially relevant skills for the phase, including adjacent/supporting domain skills surfaced by the phase goal, research, logs, error text, or stack context. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. After calling `Skill(...)`, if the loaded instructions reference additional files or follow-up read steps relevant to the active task, read those specific files first. Research stays in context.
+**Always:** Determine the full planning skill set. If your prompt already contains a `<skill_activation>` block, start there. If it contains `<skill_no_activation>`, treat that as "no skills were preselected" rather than a ban. Then run one bounded completeness pass over `<available_skills>` and activate all materially relevant skills for the phase, including adjacent/supporting domain skills surfaced by the phase goal, research, logs, error text, or stack context. Wire relevant skills into plans via `skills_used` frontmatter and `@`-references to SKILL.md files. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references. Research stays in context.
 
 If Scout-produced RESEARCH.md includes findings from MCP tools (documentation servers, web search MCPs, domain-specific data sources), trust those equally to WebFetch/WebSearch findings — they come from the user's installed information sources.
 
