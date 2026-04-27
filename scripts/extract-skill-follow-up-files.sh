@@ -19,6 +19,18 @@ PROJECT_DIR="."
 SKILLS=()
 NORMALIZED_SKILLS=()
 
+valid_skill_name() {
+  local skill="$1"
+
+  case "$skill" in
+    ""|.|..|*/*)
+      return 1
+      ;;
+  esac
+
+  return 0
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --project-dir)
@@ -55,6 +67,7 @@ PROJECT_DIR=$(cd "$PROJECT_DIR" && pwd -P)
 for raw_skill in "${SKILLS[@]}"; do
   while IFS= read -r parsed_skill; do
     [ -n "$parsed_skill" ] || continue
+    valid_skill_name "$parsed_skill" || continue
     NORMALIZED_SKILLS+=("$parsed_skill")
   done < <(printf '%s\n' "$raw_skill" | tr ',[:space:]' '\n\n' | sed '/^$/d')
 done

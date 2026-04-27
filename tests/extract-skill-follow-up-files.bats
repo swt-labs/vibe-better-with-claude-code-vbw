@@ -146,6 +146,68 @@ EOF
   [ -z "$output" ]
 }
 
+@test "extract-skill-follow-up-files: ignores traversal tokens that would escape into project lookalike roots" {
+  local project_dir="$TEST_TEMP_DIR/project"
+  mkdir -p "$project_dir/.claude/skills"
+
+  write_skill_fixture "$project_dir/.agents/skills" "swiftdata" \
+    "references/first.md" \
+    "references/second.md"
+  write_skill_fixture "$project_dir/.pi/skills" "swiftdata" \
+    "references/first.md" \
+    "references/second.md"
+
+  run bash "$SCRIPTS_DIR/extract-skill-follow-up-files.sh" --project-dir "$project_dir" ../../.agents/skills/swiftdata ../../.pi/skills/swiftdata
+
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "extract-skill-follow-up-files: ignores traversal tokens that would escape into HOME/.agents through the global root" {
+  local project_dir="$TEST_TEMP_DIR/project"
+  mkdir -p "$project_dir"
+  unset CLAUDE_CONFIG_DIR
+  mkdir -p "$HOME/.claude/skills"
+
+  write_skill_fixture "$HOME/.agents/skills" "swiftdata" \
+    "references/first.md" \
+    "references/second.md"
+
+  run bash "$SCRIPTS_DIR/extract-skill-follow-up-files.sh" --project-dir "$project_dir" ../../.agents/skills/swiftdata
+
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "extract-skill-follow-up-files: preserves valid skills when a whitespace-delimited list includes a traversal token" {
+  local project_dir="$TEST_TEMP_DIR/project"
+  mkdir -p "$project_dir/.claude/skills"
+
+  write_skill_fixture "$project_dir/.claude/skills" "swiftdata" \
+    "references/first.md" \
+    "references/second.md"
+  write_skill_fixture "$project_dir/.agents/skills" "swiftdata" \
+    "references/first.md" \
+    "references/second.md"
+
+  run bash "$SCRIPTS_DIR/extract-skill-follow-up-files.sh" --project-dir "$project_dir" "swiftdata ../../.agents/skills/swiftdata"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Skill: swiftdata"* ]]
+  [[ "$output" == *"$project_dir/.claude/skills/swiftdata/references/first.md"* ]]
+  [[ "$output" != *"$project_dir/.agents/skills/swiftdata/references/first.md"* ]]
+}
+
+@test "extract-skill-follow-up-files: ignores dot-segment pseudo skill names" {
+  local project_dir="$TEST_TEMP_DIR/project"
+  mkdir -p "$project_dir"
+
+  run bash "$SCRIPTS_DIR/extract-skill-follow-up-files.sh" --project-dir "$project_dir" . ..
+
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
 @test "extract-skill-follow-up-files: splits whitespace-delimited skill lists passed as one argument" {
   local project_dir="$TEST_TEMP_DIR/project"
   mkdir -p "$project_dir"

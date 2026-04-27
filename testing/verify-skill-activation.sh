@@ -69,6 +69,63 @@ fail() {
   FAIL=$((FAIL + 1))
 }
 
+RUNTIME_HELPER_TEST_ROOT=$(mktemp -d)
+trap 'rm -rf "${RUNTIME_HELPER_TEST_ROOT:-}"' EXIT
+
+write_runtime_skill_fixture() {
+  local base_dir="$1"
+  local skill_name="$2"
+  local rel_name="$3"
+  local body_text="$4"
+
+  mkdir -p "$base_dir/$skill_name/references"
+  printf '%s\n' "Skill details: [${rel_name%.md}](references/${rel_name})" > "$base_dir/$skill_name/SKILL.md"
+  printf '%s\n' "$body_text" > "$base_dir/$skill_name/references/$rel_name"
+}
+
+verify_runtime_skill_root_guard() {
+  local temp_root="$RUNTIME_HELPER_TEST_ROOT"
+  local project_dir="$temp_root/project"
+  local home_dir="$temp_root/home"
+  local helper="$ROOT/scripts/extract-skill-follow-up-files.sh"
+  local traversal_project_output traversal_global_output mixed_output
+
+  rm -rf "$temp_root"
+  mkdir -p "$project_dir/.claude/skills" "$home_dir/.claude/skills"
+
+  write_runtime_skill_fixture "$project_dir/.claude/skills" swiftdata local-good.md "Local good reference content"
+  write_runtime_skill_fixture "$project_dir/.agents/skills" swiftdata agents-bad.md "Agents bad reference content"
+  write_runtime_skill_fixture "$project_dir/.pi/skills" swiftdata pi-bad.md "Pi bad reference content"
+  write_runtime_skill_fixture "$home_dir/.agents/skills" swiftdata home-agents-bad.md "Home agents bad reference content"
+
+  traversal_project_output=$(HOME="$home_dir" CLAUDE_CONFIG_DIR="$home_dir/.claude" bash "$helper" --project-dir "$project_dir" ../../.agents/skills/swiftdata ../../.pi/skills/swiftdata 2>/dev/null || true)
+  if [ -z "$traversal_project_output" ]; then
+    pass "scripts/extract-skill-follow-up-files.sh: rejects traversal into project lookalike roots at runtime"
+  else
+    fail "scripts/extract-skill-follow-up-files.sh: traversal into project lookalike roots still produces runtime output"
+  fi
+
+  traversal_global_output=$(HOME="$home_dir" CLAUDE_CONFIG_DIR="$home_dir/.claude" bash "$helper" --project-dir "$project_dir" ../../.agents/skills/swiftdata 2>/dev/null || true)
+  if [ -z "$traversal_global_output" ]; then
+    pass "scripts/extract-skill-follow-up-files.sh: rejects traversal into HOME/.agents at runtime"
+  else
+    fail "scripts/extract-skill-follow-up-files.sh: traversal into HOME/.agents still produces runtime output"
+  fi
+
+  mixed_output=$(HOME="$home_dir" CLAUDE_CONFIG_DIR="$home_dir/.claude" bash "$helper" --project-dir "$project_dir" "swiftdata ../../.agents/skills/swiftdata" 2>/dev/null || true)
+  if [[ "$mixed_output" == *"$project_dir/.claude/skills/swiftdata/references/local-good.md"* ]]; then
+    pass "scripts/extract-skill-follow-up-files.sh: preserves valid skills alongside invalid traversal tokens"
+  else
+    fail "scripts/extract-skill-follow-up-files.sh: mixed valid+invalid runtime input lost the valid skill"
+  fi
+
+  if [[ "$mixed_output" == *"agents-bad.md"* || "$mixed_output" == *"pi-bad.md"* || "$mixed_output" == *"home-agents-bad.md"* ]]; then
+    fail "scripts/extract-skill-follow-up-files.sh: mixed valid+invalid runtime input still leaked a decoy root"
+  else
+    pass "scripts/extract-skill-follow-up-files.sh: mixed valid+invalid runtime input does not leak decoy roots"
+  fi
+}
+
 expected_skill_contract_sites() {
   case "$(basename "$1")" in
     vibe.md) echo 10 ;;
@@ -1180,6 +1237,8 @@ if grep -q '\.agents/skills\|\.pi/skills\|\$HOME/.agents/skills' "$ROOT/scripts/
 else
   pass "scripts/extract-skill-follow-up-files.sh: rejects non-Claude lookalike skill roots"
 fi
+
+verify_runtime_skill_root_guard
 
 if [ -x "$ROOT/scripts/skill-decision-logger.sh" ]; then
   pass "scripts/skill-decision-logger.sh: is executable"
