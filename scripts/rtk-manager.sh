@@ -714,15 +714,47 @@ verify_download_checksum() {
   echo "$actual"
 }
 
-extract_rtk_binary() {
-  local asset="$1" temp_dir="$2" found
-  mkdir -p "$temp_dir"
-  tar -xzf "$asset" -C "$temp_dir"
-  found="$(find "$temp_dir" -type f -name rtk -perm -u+x -print 2>/dev/null | head -1 || true)"
-  if [ -z "$found" ]; then
-    found="$(find "$temp_dir" -type f -name rtk -print 2>/dev/null | head -1 || true)"
+rtk_archive_member_safe() {
+  local member="$1"
+  [ -n "$member" ] || return 1
+  case "$member" in
+    /*|..|../*|*/..|*/../*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+validate_rtk_archive_members() {
+  local asset="$1" member rtk_member="" rtk_count=0
+  while IFS= read -r member; do
+    [ -n "$member" ] || continue
+    if ! rtk_archive_member_safe "$member"; then
+      die 1 "unsafe RTK archive member path: $member"
+    fi
+    case "$member" in
+      */) continue ;;
+    esac
+    if [ "$(basename "$member")" = "rtk" ]; then
+      rtk_member="$member"
+      rtk_count=$((rtk_count + 1))
+    fi
+  done < <(tar -tzf "$asset" 2>/dev/null || die 1 "failed to read RTK release archive")
+
+  if [ "$rtk_count" -eq 0 ]; then
+    die 1 "downloaded RTK asset did not contain an rtk binary"
   fi
-  [ -n "$found" ] || die 1 "downloaded RTK asset did not contain an rtk binary"
+  if [ "$rtk_count" -gt 1 ]; then
+    die 1 "RTK release archive contains multiple rtk binaries; refusing ambiguous extraction"
+  fi
+  printf '%s\n' "$rtk_member"
+}
+
+extract_rtk_binary() {
+  local asset="$1" temp_dir="$2" rtk_member found
+  mkdir -p "$temp_dir"
+  rtk_member="$(validate_rtk_archive_members "$asset")"
+  tar -xzf "$asset" -C "$temp_dir" -- "$rtk_member"
+  found="$temp_dir/$rtk_member"
+  [ -f "$found" ] || die 1 "downloaded RTK asset did not contain an rtk binary"
   chmod +x "$found" 2>/dev/null || true
   printf '%s\n' "$found"
 }

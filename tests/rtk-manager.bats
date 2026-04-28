@@ -135,6 +135,102 @@ EOF
 EOF
 }
 
+tar_supports_rewrite() {
+  local probe_dir
+  if tar --version 2>/dev/null | grep -qi 'gnu tar'; then
+    echo "gnu"
+  else
+    probe_dir="$(mktemp -d)"
+    echo x > "$probe_dir/x"
+    if tar -czf "$probe_dir/out.tar.gz" -C "$probe_dir" -s '|^x$|y|' x >/dev/null 2>&1; then
+      rm -rf "$probe_dir"
+      echo "bsd"
+      return 0
+    fi
+    rm -rf "$probe_dir"
+    echo ""
+  fi
+}
+
+create_rewritten_tar() {
+  local archive="$1" payload_dir="$2" source_name="$3" target_name="$4" mode="$5"
+  case "$mode" in
+    gnu)
+      if [[ "$target_name" = /* ]]; then
+        tar -P -czf "$archive" -C "$payload_dir" rtk --transform "s|^${source_name}$|${target_name}|" "$source_name"
+      else
+        tar -czf "$archive" -C "$payload_dir" rtk --transform "s|^${source_name}$|${target_name}|" "$source_name"
+      fi
+      ;;
+    bsd)
+      if [[ "$target_name" = /* ]]; then
+        tar -P -czf "$archive" -C "$payload_dir" rtk -s "|^${source_name}$|${target_name}|" "$source_name"
+      else
+        tar -czf "$archive" -C "$payload_dir" rtk -s "|^${source_name}$|${target_name}|" "$source_name"
+      fi
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+prepare_malicious_release_fixture() {
+  local unsafe_member="$1" version="${2:-9.9.9}" mode asset checksum
+  mode="$(tar_supports_rewrite)"
+  [ -n "$mode" ] || return 1
+  asset="$(release_target_asset)"
+  mkdir -p "$TEST_TEMP_DIR/release/payload"
+  cat > "$TEST_TEMP_DIR/release/payload/rtk" <<EOF
+#!/usr/bin/env bash
+case "\${1:-}" in
+  --version) echo "rtk $version" ;;
+  *) echo "installed fake rtk $version" ;;
+esac
+EOF
+  chmod +x "$TEST_TEMP_DIR/release/payload/rtk"
+  echo "evil" > "$TEST_TEMP_DIR/release/payload/evil"
+  create_rewritten_tar "$TEST_TEMP_DIR/release/$asset" "$TEST_TEMP_DIR/release/payload" evil "$unsafe_member" "$mode" || return 1
+  checksum="$(sha256_value "$TEST_TEMP_DIR/release/$asset")"
+  printf '%s  %s\n' "$checksum" "$asset" > "$TEST_TEMP_DIR/release/checksums.txt"
+  cat > "$TEST_TEMP_DIR/release/release.json" <<EOF
+{
+  "tag_name": "v$version",
+  "assets": [
+    {"name": "$asset", "browser_download_url": "https://example.invalid/$asset"},
+    {"name": "checksums.txt", "browser_download_url": "https://example.invalid/checksums.txt"}
+  ]
+}
+EOF
+}
+
+prepare_ambiguous_rtk_release_fixture() {
+  local version="${1:-9.9.9}" asset checksum
+  asset="$(release_target_asset)"
+  mkdir -p "$TEST_TEMP_DIR/release/payload/nested"
+  cat > "$TEST_TEMP_DIR/release/payload/rtk" <<EOF
+#!/usr/bin/env bash
+case "\${1:-}" in
+  --version) echo "rtk $version" ;;
+  *) echo "installed fake rtk $version" ;;
+esac
+EOF
+  cp "$TEST_TEMP_DIR/release/payload/rtk" "$TEST_TEMP_DIR/release/payload/nested/rtk"
+  chmod +x "$TEST_TEMP_DIR/release/payload/rtk" "$TEST_TEMP_DIR/release/payload/nested/rtk"
+  (cd "$TEST_TEMP_DIR/release/payload" && tar -czf "$TEST_TEMP_DIR/release/$asset" rtk nested/rtk)
+  checksum="$(sha256_value "$TEST_TEMP_DIR/release/$asset")"
+  printf '%s  %s\n' "$checksum" "$asset" > "$TEST_TEMP_DIR/release/checksums.txt"
+  cat > "$TEST_TEMP_DIR/release/release.json" <<EOF
+{
+  "tag_name": "v$version",
+  "assets": [
+    {"name": "$asset", "browser_download_url": "https://example.invalid/$asset"},
+    {"name": "checksums.txt", "browser_download_url": "https://example.invalid/checksums.txt"}
+  ]
+}
+EOF
+}
+
 create_managed_rtk() {
   local version="${1:-0.1.0}" dir="${2:-$TEST_TEMP_DIR/managed-bin}" binary
   mkdir -p "$dir" "$VBW_RTK_DIR"
@@ -381,6 +477,41 @@ JSON
   [ "$status" -eq 1 ]
   [[ "$output" == *"checksum mismatch"* ]]
   [ ! -e "$TEST_TEMP_DIR/install-bin/rtk" ]
+}
+
+@test "rtk-manager: managed install rejects archive traversal member" {
+  prepare_malicious_release_fixture "../outside-marker" || skip "tar rewrite support unavailable"
+  write_release_curl
+  export RTK_INSTALL_DIR="$TEST_TEMP_DIR/install-bin"
+  run rtk_manager install --yes
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unsafe RTK archive member path"* ]]
+  [ ! -e "$TEST_TEMP_DIR/install-bin/rtk" ]
+  [ ! -f "$VBW_RTK_DIR/rtk-install.json" ]
+  [ ! -e "$TEST_TEMP_DIR/outside-marker" ]
+}
+
+@test "rtk-manager: managed install rejects archive absolute member" {
+  prepare_malicious_release_fixture "$TEST_TEMP_DIR/outside-marker" || skip "tar rewrite support unavailable"
+  write_release_curl
+  export RTK_INSTALL_DIR="$TEST_TEMP_DIR/install-bin"
+  run rtk_manager install --yes
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unsafe RTK archive member path"* ]]
+  [ ! -e "$TEST_TEMP_DIR/install-bin/rtk" ]
+  [ ! -f "$VBW_RTK_DIR/rtk-install.json" ]
+  [ ! -e "$TEST_TEMP_DIR/outside-marker" ]
+}
+
+@test "rtk-manager: managed install rejects ambiguous rtk members" {
+  prepare_ambiguous_rtk_release_fixture "9.9.9"
+  write_release_curl
+  export RTK_INSTALL_DIR="$TEST_TEMP_DIR/install-bin"
+  run rtk_manager install --yes
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"multiple rtk binaries"* ]]
+  [ ! -e "$TEST_TEMP_DIR/install-bin/rtk" ]
+  [ ! -f "$VBW_RTK_DIR/rtk-install.json" ]
 }
 
 @test "rtk-manager: init dry-run warns about hook mutation and compatibility" {

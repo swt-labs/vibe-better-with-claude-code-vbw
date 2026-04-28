@@ -110,6 +110,19 @@ else
   fail "rtk-manager has unbounded direct curl calls or missing timeout guard"
 fi
 
+unrestricted_tar_count=$(awk '/tar -xzf "\$asset" -C "\$temp_dir"$/ { count++ } END { print count + 0 }' "$RTK_MANAGER")
+if contains "$RTK_MANAGER" 'rtk_archive_member_safe()' \
+  && contains "$RTK_MANAGER" 'validate_rtk_archive_members()' \
+  && contains "$RTK_MANAGER" 'tar -tzf "$asset"' \
+  && contains "$RTK_MANAGER" 'unsafe RTK archive member path' \
+  && contains "$RTK_MANAGER" 'multiple rtk binaries' \
+  && contains "$RTK_MANAGER" 'tar -xzf "$asset" -C "$temp_dir" -- "$rtk_member"' \
+  && [ "${unrestricted_tar_count:-0}" -eq 0 ]; then
+  pass "rtk-manager validates tar members before single-member extraction"
+else
+  fail "rtk-manager missing safe tar member validation/extraction"
+fi
+
 if contains "$RTK_MANAGER" 'settings_hook_command()' \
   && contains "$RTK_MANAGER" 'as $match_command' \
   && contains "$RTK_MANAGER" 'rtkhookclaude' \
