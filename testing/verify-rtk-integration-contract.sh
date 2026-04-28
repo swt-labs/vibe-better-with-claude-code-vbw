@@ -97,11 +97,12 @@ else
 fi
 
 if contains "$RTK_MANAGER" 'settings_hook_command()' \
-  && contains "$RTK_MANAGER" 'rtk[[:space:]]+hook[[:space:]]+claude' \
+  && contains "$RTK_MANAGER" 'as $match_command' \
+  && contains "$RTK_MANAGER" 'rtkhookclaude' \
   && contains "$RTK_MANAGER" 'rtk-rewrite[.]sh' \
   && contains "$RTK_MANAGER" 'RTK_CLAUDE_MD' \
   && contains "$RTK_MANAGER" 'RTK_GLOBAL_MD'; then
-  pass "rtk-manager detects current and legacy RTK hook/artifact shapes"
+  pass "rtk-manager detects current, quoted, and legacy RTK hook/artifact shapes"
 else
   fail "rtk-manager missing current/legacy RTK hook detection"
 fi
@@ -122,6 +123,13 @@ if contains "$RTK_MANAGER" '"$path" --version' \
   pass "rtk-manager quotes executable paths for version probes"
 else
   fail "rtk-manager has unquoted RTK executable version probes"
+fi
+
+if contains "$RTK_MANAGER" '"$rtk_path" gain --json' \
+  && ! contains "$RTK_MANAGER" '$rtk_path gain --json'; then
+  pass "rtk-manager quotes executable path for explicit stats"
+else
+  fail "rtk-manager has unquoted RTK executable stats invocation"
 fi
 
 backup_helper_refs=$(grep -c 'backup_rtk_global_config_files' "$RTK_MANAGER" 2>/dev/null || echo 0)

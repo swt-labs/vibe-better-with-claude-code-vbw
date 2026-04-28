@@ -147,7 +147,9 @@ settings_hook_command() {
       .hooks.PreToolUse[]? as $group
       | ($group.matcher // "") as $matcher
       | $group.hooks[]?
-      | select((.command // "") | test("(^|[[:space:]/])rtk[[:space:]]+hook[[:space:]]+claude($|[[:space:];])|rtk-rewrite[.]sh"))
+      | (.command // "") as $command
+      | ($command | gsub("[\"'\'' ]"; "")) as $match_command
+      | select($match_command | test("(^|/)rtkhookclaude($|[;])|rtk-rewrite[.]sh"))
       | {matcher: $matcher, command: (.command // "")}
     ][0].command // ""
   ' "$RTK_SETTINGS_JSON" 2>/dev/null || true
@@ -160,7 +162,9 @@ settings_hook_matcher() {
       .hooks.PreToolUse[]? as $group
       | ($group.matcher // "") as $matcher
       | $group.hooks[]?
-      | select((.command // "") | test("(^|[[:space:]/])rtk[[:space:]]+hook[[:space:]]+claude($|[[:space:];])|rtk-rewrite[.]sh"))
+      | (.command // "") as $command
+      | ($command | gsub("[\"'\'' ]"; "")) as $match_command
+      | select($match_command | test("(^|/)rtkhookclaude($|[;])|rtk-rewrite[.]sh"))
       | {matcher: $matcher, command: (.command // "")}
     ][0].matcher // ""
   ' "$RTK_SETTINGS_JSON" 2>/dev/null || true
@@ -464,7 +468,7 @@ status_json() {
 
   stats_json="null"
   if [ "$include_stats" = "true" ] && [ -n "$rtk_path" ]; then
-    stats_json="$($rtk_path gain --json 2>/dev/null || echo null)"
+    stats_json="$("$rtk_path" gain --json 2>/dev/null || echo null)"
     printf '%s' "$stats_json" | jq empty >/dev/null 2>&1 || stats_json="null"
   fi
 

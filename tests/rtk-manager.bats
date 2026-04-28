@@ -122,7 +122,7 @@ EOF
 }
 
 create_managed_rtk() {
-  local version="${1:-0.1.0}" dir="$TEST_TEMP_DIR/managed-bin" binary
+  local version="${1:-0.1.0}" dir="${2:-$TEST_TEMP_DIR/managed-bin}" binary
   mkdir -p "$dir" "$VBW_RTK_DIR"
   binary="$dir/rtk"
   cat > "$binary" <<EOF
@@ -243,6 +243,29 @@ EOF
   echo "$output" | jq -e '.rtk_present == true'
   echo "$output" | jq -e --arg path "$spaced_bin/rtk" '.rtk_path == $path'
   echo "$output" | jq -e '.rtk_version == "1.2.3"'
+}
+
+@test "rtk-manager: stats work when PATH contains spaces" {
+  local spaced_bin="$TEST_TEMP_DIR/bin with space"
+  mkdir -p "$spaced_bin"
+  cat > "$spaced_bin/rtk" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+  --version) echo "rtk 1.2.3" ;;
+  gain)
+    if [ "${2:-}" = "--json" ]; then
+      echo '{"average_savings_pct":88}'
+    fi
+    ;;
+  *) exit 0 ;;
+esac
+EOF
+  chmod +x "$spaced_bin/rtk"
+  export PATH="$spaced_bin:$PATH"
+  run rtk_manager status --json --stats
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e --arg path "$spaced_bin/rtk" '.rtk_path == $path'
+  echo "$output" | jq -e '.stats.average_savings_pct == 88'
 }
 
 @test "rtk-manager: detects current RTK settings hook and updatedInput risk with VBW hook" {
@@ -496,6 +519,35 @@ JSON
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.global_hook_present == true'
   echo "$output" | jq -e '.global_hook_command | test("rtk-rewrite")'
+}
+
+@test "rtk-manager: quoted absolute hook command in settings JSON is active" {
+  local binary
+  binary="$(create_managed_rtk "0.1.0" "$TEST_TEMP_DIR/managed bin with space")"
+  cat > "$CLAUDE_CONFIG_DIR/settings.json" <<JSON
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"\"$binary\" hook claude"}]}]}}
+JSON
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.settings_json_valid == true'
+  echo "$output" | jq -e '.global_hook_present == true'
+  echo "$output" | jq -e '.settings_hook_state == "active"'
+  echo "$output" | jq -e --arg command "\"$binary\" hook claude" '.global_hook_command == $command'
+  echo "$output" | jq -e '.global_hook_matcher == "Bash"'
+  echo "$output" | jq -e '.compatibility != "binary_only"'
+}
+
+@test "rtk-manager: quoted absolute hook blocks managed uninstall without deactivate" {
+  local binary
+  binary="$(create_managed_rtk "0.1.0" "$TEST_TEMP_DIR/managed bin with space")"
+  cat > "$CLAUDE_CONFIG_DIR/settings.json" <<JSON
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"\"$binary\" hook claude"}]}]}}
+JSON
+  run rtk_manager uninstall --yes
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"pass --deactivate-hook"* ]]
+  [ -e "$binary" ]
+  [ -f "$VBW_RTK_DIR/rtk-install.json" ]
 }
 
 @test "rtk-manager: managed update dry-run does not cache latest release" {
