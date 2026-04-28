@@ -38,6 +38,11 @@ case "\${1:-}" in
     if [ "\${2:-}" = "-g" ] && [ "\${3:-}" = "--uninstall" ]; then
       if [ -e "\$0" ]; then echo "uninstall_binary_exists=yes" >> "$TEST_TEMP_DIR/rtk-calls.log"; fi
       if [ "\${FAKE_RTK_UNINSTALL_FAIL:-false}" = "true" ]; then exit 44; fi
+      if [ "\${FAKE_RTK_MUTATE_CONFIG_ON_UNINSTALL:-false}" = "true" ]; then
+        echo mutated > "$CLAUDE_CONFIG_DIR/settings.json"
+        echo mutated > "$CLAUDE_CONFIG_DIR/CLAUDE.md"
+        echo mutated > "$CLAUDE_CONFIG_DIR/RTK.md"
+      fi
       rm -f "$CLAUDE_CONFIG_DIR/settings.json"
       exit 0
     fi
@@ -129,6 +134,11 @@ case "\${1:-}" in
     if [ "\${2:-}" = "-g" ] && [ "\${3:-}" = "--uninstall" ]; then
       if [ -e "\$0" ]; then echo "uninstall_binary_exists=yes" >> "$TEST_TEMP_DIR/rtk-calls.log"; fi
       if [ "\${FAKE_RTK_UNINSTALL_FAIL:-false}" = "true" ]; then exit 44; fi
+      if [ "\${FAKE_RTK_MUTATE_CONFIG_ON_UNINSTALL:-false}" = "true" ]; then
+        echo mutated > "$CLAUDE_CONFIG_DIR/settings.json"
+        echo mutated > "$CLAUDE_CONFIG_DIR/CLAUDE.md"
+        echo mutated > "$CLAUDE_CONFIG_DIR/RTK.md"
+      fi
       exit 0
     fi
     ;;
@@ -216,6 +226,25 @@ EOF
   ! grep -Fq 'gain --json' "$TEST_TEMP_DIR/rtk-calls.log"
 }
 
+@test "rtk-manager: status detects RTK version when PATH contains spaces" {
+  local spaced_bin="$TEST_TEMP_DIR/bin with space"
+  mkdir -p "$spaced_bin"
+  cat > "$spaced_bin/rtk" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+  --version) echo "rtk 1.2.3" ;;
+  *) exit 0 ;;
+esac
+EOF
+  chmod +x "$spaced_bin/rtk"
+  export PATH="$spaced_bin:$PATH"
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.rtk_present == true'
+  echo "$output" | jq -e --arg path "$spaced_bin/rtk" '.rtk_path == $path'
+  echo "$output" | jq -e '.rtk_version == "1.2.3"'
+}
+
 @test "rtk-manager: detects current RTK settings hook and updatedInput risk with VBW hook" {
   write_fake_rtk "0.1.0"
   cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
@@ -285,6 +314,16 @@ JSON
   jq -e '.manager == "vbw"' "$VBW_RTK_DIR/rtk-install.json"
   jq -e '.installed_version == "9.9.9"' "$VBW_RTK_DIR/rtk-install.json"
   jq -e '.verified_checksum != ""' "$VBW_RTK_DIR/rtk-install.json"
+}
+
+@test "rtk-manager: managed install records version when install dir has spaces" {
+  prepare_release_fixture "9.9.9"
+  write_release_curl
+  export RTK_INSTALL_DIR="$TEST_TEMP_DIR/install bin with space"
+  run rtk_manager install --yes
+  [ "$status" -eq 0 ]
+  [ -x "$RTK_INSTALL_DIR/rtk" ]
+  jq -e '.installed_version == "9.9.9"' "$VBW_RTK_DIR/rtk-install.json"
 }
 
 @test "rtk-manager: managed install aborts on checksum mismatch" {
@@ -533,6 +572,25 @@ JSON
   grep -Fq 'uninstall_binary_exists=yes' "$TEST_TEMP_DIR/rtk-calls.log"
   [ ! -e "$binary" ]
   [ ! -f "$VBW_RTK_DIR/rtk-install.json" ]
+}
+
+@test "rtk-manager: uninstall deactivation backs up Claude config before mutation" {
+  create_managed_rtk "0.1.0" >/dev/null
+  cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'EOF'
+original settings
+EOF
+  cat > "$CLAUDE_CONFIG_DIR/CLAUDE.md" <<'EOF'
+original claude
+EOF
+  cat > "$CLAUDE_CONFIG_DIR/RTK.md" <<'EOF'
+original rtk
+EOF
+  export FAKE_RTK_MUTATE_CONFIG_ON_UNINSTALL=true
+  run rtk_manager uninstall --yes --deactivate-hook
+  [ "$status" -eq 0 ]
+  grep -R "original settings" "$VBW_RTK_DIR/backups"
+  grep -R "original claude" "$VBW_RTK_DIR/backups"
+  grep -R "original rtk" "$VBW_RTK_DIR/backups"
 }
 
 @test "rtk-manager: failed hook deactivation preserves managed binary" {

@@ -120,7 +120,7 @@ rtk_path_detect() {
 rtk_version_detect() {
   local path="$1" out
   [ -n "$path" ] || return 0
-  out="$($path --version 2>/dev/null || true)"
+  out="$("$path" --version 2>/dev/null || true)"
   normalize_version "$out"
 }
 
@@ -620,6 +620,12 @@ backup_if_present() {
   cp -p "$path" "$dest" 2>/dev/null || cp "$path" "$dest"
 }
 
+backup_rtk_global_config_files() {
+  backup_if_present "$RTK_SETTINGS_JSON"
+  backup_if_present "$RTK_CLAUDE_MD"
+  backup_if_present "$RTK_GLOBAL_MD"
+}
+
 write_receipt() {
   local operation="$1" binary_path="$2" previous_version="$3" installed_version="$4" metadata="$5" checksum="$6" tmp
   mkdir -p "$VBW_RTK_DIR"
@@ -765,7 +771,7 @@ install_or_update() {
   previous_version="$installed_version"
   cp "$extracted" "$target_path"
   chmod +x "$target_path"
-  installed_version="$($target_path --version 2>/dev/null | awk 'match($0, /[0-9]+([.][0-9]+)+/) {print substr($0, RSTART, RLENGTH); exit}' || true)"
+  installed_version="$("$target_path" --version 2>/dev/null | awk 'match($0, /[0-9]+([.][0-9]+)+/) {print substr($0, RSTART, RLENGTH); exit}' || true)"
   write_receipt "$operation" "$target_path" "$previous_version" "$installed_version" "$metadata" "$checksum"
   cache_latest_release "$metadata"
   echo "✓ RTK ${operation} complete: $target_path (${installed_version:-version unknown})"
@@ -807,9 +813,7 @@ init_hook() {
   echo "Risk: Claude Code issue #15897 reports updatedInput can fail when multiple PreToolUse hooks match; compatibility remains unverified until a runtime smoke proof exists."
   ensure_confirmation "$yes" "$dry_run" "init"
   [ "$dry_run" = "true" ] && exit 0
-  backup_if_present "$RTK_SETTINGS_JSON"
-  backup_if_present "$RTK_CLAUDE_MD"
-  backup_if_present "$RTK_GLOBAL_MD"
+  backup_rtk_global_config_files
   args=(init -g)
   [ "$auto_patch" = "true" ] && args+=(--auto-patch)
   [ "$hook_only" = "true" ] && args+=(--hook-only)
@@ -889,6 +893,7 @@ uninstall_rtk() {
       echo "RTK: cannot deactivate hook because no runnable RTK binary was found; preserved existing files" >&2
       exit 1
     fi
+    backup_rtk_global_config_files
     if ! "$rtk_path" init -g --uninstall; then
       echo "RTK: hook deactivation failed; preserved RTK binary and receipt for retry" >&2
       exit 1

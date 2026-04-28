@@ -115,6 +115,26 @@ else
   fail "rtk-manager missing ownership receipt contract"
 fi
 
+if contains "$RTK_MANAGER" '"$path" --version' \
+  && contains "$RTK_MANAGER" '"$target_path" --version' \
+  && ! contains "$RTK_MANAGER" '$path --version' \
+  && ! contains "$RTK_MANAGER" '$target_path --version'; then
+  pass "rtk-manager quotes executable paths for version probes"
+else
+  fail "rtk-manager has unquoted RTK executable version probes"
+fi
+
+backup_helper_refs=$(grep -c 'backup_rtk_global_config_files' "$RTK_MANAGER" 2>/dev/null || echo 0)
+if contains "$RTK_MANAGER" 'backup_rtk_global_config_files()' \
+  && contains "$RTK_MANAGER" 'backup_if_present "$RTK_SETTINGS_JSON"' \
+  && contains "$RTK_MANAGER" 'backup_if_present "$RTK_CLAUDE_MD"' \
+  && contains "$RTK_MANAGER" 'backup_if_present "$RTK_GLOBAL_MD"' \
+  && [ "${backup_helper_refs:-0}" -ge 3 ]; then
+  pass "rtk-manager backs up Claude config for activation and uninstall deactivation"
+else
+  fail "rtk-manager missing shared Claude config backup helper/calls"
+fi
+
 if contains "$RTK_MANAGER" 'ensure_confirmation' \
   && contains "$RTK_MANAGER" 'requires explicit confirmation' \
   && contains "$RTK_MANAGER" 'dry_run=true'; then
