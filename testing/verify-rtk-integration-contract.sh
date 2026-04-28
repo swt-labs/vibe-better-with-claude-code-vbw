@@ -142,7 +142,9 @@ else
   fail "rtk-manager proof validation is too weak"
 fi
 
-if contains "$RTK_MANAGER" 'if [ -n "$hook_command" ]; then global_hook_present=true; fi' \
+if contains "$RTK_MANAGER" 'if [ -n "$hook_command" ]; then' \
+  && contains "$RTK_MANAGER" 'global_hook_present=true' \
+  && contains "$RTK_MANAGER" 'settings_hook_state="active"' \
   && ! contains "$RTK_MANAGER" 'if [ -n "$hook_command" ] || [ "$legacy_hook" = "true" ]; then global_hook_present=true; fi'; then
   pass "rtk-manager treats settings JSON hook command as active-hook source of truth"
 else
@@ -172,7 +174,7 @@ else
   fail "rtk-manager uninstall order can remove binary before hook deactivation"
 fi
 
-if contains "$RTK_CMD" 'managed_by_vbw=true` and `global_hook_present=true' \
+if contains "$RTK_CMD" 'managed_by_vbw=true` and either `global_hook_present=true` or `settings_json_valid=false' \
   && contains "$RTK_CMD" 'uninstall --dry-run --deactivate-hook' \
   && contains "$RTK_CMD" 'uninstall --yes --deactivate-hook'; then
   pass "rtk command routes hook-active managed uninstall through deactivate-hook flow"
@@ -180,7 +182,7 @@ else
   fail "rtk command missing hook-active managed deactivate-hook uninstall flow"
 fi
 
-if contains "$RTK_MANAGER" 'active RTK settings hook detected; pass --deactivate-hook' \
+if contains "$RTK_MANAGER" 'active or unreadable RTK settings hook state detected; pass --deactivate-hook' \
   && contains "$RTK_MANAGER" 'retire_install_receipt()' \
   && contains "$RTK_MANAGER" 'retire_install_receipt'; then
   pass "rtk-manager refuses unsafe managed uninstall and retires receipts after success"
@@ -203,6 +205,23 @@ if contains "$RTK_MANAGER" 'binary_install_state="installed_not_on_path"' \
   pass "rtk status and command menu keep hook activation gated on PATH-visible RTK"
 else
   fail "rtk status/menu missing PATH-visible RTK hook activation invariant"
+fi
+
+if contains "$RTK_MANAGER" 'settings_hook_state="unknown"' \
+  && contains "$RTK_MANAGER" 'compatibility="settings_unreadable"' \
+  && contains "$RTK_MANAGER" 'if ($s.settings_json_valid == false) then "WARN"' \
+  && contains "$RTK_MANAGER" 'active or unreadable RTK settings hook state detected' \
+  && contains "$RTK_CMD" 'settings_json_valid=false'; then
+  pass "rtk-manager treats malformed settings as unknown/WARN and blocks unsafe uninstall"
+else
+  fail "rtk-manager missing malformed-settings unknown-state safety"
+fi
+
+if ! grep -Fq 'status_json false true' "$RTK_MANAGER" \
+  && contains "$RTK_MANAGER" 'status_json false false'; then
+  pass "rtk verify path does not implicitly collect RTK stats"
+else
+  fail "rtk verify path still enables implicit stats collection"
 fi
 
 if contains "$DOCTOR_CMD" '### 18. RTK integration' \

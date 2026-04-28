@@ -134,13 +134,13 @@ Static verification may confirm binary, settings hook, RTK docs/artifacts, and V
 
 For `/vbw:rtk uninstall`, choose the helper path from RTK state:
 
-- If `managed_by_vbw=true` and `global_hook_present=true`, first run:
+- If `managed_by_vbw=true` and either `global_hook_present=true` or `settings_json_valid=false`, first run:
 
 ```bash
 bash "{plugin-root}/scripts/rtk-manager.sh" uninstall --dry-run --deactivate-hook
 ```
 
-Ask for one explicit confirmation that names both Claude Code hook deactivation and VBW-managed binary removal. If confirmed, run:
+Ask for one explicit confirmation that names both Claude Code hook deactivation/settings repair risk and VBW-managed binary removal. If confirmed, run:
 
 ```bash
 bash "{plugin-root}/scripts/rtk-manager.sh" uninstall --yes --deactivate-hook

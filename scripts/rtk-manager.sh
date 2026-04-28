@@ -325,7 +325,7 @@ status_json() {
   local rtk_path rtk_present rtk_version latest_json latest_version latest_checked_at update_available version_source
   local managed_by_vbw install_receipt receipt_binary binary_install_state can_install preferred_install_method
   local settings_json_valid hook_command hook_matcher global_hook_present global_claude_ref global_rtk_md legacy_hook project_local vbw_hook bash_hook_count multiple_bash updated_input_risk
-  local proof_source compatibility restart_required summary next_action stats_json
+  local settings_hook_state proof_source compatibility restart_required summary next_action stats_json
 
   rtk_path="$(rtk_path_detect)"
   rtk_present=false
@@ -368,11 +368,14 @@ status_json() {
 
   settings_json_valid=true
   if ! settings_valid; then settings_json_valid=false; fi
+  settings_hook_state="inactive"
   hook_command=""
   hook_matcher=""
   if [ "$settings_json_valid" = "true" ]; then
     hook_command="$(settings_hook_command)"
     hook_matcher="$(settings_hook_matcher)"
+  else
+    settings_hook_state="unknown"
   fi
   global_claude_ref=false
   if global_claude_ref_present; then global_claude_ref=true; fi
@@ -385,7 +388,10 @@ status_json() {
   vbw_hook=false
   if vbw_bash_hook_present; then vbw_hook=true; fi
   global_hook_present=false
-  if [ -n "$hook_command" ]; then global_hook_present=true; fi
+  if [ -n "$hook_command" ]; then
+    global_hook_present=true
+    settings_hook_state="active"
+  fi
   bash_hook_count=0
   if [ "$settings_json_valid" = "true" ]; then bash_hook_count="$(settings_bash_hook_count)"; fi
   multiple_bash=false
@@ -402,7 +408,9 @@ status_json() {
 
   compatibility="absent"
   restart_required=false
-  if [ -n "$proof_source" ] && [ "$global_hook_present" = "true" ]; then
+  if [ "$settings_hook_state" = "unknown" ]; then
+    compatibility="settings_unreadable"
+  elif [ -n "$proof_source" ] && [ "$global_hook_present" = "true" ]; then
     compatibility="verified"
   elif [ "$global_hook_present" = "true" ] && [ "$updated_input_risk" = "true" ]; then
     compatibility="risk"
@@ -427,6 +435,10 @@ status_json() {
         summary="RTK not installed; optional: /vbw:rtk install"
         next_action="install"
       fi
+      ;;
+    settings_unreadable)
+      summary="Claude settings unreadable; RTK hook state cannot be determined from ${RTK_SETTINGS_JSON}"
+      next_action="repair_settings"
       ;;
     binary_only)
       summary="RTK binary installed; Claude Code hook inactive"
@@ -470,6 +482,7 @@ status_json() {
     --argjson can_install "$(bool_to_json "$can_install")" \
     --arg binary_install_state "$binary_install_state" \
     --argjson settings_json_valid "$(bool_to_json "$settings_json_valid")" \
+    --arg settings_hook_state "$settings_hook_state" \
     --argjson global_hook_present "$(bool_to_json "$global_hook_present")" \
     --arg global_hook_command "$hook_command" \
     --arg global_hook_matcher "$hook_matcher" \
@@ -500,6 +513,7 @@ status_json() {
       can_install: $can_install,
       binary_install_state: $binary_install_state,
       settings_json_valid: $settings_json_valid,
+      settings_hook_state: $settings_hook_state,
       global_hook_present: $global_hook_present,
       global_hook_command: $global_hook_command,
       global_hook_matcher: $global_hook_matcher,
@@ -523,13 +537,15 @@ doctor_json() {
   status_json false false | jq '
     . as $s
     | .doctor_status = (
-        if ($s.compatibility == "absent" and ($s.project_local_present | not) and ($s.legacy_hook_file_present | not)) then "SKIP"
+        if ($s.settings_json_valid == false) then "WARN"
+        elif ($s.compatibility == "absent" and ($s.project_local_present | not) and ($s.legacy_hook_file_present | not)) then "SKIP"
         elif ($s.update_available == true) then "WARN"
         elif ($s.compatibility == "verified") then "PASS"
         else "WARN" end
       )
     | .doctor_detail = (
-        if .update_available == true then "outdated from cached RTK release check; run /vbw:rtk update"
+        if .settings_json_valid == false then "Claude settings unreadable; RTK hook state cannot be determined from settings.json"
+        elif .update_available == true then "outdated from cached RTK release check; run /vbw:rtk update"
         elif .doctor_status == "PASS" then "verified by " + ($s.proof_source // "smoke proof")
         elif .compatibility == "absent" then "not installed; optional: /vbw:rtk install"
         elif .compatibility == "binary_only" then "binary installed; hook inactive"
@@ -802,10 +818,10 @@ verify_rtk() {
     esac
   done
   if [ "$as_json" = "true" ]; then
-    status_json false true
+    status_json false false
     return 0
   fi
-  status_json false true | jq -r '
+  status_json false false | jq -r '
     "RTK verify\n" +
     "Static: " + .summary + "\n" +
     "Runtime: " + (if .compatibility == "verified" then "verified by " + .proof_source else "manual Claude Code smoke required before PASS" end) + "\n" +
@@ -814,7 +830,7 @@ verify_rtk() {
 }
 
 uninstall_rtk() {
-  local dry_run=false yes=false deactivate_hook=false binary_path managed rtk_path active_hook will_run
+  local dry_run=false yes=false deactivate_hook=false binary_path managed rtk_path active_hook settings_unknown will_run
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --dry-run) dry_run=true; shift ;;
@@ -827,15 +843,20 @@ uninstall_rtk() {
   if receipt_managed; then managed=true; fi
   binary_path="$(rtk_path_from_receipt)"
   active_hook=""
-  if settings_valid; then active_hook="$(settings_hook_command)"; fi
+  settings_unknown=false
+  if settings_valid; then
+    active_hook="$(settings_hook_command)"
+  else
+    settings_unknown=true
+  fi
   echo "RTK uninstall preflight"
   if [ "$managed" = "true" ] && [ -n "$binary_path" ]; then
     echo "Will remove: $binary_path (VBW receipt-owned)"
   else
     echo "Will remove: no binary; external installs are not deleted by VBW"
   fi
-  if [ "$managed" = "true" ] && [ -n "$active_hook" ] && [ "$deactivate_hook" != "true" ]; then
-    will_run="hook deactivation required before binary removal; rerun with --deactivate-hook"
+  if [ "$managed" = "true" ] && { [ -n "$active_hook" ] || [ "$settings_unknown" = "true" ]; } && [ "$deactivate_hook" != "true" ]; then
+    will_run="hook deactivation or settings repair required before binary removal; rerun with --deactivate-hook after confirming settings intent"
   elif [ "$deactivate_hook" = "true" ]; then
     will_run="rtk init -g --uninstall before binary removal"
   elif [ "$managed" = "true" ] && [ -n "$binary_path" ]; then
@@ -847,8 +868,8 @@ uninstall_rtk() {
   echo "Writes: receipt/backups under ${VBW_RTK_DIR}; RTK may edit Claude settings only when --deactivate-hook is used"
   ensure_confirmation "$yes" "$dry_run" "uninstall"
   [ "$dry_run" = "true" ] && exit 0
-  if [ "$managed" = "true" ] && [ -n "$active_hook" ] && [ "$deactivate_hook" != "true" ]; then
-    echo "RTK: active RTK settings hook detected; pass --deactivate-hook before removing the VBW-managed binary" >&2
+  if [ "$managed" = "true" ] && { [ -n "$active_hook" ] || [ "$settings_unknown" = "true" ]; } && [ "$deactivate_hook" != "true" ]; then
+    echo "RTK: active or unreadable RTK settings hook state detected; pass --deactivate-hook before removing the VBW-managed binary" >&2
     exit 1
   fi
   if [ "$deactivate_hook" = "true" ]; then

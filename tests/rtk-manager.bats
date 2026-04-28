@@ -235,8 +235,9 @@ JSON
   run rtk_manager status --json
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.settings_json_valid == false'
+  echo "$output" | jq -e '.settings_hook_state == "unknown"'
   echo "$output" | jq -e '.global_hook_present == false'
-  echo "$output" | jq -e '.compatibility == "binary_only"'
+  echo "$output" | jq -e '.compatibility == "settings_unreadable"'
 }
 
 @test "rtk-manager: check-updates queries latest release only on explicit flag" {
@@ -317,10 +318,12 @@ JSON
 }
 
 @test "rtk-manager: doctor-json skips absent RTK" {
+  write_failing_curl
   run rtk_manager doctor-json
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.doctor_status == "SKIP"'
   echo "$output" | jq -e '.doctor_detail | test("not installed")'
+  [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
 }
 
 @test "rtk-manager: stats are explicit and labeled separately in JSON" {
@@ -328,6 +331,29 @@ JSON
   run rtk_manager status --json --stats
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.stats.average_savings_pct == 47'
+}
+
+@test "rtk-manager: verify does not collect RTK gain stats" {
+  write_fake_rtk "0.1.0"
+  : > "$TEST_TEMP_DIR/rtk-calls.log"
+  run rtk_manager verify
+  [ "$status" -eq 0 ]
+  ! grep -Fq 'gain --json' "$TEST_TEMP_DIR/rtk-calls.log"
+  run rtk_manager verify --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.stats == null'
+  ! grep -Fq 'gain --json' "$TEST_TEMP_DIR/rtk-calls.log"
+}
+
+@test "rtk-manager: doctor-json warns on malformed settings without network" {
+  write_failing_curl
+  printf '{not-json' > "$CLAUDE_CONFIG_DIR/settings.json"
+  run rtk_manager doctor-json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.settings_json_valid == false'
+  echo "$output" | jq -e '.doctor_status == "WARN"'
+  echo "$output" | jq -e '.doctor_detail | test("settings unreadable|Settings unreadable|Claude settings unreadable")'
+  [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
 }
 
 @test "rtk-manager: arbitrary valid proof JSON does not verify compatibility" {
@@ -488,10 +514,24 @@ JSON
 JSON
   run rtk_manager uninstall --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *"hook deactivation required before binary removal"* ]]
+  [[ "$output" == *"hook deactivation or settings repair required before binary removal"* ]]
   run rtk_manager uninstall --yes
   [ "$status" -eq 1 ]
   [[ "$output" == *"pass --deactivate-hook"* ]]
+  [ -e "$binary" ]
+  [ -f "$VBW_RTK_DIR/rtk-install.json" ]
+}
+
+@test "rtk-manager: malformed settings blocks managed uninstall without deactivate flag" {
+  local binary
+  binary="$(create_managed_rtk "0.1.0")"
+  printf '{not-json' > "$CLAUDE_CONFIG_DIR/settings.json"
+  run rtk_manager uninstall --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"settings repair required"* ]]
+  run rtk_manager uninstall --yes
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unreadable RTK settings hook state"* ]]
   [ -e "$binary" ]
   [ -f "$VBW_RTK_DIR/rtk-install.json" ]
 }
