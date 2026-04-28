@@ -473,6 +473,67 @@ JSON
   echo "$output" | jq -e '.compatibility == "risk"'
 }
 
+@test "rtk-manager: stale proof without runnable RTK does not verify doctor" {
+  write_failing_curl
+  cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}
+JSON
+  mkdir -p "$VBW_RTK_DIR"
+  cat > "$VBW_RTK_DIR/rtk-compatibility-proof.json" <<'JSON'
+{
+  "proof_type": "runtime_smoke",
+  "status": "pass",
+  "timestamp": "2026-04-27T00:00:00Z",
+  "rtk_version": "0.1.0",
+  "hook_command": "rtk hook claude",
+  "updated_input_verified": true,
+  "rtk_rewrite_observed": true,
+  "vbw_bash_guard_verified": true,
+  "commands": ["git status"]
+}
+JSON
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.rtk_present == false'
+  echo "$output" | jq -e '.global_hook_present == true'
+  echo "$output" | jq -e '.proof_source == ""'
+  echo "$output" | jq -e '.compatibility != "verified"'
+  echo "$output" | jq -e '.restart_required == true'
+  run rtk_manager doctor-json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.doctor_status == "WARN"'
+  [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
+}
+
+@test "rtk-manager: proof version must match current RTK version" {
+  write_fake_rtk "0.1.0"
+  cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}
+JSON
+  mkdir -p "$VBW_RTK_DIR"
+  cat > "$VBW_RTK_DIR/rtk-compatibility-proof.json" <<'JSON'
+{
+  "proof_type": "runtime_smoke",
+  "status": "pass",
+  "timestamp": "2026-04-27T00:00:00Z",
+  "rtk_version": "9.9.9",
+  "hook_command": "rtk hook claude",
+  "updated_input_verified": true,
+  "rtk_rewrite_observed": true,
+  "vbw_bash_guard_verified": true,
+  "commands": ["git status"]
+}
+JSON
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.rtk_present == true'
+  echo "$output" | jq -e '.proof_source == ""'
+  echo "$output" | jq -e '.compatibility != "verified"'
+  run rtk_manager doctor-json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.doctor_status == "WARN"'
+}
+
 @test "rtk-manager: validated runtime smoke proof can produce doctor PASS" {
   write_fake_rtk "0.1.0"
   cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
@@ -481,6 +542,7 @@ JSON
   write_valid_smoke_proof
   run rtk_manager doctor-json
   [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.rtk_present == true'
   echo "$output" | jq -e '.compatibility == "verified"'
   echo "$output" | jq -e '.doctor_status == "PASS"'
 }

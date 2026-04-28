@@ -304,6 +304,8 @@ release_metadata() {
 valid_runtime_smoke_proof() {
   local proof_file="$1" current_version="$2" active_hook_command="$3"
   [ -f "$proof_file" ] || return 1
+  [ -n "$current_version" ] || return 1
+  [ -n "$active_hook_command" ] || return 1
   jq -e \
     --arg current_version "$current_version" \
     --arg active_hook_command "$active_hook_command" '
@@ -315,8 +317,10 @@ valid_runtime_smoke_proof() {
       and ((.updated_input_verified // .updatedInput_verified // false) == true)
       and ((.rtk_rewrite_observed // .rewrite_observed // false) == true)
       and ((.vbw_bash_guard_verified // .bash_guard_verified // false) == true)
-      and (($current_version == "") or ((.rtk_version // $current_version) == $current_version))
-      and (($active_hook_command == "") or ((.hook_command // $active_hook_command) == $active_hook_command))
+      and (((.rtk_version // "") | type) == "string")
+      and ((.rtk_version // "") == $current_version)
+      and (((.hook_command // "") | type) == "string")
+      and ((.hook_command // "") == $active_hook_command)
       and (
         (((.commands // .smoke_commands // .results // []) | type) == "array" and ((.commands // .smoke_commands // .results // []) | length > 0))
         or ((((.summary // .evidence // "") | type) == "string") and ((.summary // .evidence // "") | length > 0))
@@ -406,7 +410,7 @@ status_json() {
   [ "$multiple_bash" = "true" ] && updated_input_risk=true
 
   proof_source=""
-  if valid_runtime_smoke_proof "$RTK_PROOF_FILE" "$rtk_version" "$hook_command"; then
+  if [ "$rtk_present" = "true" ] && [ -n "$hook_command" ] && valid_runtime_smoke_proof "$RTK_PROOF_FILE" "$rtk_version" "$hook_command"; then
     proof_source="$RTK_PROOF_FILE"
   fi
 

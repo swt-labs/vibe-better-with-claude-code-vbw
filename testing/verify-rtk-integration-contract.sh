@@ -164,10 +164,22 @@ if contains "$RTK_MANAGER" 'valid_runtime_smoke_proof()' \
   && contains "$RTK_MANAGER" 'updated_input_verified' \
   && contains "$RTK_MANAGER" 'rtk_rewrite_observed' \
   && contains "$RTK_MANAGER" 'vbw_bash_guard_verified' \
+  && contains "$RTK_MANAGER" '[ -n "$current_version" ] || return 1' \
+  && contains "$RTK_MANAGER" '(.rtk_version // "") == $current_version' \
+  && contains "$RTK_MANAGER" '(.hook_command // "") == $active_hook_command' \
   && ! grep -Fq 'jq empty "$RTK_PROOF_FILE"' "$RTK_MANAGER"; then
   pass "rtk-manager requires concrete runtime smoke proof before verified compatibility"
 else
   fail "rtk-manager proof validation is too weak"
+fi
+
+if ! contains "$RTK_MANAGER" '$current_version == ""' \
+  && ! contains "$RTK_MANAGER" '.rtk_version // $current_version' \
+  && ! contains "$RTK_MANAGER" '.hook_command // $active_hook_command' \
+  && contains "$RTK_MANAGER" '[ "$rtk_present" = "true" ] && [ -n "$hook_command" ] && valid_runtime_smoke_proof'; then
+  pass "rtk-manager rejects stale proof without current RTK runtime state"
+else
+  fail "rtk-manager can still accept stale proof without current RTK runtime state"
 fi
 
 if contains "$RTK_MANAGER" 'if [ -n "$hook_command" ]; then' \
