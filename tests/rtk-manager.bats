@@ -11,7 +11,8 @@ setup() {
     ln -sf "$(command -v jq)" "$TEST_TEMP_DIR/bin/jq"
   fi
   local clean_path="" path_dir
-  IFS=: read -r -a _rtk_path_parts <<< "$PATH"
+  local -a _rtk_path_parts=()
+  IFS=: read -r -a _rtk_path_parts <<< "${PATH:-}"
   for path_dir in "${_rtk_path_parts[@]}"; do
     [ -n "$path_dir" ] || continue
     [ -x "$path_dir/rtk" ] && continue
@@ -21,7 +22,7 @@ setup() {
       clean_path="$clean_path:$path_dir"
     fi
   done
-  export PATH="$TEST_TEMP_DIR/bin:$clean_path"
+  export PATH="$TEST_TEMP_DIR/bin${clean_path:+:$clean_path}"
 }
 
 teardown() {
@@ -30,6 +31,12 @@ teardown() {
 
 rtk_manager() {
   bash "$SCRIPTS_DIR/rtk-manager.sh" "$@"
+}
+
+@test "rtk-manager: test harness PATH has no empty segments" {
+  [[ "$PATH" == "$TEST_TEMP_DIR/bin" || "$PATH" == "$TEST_TEMP_DIR/bin:"* ]]
+  [[ "$PATH" != *: ]]
+  [[ ":$PATH:" != *::* ]]
 }
 
 write_fake_rtk() {
