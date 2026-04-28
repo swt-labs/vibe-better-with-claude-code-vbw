@@ -213,9 +213,12 @@ Profile depth controls gray area count:
 | default | 3-5 |
 | production | 4-6 |
 
-Present gray-area selection based on list size:
-- **1–4 gray areas:** Use structured AskUserQuestion multi-select.
-- **5–6 gray areas:** Present a numbered list and ask for intentional freeform/no-options selection; do NOT use `options` array. Fresh discussions still require at least one selected area. Continuation discussions may accept `none` / "None — discussion is complete" because the user may have only wanted to check.
+Present gray-area selection based on list size and discussion mode:
+- **Continuation invariant:** Continuation discussions must always offer an explicit `None — discussion is complete` no-op path. Selecting it, or entering `none` in a freeform path, means no gray areas were selected.
+- **Fresh 1–4 gray areas:** Use structured AskUserQuestion multi-select and require at least one selected area.
+- **Fresh 5–6 gray areas:** Present a numbered list and ask for intentional freeform/no-options selection; require at least one selected area and do NOT use `options` array.
+- **Continuation 1–3 uncovered gray areas:** Use structured AskUserQuestion multi-select with `None — discussion is complete` as a visible option. This keeps the total within four visible choices because the no-op option counts.
+- **Continuation 4–6 uncovered gray areas:** Present a numbered list and ask for intentional freeform/no-options selection; accept `none` / `None — discussion is complete` and do NOT use `options` array.
 - **Fresh discussion copy:** "Which areas should we discuss?" No "skip all" option when using structured selection.
 - **Continuation copy:** "These topics weren't covered in the previous discussion. Which would you like to explore?"
 
@@ -223,7 +226,7 @@ Present gray-area selection based on list size:
 
 ## Step 3: Explore
 
-**Early exit:** If no areas were selected (user chose "None — discussion is complete" in Step 2), skip directly to Step 4.
+**Early exit:** If Step 2 produced no selected areas because the user chose structured `None — discussion is complete` or entered freeform `none`, skip directly to Step 4.
 
 For each selected area, have a natural conversation. Not a form. Not a fixed number of questions.
 

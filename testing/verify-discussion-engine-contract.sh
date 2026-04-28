@@ -141,6 +141,8 @@ fi
 # --- Shared AskUserQuestion contract and local structured/freeform boundary ---
 
 SHARED_BLOCK="$(extract_heading_block "$ENGINE" "## Shared interaction contract" '^## ' || true)"
+STEP_2_BLOCK="$(extract_heading_block "$ENGINE" "## Step 2: Orient" '^## ' || true)"
+STEP_3_BLOCK="$(extract_heading_block "$ENGINE" "## Step 3: Explore" '^## ' || true)"
 
 if [ -n "$SHARED_BLOCK" ]; then
   pass "engine: shared interaction contract block extracted"
@@ -148,11 +150,27 @@ else
   fail "engine: shared interaction contract block extracted"
 fi
 
+if [ -n "$STEP_2_BLOCK" ]; then
+  pass "engine: Step 2 block extracted"
+else
+  fail "engine: Step 2 block extracted"
+fi
+
+if [ -n "$STEP_3_BLOCK" ]; then
+  pass "engine: Step 3 block extracted"
+else
+  fail "engine: Step 3 block extracted"
+fi
+
 require_text_literal "engine: shared block points to ask-user-question reference" "references/ask-user-question.md" "$SHARED_BLOCK"
 require_file_regex "engine: documents bounded choices as structured AskUserQuestion" 'bounded (discussion )?decisions?.*structured AskUserQuestion|structured AskUserQuestion.*bounded (discussion )?decisions?' "$ENGINE"
 require_file_regex "engine: documents larger selections as freeform/no-options" '(5[-–]6|more than four|exceed four).*freeform|freeform.*(5[-–]6|more than four|exceed four)' "$ENGINE"
 require_file_literal "engine: freeform selection forbids options array" 'do NOT use `options` array' "$ENGINE"
 require_file_regex "engine: Step 2 distinguishes 1-4 vs 5-6 gray areas" '1[-–]4 gray areas.*structured|5[-–]6 gray areas.*freeform|1[-–]4.*structured multi-select|5[-–]6.*numbered/freeform' "$ENGINE"
+require_text_literal "engine: continuation selection keeps explicit no-op path" 'Continuation discussions must always offer an explicit `None — discussion is complete` no-op path' "$STEP_2_BLOCK"
+require_text_regex "engine: structured continuation accounts for None option limit" 'Continuation 1[-–]3 uncovered gray areas.*structured AskUserQuestion.*None|1[-–]3.*None.*four visible choices' "$STEP_2_BLOCK"
+require_text_regex "engine: freeform continuation accepts none without options array" 'Continuation 4[-–]6 uncovered gray areas.*freeform|accept `none`|do NOT use `options` array' "$STEP_2_BLOCK"
+require_text_regex "engine: Step 3 early exit covers structured and freeform no-op" 'structured `None — discussion is complete`.*freeform `none`|freeform `none`.*structured `None — discussion is complete`|no selected areas' "$STEP_3_BLOCK"
 require_file_literal "engine: Let me explain stops AskUserQuestion" 'stop using AskUserQuestion' "$ENGINE"
 require_file_regex "engine: Let me explain asks plain-text follow-up and waits" 'plain-text follow-up.*wait|wait.*plain-text follow-up' "$ENGINE"
 require_file_regex "engine: Builder sample is clearly marked as an example" '<example[^>]*Builder|label="Builder"' "$ENGINE"
