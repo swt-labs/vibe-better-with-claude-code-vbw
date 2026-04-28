@@ -4,6 +4,10 @@ One engine. Three entry points. Claude thinks, not pattern-matches.
 
 Replaces the three competing discussion subsystems (Bootstrap Discovery, Phase Discovery, Phase Discussion) with a single unified protocol. The user is the visionary. Claude is the builder. The engine's job is to surface decisions that downstream agents (researcher, planner, executor) need to act without asking the user again.
 
+## Shared interaction contract
+
+Generic AskUserQuestion behavior lives in `references/ask-user-question.md`. Use that contract for headers, option counts, built-in `Other`, spacing, and freeform handoffs. This file only defines discussion-specific routing.
+
 ## Entry Points
 
 All resolve to this protocol:
@@ -11,6 +15,10 @@ All resolve to this protocol:
 - `/vbw:vibe` — auto-detects discussion need from state
 - `/vbw:vibe --discuss [N]` — explicit flag, targets phase N
 - `/vbw:discuss [N]` — standalone command
+
+## Interaction Boundary
+
+Use structured AskUserQuestion for bounded discussion decisions with 2–4 visible choices. Use intentional freeform/no-options input for gray-area selections, corrections, or explanations that exceed four visible choices, and do NOT use `options` array for those high-cardinality paths.
 
 ## Step 1: Calibrate
 
@@ -32,15 +40,21 @@ Two modes, silently selected:
 
 Same gray area, two modes:
 
+<examples>
+<example label="Builder mode gray-area prompt">
 **Builder:** "When someone's internet drops while they're writing a post, we'll save their work and try again when they're back online. This is standard — it prevents data loss. Sound good?"
 - "Sounds good (Recommended — prevents data loss)"
 - "I'd prefer it to show an error instead"
 - "Let me explain..."
+</example>
 
+<example label="Architect mode gray-area prompt">
 **Architect:** "For offline write handling, the enterprise-standard approach is optimistic local queueing with sync on reconnect. Pessimistic blocking has a poor UX in mobile-first apps and doesn't reduce conflict risk. Recommendation: queue locally, sync on reconnect."
 - "Queue locally, sync on reconnect (Recommended — standard for mobile-first)"
 - "Block submission, show connectivity state"
 - "Let me explain..."
+</example>
+</examples>
 
 ## Step 1.5: Detect Continuation
 
@@ -129,6 +143,8 @@ Presentation varies by profile:
 
 **Low confidence (genuine questions):** Fall through to standard Step 3 Explore flow with recommendation-led questions.
 
+When the user selects `Let me explain...`, stop using AskUserQuestion, ask a plain-text follow-up for the explanation, wait for the response, then update the assumption from that response before continuing.
+
 ### A4: Process Corrections
 
 For each assumption the user reviews:
@@ -197,9 +213,11 @@ Profile depth controls gray area count:
 | default | 3-5 |
 | production | 4-6 |
 
-Present gray areas as a multi-select using AskUserQuestion.
-- **Fresh discussion:** "Which areas should we discuss?" No "skip all" option — if the user ran discuss, give them real choices.
-- **Continuation:** "These topics weren't covered in the previous discussion. Which would you like to explore?" Include a "None — discussion is complete" option since the user may have only wanted to check.
+Present gray-area selection based on list size:
+- **1–4 gray areas:** Use structured AskUserQuestion multi-select.
+- **5–6 gray areas:** Present a numbered list and ask for intentional freeform/no-options selection; do NOT use `options` array. Fresh discussions still require at least one selected area. Continuation discussions may accept `none` / "None — discussion is complete" because the user may have only wanted to check.
+- **Fresh discussion copy:** "Which areas should we discuss?" No "skip all" option when using structured selection.
+- **Continuation copy:** "These topics weren't covered in the previous discussion. Which would you like to explore?"
 
 > **AskUserQuestion spacing**: output 3–4 blank lines before the tool call (the dialog obscures trailing text).
 
@@ -213,7 +231,7 @@ The rhythm:
 1. Open with your recommendation for the area (for product decisions, present options equally per the Recommendation Principle instead): state the gray area, provide your recommendation with brief reasoning (2-3 sentences), then ask for confirmation via AskUserQuestion. Format the first option as the recommended choice with "(Recommended — [brief reason])" in the label. Include 1-2 alternatives and a "Let me explain..." free-form option.
 2. If user picks recommended: confirm in one line, move on. No follow-ups for standard picks.
 3. If user picks alternative: record the preference. Only ask a follow-up if the alternative changes a downstream requirement or invalidates the recommendation's reasoning — otherwise move on.
-4. If user picks "Let me explain...": read their free-form input, adjust your recommendation based on their reasoning, and confirm the updated decision. Treat their input as a preference, not a request for more options.
+4. If user picks "Let me explain...": stop using AskUserQuestion, ask a plain-text follow-up, wait for the response, adjust your recommendation based on their reasoning, and confirm the updated decision. Treat their input as a preference, not a request for more options.
 5. After covering the area, move to the next one.
 
 **Clear-cut batching:** For decisions where the enterprise answer is standard practice across well-architected projects, batch them instead of asking individually. Present the batch as a list with brief reasoning and confirm via AskUserQuestion with options like "All good", "I'd like to discuss one of these", and "Let me explain...": "For [area], we'll use these standard approaches: [list with brief reasoning]. Any of these need discussion?"
