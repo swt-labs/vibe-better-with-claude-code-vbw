@@ -381,13 +381,13 @@ curl_pipe_matches=""
 while IFS= read -r file; do
   [ -n "$file" ] || continue
   if contains_re "$file" 'curl[[:space:]].*[|][[:space:]]*(ba)?sh'; then
-    curl_pipe_matches="${curl_pipe_matches}${file#$ROOT/}\n"
+    curl_pipe_matches+="${file#$ROOT/}"$'\n'
   fi
 done < <(tracked_files 'scripts/*.sh')
 if [ -z "$curl_pipe_matches" ]; then
   pass "managed shell scripts do not use curl-pipe-shell"
 else
-  fail "managed shell scripts contain curl-pipe-shell:\n$curl_pipe_matches"
+  fail $'managed shell scripts contain curl-pipe-shell:\n'"$curl_pipe_matches"
 fi
 
 echo ""

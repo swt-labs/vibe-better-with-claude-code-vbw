@@ -157,16 +157,16 @@ create_rewritten_tar() {
   case "$mode" in
     gnu)
       if [[ "$target_name" = /* ]]; then
-        tar -P -czf "$archive" -C "$payload_dir" rtk --transform "s|^${source_name}$|${target_name}|" "$source_name"
+        tar -P -czf "$archive" -C "$payload_dir" --transform "s|^${source_name}$|${target_name}|" rtk "$source_name"
       else
-        tar -czf "$archive" -C "$payload_dir" rtk --transform "s|^${source_name}$|${target_name}|" "$source_name"
+        tar -czf "$archive" -C "$payload_dir" --transform "s|^${source_name}$|${target_name}|" rtk "$source_name"
       fi
       ;;
     bsd)
       if [[ "$target_name" = /* ]]; then
-        tar -P -czf "$archive" -C "$payload_dir" rtk -s "|^${source_name}$|${target_name}|" "$source_name"
+        tar -P -czf "$archive" -C "$payload_dir" -s "|^${source_name}$|${target_name}|" rtk "$source_name"
       else
-        tar -czf "$archive" -C "$payload_dir" rtk -s "|^${source_name}$|${target_name}|" "$source_name"
+        tar -czf "$archive" -C "$payload_dir" -s "|^${source_name}$|${target_name}|" rtk "$source_name"
       fi
       ;;
     *)
