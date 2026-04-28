@@ -536,21 +536,29 @@ status_json() {
 doctor_json() {
   status_json false false | jq '
     . as $s
+    | ([
+        (if $s.legacy_hook_file_present then "legacy hook file" else empty end),
+        (if $s.global_rtk_md_present then "global RTK.md" else empty end),
+        (if $s.global_claude_ref_present then "CLAUDE.md @RTK.md reference" else empty end),
+        (if $s.project_local_present then "project .rtk files" else empty end),
+        (if (($s.install_receipt // "") != "") then "VBW install receipt" else empty end),
+        (if (($s.binary_install_state // "absent") != "absent") then "binary state: " + $s.binary_install_state else empty end)
+      ]) as $rtk_artifacts
     | .doctor_status = (
         if ($s.settings_json_valid == false) then "WARN"
-        elif ($s.compatibility == "absent" and ($s.project_local_present | not) and ($s.legacy_hook_file_present | not)) then "SKIP"
         elif ($s.update_available == true) then "WARN"
         elif ($s.compatibility == "verified") then "PASS"
+        elif ($s.compatibility == "absent" and ($rtk_artifacts | length) == 0) then "SKIP"
         else "WARN" end
       )
     | .doctor_detail = (
         if .settings_json_valid == false then "Claude settings unreadable; RTK hook state cannot be determined from settings.json"
         elif .update_available == true then "outdated from cached RTK release check; run /vbw:rtk update"
         elif .doctor_status == "PASS" then "verified by " + ($s.proof_source // "smoke proof")
+        elif ($rtk_artifacts | length) > 0 then "RTK artifacts present with no active settings hook: " + ($rtk_artifacts | join(", ")) + "; run /vbw:rtk status or /vbw:rtk uninstall/manage"
         elif .compatibility == "absent" then "not installed; optional: /vbw:rtk install"
         elif .compatibility == "binary_only" then "binary installed; hook inactive"
         elif .compatibility == "risk" then "hook active; PreToolUse updatedInput compatibility unverified"
-        elif .legacy_hook_file_present == true then "legacy RTK hook artifact found; settings hook inactive"
         else "hook active; compatibility unverified" end
       )'
 }

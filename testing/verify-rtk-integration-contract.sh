@@ -217,6 +217,19 @@ else
   fail "rtk-manager missing malformed-settings unknown-state safety"
 fi
 
+if contains "$RTK_MANAGER" '$rtk_artifacts' \
+  && contains "$RTK_MANAGER" 'legacy hook file' \
+  && contains "$RTK_MANAGER" 'global RTK.md' \
+  && contains "$RTK_MANAGER" 'CLAUDE.md @RTK.md reference' \
+  && contains "$RTK_MANAGER" 'project .rtk files' \
+  && contains "$RTK_MANAGER" 'VBW install receipt' \
+  && contains "$RTK_MANAGER" 'RTK artifacts present with no active settings hook' \
+  && contains "$DOCTOR_CMD" 'artifact-only'; then
+  pass "doctor-json surfaces artifact-only RTK states as WARN with concrete evidence"
+else
+  fail "doctor-json missing artifact-only RTK WARN/detail handling"
+fi
+
 if ! grep -Fq 'status_json false true' "$RTK_MANAGER" \
   && contains "$RTK_MANAGER" 'status_json false false'; then
   pass "rtk verify path does not implicitly collect RTK stats"

@@ -356,6 +356,48 @@ JSON
   [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
 }
 
+@test "rtk-manager: doctor-json warns on legacy hook artifact without network" {
+  write_failing_curl
+  mkdir -p "$CLAUDE_CONFIG_DIR/hooks"
+  touch "$CLAUDE_CONFIG_DIR/hooks/rtk-rewrite.sh"
+  run rtk_manager doctor-json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.legacy_hook_file_present == true'
+  echo "$output" | jq -e '.global_hook_present == false'
+  echo "$output" | jq -e '.doctor_status == "WARN"'
+  echo "$output" | jq -e '.doctor_detail | test("legacy hook file")'
+  ! echo "$output" | jq -e '.doctor_detail | test("not installed; optional")'
+  [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
+}
+
+@test "rtk-manager: doctor-json warns on global RTK docs artifacts without network" {
+  write_failing_curl
+  echo "RTK docs" > "$CLAUDE_CONFIG_DIR/RTK.md"
+  echo "@RTK.md" > "$CLAUDE_CONFIG_DIR/CLAUDE.md"
+  run rtk_manager doctor-json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.global_rtk_md_present == true'
+  echo "$output" | jq -e '.global_claude_ref_present == true'
+  echo "$output" | jq -e '.doctor_status == "WARN"'
+  echo "$output" | jq -e '.doctor_detail | test("global RTK.md")'
+  echo "$output" | jq -e '.doctor_detail | test("CLAUDE.md @RTK.md reference")'
+  ! echo "$output" | jq -e '.doctor_detail | test("not installed; optional")'
+  [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
+}
+
+@test "rtk-manager: doctor-json warns on project RTK artifact without network" {
+  write_failing_curl
+  mkdir -p "$TEST_TEMP_DIR/project/.rtk"
+  touch "$TEST_TEMP_DIR/project/.rtk/filters.toml"
+  cd "$TEST_TEMP_DIR/project"
+  run rtk_manager doctor-json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.project_local_present == true'
+  echo "$output" | jq -e '.doctor_status == "WARN"'
+  echo "$output" | jq -e '.doctor_detail | test("project .rtk files")'
+  [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
+}
+
 @test "rtk-manager: arbitrary valid proof JSON does not verify compatibility" {
   write_fake_rtk "0.1.0"
   cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
