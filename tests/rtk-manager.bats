@@ -302,8 +302,18 @@ JSON
   [ "$status" -eq 0 ]
   [[ "$output" == *"RTK hook preflight"* ]]
   [[ "$output" == *"rtk init -g"* ]]
+  [[ "$output" != *"--auto-patch"* ]]
+  [[ "$output" != *"--hook-only"* ]]
   [[ "$output" == *"updatedInput"* ]]
   [ ! -f "$CLAUDE_CONFIG_DIR/settings.json" ]
+}
+
+@test "rtk-manager: init dry-run shows requested optional flags only" {
+  write_fake_rtk "0.1.0"
+  run rtk_manager init --dry-run --auto-patch --hook-only
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--auto-patch"* ]]
+  [[ "$output" == *"--hook-only"* ]]
 }
 
 @test "rtk-manager: doctor-json skips absent RTK" {
@@ -391,6 +401,22 @@ JSON
   [ ! -f "$VBW_RTK_DIR/rtk-latest-release.json" ]
 }
 
+@test "rtk-manager: off-PATH managed receipt is not hook-activation-ready" {
+  local binary
+  binary="$(create_managed_rtk "0.1.0")"
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.rtk_present == false'
+  echo "$output" | jq -e '.managed_by_vbw == true'
+  echo "$output" | jq -e '.binary_install_state == "installed_not_on_path"'
+  echo "$output" | jq -e '.compatibility == "absent"'
+  echo "$output" | jq -e '.next_action == "path"'
+  run rtk_manager init --dry-run
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"not on PATH"* ]]
+  [[ "$output" == *"$(dirname "$binary")"* ]]
+}
+
 @test "rtk-manager: external no-receipt update does not take ownership" {
   write_fake_rtk "0.1.0"
   prepare_release_fixture "9.9.9"
@@ -430,19 +456,67 @@ JSON
 @test "rtk-manager: uninstall deactivates hook before removing managed binary" {
   local binary
   binary="$(create_managed_rtk "0.1.0")"
+  cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}
+JSON
   run rtk_manager uninstall --yes --deactivate-hook
   [ "$status" -eq 0 ]
   grep -Fq 'init -g --uninstall' "$TEST_TEMP_DIR/rtk-calls.log"
   grep -Fq 'uninstall_binary_exists=yes' "$TEST_TEMP_DIR/rtk-calls.log"
   [ ! -e "$binary" ]
+  [ ! -f "$VBW_RTK_DIR/rtk-install.json" ]
 }
 
 @test "rtk-manager: failed hook deactivation preserves managed binary" {
   local binary
   binary="$(create_managed_rtk "0.1.0")"
+  cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}
+JSON
   export FAKE_RTK_UNINSTALL_FAIL=true
   run rtk_manager uninstall --yes --deactivate-hook
   [ "$status" -eq 1 ]
   [ -e "$binary" ]
   [ -f "$VBW_RTK_DIR/rtk-install.json" ]
+}
+
+@test "rtk-manager: hook-active managed uninstall requires deactivate flag" {
+  local binary
+  binary="$(create_managed_rtk "0.1.0")"
+  cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}
+JSON
+  run rtk_manager uninstall --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"hook deactivation required before binary removal"* ]]
+  run rtk_manager uninstall --yes
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"pass --deactivate-hook"* ]]
+  [ -e "$binary" ]
+  [ -f "$VBW_RTK_DIR/rtk-install.json" ]
+}
+
+@test "rtk-manager: uninstall preflight text has no boolean suffix" {
+  create_managed_rtk "0.1.0" >/dev/null
+  run rtk_manager uninstall --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"no hook deactivation requested"* ]]
+  [[ "$output" != *"before binary removalfalse"* ]]
+  run rtk_manager uninstall --dry-run --deactivate-hook
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"rtk init -g --uninstall before binary removal"* ]]
+  [[ "$output" != *"false"* ]]
+}
+
+@test "rtk-manager: managed uninstall retires receipt and clears managed status" {
+  local binary
+  binary="$(create_managed_rtk "0.1.0")"
+  run rtk_manager uninstall --yes
+  [ "$status" -eq 0 ]
+  [ ! -e "$binary" ]
+  [ ! -f "$VBW_RTK_DIR/rtk-install.json" ]
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.managed_by_vbw == false'
+  echo "$output" | jq -e '.install_receipt == ""'
 }

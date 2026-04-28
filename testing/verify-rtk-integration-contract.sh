@@ -172,6 +172,39 @@ else
   fail "rtk-manager uninstall order can remove binary before hook deactivation"
 fi
 
+if contains "$RTK_CMD" 'managed_by_vbw=true` and `global_hook_present=true' \
+  && contains "$RTK_CMD" 'uninstall --dry-run --deactivate-hook' \
+  && contains "$RTK_CMD" 'uninstall --yes --deactivate-hook'; then
+  pass "rtk command routes hook-active managed uninstall through deactivate-hook flow"
+else
+  fail "rtk command missing hook-active managed deactivate-hook uninstall flow"
+fi
+
+if contains "$RTK_MANAGER" 'active RTK settings hook detected; pass --deactivate-hook' \
+  && contains "$RTK_MANAGER" 'retire_install_receipt()' \
+  && contains "$RTK_MANAGER" 'retire_install_receipt'; then
+  pass "rtk-manager refuses unsafe managed uninstall and retires receipts after success"
+else
+  fail "rtk-manager missing unsafe-uninstall guard or receipt retirement"
+fi
+
+if ! contains "$RTK_MANAGER" '${auto_patch:+' \
+  && ! contains "$RTK_MANAGER" '${hook_only:+' \
+  && ! contains "$RTK_MANAGER" '${deactivate_hook:+'; then
+  pass "rtk-manager preflight output avoids non-empty-string boolean expansion bugs"
+else
+  fail "rtk-manager still uses buggy boolean parameter expansion in preflight output"
+fi
+
+if contains "$RTK_MANAGER" 'binary_install_state="installed_not_on_path"' \
+  && contains "$RTK_MANAGER" 'RTK binary exists at $receipt_path but is not on PATH' \
+  && contains "$RTK_CMD" 'Enable Claude Code hook` when `rtk_present=true` and `global_hook_present=false' \
+  && contains "$RTK_CMD" 'Show PATH guidance` when `managed_by_vbw=true` and `binary_install_state="installed_not_on_path"'; then
+  pass "rtk status and command menu keep hook activation gated on PATH-visible RTK"
+else
+  fail "rtk status/menu missing PATH-visible RTK hook activation invariant"
+fi
+
 if contains "$DOCTOR_CMD" '### 18. RTK integration' \
   && contains "$DOCTOR_CMD" 'bash "{plugin-root}/scripts/rtk-manager.sh" doctor-json' \
   && contains "$DOCTOR_CMD" 'Result: {N}/18 passed' \

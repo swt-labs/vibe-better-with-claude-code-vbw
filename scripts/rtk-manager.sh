@@ -110,16 +110,10 @@ rtk_path_from_receipt() {
 }
 
 rtk_path_detect() {
-  local path receipt_path
+  local path
   path="$(command_path rtk)"
   if [ -n "$path" ]; then
     printf '%s\n' "$path"
-    return 0
-  fi
-
-  receipt_path="$(rtk_path_from_receipt)"
-  if [ -n "$receipt_path" ] && [ -x "$receipt_path" ]; then
-    printf '%s\n' "$receipt_path"
   fi
 }
 
@@ -361,7 +355,9 @@ status_json() {
   if [ "$rtk_present" = "true" ]; then
     binary_install_state="present"
   elif [ -n "$receipt_binary" ] && [ -x "$receipt_binary" ]; then
-    binary_install_state="installed_path_missing"
+    binary_install_state="installed_not_on_path"
+  elif [ -n "$receipt_binary" ]; then
+    binary_install_state="receipt_missing_binary"
   fi
 
   can_install=true
@@ -421,8 +417,16 @@ status_json() {
 
   case "$compatibility" in
     absent)
-      summary="RTK not installed; optional: /vbw:rtk install"
-      next_action="install"
+      if [ "$binary_install_state" = "installed_not_on_path" ]; then
+        summary="RTK binary installed by VBW but not on PATH; add $(dirname "$receipt_binary") to PATH before hook activation"
+        next_action="path"
+      elif [ "$binary_install_state" = "receipt_missing_binary" ]; then
+        summary="VBW RTK receipt exists but binary is missing; run /vbw:rtk install or uninstall/manage"
+        next_action="repair"
+      else
+        summary="RTK not installed; optional: /vbw:rtk install"
+        next_action="install"
+      fi
       ;;
     binary_only)
       summary="RTK binary installed; Claude Code hook inactive"
@@ -614,6 +618,16 @@ write_receipt() {
   mv "$tmp" "$RTK_RECEIPT_FILE"
 }
 
+retire_install_receipt() {
+  local stamp dest
+  [ -f "$RTK_RECEIPT_FILE" ] || return 0
+  mkdir -p "$RTK_BACKUP_DIR"
+  stamp="$(now_utc | tr ':T' '--')"
+  dest="$RTK_BACKUP_DIR/rtk-install.$stamp.retired.json"
+  cp -p "$RTK_RECEIPT_FILE" "$dest" 2>/dev/null || cp "$RTK_RECEIPT_FILE" "$dest"
+  rm -f "$RTK_RECEIPT_FILE"
+}
+
 verify_download_checksum() {
   local asset="$1" asset_name="$2" checksums="$3" allow_missing="$4" expected actual
   if [ ! -s "$checksums" ]; then
@@ -740,7 +754,7 @@ install_or_update() {
 }
 
 init_hook() {
-  local dry_run=false yes=false auto_patch=false hook_only=false rtk_path args
+  local dry_run=false yes=false auto_patch=false hook_only=false rtk_path receipt_path args display_cmd
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --dry-run) dry_run=true; shift ;;
@@ -750,10 +764,19 @@ init_hook() {
       *) die 2 "unknown init option: $1" ;;
     esac
   done
-  rtk_path="$(rtk_path_detect)"
-  [ -n "$rtk_path" ] || die 1 "RTK binary not found; run /vbw:rtk install first or install RTK manually"
+  rtk_path="$(command_path rtk)"
+  if [ -z "$rtk_path" ]; then
+    receipt_path="$(rtk_path_from_receipt)"
+    if [ -n "$receipt_path" ] && [ -x "$receipt_path" ]; then
+      die 1 "RTK binary exists at $receipt_path but is not on PATH; add $(dirname "$receipt_path") to PATH before hook activation"
+    fi
+    die 1 "RTK binary not found on PATH; run /vbw:rtk install first or install RTK manually"
+  fi
+  display_cmd="$rtk_path init -g"
+  if [ "$auto_patch" = "true" ]; then display_cmd="$display_cmd --auto-patch"; fi
+  if [ "$hook_only" = "true" ]; then display_cmd="$display_cmd --hook-only"; fi
   echo "RTK hook preflight"
-  echo "Will run: $rtk_path init -g${auto_patch:+ --auto-patch}${hook_only:+ --hook-only}"
+  echo "Will run: $display_cmd"
   echo "Writes: ${RTK_SETTINGS_JSON}, ${RTK_GLOBAL_MD}, and @RTK.md references inside ${RTK_CLAUDE_MD} when RTK patches Claude Code"
   echo "Does not do: disable, reorder, or weaken VBW bash-guard.sh"
   echo "Next step: restart Claude Code after hook activation, then run /vbw:rtk verify"
@@ -791,7 +814,7 @@ verify_rtk() {
 }
 
 uninstall_rtk() {
-  local dry_run=false yes=false deactivate_hook=false binary_path managed rtk_path
+  local dry_run=false yes=false deactivate_hook=false binary_path managed rtk_path active_hook will_run
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --dry-run) dry_run=true; shift ;;
@@ -803,16 +826,31 @@ uninstall_rtk() {
   managed=false
   if receipt_managed; then managed=true; fi
   binary_path="$(rtk_path_from_receipt)"
+  active_hook=""
+  if settings_valid; then active_hook="$(settings_hook_command)"; fi
   echo "RTK uninstall preflight"
   if [ "$managed" = "true" ] && [ -n "$binary_path" ]; then
     echo "Will remove: $binary_path (VBW receipt-owned)"
   else
     echo "Will remove: no binary; external installs are not deleted by VBW"
   fi
-  echo "Will run: ${deactivate_hook:+rtk init -g --uninstall before binary removal}${deactivate_hook:-no hook deactivation unless --deactivate-hook is passed}"
+  if [ "$managed" = "true" ] && [ -n "$active_hook" ] && [ "$deactivate_hook" != "true" ]; then
+    will_run="hook deactivation required before binary removal; rerun with --deactivate-hook"
+  elif [ "$deactivate_hook" = "true" ]; then
+    will_run="rtk init -g --uninstall before binary removal"
+  elif [ "$managed" = "true" ] && [ -n "$binary_path" ]; then
+    will_run="remove VBW receipt-owned binary only; no hook deactivation requested"
+  else
+    will_run="external/no-receipt guidance only; no binary deletion"
+  fi
+  echo "Will run: $will_run"
   echo "Writes: receipt/backups under ${VBW_RTK_DIR}; RTK may edit Claude settings only when --deactivate-hook is used"
   ensure_confirmation "$yes" "$dry_run" "uninstall"
   [ "$dry_run" = "true" ] && exit 0
+  if [ "$managed" = "true" ] && [ -n "$active_hook" ] && [ "$deactivate_hook" != "true" ]; then
+    echo "RTK: active RTK settings hook detected; pass --deactivate-hook before removing the VBW-managed binary" >&2
+    exit 1
+  fi
   if [ "$deactivate_hook" = "true" ]; then
     rtk_path="$(rtk_path_detect)"
     if [ -z "$rtk_path" ] && [ -n "$binary_path" ] && [ -x "$binary_path" ]; then
@@ -829,6 +867,9 @@ uninstall_rtk() {
   fi
   if [ "$managed" = "true" ] && [ -n "$binary_path" ] && [ -e "$binary_path" ]; then
     rm -f "$binary_path"
+  fi
+  if [ "$managed" = "true" ]; then
+    retire_install_receipt
   fi
   echo "✓ RTK uninstall complete"
 }

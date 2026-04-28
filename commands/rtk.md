@@ -44,6 +44,7 @@ If no subcommand is provided, use the RTK state JSON to present one bounded AskU
   - `Install RTK binary` when `rtk_present=false`
   - `Update RTK binary` when `update_available=true`
   - `Enable Claude Code hook` when `rtk_present=true` and `global_hook_present=false`
+  - `Show PATH guidance` when `managed_by_vbw=true` and `binary_install_state="installed_not_on_path"`
   - `Verify RTK/VBW coexistence` when `global_hook_present=true` and `compatibility` is not `verified`
   - `Uninstall/manage RTK` when `managed_by_vbw=true` or `global_hook_present=true`
   - `Exit` when no action is wanted
@@ -131,7 +132,21 @@ Static verification may confirm binary, settings hook, RTK docs/artifacts, and V
 
 ### Step 6: Uninstall/manage
 
-For `/vbw:rtk uninstall`, first run:
+For `/vbw:rtk uninstall`, choose the helper path from RTK state:
+
+- If `managed_by_vbw=true` and `global_hook_present=true`, first run:
+
+```bash
+bash "{plugin-root}/scripts/rtk-manager.sh" uninstall --dry-run --deactivate-hook
+```
+
+Ask for one explicit confirmation that names both Claude Code hook deactivation and VBW-managed binary removal. If confirmed, run:
+
+```bash
+bash "{plugin-root}/scripts/rtk-manager.sh" uninstall --yes --deactivate-hook
+```
+
+- If `managed_by_vbw=true` and `global_hook_present=false`, first run:
 
 ```bash
 bash "{plugin-root}/scripts/rtk-manager.sh" uninstall --dry-run
@@ -143,7 +158,7 @@ Ask for confirmation. If confirmed, run:
 bash "{plugin-root}/scripts/rtk-manager.sh" uninstall --yes
 ```
 
-For externally managed installs, do not delete the binary. Show package-manager/manual uninstall guidance from the helper output instead.
+- For externally managed installs, do not delete the binary. Show package-manager/manual uninstall guidance from the helper output instead.
 
 ## Output
 
