@@ -1,19 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# verify-askuserquestion-contract.sh — Contract checks for AskUserQuestion maxItems:4
+# verify-askuserquestion-contract.sh — Contract checks for AskUserQuestion usage
 #
 # The Claude Code AskUserQuestion tool has a maxItems:4 constraint on its
 # `options` array. Commands that need more than 4 choices must use a
 # numbered-list-in-question-text workaround with explicit guard language.
 #
+# This verifier also protects the shared VBW interactive prompt pattern:
+# centralized AskUserQuestion guidance, local-vs-shared `/vbw:vibe`
+# boundaries, intentional freeform/plain-text handoffs, and stable
+# structured-vs-freeform command boundaries.
+#
 # Checks:
 # 1. No option lists with >4 items in AskUserQuestion context (pipe-delimited
 #    or JSON array format)
 # 2. Numbered-list AskUserQuestion workarounds include guard language
+# 3. Shared interactive prompt reference has stable semantic anchors
+# 4. Command consumers preserve their structured/freeform boundaries
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMMANDS_DIR="$ROOT/commands"
+REFERENCES_DIR="$ROOT/references"
+
+ASK_USER_QUESTION_REF="$REFERENCES_DIR/ask-user-question.md"
+VIBE_COMMAND_FILE="$COMMANDS_DIR/vibe.md"
+LIST_TODOS_COMMAND_FILE="$COMMANDS_DIR/list-todos.md"
+CONFIG_COMMAND_FILE="$COMMANDS_DIR/config.md"
+SKILLS_COMMAND_FILE="$COMMANDS_DIR/skills.md"
 
 tracked_command_markdown_files() {
   local rel
@@ -52,7 +66,216 @@ extract_body() {
   ' "$file"
 }
 
-echo "=== AskUserQuestion maxItems Contract Verification ==="
+extract_frontmatter() {
+  local file="$1"
+  awk '
+    BEGIN { delim=0 }
+    /^---$/ {
+      delim++
+      if (delim == 2) exit
+      next
+    }
+    delim == 1 { print }
+  ' "$file"
+}
+
+extract_heading_block() {
+  local file="$1"
+  local heading="$2"
+  local end_regex="$3"
+
+  awk -v h="$heading" -v end_re="$end_regex" '
+    function trim_line(s) {
+      sub(/^[[:space:]]+/, "", s)
+      sub(/[[:space:]]+$/, "", s)
+      return s
+    }
+
+    {
+      line=$0
+      gsub(/\r/, "", line)
+      trimmed=trim_line(line)
+
+      if (trimmed == h) {
+        found=1
+        print line
+        next
+      }
+
+      if (found && trimmed ~ end_re) {
+        exit
+      }
+
+      if (found) {
+        print line
+      }
+    }
+  ' "$file"
+}
+
+extract_regex_block() {
+  local file="$1"
+  local start_regex="$2"
+  local end_regex="$3"
+
+  awk -v start_re="$start_regex" -v end_re="$end_regex" '
+    $0 ~ start_re {
+      found=1
+      print
+      next
+    }
+
+    found && $0 ~ end_re {
+      exit
+    }
+
+    found {
+      print
+    }
+  ' "$file"
+}
+
+count_text_occurrences() {
+  local text="$1"
+  local needle="$2"
+
+  awk -v needle="$needle" '
+    BEGIN { count=0 }
+
+    {
+      line=$0
+      while (needle != "" && (idx = index(line, needle)) > 0) {
+        count++
+        line = substr(line, idx + length(needle))
+      }
+    }
+
+    END { print count + 0 }
+  ' <<< "$text"
+}
+
+require_file_exists() {
+  local desc="$1"
+  local file="$2"
+
+  if [ -f "$file" ]; then
+    pass "$desc"
+  else
+    fail "$desc"
+  fi
+}
+
+require_file_literal() {
+  local desc="$1"
+  local needle="$2"
+  local file="$3"
+
+  if [ -f "$file" ] && grep -Fq -- "$needle" "$file"; then
+    pass "$desc"
+  else
+    fail "$desc"
+  fi
+}
+
+require_file_regex() {
+  local desc="$1"
+  local pattern="$2"
+  local file="$3"
+
+  if [ -f "$file" ] && grep -Eq -- "$pattern" "$file"; then
+    pass "$desc"
+  else
+    fail "$desc"
+  fi
+}
+
+forbid_file_regex() {
+  local desc="$1"
+  local pattern="$2"
+  local file="$3"
+
+  if [ -f "$file" ] && grep -Eiq -- "$pattern" "$file"; then
+    fail "$desc"
+  else
+    pass "$desc"
+  fi
+}
+
+require_text_literal() {
+  local desc="$1"
+  local needle="$2"
+  local text="$3"
+
+  if grep -Fq -- "$needle" <<< "$text"; then
+    pass "$desc"
+  else
+    fail "$desc"
+  fi
+}
+
+require_text_regex() {
+  local desc="$1"
+  local pattern="$2"
+  local text="$3"
+
+  if grep -Eq -- "$pattern" <<< "$text"; then
+    pass "$desc"
+  else
+    fail "$desc"
+  fi
+}
+
+forbid_text_regex() {
+  local desc="$1"
+  local pattern="$2"
+  local text="$3"
+
+  if grep -Eiq -- "$pattern" <<< "$text"; then
+    fail "$desc"
+  else
+    pass "$desc"
+  fi
+}
+
+require_text_occurrence_count() {
+  local desc="$1"
+  local text="$2"
+  local needle="$3"
+  local expected_count="$4"
+  local actual_count=""
+
+  actual_count="$(count_text_occurrences "$text" "$needle")"
+  if [ "$actual_count" -eq "$expected_count" ]; then
+    pass "$desc"
+  else
+    fail "$desc (expected $expected_count, found $actual_count)"
+  fi
+}
+
+require_backticked_labels() {
+  local desc="$1"
+  local text="$2"
+  shift 2
+
+  local missing=()
+  local label=""
+  local needle=""
+
+  for label in "$@"; do
+    needle="\`$label\`"
+    if ! grep -Fq -- "$needle" <<< "$text"; then
+      missing+=("$label")
+    fi
+  done
+
+  if [ "${#missing[@]}" -eq 0 ]; then
+    pass "$desc"
+  else
+    fail "$desc (missing labels: ${missing[*]})"
+  fi
+}
+
+echo "=== AskUserQuestion Contract Verification ==="
 
 # --------------------------------------------------------------------------
 # Check 1: No pipe-delimited option lists exceeding 4 items
@@ -161,6 +384,208 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
     fi
   fi
 done
+
+# --------------------------------------------------------------------------
+# Check 3: Shared reference semantic anchors
+# --------------------------------------------------------------------------
+
+echo ""
+echo "--- Check 3: Shared AskUserQuestion reference anchors ---"
+
+require_file_exists "ask-user-question: shared reference exists" "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: source note metadata present" "Source note:" "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: last reviewed metadata present" "Last reviewed:" "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: documents short-header guidance" "Keep headers short" "$ASK_USER_QUESTION_REF"
+require_file_regex "ask-user-question: documents 2-4 option sweet spot" '2[-–]4 options' "$ASK_USER_QUESTION_REF"
+require_file_regex "ask-user-question: documents 1-4 question guidance" '1[-–]4 questions' "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: documents built-in Other path" '`Other` path' "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: documents intentional freeform boundary" "high-cardinality or unbounded" "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: documents freeform handoff heading" "### Freeform handoff" "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: documents freeform handoff behavior" "stop using AskUserQuestion" "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: documents fake bounded menu anti-pattern" "Fake bounded menus" "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: includes structured example" "### Example — structured single-select" "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: includes intentional-freeform example" "### Example — intentional freeform" "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: includes decision-gate example" "### Example — decision gate" "$ASK_USER_QUESTION_REF"
+forbid_file_regex "ask-user-question: no volatile upstream issue links" 'github\.com/.*issues|fixes #[0-9]+|see #[0-9]+|issue #[0-9]+|parent.*#[0-9]+' "$ASK_USER_QUESTION_REF"
+
+# --------------------------------------------------------------------------
+# Check 4: /vbw:vibe local-vs-shared confirmation boundary
+# --------------------------------------------------------------------------
+
+echo ""
+echo "--- Check 4: /vbw:vibe confirmation boundary ---"
+
+VIBE_CONFIRMATION_BLOCK="$(extract_heading_block "$VIBE_COMMAND_FILE" "### Confirmation Gate" '^## ' || true)"
+
+require_file_literal "vibe: loads shared AskUserQuestion reference" '@${CLAUDE_PLUGIN_ROOT}/references/ask-user-question.md' "$VIBE_COMMAND_FILE"
+
+if [ -n "$VIBE_CONFIRMATION_BLOCK" ]; then
+  pass "vibe: confirmation gate block extracted"
+else
+  fail "vibe: confirmation gate block extracted"
+fi
+
+require_text_literal "vibe: confirmation gate points to shared reference" "references/ask-user-question.md" "$VIBE_CONFIRMATION_BLOCK"
+
+if grep -Fq '**Exception:** `--yolo` skips all confirmation gates.' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  && grep -Fq '**Exception:** Flags skip confirmation (explicit intent).' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  && grep -Fq '| Routing state | Recommended | Alternatives |' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  && grep -Fq '**Discussion-aware alternatives:**' <<< "$VIBE_CONFIRMATION_BLOCK"; then
+  pass "vibe: confirmation gate preserves vibe-local routing constructs"
+else
+  fail "vibe: confirmation gate preserves vibe-local routing constructs"
+fi
+
+if grep -Eq '2[-–]4 options|1[-–]4 questions|high-cardinality' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq '`Other` path' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq 'Keep headers short' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq 'dialog obscures' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq 'For simple yes/no confirmations without a table entry' <<< "$VIBE_CONFIRMATION_BLOCK" \
+  || grep -Fq '**AskUserQuestion parameters:**' <<< "$VIBE_CONFIRMATION_BLOCK"; then
+  fail "vibe: confirmation gate does not duplicate generic AskUserQuestion guidance"
+else
+  pass "vibe: confirmation gate does not duplicate generic AskUserQuestion guidance"
+fi
+
+# --------------------------------------------------------------------------
+# Check 5: /vbw:list-todos intentional plain-text/freeform handoff
+# --------------------------------------------------------------------------
+
+echo ""
+echo "--- Check 5: /vbw:list-todos freeform boundary ---"
+
+LIST_TODOS_FRONTMATTER="$(extract_frontmatter "$LIST_TODOS_COMMAND_FILE" || true)"
+LIST_TODOS_STEP_5="$(extract_regex_block "$LIST_TODOS_COMMAND_FILE" 'Display action hints and STOP' '^## ' || true)"
+LIST_TODOS_UNFILTERED_HINTS="$(extract_regex_block "$LIST_TODOS_COMMAND_FILE" 'Unfiltered view' 'Filtered view' || true)"
+LIST_TODOS_FILTERED_HINTS="$(extract_regex_block "$LIST_TODOS_COMMAND_FILE" 'Filtered view' 'If the user says' || true)"
+
+if grep -Fq 'AskUserQuestion' <<< "$LIST_TODOS_FRONTMATTER"; then
+  fail "list-todos: frontmatter allowed-tools excludes AskUserQuestion"
+else
+  pass "list-todos: frontmatter allowed-tools excludes AskUserQuestion"
+fi
+
+if grep -Fq 'AskUserQuestion' <<< "$(extract_body "$LIST_TODOS_COMMAND_FILE")"; then
+  fail "list-todos: body does not use AskUserQuestion"
+else
+  pass "list-todos: body does not use AskUserQuestion"
+fi
+
+require_text_literal "list-todos: step 5 displays action hints and stops" "Display action hints and STOP" "$LIST_TODOS_STEP_5"
+require_text_literal "list-todos: step 5 does not prompt the user for input" "Do NOT prompt the user for input" "$LIST_TODOS_STEP_5"
+require_text_literal "list-todos: unfiltered hints preserve /vbw:vibe N" "/vbw:vibe N" "$LIST_TODOS_UNFILTERED_HINTS"
+require_text_literal "list-todos: unfiltered hints preserve /vbw:fix N" "/vbw:fix N" "$LIST_TODOS_UNFILTERED_HINTS"
+require_text_literal "list-todos: unfiltered hints preserve /vbw:debug N" "/vbw:debug N" "$LIST_TODOS_UNFILTERED_HINTS"
+require_text_regex "list-todos: unfiltered hints preserve remove N" '(^|[[:space:]])remove N([[:space:]]|$)' "$LIST_TODOS_UNFILTERED_HINTS"
+require_text_regex "list-todos: filtered hints preserve remove N" '(^|[[:space:]])remove N([[:space:]]|$)' "$LIST_TODOS_FILTERED_HINTS"
+require_text_regex "list-todos: filtered hints preserve delete N" '(^|[[:space:]])delete N([[:space:]]|$)' "$LIST_TODOS_FILTERED_HINTS"
+require_text_literal "list-todos: filtered hints preserve rerun-unfiltered guard" "rerun unfiltered /vbw:list-todos before using /vbw:vibe N, /vbw:fix N, or /vbw:debug N" "$LIST_TODOS_FILTERED_HINTS"
+
+# --------------------------------------------------------------------------
+# Check 6: /vbw:config bounded structured flow
+# --------------------------------------------------------------------------
+
+echo ""
+echo "--- Check 6: /vbw:config structured boundary ---"
+
+CONFIG_NO_ARGS_BLOCK="$(extract_heading_block "$CONFIG_COMMAND_FILE" "### No arguments: Interactive configuration" '^### ' || true)"
+CONFIG_STEP_2="$(extract_regex_block "$CONFIG_COMMAND_FILE" 'Step 2:.*AskUserQuestion with 1 question' 'Step 2\.5:' || true)"
+
+if [ -n "$CONFIG_NO_ARGS_BLOCK" ]; then
+  pass "config: no-args interactive configuration block extracted"
+else
+  fail "config: no-args interactive configuration block extracted"
+fi
+
+require_text_occurrence_count "config: Step 2 uses exactly one AskUserQuestion prompt definition" "$CONFIG_STEP_2" "AskUserQuestion with 1 question:" 1
+require_text_literal "config: bounded branches acknowledge built-in Other path" 'the built-in `Other` path is still part of that question' "$CONFIG_NO_ARGS_BLOCK"
+require_text_literal "config: bounded branches do not add visible Other option" 'do NOT add an extra visible `Other` option' "$CONFIG_NO_ARGS_BLOCK"
+
+if grep -Fq 'Which core setting do you want to change?' <<< "$CONFIG_NO_ARGS_BLOCK" \
+  && grep -Fq '`Effort` — current:' <<< "$CONFIG_NO_ARGS_BLOCK" \
+  && grep -Fq '`Autonomy` — current:' <<< "$CONFIG_NO_ARGS_BLOCK" \
+  && grep -Fq '`Planning tracking` — current:' <<< "$CONFIG_NO_ARGS_BLOCK" \
+  && grep -Fq '`Auto push` — current:' <<< "$CONFIG_NO_ARGS_BLOCK"; then
+  pass "config: core setting selection remains bounded"
+else
+  fail "config: core setting selection remains bounded"
+fi
+
+require_backticked_labels "config: core values remain 3-4 option bounded choices" "$CONFIG_NO_ARGS_BLOCK" \
+  thorough balanced fast turbo \
+  cautious standard confident pure-vibe \
+  manual ignore commit \
+  never after_phase always
+
+if grep -Fq 'How do you want to configure model behavior?' <<< "$CONFIG_NO_ARGS_BLOCK" \
+  && grep -Fq '`Use preset profile` — quality, balanced, or budget' <<< "$CONFIG_NO_ARGS_BLOCK" \
+  && grep -Fq '`Configure each agent individually` — 6 per-agent model questions' <<< "$CONFIG_NO_ARGS_BLOCK"; then
+  pass "config: model profile method remains a 2-option branch"
+else
+  fail "config: model profile method remains a 2-option branch"
+fi
+
+require_text_literal "config: preset profile branch remains 3 options" 'AskUserQuestion with 1 question and 3 options (`quality`, `balanced`, `budget`)' "$CONFIG_NO_ARGS_BLOCK"
+require_text_literal "config: per-agent overrides keep 4-question first round" "AskUserQuestion with 4 questions:" "$CONFIG_NO_ARGS_BLOCK"
+require_text_literal "config: per-agent overrides keep 2-question second round" "AskUserQuestion with 2 questions:" "$CONFIG_NO_ARGS_BLOCK"
+forbid_text_regex "config: no-args flow avoids numeric pseudo-menu language" 'enter numbers|comma-separated|numbered list' "$CONFIG_NO_ARGS_BLOCK"
+
+# --------------------------------------------------------------------------
+# Check 7: /vbw:skills structured-vs-freeform boundary
+# --------------------------------------------------------------------------
+
+echo ""
+echo "--- Check 7: /vbw:skills structured/freeform boundary ---"
+
+SKILLS_STEP_5="$(extract_regex_block "$SKILLS_COMMAND_FILE" '^### Step 5: Offer installation$' '^### ' || true)"
+SKILLS_ONE_CANDIDATE_BRANCH="$(extract_regex_block "$SKILLS_COMMAND_FILE" 'If the combined list has exactly 1 candidate' 'If the combined list has 2[-–]4 candidates' || true)"
+SKILLS_BOUNDED_MULTI_BRANCH="$(extract_regex_block "$SKILLS_COMMAND_FILE" 'If the combined list has 2[-–]4 candidates' 'If the combined list has more than 4 candidates' || true)"
+SKILLS_HIGH_CARDINALITY_BRANCH="$(extract_regex_block "$SKILLS_COMMAND_FILE" 'If the combined list has more than 4 candidates' '^### Step 5b:' || true)"
+
+if [ -n "$SKILLS_STEP_5" ]; then
+  pass "skills: Step 5 block extracted"
+else
+  fail "skills: Step 5 block extracted"
+fi
+
+if [ -n "$SKILLS_ONE_CANDIDATE_BRANCH" ]; then
+  pass "skills: one-candidate branch extracted"
+else
+  fail "skills: one-candidate branch extracted"
+fi
+
+if [ -n "$SKILLS_BOUNDED_MULTI_BRANCH" ]; then
+  pass "skills: 2-4 candidate branch extracted"
+else
+  fail "skills: 2-4 candidate branch extracted"
+fi
+
+if [ -n "$SKILLS_HIGH_CARDINALITY_BRANCH" ]; then
+  pass "skills: 5+ candidate branch extracted"
+else
+  fail "skills: 5+ candidate branch extracted"
+fi
+
+require_text_literal "skills: empty candidate list stops without AskUserQuestion" "If the combined list is empty: STOP here. Do NOT AskUserQuestion." "$SKILLS_STEP_5"
+require_text_literal "skills: one candidate uses structured single bounded question" "If the combined list has exactly 1 candidate: keep it structured." "$SKILLS_ONE_CANDIDATE_BRANCH"
+require_text_literal "skills: one candidate asks a single bounded question" "AskUserQuestion with a single bounded question." "$SKILLS_ONE_CANDIDATE_BRANCH"
+require_text_literal "skills: one candidate preserves install option" 'Install {skill-name}' "$SKILLS_ONE_CANDIDATE_BRANCH"
+require_text_literal "skills: one candidate preserves skip option" 'Skip for now' "$SKILLS_ONE_CANDIDATE_BRANCH"
+forbid_text_regex "skills: one candidate branch excludes freeform parser anti-patterns" 'numbered list|comma-separated|high-cardinality|numeric/freeform|Type numbers|Accept comma-separated|Reject out-of-range|freeform response|do NOT use `options` array' "$SKILLS_ONE_CANDIDATE_BRANCH"
+require_text_regex "skills: 2-4 candidates stay structured" 'If the combined list has 2[-–]4 candidates: keep it structured' "$SKILLS_BOUNDED_MULTI_BRANCH"
+require_text_regex "skills: 2-4 candidates use per-skill AskUserQuestion prompts" 'Use AskUserQuestion with 1 question per skill \(2[-–]4 questions total\)' "$SKILLS_BOUNDED_MULTI_BRANCH"
+require_text_literal "skills: 2-4 candidates preserve install option" '`Install`' "$SKILLS_BOUNDED_MULTI_BRANCH"
+require_text_literal "skills: 2-4 candidates preserve skip option" '`Skip`' "$SKILLS_BOUNDED_MULTI_BRANCH"
+forbid_text_regex "skills: 2-4 candidate branch excludes freeform parser anti-patterns" 'numbered list|comma-separated|high-cardinality|numeric/freeform|Type numbers|Accept comma-separated|Reject out-of-range|freeform response|do NOT use `options` array' "$SKILLS_BOUNDED_MULTI_BRANCH"
+require_text_literal "skills: bounded branches acknowledge built-in Other path" 'the built-in `Other` path is still part of that question' "$SKILLS_STEP_5"
+require_text_literal "skills: bounded branches accept hybrid number replies" 'accept hybrid replies anchored to one of those visible option numbers' "$SKILLS_STEP_5"
+require_text_literal "skills: no-selection stops before installation scope" 'Do not ask Step 5b and do not enter Step 6.' "$SKILLS_STEP_5"
+require_text_literal "skills: 5+ candidates use intentional high-cardinality freeform" "If the combined list has more than 4 candidates: use intentional high-cardinality freeform input." "$SKILLS_HIGH_CARDINALITY_BRANCH"
+require_text_literal "skills: 5+ candidate branch forbids options array" 'do NOT use `options` array' "$SKILLS_HIGH_CARDINALITY_BRANCH"
+require_text_literal "skills: 5+ candidate branch presents numbered list in question text" "numbered list in the AskUserQuestion text" "$SKILLS_HIGH_CARDINALITY_BRANCH"
+require_text_literal "skills: 5+ candidate parser accepts comma-separated digits" "Accept comma-separated digits" "$SKILLS_HIGH_CARDINALITY_BRANCH"
+require_text_literal "skills: 5+ candidate parser accepts skip" 'Accept the word `skip`' "$SKILLS_HIGH_CARDINALITY_BRANCH"
+require_text_literal "skills: 5+ candidate parser rejects invalid numeric/freeform input" "Reject out-of-range numbers" "$SKILLS_HIGH_CARDINALITY_BRANCH"
 
 echo ""
 echo "==============================="
