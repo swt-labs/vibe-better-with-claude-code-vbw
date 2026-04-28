@@ -332,8 +332,8 @@ fi
 # Check 11: targeted command preambles use CLAUDE_SESSION_ID:-default session key
 # todo.md and list-todos.md intentionally have no shell preamble (fix for #201) — skip from preamble checks
 TARGET_COMMANDS=(
-  config.md debug.md discuss.md fix.md help.md init.md map.md qa.md
-  report.md research.md resume.md skills.md status.md update.md verify.md vibe.md whats-new.md
+  config.md debug.md discuss.md doctor.md fix.md help.md init.md map.md qa.md
+  report.md research.md resume.md rtk.md skills.md status.md update.md verify.md vibe.md whats-new.md
 )
 for rel in "${TARGET_COMMANDS[@]}"; do
   file="$COMMANDS_DIR/$rel"
@@ -433,7 +433,7 @@ echo ""
 echo "=== Preamble Coverage Drift Detection ==="
 
 # Known non-preamble commands (no shell preamble by design)
-NON_PREAMBLE_COMMANDS="todo.md list-todos.md doctor.md pause.md profile.md teach.md uninstall.md"
+NON_PREAMBLE_COMMANDS="todo.md list-todos.md pause.md profile.md teach.md uninstall.md"
 
 DRIFT_FAIL=0
 for file in "$COMMANDS_DIR"/*.md; do

@@ -49,6 +49,7 @@ printf '%s\t%s\n' \
   qa-persistence-contract      testing/verify-qa-persistence-contract.sh \
   report-template-contract     testing/verify-report-template-contract.sh \
   report-diag-handoff          testing/verify-report-diag-handoff.sh \
+  rtk-integration-contract     testing/verify-rtk-integration-contract.sh \
   discussion-engine-contract   testing/verify-discussion-engine-contract.sh \
   debug-session-contract       testing/verify-debug-session-contract.sh \
   todo-pickup-contract         testing/verify-todo-pickup-contract.sh \

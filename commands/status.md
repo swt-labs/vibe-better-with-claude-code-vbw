@@ -180,4 +180,6 @@ Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
     Cache hit rate: {percent}%
 ```
 
+  **RTK external metrics** (only when `--metrics` is explicit): run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/rtk-manager.sh status --json --stats`. If RTK is absent, show nothing. If RTK is present, show one compact line labeled external, for example `RTK external: active, 47% avg savings` or `RTK external: hook active, compatibility unverified`. RTK savings are external RTK savings, not VBW savings. Default `/vbw:status` must not advertise RTK when absent and must not run RTK stats or network checks.
+
 **Next Up:** Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh status` and display.
