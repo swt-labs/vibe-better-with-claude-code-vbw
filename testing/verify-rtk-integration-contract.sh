@@ -96,6 +96,20 @@ else
   fail "rtk-manager missing latest-release checksum contract"
 fi
 
+curl_direct_count=$(grep -c 'curl -fsSL' "$RTK_MANAGER" 2>/dev/null || echo 0)
+if contains "$RTK_MANAGER" 'RTK_CURL_MAX_TIME="${RTK_CURL_MAX_TIME:-15}"' \
+  && contains "$RTK_MANAGER" 'curl_bounded()' \
+  && contains "$RTK_MANAGER" 'curl -fsSL --max-time "$RTK_CURL_MAX_TIME" "$@"' \
+  && contains "$RTK_MANAGER" 'curl_json()' \
+  && contains "$RTK_MANAGER" 'curl_bounded "$url"' \
+  && contains "$RTK_MANAGER" 'curl_bounded -o "$asset_file" "$asset_url"' \
+  && contains "$RTK_MANAGER" 'curl_bounded -o "$checksums_file" "$checksums_url"' \
+  && [ "${curl_direct_count:-0}" -eq 1 ]; then
+  pass "rtk-manager bounds all managed curl calls with max-time"
+else
+  fail "rtk-manager has unbounded direct curl calls or missing timeout guard"
+fi
+
 if contains "$RTK_MANAGER" 'settings_hook_command()' \
   && contains "$RTK_MANAGER" 'as $match_command' \
   && contains "$RTK_MANAGER" 'rtkhookclaude' \

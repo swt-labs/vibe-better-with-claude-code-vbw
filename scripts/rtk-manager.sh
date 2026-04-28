@@ -23,6 +23,7 @@ RTK_GLOBAL_MD="${RTK_GLOBAL_MD:-$CLAUDE_DIR/RTK.md}"
 RTK_CLAUDE_MD="${RTK_CLAUDE_MD:-$CLAUDE_DIR/CLAUDE.md}"
 RTK_INSTALL_DIR_DEFAULT="${RTK_INSTALL_DIR:-$HOME/.local/bin}"
 RTK_LEGACY_CLAUDE_DIR="${RTK_LEGACY_CLAUDE_DIR:-${HOME}/.claude}"
+RTK_CURL_MAX_TIME="${RTK_CURL_MAX_TIME:-15}"
 RTK_TEMP_DIR=""
 
 cleanup_temp_dir() {
@@ -254,9 +255,13 @@ os_arch_target() {
   esac
 }
 
+curl_bounded() {
+  curl -fsSL --max-time "$RTK_CURL_MAX_TIME" "$@"
+}
+
 curl_json() {
   local url="$1"
-  curl -fsSL "$url"
+  curl_bounded "$url"
 }
 
 fetch_latest_release() {
@@ -790,9 +795,9 @@ install_or_update() {
   trap cleanup_temp_dir EXIT
   asset_file="$temp_dir/$asset_name"
   checksums_file="$temp_dir/checksums.txt"
-  curl -fsSL -o "$asset_file" "$asset_url"
+  curl_bounded -o "$asset_file" "$asset_url"
   if [ -n "$checksums_url" ]; then
-    curl -fsSL -o "$checksums_file" "$checksums_url"
+    curl_bounded -o "$checksums_file" "$checksums_url"
   else
     : > "$checksums_file"
   fi

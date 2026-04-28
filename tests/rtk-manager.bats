@@ -184,12 +184,16 @@ JSON
 write_release_curl() {
   cat > "$TEST_TEMP_DIR/bin/curl" <<EOF
 #!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$TEST_TEMP_DIR/curl-calls.log"
 out=""
 url=""
 while [ "\$#" -gt 0 ]; do
   case "\$1" in
     -o)
       out="\${2:-}"
+      shift 2
+      ;;
+    --max-time|--retry|--retry-delay)
       shift 2
       ;;
     -*)
@@ -312,11 +316,13 @@ JSON
   write_fake_rtk "0.1.0"
   prepare_release_fixture "9.9.9"
   write_release_curl
+  export RTK_CURL_MAX_TIME=7
   run rtk_manager status --json --check-updates
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.latest_version == "9.9.9"'
   echo "$output" | jq -e '.update_available == true'
   [ -f "$VBW_RTK_DIR/rtk-latest-release.json" ]
+  grep -Fq -- '--max-time 7' "$TEST_TEMP_DIR/curl-calls.log"
 }
 
 @test "rtk-manager: install dry-run shows preflight and does not mutate" {
@@ -345,6 +351,7 @@ JSON
 @test "rtk-manager: managed install verifies checksum and writes receipt" {
   prepare_release_fixture "9.9.9"
   write_release_curl
+  export RTK_CURL_MAX_TIME=7
   export RTK_INSTALL_DIR="$TEST_TEMP_DIR/install-bin"
   run rtk_manager install --yes
   [ "$status" -eq 0 ]
@@ -353,6 +360,7 @@ JSON
   jq -e '.manager == "vbw"' "$VBW_RTK_DIR/rtk-install.json"
   jq -e '.installed_version == "9.9.9"' "$VBW_RTK_DIR/rtk-install.json"
   jq -e '.verified_checksum != ""' "$VBW_RTK_DIR/rtk-install.json"
+  [ "$(grep -c -- '--max-time 7' "$TEST_TEMP_DIR/curl-calls.log")" -ge 3 ]
 }
 
 @test "rtk-manager: managed install records version when install dir has spaces" {
@@ -707,12 +715,14 @@ JSON
   binary="$(create_managed_rtk "0.1.0")"
   prepare_release_fixture "9.9.9"
   write_release_curl
+  export RTK_CURL_MAX_TIME=7
   run rtk_manager update --yes
   [ "$status" -eq 0 ]
   [ -x "$binary" ]
   "$binary" --version | grep -Fq "9.9.9"
   jq -e '.previous_version == "0.1.0"' "$VBW_RTK_DIR/rtk-install.json"
   jq -e '.installed_version == "9.9.9"' "$VBW_RTK_DIR/rtk-install.json"
+  [ "$(grep -c -- '--max-time 7' "$TEST_TEMP_DIR/curl-calls.log")" -ge 3 ]
 }
 
 @test "rtk-manager: missing checksum aborts unless explicitly allowed" {
