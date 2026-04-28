@@ -18,7 +18,7 @@ All resolve to this protocol:
 
 ## Interaction Boundary
 
-Use structured AskUserQuestion for bounded discussion decisions with 2–4 visible choices. Use intentional freeform/no-options input for gray-area selections, corrections, or explanations that exceed four visible choices, and do NOT use `options` array for those high-cardinality paths.
+Use structured AskUserQuestion for bounded discussion decisions with 1–4 visible choices. Use intentional freeform/no-options input for gray-area selections, corrections, or explanations that exceed four visible choices, and do NOT use `options` array for those high-cardinality paths.
 
 ## Step 1: Calibrate
 
@@ -226,7 +226,7 @@ Present gray-area selection based on list size and discussion mode:
 
 ## Step 3: Explore
 
-**Early exit:** If Step 2 produced no selected areas because the user chose structured `None — discussion is complete` or entered freeform `none`, skip directly to Step 4.
+**Early exit:** If Step 2 produced no selected areas because the user chose structured `None — discussion is complete` or entered freeform `none` / `None — discussion is complete`, skip directly to Step 4.
 
 For each selected area, have a natural conversation. Not a form. Not a fixed number of questions.
 
