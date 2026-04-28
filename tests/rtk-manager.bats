@@ -291,6 +291,8 @@ JSON
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.global_hook_present == true'
   echo "$output" | jq -e '.global_hook_command == "rtk hook claude"'
+  echo "$output" | jq -e '.multiple_bash_pretooluse_hooks_detected == true'
+  echo "$output" | jq -e --arg typo_key "multiple_bash_pre""tookuse_hooks_detected" 'has($typo_key) | not'
   echo "$output" | jq -e '.updated_input_risk == true'
   echo "$output" | jq -e '.compatibility == "risk"'
 }

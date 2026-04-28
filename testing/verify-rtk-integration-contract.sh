@@ -125,6 +125,16 @@ else
   fail "rtk-manager has unquoted RTK executable version probes"
 fi
 
+pretooluse_typo_key="multiple_bash_pre""tookuse_hooks_detected"
+if contains "$RTK_MANAGER" 'multiple_bash_pretooluse_hooks_detected' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'multiple_bash_pretooluse_hooks_detected' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'typo_key' \
+  && ! contains "$RTK_MANAGER" "$pretooluse_typo_key"; then
+  pass "rtk-manager status JSON spells PreToolUse correctly"
+else
+  fail "rtk-manager status JSON still contains misspelled PreToolUse key"
+fi
+
 if contains "$RTK_MANAGER" '"$rtk_path" gain --json' \
   && ! contains "$RTK_MANAGER" '$rtk_path gain --json'; then
   pass "rtk-manager quotes executable path for explicit stats"

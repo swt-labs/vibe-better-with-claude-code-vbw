@@ -522,7 +522,7 @@ status_json() {
     --argjson legacy_hook_file_present "$(bool_to_json "$legacy_hook")" \
     --argjson project_local_present "$(bool_to_json "$project_local")" \
     --argjson vbw_bash_hook_present "$(bool_to_json "$vbw_hook")" \
-    --argjson multiple_bash_pretookuse_hooks_detected "$(bool_to_json "$multiple_bash")" \
+    --argjson multiple_bash_pretooluse_hooks_detected "$(bool_to_json "$multiple_bash")" \
     --argjson updated_input_risk "$(bool_to_json "$updated_input_risk")" \
     --arg compatibility "$compatibility" \
     --arg proof_source "$proof_source" \
@@ -555,7 +555,7 @@ status_json() {
       legacy_hook_file_present: $legacy_hook_file_present,
       project_local_present: $project_local_present,
       vbw_bash_hook_present: $vbw_bash_hook_present,
-      multiple_bash_pretookuse_hooks_detected: $multiple_bash_pretookuse_hooks_detected,
+      multiple_bash_pretooluse_hooks_detected: $multiple_bash_pretooluse_hooks_detected,
       updated_input_risk: $updated_input_risk,
       compatibility: $compatibility,
       proof_source: $proof_source,
