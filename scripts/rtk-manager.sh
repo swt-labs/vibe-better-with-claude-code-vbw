@@ -124,6 +124,21 @@ rtk_version_detect() {
   normalize_version "$out"
 }
 
+rtk_path_from_hook_command() {
+  local command="$1" executable=""
+  [ -n "$command" ] || return 0
+  case "$command" in
+    "\""*) executable="${command#\"}"; executable="${executable%%\"*}" ;;
+    "'"*) executable="${command#\'}"; executable="${executable%%\'*}" ;;
+    *) executable="${command%%[[:space:]]*}" ;;
+  esac
+  case "$executable" in
+    rtk) command_path rtk ;;
+    */rtk) if [ -x "$executable" ]; then printf '%s\n' "$executable"; fi ;;
+    *) return 0 ;;
+  esac
+}
+
 receipt_managed() {
   [ -f "$RTK_RECEIPT_FILE" ] || return 1
   jq -e '.manager == "vbw"' "$RTK_RECEIPT_FILE" >/dev/null 2>&1
@@ -333,7 +348,7 @@ status_json() {
   local rtk_path rtk_present rtk_version latest_json latest_version latest_checked_at update_available version_source
   local managed_by_vbw install_receipt receipt_binary binary_install_state can_install preferred_install_method
   local settings_json_valid hook_command hook_matcher global_hook_present global_claude_ref global_rtk_md legacy_hook project_local vbw_hook bash_hook_count multiple_bash updated_input_risk
-  local settings_hook_state proof_source compatibility restart_required summary next_action stats_json
+  local settings_hook_state active_hook_rtk_path active_hook_rtk_version proof_source compatibility restart_required summary next_action stats_json
 
   rtk_path="$(rtk_path_detect)"
   rtk_present=false
@@ -400,6 +415,12 @@ status_json() {
     global_hook_present=true
     settings_hook_state="active"
   fi
+  active_hook_rtk_path=""
+  active_hook_rtk_version=""
+  if [ -n "$hook_command" ]; then
+    active_hook_rtk_path="$(rtk_path_from_hook_command "$hook_command")"
+    active_hook_rtk_version="$(rtk_version_detect "$active_hook_rtk_path")"
+  fi
   bash_hook_count=0
   if [ "$settings_json_valid" = "true" ]; then bash_hook_count="$(settings_bash_hook_count)"; fi
   multiple_bash=false
@@ -410,7 +431,7 @@ status_json() {
   [ "$multiple_bash" = "true" ] && updated_input_risk=true
 
   proof_source=""
-  if [ "$rtk_present" = "true" ] && [ -n "$hook_command" ] && valid_runtime_smoke_proof "$RTK_PROOF_FILE" "$rtk_version" "$hook_command"; then
+  if [ -n "$hook_command" ] && [ -n "$active_hook_rtk_path" ] && valid_runtime_smoke_proof "$RTK_PROOF_FILE" "$active_hook_rtk_version" "$hook_command"; then
     proof_source="$RTK_PROOF_FILE"
   fi
 
@@ -494,6 +515,8 @@ status_json() {
     --argjson global_hook_present "$(bool_to_json "$global_hook_present")" \
     --arg global_hook_command "$hook_command" \
     --arg global_hook_matcher "$hook_matcher" \
+    --arg active_hook_rtk_path "$active_hook_rtk_path" \
+    --arg active_hook_rtk_version "$active_hook_rtk_version" \
     --argjson global_claude_ref_present "$(bool_to_json "$global_claude_ref")" \
     --argjson global_rtk_md_present "$(bool_to_json "$global_rtk_md")" \
     --argjson legacy_hook_file_present "$(bool_to_json "$legacy_hook")" \
@@ -525,6 +548,8 @@ status_json() {
       global_hook_present: $global_hook_present,
       global_hook_command: $global_hook_command,
       global_hook_matcher: $global_hook_matcher,
+      active_hook_rtk_path: $active_hook_rtk_path,
+      active_hook_rtk_version: $active_hook_rtk_version,
       global_claude_ref_present: $global_claude_ref_present,
       global_rtk_md_present: $global_rtk_md_present,
       legacy_hook_file_present: $legacy_hook_file_present,

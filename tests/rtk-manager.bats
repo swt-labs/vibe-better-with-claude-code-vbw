@@ -7,7 +7,21 @@ setup() {
   export CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/claude"
   export VBW_RTK_DIR="$CLAUDE_CONFIG_DIR/vbw"
   mkdir -p "$CLAUDE_CONFIG_DIR" "$TEST_TEMP_DIR/bin"
-  export PATH="$TEST_TEMP_DIR/bin:$PATH"
+  if command -v jq >/dev/null 2>&1; then
+    ln -sf "$(command -v jq)" "$TEST_TEMP_DIR/bin/jq"
+  fi
+  local clean_path="" path_dir
+  IFS=: read -r -a _rtk_path_parts <<< "$PATH"
+  for path_dir in "${_rtk_path_parts[@]}"; do
+    [ -n "$path_dir" ] || continue
+    [ -x "$path_dir/rtk" ] && continue
+    if [ -z "$clean_path" ]; then
+      clean_path="$path_dir"
+    else
+      clean_path="$clean_path:$path_dir"
+    fi
+  done
+  export PATH="$TEST_TEMP_DIR/bin:$clean_path"
 }
 
 teardown() {
@@ -505,6 +519,28 @@ JSON
   [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
 }
 
+@test "rtk-manager: stale proof does not verify missing quoted hook binary using unrelated PATH RTK" {
+  write_failing_curl
+  write_fake_rtk "0.1.0"
+  local missing_binary="$TEST_TEMP_DIR/missing bin/rtk"
+  local quoted_command="\"$missing_binary\" hook claude"
+  jq -n --arg command "$quoted_command" '{hooks:{PreToolUse:[{matcher:"Bash",hooks:[{type:"command",command:$command}]}]}}' > "$CLAUDE_CONFIG_DIR/settings.json"
+  mkdir -p "$VBW_RTK_DIR"
+  jq -n --arg command "$quoted_command" '{proof_type:"runtime_smoke",status:"pass",timestamp:"2026-04-27T00:00:00Z",rtk_version:"0.1.0",hook_command:$command,updated_input_verified:true,rtk_rewrite_observed:true,vbw_bash_guard_verified:true,commands:["git status"]}' > "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.rtk_present == true'
+  echo "$output" | jq -e '.global_hook_present == true'
+  echo "$output" | jq -e --arg command "$quoted_command" '.global_hook_command == $command'
+  echo "$output" | jq -e '.active_hook_rtk_path == ""'
+  echo "$output" | jq -e '.proof_source == ""'
+  echo "$output" | jq -e '.compatibility != "verified"'
+  run rtk_manager doctor-json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.doctor_status == "WARN"'
+  [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
+}
+
 @test "rtk-manager: proof version must match current RTK version" {
   write_fake_rtk "0.1.0"
   cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
@@ -543,6 +579,21 @@ JSON
   run rtk_manager doctor-json
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.rtk_present == true'
+  echo "$output" | jq -e '.compatibility == "verified"'
+  echo "$output" | jq -e '.doctor_status == "PASS"'
+}
+
+@test "rtk-manager: validated quoted absolute hook proof can produce doctor PASS" {
+  local binary
+  binary="$(create_managed_rtk "0.1.0" "$TEST_TEMP_DIR/managed bin with space")"
+  local quoted_command="\"$binary\" hook claude"
+  jq -n --arg command "$quoted_command" '{hooks:{PreToolUse:[{matcher:"Bash",hooks:[{type:"command",command:$command}]}]}}' > "$CLAUDE_CONFIG_DIR/settings.json"
+  mkdir -p "$VBW_RTK_DIR"
+  jq -n --arg command "$quoted_command" '{proof_type:"runtime_smoke",status:"pass",timestamp:"2026-04-27T00:00:00Z",rtk_version:"0.1.0",hook_command:$command,updated_input_verified:true,rtk_rewrite_observed:true,vbw_bash_guard_verified:true,commands:["git status"]}' > "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  run rtk_manager doctor-json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e --arg path "$binary" '.active_hook_rtk_path == $path'
+  echo "$output" | jq -e '.active_hook_rtk_version == "0.1.0"'
   echo "$output" | jq -e '.compatibility == "verified"'
   echo "$output" | jq -e '.doctor_status == "PASS"'
 }

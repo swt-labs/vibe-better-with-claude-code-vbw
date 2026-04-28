@@ -176,7 +176,10 @@ fi
 if ! contains "$RTK_MANAGER" '$current_version == ""' \
   && ! contains "$RTK_MANAGER" '.rtk_version // $current_version' \
   && ! contains "$RTK_MANAGER" '.hook_command // $active_hook_command' \
-  && contains "$RTK_MANAGER" '[ "$rtk_present" = "true" ] && [ -n "$hook_command" ] && valid_runtime_smoke_proof'; then
+  && contains "$RTK_MANAGER" 'rtk_path_from_hook_command()' \
+  && contains "$RTK_MANAGER" 'active_hook_rtk_path' \
+  && contains "$RTK_MANAGER" 'active_hook_rtk_version' \
+  && contains "$RTK_MANAGER" 'valid_runtime_smoke_proof "$RTK_PROOF_FILE" "$active_hook_rtk_version" "$hook_command"'; then
   pass "rtk-manager rejects stale proof without current RTK runtime state"
 else
   fail "rtk-manager can still accept stale proof without current RTK runtime state"
