@@ -401,7 +401,7 @@ PAUL's argument applies to stock subagent spawning. It does not apply to VBW's a
 | Is VBW more like PAUL than GSD? | VBW shares PAUL's quality-first philosophy but implements it with mechanically stronger enforcement than PAUL provides. VBW also retains (and improves upon) GSD's execution speed through context-compiled parallel Agent Teams. |
 | Does VBW address PAUL's criticisms of GSD? | Yes, every one of them — and in most cases goes further than PAUL does. |
 | Should VBW users worry about PAUL's claims? | No. Every claimed advantage in PAUL-VS-GSD.md is already present in VBW, typically with stronger implementation. |
-| Is PAUL a competitor to VBW? | PAUL is a lightweight framework (~26 commands, markdown-only, single-agent) with good principles. VBW is a full-stack development lifecycle platform (24 commands, 85 scripts, 21 hooks, 7 agents, 845 tests). They operate at different scales. |
+| Is PAUL a competitor to VBW? | PAUL is a lightweight framework (markdown-only, single-agent) with good principles. VBW is a full-stack development lifecycle platform with commands, scripts, hooks, specialized agents, and a broad test suite. They operate at different scales. |
 
 **VBW is not PAUL. VBW is not GSD. VBW is what happens when you take the best ideas from both — mandatory loop closure, token efficiency, acceptance-driven verification, structured session continuity — and implement them with platform-level enforcement, parallel execution, and comprehensive automation.**
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # verify-vibe.sh — Automated verification of vibe command consolidation (Plan 03-01)
 #
-# Checks all 25 requirements (REQ-01 through REQ-25) across 6 groups.
+# Checks all 25 vibe consolidation requirements (REQ-01 through REQ-25) across 6 groups.
 # Read-only: never modifies any files.
 #
 # Usage: bash scripts/verify-vibe.sh
@@ -169,7 +169,7 @@ done
 
 # REQ-18: Exact tracked file count (ignore ignored/untracked local command artifacts)
 CMD_COUNT=$(tracked_markdown_count 'commands/*.md')
-check "REQ-18" "commands/ has exactly 25 .md files (found $CMD_COUNT)" test "$CMD_COUNT" -eq 25
+check "REQ-18" "commands/ has exactly 26 .md files (found $CMD_COUNT)" test "$CMD_COUNT" -eq 26
 
 # REQ-20: No stale "29 commands" in key files
 check_absent "REQ-20" "README.md has no '29 commands'" grep -q "29 commands" "$README"

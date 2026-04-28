@@ -97,6 +97,14 @@ If `.vbw-planning/` exists:
 - WARN if verdict is `"fail"` — show `.failed_checks` array
 - SKIP if no `.vbw-planning/` directory (not bootstrapped)
 
+### 18. RTK integration
+Run `bash scripts/rtk-manager.sh doctor-json 2>/dev/null`.
+- Parse JSON output: `doctor_status`, `doctor_detail`, `compatibility`, `updated_input_risk`, `proof_source`
+- SKIP when RTK is absent and no local RTK project files exist
+- WARN when binary-only, hook-active-unverified, multiple Bash `PreToolUse` hooks exist, `updatedInput` risk applies, or a cached explicit update check says RTK is outdated
+- PASS only when `compatibility` is `"verified"` with a concrete `proof_source`
+- Doctor must not query the network; update availability may only come from cached explicit `/vbw:rtk status --check-updates` or `/vbw:rtk update` data
+
 ## Output Format
 
 ```
@@ -119,8 +127,9 @@ VBW Doctor v{version}
  15. Watchdog status      {PASS|WARN}
  16. CLAUDE.md sections   {PASS|WARN|SKIP}
  17. State consistency    {PASS|WARN|SKIP}
+ 18. RTK integration      {PASS|WARN|SKIP} {detail}
 
-Result: {N}/17 passed, {W} warnings, {F} failures
+Result: {N}/18 passed, {W} warnings, {F} failures
 ```
 
 Use checkmark for PASS, warning triangle for WARN, X for FAIL.

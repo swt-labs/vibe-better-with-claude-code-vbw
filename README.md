@@ -388,7 +388,7 @@ Closed your terminal? Switched branches? Came back after a weekend of pretending
 >
 > **If you accidentally `/clear`**, run `/vbw:resume` immediately. It restores project context from ground truth files in `.vbw-planning/` — state, roadmap, plans, summaries — and tells you exactly where to pick up.
 >
-> **For advanced users:** The [full command reference](#commands) below has 25 commands for granular control — `/vbw:vibe` with flags for explicit mode selection (`--plan`, `--execute`, `--discuss`, `--assumptions`), `/vbw:discuss` for standalone phase discussions, `/vbw:debug` for systematic bug investigation, and more. But you never *need* the flags. `/vbw:vibe` with no arguments handles the entire lifecycle on its own.
+> **For advanced users:** The [full command reference](#commands) below has granular controls — `/vbw:vibe` with flags for explicit mode selection (`--plan`, `--execute`, `--discuss`, `--assumptions`), `/vbw:discuss` for standalone phase discussions, `/vbw:debug` for systematic bug investigation, and more. But you never *need* the flags. `/vbw:vibe` with no arguments handles the entire lifecycle on its own.
 
 ---
 
@@ -421,13 +421,20 @@ These are the commands you'll use every day. This is the job now.
 | `/vbw:pause` | Save session notes for next time. State auto-persists in `.vbw-planning/` -- pause just lets you leave a sticky note for future you. |
 | `/vbw:resume` | Restore project context from `.vbw-planning/` ground truth. Reads state, roadmap, plans, and summaries directly -- no prior `/vbw:pause` needed. |
 | `/vbw:skills` | Browse and install community skills from skills.sh based on your project's tech stack. Detects your stack, suggests relevant skills, and installs them with one command. |
+| `/vbw:rtk [status\|install\|init\|verify\|update\|uninstall]` | Optional RTK tool-output compression management. Binary install/update and Claude Code hook activation are separate, explicit steps. |
 | `/vbw:config` | View and toggle VBW settings: effort profiles, autonomy levels (cautious/standard/confident/pure-vibe), plain-language summaries (`plain_summary`), skill suggestions, auto-install behavior, and skill-hook wiring. Detects profile drift and offers to save as new profile. |
 | `/vbw:compress` | Compress a natural language file (`.md`, `.txt`) into caveman format. Creates an `.original` backup preserving the original extension. Uses caveman language rules for token-efficient compression. |
 | `/vbw:profile` | Switch between work profiles or create custom ones. 4 built-in presets (default, prototype, production, yolo) change effort, autonomy, and verification in one command. Interactive profile creation for custom workflows. |
 | `/vbw:report` | Collect diagnostic context and file a GitHub issue. Captures VBW version, environment, hook errors, session logs, config, and project state. |
 | `/vbw:teach` | View, add, or manage project conventions. Auto-detected from codebase during init, manually teachable anytime. Shows what VBW already knows and warns about conflicts before adding. Conventions are injected into agent context via CLAUDE.md and verified by QA. |
-| `/vbw:doctor` | Run 10 health checks on your VBW installation: jq, VERSION sync, plugin cache, hooks validity, agent files, config, script permissions, gh CLI, sort -V support. Diagnoses issues before they become mysteries. |
+| `/vbw:doctor` | Run VBW installation and project health checks: jq, version sync, plugin cache, hook validity, agent files, config, script permissions, gh CLI, runtime cleanup state, CLAUDE.md staleness, state consistency, and optional RTK integration. Diagnoses issues before they become mysteries. |
 | `/vbw:help` | Command reference with usage examples. You are reading its output's spiritual ancestor right now. |
+
+### Optional RTK tool-output compression
+
+VBW can optionally manage [RTK](https://github.com/rtk-ai/rtk) setup through `/vbw:rtk install` and keep VBW-managed RTK current through `/vbw:rtk update`. You can also follow RTK's upstream install docs yourself and use `/vbw:rtk status` or `/vbw:rtk verify` for diagnostics.
+
+VBW treats RTK binary installation/update and Claude Code hook activation as separate steps. VBW-managed install/update pulls the latest `rtk-ai/rtk` GitHub release asset for your platform and verifies `checksums.txt` when available. Hook activation runs RTK's `rtk init -g`, which can mutate user-level Claude Code config, so VBW shows a separate preflight and asks separately before doing it. RTK/VBW hook coexistence remains a WARN/unverified state until a real runtime smoke test proves `updatedInput` behavior works with both tools active. RTK savings are shown as external RTK metrics, not VBW savings.
 
 ### Advanced -- For When You're Feeling Ambitious
 
@@ -1068,7 +1075,7 @@ See **[Model Profiles Reference](references/model-profiles.md)** for preset defi
 ```text
 .claude-plugin/    Plugin manifest (plugin.json)
 agents/            7 agent definitions with native tool permissions
-commands/          25 slash commands (23 user-visible, 2 hidden protocol files)
+commands/          Slash-command definitions
 config/            Default settings and stack-to-skill mappings
 hooks/             Plugin hooks for continuous verification
 scripts/           Hook handler scripts (security, validation, QA gates)
