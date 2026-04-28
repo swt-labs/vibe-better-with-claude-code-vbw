@@ -246,8 +246,8 @@ curl_json() {
   curl -fsSL "$url"
 }
 
-query_latest_release() {
-  local release_json tag version target asset_name asset_url checksums_url checked tmp
+fetch_latest_release() {
+  local release_json tag version target asset_name asset_url checksums_url checked
   release_json="$(curl_json "$RTK_REPO_API")" || die 1 "failed to query latest RTK release metadata"
   tag="$(printf '%s' "$release_json" | jq -r '.tag_name // .tagName // empty')"
   version="$(normalize_version "$tag")"
@@ -259,8 +259,6 @@ query_latest_release() {
   [ -n "$tag" ] && [ -n "$version" ] || die 1 "latest RTK release metadata did not include a tag"
   [ -n "$asset_name" ] && [ -n "$asset_url" ] || die 1 "latest RTK release has no asset for target $target"
   checked="$(now_utc)"
-  mkdir -p "$VBW_RTK_DIR"
-  tmp="$(mktemp "$VBW_RTK_DIR/rtk-latest.XXXXXX")"
   jq -n \
     --arg tag "$tag" \
     --arg version "$version" \
@@ -269,9 +267,22 @@ query_latest_release() {
     --arg asset_name "$asset_name" \
     --arg asset_url "$asset_url" \
     --arg checksums_url "$checksums_url" \
-    '{tag:$tag, version:$version, checked_at:$checked_at, target:$target, asset_name:$asset_name, asset_url:$asset_url, checksums_url:$checksums_url}' > "$tmp"
+    '{tag:$tag, version:$version, checked_at:$checked_at, target:$target, asset_name:$asset_name, asset_url:$asset_url, checksums_url:$checksums_url}'
+}
+
+cache_latest_release() {
+  local metadata="$1" tmp
+  mkdir -p "$VBW_RTK_DIR"
+  tmp="$(mktemp "$VBW_RTK_DIR/rtk-latest.XXXXXX")"
+  printf '%s\n' "$metadata" > "$tmp"
   chmod 600 "$tmp" 2>/dev/null || true
   mv "$tmp" "$RTK_LATEST_CACHE"
+}
+
+query_latest_release() {
+  local metadata
+  metadata="$(fetch_latest_release)"
+  cache_latest_release "$metadata"
   cat "$RTK_LATEST_CACHE"
 }
 
@@ -290,6 +301,29 @@ release_metadata() {
   metadata="$(latest_from_cache)"
   [ -n "$metadata" ] && printf '%s\n' "$metadata"
   return 0
+}
+
+valid_runtime_smoke_proof() {
+  local proof_file="$1" current_version="$2" active_hook_command="$3"
+  [ -f "$proof_file" ] || return 1
+  jq -e \
+    --arg current_version "$current_version" \
+    --arg active_hook_command "$active_hook_command" '
+      type == "object"
+      and (((.proof_type // .type // .source // "") | ascii_downcase) | test("runtime.*smoke|smoke.*runtime|manual.*smoke"))
+      and ((.verified == true) or (((.status // .result // .verdict // "") | ascii_downcase) | test("pass|verified")))
+      and (((.timestamp // .verified_at // .ts // "") | type) == "string")
+      and ((.timestamp // .verified_at // .ts // "") | length > 0)
+      and ((.updated_input_verified // .updatedInput_verified // false) == true)
+      and ((.rtk_rewrite_observed // .rewrite_observed // false) == true)
+      and ((.vbw_bash_guard_verified // .bash_guard_verified // false) == true)
+      and (($current_version == "") or ((.rtk_version // $current_version) == $current_version))
+      and (($active_hook_command == "") or ((.hook_command // $active_hook_command) == $active_hook_command))
+      and (
+        (((.commands // .smoke_commands // .results // []) | type) == "array" and ((.commands // .smoke_commands // .results // []) | length > 0))
+        or ((((.summary // .evidence // "") | type) == "string") and ((.summary // .evidence // "") | length > 0))
+      )
+    ' "$proof_file" >/dev/null 2>&1
 }
 
 status_json() {
@@ -355,7 +389,7 @@ status_json() {
   vbw_hook=false
   if vbw_bash_hook_present; then vbw_hook=true; fi
   global_hook_present=false
-  if [ -n "$hook_command" ] || [ "$legacy_hook" = "true" ]; then global_hook_present=true; fi
+  if [ -n "$hook_command" ]; then global_hook_present=true; fi
   bash_hook_count=0
   if [ "$settings_json_valid" = "true" ]; then bash_hook_count="$(settings_bash_hook_count)"; fi
   multiple_bash=false
@@ -366,7 +400,7 @@ status_json() {
   [ "$multiple_bash" = "true" ] && updated_input_risk=true
 
   proof_source=""
-  if [ -f "$RTK_PROOF_FILE" ] && jq empty "$RTK_PROOF_FILE" >/dev/null 2>&1; then
+  if valid_runtime_smoke_proof "$RTK_PROOF_FILE" "$rtk_version" "$hook_command"; then
     proof_source="$RTK_PROOF_FILE"
   fi
 
@@ -485,16 +519,18 @@ doctor_json() {
   status_json false false | jq '
     . as $s
     | .doctor_status = (
-        if ($s.compatibility == "verified") then "PASS"
-        elif ($s.compatibility == "absent" and ($s.project_local_present | not)) then "SKIP"
+        if ($s.compatibility == "absent" and ($s.project_local_present | not) and ($s.legacy_hook_file_present | not)) then "SKIP"
+        elif ($s.update_available == true) then "WARN"
+        elif ($s.compatibility == "verified") then "PASS"
         else "WARN" end
       )
     | .doctor_detail = (
-        if .doctor_status == "PASS" then "verified by " + ($s.proof_source // "smoke proof")
+        if .update_available == true then "outdated from cached RTK release check; run /vbw:rtk update"
+        elif .doctor_status == "PASS" then "verified by " + ($s.proof_source // "smoke proof")
         elif .compatibility == "absent" then "not installed; optional: /vbw:rtk install"
         elif .compatibility == "binary_only" then "binary installed; hook inactive"
         elif .compatibility == "risk" then "hook active; PreToolUse updatedInput compatibility unverified"
-        elif .update_available == true then "outdated; run /vbw:rtk update"
+        elif .legacy_hook_file_present == true then "legacy RTK hook artifact found; settings hook inactive"
         else "hook active; compatibility unverified" end
       )'
 }
@@ -507,9 +543,12 @@ ensure_confirmation() {
 }
 
 latest_metadata_or_die() {
-  local metadata
-  metadata="$(query_latest_release)"
+  local write_cache="${1:-false}" metadata
+  metadata="$(fetch_latest_release)"
   [ -n "$metadata" ] || die 1 "latest release metadata unavailable"
+  if [ "$write_cache" = "true" ]; then
+    cache_latest_release "$metadata"
+  fi
   printf '%s\n' "$metadata"
 }
 
@@ -608,7 +647,7 @@ extract_rtk_binary() {
 
 install_or_update() {
   local operation="$1" dry_run=false yes=false allow_missing=false install_dir metadata installed_path installed_version previous_version
-  local temp_dir asset_name asset_url checksums_url asset_file checksums_file checksum extracted target_path
+  local temp_dir asset_name asset_url checksums_url asset_file checksums_file checksum extracted target_path receipt_binary latest_version
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -625,17 +664,44 @@ install_or_update() {
   installed_path="$(rtk_path_detect)"
   installed_version="$(rtk_version_detect "$installed_path")"
 
-  if [ "$operation" = "update" ] && [ -f "$RTK_RECEIPT_FILE" ] && ! receipt_managed; then
-    echo "RTK update preflight"
-    echo "Installed: ${installed_version:-present}"
-    echo "Method: external install detected"
-    echo "Will run: no VBW-managed overwrite"
-    echo "Next step: update RTK with the package manager or install method that owns ${installed_path:-the binary}."
-    exit 0
+  if [ "$operation" = "update" ]; then
+    receipt_binary="$(rtk_path_from_receipt)"
+    if receipt_managed; then
+      if [ -z "$receipt_binary" ] || [ ! -x "$receipt_binary" ]; then
+        echo "RTK update preflight"
+        echo "Installed: ${installed_version:-unknown}"
+        echo "Method: VBW receipt exists but its binary is missing"
+        echo "Will run: no update"
+        echo "Next step: run /vbw:rtk install or repair the receipt-owned binary path."
+        exit 1
+      fi
+      installed_path="$receipt_binary"
+      installed_version="$(rtk_version_detect "$installed_path")"
+      install_dir="$(dirname "$receipt_binary")"
+    elif [ -n "$installed_path" ]; then
+      echo "RTK update preflight"
+      echo "Installed: ${installed_version:-present}"
+      echo "Method: external install detected"
+      echo "Will run: no VBW-managed overwrite and no ownership takeover"
+      echo "Next step: update RTK with the package manager or install method that owns ${installed_path}."
+      exit 0
+    else
+      echo "RTK update preflight"
+      echo "Installed: absent"
+      echo "Method: no RTK binary detected"
+      echo "Will run: no update"
+      echo "Next step: run /vbw:rtk install."
+      exit 0
+    fi
   fi
 
-  metadata="$(latest_metadata_or_die)"
+  metadata="$(latest_metadata_or_die false)"
   print_install_preflight "$operation" "$metadata" "$install_dir" "$installed_version"
+  latest_version="$(printf '%s' "$metadata" | jq -r '.version // empty')"
+  if [ "$operation" = "update" ] && [ -n "$latest_version" ] && [ -n "$installed_version" ] && ! version_gt "$latest_version" "$installed_version"; then
+    echo "Update: installed RTK ${installed_version} is current for latest ${latest_version}; no replacement needed."
+    exit 0
+  fi
   ensure_confirmation "$yes" "$dry_run" "$operation"
   [ "$dry_run" = "true" ] && exit 0
 
@@ -663,6 +729,7 @@ install_or_update() {
   chmod +x "$target_path"
   installed_version="$($target_path --version 2>/dev/null | awk 'match($0, /[0-9]+([.][0-9]+)+/) {print substr($0, RSTART, RLENGTH); exit}' || true)"
   write_receipt "$operation" "$target_path" "$previous_version" "$installed_version" "$metadata" "$checksum"
+  cache_latest_release "$metadata"
   echo "✓ RTK ${operation} complete: $target_path (${installed_version:-version unknown})"
   if ! path_contains_dir "$install_dir"; then
     echo "⚠ $install_dir is not on PATH. Add: export PATH=\"${install_dir}:\$PATH\""
@@ -724,7 +791,7 @@ verify_rtk() {
 }
 
 uninstall_rtk() {
-  local dry_run=false yes=false deactivate_hook=false binary_path managed
+  local dry_run=false yes=false deactivate_hook=false binary_path managed rtk_path
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --dry-run) dry_run=true; shift ;;
@@ -742,18 +809,26 @@ uninstall_rtk() {
   else
     echo "Will remove: no binary; external installs are not deleted by VBW"
   fi
-  echo "Will run: ${deactivate_hook:+rtk init -g --uninstall}${deactivate_hook:-no hook deactivation unless --deactivate-hook is passed}"
+  echo "Will run: ${deactivate_hook:+rtk init -g --uninstall before binary removal}${deactivate_hook:-no hook deactivation unless --deactivate-hook is passed}"
   echo "Writes: receipt/backups under ${VBW_RTK_DIR}; RTK may edit Claude settings only when --deactivate-hook is used"
   ensure_confirmation "$yes" "$dry_run" "uninstall"
   [ "$dry_run" = "true" ] && exit 0
+  if [ "$deactivate_hook" = "true" ]; then
+    rtk_path="$(rtk_path_detect)"
+    if [ -z "$rtk_path" ] && [ -n "$binary_path" ] && [ -x "$binary_path" ]; then
+      rtk_path="$binary_path"
+    fi
+    if [ -z "$rtk_path" ]; then
+      echo "RTK: cannot deactivate hook because no runnable RTK binary was found; preserved existing files" >&2
+      exit 1
+    fi
+    if ! "$rtk_path" init -g --uninstall; then
+      echo "RTK: hook deactivation failed; preserved RTK binary and receipt for retry" >&2
+      exit 1
+    fi
+  fi
   if [ "$managed" = "true" ] && [ -n "$binary_path" ] && [ -e "$binary_path" ]; then
     rm -f "$binary_path"
-  fi
-  if [ "$deactivate_hook" = "true" ]; then
-    local rtk_path
-    rtk_path="$(rtk_path_detect)"
-    [ -n "$rtk_path" ] || rtk_path="rtk"
-    "$rtk_path" init -g --uninstall
   fi
   echo "✓ RTK uninstall complete"
 }

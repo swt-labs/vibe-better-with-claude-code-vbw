@@ -127,7 +127,7 @@ For `/vbw:rtk verify`:
 bash "{plugin-root}/scripts/rtk-manager.sh" verify
 ```
 
-Static verification may confirm binary, settings hook, RTK docs/artifacts, and VBW hook presence. Runtime compatibility is PASS only when a concrete smoke proof source exists. Otherwise report `hook_active_unverified` or `risk` and show the manual smoke steps.
+Static verification may confirm binary, settings hook, RTK docs/artifacts, and VBW hook presence. Runtime compatibility is PASS only when the helper reports `compatibility=verified` with a validated runtime smoke proof source. Otherwise report `hook_active_unverified` or `risk` and show the manual smoke steps.
 
 ### Step 6: Uninstall/manage
 

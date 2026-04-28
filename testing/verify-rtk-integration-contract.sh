@@ -132,13 +132,53 @@ else
   fail "rtk-manager missing updatedInput compatibility caveat"
 fi
 
+if contains "$RTK_MANAGER" 'valid_runtime_smoke_proof()' \
+  && contains "$RTK_MANAGER" 'updated_input_verified' \
+  && contains "$RTK_MANAGER" 'rtk_rewrite_observed' \
+  && contains "$RTK_MANAGER" 'vbw_bash_guard_verified' \
+  && ! grep -Fq 'jq empty "$RTK_PROOF_FILE"' "$RTK_MANAGER"; then
+  pass "rtk-manager requires concrete runtime smoke proof before verified compatibility"
+else
+  fail "rtk-manager proof validation is too weak"
+fi
+
+if contains "$RTK_MANAGER" 'if [ -n "$hook_command" ]; then global_hook_present=true; fi' \
+  && ! contains "$RTK_MANAGER" 'if [ -n "$hook_command" ] || [ "$legacy_hook" = "true" ]; then global_hook_present=true; fi'; then
+  pass "rtk-manager treats settings JSON hook command as active-hook source of truth"
+else
+  fail "rtk-manager lets legacy hook files masquerade as active hooks"
+fi
+
+if contains "$RTK_MANAGER" 'fetch_latest_release()' \
+  && contains "$RTK_MANAGER" 'cache_latest_release()' \
+  && contains "$RTK_MANAGER" 'metadata="$(latest_metadata_or_die false)"' \
+  && contains "$RTK_MANAGER" 'cache_latest_release "$metadata"'; then
+  pass "rtk-manager separates metadata fetch from cache writes for dry-run/preflight safety"
+else
+  fail "rtk-manager does not clearly separate latest-release fetch and cache mutation"
+fi
+
+if contains "$RTK_MANAGER" 'no ownership takeover' \
+  && contains "$RTK_MANAGER" 'VBW receipt exists but its binary is missing'; then
+  pass "rtk-manager update path is ownership-aware for external and inconsistent installs"
+else
+  fail "rtk-manager update path missing ownership-aware guards"
+fi
+
+if contains "$RTK_MANAGER" 'rtk init -g --uninstall before binary removal' \
+  && contains "$RTK_MANAGER" 'hook deactivation failed; preserved RTK binary and receipt'; then
+  pass "rtk-manager uninstall deactivates hooks before removing managed binaries"
+else
+  fail "rtk-manager uninstall order can remove binary before hook deactivation"
+fi
+
 if contains "$DOCTOR_CMD" '### 18. RTK integration' \
-  && contains "$DOCTOR_CMD" 'rtk-manager.sh doctor-json' \
+  && contains "$DOCTOR_CMD" 'bash "{plugin-root}/scripts/rtk-manager.sh" doctor-json' \
   && contains "$DOCTOR_CMD" 'Result: {N}/18 passed' \
   && contains "$DOCTOR_CMD" 'Doctor must not query the network'; then
-  pass "doctor command includes RTK check 18 via offline helper JSON"
+  pass "doctor command includes RTK check 18 via plugin-root offline helper JSON"
 else
-  fail "doctor command missing RTK check 18 offline helper contract"
+  fail "doctor command missing plugin-root RTK check 18 offline helper contract"
 fi
 
 if contains "$STATUS_CMD" 'RTK external metrics' \
