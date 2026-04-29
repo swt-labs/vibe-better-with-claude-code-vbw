@@ -25,6 +25,7 @@ REFERENCES_DIR="$ROOT/references"
 
 ASK_USER_QUESTION_REF="$REFERENCES_DIR/ask-user-question.md"
 VIBE_COMMAND_FILE="$COMMANDS_DIR/vibe.md"
+INIT_COMMAND_FILE="$COMMANDS_DIR/init.md"
 LIST_TODOS_COMMAND_FILE="$COMMANDS_DIR/list-todos.md"
 CONFIG_COMMAND_FILE="$COMMANDS_DIR/config.md"
 SKILLS_COMMAND_FILE="$COMMANDS_DIR/skills.md"
@@ -586,6 +587,38 @@ require_text_literal "skills: 5+ candidate branch presents numbered list in ques
 require_text_literal "skills: 5+ candidate parser accepts comma-separated digits" "Accept comma-separated digits" "$SKILLS_HIGH_CARDINALITY_BRANCH"
 require_text_literal "skills: 5+ candidate parser accepts skip" 'Accept the word `skip`' "$SKILLS_HIGH_CARDINALITY_BRANCH"
 require_text_literal "skills: 5+ candidate parser rejects invalid numeric/freeform input" "Reject out-of-range numbers" "$SKILLS_HIGH_CARDINALITY_BRANCH"
+
+# --------------------------------------------------------------------------
+# Check 8: /vbw:init shared interaction contract boundary
+# --------------------------------------------------------------------------
+
+echo ""
+echo "--- Check 8: /vbw:init shared interaction boundary ---"
+
+INIT_SHARED_BLOCK="$(extract_heading_block "$INIT_COMMAND_FILE" "## Shared interaction contract" '^## ' || true)"
+INIT_BODY="$(extract_body "$INIT_COMMAND_FILE")"
+INIT_STEP_0="$(extract_regex_block "$INIT_COMMAND_FILE" '^### Step 0: Environment setup' '^### ' || true)"
+INIT_SKILL_PROMPT="$(extract_regex_block "$INIT_COMMAND_FILE" '^### Step 3: Convergence' '^### Step 3\.5:' || true)"
+INIT_CORRECTION_FLOW="$(extract_regex_block "$INIT_COMMAND_FILE" '^\*\*6e\. Correction flow' '^### Step 7:' || true)"
+
+require_file_literal "init: loads shared AskUserQuestion reference" '@${CLAUDE_PLUGIN_ROOT}/references/ask-user-question.md' "$INIT_COMMAND_FILE"
+require_text_occurrence_count "init: shared AskUserQuestion reference appears once" "$INIT_BODY" '@${CLAUDE_PLUGIN_ROOT}/references/ask-user-question.md' 1
+
+if [ -n "$INIT_SHARED_BLOCK" ]; then
+  pass "init: shared interaction contract block extracted"
+else
+  fail "init: shared interaction contract block extracted"
+fi
+
+require_text_literal "init: shared block points to AskUserQuestion reference" 'references/ask-user-question.md' "$INIT_SHARED_BLOCK"
+require_text_regex "init: documents bounded choices as structured AskUserQuestion" 'bounded (bootstrap|config|setup|choices).*structured AskUserQuestion|structured AskUserQuestion.*bounded (bootstrap|config|setup|choices)' "$INIT_BODY"
+require_text_regex "init: documents project data as intentional freeform" 'project names?.*requirements?.*phases?.*field corrections?.*(freeform|no-options)|freeform.*project names?.*requirements?.*phases?.*field corrections?' "$INIT_BODY"
+require_text_regex "init: documents Other/freeform handoff uses shared contract" '(Other|Let me explain).*shared contract|shared contract.*(Other|Let me explain)' "$INIT_BODY"
+require_text_regex "init: skill prompt counts Skip within four visible choices" 'max 4 visible choices total, including `?Skip`?' "$INIT_SKILL_PROMPT"
+forbid_text_regex "init: skill prompt does not allow four options plus Skip" 'Max 4 options[[:space:]]*\+[[:space:]]*"?Skip"?' "$INIT_SKILL_PROMPT"
+require_text_literal "init: field correction selection is marked freeform" 'This is freeform input' "$INIT_CORRECTION_FLOW"
+require_text_regex "init: field correction guard forbids structured options array" 'do not format.*structured options array|do NOT use.*options.*array' "$INIT_CORRECTION_FLOW"
+forbid_text_regex "init: Step 0 ordering avoids unnecessary all-caps intensity" '\*\*CRITICAL: Complete ENTIRE step' "$INIT_STEP_0"
 
 echo ""
 echo "==============================="

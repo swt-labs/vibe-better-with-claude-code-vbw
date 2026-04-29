@@ -12,6 +12,14 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Agent, LSP
 <!-- Full init flow: Steps 0-4 handle environment/scaffold/hooks/mapping/summary -->
 <!-- Steps 5-8 handle auto-bootstrap: detect scenario, run inference (brownfield/GSD), confirm with user, generate project files -->
 
+## Shared interaction contract
+
+@${CLAUDE_PLUGIN_ROOT}/references/ask-user-question.md
+
+## Init interaction boundary
+
+Use structured AskUserQuestion for bounded bootstrap/config/setup choices. Use intentional freeform/no-options input for project names, requirements, phases, field corrections, and other high-cardinality user-authored content. If `Other` or `Let me explain...` signals freeform intent, follow the shared contract: ask plain text, wait for the response, process it, then resume structured prompts only if another bounded decision remains.
+
 ## Context
 
 Working directory:
@@ -57,7 +65,7 @@ Skills:
 
 ### Step 0: Environment setup (settings.json)
 
-**CRITICAL: Complete ENTIRE step (including writing settings.json) BEFORE Step 1. Use AskUserQuestion for prompts. Wait for answers. Write settings.json. Only then proceed.**
+**Required order:** Complete Step 0, including writing `settings.json`, before Step 1. Ask any bounded environment/setup questions, wait for answers, write `settings.json`, then proceed so configuration is stable before scaffold files are created.
 
 **Resolve config directory:** Try in order: env var `CLAUDE_CONFIG_DIR` (if set, even if directory does not yet exist), `~/.config/claude-code` (if exists), otherwise `~/.claude`. Store result as `CLAUDE_DIR`. Use it for all config paths in this command.
 
@@ -265,7 +273,7 @@ If greenfield: write `{"conventions": []}`. Display: `○ Conventions — none y
 
 **3c. Parallel registry search** (if find-skills available): run `npx skills find "<stack-item>"` for ALL detected_stack items **in parallel** (multiple concurrent Bash calls). Deduplicate against installed skills. If detected_stack empty, search by project type. Display results with `(registry)` tag.
 
-**3d. Unified skill prompt:** Combine curated (from 2b) + registry (from 3c) results into single AskUserQuestion multiSelect. Tag `(curated)` or `(registry)`. Max 4 options + "Skip". Install selected: `npx skills add <skill> -g -y`.
+**3d. Unified skill prompt:** Combine curated (from 2b) + registry (from 3c) results into single AskUserQuestion multiSelect. Tag `(curated)` or `(registry)`. Use max 4 visible choices total, including `Skip`; if more than 3 skills are candidates, show the top 3 plus `Skip` and point broader discovery to `/vbw:skills`. Install selected: `npx skills add <skill> -g -y`.
 
 ### Step 3.5: Generate bootstrap CLAUDE.md
 
@@ -379,7 +387,7 @@ Options:
 
 **6e. Correction flow** (when user picks "Close, but needs adjustments"):
 
-Display all fields as a numbered list. Use AskUserQuestion: "Which fields would you like to correct? (enter numbers, comma-separated)"
+Display all fields as a numbered list. Ask as intentional freeform/no-options input: "Which fields would you like to correct?" Enter comma-separated field numbers (for example, 1,3,5). This is freeform input — do not format the field list as a structured options array.
 
 For each selected field, use AskUserQuestion to ask the user for the corrected value. Update the inference JSON with corrected values.
 
@@ -404,7 +412,7 @@ Display: `◆ Generating project files...`
 **7a. Gather project data:**
 
 If SKIP_INFERENCE=true (greenfield or user chose "Define from scratch"):
-- Use AskUserQuestion to ask discovery questions:
+- Ask intentional freeform/no-options discovery questions:
   1. "What is your project name?"
   2. "Describe your project in one sentence."
   3. "What are the key requirements? (one per line)"
@@ -415,7 +423,7 @@ If SKIP_INFERENCE=false (confirmed/corrected inference data):
 - Read `.vbw-planning/inference.json` to get confirmed project context
 - Extract: NAME from `name.value`, DESCRIPTION from `purpose.value`
 - If GSD_MIGRATION: read `.vbw-planning/gsd-inference.json` for milestone/phase context
-- Use AskUserQuestion to ask any remaining questions not covered by inference:
+- Ask intentional freeform/no-options questions for any remaining user-authored content not covered by inference:
   1. "What are the key requirements?" (pre-fill from inferred features if available)
   2. "What phases do you envision?" (pre-fill from GSD recent_phases if available)
 
