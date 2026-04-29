@@ -173,9 +173,14 @@ fi
 
 if contains "$RTK_MANAGER" 'config_next_action="init"' \
   && contains "$RTK_MANAGER" 'config_next_action="install"' \
+  && ! contains "$RTK_MANAGER" 'config_next_action="repair_config"' \
+  && ! contains "$RTK_MANAGER" 'next_action="repair_config"' \
   && contains "$RTK_MANAGER" 'case "$next_action" in' \
   && contains "$ROOT/tests/rtk-manager.bats" '.config_next_action == "init"' \
-  && contains "$ROOT/tests/rtk-manager.bats" '.next_action == "verify"'; then
+  && contains "$ROOT/tests/rtk-manager.bats" '.config_next_action == "install"' \
+  && contains "$ROOT/tests/rtk-manager.bats" '.next_action == "verify"' \
+  && contains "$ROOT/tests/rtk-manager.bats" '.next_action == "repair_settings"' \
+  && contains "$ROOT/tests/rtk-manager.bats" '.next_action != "repair_config" and .config_next_action != "repair_config"'; then
   pass "rtk-manager separates config remediation from primary next-action routing"
 else
   fail "rtk-manager missing config_next_action routing guard"

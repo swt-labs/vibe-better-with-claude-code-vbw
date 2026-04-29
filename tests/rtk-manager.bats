@@ -634,12 +634,21 @@ JSON
 @test "rtk-manager: malformed settings JSON is reported without breaking status" {
   write_fake_rtk "0.1.0"
   printf '{not-json' > "$CLAUDE_CONFIG_DIR/settings.json"
+  local config_path
+  config_path="$(expected_rtk_config_path)"
+  mkdir -p "$(dirname "$config_path")"
+  printf '%s\n' '[tracking]' 'enabled = true' > "$config_path"
+  export FAKE_RTK_CONFIG_VALIDATE_FAIL=true
   run rtk_manager status --json
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.settings_json_valid == false'
   echo "$output" | jq -e '.settings_hook_state == "unknown"'
   echo "$output" | jq -e '.global_hook_present == false'
   echo "$output" | jq -e '.compatibility == "settings_unreadable"'
+  echo "$output" | jq -e '.config_state == "config_error"'
+  echo "$output" | jq -e '.next_action == "repair_settings"'
+  echo "$output" | jq -e '.config_next_action == "init"'
+  echo "$output" | jq -e '.next_action != "repair_config" and .config_next_action != "repair_config"'
 }
 
 @test "rtk-manager: config validation failure is reported in status and doctor" {
@@ -653,10 +662,51 @@ JSON
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.config_present == true'
   echo "$output" | jq -e '.config_state == "config_error"'
+  echo "$output" | jq -e '.next_action == "init"'
+  echo "$output" | jq -e '.config_next_action == "init"'
+  echo "$output" | jq -e '.next_action != "repair_config" and .config_next_action != "repair_config"'
   run rtk_manager doctor-json
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.doctor_status == "WARN"'
   echo "$output" | jq -e '.doctor_detail | test("config unreadable|config")'
+}
+
+@test "rtk-manager: config error with hook risk preserves verify route" {
+  write_fake_rtk "0.1.0"
+  cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}
+JSON
+  local config_path
+  config_path="$(expected_rtk_config_path)"
+  mkdir -p "$(dirname "$config_path")"
+  printf '%s\n' '[tracking]' 'enabled = true' > "$config_path"
+  export FAKE_RTK_CONFIG_VALIDATE_FAIL=true
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.compatibility == "risk"'
+  echo "$output" | jq -e '.config_state == "config_error"'
+  echo "$output" | jq -e '.next_action == "verify"'
+  echo "$output" | jq -e '.config_next_action == "init"'
+  echo "$output" | jq -e '.next_action != "repair_config" and .config_next_action != "repair_config"'
+}
+
+@test "rtk-manager: config error without PATH RTK maps config action to install" {
+  write_failing_curl
+  cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}
+JSON
+  local config_path
+  config_path="$(expected_rtk_config_path)"
+  mkdir -p "$(dirname "$config_path")"
+  : > "$config_path"
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.rtk_present == false'
+  echo "$output" | jq -e '.global_hook_present == true'
+  echo "$output" | jq -e '.config_state == "config_error"'
+  echo "$output" | jq -e '.config_next_action == "install"'
+  echo "$output" | jq -e '.next_action != "repair_config" and .config_next_action != "repair_config"'
+  [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
 }
 
 @test "rtk-manager: check-updates queries latest release only on explicit flag" {

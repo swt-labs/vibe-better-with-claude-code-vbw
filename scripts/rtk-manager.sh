@@ -639,9 +639,13 @@ status_json() {
         ;;
       config_error)
         summary="${summary}; RTK config unreadable or empty at ${config_path}"
-        config_next_action="repair_config"
+        if [ "$rtk_present" = "true" ]; then
+          config_next_action="init"
+        else
+          config_next_action="install"
+        fi
         case "$next_action" in
-          status|install) next_action="repair_config" ;;
+          status|install) next_action="$config_next_action" ;;
         esac
         ;;
     esac
