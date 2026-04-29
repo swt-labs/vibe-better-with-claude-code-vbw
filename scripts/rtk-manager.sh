@@ -500,10 +500,6 @@ rtk_history_total() {
   '
 }
 
-rtk_history_tail() {
-  tail -n 40 2>/dev/null || true
-}
-
 rtk_history_evidence_tail() {
   awk '
     /(Total|total)[^0-9]{0,40}[0-9]+/ { next }
