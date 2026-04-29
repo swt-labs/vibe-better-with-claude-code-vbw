@@ -357,6 +357,21 @@ else
   fail "rtk-manager missing explicit scoped runtime smoke helper contract"
 fi
 
+if contains "$RTK_MANAGER" 'Install/update/init/uninstall require --yes' \
+  && contains "$RTK_MANAGER" 'Smoke helpers are explicit runtime verification internals used by /vbw:rtk verify; they write only local VBW RTK pending/proof/failure JSON'; then
+  pass "rtk-manager usage scopes confirmation requirements away from local smoke proof writes"
+else
+  fail "rtk-manager usage misrepresents smoke helper local proof writes as --yes-gated mutations"
+fi
+
+if contains "$RTK_MANAGER" 'rtk_history_after_pending_tail()' \
+  && contains "$RTK_MANAGER" 'jq -Rs -r --arg before_tail "$before_tail"' \
+  && ! contains "$RTK_MANAGER" '--arg after_history'; then
+  pass "rtk-manager compares post-smoke history through stdin instead of argv"
+else
+  fail "rtk-manager can still pass full RTK history through argv during smoke verification"
+fi
+
 if contains "$RTK_MANAGER" 'compatibility_basis="runtime_smoke_passed"' \
   && contains "$RTK_MANAGER" 'proof_state="valid"' \
   && contains "$RTK_MANAGER" 'upstream_issue="anthropics/claude-code#15897"' \

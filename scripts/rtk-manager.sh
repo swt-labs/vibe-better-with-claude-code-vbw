@@ -48,8 +48,8 @@ Commands:
   smoke-finish
   uninstall [--dry-run] [--yes] [--deactivate-hook]
 
-Mutating commands require --yes. Use --dry-run to inspect planned effects.
-Smoke helpers are explicit runtime verification internals used by /vbw:rtk verify.
+Install/update/init/uninstall require --yes. Use --dry-run to inspect planned effects.
+Smoke helpers are explicit runtime verification internals used by /vbw:rtk verify; they write only local VBW RTK pending/proof/failure JSON.
 EOF
 }
 
@@ -537,9 +537,9 @@ rtk_history_after_pending_tail() {
     printf '%s\n' "$after_history"
     return 0
   fi
-  jq -n -r --arg before_tail "$before_tail" --arg after_history "$after_history" '
-    if ($after_history | contains($before_tail)) then
-      ($after_history | split($before_tail) | .[-1])
+  printf '%s' "$after_history" | jq -Rs -r --arg before_tail "$before_tail" '
+    if (. | contains($before_tail)) then
+      (. | split($before_tail) | .[-1])
     else
       empty
     end
