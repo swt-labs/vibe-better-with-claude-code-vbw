@@ -1344,6 +1344,31 @@ JSON
   [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
 }
 
+@test "rtk-manager: smoke-finish rejects stale command matches when totals advance with unrelated commands" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history \
+    'Total commands: 10' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  write_rtk_history \
+    'Total commands: 13' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline' \
+    'rtk echo unrelated-1' \
+    'rtk echo unrelated-2' \
+    'rtk echo unrelated-3'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing RTK history evidence"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
 @test "rtk-manager: smoke-finish fails when command evidence is missing" {
   run_smoke_start_ready
   write_rtk_history \
