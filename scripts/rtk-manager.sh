@@ -176,6 +176,66 @@ rtk_path_detect() {
   fi
 }
 
+shell_first_word_unquote() {
+  local input="$1" len i ch next quote="" started=false word=""
+  len=${#input}
+  i=0
+  while [ "$i" -lt "$len" ]; do
+    ch="${input:i:1}"
+    if [ -z "$quote" ]; then
+      case "$ch" in
+        [[:space:]])
+          if [ "$started" = "true" ]; then
+            break
+          fi
+          ;;
+        "'")
+          started=true
+          quote="single"
+          ;;
+        '"')
+          started=true
+          quote="double"
+          ;;
+        "\\")
+          started=true
+          if [ $((i + 1)) -lt "$len" ]; then
+            next="${input:i+1:1}"
+            word+="$next"
+            i=$((i + 1))
+          else
+            word+="$ch"
+          fi
+          ;;
+        *)
+          started=true
+          word+="$ch"
+          ;;
+      esac
+    elif [ "$quote" = "single" ]; then
+      if [ "$ch" = "'" ]; then
+        quote=""
+      else
+        word+="$ch"
+      fi
+    else
+      if [ "$ch" = '"' ]; then
+        quote=""
+      elif [ "$ch" = "\\" ] && [ $((i + 1)) -lt "$len" ]; then
+        next="${input:i+1:1}"
+        word+="$next"
+        i=$((i + 1))
+      else
+        word+="$ch"
+      fi
+    fi
+    i=$((i + 1))
+  done
+  [ -z "$quote" ] || return 1
+  [ "$started" = "true" ] || return 1
+  printf '%s\n' "$word"
+}
+
 rtk_version_detect() {
   local path="$1" out
   [ -n "$path" ] || return 0
@@ -186,11 +246,7 @@ rtk_version_detect() {
 rtk_path_from_hook_command() {
   local command="$1" executable=""
   [ -n "$command" ] || return 0
-  case "$command" in
-    "\""*) executable="${command#\"}"; executable="${executable%%\"*}" ;;
-    "'"*) executable="${command#\'}"; executable="${executable%%\'*}" ;;
-    *) executable="${command%%[[:space:]]*}" ;;
-  esac
+  executable="$(shell_first_word_unquote "$command" 2>/dev/null || true)"
   case "$executable" in
     rtk) command_path rtk ;;
     */rtk) if [ -x "$executable" ]; then printf '%s\n' "$executable"; fi ;;

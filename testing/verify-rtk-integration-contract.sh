@@ -176,6 +176,16 @@ else
   fail "rtk-manager missing off-PATH selected-binary setup/hook-usability invariant"
 fi
 
+if contains "$RTK_MANAGER" 'shell_first_word_unquote()' \
+  && contains "$RTK_MANAGER" 'executable="$(shell_first_word_unquote "$command"' \
+  && ! contains "$RTK_MANAGER" "executable=\"\${command#\\'}\"" \
+  && contains "$ROOT/tests/rtk-manager.bats" 'off-PATH managed install with apostrophe writes parseable absolute hook' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'shell-quoted absolute hook with apostrophe parses and verifies proof'; then
+  pass "rtk-manager parses apostrophe-safe shell-quoted hook executables without naïve truncation"
+else
+  fail "rtk-manager missing apostrophe-safe hook executable parsing contract"
+fi
+
 if ! contains "$RTK_CMD" 'do not offer hook activation until the user has made the binary visible' \
   && ! contains "$README" 'After the RTK binary is visible on `PATH`' \
   && contains "$RTK_CMD" 'Do not treat off-`PATH` as a setup blocker' \

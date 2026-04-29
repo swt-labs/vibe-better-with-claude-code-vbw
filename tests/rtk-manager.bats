@@ -744,6 +744,24 @@ JSON
   echo "$output" | jq -e --arg path "$RTK_INSTALL_DIR/rtk" '.active_hook_rtk_path == $path'
 }
 
+@test "rtk-manager: off-PATH managed install with apostrophe writes parseable absolute hook" {
+  prepare_release_fixture "9.9.9"
+  write_release_curl
+  export RTK_INSTALL_DIR="$TEST_TEMP_DIR/rtk QA's bin"
+  run rtk_manager install --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Hook: active via VBW settings fallback patch"* ]]
+  [ -x "$RTK_INSTALL_DIR/rtk" ]
+  local expected_command
+  expected_command="'${RTK_INSTALL_DIR%\'*}'\\''${RTK_INSTALL_DIR#*\'}/rtk' hook claude"
+  jq -e --arg command "$expected_command" '.hooks.PreToolUse[0].hooks[0].command == $command' "$CLAUDE_CONFIG_DIR/settings.json"
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.binary_install_state == "installed_not_on_path"'
+  echo "$output" | jq -e '.global_hook_present == true'
+  echo "$output" | jq -e --arg path "$RTK_INSTALL_DIR/rtk" '.active_hook_rtk_path == $path'
+}
+
 @test "rtk-manager: install fails honestly when required setup probe fails" {
   prepare_release_fixture "9.9.9"
   write_release_curl
@@ -1124,6 +1142,40 @@ JSON
   echo "$output" | jq -e '.active_hook_rtk_version == "0.1.0"'
   echo "$output" | jq -e '.compatibility == "verified"'
   echo "$output" | jq -e '.doctor_status == "PASS"'
+}
+
+@test "rtk-manager: shell-quoted absolute hook with apostrophe parses and verifies proof" {
+  local binary_dir binary config_path quoted_command
+  binary_dir="$TEST_TEMP_DIR/managed QA's bin"
+  binary="$(create_managed_rtk "0.1.0" "$binary_dir")"
+  config_path="$(expected_rtk_config_path)"
+  mkdir -p "$(dirname "$config_path")"
+  printf '%s\n' '[tracking]' 'enabled = true' 'history_days = 90' > "$config_path"
+  quoted_command="'${binary%\'*}'\\''${binary#*\'}' hook claude"
+  jq -n --arg command "$quoted_command" '{hooks:{PreToolUse:[{matcher:"Bash",hooks:[{type:"command",command:$command}]}]}}' > "$CLAUDE_CONFIG_DIR/settings.json"
+  mkdir -p "$VBW_RTK_DIR"
+  jq -n --arg command "$quoted_command" '{proof_type:"runtime_smoke",status:"pass",timestamp:"2026-04-27T00:00:00Z",rtk_version:"0.1.0",hook_command:$command,updated_input_verified:true,rtk_rewrite_observed:true,vbw_bash_guard_verified:true,commands:["git status"]}' > "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.global_hook_present == true'
+  echo "$output" | jq -e --arg path "$binary" '.active_hook_rtk_path == $path'
+  echo "$output" | jq -e '.active_hook_rtk_version == "0.1.0"'
+  run rtk_manager doctor-json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.compatibility == "verified"'
+  echo "$output" | jq -e '.doctor_status == "PASS"'
+}
+
+@test "rtk-manager: malformed quoted hook command is not executed or accepted" {
+  write_fake_rtk "0.1.0"
+  local malformed_command
+  malformed_command="'$TEST_TEMP_DIR/malformed/rtk hook claude"
+  jq -n --arg command "$malformed_command" '{hooks:{PreToolUse:[{matcher:"Bash",hooks:[{type:"command",command:$command}]}]}}' > "$CLAUDE_CONFIG_DIR/settings.json"
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.global_hook_present == true'
+  echo "$output" | jq -e '.active_hook_rtk_path == ""'
+  echo "$output" | jq -e '.proof_source == ""'
 }
 
 @test "rtk-manager: cached newer release makes verified doctor status WARN" {
