@@ -106,6 +106,8 @@ if contains "$RTK_MANAGER" 'status --json [--check-updates] [--stats]' \
   && contains "$RTK_MANAGER" 'doctor-json' \
   && contains "$RTK_MANAGER" 'install [--dry-run] [--yes] [--allow-missing-checksum]' \
   && contains "$RTK_MANAGER" 'init [--dry-run] [--yes] [--hook-only]' \
+  && contains "$RTK_MANAGER" 'smoke-start' \
+  && contains "$RTK_MANAGER" 'smoke-finish' \
   && contains "$RTK_MANAGER" 'uninstall [--dry-run] [--yes] [--deactivate-hook]'; then
   pass "rtk-manager exposes required subcommands and safety flags"
 else
@@ -341,6 +343,31 @@ else
   fail "rtk-manager proof validation is too weak"
 fi
 
+if contains "$RTK_MANAGER" 'RTK_PENDING_SMOKE_FILE' \
+  && contains "$RTK_MANAGER" 'smoke_start()' \
+  && contains "$RTK_MANAGER" 'smoke_finish()' \
+  && contains "$RTK_MANAGER" 'rtk_history_snapshot()' \
+  && contains "$RTK_MANAGER" 'gain --history' \
+  && contains "$RTK_MANAGER" 'expected_unprefixed_commands:["ls -la .","git status --short","git log -n 2 --oneline"]' \
+  && contains "$RTK_MANAGER" 'verify_bash_guard_smoke()' \
+  && contains "$RTK_MANAGER" 'scripts/bash-guard.sh to block synthetic destructive command with exit 2' \
+  && contains "$RTK_MANAGER" 'history_count_evidence'; then
+  pass "rtk-manager records explicit scoped runtime smoke proofs"
+else
+  fail "rtk-manager missing explicit scoped runtime smoke helper contract"
+fi
+
+if contains "$RTK_MANAGER" 'compatibility_basis="runtime_smoke_passed"' \
+  && contains "$RTK_MANAGER" 'proof_state="valid"' \
+  && contains "$RTK_MANAGER" 'upstream_issue="anthropics/claude-code#15897"' \
+  && contains "$RTK_MANAGER" 'RTK/VBW coexistence verified by runtime smoke proof' \
+  && contains "$RTK_MANAGER" 'manual Claude Code smoke required before PASS' \
+  && contains "$RTK_MANAGER" 'diagnostic_caveat'; then
+  pass "rtk-manager separates verified normal output from diagnostic #15897 caveat"
+else
+  fail "rtk-manager missing verified-proof normal/diagnostic caveat split"
+fi
+
 if ! contains "$RTK_MANAGER" '$current_version == ""' \
   && ! contains "$RTK_MANAGER" '.rtk_version // $current_version' \
   && ! contains "$RTK_MANAGER" '.hook_command // $active_hook_command' \
@@ -451,7 +478,9 @@ fi
 if contains "$DOCTOR_CMD" '### 18. RTK integration' \
   && contains "$DOCTOR_CMD" 'bash "{plugin-root}/scripts/rtk-manager.sh" doctor-json' \
   && contains "$DOCTOR_CMD" 'Result: {N}/18 passed' \
-  && contains "$DOCTOR_CMD" 'Doctor must not query the network'; then
+  && contains "$DOCTOR_CMD" 'PASS when `compatibility` is `"verified"` with a concrete `proof_source`, even if `updated_input_risk=true`' \
+  && contains "$DOCTOR_CMD" 'When invoked with `--verbose`, include `diagnostic_caveat`/`upstream_issue`' \
+  && contains "$DOCTOR_CMD" 'Doctor must not query the network, run RTK history/stats, or run runtime smoke'; then
   pass "doctor command includes RTK check 18 via plugin-root offline helper JSON"
 else
   fail "doctor command missing plugin-root RTK check 18 offline helper contract"
@@ -459,10 +488,25 @@ fi
 
 if contains "$STATUS_CMD" 'RTK external metrics' \
   && contains "$STATUS_CMD" 'status --json --stats' \
-  && contains "$STATUS_CMD" 'Default `/vbw:status` must not advertise RTK when absent'; then
+  && contains "$STATUS_CMD" 'RTK external: verified by runtime smoke proof' \
+  && contains "$STATUS_CMD" 'Use compatibility-unverified wording only for `risk` or `hook_active_unverified` states without proof' \
+  && contains "$STATUS_CMD" 'Default `/vbw:status` avoids RTK history, stats, network, and smoke work'; then
   pass "status command limits RTK to explicit external metrics"
 else
   fail "status command missing explicit-only RTK metrics boundary"
+fi
+
+if contains "$RTK_CMD" 'smoke-start' \
+  && contains "$RTK_CMD" 'ls -la .' \
+  && contains "$RTK_CMD" 'git status --short' \
+  && contains "$RTK_CMD" 'git log -n 2 --oneline' \
+  && contains "$RTK_CMD" 'smoke-finish' \
+  && contains "$RTK_CMD" 'separate Claude Code Bash tool calls exercise the RTK PreToolUse `updatedInput` rewrite behavior' \
+  && contains "$RTK_CMD" 'Example anti-pattern' \
+  && contains "$RTK_CMD" 'Do not use repo-wide `rtk grep`, `find .`, broad scans'; then
+  pass "rtk command verifies with separate scoped Bash-tool smoke calls"
+else
+  fail "rtk command missing separate scoped Bash-tool smoke verification contract"
 fi
 
 if contains "$README" '/vbw:rtk' \
@@ -471,6 +515,9 @@ if contains "$README" '/vbw:rtk' \
   && contains "$README" 'checksums.txt' \
   && contains "$README" 'config.toml' \
   && contains "$README" 'rtk init -g --auto-patch' \
+  && contains "$README" '/vbw:rtk verify` can run a scoped Claude Code Bash-tool smoke' \
+  && contains "$README" 'normal status and doctor warnings quiet for this local setup' \
+  && contains "$README" 'anthropics/claude-code#15897 caveat' \
   && contains "$README" 'RTK savings are shown as external RTK metrics'; then
   pass "README documents complete RTK setup and verification boundaries"
 else

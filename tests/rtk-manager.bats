@@ -75,6 +75,12 @@ case "\${1:-}" in
   gain)
     if [ "\${2:-}" = "--json" ]; then
       echo '{"average_savings_pct":47,"commands":3}'
+    elif [ "\${2:-}" = "--history" ]; then
+      if [ -n "\${FAKE_RTK_HISTORY_FILE:-}" ] && [ -f "\$FAKE_RTK_HISTORY_FILE" ]; then
+        cat "\$FAKE_RTK_HISTORY_FILE"
+      else
+        echo 'Total commands: 0'
+      fi
     else
       echo 'average savings: 47%'
     fi
@@ -503,6 +509,35 @@ write_valid_smoke_proof() {
   "commands": ["git status", "echo ok"]
 }
 JSON
+}
+
+write_present_rtk_config() {
+  local config_path
+  config_path="$(expected_rtk_config_path)"
+  mkdir -p "$(dirname "$config_path")"
+  printf '%s\n' '[tracking]' 'enabled = true' 'history_days = 90' > "$config_path"
+}
+
+write_rtk_settings_hook() {
+  local command="${1:-rtk hook claude}"
+  mkdir -p "$CLAUDE_CONFIG_DIR"
+  jq -n --arg command "$command" '{hooks:{PreToolUse:[{matcher:"Bash",hooks:[{type:"command",command:$command}]}]}}' > "$CLAUDE_CONFIG_DIR/settings.json"
+}
+
+write_rtk_history() {
+  export FAKE_RTK_HISTORY_FILE="$TEST_TEMP_DIR/rtk-history.txt"
+  printf '%s\n' "$@" > "$FAKE_RTK_HISTORY_FILE"
+}
+
+run_smoke_start_ready() {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history 'Total commands: 10'
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.status == "pending"'
+  [ -f "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json" ]
 }
 
 write_release_curl() {
@@ -1198,6 +1233,127 @@ JSON
   echo "$output" | jq -e '.rtk_present == true'
   echo "$output" | jq -e '.compatibility == "verified"'
   echo "$output" | jq -e '.doctor_status == "PASS"'
+}
+
+@test "rtk-manager: smoke helpers record proof and quiet normal risk summary" {
+  run_smoke_start_ready
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+  write_rtk_history \
+    'Total commands: 13' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.status == "pass"'
+  [ -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json" ]
+  jq -e '.proof_type == "runtime_smoke"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.updated_input_verified == true' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.rtk_rewrite_observed == true' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.vbw_bash_guard_verified == true' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.compatibility_basis == "runtime_smoke_passed"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.upstream_caveat == "anthropics/claude-code#15897"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  local proof_mode
+  proof_mode="$(stat -f '%Lp' "$VBW_RTK_DIR/rtk-compatibility-proof.json" 2>/dev/null || stat -c '%a' "$VBW_RTK_DIR/rtk-compatibility-proof.json")"
+  [ "$proof_mode" = "600" ]
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.compatibility == "verified"'
+  echo "$output" | jq -e '.proof_source != ""'
+  echo "$output" | jq -e '.compatibility_basis == "runtime_smoke_passed"'
+  echo "$output" | jq -e '.proof_state == "valid"'
+  echo "$output" | jq -e '.updated_input_risk == true'
+  echo "$output" | jq -e '.summary == "RTK/VBW coexistence verified by runtime smoke proof"'
+  [[ "$(echo "$output" | jq -r '.summary')" != *"multiple Bash PreToolUse hooks make updatedInput compatibility risky"* ]]
+  [[ "$(echo "$output" | jq -r '.summary')" != *"manual Claude Code smoke required before PASS"* ]]
+  run rtk_manager verify
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Runtime: verified by runtime smoke proof"* ]]
+  [[ "$output" == *"Caveat:"* ]]
+  [[ "$output" != *"Manual smoke:"* ]]
+}
+
+@test "rtk-manager: smoke-finish fails when command evidence is missing" {
+  run_smoke_start_ready
+  write_rtk_history \
+    'Total commands: 13' \
+    'rtk ls -la .' \
+    'rtk git status --short'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing RTK history evidence"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.compatibility == "risk"'
+}
+
+@test "rtk-manager: smoke-finish requires count delta when totals are available" {
+  run_smoke_start_ready
+  write_rtk_history \
+    'Total commands: 12' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK history count did not increase by at least 3"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish fails when hook command changes" {
+  run_smoke_start_ready
+  write_rtk_settings_hook "'$TEST_TEMP_DIR/bin/rtk' hook claude"
+  write_rtk_history \
+    'Total commands: 13' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK hook command changed during smoke"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish fails when hook RTK version changes" {
+  run_smoke_start_ready
+  write_fake_rtk "0.2.0"
+  write_rtk_history \
+    'Total commands: 13' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK hook version changed during smoke"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish rejects malformed pending smoke" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  mkdir -p "$VBW_RTK_DIR"
+  printf '{not-json' > "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"pending smoke file is malformed"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: bash-guard smoke failure prevents proof creation" {
+  run_smoke_start_ready
+  export VBW_ALLOW_DESTRUCTIVE=1
+  write_rtk_history \
+    'Total commands: 13' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"VBW Bash guard smoke verification failed"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
 }
 
 @test "rtk-manager: validated quoted absolute hook proof can produce doctor PASS" {

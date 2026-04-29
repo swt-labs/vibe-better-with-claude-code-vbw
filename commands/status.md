@@ -180,6 +180,6 @@ Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
     Cache hit rate: {percent}%
 ```
 
-  **RTK external metrics** (only when `--metrics` is explicit): run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/rtk-manager.sh status --json --stats`. If RTK is absent, show nothing. If RTK is present, show one compact line labeled external, for example `RTK external: active, 47% avg savings` or `RTK external: hook active, compatibility unverified`. RTK savings are external RTK savings, not VBW savings. Default `/vbw:status` must not advertise RTK when absent and must not run RTK stats or network checks.
+  **RTK external metrics** (only when `--metrics` is explicit): run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/rtk-manager.sh status --json --stats`. If RTK is absent, show nothing. If RTK is present, show one compact line labeled external, for example `RTK external: verified by runtime smoke proof, 47% avg savings`, `RTK external: active, 47% avg savings`, or `RTK external: hook active, compatibility unverified`. Use compatibility-unverified wording only for `risk` or `hook_active_unverified` states without proof. RTK savings are external RTK savings, not VBW savings. Default `/vbw:status` avoids RTK history, stats, network, and smoke work to prevent recurring overhead; it must not advertise RTK when absent.
 
 **Next Up:** Run `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/suggest-next.sh status` and display.
