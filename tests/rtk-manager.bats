@@ -529,6 +529,18 @@ write_rtk_history() {
   printf '%s\n' "$@" > "$FAKE_RTK_HISTORY_FILE"
 }
 
+file_mode_octal() {
+  local path="$1"
+  case "$(uname -s 2>/dev/null || echo unknown)" in
+    Darwin|FreeBSD|OpenBSD|NetBSD)
+      stat -f '%Lp' "$path"
+      ;;
+    *)
+      stat -c '%a' "$path"
+      ;;
+  esac
+}
+
 run_smoke_start_ready() {
   write_fake_rtk "0.1.0"
   write_present_rtk_config
@@ -1255,7 +1267,7 @@ JSON
   jq -e '.compatibility_basis == "runtime_smoke_passed"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
   jq -e '.upstream_caveat == "anthropics/claude-code#15897"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
   local proof_mode
-  proof_mode="$(stat -f '%Lp' "$VBW_RTK_DIR/rtk-compatibility-proof.json" 2>/dev/null || stat -c '%a' "$VBW_RTK_DIR/rtk-compatibility-proof.json")"
+  proof_mode="$(file_mode_octal "$VBW_RTK_DIR/rtk-compatibility-proof.json")"
   [ "$proof_mode" = "600" ]
   run rtk_manager status --json
   [ "$status" -eq 0 ]
