@@ -944,6 +944,22 @@ JSON
   [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
 }
 
+@test "rtk-manager: doctor-json with RTK present does not collect RTK gain stats" {
+  write_fake_rtk "0.1.0"
+  write_failing_curl
+  : > "$TEST_TEMP_DIR/rtk-calls.log"
+  run rtk_manager doctor-json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.rtk_present == true'
+  echo "$output" | jq -e '.stats == null'
+  echo "$output" | jq -e '.config_state == "missing"'
+  echo "$output" | jq -e '.doctor_status == "WARN"'
+  grep -Fxq -- '--version' "$TEST_TEMP_DIR/rtk-calls.log"
+  ! grep -Fxq 'gain' "$TEST_TEMP_DIR/rtk-calls.log"
+  ! grep -Fq 'gain --json' "$TEST_TEMP_DIR/rtk-calls.log"
+  [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
+}
+
 @test "rtk-manager: stats are explicit and labeled separately in JSON" {
   write_fake_rtk "0.1.0"
   run rtk_manager status --json --stats
