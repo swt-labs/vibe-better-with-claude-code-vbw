@@ -1266,6 +1266,7 @@ JSON
   jq -e '.vbw_bash_guard_verified == true' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
   jq -e '.compatibility_basis == "runtime_smoke_passed"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
   jq -e '.upstream_caveat == "anthropics/claude-code#15897"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_count_evidence == "before=10 after=13 delta=3"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
   local proof_mode
   proof_mode="$(file_mode_octal "$VBW_RTK_DIR/rtk-compatibility-proof.json")"
   [ "$proof_mode" = "600" ]
@@ -1284,6 +1285,63 @@ JSON
   [[ "$output" == *"Runtime: verified by runtime smoke proof"* ]]
   [[ "$output" == *"Caveat:"* ]]
   [[ "$output" != *"Manual smoke:"* ]]
+}
+
+@test "rtk-manager: smoke-finish accepts count-unavailable proof only from post-start history entries" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history 'rtk previous command'
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  write_rtk_history \
+    'rtk previous command' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 0 ]
+  jq -e '.history_before_total == null' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_after_total == null' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_count_evidence == "history_tail_changed_after_smoke_start"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_before_sha256 != "" and .history_after_sha256 != "" and .history_before_sha256 != .history_after_sha256' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+}
+
+@test "rtk-manager: smoke-finish rejects count-unavailable unchanged history" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK history did not advance after smoke-start"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish rejects stale command evidence when only unrelated history advanced" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  write_rtk_history \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline' \
+    'rtk echo unrelated'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing RTK history evidence"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
 }
 
 @test "rtk-manager: smoke-finish fails when command evidence is missing" {

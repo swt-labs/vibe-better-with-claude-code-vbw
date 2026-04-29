@@ -522,6 +522,21 @@ rtk_history_has_command() {
   esac
 }
 
+rtk_history_after_pending_tail() {
+  local before_tail="$1" after_history="$2"
+  if [ -z "$before_tail" ]; then
+    printf '%s\n' "$after_history"
+    return 0
+  fi
+  jq -n -r --arg before_tail "$before_tail" --arg after_history "$after_history" '
+    if ($after_history | contains($before_tail)) then
+      ($after_history | split($before_tail) | .[-1])
+    else
+      empty
+    end
+  '
+}
+
 write_smoke_failure() {
   local reason="$1" detail="${2:-}" tmp
   mkdir -p "$VBW_RTK_DIR"
@@ -614,7 +629,7 @@ verify_bash_guard_smoke() {
 }
 
 write_runtime_smoke_proof() {
-  local status_payload="$1" pending_payload="$2" history_after_total="$3" count_evidence="$4" tmp
+  local status_payload="$1" pending_payload="$2" history_after_total="$3" history_after_sha256="$4" count_evidence="$5" tmp
   local hook_command hook_version
   hook_command="$(printf '%s' "$status_payload" | jq -r '.global_hook_command')"
   hook_version="$(printf '%s' "$status_payload" | jq -r '.active_hook_rtk_version')"
@@ -629,7 +644,9 @@ write_runtime_smoke_proof() {
     --arg compatibility_basis "runtime_smoke_passed" \
     --arg upstream_caveat "anthropics/claude-code#15897" \
     --argjson history_before_total "$(printf '%s' "$pending_payload" | jq '.history_before_total // null')" \
+    --arg history_before_sha256 "$(printf '%s' "$pending_payload" | jq -r '.history_before_sha256 // ""')" \
     --arg history_after_total "$history_after_total" \
+    --arg history_after_sha256 "$history_after_sha256" \
     --arg count_evidence "$count_evidence" \
     '{
       proof_type:$proof_type,
@@ -647,7 +664,9 @@ write_runtime_smoke_proof() {
         {expected:"git log -n 2 --oneline", observed:"rtk git log -n 2 --oneline"}
       ],
       history_before_total:$history_before_total,
+      history_before_sha256:$history_before_sha256,
       history_after_total:(if $history_after_total == "" then null else ($history_after_total | tonumber) end),
+      history_after_sha256:$history_after_sha256,
       history_count_evidence:$count_evidence,
       compatibility_basis:$compatibility_basis,
       upstream_caveat:$upstream_caveat
@@ -658,7 +677,7 @@ write_runtime_smoke_proof() {
 
 smoke_finish() {
   local pending_payload status_payload hook_path hook_command hook_version pending_hook_command pending_hook_version
-  local history history_after_total history_before_total count_evidence
+  local history history_after_total history_before_total history_before_tail history_after_tail history_before_sha256 history_after_sha256 history_evidence count_evidence
   [ -f "$RTK_PENDING_SMOKE_FILE" ] || smoke_fail 1 "pending smoke file missing" "$RTK_PENDING_SMOKE_FILE"
   jq empty "$RTK_PENDING_SMOKE_FILE" >/dev/null 2>&1 || smoke_fail 1 "pending smoke file is malformed" "$RTK_PENDING_SMOKE_FILE"
   pending_payload="$(cat "$RTK_PENDING_SMOKE_FILE")"
@@ -674,20 +693,34 @@ smoke_finish() {
   [ "$hook_version" = "$pending_hook_version" ] || smoke_fail 1 "RTK hook version changed during smoke" "$pending_hook_version -> $hook_version"
 
   history="$(rtk_history_snapshot "$hook_path")"
-  rtk_history_has_command "$history" ls || smoke_fail 1 "missing RTK history evidence" "rtk ls -la ."
-  rtk_history_has_command "$history" status || smoke_fail 1 "missing RTK history evidence" "rtk git status --short"
-  rtk_history_has_command "$history" log || smoke_fail 1 "missing RTK history evidence" "rtk git log -n 2 --oneline"
+  history_after_tail="$(printf '%s\n' "$history" | rtk_history_tail)"
+  history_before_sha256="$(printf '%s' "$pending_payload" | jq -r '.history_before_sha256 // ""')"
+  history_after_sha256="$(printf '%s' "$history_after_tail" | sha256_text || true)"
   history_after_total="$(printf '%s\n' "$history" | rtk_history_total || true)"
   history_before_total="$(printf '%s' "$pending_payload" | jq -r '.history_before_total // empty')"
+  history_evidence="$history"
   count_evidence="unavailable"
   if [ -n "$history_before_total" ] && [ -n "$history_after_total" ]; then
     if [ $((history_after_total - history_before_total)) -lt 3 ]; then
       smoke_fail 1 "RTK history count did not increase by at least 3" "before=$history_before_total after=$history_after_total"
     fi
     count_evidence="before=$history_before_total after=$history_after_total delta=$((history_after_total - history_before_total))"
+  else
+    history_before_tail="$(printf '%s' "$pending_payload" | jq -r '.history_before_tail // ""')"
+    if [ -n "$history_before_sha256" ] && [ -n "$history_after_sha256" ] && [ "$history_before_sha256" = "$history_after_sha256" ]; then
+      smoke_fail 1 "RTK history did not advance after smoke-start" "history tail hash unchanged"
+    fi
+    history_evidence="$(rtk_history_after_pending_tail "$history_before_tail" "$history")"
+    if [ -n "$history_before_tail" ] && [ -z "$history_evidence" ]; then
+      smoke_fail 1 "could not isolate RTK history entries after smoke-start" "pending history tail was not found in the after-history snapshot"
+    fi
+    count_evidence="history_tail_changed_after_smoke_start"
   fi
+  rtk_history_has_command "$history_evidence" ls || smoke_fail 1 "missing RTK history evidence" "rtk ls -la ."
+  rtk_history_has_command "$history_evidence" status || smoke_fail 1 "missing RTK history evidence" "rtk git status --short"
+  rtk_history_has_command "$history_evidence" log || smoke_fail 1 "missing RTK history evidence" "rtk git log -n 2 --oneline"
   verify_bash_guard_smoke || smoke_fail 1 "VBW Bash guard smoke verification failed" "expected scripts/bash-guard.sh to block synthetic destructive command with exit 2"
-  write_runtime_smoke_proof "$status_payload" "$pending_payload" "$history_after_total" "$count_evidence"
+  write_runtime_smoke_proof "$status_payload" "$pending_payload" "$history_after_total" "$history_after_sha256" "$count_evidence"
   rm -f "$RTK_PENDING_SMOKE_FILE"
   jq -n --arg status "pass" --arg proof_source "$RTK_PROOF_FILE" --arg history_count_evidence "$count_evidence" '{status:$status,proof_source:$proof_source,history_count_evidence:$history_count_evidence}'
 }
