@@ -417,7 +417,7 @@ These are the commands you'll use every day. This is the job now.
 | `/vbw:fix` | Quick task in Turbo mode. One commit, no ceremony. For when the fix is obvious and you don't need seven agents to add a missing comma. |
 | `/vbw:debug` | Systematic bug investigation via the Debugger agent. Persists findings to a debug session file so investigations survive across sessions — resume with `--resume` or target a specific session with `--session <id>`. At Thorough effort with ambiguous bugs, spawns 3 parallel debugger teammates for report-only competing-hypothesis investigation, waits for all reports, tears that cohort down, and only then (if needed) spawns one fresh debugger as the sole implementation owner. Investigations that create a new fix commit auto-chain QA and UAT verification inline; investigations that confirm the fix was already present can complete immediately without re-running QA/UAT. |
 | `/vbw:todo` | Add an item to a persistent backlog that survives across sessions. For all those "we should really..." thoughts that usually die in a terminal tab. |
-| `/vbw:list-todos` | Browse pending todos, filter by priority, and pick one to act on. Computes ages, formats a numbered list, persists the last displayed view for deterministic follow-up actions, offers `/vbw:fix`, `/vbw:debug`, and `/vbw:vibe` routing only from unfiltered views, and keeps `remove N` / `delete N` working against the exact displayed snapshot. |
+| `/vbw:list-todos` | Browse pending todos, filter by priority, and pick one to act on. Computes ages, formats a numbered list, persists the last displayed view for deterministic follow-up actions, offers `/vbw:fix`, `/vbw:debug`, `/vbw:research`, and `/vbw:vibe` routing only from unfiltered views, and keeps `remove N` / `delete N` working against the exact displayed snapshot. |
 | `/vbw:pause` | Save session notes for next time. State auto-persists in `.vbw-planning/` -- pause just lets you leave a sticky note for future you. |
 | `/vbw:resume` | Restore project context from `.vbw-planning/` ground truth. Reads state, roadmap, plans, and summaries directly -- no prior `/vbw:pause` needed. |
 | `/vbw:skills` | Browse and install community skills from skills.sh based on your project's tech stack. Detects your stack, suggests relevant skills, and installs them with one command. |
@@ -441,7 +441,7 @@ VBW treats RTK binary installation/update and Claude Code hook activation as sep
 | Command | Description |
 | :--- | :--- |
 | `/vbw:map` | Analyze a codebase with 4 parallel Scout teammates (Tech, Architecture, Quality, Concerns). Produces synthesis documents (INDEX.md, PATTERNS.md). Supports monorepo per-package mapping. Security-enforced via hooks: never reads `.env` or credentials. |
-| `/vbw:research` | Standalone research task, decoupled from planning. For when you need answers but aren't ready to commit to a plan. |
+| `/vbw:research` | Standalone research task, decoupled from planning. Accepts `/vbw:research N` from an unfiltered `/vbw:list-todos` snapshot for context-only Scout research without removing the todo. |
 | `/vbw:whats-new` | View changelog entries since your installed version. |
 | `/vbw:update` | Update VBW to the latest version with automatic cache refresh. |
 | `/vbw:uninstall` | Clean removal of VBW -- statusline, settings, and project data. For when you want to go back to prompting manually like it's 2024. |

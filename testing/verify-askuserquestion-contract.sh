@@ -477,10 +477,11 @@ require_text_literal "list-todos: step 5 does not prompt the user for input" "Do
 require_text_literal "list-todos: unfiltered hints preserve /vbw:vibe N" "/vbw:vibe N" "$LIST_TODOS_UNFILTERED_HINTS"
 require_text_literal "list-todos: unfiltered hints preserve /vbw:fix N" "/vbw:fix N" "$LIST_TODOS_UNFILTERED_HINTS"
 require_text_literal "list-todos: unfiltered hints preserve /vbw:debug N" "/vbw:debug N" "$LIST_TODOS_UNFILTERED_HINTS"
+require_text_literal "list-todos: unfiltered hints preserve /vbw:research N" "/vbw:research N" "$LIST_TODOS_UNFILTERED_HINTS"
 require_text_regex "list-todos: unfiltered hints preserve remove N" '(^|[[:space:]])remove N([[:space:]]|$)' "$LIST_TODOS_UNFILTERED_HINTS"
 require_text_regex "list-todos: filtered hints preserve remove N" '(^|[[:space:]])remove N([[:space:]]|$)' "$LIST_TODOS_FILTERED_HINTS"
 require_text_regex "list-todos: filtered hints preserve delete N" '(^|[[:space:]])delete N([[:space:]]|$)' "$LIST_TODOS_FILTERED_HINTS"
-require_text_literal "list-todos: filtered hints preserve rerun-unfiltered guard" "rerun unfiltered /vbw:list-todos before using /vbw:vibe N, /vbw:fix N, or /vbw:debug N" "$LIST_TODOS_FILTERED_HINTS"
+require_text_literal "list-todos: filtered hints preserve rerun-unfiltered guard" "rerun unfiltered /vbw:list-todos before using /vbw:vibe N, /vbw:fix N, /vbw:debug N, or /vbw:research N" "$LIST_TODOS_FILTERED_HINTS"
 
 # --------------------------------------------------------------------------
 # Check 6: /vbw:config bounded structured flow
