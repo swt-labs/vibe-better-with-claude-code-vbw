@@ -1287,6 +1287,57 @@ JSON
   [[ "$output" != *"Manual smoke:"* ]]
 }
 
+@test "rtk-manager: smoke-finish accepts parseable total tail mismatch with fresh command counts" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history \
+    'Total commands: 10' \
+    'rtk old-before-smoke'
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  write_rtk_history \
+    'Total commands: 13' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 0 ]
+  [ -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+  jq -e '.history_count_evidence == "before=10 after=13 delta=3"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_isolation_evidence == "command_counts_with_total_delta"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_command_evidence.ls.before == 0 and .history_command_evidence.ls.after == 1' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_command_evidence.status.before == 0 and .history_command_evidence.status.after == 1' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_command_evidence.log.before == 0 and .history_command_evidence.log.after == 1' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+}
+
+@test "rtk-manager: smoke-finish rejects parseable total tail mismatch with stale command counts" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history \
+    'Total commands: 10' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline' \
+    'rtk old-before-smoke'
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  write_rtk_history \
+    'Total commands: 13' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline' \
+    'rtk unrelated-1' \
+    'rtk unrelated-2' \
+    'rtk unrelated-3'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing fresh RTK history evidence after smoke-start"* ]]
+  [[ "$output" != *"pending history tail was not found"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
 @test "rtk-manager: smoke-finish accepts count-unavailable proof only from post-start history entries" {
   write_fake_rtk "0.1.0"
   write_present_rtk_config
@@ -1305,6 +1356,72 @@ JSON
   jq -e '.history_after_total == null' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
   jq -e '.history_count_evidence == "history_tail_changed_after_smoke_start"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
   jq -e '.history_before_sha256 != "" and .history_after_sha256 != "" and .history_before_sha256 != .history_after_sha256' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+}
+
+@test "rtk-manager: smoke-finish accepts count-unavailable tail mismatch with fresh command counts" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history 'rtk old-before-smoke'
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  write_rtk_history \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 0 ]
+  [ -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+  jq -e '.history_count_evidence == "history_tail_changed_after_smoke_start"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_isolation_evidence == "command_counts_with_tail_change"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_command_evidence.ls.before == 0 and .history_command_evidence.ls.after == 1' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+}
+
+@test "rtk-manager: smoke-finish rejects count-unavailable tail mismatch with stale command counts" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline' \
+    'rtk old-before-smoke'
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  write_rtk_history \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline' \
+    'rtk unrelated-after-smoke'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing fresh RTK history evidence after smoke-start"* ]]
+  [[ "$output" != *"pending history tail was not found"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish asks for fresh verify when tail mismatch pending lacks command counts" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history \
+    'Total commands: 10' \
+    'rtk old-before-smoke'
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  jq 'del(.history_before_command_counts)' "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json" > "$TEST_TEMP_DIR/pending-old.json"
+  mv "$TEST_TEMP_DIR/pending-old.json" "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
+  write_rtk_history \
+    'Total commands: 13' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"fresh smoke evidence requires a new /vbw:rtk verify attempt"* ]]
+  [[ "$output" == *"pending smoke file lacks history_before_command_counts"* ]]
+  [[ "$output" != *"pending history tail was not found"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
 }
 
 @test "rtk-manager: smoke-finish rejects count-unavailable unchanged history" {
@@ -1452,6 +1569,17 @@ JSON
   [ "$status" -eq 1 ]
   [[ "$output" == *"pending smoke file is malformed"* ]]
   [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: verify output does not recommend restart for runtime smoke" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  run rtk_manager verify
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Manual smoke:"* ]]
+  [[ "$output" != *"restart Claude Code"* ]]
+  [[ "$output" == *"run the scoped /vbw:rtk verify Bash-tool sequence"* ]]
 }
 
 @test "rtk-manager: bash-guard smoke failure prevents proof creation" {
