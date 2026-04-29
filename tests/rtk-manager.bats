@@ -567,6 +567,8 @@ EOF
   echo "$output" | jq -e '.rtk_version == "0.1.0"'
   echo "$output" | jq -e '.compatibility == "binary_only"'
   echo "$output" | jq -e '.config_state == "missing"'
+  echo "$output" | jq -e '.next_action == "init"'
+  echo "$output" | jq -e '.config_next_action == "init"'
   ! grep -Fq 'gain --json' "$TEST_TEMP_DIR/rtk-calls.log"
 }
 
@@ -625,6 +627,8 @@ JSON
   echo "$output" | jq -e --arg typo_key "multiple_bash_pre""tookuse_hooks_detected" 'has($typo_key) | not'
   echo "$output" | jq -e '.updated_input_risk == true'
   echo "$output" | jq -e '.compatibility == "risk"'
+  echo "$output" | jq -e '.next_action == "verify"'
+  echo "$output" | jq -e '.config_next_action == "init"'
 }
 
 @test "rtk-manager: malformed settings JSON is reported without breaking status" {
@@ -863,12 +867,16 @@ JSON
   [ ! -f "$CLAUDE_CONFIG_DIR/settings.json" ]
 }
 
-@test "rtk-manager: init dry-run shows requested optional flags only" {
+@test "rtk-manager: init accepts legacy auto-patch flag without advertising it as a toggle" {
   write_fake_rtk "0.1.0"
   run rtk_manager init --dry-run --auto-patch --hook-only
   [ "$status" -eq 0 ]
   [[ "$output" == *"--auto-patch"* ]]
   [[ "$output" == *"--hook-only"* ]]
+  run rtk_manager help
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"init [--dry-run] [--yes] [--hook-only]"* ]]
+  [[ "$output" != *"init [--dry-run] [--yes] [--auto-patch] [--hook-only]"* ]]
 }
 
 @test "rtk-manager: init creates missing RTK config and activates hook" {

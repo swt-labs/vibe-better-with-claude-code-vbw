@@ -40,7 +40,7 @@ Commands:
   doctor-json
   install [--dry-run] [--yes] [--allow-missing-checksum]
   update [--dry-run] [--yes] [--allow-missing-checksum]
-  init [--dry-run] [--yes] [--auto-patch] [--hook-only]
+  init [--dry-run] [--yes] [--hook-only]
   verify [--json]
   uninstall [--dry-run] [--yes] [--deactivate-hook]
 
@@ -468,7 +468,7 @@ status_json() {
   local managed_by_vbw install_receipt receipt_binary binary_install_state can_install preferred_install_method
   local config_path config_present config_state
   local settings_json_valid hook_command hook_matcher global_hook_present global_claude_ref global_rtk_md legacy_hook project_local vbw_hook bash_hook_count multiple_bash updated_input_risk
-  local settings_hook_state active_hook_rtk_path active_hook_rtk_version proof_source compatibility restart_required summary next_action stats_json
+  local settings_hook_state active_hook_rtk_path active_hook_rtk_version proof_source compatibility restart_required summary next_action config_next_action stats_json
 
   rtk_path="$(rtk_path_detect)"
   rtk_present=false
@@ -520,6 +520,7 @@ status_json() {
   fi
   config_present=false
   [ "$config_state" != "missing" ] && config_present=true
+  config_next_action="none"
 
   settings_json_valid=true
   if ! settings_valid; then settings_json_valid=false; fi
@@ -627,11 +628,21 @@ status_json() {
     case "$config_state" in
       missing)
         summary="${summary}; RTK config missing at ${config_path}"
-        next_action="install"
+        if [ "$rtk_present" = "true" ]; then
+          config_next_action="init"
+        else
+          config_next_action="install"
+        fi
+        case "$next_action" in
+          status|install) next_action="$config_next_action" ;;
+        esac
         ;;
       config_error)
         summary="${summary}; RTK config unreadable or empty at ${config_path}"
-        next_action="repair_config"
+        config_next_action="repair_config"
+        case "$next_action" in
+          status|install) next_action="repair_config" ;;
+        esac
         ;;
     esac
   fi
@@ -658,6 +669,7 @@ status_json() {
     --argjson config_present "$(bool_to_json "$config_present")" \
     --arg config_path "$config_path" \
     --arg config_state "$config_state" \
+    --arg config_next_action "$config_next_action" \
     --argjson settings_json_valid "$(bool_to_json "$settings_json_valid")" \
     --arg settings_hook_state "$settings_hook_state" \
     --argjson global_hook_present "$(bool_to_json "$global_hook_present")" \
@@ -694,6 +706,7 @@ status_json() {
       config_present: $config_present,
       config_path: $config_path,
       config_state: $config_state,
+      config_next_action: $config_next_action,
       settings_json_valid: $settings_json_valid,
       settings_hook_state: $settings_hook_state,
       global_hook_present: $global_hook_present,
@@ -1291,12 +1304,12 @@ install_or_update() {
 }
 
 init_hook() {
-  local dry_run=false yes=false auto_patch=true hook_only=false rtk_path receipt_path display_cmd
+  local dry_run=false yes=false hook_only=false rtk_path receipt_path display_cmd
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --dry-run) dry_run=true; shift ;;
       --yes) yes=true; shift ;;
-      --auto-patch) auto_patch=true; shift ;;
+      --auto-patch) shift ;; # Backward-compatible no-op; auto-patch is always used.
       --hook-only) hook_only=true; shift ;;
       *) die 2 "unknown init option: $1" ;;
     esac
@@ -1309,8 +1322,7 @@ init_hook() {
     fi
     die 1 "RTK binary not found on PATH; run /vbw:rtk install first or install RTK manually"
   fi
-  display_cmd="$rtk_path init -g"
-  if [ "$auto_patch" = "true" ]; then display_cmd="$display_cmd --auto-patch"; fi
+  display_cmd="$rtk_path init -g --auto-patch"
   if [ "$hook_only" = "true" ]; then display_cmd="$display_cmd --hook-only"; fi
   echo "RTK hook preflight"
   echo "Will run: $display_cmd"

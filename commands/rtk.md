@@ -28,7 +28,7 @@ AskUserQuestion reference: @${CLAUDE_PLUGIN_ROOT}/references/ask-user-question.m
 - Store the Plugin root output above as `{plugin-root}`.
 - Do not run RTK install, update, hook activation, or uninstall unless the user explicitly invoked the matching RTK subcommand or confirmed the no-args menu.
 - `/vbw:rtk install` and no-args install/repair selections are explicit consent for complete setup: binary install, RTK config bootstrap, Claude Code hook activation, and hook verification/fallback.
-- `/vbw:rtk init` is explicit consent for hook-only setup/repair for an RTK binary that is already on PATH.
+- `/vbw:rtk init` is explicit consent for setup/repair of Claude Code RTK integration for an RTK binary already on PATH; it does not install or update the binary, but may validate the RTK CLI and bootstrap RTK config when missing.
 - Keep separate confirmation for destructive or ambiguous manage flows such as update and uninstall.
 - Default `status` is read-only and offline. Only `status --check-updates`, `install`, or `update` may query GitHub release metadata.
 - Managed setup must not use `sudo`, edit shell profiles, or pipe downloaded scripts into `sh`.

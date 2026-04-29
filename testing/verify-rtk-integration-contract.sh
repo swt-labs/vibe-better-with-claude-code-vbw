@@ -86,6 +86,14 @@ else
   fail "rtk command missing unavailable-state/setup-first menu contract"
 fi
 
+if contains "$RTK_CMD" '/vbw:rtk init` is explicit consent for setup/repair of Claude Code RTK integration' \
+  && contains "$RTK_CMD" 'does not install or update the binary' \
+  && ! contains "$RTK_CMD" 'hook-only setup/repair for an RTK binary that is already on PATH'; then
+  pass "rtk command init wording matches validation/config-bootstrap behavior"
+else
+  fail "rtk command init wording still implies hook-only behavior"
+fi
+
 if ! contains "$RTK_CMD" 'Binary install/update and Claude Code hook activation are separate operations' \
   && ! contains "$RTK_CMD" 'does not edit Claude settings' \
   && ! contains "$RTK_CMD" 'does not run `rtk init -g`'; then
@@ -97,11 +105,19 @@ fi
 if contains "$RTK_MANAGER" 'status --json [--check-updates] [--stats]' \
   && contains "$RTK_MANAGER" 'doctor-json' \
   && contains "$RTK_MANAGER" 'install [--dry-run] [--yes] [--allow-missing-checksum]' \
-  && contains "$RTK_MANAGER" 'init [--dry-run] [--yes] [--auto-patch] [--hook-only]' \
+  && contains "$RTK_MANAGER" 'init [--dry-run] [--yes] [--hook-only]' \
   && contains "$RTK_MANAGER" 'uninstall [--dry-run] [--yes] [--deactivate-hook]'; then
   pass "rtk-manager exposes required subcommands and safety flags"
 else
   fail "rtk-manager usage missing required subcommands or safety flags"
+fi
+
+if ! contains "$RTK_MANAGER" 'init [--dry-run] [--yes] [--auto-patch] [--hook-only]' \
+  && contains "$RTK_MANAGER" '--auto-patch) shift ;; # Backward-compatible no-op; auto-patch is always used.' \
+  && contains "$RTK_MANAGER" 'display_cmd="$rtk_path init -g --auto-patch"'; then
+  pass "rtk-manager no longer advertises auto-patch as a user-controlled init option"
+else
+  fail "rtk-manager still advertises or misrepresents init --auto-patch"
 fi
 
 if contains "$RTK_MANAGER" 'RTK_REPO_API="${RTK_REPO_API:-https://api.github.com/repos/rtk-ai/rtk/releases/latest}"' \
@@ -147,11 +163,22 @@ fi
 if contains "$RTK_MANAGER" 'config_present: $config_present' \
   && contains "$RTK_MANAGER" 'config_path: $config_path' \
   && contains "$RTK_MANAGER" 'config_state: $config_state' \
+  && contains "$RTK_MANAGER" 'config_next_action: $config_next_action' \
   && contains "$RTK_MANAGER" 'RTK config missing at' \
   && contains "$RTK_MANAGER" 'RTK config unreadable or empty'; then
   pass "rtk-manager status/doctor surface compact config evidence"
 else
   fail "rtk-manager missing config status JSON/reporting fields"
+fi
+
+if contains "$RTK_MANAGER" 'config_next_action="init"' \
+  && contains "$RTK_MANAGER" 'config_next_action="install"' \
+  && contains "$RTK_MANAGER" 'case "$next_action" in' \
+  && contains "$ROOT/tests/rtk-manager.bats" '.config_next_action == "init"' \
+  && contains "$ROOT/tests/rtk-manager.bats" '.next_action == "verify"'; then
+  pass "rtk-manager separates config remediation from primary next-action routing"
+else
+  fail "rtk-manager missing config_next_action routing guard"
 fi
 
 if contains "$RTK_MANAGER" 'activate_rtk_hook()' \
