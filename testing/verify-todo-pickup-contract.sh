@@ -68,7 +68,8 @@ require_absent "list-todos no longer asks markdown to pipe JSON into snapshot-sa
 require_grep "list-todos remove uses snapshot resolver" 'resolve-todo-item\.sh" <N> --session-snapshot' "$LIST_CMD"
 require_grep "list-todos remove delegates to lifecycle helper" 'todo-lifecycle\.sh" remove' "$LIST_CMD"
 require_grep "list-todos filtered view rerun-unfiltered hint exists" 'rerun unfiltered /vbw:list-todos' "$LIST_CMD"
-require_absent "list-todos no longer advertises /vbw:research N" '/vbw:research N' "$LIST_CMD"
+require_grep "list-todos advertises /vbw:research N" '/vbw:research N' "$LIST_CMD"
+require_grep "list-todos filtered guard includes /vbw:research N" 'rerun unfiltered /vbw:list-todos before using /vbw:vibe N, /vbw:fix N, /vbw:debug N, or /vbw:research N' "$LIST_CMD"
 
 # debug command surface
 require_grep "debug uses snapshot-backed todo resolver" 'resolve-todo-item\.sh" <N> --session-snapshot --require-unfiltered --validate-live' "$DEBUG_CMD"
@@ -100,8 +101,15 @@ require_grep "vibe eagerly loads detail during Input Parsing for selected todos"
 require_grep "vibe pickup uses lifecycle helper" 'todo-lifecycle\.sh" pickup /vbw:vibe' "$VIBE_CMD"
 require_grep "vibe writes detail warning through lifecycle helper" 'todo-lifecycle\.sh" detail-warning' "$VIBE_CMD"
 
-# research warning path
+# research command surface
+require_grep "research uses snapshot-backed todo resolver" 'resolve-todo-item\.sh" <N> --session-snapshot --require-unfiltered --validate-live' "$RESEARCH_CMD"
+require_grep "research stores selected todo payload" 'TODO_SELECTED_JSON' "$RESEARCH_CMD"
+require_grep "research marks numbered todo selection" 'TODO_SELECTED=true' "$RESEARCH_CMD"
+require_grep "research uses selected command text as topic" 'command_text' "$RESEARCH_CMD"
+require_grep "research rejects archived milestone selected todos" 'archived milestone state' "$RESEARCH_CMD"
+require_grep "research loads selected todo detail through helper" 'todo-details\.sh" get \{hash\}' "$RESEARCH_CMD"
 require_grep "research writes detail warning through lifecycle helper" 'todo-lifecycle\.sh" detail-warning' "$RESEARCH_CMD"
+require_absent "research does not claim todos automatically" 'todo-lifecycle\.sh" pickup /vbw:research' "$RESEARCH_CMD"
 
 echo
  echo "==============================="

@@ -52,6 +52,7 @@ allowed-tools: Read, Edit, Bash
              /vbw:vibe N      — full lifecycle (plan → execute → verify)
              /vbw:fix N       — quick fix, one commit
              /vbw:debug N     — investigate with scientific method
+             /vbw:research N  — research context with Scout
              remove N         — delete from todo list
        ```
     - **Filtered view (`filter` is non-null):**
@@ -59,7 +60,7 @@ allowed-tools: Read, Edit, Bash
        ➜ Filtered view:
              remove N         — delete from this displayed list
              delete N         — same as remove N
-          /vbw:list-todos  — rerun unfiltered /vbw:list-todos before using /vbw:vibe N, /vbw:fix N, or /vbw:debug N
+          /vbw:list-todos  — rerun unfiltered /vbw:list-todos before using /vbw:vibe N, /vbw:fix N, /vbw:debug N, or /vbw:research N
        ```
 
     If the user says **`remove N`** or **`delete N`** as a follow-up message (not via a slash command):

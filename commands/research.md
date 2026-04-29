@@ -33,7 +33,23 @@ Current project:
 
 ## Steps
 
-1. **Parse:** Strip any `--parallel` flag from $ARGUMENTS and store it separately for Step 2 routing. If the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the topic. If a ref was found, load extended detail:
+1. **Parse:** Strip any `--parallel` flag from $ARGUMENTS and store it separately for Step 2 routing. After stripping flags, if the remaining topic is a bare integer (matches `^[0-9]+$`), resolve the todo item against the persisted unfiltered `/vbw:list-todos` snapshot and validate that the live backlog still matches the snapshotted identity:
+    ```bash
+    bash "{plugin-root}/scripts/resolve-todo-item.sh" <N> --session-snapshot --require-unfiltered --validate-live
+    ```
+    Parse the JSON output. If `status` is `"ok"`, store `TODO_SELECTED=true`, store the full payload as `TODO_SELECTED_JSON`, replace the topic with the item's `command_text` value, and reuse the item's `ref` metadata for detail loading. If the resolved `state_path` points under `.vbw-planning/milestones/`, STOP with: `This todo came from archived milestone state. Restore the writable root STATE.md first by restarting so session-start.sh can run migration, or run 'bash scripts/migrate-orphaned-state.sh .vbw-planning'.` Do not continue using the archived description as live research input. If `status` is `"error"`, STOP with the resolver's `message` value.
+
+    If the selected item has a non-null `ref`, load detail immediately:
+    ```bash
+    bash "{plugin-root}/scripts/todo-details.sh" get {hash}
+    ```
+    If `status` is `"ok"`, store `DETAIL_STATUS=ok`, `detail.context`, and `detail.files` for Step 3. If `status` is `"not_found"` or `"error"`, record the matching `DETAIL_STATUS` value and run:
+    ```bash
+    bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
+    ```
+    Continue without detail. If the selected item has no ref, use `DETAIL_STATUS=none`.
+
+    If no numbered todo selection was used, preserve the current manual ref behavior: if the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash and strip the ref tag. Store remaining text (minus flags and ref) as the topic. If a ref was found, load extended detail:
     ```bash
     bash "{plugin-root}/scripts/todo-details.sh" get <hash>
     ```
@@ -44,7 +60,7 @@ Current project:
     ```
     Ignore missing-root-state cases — the helper already degrades gracefully. In all cases, continue without detail.
     If no ref suffix, $ARGUMENTS minus flags = topic.
-    **Post-parse validation:** If the topic is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the research context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:research <topic> [--parallel]"`.
+    **Post-parse validation:** If the topic is empty or whitespace-only after stripping flags and ref, check whether a ref was found (including a numbered selection's resolved ref) AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the research context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:research <topic> [--parallel]"`.
     `--parallel` controls Scout fan-out (Step 2) and must not be included in the topic text passed to Scout.
 2. **Scope:** Single question = 1 Scout. Multi-faceted or --parallel = 2-4 sub-topics.
 3. **Spawn Scout:**
@@ -77,6 +93,7 @@ After calling `Skill(...)`, if the loaded skill's instructions reference additio
 Research: {topic or sub-topic}.
 Project context: {tech stack, constraints from PROJECT.md if relevant}.
 Extended context from todo detail (include only if detail was loaded in Step 1): {detail.context}. Related files: {detail.files, comma-separated}.
+Todo selection note (include only if TODO_SELECTED=true): Numbered /vbw:list-todos research selections are context-only; leave the todo visible because research may not complete the underlying work item.
 </task_context>
 
 <output_path>{resolved save path}</output_path>
@@ -94,7 +111,9 @@ After calling `Skill(...)`, if the loaded skill's instructions reference additio
 
 <task_context>
 Research: {topic or sub-topic}.
-...
+Project context: {tech stack, constraints from PROJECT.md if relevant}.
+Extended context from todo detail (include only if detail was loaded in Step 1): {detail.context}. Related files: {detail.files, comma-separated}.
+Todo selection note (include only if TODO_SELECTED=true): Numbered /vbw:list-todos research selections are context-only; leave the todo visible because research may not complete the underlying work item.
 </task_context>
 ```
     - If save path is unknown yet (user hasn't confirmed), omit `<output_path>` — Scout returns findings in response, and the orchestrator writes them after user confirms a path.
