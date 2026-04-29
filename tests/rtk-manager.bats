@@ -16,6 +16,7 @@ setup() {
   for path_dir in "${_rtk_path_parts[@]}"; do
     [ -n "$path_dir" ] || continue
     [ -x "$path_dir/rtk" ] && continue
+    [ -x "$path_dir/brew" ] && continue
     if [ -z "$clean_path" ]; then
       clean_path="$path_dir"
     else
@@ -33,6 +34,26 @@ rtk_manager() {
   bash "$SCRIPTS_DIR/rtk-manager.sh" "$@"
 }
 
+expected_rtk_config_path() {
+  case "$(uname -s 2>/dev/null || echo unknown)" in
+    Darwin) printf '%s\n' "$HOME/Library/Application Support/rtk/config.toml" ;;
+    *) printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/rtk/config.toml" ;;
+  esac
+}
+
+write_fake_uname() {
+  local os="${1:-Darwin}" arch="${2:-arm64}"
+  cat > "$TEST_TEMP_DIR/bin/uname" <<EOF
+#!/usr/bin/env bash
+case "\${1:-}" in
+  -s) echo "$os" ;;
+  -m) echo "$arch" ;;
+  *) echo "$os" ;;
+esac
+EOF
+  chmod +x "$TEST_TEMP_DIR/bin/uname"
+}
+
 @test "rtk-manager: test harness PATH has no empty segments" {
   [[ "$PATH" == "$TEST_TEMP_DIR/bin" || "$PATH" == "$TEST_TEMP_DIR/bin:"* ]]
   [[ "$PATH" != *: ]]
@@ -41,6 +62,8 @@ rtk_manager() {
 
 write_fake_rtk() {
   local version="${1:-0.1.0}"
+  local config_path
+  config_path="$(expected_rtk_config_path)"
   cat > "$TEST_TEMP_DIR/bin/rtk" <<EOF
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "$TEST_TEMP_DIR/rtk-calls.log"
@@ -55,6 +78,38 @@ case "\${1:-}" in
       echo 'average savings: 47%'
     fi
     ;;
+  config)
+    if [ "\${2:-}" = "--create" ]; then
+      if [ "\${FAKE_RTK_CONFIG_CREATE_FAIL:-false}" = "true" ]; then exit 55; fi
+      mkdir -p "$(dirname "$config_path")"
+      cat > "$config_path" <<'TOML'
+[tracking]
+enabled = true
+history_days = 90
+
+[display]
+colors = true
+emoji = true
+max_width = 120
+
+[filters]
+ignore_dirs = [".git", "node_modules", "target", "__pycache__", ".venv", "vendor"]
+ignore_files = ["*.lock", "*.min.js", "*.min.css"]
+
+[tee]
+enabled = true
+mode = "failures"
+max_files = 20
+
+[hooks]
+exclude_commands = []
+TOML
+      exit 0
+    fi
+    if [ "\${FAKE_RTK_CONFIG_VALIDATE_FAIL:-false}" = "true" ]; then exit 57; fi
+    [ -s "$config_path" ] || exit 56
+    cat "$config_path"
+    ;;
   init)
     if [ "\${2:-}" = "-g" ] && [ "\${3:-}" = "--uninstall" ]; then
       if [ -e "\$0" ]; then echo "uninstall_binary_exists=yes" >> "$TEST_TEMP_DIR/rtk-calls.log"; fi
@@ -66,6 +121,10 @@ case "\${1:-}" in
       fi
       rm -f "$CLAUDE_CONFIG_DIR/settings.json"
       exit 0
+    fi
+    if [ "\${FAKE_RTK_INIT_FAIL_WITH_MANUAL:-false}" = "true" ]; then
+      echo 'Manual settings snippet: {"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}'
+      exit 42
     fi
     mkdir -p "$CLAUDE_CONFIG_DIR"
     cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
@@ -90,6 +149,85 @@ EOF
   chmod +x "$TEST_TEMP_DIR/bin/curl"
 }
 
+write_fake_brew() {
+  local version="${1:-9.9.9}" config_path
+  config_path="$(expected_rtk_config_path)"
+  cat > "$TEST_TEMP_DIR/bin/brew" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$TEST_TEMP_DIR/brew-calls.log"
+write_rtk() {
+  cat > "$TEST_TEMP_DIR/bin/rtk" <<'RTK'
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$TEST_TEMP_DIR/rtk-calls.log"
+case "\${1:-}" in
+  --version) echo "rtk $version" ;;
+  gain)
+    if [ "\${2:-}" = "--json" ]; then
+      echo '{"average_savings_pct":47,"commands":3}'
+    else
+      echo 'average savings: 47%'
+    fi
+    ;;
+  config)
+    if [ "\${2:-}" = "--create" ]; then
+      if [ "\${FAKE_RTK_CONFIG_CREATE_FAIL:-false}" = "true" ]; then exit 55; fi
+      mkdir -p "$(dirname "$config_path")"
+      cat > "$config_path" <<'TOML'
+[tracking]
+enabled = true
+history_days = 90
+
+[display]
+colors = true
+emoji = true
+max_width = 120
+
+[filters]
+ignore_dirs = [".git", "node_modules", "target", "__pycache__", ".venv", "vendor"]
+ignore_files = ["*.lock", "*.min.js", "*.min.css"]
+
+[tee]
+enabled = true
+mode = "failures"
+max_files = 20
+
+[hooks]
+exclude_commands = []
+TOML
+      exit 0
+    fi
+    [ -s "$config_path" ] || exit 56
+    cat "$config_path"
+    ;;
+  init)
+    if [ "\${FAKE_RTK_INIT_FAIL_WITH_MANUAL:-false}" = "true" ]; then
+      echo 'Manual settings snippet: {"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}'
+      exit 42
+    fi
+    mkdir -p "$CLAUDE_CONFIG_DIR"
+    cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}
+JSON
+    ;;
+  *) exit 0 ;;
+esac
+RTK
+  chmod +x "$TEST_TEMP_DIR/bin/rtk"
+}
+case "\${1:-}" in
+  install) write_rtk ;;
+  upgrade) write_rtk ;;
+  outdated)
+    if [ "\${FAKE_BREW_OUTDATED:-false}" = "true" ]; then echo rtk; fi
+    ;;
+  uninstall) rm -f "$TEST_TEMP_DIR/bin/rtk" ;;
+  list) [ -x "$TEST_TEMP_DIR/bin/rtk" ] ;;
+  *) exit 0 ;;
+esac
+EOF
+  chmod +x "$TEST_TEMP_DIR/bin/brew"
+}
+
 release_target_asset() {
   case "$(uname -s):$(uname -m)" in
     Darwin:arm64|Darwin:aarch64) echo "rtk-aarch64-apple-darwin.tar.gz" ;;
@@ -109,13 +247,52 @@ sha256_value() {
 
 prepare_release_fixture() {
   local version="${1:-9.9.9}" mismatch="${2:-false}" checksum_mode="${3:-present}"
-  local asset checksum
+  local asset checksum config_path
   asset="$(release_target_asset)"
+  config_path="$(expected_rtk_config_path)"
   mkdir -p "$TEST_TEMP_DIR/release/payload"
   cat > "$TEST_TEMP_DIR/release/payload/rtk" <<EOF
 #!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$TEST_TEMP_DIR/installed-rtk-calls.log"
 case "\${1:-}" in
   --version) echo "rtk $version" ;;
+  gain) echo 'average savings: 47%' ;;
+  config)
+    if [ "\${2:-}" = "--create" ]; then
+      mkdir -p "$(dirname "$config_path")"
+      cat > "$config_path" <<'TOML'
+[tracking]
+enabled = true
+history_days = 90
+
+[display]
+colors = true
+emoji = true
+max_width = 120
+
+[filters]
+ignore_dirs = [".git", "node_modules", "target", "__pycache__", ".venv", "vendor"]
+ignore_files = ["*.lock", "*.min.js", "*.min.css"]
+
+[tee]
+enabled = true
+mode = "failures"
+max_files = 20
+
+[hooks]
+exclude_commands = []
+TOML
+      exit 0
+    fi
+    [ -s "$config_path" ] || exit 56
+    cat "$config_path"
+    ;;
+  init)
+    mkdir -p "$CLAUDE_CONFIG_DIR"
+    cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}
+JSON
+    ;;
   *) echo "installed fake rtk $version" ;;
 esac
 EOF
@@ -239,7 +416,8 @@ EOF
 }
 
 create_managed_rtk() {
-  local version="${1:-0.1.0}" dir="${2:-$TEST_TEMP_DIR/managed-bin}" binary
+  local version="${1:-0.1.0}" dir="${2:-$TEST_TEMP_DIR/managed-bin}" binary config_path
+  config_path="$(expected_rtk_config_path)"
   mkdir -p "$dir" "$VBW_RTK_DIR"
   binary="$dir/rtk"
   cat > "$binary" <<EOF
@@ -247,6 +425,37 @@ create_managed_rtk() {
 printf '%s\n' "\$*" >> "$TEST_TEMP_DIR/rtk-calls.log"
 case "\${1:-}" in
   --version) echo "rtk $version" ;;
+  gain) echo 'average savings: 47%' ;;
+  config)
+    if [ "\${2:-}" = "--create" ]; then
+      mkdir -p "$(dirname "$config_path")"
+      cat > "$config_path" <<'TOML'
+[tracking]
+enabled = true
+history_days = 90
+
+[display]
+colors = true
+emoji = true
+max_width = 120
+
+[filters]
+ignore_dirs = [".git", "node_modules", "target", "__pycache__", ".venv", "vendor"]
+ignore_files = ["*.lock", "*.min.js", "*.min.css"]
+
+[tee]
+enabled = true
+mode = "failures"
+max_files = 20
+
+[hooks]
+exclude_commands = []
+TOML
+      exit 0
+    fi
+    [ -s "$config_path" ] || exit 56
+    cat "$config_path"
+    ;;
   init)
     if [ "\${2:-}" = "-g" ] && [ "\${3:-}" = "--uninstall" ]; then
       if [ -e "\$0" ]; then echo "uninstall_binary_exists=yes" >> "$TEST_TEMP_DIR/rtk-calls.log"; fi
@@ -258,6 +467,10 @@ case "\${1:-}" in
       fi
       exit 0
     fi
+    mkdir -p "$CLAUDE_CONFIG_DIR"
+    cat > "$CLAUDE_CONFIG_DIR/settings.json" <<'JSON'
+{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"rtk hook claude"}]}]}}
+JSON
     ;;
 esac
 EOF
@@ -269,6 +482,10 @@ EOF
 
 write_valid_smoke_proof() {
   mkdir -p "$VBW_RTK_DIR"
+  local config_path
+  config_path="$(expected_rtk_config_path)"
+  mkdir -p "$(dirname "$config_path")"
+  printf '%s\n' '[tracking]' 'enabled = true' 'history_days = 90' > "$config_path"
   cat > "$VBW_RTK_DIR/rtk-compatibility-proof.json" <<'JSON'
 {
   "proof_type": "runtime_smoke",
@@ -334,6 +551,8 @@ EOF
   echo "$output" | jq -e '.rtk_present == false'
   echo "$output" | jq -e '.compatibility == "absent"'
   echo "$output" | jq -e '.version_source == "none"'
+  echo "$output" | jq -e '.config_present == false'
+  echo "$output" | jq -e '.config_state == "missing"'
   [ ! -f "$TEST_TEMP_DIR/curl-called.log" ]
 }
 
@@ -344,6 +563,7 @@ EOF
   echo "$output" | jq -e '.rtk_present == true'
   echo "$output" | jq -e '.rtk_version == "0.1.0"'
   echo "$output" | jq -e '.compatibility == "binary_only"'
+  echo "$output" | jq -e '.config_state == "missing"'
   ! grep -Fq 'gain --json' "$TEST_TEMP_DIR/rtk-calls.log"
 }
 
@@ -415,6 +635,23 @@ JSON
   echo "$output" | jq -e '.compatibility == "settings_unreadable"'
 }
 
+@test "rtk-manager: config validation failure is reported in status and doctor" {
+  write_fake_rtk "0.1.0"
+  local config_path
+  config_path="$(expected_rtk_config_path)"
+  mkdir -p "$(dirname "$config_path")"
+  printf '%s\n' '[tracking]' 'enabled = true' > "$config_path"
+  export FAKE_RTK_CONFIG_VALIDATE_FAIL=true
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.config_present == true'
+  echo "$output" | jq -e '.config_state == "config_error"'
+  run rtk_manager doctor-json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.doctor_status == "WARN"'
+  echo "$output" | jq -e '.doctor_detail | test("config unreadable|config")'
+}
+
 @test "rtk-manager: check-updates queries latest release only on explicit flag" {
   write_fake_rtk "0.1.0"
   prepare_release_fixture "9.9.9"
@@ -434,8 +671,11 @@ JSON
   run rtk_manager install --dry-run
   [ "$status" -eq 0 ]
   [[ "$output" == *"RTK install preflight"* ]]
-  [[ "$output" == *"Does not do: edit Claude settings"* ]]
-  [[ "$output" == *"pipe downloaded shell scripts into sh"* ]]
+  [[ "$output" == *"Method:"* ]]
+  [[ "$output" == *"Will run:"* ]]
+  [[ "$output" == *"Fallback:"* ]]
+  [[ "$output" == *"rtk init -g --auto-patch"* ]]
+  [[ "$output" == *"no curl-pipe-shell"* ]]
   [ ! -e "$HOME/.local/bin/rtk" ]
   [ ! -f "$VBW_RTK_DIR/rtk-install.json" ]
   [ ! -f "$VBW_RTK_DIR/rtk-latest-release.json" ]
@@ -474,6 +714,35 @@ JSON
   [ "$status" -eq 0 ]
   [ -x "$RTK_INSTALL_DIR/rtk" ]
   jq -e '.installed_version == "9.9.9"' "$VBW_RTK_DIR/rtk-install.json"
+}
+
+@test "rtk-manager: install runs full setup when GitHub binary is on PATH" {
+  prepare_release_fixture "9.9.9"
+  write_release_curl
+  export RTK_INSTALL_DIR="$TEST_TEMP_DIR/bin"
+  run rtk_manager install --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Binary: verified"* ]]
+  [[ "$output" == *"Config: created_after_missing"* ]]
+  [[ "$output" == *"Hook: active"* ]]
+  [ -s "$(expected_rtk_config_path)" ]
+  jq -e '.hooks.PreToolUse[0].hooks[0].command | test("rtk hook claude")' "$CLAUDE_CONFIG_DIR/settings.json"
+  grep -Fq -- '--version' "$TEST_TEMP_DIR/installed-rtk-calls.log"
+  grep -Fxq 'gain' "$TEST_TEMP_DIR/installed-rtk-calls.log"
+  grep -Fq -- 'config --create' "$TEST_TEMP_DIR/installed-rtk-calls.log"
+  grep -Fq -- 'init -g --auto-patch' "$TEST_TEMP_DIR/installed-rtk-calls.log"
+}
+
+@test "rtk-manager: install prefers Homebrew on macOS with fake brew" {
+  write_fake_uname Darwin arm64
+  write_fake_brew "9.9.9"
+  run rtk_manager install --yes
+  [ "$status" -eq 0 ]
+  grep -Fxq 'install rtk' "$TEST_TEMP_DIR/brew-calls.log"
+  jq -e '.method == "homebrew"' "$VBW_RTK_DIR/rtk-install.json"
+  jq -e '.binary_path | endswith("/rtk")' "$VBW_RTK_DIR/rtk-install.json"
+  [ -s "$HOME/Library/Application Support/rtk/config.toml" ]
+  jq -e '.global_hook_present == true' < <(rtk_manager status --json)
 }
 
 @test "rtk-manager: managed install aborts on checksum mismatch" {
@@ -527,8 +796,9 @@ JSON
   [ "$status" -eq 0 ]
   [[ "$output" == *"RTK hook preflight"* ]]
   [[ "$output" == *"rtk init -g"* ]]
-  [[ "$output" != *"--auto-patch"* ]]
+  [[ "$output" == *"--auto-patch"* ]]
   [[ "$output" != *"--hook-only"* ]]
+  [[ "$output" == *"Fallback:"* ]]
   [[ "$output" == *"updatedInput"* ]]
   [ ! -f "$CLAUDE_CONFIG_DIR/settings.json" ]
 }
@@ -539,6 +809,70 @@ JSON
   [ "$status" -eq 0 ]
   [[ "$output" == *"--auto-patch"* ]]
   [[ "$output" == *"--hook-only"* ]]
+}
+
+@test "rtk-manager: init creates missing RTK config and activates hook" {
+  write_fake_rtk "0.1.0"
+  run rtk_manager init --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Binary: verified"* ]]
+  [[ "$output" == *"Config: created_after_missing"* ]]
+  [[ "$output" == *"Hook: active"* ]]
+  [ -s "$(expected_rtk_config_path)" ]
+  jq -e '.config_present == true' < <(rtk_manager status --json)
+  grep -Fq -- 'init -g --auto-patch' "$TEST_TEMP_DIR/rtk-calls.log"
+}
+
+@test "rtk-manager: init preserves existing RTK config" {
+  write_fake_rtk "0.1.0"
+  local config_path
+  config_path="$(expected_rtk_config_path)"
+  mkdir -p "$(dirname "$config_path")"
+  printf '%s\n' '[tracking]' 'enabled = false' > "$config_path"
+  run rtk_manager init --yes
+  [ "$status" -eq 0 ]
+  grep -Fq 'enabled = false' "$config_path"
+}
+
+@test "rtk-manager: init fallback creates non-telemetry config when rtk config create fails" {
+  write_fake_rtk "0.1.0"
+  export FAKE_RTK_CONFIG_CREATE_FAIL=true
+  run rtk_manager init --yes
+  [ "$status" -eq 0 ]
+  local config_path
+  config_path="$(expected_rtk_config_path)"
+  [ -s "$config_path" ]
+  grep -Fq '[tracking]' "$config_path"
+  grep -Fq 'exclude_commands = []' "$config_path"
+  ! grep -Fq '[telemetry]' "$config_path"
+}
+
+@test "rtk-manager: init handles macOS Application Support config path with spaces" {
+  write_fake_uname Darwin arm64
+  write_fake_rtk "0.1.0"
+  run rtk_manager init --yes
+  [ "$status" -eq 0 ]
+  [ -s "$HOME/Library/Application Support/rtk/config.toml" ]
+}
+
+@test "rtk-manager: fallback settings patch activates hook after RTK auto-patch failure" {
+  write_fake_rtk "0.1.0"
+  export FAKE_RTK_INIT_FAIL_WITH_MANUAL=true
+  run rtk_manager init --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Hook: active via VBW settings fallback patch"* ]]
+  jq -e '.hooks.PreToolUse[0].matcher == "Bash"' "$CLAUDE_CONFIG_DIR/settings.json"
+  jq -e '.hooks.PreToolUse[0].hooks[0].command | test("rtk.*hook claude")' "$CLAUDE_CONFIG_DIR/settings.json"
+}
+
+@test "rtk-manager: fallback settings patch preserves malformed settings" {
+  write_fake_rtk "0.1.0"
+  printf '{not-json' > "$CLAUDE_CONFIG_DIR/settings.json"
+  export FAKE_RTK_INIT_FAIL_WITH_MANUAL=true
+  run rtk_manager init --yes
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"settings preserved"* ]]
+  [ "$(cat "$CLAUDE_CONFIG_DIR/settings.json")" = "{not-json" ]
 }
 
 @test "rtk-manager: doctor-json skips absent RTK" {
@@ -734,6 +1068,10 @@ JSON
 @test "rtk-manager: validated quoted absolute hook proof can produce doctor PASS" {
   local binary
   binary="$(create_managed_rtk "0.1.0" "$TEST_TEMP_DIR/managed bin with space")"
+  local config_path
+  config_path="$(expected_rtk_config_path)"
+  mkdir -p "$(dirname "$config_path")"
+  printf '%s\n' '[tracking]' 'enabled = true' 'history_days = 90' > "$config_path"
   local quoted_command="\"$binary\" hook claude"
   jq -n --arg command "$quoted_command" '{hooks:{PreToolUse:[{matcher:"Bash",hooks:[{type:"command",command:$command}]}]}}' > "$CLAUDE_CONFIG_DIR/settings.json"
   mkdir -p "$VBW_RTK_DIR"
@@ -861,6 +1199,31 @@ JSON
   jq -e '.previous_version == "0.1.0"' "$VBW_RTK_DIR/rtk-install.json"
   jq -e '.installed_version == "9.9.9"' "$VBW_RTK_DIR/rtk-install.json"
   [ "$(grep -c -- '--max-time 7' "$TEST_TEMP_DIR/curl-calls.log")" -ge 3 ]
+}
+
+@test "rtk-manager: Homebrew-managed update uses brew upgrade when outdated" {
+  write_fake_uname Darwin arm64
+  write_fake_brew "9.9.9"
+  "$TEST_TEMP_DIR/bin/brew" install rtk
+  mkdir -p "$VBW_RTK_DIR"
+  jq -n --arg binary "$TEST_TEMP_DIR/bin/rtk" '{manager:"vbw", method:"homebrew", binary_path:$binary, installed_version:"0.1.0"}' > "$VBW_RTK_DIR/rtk-install.json"
+  export FAKE_BREW_OUTDATED=true
+  run rtk_manager update --yes
+  [ "$status" -eq 0 ]
+  grep -Fxq 'upgrade rtk' "$TEST_TEMP_DIR/brew-calls.log"
+  jq -e '.method == "homebrew"' "$VBW_RTK_DIR/rtk-install.json"
+}
+
+@test "rtk-manager: Homebrew-managed uninstall calls brew uninstall after safety guards" {
+  write_fake_uname Darwin arm64
+  write_fake_brew "9.9.9"
+  "$TEST_TEMP_DIR/bin/brew" install rtk
+  mkdir -p "$VBW_RTK_DIR"
+  jq -n --arg binary "$TEST_TEMP_DIR/bin/rtk" '{manager:"vbw", method:"homebrew", binary_path:$binary, installed_version:"9.9.9"}' > "$VBW_RTK_DIR/rtk-install.json"
+  run rtk_manager uninstall --yes
+  [ "$status" -eq 0 ]
+  grep -Fxq 'uninstall rtk' "$TEST_TEMP_DIR/brew-calls.log"
+  [ ! -f "$VBW_RTK_DIR/rtk-install.json" ]
 }
 
 @test "rtk-manager: missing checksum aborts unless explicitly allowed" {

@@ -104,6 +104,44 @@ command_path() {
   command -v "$1" 2>/dev/null || true
 }
 
+platform_os() {
+  uname -s 2>/dev/null || echo unknown
+}
+
+preferred_install_method_detect() {
+  if [ "$(platform_os)" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
+    echo "homebrew"
+  else
+    echo "github-release"
+  fi
+}
+
+rtk_config_path() {
+  case "$(platform_os)" in
+    Darwin)
+      printf '%s\n' "$HOME/Library/Application Support/rtk/config.toml"
+      ;;
+    *)
+      if [ -n "${XDG_CONFIG_HOME:-}" ]; then
+        printf '%s\n' "$XDG_CONFIG_HOME/rtk/config.toml"
+      else
+        printf '%s\n' "$HOME/.config/rtk/config.toml"
+      fi
+      ;;
+  esac
+}
+
+rtk_config_state() {
+  local path="$1"
+  if [ ! -f "$path" ]; then
+    echo "missing"
+  elif [ ! -s "$path" ]; then
+    echo "config_error"
+  else
+    echo "present"
+  fi
+}
+
 rtk_path_from_receipt() {
   if [ -f "$RTK_RECEIPT_FILE" ] && jq empty "$RTK_RECEIPT_FILE" >/dev/null 2>&1; then
     jq -r '.binary_path // empty' "$RTK_RECEIPT_FILE" 2>/dev/null || true
@@ -352,6 +390,7 @@ status_json() {
   local check_updates="${1:-false}" include_stats="${2:-false}"
   local rtk_path rtk_present rtk_version latest_json latest_version latest_checked_at update_available version_source
   local managed_by_vbw install_receipt receipt_binary binary_install_state can_install preferred_install_method
+  local config_path config_present config_state
   local settings_json_valid hook_command hook_matcher global_hook_present global_claude_ref global_rtk_md legacy_hook project_local vbw_hook bash_hook_count multiple_bash updated_input_risk
   local settings_hook_state active_hook_rtk_path active_hook_rtk_version proof_source compatibility restart_required summary next_action stats_json
 
@@ -388,11 +427,23 @@ status_json() {
     binary_install_state="receipt_missing_binary"
   fi
 
+  preferred_install_method="$(preferred_install_method_detect)"
   can_install=true
-  command -v curl >/dev/null 2>&1 || can_install=false
   command -v jq >/dev/null 2>&1 || can_install=false
-  [ -n "$(checksum_tool)" ] || can_install=false
-  preferred_install_method="github-release"
+  if [ "$preferred_install_method" = "homebrew" ]; then
+    command -v brew >/dev/null 2>&1 || can_install=false
+  else
+    command -v curl >/dev/null 2>&1 || can_install=false
+    [ -n "$(checksum_tool)" ] || can_install=false
+  fi
+
+  config_path="$(rtk_config_path)"
+  config_state="$(rtk_config_state "$config_path")"
+  if [ "$config_state" = "present" ] && [ -n "$rtk_path" ] && ! validate_rtk_config_if_possible "$rtk_path"; then
+    config_state="config_error"
+  fi
+  config_present=false
+  [ "$config_state" != "missing" ] && config_present=true
 
   settings_json_valid=true
   if ! settings_valid; then settings_json_valid=false; fi
@@ -496,6 +547,19 @@ status_json() {
       ;;
   esac
 
+  if [ "$rtk_present" = "true" ] || [ "$global_hook_present" = "true" ]; then
+    case "$config_state" in
+      missing)
+        summary="${summary}; RTK config missing at ${config_path}"
+        next_action="install"
+        ;;
+      config_error)
+        summary="${summary}; RTK config unreadable or empty at ${config_path}"
+        next_action="repair_config"
+        ;;
+    esac
+  fi
+
   stats_json="null"
   if [ "$include_stats" = "true" ] && [ -n "$rtk_path" ]; then
     stats_json="$("$rtk_path" gain --json 2>/dev/null || echo null)"
@@ -515,6 +579,9 @@ status_json() {
     --arg preferred_install_method "$preferred_install_method" \
     --argjson can_install "$(bool_to_json "$can_install")" \
     --arg binary_install_state "$binary_install_state" \
+    --argjson config_present "$(bool_to_json "$config_present")" \
+    --arg config_path "$config_path" \
+    --arg config_state "$config_state" \
     --argjson settings_json_valid "$(bool_to_json "$settings_json_valid")" \
     --arg settings_hook_state "$settings_hook_state" \
     --argjson global_hook_present "$(bool_to_json "$global_hook_present")" \
@@ -548,6 +615,9 @@ status_json() {
       preferred_install_method: $preferred_install_method,
       can_install: $can_install,
       binary_install_state: $binary_install_state,
+      config_present: $config_present,
+      config_path: $config_path,
+      config_state: $config_state,
       settings_json_valid: $settings_json_valid,
       settings_hook_state: $settings_hook_state,
       global_hook_present: $global_hook_present,
@@ -584,6 +654,8 @@ doctor_json() {
       ]) as $rtk_artifacts
     | .doctor_status = (
         if ($s.settings_json_valid == false) then "WARN"
+        elif ($s.config_state == "config_error") then "WARN"
+        elif (($s.config_state == "missing") and (($s.rtk_present == true) or ($s.global_hook_present == true))) then "WARN"
         elif ($s.update_available == true) then "WARN"
         elif ($s.compatibility == "verified") then "PASS"
         elif ($s.compatibility == "absent" and ($rtk_artifacts | length) == 0) then "SKIP"
@@ -591,6 +663,8 @@ doctor_json() {
       )
     | .doctor_detail = (
         if .settings_json_valid == false then "Claude settings unreadable; RTK hook state cannot be determined from settings.json"
+        elif .config_state == "config_error" then "RTK config unreadable or empty at " + ($s.config_path // "unknown")
+        elif (.config_state == "missing" and ((.rtk_present == true) or (.global_hook_present == true))) then "RTK config missing at " + ($s.config_path // "unknown") + "; run /vbw:rtk install or /vbw:rtk init to repair setup"
         elif .update_available == true then "outdated from cached RTK release check; run /vbw:rtk update"
         elif .doctor_status == "PASS" then "verified by " + ($s.proof_source // "smoke proof")
         elif ($rtk_artifacts | length) > 0 then "RTK artifacts present with no active settings hook: " + ($rtk_artifacts | join(", ")) + "; run /vbw:rtk status or /vbw:rtk uninstall/manage"
@@ -619,32 +693,64 @@ latest_metadata_or_die() {
 }
 
 print_install_preflight() {
-  local operation="$1" metadata="$2" install_dir="$3" installed_version="$4"
-  local tag asset_name checksums_url path_state next_step risk
-  tag="$(printf '%s' "$metadata" | jq -r '.tag // empty')"
-  asset_name="$(printf '%s' "$metadata" | jq -r '.asset_name // empty')"
-  checksums_url="$(printf '%s' "$metadata" | jq -r '.checksums_url // empty')"
+  local operation="$1" method="$2" metadata="$3" install_dir="$4" installed_version="$5"
+  local tag asset_name checksums_url path_state next_step risk writes will_run fallback restart method_label
+  tag="$(printf '%s' "$metadata" | jq -r '.tag // empty' 2>/dev/null || true)"
+  asset_name="$(printf '%s' "$metadata" | jq -r '.asset_name // empty' 2>/dev/null || true)"
+  checksums_url="$(printf '%s' "$metadata" | jq -r '.checksums_url // empty' 2>/dev/null || true)"
   path_state="on PATH"
   if ! path_contains_dir "$install_dir"; then
     path_state="not on PATH"
   fi
-  next_step="Run /vbw:rtk init after the binary is visible on PATH."
-  risk="No Claude Code settings are edited by this ${operation}; checksum is required when checksums.txt exists."
+  if [ "$operation" = "update" ]; then
+    restart="No restart required for the binary replacement itself; restart only before a new runtime hook smoke test."
+  else
+    restart="Restart Claude Code after hook activation before runtime verification."
+  fi
+  risk="No sudo, no shell profile edits, no curl-pipe-shell. Claude Code issue #15897 can leave multi-hook updatedInput behavior unverified until runtime smoke proof."
+  if [ "$method" = "homebrew" ]; then
+    method_label="Homebrew (auto-selected on macOS when brew is available)"
+    if [ "$operation" = "update" ]; then
+      will_run="brew upgrade rtk or no-op if Homebrew reports it is current; rtk --version; rtk gain"
+      writes="Homebrew-managed RTK files; receipt ${RTK_RECEIPT_FILE}; backups under ${RTK_BACKUP_DIR}"
+      fallback="No-op when Homebrew reports rtk is current."
+      next_step="Run /vbw:rtk verify if hook compatibility needs re-checking."
+    else
+      will_run="brew install rtk; rtk --version; rtk gain; rtk config --create when config is missing; rtk init -g --auto-patch"
+      writes="Homebrew-managed RTK files; receipt ${RTK_RECEIPT_FILE}; config $(rtk_config_path); ${RTK_SETTINGS_JSON}, ${RTK_GLOBAL_MD}, ${RTK_CLAUDE_MD} when RTK/VBW patch hooks"
+      fallback="Use jq settings patch if RTK auto-patch does not persist the hook; use GitHub release path only when Homebrew is unavailable before mutation."
+      next_step="Run /vbw:rtk verify after restart."
+    fi
+  else
+    method_label="GitHub release asset from rtk-ai/rtk (${path_state})"
+    if [ "$operation" = "update" ]; then
+      will_run="query latest release metadata, download ${asset_name:-matching asset}, download checksums.txt, verify SHA-256, replace the receipt-owned RTK binary, then run rtk --version and rtk gain"
+      writes="${install_dir}/rtk (${path_state}); receipt ${RTK_RECEIPT_FILE}; backups under ${RTK_BACKUP_DIR}"
+      fallback="No-op when the installed version is current; checksum failure aborts without replacement."
+      next_step="Run /vbw:rtk verify if hook compatibility needs re-checking."
+    else
+      will_run="query latest release metadata, download ${asset_name:-matching asset}, download checksums.txt, verify SHA-256, install rtk, then run rtk --version, rtk gain, config bootstrap, and rtk init -g --auto-patch when the binary is on PATH"
+      writes="${install_dir}/rtk (${path_state}); receipt ${RTK_RECEIPT_FILE}; backups under ${RTK_BACKUP_DIR}; config $(rtk_config_path); ${RTK_SETTINGS_JSON}, ${RTK_GLOBAL_MD}, ${RTK_CLAUDE_MD} when hook setup runs"
+      fallback="Stop with PATH guidance if ${install_dir} is not on PATH; otherwise use jq settings patch if RTK auto-patch does not persist the hook."
+      next_step="If PATH-visible, run /vbw:rtk verify after restart; otherwise add ${install_dir} to PATH and rerun setup."
+    fi
+  fi
   echo "RTK ${operation} preflight"
   echo "Installed: ${installed_version:-absent}"
   echo "Latest: ${tag:-unknown}"
-  echo "Method: latest GitHub release asset from rtk-ai/rtk"
-  echo "Will run: query latest release metadata, download ${asset_name:-matching asset}, download checksums.txt, verify SHA-256, install rtk"
-  echo "Writes: ${install_dir}/rtk (${path_state}); receipt ${RTK_RECEIPT_FILE}; backups under ${RTK_BACKUP_DIR}"
-  echo "Does not do: edit Claude settings, edit shell profiles, use sudo, pipe downloaded shell scripts into sh, or run rtk init -g"
+  echo "Method: ${method_label}"
+  echo "Will run: ${will_run}"
+  echo "Writes: ${writes}"
+  echo "Fallback: ${fallback}"
+  echo "Restart: ${restart}"
   echo "Next step: ${next_step}"
   echo "Risk: ${risk}"
-  if [ -z "$checksums_url" ]; then
+  if [ "$method" = "github-release" ] && [ -z "$checksums_url" ]; then
     echo "Checksum: unavailable; operation will abort unless --allow-missing-checksum is explicitly provided"
-  else
+  elif [ "$method" = "github-release" ]; then
     echo "Checksum: ${checksums_url}"
   fi
-  if ! path_contains_dir "$install_dir"; then
+  if [ "$method" = "github-release" ] && ! path_contains_dir "$install_dir"; then
     echo "PATH note: add this yourself before hook activation: export PATH=\"${install_dir}:\$PATH\""
   fi
 }
@@ -664,14 +770,214 @@ backup_rtk_global_config_files() {
   backup_if_present "$RTK_GLOBAL_MD"
 }
 
+shell_single_quote() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+
+verify_rtk_binary() {
+  local rtk_path="$1"
+  [ -n "$rtk_path" ] && [ -x "$rtk_path" ] || die 1 "RTK binary probe failed; no executable RTK binary found"
+  "$rtk_path" --version >/dev/null 2>&1 || die 1 "RTK binary probe failed: $rtk_path --version did not run"
+  "$rtk_path" gain >/dev/null 2>&1 || die 1 "RTK binary probe failed: $rtk_path gain did not run; refusing to treat this as the RTK CLI"
+}
+
+write_minimal_rtk_config() {
+  local path="$1"
+  mkdir -p "$(dirname "$path")"
+  cat > "$path" <<'EOF'
+[tracking]
+enabled = true
+history_days = 90
+
+[display]
+colors = true
+emoji = true
+max_width = 120
+
+[filters]
+ignore_dirs = [".git", "node_modules", "target", "__pycache__", ".venv", "vendor"]
+ignore_files = ["*.lock", "*.min.js", "*.min.css"]
+
+[tee]
+enabled = true
+mode = "failures"
+max_files = 20
+
+[hooks]
+exclude_commands = []
+EOF
+}
+
+validate_rtk_config_if_possible() {
+  local rtk_path="$1" err_file status
+  [ -n "$rtk_path" ] && [ -x "$rtk_path" ] || return 0
+  err_file="$(mktemp)"
+  set +e
+  "$rtk_path" config >/dev/null 2>"$err_file"
+  status=$?
+  set -e
+  if [ "$status" -eq 0 ]; then
+    rm -f "$err_file"
+    return 0
+  fi
+  if grep -Eiq 'unknown|unsupported|unrecognized|invalid option|usage:' "$err_file" 2>/dev/null; then
+    rm -f "$err_file"
+    return 0
+  fi
+  rm -f "$err_file"
+  return 1
+}
+
+bootstrap_rtk_config() {
+  local rtk_path="$1" config_path existed=false status
+  config_path="$(rtk_config_path)"
+  if [ -e "$config_path" ]; then
+    existed=true
+  fi
+  status="$(rtk_config_state "$config_path")"
+  case "$status" in
+    present)
+      if validate_rtk_config_if_possible "$rtk_path"; then
+        echo "Config: present at $config_path"
+      else
+        echo "Config: config_error at $config_path"
+      fi
+      return 0
+      ;;
+    config_error)
+      echo "Config: config_error at $config_path (existing file preserved)"
+      return 0
+      ;;
+  esac
+
+  mkdir -p "$(dirname "$config_path")"
+  set +e
+  "$rtk_path" config --create >/dev/null 2>&1
+  status=$?
+  set -e
+  if [ "$status" -eq 0 ] && [ -s "$config_path" ] && validate_rtk_config_if_possible "$rtk_path"; then
+    echo "Config: created_after_missing at $config_path"
+    return 0
+  fi
+
+  if [ "$existed" = "true" ]; then
+    echo "Config: config_error at $config_path (existing file preserved)"
+    return 0
+  fi
+
+  write_minimal_rtk_config "$config_path"
+  if validate_rtk_config_if_possible "$rtk_path"; then
+    echo "Config: fallback_created at $config_path"
+  else
+    echo "Config: config_error at $config_path (fallback preserved for inspection)"
+  fi
+}
+
+patch_settings_hook() {
+  local rtk_path="$1" hook_command settings_dir input_file base_file tmp_file
+  settings_valid || return 1
+  hook_command="$(shell_single_quote "$rtk_path") hook claude"
+  settings_dir="$(dirname "$RTK_SETTINGS_JSON")"
+  mkdir -p "$settings_dir"
+  input_file="$RTK_SETTINGS_JSON"
+  base_file=""
+  if [ ! -f "$input_file" ]; then
+    base_file="$(mktemp "$settings_dir/settings-base.XXXXXX")"
+    printf '{}\n' > "$base_file"
+    input_file="$base_file"
+  fi
+  tmp_file="$(mktemp "$settings_dir/settings.XXXXXX")"
+  jq --arg command "$hook_command" '
+    if type == "object" then . else {} end
+    | .hooks = (if ((.hooks // {}) | type) == "object" then (.hooks // {}) else {} end)
+    | .hooks.PreToolUse = (
+        ((.hooks.PreToolUse // []) | if type == "array" then . else [] end)
+        | map(
+            if type == "object" then
+              .hooks = (
+                ((.hooks // []) | if type == "array" then . else [] end)
+                | map(select((((.command // "") | gsub("[\"'\'' ]"; "")) | test("(^|/)rtkhookclaude($|[;])|rtk-rewrite[.]sh")) | not))
+              )
+            else
+              empty
+            end
+          )
+        | map(select(((.hooks // []) | length) > 0))
+        | [{matcher:"Bash",hooks:[{type:"command",command:$command}]}] + .
+      )
+  ' "$input_file" > "$tmp_file"
+  backup_if_present "$RTK_SETTINGS_JSON"
+  chmod 600 "$tmp_file" 2>/dev/null || true
+  mv "$tmp_file" "$RTK_SETTINGS_JSON"
+  [ -z "$base_file" ] || rm -f "$base_file"
+}
+
+activate_rtk_hook() {
+  local rtk_path="$1" hook_only="${2:-false}" stdout_file stderr_file status status_after hook_present recoverable
+  local -a init_args=(init -g --auto-patch)
+  [ "$hook_only" = "true" ] && init_args+=(--hook-only)
+  stdout_file="$(mktemp)"
+  stderr_file="$(mktemp)"
+  backup_rtk_global_config_files
+  set +e
+  "$rtk_path" "${init_args[@]}" >"$stdout_file" 2>"$stderr_file"
+  status=$?
+  set -e
+  status_after="$(status_json false false)"
+  hook_present="$(printf '%s' "$status_after" | jq -r '.global_hook_present // false')"
+  if [ "$hook_present" = "true" ]; then
+    rm -f "$stdout_file" "$stderr_file"
+    echo "Hook: active via rtk init -g --auto-patch"
+    return 0
+  fi
+
+  recoverable=false
+  if [ "$status" -eq 0 ]; then
+    recoverable=true
+  elif grep -Eiq 'settings[.]json|PreToolUse|hook claude|RTK[.]md|manual|auto-patch' "$stdout_file" "$stderr_file" 2>/dev/null; then
+    recoverable=true
+  elif printf '%s' "$status_after" | jq -e '.global_rtk_md_present == true or .global_claude_ref_present == true' >/dev/null 2>&1; then
+    recoverable=true
+  fi
+
+  if [ "$recoverable" = "true" ] && settings_valid; then
+    patch_settings_hook "$rtk_path"
+    status_after="$(status_json false false)"
+    hook_present="$(printf '%s' "$status_after" | jq -r '.global_hook_present // false')"
+    if [ "$hook_present" = "true" ]; then
+      rm -f "$stdout_file" "$stderr_file"
+      echo "Hook: active via VBW settings fallback patch"
+      return 0
+    fi
+  fi
+
+  cat "$stdout_file" 2>/dev/null || true
+  cat "$stderr_file" >&2 2>/dev/null || true
+  rm -f "$stdout_file" "$stderr_file"
+  if ! settings_valid; then
+    die 1 "RTK hook activation failed and ${RTK_SETTINGS_JSON} is malformed; settings preserved for manual repair"
+  fi
+  [ "$status" -eq 0 ] || die "$status" "rtk init -g --auto-patch failed before VBW could verify or patch the settings hook"
+  die 1 "rtk init -g --auto-patch completed but no RTK settings hook was found"
+}
+
+complete_setup() {
+  local rtk_path="$1" hook_only="${2:-false}"
+  verify_rtk_binary "$rtk_path"
+  echo "Binary: verified $rtk_path"
+  bootstrap_rtk_config "$rtk_path"
+  activate_rtk_hook "$rtk_path" "$hook_only"
+  status_json false false | jq -r '.summary'
+}
+
 write_receipt() {
-  local operation="$1" binary_path="$2" previous_version="$3" installed_version="$4" metadata="$5" checksum="$6" tmp
+  local operation="$1" method="$2" binary_path="$3" previous_version="$4" installed_version="$5" metadata="$6" checksum="$7" tmp
   mkdir -p "$VBW_RTK_DIR"
   tmp="$(mktemp "$VBW_RTK_DIR/rtk-install.XXXXXX")"
   jq -n \
     --arg manager "vbw" \
     --arg operation "$operation" \
-    --arg method "github-release" \
+    --arg method "$method" \
     --arg binary_path "$binary_path" \
     --arg previous_version "$previous_version" \
     --arg installed_version "$installed_version" \
@@ -760,7 +1066,7 @@ extract_rtk_binary() {
 }
 
 install_or_update() {
-  local operation="$1" dry_run=false yes=false allow_missing=false install_dir metadata installed_path installed_version previous_version
+  local operation="$1" dry_run=false yes=false allow_missing=false install_dir metadata installed_path installed_version previous_version method receipt_method
   local temp_dir asset_name asset_url checksums_url asset_file checksums_file checksum extracted target_path receipt_binary latest_version
 
   while [ "$#" -gt 0 ]; do
@@ -777,10 +1083,13 @@ install_or_update() {
   install_dir="${install_dir:-$RTK_INSTALL_DIR_DEFAULT}"
   installed_path="$(rtk_path_detect)"
   installed_version="$(rtk_version_detect "$installed_path")"
+  method="$(preferred_install_method_detect)"
 
   if [ "$operation" = "update" ]; then
     receipt_binary="$(rtk_path_from_receipt)"
     if receipt_managed; then
+      receipt_method="$(receipt_field method)"
+      [ -n "$receipt_method" ] || receipt_method="github-release"
       if [ -z "$receipt_binary" ] || [ ! -x "$receipt_binary" ]; then
         echo "RTK update preflight"
         echo "Installed: ${installed_version:-unknown}"
@@ -792,6 +1101,7 @@ install_or_update() {
       installed_path="$receipt_binary"
       installed_version="$(rtk_version_detect "$installed_path")"
       install_dir="$(dirname "$receipt_binary")"
+      method="$receipt_method"
     elif [ -n "$installed_path" ]; then
       echo "RTK update preflight"
       echo "Installed: ${installed_version:-present}"
@@ -809,15 +1119,47 @@ install_or_update() {
     fi
   fi
 
-  metadata="$(latest_metadata_or_die false)"
-  print_install_preflight "$operation" "$metadata" "$install_dir" "$installed_version"
-  latest_version="$(printf '%s' "$metadata" | jq -r '.version // empty')"
-  if [ "$operation" = "update" ] && [ -n "$latest_version" ] && [ -n "$installed_version" ] && ! version_gt "$latest_version" "$installed_version"; then
-    echo "Update: installed RTK ${installed_version} is current for latest ${latest_version}; no replacement needed."
-    exit 0
+  metadata="{}"
+  if [ "$method" = "github-release" ]; then
+    metadata="$(latest_metadata_or_die false)"
+  fi
+  print_install_preflight "$operation" "$method" "$metadata" "$install_dir" "$installed_version"
+  if [ "$method" = "github-release" ]; then
+    latest_version="$(printf '%s' "$metadata" | jq -r '.version // empty')"
+    if [ "$operation" = "update" ] && [ -n "$latest_version" ] && [ -n "$installed_version" ] && ! version_gt "$latest_version" "$installed_version"; then
+      echo "Update: installed RTK ${installed_version} is current for latest ${latest_version}; no replacement needed."
+      exit 0
+    fi
   fi
   ensure_confirmation "$yes" "$dry_run" "$operation"
   [ "$dry_run" = "true" ] && exit 0
+
+  if [ "$method" = "homebrew" ]; then
+    local outdated
+    command -v brew >/dev/null 2>&1 || die 1 "Homebrew selected but brew is not available"
+    previous_version="$installed_version"
+    if [ "$operation" = "update" ]; then
+      outdated="$(brew outdated --quiet rtk 2>/dev/null || true)"
+      if [ -n "$outdated" ]; then
+        brew upgrade rtk
+      else
+        echo "Update: Homebrew reports rtk is current; no replacement needed."
+      fi
+    else
+      brew install rtk
+    fi
+    installed_path="$(rtk_path_detect)"
+    [ -n "$installed_path" ] || die 1 "Homebrew completed but rtk is not on PATH"
+    installed_version="$(rtk_version_detect "$installed_path")"
+    write_receipt "$operation" "homebrew" "$installed_path" "$previous_version" "$installed_version" "$metadata" ""
+    echo "✓ RTK ${operation} complete via Homebrew: $installed_path (${installed_version:-version unknown})"
+    if [ "$operation" = "install" ]; then
+      complete_setup "$installed_path"
+    else
+      verify_rtk_binary "$installed_path"
+    fi
+    exit 0
+  fi
 
   asset_name="$(printf '%s' "$metadata" | jq -r '.asset_name')"
   asset_url="$(printf '%s' "$metadata" | jq -r '.asset_url')"
@@ -842,11 +1184,15 @@ install_or_update() {
   cp "$extracted" "$target_path"
   chmod +x "$target_path"
   installed_version="$("$target_path" --version 2>/dev/null | awk 'match($0, /[0-9]+([.][0-9]+)+/) {print substr($0, RSTART, RLENGTH); exit}' || true)"
-  write_receipt "$operation" "$target_path" "$previous_version" "$installed_version" "$metadata" "$checksum"
+  write_receipt "$operation" "github-release" "$target_path" "$previous_version" "$installed_version" "$metadata" "$checksum"
   cache_latest_release "$metadata"
   echo "✓ RTK ${operation} complete: $target_path (${installed_version:-version unknown})"
   if ! path_contains_dir "$install_dir"; then
     echo "⚠ $install_dir is not on PATH. Add: export PATH=\"${install_dir}:\$PATH\""
+  elif [ "$operation" = "install" ]; then
+    complete_setup "$target_path"
+  else
+    verify_rtk_binary "$target_path"
   fi
   cleanup_temp_dir
   RTK_TEMP_DIR=""
@@ -854,7 +1200,7 @@ install_or_update() {
 }
 
 init_hook() {
-  local dry_run=false yes=false auto_patch=false hook_only=false rtk_path receipt_path args display_cmd
+  local dry_run=false yes=false auto_patch=true hook_only=false rtk_path receipt_path display_cmd
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --dry-run) dry_run=true; shift ;;
@@ -877,18 +1223,13 @@ init_hook() {
   if [ "$hook_only" = "true" ]; then display_cmd="$display_cmd --hook-only"; fi
   echo "RTK hook preflight"
   echo "Will run: $display_cmd"
-  echo "Writes: ${RTK_SETTINGS_JSON}, ${RTK_GLOBAL_MD}, and @RTK.md references inside ${RTK_CLAUDE_MD} when RTK patches Claude Code"
-  echo "Does not do: disable, reorder, or weaken VBW bash-guard.sh"
+  echo "Writes: config $(rtk_config_path) when missing; ${RTK_SETTINGS_JSON}, ${RTK_GLOBAL_MD}, and @RTK.md references inside ${RTK_CLAUDE_MD} when RTK/VBW patches Claude Code"
+  echo "Fallback: validate settings hook after RTK auto-patch; use a jq settings patch only when settings JSON is valid and the hook is still missing"
   echo "Next step: restart Claude Code after hook activation, then run /vbw:rtk verify"
-  echo "Risk: Claude Code issue #15897 reports updatedInput can fail when multiple PreToolUse hooks match; compatibility remains unverified until a runtime smoke proof exists."
+  echo "Risk: Claude Code issue #15897 reports updatedInput can fail when multiple PreToolUse hooks match; compatibility remains unverified until a runtime smoke proof exists. VBW bash-guard.sh is not disabled, reordered, or weakened."
   ensure_confirmation "$yes" "$dry_run" "init"
   [ "$dry_run" = "true" ] && exit 0
-  backup_rtk_global_config_files
-  args=(init -g)
-  [ "$auto_patch" = "true" ] && args+=(--auto-patch)
-  [ "$hook_only" = "true" ] && args+=(--hook-only)
-  "$rtk_path" "${args[@]}"
-  status_json false false | jq -r '.summary'
+  complete_setup "$rtk_path" "$hook_only"
 }
 
 verify_rtk() {
@@ -906,13 +1247,14 @@ verify_rtk() {
   status_json false false | jq -r '
     "RTK verify\n" +
     "Static: " + .summary + "\n" +
+    "Config: " + (.config_state // "unknown") + " at " + (.config_path // "unknown") + "\n" +
     "Runtime: " + (if .compatibility == "verified" then "verified by " + .proof_source else "manual Claude Code smoke required before PASS" end) + "\n" +
     "Manual smoke: restart Claude Code, run representative Bash commands, confirm RTK rewrites and VBW bash-guard behavior, then record proof."
   '
 }
 
 uninstall_rtk() {
-  local dry_run=false yes=false deactivate_hook=false binary_path managed rtk_path active_hook settings_unknown will_run
+  local dry_run=false yes=false deactivate_hook=false binary_path managed rtk_path active_hook settings_unknown will_run receipt_method
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --dry-run) dry_run=true; shift ;;
@@ -923,6 +1265,8 @@ uninstall_rtk() {
   done
   managed=false
   if receipt_managed; then managed=true; fi
+  receipt_method="$(receipt_field method)"
+  [ -n "$receipt_method" ] || receipt_method="github-release"
   binary_path="$(rtk_path_from_receipt)"
   active_hook=""
   settings_unknown=false
@@ -932,7 +1276,9 @@ uninstall_rtk() {
     settings_unknown=true
   fi
   echo "RTK uninstall preflight"
-  if [ "$managed" = "true" ] && [ -n "$binary_path" ]; then
+  if [ "$managed" = "true" ] && [ "$receipt_method" = "homebrew" ]; then
+    echo "Will remove: Homebrew-managed rtk formula after hook-safety guards pass"
+  elif [ "$managed" = "true" ] && [ -n "$binary_path" ]; then
     echo "Will remove: $binary_path (VBW receipt-owned)"
   else
     echo "Will remove: no binary; external installs are not deleted by VBW"
@@ -940,7 +1286,13 @@ uninstall_rtk() {
   if [ "$managed" = "true" ] && { [ -n "$active_hook" ] || [ "$settings_unknown" = "true" ]; } && [ "$deactivate_hook" != "true" ]; then
     will_run="hook deactivation or settings repair required before binary removal; rerun with --deactivate-hook after confirming settings intent"
   elif [ "$deactivate_hook" = "true" ]; then
-    will_run="rtk init -g --uninstall before binary removal"
+    if [ "$receipt_method" = "homebrew" ]; then
+      will_run="rtk init -g --uninstall before brew uninstall rtk"
+    else
+      will_run="rtk init -g --uninstall before binary removal"
+    fi
+  elif [ "$managed" = "true" ] && [ "$receipt_method" = "homebrew" ]; then
+    will_run="brew uninstall rtk after hook-safety guards pass"
   elif [ "$managed" = "true" ] && [ -n "$binary_path" ]; then
     will_run="remove VBW receipt-owned binary only; no hook deactivation requested"
   else
@@ -969,7 +1321,10 @@ uninstall_rtk() {
       exit 1
     fi
   fi
-  if [ "$managed" = "true" ] && [ -n "$binary_path" ] && [ -e "$binary_path" ]; then
+  if [ "$managed" = "true" ] && [ "$receipt_method" = "homebrew" ]; then
+    command -v brew >/dev/null 2>&1 || die 1 "Homebrew-managed RTK receipt found but brew is not available; preserved receipt for manual repair"
+    brew uninstall rtk
+  elif [ "$managed" = "true" ] && [ -n "$binary_path" ] && [ -e "$binary_path" ]; then
     rm -f "$binary_path"
   fi
   if [ "$managed" = "true" ]; then
