@@ -123,11 +123,47 @@ Do not disable, reorder, or weaken VBW `bash-guard.sh`.
 
 ### Step 5: Verify
 
+First inspect deterministic helper state:
+
+```bash
+bash "{plugin-root}/scripts/rtk-manager.sh" verify --json
+```
+
+If `compatibility="verified"` and `proof_source` is concrete, run the human-readable verifier and report the runtime proof. Keep any `diagnostic_caveat` or `upstream_issue` as diagnostic detail only; a valid proof quiets normal warning noise for this local setup.
+
 ```bash
 bash "{plugin-root}/scripts/rtk-manager.sh" verify
 ```
 
-Static verification may confirm binary, config state/path, settings hook, RTK docs/artifacts, and VBW hook presence. Runtime compatibility is PASS only when the helper reports `compatibility=verified` with a validated runtime smoke proof source. Otherwise report `hook_active_unverified` or `risk` and show the manual smoke steps.
+If RTK is present, `config_state="present"`, the settings hook is active, and compatibility is not verified, run the scoped runtime smoke as separate Claude Code Bash tool calls in this exact order:
+
+```bash
+bash "{plugin-root}/scripts/rtk-manager.sh" smoke-start
+```
+
+```bash
+ls -la .
+```
+
+```bash
+git status --short
+```
+
+```bash
+git log -n 2 --oneline
+```
+
+```bash
+bash "{plugin-root}/scripts/rtk-manager.sh" smoke-finish
+```
+
+```bash
+bash "{plugin-root}/scripts/rtk-manager.sh" verify
+```
+
+Reason: separate Claude Code Bash tool calls exercise the RTK PreToolUse `updatedInput` rewrite behavior under test. Nested helper loops, chained commands, or command substitutions can bypass the exact hook path affected by anthropics/claude-code#15897. Example anti-pattern: `bash "{plugin-root}/scripts/rtk-manager.sh" smoke-start && ls -la . && git status --short && git log -n 2 --oneline && bash "{plugin-root}/scripts/rtk-manager.sh" smoke-finish`.
+
+Keep the smoke scoped to those three unprefixed commands. Do not use repo-wide `rtk grep`, `find .`, broad scans, or performance-oriented RTK commands as compatibility proof. Static verification may confirm binary, config state/path, settings hook, RTK docs/artifacts, and VBW hook presence. Runtime compatibility is PASS only when the helper reports `compatibility=verified` with a validated runtime smoke proof source. Otherwise report `hook_active_unverified` or `risk` and show the manual/runtime-smoke-required message.
 
 ### Step 6: Uninstall/manage
 

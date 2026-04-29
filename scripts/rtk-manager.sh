@@ -17,6 +17,8 @@ VBW_RTK_DIR="${VBW_RTK_DIR:-$CLAUDE_DIR/vbw}"
 RTK_RECEIPT_FILE="${RTK_RECEIPT_FILE:-$VBW_RTK_DIR/rtk-install.json}"
 RTK_LATEST_CACHE="${RTK_LATEST_CACHE:-$VBW_RTK_DIR/rtk-latest-release.json}"
 RTK_PROOF_FILE="${RTK_PROOF_FILE:-$VBW_RTK_DIR/rtk-compatibility-proof.json}"
+RTK_PENDING_SMOKE_FILE="${RTK_PENDING_SMOKE_FILE:-$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json}"
+RTK_LAST_SMOKE_FAILURE_FILE="${RTK_LAST_SMOKE_FAILURE_FILE:-$VBW_RTK_DIR/rtk-compatibility-smoke-last-failure.json}"
 RTK_BACKUP_DIR="${RTK_BACKUP_DIR:-$VBW_RTK_DIR/backups}"
 RTK_SETTINGS_JSON="${RTK_SETTINGS_JSON:-$CLAUDE_DIR/settings.json}"
 RTK_GLOBAL_MD="${RTK_GLOBAL_MD:-$CLAUDE_DIR/RTK.md}"
@@ -42,9 +44,12 @@ Commands:
   update [--dry-run] [--yes] [--allow-missing-checksum]
   init [--dry-run] [--yes] [--hook-only]
   verify [--json]
+  smoke-start
+  smoke-finish
   uninstall [--dry-run] [--yes] [--deactivate-hook]
 
-Mutating commands require --yes. Use --dry-run to inspect planned effects.
+Install/update/init/uninstall require --yes. Use --dry-run to inspect planned effects.
+Smoke helpers are explicit runtime verification internals used by /vbw:rtk verify; they write only local VBW RTK pending/proof/failure JSON.
 EOF
 }
 
@@ -352,6 +357,16 @@ sha256_file() {
   esac
 }
 
+sha256_text() {
+  local tool
+  tool="$(checksum_tool)"
+  [ -n "$tool" ] || return 0
+  case "$tool" in
+    shasum) shasum -a 256 | awk '{print $1}' ;;
+    sha256sum) sha256sum | awk '{print $1}' ;;
+  esac
+}
+
 os_arch_target() {
   local os arch
   os="$(uname -s 2>/dev/null || echo unknown)"
@@ -462,13 +477,265 @@ valid_runtime_smoke_proof() {
     ' "$proof_file" >/dev/null 2>&1
 }
 
+rtk_history_snapshot() {
+  local rtk_path="$1"
+  [ -n "$rtk_path" ] && [ -x "$rtk_path" ] || return 0
+  "$rtk_path" gain --history 2>/dev/null || true
+}
+
+rtk_history_total() {
+  awk '
+    match($0, /(Total|total)[^0-9]{0,40}[0-9]+/) {
+      part = substr($0, RSTART, RLENGTH)
+      if (match(part, /[0-9]+$/)) { print substr(part, RSTART, RLENGTH); exit }
+    }
+    match($0, /[0-9]+[[:space:]]+(commands|command|entries|entry)/) {
+      part = substr($0, RSTART, RLENGTH)
+      if (match(part, /^[0-9]+/)) { print substr(part, RSTART, RLENGTH); exit }
+    }
+    match($0, /(commands|Commands|entries|Entries)[^0-9]{0,40}[0-9]+/) {
+      part = substr($0, RSTART, RLENGTH)
+      if (match(part, /[0-9]+$/)) { print substr(part, RSTART, RLENGTH); exit }
+    }
+  '
+}
+
+rtk_history_evidence_tail() {
+  awk '
+    /(Total|total)[^0-9]{0,40}[0-9]+/ { next }
+    /(commands|Commands|entries|Entries)[^0-9]{0,40}[0-9]+/ && $0 !~ /rtk[[:space:]]/ { next }
+    /^[[:space:]]*[0-9]+[[:space:]]+(commands|command|entries|entry)([[:space:]]|$)/ { next }
+    { print }
+  ' | tail -n 40 2>/dev/null || true
+}
+
+rtk_history_has_command() {
+  local history="$1" command_key="$2"
+  case "$command_key" in
+    ls)
+      printf '%s\n' "$history" | grep -Eq '(^|[^[:alnum:]_/.-])rtk[[:space:]]+ls[[:space:]]+-la[[:space:]]+[.]([^[:alnum:]_/.-]|$)'
+      ;;
+    status)
+      printf '%s\n' "$history" | grep -Eq '(^|[^[:alnum:]_/.-])rtk[[:space:]]+git[[:space:]]+status[[:space:]]+--short([^[:alnum:]_-]|$)'
+      ;;
+    log)
+      printf '%s\n' "$history" | grep -Eq '(^|[^[:alnum:]_/.-])rtk[[:space:]]+git[[:space:]]+log[[:space:]]+(-n[[:space:]]+2|-[0-9A-Za-z]*n[[:space:]]*2)[[:space:]]+--oneline([^[:alnum:]_-]|$)'
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+rtk_history_after_pending_tail() {
+  local before_tail="$1" after_history="$2"
+  if [ -z "$before_tail" ]; then
+    printf '%s\n' "$after_history"
+    return 0
+  fi
+  printf '%s' "$after_history" | jq -Rs -r --arg before_tail "$before_tail" '
+    if (. | contains($before_tail)) then
+      (. | split($before_tail) | .[-1])
+    else
+      empty
+    end
+  '
+}
+
+write_smoke_failure() {
+  local reason="$1" detail="${2:-}" tmp
+  mkdir -p "$VBW_RTK_DIR"
+  tmp="$(mktemp "$VBW_RTK_DIR/rtk-smoke-failure.XXXXXX")"
+  jq -n \
+    --arg status "fail" \
+    --arg timestamp "$(now_utc)" \
+    --arg reason "$reason" \
+    --arg detail "$detail" \
+    '{status:$status,timestamp:$timestamp,reason:$reason,detail:$detail}' > "$tmp"
+  chmod 600 "$tmp" 2>/dev/null || true
+  mv "$tmp" "$RTK_LAST_SMOKE_FAILURE_FILE"
+}
+
+smoke_fail() {
+  local code="$1" reason="$2" detail="${3:-}"
+  write_smoke_failure "$reason" "$detail" || true
+  echo "RTK smoke failed: $reason${detail:+: $detail}" >&2
+  exit "$code"
+}
+
+smoke_status_preconditions() {
+  local payload="$1" field
+  for field in rtk_present config_state global_hook_present global_hook_command active_hook_rtk_path active_hook_rtk_version; do
+    if ! printf '%s' "$payload" | jq -e --arg field "$field" '.[$field] != null and (.[$field] | tostring | length > 0)' >/dev/null 2>&1; then
+      smoke_fail 1 "missing smoke precondition" "$field"
+    fi
+  done
+  printf '%s' "$payload" | jq -e '.rtk_present == true' >/dev/null 2>&1 || smoke_fail 1 "RTK binary missing"
+  printf '%s' "$payload" | jq -e '.config_state == "present"' >/dev/null 2>&1 || smoke_fail 1 "RTK config is not present" "run /vbw:rtk install or /vbw:rtk init first"
+  printf '%s' "$payload" | jq -e '.global_hook_present == true' >/dev/null 2>&1 || smoke_fail 1 "RTK settings hook inactive"
+  local hook_path
+  hook_path="$(printf '%s' "$payload" | jq -r '.active_hook_rtk_path // empty')"
+  [ -x "$hook_path" ] || smoke_fail 1 "active RTK hook binary is not runnable" "$hook_path"
+}
+
+smoke_start() {
+  local status_payload hook_path hook_command hook_version history history_total history_tail history_hash tmp
+  status_payload="$(status_json false false)"
+  smoke_status_preconditions "$status_payload"
+  if printf '%s' "$status_payload" | jq -e '.compatibility == "verified" and ((.proof_source // "") != "")' >/dev/null 2>&1; then
+    smoke_fail 1 "runtime compatibility already verified" "proof_source=$(printf '%s' "$status_payload" | jq -r '.proof_source')"
+  fi
+  hook_path="$(printf '%s' "$status_payload" | jq -r '.active_hook_rtk_path')"
+  hook_command="$(printf '%s' "$status_payload" | jq -r '.global_hook_command')"
+  hook_version="$(printf '%s' "$status_payload" | jq -r '.active_hook_rtk_version')"
+  history="$(rtk_history_snapshot "$hook_path")"
+  history_total="$(printf '%s\n' "$history" | rtk_history_total || true)"
+  history_tail="$(printf '%s\n' "$history" | rtk_history_evidence_tail)"
+  history_hash="$(printf '%s' "$history_tail" | sha256_text || true)"
+  mkdir -p "$VBW_RTK_DIR"
+  tmp="$(mktemp "$VBW_RTK_DIR/rtk-smoke-pending.XXXXXX")"
+  jq -n \
+    --arg proof_type "runtime_smoke_pending" \
+    --arg status "pending" \
+    --arg timestamp "$(now_utc)" \
+    --arg rtk_version "$hook_version" \
+    --arg hook_command "$hook_command" \
+    --arg active_hook_rtk_path "$hook_path" \
+    --arg active_hook_rtk_version "$hook_version" \
+    --arg history_before_total "$history_total" \
+    --arg history_before_tail "$history_tail" \
+    --arg history_before_sha256 "$history_hash" \
+    '{
+      proof_type:$proof_type,
+      status:$status,
+      timestamp:$timestamp,
+      rtk_version:$rtk_version,
+      hook_command:$hook_command,
+      active_hook_rtk_path:$active_hook_rtk_path,
+      active_hook_rtk_version:$active_hook_rtk_version,
+      history_before_total: (if $history_before_total == "" then null else ($history_before_total | tonumber) end),
+      history_before_total_available: ($history_before_total != ""),
+      history_before_tail:$history_before_tail,
+      history_before_sha256:$history_before_sha256,
+      expected_unprefixed_commands:["ls -la .","git status --short","git log -n 2 --oneline"]
+    }' > "$tmp"
+  chmod 600 "$tmp" 2>/dev/null || true
+  mv "$tmp" "$RTK_PENDING_SMOKE_FILE"
+  jq -n --arg status "pending" --arg pending_file "$RTK_PENDING_SMOKE_FILE" --arg rtk_version "$hook_version" --arg hook_command "$hook_command" '{status:$status,pending_file:$pending_file,rtk_version:$rtk_version,hook_command:$hook_command}'
+}
+
+verify_bash_guard_smoke() {
+  local status
+  set +e
+  printf '%s\n' '{"tool_input":{"command":"python manage.py flush"}}' | bash "$SCRIPT_DIR/bash-guard.sh" >/dev/null 2>&1
+  status=$?
+  set -e
+  [ "$status" -eq 2 ]
+}
+
+write_runtime_smoke_proof() {
+  local status_payload="$1" pending_payload="$2" history_after_total="$3" history_after_sha256="$4" count_evidence="$5" tmp
+  local hook_command hook_version
+  hook_command="$(printf '%s' "$status_payload" | jq -r '.global_hook_command')"
+  hook_version="$(printf '%s' "$status_payload" | jq -r '.active_hook_rtk_version')"
+  mkdir -p "$VBW_RTK_DIR"
+  tmp="$(mktemp "$VBW_RTK_DIR/rtk-proof.XXXXXX")"
+  jq -n \
+    --arg proof_type "runtime_smoke" \
+    --arg status "pass" \
+    --arg timestamp "$(now_utc)" \
+    --arg rtk_version "$hook_version" \
+    --arg hook_command "$hook_command" \
+    --arg compatibility_basis "runtime_smoke_passed" \
+    --arg upstream_caveat "anthropics/claude-code#15897" \
+    --argjson history_before_total "$(printf '%s' "$pending_payload" | jq '.history_before_total // null')" \
+    --arg history_before_sha256 "$(printf '%s' "$pending_payload" | jq -r '.history_before_sha256 // ""')" \
+    --arg history_after_total "$history_after_total" \
+    --arg history_after_sha256 "$history_after_sha256" \
+    --arg count_evidence "$count_evidence" \
+    '{
+      proof_type:$proof_type,
+      status:$status,
+      verified:true,
+      timestamp:$timestamp,
+      rtk_version:$rtk_version,
+      hook_command:$hook_command,
+      updated_input_verified:true,
+      rtk_rewrite_observed:true,
+      vbw_bash_guard_verified:true,
+      commands:[
+        {expected:"ls -la .", observed:"rtk ls -la ."},
+        {expected:"git status --short", observed:"rtk git status --short"},
+        {expected:"git log -n 2 --oneline", observed:"rtk git log -n 2 --oneline"}
+      ],
+      history_before_total:$history_before_total,
+      history_before_sha256:$history_before_sha256,
+      history_after_total:(if $history_after_total == "" then null else ($history_after_total | tonumber) end),
+      history_after_sha256:$history_after_sha256,
+      history_count_evidence:$count_evidence,
+      compatibility_basis:$compatibility_basis,
+      upstream_caveat:$upstream_caveat
+    }' > "$tmp"
+  chmod 600 "$tmp" 2>/dev/null || true
+  mv "$tmp" "$RTK_PROOF_FILE"
+}
+
+smoke_finish() {
+  local pending_payload status_payload hook_path hook_command hook_version pending_hook_command pending_hook_version
+  local history history_after_total history_before_total history_before_tail history_after_tail history_before_sha256 history_after_sha256 history_evidence count_evidence
+  [ -f "$RTK_PENDING_SMOKE_FILE" ] || smoke_fail 1 "pending smoke file missing" "$RTK_PENDING_SMOKE_FILE"
+  jq empty "$RTK_PENDING_SMOKE_FILE" >/dev/null 2>&1 || smoke_fail 1 "pending smoke file is malformed" "$RTK_PENDING_SMOKE_FILE"
+  pending_payload="$(cat "$RTK_PENDING_SMOKE_FILE")"
+  printf '%s' "$pending_payload" | jq -e '.status == "pending" and .proof_type == "runtime_smoke_pending"' >/dev/null 2>&1 || smoke_fail 1 "pending smoke file has invalid state"
+  status_payload="$(status_json false false)"
+  smoke_status_preconditions "$status_payload"
+  hook_path="$(printf '%s' "$status_payload" | jq -r '.active_hook_rtk_path')"
+  hook_command="$(printf '%s' "$status_payload" | jq -r '.global_hook_command')"
+  hook_version="$(printf '%s' "$status_payload" | jq -r '.active_hook_rtk_version')"
+  pending_hook_command="$(printf '%s' "$pending_payload" | jq -r '.hook_command')"
+  pending_hook_version="$(printf '%s' "$pending_payload" | jq -r '.active_hook_rtk_version')"
+  [ "$hook_command" = "$pending_hook_command" ] || smoke_fail 1 "RTK hook command changed during smoke" "$pending_hook_command -> $hook_command"
+  [ "$hook_version" = "$pending_hook_version" ] || smoke_fail 1 "RTK hook version changed during smoke" "$pending_hook_version -> $hook_version"
+
+  history="$(rtk_history_snapshot "$hook_path")"
+  history_after_tail="$(printf '%s\n' "$history" | rtk_history_evidence_tail)"
+  history_before_sha256="$(printf '%s' "$pending_payload" | jq -r '.history_before_sha256 // ""')"
+  history_after_sha256="$(printf '%s' "$history_after_tail" | sha256_text || true)"
+  history_after_total="$(printf '%s\n' "$history" | rtk_history_total || true)"
+  history_before_total="$(printf '%s' "$pending_payload" | jq -r '.history_before_total // empty')"
+  history_before_tail="$(printf '%s' "$pending_payload" | jq -r '.history_before_tail // ""')"
+  if [ -n "$history_before_sha256" ] && [ -n "$history_after_sha256" ] && [ "$history_before_sha256" = "$history_after_sha256" ]; then
+    smoke_fail 1 "RTK history did not advance after smoke-start" "history tail hash unchanged"
+  fi
+  history_evidence="$(rtk_history_after_pending_tail "$history_before_tail" "$history")"
+  if [ -n "$history_before_tail" ] && [ -z "$history_evidence" ]; then
+    smoke_fail 1 "could not isolate RTK history entries after smoke-start" "pending history tail was not found in the after-history snapshot"
+  fi
+  count_evidence="unavailable"
+  if [ -n "$history_before_total" ] && [ -n "$history_after_total" ]; then
+    if [ $((history_after_total - history_before_total)) -lt 3 ]; then
+      smoke_fail 1 "RTK history count did not increase by at least 3" "before=$history_before_total after=$history_after_total"
+    fi
+    count_evidence="before=$history_before_total after=$history_after_total delta=$((history_after_total - history_before_total))"
+  else
+    count_evidence="history_tail_changed_after_smoke_start"
+  fi
+  rtk_history_has_command "$history_evidence" ls || smoke_fail 1 "missing RTK history evidence" "rtk ls -la ."
+  rtk_history_has_command "$history_evidence" status || smoke_fail 1 "missing RTK history evidence" "rtk git status --short"
+  rtk_history_has_command "$history_evidence" log || smoke_fail 1 "missing RTK history evidence" "rtk git log -n 2 --oneline"
+  verify_bash_guard_smoke || smoke_fail 1 "VBW Bash guard smoke verification failed" "expected scripts/bash-guard.sh to block synthetic destructive command with exit 2"
+  write_runtime_smoke_proof "$status_payload" "$pending_payload" "$history_after_total" "$history_after_sha256" "$count_evidence"
+  rm -f "$RTK_PENDING_SMOKE_FILE"
+  jq -n --arg status "pass" --arg proof_source "$RTK_PROOF_FILE" --arg history_count_evidence "$count_evidence" '{status:$status,proof_source:$proof_source,history_count_evidence:$history_count_evidence}'
+}
+
 status_json() {
   local check_updates="${1:-false}" include_stats="${2:-false}"
   local rtk_path rtk_present rtk_version latest_json latest_version latest_checked_at update_available version_source
   local managed_by_vbw install_receipt receipt_binary binary_install_state can_install preferred_install_method
   local config_path config_present config_state
   local settings_json_valid hook_command hook_matcher global_hook_present global_claude_ref global_rtk_md legacy_hook project_local vbw_hook bash_hook_count multiple_bash updated_input_risk
-  local settings_hook_state active_hook_rtk_path active_hook_rtk_version proof_source compatibility restart_required summary next_action config_next_action stats_json
+  local settings_hook_state active_hook_rtk_path active_hook_rtk_version proof_source proof_state compatibility compatibility_basis diagnostic_caveat upstream_issue restart_required summary next_action config_next_action stats_json
 
   rtk_path="$(rtk_path_detect)"
   rtk_present=false
@@ -564,11 +831,17 @@ status_json() {
   [ "$multiple_bash" = "true" ] && updated_input_risk=true
 
   proof_source=""
+  proof_state="none"
+  [ -f "$RTK_PROOF_FILE" ] && proof_state="stale_or_invalid"
   if [ -n "$hook_command" ] && [ -n "$active_hook_rtk_path" ] && valid_runtime_smoke_proof "$RTK_PROOF_FILE" "$active_hook_rtk_version" "$hook_command"; then
     proof_source="$RTK_PROOF_FILE"
+    proof_state="valid"
   fi
 
   compatibility="absent"
+  compatibility_basis="absent"
+  diagnostic_caveat=""
+  upstream_issue=""
   restart_required=false
   if [ "$settings_hook_state" = "unknown" ]; then
     compatibility="settings_unreadable"
@@ -580,6 +853,30 @@ status_json() {
     compatibility="hook_active_unverified"
   elif [ "$rtk_present" = "true" ]; then
     compatibility="binary_only"
+  fi
+  case "$compatibility" in
+    verified)
+      compatibility_basis="runtime_smoke_passed"
+      ;;
+    risk)
+      compatibility_basis="manual_runtime_smoke_required"
+      ;;
+    hook_active_unverified)
+      compatibility_basis="hook_active_without_runtime_proof"
+      ;;
+    binary_only)
+      compatibility_basis="binary_present_hook_inactive"
+      ;;
+    settings_unreadable)
+      compatibility_basis="settings_unreadable"
+      ;;
+  esac
+  if [ "$updated_input_risk" = "true" ]; then
+    upstream_issue="anthropics/claude-code#15897"
+    diagnostic_caveat="Claude Code issue #15897 reports updatedInput can fail when multiple Bash PreToolUse hooks match; local runtime smoke proof is required before normal PASS."
+    if [ "$compatibility" = "verified" ]; then
+      diagnostic_caveat="Claude Code issue #15897 remains an upstream diagnostic caveat; local runtime smoke proof verifies this RTK/VBW setup."
+    fi
   fi
   if [ "$global_hook_present" = "true" ] && [ -z "$proof_source" ]; then
     restart_required=true
@@ -615,7 +912,7 @@ status_json() {
       next_action="verify"
       ;;
     verified)
-      summary="RTK/VBW coexistence verified by smoke proof"
+      summary="RTK/VBW coexistence verified by runtime smoke proof"
       next_action="status"
       ;;
     *)
@@ -689,7 +986,11 @@ status_json() {
     --argjson multiple_bash_pretooluse_hooks_detected "$(bool_to_json "$multiple_bash")" \
     --argjson updated_input_risk "$(bool_to_json "$updated_input_risk")" \
     --arg compatibility "$compatibility" \
+    --arg compatibility_basis "$compatibility_basis" \
+    --arg proof_state "$proof_state" \
     --arg proof_source "$proof_source" \
+    --arg upstream_issue "$upstream_issue" \
+    --arg diagnostic_caveat "$diagnostic_caveat" \
     --argjson restart_required "$(bool_to_json "$restart_required")" \
     --arg summary "$summary" \
     --arg next_action "$next_action" \
@@ -726,7 +1027,11 @@ status_json() {
       multiple_bash_pretooluse_hooks_detected: $multiple_bash_pretooluse_hooks_detected,
       updated_input_risk: $updated_input_risk,
       compatibility: $compatibility,
+      compatibility_basis: $compatibility_basis,
+      proof_state: $proof_state,
       proof_source: $proof_source,
+      upstream_issue: $upstream_issue,
+      diagnostic_caveat: $diagnostic_caveat,
       restart_required: $restart_required,
       summary: $summary,
       next_action: $next_action,
@@ -750,7 +1055,7 @@ doctor_json() {
         elif ($s.config_state == "config_error") then "WARN"
         elif (($s.config_state == "missing") and (($s.rtk_present == true) or ($s.global_hook_present == true))) then "WARN"
         elif ($s.update_available == true) then "WARN"
-        elif ($s.compatibility == "verified") then "PASS"
+        elif ($s.compatibility == "verified" and (($s.proof_source // "") != "")) then "PASS"
         elif ($s.compatibility == "absent" and ($rtk_artifacts | length) == 0) then "SKIP"
         else "WARN" end
       )
@@ -759,7 +1064,7 @@ doctor_json() {
         elif .config_state == "config_error" then "RTK config unreadable or empty at " + ($s.config_path // "unknown")
         elif (.config_state == "missing" and ((.rtk_present == true) or (.global_hook_present == true))) then "RTK config missing at " + ($s.config_path // "unknown") + "; run /vbw:rtk install or /vbw:rtk init to repair setup"
         elif .update_available == true then "outdated from cached RTK release check; run /vbw:rtk update"
-        elif .doctor_status == "PASS" then "verified by " + ($s.proof_source // "smoke proof")
+        elif .doctor_status == "PASS" then "verified by runtime smoke proof: " + ($s.proof_source // "smoke proof")
         elif ($rtk_artifacts | length) > 0 then "RTK artifacts present with no active settings hook: " + ($rtk_artifacts | join(", ")) + "; run /vbw:rtk status or /vbw:rtk uninstall/manage"
         elif .compatibility == "absent" then "not installed; optional: /vbw:rtk install"
         elif .compatibility == "binary_only" then "binary installed; hook inactive"
@@ -1355,8 +1660,9 @@ verify_rtk() {
     "RTK verify\n" +
     "Static: " + .summary + "\n" +
     "Config: " + (.config_state // "unknown") + " at " + (.config_path // "unknown") + "\n" +
-    "Runtime: " + (if .compatibility == "verified" then "verified by " + .proof_source else "manual Claude Code smoke required before PASS" end) + "\n" +
-    "Manual smoke: restart Claude Code, run representative Bash commands, confirm RTK rewrites and VBW bash-guard behavior, then record proof."
+    "Runtime: " + (if .compatibility == "verified" then "verified by runtime smoke proof " + .proof_source else "manual Claude Code smoke required before PASS" end) +
+    (if (.compatibility == "verified" and (.updated_input_risk == true)) then "\nCaveat: " + (.diagnostic_caveat // "anthropics/claude-code#15897 remains an upstream diagnostic caveat") else "" end) +
+    (if .compatibility == "verified" then "" else "\nManual smoke: restart Claude Code, run the scoped /vbw:rtk verify Bash-tool sequence, confirm RTK rewrites and VBW bash-guard behavior, then record proof." end)
   '
 }
 
@@ -1467,6 +1773,8 @@ main() {
     update) install_or_update update "$@" ;;
     init) init_hook "$@" ;;
     verify) verify_rtk "$@" ;;
+    smoke-start) smoke_start "$@" ;;
+    smoke-finish) smoke_finish "$@" ;;
     uninstall) uninstall_rtk "$@" ;;
     help|-h|--help) usage ;;
     *) usage >&2; die 2 "unknown command: $cmd" ;;

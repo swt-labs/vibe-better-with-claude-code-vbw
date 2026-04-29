@@ -103,11 +103,12 @@ If `.vbw-planning/` exists:
 
 ### 18. RTK integration
 Run `bash "{plugin-root}/scripts/rtk-manager.sh" doctor-json 2>/dev/null`.
-- Parse JSON output: `doctor_status`, `doctor_detail`, `compatibility`, `updated_input_risk`, `proof_source`
+- Parse JSON output: `doctor_status`, `doctor_detail`, `compatibility`, `compatibility_basis`, `updated_input_risk`, `proof_source`, `diagnostic_caveat`, `upstream_issue`
 - SKIP only when RTK is absent and helper JSON reports no local/global RTK artifacts, no VBW RTK receipt, and no partial install evidence
-- WARN when binary-only, hook-active-unverified, artifact-only, multiple Bash `PreToolUse` hooks exist, `updatedInput` risk applies, or a cached explicit update check says RTK is outdated
-- PASS only when `compatibility` is `"verified"` with a concrete `proof_source`
-- Doctor must not query the network; update availability may only come from cached explicit `/vbw:rtk status --check-updates` or `/vbw:rtk update` data
+- WARN when binary-only, hook-active-unverified, artifact-only, missing/error config, settings are unreadable, or a cached explicit update check says RTK is outdated
+- PASS when `compatibility` is `"verified"` with a concrete `proof_source`, even if `updated_input_risk=true`; the runtime proof verifies this local RTK/VBW hook setup
+- In normal output, do not warn solely because anthropics/claude-code#15897 still exists after proof. When invoked with `--verbose`, include `diagnostic_caveat`/`upstream_issue` as detail so the upstream caveat remains visible without downgrading health.
+- Doctor must not query the network, run RTK history/stats, or run runtime smoke; runtime smoke requires explicit Claude Code Bash-tool orchestration and belongs in `/vbw:rtk verify`. Update availability may only come from cached explicit `/vbw:rtk status --check-updates` or `/vbw:rtk update` data.
 
 ## Output Format
 
