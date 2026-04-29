@@ -91,7 +91,7 @@ The install preflight must show compact lines for `Method`, `Will run`, `Writes`
 bash "{plugin-root}/scripts/rtk-manager.sh" install --yes
 ```
 
-If the helper reports the install directory is not on `PATH`, show the PATH line and do not offer hook activation until the user has made the binary visible.
+If the helper prints a PATH note, show it as optional guidance for future manual `rtk` shell usage. Do not treat off-`PATH` as a setup blocker; the helper must complete setup with the selected binary path or fail clearly.
 
 For `/vbw:rtk update`, first run the dry-run preflight and show it verbatim:
 

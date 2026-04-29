@@ -165,6 +165,26 @@ else
   fail "rtk-manager missing auto-patch/fallback hook activation contract"
 fi
 
+if contains "$RTK_MANAGER" 'same_executable_path()' \
+  && contains "$RTK_MANAGER" 'status_hook_matches_rtk_path()' \
+  && contains "$RTK_MANAGER" 'status_hook_matches_rtk_path "$status_after" "$rtk_path"' \
+  && contains "$RTK_MANAGER" 'complete_setup "$target_path"' \
+  && contains "$RTK_MANAGER" "hook_command=\"\$(shell_single_quote \"\$rtk_path\") hook claude\"" \
+  && contains "$ROOT/tests/rtk-manager.bats" 'off-PATH managed install verifies checksum, writes receipt, and completes setup'; then
+  pass "rtk-manager completes GitHub setup from selected absolute binary and verifies hook usability"
+else
+  fail "rtk-manager missing off-PATH selected-binary setup/hook-usability invariant"
+fi
+
+if ! contains "$RTK_CMD" 'do not offer hook activation until the user has made the binary visible' \
+  && ! contains "$README" 'After the RTK binary is visible on `PATH`' \
+  && contains "$RTK_CMD" 'Do not treat off-`PATH` as a setup blocker' \
+  && contains "$README" 'VBW still completes setup through that absolute binary path'; then
+  pass "rtk docs reject off-PATH binary-only setup guidance"
+else
+  fail "rtk docs still contain stale off-PATH setup blocker wording"
+fi
+
 curl_direct_count=$(grep -c 'curl -fsSL' "$RTK_MANAGER" 2>/dev/null || echo 0)
 if contains "$RTK_MANAGER" 'RTK_CURL_MAX_TIME="${RTK_CURL_MAX_TIME:-15}"' \
   && contains "$RTK_MANAGER" 'curl_bounded()' \

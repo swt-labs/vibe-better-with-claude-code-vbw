@@ -256,7 +256,10 @@ prepare_release_fixture() {
 printf '%s\n' "\$*" >> "$TEST_TEMP_DIR/installed-rtk-calls.log"
 case "\${1:-}" in
   --version) echo "rtk $version" ;;
-  gain) echo 'average savings: 47%' ;;
+  gain)
+    if [ "\${FAKE_INSTALLED_RTK_GAIN_FAIL:-false}" = "true" ]; then exit 58; fi
+    echo 'average savings: 47%'
+    ;;
   config)
     if [ "\${2:-}" = "--create" ]; then
       mkdir -p "$(dirname "$config_path")"
@@ -691,29 +694,68 @@ JSON
   [ ! -f "$VBW_RTK_DIR/rtk-latest-release.json" ]
 }
 
-@test "rtk-manager: managed install verifies checksum and writes receipt" {
+@test "rtk-manager: off-PATH managed install verifies checksum, writes receipt, and completes setup" {
   prepare_release_fixture "9.9.9"
   write_release_curl
   export RTK_CURL_MAX_TIME=7
   export RTK_INSTALL_DIR="$TEST_TEMP_DIR/install-bin"
   run rtk_manager install --yes
   [ "$status" -eq 0 ]
+  [[ "$output" == *"Binary: verified"* ]]
+  [[ "$output" == *"Config: created_after_missing"* ]]
+  [[ "$output" == *"Hook: active via VBW settings fallback patch"* ]]
+  [[ "$output" == *"RTK install setup complete"* ]]
   [ -x "$TEST_TEMP_DIR/install-bin/rtk" ]
   [ -f "$VBW_RTK_DIR/rtk-install.json" ]
   jq -e '.manager == "vbw"' "$VBW_RTK_DIR/rtk-install.json"
   jq -e '.installed_version == "9.9.9"' "$VBW_RTK_DIR/rtk-install.json"
   jq -e '.verified_checksum != ""' "$VBW_RTK_DIR/rtk-install.json"
+  [ -s "$(expected_rtk_config_path)" ]
+  grep -Fq -- '--version' "$TEST_TEMP_DIR/installed-rtk-calls.log"
+  grep -Fxq 'gain' "$TEST_TEMP_DIR/installed-rtk-calls.log"
+  grep -Fq -- 'config --create' "$TEST_TEMP_DIR/installed-rtk-calls.log"
+  grep -Fq -- 'init -g --auto-patch' "$TEST_TEMP_DIR/installed-rtk-calls.log"
+  local expected_command
+  expected_command="'$TEST_TEMP_DIR/install-bin/rtk' hook claude"
+  jq -e --arg command "$expected_command" '.hooks.PreToolUse[0].hooks[0].command == $command' "$CLAUDE_CONFIG_DIR/settings.json"
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.managed_by_vbw == true'
+  echo "$output" | jq -e '.binary_install_state == "installed_not_on_path"'
+  echo "$output" | jq -e '.global_hook_present == true'
+  echo "$output" | jq -e --arg path "$TEST_TEMP_DIR/install-bin/rtk" '.active_hook_rtk_path == $path'
   [ "$(grep -c -- '--max-time 7' "$TEST_TEMP_DIR/curl-calls.log")" -ge 3 ]
 }
 
-@test "rtk-manager: managed install records version when install dir has spaces" {
+@test "rtk-manager: off-PATH managed install with spaces writes parseable absolute hook" {
   prepare_release_fixture "9.9.9"
   write_release_curl
   export RTK_INSTALL_DIR="$TEST_TEMP_DIR/install bin with space"
   run rtk_manager install --yes
   [ "$status" -eq 0 ]
+  [[ "$output" == *"Hook: active via VBW settings fallback patch"* ]]
   [ -x "$RTK_INSTALL_DIR/rtk" ]
   jq -e '.installed_version == "9.9.9"' "$VBW_RTK_DIR/rtk-install.json"
+  local expected_command
+  expected_command="'$RTK_INSTALL_DIR/rtk' hook claude"
+  jq -e --arg command "$expected_command" '.hooks.PreToolUse[0].hooks[0].command == $command' "$CLAUDE_CONFIG_DIR/settings.json"
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e --arg path "$RTK_INSTALL_DIR/rtk" '.active_hook_rtk_path == $path'
+}
+
+@test "rtk-manager: install fails honestly when required setup probe fails" {
+  prepare_release_fixture "9.9.9"
+  write_release_curl
+  export RTK_INSTALL_DIR="$TEST_TEMP_DIR/install-bin"
+  export FAKE_INSTALLED_RTK_GAIN_FAIL=true
+  run rtk_manager install --yes
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK binary probe failed"* ]]
+  [[ "$output" != *"RTK install setup complete"* ]]
+  [ -x "$TEST_TEMP_DIR/install-bin/rtk" ]
+  [ -f "$VBW_RTK_DIR/rtk-install.json" ]
+  [ ! -f "$CLAUDE_CONFIG_DIR/settings.json" ]
 }
 
 @test "rtk-manager: install runs full setup when GitHub binary is on PATH" {

@@ -100,6 +100,26 @@ path_contains_dir() {
   esac
 }
 
+canonical_executable_path() {
+  local path="$1" dir base dir_real
+  [ -n "$path" ] || return 0
+  dir="$(dirname "$path")"
+  base="$(basename "$path")"
+  if dir_real="$(cd "$dir" 2>/dev/null && pwd -P)"; then
+    printf '%s/%s\n' "$dir_real" "$base"
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+same_executable_path() {
+  local left="$1" right="$2" left_real right_real
+  [ -n "$left" ] && [ -n "$right" ] || return 1
+  left_real="$(canonical_executable_path "$left")"
+  right_real="$(canonical_executable_path "$right")"
+  [ "$left_real" = "$right_real" ]
+}
+
 command_path() {
   command -v "$1" 2>/dev/null || true
 }
@@ -729,10 +749,10 @@ print_install_preflight() {
       fallback="No-op when the installed version is current; checksum failure aborts without replacement."
       next_step="Run /vbw:rtk verify if hook compatibility needs re-checking."
     else
-      will_run="query latest release metadata, download ${asset_name:-matching asset}, download checksums.txt, verify SHA-256, install rtk, then run rtk --version, rtk gain, config bootstrap, and rtk init -g --auto-patch when the binary is on PATH"
+      will_run="query latest release metadata, download ${asset_name:-matching asset}, download checksums.txt, verify SHA-256, install rtk, then run the selected binary path through rtk --version, rtk gain, config bootstrap, and rtk init -g --auto-patch"
       writes="${install_dir}/rtk (${path_state}); receipt ${RTK_RECEIPT_FILE}; backups under ${RTK_BACKUP_DIR}; config $(rtk_config_path); ${RTK_SETTINGS_JSON}, ${RTK_GLOBAL_MD}, ${RTK_CLAUDE_MD} when hook setup runs"
-      fallback="Stop with PATH guidance if ${install_dir} is not on PATH; otherwise use jq settings patch if RTK auto-patch does not persist the hook."
-      next_step="If PATH-visible, run /vbw:rtk verify after restart; otherwise add ${install_dir} to PATH and rerun setup."
+      fallback="Use jq settings patch if RTK auto-patch does not persist a usable hook for the selected binary path."
+      next_step="Run /vbw:rtk verify after restart; add ${install_dir} to PATH only for future manual rtk shell usage."
     fi
   fi
   echo "RTK ${operation} preflight"
@@ -751,7 +771,7 @@ print_install_preflight() {
     echo "Checksum: ${checksums_url}"
   fi
   if [ "$method" = "github-release" ] && ! path_contains_dir "$install_dir"; then
-    echo "PATH note: add this yourself before hook activation: export PATH=\"${install_dir}:\$PATH\""
+    echo "PATH note: optional for future manual shell use: export PATH=\"${install_dir}:\$PATH\""
   fi
 }
 
@@ -912,6 +932,14 @@ patch_settings_hook() {
   [ -z "$base_file" ] || rm -f "$base_file"
 }
 
+status_hook_matches_rtk_path() {
+  local status_payload="$1" selected_rtk_path="$2" active_hook_rtk_path
+  active_hook_rtk_path="$(printf '%s' "$status_payload" | jq -r '.active_hook_rtk_path // ""' 2>/dev/null || true)"
+  [ -n "$active_hook_rtk_path" ] || return 1
+  [ -x "$active_hook_rtk_path" ] || return 1
+  same_executable_path "$active_hook_rtk_path" "$selected_rtk_path"
+}
+
 activate_rtk_hook() {
   local rtk_path="$1" hook_only="${2:-false}" stdout_file stderr_file status status_after hook_present recoverable
   local -a init_args=(init -g --auto-patch)
@@ -925,14 +953,16 @@ activate_rtk_hook() {
   set -e
   status_after="$(status_json false false)"
   hook_present="$(printf '%s' "$status_after" | jq -r '.global_hook_present // false')"
-  if [ "$hook_present" = "true" ]; then
+  if [ "$hook_present" = "true" ] && status_hook_matches_rtk_path "$status_after" "$rtk_path"; then
     rm -f "$stdout_file" "$stderr_file"
     echo "Hook: active via rtk init -g --auto-patch"
     return 0
   fi
 
   recoverable=false
-  if [ "$status" -eq 0 ]; then
+  if [ "$hook_present" = "true" ]; then
+    recoverable=true
+  elif [ "$status" -eq 0 ]; then
     recoverable=true
   elif grep -Eiq 'settings[.]json|PreToolUse|hook claude|RTK[.]md|manual|auto-patch' "$stdout_file" "$stderr_file" 2>/dev/null; then
     recoverable=true
@@ -944,7 +974,7 @@ activate_rtk_hook() {
     patch_settings_hook "$rtk_path"
     status_after="$(status_json false false)"
     hook_present="$(printf '%s' "$status_after" | jq -r '.global_hook_present // false')"
-    if [ "$hook_present" = "true" ]; then
+    if [ "$hook_present" = "true" ] && status_hook_matches_rtk_path "$status_after" "$rtk_path"; then
       rm -f "$stdout_file" "$stderr_file"
       echo "Hook: active via VBW settings fallback patch"
       return 0
@@ -1152,11 +1182,13 @@ install_or_update() {
     [ -n "$installed_path" ] || die 1 "Homebrew completed but rtk is not on PATH"
     installed_version="$(rtk_version_detect "$installed_path")"
     write_receipt "$operation" "homebrew" "$installed_path" "$previous_version" "$installed_version" "$metadata" ""
-    echo "✓ RTK ${operation} complete via Homebrew: $installed_path (${installed_version:-version unknown})"
     if [ "$operation" = "install" ]; then
+      echo "RTK binary installed via Homebrew: $installed_path (${installed_version:-version unknown})"
       complete_setup "$installed_path"
+      echo "✓ RTK install setup complete: $installed_path (${installed_version:-version unknown})"
     else
       verify_rtk_binary "$installed_path"
+      echo "✓ RTK update complete via Homebrew: $installed_path (${installed_version:-version unknown})"
     fi
     exit 0
   fi
@@ -1186,13 +1218,16 @@ install_or_update() {
   installed_version="$("$target_path" --version 2>/dev/null | awk 'match($0, /[0-9]+([.][0-9]+)+/) {print substr($0, RSTART, RLENGTH); exit}' || true)"
   write_receipt "$operation" "github-release" "$target_path" "$previous_version" "$installed_version" "$metadata" "$checksum"
   cache_latest_release "$metadata"
-  echo "✓ RTK ${operation} complete: $target_path (${installed_version:-version unknown})"
-  if ! path_contains_dir "$install_dir"; then
-    echo "⚠ $install_dir is not on PATH. Add: export PATH=\"${install_dir}:\$PATH\""
-  elif [ "$operation" = "install" ]; then
+  if [ "$operation" = "install" ]; then
+    echo "RTK binary installed: $target_path (${installed_version:-version unknown})"
+    if ! path_contains_dir "$install_dir"; then
+      echo "ℹ $install_dir is not on PATH. Setup will use the selected binary path; optional for manual shell use: export PATH=\"${install_dir}:\$PATH\""
+    fi
     complete_setup "$target_path"
+    echo "✓ RTK install setup complete: $target_path (${installed_version:-version unknown})"
   else
     verify_rtk_binary "$target_path"
+    echo "✓ RTK update complete: $target_path (${installed_version:-version unknown})"
   fi
   cleanup_temp_dir
   RTK_TEMP_DIR=""
