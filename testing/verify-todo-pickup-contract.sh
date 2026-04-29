@@ -109,7 +109,11 @@ require_grep "research uses selected command text as topic" 'command_text' "$RES
 require_grep "research rejects archived milestone selected todos" 'archived milestone state' "$RESEARCH_CMD"
 require_grep "research loads selected todo detail through helper" 'todo-details\.sh" get <hash>' "$RESEARCH_CMD"
 require_grep "research writes detail warning through lifecycle helper" 'todo-lifecycle\.sh" detail-warning <hash>' "$RESEARCH_CMD"
+require_grep "research manual detail records ok status" 'Parse the JSON output\. If `status` is `"ok"`, store `DETAIL_STATUS=ok`' "$RESEARCH_CMD"
+require_grep "research no-ref path records none detail status" 'If no ref suffix, set `DETAIL_STATUS=none`' "$RESEARCH_CMD"
+require_grep "research empty-topic validation uses detail status" 'AND `DETAIL_STATUS=ok`' "$RESEARCH_CMD"
 require_absent "research does not claim todos automatically" 'todo-lifecycle\.sh" pickup /vbw:research' "$RESEARCH_CMD"
+require_absent "research does not remove todos automatically" 'todo-lifecycle\.sh" remove' "$RESEARCH_CMD"
 
 echo
  echo "==============================="
