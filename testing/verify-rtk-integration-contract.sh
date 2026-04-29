@@ -381,8 +381,11 @@ else
   fail "rtk-manager can still pass full RTK history through argv during smoke verification"
 fi
 
-if contains "$RTK_MANAGER" 'rtk_history_command_count()' \
+if contains "$RTK_MANAGER" 'rtk_history_evidence()' \
+  && contains "$RTK_MANAGER" 'rtk_history_command_count()' \
   && contains "$RTK_MANAGER" 'history_before_command_counts' \
+  && contains "$RTK_MANAGER" 'history_command_counts="$(rtk_history_command_counts_json "$history_evidence")"' \
+  && contains "$RTK_MANAGER" 'after_ls="$(rtk_history_command_count "$history_after_evidence" ls)"' \
   && contains "$RTK_MANAGER" 'rtk_history_require_fresh_command_counts' \
   && contains "$RTK_MANAGER" 'history_isolation_evidence' \
   && contains "$RTK_MANAGER" 'history_command_evidence' \
@@ -391,6 +394,8 @@ if contains "$RTK_MANAGER" 'rtk_history_command_count()' \
   && ! contains "$RTK_MANAGER" 'pending history tail was not found in the after-history snapshot' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish accepts parseable total tail mismatch with fresh command counts' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects parseable total tail mismatch with stale command counts' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects parseable total tail mismatch with stale commands outside stored tail' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects count-unavailable tail mismatch with stale commands outside stored tail' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish asks for fresh verify when tail mismatch pending lacks command counts'; then
   pass "rtk-manager proves fresh smoke history with command counts when exact tail isolation is unavailable"
 else

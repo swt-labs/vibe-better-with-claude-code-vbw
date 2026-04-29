@@ -1338,6 +1338,65 @@ JSON
   [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
 }
 
+@test "rtk-manager: smoke-finish rejects parseable total tail mismatch with stale commands outside stored tail" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history \
+    'Total commands: 100' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  for i in $(seq 1 41); do
+    printf 'rtk old-filler-%02d\n' "$i" >> "$FAKE_RTK_HISTORY_FILE"
+  done
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  write_rtk_history \
+    'Total commands: 103' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline' \
+    'rtk unrelated-after-1' \
+    'rtk unrelated-after-2' \
+    'rtk unrelated-after-3'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing fresh RTK history evidence after smoke-start"* ]]
+  [[ "$output" != *"pending history tail was not found"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish accepts parseable total tail mismatch with fresh counts after old outside-tail baseline" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history \
+    'Total commands: 100' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  for i in $(seq 1 41); do
+    printf 'rtk old-filler-%02d\n' "$i" >> "$FAKE_RTK_HISTORY_FILE"
+  done
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  write_rtk_history \
+    'Total commands: 103' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 0 ]
+  jq -e '.history_isolation_evidence == "command_counts_with_total_delta"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_command_evidence.ls.before == 1 and .history_command_evidence.ls.after == 2' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_command_evidence.status.before == 1 and .history_command_evidence.status.after == 2' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_command_evidence.log.before == 1 and .history_command_evidence.log.after == 2' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+}
+
 @test "rtk-manager: smoke-finish accepts count-unavailable proof only from post-start history entries" {
   write_fake_rtk "0.1.0"
   write_present_rtk_config
@@ -1386,6 +1445,31 @@ JSON
     'rtk git status --short' \
     'rtk git log -n 2 --oneline' \
     'rtk old-before-smoke'
+  run rtk_manager smoke-start
+  [ "$status" -eq 0 ]
+  write_rtk_history \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline' \
+    'rtk unrelated-after-smoke'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing fresh RTK history evidence after smoke-start"* ]]
+  [[ "$output" != *"pending history tail was not found"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish rejects count-unavailable tail mismatch with stale commands outside stored tail" {
+  write_fake_rtk "0.1.0"
+  write_present_rtk_config
+  write_rtk_settings_hook
+  write_rtk_history \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2 --oneline'
+  for i in $(seq 1 41); do
+    printf 'rtk old-filler-%02d\n' "$i" >> "$FAKE_RTK_HISTORY_FILE"
+  done
   run rtk_manager smoke-start
   [ "$status" -eq 0 ]
   write_rtk_history \

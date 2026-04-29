@@ -500,13 +500,17 @@ rtk_history_total() {
   '
 }
 
-rtk_history_evidence_tail() {
+rtk_history_evidence() {
   awk '
     /(Total|total)[^0-9]{0,40}[0-9]+/ { next }
     /(commands|Commands|entries|Entries)[^0-9]{0,40}[0-9]+/ && $0 !~ /rtk[[:space:]]/ { next }
     /^[[:space:]]*[0-9]+[[:space:]]+(commands|command|entries|entry)([[:space:]]|$)/ { next }
     { print }
-  ' | tail -n 40 2>/dev/null || true
+  '
+}
+
+rtk_history_evidence_tail() {
+  rtk_history_evidence | tail -n 40 2>/dev/null || true
 }
 
 rtk_history_command_pattern() {
@@ -638,7 +642,7 @@ smoke_status_preconditions() {
 }
 
 smoke_start() {
-  local status_payload hook_path hook_command hook_version history history_total history_tail history_hash history_command_counts tmp
+  local status_payload hook_path hook_command hook_version history history_total history_evidence history_tail history_hash history_command_counts tmp
   status_payload="$(status_json false false)"
   smoke_status_preconditions "$status_payload"
   if printf '%s' "$status_payload" | jq -e '.compatibility == "verified" and ((.proof_source // "") != "")' >/dev/null 2>&1; then
@@ -649,9 +653,10 @@ smoke_start() {
   hook_version="$(printf '%s' "$status_payload" | jq -r '.active_hook_rtk_version')"
   history="$(rtk_history_snapshot "$hook_path")"
   history_total="$(printf '%s\n' "$history" | rtk_history_total || true)"
-  history_tail="$(printf '%s\n' "$history" | rtk_history_evidence_tail)"
+  history_evidence="$(printf '%s\n' "$history" | rtk_history_evidence)"
+  history_tail="$(printf '%s\n' "$history_evidence" | tail -n 40 2>/dev/null || true)"
   history_hash="$(printf '%s' "$history_tail" | sha256_text || true)"
-  history_command_counts="$(rtk_history_command_counts_json "$history_tail")"
+  history_command_counts="$(rtk_history_command_counts_json "$history_evidence")"
   mkdir -p "$VBW_RTK_DIR"
   tmp="$(mktemp "$VBW_RTK_DIR/rtk-smoke-pending.XXXXXX")"
   jq -n \
@@ -748,7 +753,7 @@ write_runtime_smoke_proof() {
 
 smoke_finish() {
   local pending_payload status_payload hook_path hook_command hook_version pending_hook_command pending_hook_version
-  local history history_after_total history_before_total history_before_tail history_after_tail history_before_sha256 history_after_sha256 history_evidence count_evidence isolation_evidence
+  local history history_after_total history_before_total history_before_tail history_after_evidence history_after_tail history_before_sha256 history_after_sha256 history_evidence count_evidence isolation_evidence
   local before_ls before_status before_log after_ls after_status after_log command_evidence_json
   [ -f "$RTK_PENDING_SMOKE_FILE" ] || smoke_fail 1 "pending smoke file missing" "$RTK_PENDING_SMOKE_FILE"
   jq empty "$RTK_PENDING_SMOKE_FILE" >/dev/null 2>&1 || smoke_fail 1 "pending smoke file is malformed" "$RTK_PENDING_SMOKE_FILE"
@@ -765,7 +770,8 @@ smoke_finish() {
   [ "$hook_version" = "$pending_hook_version" ] || smoke_fail 1 "RTK hook version changed during smoke" "$pending_hook_version -> $hook_version"
 
   history="$(rtk_history_snapshot "$hook_path")"
-  history_after_tail="$(printf '%s\n' "$history" | rtk_history_evidence_tail)"
+  history_after_evidence="$(printf '%s\n' "$history" | rtk_history_evidence)"
+  history_after_tail="$(printf '%s\n' "$history_after_evidence" | tail -n 40 2>/dev/null || true)"
   history_before_sha256="$(printf '%s' "$pending_payload" | jq -r '.history_before_sha256 // ""')"
   history_after_sha256="$(printf '%s' "$history_after_tail" | sha256_text || true)"
   history_after_total="$(printf '%s\n' "$history" | rtk_history_total || true)"
@@ -774,13 +780,13 @@ smoke_finish() {
   before_ls="$(rtk_pending_history_command_count "$pending_payload" ls)"
   before_status="$(rtk_pending_history_command_count "$pending_payload" status)"
   before_log="$(rtk_pending_history_command_count "$pending_payload" log)"
-  after_ls="$(rtk_history_command_count "$history_after_tail" ls)"
-  after_status="$(rtk_history_command_count "$history_after_tail" status)"
-  after_log="$(rtk_history_command_count "$history_after_tail" log)"
+  after_ls="$(rtk_history_command_count "$history_after_evidence" ls)"
+  after_status="$(rtk_history_command_count "$history_after_evidence" status)"
+  after_log="$(rtk_history_command_count "$history_after_evidence" log)"
   if [ -n "$history_before_sha256" ] && [ -n "$history_after_sha256" ] && [ "$history_before_sha256" = "$history_after_sha256" ]; then
     smoke_fail 1 "RTK history did not advance after smoke-start" "history tail hash unchanged"
   fi
-  history_evidence="$(rtk_history_after_pending_tail "$history_before_tail" "$history")"
+  history_evidence="$(rtk_history_after_pending_tail "$history_before_tail" "$history_after_evidence")"
   isolation_evidence="exact_tail"
   count_evidence="unavailable"
   if [ -n "$history_before_total" ] && [ -n "$history_after_total" ]; then
@@ -796,7 +802,7 @@ smoke_finish() {
       smoke_fail 1 "fresh smoke evidence requires a new /vbw:rtk verify attempt" "pending smoke file lacks history_before_command_counts"
     fi
     rtk_history_require_fresh_command_counts "$before_ls" "$before_status" "$before_log" "$after_ls" "$after_status" "$after_log"
-    history_evidence="$history_after_tail"
+    history_evidence="$history_after_evidence"
     if [ -n "$history_before_total" ] && [ -n "$history_after_total" ]; then
       isolation_evidence="command_counts_with_total_delta"
     else
