@@ -357,6 +357,15 @@ else
   fail "rtk-manager missing explicit scoped runtime smoke helper contract"
 fi
 
+if contains "$RTK_MANAGER" 'rtk git log -n 2 --oneline' \
+  && contains "$RTK_MANAGER" '[[:space:]]+--oneline([^[:alnum:]_-]|$)' \
+  && ! contains "$RTK_MANAGER" '([[:space:]]+--oneline)?' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects git log smoke evidence without --oneline'; then
+  pass "rtk-manager requires --oneline for git log smoke proof evidence"
+else
+  fail "rtk-manager can still accept git log smoke proof evidence without --oneline"
+fi
+
 if contains "$RTK_MANAGER" 'Install/update/init/uninstall require --yes' \
   && contains "$RTK_MANAGER" 'Smoke helpers are explicit runtime verification internals used by /vbw:rtk verify; they write only local VBW RTK pending/proof/failure JSON'; then
   pass "rtk-manager usage scopes confirmation requirements away from local smoke proof writes"

@@ -1384,6 +1384,23 @@ JSON
   echo "$output" | jq -e '.compatibility == "risk"'
 }
 
+@test "rtk-manager: smoke-finish rejects git log smoke evidence without --oneline" {
+  run_smoke_start_ready
+  write_rtk_history \
+    'Total commands: 13' \
+    'rtk ls -la .' \
+    'rtk git status --short' \
+    'rtk git log -n 2'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing RTK history evidence"* ]]
+  [[ "$output" == *"rtk git log -n 2 --oneline"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+  run rtk_manager status --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.compatibility == "risk"'
+}
+
 @test "rtk-manager: smoke-finish requires count delta when totals are available" {
   run_smoke_start_ready
   write_rtk_history \

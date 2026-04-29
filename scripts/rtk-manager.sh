@@ -523,7 +523,7 @@ rtk_history_has_command() {
       printf '%s\n' "$history" | grep -Eq '(^|[^[:alnum:]_/.-])rtk[[:space:]]+git[[:space:]]+status[[:space:]]+--short([^[:alnum:]_-]|$)'
       ;;
     log)
-      printf '%s\n' "$history" | grep -Eq '(^|[^[:alnum:]_/.-])rtk[[:space:]]+git[[:space:]]+log[[:space:]]+(-n[[:space:]]+2|-[0-9A-Za-z]*n[[:space:]]*2)([[:space:]]+--oneline)?([^[:alnum:]_-]|$)'
+      printf '%s\n' "$history" | grep -Eq '(^|[^[:alnum:]_/.-])rtk[[:space:]]+git[[:space:]]+log[[:space:]]+(-n[[:space:]]+2|-[0-9A-Za-z]*n[[:space:]]*2)[[:space:]]+--oneline([^[:alnum:]_-]|$)'
       ;;
     *)
       return 1
