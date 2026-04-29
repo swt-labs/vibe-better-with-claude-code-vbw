@@ -5,8 +5,9 @@ load test_helper
 setup() {
   setup_temp_dir
   export CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/claude"
+  export XDG_CONFIG_HOME="$TEST_TEMP_DIR/xdg-config"
   export VBW_RTK_DIR="$CLAUDE_CONFIG_DIR/vbw"
-  mkdir -p "$CLAUDE_CONFIG_DIR" "$TEST_TEMP_DIR/bin"
+  mkdir -p "$CLAUDE_CONFIG_DIR" "$XDG_CONFIG_HOME" "$TEST_TEMP_DIR/bin"
   if command -v jq >/dev/null 2>&1; then
     ln -sf "$(command -v jq)" "$TEST_TEMP_DIR/bin/jq"
   fi
