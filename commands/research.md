@@ -41,11 +41,11 @@ Current project:
 
     If the selected item has a non-null `ref`, load detail immediately:
     ```bash
-    bash "{plugin-root}/scripts/todo-details.sh" get {hash}
+    bash "{plugin-root}/scripts/todo-details.sh" get <hash>
     ```
     If `status` is `"ok"`, store `DETAIL_STATUS=ok`, `detail.context`, and `detail.files` for Step 3. If `status` is `"not_found"` or `"error"`, record the matching `DETAIL_STATUS` value and run:
     ```bash
-    bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
+    bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning <hash>
     ```
     Continue without detail. If the selected item has no ref, use `DETAIL_STATUS=none`.
 
@@ -56,7 +56,7 @@ Current project:
     Command shape: `bash "{plugin-root}/scripts/todo-details.sh" get <hash>`.
     Parse the JSON output. If `status` is `"ok"`, store `detail.context` and `detail.files` for Step 3. If `status` is `"not_found"` or `"error"`, run:
     ```bash
-    bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
+    bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning <hash>
     ```
     Ignore missing-root-state cases — the helper already degrades gracefully. In all cases, continue without detail.
     If no ref suffix, $ARGUMENTS minus flags = topic.

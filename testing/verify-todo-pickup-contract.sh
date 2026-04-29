@@ -107,8 +107,8 @@ require_grep "research stores selected todo payload" 'TODO_SELECTED_JSON' "$RESE
 require_grep "research marks numbered todo selection" 'TODO_SELECTED=true' "$RESEARCH_CMD"
 require_grep "research uses selected command text as topic" 'command_text' "$RESEARCH_CMD"
 require_grep "research rejects archived milestone selected todos" 'archived milestone state' "$RESEARCH_CMD"
-require_grep "research loads selected todo detail through helper" 'todo-details\.sh" get \{hash\}' "$RESEARCH_CMD"
-require_grep "research writes detail warning through lifecycle helper" 'todo-lifecycle\.sh" detail-warning' "$RESEARCH_CMD"
+require_grep "research loads selected todo detail through helper" 'todo-details\.sh" get <hash>' "$RESEARCH_CMD"
+require_grep "research writes detail warning through lifecycle helper" 'todo-lifecycle\.sh" detail-warning <hash>' "$RESEARCH_CMD"
 require_absent "research does not claim todos automatically" 'todo-lifecycle\.sh" pickup /vbw:research' "$RESEARCH_CMD"
 
 echo
