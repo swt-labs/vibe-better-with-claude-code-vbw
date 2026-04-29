@@ -69,22 +69,55 @@ for subcommand in 'status --json' 'install --dry-run' 'install --yes' 'init --dr
   fi
 done
 
-if contains "$RTK_CMD" 'Binary install/update and Claude Code hook activation are separate operations' \
-  && contains "$RTK_CMD" 'Never combine them into one confirmation' \
-  && contains "$RTK_CMD" 'does not pipe downloaded shell scripts into sh'; then
-  pass "rtk command documents separate consent boundaries and no curl-to-shell piping"
+if contains "$RTK_CMD" '/vbw:rtk install` and no-args install/repair selections are explicit consent for complete setup' \
+  && contains "$RTK_CMD" 'do not ask a second install question' \
+  && contains "$RTK_CMD" 'Managed setup must not use `sudo`, edit shell profiles, or pipe downloaded scripts into `sh`'; then
+  pass "rtk command documents complete setup consent and no curl-to-shell piping"
 else
   fail "rtk command missing consent/no-curl-to-shell wording"
+fi
+
+if contains "$RTK_CMD" 'Install or repair RTK setup` first when `status_unavailable=true' \
+  && contains "$RTK_CMD" 'Install RTK and enable Claude hook` first when `rtk_present=false' \
+  && contains "$RTK_CMD" 'Verify RTK/VBW coexistence` second when `status_unavailable=true` or `rtk_present=false' \
+  && contains "$RTK_CMD" 'status_unavailable":true'; then
+  pass "rtk command preserves unavailable state and setup-first no-args menu ordering"
+else
+  fail "rtk command missing unavailable-state/setup-first menu contract"
+fi
+
+if contains "$RTK_CMD" '/vbw:rtk init` is explicit consent for setup/repair of Claude Code RTK integration' \
+  && contains "$RTK_CMD" 'does not install or update the binary' \
+  && ! contains "$RTK_CMD" 'hook-only setup/repair for an RTK binary that is already on PATH'; then
+  pass "rtk command init wording matches validation/config-bootstrap behavior"
+else
+  fail "rtk command init wording still implies hook-only behavior"
+fi
+
+if ! contains "$RTK_CMD" 'Binary install/update and Claude Code hook activation are separate operations' \
+  && ! contains "$RTK_CMD" 'does not edit Claude settings' \
+  && ! contains "$RTK_CMD" 'does not run `rtk init -g`'; then
+  pass "rtk command rejects old binary-only install wording"
+else
+  fail "rtk command still contains old binary-only install wording"
 fi
 
 if contains "$RTK_MANAGER" 'status --json [--check-updates] [--stats]' \
   && contains "$RTK_MANAGER" 'doctor-json' \
   && contains "$RTK_MANAGER" 'install [--dry-run] [--yes] [--allow-missing-checksum]' \
-  && contains "$RTK_MANAGER" 'init [--dry-run] [--yes] [--auto-patch] [--hook-only]' \
+  && contains "$RTK_MANAGER" 'init [--dry-run] [--yes] [--hook-only]' \
   && contains "$RTK_MANAGER" 'uninstall [--dry-run] [--yes] [--deactivate-hook]'; then
   pass "rtk-manager exposes required subcommands and safety flags"
 else
   fail "rtk-manager usage missing required subcommands or safety flags"
+fi
+
+if ! contains "$RTK_MANAGER" 'init [--dry-run] [--yes] [--auto-patch] [--hook-only]' \
+  && contains "$RTK_MANAGER" '--auto-patch) shift ;; # Backward-compatible no-op; auto-patch is always used.' \
+  && contains "$RTK_MANAGER" 'display_cmd="$rtk_path init -g --auto-patch"'; then
+  pass "rtk-manager no longer advertises auto-patch as a user-controlled init option"
+else
+  fail "rtk-manager still advertises or misrepresents init --auto-patch"
 fi
 
 if contains "$RTK_MANAGER" 'RTK_REPO_API="${RTK_REPO_API:-https://api.github.com/repos/rtk-ai/rtk/releases/latest}"' \
@@ -94,6 +127,104 @@ if contains "$RTK_MANAGER" 'RTK_REPO_API="${RTK_REPO_API:-https://api.github.com
   pass "rtk-manager uses latest GitHub release metadata with checksum verification"
 else
   fail "rtk-manager missing latest-release checksum contract"
+fi
+
+if contains "$RTK_MANAGER" 'preferred_install_method_detect()' \
+  && contains "$RTK_MANAGER" 'command -v brew' \
+  && contains "$RTK_MANAGER" 'brew install rtk' \
+  && contains "$RTK_MANAGER" 'write_receipt "$operation" "homebrew"'; then
+  pass "rtk-manager prefers Homebrew on macOS and records Homebrew receipts"
+else
+  fail "rtk-manager missing Homebrew-first install ownership contract"
+fi
+
+if contains "$RTK_MANAGER" 'verify_rtk_binary()' \
+  && contains "$RTK_MANAGER" '"$rtk_path" --version' \
+  && contains "$RTK_MANAGER" '"$rtk_path" gain' \
+  && contains "$RTK_MANAGER" 'complete_setup()'; then
+  pass "rtk-manager verifies RTK binary identity during explicit setup"
+else
+  fail "rtk-manager missing explicit setup binary identity probe"
+fi
+
+if contains "$RTK_MANAGER" 'rtk_config_path()' \
+  && contains "$RTK_MANAGER" 'Library/Application Support/rtk/config.toml' \
+  && contains "$RTK_MANAGER" '.config/rtk/config.toml' \
+  && contains "$RTK_MANAGER" 'bootstrap_rtk_config()' \
+  && contains "$RTK_MANAGER" 'config --create' \
+  && contains "$RTK_MANAGER" '[tracking]' \
+  && contains "$RTK_MANAGER" 'exclude_commands = []' \
+  && ! contains "$RTK_MANAGER" '[telemetry]'; then
+  pass "rtk-manager bootstraps documented non-telemetry RTK config"
+else
+  fail "rtk-manager missing config bootstrap/fallback contract"
+fi
+
+if contains "$RTK_MANAGER" 'config_present: $config_present' \
+  && contains "$RTK_MANAGER" 'config_path: $config_path' \
+  && contains "$RTK_MANAGER" 'config_state: $config_state' \
+  && contains "$RTK_MANAGER" 'config_next_action: $config_next_action' \
+  && contains "$RTK_MANAGER" 'RTK config missing at' \
+  && contains "$RTK_MANAGER" 'RTK config unreadable or empty'; then
+  pass "rtk-manager status/doctor surface compact config evidence"
+else
+  fail "rtk-manager missing config status JSON/reporting fields"
+fi
+
+if contains "$RTK_MANAGER" 'config_next_action="init"' \
+  && contains "$RTK_MANAGER" 'config_next_action="install"' \
+  && ! contains "$RTK_MANAGER" 'config_next_action="repair_config"' \
+  && ! contains "$RTK_MANAGER" 'next_action="repair_config"' \
+  && contains "$RTK_MANAGER" 'case "$next_action" in' \
+  && contains "$ROOT/tests/rtk-manager.bats" '.config_next_action == "init"' \
+  && contains "$ROOT/tests/rtk-manager.bats" '.config_next_action == "install"' \
+  && contains "$ROOT/tests/rtk-manager.bats" '.next_action == "verify"' \
+  && contains "$ROOT/tests/rtk-manager.bats" '.next_action == "repair_settings"' \
+  && contains "$ROOT/tests/rtk-manager.bats" '.next_action != "repair_config" and .config_next_action != "repair_config"'; then
+  pass "rtk-manager separates config remediation from primary next-action routing"
+else
+  fail "rtk-manager missing config_next_action routing guard"
+fi
+
+if contains "$RTK_MANAGER" 'activate_rtk_hook()' \
+  && contains "$RTK_MANAGER" 'init -g --auto-patch' \
+  && contains "$RTK_MANAGER" 'patch_settings_hook()' \
+  && contains "$RTK_MANAGER" 'jq --arg command "$hook_command"' \
+  && contains "$RTK_MANAGER" 'settings_valid || return 1' \
+  && contains "$RTK_MANAGER" 'Hook: active via VBW settings fallback patch'; then
+  pass "rtk-manager activates hook with auto-patch plus safe jq fallback"
+else
+  fail "rtk-manager missing auto-patch/fallback hook activation contract"
+fi
+
+if contains "$RTK_MANAGER" 'same_executable_path()' \
+  && contains "$RTK_MANAGER" 'status_hook_matches_rtk_path()' \
+  && contains "$RTK_MANAGER" 'status_hook_matches_rtk_path "$status_after" "$rtk_path"' \
+  && contains "$RTK_MANAGER" 'complete_setup "$target_path"' \
+  && contains "$RTK_MANAGER" "hook_command=\"\$(shell_single_quote \"\$rtk_path\") hook claude\"" \
+  && contains "$ROOT/tests/rtk-manager.bats" 'off-PATH managed install verifies checksum, writes receipt, and completes setup'; then
+  pass "rtk-manager completes GitHub setup from selected absolute binary and verifies hook usability"
+else
+  fail "rtk-manager missing off-PATH selected-binary setup/hook-usability invariant"
+fi
+
+if contains "$RTK_MANAGER" 'shell_first_word_unquote()' \
+  && contains "$RTK_MANAGER" 'executable="$(shell_first_word_unquote "$command"' \
+  && ! contains "$RTK_MANAGER" "executable=\"\${command#\\'}\"" \
+  && contains "$ROOT/tests/rtk-manager.bats" 'off-PATH managed install with apostrophe writes parseable absolute hook' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'shell-quoted absolute hook with apostrophe parses and verifies proof'; then
+  pass "rtk-manager parses apostrophe-safe shell-quoted hook executables without naïve truncation"
+else
+  fail "rtk-manager missing apostrophe-safe hook executable parsing contract"
+fi
+
+if ! contains "$RTK_CMD" 'do not offer hook activation until the user has made the binary visible' \
+  && ! contains "$README" 'After the RTK binary is visible on `PATH`' \
+  && contains "$RTK_CMD" 'Do not treat off-`PATH` as a setup blocker' \
+  && contains "$README" 'VBW still completes setup through that absolute binary path'; then
+  pass "rtk docs reject off-PATH binary-only setup guidance"
+else
+  fail "rtk docs still contain stale off-PATH setup blocker wording"
 fi
 
 curl_direct_count=$(grep -c 'curl -fsSL' "$RTK_MANAGER" 2>/dev/null || echo 0)
@@ -335,10 +466,13 @@ else
 fi
 
 if contains "$README" '/vbw:rtk' \
-  && contains "$README" 'Binary install/update and Claude Code hook activation are separate' \
+  && contains "$README" '`/vbw:rtk install` is complete setup' \
+  && contains "$README" 'prefers `brew install rtk`' \
   && contains "$README" 'checksums.txt' \
+  && contains "$README" 'config.toml' \
+  && contains "$README" 'rtk init -g --auto-patch' \
   && contains "$README" 'RTK savings are shown as external RTK metrics'; then
-  pass "README documents optional RTK managed setup boundaries"
+  pass "README documents complete RTK setup and verification boundaries"
 else
   fail "README missing RTK managed setup docs"
 fi
