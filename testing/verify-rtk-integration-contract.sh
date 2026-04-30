@@ -381,7 +381,12 @@ else
   fail "rtk-manager can still pass full RTK history through argv during smoke verification"
 fi
 
+rtk_tail_policy_count="$(grep -Fc 'tail -n 40' "$RTK_MANAGER" || true)"
 if contains "$RTK_MANAGER" 'rtk_history_evidence()' \
+  && contains "$RTK_MANAGER" 'rtk_history_evidence_tail()' \
+  && contains_re "$RTK_MANAGER" 'history_tail=.*rtk_history_evidence_tail' \
+  && contains_re "$RTK_MANAGER" 'history_after_tail=.*rtk_history_evidence_tail' \
+  && [ "$rtk_tail_policy_count" -eq 1 ] \
   && contains "$RTK_MANAGER" 'rtk_history_command_count()' \
   && contains "$RTK_MANAGER" 'history_tail_hash_unchanged' \
   && contains "$RTK_MANAGER" 'history_totals_available' \

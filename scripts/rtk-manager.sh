@@ -510,7 +510,8 @@ rtk_history_evidence() {
 }
 
 rtk_history_evidence_tail() {
-  rtk_history_evidence | tail -n 40 2>/dev/null || true
+  # Callers keep full filtered evidence separately for command-count proof.
+  tail -n 40 2>/dev/null || true
 }
 
 rtk_history_command_pattern() {
@@ -654,7 +655,7 @@ smoke_start() {
   history="$(rtk_history_snapshot "$hook_path")"
   history_total="$(printf '%s\n' "$history" | rtk_history_total || true)"
   history_evidence="$(printf '%s\n' "$history" | rtk_history_evidence)"
-  history_tail="$(printf '%s\n' "$history_evidence" | tail -n 40 2>/dev/null || true)"
+  history_tail="$(printf '%s\n' "$history_evidence" | rtk_history_evidence_tail)"
   history_hash="$(printf '%s' "$history_tail" | sha256_text || true)"
   history_command_counts="$(rtk_history_command_counts_json "$history_evidence")"
   mkdir -p "$VBW_RTK_DIR"
@@ -772,7 +773,7 @@ smoke_finish() {
 
   history="$(rtk_history_snapshot "$hook_path")"
   history_after_evidence="$(printf '%s\n' "$history" | rtk_history_evidence)"
-  history_after_tail="$(printf '%s\n' "$history_after_evidence" | tail -n 40 2>/dev/null || true)"
+  history_after_tail="$(printf '%s\n' "$history_after_evidence" | rtk_history_evidence_tail)"
   history_before_sha256="$(printf '%s' "$pending_payload" | jq -r '.history_before_sha256 // ""')"
   history_after_sha256="$(printf '%s' "$history_after_tail" | sha256_text || true)"
   history_after_total="$(printf '%s\n' "$history" | rtk_history_total || true)"
