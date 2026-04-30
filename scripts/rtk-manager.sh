@@ -624,12 +624,20 @@ claude_transcript_path_for_context() {
   printf '%s/projects/%s/%s.jsonl\n' "$CLAUDE_DIR" "$encoded_cwd" "$session_id"
 }
 
+claude_transcript_line_count() {
+  local transcript_path="$1"
+  [ -n "$transcript_path" ] || { printf '0\n'; return 0; }
+  [ -f "$transcript_path" ] || { printf '0\n'; return 0; }
+  awk 'END { print NR + 0 }' "$transcript_path" 2>/dev/null || printf '0\n'
+}
+
 rtk_transcript_smoke_evidence_json() {
-  local pending_payload="$1" hook_command="$2" start_ts session_id smoke_cwd transcript_path
+  local pending_payload="$1" hook_command="$2" start_ts session_id smoke_cwd transcript_path transcript_start_line_count
   start_ts="$(printf '%s' "$pending_payload" | jq -r '.timestamp // empty' 2>/dev/null || true)"
   session_id="$(printf '%s' "$pending_payload" | jq -r '.claude_session_id // empty' 2>/dev/null || true)"
   smoke_cwd="$(printf '%s' "$pending_payload" | jq -r '.smoke_cwd // empty' 2>/dev/null || true)"
   transcript_path="$(printf '%s' "$pending_payload" | jq -r '.claude_transcript_path // empty' 2>/dev/null || true)"
+  transcript_start_line_count="$(printf '%s' "$pending_payload" | jq -r '.claude_transcript_start_line_count // empty' 2>/dev/null || true)"
   if [ -z "$transcript_path" ]; then
     transcript_path="$(claude_transcript_path_for_context "$smoke_cwd" "$session_id" 2>/dev/null || true)"
   fi
@@ -638,14 +646,19 @@ rtk_transcript_smoke_evidence_json() {
   [ -n "$smoke_cwd" ] || return 1
   [ -n "$transcript_path" ] || return 1
   [ -f "$transcript_path" ] || return 1
+  case "$transcript_start_line_count" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
 
   jq -c -s -e \
     --arg start_ts "$start_ts" \
     --arg session_id "$session_id" \
     --arg smoke_cwd "$smoke_cwd" \
     --arg hook_command "$hook_command" \
-    --arg transcript_path "$transcript_path" '
+    --arg transcript_path "$transcript_path" \
+    --argjson transcript_start_line_count "$transcript_start_line_count" '
       . as $records
+      | ($records[$transcript_start_line_count:] // []) as $fresh_records
       | def parse_epoch:
           if type == "string" then (sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601? // 0) else 0 end;
       ($start_ts | parse_epoch) as $start_epoch
@@ -656,7 +669,7 @@ rtk_transcript_smoke_evidence_json() {
       def hook_stdout:
         (.attachment.stdout // "" | fromjson? // {});
       def hook_updated($tool_use_id; $observed_command):
-        any($records[];
+        any($fresh_records[];
           in_scope
           and ((.attachment.type // "") == "hook_success")
           and ((.attachment.hookName // "") == "PreToolUse:Bash")
@@ -669,7 +682,7 @@ rtk_transcript_smoke_evidence_json() {
         );
       def tool_id($expected_command):
         [
-          $records[]
+          $fresh_records[]
           | select(in_scope and ((.type // "") == "assistant"))
           | .message.content[]?
           | select((.type // "") == "tool_use" and (.name // "") == "Bash" and (.input.command // "") == $expected_command)
@@ -677,7 +690,7 @@ rtk_transcript_smoke_evidence_json() {
         ] | first // "";
       def tool_result_text($tool_use_id):
         [
-          $records[]
+          $fresh_records[]
           | select(in_scope and ((.type // "") == "user"))
           | .message.content[]?
           | select((.type // "") == "tool_result" and (.tool_use_id // "") == $tool_use_id)
@@ -701,6 +714,7 @@ rtk_transcript_smoke_evidence_json() {
             session_id:$session_id,
             smoke_cwd:$smoke_cwd,
             started_at:$start_ts,
+            transcript_start_line_count:$transcript_start_line_count,
             commands:$commands
           }
         else
@@ -747,7 +761,7 @@ smoke_status_preconditions() {
 
 smoke_start() {
   local status_payload hook_path hook_command hook_version history history_total history_evidence history_tail history_hash history_command_counts tmp
-  local smoke_timestamp smoke_cwd claude_session_id claude_transcript_path
+  local smoke_timestamp smoke_cwd claude_session_id claude_transcript_path claude_transcript_start_line_count
   status_payload="$(status_json false false)"
   smoke_status_preconditions "$status_payload"
   if printf '%s' "$status_payload" | jq -e '.compatibility == "verified" and ((.proof_source // "") != "")' >/dev/null 2>&1; then
@@ -766,6 +780,7 @@ smoke_start() {
   smoke_cwd="$(pwd -P 2>/dev/null || pwd)"
   claude_session_id="${CLAUDE_SESSION_ID:-}"
   claude_transcript_path="$(claude_transcript_path_for_context "$smoke_cwd" "$claude_session_id" 2>/dev/null || true)"
+  claude_transcript_start_line_count="$(claude_transcript_line_count "$claude_transcript_path")"
   mkdir -p "$VBW_RTK_DIR"
   tmp="$(mktemp "$VBW_RTK_DIR/rtk-smoke-pending.XXXXXX")"
   jq -n \
@@ -779,6 +794,7 @@ smoke_start() {
     --arg claude_session_id "$claude_session_id" \
     --arg smoke_cwd "$smoke_cwd" \
     --arg claude_transcript_path "$claude_transcript_path" \
+    --argjson claude_transcript_start_line_count "$claude_transcript_start_line_count" \
     --arg history_before_total "$history_total" \
     --arg history_before_tail "$history_tail" \
     --arg history_before_sha256 "$history_hash" \
@@ -794,6 +810,7 @@ smoke_start() {
       claude_session_id:$claude_session_id,
       smoke_cwd:$smoke_cwd,
       claude_transcript_path:$claude_transcript_path,
+      claude_transcript_start_line_count:$claude_transcript_start_line_count,
       history_before_total: (if $history_before_total == "" then null else ($history_before_total | tonumber) end),
       history_before_total_available: ($history_before_total != ""),
       history_before_tail:$history_before_tail,
@@ -991,7 +1008,7 @@ status_json() {
   local managed_by_vbw install_receipt receipt_binary binary_install_state can_install preferred_install_method
   local config_path config_present config_state
   local settings_json_valid hook_command hook_matcher global_hook_present global_claude_ref global_rtk_md legacy_hook project_local vbw_hook bash_hook_count multiple_bash updated_input_risk
-  local settings_hook_state active_hook_rtk_path active_hook_rtk_version proof_source proof_state compatibility compatibility_basis diagnostic_caveat upstream_issue restart_required summary next_action config_next_action stats_json
+  local settings_hook_state active_hook_rtk_path active_hook_rtk_version proof_source proof_state runtime_proof_source compatibility compatibility_basis diagnostic_caveat upstream_issue restart_required summary next_action config_next_action stats_json
 
   rtk_path="$(rtk_path_detect)"
   rtk_present=false
@@ -1088,10 +1105,16 @@ status_json() {
 
   proof_source=""
   proof_state="none"
+  runtime_proof_source=""
   [ -f "$RTK_PROOF_FILE" ] && proof_state="stale_or_invalid"
   if [ -n "$hook_command" ] && [ -n "$active_hook_rtk_path" ] && valid_runtime_smoke_proof "$RTK_PROOF_FILE" "$active_hook_rtk_version" "$hook_command"; then
     proof_source="$RTK_PROOF_FILE"
     proof_state="valid"
+    runtime_proof_source="$(jq -r '.runtime_proof_source // "rtk_history"' "$RTK_PROOF_FILE" 2>/dev/null || printf 'rtk_history')"
+    case "$runtime_proof_source" in
+      rtk_history|claude_transcript) ;;
+      *) runtime_proof_source="unknown" ;;
+    esac
   fi
 
   compatibility="absent"
@@ -1245,6 +1268,7 @@ status_json() {
     --arg compatibility_basis "$compatibility_basis" \
     --arg proof_state "$proof_state" \
     --arg proof_source "$proof_source" \
+    --arg runtime_proof_source "$runtime_proof_source" \
     --arg upstream_issue "$upstream_issue" \
     --arg diagnostic_caveat "$diagnostic_caveat" \
     --argjson restart_required "$(bool_to_json "$restart_required")" \
@@ -1286,6 +1310,7 @@ status_json() {
       compatibility_basis: $compatibility_basis,
       proof_state: $proof_state,
       proof_source: $proof_source,
+      runtime_proof_source: $runtime_proof_source,
       upstream_issue: $upstream_issue,
       diagnostic_caveat: $diagnostic_caveat,
       restart_required: $restart_required,
@@ -1913,10 +1938,15 @@ verify_rtk() {
     return 0
   fi
   status_json false false | jq -r '
+    def proof_source_label:
+      if (.runtime_proof_source // "") == "claude_transcript" then "claude transcript fallback"
+      elif (.runtime_proof_source // "") == "rtk_history" then "RTK history"
+      elif (.runtime_proof_source // "") != "" then (.runtime_proof_source // "")
+      else "unknown source" end;
     "RTK verify\n" +
     "Static: " + .summary + "\n" +
     "Config: " + (.config_state // "unknown") + " at " + (.config_path // "unknown") + "\n" +
-    "Runtime: " + (if .compatibility == "verified" then "verified by runtime smoke proof " + .proof_source else "manual Claude Code smoke required before PASS" end) +
+    "Runtime: " + (if .compatibility == "verified" then "verified by runtime smoke proof " + .proof_source + " (source: " + proof_source_label + ")" else "manual Claude Code smoke required before PASS" end) +
     (if (.compatibility == "verified" and (.updated_input_risk == true)) then "\nCaveat: " + (.diagnostic_caveat // "anthropics/claude-code#15897 remains an upstream diagnostic caveat") else "" end) +
     (if .compatibility == "verified" then "" else "\nManual smoke: run the scoped /vbw:rtk verify Bash-tool sequence; if it fails, inspect the RTK smoke failure diagnostic and rerun /vbw:rtk verify after addressing the local evidence gap." end)
   '

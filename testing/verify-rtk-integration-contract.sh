@@ -419,6 +419,9 @@ if contains "$RTK_MANAGER" 'claude_transcript_path_for_context()' \
   && contains "$RTK_MANAGER" 'claude_session_id' \
   && contains "$RTK_MANAGER" 'smoke_cwd' \
   && contains "$RTK_MANAGER" 'claude_transcript_path' \
+  && contains "$RTK_MANAGER" 'claude_transcript_line_count()' \
+  && contains "$RTK_MANAGER" 'claude_transcript_start_line_count' \
+  && contains "$RTK_MANAGER" '$records[$transcript_start_line_count:]' \
   && contains "$RTK_MANAGER" '.attachment.toolUseID' \
   && contains "$RTK_MANAGER" 'hookSpecificOutput.updatedInput.command' \
   && contains "$RTK_MANAGER" 'ls_output_is_rtk' \
@@ -426,14 +429,20 @@ if contains "$RTK_MANAGER" 'claude_transcript_path_for_context()' \
   && contains "$RTK_MANAGER" 'claude_transcript_hook_updated_input' \
   && contains "$RTK_MANAGER" 'rtk_history_unadvanced_transcript_verified' \
   && contains "$RTK_MANAGER" 'runtime_proof_source' \
+  && contains "$RTK_MANAGER" 'proof_source_label' \
+  && contains "$RTK_MANAGER" 'claude transcript fallback' \
+  && contains "$RTK_MANAGER" 'RTK history' \
   && contains "$RTK_MANAGER" 'transcript_hook_evidence' \
   && ! contains "$RTK_MANAGER" 'find "$CLAUDE_DIR"' \
   && ! contains "$RTK_MANAGER" 'find "$CLAUDE_DIR/projects"' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-start records bounded Claude transcript context' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish accepts transcript fallback when RTK history does not advance' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects same-second stale transcript before smoke-start' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish accepts same-second transcript after smoke-start' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects stale transcript fallback evidence' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects transcript fallback with wrong rewrite' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects transcript fallback with raw ls output' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects transcript fallback with malformed hook evidence' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects transcript fallback when hook evidence is missing'; then
   pass "rtk-manager accepts only bounded current-session transcript smoke proof fallback"
 else
