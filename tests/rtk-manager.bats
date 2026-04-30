@@ -552,6 +552,68 @@ run_smoke_start_ready() {
   [ -f "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json" ]
 }
 
+write_transcript_record() {
+  local transcript="$1" session_id="$2" smoke_cwd="$3" timestamp="$4" json_filter="$5"
+  jq -c -n \
+    --arg session_id "$session_id" \
+    --arg smoke_cwd "$smoke_cwd" \
+    --arg timestamp "$timestamp" \
+    "$json_filter" >> "$transcript"
+}
+
+write_transcript_tool_and_hook() {
+  local transcript="$1" session_id="$2" smoke_cwd="$3" timestamp="$4" tool_use_id="$5" expected_command="$6" observed_command="$7" hook_command="${8:-rtk hook claude}" result_text="${9:-}"
+  write_transcript_record "$transcript" "$session_id" "$smoke_cwd" "$timestamp" '
+    {
+      type:"assistant",
+      timestamp:$timestamp,
+      sessionId:$session_id,
+      cwd:$smoke_cwd,
+      message:{content:[{type:"tool_use", id:"'"$tool_use_id"'", name:"Bash", input:{command:"'"$expected_command"'"}}]}
+    }'
+  write_transcript_record "$transcript" "$session_id" "$smoke_cwd" "$timestamp" '
+    {
+      type:"attachment",
+      timestamp:$timestamp,
+      sessionId:$session_id,
+      cwd:$smoke_cwd,
+      attachment:{
+        type:"hook_success",
+        hookName:"PreToolUse:Bash",
+        toolUseID:"'"$tool_use_id"'",
+        hookEvent:"PreToolUse",
+        stdout:({hookSpecificOutput:{hookEventName:"PreToolUse", permissionDecisionReason:"RTK auto-rewrite", updatedInput:{command:"'"$observed_command"'"}}} | tojson),
+        stderr:"",
+        exitCode:0,
+        command:"'"$hook_command"'"
+      }
+    }'
+  write_transcript_record "$transcript" "$session_id" "$smoke_cwd" "$timestamp" '
+    {
+      type:"user",
+      timestamp:$timestamp,
+      sessionId:$session_id,
+      cwd:$smoke_cwd,
+      message:{content:[{type:"tool_result", tool_use_id:"'"$tool_use_id"'", content:"'"$result_text"'", is_error:false}]}
+    }'
+}
+
+write_claude_transcript_smoke_evidence() {
+  local session_id="$1" smoke_cwd="$2" timestamp="${3:-2999-01-01T00:00:00.000Z}" log_rewrite="${4:-rtk git log -n 2 --oneline}" ls_result="${5:-}"
+  local encoded_cwd transcript
+  if [ -z "$ls_result" ]; then
+    ls_result="$(printf '%s\n' '.git/' 'README.md  1.2K')"
+  fi
+  encoded_cwd="${smoke_cwd//\//-}"
+  transcript="$CLAUDE_CONFIG_DIR/projects/$encoded_cwd/$session_id.jsonl"
+  mkdir -p "$(dirname "$transcript")"
+  : > "$transcript"
+  write_transcript_tool_and_hook "$transcript" "$session_id" "$smoke_cwd" "$timestamp" call_ls 'ls -la .' 'rtk ls -la .' 'rtk hook claude' "$ls_result"
+  write_transcript_tool_and_hook "$transcript" "$session_id" "$smoke_cwd" "$timestamp" call_status 'git status --short' 'rtk git status --short' 'rtk hook claude' '?? .compile'
+  write_transcript_tool_and_hook "$transcript" "$session_id" "$smoke_cwd" "$timestamp" call_log 'git log -n 2 --oneline' "$log_rewrite" 'rtk hook claude' '4567d46 chore(vbw): complete debug session'
+  printf '%s\n' "$transcript"
+}
+
 write_release_curl() {
   cat > "$TEST_TEMP_DIR/bin/curl" <<EOF
 #!/usr/bin/env bash
@@ -1285,6 +1347,95 @@ JSON
   [[ "$output" == *"Runtime: verified by runtime smoke proof"* ]]
   [[ "$output" == *"Caveat:"* ]]
   [[ "$output" != *"Manual smoke:"* ]]
+}
+
+@test "rtk-manager: smoke-start records bounded Claude transcript context" {
+  export CLAUDE_SESSION_ID="session-context"
+  local smoke_cwd encoded_cwd
+  smoke_cwd="$(pwd -P)"
+  encoded_cwd="${smoke_cwd//\//-}"
+  run_smoke_start_ready
+  jq -e --arg session_id "$CLAUDE_SESSION_ID" '.claude_session_id == $session_id' "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
+  jq -e --arg smoke_cwd "$smoke_cwd" '.smoke_cwd == $smoke_cwd' "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
+  jq -e --arg suffix "/projects/$encoded_cwd/$CLAUDE_SESSION_ID.jsonl" '.claude_transcript_path | endswith($suffix)' "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
+}
+
+@test "rtk-manager: smoke-finish accepts transcript fallback when RTK history does not advance" {
+  export CLAUDE_SESSION_ID="session-transcript-pass"
+  local smoke_cwd
+  smoke_cwd="$(pwd -P)"
+  run_smoke_start_ready
+  write_claude_transcript_smoke_evidence "$CLAUDE_SESSION_ID" "$smoke_cwd" >/dev/null
+  write_rtk_history 'Total commands: 10'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.runtime_proof_source == "claude_transcript"'
+  echo "$output" | jq -e '.history_count_evidence == "rtk_history_unadvanced_transcript_verified"'
+  echo "$output" | jq -e '.history_isolation_evidence == "claude_transcript_hook_updated_input"'
+  jq -e '.runtime_proof_source == "claude_transcript"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.transcript_hook_evidence.source == "claude_transcript"' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.transcript_hook_evidence.commands | length == 3' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+  jq -e '.history_command_evidence.ls.before == 0 and .history_command_evidence.ls.after == 0' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+}
+
+@test "rtk-manager: smoke-finish rejects stale transcript fallback evidence" {
+  export CLAUDE_SESSION_ID="session-transcript-stale"
+  local smoke_cwd
+  smoke_cwd="$(pwd -P)"
+  run_smoke_start_ready
+  write_claude_transcript_smoke_evidence "$CLAUDE_SESSION_ID" "$smoke_cwd" "2000-01-01T00:00:00.000Z" >/dev/null
+  write_rtk_history 'Total commands: 10'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK history count did not increase by at least 3"* ]]
+  [[ "$output" == *"transcript hook proof unavailable"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish rejects transcript fallback with wrong rewrite" {
+  export CLAUDE_SESSION_ID="session-transcript-wrong-rewrite"
+  local smoke_cwd
+  smoke_cwd="$(pwd -P)"
+  run_smoke_start_ready
+  write_claude_transcript_smoke_evidence "$CLAUDE_SESSION_ID" "$smoke_cwd" "2999-01-01T00:00:00.000Z" 'rtk git log -n 2' >/dev/null
+  write_rtk_history 'Total commands: 10'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK history count did not increase by at least 3"* ]]
+  [[ "$output" == *"transcript hook proof unavailable"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish rejects transcript fallback with raw ls output" {
+  export CLAUDE_SESSION_ID="session-transcript-raw-ls"
+  local smoke_cwd raw_ls_result
+  smoke_cwd="$(pwd -P)"
+  raw_ls_result="$(printf '%s\n' 'total 16' 'drwxr-xr-x  5 user  staff  160 Apr 30 00:00 .')"
+  run_smoke_start_ready
+  write_claude_transcript_smoke_evidence "$CLAUDE_SESSION_ID" "$smoke_cwd" "2999-01-01T00:00:00.000Z" 'rtk git log -n 2 --oneline' "$raw_ls_result" >/dev/null
+  write_rtk_history 'Total commands: 10'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK history count did not increase by at least 3"* ]]
+  [[ "$output" == *"transcript hook proof unavailable"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish rejects transcript fallback when hook evidence is missing" {
+  export CLAUDE_SESSION_ID="session-transcript-missing-hook"
+  local smoke_cwd encoded_cwd transcript
+  smoke_cwd="$(pwd -P)"
+  encoded_cwd="${smoke_cwd//\//-}"
+  run_smoke_start_ready
+  transcript="$CLAUDE_CONFIG_DIR/projects/$encoded_cwd/$CLAUDE_SESSION_ID.jsonl"
+  mkdir -p "$(dirname "$transcript")"
+  : > "$transcript"
+  write_rtk_history 'Total commands: 10'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK history count did not increase by at least 3"* ]]
+  [[ "$output" == *"transcript hook proof unavailable"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
 }
 
 @test "rtk-manager: smoke-finish accepts parseable total tail mismatch with fresh command counts" {

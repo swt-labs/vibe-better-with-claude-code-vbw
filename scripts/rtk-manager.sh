@@ -584,11 +584,21 @@ rtk_history_command_evidence_json() {
     }'
 }
 
-rtk_history_require_fresh_command_counts() {
+rtk_history_fresh_command_failure_detail() {
   local before_ls="$1" before_status="$2" before_log="$3" after_ls="$4" after_status="$5" after_log="$6"
-  [ "$after_ls" -gt "$before_ls" ] || smoke_fail 1 "missing fresh RTK history evidence after smoke-start" "rtk ls -la . before_count=$before_ls after_count=$after_ls"
-  [ "$after_status" -gt "$before_status" ] || smoke_fail 1 "missing fresh RTK history evidence after smoke-start" "rtk git status --short before_count=$before_status after_count=$after_status"
-  [ "$after_log" -gt "$before_log" ] || smoke_fail 1 "missing fresh RTK history evidence after smoke-start" "rtk git log -n 2 --oneline before_count=$before_log after_count=$after_log"
+  if [ "$after_ls" -le "$before_ls" ]; then
+    printf '%s\n' "rtk ls -la . before_count=$before_ls after_count=$after_ls"
+    return 1
+  fi
+  if [ "$after_status" -le "$before_status" ]; then
+    printf '%s\n' "rtk git status --short before_count=$before_status after_count=$after_status"
+    return 1
+  fi
+  if [ "$after_log" -le "$before_log" ]; then
+    printf '%s\n' "rtk git log -n 2 --oneline before_count=$before_log after_count=$after_log"
+    return 1
+  fi
+  return 0
 }
 
 rtk_history_after_pending_tail() {
@@ -604,6 +614,99 @@ rtk_history_after_pending_tail() {
       empty
     end
   '
+}
+
+claude_transcript_path_for_context() {
+  local smoke_cwd="$1" session_id="$2" encoded_cwd
+  [ -n "$smoke_cwd" ] || return 1
+  [ -n "$session_id" ] || return 1
+  encoded_cwd="${smoke_cwd//\//-}"
+  printf '%s/projects/%s/%s.jsonl\n' "$CLAUDE_DIR" "$encoded_cwd" "$session_id"
+}
+
+rtk_transcript_smoke_evidence_json() {
+  local pending_payload="$1" hook_command="$2" start_ts session_id smoke_cwd transcript_path
+  start_ts="$(printf '%s' "$pending_payload" | jq -r '.timestamp // empty' 2>/dev/null || true)"
+  session_id="$(printf '%s' "$pending_payload" | jq -r '.claude_session_id // empty' 2>/dev/null || true)"
+  smoke_cwd="$(printf '%s' "$pending_payload" | jq -r '.smoke_cwd // empty' 2>/dev/null || true)"
+  transcript_path="$(printf '%s' "$pending_payload" | jq -r '.claude_transcript_path // empty' 2>/dev/null || true)"
+  if [ -z "$transcript_path" ]; then
+    transcript_path="$(claude_transcript_path_for_context "$smoke_cwd" "$session_id" 2>/dev/null || true)"
+  fi
+  [ -n "$start_ts" ] || return 1
+  [ -n "$session_id" ] || return 1
+  [ -n "$smoke_cwd" ] || return 1
+  [ -n "$transcript_path" ] || return 1
+  [ -f "$transcript_path" ] || return 1
+
+  jq -c -s -e \
+    --arg start_ts "$start_ts" \
+    --arg session_id "$session_id" \
+    --arg smoke_cwd "$smoke_cwd" \
+    --arg hook_command "$hook_command" \
+    --arg transcript_path "$transcript_path" '
+      . as $records
+      | def parse_epoch:
+          if type == "string" then (sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601? // 0) else 0 end;
+      ($start_ts | parse_epoch) as $start_epoch
+      | def in_scope:
+          (((.timestamp // "") | parse_epoch) >= $start_epoch)
+          and ((.sessionId // "") == $session_id)
+          and ((.cwd // "") == $smoke_cwd);
+      def hook_stdout:
+        (.attachment.stdout // "" | fromjson? // {});
+      def hook_updated($tool_use_id; $observed_command):
+        any($records[];
+          in_scope
+          and ((.attachment.type // "") == "hook_success")
+          and ((.attachment.hookName // "") == "PreToolUse:Bash")
+          and ((.attachment.hookEvent // "") == "PreToolUse")
+          and ((.attachment.toolUseID // "") == $tool_use_id)
+          and ((.attachment.command // "") == $hook_command)
+          and ((.attachment.exitCode // -1) == 0)
+          and (((hook_stdout.hookSpecificOutput.hookEventName // "") == "PreToolUse"))
+          and (((hook_stdout.hookSpecificOutput.updatedInput.command // "") == $observed_command))
+        );
+      def tool_id($expected_command):
+        [
+          $records[]
+          | select(in_scope and ((.type // "") == "assistant"))
+          | .message.content[]?
+          | select((.type // "") == "tool_use" and (.name // "") == "Bash" and (.input.command // "") == $expected_command)
+          | .id
+        ] | first // "";
+      def tool_result_text($tool_use_id):
+        [
+          $records[]
+          | select(in_scope and ((.type // "") == "user"))
+          | .message.content[]?
+          | select((.type // "") == "tool_result" and (.tool_use_id // "") == $tool_use_id)
+          | (.content // "")
+        ] | first // "";
+      def ls_output_is_rtk($tool_use_id):
+        (tool_result_text($tool_use_id)) as $out
+        | ($out | length > 0)
+        and (($out | test("(^|\\n)total[[:space:]]+[0-9]+")) | not)
+        and (($out | test("(^|\\n)[bcdlps-][rwx-]{9}[[:space:]]")) | not)
+        and ($out | test("(^|\\n)[^\\n]+/[[:space:]]*(\\n|$)|(^|\\n)[^\\n]+[[:space:]]+[0-9.]+[KMGT]?B(\\n|$)"));
+      [
+        {expected:"ls -la .", observed:"rtk ls -la .", tool_use_id:tool_id("ls -la .")},
+        {expected:"git status --short", observed:"rtk git status --short", tool_use_id:tool_id("git status --short")},
+        {expected:"git log -n 2 --oneline", observed:"rtk git log -n 2 --oneline", tool_use_id:tool_id("git log -n 2 --oneline")}
+      ] as $commands
+      | if all($commands[]; ((.tool_use_id // "") != "") and hook_updated(.tool_use_id; .observed)) and ls_output_is_rtk($commands[0].tool_use_id) then
+          {
+            source:"claude_transcript",
+            transcript_path:$transcript_path,
+            session_id:$session_id,
+            smoke_cwd:$smoke_cwd,
+            started_at:$start_ts,
+            commands:$commands
+          }
+        else
+          empty
+        end
+    ' "$transcript_path"
 }
 
 write_smoke_failure() {
@@ -644,6 +747,7 @@ smoke_status_preconditions() {
 
 smoke_start() {
   local status_payload hook_path hook_command hook_version history history_total history_evidence history_tail history_hash history_command_counts tmp
+  local smoke_timestamp smoke_cwd claude_session_id claude_transcript_path
   status_payload="$(status_json false false)"
   smoke_status_preconditions "$status_payload"
   if printf '%s' "$status_payload" | jq -e '.compatibility == "verified" and ((.proof_source // "") != "")' >/dev/null 2>&1; then
@@ -658,16 +762,23 @@ smoke_start() {
   history_tail="$(printf '%s\n' "$history_evidence" | rtk_history_evidence_tail)"
   history_hash="$(printf '%s' "$history_tail" | sha256_text || true)"
   history_command_counts="$(rtk_history_command_counts_json "$history_evidence")"
+  smoke_timestamp="$(now_utc)"
+  smoke_cwd="$(pwd -P 2>/dev/null || pwd)"
+  claude_session_id="${CLAUDE_SESSION_ID:-}"
+  claude_transcript_path="$(claude_transcript_path_for_context "$smoke_cwd" "$claude_session_id" 2>/dev/null || true)"
   mkdir -p "$VBW_RTK_DIR"
   tmp="$(mktemp "$VBW_RTK_DIR/rtk-smoke-pending.XXXXXX")"
   jq -n \
     --arg proof_type "runtime_smoke_pending" \
     --arg status "pending" \
-    --arg timestamp "$(now_utc)" \
+    --arg timestamp "$smoke_timestamp" \
     --arg rtk_version "$hook_version" \
     --arg hook_command "$hook_command" \
     --arg active_hook_rtk_path "$hook_path" \
     --arg active_hook_rtk_version "$hook_version" \
+    --arg claude_session_id "$claude_session_id" \
+    --arg smoke_cwd "$smoke_cwd" \
+    --arg claude_transcript_path "$claude_transcript_path" \
     --arg history_before_total "$history_total" \
     --arg history_before_tail "$history_tail" \
     --arg history_before_sha256 "$history_hash" \
@@ -680,6 +791,9 @@ smoke_start() {
       hook_command:$hook_command,
       active_hook_rtk_path:$active_hook_rtk_path,
       active_hook_rtk_version:$active_hook_rtk_version,
+      claude_session_id:$claude_session_id,
+      smoke_cwd:$smoke_cwd,
+      claude_transcript_path:$claude_transcript_path,
       history_before_total: (if $history_before_total == "" then null else ($history_before_total | tonumber) end),
       history_before_total_available: ($history_before_total != ""),
       history_before_tail:$history_before_tail,
@@ -703,9 +817,13 @@ verify_bash_guard_smoke() {
 
 write_runtime_smoke_proof() {
   local status_payload="$1" pending_payload="$2" history_after_total="$3" history_after_sha256="$4" count_evidence="$5" isolation_evidence="$6" command_evidence_json="$7" tmp
+  local transcript_evidence_json="${8:-null}" runtime_proof_source="rtk_history"
   local hook_command hook_version
   hook_command="$(printf '%s' "$status_payload" | jq -r '.global_hook_command')"
   hook_version="$(printf '%s' "$status_payload" | jq -r '.active_hook_rtk_version')"
+  if [ "$transcript_evidence_json" != "null" ]; then
+    runtime_proof_source="claude_transcript"
+  fi
   mkdir -p "$VBW_RTK_DIR"
   tmp="$(mktemp "$VBW_RTK_DIR/rtk-proof.XXXXXX")"
   jq -n \
@@ -723,6 +841,8 @@ write_runtime_smoke_proof() {
     --arg count_evidence "$count_evidence" \
     --arg isolation_evidence "$isolation_evidence" \
     --argjson history_command_evidence "$command_evidence_json" \
+    --arg runtime_proof_source "$runtime_proof_source" \
+    --argjson transcript_hook_evidence "$transcript_evidence_json" \
     '{
       proof_type:$proof_type,
       status:$status,
@@ -745,6 +865,8 @@ write_runtime_smoke_proof() {
       history_count_evidence:$count_evidence,
       history_isolation_evidence:$isolation_evidence,
       history_command_evidence:$history_command_evidence,
+      runtime_proof_source:$runtime_proof_source,
+      transcript_hook_evidence:$transcript_hook_evidence,
       compatibility_basis:$compatibility_basis,
       upstream_caveat:$upstream_caveat
     }' > "$tmp"
@@ -757,6 +879,7 @@ smoke_finish() {
   local history history_after_total history_before_total history_before_tail history_after_evidence history_after_tail history_before_sha256 history_after_sha256 history_evidence count_evidence isolation_evidence
   local history_tail_hash_unchanged=false history_totals_available=false history_total_delta=0
   local before_ls before_status before_log after_ls after_status after_log command_evidence_json
+  local history_validation_failed=false history_failure_reason="" history_failure_detail="" transcript_evidence_json="" fresh_count_failure_detail=""
   [ -f "$RTK_PENDING_SMOKE_FILE" ] || smoke_fail 1 "pending smoke file missing" "$RTK_PENDING_SMOKE_FILE"
   jq empty "$RTK_PENDING_SMOKE_FILE" >/dev/null 2>&1 || smoke_fail 1 "pending smoke file is malformed" "$RTK_PENDING_SMOKE_FILE"
   pending_payload="$(cat "$RTK_PENDING_SMOKE_FILE")"
@@ -795,35 +918,71 @@ smoke_finish() {
     history_totals_available=true
     history_total_delta=$((history_after_total - history_before_total))
     if [ "$history_total_delta" -lt 3 ]; then
-      smoke_fail 1 "RTK history count did not increase by at least 3" "before=$history_before_total after=$history_after_total"
+      history_validation_failed=true
+      history_failure_reason="RTK history count did not increase by at least 3"
+      history_failure_detail="before=$history_before_total after=$history_after_total"
+    else
+      count_evidence="before=$history_before_total after=$history_after_total delta=$history_total_delta"
     fi
-    count_evidence="before=$history_before_total after=$history_after_total delta=$history_total_delta"
   else
     if [ "$history_tail_hash_unchanged" = "true" ]; then
-      smoke_fail 1 "RTK history did not advance after smoke-start" "history totals unavailable and evidence tail hash unchanged"
+      history_validation_failed=true
+      history_failure_reason="RTK history did not advance after smoke-start"
+      history_failure_detail="history totals unavailable and evidence tail hash unchanged"
+    else
+      count_evidence="history_tail_changed_after_smoke_start"
     fi
-    count_evidence="history_tail_changed_after_smoke_start"
   fi
-  if [ -n "$history_before_tail" ] && [ -z "$history_evidence" ]; then
+  if [ "$history_validation_failed" = "false" ] && [ -n "$history_before_tail" ] && [ -z "$history_evidence" ]; then
     if [ -z "$before_ls" ] || [ -z "$before_status" ] || [ -z "$before_log" ]; then
       smoke_fail 1 "fresh smoke evidence requires a new /vbw:rtk verify attempt" "pending smoke file lacks history_before_command_counts"
     fi
-    rtk_history_require_fresh_command_counts "$before_ls" "$before_status" "$before_log" "$after_ls" "$after_status" "$after_log"
-    history_evidence="$history_after_evidence"
-    if [ "$history_totals_available" = "true" ]; then
-      isolation_evidence="command_counts_with_total_delta"
+    if ! fresh_count_failure_detail="$(rtk_history_fresh_command_failure_detail "$before_ls" "$before_status" "$before_log" "$after_ls" "$after_status" "$after_log")"; then
+      history_validation_failed=true
+      history_failure_reason="missing fresh RTK history evidence after smoke-start"
+      history_failure_detail="$fresh_count_failure_detail"
     else
-      isolation_evidence="command_counts_with_tail_change"
+      history_evidence="$history_after_evidence"
+      if [ "$history_totals_available" = "true" ]; then
+        isolation_evidence="command_counts_with_total_delta"
+      else
+        isolation_evidence="command_counts_with_tail_change"
+      fi
     fi
   fi
-  rtk_history_has_command "$history_evidence" ls || smoke_fail 1 "missing RTK history evidence" "rtk ls -la ."
-  rtk_history_has_command "$history_evidence" status || smoke_fail 1 "missing RTK history evidence" "rtk git status --short"
-  rtk_history_has_command "$history_evidence" log || smoke_fail 1 "missing RTK history evidence" "rtk git log -n 2 --oneline"
-  verify_bash_guard_smoke || smoke_fail 1 "VBW Bash guard smoke verification failed" "expected scripts/bash-guard.sh to block synthetic destructive command with exit 2"
   command_evidence_json="$(rtk_history_command_evidence_json "${before_ls:-0}" "${before_status:-0}" "${before_log:-0}" "$after_ls" "$after_status" "$after_log")"
-  write_runtime_smoke_proof "$status_payload" "$pending_payload" "$history_after_total" "$history_after_sha256" "$count_evidence" "$isolation_evidence" "$command_evidence_json"
+  if [ "$history_validation_failed" = "false" ]; then
+    if ! rtk_history_has_command "$history_evidence" ls; then
+      history_validation_failed=true
+      history_failure_reason="missing RTK history evidence"
+      history_failure_detail="rtk ls -la ."
+    elif ! rtk_history_has_command "$history_evidence" status; then
+      history_validation_failed=true
+      history_failure_reason="missing RTK history evidence"
+      history_failure_detail="rtk git status --short"
+    elif ! rtk_history_has_command "$history_evidence" log; then
+      history_validation_failed=true
+      history_failure_reason="missing RTK history evidence"
+      history_failure_detail="rtk git log -n 2 --oneline"
+    fi
+  fi
+  if [ "$history_validation_failed" = "true" ]; then
+    transcript_evidence_json="$(rtk_transcript_smoke_evidence_json "$pending_payload" "$hook_command" 2>/dev/null || true)"
+    if [ -n "$transcript_evidence_json" ]; then
+      verify_bash_guard_smoke || smoke_fail 1 "VBW Bash guard smoke verification failed" "expected scripts/bash-guard.sh to block synthetic destructive command with exit 2"
+      count_evidence="rtk_history_unadvanced_transcript_verified"
+      isolation_evidence="claude_transcript_hook_updated_input"
+      write_runtime_smoke_proof "$status_payload" "$pending_payload" "$history_after_total" "$history_after_sha256" "$count_evidence" "$isolation_evidence" "$command_evidence_json" "$transcript_evidence_json"
+      rm -f "$RTK_PENDING_SMOKE_FILE"
+      jq -n --arg status "pass" --arg proof_source "$RTK_PROOF_FILE" --arg history_count_evidence "$count_evidence" --arg history_isolation_evidence "$isolation_evidence" --arg runtime_proof_source "claude_transcript" '{status:$status,proof_source:$proof_source,history_count_evidence:$history_count_evidence,history_isolation_evidence:$history_isolation_evidence,runtime_proof_source:$runtime_proof_source}'
+      return 0
+    fi
+    smoke_fail 1 "$history_failure_reason" "${history_failure_detail}${history_failure_detail:+; }transcript hook proof unavailable"
+  fi
+  verify_bash_guard_smoke || smoke_fail 1 "VBW Bash guard smoke verification failed" "expected scripts/bash-guard.sh to block synthetic destructive command with exit 2"
+  write_runtime_smoke_proof "$status_payload" "$pending_payload" "$history_after_total" "$history_after_sha256" "$count_evidence" "$isolation_evidence" "$command_evidence_json" "null"
   rm -f "$RTK_PENDING_SMOKE_FILE"
-  jq -n --arg status "pass" --arg proof_source "$RTK_PROOF_FILE" --arg history_count_evidence "$count_evidence" --arg history_isolation_evidence "$isolation_evidence" '{status:$status,proof_source:$proof_source,history_count_evidence:$history_count_evidence,history_isolation_evidence:$history_isolation_evidence}'
+  jq -n --arg status "pass" --arg proof_source "$RTK_PROOF_FILE" --arg history_count_evidence "$count_evidence" --arg history_isolation_evidence "$isolation_evidence" --arg runtime_proof_source "rtk_history" '{status:$status,proof_source:$proof_source,history_count_evidence:$history_count_evidence,history_isolation_evidence:$history_isolation_evidence,runtime_proof_source:$runtime_proof_source}'
 }
 
 status_json() {
