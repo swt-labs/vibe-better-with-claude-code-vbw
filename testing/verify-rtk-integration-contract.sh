@@ -381,6 +381,39 @@ else
   fail "rtk-manager can still pass full RTK history through argv during smoke verification"
 fi
 
+rtk_tail_policy_count="$(grep -Fc 'tail -n 40' "$RTK_MANAGER" || true)"
+if contains "$RTK_MANAGER" 'rtk_history_evidence()' \
+  && contains "$RTK_MANAGER" 'rtk_history_evidence_tail()' \
+  && contains_re "$RTK_MANAGER" 'history_tail=.*rtk_history_evidence_tail' \
+  && contains_re "$RTK_MANAGER" 'history_after_tail=.*rtk_history_evidence_tail' \
+  && [ "$rtk_tail_policy_count" -eq 1 ] \
+  && contains "$RTK_MANAGER" 'rtk_history_command_count()' \
+  && contains "$RTK_MANAGER" 'history_tail_hash_unchanged' \
+  && contains "$RTK_MANAGER" 'history_totals_available' \
+  && contains "$RTK_MANAGER" 'history_total_delta' \
+  && contains "$RTK_MANAGER" 'history_before_command_counts' \
+  && contains "$RTK_MANAGER" 'history_command_counts="$(rtk_history_command_counts_json "$history_evidence")"' \
+  && contains "$RTK_MANAGER" 'after_ls="$(rtk_history_command_count "$history_after_evidence" ls)"' \
+  && contains "$RTK_MANAGER" 'rtk_history_require_fresh_command_counts' \
+  && contains "$RTK_MANAGER" 'history_isolation_evidence' \
+  && contains "$RTK_MANAGER" 'history_command_evidence' \
+  && contains "$RTK_MANAGER" 'missing fresh RTK history evidence after smoke-start' \
+  && contains "$RTK_MANAGER" 'history totals unavailable and evidence tail hash unchanged' \
+  && contains "$RTK_MANAGER" 'fresh smoke evidence requires a new /vbw:rtk verify attempt' \
+  && ! contains "$RTK_MANAGER" 'pending history tail was not found in the after-history snapshot' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish accepts parseable total tail mismatch with fresh command counts' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects parseable total tail mismatch with stale command counts' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects parseable total tail mismatch with stale commands outside stored tail' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish accepts parseable total unchanged tail with fresh prepended command counts' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects parseable total unchanged tail with stale prepended unrelated commands' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects count-unavailable tail mismatch with stale commands outside stored tail' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects count-unavailable unchanged tail with scoped-looking prepended commands' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish asks for fresh verify when tail mismatch pending lacks command counts'; then
+  pass "rtk-manager proves fresh smoke history with command counts when exact tail isolation is unavailable"
+else
+  fail "rtk-manager missing robust tail-mismatch smoke history proof contract"
+fi
+
 if contains "$RTK_MANAGER" 'compatibility_basis="runtime_smoke_passed"' \
   && contains "$RTK_MANAGER" 'proof_state="valid"' \
   && contains "$RTK_MANAGER" 'upstream_issue="anthropics/claude-code#15897"' \
