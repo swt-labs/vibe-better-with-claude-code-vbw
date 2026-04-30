@@ -394,7 +394,7 @@ if contains "$RTK_MANAGER" 'rtk_history_evidence()' \
   && contains "$RTK_MANAGER" 'history_before_command_counts' \
   && contains "$RTK_MANAGER" 'history_command_counts="$(rtk_history_command_counts_json "$history_evidence")"' \
   && contains "$RTK_MANAGER" 'after_ls="$(rtk_history_command_count "$history_after_evidence" ls)"' \
-  && contains "$RTK_MANAGER" 'rtk_history_require_fresh_command_counts' \
+  && contains "$RTK_MANAGER" 'rtk_history_fresh_command_failure_detail' \
   && contains "$RTK_MANAGER" 'history_isolation_evidence' \
   && contains "$RTK_MANAGER" 'history_command_evidence' \
   && contains "$RTK_MANAGER" 'missing fresh RTK history evidence after smoke-start' \
@@ -412,6 +412,51 @@ if contains "$RTK_MANAGER" 'rtk_history_evidence()' \
   pass "rtk-manager proves fresh smoke history with command counts when exact tail isolation is unavailable"
 else
   fail "rtk-manager missing robust tail-mismatch smoke history proof contract"
+fi
+
+if contains "$RTK_MANAGER" 'claude_transcript_path_for_context()' \
+  && contains "$RTK_MANAGER" 'claude_session_id_is_safe_path_component()' \
+  && contains "$RTK_MANAGER" '*[!A-Za-z0-9._-]*' \
+  && contains "$RTK_MANAGER" 'claude_transcript_path_matches_context()' \
+  && contains "$RTK_MANAGER" 'rtk_transcript_smoke_evidence_json()' \
+  && contains "$RTK_MANAGER" 'claude_session_id' \
+  && contains "$RTK_MANAGER" 'smoke_cwd' \
+  && contains "$RTK_MANAGER" 'claude_transcript_path' \
+  && contains "$RTK_MANAGER" 'claude_transcript_line_count()' \
+  && contains "$RTK_MANAGER" 'claude_transcript_after_start_lines()' \
+  && contains "$RTK_MANAGER" "awk -v start_line_count=\"\$start_line_count\" 'NR > start_line_count' \"\$transcript_path\"" \
+  && contains "$RTK_MANAGER" 'claude_transcript_start_line_count' \
+  && ! contains "$RTK_MANAGER" '$records[$transcript_start_line_count:]' \
+  && contains "$RTK_MANAGER" '.attachment.toolUseID' \
+  && contains "$RTK_MANAGER" 'hookSpecificOutput.updatedInput.command' \
+  && contains "$RTK_MANAGER" 'ls_output_is_rtk' \
+  && contains "$RTK_MANAGER" 'tool_result_text' \
+  && contains "$RTK_MANAGER" 'expected_transcript_path' \
+  && contains "$RTK_MANAGER" 'claude_transcript_hook_updated_input' \
+  && contains "$RTK_MANAGER" 'rtk_history_unadvanced_transcript_verified' \
+  && contains "$RTK_MANAGER" 'runtime_proof_source' \
+  && contains "$RTK_MANAGER" 'proof_source_label' \
+  && contains "$RTK_MANAGER" 'claude transcript fallback' \
+  && contains "$RTK_MANAGER" 'RTK history' \
+  && contains "$RTK_MANAGER" 'transcript_hook_evidence' \
+  && ! contains "$RTK_MANAGER" 'find "$CLAUDE_DIR"' \
+  && ! contains "$RTK_MANAGER" 'find "$CLAUDE_DIR/projects"' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-start records bounded Claude transcript context' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-start rejects unsafe transcript session id path component' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish accepts transcript fallback when RTK history does not advance' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish transcript fallback ignores pre-start transcript lines' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects same-second stale transcript before smoke-start' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish accepts same-second transcript after smoke-start' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects stale transcript fallback evidence' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects transcript fallback with wrong rewrite' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects transcript fallback with raw ls output' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects transcript fallback with malformed hook evidence' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects transcript fallback when hook evidence is missing' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects tampered pending transcript path outside project' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects tampered pending transcript path for wrong session file'; then
+  pass "rtk-manager accepts only bounded current-session transcript smoke proof fallback"
+else
+  fail "rtk-manager missing bounded transcript smoke proof fallback contract"
 fi
 
 if contains "$RTK_MANAGER" 'compatibility_basis="runtime_smoke_passed"' \
@@ -573,6 +618,8 @@ if contains "$README" '/vbw:rtk' \
   && contains "$README" 'config.toml' \
   && contains "$README" 'rtk init -g --auto-patch' \
   && contains "$README" '/vbw:rtk verify` can run a scoped Claude Code Bash-tool smoke' \
+  && contains "$README" 'current Claude session transcript proves the RTK hook returned exact post-smoke `updatedInput` rewrites' \
+  && contains "$README" '`ls` produced RTK-style output' \
   && contains "$README" 'normal status and doctor warnings quiet for this local setup' \
   && contains "$README" 'anthropics/claude-code#15897 caveat' \
   && contains "$README" 'RTK savings are shown as external RTK metrics'; then
