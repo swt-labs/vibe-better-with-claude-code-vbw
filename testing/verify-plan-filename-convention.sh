@@ -337,10 +337,11 @@ cat > "$TDIR/.vbw-planning/PROJECT.md" << 'EOF'
 This is a test project.
 EOF
 OUTPUT=$(cd "$TDIR" && bash "$SCRIPT_DIR/scripts/phase-detect.sh" 2>/dev/null) && RC=$? || RC=$?
+MISNAMED=$(grep misnamed <<<"$OUTPUT" || true)
 if echo "$OUTPUT" | grep -q "misnamed_plans=false"; then
   pass "phase-detect ignores PLAN-01-RESEARCH.md (not a known misname pattern)"
 else
-  fail "phase-detect compound — output missing misnamed_plans=false, got: $(echo "$OUTPUT" | grep misnamed)"
+  fail "phase-detect compound — output missing misnamed_plans=false, got: $MISNAMED"
 fi
 
 # --- Type-aware error messages, path normalization, placeholder guard ---
@@ -440,10 +441,11 @@ cat > "$TDIR/.vbw-planning/PROJECT.md" << 'EOF'
 This is a test project.
 EOF
 OUTPUT=$(cd "$TDIR" && bash "$SCRIPT_DIR/scripts/phase-detect.sh" 2>/dev/null) && RC=$? || RC=$?
+MISNAMED=$(grep misnamed <<<"$OUTPUT" || true)
 if echo "$OUTPUT" | grep -q "misnamed_plans=true"; then
   pass "phase-detect catches PLAN-100.md (3 digits)"
 else
-  fail "phase-detect 3-digit — output missing misnamed_plans=true, got: $(echo "$OUTPUT" | grep misnamed)"
+  fail "phase-detect 3-digit — output missing misnamed_plans=true, got: $MISNAMED"
 fi
 
 # Test 39: phase-detect catches PLAN-1000.md (4 digits)
@@ -455,10 +457,11 @@ cat > "$TDIR/.vbw-planning/PROJECT.md" << 'EOF'
 This is a test project.
 EOF
 OUTPUT=$(cd "$TDIR" && bash "$SCRIPT_DIR/scripts/phase-detect.sh" 2>/dev/null) && RC=$? || RC=$?
+MISNAMED=$(grep misnamed <<<"$OUTPUT" || true)
 if echo "$OUTPUT" | grep -q "misnamed_plans=true"; then
   pass "phase-detect catches PLAN-1000.md (4 digits)"
 else
-  fail "phase-detect 4-digit — output missing misnamed_plans=true, got: $(echo "$OUTPUT" | grep misnamed)"
+  fail "phase-detect 4-digit — output missing misnamed_plans=true, got: $MISNAMED"
 fi
 
 # Test 40: phase-detect still ignores PLAN-100-RESEARCH.md (unknown compound, 3 digits)
@@ -470,10 +473,11 @@ cat > "$TDIR/.vbw-planning/PROJECT.md" << 'EOF'
 This is a test project.
 EOF
 OUTPUT=$(cd "$TDIR" && bash "$SCRIPT_DIR/scripts/phase-detect.sh" 2>/dev/null) && RC=$? || RC=$?
+MISNAMED=$(grep misnamed <<<"$OUTPUT" || true)
 if echo "$OUTPUT" | grep -q "misnamed_plans=false"; then
   pass "phase-detect ignores PLAN-100-RESEARCH.md (unknown compound, 3 digits)"
 else
-  fail "phase-detect 3-digit compound — output missing misnamed_plans=false, got: $(echo "$OUTPUT" | grep misnamed)"
+  fail "phase-detect 3-digit compound — output missing misnamed_plans=false, got: $MISNAMED"
 fi
 
 # --- End-to-end: phase-detect → normalize → phase-detect loop ---
@@ -493,10 +497,12 @@ EOF
 OUTPUT_BEFORE=$(cd "$TDIR" && bash "$SCRIPT_DIR/scripts/phase-detect.sh" 2>/dev/null)
 bash "$NORM_SCRIPT" "$TDIR/.vbw-planning/phases/01-setup" >/dev/null 2>&1
 OUTPUT_AFTER=$(cd "$TDIR" && bash "$SCRIPT_DIR/scripts/phase-detect.sh" 2>/dev/null)
+BEFORE=$(grep misnamed <<<"$OUTPUT_BEFORE" || true)
+AFTER=$(grep misnamed <<<"$OUTPUT_AFTER" || true)
 if echo "$OUTPUT_BEFORE" | grep -q "misnamed_plans=true" && echo "$OUTPUT_AFTER" | grep -q "misnamed_plans=false"; then
   pass "end-to-end: misnamed_plans true → normalize → false"
 else
-  fail "end-to-end — before: $(echo "$OUTPUT_BEFORE" | grep misnamed), after: $(echo "$OUTPUT_AFTER" | grep misnamed)"
+  fail "end-to-end — before: $BEFORE, after: $AFTER"
 fi
 
 # Test 42: end-to-end with lowercase misnamed files
@@ -511,10 +517,12 @@ EOF
 OUTPUT_BEFORE=$(cd "$TDIR" && bash "$SCRIPT_DIR/scripts/phase-detect.sh" 2>/dev/null)
 bash "$NORM_SCRIPT" "$TDIR/.vbw-planning/phases/01-setup" >/dev/null 2>&1
 OUTPUT_AFTER=$(cd "$TDIR" && bash "$SCRIPT_DIR/scripts/phase-detect.sh" 2>/dev/null)
+BEFORE=$(grep misnamed <<<"$OUTPUT_BEFORE" || true)
+AFTER=$(grep misnamed <<<"$OUTPUT_AFTER" || true)
 if echo "$OUTPUT_BEFORE" | grep -q "misnamed_plans=true" && echo "$OUTPUT_AFTER" | grep -q "misnamed_plans=false"; then
   pass "end-to-end: lowercase misnamed → normalize → clean"
 else
-  fail "end-to-end lowercase — before: $(echo "$OUTPUT_BEFORE" | grep misnamed), after: $(echo "$OUTPUT_AFTER" | grep misnamed)"
+  fail "end-to-end lowercase — before: $BEFORE, after: $AFTER"
 fi
 
 # --- Command-level normalization guard contract tests ---
