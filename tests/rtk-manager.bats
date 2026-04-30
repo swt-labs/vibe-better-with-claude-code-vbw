@@ -1384,6 +1384,23 @@ JSON
   jq -e --arg suffix "/projects/$encoded_cwd/$CLAUDE_SESSION_ID.jsonl" '.claude_transcript_path | endswith($suffix)' "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
 }
 
+@test "rtk-manager: smoke-start rejects unsafe transcript session id path component" {
+  export CLAUDE_SESSION_ID="../../spoof"
+  local smoke_cwd
+  smoke_cwd="$(pwd -P)"
+  run_smoke_start_ready
+  jq -e '.claude_session_id == ""' "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
+  jq -e '.claude_transcript_path == ""' "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
+  jq -e '.claude_transcript_start_line_count == 0' "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
+  write_claude_transcript_smoke_evidence "$CLAUDE_SESSION_ID" "$smoke_cwd" >/dev/null
+  write_rtk_history 'Total commands: 10'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK history count did not increase by at least 3"* ]]
+  [[ "$output" == *"transcript hook proof unavailable"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
 @test "rtk-manager: smoke-finish accepts transcript fallback when RTK history does not advance" {
   export CLAUDE_SESSION_ID="session-transcript-pass"
   local smoke_cwd
@@ -1511,6 +1528,43 @@ JSON
   transcript="$CLAUDE_CONFIG_DIR/projects/$encoded_cwd/$CLAUDE_SESSION_ID.jsonl"
   mkdir -p "$(dirname "$transcript")"
   : > "$transcript"
+  write_rtk_history 'Total commands: 10'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK history count did not increase by at least 3"* ]]
+  [[ "$output" == *"transcript hook proof unavailable"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish rejects tampered pending transcript path outside project" {
+  export CLAUDE_SESSION_ID="session-transcript-tampered-outside"
+  local smoke_cwd valid_transcript spoof_transcript
+  smoke_cwd="$(pwd -P)"
+  run_smoke_start_ready
+  valid_transcript="$(write_claude_transcript_smoke_evidence "$CLAUDE_SESSION_ID" "$smoke_cwd")"
+  spoof_transcript="$TEST_TEMP_DIR/spoof-transcript.jsonl"
+  cp "$valid_transcript" "$spoof_transcript"
+  jq --arg spoof_transcript "$spoof_transcript" '.claude_transcript_path = $spoof_transcript | .claude_transcript_start_line_count = 0' "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json" > "$TEST_TEMP_DIR/pending-tampered-outside.json"
+  mv "$TEST_TEMP_DIR/pending-tampered-outside.json" "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
+  write_rtk_history 'Total commands: 10'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RTK history count did not increase by at least 3"* ]]
+  [[ "$output" == *"transcript hook proof unavailable"* ]]
+  [ ! -f "$VBW_RTK_DIR/rtk-compatibility-proof.json" ]
+}
+
+@test "rtk-manager: smoke-finish rejects tampered pending transcript path for wrong session file" {
+  export CLAUDE_SESSION_ID="session-transcript-tampered-same-dir"
+  local smoke_cwd encoded_cwd valid_transcript spoof_transcript
+  smoke_cwd="$(pwd -P)"
+  encoded_cwd="${smoke_cwd//\//-}"
+  run_smoke_start_ready
+  valid_transcript="$(write_claude_transcript_smoke_evidence "$CLAUDE_SESSION_ID" "$smoke_cwd")"
+  spoof_transcript="$CLAUDE_CONFIG_DIR/projects/$encoded_cwd/other-session.jsonl"
+  cp "$valid_transcript" "$spoof_transcript"
+  jq --arg spoof_transcript "$spoof_transcript" '.claude_transcript_path = $spoof_transcript | .claude_transcript_start_line_count = 0' "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json" > "$TEST_TEMP_DIR/pending-tampered-same-dir.json"
+  mv "$TEST_TEMP_DIR/pending-tampered-same-dir.json" "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
   write_rtk_history 'Total commands: 10'
   run rtk_manager smoke-finish
   [ "$status" -eq 1 ]

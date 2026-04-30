@@ -616,12 +616,28 @@ rtk_history_after_pending_tail() {
   '
 }
 
+claude_session_id_is_safe_path_component() {
+  local session_id="${1:-}"
+  [ -n "$session_id" ] || return 1
+  case "$session_id" in
+    *[!A-Za-z0-9._-]*) return 1 ;;
+  esac
+  return 0
+}
+
 claude_transcript_path_for_context() {
   local smoke_cwd="$1" session_id="$2" encoded_cwd
   [ -n "$smoke_cwd" ] || return 1
-  [ -n "$session_id" ] || return 1
+  claude_session_id_is_safe_path_component "$session_id" || return 1
   encoded_cwd="${smoke_cwd//\//-}"
   printf '%s/projects/%s/%s.jsonl\n' "$CLAUDE_DIR" "$encoded_cwd" "$session_id"
+}
+
+claude_transcript_path_matches_context() {
+  local transcript_path="$1" smoke_cwd="$2" session_id="$3" expected_path
+  expected_path="$(claude_transcript_path_for_context "$smoke_cwd" "$session_id" 2>/dev/null || true)"
+  [ -n "$expected_path" ] || return 1
+  [ "$transcript_path" = "$expected_path" ]
 }
 
 claude_transcript_line_count() {
@@ -632,18 +648,21 @@ claude_transcript_line_count() {
 }
 
 rtk_transcript_smoke_evidence_json() {
-  local pending_payload="$1" hook_command="$2" start_ts session_id smoke_cwd transcript_path transcript_start_line_count
+  local pending_payload="$1" hook_command="$2" start_ts session_id smoke_cwd transcript_path expected_transcript_path transcript_start_line_count
   start_ts="$(printf '%s' "$pending_payload" | jq -r '.timestamp // empty' 2>/dev/null || true)"
   session_id="$(printf '%s' "$pending_payload" | jq -r '.claude_session_id // empty' 2>/dev/null || true)"
   smoke_cwd="$(printf '%s' "$pending_payload" | jq -r '.smoke_cwd // empty' 2>/dev/null || true)"
   transcript_path="$(printf '%s' "$pending_payload" | jq -r '.claude_transcript_path // empty' 2>/dev/null || true)"
   transcript_start_line_count="$(printf '%s' "$pending_payload" | jq -r '.claude_transcript_start_line_count // empty' 2>/dev/null || true)"
-  if [ -z "$transcript_path" ]; then
-    transcript_path="$(claude_transcript_path_for_context "$smoke_cwd" "$session_id" 2>/dev/null || true)"
-  fi
   [ -n "$start_ts" ] || return 1
   [ -n "$session_id" ] || return 1
   [ -n "$smoke_cwd" ] || return 1
+  expected_transcript_path="$(claude_transcript_path_for_context "$smoke_cwd" "$session_id" 2>/dev/null || true)"
+  [ -n "$expected_transcript_path" ] || return 1
+  if [ -z "$transcript_path" ]; then
+    transcript_path="$expected_transcript_path"
+  fi
+  claude_transcript_path_matches_context "$transcript_path" "$smoke_cwd" "$session_id" || return 1
   [ -n "$transcript_path" ] || return 1
   [ -f "$transcript_path" ] || return 1
   case "$transcript_start_line_count" in
@@ -779,6 +798,9 @@ smoke_start() {
   smoke_timestamp="$(now_utc)"
   smoke_cwd="$(pwd -P 2>/dev/null || pwd)"
   claude_session_id="${CLAUDE_SESSION_ID:-}"
+  if ! claude_session_id_is_safe_path_component "$claude_session_id"; then
+    claude_session_id=""
+  fi
   claude_transcript_path="$(claude_transcript_path_for_context "$smoke_cwd" "$claude_session_id" 2>/dev/null || true)"
   claude_transcript_start_line_count="$(claude_transcript_line_count "$claude_transcript_path")"
   mkdir -p "$VBW_RTK_DIR"
