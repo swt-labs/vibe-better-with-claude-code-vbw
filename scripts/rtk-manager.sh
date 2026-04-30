@@ -647,6 +647,11 @@ claude_transcript_line_count() {
   awk 'END { print NR + 0 }' "$transcript_path" 2>/dev/null || printf '0\n'
 }
 
+claude_transcript_after_start_lines() {
+  local transcript_path="$1" start_line_count="$2"
+  awk -v start_line_count="$start_line_count" 'NR > start_line_count' "$transcript_path"
+}
+
 rtk_transcript_smoke_evidence_json() {
   local pending_payload="$1" hook_command="$2" start_ts session_id smoke_cwd transcript_path expected_transcript_path transcript_start_line_count
   start_ts="$(printf '%s' "$pending_payload" | jq -r '.timestamp // empty' 2>/dev/null || true)"
@@ -669,15 +674,14 @@ rtk_transcript_smoke_evidence_json() {
     ''|*[!0-9]*) return 1 ;;
   esac
 
-  jq -c -s -e \
+  claude_transcript_after_start_lines "$transcript_path" "$transcript_start_line_count" | jq -c -s -e \
     --arg start_ts "$start_ts" \
     --arg session_id "$session_id" \
     --arg smoke_cwd "$smoke_cwd" \
     --arg hook_command "$hook_command" \
     --arg transcript_path "$transcript_path" \
     --argjson transcript_start_line_count "$transcript_start_line_count" '
-      . as $records
-      | ($records[$transcript_start_line_count:] // []) as $fresh_records
+      . as $fresh_records
       | def parse_epoch:
           if type == "string" then (sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601? // 0) else 0 end;
       ($start_ts | parse_epoch) as $start_epoch
@@ -739,7 +743,7 @@ rtk_transcript_smoke_evidence_json() {
         else
           empty
         end
-    ' "$transcript_path"
+    '
 }
 
 write_smoke_failure() {

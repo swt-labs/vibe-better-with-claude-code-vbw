@@ -1426,6 +1426,24 @@ JSON
   [[ "$output" == *"source: claude transcript fallback"* ]]
 }
 
+@test "rtk-manager: smoke-finish transcript fallback ignores pre-start transcript lines" {
+  export CLAUDE_SESSION_ID="session-transcript-prestart-malformed"
+  local smoke_cwd encoded_cwd transcript
+  smoke_cwd="$(pwd -P)"
+  encoded_cwd="${smoke_cwd//\//-}"
+  transcript="$CLAUDE_CONFIG_DIR/projects/$encoded_cwd/$CLAUDE_SESSION_ID.jsonl"
+  mkdir -p "$(dirname "$transcript")"
+  printf '{not-json\n' > "$transcript"
+  run_smoke_start_ready
+  jq -e '.claude_transcript_start_line_count == 1' "$VBW_RTK_DIR/rtk-compatibility-smoke-pending.json"
+  append_claude_transcript_smoke_evidence "$CLAUDE_SESSION_ID" "$smoke_cwd" "2999-01-01T00:00:00.000Z" >/dev/null
+  write_rtk_history 'Total commands: 10'
+  run rtk_manager smoke-finish
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.runtime_proof_source == "claude_transcript"'
+  jq -e '.transcript_hook_evidence.transcript_start_line_count == 1' "$VBW_RTK_DIR/rtk-compatibility-proof.json"
+}
+
 @test "rtk-manager: smoke-finish rejects same-second stale transcript before smoke-start" {
   export CLAUDE_SESSION_ID="session-transcript-same-second-stale"
   local smoke_cwd

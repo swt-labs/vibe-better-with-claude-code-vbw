@@ -423,8 +423,10 @@ if contains "$RTK_MANAGER" 'claude_transcript_path_for_context()' \
   && contains "$RTK_MANAGER" 'smoke_cwd' \
   && contains "$RTK_MANAGER" 'claude_transcript_path' \
   && contains "$RTK_MANAGER" 'claude_transcript_line_count()' \
+  && contains "$RTK_MANAGER" 'claude_transcript_after_start_lines()' \
+  && contains "$RTK_MANAGER" "awk -v start_line_count=\"\$start_line_count\" 'NR > start_line_count' \"\$transcript_path\"" \
   && contains "$RTK_MANAGER" 'claude_transcript_start_line_count' \
-  && contains "$RTK_MANAGER" '$records[$transcript_start_line_count:]' \
+  && ! contains "$RTK_MANAGER" '$records[$transcript_start_line_count:]' \
   && contains "$RTK_MANAGER" '.attachment.toolUseID' \
   && contains "$RTK_MANAGER" 'hookSpecificOutput.updatedInput.command' \
   && contains "$RTK_MANAGER" 'ls_output_is_rtk' \
@@ -442,6 +444,7 @@ if contains "$RTK_MANAGER" 'claude_transcript_path_for_context()' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-start records bounded Claude transcript context' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-start rejects unsafe transcript session id path component' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish accepts transcript fallback when RTK history does not advance' \
+  && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish transcript fallback ignores pre-start transcript lines' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects same-second stale transcript before smoke-start' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish accepts same-second transcript after smoke-start' \
   && contains "$ROOT/tests/rtk-manager.bats" 'smoke-finish rejects stale transcript fallback evidence' \
