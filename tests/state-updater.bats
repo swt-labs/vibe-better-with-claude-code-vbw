@@ -551,3 +551,42 @@ EOF
   # SOURCE-UAT should be ignored — all phases should be complete
   grep -q '^Status: complete$' .vbw-planning/STATE.md
 }
+
+@test "summary update preserves parsed status when summary-utils helper is unavailable" {
+  cd "$TEST_TEMP_DIR"
+
+  local helperless_scripts
+  helperless_scripts="$TEST_TEMP_DIR/helperless-scripts"
+  mkdir -p "$helperless_scripts"
+  cp "$SCRIPTS_DIR/state-updater.sh" "$helperless_scripts/state-updater.sh"
+
+  mkdir -p .vbw-planning/phases/01-setup
+  echo "# plan" > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  cat > .vbw-planning/phases/01-setup/01-01-SUMMARY.md <<'SUMMARY'
+---
+phase: 1
+plan: 1
+status: complete
+---
+# summary
+SUMMARY
+
+  cat > .vbw-planning/.execution-state.json <<'EOF'
+{
+  "phase": 1,
+  "status": "running",
+  "plans": [
+    {"id": "01-01", "status": "pending"}
+  ]
+}
+EOF
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/01-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$helperless_scripts/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  jq -e '.plans[0].status == "complete"' .vbw-planning/.execution-state.json >/dev/null
+}

@@ -14,7 +14,7 @@ else
   # Safe default: report zero completions when helpers unavailable
   count_complete_summaries() { echo "0"; }
   count_terminal_summaries() { echo "0"; }
-  extract_summary_status() { return 0; }
+  extract_summary_status() { printf ''; return 1; }
 fi
 if [ -f "$SCRIPT_DIR/phase-state-utils.sh" ]; then
   # shellcheck source=phase-state-utils.sh
@@ -376,7 +376,10 @@ fi
 # partial product write cannot preemptively unlock dependent plans.
 STATUS_RAW="$STATUS"
 if type extract_summary_status >/dev/null 2>&1; then
-  STATUS_RAW=$(extract_summary_status "$FILE_PATH")
+  _summary_status_raw=$(extract_summary_status "$FILE_PATH" 2>/dev/null || true)
+  if [ -n "$_summary_status_raw" ]; then
+    STATUS_RAW="$_summary_status_raw"
+  fi
 fi
 STATUS_RAW=$(printf '%s' "${STATUS_RAW:-}" | tr '[:upper:]' '[:lower:]' | tr -d "\r\"'" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 STATUS=""

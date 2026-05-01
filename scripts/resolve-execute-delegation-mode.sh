@@ -378,7 +378,9 @@ if [ -z "$effective_effort" ] || [ "$effective_effort" = "null" ]; then
   fi
 fi
 phase_effort=$(jq -r '.phase_effort // empty' "$EXEC_STATE_PATH" 2>/dev/null || true)
-[ -z "$phase_effort" ] || [ "$phase_effort" = "null" ] && phase_effort="$effective_effort"
+if [ -z "$phase_effort" ] || [ "$phase_effort" = "null" ]; then
+  phase_effort="$effective_effort"
+fi
 
 plans_json="{}"
 all_plan_ids="[]"
