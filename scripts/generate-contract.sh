@@ -54,6 +54,102 @@ PLAN=$(awk '/^---$/{n++; next} n==1 && /^plan:/{gsub(/"/,"",$2); print $2; exit}
 # Extract title (objective) from frontmatter
 TITLE=$(awk '/^---$/{n++; next} n==1 && /^title:/{sub(/^title: */, ""); print; exit}' "$PLAN_PATH" 2>/dev/null) || TITLE=""
 
+trim_value() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+strip_dep_token() {
+  local value
+  value=$(trim_value "$1")
+  value="${value%,}"
+  value=$(trim_value "$value")
+  value="${value#\[}"
+  value="${value%\]}"
+  value=$(trim_value "$value")
+  case "$value" in
+    \"*\") value="${value#\"}"; value="${value%\"}" ;;
+    \'*\') value="${value#\'}"; value="${value%\'}" ;;
+  esac
+  trim_value "$value"
+}
+
+pad_contract_number() {
+  local raw="$1"
+  case "$raw" in
+    ''|*[!0-9]*) printf '%s' "$raw" ;;
+    *) printf '%02d' "$((10#$raw))" ;;
+  esac
+}
+
+normalize_contract_dep_ref() {
+  local raw="$1"
+  local value ph pl phase_id
+  value=$(strip_dep_token "$raw")
+  [ -z "$value" ] && return 1
+  case "$value" in
+    null|NULL|None|none|[]) return 1 ;;
+  esac
+  phase_id=$(pad_contract_number "$PHASE")
+  case "$value" in
+    *-*)
+      ph="${value%%-*}"
+      pl="${value#*-}"
+      if [ -n "$ph" ] && [ -n "$pl" ] && [[ "$ph" =~ ^[0-9]+$ ]] && [[ "$pl" =~ ^[0-9]+$ ]]; then
+        printf '%s-%s\n' "$(pad_contract_number "$ph")" "$(pad_contract_number "$pl")"
+      else
+        printf '%s\n' "$value"
+      fi
+      ;;
+    *)
+      if [[ "$value" =~ ^[0-9]+$ ]] && [[ "$phase_id" =~ ^[0-9]+$ ]]; then
+        printf '%s-%s\n' "$phase_id" "$(pad_contract_number "$value")"
+      else
+        printf '%s\n' "$value"
+      fi
+      ;;
+  esac
+}
+
+extract_depends_on_refs() {
+  awk '
+    function trim(v) { gsub(/^[[:space:]]+|[[:space:]]+$/, "", v); return v }
+    function emit(v, n, i, parts) {
+      v = trim(v)
+      sub(/[[:space:]]+#.*$/, "", v)
+      v = trim(v)
+      if (v == "" || v == "[]") return
+      if (v ~ /^\[/) {
+        gsub(/^\[/, "", v); gsub(/\].*$/, "", v)
+        n = split(v, parts, ",")
+        for (i = 1; i <= n; i++) {
+          item = trim(parts[i])
+          if (item != "") print item
+        }
+        return
+      }
+      print v
+    }
+    BEGIN { in_front=0; in_dep=0 }
+    /^---$/ { if (in_front==0) { in_front=1; next } else { exit } }
+    in_front && /^[[:space:]]*depends_on:[[:space:]]*/ {
+      line=$0
+      sub(/^[[:space:]]*depends_on:[[:space:]]*/, "", line)
+      if (trim(line) != "") { emit(line); exit }
+      in_dep=1; next
+    }
+    in_front && in_dep && /^[[:space:]]*-[[:space:]]*/ {
+      line=$0
+      sub(/^[[:space:]]*-[[:space:]]*/, "", line)
+      emit(line)
+      next
+    }
+    in_front && in_dep && /^[^[:space:]]/ { exit }
+  ' "$PLAN_PATH" 2>/dev/null || true
+}
+
 # Extract must_haves from frontmatter
 MUST_HAVES=$(awk '
   BEGIN { in_front=0; in_mh=0 }
@@ -68,27 +164,20 @@ MUST_HAVES=$(awk '
   in_front && in_mh && /^[^[:space:]]/ { exit }
 ' "$PLAN_PATH" 2>/dev/null) || true
 
-# Extract depends_on from frontmatter
-DEPENDS_ON=$(awk '
-  BEGIN { in_front=0; in_dep=0 }
-  /^---$/ { if (in_front==0) { in_front=1; next } else { exit } }
-  in_front && /^depends_on:/ {
-    # Check inline array format: depends_on: [1, 2]
-    if (match($0, /\[.*\]/)) {
-      sub(/^depends_on: *\[/, ""); sub(/\].*$/, "")
-      gsub(/ /, ""); gsub(/,/, "\n")
-      print
-      exit
-    }
-    in_dep=1; next
-  }
-  in_front && in_dep && /^[[:space:]]+- / {
-    sub(/^[[:space:]]+- /, "")
-    print
-    next
-  }
-  in_front && in_dep && /^[^[:space:]]/ { exit }
-' "$PLAN_PATH" 2>/dev/null) || true
+# Extract depends_on from frontmatter. Keep this parser aligned with
+# resolve-execute-delegation-mode.sh so routing and contract sidecars retain
+# the same dependency edges.
+DEPENDS_ON=""
+while IFS= read -r dep_ref; do
+  dep_norm=$(normalize_contract_dep_ref "$dep_ref" 2>/dev/null || true)
+  [ -n "$dep_norm" ] || continue
+  if [ -n "$DEPENDS_ON" ]; then
+    DEPENDS_ON="${DEPENDS_ON}
+${dep_norm}"
+  else
+    DEPENDS_ON="$dep_norm"
+  fi
+done < <(extract_depends_on_refs)
 
 # Extract verification_checks from frontmatter (if present)
 VERIFICATION_CHECKS=$(awk '
@@ -165,7 +254,7 @@ CONTRACT_FILE="${CONTRACT_DIR}/${PHASE}-${PLAN}.json"
 
   DEP_JSON="[]"
   if [ -n "$DEPENDS_ON" ]; then
-    DEP_JSON=$(echo "$DEPENDS_ON" | jq -R 'tonumber' | jq -s '.' 2>/dev/null) || DEP_JSON="[]"
+    DEP_JSON=$(jq -Rs 'split("\n") | map(select(length > 0))' <<< "$DEPENDS_ON" 2>/dev/null) || DEP_JSON="[]"
   fi
 
   VC_JSON="[]"

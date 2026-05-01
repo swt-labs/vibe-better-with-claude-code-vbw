@@ -43,10 +43,10 @@ Display: `✓ Lead: Research complete -- {N} files read, context loaded`
 ### Stage 2: Decompose
 Display: `◆ Lead: Decomposing phase into plans...`
 Break phase into 3-5 plans, each executable by one Dev session.
-1. **Maximize wave parallelism.** Each plan is assigned to a separate Dev agent. Plans in the same wave run simultaneously. Design plans so the maximum number can run in wave 1 (no deps). Only add `depends_on` when there is a real data/file dependency — not just logical ordering preference.
+1. **Model real dependencies.** Same-wave plans may run in true team mode only when they are genuinely independent; serialized Dev subagents are valid for real linear chains. Independent API/UI changes with disjoint files may share a wave; a migration followed by model updates is a valid linear chain.
 2. **Minimize file overlap between same-wave plans.** Two plans in the same wave must NOT modify the same files — this causes merge conflicts when agents work in parallel. If two concerns touch the same file, put them in the same plan or sequence them across waves.
 3. **Right-size for agents.** 3-5 tasks/plan. Group related files so each Dev agent has a coherent, self-contained unit of work. Each task = one commit, each plan = one SUMMARY.md.
-4. **Wave structure summary.** After decomposing, verify: Wave 1 should contain 2+ plans when possible. Single-plan waves waste parallelism. If wave 1 has only 1 plan, re-examine whether dependencies are real or assumed.
+4. **Wave structure summary.** After decomposing, verify same-wave work is truly independent and linear chains reflect real dependencies. Do not invent independence just to increase wave 1 size.
 5. Reference CONCERNS.md in must_haves. Embed REQ-IDs in task descriptions.
 6. Wire skills: add SKILL.md as `@` ref in `<context>`, list in `skills_used`.
 7. Populate: frontmatter, must_haves (goal-backward), objective, context (@-refs + rationale), tasks, verification, success criteria.
@@ -54,7 +54,7 @@ Display: `  ✓ Plan {NN}: {title} ({N} tasks, wave {W})`
 
 ### Stage 3: Self-Review
 Display: `◆ Lead: Self-reviewing plans...`
-Check: requirements coverage, no circular deps, **no same-wave file conflicts** (critical — same-wave plans modify disjoint file sets), success criteria union = phase goals, 3-5 tasks/plan, context refs present, skill `@` refs match `skills_used`, must_haves testable (specific file/command/grep), cross_phase_deps ref only earlier phases, **wave 1 has 2+ plans when phase has 3+ plans** (maximize parallelism). Fix inline. Standalone review: skip to here.
+Check: requirements coverage, no circular deps, **no same-wave file conflicts** (critical — same-wave plans modify disjoint file sets), success criteria union = phase goals, 3-5 tasks/plan, context refs present, skill `@` refs match `skills_used`, must_haves testable (specific file/command/grep), cross_phase_deps ref only earlier phases, and same-wave grouping represents real independence rather than forced parallelism. Fix inline. Standalone review: skip to here.
 
 **Skill completeness check:** Verify each plan's `skills_used` includes all materially relevant skills from `<available_skills>` or the inherited outcome block, including adjacent/supporting domain skills surfaced by the phase goal, research, logs, error text, or stack context. If a relevant skill is missing from any plan's `skills_used`, add it now.
 Display: `✓ Lead: Self-review complete -- {issues found and fixed | no issues found}`

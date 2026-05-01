@@ -87,6 +87,30 @@ is_summary_terminal() {
   esac
 }
 
+# is_valid_summary_status STATUS
+# Returns 0 only for canonical runtime SUMMARY statuses.
+# Brownfield "completed" is accepted by file-level helpers above, but runtime
+# execution state should canonicalize it to "complete" before validation.
+is_valid_summary_status() {
+  local status
+  status=$(trim_summary_value "${1:-}")
+  case "$status" in
+    complete|partial|failed) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# is_execution_progress_status STATUS
+# Returns 0 for statuses that satisfy Execute dependency progression.
+is_execution_progress_status() {
+  local status
+  status=$(trim_summary_value "${1:-}")
+  case "$status" in
+    complete|partial) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # count_complete_summaries DIR
 # Returns count of SUMMARY.md files with terminal-complete status in DIR.
 count_complete_summaries() {
@@ -103,8 +127,9 @@ count_complete_summaries() {
 }
 
 # count_done_summaries DIR
-# Returns count of SUMMARY.md files considered "done" for reconciliation:
-# complete, completed, or partial (matching recover-state.sh's promotion of partial→complete).
+# Returns count of SUMMARY.md files considered "done" for Execute/statusline
+# reconciliation: complete, completed, or partial. Runtime execution state
+# preserves partial as partial; it is progression-satisfied but not strict-complete.
 count_done_summaries() {
   local dir="$1"
   local count=0

@@ -23,11 +23,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=lib/vbw-config-root.sh
 . "$SCRIPT_DIR/lib/vbw-config-root.sh"
 
-if [ -f "$SCRIPT_DIR/lib/summary-status.sh" ]; then
-  # shellcheck source=lib/summary-status.sh
-  . "$SCRIPT_DIR/lib/summary-status.sh"
-fi
-
 if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
   # shellcheck source=summary-utils.sh
   . "$SCRIPT_DIR/summary-utils.sh"

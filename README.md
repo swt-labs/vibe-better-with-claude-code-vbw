@@ -97,7 +97,7 @@ Think of it as project management for the post-dignity era of software developme
 
 Most Claude Code plugins were built for the subagent era, one main session spawning helper agents that report back and die. Much like the codebases they produce. VBW is designed from the ground up for the platform features that changed the game:
 
-- **Agent Teams for real parallelism.** `/vbw:vibe` creates a team of Dev teammates that execute tasks concurrently, each in their own context window. `/vbw:map` runs 4 Scout teammates in parallel to analyze your codebase. This isn't "spawn a subagent and wait" -- it's coordinated teamwork with a shared task list and direct inter-agent communication. Agent health monitoring tracks lifecycle events, detects orphaned teammates, and recovers stuck agents via circuit breakers.
+- **Agent Teams for real parallelism.** `/vbw:vibe` uses dependency-aware routing: true Dev teams are created when plans have real parallel delegate work, while linear dependency chains use serialized Dev subagents to avoid fake coordination overhead. `/vbw:map` runs 4 Scout teammates in parallel to analyze your codebase. When teams are used, this isn't "spawn a subagent and wait" -- it's coordinated teamwork with a shared task list and direct inter-agent communication. Agent health monitoring tracks lifecycle events, detects orphaned teammates, and recovers stuck agents via circuit breakers.
 
 - **Native hooks for continuous verification.** 24 hooks across 11 event types run automatically -- validating SUMMARY.md structure, checking commit format, validating frontmatter descriptions, gating task completion, blocking sensitive file access, enforcing plan file boundaries, managing session lifecycle, tracking agent health and cost attribution, tracking session metrics, pre-flight prompt validation, and post-compaction context verification. No more spawning a QA agent after every task. The platform enforces it, not the prompt.
 
@@ -115,11 +115,11 @@ Agent Teams are [experimental with known limitations](https://code.claude.com/do
 
 - **Task status lag.** Teammates sometimes forget to mark tasks complete. VBW's `TaskCompleted` hook treats commit matching as an advisory signal for execute-protocol tasks instead of a universal blocking gate, so manual or non-code tasks do not get stranded at `in_progress` when no commit exists or the wording diverges. The `TeammateIdle` hook runs a tiered SUMMARY.md gate — all summaries present passes immediately, conventional commit format only grants a 1-plan grace period, and 2+ missing summaries block regardless.
 
-- **Shutdown coordination.** VBW defines `shutdown_request`/`shutdown_response` schemas in the typed communication protocol. After phase work completes, the orchestrator sends `shutdown_request` to every teammate, waits for acknowledgment, then calls `TeamDelete`. All 6 team-participating agents (Dev, QA, Scout, Lead, Debugger, Docs) have explicit shutdown handlers with mechanical SendMessage tool-call instructions. Architect is planning-only and excluded from the shutdown protocol. If shutdown stalls or agents linger, `/vbw:doctor --cleanup` detects and cleans stale teams, orphan processes, and dangling PIDs.
+- **Shutdown coordination.** VBW defines `shutdown_request`/`shutdown_response` schemas in the typed communication protocol. After a true team run completes, the orchestrator sends `shutdown_request` to every teammate, waits for acknowledgment, then calls `TeamDelete`. Serialized subagent, turbo, and internal direct runs skip team shutdown because no team was created. All 6 team-participating agents (Dev, QA, Scout, Lead, Debugger, Docs) have explicit shutdown handlers with mechanical SendMessage tool-call instructions. Architect is planning-only and excluded from the shutdown protocol. If shutdown stalls or agents linger, `/vbw:doctor --cleanup` detects and cleans stale teams, orphan processes, and dangling PIDs.
 
 - **File conflicts.** Plans decompose work into tasks with explicit file ownership. Dev teammates operate on disjoint file sets by design, enforced at runtime by the `file-guard.sh` hook that blocks writes to files not declared in the active plan.
 
-- **Worktree isolation.** Each Dev agent gets its own git worktree — physical filesystem isolation, not just file-list enforcement. Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. Off by default; set `worktree_isolation` to `"on"` in config to enable. See [Execution Model](#execution-model) for how this interacts with parallel plans and lease locks.
+- **Worktree isolation.** Each Dev plan can get its own git worktree — physical filesystem isolation, not just file-list enforcement — whether execution is true-team parallel or serialized by dependencies. Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. Off by default; set `worktree_isolation` to `"on"` in config to enable. See [Execution Model](#execution-model) for how this interacts with dependency routing and lease locks.
 
 Agent Teams ship with seven known limitations. VBW addresses all of them. The eighth... that you're using AI to write software doesn't need a fix. It needs an intervention.
 
@@ -298,7 +298,7 @@ Milestone (your project goal)
 
 ### How Agents Execute Work
 
-When you run `/vbw:vibe` and it enters Execute mode, the **Lead** agent orchestrates everything. It never writes code itself — it spawns **Dev** teammates and assigns each one a plan.
+When you run `/vbw:vibe` and it enters Execute mode, the **Lead** agent orchestrates everything. It never writes code itself — it routes runnable plans to **Dev** agents. Dependency-aware routing chooses true Agent Teams only for real parallel delegate work; otherwise it uses serialized Dev subagents.
 
 ```text
  Lead (orchestrator)
@@ -311,7 +311,7 @@ Each Dev agent reads its assigned PLAN.md and works through the tasks in order: 
 
 **Whether plans actually run in parallel depends on their dependencies.** Each plan can declare `depends_on` in its YAML frontmatter — if Plan 02 depends on Plan 01, Dev-02 waits until Dev-01 finishes. Plans with no dependencies start immediately. In practice, the Architect often chains plans sequentially (Plan 01 → 02 → 03), which means they execute one at a time even though the mechanism supports parallelism.
 
-After all Devs finish, the Lead runs QA (if not skipped), then shuts down the team.
+After all Devs finish, the Lead runs QA (if not skipped). It shuts down a team only if the run actually used true team mode; serialized subagent, turbo, and internal direct runs clear delegation state without SendMessage/TeamDelete.
 
 ### Concurrency and File Conflicts
 
@@ -341,7 +341,7 @@ This is the one command. Run it, and VBW figures out what to do next:
 
 - **No project defined?** It asks about your project, gathers requirements, and creates a phased roadmap.
 - **Phases ready but not planned?** The Lead agent researches, decomposes, and produces plans.
-- **Plans ready but not built?** Dev teammates execute in parallel with atomic commits and continuous verification.
+- **Plans ready but not built?** Dev agents execute with atomic commits and continuous verification. True teams are used for real parallel plan fan-out; linear dependency chains run as serialized subagents.
 - **Everything built?** It tells you and suggests wrapping up.
 
 You don't need to know which state your project is in. VBW knows. Just keep running `/vbw:vibe` and it handles the rest — planning, building, verifying — one phase at a time. Or if you're feeling brave, set your autonomy to `pure-vibe` and it'll loop through every remaining phase without stopping.
@@ -770,13 +770,13 @@ Controls when VBW creates an Agent Team (multiple color-coded Dev agents) vs usi
 
 | Value | Behavior |
 | :--- | :--- |
-| `always` | Creates a team for every phase, even with 1 plan. Maximum agent visibility. |
-| `auto` | Creates a team only when 2+ plans exist. Single plan = single agent, lower overhead. Default. Smart routing may further downgrade simple plans to turbo (no team). |
+| `always` | Forces team mode for delegate-eligible work, including linear delegate graphs. Does not override phase-level turbo, smart-routed turbo, or internal direct segments. |
+| `auto` | Creates a true team only when dependency-aware routing finds real parallel delegate work (`max_parallel_width > 1`). Linear graphs and single delegate plans use serialized subagents. Smart routing may further downgrade simple plans to turbo (no team). Default. |
 | `never` | Never creates teams. All agents run as sequential subagents. Disables parallel execution entirely. |
 
 If `prefer_teams` requests team mode but the live tool set cannot express real team semantics, VBW now emits `⚠ Agent Teams not enabled — using non-team mode` and falls back to explicit non-team execution. It does **not** substitute plain background agents without `team_name` and pretend a team was created.
 
-This setting determines whether parallel execution is even possible. With a single agent (1 plan, no team), there's no concurrency by definition. `auto` also creates teams for ambiguous bugs in debug mode. Note: Planning always uses sequential subagents (Scout → Lead), not teams — `prefer_teams` only affects Execute and debug/map modes.
+This setting determines whether true team execution is allowed for delegate-eligible Execute work. With a single delegate plan or a real dependency chain, `auto` chooses serialized subagents because there is no useful parallelism. `auto` also creates teams for ambiguous bugs in debug mode. Note: Planning always uses sequential subagents (Scout → Lead), not teams — `prefer_teams` only affects Execute and debug/map modes.
 
 #### `worktree_isolation` — Filesystem Isolation
 

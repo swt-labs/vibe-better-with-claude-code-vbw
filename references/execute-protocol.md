@@ -62,19 +62,18 @@ All runtime script invocations below assume `VBW_PLUGIN_ROOT` is set.
 **Orchestrator read-scope boundary:** You may ONLY read planning/state artifacts: `*-PLAN.md`, `*-SUMMARY.md`, `*-RESEARCH.md`, `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, `.execution-state.json`, `.context-*.md`, `config.json`, and `.vbw-planning/` metadata. Do NOT read product source files (application code, tests, configs outside `.vbw-planning/`). If you need to understand product code to make a routing or sequencing decision, that understanding must come from Dev — delegate it via a task.
 
 1. Glob `*-PLAN.md` in phase dir. Read each plan's YAML frontmatter.
-2. Check existing SUMMARY.md files — a plan is complete only if its SUMMARY has `status: complete|partial` (use `is_summary_complete` from `scripts/summary-utils.sh`). A SUMMARY with `status: pending` or no status field is NOT complete.
+2. Check existing SUMMARY.md files — a plan is progression-complete for Execute dependency routing only when its SUMMARY has `status: complete|partial`. Strict phase/build completion still requires `complete|completed`. A SUMMARY with `status: pending` or no status field is NOT progression-complete.
 3. `git log --oneline -20` for committed tasks (crash recovery).
 4. Build remaining plans list. If `--plan=NN`, filter to that plan.
-4b. **Worktree isolation (REQ-WORKTREE):** If `worktree_isolation` is not `"off"` in config:
+4b. **Worktree isolation (REQ-WORKTREE):** If `worktree_isolation` is not `"off"` in config, worktrees remain per-plan but are created/refreshed just in time when a plan becomes runnable. Do **not** create every remaining plan worktree up front; a dependent serialized plan must start from a branch that includes prerequisite output.
    ```bash
    WORKTREE_ISOLATION=$(jq -r '.worktree_isolation // "off"' .vbw-planning/config.json 2>/dev/null || echo "off")
    ```
-   For each uncompleted plan in the remaining plans list:
-   - Create worktree: `WPATH=$(bash "${VBW_PLUGIN_ROOT}/scripts/worktree-create.sh" {phase} {plan} 2>/dev/null || echo "")`. If `WPATH` is empty, log warning and continue without worktree for this plan.
-   - If `WPATH` is non-empty:
-     - Store `worktree_path` in the plan's entry in execution-state.json (added alongside `"status"` in the `plans` array).
-     - Fetch targeting JSON: `WTARGET=$(bash "${VBW_PLUGIN_ROOT}/scripts/worktree-target.sh" "$WPATH" 2>/dev/null || echo "{}")`.
-     - Register agent mapping: `bash "${VBW_PLUGIN_ROOT}/scripts/worktree-agent-map.sh" set "dev-{plan}" "$WPATH" {phase} {plan} 2>/dev/null || true`.
+  For each plan when it becomes runnable in Step 3:
+  - Merge or otherwise make completed prerequisite worktree output visible before creating the dependent plan's worktree.
+  - Create/refresh worktree: `WPATH=$(bash "${VBW_PLUGIN_ROOT}/scripts/worktree-create.sh" {phase} {plan} 2>/dev/null || echo "")`. If `WPATH` is empty, log warning and continue without worktree for this plan.
+  - If `WPATH` is non-empty: update that plan's `worktree_path` in `.execution-state.json`, regenerate `WTARGET=$(bash "${VBW_PLUGIN_ROOT}/scripts/worktree-target.sh" "$WPATH" 2>/dev/null || echo "{}")`, and register `bash "${VBW_PLUGIN_ROOT}/scripts/worktree-agent-map.sh" set "dev-{plan}" "$WPATH" {phase} {plan} 2>/dev/null || true` before spawning Dev.
+  - After merge/cleanup for that plan, clear `bash "${VBW_PLUGIN_ROOT}/scripts/worktree-agent-map.sh" clear "dev-{plan}" 2>/dev/null || true`.
    When `worktree_isolation="off"`: skip this step silently.
 5. Partially-complete plans: note resume-from task number.
 6. **Crash recovery:** If `.vbw-planning/.execution-state.json` exists with `"status": "running"`, update plan statuses to match current SUMMARY.md state.
@@ -93,10 +92,11 @@ All runtime script invocations below assume `VBW_PLUGIN_ROOT` is set.
   "phase": N, "phase_name": "{slug}", "status": "running",
   "started_at": "{ISO 8601}", "wave": 1, "total_waves": N,
   "correlation_id": "{UUID}",
-  "plans": [{"id": "NN-MM", "title": "...", "wave": W, "status": "pending|complete"}]
+  "effort": "{effective effort}", "phase_effort": "{configured phase effort}",
+  "plans": [{"id": "NN-MM", "title": "...", "wave": W, "status": "pending|complete|partial|failed"}]
 }
 ```
-Set completed plans (with SUMMARY.md whose `status` is `complete` or `completed`) to `"complete"`, others to `"pending"`. A SUMMARY.md with a non-terminal status (e.g., `pending`) does NOT count as complete.
+Set plan status from verified SUMMARY.md frontmatter: `complete|completed` → `"complete"`, `partial` → `"partial"`, `failed` → `"failed"`, others → `"pending"`. `phase_effort` preserves the configured phase effort; `effort` may be temporarily changed to `turbo` or internal `direct` for segment-local guard visibility and restored before the next non-direct segment.
 
 **Task list hygiene (crash-resume):** When resuming execution (`.execution-state.json` already existed), plans that are already `"complete"` were finished in a prior session. Immediately mark those plans as completed in your task list — do NOT leave them as not-started or in-progress. Only pending plans should be active in your task list.
 
@@ -125,18 +125,45 @@ Set completed plans (with SUMMARY.md whose `status` is `complete` or `completed`
    - All satisfied: `✓ Cross-phase dependencies verified`
    - No cross_phase_deps: skip silently
 
-### Step 3: Create Agent Team and execute
+### Step 3: Resolve Execute routing and run segments
 
-**Team creation (multi-agent only):**
-Read prefer_teams config to determine team creation:
+**Smart Routing (REQ-15):** If `smart_routing=true` in config, build a transient route map before selecting team/subagent mode:
 ```bash
-PREFER_TEAMS=$(bash "${VBW_PLUGIN_ROOT}/scripts/normalize-prefer-teams.sh" .vbw-planning/config.json 2>/dev/null || echo "auto")
+ROUTE_MAP=.vbw-planning/.cache/execute-route-map.json
+mkdir -p .vbw-planning/.cache
+printf '{"plans":{}}\n' > "$ROUTE_MAP"
 ```
+- For each remaining plan, assess risk before team selection:
+  ```bash
+  RISK=$(bash "${VBW_PLUGIN_ROOT}/scripts/assess-plan-risk.sh" {plan_path} 2>/dev/null || echo "medium")
+  TASK_COUNT=$(grep -c '^### Task [0-9]' {plan_path} 2>/dev/null || echo "0")
+  ```
+- If `RISK=low` AND `TASK_COUNT<=3` AND effort is not `thorough`: write route `turbo` for that plan in `$ROUTE_MAP` and log numeric metrics:
+  `bash "${VBW_PLUGIN_ROOT}/scripts/collect-metrics.sh" smart_route {phase} {plan} risk=$RISK tasks=$TASK_COUNT routed=turbo 2>/dev/null || true`
+- Otherwise: omit the route-map entry or write route `delegate`; log non-turbo delegated metrics as:
+  `bash "${VBW_PLUGIN_ROOT}/scripts/collect-metrics.sh" smart_route {phase} {plan} risk=$RISK tasks=$TASK_COUNT routed=team 2>/dev/null || true`
+- Internal route `direct` is only for explicit route-map entries supplied by existing guard/delegation machinery. Do not add a user-facing `direct` phase effort.
+- On script error: leave the plan unlisted in the route map; missing entries default to delegate.
 
-Team request policy:
-- `prefer_teams='always'`: request team mode for ALL remaining-plan counts (even 1 plan), unless turbo or smart-routed to turbo
-- `prefer_teams='auto'`: request team mode only when 2+ uncompleted plans remain, unless turbo or smart-routed to turbo
-- `prefer_teams='never'`: request explicit non-team mode
+**Dependency-aware routing helper:** After `.execution-state.json` and the optional route map exist, resolve routing before writing `.delegated-workflow.json`:
+```bash
+ROUTE_ARGS=()
+[ -f .vbw-planning/.cache/execute-route-map.json ] && ROUTE_ARGS=(--route-map .vbw-planning/.cache/execute-route-map.json)
+ROUTING=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-execute-delegation-mode.sh" \
+  --phase-dir "{phase_dir}" \
+  --config .vbw-planning/config.json \
+  --execution-state .vbw-planning/.execution-state.json \
+  "${ROUTE_ARGS[@]}" \
+  --segments)
+```
+The helper canonicalizes `prefer_teams` with `normalize-prefer-teams.sh`, computes remaining dependency waves from the execution state and plan frontmatter, and emits compact JSON (`delegation_mode`, `requested_mode`, `reason`, `max_parallel_width`, `delegate_count`, route-specific plan IDs, and ordered `segments`).
+If the helper exits non-zero or returns `reason=invalid_dependency_graph`, stop before spawning agents and surface the diagnostic. Valid serial graphs are not errors: `prefer_teams=auto` with `max_parallel_width <= 1` uses serialized Dev subagents.
+
+Team request policy from helper output:
+- `prefer_teams='always'`: request team mode for delegate-eligible work regardless of dependency width; it does not override phase-level turbo, smart-routed turbo, or explicit internal-direct segments.
+- `prefer_teams='auto'`: request team mode only when dependency analysis finds real parallel delegate work (`max_parallel_width > 1`).
+- `prefer_teams='never'`: request explicit non-team mode.
+- Unknown normalized values preserve the raw value, use `delegation_mode=subagent`, and report `unknown_prefer_teams:<value>`.
 
 Determine whether **real team semantics** are available in the live tool set before spawning anything:
 - Real team semantics are available when either:
@@ -145,53 +172,46 @@ Determine whether **real team semantics** are available in the live tool set bef
 - If the live tool set only supports plain background spawns (for example `Agent` with `run_in_background: true` but no `team_name`), then real team semantics are **NOT** available.
 - **Plain background `Agent` spawns without team semantics are NOT an agent team. Do NOT use them as a substitute for team mode.**
 
-Branch execute mode into exactly one of these runtime paths and persist it **before the first teammate spawn**:
+Process `ROUTING.segments[]` in order. Before each segment, ensure no previous team marker is live. If the previous segment used true team mode, send `shutdown_request`, wait for responses, call `TeamDelete`, run `clean-stale-teams.sh`, then clear or replace the marker before starting the next segment.
+
+Branch each segment into exactly one runtime path and persist that segment's actual mode **before the first spawn or orchestrator product-file write**:
 
 1. **True team mode**
-   - Use this path only when prefer_teams requests team mode **and** real team semantics are available.
+   - Use this path only when the helper segment has `delegation_mode=team` **and** real team semantics are available.
    - **Pre-TeamCreate cleanup** (remove orphaned VBW team directories from prior sessions before creating a new team):
      ```bash
      bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true
      ```
-   - Set `TEAM_NAME="vbw-phase-{NN}"`.
+   - Set `TEAM_NAME` from the segment (`team_name`) or default to `"vbw-phase-{NN}"`.
    - If literal `TeamCreate` is available, call it with `team_name="$TEAM_NAME"`, `description="Phase {NN}: {phase-name}"`.
    - If literal `TeamCreate` is unavailable but the live teammate spawn tool accepts `team_name`, create the team implicitly by using the shared `TEAM_NAME` on every teammate spawn.
    - Persist the actual runtime mode:
      ```bash
-     bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {effort} team "$TEAM_NAME"
+     bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {segment_effort} team "$TEAM_NAME"
      ```
-   - All Dev and QA teammates below MUST carry `team_name: "$TEAM_NAME"` plus `name: "dev-{MM}"` (from plan number) or `name: "qa"` / `name: "qa-wave{W}"` on the live spawn call.
+   - All Dev and QA teammates below MUST carry `team_name: "$TEAM_NAME"` plus `name: "dev-{MM}"` (from plan number) or `name: "qa"` / `name: "qa-wave{W}"` on the live spawn call. No plain task-management `TaskCreate` may happen after the team marker is set unless it carries the selected `TEAM_NAME` and teammate `name`.
 
 2. **Explicit non-team mode**
-   - Use this path when `prefer_teams='never'`, or when `prefer_teams='auto'` and only 1 plan remains, or when turbo / smart routing resolves to non-team execution.
+   - Use this path when `prefer_teams='never'`, `prefer_teams='auto'` with `max_parallel_width <= 1`, unknown `prefer_teams`, no delegate-eligible plans, segment route `turbo`/internal `direct`, or team-tooling-unavailable fallback.
+   - For `turbo` or internal `direct` segments, update `.execution-state.json.effort` to `turbo` or `direct` before orchestrator product-file writes; keep `phase_effort` unchanged and restore `.execution-state.json.effort` to `phase_effort` before the next non-direct segment.
    - Persist the actual runtime mode:
      ```bash
-     bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {effort} subagent
+     bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {segment_effort} subagent
      ```
    - Skip TeamCreate. Spawn one Dev at a time and wait for completion before spawning the next one.
    - **Do NOT use `run_in_background: true` to simulate parallelism in non-team mode.**
 
 3. **Team-tooling-unavailable fallback**
-   - Use this path when prefer_teams requests team mode but the live tool set cannot express real team semantics.
+   - Use this path when the helper requests `delegation_mode=team` but the live tool set cannot express real team semantics.
    - Display: `⚠ Agent Teams not enabled — using non-team mode`
    - Persist the fallback runtime mode:
      ```bash
-     bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {effort} subagent
+     bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {segment_effort} subagent
      ```
    - Skip TeamCreate and continue in explicit non-team mode.
    - **Do NOT preserve “parallelism” by launching multiple background `Agent` spawns without `team_name`.**
 
-**Smart Routing (REQ-15):** If `smart_routing=true` in config:
-- Before creating agent teams, assess each plan:
-  ```bash
-  RISK=$(bash "${VBW_PLUGIN_ROOT}/scripts/assess-plan-risk.sh" {plan_path} 2>/dev/null || echo "medium")
-  TASK_COUNT=$(grep -c '^### Task [0-9]' {plan_path} 2>/dev/null || echo "0")
-  ```
-- If `RISK=low` AND `TASK_COUNT<=3` AND effort is not `thorough`: force turbo execution for this plan (no team, direct implementation). Log routing decision:
-  `bash "${VBW_PLUGIN_ROOT}/scripts/collect-metrics.sh" smart_route {phase} {plan} risk=$RISK tasks=$TASK_COUNT routed=turbo 2>/dev/null || true`
-- Otherwise: proceed with normal team delegation. Log:
-  `bash "${VBW_PLUGIN_ROOT}/scripts/collect-metrics.sh" smart_route {phase} {plan} risk=$RISK tasks=$TASK_COUNT routed=team 2>/dev/null || true`
-- On script error: fall back to configured effort level.
+After each segment completes, verify each plan's SUMMARY.md through Step 3c and write the verified status (`complete`, `partial`, or `failed`) into `.execution-state.json`. Only `complete|partial` unlock dependents. Re-run the helper against the updated execution state until no pending plans remain.
 
 **Delegation directive (all except Turbo):**
 You are the team LEAD. NEVER implement tasks yourself.
@@ -303,7 +323,7 @@ if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
 
 **MCP tool evaluation for Dev tasks:** Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to the tasks (build tools, documentation servers, domain-specific APIs), note them in the Dev task description so the Dev agent knows which MCP tools to use.
 
-For each uncompleted plan, create the teammate task using the live teammate spawn tool (for example `TaskCreate` or `Agent`):
+For each runnable plan in the current segment, create the teammate task using the live teammate spawn tool (for example `TaskCreate` or `Agent`). In non-team mode, spawn exactly one Dev and wait for its result before spawning the next runnable plan. In true team mode, every spawn/TaskCreate after the marker is set must include the selected `TEAM_NAME` and teammate `name`.
 ```yaml
 subject: "Execute {NN-MM}: {plan-title}"
 description: |
@@ -333,9 +353,9 @@ Display: `◆ Spawning Dev teammate (${DEV_MODEL})...`
 **CRITICAL:** When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"` on the live spawn call. If the live spawn tool is `Agent`, those parameters belong on `Agent(...)`. If the live spawn tool is `TaskCreate`, put the same parameters there. Team mode without `team_name` is invalid.
 **CRITICAL:** In explicit non-team mode or team-tooling-unavailable fallback, do NOT use `run_in_background: true` to imitate parallel team execution.
 
-Wire dependencies via TaskUpdate: read `depends_on` from each plan's frontmatter, add `addBlockedBy: [task IDs of dependency plans]`. Plans with empty depends_on start immediately.
+Dependency ordering is enforced by the routing helper's segment plan, not by speculative background spawns. Use TaskUpdate dependency metadata only as a task-list mirror of `depends_on`; do not spawn a dependent plan until the helper recomputes it as runnable from updated execution state. If `--plan=NN`: single task, no dependencies.
 
-Spawn Dev teammates and assign tasks. Platform enforces execution ordering via task deps. If `--plan=NN`: single task, no dependencies.
+Just before spawning a runnable plan with `worktree_isolation` enabled, create or refresh that plan's worktree, update its `worktree_path` in execution state, regenerate `WTARGET`, and register `dev-{plan}` with `worktree-agent-map.sh`. After the plan's worktree is merged or cleaned up, clear the mapping.
 
 **Blocked agent notification (mandatory):** When a Dev teammate completes a plan (task marked completed + SUMMARY.md verified), check if any other tasks have `blockedBy` containing that completed task's ID. For each newly-unblocked task, send its assigned Dev a message: "Blocking task {id} complete. Your task is now unblocked — proceed with execution." This ensures blocked agents resume without manual intervention.
 
@@ -385,7 +405,7 @@ Use targeted `message` not `broadcast`. Reserve broadcast for critical blocking 
 - **On message send** (before sending): agents should construct messages using full V2 envelope (id, type, phase, task, author_role, timestamp, schema_version, payload, confidence). Reference `${VBW_PLUGIN_ROOT}/references/handoff-schemas.md` for schema details.
 
 **Execution state updates:**
-- Task completion: update plan status in .execution-state.json (`"complete"` or `"failed"`)
+- Task completion: update plan status in .execution-state.json (`"complete"`, `"partial"`, or `"failed"` from verified SUMMARY.md status)
 - Wave transition: update `"wave"` when first wave N+1 task starts
 - Use `jq` for atomic updates
 
@@ -457,7 +477,7 @@ All metrics calls should be `2>/dev/null || true` — never block execution.
   - Gate failures trigger auto-repair with same flow as pre-task.
 - **Post-plan gate (after all tasks complete, before marking plan done):**
   1. `artifact_persistence` gate: `bash "${VBW_PLUGIN_ROOT}/scripts/hard-gate.sh" artifact_persistence {phase} {plan} {task} {contract_path}`
-  - This gate fires AFTER SUMMARY.md verification but BEFORE updating execution-state.json to "complete".
+  - This gate fires AFTER SUMMARY.md verification but BEFORE updating execution-state.json to the verified terminal status.
 - **YOLO mode:** Hard gates ALWAYS fire regardless of autonomy level. YOLO only skips confirmation prompts.
 - **Fallback:** If hard-gate.sh or auto-repair.sh errors (not a gate fail, but a script error), log to metrics and continue (fail-open on script errors, hard-stop only on gate verdicts).
 
@@ -487,7 +507,7 @@ RESULT=$(bash "${VBW_PLUGIN_ROOT}/scripts/two-phase-complete.sh" {task_id} {phas
 
 ### Step 3c: SUMMARY.md verification gate (mandatory)
 
-**This is a hard gate. Do NOT proceed to QA or mark a plan as complete in .execution-state.json without verifying its SUMMARY.md.**
+**This is a hard gate. Do NOT proceed to QA or mark a plan terminal in .execution-state.json without verifying its SUMMARY.md.**
 
 When a Dev teammate reports plan completion (task marked completed):
 1. **Check:** Verify `{phase_dir}/{plan_id}-SUMMARY.md` exists and contains commit hashes, task statuses, and files modified.
@@ -497,7 +517,7 @@ When a Dev teammate reports plan completion (task marked completed):
 5. **Schema Validation — SUMMARY.md (REQ-17, graduated, always-on):**
   - Validate SUMMARY.md frontmatter: `VALID=$(bash "${VBW_PLUGIN_ROOT}/scripts/validate-schema.sh" summary {summary_path} 2>/dev/null || echo "valid")`
    - If `invalid`: log warning `⚠ Summary {plan_id} schema: ${VALID}` — advisory only.
-6. **Only after SUMMARY.md is verified with terminal status:** Update plan status to `"complete"` in .execution-state.json and proceed.
+6. **Only after SUMMARY.md is verified with terminal status:** Canonicalize and write the verified status to `.execution-state.json`: `complete|completed` → `"complete"`, `partial` → `"partial"`, `failed` → `"failed"`. Only `complete|partial` satisfy Execute dependencies; `failed` is terminal but does not unlock dependents.
 
 **SUMMARY.md timing rule:** A SUMMARY.md represents completed execution. Never create a SUMMARY.md as a placeholder or stub before execution begins. Do not write SUMMARY.md with `status: pending` or any non-terminal status. **Exception:** Remediation round summaries (`R{RR}-SUMMARY.md`) are built incrementally across multiple Dev agents — the first Dev creates the file with `status: in-progress` and subsequent Devs append task sections. The Lead finalizes the frontmatter after all tasks complete.
 
@@ -915,18 +935,18 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
 
 ### Step 5: Update state and present summary
 
-**HARD GATE — Shutdown before ANY output or state updates:** If team was created (based on prefer_teams decision), you MUST shut down the team BEFORE updating state, presenting results, or asking the user anything. This is blocking and non-negotiable:
-1. Send `shutdown_request` via SendMessage to EVERY active teammate (excluding yourself — the orchestrator controls the sequence, not the lead agent) — do not skip any. The SendMessage JSON body must include at minimum: `{"type": "shutdown_request", "id": "<unique-id>", "reason": "phase_complete", "team_name": "vbw-phase-{NN}"}` (this is a simplified form — the full V2 envelope nests these under `payload` with `id` at envelope level, but agents are instructed to match on `"type":"shutdown_request"` regardless of structure). Agents echo the `id` back as `request_id` in their `shutdown_response`. Teammates respond by calling SendMessage with `type: "shutdown_response"`.
+**HARD GATE — Shutdown before ANY output or state updates:** Run team shutdown only when the persisted/helper-resolved runtime state says `delegation_mode=team` and a real `TEAM_NAME` exists. If the helper selected `subagent`, turbo, internal `direct`, no delegate-eligible plans, or team-tooling-unavailable fallback, skip SendMessage/TeamDelete and clear the marker. For actual team mode, shut down the team BEFORE updating state, presenting results, or asking the user anything. This is blocking and non-negotiable:
+1. Send `shutdown_request` via SendMessage to EVERY active teammate in `TEAM_NAME` (excluding yourself — the orchestrator controls the sequence, not the lead agent) — do not skip any. The SendMessage JSON body must include at minimum: `{"type": "shutdown_request", "id": "<unique-id>", "reason": "phase_complete", "team_name": "<TEAM_NAME>"}` (this is a simplified form — the full V2 envelope nests these under `payload` with `id` at envelope level, but agents are instructed to match on `"type":"shutdown_request"` regardless of structure). Agents echo the `id` back as `request_id` in their `shutdown_response`. Teammates respond by calling SendMessage with `type: "shutdown_response"`.
 2. Log event: `bash "${VBW_PLUGIN_ROOT}/scripts/log-event.sh" shutdown_sent {phase} team={team_name} targets={count} 2>/dev/null || true`
 3. Wait for each `shutdown_response` with `approved: true` (delivered as a SendMessage tool call from the teammate, NOT as plain text). If a teammate responds in plain text instead of calling SendMessage, re-send the `shutdown_request`. If a teammate rejects, re-request immediately (max 3 attempts per teammate — if still rejected after 3 attempts, log a warning and proceed with TeamDelete).
 4. Log event: `bash "${VBW_PLUGIN_ROOT}/scripts/log-event.sh" shutdown_received {phase} team={team_name} approved={count} rejected={count} 2>/dev/null || true`
-5. Call TeamDelete for team "vbw-phase-{NN}"
+5. Call TeamDelete for `TEAM_NAME`
 6. **Post-TeamDelete residual cleanup** (belt-and-suspenders — catches race-condition residuals where agents recreate inbox files after TeamDelete):
    ```bash
    bash "${VBW_PLUGIN_ROOT}/scripts/clean-stale-teams.sh" 2>/dev/null || true
    ```
 7. Only THEN proceed to state updates and user-facing output below
-Failure to shut down leaves agents running in the background, consuming API credits (visible as hanging panes in tmux, invisible but still costly without tmux). If no team was created: skip shutdown sequence. **Recovery:** If shutdown stalls or agents linger after TeamDelete, do NOT manually `rm -rf ~/.claude/teams` — use `/vbw:doctor --cleanup` which runs `doctor-cleanup.sh` and `clean-stale-teams.sh` with safe atomic cleanup. These scripts detect stale teams, orphan processes, and dangling PIDs. `clean-stale-teams.sh` immediately removes VBW team directories missing `config.json` (orphaned residuals) without waiting for the 2-hour stale threshold.
+Failure to shut down an actual team leaves agents running in the background, consuming API credits (visible as hanging panes in tmux, invisible but still costly without tmux). If no actual team was created: skip shutdown sequence. **Recovery:** If shutdown stalls or agents linger after TeamDelete, do NOT manually `rm -rf ~/.claude/teams` — use `/vbw:doctor --cleanup` which runs `doctor-cleanup.sh` and `clean-stale-teams.sh` with safe atomic cleanup. These scripts detect stale teams, orphan processes, and dangling PIDs. `clean-stale-teams.sh` immediately removes VBW team directories missing `config.json` (orphaned residuals) without waiting for the 2-hour stale threshold.
 
 Regardless of whether a real team was created, clear the execute delegation marker before state updates:
 ```bash
@@ -951,12 +971,12 @@ For each plan that has a `worktree_path` entry in execution-state.json (complete
 All worktree operations are fail-open: script errors are suppressed (2>/dev/null || true). Merge failures are surfaced as warnings, not blockers.
 When `worktree_isolation="off"`: skip this block silently.
 
-**Post-shutdown verification:** After TeamDelete, there must be ZERO active teammates. If the Pure-Vibe loop or auto-chain will re-enter Plan mode next, confirm no prior agents linger before spawning new ones. This gate survives compaction — if you lost context about whether shutdown happened, assume it did NOT and send `shutdown_request` to any teammates that may still exist before proceeding.
+**Post-shutdown verification:** After TeamDelete for an actual `delegation_mode=team` run, there must be ZERO active teammates. If the Pure-Vibe loop or auto-chain will re-enter Plan mode next, confirm no prior agents linger before spawning new ones. For serialized subagent, turbo, direct, or fallback runs, rely on completed subagent/direct execution plus the cleared delegation marker; do not send team shutdown messages without a real `TEAM_NAME`.
 
 **Control Plane cleanup:** Lock and token state cleanup already handled by existing Lease Lock and Token Budget cleanup blocks.
 
 **Rolling Summary (REQ-03):** If `rolling_summary=true` in config:
-- After TeamDelete (team fully shut down), before phase_end event log:
+- After TeamDelete when an actual team was fully shut down, before phase_end event log:
   ```bash
   bash "${VBW_PLUGIN_ROOT}/scripts/compile-rolling-summary.sh" \
     .vbw-planning/phases .vbw-planning/ROLLING-CONTEXT.md 2>/dev/null || true

@@ -27,6 +27,7 @@ printf '%s\t%s\n' \
   permission-mode-contract     testing/verify-permission-mode-contract.sh \
   delegation-guard             testing/verify-delegation-guard.sh \
   agent-spawn-guard            testing/verify-agent-spawn-guard.sh \
+  execute-delegation-routing   testing/verify-execute-delegation-routing.sh \
   summary-status-contract      testing/verify-summary-status-contract.sh \
   summary-utils-contract       testing/verify-summary-utils-contract.sh \
   exec-state-reconciliation    testing/verify-exec-state-reconciliation.sh \
