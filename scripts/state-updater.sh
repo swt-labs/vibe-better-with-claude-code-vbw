@@ -14,6 +14,7 @@ else
   # Safe default: report zero completions when helpers unavailable
   count_complete_summaries() { echo "0"; }
   count_terminal_summaries() { echo "0"; }
+  extract_summary_status() { printf ''; return 1; }
 fi
 if [ -f "$SCRIPT_DIR/phase-state-utils.sh" ]; then
   # shellcheck source=phase-state-utils.sh
@@ -370,17 +371,26 @@ if [ -z "$PLAN" ]; then
   [ "$PLAN" = "$SUMMARY_ID" ] && PLAN="$SUMMARY_ID"
 fi
 
-# Normalize status: map known variants to canonical values
-case "$(echo "${STATUS:-}" | tr '[:upper:]' '[:lower:]')" in
-  complete|completed|done) STATUS="complete" ;;
-  partial|incomplete|in_progress|in-progress) STATUS="partial" ;;
-  failed|error|errored) STATUS="failed" ;;
-  "") STATUS="complete" ;;  # default for missing status
-  *) STATUS="complete" ;;   # unknown status — normalize to complete
+# Normalize status: only verified terminal SUMMARY statuses update execution-state.
+# Missing, unknown, and nonterminal statuses are intentionally ignored so a
+# partial product write cannot preemptively unlock dependent plans.
+STATUS_RAW="$STATUS"
+if type extract_summary_status >/dev/null 2>&1; then
+  _summary_status_raw=$(extract_summary_status "$FILE_PATH" 2>/dev/null || true)
+  if [ -n "$_summary_status_raw" ]; then
+    STATUS_RAW="$_summary_status_raw"
+  fi
+fi
+STATUS_RAW=$(printf '%s' "${STATUS_RAW:-}" | tr '[:upper:]' '[:lower:]' | tr -d "\r\"'" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+STATUS=""
+case "$STATUS_RAW" in
+  complete|completed) STATUS="complete" ;;
+  partial) STATUS="partial" ;;
+  failed) STATUS="failed" ;;
 esac
 
 # Update execution-state as best-effort only (never gates STATE/ROADMAP updates)
-if [ -f "$STATE_FILE" ] && [ -n "$PLAN" ]; then
+if [ -f "$STATE_FILE" ] && [ -n "$PLAN" ] && [ -n "$STATUS" ]; then
   TEMP_FILE="${STATE_FILE}.tmp.$$.${RANDOM:-0}"
   jq --arg phase "$PHASE" --arg plan "$PLAN" --arg status "$STATUS" --arg summary_id "$SUMMARY_ID" '
     def as_num: (try tonumber catch null);

@@ -245,8 +245,8 @@ GSD's Nyquist compliance check (ensuring plans don't exceed ~50% context) is a u
 
 | Feature | VBW | GSD |
 |---------|-----|-----|
-| **Parallelism** | Agent Teams (persistent teammates with shared task lists) | Wave-based parallel execution (dependency graph → wave grouping) |
-| **Isolation** | Worktree isolation (physical filesystem separation) | No filesystem isolation |
+| **Parallelism** | Dependency-aware routing: Agent Teams for real fan-out, serialized Dev subagents for linear graphs | Wave-based parallel execution (dependency graph → wave grouping) |
+| **Isolation** | Worktree isolation per plan when enabled (physical filesystem separation for team or serialized execution) | No filesystem isolation |
 | **File access control** | `file-guard.sh` hook + `lease-lock.sh` locking | Instruction-level per-plan file boundaries |
 | **Deviation handling** | Event logging, SUMMARY.md deviation section | 4 structured deviation rules in executor agent |
 | **Checkpoints** | `autonomous: false` + UAT CHECKPOINTs | 3 formal checkpoint types (human-verify, decision, human-action) |
@@ -258,7 +258,7 @@ GSD's Nyquist compliance check (ensuring plans don't exceed ~50% context) is a u
 
 GSD's checkpoint system is more formally specified than VBW's. Three distinct types with structured XML (`checkpoint:human-verify`, `checkpoint:decision`, `checkpoint:human-action`) each with documented presentation formats, usage frequency (90%/9%/1%), and auto-mode bypass rules. GSD's `checkpoints.md` reference (29KB) includes service CLI references, authentication gate protocols, and environment automation patterns.
 
-VBW's worktree isolation and lease locking provide stronger parallel execution guarantees. GSD relies on instruction-level file boundaries.
+VBW's worktree isolation and lease locking provide stronger execution guarantees when plans can run in parallel, while dependency-aware routing avoids team overhead for linear graphs. GSD relies on instruction-level file boundaries.
 
 GSD's 4 deviation rules are well-defined:
 1. Auto-fix bugs discovered during implementation
@@ -331,7 +331,7 @@ Different approaches to interruptions: VBW renumbers directories, file prefixes,
 |------------|---------------|----------------|
 | **Blocking platform hooks (exit 2)** | `hard-gate.sh`, `qa-gate.sh`, `file-guard.sh`, `bash-guard.sh`, `security-filter.sh`, `archive-uat-guard.sh` | Model cannot bypass these during compaction or context overflow |
 | **Platform-enforced agent permissions** | `disallowedTools` in agent YAML — Scout cannot write files; QA restricted to persistence via `write-verification.sh` | Verified tool restriction at the platform level, not instruction level |
-| **Worktree isolation** | `worktree-create.sh`, `worktree-target.sh`, `worktree-agent-map.sh` | Physical filesystem separation for parallel agents |
+| **Worktree isolation** | `worktree-create.sh`, `worktree-target.sh`, `worktree-agent-map.sh` | Physical filesystem separation per plan when enabled, for both team and serialized execution |
 | **Lease locks** | `lease-lock.sh` | File-level exclusive locking during parallel execution |
 | **Contract system** | `generate-contract.sh`, `validate-contract.sh` with hash integrity | Tasks operate within declared boundaries, hash prevents tampering |
 | **Event-sourced state** | `event-log.jsonl` (13 event types) + `recover-state.sh` | Crash recovery via event replay, not just checkpoint files |
@@ -416,7 +416,7 @@ The blocking hooks (exit 2) are the key differentiator. These run as bash subpro
 | **Primary goal** | Structured AI development via context engineering | Structured AI development via phased workflows |
 | **Optimization target** | Token-to-value efficiency (Nyquist compliance, ~50% context budgets) | Token efficiency (86% overhead reduction vs stock, per-role budgets) |
 | **Loop closure** | Instruction-enforced + CLI verification | Instruction-enforced + hook-enforced (exit 2) |
-| **Parallel execution** | Wave-based (dependency graph → wave grouping) | Agent Teams (persistent teammates + worktree isolation) |
+| **Parallel execution** | Wave-based (dependency graph → wave grouping) | Dependency-aware Agent Teams for fan-out; serialized Dev subagents for linear graphs; worktree isolation when enabled |
 | **Decision flow** | State-detected single path (resume-project.md) | State-detected single path (phase-detect.sh) |
 | **Session continuity** | Explicit pause → `.continue-here.md` with 7 sections | Auto-persistent (`.execution-state.json` + `event-log.jsonl`) |
 | **Quality gates** | Goal-backward verification (verifier + plan checker) | Goal-backward verification (QA agent, tiered) + hook gates |
@@ -442,7 +442,7 @@ The blocking hooks (exit 2) are the key differentiator. These run as bash subpro
 - **You need platform-enforced quality gates** — VBW's blocking hooks prevent the model from bypassing rules
 - **You run long, complex sessions** — VBW's event-sourced state recovery and compaction hooks handle multi-hour sessions and crashes
 - **You want tiered QA** — VBW's Quick/Standard/Deep tiers let you right-size verification effort
-- **You want filesystem isolation** — VBW's worktree isolation provides physical separation for parallel agents
+- **You want filesystem isolation** — VBW's worktree isolation provides physical separation per plan when enabled, not only for parallel/team execution
 - **You want fine-grained control** — 4 effort levels × 4 autonomy levels × bundled work profiles
 - **You want security enforcement** — `bash-guard.sh` (40+ patterns), `security-filter.sh` (.env, .pem, credentials), and `file-guard.sh` (undeclared file access)
 - **You use the Claude Code marketplace** — VBW distributes as a marketplace plugin with migration handling

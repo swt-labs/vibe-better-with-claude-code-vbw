@@ -92,6 +92,36 @@ teardown() {
   [ "$output" = "2" ]
 }
 
+@test "generate-contract.sh preserves normalized dependency references" {
+  cd "$TEST_TEMP_DIR"
+
+  cat > ".vbw-planning/phases/03-test-phase/03-02-PLAN.md" <<'EOF'
+---
+phase: 3
+plan: 2
+title: "Dependency Parser Test"
+wave: 2
+depends_on:
+  - 1
+  - "03-01"
+  - custom-id
+---
+
+# Plan 03-02: Dependency Parser Test
+
+## Tasks
+
+### Task 1: Implement dependent work
+- **Files:** `scripts/dependent.sh`
+- **Action:** Create dependent work.
+EOF
+
+  bash "$SCRIPTS_DIR/generate-contract.sh" ".vbw-planning/phases/03-test-phase/03-02-PLAN.md"
+
+  run jq -c '.depends_on' ".vbw-planning/.contracts/3-2.json"
+  [ "$output" = '["03-01","03-01","custom-id"]' ]
+}
+
 @test "validate-contract.sh start mode passes for valid task" {
   cd "$TEST_TEMP_DIR"
 

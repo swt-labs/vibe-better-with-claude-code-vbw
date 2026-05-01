@@ -73,25 +73,25 @@ fi
 echo ""
 echo "--- Session-start plan status reconciliation ---"
 
-# Test 6: session-start compares JSON complete count vs disk SUMMARY count
-if grep -q '_json_done.*plans.*select.*complete.*length' "$ROOT/scripts/session-start.sh"; then
-  pass "session-start extracts JSON complete count for comparison"
+# Test 6: session-start counts complete and partial SUMMARY files for reconciliation
+if grep -q 'SUMMARY_COUNT=0' "$ROOT/scripts/session-start.sh" && grep -q 'partial) SUMMARY_COUNT' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start counts complete and partial SUMMARY files for reconciliation"
 else
-  fail "session-start extracts JSON complete count for comparison"
+  fail "session-start counts complete and partial SUMMARY files for reconciliation"
 fi
 
-# Test 7: session-start triggers reconciliation when JSON > disk
-if grep -q '_json_done.*-gt.*SUMMARY_COUNT' "$ROOT/scripts/session-start.sh"; then
-  pass "session-start triggers reconciliation when JSON exceeds disk count"
+# Test 7: session-start reconciles JSON statuses from disk SUMMARY status map
+if grep -q 'summary_statuses\[\.id\]' "$ROOT/scripts/session-start.sh" && grep -q '\.status = "pending"' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start reconciles JSON statuses from disk SUMMARY status map"
 else
-  fail "session-start triggers reconciliation when JSON exceeds disk count"
+  fail "session-start reconciles JSON statuses from disk SUMMARY status map"
 fi
 
 # Test 8: session-start builds completed IDs from actual SUMMARY.md files
-if grep -q '_completed_json' "$ROOT/scripts/session-start.sh" && grep -q 'SUMMARY' "$ROOT/scripts/session-start.sh"; then
-  pass "session-start builds completed ID list from SUMMARY.md files"
+if grep -q '_summary_status_json' "$ROOT/scripts/session-start.sh" && grep -q 'SUMMARY' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start builds SUMMARY status map from SUMMARY.md files"
 else
-  fail "session-start builds completed ID list from SUMMARY.md files"
+  fail "session-start builds SUMMARY status map from SUMMARY.md files"
 fi
 
 # Test 9: session-start resets stale plan statuses to "pending"
@@ -102,7 +102,7 @@ else
 fi
 
 # Test 10: session-start reconciliation uses jq for atomic JSON update
-if grep -q 'argjson completed' "$ROOT/scripts/session-start.sh" && grep -q 'reconcile_tmp' "$ROOT/scripts/session-start.sh"; then
+if grep -q 'argjson summary_statuses' "$ROOT/scripts/session-start.sh" && grep -q 'reconcile_tmp' "$ROOT/scripts/session-start.sh"; then
   pass "session-start uses jq with argjson for atomic reconciliation"
 else
   fail "session-start uses jq with argjson for atomic reconciliation"
@@ -162,23 +162,27 @@ else
 fi
 
 # Simulate the reconciliation logic from session-start
-_completed_json="[]"
+_summary_status_json="{}"
 for _sf in "$FAKE_PHASE"/*-SUMMARY.md; do
   [ -f "$_sf" ] || continue
   _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
   case "$_sf_st" in
-    complete|completed)
-      _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
-      _completed_json=$(echo "$_completed_json" | jq --arg id "$_sf_id" '. + [$id]')
-      ;;
+    complete|completed) _sf_st="complete" ;;
+    partial) _sf_st="partial" ;;
+    failed) _sf_st="failed" ;;
+    *) continue ;;
   esac
+      _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
+  _summary_status_json=$(jq -cn --argjson current "$_summary_status_json" --arg id "$_sf_id" --arg status "$_sf_st" '$current + {($id): $status}')
 done
 
 EXEC_STATE="$FAKE_PROJECT/.execution-state.json"
 _reconcile_tmp="${EXEC_STATE}.reconcile.$$"
-jq --argjson completed "$_completed_json" '
+jq --argjson summary_statuses "$_summary_status_json" '
   .plans |= map(
-    if .status == "complete" and (.id as $pid | $completed | any(. == $pid) | not) then
+    if ($summary_statuses[.id] // null) != null then
+      .status = $summary_statuses[.id]
+    elif (.status == "complete" or .status == "partial" or .status == "failed") then
       .status = "pending"
     else .
     end
@@ -214,7 +218,7 @@ else
   fail "reconciliation: plan 06-03 stays pending (got $PLAN3_STATUS)"
 fi
 
-# --- Functional: partial SUMMARY → reconciliation preserves "complete" in JSON ---
+# --- Functional: partial SUMMARY → reconciliation preserves "partial" in JSON ---
 echo ""
 echo "--- Functional: partial SUMMARY accepted by reconciliation ---"
 
@@ -254,42 +258,46 @@ status: partial
 SUMMARY
 
 # Reconciliation should count both complete and partial as "done"
-_completed_json="[]"
+_summary_status_json="{}"
 for _sf in "$PARTIAL_PHASE"/*-SUMMARY.md; do
   [ -f "$_sf" ] || continue
   _sf_st=$(sed -n '/^---$/,/^---$/{ /^status:/{ s/^status:[[:space:]]*//; s/["'"'"']//g; p; }; }' "$_sf" 2>/dev/null | head -1 | tr -d '[:space:]')
   case "$_sf_st" in
-    complete|completed|partial)
-      _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
-      _completed_json=$(echo "$_completed_json" | jq --arg id "$_sf_id" '. + [$id]')
-      ;;
+    complete|completed) _sf_st="complete" ;;
+    partial) _sf_st="partial" ;;
+    failed) _sf_st="failed" ;;
+    *) continue ;;
   esac
+      _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
+  _summary_status_json=$(jq -cn --argjson current "$_summary_status_json" --arg id "$_sf_id" --arg status "$_sf_st" '$current + {($id): $status}')
 done
 
 EXEC_STATE="$PARTIAL_PROJECT/.execution-state.json"
 _reconcile_tmp="${EXEC_STATE}.reconcile.$$"
-jq --argjson completed "$_completed_json" '
+jq --argjson summary_statuses "$_summary_status_json" '
   .plans |= map(
-    if .status == "complete" and (.id as $pid | $completed | any(. == $pid) | not) then
+    if ($summary_statuses[.id] // null) != null then
+      .status = $summary_statuses[.id]
+    elif (.status == "complete" or .status == "partial" or .status == "failed") then
       .status = "pending"
     else .
     end
   )
 ' "$EXEC_STATE" > "$_reconcile_tmp" 2>/dev/null && mv "$_reconcile_tmp" "$EXEC_STATE" 2>/dev/null
 
-# Both plans should stay "complete" because both have SUMMARY.md (one complete, one partial)
-PARTIAL_DONE=$(jq '[.plans[] | select(.status == "complete")] | length' "$EXEC_STATE")
+# One plan should stay complete and the partial SUMMARY should be preserved as partial.
+PARTIAL_DONE=$(jq '[.plans[] | select(.status == "complete" or .status == "partial")] | length' "$EXEC_STATE")
 if [ "$PARTIAL_DONE" -eq 2 ]; then
-  pass "partial: both plans preserved as complete (2 done)"
+  pass "partial: both plans preserved as done (1 complete + 1 partial)"
 else
-  fail "partial: both plans preserved as complete (got $PARTIAL_DONE)"
+  fail "partial: both plans preserved as done (got $PARTIAL_DONE)"
 fi
 
 PARTIAL_P2=$(jq -r '.plans[] | select(.id == "03-02") | .status' "$EXEC_STATE")
-if [ "$PARTIAL_P2" = "complete" ]; then
-  pass "partial: plan 03-02 with partial SUMMARY kept as complete"
+if [ "$PARTIAL_P2" = "partial" ]; then
+  pass "partial: plan 03-02 with partial SUMMARY preserved as partial"
 else
-  fail "partial: plan 03-02 with partial SUMMARY kept as complete (got $PARTIAL_P2)"
+  fail "partial: plan 03-02 with partial SUMMARY preserved as partial (got $PARTIAL_P2)"
 fi
 
 # --- Functional: statusline reconciliation (count_done_summaries) ---
@@ -369,10 +377,10 @@ else
   fail "statusline JQ counts partial plans as done"
 fi
 
-if grep -q 'select(.status == "complete" or .status == "partial")' "$ROOT/scripts/session-start.sh"; then
-  pass "session-start JQ counts partial plans as done"
+if grep -q 'partial) SUMMARY_COUNT' "$ROOT/scripts/session-start.sh" && grep -q 'summary_statuses\[\.id\]' "$ROOT/scripts/session-start.sh"; then
+  pass "session-start reconciliation preserves partial plans as done"
 else
-  fail "session-start JQ counts partial plans as done"
+  fail "session-start reconciliation preserves partial plans as done"
 fi
 
 # recover-state COMPLETE count must use strict-complete only (partial is progress, not done)

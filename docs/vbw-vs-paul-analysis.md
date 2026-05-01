@@ -139,7 +139,7 @@ PAUL enforces loop closure via instructions to the model. VBW enforces it via pl
 
 **PAUL's claim:** GSD wastes tokens on subagent sprawl. PAUL keeps execution in-session. Subagents are reserved for discovery/research only.
 
-**VBW's reality:** VBW takes a more nuanced position — it uses Agent Teams (not subagents) with surgical context management:
+**VBW's reality:** VBW takes a more nuanced position — it uses dependency-aware execution with surgical context management. Real fan-out graphs use Agent Teams; linear graphs use serialized Dev subagents to avoid fake coordination overhead:
 
 | Mechanism | What it does |
 |---|---|
@@ -147,9 +147,9 @@ PAUL enforces loop closure via instructions to the model. VBW enforces it via pl
 | **Token budgets** | Per-role caps (Scout 200 lines, Dev/Debugger 800 lines) with per-task complexity scoring from contract metadata |
 | **86% overhead reduction** | Measured and documented: 12,100 tokens vs stock Agent Teams' 87,100 tokens |
 | **Smart routing** | `assess-plan-risk.sh` downgrades low-risk plans to turbo (single agent, no team) automatically |
-| **`prefer_teams` setting** | `auto` mode creates teams only when 2+ plans exist — single plan = single agent, zero coordination overhead |
+| **`prefer_teams` setting** | `auto` mode creates teams only when dependency analysis finds real parallel delegate work; linear graphs and single delegate plans use serialized subagents |
 
-PAUL's argument that "subagents produce ~70% quality work" is valid criticism of vanilla subagent spawning. But VBW doesn't use vanilla subagents — Agent Teams are persistent teammates with shared task lists, typed communication schemas, and compiled context. The quality delta PAUL describes doesn't apply.
+PAUL's argument that "subagents produce ~70% quality work" is valid criticism of vanilla subagent sprawl. VBW avoids that pattern: true Agent Teams are persistent teammates with shared task lists, typed communication schemas, and compiled context, while serialized Dev subagents are used deliberately for linear dependency chains where parallelism would be fake.
 
 More importantly: VBW's parallel execution with context compilation achieves **both** speed and quality. PAUL forces a false dichotomy — "quality OR speed." VBW's token analysis proves you can have parallel execution at 86% lower overhead than stock implementation.
 
@@ -302,7 +302,7 @@ Beyond addressing every PAUL differentiator, VBW includes substantial capabiliti
 | **Platform hooks (21 handlers, 11 event types)** | Continuous verification, security filtering, lifecycle management, compaction recovery — all running as platform hooks, not instructions | None — CARL adds dynamic rules but no platform-level hooks |
 | **Agent tool permissions (platform-enforced)** | 4 of 7 agents have `disallowedTools` enforced by Claude Code itself | None — PAUL is single-agent |
 | **Database safety guard** | 40+ destructive command patterns blocked across all major frameworks | None |
-| **Parallel execution with isolation** | Agent Teams + worktree isolation + lease locks + file guards | Explicitly rejected — in-session only |
+| **Parallel execution with isolation** | Dependency-aware true teams for real fan-out; serialized Dev subagents for linear graphs; worktree isolation + lease locks + file guards | Explicitly rejected — in-session only |
 | **Three-tier automated QA** | Goal-backward verification at Quick/Standard/Deep tiers with 5-30+ checks | Manual UNIFY reconciliation |
 | **Human acceptance testing (UAT)** | VBW's UAT protocol (verify.md) with per-test CHECKPOINT prompts, severity classification, resume support | `/paul:verify` exists but is guide-based, not structured |
 | **UAT remediation pipeline** | Automatic detection of unresolved UAT → discuss → plan → execute chain, including milestone recovery | None |
@@ -333,7 +333,7 @@ PAUL's PAUL-VS-GSD.md includes a philosophy comparison table. Here it is with VB
 | Primary goal | Ship fast | Ship correctly | Ship correctly AND fast (parallel execution with quality gates) |
 | Optimization target | Speed to done | Token-to-value efficiency | Measured token efficiency (86% reduction vs stock) |
 | Loop closure | Flexible | Mandatory | Mandatory + hook-enforced + archive-guarded |
-| Subagent role | Execution (parallel speed) | Discovery only | Execution (Agent Teams with context compilation) + Discovery (Scout) |
+| Subagent role | Execution (parallel speed) | Discovery only | Execution (Agent Teams for fan-out, serialized Dev subagents for linear graphs) + Discovery (Scout) |
 | Decision flow | Multiple options | Single best path | Single best path (`phase-detect.sh` → one action) |
 | Session handoff | Implicit | Explicit + dated | Automatic (no prior action needed) + event-sourced crash recovery |
 | Quality gates | Completion-based | Acceptance-based | Automated QA + Human UAT + hook-enforced gates |

@@ -30,6 +30,7 @@ else
   count_complete_summaries() { echo "0"; }
   count_done_summaries() { echo "0"; }
   is_summary_complete() { return 0; }
+  is_summary_terminal() { return 0; }
 fi
 if [ -f "$SCRIPT_DIR/phase-state-utils.sh" ]; then
   # shellcheck source=phase-state-utils.sh
@@ -375,17 +376,17 @@ if [ -d "$PLANNING_DIR" ] && [ ! -f "$PLANNING_DIR/.skills-section-stripped" ]; 
   fi
 fi
 
-# --- Brownfield: detect SUMMARY.md files without valid completion status ---
+# --- Brownfield: detect SUMMARY.md files without valid terminal status ---
 # Projects bootstrapped before status-aware detection may have SUMMARY files
 # that were created empty (touch) or with non-terminal statuses. Warn so users
-# know these plans won't be counted as complete under the new detection.
+# know these plans won't be counted as done under the new detection.
 _bf_bad_summary_count=0
 if [ -d "$PLANNING_DIR/phases" ]; then
   for _bf_phase_dir in "$PLANNING_DIR"/phases/*/; do
     [ -d "$_bf_phase_dir" ] || continue
     for _bf_sf in "$_bf_phase_dir"*-SUMMARY.md "$_bf_phase_dir"SUMMARY.md; do
       [ -f "$_bf_sf" ] || continue
-      if ! is_summary_complete "$_bf_sf"; then
+      if ! is_summary_terminal "$_bf_sf"; then
         _bf_bad_summary_count=$((_bf_bad_summary_count + 1))
       fi
     done
@@ -731,33 +732,34 @@ if [ "$_auto_recovered" = false ] && [ -f "$EXEC_STATE" ]; then
       done
 
       # Reconcile individual plan statuses against actual SUMMARY.md files.
-      # After a reset/undo, .execution-state.json may have stale "complete"
-      # entries for plans whose SUMMARY.md no longer exists on disk.
-      _json_done=$(jq -r '[.plans[]? | select(.status == "complete" or .status == "partial")] | length' "$EXEC_STATE" 2>/dev/null || echo 0)
-      if [ "${_json_done:-0}" -gt "${SUMMARY_COUNT:-0}" ] 2>/dev/null; then
-        # Build JSON array of plan IDs that actually have completed SUMMARY.md
-        _completed_json="[]"
-        for _sf in "$PHASE_DIR"/*-SUMMARY.md "$PHASE_DIR"/SUMMARY.md; do
-          [ -f "$_sf" ] || continue
-          _sf_st=$(extract_summary_status "$_sf")
-          case "$_sf_st" in
-            complete|completed|partial)
-              _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
-              _completed_json=$(echo "$_completed_json" | jq --arg id "$_sf_id" '. + [$id]')
-              ;;
-          esac
-        done
-        # Reset plans to "pending" if their SUMMARY.md is missing on disk
-        _reconcile_tmp="${EXEC_STATE}.reconcile.$$"
-        jq --argjson completed "$_completed_json" '
-          .plans |= map(
-            if (.status == "complete" or .status == "partial") and (.id as $pid | $completed | any(. == $pid) | not) then
-              .status = "pending"
-            else .
-            end
-          )
-        ' "$EXEC_STATE" > "$_reconcile_tmp" 2>/dev/null && mv "$_reconcile_tmp" "$EXEC_STATE" 2>/dev/null || rm -f "$_reconcile_tmp" 2>/dev/null
-      fi
+      # Verified terminal SUMMARY statuses are authoritative for Execute state:
+      # complete stays complete, partial stays partial, failed stays failed.
+      # After a reset/undo, stale terminal JSON entries without SUMMARY.md are
+      # reset to pending so dependents do not unlock from phantom completion.
+      _summary_status_json="{}"
+      for _sf in "$PHASE_DIR"/*-SUMMARY.md "$PHASE_DIR"/SUMMARY.md; do
+        [ -f "$_sf" ] || continue
+        _sf_st=$(extract_summary_status "$_sf")
+        case "$_sf_st" in
+          complete|completed) _sf_st="complete" ;;
+          partial) _sf_st="partial" ;;
+          failed) _sf_st="failed" ;;
+          *) continue ;;
+        esac
+        _sf_id=$(basename "$_sf" | sed 's/-SUMMARY\.md$//')
+        _summary_status_json=$(jq -cn --argjson current "$_summary_status_json" --arg id "$_sf_id" --arg status "$_sf_st" '$current + {($id): $status}')
+      done
+      _reconcile_tmp="${EXEC_STATE}.reconcile.$$"
+      jq --argjson summary_statuses "$_summary_status_json" '
+        .plans |= map(
+          if ($summary_statuses[.id] // null) != null then
+            .status = $summary_statuses[.id]
+          elif (.status == "complete" or .status == "partial" or .status == "failed") then
+            .status = "pending"
+          else .
+          end
+        )
+      ' "$EXEC_STATE" > "$_reconcile_tmp" 2>/dev/null && mv "$_reconcile_tmp" "$EXEC_STATE" 2>/dev/null || rm -f "$_reconcile_tmp" 2>/dev/null
 
       if [ "${STRICT_COMPLETE:-0}" -ge "${PLAN_COUNT:-1}" ] && [ "${PLAN_COUNT:-0}" -gt 0 ]; then
         # All plans are strictly complete — build finished after crash

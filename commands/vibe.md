@@ -1299,7 +1299,7 @@ This mode handles the case where a milestone was archived before UAT issues were
      LEAD_MODEL="$RESOLVED_MODEL"
      LEAD_MAX_TURNS="$RESOLVED_MAX_TURNS"
      ```
-   **No team creation in Plan mode.** Scout (step 3) and Lead are sequential — Scout must complete before Lead starts (Lead reads the RESEARCH.md). Teams are only for parallel Dev agents in Execute mode (`prefer_teams` is evaluated there, not here). Always spawn Lead as a plain subagent.
+  **No team creation in Plan mode.** Scout (step 3) and Lead are sequential — Scout must complete before Lead starts (Lead reads the RESEARCH.md). Execute mode may later choose true team mode or serialized Dev subagents based on dependency-aware routing; `prefer_teams` is evaluated there, not here. Always spawn Lead as a plain subagent.
   - Before composing the Lead task description, evaluate installed skills visible in your system context — read each skill's description and select all materially helpful installed skills for this task, including adjacent/supporting domain skills surfaced by the prompt, logs, error text, related files, or stack context — not just the single most direct skill. The Lead prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. Example: if the prompt or error mentions SwiftData, include `swiftdata` alongside relevant test/build/debug skills. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
   - If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning the phase planning Lead. If the helper prints a `<skill_follow_up_files>` block, paste it immediately after the follow-up-read sentence in the spawned payload. Otherwise omit that block.
   - Use this payload prefix as the FIRST lines of the phase planning Lead prompt:
@@ -1324,7 +1324,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    - Spawn vbw-lead as subagent via Task tool with compiled context (or full file list as fallback).
    - **CRITICAL:** Set `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"` in the Task tool invocation. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
    - **CRITICAL:** If a RESEARCH.md was found or created in step 3, include in the Lead prompt: `Read {research-path} for full research findings before planning.` where `{research-path}` is the per-plan or legacy path from step 3. The Lead must read the file itself — do NOT substitute an inlined summary.
-   - **CRITICAL:** Include in the Lead prompt: "Plans will be executed by a team of parallel Dev agents — one agent per plan. Maximize wave 1 plans (no deps) so agents start simultaneously. Ensure same-wave plans modify disjoint file sets to avoid merge conflicts."
+  - Required Lead guidance: "Execute may run plans as true team teammates or as serialized Dev subagents. Model real dependencies accurately. Same-wave plans must be genuinely independent and modify disjoint file sets; linear chains are valid when dependencies are real. Do not invent independence to increase wave 1 size — dependency-aware Execute uses teams only for real parallel delegate work, and false same-wave grouping can cause stale inputs or file conflicts."
    - **CRITICAL:** Include in the Lead prompt: `Use resolve-artifact-path.sh to compute plan filenames: bash ${RESOLVE_SCRIPT} plan "{phase-dir}" --plan-number {MM}` where `RESOLVE_SCRIPT` is the path from step 3. The script returns the canonical filename (e.g., `03-01-PLAN.md`). Call it once per plan with the plan number.
    - Display `◆ Spawning Lead agent...` -> `✓ Lead agent complete`.
 8. **Normalize plan filenames:**
@@ -1362,7 +1362,7 @@ This mode handles the case where a milestone was archived before UAT issues were
 
 ### Mode: Execute
 
-**Execute-mode invariant:** Parallel execution is only valid when the live tool set can create real team-scoped teammates. If real team semantics cannot be established, execute mode must warn and fall back to explicit non-team execution. Never simulate a team with background `Agent` spawns that lack `team_name`.
+**Execute-mode invariant:** Parallel execution is only valid when dependency-aware routing finds real parallel delegate work and the live tool set can create real team-scoped teammates. If routing selects serialized subagents, turbo/internal direct, or real team semantics cannot be established, execute mode must fall back to explicit non-team execution. Never simulate a team with background `Agent` spawns that lack `team_name`.
 
 Read `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/references/execute-protocol.md` and follow its instructions.
 
@@ -1666,7 +1666,7 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
 
 After Execute mode completes (autonomy=pure-vibe only): if more unbuilt phases exist, auto-continue to next phase (Plan + Execute). Loop until `next_phase_state=all_done` or error. Other autonomy levels: STOP after phase.
 
-**CRITICAL — Between iterations:** Before starting the next phase's Plan mode, verify ALL agents from the previous phase (Dev, QA) have been shut down via the Execute mode Step 5 HARD GATE. Do NOT enter Plan mode while prior Execute agents are still active. If unsure (e.g., after compaction), send `shutdown_request` to any teammates that may still exist from the prior Execute team and call TeamDelete before continuing.
+**CRITICAL — Between iterations:** Before starting the next phase's Plan mode, inspect the prior Execute delegation marker/state. Send `shutdown_request` and call TeamDelete only when the prior run actually persisted `delegation_mode=team` with a real `TEAM_NAME`. If the prior run used serialized subagents, turbo/internal direct, or fallback non-team mode, rely on completed subagent/direct execution plus the cleared delegation state; do not send team shutdown messages without a real team.
 
 ## Output Format
 

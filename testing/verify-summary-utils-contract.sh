@@ -3,9 +3,10 @@ set -euo pipefail
 
 # verify-summary-utils-contract.sh — Tests for scripts/summary-utils.sh
 #
-# Verifies the 4 functions that all runtime scripts now source:
+# Verifies the runtime functions that all runtime scripts now source:
 # - is_summary_complete (complete|completed only)
 # - is_summary_terminal (complete|completed|partial|failed)
+# - is_valid_summary_status (canonical runtime statuses only)
 # - count_complete_summaries (count completion-status files)
 # - count_terminal_summaries (count any-terminal-status files)
 
@@ -340,6 +341,27 @@ else
   fail "is_summary_terminal: quoted whitespace-padded status -> expected 0, got 1"
 fi
 
+# ===== is_valid_summary_status =====
+
+echo ""
+echo "--- is_valid_summary_status ---"
+
+for valid_status in complete partial failed; do
+  if is_valid_summary_status "$valid_status"; then
+    pass "is_valid_summary_status: $valid_status -> 0"
+  else
+    fail "is_valid_summary_status: $valid_status -> expected 0, got 1"
+  fi
+done
+
+for invalid_status in completed pending in_progress ""; do
+  if is_valid_summary_status "$invalid_status"; then
+    fail "is_valid_summary_status: '${invalid_status}' -> expected 1, got 0"
+  else
+    pass "is_valid_summary_status: '${invalid_status}' -> 1"
+  fi
+done
+
 # ===== count_complete_summaries =====
 
 echo ""
@@ -458,8 +480,8 @@ fi
 echo ""
 echo "--- Integration: runtime scripts source summary-utils.sh ---"
 
-# Verify all 6 runtime scripts that should source summary-utils.sh actually reference it
-for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh; do
+# Verify all runtime scripts that should source summary-utils.sh actually reference it
+for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh verify-state-consistency.sh; do
   if grep -q 'summary-utils\.sh' "$ROOT/scripts/$script" 2>/dev/null; then
     pass "integration: $script references summary-utils.sh"
   else
@@ -468,7 +490,7 @@ for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-
 done
 
 # Verify no runtime script still sources the deprecated lib/summary-status.sh
-for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh; do
+for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh verify-state-consistency.sh; do
   if grep -q 'lib/summary-status\.sh' "$ROOT/scripts/$script" 2>/dev/null; then
     fail "integration: $script still references deprecated lib/summary-status.sh"
   else
@@ -479,7 +501,7 @@ done
 # Verify no consumer script overrides extract_summary_status() after sourcing summary-utils.sh.
 # Fallback stubs in else-blocks (for when summary-utils.sh is missing) are allowed — only
 # definitions that coexist with the sourced helper create split-brain parsing.
-for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh; do
+for script in phase-detect.sh state-updater.sh recover-state.sh qa-gate.sh file-guard.sh session-start.sh verify-state-consistency.sh; do
   # Count function definitions of extract_summary_status()
   def_count=$(grep -cE '^[[:space:]]*extract_summary_status[[:space:]]*\(\)' "$ROOT/scripts/$script" 2>/dev/null) || def_count=0
   # Count source lines for summary-utils.sh (matches both `. file` and `source file`)

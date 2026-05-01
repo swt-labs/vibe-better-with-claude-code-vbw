@@ -1061,14 +1061,15 @@ else
   fail "execute-protocol: missing explicit non-team fallback warning text"
 fi
 
-if ! grep -Fq 'When team was created (2+ plans)' "$ROOT/references/execute-protocol.md" \
-  && grep -Fq 'request team mode for ALL remaining-plan counts (even 1 plan)' "$ROOT/references/execute-protocol.md" \
-  && grep -Fq 'ALL remaining-plan counts (even 1 plan)' "$ROOT/references/execute-protocol.md" \
+if grep -Fq 'resolve-execute-delegation-mode.sh' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq "prefer_teams='auto'" "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'max_parallel_width > 1' "$ROOT/references/execute-protocol.md" \
+  && ! grep -Fq "prefer_teams='auto': request team mode only when 2+ uncompleted plans remain" "$ROOT/references/execute-protocol.md" \
   && grep -Fq 'When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"`' "$ROOT/references/execute-protocol.md" \
   && grep -Fq 'When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "qa"' "$ROOT/references/execute-protocol.md"; then
-  pass "execute-protocol: single-plan team mode uses consistent true-team metadata wording"
+  pass "execute-protocol: dependency-aware routing uses consistent true-team metadata wording"
 else
-  fail "execute-protocol: single-plan team mode wording is inconsistent or still references 2+ plan team creation"
+  fail "execute-protocol: dependency-aware routing wording is inconsistent or still references stale 2+ plan team creation"
 fi
 
 if grep -q 'scripts/delegated-workflow.sh" set execute' "$ROOT/references/execute-protocol.md" \
