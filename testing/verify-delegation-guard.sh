@@ -243,6 +243,30 @@ test_direct_effort_allowed() {
 }
 test_direct_effort_allowed
 
+# --- Test 10b: Execute direct marker is live and allowed through effort exemption ---
+test_execute_direct_marker_allowed() {
+  setup_project
+  jq -n '{phase:1,status:"running",effort:"direct",correlation_id:"corr-direct",plans:[{id:"01-01",status:"pending"}]}' \
+    > "$PROJECT/.vbw-planning/.execution-state.json"
+  (cd "$PROJECT" && bash "$DELEG_SCRIPT" set execute direct direct)
+
+  local status_json
+  status_json=$(cd "$PROJECT" && bash "$DELEG_SCRIPT" status-json)
+  if jq -e '.live == true and .delegation_mode == "direct" and .mode == "execute"' >/dev/null <<< "$status_json"; then
+    pass "execute direct marker: status-json reports live direct mode"
+  else
+    fail "execute direct marker: expected live direct mode, got $status_json"
+  fi
+
+  if run_guard "$PROJECT" "src/app.js" "" >/dev/null 2>&1; then
+    pass "execute direct marker: file-guard allows direct effort product write"
+  else
+    fail "execute direct marker: file-guard unexpectedly blocked direct effort product write"
+  fi
+  cleanup
+}
+test_execute_direct_marker_allowed
+
 # --- Test 11: Execution running with complete status → no block ---
 test_complete_status_no_block() {
   setup_project

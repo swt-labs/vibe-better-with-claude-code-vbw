@@ -97,6 +97,20 @@ if ! jq empty "$EXEC_STATE_PATH" >/dev/null 2>&1; then
   fail_json "invalid_execution_state" "execution state is not valid JSON: $EXEC_STATE_PATH"
   exit 2
 fi
+
+exec_shape_error=$(jq -r '
+  if type != "object" then "execution_state_not_object"
+  elif (.plans | type) != "array" then "plans_not_array"
+  elif any(.plans[]; type != "object") then "plan_entry_not_object"
+  elif any(.plans[]; (has("id") | not) or ((.id | type) as $t | ($t != "string" and $t != "number")) or ((.id | tostring | length) == 0)) then "plan_entry_missing_id"
+  else ""
+  end
+' "$EXEC_STATE_PATH" 2>/dev/null || echo "execution_state_schema_error")
+if [ -n "$exec_shape_error" ]; then
+  fail_json "invalid_dependency_graph" "$exec_shape_error"
+  exit 2
+fi
+
 if [ -n "$ROUTE_MAP_PATH" ]; then
   if [ ! -f "$ROUTE_MAP_PATH" ]; then
     fail_json "invalid_route_map" "route map does not exist: $ROUTE_MAP_PATH"
@@ -104,6 +118,19 @@ if [ -n "$ROUTE_MAP_PATH" ]; then
   fi
   if ! jq empty "$ROUTE_MAP_PATH" >/dev/null 2>&1; then
     fail_json "invalid_route_map" "route map is not valid JSON: $ROUTE_MAP_PATH"
+    exit 2
+  fi
+  route_map_shape_error=$(jq -r '
+    if type != "object" then "route_map_not_object"
+    elif (.plans | type) != "object" then "route_map_plans_not_object"
+    elif any(.plans | to_entries[]; (.value | type) != "object") then "route_map_entry_not_object"
+    elif any(.plans | to_entries[]; (.value.route? != null) and ((.value.route | type) != "string" or ((.value.route == "delegate" or .value.route == "turbo" or .value.route == "direct") | not))) then "route_map_invalid_route"
+    elif any(.plans | to_entries[]; (.value.reason? != null) and ((.value.reason | type) == "object" or (.value.reason | type) == "array")) then "route_map_invalid_reason"
+    else ""
+    end
+  ' "$ROUTE_MAP_PATH" 2>/dev/null || echo "route_map_schema_error")
+  if [ -n "$route_map_shape_error" ]; then
+    fail_json "invalid_dependency_graph" "$route_map_shape_error"
     exit 2
   fi
 fi

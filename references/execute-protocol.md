@@ -172,7 +172,7 @@ Determine whether **real team semantics** are available in the live tool set bef
 - If the live tool set only supports plain background spawns (for example `Agent` with `run_in_background: true` but no `team_name`), then real team semantics are **NOT** available.
 - **Plain background `Agent` spawns without team semantics are NOT an agent team. Do NOT use them as a substitute for team mode.**
 
-Process `ROUTING.segments[]` in order. Before each segment, ensure no previous team marker is live. If the previous segment used true team mode, send `shutdown_request`, wait for responses, call `TeamDelete`, run `clean-stale-teams.sh`, then clear or replace the marker before starting the next segment.
+Process `ROUTING.segments[]` in order. For each segment, extract `route`, `plan_ids`, `effort`, `delegation_mode`, and optional `team_name` from the helper output. Before any direct, turbo, fallback, or serialized subagent segment starts, check the current delegation marker; if a live execute marker has `delegation_mode=team`, complete shutdown (`shutdown_request`, responses, `TeamDelete`, stale cleanup) and clear the marker first. Do not start a non-team segment while `.delegated-workflow.json` still reports a live team marker.
 
 Branch each segment into exactly one runtime path and persist that segment's actual mode **before the first spawn or orchestrator product-file write**:
 
@@ -193,12 +193,14 @@ Branch each segment into exactly one runtime path and persist that segment's act
 
 2. **Explicit non-team mode**
    - Use this path when `prefer_teams='never'`, `prefer_teams='auto'` with `max_parallel_width <= 1`, unknown `prefer_teams`, no delegate-eligible plans, segment route `turbo`/internal `direct`, or team-tooling-unavailable fallback.
-   - For `turbo` or internal `direct` segments, update `.execution-state.json.effort` to `turbo` or `direct` before orchestrator product-file writes; keep `phase_effort` unchanged and restore `.execution-state.json.effort` to `phase_effort` before the next non-direct segment.
-   - Persist the actual runtime mode:
+   - For serialized delegate segments (`route=delegate`, `delegation_mode=subagent`), persist the actual runtime mode as subagent, skip TeamCreate, spawn one Dev subagent, and wait for completion before the next spawn:
      ```bash
      bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {segment_effort} subagent
      ```
-   - Skip TeamCreate. Spawn one Dev at a time and wait for completion before spawning the next one.
+   - For `turbo` or internal `direct` segments (`delegation_mode=direct`), update `.execution-state.json.effort` to `turbo` or `direct` before orchestrator product-file writes; keep `phase_effort` unchanged, persist the actual runtime mode as direct, and restore `.execution-state.json.effort` to `phase_effort` before the next non-direct segment:
+     ```bash
+     bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {segment_effort} direct
+     ```
    - **Do NOT use `run_in_background: true` to simulate parallelism in non-team mode.**
 
 3. **Team-tooling-unavailable fallback**

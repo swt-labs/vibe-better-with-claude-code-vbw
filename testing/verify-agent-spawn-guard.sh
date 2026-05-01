@@ -243,6 +243,22 @@ test_non_team_mode_blocks_background_spawn() {
 }
 test_non_team_mode_blocks_background_spawn
 
+test_direct_mode_blocks_background_spawn() {
+  setup_project
+  write_execution_state "corr-123"
+  write_marker execute direct "" "corr-123"
+
+  local output rc
+  output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'cannot simulate team mode with background Agent spawns'; then
+    pass "Execute direct mode blocks faux-team background spawn"
+  else
+    fail "Execute direct mode should block background spawn (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_direct_mode_blocks_background_spawn
+
 test_non_team_mode_allows_foreground_spawn() {
   setup_project
   write_execution_state "corr-123"

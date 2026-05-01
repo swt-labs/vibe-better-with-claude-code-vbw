@@ -123,9 +123,10 @@ assert_json_array_eq() {
 
 expect_helper_failure() {
   local label="$1"
+  shift
   local out status reason
   set +e
-  out=$(run_helper 2>/dev/null)
+  out=$(run_helper "$@" 2>/dev/null)
   status=$?
   set -e
   reason=$(jq -r '.reason // empty' <<< "$out" 2>/dev/null || true)
@@ -291,6 +292,54 @@ write_state '{"plans":[{"id":"01-02","status":"pending"}],"effort":"balanced","p
 write_plan_inline 01-02-PLAN.md 01 03 '[]'
 expect_helper_failure "frontmatter plan mismatch fails closed with invalid_dependency_graph"
 
+# malformed execution-state / route-map schemas fail closed before spawning
+make_fixture valid-empty-plans '"auto"' balanced
+write_state '{"plans":[],"effort":"balanced","phase_effort":"balanced"}'
+out=$(run_helper)
+assert_eq "$(json_field "$out" '.reason')" "no_remaining_plans" "valid empty execution-state plans array returns no_remaining_plans"
+
+make_fixture missing-plans '"auto"' balanced
+write_state '{"effort":"balanced","phase_effort":"balanced"}'
+expect_helper_failure "missing execution-state plans fails closed with invalid_dependency_graph"
+
+make_fixture scalar-plans '"auto"' balanced
+write_state '{"plans":"oops","effort":"balanced","phase_effort":"balanced"}'
+expect_helper_failure "scalar execution-state plans fails closed with invalid_dependency_graph"
+
+make_fixture object-plans '"auto"' balanced
+write_state '{"plans":{"01-01":{"status":"pending"}},"effort":"balanced","phase_effort":"balanced"}'
+expect_helper_failure "object execution-state plans fails closed with invalid_dependency_graph"
+
+make_fixture scalar-plan-entry '"auto"' balanced
+write_state '{"plans":["01-01"],"effort":"balanced","phase_effort":"balanced"}'
+expect_helper_failure "scalar execution-state plan entry fails closed with invalid_dependency_graph"
+
+make_fixture missing-plan-id '"auto"' balanced
+write_state '{"plans":[{"status":"pending"}],"effort":"balanced","phase_effort":"balanced"}'
+expect_helper_failure "execution-state plan missing id fails closed with invalid_dependency_graph"
+
+make_fixture empty-plan-id '"auto"' balanced
+write_state '{"plans":[{"id":"","status":"pending"}],"effort":"balanced","phase_effort":"balanced"}'
+expect_helper_failure "execution-state plan empty id fails closed with invalid_dependency_graph"
+
+make_fixture route-map-scalar-plans '"auto"' balanced
+write_state '{"plans":[{"id":"01-01","status":"pending"}],"effort":"balanced","phase_effort":"balanced"}'
+write_plan_inline 01-01-PLAN.md 01 01 '[]'
+printf '{"plans":"oops"}\n' > "$FIXTURE/.vbw-planning/.cache/execute-route-map.json"
+expect_helper_failure "scalar route-map plans fails closed with invalid_dependency_graph" --route-map .vbw-planning/.cache/execute-route-map.json
+
+make_fixture route-map-scalar-entry '"auto"' balanced
+write_state '{"plans":[{"id":"01-01","status":"pending"}],"effort":"balanced","phase_effort":"balanced"}'
+write_plan_inline 01-01-PLAN.md 01 01 '[]'
+printf '{"plans":{"01-01":"turbo"}}\n' > "$FIXTURE/.vbw-planning/.cache/execute-route-map.json"
+expect_helper_failure "scalar route-map entry fails closed with invalid_dependency_graph" --route-map .vbw-planning/.cache/execute-route-map.json
+
+make_fixture route-map-invalid-route '"auto"' balanced
+write_state '{"plans":[{"id":"01-01","status":"pending"}],"effort":"balanced","phase_effort":"balanced"}'
+write_plan_inline 01-01-PLAN.md 01 01 '[]'
+printf '{"plans":{"01-01":{"route":"parallel"}}}\n' > "$FIXTURE/.vbw-planning/.cache/execute-route-map.json"
+expect_helper_failure "invalid route-map route fails closed with invalid_dependency_graph" --route-map .vbw-planning/.cache/execute-route-map.json
+
 # prefer_teams canonicalization, including legacy aliases only in tests/helper code
 for raw in '"when_parallel"' 'false' 'null' '""'; do
   make_fixture "canon-$raw" "$raw" balanced
@@ -394,6 +443,21 @@ if grep -q 'delegation_mode=team' "$EXECUTE_PROTOCOL" && grep -q 'TEAM_NAME' "$E
   pass "execute-protocol keys team shutdown off actual delegation_mode=team plus TEAM_NAME"
 else
   fail "execute-protocol keys team shutdown off actual delegation_mode=team plus TEAM_NAME"
+fi
+
+if grep -Fq 'set execute {segment_effort} direct' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'set execute {segment_effort} subagent' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'For serialized delegate segments (`route=delegate`, `delegation_mode=subagent`)' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'For `turbo` or internal `direct` segments (`delegation_mode=direct`)' "$EXECUTE_PROTOCOL"; then
+  pass "execute-protocol persists direct/turbo and serialized subagent segments distinctly"
+else
+  fail "execute-protocol persists direct/turbo and serialized subagent segments distinctly"
+fi
+
+if grep -Fq 'Do not start a non-team segment while `.delegated-workflow.json` still reports a live team marker' "$EXECUTE_PROTOCOL"; then
+  pass "execute-protocol forbids non-team segment while live team marker exists"
+else
+  fail "execute-protocol forbids non-team segment while live team marker exists"
 fi
 
 if grep -Fq 'When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"`' "$EXECUTE_PROTOCOL" \
