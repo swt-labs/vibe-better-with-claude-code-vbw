@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.36.0] - 2026-05-01
+
+### Added
+
+- **`rtk`** -- added explicit opt-in RTK management for install, setup, verification, update, uninstall, and runtime smoke proof capture. (PR #540)
+- **`research`** -- added `/vbw:research N` so numbered todo snapshots can launch context-only Scout research without removing the todo. (PR #543)
+- **`skills`** -- nudged agents to read skill-referenced follow-up material after `Skill()` activation when relevant to the active task. (PR #534)
+
+### Changed
+
+- **`config`** -- replaced the typed pseudo-menu with bounded structured prompts for top-level and core settings choices. (PR #528)
+- **`debug`** -- split competing-hypothesis investigation from implementation ownership so report-only investigators tear down before a fresh implementation debugger is spawned. (PR #530)
+- **`init`** -- aligned init and discussion prompts with the shared AskUserQuestion interaction contract. (PR #541)
+- **`testing`** -- expanded interactive prompt contract coverage to keep structured prompts and freeform handoffs on the intended paths. (PR #539)
+
+### Fixed
+
+- **`debug`** -- improved sparse `/vbw:debug` skill selection by enriching sparse todo context and logging runtime skill decisions. (PR #526)
+- **`execute`** -- routed true teams only when dependency graphs have real parallel delegate width, preserving serial execution for linear work. (PR #555)
+- **`rtk`** -- made install complete setup, added runtime smoke proof recording, and hardened verification when history tails stall or mismatch. (PR #545, PR #547, PR #549, PR #551)
+- **`skills`** -- restricted follow-up file resolution to Claude skill roots so lookalike directories are ignored. (PR #538)
+- **`testing`** -- hardened verifier pipelines and archive contract matching to avoid pipefail and broken-pipe false failures. (PR #532, PR #537, PR #552)
+
 All notable changes to VBW will be documented in this file.
 
 ## [1.35.1] - 2026-04-25
