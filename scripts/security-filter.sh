@@ -13,16 +13,24 @@ fi
 INPUT=$(cat 2>/dev/null) || exit 2
 [ -z "$INPUT" ] && exit 2
 
-FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // .tool_input.pattern // ""' 2>/dev/null) || exit 2
+TOOL_NAME=$(jq -r '.tool_name // ""' <<<"$INPUT" 2>/dev/null) || exit 2
+FILE_PATH=$(jq -r '.tool_input.file_path // .tool_input.path // .tool_input.pattern // ""' <<<"$INPUT" 2>/dev/null) || exit 2
 
 if [ -z "$FILE_PATH" ]; then
   exit 2
 fi
 
+is_pdf_path() {
+  case "$1" in
+    *.[pP][dD][fF]) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # Sensitive file patterns
 # Directory patterns use (^|/) anchoring so they match only as path components,
 # not as substrings of unrelated directory names (e.g. "corvex-build/" != "build/").
-if echo "$FILE_PATH" | grep -qE '\.env$|\.env\.|\.pem$|\.key$|\.cert$|\.p12$|\.pfx$|credentials\.json$|secrets\.json$|service-account.*\.json$|(^|/)node_modules/|(^|/)\.git/|(^|/)dist/|(^|/)build/'; then
+if grep -qE '\.env$|\.env\.|\.pem$|\.key$|\.cert$|\.p12$|\.pfx$|credentials\.json$|secrets\.json$|service-account.*\.json$|(^|/)node_modules/|(^|/)\.git/|(^|/)dist/|(^|/)build/' <<<"$FILE_PATH"; then
   echo "Blocked: sensitive file ($FILE_PATH)" >&2
   exit 2
 fi
@@ -59,7 +67,7 @@ derive_project_root() {
   printf '%s' "$root"
 }
 
-if echo "$FILE_PATH" | grep -qF '.planning/' && ! echo "$FILE_PATH" | grep -qF '.vbw-planning/'; then
+if grep -qF '.planning/' <<<"$FILE_PATH" && ! grep -qF '.vbw-planning/' <<<"$FILE_PATH"; then
   GSD_ROOT=$(derive_project_root "$FILE_PATH" ".planning")
   if is_marker_fresh "$GSD_ROOT/.vbw-planning/.active-agent" || is_marker_fresh "$GSD_ROOT/.vbw-planning/.vbw-session"; then
     echo "Blocked: .planning/ is managed by GSD, not VBW ($FILE_PATH)" >&2
@@ -73,5 +81,23 @@ fi
 # Read calls before prompt-preflight runs. GSD isolation is enforced by CLAUDE.md
 # instructions + the .planning/ block above (which prevents VBW from touching GSD).
 # Removed: self-blocking of .vbw-planning/ (v1.21.13).
+
+if [ "$TOOL_NAME" = "Read" ] && ! is_pdf_path "$FILE_PATH"; then
+  READ_HAS_EMPTY_PAGES=$(jq -r '
+    def empty_pages:
+      if (.tool_input.pages == null) then true
+      elif ((.tool_input.pages | type) == "string") then (.tool_input.pages | test("^[[:space:]]*$"))
+      else false
+      end;
+    ((.tool_input | type) == "object")
+    and (.tool_input | has("pages"))
+    and empty_pages
+  ' <<<"$INPUT" 2>/dev/null) || exit 2
+
+  if [ "$READ_HAS_EMPTY_PAGES" = "true" ]; then
+    jq -c '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"allow",updatedInput:(.tool_input | del(.pages))}}' <<<"$INPUT" || exit 2
+    exit 0
+  fi
+fi
 
 exit 0

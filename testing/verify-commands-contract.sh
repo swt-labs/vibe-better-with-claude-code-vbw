@@ -415,6 +415,14 @@ else
   fail "vibe: missing shared AskUserQuestion reference include"
 fi
 
+if grep -Fq '<read_tool_pages_guard>' "$VIBE_COMMAND_FILE" \
+  && grep -Fq "Claude Code's \`Read\` \`pages\` argument is for PDFs only" "$VIBE_COMMAND_FILE" \
+  && grep -Fq 'retry once immediately without `pages`' "$VIBE_COMMAND_FILE"; then
+  pass "vibe: guards non-PDF Read calls from empty pages loops"
+else
+  fail "vibe: missing non-PDF Read pages compatibility guard"
+fi
+
 if [ -n "$VIBE_CONFIRMATION_BLOCK" ]; then
   pass "vibe: confirmation gate block extracted for boundary checks"
 else
