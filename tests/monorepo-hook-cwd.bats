@@ -152,6 +152,119 @@ JSON
   [ "$result" = "$root" ]
 }
 
+@test "find_vbw_root: maps Claude internal sidechain cwd to host workspace" {
+  local host="$TEST_TEMP_DIR/claude-sidechain-host"
+  setup_workspace "$host"
+  local sidechain="$host/.claude/worktrees/agent-test"
+  mkdir -p "$sidechain/.vbw-planning" "$sidechain/src/nested"
+  cat > "$sidechain/.vbw-planning/config.json" <<'JSON'
+{"effort": "turbo", "model_profile": "budget"}
+JSON
+
+  local host_real sidechain_real
+  host_real=$(cd "$host" && pwd -P 2>/dev/null || echo "$host")
+  sidechain_real=$(cd "$sidechain" && pwd -P 2>/dev/null || echo "$sidechain")
+
+  local result config_root planning_dir sidechain_root sidechain_host
+  result=$(
+    cd "$sidechain/src/nested"
+    unset VBW_CONFIG_ROOT 2>/dev/null || true
+    unset VBW_PLANNING_DIR 2>/dev/null || true
+    unset VBW_CLAUDE_SIDECHAIN_ROOT 2>/dev/null || true
+    unset VBW_CLAUDE_SIDECHAIN_HOST_ROOT 2>/dev/null || true
+    . "$LIB"
+    find_vbw_root
+    printf '%s\n%s\n%s\n%s\n' \
+      "$VBW_CONFIG_ROOT" \
+      "$VBW_PLANNING_DIR" \
+      "${VBW_CLAUDE_SIDECHAIN_ROOT:-}" \
+      "${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}"
+  )
+  cd "$PROJECT_ROOT"
+
+  local result_lines
+  mapfile -t result_lines <<< "$result"
+  config_root="${result_lines[0]}"
+  planning_dir="${result_lines[1]}"
+  sidechain_root="${result_lines[2]}"
+  sidechain_host="${result_lines[3]}"
+
+  [ "$config_root" = "$host_real" ]
+  [ "$planning_dir" = "$host_real/.vbw-planning" ]
+  [ "$sidechain_root" = "$sidechain_real" ]
+  [ "$sidechain_host" = "$host_real" ]
+}
+
+@test "find_vbw_root: preserves nearest ancestor for VBW-managed worktrees" {
+  local host="$TEST_TEMP_DIR/vbw-managed-worktree-host"
+  setup_workspace "$host"
+  local managed="$host/.vbw-worktrees/01-01"
+  mkdir -p "$managed/.vbw-planning" "$managed/src/nested"
+  cat > "$managed/.vbw-planning/config.json" <<'JSON'
+{"effort": "balanced", "model_profile": "balanced"}
+JSON
+
+  local managed_real
+  managed_real=$(cd "$managed" && pwd -P 2>/dev/null || echo "$managed")
+
+  local result config_root planning_dir sidechain_root sidechain_host
+  result=$(
+    cd "$managed/src/nested"
+    unset VBW_CONFIG_ROOT 2>/dev/null || true
+    unset VBW_PLANNING_DIR 2>/dev/null || true
+    unset VBW_CLAUDE_SIDECHAIN_ROOT 2>/dev/null || true
+    unset VBW_CLAUDE_SIDECHAIN_HOST_ROOT 2>/dev/null || true
+    . "$LIB"
+    find_vbw_root
+    printf '%s\n%s\n%s\n%s\n' \
+      "$VBW_CONFIG_ROOT" \
+      "$VBW_PLANNING_DIR" \
+      "${VBW_CLAUDE_SIDECHAIN_ROOT:-}" \
+      "${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}"
+  )
+  cd "$PROJECT_ROOT"
+
+  local result_lines
+  mapfile -t result_lines <<< "$result"
+  config_root="${result_lines[0]}"
+  planning_dir="${result_lines[1]}"
+  sidechain_root="${result_lines[2]}"
+  sidechain_host="${result_lines[3]}"
+
+  [ "$config_root" = "$managed_real" ]
+  [ "$planning_dir" = "$managed_real/.vbw-planning" ]
+  [ -z "$sidechain_root" ]
+  [ -z "$sidechain_host" ]
+}
+
+@test "find_vbw_root: cache hit still wins inside Claude sidechain" {
+  local host="$TEST_TEMP_DIR/claude-sidechain-cache-host"
+  local cached="$TEST_TEMP_DIR/cached-root"
+  setup_workspace "$host"
+  setup_workspace "$cached"
+  local sidechain="$host/.claude/worktrees/agent-test"
+  mkdir -p "$sidechain/.vbw-planning" "$sidechain/src"
+  cat > "$sidechain/.vbw-planning/config.json" <<'JSON'
+{"effort": "turbo", "model_profile": "budget"}
+JSON
+
+  local result
+  result=$(
+    cd "$sidechain/src"
+    export VBW_CONFIG_ROOT="$cached"
+    unset VBW_PLANNING_DIR 2>/dev/null || true
+    . "$LIB"
+    find_vbw_root
+    printf '%s\n%s\n' "$VBW_CONFIG_ROOT" "$VBW_PLANNING_DIR"
+  )
+  cd "$PROJECT_ROOT"
+
+  local result_lines
+  mapfile -t result_lines <<< "$result"
+  [ "${result_lines[0]}" = "$cached" ]
+  [ "${result_lines[1]}" = "$cached/.vbw-planning" ]
+}
+
 # --- Test 6: find_vbw_root with start_dir resolves from script location (#266) ---
 
 @test "find_vbw_root: resolves via start_dir when CWD is outside project" {

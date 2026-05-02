@@ -15,6 +15,8 @@ fi
 INPUT=$(cat 2>/dev/null) || exit 0
 [ -z "$INPUT" ] && exit 0
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 find_project_root() {
   local dir="$PWD"
   while [ "$dir" != "/" ]; do
@@ -27,8 +29,26 @@ find_project_root() {
   return 1
 }
 
-PROJECT_ROOT=$(find_project_root) || exit 0
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+resolve_project_root() {
+  if [ -n "${VBW_PLANNING_DIR:-}" ] && [ -d "$VBW_PLANNING_DIR" ]; then
+    cd "$VBW_PLANNING_DIR/.." 2>/dev/null && pwd -P 2>/dev/null
+    return $?
+  fi
+
+  if [ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ]; then
+    # shellcheck source=lib/vbw-config-root.sh
+    if source "$SCRIPT_DIR/lib/vbw-config-root.sh" 2>/dev/null; then
+      if find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 && [ -n "${VBW_CONFIG_ROOT:-}" ] && [ -n "${VBW_PLANNING_DIR:-}" ] && [ -d "$VBW_PLANNING_DIR" ]; then
+        printf '%s\n' "$VBW_CONFIG_ROOT"
+        return 0
+      fi
+    fi
+  fi
+
+  find_project_root
+}
+
+PROJECT_ROOT=$(resolve_project_root) || exit 0
 MARKER_STATUS=$(VBW_PLANNING_DIR="$PROJECT_ROOT/.vbw-planning" bash "$SCRIPT_DIR/delegated-workflow.sh" status-json 2>/dev/null) || exit 0
 [ -n "$MARKER_STATUS" ] || exit 0
 

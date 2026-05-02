@@ -12,6 +12,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FILE_GUARD="$ROOT/scripts/file-guard.sh"
 DELEG_SCRIPT="$ROOT/scripts/delegated-workflow.sh"
+HOOK_WRAPPER="$ROOT/scripts/hook-wrapper.sh"
 
 PASS=0
 FAIL=0
@@ -68,6 +69,77 @@ run_guard() {
     (cd "$project_dir" && unset VBW_AGENT_ROLE; bash "$FILE_GUARD" <<< "$input") 2>&1
   fi
   return ${PIPESTATUS[0]}
+}
+
+run_guard_from() {
+  local working_dir="$1"
+  local file_path="$2"
+  local agent_role="${3:-}"
+
+  local input
+  input=$(jq -n --arg fp "$file_path" '{"tool_input":{"file_path":$fp}}')
+
+  if [ -n "$agent_role" ]; then
+    (cd "$working_dir" && unset VBW_CONFIG_ROOT VBW_PLANNING_DIR; VBW_AGENT_ROLE="$agent_role" bash "$FILE_GUARD" <<< "$input") 2>&1
+  else
+    (cd "$working_dir" && unset VBW_AGENT_ROLE VBW_CONFIG_ROOT VBW_PLANNING_DIR; bash "$FILE_GUARD" <<< "$input") 2>&1
+  fi
+  return ${PIPESTATUS[0]}
+}
+
+setup_sidechain_project() {
+  setup_project
+  SIDECHAIN="$PROJECT/.claude/worktrees/agent-test"
+  mkdir -p "$SIDECHAIN/.vbw-planning/phases/01-copy" "$SIDECHAIN/src"
+  echo '{"effort":"turbo","prefer_teams":"always"}' > "$SIDECHAIN/.vbw-planning/config.json"
+}
+
+write_live_execute_state() {
+  jq -n '{phase:1,status:"running",effort:"balanced",correlation_id:"corr-sidechain",plans:[{id:"01-01",status:"pending"}]}' \
+    > "$PROJECT/.vbw-planning/.execution-state.json"
+  (cd "$PROJECT" && bash "$DELEG_SCRIPT" set execute balanced subagent)
+}
+
+run_sidechain_agent_hook() {
+  local hook_script="$1"
+  local input
+  input=$(jq -n '{agent_type:"vbw:vbw-dev", pid:"12345"}')
+
+  (
+    cd "$SIDECHAIN"
+    unset VBW_CONFIG_ROOT VBW_PLANNING_DIR
+    CLAUDE_CONFIG_DIR="$TMPDIR_BASE/claude" \
+      CLAUDE_PLUGIN_ROOT="$ROOT" \
+      bash "$HOOK_WRAPPER" "$hook_script" <<< "$input"
+  )
+}
+
+assert_sidechain_target_message() {
+  local output="$1"
+  local host_root="$2"
+  local label="$3"
+
+  if ! grep -qi 'blocked target:' <<< "$output"; then
+    fail "$label: missing blocked target label ($output)"
+    return 1
+  fi
+  if ! grep -q "$host_root" <<< "$output" && ! grep -qi 'host repo' <<< "$output"; then
+    fail "$label: missing host repo path/phrase ($output)"
+    return 1
+  fi
+  if ! grep -qi 'retry.*absolute path.*host repo' <<< "$output"; then
+    fail "$label: missing retry action for absolute host path ($output)"
+    return 1
+  fi
+  if ! grep -qi 'sidechain' <<< "$output" || ! grep -qiE 'not.*(merge|use)|will not.*(merge|use)' <<< "$output"; then
+    fail "$label: missing sidechain not-merged/used reason ($output)"
+    return 1
+  fi
+  if grep -qE 'CRITICAL|MUST' <<< "$output"; then
+    fail "$label: message uses aggressive CRITICAL/MUST wording ($output)"
+    return 1
+  fi
+  return 0
 }
 
 echo "=== Delegation Guard Tests ==="
@@ -614,6 +686,106 @@ test_session_stop_preserves_live_execute_team_marker() {
   cleanup
 }
 test_session_stop_preserves_live_execute_team_marker
+
+# --- Test 25: Claude sidechain agent-start/stop uses host planning dir ---
+test_claude_sidechain_agent_hooks_use_host_planning_dir() {
+  setup_sidechain_project
+  write_live_execute_state
+
+  run_sidechain_agent_hook agent-start.sh >/dev/null 2>&1 || true
+
+  local host_count sidechain_count
+  host_count=$(cat "$PROJECT/.vbw-planning/.active-agent-count" 2>/dev/null || true)
+  sidechain_count=$(cat "$SIDECHAIN/.vbw-planning/.active-agent-count" 2>/dev/null || true)
+  if [ "$host_count" = "1" ] && [ -z "$sidechain_count" ]; then
+    pass "Claude sidechain agent-start writes active count to host planning dir"
+  else
+    fail "Claude sidechain agent-start should write host count=1 and no sidechain count (host=$host_count sidechain=$sidechain_count)"
+  fi
+
+  run_sidechain_agent_hook agent-stop.sh >/dev/null 2>&1 || true
+  if [ ! -f "$PROJECT/.vbw-planning/.active-agent-count" ] && [ ! -f "$PROJECT/.vbw-planning/.active-agent" ]; then
+    pass "Claude sidechain agent-stop cleans host active-agent markers"
+  else
+    fail "Claude sidechain agent-stop should remove host active-agent markers"
+  fi
+  cleanup
+}
+test_claude_sidechain_agent_hooks_use_host_planning_dir
+
+# --- Test 26: Claude sidechain subagent can write declared host product path ---
+test_claude_sidechain_host_absolute_write_allowed_after_agent_start() {
+  setup_sidechain_project
+  write_live_execute_state
+  run_sidechain_agent_hook agent-start.sh >/dev/null 2>&1 || true
+
+  if run_guard_from "$SIDECHAIN" "$PROJECT/src/app.js" "" >/dev/null 2>&1; then
+    pass "Claude sidechain active subagent: host-root declared product write allowed"
+  else
+    fail "Claude sidechain active subagent: host-root declared product write unexpectedly blocked"
+  fi
+
+  run_sidechain_agent_hook agent-stop.sh >/dev/null 2>&1 || true
+  cleanup
+}
+test_claude_sidechain_host_absolute_write_allowed_after_agent_start
+
+# --- Test 27: Claude sidechain host write without active marker still blocks orchestrator ---
+test_claude_sidechain_host_absolute_write_blocks_without_agent_marker() {
+  setup_sidechain_project
+  write_live_execute_state
+
+  rm -f "$PROJECT/.vbw-planning/.active-agent" "$PROJECT/.vbw-planning/.active-agent-count"
+  local output rc
+  output=$(run_guard_from "$SIDECHAIN" "$PROJECT/src/app.js" "" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && grep -q 'orchestrator cannot write product files' <<< "$output"; then
+    pass "Claude sidechain orchestrator host-root product write: blocked"
+  else
+    fail "Claude sidechain orchestrator host-root product write should block (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_claude_sidechain_host_absolute_write_blocks_without_agent_marker
+
+# --- Test 28: Claude sidechain relative Write/Edit target is blocked early ---
+test_claude_sidechain_relative_write_target_blocks() {
+  setup_sidechain_project
+  write_live_execute_state
+  echo "1" > "$PROJECT/.vbw-planning/.active-agent-count"
+  echo "dev" > "$PROJECT/.vbw-planning/.active-agent"
+
+  local output rc
+  output=$(run_guard_from "$SIDECHAIN" "src/app.js" "" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ]; then
+    if assert_sidechain_target_message "$output" "$PROJECT" "Claude sidechain relative target"; then
+      pass "Claude sidechain relative Write/Edit target: blocked with retry guidance"
+    fi
+  else
+    fail "Claude sidechain relative Write/Edit target should block (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_claude_sidechain_relative_write_target_blocks
+
+# --- Test 29: Claude sidechain absolute target under sidechain is blocked early ---
+test_claude_sidechain_absolute_sidechain_target_blocks() {
+  setup_sidechain_project
+  write_live_execute_state
+  echo "1" > "$PROJECT/.vbw-planning/.active-agent-count"
+  echo "dev" > "$PROJECT/.vbw-planning/.active-agent"
+
+  local output rc
+  output=$(run_guard_from "$SIDECHAIN" "$SIDECHAIN/src/app.js" "" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ]; then
+    if assert_sidechain_target_message "$output" "$PROJECT" "Claude sidechain absolute target"; then
+      pass "Claude sidechain absolute sidechain target: blocked with retry guidance"
+    fi
+  else
+    fail "Claude sidechain absolute target should block (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_claude_sidechain_absolute_sidechain_target_blocks
 
 echo ""
 echo "==============================="

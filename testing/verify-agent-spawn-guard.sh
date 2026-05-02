@@ -25,6 +25,7 @@ setup_project() {
   PROJECT="$TMPDIR_BASE/project"
   mkdir -p "$PROJECT/.vbw-planning/phases/01-test"
   mkdir -p "$PROJECT/src/nested"
+  echo '{"effort":"balanced","prefer_teams":"never"}' > "$PROJECT/.vbw-planning/config.json"
 }
 
 cleanup() {
@@ -104,6 +105,54 @@ run_guard() {
 
   (cd "$working_dir" && VBW_PLANNING_DIR="$project_dir/.vbw-planning" bash "$GUARD" <<< "$input") 2>&1
   return ${PIPESTATUS[0]}
+}
+
+run_guard_without_exported_root() {
+  local project_dir="$1"
+  local team_name="$2"
+  local run_in_background="$3"
+  local agent_name="${4-dev-01}"
+  local working_dir="${5:-$project_dir}"
+  local tool_name="${6:-Agent}"
+  local active_count="${7:-}"
+
+  local input
+  input=$(jq -n \
+    --arg tool_name "$tool_name" \
+    --arg team_name "$team_name" \
+    --arg agent_name "$agent_name" \
+    --argjson run_in_background "$run_in_background" \
+    '{
+      tool_name: $tool_name,
+      tool_input: {
+        team_name: $team_name,
+        name: $agent_name,
+        run_in_background: $run_in_background
+      }
+    }')
+
+  if [ -n "$active_count" ]; then
+    printf '%s\n' "$active_count" > "$project_dir/.vbw-planning/.active-agent-count"
+  else
+    rm -f "$project_dir/.vbw-planning/.active-agent-count" 2>/dev/null || true
+  fi
+
+  (cd "$working_dir" && unset VBW_CONFIG_ROOT VBW_PLANNING_DIR; bash "$GUARD" <<< "$input") 2>&1
+  return ${PIPESTATUS[0]}
+}
+
+setup_sidechain_project() {
+  setup_project
+  SIDECHAIN="$PROJECT/.claude/worktrees/agent-test"
+  mkdir -p "$SIDECHAIN/.vbw-planning/phases/01-copy" "$SIDECHAIN/src"
+  echo '{"effort":"turbo","prefer_teams":"always"}' > "$SIDECHAIN/.vbw-planning/config.json"
+}
+
+write_sidechain_copied_state() {
+  jq -n '{phase:1,phase_name:"copy",status:"running",effort:"balanced",correlation_id:"sidechain-corr",plans:[]}' \
+    > "$SIDECHAIN/.vbw-planning/.execution-state.json"
+  jq -n '{mode:"execute",active:true,effort:"balanced",delegation_mode:"subagent",team_name:"",started_at:"2026-04-07T00:00:00Z",session_id:"session-test",correlation_id:"sidechain-corr"}' \
+    > "$SIDECHAIN/.vbw-planning/.delegated-workflow.json"
 }
 
 echo "=== Agent Spawn Guard Tests ==="
@@ -396,6 +445,40 @@ test_aged_live_execute_marker_still_enforces_team_rules() {
   cleanup
 }
 test_aged_live_execute_marker_still_enforces_team_rules
+
+test_sidechain_taskcreate_uses_host_state_when_host_count_absent() {
+  setup_sidechain_project
+  write_execution_state "corr-123"
+  write_marker execute subagent "" "corr-123"
+  write_sidechain_copied_state
+  printf '9\n' > "$SIDECHAIN/.vbw-planning/.active-agent-count"
+
+  if run_guard_without_exported_root "$PROJECT" "" false "dev-01" "$SIDECHAIN" "TaskCreate" "" >/dev/null 2>&1; then
+    pass "Claude sidechain TaskCreate uses host state: allowed when host active count absent"
+  else
+    fail "Claude sidechain TaskCreate should ignore sidechain active count when host count is absent"
+  fi
+  cleanup
+}
+test_sidechain_taskcreate_uses_host_state_when_host_count_absent
+
+test_sidechain_taskcreate_uses_host_active_count_to_block() {
+  setup_sidechain_project
+  write_execution_state "corr-123"
+  write_marker execute subagent "" "corr-123"
+  write_sidechain_copied_state
+  printf '0\n' > "$SIDECHAIN/.vbw-planning/.active-agent-count"
+
+  local output rc
+  output=$(run_guard_without_exported_root "$PROJECT" "" false "dev-02" "$SIDECHAIN" "TaskCreate" "2" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && grep -q 'must serialize non-team TaskCreate spawns' <<< "$output"; then
+    pass "Claude sidechain TaskCreate uses host active count: blocked when host count > 0"
+  else
+    fail "Claude sidechain TaskCreate should block from host active count > 0 (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_sidechain_taskcreate_uses_host_active_count_to_block
 
 echo ""
 echo "==============================="
