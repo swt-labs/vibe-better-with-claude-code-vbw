@@ -13,12 +13,6 @@ disable-model-invocation: true
 
 @${CLAUDE_PLUGIN_ROOT}/references/ask-user-question.md
 
-## Tool-use compatibility
-
-<read_tool_pages_guard>
-Claude Code's `Read` `pages` argument is for PDFs only. When reading Markdown, text, source, or VBW planning artifacts, call `Read` with `file_path` only, plus `offset`/`limit` when useful; do not include `pages`, especially `pages: ""`. If a non-PDF `Read` fails with `Invalid pages parameter`, retry once immediately without `pages`; if that retry fails too, stop and report the tool error instead of looping.
-</read_tool_pages_guard>
-
 ## Context
 
 Working directory:
