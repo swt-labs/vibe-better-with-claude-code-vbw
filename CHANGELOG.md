@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.36.1] - 2026-05-02
+
+### Fixed
+
+- **`guards`** -- resolved Claude Code internal sidechains at `.claude/worktrees/agent-*` to host repository root for hook state, blocking accidental writes into unmanaged sidechain copies. (PR #558)
+- **`state`** -- added deterministic shell-side `STATE.md` reconciliation for UAT/remediation artifacts, fixing drift caused by Bash scripts mutating authoritative files outside PostToolUse hooks; also suppressed invalid SubagentStart/SubagentStop `hookSpecificOutput` JSON. (PR #560)
+- **`hooks`** -- reverted non-PDF `Read.pages` sanitizer addition after runtime evidence showed Claude Code validates `Read.pages: ""` before firing `PreToolUse:Read`, making the hook-seam fix insufficient for the observed validation-before-hook path. (PR #562, PR #563)
+
 ## [1.36.0] - 2026-05-01
 
 ### Added
