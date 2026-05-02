@@ -178,6 +178,35 @@ SUMMARY
   [[ "$output" == *"Missing"* ]]
 }
 
+@test "validate-summary: PostToolUse preserves advisory JSON" {
+  echo "No frontmatter here" > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+
+  local input
+  input=$(jq -n --arg fp "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-01-SUMMARY.md" '{"tool_input":{"file_path":$fp}}')
+  run bash -c "echo '$input' | bash '$SCRIPTS_DIR/validate-summary.sh' PostToolUse"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"' >/dev/null
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("SUMMARY validation")' >/dev/null
+}
+
+@test "hook-output-guard: allowlist includes PostToolUse and excludes SubagentStop" {
+  run bash "$SCRIPTS_DIR/lib/hook-output-guard.sh" PostToolUse
+  [ "$status" -eq 0 ]
+
+  run bash "$SCRIPTS_DIR/lib/hook-output-guard.sh" SubagentStop
+  [ "$status" -eq 1 ]
+}
+
+@test "validate-summary: SubagentStop suppresses PostToolUse advisory JSON" {
+  echo "No frontmatter here" > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+
+  local input
+  input=$(jq -n --arg fp "$TEST_TEMP_DIR/.vbw-planning/phases/01-test/01-01-SUMMARY.md" '{"tool_input":{"file_path":$fp}}')
+  run bash -c "echo '$input' | bash '$SCRIPTS_DIR/validate-summary.sh' SubagentStop"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
 @test "validate-summary: ignores non-SUMMARY.md files" {
   local input
   input=$(jq -n '{"tool_input":{"file_path":"src/app.ts"}}')

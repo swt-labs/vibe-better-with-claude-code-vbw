@@ -22,6 +22,7 @@
 set -euo pipefail
 
 UAT_FILE="${1:?Usage: finalize-uat-status.sh <uat-file-path>}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P 2>/dev/null || pwd)"
 
 if [ ! -f "$UAT_FILE" ]; then
   echo "Error: UAT file not found: $UAT_FILE" >&2
@@ -169,5 +170,7 @@ awk -v status="$STATUS" -v completed="$TODAY" -v passed="$PASSED" \
   }
   { print }
 ' "$UAT_FILE" > "${UAT_FILE}.tmp" && mv "${UAT_FILE}.tmp" "$UAT_FILE"
+
+bash "$SCRIPT_DIR/reconcile-state-md.sh" --changed "$UAT_FILE" >/dev/null 2>&1 || true
 
 echo "status=${STATUS} passed=${PASSED} skipped=${SKIPPED} issues=${ISSUES} total=${TOTAL}"

@@ -2,8 +2,39 @@
 set -u
 # PostToolUse/SubagentStop: Validate SUMMARY.md structure (non-blocking, exit 0)
 
+HOOK_EVENT="${1:-PostToolUse}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+HOOK_OUTPUT_GUARD="$SCRIPT_DIR/lib/hook-output-guard.sh"
+if [ -f "$HOOK_OUTPUT_GUARD" ]; then
+  # shellcheck source=scripts/lib/hook-output-guard.sh
+  source "$HOOK_OUTPUT_GUARD"
+fi
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.command // ""')
+
+hook_event_allows_output() {
+  local event_name="$1"
+
+  if type should_emit_hook_output >/dev/null 2>&1; then
+    should_emit_hook_output "$event_name"
+    return $?
+  fi
+
+  [ "$event_name" = "PostToolUse" ]
+}
+
+emit_posttool_context() {
+  local context="$1"
+
+  [ "$HOOK_EVENT" = "PostToolUse" ] || return 0
+  hook_event_allows_output "$HOOK_EVENT" || return 0
+  jq -n --arg context "$context" '{
+    "hookSpecificOutput": {
+      "hookEventName": "PostToolUse",
+      "additionalContext": $context
+    }
+  }'
+}
 
 # Only check SUMMARY.md files in .vbw-planning/
 if ! echo "$FILE_PATH" | grep -qE '\.vbw-planning/.*SUMMARY\.md$'; then
@@ -41,19 +72,9 @@ if [ ! -f "$FILE_PATH" ]; then
     done
 
     if [ -n "$FALLBACK_FOUND" ]; then
-      jq -n --arg file "$(basename "$FALLBACK_FOUND")" '{
-        "hookSpecificOutput": {
-          "hookEventName": "PostToolUse",
-          "additionalContext": ("SUMMARY.md missing but crash recovery fallback available: " + $file + ". Agent may have crashed before writing SUMMARY.md. Check .agent-last-words/ for final output.")
-        }
-      }'
+      emit_posttool_context "SUMMARY.md missing but crash recovery fallback available: $(basename "$FALLBACK_FOUND"). Agent may have crashed before writing SUMMARY.md. Check .agent-last-words/ for final output."
     elif [ "$STALE_FOUND" = true ]; then
-      jq -n '{
-        "hookSpecificOutput": {
-          "hookEventName": "PostToolUse",
-          "additionalContext": "SUMMARY.md missing and only stale crash recovery artifacts were found in .agent-last-words/ (>60s old). Check those files if this was a prior crash, then rerun or regenerate SUMMARY.md."
-        }
-      }'
+      emit_posttool_context "SUMMARY.md missing and only stale crash recovery artifacts were found in .agent-last-words/ (>60s old). Check those files if this was a prior crash, then rerun or regenerate SUMMARY.md."
     fi
   fi
 
@@ -135,12 +156,7 @@ fi
 esac
 
 if [ -n "$MISSING" ]; then
-  jq -n --arg msg "$MISSING" '{
-    "hookSpecificOutput": {
-      "hookEventName": "PostToolUse",
-      "additionalContext": ("SUMMARY validation: " + $msg)
-    }
-  }'
+  emit_posttool_context "SUMMARY validation: $MISSING"
 fi
 
 exit 0

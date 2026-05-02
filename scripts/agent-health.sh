@@ -294,6 +294,16 @@ orphan_recovery() {
   echo "$advisory"
 }
 
+log_health_advisory() {
+  local advisory="$1"
+  local timestamp
+
+  [ -n "$advisory" ] || return 0
+  timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%d %H:%M:%S")
+  mkdir -p "$PLANNING_DIR" 2>/dev/null || true
+  echo "[$timestamp] $advisory" >> "$PLANNING_DIR/.hook-errors.log" 2>/dev/null || true
+}
+
 cmd_start() {
   local input pid key role team_name key_role now
   input=$(cat)
@@ -336,16 +346,6 @@ cmd_start() {
       last_event: "start",
       idle_count: 0
     }' > "$HEALTH_DIR/${key}.json"
-
-  # Output hook response
-  jq -n \
-    --arg event "SubagentStart" \
-    '{
-      hookSpecificOutput: {
-        hookEventName: $event,
-        additionalContext: ""
-      }
-    }'
 }
 
 cmd_idle() {
@@ -477,16 +477,7 @@ cmd_stop() {
     rm -f "$health_file"
   fi
 
-  # Output hook response
-  jq -n \
-    --arg event "SubagentStop" \
-    --arg context "$advisory" \
-    '{
-      hookSpecificOutput: {
-        hookEventName: $event,
-        additionalContext: $context
-      }
-    }'
+  log_health_advisory "$advisory"
 }
 
 cmd_cleanup() {

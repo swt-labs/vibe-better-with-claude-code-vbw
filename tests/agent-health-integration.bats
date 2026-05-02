@@ -22,7 +22,9 @@ teardown() {
   kill -0 "$live_pid" 2>/dev/null || fail "live pid fixture is not alive"
 
   # Simulate SubagentStart hook
-  echo "{\"pid\":\"$live_pid\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  run bash -c "echo '{\"pid\":\"$live_pid\",\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' start"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 
   # Verify health file created
   [ -f "$HEALTH_DIR/dev.json" ]
@@ -39,7 +41,9 @@ teardown() {
   [ "$output" = "1" ]
 
   # Simulate SubagentStop hook
-  echo '{"agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" stop >/dev/null
+  run bash -c "echo '{\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 
   # Verify health file removed
   [ ! -f "$HEALTH_DIR/dev.json" ]

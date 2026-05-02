@@ -95,7 +95,7 @@ EOF
   jq -e '.plans[0].status == "complete"' .vbw-planning/.execution-state.json >/dev/null
 }
 
-@test "PLAN trigger supports NN-PLAN naming and flips status ready to active" {
+@test "PLAN trigger supports NN-PLAN naming and reconciles planned status" {
   cd "$TEST_TEMP_DIR"
   create_state_and_roadmap "$TEST_TEMP_DIR/.vbw-planning" 2
   sed -i.bak 's/^Status: .*/Status: ready/' .vbw-planning/STATE.md && rm -f .vbw-planning/STATE.md.bak
@@ -111,10 +111,10 @@ EOF
   [ "$status" -eq 0 ]
 
   grep -q '^Plans: 0/1$' .vbw-planning/STATE.md
-  grep -q '^Status: active$' .vbw-planning/STATE.md
+  grep -q '^Status: ready$' .vbw-planning/STATE.md
 }
 
-@test "PLAN trigger supports legacy PLAN.md naming and flips status ready to active" {
+@test "PLAN trigger supports legacy PLAN.md naming and reconciles planned status" {
   cd "$TEST_TEMP_DIR"
   create_state_and_roadmap "$TEST_TEMP_DIR/.vbw-planning" 2
   sed -i.bak 's/^Status: .*/Status: ready/' .vbw-planning/STATE.md && rm -f .vbw-planning/STATE.md.bak
@@ -130,7 +130,7 @@ EOF
   [ "$status" -eq 0 ]
 
   grep -q '^Plans: 0/1$' .vbw-planning/STATE.md
-  grep -q '^Status: active$' .vbw-planning/STATE.md
+  grep -q '^Status: ready$' .vbw-planning/STATE.md
 }
 
 @test "summary update is milestone-aware for state, roadmap, and execution-state" {
@@ -224,15 +224,19 @@ SUMMARY
   run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
   [ "$status" -eq 0 ]
 
-  run grep -q '^Plans: 1/1$' .vbw-planning/STATE.md
+  run grep -q '^Plans: 0/1$' .vbw-planning/STATE.md
   if [ "$status" -ne 0 ]; then echo "STATE.md contents:" >&2; cat .vbw-planning/STATE.md >&2; fi
   [ "$status" -eq 0 ]
 
-  run grep -q '^Progress: 100%$' .vbw-planning/STATE.md
+  run grep -q '^Progress: 0%$' .vbw-planning/STATE.md
   if [ "$status" -ne 0 ]; then echo "STATE.md contents:" >&2; cat .vbw-planning/STATE.md >&2; fi
   [ "$status" -eq 0 ]
 
   run grep -q '^Phase: 2 of 2 (Core)$' .vbw-planning/STATE.md
+  if [ "$status" -ne 0 ]; then echo "STATE.md contents:" >&2; cat .vbw-planning/STATE.md >&2; fi
+  [ "$status" -eq 0 ]
+
+  run grep -q '^Status: ready$' .vbw-planning/STATE.md
   if [ "$status" -ne 0 ]; then echo "STATE.md contents:" >&2; cat .vbw-planning/STATE.md >&2; fi
   [ "$status" -eq 0 ]
 
@@ -589,4 +593,93 @@ EOF
   [ "$status" -eq 0 ]
 
   jq -e '.plans[0].status == "complete"' .vbw-planning/.execution-state.json >/dev/null
+}
+
+@test "remediation round-dir UAT write triggers STATE reconciliation" {
+  cd "$TEST_TEMP_DIR"
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+Phase: 1 of 1 (Setup)
+Plans: 1/1
+Progress: 100%
+Status: complete
+EOF
+
+  mkdir -p .vbw-planning/phases/01-setup/remediation/uat/round-01
+  echo "# plan" > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  printf '%s\n' 'stage=verify' 'round=01' 'layout=round-dir' > .vbw-planning/phases/01-setup/remediation/uat/.uat-remediation-stage
+  printf '%s\n' '---' 'status: issues_found' '---' 'Round failed.' > .vbw-planning/phases/01-setup/remediation/uat/round-01/R01-UAT.md
+
+  local uat_path input
+  uat_path="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/remediation/uat/round-01/R01-UAT.md"
+  input=$(jq -nc --arg p "$uat_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^Status: needs_remediation$' .vbw-planning/STATE.md
+}
+
+@test "legacy remediation round UAT write triggers STATE reconciliation" {
+  cd "$TEST_TEMP_DIR"
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+Phase: 1 of 1 (Setup)
+Plans: 1/1
+Progress: 100%
+Status: complete
+EOF
+
+  mkdir -p .vbw-planning/phases/01-setup/remediation/round-01
+  echo "# plan" > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  printf '%s\n' 'stage=verify' 'round=01' 'layout=legacy' > .vbw-planning/phases/01-setup/remediation/.uat-remediation-stage
+  printf '%s\n' '---' 'status: issues_found' '---' 'Legacy round failed.' > .vbw-planning/phases/01-setup/remediation/round-01/R01-UAT.md
+
+  local uat_path input
+  uat_path="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/remediation/round-01/R01-UAT.md"
+  input=$(jq -nc --arg p "$uat_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^Status: needs_remediation$' .vbw-planning/STATE.md
+}
+
+@test "remediation summary reconciles but does not complete phase-root execution plan" {
+  cd "$TEST_TEMP_DIR"
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+Phase: 1 of 1 (Setup)
+Plans: 0/1
+Progress: 0%
+Status: active
+EOF
+
+  mkdir -p .vbw-planning/phases/01-setup/remediation/uat/round-01
+  echo "# plan" > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' 'stage=execute' 'round=01' 'layout=round-dir' > .vbw-planning/phases/01-setup/remediation/uat/.uat-remediation-stage
+  printf '%s\n' '---' 'status: complete' '---' 'Remediation done.' > .vbw-planning/phases/01-setup/remediation/uat/round-01/R01-SUMMARY.md
+
+  cat > .vbw-planning/.execution-state.json <<'EOF'
+{
+  "phase": 1,
+  "status": "running",
+  "plans": [
+    {"id": "01-01", "title": "setup", "status": "pending"}
+  ]
+}
+EOF
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/remediation/uat/round-01/R01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  jq -e '.plans[0].status == "pending"' .vbw-planning/.execution-state.json >/dev/null
+  grep -q '^Plans: 0/1$' .vbw-planning/STATE.md
+  grep -q '^Status: ready$' .vbw-planning/STATE.md
 }

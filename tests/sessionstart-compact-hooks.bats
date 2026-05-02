@@ -50,6 +50,63 @@ teardown() {
   echo "$output" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null
 }
 
+@test "session-start: self-heals STATE drift before additionalContext" {
+  cd "$TEST_TEMP_DIR"
+
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 3 of 3 (Order Backed Sync Integration)
+Plans: 2/2
+Progress: 100%
+Status: ready
+
+## Phase Status
+- **Phase 1:** Complete
+- **Phase 2:** Complete
+- **Phase 3:** Planned
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+- [x] Phase 1: Foundation
+- [ ] Phase 2: Ios Orders Client Models
+- [ ] Phase 3: Order Backed Sync Integration
+
+### Phase 1: Foundation
+### Phase 2: Ios Orders Client Models
+### Phase 3: Order Backed Sync Integration
+ROADMAP
+
+  rm -rf .vbw-planning/phases
+  mkdir -p \
+    .vbw-planning/phases/01-foundation \
+    .vbw-planning/phases/02-ios-orders-client-models \
+    .vbw-planning/phases/03-order-backed-sync-integration
+
+  echo '# Plan 1' > .vbw-planning/phases/01-foundation/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-foundation/01-01-SUMMARY.md
+  echo '# Plan 1' > .vbw-planning/phases/02-ios-orders-client-models/02-01-PLAN.md
+  echo '# Plan 2' > .vbw-planning/phases/02-ios-orders-client-models/02-02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/02-ios-orders-client-models/02-01-SUMMARY.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/02-ios-orders-client-models/02-02-SUMMARY.md
+  printf '%s\n' '---' 'status: issues_found' '---' 'Failed.' > .vbw-planning/phases/02-ios-orders-client-models/02-UAT.md
+
+  run bash "$SCRIPTS_DIR/session-start.sh"
+  [ "$status" -eq 0 ]
+
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Phase: 2/3 (Ios Orders Client Models) -- needs_remediation.")' >/dev/null
+  echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Progress: 100%.")' >/dev/null
+  ! echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("State drift detected (state_vs_filesystem)")' >/dev/null
+  grep -q '^Phase: 2 of 3 (Ios Orders Client Models)$' .vbw-planning/STATE.md
+  grep -q '^Status: needs_remediation$' .vbw-planning/STATE.md
+}
+
 @test "session-start: no phases does not crash and suggests scoping" {
   cd "$TEST_TEMP_DIR"
   rm -rf .vbw-planning/phases
