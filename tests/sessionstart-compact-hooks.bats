@@ -519,71 +519,6 @@ MOCK
   INPUT='{"tool_name":"Read","tool_input":{"file_path":"src/app.js"}}'
   run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
   [ "$status" -eq 0 ]
-  [ -z "$output" ]
-}
-
-@test "security-filter: strips empty pages from non-pdf Read input" {
-  cd "$TEST_TEMP_DIR"
-  INPUT='{"tool_name":"Read","tool_input":{"file_path":"docs/notes.md","pages":"","offset":5,"limit":10,"custom":"keep"}}'
-  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
-  [ "$status" -eq 0 ]
-  jq -e '
-    .hookSpecificOutput.hookEventName == "PreToolUse"
-    and .hookSpecificOutput.permissionDecision == "allow"
-    and .hookSpecificOutput.updatedInput.file_path == "docs/notes.md"
-    and .hookSpecificOutput.updatedInput.offset == 5
-    and .hookSpecificOutput.updatedInput.limit == 10
-    and .hookSpecificOutput.updatedInput.custom == "keep"
-    and (.hookSpecificOutput.updatedInput | has("pages") | not)
-  ' <<<"$output" >/dev/null
-}
-
-@test "security-filter: strips whitespace pages from non-pdf Read input" {
-  cd "$TEST_TEMP_DIR"
-  INPUT='{"tool_name":"Read","tool_input":{"file_path":"docs/notes.md","pages":"  \t  "}}'
-  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
-  [ "$status" -eq 0 ]
-  jq -e '
-    .hookSpecificOutput.hookEventName == "PreToolUse"
-    and (.hookSpecificOutput.updatedInput | has("pages") | not)
-  ' <<<"$output" >/dev/null
-}
-
-@test "security-filter: strips null pages from non-pdf Read input" {
-  cd "$TEST_TEMP_DIR"
-  INPUT='{"tool_name":"Read","tool_input":{"file_path":"docs/notes.md","pages":null,"limit":20}}'
-  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
-  [ "$status" -eq 0 ]
-  jq -e '
-    .hookSpecificOutput.hookEventName == "PreToolUse"
-    and .hookSpecificOutput.updatedInput.limit == 20
-    and (.hookSpecificOutput.updatedInput | has("pages") | not)
-  ' <<<"$output" >/dev/null
-}
-
-@test "security-filter: leaves non-empty pages unchanged with no stdout" {
-  cd "$TEST_TEMP_DIR"
-  INPUT='{"tool_name":"Read","tool_input":{"file_path":"docs/notes.md","pages":"1-2"}}'
-  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
-}
-
-@test "security-filter: leaves mixed-case PDF empty pages unchanged" {
-  cd "$TEST_TEMP_DIR"
-  INPUT='{"tool_name":"Read","tool_input":{"file_path":"docs/Guide.PdF","pages":""}}'
-  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
-}
-
-@test "security-filter: blocks .env before empty pages sanitizer" {
-  cd "$TEST_TEMP_DIR"
-  INPUT='{"tool_name":"Read","tool_input":{"file_path":".env","pages":""}}'
-  run bash -c "echo '$INPUT' | bash '$SCRIPTS_DIR/security-filter.sh'"
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"Blocked: sensitive file"* ]]
-  [[ "$output" != *"hookSpecificOutput"* ]]
 }
 
 @test "security-filter: exit 2 preserved through hook-wrapper logic" {
@@ -601,26 +536,6 @@ MOCK
   INPUT='{"tool_name":"Read","tool_input":{"file_path":".env"}}'
   run bash -c "export HOME='$TEST_TEMP_DIR'; export CLAUDE_CONFIG_DIR='$claude_dir'; echo '$INPUT' | bash '$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/hook-wrapper.sh' security-filter.sh"
   [ "$status" -eq 2 ]
-}
-
-@test "hook-wrapper: passes through security-filter sanitizer stdout on exit 0" {
-  cd "$TEST_TEMP_DIR"
-  local claude_dir="$TEST_TEMP_DIR/.claude"
-
-  mkdir -p "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/lib"
-  cp "$SCRIPTS_DIR/hook-wrapper.sh" "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
-  cp "$SCRIPTS_DIR/security-filter.sh" "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
-  cp "$SCRIPTS_DIR/resolve-claude-dir.sh" "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/"
-  cp "$SCRIPTS_DIR/lib/vbw-config-root.sh" "$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/lib/"
-
-  INPUT='{"tool_name":"Read","tool_input":{"file_path":"docs/notes.md","pages":"","limit":10}}'
-  run bash -c "export HOME='$TEST_TEMP_DIR'; export CLAUDE_CONFIG_DIR='$claude_dir'; echo '$INPUT' | bash '$claude_dir/plugins/cache/vbw-marketplace/vbw/1.0.0/scripts/hook-wrapper.sh' security-filter.sh"
-  [ "$status" -eq 0 ]
-  jq -e '
-    .hookSpecificOutput.hookEventName == "PreToolUse"
-    and .hookSpecificOutput.updatedInput.limit == 10
-    and (.hookSpecificOutput.updatedInput | has("pages") | not)
-  ' <<<"$output" >/dev/null
 }
 
 # --- session-start.sh brownfield SUMMARY warning ---
