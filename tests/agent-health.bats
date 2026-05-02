@@ -22,7 +22,9 @@ run_health_via_wrapper() {
 # Test 1: start creates health file
 @test "agent-health: start creates health file" {
   cd "$TEST_TEMP_DIR"
-  echo '{"pid":"12345","agent_type":"vbw-dev"}' | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
+  run bash -c "echo '{\"pid\":\"12345\",\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' start"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
   [ -f "$HEALTH_DIR/dev.json" ]
   run jq -r '.pid' "$HEALTH_DIR/dev.json"
   [ "$output" = "12345" ]
@@ -173,11 +175,14 @@ EOF
   dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
   echo "{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-stop-001\",\"agent_type\":\"vbw:vbw-dev\",\"name\":\"dev-01\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
-  run bash -c "echo '{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-stop-001\",\"agent_type\":\"vbw:vbw-dev\",\"name\":\"dev-01\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
-  [[ "$output" == *"task-stop"* ]]
+  run bash -c "echo '{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-stop-001\",\"agent_type\":\"vbw:vbw-dev\",\"name\":\"dev-01\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 
   run jq -r '.owner' "$TASKS_DIR/task-stop.json"
   [ "$output" = "" ]
+
+  grep -q 'task-stop' .vbw-planning/.hook-errors.log
 
   rm -rf "$TASKS_DIR"
 }
@@ -206,11 +211,14 @@ EOF
   dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
   echo "{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-dead\",\"agent_type\":\"vbw-dev\"}" | bash "$SCRIPTS_DIR/agent-health.sh" start >/dev/null
 
-  run bash -c "echo '{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-dead\",\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop | jq -r '.hookSpecificOutput.additionalContext'"
-  [[ "$output" == *"another live teammate"* ]]
+  run bash -c "echo '{\"pid\":\"$dead_pid\",\"agent_id\":\"agent-dead\",\"agent_type\":\"vbw-dev\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 
   run jq -r '.owner' "$TASKS_DIR/task-shared.json"
   [ "$output" = "dev" ]
+
+  grep -q 'another live teammate' .vbw-planning/.hook-errors.log
 
   rm -rf "$TASKS_DIR"
 }
@@ -238,7 +246,9 @@ EOF
   [ -f "$HEALTH_DIR/qa.json" ]
 
   # Stop
-  echo '{"agent_type":"vbw-qa"}' | bash "$SCRIPTS_DIR/agent-health.sh" stop >/dev/null
+  run bash -c "echo '{\"agent_type\":\"vbw-qa\"}' | bash '$SCRIPTS_DIR/agent-health.sh' stop"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 
   # Verify file removed
   [ ! -f "$HEALTH_DIR/qa.json" ]

@@ -40,6 +40,13 @@ _SCRIPT_DIR_PR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=uat-utils.sh
 . "$_SCRIPT_DIR_PR/uat-utils.sh"
 
+reconcile_changed_artifact() {
+  local changed_path="$1"
+
+  [ -f "$_SCRIPT_DIR_PR/reconcile-state-md.sh" ] || return 0
+  bash "$_SCRIPT_DIR_PR/reconcile-state-md.sh" --changed "$changed_path" >/dev/null 2>&1 || true
+}
+
 resolve_config_path() {
   local phase_dir="${1%/}"
   local planning_dir
@@ -171,6 +178,7 @@ case "$UAT_FILE" in
         git add "${PHASE_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null || true
         git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
       fi
+      reconcile_changed_artifact "${PHASE_DIR}remediation/uat/.uat-remediation-stage"
       echo "archived=in-round-dir"
       echo "round_file=$UAT_BASENAME"
       echo "phase=$PHASE_NUM"
@@ -182,6 +190,7 @@ case "$UAT_FILE" in
       if [ "$_REM_STAGE" = "done" ]; then
         bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" advance "${PHASE_DIR%/}" >/dev/null
       fi
+      reconcile_changed_artifact "${PHASE_DIR}remediation/uat/.uat-remediation-stage"
       echo "skipped=ready_for_verify"
       echo "phase=$PHASE_NUM"
       echo "layout=$_LAYOUT"
@@ -208,6 +217,8 @@ if [ "$_LAYOUT" = "round-dir" ]; then
     git add "${PHASE_DIR}remediation/uat/.uat-remediation-stage" 2>/dev/null || true
     git rm -f --quiet "${PHASE_DIR}.uat-remediation-stage" 2>/dev/null || true
   fi
+
+  reconcile_changed_artifact "${PHASE_DIR}remediation/uat/.uat-remediation-stage"
 
   echo "archived=kept"
   echo "phase=$PHASE_NUM"
@@ -255,6 +266,8 @@ bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" needs-round "${PHASE_DIR%/}" >/d
 
 # Clean up legacy state file if present (new-location state file persists with updated round)
 rm -f "${PHASE_DIR}.uat-remediation-stage"
+
+reconcile_changed_artifact "${PHASE_DIR}remediation/uat/.uat-remediation-stage"
 
 # Pre-stage changes in git so boundary commits capture them even if the
 # LLM improvises a manual commit instead of using planning-git.sh.

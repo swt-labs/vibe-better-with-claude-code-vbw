@@ -71,6 +71,17 @@ STATE_FILE="$PHASE_DIR/remediation/uat/.uat-remediation-stage"
 LEGACY_STATE_FILE="$PHASE_DIR/.uat-remediation-stage"
 LEGACY_REMED_STATE_FILE="$PHASE_DIR/remediation/.uat-remediation-stage"
 
+reconcile_uat_state() {
+  local changed_path="${1:-$STATE_FILE}"
+
+  [ -f "$SCRIPT_DIR/reconcile-state-md.sh" ] || return 0
+  if [ -e "$changed_path" ]; then
+    bash "$SCRIPT_DIR/reconcile-state-md.sh" --changed "$changed_path" >/dev/null 2>&1 || true
+  else
+    bash "$SCRIPT_DIR/reconcile-state-md.sh" --changed "$PHASE_DIR" >/dev/null 2>&1 || true
+  fi
+}
+
 # Auto-migrate: if old-location state file exists but new doesn't, migrate
 if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_REMED_STATE_FILE" ]; then
   mkdir -p "$PHASE_DIR/remediation/uat"
@@ -84,6 +95,7 @@ if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_REMED_STATE_FILE" ]; then
     fi
   done
   rm -f "$LEGACY_REMED_STATE_FILE"
+  reconcile_uat_state "$STATE_FILE"
 fi
 
 # Major/critical chain order (UAT report serves as discussion — no separate discuss step)
@@ -221,6 +233,7 @@ start_new_round() {
   mkdir -p "$PHASE_DIR/remediation/uat/round-${next_round_padded}"
   printf 'stage=research\nround=%s\nlayout=round-dir\n' "$next_round_padded" > "$STATE_FILE"
   [ -f "$LEGACY_STATE_FILE" ] && rm -f "$LEGACY_STATE_FILE"
+  reconcile_uat_state "$STATE_FILE"
   echo "research"
   echo "round=${next_round_padded}"
   echo "round_dir=$PHASE_DIR/remediation/uat/round-${next_round_padded}"
@@ -271,6 +284,8 @@ do_init() {
   # Remove legacy state files if they exist (migrated to new location)
   rm -f "$LEGACY_STATE_FILE"
   rm -f "$LEGACY_REMED_STATE_FILE"
+
+  reconcile_uat_state "$STATE_FILE"
 
   echo "$initial_stage"
 
@@ -459,12 +474,14 @@ case "$CMD" in
       printf 'stage=%s\nround=%s\nlayout=%s\n' "$new_stage" "$round" "$layout" > "$STATE_FILE"
       # Remove legacy state file if we migrated to new location
       [ -f "$LEGACY_STATE_FILE" ] && rm -f "$LEGACY_STATE_FILE"
+      reconcile_uat_state "$STATE_FILE"
       echo "$new_stage"
     fi
     ;;
 
   reset)
     rm -f "$STATE_FILE" "$LEGACY_STATE_FILE"
+    reconcile_uat_state "$PHASE_DIR"
     echo "none"
     ;;
 
@@ -508,6 +525,7 @@ case "$CMD" in
         # layout=legacy: phase-root artifacts are current work (migrated from old format)
         printf 'stage=%s\nround=%s\nlayout=legacy\n' "$existing" "$_resume_round" > "$STATE_FILE"
         rm -f "$LEGACY_STATE_FILE"
+        reconcile_uat_state "$STATE_FILE"
       fi
       echo "$existing"
       emit_plan_metadata

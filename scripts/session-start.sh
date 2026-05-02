@@ -956,6 +956,8 @@ if [ -f "$CONFIG_FILE" ]; then
   config_caveman_review=$(jq -r 'if .caveman_review == null then false else .caveman_review end' "$CONFIG_FILE" 2>/dev/null)
 fi
 
+bash "$SCRIPT_DIR/reconcile-state-md.sh" "$PLANNING_DIR" >/dev/null 2>&1 || true
+
 # --- Parse STATE.md ---
 STATE_FILE="$MILESTONE_DIR/STATE.md"
 phase_pos="unknown"

@@ -295,6 +295,8 @@ setup() {
 
   # Verify it's a valid bash -c command
   echo "$INVOCATION" | grep -q 'bash -c'
+  grep -q 'validate-summary.sh PostToolUse' "$PROJECT_ROOT/hooks/hooks.json"
+  grep -q 'validate-summary.sh SubagentStop' "$PROJECT_ROOT/hooks/hooks.json"
 }
 
 @test "script invocation: bash-guard.sh with grep pattern matching" {
