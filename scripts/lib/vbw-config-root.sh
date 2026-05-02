@@ -11,6 +11,9 @@
 # After calling find_vbw_root(), these variables are exported:
 #   VBW_CONFIG_ROOT  — absolute path to the workspace root (directory containing .vbw-planning/)
 #   VBW_PLANNING_DIR — convenience alias: $VBW_CONFIG_ROOT/.vbw-planning
+#   VBW_CLAUDE_SIDECHAIN_ROOT — Claude internal sidechain root when CWD is under
+#                               {host}/.claude/worktrees/agent-* (unset otherwise)
+#   VBW_CLAUDE_SIDECHAIN_HOST_ROOT — host repo for the Claude sidechain (unset otherwise)
 #
 # Resolution strategy when start_dir is provided:
 #   1. Walk up from PWD — prefer the active workspace when the script lives in a different repo
@@ -40,6 +43,36 @@ _walk_up_for_vbw_root() {
   return 1
 }
 
+_prefer_claude_sidechain_host_root() {
+  local _cwd="$1" _probe _parent _grandparent _host
+
+  _probe="$_cwd"
+  while [ "$_probe" != "/" ]; do
+    case "$(basename "$_probe")" in
+      agent-*)
+        _parent=$(dirname "$_probe")
+        _grandparent=$(dirname "$_parent")
+        if [ "$(basename "$_parent")" = "worktrees" ] && [ "$(basename "$_grandparent")" = ".claude" ]; then
+          _host=$(dirname "$_grandparent")
+          if [ -f "$_host/.vbw-planning/config.json" ]; then
+            export VBW_CONFIG_ROOT="$_host"
+            export VBW_PLANNING_DIR="$_host/.vbw-planning"
+            export VBW_CLAUDE_SIDECHAIN_ROOT="$_probe"
+            export VBW_CLAUDE_SIDECHAIN_HOST_ROOT="$_host"
+            return 0
+          fi
+        fi
+        ;;
+    esac
+
+    _parent=$(dirname "$_probe")
+    [ "$_parent" = "$_probe" ] && break
+    _probe="$_parent"
+  done
+
+  return 1
+}
+
 find_vbw_root() {
   # Cache hit: already resolved in this shell or by a parent script
   if [ -n "${VBW_CONFIG_ROOT:-}" ]; then
@@ -52,6 +85,12 @@ find_vbw_root() {
   _cwd_dir=$(pwd -P 2>/dev/null || pwd)
 
   if [ -n "${1:-}" ]; then
+    # Claude Code can run subagents inside unmanaged internal sidechains at
+    # {host}/.claude/worktrees/agent-*. Treat those as executions of the host
+    # workspace before nearest-ancestor walking can select the copied sidechain
+    # .vbw-planning tree. VBW-managed .vbw-worktrees/* are intentionally not
+    # covered by this exception.
+    _prefer_claude_sidechain_host_root "$_cwd_dir" && return 0
     # Prefer the active workspace when CWD is already inside a VBW project.
     _walk_up_for_vbw_root "$_cwd_dir" && return 0
     # Resolve start_dir to an absolute path; suppress cd stderr so bad paths
@@ -64,6 +103,7 @@ find_vbw_root() {
       _walk_up_for_vbw_root "$_cwd_dir" && return 0
     fi
   else
+    _prefer_claude_sidechain_host_root "$_cwd_dir" && return 0
     _walk_up_for_vbw_root "$_cwd_dir" && return 0
   fi
 

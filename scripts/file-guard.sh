@@ -17,6 +17,53 @@ INPUT=$(cat 2>/dev/null) || exit 0
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null) || exit 0
 [ -z "$FILE_PATH" ] && exit 0
 
+_FG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_FG_SHARED_ROOT_RESOLVED=false
+if [ -f "$_FG_SCRIPT_DIR/lib/vbw-config-root.sh" ]; then
+  # shellcheck source=lib/vbw-config-root.sh
+  if source "$_FG_SCRIPT_DIR/lib/vbw-config-root.sh" 2>/dev/null; then
+    if find_vbw_root "$_FG_SCRIPT_DIR" >/dev/null 2>&1; then
+      _FG_SHARED_ROOT_RESOLVED=true
+    fi
+  fi
+fi
+
+# Best-effort absolute path resolver for boundary checks.
+# - Relative paths are resolved from current working directory.
+# - Non-existent paths still get a stable absolute lexical form.
+to_abs_path() {
+  local p="$1"
+  local base dir file cwd_base probe suffix resolved_probe
+  [ -z "$p" ] && {
+    echo ""
+    return 0
+  }
+
+  case "$p" in
+    /*) base="$p" ;;
+    *)
+      cwd_base=$(pwd -P 2>/dev/null || pwd)
+      base="$cwd_base/${p#./}"
+      ;;
+  esac
+
+  dir=$(dirname "$base")
+  file=$(basename "$base")
+  probe="$dir"
+  suffix="/$file"
+  while [ ! -d "$probe" ] && [ "$probe" != "/" ]; do
+    suffix="/$(basename "$probe")$suffix"
+    probe=$(dirname "$probe")
+  done
+
+  if [ -d "$probe" ]; then
+    resolved_probe=$(cd "$probe" 2>/dev/null && pwd -P 2>/dev/null) || resolved_probe="$probe"
+    echo "${resolved_probe%/}$suffix"
+  else
+    echo "$base"
+  fi
+}
+
 # Block misnamed plan/summary/context files in phase dirs (type-first format)
 # Must precede the .vbw-planning/* exemption which exits 0 for all planning artifacts.
 # Case-insensitive on extension (.md/.MD/.Md) to prevent bypass.
@@ -43,6 +90,42 @@ case "$FILE_PATH_LC" in
     fi
     ;;
 esac
+
+# Claude Code may execute subagents from an unmanaged internal sidechain at
+# {host}/.claude/worktrees/agent-*. Relative writes from that CWD, or absolute
+# writes under the sidechain, would land in files VBW does not merge/use when
+# VBW worktree isolation is off. Block those targets before planning-artifact
+# exemptions and before the active-agent delegated workflow bypass.
+if [ -n "${VBW_CLAUDE_SIDECHAIN_ROOT:-}" ] && [ -n "${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}" ]; then
+  _FG_SIDECHAIN_BLOCK=false
+  _FG_BLOCKED_TARGET="$FILE_PATH"
+
+  case "$FILE_PATH" in
+    /*)
+      _FG_TARGET_ABS=$(to_abs_path "$FILE_PATH")
+      case "$_FG_TARGET_ABS" in
+        "$VBW_CLAUDE_SIDECHAIN_ROOT"|"$VBW_CLAUDE_SIDECHAIN_ROOT"/*)
+          _FG_SIDECHAIN_BLOCK=true
+          _FG_BLOCKED_TARGET="$_FG_TARGET_ABS"
+          ;;
+      esac
+      ;;
+    *)
+      _FG_SIDECHAIN_BLOCK=true
+      ;;
+  esac
+
+  if [ "$_FG_SIDECHAIN_BLOCK" = "true" ]; then
+    {
+      echo "Blocked: Claude sidechain write target"
+      echo "blocked target: $_FG_BLOCKED_TARGET"
+      echo "host repo: $VBW_CLAUDE_SIDECHAIN_HOST_ROOT"
+      echo "retry: retry the same Write/Edit with an absolute path under the host repo, not the Claude sidechain path."
+      echo "reason: VBW will not merge or use writes made inside Claude's internal sidechain."
+    } >&2
+    exit 2
+  fi
+fi
 
 # Exempt planning artifacts — these are always allowed
 case "$FILE_PATH" in
@@ -95,12 +178,16 @@ find_project_root() {
   return 1
 }
 
-PROJECT_ROOT=$(find_project_root) || exit 0
-PHASES_DIR="$PROJECT_ROOT/.vbw-planning/phases"
+if [ "$_FG_SHARED_ROOT_RESOLVED" = "true" ] && [ -n "${VBW_CONFIG_ROOT:-}" ] && [ -n "${VBW_PLANNING_DIR:-}" ] && [ -d "$VBW_PLANNING_DIR/phases" ]; then
+  PROJECT_ROOT="$VBW_CONFIG_ROOT"
+  PHASES_DIR="$VBW_PLANNING_DIR/phases"
+else
+  PROJECT_ROOT=$(find_project_root) || exit 0
+  PHASES_DIR="$PROJECT_ROOT/.vbw-planning/phases"
+fi
 [ ! -d "$PHASES_DIR" ] && exit 0
 
 # Source shared summary-status helpers (fail-open: inline fallback if lib unavailable)
-_FG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _FG_STATUS_LIB="${_FG_SCRIPT_DIR}/summary-utils.sh"
 if [ -f "$_FG_STATUS_LIB" ]; then
   # shellcheck source=summary-utils.sh
@@ -114,33 +201,25 @@ fi
 # Normalize path helper
 normalize_path() {
   local p="$1"
+  local p_abs root_abs
   if [ -n "$PROJECT_ROOT" ]; then
-    p="${p#"$PROJECT_ROOT"/}"
+    case "$p" in
+      "$PROJECT_ROOT"/*)
+        p="${p#"$PROJECT_ROOT"/}"
+        ;;
+      /*)
+        p_abs=$(to_abs_path "$p")
+        root_abs=$(to_abs_path "$PROJECT_ROOT")
+        if [ "$p_abs" = "$root_abs" ]; then
+          p=""
+        elif [[ "$p_abs" == "$root_abs"/* ]]; then
+          p="${p_abs#"$root_abs"/}"
+        fi
+        ;;
+    esac
   fi
   p="${p#./}"
   echo "$p"
-}
-
-# Best-effort absolute path resolver for boundary checks.
-# - Relative paths are resolved from current working directory.
-# - Non-existent paths still get a stable absolute lexical form.
-to_abs_path() {
-  local p="$1"
-  local base dir file resolved_dir
-  [ -z "$p" ] && {
-    echo ""
-    return 0
-  }
-
-  case "$p" in
-    /*) base="$p" ;;
-    *)  base="$PWD/${p#./}" ;;
-  esac
-
-  dir=$(dirname "$base")
-  file=$(basename "$base")
-  resolved_dir=$(cd "$dir" 2>/dev/null && pwd) || resolved_dir="$dir"
-  echo "${resolved_dir%/}/$file"
 }
 
 NORM_TARGET=$(normalize_path "$FILE_PATH")
