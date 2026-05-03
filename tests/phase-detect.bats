@@ -1919,6 +1919,30 @@ EOF
   echo "$output" | grep -q "qa_status=failed"
 }
 
+@test "qa_status is failed when VERIFICATION.md has PARTIAL result" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'result: PARTIAL' '---' '# Verification' 'Partially passed checks.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  grep -q "qa_status=failed" <<< "$output"
+  grep -q "qa_reason=none" <<< "$output"
+}
+
+@test "qa_status accepts legacy status PARTIAL when result is absent" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  printf '%s\n' '---' 'status: PARTIAL' '---' '# Verification' 'Legacy partial artifact.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  grep -q "qa_status=failed" <<< "$output"
+  grep -q "qa_reason=none" <<< "$output"
+}
+
 @test "qa_status is remediating when qa-remediation-stage is active" {
   mkdir -p .vbw-planning/phases/01-test/remediation/qa
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
