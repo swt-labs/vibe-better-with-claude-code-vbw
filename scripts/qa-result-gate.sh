@@ -1435,10 +1435,30 @@ WRITER=$(awk '
 ' "$VERIF_PATH" 2>/dev/null)
 
 RESULT=$(awk '
-  BEGIN { in_fm=0 }
+  BEGIN { in_fm=0; result_seen=0; status_seen=0; result=""; status="" }
   NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
   in_fm && /^---[[:space:]]*$/ { exit }
-  in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); sub(/[[:space:]]+$/, ""); print; exit }
+  in_fm && /^result:/ {
+    result_seen=1
+    result=$0
+    sub(/^result:[[:space:]]*/, "", result)
+    sub(/[[:space:]]+$/, "", result)
+    next
+  }
+  in_fm && /^status:/ {
+    status_seen=1
+    status=$0
+    sub(/^status:[[:space:]]*/, "", status)
+    sub(/[[:space:]]+$/, "", status)
+    next
+  }
+  END {
+    if (result_seen) {
+      print toupper(result)
+    } else if (status_seen && (toupper(status) == "PASS" || toupper(status) == "FAIL" || toupper(status) == "PARTIAL")) {
+      print toupper(status)
+    }
+  }
 ' "$VERIF_PATH" 2>/dev/null)
 
 # Body FAIL count (defense-in-depth cross-check)

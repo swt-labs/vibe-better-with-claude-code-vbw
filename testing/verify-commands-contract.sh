@@ -727,6 +727,38 @@ else
   fail "vibe: missing qa-remediation-state get-or-init for stage-less QA remediation resume"
 fi
 
+if grep -q 'qa_reason' "$VIBE_FILE" \
+  && grep -q 'qa_attention_reason' "$VIBE_FILE" \
+  && grep -q 'missing_verification_artifact' "$VIBE_FILE" \
+  && grep -q 'verified_at_commit_mismatch' "$VIBE_FILE" \
+  && grep -q 'qa_gate_rerun_required' "$VIBE_FILE"; then
+  pass "vibe: QA pending gate surfaces machine-readable phase-detect reasons"
+else
+  fail "vibe: QA pending gate missing machine-readable reason guidance"
+fi
+
+if grep -Fq 'QA is pending ({qa_reason})' "$VIBE_FILE"; then
+  fail "vibe: QA pending table still displays raw qa_reason token"
+else
+  pass "vibe: QA pending table avoids raw qa_reason display token"
+fi
+
+if grep -Fq 'QA is pending ({reason label})' "$VIBE_FILE" \
+  && grep -Fq 'Resolve `{reason label}` from `qa_reason`' "$VIBE_FILE"; then
+  pass "vibe: QA pending table points to resolved reason-label mapping"
+else
+  fail "vibe: QA pending table missing resolved reason-label guidance"
+fi
+
+if grep -Fq -- 'qa_reason=none|<reason>' "$ROOT/references/phase-detection.md" \
+  && grep -Fq -- 'qa_attention_reason=none|<reason>' "$ROOT/references/phase-detection.md" \
+  && grep -Fq -- 'result:` is authoritative when present' "$ROOT/references/phase-detection.md" \
+  && grep -Fq -- 'Legacy `status:` is accepted only when `result:` is absent' "$ROOT/references/phase-detection.md"; then
+  pass "phase-detection: documents QA reason fields and legacy result precedence"
+else
+  fail "phase-detection: missing QA reason or legacy result documentation"
+fi
+
 if grep -q 'Read the active UAT artifact exactly once' "$VIBE_FILE" \
   && grep -q 'Do NOT shell out to `extract-uat-issues.sh` for active-phase routing' "$VIBE_FILE" \
   && grep -q 'Use `uat_file` from the pre-computed state when available' "$VIBE_FILE"; then

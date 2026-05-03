@@ -221,25 +221,119 @@ restore_known_issues_from_verification_if_needed() {
   esac
 }
 
-verification_result_value() {
+verification_frontmatter_value() {
   local verification_file="$1"
+  local key_name="$2"
   [ -n "$verification_file" ] && [ -f "$verification_file" ] || return 0
+  [ -n "$key_name" ] || return 0
   awk '
     BEGIN { in_fm=0 }
     NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
     in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && /^result:/ { sub(/^result:[[:space:]]*/, ""); print; exit }
-  ' "$verification_file" 2>/dev/null || true
+    in_fm {
+      prefix = key ":"
+      if (index($0, prefix) == 1) {
+        value=$0
+        sub(/^[^:]*:[[:space:]]*/, "", value)
+        sub(/[[:space:]]+$/, "", value)
+        print value
+        exit
+      }
+    }
+  ' key="$key_name" "$verification_file" 2>/dev/null || true
 }
 
-phase_verification_state() {
+verification_frontmatter_has_key() {
+  local verification_file="$1"
+  local key_name="$2"
+  [ -n "$verification_file" ] && [ -f "$verification_file" ] || return 1
+  [ -n "$key_name" ] || return 1
+  awk '
+    BEGIN { in_fm=0; found=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm {
+      prefix = key ":"
+      if (index($0, prefix) == 1) {
+        found=1
+        exit
+      }
+    }
+    END { exit(found ? 0 : 1) }
+  ' key="$key_name" "$verification_file" 2>/dev/null
+}
+
+verification_result_value() {
+  local verification_file="$1"
+  local status_value status_upper
+
+  [ -n "$verification_file" ] && [ -f "$verification_file" ] || return 0
+
+  if verification_frontmatter_has_key "$verification_file" "result"; then
+    verification_frontmatter_value "$verification_file" "result"
+    return 0
+  fi
+
+  if verification_frontmatter_has_key "$verification_file" "status"; then
+    status_value=$(verification_frontmatter_value "$verification_file" "status")
+    status_upper=$(printf '%s' "$status_value" | tr '[:lower:]' '[:upper:]')
+    case "$status_upper" in
+      PASS|FAIL|PARTIAL)
+        printf '%s\n' "$status_value"
+        ;;
+    esac
+  fi
+}
+
+verification_pending_reason() {
+  local verification_file="$1"
+  local field_value field_upper
+
+  [ -n "$verification_file" ] && [ -f "$verification_file" ] || {
+    printf '%s\n' "missing_verification_artifact"
+    return 0
+  }
+
+  if verification_frontmatter_has_key "$verification_file" "result"; then
+    field_value=$(verification_frontmatter_value "$verification_file" "result")
+    field_value=$(trim_phase_detect_value "$field_value")
+    if [ -z "$field_value" ]; then
+      printf '%s\n' "verification_result_missing"
+    else
+      printf '%s\n' "verification_result_unrecognized"
+    fi
+    return 0
+  fi
+
+  if verification_frontmatter_has_key "$verification_file" "status"; then
+    field_value=$(verification_frontmatter_value "$verification_file" "status")
+    field_value=$(trim_phase_detect_value "$field_value")
+    field_upper=$(printf '%s' "$field_value" | tr '[:lower:]' '[:upper:]')
+    case "$field_upper" in
+      PASS|FAIL|PARTIAL)
+        printf '%s\n' "none"
+        ;;
+      "")
+        printf '%s\n' "verification_result_missing"
+        ;;
+      *)
+        printf '%s\n' "verification_result_unrecognized"
+        ;;
+    esac
+    return 0
+  fi
+
+  printf '%s\n' "verification_result_missing"
+}
+
+phase_verification_assessment() {
   local phase_dir="$1"
   local verification_file="$2"
   local success_state="$3"
-  local qa_result qa_gate_routing
+  local qa_result qa_gate_routing stale_reason
 
   [ -n "$verification_file" ] && [ -f "$verification_file" ] || {
-    printf '%s\n' "pending"
+    printf '%s\t%s\n' "pending" "missing_verification_artifact"
     return 0
   }
 
@@ -250,27 +344,44 @@ phase_verification_state() {
       qa_gate_routing=$(qa_gate_routing_for_phase "$phase_dir")
       case "${qa_gate_routing:-}" in
         REMEDIATION_REQUIRED)
-          printf '%s\n' "failed"
+          printf '%s\t%s\n' "failed" "none"
           ;;
-        QA_RERUN_REQUIRED|"")
-          printf '%s\n' "pending"
+        QA_RERUN_REQUIRED)
+          printf '%s\t%s\n' "pending" "qa_gate_rerun_required"
+          ;;
+        "")
+          printf '%s\t%s\n' "pending" "qa_gate_output_missing"
           ;;
         PROCEED_TO_UAT)
           if verification_is_stale "$verification_file"; then
-            printf '%s\n' "pending"
+            stale_reason="${VERIFICATION_FRESHNESS_REASON:-freshness_baseline_unavailable}"
+            case "$stale_reason" in
+              ""|fresh|missing_file) stale_reason="freshness_baseline_unavailable" ;;
+            esac
+            printf '%s\t%s\n' "pending" "$stale_reason"
           else
-            printf '%s\n' "$success_state"
+            printf '%s\t%s\n' "$success_state" "none"
           fi
+          ;;
+        *)
+          printf '%s\t%s\n' "pending" "qa_gate_output_missing"
           ;;
       esac
       ;;
     FAIL|PARTIAL)
-      printf '%s\n' "failed"
+      printf '%s\t%s\n' "failed" "none"
       ;;
     *)
-      printf '%s\n' "pending"
+      printf '%s\t%s\n' "pending" "$(verification_pending_reason "$verification_file")"
       ;;
   esac
+}
+
+phase_verification_state() {
+  local assessment state _
+  assessment=$(phase_verification_assessment "$1" "$2" "$3")
+  IFS=$'\t' read -r state _ <<< "$assessment"
+  printf '%s\n' "${state:-pending}"
 }
 
 # --- jq availability ---
@@ -326,7 +437,9 @@ else
   echo "first_qa_attention_phase="
   echo "first_qa_attention_slug="
   echo "qa_attention_status=none"
+  echo "qa_attention_reason=none"
   echo "qa_status=none"
+  echo "qa_reason=none"
   echo "qa_round=00"
   echo "has_codebase_map=false"
   echo "brownfield=false"
@@ -785,7 +898,9 @@ FIRST_UNVERIFIED_SLUG=""
 FIRST_QA_ATTENTION_PHASE=""
 FIRST_QA_ATTENTION_SLUG=""
 QA_ATTENTION_STATUS="none"
+QA_ATTENTION_REASON="none"
 QA_STATUS="none"
+QA_REASON="none"
 QA_ROUND="00"
 QA_REMEDIATING_PHASE=""
 QA_REMEDIATING_SLUG=""
@@ -850,6 +965,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
         FIRST_UNVERIFIED_PHASE=$(echo "$_uv_dirname" | sed 's/^\([0-9]*\).*/\1/')
         FIRST_UNVERIFIED_SLUG="$_uv_dirname"
         QA_STATUS="remediating"
+        QA_REASON="none"
         QA_ROUND="$_qa_rem_round"
       fi
       # Don't set HAS_UNVERIFIED_PHASES — QA remediation takes priority
@@ -895,12 +1011,15 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
           if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
             restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
           fi
-          QA_STATUS=$(phase_verification_state "$_uv_dir" "$_uv_verif" "remediated")
+          _uv_assessment=$(phase_verification_assessment "$_uv_dir" "$_uv_verif" "remediated")
         elif [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
-          QA_STATUS=$(phase_verification_state "$_uv_dir" "$_uv_verif" "passed")
+          _uv_assessment=$(phase_verification_assessment "$_uv_dir" "$_uv_verif" "passed")
         else
-          QA_STATUS="pending"
+          _uv_assessment=$(phase_verification_assessment "$_uv_dir" "" "passed")
         fi
+        IFS=$'\t' read -r QA_STATUS QA_REASON <<< "$_uv_assessment"
+        QA_STATUS="${QA_STATUS:-pending}"
+        QA_REASON="${QA_REASON:-none}"
       fi
       break
     fi
@@ -929,6 +1048,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     fi
 
     _qa_attention="none"
+    _qa_attention_reason="none"
     # Active remediation is handled by next_phase_state=needs_qa_remediation,
     # except QA protocol still needs a signal for verify-stage rounds
     # when an earlier phase blocks the main orchestrator route.
@@ -951,7 +1071,10 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     fi
 
     if [ "$_qa_attention" = "none" ]; then
-      _qa_attention=$(phase_verification_state "$_qa_dir" "$_qa_verif_scan" "none")
+      _qa_assessment=$(phase_verification_assessment "$_qa_dir" "$_qa_verif_scan" "none")
+      IFS=$'\t' read -r _qa_attention _qa_attention_reason <<< "$_qa_assessment"
+      _qa_attention="${_qa_attention:-none}"
+      _qa_attention_reason="${_qa_attention_reason:-none}"
     fi
 
     if [ "$_qa_attention" != "none" ]; then
@@ -959,6 +1082,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
       FIRST_QA_ATTENTION_PHASE=$(echo "$_qa_dirname" | sed 's/^\([0-9]*\).*/\1/')
       FIRST_QA_ATTENTION_SLUG="$_qa_dirname"
       QA_ATTENTION_STATUS="$_qa_attention"
+      QA_ATTENTION_REASON="${_qa_attention_reason:-none}"
       break
     fi
   done
@@ -976,6 +1100,7 @@ if [ -n "$QA_REMEDIATING_PHASE" ] && [ "$NEXT_PHASE_STATE" != "needs_uat_remedia
       NEXT_PHASE_SLUG="$QA_REMEDIATING_SLUG"
       NEXT_PHASE_STATE="needs_qa_remediation"
       QA_STATUS="remediating"
+      QA_REASON="none"
       QA_ROUND="$QA_REMEDIATING_ROUND"
       _QR_DIR="$PHASES_DIR/$QA_REMEDIATING_SLUG"
       if [ -d "$_QR_DIR" ]; then
@@ -1034,6 +1159,7 @@ if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; t
       else
         QA_STATUS="remediating"
       fi
+      QA_REASON="none"
       ;;
     pending)
       _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
@@ -1052,6 +1178,7 @@ if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; t
           fi
           NEXT_PHASE_STATE="needs_verification"
           QA_STATUS="pending"
+          QA_REASON="${QA_ATTENTION_REASON:-none}"
           ;;
       esac
       ;;
@@ -1079,7 +1206,9 @@ echo "first_unverified_slug=$FIRST_UNVERIFIED_SLUG"
 echo "first_qa_attention_phase=$FIRST_QA_ATTENTION_PHASE"
 echo "first_qa_attention_slug=$FIRST_QA_ATTENTION_SLUG"
 echo "qa_attention_status=$QA_ATTENTION_STATUS"
+echo "qa_attention_reason=$QA_ATTENTION_REASON"
 echo "qa_status=$QA_STATUS"
+echo "qa_reason=$QA_REASON"
 echo "qa_round=$QA_ROUND"
 echo "uat_issues_phase=$UAT_ISSUES_PHASE"
 echo "uat_issues_slug=$UAT_ISSUES_SLUG"

@@ -478,7 +478,7 @@ State detects needs_uat_remediation → enters mode inline → step 4 creates To
 | 4 | `next_phase_state=needs_reverification` | Re-verify | auto_uat=true: no confirmation. auto_uat=false: → AskUserQuestion: "Phase {NN} remediation complete. Run re-verification?" |
 | 5 | `milestone_uat_issues=true` | Milestone UAT Recovery | (mode handles confirmation — see Milestone UAT Recovery steps) |
 | 6 | `phase_count=0` | Scope | → AskUserQuestion: "Project defined but no phases. Scope the work?" |
-| 7 | `next_phase_state=needs_verification` | Verify | (no confirmation — auto_uat intent). **QA gate:** If `qa_status=pending`, display "Phase {NN} QA is pending — running QA now." and spawn QA inline first (see QA Gate section below). This state also covers `all_done` milestones that were retargeted because authoritative QA on a completed phase is stale/missing, plus fully built no-UAT phases retargeted back into verification when QA is still pending even with `auto_uat=false`. If `qa_status=failed`, enter QA remediation inline. Only proceed to Verify mode when `qa_status` is `passed` or `remediated`. |
+| 7 | `next_phase_state=needs_verification` | Verify | (no confirmation — auto_uat intent). **QA gate:** If `qa_status=pending`, display "Phase {NN} QA is pending ({reason label}) — running QA now." after mapping `qa_reason` through the reason labels below, then spawn QA inline first. This state also covers `all_done` milestones that were retargeted because authoritative QA on a completed phase is stale/missing, plus fully built no-UAT phases retargeted back into verification when QA is still pending even with `auto_uat=false`. If `qa_status=failed`, enter QA remediation inline. Only proceed to Verify mode when `qa_status` is `passed` or `remediated`. |
 | 8 | `next_phase_state=needs_discussion` | Discuss | → AskUserQuestion: "Phase {NN} needs discussion before planning. Start discussion?" |
 | 9 | `next_phase_state=needs_plan_and_execute` | Plan + Execute | → AskUserQuestion: "Phase {NN} needs planning and execution. Start?" |
 | 10 | `next_phase_state=needs_execute` | Execute | → AskUserQuestion: "Phase {NN} is planned. Execute it?" |
@@ -530,7 +530,24 @@ The `needs_reverification` state fires regardless of `auto_uat` — remediation 
 **QA gate before UAT (needs_verification) — NON-NEGOTIABLE:**
 Before entering Verify mode (UAT), check `qa_status` from phase-detect output:
 - `qa_status=passed` or `qa_status=remediated`: proceed to Verify mode (UAT). These values mean VERIFICATION.md exists with PASS and the product code has not changed since QA verified it (staleness check via `verified_at_commit`).
-- `qa_status=pending` (no VERIFICATION.md, or VERIFICATION.md exists but code changed since QA verified — stale): display "Phase {NN} QA is pending — running QA now." and spawn QA inline first. Resolve QA model, compile QA context, and spawn the QA agent as a subagent (same as execute-protocol Step 4). After QA returns, run the deterministic gate:
+- `qa_status=pending` (no VERIFICATION.md, malformed/untrusted VERIFICATION.md, deterministic gate rerun, or stale PASS): display "Phase {NN} QA is pending ({reason label}) — running QA now." and spawn QA inline first. Resolve `{reason label}` from `qa_reason`; if `qa_reason=none` or is empty, use `qa_attention_reason`; if both are empty/none, omit the parenthetical.
+
+  **QA pending reason labels:**
+  - `missing_verification_artifact` → `no verification artifact exists`
+  - `verification_result_missing` → `verification result is missing`
+  - `verification_result_unrecognized` → `verification result is unrecognized`
+  - `qa_gate_rerun_required` → `the QA gate requires a rerun`
+  - `qa_gate_output_missing` → `the QA gate did not return a routing decision`
+  - `working_tree_changed` → `the working tree changed after QA`
+  - `verified_at_commit_mismatch` → `product code changed since QA`
+  - `git_status_failed` → `git status failed during freshness check`
+  - `git_log_failed` → `git log failed during freshness check`
+  - `product_commit_unavailable` → `no product-code commit could be resolved`
+  - `product_changed_after_verification` → `product code changed after QA`
+  - `freshness_baseline_unavailable` → `QA freshness could not be proven`
+  - Unknown non-empty token → use the token verbatim.
+
+  Then continue with QA:
   - If the phase-level verification artifact does not yet exist, backfill tracked known issues from completed summaries before QA starts:
     ```bash
     bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-summaries "{phase-dir}" 2>/dev/null || true
