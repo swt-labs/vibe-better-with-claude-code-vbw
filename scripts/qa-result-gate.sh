@@ -1454,9 +1454,9 @@ RESULT=$(awk '
   }
   END {
     if (result_seen) {
-      print result
+      print toupper(result)
     } else if (status_seen && (toupper(status) == "PASS" || toupper(status) == "FAIL" || toupper(status) == "PARTIAL")) {
-      print status
+      print toupper(status)
     }
   }
 ' "$VERIF_PATH" 2>/dev/null)

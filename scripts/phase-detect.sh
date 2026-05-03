@@ -1048,7 +1048,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     fi
 
     _qa_attention="none"
-  _qa_attention_reason="none"
+    _qa_attention_reason="none"
     # Active remediation is handled by next_phase_state=needs_qa_remediation,
     # except QA protocol still needs a signal for verify-stage rounds
     # when an earlier phase blocks the main orchestrator route.
@@ -1178,7 +1178,7 @@ if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; t
           fi
           NEXT_PHASE_STATE="needs_verification"
           QA_STATUS="pending"
-            QA_REASON="${QA_ATTENTION_REASON:-none}"
+          QA_REASON="${QA_ATTENTION_REASON:-none}"
           ;;
       esac
       ;;

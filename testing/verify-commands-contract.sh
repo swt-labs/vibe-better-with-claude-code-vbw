@@ -737,6 +737,19 @@ else
   fail "vibe: QA pending gate missing machine-readable reason guidance"
 fi
 
+if grep -Fq 'QA is pending ({qa_reason})' "$VIBE_FILE"; then
+  fail "vibe: QA pending table still displays raw qa_reason token"
+else
+  pass "vibe: QA pending table avoids raw qa_reason display token"
+fi
+
+if grep -Fq 'QA is pending ({reason label})' "$VIBE_FILE" \
+  && grep -Fq 'Resolve `{reason label}` from `qa_reason`' "$VIBE_FILE"; then
+  pass "vibe: QA pending table points to resolved reason-label mapping"
+else
+  fail "vibe: QA pending table missing resolved reason-label guidance"
+fi
+
 if grep -q 'qa_reason=none|<reason>' "$ROOT/references/phase-detection.md" \
   && grep -q 'qa_attention_reason=none|<reason>' "$ROOT/references/phase-detection.md" \
   && grep -q 'result:` is authoritative when present' "$ROOT/references/phase-detection.md" \
