@@ -1609,6 +1609,8 @@ EOF
   run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "uat_round_count=0"
+  grep -q "qa_attention_reason=none" <<< "$output"
+  grep -q "qa_reason=none" <<< "$output"
 }
 
 @test "uat_round_count=0 when UAT issues resolved (no routing target)" {
@@ -1739,6 +1741,8 @@ CONF
   run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=none"
+  grep -q "qa_reason=none" <<< "$output"
+  grep -q "qa_attention_reason=none" <<< "$output"
   echo "$output" | grep -q "qa_round=00"
 }
 
@@ -1750,6 +1754,7 @@ CONF
   run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=pending"
+  grep -q "qa_reason=missing_verification_artifact" <<< "$output"
 }
 
 @test "qa_status is passed when VERIFICATION.md has PASS result" {
@@ -1762,6 +1767,59 @@ CONF
   run_phase_detect
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "qa_status=passed"
+  grep -q "qa_reason=none" <<< "$output"
+}
+
+@test "qa_status accepts legacy status PASS when result is absent" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'status: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Legacy PASS artifact.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  grep -q "qa_status=passed" <<< "$output"
+  grep -q "qa_reason=none" <<< "$output"
+}
+
+@test "qa_status result field overrides conflicting legacy status" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: FAIL' 'status: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Result wins.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  grep -q "qa_status=failed" <<< "$output"
+  grep -q "qa_reason=none" <<< "$output"
+}
+
+@test "qa_status does not fall back to legacy status when result is blank" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: ' 'status: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Blank result is invalid.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  grep -q "qa_status=pending" <<< "$output"
+  grep -q "qa_reason=verification_result_missing" <<< "$output"
+}
+
+@test "qa_status explains unrecognized verification result" {
+  mkdir -p .vbw-planning/phases/01-test
+  echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
+  echo "# My Project" > .vbw-planning/PROJECT.md
+  current_commit="$(git rev-parse HEAD)"
+  printf '%s\n' '---' 'result: MAYBE' 'status: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 01' "verified_at_commit: ${current_commit}" '---' '# Verification' 'Unknown result is invalid.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  grep -q "qa_status=pending" <<< "$output"
+  grep -q "qa_reason=verification_result_unrecognized" <<< "$output"
 }
 
 @test "qa_status is failed when PASS verification still has unresolved known issues" {
@@ -2525,6 +2583,9 @@ EOF
   printf '%s\n' \
     '---' \
     'result: PASS' \
+    'writer: write-verification.sh' \
+    'plans_verified:' \
+    '  - 01' \
     "verified_at_commit: ${verified_commit}" \
     '---' \
     '# Verification' \
@@ -2541,6 +2602,7 @@ EOF
     echo "$output" >&3
     false
   }
+  grep -q "qa_reason=verified_at_commit_mismatch" <<< "$output"
 }
 
 @test "qa_status is pending for brownfield PASS verification after later commit" {
@@ -2553,7 +2615,7 @@ EOF
   git add app.py
   git commit -m "before qa" --quiet
 
-  printf '%s\n' '---' 'result: PASS' '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - 01' '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
   echo "print(\"after\")" > app.py
   git add app.py
   git commit -m "after qa" --quiet
@@ -2565,6 +2627,7 @@ EOF
     echo "$output" >&3
     false
   }
+  grep -q "qa_reason=product_changed_after_verification" <<< "$output"
 }
 
 @test "qa_status is pending when PASS verification has uncommitted product changes" {
@@ -2581,6 +2644,9 @@ EOF
   printf '%s\n' \
     '---' \
     'result: PASS' \
+    'writer: write-verification.sh' \
+    'plans_verified:' \
+    '  - 01' \
     "verified_at_commit: ${verified_commit}" \
     '---' \
     '# Verification' \
@@ -2595,6 +2661,7 @@ EOF
     echo "$output" >&3
     false
   }
+  grep -q "qa_reason=working_tree_changed" <<< "$output"
 }
 
 @test "qa_status is pending when structured phase PASS fails qa-result-gate" {
@@ -2624,6 +2691,7 @@ EOF
     echo "$output" >&3
     false
   }
+  grep -q "qa_reason=qa_gate_rerun_required" <<< "$output"
 }
 
 @test "summary with leading blank line still counts as complete for pending QA routing" {
@@ -2652,10 +2720,11 @@ EOF
     echo "$output" >&3
     false
   }
+  grep -q "qa_reason=qa_gate_rerun_required" <<< "$output"
 }
 
 @test "qa_status is pending for brownfield remediated verification after later commit" {
-  mkdir -p .vbw-planning/phases/01-test/remediation/qa
+  mkdir -p .vbw-planning/phases/01-test/remediation/qa/round-01
   echo "# Plan" > .vbw-planning/phases/01-test/01-PLAN.md
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Done.' > .vbw-planning/phases/01-test/01-SUMMARY.md
   echo "# My Project" > .vbw-planning/PROJECT.md
@@ -2664,7 +2733,35 @@ EOF
   git add app.py
   git commit -m "before remediated qa" --quiet
 
-  printf '%s\n' '---' 'result: PASS' '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/01-VERIFICATION.md
+  cat > .vbw-planning/phases/01-test/01-VERIFICATION.md <<'EOF'
+---
+result: FAIL
+writer: write-verification.sh
+plans_verified:
+  - 01
+---
+## Must-Have Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| FAIL-01 | must_have | Original failure | FAIL | Missing |
+EOF
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-PLAN.md <<'EOF'
+---
+round: 01
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Fixture documents a structurally valid remediated round"}
+---
+EOF
+  cat > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md <<'EOF'
+---
+plan: R01
+status: complete
+files_modified:
+  - .vbw-planning/phases/01-test/remediation/qa/round-01/R01-SUMMARY.md
+deviations: []
+---
+EOF
+  printf '%s\n' '---' 'result: PASS' 'writer: write-verification.sh' 'plans_verified:' '  - R01' '---' '# Verification' 'Passed.' > .vbw-planning/phases/01-test/remediation/qa/round-01/R01-VERIFICATION.md
   printf '%s\n%s\n' 'stage=done' 'round=01' > .vbw-planning/phases/01-test/remediation/qa/.qa-remediation-stage
   echo "print(\"after\")" > app.py
   git add app.py
@@ -2677,6 +2774,7 @@ EOF
     echo "$output" >&3
     false
   }
+  grep -q "qa_reason=product_changed_after_verification" <<< "$output"
 }
 
 @test "first_qa_attention targets stale QA even when terminal UAT exists" {
@@ -2693,6 +2791,9 @@ EOF
   printf '%s\n' \
     '---' \
     'result: PASS' \
+    'writer: write-verification.sh' \
+    'plans_verified:' \
+    '  - 01' \
     "verified_at_commit: ${verified_commit}" \
     '---' \
     '# Verification' \
@@ -2718,6 +2819,8 @@ EOF
   echo "$output" | grep -q "first_qa_attention_phase=01"
   echo "$output" | grep -q "first_qa_attention_slug=01-test"
   echo "$output" | grep -q "qa_attention_status=pending"
+  grep -q "qa_attention_reason=verified_at_commit_mismatch" <<< "$output"
+  grep -q "qa_reason=verified_at_commit_mismatch" <<< "$output"
 }
 
 @test "all_done routes to QA remediation when authoritative QA failed despite terminal UAT" {

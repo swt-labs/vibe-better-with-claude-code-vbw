@@ -148,6 +148,64 @@ create_source_fail_verif() {
   [[ "$output" == *"qa_gate_fail_count=0"* ]]
 }
 
+@test "legacy status PASS without result → PROCEED_TO_UAT" {
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'VERIF'
+---
+phase: 01
+status: PASS
+writer: write-verification.sh
+---
+## Must-Have Checks
+| Check | Status |
+|-------|--------|
+| Feature works | PASS |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "result field overrides conflicting legacy status" {
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'VERIF'
+---
+phase: 01
+result: FAIL
+status: PASS
+writer: write-verification.sh
+---
+## Must-Have Checks
+| Check | Status |
+|-------|--------|
+| Feature failed | FAIL |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=FAIL"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "blank result does not fall back to legacy status" {
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'VERIF'
+---
+phase: 01
+result:
+status: PASS
+writer: write-verification.sh
+---
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_result=missing"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
 @test "plan-amendment does not accept sibling-phase traversal path" {
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
