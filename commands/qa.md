@@ -412,14 +412,14 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
         bash "{plugin-root}/scripts/qa-remediation-state.sh" needs-round "{phase-dir}"
         ```
 
-        Then display that standalone QA found a result, but the deterministic gate still requires remediation; tell the user to continue via `/vbw:vibe`. Do **not** present the round as a shippable PASS. If `qa_gate_known_issues_override=true`, note that the contract checks passed but `{qa_gate_known_issue_count}` tracked known issues remain unresolved in `{phase-dir}/known-issues.json`.
+        Then display that standalone QA found a result, but the deterministic gate still requires remediation; tell the user to continue via `/vbw:vibe`. Do **not** present the round as a shippable PASS. If `qa_gate_process_exception_evidence_missing=true`, say the round has a clean verification result but lacks recorded remediation-artifact evidence, and the next round should record an existing remediation `RNN-PLAN.md`/`RNN-SUMMARY.md` or valid original phase `PLAN.md`. If `qa_gate_known_issues_override=true`, note that the contract checks passed but `{qa_gate_known_issue_count}` tracked known issues remain unresolved in `{phase-dir}/known-issues.json`.
       - `REMEDIATION_REQUIRED` → if `VERIF_PATH` is phase-level, initialize QA remediation state first so plain `/vbw:vibe` has a deterministic resume target:
 
         ```bash
         bash "{plugin-root}/scripts/qa-remediation-state.sh" init "{phase-dir}" 2>/dev/null || true
         ```
 
-        Then display that the phase-level QA result was written, but the deterministic gate still requires remediation; tell the user to continue via `/vbw:vibe`. Do **not** continue to the generic verified presentation. If `qa_gate_known_issues_override=true`, note that the contract checks passed but `{qa_gate_known_issue_count}` tracked known issues remain unresolved in `{phase-dir}/known-issues.json`.
+        Then display that the phase-level QA result was written, but the deterministic gate still requires remediation; tell the user to continue via `/vbw:vibe`. Do **not** continue to the generic verified presentation. If `qa_gate_process_exception_evidence_missing=true`, say the round has a clean verification result but lacks recorded remediation-artifact evidence, and the next round should record an existing remediation `RNN-PLAN.md`/`RNN-SUMMARY.md` or valid original phase `PLAN.md`. If `qa_gate_known_issues_override=true`, note that the contract checks passed but `{qa_gate_known_issue_count}` tracked known issues remain unresolved in `{phase-dir}/known-issues.json`.
       - `QA_RERUN_REQUIRED` → display that the persisted verification artifact is invalid or incomplete and must be re-run before it can be trusted. Do **not** present it as authoritative.
 
 5. **Present:** Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:

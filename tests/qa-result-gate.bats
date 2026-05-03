@@ -2048,6 +2048,7 @@ VERIF
   # No code-fix classifications → change-evidence early-exit is skipped;
   # routing still blocks via the metadata-only handler's process-exception
   # evidence check (no recorded paths → no evidence).
+  [[ "$output" == *"qa_gate_process_exception_evidence_missing=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
@@ -2144,6 +2145,7 @@ VERIF
   # No code-fix classifications → change-evidence early-exit is skipped;
   # routing still blocks via the metadata-only handler's process-exception
   # evidence check (empty paths → no evidence).
+  [[ "$output" == *"qa_gate_process_exception_evidence_missing=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
@@ -4392,6 +4394,7 @@ VERIF
   # evidence check (empty paths → no evidence).
   [[ "$output" != *"qa_gate_metadata_only_override=true"* ]]
   [[ "$output" != *"qa_gate_phase_deviation_count="* ]]
+  [[ "$output" == *"qa_gate_process_exception_evidence_missing=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
@@ -4827,6 +4830,171 @@ VERIF
   [[ "$output" != *"qa_gate_round_change_evidence_unavailable=true"* ]]
   [[ "$output" != *"qa_gate_source_verification_missing=true"* ]]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "round-02 process-exception can use existing remediation artifact when diff lacks it" {
+  init_git_repo
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "src/OldFix.swift"
+deviations: []
+---
+
+## Summary
+Round 01 originally documented a valid focused-test invocation as a deviation.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: FAIL
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| DEV-R01-01 | must_have | Round 01 summary still misclassifies valid QA evidence | FAIL | Needs metadata correction |
+VERIF
+
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-SUMMARY.md" <<'SUMMARY'
+---
+plan: R02
+status: complete
+commit_hashes: []
+files_modified:
+  - "remediation/qa/round-01/R01-SUMMARY.md"
+  - "remediation/qa/round-02/R02-SUMMARY.md"
+deviations: []
+---
+
+## Summary
+Corrected remediation bookkeeping only; no product code changed.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'PLAN'
+---
+round: 02
+title: Correct remediation artifact metadata
+fail_classifications:
+  - {id: "DEV-R01-01", type: "process-exception", rationale: "Round 01 summary metadata was corrected; product code does not need to change"}
+---
+PLAN
+
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Remediation metadata corrected | PASS | R01/R02 summaries recorded |
+VERIF
+
+  git -C "$TEST_DIR" add .
+  git -C "$TEST_DIR" commit -q -m "baseline remediation artifacts"
+  baseline_commit=$(git -C "$TEST_DIR" rev-parse HEAD)
+  printf 'stage=verify\nround=02\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_round_change_evidence_unavailable=true"* ]]
+  [[ "$output" != *"qa_gate_process_exception_evidence_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "process-exception with nonexistent remediation artifact evidence fails closed" {
+  create_source_fail_verif "FAIL-01" "Nonexistent remediation artifact must not satisfy process-exception evidence"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "remediation/qa/round-99/R99-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Nonexistent artifact evidence must fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "The round needs recorded artifact evidence"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Nonexistent artifact rejected | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_process_exception_evidence_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "process-exception traversal to sibling remediation artifact fails closed" {
+  create_source_fail_verif "FAIL-01" "Sibling phase artifact must not satisfy process-exception evidence"
+  mkdir -p "$TEST_DIR/02-other-phase/remediation/qa/round-01"
+  cat > "$TEST_DIR/02-other-phase/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+---
+
+## Summary
+Sibling phase artifact.
+SUMMARY
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "../02-other-phase/remediation/qa/round-01/R01-SUMMARY.md"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Traversal artifact evidence must fail closed
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Sibling phase artifacts are outside this phase"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Traversal artifact rejected | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_process_exception_evidence_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
 @test "committed and worktree evidence can combine for a process-exception round" {

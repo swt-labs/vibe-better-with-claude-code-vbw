@@ -250,12 +250,7 @@ path_is_code_fix_support_artifact() {
 path_is_process_exception_evidence_artifact() {
   local phase_dir="${1:-}"
   local path="${2:-}"
-  path=$(normalize_recorded_path "$path")
-  [ -n "$path" ] || return 1
-  if [ -n "$phase_dir" ]; then
-    path=$(canonicalize_phase_path "$path" "$phase_dir")
-  fi
-  if path_is_qa_remediation_round_artifact "$path"; then
+  if resolve_qa_remediation_round_artifact_path "$path" "$phase_dir" >/dev/null 2>&1; then
     return 0
   fi
   path_is_original_plan_artifact "$path" "$phase_dir"
@@ -264,7 +259,11 @@ path_is_process_exception_evidence_artifact() {
 path_is_qa_remediation_round_artifact() {
   local path="${1:-}"
   # Match remediation/qa/round-NN/RNN-{PLAN,SUMMARY}.md with digits-only round IDs
-  [[ "$path" =~ (^|/)remediation/qa/round-[0-9]+/R[0-9]+-(PLAN|SUMMARY)\.md$ ]]
+  if [[ "$path" =~ (^|/)remediation/qa/round-([0-9]+)/R([0-9]+)-(PLAN|SUMMARY)\.md$ ]]; then
+    [ "${BASH_REMATCH[2]}" = "${BASH_REMATCH[3]}" ]
+    return
+  fi
+  return 1
 }
 
 resolve_existing_path_target() {
@@ -301,6 +300,60 @@ resolve_existing_path_target() {
   path_dir="$(cd "$path_dir" 2>/dev/null && pwd -P || return 1)"
   [ -e "$path_dir/$path_base" ] || return 1
   printf '%s' "$path_dir/$path_base"
+}
+
+resolve_qa_remediation_round_artifact_path() {
+  local path="${1:-}"
+  local phase_dir="${2:-}"
+  local phase_dir_abs=""
+  local phase_parent_abs=""
+  local phase_basename=""
+  local repo_root_abs=""
+  local phase_dir_rel=""
+  local candidate=""
+  local candidate_rel=""
+
+  path=$(normalize_recorded_path "$path")
+  [ -n "$path" ] || return 1
+  [ -n "$phase_dir" ] || return 1
+
+  case "$path" in
+    ../*|*/../*|*/./*) return 1 ;;
+  esac
+
+  phase_dir_abs="$(cd "$phase_dir" 2>/dev/null && pwd -P || return 1)"
+  phase_parent_abs="${phase_dir_abs%/*}"
+  phase_basename="${phase_dir_abs##*/}"
+  repo_root_abs="$(git -C "$phase_dir" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [ -n "$repo_root_abs" ] && [[ "$phase_dir_abs" == "$repo_root_abs/"* ]]; then
+    phase_dir_rel="${phase_dir_abs#"$repo_root_abs"/}"
+  fi
+
+  if [[ "$path" == /* ]]; then
+    candidate="$path"
+  elif [ -n "$repo_root_abs" ] && [ -n "$phase_dir_rel" ] && [[ "$path" == "$phase_dir_rel/"* ]]; then
+    candidate="$repo_root_abs/$path"
+  elif [[ "$path" == remediation/qa/* ]]; then
+    candidate="$phase_dir_abs/$path"
+  elif [[ "$path" == "$phase_basename/"* ]]; then
+    candidate="$phase_parent_abs/$path"
+  else
+    return 1
+  fi
+
+  candidate="$(resolve_existing_path_target "$candidate" 2>/dev/null || true)"
+  [ -n "$candidate" ] || return 1
+  [ -f "$candidate" ] || return 1
+  [[ "$candidate" == "$phase_dir_abs/"* ]] || return 1
+
+  candidate_rel="${candidate#"$phase_dir_abs"/}"
+  if [[ "$candidate_rel" =~ ^remediation/qa/round-([0-9]+)/R([0-9]+)-(PLAN|SUMMARY)\.md$ ]]; then
+    [ "${BASH_REMATCH[1]}" = "${BASH_REMATCH[2]}" ] || return 1
+    printf '%s' "$candidate"
+    return 0
+  fi
+
+  return 1
 }
 
 resolve_original_plan_artifact_path() {
@@ -518,15 +571,26 @@ paths_include_process_exception_evidence() {
   return 1
 }
 
+paths_are_process_exception_evidence_artifacts() {
+  local phase_dir="${1:-}"
+  local saw_path=false
+  while IFS= read -r path; do
+    path=$(normalize_recorded_path "$path")
+    [ -n "$path" ] || continue
+    saw_path=true
+    if ! path_is_process_exception_evidence_artifact "$phase_dir" "$path"; then
+      return 1
+    fi
+  done
+  [ "$saw_path" = true ]
+}
+
 path_is_allowed_worktree_evidence_artifact() {
   local phase_dir="${1:-}"
   local path="${2:-}"
   path=$(normalize_recorded_path "$path")
   [ -n "$path" ] || return 1
-  if [ -n "$phase_dir" ]; then
-    path=$(canonicalize_phase_path "$path" "$phase_dir")
-  fi
-  if path_is_qa_remediation_round_artifact "$path"; then
+  if resolve_qa_remediation_round_artifact_path "$path" "$phase_dir" >/dev/null 2>&1; then
     return 0
   fi
   path_is_original_plan_artifact "$path" "$phase_dir"
@@ -1463,6 +1527,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   _mo_has_code_changes="false"
   _mo_found_summary="false"
   _mo_all_recorded_paths=""
+  _mo_structural_recorded_paths=""
   _mo_effective_files=""
   while IFS= read -r _mo_summary; do
     [ -f "$_mo_summary" ] || continue
@@ -1486,6 +1551,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
       ROUND_CHANGE_EVIDENCE_EMPTY="true"
     fi
     if [ -n "$_mo_files" ]; then
+      _mo_structural_recorded_paths=$(printf '%s\n%s\n' "${_mo_structural_recorded_paths:-}" "$_mo_recorded_files")
       if [ -z "$_mo_recorded_files" ]; then
         ROUND_CHANGE_EVIDENCE_UNAVAILABLE="true"
         break
@@ -1564,6 +1630,7 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$PLAN_SCOPE_DIR" != "$PHASE_DIR" ] && [ 
 fi
 
 ROUND_ALL_RECORDED_PATHS=$(printf '%s\n' "${_mo_all_recorded_paths:-}" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))
+ROUND_RECORDED_STRUCTURAL_PATHS=$(printf '%s\n' "${_mo_structural_recorded_paths:-}" | sed '/^[[:space:]]*$/d' | (sort -u 2>/dev/null || sort -u))
 ROUND_CLASSIFICATION_TYPES=""
 ROUND_CLASSIFICATION_IDS=""
 ROUND_CLASSIFICATION_TYPE_COUNT=0
@@ -1583,6 +1650,7 @@ ROUND_KNOWN_ISSUE_OUTCOME_COUNT=0
 ROUND_CARRIED_KNOWN_ISSUE_COUNT=0
 ROUND_KNOWN_ISSUE_CONTRACT_REQUIRED="false"
 ROUND_KNOWN_ISSUES_VALID=true
+ROUND_PROCESS_EXCEPTION_EVIDENCE_VALID=false
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
   ROUND_CLASSIFICATION_TYPES=$(collect_fail_classification_types_in_dir "$PLAN_SCOPE_DIR")
   ROUND_CLASSIFICATION_IDS=$(collect_fail_classification_ids_in_dir "$PLAN_SCOPE_DIR" | (sort -u 2>/dev/null || sort -u))
@@ -1645,6 +1713,14 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
 
   if [ "$ROUND_KNOWN_ISSUE_INPUT_COUNT" -gt 0 ] 2>/dev/null && [ "$SOURCE_FAIL_ROW_COUNT" -eq 0 ] 2>/dev/null && [ -z "$SOURCE_VERIFICATION_PATH" ]; then
     ROUND_SOURCE_VERIFICATION_MISSING="false"
+  fi
+
+  if paths_include_process_exception_evidence "$PHASE_DIR" <<< "$ROUND_ALL_RECORDED_PATHS"; then
+    ROUND_PROCESS_EXCEPTION_EVIDENCE_VALID=true
+  elif [ "$METADATA_ONLY_ROUND" = "true" ] \
+    && [ "$ROUND_CHANGE_EVIDENCE_UNAVAILABLE" = "true" ] \
+    && paths_are_process_exception_evidence_artifacts "$PHASE_DIR" <<< "$ROUND_RECORDED_STRUCTURAL_PATHS"; then
+    ROUND_PROCESS_EXCEPTION_EVIDENCE_VALID=true
   fi
 fi
 
@@ -1743,7 +1819,8 @@ case "$RESULT" in
         echo "qa_gate_routing=REMEDIATION_REQUIRED"
       elif [ "$ROUND_PLAN_AMENDMENT_COUNT" -eq 0 ] 2>/dev/null \
         && [ "$ROUND_CLASSIFICATION_TYPE_COUNT" -gt 0 ] 2>/dev/null \
-        && ! paths_include_process_exception_evidence "$PHASE_DIR" <<< "$ROUND_ALL_RECORDED_PATHS"; then
+        && [ "$ROUND_PROCESS_EXCEPTION_EVIDENCE_VALID" != "true" ]; then
+        echo "qa_gate_process_exception_evidence_missing=true"
         echo "qa_gate_routing=REMEDIATION_REQUIRED"
       elif [ "$PLAN_COUNT" -gt 0 ] && [ "$PLANS_VERIFIED_COUNT" -lt "$PLAN_COUNT" ]; then
         echo "qa_gate_plan_coverage=${PLANS_VERIFIED_COUNT}/${PLAN_COUNT}"
