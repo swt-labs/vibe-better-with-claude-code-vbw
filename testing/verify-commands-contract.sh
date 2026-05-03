@@ -750,10 +750,10 @@ else
   fail "vibe: QA pending table missing resolved reason-label guidance"
 fi
 
-if grep -q 'qa_reason=none|<reason>' "$ROOT/references/phase-detection.md" \
-  && grep -q 'qa_attention_reason=none|<reason>' "$ROOT/references/phase-detection.md" \
-  && grep -q 'result:` is authoritative when present' "$ROOT/references/phase-detection.md" \
-  && grep -q 'Legacy `status:` is accepted only when `result:` is absent' "$ROOT/references/phase-detection.md"; then
+if grep -Fq -- 'qa_reason=none|<reason>' "$ROOT/references/phase-detection.md" \
+  && grep -Fq -- 'qa_attention_reason=none|<reason>' "$ROOT/references/phase-detection.md" \
+  && grep -Fq -- 'result:` is authoritative when present' "$ROOT/references/phase-detection.md" \
+  && grep -Fq -- 'Legacy `status:` is accepted only when `result:` is absent' "$ROOT/references/phase-detection.md"; then
   pass "phase-detection: documents QA reason fields and legacy result precedence"
 else
   fail "phase-detection: missing QA reason or legacy result documentation"
