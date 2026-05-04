@@ -736,10 +736,32 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
   # Priority 2: system credential store (skip if VBW_SKIP_KEYCHAIN=1, e.g. in tests)
   if [ -z "$OAUTH_TOKEN" ] && [ "${VBW_SKIP_KEYCHAIN:-0}" != "1" ]; then
     if [ "$_OS" = "Darwin" ]; then
+      # Try the legacy literal service name first (back-compat for older Claude Code installs).
       CRED_JSON=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
       if [ -n "$CRED_JSON" ]; then
         OAUTH_TOKEN=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
         [ -n "$OAUTH_TOKEN" ] && AUTH_CLASS="oauth"
+      fi
+      # Fallback (#576): newer Claude Code installs persist credentials under
+      # per-install suffixed service names like "Claude Code-credentials-<8hex>".
+      # Discover candidates via a non-prompting `security dump-keychain`
+      # (metadata only — no `-d`, so secrets are not dumped and no GUI prompt fires).
+      if [ -z "$OAUTH_TOKEN" ]; then
+        _SUFFIXED_NAMES=$(security dump-keychain 2>/dev/null \
+          | grep -oE '"svce"<blob>="Claude Code-credentials-[^"]+"' \
+          | sed -E 's/^"svce"<blob>="(.*)"$/\1/' \
+          | sort -u)
+        while IFS= read -r _sn; do
+          [ -z "$_sn" ] && continue
+          CRED_JSON=$(security find-generic-password -s "$_sn" -w 2>/dev/null)
+          [ -z "$CRED_JSON" ] && continue
+          OAUTH_TOKEN=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+          if [ -n "$OAUTH_TOKEN" ]; then
+            AUTH_CLASS="oauth"
+            break
+          fi
+        done <<< "$_SUFFIXED_NAMES"
+        unset _SUFFIXED_NAMES _sn
       fi
     else
       # Linux: try secret-tool (GNOME Keyring) then pass (password-store)
@@ -962,7 +984,12 @@ elif [ "$FETCH_OK" = "fail" ]; then
 elif [ "$FETCH_OK" = "notraffic" ]; then
   USAGE_LINE="${D}Limits: skipped (nonessential traffic disabled)${X}"
 elif [ "$AUTH_METHOD" = "claude.ai" ]; then
-  USAGE_LINE="${D}Limits: keychain access denied (allow Terminal in Keychain Access.app or set VBW_OAUTH_TOKEN)${X}"
+  # #576: previously labeled "keychain access denied" — but this branch fires
+  # whenever priorities 1-3 (env var, keychain literal+suffixed names, credentials
+  # file) all returned empty AND the claude CLI confirms an OAuth login. Most
+  # often that means the token simply isn't in any location we can reach, not
+  # that macOS denied access. Suggest the env-var workaround.
+  USAGE_LINE="${D}Limits: OAuth token unavailable (set VBW_OAUTH_TOKEN)${X}"
 elif [ "$FETCH_OK" = "noauth" ]; then
   USAGE_LINE="${D}Limits: N/A (using API key)${X}"
 else
