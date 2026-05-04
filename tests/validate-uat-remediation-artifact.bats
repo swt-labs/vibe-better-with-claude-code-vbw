@@ -248,6 +248,29 @@ EOF
   [[ "$output" == *"legacy artifact is stale; expected $round_research"* ]]
 }
 
+@test "validator accepts state-selected legacy plan after inferred round advances" {
+  local stale_round_plan="$ROUND_DIR/R01-PLAN.md"
+  local selected_plan selected_plan_physical plan_path
+  selected_plan="$PHASE_DIR/01-02-PLAN.md"
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  printf 'stage=execute\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  touch "$PHASE_DIR/01-UAT-round-01.md"
+  write_valid_plan "$stale_round_plan"
+  write_valid_plan "$selected_plan"
+  selected_plan_physical="$(cd "$PHASE_DIR" && pwd -P)/01-02-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round=02"* ]]
+  [[ "$output" == *"plan_path=$selected_plan_physical"* ]]
+  plan_path=$(awk -F= '/^plan_path=/ { print $2; exit }' <<< "$output")
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"artifact_valid=true"* ]]
+  [[ "$output" == *"artifact_path=$selected_plan_physical"* ]]
+}
+
 @test "validator rejects legacy-looking summary path" {
   local legacy_summary="$PHASE_DIR/01-SUMMARY.md"
   mkdir -p "$PHASE_DIR/remediation/uat"

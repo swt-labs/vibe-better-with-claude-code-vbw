@@ -11,6 +11,12 @@ set -euo pipefail
 
 ARTIFACT_TYPE="${1:-}"
 ARTIFACT_PATH="${2:-}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+if [ -f "$SCRIPT_DIR/uat-utils.sh" ]; then
+  # shellcheck source=scripts/uat-utils.sh
+  source "$SCRIPT_DIR/uat-utils.sh"
+fi
 
 usage() {
   echo "Usage: validate-uat-remediation-artifact.sh <research|plan|summary> <absolute-artifact-path>" >&2
@@ -89,7 +95,7 @@ layout_for_phase_dir() {
 }
 
 round_for_phase_dir() {
-  local phase_dir="$1" state_file legacy_state_file round=""
+  local phase_dir="$1" state_file legacy_state_file round="" layout
 
   state_file="$phase_dir/remediation/uat/.uat-remediation-stage"
   legacy_state_file="$phase_dir/.uat-remediation-stage"
@@ -100,7 +106,12 @@ round_for_phase_dir() {
     round=$(grep '^round=' "$legacy_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
   fi
 
-  echo "${round:-01}"
+  layout=$(layout_for_phase_dir "$phase_dir")
+  if [ "$layout" = "legacy" ]; then
+    uat_resolve_legacy_round "$phase_dir" "$round"
+  else
+    echo "${round:-01}"
+  fi
 }
 
 selected_legacy_artifact_path() {

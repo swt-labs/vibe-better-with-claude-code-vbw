@@ -507,6 +507,24 @@ EOF
   [ ! -d "$sidechain_dir/.vbw-planning/phases/01-sidechain/remediation" ]
 }
 
+@test "get-or-init maps absolute Claude sidechain phase dir back to host" {
+  local host_root host_phase_dir sidechain_dir sidechain_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-absolute" "$host_root/.claude/worktrees/agent-test/.vbw-planning/phases/01-absolute"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-absolute"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+  sidechain_phase_dir="$sidechain_dir/.vbw-planning/phases/01-absolute"
+
+  run bash -c 'cd "$1" && bash "$2/uat-remediation-state.sh" get-or-init "$3" "major"' _ "$sidechain_dir" "$SCRIPTS_DIR" "$sidechain_phase_dir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round_dir=$host_phase_dir/remediation/uat/round-01"* ]]
+  [[ "$output" == *"summary_path=$host_phase_dir/remediation/uat/round-01/R01-SUMMARY.md"* ]]
+  [ -f "$host_phase_dir/remediation/uat/.uat-remediation-stage" ]
+  [ ! -d "$sidechain_phase_dir/remediation" ]
+}
+
 @test "get-or-init rejects relative archived milestone phase path" {
   local host_root archived_phase_dir
   host_root="$TEST_TEMP_DIR/host"
@@ -604,6 +622,19 @@ EOF
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "^plan_path=.*remediation/uat/round-01/R01-PLAN.md$"
+}
+
+@test "legacy inferred round ignores stale round-dir plan from older round" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=execute\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  touch "$PHASE_DIR/01-UAT-round-01.md"
+  echo "# Stale round 1 plan" > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md"
+  echo "# Current legacy plan" > "$PHASE_DIR/01-02-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^round=02$"
+  echo "$output" | grep -q "^plan_path=.*01-02-PLAN.md$"
 }
 
 @test "get-or-init metadata emitted before CONTEXT block" {

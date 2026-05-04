@@ -93,6 +93,25 @@ canonicalize_existing_or_parent() {
   fi
 }
 
+translate_claude_sidechain_phase_candidate() {
+  local candidate="$1" sidechain_root="${VBW_CLAUDE_SIDECHAIN_ROOT:-}" host_root="${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}" rel_phase_path
+
+  if [ -z "$sidechain_root" ] || [ -z "$host_root" ] || [ ! -f "$host_root/.vbw-planning/config.json" ]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  case "$candidate" in
+    "$sidechain_root"/.vbw-planning/phases/*)
+      rel_phase_path="${candidate#"$sidechain_root"/.vbw-planning/phases/}"
+      printf '%s/.vbw-planning/phases/%s\n' "$host_root" "$rel_phase_path"
+      ;;
+    *)
+      printf '%s\n' "$candidate"
+      ;;
+  esac
+}
+
 canonicalize_phase_dir() {
   local raw_phase_dir="$1" candidate phase_root
 
@@ -105,6 +124,8 @@ canonicalize_phase_dir() {
     *)  candidate="${VBW_CONFIG_ROOT:-$(pwd -P)}/$raw_phase_dir" ;;
   esac
 
+  candidate=$(canonicalize_existing_or_parent "$candidate")
+  candidate=$(translate_claude_sidechain_phase_candidate "$candidate")
   candidate=$(canonicalize_existing_or_parent "$candidate")
   reject_milestone_phase_dir "$candidate"
 
@@ -177,45 +198,16 @@ MAJOR_STAGES=("research" "plan" "execute" "done")
 MINOR_STAGES=("fix" "done")
 
 extract_phase_num() {
-  local phase_basename phase_num
-  phase_basename=$(basename "$PHASE_DIR")
-  phase_num=$(printf '%s\n' "$phase_basename" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
-  printf '%s' "$phase_num"
+  uat_phase_num_for_dir "$PHASE_DIR"
 }
 
 infer_legacy_current_round() {
-  local phase_num archived_rounds current_round
-
-  phase_num=$(extract_phase_num)
-  if [ -z "$phase_num" ] || ! type count_uat_rounds >/dev/null 2>&1; then
-    echo "01"
-    return 0
-  fi
-
-  archived_rounds=$(count_uat_rounds "$PHASE_DIR" "$phase_num")
-  if printf '%s\n' "$archived_rounds" | grep -qE '^[0-9]+$' && [ "$archived_rounds" -gt 0 ] 2>/dev/null; then
-    current_round=$((archived_rounds + 1))
-    printf '%02d\n' "$current_round"
-    return 0
-  fi
-
-  echo "01"
+  uat_infer_legacy_current_round "$PHASE_DIR"
 }
 
 resolve_legacy_round() {
   local stored_round="$1"
-  local inferred_round stored_num
-
-  stored_num=$(echo "$stored_round" | sed 's/^0*//')
-  stored_num="${stored_num:-0}"
-
-  if [ "$stored_num" -gt 1 ] 2>/dev/null; then
-    printf '%02d\n' "$stored_num"
-    return 0
-  fi
-
-  inferred_round=$(infer_legacy_current_round)
-  echo "$inferred_round"
+  uat_resolve_legacy_round "$PHASE_DIR" "$stored_round"
 }
 
 get_stage() {
