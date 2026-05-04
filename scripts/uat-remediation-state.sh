@@ -19,9 +19,10 @@
 #     the stage + ---CONTEXT--- block — identical to calling init directly.
 #   - Both paths emit plan metadata after the stage line:
 #       round=RR              — zero-padded current round number
-#       round_dir=<path>      — path to the current round directory
-#       research_path=<path>  — path to existing RESEARCH.md (empty if none)
-#       plan_path=<path>      — path to existing PLAN.md (empty if none)
+#       round_dir=<path>      — absolute path to the current host round directory
+#       research_path=<path>  — absolute path to existing RESEARCH.md (empty if none)
+#       plan_path=<path>      — absolute path to existing PLAN.md (empty if none)
+#       summary_path=<path>   — absolute path where SUMMARY.md must be written
 #     Stage-aware: for plan/execute stages, uses file presence to find
 #     the correct working state (handles session-death-before-advance).
 #     This eliminates Search/Glob tool calls the orchestrator would otherwise need.
@@ -46,6 +47,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f "$SCRIPT_DIR/uat-utils.sh" ]; then
   source "$SCRIPT_DIR/uat-utils.sh"
 fi
+if [ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ]; then
+  # shellcheck source=scripts/lib/vbw-config-root.sh
+  source "$SCRIPT_DIR/lib/vbw-config-root.sh"
+fi
 
 CMD="${1:-}"
 PHASE_DIR="${2:-}"
@@ -56,10 +61,121 @@ if [ -z "$CMD" ] || [ -z "$PHASE_DIR" ]; then
   exit 1
 fi
 
-# Milestone path guard: refuse to init/advance remediation in archived milestones.
-# Archived milestones are read-only; remediation must happen in active phases.
+reject_milestone_phase_dir() {
+  local phase_dir="$1"
+
+  # Milestone path guard: refuse to init/advance remediation in archived milestones.
+  # Archived milestones are read-only; remediation must happen in active phases.
+  case "$phase_dir" in
+    */.vbw-planning/milestones/*|.vbw-planning/milestones/*)
+      echo "Error: refusing to operate on archived milestone path: $phase_dir" >&2
+      echo "Remediation must target active phases in .vbw-planning/phases/" >&2
+      echo "Use create-remediation-phase.sh to create active remediation phases from milestone UAT." >&2
+      exit 1
+      ;;
+  esac
+}
+
+canonicalize_existing_or_parent() {
+  local path="$1" parent base parent_real
+
+  if [ -d "$path" ]; then
+    (cd "$path" && pwd -P)
+    return 0
+  fi
+
+  parent=$(dirname "$path")
+  base=$(basename "$path")
+  if parent_real=$(cd "$parent" 2>/dev/null && pwd -P); then
+    printf '%s/%s\n' "$parent_real" "$base"
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+translate_claude_sidechain_phase_candidate() {
+  local candidate="$1" sidechain_root="${VBW_CLAUDE_SIDECHAIN_ROOT:-}" host_root="${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}" rel_phase_path
+
+  if [ -z "$sidechain_root" ] || [ -z "$host_root" ] || [ ! -f "$host_root/.vbw-planning/config.json" ]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  case "$candidate" in
+    "$sidechain_root"/.vbw-planning/phases/*)
+      rel_phase_path="${candidate#"$sidechain_root"/.vbw-planning/phases/}"
+      printf '%s/.vbw-planning/phases/%s\n' "$host_root" "$rel_phase_path"
+      ;;
+    *)
+      printf '%s\n' "$candidate"
+      ;;
+  esac
+}
+
+normalize_active_phase_dir_root() {
+  local candidate="$1" phase_root suffix phase_slug
+
+  case "$candidate" in
+    */.vbw-planning/phases/*)
+      phase_root="${candidate%%/.vbw-planning/phases/*}"
+      suffix="${candidate#*/.vbw-planning/phases/}"
+      phase_slug="${suffix%%/*}"
+      if [ -z "$phase_root" ] || [ -z "$phase_slug" ]; then
+        echo "Error: UAT remediation phase must include an active phase slug: $candidate" >&2
+        exit 1
+      fi
+      printf '%s/.vbw-planning/phases/%s\n' "$phase_root" "$phase_slug"
+      ;;
+    *)
+      printf '%s\n' "$candidate"
+      ;;
+  esac
+}
+
+canonicalize_phase_dir() {
+  local raw_phase_dir="$1" candidate phase_root
+
+  if type find_vbw_root >/dev/null 2>&1; then
+    find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
+  fi
+
+  case "$raw_phase_dir" in
+    /*) candidate="$raw_phase_dir" ;;
+    *)  candidate="${VBW_CONFIG_ROOT:-$(pwd -P)}/$raw_phase_dir" ;;
+  esac
+
+  candidate=$(canonicalize_existing_or_parent "$candidate")
+  candidate=$(translate_claude_sidechain_phase_candidate "$candidate")
+  candidate=$(canonicalize_existing_or_parent "$candidate")
+  candidate=$(normalize_active_phase_dir_root "$candidate")
+  candidate=$(canonicalize_existing_or_parent "$candidate")
+  reject_milestone_phase_dir "$candidate"
+
+  case "$candidate" in
+    */.vbw-planning/phases/*) ;;
+    *)
+      echo "Error: UAT remediation phase must be under active .vbw-planning/phases/: $candidate" >&2
+      echo "Remediation must target active phases, not archived milestones or arbitrary directories." >&2
+      exit 1
+      ;;
+  esac
+
+  phase_root="${candidate%%/.vbw-planning/phases/*}"
+  if [ -z "$phase_root" ] || [ "$phase_root" = "$candidate" ]; then
+    echo "Error: unable to determine VBW root from phase path: $candidate" >&2
+    exit 1
+  fi
+
+  export VBW_CONFIG_ROOT="$phase_root"
+  export VBW_PLANNING_DIR="$phase_root/.vbw-planning"
+  printf '%s\n' "$candidate"
+}
+
+reject_milestone_phase_dir "$PHASE_DIR"
+PHASE_DIR=$(canonicalize_phase_dir "$PHASE_DIR")
+
 case "$PHASE_DIR" in
-  */.vbw-planning/milestones/*|.vbw-planning/milestones/*)
+  */.vbw-planning/milestones/*)
     echo "Error: refusing to operate on archived milestone path: $PHASE_DIR" >&2
     echo "Remediation must target active phases in .vbw-planning/phases/" >&2
     echo "Use create-remediation-phase.sh to create active remediation phases from milestone UAT." >&2
@@ -104,45 +220,16 @@ MAJOR_STAGES=("research" "plan" "execute" "done")
 MINOR_STAGES=("fix" "done")
 
 extract_phase_num() {
-  local phase_basename phase_num
-  phase_basename=$(basename "$PHASE_DIR")
-  phase_num=$(printf '%s\n' "$phase_basename" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
-  printf '%s' "$phase_num"
+  uat_phase_num_for_dir "$PHASE_DIR"
 }
 
 infer_legacy_current_round() {
-  local phase_num archived_rounds current_round
-
-  phase_num=$(extract_phase_num)
-  if [ -z "$phase_num" ] || ! type count_uat_rounds >/dev/null 2>&1; then
-    echo "01"
-    return 0
-  fi
-
-  archived_rounds=$(count_uat_rounds "$PHASE_DIR" "$phase_num")
-  if printf '%s\n' "$archived_rounds" | grep -qE '^[0-9]+$' && [ "$archived_rounds" -gt 0 ] 2>/dev/null; then
-    current_round=$((archived_rounds + 1))
-    printf '%02d\n' "$current_round"
-    return 0
-  fi
-
-  echo "01"
+  uat_infer_legacy_current_round "$PHASE_DIR"
 }
 
 resolve_legacy_round() {
   local stored_round="$1"
-  local inferred_round stored_num
-
-  stored_num=$(echo "$stored_round" | sed 's/^0*//')
-  stored_num="${stored_num:-0}"
-
-  if [ "$stored_num" -gt 1 ] 2>/dev/null; then
-    printf '%02d\n' "$stored_num"
-    return 0
-  fi
-
-  inferred_round=$(infer_legacy_current_round)
-  echo "$inferred_round"
+  uat_resolve_legacy_round "$PHASE_DIR" "$stored_round"
 }
 
 get_stage() {
@@ -237,6 +324,9 @@ start_new_round() {
   echo "research"
   echo "round=${next_round_padded}"
   echo "round_dir=$PHASE_DIR/remediation/uat/round-${next_round_padded}"
+  echo "research_path="
+  echo "plan_path="
+  echo "summary_path=$PHASE_DIR/remediation/uat/round-${next_round_padded}/R${next_round_padded}-SUMMARY.md"
 }
 
 next_stage() {
@@ -403,11 +493,12 @@ emit_plan_metadata() {
   # research/plan files within the round dir. Legacy phase-root fallback
   # only applies when layout=legacy (migrated from old single-word state file),
   # preventing stale artifacts from previous rounds being returned as current.
-  local round round_dir layout research_path="" plan_path=""
+  local round round_dir layout research_path="" plan_path="" summary_path=""
 
   round=$(get_round)
   round_dir=$(get_round_dir)
   layout=$(get_layout)
+  summary_path="${round_dir}/R${round}-SUMMARY.md"
 
   # Check for existing research in round dir first, then legacy phase root
   local rr_research="${round_dir}/R${round}-RESEARCH.md"
@@ -415,9 +506,8 @@ emit_plan_metadata() {
     research_path="$rr_research"
   elif [ "$layout" = "legacy" ]; then
     # Legacy fallback: per-plan research at phase root (brownfield migration only)
-    local phase_basename phase_prefix
-    phase_basename=$(basename "$PHASE_DIR")
-    phase_prefix=$(echo "$phase_basename" | sed 's/-[^0-9].*//')
+    local phase_prefix
+    phase_prefix=$(extract_phase_num)
     local legacy_per_plan legacy_phase_level
     # Scan for highest per-plan research in phase root
     legacy_per_plan=$(find "$PHASE_DIR" -maxdepth 1 -name "${phase_prefix}-*-RESEARCH.md" ! -name '.*' 2>/dev/null | sort | tail -1)
@@ -435,9 +525,8 @@ emit_plan_metadata() {
     plan_path="$rr_plan"
   elif [ "$layout" = "legacy" ]; then
     # Legacy fallback: highest plan file at phase root (brownfield migration only)
-    local phase_basename phase_prefix
-    phase_basename=$(basename "$PHASE_DIR")
-    phase_prefix=$(echo "$phase_basename" | sed 's/-[^0-9].*//')
+    local phase_prefix
+    phase_prefix=$(extract_phase_num)
     local legacy_plan
     legacy_plan=$(find "$PHASE_DIR" -maxdepth 1 -name "${phase_prefix}-*-PLAN.md" ! -name '.*' 2>/dev/null | sort | tail -1)
     if [ -n "$legacy_plan" ] && [ -f "$legacy_plan" ]; then
@@ -449,6 +538,7 @@ emit_plan_metadata() {
   echo "round_dir=${round_dir}"
   echo "research_path=${research_path}"
   echo "plan_path=${plan_path}"
+  echo "summary_path=${summary_path}"
 }
 
 case "$CMD" in

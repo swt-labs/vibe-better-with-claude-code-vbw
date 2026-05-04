@@ -949,11 +949,16 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    - Both resume and init paths emit **plan metadata** after the stage line:
      ```text
      round=RR              — zero-padded current round number (e.g., 01)
-     round_dir=<path>      — full path to the round directory (e.g., .vbw-planning/phases/03-slug/remediation/uat/round-01)
-     research_path=<path>  — path to existing RESEARCH.md (empty if none)
-     plan_path=<path>      — path to existing PLAN.md (empty if none)
+    round_dir=<path>      — absolute host-repository path to the round directory
+    research_path=<path>  — absolute host-repository path to existing RESEARCH.md (empty if none)
+    plan_path=<path>      — absolute host-repository path to existing PLAN.md (empty if none)
+    summary_path=<path>   — absolute host-repository path where SUMMARY.md must be written
      ```
      **Use these values directly** — do NOT glob `*-PLAN.md` or search for RESEARCH.md files. The script pre-computes all paths from the phase directory (with legacy phase-root fallback for brownfield projects).
+    <uat_remediation_artifact_contract>
+    `round_dir`, `research_path`, `plan_path`, and `summary_path` are absolute paths in the host repository. Claude Code may run subagents from `.claude/worktrees/agent-*` sidechain CWDs; pass these exact paths to every Scout/Lead/Dev prompt and never rewrite them relative to the current CWD. Do not accept artifacts written under `.claude/worktrees/agent-*` as valid remediation artifacts.
+    In migrated `layout=legacy` projects, non-empty `research_path` or `plan_path` may be an absolute phase-root artifact selected by `uat-remediation-state.sh`; validate that exact metadata path directly instead of rewriting it to `round_dir` or searching for alternatives.
+    </uat_remediation_artifact_contract>
    - If a stage was already persisted (resume after compaction/restart), the script returns the stage word + plan metadata with no side effects.
    - If no stage existed (first entry into remediation), the script initializes the stage file, creates `remediation/uat/round-01/` directory, pre-seeds the phase `{NN}-CONTEXT.md`, and returns the stage word + plan metadata + `---CONTEXT---` separator with the full pre-seeded context content — **use this directly as your remediation context. Do NOT separately read UAT.md or `{NN}-CONTEXT.md` files.**
    - If the returned stage is `done`: UAT remediation already completed for this phase. Display "Remediation already completed. Run `/vbw:vibe` to re-verify." STOP.
@@ -985,11 +990,17 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 
 Execute the current stage based on `STAGE`:
 **File read rule:** Do NOT re-read the active `{phase}-UAT.md` artifact unless step 5 requires earlier archived rounds for recurrence enrichment. Use the single step-2 UAT read as the active-round source of truth, and if step 5 scans archived rounds, exclude that active artifact from the scan. Do NOT read `{phase}-CONTEXT.md` — step 4 already emitted the remediation context when needed.
-**Round metadata prohibition:** Do NOT glob `*-PLAN.md` or search for `*-RESEARCH.md` — use the pre-computed `round`, `round_dir`, `research_path`, and `plan_path` values from step 4.
+**Round metadata prohibition:** Do NOT glob `*-PLAN.md`, search for `*-RESEARCH.md`, or infer summary locations — use the pre-computed `round`, `round_dir`, `research_path`, `plan_path`, and `summary_path` values from step 4. If a subagent reports success but the deterministic validator below fails, treat the stage as incomplete and STOP without advancing state.
 
 #### research
 
-If `research_path` from step 4 is non-empty, research already exists — skip to advancing the stage. Otherwise, spawn Scout (with `subagent_type: "vbw:vbw-scout"`) with the normalized issue list from steps 3-5, **ordered by failure_count descending**, so Scout investigates the relevant code areas for each issue. Use `round` from step 4 as `{RR}`. Pass `<output_path>{round_dir}/R{RR}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file directly. Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and select all materially helpful installed skills for this task, including adjacent/supporting domain skills surfaced by the prompt, logs, error text, related files, or stack context — not just the single most direct skill. The Scout prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. Example: if the prompt or error mentions SwiftData, include `swiftdata` alongside relevant test/build/debug skills. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references. Also evaluate available MCP tools in your system context — if any MCP servers provide documentation, search, or data retrieval capabilities relevant to investigating these issues, note them in the Scout's task context so it prioritizes those tools over generic WebSearch/WebFetch where applicable.
+If `research_path` from step 4 is non-empty, research already exists — validate it before advancing:
+```bash
+bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/validate-uat-remediation-artifact.sh research "{research_path}"
+```
+If validation fails, display the validator error and STOP without advancing state. Otherwise, skip to advancing the stage.
+
+If `research_path` is empty, spawn Scout (with `subagent_type: "vbw:vbw-scout"`) with the normalized issue list from steps 3-5, **ordered by failure_count descending**, so Scout investigates the relevant code areas for each issue. Use `round` from step 4 as `{RR}`. Pass `<output_path>{round_dir}/R{RR}-RESEARCH.md</output_path>` in the Scout prompt so Scout writes the file directly to the absolute host-repository round directory. Before composing the Scout task description, evaluate installed skills visible in your system context — read each skill's description and select only skills directly needed for this research task. Do not include implementation, build, or adjacent domain skills solely because they might become useful in a later Lead or Dev stage. The Scout prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. Example: if the prompt or error mentions SwiftData and the research task requires SwiftData model semantics, include `swiftdata`; do not include it only as a possible future implementation aid. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references. Also evaluate available MCP tools in your system context — if any MCP servers provide documentation, search, or data retrieval capabilities relevant to investigating these issues, note them in the Scout's task context so it prioritizes those tools over generic WebSearch/WebFetch where applicable.
 
 If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning the UAT remediation research Scout. If the helper prints a `<skill_follow_up_files>` block, paste it immediately after the follow-up-read sentence in the spawned payload. Otherwise omit that block.
 
@@ -1013,7 +1024,12 @@ After calling `Skill(...)`, if the loaded skill's instructions reference additio
 ```
 
 - **Live data validation:** When any issue involves external data sources (APIs, databases, services), include in the Scout prompt: *"For issues involving external data sources, use WebFetch to query accessible HTTP endpoints and compare actual responses against what the code expects. For non-HTTP data sources, document what live data needs to be checked and flag it as ⚠ REQUIRES LIVE VALIDATION for the execute stage."*
-- After Scout completes, confirm RESEARCH.md exists (read first line), then advance:
+- After Scout completes, validate the exact research artifact before advancing:
+  ```bash
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/validate-uat-remediation-artifact.sh research "{round_dir}/R{RR}-RESEARCH.md"
+  ```
+  If validation fails, display the validator error and STOP without advancing state. Do not search for an alternate RESEARCH.md.
+- Then advance:
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
   ```
@@ -1021,7 +1037,13 @@ After calling `Skill(...)`, if the loaded skill's instructions reference additio
 
 #### plan
 
-If `plan_path` from step 4 is non-empty, the plan was already written in a previous session — do NOT re-plan. Read the existing plan and advance directly to `execute`. Otherwise, spawn Lead as a **single subagent** to write the remediation plan.
+If `plan_path` from step 4 is non-empty, the plan was already written in a previous session — do NOT re-plan. Validate it, read the existing plan, and advance directly to `execute`:
+```bash
+bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/validate-uat-remediation-artifact.sh plan "{plan_path}"
+```
+If validation fails, display the validator error and STOP without advancing state. If validation succeeds, read the existing plan and advance directly to `execute`.
+
+If `plan_path` is empty, spawn Lead as a **single subagent** to write the remediation plan.
 
 **NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name` or `name` parameters**. This is NOT "Plan mode steps 1-12" — remediation has its own sequential flow that does not use the standard planning pipeline.
 
@@ -1035,7 +1057,7 @@ If `plan_path` from step 4 is non-empty, the plan was already written in a previ
   LEAD_MODEL="$RESOLVED_MODEL"
   LEAD_MAX_TURNS="$RESOLVED_MAX_TURNS"
   ```
-- Before composing the Lead task description, evaluate installed skills visible in your system context — read each skill's description and select all materially helpful installed skills for this task, including adjacent/supporting domain skills surfaced by the prompt, logs, error text, related files, or stack context — not just the single most direct skill. The Lead prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. Example: if the prompt or error mentions SwiftData, include `swiftdata` alongside relevant test/build/debug skills. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+- Before composing the Lead task description, evaluate installed skills visible in your system context — read each skill's description and select only skills directly needed to write the remediation plan. Do not preselect implementation-heavy skills such as SwiftData, SwiftUI, XcodeBuildMCP, database, or accessibility skills unless the planning task itself requires that documentation to produce correct tasks. Instead, record recommended Dev-stage skills in the plan when implementation work will need them. The Lead prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
 - If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning the UAT remediation Lead. If the helper prints a `<skill_follow_up_files>` block, paste it immediately after the follow-up-read sentence in the spawned payload. Otherwise omit that block.
 - Use this payload prefix as the FIRST lines of the UAT remediation Lead prompt:
   ```text
@@ -1061,7 +1083,7 @@ If `plan_path` from step 4 is non-empty, the plan was already written in a previ
   - If `research_path` from step 4 is non-empty: `Read {research_path} for full research findings before planning.` (Lead must read the file, do NOT inline a summary.)
   - The priority-ranked issue list from step 5 with recurring-issue annotations.
   - `"Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md and follow its structure exactly. This template is different from the regular PLAN.md — it has no wave or depends_on fields because remediation tasks are always sequential. Produce a flat ordered task list where each task can see the results of previous tasks."` (Lead must read the template file.)
-  - Output path: `{round_dir}/R{RR}-PLAN.md` (using `round` from step 4 as `{RR}`).
+  - Output path: `{round_dir}/R{RR}-PLAN.md` (using `round` from step 4 as `{RR}` and the absolute `round_dir` from step 4).
 - Display `◆ Spawning Lead agent...` → `✓ Lead agent complete`.
 - Normalize plan filenames:
   ```bash
@@ -1070,7 +1092,11 @@ If `plan_path` from step 4 is non-empty, the plan was already written in a previ
     bash "$NORM_SCRIPT" "{round_dir}"
   fi
   ```
-- Validate: Verify plan has valid frontmatter (phase, round, title, must_haves) and tasks.
+- Validate the exact plan artifact before advancing:
+  ```bash
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/validate-uat-remediation-artifact.sh plan "{round_dir}/R{RR}-PLAN.md"
+  ```
+  If validation fails, display the validator error and STOP without advancing state. Do not search for an alternate PLAN.md.
 - After planning completes, advance:
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
@@ -1084,7 +1110,7 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
 
 **NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation execution spawns Dev agents directly via Task tool with **no `team_name` or `name` parameters**.
 
-- Read `{round_dir}/R{RR}-PLAN.md` (using `round` and `round_dir` from step 4) and extract the task list from the plan frontmatter/body. Each task has an ID (e.g., `P07`, `P08`, `UAT-3`).
+- Read `plan_path` when it is non-empty; otherwise read `{round_dir}/R{RR}-PLAN.md` (using `round` and the absolute `round_dir` from step 4). Extract the task list from the plan frontmatter/body. Each task has an ID (e.g., `P07`, `P08`, `UAT-3`).
 - Resolve Dev model:
   ```bash
   if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh dev .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
@@ -1095,7 +1121,7 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
   DEV_MODEL="$RESOLVED_MODEL"
   DEV_MAX_TURNS="$RESOLVED_MAX_TURNS"
   ```
-- Before composing Dev task descriptions, evaluate installed skills visible in your system context — read each skill's description and select all materially helpful installed skills for this task, including adjacent/supporting domain skills surfaced by the prompt, logs, error text, related files, or stack context — not just the single most direct skill. The Dev prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. Example: if the prompt or error mentions SwiftData, include `swiftdata` alongside relevant test/build/debug skills. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
+- Before composing Dev task descriptions, evaluate installed skills visible in your system context — read each skill's description and select the task-specific skills listed in the remediation plan plus any directly required build, test, documentation, or domain skills for the current task. Do not carry over broad Scout/Lead context or activate skills for unrelated future tasks. The Dev prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
 - If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning the UAT remediation Dev. If the helper prints a `<skill_follow_up_files>` block, paste it immediately after the follow-up-read sentence in the spawned payload. Otherwise omit that block.
 - Use this payload prefix as the FIRST lines of the UAT remediation Dev prompt:
   ```text
@@ -1120,11 +1146,16 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
   - Spawn vbw-dev via Task tool: Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"`. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If empty, omit maxTurns.
   - Dev prompt MUST include:
     - The task details from the plan (description, files to modify, acceptance criteria).
-    - `"Read the remediation summary template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-SUMMARY.md and follow its structure for your task section."` For the **first task only**, also include: `"Create {round_dir}/R{RR}-SUMMARY.md with the YAML frontmatter from the template (populate phase, round, title from the plan; set status to in-progress, tasks_completed to 0, tasks_total to {total}) followed by your ## Task {N}: {name} section."` For **subsequent tasks**, include: `"Append your ## Task {N}: {name} section to {round_dir}/R{RR}-SUMMARY.md. Do NOT rewrite the frontmatter or earlier task sections. Do NOT leave trailing blank lines after your section."`
-    - `"Do NOT create git worktrees. Work in the project root directory."`
+    - `"Read the remediation summary template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-SUMMARY.md and follow its structure for your task section."` For the **first task only**, also include: `"Create {summary_path} with the YAML frontmatter from the template (populate phase, round, title from the plan; set status to in-progress, tasks_completed to 0, tasks_total to {total}) followed by your ## Task {N}: {name} section."` For **subsequent tasks**, include: `"Append your ## Task {N}: {name} section to {summary_path}. Do NOT rewrite the frontmatter or earlier task sections. Do NOT leave trailing blank lines after your section."`
+    - `"Use the absolute host-repository artifact paths in this prompt exactly. Claude may execute from .claude/worktrees/agent-* sidechain CWDs; do not rewrite artifact paths relative to the current CWD or create remediation artifacts inside the sidechain."`
     - If `.vbw-planning/codebase/META.md` exists: `"Read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/ to bootstrap codebase understanding before executing."`
   - Display: `◆ Spawning Dev agent for task {task-id} (${DEV_MODEL})...` → `✓ Dev agent complete for task {task-id}`.
-- **Frontmatter finalization:** After ALL Dev agents have completed, update the YAML frontmatter in `{round_dir}/R{RR}-SUMMARY.md`: set `status` to `complete` (or `partial`/`failed`), `completed` to today's date, `tasks_completed` to the actual count, and populate `commit_hashes`, `files_modified`, and `deviations` with aggregate data from all task sections. Strip any trailing blank lines from the file.
+- **Frontmatter finalization:** After ALL Dev agents have completed, update the YAML frontmatter in `{summary_path}`: set `status` to `complete` (or `partial`/`failed`), `completed` to today's date, `tasks_completed` to the actual count, and populate `commit_hashes`, `files_modified`, and `deviations` with aggregate data from all task sections. Strip any trailing blank lines from the file.
+- **Summary validation:** Validate the exact summary artifact before advancing:
+  ```bash
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/validate-uat-remediation-artifact.sh summary "{summary_path}"
+  ```
+  If validation fails, display the validator error and STOP without advancing state. Do not search for an alternate SUMMARY.md.
 - **Worktree cleanup check:** After execution, check for orphan CC worktrees:
   ```bash
   if [ -d ".claude/worktrees" ] && [ -n "$(ls -A .claude/worktrees 2>/dev/null)" ]; then
