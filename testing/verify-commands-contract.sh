@@ -1171,6 +1171,7 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
   check_allowed_tool_match "$base" "$ALLOWED" "$file" "Agent" '(via[[:space:]]+Task[[:space:]]+tool|Task[[:space:]]+tool[[:space:]]+invocation|subagent_type:)'
   check_allowed_tool_match "$base" "$ALLOWED" "$file" "TeamCreate" '(^|[^[:alnum:]_])TeamCreate([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TeamCreate'
   check_allowed_tool_match "$base" "$ALLOWED" "$file" "TaskCreate" '(^|[^[:alnum:]_])TaskCreate([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TaskCreate'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "TodoWrite" '(^|[^[:alnum:]_])TodoWrite([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TodoWrite|disallow.*TodoWrite|forbid.*TodoWrite'
   check_allowed_tool_match "$base" "$ALLOWED" "$file" "SendMessage" '(^|[^[:alnum:]_])SendMessage([^[:alnum:]_]|$)' 'do[[:space:]]+not.*SendMessage'
   check_allowed_tool_match "$base" "$ALLOWED" "$file" "TeamDelete" '(^|[^[:alnum:]_])TeamDelete([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TeamDelete'
 done
@@ -1247,6 +1248,24 @@ if grep -q '\*\*TodoWrite progress list (NON-NEGOTIABLE' <<< "$uat_section"; the
   pass "UAT Remediation step 4 explicitly references TodoWrite"
 else
   fail "UAT Remediation step 4 missing 'TodoWrite progress list' heading — risk of TaskCreate conflation (see issue #367)"
+fi
+
+if contains_literal "$uat_section" 'TodoWrite is the only progress tracker for these stages'; then
+  pass "UAT Remediation declares TodoWrite as the sole stage progress tracker"
+else
+  fail "UAT Remediation missing explicit TodoWrite-only stage progress tracker contract"
+fi
+
+if contains_literal "$uat_section" 'Do not represent Research, Plan, Execute, or Fix as TaskCreate/TaskUpdate items'; then
+  pass "UAT Remediation forbids TaskCreate/TaskUpdate stage trackers"
+else
+  fail "UAT Remediation missing TaskCreate/TaskUpdate stage-tracker prohibition"
+fi
+
+if contains_literal "$uat_section" 'TaskCreate/Agent is allowed only for real Scout/Lead/Dev work-unit delegation inside the current stage'; then
+  pass "UAT Remediation distinguishes progress tracking from Scout/Lead/Dev delegation"
+else
+  fail "UAT Remediation missing delegation/progress-tracking distinction"
 fi
 
 echo ""

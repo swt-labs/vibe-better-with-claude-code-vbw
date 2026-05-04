@@ -583,23 +583,75 @@ EOF
 }
 
 @test "get-or-init research_path finds file in round dir" {
+  local phase_dir_physical research_path
   mkdir -p "$PHASE_DIR/remediation/uat/round-01"
   printf 'stage=research\nround=01\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
   echo "# Research" > "$PHASE_DIR/remediation/uat/round-01/R01-RESEARCH.md"
+  phase_dir_physical="$(cd "$PHASE_DIR" && pwd -P)"
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^research_path=.*remediation/uat/round-01/R01-RESEARCH.md$"
+  research_path=$(awk -F= '/^research_path=/ { print $2; exit }' <<< "$output")
+  [ "$research_path" = "$phase_dir_physical/remediation/uat/round-01/R01-RESEARCH.md" ]
+  [[ "$research_path" = /* ]]
 }
 
 @test "get-or-init plan_path finds file in round dir" {
+  local phase_dir_physical plan_path
   mkdir -p "$PHASE_DIR/remediation/uat/round-01"
   printf 'stage=plan\nround=01\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
   echo "# Plan" > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md"
+  phase_dir_physical="$(cd "$PHASE_DIR" && pwd -P)"
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^plan_path=.*remediation/uat/round-01/R01-PLAN.md$"
+  plan_path=$(awk -F= '/^plan_path=/ { print $2; exit }' <<< "$output")
+  [ "$plan_path" = "$phase_dir_physical/remediation/uat/round-01/R01-PLAN.md" ]
+  [[ "$plan_path" = /* ]]
+}
+
+@test "get-or-init sidechain resume emits host research_path for existing round research" {
+  local host_root host_phase_dir sidechain_dir sidechain_phase_dir research_path
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-sidechain-resume/remediation/uat/round-01"
+  mkdir -p "$host_root/.claude/worktrees/agent-test/.vbw-planning/phases/01-sidechain-resume"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-sidechain-resume"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+  sidechain_phase_dir="$sidechain_dir/.vbw-planning/phases/01-sidechain-resume"
+  printf 'stage=research\nround=01\nlayout=round-dir\n' > "$host_phase_dir/remediation/uat/.uat-remediation-stage"
+  echo "# Host research" > "$host_phase_dir/remediation/uat/round-01/R01-RESEARCH.md"
+
+  run bash -c 'cd "$1" && bash "$2/uat-remediation-state.sh" get-or-init "$3" "major"' _ "$sidechain_dir" "$SCRIPTS_DIR" "$sidechain_phase_dir"
+  [ "$status" -eq 0 ]
+  research_path=$(awk -F= '/^research_path=/ { print $2; exit }' <<< "$output")
+  [ "$research_path" = "$host_phase_dir/remediation/uat/round-01/R01-RESEARCH.md" ]
+  [[ "$research_path" = /* ]]
+  [[ "$research_path" != *"/.claude/worktrees/agent-test/"* ]]
+  [ ! -d "$sidechain_phase_dir/remediation" ]
+}
+
+@test "get-or-init sidechain resume emits host plan_path for existing round plan" {
+  local host_root host_phase_dir sidechain_dir sidechain_phase_dir plan_path
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-sidechain-resume/remediation/uat/round-01"
+  mkdir -p "$host_root/.claude/worktrees/agent-test/.vbw-planning/phases/01-sidechain-resume"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-sidechain-resume"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+  sidechain_phase_dir="$sidechain_dir/.vbw-planning/phases/01-sidechain-resume"
+  printf 'stage=plan\nround=01\nlayout=round-dir\n' > "$host_phase_dir/remediation/uat/.uat-remediation-stage"
+  echo "# Host plan" > "$host_phase_dir/remediation/uat/round-01/R01-PLAN.md"
+
+  run bash -c 'cd "$1" && bash "$2/uat-remediation-state.sh" get-or-init "$3" "major"' _ "$sidechain_dir" "$SCRIPTS_DIR" "$sidechain_phase_dir"
+  [ "$status" -eq 0 ]
+  plan_path=$(awk -F= '/^plan_path=/ { print $2; exit }' <<< "$output")
+  [ "$plan_path" = "$host_phase_dir/remediation/uat/round-01/R01-PLAN.md" ]
+  [[ "$plan_path" = /* ]]
+  [[ "$plan_path" != *"/.claude/worktrees/agent-test/"* ]]
+  [ ! -d "$sidechain_phase_dir/remediation" ]
 }
 
 @test "get-or-init plan_path falls back to highest legacy phase-root plan when layout=legacy" {
