@@ -139,8 +139,12 @@ roadmap_numbering_scheme() {
     ordinal_nums+=("$idx")
   done < <(list_canonical_phase_dirs "$phases_dir")
 
-  if [ "${#checklist_nums[@]}" -eq 0 ] || [ "${#prefix_nums[@]}" -eq 0 ]; then
+  if [ "${#prefix_nums[@]}" -eq 0 ]; then
     printf '%s\n' "unknown"
+    return 0
+  fi
+  if [ "${#checklist_nums[@]}" -eq 0 ]; then
+    printf '%s\n' "prefix"
     return 0
   fi
 

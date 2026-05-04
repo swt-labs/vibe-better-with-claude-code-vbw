@@ -1510,6 +1510,30 @@ EOF
   [ "$verdict" = "pass" ] || [ "$verdict" = "fail" ]
 }
 
+@test "roadmap_vs_summaries reports missing entries for headings-only ROADMAP" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+### Phase 1: Setup
+### Phase 2: Backend API
+### Phase 3: Frontend
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  local c2_pass c2_detail
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
+  [ "$c2_pass" = "false" ]
+  [[ "$c2_detail" == *"phase directory 1 exists on disk but no matching ROADMAP checklist entry"* ]]
+  [[ "$c2_detail" == *"phase directory 2 exists on disk but no matching ROADMAP checklist entry"* ]]
+  [[ "$c2_detail" == *"phase directory 3 exists on disk but no matching ROADMAP checklist entry"* ]]
+  [[ "$c2_detail" != *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
+}
+
 @test "state_vs_roadmap handles checklist-only ROADMAP" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
