@@ -1210,7 +1210,8 @@ EOF
 
   local c2_detail
   c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
-  [[ "$c2_detail" == *"no matching phase directory"* ]]
+  [[ "$c2_detail" == *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
+  [[ "$c2_detail" != *"phase 1 referenced in ROADMAP.md but no matching phase directory"* ]]
 }
 
 @test "roadmap references phase with no matching dir fails in advisory mode too" {
@@ -1236,7 +1237,8 @@ EOF
 
   local c2_detail
   c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
-  [[ "$c2_detail" == *"no matching phase directory"* ]]
+  [[ "$c2_detail" == *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
+  [[ "$c2_detail" != *"phase 1 referenced in ROADMAP.md but no matching phase directory"* ]]
 }
 
 # ---------------------------------------------------------------------------
@@ -1978,9 +1980,8 @@ ROADMAP
   c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
   c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
   [ "$c2_pass" = "false" ]
-  [[ "$c2_detail" == *"phase"* ]]
-  [[ "$c2_detail" == *"2"* ]]
-  [[ "$c2_detail" == *"no matching ROADMAP"* ]]
+  [[ "$c2_detail" == *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
+  [[ "$c2_detail" != *"phase directory 2 exists on disk but no matching ROADMAP checklist entry"* ]]
 }
 
 @test "roadmap_vs_summaries passes when roadmap and dirs fully aligned" {
@@ -2035,6 +2036,55 @@ EOF
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode archive
   if [ "$status" -ne 0 ]; then echo "$output" >&2; fi
   [ "$status" -eq 0 ]
+}
+
+@test "roadmap_vs_summaries reports unknown scheme without guessed phase details" {
+  cd "$TEST_TEMP_DIR"
+  local root="$TEST_TEMP_DIR/.vbw-planning"
+
+  cat > "$root/STATE.md" <<'EOF'
+# State
+**Project:** My Test Project
+**Milestone:** MVP
+Phase: 2 of 3 (Build)
+Plans: 1/1
+Progress: 100%
+Status: active
+EOF
+
+  cat > "$root/PROJECT.md" <<'EOF'
+# My Test Project
+EOF
+
+  cat > "$root/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+
+### Phase 1: Setup
+### Phase 2: Build
+EOF
+
+  mkdir -p "$root/phases/01-setup" "$root/phases/03-build" "$root/phases/04-deploy"
+  echo '# Plan' > "$root/phases/01-setup/01-01-PLAN.md"
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > "$root/phases/01-setup/01-01-SUMMARY.md"
+  echo '# Plan' > "$root/phases/03-build/03-01-PLAN.md"
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > "$root/phases/03-build/03-01-SUMMARY.md"
+  echo '# Plan' > "$root/phases/04-deploy/04-01-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c2_pass c2_detail
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
+  [ "$c2_pass" = "false" ]
+  [[ "$c2_detail" == *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
+  [[ "$c2_detail" != *"phase 1 referenced in ROADMAP.md but no matching phase directory"* ]]
+  [[ "$c2_detail" != *"phase 2 referenced in ROADMAP.md but no matching phase directory"* ]]
+  [[ "$c2_detail" != *"phase directory 3 exists on disk but no matching ROADMAP checklist entry"* ]]
+  [[ "$c2_detail" != *"phase directory 4 exists on disk but no matching ROADMAP checklist entry"* ]]
 }
 
 # ============================================================

@@ -372,6 +372,21 @@ run_check_roadmap_vs_summaries() {
   scheme=$(roadmap_numbering_scheme "$ROADMAP_FILE" "$PHASES_DIR")
   if [ "$scheme" = "unknown" ]; then
     mismatches="ROADMAP checklist numbering scheme is mixed or unresolvable"
+    while IFS= read -r line; do
+      phase_num=$(echo "$line" | sed -n 's/^- \[.\] \[\{0,1\}Phase \([0-9][0-9]*\):.*/\1/p')
+      [ -n "$phase_num" ] || continue
+      phase_num=$(normalize_roadmap_phase_num "$phase_num")
+      case " $seen_phases " in
+        *" $phase_num "*)
+          mismatches="${mismatches:+$mismatches, }duplicate ROADMAP checklist entry for phase $phase_num"
+          ;;
+      esac
+      seen_phases="$seen_phases $phase_num"
+    done < <(grep -iE '^\- \[(x| )\] (\[)?Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
+
+    check_roadmap_vs_summaries_pass=false
+    check_roadmap_vs_summaries_detail="$mismatches"
+    return
   fi
 
   while IFS= read -r line; do
@@ -438,8 +453,11 @@ run_check_roadmap_vs_summaries() {
       ordinal)
         rd_num="$rd_idx"
         ;;
-      *)
+      prefix)
         rd_num=$(roadmap_phase_dir_prefix_num "$rd")
+        ;;
+      *)
+        continue
         ;;
     esac
     case " $seen_phases " in
