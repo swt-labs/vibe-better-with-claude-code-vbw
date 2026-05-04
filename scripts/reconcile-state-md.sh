@@ -235,7 +235,7 @@ desired_roadmap_marker_for_phase_num() {
 
 rewrite_roadmap_checklist_projection() {
   local roadmap_file="$1"
-  local tmp line raw_num line_num marker scheme
+  local tmp line line_num marker scheme
 
   [ -f "$roadmap_file" ] || return 0
   scheme=$(roadmap_numbering_scheme "$roadmap_file" "$PHASES_DIR")
@@ -245,9 +245,7 @@ rewrite_roadmap_checklist_projection() {
   : > "$tmp" 2>/dev/null || return 0
 
   while IFS= read -r line || [ -n "$line" ]; do
-    if [[ "$line" =~ ^-\ \[.\]\ \[?Phase\ ([0-9][0-9]*): ]]; then
-      raw_num="${BASH_REMATCH[1]}"
-      line_num=$(normalize_roadmap_phase_num "$raw_num")
+    if line_num=$(roadmap_checklist_phase_num_from_line "$line"); then
       if marker=$(desired_roadmap_marker_for_phase_num "$scheme" "$line_num"); then
         line="- [${marker}]${line:5}"
       fi

@@ -320,15 +320,13 @@ rewrite_roadmap_checkboxes_for_phase() {
   [ -f "$roadmap" ] || return 0
   [ "$#" -gt 0 ] || return 0
 
-  local tmp line raw_num line_num target target_num matched
+  local tmp line line_num target target_num matched
   tmp="${roadmap}.tmp_checkbox.$$.${RANDOM:-0}"
   : > "$tmp" 2>/dev/null || return 0
 
   while IFS= read -r line || [ -n "$line" ]; do
     matched=false
-    if [[ "$line" =~ ^-\ \[.\]\ \[?Phase\ ([0-9][0-9]*): ]]; then
-      raw_num="${BASH_REMATCH[1]}"
-      line_num=$(normalize_roadmap_phase_num "$raw_num")
+    if line_num=$(roadmap_checklist_phase_num_from_line "$line"); then
       for target in "$@"; do
         [ -n "$target" ] || continue
         target_num=$(normalize_roadmap_phase_num "$target")

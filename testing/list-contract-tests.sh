@@ -60,5 +60,6 @@ printf '%s\t%s\n' \
   research-storage-contract    testing/verify-research-storage-contract.sh \
   readme-config-reference      testing/verify-readme-config-reference.sh \
   config-defaults-sync         testing/verify-config-defaults-sync.sh \
+  roadmap-checklist-parser     testing/verify-roadmap-checklist-parser-contract.sh \
   caveman-contract             testing/verify-caveman-contract.sh \
   verify-vibe                  scripts/verify-vibe.sh

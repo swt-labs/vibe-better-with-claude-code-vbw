@@ -2110,6 +2110,56 @@ EOF
   [[ "$c2_detail" != *"phase directory 4 exists on disk but no matching ROADMAP checklist entry"* ]]
 }
 
+@test "roadmap_vs_summaries reports duplicates when numbering scheme is unknown" {
+  cd "$TEST_TEMP_DIR"
+  local root="$TEST_TEMP_DIR/.vbw-planning"
+
+  cat > "$root/STATE.md" <<'EOF'
+# State
+**Project:** My Test Project
+**Milestone:** MVP
+Phase: 2 of 3 (Build)
+Plans: 1/1
+Progress: 100%
+Status: active
+EOF
+
+  cat > "$root/PROJECT.md" <<'EOF'
+# My Test Project
+EOF
+
+  cat > "$root/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] [Phase 01: Setup](#phase-01-setup)
+- [ ] [Phase 02: Build](#phase-02-build)
+- [ ] [Phase 02: Duplicate Build](#phase-02-duplicate-build)
+- [ ] [Phase 04: Deploy](#phase-04-deploy)
+
+### Phase 01: Setup
+### Phase 02: Build
+### Phase 02: Duplicate Build
+### Phase 04: Deploy
+EOF
+
+  mkdir -p "$root/phases/01-setup" "$root/phases/03-build" "$root/phases/04-deploy"
+  echo '# Plan' > "$root/phases/01-setup/01-01-PLAN.md"
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > "$root/phases/01-setup/01-01-SUMMARY.md"
+  echo '# Plan' > "$root/phases/03-build/03-01-PLAN.md"
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > "$root/phases/03-build/03-01-SUMMARY.md"
+  echo '# Plan' > "$root/phases/04-deploy/04-01-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c2_pass c2_detail
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
+  [ "$c2_pass" = "false" ]
+  [[ "$c2_detail" == *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
+  [[ "$c2_detail" == *"duplicate ROADMAP checklist entry for phase 2"* ]]
+}
+
 @test "missing ROADMAP helper functions return structured missing_deps" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
