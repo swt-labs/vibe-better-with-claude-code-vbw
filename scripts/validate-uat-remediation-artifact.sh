@@ -71,10 +71,9 @@ artifact_phase_dir() {
 }
 
 phase_prefix_for_dir() {
-  local phase_dir="$1" phase_basename
+  local phase_dir="$1"
 
-  phase_basename=$(basename "$phase_dir")
-  printf '%s\n' "$phase_basename" | sed 's/-[^0-9].*//'
+  uat_phase_num_for_dir "$phase_dir"
 }
 
 layout_for_phase_dir() {

@@ -525,6 +525,37 @@ EOF
   [ ! -d "$sidechain_phase_dir/remediation" ]
 }
 
+@test "get-or-init normalizes nested active phase subpath back to phase root" {
+  local phase_dir_physical
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  phase_dir_physical="$(cd "$PHASE_DIR" && pwd -P)"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR/remediation/uat/round-01" "major"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round_dir=$phase_dir_physical/remediation/uat/round-01"* ]]
+  [[ "$output" == *"summary_path=$phase_dir_physical/remediation/uat/round-01/R01-SUMMARY.md"* ]]
+  [ -f "$PHASE_DIR/remediation/uat/.uat-remediation-stage" ]
+  [ ! -d "$PHASE_DIR/remediation/uat/round-01/remediation" ]
+}
+
+@test "get-or-init normalizes absolute nested sidechain phase subpath back to host root" {
+  local host_root host_phase_dir sidechain_dir sidechain_phase_subpath
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-nested" "$host_root/.claude/worktrees/agent-test/.vbw-planning/phases/01-nested/remediation/uat"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-nested"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+  sidechain_phase_subpath="$sidechain_dir/.vbw-planning/phases/01-nested/remediation/uat"
+
+  run bash -c 'cd "$1" && bash "$2/uat-remediation-state.sh" get-or-init "$3" "major"' _ "$sidechain_dir" "$SCRIPTS_DIR" "$sidechain_phase_subpath"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round_dir=$host_phase_dir/remediation/uat/round-01"* ]]
+  [[ "$output" == *"summary_path=$host_phase_dir/remediation/uat/round-01/R01-SUMMARY.md"* ]]
+  [ -f "$host_phase_dir/remediation/uat/.uat-remediation-stage" ]
+  [ ! -d "$sidechain_dir/.vbw-planning/phases/01-nested/remediation/uat/remediation" ]
+}
+
 @test "get-or-init rejects relative archived milestone phase path" {
   local host_root archived_phase_dir
   host_root="$TEST_TEMP_DIR/host"
@@ -635,6 +666,23 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "^round=02$"
   echo "$output" | grep -q "^plan_path=.*01-02-PLAN.md$"
+}
+
+@test "legacy fallback uses numeric prefix for digit-starting phase slug" {
+  local digit_phase_dir research_path plan_path
+  digit_phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-2024-refactor"
+  mkdir -p "$digit_phase_dir/remediation/uat"
+  printf 'stage=execute\nround=01\nlayout=legacy\n' > "$digit_phase_dir/remediation/uat/.uat-remediation-stage"
+  touch "$digit_phase_dir/01-03-RESEARCH.md" "$digit_phase_dir/01-04-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$digit_phase_dir" "major"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^research_path=.*01-03-RESEARCH.md$"
+  echo "$output" | grep -q "^plan_path=.*01-04-PLAN.md$"
+  research_path=$(awk -F= '/^research_path=/ { print $2; exit }' <<< "$output")
+  plan_path=$(awk -F= '/^plan_path=/ { print $2; exit }' <<< "$output")
+  [ "$(basename "$research_path")" = "01-03-RESEARCH.md" ]
+  [ "$(basename "$plan_path")" = "01-04-PLAN.md" ]
 }
 
 @test "get-or-init metadata emitted before CONTEXT block" {

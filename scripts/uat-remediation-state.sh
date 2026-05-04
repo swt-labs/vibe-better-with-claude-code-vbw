@@ -112,6 +112,26 @@ translate_claude_sidechain_phase_candidate() {
   esac
 }
 
+normalize_active_phase_dir_root() {
+  local candidate="$1" phase_root suffix phase_slug
+
+  case "$candidate" in
+    */.vbw-planning/phases/*)
+      phase_root="${candidate%%/.vbw-planning/phases/*}"
+      suffix="${candidate#*/.vbw-planning/phases/}"
+      phase_slug="${suffix%%/*}"
+      if [ -z "$phase_root" ] || [ -z "$phase_slug" ]; then
+        echo "Error: UAT remediation phase must include an active phase slug: $candidate" >&2
+        exit 1
+      fi
+      printf '%s/.vbw-planning/phases/%s\n' "$phase_root" "$phase_slug"
+      ;;
+    *)
+      printf '%s\n' "$candidate"
+      ;;
+  esac
+}
+
 canonicalize_phase_dir() {
   local raw_phase_dir="$1" candidate phase_root
 
@@ -126,6 +146,8 @@ canonicalize_phase_dir() {
 
   candidate=$(canonicalize_existing_or_parent "$candidate")
   candidate=$(translate_claude_sidechain_phase_candidate "$candidate")
+  candidate=$(canonicalize_existing_or_parent "$candidate")
+  candidate=$(normalize_active_phase_dir_root "$candidate")
   candidate=$(canonicalize_existing_or_parent "$candidate")
   reject_milestone_phase_dir "$candidate"
 
@@ -484,9 +506,8 @@ emit_plan_metadata() {
     research_path="$rr_research"
   elif [ "$layout" = "legacy" ]; then
     # Legacy fallback: per-plan research at phase root (brownfield migration only)
-    local phase_basename phase_prefix
-    phase_basename=$(basename "$PHASE_DIR")
-    phase_prefix=$(echo "$phase_basename" | sed 's/-[^0-9].*//')
+    local phase_prefix
+    phase_prefix=$(extract_phase_num)
     local legacy_per_plan legacy_phase_level
     # Scan for highest per-plan research in phase root
     legacy_per_plan=$(find "$PHASE_DIR" -maxdepth 1 -name "${phase_prefix}-*-RESEARCH.md" ! -name '.*' 2>/dev/null | sort | tail -1)
@@ -504,9 +525,8 @@ emit_plan_metadata() {
     plan_path="$rr_plan"
   elif [ "$layout" = "legacy" ]; then
     # Legacy fallback: highest plan file at phase root (brownfield migration only)
-    local phase_basename phase_prefix
-    phase_basename=$(basename "$PHASE_DIR")
-    phase_prefix=$(echo "$phase_basename" | sed 's/-[^0-9].*//')
+    local phase_prefix
+    phase_prefix=$(extract_phase_num)
     local legacy_plan
     legacy_plan=$(find "$PHASE_DIR" -maxdepth 1 -name "${phase_prefix}-*-PLAN.md" ! -name '.*' 2>/dev/null | sort | tail -1)
     if [ -n "$legacy_plan" ] && [ -f "$legacy_plan" ]; then

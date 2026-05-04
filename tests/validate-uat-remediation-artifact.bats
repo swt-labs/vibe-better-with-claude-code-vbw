@@ -271,6 +271,45 @@ EOF
   [[ "$output" == *"artifact_path=$selected_plan_physical"* ]]
 }
 
+@test "validator accepts legacy artifacts for digit-starting phase slug" {
+  local digit_phase_dir digit_plan digit_research
+  digit_phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-2024-refactor"
+  digit_plan="$digit_phase_dir/01-04-PLAN.md"
+  digit_research="$digit_phase_dir/01-03-RESEARCH.md"
+  mkdir -p "$digit_phase_dir/remediation/uat"
+  printf 'stage=execute\nround=01\nlayout=legacy\n' > "$digit_phase_dir/remediation/uat/.uat-remediation-stage"
+  write_valid_plan "$digit_plan"
+  write_valid_research "$digit_research"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$digit_plan"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"artifact_valid=true"* ]]
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" research "$digit_research"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"artifact_valid=true"* ]]
+}
+
+@test "validator accepts state-selected legacy plan for digit-starting phase slug" {
+  local digit_phase_dir selected_plan selected_plan_physical plan_path
+  digit_phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-2024-refactor"
+  selected_plan="$digit_phase_dir/01-04-PLAN.md"
+  mkdir -p "$digit_phase_dir/remediation/uat"
+  printf 'stage=execute\nround=01\nlayout=legacy\n' > "$digit_phase_dir/remediation/uat/.uat-remediation-stage"
+  write_valid_plan "$selected_plan"
+  selected_plan_physical="$(cd "$digit_phase_dir" && pwd -P)/01-04-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$digit_phase_dir" "major"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"plan_path=$selected_plan_physical"* ]]
+  plan_path=$(awk -F= '/^plan_path=/ { print $2; exit }' <<< "$output")
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"artifact_valid=true"* ]]
+  [[ "$output" == *"artifact_path=$selected_plan_physical"* ]]
+}
+
 @test "validator rejects legacy-looking summary path" {
   local legacy_summary="$PHASE_DIR/01-SUMMARY.md"
   mkdir -p "$PHASE_DIR/remediation/uat"
