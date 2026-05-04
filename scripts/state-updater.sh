@@ -86,6 +86,52 @@ if ! type roadmap_checklist_phase_num_from_line >/dev/null 2>&1; then
   }
 fi
 
+if ! type roadmap_checklist_duplicate_phase_nums >/dev/null 2>&1; then
+  roadmap_checklist_duplicate_phase_nums() {
+    local roadmap_file="$1"
+    local seen="" emitted="" line num
+
+    [ -f "$roadmap_file" ] || return 0
+
+    while IFS= read -r line || [ -n "$line" ]; do
+      if num=$(roadmap_checklist_phase_num_from_line "$line"); then
+        case " $seen " in
+          *" $num "*)
+            case " $emitted " in
+              *" $num "*) ;;
+              *)
+                printf '%s\n' "$num"
+                emitted="$emitted $num"
+                ;;
+            esac
+            ;;
+        esac
+        seen="$seen $num"
+      fi
+    done < "$roadmap_file"
+  }
+fi
+
+if ! type roadmap_checklist_has_duplicate_phase_nums >/dev/null 2>&1; then
+  roadmap_checklist_has_duplicate_phase_nums() {
+    local roadmap_file="$1"
+    local seen="" line num
+
+    [ -f "$roadmap_file" ] || return 1
+
+    while IFS= read -r line || [ -n "$line" ]; do
+      if num=$(roadmap_checklist_phase_num_from_line "$line"); then
+        case " $seen " in
+          *" $num "*) return 0 ;;
+        esac
+        seen="$seen $num"
+      fi
+    done < "$roadmap_file"
+
+    return 1
+  }
+fi
+
 if ! type roadmap_phase_dir_prefix_num >/dev/null 2>&1; then
   roadmap_phase_dir_prefix_num() {
     local phase_dir="$1" num
@@ -145,6 +191,10 @@ if ! type roadmap_numbering_scheme >/dev/null 2>&1; then
 
     [ -f "$roadmap_file" ] || { printf '%s\n' "unknown"; return 0; }
     [ -d "$phases_dir" ] || { printf '%s\n' "unknown"; return 0; }
+    if roadmap_checklist_has_duplicate_phase_nums "$roadmap_file"; then
+      printf '%s\n' "unknown"
+      return 0
+    fi
 
     while IFS= read -r line || [ -n "$line" ]; do
       if num=$(roadmap_checklist_phase_num_from_line "$line"); then
@@ -319,6 +369,9 @@ rewrite_roadmap_checkboxes_for_phase() {
 
   [ -f "$roadmap" ] || return 0
   [ "$#" -gt 0 ] || return 0
+  if roadmap_checklist_has_duplicate_phase_nums "$roadmap"; then
+    return 0
+  fi
 
   local tmp line line_num target target_num matched
   tmp="${roadmap}.tmp_checkbox.$$.${RANDOM:-0}"

@@ -59,6 +59,7 @@ REQUIRED_FUNCTIONS=(
   roadmap_numbering_scheme
   roadmap_phase_num_for_dir
   roadmap_phase_dir_for_num
+  roadmap_checklist_has_duplicate_phase_nums
 )
 MISSING_FUNCTIONS=()
 for fn in "${REQUIRED_FUNCTIONS[@]}"; do

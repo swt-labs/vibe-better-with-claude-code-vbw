@@ -65,6 +65,7 @@ REQUIRED_FUNCTIONS=(
   roadmap_numbering_scheme
   roadmap_phase_num_for_dir
   roadmap_phase_dir_for_num
+  roadmap_checklist_has_duplicate_phase_nums
 )
 for fn in "${REQUIRED_FUNCTIONS[@]}"; do
   if ! type "$fn" >/dev/null 2>&1; then
@@ -238,6 +239,9 @@ rewrite_roadmap_checklist_projection() {
   local tmp line line_num marker scheme
 
   [ -f "$roadmap_file" ] || return 0
+  if roadmap_checklist_has_duplicate_phase_nums "$roadmap_file"; then
+    return 0
+  fi
   scheme=$(roadmap_numbering_scheme "$roadmap_file" "$PHASES_DIR")
   [ "$scheme" != "unknown" ] || return 0
 

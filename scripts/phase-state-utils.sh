@@ -72,6 +72,48 @@ roadmap_checklist_phase_num_from_line() {
   return 1
 }
 
+roadmap_checklist_duplicate_phase_nums() {
+  local roadmap_file="$1"
+  local seen="" emitted="" line num
+
+  [ -f "$roadmap_file" ] || return 0
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    if num=$(roadmap_checklist_phase_num_from_line "$line"); then
+      case " $seen " in
+        *" $num "*)
+          case " $emitted " in
+            *" $num "*) ;;
+            *)
+              printf '%s\n' "$num"
+              emitted="$emitted $num"
+              ;;
+          esac
+          ;;
+      esac
+      seen="$seen $num"
+    fi
+  done < "$roadmap_file"
+}
+
+roadmap_checklist_has_duplicate_phase_nums() {
+  local roadmap_file="$1"
+  local seen="" line num
+
+  [ -f "$roadmap_file" ] || return 1
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    if num=$(roadmap_checklist_phase_num_from_line "$line"); then
+      case " $seen " in
+        *" $num "*) return 0 ;;
+      esac
+      seen="$seen $num"
+    fi
+  done < "$roadmap_file"
+
+  return 1
+}
+
 roadmap_phase_dir_prefix_num() {
   local phase_dir="$1" num
   num=$(basename "$phase_dir" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
@@ -124,6 +166,10 @@ roadmap_numbering_scheme() {
 
   [ -f "$roadmap_file" ] || { printf '%s\n' "unknown"; return 0; }
   [ -d "$phases_dir" ] || { printf '%s\n' "unknown"; return 0; }
+  if roadmap_checklist_has_duplicate_phase_nums "$roadmap_file"; then
+    printf '%s\n' "unknown"
+    return 0
+  fi
 
   while IFS= read -r line || [ -n "$line" ]; do
     if num=$(roadmap_checklist_phase_num_from_line "$line"); then

@@ -318,6 +318,65 @@ ROADMAP
   [ "$status" -eq 0 ]
 }
 
+@test "reconcile-state leaves duplicate ordinal ROADMAP entries verifier-owned" {
+  cat > .vbw-planning/PROJECT.md <<'PROJECT'
+# Test Project
+PROJECT
+
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 3 of 3 (Deploy)
+Plans: 0/1
+Progress: 0%
+Status: ready
+
+## Phase Status
+- **Phase 1:** Complete
+- **Phase 2:** Planned
+- **Phase 3:** Planned
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 2: Duplicate Build
+- [ ] Phase 3: Deploy
+
+## Phase 1: Setup
+## Phase 2: Build
+## Phase 2: Duplicate Build
+## Phase 3: Deploy
+ROADMAP
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/03-build .vbw-planning/phases/04-deploy
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/03-build/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/03-build/03-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/04-deploy/04-01-PLAN.md
+
+  grep -E '^- \[[ xX]\] Phase 2:' .vbw-planning/ROADMAP.md > "$TEST_TEMP_DIR/roadmap-before.txt"
+
+  run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  grep -E '^- \[[ xX]\] Phase 2:' .vbw-planning/ROADMAP.md > "$TEST_TEMP_DIR/roadmap-after.txt"
+  cmp -s "$TEST_TEMP_DIR/roadmap-before.txt" "$TEST_TEMP_DIR/roadmap-after.txt"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.failed_checks | index("roadmap_vs_summaries")' >/dev/null
+  echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q 'duplicate ROADMAP checklist entry for phase 2'
+}
+
 @test "reconcile-state leaves unknown ROADMAP checklist scheme untouched" {
   cat > .vbw-planning/PROJECT.md <<'PROJECT'
 # Test Project
