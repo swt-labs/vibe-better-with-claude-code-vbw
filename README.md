@@ -457,7 +457,7 @@ VBW uses 7 specialized agents, each with native tool permissions enforced via YA
 | **Scout** | Research and information gathering. The responsible one. | Inherited (all except denied) + MCP | Bash, Edit, NotebookEdit, Task | `plan` |
 | **Architect** | Creates roadmaps and phase structure. Writes plans, not code. | Read, Glob, Grep, Write | Edit, WebFetch, Bash | `acceptEdits` |
 | **Lead** | Merges research + planning + self-review. The one who actually makes decisions. | Read, Glob, Grep, Write, Bash, WebFetch | Edit | `acceptEdits` |
-| **Dev** | Writes code, makes commits, builds things. Handle with care. | Explicit allowlist: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch, LSP, Skill, SendMessage, TaskGet | Outside explicit allowlist: Task, TaskCreate, Agent, TeamCreate, TeamDelete, AskUserQuestion | `acceptEdits` |
+| **Dev** | Writes code, makes commits, builds things. Handle with care. | Explicit allowlist: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch, LSP, Skill, SendMessage, TaskGet | Outside explicit allowlist: Task, TaskCreate, Agent, TeamCreate, TeamDelete, AskUserQuestion, TodoWrite, NotebookEdit | `acceptEdits` |
 | **QA** | Goal-backward verification. Trusts nothing. Persists VERIFICATION.md via write-verification.sh; Write/Edit tools disallowed. | Read, Grep, Glob, Bash | Write, Edit, NotebookEdit | `plan` |
 | **Debugger** | Scientific method bug investigation. One issue, one session. | Full access | -- | `acceptEdits` |
 | **Docs** | Documentation specialist. READMEs, changelogs, API docs, guides. | Read, Grep, Glob, Bash, Write, Edit | -- | `acceptEdits` |

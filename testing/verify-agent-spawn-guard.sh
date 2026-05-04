@@ -265,14 +265,16 @@ test_no_marker_blocks_taskcreate_worktree_isolation_when_config_on
 test_no_marker_blocks_sidechain_cwd_when_config_off() {
   setup_project
 
-  local field output rc
-  for field in cwd working_dir workingDirectory workdir; do
-    output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
-      pass "No marker with config off: sidechain ${field} blocked"
-    else
-      fail "No-marker sidechain ${field} should block when worktree_isolation off (rc=$rc, output=$output)"
-    fi
+  local tool field output rc
+  for tool in Agent TaskCreate; do
+    for field in cwd working_dir workingDirectory workdir; do
+      output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
+      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
+        pass "No marker with config off: ${tool} sidechain ${field} blocked"
+      else
+        fail "No-marker ${tool} sidechain ${field} should block when worktree_isolation off (rc=$rc, output=$output)"
+      fi
+    done
   done
   cleanup
 }
@@ -294,11 +296,14 @@ test_no_marker_allows_regular_project_cwd() {
   setup_project
   mkdir -p "$PROJECT/src/nested"
 
-  if run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "" "$PROJECT/src/nested" "cwd" >/dev/null 2>&1; then
-    pass "No marker: regular project cwd allowed"
-  else
-    fail "No-marker regular project cwd should be allowed"
-  fi
+  local tool
+  for tool in Agent TaskCreate; do
+    if run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/src/nested" "cwd" >/dev/null 2>&1; then
+      pass "No marker: ${tool} regular project cwd allowed"
+    else
+      fail "No-marker ${tool} regular project cwd should be allowed"
+    fi
+  done
   cleanup
 }
 test_no_marker_allows_regular_project_cwd
@@ -308,14 +313,16 @@ test_no_marker_blocks_sidechain_cwd_when_config_on() {
   jq '.worktree_isolation = "on"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
   mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
 
-  local field output rc
-  for field in cwd working_dir workingDirectory workdir; do
-    output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
-      pass "No marker with config on: sidechain ${field} blocked"
-    else
-      fail "No-marker sidechain ${field} should block even when worktree_isolation on (rc=$rc, output=$output)"
-    fi
+  local tool field output rc
+  for tool in Agent TaskCreate; do
+    for field in cwd working_dir workingDirectory workdir; do
+      output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
+      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
+        pass "No marker with config on: ${tool} sidechain ${field} blocked"
+      else
+        fail "No-marker ${tool} sidechain ${field} should block even when worktree_isolation on (rc=$rc, output=$output)"
+      fi
+    done
   done
   cleanup
 }

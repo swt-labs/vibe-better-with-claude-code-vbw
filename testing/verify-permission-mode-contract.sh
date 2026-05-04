@@ -48,6 +48,22 @@ check_not_contains() {
   fi
 }
 
+markdown_table_cell() {
+  local row="$1"
+  local index="$2"
+  printf '%s\n' "$row" | awk -F'|' -v index="$index" '{ cell=$index; gsub(/^[[:space:]]+|[[:space:]]+$/, "", cell); print cell }'
+}
+
+tool_list_contains() {
+  local list="$1"
+  local tool="$2"
+  printf '%s\n' "$list" \
+    | sed 's/^[^:]*:[[:space:]]*//' \
+    | tr ',' '\n' \
+    | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
+    | grep -Fxq "$tool"
+}
+
 echo "=== Agent permissionMode Contract Verification ==="
 
 # Define expected permission modes (bash 3.2 compatible — no associative arrays)
@@ -84,6 +100,9 @@ done
 README_DEV_ROW=$(grep -F '| **Dev** |' "$README_FILE" || true)
 README_PERMISSION_LEGEND=$(grep -F '**Denied / Omitted**' "$README_FILE" || true)
 DEV_DESCRIPTION=$(head -15 "$ROOT/agents/vbw-dev.md" | grep '^description:' || true)
+DEV_TOOLS_FRONTMATTER=$(head -15 "$ROOT/agents/vbw-dev.md" | awk '/^tools:/ { sub(/^tools:[[:space:]]*/, ""); print }')
+README_DEV_ALLOWED_CELL=$(markdown_table_cell "$README_DEV_ROW" 4)
+README_DEV_OMITTED_CELL=$(markdown_table_cell "$README_DEV_ROW" 5)
 
 if [[ -n "$README_DEV_ROW" ]]; then
   pass "README: Dev permission row exists"
@@ -96,11 +115,30 @@ check_contains "dev: description mentions explicit tool allowlist" "$DEV_DESCRIP
 check_not_contains "README: Dev row no longer says Full access" "$README_DEV_ROW" "Full access"
 check_not_contains "README: Dev row no longer leaves denied tools blank" "$README_DEV_ROW" "| -- |"
 check_contains "README: Dev row describes explicit omissions" "$README_DEV_ROW" "Outside explicit allowlist"
-for tool in Read Glob Grep Write Edit Bash WebFetch WebSearch LSP Skill SendMessage TaskGet; do
-  check_contains "README: Dev row mentions allowed tool ${tool}" "$README_DEV_ROW" "$tool"
-done
-for tool in Task TaskCreate Agent TeamCreate TeamDelete AskUserQuestion; do
-  check_contains "README: Dev row mentions omitted tool ${tool}" "$README_DEV_ROW" "$tool"
+for tool in Read Glob Grep Write Edit Bash WebFetch WebSearch LSP Skill SendMessage TaskGet Task TaskCreate Agent TeamCreate TeamDelete AskUserQuestion TodoWrite NotebookEdit; do
+  if tool_list_contains "$DEV_TOOLS_FRONTMATTER" "$tool"; then
+    if tool_list_contains "$README_DEV_ALLOWED_CELL" "$tool"; then
+      pass "README: Dev row allowed cell matches frontmatter for ${tool}"
+    else
+      fail "README: Dev row allowed cell missing frontmatter tool ${tool}"
+    fi
+    if tool_list_contains "$README_DEV_OMITTED_CELL" "$tool"; then
+      fail "README: Dev row omitted cell should not list allowed tool ${tool}"
+    else
+      pass "README: Dev row omitted cell excludes allowed tool ${tool}"
+    fi
+  else
+    if tool_list_contains "$README_DEV_OMITTED_CELL" "$tool"; then
+      pass "README: Dev row omitted cell lists absent tool ${tool}"
+    else
+      fail "README: Dev row omitted cell missing absent tool ${tool}"
+    fi
+    if tool_list_contains "$README_DEV_ALLOWED_CELL" "$tool"; then
+      fail "README: Dev row allowed cell should not list absent tool ${tool}"
+    else
+      pass "README: Dev row allowed cell excludes absent tool ${tool}"
+    fi
+  fi
 done
 
 check_contains "README: permission legend covers allowlist omissions" "$README_PERMISSION_LEGEND" 'for explicit allowlist agents, tools intentionally absent from `tools`'
