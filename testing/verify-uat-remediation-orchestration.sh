@@ -44,6 +44,13 @@ not_contains_literal() {
   ! contains_literal "$haystack" "$needle"
 }
 
+not_contains_regex() {
+  local haystack="$1"
+  local regex="$2"
+
+  ! contains_regex "$haystack" "$regex"
+}
+
 check_contains() {
   local label="$1"
   local haystack="$2"
@@ -74,6 +81,18 @@ check_not_contains() {
   local needle="$3"
 
   if not_contains_literal "$haystack" "$needle"; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
+check_not_regex() {
+  local label="$1"
+  local haystack="$2"
+  local regex="$3"
+
+  if not_contains_regex "$haystack" "$regex"; then
     pass "$label"
   else
     fail "$label"
@@ -117,9 +136,10 @@ check_regex "execute stage validates summary_path" "$UAT_BLOCK" 'validate-uat-re
 check_contains "Dev writes to summary_path" "$UAT_BLOCK" 'Create {summary_path}'
 check_contains "Dev appends to summary_path" "$UAT_BLOCK" 'Append your ## Task {N}: {name} section to {summary_path}'
 check_not_contains "UAT block no longer relies on project-root workaround" "$UAT_BLOCK" 'Do NOT create git worktrees. Work in the project root directory.'
-check_not_contains "UAT block does not include isolation argument syntax" "$UAT_BLOCK" 'isolation:'
-check_not_contains "UAT block does not include background argument syntax" "$UAT_BLOCK" 'run_in_background:'
-check_not_contains "UAT block does not include team_name argument syntax" "$UAT_BLOCK" 'team_name:'
+check_not_regex "UAT block does not include isolation argument syntax" "$UAT_BLOCK" '"?isolation"?[[:space:]]*:'
+check_not_regex "UAT block does not include background argument syntax" "$UAT_BLOCK" '"?run_in_background"?[[:space:]]*:'
+check_not_regex "UAT block does not include team_name argument syntax" "$UAT_BLOCK" '"?team_name"?[[:space:]]*:'
+check_not_regex "UAT block does not include per-agent name argument syntax" "$UAT_BLOCK" '"?name"?[[:space:]]*:'
 check_not_contains "UAT block no longer uses broad skill preselection" "$UAT_BLOCK" 'select all materially helpful installed skills'
 check_contains "Lead avoids implementation-heavy preselection" "$UAT_BLOCK" 'Do not preselect implementation-heavy skills'
 check_contains "Dev uses task-specific skills" "$UAT_BLOCK" 'select the task-specific skills listed in the remediation plan'
