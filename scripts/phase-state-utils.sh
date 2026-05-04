@@ -56,6 +56,117 @@ phase_dir_position() {
   echo ""
 }
 
+normalize_roadmap_phase_num() {
+  local num="$1"
+  num=$(printf '%s' "$num" | sed 's/^0*//')
+  printf '%s\n' "${num:-0}"
+}
+
+roadmap_checklist_phase_num_from_line() {
+  local line="$1" raw_num
+  if [[ "$line" =~ ^-\ \[.\]\ \[?Phase\ ([0-9][0-9]*): ]]; then
+    raw_num="${BASH_REMATCH[1]}"
+    normalize_roadmap_phase_num "$raw_num"
+    return 0
+  fi
+  return 1
+}
+
+roadmap_phase_dir_prefix_num() {
+  local phase_dir="$1" num
+  num=$(basename "$phase_dir" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
+  normalize_roadmap_phase_num "$num"
+}
+
+roadmap_numbering_scheme() {
+  local roadmap_file="$1" phases_dir="$2"
+  local checklist_nums=() prefix_nums=() ordinal_nums=()
+  local line num dir idx checklist_seq prefix_seq ordinal_seq
+
+  [ -f "$roadmap_file" ] || { printf '%s\n' "unknown"; return 0; }
+  [ -d "$phases_dir" ] || { printf '%s\n' "unknown"; return 0; }
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    if num=$(roadmap_checklist_phase_num_from_line "$line"); then
+      checklist_nums+=("$num")
+    fi
+  done < "$roadmap_file"
+
+  idx=0
+  while IFS= read -r dir; do
+    [ -n "$dir" ] || continue
+    idx=$((idx + 1))
+    prefix_nums+=("$(roadmap_phase_dir_prefix_num "$dir")")
+    ordinal_nums+=("$idx")
+  done < <(list_canonical_phase_dirs "$phases_dir")
+
+  if [ "${#checklist_nums[@]}" -eq 0 ] || [ "${#checklist_nums[@]}" -ne "${#prefix_nums[@]}" ]; then
+    printf '%s\n' "unknown"
+    return 0
+  fi
+
+  checklist_seq=$(printf '%s\n' "${checklist_nums[@]}")
+  prefix_seq=$(printf '%s\n' "${prefix_nums[@]}")
+  ordinal_seq=$(printf '%s\n' "${ordinal_nums[@]}")
+
+  if [ "$checklist_seq" = "$prefix_seq" ]; then
+    printf '%s\n' "prefix"
+  elif [ "$checklist_seq" = "$ordinal_seq" ]; then
+    printf '%s\n' "ordinal"
+  else
+    printf '%s\n' "unknown"
+  fi
+}
+
+roadmap_phase_num_for_dir() {
+  local scheme="$1" phase_dir="$2" phases_dir
+  phases_dir="${3:-$(dirname "$phase_dir")}"
+
+  case "$scheme" in
+    prefix)
+      roadmap_phase_dir_prefix_num "$phase_dir"
+      ;;
+    ordinal)
+      phase_dir_position "$phase_dir" "$phases_dir"
+      ;;
+    *)
+      printf '\n'
+      ;;
+  esac
+}
+
+roadmap_phase_dir_for_num() {
+  local scheme="$1" phases_dir="$2" phase_num="$3"
+  local wanted dir idx dir_num
+
+  wanted=$(normalize_roadmap_phase_num "$phase_num")
+  [ -n "$wanted" ] || return 1
+  [ "$wanted" != "0" ] || return 1
+
+  idx=0
+  while IFS= read -r dir; do
+    [ -n "$dir" ] || continue
+    idx=$((idx + 1))
+    case "$scheme" in
+      prefix)
+        dir_num=$(roadmap_phase_dir_prefix_num "$dir")
+        ;;
+      ordinal)
+        dir_num="$idx"
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+    if [ "$dir_num" = "$wanted" ]; then
+      printf '%s\n' "$dir"
+      return 0
+    fi
+  done < <(list_canonical_phase_dirs "$phases_dir")
+
+  return 1
+}
+
 find_phase_dir_by_ref() {
   local planning_dir="$1"
   local phase_ref="$2"

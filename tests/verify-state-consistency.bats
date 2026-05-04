@@ -1995,6 +1995,48 @@ ROADMAP
   [ "$c2_pass" = "true" ]
 }
 
+@test "roadmap_vs_summaries validates ordinal gapped ROADMAP by sorted phase position" {
+  cd "$TEST_TEMP_DIR"
+  local root="$TEST_TEMP_DIR/.vbw-planning"
+
+  cat > "$root/STATE.md" <<'EOF'
+# State
+**Project:** My Test Project
+**Milestone:** MVP
+Phase: 3 of 3 (Deploy)
+Plans: 0/1
+Progress: 0%
+Status: ready
+EOF
+
+  cat > "$root/PROJECT.md" <<'EOF'
+# My Test Project
+EOF
+
+  cat > "$root/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] Phase 1: Setup
+- [x] Phase 2: Build
+- [ ] Phase 3: Deploy
+
+### Phase 1: Setup
+### Phase 2: Build
+### Phase 3: Deploy
+EOF
+
+  mkdir -p "$root/phases/01-setup" "$root/phases/03-build" "$root/phases/04-deploy"
+  echo '# Plan' > "$root/phases/01-setup/01-01-PLAN.md"
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > "$root/phases/01-setup/01-01-SUMMARY.md"
+  echo '# Plan' > "$root/phases/03-build/03-01-PLAN.md"
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > "$root/phases/03-build/03-01-SUMMARY.md"
+  echo '# Plan' > "$root/phases/04-deploy/04-01-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode archive
+  if [ "$status" -ne 0 ]; then echo "$output" >&2; fi
+  [ "$status" -eq 0 ]
+}
+
 # ============================================================
 # Bootstrap link-format ROADMAP tests
 # ============================================================

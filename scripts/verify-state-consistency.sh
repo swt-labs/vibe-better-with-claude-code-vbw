@@ -366,8 +366,13 @@ run_check_roadmap_vs_summaries() {
   fi
 
   local mismatches=""
-  local phase_num checked plans complete phase_dir
+  local phase_num checked plans complete phase_dir scheme
   local seen_phases=""
+
+  scheme=$(roadmap_numbering_scheme "$ROADMAP_FILE" "$PHASES_DIR")
+  if [ "$scheme" = "unknown" ]; then
+    mismatches="ROADMAP checklist numbering scheme is mixed or unresolvable"
+  fi
 
   while IFS= read -r line; do
     # Accept both plain "- [ ] Phase N:" and bootstrap link "- [ ] [Phase N:"
@@ -390,20 +395,11 @@ run_check_roadmap_vs_summaries() {
       checked=true
     fi
 
-    # Find phase dir with matching number
+    # Find phase dir using the ROADMAP's existing numbering scheme.
     phase_dir=""
-    local d d_num
-    while IFS= read -r d; do
-      [ -n "$d" ] || continue
-      d_num=$(basename "$d" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
-      # Remove leading zeros for comparison (sed, not arithmetic — avoids octal for 08/09)
-      d_num=$(printf '%s' "$d_num" | sed 's/^0*//')
-      d_num=${d_num:-0}
-      if [ "$d_num" -eq "$phase_num" ]; then
-        phase_dir="$d"
-        break
-      fi
-    done < <(list_canonical_phase_dirs "$PHASES_DIR")
+    if [ "$scheme" != "unknown" ]; then
+      phase_dir=$(roadmap_phase_dir_for_num "$scheme" "$PHASES_DIR" "$phase_num" 2>/dev/null || true)
+    fi
 
     if [ -z "$phase_dir" ]; then
       mismatches="${mismatches:+$mismatches, }phase $phase_num referenced in ROADMAP.md but no matching phase directory"
@@ -433,12 +429,19 @@ run_check_roadmap_vs_summaries() {
   done < <(grep -iE '^\- \[(x| )\] (\[)?Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
 
   # Reverse check: every phase dir should have a matching ROADMAP entry
-  local rd rd_num
+  local rd rd_num rd_idx
+  rd_idx=0
   while IFS= read -r rd; do
     [ -n "$rd" ] || continue
-    rd_num=$(basename "$rd" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
-    rd_num=$(printf '%s' "$rd_num" | sed 's/^0*//')
-    rd_num=${rd_num:-0}
+    rd_idx=$((rd_idx + 1))
+    case "$scheme" in
+      ordinal)
+        rd_num="$rd_idx"
+        ;;
+      *)
+        rd_num=$(roadmap_phase_dir_prefix_num "$rd")
+        ;;
+    esac
     case " $seen_phases " in
       *" $rd_num "*) ;; # found in roadmap
       *) mismatches="${mismatches:+$mismatches, }phase directory $rd_num exists on disk but no matching ROADMAP checklist entry" ;;

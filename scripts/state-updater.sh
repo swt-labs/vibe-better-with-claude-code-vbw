@@ -48,6 +48,26 @@ else
   }
 fi
 
+if ! type normalize_roadmap_phase_num >/dev/null 2>&1; then
+  normalize_roadmap_phase_num() {
+    local num="$1"
+    num=$(printf '%s' "$num" | sed 's/^0*//')
+    printf '%s\n' "${num:-0}"
+  }
+fi
+
+if ! type roadmap_numbering_scheme >/dev/null 2>&1; then
+  roadmap_numbering_scheme() {
+    printf '%s\n' "unknown"
+  }
+fi
+
+if ! type roadmap_phase_num_for_dir >/dev/null 2>&1; then
+  roadmap_phase_num_for_dir() {
+    printf '\n'
+  }
+fi
+
 planning_root_from_phase_dir() {
   local phase_dir="$1"
   local phases_dir root
@@ -149,12 +169,6 @@ slug_to_name() {
   echo "$1" | sed 's/^[0-9]*-//' | tr '-' ' ' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1'
 }
 
-normalize_roadmap_phase_num() {
-  local num="$1"
-  num=$(printf '%s' "$num" | sed 's/^0*//')
-  printf '%s\n' "${num:-0}"
-}
-
 rewrite_roadmap_checkboxes_for_phase() {
   local roadmap="$1" marker="$2"
   shift 2
@@ -209,14 +223,15 @@ update_roadmap() {
 
   [ -f "$roadmap" ] || return 0
 
-  local dirname phase_num prefix_phase_num plan_count summary_count status date_str
+  local dirname ordinal_phase_num table_phase_num checkbox_phase_num checkbox_scheme prefix_phase_num plan_count summary_count status date_str
   dirname=$(basename "$phase_dir")
   prefix_phase_num=$(echo "$dirname" | sed 's/^\([0-9]*\).*/\1/' | sed 's/^0*//')
-  phase_num=$(phase_dir_position "$phase_dir")
-  if [ -z "$phase_num" ]; then
-    phase_num="$prefix_phase_num"
+  ordinal_phase_num=$(phase_dir_position "$phase_dir")
+  if [ -z "$ordinal_phase_num" ]; then
+    ordinal_phase_num="$prefix_phase_num"
   fi
-  [ -z "$phase_num" ] && return 0
+  [ -z "$ordinal_phase_num" ] && return 0
+  table_phase_num="$ordinal_phase_num"
 
   plan_count=$(count_phase_plans "$phase_dir")
   summary_count=$(count_terminal_summaries "$phase_dir")
@@ -246,21 +261,21 @@ update_roadmap() {
 
   # Update extended progress table row (| num - name | done | status | date |)
   local existing_name
-  existing_name=$(grep -E "^\| *${phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
-  if [ -z "$existing_name" ] && [ -n "$prefix_phase_num" ] && [ "$prefix_phase_num" != "$phase_num" ]; then
-    phase_num="$prefix_phase_num"
-    existing_name=$(grep -E "^\| *${phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
+  existing_name=$(grep -E "^\| *${table_phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
+  if [ -z "$existing_name" ] && [ -n "$prefix_phase_num" ] && [ "$prefix_phase_num" != "$table_phase_num" ]; then
+    table_phase_num="$prefix_phase_num"
+    existing_name=$(grep -E "^\| *${table_phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
   fi
   if [ -n "$existing_name" ]; then
     local tmp_ext="${roadmap}.tmp_ext.$$.${RANDOM:-0}"
-    sed "s/^| *${phase_num} - .*/| ${phase_num} - ${existing_name} | ${summary_count}\/${plan_count} | ${status} | ${date_str} |/" "$tmp" > "$tmp_ext" 2>/dev/null && \
+    sed "s/^| *${table_phase_num} - .*/| ${table_phase_num} - ${existing_name} | ${summary_count}\/${plan_count} | ${status} | ${date_str} |/" "$tmp" > "$tmp_ext" 2>/dev/null && \
       [ -s "$tmp_ext" ] && mv "$tmp_ext" "$tmp" 2>/dev/null || rm -f "$tmp_ext" 2>/dev/null
   fi
 
   # Update simple progress table format (| 01 | ● Done |)
   local padded_num
-  padded_num=$(printf '%02d' "$phase_num" 2>/dev/null || echo "$phase_num")
-  if grep -qE "^\| *0*${phase_num} *\|" "$tmp" 2>/dev/null; then
+  padded_num=$(printf '%02d' "$table_phase_num" 2>/dev/null || echo "$table_phase_num")
+  if grep -qE "^\| *0*${table_phase_num} *\|" "$tmp" 2>/dev/null; then
     local simple_status
     case "$status" in
       complete)      simple_status="● Done" ;;
@@ -270,15 +285,20 @@ update_roadmap() {
       *)             simple_status="$status" ;;
     esac
     local tmp_simple="${roadmap}.tmp_s.$$.${RANDOM:-0}"
-    sed "s/^| *0*${phase_num} *|.*/| ${padded_num} | ${simple_status} |/" "$tmp" > "$tmp_simple" 2>/dev/null && \
+    sed "s/^| *0*${table_phase_num} *|.*/| ${padded_num} | ${simple_status} |/" "$tmp" > "$tmp_simple" 2>/dev/null && \
       [ -s "$tmp_simple" ] && mv "$tmp_simple" "$tmp" 2>/dev/null || rm -f "$tmp_simple" 2>/dev/null
   fi
 
+  checkbox_scheme=$(roadmap_numbering_scheme "$tmp" "$(dirname "$phase_dir")")
+  checkbox_phase_num=$(roadmap_phase_num_for_dir "$checkbox_scheme" "$phase_dir" "$(dirname "$phase_dir")")
+
   # Check/uncheck checkbox based on status
-  if [ "$status" = "complete" ]; then
-    rewrite_roadmap_checkboxes_for_phase "$tmp" "x" "$phase_num" "$prefix_phase_num"
-  elif [ "$status" = "uat issues" ]; then
-    rewrite_roadmap_checkboxes_for_phase "$tmp" " " "$phase_num" "$prefix_phase_num"
+  if [ -n "$checkbox_phase_num" ]; then
+    if [ "$status" = "complete" ]; then
+      rewrite_roadmap_checkboxes_for_phase "$tmp" "x" "$checkbox_phase_num"
+    elif [ "$status" = "uat issues" ]; then
+      rewrite_roadmap_checkboxes_for_phase "$tmp" " " "$checkbox_phase_num"
+    fi
   fi
 
   mv "$tmp" "$roadmap" 2>/dev/null || rm -f "$tmp" 2>/dev/null

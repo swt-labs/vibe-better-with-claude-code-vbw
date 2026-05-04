@@ -260,6 +260,64 @@ ROADMAP
   [ "$status" -eq 0 ]
 }
 
+@test "reconcile-state repairs ordinal ROADMAP checklist drift by sorted phase position" {
+  cat > .vbw-planning/PROJECT.md <<'PROJECT'
+# Test Project
+PROJECT
+
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 3 of 3 (Deploy)
+Plans: 0/1
+Progress: 0%
+Status: ready
+
+## Phase Status
+- **Phase 1:** Complete
+- **Phase 2:** Planned
+- **Phase 3:** Planned
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 3: Deploy
+
+## Phase 1: Setup
+## Phase 2: Build
+## Phase 3: Deploy
+ROADMAP
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/03-build .vbw-planning/phases/04-deploy
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/03-build/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/03-build/03-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/04-deploy/04-01-PLAN.md
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.failed_checks | index("roadmap_vs_summaries")' >/dev/null
+
+  run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  grep -q '^- \[x\] Phase 2: Build$' .vbw-planning/ROADMAP.md
+  grep -q '^- \[ \] Phase 3: Deploy$' .vbw-planning/ROADMAP.md
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  if [ "$status" -ne 0 ]; then echo "$output" >&2; fi
+  [ "$status" -eq 0 ]
+}
+
 @test "reconcile-state preserves terminal-summary display semantics" {
   cat > .vbw-planning/STATE.md <<'STATE'
 # State

@@ -582,6 +582,7 @@ EOF
 
   grep -q '^Phase: 3 of 3 (Deploy)$' .vbw-planning/STATE.md
   grep -q '^- \[x\] Phase 2: Build$' .vbw-planning/ROADMAP.md
+  grep -q '^- \[ \] Phase 3: Deploy$' .vbw-planning/ROADMAP.md
   grep -Eq '^\| 2 - Build \| 1/1 \| complete \| [0-9]{4}-[0-9]{2}-[0-9]{2} \|$' .vbw-planning/ROADMAP.md
 }
 
