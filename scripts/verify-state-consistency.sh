@@ -443,7 +443,7 @@ run_check_roadmap_vs_summaries() {
   done < "$ROADMAP_FILE"
 
   # Reverse check: every phase dir should have a matching ROADMAP entry
-  local rd rd_num rd_idx
+  local rd rd_num rd_idx rd_base rd_prefix
   rd_idx=0
   while IFS= read -r rd; do
     [ -n "$rd" ] || continue
@@ -461,7 +461,18 @@ run_check_roadmap_vs_summaries() {
     esac
     case " $seen_phases " in
       *" $rd_num "*) ;; # found in roadmap
-      *) mismatches="${mismatches:+$mismatches, }phase directory $rd_num exists on disk but no matching ROADMAP checklist entry" ;;
+      *)
+        case "$scheme" in
+          ordinal)
+            rd_base=$(basename "$rd")
+            rd_prefix=$(roadmap_phase_dir_prefix_num "$rd")
+            mismatches="${mismatches:+$mismatches, }ordinal phase position $rd_num maps to phase directory $rd_base (prefix $rd_prefix) but no matching ROADMAP checklist entry"
+            ;;
+          prefix)
+            mismatches="${mismatches:+$mismatches, }phase directory $rd_num exists on disk but no matching ROADMAP checklist entry"
+            ;;
+        esac
+        ;;
     esac
   done < <(list_canonical_phase_dirs "$PHASES_DIR")
 

@@ -2044,6 +2044,53 @@ ROADMAP
   [[ "$c2_detail" == *"phase directory 2 exists on disk but no matching ROADMAP checklist entry"* ]]
 }
 
+@test "roadmap_vs_summaries describes missing ordinal checklist entry with actual dir" {
+  cd "$TEST_TEMP_DIR"
+  local root="$TEST_TEMP_DIR/.vbw-planning"
+
+  cat > "$root/STATE.md" <<'EOF'
+# State
+**Project:** My Test Project
+**Milestone:** MVP
+Phase: 2 of 4 (Build)
+Plans: 0/1
+Progress: 0%
+Status: running
+EOF
+
+  cat > "$root/PROJECT.md" <<'EOF'
+# My Test Project
+EOF
+
+  cat > "$root/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] Phase 1: Setup
+- [ ] Phase 3: Test
+- [ ] Phase 4: Deploy
+EOF
+
+  mkdir -p "$root/phases/01-setup" "$root/phases/03-build" "$root/phases/05-test" "$root/phases/06-deploy"
+  echo '# Plan' > "$root/phases/01-setup/01-01-PLAN.md"
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > "$root/phases/01-setup/01-01-SUMMARY.md"
+  echo '# Plan' > "$root/phases/03-build/03-01-PLAN.md"
+  echo '# Plan' > "$root/phases/05-test/05-01-PLAN.md"
+  echo '# Plan' > "$root/phases/06-deploy/06-01-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c2_pass c2_detail
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
+  [ "$c2_pass" = "false" ]
+  [[ "$c2_detail" == *"ordinal phase position 2"* ]]
+  [[ "$c2_detail" == *"03-build"* ]]
+  [[ "$c2_detail" == *"prefix 3"* ]]
+  [[ "$c2_detail" == *"no matching ROADMAP checklist entry"* ]]
+  [[ "$c2_detail" != *"phase directory 2 exists on disk but no matching ROADMAP checklist entry"* ]]
+}
+
 @test "roadmap_vs_summaries passes when roadmap and dirs fully aligned" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
