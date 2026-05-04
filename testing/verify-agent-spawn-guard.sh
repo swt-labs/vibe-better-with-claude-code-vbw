@@ -247,13 +247,15 @@ test_no_marker_allows_agent_worktree_isolation_when_config_on
 test_no_marker_blocks_sidechain_cwd_when_config_off() {
   setup_project
 
-  local output rc
-  output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "" "$PROJECT/.claude/worktrees/agent-123" "cwd" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
-    pass "No marker with config off: sidechain cwd blocked"
-  else
-    fail "No-marker sidechain cwd should block when worktree_isolation off (rc=$rc, output=$output)"
-  fi
+  local field output rc
+  for field in cwd working_dir workingDirectory workdir; do
+    output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
+      pass "No marker with config off: sidechain ${field} blocked"
+    else
+      fail "No-marker sidechain ${field} should block when worktree_isolation off (rc=$rc, output=$output)"
+    fi
+  done
   cleanup
 }
 test_no_marker_blocks_sidechain_cwd_when_config_off

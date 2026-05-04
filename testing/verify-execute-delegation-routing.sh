@@ -121,6 +121,81 @@ assert_json_array_eq() {
   fi
 }
 
+first_matching_line_number() {
+  local text="$1"
+  local needle="$2"
+
+  awk -v needle="$needle" '
+    index($0, needle) && first == 0 {
+      first = NR
+    }
+
+    END {
+      if (first > 0) print first
+    }
+  ' <<< "$text"
+}
+
+first_matching_regex_line_number() {
+  local text="$1"
+  local regex="$2"
+
+  awk -v regex="$regex" '
+    $0 ~ regex && first == 0 {
+      first = NR
+    }
+
+    END {
+      if (first > 0) print first
+    }
+  ' <<< "$text"
+}
+
+check_literal_before_literal() {
+  local label="$1"
+  local text="$2"
+  local before="$3"
+  local after="$4"
+  local before_line after_line
+
+  before_line=$(first_matching_line_number "$text" "$before")
+  after_line=$(first_matching_line_number "$text" "$after")
+
+  if [ -n "$before_line" ] && [ -n "$after_line" ] && [ "$before_line" -lt "$after_line" ]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
+check_literal_before_regex() {
+  local label="$1"
+  local text="$2"
+  local before="$3"
+  local after_regex="$4"
+  local before_line after_line
+
+  before_line=$(first_matching_line_number "$text" "$before")
+  after_line=$(first_matching_regex_line_number "$text" "$after_regex")
+
+  if [ -n "$before_line" ] && [ -n "$after_line" ] && [ "$before_line" -lt "$after_line" ]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
+extract_protocol_block() {
+  local start="$1"
+  local end="$2"
+
+  awk -v start="$start" -v end="$end" '
+    index($0, start) { in_block = 1 }
+    in_block && end != "" && index($0, end) { in_block = 0 }
+    in_block { print }
+  ' "$EXECUTE_PROTOCOL"
+}
+
 expect_helper_failure() {
   local label="$1"
   shift
@@ -141,6 +216,18 @@ require_file "$HELPER"
 require_file "$GENERATE_CONTRACT"
 require_file "$STATE_UPDATER"
 require_file "$EXECUTE_PROTOCOL"
+
+EXECUTE_PROTOCOL_TEXT=$(cat "$EXECUTE_PROTOCOL")
+QA_REMEDIATION_BLOCK=$(extract_protocol_block 'QA Remediation Loop (inline, same session):' '### Step 4.5')
+QA_REMEDIATION_EXECUTE_BLOCK=$(awk '
+  /\*\*stage=execute:/ { in_block = 1 }
+  /\*\*stage=verify:/ { in_block = 0 }
+  in_block { print }
+' <<< "$QA_REMEDIATION_BLOCK")
+QA_REMEDIATION_VERIFY_BLOCK=$(awk '
+  /\*\*stage=verify:/ { in_block = 1 }
+  in_block { print }
+' <<< "$QA_REMEDIATION_BLOCK")
 
 TMPDIR_BASE=$(mktemp -d)
 
@@ -468,6 +555,9 @@ else
   fail "execute-protocol missing no-tool Dev fail-fast return handling"
 fi
 
+check_literal_before_literal "execute-protocol inspects Dev return before blocker retry handling" "$EXECUTE_PROTOCOL_TEXT" 'When a Dev subagent Task returns, inspect the result immediately' '2. **blocker_report received:**'
+check_literal_before_literal "execute-protocol handles no-tool Dev return before normal blocker retry handling" "$EXECUTE_PROTOCOL_TEXT" '1. **platform/tool provisioning failure:**' '2. **blocker_report received:**'
+
 if grep -Fq '**Non-team spawn-shape rule:**' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'whether the live tool is `Agent` or `TaskCreate`' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'omit `team_name`, per-agent `name`, `run_in_background`, and `isolation`' "$EXECUTE_PROTOCOL" \
@@ -501,6 +591,13 @@ if grep -Fq '<qa_remediation_no_tool_circuit_breaker>' "$EXECUTE_PROTOCOL" \
 else
   fail "execute-protocol missing QA remediation no-tool circuit breaker"
 fi
+
+check_literal_before_regex "execute-protocol QA no-tool breaker appears before remediation state advance" "$QA_REMEDIATION_BLOCK" '<qa_remediation_no_tool_circuit_breaker>' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "execute-protocol QA no-tool breaker appears before deterministic gate" "$QA_REMEDIATION_BLOCK" '<qa_remediation_no_tool_circuit_breaker>' 'qa-result-gate.sh'
+check_literal_before_regex "execute-protocol QA execute Dev breaker appears before execute-stage state advance" "$QA_REMEDIATION_EXECUTE_BLOCK" 'After Dev returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "execute-protocol QA verify breaker appears before known-issue sync" "$QA_REMEDIATION_VERIFY_BLOCK" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" sync-verification'
+check_literal_before_literal "execute-protocol QA verify breaker appears before known-issue promotion" "$QA_REMEDIATION_VERIFY_BLOCK" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" promote-todos'
+check_literal_before_literal "execute-protocol QA verify breaker appears before deterministic gate" "$QA_REMEDIATION_VERIFY_BLOCK" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'qa-result-gate.sh'
 
 if grep -Fq 'When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"`' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "qa"`' "$EXECUTE_PROTOCOL"; then

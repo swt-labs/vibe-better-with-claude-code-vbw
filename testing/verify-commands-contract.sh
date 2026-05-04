@@ -164,6 +164,55 @@ first_matching_line_number() {
   ' <<< "$text"
 }
 
+first_matching_regex_line_number() {
+  local text="$1"
+  local regex="$2"
+
+  awk -v regex="$regex" '
+    $0 ~ regex && first == 0 {
+      first = NR
+    }
+
+    END {
+      if (first > 0) print first
+    }
+  ' <<< "$text"
+}
+
+check_literal_before_literal() {
+  local label="$1"
+  local text="$2"
+  local before="$3"
+  local after="$4"
+  local before_line after_line
+
+  before_line=$(first_matching_line_number "$text" "$before")
+  after_line=$(first_matching_line_number "$text" "$after")
+
+  if [ -n "$before_line" ] && [ -n "$after_line" ] && [ "$before_line" -lt "$after_line" ]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
+check_literal_before_regex() {
+  local label="$1"
+  local text="$2"
+  local before="$3"
+  local after_regex="$4"
+  local before_line after_line
+
+  before_line=$(first_matching_line_number "$text" "$before")
+  after_line=$(first_matching_regex_line_number "$text" "$after_regex")
+
+  if [ -n "$before_line" ] && [ -n "$after_line" ] && [ "$before_line" -lt "$after_line" ]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
 extract_heading_block() {
   local file="$1"
   local heading="$2"
@@ -1054,6 +1103,21 @@ qa_remediation_block="$({
   ' "$VIBE_FILE"
 } || true)"
 
+qa_remediation_execute_block="$({
+  awk '
+    /^- \*\*stage=execute:/ { in_block=1 }
+    /^- \*\*stage=verify:/ { in_block=0 }
+    in_block { print }
+  ' <<< "$qa_remediation_block"
+} || true)"
+
+qa_remediation_verify_block="$({
+  awk '
+    /^- \*\*stage=verify:/ { in_block=1 }
+    in_block { print }
+  ' <<< "$qa_remediation_block"
+} || true)"
+
 if grep -Fq '<qa_remediation_artifact_contract>' <<< "$qa_remediation_block" \
   && grep -Fq '`round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` are authoritative host-repository paths from `qa-remediation-state.sh` metadata' <<< "$qa_remediation_block" \
   && grep -Fq '.claude/worktrees/agent-*' <<< "$qa_remediation_block" \
@@ -1080,12 +1144,20 @@ else
   fail "vibe: QA remediation missing no-tool circuit breaker"
 fi
 
+check_literal_before_regex "vibe: QA no-tool breaker appears before remediation state advance" "$qa_remediation_block" '<qa_remediation_no_tool_circuit_breaker>' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "vibe: QA no-tool breaker appears before deterministic gate" "$qa_remediation_block" '<qa_remediation_no_tool_circuit_breaker>' 'qa-result-gate.sh'
+
 if grep -Fq 'After Dev returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block" \
   && grep -Fq 'After QA returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block"; then
   pass "vibe: QA remediation applies no-tool breaker at Dev and QA return sites"
 else
   fail "vibe: QA remediation missing no-tool breaker at Dev or QA return site"
 fi
+
+check_literal_before_regex "vibe: QA execute Dev breaker appears before execute-stage state advance" "$qa_remediation_execute_block" 'After Dev returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "vibe: QA verify breaker appears before known-issue sync" "$qa_remediation_verify_block" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" sync-verification'
+check_literal_before_literal "vibe: QA verify breaker appears before known-issue promotion" "$qa_remediation_verify_block" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" promote-todos'
+check_literal_before_literal "vibe: QA verify breaker appears before deterministic gate" "$qa_remediation_verify_block" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'qa-result-gate.sh'
 
 if grep -q 'Determine verification scope from `VERIF_PATH`' "$QA_FILE"; then
   pass "qa: standalone QA scope is tied to resolved VERIF_PATH"
