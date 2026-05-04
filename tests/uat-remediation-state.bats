@@ -553,6 +553,16 @@ EOF
   echo "$output" | grep -q "^plan_path=.*remediation/uat/round-01/R01-PLAN.md$"
 }
 
+@test "get-or-init plan_path falls back to highest legacy phase-root plan when layout=legacy" {
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  printf 'stage=execute\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  touch "$PHASE_DIR/01-01-PLAN.md" "$PHASE_DIR/01-03-PLAN.md" "$PHASE_DIR/01-02-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^plan_path=.*01-03-PLAN.md$"
+}
+
 @test "get-or-init research_path falls back to legacy phase root when layout=legacy" {
   mkdir -p "$PHASE_DIR/remediation/uat"
   printf 'stage=research\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
@@ -583,6 +593,17 @@ EOF
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "^research_path=.*remediation/uat/round-01/R01-RESEARCH.md$"
+}
+
+@test "get-or-init round-dir plan takes priority over legacy" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+  printf 'stage=execute\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  echo "# Round plan" > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md"
+  touch "$PHASE_DIR/01-03-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "^plan_path=.*remediation/uat/round-01/R01-PLAN.md$"
 }
 
 @test "get-or-init metadata emitted before CONTEXT block" {

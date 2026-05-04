@@ -47,7 +47,142 @@ extract_frontmatter() {
   ' "$file"
 }
 
+artifact_phase_dir() {
+  local path="$1" root suffix phase_slug
+
+  case "$path" in
+    */.vbw-planning/phases/*/*) ;;
+    *) return 1 ;;
+  esac
+
+  root="${path%%/.vbw-planning/phases/*}"
+  suffix="${path#*/.vbw-planning/phases/}"
+  phase_slug="${suffix%%/*}"
+
+  [ -n "$root" ] || return 1
+  [ -n "$phase_slug" ] || return 1
+  printf '%s/.vbw-planning/phases/%s\n' "$root" "$phase_slug"
+}
+
+phase_prefix_for_dir() {
+  local phase_dir="$1" phase_basename
+
+  phase_basename=$(basename "$phase_dir")
+  printf '%s\n' "$phase_basename" | sed 's/-[^0-9].*//'
+}
+
+layout_for_phase_dir() {
+  local phase_dir="$1" state_file legacy_state_file layout=""
+
+  state_file="$phase_dir/remediation/uat/.uat-remediation-stage"
+  legacy_state_file="$phase_dir/.uat-remediation-stage"
+
+  if [ -f "$state_file" ]; then
+    layout=$(grep '^layout=' "$state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+    echo "${layout:-round-dir}"
+  elif [ -f "$legacy_state_file" ]; then
+    layout=$(grep '^layout=' "$legacy_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+    echo "${layout:-legacy}"
+  else
+    echo "round-dir"
+  fi
+}
+
+round_for_phase_dir() {
+  local phase_dir="$1" state_file legacy_state_file round=""
+
+  state_file="$phase_dir/remediation/uat/.uat-remediation-stage"
+  legacy_state_file="$phase_dir/.uat-remediation-stage"
+
+  if [ -f "$state_file" ]; then
+    round=$(grep '^round=' "$state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+  elif [ -f "$legacy_state_file" ]; then
+    round=$(grep '^round=' "$legacy_state_file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+  fi
+
+  echo "${round:-01}"
+}
+
+selected_legacy_artifact_path() {
+  local phase_dir="$1" artifact_type="$2" phase_prefix round round_dir_artifact phase_root_artifact
+
+  phase_prefix=$(phase_prefix_for_dir "$phase_dir")
+  round=$(round_for_phase_dir "$phase_dir")
+  case "$artifact_type" in
+    research)
+      round_dir_artifact="$phase_dir/remediation/uat/round-${round}/R${round}-RESEARCH.md"
+      if [ -f "$round_dir_artifact" ]; then
+        echo "$round_dir_artifact"
+        return 0
+      fi
+
+      phase_root_artifact=$(find "$phase_dir" -maxdepth 1 -name "${phase_prefix}-*-RESEARCH.md" ! -name '.*' 2>/dev/null | sort | tail -1)
+      if [ -n "$phase_root_artifact" ] && [ -f "$phase_root_artifact" ]; then
+        echo "$phase_root_artifact"
+        return 0
+      fi
+
+      phase_root_artifact="$phase_dir/${phase_prefix}-RESEARCH.md"
+      if [ -f "$phase_root_artifact" ]; then
+        echo "$phase_root_artifact"
+        return 0
+      fi
+      ;;
+    plan)
+      round_dir_artifact="$phase_dir/remediation/uat/round-${round}/R${round}-PLAN.md"
+      if [ -f "$round_dir_artifact" ]; then
+        echo "$round_dir_artifact"
+        return 0
+      fi
+
+      phase_root_artifact=$(find "$phase_dir" -maxdepth 1 -name "${phase_prefix}-*-PLAN.md" ! -name '.*' 2>/dev/null | sort | tail -1)
+      if [ -n "$phase_root_artifact" ] && [ -f "$phase_root_artifact" ]; then
+        echo "$phase_root_artifact"
+        return 0
+      fi
+      ;;
+  esac
+
+  return 1
+}
+
+validate_legacy_phase_root_path() {
+  local expected_suffix="$1" phase_dir phase_prefix artifact_basename layout selected_path
+
+  if [ "$ARTIFACT_TYPE" = "summary" ]; then
+    emit_failure "summary artifacts must use the round-dir layout"
+  fi
+
+  phase_dir=$(artifact_phase_dir "$ARTIFACT_PATH") \
+    || emit_failure "artifact path must point at an active .vbw-planning/phases/ artifact"
+
+  if [ "$(dirname "$ARTIFACT_PATH")" != "$phase_dir" ]; then
+    emit_failure "legacy phase-root artifacts must be direct children of the active phase directory"
+  fi
+
+  phase_prefix=$(phase_prefix_for_dir "$phase_dir")
+  artifact_basename=$(basename "$ARTIFACT_PATH")
+  case "$ARTIFACT_TYPE:$artifact_basename" in
+    research:"${phase_prefix}-RESEARCH.md"|research:"${phase_prefix}"-*-RESEARCH.md|plan:"${phase_prefix}"-*-PLAN.md) ;;
+    *) emit_failure "artifact path must match the expected legacy ${expected_suffix} filename shape" ;;
+  esac
+
+  layout=$(layout_for_phase_dir "$phase_dir")
+  if [ "$layout" != "legacy" ]; then
+    emit_failure "legacy phase-root artifacts require layout=legacy"
+  fi
+
+  selected_path=$(selected_legacy_artifact_path "$phase_dir" "$ARTIFACT_TYPE") \
+    || emit_failure "no current legacy ${ARTIFACT_TYPE} artifact is selected by state metadata"
+
+  if [ "$ARTIFACT_PATH" != "$selected_path" ]; then
+    emit_failure "legacy artifact is stale; expected $selected_path"
+  fi
+}
+
 validate_common_path() {
+  local expected_suffix="$1"
+
   case "$ARTIFACT_PATH" in
     /*) ;;
     *) emit_failure "artifact path must be absolute" ;;
@@ -60,8 +195,8 @@ validate_common_path() {
   esac
 
   case "$ARTIFACT_PATH" in
-    */.vbw-planning/phases/*/remediation/uat/round-[0-9][0-9]/R[0-9][0-9]-"$1".md) ;;
-    *) emit_failure "artifact path must point at the expected active-phase UAT remediation round file" ;;
+    */.vbw-planning/phases/*/remediation/uat/round-[0-9][0-9]/R[0-9][0-9]-"$expected_suffix".md) ;;
+    *) validate_legacy_phase_root_path "$expected_suffix" ;;
   esac
 
   if [ ! -f "$ARTIFACT_PATH" ]; then

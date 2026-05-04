@@ -102,6 +102,7 @@ check_contains "state metadata documents summary_path" "$UAT_BLOCK" 'summary_pat
 check_contains "metadata paths are host-repository absolute paths" "$UAT_BLOCK" 'absolute host-repository path'
 check_contains "artifact contract names sidechain CWDs" "$UAT_BLOCK" '.claude/worktrees/agent-*'
 check_contains "artifact contract passes exact paths to all agents" "$UAT_BLOCK" 'pass these exact paths to every Scout/Lead/Dev prompt'
+check_contains "artifact contract validates legacy metadata paths directly" "$UAT_BLOCK" 'validate that exact metadata path directly instead of rewriting it to `round_dir` or searching for alternatives'
 check_contains "round metadata prohibition includes summary_path" "$UAT_BLOCK" 'round_dir`, `research_path`, `plan_path`, and `summary_path`'
 check_contains "failed artifact validation blocks state advance" "$UAT_BLOCK" 'STOP without advancing state'
 check_regex "research stage validates exact artifact" "$UAT_BLOCK" 'validate-uat-remediation-artifact\.sh research "\{round_dir\}/R\{RR\}-RESEARCH\.md"'
