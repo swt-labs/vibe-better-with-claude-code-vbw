@@ -58,6 +58,9 @@ DELEGATION_MODE=$(echo "$MARKER_STATUS" | jq -r '.delegation_mode // ""' 2>/dev/
 EXPECTED_TEAM_NAME=$(echo "$MARKER_STATUS" | jq -r '.team_name // ""' 2>/dev/null) || exit 0
 MARKER_REASON=$(echo "$MARKER_STATUS" | jq -r '.reason // ""' 2>/dev/null) || exit 0
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null) || exit 0
+TEAM_NAME=$(echo "$INPUT" | jq -r '.tool_input.team_name // ""' 2>/dev/null) || exit 0
+AGENT_NAME=$(echo "$INPUT" | jq -r '.tool_input.name // ""' 2>/dev/null) || exit 0
+RUN_IN_BACKGROUND=$(echo "$INPUT" | jq -r '.tool_input.run_in_background // false' 2>/dev/null) || exit 0
 
 is_teammate_spawn_tool() {
   [ "$TOOL_NAME" = "Agent" ] || [ "$TOOL_NAME" = "TaskCreate" ]
@@ -118,15 +121,15 @@ if is_teammate_spawn_tool; then
     echo "Blocked: teammate spawn requested Claude-side worktree isolation. Omit isolation; when VBW worktree isolation is enabled, use VBW-prepared worktree targeting metadata instead." >&2
     exit 2
   fi
+  if [ -n "$AGENT_NAME" ] && [ -z "$TEAM_NAME" ] && [ "$DELEGATION_MODE" != "team" ]; then
+    echo "Blocked: named non-team teammate spawns are unsupported. Omit name for sequential non-team calls; name is only valid with team_name in true team mode." >&2
+    exit 2
+  fi
 fi
 
 [ "$MARKER_LIVE" = "true" ] || exit 0
 [ "$MODE" = "execute" ] || exit 0
 [ -n "$DELEGATION_MODE" ] || exit 0
-
-TEAM_NAME=$(echo "$INPUT" | jq -r '.tool_input.team_name // ""' 2>/dev/null) || exit 0
-AGENT_NAME=$(echo "$INPUT" | jq -r '.tool_input.name // ""' 2>/dev/null) || exit 0
-RUN_IN_BACKGROUND=$(echo "$INPUT" | jq -r '.tool_input.run_in_background // false' 2>/dev/null) || exit 0
 
 case "$DELEGATION_MODE" in
   team)

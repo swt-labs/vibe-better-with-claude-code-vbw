@@ -77,7 +77,7 @@ run_guard() {
   local project_dir="$1"
   local team_name="$2"
   local run_in_background="$3"
-  local agent_name="${4-dev-01}"
+  local agent_name="${4:-}"
   local working_dir="${5:-$project_dir}"
   local tool_name="${6:-Agent}"
   local active_count="${7:-}"
@@ -98,10 +98,10 @@ run_guard() {
       tool_name: $tool_name,
       tool_input: {
         team_name: $team_name,
-        name: $agent_name,
         run_in_background: $run_in_background
       }
     }
+    | if $agent_name != "" then .tool_input.name = $agent_name else . end
     | if $isolation != "" then .tool_input.isolation = $isolation else . end
     | if $spawn_cwd != "" then .tool_input[$spawn_cwd_field] = $spawn_cwd else . end')
 
@@ -119,7 +119,7 @@ run_guard_without_exported_root() {
   local project_dir="$1"
   local team_name="$2"
   local run_in_background="$3"
-  local agent_name="${4-dev-01}"
+  local agent_name="${4:-}"
   local working_dir="${5:-$project_dir}"
   local tool_name="${6:-Agent}"
   local active_count="${7:-}"
@@ -140,10 +140,10 @@ run_guard_without_exported_root() {
       tool_name: $tool_name,
       tool_input: {
         team_name: $team_name,
-        name: $agent_name,
         run_in_background: $run_in_background
       }
     }
+    | if $agent_name != "" then .tool_input.name = $agent_name else . end
     | if $isolation != "" then .tool_input.isolation = $isolation else . end
     | if $spawn_cwd != "" then .tool_input[$spawn_cwd_field] = $spawn_cwd else . end')
 
@@ -262,13 +262,33 @@ test_no_marker_blocks_taskcreate_worktree_isolation_when_config_on() {
 }
 test_no_marker_blocks_taskcreate_worktree_isolation_when_config_on
 
-test_no_marker_blocks_sidechain_cwd_when_config_off() {
+test_no_marker_blocks_sidechain_cwd_when_config_missing() {
   setup_project
 
   local tool field output rc
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
       output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
+      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
+        pass "No marker with missing config key: ${tool} sidechain ${field} blocked"
+      else
+        fail "No-marker ${tool} sidechain ${field} should block when worktree_isolation key is missing (rc=$rc, output=$output)"
+      fi
+    done
+  done
+  cleanup
+}
+test_no_marker_blocks_sidechain_cwd_when_config_missing
+
+test_no_marker_blocks_sidechain_cwd_when_config_off() {
+  setup_project
+  jq '.worktree_isolation = "off"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
+  mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
+
+  local tool field output rc
+  for tool in Agent TaskCreate; do
+    for field in cwd working_dir workingDirectory workdir; do
+      output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
       if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
         pass "No marker with config off: ${tool} sidechain ${field} blocked"
       else
@@ -280,10 +300,26 @@ test_no_marker_blocks_sidechain_cwd_when_config_off() {
 }
 test_no_marker_blocks_sidechain_cwd_when_config_off
 
+test_no_marker_blocks_named_non_team_spawns() {
+  setup_project
+
+  local tool output rc
+  for tool in Agent TaskCreate; do
+    output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
+      pass "No marker: named non-team ${tool} blocked"
+    else
+      fail "No-marker named non-team ${tool} should block (rc=$rc, output=$output)"
+    fi
+  done
+  cleanup
+}
+test_no_marker_blocks_named_non_team_spawns
+
 test_no_marker_allows_non_agent_worktree_cwd_when_config_off() {
   setup_project
 
-  if run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "" "$PROJECT/.claude/worktrees/manual-workdir" "cwd" >/dev/null 2>&1; then
+  if run_guard "$PROJECT" "" false "" "$PROJECT" "Agent" "" "" "$PROJECT/.claude/worktrees/manual-workdir" "cwd" >/dev/null 2>&1; then
     pass "No marker with config off: non-agent worktree cwd allowed"
   else
     fail "No-marker non-agent .claude/worktrees cwd should be allowed when worktree_isolation off"
@@ -298,7 +334,7 @@ test_no_marker_allows_regular_project_cwd() {
 
   local tool
   for tool in Agent TaskCreate; do
-    if run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/src/nested" "cwd" >/dev/null 2>&1; then
+    if run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/src/nested" "cwd" >/dev/null 2>&1; then
       pass "No marker: ${tool} regular project cwd allowed"
     else
       fail "No-marker ${tool} regular project cwd should be allowed"
@@ -419,7 +455,7 @@ test_team_mode_allows_team_scoped_spawn() {
   write_execution_state "corr-123"
   write_marker execute team "vbw-phase-01" "corr-123"
 
-  if run_guard "$PROJECT" "vbw-phase-01" true >/dev/null 2>&1; then
+  if run_guard "$PROJECT" "vbw-phase-01" true "dev-01" >/dev/null 2>&1; then
     pass "Execute team mode allows team-scoped spawn"
   else
     fail "Execute team mode unexpectedly blocked valid team-scoped spawn"
@@ -450,7 +486,7 @@ test_team_mode_requires_matching_team_name() {
   write_marker execute team "vbw-phase-01" "corr-123"
 
   local output rc
-  output=$(run_guard "$PROJECT" "vbw-phase-99" true 2>&1) && rc=$? || rc=$?
+  output=$(run_guard "$PROJECT" "vbw-phase-99" true "dev-01" 2>&1) && rc=$? || rc=$?
   if [ "$rc" -eq 2 ] && echo "$output" | grep -q "requires team_name 'vbw-phase-01'"; then
     pass "Execute team mode blocks mismatched team_name"
   else
@@ -511,7 +547,7 @@ test_non_team_mode_allows_first_taskcreate_when_no_agent_active() {
   write_execution_state "corr-123"
   write_marker execute subagent "" "corr-123"
 
-  if run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "TaskCreate" "0" >/dev/null 2>&1; then
+  if run_guard "$PROJECT" "" false "" "$PROJECT" "TaskCreate" "0" >/dev/null 2>&1; then
     pass "Execute subagent mode allows first TaskCreate when no agent is active"
   else
     fail "Execute subagent mode unexpectedly blocked first TaskCreate"
@@ -526,7 +562,7 @@ test_non_team_mode_blocks_overlapping_taskcreate() {
   write_marker execute subagent "" "corr-123"
 
   local output rc
-  output=$(run_guard "$PROJECT" "" false "dev-02" "$PROJECT" "TaskCreate" "1" 2>&1) && rc=$? || rc=$?
+  output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "TaskCreate" "1" 2>&1) && rc=$? || rc=$?
   if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'must serialize non-team TaskCreate spawns'; then
     pass "Execute subagent mode blocks overlapping TaskCreate spawns"
   else
@@ -542,7 +578,7 @@ test_direct_mode_blocks_overlapping_taskcreate() {
   write_marker execute direct "" "corr-123"
 
   local output rc
-  output=$(run_guard "$PROJECT" "" false "dev-03" "$PROJECT" "TaskCreate" "1" 2>&1) && rc=$? || rc=$?
+  output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "TaskCreate" "1" 2>&1) && rc=$? || rc=$?
   if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'must serialize non-team TaskCreate spawns'; then
     pass "Execute direct mode blocks overlapping TaskCreate spawns"
   else
@@ -583,6 +619,24 @@ test_non_team_mode_blocks_team_name() {
   cleanup
 }
 test_non_team_mode_blocks_team_name
+
+test_non_team_mode_blocks_named_non_team_spawns() {
+  setup_project
+  write_execution_state "corr-123"
+  write_marker execute subagent "" "corr-123"
+
+  local tool output rc
+  for tool in Agent TaskCreate; do
+    output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
+      pass "Execute subagent mode blocks named non-team ${tool}"
+    else
+      fail "Execute subagent mode should block named non-team ${tool} (rc=$rc, output=$output)"
+    fi
+  done
+  cleanup
+}
+test_non_team_mode_blocks_named_non_team_spawns
 
 test_fix_marker_is_ignored() {
   setup_project
@@ -637,7 +691,7 @@ test_sidechain_taskcreate_uses_host_state_when_host_count_absent() {
   write_sidechain_copied_state
   printf '9\n' > "$SIDECHAIN/.vbw-planning/.active-agent-count"
 
-  if run_guard_without_exported_root "$PROJECT" "" false "dev-01" "$SIDECHAIN" "TaskCreate" "" >/dev/null 2>&1; then
+  if run_guard_without_exported_root "$PROJECT" "" false "" "$SIDECHAIN" "TaskCreate" "" >/dev/null 2>&1; then
     pass "Claude sidechain TaskCreate uses host state: allowed when host active count absent"
   else
     fail "Claude sidechain TaskCreate should ignore sidechain active count when host count is absent"
@@ -654,7 +708,7 @@ test_sidechain_taskcreate_uses_host_active_count_to_block() {
   printf '0\n' > "$SIDECHAIN/.vbw-planning/.active-agent-count"
 
   local output rc
-  output=$(run_guard_without_exported_root "$PROJECT" "" false "dev-02" "$SIDECHAIN" "TaskCreate" "2" 2>&1) && rc=$? || rc=$?
+  output=$(run_guard_without_exported_root "$PROJECT" "" false "" "$SIDECHAIN" "TaskCreate" "2" 2>&1) && rc=$? || rc=$?
   if [ "$rc" -eq 2 ] && grep -q 'must serialize non-team TaskCreate spawns' <<< "$output"; then
     pass "Claude sidechain TaskCreate uses host active count: blocked when host count > 0"
   else

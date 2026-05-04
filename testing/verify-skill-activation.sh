@@ -522,6 +522,7 @@ VIBE_COMMAND="$ROOT/commands/vibe.md"
 EXECUTE_PROTOCOL="$ROOT/references/execute-protocol.md"
 DEV_TOOLS=$(sed -n '/^---$/,/^---$/p' "$DEV_AGENT" | grep '^tools:' || true)
 DEV_DISALLOWED=$(sed -n '/^---$/,/^---$/p' "$DEV_AGENT" | grep '^disallowedTools:' || true)
+DEV_MEMORY=$(sed -n '/^---$/,/^---$/p' "$DEV_AGENT" | grep '^memory:' || true)
 
 dev_tools_has() {
   local target="$1"
@@ -544,6 +545,12 @@ if [ -z "$DEV_DISALLOWED" ]; then
   pass "vbw-dev.md: no longer relies on disallowedTools inheritance"
 else
   fail "vbw-dev.md: still relies on disallowedTools inheritance"
+fi
+
+if [ "$DEV_MEMORY" = "memory: project" ]; then
+  pass "vbw-dev.md: preserves project memory"
+else
+  fail "vbw-dev.md: memory must remain project (found: ${DEV_MEMORY:-missing})"
 fi
 
 for required_dev_tool in Read Glob Grep Write Edit Bash WebFetch WebSearch LSP Skill SendMessage TaskGet; do
