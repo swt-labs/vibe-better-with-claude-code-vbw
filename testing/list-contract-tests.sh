@@ -35,6 +35,7 @@ printf '%s\t%s\n' \
   statusline-429-backoff       testing/verify-statusline-429-backoff.sh \
   uat-recurrence               testing/verify-uat-recurrence.sh \
   uat-autocontinue             testing/verify-uat-autocontinue.sh \
+  uat-remediation-orchestration testing/verify-uat-remediation-orchestration.sh \
   human-only-uat-contract      testing/verify-human-only-uat-contract.sh \
   lead-research-conditional    testing/verify-lead-research-conditional.sh \
   lsp-setup                    testing/verify-lsp-setup.sh \

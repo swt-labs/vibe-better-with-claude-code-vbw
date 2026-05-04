@@ -471,6 +471,66 @@ EOF
   echo "$output" | grep -q "^round=01$"
   echo "$output" | grep -q "^round_dir=.*remediation/uat/round-01$"
   echo "$output" | grep -q "^plan_path=$"
+  echo "$output" | grep -q "^summary_path=.*remediation/uat/round-01/R01-SUMMARY.md$"
+}
+
+@test "get-or-init emits absolute host artifact metadata for relative phase dir" {
+  local host_root host_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$TEST_TEMP_DIR/host"
+  mkdir -p "$host_root/.vbw-planning/phases/01-test"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-test"
+
+  run bash -c 'cd "$1" && bash "$2/uat-remediation-state.sh" get-or-init ".vbw-planning/phases/01-test" "major"' _ "$host_root" "$SCRIPTS_DIR"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "research" ]
+  [[ "$output" == *"round_dir=$host_phase_dir/remediation/uat/round-01"* ]]
+  [[ "$output" == *"research_path="* ]]
+  [[ "$output" == *"plan_path="* ]]
+  [[ "$output" == *"summary_path=$host_phase_dir/remediation/uat/round-01/R01-SUMMARY.md"* ]]
+}
+
+@test "get-or-init maps Claude sidechain cwd relative phase dir back to host" {
+  local host_root host_phase_dir sidechain_dir
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-sidechain" "$host_root/.claude/worktrees/agent-test"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-sidechain"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+
+  run bash -c 'cd "$1" && bash "$2/uat-remediation-state.sh" get-or-init ".vbw-planning/phases/01-sidechain" "major"' _ "$sidechain_dir" "$SCRIPTS_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round_dir=$host_phase_dir/remediation/uat/round-01"* ]]
+  [[ "$output" == *"summary_path=$host_phase_dir/remediation/uat/round-01/R01-SUMMARY.md"* ]]
+  [ ! -d "$sidechain_dir/.vbw-planning/phases/01-sidechain/remediation" ]
+}
+
+@test "get-or-init rejects relative archived milestone phase path" {
+  local host_root archived_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  archived_phase_dir="$host_root/.vbw-planning/milestones/m01/phases/01-old"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$archived_phase_dir"
+
+  run bash -c 'cd "$1" && bash "$2/uat-remediation-state.sh" get-or-init ".vbw-planning/milestones/m01/phases/01-old" "major"' _ "$host_root" "$SCRIPTS_DIR"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"refusing to operate on archived milestone path"* ]]
+  [ ! -d "$archived_phase_dir/remediation" ]
+}
+
+@test "get-or-init rejects absolute archived milestone phase path" {
+  local host_root archived_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  archived_phase_dir="$host_root/.vbw-planning/milestones/m01/phases/01-old"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$archived_phase_dir"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$archived_phase_dir" "major"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"refusing to operate on archived milestone path"* ]]
+  [ ! -d "$archived_phase_dir/remediation" ]
 }
 
 @test "get-or-init research_path finds file in round dir" {
@@ -636,6 +696,7 @@ EOF
   [ "$(echo "$output" | head -1)" = "research" ]
   echo "$output" | grep -q "^round=02$"
   echo "$output" | grep -q "^round_dir=.*remediation/uat/round-02$"
+  echo "$output" | grep -q "^summary_path=.*remediation/uat/round-02/R02-SUMMARY.md$"
   [ -d "$PHASE_DIR/remediation/uat/round-02" ]
   grep -q "^stage=research$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
   grep -q "^round=02$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"

@@ -397,6 +397,21 @@ verify_payload_local_skill_contract_sites() {
   done
 }
 
+is_uat_remediation_skill_site() {
+  local file="$1"
+  local start_line="$2"
+  local uat_start uat_end
+
+  [ "$(basename "$file")" = "vibe.md" ] || return 1
+
+  uat_start=$(awk '/^### Mode: UAT Remediation[[:space:]]*$/ { print NR; exit }' "$file")
+  uat_end=$(awk '/^### Mode: Milestone UAT Recovery[[:space:]]*$/ { print NR; exit }' "$file")
+
+  [ -n "$uat_start" ] || return 1
+  [ -n "$uat_end" ] || return 1
+  [ "$start_line" -gt "$uat_start" ] && [ "$start_line" -lt "$uat_end" ]
+}
+
 verify_skill_contract_sites() {
   local file="$1"
   local file_name expected_count total_lines start_line end_line site_number
@@ -460,14 +475,22 @@ verify_skill_contract_sites() {
       fail "$file_name: site $site_number missing visible-reporting instruction"
     fi
 
-    if grep -q 'materially helpful' <<< "$segment" \
+    if is_uat_remediation_skill_site "$file" "$start_line"; then
+      if grep -q 'select only skills directly needed\|select the task-specific skills listed in the remediation plan' <<< "$segment"; then
+        pass "$file_name: site $site_number uses UAT-scoped skill-selection wording"
+      else
+        fail "$file_name: site $site_number missing UAT-scoped skill-selection wording"
+      fi
+    elif grep -q 'materially helpful' <<< "$segment" \
       && grep -q 'single most direct skill' <<< "$segment"; then
       pass "$file_name: site $site_number uses additive-selection wording"
     else
       fail "$file_name: site $site_number missing additive-selection wording"
     fi
 
-    if grep -qi 'swiftdata' <<< "$segment"; then
+    if is_uat_remediation_skill_site "$file" "$start_line"; then
+      pass "$file_name: site $site_number does not require adjacent-skill example for UAT remediation"
+    elif grep -qi 'swiftdata' <<< "$segment"; then
       pass "$file_name: site $site_number includes the SwiftData-style adjacent-skill example"
     else
       fail "$file_name: site $site_number missing the SwiftData-style adjacent-skill example"
