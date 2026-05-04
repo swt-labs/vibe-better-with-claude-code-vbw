@@ -31,6 +31,57 @@ EOF
 EOF
 }
 
+create_linked_archive_fixture() {
+  local checkbox="$1" uat_status="${2:-}"
+
+  cat > .vbw-planning/PROJECT.md <<'EOF'
+# Test Project
+EOF
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 1 of 1 (Service Utility Tests)
+Plans: 0/1
+Progress: 0%
+Status: active
+
+## Phase Status
+- **Phase 1:** Planned
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<EOF
+# Roadmap
+
+- [${checkbox}] [Phase 02: Service Utility Tests](#phase-02-service-utility-tests)
+
+## Phase 02: Service Utility Tests
+EOF
+
+  mkdir -p .vbw-planning/phases/02-service-utility-tests
+  echo "# plan" > .vbw-planning/phases/02-service-utility-tests/02-01-PLAN.md
+  cat > .vbw-planning/phases/02-service-utility-tests/02-01-SUMMARY.md <<'EOF'
+---
+status: complete
+---
+# Summary
+EOF
+
+  if [ -n "$uat_status" ]; then
+    cat > .vbw-planning/phases/02-service-utility-tests/02-UAT.md <<EOF
+---
+phase: 02
+status: ${uat_status}
+---
+# UAT
+EOF
+  fi
+}
+
 @test "summary update advances STATE/ROADMAP without execution-state file" {
   cd "$TEST_TEMP_DIR"
   create_state_and_roadmap "$TEST_TEMP_DIR/.vbw-planning" 3
@@ -55,6 +106,42 @@ SUMMARY
   grep -q '^Progress: 100%$' .vbw-planning/STATE.md
   grep -q '^- \[x\] Phase 3: Service Utility Tests$' .vbw-planning/ROADMAP.md
   grep -Eq '^\| 3 - Service Utility Tests \| 1/1 \| complete \| [0-9]{4}-[0-9]{2}-[0-9]{2} \|$' .vbw-planning/ROADMAP.md
+}
+
+@test "summary update checks linked ROADMAP entry and preserves anchor" {
+  cd "$TEST_TEMP_DIR"
+  create_linked_archive_fixture " "
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/02-service-utility-tests/02-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^- \[x\] \[Phase 02: Service Utility Tests\](#phase-02-service-utility-tests)$' .vbw-planning/ROADMAP.md
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  if [ "$status" -ne 0 ]; then echo "$output" >&2; fi
+  [ "$status" -eq 0 ]
+}
+
+@test "UAT update unchecks linked ROADMAP entry when current UAT has issues" {
+  cd "$TEST_TEMP_DIR"
+  create_linked_archive_fixture "x" "issues_found"
+
+  local uat_path input
+  uat_path="$TEST_TEMP_DIR/.vbw-planning/phases/02-service-utility-tests/02-UAT.md"
+  input=$(jq -nc --arg p "$uat_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^- \[ \] \[Phase 02: Service Utility Tests\](#phase-02-service-utility-tests)$' .vbw-planning/ROADMAP.md
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  if [ "$status" -ne 0 ]; then echo "$output" >&2; fi
+  [ "$status" -eq 0 ]
 }
 
 @test "summary update patches execution state in .plans[] schema" {

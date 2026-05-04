@@ -204,6 +204,62 @@ rewrite_phase_status_section() {
   ' "$state_file" > "$tmp" 2>/dev/null && [ -s "$tmp" ] && mv "$tmp" "$state_file" 2>/dev/null || rm -f "$tmp" 2>/dev/null
 }
 
+normalize_roadmap_phase_num() {
+  local num="$1"
+  num=$(printf '%s' "$num" | sed 's/^0*//')
+  printf '%s\n' "${num:-0}"
+}
+
+phase_dir_prefix_num() {
+  local phase_dir="$1" num
+  num=$(basename "$phase_dir" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
+  normalize_roadmap_phase_num "$num"
+}
+
+desired_roadmap_marker_for_phase_num() {
+  local wanted_num="$1" idx phase_dir prefix_num plan_count complete_count unresolved
+  idx=0
+  for phase_dir in "${phase_dirs[@]}"; do
+    prefix_num=$(phase_dir_prefix_num "$phase_dir")
+    if [ "$prefix_num" = "$wanted_num" ]; then
+      plan_count=${plan_counts[$idx]}
+      complete_count=${complete_counts[$idx]}
+      unresolved=${unresolved_flags[$idx]}
+      if [ "$plan_count" -gt 0 ] && [ "$complete_count" -ge "$plan_count" ] && [ "$unresolved" != true ]; then
+        printf '%s\n' "x"
+      else
+        printf '%s\n' " "
+      fi
+      return 0
+    fi
+    idx=$((idx + 1))
+  done
+  return 1
+}
+
+rewrite_roadmap_checklist_projection() {
+  local roadmap_file="$1"
+  local tmp line raw_num line_num marker
+
+  [ -f "$roadmap_file" ] || return 0
+
+  tmp="${roadmap_file}.tmp-checklist.$$.${RANDOM:-0}"
+  : > "$tmp" 2>/dev/null || return 0
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [[ "$line" =~ ^-\ \[.\]\ \[?Phase\ ([0-9][0-9]*): ]]; then
+      raw_num="${BASH_REMATCH[1]}"
+      line_num=$(normalize_roadmap_phase_num "$raw_num")
+      if marker=$(desired_roadmap_marker_for_phase_num "$line_num"); then
+        line="- [${marker}]${line:5}"
+      fi
+    fi
+    printf '%s\n' "$line" >> "$tmp" 2>/dev/null || { rm -f "$tmp" 2>/dev/null; return 0; }
+  done < "$roadmap_file"
+
+  [ -s "$tmp" ] && mv "$tmp" "$roadmap_file" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+}
+
 PLANNING_DIR=$(resolve_planning_root "$TARGET")
 [ -n "$PLANNING_DIR" ] || { quiet_json "skipped" "planning root not found"; exit 0; }
 
@@ -305,6 +361,7 @@ done
 rewrite_current_phase_section "$STATE_FILE" "$phase_line" "$plans_line" "$progress_line" "$status_line"
 rewrite_phase_status_section "$STATE_FILE" "$status_lines_file"
 rm -f "$status_lines_file" 2>/dev/null || true
+rewrite_roadmap_checklist_projection "$PLANNING_DIR/ROADMAP.md"
 
 if [ "$JSON_OUTPUT" = true ] && command -v jq >/dev/null 2>&1; then
   jq -n \

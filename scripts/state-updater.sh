@@ -149,6 +149,46 @@ slug_to_name() {
   echo "$1" | sed 's/^[0-9]*-//' | tr '-' ' ' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1'
 }
 
+normalize_roadmap_phase_num() {
+  local num="$1"
+  num=$(printf '%s' "$num" | sed 's/^0*//')
+  printf '%s\n' "${num:-0}"
+}
+
+rewrite_roadmap_checkboxes_for_phase() {
+  local roadmap="$1" marker="$2"
+  shift 2
+
+  [ -f "$roadmap" ] || return 0
+  [ "$#" -gt 0 ] || return 0
+
+  local tmp line raw_num line_num target target_num matched
+  tmp="${roadmap}.tmp_checkbox.$$.${RANDOM:-0}"
+  : > "$tmp" 2>/dev/null || return 0
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    matched=false
+    if [[ "$line" =~ ^-\ \[.\]\ \[?Phase\ ([0-9][0-9]*): ]]; then
+      raw_num="${BASH_REMATCH[1]}"
+      line_num=$(normalize_roadmap_phase_num "$raw_num")
+      for target in "$@"; do
+        [ -n "$target" ] || continue
+        target_num=$(normalize_roadmap_phase_num "$target")
+        if [ "$line_num" = "$target_num" ]; then
+          matched=true
+          break
+        fi
+      done
+      if [ "$matched" = true ]; then
+        line="- [${marker}]${line:5}"
+      fi
+    fi
+    printf '%s\n' "$line" >> "$tmp" 2>/dev/null || { rm -f "$tmp" 2>/dev/null; return 0; }
+  done < "$roadmap"
+
+  [ -s "$tmp" ] && mv "$tmp" "$roadmap" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+}
+
 # Check if a phase has unresolved UAT issues
 # Uses shared extract_status_value() + current_uat() from uat-utils.sh
 phase_has_uat_issues() {
@@ -235,13 +275,10 @@ update_roadmap() {
   fi
 
   # Check/uncheck checkbox based on status
-  local tmp2="${roadmap}.tmp2.$$.${RANDOM:-0}"
   if [ "$status" = "complete" ]; then
-    sed "s/^- \[ \] Phase ${phase_num}:/- [x] Phase ${phase_num}:/" "$tmp" > "$tmp2" 2>/dev/null && \
-      [ -s "$tmp2" ] && mv "$tmp2" "$tmp" 2>/dev/null || rm -f "$tmp2" 2>/dev/null
+    rewrite_roadmap_checkboxes_for_phase "$tmp" "x" "$phase_num" "$prefix_phase_num"
   elif [ "$status" = "uat issues" ]; then
-    sed "s/^- \[[xX]\] Phase ${phase_num}:/- [ ] Phase ${phase_num}:/" "$tmp" > "$tmp2" 2>/dev/null && \
-      [ -s "$tmp2" ] && mv "$tmp2" "$tmp" 2>/dev/null || rm -f "$tmp2" 2>/dev/null
+    rewrite_roadmap_checkboxes_for_phase "$tmp" " " "$phase_num" "$prefix_phase_num"
   fi
 
   mv "$tmp" "$roadmap" 2>/dev/null || rm -f "$tmp" 2>/dev/null
