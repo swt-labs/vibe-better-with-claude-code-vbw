@@ -580,6 +580,15 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 1. Read current state: `bash {plugin-root}/scripts/qa-remediation-state.sh get-or-init {phase-dir}`
   Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `source_fail_count`, `known_issues_path`, `known_issues_count`, `input_mode`, `verification_path`
    If remediation state was absent, `get-or-init` initializes round 01 before stage-specific routing. This is the deterministic stage-less resume path for a persisted known-issues backlog.
+  <qa_remediation_artifact_contract>
+  `round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` are authoritative host-repository paths from `qa-remediation-state.sh` metadata. Claude Code may run subagents from `.claude/worktrees/agent-*` sidechain CWDs; pass these exact paths to Dev and QA prompts and never rewrite them relative to the current CWD. Rewriting them relative to sidechain CWDs can write or read remediation artifacts from the wrong location and break resume or verification.
+  </qa_remediation_artifact_contract>
+  <qa_remediation_spawn_contract>
+  QA remediation spawns are plain sequential subagent calls. Do not use TeamCreate. Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, or the `isolation` parameter. Use the remediation metadata paths above instead of forcing Claude worktree isolation.
+  </qa_remediation_spawn_contract>
+  <qa_remediation_no_tool_circuit_breaker>
+  After any QA remediation Dev or QA subagent returns, inspect returned text before artifact validation, deterministic gates, or state advancement. If it says tools, Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure: STOP without advancing `.qa-remediation-stage`, report the failed role and task, and do not retry the same prompt. Repeating a no-tool spawn cannot fix tool provisioning and wastes tokens.
+  </qa_remediation_no_tool_circuit_breaker>
 2. Read remediation inputs.
 - Round 01: phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
 - Round 02+: previous round's `R{RR}-VERIFICATION.md`
@@ -641,7 +650,8 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     - The remediation summary frontmatter MUST include aggregated `commit_hashes`, `files_modified`, and `deviations`
     - `files_modified` is required even for documentation-only rounds so `qa-result-gate.sh` can deterministically distinguish metadata-only remediation from real code changes
     - When `input_mode=known-issues` or `input_mode=both`, the remediation summary frontmatter MUST also include `known_issue_outcomes` with one `{test,file,error,disposition,rationale}` JSON object string per carried known issue. Keys and `disposition` values must match `R{RR}-PLAN.md` `known_issue_resolutions`; do not silently drop accepted non-blocking issues.
-  - After Dev completes, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
+  - After Dev returns, apply the QA remediation no-tool circuit breaker before checking the summary or advancing state. If Dev reports unavailable tools, Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Dev prompt.
+  - After Dev completes without a no-tool provisioning failure, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
 
 - **stage=verify:** Re-run QA:
   - Run `compile-verify-context.sh --remediation-only {phase-dir}` to get compounded verification history plus the current round's plan/summary context only
@@ -670,6 +680,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     - The output path is `{round_dir}/R{RR}-VERIFICATION.md` — NOT the phase-level file
     - Phase-level VERIFICATION.md stays frozen as the original QA FAIL result
     - Include the compiled verify context output in QA's task description
+    - After QA returns, apply the QA remediation no-tool circuit breaker before syncing known issues or running the deterministic gate. If QA reports unavailable tools, Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same QA prompt.
     - After QA persists `{verification_path}`, immediately sync tracked known issues:
       ```bash
       bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-verification "{phase-dir}" "{verification_path}" 2>/dev/null || true
@@ -1008,6 +1019,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 Execute the current stage based on `STAGE`:
 **File read rule:** Do NOT re-read the active `{phase}-UAT.md` artifact unless step 5 requires earlier archived rounds for recurrence enrichment. Use the single step-2 UAT read as the active-round source of truth, and if step 5 scans archived rounds, exclude that active artifact from the scan. Do NOT read `{phase}-CONTEXT.md` — step 4 already emitted the remediation context when needed.
 **Round metadata prohibition:** Do NOT glob `*-PLAN.md`, search for `*-RESEARCH.md`, or infer summary locations — use the pre-computed `round`, `round_dir`, `research_path`, `plan_path`, and `summary_path` values from step 4. If a subagent reports success but the deterministic validator below fails, treat the stage as incomplete and STOP without advancing state.
+**Subagent no-tool circuit breaker (NON-NEGOTIABLE):** At every UAT remediation Scout, Lead, or Dev subagent return site below, inspect returned text before artifact validation, summary finalization, or `.uat-remediation-stage` advancement. If it says tools, Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure. STOP without advancing `.uat-remediation-stage`, report the failed subagent role and task, and do not retry the same prompt. Repeating a no-tool spawn cannot fix tool provisioning and wastes tokens.
 
 #### research
 
@@ -1042,6 +1054,7 @@ After calling `Skill(...)`, if the loaded skill's instructions reference additio
 
 - **Live data validation:** When any issue involves external data sources (APIs, databases, services), include in the Scout prompt: *"For issues involving external data sources, use WebFetch to query accessible HTTP endpoints and compare actual responses against what the code expects. For non-HTTP data sources, document what live data needs to be checked and flag it as ⚠ REQUIRES LIVE VALIDATION for the execute stage."*
 - After Scout completes, validate the exact research artifact before advancing:
+  - If Scout returns a no-tool/tool-provisioning failure, apply the circuit breaker above before running validation.
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/validate-uat-remediation-artifact.sh research "{round_dir}/R{RR}-RESEARCH.md"
   ```
@@ -1102,6 +1115,7 @@ If `plan_path` is empty, spawn Lead as a **single subagent** to write the remedi
   - `"Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md and follow its structure exactly. This template is different from the regular PLAN.md — it has no wave or depends_on fields because remediation tasks are always sequential. Produce a flat ordered task list where each task can see the results of previous tasks."` (Lead must read the template file.)
   - Output path: `{round_dir}/R{RR}-PLAN.md` (using `round` from step 4 as `{RR}` and the absolute `round_dir` from step 4).
 - Display `◆ Spawning Lead agent...` → `✓ Lead agent complete`.
+- If Lead returns a no-tool/tool-provisioning failure, apply the circuit breaker above before normalizing or validating the plan.
 - Normalize plan filenames:
   ```bash
   NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
@@ -1167,6 +1181,7 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
     - `"Use the absolute host-repository artifact paths in this prompt exactly. Claude may execute from .claude/worktrees/agent-* sidechain CWDs; do not rewrite artifact paths relative to the current CWD or create remediation artifacts inside the sidechain."`
     - If `.vbw-planning/codebase/META.md` exists: `"Read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/ to bootstrap codebase understanding before executing."`
   - Display: `◆ Spawning Dev agent for task {task-id} (${DEV_MODEL})...` → `✓ Dev agent complete for task {task-id}`.
+  - If Dev returns a no-tool/tool-provisioning failure for the task, apply the circuit breaker above before spawning another Dev, finalizing `{summary_path}`, or advancing state.
 - **Frontmatter finalization:** After ALL Dev agents have completed, update the YAML frontmatter in `{summary_path}`: set `status` to `complete` (or `partial`/`failed`), `completed` to today's date, `tasks_completed` to the actual count, and populate `commit_hashes`, `files_modified`, and `deviations` with aggregate data from all task sections. Strip any trailing blank lines from the file.
 - **Summary validation:** Validate the exact summary artifact before advancing:
   ```bash

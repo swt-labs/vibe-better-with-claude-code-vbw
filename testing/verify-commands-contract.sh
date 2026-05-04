@@ -1046,6 +1046,47 @@ else
   fail "qa: missing deterministic gate reconciliation for standalone remediation QA"
 fi
 
+qa_remediation_block="$({
+  awk '
+    /^\*\*QA Remediation mode \(needs_qa_remediation\)/ { in_block=1 }
+    /^\*\*QA Remediation \+ UAT blocking:/ { in_block=0 }
+    in_block { print }
+  ' "$VIBE_FILE"
+} || true)"
+
+if grep -Fq '<qa_remediation_artifact_contract>' <<< "$qa_remediation_block" \
+  && grep -Fq '`round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` are authoritative host-repository paths from `qa-remediation-state.sh` metadata' <<< "$qa_remediation_block" \
+  && grep -Fq '.claude/worktrees/agent-*' <<< "$qa_remediation_block" \
+  && grep -Fq 'never rewrite them relative to the current CWD' <<< "$qa_remediation_block"; then
+  pass "vibe: QA remediation has host artifact path contract"
+else
+  fail "vibe: QA remediation missing host artifact path contract"
+fi
+
+if grep -Fq '<qa_remediation_spawn_contract>' <<< "$qa_remediation_block" \
+  && grep -Fq 'QA remediation spawns are plain sequential subagent calls' <<< "$qa_remediation_block" \
+  && grep -Fq 'Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, or the `isolation` parameter' <<< "$qa_remediation_block"; then
+  pass "vibe: QA remediation has non-team spawn-shape contract"
+else
+  fail "vibe: QA remediation missing non-team spawn-shape contract"
+fi
+
+if grep -Fq '<qa_remediation_no_tool_circuit_breaker>' <<< "$qa_remediation_block" \
+  && grep -Fq 'tools, Bash, filesystem, edits, or API-session access are unavailable' <<< "$qa_remediation_block" \
+  && grep -Fq 'STOP without advancing `.qa-remediation-stage`' <<< "$qa_remediation_block" \
+  && grep -Fq 'do not retry the same prompt' <<< "$qa_remediation_block"; then
+  pass "vibe: QA remediation has no-tool circuit breaker"
+else
+  fail "vibe: QA remediation missing no-tool circuit breaker"
+fi
+
+if grep -Fq 'After Dev returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block" \
+  && grep -Fq 'After QA returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block"; then
+  pass "vibe: QA remediation applies no-tool breaker at Dev and QA return sites"
+else
+  fail "vibe: QA remediation missing no-tool breaker at Dev or QA return site"
+fi
+
 if grep -q 'Determine verification scope from `VERIF_PATH`' "$QA_FILE"; then
   pass "qa: standalone QA scope is tied to resolved VERIF_PATH"
 else

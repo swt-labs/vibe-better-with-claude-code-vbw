@@ -81,6 +81,9 @@ run_guard() {
   local working_dir="${5:-$project_dir}"
   local tool_name="${6:-Agent}"
   local active_count="${7:-}"
+  local isolation="${8:-}"
+  local spawn_cwd="${9:-}"
+  local spawn_cwd_field="${10:-cwd}"
 
   local input
   input=$(jq -n \
@@ -88,6 +91,9 @@ run_guard() {
     --arg team_name "$team_name" \
     --arg agent_name "$agent_name" \
     --argjson run_in_background "$run_in_background" \
+    --arg isolation "$isolation" \
+    --arg spawn_cwd "$spawn_cwd" \
+    --arg spawn_cwd_field "$spawn_cwd_field" \
     '{
       tool_name: $tool_name,
       tool_input: {
@@ -95,7 +101,9 @@ run_guard() {
         name: $agent_name,
         run_in_background: $run_in_background
       }
-    }')
+    }
+    | if $isolation != "" then .tool_input.isolation = $isolation else . end
+    | if $spawn_cwd != "" then .tool_input[$spawn_cwd_field] = $spawn_cwd else . end')
 
   if [ -n "$active_count" ]; then
     printf '%s\n' "$active_count" > "$project_dir/.vbw-planning/.active-agent-count"
@@ -115,6 +123,9 @@ run_guard_without_exported_root() {
   local working_dir="${5:-$project_dir}"
   local tool_name="${6:-Agent}"
   local active_count="${7:-}"
+  local isolation="${8:-}"
+  local spawn_cwd="${9:-}"
+  local spawn_cwd_field="${10:-cwd}"
 
   local input
   input=$(jq -n \
@@ -122,6 +133,9 @@ run_guard_without_exported_root() {
     --arg team_name "$team_name" \
     --arg agent_name "$agent_name" \
     --argjson run_in_background "$run_in_background" \
+    --arg isolation "$isolation" \
+    --arg spawn_cwd "$spawn_cwd" \
+    --arg spawn_cwd_field "$spawn_cwd_field" \
     '{
       tool_name: $tool_name,
       tool_input: {
@@ -129,7 +143,9 @@ run_guard_without_exported_root() {
         name: $agent_name,
         run_in_background: $run_in_background
       }
-    }')
+    }
+    | if $isolation != "" then .tool_input.isolation = $isolation else . end
+    | if $spawn_cwd != "" then .tool_input[$spawn_cwd_field] = $spawn_cwd else . end')
 
   if [ -n "$active_count" ]; then
     printf '%s\n' "$active_count" > "$project_dir/.vbw-planning/.active-agent-count"
@@ -161,7 +177,7 @@ test_non_vbw_repo_allows() {
   local tmpdir
   tmpdir=$(mktemp -d)
   local input
-  input=$(jq -n '{tool_input:{run_in_background:true,name:"dev-01"}}')
+  input=$(jq -n '{tool_name:"Agent",tool_input:{run_in_background:true,name:"dev-01",isolation:"worktree"}}')
 
   if (cd "$tmpdir" && bash "$GUARD" <<< "$input") >/dev/null 2>&1; then
     pass "Non-VBW repo: allow"
@@ -184,12 +200,70 @@ test_no_marker_allows() {
 }
 test_no_marker_allows
 
+test_no_marker_blocks_agent_worktree_isolation_when_config_key_missing() {
+  setup_project
+
+  local output rc
+  output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "worktree" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'worktree isolation while VBW worktree_isolation is off'; then
+    pass "No marker with missing worktree_isolation key: Agent isolation blocked"
+  else
+    fail "No-marker Agent isolation should block when worktree_isolation missing (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_no_marker_blocks_agent_worktree_isolation_when_config_key_missing
+
+test_no_marker_blocks_taskcreate_worktree_isolation_when_config_off() {
+  setup_project
+  jq '.worktree_isolation = "off"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
+  mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
+
+  local output rc
+  output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "TaskCreate" "" "worktree" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'worktree isolation while VBW worktree_isolation is off'; then
+    pass "No marker with config off: TaskCreate isolation blocked"
+  else
+    fail "No-marker TaskCreate isolation should block when worktree_isolation off (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_no_marker_blocks_taskcreate_worktree_isolation_when_config_off
+
+test_no_marker_allows_agent_worktree_isolation_when_config_on() {
+  setup_project
+  jq '.worktree_isolation = "on"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
+  mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
+
+  if run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "worktree" >/dev/null 2>&1; then
+    pass "No marker with config on: Agent isolation allowed"
+  else
+    fail "No-marker Agent isolation should be allowed when worktree_isolation on"
+  fi
+  cleanup
+}
+test_no_marker_allows_agent_worktree_isolation_when_config_on
+
+test_no_marker_blocks_sidechain_cwd_when_config_off() {
+  setup_project
+
+  local output rc
+  output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "" "$PROJECT/.claude/worktrees/agent-123" "cwd" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
+    pass "No marker with config off: sidechain cwd blocked"
+  else
+    fail "No-marker sidechain cwd should block when worktree_isolation off (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_no_marker_blocks_sidechain_cwd_when_config_off
+
 test_active_execute_without_live_marker_blocks() {
   setup_project
   write_execution_state "corr-123"
 
   local output rc
-  output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
+  output=$(run_guard "$PROJECT" "" true "dev-01" "$PROJECT" "Agent" "" "worktree" 2>&1) && rc=$? || rc=$?
   if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'missing live runtime delegation state'; then
     pass "Active execute without live marker: blocked"
   else
@@ -479,6 +553,20 @@ test_sidechain_taskcreate_uses_host_active_count_to_block() {
   cleanup
 }
 test_sidechain_taskcreate_uses_host_active_count_to_block
+
+test_sidechain_cwd_uses_host_config_to_block_worktree_isolation() {
+  setup_sidechain_project
+
+  local output rc
+  output=$(run_guard_without_exported_root "$PROJECT" "" false "dev-01" "$SIDECHAIN" "Agent" "" "worktree" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && grep -q 'worktree isolation while VBW worktree_isolation is off' <<< "$output"; then
+    pass "Claude sidechain Agent isolation uses host config: blocked when host config is off"
+  else
+    fail "Claude sidechain Agent isolation should block from host config off (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_sidechain_cwd_uses_host_config_to_block_worktree_isolation
 
 echo ""
 echo "==============================="

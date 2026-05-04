@@ -4,7 +4,7 @@ description: Execution agent with full tool access for implementing plan tasks w
 model: inherit
 memory: project
 permissionMode: acceptEdits
-disallowedTools: Task
+tools: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch, LSP, Skill, SendMessage, TaskGet
 ---
 
 # VBW Dev
@@ -92,6 +92,8 @@ Before running any database command that modifies schema or data:
 
 ## Constraints
 Before each task: if `.vbw-planning/.compaction-marker` exists, re-read PLAN.md from disk (compaction occurred). If no marker: use plan already in context. If marker check fails: re-read (conservative default). When in doubt, re-read. First task always reads from disk (initial load). Progress = `git log --oneline`. No subagents.
+
+Your frontmatter tool allowlist intentionally omits recursive delegation and user-question tools: `Task`, `TaskCreate`, `Agent`, `TeamCreate`, `TeamDelete`, and `AskUserQuestion`. Do not ask the orchestrator to enable them and do not simulate subagent/team behavior through other tools. Use the listed implementation tools directly; use `SendMessage` for teammate protocol messages and `TaskGet` only for the blocker self-start checks described below.
 
 ## V2 Role Isolation (always enforced)
 - You may ONLY write files listed in the active contract's `allowed_paths`. File-guard hook enforces this.

@@ -460,6 +460,48 @@ else
   fail "execute-protocol forbids non-team segment while live team marker exists"
 fi
 
+if grep -Fq 'platform/tool provisioning failure' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'tools, Bash, filesystem, edits, or API-session access are unavailable' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'Do not consume the normal retry budget' "$EXECUTE_PROTOCOL"; then
+  pass "execute-protocol fails fast on no-tool Dev subagent returns"
+else
+  fail "execute-protocol missing no-tool Dev fail-fast return handling"
+fi
+
+if grep -Fq '**Non-team spawn-shape rule:**' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'whether the live tool is `Agent` or `TaskCreate`' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'omit `team_name`, per-agent `name`, `run_in_background`, and `isolation`' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'When VBW `worktree_isolation` is off, omit Claude worktree isolation entirely' "$EXECUTE_PROTOCOL" \
+  && grep -Fq '.claude/worktrees/agent-*' "$EXECUTE_PROTOCOL"; then
+  pass "execute-protocol documents non-team Agent/TaskCreate isolation-safe spawn shape"
+else
+  fail "execute-protocol missing non-team Agent/TaskCreate isolation-safe spawn guidance"
+fi
+
+if grep -Fq '<qa_remediation_artifact_contract>' "$EXECUTE_PROTOCOL" \
+  && grep -Fq '`round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` from `qa-remediation-state.sh` metadata are authoritative host-repository paths' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'never rewrite them relative to the current CWD' "$EXECUTE_PROTOCOL"; then
+  pass "execute-protocol documents QA remediation authoritative host artifact paths"
+else
+  fail "execute-protocol missing QA remediation authoritative host artifact path contract"
+fi
+
+if grep -Fq '<qa_remediation_spawn_contract>' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'QA remediation uses plain sequential subagent calls' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, or `isolation`' "$EXECUTE_PROTOCOL"; then
+  pass "execute-protocol documents QA remediation non-team spawn shape"
+else
+  fail "execute-protocol missing QA remediation non-team spawn shape contract"
+fi
+
+if grep -Fq '<qa_remediation_no_tool_circuit_breaker>' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'STOP without advancing `.qa-remediation-stage`' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'do not retry the same prompt' "$EXECUTE_PROTOCOL"; then
+  pass "execute-protocol documents QA remediation no-tool circuit breaker"
+else
+  fail "execute-protocol missing QA remediation no-tool circuit breaker"
+fi
+
 if grep -Fq 'When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "dev-{MM}"`' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'When true team mode is active, pass `team_name: "vbw-phase-{NN}"` and `name: "qa"`' "$EXECUTE_PROTOCOL"; then
   pass "execute-protocol preserves team_name/name invariant for true team mode"

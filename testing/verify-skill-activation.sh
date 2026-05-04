@@ -517,6 +517,66 @@ echo "=== Skill Activation Pipeline Verification (plan-driven model) ==="
 # --- vbw-dev.md checks ---
 
 DEV_AGENT="$ROOT/agents/vbw-dev.md"
+DEV_TOOLS=$(sed -n '/^---$/,/^---$/p' "$DEV_AGENT" | grep '^tools:' || true)
+DEV_DISALLOWED=$(sed -n '/^---$/,/^---$/p' "$DEV_AGENT" | grep '^disallowedTools:' || true)
+
+dev_tools_has() {
+  local target="$1"
+  printf '%s' "$DEV_TOOLS" | sed 's/^tools:[[:space:]]*//' | awk -v RS=',' -v target="$target" '
+    {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+      if ($0 == target) found=1
+    }
+    END { exit(found ? 0 : 1) }
+  '
+}
+
+if [ -n "$DEV_TOOLS" ]; then
+  pass "vbw-dev.md: uses explicit tools allowlist"
+else
+  fail "vbw-dev.md: missing explicit tools allowlist"
+fi
+
+if [ -z "$DEV_DISALLOWED" ]; then
+  pass "vbw-dev.md: no longer relies on disallowedTools inheritance"
+else
+  fail "vbw-dev.md: still relies on disallowedTools inheritance"
+fi
+
+for required_dev_tool in Read Glob Grep Write Edit Bash WebFetch WebSearch LSP Skill SendMessage TaskGet; do
+  if dev_tools_has "$required_dev_tool"; then
+    pass "vbw-dev.md: explicit tools include $required_dev_tool"
+  else
+    fail "vbw-dev.md: explicit tools missing $required_dev_tool"
+  fi
+done
+
+for forbidden_dev_tool in Task TaskCreate Agent TeamCreate TeamDelete AskUserQuestion; do
+  if dev_tools_has "$forbidden_dev_tool"; then
+    fail "vbw-dev.md: explicit tools expose forbidden $forbidden_dev_tool"
+  else
+    pass "vbw-dev.md: explicit tools omit forbidden $forbidden_dev_tool"
+  fi
+done
+
+if grep -q 'Your frontmatter tool allowlist intentionally omits recursive delegation' "$DEV_AGENT" \
+  && grep -q 'Use the listed implementation tools directly' "$DEV_AGENT"; then
+  pass "vbw-dev.md: prompt explains explicit no-subagent tool boundary"
+else
+  fail "vbw-dev.md: missing explicit no-subagent tool-boundary guidance"
+fi
+
+if grep -q 'SendMessage' "$DEV_AGENT" && dev_tools_has SendMessage; then
+  pass "vbw-dev.md: SendMessage guidance matches explicit tool availability"
+else
+  fail "vbw-dev.md: SendMessage guidance/tool availability mismatch"
+fi
+
+if grep -q 'TaskGet' "$DEV_AGENT" && dev_tools_has TaskGet; then
+  pass "vbw-dev.md: TaskGet guidance matches explicit tool availability"
+else
+  fail "vbw-dev.md: TaskGet guidance/tool availability mismatch"
+fi
 
 if grep -q 'skills_used' "$DEV_AGENT"; then
   pass "vbw-dev.md: references skills_used frontmatter"

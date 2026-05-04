@@ -59,6 +59,26 @@ EXPECTED_TEAM_NAME=$(echo "$MARKER_STATUS" | jq -r '.team_name // ""' 2>/dev/nul
 MARKER_REASON=$(echo "$MARKER_STATUS" | jq -r '.reason // ""' 2>/dev/null) || exit 0
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null) || exit 0
 
+is_teammate_spawn_tool() {
+  [ "$TOOL_NAME" = "Agent" ] || [ "$TOOL_NAME" = "TaskCreate" ]
+}
+
+config_worktree_isolation() {
+  local config_file="$PROJECT_ROOT/.vbw-planning/config.json"
+  jq -r '.worktree_isolation // "off"' "$config_file" 2>/dev/null || printf '%s\n' "off"
+}
+
+requested_worktree_isolation() {
+  local isolation=""
+  isolation=$(echo "$INPUT" | jq -r '.tool_input.isolation // ""' 2>/dev/null) || return 1
+  [ "$isolation" = "worktree" ]
+}
+
+requested_sidechain_cwd() {
+  echo "$INPUT" | jq -r '[.tool_input.cwd? // empty, .tool_input.working_dir? // empty, .tool_input.workingDirectory? // empty, .tool_input.workdir? // empty] | map(select(type == "string")) | .[]' 2>/dev/null \
+    | grep -Fq '.claude/worktrees/'
+}
+
 EXEC_STATE_FILE="$PROJECT_ROOT/.vbw-planning/.execution-state.json"
 EXEC_ACTIVE=false
 if [ -f "$EXEC_STATE_FILE" ] && jq empty "$EXEC_STATE_FILE" >/dev/null 2>&1; then
@@ -80,6 +100,20 @@ fi
 if [ "$EXEC_ACTIVE" = true ] && { [ "$MARKER_LIVE" != "true" ] || [ "$MODE" != "execute" ] || [ -z "$DELEGATION_MODE" ]; }; then
   echo "Blocked: active execute run is missing live runtime delegation state (reason=${MARKER_REASON:-missing_marker}). Initialize execute delegation before spawning teammates." >&2
   exit 2
+fi
+
+if is_teammate_spawn_tool; then
+  WORKTREE_ISOLATION=$(config_worktree_isolation)
+  if [ "$WORKTREE_ISOLATION" != "on" ]; then
+    if requested_worktree_isolation; then
+      echo "Blocked: teammate spawn requested Claude worktree isolation while VBW worktree_isolation is off. Omit isolation or enable VBW worktree isolation." >&2
+      exit 2
+    fi
+    if requested_sidechain_cwd; then
+      echo "Blocked: teammate spawn requested a Claude sidechain working directory while VBW worktree_isolation is off. Omit the sidechain cwd/working_dir or enable VBW worktree isolation." >&2
+      exit 2
+    fi
+  fi
 fi
 
 [ "$MARKER_LIVE" = "true" ] || exit 0
