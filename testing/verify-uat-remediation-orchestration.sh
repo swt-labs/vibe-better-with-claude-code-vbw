@@ -105,6 +105,11 @@ UAT_BLOCK=$(awk '
   in_block { print }
 ' "$VIBE_FILE")
 
+SPAWN_ARG_ISOLATION_RE='(^|[^[:alnum:]_])"?isolation"?([[:space:]]*[:=][[:space:]]*"?worktree"?|[[:space:]]+worktree)([^[:alnum:]_]|$)'
+SPAWN_ARG_BACKGROUND_RE='(^|[^[:alnum:]_])"?run_in_background"?([[:space:]]*[:=][[:space:]]*"?(true|false)"?|[[:space:]]+(true|false))([^[:alnum:]_]|$)'
+SPAWN_ARG_TEAM_NAME_RE='(^|[^[:alnum:]_])"?team_name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
+SPAWN_ARG_NAME_RE='(^|[^[:alnum:]_])"?name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
+
 if [ -z "$UAT_BLOCK" ]; then
   fail "vibe.md exposes a UAT Remediation block"
 else
@@ -136,10 +141,18 @@ check_regex "execute stage validates summary_path" "$UAT_BLOCK" 'validate-uat-re
 check_contains "Dev writes to summary_path" "$UAT_BLOCK" 'Create {summary_path}'
 check_contains "Dev appends to summary_path" "$UAT_BLOCK" 'Append your ## Task {N}: {name} section to {summary_path}'
 check_not_contains "UAT block no longer relies on project-root workaround" "$UAT_BLOCK" 'Do NOT create git worktrees. Work in the project root directory.'
-check_not_regex "UAT block does not include isolation argument syntax" "$UAT_BLOCK" '"?isolation"?[[:space:]]*:'
-check_not_regex "UAT block does not include background argument syntax" "$UAT_BLOCK" '"?run_in_background"?[[:space:]]*:'
-check_not_regex "UAT block does not include team_name argument syntax" "$UAT_BLOCK" '"?team_name"?[[:space:]]*:'
-check_not_regex "UAT block does not include per-agent name argument syntax" "$UAT_BLOCK" '"?name"?[[:space:]]*:'
+check_not_regex "UAT block does not include isolation argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_ISOLATION_RE"
+check_not_regex "UAT block does not include background argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_BACKGROUND_RE"
+check_not_regex "UAT block does not include team_name argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_TEAM_NAME_RE"
+check_not_regex "UAT block does not include per-agent name argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_NAME_RE"
+check_regex "spawn argument matcher catches isolation equals syntax" 'Agent isolation=worktree' "$SPAWN_ARG_ISOLATION_RE"
+check_regex "spawn argument matcher catches isolation JSON syntax" 'Agent "isolation": "worktree"' "$SPAWN_ARG_ISOLATION_RE"
+check_regex "spawn argument matcher catches run_in_background equals syntax" 'Agent run_in_background=true' "$SPAWN_ARG_BACKGROUND_RE"
+check_regex "spawn argument matcher catches team_name bare syntax" 'Agent team_name vbw-phase-03' "$SPAWN_ARG_TEAM_NAME_RE"
+check_regex "spawn argument matcher catches per-agent name bare syntax" 'Agent name dev-1' "$SPAWN_ARG_NAME_RE"
+check_not_regex "per-agent name matcher ignores filename keys" 'filename: R01-PLAN.md' "$SPAWN_ARG_NAME_RE"
+check_not_regex "per-agent name matcher ignores team_name keys" 'team_name: vbw-phase-03' "$SPAWN_ARG_NAME_RE"
+check_not_regex "isolation matcher ignores benign prose" 'Spawn one Dev with no isolation parameter.' "$SPAWN_ARG_ISOLATION_RE"
 check_not_contains "UAT block no longer uses broad skill preselection" "$UAT_BLOCK" 'select all materially helpful installed skills'
 check_contains "Lead avoids implementation-heavy preselection" "$UAT_BLOCK" 'Do not preselect implementation-heavy skills'
 check_contains "Dev uses task-specific skills" "$UAT_BLOCK" 'select the task-specific skills listed in the remediation plan'

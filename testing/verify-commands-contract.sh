@@ -1171,7 +1171,7 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
   check_allowed_tool_match "$base" "$ALLOWED" "$file" "Agent" '(via[[:space:]]+Task[[:space:]]+tool|Task[[:space:]]+tool[[:space:]]+invocation|subagent_type:)'
   check_allowed_tool_match "$base" "$ALLOWED" "$file" "TeamCreate" '(^|[^[:alnum:]_])TeamCreate([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TeamCreate'
   check_allowed_tool_match "$base" "$ALLOWED" "$file" "TaskCreate" '(^|[^[:alnum:]_])TaskCreate([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TaskCreate'
-  check_allowed_tool_match "$base" "$ALLOWED" "$file" "TodoWrite" '(^|[^[:alnum:]_])TodoWrite([^[:alnum:]_]|$)'
+  check_allowed_tool_match "$base" "$ALLOWED" "$file" "TodoWrite" '(^|[^[:alnum:]_])TodoWrite([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TodoWrite|disallow.*TodoWrite|forbid.*TodoWrite'
   check_allowed_tool_match "$base" "$ALLOWED" "$file" "SendMessage" '(^|[^[:alnum:]_])SendMessage([^[:alnum:]_]|$)' 'do[[:space:]]+not.*SendMessage'
   check_allowed_tool_match "$base" "$ALLOWED" "$file" "TeamDelete" '(^|[^[:alnum:]_])TeamDelete([^[:alnum:]_]|$)' 'do[[:space:]]+not.*TeamDelete'
 done
