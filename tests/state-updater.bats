@@ -639,6 +639,94 @@ EOF
   echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q 'ROADMAP checklist numbering scheme is mixed or unresolvable'
 }
 
+@test "summary update repairs resolvable ROADMAP despite stray extra entry" {
+  cd "$TEST_TEMP_DIR"
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/02-build .vbw-planning/phases/03-deploy
+
+  cat > .vbw-planning/PROJECT.md <<'EOF'
+# Test Project
+EOF
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+**Project:** Test Project
+**Milestone:** MVP
+Phase: 2 of 3 (Build)
+Plans: 1/1
+Progress: 100%
+Status: active
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 3: Deploy
+- [ ] Phase 4: Stray
+### Phase 1: Setup
+### Phase 2: Build
+### Phase 3: Deploy
+### Phase 4: Stray
+EOF
+
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/02-build/02-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/02-build/02-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/03-deploy/03-01-PLAN.md
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/02-build/02-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^- \[x\] Phase 2: Build$' .vbw-planning/ROADMAP.md
+  grep -q '^- \[ \] Phase 4: Stray$' .vbw-planning/ROADMAP.md
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q 'phase 4 referenced in ROADMAP.md but no matching phase directory'
+}
+
+@test "summary update preserves plain ROADMAP fallback without phase-state-utils" {
+  cd "$TEST_TEMP_DIR"
+
+  local helperless_scripts
+  helperless_scripts="$TEST_TEMP_DIR/helperless-roadmap-scripts"
+  mkdir -p "$helperless_scripts"
+  cp "$SCRIPTS_DIR/state-updater.sh" "$helperless_scripts/state-updater.sh"
+  cp "$SCRIPTS_DIR/summary-utils.sh" "$helperless_scripts/summary-utils.sh"
+  cp "$SCRIPTS_DIR/uat-utils.sh" "$helperless_scripts/uat-utils.sh"
+
+  mkdir -p .vbw-planning/phases/01-setup
+  cat > .vbw-planning/STATE.md <<'EOF'
+Phase: 1 of 1 (Setup)
+Plans: 0/1
+Progress: 0%
+Status: active
+EOF
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+- [ ] Phase 1: Setup
+| Phase | Progress | Status | Completed |
+|------|----------|--------|-----------|
+| 1 - Setup | 0/1 | pending | - |
+EOF
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'phase: 1' 'plan: 1' 'status: complete' '---' '# Summary' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/01-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$helperless_scripts/state-updater.sh'"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"command not found"* ]]
+  grep -q '^- \[x\] Phase 1: Setup$' .vbw-planning/ROADMAP.md
+}
+
 @test "advance_phase skips SOURCE-UAT files via shared uat-utils" {
   cd "$TEST_TEMP_DIR"
 

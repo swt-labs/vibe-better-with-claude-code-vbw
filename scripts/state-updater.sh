@@ -56,15 +56,155 @@ if ! type normalize_roadmap_phase_num >/dev/null 2>&1; then
   }
 fi
 
+if ! type phase_dir_position >/dev/null 2>&1; then
+  phase_dir_position() {
+    local phase_dir="$1"
+    local phases_parent="${2:-$(dirname "$phase_dir")}" idx=0 dir
+
+    while IFS= read -r dir; do
+      [ -n "$dir" ] || continue
+      idx=$((idx + 1))
+      if [ "${dir%/}" = "${phase_dir%/}" ]; then
+        echo "$idx"
+        return 0
+      fi
+    done < <(list_canonical_phase_dirs "$phases_parent")
+
+    echo ""
+  }
+fi
+
+if ! type roadmap_checklist_phase_num_from_line >/dev/null 2>&1; then
+  roadmap_checklist_phase_num_from_line() {
+    local line="$1" raw_num
+    if [[ "$line" =~ ^-\ \[.\]\ \[?Phase\ ([0-9][0-9]*): ]]; then
+      raw_num="${BASH_REMATCH[1]}"
+      normalize_roadmap_phase_num "$raw_num"
+      return 0
+    fi
+    return 1
+  }
+fi
+
+if ! type roadmap_phase_dir_prefix_num >/dev/null 2>&1; then
+  roadmap_phase_dir_prefix_num() {
+    local phase_dir="$1" num
+    num=$(basename "$phase_dir" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
+    normalize_roadmap_phase_num "$num"
+  }
+fi
+
+if ! type _roadmap_index_in_sequence >/dev/null 2>&1; then
+  _roadmap_index_in_sequence() {
+    local wanted="$1" sequence="$2" idx=0 candidate
+
+    while IFS= read -r candidate; do
+      [ -n "$candidate" ] || continue
+      idx=$((idx + 1))
+      if [ "$candidate" = "$wanted" ]; then
+        printf '%s\n' "$idx"
+        return 0
+      fi
+    done <<< "$sequence"
+
+    return 1
+  }
+fi
+
+if ! type _roadmap_candidate_score >/dev/null 2>&1; then
+  _roadmap_candidate_score() {
+    local checklist_seq="$1" expected_seq="$2"
+    local seen="" last_idx=0 score=0 num expected_idx
+
+    [ -n "$expected_seq" ] || { printf '%s\n' "0"; return 0; }
+
+    while IFS= read -r num; do
+      [ -n "$num" ] || continue
+      case " $seen " in *" $num "*) continue ;; esac
+      seen="$seen $num"
+
+      if expected_idx=$(_roadmap_index_in_sequence "$num" "$expected_seq"); then
+        if [ "$expected_idx" -le "$last_idx" ]; then
+          printf '%s\n' "0"
+          return 0
+        fi
+        last_idx="$expected_idx"
+        score=$((score + 1))
+      fi
+    done <<< "$checklist_seq"
+
+    printf '%s\n' "$score"
+  }
+fi
+
 if ! type roadmap_numbering_scheme >/dev/null 2>&1; then
   roadmap_numbering_scheme() {
-    printf '%s\n' "unknown"
+    local roadmap_file="$1" phases_dir="$2"
+    local checklist_nums=() prefix_nums=() ordinal_nums=()
+    local line num dir idx checklist_seq prefix_seq ordinal_seq prefix_score ordinal_score
+
+    [ -f "$roadmap_file" ] || { printf '%s\n' "unknown"; return 0; }
+    [ -d "$phases_dir" ] || { printf '%s\n' "unknown"; return 0; }
+
+    while IFS= read -r line || [ -n "$line" ]; do
+      if num=$(roadmap_checklist_phase_num_from_line "$line"); then
+        checklist_nums+=("$num")
+      fi
+    done < "$roadmap_file"
+
+    idx=0
+    while IFS= read -r dir; do
+      [ -n "$dir" ] || continue
+      idx=$((idx + 1))
+      prefix_nums+=("$(roadmap_phase_dir_prefix_num "$dir")")
+      ordinal_nums+=("$idx")
+    done < <(list_canonical_phase_dirs "$phases_dir")
+
+    if [ "${#checklist_nums[@]}" -eq 0 ] || [ "${#prefix_nums[@]}" -eq 0 ]; then
+      printf '%s\n' "unknown"
+      return 0
+    fi
+
+    checklist_seq=$(printf '%s\n' "${checklist_nums[@]}")
+    prefix_seq=$(printf '%s\n' "${prefix_nums[@]}")
+    ordinal_seq=$(printf '%s\n' "${ordinal_nums[@]}")
+    prefix_score=$(_roadmap_candidate_score "$checklist_seq" "$prefix_seq")
+    ordinal_score=$(_roadmap_candidate_score "$checklist_seq" "$ordinal_seq")
+
+    if [ "$prefix_score" -le 0 ] && [ "$ordinal_score" -le 0 ]; then
+      printf '%s\n' "unknown"
+    elif [ "$prefix_seq" = "$ordinal_seq" ]; then
+      printf '%s\n' "prefix"
+    elif [ "$prefix_score" -gt 0 ] && [ "$ordinal_score" -le 0 ]; then
+      printf '%s\n' "prefix"
+    elif [ "$ordinal_score" -gt 0 ] && [ "$prefix_score" -le 0 ]; then
+      printf '%s\n' "ordinal"
+    elif [ "$prefix_score" -gt "$ordinal_score" ]; then
+      printf '%s\n' "prefix"
+    elif [ "$ordinal_score" -gt "$prefix_score" ]; then
+      printf '%s\n' "ordinal"
+    else
+      printf '%s\n' "unknown"
+    fi
   }
 fi
 
 if ! type roadmap_phase_num_for_dir >/dev/null 2>&1; then
   roadmap_phase_num_for_dir() {
-    printf '\n'
+    local scheme="$1" phase_dir="$2" phases_dir
+    phases_dir="${3:-$(dirname "$phase_dir")}"
+
+    case "$scheme" in
+      prefix)
+        roadmap_phase_dir_prefix_num "$phase_dir"
+        ;;
+      ordinal)
+        phase_dir_position "$phase_dir" "$phases_dir"
+        ;;
+      *)
+        printf '\n'
+        ;;
+    esac
   }
 fi
 

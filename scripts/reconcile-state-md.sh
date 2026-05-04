@@ -59,6 +59,12 @@ REQUIRED_FUNCTIONS=(
   current_uat
   extract_status_value
   phase_dir_display_name
+  normalize_roadmap_phase_num
+  roadmap_checklist_phase_num_from_line
+  roadmap_phase_dir_prefix_num
+  roadmap_numbering_scheme
+  roadmap_phase_num_for_dir
+  roadmap_phase_dir_for_num
 )
 for fn in "${REQUIRED_FUNCTIONS[@]}"; do
   if ! type "$fn" >/dev/null 2>&1; then

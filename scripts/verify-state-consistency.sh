@@ -53,6 +53,12 @@ REQUIRED_FUNCTIONS=(
   is_valid_summary_status
   current_uat
   extract_status_value
+  normalize_roadmap_phase_num
+  roadmap_checklist_phase_num_from_line
+  roadmap_phase_dir_prefix_num
+  roadmap_numbering_scheme
+  roadmap_phase_num_for_dir
+  roadmap_phase_dir_for_num
 )
 MISSING_FUNCTIONS=()
 for fn in "${REQUIRED_FUNCTIONS[@]}"; do

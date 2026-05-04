@@ -78,10 +78,49 @@ roadmap_phase_dir_prefix_num() {
   normalize_roadmap_phase_num "$num"
 }
 
+_roadmap_index_in_sequence() {
+  local wanted="$1" sequence="$2" idx=0 candidate
+
+  while IFS= read -r candidate; do
+    [ -n "$candidate" ] || continue
+    idx=$((idx + 1))
+    if [ "$candidate" = "$wanted" ]; then
+      printf '%s\n' "$idx"
+      return 0
+    fi
+  done <<< "$sequence"
+
+  return 1
+}
+
+_roadmap_candidate_score() {
+  local checklist_seq="$1" expected_seq="$2"
+  local seen="" last_idx=0 score=0 num expected_idx
+
+  [ -n "$expected_seq" ] || { printf '%s\n' "0"; return 0; }
+
+  while IFS= read -r num; do
+    [ -n "$num" ] || continue
+    case " $seen " in *" $num "*) continue ;; esac
+    seen="$seen $num"
+
+    if expected_idx=$(_roadmap_index_in_sequence "$num" "$expected_seq"); then
+      if [ "$expected_idx" -le "$last_idx" ]; then
+        printf '%s\n' "0"
+        return 0
+      fi
+      last_idx="$expected_idx"
+      score=$((score + 1))
+    fi
+  done <<< "$checklist_seq"
+
+  printf '%s\n' "$score"
+}
+
 roadmap_numbering_scheme() {
   local roadmap_file="$1" phases_dir="$2"
   local checklist_nums=() prefix_nums=() ordinal_nums=()
-  local line num dir idx checklist_seq prefix_seq ordinal_seq
+  local line num dir idx checklist_seq prefix_seq ordinal_seq prefix_score ordinal_score
 
   [ -f "$roadmap_file" ] || { printf '%s\n' "unknown"; return 0; }
   [ -d "$phases_dir" ] || { printf '%s\n' "unknown"; return 0; }
@@ -100,7 +139,7 @@ roadmap_numbering_scheme() {
     ordinal_nums+=("$idx")
   done < <(list_canonical_phase_dirs "$phases_dir")
 
-  if [ "${#checklist_nums[@]}" -eq 0 ] || [ "${#checklist_nums[@]}" -ne "${#prefix_nums[@]}" ]; then
+  if [ "${#checklist_nums[@]}" -eq 0 ] || [ "${#prefix_nums[@]}" -eq 0 ]; then
     printf '%s\n' "unknown"
     return 0
   fi
@@ -108,10 +147,20 @@ roadmap_numbering_scheme() {
   checklist_seq=$(printf '%s\n' "${checklist_nums[@]}")
   prefix_seq=$(printf '%s\n' "${prefix_nums[@]}")
   ordinal_seq=$(printf '%s\n' "${ordinal_nums[@]}")
+  prefix_score=$(_roadmap_candidate_score "$checklist_seq" "$prefix_seq")
+  ordinal_score=$(_roadmap_candidate_score "$checklist_seq" "$ordinal_seq")
 
-  if [ "$checklist_seq" = "$prefix_seq" ]; then
+  if [ "$prefix_score" -le 0 ] && [ "$ordinal_score" -le 0 ]; then
+    printf '%s\n' "unknown"
+  elif [ "$prefix_seq" = "$ordinal_seq" ]; then
     printf '%s\n' "prefix"
-  elif [ "$checklist_seq" = "$ordinal_seq" ]; then
+  elif [ "$prefix_score" -gt 0 ] && [ "$ordinal_score" -le 0 ]; then
+    printf '%s\n' "prefix"
+  elif [ "$ordinal_score" -gt 0 ] && [ "$prefix_score" -le 0 ]; then
+    printf '%s\n' "ordinal"
+  elif [ "$prefix_score" -gt "$ordinal_score" ]; then
+    printf '%s\n' "prefix"
+  elif [ "$ordinal_score" -gt "$prefix_score" ]; then
     printf '%s\n' "ordinal"
   else
     printf '%s\n' "unknown"

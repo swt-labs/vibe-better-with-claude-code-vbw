@@ -1210,8 +1210,7 @@ EOF
 
   local c2_detail
   c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
-  [[ "$c2_detail" == *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
-  [[ "$c2_detail" != *"phase 1 referenced in ROADMAP.md but no matching phase directory"* ]]
+  [[ "$c2_detail" == *"phase 4 referenced in ROADMAP.md but no matching phase directory"* ]]
 }
 
 @test "roadmap references phase with no matching dir fails in advisory mode too" {
@@ -1237,8 +1236,7 @@ EOF
 
   local c2_detail
   c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
-  [[ "$c2_detail" == *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
-  [[ "$c2_detail" != *"phase 1 referenced in ROADMAP.md but no matching phase directory"* ]]
+  [[ "$c2_detail" == *"phase 4 referenced in ROADMAP.md but no matching phase directory"* ]]
 }
 
 # ---------------------------------------------------------------------------
@@ -1980,8 +1978,7 @@ ROADMAP
   c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
   c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
   [ "$c2_pass" = "false" ]
-  [[ "$c2_detail" == *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
-  [[ "$c2_detail" != *"phase directory 2 exists on disk but no matching ROADMAP checklist entry"* ]]
+  [[ "$c2_detail" == *"phase directory 2 exists on disk but no matching ROADMAP checklist entry"* ]]
 }
 
 @test "roadmap_vs_summaries passes when roadmap and dirs fully aligned" {
@@ -2061,9 +2058,11 @@ EOF
 
 - [x] Phase 1: Setup
 - [ ] Phase 2: Build
+- [ ] Phase 4: Deploy
 
 ### Phase 1: Setup
 ### Phase 2: Build
+### Phase 4: Deploy
 EOF
 
   mkdir -p "$root/phases/01-setup" "$root/phases/03-build" "$root/phases/04-deploy"
@@ -2085,6 +2084,29 @@ EOF
   [[ "$c2_detail" != *"phase 2 referenced in ROADMAP.md but no matching phase directory"* ]]
   [[ "$c2_detail" != *"phase directory 3 exists on disk but no matching ROADMAP checklist entry"* ]]
   [[ "$c2_detail" != *"phase directory 4 exists on disk but no matching ROADMAP checklist entry"* ]]
+}
+
+@test "missing ROADMAP helper functions return structured missing_deps" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  local partial_scripts
+  partial_scripts="$TEST_TEMP_DIR/partial-verify-scripts"
+  mkdir -p "$partial_scripts/lib"
+  cp "$SCRIPTS_DIR/verify-state-consistency.sh" "$partial_scripts/verify-state-consistency.sh"
+  cp "$SCRIPTS_DIR/summary-utils.sh" "$partial_scripts/summary-utils.sh"
+  cp "$SCRIPTS_DIR/uat-utils.sh" "$partial_scripts/uat-utils.sh"
+  cp "$SCRIPTS_DIR/lib/vbw-config-root.sh" "$partial_scripts/lib/vbw-config-root.sh"
+  cat > "$partial_scripts/phase-state-utils.sh" <<'PHASEUTILS'
+list_canonical_phase_dirs() { :; }
+count_phase_plans() { echo "0"; }
+phase_dir_display_name() { echo "Stub"; }
+PHASEUTILS
+
+  run bash "$partial_scripts/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.failed_checks | index("missing_deps")' >/dev/null
+  echo "$output" | jq -r '.reason' | grep -q 'normalize_roadmap_phase_num'
 }
 
 # ============================================================
