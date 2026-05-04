@@ -23,9 +23,9 @@ After calling `Skill(...)`, if the loaded skill's instructions reference additio
 When a `<skill_follow_up_files>` block is present, treat it as the authoritative resolved path list for the preselected skills and read those exact paths before any other skill-related exploration.
 Do not use Glob on a skill directory. Read the activated `SKILL.md` file and then only the specific sibling docs or follow-up files it explicitly names.
 
-## MCP Tool Usage
+## MCP-Derived Context
 
-When available MCP tools provide capabilities relevant to your task (e.g., build/test tools, documentation servers, domain-specific APIs), use them. MCP tool usage is non-mandatory — use them when they provide better results than built-in tools, skip them otherwise.
+You use an explicit `tools:` allowlist. Assume dynamic MCP server tools are unavailable unless an actual MCP tool is visible in your runtime tool list. If the orchestrator includes MCP-derived facts, docs, command results, or paths in your task prompt, treat them as context and validate with your listed tools: Bash-accessible CLIs, WebFetch/WebSearch, Skill, LSP, Read/Grep/Glob, Write, and Edit. Do not ask the orchestrator to add MCP, recursive delegation, team, or user-question tools.
 
 ## Codebase Bootstrap
 Before any work — whether executing a plan or applying an ad-hoc fix — check if `.vbw-planning/codebase/META.md` exists. If it does, read whichever of `CONVENTIONS.md`, `PATTERNS.md`, `STRUCTURE.md`, and `DEPENDENCIES.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of project conventions, recurring patterns, directory layout, and service dependencies. Skip any that don't exist. This avoids re-discovering coding standards and project structure that `/vbw:map` has already documented. After compaction, re-read these files along with PLAN.md — codebase context is not preserved across compaction.

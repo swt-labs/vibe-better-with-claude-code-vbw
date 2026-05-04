@@ -517,6 +517,9 @@ echo "=== Skill Activation Pipeline Verification (plan-driven model) ==="
 # --- vbw-dev.md checks ---
 
 DEV_AGENT="$ROOT/agents/vbw-dev.md"
+FIX_COMMAND="$ROOT/commands/fix.md"
+VIBE_COMMAND="$ROOT/commands/vibe.md"
+EXECUTE_PROTOCOL="$ROOT/references/execute-protocol.md"
 DEV_TOOLS=$(sed -n '/^---$/,/^---$/p' "$DEV_AGENT" | grep '^tools:' || true)
 DEV_DISALLOWED=$(sed -n '/^---$/,/^---$/p' "$DEV_AGENT" | grep '^disallowedTools:' || true)
 
@@ -576,6 +579,50 @@ if grep -q 'TaskGet' "$DEV_AGENT" && dev_tools_has TaskGet; then
   pass "vbw-dev.md: TaskGet guidance matches explicit tool availability"
 else
   fail "vbw-dev.md: TaskGet guidance/tool availability mismatch"
+fi
+
+if grep -q '## MCP-Derived Context' "$DEV_AGENT" \
+  && grep -q 'explicit `tools:` allowlist' "$DEV_AGENT" \
+  && grep -q 'Assume dynamic MCP server tools are unavailable' "$DEV_AGENT" \
+  && grep -q 'MCP-derived facts, docs, command results, or paths' "$DEV_AGENT"; then
+  pass "vbw-dev.md: MCP guidance matches explicit allowlist boundary"
+else
+  fail "vbw-dev.md: MCP guidance does not match explicit allowlist boundary"
+fi
+
+if grep -q 'When available MCP tools provide capabilities' "$DEV_AGENT" || grep -q 'use MCP tools' "$DEV_AGENT"; then
+  fail "vbw-dev.md: stale direct MCP-use guidance remains"
+else
+  pass "vbw-dev.md: no stale direct MCP-use guidance"
+fi
+
+if grep -q 'pre-extract concise task-relevant facts, docs, command results, or paths for Dev' "$FIX_COMMAND" \
+  && grep -q 'do not instruct `vbw-dev` to call MCP servers directly' "$FIX_COMMAND"; then
+  pass "fix.md: Dev MCP guidance uses parent-side pre-extraction"
+else
+  fail "fix.md: Dev MCP guidance still assumes inherited MCP access"
+fi
+
+if [ "$(grep -c 'do not instruct `vbw-dev` to call MCP servers directly' "$VIBE_COMMAND")" -ge 2 ] \
+  && grep -q 'Do not plan for Dev agents to call MCP servers directly' "$VIBE_COMMAND"; then
+  pass "vibe.md: Dev MCP guidance uses parent-side pre-extraction"
+else
+  fail "vibe.md: Dev MCP guidance still assumes inherited MCP access"
+fi
+
+if grep -q 'pre-extract concise task-relevant facts, docs, command results, or paths for Dev' "$EXECUTE_PROTOCOL" \
+  && grep -q 'do not instruct `vbw-dev` to call MCP servers directly' "$EXECUTE_PROTOCOL"; then
+  pass "execute-protocol.md: Dev MCP guidance uses parent-side pre-extraction"
+else
+  fail "execute-protocol.md: Dev MCP guidance still assumes inherited MCP access"
+fi
+
+if grep -q 'note them in the Dev task description' "$FIX_COMMAND" \
+  || grep -q "note them in the Dev's task context" "$VIBE_COMMAND" \
+  || grep -q 'so the Dev agent knows which MCP tools to use' "$EXECUTE_PROTOCOL"; then
+  fail "Dev spawn docs: stale inherited MCP instruction remains"
+else
+  pass "Dev spawn docs: no stale inherited MCP instruction remains"
 fi
 
 if grep -q 'skills_used' "$DEV_AGENT"; then

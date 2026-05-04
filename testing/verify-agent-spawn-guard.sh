@@ -272,6 +272,39 @@ test_no_marker_allows_non_agent_worktree_cwd_when_config_off() {
 }
 test_no_marker_allows_non_agent_worktree_cwd_when_config_off
 
+test_no_marker_blocks_sidechain_cwd_when_config_on() {
+  setup_project
+  jq '.worktree_isolation = "on"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
+  mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
+
+  local field output rc
+  for field in cwd working_dir workingDirectory workdir; do
+    output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
+      pass "No marker with config on: sidechain ${field} blocked"
+    else
+      fail "No-marker sidechain ${field} should block even when worktree_isolation on (rc=$rc, output=$output)"
+    fi
+  done
+  cleanup
+}
+test_no_marker_blocks_sidechain_cwd_when_config_on
+
+test_no_marker_allows_prepared_vbw_worktree_cwd_when_config_on() {
+  setup_project
+  jq '.worktree_isolation = "on"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
+  mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
+  mkdir -p "$PROJECT/.vbw-worktrees/dev-01"
+
+  if run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "worktree" "$PROJECT/.vbw-worktrees/dev-01" "cwd" >/dev/null 2>&1; then
+    pass "No marker with config on: prepared VBW worktree cwd allowed"
+  else
+    fail "No-marker prepared VBW worktree cwd should be allowed when worktree_isolation on"
+  fi
+  cleanup
+}
+test_no_marker_allows_prepared_vbw_worktree_cwd_when_config_on
+
 test_active_execute_without_live_marker_blocks() {
   setup_project
   write_execution_state "corr-123"
@@ -570,13 +603,16 @@ test_sidechain_taskcreate_uses_host_active_count_to_block
 
 test_sidechain_cwd_uses_host_config_to_block_worktree_isolation() {
   setup_sidechain_project
+  jq '.worktree_isolation = "on"' "$SIDECHAIN/.vbw-planning/config.json" > "$SIDECHAIN/.vbw-planning/config.json.tmp"
+  mv "$SIDECHAIN/.vbw-planning/config.json.tmp" "$SIDECHAIN/.vbw-planning/config.json"
+  mkdir -p "$PROJECT/.vbw-worktrees/dev-01"
 
   local output rc
-  output=$(run_guard_without_exported_root "$PROJECT" "" false "dev-01" "$SIDECHAIN" "Agent" "" "worktree" 2>&1) && rc=$? || rc=$?
+  output=$(run_guard_without_exported_root "$PROJECT" "" false "dev-01" "$SIDECHAIN" "Agent" "" "worktree" "$PROJECT/.vbw-worktrees/dev-01" "working_dir" 2>&1) && rc=$? || rc=$?
   if [ "$rc" -eq 2 ] && grep -q 'worktree isolation while VBW worktree_isolation is off' <<< "$output"; then
-    pass "Claude sidechain Agent isolation uses host config: blocked when host config is off"
+    pass "Claude sidechain Agent isolation with cwd alias uses host config: blocked when host config is off"
   else
-    fail "Claude sidechain Agent isolation should block from host config off (rc=$rc, output=$output)"
+    fail "Claude sidechain Agent isolation with cwd alias should block from host config off (rc=$rc, output=$output)"
   fi
   cleanup
 }

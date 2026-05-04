@@ -103,14 +103,14 @@ if [ "$EXEC_ACTIVE" = true ] && { [ "$MARKER_LIVE" != "true" ] || [ "$MODE" != "
 fi
 
 if is_teammate_spawn_tool; then
+  if requested_sidechain_cwd; then
+    echo "Blocked: teammate spawn requested an unmanaged Claude sidechain working directory. Omit the sidechain cwd/working_dir or use a VBW-prepared worktree target." >&2
+    exit 2
+  fi
   WORKTREE_ISOLATION=$(config_worktree_isolation)
   if [ "$WORKTREE_ISOLATION" != "on" ]; then
     if requested_worktree_isolation; then
       echo "Blocked: teammate spawn requested Claude worktree isolation while VBW worktree_isolation is off. Omit isolation or enable VBW worktree isolation." >&2
-      exit 2
-    fi
-    if requested_sidechain_cwd; then
-      echo "Blocked: teammate spawn requested a Claude sidechain working directory while VBW worktree_isolation is off. Omit the sidechain cwd/working_dir or enable VBW worktree isolation." >&2
       exit 2
     fi
   fi

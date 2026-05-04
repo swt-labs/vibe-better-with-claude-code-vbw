@@ -644,7 +644,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     </skill_no_activation>
     After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
     ```
-  - Also evaluate available MCP tools in your system context. If any MCP servers provide build, test, or domain-specific capabilities relevant to the remediation tasks, note them in the Dev's task context.
+  - You may use MCP tools available in the parent session to pre-extract concise remediation facts, docs, command results, or paths for Dev. Pass that MCP-derived context into the Dev task description, but do not instruct `vbw-dev` to call MCP servers directly; Dev uses an explicit tool allowlist and validates with built-in tools or Bash-accessible CLIs.
   - Always subagent — NO team creation for QA remediation (NON-NEGOTIABLE)
   - Dev fixes code, commits, writes `R{RR}-SUMMARY.md` in `{round_dir}` using `templates/REMEDIATION-SUMMARY.md` (NOT `templates/SUMMARY.md`)
     - The remediation summary frontmatter MUST include aggregated `commit_hashes`, `files_modified`, and `deviations`
@@ -1107,7 +1107,7 @@ If `plan_path` is empty, spawn Lead as a **single subagent** to write the remedi
   </skill_no_activation>
   After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
   ```
-- Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, note them in the Lead's task context so Lead can include them when spawning Dev agents.
+- Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, use them to derive concise facts, docs, results, or recommended Dev-stage CLIs/skills for the Lead's task context. Do not plan for Dev agents to call MCP servers directly unless those MCP tools are explicitly listed in Dev's runtime tools.
 - Spawn vbw-lead via Task tool: Set `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"`. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If empty, omit maxTurns.
 - Lead prompt MUST include:
   - If `research_path` from step 4 is non-empty: `Read {research_path} for full research findings before planning.` (Lead must read the file, do NOT inline a summary.)
@@ -1172,7 +1172,7 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
   </skill_no_activation>
   After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
   ```
-- Also evaluate available MCP tools in your system context. If any MCP servers provide build, test, documentation, or domain-specific capabilities relevant to the Dev tasks, note them in the Dev's task context.
+- You may use MCP tools available in the parent session to pre-extract concise build, test, documentation, or domain facts for Dev. Pass that MCP-derived context into the Dev task description, but do not instruct `vbw-dev` to call MCP servers directly; Dev uses an explicit tool allowlist and validates with built-in tools or Bash-accessible CLIs.
 - For each task in the plan (**sequentially**, one at a time — wait for each Dev to complete before spawning the next):
   - Spawn vbw-dev via Task tool: Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"`. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If empty, omit maxTurns.
   - Dev prompt MUST include:
@@ -1403,7 +1403,7 @@ This mode handles the case where a milestone was archived before UAT issues were
     </skill_no_activation>
     After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
     ```
-   - Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, note them in the Lead's task context so Lead can include them when spawning Dev agents.
+  - Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, use them to derive concise facts, docs, results, or recommended Dev-stage CLIs/skills for the Lead's task context. Do not plan for Dev agents to call MCP servers directly unless those MCP tools are explicitly listed in Dev's runtime tools.
    - Spawn vbw-lead as subagent via Task tool with compiled context (or full file list as fallback).
    - **CRITICAL:** Set `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"` in the Task tool invocation. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
    - **CRITICAL:** If a RESEARCH.md was found or created in step 3, include in the Lead prompt: `Read {research-path} for full research findings before planning.` where `{research-path}` is the per-plan or legacy path from step 3. The Lead must read the file itself — do NOT substitute an inlined summary.
