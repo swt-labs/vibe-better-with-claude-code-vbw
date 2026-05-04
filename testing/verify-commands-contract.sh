@@ -1129,10 +1129,18 @@ fi
 
 if grep -Fq '<qa_remediation_spawn_contract>' <<< "$qa_remediation_block" \
   && grep -Fq 'QA remediation spawns are plain sequential subagent calls' <<< "$qa_remediation_block" \
-  && grep -Fq 'Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, or the `isolation` parameter' <<< "$qa_remediation_block"; then
+  && grep -Fq 'Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' <<< "$qa_remediation_block"; then
   pass "vibe: QA remediation has non-team spawn-shape contract"
 else
   fail "vibe: QA remediation missing non-team spawn-shape contract"
+fi
+
+if grep -Fq 'future section explicitly prepares VBW worktree targeting' <<< "$qa_remediation_block" \
+  || grep -Fq 'unless a future section' <<< "$qa_remediation_block" \
+  || grep -Fq 'prepared VBW worktree target' <<< "$qa_remediation_block"; then
+  fail "vibe: QA remediation must not preserve worktree-targeting spawn exceptions"
+else
+  pass "vibe: QA remediation rejects worktree-targeting spawn exceptions"
 fi
 
 if grep -Fq '<qa_remediation_no_tool_circuit_breaker>' <<< "$qa_remediation_block" \

@@ -103,8 +103,8 @@ for tool in Task TaskCreate Agent TeamCreate TeamDelete AskUserQuestion; do
   check_contains "README: Dev row mentions omitted tool ${tool}" "$README_DEV_ROW" "$tool"
 done
 
-check_contains "README: permission legend covers allowlist omissions" "$README_PERMISSION_LEGEND" "for explicit allowlist agents, tools intentionally absent from `tools`"
-check_not_contains "README: permission legend no longer describes only disallowedTools" "$README_PERMISSION_LEGEND" "**Denied** = `disallowedTools`"
+check_contains "README: permission legend covers allowlist omissions" "$README_PERMISSION_LEGEND" 'for explicit allowlist agents, tools intentionally absent from `tools`'
+check_not_contains "README: permission legend no longer describes only disallowedTools" "$README_PERMISSION_LEGEND" '**Denied** = `disallowedTools`'
 
 if grep -Fq 'Dev, Debugger' "$README_FILE" && grep -Fq 'Full access. The ones you actually worry about.' "$README_FILE"; then
   fail "README: permission model no longer groups Dev with full-access agents"

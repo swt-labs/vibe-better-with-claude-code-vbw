@@ -69,9 +69,17 @@ requested_worktree_isolation() {
   [ "$isolation" = "worktree" ]
 }
 
-requested_sidechain_cwd() {
+requested_cwd_values() {
   echo "$INPUT" | jq -r '[.tool_input.cwd? // empty, .tool_input.working_dir? // empty, .tool_input.workingDirectory? // empty, .tool_input.workdir? // empty] | map(select(type == "string")) | .[]' 2>/dev/null \
-    | grep -Eq '(^|/)\.claude/worktrees/agent-[^/]+(/|$)'
+    || return 1
+}
+
+requested_sidechain_cwd() {
+  requested_cwd_values | grep -Eq '(^|/)\.claude/worktrees/agent-[^/]+(/|$)'
+}
+
+requested_vbw_worktree_cwd() {
+  requested_cwd_values | grep -Eq '(^|/)\.vbw-worktrees(/|$)'
 }
 
 EXEC_STATE_FILE="$PROJECT_ROOT/.vbw-planning/.execution-state.json"
@@ -99,7 +107,11 @@ fi
 
 if is_teammate_spawn_tool; then
   if requested_sidechain_cwd; then
-    echo "Blocked: teammate spawn requested an unmanaged Claude sidechain working directory. Omit the sidechain cwd/working_dir or use a VBW-prepared worktree target." >&2
+    echo "Blocked: teammate spawn requested an unmanaged Claude sidechain working directory. Omit sidechain cwd/working_dir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
+    exit 2
+  fi
+  if requested_vbw_worktree_cwd; then
+    echo "Blocked: teammate spawn requested a VBW worktree path as a spawn working directory. Omit cwd/working_dir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
     exit 2
   fi
   if requested_worktree_isolation; then

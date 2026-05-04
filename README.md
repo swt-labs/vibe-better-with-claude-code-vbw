@@ -119,7 +119,7 @@ Agent Teams are [experimental with known limitations](https://code.claude.com/do
 
 - **File conflicts.** Plans decompose work into tasks with explicit file ownership. Dev teammates operate on disjoint file sets by design, enforced at runtime by the `file-guard.sh` hook that blocks writes to files not declared in the active plan.
 
-- **Worktree isolation.** Each Dev plan can get its own git worktree — physical filesystem isolation, not just file-list enforcement — whether execution is true-team parallel or serialized by dependencies. Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. Off by default; set `worktree_isolation` to `"on"` in config to enable. VBW uses its own `.vbw-worktrees` git worktrees and blocks teammate spawns that try to force Claude-side `isolation:"worktree"` or unmanaged `.claude/worktrees/agent-*` sidechain CWDs. See [Execution Model](#execution-model) for how this interacts with dependency routing and lease locks.
+- **Worktree isolation.** Each Dev plan can get its own git worktree — physical filesystem isolation, not just file-list enforcement — whether execution is true-team parallel or serialized by dependencies. Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. Off by default; set `worktree_isolation` to `"on"` in config to enable. VBW uses its own `.vbw-worktrees` git worktrees through task prompt/state metadata and blocks teammate spawns that try to force Claude-side `isolation:"worktree"`, unmanaged `.claude/worktrees/agent-*` sidechain CWDs, or `.vbw-worktrees/...` spawn CWD aliases. See [Execution Model](#execution-model) for how this interacts with dependency routing and lease locks.
 
 Agent Teams ship with seven known limitations. VBW addresses all of them. The eighth... that you're using AI to write software doesn't need a fix. It needs an intervention.
 
@@ -785,7 +785,7 @@ When enabled, each Dev agent gets its own **git worktree** — a physically sepa
 
 When `worktree_isolation` is `on`, VBW creates `.vbw-worktrees/...` git worktrees, records the assigned path in execution state, and tells Dev agents their working directory through task prompt metadata. VBW does not use Claude Code's `isolation:"worktree"` sidechain for this flow.
 
-VBW teammate spawns always block Claude-side `isolation:"worktree"` and unmanaged `.claude/worktrees/agent-*` sidechain working directories. This keeps remediation and serialized subagent paths out of unprepared sidechain roots while still allowing VBW-prepared git worktree targeting.
+VBW teammate spawns always block Claude-side `isolation:"worktree"`, unmanaged `.claude/worktrees/agent-*` sidechain working directories, and `.vbw-worktrees/...` spawn cwd aliases. This keeps remediation and serialized subagent paths out of unprepared sidechain roots while allowing VBW-prepared git worktree targeting through `.execution-state.json`, `scripts/worktree-target.sh`, and task prompt metadata.
 
 | Setting | Type | Default | Values |
 | :--- | :--- | :--- | :--- |

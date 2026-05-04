@@ -587,10 +587,19 @@ fi
 
 if grep -Fq '<qa_remediation_spawn_contract>' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'QA remediation uses plain sequential subagent calls' "$EXECUTE_PROTOCOL" \
-  && grep -Fq 'Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, or `isolation`' "$EXECUTE_PROTOCOL"; then
+  && grep -Fq 'Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'VBW worktree targeting is task prompt/state metadata, not a spawn isolation or cwd handoff' "$EXECUTE_PROTOCOL"; then
   pass "execute-protocol documents QA remediation non-team spawn shape"
 else
   fail "execute-protocol missing QA remediation non-team spawn shape contract"
+fi
+
+if grep -Fq 'future section explicitly prepares VBW worktree targeting' <<< "$QA_REMEDIATION_BLOCK" \
+  || grep -Fq 'unless a future section' <<< "$QA_REMEDIATION_BLOCK" \
+  || grep -Fq 'prepared VBW worktree target' <<< "$QA_REMEDIATION_BLOCK"; then
+  fail "execute-protocol QA remediation must not preserve worktree-targeting spawn exceptions"
+else
+  pass "execute-protocol QA remediation rejects worktree-targeting spawn exceptions"
 fi
 
 if grep -Fq '<qa_remediation_no_tool_circuit_breaker>' "$EXECUTE_PROTOCOL" \
