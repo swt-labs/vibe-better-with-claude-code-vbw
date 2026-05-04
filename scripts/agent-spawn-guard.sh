@@ -76,7 +76,7 @@ requested_worktree_isolation() {
 
 requested_sidechain_cwd() {
   echo "$INPUT" | jq -r '[.tool_input.cwd? // empty, .tool_input.working_dir? // empty, .tool_input.workingDirectory? // empty, .tool_input.workdir? // empty] | map(select(type == "string")) | .[]' 2>/dev/null \
-    | grep -Fq '.claude/worktrees/'
+    | grep -Eq '(^|/)\.claude/worktrees/agent-[^/]+(/|$)'
 }
 
 EXEC_STATE_FILE="$PROJECT_ROOT/.vbw-planning/.execution-state.json"

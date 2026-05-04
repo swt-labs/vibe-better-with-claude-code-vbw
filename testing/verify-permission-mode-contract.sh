@@ -82,20 +82,29 @@ for agent in $AGENTS; do
 done
 
 README_DEV_ROW=$(grep -F '| **Dev** |' "$README_FILE" || true)
+README_PERMISSION_LEGEND=$(grep -F '**Denied / Omitted**' "$README_FILE" || true)
+DEV_DESCRIPTION=$(head -15 "$ROOT/agents/vbw-dev.md" | grep '^description:' || true)
+
 if [[ -n "$README_DEV_ROW" ]]; then
   pass "README: Dev permission row exists"
 else
   fail "README: Dev permission row exists"
 fi
 
+check_not_contains "dev: description no longer says full tool access" "$DEV_DESCRIPTION" "full tool access"
+check_contains "dev: description mentions explicit tool allowlist" "$DEV_DESCRIPTION" "explicit implementation tool allowlist"
 check_not_contains "README: Dev row no longer says Full access" "$README_DEV_ROW" "Full access"
 check_not_contains "README: Dev row no longer leaves denied tools blank" "$README_DEV_ROW" "| -- |"
+check_contains "README: Dev row describes explicit omissions" "$README_DEV_ROW" "Outside explicit allowlist"
 for tool in Read Glob Grep Write Edit Bash WebFetch WebSearch LSP Skill SendMessage TaskGet; do
   check_contains "README: Dev row mentions allowed tool ${tool}" "$README_DEV_ROW" "$tool"
 done
 for tool in Task TaskCreate Agent TeamCreate TeamDelete AskUserQuestion; do
   check_contains "README: Dev row mentions omitted tool ${tool}" "$README_DEV_ROW" "$tool"
 done
+
+check_contains "README: permission legend covers allowlist omissions" "$README_PERMISSION_LEGEND" "for explicit allowlist agents, tools intentionally absent from `tools`"
+check_not_contains "README: permission legend no longer describes only disallowedTools" "$README_PERMISSION_LEGEND" "**Denied** = `disallowedTools`"
 
 if grep -Fq 'Dev, Debugger' "$README_FILE" && grep -Fq 'Full access. The ones you actually worry about.' "$README_FILE"; then
   fail "README: permission model no longer groups Dev with full-access agents"

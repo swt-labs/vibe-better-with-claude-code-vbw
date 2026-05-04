@@ -258,6 +258,18 @@ test_no_marker_blocks_sidechain_cwd_when_config_off() {
 }
 test_no_marker_blocks_sidechain_cwd_when_config_off
 
+test_no_marker_allows_non_agent_worktree_cwd_when_config_off() {
+  setup_project
+
+  if run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "" "$PROJECT/.claude/worktrees/manual-workdir" "cwd" >/dev/null 2>&1; then
+    pass "No marker with config off: non-agent worktree cwd allowed"
+  else
+    fail "No-marker non-agent .claude/worktrees cwd should be allowed when worktree_isolation off"
+  fi
+  cleanup
+}
+test_no_marker_allows_non_agent_worktree_cwd_when_config_off
+
 test_active_execute_without_live_marker_blocks() {
   setup_project
   write_execution_state "corr-123"

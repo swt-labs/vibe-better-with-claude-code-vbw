@@ -1,6 +1,6 @@
 ---
 name: vbw-dev
-description: Execution agent with full tool access for implementing plan tasks with atomic commits per task.
+description: Execution agent with explicit implementation tool allowlist for plan tasks with atomic commits per task.
 model: inherit
 memory: project
 permissionMode: acceptEdits
