@@ -149,8 +149,12 @@ TOKENS_RAW=\$(cat <<'TOKENS_EOF'
 $tokens
 TOKENS_EOF
 )
-mapfile -t NAMES_ARR <<< "\$NAMES_RAW"
-mapfile -t TOKENS_ARR <<< "\$TOKENS_RAW"
+# Portable mapfile equivalent — bash 3.2 (macOS default) lacks `mapfile`.
+NAMES_ARR=()
+TOKENS_ARR=()
+while IFS= read -r _line; do NAMES_ARR+=("\$_line"); done <<< "\$NAMES_RAW"
+while IFS= read -r _line; do TOKENS_ARR+=("\$_line"); done <<< "\$TOKENS_RAW"
+unset _line
 
 if [ "\$1" = "find-generic-password" ]; then
   svc=""

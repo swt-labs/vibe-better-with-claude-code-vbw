@@ -770,7 +770,6 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
         fi
         unset _SUFFIXED_NAMES _sn _kt
       fi
-      unset CRED_JSON
     else
       # Linux: try secret-tool (GNOME Keyring) then pass (password-store)
       if command -v secret-tool &>/dev/null; then
@@ -787,6 +786,9 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
         fi
       fi
     fi
+    # Hygiene: clear the credential JSON (which includes the refresh token)
+    # from the script's variable namespace once we've extracted any access token.
+    unset CRED_JSON
   fi
 
   # Priority 3: credentials file (check both with and without leading dot,
@@ -835,11 +837,14 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
     # Build candidate list: primary token first, then any keychain alternates
     # (#576 multi-install case — if the primary returns 401 we try the next).
     # Non-auth failures (429/5xx/network) break immediately; retrying wouldn't help.
+    # Cap at 4 attempts so a user with many stale installs isn't blocked by
+    # 6× the curl timeout (3s each) on every render.
     _USAGE_CANDIDATES=("$OAUTH_TOKEN")
     for _alt_token in "${_KEYCHAIN_FALLBACK_TOKENS[@]:-}"; do
       [ -z "$_alt_token" ] && continue
       [ "$_alt_token" = "$OAUTH_TOKEN" ] && continue
       _USAGE_CANDIDATES+=("$_alt_token")
+      [ "${#_USAGE_CANDIDATES[@]}" -ge 4 ] && break
     done
     for _candidate_token in "${_USAGE_CANDIDATES[@]}"; do
       HTTP_CODE="000"
@@ -1014,6 +1019,13 @@ elif [ "$AUTH_METHOD" = "claude.ai" ]; then
   # file) all returned empty AND the claude CLI confirms an OAuth login. Most
   # often that means the token simply isn't in any location we can reach, not
   # that macOS denied access. Suggest the env-var workaround.
+  #
+  # NOTE: the exit-44 (item-not-found) vs exit-51 (access-denied) distinction
+  # from the issue's proposed fix is deliberately collapsed here — branching
+  # the message would require persisting the keychain status through the slow
+  # cache (15 → 16 fields with back-compat read), and the env-var workaround
+  # already resolves both sub-cases. Future maintainers: if you want exit-code
+  # branching, plan the cache schema bump first. See PR #578.
   USAGE_LINE="${D}Limits: OAuth token unavailable (set VBW_OAUTH_TOKEN)${X}"
 elif [ "$FETCH_OK" = "noauth" ]; then
   USAGE_LINE="${D}Limits: N/A (using API key)${X}"
