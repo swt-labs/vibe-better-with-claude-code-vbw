@@ -561,11 +561,20 @@ check_literal_before_literal "execute-protocol handles no-tool Dev return before
 if grep -Fq '**Non-team spawn-shape rule:**' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'whether the live tool is `Agent` or `TaskCreate`' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'omit `team_name`, per-agent `name`, `run_in_background`, and `isolation`' "$EXECUTE_PROTOCOL" \
-  && grep -Fq 'When VBW `worktree_isolation` is off, omit Claude worktree isolation entirely' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'Prepared VBW worktree targeting means the `Working directory:` and `Worktree targeting:` lines in the task description' "$EXECUTE_PROTOCOL" \
+  && grep -Fq '`.execution-state.json` `worktree_path` and `scripts/worktree-target.sh`' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'it is not an `isolation` or `cwd` field on the spawn call' "$EXECUTE_PROTOCOL" \
   && grep -Fq '.claude/worktrees/agent-*' "$EXECUTE_PROTOCOL"; then
   pass "execute-protocol documents non-team Agent/TaskCreate isolation-safe spawn shape"
 else
   fail "execute-protocol missing non-team Agent/TaskCreate isolation-safe spawn guidance"
+fi
+
+if grep -Fq 'When VBW `worktree_isolation` is off, omit Claude worktree isolation entirely' "$EXECUTE_PROTOCOL" \
+  || grep -Fq 'unless a section is explicitly in true team mode or has prepared VBW worktree targeting' "$EXECUTE_PROTOCOL"; then
+  fail "execute-protocol must not preserve stale off-only or prepared-targeting isolation allowance"
+else
+  pass "execute-protocol rejects stale off-only or prepared-targeting isolation allowance"
 fi
 
 if grep -Fq '<qa_remediation_artifact_contract>' "$EXECUTE_PROTOCOL" \

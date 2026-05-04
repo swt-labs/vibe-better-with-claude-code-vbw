@@ -328,7 +328,7 @@ if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
 
 For each runnable plan in the current segment, create the teammate task using the live teammate spawn tool (for example `TaskCreate` or `Agent`). In non-team mode, spawn exactly one Dev and wait for its result before spawning the next runnable plan. In true team mode, every spawn/TaskCreate after the marker is set must include the selected `TEAM_NAME` and teammate `name`.
 
-**Non-team spawn-shape rule:** On non-team live teammate spawn calls, whether the live tool is `Agent` or `TaskCreate`, omit `team_name`, per-agent `name`, `run_in_background`, and `isolation` unless a section is explicitly in true team mode or has prepared VBW worktree targeting for that plan. When VBW `worktree_isolation` is off, omit Claude worktree isolation entirely. Forcing Claude worktree isolation while VBW worktree isolation is off can put subagents in unprepared `.claude/worktrees/agent-*` sidechains and break tool/artifact assumptions.
+**Non-team spawn-shape rule:** On non-team live teammate spawn calls, whether the live tool is `Agent` or `TaskCreate`, omit `team_name`, per-agent `name`, `run_in_background`, and `isolation`. Prepared VBW worktree targeting means the `Working directory:` and `Worktree targeting:` lines in the task description, derived from `.execution-state.json` `worktree_path` and `scripts/worktree-target.sh`; it is not an `isolation` or `cwd` field on the spawn call. Claude-side `isolation:"worktree"` can create unmanaged `.claude/worktrees/agent-*` sidechains with different tool/artifact assumptions; VBW's current isolation uses its own `.vbw-worktrees` git worktrees.
 ```yaml
 subject: "Execute {NN-MM}: {plan-title}"
 description: |

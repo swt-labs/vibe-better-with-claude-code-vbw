@@ -63,11 +63,6 @@ is_teammate_spawn_tool() {
   [ "$TOOL_NAME" = "Agent" ] || [ "$TOOL_NAME" = "TaskCreate" ]
 }
 
-config_worktree_isolation() {
-  local config_file="$PROJECT_ROOT/.vbw-planning/config.json"
-  jq -r '.worktree_isolation // "off"' "$config_file" 2>/dev/null || printf '%s\n' "off"
-}
-
 requested_worktree_isolation() {
   local isolation=""
   isolation=$(echo "$INPUT" | jq -r '.tool_input.isolation // ""' 2>/dev/null) || return 1
@@ -107,12 +102,9 @@ if is_teammate_spawn_tool; then
     echo "Blocked: teammate spawn requested an unmanaged Claude sidechain working directory. Omit the sidechain cwd/working_dir or use a VBW-prepared worktree target." >&2
     exit 2
   fi
-  WORKTREE_ISOLATION=$(config_worktree_isolation)
-  if [ "$WORKTREE_ISOLATION" != "on" ]; then
-    if requested_worktree_isolation; then
-      echo "Blocked: teammate spawn requested Claude worktree isolation while VBW worktree_isolation is off. Omit isolation or enable VBW worktree isolation." >&2
-      exit 2
-    fi
+  if requested_worktree_isolation; then
+    echo "Blocked: teammate spawn requested Claude-side worktree isolation. Omit isolation; when VBW worktree isolation is enabled, use VBW-prepared worktree targeting metadata instead." >&2
+    exit 2
   fi
 fi
 
