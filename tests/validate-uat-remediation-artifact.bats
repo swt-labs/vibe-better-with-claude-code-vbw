@@ -148,11 +148,45 @@ EOF
   [[ "$output" == *"artifact path must be absolute"* ]]
 }
 
+@test "validator rejects relative research artifact paths" {
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" research ".vbw-planning/phases/01-test/remediation/uat/round-01/R01-RESEARCH.md"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"artifact path must be absolute"* ]]
+}
+
+@test "validator rejects relative plan artifact paths" {
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan ".vbw-planning/phases/01-test/remediation/uat/round-01/R01-PLAN.md"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"artifact path must be absolute"* ]]
+}
+
 @test "validator rejects Claude sidechain artifact paths" {
   local sidechain_summary="$TEST_TEMP_DIR/repo/.claude/worktrees/agent-test/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-SUMMARY.md"
   write_valid_summary "$sidechain_summary"
 
   run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" summary "$sidechain_summary"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"Claude sidechain"* ]]
+}
+
+@test "validator rejects Claude sidechain research artifact paths" {
+  local sidechain_research="$TEST_TEMP_DIR/repo/.claude/worktrees/agent-test/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-RESEARCH.md"
+  write_valid_research "$sidechain_research"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" research "$sidechain_research"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"Claude sidechain"* ]]
+}
+
+@test "validator rejects Claude sidechain plan artifact paths" {
+  local sidechain_plan="$TEST_TEMP_DIR/repo/.claude/worktrees/agent-test/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-PLAN.md"
+  write_valid_plan "$sidechain_plan"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$sidechain_plan"
   [ "$status" -eq 1 ]
   [[ "$output" == *"artifact_valid=false"* ]]
   [[ "$output" == *"Claude sidechain"* ]]

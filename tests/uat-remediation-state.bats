@@ -583,23 +583,31 @@ EOF
 }
 
 @test "get-or-init research_path finds file in round dir" {
+  local phase_dir_physical research_path
   mkdir -p "$PHASE_DIR/remediation/uat/round-01"
   printf 'stage=research\nround=01\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
   echo "# Research" > "$PHASE_DIR/remediation/uat/round-01/R01-RESEARCH.md"
+  phase_dir_physical="$(cd "$PHASE_DIR" && pwd -P)"
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^research_path=.*remediation/uat/round-01/R01-RESEARCH.md$"
+  research_path=$(awk -F= '/^research_path=/ { print $2; exit }' <<< "$output")
+  [ "$research_path" = "$phase_dir_physical/remediation/uat/round-01/R01-RESEARCH.md" ]
+  [[ "$research_path" = /* ]]
 }
 
 @test "get-or-init plan_path finds file in round dir" {
+  local phase_dir_physical plan_path
   mkdir -p "$PHASE_DIR/remediation/uat/round-01"
   printf 'stage=plan\nround=01\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
   echo "# Plan" > "$PHASE_DIR/remediation/uat/round-01/R01-PLAN.md"
+  phase_dir_physical="$(cd "$PHASE_DIR" && pwd -P)"
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" get-or-init "$PHASE_DIR" "major"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^plan_path=.*remediation/uat/round-01/R01-PLAN.md$"
+  plan_path=$(awk -F= '/^plan_path=/ { print $2; exit }' <<< "$output")
+  [ "$plan_path" = "$phase_dir_physical/remediation/uat/round-01/R01-PLAN.md" ]
+  [[ "$plan_path" = /* ]]
 }
 
 @test "get-or-init plan_path falls back to highest legacy phase-root plan when layout=legacy" {

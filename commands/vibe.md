@@ -3,7 +3,7 @@ name: vbw:vibe
 category: lifecycle
 description: "The one command. Detects state, parses intent, routes to any lifecycle mode -- bootstrap, scope, plan, execute, verify, discuss, archive, and more."
 argument-hint: "[intent or flags] [--plan] [--execute] [--verify] [--discuss] [--assumptions] [--scope] [--add] [--insert] [--remove] [--archive] [--yolo] [--effort=level] [--skip-qa] [--skip-audit] [--plan=NN] [N]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch, AskUserQuestion, Agent, TeamCreate, TaskCreate, SendMessage, TeamDelete, Skill, LSP
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch, AskUserQuestion, Agent, TeamCreate, TaskCreate, SendMessage, TeamDelete, Skill, LSP, TodoWrite
 disable-model-invocation: true
 ---
 
@@ -959,10 +959,27 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
     `round_dir`, `research_path`, `plan_path`, and `summary_path` are absolute paths in the host repository. Claude Code may run subagents from `.claude/worktrees/agent-*` sidechain CWDs; pass these exact paths to every Scout/Lead/Dev prompt and never rewrite them relative to the current CWD. Do not accept artifacts written under `.claude/worktrees/agent-*` as valid remediation artifacts.
     In migrated `layout=legacy` projects, non-empty `research_path` or `plan_path` may be an absolute phase-root artifact selected by `uat-remediation-state.sh`; validate that exact metadata path directly instead of rewriting it to `round_dir` or searching for alternatives.
     </uat_remediation_artifact_contract>
+    <uat_remediation_spawn_contract>
+    The Research → Plan → Execute (or Fix) list is session progress tracking only. TodoWrite is the only progress tracker for these stages; do not create or update stage-progress items with TaskCreate, TaskUpdate, Agent, or TeamCreate. TaskCreate/Agent is allowed only for real Scout/Lead/Dev work-unit delegation inside the current stage, never to represent the stage list itself.
+    UAT remediation spawns are plain sequential subagent calls. Do not use TeamCreate. Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, or the `isolation` parameter. Claude Code worktree isolation is not reliable for this path; exact absolute host paths keep the orchestrator and subagents on the same `.vbw-planning/.../remediation/uat/...` artifacts.
+    </uat_remediation_spawn_contract>
+    <examples>
+    <example type="anti-pattern" label="WRONG — stage progress via delegated task manager">
+    TaskCreate("Research Phase 03 UAT remediation") → TaskUpdate("Plan", completed) → TaskCreate("Execute") creates stage trackers outside the orchestrator's TodoWrite progress list.
+    </example>
+    <example type="correct" label="RIGHT — stage progress via TodoWrite">
+    TodoWrite: Research=in-progress, Plan=not-started, Execute=not-started; after research validates, TodoWrite: Research=completed, Plan=in-progress, Execute=not-started.
+    </example>
+    <example type="correct" label="RIGHT — delegated Dev work unit">
+    Spawn one Dev for the current plan task with no team metadata, no per-agent name, no background execution, and no isolation parameter. Include absolute artifacts exactly as returned by state metadata:
+    Plan: /repo/.vbw-planning/phases/03-example/remediation/uat/round-01/R01-PLAN.md
+    Summary: /repo/.vbw-planning/phases/03-example/remediation/uat/round-01/R01-SUMMARY.md
+    </example>
+    </examples>
    - If a stage was already persisted (resume after compaction/restart), the script returns the stage word + plan metadata with no side effects.
    - If no stage existed (first entry into remediation), the script initializes the stage file, creates `remediation/uat/round-01/` directory, pre-seeds the phase `{NN}-CONTEXT.md`, and returns the stage word + plan metadata + `---CONTEXT---` separator with the full pre-seeded context content — **use this directly as your remediation context. Do NOT separately read UAT.md or `{NN}-CONTEXT.md` files.**
    - If the returned stage is `done`: UAT remediation already completed for this phase. Display "Remediation already completed. Run `/vbw:vibe` to re-verify." STOP.
-   **TodoWrite progress list (NON-NEGOTIABLE ordering and state):** Immediately after resolving the stage, create a TodoWrite progress list with items in **exactly this order** for the major path: (1) Research, (2) Plan, (3) Execute. For the minor path: (1) Fix. **Item numbering must match stage order** — Research is always #1, Plan #2, Execute #3. Never reorder items. This is a progress display for the user — agent spawning for each stage is handled in the execution stage below.
+    **TodoWrite progress list (NON-NEGOTIABLE ordering and state):** Immediately after resolving the stage, create a TodoWrite progress list with items in **exactly this order** for the major path: (1) Research, (2) Plan, (3) Execute. For the minor path: (1) Fix. **Item numbering must match stage order** — Research is always #1, Plan #2, Execute #3. Never reorder items. This is a progress display for the user — agent spawning for each stage is handled in the execution stage below. Do not represent Research, Plan, Execute, or Fix as TaskCreate/TaskUpdate items.
    - **Initial creation:** If the resolved stage is `research`, mark Research as in-progress, Plan and Execute as not-started. If the resolved stage is `plan` (resume case), mark Research as completed, Plan as in-progress, Execute as not-started. If `execute`, mark Research and Plan as completed, Execute as in-progress.
    - **Same-session progression:** When a stage completes and you advance to the next stage within the same session (e.g., research completes → advance → start plan), immediately update the TodoWrite progress list: mark the completed stage as completed and the new stage as in-progress. Do NOT defer updates or recreate the list from scratch.
    - **Final stage:** When the last stage completes, mark ALL TodoWrite items as completed before presenting the summary.
@@ -1045,7 +1062,7 @@ If validation fails, display the validator error and STOP without advancing stat
 
 If `plan_path` is empty, spawn Lead as a **single subagent** to write the remediation plan.
 
-**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name` or `name` parameters**. This is NOT "Plan mode steps 1-12" — remediation has its own sequential flow that does not use the standard planning pipeline.
+**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name`, `name`, `run_in_background`, or `isolation` parameters**. This is NOT "Plan mode steps 1-12" — remediation has its own sequential flow that does not use the standard planning pipeline.
 
 - Resolve Lead model:
   ```bash
@@ -1108,7 +1125,7 @@ Then continue to the next stage (`execute`), respecting autonomy confirmation ru
 
 Execute the remediation plan by spawning Dev agents sequentially — one per task in the plan. Do NOT use "normal Execute flow" or `execute-protocol.md` — remediation execution is self-contained with no wave parallelism.
 
-**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation execution spawns Dev agents directly via Task tool with **no `team_name` or `name` parameters**.
+**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation execution spawns Dev agents directly via Task tool with **no `team_name`, `name`, `run_in_background`, or `isolation` parameters**.
 
 - Read `plan_path` when it is non-empty; otherwise read `{round_dir}/R{RR}-PLAN.md` (using `round` and the absolute `round_dir` from step 4). Extract the task list from the plan frontmatter/body. Each task has an ID (e.g., `P07`, `P08`, `UAT-3`).
 - Resolve Dev model:
