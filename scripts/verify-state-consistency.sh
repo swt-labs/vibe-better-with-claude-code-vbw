@@ -378,7 +378,7 @@ run_check_roadmap_vs_summaries() {
   scheme=$(roadmap_numbering_scheme "$ROADMAP_FILE" "$PHASES_DIR")
   if [ "$scheme" = "unknown" ]; then
     mismatches="ROADMAP checklist numbering scheme is mixed or unresolvable"
-    while IFS= read -r line; do
+    while IFS= read -r line || [ -n "$line" ]; do
       phase_num=$(roadmap_checklist_phase_num_from_line "$line") || continue
       case " $seen_phases " in
         *" $phase_num "*)
@@ -393,7 +393,7 @@ run_check_roadmap_vs_summaries() {
     return
   fi
 
-  while IFS= read -r line; do
+  while IFS= read -r line || [ -n "$line" ]; do
     phase_num=$(roadmap_checklist_phase_num_from_line "$line") || continue
 
     # Duplicate detection
@@ -840,7 +840,7 @@ run_check_state_vs_roadmap() {
   local roadmap_checklist_count roadmap_section_count
   # Accept both plain "- [ ] Phase N:" and bootstrap link "- [ ] [Phase N:"
   roadmap_checklist_count=0
-  while IFS= read -r line; do
+  while IFS= read -r line || [ -n "$line" ]; do
     if roadmap_checklist_phase_num_from_line "$line" >/dev/null 2>&1; then
       roadmap_checklist_count=$((roadmap_checklist_count + 1))
     fi
