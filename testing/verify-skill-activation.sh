@@ -523,6 +523,24 @@ EXECUTE_PROTOCOL="$ROOT/references/execute-protocol.md"
 DEV_TOOLS=$(sed -n '/^---$/,/^---$/p' "$DEV_AGENT" | grep '^tools:' || true)
 DEV_DISALLOWED=$(sed -n '/^---$/,/^---$/p' "$DEV_AGENT" | grep '^disallowedTools:' || true)
 DEV_MEMORY=$(sed -n '/^---$/,/^---$/p' "$DEV_AGENT" | grep '^memory:' || true)
+DEV_BODY=$(awk '
+  NR == 1 && /^---$/ { in_frontmatter = 1; next }
+  in_frontmatter && /^---$/ { in_frontmatter = 0; next }
+  !in_frontmatter { print }
+' "$DEV_AGENT")
+
+markdown_section() {
+  local heading="$1"
+  awk -v heading="$heading" '
+    $0 == "## " heading { in_section = 1; next }
+    in_section && /^## / { exit }
+    in_section { print }
+  ' <<< "$DEV_BODY"
+}
+
+DEV_COMMUNICATION_SECTION=$(markdown_section Communication)
+DEV_BLOCKED_TASK_SECTION=$(markdown_section "Blocked Task Self-Start")
+DEV_CONSTRAINTS_SECTION=$(markdown_section Constraints)
 
 dev_tools_has() {
   local target="$1"
@@ -569,20 +587,28 @@ for forbidden_dev_tool in Task TaskCreate Agent TeamCreate TeamDelete AskUserQue
   fi
 done
 
-if grep -q 'Your frontmatter tool allowlist intentionally omits recursive delegation' "$DEV_AGENT" \
-  && grep -q 'Use the listed implementation tools directly' "$DEV_AGENT"; then
+if grep -q 'Your frontmatter tool allowlist intentionally omits recursive delegation' <<< "$DEV_CONSTRAINTS_SECTION" \
+  && grep -q 'Use the listed implementation tools directly' <<< "$DEV_CONSTRAINTS_SECTION" \
+  && grep -q 'Task`, `TaskCreate`, `Agent`, `TeamCreate`, `TeamDelete`, and `AskUserQuestion`' <<< "$DEV_CONSTRAINTS_SECTION"; then
   pass "vbw-dev.md: prompt explains explicit no-subagent tool boundary"
 else
   fail "vbw-dev.md: missing explicit no-subagent tool-boundary guidance"
 fi
 
-if grep -q 'SendMessage' "$DEV_AGENT" && dev_tools_has SendMessage; then
+if grep -q 'SendMessage' <<< "$DEV_COMMUNICATION_SECTION" \
+  && grep -q 'execution_update' <<< "$DEV_COMMUNICATION_SECTION" \
+  && grep -q 'blocker_report' <<< "$DEV_COMMUNICATION_SECTION" \
+  && dev_tools_has SendMessage; then
   pass "vbw-dev.md: SendMessage guidance matches explicit tool availability"
 else
   fail "vbw-dev.md: SendMessage guidance/tool availability mismatch"
 fi
 
-if grep -q 'TaskGet' "$DEV_AGENT" && dev_tools_has TaskGet; then
+if grep -q 'TaskGet' <<< "$DEV_BLOCKED_TASK_SECTION" \
+  && grep -q 'blockedBy' <<< "$DEV_BLOCKED_TASK_SECTION" \
+  && grep -q 'completed' <<< "$DEV_BLOCKED_TASK_SECTION" \
+  && grep -q 'self-start' <<< "$DEV_BLOCKED_TASK_SECTION" \
+  && dev_tools_has TaskGet; then
   pass "vbw-dev.md: TaskGet guidance matches explicit tool availability"
 else
   fail "vbw-dev.md: TaskGet guidance/tool availability mismatch"

@@ -167,7 +167,7 @@ SPAWN_ARG_ISOLATION_RE='(^|[^[:alnum:]_])"?isolation"?([[:space:]]*[:=][[:space:
 SPAWN_ARG_BACKGROUND_RE='(^|[^[:alnum:]_])"?run_in_background"?([[:space:]]*[:=][[:space:]]*"?(true|false)"?|[[:space:]]+(true|false))([^[:alnum:]_]|$)'
 SPAWN_ARG_TEAM_NAME_RE='(^|[^[:alnum:]_])"?team_name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
 SPAWN_ARG_NAME_RE='(^|[^[:alnum:]_])"?name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
-SPAWN_ARG_CWD_RE='(^|[^[:alnum:]_])"?(cwd|working_dir|workingDirectory|workdir)"?([[:space:]]*[:=][[:space:]]*"?|[[:space:]]+)"?([^"[:space:]]*/)?(\.claude/worktrees/agent-[^"[:space:]]*|\.vbw-worktrees/[^"[:space:]]*)'
+SPAWN_ARG_CWD_RE='(^|[^[:alnum:]_])"?(cwd|working_dir|workingDirectory|workdir)"?([[:space:]]*[:=][[:space:]]*"?|[[:space:]]+)"?([./~]|[[:alnum:]_-]+/)[^"[:space:]]*'
 
 if [ -z "$UAT_BLOCK" ]; then
   fail "vibe.md exposes a UAT Remediation block"
@@ -236,6 +236,10 @@ check_regex "spawn argument matcher catches isolation JSON syntax" 'Agent "isola
 check_regex "spawn argument matcher catches run_in_background equals syntax" 'Agent run_in_background=true' "$SPAWN_ARG_BACKGROUND_RE"
 check_regex "spawn argument matcher catches team_name bare syntax" 'Agent team_name vbw-phase-03' "$SPAWN_ARG_TEAM_NAME_RE"
 check_regex "spawn argument matcher catches per-agent name bare syntax" 'Agent name dev-1' "$SPAWN_ARG_NAME_RE"
+check_regex "spawn argument matcher catches generic cwd syntax" 'Agent cwd=/repo' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches generic working_dir syntax" 'Agent "working_dir": "/repo"' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches generic workingDirectory syntax" 'Agent workingDirectory /repo' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches generic workdir syntax" 'Agent workdir ./tmp' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches cwd sidechain syntax" 'Agent cwd=.claude/worktrees/agent-1' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches working_dir vbw-worktree syntax" 'Agent "working_dir": ".vbw-worktrees/dev-01"' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches workingDirectory sidechain syntax" 'Agent workingDirectory=/repo/.claude/worktrees/agent-1' "$SPAWN_ARG_CWD_RE"

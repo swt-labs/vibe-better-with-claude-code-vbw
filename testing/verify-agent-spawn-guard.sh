@@ -643,6 +643,26 @@ test_non_team_mode_blocks_named_non_team_spawns() {
 }
 test_non_team_mode_blocks_named_non_team_spawns
 
+test_stale_team_marker_blocks_named_non_team_spawns() {
+  setup_project
+  write_marker execute team "vbw-phase-01" "corr-123"
+
+  local tool team_name output rc label
+  for tool in Agent TaskCreate; do
+    for team_name in "" "vbw-phase-01"; do
+      output=$(run_guard "$PROJECT" "$team_name" false "dev-01" "$PROJECT" "$tool" 2>&1) && rc=$? || rc=$?
+      label="${team_name:-without-team-name}"
+      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
+        pass "Stale team marker blocks named ${tool} ${label}"
+      else
+        fail "Stale team marker should block named ${tool} ${label} (rc=$rc, output=$output)"
+      fi
+    done
+  done
+  cleanup
+}
+test_stale_team_marker_blocks_named_non_team_spawns
+
 test_fix_marker_is_ignored() {
   setup_project
   write_marker fix "" ""
