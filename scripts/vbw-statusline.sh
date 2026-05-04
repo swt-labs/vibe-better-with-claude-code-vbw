@@ -736,10 +736,39 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
   # Priority 2: system credential store (skip if VBW_SKIP_KEYCHAIN=1, e.g. in tests)
   if [ -z "$OAUTH_TOKEN" ] && [ "${VBW_SKIP_KEYCHAIN:-0}" != "1" ]; then
     if [ "$_OS" = "Darwin" ]; then
+      # Try the legacy literal service name first (back-compat for older Claude Code installs).
       CRED_JSON=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
       if [ -n "$CRED_JSON" ]; then
         OAUTH_TOKEN=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
         [ -n "$OAUTH_TOKEN" ] && AUTH_CLASS="oauth"
+      fi
+      # Fallback (#576): newer Claude Code installs persist credentials under
+      # per-install suffixed service names like "Claude Code-credentials-<8hex>".
+      # Discover candidates via a non-prompting `security dump-keychain`
+      # (metadata only — no `-d`, so secrets are not dumped and no GUI prompt fires).
+      # Multi-install handling: collect ALL valid tokens into _KEYCHAIN_FALLBACK_TOKENS
+      # so the usage-fetch block can retry with the next candidate if the first
+      # token returns 401 (stale install). Without this, a user with several
+      # installs could get pinned to a stale token until cache expiry.
+      _KEYCHAIN_FALLBACK_TOKENS=()
+      if [ -z "$OAUTH_TOKEN" ]; then
+        _SUFFIXED_NAMES=$(security dump-keychain 2>/dev/null \
+          | grep -oE '"svce"<blob>="Claude Code-credentials-[^"]+"' \
+          | sed -E 's/^"svce"<blob>="(.*)"$/\1/' \
+          | sort -u)
+        while IFS= read -r _sn; do
+          [ -z "$_sn" ] && continue
+          CRED_JSON=$(security find-generic-password -s "$_sn" -w 2>/dev/null)
+          [ -z "$CRED_JSON" ] && continue
+          _kt=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+          [ -z "$_kt" ] && continue
+          _KEYCHAIN_FALLBACK_TOKENS+=("$_kt")
+        done <<< "$_SUFFIXED_NAMES"
+        if [ "${#_KEYCHAIN_FALLBACK_TOKENS[@]}" -gt 0 ]; then
+          OAUTH_TOKEN="${_KEYCHAIN_FALLBACK_TOKENS[0]}"
+          AUTH_CLASS="oauth"
+        fi
+        unset _SUFFIXED_NAMES _sn _kt
       fi
     else
       # Linux: try secret-tool (GNOME Keyring) then pass (password-store)
@@ -757,6 +786,9 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
         fi
       fi
     fi
+    # Hygiene: clear the credential JSON (which includes the refresh token)
+    # from the script's variable namespace once we've extracted any access token.
+    unset CRED_JSON
   fi
 
   # Priority 3: credentials file (check both with and without leading dot,
@@ -802,47 +834,67 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
   else
 
   if [ -n "$OAUTH_TOKEN" ]; then
-    HTTP_CODE="000"
-    USAGE_RAW=""
-    HTTP_RAW=$(curl -s -w $'\n%{http_code}' --max-time 3 \
-      -H "Authorization: Bearer ${OAUTH_TOKEN}" \
-      -H "anthropic-beta: oauth-2025-04-20" \
-      "https://api.anthropic.com/api/oauth/usage" 2>/dev/null) || HTTP_RAW=""
-    if [ -n "$HTTP_RAW" ]; then
-      HTTP_CODE="${HTTP_RAW##*$'\n'}"
-      case "$HTTP_RAW" in
-        *$'\n'*) USAGE_RAW="${HTTP_RAW%$'\n'*}" ;;
-      esac
-    fi
-
-    if [ -n "$USAGE_RAW" ] && echo "$USAGE_RAW" | jq -e '.five_hour' >/dev/null 2>&1; then
-      IFS='|' read -r FIVE_PCT FIVE_EPOCH WEEK_PCT WEEK_EPOCH SONNET_PCT \
-                      EXTRA_ENABLED EXTRA_PCT EXTRA_USED_C EXTRA_LIMIT_C <<< \
-        "$(echo "$USAGE_RAW" | jq -r '
-          def pct: floor;
-          def epoch: gsub("\\.[0-9]+"; "") | gsub("Z$"; "+00:00") | split("+")[0] + "Z" | fromdate;
-          [
-            ((.five_hour.utilization // 0) | pct),
-            ((.five_hour.resets_at // "") | if . == "" or . == null then 0 else epoch end),
-            ((.seven_day.utilization // 0) | pct),
-            ((.seven_day.resets_at // "") | if . == "" or . == null then 0 else epoch end),
-            ((.seven_day_sonnet.utilization // -1) | pct),
-            (if .extra_usage.is_enabled == true then 1 else 0 end),
-            ((.extra_usage.utilization // -1) | pct),
-            ((.extra_usage.used_credits // 0) | floor),
-            ((.extra_usage.monthly_limit // 0) | floor)
-          ] | join("|")
-        ' 2>/dev/null)"
-      FETCH_OK="ok"
-    else
-      if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
-        FETCH_OK="auth"
-      elif [ "$HTTP_CODE" = "429" ]; then
-        FETCH_OK="ratelimited"
-      else
-        FETCH_OK="fail"
+    # Build candidate list: primary token first, then any keychain alternates
+    # (#576 multi-install case — if the primary returns 401 we try the next).
+    # Non-auth failures (429/5xx/network) break immediately; retrying wouldn't help.
+    # Cap at 4 attempts so a user with many stale installs isn't blocked by
+    # 6× the curl timeout (3s each) on every render.
+    _USAGE_CANDIDATES=("$OAUTH_TOKEN")
+    for _alt_token in "${_KEYCHAIN_FALLBACK_TOKENS[@]:-}"; do
+      [ -z "$_alt_token" ] && continue
+      [ "$_alt_token" = "$OAUTH_TOKEN" ] && continue
+      _USAGE_CANDIDATES+=("$_alt_token")
+      [ "${#_USAGE_CANDIDATES[@]}" -ge 4 ] && break
+    done
+    for _candidate_token in "${_USAGE_CANDIDATES[@]}"; do
+      HTTP_CODE="000"
+      USAGE_RAW=""
+      HTTP_RAW=$(curl -s -w $'\n%{http_code}' --max-time 3 \
+        -H "Authorization: Bearer ${_candidate_token}" \
+        -H "anthropic-beta: oauth-2025-04-20" \
+        "https://api.anthropic.com/api/oauth/usage" 2>/dev/null) || HTTP_RAW=""
+      if [ -n "$HTTP_RAW" ]; then
+        HTTP_CODE="${HTTP_RAW##*$'\n'}"
+        case "$HTTP_RAW" in
+          *$'\n'*) USAGE_RAW="${HTTP_RAW%$'\n'*}" ;;
+        esac
       fi
-    fi
+
+      if [ -n "$USAGE_RAW" ] && echo "$USAGE_RAW" | jq -e '.five_hour' >/dev/null 2>&1; then
+        IFS='|' read -r FIVE_PCT FIVE_EPOCH WEEK_PCT WEEK_EPOCH SONNET_PCT \
+                        EXTRA_ENABLED EXTRA_PCT EXTRA_USED_C EXTRA_LIMIT_C <<< \
+          "$(echo "$USAGE_RAW" | jq -r '
+            def pct: floor;
+            def epoch: gsub("\\.[0-9]+"; "") | gsub("Z$"; "+00:00") | split("+")[0] + "Z" | fromdate;
+            [
+              ((.five_hour.utilization // 0) | pct),
+              ((.five_hour.resets_at // "") | if . == "" or . == null then 0 else epoch end),
+              ((.seven_day.utilization // 0) | pct),
+              ((.seven_day.resets_at // "") | if . == "" or . == null then 0 else epoch end),
+              ((.seven_day_sonnet.utilization // -1) | pct),
+              (if .extra_usage.is_enabled == true then 1 else 0 end),
+              ((.extra_usage.utilization // -1) | pct),
+              ((.extra_usage.used_credits // 0) | floor),
+              ((.extra_usage.monthly_limit // 0) | floor)
+            ] | join("|")
+          ' 2>/dev/null)"
+        FETCH_OK="ok"
+        OAUTH_TOKEN="$_candidate_token"
+        break
+      else
+        if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
+          FETCH_OK="auth"
+          # Retry next candidate (if any); loop will exit naturally if none left.
+        elif [ "$HTTP_CODE" = "429" ]; then
+          FETCH_OK="ratelimited"
+          break
+        else
+          FETCH_OK="fail"
+          break
+        fi
+      fi
+    done
+    unset _USAGE_CANDIDATES _candidate_token _alt_token
   fi
 
   UPDATE_AVAIL=""
@@ -962,7 +1014,19 @@ elif [ "$FETCH_OK" = "fail" ]; then
 elif [ "$FETCH_OK" = "notraffic" ]; then
   USAGE_LINE="${D}Limits: skipped (nonessential traffic disabled)${X}"
 elif [ "$AUTH_METHOD" = "claude.ai" ]; then
-  USAGE_LINE="${D}Limits: keychain access denied (allow Terminal in Keychain Access.app or set VBW_OAUTH_TOKEN)${X}"
+  # #576: previously labeled "keychain access denied" — but this branch fires
+  # whenever priorities 1-3 (env var, keychain literal+suffixed names, credentials
+  # file) all returned empty AND the claude CLI confirms an OAuth login. Most
+  # often that means the token simply isn't in any location we can reach, not
+  # that macOS denied access. Suggest the env-var workaround.
+  #
+  # NOTE: the exit-44 (item-not-found) vs exit-51 (access-denied) distinction
+  # from the issue's proposed fix is deliberately collapsed here — branching
+  # the message would require persisting the keychain status through the slow
+  # cache (15 → 16 fields with back-compat read), and the env-var workaround
+  # already resolves both sub-cases. Future maintainers: if you want exit-code
+  # branching, plan the cache schema bump first. See PR #578.
+  USAGE_LINE="${D}Limits: OAuth token unavailable (set VBW_OAUTH_TOKEN)${X}"
 elif [ "$FETCH_OK" = "noauth" ]; then
   USAGE_LINE="${D}Limits: N/A (using API key)${X}"
 else
