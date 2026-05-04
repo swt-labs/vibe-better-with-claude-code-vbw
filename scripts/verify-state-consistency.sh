@@ -53,6 +53,13 @@ REQUIRED_FUNCTIONS=(
   is_valid_summary_status
   current_uat
   extract_status_value
+  normalize_roadmap_phase_num
+  roadmap_checklist_phase_num_from_line
+  roadmap_phase_dir_prefix_num
+  roadmap_numbering_scheme
+  roadmap_phase_num_for_dir
+  roadmap_phase_dir_for_num
+  roadmap_checklist_has_duplicate_phase_nums
 )
 MISSING_FUNCTIONS=()
 for fn in "${REQUIRED_FUNCTIONS[@]}"; do
@@ -366,16 +373,29 @@ run_check_roadmap_vs_summaries() {
   fi
 
   local mismatches=""
-  local phase_num checked plans complete phase_dir
+  local phase_num checked plans complete phase_dir scheme
   local seen_phases=""
 
-  while IFS= read -r line; do
-    # Accept both plain "- [ ] Phase N:" and bootstrap link "- [ ] [Phase N:"
-    phase_num=$(echo "$line" | sed -n 's/^- \[.\] \[\{0,1\}Phase \([0-9][0-9]*\):.*/\1/p')
-    [ -n "$phase_num" ] || continue
-    # Remove leading zeros (sed, not arithmetic — avoids octal for 08/09)
-    phase_num=$(printf '%s' "$phase_num" | sed 's/^0*//')
-    phase_num=${phase_num:-0}
+  scheme=$(roadmap_numbering_scheme "$ROADMAP_FILE" "$PHASES_DIR")
+  if [ "$scheme" = "unknown" ]; then
+    mismatches="ROADMAP checklist numbering scheme is mixed or unresolvable"
+    while IFS= read -r line || [ -n "$line" ]; do
+      phase_num=$(roadmap_checklist_phase_num_from_line "$line") || continue
+      case " $seen_phases " in
+        *" $phase_num "*)
+          mismatches="${mismatches:+$mismatches, }duplicate ROADMAP checklist entry for phase $phase_num"
+          ;;
+      esac
+      seen_phases="$seen_phases $phase_num"
+    done < "$ROADMAP_FILE"
+
+    check_roadmap_vs_summaries_pass=false
+    check_roadmap_vs_summaries_detail="$mismatches"
+    return
+  fi
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    phase_num=$(roadmap_checklist_phase_num_from_line "$line") || continue
 
     # Duplicate detection
     case " $seen_phases " in
@@ -386,24 +406,15 @@ run_check_roadmap_vs_summaries() {
     seen_phases="$seen_phases $phase_num"
 
     checked=false
-    if echo "$line" | grep -qi '^\- \[x\]'; then
-      checked=true
-    fi
+    case "$line" in
+      -\ \[x\]*|-\ \[X\]*) checked=true ;;
+    esac
 
-    # Find phase dir with matching number
+    # Find phase dir using the ROADMAP's existing numbering scheme.
     phase_dir=""
-    local d d_num
-    while IFS= read -r d; do
-      [ -n "$d" ] || continue
-      d_num=$(basename "$d" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
-      # Remove leading zeros for comparison (sed, not arithmetic — avoids octal for 08/09)
-      d_num=$(printf '%s' "$d_num" | sed 's/^0*//')
-      d_num=${d_num:-0}
-      if [ "$d_num" -eq "$phase_num" ]; then
-        phase_dir="$d"
-        break
-      fi
-    done < <(list_canonical_phase_dirs "$PHASES_DIR")
+    if [ "$scheme" != "unknown" ]; then
+      phase_dir=$(roadmap_phase_dir_for_num "$scheme" "$PHASES_DIR" "$phase_num" 2>/dev/null || true)
+    fi
 
     if [ -z "$phase_dir" ]; then
       mismatches="${mismatches:+$mismatches, }phase $phase_num referenced in ROADMAP.md but no matching phase directory"
@@ -430,18 +441,39 @@ run_check_roadmap_vs_summaries() {
         mismatches="${mismatches:+$mismatches, }phase $phase_num marked [ ] but all plans complete ($complete/$plans)"
       fi
     fi
-  done < <(grep -iE '^\- \[(x| )\] (\[)?Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
+  done < "$ROADMAP_FILE"
 
   # Reverse check: every phase dir should have a matching ROADMAP entry
-  local rd rd_num
+  local rd rd_num rd_idx rd_base rd_prefix
+  rd_idx=0
   while IFS= read -r rd; do
     [ -n "$rd" ] || continue
-    rd_num=$(basename "$rd" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
-    rd_num=$(printf '%s' "$rd_num" | sed 's/^0*//')
-    rd_num=${rd_num:-0}
+    rd_idx=$((rd_idx + 1))
+    case "$scheme" in
+      ordinal)
+        rd_num="$rd_idx"
+        ;;
+      prefix)
+        rd_num=$(roadmap_phase_dir_prefix_num "$rd")
+        ;;
+      *)
+        continue
+        ;;
+    esac
     case " $seen_phases " in
       *" $rd_num "*) ;; # found in roadmap
-      *) mismatches="${mismatches:+$mismatches, }phase directory $rd_num exists on disk but no matching ROADMAP checklist entry" ;;
+      *)
+        case "$scheme" in
+          ordinal)
+            rd_base=$(basename "$rd")
+            rd_prefix=$(roadmap_phase_dir_prefix_num "$rd")
+            mismatches="${mismatches:+$mismatches, }ordinal phase position $rd_num maps to phase directory $rd_base (prefix $rd_prefix) but no matching ROADMAP checklist entry"
+            ;;
+          prefix)
+            mismatches="${mismatches:+$mismatches, }phase directory $rd_num exists on disk but no matching ROADMAP checklist entry"
+            ;;
+        esac
+        ;;
     esac
   done < <(list_canonical_phase_dirs "$PHASES_DIR")
 
@@ -819,7 +851,12 @@ run_check_state_vs_roadmap() {
 
   local roadmap_checklist_count roadmap_section_count
   # Accept both plain "- [ ] Phase N:" and bootstrap link "- [ ] [Phase N:"
-  roadmap_checklist_count=$(grep -cE '^\- \[.\] (\[)?Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
+  roadmap_checklist_count=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    if roadmap_checklist_phase_num_from_line "$line" >/dev/null 2>&1; then
+      roadmap_checklist_count=$((roadmap_checklist_count + 1))
+    fi
+  done < "$ROADMAP_FILE"
   # Accept ### or ## section headings (bootstrap may use ## instead of ###)
   roadmap_section_count=$(grep -cE '^#{2,3} (\[)?Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
 

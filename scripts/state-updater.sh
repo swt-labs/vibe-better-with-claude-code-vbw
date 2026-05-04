@@ -48,6 +48,220 @@ else
   }
 fi
 
+if ! type normalize_roadmap_phase_num >/dev/null 2>&1; then
+  normalize_roadmap_phase_num() {
+    local num="$1"
+    num=$(printf '%s' "$num" | sed 's/^0*//')
+    printf '%s\n' "${num:-0}"
+  }
+fi
+
+if ! type phase_dir_position >/dev/null 2>&1; then
+  phase_dir_position() {
+    local phase_dir="$1"
+    local phases_parent="${2:-$(dirname "$phase_dir")}" idx=0 dir
+
+    while IFS= read -r dir; do
+      [ -n "$dir" ] || continue
+      idx=$((idx + 1))
+      if [ "${dir%/}" = "${phase_dir%/}" ]; then
+        echo "$idx"
+        return 0
+      fi
+    done < <(list_canonical_phase_dirs "$phases_parent")
+
+    echo ""
+  }
+fi
+
+if ! type roadmap_checklist_phase_num_from_line >/dev/null 2>&1; then
+  roadmap_checklist_phase_num_from_line() {
+    local line="$1" raw_num
+    if [[ "$line" =~ ^-\ \[.\]\ \[?Phase\ ([0-9][0-9]*): ]]; then
+      raw_num="${BASH_REMATCH[1]}"
+      normalize_roadmap_phase_num "$raw_num"
+      return 0
+    fi
+    return 1
+  }
+fi
+
+if ! type roadmap_checklist_duplicate_phase_nums >/dev/null 2>&1; then
+  roadmap_checklist_duplicate_phase_nums() {
+    local roadmap_file="$1"
+    local seen="" emitted="" line num
+
+    [ -f "$roadmap_file" ] || return 0
+
+    while IFS= read -r line || [ -n "$line" ]; do
+      if num=$(roadmap_checklist_phase_num_from_line "$line"); then
+        case " $seen " in
+          *" $num "*)
+            case " $emitted " in
+              *" $num "*) ;;
+              *)
+                printf '%s\n' "$num"
+                emitted="$emitted $num"
+                ;;
+            esac
+            ;;
+        esac
+        seen="$seen $num"
+      fi
+    done < "$roadmap_file"
+  }
+fi
+
+if ! type roadmap_checklist_has_duplicate_phase_nums >/dev/null 2>&1; then
+  roadmap_checklist_has_duplicate_phase_nums() {
+    local roadmap_file="$1"
+    local seen="" line num
+
+    [ -f "$roadmap_file" ] || return 1
+
+    while IFS= read -r line || [ -n "$line" ]; do
+      if num=$(roadmap_checklist_phase_num_from_line "$line"); then
+        case " $seen " in
+          *" $num "*) return 0 ;;
+        esac
+        seen="$seen $num"
+      fi
+    done < "$roadmap_file"
+
+    return 1
+  }
+fi
+
+if ! type roadmap_phase_dir_prefix_num >/dev/null 2>&1; then
+  roadmap_phase_dir_prefix_num() {
+    local phase_dir="$1" num
+    num=$(basename "$phase_dir" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
+    normalize_roadmap_phase_num "$num"
+  }
+fi
+
+if ! type _roadmap_index_in_sequence >/dev/null 2>&1; then
+  _roadmap_index_in_sequence() {
+    local wanted="$1" sequence="$2" idx=0 candidate
+
+    while IFS= read -r candidate; do
+      [ -n "$candidate" ] || continue
+      idx=$((idx + 1))
+      if [ "$candidate" = "$wanted" ]; then
+        printf '%s\n' "$idx"
+        return 0
+      fi
+    done <<< "$sequence"
+
+    return 1
+  }
+fi
+
+if ! type _roadmap_candidate_score >/dev/null 2>&1; then
+  _roadmap_candidate_score() {
+    local checklist_seq="$1" expected_seq="$2"
+    local seen="" last_idx=0 score=0 num expected_idx
+
+    [ -n "$expected_seq" ] || { printf '%s\n' "0"; return 0; }
+
+    while IFS= read -r num; do
+      [ -n "$num" ] || continue
+      case " $seen " in *" $num "*) continue ;; esac
+      seen="$seen $num"
+
+      if expected_idx=$(_roadmap_index_in_sequence "$num" "$expected_seq"); then
+        if [ "$expected_idx" -le "$last_idx" ]; then
+          printf '%s\n' "0"
+          return 0
+        fi
+        last_idx="$expected_idx"
+        score=$((score + 1))
+      fi
+    done <<< "$checklist_seq"
+
+    printf '%s\n' "$score"
+  }
+fi
+
+if ! type roadmap_numbering_scheme >/dev/null 2>&1; then
+  roadmap_numbering_scheme() {
+    local roadmap_file="$1" phases_dir="$2"
+    local checklist_nums=() prefix_nums=() ordinal_nums=()
+    local line num dir idx checklist_seq prefix_seq ordinal_seq prefix_score ordinal_score
+
+    [ -f "$roadmap_file" ] || { printf '%s\n' "unknown"; return 0; }
+    [ -d "$phases_dir" ] || { printf '%s\n' "unknown"; return 0; }
+    if roadmap_checklist_has_duplicate_phase_nums "$roadmap_file"; then
+      printf '%s\n' "unknown"
+      return 0
+    fi
+
+    while IFS= read -r line || [ -n "$line" ]; do
+      if num=$(roadmap_checklist_phase_num_from_line "$line"); then
+        checklist_nums+=("$num")
+      fi
+    done < "$roadmap_file"
+
+    idx=0
+    while IFS= read -r dir; do
+      [ -n "$dir" ] || continue
+      idx=$((idx + 1))
+      prefix_nums+=("$(roadmap_phase_dir_prefix_num "$dir")")
+      ordinal_nums+=("$idx")
+    done < <(list_canonical_phase_dirs "$phases_dir")
+
+    if [ "${#prefix_nums[@]}" -eq 0 ]; then
+      printf '%s\n' "unknown"
+      return 0
+    fi
+    if [ "${#checklist_nums[@]}" -eq 0 ]; then
+      printf '%s\n' "prefix"
+      return 0
+    fi
+
+    checklist_seq=$(printf '%s\n' "${checklist_nums[@]}")
+    prefix_seq=$(printf '%s\n' "${prefix_nums[@]}")
+    ordinal_seq=$(printf '%s\n' "${ordinal_nums[@]}")
+    prefix_score=$(_roadmap_candidate_score "$checklist_seq" "$prefix_seq")
+    ordinal_score=$(_roadmap_candidate_score "$checklist_seq" "$ordinal_seq")
+
+    if [ "$prefix_score" -le 0 ] && [ "$ordinal_score" -le 0 ]; then
+      printf '%s\n' "unknown"
+    elif [ "$prefix_seq" = "$ordinal_seq" ]; then
+      printf '%s\n' "prefix"
+    elif [ "$prefix_score" -gt 0 ] && [ "$ordinal_score" -le 0 ]; then
+      printf '%s\n' "prefix"
+    elif [ "$ordinal_score" -gt 0 ] && [ "$prefix_score" -le 0 ]; then
+      printf '%s\n' "ordinal"
+    elif [ "$prefix_score" -gt "$ordinal_score" ]; then
+      printf '%s\n' "prefix"
+    elif [ "$ordinal_score" -gt "$prefix_score" ]; then
+      printf '%s\n' "ordinal"
+    else
+      printf '%s\n' "unknown"
+    fi
+  }
+fi
+
+if ! type roadmap_phase_num_for_dir >/dev/null 2>&1; then
+  roadmap_phase_num_for_dir() {
+    local scheme="$1" phase_dir="$2" phases_dir
+    phases_dir="${3:-$(dirname "$phase_dir")}"
+
+    case "$scheme" in
+      prefix)
+        roadmap_phase_dir_prefix_num "$phase_dir"
+        ;;
+      ordinal)
+        phase_dir_position "$phase_dir" "$phases_dir"
+        ;;
+      *)
+        printf '\n'
+        ;;
+    esac
+  }
+fi
+
 planning_root_from_phase_dir() {
   local phase_dir="$1"
   local phases_dir root
@@ -149,6 +363,41 @@ slug_to_name() {
   echo "$1" | sed 's/^[0-9]*-//' | tr '-' ' ' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1'
 }
 
+rewrite_roadmap_checkboxes_for_phase() {
+  local roadmap="$1" marker="$2"
+  shift 2
+
+  [ -f "$roadmap" ] || return 0
+  [ "$#" -gt 0 ] || return 0
+  if roadmap_checklist_has_duplicate_phase_nums "$roadmap"; then
+    return 0
+  fi
+
+  local tmp line line_num target target_num matched
+  tmp="${roadmap}.tmp_checkbox.$$.${RANDOM:-0}"
+  : > "$tmp" 2>/dev/null || return 0
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    matched=false
+    if line_num=$(roadmap_checklist_phase_num_from_line "$line"); then
+      for target in "$@"; do
+        [ -n "$target" ] || continue
+        target_num=$(normalize_roadmap_phase_num "$target")
+        if [ "$line_num" = "$target_num" ]; then
+          matched=true
+          break
+        fi
+      done
+      if [ "$matched" = true ]; then
+        line="- [${marker}]${line:5}"
+      fi
+    fi
+    printf '%s\n' "$line" >> "$tmp" 2>/dev/null || { rm -f "$tmp" 2>/dev/null; return 0; }
+  done < "$roadmap"
+
+  [ -s "$tmp" ] && mv "$tmp" "$roadmap" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+}
+
 # Check if a phase has unresolved UAT issues
 # Uses shared extract_status_value() + current_uat() from uat-utils.sh
 phase_has_uat_issues() {
@@ -169,14 +418,15 @@ update_roadmap() {
 
   [ -f "$roadmap" ] || return 0
 
-  local dirname phase_num prefix_phase_num plan_count summary_count status date_str
+  local dirname ordinal_phase_num table_phase_num checkbox_phase_num checkbox_scheme prefix_phase_num plan_count summary_count status date_str
   dirname=$(basename "$phase_dir")
   prefix_phase_num=$(echo "$dirname" | sed 's/^\([0-9]*\).*/\1/' | sed 's/^0*//')
-  phase_num=$(phase_dir_position "$phase_dir")
-  if [ -z "$phase_num" ]; then
-    phase_num="$prefix_phase_num"
+  ordinal_phase_num=$(phase_dir_position "$phase_dir")
+  if [ -z "$ordinal_phase_num" ]; then
+    ordinal_phase_num="$prefix_phase_num"
   fi
-  [ -z "$phase_num" ] && return 0
+  [ -z "$ordinal_phase_num" ] && return 0
+  table_phase_num="$ordinal_phase_num"
 
   plan_count=$(count_phase_plans "$phase_dir")
   summary_count=$(count_terminal_summaries "$phase_dir")
@@ -206,21 +456,21 @@ update_roadmap() {
 
   # Update extended progress table row (| num - name | done | status | date |)
   local existing_name
-  existing_name=$(grep -E "^\| *${phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
-  if [ -z "$existing_name" ] && [ -n "$prefix_phase_num" ] && [ "$prefix_phase_num" != "$phase_num" ]; then
-    phase_num="$prefix_phase_num"
-    existing_name=$(grep -E "^\| *${phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
+  existing_name=$(grep -E "^\| *${table_phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
+  if [ -z "$existing_name" ] && [ -n "$prefix_phase_num" ] && [ "$prefix_phase_num" != "$table_phase_num" ]; then
+    table_phase_num="$prefix_phase_num"
+    existing_name=$(grep -E "^\| *${table_phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
   fi
   if [ -n "$existing_name" ]; then
     local tmp_ext="${roadmap}.tmp_ext.$$.${RANDOM:-0}"
-    sed "s/^| *${phase_num} - .*/| ${phase_num} - ${existing_name} | ${summary_count}\/${plan_count} | ${status} | ${date_str} |/" "$tmp" > "$tmp_ext" 2>/dev/null && \
+    sed "s/^| *${table_phase_num} - .*/| ${table_phase_num} - ${existing_name} | ${summary_count}\/${plan_count} | ${status} | ${date_str} |/" "$tmp" > "$tmp_ext" 2>/dev/null && \
       [ -s "$tmp_ext" ] && mv "$tmp_ext" "$tmp" 2>/dev/null || rm -f "$tmp_ext" 2>/dev/null
   fi
 
   # Update simple progress table format (| 01 | ● Done |)
   local padded_num
-  padded_num=$(printf '%02d' "$phase_num" 2>/dev/null || echo "$phase_num")
-  if grep -qE "^\| *0*${phase_num} *\|" "$tmp" 2>/dev/null; then
+  padded_num=$(printf '%02d' "$table_phase_num" 2>/dev/null || echo "$table_phase_num")
+  if grep -qE "^\| *0*${table_phase_num} *\|" "$tmp" 2>/dev/null; then
     local simple_status
     case "$status" in
       complete)      simple_status="● Done" ;;
@@ -230,18 +480,20 @@ update_roadmap() {
       *)             simple_status="$status" ;;
     esac
     local tmp_simple="${roadmap}.tmp_s.$$.${RANDOM:-0}"
-    sed "s/^| *0*${phase_num} *|.*/| ${padded_num} | ${simple_status} |/" "$tmp" > "$tmp_simple" 2>/dev/null && \
+    sed "s/^| *0*${table_phase_num} *|.*/| ${padded_num} | ${simple_status} |/" "$tmp" > "$tmp_simple" 2>/dev/null && \
       [ -s "$tmp_simple" ] && mv "$tmp_simple" "$tmp" 2>/dev/null || rm -f "$tmp_simple" 2>/dev/null
   fi
 
+  checkbox_scheme=$(roadmap_numbering_scheme "$tmp" "$(dirname "$phase_dir")")
+  checkbox_phase_num=$(roadmap_phase_num_for_dir "$checkbox_scheme" "$phase_dir" "$(dirname "$phase_dir")")
+
   # Check/uncheck checkbox based on status
-  local tmp2="${roadmap}.tmp2.$$.${RANDOM:-0}"
-  if [ "$status" = "complete" ]; then
-    sed "s/^- \[ \] Phase ${phase_num}:/- [x] Phase ${phase_num}:/" "$tmp" > "$tmp2" 2>/dev/null && \
-      [ -s "$tmp2" ] && mv "$tmp2" "$tmp" 2>/dev/null || rm -f "$tmp2" 2>/dev/null
-  elif [ "$status" = "uat issues" ]; then
-    sed "s/^- \[[xX]\] Phase ${phase_num}:/- [ ] Phase ${phase_num}:/" "$tmp" > "$tmp2" 2>/dev/null && \
-      [ -s "$tmp2" ] && mv "$tmp2" "$tmp" 2>/dev/null || rm -f "$tmp2" 2>/dev/null
+  if [ -n "$checkbox_phase_num" ]; then
+    if [ "$status" = "complete" ]; then
+      rewrite_roadmap_checkboxes_for_phase "$tmp" "x" "$checkbox_phase_num"
+    elif [ "$status" = "uat issues" ]; then
+      rewrite_roadmap_checkboxes_for_phase "$tmp" " " "$checkbox_phase_num"
+    fi
   fi
 
   mv "$tmp" "$roadmap" 2>/dev/null || rm -f "$tmp" 2>/dev/null

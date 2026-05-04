@@ -31,6 +31,110 @@ EOF
 EOF
 }
 
+create_linked_archive_fixture() {
+  local checkbox="$1" uat_status="${2:-}"
+
+  cat > .vbw-planning/PROJECT.md <<'EOF'
+# Test Project
+EOF
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 1 of 1 (Service Utility Tests)
+Plans: 0/1
+Progress: 0%
+Status: active
+
+## Phase Status
+- **Phase 1:** Planned
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<EOF
+# Roadmap
+
+- [${checkbox}] [Phase 02: Service Utility Tests](#phase-02-service-utility-tests)
+
+## Phase 02: Service Utility Tests
+EOF
+
+  mkdir -p .vbw-planning/phases/02-service-utility-tests
+  echo "# plan" > .vbw-planning/phases/02-service-utility-tests/02-01-PLAN.md
+  cat > .vbw-planning/phases/02-service-utility-tests/02-01-SUMMARY.md <<'EOF'
+---
+status: complete
+---
+# Summary
+EOF
+
+  if [ -n "$uat_status" ]; then
+    cat > .vbw-planning/phases/02-service-utility-tests/02-UAT.md <<EOF
+---
+phase: 02
+status: ${uat_status}
+---
+# UAT
+EOF
+  fi
+}
+
+create_duplicate_linked_archive_fixture() {
+  local first_checkbox="$1" second_checkbox="${2:-$1}" uat_status="${3:-}"
+
+  cat > .vbw-planning/PROJECT.md <<'EOF'
+# Test Project
+EOF
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 1 of 1 (Service Utility Tests)
+Plans: 0/1
+Progress: 0%
+Status: active
+
+## Phase Status
+- **Phase 1:** Planned
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<EOF
+# Roadmap
+
+- [${first_checkbox}] [Phase 02: Service Utility Tests](#phase-02-service-utility-tests)
+- [${second_checkbox}] [Phase 02: Duplicate Service Utility Tests](#phase-02-duplicate-service-utility-tests)
+
+## Phase 02: Service Utility Tests
+## Phase 02: Duplicate Service Utility Tests
+EOF
+
+  mkdir -p .vbw-planning/phases/02-service-utility-tests
+  echo "# plan" > .vbw-planning/phases/02-service-utility-tests/02-01-PLAN.md
+  cat > .vbw-planning/phases/02-service-utility-tests/02-01-SUMMARY.md <<'EOF'
+---
+status: complete
+---
+# Summary
+EOF
+
+  if [ -n "$uat_status" ]; then
+    cat > .vbw-planning/phases/02-service-utility-tests/02-UAT.md <<EOF
+---
+phase: 02
+status: ${uat_status}
+---
+# UAT
+EOF
+  fi
+}
+
 @test "summary update advances STATE/ROADMAP without execution-state file" {
   cd "$TEST_TEMP_DIR"
   create_state_and_roadmap "$TEST_TEMP_DIR/.vbw-planning" 3
@@ -55,6 +159,86 @@ SUMMARY
   grep -q '^Progress: 100%$' .vbw-planning/STATE.md
   grep -q '^- \[x\] Phase 3: Service Utility Tests$' .vbw-planning/ROADMAP.md
   grep -Eq '^\| 3 - Service Utility Tests \| 1/1 \| complete \| [0-9]{4}-[0-9]{2}-[0-9]{2} \|$' .vbw-planning/ROADMAP.md
+}
+
+@test "summary update checks linked ROADMAP entry and preserves anchor" {
+  cd "$TEST_TEMP_DIR"
+  create_linked_archive_fixture " "
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/02-service-utility-tests/02-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^- \[x\] \[Phase 02: Service Utility Tests\](#phase-02-service-utility-tests)$' .vbw-planning/ROADMAP.md
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  if [ "$status" -ne 0 ]; then echo "$output" >&2; fi
+  [ "$status" -eq 0 ]
+}
+
+@test "UAT update unchecks linked ROADMAP entry when current UAT has issues" {
+  cd "$TEST_TEMP_DIR"
+  create_linked_archive_fixture "x" "issues_found"
+
+  local uat_path input
+  uat_path="$TEST_TEMP_DIR/.vbw-planning/phases/02-service-utility-tests/02-UAT.md"
+  input=$(jq -nc --arg p "$uat_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^- \[ \] \[Phase 02: Service Utility Tests\](#phase-02-service-utility-tests)$' .vbw-planning/ROADMAP.md
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  if [ "$status" -ne 0 ]; then echo "$output" >&2; fi
+  [ "$status" -eq 0 ]
+}
+
+@test "summary update leaves duplicate linked ROADMAP entries verifier-owned" {
+  cd "$TEST_TEMP_DIR"
+  create_duplicate_linked_archive_fixture " "
+
+  grep -E '^- \[[ xX]\] \[Phase 02:' .vbw-planning/ROADMAP.md > "$TEST_TEMP_DIR/roadmap-before.txt"
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/02-service-utility-tests/02-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -E '^- \[[ xX]\] \[Phase 02:' .vbw-planning/ROADMAP.md > "$TEST_TEMP_DIR/roadmap-after.txt"
+  cmp -s "$TEST_TEMP_DIR/roadmap-before.txt" "$TEST_TEMP_DIR/roadmap-after.txt"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.failed_checks | index("roadmap_vs_summaries")' >/dev/null
+  echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q 'duplicate ROADMAP checklist entry for phase 2'
+}
+
+@test "UAT update leaves duplicate linked ROADMAP entries checked" {
+  cd "$TEST_TEMP_DIR"
+  create_duplicate_linked_archive_fixture "x" "x" "issues_found"
+
+  grep -E '^- \[[ xX]\] \[Phase 02:' .vbw-planning/ROADMAP.md > "$TEST_TEMP_DIR/roadmap-before.txt"
+
+  local uat_path input
+  uat_path="$TEST_TEMP_DIR/.vbw-planning/phases/02-service-utility-tests/02-UAT.md"
+  input=$(jq -nc --arg p "$uat_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -E '^- \[[ xX]\] \[Phase 02:' .vbw-planning/ROADMAP.md > "$TEST_TEMP_DIR/roadmap-after.txt"
+  cmp -s "$TEST_TEMP_DIR/roadmap-before.txt" "$TEST_TEMP_DIR/roadmap-after.txt"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.failed_checks | index("roadmap_vs_summaries")' >/dev/null
+  echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q 'duplicate ROADMAP checklist entry for phase 2'
 }
 
 @test "summary update patches execution state in .plans[] schema" {
@@ -495,7 +679,149 @@ EOF
 
   grep -q '^Phase: 3 of 3 (Deploy)$' .vbw-planning/STATE.md
   grep -q '^- \[x\] Phase 2: Build$' .vbw-planning/ROADMAP.md
+  grep -q '^- \[ \] Phase 3: Deploy$' .vbw-planning/ROADMAP.md
   grep -Eq '^\| 2 - Build \| 1/1 \| complete \| [0-9]{4}-[0-9]{2}-[0-9]{2} \|$' .vbw-planning/ROADMAP.md
+}
+
+@test "summary update leaves unknown ROADMAP checklist scheme untouched" {
+  cd "$TEST_TEMP_DIR"
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/03-build .vbw-planning/phases/04-deploy
+
+  cat > .vbw-planning/PROJECT.md <<'EOF'
+# Test Project
+EOF
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+**Project:** Test Project
+**Milestone:** MVP
+Phase: 2 of 3 (Build)
+Plans: 1/1
+Progress: 100%
+Status: active
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 4: Deploy
+### Phase 1: Setup
+### Phase 2: Build
+### Phase 4: Deploy
+EOF
+
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/03-build/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/03-build/03-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/04-deploy/04-01-PLAN.md
+
+  grep -E '^- \[(x| )\] Phase ' .vbw-planning/ROADMAP.md > "$TEST_TEMP_DIR/roadmap-before.txt"
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/03-build/03-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -E '^- \[(x| )\] Phase ' .vbw-planning/ROADMAP.md > "$TEST_TEMP_DIR/roadmap-after.txt"
+  cmp -s "$TEST_TEMP_DIR/roadmap-before.txt" "$TEST_TEMP_DIR/roadmap-after.txt"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.failed_checks | index("roadmap_vs_summaries")' >/dev/null
+  echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q 'ROADMAP checklist numbering scheme is mixed or unresolvable'
+}
+
+@test "summary update repairs resolvable ROADMAP despite stray extra entry" {
+  cd "$TEST_TEMP_DIR"
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/02-build .vbw-planning/phases/03-deploy
+
+  cat > .vbw-planning/PROJECT.md <<'EOF'
+# Test Project
+EOF
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+**Project:** Test Project
+**Milestone:** MVP
+Phase: 2 of 3 (Build)
+Plans: 1/1
+Progress: 100%
+Status: active
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 3: Deploy
+- [ ] Phase 4: Stray
+### Phase 1: Setup
+### Phase 2: Build
+### Phase 3: Deploy
+### Phase 4: Stray
+EOF
+
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/02-build/02-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/02-build/02-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/03-deploy/03-01-PLAN.md
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/02-build/02-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^- \[x\] Phase 2: Build$' .vbw-planning/ROADMAP.md
+  grep -q '^- \[ \] Phase 4: Stray$' .vbw-planning/ROADMAP.md
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q 'phase 4 referenced in ROADMAP.md but no matching phase directory'
+}
+
+@test "summary update preserves plain ROADMAP fallback without phase-state-utils" {
+  cd "$TEST_TEMP_DIR"
+
+  local helperless_scripts
+  helperless_scripts="$TEST_TEMP_DIR/helperless-roadmap-scripts"
+  mkdir -p "$helperless_scripts"
+  cp "$SCRIPTS_DIR/state-updater.sh" "$helperless_scripts/state-updater.sh"
+  cp "$SCRIPTS_DIR/summary-utils.sh" "$helperless_scripts/summary-utils.sh"
+  cp "$SCRIPTS_DIR/uat-utils.sh" "$helperless_scripts/uat-utils.sh"
+
+  mkdir -p .vbw-planning/phases/01-setup
+  cat > .vbw-planning/STATE.md <<'EOF'
+Phase: 1 of 1 (Setup)
+Plans: 0/1
+Progress: 0%
+Status: active
+EOF
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+- [ ] Phase 1: Setup
+| Phase | Progress | Status | Completed |
+|------|----------|--------|-----------|
+| 1 - Setup | 0/1 | pending | - |
+EOF
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'phase: 1' 'plan: 1' 'status: complete' '---' '# Summary' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/01-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$helperless_scripts/state-updater.sh'"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"command not found"* ]]
+  grep -q '^- \[x\] Phase 1: Setup$' .vbw-planning/ROADMAP.md
 }
 
 @test "advance_phase skips SOURCE-UAT files via shared uat-utils" {
