@@ -9,6 +9,7 @@ set -euo pipefail
 # - Every agent has an explicit permissionMode in frontmatter
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+README_FILE="$ROOT/README.md"
 
 PASS=0
 FAIL=0
@@ -21,6 +22,30 @@ pass() {
 fail() {
   echo "FAIL  $1"
   FAIL=$((FAIL + 1))
+}
+
+check_contains() {
+  local label="$1"
+  local haystack="$2"
+  local needle="$3"
+
+  if [[ "$haystack" == *"$needle"* ]]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
+check_not_contains() {
+  local label="$1"
+  local haystack="$2"
+  local needle="$3"
+
+  if [[ "$haystack" == *"$needle"* ]]; then
+    fail "$label"
+  else
+    pass "$label"
+  fi
 }
 
 echo "=== Agent permissionMode Contract Verification ==="
@@ -55,6 +80,28 @@ for agent in $AGENTS; do
     fail "${SHORT_NAME}: permissionMode is ${ACTUAL} (expected: ${EXPECTED})"
   fi
 done
+
+README_DEV_ROW=$(grep -F '| **Dev** |' "$README_FILE" || true)
+if [[ -n "$README_DEV_ROW" ]]; then
+  pass "README: Dev permission row exists"
+else
+  fail "README: Dev permission row exists"
+fi
+
+check_not_contains "README: Dev row no longer says Full access" "$README_DEV_ROW" "Full access"
+check_not_contains "README: Dev row no longer leaves denied tools blank" "$README_DEV_ROW" "| -- |"
+for tool in Read Glob Grep Write Edit Bash WebFetch WebSearch LSP Skill SendMessage TaskGet; do
+  check_contains "README: Dev row mentions allowed tool ${tool}" "$README_DEV_ROW" "$tool"
+done
+for tool in Task TaskCreate Agent TeamCreate TeamDelete AskUserQuestion; do
+  check_contains "README: Dev row mentions omitted tool ${tool}" "$README_DEV_ROW" "$tool"
+done
+
+if grep -Fq 'Dev, Debugger' "$README_FILE" && grep -Fq 'Full access. The ones you actually worry about.' "$README_FILE"; then
+  fail "README: permission model no longer groups Dev with full-access agents"
+else
+  pass "README: permission model no longer groups Dev with full-access agents"
+fi
 
 echo ""
 echo "TOTAL  ${PASS} PASS, ${FAIL} FAIL"

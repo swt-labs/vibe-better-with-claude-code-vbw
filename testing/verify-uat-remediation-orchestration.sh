@@ -99,10 +99,35 @@ check_not_regex() {
   fi
 }
 
+check_before() {
+  local label="$1"
+  local haystack="$2"
+  local before="$3"
+  local after="$4"
+  local before_line after_line
+
+  before_line=$(grep -nF -- "$before" <<< "$haystack" | head -n 1 | cut -d: -f1 || true)
+  after_line=$(grep -nF -- "$after" <<< "$haystack" | head -n 1 | cut -d: -f1 || true)
+
+  if [ -n "$before_line" ] && [ -n "$after_line" ] && [ "$before_line" -lt "$after_line" ]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
 UAT_BLOCK=$(awk '
   /^### Mode: UAT Remediation[[:space:]]*$/ { in_block = 1 }
   /^### Mode: Milestone UAT Recovery[[:space:]]*$/ { in_block = 0 }
   in_block { print }
+' "$VIBE_FILE")
+
+FIX_BLOCK=$(awk '
+  /^### Mode: UAT Remediation[[:space:]]*$/ { in_uat = 1 }
+  /^### Mode: Milestone UAT Recovery[[:space:]]*$/ { in_uat = 0; in_fix = 0 }
+  in_uat && /^#### fix[[:space:]]*$/ { in_fix = 1 }
+  in_uat && /^### Fallback remediation summary[[:space:]]*$/ { in_fix = 0 }
+  in_uat && in_fix { print }
 ' "$VIBE_FILE")
 
 SPAWN_ARG_ISOLATION_RE='(^|[^[:alnum:]_])"?isolation"?([[:space:]]*[:=][[:space:]]*"?worktree"?|[[:space:]]+worktree)([^[:alnum:]_]|$)'
@@ -114,6 +139,12 @@ if [ -z "$UAT_BLOCK" ]; then
   fail "vibe.md exposes a UAT Remediation block"
 else
   pass "vibe.md exposes a UAT Remediation block"
+fi
+
+if [ -z "$FIX_BLOCK" ]; then
+  fail "vibe.md exposes a UAT Remediation fix block"
+else
+  pass "vibe.md exposes a UAT Remediation fix block"
 fi
 
 if [ -f "$VALIDATOR" ]; then
@@ -141,6 +172,11 @@ check_contains "UAT no-tool breaker avoids same-prompt retry" "$UAT_BLOCK" 'do n
 check_contains "UAT research site applies no-tool breaker before validation" "$UAT_BLOCK" 'If Scout returns a no-tool/tool-provisioning failure'
 check_contains "UAT plan site applies no-tool breaker before validation" "$UAT_BLOCK" 'If Lead returns a no-tool/tool-provisioning failure'
 check_contains "UAT execute site applies no-tool breaker before next Dev" "$UAT_BLOCK" 'If Dev returns a no-tool/tool-provisioning failure for the task'
+check_contains "UAT fix site applies no-tool breaker" "$FIX_BLOCK" 'If the quick-fix Dev return reports that tools, Bash, filesystem, edits, or API-session access are unavailable'
+check_contains "UAT fix no-tool breaker stops without advancing stage" "$FIX_BLOCK" 'STOP without advancing `.uat-remediation-stage`'
+check_contains "UAT fix no-tool breaker avoids same-prompt retry" "$FIX_BLOCK" 'do not retry the same prompt'
+check_contains "UAT fix no-tool breaker blocks re-verification" "$FIX_BLOCK" 'do not enter re-verification'
+check_before "UAT fix no-tool guard appears before state advance" "$FIX_BLOCK" 'If the quick-fix Dev return reports that tools, Bash, filesystem, edits, or API-session access are unavailable' 'uat-remediation-state.sh advance "$PHASE_DIR"'
 check_regex "research stage validates exact artifact" "$UAT_BLOCK" 'validate-uat-remediation-artifact\.sh research "\{round_dir\}/R\{RR\}-RESEARCH\.md"'
 check_regex "plan stage validates existing plan_path" "$UAT_BLOCK" 'validate-uat-remediation-artifact\.sh plan "\{plan_path\}"'
 check_regex "plan stage validates exact generated plan" "$UAT_BLOCK" 'validate-uat-remediation-artifact\.sh plan "\{round_dir\}/R\{RR\}-PLAN\.md"'

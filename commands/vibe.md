@@ -1227,6 +1227,8 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
 
 Route to a quick-fix implementation path for the same phase using the normalized issue list from step 3 (with step-5 recurrence annotations when available) as task input (equivalent to `/vbw:fix`, but without requiring the user to invoke it manually). After changes, advance:
 
+If the quick-fix Dev return reports that tools, Bash, filesystem, edits, or API-session access are unavailable, apply the Subagent no-tool circuit breaker before the advance below: STOP without advancing `.uat-remediation-stage`, report the failed Dev quick-fix task, do not retry the same prompt, and do not enter re-verification.
+
 ```bash
 bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
 ```
