@@ -972,7 +972,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
     </uat_remediation_artifact_contract>
     <uat_remediation_spawn_contract>
     The Research → Plan → Execute (or Fix) list is session progress tracking only. TodoWrite is the only progress tracker for these stages; do not create or update stage-progress items with TaskCreate, TaskUpdate, Agent, or TeamCreate. TaskCreate/Agent is allowed only for real Scout/Lead/Dev work-unit delegation inside the current stage, never to represent the stage list itself.
-    UAT remediation spawns are plain sequential subagent calls. Do not use TeamCreate. Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, or the `isolation` parameter. Claude Code worktree isolation is not reliable for this path; exact absolute host paths keep the orchestrator and subagents on the same `.vbw-planning/.../remediation/uat/...` artifacts.
+    UAT remediation spawns are plain sequential subagent calls. Do not use TeamCreate. Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). Claude Code worktree isolation and spawn cwd handoffs are not reliable for this path; exact absolute host paths keep the orchestrator and subagents on the same `.vbw-planning/.../remediation/uat/...` artifacts.
     </uat_remediation_spawn_contract>
     <examples>
     <example type="anti-pattern" label="WRONG — stage progress via delegated task manager">
@@ -982,7 +982,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
     TodoWrite: Research=in-progress, Plan=not-started, Execute=not-started; after research validates, TodoWrite: Research=completed, Plan=in-progress, Execute=not-started.
     </example>
     <example type="correct" label="RIGHT — delegated Dev work unit">
-    Spawn one Dev for the current plan task with no team metadata, no per-agent name, no background execution, and no isolation parameter. Include absolute artifacts exactly as returned by state metadata:
+    Spawn one Dev for the current plan task with no team metadata, no per-agent name, no background execution, no isolation parameter, and no worktree cwd fields. Include absolute artifacts exactly as returned by state metadata:
     Plan: /repo/.vbw-planning/phases/03-example/remediation/uat/round-01/R01-PLAN.md
     Summary: /repo/.vbw-planning/phases/03-example/remediation/uat/round-01/R01-SUMMARY.md
     </example>
@@ -1075,7 +1075,7 @@ If validation fails, display the validator error and STOP without advancing stat
 
 If `plan_path` is empty, spawn Lead as a **single subagent** to write the remediation plan.
 
-**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name`, `name`, `run_in_background`, or `isolation` parameters**. This is NOT "Plan mode steps 1-12" — remediation has its own sequential flow that does not use the standard planning pipeline.
+**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name`, `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir` parameters**. This is NOT "Plan mode steps 1-12" — remediation has its own sequential flow that does not use the standard planning pipeline.
 
 - Resolve Lead model:
   ```bash
@@ -1139,7 +1139,7 @@ Then continue to the next stage (`execute`), respecting autonomy confirmation ru
 
 Execute the remediation plan by spawning Dev agents sequentially — one per task in the plan. Do NOT use "normal Execute flow" or `execute-protocol.md` — remediation execution is self-contained with no wave parallelism.
 
-**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation execution spawns Dev agents directly via Task tool with **no `team_name`, `name`, `run_in_background`, or `isolation` parameters**.
+**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation execution spawns Dev agents directly via Task tool with **no `team_name`, `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir` parameters**.
 
 - Read `plan_path` when it is non-empty; otherwise read `{round_dir}/R{RR}-PLAN.md` (using `round` and the absolute `round_dir` from step 4). Extract the task list from the plan frontmatter/body. Each task has an ID (e.g., `P07`, `P08`, `UAT-3`).
 - Resolve Dev model:

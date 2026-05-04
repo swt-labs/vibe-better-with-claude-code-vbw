@@ -318,12 +318,17 @@ test_no_marker_blocks_named_non_team_spawns
 
 test_no_marker_allows_non_agent_worktree_cwd_when_config_off() {
   setup_project
+  jq '.worktree_isolation = "off"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
+  mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
 
-  if run_guard "$PROJECT" "" false "" "$PROJECT" "Agent" "" "" "$PROJECT/.claude/worktrees/manual-workdir" "cwd" >/dev/null 2>&1; then
-    pass "No marker with config off: non-agent worktree cwd allowed"
-  else
-    fail "No-marker non-agent .claude/worktrees cwd should be allowed when worktree_isolation off"
-  fi
+  local tool
+  for tool in Agent TaskCreate; do
+    if run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/manual-workdir" "cwd" >/dev/null 2>&1; then
+      pass "No marker with config off: ${tool} non-agent worktree cwd allowed"
+    else
+      fail "No-marker ${tool} non-agent .claude/worktrees cwd should be allowed when worktree_isolation off"
+    fi
+  done
   cleanup
 }
 test_no_marker_allows_non_agent_worktree_cwd_when_config_off
