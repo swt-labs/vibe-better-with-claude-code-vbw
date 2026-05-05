@@ -111,6 +111,24 @@ teardown() {
   [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md (replaced existing target)"* ]]
 }
 
+@test "fails closed when round-dir has conflicting misnamed plan candidates" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "stale" > "$ROUND_DIR/R01-PLAN.md"
+  echo "fresh a" > "$ROUND_DIR/PLAN-01.md"
+  echo "fresh b" > "$ROUND_DIR/PLAN-R01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ -f "$ROUND_DIR/R01-PLAN.md.conflict" ]
+  [ -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-R01.md" ]
+  [[ "$output" == *"multiple non-identical remediation round plan candidates"* ]]
+  [[ "$output" == *"validation fails closed"* ]]
+}
+
 @test "renames {NN}-01-RESEARCH.md to {NN}-RESEARCH.md when it is the only research file" {
   PHASE_DIR="$TEST_DIR/03-auth"
   mkdir -p "$PHASE_DIR"

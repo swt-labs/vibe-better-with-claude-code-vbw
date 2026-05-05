@@ -45,6 +45,8 @@ esac
 if [ -n "$ROUND_PLAN_TOKEN" ]; then
   # Pattern: PLAN-RNN.md or PLAN-NN.md → RNN-PLAN.md, where RNN is derived
   # from the containing remediation round directory.
+  TARGET="$PHASE_DIR/${ROUND_PLAN_TOKEN}-PLAN.md"
+  ROUND_PLAN_CANDIDATES=()
   for f in "$PHASE_DIR"/[Pp][Ll][Aa][Nn]-[Rr][0-9]*.[mM][dD] "$PHASE_DIR"/[Pp][Ll][Aa][Nn]-[0-9]*.[mM][dD]; do
     [ -f "$f" ] || continue
     [ ! -L "$f" ] || continue  # skip symlinks
@@ -53,8 +55,37 @@ if [ -n "$ROUND_PLAN_TOKEN" ]; then
       echo "skipped: $BASENAME (unknown remediation round plan form)" >&2
       continue
     fi
+    ROUND_PLAN_CANDIDATES+=("$f")
+  done
 
-    TARGET="$PHASE_DIR/${ROUND_PLAN_TOKEN}-PLAN.md"
+  if [ "${#ROUND_PLAN_CANDIDATES[@]}" -gt 1 ]; then
+    FIRST_ROUND_PLAN_CANDIDATE="${ROUND_PLAN_CANDIDATES[0]}"
+    ROUND_PLAN_CONFLICT=false
+    for f in "${ROUND_PLAN_CANDIDATES[@]:1}"; do
+      if ! cmp -s "$FIRST_ROUND_PLAN_CANDIDATE" "$f"; then
+        ROUND_PLAN_CONFLICT=true
+        break
+      fi
+    done
+
+    if [ "$ROUND_PLAN_CONFLICT" = true ]; then
+      echo "conflict: multiple non-identical remediation round plan candidates exist in $(basename "$PHASE_DIR")" >&2
+      if [ -f "$TARGET" ]; then
+        BACKUP_TARGET="$TARGET.conflict"
+        BACKUP_INDEX=1
+        while [ -e "$BACKUP_TARGET" ]; do
+          BACKUP_TARGET="$TARGET.conflict.$BACKUP_INDEX"
+          BACKUP_INDEX=$((BACKUP_INDEX + 1))
+        done
+        mv "$TARGET" "$BACKUP_TARGET"
+        echo "conflict: moved existing $(basename "$TARGET") to $(basename "$BACKUP_TARGET") so validation fails closed" >&2
+      fi
+      exit 0
+    fi
+  fi
+
+  for f in "${ROUND_PLAN_CANDIDATES[@]}"; do
+    BASENAME=$(basename "$f")
     if [ -f "$TARGET" ]; then
       if cmp -s "$f" "$TARGET"; then
         rm "$f"

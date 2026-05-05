@@ -213,6 +213,26 @@ EOF
   [[ "$output" == *"artifact_path=$plan_path"* ]]
 }
 
+@test "validator rejects QA round-dir research artifacts" {
+  local research_path="$QA_ROUND_DIR/R01-RESEARCH.md"
+  write_valid_research "$research_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" research "$research_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"QA remediation validation currently supports plan artifacts only"* ]]
+}
+
+@test "validator rejects QA round-dir summary artifacts" {
+  local summary_path="$QA_ROUND_DIR/R01-SUMMARY.md"
+  write_valid_summary "$summary_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" summary "$summary_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"QA remediation validation currently supports plan artifacts only"* ]]
+}
+
 @test "validator rejects non-canonical QA plan filenames" {
   local plan_path="$QA_ROUND_DIR/R01-CUSTOM-PLAN.md"
   write_valid_plan "$plan_path"

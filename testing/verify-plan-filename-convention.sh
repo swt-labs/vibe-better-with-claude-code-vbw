@@ -196,6 +196,19 @@ else
   fail "round collision — rc=$RC, content: $CONTENT, files: $(ls "$TDIR"), output: $OUTPUT"
 fi
 
+# Test 10d2: round-dir conflicting misnamed candidates fail closed instead of picking one
+TDIR="$TMPDIR_TEST/test10d2/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "stale" > "$TDIR/R01-PLAN.md"
+echo "fresh a" > "$TDIR/PLAN-01.md"
+echo "fresh b" > "$TDIR/PLAN-R01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ ! -f "$TDIR/R01-PLAN.md" ] && [ -f "$TDIR/R01-PLAN.md.conflict" ] && [ -f "$TDIR/PLAN-01.md" ] && [ -f "$TDIR/PLAN-R01.md" ] && echo "$OUTPUT" | grep -q "multiple non-identical remediation round plan candidates"; then
+  pass "round conflict: fails closed when PLAN-01.md and PLAN-R01.md differ"
+else
+  fail "round conflict — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
 # Test 10e: phase directories still normalize PLAN-01.md to 01-PLAN.md
 TDIR="$TMPDIR_TEST/test10e/.vbw-planning/phases/01-setup"
 mkdir -p "$TDIR"
