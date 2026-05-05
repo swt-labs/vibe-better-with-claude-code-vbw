@@ -112,28 +112,65 @@ if [ "$EXEC_ACTIVE" = true ] && { [ "$MARKER_LIVE" != "true" ] || [ "$MODE" != "
   exit 2
 fi
 
+emit_strip_json() {
+  local stripped_input="$1" reason="$2"
+  # Build entire hook JSON via jq to guarantee valid output (reason is JSON-escaped)
+  local compact_input
+  compact_input=$(echo "$stripped_input" | jq -c '.' 2>/dev/null) || compact_input="$stripped_input"
+  jq -n -c --arg reason "$reason" --argjson input "$compact_input" \
+    '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":$reason,"updatedInput":$input}}'
+}
+
 if is_teammate_spawn_tool; then
-  if requested_sidechain_cwd; then
-    echo "Blocked: teammate spawn requested an unmanaged Claude sidechain working directory. Omit sidechain cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
-    exit 2
-  fi
+  # Hard blocks first — VBW-internal invariants must reject before strip paths
   if requested_vbw_worktree_cwd; then
     echo "Blocked: teammate spawn requested a VBW worktree path as a spawn working directory. Omit cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
-    exit 2
-  fi
-  if requested_worktree_isolation; then
-    echo "Blocked: teammate spawn requested Claude-side worktree isolation. Omit isolation; when VBW worktree isolation is enabled, use VBW-prepared worktree targeting metadata instead." >&2
     exit 2
   fi
   if [ -n "$AGENT_NAME" ] && [ "$TRUE_LIVE_TEAM_MODE" != "true" ]; then
     echo "Blocked: named non-team teammate spawns are unsupported. Omit name for sequential non-team calls; name is only valid with team_name in true team mode." >&2
     exit 2
   fi
+  # Strip paths — record fields to strip but do NOT exit yet.
+  # Execute-mode checks below may still block this spawn.
+  STRIP_REASON=""
+  STRIP_WARN=""
+  if requested_sidechain_cwd; then
+    STRIPPED_INPUT=$(echo "$INPUT" | jq '.tool_input | del(.cwd, .working_dir, .workingDirectory, .workdir, .isolation)' 2>/dev/null)
+    STRIP_REASON="VBW stripped sidechain cwd fields — worktree targeting is task metadata, not spawn cwd"
+    STRIP_WARN="VBW guard: stripped sidechain cwd fields (and isolation if present) from $TOOL_NAME spawn (models add these spontaneously; blocking causes infinite retry loops)"
+  elif requested_worktree_isolation; then
+    STRIPPED_INPUT=$(echo "$INPUT" | jq '.tool_input | del(.isolation)' 2>/dev/null)
+    STRIP_REASON="VBW stripped isolation:worktree — worktree isolation is not managed via spawn params"
+    STRIP_WARN="VBW guard: stripped isolation:worktree from $TOOL_NAME spawn (models add this spontaneously; blocking causes infinite retry loops)"
+  fi
 fi
 
-[ "$MARKER_LIVE" = "true" ] || exit 0
-[ "$MODE" = "execute" ] || exit 0
-[ -n "$DELEGATION_MODE" ] || exit 0
+[ "$MARKER_LIVE" = "true" ] || {
+  # No marker — if stripping was needed, emit now and exit
+  if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+    echo "$STRIP_WARN" >&2
+    emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+    exit 0
+  fi
+  exit 0
+}
+[ "$MODE" = "execute" ] || {
+  if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+    echo "$STRIP_WARN" >&2
+    emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+    exit 0
+  fi
+  exit 0
+}
+[ -n "$DELEGATION_MODE" ] || {
+  if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+    echo "$STRIP_WARN" >&2
+    emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+    exit 0
+  fi
+  exit 0
+}
 
 case "$DELEGATION_MODE" in
   team)
@@ -175,5 +212,12 @@ case "$DELEGATION_MODE" in
     fi
     ;;
 esac
+
+# If strip was deferred and we made it past all blocks, emit now
+if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+  echo "$STRIP_WARN" >&2
+  emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+  exit 0
+fi
 
 exit 0
