@@ -190,6 +190,50 @@ validate_legacy_phase_root_path() {
   fi
 }
 
+validate_round_dir_artifact_path() {
+  local remediation_kind="$1" expected_suffix="$2"
+  local artifact_dir round_dir_base round_raw expected_round artifact_basename file_round shape_error mismatch_error
+
+  artifact_dir=$(dirname "$ARTIFACT_PATH")
+  round_dir_base=$(basename "$artifact_dir")
+  round_raw="${round_dir_base#round-}"
+
+  case "$remediation_kind" in
+    qa)
+      shape_error="artifact path must match the expected QA remediation plan filename shape"
+      mismatch_error="QA remediation plan round token must match round directory"
+      ;;
+    *)
+      shape_error="artifact path must match the expected round-dir ${expected_suffix} filename shape"
+      mismatch_error="artifact round token must match round directory"
+      ;;
+  esac
+
+  case "$round_dir_base" in
+    round-[0-9]*) ;;
+    *) emit_failure "$shape_error" ;;
+  esac
+
+  case "$round_raw" in
+    ""|*[!0-9]*) emit_failure "$shape_error" ;;
+  esac
+
+  expected_round=$(printf "%02d" "$((10#$round_raw))")
+  if [ "$round_raw" != "$expected_round" ]; then
+    emit_failure "$shape_error"
+  fi
+
+  artifact_basename=$(basename "$ARTIFACT_PATH")
+  file_round=$(printf '%s\n' "$artifact_basename" | sed -n "s/^R\([0-9][0-9]*\)-${expected_suffix}\.md$/\1/p")
+  if [ -z "$file_round" ]; then
+    emit_failure "$shape_error"
+  fi
+
+  if [ "$file_round" != "$expected_round" ]; then
+    emit_failure "$mismatch_error"
+  fi
+}
+
 validate_common_path() {
   local expected_suffix="$1"
 
@@ -205,9 +249,12 @@ validate_common_path() {
   esac
 
   case "$ARTIFACT_PATH" in
-    */.vbw-planning/phases/*/remediation/uat/round-[0-9][0-9]/R[0-9][0-9]-"$expected_suffix".md) ;;
-    */.vbw-planning/phases/*/remediation/qa/round-[0-9][0-9]/R[0-9][0-9]-PLAN.md)
+    */.vbw-planning/phases/*/remediation/uat/round-[0-9]*/*)
+      validate_round_dir_artifact_path "uat" "$expected_suffix"
+      ;;
+    */.vbw-planning/phases/*/remediation/qa/round-[0-9]*/*)
       [ "$ARTIFACT_TYPE" = "plan" ] || emit_failure "QA remediation validation currently supports plan artifacts only"
+      validate_round_dir_artifact_path "qa" "PLAN"
       ;;
     */.vbw-planning/phases/*/remediation/qa/*)
       emit_failure "artifact path must match the expected QA remediation plan filename shape"

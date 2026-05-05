@@ -223,6 +223,26 @@ EOF
   [[ "$output" == *"QA remediation plan filename shape"* ]]
 }
 
+@test "validator rejects QA plan round token that does not match round directory" {
+  local plan_path="$QA_ROUND_DIR/R02-PLAN.md"
+  write_valid_plan "$plan_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"round token must match round directory"* ]]
+}
+
+@test "validator rejects UAT plan round token that does not match round directory" {
+  local plan_path="$ROUND_DIR/R02-PLAN.md"
+  write_valid_plan "$plan_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"round token must match round directory"* ]]
+}
+
 @test "validator rejects missing canonical QA plan artifacts" {
   local plan_path="$QA_ROUND_DIR/R01-PLAN.md"
 
