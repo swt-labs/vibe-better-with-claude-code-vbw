@@ -1136,11 +1136,21 @@ qa_remediation_verify_block="$({
 
 if grep -Fq '<qa_remediation_artifact_contract>' <<< "$qa_remediation_block" \
   && grep -Fq '`round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` are authoritative host-repository paths from `qa-remediation-state.sh` metadata' <<< "$qa_remediation_block" \
+  && grep -Fq 'pass these exact paths to Lead, Dev, and QA prompts' <<< "$qa_remediation_block" \
   && grep -Fq '.claude/worktrees/agent-*' <<< "$qa_remediation_block" \
   && grep -Fq 'never rewrite them relative to the current CWD' <<< "$qa_remediation_block"; then
   pass "vibe: QA remediation has host artifact path contract"
 else
   fail "vibe: QA remediation missing host artifact path contract"
+fi
+
+if grep -Fq '<qa_remediation_artifact_contract>' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq '`round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` from `qa-remediation-state.sh` metadata are authoritative host-repository paths' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'pass these exact paths to Lead, Dev, and QA prompts' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'never rewrite them relative to the current CWD' <<< "$execute_protocol_qa_remediation_block"; then
+  pass "execute-protocol: QA remediation host paths cover Lead, Dev, and QA"
+else
+  fail "execute-protocol: QA remediation host path contract missing Lead/Dev/QA coverage"
 fi
 
 if grep -Fq '<qa_remediation_spawn_contract>' <<< "$qa_remediation_block" \
@@ -1198,6 +1208,24 @@ fi
 
 check_literal_before_regex "vibe: QA no-tool breaker appears before remediation state advance" "$qa_remediation_block" '<qa_remediation_no_tool_circuit_breaker>' 'qa-remediation-state\.sh.*advance'
 check_literal_before_literal "vibe: QA no-tool breaker appears before deterministic gate" "$qa_remediation_block" '<qa_remediation_no_tool_circuit_breaker>' 'qa-result-gate.sh'
+
+if grep -Fq 'The orchestrator/Lead writes the plan' <<< "$qa_remediation_plan_block" \
+  || grep -Fq 'The orchestrator writes the plan' <<< "$qa_remediation_plan_block"; then
+  fail "vibe: QA remediation plan stage still has ambiguous orchestrator-authored planning wording"
+else
+  pass "vibe: QA remediation plan stage removes ambiguous orchestrator-authored wording"
+fi
+
+if grep -Fq 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'subagent_type: "vbw:vbw-lead"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md' <<< "$qa_remediation_plan_block"; then
+  pass "vibe: QA remediation plan stage explicitly spawns Lead with safe shape"
+else
+  fail "vibe: QA remediation plan stage missing explicit safe Lead spawn contract"
+fi
+
+check_literal_before_literal "vibe: QA plan Lead spawn appears before Lead return breaker" "$qa_remediation_plan_block" 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' 'After Lead returns, apply the QA remediation no-tool circuit breaker'
 
 if grep -Fq 'After Lead returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_plan_block" \

@@ -219,6 +219,11 @@ require_file "$EXECUTE_PROTOCOL"
 
 EXECUTE_PROTOCOL_TEXT=$(cat "$EXECUTE_PROTOCOL")
 QA_REMEDIATION_BLOCK=$(extract_protocol_block 'QA Remediation Loop (inline, same session):' '### Step 4.5')
+QA_REMEDIATION_PLAN_BLOCK=$(awk '
+  /\*\*stage=plan:/ { in_block = 1 }
+  /\*\*stage=execute:/ { in_block = 0 }
+  in_block { print }
+' <<< "$QA_REMEDIATION_BLOCK")
 QA_REMEDIATION_EXECUTE_BLOCK=$(awk '
   /\*\*stage=execute:/ { in_block = 1 }
   /\*\*stage=verify:/ { in_block = 0 }
@@ -591,6 +596,7 @@ fi
 
 if grep -Fq '<qa_remediation_artifact_contract>' "$EXECUTE_PROTOCOL" \
   && grep -Fq '`round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` from `qa-remediation-state.sh` metadata are authoritative host-repository paths' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'pass these exact paths to Lead, Dev, and QA prompts' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'never rewrite them relative to the current CWD' "$EXECUTE_PROTOCOL"; then
   pass "execute-protocol documents QA remediation authoritative host artifact paths"
 else
@@ -622,6 +628,29 @@ else
   fail "execute-protocol missing QA remediation no-tool circuit breaker"
 fi
 
+if grep -Fq 'The orchestrator writes the plan' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  || grep -Fq 'The orchestrator/Lead writes the plan' <<< "$QA_REMEDIATION_PLAN_BLOCK"; then
+  fail "execute-protocol QA remediation plan stage still has orchestrator-authored planning wording"
+else
+  pass "execute-protocol QA remediation plan stage removes orchestrator-authored wording"
+fi
+
+if grep -Fq 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'subagent_type: "vbw:vbw-lead"' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md' <<< "$QA_REMEDIATION_PLAN_BLOCK"; then
+  pass "execute-protocol QA remediation plan stage explicitly spawns Lead with safe shape"
+else
+  fail "execute-protocol QA remediation plan stage missing explicit safe Lead spawn contract"
+fi
+
+if grep -Fq 'After Lead returns, apply the QA remediation no-tool circuit breaker' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$QA_REMEDIATION_PLAN_BLOCK"; then
+  pass "execute-protocol QA remediation applies shell/Bash no-tool handling at Lead return site"
+else
+  fail "execute-protocol QA remediation Lead return site missing shell/Bash no-tool handling"
+fi
+
 if grep -Fq 'If Dev reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$QA_REMEDIATION_EXECUTE_BLOCK" \
   && grep -Fq 'If QA reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$QA_REMEDIATION_VERIFY_BLOCK"; then
   pass "execute-protocol QA remediation applies shell/Bash no-tool handling at Dev and QA return sites"
@@ -631,6 +660,8 @@ fi
 
 check_literal_before_regex "execute-protocol QA no-tool breaker appears before remediation state advance" "$QA_REMEDIATION_BLOCK" '<qa_remediation_no_tool_circuit_breaker>' 'qa-remediation-state\.sh.*advance'
 check_literal_before_literal "execute-protocol QA no-tool breaker appears before deterministic gate" "$QA_REMEDIATION_BLOCK" '<qa_remediation_no_tool_circuit_breaker>' 'qa-result-gate.sh'
+check_literal_before_literal "execute-protocol QA plan Lead spawn appears before Lead return breaker" "$QA_REMEDIATION_PLAN_BLOCK" 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' 'After Lead returns, apply the QA remediation no-tool circuit breaker'
+check_literal_before_regex "execute-protocol QA plan Lead breaker appears before plan-stage state advance" "$QA_REMEDIATION_PLAN_BLOCK" 'After Lead returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
 check_literal_before_regex "execute-protocol QA execute Dev breaker appears before execute-stage state advance" "$QA_REMEDIATION_EXECUTE_BLOCK" 'After Dev returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
 check_literal_before_literal "execute-protocol QA verify breaker appears before known-issue sync" "$QA_REMEDIATION_VERIFY_BLOCK" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" sync-verification'
 check_literal_before_literal "execute-protocol QA verify breaker appears before known-issue promotion" "$QA_REMEDIATION_VERIFY_BLOCK" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" promote-todos'

@@ -757,7 +757,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    ```
   Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `source_fail_count`, `known_issues_path`, `known_issues_count`, `input_mode`, `verification_path`
   <qa_remediation_artifact_contract>
-  `round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` from `qa-remediation-state.sh` metadata are authoritative host-repository paths. Claude Code may run subagents from `.claude/worktrees/agent-*` sidechain CWDs; pass these exact paths to Dev and QA prompts and never rewrite them relative to the current CWD. Rewriting those paths relative to sidechain CWDs can write or read remediation artifacts from the wrong location and break resume or verification.
+  `round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` from `qa-remediation-state.sh` metadata are authoritative host-repository paths. Claude Code may run subagents from `.claude/worktrees/agent-*` sidechain CWDs; pass these exact paths to Lead, Dev, and QA prompts and never rewrite them relative to the current CWD. Rewriting those paths relative to sidechain CWDs can write or read remediation artifacts from the wrong location and break resume or verification.
   </qa_remediation_artifact_contract>
   <qa_remediation_spawn_contract>
   QA remediation uses plain sequential subagent calls. Do not use TeamCreate. Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). Use remediation metadata paths in prompts; VBW worktree targeting is task prompt/state metadata, not a spawn isolation or cwd handoff.
@@ -789,8 +789,11 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
      - `unresolved` = the issue remains blocking and the next round must continue to carry it
    - Do NOT omit a carried known issue from `known_issues_input` or `known_issue_resolutions`. The deterministic gate treats missing coverage as a failed remediation round even if QA writes `PASS`.
    - Scope the plan to those failures: what to fix, which files, acceptance criteria
-   - The orchestrator writes the plan (QA identified problems, orchestrator determines fixes)
-   - Advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
+  - The orchestrator coordinates the remediation loop and spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md` (QA identified problems, Lead determines fixes).
+  - Resolve Lead settings with `resolve-agent-settings.sh lead`; spawn Lead as a plain sequential work-unit subagent with `subagent_type: "vbw:vbw-lead"`, `model: "${LEAD_MODEL}"`, and `maxTurns` only when the resolved value is non-empty. Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`.
+  - Lead prompt MUST include the authoritative `round_dir`, `source_verification_path`, `known_issues_path`, and output path `{round_dir}/R{RR}-PLAN.md`; the failed-check and known-issue inputs above; the deviation-classification and known-issue-resolution requirements above; and `Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md and follow its structure exactly.`
+  - After Lead returns, apply the QA remediation no-tool circuit breaker before reading or trusting the generated plan, normalizing anything, validating anything, or advancing state. If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Lead prompt.
+  - Advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
 
    **stage=execute:** Spawn a Dev subagent per `R{RR}-PLAN.md`:
    - **Always subagent — NO team creation for QA remediation (NON-NEGOTIABLE)**
