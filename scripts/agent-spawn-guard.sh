@@ -120,6 +120,16 @@ EOJSON
 }
 
 if is_teammate_spawn_tool; then
+  # Hard blocks first — VBW-internal invariants must reject before strip paths
+  if requested_vbw_worktree_cwd; then
+    echo "Blocked: teammate spawn requested a VBW worktree path as a spawn working directory. Omit cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
+    exit 2
+  fi
+  if [ -n "$AGENT_NAME" ] && [ "$TRUE_LIVE_TEAM_MODE" != "true" ]; then
+    echo "Blocked: named non-team teammate spawns are unsupported. Omit name for sequential non-team calls; name is only valid with team_name in true team mode." >&2
+    exit 2
+  fi
+  # Strip paths — remove model-hallucinated fields and allow the spawn
   if requested_sidechain_cwd; then
     # Strip sidechain CWD fields and allow — blocking causes infinite retry loops
     # because models hallucinate compliance but regenerate the same tool_input.
@@ -132,10 +142,6 @@ if is_teammate_spawn_tool; then
     # Fallback: if jq stripping failed, allow without modification (fail-open)
     exit 0
   fi
-  if requested_vbw_worktree_cwd; then
-    echo "Blocked: teammate spawn requested a VBW worktree path as a spawn working directory. Omit cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
-    exit 2
-  fi
   if requested_worktree_isolation; then
     # Strip isolation field and allow — blocking causes infinite retry loops
     # because models hallucinate compliance but regenerate the same tool_input.
@@ -147,10 +153,6 @@ if is_teammate_spawn_tool; then
     fi
     # Fallback: if jq stripping failed, allow without modification (fail-open)
     exit 0
-  fi
-  if [ -n "$AGENT_NAME" ] && [ "$TRUE_LIVE_TEAM_MODE" != "true" ]; then
-    echo "Blocked: named non-team teammate spawns are unsupported. Omit name for sequential non-team calls; name is only valid with team_name in true team mode." >&2
-    exit 2
   fi
 fi
 

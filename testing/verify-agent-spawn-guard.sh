@@ -218,7 +218,7 @@ test_no_marker_strips_worktree_isolation_for_all_tools_and_config_states() {
     fi
 
     for tool in Agent TaskCreate; do
-      output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "worktree" 2>&1) && rc=$? || rc=$?
+      output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "worktree" 2>&1) && rc=$? || rc=$?
       if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"' && ! echo "$output" | jq -e '.hookSpecificOutput.updatedInput.isolation' >/dev/null 2>&1; then
         pass "No marker with config ${config_state}: ${tool} isolation stripped and allowed"
       else
@@ -236,7 +236,7 @@ test_no_marker_strips_sidechain_cwd_when_config_missing() {
   local tool field output rc
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
-      output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
+      output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
       if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"'; then
         pass "No marker with missing config key: ${tool} sidechain ${field} stripped and allowed"
       else
@@ -300,6 +300,38 @@ test_combined_sidechain_cwd_and_isolation_strips_both() {
 }
 test_combined_sidechain_cwd_and_isolation_strips_both
 
+test_named_non_team_with_isolation_blocks() {
+  setup_project
+
+  local tool output rc
+  for tool in Agent TaskCreate; do
+    output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "worktree" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
+      pass "Named non-team + isolation: ${tool} blocked (named check fires before strip)"
+    else
+      fail "Named non-team + isolation should block for ${tool} (rc=$rc, output=$output)"
+    fi
+  done
+  cleanup
+}
+test_named_non_team_with_isolation_blocks
+
+test_named_non_team_with_sidechain_cwd_blocks() {
+  setup_project
+
+  local tool output rc
+  for tool in Agent TaskCreate; do
+    output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "cwd" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
+      pass "Named non-team + sidechain cwd: ${tool} blocked (named check fires before strip)"
+    else
+      fail "Named non-team + sidechain cwd should block for ${tool} (rc=$rc, output=$output)"
+    fi
+  done
+  cleanup
+}
+test_named_non_team_with_sidechain_cwd_blocks
+
 test_no_marker_blocks_named_non_team_spawns() {
   setup_project
 
@@ -357,7 +389,7 @@ test_no_marker_strips_sidechain_cwd_when_config_on() {
   local tool field output rc
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
-      output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
+      output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
       if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"'; then
         pass "No marker with config on: ${tool} sidechain ${field} stripped and allowed"
       else
