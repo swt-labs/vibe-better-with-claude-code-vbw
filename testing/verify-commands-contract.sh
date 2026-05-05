@@ -164,6 +164,55 @@ first_matching_line_number() {
   ' <<< "$text"
 }
 
+first_matching_regex_line_number() {
+  local text="$1"
+  local regex="$2"
+
+  awk -v regex="$regex" '
+    $0 ~ regex && first == 0 {
+      first = NR
+    }
+
+    END {
+      if (first > 0) print first
+    }
+  ' <<< "$text"
+}
+
+check_literal_before_literal() {
+  local label="$1"
+  local text="$2"
+  local before="$3"
+  local after="$4"
+  local before_line after_line
+
+  before_line=$(first_matching_line_number "$text" "$before")
+  after_line=$(first_matching_line_number "$text" "$after")
+
+  if [ -n "$before_line" ] && [ -n "$after_line" ] && [ "$before_line" -lt "$after_line" ]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
+check_literal_before_regex() {
+  local label="$1"
+  local text="$2"
+  local before="$3"
+  local after_regex="$4"
+  local before_line after_line
+
+  before_line=$(first_matching_line_number "$text" "$before")
+  after_line=$(first_matching_regex_line_number "$text" "$after_regex")
+
+  if [ -n "$before_line" ] && [ -n "$after_line" ] && [ "$before_line" -lt "$after_line" ]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
 extract_heading_block() {
   local file="$1"
   local heading="$2"
@@ -1045,6 +1094,165 @@ if grep -q 'qa-result-gate\.sh' "$QA_FILE" \
 else
   fail "qa: missing deterministic gate reconciliation for standalone remediation QA"
 fi
+
+qa_remediation_block="$({
+  awk '
+    /^\*\*QA Remediation mode \(needs_qa_remediation\)/ { in_block=1 }
+    /^\*\*QA Remediation \+ UAT blocking:/ { in_block=0 }
+    in_block { print }
+  ' "$VIBE_FILE"
+} || true)"
+
+qa_remediation_plan_block="$({
+  awk '
+    /^- \*\*stage=plan:/ { in_block=1 }
+    /^- \*\*stage=execute:/ { in_block=0 }
+    in_block { print }
+  ' <<< "$qa_remediation_block"
+} || true)"
+
+qa_remediation_execute_block="$({
+  awk '
+    /^- \*\*stage=execute:/ { in_block=1 }
+    /^- \*\*stage=verify:/ { in_block=0 }
+    in_block { print }
+  ' <<< "$qa_remediation_block"
+} || true)"
+
+execute_protocol_qa_remediation_block="$({
+  awk '
+    /^\*\*QA Remediation Loop \(inline, same session\):/ { in_block=1 }
+    /^### Step 4\.5: Human acceptance testing \(UAT\)/ { in_block=0 }
+    in_block { print }
+  ' "$ROOT/references/execute-protocol.md"
+} || true)"
+
+qa_remediation_verify_block="$({
+  awk '
+    /^- \*\*stage=verify:/ { in_block=1 }
+    in_block { print }
+  ' <<< "$qa_remediation_block"
+} || true)"
+
+if grep -Fq '<qa_remediation_artifact_contract>' <<< "$qa_remediation_block" \
+  && grep -Fq '`round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` are authoritative host-repository paths from `qa-remediation-state.sh` metadata' <<< "$qa_remediation_block" \
+  && grep -Fq 'pass these exact paths to Lead, Dev, and QA prompts' <<< "$qa_remediation_block" \
+  && grep -Fq '.claude/worktrees/agent-*' <<< "$qa_remediation_block" \
+  && grep -Fq 'never rewrite them relative to the current CWD' <<< "$qa_remediation_block"; then
+  pass "vibe: QA remediation has host artifact path contract"
+else
+  fail "vibe: QA remediation missing host artifact path contract"
+fi
+
+if grep -Fq '<qa_remediation_artifact_contract>' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq '`round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` from `qa-remediation-state.sh` metadata are authoritative host-repository paths' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'pass these exact paths to Lead, Dev, and QA prompts' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'never rewrite them relative to the current CWD' <<< "$execute_protocol_qa_remediation_block"; then
+  pass "execute-protocol: QA remediation host paths cover Lead, Dev, and QA"
+else
+  fail "execute-protocol: QA remediation host path contract missing Lead/Dev/QA coverage"
+fi
+
+if grep -Fq '<qa_remediation_spawn_contract>' <<< "$qa_remediation_block" \
+  && grep -Fq 'QA remediation spawns are plain sequential subagent calls' <<< "$qa_remediation_block" \
+  && grep -Fq 'Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' <<< "$qa_remediation_block"; then
+  pass "vibe: QA remediation has non-team spawn-shape contract"
+else
+  fail "vibe: QA remediation missing non-team spawn-shape contract"
+fi
+
+if grep -Fq 'future section explicitly prepares VBW worktree targeting' <<< "$qa_remediation_block" \
+  || grep -Fq 'unless a future section' <<< "$qa_remediation_block" \
+  || grep -Fq 'prepared VBW worktree target' <<< "$qa_remediation_block"; then
+  fail "vibe: QA remediation must not preserve worktree-targeting spawn exceptions"
+else
+  pass "vibe: QA remediation rejects worktree-targeting spawn exceptions"
+fi
+
+if grep -Fq '<qa_remediation_no_tool_circuit_breaker>' <<< "$qa_remediation_block" \
+  && grep -Fq 'After any QA remediation Lead, Dev, or QA subagent returns' <<< "$qa_remediation_block" \
+  && grep -Fq 'tools, shell/Bash, filesystem, edits, or API-session access are unavailable' <<< "$qa_remediation_block" \
+  && grep -Fq 'STOP without advancing `.qa-remediation-stage`' <<< "$qa_remediation_block" \
+  && grep -Fq 'do not retry the same prompt' <<< "$qa_remediation_block"; then
+  pass "vibe: QA remediation has no-tool circuit breaker"
+else
+  fail "vibe: QA remediation missing no-tool circuit breaker"
+fi
+
+if grep -Fq 'tools, Bash, filesystem, edits, or API-session access are unavailable' <<< "$qa_remediation_block"; then
+  fail "vibe: QA remediation no-tool breaker still uses Bash-only wording"
+else
+  pass "vibe: QA remediation no-tool breaker includes generic shell signal"
+fi
+
+if grep -Fq 'unavailable tools, Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_block"; then
+  fail "vibe: QA remediation return sites still use Bash-only wording"
+else
+  pass "vibe: QA remediation return sites include generic shell signal"
+fi
+
+if grep -Fq 'After any QA remediation Dev or QA subagent returns' <<< "$qa_remediation_block"; then
+  fail "vibe: QA remediation shared no-tool breaker still excludes Lead"
+else
+  pass "vibe: QA remediation shared no-tool breaker includes Lead"
+fi
+
+if grep -Fq 'After any QA remediation Lead, Dev, or QA subagent returns' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'tools, shell/Bash, filesystem, edits, or API-session access are unavailable' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'STOP without advancing `.qa-remediation-stage`' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'do not retry the same prompt' <<< "$execute_protocol_qa_remediation_block"; then
+  pass "execute-protocol: QA remediation shared no-tool breaker includes Lead"
+else
+  fail "execute-protocol: QA remediation shared no-tool breaker missing Lead or stop/no-retry wording"
+fi
+
+check_literal_before_regex "vibe: QA no-tool breaker appears before remediation state advance" "$qa_remediation_block" '<qa_remediation_no_tool_circuit_breaker>' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "vibe: QA no-tool breaker appears before deterministic gate" "$qa_remediation_block" '<qa_remediation_no_tool_circuit_breaker>' 'qa-result-gate.sh'
+
+if grep -Fq 'The orchestrator/Lead writes the plan' <<< "$qa_remediation_plan_block" \
+  || grep -Fq 'The orchestrator writes the plan' <<< "$qa_remediation_plan_block"; then
+  fail "vibe: QA remediation plan stage still has ambiguous orchestrator-authored planning wording"
+else
+  pass "vibe: QA remediation plan stage removes ambiguous orchestrator-authored wording"
+fi
+
+if grep -Fq 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'subagent_type: "vbw:vbw-lead"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'resolve-agent-settings.sh lead' <<< "$qa_remediation_plan_block" \
+  && grep -Fq '.vbw-planning/config.json' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'config/model-profiles.json' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'LEAD_MODEL="$RESOLVED_MODEL"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'LEAD_MAX_TURNS="$RESOLVED_MAX_TURNS"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'model: "${LEAD_MODEL}"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'maxTurns: ${LEAD_MAX_TURNS}' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'omit `maxTurns` because the resolved profile is unlimited' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md' <<< "$qa_remediation_plan_block"; then
+  pass "vibe: QA remediation plan stage resolves Lead settings and spawns with safe shape"
+else
+  fail "vibe: QA remediation plan stage missing Lead settings resolution or safe spawn contract"
+fi
+
+check_literal_before_literal "vibe: QA plan resolves Lead settings before using Lead model" "$qa_remediation_plan_block" 'resolve-agent-settings.sh lead' 'model: "${LEAD_MODEL}"'
+check_literal_before_literal "vibe: QA plan Lead spawn appears before Lead return breaker" "$qa_remediation_plan_block" 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' 'After Lead returns, apply the QA remediation no-tool circuit breaker'
+
+if grep -Fq 'After Lead returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'After Dev returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block" \
+  && grep -Fq 'If Dev reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_execute_block" \
+  && grep -Fq 'After QA returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block" \
+  && grep -Fq 'If QA reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_verify_block"; then
+  pass "vibe: QA remediation applies no-tool breaker at Lead, Dev, and QA return sites"
+else
+  fail "vibe: QA remediation missing no-tool breaker at Lead, Dev, or QA return site"
+fi
+
+check_literal_before_regex "vibe: QA plan Lead breaker appears before plan-stage state advance" "$qa_remediation_plan_block" 'After Lead returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "vibe: QA plan Lead breaker appears before plan validation wording" "$qa_remediation_plan_block" 'After Lead returns, apply the QA remediation no-tool circuit breaker' 'After writing the plan, advance state'
+check_literal_before_regex "vibe: QA execute Dev breaker appears before execute-stage state advance" "$qa_remediation_execute_block" 'After Dev returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "vibe: QA verify breaker appears before known-issue sync" "$qa_remediation_verify_block" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" sync-verification'
+check_literal_before_literal "vibe: QA verify breaker appears before known-issue promotion" "$qa_remediation_verify_block" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" promote-todos'
+check_literal_before_literal "vibe: QA verify breaker appears before deterministic gate" "$qa_remediation_verify_block" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'qa-result-gate.sh'
 
 if grep -q 'Determine verification scope from `VERIF_PATH`' "$QA_FILE"; then
   pass "qa: standalone QA scope is tied to resolved VERIF_PATH"

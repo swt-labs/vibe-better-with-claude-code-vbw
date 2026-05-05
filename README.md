@@ -101,7 +101,7 @@ Most Claude Code plugins were built for the subagent era, one main session spawn
 
 - **Native hooks for continuous verification.** 24 hooks across 11 event types run automatically -- validating SUMMARY.md structure, checking commit format, validating frontmatter descriptions, gating task completion, blocking sensitive file access, enforcing plan file boundaries, managing session lifecycle, tracking agent health and cost attribution, tracking session metrics, pre-flight prompt validation, and post-compaction context verification. No more spawning a QA agent after every task. The platform enforces it, not the prompt.
 
-- **Platform-enforced tool permissions.** Each agent has `tools`/`disallowedTools` in their YAML frontmatter -- 4 of 7 agents have platform-enforced deny lists. Scout can write research files to `.vbw-planning/` but cannot edit existing code, run commands, or spawn subagents (Edit, Bash, NotebookEdit, Task are platform-denied); QA is read-only via `permissionMode: plan` and can only persist VERIFICATION.md through the deterministic `write-verification.sh` script via Bash. Sensitive file access (`.env`, credentials) is intercepted by the `security-filter` hook. `disallowedTools` is enforced by Claude Code itself, not by instructions an agent might ignore during compaction.
+- **Platform-enforced tool permissions.** Each agent has `tools`/`disallowedTools` in YAML frontmatter. Dev uses a `disallowedTools` denylist that explicitly bans recursive subagent, team, and user-question tools (`Task`, `TaskCreate`, `Agent`, `TeamCreate`, `TeamDelete`, `AskUserQuestion`) while leaving every other built-in and MCP tool available; Scout can write research files to `.vbw-planning/` but cannot edit existing code, run commands, or spawn subagents (Edit, Bash, NotebookEdit, Task are platform-denied); QA is read-only via `permissionMode: plan` and can only persist VERIFICATION.md through the deterministic `write-verification.sh` script via Bash. Sensitive file access (`.env`, credentials) is intercepted by the `security-filter` hook. Claude Code enforces these frontmatter permissions directly, not through instructions an agent might ignore during compaction.
 
 - **Database safety guard.** A PreToolUse hook (`bash-guard.sh`) intercepts every Bash command before it reaches the shell and blocks known destructive patterns -- `migrate:fresh`, `db:drop`, `TRUNCATE TABLE`, `FLUSHALL`, and 40+ patterns across Laravel, Rails, Django, Prisma, Knex, Sequelize, TypeORM, Drizzle, Diesel, SQLx, Ecto, raw SQL clients, Redis, MongoDB, and Docker volumes. All five agents with Bash access (Dev, QA, Lead, Debugger, Docs) are filtered equally. Override with `VBW_ALLOW_DESTRUCTIVE=1` env var or `bash_guard=false` in config. Extend with `.vbw-planning/destructive-commands.local.txt` for project-specific patterns. See **[Database Safety Guard](docs/database-safety-guard.md)** for the full design, flowchart, and pattern list.
 
@@ -119,7 +119,7 @@ Agent Teams are [experimental with known limitations](https://code.claude.com/do
 
 - **File conflicts.** Plans decompose work into tasks with explicit file ownership. Dev teammates operate on disjoint file sets by design, enforced at runtime by the `file-guard.sh` hook that blocks writes to files not declared in the active plan.
 
-- **Worktree isolation.** Each Dev plan can get its own git worktree — physical filesystem isolation, not just file-list enforcement — whether execution is true-team parallel or serialized by dependencies. Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. Off by default; set `worktree_isolation` to `"on"` in config to enable. See [Execution Model](#execution-model) for how this interacts with dependency routing and lease locks.
+- **Worktree isolation.** Each Dev plan can get its own git worktree — physical filesystem isolation, not just file-list enforcement — whether execution is true-team parallel or serialized by dependencies. Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. Off by default; set `worktree_isolation` to `"on"` in config to enable. VBW uses its own `.vbw-worktrees` git worktrees through task prompt/state metadata and blocks teammate spawns that try to force Claude-side `isolation:"worktree"`, unmanaged `.claude/worktrees/agent-*` sidechain CWDs, or `.vbw-worktrees/...` spawn CWD aliases. See [Execution Model](#execution-model) for how this interacts with dependency routing and lease locks.
 
 Agent Teams ship with seven known limitations. VBW addresses all of them. The eighth... that you're using AI to write software doesn't need a fix. It needs an intervention.
 
@@ -452,17 +452,17 @@ VBW can optionally manage [RTK](https://github.com/rtk-ai/rtk) setup through `/v
 
 VBW uses 7 specialized agents, each with native tool permissions enforced via YAML frontmatter. Three layers of control -- `tools` (what they can use), `disallowedTools` (what's platform-denied), and `permissionMode` (how they interact with the session) -- mean they can't do what they shouldn't, which is more than can be said for most interns.
 
-| Agent | Role | Tools | Denied | Mode |
+| Agent | Role | Tools | Denied / Omitted | Mode |
 | :--- | :--- | :--- | :--- | :--- |
 | **Scout** | Research and information gathering. The responsible one. | Inherited (all except denied) + MCP | Bash, Edit, NotebookEdit, Task | `plan` |
 | **Architect** | Creates roadmaps and phase structure. Writes plans, not code. | Read, Glob, Grep, Write | Edit, WebFetch, Bash | `acceptEdits` |
 | **Lead** | Merges research + planning + self-review. The one who actually makes decisions. | Read, Glob, Grep, Write, Bash, WebFetch | Edit | `acceptEdits` |
-| **Dev** | Writes code, makes commits, builds things. Handle with care. | Full access | -- | `acceptEdits` |
+| **Dev** | Writes code, makes commits, builds things. Handle with care. | Inherited (all except denied) + MCP | Task, TaskCreate, Agent, TeamCreate, TeamDelete, AskUserQuestion | `acceptEdits` |
 | **QA** | Goal-backward verification. Trusts nothing. Persists VERIFICATION.md via write-verification.sh; Write/Edit tools disallowed. | Read, Grep, Glob, Bash | Write, Edit, NotebookEdit | `plan` |
 | **Debugger** | Scientific method bug investigation. One issue, one session. | Full access | -- | `acceptEdits` |
 | **Docs** | Documentation specialist. READMEs, changelogs, API docs, guides. | Read, Grep, Glob, Bash, Write, Edit | -- | `acceptEdits` |
 
-**Denied** = `disallowedTools` -- platform-enforced denial. These tools are blocked by Claude Code itself, not by instructions an agent might ignore during compaction. **Mode** = `permissionMode` -- `plan` means no interactive edits — Scout writes research files to `.vbw-planning/` but cannot edit code or run commands; QA can only persist VERIFICATION.md via `write-verification.sh`, `acceptEdits` means the agent can propose and apply changes.
+**Denied / Omitted** = `disallowedTools` for denylist agents; for explicit allowlist agents, tools intentionally absent from `tools`. These restrictions are blocked by Claude Code itself, not by instructions an agent might ignore during compaction. **Mode** = `permissionMode` -- `plan` means no interactive edits — Scout writes research files to `.vbw-planning/` but cannot edit code or run commands; QA can only persist VERIFICATION.md via `write-verification.sh`, `acceptEdits` means the agent can propose and apply changes.
 
 Here's when each one shows up to work:
 
@@ -525,7 +525,8 @@ Here's when each one shows up to work:
   │                    by instruction. Writes roadmaps, not code. Mostly.         │
   │  Lead ─────────── Read, Write, Bash, WebFetch. The middle manager.            │
   │  Docs ─────────── Read, Write, Edit, Bash. Doc files only by instruction.     │
-  │  Dev, Debugger ─── Full access. The ones you actually worry about.            │
+  │  Dev ──────────── Denylist (no Task/Agent/Team/AskUserQuestion); inherited tools.   │
+  │  Debugger ─────── Full access. The one you still worry about.                 │
   │                                                                               │
   │  Platform-enforced: tools / disallowedTools (cannot be overridden)            │
   │  Instruction-enforced: behavioral constraints in agent prompts                │
@@ -781,6 +782,10 @@ This setting determines whether true team execution is allowed for delegate-elig
 #### `worktree_isolation` — Filesystem Isolation
 
 When enabled, each Dev agent gets its own **git worktree** — a physically separate copy of your repo on a dedicated branch. Agents literally work in different directories, so they can't overwrite each other's files.
+
+When `worktree_isolation` is `on`, VBW creates `.vbw-worktrees/...` git worktrees, records the assigned path in execution state, and tells Dev agents their working directory through task prompt metadata. VBW does not use Claude Code's `isolation:"worktree"` sidechain for this flow.
+
+VBW teammate spawns always block Claude-side `isolation:"worktree"`, unmanaged `.claude/worktrees/agent-*` sidechain working directories, and `.vbw-worktrees/...` spawn cwd aliases. This keeps remediation and serialized subagent paths out of unprepared sidechain roots while allowing VBW-prepared git worktree targeting through `.execution-state.json`, `scripts/worktree-target.sh`, and task prompt metadata.
 
 | Setting | Type | Default | Values |
 | :--- | :--- | :--- | :--- |

@@ -580,6 +580,15 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
 1. Read current state: `bash {plugin-root}/scripts/qa-remediation-state.sh get-or-init {phase-dir}`
   Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `source_fail_count`, `known_issues_path`, `known_issues_count`, `input_mode`, `verification_path`
    If remediation state was absent, `get-or-init` initializes round 01 before stage-specific routing. This is the deterministic stage-less resume path for a persisted known-issues backlog.
+  <qa_remediation_artifact_contract>
+  `round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` are authoritative host-repository paths from `qa-remediation-state.sh` metadata. Claude Code may run subagents from `.claude/worktrees/agent-*` sidechain CWDs; pass these exact paths to Lead, Dev, and QA prompts and never rewrite them relative to the current CWD. Rewriting them relative to sidechain CWDs can write or read remediation artifacts from the wrong location and break resume or verification.
+  </qa_remediation_artifact_contract>
+  <qa_remediation_spawn_contract>
+  QA remediation spawns are plain sequential subagent calls. Do not use TeamCreate. Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). Use the remediation metadata paths above instead of forcing Claude worktree isolation or spawn cwd handoffs.
+  </qa_remediation_spawn_contract>
+  <qa_remediation_no_tool_circuit_breaker>
+  After any QA remediation Lead, Dev, or QA subagent returns, inspect returned text before artifact validation, deterministic gates, or state advancement. If it says tools, shell/Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure: STOP without advancing `.qa-remediation-stage`, report the failed role and stage/task, and do not retry the same prompt. Repeating a no-tool spawn cannot fix tool provisioning and wastes tokens.
+  </qa_remediation_no_tool_circuit_breaker>
 2. Read remediation inputs.
 - Round 01: phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
 - Round 02+: previous round's `R{RR}-VERIFICATION.md`
@@ -611,7 +620,20 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     - `unresolved` = the issue remains blocking and the next round must continue to carry it
   - Do NOT omit a carried known issue from `known_issues_input` or `known_issue_resolutions`. The deterministic gate treats missing coverage as a failed remediation round even if QA writes `PASS`.
   - Scope the plan to those failures: what to fix, which files, acceptance criteria
-  - The orchestrator/Lead writes the plan (QA says what's wrong, planning says how to fix)
+  - The orchestrator coordinates the remediation loop and spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md` (QA says what's wrong, planning says how to fix).
+  - Resolve Lead settings before composing the Lead task:
+    ```bash
+    if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh lead .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
+      echo "$AGENT_SETTINGS" >&2
+      exit 1
+    fi
+    eval "$AGENT_SETTINGS"
+    LEAD_MODEL="$RESOLVED_MODEL"
+    LEAD_MAX_TURNS="$RESOLVED_MAX_TURNS"
+    ```
+  - Spawn Lead as a plain sequential work-unit subagent with `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"`. If `LEAD_MAX_TURNS` is non-empty, include `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is empty, omit `maxTurns` because the resolved profile is unlimited. Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`.
+  - Lead prompt MUST include the authoritative `round_dir`, `source_verification_path`, `known_issues_path`, and output path `{round_dir}/R{RR}-PLAN.md`; the failed-check and known-issue inputs above; the deviation-classification and known-issue-resolution requirements above; and `Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md and follow its structure exactly.`
+  - After Lead returns, apply the QA remediation no-tool circuit breaker before plan validation, normalization, or state advancement. If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Lead prompt.
   - After writing the plan, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
 
 - **stage=execute:** Spawn a Dev subagent per `R{RR}-PLAN.md`:
@@ -635,13 +657,13 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     </skill_no_activation>
     After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
     ```
-  - Also evaluate available MCP tools in your system context. If any MCP servers provide build, test, or domain-specific capabilities relevant to the remediation tasks, note them in the Dev's task context.
   - Always subagent — NO team creation for QA remediation (NON-NEGOTIABLE)
   - Dev fixes code, commits, writes `R{RR}-SUMMARY.md` in `{round_dir}` using `templates/REMEDIATION-SUMMARY.md` (NOT `templates/SUMMARY.md`)
     - The remediation summary frontmatter MUST include aggregated `commit_hashes`, `files_modified`, and `deviations`
     - `files_modified` is required even for documentation-only rounds so `qa-result-gate.sh` can deterministically distinguish metadata-only remediation from real code changes
     - When `input_mode=known-issues` or `input_mode=both`, the remediation summary frontmatter MUST also include `known_issue_outcomes` with one `{test,file,error,disposition,rationale}` JSON object string per carried known issue. Keys and `disposition` values must match `R{RR}-PLAN.md` `known_issue_resolutions`; do not silently drop accepted non-blocking issues.
-  - After Dev completes, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
+  - After Dev returns, apply the QA remediation no-tool circuit breaker before checking the summary or advancing state. If Dev reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Dev prompt.
+  - After Dev completes without a no-tool provisioning failure, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
 
 - **stage=verify:** Re-run QA:
   - Run `compile-verify-context.sh --remediation-only {phase-dir}` to get compounded verification history plus the current round's plan/summary context only
@@ -670,6 +692,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     - The output path is `{round_dir}/R{RR}-VERIFICATION.md` — NOT the phase-level file
     - Phase-level VERIFICATION.md stays frozen as the original QA FAIL result
     - Include the compiled verify context output in QA's task description
+    - After QA returns, apply the QA remediation no-tool circuit breaker before syncing known issues or running the deterministic gate. If QA reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same QA prompt.
     - After QA persists `{verification_path}`, immediately sync tracked known issues:
       ```bash
       bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-verification "{phase-dir}" "{verification_path}" 2>/dev/null || true
@@ -961,7 +984,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
     </uat_remediation_artifact_contract>
     <uat_remediation_spawn_contract>
     The Research → Plan → Execute (or Fix) list is session progress tracking only. TodoWrite is the only progress tracker for these stages; do not create or update stage-progress items with TaskCreate, TaskUpdate, Agent, or TeamCreate. TaskCreate/Agent is allowed only for real Scout/Lead/Dev work-unit delegation inside the current stage, never to represent the stage list itself.
-    UAT remediation spawns are plain sequential subagent calls. Do not use TeamCreate. Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, or the `isolation` parameter. Claude Code worktree isolation is not reliable for this path; exact absolute host paths keep the orchestrator and subagents on the same `.vbw-planning/.../remediation/uat/...` artifacts.
+    UAT remediation spawns are plain sequential subagent calls. Do not use TeamCreate. Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). Claude Code worktree isolation and spawn cwd handoffs are not reliable for this path; exact absolute host paths keep the orchestrator and subagents on the same `.vbw-planning/.../remediation/uat/...` artifacts.
     </uat_remediation_spawn_contract>
     <examples>
     <example type="anti-pattern" label="WRONG — stage progress via delegated task manager">
@@ -971,7 +994,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
     TodoWrite: Research=in-progress, Plan=not-started, Execute=not-started; after research validates, TodoWrite: Research=completed, Plan=in-progress, Execute=not-started.
     </example>
     <example type="correct" label="RIGHT — delegated Dev work unit">
-    Spawn one Dev for the current plan task with no team metadata, no per-agent name, no background execution, and no isolation parameter. Include absolute artifacts exactly as returned by state metadata:
+    Spawn one Dev for the current plan task with no team metadata, no per-agent name, no background execution, no isolation parameter, and no worktree cwd fields. Include absolute artifacts exactly as returned by state metadata:
     Plan: /repo/.vbw-planning/phases/03-example/remediation/uat/round-01/R01-PLAN.md
     Summary: /repo/.vbw-planning/phases/03-example/remediation/uat/round-01/R01-SUMMARY.md
     </example>
@@ -1008,6 +1031,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 Execute the current stage based on `STAGE`:
 **File read rule:** Do NOT re-read the active `{phase}-UAT.md` artifact unless step 5 requires earlier archived rounds for recurrence enrichment. Use the single step-2 UAT read as the active-round source of truth, and if step 5 scans archived rounds, exclude that active artifact from the scan. Do NOT read `{phase}-CONTEXT.md` — step 4 already emitted the remediation context when needed.
 **Round metadata prohibition:** Do NOT glob `*-PLAN.md`, search for `*-RESEARCH.md`, or infer summary locations — use the pre-computed `round`, `round_dir`, `research_path`, `plan_path`, and `summary_path` values from step 4. If a subagent reports success but the deterministic validator below fails, treat the stage as incomplete and STOP without advancing state.
+**Subagent no-tool circuit breaker (NON-NEGOTIABLE):** At every UAT remediation Scout, Lead, or Dev subagent return site below, inspect returned text before artifact validation, summary finalization, or `.uat-remediation-stage` advancement. If it says tools, shell/Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure. STOP without advancing `.uat-remediation-stage`, report the failed subagent role and task, and do not retry the same prompt. Repeating a no-tool spawn cannot fix tool provisioning and wastes tokens.
 
 #### research
 
@@ -1042,6 +1066,7 @@ After calling `Skill(...)`, if the loaded skill's instructions reference additio
 
 - **Live data validation:** When any issue involves external data sources (APIs, databases, services), include in the Scout prompt: *"For issues involving external data sources, use WebFetch to query accessible HTTP endpoints and compare actual responses against what the code expects. For non-HTTP data sources, document what live data needs to be checked and flag it as ⚠ REQUIRES LIVE VALIDATION for the execute stage."*
 - After Scout completes, validate the exact research artifact before advancing:
+  - If Scout returns a no-tool/tool-provisioning failure, apply the circuit breaker above before running validation.
   ```bash
   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/validate-uat-remediation-artifact.sh research "{round_dir}/R{RR}-RESEARCH.md"
   ```
@@ -1062,7 +1087,7 @@ If validation fails, display the validator error and STOP without advancing stat
 
 If `plan_path` is empty, spawn Lead as a **single subagent** to write the remediation plan.
 
-**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name`, `name`, `run_in_background`, or `isolation` parameters**. This is NOT "Plan mode steps 1-12" — remediation has its own sequential flow that does not use the standard planning pipeline.
+**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation planning spawns Lead directly via Task tool with **no `team_name`, `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir` parameters**. This is NOT "Plan mode steps 1-12" — remediation has its own sequential flow that does not use the standard planning pipeline.
 
 - Resolve Lead model:
   ```bash
@@ -1094,7 +1119,7 @@ If `plan_path` is empty, spawn Lead as a **single subagent** to write the remedi
   </skill_no_activation>
   After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
   ```
-- Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, note them in the Lead's task context so Lead can include them when spawning Dev agents.
+- Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, use them to derive concise facts, docs, results, or recommended Dev-stage CLIs/skills for the Lead's task context. Dev subagents may call any MCP tools available in their runtime; no orchestrator-side gating is required.
 - Spawn vbw-lead via Task tool: Set `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"`. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If empty, omit maxTurns.
 - Lead prompt MUST include:
   - If `research_path` from step 4 is non-empty: `Read {research_path} for full research findings before planning.` (Lead must read the file, do NOT inline a summary.)
@@ -1102,6 +1127,7 @@ If `plan_path` is empty, spawn Lead as a **single subagent** to write the remedi
   - `"Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md and follow its structure exactly. This template is different from the regular PLAN.md — it has no wave or depends_on fields because remediation tasks are always sequential. Produce a flat ordered task list where each task can see the results of previous tasks."` (Lead must read the template file.)
   - Output path: `{round_dir}/R{RR}-PLAN.md` (using `round` from step 4 as `{RR}` and the absolute `round_dir` from step 4).
 - Display `◆ Spawning Lead agent...` → `✓ Lead agent complete`.
+- If Lead returns a no-tool/tool-provisioning failure, apply the circuit breaker above before normalizing or validating the plan.
 - Normalize plan filenames:
   ```bash
   NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
@@ -1125,7 +1151,7 @@ Then continue to the next stage (`execute`), respecting autonomy confirmation ru
 
 Execute the remediation plan by spawning Dev agents sequentially — one per task in the plan. Do NOT use "normal Execute flow" or `execute-protocol.md` — remediation execution is self-contained with no wave parallelism.
 
-**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation execution spawns Dev agents directly via Task tool with **no `team_name`, `name`, `run_in_background`, or `isolation` parameters**.
+**NO team creation (NON-NEGOTIABLE).** Do NOT use TeamCreate — remediation execution spawns Dev agents directly via Task tool with **no `team_name`, `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir` parameters**.
 
 - Read `plan_path` when it is non-empty; otherwise read `{round_dir}/R{RR}-PLAN.md` (using `round` and the absolute `round_dir` from step 4). Extract the task list from the plan frontmatter/body. Each task has an ID (e.g., `P07`, `P08`, `UAT-3`).
 - Resolve Dev model:
@@ -1158,7 +1184,6 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
   </skill_no_activation>
   After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
   ```
-- Also evaluate available MCP tools in your system context. If any MCP servers provide build, test, documentation, or domain-specific capabilities relevant to the Dev tasks, note them in the Dev's task context.
 - For each task in the plan (**sequentially**, one at a time — wait for each Dev to complete before spawning the next):
   - Spawn vbw-dev via Task tool: Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"`. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If empty, omit maxTurns.
   - Dev prompt MUST include:
@@ -1167,6 +1192,7 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
     - `"Use the absolute host-repository artifact paths in this prompt exactly. Claude may execute from .claude/worktrees/agent-* sidechain CWDs; do not rewrite artifact paths relative to the current CWD or create remediation artifacts inside the sidechain."`
     - If `.vbw-planning/codebase/META.md` exists: `"Read CONVENTIONS.md, PATTERNS.md, STRUCTURE.md, and DEPENDENCIES.md (whichever exist) from .vbw-planning/codebase/ to bootstrap codebase understanding before executing."`
   - Display: `◆ Spawning Dev agent for task {task-id} (${DEV_MODEL})...` → `✓ Dev agent complete for task {task-id}`.
+  - If Dev returns a no-tool/tool-provisioning failure for the task, apply the circuit breaker above before spawning another Dev, finalizing `{summary_path}`, or advancing state.
 - **Frontmatter finalization:** After ALL Dev agents have completed, update the YAML frontmatter in `{summary_path}`: set `status` to `complete` (or `partial`/`failed`), `completed` to today's date, `tasks_completed` to the actual count, and populate `commit_hashes`, `files_modified`, and `deviations` with aggregate data from all task sections. Strip any trailing blank lines from the file.
 - **Summary validation:** Validate the exact summary artifact before advancing:
   ```bash
@@ -1211,6 +1237,8 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
 #### fix
 
 Route to a quick-fix implementation path for the same phase using the normalized issue list from step 3 (with step-5 recurrence annotations when available) as task input (equivalent to `/vbw:fix`, but without requiring the user to invoke it manually). After changes, advance:
+
+If the quick-fix Dev return reports that tools, shell/Bash, filesystem, edits, or API-session access are unavailable, apply the Subagent no-tool circuit breaker before the advance below: STOP without advancing `.uat-remediation-stage`, report the failed Dev quick-fix task, do not retry the same prompt, and do not enter re-verification.
 
 ```bash
 bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"
@@ -1386,7 +1414,7 @@ This mode handles the case where a milestone was archived before UAT issues were
     </skill_no_activation>
     After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
     ```
-   - Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, note them in the Lead's task context so Lead can include them when spawning Dev agents.
+  - Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, use them to derive concise facts, docs, results, or recommended Dev-stage CLIs/skills for the Lead's task context. Dev subagents may call any MCP tools available in their runtime; no orchestrator-side gating is required.
    - Spawn vbw-lead as subagent via Task tool with compiled context (or full file list as fallback).
    - **CRITICAL:** Set `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"` in the Task tool invocation. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
    - **CRITICAL:** If a RESEARCH.md was found or created in step 3, include in the Lead prompt: `Read {research-path} for full research findings before planning.` where `{research-path}` is the per-plan or legacy path from step 3. The Lead must read the file itself — do NOT substitute an inlined summary.

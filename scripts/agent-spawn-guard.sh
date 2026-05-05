@@ -58,6 +58,36 @@ DELEGATION_MODE=$(echo "$MARKER_STATUS" | jq -r '.delegation_mode // ""' 2>/dev/
 EXPECTED_TEAM_NAME=$(echo "$MARKER_STATUS" | jq -r '.team_name // ""' 2>/dev/null) || exit 0
 MARKER_REASON=$(echo "$MARKER_STATUS" | jq -r '.reason // ""' 2>/dev/null) || exit 0
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null) || exit 0
+TEAM_NAME=$(echo "$INPUT" | jq -r '.tool_input.team_name // ""' 2>/dev/null) || exit 0
+AGENT_NAME=$(echo "$INPUT" | jq -r '.tool_input.name // ""' 2>/dev/null) || exit 0
+RUN_IN_BACKGROUND=$(echo "$INPUT" | jq -r '.tool_input.run_in_background // false' 2>/dev/null) || exit 0
+TRUE_LIVE_TEAM_MODE=false
+if [ "$MARKER_LIVE" = "true" ] && [ "$MODE" = "execute" ] && [ "$DELEGATION_MODE" = "team" ]; then
+  TRUE_LIVE_TEAM_MODE=true
+fi
+
+is_teammate_spawn_tool() {
+  [ "$TOOL_NAME" = "Agent" ] || [ "$TOOL_NAME" = "TaskCreate" ]
+}
+
+requested_worktree_isolation() {
+  local isolation=""
+  isolation=$(echo "$INPUT" | jq -r '.tool_input.isolation // ""' 2>/dev/null) || return 1
+  [ "$isolation" = "worktree" ]
+}
+
+requested_cwd_values() {
+  echo "$INPUT" | jq -r '[.tool_input.cwd? // empty, .tool_input.working_dir? // empty, .tool_input.workingDirectory? // empty, .tool_input.workdir? // empty] | map(select(type == "string")) | .[]' 2>/dev/null \
+    || return 1
+}
+
+requested_sidechain_cwd() {
+  requested_cwd_values | grep -Eq '(^|/)\.claude/worktrees/agent-[^/]+(/|$)'
+}
+
+requested_vbw_worktree_cwd() {
+  requested_cwd_values | grep -Eq '(^|/)\.vbw-worktrees(/|$)'
+}
 
 EXEC_STATE_FILE="$PROJECT_ROOT/.vbw-planning/.execution-state.json"
 EXEC_ACTIVE=false
@@ -82,13 +112,28 @@ if [ "$EXEC_ACTIVE" = true ] && { [ "$MARKER_LIVE" != "true" ] || [ "$MODE" != "
   exit 2
 fi
 
+if is_teammate_spawn_tool; then
+  if requested_sidechain_cwd; then
+    echo "Blocked: teammate spawn requested an unmanaged Claude sidechain working directory. Omit sidechain cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
+    exit 2
+  fi
+  if requested_vbw_worktree_cwd; then
+    echo "Blocked: teammate spawn requested a VBW worktree path as a spawn working directory. Omit cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
+    exit 2
+  fi
+  if requested_worktree_isolation; then
+    echo "Blocked: teammate spawn requested Claude-side worktree isolation. Omit isolation; when VBW worktree isolation is enabled, use VBW-prepared worktree targeting metadata instead." >&2
+    exit 2
+  fi
+  if [ -n "$AGENT_NAME" ] && [ "$TRUE_LIVE_TEAM_MODE" != "true" ]; then
+    echo "Blocked: named non-team teammate spawns are unsupported. Omit name for sequential non-team calls; name is only valid with team_name in true team mode." >&2
+    exit 2
+  fi
+fi
+
 [ "$MARKER_LIVE" = "true" ] || exit 0
 [ "$MODE" = "execute" ] || exit 0
 [ -n "$DELEGATION_MODE" ] || exit 0
-
-TEAM_NAME=$(echo "$INPUT" | jq -r '.tool_input.team_name // ""' 2>/dev/null) || exit 0
-AGENT_NAME=$(echo "$INPUT" | jq -r '.tool_input.name // ""' 2>/dev/null) || exit 0
-RUN_IN_BACKGROUND=$(echo "$INPUT" | jq -r '.tool_input.run_in_background // false' 2>/dev/null) || exit 0
 
 case "$DELEGATION_MODE" in
   team)
