@@ -284,6 +284,22 @@ test_sidechain_cwd_strip_emits_json_for_all_tools() {
 }
 test_sidechain_cwd_strip_emits_json_for_all_tools
 
+test_combined_sidechain_cwd_and_isolation_strips_both() {
+  setup_project
+
+  local tool output rc
+  for tool in Agent TaskCreate; do
+    output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "worktree" "$PROJECT/.claude/worktrees/agent-123" "cwd" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"' && ! echo "$output" | jq -e '.hookSpecificOutput.updatedInput.isolation' >/dev/null 2>&1 && ! echo "$output" | jq -e '.hookSpecificOutput.updatedInput.cwd' >/dev/null 2>&1; then
+      pass "Combined sidechain cwd + isolation: both stripped for ${tool}"
+    else
+      fail "Combined sidechain cwd + isolation should strip both for ${tool} (rc=$rc, output=$output)"
+    fi
+  done
+  cleanup
+}
+test_combined_sidechain_cwd_and_isolation_strips_both
+
 test_no_marker_blocks_named_non_team_spawns() {
   setup_project
 
