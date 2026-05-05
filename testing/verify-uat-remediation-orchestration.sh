@@ -163,11 +163,11 @@ UAT_RESEARCH_BLOCK=$(extract_uat_subsection research)
 UAT_PLAN_BLOCK=$(extract_uat_subsection plan)
 UAT_EXECUTE_BLOCK=$(extract_uat_subsection execute)
 
-SPAWN_ARG_ISOLATION_RE='(^|[^[:alnum:]_])"?isolation"?([[:space:]]*[:=][[:space:]]*"?worktree"?|[[:space:]]+worktree)([^[:alnum:]_]|$)'
-SPAWN_ARG_BACKGROUND_RE='(^|[^[:alnum:]_])"?run_in_background"?([[:space:]]*[:=][[:space:]]*"?(true|false)"?|[[:space:]]+(true|false))([^[:alnum:]_]|$)'
+SPAWN_ARG_ISOLATION_RE='(^|[^[:alnum:]_])"?isolation"?([[:space:]]*[:=][[:space:]]*"?[^"[:space:]]+"?|[[:space:]]+(worktree|"?\{[A-Za-z0-9_:-]+\}"?|"?\$[A-Za-z_][A-Za-z0-9_]*"?))([^[:alnum:]_]|$)'
+SPAWN_ARG_BACKGROUND_RE='(^|[^[:alnum:]_])"?run_in_background"?([[:space:]]*[:=][[:space:]]*"?[^"[:space:]]+"?|[[:space:]]+(true|false|"?\{[A-Za-z0-9_:-]+\}"?|"?\$[A-Za-z_][A-Za-z0-9_]*"?))([^[:alnum:]_]|$)'
 SPAWN_ARG_TEAM_NAME_RE='(^|[^[:alnum:]_])"?team_name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
 SPAWN_ARG_NAME_RE='(^|[^[:alnum:]_])"?name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
-SPAWN_ARG_CWD_RE='(^|[^[:alnum:]_])"?(cwd|working_dir|workingDirectory|workdir)"?([[:space:]]*[:=][[:space:]]*"?|[[:space:]]+)"?([./~]|[[:alnum:]_-]+/)[^"[:space:]]*'
+SPAWN_ARG_CWD_RE='(^|[^[:alnum:]_])"?(cwd|working_dir|workingDirectory|workdir)"?([[:space:]]*[:=][[:space:]]*"?([^"[:space:]]+|\{[A-Za-z0-9_:-]+\}|\$[A-Za-z_][A-Za-z0-9_]*)"?|[[:space:]]+"?([./~][^"[:space:]]*|[[:alnum:]_-]+/[^"[:space:]]*|\{[A-Za-z0-9_:-]+\}|\$[A-Za-z_][A-Za-z0-9_]*)"?)'
 
 if [ -z "$UAT_BLOCK" ]; then
   fail "vibe.md exposes a UAT Remediation block"
@@ -233,13 +233,18 @@ check_not_regex "UAT block does not include per-agent name argument syntax" "$UA
 check_not_regex "UAT block does not include worktree cwd argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches isolation equals syntax" 'Agent isolation=worktree' "$SPAWN_ARG_ISOLATION_RE"
 check_regex "spawn argument matcher catches isolation JSON syntax" 'Agent "isolation": "worktree"' "$SPAWN_ARG_ISOLATION_RE"
+check_regex "spawn argument matcher catches isolation placeholder syntax" 'Agent isolation="{mode}"' "$SPAWN_ARG_ISOLATION_RE"
 check_regex "spawn argument matcher catches run_in_background equals syntax" 'Agent run_in_background=true' "$SPAWN_ARG_BACKGROUND_RE"
+check_regex "spawn argument matcher catches run_in_background variable syntax" 'Agent run_in_background="$FLAG"' "$SPAWN_ARG_BACKGROUND_RE"
 check_regex "spawn argument matcher catches team_name bare syntax" 'Agent team_name vbw-phase-03' "$SPAWN_ARG_TEAM_NAME_RE"
 check_regex "spawn argument matcher catches per-agent name bare syntax" 'Agent name dev-1' "$SPAWN_ARG_NAME_RE"
 check_regex "spawn argument matcher catches generic cwd syntax" 'Agent cwd=/repo' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches generic working_dir syntax" 'Agent "working_dir": "/repo"' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches generic workingDirectory syntax" 'Agent workingDirectory /repo' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches generic workdir syntax" 'Agent workdir ./tmp' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches cwd placeholder syntax" 'Agent cwd="{round_dir}"' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches working_dir placeholder syntax" 'Agent working_dir="{summary_path}"' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches workdir variable syntax" 'Agent workdir="$PHASE_DIR"' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches cwd sidechain syntax" 'Agent cwd=.claude/worktrees/agent-1' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches working_dir vbw-worktree syntax" 'Agent "working_dir": ".vbw-worktrees/dev-01"' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches workingDirectory sidechain syntax" 'Agent workingDirectory=/repo/.claude/worktrees/agent-1' "$SPAWN_ARG_CWD_RE"

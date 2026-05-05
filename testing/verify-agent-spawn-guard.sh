@@ -208,67 +208,27 @@ test_no_marker_allows() {
 }
 test_no_marker_allows
 
-test_no_marker_blocks_agent_worktree_isolation_when_config_key_missing() {
-  setup_project
+test_no_marker_blocks_worktree_isolation_for_all_tools_and_config_states() {
+  local config_state tool output rc
+  for config_state in missing off on; do
+    setup_project
+    if [ "$config_state" != "missing" ]; then
+      jq --arg value "$config_state" '.worktree_isolation = $value' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
+      mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
+    fi
 
-  local output rc
-  output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "worktree" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude-side worktree isolation'; then
-    pass "No marker with missing worktree_isolation key: Agent isolation blocked"
-  else
-    fail "No-marker Agent isolation should block when worktree_isolation missing (rc=$rc, output=$output)"
-  fi
-  cleanup
+    for tool in Agent TaskCreate; do
+      output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "worktree" 2>&1) && rc=$? || rc=$?
+      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude-side worktree isolation'; then
+        pass "No marker with config ${config_state}: ${tool} isolation blocked"
+      else
+        fail "No-marker ${tool} isolation should block when worktree_isolation ${config_state} (rc=$rc, output=$output)"
+      fi
+    done
+    cleanup
+  done
 }
-test_no_marker_blocks_agent_worktree_isolation_when_config_key_missing
-
-test_no_marker_blocks_taskcreate_worktree_isolation_when_config_off() {
-  setup_project
-  jq '.worktree_isolation = "off"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
-  mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
-
-  local output rc
-  output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "TaskCreate" "" "worktree" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude-side worktree isolation'; then
-    pass "No marker with config off: TaskCreate isolation blocked"
-  else
-    fail "No-marker TaskCreate isolation should block when worktree_isolation off (rc=$rc, output=$output)"
-  fi
-  cleanup
-}
-test_no_marker_blocks_taskcreate_worktree_isolation_when_config_off
-
-test_no_marker_blocks_agent_worktree_isolation_when_config_on() {
-  setup_project
-  jq '.worktree_isolation = "on"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
-  mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
-
-  local output rc
-  output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "worktree" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude-side worktree isolation'; then
-    pass "No marker with config on: Agent isolation blocked"
-  else
-    fail "No-marker Agent isolation should block when worktree_isolation on (rc=$rc, output=$output)"
-  fi
-  cleanup
-}
-test_no_marker_blocks_agent_worktree_isolation_when_config_on
-
-test_no_marker_blocks_taskcreate_worktree_isolation_when_config_on() {
-  setup_project
-  jq '.worktree_isolation = "on"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
-  mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
-
-  local output rc
-  output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "TaskCreate" "" "worktree" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude-side worktree isolation'; then
-    pass "No marker with config on: TaskCreate isolation blocked"
-  else
-    fail "No-marker TaskCreate isolation should block when worktree_isolation on (rc=$rc, output=$output)"
-  fi
-  cleanup
-}
-test_no_marker_blocks_taskcreate_worktree_isolation_when_config_on
+test_no_marker_blocks_worktree_isolation_for_all_tools_and_config_states
 
 test_no_marker_blocks_sidechain_cwd_when_config_missing() {
   setup_project
@@ -398,9 +358,11 @@ test_no_marker_blocks_vbw_worktree_cwd_aliases() {
   mkdir -p "$PROJECT/.vbw-worktrees/dev-01"
 
   local config_value tool field output rc
-  for config_value in off on; do
-    jq --arg value "$config_value" '.worktree_isolation = $value' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
-    mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
+  for config_value in missing off on; do
+    if [ "$config_value" != "missing" ]; then
+      jq --arg value "$config_value" '.worktree_isolation = $value' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
+      mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
+    fi
     for tool in Agent TaskCreate; do
       for field in cwd working_dir workingDirectory workdir; do
         output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.vbw-worktrees/dev-01" "$field" 2>&1) && rc=$? || rc=$?
