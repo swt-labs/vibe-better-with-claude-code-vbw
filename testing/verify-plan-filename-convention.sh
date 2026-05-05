@@ -128,6 +128,63 @@ else
   fail "collision — rc=$RC, content: $CONTENT, output: $OUTPUT"
 fi
 
+# Test 10a: QA remediation round PLAN-R01.md normalizes to R01-PLAN.md
+TDIR="$TMPDIR_TEST/test10a/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "plan" > "$TDIR/PLAN-R01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-R01.md" ]; then
+  pass "renames QA round PLAN-R01.md → R01-PLAN.md"
+else
+  fail "QA PLAN-R01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10b: QA remediation round PLAN-01.md normalizes to R01-PLAN.md, not 01-PLAN.md
+TDIR="$TMPDIR_TEST/test10b/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "plan" > "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-01.md" ]; then
+  pass "renames QA round PLAN-01.md → R01-PLAN.md"
+else
+  fail "QA PLAN-01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10c: UAT remediation round PLAN-01.md normalizes to R01-PLAN.md
+TDIR="$TMPDIR_TEST/test10c/.vbw-planning/phases/01-setup/remediation/uat/round-01"
+mkdir -p "$TDIR"
+echo "plan" > "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-01.md" ]; then
+  pass "renames UAT round PLAN-01.md → R01-PLAN.md"
+else
+  fail "UAT PLAN-01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d: round-dir collision preserves existing canonical R01-PLAN.md
+TDIR="$TMPDIR_TEST/test10d/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "correct" > "$TDIR/R01-PLAN.md"
+echo "misnamed" > "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+CONTENT=$(cat "$TDIR/R01-PLAN.md")
+if [ "$RC" -eq 0 ] && [ "$CONTENT" = "correct" ] && [ -f "$TDIR/PLAN-01.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && echo "$OUTPUT" | grep -q "skipped"; then
+  pass "round collision: skips PLAN-01.md when R01-PLAN.md exists"
+else
+  fail "round collision — rc=$RC, content: $CONTENT, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10e: phase directories still normalize PLAN-01.md to 01-PLAN.md
+TDIR="$TMPDIR_TEST/test10e/.vbw-planning/phases/01-setup"
+mkdir -p "$TDIR"
+echo "plan" > "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/01-PLAN.md" ] && [ ! -f "$TDIR/R01-PLAN.md" ]; then
+  pass "phase dir still renames PLAN-01.md → 01-PLAN.md"
+else
+  fail "phase regression rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
 # Test 11: empty/missing dir exits 0
 OUTPUT=$(bash "$NORM_SCRIPT" "$TMPDIR_TEST/nonexistent" 2>&1) && RC=$? || RC=$?
 if [ "$RC" -eq 0 ]; then

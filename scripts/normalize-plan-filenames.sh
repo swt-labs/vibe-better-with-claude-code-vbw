@@ -1,14 +1,17 @@
 #!/bin/bash
 set -u
-# normalize-plan-filenames.sh — Rename type-first plan artifacts to number-first format
+# normalize-plan-filenames.sh — Rename type-first plan artifacts to canonical format
 #
-# Usage: bash normalize-plan-filenames.sh <phase-dir>
+# Usage: bash normalize-plan-filenames.sh <phase-or-remediation-round-dir>
 #
-# Renames:
-#   PLAN-{NN}.md         → {NN}-PLAN.md
-#   PLAN-{NN}-SUMMARY.md → {NN}-SUMMARY.md
-#   SUMMARY-{NN}.md      → {NN}-SUMMARY.md
-#   CONTEXT-{NN}.md      → {NN}-CONTEXT.md
+# Phase directories rename:
+#   PLAN-{NN}.md          → {NN}-PLAN.md
+#   PLAN-{NN}-SUMMARY.md  → {NN}-SUMMARY.md
+#   SUMMARY-{NN}.md       → {NN}-SUMMARY.md
+#   CONTEXT-{NN}.md       → {NN}-CONTEXT.md
+# Remediation round directories rename:
+#   PLAN-R{RR}.md         → R{RR}-PLAN.md
+#   PLAN-{RR}.md          → R{RR}-PLAN.md
 #
 # Skips if target already exists. Exit 0 always (best-effort).
 
@@ -23,6 +26,45 @@ fi
 
 # Strip trailing slash for consistent path joining
 PHASE_DIR="${PHASE_DIR%/}"
+PHASE_DIR_BASE=$(basename "$PHASE_DIR")
+
+# Remediation round directories use round-scoped names (R01-PLAN.md), not
+# phase-scoped names (01-PLAN.md). The containing round directory is the source
+# of truth for the canonical round token so QA/UAT/legacy round paths all share
+# the same normalization contract.
+ROUND_PLAN_TOKEN=""
+case "$PHASE_DIR" in
+  */remediation/qa/round-[0-9]*|remediation/qa/round-[0-9]*|*/remediation/uat/round-[0-9]*|remediation/uat/round-[0-9]*|*/remediation/round-[0-9]*|remediation/round-[0-9]*)
+    ROUND_RAW=$(echo "$PHASE_DIR_BASE" | sed -n 's/^round-\([0-9][0-9]*\)$/\1/p')
+    if [ -n "$ROUND_RAW" ]; then
+      ROUND_PLAN_TOKEN=$(printf "R%02d" "$((10#$ROUND_RAW))")
+    fi
+    ;;
+esac
+
+if [ -n "$ROUND_PLAN_TOKEN" ]; then
+  # Pattern: PLAN-RNN.md or PLAN-NN.md → RNN-PLAN.md, where RNN is derived
+  # from the containing remediation round directory.
+  for f in "$PHASE_DIR"/[Pp][Ll][Aa][Nn]-[Rr][0-9]*.[mM][dD] "$PHASE_DIR"/[Pp][Ll][Aa][Nn]-[0-9]*.[mM][dD]; do
+    [ -f "$f" ] || continue
+    [ ! -L "$f" ] || continue  # skip symlinks
+    BASENAME=$(basename "$f")
+    if ! echo "$BASENAME" | grep -qiE '^PLAN-R?[0-9]+\.(md|MD)$'; then
+      echo "skipped: $BASENAME (unknown remediation round plan form)" >&2
+      continue
+    fi
+
+    TARGET="$PHASE_DIR/${ROUND_PLAN_TOKEN}-PLAN.md"
+    if [ -f "$TARGET" ]; then
+      echo "skipped: $BASENAME (target $(basename "$TARGET") already exists)" >&2
+      continue
+    fi
+    mv "$f" "$TARGET"
+    echo "renamed: $BASENAME -> $(basename "$TARGET")"
+  done
+
+  exit 0
+fi
 
 # Pattern: PLAN-NN.md → NN-PLAN.md (case-insensitive prefix and extension)
 for f in "$PHASE_DIR"/[Pp][Ll][Aa][Nn]-[0-9]*.[mM][dD]; do
@@ -109,7 +151,6 @@ done
 #   - {NN}-01-RESEARCH.md exists
 #   - {NN}-RESEARCH.md does NOT exist
 #   - No other per-plan research ({NN}-02-RESEARCH.md, etc.) exists
-PHASE_DIR_BASE=$(basename "$PHASE_DIR")
 PHASE_NUM_NRM=$(echo "$PHASE_DIR_BASE" | sed 's/^\([0-9]*\).*/\1/')
 if [ -n "$PHASE_NUM_NRM" ]; then
   PHASE_NUM_NRM=$(printf "%02d" "$((10#$PHASE_NUM_NRM))")
