@@ -248,6 +248,33 @@ else
   fail "round token numeric mismatch — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
 fi
 
+# Test 10d6: equal-mtime canonical/misnamed conflict fails closed
+TDIR="$TMPDIR_TEST/test10d6/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "canonical" > "$TDIR/R01-PLAN.md"
+echo "ambiguous candidate" > "$TDIR/PLAN-01.md"
+touch -t 202001010000 "$TDIR/R01-PLAN.md" "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ ! -f "$TDIR/R01-PLAN.md" ] && [ -f "$TDIR/R01-PLAN.md.conflict" ] && [ -f "$TDIR/PLAN-01.md" ] && echo "$OUTPUT" | grep -q "same mtime but different contents"; then
+  pass "round mtime tie: fails closed when canonical and PLAN-01.md differ"
+else
+  fail "round mtime tie — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d7: paired equal-mtime misnamed candidates cannot replace different canonical plan
+TDIR="$TMPDIR_TEST/test10d7/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "canonical" > "$TDIR/R01-PLAN.md"
+echo "replacement" > "$TDIR/PLAN-01.md"
+echo "replacement" > "$TDIR/PLAN-R01.md"
+touch -t 202001010000 "$TDIR/R01-PLAN.md" "$TDIR/PLAN-01.md" "$TDIR/PLAN-R01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ ! -f "$TDIR/R01-PLAN.md" ] && [ -f "$TDIR/R01-PLAN.md.conflict" ] && [ -f "$TDIR/PLAN-01.md" ] && [ -f "$TDIR/PLAN-R01.md" ] && echo "$OUTPUT" | grep -q "same mtime but different contents"; then
+  pass "round mtime tie: fails closed when paired candidates differ from canonical"
+else
+  fail "paired round mtime tie — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
 # Test 10e: phase directories still normalize PLAN-01.md to 01-PLAN.md
 TDIR="$TMPDIR_TEST/test10e/.vbw-planning/phases/01-setup"
 mkdir -p "$TDIR"

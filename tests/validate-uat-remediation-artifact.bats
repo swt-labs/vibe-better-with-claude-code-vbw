@@ -4,6 +4,7 @@ load test_helper
 
 setup() {
   setup_temp_dir
+  TEST_TEMP_DIR="$(cd "$TEST_TEMP_DIR" && pwd -P)"
   PHASE_DIR="$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
   ROUND_DIR="$PHASE_DIR/remediation/uat/round-01"
   QA_ROUND_DIR="$PHASE_DIR/remediation/qa/round-01"
@@ -211,6 +212,56 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"artifact_valid=true"* ]]
   [[ "$output" == *"artifact_path=$plan_path"* ]]
+}
+
+@test "validator rejects QA plan absolute paths containing traversal aliases" {
+  local plan_path alias_path
+  plan_path="$QA_ROUND_DIR/R01-PLAN.md"
+  alias_path="$QA_ROUND_DIR/../round-01/R01-PLAN.md"
+  write_valid_plan "$plan_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$alias_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"exact canonical host path"* ]]
+}
+
+@test "validator rejects UAT plan absolute paths containing traversal aliases" {
+  local plan_path alias_path
+  plan_path="$ROUND_DIR/R01-PLAN.md"
+  alias_path="$ROUND_DIR/../round-01/R01-PLAN.md"
+  write_valid_plan "$plan_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$alias_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"exact canonical host path"* ]]
+}
+
+@test "validator rejects host-looking QA plan symlink that resolves into Claude sidechain" {
+  local host_plan sidechain_plan
+  host_plan="$QA_ROUND_DIR/R01-PLAN.md"
+  sidechain_plan="$TEST_TEMP_DIR/repo/.claude/worktrees/agent-test/.vbw-planning/phases/01-test/remediation/qa/round-01/R01-PLAN.md"
+  write_valid_plan "$sidechain_plan"
+  ln -s "$sidechain_plan" "$host_plan"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$host_plan"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"Claude sidechain"* ]]
+}
+
+@test "validator rejects host-looking UAT plan symlink that resolves into Claude sidechain" {
+  local host_plan sidechain_plan
+  host_plan="$ROUND_DIR/R01-PLAN.md"
+  sidechain_plan="$TEST_TEMP_DIR/repo/.claude/worktrees/agent-test/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-PLAN.md"
+  write_valid_plan "$sidechain_plan"
+  ln -s "$sidechain_plan" "$host_plan"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$host_plan"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"Claude sidechain"* ]]
 }
 
 @test "validator rejects QA round-dir research artifacts" {

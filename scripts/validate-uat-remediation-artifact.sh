@@ -53,6 +53,48 @@ extract_frontmatter() {
   ' "$file"
 }
 
+canonicalize_artifact_path() {
+  local raw_path="$1" parent base parent_physical current link_target depth
+
+  case "$raw_path" in
+    /*) ;;
+    *) return 1 ;;
+  esac
+
+  parent=$(dirname "$raw_path")
+  base=$(basename "$raw_path")
+  [ -d "$parent" ] || return 1
+  parent_physical=$(cd "$parent" 2>/dev/null && pwd -P) || return 1
+  current="$parent_physical/$base"
+
+  depth=0
+  while [ -L "$current" ]; do
+    if [ "$depth" -ge 20 ]; then
+      return 1
+    fi
+    link_target=$(readlink "$current" 2>/dev/null) || return 1
+    case "$link_target" in
+      /*) current="$link_target" ;;
+      *) current="$(dirname "$current")/$link_target" ;;
+    esac
+    parent=$(dirname "$current")
+    base=$(basename "$current")
+    [ -d "$parent" ] || return 1
+    parent_physical=$(cd "$parent" 2>/dev/null && pwd -P) || return 1
+    current="$parent_physical/$base"
+    depth=$((depth + 1))
+  done
+
+  printf '%s\n' "$current"
+}
+
+canonicalize_selected_path() {
+  local selected_path="$1" canonical_path
+
+  canonical_path=$(canonicalize_artifact_path "$selected_path") || return 1
+  printf '%s\n' "$canonical_path"
+}
+
 artifact_phase_dir() {
   local path="$1" root suffix phase_slug
 
@@ -157,7 +199,7 @@ selected_legacy_artifact_path() {
 }
 
 validate_legacy_phase_root_path() {
-  local expected_suffix="$1" phase_dir phase_prefix artifact_basename layout selected_path
+  local expected_suffix="$1" phase_dir phase_prefix artifact_basename layout selected_path selected_canonical_path
 
   if [ "$ARTIFACT_TYPE" = "summary" ]; then
     emit_failure "summary artifacts must use the round-dir layout"
@@ -184,8 +226,10 @@ validate_legacy_phase_root_path() {
 
   selected_path=$(selected_legacy_artifact_path "$phase_dir" "$ARTIFACT_TYPE") \
     || emit_failure "no current legacy ${ARTIFACT_TYPE} artifact is selected by state metadata"
+  selected_canonical_path=$(canonicalize_selected_path "$selected_path") \
+    || emit_failure "state-selected legacy ${ARTIFACT_TYPE} artifact path is not canonical"
 
-  if [ "$ARTIFACT_PATH" != "$selected_path" ]; then
+  if [ "$ARTIFACT_PATH" != "$selected_canonical_path" ]; then
     emit_failure "legacy artifact is stale; expected $selected_path"
   fi
 }
@@ -235,12 +279,28 @@ validate_round_dir_artifact_path() {
 }
 
 validate_common_path() {
-  local expected_suffix="$1"
+  local expected_suffix="$1" raw_artifact_path canonical_artifact_path
 
   case "$ARTIFACT_PATH" in
     /*) ;;
     *) emit_failure "artifact path must be absolute" ;;
   esac
+
+  raw_artifact_path="$ARTIFACT_PATH"
+  canonical_artifact_path=$(canonicalize_artifact_path "$ARTIFACT_PATH") \
+    || emit_failure "artifact path parent directory does not exist or cannot be canonicalized"
+
+  case "$canonical_artifact_path" in
+    */.claude/worktrees/agent-*/*)
+      emit_failure "artifact path points at a Claude sidechain; use the host repository path"
+      ;;
+  esac
+
+  if [ "$raw_artifact_path" != "$canonical_artifact_path" ]; then
+    emit_failure "artifact path must be the exact canonical host path"
+  fi
+
+  ARTIFACT_PATH="$canonical_artifact_path"
 
   case "$ARTIFACT_PATH" in
     */.claude/worktrees/agent-*/*)

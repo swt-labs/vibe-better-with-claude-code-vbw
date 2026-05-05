@@ -131,6 +131,42 @@ teardown() {
   [[ "$output" == *"existing R01-PLAN.md is newer"* ]]
 }
 
+@test "fails closed when canonical and misnamed round-dir plans differ with equal mtimes" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "canonical" > "$ROUND_DIR/R01-PLAN.md"
+  echo "ambiguous candidate" > "$ROUND_DIR/PLAN-01.md"
+  touch -t 202001010000 "$ROUND_DIR/R01-PLAN.md" "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ -f "$ROUND_DIR/R01-PLAN.md.conflict" ]
+  [ -f "$ROUND_DIR/PLAN-01.md" ]
+  [[ "$output" == *"same mtime but different contents"* ]]
+  [[ "$output" == *"validation fails closed"* ]]
+}
+
+@test "fails closed when paired misnamed plans tie with different canonical contents" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "canonical" > "$ROUND_DIR/R01-PLAN.md"
+  echo "replacement" > "$ROUND_DIR/PLAN-01.md"
+  echo "replacement" > "$ROUND_DIR/PLAN-R01.md"
+  touch -t 202001010000 "$ROUND_DIR/R01-PLAN.md" "$ROUND_DIR/PLAN-01.md" "$ROUND_DIR/PLAN-R01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ -f "$ROUND_DIR/R01-PLAN.md.conflict" ]
+  [ -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-R01.md" ]
+  [[ "$output" == *"same mtime but different contents"* ]]
+  [[ "$output" == *"validation fails closed"* ]]
+}
+
 @test "does not normalize round-dir plan whose source round token mismatches directory" {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
   mkdir -p "$ROUND_DIR"

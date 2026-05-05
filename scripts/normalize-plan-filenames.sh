@@ -94,6 +94,31 @@ if [ -n "$ROUND_PLAN_TOKEN" ]; then
     fi
   fi
 
+  if [ -f "$TARGET" ]; then
+    ROUND_PLAN_MTIME_TIE=false
+    for f in "${ROUND_PLAN_CANDIDATES[@]}"; do
+      if cmp -s "$f" "$TARGET"; then
+        continue
+      fi
+      if [ ! "$f" -nt "$TARGET" ] && [ ! "$TARGET" -nt "$f" ]; then
+        ROUND_PLAN_MTIME_TIE=true
+        break
+      fi
+    done
+
+    if [ "$ROUND_PLAN_MTIME_TIE" = true ]; then
+      BACKUP_TARGET="$TARGET.conflict"
+      BACKUP_INDEX=1
+      while [ -e "$BACKUP_TARGET" ]; do
+        BACKUP_TARGET="$TARGET.conflict.$BACKUP_INDEX"
+        BACKUP_INDEX=$((BACKUP_INDEX + 1))
+      done
+      mv "$TARGET" "$BACKUP_TARGET"
+      echo "conflict: remediation round plan candidates have the same mtime but different contents; moved $(basename "$TARGET") to $(basename "$BACKUP_TARGET") so validation fails closed" >&2
+      exit 0
+    fi
+  fi
+
   for f in "${ROUND_PLAN_CANDIDATES[@]}"; do
     BASENAME=$(basename "$f")
     if [ -f "$TARGET" ]; then
