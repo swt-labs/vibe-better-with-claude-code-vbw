@@ -20,6 +20,12 @@ fail() {
   FAIL=$((FAIL + 1))
 }
 
+# Extract the JSON line from mixed stderr+stdout output (run_guard merges them).
+# Strip-path tests must validate JSON structure via this helper, not raw output.
+extract_json() {
+  grep '^{"hookSpecificOutput"' <<< "$1" || true
+}
+
 setup_project() {
   TMPDIR_BASE=$(mktemp -d)
   PROJECT="$TMPDIR_BASE/project"
@@ -208,7 +214,7 @@ test_no_marker_allows() {
 }
 test_no_marker_allows
 
-test_no_marker_blocks_worktree_isolation_for_all_tools_and_config_states() {
+test_no_marker_strips_worktree_isolation_for_all_tools_and_config_states() {
   local config_state tool output rc
   for config_state in missing off on; do
     setup_project
@@ -218,37 +224,39 @@ test_no_marker_blocks_worktree_isolation_for_all_tools_and_config_states() {
     fi
 
     for tool in Agent TaskCreate; do
-      output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "worktree" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude-side worktree isolation'; then
-        pass "No marker with config ${config_state}: ${tool} isolation blocked"
+      output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "worktree" 2>&1) && rc=$? || rc=$?
+      json_line=$(extract_json "$output")
+      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && ! echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput.isolation' >/dev/null 2>&1; then
+        pass "No marker with config ${config_state}: ${tool} isolation stripped and allowed"
       else
-        fail "No-marker ${tool} isolation should block when worktree_isolation ${config_state} (rc=$rc, output=$output)"
+        fail "No-marker ${tool} isolation should be stripped when worktree_isolation ${config_state} (rc=$rc, output=$output)"
       fi
     done
     cleanup
   done
 }
-test_no_marker_blocks_worktree_isolation_for_all_tools_and_config_states
+test_no_marker_strips_worktree_isolation_for_all_tools_and_config_states
 
-test_no_marker_blocks_sidechain_cwd_when_config_missing() {
+test_no_marker_strips_sidechain_cwd_when_config_missing() {
   setup_project
 
   local tool field output rc
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
-      output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
-        pass "No marker with missing config key: ${tool} sidechain ${field} blocked"
+      output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
+      json_line=$(extract_json "$output")
+      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && ! echo "$json_line" | jq -e ".hookSpecificOutput.updatedInput.${field}" >/dev/null 2>&1; then
+        pass "No marker with missing config key: ${tool} sidechain ${field} stripped and allowed"
       else
-        fail "No-marker ${tool} sidechain ${field} should block when worktree_isolation key is missing (rc=$rc, output=$output)"
+        fail "No-marker ${tool} sidechain ${field} should be stripped when worktree_isolation key is missing (rc=$rc, output=$output)"
       fi
     done
   done
   cleanup
 }
-test_no_marker_blocks_sidechain_cwd_when_config_missing
+test_no_marker_strips_sidechain_cwd_when_config_missing
 
-test_no_marker_blocks_sidechain_cwd_when_config_off() {
+test_no_marker_strips_sidechain_cwd_when_config_off() {
   setup_project
   jq '.worktree_isolation = "off"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
   mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
@@ -257,32 +265,129 @@ test_no_marker_blocks_sidechain_cwd_when_config_off() {
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
       output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
-        pass "No marker with config off: ${tool} sidechain ${field} blocked"
+      json_line=$(extract_json "$output")
+      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && ! echo "$json_line" | jq -e ".hookSpecificOutput.updatedInput.${field}" >/dev/null 2>&1; then
+        pass "No marker with config off: ${tool} sidechain ${field} stripped and allowed"
       else
-        fail "No-marker ${tool} sidechain ${field} should block when worktree_isolation off (rc=$rc, output=$output)"
+        fail "No-marker ${tool} sidechain ${field} should be stripped when worktree_isolation off (rc=$rc, output=$output)"
       fi
     done
   done
   cleanup
 }
-test_no_marker_blocks_sidechain_cwd_when_config_off
+test_no_marker_strips_sidechain_cwd_when_config_off
 
-test_sidechain_cwd_diagnostic_names_all_aliases() {
+test_sidechain_cwd_strip_emits_json_for_all_tools() {
   setup_project
 
   local tool output rc
   for tool in Agent TaskCreate; do
     output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "workingDirectory" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory' && diagnostic_mentions_all_cwd_aliases "$output"; then
-      pass "Sidechain cwd diagnostic names all aliases for ${tool}"
+    json_line=$(extract_json "$output")
+    if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && echo "$output" | grep -q 'stripped sidechain cwd'; then
+      pass "Sidechain cwd strip emits JSON and warning for ${tool}"
     else
-      fail "Sidechain cwd diagnostic should name all aliases for ${tool} (rc=$rc, output=$output)"
+      fail "Sidechain cwd strip should emit JSON and warning for ${tool} (rc=$rc, output=$output)"
     fi
   done
   cleanup
 }
-test_sidechain_cwd_diagnostic_names_all_aliases
+test_sidechain_cwd_strip_emits_json_for_all_tools
+
+test_combined_sidechain_cwd_and_isolation_strips_both() {
+  setup_project
+
+  local tool output rc
+  for tool in Agent TaskCreate; do
+    output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "worktree" "$PROJECT/.claude/worktrees/agent-123" "cwd" 2>&1) && rc=$? || rc=$?
+    json_line=$(extract_json "$output")
+    if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && ! echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput.isolation' >/dev/null 2>&1 && ! echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput.cwd' >/dev/null 2>&1; then
+      pass "Combined sidechain cwd + isolation: both stripped for ${tool}"
+    else
+      fail "Combined sidechain cwd + isolation should strip both for ${tool} (rc=$rc, output=$output)"
+    fi
+  done
+  cleanup
+}
+test_combined_sidechain_cwd_and_isolation_strips_both
+
+test_strip_preserves_non_stripped_fields() {
+  setup_project
+
+  local tool output rc json_line
+  for tool in Agent TaskCreate; do
+    local input
+    input=$(jq -n --arg tool_name "$tool" '{
+      tool_name: $tool_name,
+      tool_input: {
+        prompt: "Do the task",
+        description: "A test task",
+        subagent_type: "vbw:vbw-dev",
+        model: "claude-sonnet-4-20250514",
+        run_in_background: false,
+        team_name: "",
+        isolation: "worktree"
+      }
+    }')
+    output=$( (cd "$PROJECT" && VBW_PLANNING_DIR="$PROJECT/.vbw-planning" bash "$GUARD" <<< "$input") 2>&1 ) && rc=$? || rc=$?
+    json_line=$(extract_json "$output")
+    if [ "$rc" -ne 0 ] || [ -z "$json_line" ]; then
+      fail "Strip should exit 0 with JSON for ${tool} (rc=$rc)"
+      continue
+    fi
+    local ui
+    ui=$(echo "$json_line" | jq '.hookSpecificOutput.updatedInput')
+    local ok=true
+    for field in prompt description subagent_type model run_in_background team_name; do
+      if ! echo "$ui" | jq -e "has(\"$field\")" >/dev/null 2>&1; then
+        fail "Strip lost field '$field' in updatedInput for ${tool}"
+        ok=false
+        break
+      fi
+    done
+    if [ "$ok" = "true" ] && echo "$ui" | jq -e 'has("isolation")' >/dev/null 2>&1; then
+      fail "Strip did not remove isolation for ${tool}"
+      ok=false
+    fi
+    if [ "$ok" = "true" ]; then
+      pass "Strip preserves all non-stripped fields for ${tool}"
+    fi
+  done
+  cleanup
+}
+test_strip_preserves_non_stripped_fields
+
+test_named_non_team_with_isolation_blocks() {
+  setup_project
+
+  local tool output rc
+  for tool in Agent TaskCreate; do
+    output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "worktree" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
+      pass "Named non-team + isolation: ${tool} blocked (named check fires before strip)"
+    else
+      fail "Named non-team + isolation should block for ${tool} (rc=$rc, output=$output)"
+    fi
+  done
+  cleanup
+}
+test_named_non_team_with_isolation_blocks
+
+test_named_non_team_with_sidechain_cwd_blocks() {
+  setup_project
+
+  local tool output rc
+  for tool in Agent TaskCreate; do
+    output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "cwd" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
+      pass "Named non-team + sidechain cwd: ${tool} blocked (named check fires before strip)"
+    else
+      fail "Named non-team + sidechain cwd should block for ${tool} (rc=$rc, output=$output)"
+    fi
+  done
+  cleanup
+}
+test_named_non_team_with_sidechain_cwd_blocks
 
 test_no_marker_blocks_named_non_team_spawns() {
   setup_project
@@ -333,7 +438,7 @@ test_no_marker_allows_regular_project_cwd() {
 }
 test_no_marker_allows_regular_project_cwd
 
-test_no_marker_blocks_sidechain_cwd_when_config_on() {
+test_no_marker_strips_sidechain_cwd_when_config_on() {
   setup_project
   jq '.worktree_isolation = "on"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
   mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
@@ -341,17 +446,18 @@ test_no_marker_blocks_sidechain_cwd_when_config_on() {
   local tool field output rc
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
-      output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
-        pass "No marker with config on: ${tool} sidechain ${field} blocked"
+      output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
+      json_line=$(extract_json "$output")
+      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && ! echo "$json_line" | jq -e ".hookSpecificOutput.updatedInput.${field}" >/dev/null 2>&1; then
+        pass "No marker with config on: ${tool} sidechain ${field} stripped and allowed"
       else
-        fail "No-marker ${tool} sidechain ${field} should block even when worktree_isolation on (rc=$rc, output=$output)"
+        fail "No-marker ${tool} sidechain ${field} should be stripped even when worktree_isolation on (rc=$rc, output=$output)"
       fi
     done
   done
   cleanup
 }
-test_no_marker_blocks_sidechain_cwd_when_config_on
+test_no_marker_strips_sidechain_cwd_when_config_on
 
 test_no_marker_blocks_vbw_worktree_cwd_aliases() {
   setup_project
