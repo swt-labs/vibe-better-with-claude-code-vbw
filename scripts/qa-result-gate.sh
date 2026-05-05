@@ -1181,16 +1181,17 @@ json_object_array_length() {
 json_object_array_covers_full_issue_objects() {
   local required_json="${1:-[]}"
   local candidate_json="${2:-[]}"
-  local test_name=""
-  local file_path=""
-  local error_msg=""
 
-  while IFS=$'\t' read -r test_name file_path error_msg; do
-    [ -n "$test_name" ] || continue
-    printf '%s' "$candidate_json" | jq -e --arg test "$test_name" --arg file "$file_path" --arg error "$error_msg" '.[] | select(.test == $test and .file == $file and .error == $error)' >/dev/null 2>&1 || return 1
-  done < <(printf '%s' "$required_json" | jq -r '.[] | [.test, .file, .error] | @tsv' 2>/dev/null)
-
-  return 0
+  jq -e -n \
+    --argjson required "${required_json:-[]}" \
+    --argjson candidate "${candidate_json:-[]}" '
+      all($required[];
+        (.test // "") == ""
+        or (. as $required_issue
+          | $candidate
+          | any(.test == $required_issue.test and .file == $required_issue.file and .error == $required_issue.error))
+      )
+    ' >/dev/null 2>&1
 }
 
 load_known_issue_registry_json() {
@@ -1203,17 +1204,22 @@ load_known_issue_registry_json() {
 json_object_array_dispositions_match() {
   local expected_json="${1:-[]}"
   local actual_json="${2:-[]}"
-  local test_name=""
-  local file_path=""
-  local error_msg=""
-  local disposition=""
 
-  while IFS=$'\t' read -r test_name file_path error_msg disposition; do
-    [ -n "$test_name" ] || continue
-    printf '%s' "$actual_json" | jq -e --arg test "$test_name" --arg file "$file_path" --arg error "$error_msg" --arg disposition "$disposition" '.[] | select(.test == $test and .file == $file and .error == $error and .disposition == $disposition)' >/dev/null 2>&1 || return 1
-  done < <(printf '%s' "$expected_json" | jq -r '.[] | [.test, .file, .error, .disposition] | @tsv' 2>/dev/null)
-
-  return 0
+  jq -e -n \
+    --argjson expected "${expected_json:-[]}" \
+    --argjson actual "${actual_json:-[]}" '
+      all($expected[];
+        (.test // "") == ""
+        or (. as $expected_issue
+          | $actual
+          | any(
+            .test == $expected_issue.test
+            and .file == $expected_issue.file
+            and .error == $expected_issue.error
+            and .disposition == $expected_issue.disposition
+          ))
+      )
+    ' >/dev/null 2>&1
 }
 
 json_object_array_has_disposition() {

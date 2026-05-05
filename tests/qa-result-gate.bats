@@ -4146,6 +4146,185 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "known-issues-only remediation round accepts Pest namespace backslashes and proceeds" {
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" <<'SNAP'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+SNAP
+
+  cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+REGISTRY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace failure is pre-existing and non-blocking for this phase"}'
+---
+
+## Summary
+Documented the Pest/PHPUnit known issue as an accepted non-blocking process-exception.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Known-issues-only Pest namespace process-exception round
+known_issues_input:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500."}'
+known_issue_resolutions:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace failure is pre-existing and non-blocking for this phase"}'
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Pest known issue accepted as non-blocking | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=1"* ]]
+  [[ "$output" == *"qa_gate_known_issues_all_addressed=true"* ]]
+  [[ "$output" != *"qa_gate_known_issues_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "known-issues disposition mismatch with Pest namespace backslashes fails closed" {
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" <<'SNAP'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+SNAP
+
+  cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+REGISTRY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"resolved","rationale":"Incorrectly marked as resolved"}'
+---
+
+## Summary
+Recorded a disposition that disagrees with the plan.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Known-issues-only Pest namespace mismatch round
+known_issues_input:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500."}'
+known_issue_resolutions:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace failure is pre-existing and non-blocking for this phase"}'
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Pest known issue disposition mismatch is detected | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
 @test "mixed input_mode both round can satisfy fail and carried known-issue contracts together" {
   create_source_fail_verif "FAIL-01" "A carried process-exception still needs explicit round coverage"
   cat > "$PHASE_DIR/known-issues.json" <<'EOF'
