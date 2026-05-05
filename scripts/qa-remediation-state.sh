@@ -175,19 +175,28 @@ extract_pre_existing_issues_json_from_verification() {
 write_known_issue_snapshot() {
   local snapshot_path="$1"
   local issues_json="$2"
-  local issue_count tmp_file issues_file jq_status
-  issues_file=$(mktemp)
-  printf '%s' "$issues_json" > "$issues_file"
+  local issue_count tmp_file="" issues_file="" jq_status
+  issues_file=$(mktemp) || return 1
+  if ! printf '%s' "$issues_json" > "$issues_file"; then
+    [ -n "$issues_file" ] && rm -f "$issues_file"
+    return 1
+  fi
   issue_count=$(jq 'if type == "array" then length else 0 end' "$issues_file" 2>/dev/null || echo 0)
   if [ "$issue_count" -eq 0 ] 2>/dev/null; then
     rm -f "$snapshot_path"
-    rm -f "$issues_file"
+    [ -n "$issues_file" ] && rm -f "$issues_file"
     echo 0
     return 0
   fi
 
-  mkdir -p "$(dirname "$snapshot_path")"
-  tmp_file=$(mktemp "${snapshot_path}.tmp.XXXXXX")
+  if ! mkdir -p "$(dirname "$snapshot_path")"; then
+    [ -n "$issues_file" ] && rm -f "$issues_file"
+    return 1
+  fi
+  tmp_file=$(mktemp "${snapshot_path}.tmp.XXXXXX") || {
+    [ -n "$issues_file" ] && rm -f "$issues_file"
+    return 1
+  }
   if jq -n \
     --arg phase "$(phase_number)" \
     --slurpfile issues "$issues_file" '
@@ -201,12 +210,15 @@ write_known_issue_snapshot() {
   else
     jq_status=$?
   fi
-  rm -f "$issues_file"
+  [ -n "$issues_file" ] && rm -f "$issues_file"
   if [ "$jq_status" -ne 0 ]; then
-    rm -f "$tmp_file"
+    [ -n "$tmp_file" ] && rm -f "$tmp_file"
     return "$jq_status"
   fi
-  mv "$tmp_file" "$snapshot_path"
+  if ! mv "$tmp_file" "$snapshot_path"; then
+    [ -n "$tmp_file" ] && rm -f "$tmp_file"
+    return 1
+  fi
   echo "$issue_count"
 }
 
@@ -240,7 +252,9 @@ materialize_round_known_issues_snapshot() {
     issues_json=$(extract_pre_existing_issues_json_from_verification "$phase_verification_path" "$source_rel" 0)
   fi
 
-  issue_count=$(write_known_issue_snapshot "$snapshot_path" "$issues_json")
+  if ! issue_count=$(write_known_issue_snapshot "$snapshot_path" "$issues_json"); then
+    return 1
+  fi
   printf 'snapshot_path=%s\n' "$snapshot_path"
   printf 'snapshot_count=%s\n' "$issue_count"
 }
@@ -401,14 +415,16 @@ emit_metadata() {
   known_issues_status="${known_issues_status:-missing}"
   known_issues_count="${known_issues_count:-0}"
 
-  snapshot_meta=$(materialize_round_known_issues_snapshot \
+  if ! snapshot_meta=$(materialize_round_known_issues_snapshot \
     "$round_dir" \
     "$round" \
     "$known_issues_path" \
     "$known_issues_status" \
     "$source_verification_path" \
     "$phase_verification_path" \
-    "$current_round_verification_path")
+    "$current_round_verification_path"); then
+    return 1
+  fi
   known_issues_path=$(printf '%s\n' "$snapshot_meta" | awk -F= '/^snapshot_path=/{print $2; exit}')
   known_issues_count=$(printf '%s\n' "$snapshot_meta" | awk -F= '/^snapshot_count=/{print $2; exit}')
   if [ -n "$known_issues_path" ] && [ -f "$known_issues_path" ] && [ "$known_issues_count" -gt 0 ] 2>/dev/null; then

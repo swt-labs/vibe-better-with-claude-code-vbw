@@ -139,9 +139,10 @@ extract_function_span() {
   local end_function="${3}"
 
   awk -v start="$start_function" -v end="$end_function" '
-    $0 ~ "^" start "\\(\\)[[:space:]]*\\{" { in_body = 1 }
-    in_body && $0 ~ "^" end "\\(\\)[[:space:]]*\\{" { exit }
+    $0 ~ "^" start "\\(\\)[[:space:]]*\\{" { found_start = 1; in_body = 1 }
+    in_body && $0 ~ "^" end "\\(\\)[[:space:]]*\\{" { found_end = 1; exit }
     in_body { print }
+    END { if (!found_start || !found_end) exit 1 }
   ' "$file_path"
 }
 
@@ -4159,9 +4160,12 @@ VERIF
 }
 
 @test "known-issue structural helpers avoid delimiter and large-array argv regressions" {
-  gate_cover_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "json_object_array_covers_full_issue_objects" "load_known_issue_registry_json")
-  gate_disposition_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "json_object_array_dispositions_match" "json_object_array_has_disposition")
-  snapshot_body=$(extract_function_span "$REPO_ROOT/scripts/qa-remediation-state.sh" "write_known_issue_snapshot" "materialize_round_known_issues_snapshot")
+  gate_cover_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "json_object_array_covers_full_issue_objects" "load_known_issue_registry_json") || false
+  gate_disposition_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "json_object_array_dispositions_match" "json_object_array_has_disposition") || false
+  snapshot_body=$(extract_function_span "$REPO_ROOT/scripts/qa-remediation-state.sh" "write_known_issue_snapshot" "materialize_round_known_issues_snapshot") || false
+  [ -n "$gate_cover_body" ]
+  [ -n "$gate_disposition_body" ]
+  [ -n "$snapshot_body" ]
   combined_body=$(printf '%s\n%s\n%s\n' "$gate_cover_body" "$gate_disposition_body" "$snapshot_body")
 
   [[ "$combined_body" != *"--argjson issues"* ]]

@@ -70,6 +70,44 @@ write_known_issues_file() {
 EOF
 }
 
+write_always_failing_mktemp_shim() {
+  local shim_dir="$TEST_TEMP_DIR/mktemp-shim"
+  mkdir -p "$shim_dir"
+  cat > "$shim_dir/mktemp" <<'SHIM'
+#!/usr/bin/env bash
+echo "mktemp injected failure" >&2
+exit 1
+SHIM
+  chmod +x "$shim_dir/mktemp"
+  printf '%s' "$shim_dir"
+}
+
+write_snapshot_failing_mktemp_shim() {
+  local shim_dir="$TEST_TEMP_DIR/mktemp-shim"
+  mkdir -p "$shim_dir"
+  cat > "$shim_dir/mktemp" <<'SHIM'
+#!/usr/bin/env bash
+set -eu
+
+case "${1:-}" in
+  *.tmp.XXXXXX)
+    echo "snapshot mktemp injected failure" >&2
+    exit 1
+    ;;
+  "")
+    path="${TEST_TEMP_DIR}/issues-json.tmp"
+    : > "$path"
+    printf '%s\n' "$path"
+    ;;
+  *)
+    exec /usr/bin/mktemp "$@"
+    ;;
+esac
+SHIM
+  chmod +x "$shim_dir/mktemp"
+  printf '%s' "$shim_dir"
+}
+
 # --- get command ---
 
 @test "get returns none when no state file exists" {
@@ -285,6 +323,33 @@ EOF
   echo "$output" | grep -q "^plan_path=.*remediation/qa/round-01/R01-PLAN.md$"
   [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]
   [ -d "$PHASE_DIR/remediation/qa/round-01" ]
+}
+
+@test "get-or-init fails closed when known-issue issues temp file cannot be created" {
+  write_phase_verification "PASS" $'## Must-Have Checks\n| # | ID | Truth/Condition | Status | Evidence |\n|---|-----|-----------------|--------|----------|\n| 1 | MH-01 | Fixture check | PASS | Done |'
+  write_known_issues_file
+  shim_dir=$(write_always_failing_mktemp_shim)
+
+  run env PATH="$shim_dir:$PATH" bash "$SCRIPTS_DIR/qa-remediation-state.sh" get-or-init "$PHASE_DIR"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" != *"known_issues_count=1"* ]]
+  [[ "$output" != *"input_mode=known-issues"* ]]
+  [ ! -f "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" ]
+}
+
+@test "get-or-init fails closed and cleans up when known-issue snapshot temp file cannot be created" {
+  write_phase_verification "PASS" $'## Must-Have Checks\n| # | ID | Truth/Condition | Status | Evidence |\n|---|-----|-----------------|--------|----------|\n| 1 | MH-01 | Fixture check | PASS | Done |'
+  write_known_issues_file
+  shim_dir=$(write_snapshot_failing_mktemp_shim)
+
+  run env PATH="$shim_dir:$PATH" bash "$SCRIPTS_DIR/qa-remediation-state.sh" get-or-init "$PHASE_DIR"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" != *"known_issues_count=1"* ]]
+  [[ "$output" != *"input_mode=known-issues"* ]]
+  [ ! -f "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" ]
+  [ ! -e "$TEST_TEMP_DIR/issues-json.tmp" ]
 }
 
 @test "get preserves an existing round-local known-issues snapshot after sync-verification clears the live registry" {
