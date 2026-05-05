@@ -6,7 +6,8 @@ setup() {
   setup_temp_dir
   PHASE_DIR="$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
   ROUND_DIR="$PHASE_DIR/remediation/uat/round-01"
-  mkdir -p "$ROUND_DIR"
+  QA_ROUND_DIR="$PHASE_DIR/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR" "$QA_ROUND_DIR"
 }
 
 write_valid_research() {
@@ -184,6 +185,77 @@ EOF
 
 @test "validator rejects Claude sidechain plan artifact paths" {
   local sidechain_plan="$TEST_TEMP_DIR/repo/.claude/worktrees/agent-test/.vbw-planning/phases/01-test/remediation/uat/round-01/R01-PLAN.md"
+  write_valid_plan "$sidechain_plan"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$sidechain_plan"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"Claude sidechain"* ]]
+}
+
+@test "validator accepts canonical UAT round-dir plan path" {
+  local plan_path="$ROUND_DIR/R01-PLAN.md"
+  write_valid_plan "$plan_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"artifact_valid=true"* ]]
+  [[ "$output" == *"artifact_path=$plan_path"* ]]
+}
+
+@test "validator accepts canonical QA round-dir plan path" {
+  local plan_path="$QA_ROUND_DIR/R01-PLAN.md"
+  write_valid_plan "$plan_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"artifact_valid=true"* ]]
+  [[ "$output" == *"artifact_path=$plan_path"* ]]
+}
+
+@test "validator rejects non-canonical QA plan filenames" {
+  local plan_path="$QA_ROUND_DIR/R01-CUSTOM-PLAN.md"
+  write_valid_plan "$plan_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"QA remediation plan filename shape"* ]]
+}
+
+@test "validator rejects missing canonical QA plan artifacts" {
+  local plan_path="$QA_ROUND_DIR/R01-PLAN.md"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"artifact file does not exist"* ]]
+}
+
+@test "validator rejects empty canonical QA plan artifacts" {
+  local plan_path="$QA_ROUND_DIR/R01-PLAN.md"
+  mkdir -p "$(dirname "$plan_path")"
+  : > "$plan_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"artifact file is empty"* ]]
+}
+
+@test "validator rejects malformed canonical QA plan artifacts" {
+  local plan_path="$QA_ROUND_DIR/R01-PLAN.md"
+  mkdir -p "$(dirname "$plan_path")"
+  printf '%s\n' '# Missing frontmatter' > "$plan_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"artifact missing YAML frontmatter"* ]]
+}
+
+@test "validator rejects Claude sidechain QA plan artifact paths" {
+  local sidechain_plan="$TEST_TEMP_DIR/repo/.claude/worktrees/agent-test/.vbw-planning/phases/01-test/remediation/qa/round-01/R01-PLAN.md"
   write_valid_plan "$sidechain_plan"
 
   run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$sidechain_plan"

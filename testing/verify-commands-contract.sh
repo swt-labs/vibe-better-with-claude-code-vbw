@@ -1236,6 +1236,16 @@ fi
 check_literal_before_literal "vibe: QA plan resolves Lead settings before using Lead model" "$qa_remediation_plan_block" 'resolve-agent-settings.sh lead' 'model: "${LEAD_MODEL}"'
 check_literal_before_literal "vibe: QA plan Lead spawn appears before Lead return breaker" "$qa_remediation_plan_block" 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' 'After Lead returns, apply the QA remediation no-tool circuit breaker'
 
+if grep -Fq 'Normalize plan filenames before validation' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'normalize-plan-filenames.sh' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'validate-uat-remediation-artifact.sh plan "{round_dir}/R{RR}-PLAN.md"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'If validation fails, display the validator error and STOP without advancing `.qa-remediation-stage`' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'Do not search for an alternate PLAN.md' <<< "$qa_remediation_plan_block"; then
+  pass "vibe: QA remediation plan stage validates canonical plan before advance"
+else
+  fail "vibe: QA remediation plan stage missing normalization/validation gate before advance"
+fi
+
 if grep -Fq 'After Lead returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'After Dev returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block" \
@@ -1248,7 +1258,10 @@ else
 fi
 
 check_literal_before_regex "vibe: QA plan Lead breaker appears before plan-stage state advance" "$qa_remediation_plan_block" 'After Lead returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
-check_literal_before_literal "vibe: QA plan Lead breaker appears before plan validation wording" "$qa_remediation_plan_block" 'After Lead returns, apply the QA remediation no-tool circuit breaker' 'After writing the plan, advance state'
+check_literal_before_literal "vibe: QA plan Lead breaker appears before plan normalization" "$qa_remediation_plan_block" 'After Lead returns, apply the QA remediation no-tool circuit breaker' 'Normalize plan filenames before validation'
+check_literal_before_literal "vibe: QA plan normalization appears before plan validation" "$qa_remediation_plan_block" 'Normalize plan filenames before validation' 'Validate the exact QA remediation plan artifact before advancing'
+check_literal_before_regex "vibe: QA plan validation appears before plan-stage state advance" "$qa_remediation_plan_block" 'validate-uat-remediation-artifact.sh plan "{round_dir}/R{RR}-PLAN.md"' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "vibe: QA plan validation passes before state advance wording" "$qa_remediation_plan_block" 'Validate the exact QA remediation plan artifact before advancing' 'After plan validation passes, advance state'
 check_literal_before_regex "vibe: QA execute Dev breaker appears before execute-stage state advance" "$qa_remediation_execute_block" 'After Dev returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
 check_literal_before_literal "vibe: QA verify breaker appears before known-issue sync" "$qa_remediation_verify_block" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" sync-verification'
 check_literal_before_literal "vibe: QA verify breaker appears before known-issue promotion" "$qa_remediation_verify_block" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" promote-todos'

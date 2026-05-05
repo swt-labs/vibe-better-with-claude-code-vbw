@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# validate-uat-remediation-artifact.sh — deterministic gate for UAT remediation artifacts.
+# validate-uat-remediation-artifact.sh — deterministic gate for remediation artifacts.
 #
 # Usage:
 #   validate-uat-remediation-artifact.sh <research|plan|summary> <absolute-artifact-path>
 #
-# The UAT remediation orchestrator uses this before advancing persisted state so
-# a sidechain/subagent artifact miss cannot be mistaken for a completed stage.
+# UAT and QA remediation orchestrators use this before advancing persisted state
+# so a sidechain/subagent artifact miss cannot be mistaken for a completed stage.
 
 set -euo pipefail
 
@@ -206,6 +206,12 @@ validate_common_path() {
 
   case "$ARTIFACT_PATH" in
     */.vbw-planning/phases/*/remediation/uat/round-[0-9][0-9]/R[0-9][0-9]-"$expected_suffix".md) ;;
+    */.vbw-planning/phases/*/remediation/qa/round-[0-9][0-9]/R[0-9][0-9]-PLAN.md)
+      [ "$ARTIFACT_TYPE" = "plan" ] || emit_failure "QA remediation validation currently supports plan artifacts only"
+      ;;
+    */.vbw-planning/phases/*/remediation/qa/*)
+      emit_failure "artifact path must match the expected QA remediation plan filename shape"
+      ;;
     *) validate_legacy_phase_root_path "$expected_suffix" ;;
   esac
 

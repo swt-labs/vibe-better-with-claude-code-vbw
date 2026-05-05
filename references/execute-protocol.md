@@ -800,8 +800,20 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
     ```
   - Spawn Lead as a plain sequential work-unit subagent with `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"`. If `LEAD_MAX_TURNS` is non-empty, include `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is empty, omit `maxTurns` because the resolved profile is unlimited. Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`.
   - Lead prompt MUST include the authoritative `round_dir`, `source_verification_path`, `known_issues_path`, and output path `{round_dir}/R{RR}-PLAN.md`; the failed-check and known-issue inputs above; the deviation-classification and known-issue-resolution requirements above; and `Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md and follow its structure exactly.`
-  - After Lead returns, apply the QA remediation no-tool circuit breaker before reading or trusting the generated plan, normalizing anything, validating anything, or advancing state. If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Lead prompt.
-  - Advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
+  - After Lead returns, apply the QA remediation no-tool circuit breaker before normalizing plan filenames, validating the generated plan, or advancing state. If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Lead prompt.
+  - Normalize plan filenames before validation:
+    ```bash
+    NORM_SCRIPT="${VBW_PLUGIN_ROOT}/scripts/normalize-plan-filenames.sh"
+    if [ -f "$NORM_SCRIPT" ]; then
+      bash "$NORM_SCRIPT" "{round_dir}"
+    fi
+    ```
+  - Validate the exact QA remediation plan artifact before advancing:
+    ```bash
+    bash "${VBW_PLUGIN_ROOT}/scripts/validate-uat-remediation-artifact.sh" plan "{round_dir}/R{RR}-PLAN.md"
+    ```
+    If validation fails, display the validator error and STOP without advancing `.qa-remediation-stage`. Do not search for an alternate PLAN.md.
+  - After plan validation passes, advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
 
    **stage=execute:** Spawn a Dev subagent per `R{RR}-PLAN.md`:
    - **Always subagent — NO team creation for QA remediation (NON-NEGOTIABLE)**
