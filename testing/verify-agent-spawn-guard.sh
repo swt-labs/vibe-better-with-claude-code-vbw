@@ -245,7 +245,7 @@ test_no_marker_strips_sidechain_cwd_when_config_missing() {
     for field in cwd working_dir workingDirectory workdir; do
       output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
       json_line=$(extract_json "$output")
-      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1; then
+      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && ! echo "$json_line" | jq -e ".hookSpecificOutput.updatedInput.${field}" >/dev/null 2>&1; then
         pass "No marker with missing config key: ${tool} sidechain ${field} stripped and allowed"
       else
         fail "No-marker ${tool} sidechain ${field} should be stripped when worktree_isolation key is missing (rc=$rc, output=$output)"
@@ -266,7 +266,7 @@ test_no_marker_strips_sidechain_cwd_when_config_off() {
     for field in cwd working_dir workingDirectory workdir; do
       output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
       json_line=$(extract_json "$output")
-      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1; then
+      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && ! echo "$json_line" | jq -e ".hookSpecificOutput.updatedInput.${field}" >/dev/null 2>&1; then
         pass "No marker with config off: ${tool} sidechain ${field} stripped and allowed"
       else
         fail "No-marker ${tool} sidechain ${field} should be stripped when worktree_isolation off (rc=$rc, output=$output)"
@@ -448,7 +448,7 @@ test_no_marker_strips_sidechain_cwd_when_config_on() {
     for field in cwd working_dir workingDirectory workdir; do
       output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
       json_line=$(extract_json "$output")
-      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1; then
+      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && ! echo "$json_line" | jq -e ".hookSpecificOutput.updatedInput.${field}" >/dev/null 2>&1; then
         pass "No marker with config on: ${tool} sidechain ${field} stripped and allowed"
       else
         fail "No-marker ${tool} sidechain ${field} should be stripped even when worktree_isolation on (rc=$rc, output=$output)"
