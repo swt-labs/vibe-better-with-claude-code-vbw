@@ -12,7 +12,8 @@ set -euo pipefail
 ARTIFACT_TYPE="${1:-}"
 ARTIFACT_PATH="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# Set to "qa" or "uat" by validate_common_path so downstream checks can vary per kind.
+# Set to "qa" or "uat" inside validate_common_path based on the artifact path structure;
+# used by downstream artifact-type checks to allow per-kind variations (e.g. optional fields).
 REMEDIATION_KIND=""
 
 if [ -f "$SCRIPT_DIR/uat-utils.sh" ]; then
