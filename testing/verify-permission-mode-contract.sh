@@ -54,16 +54,6 @@ markdown_table_cell() {
   printf '%s\n' "$row" | awk -F'|' -v index="$index" '{ cell=$index; gsub(/^[[:space:]]+|[[:space:]]+$/, "", cell); print cell }'
 }
 
-tool_list_contains() {
-  local list="$1"
-  local tool="$2"
-  printf '%s\n' "$list" \
-    | sed 's/^[^:]*:[[:space:]]*//' \
-    | tr ',' '\n' \
-    | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
-    | grep -Fxq "$tool"
-}
-
 normalize_tool_list() {
   local list="$1"
   printf '%s\n' "$list" \
