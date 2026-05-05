@@ -187,12 +187,31 @@ fi
 TDIR="$TMPDIR_TEST/test10d/.vbw-planning/phases/01-setup/remediation/qa/round-01"
 mkdir -p "$TDIR"
 echo "stale" > "$TDIR/R01-PLAN.md"
-echo "fresh" > "$TDIR/PLAN-01.md"
+cat > "$TDIR/PLAN-01.md" <<'PLAN'
+---
+phase: 1
+round: 1
+title: Valid remediation plan
+type: remediation
+fail_classifications:
+  - {id: "FAIL-1", type: "code-fix", rationale: "fix required"}
+known_issues_input: []
+known_issue_resolutions: []
+---
+<tasks>
+<task type="auto">
+  <name>Fix</name>
+</task>
+</tasks>
+<verification>
+1. Run tests.
+</verification>
+PLAN
 touch -t 202001010000 "$TDIR/R01-PLAN.md"
 touch -t 202001010001 "$TDIR/PLAN-01.md"
 OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
 CONTENT=$(cat "$TDIR/R01-PLAN.md")
-if [ "$RC" -eq 0 ] && [ "$CONTENT" = "fresh" ] && [ ! -f "$TDIR/PLAN-01.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && echo "$OUTPUT" | grep -q "replaced existing target"; then
+if [ "$RC" -eq 0 ] && echo "$CONTENT" | grep -q "Valid remediation plan" && [ ! -f "$TDIR/PLAN-01.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && echo "$OUTPUT" | grep -q "replaced existing target"; then
   pass "round collision: replaces stale R01-PLAN.md with fresh PLAN-01.md"
 else
   fail "round collision — rc=$RC, content: $CONTENT, files: $(ls "$TDIR"), output: $OUTPUT"

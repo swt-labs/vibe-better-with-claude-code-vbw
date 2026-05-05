@@ -12,9 +12,6 @@ set -euo pipefail
 ARTIFACT_TYPE="${1:-}"
 ARTIFACT_PATH="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# Set to "qa" or "uat" inside validate_common_path based on the artifact path structure;
-# used by downstream artifact-type checks to allow per-kind variations (e.g. optional fields).
-REMEDIATION_KIND=""
 
 if [ -f "$SCRIPT_DIR/uat-utils.sh" ]; then
   # shellcheck source=scripts/uat-utils.sh
@@ -313,11 +310,9 @@ validate_common_path() {
 
   case "$ARTIFACT_PATH" in
     */.vbw-planning/phases/*/remediation/uat/round-[0-9]*/*)
-      REMEDIATION_KIND="uat"
       validate_round_dir_artifact_path "uat" "$expected_suffix"
       ;;
     */.vbw-planning/phases/*/remediation/qa/round-[0-9]*/*)
-      REMEDIATION_KIND="qa"
       [ "$ARTIFACT_TYPE" = "plan" ] || emit_failure "QA remediation validation currently supports plan artifacts only"
       validate_round_dir_artifact_path "qa" "PLAN"
       ;;
