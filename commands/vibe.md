@@ -587,7 +587,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
   QA remediation spawns are plain sequential subagent calls. Do not use TeamCreate. Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). Use the remediation metadata paths above instead of forcing Claude worktree isolation or spawn cwd handoffs.
   </qa_remediation_spawn_contract>
   <qa_remediation_no_tool_circuit_breaker>
-  After any QA remediation Dev or QA subagent returns, inspect returned text before artifact validation, deterministic gates, or state advancement. If it says tools, shell/Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure: STOP without advancing `.qa-remediation-stage`, report the failed role and task, and do not retry the same prompt. Repeating a no-tool spawn cannot fix tool provisioning and wastes tokens.
+  After any QA remediation Lead, Dev, or QA subagent returns, inspect returned text before artifact validation, deterministic gates, or state advancement. If it says tools, shell/Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure: STOP without advancing `.qa-remediation-stage`, report the failed role and stage/task, and do not retry the same prompt. Repeating a no-tool spawn cannot fix tool provisioning and wastes tokens.
   </qa_remediation_no_tool_circuit_breaker>
 2. Read remediation inputs.
 - Round 01: phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
@@ -621,6 +621,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
   - Do NOT omit a carried known issue from `known_issues_input` or `known_issue_resolutions`. The deterministic gate treats missing coverage as a failed remediation round even if QA writes `PASS`.
   - Scope the plan to those failures: what to fix, which files, acceptance criteria
   - The orchestrator/Lead writes the plan (QA says what's wrong, planning says how to fix)
+  - After Lead returns, apply the QA remediation no-tool circuit breaker before plan validation, normalization, or state advancement. If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Lead prompt.
   - After writing the plan, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
 
 - **stage=execute:** Spawn a Dev subagent per `R{RR}-PLAN.md`:

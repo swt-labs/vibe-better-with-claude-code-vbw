@@ -763,7 +763,7 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
   QA remediation uses plain sequential subagent calls. Do not use TeamCreate. Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). Use remediation metadata paths in prompts; VBW worktree targeting is task prompt/state metadata, not a spawn isolation or cwd handoff.
   </qa_remediation_spawn_contract>
   <qa_remediation_no_tool_circuit_breaker>
-  After any QA remediation Dev or QA subagent returns, inspect returned text before artifact validation, deterministic gates, or state advancement. If it says tools, shell/Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure: STOP without advancing `.qa-remediation-stage`, report the failed role and task, and do not retry the same prompt.
+  After any QA remediation Lead, Dev, or QA subagent returns, inspect returned text before artifact validation, deterministic gates, or state advancement. If it says tools, shell/Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure: STOP without advancing `.qa-remediation-stage`, report the failed role and stage/task, and do not retry the same prompt.
   </qa_remediation_no_tool_circuit_breaker>
 
 2. **Loop (until PROCEED_TO_UAT or user intervention):**
