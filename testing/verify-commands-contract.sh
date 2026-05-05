@@ -1158,11 +1158,19 @@ else
   pass "vibe: QA remediation no-tool breaker includes generic shell signal"
 fi
 
+if grep -Fq 'unavailable tools, Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_block"; then
+  fail "vibe: QA remediation return sites still use Bash-only wording"
+else
+  pass "vibe: QA remediation return sites include generic shell signal"
+fi
+
 check_literal_before_regex "vibe: QA no-tool breaker appears before remediation state advance" "$qa_remediation_block" '<qa_remediation_no_tool_circuit_breaker>' 'qa-remediation-state\.sh.*advance'
 check_literal_before_literal "vibe: QA no-tool breaker appears before deterministic gate" "$qa_remediation_block" '<qa_remediation_no_tool_circuit_breaker>' 'qa-result-gate.sh'
 
 if grep -Fq 'After Dev returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block" \
-  && grep -Fq 'After QA returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block"; then
+  && grep -Fq 'If Dev reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_execute_block" \
+  && grep -Fq 'After QA returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block" \
+  && grep -Fq 'If QA reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_verify_block"; then
   pass "vibe: QA remediation applies no-tool breaker at Dev and QA return sites"
 else
   fail "vibe: QA remediation missing no-tool breaker at Dev or QA return site"

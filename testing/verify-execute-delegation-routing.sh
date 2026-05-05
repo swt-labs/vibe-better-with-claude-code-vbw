@@ -561,6 +561,12 @@ else
   pass "execute-protocol no-tool handling includes generic shell signal"
 fi
 
+if grep -Fq 'unavailable tools, Bash, filesystem, edits, or API-session access' <<< "$QA_REMEDIATION_BLOCK"; then
+  fail "execute-protocol QA remediation return sites still use Bash-only wording"
+else
+  pass "execute-protocol QA remediation return sites include generic shell signal"
+fi
+
 check_literal_before_literal "execute-protocol inspects Dev return before blocker retry handling" "$EXECUTE_PROTOCOL_TEXT" 'When a Dev subagent Task returns, inspect the result immediately' '2. **blocker_report received:**'
 check_literal_before_literal "execute-protocol handles no-tool Dev return before normal blocker retry handling" "$EXECUTE_PROTOCOL_TEXT" '1. **platform/tool provisioning failure:**' '2. **blocker_report received:**'
 
@@ -614,6 +620,13 @@ if grep -Fq '<qa_remediation_no_tool_circuit_breaker>' "$EXECUTE_PROTOCOL" \
   pass "execute-protocol documents QA remediation no-tool circuit breaker"
 else
   fail "execute-protocol missing QA remediation no-tool circuit breaker"
+fi
+
+if grep -Fq 'If Dev reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$QA_REMEDIATION_EXECUTE_BLOCK" \
+  && grep -Fq 'If QA reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$QA_REMEDIATION_VERIFY_BLOCK"; then
+  pass "execute-protocol QA remediation applies shell/Bash no-tool handling at Dev and QA return sites"
+else
+  fail "execute-protocol QA remediation return sites missing shell/Bash no-tool handling"
 fi
 
 check_literal_before_regex "execute-protocol QA no-tool breaker appears before remediation state advance" "$QA_REMEDIATION_BLOCK" '<qa_remediation_no_tool_circuit_breaker>' 'qa-remediation-state\.sh.*advance'
