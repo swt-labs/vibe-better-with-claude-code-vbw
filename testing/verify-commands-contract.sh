@@ -1255,6 +1255,26 @@ else
   fail "vibe: QA remediation plan stage missing normalization/validation gate before advance"
 fi
 
+if grep -Fq 'Always include `known_issues_input:` and `known_issue_resolutions:` in R{RR}-PLAN.md frontmatter' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'known_issues_count=0' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'input_mode=verification' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'known_issues_input: []' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'known_issue_resolutions: []' <<< "$qa_remediation_plan_block"; then
+  pass "vibe: QA remediation plan always includes known-issue arrays"
+else
+  fail "vibe: QA remediation plan may omit validator-required known-issue arrays"
+fi
+
+if grep -Fq 'Always include `known_issues_input:` and `known_issue_resolutions:` in R{RR}-PLAN.md frontmatter' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'known_issues_count=0' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'input_mode=verification' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'known_issues_input: []' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'known_issue_resolutions: []' <<< "$execute_protocol_qa_remediation_block"; then
+  pass "execute-protocol: QA remediation plan always includes known-issue arrays"
+else
+  fail "execute-protocol: QA remediation plan may omit validator-required known-issue arrays"
+fi
+
 if grep -Fq 'After Lead returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'After Dev returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block" \

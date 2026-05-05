@@ -65,7 +65,8 @@ canonicalize_existing_or_parent() {
 }
 
 translate_claude_sidechain_phase_candidate() {
-  local candidate="$1" sidechain_root="${VBW_CLAUDE_SIDECHAIN_ROOT:-}" host_root="${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}" rel_phase_path inferred_host_root sidechain_phases_dir
+  local candidate="$1" sidechain_root="${VBW_CLAUDE_SIDECHAIN_ROOT:-}" host_root="${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}"
+  local rel_phase_path inferred_sidechain_root worktrees_dir claude_dir inferred_host_root
 
   # Primary: env-var mapping populated by vbw-config-root.sh when the shell CWD is inside a
   # Claude sidechain (e.g. .claude/worktrees/agent-*).
@@ -81,15 +82,18 @@ translate_claude_sidechain_phase_candidate() {
 
   # Structural fallback: caller is running from the host CWD but passed an absolute sidechain
   # phase path directly (env vars not set because the hook fires only for sidechain CWD).
-  # Infer the host root by stripping the /.claude/worktrees/agent-{id}/... suffix.
+  # Infer the host root by walking up from /.claude/worktrees/agent-{id}/... rather than
+  # relying on a greedy text replacement.
   case "$candidate" in
     */.claude/worktrees/agent-*/.vbw-planning/phases/*)
-      inferred_host_root=$(printf '%s\n' "$candidate" | sed 's|/\.claude/worktrees/agent-[a-zA-Z0-9_-]*/.*||')
-      if [ -n "$inferred_host_root" ] && [ -f "$inferred_host_root/.vbw-planning/config.json" ]; then
-        # Derive rel_phase_path via shell expansion (%%/# operators) rather than a greedy
-        # sed pattern, so multiple .vbw-planning/phases/ segments cannot mislead extraction.
-        sidechain_phases_dir="${candidate%%/.vbw-planning/phases/*}"
-        rel_phase_path="${candidate#"$sidechain_phases_dir"/.vbw-planning/phases/}"
+      inferred_sidechain_root="${candidate%%/.vbw-planning/phases/*}"
+      rel_phase_path="${candidate#"$inferred_sidechain_root"/.vbw-planning/phases/}"
+      worktrees_dir=$(dirname "$inferred_sidechain_root")
+      claude_dir=$(dirname "$worktrees_dir")
+      inferred_host_root=$(dirname "$claude_dir")
+      if [ "$(basename "$worktrees_dir")" = "worktrees" ] \
+        && [ "$(basename "$claude_dir")" = ".claude" ] \
+        && [ -f "$inferred_host_root/.vbw-planning/config.json" ]; then
         printf '%s/.vbw-planning/phases/%s\n' "$inferred_host_root" "$rel_phase_path"
         return 0
       fi

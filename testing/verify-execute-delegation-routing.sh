@@ -673,6 +673,16 @@ else
   fail "execute-protocol QA remediation plan stage missing normalization/validation gate before advance"
 fi
 
+if grep -Fq 'Always include `known_issues_input:` and `known_issue_resolutions:` in R{RR}-PLAN.md frontmatter' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'known_issues_count=0' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'input_mode=verification' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'known_issues_input: []' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'known_issue_resolutions: []' <<< "$QA_REMEDIATION_PLAN_BLOCK"; then
+  pass "execute-protocol QA remediation plan always includes validator-required known-issue arrays"
+else
+  fail "execute-protocol QA remediation plan may omit validator-required known-issue arrays"
+fi
+
 if grep -Fq 'If Dev reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$QA_REMEDIATION_EXECUTE_BLOCK" \
   && grep -Fq 'If QA reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$QA_REMEDIATION_VERIFY_BLOCK"; then
   pass "execute-protocol QA remediation applies shell/Bash no-tool handling at Dev and QA return sites"
