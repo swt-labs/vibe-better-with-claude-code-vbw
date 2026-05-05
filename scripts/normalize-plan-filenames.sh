@@ -56,7 +56,13 @@ if [ -n "$ROUND_PLAN_TOKEN" ]; then
 
     TARGET="$PHASE_DIR/${ROUND_PLAN_TOKEN}-PLAN.md"
     if [ -f "$TARGET" ]; then
-      echo "skipped: $BASENAME (target $(basename "$TARGET") already exists)" >&2
+      if cmp -s "$f" "$TARGET"; then
+        rm "$f"
+        echo "removed duplicate: $BASENAME (matches $(basename "$TARGET"))"
+        continue
+      fi
+      mv "$f" "$TARGET"
+      echo "renamed: $BASENAME -> $(basename "$TARGET") (replaced existing target)"
       continue
     fi
     mv "$f" "$TARGET"

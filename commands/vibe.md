@@ -620,6 +620,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     - `unresolved` = the issue remains blocking and the next round must continue to carry it
   - Do NOT omit a carried known issue from `known_issues_input` or `known_issue_resolutions`. The deterministic gate treats missing coverage as a failed remediation round even if QA writes `PASS`.
   - Scope the plan to those failures: what to fix, which files, acceptance criteria
+  - Existing-plan recovery before spawning Lead: first run the normalizer on `{round_dir}`. If the canonical `{round_dir}/R{RR}-PLAN.md` exists after normalization, validate that exact artifact with `validate-uat-remediation-artifact.sh plan "{round_dir}/R{RR}-PLAN.md"`. If validation fails, display the validator error and STOP without advancing `.qa-remediation-stage`. If validation passes, do not spawn Lead again; reuse the persisted plan and continue at the final post-validation state-advance step below. This preserves a valid plan written before an interrupted `stage=plan` resume instead of overwriting it.
   - The orchestrator coordinates the remediation loop and spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md` (QA says what's wrong, planning says how to fix).
   - Resolve Lead settings before composing the Lead task:
     ```bash

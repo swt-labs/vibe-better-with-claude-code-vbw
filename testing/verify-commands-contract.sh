@@ -1234,6 +1234,14 @@ else
 fi
 
 check_literal_before_literal "vibe: QA plan resolves Lead settings before using Lead model" "$qa_remediation_plan_block" 'resolve-agent-settings.sh lead' 'model: "${LEAD_MODEL}"'
+if grep -Fq 'Existing-plan recovery before spawning Lead' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'If the canonical `{round_dir}/R{RR}-PLAN.md` exists after normalization' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'If validation passes, do not spawn Lead again; reuse the persisted plan' <<< "$qa_remediation_plan_block"; then
+  pass "vibe: QA remediation reuses existing validated plan on resume"
+else
+  fail "vibe: QA remediation missing existing-plan recovery before Lead respawn"
+fi
+check_literal_before_literal "vibe: QA existing-plan recovery appears before Lead spawn" "$qa_remediation_plan_block" 'Existing-plan recovery before spawning Lead' 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`'
 check_literal_before_literal "vibe: QA plan Lead spawn appears before Lead return breaker" "$qa_remediation_plan_block" 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' 'After Lead returns, apply the QA remediation no-tool circuit breaker'
 
 if grep -Fq 'Normalize plan filenames before validation' <<< "$qa_remediation_plan_block" \

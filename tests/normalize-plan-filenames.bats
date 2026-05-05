@@ -95,20 +95,20 @@ teardown() {
   [[ "$output" == *"renamed: PLAN-R01.md -> R01-PLAN.md"* ]]
 }
 
-@test "does not overwrite existing round-dir R01-PLAN.md" {
+@test "replaces existing round-dir R01-PLAN.md with fresh misnamed plan" {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
   mkdir -p "$ROUND_DIR"
-  echo "correct" > "$ROUND_DIR/R01-PLAN.md"
-  echo "misnamed" > "$ROUND_DIR/PLAN-01.md"
+  echo "stale" > "$ROUND_DIR/R01-PLAN.md"
+  echo "fresh" > "$ROUND_DIR/PLAN-01.md"
 
   run bash "$SCRIPT" "$ROUND_DIR"
 
   [ "$status" -eq 0 ]
   [ -f "$ROUND_DIR/R01-PLAN.md" ]
-  [ -f "$ROUND_DIR/PLAN-01.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
   [ ! -f "$ROUND_DIR/01-PLAN.md" ]
-  [ "$(cat "$ROUND_DIR/R01-PLAN.md")" = "correct" ]
-  [[ "$output" == *"skipped: PLAN-01.md (target R01-PLAN.md already exists)"* ]]
+  [ "$(cat "$ROUND_DIR/R01-PLAN.md")" = "fresh" ]
+  [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md (replaced existing target)"* ]]
 }
 
 @test "renames {NN}-01-RESEARCH.md to {NN}-RESEARCH.md when it is the only research file" {

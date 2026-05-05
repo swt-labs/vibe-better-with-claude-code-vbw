@@ -183,15 +183,15 @@ else
   fail "legacy PLAN-R01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
 fi
 
-# Test 10d: round-dir collision preserves existing canonical R01-PLAN.md
+# Test 10d: round-dir collision replaces stale canonical R01-PLAN.md with fresh misnamed plan
 TDIR="$TMPDIR_TEST/test10d/.vbw-planning/phases/01-setup/remediation/qa/round-01"
 mkdir -p "$TDIR"
-echo "correct" > "$TDIR/R01-PLAN.md"
-echo "misnamed" > "$TDIR/PLAN-01.md"
+echo "stale" > "$TDIR/R01-PLAN.md"
+echo "fresh" > "$TDIR/PLAN-01.md"
 OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
 CONTENT=$(cat "$TDIR/R01-PLAN.md")
-if [ "$RC" -eq 0 ] && [ "$CONTENT" = "correct" ] && [ -f "$TDIR/PLAN-01.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && echo "$OUTPUT" | grep -q "skipped"; then
-  pass "round collision: skips PLAN-01.md when R01-PLAN.md exists"
+if [ "$RC" -eq 0 ] && [ "$CONTENT" = "fresh" ] && [ ! -f "$TDIR/PLAN-01.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && echo "$OUTPUT" | grep -q "replaced existing target"; then
+  pass "round collision: replaces stale R01-PLAN.md with fresh PLAN-01.md"
 else
   fail "round collision — rc=$RC, content: $CONTENT, files: $(ls "$TDIR"), output: $OUTPUT"
 fi
