@@ -144,6 +144,19 @@ teardown() {
   [[ "$output" == *"round token does not match"* ]]
 }
 
+@test "does not normalize bare numeric round-dir plan whose source round token mismatches directory" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "wrong round" > "$ROUND_DIR/PLAN-02.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/PLAN-02.md" ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [[ "$output" == *"round token does not match"* ]]
+}
+
 @test "fails closed when round-dir has conflicting misnamed plan candidates" {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
   mkdir -p "$ROUND_DIR"

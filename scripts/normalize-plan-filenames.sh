@@ -13,7 +13,11 @@ set -u
 #   PLAN-R{RR}.md         → R{RR}-PLAN.md
 #   PLAN-{RR}.md          → R{RR}-PLAN.md
 #
-# Skips if target already exists. Exit 0 always (best-effort).
+# Phase-directory renames skip when the target already exists. Remediation
+# round-directory renames deduplicate matching candidates, preserve newer
+# canonical targets, replace them only with newer single candidates, and move
+# conflicts/stale candidates aside so downstream validation fails closed. Exit 0
+# always (best-effort).
 
 PHASE_DIR="${1:-}"
 if [ -z "$PHASE_DIR" ] || [ ! -d "$PHASE_DIR" ]; then

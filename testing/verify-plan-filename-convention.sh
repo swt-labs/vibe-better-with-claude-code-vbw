@@ -237,6 +237,17 @@ else
   fail "round token mismatch — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
 fi
 
+# Test 10d5: bare numeric source round token must also match containing round directory
+TDIR="$TMPDIR_TEST/test10d5/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "wrong round" > "$TDIR/PLAN-02.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/PLAN-02.md" ] && [ ! -f "$TDIR/R01-PLAN.md" ] && echo "$OUTPUT" | grep -q "round token does not match"; then
+  pass "round token mismatch: skips PLAN-02.md in round-01"
+else
+  fail "round token numeric mismatch — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
 # Test 10e: phase directories still normalize PLAN-01.md to 01-PLAN.md
 TDIR="$TMPDIR_TEST/test10e/.vbw-planning/phases/01-setup"
 mkdir -p "$TDIR"

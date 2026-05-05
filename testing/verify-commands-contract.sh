@@ -1241,6 +1241,7 @@ if grep -Fq 'Existing-plan recovery before spawning Lead' <<< "$qa_remediation_p
 else
   fail "vibe: QA remediation missing existing-plan recovery before Lead respawn"
 fi
+check_literal_before_literal "vibe: QA existing-plan recovery normalizes before canonical probe" "$qa_remediation_plan_block" 'normalize-plan-filenames.sh' 'If the canonical `{round_dir}/R{RR}-PLAN.md` exists after normalization'
 check_literal_before_literal "vibe: QA existing-plan recovery appears before Lead spawn" "$qa_remediation_plan_block" 'Existing-plan recovery before spawning Lead' 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`'
 check_literal_before_literal "vibe: QA plan Lead spawn appears before Lead return breaker" "$qa_remediation_plan_block" 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' 'After Lead returns, apply the QA remediation no-tool circuit breaker'
 
