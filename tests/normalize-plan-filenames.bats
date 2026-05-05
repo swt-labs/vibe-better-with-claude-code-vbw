@@ -67,7 +67,7 @@ EOF
 @test "renames QA round-dir PLAN-R01.md to R01-PLAN.md" {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
   mkdir -p "$ROUND_DIR"
-  echo "plan" > "$ROUND_DIR/PLAN-R01.md"
+  write_valid_round_plan "$ROUND_DIR/PLAN-R01.md"
 
   run bash "$SCRIPT" "$ROUND_DIR"
 
@@ -81,7 +81,7 @@ EOF
 @test "renames QA round-dir PLAN-01.md to R01-PLAN.md" {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
   mkdir -p "$ROUND_DIR"
-  echo "plan" > "$ROUND_DIR/PLAN-01.md"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.md"
 
   run bash "$SCRIPT" "$ROUND_DIR"
 
@@ -95,7 +95,7 @@ EOF
 @test "renames UAT round-dir PLAN-01.md to R01-PLAN.md" {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/uat/round-01"
   mkdir -p "$ROUND_DIR"
-  echo "plan" > "$ROUND_DIR/PLAN-01.md"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.md"
 
   run bash "$SCRIPT" "$ROUND_DIR"
 
@@ -109,7 +109,7 @@ EOF
 @test "renames legacy remediation round-dir PLAN-01.md to R01-PLAN.md" {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/round-01"
   mkdir -p "$ROUND_DIR"
-  echo "plan" > "$ROUND_DIR/PLAN-01.md"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.md"
 
   run bash "$SCRIPT" "$ROUND_DIR"
 
@@ -123,7 +123,7 @@ EOF
 @test "renames legacy remediation round-dir PLAN-R01.md to R01-PLAN.md" {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/round-01"
   mkdir -p "$ROUND_DIR"
-  echo "plan" > "$ROUND_DIR/PLAN-R01.md"
+  write_valid_round_plan "$ROUND_DIR/PLAN-R01.md"
 
   run bash "$SCRIPT" "$ROUND_DIR"
 
@@ -169,6 +169,40 @@ EOF
   grep -q "Valid remediation plan" "$ROUND_DIR/R01-PLAN.md"
   [[ "$output" == *"newer candidate is structurally invalid"* ]]
   [[ "$output" == *"preserved existing R01-PLAN.md"* ]]
+}
+
+@test "does not promote lone misnamed round plan when candidate is malformed" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "partial write without required frontmatter" > "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-01.md.invalid" ]
+  [[ "$output" == *"candidate is structurally invalid"* ]]
+}
+
+@test "does not replace canonical round plan with candidate from different frontmatter round" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/R01-PLAN.md"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.md"
+  sed -i.bak 's/^round: 1$/round: 2/' "$ROUND_DIR/PLAN-01.md"
+  rm -f "$ROUND_DIR/PLAN-01.md.bak"
+  touch -t 202001010000 "$ROUND_DIR/R01-PLAN.md"
+  touch -t 202001010001 "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-01.md.invalid" ]
+  grep -q "round: 1" "$ROUND_DIR/R01-PLAN.md"
+  [[ "$output" == *"newer candidate is structurally invalid"* ]]
 }
 
 @test "does not replace newer canonical plan with stale misnamed round-dir candidate" {

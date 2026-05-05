@@ -12,6 +12,7 @@ set -euo pipefail
 ARTIFACT_TYPE="${1:-}"
 ARTIFACT_PATH="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+EXPECTED_ARTIFACT_ROUND=""
 
 if [ -f "$SCRIPT_DIR/uat-utils.sh" ]; then
   # shellcheck source=scripts/uat-utils.sh
@@ -263,6 +264,7 @@ validate_round_dir_artifact_path() {
   esac
 
   expected_round=$(printf "%02d" "$((10#$round_raw))")
+  EXPECTED_ARTIFACT_ROUND="$expected_round"
   if [ "$round_raw" != "$expected_round" ]; then
     emit_failure "$shape_error"
   fi
@@ -346,6 +348,18 @@ validate_frontmatter() {
     || emit_failure "artifact frontmatter missing title"
 }
 
+validate_frontmatter_round_matches_path() {
+  local frontmatter="$1" frontmatter_round frontmatter_round_norm
+
+  [ -n "$EXPECTED_ARTIFACT_ROUND" ] || return 0
+  frontmatter_round=$(printf '%s\n' "$frontmatter" | sed -n 's/^round:[[:space:]]*\([0-9][0-9]*\).*$/\1/p' | head -1)
+  [ -n "$frontmatter_round" ] || emit_failure "artifact frontmatter missing numeric round"
+  frontmatter_round_norm=$(printf "%02d" "$((10#$frontmatter_round))")
+  if [ "$frontmatter_round_norm" != "$EXPECTED_ARTIFACT_ROUND" ]; then
+    emit_failure "artifact frontmatter round must match round directory"
+  fi
+}
+
 if [ -z "$ARTIFACT_TYPE" ] || [ -z "$ARTIFACT_PATH" ]; then
   usage
   exit 1
@@ -369,6 +383,7 @@ esac
 validate_common_path "$expected_suffix"
 FRONTMATTER=$(extract_frontmatter "$ARTIFACT_PATH")
 validate_frontmatter "$FRONTMATTER"
+validate_frontmatter_round_matches_path "$FRONTMATTER"
 
 case "$ARTIFACT_TYPE" in
   research)

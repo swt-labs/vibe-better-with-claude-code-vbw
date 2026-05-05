@@ -33,7 +33,7 @@ PHASE_DIR="${PHASE_DIR%/}"
 PHASE_DIR_BASE=$(basename "$PHASE_DIR")
 
 round_plan_content_is_valid() {
-  local file_path="$1" frontmatter
+  local file_path="$1" expected_round="${2:-}" frontmatter frontmatter_round frontmatter_round_norm
 
   [ -s "$file_path" ] || return 1
   frontmatter=$(awk '
@@ -49,6 +49,12 @@ round_plan_content_is_valid() {
   [ -n "$frontmatter" ] || return 1
   grep -Eq '^phase:[[:space:]]*[0-9]+([[:space:]]*(#.*)?)?$' <<< "$frontmatter" || return 1
   grep -Eq '^round:[[:space:]]*[0-9]+([[:space:]]*(#.*)?)?$' <<< "$frontmatter" || return 1
+  if [ -n "$expected_round" ]; then
+    frontmatter_round=$(printf '%s\n' "$frontmatter" | sed -n 's/^round:[[:space:]]*\([0-9][0-9]*\).*$/\1/p' | head -1)
+    [ -n "$frontmatter_round" ] || return 1
+    frontmatter_round_norm=$(printf "%02d" "$((10#$frontmatter_round))")
+    [ "$frontmatter_round_norm" = "$expected_round" ] || return 1
+  fi
   grep -Eq '^title:[[:space:]]*.+' <<< "$frontmatter" || return 1
   grep -Eq '^type:[[:space:]]*remediation([[:space:]]*(#.*)?)?$' <<< "$frontmatter" || return 1
   grep -Eq '^fail_classifications:[[:space:]]*.*$' <<< "$frontmatter" || return 1
@@ -177,13 +183,18 @@ if [ -n "$ROUND_PLAN_TOKEN" ]; then
         echo "skipped: $BASENAME (existing $(basename "$TARGET") is newer; moved stale candidate to $(basename "$STALE_SOURCE"))" >&2
         continue
       fi
-      if ! round_plan_content_is_valid "$f"; then
+      if ! round_plan_content_is_valid "$f" "${ROUND_PLAN_TOKEN#R}"; then
         INVALID_SOURCE_BASENAME=$(move_as_invalid_candidate "$f")
         echo "skipped: $BASENAME (newer candidate is structurally invalid; moved invalid candidate to $INVALID_SOURCE_BASENAME and preserved existing $(basename "$TARGET"))" >&2
         continue
       fi
       mv "$f" "$TARGET"
       echo "renamed: $BASENAME -> $(basename "$TARGET") (replaced existing target)"
+      continue
+    fi
+    if ! round_plan_content_is_valid "$f" "${ROUND_PLAN_TOKEN#R}"; then
+      INVALID_SOURCE_BASENAME=$(move_as_invalid_candidate "$f")
+      echo "skipped: $BASENAME (candidate is structurally invalid; moved invalid candidate to $INVALID_SOURCE_BASENAME)" >&2
       continue
     fi
     mv "$f" "$TARGET"

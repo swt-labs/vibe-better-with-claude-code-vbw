@@ -214,6 +214,18 @@ EOF
   [[ "$output" == *"artifact_path=$plan_path"* ]]
 }
 
+@test "validator rejects QA plan whose frontmatter round mismatches round directory" {
+  local plan_path="$QA_ROUND_DIR/R01-PLAN.md"
+  write_valid_plan "$plan_path"
+  sed -i.bak 's/^round: 1$/round: 2/' "$plan_path"
+  rm -f "$plan_path.bak"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"frontmatter round must match round directory"* ]]
+}
+
 @test "validator rejects QA round-dir plan without known_issue_resolutions" {
   local plan_path="$QA_ROUND_DIR/R01-PLAN.md"
   mkdir -p "$(dirname "$plan_path")"

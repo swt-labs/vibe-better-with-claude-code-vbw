@@ -17,6 +17,30 @@ trap cleanup EXIT
 
 TMPDIR_TEST=$(mktemp -d)
 
+write_valid_round_plan() {
+  local path="$1"
+  cat > "$path" <<'PLAN'
+---
+phase: 1
+round: 1
+title: Valid remediation plan
+type: remediation
+fail_classifications:
+  - {id: "FAIL-1", type: "code-fix", rationale: "fix required"}
+known_issues_input: []
+known_issue_resolutions: []
+---
+<tasks>
+<task type="auto">
+  <name>Fix</name>
+</task>
+</tasks>
+<verification>
+1. Run tests.
+</verification>
+PLAN
+}
+
 echo "=== Plan Filename Convention Tests ==="
 
 # --- file-guard tests ---
@@ -131,7 +155,7 @@ fi
 # Test 10a: QA remediation round PLAN-R01.md normalizes to R01-PLAN.md
 TDIR="$TMPDIR_TEST/test10a/.vbw-planning/phases/01-setup/remediation/qa/round-01"
 mkdir -p "$TDIR"
-echo "plan" > "$TDIR/PLAN-R01.md"
+write_valid_round_plan "$TDIR/PLAN-R01.md"
 OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
 if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-R01.md" ]; then
   pass "renames QA round PLAN-R01.md → R01-PLAN.md"
@@ -142,7 +166,7 @@ fi
 # Test 10b: QA remediation round PLAN-01.md normalizes to R01-PLAN.md, not 01-PLAN.md
 TDIR="$TMPDIR_TEST/test10b/.vbw-planning/phases/01-setup/remediation/qa/round-01"
 mkdir -p "$TDIR"
-echo "plan" > "$TDIR/PLAN-01.md"
+write_valid_round_plan "$TDIR/PLAN-01.md"
 OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
 if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-01.md" ]; then
   pass "renames QA round PLAN-01.md → R01-PLAN.md"
@@ -153,7 +177,7 @@ fi
 # Test 10c: UAT remediation round PLAN-01.md normalizes to R01-PLAN.md
 TDIR="$TMPDIR_TEST/test10c/.vbw-planning/phases/01-setup/remediation/uat/round-01"
 mkdir -p "$TDIR"
-echo "plan" > "$TDIR/PLAN-01.md"
+write_valid_round_plan "$TDIR/PLAN-01.md"
 OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
 if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-01.md" ]; then
   pass "renames UAT round PLAN-01.md → R01-PLAN.md"
@@ -164,7 +188,7 @@ fi
 # Test 10c2: legacy remediation round PLAN-01.md normalizes to R01-PLAN.md
 TDIR="$TMPDIR_TEST/test10c2/.vbw-planning/phases/01-setup/remediation/round-01"
 mkdir -p "$TDIR"
-echo "plan" > "$TDIR/PLAN-01.md"
+write_valid_round_plan "$TDIR/PLAN-01.md"
 OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
 if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-01.md" ]; then
   pass "renames legacy round PLAN-01.md → R01-PLAN.md"
@@ -175,7 +199,7 @@ fi
 # Test 10c3: legacy remediation round PLAN-R01.md normalizes to R01-PLAN.md
 TDIR="$TMPDIR_TEST/test10c3/.vbw-planning/phases/01-setup/remediation/round-01"
 mkdir -p "$TDIR"
-echo "plan" > "$TDIR/PLAN-R01.md"
+write_valid_round_plan "$TDIR/PLAN-R01.md"
 OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
 if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-R01.md" ] && [ ! -f "$TDIR/01-PLAN.md" ]; then
   pass "renames legacy round PLAN-R01.md → R01-PLAN.md"
