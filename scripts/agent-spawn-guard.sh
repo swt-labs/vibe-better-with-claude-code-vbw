@@ -130,36 +130,46 @@ if is_teammate_spawn_tool; then
     echo "Blocked: named non-team teammate spawns are unsupported. Omit name for sequential non-team calls; name is only valid with team_name in true team mode." >&2
     exit 2
   fi
-  # Strip paths — remove model-hallucinated fields and allow the spawn
+  # Strip paths — record fields to strip but do NOT exit yet.
+  # Execute-mode checks below may still block this spawn.
+  STRIP_REASON=""
+  STRIP_WARN=""
   if requested_sidechain_cwd; then
-    # Strip sidechain CWD fields and allow — blocking causes infinite retry loops
-    # because models hallucinate compliance but regenerate the same tool_input.
     STRIPPED_INPUT=$(echo "$INPUT" | jq '.tool_input | del(.cwd, .working_dir, .workingDirectory, .workdir, .isolation)' 2>/dev/null)
-    if [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
-      echo "VBW guard: stripped sidechain cwd fields (and isolation if present) from $TOOL_NAME spawn (models add these spontaneously; blocking causes infinite retry loops)" >&2
-      emit_strip_json "$STRIPPED_INPUT" "VBW stripped sidechain cwd fields — worktree targeting is task metadata, not spawn cwd"
-      exit 0
-    fi
-    # Fallback: if jq stripping failed, allow without modification (fail-open)
-    exit 0
-  fi
-  if requested_worktree_isolation; then
-    # Strip isolation field and allow — blocking causes infinite retry loops
-    # because models hallucinate compliance but regenerate the same tool_input.
+    STRIP_REASON="VBW stripped sidechain cwd fields — worktree targeting is task metadata, not spawn cwd"
+    STRIP_WARN="VBW guard: stripped sidechain cwd fields (and isolation if present) from $TOOL_NAME spawn (models add these spontaneously; blocking causes infinite retry loops)"
+  elif requested_worktree_isolation; then
     STRIPPED_INPUT=$(echo "$INPUT" | jq '.tool_input | del(.isolation)' 2>/dev/null)
-    if [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
-      echo "VBW guard: stripped isolation:worktree from $TOOL_NAME spawn (models add this spontaneously; blocking causes infinite retry loops)" >&2
-      emit_strip_json "$STRIPPED_INPUT" "VBW stripped isolation:worktree — worktree isolation is not managed via spawn params"
-      exit 0
-    fi
-    # Fallback: if jq stripping failed, allow without modification (fail-open)
-    exit 0
+    STRIP_REASON="VBW stripped isolation:worktree — worktree isolation is not managed via spawn params"
+    STRIP_WARN="VBW guard: stripped isolation:worktree from $TOOL_NAME spawn (models add this spontaneously; blocking causes infinite retry loops)"
   fi
 fi
 
-[ "$MARKER_LIVE" = "true" ] || exit 0
-[ "$MODE" = "execute" ] || exit 0
-[ -n "$DELEGATION_MODE" ] || exit 0
+[ "$MARKER_LIVE" = "true" ] || {
+  # No marker — if stripping was needed, emit now and exit
+  if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+    echo "$STRIP_WARN" >&2
+    emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+    exit 0
+  fi
+  exit 0
+}
+[ "$MODE" = "execute" ] || {
+  if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+    echo "$STRIP_WARN" >&2
+    emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+    exit 0
+  fi
+  exit 0
+}
+[ -n "$DELEGATION_MODE" ] || {
+  if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+    echo "$STRIP_WARN" >&2
+    emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+    exit 0
+  fi
+  exit 0
+}
 
 case "$DELEGATION_MODE" in
   team)
@@ -201,5 +211,12 @@ case "$DELEGATION_MODE" in
     fi
     ;;
 esac
+
+# If strip was deferred and we made it past all blocks, emit now
+if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+  echo "$STRIP_WARN" >&2
+  emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+  exit 0
+fi
 
 exit 0
