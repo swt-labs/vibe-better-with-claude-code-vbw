@@ -1144,12 +1144,18 @@ else
 fi
 
 if grep -Fq '<qa_remediation_no_tool_circuit_breaker>' <<< "$qa_remediation_block" \
-  && grep -Fq 'tools, Bash, filesystem, edits, or API-session access are unavailable' <<< "$qa_remediation_block" \
+  && grep -Fq 'tools, shell/Bash, filesystem, edits, or API-session access are unavailable' <<< "$qa_remediation_block" \
   && grep -Fq 'STOP without advancing `.qa-remediation-stage`' <<< "$qa_remediation_block" \
   && grep -Fq 'do not retry the same prompt' <<< "$qa_remediation_block"; then
   pass "vibe: QA remediation has no-tool circuit breaker"
 else
   fail "vibe: QA remediation missing no-tool circuit breaker"
+fi
+
+if grep -Fq 'tools, Bash, filesystem, edits, or API-session access are unavailable' <<< "$qa_remediation_block"; then
+  fail "vibe: QA remediation no-tool breaker still uses Bash-only wording"
+else
+  pass "vibe: QA remediation no-tool breaker includes generic shell signal"
 fi
 
 check_literal_before_regex "vibe: QA no-tool breaker appears before remediation state advance" "$qa_remediation_block" '<qa_remediation_no_tool_circuit_breaker>' 'qa-remediation-state\.sh.*advance'

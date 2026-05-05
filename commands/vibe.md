@@ -587,7 +587,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
   QA remediation spawns are plain sequential subagent calls. Do not use TeamCreate. Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). Use the remediation metadata paths above instead of forcing Claude worktree isolation or spawn cwd handoffs.
   </qa_remediation_spawn_contract>
   <qa_remediation_no_tool_circuit_breaker>
-  After any QA remediation Dev or QA subagent returns, inspect returned text before artifact validation, deterministic gates, or state advancement. If it says tools, Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure: STOP without advancing `.qa-remediation-stage`, report the failed role and task, and do not retry the same prompt. Repeating a no-tool spawn cannot fix tool provisioning and wastes tokens.
+  After any QA remediation Dev or QA subagent returns, inspect returned text before artifact validation, deterministic gates, or state advancement. If it says tools, shell/Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure: STOP without advancing `.qa-remediation-stage`, report the failed role and task, and do not retry the same prompt. Repeating a no-tool spawn cannot fix tool provisioning and wastes tokens.
   </qa_remediation_no_tool_circuit_breaker>
 2. Read remediation inputs.
 - Round 01: phase-level VERIFICATION (`{NN}-VERIFICATION.md` or brownfield `VERIFICATION.md`)
@@ -1019,7 +1019,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 Execute the current stage based on `STAGE`:
 **File read rule:** Do NOT re-read the active `{phase}-UAT.md` artifact unless step 5 requires earlier archived rounds for recurrence enrichment. Use the single step-2 UAT read as the active-round source of truth, and if step 5 scans archived rounds, exclude that active artifact from the scan. Do NOT read `{phase}-CONTEXT.md` — step 4 already emitted the remediation context when needed.
 **Round metadata prohibition:** Do NOT glob `*-PLAN.md`, search for `*-RESEARCH.md`, or infer summary locations — use the pre-computed `round`, `round_dir`, `research_path`, `plan_path`, and `summary_path` values from step 4. If a subagent reports success but the deterministic validator below fails, treat the stage as incomplete and STOP without advancing state.
-**Subagent no-tool circuit breaker (NON-NEGOTIABLE):** At every UAT remediation Scout, Lead, or Dev subagent return site below, inspect returned text before artifact validation, summary finalization, or `.uat-remediation-stage` advancement. If it says tools, Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure. STOP without advancing `.uat-remediation-stage`, report the failed subagent role and task, and do not retry the same prompt. Repeating a no-tool spawn cannot fix tool provisioning and wastes tokens.
+**Subagent no-tool circuit breaker (NON-NEGOTIABLE):** At every UAT remediation Scout, Lead, or Dev subagent return site below, inspect returned text before artifact validation, summary finalization, or `.uat-remediation-stage` advancement. If it says tools, shell/Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure. STOP without advancing `.uat-remediation-stage`, report the failed subagent role and task, and do not retry the same prompt. Repeating a no-tool spawn cannot fix tool provisioning and wastes tokens.
 
 #### research
 
@@ -1227,7 +1227,7 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
 
 Route to a quick-fix implementation path for the same phase using the normalized issue list from step 3 (with step-5 recurrence annotations when available) as task input (equivalent to `/vbw:fix`, but without requiring the user to invoke it manually). After changes, advance:
 
-If the quick-fix Dev return reports that tools, Bash, filesystem, edits, or API-session access are unavailable, apply the Subagent no-tool circuit breaker before the advance below: STOP without advancing `.uat-remediation-stage`, report the failed Dev quick-fix task, do not retry the same prompt, and do not enter re-verification.
+If the quick-fix Dev return reports that tools, shell/Bash, filesystem, edits, or API-session access are unavailable, apply the Subagent no-tool circuit breaker before the advance below: STOP without advancing `.uat-remediation-stage`, report the failed Dev quick-fix task, do not retry the same prompt, and do not enter re-verification.
 
 ```bash
 bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh advance "$PHASE_DIR"

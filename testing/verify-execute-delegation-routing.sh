@@ -548,11 +548,17 @@ else
 fi
 
 if grep -Fq 'platform/tool provisioning failure' "$EXECUTE_PROTOCOL" \
-  && grep -Fq 'tools, Bash, filesystem, edits, or API-session access are unavailable' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'tools, shell/Bash, filesystem, edits, or API-session access are unavailable' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'Do not consume the normal retry budget' "$EXECUTE_PROTOCOL"; then
   pass "execute-protocol fails fast on no-tool Dev subagent returns"
 else
   fail "execute-protocol missing no-tool Dev fail-fast return handling"
+fi
+
+if grep -Fq 'tools, Bash, filesystem, edits, or API-session access are unavailable' "$EXECUTE_PROTOCOL"; then
+  fail "execute-protocol no-tool handling still uses Bash-only wording"
+else
+  pass "execute-protocol no-tool handling includes generic shell signal"
 fi
 
 check_literal_before_literal "execute-protocol inspects Dev return before blocker retry handling" "$EXECUTE_PROTOCOL_TEXT" 'When a Dev subagent Task returns, inspect the result immediately' '2. **blocker_report received:**'
