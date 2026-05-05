@@ -208,7 +208,7 @@ test_no_marker_allows() {
 }
 test_no_marker_allows
 
-test_no_marker_blocks_worktree_isolation_for_all_tools_and_config_states() {
+test_no_marker_strips_worktree_isolation_for_all_tools_and_config_states() {
   local config_state tool output rc
   for config_state in missing off on; do
     setup_project
@@ -219,36 +219,36 @@ test_no_marker_blocks_worktree_isolation_for_all_tools_and_config_states() {
 
     for tool in Agent TaskCreate; do
       output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "worktree" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude-side worktree isolation'; then
-        pass "No marker with config ${config_state}: ${tool} isolation blocked"
+      if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"' && ! echo "$output" | jq -e '.hookSpecificOutput.updatedInput.isolation' >/dev/null 2>&1; then
+        pass "No marker with config ${config_state}: ${tool} isolation stripped and allowed"
       else
-        fail "No-marker ${tool} isolation should block when worktree_isolation ${config_state} (rc=$rc, output=$output)"
+        fail "No-marker ${tool} isolation should be stripped when worktree_isolation ${config_state} (rc=$rc, output=$output)"
       fi
     done
     cleanup
   done
 }
-test_no_marker_blocks_worktree_isolation_for_all_tools_and_config_states
+test_no_marker_strips_worktree_isolation_for_all_tools_and_config_states
 
-test_no_marker_blocks_sidechain_cwd_when_config_missing() {
+test_no_marker_strips_sidechain_cwd_when_config_missing() {
   setup_project
 
   local tool field output rc
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
       output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
-        pass "No marker with missing config key: ${tool} sidechain ${field} blocked"
+      if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"'; then
+        pass "No marker with missing config key: ${tool} sidechain ${field} stripped and allowed"
       else
-        fail "No-marker ${tool} sidechain ${field} should block when worktree_isolation key is missing (rc=$rc, output=$output)"
+        fail "No-marker ${tool} sidechain ${field} should be stripped when worktree_isolation key is missing (rc=$rc, output=$output)"
       fi
     done
   done
   cleanup
 }
-test_no_marker_blocks_sidechain_cwd_when_config_missing
+test_no_marker_strips_sidechain_cwd_when_config_missing
 
-test_no_marker_blocks_sidechain_cwd_when_config_off() {
+test_no_marker_strips_sidechain_cwd_when_config_off() {
   setup_project
   jq '.worktree_isolation = "off"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
   mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
@@ -257,32 +257,32 @@ test_no_marker_blocks_sidechain_cwd_when_config_off() {
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
       output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
-        pass "No marker with config off: ${tool} sidechain ${field} blocked"
+      if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"'; then
+        pass "No marker with config off: ${tool} sidechain ${field} stripped and allowed"
       else
-        fail "No-marker ${tool} sidechain ${field} should block when worktree_isolation off (rc=$rc, output=$output)"
+        fail "No-marker ${tool} sidechain ${field} should be stripped when worktree_isolation off (rc=$rc, output=$output)"
       fi
     done
   done
   cleanup
 }
-test_no_marker_blocks_sidechain_cwd_when_config_off
+test_no_marker_strips_sidechain_cwd_when_config_off
 
-test_sidechain_cwd_diagnostic_names_all_aliases() {
+test_sidechain_cwd_strip_emits_json_for_all_tools() {
   setup_project
 
   local tool output rc
   for tool in Agent TaskCreate; do
     output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "workingDirectory" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory' && diagnostic_mentions_all_cwd_aliases "$output"; then
-      pass "Sidechain cwd diagnostic names all aliases for ${tool}"
+    if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q 'stripped sidechain cwd'; then
+      pass "Sidechain cwd strip emits JSON and warning for ${tool}"
     else
-      fail "Sidechain cwd diagnostic should name all aliases for ${tool} (rc=$rc, output=$output)"
+      fail "Sidechain cwd strip should emit JSON and warning for ${tool} (rc=$rc, output=$output)"
     fi
   done
   cleanup
 }
-test_sidechain_cwd_diagnostic_names_all_aliases
+test_sidechain_cwd_strip_emits_json_for_all_tools
 
 test_no_marker_blocks_named_non_team_spawns() {
   setup_project
@@ -333,7 +333,7 @@ test_no_marker_allows_regular_project_cwd() {
 }
 test_no_marker_allows_regular_project_cwd
 
-test_no_marker_blocks_sidechain_cwd_when_config_on() {
+test_no_marker_strips_sidechain_cwd_when_config_on() {
   setup_project
   jq '.worktree_isolation = "on"' "$PROJECT/.vbw-planning/config.json" > "$PROJECT/.vbw-planning/config.json.tmp"
   mv "$PROJECT/.vbw-planning/config.json.tmp" "$PROJECT/.vbw-planning/config.json"
@@ -342,16 +342,16 @@ test_no_marker_blocks_sidechain_cwd_when_config_on() {
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
       output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory'; then
-        pass "No marker with config on: ${tool} sidechain ${field} blocked"
+      if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"'; then
+        pass "No marker with config on: ${tool} sidechain ${field} stripped and allowed"
       else
-        fail "No-marker ${tool} sidechain ${field} should block even when worktree_isolation on (rc=$rc, output=$output)"
+        fail "No-marker ${tool} sidechain ${field} should be stripped even when worktree_isolation on (rc=$rc, output=$output)"
       fi
     done
   done
   cleanup
 }
-test_no_marker_blocks_sidechain_cwd_when_config_on
+test_no_marker_strips_sidechain_cwd_when_config_on
 
 test_no_marker_blocks_vbw_worktree_cwd_aliases() {
   setup_project

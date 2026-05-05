@@ -112,18 +112,41 @@ if [ "$EXEC_ACTIVE" = true ] && { [ "$MARKER_LIVE" != "true" ] || [ "$MODE" != "
   exit 2
 fi
 
+emit_strip_json() {
+  local stripped_input="$1" reason="$2"
+  cat <<EOJSON
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":"$reason","updatedInput":$stripped_input}}
+EOJSON
+}
+
 if is_teammate_spawn_tool; then
   if requested_sidechain_cwd; then
-    echo "Blocked: teammate spawn requested an unmanaged Claude sidechain working directory. Omit sidechain cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
-    exit 2
+    # Strip sidechain CWD fields and allow — blocking causes infinite retry loops
+    # because models hallucinate compliance but regenerate the same tool_input.
+    STRIPPED_INPUT=$(echo "$INPUT" | jq '.tool_input | del(.cwd, .working_dir, .workingDirectory, .workdir)' 2>/dev/null)
+    if [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+      echo "VBW guard: stripped sidechain cwd fields from Agent spawn (models add these spontaneously; blocking causes infinite retry loops)" >&2
+      emit_strip_json "$STRIPPED_INPUT" "VBW stripped sidechain cwd fields — worktree targeting is task metadata, not spawn cwd"
+      exit 0
+    fi
+    # Fallback: if jq stripping failed, allow without modification (fail-open)
+    exit 0
   fi
   if requested_vbw_worktree_cwd; then
     echo "Blocked: teammate spawn requested a VBW worktree path as a spawn working directory. Omit cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
     exit 2
   fi
   if requested_worktree_isolation; then
-    echo "Blocked: teammate spawn requested Claude-side worktree isolation. Omit isolation; when VBW worktree isolation is enabled, use VBW-prepared worktree targeting metadata instead." >&2
-    exit 2
+    # Strip isolation field and allow — blocking causes infinite retry loops
+    # because models hallucinate compliance but regenerate the same tool_input.
+    STRIPPED_INPUT=$(echo "$INPUT" | jq '.tool_input | del(.isolation)' 2>/dev/null)
+    if [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+      echo "VBW guard: stripped isolation:worktree from Agent spawn (models add this spontaneously; blocking causes infinite retry loops)" >&2
+      emit_strip_json "$STRIPPED_INPUT" "VBW stripped isolation:worktree — worktree isolation is not managed via spawn params"
+      exit 0
+    fi
+    # Fallback: if jq stripping failed, allow without modification (fail-open)
+    exit 0
   fi
   if [ -n "$AGENT_NAME" ] && [ "$TRUE_LIVE_TEAM_MODE" != "true" ]; then
     echo "Blocked: named non-team teammate spawns are unsupported. Omit name for sequential non-team calls; name is only valid with team_name in true team mode." >&2
