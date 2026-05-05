@@ -575,16 +575,18 @@ fi
 check_literal_before_literal "execute-protocol inspects Dev return before blocker retry handling" "$EXECUTE_PROTOCOL_TEXT" 'When a Dev subagent Task returns, inspect the result immediately' '2. **blocker_report received:**'
 check_literal_before_literal "execute-protocol handles no-tool Dev return before normal blocker retry handling" "$EXECUTE_PROTOCOL_TEXT" '1. **platform/tool provisioning failure:**' '2. **blocker_report received:**'
 
-if grep -Fq '**Non-team spawn-shape rule:**' "$EXECUTE_PROTOCOL" \
+if grep -Fq '**Spawn-shape rule (applies to both non-team and true-team spawns):**' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'whether the live tool is `Agent` or `TaskCreate`' "$EXECUTE_PROTOCOL" \
-  && grep -Fq 'omit `team_name`, per-agent `name`, `run_in_background`, and `isolation`' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'never set Claude-side `isolation:"worktree"` or pass a `cwd` pointing into `.claude/worktrees/...` or `.vbw-worktrees/...`' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'agent-spawn-guard.sh` validates these isolation/cwd fields before it branches on delegation mode' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'on non-team spawns omit `team_name`, per-agent `name`, and `run_in_background`' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'Prepared VBW worktree targeting means the `Working directory:` and `Worktree targeting:` lines in the task description' "$EXECUTE_PROTOCOL" \
   && grep -Fq '`.execution-state.json` `worktree_path` and `scripts/worktree-target.sh`' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'it is not an `isolation` or `cwd` field on the spawn call' "$EXECUTE_PROTOCOL" \
   && grep -Fq '.claude/worktrees/agent-*' "$EXECUTE_PROTOCOL"; then
-  pass "execute-protocol documents non-team Agent/TaskCreate isolation-safe spawn shape"
+  pass "execute-protocol documents Agent/TaskCreate isolation-safe spawn shape for non-team and team spawns"
 else
-  fail "execute-protocol missing non-team Agent/TaskCreate isolation-safe spawn guidance"
+  fail "execute-protocol missing unified Agent/TaskCreate isolation-safe spawn guidance"
 fi
 
 if grep -Fq 'When VBW `worktree_isolation` is off, omit Claude worktree isolation entirely' "$EXECUTE_PROTOCOL" \
