@@ -5,9 +5,11 @@ SCRIPT="$REPO_ROOT/scripts/qa-result-gate.sh"
 
 setup() {
   TEST_DIR="$(mktemp -d)"
+  TEST_DIR="$(cd "$TEST_DIR" && pwd -P)"
   # Use numbered phase-dir prefix to match production convention ({NN}-slug)
-  PHASE_DIR="$TEST_DIR/01-test-phase"
-  mkdir -p "$PHASE_DIR"
+  PHASE_DIR="$TEST_DIR/.vbw-planning/phases/01-test-phase"
+  mkdir -p "$PHASE_DIR" "$TEST_DIR/.vbw-planning"
+  printf '{}\n' > "$TEST_DIR/.vbw-planning/config.json"
 }
 
 teardown() {
@@ -359,25 +361,25 @@ VERIF
 
 @test "plan-amendment accepts repo-relative original plan path when file still exists" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
-  commit_repo_file "01-test-phase/01-01-PLAN.md" "updated plan with rationale" >/dev/null
+  commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "updated plan with rationale" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - "01-test-phase/01-01-PLAN.md"'
+    '  - ".vbw-planning/phases/01-test-phase/01-01-PLAN.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
 round: 01
 title: Repo-relative original plan path remains valid when the plan still exists
 fail_classifications:
-  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan updated with actual approach", source_plan: "01-test-phase/01-01-PLAN.md"}
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan updated with actual approach", source_plan: ".vbw-planning/phases/01-test-phase/01-01-PLAN.md"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -1936,19 +1938,19 @@ VERIF
 
 @test "metadata-only round with plan-amendment and original plan edit → PROCEED_TO_UAT" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
-  commit_repo_file "01-test-phase/01-01-PLAN.md" "updated plan with actual approach" >/dev/null
+  commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "updated plan with actual approach" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     "  - \"$PHASE_DIR/01-01-PLAN.md\"
-  - \"01-test-phase/remediation/qa/round-01/R01-SUMMARY.md\""
+  - \".vbw-planning/phases/01-test-phase/remediation/qa/round-01/R01-SUMMARY.md\""
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -2468,19 +2470,19 @@ VERIF
 
 @test "plan-amendment accepts short original plan filename" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
-  commit_repo_file "01-test-phase/01-01-PLAN.md" "updated plan with actual approach" >/dev/null
+  commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "updated plan with actual approach" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     '  - "01-01-PLAN.md"
-  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
+  - ".vbw-planning/phases/01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -3083,7 +3085,7 @@ commit_hashes: []
 files_modified:
   - "src/Fix.swift"
   - "README.md"
-  - "01-test-phase/01-SUMMARY.md"
+  - ".vbw-planning/phases/01-test-phase/01-SUMMARY.md"
 deviations: []
 ---
 
@@ -3094,7 +3096,7 @@ SUMMARY
   echo "real code fix" > "$TEST_DIR/src/Fix.swift"
   echo "round pass docs" > "$TEST_DIR/README.md"
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Round 01 documented the remediation outcome.' > "$PHASE_DIR/01-SUMMARY.md"
-  git -C "$TEST_DIR" add src/Fix.swift README.md 01-test-phase/01-SUMMARY.md
+  git -C "$TEST_DIR" add src/Fix.swift README.md .vbw-planning/phases/01-test-phase/01-SUMMARY.md
   git -C "$TEST_DIR" commit -m "round pass summary evidence" --quiet
   current_commit=$(git -C "$TEST_DIR" rev-parse HEAD)
 
@@ -5128,7 +5130,7 @@ status: complete
 commit_hashes: []
 files_modified:
   - "README.md"
-  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+  - ".vbw-planning/phases/01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
 deviations: []
 ---
 

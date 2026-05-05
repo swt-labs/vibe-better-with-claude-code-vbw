@@ -21,6 +21,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ]; then
+  # shellcheck source=scripts/lib/vbw-config-root.sh
+  source "$SCRIPT_DIR/lib/vbw-config-root.sh"
+fi
 
 CMD="${1:-}"
 PHASE_DIR="${2:-}"
@@ -30,14 +34,116 @@ if [ -z "$CMD" ] || [ -z "$PHASE_DIR" ]; then
   exit 1
 fi
 
-# Milestone path guard: refuse to operate on archived milestones.
-case "$PHASE_DIR" in
-  */.vbw-planning/milestones/*|.vbw-planning/milestones/*)
-    echo "Error: refusing to operate on archived milestone path: $PHASE_DIR" >&2
-    echo "QA remediation must target active phases in .vbw-planning/phases/" >&2
+reject_milestone_phase_dir() {
+  local phase_dir="$1"
+
+  # Milestone path guard: refuse to operate on archived milestones.
+  case "$phase_dir" in
+    */.vbw-planning/milestones/*|.vbw-planning/milestones/*)
+      echo "Error: refusing to operate on archived milestone path: $phase_dir" >&2
+      echo "QA remediation must target active phases in .vbw-planning/phases/" >&2
+      exit 1
+      ;;
+  esac
+}
+
+canonicalize_existing_or_parent() {
+  local path="$1" parent base parent_real
+
+  if [ -d "$path" ]; then
+    (cd "$path" && pwd -P)
+    return 0
+  fi
+
+  parent=$(dirname "$path")
+  base=$(basename "$path")
+  if parent_real=$(cd "$parent" 2>/dev/null && pwd -P); then
+    printf '%s/%s\n' "$parent_real" "$base"
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+translate_claude_sidechain_phase_candidate() {
+  local candidate="$1" sidechain_root="${VBW_CLAUDE_SIDECHAIN_ROOT:-}" host_root="${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}" rel_phase_path
+
+  if [ -z "$sidechain_root" ] || [ -z "$host_root" ] || [ ! -f "$host_root/.vbw-planning/config.json" ]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  case "$candidate" in
+    "$sidechain_root"/.vbw-planning/phases/*)
+      rel_phase_path="${candidate#"$sidechain_root"/.vbw-planning/phases/}"
+      printf '%s/.vbw-planning/phases/%s\n' "$host_root" "$rel_phase_path"
+      ;;
+    *)
+      printf '%s\n' "$candidate"
+      ;;
+  esac
+}
+
+normalize_active_phase_dir_root() {
+  local candidate="$1" phase_root suffix phase_slug
+
+  case "$candidate" in
+    */.vbw-planning/phases/*)
+      phase_root="${candidate%%/.vbw-planning/phases/*}"
+      suffix="${candidate#*/.vbw-planning/phases/}"
+      phase_slug="${suffix%%/*}"
+      if [ -z "$phase_root" ] || [ -z "$phase_slug" ]; then
+        echo "Error: QA remediation phase must include an active phase slug: $candidate" >&2
+        exit 1
+      fi
+      printf '%s/.vbw-planning/phases/%s\n' "$phase_root" "$phase_slug"
+      ;;
+    *)
+      printf '%s\n' "$candidate"
+      ;;
+  esac
+}
+
+canonicalize_phase_dir() {
+  local raw_phase_dir="$1" candidate phase_root
+
+  if type find_vbw_root >/dev/null 2>&1; then
+    find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
+  fi
+
+  case "$raw_phase_dir" in
+    /*) candidate="$raw_phase_dir" ;;
+    *)  candidate="${VBW_CONFIG_ROOT:-$(pwd -P)}/$raw_phase_dir" ;;
+  esac
+
+  candidate=$(canonicalize_existing_or_parent "$candidate")
+  candidate=$(translate_claude_sidechain_phase_candidate "$candidate")
+  candidate=$(canonicalize_existing_or_parent "$candidate")
+  candidate=$(normalize_active_phase_dir_root "$candidate")
+  candidate=$(canonicalize_existing_or_parent "$candidate")
+  reject_milestone_phase_dir "$candidate"
+
+  case "$candidate" in
+    */.vbw-planning/phases/*) ;;
+    *)
+      echo "Error: QA remediation phase must be under active .vbw-planning/phases/: $candidate" >&2
+      echo "QA remediation must target active phases, not archived milestones or arbitrary directories." >&2
+      exit 1
+      ;;
+  esac
+
+  phase_root="${candidate%%/.vbw-planning/phases/*}"
+  if [ -z "$phase_root" ] || [ "$phase_root" = "$candidate" ]; then
+    echo "Error: unable to determine VBW root from phase path: $candidate" >&2
     exit 1
-    ;;
-esac
+  fi
+
+  export VBW_CONFIG_ROOT="$phase_root"
+  export VBW_PLANNING_DIR="$phase_root/.vbw-planning"
+  printf '%s\n' "$candidate"
+}
+
+reject_milestone_phase_dir "$PHASE_DIR"
+PHASE_DIR=$(canonicalize_phase_dir "$PHASE_DIR")
 
 STATE_FILE="$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 

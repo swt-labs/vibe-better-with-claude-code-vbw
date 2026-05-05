@@ -264,6 +264,48 @@ EOF
   [[ "$output" == *"Claude sidechain"* ]]
 }
 
+@test "validator accepts QA plan_path emitted from relative QA remediation state input" {
+  local host_root host_phase_dir plan_path
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-relative"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-relative"
+
+  run bash -c 'cd "$1" && bash "$2/qa-remediation-state.sh" get-or-init ".vbw-planning/phases/01-relative"' _ "$host_root" "$SCRIPTS_DIR"
+  [ "$status" -eq 0 ]
+  plan_path=$(awk -F= '/^plan_path=/ { print $2; exit }' <<< "$output")
+  [ "$plan_path" = "$host_phase_dir/remediation/qa/round-01/R01-PLAN.md" ]
+  write_valid_plan "$plan_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"artifact_valid=true"* ]]
+  [[ "$output" == *"artifact_path=$plan_path"* ]]
+}
+
+@test "validator accepts QA plan_path emitted from Claude sidechain QA remediation state input" {
+  local host_root host_phase_dir sidechain_dir plan_path
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-sidechain" "$host_root/.claude/worktrees/agent-test"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-sidechain"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+
+  run bash -c 'cd "$1" && bash "$2/qa-remediation-state.sh" get-or-init ".vbw-planning/phases/01-sidechain"' _ "$sidechain_dir" "$SCRIPTS_DIR"
+  [ "$status" -eq 0 ]
+  plan_path=$(awk -F= '/^plan_path=/ { print $2; exit }' <<< "$output")
+  [ "$plan_path" = "$host_phase_dir/remediation/qa/round-01/R01-PLAN.md" ]
+  write_valid_plan "$plan_path"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"artifact_valid=true"* ]]
+  [[ "$output" == *"artifact_path=$plan_path"* ]]
+  [ ! -d "$sidechain_dir/.vbw-planning/phases/01-sidechain/remediation" ]
+}
+
 @test "validator rejects QA round-dir research artifacts" {
   local research_path="$QA_ROUND_DIR/R01-RESEARCH.md"
   write_valid_research "$research_path"
