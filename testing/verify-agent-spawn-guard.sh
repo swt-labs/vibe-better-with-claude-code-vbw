@@ -20,6 +20,12 @@ fail() {
   FAIL=$((FAIL + 1))
 }
 
+# Extract the JSON line from mixed stderr+stdout output (run_guard merges them).
+# Strip-path tests must validate JSON structure via this helper, not raw output.
+extract_json() {
+  grep '^{"hookSpecificOutput"' <<< "$1" || true
+}
+
 setup_project() {
   TMPDIR_BASE=$(mktemp -d)
   PROJECT="$TMPDIR_BASE/project"
@@ -219,7 +225,8 @@ test_no_marker_strips_worktree_isolation_for_all_tools_and_config_states() {
 
     for tool in Agent TaskCreate; do
       output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "worktree" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"' && ! echo "$output" | jq -e '.hookSpecificOutput.updatedInput.isolation' >/dev/null 2>&1; then
+      json_line=$(extract_json "$output")
+      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && ! echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput.isolation' >/dev/null 2>&1; then
         pass "No marker with config ${config_state}: ${tool} isolation stripped and allowed"
       else
         fail "No-marker ${tool} isolation should be stripped when worktree_isolation ${config_state} (rc=$rc, output=$output)"
@@ -237,7 +244,8 @@ test_no_marker_strips_sidechain_cwd_when_config_missing() {
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
       output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"'; then
+      json_line=$(extract_json "$output")
+      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1; then
         pass "No marker with missing config key: ${tool} sidechain ${field} stripped and allowed"
       else
         fail "No-marker ${tool} sidechain ${field} should be stripped when worktree_isolation key is missing (rc=$rc, output=$output)"
@@ -257,7 +265,8 @@ test_no_marker_strips_sidechain_cwd_when_config_off() {
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
       output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"'; then
+      json_line=$(extract_json "$output")
+      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1; then
         pass "No marker with config off: ${tool} sidechain ${field} stripped and allowed"
       else
         fail "No-marker ${tool} sidechain ${field} should be stripped when worktree_isolation off (rc=$rc, output=$output)"
@@ -274,7 +283,8 @@ test_sidechain_cwd_strip_emits_json_for_all_tools() {
   local tool output rc
   for tool in Agent TaskCreate; do
     output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "workingDirectory" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q 'stripped sidechain cwd'; then
+    json_line=$(extract_json "$output")
+    if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && echo "$output" | grep -q 'stripped sidechain cwd'; then
       pass "Sidechain cwd strip emits JSON and warning for ${tool}"
     else
       fail "Sidechain cwd strip should emit JSON and warning for ${tool} (rc=$rc, output=$output)"
@@ -290,7 +300,8 @@ test_combined_sidechain_cwd_and_isolation_strips_both() {
   local tool output rc
   for tool in Agent TaskCreate; do
     output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "worktree" "$PROJECT/.claude/worktrees/agent-123" "cwd" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"' && ! echo "$output" | jq -e '.hookSpecificOutput.updatedInput.isolation' >/dev/null 2>&1 && ! echo "$output" | jq -e '.hookSpecificOutput.updatedInput.cwd' >/dev/null 2>&1; then
+    json_line=$(extract_json "$output")
+    if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && ! echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput.isolation' >/dev/null 2>&1 && ! echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput.cwd' >/dev/null 2>&1; then
       pass "Combined sidechain cwd + isolation: both stripped for ${tool}"
     else
       fail "Combined sidechain cwd + isolation should strip both for ${tool} (rc=$rc, output=$output)"
@@ -390,7 +401,8 @@ test_no_marker_strips_sidechain_cwd_when_config_on() {
   for tool in Agent TaskCreate; do
     for field in cwd working_dir workingDirectory workdir; do
       output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "$field" 2>&1) && rc=$? || rc=$?
-      if [ "$rc" -eq 0 ] && echo "$output" | grep -q '"permissionDecision":"allow"' && echo "$output" | grep -q '"updatedInput"'; then
+      json_line=$(extract_json "$output")
+      if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1; then
         pass "No marker with config on: ${tool} sidechain ${field} stripped and allowed"
       else
         fail "No-marker ${tool} sidechain ${field} should be stripped even when worktree_isolation on (rc=$rc, output=$output)"

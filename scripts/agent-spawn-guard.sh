@@ -114,9 +114,10 @@ fi
 
 emit_strip_json() {
   local stripped_input="$1" reason="$2"
-  cat <<EOJSON
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":"$reason","updatedInput":$stripped_input}}
-EOJSON
+  # Compact stripped_input to single line so hook output is a single JSON line
+  local compact_input
+  compact_input=$(echo "$stripped_input" | jq -c '.' 2>/dev/null) || compact_input="$stripped_input"
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":"%s","updatedInput":%s}}\n' "$reason" "$compact_input"
 }
 
 if is_teammate_spawn_tool; then
