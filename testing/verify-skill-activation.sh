@@ -542,9 +542,9 @@ DEV_COMMUNICATION_SECTION=$(markdown_section Communication)
 DEV_BLOCKED_TASK_SECTION=$(markdown_section "Blocked Task Self-Start")
 DEV_CONSTRAINTS_SECTION=$(markdown_section Constraints)
 
-dev_tools_has() {
+dev_disallowed_has() {
   local target="$1"
-  printf '%s' "$DEV_TOOLS" | sed 's/^tools:[[:space:]]*//' | awk -v RS=',' -v target="$target" '
+  printf '%s' "$DEV_DISALLOWED" | sed 's/^disallowedTools:[[:space:]]*//' | awk -v RS=',' -v target="$target" '
     {
       gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
       if ($0 == target) found=1
@@ -553,16 +553,16 @@ dev_tools_has() {
   '
 }
 
-if [ -n "$DEV_TOOLS" ]; then
-  pass "vbw-dev.md: uses explicit tools allowlist"
+if [ -z "$DEV_TOOLS" ]; then
+  pass "vbw-dev.md: does not pin a tools allowlist (forward-compatible)"
 else
-  fail "vbw-dev.md: missing explicit tools allowlist"
+  fail "vbw-dev.md: must not pin a tools allowlist (use disallowedTools denylist for forward compatibility)"
 fi
 
-if [ -z "$DEV_DISALLOWED" ]; then
-  pass "vbw-dev.md: no longer relies on disallowedTools inheritance"
+if [ -n "$DEV_DISALLOWED" ]; then
+  pass "vbw-dev.md: declares disallowedTools denylist"
 else
-  fail "vbw-dev.md: still relies on disallowedTools inheritance"
+  fail "vbw-dev.md: missing disallowedTools denylist"
 fi
 
 if [ "$DEV_MEMORY" = "memory: project" ]; then
@@ -571,84 +571,95 @@ else
   fail "vbw-dev.md: memory must remain project (found: ${DEV_MEMORY:-missing})"
 fi
 
-for required_dev_tool in Read Glob Grep Write Edit Bash WebFetch WebSearch LSP Skill SendMessage TaskGet; do
-  if dev_tools_has "$required_dev_tool"; then
-    pass "vbw-dev.md: explicit tools include $required_dev_tool"
+for required_denied in Task TaskCreate Agent TeamCreate TeamDelete AskUserQuestion; do
+  if dev_disallowed_has "$required_denied"; then
+    pass "vbw-dev.md: disallowedTools bans $required_denied"
   else
-    fail "vbw-dev.md: explicit tools missing $required_dev_tool"
+    fail "vbw-dev.md: disallowedTools must ban $required_denied"
   fi
 done
 
-for forbidden_dev_tool in Task TaskCreate Agent TeamCreate TeamDelete AskUserQuestion; do
-  if dev_tools_has "$forbidden_dev_tool"; then
-    fail "vbw-dev.md: explicit tools expose forbidden $forbidden_dev_tool"
+for must_remain_available in Bash Read Edit Write Glob Grep LSP Skill WebFetch WebSearch SendMessage TaskGet; do
+  if dev_disallowed_has "$must_remain_available"; then
+    fail "vbw-dev.md: disallowedTools must not ban $must_remain_available (Dev relies on it)"
   else
-    pass "vbw-dev.md: explicit tools omit forbidden $forbidden_dev_tool"
+    pass "vbw-dev.md: disallowedTools does not ban $must_remain_available"
   fi
 done
 
-if grep -q 'Your frontmatter tool allowlist intentionally omits recursive delegation' <<< "$DEV_CONSTRAINTS_SECTION" \
+if grep -q 'Your frontmatter denylist explicitly bans recursive delegation' <<< "$DEV_CONSTRAINTS_SECTION" \
   && grep -q 'Use the listed implementation tools directly' <<< "$DEV_CONSTRAINTS_SECTION" \
   && grep -q 'Task`, `TaskCreate`, `Agent`, `TeamCreate`, `TeamDelete`, and `AskUserQuestion`' <<< "$DEV_CONSTRAINTS_SECTION"; then
-  pass "vbw-dev.md: prompt explains explicit no-subagent tool boundary"
+  pass "vbw-dev.md: prompt explains denylist no-subagent tool boundary"
 else
-  fail "vbw-dev.md: missing explicit no-subagent tool-boundary guidance"
+  fail "vbw-dev.md: missing denylist no-subagent tool-boundary guidance"
 fi
 
 if grep -q 'SendMessage' <<< "$DEV_COMMUNICATION_SECTION" \
   && grep -q 'execution_update' <<< "$DEV_COMMUNICATION_SECTION" \
   && grep -q 'blocker_report' <<< "$DEV_COMMUNICATION_SECTION" \
-  && dev_tools_has SendMessage; then
-  pass "vbw-dev.md: SendMessage guidance matches explicit tool availability"
+  && ! dev_disallowed_has SendMessage; then
+  pass "vbw-dev.md: SendMessage guidance available (not in denylist)"
 else
-  fail "vbw-dev.md: SendMessage guidance/tool availability mismatch"
+  fail "vbw-dev.md: SendMessage guidance/availability mismatch"
 fi
 
 if grep -q 'TaskGet' <<< "$DEV_BLOCKED_TASK_SECTION" \
   && grep -q 'blockedBy' <<< "$DEV_BLOCKED_TASK_SECTION" \
   && grep -q 'completed' <<< "$DEV_BLOCKED_TASK_SECTION" \
   && grep -q 'self-start' <<< "$DEV_BLOCKED_TASK_SECTION" \
-  && dev_tools_has TaskGet; then
-  pass "vbw-dev.md: TaskGet guidance matches explicit tool availability"
+  && ! dev_disallowed_has TaskGet; then
+  pass "vbw-dev.md: TaskGet guidance available (not in denylist)"
 else
-  fail "vbw-dev.md: TaskGet guidance/tool availability mismatch"
+  fail "vbw-dev.md: TaskGet guidance/availability mismatch"
 fi
 
-if grep -q '## MCP-Derived Context' "$DEV_AGENT" \
-  && grep -q 'explicit `tools:` allowlist' "$DEV_AGENT" \
-  && grep -q 'Assume dynamic MCP server tools are unavailable' "$DEV_AGENT" \
-  && grep -q 'MCP-derived facts, docs, command results, or paths' "$DEV_AGENT"; then
-  pass "vbw-dev.md: MCP guidance matches explicit allowlist boundary"
+if grep -q '^## MCP-Derived Context' "$DEV_AGENT"; then
+  fail "vbw-dev.md: stale '## MCP-Derived Context' section must be removed (subagents may call MCP directly)"
 else
-  fail "vbw-dev.md: MCP guidance does not match explicit allowlist boundary"
+  pass "vbw-dev.md: no stale '## MCP-Derived Context' section"
 fi
 
-if grep -q 'When available MCP tools provide capabilities' "$DEV_AGENT" || grep -q 'use MCP tools' "$DEV_AGENT"; then
-  fail "vbw-dev.md: stale direct MCP-use guidance remains"
+if grep -q 'explicit `tools:` allowlist' "$DEV_AGENT" \
+  || grep -q 'Assume dynamic MCP server tools are unavailable' "$DEV_AGENT" \
+  || grep -q 'Do not ask the orchestrator to add MCP' "$DEV_AGENT"; then
+  fail "vbw-dev.md: stale anti-MCP allowlist guidance must be removed"
 else
-  pass "vbw-dev.md: no stale direct MCP-use guidance"
+  pass "vbw-dev.md: no stale anti-MCP allowlist guidance"
 fi
 
-if grep -q 'pre-extract concise task-relevant facts, docs, command results, or paths for Dev' "$FIX_COMMAND" \
-  && grep -q 'do not instruct `vbw-dev` to call MCP servers directly' "$FIX_COMMAND"; then
-  pass "fix.md: Dev MCP guidance uses parent-side pre-extraction"
+if grep -q 'Dev uses an explicit allowlist' "$ROOT/README.md" \
+  || grep -q 'Explicit implementation allowlist' "$ROOT/README.md"; then
+  fail "README.md: stale Dev allowlist wording must be removed"
 else
-  fail "fix.md: Dev MCP guidance still assumes inherited MCP access"
+  pass "README.md: no stale Dev allowlist wording"
 fi
 
-if [ "$(grep -c 'do not instruct `vbw-dev` to call MCP servers directly' "$VIBE_COMMAND")" -ge 2 ] \
-  && grep -q 'Do not plan for Dev agents to call MCP servers directly' "$VIBE_COMMAND"; then
-  pass "vibe.md: Dev MCP guidance uses parent-side pre-extraction"
+if grep -q 'Dev uses a `disallowedTools` denylist' "$ROOT/README.md" \
+  && grep -q 'Denylist (no Task/Agent/Team/AskUserQuestion)' "$ROOT/README.md"; then
+  pass "README.md: Dev described as denylist in overview and diagram"
 else
-  fail "vibe.md: Dev MCP guidance still assumes inherited MCP access"
+  fail "README.md: Dev overview/diagram missing denylist language"
 fi
 
-if grep -q 'pre-extract concise task-relevant facts, docs, command results, or paths for Dev' "$EXECUTE_PROTOCOL" \
-  && grep -q 'do not instruct `vbw-dev` to call MCP servers directly' "$EXECUTE_PROTOCOL"; then
-  pass "execute-protocol.md: Dev MCP guidance uses parent-side pre-extraction"
+if grep -q '## Available Tools' "$DEV_AGENT" \
+  && grep -q 'denylist' "$DEV_AGENT" \
+  && grep -q '## MCP Tool Usage' "$DEV_AGENT"; then
+  pass "vbw-dev.md: documents denylist tool boundary and MCP availability"
 else
-  fail "execute-protocol.md: Dev MCP guidance still assumes inherited MCP access"
+  fail "vbw-dev.md: missing denylist + MCP availability documentation"
 fi
+
+for anti_mcp_target in "$FIX_COMMAND" "$VIBE_COMMAND" "$EXECUTE_PROTOCOL"; do
+  target_label=$(basename "$anti_mcp_target")
+  if grep -q 'do not instruct `vbw-dev` to call MCP servers directly' "$anti_mcp_target" \
+    || grep -q 'pre-extract concise.*for Dev' "$anti_mcp_target" \
+    || grep -q 'Do not plan for Dev agents to call MCP servers directly' "$anti_mcp_target"; then
+    fail "$target_label: stale anti-MCP gating prose must be removed (subagents may call MCP directly)"
+  else
+    pass "$target_label: no stale anti-MCP gating prose"
+  fi
+done
 
 if grep -q 'note them in the Dev task description' "$FIX_COMMAND" \
   || grep -q "note them in the Dev's task context" "$VIBE_COMMAND" \

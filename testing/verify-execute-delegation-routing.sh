@@ -637,12 +637,22 @@ fi
 
 if grep -Fq 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
   && grep -Fq 'subagent_type: "vbw:vbw-lead"' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'resolve-agent-settings.sh" lead' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq '.vbw-planning/config.json' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'config/model-profiles.json' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'LEAD_MODEL="$RESOLVED_MODEL"' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'LEAD_MAX_TURNS="$RESOLVED_MAX_TURNS"' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'model: "${LEAD_MODEL}"' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'maxTurns: ${LEAD_MAX_TURNS}' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'omit `maxTurns` because the resolved profile is unlimited' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
   && grep -Fq 'Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
   && grep -Fq 'Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md' <<< "$QA_REMEDIATION_PLAN_BLOCK"; then
-  pass "execute-protocol QA remediation plan stage explicitly spawns Lead with safe shape"
+  pass "execute-protocol QA remediation plan stage resolves Lead settings and spawns with safe shape"
 else
-  fail "execute-protocol QA remediation plan stage missing explicit safe Lead spawn contract"
+  fail "execute-protocol QA remediation plan stage missing Lead settings resolution or safe spawn contract"
 fi
+
+check_literal_before_literal "execute-protocol QA plan resolves Lead settings before using Lead model" "$QA_REMEDIATION_PLAN_BLOCK" 'resolve-agent-settings.sh" lead' 'model: "${LEAD_MODEL}"'
 
 if grep -Fq 'After Lead returns, apply the QA remediation no-tool circuit breaker' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
   && grep -Fq 'If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$QA_REMEDIATION_PLAN_BLOCK"; then

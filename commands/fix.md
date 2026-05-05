@@ -73,8 +73,6 @@ Config: Pre-injected by SessionStart hook.
 
     If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning the Dev. If the helper prints a `<skill_follow_up_files>` block, paste it immediately after the follow-up-read sentence in the spawned payload. Otherwise omit that block.
 
-    You may use MCP tools available in the parent session to pre-extract concise task-relevant facts, docs, command results, or paths for Dev. Pass that MCP-derived context into the Dev task description, but do not instruct `vbw-dev` to call MCP servers directly; Dev uses an explicit tool allowlist and validates with built-in tools or Bash-accessible CLIs.
-
     **Discover research context** (optional, from prior `/vbw:research`):
     ```bash
     RESEARCH_CONTEXT=$(bash "{plugin-root}/scripts/compile-research-context.sh" .vbw-planning "{fix description from Step 1}" 2>/dev/null || echo "")

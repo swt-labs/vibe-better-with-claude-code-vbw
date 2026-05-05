@@ -101,7 +101,7 @@ Most Claude Code plugins were built for the subagent era, one main session spawn
 
 - **Native hooks for continuous verification.** 24 hooks across 11 event types run automatically -- validating SUMMARY.md structure, checking commit format, validating frontmatter descriptions, gating task completion, blocking sensitive file access, enforcing plan file boundaries, managing session lifecycle, tracking agent health and cost attribution, tracking session metrics, pre-flight prompt validation, and post-compaction context verification. No more spawning a QA agent after every task. The platform enforces it, not the prompt.
 
-- **Platform-enforced tool permissions.** Each agent has `tools`/`disallowedTools` in YAML frontmatter. Dev uses an explicit allowlist for implementation, communication, and task-read tools while omitting recursive delegation tools; Scout can write research files to `.vbw-planning/` but cannot edit existing code, run commands, or spawn subagents (Edit, Bash, NotebookEdit, Task are platform-denied); QA is read-only via `permissionMode: plan` and can only persist VERIFICATION.md through the deterministic `write-verification.sh` script via Bash. Sensitive file access (`.env`, credentials) is intercepted by the `security-filter` hook. Claude Code enforces these frontmatter permissions directly, not through instructions an agent might ignore during compaction.
+- **Platform-enforced tool permissions.** Each agent has `tools`/`disallowedTools` in YAML frontmatter. Dev uses a `disallowedTools` denylist that explicitly bans recursive subagent, team, and user-question tools (`Task`, `TaskCreate`, `Agent`, `TeamCreate`, `TeamDelete`, `AskUserQuestion`) while leaving every other built-in and MCP tool available; Scout can write research files to `.vbw-planning/` but cannot edit existing code, run commands, or spawn subagents (Edit, Bash, NotebookEdit, Task are platform-denied); QA is read-only via `permissionMode: plan` and can only persist VERIFICATION.md through the deterministic `write-verification.sh` script via Bash. Sensitive file access (`.env`, credentials) is intercepted by the `security-filter` hook. Claude Code enforces these frontmatter permissions directly, not through instructions an agent might ignore during compaction.
 
 - **Database safety guard.** A PreToolUse hook (`bash-guard.sh`) intercepts every Bash command before it reaches the shell and blocks known destructive patterns -- `migrate:fresh`, `db:drop`, `TRUNCATE TABLE`, `FLUSHALL`, and 40+ patterns across Laravel, Rails, Django, Prisma, Knex, Sequelize, TypeORM, Drizzle, Diesel, SQLx, Ecto, raw SQL clients, Redis, MongoDB, and Docker volumes. All five agents with Bash access (Dev, QA, Lead, Debugger, Docs) are filtered equally. Override with `VBW_ALLOW_DESTRUCTIVE=1` env var or `bash_guard=false` in config. Extend with `.vbw-planning/destructive-commands.local.txt` for project-specific patterns. See **[Database Safety Guard](docs/database-safety-guard.md)** for the full design, flowchart, and pattern list.
 
@@ -457,7 +457,7 @@ VBW uses 7 specialized agents, each with native tool permissions enforced via YA
 | **Scout** | Research and information gathering. The responsible one. | Inherited (all except denied) + MCP | Bash, Edit, NotebookEdit, Task | `plan` |
 | **Architect** | Creates roadmaps and phase structure. Writes plans, not code. | Read, Glob, Grep, Write | Edit, WebFetch, Bash | `acceptEdits` |
 | **Lead** | Merges research + planning + self-review. The one who actually makes decisions. | Read, Glob, Grep, Write, Bash, WebFetch | Edit | `acceptEdits` |
-| **Dev** | Writes code, makes commits, builds things. Handle with care. | Explicit allowlist: Read, Glob, Grep, Write, Edit, Bash, WebFetch, WebSearch, LSP, Skill, SendMessage, TaskGet | Outside explicit allowlist: Task, TaskCreate, Agent, TeamCreate, TeamDelete, AskUserQuestion, TodoWrite, NotebookEdit | `acceptEdits` |
+| **Dev** | Writes code, makes commits, builds things. Handle with care. | Inherited (all except denied) + MCP | Task, TaskCreate, Agent, TeamCreate, TeamDelete, AskUserQuestion | `acceptEdits` |
 | **QA** | Goal-backward verification. Trusts nothing. Persists VERIFICATION.md via write-verification.sh; Write/Edit tools disallowed. | Read, Grep, Glob, Bash | Write, Edit, NotebookEdit | `plan` |
 | **Debugger** | Scientific method bug investigation. One issue, one session. | Full access | -- | `acceptEdits` |
 | **Docs** | Documentation specialist. READMEs, changelogs, API docs, guides. | Read, Grep, Glob, Bash, Write, Edit | -- | `acceptEdits` |
@@ -525,7 +525,7 @@ Here's when each one shows up to work:
   │                    by instruction. Writes roadmaps, not code. Mostly.         │
   │  Lead ─────────── Read, Write, Bash, WebFetch. The middle manager.            │
   │  Docs ─────────── Read, Write, Edit, Bash. Doc files only by instruction.     │
-  │  Dev ──────────── Explicit implementation allowlist; no recursive spawning.   │
+  │  Dev ──────────── Denylist (no Task/Agent/Team/AskUserQuestion); inherited tools.   │
   │  Debugger ─────── Full access. The one you still worry about.                 │
   │                                                                               │
   │  Platform-enforced: tools / disallowedTools (cannot be overridden)            │

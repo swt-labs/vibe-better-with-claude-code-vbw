@@ -1218,13 +1218,22 @@ fi
 
 if grep -Fq 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'subagent_type: "vbw:vbw-lead"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'resolve-agent-settings.sh lead' <<< "$qa_remediation_plan_block" \
+  && grep -Fq '.vbw-planning/config.json' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'config/model-profiles.json' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'LEAD_MODEL="$RESOLVED_MODEL"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'LEAD_MAX_TURNS="$RESOLVED_MAX_TURNS"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'model: "${LEAD_MODEL}"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'maxTurns: ${LEAD_MAX_TURNS}' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'omit `maxTurns` because the resolved profile is unlimited' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md' <<< "$qa_remediation_plan_block"; then
-  pass "vibe: QA remediation plan stage explicitly spawns Lead with safe shape"
+  pass "vibe: QA remediation plan stage resolves Lead settings and spawns with safe shape"
 else
-  fail "vibe: QA remediation plan stage missing explicit safe Lead spawn contract"
+  fail "vibe: QA remediation plan stage missing Lead settings resolution or safe spawn contract"
 fi
 
+check_literal_before_literal "vibe: QA plan resolves Lead settings before using Lead model" "$qa_remediation_plan_block" 'resolve-agent-settings.sh lead' 'model: "${LEAD_MODEL}"'
 check_literal_before_literal "vibe: QA plan Lead spawn appears before Lead return breaker" "$qa_remediation_plan_block" 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' 'After Lead returns, apply the QA remediation no-tool circuit breaker'
 
 if grep -Fq 'After Lead returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_plan_block" \

@@ -621,7 +621,17 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
   - Do NOT omit a carried known issue from `known_issues_input` or `known_issue_resolutions`. The deterministic gate treats missing coverage as a failed remediation round even if QA writes `PASS`.
   - Scope the plan to those failures: what to fix, which files, acceptance criteria
   - The orchestrator coordinates the remediation loop and spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md` (QA says what's wrong, planning says how to fix).
-  - Resolve Lead settings with the same `resolve-agent-settings.sh lead ...` pattern used by UAT remediation. Spawn Lead as a plain sequential work-unit subagent with `subagent_type: "vbw:vbw-lead"`, `model: "${LEAD_MODEL}"`, and `maxTurns` only when the resolved value is non-empty. Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`.
+  - Resolve Lead settings before composing the Lead task:
+    ```bash
+    if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh lead .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
+      echo "$AGENT_SETTINGS" >&2
+      exit 1
+    fi
+    eval "$AGENT_SETTINGS"
+    LEAD_MODEL="$RESOLVED_MODEL"
+    LEAD_MAX_TURNS="$RESOLVED_MAX_TURNS"
+    ```
+  - Spawn Lead as a plain sequential work-unit subagent with `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"`. If `LEAD_MAX_TURNS` is non-empty, include `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is empty, omit `maxTurns` because the resolved profile is unlimited. Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`.
   - Lead prompt MUST include the authoritative `round_dir`, `source_verification_path`, `known_issues_path`, and output path `{round_dir}/R{RR}-PLAN.md`; the failed-check and known-issue inputs above; the deviation-classification and known-issue-resolution requirements above; and `Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md and follow its structure exactly.`
   - After Lead returns, apply the QA remediation no-tool circuit breaker before plan validation, normalization, or state advancement. If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Lead prompt.
   - After writing the plan, advance state: `bash {plugin-root}/scripts/qa-remediation-state.sh advance {phase-dir}`
@@ -647,7 +657,6 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
     </skill_no_activation>
     After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
     ```
-  - You may use MCP tools available in the parent session to pre-extract concise remediation facts, docs, command results, or paths for Dev. Pass that MCP-derived context into the Dev task description, but do not instruct `vbw-dev` to call MCP servers directly; Dev uses an explicit tool allowlist and validates with built-in tools or Bash-accessible CLIs.
   - Always subagent — NO team creation for QA remediation (NON-NEGOTIABLE)
   - Dev fixes code, commits, writes `R{RR}-SUMMARY.md` in `{round_dir}` using `templates/REMEDIATION-SUMMARY.md` (NOT `templates/SUMMARY.md`)
     - The remediation summary frontmatter MUST include aggregated `commit_hashes`, `files_modified`, and `deviations`
@@ -1110,7 +1119,7 @@ If `plan_path` is empty, spawn Lead as a **single subagent** to write the remedi
   </skill_no_activation>
   After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
   ```
-- Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, use them to derive concise facts, docs, results, or recommended Dev-stage CLIs/skills for the Lead's task context. Do not plan for Dev agents to call MCP servers directly unless those MCP tools are explicitly listed in Dev's runtime tools.
+- Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, use them to derive concise facts, docs, results, or recommended Dev-stage CLIs/skills for the Lead's task context. Dev subagents may call any MCP tools available in their runtime; no orchestrator-side gating is required.
 - Spawn vbw-lead via Task tool: Set `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"`. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If empty, omit maxTurns.
 - Lead prompt MUST include:
   - If `research_path` from step 4 is non-empty: `Read {research_path} for full research findings before planning.` (Lead must read the file, do NOT inline a summary.)
@@ -1175,7 +1184,6 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
   </skill_no_activation>
   After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
   ```
-- You may use MCP tools available in the parent session to pre-extract concise build, test, documentation, or domain facts for Dev. Pass that MCP-derived context into the Dev task description, but do not instruct `vbw-dev` to call MCP servers directly; Dev uses an explicit tool allowlist and validates with built-in tools or Bash-accessible CLIs.
 - For each task in the plan (**sequentially**, one at a time — wait for each Dev to complete before spawning the next):
   - Spawn vbw-dev via Task tool: Set `subagent_type: "vbw:vbw-dev"` and `model: "${DEV_MODEL}"`. If `DEV_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEV_MAX_TURNS}`. If empty, omit maxTurns.
   - Dev prompt MUST include:
@@ -1406,7 +1414,7 @@ This mode handles the case where a milestone was archived before UAT issues were
     </skill_no_activation>
     After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
     ```
-  - Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, use them to derive concise facts, docs, results, or recommended Dev-stage CLIs/skills for the Lead's task context. Do not plan for Dev agents to call MCP servers directly unless those MCP tools are explicitly listed in Dev's runtime tools.
+  - Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to this planning task, use them to derive concise facts, docs, results, or recommended Dev-stage CLIs/skills for the Lead's task context. Dev subagents may call any MCP tools available in their runtime; no orchestrator-side gating is required.
    - Spawn vbw-lead as subagent via Task tool with compiled context (or full file list as fallback).
    - **CRITICAL:** Set `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"` in the Task tool invocation. If `LEAD_MAX_TURNS` is non-empty, also pass `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
    - **CRITICAL:** If a RESEARCH.md was found or created in step 3, include in the Lead prompt: `Read {research-path} for full research findings before planning.` where `{research-path}` is the per-plan or legacy path from step 3. The Lead must read the file itself — do NOT substitute an inlined summary.

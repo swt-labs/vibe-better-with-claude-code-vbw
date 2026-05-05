@@ -120,38 +120,10 @@ done
 README_DEV_ROW=$(grep -F '| **Dev** |' "$README_FILE" || true)
 README_PERMISSION_LEGEND=$(grep -F '**Denied / Omitted**' "$README_FILE" || true)
 DEV_DESCRIPTION=$(head -15 "$ROOT/agents/vbw-dev.md" | grep '^description:' || true)
-DEV_TOOLS_FRONTMATTER=$(head -15 "$ROOT/agents/vbw-dev.md" | awk '/^tools:/ { sub(/^tools:[[:space:]]*/, ""); print }')
-README_DEV_ALLOWED_CELL=$(markdown_table_cell "$README_DEV_ROW" 4)
-README_DEV_OMITTED_CELL=$(markdown_table_cell "$README_DEV_ROW" 5)
-DEV_ALLOWED_NORMALIZED=$(normalize_tool_list "$DEV_TOOLS_FRONTMATTER")
-README_ALLOWED_NORMALIZED=$(normalize_tool_list "$README_DEV_ALLOWED_CELL")
-README_OMITTED_NORMALIZED=$(normalize_tool_list "$README_DEV_OMITTED_CELL")
-VISIBLE_TOOL_UNIVERSE=$(cat <<'TOOLS'
-Agent
-AskUserQuestion
-Bash
-Edit
-Glob
-Grep
-LSP
-NotebookEdit
-Read
-SendMessage
-Skill
-Task
-TaskCreate
-TaskGet
-TeamCreate
-TeamDelete
-TodoWrite
-WebFetch
-WebSearch
-Write
-TOOLS
-)
-VISIBLE_TOOL_UNIVERSE_NORMALIZED=$(normalize_tool_list "$VISIBLE_TOOL_UNIVERSE")
-UNKNOWN_DEV_TOOLS=$(comm -23 <(print_tool_lines "$DEV_ALLOWED_NORMALIZED") <(print_tool_lines "$VISIBLE_TOOL_UNIVERSE_NORMALIZED"))
-EXPECTED_DEV_OMITTED_NORMALIZED=$(comm -23 <(print_tool_lines "$VISIBLE_TOOL_UNIVERSE_NORMALIZED") <(print_tool_lines "$DEV_ALLOWED_NORMALIZED"))
+DEV_DISALLOWED_FRONTMATTER=$(head -15 "$ROOT/agents/vbw-dev.md" | awk '/^disallowedTools:/ { sub(/^disallowedTools:[[:space:]]*/, ""); print }')
+README_DEV_DENIED_CELL=$(markdown_table_cell "$README_DEV_ROW" 5)
+DEV_DENIED_NORMALIZED=$(normalize_tool_list "$DEV_DISALLOWED_FRONTMATTER")
+README_DENIED_NORMALIZED=$(normalize_tool_list "$README_DEV_DENIED_CELL")
 
 if [[ -n "$README_DEV_ROW" ]]; then
   pass "README: Dev permission row exists"
@@ -159,27 +131,43 @@ else
   fail "README: Dev permission row exists"
 fi
 
-check_not_contains "dev: description no longer says full tool access" "$DEV_DESCRIPTION" "full tool access"
-check_contains "dev: description mentions explicit tool allowlist" "$DEV_DESCRIPTION" "explicit implementation tool allowlist"
-check_not_contains "README: Dev row no longer says Full access" "$README_DEV_ROW" "Full access"
-check_not_contains "README: Dev row no longer leaves denied tools blank" "$README_DEV_ROW" "| -- |"
-check_contains "README: Dev row describes explicit omissions" "$README_DEV_ROW" "Outside explicit allowlist"
-compare_tool_lists "README: Dev allowed tokens exactly match frontmatter" "$README_ALLOWED_NORMALIZED" "$DEV_ALLOWED_NORMALIZED"
-compare_tool_lists "README: Dev omitted tokens exactly match universe minus frontmatter" "$README_OMITTED_NORMALIZED" "$EXPECTED_DEV_OMITTED_NORMALIZED"
-if [ -z "$UNKNOWN_DEV_TOOLS" ]; then
-  pass "README: Dev frontmatter tools are in canonical visible-tool universe"
+if [ -n "$DEV_DISALLOWED_FRONTMATTER" ]; then
+  pass "vbw-dev.md: frontmatter declares disallowedTools denylist"
 else
-  fail "README: Dev frontmatter tools must be added to canonical visible-tool universe"
-  printf 'UNKNOWN:\n%s\n' "$UNKNOWN_DEV_TOOLS"
-fi
-if [ -z "$(comm -12 <(print_tool_lines "$README_ALLOWED_NORMALIZED") <(print_tool_lines "$README_OMITTED_NORMALIZED"))" ]; then
-  pass "README: Dev allowed and omitted cells do not overlap"
-else
-  fail "README: Dev allowed and omitted cells must not overlap"
+  fail "vbw-dev.md: frontmatter must declare disallowedTools denylist"
 fi
 
-check_contains "README: permission legend covers allowlist omissions" "$README_PERMISSION_LEGEND" 'for explicit allowlist agents, tools intentionally absent from `tools`'
-check_not_contains "README: permission legend no longer describes only disallowedTools" "$README_PERMISSION_LEGEND" '**Denied** = `disallowedTools`'
+check_not_contains "vbw-dev.md: description no longer says explicit allowlist" "$DEV_DESCRIPTION" "explicit implementation tool allowlist"
+check_contains "vbw-dev.md: description mentions denylist-controlled tool access" "$DEV_DESCRIPTION" "denylist-controlled"
+
+if head -15 "$ROOT/agents/vbw-dev.md" | grep -q '^tools:'; then
+  fail "vbw-dev.md: frontmatter must not use a tools allowlist (use disallowedTools denylist for forward compatibility)"
+else
+  pass "vbw-dev.md: frontmatter does not use a tools allowlist"
+fi
+
+for required_denied in Task TaskCreate Agent TeamCreate TeamDelete AskUserQuestion; do
+  if printf '%s\n' "$DEV_DENIED_NORMALIZED" | grep -Fxq "$required_denied"; then
+    pass "vbw-dev.md: disallowedTools bans $required_denied"
+  else
+    fail "vbw-dev.md: disallowedTools must ban $required_denied"
+  fi
+done
+
+for must_not_deny in Bash Read Edit Write Glob Grep LSP Skill WebFetch WebSearch SendMessage TaskGet; do
+  if printf '%s\n' "$DEV_DENIED_NORMALIZED" | grep -Fxq "$must_not_deny"; then
+    fail "vbw-dev.md: disallowedTools must not ban $must_not_deny (Dev relies on it)"
+  else
+    pass "vbw-dev.md: disallowedTools does not ban $must_not_deny"
+  fi
+done
+
+check_not_contains "README: Dev row no longer pins an explicit allowlist" "$README_DEV_ROW" "Explicit allowlist:"
+check_not_contains "README: Dev row no longer says Outside explicit allowlist" "$README_DEV_ROW" "Outside explicit allowlist"
+check_contains "README: Dev row uses inherited tools language" "$README_DEV_ROW" "Inherited (all except denied)"
+compare_tool_lists "README: Dev denied tokens exactly match disallowedTools frontmatter" "$README_DENIED_NORMALIZED" "$DEV_DENIED_NORMALIZED"
+
+check_contains "README: permission legend mentions disallowedTools" "$README_PERMISSION_LEGEND" 'disallowedTools'
 
 if grep -Fq 'Dev, Debugger' "$README_FILE" && grep -Fq 'Full access. The ones you actually worry about.' "$README_FILE"; then
   fail "README: permission model no longer groups Dev with full-access agents"
