@@ -32,6 +32,45 @@ fi
 PHASE_DIR="${PHASE_DIR%/}"
 PHASE_DIR_BASE=$(basename "$PHASE_DIR")
 
+round_plan_content_is_valid() {
+  local file_path="$1" frontmatter
+
+  [ -s "$file_path" ] || return 1
+  frontmatter=$(awk '
+    BEGIN { delimiter_count = 0 }
+    /^---[[:space:]]*$/ {
+      delimiter_count++
+      if (delimiter_count == 2) exit
+      next
+    }
+    delimiter_count == 1 { print }
+  ' "$file_path" 2>/dev/null) || return 1
+
+  [ -n "$frontmatter" ] || return 1
+  grep -Eq '^phase:[[:space:]]*[0-9]+([[:space:]]*(#.*)?)?$' <<< "$frontmatter" || return 1
+  grep -Eq '^round:[[:space:]]*[0-9]+([[:space:]]*(#.*)?)?$' <<< "$frontmatter" || return 1
+  grep -Eq '^title:[[:space:]]*.+' <<< "$frontmatter" || return 1
+  grep -Eq '^type:[[:space:]]*remediation([[:space:]]*(#.*)?)?$' <<< "$frontmatter" || return 1
+  grep -Eq '^fail_classifications:[[:space:]]*.*$' <<< "$frontmatter" || return 1
+  grep -Eq '^known_issues_input:[[:space:]]*.*$' <<< "$frontmatter" || return 1
+  grep -Eq '^known_issue_resolutions:[[:space:]]*.*$' <<< "$frontmatter" || return 1
+  grep -Eq '^<tasks>[[:space:]]*$' "$file_path" || return 1
+  grep -Eq '^<verification>[[:space:]]*$' "$file_path" || return 1
+}
+
+move_as_invalid_candidate() {
+  local source_path="$1" invalid_source invalid_index
+
+  invalid_source="$source_path.invalid"
+  invalid_index=1
+  while [ -e "$invalid_source" ]; do
+    invalid_source="$source_path.invalid.$invalid_index"
+    invalid_index=$((invalid_index + 1))
+  done
+  mv "$source_path" "$invalid_source"
+  printf '%s\n' "$(basename "$invalid_source")"
+}
+
 # Remediation round directories use round-scoped names (R01-PLAN.md), not
 # phase-scoped names (01-PLAN.md). The containing round directory is the source
 # of truth for the canonical round token so QA/UAT/legacy round paths all share
@@ -136,6 +175,11 @@ if [ -n "$ROUND_PLAN_TOKEN" ]; then
         done
         mv "$f" "$STALE_SOURCE"
         echo "skipped: $BASENAME (existing $(basename "$TARGET") is newer; moved stale candidate to $(basename "$STALE_SOURCE"))" >&2
+        continue
+      fi
+      if ! round_plan_content_is_valid "$f"; then
+        INVALID_SOURCE_BASENAME=$(move_as_invalid_candidate "$f")
+        echo "skipped: $BASENAME (newer candidate is structurally invalid; moved invalid candidate to $INVALID_SOURCE_BASENAME and preserved existing $(basename "$TARGET"))" >&2
         continue
       fi
       mv "$f" "$TARGET"

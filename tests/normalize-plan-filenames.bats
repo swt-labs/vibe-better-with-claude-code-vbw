@@ -11,6 +11,45 @@ teardown() {
   rm -rf "$TEST_DIR"
 }
 
+write_valid_round_plan() {
+  local path="$1"
+  cat > "$path" <<'EOF'
+---
+phase: 1
+round: 1
+title: Valid remediation plan
+type: remediation
+fail_classifications:
+  - {id: "FAIL-1", type: "code-fix", rationale: "fix required"}
+known_issues_input: []
+known_issue_resolutions: []
+---
+<objective>
+Fix the issue.
+</objective>
+<tasks>
+<task type="auto">
+  <name>Fix</name>
+  <files>
+    src/example.sh
+  </files>
+  <action>
+Apply the fix.
+  </action>
+  <verify>
+Run tests.
+  </verify>
+  <done>
+Tests pass.
+  </done>
+</task>
+</tasks>
+<verification>
+1. Run tests.
+</verification>
+EOF
+}
+
 @test "renames phase-dir PLAN-01.md to 01-PLAN.md" {
   PHASE_DIR="$TEST_DIR/.vbw-planning/phases/01-setup"
   mkdir -p "$PHASE_DIR"
@@ -99,7 +138,7 @@ teardown() {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
   mkdir -p "$ROUND_DIR"
   echo "stale" > "$ROUND_DIR/R01-PLAN.md"
-  echo "fresh" > "$ROUND_DIR/PLAN-01.md"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.md"
   touch -t 202001010000 "$ROUND_DIR/R01-PLAN.md"
   touch -t 202001010001 "$ROUND_DIR/PLAN-01.md"
 
@@ -109,8 +148,27 @@ teardown() {
   [ -f "$ROUND_DIR/R01-PLAN.md" ]
   [ ! -f "$ROUND_DIR/PLAN-01.md" ]
   [ ! -f "$ROUND_DIR/01-PLAN.md" ]
-  [ "$(cat "$ROUND_DIR/R01-PLAN.md")" = "fresh" ]
+  grep -q "Valid remediation plan" "$ROUND_DIR/R01-PLAN.md"
   [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md (replaced existing target)"* ]]
+}
+
+@test "preserves valid canonical round plan when newer misnamed candidate is malformed" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/R01-PLAN.md"
+  echo "partial write without required frontmatter" > "$ROUND_DIR/PLAN-01.md"
+  touch -t 202001010000 "$ROUND_DIR/R01-PLAN.md"
+  touch -t 202001010001 "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-01.md.invalid" ]
+  grep -q "Valid remediation plan" "$ROUND_DIR/R01-PLAN.md"
+  [[ "$output" == *"newer candidate is structurally invalid"* ]]
+  [[ "$output" == *"preserved existing R01-PLAN.md"* ]]
 }
 
 @test "does not replace newer canonical plan with stale misnamed round-dir candidate" {

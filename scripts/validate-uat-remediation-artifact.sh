@@ -389,11 +389,10 @@ case "$ARTIFACT_TYPE" in
       || emit_failure "plan artifact type must be remediation"
     contains_regex "$FRONTMATTER" '^fail_classifications:[[:space:]]*.*$' \
       || emit_failure "plan artifact missing fail_classifications metadata"
-    # known_issue_resolutions is required for UAT plans; QA fail-only rounds may omit it.
-    if [ "${REMEDIATION_KIND:-}" != "qa" ]; then
-      contains_regex "$FRONTMATTER" '^known_issue_resolutions:[[:space:]]*.*$' \
-        || emit_failure "plan artifact missing known_issue_resolutions metadata"
-    fi
+    contains_regex "$FRONTMATTER" '^known_issues_input:[[:space:]]*.*$' \
+      || emit_failure "plan artifact missing known_issues_input metadata"
+    contains_regex "$FRONTMATTER" '^known_issue_resolutions:[[:space:]]*.*$' \
+      || emit_failure "plan artifact missing known_issue_resolutions metadata"
     grep -Eq '^<tasks>[[:space:]]*$' "$ARTIFACT_PATH" \
       || emit_failure "plan artifact missing tasks block"
     grep -Eq '^<verification>[[:space:]]*$' "$ARTIFACT_PATH" \
