@@ -50,8 +50,8 @@ check_not_contains() {
 
 markdown_table_cell() {
   local row="$1"
-  local index="$2"
-  printf '%s\n' "$row" | awk -F'|' -v index="$index" '{ cell=$index; gsub(/^[[:space:]]+|[[:space:]]+$/, "", cell); print cell }'
+  local cell_index="$2"
+  printf '%s\n' "$row" | awk -F'|' -v cell_index="$cell_index" '{ cell=$cell_index; gsub(/^[[:space:]]+|[[:space:]]+$/, "", cell); print cell }'
 }
 
 normalize_tool_list() {
