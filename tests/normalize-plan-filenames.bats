@@ -67,6 +67,34 @@ teardown() {
   [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md"* ]]
 }
 
+@test "renames legacy remediation round-dir PLAN-01.md to R01-PLAN.md" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "plan" > "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ ! -f "$ROUND_DIR/01-PLAN.md" ]
+  [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md"* ]]
+}
+
+@test "renames legacy remediation round-dir PLAN-R01.md to R01-PLAN.md" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "plan" > "$ROUND_DIR/PLAN-R01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-R01.md" ]
+  [ ! -f "$ROUND_DIR/01-PLAN.md" ]
+  [[ "$output" == *"renamed: PLAN-R01.md -> R01-PLAN.md"* ]]
+}
+
 @test "does not overwrite existing round-dir R01-PLAN.md" {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
   mkdir -p "$ROUND_DIR"

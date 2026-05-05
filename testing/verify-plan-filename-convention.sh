@@ -161,6 +161,28 @@ else
   fail "UAT PLAN-01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
 fi
 
+# Test 10c2: legacy remediation round PLAN-01.md normalizes to R01-PLAN.md
+TDIR="$TMPDIR_TEST/test10c2/.vbw-planning/phases/01-setup/remediation/round-01"
+mkdir -p "$TDIR"
+echo "plan" > "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-01.md" ]; then
+  pass "renames legacy round PLAN-01.md → R01-PLAN.md"
+else
+  fail "legacy PLAN-01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10c3: legacy remediation round PLAN-R01.md normalizes to R01-PLAN.md
+TDIR="$TMPDIR_TEST/test10c3/.vbw-planning/phases/01-setup/remediation/round-01"
+mkdir -p "$TDIR"
+echo "plan" > "$TDIR/PLAN-R01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-R01.md" ] && [ ! -f "$TDIR/01-PLAN.md" ]; then
+  pass "renames legacy round PLAN-R01.md → R01-PLAN.md"
+else
+  fail "legacy PLAN-R01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
 # Test 10d: round-dir collision preserves existing canonical R01-PLAN.md
 TDIR="$TMPDIR_TEST/test10d/.vbw-planning/phases/01-setup/remediation/qa/round-01"
 mkdir -p "$TDIR"
