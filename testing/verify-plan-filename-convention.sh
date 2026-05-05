@@ -188,6 +188,8 @@ TDIR="$TMPDIR_TEST/test10d/.vbw-planning/phases/01-setup/remediation/qa/round-01
 mkdir -p "$TDIR"
 echo "stale" > "$TDIR/R01-PLAN.md"
 echo "fresh" > "$TDIR/PLAN-01.md"
+touch -t 202001010000 "$TDIR/R01-PLAN.md"
+touch -t 202001010001 "$TDIR/PLAN-01.md"
 OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
 CONTENT=$(cat "$TDIR/R01-PLAN.md")
 if [ "$RC" -eq 0 ] && [ "$CONTENT" = "fresh" ] && [ ! -f "$TDIR/PLAN-01.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && echo "$OUTPUT" | grep -q "replaced existing target"; then
@@ -207,6 +209,32 @@ if [ "$RC" -eq 0 ] && [ ! -f "$TDIR/R01-PLAN.md" ] && [ -f "$TDIR/R01-PLAN.md.co
   pass "round conflict: fails closed when PLAN-01.md and PLAN-R01.md differ"
 else
   fail "round conflict — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d3: round-dir stale misnamed candidate does not clobber newer canonical plan
+TDIR="$TMPDIR_TEST/test10d3/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "canonical" > "$TDIR/R01-PLAN.md"
+echo "stale candidate" > "$TDIR/PLAN-01.md"
+touch -t 202001010001 "$TDIR/R01-PLAN.md"
+touch -t 202001010000 "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+CONTENT=$(cat "$TDIR/R01-PLAN.md")
+if [ "$RC" -eq 0 ] && [ "$CONTENT" = "canonical" ] && [ ! -f "$TDIR/PLAN-01.md" ] && [ -f "$TDIR/PLAN-01.md.stale" ] && echo "$OUTPUT" | grep -q "existing R01-PLAN.md is newer"; then
+  pass "round stale candidate: preserves newer canonical R01-PLAN.md"
+else
+  fail "round stale candidate — rc=$RC, content: $CONTENT, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d4: round-dir source round token must match containing round directory
+TDIR="$TMPDIR_TEST/test10d4/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "wrong round" > "$TDIR/PLAN-R02.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/PLAN-R02.md" ] && [ ! -f "$TDIR/R01-PLAN.md" ] && echo "$OUTPUT" | grep -q "round token does not match"; then
+  pass "round token mismatch: skips PLAN-R02.md in round-01"
+else
+  fail "round token mismatch — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
 fi
 
 # Test 10e: phase directories still normalize PLAN-01.md to 01-PLAN.md

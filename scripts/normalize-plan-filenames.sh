@@ -55,6 +55,12 @@ if [ -n "$ROUND_PLAN_TOKEN" ]; then
       echo "skipped: $BASENAME (unknown remediation round plan form)" >&2
       continue
     fi
+    SOURCE_ROUND_RAW=$(echo "$BASENAME" | sed -n 's/^[Pp][Ll][Aa][Nn]-[Rr]\{0,1\}\([0-9][0-9]*\)\.[mM][dD]$/\1/p')
+    SOURCE_ROUND_TOKEN=$(printf "R%02d" "$((10#$SOURCE_ROUND_RAW))")
+    if [ "$SOURCE_ROUND_TOKEN" != "$ROUND_PLAN_TOKEN" ]; then
+      echo "skipped: $BASENAME (round token does not match $(basename "$PHASE_DIR"))" >&2
+      continue
+    fi
     ROUND_PLAN_CANDIDATES+=("$f")
   done
 
@@ -90,6 +96,17 @@ if [ -n "$ROUND_PLAN_TOKEN" ]; then
       if cmp -s "$f" "$TARGET"; then
         rm "$f"
         echo "removed duplicate: $BASENAME (matches $(basename "$TARGET"))"
+        continue
+      fi
+      if [ ! "$f" -nt "$TARGET" ]; then
+        STALE_SOURCE="$f.stale"
+        STALE_INDEX=1
+        while [ -e "$STALE_SOURCE" ]; do
+          STALE_SOURCE="$f.stale.$STALE_INDEX"
+          STALE_INDEX=$((STALE_INDEX + 1))
+        done
+        mv "$f" "$STALE_SOURCE"
+        echo "skipped: $BASENAME (existing $(basename "$TARGET") is newer; moved stale candidate to $(basename "$STALE_SOURCE"))" >&2
         continue
       fi
       mv "$f" "$TARGET"

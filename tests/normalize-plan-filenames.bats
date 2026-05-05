@@ -100,6 +100,8 @@ teardown() {
   mkdir -p "$ROUND_DIR"
   echo "stale" > "$ROUND_DIR/R01-PLAN.md"
   echo "fresh" > "$ROUND_DIR/PLAN-01.md"
+  touch -t 202001010000 "$ROUND_DIR/R01-PLAN.md"
+  touch -t 202001010001 "$ROUND_DIR/PLAN-01.md"
 
   run bash "$SCRIPT" "$ROUND_DIR"
 
@@ -109,6 +111,37 @@ teardown() {
   [ ! -f "$ROUND_DIR/01-PLAN.md" ]
   [ "$(cat "$ROUND_DIR/R01-PLAN.md")" = "fresh" ]
   [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md (replaced existing target)"* ]]
+}
+
+@test "does not replace newer canonical plan with stale misnamed round-dir candidate" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "canonical" > "$ROUND_DIR/R01-PLAN.md"
+  echo "stale candidate" > "$ROUND_DIR/PLAN-01.md"
+  touch -t 202001010001 "$ROUND_DIR/R01-PLAN.md"
+  touch -t 202001010000 "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-01.md.stale" ]
+  [ "$(cat "$ROUND_DIR/R01-PLAN.md")" = "canonical" ]
+  [[ "$output" == *"existing R01-PLAN.md is newer"* ]]
+}
+
+@test "does not normalize round-dir plan whose source round token mismatches directory" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "wrong round" > "$ROUND_DIR/PLAN-R02.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/PLAN-R02.md" ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [[ "$output" == *"round token does not match"* ]]
 }
 
 @test "fails closed when round-dir has conflicting misnamed plan candidates" {
