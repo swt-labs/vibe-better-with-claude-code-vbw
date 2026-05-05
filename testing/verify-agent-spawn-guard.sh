@@ -157,6 +157,14 @@ run_guard_without_exported_root() {
   return ${PIPESTATUS[0]}
 }
 
+diagnostic_mentions_all_cwd_aliases() {
+  local output="$1"
+  grep -q 'cwd' <<< "$output" \
+    && grep -q 'working_dir' <<< "$output" \
+    && grep -q 'workingDirectory' <<< "$output" \
+    && grep -q 'workdir' <<< "$output"
+}
+
 setup_sidechain_project() {
   setup_project
   SIDECHAIN="$PROJECT/.claude/worktrees/agent-test"
@@ -300,6 +308,22 @@ test_no_marker_blocks_sidechain_cwd_when_config_off() {
 }
 test_no_marker_blocks_sidechain_cwd_when_config_off
 
+test_sidechain_cwd_diagnostic_names_all_aliases() {
+  setup_project
+
+  local tool output rc
+  for tool in Agent TaskCreate; do
+    output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "workingDirectory" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'Claude sidechain working directory' && diagnostic_mentions_all_cwd_aliases "$output"; then
+      pass "Sidechain cwd diagnostic names all aliases for ${tool}"
+    else
+      fail "Sidechain cwd diagnostic should name all aliases for ${tool} (rc=$rc, output=$output)"
+    fi
+  done
+  cleanup
+}
+test_sidechain_cwd_diagnostic_names_all_aliases
+
 test_no_marker_blocks_named_non_team_spawns() {
   setup_project
 
@@ -391,6 +415,23 @@ test_no_marker_blocks_vbw_worktree_cwd_aliases() {
   cleanup
 }
 test_no_marker_blocks_vbw_worktree_cwd_aliases
+
+test_vbw_worktree_cwd_diagnostic_names_all_aliases() {
+  setup_project
+  mkdir -p "$PROJECT/.vbw-worktrees/dev-01"
+
+  local tool output rc
+  for tool in Agent TaskCreate; do
+    output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.vbw-worktrees/dev-01" "workdir" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'prompt/state metadata, not a spawn cwd' && diagnostic_mentions_all_cwd_aliases "$output"; then
+      pass "VBW worktree cwd diagnostic names all aliases for ${tool}"
+    else
+      fail "VBW worktree cwd diagnostic should name all aliases for ${tool} (rc=$rc, output=$output)"
+    fi
+  done
+  cleanup
+}
+test_vbw_worktree_cwd_diagnostic_names_all_aliases
 
 test_no_marker_blocks_vbw_worktree_cwd_before_isolation() {
   setup_project

@@ -114,11 +114,11 @@ fi
 
 if is_teammate_spawn_tool; then
   if requested_sidechain_cwd; then
-    echo "Blocked: teammate spawn requested an unmanaged Claude sidechain working directory. Omit sidechain cwd/working_dir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
+    echo "Blocked: teammate spawn requested an unmanaged Claude sidechain working directory. Omit sidechain cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
     exit 2
   fi
   if requested_vbw_worktree_cwd; then
-    echo "Blocked: teammate spawn requested a VBW worktree path as a spawn working directory. Omit cwd/working_dir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
+    echo "Blocked: teammate spawn requested a VBW worktree path as a spawn working directory. Omit cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
     exit 2
   fi
   if requested_worktree_isolation; then
