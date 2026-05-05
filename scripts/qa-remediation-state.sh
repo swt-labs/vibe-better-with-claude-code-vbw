@@ -65,22 +65,35 @@ canonicalize_existing_or_parent() {
 }
 
 translate_claude_sidechain_phase_candidate() {
-  local candidate="$1" sidechain_root="${VBW_CLAUDE_SIDECHAIN_ROOT:-}" host_root="${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}" rel_phase_path
+  local candidate="$1" sidechain_root="${VBW_CLAUDE_SIDECHAIN_ROOT:-}" host_root="${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}" rel_phase_path inferred_host_root
 
-  if [ -z "$sidechain_root" ] || [ -z "$host_root" ] || [ ! -f "$host_root/.vbw-planning/config.json" ]; then
-    printf '%s\n' "$candidate"
-    return 0
+  # Primary: env-var mapping populated by vbw-config-root.sh when the shell CWD is inside a
+  # Claude sidechain (e.g. .claude/worktrees/agent-*).
+  if [ -n "$sidechain_root" ] && [ -n "$host_root" ] && [ -f "$host_root/.vbw-planning/config.json" ]; then
+    case "$candidate" in
+      "$sidechain_root"/.vbw-planning/phases/*)
+        rel_phase_path="${candidate#"$sidechain_root"/.vbw-planning/phases/}"
+        printf '%s/.vbw-planning/phases/%s\n' "$host_root" "$rel_phase_path"
+        return 0
+        ;;
+    esac
   fi
 
+  # Structural fallback: caller is running from the host CWD but passed an absolute sidechain
+  # phase path directly (env vars not set because the hook fires only for sidechain CWD).
+  # Infer the host root by stripping the /.claude/worktrees/agent-{id}/... suffix.
   case "$candidate" in
-    "$sidechain_root"/.vbw-planning/phases/*)
-      rel_phase_path="${candidate#"$sidechain_root"/.vbw-planning/phases/}"
-      printf '%s/.vbw-planning/phases/%s\n' "$host_root" "$rel_phase_path"
-      ;;
-    *)
-      printf '%s\n' "$candidate"
+    */.claude/worktrees/agent-*/.vbw-planning/phases/*)
+      inferred_host_root=$(printf '%s\n' "$candidate" | sed 's|/\.claude/worktrees/agent-[^/]*/.*||')
+      if [ -n "$inferred_host_root" ] && [ -f "$inferred_host_root/.vbw-planning/config.json" ]; then
+        rel_phase_path=$(printf '%s\n' "$candidate" | sed 's|.*/.claude/worktrees/agent-[^/]*/\.vbw-planning/phases/||')
+        printf '%s/.vbw-planning/phases/%s\n' "$inferred_host_root" "$rel_phase_path"
+        return 0
+      fi
       ;;
   esac
+
+  printf '%s\n' "$candidate"
 }
 
 normalize_active_phase_dir_root() {

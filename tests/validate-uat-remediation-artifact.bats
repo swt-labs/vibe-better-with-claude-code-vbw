@@ -214,6 +214,52 @@ EOF
   [[ "$output" == *"artifact_path=$plan_path"* ]]
 }
 
+@test "validator accepts QA round-dir plan without known_issue_resolutions (fail-only mode)" {
+  local plan_path="$QA_ROUND_DIR/R01-PLAN.md"
+  mkdir -p "$(dirname "$plan_path")"
+  cat > "$plan_path" <<'EOF'
+---
+phase: 1
+round: 1
+title: Fail-only remediation plan
+type: remediation
+fail_classifications:
+  - {id: "FAIL-1", type: "code-fix", rationale: "test failure needs fix"}
+---
+<objective>
+Fix the test failure.
+</objective>
+<tasks>
+<task type="auto">
+  <name>Fix</name>
+  <files>
+    src/example.sh
+  </files>
+  <action>
+Apply the fix.
+  </action>
+  <verify>
+Run tests.
+  </verify>
+  <done>
+Tests pass.
+  </done>
+</task>
+</tasks>
+<verification>
+1. Run tests.
+</verification>
+<success_criteria>
+- Tests pass.
+</success_criteria>
+EOF
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"artifact_valid=true"* ]]
+  [[ "$output" == *"artifact_path=$plan_path"* ]]
+}
+
 @test "validator rejects QA plan absolute paths containing traversal aliases" {
   local plan_path alias_path
   plan_path="$QA_ROUND_DIR/R01-PLAN.md"

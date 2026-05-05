@@ -12,6 +12,8 @@ set -euo pipefail
 ARTIFACT_TYPE="${1:-}"
 ARTIFACT_PATH="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Set to "qa" or "uat" by validate_common_path so downstream checks can vary per kind.
+REMEDIATION_KIND=""
 
 if [ -f "$SCRIPT_DIR/uat-utils.sh" ]; then
   # shellcheck source=scripts/uat-utils.sh
@@ -310,9 +312,11 @@ validate_common_path() {
 
   case "$ARTIFACT_PATH" in
     */.vbw-planning/phases/*/remediation/uat/round-[0-9]*/*)
+      REMEDIATION_KIND="uat"
       validate_round_dir_artifact_path "uat" "$expected_suffix"
       ;;
     */.vbw-planning/phases/*/remediation/qa/round-[0-9]*/*)
+      REMEDIATION_KIND="qa"
       [ "$ARTIFACT_TYPE" = "plan" ] || emit_failure "QA remediation validation currently supports plan artifacts only"
       validate_round_dir_artifact_path "qa" "PLAN"
       ;;
@@ -384,8 +388,11 @@ case "$ARTIFACT_TYPE" in
       || emit_failure "plan artifact type must be remediation"
     contains_regex "$FRONTMATTER" '^fail_classifications:[[:space:]]*.*$' \
       || emit_failure "plan artifact missing fail_classifications metadata"
-    contains_regex "$FRONTMATTER" '^known_issue_resolutions:[[:space:]]*.*$' \
-      || emit_failure "plan artifact missing known_issue_resolutions metadata"
+    # known_issue_resolutions is required for UAT plans; QA fail-only rounds may omit it.
+    if [ "${REMEDIATION_KIND:-}" != "qa" ]; then
+      contains_regex "$FRONTMATTER" '^known_issue_resolutions:[[:space:]]*.*$' \
+        || emit_failure "plan artifact missing known_issue_resolutions metadata"
+    fi
     grep -Eq '^<tasks>[[:space:]]*$' "$ARTIFACT_PATH" \
       || emit_failure "plan artifact missing tasks block"
     grep -Eq '^<verification>[[:space:]]*$' "$ARTIFACT_PATH" \

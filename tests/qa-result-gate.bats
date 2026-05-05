@@ -318,7 +318,7 @@ VERIF
 @test "plan-amendment requires actual round diff to include the original plan when git evidence is available" {
   init_git_repo
   mkdir -p "$TEST_DIR/docs"
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
@@ -329,7 +329,7 @@ VERIF
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - "01-01-PLAN.md"
+    '  - ".vbw-planning/phases/01-test-phase/01-01-PLAN.md"
   - "README.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
@@ -403,12 +403,12 @@ VERIF
 
 @test "plan-amendment does not accept deleted absolute original plan path" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
-  delete_repo_file "01-test-phase/01-01-PLAN.md" >/dev/null
+  delete_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
@@ -2416,7 +2416,7 @@ VERIF
 
 @test "Git-backed docs-only remediation artifact worktree fallback proceeds to UAT" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
@@ -2432,8 +2432,8 @@ plan: R01
 status: complete
 commit_hashes: []
 files_modified:
-  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
-  - "01-test-phase/remediation/qa/round-01/R01-PLAN.md"
+  - ".vbw-planning/phases/01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+  - ".vbw-planning/phases/01-test-phase/remediation/qa/round-01/R01-PLAN.md"
 deviations: []
 ---
 
@@ -3543,12 +3543,12 @@ VERIF
 
 @test "unrecorded post-anchor original plan diff does not satisfy plan-amendment evidence" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
-  commit_repo_file "01-test-phase/01-01-PLAN.md" "updated plan outside recorded summary evidence" >/dev/null
+  commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "updated plan outside recorded summary evidence" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
@@ -5267,7 +5267,7 @@ VERIF
 
 @test "committed and worktree evidence can combine for a plan-amendment round" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|

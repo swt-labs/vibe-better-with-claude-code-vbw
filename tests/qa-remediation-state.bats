@@ -339,6 +339,28 @@ EOF
   [ ! -d "$sidechain_phase_dir/remediation" ]
 }
 
+@test "get-or-init maps absolute Claude sidechain phase dir back to host from host CWD" {
+  local host_root host_phase_dir sidechain_dir sidechain_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-hostcwd" "$host_root/.claude/worktrees/agent-test/.vbw-planning/phases/01-hostcwd"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-hostcwd"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+  sidechain_phase_dir="$sidechain_dir/.vbw-planning/phases/01-hostcwd"
+
+  # Caller is at host CWD — env vars (VBW_CLAUDE_SIDECHAIN_ROOT/HOST_ROOT) are NOT set
+  # because the sidechain hook only fires when CWD is inside the sidechain directory.
+  # The structural fallback in translate_claude_sidechain_phase_candidate must infer
+  # the host root from the absolute sidechain path itself.
+  run bash -c 'cd "$1" && bash "$2/qa-remediation-state.sh" get-or-init "$3"' _ "$host_root" "$SCRIPTS_DIR" "$sidechain_phase_dir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round_dir=$host_phase_dir/remediation/qa/round-01"* ]]
+  [[ "$output" == *"plan_path=$host_phase_dir/remediation/qa/round-01/R01-PLAN.md"* ]]
+  [ -f "$host_phase_dir/remediation/qa/.qa-remediation-stage" ]
+  [ ! -d "$sidechain_phase_dir/remediation" ]
+}
+
 @test "get-or-init normalizes nested active phase subpath back to phase root" {
   local phase_dir_physical
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
