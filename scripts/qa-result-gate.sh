@@ -1190,8 +1190,14 @@ json_object_array_covers_full_issue_objects() {
     rm -f "$required_file"
     return 1
   }
-  printf '%s' "$required_json" > "$required_file"
-  printf '%s' "$candidate_json" > "$candidate_file"
+  if ! printf '%s' "$required_json" > "$required_file"; then
+    rm -f "$required_file" "$candidate_file"
+    return 1
+  fi
+  if ! printf '%s' "$candidate_json" > "$candidate_file"; then
+    rm -f "$required_file" "$candidate_file"
+    return 1
+  fi
 
   if jq -e -n \
     --slurpfile required "$required_file" \
@@ -1238,8 +1244,14 @@ json_object_array_dispositions_match() {
     rm -f "$expected_file"
     return 1
   }
-  printf '%s' "$expected_json" > "$expected_file"
-  printf '%s' "$actual_json" > "$actual_file"
+  if ! printf '%s' "$expected_json" > "$expected_file"; then
+    rm -f "$expected_file" "$actual_file"
+    return 1
+  fi
+  if ! printf '%s' "$actual_json" > "$actual_file"; then
+    rm -f "$expected_file" "$actual_file"
+    return 1
+  fi
 
   if jq -e -n \
     --slurpfile expected "$expected_file" \

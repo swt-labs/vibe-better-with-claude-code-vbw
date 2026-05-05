@@ -146,6 +146,134 @@ extract_function_span() {
   ' "$file_path"
 }
 
+write_known_issue_temp_write_failure_shim() {
+  local fail_on_call="${1}"
+  local shim_dir="$TEST_DIR/mktemp-shim"
+  local temp_dir="$TEST_DIR/mktemp-shim-files"
+  local count_file="$TEST_DIR/mktemp-shim-count"
+  mkdir -p "$shim_dir" "$temp_dir"
+  printf '0' > "$count_file"
+  cat > "$shim_dir/mktemp" <<'SHIM'
+#!/usr/bin/env bash
+set -eu
+
+count_file="${QA_MKTEMP_COUNT_FILE:?}"
+temp_dir="${QA_MKTEMP_TEMP_DIR:?}"
+fail_on="${QA_MKTEMP_FAIL_ON:?}"
+count=$(cat "$count_file" 2>/dev/null || printf '0')
+count=$((count + 1))
+printf '%s' "$count" > "$count_file"
+
+if [ "$count" -eq "$fail_on" ]; then
+  printf '%s\n' "$temp_dir/missing-parent/unwritable-${count}.tmp"
+  exit 0
+fi
+
+path="$temp_dir/valid-${count}.tmp"
+: > "$path"
+printf '%s\n' "$path"
+SHIM
+  chmod +x "$shim_dir/mktemp"
+  printf '%s' "$shim_dir"
+}
+
+create_single_known_issue_process_exception_round() {
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" <<'SNAP'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+SNAP
+
+  cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+REGISTRY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace failure is pre-existing and non-blocking for this phase"}'
+---
+
+## Summary
+Documented the Pest/PHPUnit known issue as an accepted non-blocking process-exception.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Known-issues-only Pest namespace process-exception round
+known_issues_input:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500."}'
+known_issue_resolutions:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace failure is pre-existing and non-blocking for this phase"}'
+---
+PLAN
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Pest known issue accepted as non-blocking | PASS | Done |
+VERIF
+}
+
+run_gate_with_mktemp_write_failure_on_call() {
+  local fail_on_call="${1}"
+  local shim_dir
+  shim_dir=$(write_known_issue_temp_write_failure_shim "$fail_on_call")
+
+  run env \
+    PATH="$shim_dir:$PATH" \
+    QA_MKTEMP_COUNT_FILE="$TEST_DIR/mktemp-shim-count" \
+    QA_MKTEMP_TEMP_DIR="$TEST_DIR/mktemp-shim-files" \
+    QA_MKTEMP_FAIL_ON="$fail_on_call" \
+    bash "$SCRIPT" "$PHASE_DIR"
+}
+
 @test "PASS with clean body → PROCEED_TO_UAT" {
   create_verif "write-verification.sh" "PASS" "## Must-Have Checks
 | Check | Status |
@@ -4213,10 +4341,12 @@ VERIF
     done
     printf '%s\n' 'known_issue_resolutions:'
     for ((i = 1; i <= issue_count; i++)); do
-      printf '  - '\''{"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d","disposition":"accepted-process-exception","rationale":"Pre-existing Pest namespace issue %04d is non-blocking for this phase"}'\''\n' "$i" "$i" "$i"
+      printf '  - '\''{"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d","disposition":"accepted-process-exception","rationale":"Pre-existing Pest namespace issue %04d is non-blocking for this phase"}'\''\n' "$i" "$i" "$i" "$i"
     done
     printf '%s\n' '---'
   } > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md"
+
+  grep -q 'KnownIssue0001.*issue 0001 is non-blocking' "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md"
 
   {
     printf '%s\n' '---'
@@ -4228,12 +4358,14 @@ VERIF
     printf '%s\n' 'deviations: []'
     printf '%s\n' 'known_issue_outcomes:'
     for ((i = 1; i <= issue_count; i++)); do
-      printf '  - '\''{"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d","disposition":"accepted-process-exception","rationale":"Pre-existing Pest namespace issue %04d is non-blocking for this phase"}'\''\n' "$i" "$i" "$i"
+      printf '  - '\''{"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d","disposition":"accepted-process-exception","rationale":"Pre-existing Pest namespace issue %04d is non-blocking for this phase"}'\''\n' "$i" "$i" "$i" "$i"
     done
     printf '%s\n' '---'
     printf '\n## Summary\n'
     printf 'Documented %s carried Pest/PHPUnit known issues as accepted non-blocking process-exceptions.\n' "$issue_count"
   } > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md"
+
+  grep -q 'KnownIssue0001.*issue 0001 is non-blocking' "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md"
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
 ---
@@ -4257,6 +4389,33 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
   [ -f "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" ]
   [ "$(jq '.issues | length' "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json")" -eq 3500 ]
+}
+
+@test "known-issue coverage comparison write failure fails closed" {
+  create_single_known_issue_process_exception_round
+
+  # Six frontmatter extraction temp files are created before the first coverage
+  # helper. Fail the required-json write target for that helper.
+  run_gate_with_mktemp_write_failure_on_call 7
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  [[ "$output" != *"qa_gate_known_issues_all_addressed=true"* ]]
+  [ -z "$(find "$TEST_DIR/mktemp-shim-files" -type f -print -quit 2>/dev/null)" ]
+}
+
+@test "known-issue disposition comparison write failure fails closed" {
+  create_single_known_issue_process_exception_round
+
+  # Six frontmatter extraction temp files plus three successful two-file
+  # coverage helper calls happen before the disposition helper. Fail the
+  # expected-json write target for that helper.
+  run_gate_with_mktemp_write_failure_on_call 13
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  [[ "$output" != *"qa_gate_known_issues_all_addressed=true"* ]]
+  [ -z "$(find "$TEST_DIR/mktemp-shim-files" -type f -print -quit 2>/dev/null)" ]
 }
 
 @test "known-issues-only remediation round accepts Pest namespace backslashes and proceeds" {
