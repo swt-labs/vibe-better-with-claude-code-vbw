@@ -1181,17 +1181,42 @@ json_object_array_length() {
 json_object_array_covers_full_issue_objects() {
   local required_json="${1:-[]}"
   local candidate_json="${2:-[]}"
+  local required_file=""
+  local candidate_file=""
+  local jq_status=0
 
-  jq -e -n \
-    --argjson required "${required_json:-[]}" \
-    --argjson candidate "${candidate_json:-[]}" '
-      all($required[];
-        (.test // "") == ""
-        or (. as $required_issue
-          | $candidate
-          | any(.test == $required_issue.test and .file == $required_issue.file and .error == $required_issue.error))
-      )
-    ' >/dev/null 2>&1
+  required_file=$(mktemp) || return 1
+  candidate_file=$(mktemp) || {
+    rm -f "$required_file"
+    return 1
+  }
+  printf '%s' "$required_json" > "$required_file"
+  printf '%s' "$candidate_json" > "$candidate_file"
+
+  if jq -e -n \
+    --slurpfile required "$required_file" \
+    --slurpfile candidate "$candidate_file" '
+      ($required[0] // empty) as $required_array |
+      ($candidate[0] // empty) as $candidate_array |
+      if (($required_array | type) != "array") or (($candidate_array | type) != "array") then
+        false
+      else
+        [$candidate_array[] | select(type == "object") | {test: .test, file: .file, error: .error}] as $candidate_identities |
+        all($required_array[];
+          (type != "object")
+          or ((.test // "") == "")
+          or ({test: .test, file: .file, error: .error} as $required_identity
+            | $candidate_identities
+            | any(. == $required_identity))
+        )
+      end
+    ' >/dev/null 2>&1; then
+    jq_status=0
+  else
+    jq_status=$?
+  fi
+  rm -f "$required_file" "$candidate_file"
+  return "$jq_status"
 }
 
 load_known_issue_registry_json() {
@@ -1204,22 +1229,42 @@ load_known_issue_registry_json() {
 json_object_array_dispositions_match() {
   local expected_json="${1:-[]}"
   local actual_json="${2:-[]}"
+  local expected_file=""
+  local actual_file=""
+  local jq_status=0
 
-  jq -e -n \
-    --argjson expected "${expected_json:-[]}" \
-    --argjson actual "${actual_json:-[]}" '
-      all($expected[];
-        (.test // "") == ""
-        or (. as $expected_issue
-          | $actual
-          | any(
-            .test == $expected_issue.test
-            and .file == $expected_issue.file
-            and .error == $expected_issue.error
-            and .disposition == $expected_issue.disposition
-          ))
-      )
-    ' >/dev/null 2>&1
+  expected_file=$(mktemp) || return 1
+  actual_file=$(mktemp) || {
+    rm -f "$expected_file"
+    return 1
+  }
+  printf '%s' "$expected_json" > "$expected_file"
+  printf '%s' "$actual_json" > "$actual_file"
+
+  if jq -e -n \
+    --slurpfile expected "$expected_file" \
+    --slurpfile actual "$actual_file" '
+      ($expected[0] // empty) as $expected_array |
+      ($actual[0] // empty) as $actual_array |
+      if (($expected_array | type) != "array") or (($actual_array | type) != "array") then
+        false
+      else
+        [$actual_array[] | select(type == "object") | {test: .test, file: .file, error: .error, disposition: .disposition}] as $actual_dispositions |
+        all($expected_array[];
+          (type != "object")
+          or ((.test // "") == "")
+          or ({test: .test, file: .file, error: .error, disposition: .disposition} as $expected_disposition
+            | $actual_dispositions
+            | any(. == $expected_disposition))
+        )
+      end
+    ' >/dev/null 2>&1; then
+    jq_status=0
+  else
+    jq_status=$?
+  fi
+  rm -f "$expected_file" "$actual_file"
+  return "$jq_status"
 }
 
 json_object_array_has_disposition() {

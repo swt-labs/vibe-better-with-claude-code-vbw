@@ -133,6 +133,18 @@ create_source_fail_verif() {
 | ${fail_id} | must_have | ${description} | FAIL | Missing |" "$verified_at_commit"
 }
 
+extract_function_span() {
+  local file_path="${1}"
+  local start_function="${2}"
+  local end_function="${3}"
+
+  awk -v start="$start_function" -v end="$end_function" '
+    $0 ~ "^" start "\\(\\)[[:space:]]*\\{" { in_body = 1 }
+    in_body && $0 ~ "^" end "\\(\\)[[:space:]]*\\{" { exit }
+    in_body { print }
+  ' "$file_path"
+}
+
 @test "PASS with clean body → PROCEED_TO_UAT" {
   create_verif "write-verification.sh" "PASS" "## Must-Have Checks
 | Check | Status |
@@ -4146,6 +4158,103 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "known-issue structural helpers avoid delimiter and large-array argv regressions" {
+  gate_cover_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "json_object_array_covers_full_issue_objects" "load_known_issue_registry_json")
+  gate_disposition_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "json_object_array_dispositions_match" "json_object_array_has_disposition")
+  snapshot_body=$(extract_function_span "$REPO_ROOT/scripts/qa-remediation-state.sh" "write_known_issue_snapshot" "materialize_round_known_issues_snapshot")
+  combined_body=$(printf '%s\n%s\n%s\n' "$gate_cover_body" "$gate_disposition_body" "$snapshot_body")
+
+  [[ "$combined_body" != *"--argjson issues"* ]]
+  [[ "$combined_body" != *"--argjson required"* ]]
+  [[ "$combined_body" != *"--argjson candidate"* ]]
+  [[ "$combined_body" != *"--argjson expected"* ]]
+  [[ "$combined_body" != *"--argjson actual"* ]]
+  [[ "$combined_body" != *"@tsv"* ]]
+  [[ "$combined_body" != *"read -r"* ]]
+  [[ "$combined_body" != *"--arg test"* ]]
+  [[ "$combined_body" != *"--arg file"* ]]
+  [[ "$combined_body" != *"--arg error"* ]]
+  [[ "$combined_body" != *"--arg disposition"* ]]
+}
+
+@test "large Pest namespace known-issue registry avoids argv limits and proceeds" {
+  local issue_count=3500
+  local i
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  {
+    printf '{\n'
+    printf '  "schema_version": 1,\n'
+    printf '  "phase": "01",\n'
+    printf '  "issues": [\n'
+    for ((i = 1; i <= issue_count; i++)); do
+      if [ "$i" -gt 1 ]; then
+        printf ',\n'
+      fi
+      printf '    {"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d","first_seen_in":"01-VERIFICATION.md","last_seen_in":"01-VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1}' "$i" "$i" "$i"
+    done
+    printf '\n  ]\n'
+    printf '}\n'
+  } > "$PHASE_DIR/known-issues.json"
+
+  {
+    printf '%s\n' '---'
+    printf '%s\n' 'round: 01'
+    printf '%s\n' 'title: Large Pest namespace known-issues-only round'
+    printf '%s\n' 'known_issues_input:'
+    for ((i = 1; i <= issue_count; i++)); do
+      printf '  - '\''{"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d"}'\''\n' "$i" "$i" "$i"
+    done
+    printf '%s\n' 'known_issue_resolutions:'
+    for ((i = 1; i <= issue_count; i++)); do
+      printf '  - '\''{"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d","disposition":"accepted-process-exception","rationale":"Pre-existing Pest namespace issue %04d is non-blocking for this phase"}'\''\n' "$i" "$i" "$i"
+    done
+    printf '%s\n' '---'
+  } > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md"
+
+  {
+    printf '%s\n' '---'
+    printf '%s\n' 'plan: R01'
+    printf '%s\n' 'status: complete'
+    printf '%s\n' 'commit_hashes: []'
+    printf '%s\n' 'files_modified:'
+    printf '%s\n' '  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
+    printf '%s\n' 'deviations: []'
+    printf '%s\n' 'known_issue_outcomes:'
+    for ((i = 1; i <= issue_count; i++)); do
+      printf '  - '\''{"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d","disposition":"accepted-process-exception","rationale":"Pre-existing Pest namespace issue %04d is non-blocking for this phase"}'\''\n' "$i" "$i" "$i"
+    done
+    printf '%s\n' '---'
+    printf '\n## Summary\n'
+    printf 'Documented %s carried Pest/PHPUnit known issues as accepted non-blocking process-exceptions.\n' "$issue_count"
+  } > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Large Pest known-issue registry accepted as non-blocking | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=3500"* ]]
+  [[ "$output" == *"qa_gate_known_issues_all_addressed=true"* ]]
+  [[ "$output" != *"qa_gate_known_issues_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  [ -f "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" ]
+  [ "$(jq '.issues | length' "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json")" -eq 3500 ]
+}
+
 @test "known-issues-only remediation round accepts Pest namespace backslashes and proceeds" {
   create_verif "write-verification.sh" "PASS"
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
@@ -4323,6 +4432,91 @@ VERIF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "backslash-bearing known issue omissions fail closed in non-empty round sections" {
+  local omission=""
+
+  for omission in input resolution outcome; do
+    PHASE_DIR="$TEST_DIR/01-${omission}-omission-phase"
+    mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+    create_verif "write-verification.sh" "PASS"
+    printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+    cat > "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" <<'SNAP'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {"test":"ControlKnownIssueTests","file":"tests/ControlKnownIssueTest.php","error":"control failure","first_seen_in":"01-VERIFICATION.md","last_seen_in":"01-VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1},
+    {"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","first_seen_in":"01-VERIFICATION.md","last_seen_in":"01-VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1}
+  ]
+}
+SNAP
+
+    cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {"test":"ControlKnownIssueTests","file":"tests/ControlKnownIssueTest.php","error":"control failure","first_seen_in":"01-VERIFICATION.md","last_seen_in":"01-VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1},
+    {"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","first_seen_in":"01-VERIFICATION.md","last_seen_in":"01-VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1}
+  ]
+}
+REGISTRY
+
+    {
+      printf '%s\n' '---'
+      printf '%s\n' 'round: 01'
+      printf '%s\n' 'title: Non-empty known-issue omission fails closed'
+      printf '%s\n' 'known_issues_input:'
+      printf '  - '\''{"test":"ControlKnownIssueTests","file":"tests/ControlKnownIssueTest.php","error":"control failure"}'\''\n'
+      if [ "$omission" != "input" ]; then
+        printf '  - '\''{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500."}'\''\n'
+      fi
+      printf '%s\n' 'known_issue_resolutions:'
+      printf '  - '\''{"test":"ControlKnownIssueTests","file":"tests/ControlKnownIssueTest.php","error":"control failure","disposition":"accepted-process-exception","rationale":"Control issue remains non-blocking"}'\''\n'
+      if [ "$omission" != "resolution" ]; then
+        printf '  - '\''{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace issue remains non-blocking"}'\''\n'
+      fi
+      printf '%s\n' '---'
+    } > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md"
+
+    {
+      printf '%s\n' '---'
+      printf '%s\n' 'plan: R01'
+      printf '%s\n' 'status: complete'
+      printf '%s\n' 'commit_hashes: []'
+      printf '%s\n' 'files_modified:'
+      printf '  - "%s"\n' "$(basename "$PHASE_DIR")/remediation/qa/round-01/R01-SUMMARY.md"
+      printf '%s\n' 'deviations: []'
+      printf '%s\n' 'known_issue_outcomes:'
+      printf '  - '\''{"test":"ControlKnownIssueTests","file":"tests/ControlKnownIssueTest.php","error":"control failure","disposition":"accepted-process-exception","rationale":"Control issue remains non-blocking"}'\''\n'
+      if [ "$omission" != "outcome" ]; then
+        printf '  - '\''{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace issue remains non-blocking"}'\''\n'
+      fi
+      printf '%s\n' '---'
+      printf '\n## Summary\nOmitted one backslash-bearing issue from a non-empty section.\n'
+    } > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md"
+
+    cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Partial omission remains blocked | PASS | Done |
+VERIF
+
+    run bash "$SCRIPT" "$PHASE_DIR"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  done
 }
 
 @test "mixed input_mode both round can satisfy fail and carried known-issue contracts together" {

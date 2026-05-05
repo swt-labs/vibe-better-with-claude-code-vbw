@@ -175,25 +175,37 @@ extract_pre_existing_issues_json_from_verification() {
 write_known_issue_snapshot() {
   local snapshot_path="$1"
   local issues_json="$2"
-  local issue_count tmp_file
-  issue_count=$(printf '%s' "$issues_json" | jq 'length' 2>/dev/null || echo 0)
+  local issue_count tmp_file issues_file jq_status
+  issues_file=$(mktemp)
+  printf '%s' "$issues_json" > "$issues_file"
+  issue_count=$(jq 'if type == "array" then length else 0 end' "$issues_file" 2>/dev/null || echo 0)
   if [ "$issue_count" -eq 0 ] 2>/dev/null; then
     rm -f "$snapshot_path"
+    rm -f "$issues_file"
     echo 0
     return 0
   fi
 
   mkdir -p "$(dirname "$snapshot_path")"
   tmp_file=$(mktemp "${snapshot_path}.tmp.XXXXXX")
-  jq -n \
+  if jq -n \
     --arg phase "$(phase_number)" \
-    --argjson issues "$issues_json" '
+    --slurpfile issues "$issues_file" '
       {
         schema_version: 1,
         phase: $phase,
-        issues: ($issues | sort_by(.test, .file, .error))
+        issues: (($issues[0] // []) | sort_by(.test, .file, .error))
       }
-    ' > "$tmp_file"
+    ' > "$tmp_file"; then
+    jq_status=0
+  else
+    jq_status=$?
+  fi
+  rm -f "$issues_file"
+  if [ "$jq_status" -ne 0 ]; then
+    rm -f "$tmp_file"
+    return "$jq_status"
+  fi
   mv "$tmp_file" "$snapshot_path"
   echo "$issue_count"
 }
