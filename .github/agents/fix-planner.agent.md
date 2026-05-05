@@ -4,7 +4,7 @@ description: "Researches and outlines issue-fix plans before implementation. Use
 argument-hint: "Issue number or description of the bug to plan"
 
 tools: [vscode/memory, vscode/resolveMemoryFileUri, vscode/switchAgent, vscode/askQuestions, execute/executionSubagent, read, agent, search, web, github/add_issue_comment, github/get_commit, github/get_file_contents, github/get_label, github/get_latest_release, github/get_me, github/get_release_by_tag, github/get_tag, github/get_team_members, github/get_teams, github/issue_read, github/issue_write, github/list_branches, github/list_commits, github/list_issue_types, github/list_issues, github/list_pull_requests, github/list_releases, github/list_tags, github/pull_request_read, github/search_code, github/search_issues, github/search_pull_requests, github/search_repositories, github/search_users, github/sub_issue_write, 'context7/*', 'mcp-omnisearch/*', github.vscode-pull-request-github/issue_fetch, github.vscode-pull-request-github/labels_fetch, github.vscode-pull-request-github/notification_fetch, github.vscode-pull-request-github/doSearch, github.vscode-pull-request-github/activePullRequest, github.vscode-pull-request-github/pullRequestStatusChecks, github.vscode-pull-request-github/openPullRequest, todo]
-agents: ['Explore']
+agents: ['Explore', 'fix-planner-vbw']
 handoffs:
   - label: Start Fix Workflow
     agent: fix-issue-vbw
@@ -165,7 +165,7 @@ After persisting (or assembling inline) the plan, run an iterative audit-fix cyc
 4. Repeat steps 2–3 until an audit returns **zero findings**.
 5. When the audit is clean, proceed to step 4.6 (if applicable) or step 5.
 
-**Audit prompt** (spawn as subagent — use *Explore* agent):
+**Audit prompt** (spawn as subagent — use *fix-planner-vbw* agent):
 
 If the plan was saved to a non-default path, substitute that path anywhere the prompts below mention `/memories/session/plan.md`.
 
