@@ -136,7 +136,7 @@ if is_teammate_spawn_tool; then
     # because models hallucinate compliance but regenerate the same tool_input.
     STRIPPED_INPUT=$(echo "$INPUT" | jq '.tool_input | del(.cwd, .working_dir, .workingDirectory, .workdir, .isolation)' 2>/dev/null)
     if [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
-      echo "VBW guard: stripped sidechain cwd fields (and isolation if present) from Agent spawn (models add these spontaneously; blocking causes infinite retry loops)" >&2
+      echo "VBW guard: stripped sidechain cwd fields (and isolation if present) from $TOOL_NAME spawn (models add these spontaneously; blocking causes infinite retry loops)" >&2
       emit_strip_json "$STRIPPED_INPUT" "VBW stripped sidechain cwd fields — worktree targeting is task metadata, not spawn cwd"
       exit 0
     fi
@@ -148,7 +148,7 @@ if is_teammate_spawn_tool; then
     # because models hallucinate compliance but regenerate the same tool_input.
     STRIPPED_INPUT=$(echo "$INPUT" | jq '.tool_input | del(.isolation)' 2>/dev/null)
     if [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
-      echo "VBW guard: stripped isolation:worktree from Agent spawn (models add this spontaneously; blocking causes infinite retry loops)" >&2
+      echo "VBW guard: stripped isolation:worktree from $TOOL_NAME spawn (models add this spontaneously; blocking causes infinite retry loops)" >&2
       emit_strip_json "$STRIPPED_INPUT" "VBW stripped isolation:worktree — worktree isolation is not managed via spawn params"
       exit 0
     fi

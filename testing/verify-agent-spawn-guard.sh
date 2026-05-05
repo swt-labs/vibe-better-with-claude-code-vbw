@@ -311,6 +311,52 @@ test_combined_sidechain_cwd_and_isolation_strips_both() {
 }
 test_combined_sidechain_cwd_and_isolation_strips_both
 
+test_strip_preserves_non_stripped_fields() {
+  setup_project
+
+  local tool output rc json_line
+  for tool in Agent TaskCreate; do
+    local input
+    input=$(jq -n --arg tool_name "$tool" '{
+      tool_name: $tool_name,
+      tool_input: {
+        prompt: "Do the task",
+        description: "A test task",
+        subagent_type: "vbw:vbw-dev",
+        model: "claude-sonnet-4-20250514",
+        run_in_background: false,
+        team_name: "",
+        isolation: "worktree"
+      }
+    }')
+    output=$( (cd "$PROJECT" && VBW_PLANNING_DIR="$PROJECT/.vbw-planning" bash "$GUARD" <<< "$input") 2>&1 ) && rc=$? || rc=$?
+    json_line=$(extract_json "$output")
+    if [ "$rc" -ne 0 ] || [ -z "$json_line" ]; then
+      fail "Strip should exit 0 with JSON for ${tool} (rc=$rc)"
+      continue
+    fi
+    local ui
+    ui=$(echo "$json_line" | jq '.hookSpecificOutput.updatedInput')
+    local ok=true
+    for field in prompt description subagent_type model run_in_background team_name; do
+      if ! echo "$ui" | jq -e "has(\"$field\")" >/dev/null 2>&1; then
+        fail "Strip lost field '$field' in updatedInput for ${tool}"
+        ok=false
+        break
+      fi
+    done
+    if [ "$ok" = "true" ] && echo "$ui" | jq -e 'has("isolation")' >/dev/null 2>&1; then
+      fail "Strip did not remove isolation for ${tool}"
+      ok=false
+    fi
+    if [ "$ok" = "true" ]; then
+      pass "Strip preserves all non-stripped fields for ${tool}"
+    fi
+  done
+  cleanup
+}
+test_strip_preserves_non_stripped_fields
+
 test_named_non_team_with_isolation_blocks() {
   setup_project
 
