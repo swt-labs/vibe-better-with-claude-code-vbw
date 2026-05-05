@@ -147,7 +147,6 @@ extract_function_span() {
 }
 
 write_known_issue_temp_write_failure_shim() {
-  local fail_on_call="${1}"
   local shim_dir="$TEST_DIR/mktemp-shim"
   local temp_dir="$TEST_DIR/mktemp-shim-files"
   local count_file="$TEST_DIR/mktemp-shim-count"
@@ -264,7 +263,7 @@ VERIF
 run_gate_with_mktemp_write_failure_on_call() {
   local fail_on_call="${1}"
   local shim_dir
-  shim_dir=$(write_known_issue_temp_write_failure_shim "$fail_on_call")
+  shim_dir=$(write_known_issue_temp_write_failure_shim)
 
   run env \
     PATH="$shim_dir:$PATH" \
@@ -4416,6 +4415,84 @@ VERIF
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
   [[ "$output" != *"qa_gate_known_issues_all_addressed=true"* ]]
   [ -z "$(find "$TEST_DIR/mktemp-shim-files" -type f -print -quit 2>/dev/null)" ]
+}
+
+@test "live known-issue registry with null test identity fails closed" {
+  create_single_known_issue_process_exception_round
+  cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    },
+    {
+      "test": null,
+      "file": "tests/Feature/MalformedKnownIssueTest.php",
+      "error": "Malformed live registry entry should not be ignored",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+REGISTRY
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=2"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  [[ "$output" != *"qa_gate_known_issues_all_addressed=true"* ]]
+}
+
+@test "live known-issue registry keeps explicit empty test sentinel skippable" {
+  create_single_known_issue_process_exception_round
+  cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    },
+    {
+      "test": "",
+      "file": "tests/Feature/BlankKnownIssueTest.php",
+      "error": "Legacy blank test sentinel",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+REGISTRY
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=2"* ]]
+  [[ "$output" == *"qa_gate_known_issues_all_addressed=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
 @test "known-issues-only remediation round accepts Pest namespace backslashes and proceeds" {

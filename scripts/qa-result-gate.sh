@@ -1209,11 +1209,17 @@ json_object_array_covers_full_issue_objects() {
       else
         [$candidate_array[] | select(type == "object") | {test: .test, file: .file, error: .error}] as $candidate_identities |
         all($required_array[];
-          (type != "object")
-          or ((.test // "") == "")
-          or ({test: .test, file: .file, error: .error} as $required_identity
+          if type != "object" then
+            false
+          elif ((.test | type) == "string" and .test == "") then
+            true
+          elif ((.test | type) != "string") or ((.file | type) != "string") or ((.error | type) != "string") then
+            false
+          else
+            {test: .test, file: .file, error: .error} as $required_identity
             | $candidate_identities
-            | any(. == $required_identity))
+            | any(. == $required_identity)
+          end
         )
       end
     ' >/dev/null 2>&1; then

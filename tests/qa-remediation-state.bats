@@ -100,7 +100,7 @@ case "${1:-}" in
     printf '%s\n' "$path"
     ;;
   *)
-    exec /usr/bin/mktemp "$@"
+    command -p mktemp "$@"
     ;;
 esac
 SHIM
