@@ -65,6 +65,31 @@ CONTRACT
   [[ "$output" == *"read-only"* ]]
 }
 
+@test "file-guard: active scout marker blocks non-planning writes before broad exemptions" {
+  cd "$TEST_TEMP_DIR"
+  create_plan_with_files
+  echo "1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  echo "scout" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
+
+  for target in "src/file.js" "CLAUDE.md" "STATE.md" "foo-SUMMARY.md" "foo-VERIFICATION.md" ".execution-state.json"; do
+    INPUT=$(jq -n --arg fp "$target" '{"tool_name":"Write","tool_input":{"file_path":$fp,"content":"bad"}}')
+    run bash -c "unset VBW_AGENT_ROLE; echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"read-only outside .vbw-planning/"* ]]
+  done
+}
+
+@test "file-guard: active scout marker allows planning artifact writes" {
+  cd "$TEST_TEMP_DIR"
+  create_plan_with_files
+  echo "1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  echo "scout" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
+
+  INPUT='{"tool_name":"Write","tool_input":{"file_path":".vbw-planning/phases/01-test/01-RESEARCH.md","content":"ok"}}'
+  run bash -c "unset VBW_AGENT_ROLE; echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 0 ]
+}
+
 @test "file-guard: allows dev to write contract-scoped files" {
   cd "$TEST_TEMP_DIR"
   create_plan_with_files

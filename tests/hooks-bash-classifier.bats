@@ -487,6 +487,94 @@ setup() {
   grep -q 'echo "\$COMMAND" | grep -iqE' "$SCRIPT"
 }
 
+@test "bash-guard: scout allows read-only helper and git inspection commands" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-safe"
+  mkdir -p "$TEST_PROJECT/.vbw-planning" "$TEST_PROJECT/scripts"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  TEST_INPUT='{"tool_input":{"command":"bash scripts/snaptrade-api.sh positions --account demo && git status --short"}}'
+  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 0 ]
+}
+
+@test "bash-guard: scout blocks shell redirection writes" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-redirection"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  TEST_INPUT='{"tool_input":{"command":"echo secret > out.txt"}}'
+  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"Scout Bash is read-only"* ]]
+}
+
+@test "bash-guard: scout blocks sensitive file reads" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-sensitive"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  TEST_INPUT='{"tool_input":{"command":"cat .env"}}'
+  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"sensitive file read"* ]]
+}
+
+@test "bash-guard: scout blocks git state mutation" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-git"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  TEST_INPUT='{"tool_input":{"command":"git add src/app.js"}}'
+  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git state mutation"* ]]
+}
+
+@test "bash-guard: scout blocks filesystem mutation" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-rm"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  TEST_INPUT='{"tool_input":{"command":"rm temporary.txt"}}'
+  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"filesystem mutation"* ]]
+}
+
+@test "bash-guard: scout read-only blocks survive destructive override" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-override"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  TEST_INPUT='{"tool_input":{"command":"cat .env"}}'
+  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout VBW_ALLOW_DESTRUCTIVE=1 bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"sensitive file read"* ]]
+}
+
+@test "bash-guard: scout read-only blocks survive bash_guard false" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-config-off"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":false}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  TEST_INPUT='{"tool_input":{"command":"git add src/app.js"}}'
+  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git state mutation"* ]]
+}
+
+@test "bash-guard: scout role can be detected from active-agent marker in nested cwd" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-marker"
+  mkdir -p "$TEST_PROJECT/.vbw-planning" "$TEST_PROJECT/packages/app"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+  echo scout > "$TEST_PROJECT/.vbw-planning/.active-agent"
+
+  TEST_INPUT='{"tool_input":{"command":"cat .env"}}'
+  run bash -c "cd '$TEST_PROJECT/packages/app' && printf '%s\n' '$TEST_INPUT' | bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"sensitive file read"* ]]
+}
+
 # Task 5: Integration tests under CC 2.1.47+
 # If running CC 2.1.47+, test actual hook execution to verify no permission errors
 

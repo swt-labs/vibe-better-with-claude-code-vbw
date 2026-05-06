@@ -118,12 +118,18 @@ for agent in $AGENTS; do
 done
 
 README_DEV_ROW=$(grep -F '| **Dev** |' "$README_FILE" || true)
+README_SCOUT_ROW=$(grep -F '| **Scout** |' "$README_FILE" || true)
 README_PERMISSION_LEGEND=$(grep -F '**Denied / Omitted**' "$README_FILE" || true)
 DEV_DESCRIPTION=$(head -15 "$ROOT/agents/vbw-dev.md" | grep '^description:' || true)
 DEV_DISALLOWED_FRONTMATTER=$(head -15 "$ROOT/agents/vbw-dev.md" | awk '/^disallowedTools:/ { sub(/^disallowedTools:[[:space:]]*/, ""); print }')
+SCOUT_DISALLOWED_FRONTMATTER=$(head -15 "$ROOT/agents/vbw-scout.md" | awk '/^disallowedTools:/ { sub(/^disallowedTools:[[:space:]]*/, ""); print }')
 README_DEV_DENIED_CELL=$(markdown_table_cell "$README_DEV_ROW" 5)
+README_SCOUT_TOOLS_CELL=$(markdown_table_cell "$README_SCOUT_ROW" 4)
+README_SCOUT_DENIED_CELL=$(markdown_table_cell "$README_SCOUT_ROW" 5)
 DEV_DENIED_NORMALIZED=$(normalize_tool_list "$DEV_DISALLOWED_FRONTMATTER")
 README_DENIED_NORMALIZED=$(normalize_tool_list "$README_DEV_DENIED_CELL")
+SCOUT_DENIED_NORMALIZED=$(normalize_tool_list "$SCOUT_DISALLOWED_FRONTMATTER")
+README_SCOUT_DENIED_NORMALIZED=$(normalize_tool_list "$README_SCOUT_DENIED_CELL")
 
 if [[ -n "$README_DEV_ROW" ]]; then
   pass "README: Dev permission row exists"
@@ -135,6 +141,18 @@ if [ -n "$DEV_DISALLOWED_FRONTMATTER" ]; then
   pass "vbw-dev.md: frontmatter declares disallowedTools denylist"
 else
   fail "vbw-dev.md: frontmatter must declare disallowedTools denylist"
+fi
+
+if [[ -n "$README_SCOUT_ROW" ]]; then
+  pass "README: Scout permission row exists"
+else
+  fail "README: Scout permission row exists"
+fi
+
+if [ -n "$SCOUT_DISALLOWED_FRONTMATTER" ]; then
+  pass "vbw-scout.md: frontmatter declares disallowedTools denylist"
+else
+  fail "vbw-scout.md: frontmatter must declare disallowedTools denylist"
 fi
 
 check_not_contains "vbw-dev.md: description no longer says explicit allowlist" "$DEV_DESCRIPTION" "explicit implementation tool allowlist"
@@ -166,6 +184,25 @@ check_not_contains "README: Dev row no longer pins an explicit allowlist" "$READ
 check_not_contains "README: Dev row no longer says Outside explicit allowlist" "$README_DEV_ROW" "Outside explicit allowlist"
 check_contains "README: Dev row uses inherited tools language" "$README_DEV_ROW" "Inherited (all except denied)"
 compare_tool_lists "README: Dev denied tokens exactly match disallowedTools frontmatter" "$README_DENIED_NORMALIZED" "$DEV_DENIED_NORMALIZED"
+
+for required_denied in Edit NotebookEdit Task TaskCreate Agent TeamCreate TeamDelete; do
+  if printf '%s\n' "$SCOUT_DENIED_NORMALIZED" | grep -Fxq "$required_denied"; then
+    pass "vbw-scout.md: disallowedTools bans $required_denied"
+  else
+    fail "vbw-scout.md: disallowedTools must ban $required_denied"
+  fi
+done
+
+for must_not_deny in Bash Read Write Glob Grep LSP Skill WebFetch WebSearch; do
+  if printf '%s\n' "$SCOUT_DENIED_NORMALIZED" | grep -Fxq "$must_not_deny"; then
+    fail "vbw-scout.md: disallowedTools must not ban $must_not_deny (Scout relies on it)"
+  else
+    pass "vbw-scout.md: disallowedTools does not ban $must_not_deny"
+  fi
+done
+
+check_contains "README: Scout row documents read-only Bash" "$README_SCOUT_TOOLS_CELL" "Bash is read-only live-validation only"
+compare_tool_lists "README: Scout denied tokens exactly match disallowedTools frontmatter" "$README_SCOUT_DENIED_NORMALIZED" "$SCOUT_DENIED_NORMALIZED"
 
 check_contains "README: permission legend mentions disallowedTools" "$README_PERMISSION_LEGEND" 'disallowedTools'
 

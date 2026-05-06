@@ -487,6 +487,39 @@ test_active_agent_count_bypass() {
 }
 test_active_agent_count_bypass
 
+# --- Test 14b: Active delegated state, .active-agent=scout, no role → non-planning writes blocked ---
+test_active_agent_count_scout_blocks_non_planning_writes() {
+  setup_project
+  jq -n '{status:"running", phase:1, effort:"balanced", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
+    > "$PROJECT/.vbw-planning/.execution-state.json"
+
+  echo "1" > "$PROJECT/.vbw-planning/.active-agent-count"
+  echo "scout" > "$PROJECT/.vbw-planning/.active-agent"
+
+  local output rc blocked_all target
+  blocked_all=true
+  for target in "src/app.js" "CLAUDE.md" "STATE.md" "foo-SUMMARY.md" "foo-VERIFICATION.md" ".execution-state.json"; do
+    output=$(run_guard "$PROJECT" "$target" "" 2>&1) && rc=$? || rc=$?
+    if [ "$rc" -ne 2 ] || ! grep -q "role 'scout' is read-only outside .vbw-planning/" <<< "$output"; then
+      blocked_all=false
+      fail "Active Scout marker should block non-planning write target $target (rc=$rc output=$output)"
+    fi
+  done
+
+  if [ "$blocked_all" = true ]; then
+    pass "Active Scout marker, no VBW_AGENT_ROLE: non-planning writes blocked before subagent bypass"
+  fi
+
+  if run_guard "$PROJECT" "$PROJECT/.vbw-planning/phases/01-test/01-RESEARCH.md" "" >/dev/null 2>&1; then
+    pass "Active Scout marker, no VBW_AGENT_ROLE: planning artifact write allowed"
+  else
+    fail "Active Scout marker should allow .vbw-planning research artifact writes"
+  fi
+
+  cleanup
+}
+test_active_agent_count_scout_blocks_non_planning_writes
+
 # --- Test 15: Active delegated state, .active-agent-count = 0 (all agents stopped), no role → blocked ---
 test_zero_agent_count_still_blocks() {
   setup_project

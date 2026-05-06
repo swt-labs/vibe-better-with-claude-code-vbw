@@ -6,9 +6,9 @@ LLMs with Bash access will occasionally run destructive database commands during
 
 A PreToolUse hook (`bash-guard.sh`) intercepts **every** Bash command before it reaches the shell. It pattern-matches against a blocklist of known destructive commands and blocks matches with exit code 2 (fail-closed). The command never executes.
 
-This fires on the **tool**, not the agent. Every Bash command from every agent — QA, Dev, Debugger, Lead — passes through the same gate. There is no way around it because Claude Code enforces hooks at the platform level, before the command reaches the shell.
+This fires on the **tool**, not the agent. Every Bash command from every Bash-capable agent — QA, Dev, Debugger, Lead, Docs, and Scout — passes through the same gate. Scout also gets read-only command-shape checks when its role can be detected. There is no way around hook execution because Claude Code enforces hooks at the platform level, before the command reaches the shell.
 
-```
+```text
 Agent wants to run: php artisan migrate:fresh --seed
                               |
                     +─────────v──────────+
@@ -22,23 +22,21 @@ Agent wants to run: php artisan migrate:fresh --seed
                     +─────────┬──────────+
                               |
                  +────────────v────────────+
-                 | VBW_ALLOW_DESTRUCTIVE=1? |
+                 | Scout read-only block?    |
                  +──┬───────────────────┬──+
-                   yes                  no
-                    |          +────────v────────+
-                 exit 0       | Pattern match    |
-                 (allow)      | against blocklist|
-                              +──┬───────────┬──+
-                              match       no match
-                               |              |
-                            exit 2         exit 0
-                            (BLOCK)        (allow)
-                               |
-                    +──────────v───────────+
-                    | Agent sees:          |
-                    | "Blocked: destructive|
-                    |  command detected"   |
-                    +──────────────────────+
+                block              no block
+                  |          +────────v────────+
+               exit 2       | Generic override?|
+               (BLOCK)      +──┬───────────┬──+
+                             yes          no
+                              |      +─────v──────+
+                           exit 0   | Pattern    |
+                           (allow)  | match?     |
+                                    +──┬──────┬──+
+                                    yes      no
+                                     |        |
+                                  exit 2   exit 0
+                                  (BLOCK)  (allow)
 ```
 
 The agent gets an error message explaining why the command was blocked and adapts — typically falling back to read-only queries or the test suite.
@@ -53,7 +51,7 @@ The agent gets an error message explaining why the command was blocked and adapt
 
 **Layer 1 is the fix.** It blocks destructive commands before they execute, regardless of what the model decides to do. Prompt instructions can't be ignored because the hook runs at the platform level.
 
-**Layer 2 reduces noise.** Every agent with Bash access (QA, Dev, Debugger, Lead) has a `## Database Safety` section in its prompt. QA is told to never modify database state. Dev is told to prefer migration files over direct commands. This reduces how often Layer 1 needs to fire.
+**Layer 2 reduces noise.** Every agent with Bash access has safety guidance in its prompt. QA is told to never modify database state. Scout is restricted to read-only live validation. Dev is told to prefer migration files over direct commands. This reduces how often Layer 1 needs to fire.
 
 **Layer 3 is audit insurance.** Plans can declare `forbidden_commands` in their frontmatter. The hard-gate system checks the event log for violations after execution, providing an audit trail and preventing repeat offenses in the same session.
 
@@ -81,9 +79,9 @@ Safe commands pass through unblocked: `php artisan migrate` (forward migration),
 
 When you legitimately need to run destructive commands:
 
-1. **Environment variable** — Start your session with `VBW_ALLOW_DESTRUCTIVE=1`. The guard checks this first and exits immediately. Zero overhead.
+1. **Environment variable** — Start your session with `VBW_ALLOW_DESTRUCTIVE=1`. This bypasses the generic destructive-command classifier. Scout-specific read-only blocks still apply when Scout identity is detected.
 
-2. **Config toggle** — Set `"bash_guard": false` in `.vbw-planning/config.json` or run `/vbw:config bash_guard false`. Disables the guard for that project entirely.
+2. **Config toggle** — Set `"bash_guard": false` in `.vbw-planning/config.json` or run `/vbw:config bash_guard false`. This disables the generic destructive-command classifier for that project. Scout-specific read-only blocks still apply when Scout identity is detected.
 
 3. **Run it yourself** — The hook only fires inside Claude Code. Open a separate terminal and run the command directly. The guard protects against agents doing it unsupervised, not against you.
 
@@ -91,7 +89,7 @@ When you legitimately need to run destructive commands:
 
 Add project-specific patterns to `.vbw-planning/destructive-commands.local.txt`:
 
-```
+```text
 # Block our custom reset script
 scripts/nuke-dev-data\.sh
 
@@ -105,7 +103,7 @@ One regex per line, same format as the default `config/destructive-commands.txt`
 
 **Fail-closed.** If jq is missing, input is unparseable, or anything unexpected happens, the guard blocks the command (exit 2). It never fails open.
 
-**Tool-level, not agent-level.** The hook matches on `Bash` tool calls, not on agent identity. Adding a new agent type doesn't create a gap — every Bash call is filtered automatically.
+**Tool-level first, role-aware where needed.** The hook matches on `Bash` tool calls, so adding a new Bash-capable agent does not create a destructive-command gap. Scout's extra read-only checks are role-aware best-effort guardrails using hook payload/env/active-agent markers when available; they are command-shape filtering, not a complete shell sandbox.
 
 **~50ms overhead.** One jq parse + one grep per Bash call. Negligible compared to the seconds Bash commands typically take. The 5-second timeout in hooks.json provides a safety ceiling.
 
