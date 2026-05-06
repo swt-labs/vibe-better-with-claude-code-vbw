@@ -813,6 +813,23 @@ run_scout_bash_guard() {
   [[ "$output" == *"sensitive file read"* ]]
 }
 
+@test "bash-guard: any active scout role set triggers conservative read-only fallback" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-role-set"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+  echo "2" > "$TEST_PROJECT/.vbw-planning/.active-agent-count"
+  echo "dev" > "$TEST_PROJECT/.vbw-planning/.active-agent"
+  cat > "$TEST_PROJECT/.vbw-planning/.active-agent-roles" <<'EOF'
+scout 1
+dev 1
+EOF
+
+  TEST_INPUT='{"tool_input":{"command":"cat .env"}}'
+  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"sensitive file read"* ]]
+}
+
 # Task 5: Integration tests under CC 2.1.47+
 # If running CC 2.1.47+, test actual hook execution to verify no permission errors
 

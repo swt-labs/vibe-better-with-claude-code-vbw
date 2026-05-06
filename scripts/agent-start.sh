@@ -1,7 +1,8 @@
 #!/bin/bash
 set -u
 # SubagentStart hook: Record active agent type for cost attribution
-# Writes stripped agent name to .vbw-planning/.active-agent
+# Writes stripped agent name to .vbw-planning/.active-agent and maintains
+# .active-agent-roles counts for conservative mixed-agent guard fallback.
 
 INPUT=$(cat)
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
@@ -12,6 +13,7 @@ LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .
 
 # Only track VBW agents; maintain reference count for concurrent agents
 COUNT_FILE="$PLANNING_DIR/.active-agent-count"
+ROLES_FILE="$PLANNING_DIR/.active-agent-roles"
 LOCK_DIR="$PLANNING_DIR/.active-agent-count.lock"
 
 normalize_agent_role() {
@@ -151,6 +153,41 @@ read_count() {
   fi
 }
 
+update_role_count() {
+  local target_role="$1"
+  local delta="$2"
+  local tmp role count found=false
+
+  tmp="${ROLES_FILE}.tmp.$$"
+  : > "$tmp" 2>/dev/null || return 0
+
+  if [ -f "$ROLES_FILE" ]; then
+    while read -r role count; do
+      [ -z "$role" ] && continue
+      if ! echo "$count" | grep -Eq '^[0-9]+$'; then
+        count=0
+      fi
+      if [ "$role" = "$target_role" ]; then
+        count=$((count + delta))
+        found=true
+      fi
+      if [ "$count" -gt 0 ]; then
+        printf '%s %s\n' "$role" "$count" >> "$tmp"
+      fi
+    done < "$ROLES_FILE"
+  fi
+
+  if [ "$found" = false ] && [ "$delta" -gt 0 ]; then
+    printf '%s %s\n' "$target_role" "$delta" >> "$tmp"
+  fi
+
+  if [ -s "$tmp" ]; then
+    mv "$tmp" "$ROLES_FILE" 2>/dev/null || rm -f "$tmp" 2>/dev/null || true
+  else
+    rm -f "$tmp" "$ROLES_FILE" 2>/dev/null || true
+  fi
+}
+
 update_agent_markers() {
   local count
   count=$(read_count)
@@ -159,6 +196,7 @@ update_agent_markers() {
   # than a missing count (agent-stop recovery handles both cases).
   echo $((count + 1)) > "$COUNT_FILE"
   echo "$ROLE" > "$PLANNING_DIR/.active-agent"
+  update_role_count "$ROLE" 1
 }
 
 if [ -n "$ROLE" ]; then

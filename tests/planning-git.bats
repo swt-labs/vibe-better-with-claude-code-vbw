@@ -120,6 +120,7 @@ EOF
     '.vbw-session'
     '.active-agent'
     '.active-agent-count'
+    '.active-agent-roles'
     '.active-agent-count.lock/'
     '.agent-pids'
     '.task-verify-seen'
@@ -175,6 +176,7 @@ EOF
   echo "1" > .vbw-planning/.vbw-context
   echo "session-abc" > .vbw-planning/.vbw-session
   echo "lead" > .vbw-planning/.active-agent
+  echo "lead 1" > .vbw-planning/.active-agent-roles
   echo "migrated" > .vbw-planning/.claude-md-migrated
   echo "patched" > .vbw-planning/.tmux-mode-patched
   echo "99999" > .vbw-planning/.watchdog-pid
@@ -201,6 +203,7 @@ EOF
     '.vbw-context'
     '.vbw-session'
     '.active-agent'
+    '.active-agent-roles'
     '.claude-md-migrated'
     '.tmux-mode-patched'
     '.watchdog-pid'

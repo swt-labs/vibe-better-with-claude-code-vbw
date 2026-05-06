@@ -10,6 +10,7 @@ INPUT=$(cat)
 LAST_MESSAGE=$(echo "$INPUT" | jq -r '.last_assistant_message // ""' 2>/dev/null)
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 COUNT_FILE="$PLANNING_DIR/.active-agent-count"
+ROLES_FILE="$PLANNING_DIR/.active-agent-roles"
 LOCK_DIR="$PLANNING_DIR/.active-agent-count.lock"
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
 LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
@@ -25,6 +26,52 @@ is_explicit_vbw_agent() {
   local lower
   lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
   echo "$lower" | grep -qE '^@?vbw:|^@?vbw-'
+}
+
+normalize_agent_role() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+
+  case "$lower" in
+    vbw-lead|vbw-lead-[0-9]*|lead|lead-[0-9]*|team-lead|team-lead-[0-9]*) printf 'lead'; return 0 ;;
+    vbw-dev|vbw-dev-[0-9]*|dev|dev-[0-9]*|team-dev|team-dev-[0-9]*) printf 'dev'; return 0 ;;
+    vbw-qa|vbw-qa-[0-9]*|qa|qa-[0-9]*|team-qa|team-qa-[0-9]*) printf 'qa'; return 0 ;;
+    vbw-scout|vbw-scout-[0-9]*|scout|scout-[0-9]*|team-scout|team-scout-[0-9]*) printf 'scout'; return 0 ;;
+    vbw-debugger|vbw-debugger-[0-9]*|debugger|debugger-[0-9]*|team-debugger|team-debugger-[0-9]*) printf 'debugger'; return 0 ;;
+    vbw-architect|vbw-architect-[0-9]*|architect|architect-[0-9]*|team-architect|team-architect-[0-9]*) printf 'architect'; return 0 ;;
+    vbw-docs|vbw-docs-[0-9]*|docs|docs-[0-9]*|team-docs|team-docs-[0-9]*) printf 'docs'; return 0 ;;
+  esac
+
+  return 1
+}
+
+select_agent_role_source() {
+  if [ -n "$NATIVE_AGENT_TYPE" ]; then
+    if is_explicit_vbw_agent "$NATIVE_AGENT_TYPE"; then
+      printf '%s' "$NATIVE_AGENT_TYPE"
+      return 0
+    fi
+
+    if is_explicit_vbw_agent "$LEGACY_AGENT_ROLE_SOURCE"; then
+      printf '%s' "$LEGACY_AGENT_ROLE_SOURCE"
+      return 0
+    fi
+
+    return 1
+  fi
+
+  if [ -n "$LEGACY_AGENT_ROLE_SOURCE" ]; then
+    if is_explicit_vbw_agent "$LEGACY_AGENT_ROLE_SOURCE" || has_vbw_context; then
+      printf '%s' "$LEGACY_AGENT_ROLE_SOURCE"
+      return 0
+    fi
+  fi
+
+  return 1
 }
 
 should_process_stop() {
@@ -97,6 +144,50 @@ read_count() {
   fi
 }
 
+update_role_count() {
+  local target_role="$1"
+  local delta="$2"
+  local tmp role count found=false
+
+  [ -n "$target_role" ] || return 0
+
+  tmp="${ROLES_FILE}.tmp.$$"
+  : > "$tmp" 2>/dev/null || return 0
+
+  if [ -f "$ROLES_FILE" ]; then
+    while read -r role count; do
+      [ -z "$role" ] && continue
+      if ! echo "$count" | grep -Eq '^[0-9]+$'; then
+        count=0
+      fi
+      if [ "$role" = "$target_role" ]; then
+        count=$((count + delta))
+        found=true
+      fi
+      if [ "$count" -gt 0 ]; then
+        printf '%s %s\n' "$role" "$count" >> "$tmp"
+      fi
+    done < "$ROLES_FILE"
+  fi
+
+  if [ "$found" = false ] && [ "$delta" -gt 0 ]; then
+    printf '%s %s\n' "$target_role" "$delta" >> "$tmp"
+  fi
+
+  if [ -s "$tmp" ]; then
+    mv "$tmp" "$ROLES_FILE" 2>/dev/null || rm -f "$tmp" 2>/dev/null || true
+  else
+    rm -f "$tmp" "$ROLES_FILE" 2>/dev/null || true
+  fi
+}
+
+ROLE=""
+if ROLE_SOURCE=$(select_agent_role_source) && ROLE=$(normalize_agent_role "$ROLE_SOURCE"); then
+  :
+else
+  ROLE=""
+fi
+
 decrement_or_cleanup() {
   local count
 
@@ -109,13 +200,14 @@ decrement_or_cleanup() {
 
     count=$((count - 1))
     if [ "$count" -le 0 ]; then
-      rm -f "$PLANNING_DIR/.active-agent" "$COUNT_FILE"
+      rm -f "$PLANNING_DIR/.active-agent" "$COUNT_FILE" "$ROLES_FILE"
     else
       echo "$count" > "$COUNT_FILE"
+      update_role_count "$ROLE" -1
     fi
   elif [ -f "$PLANNING_DIR/.active-agent" ]; then
     # Legacy: no count file but marker exists — remove (single agent case)
-    rm -f "$PLANNING_DIR/.active-agent"
+    rm -f "$PLANNING_DIR/.active-agent" "$ROLES_FILE"
   fi
 }
 

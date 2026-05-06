@@ -144,6 +144,11 @@ detect_agent_role() {
 
   if [ -n "$PROJECT_ROOT" ]; then
     planning_dir="$PROJECT_ROOT/.vbw-planning"
+    if [ -f "$planning_dir/.active-agent-roles" ] && awk '$1 == "scout" && ($2 ~ /^[0-9]+$/) && $2 > 0 { found=1 } END { exit found ? 0 : 1 }' "$planning_dir/.active-agent-roles" 2>/dev/null; then
+      printf 'scout'
+      return 0
+    fi
+
     if [ -f "$planning_dir/.active-agent" ]; then
       candidate=$(cat "$planning_dir/.active-agent" 2>/dev/null | head -n 1 | tr -d '[:space:]')
       if [ -n "$candidate" ] && role=$(normalize_agent_role "$candidate"); then
@@ -238,7 +243,7 @@ if [ "$ACTIVE_AGENT_ROLE" = "scout" ] && [ -n "$PROJECT_ROOT" ]; then
       :
       ;;
     *)
-      echo "Blocked: role 'scout' is read-only outside .vbw-planning/" >&2
+      echo "Blocked: Scout-safe active-agent context is read-only outside .vbw-planning/" >&2
       exit 2
       ;;
   esac

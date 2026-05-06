@@ -227,7 +227,7 @@ You are the team LEAD. NEVER implement tasks yourself.
   4. **Max retry: 2 re-spawns per plan.** After 2 failed Dev spawns for the same plan, stop and surface the blocker to the user: "Dev agent failed {N} times on plan {plan_id}. Last blocker: {details}. Manual intervention needed."
 - At Turbo (or smart-routed to turbo): no team — Dev executes directly.
 - **Runtime enforcement:** This directive is structurally enforced by the `file-guard.sh` PreToolUse hook. When `.execution-state.json` has `status: running` and effort is not turbo/direct, the hook blocks product-file Write/Edit from the orchestrator. Two bypass mechanisms exist:
-  - **Subagent model:** `.active-agent-count` (written by `agent-start.sh`): when count > 0, at least one VBW subagent is running and the write is allowed.
+  - **Subagent model:** `.active-agent-count` (written by `agent-start.sh`): when count > 0, at least one VBW subagent is running and the write is allowed. `.active-agent-roles` tracks active role counts; if Scout is among active roles and a later PreToolUse payload lacks per-call identity, file/bash guards use a conservative Scout-safe fallback for ambiguous calls.
   - **Execute team mode:** `scripts/delegated-workflow.sh set execute {effort} team {team_name}` records true team mode before teammate spawns. `file-guard.sh` bypasses only when that execute marker is active. This avoids assuming that `prefer_teams` or background `Agent` spawns automatically imply a real team.
   - When neither bypass applies, the write is treated as an orchestrator action and blocked. Planning/state artifacts (`.vbw-planning/*`, `STATE.md`, `SUMMARY.md`, etc.) remain exempt.
 

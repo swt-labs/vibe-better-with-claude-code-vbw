@@ -82,6 +82,11 @@ detect_agent_role() {
     fi
   done
 
+  if [ -f "$PLANNING_DIR/.active-agent-roles" ] && awk '$1 == "scout" && ($2 ~ /^[0-9]+$/) && $2 > 0 { found=1 } END { exit found ? 0 : 1 }' "$PLANNING_DIR/.active-agent-roles" 2>/dev/null; then
+    printf 'scout'
+    return 0
+  fi
+
   if [ -f "$PLANNING_DIR/.active-agent" ]; then
     candidate=$(cat "$PLANNING_DIR/.active-agent" 2>/dev/null | head -n 1 | tr -d '[:space:]')
     if [ -n "$candidate" ] && role=$(normalize_agent_role "$candidate"); then

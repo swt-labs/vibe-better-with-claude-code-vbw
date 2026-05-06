@@ -6,7 +6,7 @@ LLMs with Bash access will occasionally run destructive database commands during
 
 A PreToolUse hook (`bash-guard.sh`) intercepts **every** Bash command before it reaches the shell. It pattern-matches against a blocklist of known destructive commands and blocks matches with exit code 2 (fail-closed). The command never executes.
 
-This fires on the **tool**, not the agent. Every Bash command from every Bash-capable agent — QA, Dev, Debugger, Lead, Docs, and Scout — passes through the same gate. Scout also gets read-only command-shape checks when its role can be detected. There is no way around hook execution because Claude Code enforces hooks at the platform level, before the command reaches the shell.
+This fires on the **tool**, not the agent. Every Bash command from every Bash-capable agent — QA, Dev, Debugger, Lead, Docs, and Scout — passes through the same gate. Scout also gets read-only command-shape checks when its role can be detected. When Claude Code omits per-call agent identity but VBW knows any Scout is active, VBW applies the Scout-safe checks conservatively to the ambiguous call. There is no way around hook execution because Claude Code enforces hooks at the platform level, before the command reaches the shell.
 
 ```text
 Agent wants to run: php artisan migrate:fresh --seed
@@ -103,7 +103,7 @@ One regex per line, same format as the default `config/destructive-commands.txt`
 
 **Fail-closed.** If jq is missing, input is unparseable, or anything unexpected happens, the guard blocks the command (exit 2). It never fails open.
 
-**Tool-level first, role-aware where needed.** The hook matches on `Bash` tool calls, so adding a new Bash-capable agent does not create a destructive-command gap. Scout's extra read-only checks are role-aware best-effort guardrails using hook payload/env/active-agent markers when available; they are command-shape filtering, not a complete shell sandbox.
+**Tool-level first, role-aware where needed.** The hook matches on `Bash` tool calls, so adding a new Bash-capable agent does not create a destructive-command gap. Scout's extra read-only checks are role-aware best-effort guardrails using hook payload/env/active-agent markers when available; they are command-shape filtering, not a complete shell sandbox. `SubagentStart`/`SubagentStop` maintain `.active-agent-roles` counts so that if Scout is active but the later `PreToolUse` payload lacks per-call identity, VBW applies Scout-safe restrictions to ambiguous Bash/Write calls. This can conservatively block another concurrently active agent until Scout stops, which is safer than silently allowing a Scout-prohibited command.
 
 **~50ms overhead.** One jq parse + one grep per Bash call. Negligible compared to the seconds Bash commands typically take. The 5-second timeout in hooks.json provides a safety ceiling.
 

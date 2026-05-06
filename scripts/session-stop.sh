@@ -72,7 +72,7 @@ if [ -f "$DELEGATED_MARKER" ] && [ -f "$SCRIPT_DIR_STOP/delegated-workflow.sh" ]
     fi
   fi
 fi
-rm -f "$PLANNING_DIR/.active-agent" "$PLANNING_DIR/.active-agent-count" "$PLANNING_DIR/.agent-panes" "$PLANNING_DIR/.task-verify-seen" 2>/dev/null
+rm -f "$PLANNING_DIR/.active-agent" "$PLANNING_DIR/.active-agent-count" "$PLANNING_DIR/.active-agent-roles" "$PLANNING_DIR/.agent-panes" "$PLANNING_DIR/.task-verify-seen" 2>/dev/null
 rm -f "$PLANNING_DIR/.context-usage" 2>/dev/null || true
 rm -rf "$PLANNING_DIR/.compacting" 2>/dev/null || true
 
