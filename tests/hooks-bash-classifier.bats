@@ -508,6 +508,24 @@ setup() {
   [[ "$output" == *"Scout Bash is read-only"* ]]
 }
 
+@test "bash-guard: scout blocks attached redirection and heredoc writes" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-attached-redirection"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "echo secret >out.txt" \
+    "echo secret >>out.txt" \
+    "echo secret 2>log.txt" \
+    "cat <<EOF" \
+    "cat <<-EOF"; do
+    TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
+    run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"shell file write/redirection"* ]]
+  done
+}
+
 @test "bash-guard: scout blocks sensitive file reads" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-sensitive"
   mkdir -p "$TEST_PROJECT/.vbw-planning"
@@ -539,6 +557,55 @@ setup() {
   run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"filesystem mutation"* ]]
+}
+
+@test "bash-guard: scout blocks package mutation aliases" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-package-mutation"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "npm ci" \
+    "npm i" \
+    "pnpm add lodash" \
+    "yarn add lodash"; do
+    TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
+    run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"package or dependency mutation"* ]]
+  done
+}
+
+@test "bash-guard: scout blocks curl mutation syntax variants" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-curl-mutation"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "curl --request=POST https://example.test" \
+    "curl -XPOST https://example.test" \
+    "curl -dfoo https://example.test" \
+    "curl -Ffile=@x https://example.test"; do
+    TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
+    run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"mutating curl request"* ]]
+  done
+}
+
+@test "bash-guard: scout still allows read-only curl and package script shapes" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-readonly-controls"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "curl https://example.test/status" \
+    "npm test" \
+    "npm run inspect"; do
+    TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
+    run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+    [ "$status" -eq 0 ]
+  done
 }
 
 @test "bash-guard: scout read-only blocks survive destructive override" {

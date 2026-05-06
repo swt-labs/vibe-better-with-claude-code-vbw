@@ -142,7 +142,7 @@ check_scout_command() {
     block_scout_command "destructive command detected: $matched"
   fi
 
-  if echo "$command" | grep -iqE '(^|[[:space:];|&])[0-9]*(>>?|>&|<<-?)([[:space:]]|$)'; then
+  if echo "$command" | grep -iqE '(^|[[:space:];|&])[0-9]*(>>?|>&|<<-?)([[:space:]]|[^[:space:];|&]|$)'; then
     block_scout_command "shell file write/redirection"
   fi
 
@@ -162,7 +162,7 @@ check_scout_command() {
     block_scout_command "git state mutation command"
   fi
 
-  if echo "$command" | grep -iqE '(^|[[:space:];|&])((npm|pnpm|yarn|bun)[[:space:]]+(install|add|update|upgrade|remove|uninstall)|pip3?[[:space:]]+install|bundle[[:space:]]+install|gem[[:space:]]+install|cargo[[:space:]]+(install|update|add)|go[[:space:]]+get|brew[[:space:]]+(install|upgrade|uninstall)|apt(-get)?[[:space:]]+(install|upgrade|remove)|composer[[:space:]]+(install|update|require|remove))([[:space:]]|$)'; then
+  if echo "$command" | grep -iqE '(^|[[:space:];|&])((npm|pnpm|yarn|bun)[[:space:]]+(install|i|ci|add|update|upgrade|remove|uninstall)|pip3?[[:space:]]+install|bundle[[:space:]]+install|gem[[:space:]]+install|cargo[[:space:]]+(install|update|add)|go[[:space:]]+get|brew[[:space:]]+(install|upgrade|uninstall)|apt(-get)?[[:space:]]+(install|upgrade|remove)|composer[[:space:]]+(install|update|require|remove))([[:space:]]|$)'; then
     block_scout_command "package or dependency mutation command"
   fi
 
@@ -170,7 +170,7 @@ check_scout_command() {
     block_scout_command "service/container mutation command"
   fi
 
-  if echo "$command" | grep -iqE '(^|[[:space:];|&])curl([^;|&]*)(-X[[:space:]]*(POST|PUT|PATCH|DELETE)|--request[[:space:]]+(POST|PUT|PATCH|DELETE)|--data|-d[[:space:]]|--form|-F[[:space:]])'; then
+  if echo "$command" | grep -iqE '(^|[[:space:];|&])curl([^;|&]*)(-X[[:space:]]*(POST|PUT|PATCH|DELETE)|-X(POST|PUT|PATCH|DELETE)|--request(=|[[:space:]]+)(POST|PUT|PATCH|DELETE)|--data($|[=[:space:]-])|--data-[[:alnum:]-]+(=|[[:space:]]|$)|--json(=|[[:space:]]|$)|-d($|[[:space:]]|[^[:space:];|&])|--form(=|[[:space:]]|$)|-F($|[[:space:]]|[^[:space:];|&]))'; then
     block_scout_command "mutating curl request"
   fi
 
