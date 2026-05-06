@@ -4,6 +4,7 @@ load test_helper
 
 setup() {
   setup_temp_dir
+  TEST_TEMP_DIR="$(cd "$TEST_TEMP_DIR" && pwd -P)"
   PHASE_DIR="$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
   mkdir -p "$PHASE_DIR"
 }
@@ -285,6 +286,118 @@ EOF
   echo "$output" | grep -q "^plan_path=.*remediation/qa/round-01/R01-PLAN.md$"
   [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]
   [ -d "$PHASE_DIR/remediation/qa/round-01" ]
+}
+
+@test "get-or-init emits absolute host artifact metadata for relative phase dir" {
+  local host_root host_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-relative"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-relative"
+
+  run bash -c 'cd "$1" && bash "$2/qa-remediation-state.sh" get-or-init ".vbw-planning/phases/01-relative"' _ "$host_root" "$SCRIPTS_DIR"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "plan" ]
+  [[ "$output" == *"round_dir=$host_phase_dir/remediation/qa/round-01"* ]]
+  [[ "$output" == *"plan_path=$host_phase_dir/remediation/qa/round-01/R01-PLAN.md"* ]]
+  [[ "$output" == *"summary_path=$host_phase_dir/remediation/qa/round-01/R01-SUMMARY.md"* ]]
+  [[ "$output" == *"verification_path=$host_phase_dir/remediation/qa/round-01/R01-VERIFICATION.md"* ]]
+}
+
+@test "get-or-init maps Claude sidechain cwd relative phase dir back to host" {
+  local host_root host_phase_dir sidechain_dir
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-sidechain" "$host_root/.claude/worktrees/agent-test"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-sidechain"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+
+  run bash -c 'cd "$1" && bash "$2/qa-remediation-state.sh" get-or-init ".vbw-planning/phases/01-sidechain"' _ "$sidechain_dir" "$SCRIPTS_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round_dir=$host_phase_dir/remediation/qa/round-01"* ]]
+  [[ "$output" == *"plan_path=$host_phase_dir/remediation/qa/round-01/R01-PLAN.md"* ]]
+  [ ! -d "$sidechain_dir/.vbw-planning/phases/01-sidechain/remediation" ]
+}
+
+@test "get-or-init maps absolute Claude sidechain phase dir back to host" {
+  local host_root host_phase_dir sidechain_dir sidechain_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-absolute" "$host_root/.claude/worktrees/agent-test/.vbw-planning/phases/01-absolute"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-absolute"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+  sidechain_phase_dir="$sidechain_dir/.vbw-planning/phases/01-absolute"
+
+  run bash -c 'cd "$1" && bash "$2/qa-remediation-state.sh" get-or-init "$3"' _ "$sidechain_dir" "$SCRIPTS_DIR" "$sidechain_phase_dir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round_dir=$host_phase_dir/remediation/qa/round-01"* ]]
+  [[ "$output" == *"plan_path=$host_phase_dir/remediation/qa/round-01/R01-PLAN.md"* ]]
+  [ -f "$host_phase_dir/remediation/qa/.qa-remediation-stage" ]
+  [ ! -d "$sidechain_phase_dir/remediation" ]
+}
+
+@test "get-or-init maps absolute Claude sidechain phase dir back to host from host CWD" {
+  local host_root host_phase_dir sidechain_dir sidechain_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-hostcwd" "$host_root/.claude/worktrees/agent-test/.vbw-planning/phases/01-hostcwd"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-hostcwd"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+  sidechain_phase_dir="$sidechain_dir/.vbw-planning/phases/01-hostcwd"
+
+  # Caller is at host CWD — env vars (VBW_CLAUDE_SIDECHAIN_ROOT/HOST_ROOT) are NOT set
+  # because the sidechain hook only fires when CWD is inside the sidechain directory.
+  # The structural fallback in translate_claude_sidechain_phase_candidate must infer
+  # the host root from the absolute sidechain path itself.
+  run bash -c 'cd "$1" && bash "$2/qa-remediation-state.sh" get-or-init "$3"' _ "$host_root" "$SCRIPTS_DIR" "$sidechain_phase_dir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round_dir=$host_phase_dir/remediation/qa/round-01"* ]]
+  [[ "$output" == *"plan_path=$host_phase_dir/remediation/qa/round-01/R01-PLAN.md"* ]]
+  [ -f "$host_phase_dir/remediation/qa/.qa-remediation-stage" ]
+  [ ! -d "$sidechain_phase_dir/remediation" ]
+}
+
+@test "get-or-init normalizes nested active phase subpath back to phase root" {
+  local phase_dir_physical
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  phase_dir_physical="$(cd "$PHASE_DIR" && pwd -P)"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get-or-init "$PHASE_DIR/remediation/qa/round-01"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round_dir=$phase_dir_physical/remediation/qa/round-01"* ]]
+  [[ "$output" == *"plan_path=$phase_dir_physical/remediation/qa/round-01/R01-PLAN.md"* ]]
+  [ -f "$PHASE_DIR/remediation/qa/.qa-remediation-stage" ]
+  [ ! -d "$PHASE_DIR/remediation/qa/round-01/remediation" ]
+}
+
+@test "get-or-init rejects relative archived milestone phase path" {
+  local host_root archived_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  archived_phase_dir="$host_root/.vbw-planning/milestones/m01/phases/01-old"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$archived_phase_dir"
+
+  run bash -c 'cd "$1" && bash "$2/qa-remediation-state.sh" get-or-init ".vbw-planning/milestones/m01/phases/01-old"' _ "$host_root" "$SCRIPTS_DIR"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"refusing to operate on archived milestone path"* ]]
+  [ ! -d "$archived_phase_dir/remediation" ]
+}
+
+@test "get-or-init rejects absolute archived milestone phase path" {
+  local host_root archived_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  archived_phase_dir="$host_root/.vbw-planning/milestones/m01/phases/01-old"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$archived_phase_dir"
+
+  run bash "$SCRIPTS_DIR/qa-remediation-state.sh" get-or-init "$archived_phase_dir"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"refusing to operate on archived milestone path"* ]]
+  [ ! -d "$archived_phase_dir/remediation" ]
 }
 
 @test "get preserves an existing round-local known-issues snapshot after sync-verification clears the live registry" {

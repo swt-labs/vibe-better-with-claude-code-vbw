@@ -1,16 +1,23 @@
 #!/bin/bash
 set -u
-# normalize-plan-filenames.sh — Rename type-first plan artifacts to number-first format
+# normalize-plan-filenames.sh — Rename type-first plan artifacts to canonical format
 #
-# Usage: bash normalize-plan-filenames.sh <phase-dir>
+# Usage: bash normalize-plan-filenames.sh <phase-or-remediation-round-dir>
 #
-# Renames:
-#   PLAN-{NN}.md         → {NN}-PLAN.md
-#   PLAN-{NN}-SUMMARY.md → {NN}-SUMMARY.md
-#   SUMMARY-{NN}.md      → {NN}-SUMMARY.md
-#   CONTEXT-{NN}.md      → {NN}-CONTEXT.md
+# Phase directories rename:
+#   PLAN-{NN}.md          → {NN}-PLAN.md
+#   PLAN-{NN}-SUMMARY.md  → {NN}-SUMMARY.md
+#   SUMMARY-{NN}.md       → {NN}-SUMMARY.md
+#   CONTEXT-{NN}.md       → {NN}-CONTEXT.md
+# Remediation round directories rename:
+#   PLAN-R{RR}.md         → R{RR}-PLAN.md
+#   PLAN-{RR}.md          → R{RR}-PLAN.md
 #
-# Skips if target already exists. Exit 0 always (best-effort).
+# Phase-directory renames skip when the target already exists. Remediation
+# round-directory renames deduplicate matching candidates, preserve newer
+# canonical targets, replace them only with newer single candidates, and move
+# conflicts/stale candidates aside so downstream validation fails closed. Exit 0
+# always (best-effort).
 
 PHASE_DIR="${1:-}"
 if [ -z "$PHASE_DIR" ] || [ ! -d "$PHASE_DIR" ]; then
@@ -23,6 +30,191 @@ fi
 
 # Strip trailing slash for consistent path joining
 PHASE_DIR="${PHASE_DIR%/}"
+PHASE_DIR_BASE=$(basename "$PHASE_DIR")
+
+round_plan_content_is_valid() {
+  local file_path="$1" expected_round="${2:-}" remediation_kind="${3:-uat}"
+  local frontmatter frontmatter_round frontmatter_round_norm
+
+  [ -s "$file_path" ] || return 1
+  frontmatter=$(awk '
+    BEGIN { delimiter_count = 0 }
+    /^---[[:space:]]*$/ {
+      delimiter_count++
+      if (delimiter_count == 2) exit
+      next
+    }
+    delimiter_count == 1 { print }
+  ' "$file_path" 2>/dev/null) || return 1
+
+  [ -n "$frontmatter" ] || return 1
+  grep -Eq '^phase:[[:space:]]*[0-9]+([[:space:]]*(#.*)?)?$' <<< "$frontmatter" || return 1
+  grep -Eq '^round:[[:space:]]*[0-9]+([[:space:]]*(#.*)?)?$' <<< "$frontmatter" || return 1
+  if [ -n "$expected_round" ]; then
+    frontmatter_round=$(printf '%s\n' "$frontmatter" | sed -n 's/^round:[[:space:]]*\([0-9][0-9]*\).*$/\1/p' | head -1)
+    [ -n "$frontmatter_round" ] || return 1
+    frontmatter_round_norm=$(printf "%02d" "$((10#$frontmatter_round))")
+    [ "$frontmatter_round_norm" = "$expected_round" ] || return 1
+  fi
+  grep -Eq '^title:[[:space:]]*.+' <<< "$frontmatter" || return 1
+  grep -Eq '^type:[[:space:]]*remediation([[:space:]]*(#.*)?)?$' <<< "$frontmatter" || return 1
+  grep -Eq '^fail_classifications:[[:space:]]*.*$' <<< "$frontmatter" || return 1
+  if [ "$remediation_kind" = "qa" ]; then
+    grep -Eq '^known_issues_input:[[:space:]]*.*$' <<< "$frontmatter" || return 1
+    grep -Eq '^known_issue_resolutions:[[:space:]]*.*$' <<< "$frontmatter" || return 1
+  fi
+  grep -Eq '^<tasks>[[:space:]]*$' "$file_path" || return 1
+  grep -Eq '^<verification>[[:space:]]*$' "$file_path" || return 1
+}
+
+move_as_invalid_candidate() {
+  local source_path="$1" invalid_source invalid_index
+
+  invalid_source="$source_path.invalid"
+  invalid_index=1
+  while [ -e "$invalid_source" ]; do
+    invalid_source="$source_path.invalid.$invalid_index"
+    invalid_index=$((invalid_index + 1))
+  done
+  mv "$source_path" "$invalid_source"
+  printf '%s\n' "$(basename "$invalid_source")"
+}
+
+# Remediation round directories use round-scoped names (R01-PLAN.md), not
+# phase-scoped names (01-PLAN.md). The containing round directory is the source
+# of truth for the canonical round token so QA/UAT/legacy round paths all share
+# the same normalization contract.
+ROUND_PLAN_TOKEN=""
+ROUND_REMEDIATION_KIND=""
+case "$PHASE_DIR" in
+  */remediation/qa/round-[0-9]*|remediation/qa/round-[0-9]*)
+    ROUND_REMEDIATION_KIND="qa"
+    ROUND_RAW=$(echo "$PHASE_DIR_BASE" | sed -n 's/^round-\([0-9][0-9]*\)$/\1/p')
+    if [ -n "$ROUND_RAW" ]; then
+      ROUND_PLAN_TOKEN=$(printf "R%02d" "$((10#$ROUND_RAW))")
+    fi
+    ;;
+  */remediation/uat/round-[0-9]*|remediation/uat/round-[0-9]*|*/remediation/round-[0-9]*|remediation/round-[0-9]*)
+    ROUND_REMEDIATION_KIND="uat"
+    ROUND_RAW=$(echo "$PHASE_DIR_BASE" | sed -n 's/^round-\([0-9][0-9]*\)$/\1/p')
+    if [ -n "$ROUND_RAW" ]; then
+      ROUND_PLAN_TOKEN=$(printf "R%02d" "$((10#$ROUND_RAW))")
+    fi
+    ;;
+esac
+
+if [ -n "$ROUND_PLAN_TOKEN" ]; then
+  # Pattern: PLAN-RNN.md or PLAN-NN.md → RNN-PLAN.md, where RNN is derived
+  # from the containing remediation round directory.
+  TARGET="$PHASE_DIR/${ROUND_PLAN_TOKEN}-PLAN.md"
+  ROUND_PLAN_CANDIDATES=()
+  for f in "$PHASE_DIR"/[Pp][Ll][Aa][Nn]-[Rr][0-9]*.[mM][dD] "$PHASE_DIR"/[Pp][Ll][Aa][Nn]-[0-9]*.[mM][dD]; do
+    [ -f "$f" ] || continue
+    [ ! -L "$f" ] || continue  # skip symlinks
+    BASENAME=$(basename "$f")
+    if ! echo "$BASENAME" | grep -qE '^[Pp][Ll][Aa][Nn]-[Rr]?[0-9]+\.[mM][dD]$'; then
+      echo "skipped: $BASENAME (unknown remediation round plan form)" >&2
+      continue
+    fi
+    SOURCE_ROUND_RAW=$(echo "$BASENAME" | sed -n 's/^[Pp][Ll][Aa][Nn]-[Rr]\{0,1\}\([0-9][0-9]*\)\.[mM][dD]$/\1/p')
+    SOURCE_ROUND_TOKEN=$(printf "R%02d" "$((10#$SOURCE_ROUND_RAW))")
+    if [ "$SOURCE_ROUND_TOKEN" != "$ROUND_PLAN_TOKEN" ]; then
+      echo "skipped: $BASENAME (round token does not match $(basename "$PHASE_DIR"))" >&2
+      continue
+    fi
+    ROUND_PLAN_CANDIDATES+=("$f")
+  done
+
+  if [ "${#ROUND_PLAN_CANDIDATES[@]}" -gt 1 ]; then
+    FIRST_ROUND_PLAN_CANDIDATE="${ROUND_PLAN_CANDIDATES[0]}"
+    ROUND_PLAN_CONFLICT=false
+    for f in "${ROUND_PLAN_CANDIDATES[@]:1}"; do
+      if ! cmp -s "$FIRST_ROUND_PLAN_CANDIDATE" "$f"; then
+        ROUND_PLAN_CONFLICT=true
+        break
+      fi
+    done
+
+    if [ "$ROUND_PLAN_CONFLICT" = true ]; then
+      echo "conflict: multiple non-identical remediation round plan candidates exist in $(basename "$PHASE_DIR")" >&2
+      if [ -f "$TARGET" ]; then
+        BACKUP_TARGET="$TARGET.conflict"
+        BACKUP_INDEX=1
+        while [ -e "$BACKUP_TARGET" ]; do
+          BACKUP_TARGET="$TARGET.conflict.$BACKUP_INDEX"
+          BACKUP_INDEX=$((BACKUP_INDEX + 1))
+        done
+        mv "$TARGET" "$BACKUP_TARGET"
+        echo "conflict: moved existing $(basename "$TARGET") to $(basename "$BACKUP_TARGET") so validation fails closed" >&2
+      fi
+      exit 0
+    fi
+  fi
+
+  if [ -f "$TARGET" ]; then
+    ROUND_PLAN_MTIME_TIE=false
+    for f in "${ROUND_PLAN_CANDIDATES[@]}"; do
+      if cmp -s "$f" "$TARGET"; then
+        continue
+      fi
+      if [ ! "$f" -nt "$TARGET" ] && [ ! "$TARGET" -nt "$f" ]; then
+        ROUND_PLAN_MTIME_TIE=true
+        break
+      fi
+    done
+
+    if [ "$ROUND_PLAN_MTIME_TIE" = true ]; then
+      BACKUP_TARGET="$TARGET.conflict"
+      BACKUP_INDEX=1
+      while [ -e "$BACKUP_TARGET" ]; do
+        BACKUP_TARGET="$TARGET.conflict.$BACKUP_INDEX"
+        BACKUP_INDEX=$((BACKUP_INDEX + 1))
+      done
+      mv "$TARGET" "$BACKUP_TARGET"
+      echo "conflict: remediation round plan candidates have the same mtime but different contents; moved $(basename "$TARGET") to $(basename "$BACKUP_TARGET") so validation fails closed" >&2
+      exit 0
+    fi
+  fi
+
+  for f in "${ROUND_PLAN_CANDIDATES[@]}"; do
+    BASENAME=$(basename "$f")
+    if [ -f "$TARGET" ]; then
+      if cmp -s "$f" "$TARGET"; then
+        rm "$f"
+        echo "removed duplicate: $BASENAME (matches $(basename "$TARGET"))"
+        continue
+      fi
+      if [ ! "$f" -nt "$TARGET" ]; then
+        STALE_SOURCE="$f.stale"
+        STALE_INDEX=1
+        while [ -e "$STALE_SOURCE" ]; do
+          STALE_SOURCE="$f.stale.$STALE_INDEX"
+          STALE_INDEX=$((STALE_INDEX + 1))
+        done
+        mv "$f" "$STALE_SOURCE"
+        echo "skipped: $BASENAME (existing $(basename "$TARGET") is newer; moved stale candidate to $(basename "$STALE_SOURCE"))" >&2
+        continue
+      fi
+      if ! round_plan_content_is_valid "$f" "${ROUND_PLAN_TOKEN#R}" "$ROUND_REMEDIATION_KIND"; then
+        INVALID_SOURCE_BASENAME=$(move_as_invalid_candidate "$f")
+        echo "skipped: $BASENAME (newer candidate is structurally invalid; moved invalid candidate to $INVALID_SOURCE_BASENAME and preserved existing $(basename "$TARGET"))" >&2
+        continue
+      fi
+      mv "$f" "$TARGET"
+      echo "renamed: $BASENAME -> $(basename "$TARGET") (replaced existing target)"
+      continue
+    fi
+    if ! round_plan_content_is_valid "$f" "${ROUND_PLAN_TOKEN#R}" "$ROUND_REMEDIATION_KIND"; then
+      INVALID_SOURCE_BASENAME=$(move_as_invalid_candidate "$f")
+      echo "skipped: $BASENAME (candidate is structurally invalid; moved invalid candidate to $INVALID_SOURCE_BASENAME)" >&2
+      continue
+    fi
+    mv "$f" "$TARGET"
+    echo "renamed: $BASENAME -> $(basename "$TARGET")"
+  done
+
+  exit 0
+fi
 
 # Pattern: PLAN-NN.md → NN-PLAN.md (case-insensitive prefix and extension)
 for f in "$PHASE_DIR"/[Pp][Ll][Aa][Nn]-[0-9]*.[mM][dD]; do
@@ -109,7 +301,6 @@ done
 #   - {NN}-01-RESEARCH.md exists
 #   - {NN}-RESEARCH.md does NOT exist
 #   - No other per-plan research ({NN}-02-RESEARCH.md, etc.) exists
-PHASE_DIR_BASE=$(basename "$PHASE_DIR")
 PHASE_NUM_NRM=$(echo "$PHASE_DIR_BASE" | sed 's/^\([0-9]*\).*/\1/')
 if [ -n "$PHASE_NUM_NRM" ]; then
   PHASE_NUM_NRM=$(printf "%02d" "$((10#$PHASE_NUM_NRM))")

@@ -11,6 +11,326 @@ teardown() {
   rm -rf "$TEST_DIR"
 }
 
+write_valid_round_plan() {
+  local path="$1"
+  cat > "$path" <<'EOF'
+---
+phase: 1
+round: 1
+title: Valid remediation plan
+type: remediation
+fail_classifications:
+  - {id: "FAIL-1", type: "code-fix", rationale: "fix required"}
+known_issues_input: []
+known_issue_resolutions: []
+---
+<objective>
+Fix the issue.
+</objective>
+<tasks>
+<task type="auto">
+  <name>Fix</name>
+  <files>
+    src/example.sh
+  </files>
+  <action>
+Apply the fix.
+  </action>
+  <verify>
+Run tests.
+  </verify>
+  <done>
+Tests pass.
+  </done>
+</task>
+</tasks>
+<verification>
+1. Run tests.
+</verification>
+EOF
+}
+
+@test "renames phase-dir PLAN-01.md to 01-PLAN.md" {
+  PHASE_DIR="$TEST_DIR/.vbw-planning/phases/01-setup"
+  mkdir -p "$PHASE_DIR"
+  echo "plan" > "$PHASE_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$PHASE_DIR/01-PLAN.md" ]
+  [ ! -f "$PHASE_DIR/PLAN-01.md" ]
+  [ ! -f "$PHASE_DIR/R01-PLAN.md" ]
+  [[ "$output" == *"renamed: PLAN-01.md -> 01-PLAN.md"* ]]
+}
+
+@test "renames QA round-dir PLAN-R01.md to R01-PLAN.md" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/PLAN-R01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-R01.md" ]
+  [ ! -f "$ROUND_DIR/01-PLAN.md" ]
+  [[ "$output" == *"renamed: PLAN-R01.md -> R01-PLAN.md"* ]]
+}
+
+@test "renames QA round-dir PLAN-01.md to R01-PLAN.md" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ ! -f "$ROUND_DIR/01-PLAN.md" ]
+  [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md"* ]]
+}
+
+@test "renames QA round-dir mixed-case extension PLAN-R01.mD to R01-PLAN.md" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/PLAN-R01.mD"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-R01.mD" ]
+  [[ "$output" == *"renamed: PLAN-R01.mD -> R01-PLAN.md"* ]]
+}
+
+@test "renames UAT round-dir PLAN-01.md to R01-PLAN.md" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/uat/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ ! -f "$ROUND_DIR/01-PLAN.md" ]
+  [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md"* ]]
+}
+
+@test "renames UAT round-dir plan without known issue arrays for backward compatibility" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/uat/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.Md"
+  sed -i.bak '/^known_issues_input:/,/^---$/ { /^---$/!d; }' "$ROUND_DIR/PLAN-01.Md"
+  rm -f "$ROUND_DIR/PLAN-01.Md.bak"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.Md" ]
+  [[ "$output" == *"renamed: PLAN-01.Md -> R01-PLAN.md"* ]]
+}
+
+@test "renames legacy remediation round-dir PLAN-01.md to R01-PLAN.md" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ ! -f "$ROUND_DIR/01-PLAN.md" ]
+  [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md"* ]]
+}
+
+@test "renames legacy remediation round-dir PLAN-R01.md to R01-PLAN.md" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/PLAN-R01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-R01.md" ]
+  [ ! -f "$ROUND_DIR/01-PLAN.md" ]
+  [[ "$output" == *"renamed: PLAN-R01.md -> R01-PLAN.md"* ]]
+}
+
+@test "replaces existing round-dir R01-PLAN.md with fresh misnamed plan" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "stale" > "$ROUND_DIR/R01-PLAN.md"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.md"
+  touch -t 202001010000 "$ROUND_DIR/R01-PLAN.md"
+  touch -t 202001010001 "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ ! -f "$ROUND_DIR/01-PLAN.md" ]
+  grep -q "Valid remediation plan" "$ROUND_DIR/R01-PLAN.md"
+  [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md (replaced existing target)"* ]]
+}
+
+@test "preserves valid canonical round plan when newer misnamed candidate is malformed" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/R01-PLAN.md"
+  echo "partial write without required frontmatter" > "$ROUND_DIR/PLAN-01.md"
+  touch -t 202001010000 "$ROUND_DIR/R01-PLAN.md"
+  touch -t 202001010001 "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-01.md.invalid" ]
+  grep -q "Valid remediation plan" "$ROUND_DIR/R01-PLAN.md"
+  [[ "$output" == *"newer candidate is structurally invalid"* ]]
+  [[ "$output" == *"preserved existing R01-PLAN.md"* ]]
+}
+
+@test "does not promote lone misnamed round plan when candidate is malformed" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "partial write without required frontmatter" > "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-01.md.invalid" ]
+  [[ "$output" == *"candidate is structurally invalid"* ]]
+}
+
+@test "does not replace canonical round plan with candidate from different frontmatter round" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/R01-PLAN.md"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.md"
+  sed -i.bak 's/^round: 1$/round: 2/' "$ROUND_DIR/PLAN-01.md"
+  rm -f "$ROUND_DIR/PLAN-01.md.bak"
+  touch -t 202001010000 "$ROUND_DIR/R01-PLAN.md"
+  touch -t 202001010001 "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-01.md.invalid" ]
+  grep -q "round: 1" "$ROUND_DIR/R01-PLAN.md"
+  [[ "$output" == *"newer candidate is structurally invalid"* ]]
+}
+
+@test "does not replace newer canonical plan with stale misnamed round-dir candidate" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "canonical" > "$ROUND_DIR/R01-PLAN.md"
+  echo "stale candidate" > "$ROUND_DIR/PLAN-01.md"
+  touch -t 202001010001 "$ROUND_DIR/R01-PLAN.md"
+  touch -t 202001010000 "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-01.md.stale" ]
+  [ "$(cat "$ROUND_DIR/R01-PLAN.md")" = "canonical" ]
+  [[ "$output" == *"existing R01-PLAN.md is newer"* ]]
+}
+
+@test "fails closed when canonical and misnamed round-dir plans differ with equal mtimes" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "canonical" > "$ROUND_DIR/R01-PLAN.md"
+  echo "ambiguous candidate" > "$ROUND_DIR/PLAN-01.md"
+  touch -t 202001010000 "$ROUND_DIR/R01-PLAN.md" "$ROUND_DIR/PLAN-01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ -f "$ROUND_DIR/R01-PLAN.md.conflict" ]
+  [ -f "$ROUND_DIR/PLAN-01.md" ]
+  [[ "$output" == *"same mtime but different contents"* ]]
+  [[ "$output" == *"validation fails closed"* ]]
+}
+
+@test "fails closed when paired misnamed plans tie with different canonical contents" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "canonical" > "$ROUND_DIR/R01-PLAN.md"
+  echo "replacement" > "$ROUND_DIR/PLAN-01.md"
+  echo "replacement" > "$ROUND_DIR/PLAN-R01.md"
+  touch -t 202001010000 "$ROUND_DIR/R01-PLAN.md" "$ROUND_DIR/PLAN-01.md" "$ROUND_DIR/PLAN-R01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ -f "$ROUND_DIR/R01-PLAN.md.conflict" ]
+  [ -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-R01.md" ]
+  [[ "$output" == *"same mtime but different contents"* ]]
+  [[ "$output" == *"validation fails closed"* ]]
+}
+
+@test "does not normalize round-dir plan whose source round token mismatches directory" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "wrong round" > "$ROUND_DIR/PLAN-R02.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/PLAN-R02.md" ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [[ "$output" == *"round token does not match"* ]]
+}
+
+@test "does not normalize bare numeric round-dir plan whose source round token mismatches directory" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "wrong round" > "$ROUND_DIR/PLAN-02.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/PLAN-02.md" ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [[ "$output" == *"round token does not match"* ]]
+}
+
+@test "fails closed when round-dir has conflicting misnamed plan candidates" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  echo "stale" > "$ROUND_DIR/R01-PLAN.md"
+  echo "fresh a" > "$ROUND_DIR/PLAN-01.md"
+  echo "fresh b" > "$ROUND_DIR/PLAN-R01.md"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ -f "$ROUND_DIR/R01-PLAN.md.conflict" ]
+  [ -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-R01.md" ]
+  [[ "$output" == *"multiple non-identical remediation round plan candidates"* ]]
+  [[ "$output" == *"validation fails closed"* ]]
+}
+
 @test "renames {NN}-01-RESEARCH.md to {NN}-RESEARCH.md when it is the only research file" {
   PHASE_DIR="$TEST_DIR/03-auth"
   mkdir -p "$PHASE_DIR"

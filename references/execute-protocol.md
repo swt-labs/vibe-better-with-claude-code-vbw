@@ -780,12 +780,13 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    - Include `fail_classifications:` YAML array in R{RR}-PLAN.md frontmatter.
      - `code-fix` / `process-exception` entries: `{id: "FAIL-ID", type: "code-fix|process-exception", rationale: "..."}`
      - `plan-amendment` entries MUST also identify the original plan being amended: `{id: "FAIL-ID", type: "plan-amendment", rationale: "...", source_plan: "01-01-PLAN.md"}`. `source_plan` must reference an original plan in the current phase only — never a sibling phase, archived milestone, or remediation plan.
-   - When `input_mode=known-issues` or `input_mode=both`, include every carried known issue from `known_issues_path` in `known_issues_input:` using the canonical `{test,file,error}` JSON object-string shape already used for tracked issues.
-   - When `input_mode=known-issues` or `input_mode=both`, include a matching `known_issue_resolutions:` entry for every carried known issue using `{test,file,error,disposition,rationale}` JSON object strings. Valid `disposition` values are `resolved`, `accepted-process-exception`, and `unresolved`.
+    - Always include `known_issues_input:` and `known_issue_resolutions:` in R{RR}-PLAN.md frontmatter. When `known_issues_count=0` or `input_mode=verification`, set both to empty arrays (`known_issues_input: []` and `known_issue_resolutions: []`) rather than omitting them.
+    - When `input_mode=known-issues` or `input_mode=both`, populate `known_issues_input:` with every carried known issue from `known_issues_path` using the canonical `{test,file,error}` JSON object-string shape already used for tracked issues.
+    - When `input_mode=known-issues` or `input_mode=both`, populate `known_issue_resolutions:` with a matching entry for every carried known issue using `{test,file,error,disposition,rationale}` JSON object strings. Valid `disposition` values are `resolved`, `accepted-process-exception`, and `unresolved`.
      - `resolved` = this round fixes the issue and QA should no longer return it in `pre_existing_issues`
      - `accepted-process-exception` = QA must verify the issue is real but non-blocking for this phase, omit it from `pre_existing_issues`, and leave it visible via the summary/STATE backlog instead of reopening the round forever
      - `unresolved` = the issue remains blocking and the next round must continue to carry it
-   - Do NOT omit a carried known issue from `known_issues_input` or `known_issue_resolutions`. The deterministic gate treats missing coverage as a failed remediation round even if QA writes `PASS`.
+    - Do NOT omit the `known_issues_input` or `known_issue_resolutions` keys. Do NOT omit a carried known issue from either array. The deterministic gate treats missing coverage as a failed remediation round even if QA writes `PASS`.
    - Scope the plan to those failures: what to fix, which files, acceptance criteria
   - The orchestrator coordinates the remediation loop and spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md` (QA identified problems, Lead determines fixes).
   - Resolve Lead settings before composing the Lead task:
@@ -800,8 +801,20 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
     ```
   - Spawn Lead as a plain sequential work-unit subagent with `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"`. If `LEAD_MAX_TURNS` is non-empty, include `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is empty, omit `maxTurns` because the resolved profile is unlimited. Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`.
   - Lead prompt MUST include the authoritative `round_dir`, `source_verification_path`, `known_issues_path`, and output path `{round_dir}/R{RR}-PLAN.md`; the failed-check and known-issue inputs above; the deviation-classification and known-issue-resolution requirements above; and `Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md and follow its structure exactly.`
-  - After Lead returns, apply the QA remediation no-tool circuit breaker before reading or trusting the generated plan, normalizing anything, validating anything, or advancing state. If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Lead prompt.
-  - Advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
+  - After Lead returns, apply the QA remediation no-tool circuit breaker before normalizing plan filenames, validating the generated plan, or advancing state. If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Lead prompt.
+  - Normalize plan filenames before validation:
+    ```bash
+    NORM_SCRIPT="${VBW_PLUGIN_ROOT}/scripts/normalize-plan-filenames.sh"
+    if [ -f "$NORM_SCRIPT" ]; then
+      bash "$NORM_SCRIPT" "{round_dir}"
+    fi
+    ```
+  - Validate the exact QA remediation plan artifact before advancing:
+    ```bash
+    bash "${VBW_PLUGIN_ROOT}/scripts/validate-uat-remediation-artifact.sh" plan "{round_dir}/R{RR}-PLAN.md"
+    ```
+    If validation fails, display the validator error and STOP without advancing `.qa-remediation-stage`. Do not search for an alternate PLAN.md.
+  - After plan validation passes, advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
 
    **stage=execute:** Spawn a Dev subagent per `R{RR}-PLAN.md`:
    - **Always subagent — NO team creation for QA remediation (NON-NEGOTIABLE)**

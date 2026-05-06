@@ -94,22 +94,36 @@ canonicalize_existing_or_parent() {
 }
 
 translate_claude_sidechain_phase_candidate() {
-  local candidate="$1" sidechain_root="${VBW_CLAUDE_SIDECHAIN_ROOT:-}" host_root="${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}" rel_phase_path
-
-  if [ -z "$sidechain_root" ] || [ -z "$host_root" ] || [ ! -f "$host_root/.vbw-planning/config.json" ]; then
-    printf '%s\n' "$candidate"
-    return 0
-  fi
+  local candidate="$1" sidechain_root="${VBW_CLAUDE_SIDECHAIN_ROOT:-}" host_root="${VBW_CLAUDE_SIDECHAIN_HOST_ROOT:-}"
+  local rel_phase_path inferred_sidechain_root worktrees_dir claude_dir inferred_host_root
 
   case "$candidate" in
-    "$sidechain_root"/.vbw-planning/phases/*)
-      rel_phase_path="${candidate#"$sidechain_root"/.vbw-planning/phases/}"
-      printf '%s/.vbw-planning/phases/%s\n' "$host_root" "$rel_phase_path"
-      ;;
-    *)
-      printf '%s\n' "$candidate"
+    */.claude/worktrees/agent-*/.vbw-planning/phases/*)
+      inferred_sidechain_root="${candidate%%/.vbw-planning/phases/*}"
+      rel_phase_path="${candidate#"$inferred_sidechain_root"/.vbw-planning/phases/}"
+      worktrees_dir=$(dirname "$inferred_sidechain_root")
+      claude_dir=$(dirname "$worktrees_dir")
+      inferred_host_root=$(dirname "$claude_dir")
+      if [ "$(basename "$worktrees_dir")" = "worktrees" ] \
+        && [ "$(basename "$claude_dir")" = ".claude" ] \
+        && [ -f "$inferred_host_root/.vbw-planning/config.json" ]; then
+        printf '%s/.vbw-planning/phases/%s\n' "$inferred_host_root" "$rel_phase_path"
+        return 0
+      fi
       ;;
   esac
+
+  if [ -n "$sidechain_root" ] && [ -n "$host_root" ] && [ -f "$host_root/.vbw-planning/config.json" ]; then
+    case "$candidate" in
+      "$sidechain_root"/.vbw-planning/phases/*)
+        rel_phase_path="${candidate#"$sidechain_root"/.vbw-planning/phases/}"
+        printf '%s/.vbw-planning/phases/%s\n' "$host_root" "$rel_phase_path"
+        return 0
+        ;;
+    esac
+  fi
+
+  printf '%s\n' "$candidate"
 }
 
 normalize_active_phase_dir_root() {

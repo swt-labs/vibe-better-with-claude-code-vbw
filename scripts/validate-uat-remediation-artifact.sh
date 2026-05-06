@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# validate-uat-remediation-artifact.sh — deterministic gate for UAT remediation artifacts.
+# validate-uat-remediation-artifact.sh — deterministic gate for remediation artifacts.
 #
 # Usage:
 #   validate-uat-remediation-artifact.sh <research|plan|summary> <absolute-artifact-path>
 #
-# The UAT remediation orchestrator uses this before advancing persisted state so
-# a sidechain/subagent artifact miss cannot be mistaken for a completed stage.
+# UAT and QA remediation orchestrators use this before advancing persisted state
+# so a sidechain/subagent artifact miss cannot be mistaken for a completed stage.
 
 set -euo pipefail
 
 ARTIFACT_TYPE="${1:-}"
 ARTIFACT_PATH="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+EXPECTED_ARTIFACT_ROUND=""
+REMEDIATION_KIND=""
 
 if [ -f "$SCRIPT_DIR/uat-utils.sh" ]; then
   # shellcheck source=scripts/uat-utils.sh
@@ -51,6 +53,48 @@ extract_frontmatter() {
     }
     delimiter_count == 1 { print }
   ' "$file"
+}
+
+canonicalize_artifact_path() {
+  local raw_path="$1" parent base parent_physical current link_target depth
+
+  case "$raw_path" in
+    /*) ;;
+    *) return 1 ;;
+  esac
+
+  parent=$(dirname "$raw_path")
+  base=$(basename "$raw_path")
+  [ -d "$parent" ] || return 1
+  parent_physical=$(cd "$parent" 2>/dev/null && pwd -P) || return 1
+  current="$parent_physical/$base"
+
+  depth=0
+  while [ -L "$current" ]; do
+    if [ "$depth" -ge 20 ]; then
+      return 1
+    fi
+    link_target=$(readlink "$current" 2>/dev/null) || return 1
+    case "$link_target" in
+      /*) current="$link_target" ;;
+      *) current="$(dirname "$current")/$link_target" ;;
+    esac
+    parent=$(dirname "$current")
+    base=$(basename "$current")
+    [ -d "$parent" ] || return 1
+    parent_physical=$(cd "$parent" 2>/dev/null && pwd -P) || return 1
+    current="$parent_physical/$base"
+    depth=$((depth + 1))
+  done
+
+  printf '%s\n' "$current"
+}
+
+canonicalize_selected_path() {
+  local selected_path="$1" canonical_path
+
+  canonical_path=$(canonicalize_artifact_path "$selected_path") || return 1
+  printf '%s\n' "$canonical_path"
 }
 
 artifact_phase_dir() {
@@ -157,7 +201,7 @@ selected_legacy_artifact_path() {
 }
 
 validate_legacy_phase_root_path() {
-  local expected_suffix="$1" phase_dir phase_prefix artifact_basename layout selected_path
+  local expected_suffix="$1" phase_dir phase_prefix artifact_basename layout selected_path selected_canonical_path
 
   if [ "$ARTIFACT_TYPE" = "summary" ]; then
     emit_failure "summary artifacts must use the round-dir layout"
@@ -184,19 +228,82 @@ validate_legacy_phase_root_path() {
 
   selected_path=$(selected_legacy_artifact_path "$phase_dir" "$ARTIFACT_TYPE") \
     || emit_failure "no current legacy ${ARTIFACT_TYPE} artifact is selected by state metadata"
+  selected_canonical_path=$(canonicalize_selected_path "$selected_path") \
+    || emit_failure "state-selected legacy ${ARTIFACT_TYPE} artifact path is not canonical"
 
-  if [ "$ARTIFACT_PATH" != "$selected_path" ]; then
+  if [ "$ARTIFACT_PATH" != "$selected_canonical_path" ]; then
     emit_failure "legacy artifact is stale; expected $selected_path"
   fi
 }
 
+validate_round_dir_artifact_path() {
+  local remediation_kind="$1" expected_suffix="$2"
+  local artifact_dir round_dir_base round_raw expected_round artifact_basename file_round shape_error mismatch_error
+
+  artifact_dir=$(dirname "$ARTIFACT_PATH")
+  round_dir_base=$(basename "$artifact_dir")
+  round_raw="${round_dir_base#round-}"
+
+  case "$remediation_kind" in
+    qa)
+      shape_error="artifact path must match the expected QA remediation plan filename shape"
+      mismatch_error="QA remediation plan round token must match round directory"
+      ;;
+    *)
+      shape_error="artifact path must match the expected round-dir ${expected_suffix} filename shape"
+      mismatch_error="artifact round token must match round directory"
+      ;;
+  esac
+
+  case "$round_dir_base" in
+    round-[0-9]*) ;;
+    *) emit_failure "$shape_error" ;;
+  esac
+
+  case "$round_raw" in
+    ""|*[!0-9]*) emit_failure "$shape_error" ;;
+  esac
+
+  expected_round=$(printf "%02d" "$((10#$round_raw))")
+  EXPECTED_ARTIFACT_ROUND="$expected_round"
+  if [ "$round_raw" != "$expected_round" ]; then
+    emit_failure "$shape_error"
+  fi
+
+  artifact_basename=$(basename "$ARTIFACT_PATH")
+  file_round=$(printf '%s\n' "$artifact_basename" | sed -n "s/^R\([0-9][0-9]*\)-${expected_suffix}\.md$/\1/p")
+  if [ -z "$file_round" ]; then
+    emit_failure "$shape_error"
+  fi
+
+  if [ "$file_round" != "$expected_round" ]; then
+    emit_failure "$mismatch_error"
+  fi
+}
+
 validate_common_path() {
-  local expected_suffix="$1"
+  local expected_suffix="$1" raw_artifact_path canonical_artifact_path
 
   case "$ARTIFACT_PATH" in
     /*) ;;
     *) emit_failure "artifact path must be absolute" ;;
   esac
+
+  raw_artifact_path="$ARTIFACT_PATH"
+  canonical_artifact_path=$(canonicalize_artifact_path "$ARTIFACT_PATH") \
+    || emit_failure "artifact path parent directory does not exist or cannot be canonicalized"
+
+  case "$canonical_artifact_path" in
+    */.claude/worktrees/agent-*/*)
+      emit_failure "artifact path points at a Claude sidechain; use the host repository path"
+      ;;
+  esac
+
+  if [ "$raw_artifact_path" != "$canonical_artifact_path" ]; then
+    emit_failure "artifact path must be the exact canonical host path"
+  fi
+
+  ARTIFACT_PATH="$canonical_artifact_path"
 
   case "$ARTIFACT_PATH" in
     */.claude/worktrees/agent-*/*)
@@ -205,7 +312,18 @@ validate_common_path() {
   esac
 
   case "$ARTIFACT_PATH" in
-    */.vbw-planning/phases/*/remediation/uat/round-[0-9][0-9]/R[0-9][0-9]-"$expected_suffix".md) ;;
+    */.vbw-planning/phases/*/remediation/uat/round-[0-9]*/*)
+      REMEDIATION_KIND="uat"
+      validate_round_dir_artifact_path "uat" "$expected_suffix"
+      ;;
+    */.vbw-planning/phases/*/remediation/qa/round-[0-9]*/*)
+      REMEDIATION_KIND="qa"
+      [ "$ARTIFACT_TYPE" = "plan" ] || emit_failure "QA remediation validation currently supports plan artifacts only"
+      validate_round_dir_artifact_path "qa" "PLAN"
+      ;;
+    */.vbw-planning/phases/*/remediation/qa/*)
+      emit_failure "artifact path must match the expected QA remediation plan filename shape"
+      ;;
     *) validate_legacy_phase_root_path "$expected_suffix" ;;
   esac
 
@@ -233,6 +351,18 @@ validate_frontmatter() {
     || emit_failure "artifact frontmatter missing title"
 }
 
+validate_frontmatter_round_matches_path() {
+  local frontmatter="$1" frontmatter_round frontmatter_round_norm
+
+  [ -n "$EXPECTED_ARTIFACT_ROUND" ] || return 0
+  frontmatter_round=$(printf '%s\n' "$frontmatter" | sed -n 's/^round:[[:space:]]*\([0-9][0-9]*\).*$/\1/p' | head -1)
+  [ -n "$frontmatter_round" ] || emit_failure "artifact frontmatter missing numeric round"
+  frontmatter_round_norm=$(printf "%02d" "$((10#$frontmatter_round))")
+  if [ "$frontmatter_round_norm" != "$EXPECTED_ARTIFACT_ROUND" ]; then
+    emit_failure "artifact frontmatter round must match round directory"
+  fi
+}
+
 if [ -z "$ARTIFACT_TYPE" ] || [ -z "$ARTIFACT_PATH" ]; then
   usage
   exit 1
@@ -256,6 +386,7 @@ esac
 validate_common_path "$expected_suffix"
 FRONTMATTER=$(extract_frontmatter "$ARTIFACT_PATH")
 validate_frontmatter "$FRONTMATTER"
+validate_frontmatter_round_matches_path "$FRONTMATTER"
 
 case "$ARTIFACT_TYPE" in
   research)
@@ -271,8 +402,12 @@ case "$ARTIFACT_TYPE" in
       || emit_failure "plan artifact type must be remediation"
     contains_regex "$FRONTMATTER" '^fail_classifications:[[:space:]]*.*$' \
       || emit_failure "plan artifact missing fail_classifications metadata"
-    contains_regex "$FRONTMATTER" '^known_issue_resolutions:[[:space:]]*.*$' \
-      || emit_failure "plan artifact missing known_issue_resolutions metadata"
+    if [ "$REMEDIATION_KIND" = "qa" ]; then
+      contains_regex "$FRONTMATTER" '^known_issues_input:[[:space:]]*.*$' \
+        || emit_failure "plan artifact missing known_issues_input metadata"
+      contains_regex "$FRONTMATTER" '^known_issue_resolutions:[[:space:]]*.*$' \
+        || emit_failure "plan artifact missing known_issue_resolutions metadata"
+    fi
     grep -Eq '^<tasks>[[:space:]]*$' "$ARTIFACT_PATH" \
       || emit_failure "plan artifact missing tasks block"
     grep -Eq '^<verification>[[:space:]]*$' "$ARTIFACT_PATH" \
