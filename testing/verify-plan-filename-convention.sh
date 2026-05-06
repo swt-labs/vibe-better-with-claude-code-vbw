@@ -174,6 +174,17 @@ else
   fail "QA PLAN-01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
 fi
 
+# Test 10b2: QA remediation round mixed-case extension normalizes to R01-PLAN.md
+TDIR="$TMPDIR_TEST/test10b2/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+write_valid_round_plan "$TDIR/PLAN-R01.mD"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-R01.mD" ] && echo "$OUTPUT" | grep -q "PLAN-R01.mD -> R01-PLAN.md"; then
+  pass "renames QA round PLAN-R01.mD → R01-PLAN.md"
+else
+  fail "QA PLAN-R01.mD rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
 # Test 10c: UAT remediation round PLAN-01.md normalizes to R01-PLAN.md
 TDIR="$TMPDIR_TEST/test10c/.vbw-planning/phases/01-setup/remediation/uat/round-01"
 mkdir -p "$TDIR"

@@ -204,6 +204,17 @@ EOF
   [[ "$output" == *"artifact_path=$plan_path"* ]]
 }
 
+@test "validator accepts UAT plan without known issue arrays for backward compatibility" {
+  local plan_path="$ROUND_DIR/R01-PLAN.md"
+  write_valid_plan "$plan_path"
+  sed -i.bak '/^known_issues_input:/,/^must_haves:/ { /^must_haves:/!d; }' "$plan_path"
+  rm -f "$plan_path.bak"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" plan "$plan_path"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"artifact_valid=true"* ]]
+}
+
 @test "validator accepts canonical QA round-dir plan path" {
   local plan_path="$QA_ROUND_DIR/R01-PLAN.md"
   write_valid_plan "$plan_path"

@@ -92,6 +92,19 @@ EOF
   [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md"* ]]
 }
 
+@test "renames QA round-dir mixed-case extension PLAN-R01.mD to R01-PLAN.md" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/PLAN-R01.mD"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-R01.mD" ]
+  [[ "$output" == *"renamed: PLAN-R01.mD -> R01-PLAN.md"* ]]
+}
+
 @test "renames UAT round-dir PLAN-01.md to R01-PLAN.md" {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/uat/round-01"
   mkdir -p "$ROUND_DIR"
@@ -104,6 +117,21 @@ EOF
   [ ! -f "$ROUND_DIR/PLAN-01.md" ]
   [ ! -f "$ROUND_DIR/01-PLAN.md" ]
   [[ "$output" == *"renamed: PLAN-01.md -> R01-PLAN.md"* ]]
+}
+
+@test "renames UAT round-dir plan without known issue arrays for backward compatibility" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/uat/round-01"
+  mkdir -p "$ROUND_DIR"
+  write_valid_round_plan "$ROUND_DIR/PLAN-01.Md"
+  sed -i.bak '/^known_issues_input:/,/^---$/ { /^---$/!d; }' "$ROUND_DIR/PLAN-01.Md"
+  rm -f "$ROUND_DIR/PLAN-01.Md.bak"
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.Md" ]
+  [[ "$output" == *"renamed: PLAN-01.Md -> R01-PLAN.md"* ]]
 }
 
 @test "renames legacy remediation round-dir PLAN-01.md to R01-PLAN.md" {

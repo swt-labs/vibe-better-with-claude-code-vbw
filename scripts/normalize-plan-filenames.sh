@@ -33,7 +33,8 @@ PHASE_DIR="${PHASE_DIR%/}"
 PHASE_DIR_BASE=$(basename "$PHASE_DIR")
 
 round_plan_content_is_valid() {
-  local file_path="$1" expected_round="${2:-}" frontmatter frontmatter_round frontmatter_round_norm
+  local file_path="$1" expected_round="${2:-}" remediation_kind="${3:-uat}"
+  local frontmatter frontmatter_round frontmatter_round_norm
 
   [ -s "$file_path" ] || return 1
   frontmatter=$(awk '
@@ -58,8 +59,10 @@ round_plan_content_is_valid() {
   grep -Eq '^title:[[:space:]]*.+' <<< "$frontmatter" || return 1
   grep -Eq '^type:[[:space:]]*remediation([[:space:]]*(#.*)?)?$' <<< "$frontmatter" || return 1
   grep -Eq '^fail_classifications:[[:space:]]*.*$' <<< "$frontmatter" || return 1
-  grep -Eq '^known_issues_input:[[:space:]]*.*$' <<< "$frontmatter" || return 1
-  grep -Eq '^known_issue_resolutions:[[:space:]]*.*$' <<< "$frontmatter" || return 1
+  if [ "$remediation_kind" = "qa" ]; then
+    grep -Eq '^known_issues_input:[[:space:]]*.*$' <<< "$frontmatter" || return 1
+    grep -Eq '^known_issue_resolutions:[[:space:]]*.*$' <<< "$frontmatter" || return 1
+  fi
   grep -Eq '^<tasks>[[:space:]]*$' "$file_path" || return 1
   grep -Eq '^<verification>[[:space:]]*$' "$file_path" || return 1
 }
@@ -82,8 +85,17 @@ move_as_invalid_candidate() {
 # of truth for the canonical round token so QA/UAT/legacy round paths all share
 # the same normalization contract.
 ROUND_PLAN_TOKEN=""
+ROUND_REMEDIATION_KIND=""
 case "$PHASE_DIR" in
-  */remediation/qa/round-[0-9]*|remediation/qa/round-[0-9]*|*/remediation/uat/round-[0-9]*|remediation/uat/round-[0-9]*|*/remediation/round-[0-9]*|remediation/round-[0-9]*)
+  */remediation/qa/round-[0-9]*|remediation/qa/round-[0-9]*)
+    ROUND_REMEDIATION_KIND="qa"
+    ROUND_RAW=$(echo "$PHASE_DIR_BASE" | sed -n 's/^round-\([0-9][0-9]*\)$/\1/p')
+    if [ -n "$ROUND_RAW" ]; then
+      ROUND_PLAN_TOKEN=$(printf "R%02d" "$((10#$ROUND_RAW))")
+    fi
+    ;;
+  */remediation/uat/round-[0-9]*|remediation/uat/round-[0-9]*|*/remediation/round-[0-9]*|remediation/round-[0-9]*)
+    ROUND_REMEDIATION_KIND="uat"
     ROUND_RAW=$(echo "$PHASE_DIR_BASE" | sed -n 's/^round-\([0-9][0-9]*\)$/\1/p')
     if [ -n "$ROUND_RAW" ]; then
       ROUND_PLAN_TOKEN=$(printf "R%02d" "$((10#$ROUND_RAW))")
@@ -100,7 +112,7 @@ if [ -n "$ROUND_PLAN_TOKEN" ]; then
     [ -f "$f" ] || continue
     [ ! -L "$f" ] || continue  # skip symlinks
     BASENAME=$(basename "$f")
-    if ! echo "$BASENAME" | grep -qiE '^PLAN-R?[0-9]+\.(md|MD)$'; then
+    if ! echo "$BASENAME" | grep -qE '^[Pp][Ll][Aa][Nn]-[Rr]?[0-9]+\.[mM][dD]$'; then
       echo "skipped: $BASENAME (unknown remediation round plan form)" >&2
       continue
     fi
@@ -183,7 +195,7 @@ if [ -n "$ROUND_PLAN_TOKEN" ]; then
         echo "skipped: $BASENAME (existing $(basename "$TARGET") is newer; moved stale candidate to $(basename "$STALE_SOURCE"))" >&2
         continue
       fi
-      if ! round_plan_content_is_valid "$f" "${ROUND_PLAN_TOKEN#R}"; then
+      if ! round_plan_content_is_valid "$f" "${ROUND_PLAN_TOKEN#R}" "$ROUND_REMEDIATION_KIND"; then
         INVALID_SOURCE_BASENAME=$(move_as_invalid_candidate "$f")
         echo "skipped: $BASENAME (newer candidate is structurally invalid; moved invalid candidate to $INVALID_SOURCE_BASENAME and preserved existing $(basename "$TARGET"))" >&2
         continue
@@ -192,7 +204,7 @@ if [ -n "$ROUND_PLAN_TOKEN" ]; then
       echo "renamed: $BASENAME -> $(basename "$TARGET") (replaced existing target)"
       continue
     fi
-    if ! round_plan_content_is_valid "$f" "${ROUND_PLAN_TOKEN#R}"; then
+    if ! round_plan_content_is_valid "$f" "${ROUND_PLAN_TOKEN#R}" "$ROUND_REMEDIATION_KIND"; then
       INVALID_SOURCE_BASENAME=$(move_as_invalid_candidate "$f")
       echo "skipped: $BASENAME (candidate is structurally invalid; moved invalid candidate to $INVALID_SOURCE_BASENAME)" >&2
       continue
