@@ -300,15 +300,99 @@ load test_helper
   teardown_temp_dir
 }
 
-@test "agent-stop decrements count and preserves marker when agents remain" {
+@test "agent-start tracks active role counts" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo '{"agent_type":"vbw-scout"}' | bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/agent-start.sh'"
+  echo '{"agent_type":"vbw-dev"}' | bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/agent-start.sh'"
+  echo '{"agent_type":"vbw-scout"}' | bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/agent-start.sh'"
+
+  grep -Fqx 'scout 2' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  grep -Fqx 'dev 1' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  teardown_temp_dir
+}
+
+@test "agent-stop decrements active role counts when identity is available" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo '{"agent_type":"vbw-scout"}' | bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/agent-start.sh'"
+  echo '{"agent_type":"vbw-dev"}' | bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/agent-start.sh'"
+  echo '{"agent_type":"vbw-scout"}' | bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/agent-start.sh'"
+
+  echo '{"agent_type":"vbw-scout"}' | bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/agent-stop.sh'"
+  grep -Fqx 'scout 1' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  grep -Fqx 'dev 1' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+
+  echo '{"agent_type":"vbw-dev"}' | bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/agent-stop.sh'"
+  grep -Fqx 'scout 1' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  ! grep -q '^dev ' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+
+  echo '{"agent_type":"vbw-scout"}' | bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/agent-stop.sh'"
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles" ]
+  teardown_temp_dir
+}
+
+@test "agent-stop resolves anonymous PID stops through role map" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo '{"agent_type":"vbw-scout","pid":"10101"}' | bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/agent-start.sh'"
+  echo '{"agent_type":"vbw-dev","pid":"20202"}' | bash -c "cd '$TEST_TEMP_DIR' && bash '$SCRIPTS_DIR/agent-start.sh'"
+
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '{\"pid\":\"10101\"}' | bash '$SCRIPTS_DIR/agent-stop.sh'"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count")" = "1" ]
+  grep -Fqx 'dev 1' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  ! grep -q '^scout ' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  grep -Fqx '20202 dev' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-role-pids"
+  ! grep -q '^10101 ' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-role-pids"
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent")" = "dev" ]
+  teardown_temp_dir
+}
+
+@test "agent-stop drops unreliable role markers after anonymous mixed-role stop" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo "2" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  echo "dev" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
+  cat > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles" <<'EOF'
+scout 1
+dev 1
+EOF
+
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '{}' | bash '$SCRIPTS_DIR/agent-stop.sh'"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count")" = "1" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  grep -q '"event":"active_agent_role_reconcile"' "$TEST_TEMP_DIR/.vbw-planning/.event-log.jsonl"
+  grep -q '"reason":"anonymous_stop_unreliable_role_state"' "$TEST_TEMP_DIR/.vbw-planning/.event-log.jsonl"
+  teardown_temp_dir
+}
+
+@test "agent-stop decrements single-role anonymous fallback" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo "2" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  echo "dev" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
+  echo "dev 2" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+
+  run bash -c "cd '$TEST_TEMP_DIR' && echo '{}' | bash '$SCRIPTS_DIR/agent-stop.sh'"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count")" = "1" ]
+  grep -Fqx 'dev 1' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent")" = "dev" ]
+  teardown_temp_dir
+}
+
+@test "agent-stop decrements count and drops unreliable marker when agents remain" {
   setup_temp_dir
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
   echo "lead" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
   echo "2" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
   run bash -c "cd '$TEST_TEMP_DIR' && echo '{}' | bash '$SCRIPTS_DIR/agent-stop.sh'"
   [ "$status" -eq 0 ]
-  # Marker should still exist (one agent remaining)
-  [ -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  # Identity-less stops preserve the total count but drop unreliable role marker claims.
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
   [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count")" = "1" ]
   teardown_temp_dir
 }
@@ -483,7 +567,7 @@ load test_helper
   # First stop: 2 -> 1, marker preserved
   run bash -c "cd '$TEST_TEMP_DIR' && echo '{}' | bash '$SCRIPTS_DIR/agent-stop.sh'"
   [ "$status" -eq 0 ]
-  [ -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
   [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count")" = "1" ]
   # Second stop: 1 -> 0, full cleanup
   run bash -c "cd '$TEST_TEMP_DIR' && echo '{}' | bash '$SCRIPTS_DIR/agent-stop.sh'"
@@ -536,11 +620,15 @@ load test_helper
   echo "session" > "$TEST_TEMP_DIR/.vbw-planning/.vbw-session"
   echo "scout" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
   echo "2" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  echo "scout 2" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  echo "12345 scout" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-role-pids"
   run bash -c "cd '$TEST_TEMP_DIR' && echo '{}' | bash '$SCRIPTS_DIR/session-stop.sh'"
   [ "$status" -eq 0 ]
   [ -f "$TEST_TEMP_DIR/.vbw-planning/.vbw-session" ]
   [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
   [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-role-pids" ]
   teardown_temp_dir
 }
 

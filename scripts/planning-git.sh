@@ -49,6 +49,8 @@ ensure_transient_ignore() {
 .vbw-session
 .active-agent
 .active-agent-count
+.active-agent-roles
+.active-agent-role-pids
 .active-agent-count.lock/
 .agent-pids
 .task-verify-seen

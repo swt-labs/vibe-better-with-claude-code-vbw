@@ -64,6 +64,110 @@ to_abs_path() {
   fi
 }
 
+# Find project root by walking up from $PWD
+find_project_root() {
+  local dir="$PWD"
+  while [ "$dir" != "/" ]; do
+    if [ -f "$dir/.vbw-planning/config.json" ] || [ -d "$dir/.vbw-planning/phases" ]; then
+      echo "$dir"
+      return 0
+    fi
+    dir=$(dirname "$dir")
+  done
+  return 1
+}
+
+if [ "$_FG_SHARED_ROOT_RESOLVED" = "true" ] && [ -n "${VBW_CONFIG_ROOT:-}" ] && [ -n "${VBW_PLANNING_DIR:-}" ] && [ -f "$VBW_PLANNING_DIR/config.json" ]; then
+  PROJECT_ROOT="$VBW_CONFIG_ROOT"
+  PHASES_DIR="$VBW_PLANNING_DIR/phases"
+else
+  PROJECT_ROOT=$(find_project_root) || PROJECT_ROOT=""
+  if [ -n "$PROJECT_ROOT" ]; then
+    PHASES_DIR="$PROJECT_ROOT/.vbw-planning/phases"
+  else
+    PHASES_DIR=""
+  fi
+fi
+
+normalize_agent_role() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+
+  case "$lower" in
+    vbw-scout|vbw-scout-[0-9]*|scout|scout-[0-9]*|team-scout|team-scout-[0-9]*)
+      printf 'scout'
+      return 0
+      ;;
+    vbw-lead|vbw-lead-[0-9]*|lead|lead-[0-9]*|team-lead|team-lead-[0-9]*)
+      printf 'lead'
+      return 0
+      ;;
+    vbw-dev|vbw-dev-[0-9]*|dev|dev-[0-9]*|team-dev|team-dev-[0-9]*)
+      printf 'dev'
+      return 0
+      ;;
+    vbw-qa|vbw-qa-[0-9]*|qa|qa-[0-9]*|team-qa|team-qa-[0-9]*)
+      printf 'qa'
+      return 0
+      ;;
+    vbw-debugger|vbw-debugger-[0-9]*|debugger|debugger-[0-9]*|team-debugger|team-debugger-[0-9]*)
+      printf 'debugger'
+      return 0
+      ;;
+    vbw-architect|vbw-architect-[0-9]*|architect|architect-[0-9]*|team-architect|team-architect-[0-9]*)
+      printf 'architect'
+      return 0
+      ;;
+    vbw-docs|vbw-docs-[0-9]*|docs|docs-[0-9]*|team-docs|team-docs-[0-9]*)
+      printf 'docs'
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+detect_agent_role() {
+  local candidate role planning_dir
+
+  for candidate in "${VBW_AGENT_ROLE:-}" "${VBW_ACTIVE_AGENT:-}"; do
+    [ -z "$candidate" ] && continue
+    if role=$(normalize_agent_role "$candidate"); then
+      printf '%s' "$role"
+      return 0
+    fi
+  done
+
+  if [ -n "$PROJECT_ROOT" ]; then
+    planning_dir="$PROJECT_ROOT/.vbw-planning"
+    if [ -f "$planning_dir/.active-agent-roles" ] && awk '$1 == "scout" && ($2 ~ /^[0-9]+$/) && $2 > 0 { found=1 } END { exit found ? 0 : 1 }' "$planning_dir/.active-agent-roles" 2>/dev/null; then
+      printf 'scout'
+      return 0
+    fi
+
+    if [ -f "$planning_dir/.active-agent" ]; then
+      candidate=$(cat "$planning_dir/.active-agent" 2>/dev/null | head -n 1 | tr -d '[:space:]')
+      if [ -n "$candidate" ] && role=$(normalize_agent_role "$candidate"); then
+        printf '%s' "$role"
+        return 0
+      fi
+    fi
+  fi
+
+  return 1
+}
+
+ACTIVE_AGENT_ROLE=""
+if ACTIVE_AGENT_ROLE=$(detect_agent_role); then
+  :
+else
+  ACTIVE_AGENT_ROLE=""
+fi
+
 # Block misnamed plan/summary/context files in phase dirs (type-first format)
 # Must precede the .vbw-planning/* exemption which exits 0 for all planning artifacts.
 # Case-insensitive on extension (.md/.MD/.Md) to prevent bypass.
@@ -127,6 +231,24 @@ if [ -n "${VBW_CLAUDE_SIDECHAIN_ROOT:-}" ] && [ -n "${VBW_CLAUDE_SIDECHAIN_HOST_
   fi
 fi
 
+# Scout can write only planning artifacts. This must run before broad artifact
+# exemptions and before the active-agent-count delegated-workflow bypass; the
+# PreToolUse payload may not include VBW_AGENT_ROLE, so fall back to the
+# resolved host `.active-agent` marker when available.
+if [ "$ACTIVE_AGENT_ROLE" = "scout" ] && [ -n "$PROJECT_ROOT" ]; then
+  _FG_TARGET_ABS=$(to_abs_path "$FILE_PATH")
+  _FG_PLANNING_ABS=$(to_abs_path "$PROJECT_ROOT/.vbw-planning")
+  case "$_FG_TARGET_ABS" in
+    "$_FG_PLANNING_ABS"|"$_FG_PLANNING_ABS"/*)
+      :
+      ;;
+    *)
+      echo "Blocked: Scout-safe active-agent context is read-only outside .vbw-planning/" >&2
+      exit 2
+      ;;
+  esac
+fi
+
 # Exempt planning artifacts — these are always allowed
 case "$FILE_PATH" in
   *.vbw-planning/milestones/*/phases/*)
@@ -165,26 +287,7 @@ case "$FILE_PATH" in
     ;;
 esac
 
-# Find project root by walking up from $PWD
-find_project_root() {
-  local dir="$PWD"
-  while [ "$dir" != "/" ]; do
-    if [ -d "$dir/.vbw-planning/phases" ]; then
-      echo "$dir"
-      return 0
-    fi
-    dir=$(dirname "$dir")
-  done
-  return 1
-}
-
-if [ "$_FG_SHARED_ROOT_RESOLVED" = "true" ] && [ -n "${VBW_CONFIG_ROOT:-}" ] && [ -n "${VBW_PLANNING_DIR:-}" ] && [ -d "$VBW_PLANNING_DIR/phases" ]; then
-  PROJECT_ROOT="$VBW_CONFIG_ROOT"
-  PHASES_DIR="$VBW_PLANNING_DIR/phases"
-else
-  PROJECT_ROOT=$(find_project_root) || exit 0
-  PHASES_DIR="$PROJECT_ROOT/.vbw-planning/phases"
-fi
+[ -z "$PROJECT_ROOT" ] && exit 0
 [ ! -d "$PHASES_DIR" ] && exit 0
 
 # Source shared summary-status helpers (fail-open: inline fallback if lib unavailable)

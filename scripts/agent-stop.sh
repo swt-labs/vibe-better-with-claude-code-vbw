@@ -10,9 +10,12 @@ INPUT=$(cat)
 LAST_MESSAGE=$(echo "$INPUT" | jq -r '.last_assistant_message // ""' 2>/dev/null)
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 COUNT_FILE="$PLANNING_DIR/.active-agent-count"
+ROLES_FILE="$PLANNING_DIR/.active-agent-roles"
+ROLE_PIDS_FILE="$PLANNING_DIR/.active-agent-role-pids"
 LOCK_DIR="$PLANNING_DIR/.active-agent-count.lock"
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
 LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
+AGENT_PID=$(echo "$INPUT" | jq -r '.pid // ""' 2>/dev/null)
 
 has_vbw_context() {
   [ -f "$PLANNING_DIR/.vbw-session" ] \
@@ -25,6 +28,52 @@ is_explicit_vbw_agent() {
   local lower
   lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
   echo "$lower" | grep -qE '^@?vbw:|^@?vbw-'
+}
+
+normalize_agent_role() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+
+  case "$lower" in
+    vbw-lead|vbw-lead-[0-9]*|lead|lead-[0-9]*|team-lead|team-lead-[0-9]*) printf 'lead'; return 0 ;;
+    vbw-dev|vbw-dev-[0-9]*|dev|dev-[0-9]*|team-dev|team-dev-[0-9]*) printf 'dev'; return 0 ;;
+    vbw-qa|vbw-qa-[0-9]*|qa|qa-[0-9]*|team-qa|team-qa-[0-9]*) printf 'qa'; return 0 ;;
+    vbw-scout|vbw-scout-[0-9]*|scout|scout-[0-9]*|team-scout|team-scout-[0-9]*) printf 'scout'; return 0 ;;
+    vbw-debugger|vbw-debugger-[0-9]*|debugger|debugger-[0-9]*|team-debugger|team-debugger-[0-9]*) printf 'debugger'; return 0 ;;
+    vbw-architect|vbw-architect-[0-9]*|architect|architect-[0-9]*|team-architect|team-architect-[0-9]*) printf 'architect'; return 0 ;;
+    vbw-docs|vbw-docs-[0-9]*|docs|docs-[0-9]*|team-docs|team-docs-[0-9]*) printf 'docs'; return 0 ;;
+  esac
+
+  return 1
+}
+
+select_agent_role_source() {
+  if [ -n "$NATIVE_AGENT_TYPE" ]; then
+    if is_explicit_vbw_agent "$NATIVE_AGENT_TYPE"; then
+      printf '%s' "$NATIVE_AGENT_TYPE"
+      return 0
+    fi
+
+    if is_explicit_vbw_agent "$LEGACY_AGENT_ROLE_SOURCE"; then
+      printf '%s' "$LEGACY_AGENT_ROLE_SOURCE"
+      return 0
+    fi
+
+    return 1
+  fi
+
+  if [ -n "$LEGACY_AGENT_ROLE_SOURCE" ]; then
+    if is_explicit_vbw_agent "$LEGACY_AGENT_ROLE_SOURCE" || has_vbw_context; then
+      printf '%s' "$LEGACY_AGENT_ROLE_SOURCE"
+      return 0
+    fi
+  fi
+
+  return 1
 }
 
 should_process_stop() {
@@ -97,8 +146,177 @@ read_count() {
   fi
 }
 
+update_role_count() {
+  local target_role="$1"
+  local delta="$2"
+  local tmp role count found=false
+
+  [ -n "$target_role" ] || return 0
+
+  tmp="${ROLES_FILE}.tmp.$$"
+  : > "$tmp" 2>/dev/null || return 0
+
+  if [ -f "$ROLES_FILE" ]; then
+    while read -r role count; do
+      [ -z "$role" ] && continue
+      if ! echo "$count" | grep -Eq '^[0-9]+$'; then
+        count=0
+      fi
+      if [ "$role" = "$target_role" ]; then
+        count=$((count + delta))
+        found=true
+      fi
+      if [ "$count" -gt 0 ]; then
+        printf '%s %s\n' "$role" "$count" >> "$tmp"
+      fi
+    done < "$ROLES_FILE"
+  fi
+
+  if [ "$found" = false ] && [ "$delta" -gt 0 ]; then
+    printf '%s %s\n' "$target_role" "$delta" >> "$tmp"
+  fi
+
+  if [ -s "$tmp" ]; then
+    mv "$tmp" "$ROLES_FILE" 2>/dev/null || rm -f "$tmp" 2>/dev/null || true
+  else
+    rm -f "$tmp" "$ROLES_FILE" 2>/dev/null || true
+  fi
+}
+
+role_stats() {
+  if [ -f "$ROLES_FILE" ]; then
+    awk '($2 ~ /^[0-9]+$/) && $2 > 0 { sum += $2; count += 1; role = $1 } END { printf "%d %d %s\n", sum + 0, count + 0, role }' "$ROLES_FILE" 2>/dev/null
+  else
+    printf '0 0 \n'
+  fi
+}
+
+sync_active_agent_marker() {
+  local count stats role_sum role_count single_role
+
+  count=$(read_count)
+  stats=$(role_stats)
+  IFS=' ' read -r role_sum role_count single_role <<< "$stats"
+  role_sum="${role_sum:-0}"
+  role_count="${role_count:-0}"
+  single_role="${single_role:-}"
+
+  if [ "$role_sum" -eq "$count" ] && [ "$role_count" -eq 1 ] && [ -n "$single_role" ]; then
+    echo "$single_role" > "$PLANNING_DIR/.active-agent"
+  else
+    rm -f "$PLANNING_DIR/.active-agent" 2>/dev/null || true
+  fi
+}
+
+log_role_reconciliation() {
+  local reason="$1"
+  local before_count="$2"
+  local after_count="$3"
+  local before_role_sum="$4"
+  local action="$5"
+  local ts
+
+  [ -d "$PLANNING_DIR" ] || return 0
+  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%s")
+  printf '{"event":"active_agent_role_reconcile","reason":"%s","before_count":%s,"after_count":%s,"before_role_sum":%s,"action":"%s","timestamp":"%s"}\n' \
+    "$reason" "${before_count:-0}" "${after_count:-0}" "${before_role_sum:-0}" "$action" "$ts" \
+    >> "$PLANNING_DIR/.event-log.jsonl" 2>/dev/null || true
+}
+
+remove_role_pid() {
+  local pid="$1"
+  local tmp
+
+  [ -n "$pid" ] || return 0
+  [ -f "$ROLE_PIDS_FILE" ] || return 0
+  tmp="${ROLE_PIDS_FILE}.tmp.$$"
+  awk -v p="$pid" '$1 != p { print }' "$ROLE_PIDS_FILE" > "$tmp" 2>/dev/null || : > "$tmp"
+  if [ -s "$tmp" ]; then
+    mv "$tmp" "$ROLE_PIDS_FILE" 2>/dev/null || rm -f "$tmp" 2>/dev/null || true
+  else
+    rm -f "$tmp" "$ROLE_PIDS_FILE" 2>/dev/null || true
+  fi
+}
+
+lookup_role_by_pid() {
+  local pid="$1"
+
+  [ -n "$pid" ] || return 1
+  [ -f "$ROLE_PIDS_FILE" ] || return 1
+  awk -v p="$pid" '$1 == p { print $2; exit }' "$ROLE_PIDS_FILE" 2>/dev/null
+}
+
+discard_role_markers() {
+  local reason="$1"
+  local before_count="$2"
+  local after_count="$3"
+  local before_role_sum="$4"
+
+  log_role_reconciliation "$reason" "$before_count" "$after_count" "$before_role_sum" "discard_role_markers"
+  rm -f "$ROLES_FILE" "$ROLE_PIDS_FILE" "$PLANNING_DIR/.active-agent" 2>/dev/null || true
+}
+
+decrement_unknown_role() {
+  local new_count="$1"
+  local old_count="$2"
+  local stats role_sum role_count single_role
+
+  stats=$(role_stats)
+  IFS=' ' read -r role_sum role_count single_role <<< "$stats"
+  role_sum="${role_sum:-0}"
+  role_count="${role_count:-0}"
+  single_role="${single_role:-}"
+
+  if [ "$role_count" -eq 0 ]; then
+    rm -f "$PLANNING_DIR/.active-agent" 2>/dev/null || true
+    return 0
+  fi
+
+  if [ "$role_count" -eq 1 ] && [ -n "$single_role" ] && [ "$role_sum" -gt "$new_count" ]; then
+    update_role_count "$single_role" -1
+    return 0
+  fi
+
+  if [ "$role_sum" -eq "$new_count" ]; then
+    return 0
+  fi
+
+  discard_role_markers "anonymous_stop_unreliable_role_state" "$old_count" "$new_count" "$role_sum"
+}
+
+reconcile_role_state() {
+  local reason="$1"
+  local before_count="$2"
+  local count stats role_sum role_count _single_role
+
+  count=$(read_count)
+  stats=$(role_stats)
+  IFS=' ' read -r role_sum role_count _single_role <<< "$stats"
+  role_sum="${role_sum:-0}"
+  role_count="${role_count:-0}"
+
+  if [ "$role_count" -eq 0 ]; then
+    rm -f "$PLANNING_DIR/.active-agent" 2>/dev/null || true
+    return 0
+  fi
+
+  if [ "$role_sum" -eq "$count" ]; then
+    sync_active_agent_marker
+    return 0
+  fi
+
+  discard_role_markers "$reason" "$before_count" "$count" "$role_sum"
+}
+
+ROLE=""
+if ROLE_SOURCE=$(select_agent_role_source) && ROLE=$(normalize_agent_role "$ROLE_SOURCE"); then
+  :
+else
+  ROLE=""
+fi
+
 decrement_or_cleanup() {
-  local count
+  local count new_count pid_role
 
   if [ -f "$COUNT_FILE" ]; then
     count=$(read_count)
@@ -107,15 +325,34 @@ decrement_or_cleanup() {
       count=1
     fi
 
-    count=$((count - 1))
-    if [ "$count" -le 0 ]; then
-      rm -f "$PLANNING_DIR/.active-agent" "$COUNT_FILE"
+    new_count=$((count - 1))
+    if [ "$new_count" -le 0 ]; then
+      rm -f "$PLANNING_DIR/.active-agent" "$COUNT_FILE" "$ROLES_FILE" "$ROLE_PIDS_FILE"
     else
-      echo "$count" > "$COUNT_FILE"
+      echo "$new_count" > "$COUNT_FILE"
+
+      if [ -z "$ROLE" ] && [ -n "$AGENT_PID" ]; then
+        pid_role=$(lookup_role_by_pid "$AGENT_PID" || true)
+        if [ -n "$pid_role" ] && ROLE=$(normalize_agent_role "$pid_role"); then
+          :
+        else
+          ROLE=""
+        fi
+      fi
+
+      remove_role_pid "$AGENT_PID"
+
+      if [ -n "$ROLE" ]; then
+        update_role_count "$ROLE" -1
+      else
+        decrement_unknown_role "$new_count" "$count"
+      fi
+
+      reconcile_role_state "post_stop_role_count_mismatch" "$count"
     fi
   elif [ -f "$PLANNING_DIR/.active-agent" ]; then
     # Legacy: no count file but marker exists — remove (single agent case)
-    rm -f "$PLANNING_DIR/.active-agent"
+    rm -f "$PLANNING_DIR/.active-agent" "$ROLES_FILE" "$ROLE_PIDS_FILE"
   fi
 }
 
@@ -135,7 +372,6 @@ fi
 
 # Unregister agent PID
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-AGENT_PID=$(echo "$INPUT" | jq -r '.pid // ""' 2>/dev/null)
 if [ -n "$AGENT_PID" ] && [ -f "$SCRIPT_DIR/agent-pid-tracker.sh" ]; then
   bash "$SCRIPT_DIR/agent-pid-tracker.sh" unregister "$AGENT_PID" 2>/dev/null || true
 fi

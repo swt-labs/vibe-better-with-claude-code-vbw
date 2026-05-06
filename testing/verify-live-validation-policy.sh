@@ -14,6 +14,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EXEC_PROTO="$ROOT/references/execute-protocol.md"
 SCOUT_FILE="$ROOT/agents/vbw-scout.md"
 VIBE_FILE="$ROOT/commands/vibe.md"
+RESEARCH_FILE="$ROOT/commands/research.md"
 
 PASS=0
 FAIL=0
@@ -62,6 +63,18 @@ else
   fail "vbw-scout.md: missing public-vs-authenticated distinction"
 fi
 
+if grep -qi 'verified-safe Bash helper scripts\|curl wrappers' "$SCOUT_FILE"; then
+  pass "vbw-scout.md: authenticated read-only validation can use Bash helpers"
+else
+  fail "vbw-scout.md: missing verified-safe Bash helper guidance"
+fi
+
+if grep -qi 'eval' "$SCOUT_FILE" && grep -qi 'command.*substitution' "$SCOUT_FILE" && grep -qi 'process.*substitution' "$SCOUT_FILE" && grep -qi 'nested shell execution' "$SCOUT_FILE" && grep -qi 'quoted/absolute\|absolute.*interpreter' "$SCOUT_FILE" && grep -qi 'control syntax\|grouping' "$SCOUT_FILE"; then
+  pass "vbw-scout.md: blocks shell evaluation containers"
+else
+  fail "vbw-scout.md: missing shell evaluation container guidance"
+fi
+
 # 5. Empty/contradictory response handling
 if grep -qi 'empty.*response\|empty.*result\|contradictory.*finding\|contradiction.*explicit\|broaden.*query' "$SCOUT_FILE"; then
   pass "vbw-scout.md: handles empty/contradictory responses"
@@ -77,6 +90,39 @@ if grep -qi 'authenticated.*live.*validation\|REQUIRES.*AUTHENTICATED\|auth.*API
   pass "commands/vibe.md: mentions authenticated validation routing"
 else
   fail "commands/vibe.md: missing authenticated-validation routing guidance"
+fi
+
+if grep -qi 'public/anonymous HTTP validation uses WebFetch' "$VIBE_FILE" && grep -qi 'authenticated/private read-only checks use verified-safe Bash helper scripts or curl wrappers' "$VIBE_FILE"; then
+  pass "commands/vibe.md: uses Scout public-vs-authenticated live-validation split"
+else
+  fail "commands/vibe.md: missing Scout public-vs-authenticated live-validation split"
+fi
+
+if grep -qi 'public/anonymous HTTP validation uses WebFetch' "$RESEARCH_FILE" && grep -qi 'authenticated/private read-only checks use verified-safe Bash helper scripts or curl wrappers' "$RESEARCH_FILE"; then
+  pass "commands/research.md: uses Scout public-vs-authenticated live-validation split"
+else
+  fail "commands/research.md: missing Scout public-vs-authenticated live-validation split"
+fi
+
+for required_file in "$SCOUT_FILE" "$VIBE_FILE" "$RESEARCH_FILE"; do
+  file_label=${required_file#"$ROOT/"}
+  if grep -Fq '## Live Validation Evidence' "$required_file" && \
+     grep -Fq 'command_shape' "$required_file" && \
+     grep -Fq 'exit_status' "$required_file" && \
+     grep -Fq 'redacted_evidence' "$required_file" && \
+     grep -Fq 'expected_shape' "$required_file" && \
+     grep -Fq 'confidence' "$required_file" && \
+     grep -Fq 'limitations_or_deferred_reason' "$required_file"; then
+    pass "$file_label: requires Live Validation Evidence fields"
+  else
+    fail "$file_label: missing Live Validation Evidence field contract"
+  fi
+done
+
+if grep -qi 'no Bash access' "$SCOUT_FILE" "$VIBE_FILE" "$RESEARCH_FILE"; then
+  fail "Scout live-validation policy no longer says no Bash access"
+else
+  pass "Scout live-validation policy no longer says no Bash access"
 fi
 
 echo ""
