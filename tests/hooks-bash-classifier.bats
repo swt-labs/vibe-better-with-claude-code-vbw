@@ -630,6 +630,54 @@ run_scout_bash_guard() {
   done
 }
 
+@test "bash-guard: scout blocks git commands outside read-only allowlist" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-git-disallowed"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "git clone https://example.com/repo.git tmp-repo" \
+    "git apply /tmp/patch.diff" \
+    "git worktree add ../wt HEAD" \
+    "git init newrepo"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"git state mutation"* ]]
+  done
+}
+
+@test "bash-guard: scout blocks git local output options" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-git-output"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "git diff --output=/tmp/out.patch" \
+    "git -C . diff --output /tmp/out.patch"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"git output file command"* ]]
+  done
+}
+
+@test "bash-guard: scout allows read-only git allowlist" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-git-readonly"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "git status --short" \
+    "git -C . status --short" \
+    "git log --oneline -5" \
+    "git show HEAD" \
+    "git diff -- README.md" \
+    "git ls-files" \
+    "git rev-parse HEAD"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 0 ]
+  done
+}
+
 @test "bash-guard: scout blocks package-manager option-prefixed mutations" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-package-options"
   mkdir -p "$TEST_PROJECT/.vbw-planning"
@@ -776,6 +824,40 @@ run_scout_bash_guard() {
     run_scout_bash_guard "$TEST_PROJECT" "$command"
     [ "$status" -eq 2 ]
     [[ "$output" == *"mutating gh api request"* ]]
+  done
+}
+
+@test "bash-guard: scout blocks top-level gh mutation commands" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-gh-top-level-mutation"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "gh issue create --title bug --body body" \
+    "gh pr comment 1 --body hi" \
+    "gh repo edit owner/repo --description x"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"mutating gh command"* ]]
+  done
+}
+
+@test "bash-guard: scout allows read-only top-level gh commands" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-gh-top-level-readonly"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "gh auth status" \
+    "gh status" \
+    "gh issue view 1" \
+    "gh issue list --state open" \
+    "gh pr view 1" \
+    "gh pr checks 1" \
+    "gh repo view owner/repo" \
+    "gh search issues scout bash"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 0 ]
   done
 }
 

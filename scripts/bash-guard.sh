@@ -203,6 +203,41 @@ gh_api_uses_explicit_get() {
   echo "$command" | grep -qE '(^|[[:space:];|&])gh[[:space:]]+api([^;|&]*)(--method(=|[[:space:]]+)[Gg][Ee][Tt]|-X[[:space:]]*[Gg][Ee][Tt]|-X[Gg][Ee][Tt])'
 }
 
+scout_git_segments_are_readonly() {
+  local command="$1"
+  local segment segments
+
+  segments=$(printf '%s' "$command" | tr ';|&' '\n')
+  while IFS= read -r segment; do
+    if echo "$segment" | grep -qE '^[[:space:]]*git[[:space:]]+'; then
+      if ! echo "$segment" | grep -qE '^[[:space:]]*git([[:space:]]+(-C|-c|--git-dir|--work-tree|--namespace)(=|[[:space:]]+)[^[:space:]]+|[[:space:]]+(--no-pager|--bare|--literal-pathspecs|--[[:alnum:]-]+(=[^[:space:]]+)?))*[[:space:]]+(status|log|show|diff|ls-files|grep|rev-parse|cat-file|ls-tree|blame|describe)([[:space:]]|$)'; then
+        return 1
+      fi
+    fi
+  done <<< "$segments"
+
+  return 0
+}
+
+scout_gh_segments_are_readonly() {
+  local command="$1"
+  local segment segments
+
+  segments=$(printf '%s' "$command" | tr ';|&' '\n')
+  while IFS= read -r segment; do
+    if echo "$segment" | grep -qE '^[[:space:]]*gh[[:space:]]+'; then
+      if echo "$segment" | grep -qE '^[[:space:]]*gh[[:space:]]+api([[:space:]]|$)'; then
+        continue
+      fi
+      if ! echo "$segment" | grep -qE '^[[:space:]]*gh[[:space:]]+((auth[[:space:]]+status|status)([[:space:]]|$)|issue[[:space:]]+(view|list|status)([[:space:]]|$)|pr[[:space:]]+(view|list|status|checks|diff)([[:space:]]|$)|repo[[:space:]]+(view|list)([[:space:]]|$)|release[[:space:]]+(view|list)([[:space:]]|$)|run[[:space:]]+(view|list)([[:space:]]|$)|workflow[[:space:]]+(view|list)([[:space:]]|$)|search[[:space:]]+(issues|prs|repos|code)([[:space:]]|$))'; then
+        return 1
+      fi
+    fi
+  done <<< "$segments"
+
+  return 0
+}
+
 check_scout_command() {
   local command="$1"
   local matched=""
@@ -230,6 +265,14 @@ check_scout_command() {
 
   if echo "$command" | grep -iqE '(^|[[:space:];|&])sed[[:space:]][^;|&]*(--in-place(=|[[:space:]]|$)|-[^[:space:];|&]*i([^[:alnum:]]|$))|(^|[[:space:];|&])perl[[:space:]][^;|&]*-[^[:space:];|&]*p?i([^[:alnum:]]|$)'; then
     block_scout_command "in-place edit command"
+  fi
+
+  if echo "$command" | grep -qE '(^|[[:space:];|&])git([^;|&]*)[[:space:]]+diff([^;|&]*)(--output(=|[[:space:]]|$))'; then
+    block_scout_command "git output file command"
+  fi
+
+  if echo "$command" | grep -qE '(^|[[:space:];|&])git[[:space:]]+' && ! scout_git_segments_are_readonly "$command"; then
+    block_scout_command "git state mutation command"
   fi
 
   if echo "$command" | grep -iqE '(^|[[:space:];|&])git([[:space:]]+(-C|-c|--git-dir|--work-tree|--namespace)(=|[[:space:]]+)[^[:space:];|&]+|[[:space:]]+(--no-pager|--bare|--literal-pathspecs|--[[:alnum:]-]+(=[^[:space:];|&]+)?))*[[:space:]]+(add|commit|push|reset|checkout|switch|merge|rebase|cherry-pick|tag|branch|clean|stash|restore|rm|mv|pull|fetch)([[:space:]]|$)'; then
@@ -262,6 +305,10 @@ check_scout_command() {
 
   if echo "$command" | grep -qE '(^|[[:space:];|&])gh[[:space:]]+api([^;|&]*)(--field(=|[[:space:]]|$)|--raw-field(=|[[:space:]]|$)|-f($|[[:space:]]|[^[:space:];|&])|-F($|[[:space:]]|[^[:space:];|&]))' && ! gh_api_uses_explicit_get "$command"; then
     block_scout_command "mutating gh api request"
+  fi
+
+  if echo "$command" | grep -qE '(^|[[:space:];|&])gh[[:space:]]+' && ! scout_gh_segments_are_readonly "$command"; then
+    block_scout_command "mutating gh command"
   fi
 
   if echo "$command" | grep -iqE '(^|[[:space:]/])\.env($|[[:space:]/.;|&])|\.env\.[^[:space:];|&]*|id_(rsa|dsa|ed25519)|\.(pem|p12|pfx)($|[[:space:];|&])|private[-_]?key|credentials(\.json)?|secrets?(\.(json|ya?ml|txt))?|(^|[[:space:]/])\.git($|/|[[:space:];|&])'; then
