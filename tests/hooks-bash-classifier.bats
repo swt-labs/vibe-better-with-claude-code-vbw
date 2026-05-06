@@ -655,14 +655,31 @@ run_scout_bash_guard() {
   for command in \
     "curl --request=POST https://example.test" \
     "curl -XPOST https://example.test" \
+    "curl -Xpost https://example.test" \
     "curl -dfoo https://example.test" \
+    "curl --data-urlencode q=abc https://example.test/search" \
+    "curl --json '{\"ok\":true}' https://example.test" \
     "curl -Ffile=@x https://example.test" \
     "curl -T file https://example.test" \
+    "curl -G -T file https://example.test" \
     "curl --upload-file=file https://example.test"; do
-    TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
-    run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
     [ "$status" -eq 2 ]
     [[ "$output" == *"mutating curl request"* ]]
+  done
+}
+
+@test "bash-guard: scout allows read-only curl header and query forms" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-curl-readonly-api"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "curl -D - https://example.test/status" \
+    "curl --get --data-urlencode q=abc https://example.test/search" \
+    "curl -G --data-urlencode q=abc https://example.test/search"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 0 ]
   done
 }
 
@@ -723,6 +740,42 @@ run_scout_bash_guard() {
     TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
     run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
     [ "$status" -eq 0 ]
+  done
+}
+
+@test "bash-guard: scout allows read-only gh api GET shapes" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-gh-api-readonly"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "gh api repos/o/r/issues" \
+    "gh api --method GET /repos/o/r/issues" \
+    "gh api --method GET /repos/o/r/issues -f per_page=1"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 0 ]
+  done
+}
+
+@test "bash-guard: scout blocks mutating gh api shapes" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-gh-api-mutation"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "gh api --method POST /repos/o/r/issues" \
+    "gh api --method=POST /repos/o/r/issues" \
+    "gh api -X PATCH /repos/o/r/issues/1" \
+    "gh api -XPOST /repos/o/r/issues" \
+    "gh api repos/o/r/issues -f title=test" \
+    "gh api repos/o/r/issues --field=title=test" \
+    "gh api repos/o/r/issues --raw-field=title=test" \
+    "gh api repos/o/r/issues --input body.json" \
+    "gh api repos/o/r/issues --input=body.json" \
+    "gh api --method GET /repos/o/r/issues --input body.json"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"mutating gh api request"* ]]
   done
 }
 

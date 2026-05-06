@@ -188,6 +188,16 @@ has_shell_file_write_redirection() {
   return 1
 }
 
+curl_uses_get_query_mode() {
+  local command="$1"
+  echo "$command" | grep -qE '(^|[[:space:];|&])curl([^;|&]*)(--get([[:space:]]|$)|-[[:alnum:]]*G[[:alnum:]]*([[:space:]]|$))'
+}
+
+gh_api_uses_explicit_get() {
+  local command="$1"
+  echo "$command" | grep -qE '(^|[[:space:];|&])gh[[:space:]]+api([^;|&]*)(--method(=|[[:space:]]+)[Gg][Ee][Tt]|-X[[:space:]]*[Gg][Ee][Tt]|-X[Gg][Ee][Tt])'
+}
+
 check_scout_command() {
   local command="$1"
   local matched=""
@@ -225,12 +235,28 @@ check_scout_command() {
     block_scout_command "service/container mutation command"
   fi
 
-  if echo "$command" | grep -iqE '(^|[[:space:];|&])curl([^;|&]*)(-X[[:space:]]*(POST|PUT|PATCH|DELETE)|-X(POST|PUT|PATCH|DELETE)|--request(=|[[:space:]]+)(POST|PUT|PATCH|DELETE)|--data($|[=[:space:]-])|--data-[[:alnum:]-]+(=|[[:space:]]|$)|--json(=|[[:space:]]|$)|-d($|[[:space:]]|[^[:space:];|&])|--form(=|[[:space:]]|$)|-F($|[[:space:]]|[^[:space:];|&])|-T($|[[:space:]]|[^[:space:];|&])|--upload-file(=|[[:space:]]|$))'; then
+  if echo "$command" | grep -qE '(^|[[:space:];|&])curl([^;|&]*)([[:space:]]-X[[:space:]]*([Pp][Oo][Ss][Tt]|[Pp][Uu][Tt]|[Pp][Aa][Tt][Cc][Hh]|[Dd][Ee][Ll][Ee][Tt][Ee])|[[:space:]]-X([Pp][Oo][Ss][Tt]|[Pp][Uu][Tt]|[Pp][Aa][Tt][Cc][Hh]|[Dd][Ee][Ll][Ee][Tt][Ee])|--request(=|[[:space:]]+)([Pp][Oo][Ss][Tt]|[Pp][Uu][Tt]|[Pp][Aa][Tt][Cc][Hh]|[Dd][Ee][Ll][Ee][Tt][Ee])|--data($|[=[:space:]])|--data-(ascii|raw|binary)(=|[[:space:]]|$)|--json(=|[[:space:]]|$)|[[:space:]]-[[:alnum:]]*d($|[[:space:]]|[^[:space:];|&])|--form(=|[[:space:]]|$)|[[:space:]]-[[:alnum:]]*F($|[[:space:]]|[^[:space:];|&])|[[:space:]]-[[:alnum:]]*T($|[[:space:]]|[^[:space:];|&])|--upload-file(=|[[:space:]]|$))'; then
     block_scout_command "mutating curl request"
   fi
 
-  if echo "$command" | grep -iqE '(^|[[:space:];|&])curl([^;|&]*)(-[[:alnum:]]*o[[:alnum:]]*($|[[:space:]]|[^[:space:];|&])|--output(=|[[:space:]]|$)|--output-dir(=|[[:space:]]|$)|--remote-name([[:space:]]|$))|(^|[[:space:];|&])wget([[:space:]]|$)'; then
+  if echo "$command" | grep -qE '(^|[[:space:];|&])curl([^;|&]*)--data-urlencode(=|[[:space:]]|$)' && ! curl_uses_get_query_mode "$command"; then
+    block_scout_command "mutating curl request"
+  fi
+
+  if echo "$command" | grep -iqE '(^|[[:space:];|&])curl([^;|&]*)([[:space:]]-[[:alnum:]]*o[[:alnum:]]*($|[[:space:]]|[^[:space:];|&])|--output(=|[[:space:]]|$)|--output-dir(=|[[:space:]]|$)|--remote-name([[:space:]]|$))|(^|[[:space:];|&])wget([[:space:]]|$)'; then
     block_scout_command "local output file command"
+  fi
+
+  if echo "$command" | grep -qE '(^|[[:space:];|&])gh[[:space:]]+api([^;|&]*)(--method(=|[[:space:]]+)([Pp][Oo][Ss][Tt]|[Pp][Uu][Tt]|[Pp][Aa][Tt][Cc][Hh]|[Dd][Ee][Ll][Ee][Tt][Ee])|-X[[:space:]]*([Pp][Oo][Ss][Tt]|[Pp][Uu][Tt]|[Pp][Aa][Tt][Cc][Hh]|[Dd][Ee][Ll][Ee][Tt][Ee])|-X([Pp][Oo][Ss][Tt]|[Pp][Uu][Tt]|[Pp][Aa][Tt][Cc][Hh]|[Dd][Ee][Ll][Ee][Tt][Ee]))'; then
+    block_scout_command "mutating gh api request"
+  fi
+
+  if echo "$command" | grep -qE '(^|[[:space:];|&])gh[[:space:]]+api([^;|&]*)(--input(=|[[:space:]]|$))'; then
+    block_scout_command "mutating gh api request"
+  fi
+
+  if echo "$command" | grep -qE '(^|[[:space:];|&])gh[[:space:]]+api([^;|&]*)(--field(=|[[:space:]]|$)|--raw-field(=|[[:space:]]|$)|-f($|[[:space:]]|[^[:space:];|&])|-F($|[[:space:]]|[^[:space:];|&]))' && ! gh_api_uses_explicit_get "$command"; then
+    block_scout_command "mutating gh api request"
   fi
 
   if echo "$command" | grep -iqE '(^|[[:space:]/])\.env($|[[:space:]/.;|&])|\.env\.[^[:space:];|&]*|id_(rsa|dsa|ed25519)|\.(pem|p12|pfx)($|[[:space:];|&])|private[-_]?key|credentials(\.json)?|secrets?(\.(json|ya?ml|txt))?|(^|[[:space:]/])\.git($|/|[[:space:];|&])'; then
