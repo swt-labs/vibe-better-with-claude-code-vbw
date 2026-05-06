@@ -507,6 +507,80 @@ run_scout_bash_guard() {
   [ "$status" -eq 0 ]
 }
 
+@test "bash-guard: scout blocks nested shell evaluation containers" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-nested-shell"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  command="bash -c 'echo bad > out.txt'"
+  run_scout_bash_guard "$TEST_PROJECT" "$command"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"nested shell execution"* ]]
+
+  command="sh -c 'touch out.txt'"
+  run_scout_bash_guard "$TEST_PROJECT" "$command"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"nested shell execution"* ]]
+
+  command="bash -lc 'touch out.txt'"
+  run_scout_bash_guard "$TEST_PROJECT" "$command"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"nested shell execution"* ]]
+
+  command="bash --noprofile --norc -c 'git add src/app.js'"
+  run_scout_bash_guard "$TEST_PROJECT" "$command"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"nested shell execution"* ]]
+
+  command='echo $(touch out.txt)'
+  run_scout_bash_guard "$TEST_PROJECT" "$command"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"command substitution"* ]]
+
+  command='printf "%s\n" "$(git add src/app.js)"'
+  run_scout_bash_guard "$TEST_PROJECT" "$command"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"command substitution"* ]]
+
+  command='echo `touch out.txt`'
+  run_scout_bash_guard "$TEST_PROJECT" "$command"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"command substitution"* ]]
+
+  command='eval "git add src/app.js"'
+  run_scout_bash_guard "$TEST_PROJECT" "$command"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"eval command"* ]]
+
+  command='eval "curl --request=POST https://example.test"'
+  run_scout_bash_guard "$TEST_PROJECT" "$command"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"eval command"* ]]
+}
+
+@test "bash-guard: scout allows direct helper scripts without shell -c" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-direct-helper"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "bash scripts/snaptrade-api.sh positions --account demo" \
+    "sh scripts/read-only-helper.sh status"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 0 ]
+  done
+}
+
+@test "bash-guard: scout allows literal nested-shell text inside quoted predicates" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-quoted-nested-text"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  command="grep -E 'eval|bash -c|\$(touch out)|\`touch out\`' response.txt"
+  run_scout_bash_guard "$TEST_PROJECT" "$command"
+  [ "$status" -eq 0 ]
+}
+
 @test "bash-guard: scout blocks shell redirection writes" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-redirection"
   mkdir -p "$TEST_PROJECT/.vbw-planning"
@@ -893,6 +967,21 @@ run_scout_bash_guard() {
   run bash -c "cd '$TEST_PROJECT/packages/app' && printf '%s\n' '$TEST_INPUT' | bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"sensitive file read"* ]]
+}
+
+@test "bash-guard: scout nested shell blocks use active-agent marker" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-nested-marker"
+  local test_input
+
+  mkdir -p "$TEST_PROJECT/.vbw-planning" "$TEST_PROJECT/packages/app"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+  echo scout > "$TEST_PROJECT/.vbw-planning/.active-agent"
+
+  test_input=$(jq -n --arg cmd "bash -c 'touch out.txt'" '{"tool_input":{"command":$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
+    "$TEST_PROJECT/packages/app" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"nested shell execution"* ]]
 }
 
 @test "bash-guard: any active scout role set triggers conservative read-only fallback" {

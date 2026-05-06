@@ -193,6 +193,218 @@ has_shell_file_write_redirection() {
   return 1
 }
 
+command_has_command_substitution() {
+  local command="$1"
+  local i=0 len ch next in_single=0 in_double=0 escaped=0
+
+  len=${#command}
+  while [ "$i" -lt "$len" ]; do
+    ch="${command:$i:1}"
+
+    if [ "$escaped" -eq 1 ]; then
+      escaped=0
+      i=$((i + 1))
+      continue
+    fi
+
+    if [ "$in_single" -eq 1 ]; then
+      [ "$ch" = "'" ] && in_single=0
+      i=$((i + 1))
+      continue
+    fi
+
+    case "$ch" in
+      "'")
+        [ "$in_double" -eq 0 ] && in_single=1
+        ;;
+      '"')
+        if [ "$in_double" -eq 1 ]; then
+          in_double=0
+        else
+          in_double=1
+        fi
+        ;;
+      "\\")
+        escaped=1
+        ;;
+      '$')
+        next="${command:$((i + 1)):1}"
+        [ "$next" = "(" ] && return 0
+        ;;
+      '`')
+        return 0
+        ;;
+    esac
+
+    i=$((i + 1))
+  done
+
+  return 1
+}
+
+command_without_quoted_text() {
+  local command="$1"
+  local i=0 len ch out="" in_single=0 in_double=0 escaped=0
+
+  len=${#command}
+  while [ "$i" -lt "$len" ]; do
+    ch="${command:$i:1}"
+
+    if [ "$escaped" -eq 1 ]; then
+      out="${out} "
+      escaped=0
+      i=$((i + 1))
+      continue
+    fi
+
+    if [ "$in_single" -eq 1 ]; then
+      [ "$ch" = "'" ] && in_single=0
+      out="${out} "
+      i=$((i + 1))
+      continue
+    fi
+
+    if [ "$in_double" -eq 1 ]; then
+      if [ "$ch" = "\\" ]; then
+        escaped=1
+      elif [ "$ch" = '"' ]; then
+        in_double=0
+      fi
+      out="${out} "
+      i=$((i + 1))
+      continue
+    fi
+
+    case "$ch" in
+      "'")
+        in_single=1
+        out="${out} "
+        ;;
+      '"')
+        in_double=1
+        out="${out} "
+        ;;
+      "\\")
+        escaped=1
+        out="${out} "
+        ;;
+      *)
+        out="${out}${ch}"
+        ;;
+    esac
+
+    i=$((i + 1))
+  done
+
+  printf '%s' "$out"
+}
+
+command_has_unquoted_eval() {
+  local command="$1"
+  local masked
+
+  masked=$(command_without_quoted_text "$command")
+  echo "$masked" | grep -qE '(^|[[:space:];|&(){}])eval([[:space:];|&(){}]|$)'
+}
+
+is_shell_interpreter_token() {
+  case "$1" in
+    bash|sh|zsh|dash|ksh|fish)
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+token_has_shell_c_option() {
+  case "$1" in
+    -c|--command|--command=*)
+      return 0
+      ;;
+    --*)
+      return 1
+      ;;
+    -*)
+      echo "${1#-}" | grep -q 'c'
+      return $?
+      ;;
+  esac
+
+  return 1
+}
+
+segment_has_shell_c_invocation() {
+  local segment="$1"
+  local token expecting_command=1 saw_shell=0 allow_env_args=0
+
+  for token in $segment; do
+    if [ "$saw_shell" -eq 1 ]; then
+      if token_has_shell_c_option "$token"; then
+        return 0
+      fi
+      case "$token" in
+        -*)
+          continue
+          ;;
+        *)
+          return 1
+          ;;
+      esac
+    fi
+
+    if [ "$expecting_command" -eq 1 ]; then
+      if [ "$allow_env_args" -eq 1 ]; then
+        case "$token" in
+          -*|[A-Za-z_]*=*)
+            continue
+            ;;
+          *)
+            allow_env_args=0
+            ;;
+        esac
+      fi
+
+      case "$token" in
+        [A-Za-z_]*=*)
+          continue
+          ;;
+        env)
+          allow_env_args=1
+          continue
+          ;;
+        command|time|sudo|doas|noglob)
+          continue
+          ;;
+      esac
+
+      if is_shell_interpreter_token "$token"; then
+        saw_shell=1
+        continue
+      fi
+
+      expecting_command=0
+    fi
+  done
+
+  return 1
+}
+
+command_has_nested_shell_execution() {
+  local command="$1"
+  local masked segment segments
+
+  masked=$(command_without_quoted_text "$command")
+  segments=$(printf '%s' "$masked" | tr ';|&' '\n')
+  while IFS= read -r segment; do
+    if segment_has_shell_c_invocation "$segment"; then
+      return 0
+    fi
+  done <<< "$segments"
+
+  return 1
+}
+
 curl_uses_get_query_mode() {
   local command="$1"
   echo "$command" | grep -qE '(^|[[:space:];|&])curl([^;|&]*)(--get([[:space:]]|$)|-[[:alnum:]]*G[[:alnum:]]*([[:space:]]|$))'
@@ -245,6 +457,18 @@ check_scout_command() {
   if [ -n "$PATTERNS" ] && echo "$command" | grep -iqE "$PATTERNS"; then
     matched=$(echo "$command" | grep -ioE "$PATTERNS" | head -1)
     block_scout_command "destructive command detected: $matched"
+  fi
+
+  if command_has_command_substitution "$command"; then
+    block_scout_command "command substitution"
+  fi
+
+  if command_has_unquoted_eval "$command"; then
+    block_scout_command "eval command"
+  fi
+
+  if command_has_nested_shell_execution "$command"; then
+    block_scout_command "nested shell execution"
   fi
 
   if has_shell_file_write_redirection "$command"; then

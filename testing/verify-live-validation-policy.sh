@@ -69,6 +69,12 @@ else
   fail "vbw-scout.md: missing verified-safe Bash helper guidance"
 fi
 
+if grep -qi 'eval' "$SCOUT_FILE" && grep -qi 'command substitution' "$SCOUT_FILE" && grep -qi 'nested shell execution' "$SCOUT_FILE"; then
+  pass "vbw-scout.md: blocks shell evaluation containers"
+else
+  fail "vbw-scout.md: missing shell evaluation container guidance"
+fi
+
 # 5. Empty/contradictory response handling
 if grep -qi 'empty.*response\|empty.*result\|contradictory.*finding\|contradiction.*explicit\|broaden.*query' "$SCOUT_FILE"; then
   pass "vbw-scout.md: handles empty/contradictory responses"
