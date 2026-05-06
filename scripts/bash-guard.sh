@@ -133,6 +133,61 @@ block_scout_command() {
   exit 2
 }
 
+has_shell_file_write_redirection() {
+  local command="$1"
+  local i=0 len ch next in_single=0 in_double=0 escaped=0
+
+  len=${#command}
+  while [ "$i" -lt "$len" ]; do
+    ch="${command:$i:1}"
+
+    if [ "$escaped" -eq 1 ]; then
+      escaped=0
+      i=$((i + 1))
+      continue
+    fi
+
+    if [ "$in_single" -eq 1 ]; then
+      [ "$ch" = "'" ] && in_single=0
+      i=$((i + 1))
+      continue
+    fi
+
+    if [ "$in_double" -eq 1 ]; then
+      if [ "$ch" = "\\" ]; then
+        escaped=1
+      elif [ "$ch" = '"' ]; then
+        in_double=0
+      fi
+      i=$((i + 1))
+      continue
+    fi
+
+    case "$ch" in
+      "'")
+        in_single=1
+        ;;
+      '"')
+        in_double=1
+        ;;
+      "\\")
+        escaped=1
+        ;;
+      ">")
+        return 0
+        ;;
+      "<")
+        next="${command:$((i + 1)):1}"
+        [ "$next" = "<" ] && return 0
+        ;;
+    esac
+
+    i=$((i + 1))
+  done
+
+  return 1
+}
+
 check_scout_command() {
   local command="$1"
   local matched=""
@@ -142,7 +197,7 @@ check_scout_command() {
     block_scout_command "destructive command detected: $matched"
   fi
 
-  if echo "$command" | grep -iqE '(^|[[:space:];|&])[0-9]*(>>?|>&|<<-?)([[:space:]]|[^[:space:];|&]|$)'; then
+  if has_shell_file_write_redirection "$command"; then
     block_scout_command "shell file write/redirection"
   fi
 
@@ -158,7 +213,7 @@ check_scout_command() {
     block_scout_command "filesystem mutation command"
   fi
 
-  if echo "$command" | grep -iqE '(^|[[:space:];|&])sed[[:space:]][^;|&]*-[^[:space:];|&]*i([^[:alnum:]]|$)|(^|[[:space:];|&])perl[[:space:]][^;|&]*-[^[:space:];|&]*p?i([^[:alnum:]]|$)'; then
+  if echo "$command" | grep -iqE '(^|[[:space:];|&])sed[[:space:]][^;|&]*(--in-place(=|[[:space:]]|$)|-[^[:space:];|&]*i([^[:alnum:]]|$))|(^|[[:space:];|&])perl[[:space:]][^;|&]*-[^[:space:];|&]*p?i([^[:alnum:]]|$)'; then
     block_scout_command "in-place edit command"
   fi
 
@@ -172,6 +227,10 @@ check_scout_command() {
 
   if echo "$command" | grep -iqE '(^|[[:space:];|&])curl([^;|&]*)(-X[[:space:]]*(POST|PUT|PATCH|DELETE)|-X(POST|PUT|PATCH|DELETE)|--request(=|[[:space:]]+)(POST|PUT|PATCH|DELETE)|--data($|[=[:space:]-])|--data-[[:alnum:]-]+(=|[[:space:]]|$)|--json(=|[[:space:]]|$)|-d($|[[:space:]]|[^[:space:];|&])|--form(=|[[:space:]]|$)|-F($|[[:space:]]|[^[:space:];|&])|-T($|[[:space:]]|[^[:space:];|&])|--upload-file(=|[[:space:]]|$))'; then
     block_scout_command "mutating curl request"
+  fi
+
+  if echo "$command" | grep -iqE '(^|[[:space:];|&])curl([^;|&]*)(-[[:alnum:]]*o[[:alnum:]]*($|[[:space:]]|[^[:space:];|&])|--output(=|[[:space:]]|$)|--output-dir(=|[[:space:]]|$)|--remote-name([[:space:]]|$))|(^|[[:space:];|&])wget([[:space:]]|$)'; then
+    block_scout_command "local output file command"
   fi
 
   if echo "$command" | grep -iqE '(^|[[:space:]/])\.env($|[[:space:]/.;|&])|\.env\.[^[:space:];|&]*|id_(rsa|dsa|ed25519)|\.(pem|p12|pfx)($|[[:space:];|&])|private[-_]?key|credentials(\.json)?|secrets?(\.(json|ya?ml|txt))?|(^|[[:space:]/])\.git($|/|[[:space:];|&])'; then

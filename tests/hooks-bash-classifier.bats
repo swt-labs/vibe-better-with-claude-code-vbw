@@ -46,6 +46,16 @@ setup() {
   WRAPPER_PATTERN='bash -c '\''w=$(ls -1 "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/vbw-marketplace/vbw/*/scripts/hook-wrapper.sh 2>/dev/null | (sort -V 2>/dev/null || sort -t. -k1,1n -k2,2n -k3,3n) | tail -1); [ ! -f "$w" ] && w="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/scripts/hook-wrapper.sh}"; [ ! -f "$w" ] && for f in /tmp/.vbw-plugin-root-link-*/scripts/hook-wrapper.sh; do [ -f "$f" ] && w="$f" && break; done; [ ! -f "$w" ] && { D=$(ps axww -o args= 2>/dev/null | grep -v grep | grep -oE -- "--plugin-dir [^ ]+" | head -1); D="${D#--plugin-dir }"; [ -n "$D" ] && w="$D/scripts/hook-wrapper.sh"; }; [ -f "$w" ] && exec bash "$w" TARGET_SCRIPT; exit 0'\'''
 }
 
+run_scout_bash_guard() {
+  local test_project="$1"
+  local command="$2"
+  local test_input
+
+  test_input=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | VBW_AGENT_ROLE=scout bash "$3"' _ \
+    "$test_project" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
+}
+
 @test "hook pattern count matches hooks.json entries" {
   # Count unique bash commands in hooks.json
   HOOK_COUNT=$(grep -c '"command":' "$PROJECT_ROOT/hooks/hooks.json")
@@ -568,8 +578,21 @@ setup() {
     "sed -i 's/a/b/' file.txt" \
     "sed -i'' 's/a/b/' file.txt" \
     "perl -pi -e 's/a/b/' file.txt"; do
-    TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
-    run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"in-place edit command"* ]]
+  done
+}
+
+@test "bash-guard: scout blocks long-form in-place edit syntax" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-long-in-place-edit"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "sed --in-place 's/a/b/' file.txt" \
+    "sed --in-place=.bak 's/a/b/' file.txt"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
     [ "$status" -eq 2 ]
     [[ "$output" == *"in-place edit command"* ]]
   done
@@ -641,6 +664,50 @@ setup() {
     [ "$status" -eq 2 ]
     [[ "$output" == *"mutating curl request"* ]]
   done
+}
+
+@test "bash-guard: scout blocks local output file command shapes" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-local-output"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "curl -o /tmp/scout-out.json https://example.test/status" \
+    "curl --output /tmp/scout-out.json https://example.test/status" \
+    "curl --output=/tmp/scout-out.json https://example.test/status" \
+    "curl -O https://example.test/status.json" \
+    "curl --remote-name https://example.test/status.json" \
+    "wget -O /tmp/scout-out.json https://example.test/status" \
+    "wget --output-document=/tmp/scout-out.json https://example.test/status" \
+    "wget --output-document /tmp/scout-out.json https://example.test/status"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"local output file command"* ]]
+  done
+}
+
+@test "bash-guard: scout allows quoted read-only validation predicates" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-readonly-predicates"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "jq 'length > 0' response.json" \
+    "jq '.items | map(select(.score < 10)) | length > 0' response.json" \
+    "grep -E 'foo>bar|baz<qux' response.txt"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 0 ]
+  done
+}
+
+@test "bash-guard: scout blocks actual redirection after quoted predicates" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-quoted-predicate-redirection"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  run_scout_bash_guard "$TEST_PROJECT" "jq 'length > 0' response.json > out.txt"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"shell file write/redirection"* ]]
 }
 
 @test "bash-guard: scout still allows read-only curl and package script shapes" {
