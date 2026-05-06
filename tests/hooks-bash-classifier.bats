@@ -532,6 +532,21 @@ run_scout_bash_guard() {
   [ "$status" -eq 2 ]
   [[ "$output" == *"nested shell execution"* ]]
 
+  for command in \
+    "if bash -c 'touch out.txt'; then :; fi" \
+    "while bash -c 'touch out.txt'; do break; done" \
+    "! bash -c 'touch out.txt'" \
+    "{ bash -c 'touch out.txt'; }" \
+    "( bash -c 'touch out.txt' )" \
+    "if sh -c 'touch out.txt'; then :; fi" \
+    "{ bash -lc 'git add src/app.js'; }" \
+    "( bash --noprofile --norc -c 'cat .env' )" \
+    "if bash -o pipefail -c 'curl -XPOST https://example.test'; then :; fi"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"nested shell execution"* ]]
+  done
+
   command='echo $(touch out.txt)'
   run_scout_bash_guard "$TEST_PROJECT" "$command"
   [ "$status" -eq 2 ]
@@ -596,7 +611,7 @@ run_scout_bash_guard() {
   mkdir -p "$TEST_PROJECT/.vbw-planning"
   echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
 
-  command="grep -E 'eval|bash -c|\$(touch out)|\`touch out\`|<(touch out)|>(touch out)' response.txt"
+  command="grep -E 'eval|bash -c|if bash -c|while sh -c|! bash -c|{ bash -c; }|( bash -c )|\$(touch out)|\`touch out\`|<(touch out)|>(touch out)' response.txt"
   run_scout_bash_guard "$TEST_PROJECT" "$command"
   [ "$status" -eq 0 ]
 }
@@ -980,6 +995,20 @@ run_scout_bash_guard() {
   [[ "$output" == *"process substitution"* ]]
 }
 
+@test "bash-guard: scout nested shell wrappers survive destructive override" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-nested-shell-override"
+  local test_input
+
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  test_input=$(jq -n --arg cmd "if bash -c 'touch out.txt'; then :; fi" '{"tool_input":{"command":$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | VBW_AGENT_ROLE=scout VBW_ALLOW_DESTRUCTIVE=1 bash "$3"' _ \
+    "$TEST_PROJECT" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"nested shell execution"* ]]
+}
+
 @test "bash-guard: scout read-only blocks survive bash_guard false" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-config-off"
   mkdir -p "$TEST_PROJECT/.vbw-planning"
@@ -1005,6 +1034,20 @@ run_scout_bash_guard() {
   [[ "$output" == *"process substitution"* ]]
 }
 
+@test "bash-guard: scout nested shell wrappers survive bash_guard false" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-nested-shell-config-off"
+  local test_input
+
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":false}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  test_input=$(jq -n --arg cmd "{ bash -c 'git add src/app.js'; }" '{"tool_input":{"command":$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | VBW_AGENT_ROLE=scout bash "$3"' _ \
+    "$TEST_PROJECT" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"nested shell execution"* ]]
+}
+
 @test "bash-guard: scout role can be detected from active-agent marker in nested cwd" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-marker"
   mkdir -p "$TEST_PROJECT/.vbw-planning" "$TEST_PROJECT/packages/app"
@@ -1025,7 +1068,18 @@ run_scout_bash_guard() {
   echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
   echo scout > "$TEST_PROJECT/.vbw-planning/.active-agent"
 
-  test_input=$(jq -n --arg cmd "bash -c 'touch out.txt'" '{"tool_input":{"command":$cmd}}')
+  test_input=$(jq -n --arg cmd "if bash -c 'touch out.txt'; then :; fi" '{"tool_input":{"command":$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
+    "$TEST_PROJECT/packages/app" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"nested shell execution"* ]]
+
+  rm "$TEST_PROJECT/.vbw-planning/.active-agent"
+  cat > "$TEST_PROJECT/.vbw-planning/.active-agent-roles" <<'EOF'
+scout 1
+dev 1
+EOF
+  test_input=$(jq -n --arg cmd "{ bash -c 'git add src/app.js'; }" '{"tool_input":{"command":$cmd}}')
   run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
     "$TEST_PROJECT/packages/app" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
   [ "$status" -eq 2 ]

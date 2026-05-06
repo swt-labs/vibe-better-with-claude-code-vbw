@@ -388,54 +388,40 @@ token_has_shell_c_option() {
 
 segment_has_shell_c_invocation() {
   local segment="$1"
-  local token expecting_command=1 saw_shell=0 allow_env_args=0
+  local token saw_shell=0 skip_next_shell_option_arg=0
 
   for token in $segment; do
     if [ "$saw_shell" -eq 1 ]; then
+      if [ "$skip_next_shell_option_arg" -eq 1 ]; then
+        skip_next_shell_option_arg=0
+        continue
+      fi
+
       if token_has_shell_c_option "$token"; then
         return 0
       fi
+
       case "$token" in
+        -o|-O|--init-file|--rcfile)
+          skip_next_shell_option_arg=1
+          continue
+          ;;
+        --init-file=*|--rcfile=*)
+          continue
+          ;;
         -*)
           continue
           ;;
         *)
-          return 1
+          saw_shell=0
           ;;
       esac
     fi
 
-    if [ "$expecting_command" -eq 1 ]; then
-      if [ "$allow_env_args" -eq 1 ]; then
-        case "$token" in
-          -*|[A-Za-z_]*=*)
-            continue
-            ;;
-          *)
-            allow_env_args=0
-            ;;
-        esac
-      fi
-
-      case "$token" in
-        [A-Za-z_]*=*)
-          continue
-          ;;
-        env)
-          allow_env_args=1
-          continue
-          ;;
-        command|time|sudo|doas|noglob)
-          continue
-          ;;
-      esac
-
-      if is_shell_interpreter_token "$token"; then
-        saw_shell=1
-        continue
-      fi
-
-      expecting_command=0
+    if is_shell_interpreter_token "$token"; then
+      saw_shell=1
+      skip_next_shell_option_arg=0
+      continue
     fi
   done
 
@@ -447,6 +433,7 @@ command_has_nested_shell_execution() {
   local masked segment segments
 
   masked=$(command_without_quoted_text "$command")
+  masked=$(printf '%s' "$masked" | tr '(){}!' '     ')
   segments=$(printf '%s' "$masked" | tr ';|&' '\n')
   while IFS= read -r segment; do
     if segment_has_shell_c_invocation "$segment"; then
