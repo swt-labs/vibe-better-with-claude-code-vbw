@@ -663,6 +663,26 @@ else
   fail "execute-protocol QA remediation Lead return site missing shell/Bash no-tool handling"
 fi
 
+if grep -Fq 'Normalize plan filenames before validation' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'normalize-plan-filenames.sh' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'validate-uat-remediation-artifact.sh" plan "{round_dir}/R{RR}-PLAN.md"' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'If validation fails, display the validator error and STOP without advancing `.qa-remediation-stage`' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'Do not search for an alternate PLAN.md' <<< "$QA_REMEDIATION_PLAN_BLOCK"; then
+  pass "execute-protocol QA remediation plan stage validates canonical plan before advance"
+else
+  fail "execute-protocol QA remediation plan stage missing normalization/validation gate before advance"
+fi
+
+if grep -Fq 'Always include `known_issues_input:` and `known_issue_resolutions:` in R{RR}-PLAN.md frontmatter' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'known_issues_count=0' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'input_mode=verification' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'known_issues_input: []' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'known_issue_resolutions: []' <<< "$QA_REMEDIATION_PLAN_BLOCK"; then
+  pass "execute-protocol QA remediation plan always includes validator-required known-issue arrays"
+else
+  fail "execute-protocol QA remediation plan may omit validator-required known-issue arrays"
+fi
+
 if grep -Fq 'If Dev reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$QA_REMEDIATION_EXECUTE_BLOCK" \
   && grep -Fq 'If QA reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$QA_REMEDIATION_VERIFY_BLOCK"; then
   pass "execute-protocol QA remediation applies shell/Bash no-tool handling at Dev and QA return sites"
@@ -674,6 +694,10 @@ check_literal_before_regex "execute-protocol QA no-tool breaker appears before r
 check_literal_before_literal "execute-protocol QA no-tool breaker appears before deterministic gate" "$QA_REMEDIATION_BLOCK" '<qa_remediation_no_tool_circuit_breaker>' 'qa-result-gate.sh'
 check_literal_before_literal "execute-protocol QA plan Lead spawn appears before Lead return breaker" "$QA_REMEDIATION_PLAN_BLOCK" 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' 'After Lead returns, apply the QA remediation no-tool circuit breaker'
 check_literal_before_regex "execute-protocol QA plan Lead breaker appears before plan-stage state advance" "$QA_REMEDIATION_PLAN_BLOCK" 'After Lead returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "execute-protocol QA plan Lead breaker appears before plan normalization" "$QA_REMEDIATION_PLAN_BLOCK" 'After Lead returns, apply the QA remediation no-tool circuit breaker' 'Normalize plan filenames before validation'
+check_literal_before_literal "execute-protocol QA plan normalization appears before plan validation" "$QA_REMEDIATION_PLAN_BLOCK" 'Normalize plan filenames before validation' 'Validate the exact QA remediation plan artifact before advancing'
+check_literal_before_regex "execute-protocol QA plan validation appears before plan-stage state advance" "$QA_REMEDIATION_PLAN_BLOCK" 'validate-uat-remediation-artifact.sh" plan "{round_dir}/R{RR}-PLAN.md"' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "execute-protocol QA plan validation passes before state advance wording" "$QA_REMEDIATION_PLAN_BLOCK" 'Validate the exact QA remediation plan artifact before advancing' 'After plan validation passes, advance state'
 check_literal_before_regex "execute-protocol QA execute Dev breaker appears before execute-stage state advance" "$QA_REMEDIATION_EXECUTE_BLOCK" 'After Dev returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
 check_literal_before_literal "execute-protocol QA verify breaker appears before known-issue sync" "$QA_REMEDIATION_VERIFY_BLOCK" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" sync-verification'
 check_literal_before_literal "execute-protocol QA verify breaker appears before known-issue promotion" "$QA_REMEDIATION_VERIFY_BLOCK" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" promote-todos'
