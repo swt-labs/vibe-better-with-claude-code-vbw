@@ -280,6 +280,35 @@ else
   fail "round stale candidate — rc=$RC, content: $CONTENT, files: $(ls "$TDIR"), output: $OUTPUT"
 fi
 
+# Test 10d3b: opening-only frontmatter delimiter is structurally invalid
+TDIR="$TMPDIR_TEST/test10d3b/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+cat > "$TDIR/PLAN-01.md" <<'PLAN'
+---
+phase: 1
+round: 1
+title: Interrupted write
+type: remediation
+fail_classifications:
+  - {id: "FAIL-1", type: "code-fix", rationale: "fix required"}
+known_issues_input: []
+known_issue_resolutions: []
+<tasks>
+<task type="auto">
+  <name>Fix</name>
+</task>
+</tasks>
+<verification>
+1. Run tests.
+</verification>
+PLAN
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ ! -f "$TDIR/R01-PLAN.md" ] && [ -f "$TDIR/PLAN-01.md.invalid" ] && echo "$OUTPUT" | grep -q "candidate is structurally invalid"; then
+  pass "round invalid candidate: rejects opening-only frontmatter delimiter"
+else
+  fail "round invalid candidate — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
 # Test 10d4: round-dir source round token must match containing round directory
 TDIR="$TMPDIR_TEST/test10d4/.vbw-planning/phases/01-setup/remediation/qa/round-01"
 mkdir -p "$TDIR"

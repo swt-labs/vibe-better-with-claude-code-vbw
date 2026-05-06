@@ -38,13 +38,14 @@ round_plan_content_is_valid() {
 
   [ -s "$file_path" ] || return 1
   frontmatter=$(awk '
-    BEGIN { delimiter_count = 0 }
+    BEGIN { delimiter_count = 0; frontmatter_closed = 0 }
     /^---[[:space:]]*$/ {
       delimiter_count++
-      if (delimiter_count == 2) exit
+      if (delimiter_count == 2) { frontmatter_closed = 1; exit }
       next
     }
     delimiter_count == 1 { print }
+    END { if (!frontmatter_closed) exit 1 }
   ' "$file_path" 2>/dev/null) || return 1
 
   [ -n "$frontmatter" ] || return 1

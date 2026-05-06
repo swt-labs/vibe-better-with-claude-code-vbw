@@ -1181,16 +1181,54 @@ json_object_array_length() {
 json_object_array_covers_full_issue_objects() {
   local required_json="${1:-[]}"
   local candidate_json="${2:-[]}"
-  local test_name=""
-  local file_path=""
-  local error_msg=""
+  local required_file=""
+  local candidate_file=""
+  local jq_status=0
 
-  while IFS=$'\t' read -r test_name file_path error_msg; do
-    [ -n "$test_name" ] || continue
-    printf '%s' "$candidate_json" | jq -e --arg test "$test_name" --arg file "$file_path" --arg error "$error_msg" '.[] | select(.test == $test and .file == $file and .error == $error)' >/dev/null 2>&1 || return 1
-  done < <(printf '%s' "$required_json" | jq -r '.[] | [.test, .file, .error] | @tsv' 2>/dev/null)
+  required_file=$(mktemp) || return 1
+  candidate_file=$(mktemp) || {
+    rm -f "$required_file"
+    return 1
+  }
+  if ! printf '%s' "$required_json" > "$required_file"; then
+    rm -f "$required_file" "$candidate_file"
+    return 1
+  fi
+  if ! printf '%s' "$candidate_json" > "$candidate_file"; then
+    rm -f "$required_file" "$candidate_file"
+    return 1
+  fi
 
-  return 0
+  if jq -e -n \
+    --slurpfile required "$required_file" \
+    --slurpfile candidate "$candidate_file" '
+      ($required[0] // empty) as $required_array |
+      ($candidate[0] // empty) as $candidate_array |
+      if (($required_array | type) != "array") or (($candidate_array | type) != "array") then
+        false
+      else
+        [$candidate_array[] | select(type == "object") | {test: .test, file: .file, error: .error}] as $candidate_identities |
+        all($required_array[];
+          if type != "object" then
+            false
+          elif ((.test | type) == "string" and .test == "") then
+            true
+          elif ((.test | type) != "string") or ((.file | type) != "string") or ((.error | type) != "string") then
+            false
+          else
+            {test: .test, file: .file, error: .error} as $required_identity
+            | $candidate_identities
+            | any(. == $required_identity)
+          end
+        )
+      end
+    ' >/dev/null 2>&1; then
+    jq_status=0
+  else
+    jq_status=$?
+  fi
+  rm -f "$required_file" "$candidate_file"
+  return "$jq_status"
 }
 
 load_known_issue_registry_json() {
@@ -1203,17 +1241,48 @@ load_known_issue_registry_json() {
 json_object_array_dispositions_match() {
   local expected_json="${1:-[]}"
   local actual_json="${2:-[]}"
-  local test_name=""
-  local file_path=""
-  local error_msg=""
-  local disposition=""
+  local expected_file=""
+  local actual_file=""
+  local jq_status=0
 
-  while IFS=$'\t' read -r test_name file_path error_msg disposition; do
-    [ -n "$test_name" ] || continue
-    printf '%s' "$actual_json" | jq -e --arg test "$test_name" --arg file "$file_path" --arg error "$error_msg" --arg disposition "$disposition" '.[] | select(.test == $test and .file == $file and .error == $error and .disposition == $disposition)' >/dev/null 2>&1 || return 1
-  done < <(printf '%s' "$expected_json" | jq -r '.[] | [.test, .file, .error, .disposition] | @tsv' 2>/dev/null)
+  expected_file=$(mktemp) || return 1
+  actual_file=$(mktemp) || {
+    rm -f "$expected_file"
+    return 1
+  }
+  if ! printf '%s' "$expected_json" > "$expected_file"; then
+    rm -f "$expected_file" "$actual_file"
+    return 1
+  fi
+  if ! printf '%s' "$actual_json" > "$actual_file"; then
+    rm -f "$expected_file" "$actual_file"
+    return 1
+  fi
 
-  return 0
+  if jq -e -n \
+    --slurpfile expected "$expected_file" \
+    --slurpfile actual "$actual_file" '
+      ($expected[0] // empty) as $expected_array |
+      ($actual[0] // empty) as $actual_array |
+      if (($expected_array | type) != "array") or (($actual_array | type) != "array") then
+        false
+      else
+        [$actual_array[] | select(type == "object") | {test: .test, file: .file, error: .error, disposition: .disposition}] as $actual_dispositions |
+        all($expected_array[];
+          (type != "object")
+          or ((.test // "") == "")
+          or ({test: .test, file: .file, error: .error, disposition: .disposition} as $expected_disposition
+            | $actual_dispositions
+            | any(. == $expected_disposition))
+        )
+      end
+    ' >/dev/null 2>&1; then
+    jq_status=0
+  else
+    jq_status=$?
+  fi
+  rm -f "$expected_file" "$actual_file"
+  return "$jq_status"
 }
 
 json_object_array_has_disposition() {

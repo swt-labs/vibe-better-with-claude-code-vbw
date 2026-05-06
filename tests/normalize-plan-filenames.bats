@@ -213,6 +213,38 @@ EOF
   [[ "$output" == *"candidate is structurally invalid"* ]]
 }
 
+@test "does not promote round plan with only opening frontmatter delimiter" {
+  ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+  mkdir -p "$ROUND_DIR"
+  cat > "$ROUND_DIR/PLAN-01.md" <<'EOF'
+---
+phase: 1
+round: 1
+title: Interrupted write
+type: remediation
+fail_classifications:
+  - {id: "FAIL-1", type: "code-fix", rationale: "fix required"}
+known_issues_input: []
+known_issue_resolutions: []
+<tasks>
+<task type="auto">
+  <name>Fix</name>
+</task>
+</tasks>
+<verification>
+1. Run tests.
+</verification>
+EOF
+
+  run bash "$SCRIPT" "$ROUND_DIR"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$ROUND_DIR/R01-PLAN.md" ]
+  [ ! -f "$ROUND_DIR/PLAN-01.md" ]
+  [ -f "$ROUND_DIR/PLAN-01.md.invalid" ]
+  [[ "$output" == *"candidate is structurally invalid"* ]]
+}
+
 @test "does not replace canonical round plan with candidate from different frontmatter round" {
   ROUND_DIR="$TEST_DIR/.vbw-planning/phases/01-setup/remediation/qa/round-01"
   mkdir -p "$ROUND_DIR"
