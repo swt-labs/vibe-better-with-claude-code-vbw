@@ -554,6 +554,74 @@ scout_gh_segments_are_readonly() {
   return 0
 }
 
+is_sensitive_path_token() {
+  local token="$1"
+  local base
+
+  base="${token##*/}"
+
+  case "$token" in
+    .env|.env.*|*/.env|*/.env.*)
+      return 0
+      ;;
+    .git|.git/*|*/.git|*/.git/*)
+      return 0
+      ;;
+    .netrc|*/.netrc|.npmrc|*/.npmrc|.pypirc|*/.pypirc|.pgpass|*/.pgpass|.my.cnf|*/.my.cnf|.vault-token|*/.vault-token)
+      return 0
+      ;;
+    .docker/config.json|*/.docker/config.json)
+      return 0
+      ;;
+    .config/gh/hosts.yml|*/.config/gh/hosts.yml|.config/gh/hosts.yaml|*/.config/gh/hosts.yaml)
+      return 0
+      ;;
+    .kube/config|*/.kube/config)
+      return 0
+      ;;
+    .cargo/credentials|*/.cargo/credentials|.cargo/credentials.toml|*/.cargo/credentials.toml)
+      return 0
+      ;;
+    .gem/credentials|*/.gem/credentials)
+      return 0
+      ;;
+  esac
+
+  case "$base" in
+    id_rsa|id_dsa|id_ed25519|*.pem|*.p12|*.pfx|credentials|credentials.json|secret|secrets|secret.json|secrets.json|secret.yaml|secrets.yaml|secret.yml|secrets.yml|secret.txt|secrets.txt)
+      return 0
+      ;;
+  esac
+
+  case "$token" in
+    *private-key*|*private_key*)
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+command_has_sensitive_file_reference() {
+  local command="$1"
+  local token
+
+  # Static command-shape filter for obvious credential-store paths. This is a
+  # best-effort guardrail, not a complete secret inventory or shell sandbox.
+  while IFS= read -r token; do
+    [ -z "$token" ] && continue
+    if is_sensitive_path_token "$token"; then
+      return 0
+    fi
+  done <<< "$(shell_visible_tokens "$command")"
+
+  if echo "$command" | grep -iqE '(^|[[:space:]/])\.env($|[[:space:]/.;|&])|\.env\.[^[:space:];|&]*|id_(rsa|dsa|ed25519)|\.(pem|p12|pfx)($|[[:space:];|&])|private[-_]?key|credentials(\.json)?|secrets?(\.(json|ya?ml|txt))?|(^|[[:space:]/])\.git($|/|[[:space:];|&])'; then
+    return 0
+  fi
+
+  return 1
+}
+
 check_scout_command() {
   local command="$1"
   local matched=""
@@ -643,7 +711,7 @@ check_scout_command() {
     block_scout_command "mutating gh command"
   fi
 
-  if echo "$command" | grep -iqE '(^|[[:space:]/])\.env($|[[:space:]/.;|&])|\.env\.[^[:space:];|&]*|id_(rsa|dsa|ed25519)|\.(pem|p12|pfx)($|[[:space:];|&])|private[-_]?key|credentials(\.json)?|secrets?(\.(json|ya?ml|txt))?|(^|[[:space:]/])\.git($|/|[[:space:];|&])'; then
+  if command_has_sensitive_file_reference "$command"; then
     block_scout_command "sensitive file read"
   fi
 }

@@ -668,10 +668,41 @@ run_scout_bash_guard() {
   mkdir -p "$TEST_PROJECT/.vbw-planning"
   echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
 
-  TEST_INPUT='{"tool_input":{"command":"cat .env"}}'
-  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"sensitive file read"* ]]
+  for command in \
+    'cat .env' \
+    'cat ~/.netrc' \
+    'cat ~/.npmrc' \
+    'cat ~/.pypirc' \
+    'cat ~/.docker/config.json' \
+    'cat ~/.config/gh/hosts.yml' \
+    'grep token $HOME/.npmrc' \
+    'jq . ${HOME}/.docker/config.json' \
+    'sed -n "1p" /Users/demo/.config/gh/hosts.yaml' \
+    'cat /home/demo/.pypirc' \
+    'cat ~/.pgpass' \
+    'cat ~/.my.cnf' \
+    'cat ~/.kube/config' \
+    'cat ~/.cargo/credentials.toml' \
+    'cat ~/.gem/credentials'; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"sensitive file read"* ]]
+  done
+}
+
+@test "bash-guard: scout allows non-sensitive config reads" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-nonsensitive-config"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    'cat package.json' \
+    'jq . config.json' \
+    'cat docs/hosts.yml' \
+    'cat .config/app/settings.json'; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 0 ]
+  done
 }
 
 @test "bash-guard: scout blocks git state mutation" {
@@ -993,7 +1024,7 @@ run_scout_bash_guard() {
   mkdir -p "$TEST_PROJECT/.vbw-planning"
   echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
 
-  TEST_INPUT='{"tool_input":{"command":"cat .env"}}'
+  TEST_INPUT='{"tool_input":{"command":"cat ~/.netrc"}}'
   run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout VBW_ALLOW_DESTRUCTIVE=1 bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"sensitive file read"* ]]
@@ -1038,6 +1069,17 @@ run_scout_bash_guard() {
   [[ "$output" == *"git state mutation"* ]]
 }
 
+@test "bash-guard: scout credential-store blocks survive bash_guard false" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-sensitive-config-off"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":false}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  TEST_INPUT='{"tool_input":{"command":"cat ~/.config/gh/hosts.yml"}}'
+  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"sensitive file read"* ]]
+}
+
 @test "bash-guard: scout process substitution blocks survive bash_guard false" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-process-substitution-config-off"
   local test_input
@@ -1073,6 +1115,16 @@ run_scout_bash_guard() {
   echo scout > "$TEST_PROJECT/.vbw-planning/.active-agent"
 
   TEST_INPUT='{"tool_input":{"command":"cat .env"}}'
+  run bash -c "cd '$TEST_PROJECT/packages/app' && printf '%s\n' '$TEST_INPUT' | bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"sensitive file read"* ]]
+
+  rm "$TEST_PROJECT/.vbw-planning/.active-agent"
+  cat > "$TEST_PROJECT/.vbw-planning/.active-agent-roles" <<'EOF'
+scout 1
+dev 1
+EOF
+  TEST_INPUT='{"tool_input":{"command":"cat ~/.npmrc"}}'
   run bash -c "cd '$TEST_PROJECT/packages/app' && printf '%s\n' '$TEST_INPUT' | bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"sensitive file read"* ]]
