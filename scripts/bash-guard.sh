@@ -360,13 +360,82 @@ command_has_unquoted_eval() {
 }
 
 is_shell_interpreter_token() {
-  case "$1" in
+  local token="$1"
+
+  token="${token##*/}"
+  case "$token" in
     bash|sh|zsh|dash|ksh|fish)
       return 0
       ;;
   esac
 
   return 1
+}
+
+shell_visible_tokens() {
+  local command="$1"
+  local i=0 len ch token="" in_single=0 in_double=0 escaped=0
+
+  len=${#command}
+  while [ "$i" -lt "$len" ]; do
+    ch="${command:$i:1}"
+
+    if [ "$escaped" -eq 1 ]; then
+      token="${token}${ch}"
+      escaped=0
+      i=$((i + 1))
+      continue
+    fi
+
+    if [ "$in_single" -eq 1 ]; then
+      if [ "$ch" = "'" ]; then
+        in_single=0
+      else
+        token="${token}${ch}"
+      fi
+      i=$((i + 1))
+      continue
+    fi
+
+    if [ "$in_double" -eq 1 ]; then
+      if [ "$ch" = "\\" ]; then
+        escaped=1
+      elif [ "$ch" = '"' ]; then
+        in_double=0
+      else
+        token="${token}${ch}"
+      fi
+      i=$((i + 1))
+      continue
+    fi
+
+    case "$ch" in
+      "'")
+        in_single=1
+        ;;
+      '"')
+        in_double=1
+        ;;
+      "\\")
+        escaped=1
+        ;;
+      [[:space:]]|";"|"|"|"&"|"("|")"|"{"|"}"|"!")
+        if [ -n "$token" ]; then
+          printf '%s\n' "$token"
+          token=""
+        fi
+        ;;
+      *)
+        token="${token}${ch}"
+        ;;
+    esac
+
+    i=$((i + 1))
+  done
+
+  if [ -n "$token" ]; then
+    printf '%s\n' "$token"
+  fi
 }
 
 token_has_shell_c_option() {
@@ -390,7 +459,9 @@ segment_has_shell_c_invocation() {
   local segment="$1"
   local token saw_shell=0 skip_next_shell_option_arg=0
 
-  for token in $segment; do
+  while IFS= read -r token; do
+    [ -z "$token" ] && continue
+
     if [ "$saw_shell" -eq 1 ]; then
       if [ "$skip_next_shell_option_arg" -eq 1 ]; then
         skip_next_shell_option_arg=0
@@ -423,23 +494,17 @@ segment_has_shell_c_invocation() {
       skip_next_shell_option_arg=0
       continue
     fi
-  done
+  done <<< "$(shell_visible_tokens "$segment")"
 
   return 1
 }
 
 command_has_nested_shell_execution() {
   local command="$1"
-  local masked segment segments
 
-  masked=$(command_without_quoted_text "$command")
-  masked=$(printf '%s' "$masked" | tr '(){}!' '     ')
-  segments=$(printf '%s' "$masked" | tr ';|&' '\n')
-  while IFS= read -r segment; do
-    if segment_has_shell_c_invocation "$segment"; then
-      return 0
-    fi
-  done <<< "$segments"
+  if segment_has_shell_c_invocation "$command"; then
+    return 0
+  fi
 
   return 1
 }

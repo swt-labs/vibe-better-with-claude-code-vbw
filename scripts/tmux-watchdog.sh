@@ -213,6 +213,7 @@ while true; do
         rm -f "$PLANNING_DIR/.agent-pids" 2>/dev/null || true
         log "Removed .agent-pids file"
       fi
+      rm -f "$PLANNING_DIR/.active-agent-role-pids" 2>/dev/null || true
       rm -rf "$PLANNING_DIR/.compacting" 2>/dev/null || true
 
       # Exit after cleanup

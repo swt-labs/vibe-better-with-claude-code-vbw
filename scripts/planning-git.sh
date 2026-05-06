@@ -50,6 +50,7 @@ ensure_transient_ignore() {
 .active-agent
 .active-agent-count
 .active-agent-roles
+.active-agent-role-pids
 .active-agent-count.lock/
 .agent-pids
 .task-verify-seen

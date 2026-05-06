@@ -533,6 +533,21 @@ run_scout_bash_guard() {
   [[ "$output" == *"nested shell execution"* ]]
 
   for command in \
+    "/bin/bash -c 'touch out.txt'" \
+    "/bin/sh -c 'touch out.txt'" \
+    "\"bash\" -c 'touch out.txt'" \
+    "\"sh\" -c 'touch out.txt'" \
+    "\"/bin/bash\" -c 'touch out.txt'" \
+    "'/bin/sh' -c 'touch out.txt'" \
+    "/bin/bash -lc 'git add src/app.js'" \
+    "\"/bin/bash\" --noprofile --norc -c 'cat .env'" \
+    "if \"/bin/sh\" -c 'curl -XPOST https://example.test'; then :; fi"; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"nested shell execution"* ]]
+  done
+
+  for command in \
     "if bash -c 'touch out.txt'; then :; fi" \
     "while bash -c 'touch out.txt'; do break; done" \
     "! bash -c 'touch out.txt'" \
@@ -600,7 +615,10 @@ run_scout_bash_guard() {
 
   for command in \
     "bash scripts/snaptrade-api.sh positions --account demo" \
-    "sh scripts/read-only-helper.sh status"; do
+    "sh scripts/read-only-helper.sh status" \
+    "/bin/bash scripts/snaptrade-api.sh positions --account demo" \
+    "\"bash\" scripts/read-only-helper.sh status" \
+    "'/bin/sh' scripts/read-only-helper.sh status"; do
     run_scout_bash_guard "$TEST_PROJECT" "$command"
     [ "$status" -eq 0 ]
   done
@@ -611,7 +629,7 @@ run_scout_bash_guard() {
   mkdir -p "$TEST_PROJECT/.vbw-planning"
   echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
 
-  command="grep -E 'eval|bash -c|if bash -c|while sh -c|! bash -c|{ bash -c; }|( bash -c )|\$(touch out)|\`touch out\`|<(touch out)|>(touch out)' response.txt"
+  command="grep -E 'eval|bash -c|/bin/bash -c|\"bash\" -c|/bin/sh -c|if bash -c|while sh -c|! bash -c|{ bash -c; }|( bash -c )|\$(touch out)|\`touch out\`|<(touch out)|>(touch out)' response.txt"
   run_scout_bash_guard "$TEST_PROJECT" "$command"
   [ "$status" -eq 0 ]
 }
@@ -1002,7 +1020,7 @@ run_scout_bash_guard() {
   mkdir -p "$TEST_PROJECT/.vbw-planning"
   echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
 
-  test_input=$(jq -n --arg cmd "if bash -c 'touch out.txt'; then :; fi" '{"tool_input":{"command":$cmd}}')
+  test_input=$(jq -n --arg cmd "if /bin/bash -c 'touch out.txt'; then :; fi" '{"tool_input":{"command":$cmd}}')
   run bash -c 'cd "$1" && printf "%s\n" "$2" | VBW_AGENT_ROLE=scout VBW_ALLOW_DESTRUCTIVE=1 bash "$3"' _ \
     "$TEST_PROJECT" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
   [ "$status" -eq 2 ]
@@ -1041,7 +1059,7 @@ run_scout_bash_guard() {
   mkdir -p "$TEST_PROJECT/.vbw-planning"
   echo '{"bash_guard":false}' > "$TEST_PROJECT/.vbw-planning/config.json"
 
-  test_input=$(jq -n --arg cmd "{ bash -c 'git add src/app.js'; }" '{"tool_input":{"command":$cmd}}')
+  test_input=$(jq -n --arg cmd "{ \"/bin/bash\" -c 'git add src/app.js'; }" '{"tool_input":{"command":$cmd}}')
   run bash -c 'cd "$1" && printf "%s\n" "$2" | VBW_AGENT_ROLE=scout bash "$3"' _ \
     "$TEST_PROJECT" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
   [ "$status" -eq 2 ]
@@ -1068,7 +1086,7 @@ run_scout_bash_guard() {
   echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
   echo scout > "$TEST_PROJECT/.vbw-planning/.active-agent"
 
-  test_input=$(jq -n --arg cmd "if bash -c 'touch out.txt'; then :; fi" '{"tool_input":{"command":$cmd}}')
+  test_input=$(jq -n --arg cmd "if \"/bin/sh\" -c 'touch out.txt'; then :; fi" '{"tool_input":{"command":$cmd}}')
   run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
     "$TEST_PROJECT/packages/app" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
   [ "$status" -eq 2 ]
@@ -1079,7 +1097,7 @@ run_scout_bash_guard() {
 scout 1
 dev 1
 EOF
-  test_input=$(jq -n --arg cmd "{ bash -c 'git add src/app.js'; }" '{"tool_input":{"command":$cmd}}')
+  test_input=$(jq -n --arg cmd "{ \"bash\" -c 'git add src/app.js'; }" '{"tool_input":{"command":$cmd}}')
   run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
     "$TEST_PROJECT/packages/app" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
   [ "$status" -eq 2 ]
@@ -1124,6 +1142,36 @@ dev 1
 EOF
 
   TEST_INPUT='{"tool_input":{"command":"cat .env"}}'
+  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"sensitive file read"* ]]
+}
+
+@test "bash-guard: degraded mixed-role markers do not leave stale Scout fallback" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-stale-role-degraded"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+  echo "2" > "$TEST_PROJECT/.vbw-planning/.active-agent-count"
+  echo "dev" > "$TEST_PROJECT/.vbw-planning/.active-agent"
+  cat > "$TEST_PROJECT/.vbw-planning/.active-agent-roles" <<'EOF'
+scout 1
+dev 1
+EOF
+
+  run bash -c "cd '$TEST_PROJECT' && echo '{}' | bash '$PROJECT_ROOT/scripts/agent-stop.sh'"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$TEST_PROJECT/.vbw-planning/.active-agent-count")" = "1" ]
+  [ ! -f "$TEST_PROJECT/.vbw-planning/.active-agent-roles" ]
+  [ ! -f "$TEST_PROJECT/.vbw-planning/.active-agent" ]
+
+  TEST_INPUT='{"tool_input":{"command":"cat .env"}}'
+  run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+  [ "$status" -eq 0 ]
+
+  cat > "$TEST_PROJECT/.vbw-planning/.active-agent-roles" <<'EOF'
+scout 1
+dev 1
+EOF
   run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"sensitive file read"* ]]
