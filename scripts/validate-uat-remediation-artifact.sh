@@ -232,7 +232,7 @@ validate_legacy_phase_root_path() {
     || emit_failure "state-selected legacy ${ARTIFACT_TYPE} artifact path is not canonical"
 
   if [ "$ARTIFACT_PATH" != "$selected_canonical_path" ]; then
-    emit_failure "legacy artifact is stale; expected $selected_path"
+    emit_failure "legacy artifact is stale; expected canonical path $selected_canonical_path (state selected $selected_path)"
   fi
 }
 

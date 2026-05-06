@@ -623,7 +623,10 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
   - Scope the plan to those failures: what to fix, which files, acceptance criteria
   - Existing-plan recovery before spawning Lead: before probing for an existing plan, run the normalizer on `{round_dir}`:
     ```bash
-    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh "{round_dir}"
+    NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
+    if [ -f "$NORM_SCRIPT" ]; then
+      bash "$NORM_SCRIPT" "{round_dir}"
+    fi
     ```
     If the canonical `{round_dir}/R{RR}-PLAN.md` exists after normalization, validate that exact artifact with the same validator command shown in the validation step below. If validation fails, display the validator error and STOP without advancing `.qa-remediation-stage`. If validation passes, do not spawn Lead again; reuse the persisted plan and continue at the final post-validation state-advance step below. This preserves a valid plan written before an interrupted `stage=plan` resume instead of overwriting it.
   - The orchestrator coordinates the remediation loop and spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md` (QA says what's wrong, planning says how to fix).

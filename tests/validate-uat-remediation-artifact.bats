@@ -560,7 +560,23 @@ EOF
   run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" research "$stale_research"
   [ "$status" -eq 1 ]
   [[ "$output" == *"artifact_valid=false"* ]]
-  [[ "$output" == *"legacy artifact is stale; expected $selected_research"* ]]
+  [[ "$output" == *"legacy artifact is stale; expected canonical path $selected_research (state selected $selected_research)"* ]]
+}
+
+@test "validator stale legacy artifact diagnostic reports canonical selected path" {
+  local stale_research="$PHASE_DIR/01-02-RESEARCH.md"
+  local selected_research_target="$PHASE_DIR/selected-research.md"
+  local selected_research_link="$PHASE_DIR/01-03-RESEARCH.md"
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  printf 'stage=plan\nround=01\nlayout=legacy\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  write_valid_research "$stale_research"
+  write_valid_research "$selected_research_target"
+  ln -s "$(basename "$selected_research_target")" "$selected_research_link"
+
+  run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" research "$stale_research"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"artifact_valid=false"* ]]
+  [[ "$output" == *"legacy artifact is stale; expected canonical path $selected_research_target (state selected $selected_research_link)"* ]]
 }
 
 @test "validator rejects legacy research when round-dir research would be selected" {
@@ -574,7 +590,7 @@ EOF
   run bash "$SCRIPTS_DIR/validate-uat-remediation-artifact.sh" research "$legacy_research"
   [ "$status" -eq 1 ]
   [[ "$output" == *"artifact_valid=false"* ]]
-  [[ "$output" == *"legacy artifact is stale; expected $round_research"* ]]
+  [[ "$output" == *"legacy artifact is stale; expected canonical path $round_research (state selected $round_research)"* ]]
 }
 
 @test "validator accepts state-selected legacy plan after inferred round advances" {

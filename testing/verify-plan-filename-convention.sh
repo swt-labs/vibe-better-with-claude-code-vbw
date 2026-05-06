@@ -791,6 +791,16 @@ else
   fail "vibe.md missing normalization guard"
 fi
 
+# Test 45b: vibe.md guards QA existing-plan recovery normalizer
+RECOVERY_BLOCK=$(awk '/Existing-plan recovery before spawning Lead/{flag=1} flag{print} flag && /If the canonical/ {exit}' "$SCRIPT_DIR/commands/vibe.md")
+if echo "$RECOVERY_BLOCK" | grep -q 'NORM_SCRIPT=' \
+  && echo "$RECOVERY_BLOCK" | grep -Fq 'if [ -f "$NORM_SCRIPT" ]; then' \
+  && echo "$RECOVERY_BLOCK" | grep -Fq 'bash "$NORM_SCRIPT" "{round_dir}"'; then
+  pass "vibe.md guards existing-plan recovery normalizer"
+else
+  fail "vibe.md missing guarded existing-plan recovery normalizer"
+fi
+
 # Test 46: status.md contains normalization guard
 if grep -q 'normalize-plan-filenames.sh' "$SCRIPT_DIR/commands/status.md" && grep -q 'misnamed_plans=true' "$SCRIPT_DIR/commands/status.md"; then
   pass "status.md contains normalization guard"
