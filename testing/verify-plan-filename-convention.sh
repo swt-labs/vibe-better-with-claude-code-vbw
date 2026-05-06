@@ -17,6 +17,30 @@ trap cleanup EXIT
 
 TMPDIR_TEST=$(mktemp -d)
 
+write_valid_round_plan() {
+  local path="$1"
+  cat > "$path" <<'PLAN'
+---
+phase: 1
+round: 1
+title: Valid remediation plan
+type: remediation
+fail_classifications:
+  - {id: "FAIL-1", type: "code-fix", rationale: "fix required"}
+known_issues_input: []
+known_issue_resolutions: []
+---
+<tasks>
+<task type="auto">
+  <name>Fix</name>
+</task>
+</tasks>
+<verification>
+1. Run tests.
+</verification>
+PLAN
+}
+
 echo "=== Plan Filename Convention Tests ==="
 
 # --- file-guard tests ---
@@ -126,6 +150,223 @@ if [ "$RC" -eq 0 ] && [ "$CONTENT" = "correct" ] && echo "$OUTPUT" | grep -q "sk
   pass "collision: skips PLAN-01.md when 01-PLAN.md exists"
 else
   fail "collision — rc=$RC, content: $CONTENT, output: $OUTPUT"
+fi
+
+# Test 10a: QA remediation round PLAN-R01.md normalizes to R01-PLAN.md
+TDIR="$TMPDIR_TEST/test10a/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+write_valid_round_plan "$TDIR/PLAN-R01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-R01.md" ]; then
+  pass "renames QA round PLAN-R01.md → R01-PLAN.md"
+else
+  fail "QA PLAN-R01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10b: QA remediation round PLAN-01.md normalizes to R01-PLAN.md, not 01-PLAN.md
+TDIR="$TMPDIR_TEST/test10b/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+write_valid_round_plan "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-01.md" ]; then
+  pass "renames QA round PLAN-01.md → R01-PLAN.md"
+else
+  fail "QA PLAN-01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10b2: QA remediation round mixed-case extension normalizes to R01-PLAN.md
+TDIR="$TMPDIR_TEST/test10b2/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+write_valid_round_plan "$TDIR/PLAN-R01.mD"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-R01.mD" ] && echo "$OUTPUT" | grep -q "PLAN-R01.mD -> R01-PLAN.md"; then
+  pass "renames QA round PLAN-R01.mD → R01-PLAN.md"
+else
+  fail "QA PLAN-R01.mD rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10c: UAT remediation round PLAN-01.md normalizes to R01-PLAN.md
+TDIR="$TMPDIR_TEST/test10c/.vbw-planning/phases/01-setup/remediation/uat/round-01"
+mkdir -p "$TDIR"
+write_valid_round_plan "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-01.md" ]; then
+  pass "renames UAT round PLAN-01.md → R01-PLAN.md"
+else
+  fail "UAT PLAN-01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10c2: legacy remediation round PLAN-01.md normalizes to R01-PLAN.md
+TDIR="$TMPDIR_TEST/test10c2/.vbw-planning/phases/01-setup/remediation/round-01"
+mkdir -p "$TDIR"
+write_valid_round_plan "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-01.md" ]; then
+  pass "renames legacy round PLAN-01.md → R01-PLAN.md"
+else
+  fail "legacy PLAN-01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10c3: legacy remediation round PLAN-R01.md normalizes to R01-PLAN.md
+TDIR="$TMPDIR_TEST/test10c3/.vbw-planning/phases/01-setup/remediation/round-01"
+mkdir -p "$TDIR"
+write_valid_round_plan "$TDIR/PLAN-R01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/R01-PLAN.md" ] && [ ! -f "$TDIR/PLAN-R01.md" ] && [ ! -f "$TDIR/01-PLAN.md" ]; then
+  pass "renames legacy round PLAN-R01.md → R01-PLAN.md"
+else
+  fail "legacy PLAN-R01 rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d: round-dir collision replaces stale canonical R01-PLAN.md with fresh misnamed plan
+TDIR="$TMPDIR_TEST/test10d/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "stale" > "$TDIR/R01-PLAN.md"
+cat > "$TDIR/PLAN-01.md" <<'PLAN'
+---
+phase: 1
+round: 1
+title: Valid remediation plan
+type: remediation
+fail_classifications:
+  - {id: "FAIL-1", type: "code-fix", rationale: "fix required"}
+known_issues_input: []
+known_issue_resolutions: []
+---
+<tasks>
+<task type="auto">
+  <name>Fix</name>
+</task>
+</tasks>
+<verification>
+1. Run tests.
+</verification>
+PLAN
+touch -t 202001010000 "$TDIR/R01-PLAN.md"
+touch -t 202001010001 "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+CONTENT=$(cat "$TDIR/R01-PLAN.md")
+if [ "$RC" -eq 0 ] && echo "$CONTENT" | grep -q "Valid remediation plan" && [ ! -f "$TDIR/PLAN-01.md" ] && [ ! -f "$TDIR/01-PLAN.md" ] && echo "$OUTPUT" | grep -q "replaced existing target"; then
+  pass "round collision: replaces stale R01-PLAN.md with fresh PLAN-01.md"
+else
+  fail "round collision — rc=$RC, content: $CONTENT, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d2: round-dir conflicting misnamed candidates fail closed instead of picking one
+TDIR="$TMPDIR_TEST/test10d2/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "stale" > "$TDIR/R01-PLAN.md"
+echo "fresh a" > "$TDIR/PLAN-01.md"
+echo "fresh b" > "$TDIR/PLAN-R01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ ! -f "$TDIR/R01-PLAN.md" ] && [ -f "$TDIR/R01-PLAN.md.conflict" ] && [ -f "$TDIR/PLAN-01.md" ] && [ -f "$TDIR/PLAN-R01.md" ] && echo "$OUTPUT" | grep -q "multiple non-identical remediation round plan candidates"; then
+  pass "round conflict: fails closed when PLAN-01.md and PLAN-R01.md differ"
+else
+  fail "round conflict — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d3: round-dir stale misnamed candidate does not clobber newer canonical plan
+TDIR="$TMPDIR_TEST/test10d3/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "canonical" > "$TDIR/R01-PLAN.md"
+echo "stale candidate" > "$TDIR/PLAN-01.md"
+touch -t 202001010001 "$TDIR/R01-PLAN.md"
+touch -t 202001010000 "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+CONTENT=$(cat "$TDIR/R01-PLAN.md")
+if [ "$RC" -eq 0 ] && [ "$CONTENT" = "canonical" ] && [ ! -f "$TDIR/PLAN-01.md" ] && [ -f "$TDIR/PLAN-01.md.stale" ] && echo "$OUTPUT" | grep -q "existing R01-PLAN.md is newer"; then
+  pass "round stale candidate: preserves newer canonical R01-PLAN.md"
+else
+  fail "round stale candidate — rc=$RC, content: $CONTENT, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d3b: opening-only frontmatter delimiter is structurally invalid
+TDIR="$TMPDIR_TEST/test10d3b/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+cat > "$TDIR/PLAN-01.md" <<'PLAN'
+---
+phase: 1
+round: 1
+title: Interrupted write
+type: remediation
+fail_classifications:
+  - {id: "FAIL-1", type: "code-fix", rationale: "fix required"}
+known_issues_input: []
+known_issue_resolutions: []
+<tasks>
+<task type="auto">
+  <name>Fix</name>
+</task>
+</tasks>
+<verification>
+1. Run tests.
+</verification>
+PLAN
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ ! -f "$TDIR/R01-PLAN.md" ] && [ -f "$TDIR/PLAN-01.md.invalid" ] && echo "$OUTPUT" | grep -q "candidate is structurally invalid"; then
+  pass "round invalid candidate: rejects opening-only frontmatter delimiter"
+else
+  fail "round invalid candidate — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d4: round-dir source round token must match containing round directory
+TDIR="$TMPDIR_TEST/test10d4/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "wrong round" > "$TDIR/PLAN-R02.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/PLAN-R02.md" ] && [ ! -f "$TDIR/R01-PLAN.md" ] && echo "$OUTPUT" | grep -q "round token does not match"; then
+  pass "round token mismatch: skips PLAN-R02.md in round-01"
+else
+  fail "round token mismatch — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d5: bare numeric source round token must also match containing round directory
+TDIR="$TMPDIR_TEST/test10d5/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "wrong round" > "$TDIR/PLAN-02.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/PLAN-02.md" ] && [ ! -f "$TDIR/R01-PLAN.md" ] && echo "$OUTPUT" | grep -q "round token does not match"; then
+  pass "round token mismatch: skips PLAN-02.md in round-01"
+else
+  fail "round token numeric mismatch — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d6: equal-mtime canonical/misnamed conflict fails closed
+TDIR="$TMPDIR_TEST/test10d6/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "canonical" > "$TDIR/R01-PLAN.md"
+echo "ambiguous candidate" > "$TDIR/PLAN-01.md"
+touch -t 202001010000 "$TDIR/R01-PLAN.md" "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ ! -f "$TDIR/R01-PLAN.md" ] && [ -f "$TDIR/R01-PLAN.md.conflict" ] && [ -f "$TDIR/PLAN-01.md" ] && echo "$OUTPUT" | grep -q "same mtime but different contents"; then
+  pass "round mtime tie: fails closed when canonical and PLAN-01.md differ"
+else
+  fail "round mtime tie — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10d7: paired equal-mtime misnamed candidates cannot replace different canonical plan
+TDIR="$TMPDIR_TEST/test10d7/.vbw-planning/phases/01-setup/remediation/qa/round-01"
+mkdir -p "$TDIR"
+echo "canonical" > "$TDIR/R01-PLAN.md"
+echo "replacement" > "$TDIR/PLAN-01.md"
+echo "replacement" > "$TDIR/PLAN-R01.md"
+touch -t 202001010000 "$TDIR/R01-PLAN.md" "$TDIR/PLAN-01.md" "$TDIR/PLAN-R01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ ! -f "$TDIR/R01-PLAN.md" ] && [ -f "$TDIR/R01-PLAN.md.conflict" ] && [ -f "$TDIR/PLAN-01.md" ] && [ -f "$TDIR/PLAN-R01.md" ] && echo "$OUTPUT" | grep -q "same mtime but different contents"; then
+  pass "round mtime tie: fails closed when paired candidates differ from canonical"
+else
+  fail "paired round mtime tie — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
+fi
+
+# Test 10e: phase directories still normalize PLAN-01.md to 01-PLAN.md
+TDIR="$TMPDIR_TEST/test10e/.vbw-planning/phases/01-setup"
+mkdir -p "$TDIR"
+echo "plan" > "$TDIR/PLAN-01.md"
+OUTPUT=$(bash "$NORM_SCRIPT" "$TDIR" 2>&1) && RC=$? || RC=$?
+if [ "$RC" -eq 0 ] && [ -f "$TDIR/01-PLAN.md" ] && [ ! -f "$TDIR/R01-PLAN.md" ]; then
+  pass "phase dir still renames PLAN-01.md → 01-PLAN.md"
+else
+  fail "phase regression rename — rc=$RC, files: $(ls "$TDIR"), output: $OUTPUT"
 fi
 
 # Test 11: empty/missing dir exits 0
@@ -548,6 +789,16 @@ if grep -q 'normalize-plan-filenames.sh' "$SCRIPT_DIR/commands/vibe.md" && grep 
   pass "vibe.md contains normalization guard"
 else
   fail "vibe.md missing normalization guard"
+fi
+
+# Test 45b: vibe.md guards QA existing-plan recovery normalizer
+RECOVERY_BLOCK=$(awk '/Existing-plan recovery before spawning Lead/{flag=1} flag{print} flag && /If the canonical/ {exit}' "$SCRIPT_DIR/commands/vibe.md")
+if echo "$RECOVERY_BLOCK" | grep -q 'NORM_SCRIPT=' \
+  && echo "$RECOVERY_BLOCK" | grep -Fq 'if [ -f "$NORM_SCRIPT" ]; then' \
+  && echo "$RECOVERY_BLOCK" | grep -Fq 'bash "$NORM_SCRIPT" "{round_dir}"'; then
+  pass "vibe.md guards existing-plan recovery normalizer"
+else
+  fail "vibe.md missing guarded existing-plan recovery normalizer"
 fi
 
 # Test 46: status.md contains normalization guard

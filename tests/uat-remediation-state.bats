@@ -4,6 +4,7 @@ load test_helper
 
 setup() {
   setup_temp_dir
+  TEST_TEMP_DIR="$(cd "$TEST_TEMP_DIR" && pwd -P)"
   PHASE_DIR="$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
   mkdir -p "$PHASE_DIR"
 }
@@ -518,6 +519,24 @@ EOF
   sidechain_phase_dir="$sidechain_dir/.vbw-planning/phases/01-absolute"
 
   run bash -c 'cd "$1" && bash "$2/uat-remediation-state.sh" get-or-init "$3" "major"' _ "$sidechain_dir" "$SCRIPTS_DIR" "$sidechain_phase_dir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round_dir=$host_phase_dir/remediation/uat/round-01"* ]]
+  [[ "$output" == *"summary_path=$host_phase_dir/remediation/uat/round-01/R01-SUMMARY.md"* ]]
+  [ -f "$host_phase_dir/remediation/uat/.uat-remediation-stage" ]
+  [ ! -d "$sidechain_phase_dir/remediation" ]
+}
+
+@test "get-or-init maps absolute Claude sidechain phase dir back to host from host cwd" {
+  local host_root host_phase_dir sidechain_dir sidechain_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-host-cwd" "$host_root/.claude/worktrees/agent-test/.vbw-planning/phases/01-host-cwd"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-host-cwd"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+  sidechain_phase_dir="$sidechain_dir/.vbw-planning/phases/01-host-cwd"
+
+  run bash -c 'cd "$1" && bash "$2/uat-remediation-state.sh" get-or-init "$3" "major"' _ "$host_root" "$SCRIPTS_DIR" "$sidechain_phase_dir"
   [ "$status" -eq 0 ]
   [[ "$output" == *"round_dir=$host_phase_dir/remediation/uat/round-01"* ]]
   [[ "$output" == *"summary_path=$host_phase_dir/remediation/uat/round-01/R01-SUMMARY.md"* ]]
