@@ -90,6 +90,48 @@ CONTRACT
   [ "$status" -eq 0 ]
 }
 
+@test "file-guard: scout env role blocks non-planning writes before phases exist" {
+  cd "$TEST_TEMP_DIR"
+  rm -rf "$TEST_TEMP_DIR/.vbw-planning/phases"
+
+  INPUT='{"tool_name":"Write","tool_input":{"file_path":"src/outside.js","content":"bad"}}'
+  run bash -c "VBW_AGENT_ROLE=scout echo '$INPUT' | VBW_AGENT_ROLE=scout bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"read-only outside .vbw-planning/"* ]]
+}
+
+@test "file-guard: active scout marker blocks non-planning writes before phases exist from nested cwd" {
+  rm -rf "$TEST_TEMP_DIR/.vbw-planning/phases"
+  mkdir -p "$TEST_TEMP_DIR/packages/app"
+  echo "1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  echo "scout" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
+  cd "$TEST_TEMP_DIR/packages/app"
+
+  INPUT='{"tool_name":"Write","tool_input":{"file_path":"src/outside.js","content":"bad"}}'
+  run bash -c "unset VBW_AGENT_ROLE; echo '$INPUT' | bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"read-only outside .vbw-planning/"* ]]
+}
+
+@test "file-guard: scout allows planning writes before phases exist" {
+  cd "$TEST_TEMP_DIR"
+  rm -rf "$TEST_TEMP_DIR/.vbw-planning/phases"
+
+  INPUT='{"tool_name":"Write","tool_input":{"file_path":".vbw-planning/research.md","content":"ok"}}'
+  run bash -c "VBW_AGENT_ROLE=scout echo '$INPUT' | VBW_AGENT_ROLE=scout bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 0 ]
+}
+
+@test "file-guard: scout fails open when no VBW config or phases exist" {
+  NON_VBW="$BATS_TEST_TMPDIR/non-vbw-no-config"
+  mkdir -p "$NON_VBW"
+  cd "$NON_VBW"
+
+  INPUT='{"tool_name":"Write","tool_input":{"file_path":"src/outside.js","content":"bad"}}'
+  run bash -c "VBW_AGENT_ROLE=scout echo '$INPUT' | VBW_AGENT_ROLE=scout bash '$SCRIPTS_DIR/file-guard.sh'"
+  [ "$status" -eq 0 ]
+}
+
 @test "file-guard: allows dev to write contract-scoped files" {
   cd "$TEST_TEMP_DIR"
   create_plan_with_files

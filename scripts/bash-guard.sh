@@ -150,27 +150,27 @@ check_scout_command() {
     block_scout_command "tee can write files"
   fi
 
+  if echo "$command" | grep -iqE '(^|[[:space:];|&])((npm|pnpm|yarn|bun)([[:space:]]+(--prefix|--dir|--cwd|-C)(=|[[:space:]]+)[^[:space:];|&]+|[[:space:]]+--[[:alnum:]-]+(=[^[:space:];|&]+)?)*[[:space:]]+(install|i|ci|add|update|upgrade|remove|uninstall)|pip3?[[:space:]]+install|bundle[[:space:]]+install|gem[[:space:]]+install|cargo[[:space:]]+(install|update|add)|go[[:space:]]+get|brew[[:space:]]+(install|upgrade|uninstall)|apt(-get)?[[:space:]]+(install|upgrade|remove)|composer[[:space:]]+(install|update|require|remove))([[:space:]]|$)'; then
+    block_scout_command "package or dependency mutation command"
+  fi
+
   if echo "$command" | grep -iqE '(^|[[:space:];|&])(rm|mv|cp|mkdir|rmdir|touch|chmod|chown|ln|install|truncate)([[:space:]]|$)'; then
     block_scout_command "filesystem mutation command"
   fi
 
-  if echo "$command" | grep -iqE '(^|[[:space:];|&])sed[[:space:]][^;|&]*[[:space:]]-i([^[:alnum:]]|$)|(^|[[:space:];|&])perl[[:space:]][^;|&]*[[:space:]]-p?i([^[:alnum:]]|$)'; then
+  if echo "$command" | grep -iqE '(^|[[:space:];|&])sed[[:space:]][^;|&]*-[^[:space:];|&]*i([^[:alnum:]]|$)|(^|[[:space:];|&])perl[[:space:]][^;|&]*-[^[:space:];|&]*p?i([^[:alnum:]]|$)'; then
     block_scout_command "in-place edit command"
   fi
 
-  if echo "$command" | grep -iqE '(^|[[:space:];|&])git[[:space:]]+(add|commit|push|reset|checkout|switch|merge|rebase|cherry-pick|tag|branch|clean|stash|restore|rm|mv|pull|fetch)([[:space:]]|$)'; then
+  if echo "$command" | grep -iqE '(^|[[:space:];|&])git([[:space:]]+(-C|-c|--git-dir|--work-tree|--namespace)(=|[[:space:]]+)[^[:space:];|&]+|[[:space:]]+(--no-pager|--bare|--literal-pathspecs|--[[:alnum:]-]+(=[^[:space:];|&]+)?))*[[:space:]]+(add|commit|push|reset|checkout|switch|merge|rebase|cherry-pick|tag|branch|clean|stash|restore|rm|mv|pull|fetch)([[:space:]]|$)'; then
     block_scout_command "git state mutation command"
-  fi
-
-  if echo "$command" | grep -iqE '(^|[[:space:];|&])((npm|pnpm|yarn|bun)[[:space:]]+(install|i|ci|add|update|upgrade|remove|uninstall)|pip3?[[:space:]]+install|bundle[[:space:]]+install|gem[[:space:]]+install|cargo[[:space:]]+(install|update|add)|go[[:space:]]+get|brew[[:space:]]+(install|upgrade|uninstall)|apt(-get)?[[:space:]]+(install|upgrade|remove)|composer[[:space:]]+(install|update|require|remove))([[:space:]]|$)'; then
-    block_scout_command "package or dependency mutation command"
   fi
 
   if echo "$command" | grep -iqE '(^|[[:space:];|&])((systemctl|service|launchctl)[[:space:]]+(start|stop|restart|reload)|brew[[:space:]]+services[[:space:]]+(start|stop|restart)|docker([[:space:]]+compose)?[[:space:]]+(up|down|rm|rmi|volume|system|network))([[:space:]]|$)'; then
     block_scout_command "service/container mutation command"
   fi
 
-  if echo "$command" | grep -iqE '(^|[[:space:];|&])curl([^;|&]*)(-X[[:space:]]*(POST|PUT|PATCH|DELETE)|-X(POST|PUT|PATCH|DELETE)|--request(=|[[:space:]]+)(POST|PUT|PATCH|DELETE)|--data($|[=[:space:]-])|--data-[[:alnum:]-]+(=|[[:space:]]|$)|--json(=|[[:space:]]|$)|-d($|[[:space:]]|[^[:space:];|&])|--form(=|[[:space:]]|$)|-F($|[[:space:]]|[^[:space:];|&]))'; then
+  if echo "$command" | grep -iqE '(^|[[:space:];|&])curl([^;|&]*)(-X[[:space:]]*(POST|PUT|PATCH|DELETE)|-X(POST|PUT|PATCH|DELETE)|--request(=|[[:space:]]+)(POST|PUT|PATCH|DELETE)|--data($|[=[:space:]-])|--data-[[:alnum:]-]+(=|[[:space:]]|$)|--json(=|[[:space:]]|$)|-d($|[[:space:]]|[^[:space:];|&])|--form(=|[[:space:]]|$)|-F($|[[:space:]]|[^[:space:];|&])|-T($|[[:space:]]|[^[:space:];|&])|--upload-file(=|[[:space:]]|$))'; then
     block_scout_command "mutating curl request"
   fi
 

@@ -559,6 +559,22 @@ setup() {
   [[ "$output" == *"filesystem mutation"* ]]
 }
 
+@test "bash-guard: scout blocks in-place edit syntax variants" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-in-place-edit"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "sed -i 's/a/b/' file.txt" \
+    "sed -i'' 's/a/b/' file.txt" \
+    "perl -pi -e 's/a/b/' file.txt"; do
+    TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
+    run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"in-place edit command"* ]]
+  done
+}
+
 @test "bash-guard: scout blocks package mutation aliases" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-package-mutation"
   mkdir -p "$TEST_PROJECT/.vbw-planning"
@@ -576,6 +592,38 @@ setup() {
   done
 }
 
+@test "bash-guard: scout blocks global-option git mutations" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-git-global-options"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "git -C . add file.txt" \
+    "git -c user.name=x commit -m test"; do
+    TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
+    run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"git state mutation"* ]]
+  done
+}
+
+@test "bash-guard: scout blocks package-manager option-prefixed mutations" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-package-options"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    "pnpm --dir app add lodash" \
+    "npm --prefix app install" \
+    "yarn --cwd app add lodash" \
+    "bun --cwd app add lodash"; do
+    TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
+    run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"package or dependency mutation"* ]]
+  done
+}
+
 @test "bash-guard: scout blocks curl mutation syntax variants" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-curl-mutation"
   mkdir -p "$TEST_PROJECT/.vbw-planning"
@@ -585,7 +633,9 @@ setup() {
     "curl --request=POST https://example.test" \
     "curl -XPOST https://example.test" \
     "curl -dfoo https://example.test" \
-    "curl -Ffile=@x https://example.test"; do
+    "curl -Ffile=@x https://example.test" \
+    "curl -T file https://example.test" \
+    "curl --upload-file=file https://example.test"; do
     TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')
     run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
     [ "$status" -eq 2 ]
@@ -600,6 +650,7 @@ setup() {
 
   for command in \
     "curl https://example.test/status" \
+    "git -C . status --short" \
     "npm test" \
     "npm run inspect"; do
     TEST_INPUT=$(jq -n --arg cmd "$command" '{"tool_input":{"command":$cmd}}')

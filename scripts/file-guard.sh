@@ -68,7 +68,7 @@ to_abs_path() {
 find_project_root() {
   local dir="$PWD"
   while [ "$dir" != "/" ]; do
-    if [ -d "$dir/.vbw-planning/phases" ]; then
+    if [ -f "$dir/.vbw-planning/config.json" ] || [ -d "$dir/.vbw-planning/phases" ]; then
       echo "$dir"
       return 0
     fi
@@ -77,7 +77,7 @@ find_project_root() {
   return 1
 }
 
-if [ "$_FG_SHARED_ROOT_RESOLVED" = "true" ] && [ -n "${VBW_CONFIG_ROOT:-}" ] && [ -n "${VBW_PLANNING_DIR:-}" ] && [ -d "$VBW_PLANNING_DIR/phases" ]; then
+if [ "$_FG_SHARED_ROOT_RESOLVED" = "true" ] && [ -n "${VBW_CONFIG_ROOT:-}" ] && [ -n "${VBW_PLANNING_DIR:-}" ] && [ -f "$VBW_PLANNING_DIR/config.json" ]; then
   PROJECT_ROOT="$VBW_CONFIG_ROOT"
   PHASES_DIR="$VBW_PLANNING_DIR/phases"
 else
