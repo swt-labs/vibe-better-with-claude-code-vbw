@@ -558,6 +558,26 @@ run_scout_bash_guard() {
   [[ "$output" == *"eval command"* ]]
 }
 
+@test "bash-guard: scout blocks process substitution containers" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-process-substitution"
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  for command in \
+    'cat <(touch /tmp/vbw-scout-proc-subst)' \
+    'cat <(git add src/app.js)' \
+    'cat <(rm -rf /tmp/vbw-scout-nope)' \
+    'cat <(cat .env)' \
+    'diff <(git status --short) <(git log --oneline -1)' \
+    'cat <(curl -XPOST https://example.test)' \
+    'cat <(gh api --method POST /repos/o/r/issues)' \
+    'cat >(touch /tmp/vbw-scout-proc-subst)'; do
+    run_scout_bash_guard "$TEST_PROJECT" "$command"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"process substitution"* ]]
+  done
+}
+
 @test "bash-guard: scout allows direct helper scripts without shell -c" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-direct-helper"
   mkdir -p "$TEST_PROJECT/.vbw-planning"
@@ -576,7 +596,7 @@ run_scout_bash_guard() {
   mkdir -p "$TEST_PROJECT/.vbw-planning"
   echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
 
-  command="grep -E 'eval|bash -c|\$(touch out)|\`touch out\`' response.txt"
+  command="grep -E 'eval|bash -c|\$(touch out)|\`touch out\`|<(touch out)|>(touch out)' response.txt"
   run_scout_bash_guard "$TEST_PROJECT" "$command"
   [ "$status" -eq 0 ]
 }
@@ -946,6 +966,20 @@ run_scout_bash_guard() {
   [[ "$output" == *"sensitive file read"* ]]
 }
 
+@test "bash-guard: scout process substitution blocks survive destructive override" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-process-substitution-override"
+  local test_input
+
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  test_input=$(jq -n --arg cmd 'cat <(touch /tmp/vbw-scout-proc-subst)' '{"tool_input":{"command":$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | VBW_AGENT_ROLE=scout VBW_ALLOW_DESTRUCTIVE=1 bash "$3"' _ \
+    "$TEST_PROJECT" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"process substitution"* ]]
+}
+
 @test "bash-guard: scout read-only blocks survive bash_guard false" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-config-off"
   mkdir -p "$TEST_PROJECT/.vbw-planning"
@@ -955,6 +989,20 @@ run_scout_bash_guard() {
   run bash -c "cd '$TEST_PROJECT' && printf '%s\n' '$TEST_INPUT' | VBW_AGENT_ROLE=scout bash '$PROJECT_ROOT/scripts/bash-guard.sh'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"git state mutation"* ]]
+}
+
+@test "bash-guard: scout process substitution blocks survive bash_guard false" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-process-substitution-config-off"
+  local test_input
+
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":false}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  test_input=$(jq -n --arg cmd 'cat <(git add src/app.js)' '{"tool_input":{"command":$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | VBW_AGENT_ROLE=scout bash "$3"' _ \
+    "$TEST_PROJECT" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"process substitution"* ]]
 }
 
 @test "bash-guard: scout role can be detected from active-agent marker in nested cwd" {
@@ -982,6 +1030,32 @@ run_scout_bash_guard() {
     "$TEST_PROJECT/packages/app" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
   [ "$status" -eq 2 ]
   [[ "$output" == *"nested shell execution"* ]]
+}
+
+@test "bash-guard: scout process substitution blocks use active role markers" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-process-substitution-markers"
+  local test_input
+
+  mkdir -p "$TEST_PROJECT/.vbw-planning" "$TEST_PROJECT/packages/app"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+
+  echo scout > "$TEST_PROJECT/.vbw-planning/.active-agent"
+  test_input=$(jq -n --arg cmd 'cat <(touch /tmp/vbw-scout-proc-subst)' '{"tool_input":{"command":$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
+    "$TEST_PROJECT/packages/app" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"process substitution"* ]]
+
+  rm "$TEST_PROJECT/.vbw-planning/.active-agent"
+  cat > "$TEST_PROJECT/.vbw-planning/.active-agent-roles" <<'EOF'
+scout 1
+dev 1
+EOF
+  test_input=$(jq -n --arg cmd 'cat <(git add src/app.js)' '{"tool_input":{"command":$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
+    "$TEST_PROJECT/packages/app" "$test_input" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"process substitution"* ]]
 }
 
 @test "bash-guard: any active scout role set triggers conservative read-only fallback" {

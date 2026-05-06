@@ -242,6 +242,58 @@ command_has_command_substitution() {
   return 1
 }
 
+command_has_process_substitution() {
+  local command="$1"
+  local i=0 len ch next in_single=0 in_double=0 escaped=0
+
+  len=${#command}
+  while [ "$i" -lt "$len" ]; do
+    ch="${command:$i:1}"
+
+    if [ "$escaped" -eq 1 ]; then
+      escaped=0
+      i=$((i + 1))
+      continue
+    fi
+
+    if [ "$in_single" -eq 1 ]; then
+      [ "$ch" = "'" ] && in_single=0
+      i=$((i + 1))
+      continue
+    fi
+
+    if [ "$in_double" -eq 1 ]; then
+      if [ "$ch" = "\\" ]; then
+        escaped=1
+      elif [ "$ch" = '"' ]; then
+        in_double=0
+      fi
+      i=$((i + 1))
+      continue
+    fi
+
+    case "$ch" in
+      "'")
+        in_single=1
+        ;;
+      '"')
+        in_double=1
+        ;;
+      "\\")
+        escaped=1
+        ;;
+      "<"|">")
+        next="${command:$((i + 1)):1}"
+        [ "$next" = "(" ] && return 0
+        ;;
+    esac
+
+    i=$((i + 1))
+  done
+
+  return 1
+}
+
 command_without_quoted_text() {
   local command="$1"
   local i=0 len ch out="" in_single=0 in_double=0 escaped=0
@@ -461,6 +513,10 @@ check_scout_command() {
 
   if command_has_command_substitution "$command"; then
     block_scout_command "command substitution"
+  fi
+
+  if command_has_process_substitution "$command"; then
+    block_scout_command "process substitution"
   fi
 
   if command_has_unquoted_eval "$command"; then
