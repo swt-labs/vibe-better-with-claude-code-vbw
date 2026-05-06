@@ -316,6 +316,8 @@ simulate_session_stop() {
   # Create all the transient files session-stop should clean
   echo "dev" > ".vbw-planning/.active-agent"
   echo "2" > ".vbw-planning/.active-agent-count"
+  echo "scout 1" > ".vbw-planning/.active-agent-roles"
+  echo "12345 scout" > ".vbw-planning/.active-agent-role-pids"
   mkdir -p ".vbw-planning/.active-agent-count.lock"
   echo "12345 %1" > ".vbw-planning/.agent-panes"
 
@@ -323,8 +325,68 @@ simulate_session_stop() {
 
   [ ! -f ".vbw-planning/.active-agent" ]
   [ ! -f ".vbw-planning/.active-agent-count" ]
+  [ ! -f ".vbw-planning/.active-agent-roles" ]
+  [ ! -f ".vbw-planning/.active-agent-role-pids" ]
   [ ! -d ".vbw-planning/.active-agent-count.lock" ]
   [ ! -f ".vbw-planning/.agent-panes" ]
+}
+
+@test "tmux-watchdog detach cleanup removes stale active-agent role markers" {
+  cd "$TEST_TEMP_DIR"
+  local fakebin dead_pid test_input
+  fakebin="$TEST_TEMP_DIR/fakebin"
+  mkdir -p "$fakebin" ".vbw-planning/.active-agent-count.lock" ".vbw-planning/.compacting"
+
+  cat > "$fakebin/tmux" <<'EOF'
+#!/bin/bash
+case "$1" in
+  has-session)
+    exit 0
+    ;;
+  list-clients)
+    exit 0
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+EOF
+  chmod +x "$fakebin/tmux"
+
+  cat > "$fakebin/sleep" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$fakebin/sleep"
+
+  dead_pid=$(get_dead_pid) || fail "get_dead_pid failed"
+  echo "scout" > ".vbw-planning/.active-agent"
+  echo "2" > ".vbw-planning/.active-agent-count"
+  cat > ".vbw-planning/.active-agent-roles" <<'EOF'
+scout 1
+dev 1
+EOF
+  echo "$dead_pid scout" > ".vbw-planning/.active-agent-role-pids"
+  echo "$dead_pid" > ".vbw-planning/.agent-pids"
+  echo "$dead_pid %1" > ".vbw-planning/.agent-panes"
+  echo '{"pid":999999,"started_at":1,"agent_name":"stale"}' > ".vbw-planning/.compacting/stale.json"
+
+  run env PATH="$fakebin:$PATH" VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/tmux-watchdog.sh" test-session
+  [ "$status" -eq 0 ]
+
+  [ ! -f ".vbw-planning/.active-agent" ]
+  [ ! -f ".vbw-planning/.active-agent-count" ]
+  [ ! -f ".vbw-planning/.active-agent-roles" ]
+  [ ! -f ".vbw-planning/.active-agent-role-pids" ]
+  [ ! -d ".vbw-planning/.active-agent-count.lock" ]
+  [ ! -f ".vbw-planning/.agent-pids" ]
+  [ ! -f ".vbw-planning/.agent-panes" ]
+  [ ! -d ".vbw-planning/.compacting" ]
+  [ -f ".vbw-planning/.vbw-session" ]
+
+  test_input='{"tool_input":{"command":"cat .env"}}'
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s\n' '$test_input' | bash '$SCRIPTS_DIR/bash-guard.sh'"
+  [ "$status" -eq 0 ]
 }
 
 @test "session-stop preserves live execute delegated workflow marker" {

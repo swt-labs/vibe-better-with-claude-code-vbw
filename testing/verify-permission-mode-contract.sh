@@ -134,7 +134,7 @@ README_SCOUT_DENIED_NORMALIZED=$(normalize_tool_list "$README_SCOUT_DENIED_CELL"
 if [[ -n "$README_DEV_ROW" ]]; then
   pass "README: Dev permission row exists"
 else
-  fail "README: Dev permission row exists"
+  fail "README: Dev permission row missing"
 fi
 
 if [ -n "$DEV_DISALLOWED_FRONTMATTER" ]; then
@@ -146,7 +146,7 @@ fi
 if [[ -n "$README_SCOUT_ROW" ]]; then
   pass "README: Scout permission row exists"
 else
-  fail "README: Scout permission row exists"
+  fail "README: Scout permission row missing"
 fi
 
 if [ -n "$SCOUT_DISALLOWED_FRONTMATTER" ]; then
