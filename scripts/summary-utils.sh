@@ -1,9 +1,12 @@
 #!/bin/bash
 # summary-utils.sh -- shared helpers for status-aware SUMMARY.md checking
 # Source this from scripts that need status-based completion detection.
-# All functions are portable bash (3.2+) with no external process dependencies
-# on the hot path. This keeps summary counting stable under heavily parallel
-# BATS runs where frequent fork/exec can intermittently fail.
+# Core status/counting helpers are portable bash (3.2+) and avoid external
+# process dependencies on the status-counting hot path. This keeps summary
+# counting stable under heavily parallel BATS runs where frequent fork/exec can
+# intermittently fail. Deviation extraction helpers intentionally use awk for
+# deterministic parsing, and source-plan candidate helpers use find plus
+# sort/sort -V for deterministic scanning.
 
 trim_summary_value() {
   local value="$1"

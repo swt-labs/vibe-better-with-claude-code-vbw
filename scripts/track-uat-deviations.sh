@@ -54,11 +54,21 @@ registry_path() {
   printf '%s/remediation/uat/accepted-deviations.json\n' "${phase_dir%/}"
 }
 
+require_jq_for_registry() {
+  local message="${1:-jq not available; accepted deviation registry operation skipped}"
+  if command -v jq >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "track-uat-deviations: jq not available; $message" >&2
+  return 1
+}
+
 accepted_signatures() {
   local phase_dir registry
   phase_dir="${1:-}"
   registry=$(registry_path "$phase_dir")
   [ -f "$registry" ] || return 0
+  require_jq_for_registry "cannot read accepted deviation registry; continuing without accepted signatures" || return 0
   jq -r '.accepted[]?.signature // empty' "$registry" 2>/dev/null || true
 }
 
@@ -68,6 +78,7 @@ record_from_uat() {
   uat_file="${2:-}"
   [ -d "$phase_dir" ] || { echo "track-uat-deviations: phase dir not found: $phase_dir" >&2; exit 1; }
   [ -f "$uat_file" ] || { echo "track-uat-deviations: UAT file not found: $uat_file" >&2; exit 1; }
+  require_jq_for_registry "skipping accepted deviation registry sync; UAT result remains valid" || return 0
   registry=$(registry_path "$phase_dir")
   registry_dir=$(dirname "$registry")
   mkdir -p "$registry_dir"
