@@ -223,3 +223,31 @@ EOF
   result=$(extract_status_value "$PHASE_DIR/03-UAT.md")
   [ "$result" = "issues_found" ]
 }
+
+@test "extract_round_issue_ids: includes PR-prefixed remediation checkpoints" {
+  local uat="$TEST_TEMP_DIR/pr-uat.md"
+  cat > "$uat" <<'EOF'
+---
+status: issues_found
+---
+
+## Tests
+
+### PR03-T01: Remediation checkpoint
+
+- **Result:** issue
+
+### D01: Accepted deviation
+
+- **Result:** pass
+
+### P03-T02: Standard checkpoint
+
+- **Result:** failed
+EOF
+
+  result=$(extract_round_issue_ids "$uat")
+  [[ "$result" == *"PR03-T01"* ]]
+  [[ "$result" == *"P03-T02"* ]]
+  [[ "$result" != *"D01"* ]]
+}

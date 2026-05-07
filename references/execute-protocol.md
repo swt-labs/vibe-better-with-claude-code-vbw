@@ -555,39 +555,20 @@ for summary_file in {phase-dir}/*-SUMMARY.md; do
   [ -f "$summary_file" ] || continue
   plan_id=$(basename "$summary_file" | sed 's/-SUMMARY\.md$//')
 
-  # Extract deviations from YAML frontmatter
-  devs=$(awk '
-    BEGIN { in_fm=0; in_dev=0 }
-    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-    in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && /^deviations:/ { in_dev=1; next }
-    in_fm && in_dev && /^[[:space:]]+- / {
-      line=$0; sub(/^[[:space:]]+- /, "", line)
-      gsub(/^"/, "", line); gsub(/"$/, "", line)
-      items = items (items ? "; " : "") line; next
-    }
-    in_fm && in_dev && /^[^[:space:]]/ { exit }
-    END { print items }
-  ' "$summary_file" 2>/dev/null)
-
-  # Fallback: extract deviations from body ## Deviations section
-  # Dev agents frequently write deviations only in the body, omitting
-  # the YAML frontmatter array. This fallback ensures QA always receives them.
-  if [ -z "$devs" ]; then
-    devs=$(awk '
-      /^## Deviations/ { found=1; next }
-      found && /^## / { exit }
-      found && /^[[:space:]]*$/ { next }
-      found && /^- / {
-        line=$0; sub(/^- /, "", line)
-        if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
-        sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
-        lc = tolower(line)
-        if (lc ~ /^none[. ]/ || lc == "none" || lc ~ /^n\/a[. ]/ || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
-        items = items (items ? "; " : "") line
-      }
+  # Extract deviations from YAML frontmatter AND the body ## Deviations section.
+  # The shared helper merges both sources in stable order, drops placeholder
+  # "none" values, and de-duplicates exact duplicates. Frontmatter must not
+  # mask body-only deviation detail.
+  devs=""
+  if [ -f "${VBW_PLUGIN_ROOT}/scripts/summary-utils.sh" ]; then
+    # shellcheck source=/dev/null
+    . "${VBW_PLUGIN_ROOT}/scripts/summary-utils.sh"
+  fi
+  if type extract_summary_deviations >/dev/null 2>&1; then
+    devs=$(extract_summary_deviations "$summary_file" 2>/dev/null | awk '
+      NF { items = items (items ? "; " : "") $0 }
       END { print items }
-    ' "$summary_file" 2>/dev/null)
+    ')
   fi
 
   # Extract pre-existing issues from canonical SUMMARY.md frontmatter first.
@@ -885,10 +866,27 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
 ```
 
 1. Check if `{phase-dir}/${UAT_NAME}` already exists with `status: complete`. If so: "○ UAT already complete" and proceed to Step 5.
-2. Generate test scenarios from completed SUMMARY.md files:
-   - Read each SUMMARY.md: extract what was built, files modified, must_haves
+2. Generate test scenarios from the compiled UAT verification context:
+  ```bash
+  UAT_VERIFY_CONTEXT=$(bash "${VBW_PLUGIN_ROOT}/scripts/compile-verify-context-for-uat.sh" "{phase-dir}" 2>/dev/null || true)
+  ```
+  Treat this compact context as the authoritative UAT input. It includes merged PLAN/SUMMARY details, remediation scope, the correct `uat_path`, and any unsuppressed `SUMMARY_DEVIATION:` records. Do not independently re-read individual SUMMARY.md files to build UAT scope.
+  - Parse `verify_scope=full` vs `verify_scope=remediation round=RR` from the compiled context.
+  - Parse `uat_path=` and write the UAT file there. For full scope this is usually `${UAT_NAME}`; for remediation it is the round-scoped UAT path.
+  - Parse each `SUMMARY_DEVIATION:` record (`signature`, `source_plan`, `source_path`, `text`). These records are already filtered against `{phase-dir}/remediation/uat/accepted-deviations.json`; do not re-prefill accepted records.
+
+  **Summary deviation review prefill (NON-NEGOTIABLE):** Before generated plan checkpoints, create one `D{NN}` review checkpoint for each `SUMMARY_DEVIATION:` record, in the same stable order.
+  - These are review checkpoints, not blocking issues. Start `**Result:**` empty and leave `issues: 0` in the initial frontmatter unless the human later rejects a deviation.
+  - Write them before any generated `P...` or `PR...` checkpoints.
+  - Include identity metadata exactly in the entry: `**Source:** Summary deviation review`, `**Deviation Signature:** {signature}`, `**Source Plan:** {source_plan}`, `**Source Summary:** {source_path}`, and `**Deviation:** {text}`.
+  - Use `**Expected:** Human confirms whether this documented deviation is acceptable for this phase.`
+  - Include the `D{NN}` entries in `total_tests`; they remain incomplete until the human answers.
+
+  Generate plan/remediation scenarios from the compiled context:
+  - Use each context record's built work, files modified, and must_haves
    - Generate 1-3 test scenarios per plan requiring HUMAN judgment — things only a person can verify
    - Minimum 1 test per plan. Test IDs: `P{plan}-T{NN}`
+  - In remediation re-verification mode, use remediation checkpoint IDs `PR{RR}-T{NN}` (for example, `PR03-T01`) and focus on whether the original UAT issue was fixed.
 
    **UAT tests must require human judgment.** Good examples:
    - Open the app and navigate to screen X — does it display Y correctly?
@@ -921,7 +919,7 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
 
    If a plan's work is purely internal (refactor, test infrastructure, script changes) with no user-facing behavior, generate a single lightweight checkpoint asking the user to confirm the app still works as expected from their perspective, rather than asking them to run automated checks.
 
-   - Write initial `${UAT_NAME}` in phase dir with all tests (Result fields empty)
+  - Write initial UAT file at `{phase-dir}/{uat_path}` with all tests (prefilled `D{NN}` review checkpoints first, then generated `P...` or `PR...` checkpoints; all Result fields empty)
 3. **CHECKPOINT loop — present ONE test at a time, wait for user response:**
 
    **This is a conversational loop. Do NOT present all tests at once. Do NOT end the session after presenting a test. Do NOT proceed to Step 5 until all tests are complete.**
@@ -951,24 +949,32 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
 
    The tool automatically provides a freeform "Other" option for the user to describe issues.
 
+  **Summary-deviation checkpoint prompt:** If the current checkpoint is a prefilled `D{NN}` summary-deviation review, show the deviation text and source metadata instead of a product scenario. Ask whether the documented deviation is acceptable for this phase. Interpret responses as:
+  - `Pass` → accept the deviation as a non-blocking process exception for this phase.
+  - `Skip` → skip review for now; do not record acceptance.
+  - Freeform/Other → record the response as a UAT issue if it explains why the deviation is unacceptable or reveals a product defect.
+
    **STOP HERE.** Wait for the AskUserQuestion response. Do NOT continue to the next test or to Step 5.
 
    **After the user responds:**
 
    Map the AskUserQuestion response:
 
-   - **"Pass" selected:** record pass
-   - **"Skip" selected:** record skip
+  - **"Pass" selected:** record pass. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** accepted-process-exception` and preserve its deviation metadata.
+  - **"Skip" selected:** record skip. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** skipped-by-user` and do not record acceptance.
    - **Freeform text (via "Other"):** Apply case-insensitive, trimmed string matching:
      - **Skip words** (skip, skipped, next, n/a, na, later, defer): record skip
-     - **Anything else**: treat the entire response text as an issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major)
-   - Update `${UAT_NAME}` immediately (persist to disk)
+     - **Anything else**: treat the entire response text as an issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major). For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** rejected-by-user`.
+   - If a pass/skip response includes a separate defect observation unrelated to the current checkpoint, append it as a discovered UAT issue. Before choosing the ID, scan the current UAT file at `{phase-dir}/{uat_path}` in both initial and resumed sessions for existing `D[0-9]+` headings, including prefilled summary-deviation review entries and issues appended earlier in the same session; allocate highest existing + 1 (`D03` after prefilled `D01`/`D02`) and never renumber existing entries.
+   - Update `{phase-dir}/{uat_path}` immediately (persist to disk)
+   - If the response accepts a prefilled summary-deviation checkpoint, run `bash "${VBW_PLUGIN_ROOT}/scripts/track-uat-deviations.sh" record-from-uat "{phase-dir}" "{phase-dir}/{uat_path}"` after writing the UAT file. The helper is idempotent; never hand-edit `accepted-deviations.json`.
    - Display progress: `✓ {completed}/{total} tests`
    - If more tests remain: present the NEXT test using the same CHECKPOINT format with AskUserQuestion, then **STOP and wait again**
    - If all tests done: go to step 4
 
 4. After all tests complete:
    - Update UAT.md frontmatter (status, completed date, final counts)
+  - Run `bash "${VBW_PLUGIN_ROOT}/scripts/track-uat-deviations.sh" record-from-uat "{phase-dir}" "{phase-dir}/{uat_path}"` after finalization so accepted summary-deviation signatures are available to suppress future duplicate prefill.
    - If no issues: proceed to Step 5
    - If issues found: display issue summary, suggest `/vbw:fix`, STOP (do not proceed to Step 5)
 

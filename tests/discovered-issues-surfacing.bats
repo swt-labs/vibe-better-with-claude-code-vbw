@@ -705,8 +705,39 @@ path_b_debug_block() {
   sed -n '/\*\*"Skip" selected:\*\*/,/\*\*Freeform/p' "$PROJECT_ROOT/commands/verify.md" | grep -qi 'discovered issue\|Step 6a\|observation'
 }
 
-@test "verify command D{NN} resume scans existing entries" {
-  grep -qi 'scan existing.*D{NN}\|highest existing number\|max+1' "$PROJECT_ROOT/commands/verify.md"
+@test "verify command D{NN} allocation scans current file for every append" {
+  local section
+  section=$(sed -n '/### 7a\. Discovered issue handling/,/### 8\. After each response/p' "$PROJECT_ROOT/commands/verify.md")
+
+  grep -qi 'Before appending any discovered issue' <<< "$section"
+  grep -q '{phase-dir}/{uat_path}' <<< "$section"
+  grep -qi 'initial and resumed sessions' <<< "$section"
+  grep -Fq 'D[0-9]+' <<< "$section"
+  grep -q 'prefilled summary-deviation review entries' <<< "$section"
+  grep -q 'already appended earlier in the same session' <<< "$section"
+  grep -qi 'highest existing + 1' <<< "$section"
+  grep -q 'D01' <<< "$section"
+  grep -q 'D02' <<< "$section"
+  grep -q 'D03' <<< "$section"
+  grep -qi 'Never renumber' <<< "$section"
+  ! grep -qi 'On resumed sessions' <<< "$section"
+}
+
+@test "execute-protocol UAT D{NN} allocation scans current file for every append" {
+  local section
+  section=$(sed -n '/### Step 4\.5: Human acceptance testing (UAT)/,/### Step 5:/p' "$PROJECT_ROOT/references/execute-protocol.md")
+
+  grep -qi 'separate defect observation' <<< "$section"
+  grep -q '{phase-dir}/{uat_path}' <<< "$section"
+  grep -qi 'initial and resumed sessions' <<< "$section"
+  grep -Fq 'D[0-9]+' <<< "$section"
+  grep -q 'prefilled summary-deviation review entries' <<< "$section"
+  grep -q 'appended earlier in the same session' <<< "$section"
+  grep -qi 'highest existing + 1' <<< "$section"
+  grep -q 'D01' <<< "$section"
+  grep -q 'D02' <<< "$section"
+  grep -q 'D03' <<< "$section"
+  grep -qi 'never renumber' <<< "$section"
 }
 
 @test "dev agent DEVN-05 has priority rule for overlapping uncertainty" {

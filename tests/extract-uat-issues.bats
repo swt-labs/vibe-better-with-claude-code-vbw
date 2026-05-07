@@ -115,6 +115,35 @@ issues: 3
   [[ "${lines[3]}" == "D1|major|Found during testing|1" ]]
 }
 
+@test "extract-uat-issues: PR-prefixed remediation checkpoint is parsed" {
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### PR03-T01: Remediation behavior
+
+- **Result:** issue
+- **Issue:**
+  - Description: Remediation did not fix LCID fallback
+  - Severity: major
+
+### D01: Accepted deviation review
+
+- **Result:** pass
+- **Disposition:** accepted-process-exception'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_issues_total=1"* ]]
+  [[ "${lines[1]}" == "PR03-T01|major|Remediation did not fix LCID fallback|1" ]]
+}
+
 @test "extract-uat-issues: long description is preserved in full" {
   local long_desc
   long_desc=$(printf 'x%.0s' {1..250})

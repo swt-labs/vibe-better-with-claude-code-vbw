@@ -191,6 +191,64 @@ total_tests: 3
   [[ "$output" == "uat_resume=P02-T1 uat_completed=2 uat_total=3" ]]
 }
 
+@test "extract-uat-resume: prefilled D checkpoint resumes before PR checkpoint" {
+  create_uat_file '---
+phase: 03
+status: in_progress
+total_tests: 3
+---
+
+## Tests
+
+### D01: Review summary deviation
+
+- **Source:** Summary deviation review
+- **Result:**
+
+### PR03-T01: Verify LCID behavior
+
+- **Plan:** R03
+- **Result:**
+
+### P03-T02: Verify regression
+
+- **Plan:** R03
+- **Result:**'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-resume.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == "uat_resume=D01 uat_completed=0 uat_total=3" ]]
+}
+
+@test "extract-uat-resume: PR-prefixed checkpoint is parsed after accepted deviation" {
+  create_uat_file '---
+phase: 03
+status: in_progress
+total_tests: 2
+---
+
+## Tests
+
+### D01: Review summary deviation
+
+- **Source:** Summary deviation review
+- **Result:** pass
+- **Disposition:** accepted-process-exception
+
+### PR03-T01: Verify LCID behavior
+
+- **Plan:** R03
+- **Result:**'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-resume.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == "uat_resume=PR03-T01 uat_completed=1 uat_total=2" ]]
+}
+
 @test "extract-uat-resume: excludes SOURCE-UAT.md" {
   # Create a SOURCE-UAT.md (incomplete) and a real UAT (all done)
   create_uat_file '---

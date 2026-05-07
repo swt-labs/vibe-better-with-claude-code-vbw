@@ -439,6 +439,7 @@ When routed here, skip the standard phase-resolution Steps entirely. Instead:
 - Use pre-computed verify context from the "Pre-computed verify context" block above (or refreshed output if normalization ran or Step 2 refreshed re-verification state) — it contains per-plan titles, must_haves, what was built, files modified, and status. Do NOT read individual `*-SUMMARY.md` or `*-PLAN.md` files.
 - **Parse `verify_scope`** from the first line of the verify context block. When `verify_scope=remediation round=RR`, this is a re-verification session scoped to remediation round RR only. When `verify_scope=full`, standard full-scope verification. Use this in Step 4 to determine test framing.
 - **Parse `uat_path`** from the second line of the verify context block. This is the relative path (from phase dir) where the UAT file should be written — e.g., `03-UAT.md` for full scope or `remediation/uat/round-01/R01-UAT.md` for remediation scope. Use this in Steps 4, 8, and 9 instead of hardcoding `{phase}-UAT.md`.
+- **Parse `SUMMARY_DEVIATION:` records** from the verify context block. Each record has `signature`, `source_plan`, `source_path`, and `text`. These records are already filtered against `{phase-dir}/remediation/uat/accepted-deviations.json`; do not re-prefill any deviation that is absent because it was previously accepted. Use the remaining records in Step 4 to create reviewable summary-deviation checkpoints before generated plan checkpoints.
 - **Remediation safety check:** If `verify_scope=remediation` and `uat_path` does not already point at the current remediation round's round-scoped UAT path (`remediation/uat/round-{RR}/R{RR}-UAT.md` for round-dir layout, `remediation/round-{RR}/R{RR}-UAT.md` for legacy layout), run:
   ```bash
   bash "{plugin-root}/scripts/uat-remediation-state.sh" get-or-init "{phase-dir}" major
@@ -503,15 +504,28 @@ When routed here, skip the standard phase-resolution Steps entirely. Instead:
 - Each plan's `must_haves` reference the original UAT issues that were remediated
 - Generate 1-3 tests per plan focused on: "The original issue was {must_have description}. Verify the fix resolves it."
 - Tests should confirm the specific bug/issue is no longer present, not re-test the entire phase
-- Same test ID format (`P{plan}-T{NN}`), same UAT.md template, same rules below
+- Use remediation checkpoint IDs `PR{RR}-T{NN}` (for example, `PR03-T01`) for generated remediation tests, same UAT.md template, same rules below
 
 **Full-scope mode** (`verify_scope=full`): Standard verification of all phase plans. Use the rules below as-is.
+
+**Summary deviation review prefill (NON-NEGOTIABLE):** Before generating plan checkpoints, inspect the parsed `SUMMARY_DEVIATION:` records from the verify context.
+- For each record, create one `D{NN}` checkpoint at the top of the UAT `## Tests` section, before any generated `P...` or `PR...` tests. Number these as `D01`, `D02`, etc. in the stable order they appear in the verify context.
+- These are review checkpoints, not pre-recorded failures. Their `**Result:**` field starts empty. Do NOT mark them as `issue` unless the human explicitly rejects the deviation or describes a real bug.
+- Include deterministic identity metadata so later accepted deviations can be suppressed:
+  - `**Source:** Summary deviation review`
+  - `**Deviation Signature:** {signature}`
+  - `**Source Plan:** {source_plan}`
+  - `**Source Summary:** {source_path}`
+  - `**Deviation:** {text}`
+- Write `**Expected:** Human confirms whether this documented deviation is acceptable for this phase.`
+- Initial frontmatter `total_tests` includes these `D{NN}` review checkpoints plus generated plan checkpoints. Initial `issues` remains `0`; unresolved review checkpoints are counted as incomplete until the human answers.
+- If there are no `SUMMARY_DEVIATION:` records, do not create any prefilled deviation checkpoints.
 
 For each plan in the pre-computed verify context block:
 - Use the pre-computed `what_was_built`, `files_modified`, and `must_haves` data. Do NOT read SUMMARY.md or PLAN.md files.
 - Generate 1-3 test scenarios that require HUMAN judgment — things only a person can verify
 - Minimum 1 test per plan, even for pure refactors (use "verify nothing broke" regression test)
-- Test IDs follow the format: `P{plan}-T{NN}` (e.g., P01-T1, P01-T2, P02-T1)
+- Full-scope test IDs follow the format: `P{plan}-T{NN}` (e.g., P01-T1, P01-T2, P02-T1). Re-verification test IDs follow the format `PR{RR}-T{NN}`.
 
 **UAT tests must be things only a human can judge.** Good examples:
 - Open the app and navigate to screen X — does it display Y correctly?
@@ -546,7 +560,7 @@ If a plan's work is purely internal (refactor, test infrastructure, script chang
 
 Write the initial UAT file at `{phase-dir}/{uat_path}` (using the pre-computed `uat_path` from Step 1) using the `templates/UAT.md` format. If the parent directory doesn't exist (e.g., `remediation/uat/round-01/`), create it first.
 - Populate YAML frontmatter: phase, plan_count, status=in_progress, started=today, total_tests
-- Write all test entries with Result fields empty (no placeholder values)
+- Write prefilled `D{NN}` summary-deviation review entries first, then generated plan checkpoint entries. All entries start with Result fields empty (no placeholder values).
 
 **Result field values (NON-NEGOTIABLE):** The `**Result:**` field in each test entry MUST be exactly one of three lowercase values: `pass`, `skip`, or `issue`. Never write `FAIL`, `PARTIAL`, `PASS`, `PASSED`, or any other value — downstream scripts depend on this exact vocabulary to extract issues and compute status.
 
@@ -583,6 +597,11 @@ options:
 
 The tool automatically provides a freeform "Other" option for the user to describe issues.
 
+**Summary-deviation checkpoint prompt:** When the current checkpoint is a prefilled `D{NN}` summary-deviation review, present the deviation text and source metadata instead of a product scenario. Ask whether the documented deviation is acceptable for this phase. Use the same two visible options, but interpret them as:
+- `Pass` → accept the deviation as a non-blocking process exception for this phase.
+- `Skip` → skip review for now without recording acceptance.
+- freeform/Other → record the text as a real UAT issue if it describes why the deviation is unacceptable or exposes a product defect.
+
 **AskUserQuestion is a tool call (NON-NEGOTIABLE):** You MUST invoke AskUserQuestion via the tool_use mechanism — never emit the question parameters as text, JSON, or any other inline format in your response body. If AskUserQuestion appears in your text output instead of as a tool call, the checkpoint will not be presented to the user and the session will end prematurely.
 
 **STOP HERE.** Wait for the AskUserQuestion response. Do NOT continue to the next test, do NOT skip to Step 6, and do NOT end the turn. The tool call blocks until the user responds.
@@ -593,9 +612,9 @@ The tool automatically provides a freeform "Other" option for the user to descri
 
 Map the AskUserQuestion response:
 
-**"Pass" selected:** Record as passed. **However**, if the user's response also mentions a separate bug/issue (e.g., "Pass, but I noticed X is broken"), record the test as passed AND capture the separate observation as a discovered issue (see Step 6a).
+**"Pass" selected:** Record as passed. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** accepted-process-exception` and preserve the deviation metadata fields. **However**, if the user's response also mentions a separate bug/issue (e.g., "Pass, but I noticed X is broken"), record the test as passed AND capture the separate observation as a discovered issue (see Step 6a).
 
-**"Skip" selected:** Record as skipped. **However**, if the user selected "Skip" but also typed additional text describing a bug/issue (e.g., the response body contains "but the sidebar is broken" alongside the Skip selection), record the test as skipped AND capture the additional text as a discovered issue (see Step 6a). The additional text is the response content beyond the option selection itself.
+**"Skip" selected:** Record as skipped. For a prefilled summary-deviation `D{NN}` checkpoint, write `**Disposition:** skipped-by-user` and do not add it to the accepted-deviation registry. **However**, if the user selected "Skip" but also typed additional text describing a bug/issue (e.g., the response body contains "but the sidebar is broken" alongside the Skip selection), record the test as skipped AND capture the additional text as a discovered issue (see Step 6a). The additional text is the response content beyond the option selection itself.
 
 **Freeform text (via "Other"):** Apply case-insensitive matching in this order after normalization.
 
@@ -626,6 +645,8 @@ Evaluate in this order:
 - **Pass-intent only:** Pass-intent present, not negated, and no issue observation in post-separator text → record as passed.
 - **Anything else:** treat the entire response text as an issue description (Step 6).
 
+For a prefilled summary-deviation `D{NN}` checkpoint, "anything else" means the user rejected or challenged the deviation. Record it as `**Result:** issue` with the user's text as the issue description, infer severity as usual, and write `**Disposition:** rejected-by-user`.
+
 ### 7. Issue handling (when response = issue)
 
 The user's response text IS the issue description. Infer severity from keywords (never ask the user):
@@ -648,7 +669,7 @@ Issue recorded (severity: {level}). Final next-step routing shown at UAT summary
 
 When a user passes or skips a test but also mentions a separate bug, issue, or observation unrelated to the test's expected behavior, capture it as a **discovered issue**.
 
-Assign a discovered-issue ID: `D{NN}` (D01, D02, ...) — sequential across the UAT session. **On resumed sessions:** scan existing `D{NN}` entries in the UAT.md to find the highest existing number, then continue from max+1 (e.g., if D01 and D02 exist, the next discovered issue is D03).
+Assign a discovered-issue ID: `D{NN}` (D01, D02, ...) — sequential across the UAT session. Before appending any discovered issue, scan the current UAT file at `{phase-dir}/{uat_path}` in both initial and resumed sessions for existing `D[0-9]+` headings. Include prefilled summary-deviation review entries and discovered issues already appended earlier in the same session; those IDs are reserved. Allocate the next zero-padded `D{NN}` from highest existing + 1, or `D01` when none exist. Example: if prefilled `D01` and `D02` already exist, the next discovered issue is `D03`. Never renumber existing `D{NN}` entries.
 
 Infer severity using the same keyword table from Step 6. Infer category from context:
 - If the user identifies a specific view/screen/component: use that as the description prefix
@@ -678,6 +699,11 @@ Discovered issue D{NN} recorded (severity: {level}).
 ### 8. After each response: persist immediately
 
 - Update the UAT file at `{phase-dir}/{uat_path}` with the result for this test. The `**Result:**` value MUST be exactly `pass`, `skip`, or `issue` (lowercase). Map user responses: Pass→`pass`, Skip→`skip`, any issue/fail/problem→`issue`. Never write FAIL, PARTIAL, or any other value.
+- When the response accepts a prefilled summary-deviation checkpoint (`D{NN}` with `**Deviation Signature:** ...` and `**Disposition:** accepted-process-exception`), run the accepted-deviation registry helper after writing the UAT file:
+  ```bash
+  bash "{plugin-root}/scripts/track-uat-deviations.sh" record-from-uat "{phase-dir}" "{phase-dir}/{uat_path}"
+  ```
+  The helper is idempotent. Do not hand-edit `accepted-deviations.json`.
 - Write the file to disk (survives /clear)
 - Display progress: `✓ {completed}/{total} tests`
 
@@ -688,6 +714,11 @@ Discovered issue D{NN} recorded (severity: {level}).
   bash "{plugin-root}/scripts/finalize-uat-status.sh" "{phase-dir}/{uat_path}"
   ```
   If the script fails or reports unrecognized `**Result:**` values, STOP and surface the error. Do NOT patch the UAT frontmatter manually. The script reads all `**Result:**` lines, counts pass/skip/issue, and updates the YAML frontmatter (`status`, `completed`, `passed`, `skipped`, `issues`, `total_tests`). Its output (`status={status} passed={N} ...`) provides the values for the summary display below. Do NOT manually update frontmatter fields — the script is the source of truth.
+- **Accepted deviation registry sync:** After finalization, run:
+  ```bash
+  bash "{plugin-root}/scripts/track-uat-deviations.sh" record-from-uat "{phase-dir}" "{phase-dir}/{uat_path}"
+  ```
+  This persists accepted summary-deviation signatures so identical source/text deviations are not prefilled again in future UAT sessions.
 - Display summary:
 
 ```text

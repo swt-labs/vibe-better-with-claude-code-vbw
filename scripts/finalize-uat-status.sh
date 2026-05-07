@@ -33,7 +33,7 @@ fi
 # Returns one token per line: pass, skip, issue, empty, __missing__, or
 # __unknown__:<raw>.
 RESULTS=$(awk '
-  /^### [PD][0-9]/ {
+  /^### (P[0-9]+(-T[0-9]+)?|PR[0-9]+-T[0-9]+|D[0-9]+)(:|[[:space:]])/ {
     if (in_test && saw_result == 0) print "__missing__"
     in_test = 1
     saw_result = 0

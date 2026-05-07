@@ -1,9 +1,12 @@
 #!/bin/bash
 # summary-utils.sh -- shared helpers for status-aware SUMMARY.md checking
 # Source this from scripts that need status-based completion detection.
-# All functions are portable bash (3.2+) with no external process dependencies
-# on the hot path. This keeps summary counting stable under heavily parallel
-# BATS runs where frequent fork/exec can intermittently fail.
+# Core status/counting helpers are portable bash (3.2+) and avoid external
+# process dependencies on the status-counting hot path. This keeps summary
+# counting stable under heavily parallel BATS runs where frequent fork/exec can
+# intermittently fail. Deviation extraction helpers intentionally use awk for
+# deterministic parsing, and source-plan candidate helpers use find plus
+# sort/sort -V for deterministic scanning.
 
 trim_summary_value() {
   local value="$1"
@@ -155,4 +158,281 @@ count_terminal_summaries() {
     fi
   done
   echo "$count"
+}
+
+summary_extract_frontmatter_array_items() {
+  local file_path="${1:-}"
+  local key_name="${2:-}"
+  [ -f "$file_path" ] || return 0
+  [ -n "$key_name" ] || return 0
+  awk -v key="$key_name" '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    function strip_quotes(v, first, last) {
+      first = substr(v, 1, 1)
+      last = substr(v, length(v), 1)
+      if ((first == "\"" && last == "\"") || (first == squote && last == squote)) {
+        return substr(v, 2, length(v) - 2)
+      }
+      return v
+    }
+    function emit_value(v) {
+      v = trim(v)
+      if (v == "") return
+      v = strip_quotes(v)
+      if (v != "") print v
+    }
+    function parse_flow_array(rest, i, ch, current, quote) {
+      rest = trim(rest)
+      if (rest !~ /^\[/) return 0
+      sub(/^\[/, "", rest)
+      sub(/\][[:space:]]*$/, "", rest)
+      current = ""
+      quote = ""
+      for (i = 1; i <= length(rest); i++) {
+        ch = substr(rest, i, 1)
+        if (quote == "") {
+          if (ch == "\"" || ch == squote) {
+            quote = ch
+            current = current ch
+            continue
+          }
+          if (ch == ",") {
+            emit_value(current)
+            current = ""
+            continue
+          }
+        } else if (ch == quote) {
+          quote = ""
+          current = current ch
+          continue
+        }
+        current = current ch
+      }
+      emit_value(current)
+      return 1
+    }
+    BEGIN {
+      in_fm = 0
+      in_arr = 0
+      squote = sprintf("%c", 39)
+    }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && $0 ~ ("^" key ":[[:space:]]*") {
+      rest = $0
+      sub("^" key ":[[:space:]]*", "", rest)
+      if (parse_flow_array(rest)) exit
+      in_arr = 1
+      next
+    }
+    in_fm && in_arr && /^[[:space:]]+- / {
+      line = $0
+      sub(/^[[:space:]]+- /, "", line)
+      emit_value(line)
+      next
+    }
+    in_fm && in_arr && /^[^[:space:]]/ { exit }
+  ' "$file_path" 2>/dev/null
+}
+
+summary_extract_body_deviation_items() {
+  local file_path="${1:-}"
+  [ -f "$file_path" ] || return 0
+  awk '
+    BEGIN { found=0; in_comment=0 }
+    /^## Deviations/ || /^### Deviations/ { found=1; in_comment=0; next }
+    found && (/^## / || /^### /) { found=0; next }
+    found && /^[[:space:]]*$/ { next }
+    found && /^[[:space:]]*<!--/ {
+      in_comment=1
+      if ($0 ~ /-->/) in_comment=0
+      next
+    }
+    found && in_comment {
+      if ($0 ~ /-->/) in_comment=0
+      next
+    }
+    found { print }
+  ' "$file_path" 2>/dev/null
+}
+
+normalize_summary_deviation_item() {
+  awk '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    {
+      line = $0
+      sub(/^[[:space:]]*- /, "", line)
+      line = trim(line)
+      if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
+      sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
+      line = trim(line)
+      if (line == "") next
+      lc = tolower(line)
+      if (lc ~ /^none(\.[[:space:]].*|\.?)$/ || lc ~ /^n\/a(\.[[:space:]].*|\.?)$/ || lc ~ /^na(\.[[:space:]].*|\.?)$/ || lc ~ /^no deviations($|[.:].*)/) next
+      if (!(line in seen)) {
+        seen[line] = 1
+        print line
+      }
+    }
+  '
+}
+
+# extract_summary_deviations FILE_PATH
+# Emits one normalized non-placeholder deviation per line, merging YAML
+# frontmatter and body sections in stable order. Frontmatter no longer masks
+# body deviations; duplicates across both sources are emitted once.
+extract_summary_deviations() {
+  local file_path="${1:-}"
+  [ -f "$file_path" ] || return 0
+  {
+    summary_extract_frontmatter_array_items "$file_path" deviations
+    summary_extract_body_deviation_items "$file_path"
+  } | normalize_summary_deviation_item
+}
+
+summary_extract_frontmatter_scalar_value() {
+  local file_path="${1:-}"
+  local key_name="${2:-}"
+  [ -f "$file_path" ] || return 0
+  [ -n "$key_name" ] || return 0
+  awk -v key="$key_name" '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    function strip_quotes(v, first, last) {
+      first = substr(v, 1, 1)
+      last = substr(v, length(v), 1)
+      if ((first == "\"" && last == "\"") || (first == squote && last == squote)) {
+        return substr(v, 2, length(v) - 2)
+      }
+      return v
+    }
+    BEGIN { in_fm = 0; squote = sprintf("%c", 39) }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && $0 ~ ("^" key ":[[:space:]]*") {
+      value = $0
+      sub("^" key ":[[:space:]]*", "", value)
+      value = strip_quotes(trim(value))
+      if (value != "") print value
+      exit
+    }
+  ' "$file_path" 2>/dev/null
+}
+
+summary_plan_identity_from_plan_file() {
+  local plan_file="${1:-}"
+  local plan_id=""
+  local round_id=""
+  local plan_base=""
+  [ -f "$plan_file" ] || return 0
+
+  plan_id=$(summary_extract_frontmatter_scalar_value "$plan_file" plan | head -1)
+  if [ -z "$plan_id" ]; then
+    plan_base=$(basename "$plan_file")
+    case "$plan_base" in
+      R*-PLAN.md)
+        plan_id="${plan_base%-PLAN.md}"
+        ;;
+      *)
+        round_id=$(summary_extract_frontmatter_scalar_value "$plan_file" round | head -1)
+        if [ -n "$round_id" ]; then
+          plan_id="R${round_id}"
+        fi
+        ;;
+    esac
+  fi
+
+  printf '%s\n' "${plan_id:-unknown}"
+}
+
+summary_deviation_canonical_source_plan() {
+  local summary_file="${1:-}"
+  local summary_dir=""
+  local summary_base=""
+  local summary_prefix=""
+  local plan_file=""
+
+  [ -f "$summary_file" ] || return 0
+  summary_dir=$(dirname "$summary_file")
+  summary_base=$(basename "$summary_file")
+
+  if [ "$summary_base" = "SUMMARY.md" ]; then
+    plan_file="$summary_dir/PLAN.md"
+    if [ -f "$plan_file" ]; then
+      summary_plan_identity_from_plan_file "$plan_file"
+    else
+      printf '%s\n' "unknown"
+    fi
+    return 0
+  fi
+
+  case "$summary_base" in
+    *-SUMMARY.md)
+      summary_prefix="${summary_base%-SUMMARY.md}"
+      ;;
+    *)
+      printf '%s\n' "unknown"
+      return 0
+      ;;
+  esac
+
+  if [[ "$summary_prefix" =~ ^R[0-9]+$ ]]; then
+    printf '%s\n' "$summary_prefix"
+    return 0
+  fi
+
+  plan_file="$summary_dir/${summary_prefix}-PLAN.md"
+  if [ -f "$plan_file" ]; then
+    summary_plan_identity_from_plan_file "$plan_file"
+  else
+    printf '%s\n' "$summary_prefix"
+  fi
+}
+
+summary_deviation_source_plan_candidates() {
+  local summary_file="${1:-}"
+  local summary_dir=""
+  local summary_base=""
+  local summary_prefix=""
+  local plan_file=""
+
+  [ -f "$summary_file" ] || return 0
+  summary_dir=$(dirname "$summary_file")
+  summary_base=$(basename "$summary_file")
+
+  {
+    summary_deviation_canonical_source_plan "$summary_file"
+
+    if [ "$summary_base" = "SUMMARY.md" ]; then
+      plan_file="$summary_dir/PLAN.md"
+      [ -f "$plan_file" ] && summary_plan_identity_from_plan_file "$plan_file"
+    else
+      case "$summary_base" in
+        *-SUMMARY.md)
+          summary_prefix="${summary_base%-SUMMARY.md}"
+          ;;
+        *)
+          summary_prefix=""
+          ;;
+      esac
+
+      if [ -n "$summary_prefix" ] && [[ "$summary_prefix" =~ ^R[0-9]+$ ]]; then
+        while IFS= read -r plan_file; do
+          [ -f "$plan_file" ] || continue
+          summary_plan_identity_from_plan_file "$plan_file"
+        done < <(find "$summary_dir" -maxdepth 1 ! -name '.*' \( -name "${summary_prefix}-PLAN.md" -o -name "${summary_prefix}-*-PLAN.md" \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+      elif [ -n "$summary_prefix" ]; then
+        plan_file="$summary_dir/${summary_prefix}-PLAN.md"
+        [ -f "$plan_file" ] && summary_plan_identity_from_plan_file "$plan_file"
+      fi
+    fi
+  } | awk 'NF && !seen[$0]++'
 }

@@ -42,6 +42,26 @@ source "$LIB"
 
 echo "=== Summary Utils Contract Tests ==="
 
+# ===== Header dependency documentation =====
+
+echo ""
+echo "--- Header dependency documentation ---"
+
+if grep -q 'All functions are portable bash .*no external process dependencies' "$LIB"; then
+  fail "header: old blanket no-external-process dependency claim is still present"
+else
+  pass "header: old blanket no-external-process dependency claim is absent"
+fi
+
+if grep -q 'status-counting hot path' "$LIB" \
+  && grep -q 'Deviation extraction helpers intentionally use awk' "$LIB" \
+  && grep -q 'find plus' "$LIB" \
+  && grep -q 'sort/sort -V' "$LIB"; then
+  pass "header: documents scoped status hot path and deviation helper dependencies"
+else
+  fail "header: documents scoped status hot path and deviation helper dependencies"
+fi
+
 # ===== is_summary_complete =====
 
 echo ""

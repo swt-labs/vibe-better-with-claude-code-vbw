@@ -1264,12 +1264,41 @@ EOF
   grep -q "MCP server" "$proto"
 }
 
+@test "execute-protocol.md Step 4.5 preloads summary deviations as review checkpoints" {
+  local proto="$BATS_TEST_DIRNAME/../references/execute-protocol.md"
+  grep -q "compile-verify-context-for-uat.sh" "$proto"
+  grep -q "SUMMARY_DEVIATION:" "$proto"
+  grep -q "Summary deviation review prefill" "$proto"
+  grep -q "track-uat-deviations.sh" "$proto"
+  grep -q "PR{RR}-T{NN}" "$proto"
+}
+
 @test "verify.md Step 4 has skill-aware exclusion" {
   local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
   # Must account for skill/tool/MCP-based UI automation
   grep -q "Skill-aware exclusion" "$verify"
   grep -q "UI automation capabilities" "$verify"
   grep -q "MCP server" "$verify"
+}
+
+@test "verify.md Step 4 preloads summary deviations as review checkpoints" {
+  local verify="$BATS_TEST_DIRNAME/../commands/verify.md"
+  grep -q "SUMMARY_DEVIATION:" "$verify"
+  grep -q "Summary deviation review prefill" "$verify"
+  grep -q "track-uat-deviations.sh" "$verify"
+  grep -q "PR{RR}-T{NN}" "$verify"
+}
+
+@test "UAT template documents summary deviation review checkpoints" {
+  local template="$BATS_TEST_DIRNAME/../templates/UAT.md"
+  grep -q "Summary deviation review" "$template"
+  grep -q "Deviation Signature" "$template"
+  grep -q "accepted-process-exception" "$template"
+  grep -q "PR{round}-T{NN}" "$template"
+  grep -q "P01-T01" "$template"
+  grep -q "PR03-T01" "$template"
+  grep -q "D01" "$template"
+  grep -q 'final `Result` is `issue`' "$template"
 }
 
 # --- UAT format and lifecycle contract tests ---
