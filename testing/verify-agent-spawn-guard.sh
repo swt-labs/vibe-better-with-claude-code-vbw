@@ -117,7 +117,7 @@ run_guard() {
     rm -f "$project_dir/.vbw-planning/.active-agent-count" 2>/dev/null || true
   fi
 
-  (cd "$working_dir" && VBW_PLANNING_DIR="$project_dir/.vbw-planning" bash "$GUARD" <<< "$input") 2>&1
+  (cd "$working_dir" && unset CLAUDE_SESSION_ID; VBW_PLANNING_DIR="$project_dir/.vbw-planning" bash "$GUARD" <<< "$input") 2>&1
   return ${PIPESTATUS[0]}
 }
 
@@ -159,7 +159,30 @@ run_guard_without_exported_root() {
     rm -f "$project_dir/.vbw-planning/.active-agent-count" 2>/dev/null || true
   fi
 
-  (cd "$working_dir" && unset VBW_CONFIG_ROOT VBW_PLANNING_DIR; bash "$GUARD" <<< "$input") 2>&1
+  (cd "$working_dir" && unset VBW_CONFIG_ROOT VBW_PLANNING_DIR CLAUDE_SESSION_ID; bash "$GUARD" <<< "$input") 2>&1
+  return ${PIPESTATUS[0]}
+}
+
+run_guard_preserving_active_state() {
+  local project_dir="$1"
+  local session_id="$2"
+  local working_dir="${3:-$project_dir}"
+  local tool_name="${4:-TaskCreate}"
+
+  local input
+  input=$(jq -n \
+    --arg tool_name "$tool_name" \
+    --arg session_id "$session_id" \
+    '{
+      session_id: $session_id,
+      tool_name: $tool_name,
+      tool_input: {
+        team_name: "",
+        run_in_background: false
+      }
+    }')
+
+  (cd "$working_dir" && unset CLAUDE_SESSION_ID; VBW_PLANNING_DIR="$project_dir/.vbw-planning" bash "$GUARD" <<< "$input") 2>&1
   return ${PIPESTATUS[0]}
 }
 
@@ -685,6 +708,32 @@ test_non_team_mode_blocks_overlapping_taskcreate() {
   cleanup
 }
 test_non_team_mode_blocks_overlapping_taskcreate
+
+test_non_team_mode_uses_current_session_active_count() {
+  setup_project
+  write_execution_state "corr-123"
+  write_marker execute subagent "" "corr-123"
+
+  printf '%s\n' '{"session_id":"session-A","agent_type":"vbw-dev","pid":"30303"}' | \
+    VBW_PLANNING_DIR="$PROJECT/.vbw-planning" bash "$ROOT/scripts/agent-start.sh"
+
+  local output rc
+  output=$(run_guard_preserving_active_state "$PROJECT" "session-B" "$PROJECT" "TaskCreate" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    pass "Execute subagent mode ignores another session's active count"
+  else
+    fail "Execute subagent mode should ignore another session's active count (rc=$rc, output=$output)"
+  fi
+
+  output=$(run_guard_preserving_active_state "$PROJECT" "session-A" "$PROJECT" "TaskCreate" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'must serialize non-team TaskCreate spawns'; then
+    pass "Execute subagent mode blocks current session overlapping TaskCreate"
+  else
+    fail "Execute subagent mode should block current session overlapping TaskCreate (rc=$rc, output=$output)"
+  fi
+  cleanup
+}
+test_non_team_mode_uses_current_session_active_count
 
 test_direct_mode_blocks_overlapping_taskcreate() {
   setup_project

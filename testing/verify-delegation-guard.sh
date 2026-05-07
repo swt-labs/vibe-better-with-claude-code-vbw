@@ -64,9 +64,26 @@ run_guard() {
   # Run from project dir so find_project_root works
   # Use env to set VBW_AGENT_ROLE only when non-empty; otherwise unset it
   if [ -n "$agent_role" ]; then
-    (cd "$project_dir" && VBW_AGENT_ROLE="$agent_role" bash "$FILE_GUARD" <<< "$input") 2>&1
+    (cd "$project_dir" && unset CLAUDE_SESSION_ID; VBW_AGENT_ROLE="$agent_role" bash "$FILE_GUARD" <<< "$input") 2>&1
   else
-    (cd "$project_dir" && unset VBW_AGENT_ROLE; bash "$FILE_GUARD" <<< "$input") 2>&1
+    (cd "$project_dir" && unset VBW_AGENT_ROLE CLAUDE_SESSION_ID; bash "$FILE_GUARD" <<< "$input") 2>&1
+  fi
+  return ${PIPESTATUS[0]}
+}
+
+run_guard_with_session() {
+  local project_dir="$1"
+  local file_path="$2"
+  local session_id="$3"
+  local agent_role="${4:-}"
+
+  local input
+  input=$(jq -n --arg sid "$session_id" --arg fp "$file_path" '{session_id:$sid,tool_input:{file_path:$fp}}')
+
+  if [ -n "$agent_role" ]; then
+    (cd "$project_dir" && unset CLAUDE_SESSION_ID; VBW_AGENT_ROLE="$agent_role" bash "$FILE_GUARD" <<< "$input") 2>&1
+  else
+    (cd "$project_dir" && unset VBW_AGENT_ROLE CLAUDE_SESSION_ID; bash "$FILE_GUARD" <<< "$input") 2>&1
   fi
   return ${PIPESTATUS[0]}
 }
@@ -80,11 +97,22 @@ run_guard_from() {
   input=$(jq -n --arg fp "$file_path" '{"tool_input":{"file_path":$fp}}')
 
   if [ -n "$agent_role" ]; then
-    (cd "$working_dir" && unset VBW_CONFIG_ROOT VBW_PLANNING_DIR; VBW_AGENT_ROLE="$agent_role" bash "$FILE_GUARD" <<< "$input") 2>&1
+    (cd "$working_dir" && unset VBW_CONFIG_ROOT VBW_PLANNING_DIR CLAUDE_SESSION_ID; VBW_AGENT_ROLE="$agent_role" bash "$FILE_GUARD" <<< "$input") 2>&1
   else
-    (cd "$working_dir" && unset VBW_AGENT_ROLE VBW_CONFIG_ROOT VBW_PLANNING_DIR; bash "$FILE_GUARD" <<< "$input") 2>&1
+    (cd "$working_dir" && unset VBW_AGENT_ROLE VBW_CONFIG_ROOT VBW_PLANNING_DIR CLAUDE_SESSION_ID; bash "$FILE_GUARD" <<< "$input") 2>&1
   fi
   return ${PIPESTATUS[0]}
+}
+
+start_active_agent_session() {
+  local project_dir="$1"
+  local session_id="$2"
+  local role="$3"
+  local pid="$4"
+  local input
+
+  input=$(jq -n --arg sid "$session_id" --arg agent_type "vbw-$role" --arg pid "$pid" '{session_id:$sid,agent_type:$agent_type,pid:$pid}')
+  VBW_PLANNING_DIR="$project_dir/.vbw-planning" bash "$ROOT/scripts/agent-start.sh" <<< "$input" >/dev/null 2>&1 || true
 }
 
 setup_sidechain_project() {
@@ -544,6 +572,55 @@ EOF
   cleanup
 }
 test_mixed_active_role_set_scout_blocks_non_planning_writes
+
+# --- Test 14d: Session-local active count bypass applies only to the current session ---
+test_session_local_active_count_bypass() {
+  setup_project
+  jq -n '{status:"running", phase:1, effort:"balanced", started_at:"2026-03-03T00:00:00Z", plans:[]}' \
+    > "$PROJECT/.vbw-planning/.execution-state.json"
+
+  start_active_agent_session "$PROJECT" "session-A" "dev" "31401"
+
+  if run_guard_with_session "$PROJECT" "src/app.js" "session-A" "" >/dev/null 2>&1; then
+    pass "Session-local active count in current session: allowed (subagent bypass)"
+  else
+    fail "Session-local active count in current session: unexpected block (exit $?)"
+  fi
+
+  local output rc
+  output=$(run_guard_with_session "$PROJECT" "src/app.js" "session-B" "" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && grep -q "orchestrator cannot write product files" <<< "$output"; then
+    pass "Session-local active count in another session: blocked (no cross-session bypass)"
+  else
+    fail "Session-local active count in another session should not bypass orchestrator guard (rc=$rc output=$output)"
+  fi
+
+  cleanup
+}
+test_session_local_active_count_bypass
+
+# --- Test 14e: Session-local Scout role restricts only its owning session ---
+test_session_local_scout_role_restriction() {
+  setup_project
+  start_active_agent_session "$PROJECT" "session-A" "scout" "31402"
+
+  if run_guard_with_session "$PROJECT" "CLAUDE.md" "session-B" "" >/dev/null 2>&1; then
+    pass "Session-local Scout in another session: non-planning write not restricted"
+  else
+    fail "Session-local Scout in another session should not restrict current session writes (exit $?)"
+  fi
+
+  local output rc
+  output=$(run_guard_with_session "$PROJECT" "CLAUDE.md" "session-A" "" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 2 ] && grep -q "read-only outside .vbw-planning/" <<< "$output"; then
+    pass "Session-local Scout in current session: non-planning write blocked"
+  else
+    fail "Session-local Scout in current session should block non-planning write (rc=$rc output=$output)"
+  fi
+
+  cleanup
+}
+test_session_local_scout_role_restriction
 
 # --- Test 15: Active delegated state, .active-agent-count = 0 (all agents stopped), no role → blocked ---
 test_zero_agent_count_still_blocks() {

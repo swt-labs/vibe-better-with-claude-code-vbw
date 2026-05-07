@@ -18,6 +18,10 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null) || 
 [ -z "$FILE_PATH" ] && exit 0
 
 _FG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$_FG_SCRIPT_DIR/lib/active-agent-state.sh" ]; then
+  # shellcheck source=lib/active-agent-state.sh
+  . "$_FG_SCRIPT_DIR/lib/active-agent-state.sh"
+fi
 _FG_SHARED_ROOT_RESOLVED=false
 if [ -f "$_FG_SCRIPT_DIR/lib/vbw-config-root.sh" ]; then
   # shellcheck source=lib/vbw-config-root.sh
@@ -144,17 +148,9 @@ detect_agent_role() {
 
   if [ -n "$PROJECT_ROOT" ]; then
     planning_dir="$PROJECT_ROOT/.vbw-planning"
-    if [ -f "$planning_dir/.active-agent-roles" ] && awk '$1 == "scout" && ($2 ~ /^[0-9]+$/) && $2 > 0 { found=1 } END { exit found ? 0 : 1 }' "$planning_dir/.active-agent-roles" 2>/dev/null; then
+    if command -v vbw_active_agent_current_scout >/dev/null 2>&1 && vbw_active_agent_current_scout "$planning_dir" "$INPUT"; then
       printf 'scout'
       return 0
-    fi
-
-    if [ -f "$planning_dir/.active-agent" ]; then
-      candidate=$(cat "$planning_dir/.active-agent" 2>/dev/null | head -n 1 | tr -d '[:space:]')
-      if [ -n "$candidate" ] && role=$(normalize_agent_role "$candidate"); then
-        printf '%s' "$role"
-        return 0
-      fi
     fi
   fi
 
@@ -233,8 +229,9 @@ fi
 
 # Scout can write only planning artifacts. This must run before broad artifact
 # exemptions and before the active-agent-count delegated-workflow bypass; the
-# PreToolUse payload may not include VBW_AGENT_ROLE, so fall back to the
-# resolved host `.active-agent` marker when available.
+# PreToolUse payload may not include VBW_AGENT_ROLE, so fall back to current
+# session active-agent state when available, with legacy root markers only when
+# no safe session id exists.
 if [ "$ACTIVE_AGENT_ROLE" = "scout" ] && [ -n "$PROJECT_ROOT" ]; then
   _FG_TARGET_ABS=$(to_abs_path "$FILE_PATH")
   _FG_PLANNING_ABS=$(to_abs_path "$PROJECT_ROOT/.vbw-planning")
@@ -436,15 +433,18 @@ fi
 # `.delegated-workflow.json` marker. Only an active execute marker with
 # `delegation_mode="team"` gets the team-style bypass.
 if [ -z "${VBW_AGENT_ROLE:-}" ]; then
-  # Check .active-agent-count: if VBW subagents are active, this write is from
-  # a subagent (PreToolUse hooks don't carry agent identity). Skip the guard.
-  _DG_COUNT_FILE="$PROJECT_ROOT/.vbw-planning/.active-agent-count"
-  if [ -f "$_DG_COUNT_FILE" ]; then
-    _DG_AGENT_COUNT=$(cat "$_DG_COUNT_FILE" 2>/dev/null | tr -d '[:space:]')
-    if echo "$_DG_AGENT_COUNT" | grep -Eq '^[0-9]+$' && [ "$_DG_AGENT_COUNT" -gt 0 ]; then
-      # VBW subagent is active — allow the write
-      exit 0
-    fi
+  # Check active-agent count: if a VBW subagent is active in the current safe
+  # session, this write is from a subagent context. Other sessions' aggregate
+  # root counts are not an authority when a safe session id exists.
+  _DG_AGENT_COUNT=0
+  if command -v vbw_active_agent_current_count >/dev/null 2>&1; then
+    _DG_AGENT_COUNT=$(vbw_active_agent_current_count "$PROJECT_ROOT/.vbw-planning" "$INPUT")
+  elif [ -f "$PROJECT_ROOT/.vbw-planning/.active-agent-count" ]; then
+    _DG_AGENT_COUNT=$(cat "$PROJECT_ROOT/.vbw-planning/.active-agent-count" 2>/dev/null | tr -d '[:space:]')
+  fi
+  if echo "$_DG_AGENT_COUNT" | grep -Eq '^[0-9]+$' && [ "$_DG_AGENT_COUNT" -gt 0 ]; then
+    # VBW subagent is active in this session — allow the write
+    exit 0
   fi
 
   _DELEG_FILE="$PROJECT_ROOT/.vbw-planning/.delegated-workflow.json"

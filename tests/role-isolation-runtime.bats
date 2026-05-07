@@ -106,6 +106,45 @@ EOF
   [[ "$output" == *"Scout-safe active-agent context"* ]]
 }
 
+@test "file-guard: active Scout in session A does not restrict writes in session B" {
+  cd "$TEST_TEMP_DIR"
+  create_plan_with_files
+  printf '%s\n' '{"session_id":"session-A","agent_type":"vbw:vbw-scout","pid":"10101"}' | \
+    VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/agent-start.sh"
+
+  INPUT=$(jq -n --arg sid 'session-B' '{session_id:$sid,tool_name:"Write",tool_input:{file_path:"CLAUDE.md",content:"ok"}}')
+  run bash -c 'unset VBW_AGENT_ROLE; printf "%s\n" "$1" | bash "$2"' _ "$INPUT" "$SCRIPTS_DIR/file-guard.sh"
+  [ "$status" -eq 0 ]
+
+  INPUT=$(jq -n --arg sid 'session-A' '{session_id:$sid,tool_name:"Write",tool_input:{file_path:"CLAUDE.md",content:"bad"}}')
+  run bash -c 'unset VBW_AGENT_ROLE; printf "%s\n" "$1" | bash "$2"' _ "$INPUT" "$SCRIPTS_DIR/file-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"read-only outside .vbw-planning/"* ]]
+}
+
+@test "file-guard: active count in session A does not bypass delegated write block in session B" {
+  cd "$TEST_TEMP_DIR"
+  create_plan_with_files
+  create_contract
+  mkdir -p src
+  cat > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json" <<'JSON'
+{"phase":1,"phase_name":"test","status":"running","effort":"balanced","correlation_id":"corr-123","plans":[]}
+JSON
+  CLAUDE_SESSION_ID="session-orchestrator" VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" \
+    bash "$SCRIPTS_DIR/delegated-workflow.sh" set execute balanced subagent
+  printf '%s\n' '{"session_id":"session-A","agent_type":"vbw:vbw-dev","pid":"20202"}' | \
+    VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/agent-start.sh"
+
+  INPUT=$(jq -n --arg sid 'session-B' '{session_id:$sid,tool_name:"Write",tool_input:{file_path:"src/allowed.js",content:"blocked"}}')
+  run bash -c 'unset VBW_AGENT_ROLE; printf "%s\n" "$1" | bash "$2"' _ "$INPUT" "$SCRIPTS_DIR/file-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"orchestrator cannot write product files"* ]]
+
+  INPUT=$(jq -n --arg sid 'session-A' '{session_id:$sid,tool_name:"Write",tool_input:{file_path:"src/allowed.js",content:"allowed"}}')
+  run bash -c 'unset VBW_AGENT_ROLE; printf "%s\n" "$1" | bash "$2"' _ "$INPUT" "$SCRIPTS_DIR/file-guard.sh"
+  [ "$status" -eq 0 ]
+}
+
 @test "file-guard: degraded mixed-role markers do not leave stale Scout write block" {
   cd "$TEST_TEMP_DIR"
   create_plan_with_files

@@ -331,6 +331,25 @@ simulate_session_stop() {
   [ ! -f ".vbw-planning/.agent-panes" ]
 }
 
+@test "session-stop with session id removes only that session active-agent state" {
+  cd "$TEST_TEMP_DIR"
+
+  printf '%s\n' '{"session_id":"session-A","agent_type":"vbw-scout","pid":"10101"}' | \
+    VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/agent-start.sh"
+  printf '%s\n' '{"session_id":"session-B","agent_type":"vbw-dev","pid":"20202"}' | \
+    VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/agent-start.sh"
+
+  run bash -c 'printf "%s\n" "{\"session_id\":\"session-B\",\"cost_usd\":0,\"duration_ms\":0}" | bash "$1"' _ \
+    "$SCRIPTS_DIR/session-stop.sh"
+  [ "$status" -eq 0 ]
+
+  [ -d ".vbw-planning/.active-agents/session-A" ]
+  [ ! -d ".vbw-planning/.active-agents/session-B" ]
+  [ "$(cat ".vbw-planning/.active-agent-count")" = "1" ]
+  [ "$(cat ".vbw-planning/.active-agent")" = "scout" ]
+  grep -Fqx '10101 scout' ".vbw-planning/.active-agent-role-pids"
+}
+
 @test "tmux-watchdog detach cleanup removes stale active-agent role markers" {
   cd "$TEST_TEMP_DIR"
   local fakebin dead_pid test_input
@@ -367,6 +386,11 @@ scout 1
 dev 1
 EOF
   echo "$dead_pid scout" > ".vbw-planning/.active-agent-role-pids"
+  mkdir -p ".vbw-planning/.active-agents/session-A"
+  echo "scout" > ".vbw-planning/.active-agents/session-A/active-agent"
+  echo "1" > ".vbw-planning/.active-agents/session-A/active-agent-count"
+  echo "scout 1" > ".vbw-planning/.active-agents/session-A/active-agent-roles"
+  echo "$dead_pid scout" > ".vbw-planning/.active-agents/session-A/active-agent-role-pids"
   echo "$dead_pid" > ".vbw-planning/.agent-pids"
   echo "$dead_pid %1" > ".vbw-planning/.agent-panes"
   echo '{"pid":999999,"started_at":1,"agent_name":"stale"}' > ".vbw-planning/.compacting/stale.json"
@@ -378,6 +402,7 @@ EOF
   [ ! -f ".vbw-planning/.active-agent-count" ]
   [ ! -f ".vbw-planning/.active-agent-roles" ]
   [ ! -f ".vbw-planning/.active-agent-role-pids" ]
+  [ ! -d ".vbw-planning/.active-agents" ]
   [ ! -d ".vbw-planning/.active-agent-count.lock" ]
   [ ! -f ".vbw-planning/.agent-pids" ]
   [ ! -f ".vbw-planning/.agent-panes" ]

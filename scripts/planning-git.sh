@@ -48,6 +48,7 @@ ensure_transient_ignore() {
 .vbw-context
 .vbw-session
 .active-agent
+.active-agents/
 .active-agent-count
 .active-agent-roles
 .active-agent-role-pids

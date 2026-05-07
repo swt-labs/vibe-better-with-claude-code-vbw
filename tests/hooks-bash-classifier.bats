@@ -1199,6 +1199,78 @@ EOF
   [[ "$output" == *"sensitive file read"* ]]
 }
 
+@test "bash-guard: Scout active in session A does not block mutating gh command in session B" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-session-isolation-gh"
+  local cmd input_a input_b
+
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+  printf '%s\n' '{"session_id":"session-A","agent_type":"vbw:vbw-scout","pid":"10101"}' | \
+    VBW_PLANNING_DIR="$TEST_PROJECT/.vbw-planning" bash "$PROJECT_ROOT/scripts/agent-start.sh"
+
+  cmd='gh issue comment 1403 --repo abhigyanpatwari/GitNexus --body-file /tmp/vbw-body.md'
+  input_b=$(jq -n --arg sid 'session-B' --arg cmd "$cmd" '{session_id:$sid,tool_input:{command:$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
+    "$TEST_PROJECT" "$input_b" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 0 ]
+
+  input_a=$(jq -n --arg sid 'session-A' --arg cmd "$cmd" '{session_id:$sid,tool_input:{command:$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
+    "$TEST_PROJECT" "$input_a" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"mutating gh command"* ]]
+}
+
+@test "bash-guard: session-stop for session B preserves session A Scout protection" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-session-stop-isolation"
+  local cmd input_a
+
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+  printf '%s\n' '{"session_id":"session-A","agent_type":"vbw:vbw-scout","pid":"10101"}' | \
+    VBW_PLANNING_DIR="$TEST_PROJECT/.vbw-planning" bash "$PROJECT_ROOT/scripts/agent-start.sh"
+
+  run bash -c 'cd "$1" && printf "%s\n" "{\"session_id\":\"session-B\"}" | bash "$2"' _ \
+    "$TEST_PROJECT" "$PROJECT_ROOT/scripts/session-stop.sh"
+  [ "$status" -eq 0 ]
+
+  cmd='gh issue comment 1403 --repo abhigyanpatwari/GitNexus --body-file /tmp/vbw-body.md'
+  input_a=$(jq -n --arg sid 'session-A' --arg cmd "$cmd" '{session_id:$sid,tool_input:{command:$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
+    "$TEST_PROJECT" "$input_a" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"mutating gh command"* ]]
+
+  run bash -c 'cd "$1" && printf "%s\n" "{\"session_id\":\"session-A\",\"agent_type\":\"vbw:vbw-scout\",\"pid\":\"10101\"}" | bash "$2"' _ \
+    "$TEST_PROJECT" "$PROJECT_ROOT/scripts/agent-stop.sh"
+  [ "$status" -eq 0 ]
+
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
+    "$TEST_PROJECT" "$input_a" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "bash-guard: no-session legacy root Scout fallback still blocks mutating gh command" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-legacy-gh-fallback"
+  local cmd input
+
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+  echo "2" > "$TEST_PROJECT/.vbw-planning/.active-agent-count"
+  echo "dev" > "$TEST_PROJECT/.vbw-planning/.active-agent"
+  cat > "$TEST_PROJECT/.vbw-planning/.active-agent-roles" <<'EOF'
+scout 1
+dev 1
+EOF
+
+  cmd='gh issue comment 1403 --repo abhigyanpatwari/GitNexus --body-file /tmp/vbw-body.md'
+  input=$(jq -n --arg cmd "$cmd" '{tool_input:{command:$cmd}}')
+  run bash -c 'cd "$1" && unset CLAUDE_SESSION_ID && printf "%s\n" "$2" | bash "$3"' _ \
+    "$TEST_PROJECT" "$input" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"mutating gh command"* ]]
+}
+
 @test "bash-guard: degraded mixed-role markers do not leave stale Scout fallback" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-stale-role-degraded"
   mkdir -p "$TEST_PROJECT/.vbw-planning"

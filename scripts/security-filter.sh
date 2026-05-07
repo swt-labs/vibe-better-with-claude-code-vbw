@@ -13,6 +13,12 @@ fi
 INPUT=$(cat 2>/dev/null) || exit 2
 [ -z "$INPUT" ] && exit 2
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/lib/active-agent-state.sh" ]; then
+  # shellcheck source=lib/active-agent-state.sh
+  . "$SCRIPT_DIR/lib/active-agent-state.sh"
+fi
+
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // .tool_input.pattern // ""' 2>/dev/null) || exit 2
 
 if [ -z "$FILE_PATH" ]; then
@@ -61,7 +67,15 @@ derive_project_root() {
 
 if echo "$FILE_PATH" | grep -qF '.planning/' && ! echo "$FILE_PATH" | grep -qF '.vbw-planning/'; then
   GSD_ROOT=$(derive_project_root "$FILE_PATH" ".planning")
-  if is_marker_fresh "$GSD_ROOT/.vbw-planning/.active-agent" || is_marker_fresh "$GSD_ROOT/.vbw-planning/.vbw-session"; then
+  _SF_ACTIVE_AGENT_FRESH=false
+  if command -v vbw_active_agent_current_marker_fresh >/dev/null 2>&1 && vbw_active_agent_current_marker_fresh "$GSD_ROOT/.vbw-planning" "$INPUT" 86400; then
+    _SF_ACTIVE_AGENT_FRESH=true
+  elif ! command -v vbw_active_agent_current_marker_fresh >/dev/null 2>&1 && is_marker_fresh "$GSD_ROOT/.vbw-planning/.active-agent"; then
+    _SF_ACTIVE_AGENT_FRESH=true
+  fi
+  # .vbw-session is intentionally project-global: it protects GSD/VBW
+  # co-installation follow-up turns, not active-agent role identity.
+  if [ "$_SF_ACTIVE_AGENT_FRESH" = true ] || is_marker_fresh "$GSD_ROOT/.vbw-planning/.vbw-session"; then
     echo "Blocked: .planning/ is managed by GSD, not VBW ($FILE_PATH)" >&2
     exit 2
   fi

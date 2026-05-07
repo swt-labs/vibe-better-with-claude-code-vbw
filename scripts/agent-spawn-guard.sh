@@ -16,6 +16,10 @@ INPUT=$(cat 2>/dev/null) || exit 0
 [ -z "$INPUT" ] && exit 0
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/lib/active-agent-state.sh" ]; then
+  # shellcheck source=lib/active-agent-state.sh
+  . "$SCRIPT_DIR/lib/active-agent-state.sh"
+fi
 
 find_project_root() {
   local dir="$PWD"
@@ -193,10 +197,11 @@ case "$DELEGATION_MODE" in
       exit 2
     fi
     if [ "$TOOL_NAME" = "TaskCreate" ]; then
-      ACTIVE_COUNT_FILE="$PROJECT_ROOT/.vbw-planning/.active-agent-count"
       ACTIVE_COUNT=0
-      if [ -f "$ACTIVE_COUNT_FILE" ]; then
-        ACTIVE_COUNT=$(cat "$ACTIVE_COUNT_FILE" 2>/dev/null | tr -d '[:space:]')
+      if command -v vbw_active_agent_current_count >/dev/null 2>&1; then
+        ACTIVE_COUNT=$(vbw_active_agent_current_count "$PROJECT_ROOT/.vbw-planning" "$INPUT")
+      elif [ -f "$PROJECT_ROOT/.vbw-planning/.active-agent-count" ]; then
+        ACTIVE_COUNT=$(cat "$PROJECT_ROOT/.vbw-planning/.active-agent-count" 2>/dev/null | tr -d '[:space:]')
       fi
       if ! printf '%s' "$ACTIVE_COUNT" | grep -Eq '^[0-9]+$'; then
         ACTIVE_COUNT=0
