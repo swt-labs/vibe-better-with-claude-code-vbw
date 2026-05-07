@@ -24,6 +24,29 @@ trim_value() {
   printf '%s' "$value"
 }
 
+lower_value() {
+  local value="${1:-}"
+  local upper="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  local lower="abcdefghijklmnopqrstuvwxyz"
+  local i c pos out=""
+  for ((i = 0; i < ${#value}; i++)); do
+    c="${value:$i:1}"
+    pos="${upper%%"$c"*}"
+    if [ "${#pos}" -lt "${#upper}" ]; then
+      c="${lower:${#pos}:1}"
+    fi
+    out="$out$c"
+  done
+  printf '%s' "$out"
+}
+
+strip_uat_metadata_value() {
+  local line="${1:-}"
+  local prefix="${2:-}"
+  line="${line#"$prefix"}"
+  trim_value "$line"
+}
+
 sha256_text() {
   if command -v shasum >/dev/null 2>&1; then
     shasum -a 256 | awk '{print $1}'
@@ -63,6 +86,40 @@ require_jq_for_registry() {
   return 1
 }
 
+emit_accepted_deviation_record() {
+  local signature="$1"
+  local source_plan="$2"
+  local source_path="$3"
+  local text="$4"
+  local accepted_in="$5"
+  local accepted_at="$6"
+  jq -cn \
+    --arg signature "$signature" \
+    --arg source_plan "$source_plan" \
+    --arg source_path "$source_path" \
+    --arg text "$text" \
+    --arg accepted_in "$accepted_in" \
+    --arg accepted_at "$accepted_at" \
+    '{signature:$signature,source_plan:$source_plan,source_path:$source_path,text:$text,disposition:"accepted-process-exception",accepted_in:$accepted_in,accepted_at:$accepted_at}'
+}
+
+append_accepted_deviation_record_if_complete() {
+  local output_file="$1"
+  local in_d="$2"
+  local signature="$3"
+  local source_plan="$4"
+  local source_path="$5"
+  local text="$6"
+  local result="$7"
+  local disposition="$8"
+  local accepted_in="$9"
+  local accepted_at="${10}"
+
+  if [ "$in_d" = true ] && [ -n "$signature" ] && [ "$result" = "pass" ] && [ "$disposition" = "accepted-process-exception" ]; then
+    emit_accepted_deviation_record "$signature" "$source_plan" "$source_path" "$text" "$accepted_in" "$accepted_at" >> "$output_file"
+  fi
+}
+
 accepted_signatures() {
   local phase_dir registry
   phase_dir="${1:-}"
@@ -73,7 +130,8 @@ accepted_signatures() {
 }
 
 record_from_uat() {
-  local phase_dir uat_file registry registry_dir tmp_records tmp_registry phase_name now
+  local phase_dir uat_file registry registry_dir tmp_records tmp_registry phase_name now uat_rel
+  local line in_d sig source_plan source_path text result disposition
   phase_dir="${1:-}"
   uat_file="${2:-}"
   [ -d "$phase_dir" ] || { echo "track-uat-deviations: phase dir not found: $phase_dir" >&2; exit 1; }
@@ -89,50 +147,50 @@ record_from_uat() {
   trap 'rm -f "${_TRACK_TMP_RECORDS:-}" "${_TRACK_TMP_REGISTRY:-}"' EXIT
   now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-  awk -v uat_file="${uat_file#"$phase_dir/"}" -v accepted_at="$now" '
-    function trim(v) {
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
-      return v
-    }
-    function json_escape(v) {
-      gsub(/\\/, "\\\\", v)
-      gsub(/"/, "\\\"", v)
-      return v
-    }
-    function emit() {
-      if (in_d && sig != "" && result == "pass" && disposition == "accepted-process-exception") {
-        printf "{\"signature\":\"%s\",\"source_plan\":\"%s\",\"source_path\":\"%s\",\"text\":\"%s\",\"disposition\":\"accepted-process-exception\",\"accepted_in\":\"%s\",\"accepted_at\":\"%s\"}\n", json_escape(sig), json_escape(source_plan), json_escape(source_path), json_escape(text), json_escape(uat_file), json_escape(accepted_at)
-      }
-    }
-    /^### / {
-      emit()
-      in_d = ($0 ~ /^### D[0-9]+(:|[[:space:]])/)
-      sig = source_plan = source_path = text = result = disposition = ""
-      next
-    }
-    in_d && /^- \*\*Deviation Signature:\*\*/ {
-      sig = $0; sub(/^- \*\*Deviation Signature:\*\*[[:space:]]*/, "", sig); sig = trim(sig); next
-    }
-    in_d && /^- \*\*Source Plan:\*\*/ {
-      source_plan = $0; sub(/^- \*\*Source Plan:\*\*[[:space:]]*/, "", source_plan); source_plan = trim(source_plan); next
-    }
-    in_d && /^- \*\*Source Summary:\*\*/ {
-      source_path = $0; sub(/^- \*\*Source Summary:\*\*[[:space:]]*/, "", source_path); source_path = trim(source_path); next
-    }
-    in_d && /^- \*\*Source Path:\*\*/ {
-      source_path = $0; sub(/^- \*\*Source Path:\*\*[[:space:]]*/, "", source_path); source_path = trim(source_path); next
-    }
-    in_d && /^- \*\*Deviation:\*\*/ {
-      text = $0; sub(/^- \*\*Deviation:\*\*[[:space:]]*/, "", text); text = trim(text); next
-    }
-    in_d && /^- \*\*Result:\*\*/ {
-      result = $0; sub(/^- \*\*Result:\*\*[[:space:]]*/, "", result); result = tolower(trim(result)); next
-    }
-    in_d && /^- \*\*Disposition:\*\*/ {
-      disposition = $0; sub(/^- \*\*Disposition:\*\*[[:space:]]*/, "", disposition); disposition = tolower(trim(disposition)); next
-    }
-    END { emit() }
-  ' "$uat_file" > "$tmp_records"
+  uat_rel="${uat_file#"$phase_dir/"}"
+  in_d=false
+  sig=""
+  source_plan=""
+  source_path=""
+  text=""
+  result=""
+  disposition=""
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    if [[ "$line" == "### "* ]]; then
+      append_accepted_deviation_record_if_complete "$tmp_records" "$in_d" "$sig" "$source_plan" "$source_path" "$text" "$result" "$disposition" "$uat_rel" "$now"
+      if [[ "$line" =~ ^###[[:space:]]D[0-9]+(:|[[:space:]]) ]]; then
+        in_d=true
+      else
+        in_d=false
+      fi
+      sig=""
+      source_plan=""
+      source_path=""
+      text=""
+      result=""
+      disposition=""
+      continue
+    fi
+
+    if [ "$in_d" = true ] && [[ "$line" == "- **Deviation Signature:**"* ]]; then
+      sig=$(strip_uat_metadata_value "$line" "- **Deviation Signature:**")
+    elif [ "$in_d" = true ] && [[ "$line" == "- **Source Plan:**"* ]]; then
+      source_plan=$(strip_uat_metadata_value "$line" "- **Source Plan:**")
+    elif [ "$in_d" = true ] && [[ "$line" == "- **Source Summary:**"* ]]; then
+      source_path=$(strip_uat_metadata_value "$line" "- **Source Summary:**")
+    elif [ "$in_d" = true ] && [[ "$line" == "- **Source Path:**"* ]]; then
+      source_path=$(strip_uat_metadata_value "$line" "- **Source Path:**")
+    elif [ "$in_d" = true ] && [[ "$line" == "- **Deviation:**"* ]]; then
+      text=$(strip_uat_metadata_value "$line" "- **Deviation:**")
+    elif [ "$in_d" = true ] && [[ "$line" == "- **Result:**"* ]]; then
+      result=$(lower_value "$(strip_uat_metadata_value "$line" "- **Result:**")")
+    elif [ "$in_d" = true ] && [[ "$line" == "- **Disposition:**"* ]]; then
+      disposition=$(lower_value "$(strip_uat_metadata_value "$line" "- **Disposition:**")")
+    fi
+  done < "$uat_file"
+  append_accepted_deviation_record_if_complete "$tmp_records" "$in_d" "$sig" "$source_plan" "$source_path" "$text" "$result" "$disposition" "$uat_rel" "$now"
 
   [ -s "$tmp_records" ] || return 0
   phase_name=$(basename "$phase_dir")

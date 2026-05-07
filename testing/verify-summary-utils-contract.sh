@@ -48,7 +48,7 @@ echo ""
 echo "--- Header dependency documentation ---"
 
 if grep -q 'All functions are portable bash .*no external process dependencies' "$LIB"; then
-  fail "header: old blanket no-external-process dependency claim is absent"
+  fail "header: old blanket no-external-process dependency claim is still present"
 else
   pass "header: old blanket no-external-process dependency claim is absent"
 fi

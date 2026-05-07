@@ -81,6 +81,44 @@ EOF
   [ "$output" = "$sig" ]
 }
 
+@test "track-uat-deviations: record-from-uat preserves JSON control characters in accepted D fields" {
+  local sig source_plan source_path deviation registry
+  source_plan=$'R03\tmanual'
+  source_path=$'remediation/uat/round-03/R03-SUMMARY.md\tartifact'
+  deviation=$'Full-project\tSwiftLint unavailable'
+  sig=$(bash "$SCRIPT" signature "$source_plan" "$source_path" "$deviation")
+  registry="$PHASE_DIR/remediation/uat/accepted-deviations.json"
+
+  {
+    printf '%s\n' '---'
+    printf '%s\n' 'status: complete'
+    printf '%s\n' '---'
+    printf '\n%s\n\n' '## Tests'
+    printf '%s\n\n' '### D01: Review summary deviation'
+    printf '%s\n' '- **Source:** Summary deviation review'
+    printf -- '- **Deviation Signature:** %s\n' "$sig"
+    printf -- '- **Source Plan:** %s\n' "$source_plan"
+    printf -- '- **Source Summary:** %s\n' "$source_path"
+    printf -- '- **Deviation:** %s\n' "$deviation"
+    printf '%s\n' '- **Result:** pass'
+    printf '%s\n' '- **Disposition:** accepted-process-exception'
+  } > "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md"
+
+  run bash "$SCRIPT" record-from-uat "$PHASE_DIR" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md"
+  [ "$status" -eq 0 ]
+
+  [ -f "$registry" ]
+  [ "$(jq -r '.accepted | length' "$registry")" = "1" ]
+  [ "$(jq -r '.accepted[0].signature' "$registry")" = "$sig" ]
+  [ "$(jq -r '.accepted[0].source_plan' "$registry")" = "$source_plan" ]
+  [ "$(jq -r '.accepted[0].source_path' "$registry")" = "$source_path" ]
+  [ "$(jq -r '.accepted[0].text' "$registry")" = "$deviation" ]
+
+  run bash "$SCRIPT" accepted-signatures "$PHASE_DIR"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$sig" ]
+}
+
 @test "track-uat-deviations: signature does not require jq" {
   local no_jq_path expected
   no_jq_path=$(make_no_jq_path)
