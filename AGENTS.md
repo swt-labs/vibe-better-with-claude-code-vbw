@@ -290,7 +290,7 @@ When asked to fix a bug or implement an issue-driven change, use the tracked iss
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **vibe-better-with-claude-code-vbw** (1656 symbols, 1649 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **vibe-better-with-claude-code-vbw** (1666 symbols, 1659 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
