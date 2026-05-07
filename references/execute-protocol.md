@@ -965,6 +965,7 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
    - **Freeform text (via "Other"):** Apply case-insensitive, trimmed string matching:
      - **Skip words** (skip, skipped, next, n/a, na, later, defer): record skip
      - **Anything else**: treat the entire response text as an issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major). For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** rejected-by-user`.
+   - If a pass/skip response includes a separate defect observation unrelated to the current checkpoint, append it as a discovered UAT issue. Before choosing the ID, scan the current UAT file at `{phase-dir}/{uat_path}` in both initial and resumed sessions for existing `D[0-9]+` headings, including prefilled summary-deviation review entries and issues appended earlier in the same session; allocate highest existing + 1 (`D03` after prefilled `D01`/`D02`) and never renumber existing entries.
    - Update `{phase-dir}/{uat_path}` immediately (persist to disk)
    - If the response accepts a prefilled summary-deviation checkpoint, run `bash "${VBW_PLUGIN_ROOT}/scripts/track-uat-deviations.sh" record-from-uat "{phase-dir}" "{phase-dir}/{uat_path}"` after writing the UAT file. The helper is idempotent; never hand-edit `accepted-deviations.json`.
    - Display progress: `✓ {completed}/{total} tests`
