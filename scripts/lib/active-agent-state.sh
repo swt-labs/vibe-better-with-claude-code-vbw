@@ -10,6 +10,7 @@ vbw_active_agent_is_safe_session_id() {
   [ -n "$sid" ] || return 1
   [ "$sid" != "null" ] || return 1
   [ "$sid" != "unknown" ] || return 1
+  case "$sid" in .|..) return 1 ;; esac
   case "$sid" in
     *[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-]*) return 1 ;;
   esac
@@ -705,7 +706,7 @@ vbw_active_agent_remove_current_session() {
       lock_acquired=true
       trap 'vbw_active_agent_release_lock "$planning_dir"' INT TERM
     fi
-    _vbw_active_agent_root_files_remove "$planning_dir"
+    _vbw_active_agent_rebuild_aggregate_unlocked "$planning_dir"
     if [ "$lock_acquired" = true ]; then
       vbw_active_agent_release_lock "$planning_dir"
       trap - INT TERM
