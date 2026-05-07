@@ -144,6 +144,66 @@ EOF
   [[ "$output" == *"verify_plan_count=1"* ]]
 }
 
+@test "compile-verify-context: no-summary plan does not inherit prior summary state" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Complete plan
+must_haves:
+  - First plan complete
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Complete plan
+status: complete
+deviations:
+  - Prior plan deviation should stay local
+pre_existing_issues:
+  - '{"test":"PriorSuite","file":"Tests/PriorSuite.swift","error":"prior failure should stay local"}'
+---
+
+## What Was Built
+
+- First plan complete
+EOF
+
+  cat > "$PHASE_DIR/03-02-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 02
+title: No summary plan
+must_haves:
+  - Second plan still pending
+---
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Prior plan deviation should stay local"* ]]
+  [[ "$output" == *"pre_existing_issues: PriorSuite (Tests/PriorSuite.swift): prior failure should stay local"* ]]
+
+  local plan02
+  plan02=$(awk '
+    /^=== PLAN 02: No summary plan ===/ { capture=1 }
+    capture { print }
+    capture && /^$/ { exit }
+  ' <<< "$output")
+
+  [[ "$plan02" == *"status: no_summary"* ]]
+  [[ "$plan02" == *"deviations: none"* ]]
+  [[ "$plan02" == *"summary_deviation_reviews: none"* ]]
+  [[ "$plan02" == *"pre_existing_issues: none"* ]]
+  [[ "$plan02" != *"Prior plan deviation should stay local"* ]]
+  [[ "$plan02" != *"prior failure should stay local"* ]]
+}
+
 @test "compile-verify-context: flow-style YAML deviations are emitted" {
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
 ---

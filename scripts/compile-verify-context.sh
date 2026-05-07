@@ -435,6 +435,8 @@ while IFS= read -r plan_file; do
   STATUS="no_summary"
   WHAT_BUILT=""
   FILES_MODIFIED=""
+  DEVIATIONS=""
+  PRE_EXISTING=""
   SUMMARY_DEVIATIONS=""
   SUMMARY_DEVIATION_RECORDS=""
 
