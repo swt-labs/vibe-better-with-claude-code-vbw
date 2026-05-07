@@ -1540,7 +1540,11 @@ summary_deviation_is_accepted() {
   source_path="${summary_file#"$phase_dir/"}"
   [ -n "$source_path" ] || return 1
 
-  source_plan_ids=$(source_plan_ids_for_summary "$summary_file")
+  if type summary_deviation_source_plan_candidates >/dev/null 2>&1; then
+    source_plan_ids=$(summary_deviation_source_plan_candidates "$summary_file" 2>/dev/null || true)
+  else
+    source_plan_ids=$(source_plan_ids_for_summary "$summary_file")
+  fi
   [ -n "$source_plan_ids" ] || return 1
 
   while IFS= read -r source_plan_id; do
@@ -1548,12 +1552,13 @@ summary_deviation_is_accepted() {
     saw_source_plan=true
     signature=$(bash "$TRACK_UAT_DEVIATIONS_SCRIPT" signature "$source_plan_id" "$source_path" "$deviation_text" 2>/dev/null || true)
     [ -n "$signature" ] || return 1
-    if ! printf '%s\n' "$accepted_signatures" | grep -Fx -- "$signature" >/dev/null 2>&1; then
-      return 1
+    if printf '%s\n' "$accepted_signatures" | grep -Fx -- "$signature" >/dev/null 2>&1; then
+      return 0
     fi
   done <<< "$source_plan_ids"
 
-  [ "$saw_source_plan" = true ]
+  [ "$saw_source_plan" != true ] && return 1
+  return 1
 }
 
 # Count active, non-placeholder deviations across SUMMARY.md files in a given directory.

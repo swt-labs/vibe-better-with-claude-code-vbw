@@ -1896,6 +1896,61 @@ EOF
   [[ "$output" == *"verify_plan_count=2"* ]]
 }
 
+@test "compile-verify-context: shared round summary deviations emit once across multiple plans" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: First remediation plan
+must_haves:
+  - Fix first issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Second remediation plan
+must_haves:
+  - Fix second issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Shared remediation summary
+status: complete
+files_modified:
+  - src/api.swift
+deviations:
+  - "Shared implementation compromise"
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+
+### Deviations
+- Shared validation shortcut
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== PLAN R01: First remediation plan ==="* ]]
+  [[ "$output" == *"=== PLAN R01-02: Second remediation plan ==="* ]]
+  [ "$(grep -o 'SUMMARY_DEVIATION:' <<< "$output" | wc -l | tr -d ' ')" -eq 2 ]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"source_plan=R01"*"source_path=remediation/qa/round-01/R01-SUMMARY.md"*"text=Shared implementation compromise"* ]]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"source_plan=R01"*"text=Shared validation shortcut"* ]]
+  ! grep -q 'SUMMARY_DEVIATION: .*source_plan=R01-02' <<< "$output"
+}
+
 @test "compile-verify-context: --remediation-only excludes QA remediation plans" {
   # Phase-root plan
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'

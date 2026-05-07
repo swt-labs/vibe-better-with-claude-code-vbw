@@ -292,3 +292,144 @@ extract_summary_deviations() {
     summary_extract_body_deviation_items "$file_path"
   } | normalize_summary_deviation_item
 }
+
+summary_extract_frontmatter_scalar_value() {
+  local file_path="${1:-}"
+  local key_name="${2:-}"
+  [ -f "$file_path" ] || return 0
+  [ -n "$key_name" ] || return 0
+  awk -v key="$key_name" '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    function strip_quotes(v, first, last) {
+      first = substr(v, 1, 1)
+      last = substr(v, length(v), 1)
+      if ((first == "\"" && last == "\"") || (first == squote && last == squote)) {
+        return substr(v, 2, length(v) - 2)
+      }
+      return v
+    }
+    BEGIN { in_fm = 0; squote = sprintf("%c", 39) }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && $0 ~ ("^" key ":[[:space:]]*") {
+      value = $0
+      sub("^" key ":[[:space:]]*", "", value)
+      value = strip_quotes(trim(value))
+      if (value != "") print value
+      exit
+    }
+  ' "$file_path" 2>/dev/null
+}
+
+summary_plan_identity_from_plan_file() {
+  local plan_file="${1:-}"
+  local plan_id=""
+  local round_id=""
+  local plan_base=""
+  [ -f "$plan_file" ] || return 0
+
+  plan_id=$(summary_extract_frontmatter_scalar_value "$plan_file" plan | head -1)
+  if [ -z "$plan_id" ]; then
+    plan_base=$(basename "$plan_file")
+    case "$plan_base" in
+      R*-PLAN.md)
+        plan_id="${plan_base%-PLAN.md}"
+        ;;
+      *)
+        round_id=$(summary_extract_frontmatter_scalar_value "$plan_file" round | head -1)
+        if [ -n "$round_id" ]; then
+          plan_id="R${round_id}"
+        fi
+        ;;
+    esac
+  fi
+
+  printf '%s\n' "${plan_id:-unknown}"
+}
+
+summary_deviation_canonical_source_plan() {
+  local summary_file="${1:-}"
+  local summary_dir=""
+  local summary_base=""
+  local summary_prefix=""
+  local plan_file=""
+
+  [ -f "$summary_file" ] || return 0
+  summary_dir=$(dirname "$summary_file")
+  summary_base=$(basename "$summary_file")
+
+  if [ "$summary_base" = "SUMMARY.md" ]; then
+    plan_file="$summary_dir/PLAN.md"
+    if [ -f "$plan_file" ]; then
+      summary_plan_identity_from_plan_file "$plan_file"
+    else
+      printf '%s\n' "unknown"
+    fi
+    return 0
+  fi
+
+  case "$summary_base" in
+    *-SUMMARY.md)
+      summary_prefix="${summary_base%-SUMMARY.md}"
+      ;;
+    *)
+      printf '%s\n' "unknown"
+      return 0
+      ;;
+  esac
+
+  if [[ "$summary_prefix" =~ ^R[0-9]+$ ]]; then
+    printf '%s\n' "$summary_prefix"
+    return 0
+  fi
+
+  plan_file="$summary_dir/${summary_prefix}-PLAN.md"
+  if [ -f "$plan_file" ]; then
+    summary_plan_identity_from_plan_file "$plan_file"
+  else
+    printf '%s\n' "$summary_prefix"
+  fi
+}
+
+summary_deviation_source_plan_candidates() {
+  local summary_file="${1:-}"
+  local summary_dir=""
+  local summary_base=""
+  local summary_prefix=""
+  local plan_file=""
+
+  [ -f "$summary_file" ] || return 0
+  summary_dir=$(dirname "$summary_file")
+  summary_base=$(basename "$summary_file")
+
+  {
+    summary_deviation_canonical_source_plan "$summary_file"
+
+    if [ "$summary_base" = "SUMMARY.md" ]; then
+      plan_file="$summary_dir/PLAN.md"
+      [ -f "$plan_file" ] && summary_plan_identity_from_plan_file "$plan_file"
+    else
+      case "$summary_base" in
+        *-SUMMARY.md)
+          summary_prefix="${summary_base%-SUMMARY.md}"
+          ;;
+        *)
+          summary_prefix=""
+          ;;
+      esac
+
+      if [ -n "$summary_prefix" ] && [[ "$summary_prefix" =~ ^R[0-9]+$ ]]; then
+        while IFS= read -r plan_file; do
+          [ -f "$plan_file" ] || continue
+          summary_plan_identity_from_plan_file "$plan_file"
+        done < <(find "$summary_dir" -maxdepth 1 ! -name '.*' \( -name "${summary_prefix}-PLAN.md" -o -name "${summary_prefix}-*-PLAN.md" \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+      elif [ -n "$summary_prefix" ]; then
+        plan_file="$summary_dir/${summary_prefix}-PLAN.md"
+        [ -f "$plan_file" ] && summary_plan_identity_from_plan_file "$plan_file"
+      fi
+    fi
+  } | awk 'NF && !seen[$0]++'
+}

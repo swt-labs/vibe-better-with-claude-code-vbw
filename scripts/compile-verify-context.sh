@@ -365,6 +365,7 @@ echo "uat_path=$UAT_PATH"
 
 PLAN_COUNT=0
 ACCEPTED_DEVIATION_SIGNATURES=""
+EMITTED_SUMMARY_DEVIATION_SIGNATURES=""
 TRACK_UAT_DEVIATIONS_SCRIPT="$_CVC_SCRIPT_DIR/track-uat-deviations.sh"
 if [ -x "$TRACK_UAT_DEVIATIONS_SCRIPT" ]; then
   ACCEPTED_DEVIATION_SIGNATURES=$(bash "$TRACK_UAT_DEVIATIONS_SCRIPT" accepted-signatures "$PHASE_DIR" 2>/dev/null || true)
@@ -516,12 +517,41 @@ while IFS= read -r plan_file; do
       SUMMARY_REL_PATH="${SUMMARY_FILE#"$PHASE_DIR/"}"
       while IFS= read -r _cvc_deviation; do
         [ -n "$_cvc_deviation" ] || continue
-        _cvc_signature=$(bash "$TRACK_UAT_DEVIATIONS_SCRIPT" signature "${PLAN_ID:-unknown}" "$SUMMARY_REL_PATH" "$_cvc_deviation" 2>/dev/null || true)
+        _cvc_source_plan="${PLAN_ID:-unknown}"
+        if type summary_deviation_canonical_source_plan >/dev/null 2>&1; then
+          _cvc_source_plan=$(summary_deviation_canonical_source_plan "$SUMMARY_FILE" 2>/dev/null || true)
+          _cvc_source_plan="${_cvc_source_plan:-unknown}"
+        fi
+        _cvc_signature=$(bash "$TRACK_UAT_DEVIATIONS_SCRIPT" signature "$_cvc_source_plan" "$SUMMARY_REL_PATH" "$_cvc_deviation" 2>/dev/null || true)
         [ -n "$_cvc_signature" ] || continue
-        if [ -n "$ACCEPTED_DEVIATION_SIGNATURES" ] && printf '%s\n' "$ACCEPTED_DEVIATION_SIGNATURES" | grep -Fx -- "$_cvc_signature" >/dev/null 2>&1; then
+        _cvc_accepted=false
+        if [ -n "$ACCEPTED_DEVIATION_SIGNATURES" ]; then
+          _cvc_candidate_source_plans="$_cvc_source_plan"
+          if type summary_deviation_source_plan_candidates >/dev/null 2>&1; then
+            _cvc_candidate_source_plans=$(summary_deviation_source_plan_candidates "$SUMMARY_FILE" 2>/dev/null || true)
+            _cvc_candidate_source_plans="${_cvc_candidate_source_plans:-$_cvc_source_plan}"
+          fi
+          while IFS= read -r _cvc_candidate_source_plan; do
+            [ -n "$_cvc_candidate_source_plan" ] || continue
+            _cvc_candidate_signature=$(bash "$TRACK_UAT_DEVIATIONS_SCRIPT" signature "$_cvc_candidate_source_plan" "$SUMMARY_REL_PATH" "$_cvc_deviation" 2>/dev/null || true)
+            [ -n "$_cvc_candidate_signature" ] || break
+            if printf '%s\n' "$ACCEPTED_DEVIATION_SIGNATURES" | grep -Fx -- "$_cvc_candidate_signature" >/dev/null 2>&1; then
+              _cvc_accepted=true
+              break
+            fi
+          done <<< "$_cvc_candidate_source_plans"
+        fi
+        if [ "$_cvc_accepted" = true ]; then
           continue
         fi
-        _cvc_safe_plan=$(sanitize_summary_deviation_context_field "${PLAN_ID:-unknown}")
+        if [ -n "$EMITTED_SUMMARY_DEVIATION_SIGNATURES" ] && printf '%s\n' "$EMITTED_SUMMARY_DEVIATION_SIGNATURES" | grep -Fx -- "$_cvc_signature" >/dev/null 2>&1; then
+          continue
+        fi
+        if [ -n "$EMITTED_SUMMARY_DEVIATION_SIGNATURES" ]; then
+          EMITTED_SUMMARY_DEVIATION_SIGNATURES="${EMITTED_SUMMARY_DEVIATION_SIGNATURES}"$'\n'
+        fi
+        EMITTED_SUMMARY_DEVIATION_SIGNATURES="${EMITTED_SUMMARY_DEVIATION_SIGNATURES}${_cvc_signature}"
+        _cvc_safe_plan=$(sanitize_summary_deviation_context_field "$_cvc_source_plan")
         _cvc_safe_path=$(sanitize_summary_deviation_context_field "$SUMMARY_REL_PATH")
         _cvc_safe_text=$(sanitize_summary_deviation_context_field "$_cvc_deviation")
         if [ -n "$SUMMARY_DEVIATION_RECORDS" ]; then

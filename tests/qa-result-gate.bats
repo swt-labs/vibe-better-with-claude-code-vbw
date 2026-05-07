@@ -1881,6 +1881,170 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
+@test "multi-plan remediation round counts shared summary deviation once" {
+  create_source_fail_verif "FAIL-01" "Shared deviation still needs remediation"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: First remediation plan
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Shared deviation is under review"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Second remediation plan
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+files_modified:
+  - src/Fix.swift
+deviations:
+  - "Shared alternate fix path"
+---
+
+## Summary
+Remediation applied.
+SUMMARY
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+  - R01-02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Regression fixed | PASS | ok |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "canonical accepted shared remediation deviation is not counted by QA gate" {
+  create_source_fail_verif "FAIL-01" "Shared accepted deviation still needs remediation"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: First remediation plan
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Accepted shared deviation is non-blocking"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Second remediation plan
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+files_modified:
+  - src/Fix.swift
+deviations:
+  - "Shared accepted alternate fix path"
+---
+
+## Summary
+Remediation applied.
+SUMMARY
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+  - R01-02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Regression fixed | PASS | ok |
+VERIF
+  write_accepted_summary_deviation "R01" "remediation/qa/round-01/R01-SUMMARY.md" "Shared accepted alternate fix path"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" != *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "legacy per-plan accepted shared remediation deviation is not counted by QA gate" {
+  create_source_fail_verif "FAIL-01" "Legacy accepted shared deviation still needs remediation"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: First remediation plan
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Legacy accepted shared deviation is non-blocking"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Second remediation plan
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+files_modified:
+  - src/Fix.swift
+deviations:
+  - "Legacy accepted alternate fix path"
+---
+
+## Summary
+Remediation applied.
+SUMMARY
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+  - R01-02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Regression fixed | PASS | ok |
+VERIF
+  write_accepted_summary_deviation "R01-02" "remediation/qa/round-01/R01-SUMMARY.md" "Legacy accepted alternate fix path"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" != *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
 @test "explicit verif-name override is preserved during active remediation" {
   create_verif "write-verification.sh" "FAIL"
 
