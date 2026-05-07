@@ -1295,6 +1295,10 @@ EOF
   grep -q "Deviation Signature" "$template"
   grep -q "accepted-process-exception" "$template"
   grep -q "PR{round}-T{NN}" "$template"
+  grep -q "P01-T01" "$template"
+  grep -q "PR03-T01" "$template"
+  grep -q "D01" "$template"
+  grep -q 'final `Result` is `issue`' "$template"
 }
 
 # --- UAT format and lifecycle contract tests ---

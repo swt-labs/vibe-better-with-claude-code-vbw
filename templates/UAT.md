@@ -15,11 +15,12 @@ issues: {N}
 ## Tests
 
 Supported checkpoint IDs:
-- `P{plan}-T{NN}` — full-scope plan checkpoint
-- `PR{round}-T{NN}` — remediation re-verification checkpoint
-- `D{NN}` — prefilled summary-deviation review or discovered issue
+- `P{plan}-T{NN}` — full-scope plan checkpoint (example: `P01-T01`)
+- `PR{round}-T{NN}` — remediation re-verification checkpoint (example: `PR03-T01`)
+- `D{NN}` — prefilled summary-deviation review or discovered issue (example: `D01`)
 
 Prefilled summary-deviation reviews are not blocking issues until the human rejects them. They start with an empty `Result`, include deterministic identity metadata, and are written before generated plan checkpoints.
+Only entries whose final `Result` is `issue` are blocking UAT issues; empty, `pass`, and `skip` `DNN` review entries are non-blocking.
 
 ### D{NN}: Review summary deviation
 
