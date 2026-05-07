@@ -1281,6 +1281,35 @@ EOF
   [ "$status" -eq 0 ]
 }
 
+@test "bash-guard: no-session Scout remains blocked after safe-session agent rebuilds aggregate" {
+  TEST_PROJECT="$BATS_TEST_TMPDIR/scout-legacy-plus-safe-aggregate"
+  local cmd input_no_session input_b
+
+  mkdir -p "$TEST_PROJECT/.vbw-planning"
+  echo '{"bash_guard":true}' > "$TEST_PROJECT/.vbw-planning/config.json"
+  printf '%s\n' '{"agent_type":"vbw:vbw-scout","pid":"10101"}' | \
+    env -u CLAUDE_SESSION_ID VBW_PLANNING_DIR="$TEST_PROJECT/.vbw-planning" bash "$PROJECT_ROOT/scripts/agent-start.sh"
+  printf '%s\n' '{"session_id":"session-B","agent_type":"vbw:vbw-dev","pid":"20202"}' | \
+    VBW_PLANNING_DIR="$TEST_PROJECT/.vbw-planning" bash "$PROJECT_ROOT/scripts/agent-start.sh"
+
+  [ "$(cat "$TEST_PROJECT/.vbw-planning/.active-agent-count")" = "2" ]
+  grep -Fqx 'scout 1' "$TEST_PROJECT/.vbw-planning/.active-agent-roles"
+  grep -Fqx 'dev 1' "$TEST_PROJECT/.vbw-planning/.active-agent-roles"
+  [ ! -f "$TEST_PROJECT/.vbw-planning/.active-agent" ]
+
+  cmd='gh issue comment 1403 --repo abhigyanpatwari/GitNexus --body-file /tmp/vbw-body.md'
+  input_no_session=$(jq -n --arg cmd "$cmd" '{tool_input:{command:$cmd}}')
+  run bash -c 'cd "$1" && unset CLAUDE_SESSION_ID && printf "%s\n" "$2" | bash "$3"' _ \
+    "$TEST_PROJECT" "$input_no_session" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"mutating gh command"* ]]
+
+  input_b=$(jq -n --arg sid 'session-B' --arg cmd "$cmd" '{session_id:$sid,tool_input:{command:$cmd}}')
+  run bash -c 'cd "$1" && printf "%s\n" "$2" | bash "$3"' _ \
+    "$TEST_PROJECT" "$input_b" "$PROJECT_ROOT/scripts/bash-guard.sh"
+  [ "$status" -eq 0 ]
+}
+
 @test "bash-guard: no-session legacy root Scout fallback still blocks mutating gh command" {
   TEST_PROJECT="$BATS_TEST_TMPDIR/scout-legacy-gh-fallback"
   local cmd input

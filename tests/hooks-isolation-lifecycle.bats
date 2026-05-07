@@ -439,6 +439,81 @@ load test_helper
   teardown_temp_dir
 }
 
+@test "active-agent aggregate preserves no-session legacy Scout when safe session starts" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+
+  printf '%s\n' '{"agent_type":"vbw-scout","pid":"10101"}' | \
+    env -u CLAUDE_SESSION_ID VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/agent-start.sh"
+  printf '%s\n' '{"session_id":"session-B","agent_type":"vbw-dev","pid":"20202"}' | \
+    VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/agent-start.sh"
+
+  [ -d "$TEST_TEMP_DIR/.vbw-planning/.active-agents/__vbw_legacy_global" ]
+  [ -d "$TEST_TEMP_DIR/.vbw-planning/.active-agents/session-B" ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count")" = "2" ]
+  grep -Fqx 'scout 1' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  grep -Fqx 'dev 1' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  grep -Fqx '10101 scout' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-role-pids"
+  grep -Fqx '20202 dev' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-role-pids"
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  teardown_temp_dir
+}
+
+@test "session-stop without session id removes only legacy source and preserves safe sessions" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+
+  printf '%s\n' '{"agent_type":"vbw-scout","pid":"10101"}' | \
+    env -u CLAUDE_SESSION_ID VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/agent-start.sh"
+  printf '%s\n' '{"session_id":"session-B","agent_type":"vbw-dev","pid":"20202"}' | \
+    VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/agent-start.sh"
+
+  run bash -c "cd '$TEST_TEMP_DIR' && unset CLAUDE_SESSION_ID && echo '{}' | bash '$SCRIPTS_DIR/session-stop.sh'"
+  [ "$status" -eq 0 ]
+  [ ! -d "$TEST_TEMP_DIR/.vbw-planning/.active-agents/__vbw_legacy_global" ]
+  [ -d "$TEST_TEMP_DIR/.vbw-planning/.active-agents/session-B" ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count")" = "1" ]
+  grep -Fqx 'dev 1' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  ! grep -q '^scout ' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  grep -Fqx '20202 dev' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-role-pids"
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent")" = "dev" ]
+  teardown_temp_dir
+}
+
+@test "active-agent aggregate migrates brownfield root-only legacy state before safe rebuild" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo "1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  echo "scout" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
+  echo "scout 1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  echo "10101 scout" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-role-pids"
+
+  printf '%s\n' '{"session_id":"session-B","agent_type":"vbw-dev","pid":"20202"}' | \
+    VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/agent-start.sh"
+
+  [ -d "$TEST_TEMP_DIR/.vbw-planning/.active-agents/__vbw_legacy_global" ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agents/__vbw_legacy_global/active-agent")" = "scout" ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count")" = "2" ]
+  grep -Fqx 'scout 1' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  grep -Fqx 'dev 1' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  teardown_temp_dir
+}
+
+@test "active-agent legacy migration preserves degraded marker-only count semantics" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+  echo "2" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  echo "lead" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
+
+  run bash -c "cd '$TEST_TEMP_DIR' && unset CLAUDE_SESSION_ID && echo '{}' | bash '$SCRIPTS_DIR/agent-stop.sh'"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count")" = "1" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles" ]
+  teardown_temp_dir
+}
+
 @test "active-agent helper rejects dot-only session ids as unsafe path components" {
   run bash -c "source '$SCRIPTS_DIR/lib/active-agent-state.sh'; vbw_active_agent_is_safe_session_id ."
   [ "$status" -ne 0 ]
@@ -446,8 +521,25 @@ load test_helper
   run bash -c "source '$SCRIPTS_DIR/lib/active-agent-state.sh'; vbw_active_agent_is_safe_session_id .."
   [ "$status" -ne 0 ]
 
+  run bash -c "source '$SCRIPTS_DIR/lib/active-agent-state.sh'; vbw_active_agent_is_safe_session_id __vbw_legacy_global"
+  [ "$status" -ne 0 ]
+
   run bash -c "source '$SCRIPTS_DIR/lib/active-agent-state.sh'; vbw_active_agent_is_safe_session_id session-A_01.ok"
   [ "$status" -eq 0 ]
+}
+
+@test "agent-start treats reserved legacy source id as internal fallback" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
+
+  printf '%s\n' '{"session_id":"__vbw_legacy_global","agent_type":"vbw-scout","pid":"30303"}' | \
+    env -u CLAUDE_SESSION_ID VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/agent-start.sh"
+
+  [ -d "$TEST_TEMP_DIR/.vbw-planning/.active-agents/__vbw_legacy_global" ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count")" = "1" ]
+  [ "$(cat "$TEST_TEMP_DIR/.vbw-planning/.active-agent")" = "scout" ]
+  grep -Fqx '30303 scout' "$TEST_TEMP_DIR/.vbw-planning/.active-agent-role-pids"
+  teardown_temp_dir
 }
 
 @test "agent-start treats dot-only session ids as legacy fallback, not session directories" {
@@ -497,6 +589,34 @@ load test_helper
     bash "$SCRIPTS_DIR/doctor-cleanup.sh" cleanup
   [ "$status" -eq 0 ]
   [ ! -d "$TEST_TEMP_DIR/.vbw-planning/.active-agents/session-A" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles" ]
+  [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-role-pids" ]
+  teardown_temp_dir
+}
+
+@test "doctor-cleanup reports and removes stale legacy active-agent source" {
+  setup_temp_dir
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/.active-agents/__vbw_legacy_global"
+  echo "1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agents/__vbw_legacy_global/active-agent-count"
+  echo "scout" > "$TEST_TEMP_DIR/.vbw-planning/.active-agents/__vbw_legacy_global/active-agent"
+  echo "scout 1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agents/__vbw_legacy_global/active-agent-roles"
+  echo "999999 scout" > "$TEST_TEMP_DIR/.vbw-planning/.active-agents/__vbw_legacy_global/active-agent-role-pids"
+  echo "1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count"
+  echo "scout" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent"
+  echo "scout 1" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles"
+  echo "999999 scout" > "$TEST_TEMP_DIR/.vbw-planning/.active-agent-role-pids"
+
+  run env VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/claude" \
+    bash "$SCRIPTS_DIR/doctor-cleanup.sh" scan
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"stale_marker|.active-agents/__vbw_legacy_global|dead session-local PIDs"* ]]
+
+  run env VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" CLAUDE_CONFIG_DIR="$TEST_TEMP_DIR/claude" \
+    bash "$SCRIPTS_DIR/doctor-cleanup.sh" cleanup
+  [ "$status" -eq 0 ]
+  [ ! -d "$TEST_TEMP_DIR/.vbw-planning/.active-agents/__vbw_legacy_global" ]
   [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-count" ]
   [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent" ]
   [ ! -f "$TEST_TEMP_DIR/.vbw-planning/.active-agent-roles" ]

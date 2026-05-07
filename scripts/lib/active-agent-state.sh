@@ -4,12 +4,15 @@
 # Function library only: callers must read hook stdin exactly once and pass the
 # captured JSON string to these helpers. This file must never read stdin.
 
+VBW_ACTIVE_AGENT_LEGACY_SOURCE_ID="__vbw_legacy_global"
+
 vbw_active_agent_is_safe_session_id() {
   local sid="${1:-}"
 
   [ -n "$sid" ] || return 1
   [ "$sid" != "null" ] || return 1
   [ "$sid" != "unknown" ] || return 1
+  [ "$sid" != "$VBW_ACTIVE_AGENT_LEGACY_SOURCE_ID" ] || return 1
   case "$sid" in .|..) return 1 ;; esac
   case "$sid" in
     *[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-]*) return 1 ;;
@@ -37,6 +40,20 @@ vbw_active_agent_session_id() {
   fi
 
   return 1
+}
+
+_vbw_active_agent_legacy_source_id() {
+  printf '%s\n' "$VBW_ACTIVE_AGENT_LEGACY_SOURCE_ID"
+}
+
+_vbw_active_agent_is_aggregate_source_id() {
+  local source_id="${1:-}"
+
+  [ -n "$source_id" ] || return 1
+  if [ "$source_id" = "$VBW_ACTIVE_AGENT_LEGACY_SOURCE_ID" ]; then
+    return 0
+  fi
+  vbw_active_agent_is_safe_session_id "$source_id"
 }
 
 vbw_active_agent_has_safe_session() {
@@ -426,6 +443,89 @@ _vbw_active_agent_root_files_remove() {
     2>/dev/null || true
 }
 
+_vbw_active_agent_has_positive_source_dirs_unlocked() {
+  local planning_dir="$1"
+  local sessions_dir session_dir source_id count
+
+  sessions_dir="$planning_dir/.active-agents"
+  [ -d "$sessions_dir" ] || return 1
+
+  for session_dir in "$sessions_dir"/*; do
+    [ -d "$session_dir" ] || continue
+    source_id=$(basename "$session_dir")
+    _vbw_active_agent_is_aggregate_source_id "$source_id" || continue
+    count=$(_vbw_active_agent_read_count_file "$session_dir/active-agent-count")
+    if [ "$count" -gt 0 ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+_vbw_active_agent_migrate_legacy_root_to_source_unlocked() {
+  local planning_dir="$1"
+  local legacy_source legacy_dir count root_count roles_file role_pids_file marker_file
+  local root_roles_file root_pids_file root_marker marker_role roles_sum
+
+  legacy_source=$(_vbw_active_agent_legacy_source_id)
+  legacy_dir=$(vbw_active_agent_session_dir "$planning_dir" "$legacy_source")
+  [ ! -d "$legacy_dir" ] || return 0
+  if _vbw_active_agent_has_positive_source_dirs_unlocked "$planning_dir"; then
+    return 0
+  fi
+
+  root_roles_file="$planning_dir/.active-agent-roles"
+  root_pids_file="$planning_dir/.active-agent-role-pids"
+  root_marker="$planning_dir/.active-agent"
+  root_count=$(_vbw_active_agent_read_count_file "$planning_dir/.active-agent-count")
+  roles_sum=0
+  if [ -f "$root_roles_file" ]; then
+    roles_sum=$(awk '($2 ~ /^[0-9]+$/) && $2 > 0 { sum += $2 } END { print sum + 0 }' "$root_roles_file" 2>/dev/null)
+  fi
+
+  marker_role=""
+  if [ -f "$root_marker" ]; then
+    marker_role=$(cat "$root_marker" 2>/dev/null | head -n 1 | tr -d '[:space:]')
+    if ! marker_role=$(vbw_active_agent_normalize_role "$marker_role" 2>/dev/null); then
+      marker_role=""
+    fi
+  fi
+
+  count="$root_count"
+  if [ "$count" -le 0 ]; then
+    if [ "${roles_sum:-0}" -gt 0 ]; then
+      count="$roles_sum"
+    elif [ -n "$marker_role" ]; then
+      count=1
+    else
+      return 0
+    fi
+  fi
+  [ "$count" -gt 0 ] || return 0
+
+  mkdir -p "$legacy_dir" 2>/dev/null || return 0
+  roles_file=$(_vbw_active_agent_roles_file "$planning_dir" "$legacy_source")
+  role_pids_file=$(_vbw_active_agent_role_pids_file "$planning_dir" "$legacy_source")
+  marker_file=$(_vbw_active_agent_marker_file "$planning_dir" "$legacy_source")
+  printf '%s\n' "$count" > "$(_vbw_active_agent_count_file "$planning_dir" "$legacy_source")" 2>/dev/null || true
+
+  rm -f "$roles_file" "$role_pids_file" "$marker_file" 2>/dev/null || true
+  if [ -f "$root_roles_file" ]; then
+    awk '($2 ~ /^[0-9]+$/) && $2 > 0 { print $1, $2 }' "$root_roles_file" > "$roles_file" 2>/dev/null || rm -f "$roles_file" 2>/dev/null || true
+    [ -s "$roles_file" ] || rm -f "$roles_file" 2>/dev/null || true
+  elif [ -n "$marker_role" ] && [ "$count" -eq 1 ]; then
+    printf '%s 1\n' "$marker_role" > "$roles_file" 2>/dev/null || true
+  fi
+
+  if [ -f "$root_pids_file" ]; then
+    awk 'NF >= 2 { print $1, $2 }' "$root_pids_file" > "$role_pids_file" 2>/dev/null || rm -f "$role_pids_file" 2>/dev/null || true
+    [ -s "$role_pids_file" ] || rm -f "$role_pids_file" 2>/dev/null || true
+  fi
+
+  _vbw_active_agent_sync_marker "$planning_dir" "$legacy_source"
+}
+
 _vbw_active_agent_rebuild_aggregate_unlocked() {
   local planning_dir="$1"
   local sessions_dir total count session_dir session_id roles_file pids_file
@@ -443,7 +543,7 @@ _vbw_active_agent_rebuild_aggregate_unlocked() {
     for session_dir in "$sessions_dir"/*; do
       [ -d "$session_dir" ] || continue
       session_id=$(basename "$session_dir")
-      vbw_active_agent_is_safe_session_id "$session_id" || continue
+      _vbw_active_agent_is_aggregate_source_id "$session_id" || continue
 
       count=$(_vbw_active_agent_read_count_file "$session_dir/active-agent-count")
       if [ "$count" -le 0 ]; then
@@ -529,16 +629,18 @@ vbw_active_agent_start() {
 
   [ -n "$role" ] || return 0
 
-  if session_id=$(vbw_active_agent_session_id "$input"); then
-    :
-  else
-    session_id=""
-  fi
-
   lock_acquired=false
   if vbw_active_agent_acquire_lock "$planning_dir"; then
     lock_acquired=true
     trap 'vbw_active_agent_release_lock "$planning_dir"' INT TERM
+  fi
+
+  _vbw_active_agent_migrate_legacy_root_to_source_unlocked "$planning_dir"
+
+  if session_id=$(vbw_active_agent_session_id "$input"); then
+    :
+  else
+    session_id=$(_vbw_active_agent_legacy_source_id)
   fi
 
   state_dir=$(_vbw_active_agent_state_dir "$planning_dir" "$session_id")
@@ -549,10 +651,7 @@ vbw_active_agent_start() {
   _vbw_active_agent_update_role_count "$planning_dir" "$session_id" "$role" 1
   _vbw_active_agent_upsert_role_pid "$planning_dir" "$session_id" "$pid" "$role"
   _vbw_active_agent_sync_marker "$planning_dir" "$session_id"
-
-  if [ -n "$session_id" ]; then
-    _vbw_active_agent_rebuild_aggregate_unlocked "$planning_dir"
-  fi
+  _vbw_active_agent_rebuild_aggregate_unlocked "$planning_dir"
 
   if [ "$lock_acquired" = true ]; then
     vbw_active_agent_release_lock "$planning_dir"
@@ -578,7 +677,7 @@ vbw_active_agent_find_session_by_pid() {
     if awk -v p="$pid" '$1 == p { found=1 } END { exit found ? 0 : 1 }' "$role_pids_file" 2>/dev/null; then
       session_dir=$(dirname "$role_pids_file")
       session_id=$(basename "$session_dir")
-      vbw_active_agent_is_safe_session_id "$session_id" || continue
+      _vbw_active_agent_is_aggregate_source_id "$session_id" || continue
       found="$session_id"
       count=$((count + 1))
     fi
@@ -658,18 +757,23 @@ vbw_active_agent_stop() {
   local pid="${4:-}"
   local session_id="" session_scoped=false lock_acquired
 
-  if session_id=$(vbw_active_agent_session_id "$input"); then
-    session_scoped=true
-  elif session_id=$(vbw_active_agent_find_session_by_pid "$planning_dir" "$pid"); then
-    session_scoped=true
-  else
-    session_id=""
-  fi
-
   lock_acquired=false
   if vbw_active_agent_acquire_lock "$planning_dir"; then
     lock_acquired=true
     trap 'vbw_active_agent_release_lock "$planning_dir"' INT TERM
+  fi
+
+  _vbw_active_agent_migrate_legacy_root_to_source_unlocked "$planning_dir"
+
+  if session_id=$(vbw_active_agent_session_id "$input"); then
+    session_scoped=true
+  elif session_id=$(vbw_active_agent_find_session_by_pid "$planning_dir" "$pid"); then
+    session_scoped=true
+  elif [ -d "$(vbw_active_agent_session_dir "$planning_dir" "$(_vbw_active_agent_legacy_source_id)")" ]; then
+    session_id=$(_vbw_active_agent_legacy_source_id)
+    session_scoped=true
+  else
+    session_id=""
   fi
 
   _vbw_active_agent_decrement_state "$planning_dir" "$session_id" "$role" "$pid"
@@ -686,7 +790,7 @@ vbw_active_agent_stop() {
 vbw_active_agent_remove_current_session() {
   local planning_dir="$1"
   local input="${2:-}"
-  local session_id="" lock_acquired
+  local session_id="" lock_acquired legacy_source
 
   if session_id=$(vbw_active_agent_session_id "$input"); then
     lock_acquired=false
@@ -694,6 +798,7 @@ vbw_active_agent_remove_current_session() {
       lock_acquired=true
       trap 'vbw_active_agent_release_lock "$planning_dir"' INT TERM
     fi
+    _vbw_active_agent_migrate_legacy_root_to_source_unlocked "$planning_dir"
     rm -rf "$(vbw_active_agent_session_dir "$planning_dir" "$session_id")" 2>/dev/null || true
     _vbw_active_agent_rebuild_aggregate_unlocked "$planning_dir"
     if [ "$lock_acquired" = true ]; then
@@ -706,6 +811,9 @@ vbw_active_agent_remove_current_session() {
       lock_acquired=true
       trap 'vbw_active_agent_release_lock "$planning_dir"' INT TERM
     fi
+    _vbw_active_agent_migrate_legacy_root_to_source_unlocked "$planning_dir"
+    legacy_source=$(_vbw_active_agent_legacy_source_id)
+    rm -rf "$(vbw_active_agent_session_dir "$planning_dir" "$legacy_source")" 2>/dev/null || true
     _vbw_active_agent_rebuild_aggregate_unlocked "$planning_dir"
     if [ "$lock_acquired" = true ]; then
       vbw_active_agent_release_lock "$planning_dir"
@@ -824,7 +932,7 @@ vbw_active_agent_scan_stale_sessions() {
   for session_dir in "$sessions_dir"/*; do
     [ -d "$session_dir" ] || continue
     session_id=$(basename "$session_dir")
-    vbw_active_agent_is_safe_session_id "$session_id" || continue
+    _vbw_active_agent_is_aggregate_source_id "$session_id" || continue
     count=$(_vbw_active_agent_read_count_file "$session_dir/active-agent-count")
     [ "$count" -gt 0 ] || continue
     if ! _vbw_active_agent_session_has_live_pid "$session_dir"; then
@@ -850,7 +958,7 @@ vbw_active_agent_cleanup_stale_sessions() {
   while IFS='|' read -r _category session_ref _detail; do
     [ -n "$session_ref" ] || continue
     session_id="${session_ref#.active-agents/}"
-    vbw_active_agent_is_safe_session_id "$session_id" || continue
+    _vbw_active_agent_is_aggregate_source_id "$session_id" || continue
     rm -rf "$(vbw_active_agent_session_dir "$planning_dir" "$session_id")" 2>/dev/null || true
     removed=$((removed + 1))
   done <<EOF
