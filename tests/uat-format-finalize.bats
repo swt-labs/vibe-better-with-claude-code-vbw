@@ -291,6 +291,76 @@ EOF
   grep -q "^status: complete" "$uat"
 }
 
+@test "finalize-uat-status: PR and D checkpoints are counted" {
+  local uat="$TEST_TEMP_DIR/03-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 03
+status: in_progress
+completed:
+total_tests: 3
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### D01: Review accepted summary deviation
+
+- **Result:** pass
+- **Disposition:** accepted-process-exception
+
+### PR03-T01: Verify remediation behavior
+
+- **Result:** pass
+
+### D02: Discovered issue
+
+- **Result:** issue
+- **Issue:** New problem
+  - Description: New problem
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=issues_found"* ]]
+  [[ "$output" == *"passed=2"* ]]
+  [[ "$output" == *"issues=1"* ]]
+  [[ "$output" == *"total=3"* ]]
+}
+
+@test "finalize-uat-status: legacy P checkpoints remain supported" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 01
+status: in_progress
+completed:
+total_tests: 1
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### P01: Legacy checkpoint
+
+- **Result:** issue
+- **Issue:** Legacy checkpoint failed
+  - Description: Legacy checkpoint failed
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=issues_found"* ]]
+  [[ "$output" == *"issues=1"* ]]
+  [[ "$output" == *"total=1"* ]]
+}
+
 @test "finalize-uat-status: updates completed date" {
   local uat="$TEST_TEMP_DIR/01-UAT.md"
   create_uat_file "$uat" <<'EOF'

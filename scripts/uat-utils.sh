@@ -241,7 +241,7 @@ extract_round_issue_ids() {
       }
       return out
     }
-    /^### [PD][0-9]/ {
+    /^### (P[0-9]+(-T[0-9]+)?|PR[0-9]+-T[0-9]+|D[0-9]+)(:|[[:space:]])/ {
       id = $2
       sub(/:$/, "", id)
       has_issue = 0

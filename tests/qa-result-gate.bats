@@ -1045,6 +1045,32 @@ VERIF
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
+@test "PASS + YAML and body deviations in one SUMMARY.md are both counted once" {
+  create_verif "write-verification.sh" "PASS"
+  cat > "$PHASE_DIR/01-01-SUMMARY.md" <<'SUMMARY'
+---
+plan: 01-01
+deviations:
+  - "Frontmatter deviation"
+  - "Duplicate deviation"
+---
+
+## Summary
+Work completed.
+
+## Deviations
+- Duplicate deviation
+- Body-only deviation
+SUMMARY
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=3"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
 @test "PASS + placeholder deviations (None) → PROCEED_TO_UAT" {
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "None"

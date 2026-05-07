@@ -40,6 +40,10 @@ if [ -n "$VERIF_NAME" ]; then
 fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RESOLVE_VERIF_SCRIPT="$SCRIPT_DIR/resolve-verification-path.sh"
+if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "$SCRIPT_DIR/summary-utils.sh"
+fi
 
 # Extract YAML-frontmatter array items from either block-list form:
 #   key:
@@ -1426,16 +1430,19 @@ count_deviations_in_dir() {
   while IFS= read -r _cdf_file; do
     [ -f "$_cdf_file" ] || continue
     local _cdf_devs
-    _cdf_devs=$(extract_frontmatter_array_items "$_cdf_file" deviations | awk '
-      BEGIN { count=0 }
-      {
-        lc = tolower($0)
-        if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
-        count++
-      }
-      END { print count }
-    ' 2>/dev/null)
-    if [ "${_cdf_devs:-0}" -eq 0 ]; then
+    if type extract_summary_deviations >/dev/null 2>&1; then
+      _cdf_devs=$(extract_summary_deviations "$_cdf_file" | awk 'NF { count++ } END { print count + 0 }' 2>/dev/null)
+    else
+      _cdf_devs=$(extract_frontmatter_array_items "$_cdf_file" deviations | awk '
+        BEGIN { count=0 }
+        {
+          lc = tolower($0)
+          if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
+          count++
+        }
+        END { print count }
+      ' 2>/dev/null)
+      if [ "${_cdf_devs:-0}" -eq 0 ]; then
       _cdf_devs=$(awk '
         BEGIN { count=0; found=0 }
           /^## Deviations/ || /^### Deviations/ { found=1; in_comment=0; next }
@@ -1463,6 +1470,7 @@ count_deviations_in_dir() {
         }
         END { print count }
       ' "$_cdf_file" 2>/dev/null)
+      fi
     fi
     total=$((total + ${_cdf_devs:-0}))
   done < <(find "$scan_dir" -maxdepth 1 ! -name '.*' \( -name '*-SUMMARY.md' -o -name 'SUMMARY.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))

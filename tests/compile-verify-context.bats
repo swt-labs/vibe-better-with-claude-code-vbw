@@ -823,7 +823,7 @@ EOF
   [[ "$output" == *"deviations: Changed from raw constraint test to upsert pattern test; Proceeded since API was on disk"* ]]
 }
 
-@test "compile-verify-context: YAML frontmatter deviations take priority over body" {
+@test "compile-verify-context: YAML and body deviations are merged in stable order" {
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
 ---
 phase: 03
@@ -853,15 +853,97 @@ Built it.
 
 ## Deviations
 
-- Body deviation should be ignored
+- Body deviation should also be reviewed
 EOF
 
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"deviations: YAML deviation wins"* ]]
-  [[ "$output" != *"Body deviation should be ignored"* ]]
+  [[ "$output" == *"deviations: YAML deviation wins; Body deviation should also be reviewed"* ]]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"source_plan=01"*"source_path=03-01-SUMMARY.md"*"text=YAML deviation wins"* ]]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"text=Body deviation should also be reviewed"* ]]
+}
+
+@test "compile-verify-context: duplicate YAML/body deviations emit once" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Duplicate deviation
+wave: 1
+must_haves:
+  - Feature works
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Duplicate deviation
+status: complete
+deviations:
+  - "Same deviation"
+---
+
+## What Was Built
+
+- Thing
+
+## Deviations
+
+- Same deviation
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Same deviation"* ]]
+  [ "$(grep -o 'SUMMARY_DEVIATION:' <<< "$output" | wc -l | tr -d ' ')" -eq 1 ]
+}
+
+@test "compile-verify-context: accepted summary deviations are not re-emitted as review records" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Accepted deviation
+wave: 1
+must_haves:
+  - Feature works
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Accepted deviation
+status: complete
+deviations:
+  - "Documented tooling constraint"
+---
+
+## What Was Built
+- Thing
+EOF
+
+  local sig
+  sig=$(bash "$SCRIPTS_DIR/track-uat-deviations.sh" signature "01" "03-01-SUMMARY.md" "Documented tooling constraint")
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  cat > "$PHASE_DIR/remediation/uat/accepted-deviations.json" <<EOF
+{"schema_version":1,"phase":"03-test","accepted":[{"signature":"$sig","source_plan":"01","source_path":"03-01-SUMMARY.md","text":"Documented tooling constraint","disposition":"accepted-process-exception"}]}
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Documented tooling constraint"* ]]
+  [[ "$output" == *"summary_deviation_reviews: none"* ]]
+  [[ "$output" != *"SUMMARY_DEVIATION:"* ]]
 }
 
 @test "compile-verify-context: body deviations section with None is treated as no deviations" {

@@ -674,7 +674,7 @@ Autonomy interacts with effort profiles. At `cautious`, plan approval expands to
 | Plan approval (Balanced) | Required | Off | Off | Off |
 | UAT after QA | Run | Run | Skip | Skip |
 
-**`auto_uat`** — When `true`, VBW automatically runs UAT verification after QA passes during the `/vbw:vibe` execution flow, regardless of autonomy level. Normally, UAT only runs at `cautious` and `standard` autonomy. With `auto_uat` enabled, UAT runs inline at every level, including `confident` and `pure-vibe`.
+**`auto_uat`** — When `true`, VBW automatically runs UAT verification after QA passes during the `/vbw:vibe` execution flow, regardless of autonomy level. Normally, UAT only runs at `cautious` and `standard` autonomy. With `auto_uat` enabled, UAT runs inline at every level, including `confident` and `pure-vibe`. If completed summaries document implementation deviations, UAT preloads them as review checkpoints so you can accept them as process exceptions, skip them, or reject them as real issues.
 
 ```text
 /vbw:config auto_uat true

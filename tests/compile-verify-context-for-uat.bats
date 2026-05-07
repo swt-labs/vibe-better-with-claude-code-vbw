@@ -270,3 +270,38 @@ EOF
   [[ "$output" == *"=== PLAN R01: UAT fix ==="* ]]
   [[ "$output" != *"=== PLAN R01: QA fix ==="* ]]
 }
+
+@test "compile-verify-context-for-uat: active UAT remediation exposes unsuppressed summary deviation records" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-03"
+  printf 'stage=verify\nround=03\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-03/R03-PLAN.md" <<'EOF'
+---
+round: 03
+title: LCID remediation
+must_haves:
+  - User-visible behavior verified
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-03/R03-SUMMARY.md" <<'EOF'
+---
+round: 03
+title: LCID remediation
+status: complete
+deviations:
+  - "Full-project SwiftLint was not runnable in this environment"
+---
+
+## What Was Built
+- Added service-level regression coverage
+
+## Deviations
+- GitNexus detect_changes completed but reported FTS lock warnings
+EOF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=03"* ]]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"source_plan=R03"*"source_path=remediation/uat/round-03/R03-SUMMARY.md"*"text=Full-project SwiftLint was not runnable in this environment"* ]]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"text=GitNexus detect_changes completed but reported FTS lock warnings"* ]]
+}

@@ -42,7 +42,7 @@ function emit_issue() {
   inline_issue = ""
 }
 
-/^### [PD][0-9]/ {
+/^### (P[0-9]+(-T[0-9]+)?|PR[0-9]+-T[0-9]+|D[0-9]+)(:|[[:space:]])/ {
   if (has_issue) emit_issue()
   id = $2
   sub(/:$/, "", id)

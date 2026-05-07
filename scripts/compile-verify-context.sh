@@ -132,6 +132,10 @@ else
   is_summary_terminal() { [ -f "$1" ]; }
 fi
 
+sanitize_summary_deviation_context_field() {
+  printf '%s' "${1:-}" | tr '\r\n|' '   ' | awk '{ gsub(/[[:space:]]+/, " "); sub(/^ /, ""); sub(/ $/, ""); print }'
+}
+
 REMEDIATION_ONLY=false
 REMEDIATION_KIND=""
 while [ $# -gt 0 ]; do
@@ -360,6 +364,11 @@ echo "$SCOPE_HEADER"
 echo "uat_path=$UAT_PATH"
 
 PLAN_COUNT=0
+ACCEPTED_DEVIATION_SIGNATURES=""
+TRACK_UAT_DEVIATIONS_SCRIPT="$_CVC_SCRIPT_DIR/track-uat-deviations.sh"
+if [ -x "$TRACK_UAT_DEVIATIONS_SCRIPT" ]; then
+  ACCEPTED_DEVIATION_SIGNATURES=$(bash "$TRACK_UAT_DEVIATIONS_SCRIPT" accepted-signatures "$PHASE_DIR" 2>/dev/null || true)
+fi
 
 while IFS= read -r plan_file; do
   [ -f "$plan_file" ] || continue
@@ -426,6 +435,8 @@ while IFS= read -r plan_file; do
   STATUS="no_summary"
   WHAT_BUILT=""
   FILES_MODIFIED=""
+  SUMMARY_DEVIATIONS=""
+  SUMMARY_DEVIATION_RECORDS=""
 
   if [ -n "$SUMMARY_FILE" ] && [ -f "$SUMMARY_FILE" ]; then
     # Extract status from frontmatter
@@ -489,51 +500,33 @@ while IFS= read -r plan_file; do
       ' "$SUMMARY_FILE" 2>/dev/null) || FILES_MODIFIED=""
     fi
 
-    # Extract deviations from SUMMARY.md YAML frontmatter (block or flow arrays)
-    DEVIATIONS=$(extract_frontmatter_array_items "$SUMMARY_FILE" deviations | awk '
-      {
-        lc = tolower($0)
-        if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
-        items = items (items ? "; " : "") $0
-      }
-      END { print items }
-    ' 2>/dev/null) || DEVIATIONS=""
+    # Extract deviations from both YAML frontmatter and body sections.
+    # Frontmatter no longer masks body deviations; UAT uses the explicit
+    # SUMMARY_DEVIATION records below to prefill review checkpoints.
+    if type extract_summary_deviations >/dev/null 2>&1; then
+      SUMMARY_DEVIATIONS=$(extract_summary_deviations "$SUMMARY_FILE" 2>/dev/null || true)
+      DEVIATIONS=$(printf '%s\n' "$SUMMARY_DEVIATIONS" | awk 'NF { items = items (items ? "; " : "") $0 } END { print items }')
+    else
+      DEVIATIONS=""
+    fi
 
-    # Fallback: extract deviations from body ## Deviations section
-    # Dev agents frequently write deviations only in the body section,
-    # omitting the YAML frontmatter array. This fallback ensures QA
-    # always receives deviation data regardless of where Dev wrote it.
-    if [ -z "$DEVIATIONS" ]; then
-      DEVIATIONS=$(awk '
-        BEGIN { found=0; in_comment=0 }
-        /^## Deviations/ || /^### Deviations/ { found=1; in_comment=0; next }
-        found && (/^## / || /^### /) { found=0; next }
-        found && /^[[:space:]]*$/ { next }
-        found && /^[[:space:]]*<!--/ {
-          in_comment=1
-          if ($0 ~ /-->/) in_comment=0
-          next
-        }
-        found && in_comment {
-          if ($0 ~ /-->/) in_comment=0
-          next
-        }
-        found {
-          line = $0
-          sub(/^- /, "", line)
-          gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
-          # Check bold label for None/N/A before stripping (e.g., **N/A**: not applicable)
-          if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
-          # Strip bold prefix so "**Foo**: bar" becomes "bar"
-          sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
-          if (line == "") next
-          # Skip "None" / "None." / "N/A" / "None. <explanation>" / "No deviations" entries (case-insensitive)
-          lc = tolower(line)
-          if (lc ~ /^none(\.[[:space:]].*|\.?)$/ || lc ~ /^n\/a(\.[[:space:]].*|\.?)$/ || lc ~ /^na(\.[[:space:]].*|\.?)$/ || lc ~ /^no deviations($|[.:].*)/) next
-          items = items (items ? "; " : "") line
-        }
-        END { print items }
-      ' "$SUMMARY_FILE" 2>/dev/null) || DEVIATIONS=""
+    if [ -n "$SUMMARY_DEVIATIONS" ] && [ -x "$TRACK_UAT_DEVIATIONS_SCRIPT" ]; then
+      SUMMARY_REL_PATH="${SUMMARY_FILE#"$PHASE_DIR/"}"
+      while IFS= read -r _cvc_deviation; do
+        [ -n "$_cvc_deviation" ] || continue
+        _cvc_signature=$(bash "$TRACK_UAT_DEVIATIONS_SCRIPT" signature "${PLAN_ID:-unknown}" "$SUMMARY_REL_PATH" "$_cvc_deviation" 2>/dev/null || true)
+        [ -n "$_cvc_signature" ] || continue
+        if [ -n "$ACCEPTED_DEVIATION_SIGNATURES" ] && printf '%s\n' "$ACCEPTED_DEVIATION_SIGNATURES" | grep -Fx -- "$_cvc_signature" >/dev/null 2>&1; then
+          continue
+        fi
+        _cvc_safe_plan=$(sanitize_summary_deviation_context_field "${PLAN_ID:-unknown}")
+        _cvc_safe_path=$(sanitize_summary_deviation_context_field "$SUMMARY_REL_PATH")
+        _cvc_safe_text=$(sanitize_summary_deviation_context_field "$_cvc_deviation")
+        if [ -n "$SUMMARY_DEVIATION_RECORDS" ]; then
+          SUMMARY_DEVIATION_RECORDS="${SUMMARY_DEVIATION_RECORDS}"$'\n'
+        fi
+        SUMMARY_DEVIATION_RECORDS="${SUMMARY_DEVIATION_RECORDS}SUMMARY_DEVIATION: signature=${_cvc_signature} | source_plan=${_cvc_safe_plan} | source_path=${_cvc_safe_path} | text=${_cvc_safe_text}"
+      done <<< "$SUMMARY_DEVIATIONS"
     fi
 
     # Extract pre-existing issues from canonical SUMMARY.md frontmatter first.
@@ -590,6 +583,11 @@ while IFS= read -r plan_file; do
   echo "files_modified: ${FILES_MODIFIED:-none}"
   echo "status: ${STATUS}"
   echo "deviations: ${DEVIATIONS:-none}"
+  if [ -n "$SUMMARY_DEVIATION_RECORDS" ]; then
+    printf '%s\n' "$SUMMARY_DEVIATION_RECORDS"
+  else
+    echo "summary_deviation_reviews: none"
+  fi
   echo "pre_existing_issues: ${PRE_EXISTING:-none}"
   echo ""
 done <<< "$ALL_PLAN_FILES"
