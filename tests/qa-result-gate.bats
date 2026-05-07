@@ -2,6 +2,7 @@
 
 REPO_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
 SCRIPT="$REPO_ROOT/scripts/qa-result-gate.sh"
+TRACK_DEVIATIONS_SCRIPT="$REPO_ROOT/scripts/track-uat-deviations.sh"
 
 setup() {
   TEST_DIR="$(mktemp -d)"
@@ -123,6 +124,43 @@ create_plan() {
     echo "## Objective"
     echo "Test plan for $plan_id"
   } > "$PHASE_DIR/${plan_id}-PLAN.md"
+}
+
+create_pass_verification_for_plans() {
+  local plans="${1:-}"
+  {
+    echo "---"
+    echo "writer: write-verification.sh"
+    echo "result: PASS"
+    if [ -n "$plans" ]; then
+      echo "plans_verified:"
+      while IFS= read -r plan_id; do
+        [ -n "$plan_id" ] && echo "  - $plan_id"
+      done <<< "$plans"
+    fi
+    echo "---"
+    echo "## Checks"
+    echo "| ID | Category | Description | Status | Evidence |"
+    echo "|----|----------|-------------|--------|----------|"
+    echo "| MH-01 | must_have | Test | PASS | ok |"
+  } > "$PHASE_DIR/01-VERIFICATION.md"
+}
+
+write_accepted_summary_deviation() {
+  local source_plan="${1}"
+  local source_path="${2}"
+  local text="${3}"
+  local sig
+  sig=$(bash "$TRACK_DEVIATIONS_SCRIPT" signature "$source_plan" "$source_path" "$text")
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  jq -n \
+    --arg phase "$(basename "$PHASE_DIR")" \
+    --arg sig "$sig" \
+    --arg source_plan "$source_plan" \
+    --arg source_path "$source_path" \
+    --arg text "$text" \
+    '{schema_version: 1, phase: $phase, accepted: [{signature: $sig, source_plan: $source_plan, source_path: $source_path, text: $text, disposition: "accepted-process-exception"}]}' \
+    > "$PHASE_DIR/remediation/uat/accepted-deviations.json"
 }
 
 create_source_fail_verif() {
@@ -1170,6 +1208,34 @@ SUMMARY
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
+@test "PASS + accepted summary deviation is not counted by QA gate" {
+  create_plan "01-01"
+  create_pass_verification_for_plans "01-01"
+  create_summary_with_yaml_deviations "01-01" "Documented tooling constraint"
+  write_accepted_summary_deviation "01-01" "01-01-SUMMARY.md" "Documented tooling constraint"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" != *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "PASS + accepted and active summary deviations counts only active records" {
+  create_plan "01-01"
+  create_pass_verification_for_plans "01-01"
+  create_summary_with_yaml_deviations "01-01" "$(printf 'Documented tooling constraint\nUnreviewed implementation shortcut')"
+  write_accepted_summary_deviation "01-01" "01-01-SUMMARY.md" "Documented tooling constraint"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
 @test "diagnostic fields always present even with no deviations or plans" {
   create_verif "write-verification.sh" "PASS"
 
@@ -1765,6 +1831,54 @@ VERIF
   [[ "$output" == *"qa_gate_deviation_count=1"* ]]
   [[ "$output" == *"qa_gate_deviation_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "accepted current-round remediation deviation is not counted by QA gate" {
+  create_source_fail_verif "FAIL-01" "Historical deviation still needs remediation"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix regression
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Current-round accepted deviation should not trigger another QA rerun"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+files_modified:
+  - src/Fix.swift
+deviations:
+  - "Accepted alternate fix path"
+---
+
+## Summary
+Remediation applied.
+SUMMARY
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Regression fixed | PASS | ok |
+VERIF
+  write_accepted_summary_deviation "R01" "remediation/qa/round-01/R01-SUMMARY.md" "Accepted alternate fix path"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" != *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
 @test "explicit verif-name override is preserved during active remediation" {
