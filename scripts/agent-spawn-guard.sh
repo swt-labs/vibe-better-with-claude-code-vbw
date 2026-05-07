@@ -127,7 +127,7 @@ if is_teammate_spawn_tool; then
     echo "Blocked: teammate spawn requested a VBW worktree path as a spawn working directory. Omit cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
     exit 2
   fi
-  if [ -n "$AGENT_NAME" ] && [ "$TRUE_LIVE_TEAM_MODE" != "true" ]; then
+  if [ -n "$AGENT_NAME" ] && [ "$TRUE_LIVE_TEAM_MODE" != "true" ] && { [ "$MARKER_LIVE" = "true" ] || [ "$EXEC_ACTIVE" = "true" ]; }; then
     echo "Blocked: named non-team teammate spawns are unsupported. Omit name for sequential non-team calls; name is only valid with team_name in true team mode." >&2
     exit 2
   fi

@@ -357,53 +357,53 @@ test_strip_preserves_non_stripped_fields() {
 }
 test_strip_preserves_non_stripped_fields
 
-test_named_non_team_with_isolation_blocks() {
+test_named_non_team_with_isolation_strips_when_no_active_workflow() {
   setup_project
 
   local tool output rc
   for tool in Agent TaskCreate; do
     output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "worktree" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
-      pass "Named non-team + isolation: ${tool} blocked (named check fires before strip)"
+    if [ "$rc" -eq 0 ] && echo "$output" | grep -q 'VBW stripped isolation:worktree'; then
+      pass "Named non-team + isolation: ${tool} stripped (no active workflow)"
     else
-      fail "Named non-team + isolation should block for ${tool} (rc=$rc, output=$output)"
+      fail "Named non-team + isolation should strip for ${tool} when no active workflow (rc=$rc, output=$output)"
     fi
   done
   cleanup
 }
-test_named_non_team_with_isolation_blocks
+test_named_non_team_with_isolation_strips_when_no_active_workflow
 
-test_named_non_team_with_sidechain_cwd_blocks() {
+test_named_non_team_with_sidechain_cwd_strips_when_no_active_workflow() {
   setup_project
 
   local tool output rc
   for tool in Agent TaskCreate; do
     output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "cwd" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
-      pass "Named non-team + sidechain cwd: ${tool} blocked (named check fires before strip)"
+    if [ "$rc" -eq 0 ] && echo "$output" | grep -q 'VBW stripped sidechain cwd fields'; then
+      pass "Named non-team + sidechain cwd: ${tool} stripped (no active workflow)"
     else
-      fail "Named non-team + sidechain cwd should block for ${tool} (rc=$rc, output=$output)"
+      fail "Named non-team + sidechain cwd should strip for ${tool} when no active workflow (rc=$rc, output=$output)"
     fi
   done
   cleanup
 }
-test_named_non_team_with_sidechain_cwd_blocks
+test_named_non_team_with_sidechain_cwd_strips_when_no_active_workflow
 
-test_no_marker_blocks_named_non_team_spawns() {
+test_no_marker_allows_named_non_team_spawns() {
   setup_project
 
   local tool output rc
   for tool in Agent TaskCreate; do
     output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
-      pass "No marker: named non-team ${tool} blocked"
+    if [ "$rc" -eq 0 ]; then
+      pass "No marker: named non-team ${tool} allowed (no active workflow)"
     else
-      fail "No-marker named non-team ${tool} should block (rc=$rc, output=$output)"
+      fail "No-marker named non-team ${tool} should allow when no active workflow (rc=$rc, output=$output)"
     fi
   done
   cleanup
 }
-test_no_marker_blocks_named_non_team_spawns
+test_no_marker_allows_named_non_team_spawns
 
 test_no_marker_allows_non_agent_worktree_cwd_when_config_off() {
   setup_project
@@ -752,7 +752,7 @@ test_non_team_mode_blocks_named_non_team_spawns() {
 }
 test_non_team_mode_blocks_named_non_team_spawns
 
-test_stale_team_marker_blocks_named_non_team_spawns() {
+test_stale_team_marker_allows_named_spawns() {
   setup_project
   write_marker execute team "vbw-phase-01" "corr-123"
 
@@ -761,16 +761,16 @@ test_stale_team_marker_blocks_named_non_team_spawns() {
     for team_name in "" "vbw-phase-01"; do
       output=$(run_guard "$PROJECT" "$team_name" false "dev-01" "$PROJECT" "$tool" 2>&1) && rc=$? || rc=$?
       label="${team_name:-without-team-name}"
-      if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
-        pass "Stale team marker blocks named ${tool} ${label}"
+      if [ "$rc" -eq 0 ]; then
+        pass "Stale team marker allows named ${tool} ${label} (no active workflow)"
       else
-        fail "Stale team marker should block named ${tool} ${label} (rc=$rc, output=$output)"
+        fail "Stale team marker should allow named ${tool} ${label} when no active workflow (rc=$rc, output=$output)"
       fi
     done
   done
   cleanup
 }
-test_stale_team_marker_blocks_named_non_team_spawns
+test_stale_team_marker_allows_named_spawns
 
 test_fix_marker_is_ignored() {
   setup_project
