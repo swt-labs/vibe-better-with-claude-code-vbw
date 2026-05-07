@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.36.2] - 2026-05-06
+
+### Added
+
+- **`gitnexus`** -- added comprehensive GitNexus skills for CLI operations, debugging, code exploration, impact analysis, and refactoring. (PR #591)
+- **`agents`** -- exposed local VBW development agents for GitHub Copilot and added the `fix-planner-vbw` agent to support plan-audit workflows.
+
+### Changed
+
+- **`qa`** -- hardened QA remediation plan validation, UAT remediation orchestration, process-exception evidence gates, known-issue comparisons, and pending-QA explanations. (PR #566, PR #568, PR #574, PR #582, PR #583)
+- **`state`** -- fixed linked ROADMAP checklist drift and archive state consistency during UAT/archive reconciliation. (PR #573)
+- **`dev`** -- hardened Dev subagent spawns against worktree isolation failures. (PR #579)
+- **`release`** -- refreshed GitNexus index metadata and added Serena onboarding memories.
+
+### Fixed
+
+- **`hooks`** -- scoped agent-spawn-guard named-agent blocking to active VBW workflows and stripped unsupported isolation/cwd fields from hallucinated subagent spawn parameters instead of blocking. (PR #585, PR #590)
+- **`scout`** -- allowed read-only Bash live validation for Scout workflows. (PR #588)
+- **`hooks`** -- guarded non-PDF Read pages and reverted the sanitizer after runtime evidence showed validation happens before hook execution. (PR #562, PR #563)
+
 ## [1.36.1] - 2026-05-02
 
 ### Fixed
