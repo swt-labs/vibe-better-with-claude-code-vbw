@@ -1,21 +1,25 @@
 #!/bin/bash
 set -u
-# SubagentStart hook: Record active agent type for cost attribution
-# Writes stripped agent name to .vbw-planning/.active-agent and maintains
-# .active-agent-roles counts for conservative mixed-agent guard fallback.
+# SubagentStart hook: Record active agent type for cost attribution.
+# Active-agent state is session-local when a safe session id is available; root
+# .active-agent* files are rebuilt as aggregate display/legacy fallback state.
 
 INPUT=$(cat)
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 [ ! -d "$PLANNING_DIR" ] && exit 0
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/lib/active-agent-state.sh" ]; then
+  # shellcheck source=lib/active-agent-state.sh
+  . "$SCRIPT_DIR/lib/active-agent-state.sh"
+else
+  exit 0
+fi
 
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
 LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
 
 # Only track VBW agents; maintain reference count for concurrent agents
 COUNT_FILE="$PLANNING_DIR/.active-agent-count"
-ROLES_FILE="$PLANNING_DIR/.active-agent-roles"
-ROLE_PIDS_FILE="$PLANNING_DIR/.active-agent-role-pids"
-LOCK_DIR="$PLANNING_DIR/.active-agent-count.lock"
 
 normalize_agent_role() {
   local value="$1"
@@ -114,157 +118,10 @@ if [ -z "$AGENT_PID" ]; then
   AGENT_PID="$PPID"
 fi
 
-acquire_lock() {
-  local attempts=0
-  local max_attempts=100
-  local now lock_mtime age
-  while [ "$attempts" -lt "$max_attempts" ]; do
-    if mkdir "$LOCK_DIR" 2>/dev/null; then
-      return 0
-    fi
-
-    attempts=$((attempts + 1))
-
-    # Stale lock guard: if lock persists for >5s, clear and retry.
-    if [ "$attempts" -eq 50 ] && [ -d "$LOCK_DIR" ]; then
-      now=$(date +%s)
-      if [ "$(uname)" = "Darwin" ]; then
-        lock_mtime=$(stat -f %m "$LOCK_DIR" 2>/dev/null || echo 0)
-      else
-        lock_mtime=$(stat -c %Y "$LOCK_DIR" 2>/dev/null || echo 0)
-      fi
-      age=$((now - lock_mtime))
-      if [ "$age" -gt 5 ]; then
-        rmdir "$LOCK_DIR" 2>/dev/null || true
-      fi
-    fi
-
-    sleep 0.01
-  done
-  # Could not acquire lock — proceed without it (best-effort).
-  return 1
-}
-
-release_lock() {
-  rmdir "$LOCK_DIR" 2>/dev/null || true
-}
-
-read_count() {
-  local raw
-  raw=$(cat "$COUNT_FILE" 2>/dev/null | tr -d '[:space:]')
-  if echo "$raw" | grep -Eq '^[0-9]+$'; then
-    printf '%s' "$raw"
-  else
-    printf '0'
-  fi
-}
-
-update_role_count() {
-  local target_role="$1"
-  local delta="$2"
-  local tmp role count found=false
-
-  tmp="${ROLES_FILE}.tmp.$$"
-  : > "$tmp" 2>/dev/null || return 0
-
-  if [ -f "$ROLES_FILE" ]; then
-    while read -r role count; do
-      [ -z "$role" ] && continue
-      if ! echo "$count" | grep -Eq '^[0-9]+$'; then
-        count=0
-      fi
-      if [ "$role" = "$target_role" ]; then
-        count=$((count + delta))
-        found=true
-      fi
-      if [ "$count" -gt 0 ]; then
-        printf '%s %s\n' "$role" "$count" >> "$tmp"
-      fi
-    done < "$ROLES_FILE"
-  fi
-
-  if [ "$found" = false ] && [ "$delta" -gt 0 ]; then
-    printf '%s %s\n' "$target_role" "$delta" >> "$tmp"
-  fi
-
-  if [ -s "$tmp" ]; then
-    mv "$tmp" "$ROLES_FILE" 2>/dev/null || rm -f "$tmp" 2>/dev/null || true
-  else
-    rm -f "$tmp" "$ROLES_FILE" 2>/dev/null || true
-  fi
-}
-
-role_stats() {
-  if [ -f "$ROLES_FILE" ]; then
-    awk '($2 ~ /^[0-9]+$/) && $2 > 0 { sum += $2; count += 1; role = $1 } END { printf "%d %d %s\n", sum + 0, count + 0, role }' "$ROLES_FILE" 2>/dev/null
-  else
-    printf '0 0 \n'
-  fi
-}
-
-sync_active_agent_marker() {
-  local count stats role_sum role_count single_role
-
-  count=$(read_count)
-  stats=$(role_stats)
-  IFS=' ' read -r role_sum role_count single_role <<< "$stats"
-  role_sum="${role_sum:-0}"
-  role_count="${role_count:-0}"
-  single_role="${single_role:-}"
-
-  # `.active-agent` is reliable only when exactly one known role accounts for
-  # every active agent. Mixed or partially unknown state keeps only the total
-  # count and role-count file for conservative fallback decisions.
-  if [ "$role_sum" -eq "$count" ] && [ "$role_count" -eq 1 ] && [ -n "$single_role" ]; then
-    echo "$single_role" > "$PLANNING_DIR/.active-agent"
-  else
-    rm -f "$PLANNING_DIR/.active-agent" 2>/dev/null || true
-  fi
-}
-
-upsert_role_pid() {
-  local pid="$1"
-  local role="$2"
-  local tmp
-
-  [ -n "$pid" ] && [ -n "$role" ] || return 0
-  echo "$pid" | grep -Eq '^[0-9]+$' || return 0
-
-  tmp="${ROLE_PIDS_FILE}.tmp.$$"
-  if [ -f "$ROLE_PIDS_FILE" ]; then
-    awk -v p="$pid" '$1 != p { print }' "$ROLE_PIDS_FILE" > "$tmp" 2>/dev/null || : > "$tmp"
-  else
-    : > "$tmp" 2>/dev/null || return 0
-  fi
-  printf '%s %s\n' "$pid" "$role" >> "$tmp" 2>/dev/null || true
-  mv "$tmp" "$ROLE_PIDS_FILE" 2>/dev/null || rm -f "$tmp" 2>/dev/null || true
-}
-
-update_agent_markers() {
-  local count
-  count=$(read_count)
-
-  # Write count first: if crash between writes, an elevated count is safer
-  # than a missing count (agent-stop recovery handles both cases).
-  echo $((count + 1)) > "$COUNT_FILE"
-  update_role_count "$ROLE" 1
-  upsert_role_pid "$AGENT_PID" "$ROLE"
-  sync_active_agent_marker
-}
-
 if [ -n "$ROLE" ]; then
-  if acquire_lock; then
-    trap 'release_lock' EXIT INT TERM
-    update_agent_markers
-    release_lock
-    trap - EXIT INT TERM
-  else
-    # Lock unavailable — proceed best-effort without lock.
-    update_agent_markers
-  fi
+  vbw_active_agent_start "$PLANNING_DIR" "$INPUT" "$ROLE" "$AGENT_PID"
 
   # Register agent PID for tmux cleanup
-  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
   if [ -n "$AGENT_PID" ] && [ -f "$SCRIPT_DIR/agent-pid-tracker.sh" ]; then
     bash "$SCRIPT_DIR/agent-pid-tracker.sh" register "$AGENT_PID" 2>/dev/null || true
   fi

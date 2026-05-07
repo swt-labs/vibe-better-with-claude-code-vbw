@@ -15,6 +15,11 @@ if [ ! -d "$PLANNING_DIR" ]; then
 fi
 
 INPUT=$(cat)
+SCRIPT_DIR_STOP="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR_STOP/lib/active-agent-state.sh" ]; then
+  # shellcheck source=lib/active-agent-state.sh
+  . "$SCRIPT_DIR_STOP/lib/active-agent-state.sh"
+fi
 
 # Extract session metrics via jq (fail-silent on missing fields)
 COST=$(echo "$INPUT" | jq -r '.cost_usd // .cost // 0' 2>/dev/null)
@@ -60,7 +65,6 @@ fi
 # non-VBW slash commands in prompt-preflight.sh (and stale markers are ignored
 # by security-filter.sh after 24h).
 rmdir "$PLANNING_DIR/.active-agent-count.lock" 2>/dev/null || true
-SCRIPT_DIR_STOP="$(cd "$(dirname "$0")" && pwd)"
 DELEGATED_MARKER="$PLANNING_DIR/.delegated-workflow.json"
 if [ -f "$DELEGATED_MARKER" ] && [ -f "$SCRIPT_DIR_STOP/delegated-workflow.sh" ] && command -v jq >/dev/null 2>&1; then
   _dw_status=$(bash "$SCRIPT_DIR_STOP/delegated-workflow.sh" status-json 2>/dev/null || echo "")
@@ -72,7 +76,12 @@ if [ -f "$DELEGATED_MARKER" ] && [ -f "$SCRIPT_DIR_STOP/delegated-workflow.sh" ]
     fi
   fi
 fi
-rm -f "$PLANNING_DIR/.active-agent" "$PLANNING_DIR/.active-agent-count" "$PLANNING_DIR/.active-agent-roles" "$PLANNING_DIR/.active-agent-role-pids" "$PLANNING_DIR/.agent-panes" "$PLANNING_DIR/.task-verify-seen" 2>/dev/null
+if command -v vbw_active_agent_remove_current_session >/dev/null 2>&1; then
+  vbw_active_agent_remove_current_session "$PLANNING_DIR" "$INPUT"
+else
+  rm -f "$PLANNING_DIR/.active-agent" "$PLANNING_DIR/.active-agent-count" "$PLANNING_DIR/.active-agent-roles" "$PLANNING_DIR/.active-agent-role-pids" 2>/dev/null || true
+fi
+rm -f "$PLANNING_DIR/.agent-panes" "$PLANNING_DIR/.task-verify-seen" 2>/dev/null
 rm -f "$PLANNING_DIR/.context-usage" 2>/dev/null || true
 rm -rf "$PLANNING_DIR/.compacting" 2>/dev/null || true
 
