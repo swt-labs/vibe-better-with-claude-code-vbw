@@ -308,7 +308,7 @@ if [ "$REMEDIATION_ONLY" = true ]; then
   fi
 
   if [ -n "$LATEST_ROUND" ]; then
-    rr=$(printf '%02d' "$LATEST_ROUND")
+    rr=$(printf '%02d' "$((10#$LATEST_ROUND))")
     ALL_PLAN_FILES=$(find "$REMED_DIR/round-$rr" -maxdepth 1 \( -name "R${rr}-PLAN.md" -o -name "R${rr}-*-PLAN.md" \) 2>/dev/null | sort)
     SCOPE_HEADER="verify_scope=remediation round=$rr"
     # UAT remediation rounds write round-scoped UAT artifacts; QA remediation

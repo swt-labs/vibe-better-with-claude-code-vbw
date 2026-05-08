@@ -671,6 +671,46 @@ EOF
   [[ "$output" == *"uat_path=remediation/uat/round-01/R01-UAT.md"* ]]
 }
 
+@test "compile-verify-context: active UAT round 08 keeps remediation scope without octal error" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Phase-root plan
+must_haves:
+  - Original feature remains out of remediation scope
+---
+EOF
+
+  mkdir -p "$PHASE_DIR/remediation/uat/round-08"
+  printf 'stage=verify\nround=08\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-08/R08-PLAN.md" <<'EOF'
+---
+round: 08
+title: Round 8 UAT remediation
+must_haves:
+  - Round-eight UAT issue fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-08/R08-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Fixed the round-eight UAT issue
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only --remediation-kind uat "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"invalid number"* ]]
+  [[ "$output" == *"verify_scope=remediation round=08"* ]]
+  [[ "$output" == *"uat_path=remediation/uat/round-08/R08-UAT.md"* ]]
+  [[ "$output" == *"=== PLAN R08: Round 8 UAT remediation ==="* ]]
+  [[ "$output" != *"Phase-root plan"* ]]
+  [[ "$output" == *"verify_plan_count=1"* ]]
+}
+
 @test "compile-verify-context: legacy remediation layout emits correct uat_path" {
   # Legacy layout: remediation/round-* (no uat/ sublevel)
   mkdir -p "$PHASE_DIR/remediation/round-01"
