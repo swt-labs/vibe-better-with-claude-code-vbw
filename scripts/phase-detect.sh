@@ -133,6 +133,93 @@ phase_relative_path() {
   esac
 }
 
+phase_has_uat_cutover() {
+  local phase_dir="$1"
+  local phase_name phase_num root_uat f
+
+  [ -n "$phase_dir" ] || return 1
+  case "$phase_dir" in
+    */) ;;
+    *) phase_dir="$phase_dir/" ;;
+  esac
+
+  [ -d "$phase_dir" ] || return 1
+
+  # Any UAT remediation state means this phase has crossed the UAT boundary,
+  # even if the current UAT artifact was archived or not written yet.
+  [ -f "${phase_dir}.uat-remediation-stage" ] && return 0
+  [ -f "${phase_dir}remediation/uat/.uat-remediation-stage" ] && return 0
+  [ -f "${phase_dir}remediation/.uat-remediation-stage" ] && return 0
+
+  # Current phase-root UAT artifacts, excluding SOURCE-UAT references via the
+  # shared helper when it is available.
+  if type latest_non_source_uat &>/dev/null; then
+    root_uat=$(latest_non_source_uat "$phase_dir")
+    [ -n "$root_uat" ] && [ -f "$root_uat" ] && return 0
+  fi
+
+  phase_name=$(basename "${phase_dir%/}")
+  phase_num=$(printf '%s\n' "$phase_name" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
+
+  if [ -n "$phase_num" ] && [ -f "${phase_dir}${phase_num}-UAT.md" ]; then
+    return 0
+  fi
+
+  # Historical/archived UAT layouts also establish the one-way UAT cutover.
+  for f in "${phase_dir}"[0-9]*-UAT-round-*.md; do
+    [ -f "$f" ] && return 0
+  done
+  for f in "${phase_dir}"remediation/round-*/R*-UAT.md; do
+    [ -f "$f" ] && return 0
+  done
+  for f in "${phase_dir}"remediation/uat/round-*/R*-UAT.md; do
+    [ -f "$f" ] && return 0
+  done
+
+  return 1
+}
+
+advance_uat_round_after_issues() {
+  local target_dir="$1"
+  local state_file="$2"
+  local current_round="$3"
+  local current_layout="$4"
+  local cap_decision cap_status cap_reached next_round
+
+  case "$current_round" in
+    ''|*[!0-9]*)
+      printf '%s\n' "needs_reverification"
+      return 0
+      ;;
+  esac
+
+  cap_decision=$(bash "$_SCRIPT_DIR_PD/resolve-uat-remediation-round-limit.sh" --next-round-decision "$PLANNING_DIR/config.json" "$current_round" 2>/dev/null)
+  cap_status=$?
+  cap_reached=$(printf '%s\n' "$cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
+  case "${cap_status}:${cap_reached:-}" in
+    0:true)
+      printf '%s\n' "needs_reverification"
+      ;;
+    0:false)
+      next_round=$(printf '%02d' $(( 10#${current_round} + 1 )))
+      if [ -n "$state_file" ] && [ -f "$state_file" ]; then
+        printf 'stage=research\nround=%s\nlayout=%s\n' "$next_round" "$current_layout" > "$state_file"
+      fi
+      if [ "$current_layout" = "legacy" ]; then
+        mkdir -p "${target_dir}remediation/round-${next_round}" 2>/dev/null || true
+      else
+        mkdir -p "${target_dir}remediation/uat/round-${next_round}" 2>/dev/null || true
+      fi
+      printf '%s\n' "needs_uat_remediation"
+      ;;
+    *)
+      # Fail closed when the shared cap helper errors or emits a malformed
+      # contract. Do not mutate remediation state on an error path.
+      printf '%s\n' "needs_reverification"
+      ;;
+  esac
+}
+
 normalize_qa_remediation_stage() {
   case "${1:-none}" in
     plan|execute|verify|done) echo "$1" ;;
@@ -440,6 +527,7 @@ else
   echo "qa_attention_reason=none"
   echo "qa_status=none"
   echo "qa_reason=none"
+  echo "qa_after_uat_dormant=false"
   echo "qa_round=00"
   echo "has_codebase_map=false"
   echo "brownfield=false"
@@ -724,7 +812,7 @@ if [ -d "$PHASES_DIR" ]; then
           fi
           _rem_stage="done"
         fi
-        if [ "$_rem_stage" = "done" ]; then
+        if [ "$_rem_stage" = "done" ] || [ "$_rem_stage" = "verify" ]; then
           # Check if re-verification already happened for this round.
           # If a round-scoped UAT exists with issues, skip re-verification
           # and route directly to the next remediation round.
@@ -758,51 +846,14 @@ if [ -d "$PHASES_DIR" ]; then
           case "$_round_uat_status" in
             issues_found)
               # Re-verification already happened and found issues.
-              # Auto-advance to next round's research stage, but only if the
-              # current round read from state is a valid numeric value.
-              case "$_cur_rr" in
-                ''|*[!0-9]*)
-                  # Malformed/corrupt round value; avoid arithmetic expansion
-                  # and fall back to explicit re-verification routing.
-                  NEXT_PHASE_STATE="needs_reverification"
-                  ;;
-                *)
-                  _cap_decision=$(bash "$_SCRIPT_DIR_PD/resolve-uat-remediation-round-limit.sh" --next-round-decision "$PLANNING_DIR/config.json" "$_cur_rr" 2>/dev/null)
-                  _cap_status=$?
-                  _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
-                  case "${_cap_status}:${_cap_reached:-}" in
-                    0:true)
-                      NEXT_PHASE_STATE="needs_reverification"
-                      ;;
-                    0:false)
-                      _next_rr=$(printf '%02d' $(( 10#${_cur_rr} + 1 )))
-                      if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
-                        printf 'stage=research\nround=%s\nlayout=%s\n' "$_next_rr" "$_cur_layout" > "$_rem_state_file"
-                      fi
-                      if [ "$_cur_layout" = "legacy" ]; then
-                        mkdir -p "${TARGET_DIR}remediation/round-${_next_rr}" 2>/dev/null || true
-                      else
-                        mkdir -p "${TARGET_DIR}remediation/uat/round-${_next_rr}" 2>/dev/null || true
-                      fi
-                      NEXT_PHASE_STATE="needs_uat_remediation"
-                      ;;
-                    *)
-                      # Fail closed when the shared cap helper errors or emits a
-                      # malformed contract. Do not mutate remediation state on an
-                      # error path — route back into explicit re-verification.
-                      NEXT_PHASE_STATE="needs_reverification"
-                      ;;
-                  esac
-                  ;;
-              esac
+              # Auto-advance to next round's research stage when the cap allows.
+              NEXT_PHASE_STATE=$(advance_uat_round_after_issues "$TARGET_DIR" "$_rem_state_file" "$_cur_rr" "$_cur_layout")
               ;;
             *)
               # No round UAT yet, or UAT passed — needs re-verification
               NEXT_PHASE_STATE="needs_reverification"
               ;;
           esac
-        elif [ "$_rem_stage" = "verify" ]; then
-          NEXT_PHASE_STATE="needs_reverification"
         else
           NEXT_PHASE_STATE="needs_uat_remediation"
         fi
@@ -901,6 +952,7 @@ QA_ATTENTION_STATUS="none"
 QA_ATTENTION_REASON="none"
 QA_STATUS="none"
 QA_REASON="none"
+QA_AFTER_UAT_DORMANT=false
 QA_ROUND="00"
 QA_REMEDIATING_PHASE=""
 QA_REMEDIATING_SLUG=""
@@ -916,6 +968,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     [ "$_qr_plans" -gt 0 ] || continue
     _qr_sums=$(count_complete_summaries "$_qr_dir")
     [ "$_qr_sums" -ge "$_qr_plans" ] || continue
+    if phase_has_uat_cutover "$_qr_dir"; then
+      continue
+    fi
 
     _qr_rem_file="${_qr_dir}remediation/qa/.qa-remediation-stage"
     [ -f "$_qr_rem_file" ] || continue
@@ -944,6 +999,10 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     [ "$_uv_plans" -gt 0 ] || continue
     _uv_sums=$(count_complete_summaries "$_uv_dir")
     [ "$_uv_sums" -ge "$_uv_plans" ] || continue
+    _uv_uat_cutover=false
+    if phase_has_uat_cutover "$_uv_dir"; then
+      _uv_uat_cutover=true
+    fi
 
     # --- QA remediation state check (blocks unverified detection) ---
     _qa_rem_stage="none"
@@ -960,16 +1019,22 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     # it's "in QA remediation". Skip it for unverified detection but record
     # the QA status for routing.
     if [ "$_qa_rem_stage" != "none" ] && [ "$_qa_rem_stage" != "done" ]; then
-      if [ -z "$FIRST_UNVERIFIED_PHASE" ]; then
-        _uv_dirname=$(basename "$_uv_dir")
-        FIRST_UNVERIFIED_PHASE=$(echo "$_uv_dirname" | sed 's/^\([0-9]*\).*/\1/')
-        FIRST_UNVERIFIED_SLUG="$_uv_dirname"
-        QA_STATUS="remediating"
-        QA_REASON="none"
-        QA_ROUND="$_qa_rem_round"
+      if [ "$_uv_uat_cutover" = true ]; then
+        QA_AFTER_UAT_DORMANT=true
+        # QA remediation is a pre-UAT lane. Once UAT exists, leave this stale
+        # metadata on disk for traceability but do not let it block UAT routing.
+      else
+        if [ -z "$FIRST_UNVERIFIED_PHASE" ]; then
+          _uv_dirname=$(basename "$_uv_dir")
+          FIRST_UNVERIFIED_PHASE=$(echo "$_uv_dirname" | sed 's/^\([0-9]*\).*/\1/')
+          FIRST_UNVERIFIED_SLUG="$_uv_dirname"
+          QA_STATUS="remediating"
+          QA_REASON="none"
+          QA_ROUND="$_qa_rem_round"
+        fi
+        # Don't set HAS_UNVERIFIED_PHASES — QA remediation takes priority
+        break
       fi
-      # Don't set HAS_UNVERIFIED_PHASES — QA remediation takes priority
-      break
     fi
 
     # --- QA VERIFICATION.md check ---
@@ -977,7 +1042,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
       _uv_verif=""
     fi
-    if [ "$_qa_rem_stage" != "done" ] && [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+    if [ "$_uv_uat_cutover" != true ] && [ "$_qa_rem_stage" != "done" ] && [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
       restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
     fi
 
@@ -1001,25 +1066,31 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
         FIRST_UNVERIFIED_SLUG="$_uv_dirname"
 
         # Compute QA status for this phase
-        if [ "$_qa_rem_stage" = "done" ]; then
-          # Use the authoritative current verification path for cross-validation:
-          # round VERIFICATION.md when present, otherwise phase-level numbered/plain fallback.
-          _uv_verif=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" current "$_uv_dir" 2>/dev/null || true)
-          if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
-            _uv_verif=""
-          fi
-          if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
-            restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
-          fi
-          _uv_assessment=$(phase_verification_assessment "$_uv_dir" "$_uv_verif" "remediated")
-        elif [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
-          _uv_assessment=$(phase_verification_assessment "$_uv_dir" "$_uv_verif" "passed")
+        if [ "$_uv_uat_cutover" = true ]; then
+          QA_STATUS="none"
+          QA_REASON="uat_cutover"
+          QA_AFTER_UAT_DORMANT=true
         else
-          _uv_assessment=$(phase_verification_assessment "$_uv_dir" "" "passed")
+          if [ "$_qa_rem_stage" = "done" ]; then
+            # Use the authoritative current verification path for cross-validation:
+            # round VERIFICATION.md when present, otherwise phase-level numbered/plain fallback.
+            _uv_verif=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" current "$_uv_dir" 2>/dev/null || true)
+            if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
+              _uv_verif=""
+            fi
+            if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+              restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
+            fi
+            _uv_assessment=$(phase_verification_assessment "$_uv_dir" "$_uv_verif" "remediated")
+          elif [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+            _uv_assessment=$(phase_verification_assessment "$_uv_dir" "$_uv_verif" "passed")
+          else
+            _uv_assessment=$(phase_verification_assessment "$_uv_dir" "" "passed")
+          fi
+          IFS=$'\t' read -r QA_STATUS QA_REASON <<< "$_uv_assessment"
+          QA_STATUS="${QA_STATUS:-pending}"
+          QA_REASON="${QA_REASON:-none}"
         fi
-        IFS=$'\t' read -r QA_STATUS QA_REASON <<< "$_uv_assessment"
-        QA_STATUS="${QA_STATUS:-pending}"
-        QA_REASON="${QA_REASON:-none}"
       fi
       break
     fi
@@ -1027,8 +1098,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
 fi
 
 # --- QA attention detection for QA protocol ---
-# Unlike FIRST_UNVERIFIED_PHASE, this scan also covers built phases that already
-# have terminal UAT but whose QA verification is stale or failed.
+# Unlike FIRST_UNVERIFIED_PHASE, this scan also covers fully built pre-UAT phases
+# whose QA verification is stale or failed. Phases with any UAT state/artifact
+# are skipped because QA remediation is dormant after UAT cutover.
 if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   for _qa_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
     [ -d "$_qa_dir" ] || continue
@@ -1036,6 +1108,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     [ "$_qa_plans" -gt 0 ] || continue
     _qa_sums=$(count_complete_summaries "$_qa_dir")
     [ "$_qa_sums" -ge "$_qa_plans" ] || continue
+    if phase_has_uat_cutover "$_qa_dir"; then
+      continue
+    fi
 
     _qa_stage="none"
     _qa_round_scan="00"
@@ -1136,53 +1211,89 @@ if [ "$CFG_AUTO_UAT_EARLY" = "true" ] && [ "$HAS_UNVERIFIED_PHASES" = "true" ] &
   esac
 fi
 
-# --- all_done QA-attention override: never archive while a completed phase still needs QA attention ---
-# Terminal-UAT phases always override all_done when QA attention remains. In
-# addition, a fully built phase with no UAT yet must override all_done when QA
-# has already run and the known-issues gate left qa_attention_status=failed or
-# verify. That preserves a deterministic plain `/vbw:vibe` resume path for the
-# post-initial-QA known-issues remediation case without broadening all no-UAT
-# phases into QA remediation.
+# --- all_done QA-attention override: never archive while a pre-UAT completed phase still needs QA attention ---
+# A fully built phase with no UAT yet must override all_done when QA has already
+# run and the known-issues gate left qa_attention_status=failed or verify. That
+# preserves a deterministic plain `/vbw:vibe` resume path for the post-initial-QA
+# known-issues remediation case without broadening all no-UAT phases into QA
+# remediation. After UAT cutover, QA attention is dormant and must not route.
 if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; then
   _QA_ATT_DIR="$PHASES_DIR/$FIRST_QA_ATTENTION_SLUG/"
-  case "$QA_ATTENTION_STATUS" in
-    failed|verify)
-      NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
-      NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
-      if [ -d "$_QA_ATT_DIR" ]; then
-        NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
-        NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
-      fi
-      NEXT_PHASE_STATE="needs_qa_remediation"
-      if [ "$QA_ATTENTION_STATUS" = "failed" ]; then
-        QA_STATUS="failed"
-      else
-        QA_STATUS="remediating"
-      fi
-      QA_REASON="none"
-      ;;
-    pending)
-      _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
-      _QA_ATT_UAT_STATUS=""
-      if [ -f "$_QA_ATT_UAT" ]; then
-        _QA_ATT_UAT_STATUS=$(extract_status_value "$_QA_ATT_UAT")
-      fi
+  if phase_has_uat_cutover "$_QA_ATT_DIR"; then
+    QA_AFTER_UAT_DORMANT=true
+  else
+    case "$QA_ATTENTION_STATUS" in
+      failed|verify)
+        NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+        NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+        if [ -d "$_QA_ATT_DIR" ]; then
+          NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+          NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+        fi
+        NEXT_PHASE_STATE="needs_qa_remediation"
+        if [ "$QA_ATTENTION_STATUS" = "failed" ]; then
+          QA_STATUS="failed"
+        else
+          QA_STATUS="remediating"
+        fi
+        QA_REASON="none"
+        ;;
+      pending)
+        _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
+        _QA_ATT_UAT_STATUS=""
+        if [ -f "$_QA_ATT_UAT" ]; then
+          _QA_ATT_UAT_STATUS=$(extract_status_value "$_QA_ATT_UAT")
+        fi
 
-      case "$_QA_ATT_UAT_STATUS" in
-        complete|passed)
-          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
-          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
-          if [ -d "$_QA_ATT_DIR" ]; then
-            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
-            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
-          fi
-          NEXT_PHASE_STATE="needs_verification"
-          QA_STATUS="pending"
-          QA_REASON="${QA_ATTENTION_REASON:-none}"
-          ;;
-      esac
-      ;;
-  esac
+        case "$_QA_ATT_UAT_STATUS" in
+          complete|passed)
+            NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+            NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+            if [ -d "$_QA_ATT_DIR" ]; then
+              NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+              NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+            fi
+            NEXT_PHASE_STATE="needs_verification"
+            QA_STATUS="pending"
+            QA_REASON="${QA_ATTENTION_REASON:-none}"
+            ;;
+        esac
+        ;;
+    esac
+  fi
+fi
+
+# Defense-in-depth: no source of QA state may route a UAT-cutover phase back to
+# QA remediation. Earlier scans filter these candidates; this final guard keeps
+# the route selector safe if a future path forgets that boundary.
+if [ "$NEXT_PHASE_STATE" = "needs_qa_remediation" ]; then
+  _pd_qa_guard_dir="$PHASES_DIR/$NEXT_PHASE_SLUG/"
+  if phase_has_uat_cutover "$_pd_qa_guard_dir"; then
+    _pd_guard_uat=$(current_uat "$_pd_qa_guard_dir")
+    _pd_guard_uat_status=""
+    if [ -f "$_pd_guard_uat" ]; then
+      _pd_guard_uat_status=$(extract_status_value "$_pd_guard_uat")
+    fi
+    QA_AFTER_UAT_DORMANT=true
+    QA_STATUS="none"
+    QA_REASON="uat_cutover"
+    QA_ROUND="00"
+    case "$_pd_guard_uat_status" in
+      issues_found)
+        NEXT_PHASE_STATE="needs_uat_remediation"
+        ;;
+      complete|passed)
+        NEXT_PHASE="none"
+        NEXT_PHASE_SLUG="none"
+        NEXT_PHASE_PLANS=0
+        NEXT_PHASE_SUMMARIES=0
+        NEXT_PHASE_STATE="all_done"
+        ;;
+      *)
+        NEXT_PHASE_STATE="needs_verification"
+        ;;
+    esac
+  fi
 fi
 
 if [ "$UAT_ISSUES_PHASE" != "none" ] && [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_ISSUES_FILE" ]; then
@@ -1209,6 +1320,7 @@ echo "qa_attention_status=$QA_ATTENTION_STATUS"
 echo "qa_attention_reason=$QA_ATTENTION_REASON"
 echo "qa_status=$QA_STATUS"
 echo "qa_reason=$QA_REASON"
+echo "qa_after_uat_dormant=$QA_AFTER_UAT_DORMANT"
 echo "qa_round=$QA_ROUND"
 echo "uat_issues_phase=$UAT_ISSUES_PHASE"
 echo "uat_issues_slug=$UAT_ISSUES_SLUG"
