@@ -681,6 +681,8 @@ EOF
   grep -q '^- \[x\] Phase 2: Build$' .vbw-planning/ROADMAP.md
   grep -q '^- \[ \] Phase 3: Deploy$' .vbw-planning/ROADMAP.md
   grep -Eq '^\| 2 - Build \| 1/1 \| complete \| [0-9]{4}-[0-9]{2}-[0-9]{2} \|$' .vbw-planning/ROADMAP.md
+  grep -q 'legacy ordinal ROADMAP numbering' .vbw-planning/.hook-errors.log
+  grep -q 'position 2 -> 03-build (prefix 3)' .vbw-planning/.hook-errors.log
 }
 
 @test "summary update preserves prefix numbering when ROADMAP has a missing phase dir" {

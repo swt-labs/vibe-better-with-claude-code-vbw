@@ -519,6 +519,12 @@ Status: active
 - **Phase 2:** Pending
 - **Phase 3:** Pending
 EOF
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 3: Deploy
+EOF
   # Create dirs with a gap: 01, 03, 04 (no 02)
   mkdir -p .vbw-planning/phases/01-setup
   mkdir -p .vbw-planning/phases/03-build
@@ -529,6 +535,8 @@ EOF
   grep -q '^Phase: 2 of 3 (Build)' .vbw-planning/STATE.md
   # Bullet 2 should also say Build
   grep -q '^\- \*\*Phase 2 (Build):\*\*' .vbw-planning/STATE.md
+  grep -q 'legacy ordinal ROADMAP numbering' .vbw-planning/.hook-errors.log
+  grep -q 'position 2 -> 03-build (prefix 3)' .vbw-planning/.hook-errors.log
 }
 
 @test "update-phase-total: preserves ROADMAP prefix numbers with missing phase dir" {

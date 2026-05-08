@@ -309,11 +309,18 @@ find_active_phase_num() {
 
   if [ -f "$roadmap_file" ]; then
     scheme=$(roadmap_numbering_scheme "$roadmap_file" "$phases_dir")
-    if [ "$scheme" = "prefix" ] && [ -n "$active_prefix" ]; then
-      ACTIVE_PHASE_NUM="$active_prefix"
-      roadmap_total=$(roadmap_checklist_count "$roadmap_file")
-      [ "${roadmap_total:-0}" -gt 0 ] && ACTIVE_PHASE_TOTAL="$roadmap_total"
-    fi
+    case "$scheme" in
+      prefix)
+        if [ -n "$active_prefix" ]; then
+          ACTIVE_PHASE_NUM="$active_prefix"
+          roadmap_total=$(roadmap_checklist_count "$roadmap_file")
+          [ "${roadmap_total:-0}" -gt 0 ] && ACTIVE_PHASE_TOTAL="$roadmap_total"
+        fi
+        ;;
+      unknown)
+        ACTIVE_PHASE_NUM=""
+        ;;
+    esac
   fi
   return 0
 }

@@ -378,6 +378,8 @@ ROADMAP
 
   grep -q '^- \[x\] Phase 2: Build$' .vbw-planning/ROADMAP.md
   grep -q '^- \[ \] Phase 3: Deploy$' .vbw-planning/ROADMAP.md
+  grep -q 'legacy ordinal ROADMAP numbering' .vbw-planning/.hook-errors.log
+  grep -q 'position 2 -> 03-build (prefix 3)' .vbw-planning/.hook-errors.log
 
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
   if [ "$status" -ne 0 ]; then echo "$output" >&2; fi

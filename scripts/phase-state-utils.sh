@@ -278,6 +278,31 @@ roadmap_numbering_mismatch_details() {
     return 0
   fi
 
+  if [ "$scheme" = "ordinal" ]; then
+    local idx=0 mismatch_count=0 first_position="" first_base="" first_prefix=""
+    while IFS= read -r dir; do
+      [ -n "$dir" ] || continue
+      idx=$((idx + 1))
+      dir_num=$(roadmap_phase_dir_prefix_num "$dir")
+      if [ "$dir_num" != "$idx" ]; then
+        mismatch_count=$((mismatch_count + 1))
+        if [ -z "$first_position" ]; then
+          first_position="$idx"
+          first_base=$(basename "$dir")
+          first_prefix="$dir_num"
+        fi
+      fi
+    done < <(list_canonical_phase_dirs "$phases_dir")
+    if [ "$mismatch_count" -gt 0 ]; then
+      if [ "$mismatch_count" -gt 1 ]; then
+        printf 'legacy ordinal ROADMAP numbering is in use because phase directory prefixes diverge from the Phase 1..N checklist; position %s -> %s (prefix %s), plus %s more divergent phase dir(s)\n' "$first_position" "$first_base" "$first_prefix" "$((mismatch_count - 1))"
+      else
+        printf 'legacy ordinal ROADMAP numbering is in use because phase directory prefixes diverge from the Phase 1..N checklist; position %s -> %s (prefix %s)\n' "$first_position" "$first_base" "$first_prefix"
+      fi
+    fi
+    return 0
+  fi
+
   while IFS= read -r num; do
     [ -n "$num" ] || continue
     checklist_seen="$checklist_seen $num"

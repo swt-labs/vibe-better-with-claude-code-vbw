@@ -2251,11 +2251,19 @@ EOF
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode advisory
   [ "$status" -eq 0 ]
 
-  local c2_pass c2_detail
+  local c1_pass c1_detail c2_pass c2_detail failed_state
+  c1_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
+  c1_detail=$(echo "$output" | jq -r '.checks.state_vs_filesystem.detail')
   c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
   c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
+  failed_state=$(echo "$output" | jq -r '.failed_checks | index("state_vs_filesystem") // empty')
+  [ "$c1_pass" = "true" ]
+  [ "$c1_detail" = "ok" ]
+  [ -z "$failed_state" ]
   [ "$c2_pass" = "false" ]
   [[ "$c2_detail" == *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
+  [[ "$c1_detail" != *"active phase mismatch"* ]]
+  [[ "$c1_detail" != *"filesystem active display phase is 3"* ]]
   [[ "$c2_detail" != *"phase 1 referenced in ROADMAP.md but no matching phase directory"* ]]
   [[ "$c2_detail" != *"phase 2 referenced in ROADMAP.md but no matching phase directory"* ]]
   [[ "$c2_detail" != *"phase directory 3 exists on disk but no matching ROADMAP checklist entry"* ]]
