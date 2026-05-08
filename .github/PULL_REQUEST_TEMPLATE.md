@@ -1,7 +1,7 @@
 ## Linked Issue
 
 <!-- REQUIRED: Every PR must reference a tracking issue. CI will fail without one. -->
-<!-- Accepted: Fixes/Closes/Resolves #N, full GitHub issue URL, bare #N, or sidebar link -->
+<!-- Accepted: Fixes/Closes/Resolves #N, full GitHub issue URL, bare #N, or sidebar link. Use an issue number, not a PR number. -->
 
 Fixes #
 
@@ -27,13 +27,15 @@ Summary of the approach. Mention affected commands, agents, hooks, or scripts.
 
 ## QA Review Evidence
 
-Paste each QA round's report as a separate comment on this PR. Each round should have a corresponding fix commit (e.g., `fix(scope): address QA round 1`). Reviewers will verify the commit history matches the reported rounds.
+Paste each QA round's report as a separate comment on this PR. QA-relevant changes require 3 QA evidence commits whose first line matches `fix(scope): address QA round N`. Clean rounds still need an evidence commit; use an empty commit when there are no fixes to make. Reviewers will verify the commit history matches the reported rounds.
 
 QA must be run on a top-tier model: **Claude Opus 4.6**, **GPT-5.3 Codex high/xhigh**, or **Gemini 3.1 Pro**.
 
 - **Rounds completed:** (number)
 - **Model used:** (e.g., Claude Opus 4.6)
 - **Fix commits:** (list commit SHAs or titles)
+- [ ] QA-relevant changes have 3 QA evidence commits using `fix(scope): address QA round N`
+- [ ] Clean rounds still have an evidence commit
 
 ## Notes
 

@@ -213,6 +213,63 @@ test_pr_template_does_not_advertise_maintainer_qa_exception() {
 }
 test_pr_template_does_not_advertise_maintainer_qa_exception
 
+test_contributing_docs_document_public_pr_automation_statuses() {
+  if grep -qF 'What PR automation enforces' "$CONTRIBUTING_DOC" \
+    && grep -qF '`Linked Issue Check`' "$CONTRIBUTING_DOC" \
+    && grep -qF '`Lint`' "$CONTRIBUTING_DOC" \
+    && grep -qF '`Contract Tests`' "$CONTRIBUTING_DOC" \
+    && grep -qF '`Bats Tests (shard 0)` through `Bats Tests (shard 7)`' "$CONTRIBUTING_DOC" \
+    && grep -qF '`Bats Tests (serial)`' "$CONTRIBUTING_DOC" \
+    && grep -qF 'aggregate `Test`' "$CONTRIBUTING_DOC" \
+    && grep -qF '`QA Review Evidence`' "$CONTRIBUTING_DOC"; then
+    pass "CONTRIBUTING.md documents public PR automation status checks"
+  else
+    fail "CONTRIBUTING.md should document the public PR automation status checks"
+  fi
+}
+test_contributing_docs_document_public_pr_automation_statuses
+
+test_contributing_docs_document_issue_not_pr_requirement() {
+  if grep -qF 'link an actual issue, not just another PR' "$CONTRIBUTING_DOC"; then
+    pass "CONTRIBUTING.md distinguishes issue links from PR-only references"
+  else
+    fail "CONTRIBUTING.md should state that ordinary PRs must link an actual issue, not just another PR"
+  fi
+}
+test_contributing_docs_document_issue_not_pr_requirement
+
+test_contributing_docs_document_qa_evidence_path_rule() {
+  if grep -qF 'Docs-only and repo-metadata-only PRs skip QA evidence' "$CONTRIBUTING_DOC" \
+    && grep -qF '`.github/workflows/` and `config/` changes are QA-relevant' "$CONTRIBUTING_DOC"; then
+    pass "CONTRIBUTING.md documents QA evidence path relevance"
+  else
+    fail "CONTRIBUTING.md should document docs/repo-metadata skips and workflow/config QA relevance"
+  fi
+}
+test_contributing_docs_document_qa_evidence_path_rule
+
+test_contributing_docs_document_qa_evidence_commit_gate() {
+  if grep -qF 'at least 3 QA evidence commits' "$CONTRIBUTING_DOC" \
+    && grep -qF 'fix(scope): address QA round N' "$CONTRIBUTING_DOC" \
+    && grep -qF 'Clean QA rounds still need an empty evidence commit' "$CONTRIBUTING_DOC"; then
+    pass "CONTRIBUTING.md documents the three-commit QA evidence gate"
+  else
+    fail "CONTRIBUTING.md should document three QA evidence commits, exact pattern, and clean-round empty commits"
+  fi
+}
+test_contributing_docs_document_qa_evidence_commit_gate
+
+test_pr_template_documents_qa_evidence_commit_gate() {
+  if grep -qF '3 QA evidence commits' "$PR_TEMPLATE" \
+    && grep -qF 'fix(scope): address QA round N' "$PR_TEMPLATE" \
+    && grep -qF 'Clean rounds still need an evidence commit' "$PR_TEMPLATE"; then
+    pass "PR template documents the three-commit QA evidence gate"
+  else
+    fail "PR template should document three QA evidence commits, exact pattern, and clean-round evidence commits"
+  fi
+}
+test_pr_template_documents_qa_evidence_commit_gate
+
 test_wait_github_fails_fast_on_gh_errors() {
   setup_tmpdir
   cat > "$TMPDIR_BASE/gh" <<'EOF'
