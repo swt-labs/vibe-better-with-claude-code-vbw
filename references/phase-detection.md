@@ -112,7 +112,7 @@ Then continue with the rest of the command as if the user had typed that phase n
 - `misnamed_plans=true|false` — Set to `true` when any phase directory contains type-first filenames (e.g., `PLAN-01.md` instead of `01-PLAN.md`). Commands should run `normalize-plan-filenames.sh` on all phase directories before proceeding when this is `true`.
 - `qa_status=none|pending|passed|failed|remediating|remediated` — Current QA gate state for the primary phase routed toward verification or QA remediation.
 - `qa_reason=none|<reason>` — Machine-readable reason for `qa_status=pending`. Use this to explain why QA is being rerun instead of emitting a generic pending-QA message.
-- `qa_after_uat_dormant=true|false` — Set to `true` when stale QA remediation or QA-attention metadata exists for a phase that already has UAT state/artifacts. Commands must treat the QA metadata as traceability-only and must not route that phase to QA remediation.
+- `qa_after_uat_dormant=true|false` — Set to `true` when QA routing is suppressed because the target phase already has UAT state/artifacts, including stale QA remediation or QA-attention metadata after cutover. Commands must stay in the UAT lane and must not route that phase to QA remediation.
 - `qa_attention_status=none|pending|failed|verify` — QA state for the first otherwise-complete pre-UAT phase that still needs QA attention.
 - `qa_attention_reason=none|<reason>` — Machine-readable reason for `qa_attention_status=pending`. When `phase-detect.sh` retargets `all_done` to `needs_verification`, this reason is copied to `qa_reason`.
 
