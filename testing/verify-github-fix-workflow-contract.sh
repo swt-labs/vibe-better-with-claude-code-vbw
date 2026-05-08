@@ -195,23 +195,88 @@ test_qa_review_workflow_has_explicit_maintainer_skip_notice() {
 }
 test_qa_review_workflow_has_explicit_maintainer_skip_notice
 
-test_contributing_docs_do_not_advertise_maintainer_qa_exception() {
-  if ! grep -q '@dpearson2699' "$CONTRIBUTING_DOC"; then
-    pass "CONTRIBUTING.md does not advertise the maintainer QA exception"
+test_public_docs_do_not_advertise_private_author_qa_exception() {
+  local private_actor_terms exception_terms advertised_exceptions
+  private_actor_terms='(maintainer|author|owner|member|collaborator|admin|user|login|actor|dpearson2699|@[[:alnum:]_-]+)'
+  exception_terms='(skip|skips|skipping|exempt|exempted|bypass|bypasses|exception|not required|do not require|without QA evidence)'
+  advertised_exceptions=$(grep -nEi "(${private_actor_terms}.{0,80}${exception_terms}|${exception_terms}.{0,80}${private_actor_terms})" \
+    "$CONTRIBUTING_DOC" "$PR_TEMPLATE" || true)
+  if [ -z "$advertised_exceptions" ]; then
+    pass "public docs do not advertise private author-based QA exceptions"
   else
-    fail "CONTRIBUTING.md should not publicly advertise the maintainer QA exception"
+    fail "public contributor docs must not advertise private author/identity-based QA evidence exceptions: $advertised_exceptions"
   fi
 }
-test_contributing_docs_do_not_advertise_maintainer_qa_exception
+test_public_docs_do_not_advertise_private_author_qa_exception
 
-test_pr_template_does_not_advertise_maintainer_qa_exception() {
-  if ! grep -q '@dpearson2699' "$PR_TEMPLATE"; then
-    pass "PR template does not advertise the maintainer QA exception"
+test_contributing_docs_document_public_pr_automation_statuses() {
+  if grep -qF 'What PR automation enforces' "$CONTRIBUTING_DOC" \
+    && grep -qF '`Linked Issue Check`' "$CONTRIBUTING_DOC" \
+    && grep -qF '`Lint`' "$CONTRIBUTING_DOC" \
+    && grep -qF '`Contract Tests`' "$CONTRIBUTING_DOC" \
+    && grep -qF '`Bats Tests (shard 0)` through `Bats Tests (shard 7)`' "$CONTRIBUTING_DOC" \
+    && grep -qF '`Bats Tests (serial)`' "$CONTRIBUTING_DOC" \
+    && grep -qF 'aggregate `Test`' "$CONTRIBUTING_DOC" \
+    && grep -qF '`QA Review Evidence`' "$CONTRIBUTING_DOC"; then
+    pass "CONTRIBUTING.md documents public PR automation status checks"
   else
-    fail "PR template should not publicly advertise the maintainer QA exception"
+    fail "CONTRIBUTING.md should document the public PR automation status checks"
   fi
 }
-test_pr_template_does_not_advertise_maintainer_qa_exception
+test_contributing_docs_document_public_pr_automation_statuses
+
+test_contributing_docs_document_issue_not_pr_requirement() {
+  if grep -qF 'link an actual issue, not just another PR' "$CONTRIBUTING_DOC"; then
+    pass "CONTRIBUTING.md distinguishes issue links from PR-only references"
+  else
+    fail "CONTRIBUTING.md should state that ordinary PRs must link an actual issue, not just another PR"
+  fi
+}
+test_contributing_docs_document_issue_not_pr_requirement
+
+test_contributing_docs_document_qa_evidence_path_rule() {
+  if grep -qF 'Docs-only and repo-metadata-only PRs skip QA evidence' "$CONTRIBUTING_DOC" \
+    && grep -qF '`.github/workflows/` and `config/` changes are QA-relevant' "$CONTRIBUTING_DOC"; then
+    pass "CONTRIBUTING.md documents QA evidence path relevance"
+  else
+    fail "CONTRIBUTING.md should document docs/repo-metadata skips and workflow/config QA relevance"
+  fi
+}
+test_contributing_docs_document_qa_evidence_path_rule
+
+test_contributing_docs_document_qa_evidence_commit_gate() {
+  if grep -qF 'at least 3 QA evidence commits' "$CONTRIBUTING_DOC" \
+    && grep -qF 'fix(scope): address QA round N' "$CONTRIBUTING_DOC" \
+    && grep -qF 'Clean QA rounds still need an empty evidence commit' "$CONTRIBUTING_DOC"; then
+    pass "CONTRIBUTING.md documents the three-commit QA evidence gate"
+  else
+    fail "CONTRIBUTING.md should document three QA evidence commits, exact pattern, and clean-round empty commits"
+  fi
+}
+test_contributing_docs_document_qa_evidence_commit_gate
+
+test_pr_template_documents_qa_evidence_commit_gate() {
+  if grep -qF '3 QA evidence commits' "$PR_TEMPLATE" \
+    && grep -qF 'fix(scope): address QA round N' "$PR_TEMPLATE" \
+    && grep -qF 'Clean rounds still need an evidence commit' "$PR_TEMPLATE"; then
+    pass "PR template documents the three-commit QA evidence gate"
+  else
+    fail "PR template should document three QA evidence commits, exact pattern, and clean-round evidence commits"
+  fi
+}
+test_pr_template_documents_qa_evidence_commit_gate
+
+test_public_docs_reject_lower_minimum_qa_guidance() {
+  local stale_guidance
+  stale_guidance=$(grep -nEi '2[–-]4|2 to 4|two to four|at least 2[[:space:]]+QA|minimum 2[[:space:]]+QA|2[[:space:]]+QA[[:space:]]+(review|round|evidence)' \
+    "$CONTRIBUTING_DOC" "$PR_TEMPLATE" || true)
+  if [ -z "$stale_guidance" ]; then
+    pass "public docs do not contain stale lower-minimum QA guidance"
+  else
+    fail "public docs should not contain stale lower-minimum QA guidance: $stale_guidance"
+  fi
+}
+test_public_docs_reject_lower_minimum_qa_guidance
 
 test_wait_github_fails_fast_on_gh_errors() {
   setup_tmpdir

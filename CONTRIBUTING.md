@@ -188,6 +188,20 @@ Less good candidates:
 
 ## Pull Request Process
 
+### What PR automation enforces
+
+Ordinary contributor PRs are checked by several separate workflows. If one fails, fix the named status check rather than guessing at the aggregate result:
+
+- `Linked Issue Check` — every ordinary contributor PR must link an actual issue, not just another PR. PR-only references are ignored for traceability.
+- `Lint` — runs `bash testing/run-lint.sh`.
+- `Contract Tests` — discovers contract checks through `testing/list-contract-tests.sh`.
+- `Bats Tests (shard 0)` through `Bats Tests (shard 7)` — run shardable BATS files through the shared shard helper.
+- `Bats Tests (serial)` — runs BATS files that must not be sharded.
+- aggregate `Test` — fails if lint, contract tests, shardable BATS, or serial BATS fail.
+- `QA Review Evidence` — applies when the PR touches QA-relevant paths.
+
+Docs-only and repo-metadata-only PRs skip QA evidence. `.github/workflows/` and `config/` changes are QA-relevant because they affect the automation or plugin behavior that contributors rely on.
+
 1. **Every PR must link a tracking issue.** Open an issue first (bug report or feature request), then reference it in the PR body. CI will fail if no linked issue is found. Accepted formats:
    - Closing keywords: `Fixes #N`, `Closes #N`, `Resolves #N`
    - Full GitHub issue URLs: `https://github.com/owner/repo/issues/N`
@@ -196,9 +210,9 @@ Less good candidates:
 2. Describe what changed and why. Include before/after if relevant.
 3. Ensure `claude-vbw` or `claude --plugin-dir "<path-to-vbw-clone>"` loads without errors.
 4. Test your changes against at least one real project (not the VBW repo itself).
-5. **Run QA review before marking ready.** Repeat this cycle at least 3 times (or until the latest report contains no confirmed critical/major issues):
+5. **Run QA review before marking ready.** QA-relevant contributor PRs need at least 3 QA evidence commits before the gate passes. The first line of each evidence commit must match `fix(scope): address QA round N`, where `N` is the round number. Clean QA rounds still need an empty evidence commit in that exact format so reviewers and automation can count the round.
 
-   > **Docs-only or trivial PRs:** The QA round requirement only applies when the PR touches plugin logic paths (`agents/`, `commands/`, `config/`, `hooks/`, `references/`, `scripts/`, `templates/`, `testing/`, `tests/`). PRs that only change docs, CI config, or repo metadata skip the check automatically.
+   > **QA-relevant paths:** The QA evidence gate applies when the PR touches plugin logic or automation paths (`.github/workflows/`, `agents/`, `commands/`, `config/`, `hooks/`, `references/`, `scripts/`, `templates/`, `testing/`, `tests/`). Docs-only and repo-metadata-only PRs skip QA evidence.
 
    **Step A — Run the QA prompt.** Open a **new** Claude Code (or other AI) session using a top-tier model — **Claude Opus 4.6**, **GPT-5.3 Codex high/xhigh**, or **Gemini 3.1 Pro**. Smaller models (Haiku, Sonnet, etc.) don't produce thorough enough reviews. Paste the prompt below (fill in the placeholders):
 
@@ -223,7 +237,7 @@ Less good candidates:
    - Confirmed vs hypothetical
    ````
 
-   **Step B — Fix the findings.** Copy the QA report and paste it into your original working session (or a new session on the same branch). Tell it to fix the issues found. Each QA round's fixes must be a **separate commit** — do not amend previous commits. Use the format `fix(scope): address QA round N`.
+   **Step B — Fix the findings.** Copy the QA report and paste it into your original working session (or a new session on the same branch). Tell it to fix the issues found. Each QA round's fixes must be a **separate commit** — do not amend previous commits. Use the format `fix(scope): address QA round N`. If the round is clean, create an empty commit with that same format.
 
    **Step C — Repeat.** Go back to Step A with a fresh session. The new QA round will see the fix commits from Step B and look for anything still missed. Continue until a round comes back clean or only has hypothetical/minor findings.
 
