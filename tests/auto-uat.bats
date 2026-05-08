@@ -186,7 +186,7 @@ EOF
 
   run_phase_detect
   [ "$status" -eq 0 ]
-  [[ "$output" == *"next_phase_state=needs_verification"* ]]
+  [[ "$output" == *"next_phase_state=all_done"* ]]
   [[ "$output" == *"has_unverified_phases=false"* ]]
 }
 
