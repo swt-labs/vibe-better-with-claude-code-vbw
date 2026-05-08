@@ -23,7 +23,7 @@ Summary of the approach. Mention affected commands, agents, hooks, or scripts.
 - [ ] Tested affected commands against a real project (not the VBW repo)
 - [ ] No errors on plugin load
 - [ ] Existing commands still work
-- [ ] Ran QA review (2–4 separate AI sessions acting as devil's advocate on the diff)
+- [ ] Ran QA review (at least 3 separate QA rounds acting as devil's advocate on the diff)
 
 ## QA Review Evidence
 

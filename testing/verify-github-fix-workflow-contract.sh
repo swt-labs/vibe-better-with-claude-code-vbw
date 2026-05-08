@@ -270,6 +270,18 @@ test_pr_template_documents_qa_evidence_commit_gate() {
 }
 test_pr_template_documents_qa_evidence_commit_gate
 
+test_public_docs_reject_lower_minimum_qa_guidance() {
+  local stale_guidance
+  stale_guidance=$(grep -nEi '2[–-]4|2 to 4|two to four|at least 2[[:space:]]+QA|minimum 2[[:space:]]+QA|2[[:space:]]+QA[[:space:]]+(review|round|evidence)' \
+    "$CONTRIBUTING_DOC" "$PR_TEMPLATE" || true)
+  if [ -z "$stale_guidance" ]; then
+    pass "public docs do not contain stale lower-minimum QA guidance"
+  else
+    fail "public docs should not contain stale lower-minimum QA guidance: $stale_guidance"
+  fi
+}
+test_public_docs_reject_lower_minimum_qa_guidance
+
 test_wait_github_fails_fast_on_gh_errors() {
   setup_tmpdir
   cat > "$TMPDIR_BASE/gh" <<'EOF'
