@@ -56,7 +56,7 @@ When `require_phase_discussion=true` in config, the lifecycle command (`/vbw:vib
 
 **Algorithm:**
 1. List phase directories in numeric order
-2. If a phase has active QA remediation (`remediation/qa/.qa-remediation-stage` with stage `verify`), that phase is the QA target and writes to the persisted `verification_path` for the current round.
+2. Before UAT cutover, if a phase has active QA remediation (`remediation/qa/.qa-remediation-stage` with stage `verify`), that phase is the QA target and writes to the persisted `verification_path` for the current round. After any UAT state or artifact exists for that phase, QA remediation metadata is dormant/traceability-only and does not select the QA target.
 3. If `phase-detect.sh` reports `first_qa_attention_phase` with `qa_attention_status=pending`, `failed`, or `verify`, that phase is the QA target even when an older verification artifact already exists. This applies only before UAT cutover; once any UAT state or artifact exists for that phase, QA attention is dormant and the command stays in the UAT lane.
 4. Otherwise, for each built phase, resolve authoritative QA verification using `resolve-verification-path.sh`.
    - Default/brownfield phases: numbered final → brownfield plain → latest wave fallback.
