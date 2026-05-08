@@ -826,6 +826,98 @@ EOF
   [ ! -d .vbw-planning/phases/01-feature/remediation/uat/round-02 ]
 }
 
+setup_capped_uat_with_unrelated_active_qa() {
+  cat > .vbw-planning/config.json <<'EOF'
+{
+  "effort": "balanced",
+  "max_uat_remediation_rounds": 1
+}
+EOF
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  mkdir -p .vbw-planning/phases/01-uat/remediation/uat/round-01
+  touch .vbw-planning/phases/01-uat/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-uat/01-01-SUMMARY.md
+  printf 'stage=verify\nround=01\nlayout=round-dir\n' > .vbw-planning/phases/01-uat/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-uat/remediation/uat/round-01/R01-UAT.md <<'EOF'
+---
+phase: 01
+round: 01
+status: issues_found
+issues: 1
+---
+## Tests
+### P01-T1: capped UAT issue
+- **Result:** issue
+- **Issue:** Still failing at the cap
+  - Severity: major
+EOF
+
+  mkdir -p .vbw-planning/phases/02-qa/remediation/qa
+  touch .vbw-planning/phases/02-qa/02-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/02-qa/02-01-SUMMARY.md
+  printf '%s\n' '---' 'result: FAIL' '---' '# Verification' 'Unrelated pre-UAT QA failure.' > .vbw-planning/phases/02-qa/02-VERIFICATION.md
+  printf '%s\n%s\n' 'stage=execute' 'round=01' > .vbw-planning/phases/02-qa/remediation/qa/.qa-remediation-stage
+}
+
+assert_uat_cap_stop_blocks_unrelated_qa() {
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_slug=01-uat"
+  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  echo "$output" | grep -q "uat_issues_phase=01"
+  echo "$output" | grep -q "uat_file=remediation/uat/round-01/R01-UAT.md"
+  ! echo "$output" | grep -q "next_phase_state=needs_qa_remediation"
+  grep -q '^stage=verify$' .vbw-planning/phases/01-uat/remediation/uat/.uat-remediation-stage
+  grep -q '^round=01$' .vbw-planning/phases/01-uat/remediation/uat/.uat-remediation-stage
+  grep -q '^layout=round-dir$' .vbw-planning/phases/01-uat/remediation/uat/.uat-remediation-stage
+  [ ! -d .vbw-planning/phases/01-uat/remediation/uat/round-02 ]
+  grep -q '^stage=execute$' .vbw-planning/phases/02-qa/remediation/qa/.qa-remediation-stage
+  grep -q '^round=01$' .vbw-planning/phases/02-qa/remediation/qa/.qa-remediation-stage
+}
+
+@test "phase-detect: capped UAT lane blocks unrelated active QA remediation" {
+  setup_capped_uat_with_unrelated_active_qa
+
+  run_phase_detect
+
+  [ "$status" -eq 0 ]
+  assert_uat_cap_stop_blocks_unrelated_qa
+}
+
+@test "phase-detect: UAT cap helper failure blocks unrelated active QA remediation" {
+  setup_capped_uat_with_unrelated_active_qa
+
+  local shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-cap-helper-fail-with-qa"
+  cp -R "$SCRIPTS_DIR" "$shim_dir"
+  cat > "$shim_dir/resolve-uat-remediation-round-limit.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 23
+EOF
+  chmod +x "$shim_dir/resolve-uat-remediation-round-limit.sh"
+
+  run_phase_detect "$shim_dir"
+
+  [ "$status" -eq 0 ]
+  assert_uat_cap_stop_blocks_unrelated_qa
+}
+
+@test "phase-detect: malformed UAT cap helper output blocks unrelated active QA remediation" {
+  setup_capped_uat_with_unrelated_active_qa
+
+  local shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-cap-helper-malformed-with-qa"
+  cp -R "$SCRIPTS_DIR" "$shim_dir"
+  cat > "$shim_dir/resolve-uat-remediation-round-limit.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'current_round=01\nnext_round=02\n'
+EOF
+  chmod +x "$shim_dir/resolve-uat-remediation-round-limit.sh"
+
+  run_phase_detect "$shim_dir"
+
+  [ "$status" -eq 0 ]
+  assert_uat_cap_stop_blocks_unrelated_qa
+}
+
 @test "run_phase_detect rejects partial output without completion marker" {
   local shim_dir="$TEST_TEMP_DIR/scripts-phase-detect-incomplete"
   mkdir -p "$shim_dir"

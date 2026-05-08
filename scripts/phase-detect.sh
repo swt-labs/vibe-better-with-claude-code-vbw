@@ -620,6 +620,7 @@ UAT_ISSUES_COUNT=0
 UAT_ROUND_COUNT=0
 UAT_ISSUES_FILE=""
 UAT_ISSUES_RELATIVE_FILE="none"
+UAT_LANE_BLOCKS_QA=false
 PHASE_DIRS=()
 
 if [ -d "$PHASES_DIR" ]; then
@@ -847,7 +848,11 @@ if [ -d "$PHASES_DIR" ]; then
             issues_found)
               # Re-verification already happened and found issues.
               # Auto-advance to next round's research stage when the cap allows.
-              NEXT_PHASE_STATE=$(advance_uat_round_after_issues "$TARGET_DIR" "$_rem_state_file" "$_cur_rr" "$_cur_layout")
+              _uat_round_route=$(advance_uat_round_after_issues "$TARGET_DIR" "$_rem_state_file" "$_cur_rr" "$_cur_layout")
+              NEXT_PHASE_STATE="$_uat_round_route"
+              if [ "$_uat_round_route" = "needs_reverification" ]; then
+                UAT_LANE_BLOCKS_QA=true
+              fi
               ;;
             *)
               # No round UAT yet, or UAT passed — needs re-verification
@@ -1165,10 +1170,11 @@ fi
 
 # --- needs_qa_remediation override: active QA remediation is resume-authoritative ---
 # When QA remediation is active (qa_status=remediating), override next_phase_state
-# to needs_qa_remediation for every state except active UAT remediation. Once a
-# phase has entered the known-issues QA lifecycle, plain `/vbw:vibe` must resume
-# that backlog before drifting into unrelated discussion / planning / execution.
-if [ -n "$QA_REMEDIATING_PHASE" ] && [ "$NEXT_PHASE_STATE" != "needs_uat_remediation" ]; then
+# to needs_qa_remediation for every state except active UAT remediation or a
+# fail-closed UAT cap/evaluation lane. Once a phase has entered the known-issues
+# QA lifecycle, plain `/vbw:vibe` must resume that backlog before drifting into
+# unrelated discussion / planning / execution.
+if [ -n "$QA_REMEDIATING_PHASE" ] && [ "$NEXT_PHASE_STATE" != "needs_uat_remediation" ] && [ "$UAT_LANE_BLOCKS_QA" != true ]; then
   case "$NEXT_PHASE_STATE" in
     needs_discussion|needs_plan_and_execute|needs_execute|needs_verification|needs_reverification|all_done|no_phases)
       NEXT_PHASE="$QA_REMEDIATING_PHASE"
