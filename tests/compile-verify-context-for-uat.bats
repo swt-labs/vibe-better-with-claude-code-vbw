@@ -101,6 +101,43 @@ EOF
   [[ "$output" != *"Original feature"* ]]
 }
 
+@test "compile-verify-context-for-uat: active UAT round 09 keeps remediation scope without octal error" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Original feature
+must_haves:
+  - Feature works
+---
+EOF
+  mkdir -p "$PHASE_DIR/remediation/uat/round-09"
+  printf 'stage=verify\nround=09\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-09/R09-PLAN.md" <<'EOF'
+---
+round: 09
+title: UAT remediation round nine
+must_haves:
+  - Ninth UAT issue fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-09/R09-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Fixed the ninth UAT issue
+EOF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"invalid number"* ]]
+  [[ "$output" == *"verify_scope=remediation round=09"* ]]
+  [[ "$output" == *"uat_path=remediation/uat/round-09/R09-UAT.md"* ]]
+  [[ "$output" == *"=== PLAN R09: UAT remediation round nine ==="* ]]
+  [[ "$output" != *"Original feature"* ]]
+}
+
 @test "compile-verify-context-for-uat: legacy UAT remediation marker uses remediation-only scope" {
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
 ---
