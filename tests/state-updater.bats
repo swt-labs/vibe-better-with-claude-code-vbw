@@ -683,6 +683,74 @@ EOF
   grep -Eq '^\| 2 - Build \| 1/1 \| complete \| [0-9]{4}-[0-9]{2}-[0-9]{2} \|$' .vbw-planning/ROADMAP.md
 }
 
+@test "summary update preserves prefix numbering when ROADMAP has a missing phase dir" {
+  cd "$TEST_TEMP_DIR"
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/03-build .vbw-planning/phases/04-deploy
+
+  cat > .vbw-planning/PROJECT.md <<'EOF'
+# Test Project
+EOF
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 3 of 4 (Build)
+Plans: 0/1
+Progress: 0%
+Status: ready
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Out Of Band):** Complete
+- **Phase 3 (Build):** Planned
+- **Phase 4 (Deploy):** Pending
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+- [x] Phase 2: Out Of Band
+- [ ] Phase 3: Build
+- [ ] Phase 4: Deploy
+
+| Phase | Progress | Status | Completed |
+|------|----------|--------|-----------|
+| 1 - Setup | 1/1 | complete | 2026-01-01 |
+| 2 - Out Of Band | 1/1 | complete | 2026-01-01 |
+| 3 - Build | 0/1 | pending | - |
+| 4 - Deploy | 0/1 | pending | - |
+EOF
+
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/03-build/03-01-PLAN.md
+  printf '%s\n' '---' 'phase: 3' 'plan: 1' 'status: complete' '---' 'Done.' > .vbw-planning/phases/03-build/03-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/04-deploy/04-01-PLAN.md
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/03-build/03-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^Phase: 4 of 4 (Deploy)$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 2 (Out Of Band):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 3 (Build):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 4 (Deploy):\*\* Planned$' .vbw-planning/STATE.md
+  ! grep -q '^- \*\*Phase 2 (Build):\*\*' .vbw-planning/STATE.md
+
+  grep -q '^- \[x\] Phase 3: Build$' .vbw-planning/ROADMAP.md
+  grep -q '^- \[ \] Phase 4: Deploy$' .vbw-planning/ROADMAP.md
+  grep -Eq '^\| 3 - Build \| 1/1 \| complete \| [0-9]{4}-[0-9]{2}-[0-9]{2} \|$' .vbw-planning/ROADMAP.md
+  grep -q '^| 2 - Out Of Band | 1/1 | complete | 2026-01-01 |$' .vbw-planning/ROADMAP.md
+  grep -q 'ROADMAP phase 2 has no matching 2-\* phase directory' .vbw-planning/.hook-errors.log
+}
+
 @test "summary update leaves unknown ROADMAP checklist scheme untouched" {
   cd "$TEST_TEMP_DIR"
 

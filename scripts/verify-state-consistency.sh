@@ -59,6 +59,7 @@ REQUIRED_FUNCTIONS=(
   roadmap_numbering_scheme
   roadmap_phase_num_for_dir
   roadmap_phase_dir_for_num
+  roadmap_checklist_count
   roadmap_checklist_has_duplicate_phase_nums
 )
 MISSING_FUNCTIONS=()
@@ -267,18 +268,21 @@ phase_has_uat_issues() {
 }
 
 # --- Helper: find active phase dir (first incomplete phase) ------------------
-# Uses ordinal position (1-based index in sorted dir list) to match
-# state-updater.sh's Phase: N of M semantics, not directory prefixes.
-# Sets ACTIVE_PHASE_NUM (ordinal position for STATE.md comparison) and
+# Uses the selected ROADMAP display-numbering scheme for STATE.md comparison.
+# Sets ACTIVE_PHASE_NUM (display number for STATE.md comparison),
 # ACTIVE_PHASE_PREFIX (directory prefix number for .execution-state.json comparison).
 find_active_phase_num() {
   local phases_dir="$1"
+  local roadmap_file="${2:-${ROADMAP_FILE:-}}"
   ACTIVE_PHASE_NUM=""
   ACTIVE_PHASE_PREFIX=""
+  ACTIVE_PHASE_TOTAL=""
   [ -d "$phases_dir" ] || return 1
-  local plans complete phase_idx prefix_num
+  local plans complete phase_idx prefix_num active_ordinal active_prefix total_dirs scheme roadmap_total
   local dir=""
   phase_idx=0
+  active_ordinal=""
+  active_prefix=""
   while IFS= read -r dir; do
     [ -n "$dir" ] || continue
     phase_idx=$((phase_idx + 1))
@@ -288,15 +292,29 @@ find_active_phase_num() {
     plans=$(count_phase_plans "$dir")
     complete=$(count_complete_summaries "$dir")
     if [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ] || phase_has_uat_issues "$dir"; then
-      ACTIVE_PHASE_NUM="$phase_idx"
-      ACTIVE_PHASE_PREFIX="$prefix_num"
-      return 0
+      active_ordinal="$phase_idx"
+      active_prefix="$prefix_num"
+      break
     fi
   done < <(list_canonical_phase_dirs "$phases_dir")
+  total_dirs="$phase_idx"
   # All phases complete — use the last ordinal position
-  if [ "$phase_idx" -gt 0 ]; then
-    ACTIVE_PHASE_NUM="$phase_idx"
-    ACTIVE_PHASE_PREFIX="$prefix_num"
+  if [ -z "$active_ordinal" ] && [ "$phase_idx" -gt 0 ]; then
+    active_ordinal="$phase_idx"
+    active_prefix="$prefix_num"
+  fi
+
+  ACTIVE_PHASE_NUM="$active_ordinal"
+  ACTIVE_PHASE_PREFIX="$active_prefix"
+  ACTIVE_PHASE_TOTAL="$total_dirs"
+
+  if [ -f "$roadmap_file" ]; then
+    scheme=$(roadmap_numbering_scheme "$roadmap_file" "$phases_dir")
+    if [ "$scheme" = "prefix" ] && [ -n "$active_prefix" ]; then
+      ACTIVE_PHASE_NUM="$active_prefix"
+      roadmap_total=$(roadmap_checklist_count "$roadmap_file")
+      [ "${roadmap_total:-0}" -gt 0 ] && ACTIVE_PHASE_TOTAL="$roadmap_total"
+    fi
   fi
   return 0
 }
@@ -327,18 +345,23 @@ run_check_state_vs_filesystem() {
     return
   fi
 
-  local fs_total
+  local fs_total expected_total
   fs_total=$(list_canonical_phase_dirs "$PHASES_DIR" | wc -l | tr -d ' ')
+  expected_total="$fs_total"
+
+  find_active_phase_num "$PHASES_DIR" "$ROADMAP_FILE"
+  if [ -n "${ACTIVE_PHASE_TOTAL:-}" ]; then
+    expected_total="$ACTIVE_PHASE_TOTAL"
+  fi
 
   local details=""
-  if [ "$STATE_PHASE_TOTAL" != "$fs_total" ]; then
-    details="phase total mismatch: STATE.md says $STATE_PHASE_TOTAL, filesystem has $fs_total"
+  if [ "$STATE_PHASE_TOTAL" != "$expected_total" ]; then
+    details="phase total mismatch: STATE.md says $STATE_PHASE_TOTAL, expected display total is $expected_total"
     check_state_vs_filesystem_pass=false
   fi
 
-  find_active_phase_num "$PHASES_DIR"
   if [ -n "$ACTIVE_PHASE_NUM" ] && [ "$STATE_PHASE_CURRENT" != "$ACTIVE_PHASE_NUM" ]; then
-    local msg="active phase mismatch: STATE.md says phase $STATE_PHASE_CURRENT, filesystem active phase is $ACTIVE_PHASE_NUM"
+    local msg="active phase mismatch: STATE.md says phase $STATE_PHASE_CURRENT, filesystem active display phase is $ACTIVE_PHASE_NUM"
     if [ -n "$details" ]; then
       details="$details; $msg"
     else

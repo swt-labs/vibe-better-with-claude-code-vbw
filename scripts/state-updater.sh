@@ -183,11 +183,54 @@ if ! type _roadmap_candidate_score >/dev/null 2>&1; then
   }
 fi
 
+if ! type _roadmap_unique_count >/dev/null 2>&1; then
+  _roadmap_unique_count() {
+    local sequence="$1" seen="" count=0 num
+
+    while IFS= read -r num; do
+      [ -n "$num" ] || continue
+      case " $seen " in *" $num "*) continue ;; esac
+      seen="$seen $num"
+      count=$((count + 1))
+    done <<< "$sequence"
+
+    printf '%s\n' "$count"
+  }
+fi
+
+if ! type _roadmap_sequence_contains_all_unique_in_order >/dev/null 2>&1; then
+  _roadmap_sequence_contains_all_unique_in_order() {
+    local checklist_seq="$1" expected_seq="$2"
+    local expected_count score
+
+    expected_count=$(_roadmap_unique_count "$expected_seq")
+    [ "$expected_count" -gt 0 ] || return 1
+    score=$(_roadmap_candidate_score "$checklist_seq" "$expected_seq")
+    [ "$score" -eq "$expected_count" ]
+  }
+fi
+
+if ! type _roadmap_sequence_is_exact_ordinal >/dev/null 2>&1; then
+  _roadmap_sequence_is_exact_ordinal() {
+    local checklist_seq="$1" expected_count="$2"
+    local idx=0 num
+
+    [ "$expected_count" -gt 0 ] || return 1
+    while IFS= read -r num; do
+      [ -n "$num" ] || continue
+      idx=$((idx + 1))
+      [ "$num" = "$idx" ] || return 1
+    done <<< "$checklist_seq"
+
+    [ "$idx" -eq "$expected_count" ]
+  }
+fi
+
 if ! type roadmap_numbering_scheme >/dev/null 2>&1; then
   roadmap_numbering_scheme() {
     local roadmap_file="$1" phases_dir="$2"
-    local checklist_nums=() prefix_nums=() ordinal_nums=()
-    local line num dir idx checklist_seq prefix_seq ordinal_seq prefix_score ordinal_score
+    local checklist_nums=() prefix_nums=()
+    local line num dir idx checklist_seq prefix_seq dir_count
 
     [ -f "$roadmap_file" ] || { printf '%s\n' "unknown"; return 0; }
     [ -d "$phases_dir" ] || { printf '%s\n' "unknown"; return 0; }
@@ -207,7 +250,6 @@ if ! type roadmap_numbering_scheme >/dev/null 2>&1; then
       [ -n "$dir" ] || continue
       idx=$((idx + 1))
       prefix_nums+=("$(roadmap_phase_dir_prefix_num "$dir")")
-      ordinal_nums+=("$idx")
     done < <(list_canonical_phase_dirs "$phases_dir")
 
     if [ "${#prefix_nums[@]}" -eq 0 ]; then
@@ -221,21 +263,10 @@ if ! type roadmap_numbering_scheme >/dev/null 2>&1; then
 
     checklist_seq=$(printf '%s\n' "${checklist_nums[@]}")
     prefix_seq=$(printf '%s\n' "${prefix_nums[@]}")
-    ordinal_seq=$(printf '%s\n' "${ordinal_nums[@]}")
-    prefix_score=$(_roadmap_candidate_score "$checklist_seq" "$prefix_seq")
-    ordinal_score=$(_roadmap_candidate_score "$checklist_seq" "$ordinal_seq")
-
-    if [ "$prefix_score" -le 0 ] && [ "$ordinal_score" -le 0 ]; then
-      printf '%s\n' "unknown"
-    elif [ "$prefix_seq" = "$ordinal_seq" ]; then
+    dir_count=${#prefix_nums[@]}
+    if _roadmap_sequence_contains_all_unique_in_order "$checklist_seq" "$prefix_seq"; then
       printf '%s\n' "prefix"
-    elif [ "$prefix_score" -gt 0 ] && [ "$ordinal_score" -le 0 ]; then
-      printf '%s\n' "prefix"
-    elif [ "$ordinal_score" -gt 0 ] && [ "$prefix_score" -le 0 ]; then
-      printf '%s\n' "ordinal"
-    elif [ "$prefix_score" -gt "$ordinal_score" ]; then
-      printf '%s\n' "prefix"
-    elif [ "$ordinal_score" -gt "$prefix_score" ]; then
+    elif _roadmap_sequence_is_exact_ordinal "$checklist_seq" "$dir_count"; then
       printf '%s\n' "ordinal"
     else
       printf '%s\n' "unknown"
@@ -418,15 +449,15 @@ update_roadmap() {
 
   [ -f "$roadmap" ] || return 0
 
-  local dirname ordinal_phase_num table_phase_num checkbox_phase_num checkbox_scheme prefix_phase_num plan_count summary_count status date_str
+  local dirname table_phase_num checkbox_phase_num numbering_scheme prefix_phase_num plan_count summary_count status date_str
   dirname=$(basename "$phase_dir")
   prefix_phase_num=$(echo "$dirname" | sed 's/^\([0-9]*\).*/\1/' | sed 's/^0*//')
-  ordinal_phase_num=$(phase_dir_position "$phase_dir")
-  if [ -z "$ordinal_phase_num" ]; then
-    ordinal_phase_num="$prefix_phase_num"
+  numbering_scheme=$(roadmap_numbering_scheme "$roadmap" "$(dirname "$phase_dir")")
+  if type phase_state_log_numbering_warnings >/dev/null 2>&1; then
+    phase_state_log_numbering_warnings "$planning_root" "$roadmap" "$(dirname "$phase_dir")" "$numbering_scheme"
   fi
-  [ -z "$ordinal_phase_num" ] && return 0
-  table_phase_num="$ordinal_phase_num"
+  table_phase_num=$(roadmap_phase_num_for_dir "$numbering_scheme" "$phase_dir" "$(dirname "$phase_dir")")
+  [ -z "$table_phase_num" ] && return 0
 
   plan_count=$(count_phase_plans "$phase_dir")
   summary_count=$(count_terminal_summaries "$phase_dir")
@@ -457,7 +488,7 @@ update_roadmap() {
   # Update extended progress table row (| num - name | done | status | date |)
   local existing_name
   existing_name=$(grep -E "^\| *${table_phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
-  if [ -z "$existing_name" ] && [ -n "$prefix_phase_num" ] && [ "$prefix_phase_num" != "$table_phase_num" ]; then
+  if [ -z "$existing_name" ] && [ "$numbering_scheme" != "unknown" ] && [ -n "$prefix_phase_num" ] && [ "$prefix_phase_num" != "$table_phase_num" ]; then
     table_phase_num="$prefix_phase_num"
     existing_name=$(grep -E "^\| *${table_phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
   fi
@@ -484,8 +515,7 @@ update_roadmap() {
       [ -s "$tmp_simple" ] && mv "$tmp_simple" "$tmp" 2>/dev/null || rm -f "$tmp_simple" 2>/dev/null
   fi
 
-  checkbox_scheme=$(roadmap_numbering_scheme "$tmp" "$(dirname "$phase_dir")")
-  checkbox_phase_num=$(roadmap_phase_num_for_dir "$checkbox_scheme" "$phase_dir" "$(dirname "$phase_dir")")
+  checkbox_phase_num=$(roadmap_phase_num_for_dir "$numbering_scheme" "$phase_dir" "$(dirname "$phase_dir")")
 
   # Check/uncheck checkbox based on status
   if [ -n "$checkbox_phase_num" ]; then

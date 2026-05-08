@@ -531,6 +531,48 @@ EOF
   grep -q '^\- \*\*Phase 2 (Build):\*\*' .vbw-planning/STATE.md
 }
 
+@test "update-phase-total: preserves ROADMAP prefix numbers with missing phase dir" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+## Current Phase
+Phase: 3 of 4 (Build)
+Plans: 0/0
+Progress: 0%
+Status: active
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Out Of Band):** Complete
+- **Phase 3 (Build):** Pending
+- **Phase 4 (Deploy):** Pending
+EOF
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+- [x] Phase 2: Out Of Band
+- [ ] Phase 3: Build
+- [ ] Phase 4: Deploy
+EOF
+  mkdir -p .vbw-planning/phases/01-setup
+  mkdir -p .vbw-planning/phases/03-build
+  mkdir -p .vbw-planning/phases/04-deploy
+  touch .vbw-planning/phases/01-setup/01-PLAN.md
+  printf -- '---\nstatus: complete\n---\n' > .vbw-planning/phases/01-setup/01-SUMMARY.md
+  touch .vbw-planning/phases/03-build/03-PLAN.md
+  touch .vbw-planning/phases/04-deploy/04-PLAN.md
+
+  run bash "$SCRIPTS_DIR/update-phase-total.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+  grep -q '^Phase: 3 of 4 (Build)' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 2 (Out Of Band):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 3 (Build):\*\* Planned$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 4 (Deploy):\*\* Planned$' .vbw-planning/STATE.md
+  ! grep -q '^- \*\*Phase 2 (Build):\*\*' .vbw-planning/STATE.md
+  grep -q 'ROADMAP phase 2 has no matching 2-\* phase directory' .vbw-planning/.hook-errors.log
+}
+
 # --- F-12: blank line before next heading after empty Phase Status ---
 
 @test "update-phase-total: emits blank line before next heading after Phase Status" {

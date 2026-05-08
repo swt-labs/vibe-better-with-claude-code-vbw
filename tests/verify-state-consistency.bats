@@ -501,12 +501,13 @@ EOF
   [ "$mode" = "advisory" ]
 }
 
-@test "state_vs_filesystem passes with non-contiguous phase dirs" {
+@test "state_vs_filesystem passes with legacy ordinal non-contiguous phase dirs" {
   cd "$TEST_TEMP_DIR"
   local root="$TEST_TEMP_DIR/.vbw-planning"
 
-  # STATE says Phase 2 of 2 — only 2 phase dirs but numbered 01 and 03
-  # Verifier uses ordinal position (2nd dir = phase 2), not prefix (03)
+  # STATE says Phase 2 of 2 — only 2 phase dirs but numbered 01 and 03.
+  # ROADMAP uses the exact legacy ordinal signature (Phase 1, Phase 2), so the
+  # verifier uses sorted position (2nd dir = phase 2), not prefix (03).
   cat > "$root/STATE.md" <<'EOF'
 # State
 **Project:** My Test Project
@@ -526,10 +527,10 @@ EOF
 # Roadmap
 
 - [x] Phase 1: Setup
-- [ ] Phase 3: Build
+- [ ] Phase 2: Build
 
 ### Phase 1: Setup
-### Phase 3: Build
+### Phase 2: Build
 EOF
 
   # Non-contiguous: 01 and 03 (no 02)
@@ -548,7 +549,7 @@ SUMMARY
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$root" --mode advisory
   [ "$status" -eq 0 ]
 
-  # Active phase is ordinal 2 (second dir), STATE says phase 2 — should match
+  # Active phase is ordinal 2 (second dir), STATE says phase 2 — should match.
   local phase_pass
   phase_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
   [ "$phase_pass" = "true" ]
@@ -2023,7 +2024,7 @@ EOF
   [ "$c4_pass" = "true" ]
 }
 
-@test "roadmap_vs_summaries detects phase dir missing from roadmap" {
+@test "roadmap_vs_summaries treats phase dir missing from roadmap as unknown scheme" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace
 
@@ -2041,10 +2042,10 @@ ROADMAP
   c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
   c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
   [ "$c2_pass" = "false" ]
-  [[ "$c2_detail" == *"phase directory 2 exists on disk but no matching ROADMAP checklist entry"* ]]
+  [[ "$c2_detail" == *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
 }
 
-@test "roadmap_vs_summaries describes missing ordinal checklist entry with actual dir" {
+@test "roadmap_vs_summaries does not guess ordinal mapping for mixed checklist gaps" {
   cd "$TEST_TEMP_DIR"
   local root="$TEST_TEMP_DIR/.vbw-planning"
 
@@ -2084,10 +2085,9 @@ EOF
   c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
   c2_detail=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail')
   [ "$c2_pass" = "false" ]
-  [[ "$c2_detail" == *"ordinal phase position 2"* ]]
-  [[ "$c2_detail" == *"03-build"* ]]
-  [[ "$c2_detail" == *"prefix 3"* ]]
-  [[ "$c2_detail" == *"no matching ROADMAP checklist entry"* ]]
+  [[ "$c2_detail" == *"ROADMAP checklist numbering scheme is mixed or unresolvable"* ]]
+  [[ "$c2_detail" != *"ordinal phase position 2"* ]]
+  [[ "$c2_detail" != *"03-build"* ]]
   [[ "$c2_detail" != *"phase directory 2 exists on disk but no matching ROADMAP checklist entry"* ]]
 }
 
