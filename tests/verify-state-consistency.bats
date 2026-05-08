@@ -57,6 +57,49 @@ SUMMARY
   mkdir -p "$root/phases/03-frontend"
 }
 
+write_legacy_ordinal_active_middle_fixture() {
+  local state_total="$1"
+  local root="$TEST_TEMP_DIR/.vbw-planning"
+
+  cat > "$root/STATE.md" <<EOF
+# State
+**Project:** My Test Project
+**Milestone:** MVP
+Phase: 2 of ${state_total} (Build)
+Plans: 0/1
+Progress: 0%
+Status: running
+EOF
+
+  cat > "$root/PROJECT.md" <<'EOF'
+# My Test Project
+Core value proposition for testing.
+EOF
+
+  cat > "$root/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 3: Deploy
+
+### Phase 1: Setup
+### Phase 2: Build
+### Phase 3: Deploy
+EOF
+
+  mkdir -p "$root/phases/01-setup" "$root/phases/03-build" "$root/phases/04-deploy"
+  echo "# Plan" > "$root/phases/01-setup/01-01-PLAN.md"
+  cat > "$root/phases/01-setup/01-01-SUMMARY.md" <<'SUMMARY'
+---
+status: complete
+---
+# Summary
+SUMMARY
+  echo "# Plan" > "$root/phases/03-build/03-01-PLAN.md"
+  echo "# Plan" > "$root/phases/04-deploy/04-01-PLAN.md"
+}
+
 # ============================================================
 # Happy path
 # ============================================================
@@ -553,6 +596,29 @@ SUMMARY
   local phase_pass
   phase_pass=$(echo "$output" | jq -r '.checks.state_vs_filesystem.pass')
   [ "$phase_pass" = "true" ]
+}
+
+@test "state_vs_filesystem passes legacy ordinal active phase before final dir" {
+  cd "$TEST_TEMP_DIR"
+  write_legacy_ordinal_active_middle_fixture 3
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  if [ "$status" -ne 0 ]; then echo "$output" >&2; fi
+  [ "$status" -eq 0 ]
+
+  echo "$output" | jq -e '.verdict == "pass"' >/dev/null
+  echo "$output" | jq -e '.checks.state_vs_filesystem.pass == true' >/dev/null
+}
+
+@test "state_vs_filesystem rejects truncated legacy ordinal total" {
+  cd "$TEST_TEMP_DIR"
+  write_legacy_ordinal_active_middle_fixture 2
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 2 ]
+
+  echo "$output" | jq -e '.checks.state_vs_filesystem.pass == false' >/dev/null
+  echo "$output" | jq -r '.checks.state_vs_filesystem.detail' | grep -q 'expected display total is 3'
 }
 
 @test "exec_state plan with only generic SUMMARY.md fails" {

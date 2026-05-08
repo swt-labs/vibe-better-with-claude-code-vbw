@@ -291,10 +291,9 @@ find_active_phase_num() {
     prefix_num=${prefix_num:-0}
     plans=$(count_phase_plans "$dir")
     complete=$(count_complete_summaries "$dir")
-    if [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ] || phase_has_uat_issues "$dir"; then
+    if [ -z "$active_ordinal" ] && { [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ] || phase_has_uat_issues "$dir"; }; then
       active_ordinal="$phase_idx"
       active_prefix="$prefix_num"
-      break
     fi
   done < <(list_canonical_phase_dirs "$phases_dir")
   total_dirs="$phase_idx"
