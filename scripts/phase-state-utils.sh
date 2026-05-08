@@ -120,6 +120,48 @@ roadmap_phase_dir_prefix_num() {
   normalize_roadmap_phase_num "$num"
 }
 
+roadmap_duplicate_phase_dir_prefix_details() {
+  local phases_dir="$1"
+  local seen="" emitted="" dir num dup_dir dup_num names base
+
+  [ -d "$phases_dir" ] || return 0
+
+  while IFS= read -r dir; do
+    [ -n "$dir" ] || continue
+    num=$(roadmap_phase_dir_prefix_num "$dir")
+    case " $seen " in
+      *" $num "*)
+        case " $emitted " in
+          *" $num "*) ;;
+          *)
+            names=""
+            while IFS= read -r dup_dir; do
+              [ -n "$dup_dir" ] || continue
+              dup_num=$(roadmap_phase_dir_prefix_num "$dup_dir")
+              [ "$dup_num" = "$num" ] || continue
+              base=$(basename "$dup_dir")
+              names="${names:+$names, }$base"
+            done < <(list_canonical_phase_dirs "$phases_dir")
+            printf 'duplicate phase directory prefix %s is ambiguous across %s; ROADMAP numbering cannot be safely reconciled\n' "$num" "$names"
+            emitted="$emitted $num"
+            ;;
+        esac
+        ;;
+    esac
+    seen="$seen $num"
+  done < <(list_canonical_phase_dirs "$phases_dir")
+}
+
+roadmap_phase_dir_prefixes_have_duplicates() {
+  local detail
+
+  while IFS= read -r detail; do
+    [ -n "$detail" ] && return 0
+  done < <(roadmap_duplicate_phase_dir_prefix_details "$1")
+
+  return 1
+}
+
 _roadmap_index_in_sequence() {
   local wanted="$1" sequence="$2" idx=0 candidate
 
@@ -247,6 +289,10 @@ roadmap_numbering_scheme() {
     printf '%s\n' "unknown"
     return 0
   fi
+  if roadmap_phase_dir_prefixes_have_duplicates "$phases_dir"; then
+    printf '%s\n' "unknown"
+    return 0
+  fi
   if [ "${#checklist_nums[@]}" -eq 0 ]; then
     printf '%s\n' "prefix"
     return 0
@@ -275,6 +321,7 @@ roadmap_numbering_mismatch_details() {
 
   if [ "$scheme" = "unknown" ]; then
     printf '%s\n' "ROADMAP checklist numbering scheme is mixed or unresolvable; skipping numbering-dependent rewrite"
+    roadmap_duplicate_phase_dir_prefix_details "$phases_dir"
     return 0
   fi
 
@@ -372,13 +419,15 @@ roadmap_phase_num_for_dir() {
 
 roadmap_phase_dir_for_num() {
   local scheme="$1" phases_dir="$2" phase_num="$3"
-  local wanted dir idx dir_num
+  local wanted dir idx dir_num match_dir match_count
 
   wanted=$(normalize_roadmap_phase_num "$phase_num")
   [ -n "$wanted" ] || return 1
   [ "$wanted" != "0" ] || return 1
 
   idx=0
+  match_dir=""
+  match_count=0
   while IFS= read -r dir; do
     [ -n "$dir" ] || continue
     idx=$((idx + 1))
@@ -394,10 +443,20 @@ roadmap_phase_dir_for_num() {
         ;;
     esac
     if [ "$dir_num" = "$wanted" ]; then
-      printf '%s\n' "$dir"
-      return 0
+      if [ "$scheme" = "prefix" ]; then
+        match_dir="$dir"
+        match_count=$((match_count + 1))
+      else
+        printf '%s\n' "$dir"
+        return 0
+      fi
     fi
   done < <(list_canonical_phase_dirs "$phases_dir")
+
+  if [ "$scheme" = "prefix" ] && [ "$match_count" -eq 1 ]; then
+    printf '%s\n' "$match_dir"
+    return 0
+  fi
 
   return 1
 }

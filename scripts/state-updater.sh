@@ -140,6 +140,24 @@ if ! type roadmap_phase_dir_prefix_num >/dev/null 2>&1; then
   }
 fi
 
+if ! type roadmap_phase_dir_prefixes_have_duplicates >/dev/null 2>&1; then
+  roadmap_phase_dir_prefixes_have_duplicates() {
+    local phases_dir="$1" seen="" dir num
+
+    [ -d "$phases_dir" ] || return 1
+    while IFS= read -r dir; do
+      [ -n "$dir" ] || continue
+      num=$(roadmap_phase_dir_prefix_num "$dir")
+      case " $seen " in
+        *" $num "*) return 0 ;;
+      esac
+      seen="$seen $num"
+    done < <(list_canonical_phase_dirs "$phases_dir")
+
+    return 1
+  }
+fi
+
 if ! type _roadmap_index_in_sequence >/dev/null 2>&1; then
   _roadmap_index_in_sequence() {
     local wanted="$1" sequence="$2" idx=0 candidate
@@ -253,6 +271,10 @@ if ! type roadmap_numbering_scheme >/dev/null 2>&1; then
     done < <(list_canonical_phase_dirs "$phases_dir")
 
     if [ "${#prefix_nums[@]}" -eq 0 ]; then
+      printf '%s\n' "unknown"
+      return 0
+    fi
+    if roadmap_phase_dir_prefixes_have_duplicates "$phases_dir"; then
       printf '%s\n' "unknown"
       return 0
     fi

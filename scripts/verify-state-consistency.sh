@@ -407,7 +407,13 @@ run_check_roadmap_vs_summaries() {
 
   scheme=$(roadmap_numbering_scheme "$ROADMAP_FILE" "$PHASES_DIR")
   if [ "$scheme" = "unknown" ]; then
-    mismatches="ROADMAP checklist numbering scheme is mixed or unresolvable"
+    if type roadmap_numbering_mismatch_details >/dev/null 2>&1; then
+      while IFS= read -r detail; do
+        [ -n "$detail" ] || continue
+        mismatches="${mismatches:+$mismatches, }$detail"
+      done < <(roadmap_numbering_mismatch_details "$ROADMAP_FILE" "$PHASES_DIR" "$scheme")
+    fi
+    [ -n "$mismatches" ] || mismatches="ROADMAP checklist numbering scheme is mixed or unresolvable"
     while IFS= read -r line || [ -n "$line" ]; do
       phase_num=$(roadmap_checklist_phase_num_from_line "$line") || continue
       case " $seen_phases " in

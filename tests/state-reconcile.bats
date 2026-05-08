@@ -502,6 +502,63 @@ ROADMAP
   echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q 'ROADMAP checklist numbering scheme is mixed or unresolvable'
 }
 
+@test "reconcile-state treats duplicate phase directory prefixes as unknown" {
+  cat > .vbw-planning/PROJECT.md <<'PROJECT'
+# Test Project
+PROJECT
+
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 2 of 3 (Build)
+Plans: 0/1
+Progress: 0%
+Status: ready
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Build):** Planned
+- **Phase 3 (Deploy):** Pending
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 3: Deploy
+
+## Phase 1: Setup
+## Phase 2: Build
+## Phase 3: Deploy
+ROADMAP
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/02-build-a .vbw-planning/phases/02-build-b .vbw-planning/phases/03-deploy
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/02-build-a/02-01-PLAN.md
+  echo '# Plan' > .vbw-planning/phases/02-build-b/02-02-PLAN.md
+  echo '# Plan' > .vbw-planning/phases/03-deploy/03-01-PLAN.md
+
+  cp .vbw-planning/STATE.md "$TEST_TEMP_DIR/state-before.md"
+  cp .vbw-planning/ROADMAP.md "$TEST_TEMP_DIR/roadmap-before.md"
+
+  run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  cmp -s "$TEST_TEMP_DIR/state-before.md" .vbw-planning/STATE.md
+  cmp -s "$TEST_TEMP_DIR/roadmap-before.md" .vbw-planning/ROADMAP.md
+  grep -q 'state-numbering-warning' .vbw-planning/.hook-errors.log
+  grep -q 'duplicate phase directory prefix 2' .vbw-planning/.hook-errors.log
+  grep -q '02-build-a' .vbw-planning/.hook-errors.log
+  grep -q '02-build-b' .vbw-planning/.hook-errors.log
+}
+
 @test "reconcile-state skips quietly when ROADMAP helpers are missing" {
   local partial_scripts
   partial_scripts="$TEST_TEMP_DIR/partial-reconcile-scripts"

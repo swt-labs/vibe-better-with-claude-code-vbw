@@ -806,6 +806,66 @@ EOF
   echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q 'ROADMAP checklist numbering scheme is mixed or unresolvable'
 }
 
+@test "summary update treats duplicate phase directory prefixes as unknown" {
+  cd "$TEST_TEMP_DIR"
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/02-build-a .vbw-planning/phases/02-build-b .vbw-planning/phases/03-deploy
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 2 of 3 (Build)
+Plans: 0/1
+Progress: 0%
+Status: ready
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Build):** Planned
+- **Phase 3 (Deploy):** Pending
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 3: Deploy
+
+| Phase | Progress | Status | Completed |
+|------|----------|--------|-----------|
+| 1 - Setup | 1/1 | complete | 2026-01-01 |
+| 2 - Build | 0/1 | pending | - |
+| 3 - Deploy | 0/1 | pending | - |
+EOF
+
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/02-build-a/02-01-PLAN.md
+  printf '%s\n' '---' 'phase: 2' 'plan: 1' 'status: complete' '---' 'Done.' > .vbw-planning/phases/02-build-a/02-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/02-build-b/02-02-PLAN.md
+  echo '# Plan' > .vbw-planning/phases/03-deploy/03-01-PLAN.md
+
+  cp .vbw-planning/STATE.md "$TEST_TEMP_DIR/state-before.md"
+  cp .vbw-planning/ROADMAP.md "$TEST_TEMP_DIR/roadmap-before.md"
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/02-build-a/02-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  cmp -s "$TEST_TEMP_DIR/state-before.md" .vbw-planning/STATE.md
+  cmp -s "$TEST_TEMP_DIR/roadmap-before.md" .vbw-planning/ROADMAP.md
+  grep -q 'state-numbering-warning' .vbw-planning/.hook-errors.log
+  grep -q 'duplicate phase directory prefix 2' .vbw-planning/.hook-errors.log
+  grep -q '02-build-a' .vbw-planning/.hook-errors.log
+  grep -q '02-build-b' .vbw-planning/.hook-errors.log
+}
+
 @test "summary update repairs resolvable ROADMAP despite stray extra entry" {
   cd "$TEST_TEMP_DIR"
 
