@@ -195,23 +195,19 @@ test_qa_review_workflow_has_explicit_maintainer_skip_notice() {
 }
 test_qa_review_workflow_has_explicit_maintainer_skip_notice
 
-test_contributing_docs_do_not_advertise_maintainer_qa_exception() {
-  if ! grep -q '@dpearson2699' "$CONTRIBUTING_DOC"; then
-    pass "CONTRIBUTING.md does not advertise the maintainer QA exception"
+test_public_docs_do_not_advertise_private_author_qa_exception() {
+  local private_actor_terms exception_terms advertised_exceptions
+  private_actor_terms='(maintainer|author|owner|member|collaborator|admin|user|login|actor|dpearson2699|@[[:alnum:]_-]+)'
+  exception_terms='(skip|skips|skipping|exempt|exempted|bypass|bypasses|exception|not required|do not require|without QA evidence)'
+  advertised_exceptions=$(grep -nEi "(${private_actor_terms}.{0,80}${exception_terms}|${exception_terms}.{0,80}${private_actor_terms})" \
+    "$CONTRIBUTING_DOC" "$PR_TEMPLATE" || true)
+  if [ -z "$advertised_exceptions" ]; then
+    pass "public docs do not advertise private author-based QA exceptions"
   else
-    fail "CONTRIBUTING.md should not publicly advertise the maintainer QA exception"
+    fail "public contributor docs must not advertise private author/identity-based QA evidence exceptions: $advertised_exceptions"
   fi
 }
-test_contributing_docs_do_not_advertise_maintainer_qa_exception
-
-test_pr_template_does_not_advertise_maintainer_qa_exception() {
-  if ! grep -q '@dpearson2699' "$PR_TEMPLATE"; then
-    pass "PR template does not advertise the maintainer QA exception"
-  else
-    fail "PR template should not publicly advertise the maintainer QA exception"
-  fi
-}
-test_pr_template_does_not_advertise_maintainer_qa_exception
+test_public_docs_do_not_advertise_private_author_qa_exception
 
 test_contributing_docs_document_public_pr_automation_statuses() {
   if grep -qF 'What PR automation enforces' "$CONTRIBUTING_DOC" \
