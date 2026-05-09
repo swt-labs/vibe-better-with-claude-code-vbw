@@ -275,6 +275,26 @@ EOF
   [ ! -e "$TEST_TEMP_DIR/bogus-planning/todo-details.json" ]
 }
 
+@test "track-uat-deviations: todo-from-uat keeps detail paths phase-relative with trailing slash phase dir" {
+  local sig ref details
+  write_state_with_empty_todos
+  sig=$(bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable")
+  write_accepted_uat "$sig"
+
+  run bash "$SCRIPT" todo-from-uat "${PHASE_DIR}/" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" D01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"todo_status=added"* ]]
+  [[ "$output" == *"detail_status=ok"* ]]
+  ref=$(extract_output_value todo_ref)
+  [[ "$ref" =~ ^[a-f0-9]{8}$ ]]
+
+  details="$TEST_TEMP_DIR/.vbw-planning/todo-details.json"
+  [ "$(jq -r --arg ref "$ref" '.items[$ref].context | contains("UAT checkpoint: remediation/uat/round-03/R03-UAT.md#D01.")' "$details")" = "true" ]
+  [ "$(jq -r --arg ref "$ref" '.items[$ref].files | index("remediation/uat/round-03/R03-SUMMARY.md") != null' "$details")" = "true" ]
+  [ "$(jq -r --arg ref "$ref" '.items[$ref].files | index("remediation/uat/round-03/R03-UAT.md") != null' "$details")" = "true" ]
+  [ "$(jq -r --arg ref "$ref" '.items[$ref].files | index("R03-UAT.md") == null' "$details")" = "true" ]
+}
+
 @test "track-uat-deviations: todo-from-uat dedupes repeated accepted deviation by ref" {
   local sig ref
   write_state_with_empty_todos

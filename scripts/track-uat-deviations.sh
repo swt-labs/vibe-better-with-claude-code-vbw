@@ -263,9 +263,11 @@ planning_root_for_phase() {
 }
 
 relative_to_phase() {
-  local phase_dir="${1:-}" target="${2:-}"
+  local phase_dir="${1:-}" target="${2:-}" phase_root
+  phase_root="${phase_dir%/}"
+  [ -n "$phase_root" ] || phase_root="$phase_dir"
   case "$target" in
-    "$phase_dir"/*) printf '%s' "${target#"$phase_dir/"}" ;;
+    "$phase_root"/*) printf '%s' "${target#"$phase_root/"}" ;;
     *) printf '%s' "$(basename "$target")" ;;
   esac
 }
