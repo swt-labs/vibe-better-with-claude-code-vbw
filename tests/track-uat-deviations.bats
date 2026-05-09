@@ -43,6 +43,28 @@ None.
 EOF
 }
 
+write_legacy_state_with_pending_and_completed_todos() {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# Test Project
+
+## Current
+
+Phase 03
+
+## Todos
+
+### Pending Todos
+
+- Existing pending todo (added 2026-04-01) (ref:11111111)
+
+### Completed Todos
+
+- Completed todo that must stay separate (added 2026-04-01) (ref:22222222)
+
+## Done
+EOF
+}
+
 write_accepted_uat() {
   local sig="$1"
   local result="${2:-pass}"
@@ -267,6 +289,28 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"todo_status=already_tracked"* ]]
   [ "$(grep -cF "(ref:$ref)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md")" = "1" ]
+}
+
+@test "track-uat-deviations: todo-from-uat inserts legacy todos before completed section" {
+  local sig ref pending_block completed_block list_output
+  write_legacy_state_with_pending_and_completed_todos
+  sig=$(bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable")
+  write_accepted_uat "$sig"
+
+  run bash "$SCRIPT" todo-from-uat "$PHASE_DIR" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" D01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"todo_status=added"* ]]
+  ref=$(extract_output_value todo_ref)
+
+  pending_block=$(awk '/^### Pending Todos$/ { found=1; next } found && /^### Completed Todos$/ { exit } found { print }' "$TEST_TEMP_DIR/.vbw-planning/STATE.md")
+  completed_block=$(awk '/^### Completed Todos$/ { found=1; next } found && /^## / { exit } found { print }' "$TEST_TEMP_DIR/.vbw-planning/STATE.md")
+  [[ "$pending_block" == *"[UAT-DEVIATION]"* ]]
+  [[ "$pending_block" == *"(ref:$ref)"* ]]
+  [[ "$completed_block" != *"[UAT-DEVIATION]"* ]]
+
+  list_output=$(cd "$TEST_TEMP_DIR" && bash "$SCRIPTS_DIR/list-todos.sh")
+  [ "$(printf '%s' "$list_output" | jq -r '.section')" = "### Pending Todos" ]
+  [ "$(printf '%s' "$list_output" | jq --arg ref "$ref" '[.items[] | select(.ref == $ref and (.line | contains("[UAT-DEVIATION]")))] | length')" = "1" ]
 }
 
 @test "track-uat-deviations: todo-from-uat does not promote non-accepted D entries" {

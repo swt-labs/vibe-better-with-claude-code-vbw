@@ -480,6 +480,8 @@ echo "--- Check 4b: Summary-deviation UAT prompt context ---"
 
 VERIFY_DEVIATION_PROMPT_BLOCK="$(extract_regex_block "$VERIFY_COMMAND_FILE" 'Summary-deviation checkpoint prompt' 'AskUserQuestion is a tool call' || true)"
 EXECUTE_DEVIATION_PROMPT_BLOCK="$(extract_regex_block "$EXECUTE_PROTOCOL_FILE" 'Summary-deviation checkpoint prompt' 'STOP HERE' || true)"
+VERIFY_RESPONSE_MAPPING_BLOCK="$(extract_regex_block "$VERIFY_COMMAND_FILE" '### 6\. Response mapping' '### 7\. Issue handling' || true)"
+EXECUTE_RESPONSE_MAPPING_BLOCK="$(extract_regex_block "$EXECUTE_PROTOCOL_FILE" 'Map the AskUserQuestion response' 'If a pass/skip response includes' || true)"
 
 if [ -n "$VERIFY_DEVIATION_PROMPT_BLOCK" ]; then
   pass "verify: summary-deviation prompt block extracted"
@@ -530,6 +532,26 @@ require_file_literal "verify: accepted tracked DNN invokes todo-from-uat helper"
 require_file_literal "verify: tracked DNN uses helper-emitted todo ref" 'accepted deviation added to todos (ref:{TODO_REF})' "$VERIFY_COMMAND_FILE"
 require_file_literal "execute-protocol: accepted tracked DNN invokes todo-from-uat helper" 'track-uat-deviations.sh" todo-from-uat' "$EXECUTE_PROTOCOL_FILE"
 require_file_literal "execute-protocol: tracked DNN uses helper-emitted todo ref" 'accepted deviation added to todos (ref:{todo_ref})' "$EXECUTE_PROTOCOL_FILE"
+
+for mapping_target in \
+  "verify:$VERIFY_RESPONSE_MAPPING_BLOCK" \
+  "execute-protocol:$EXECUTE_RESPONSE_MAPPING_BLOCK"; do
+  mapping_label="${mapping_target%%:*}"
+  mapping_block="${mapping_target#*:}"
+
+  if [ -n "$mapping_block" ]; then
+    pass "$mapping_label: DNN response mapping block extracted"
+  else
+    fail "$mapping_label: DNN response mapping block extracted"
+  fi
+
+  require_text_literal "$mapping_label: DNN todo intent canonicalizes can't" "can't\`/\`cant\` → \`cannot" "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent requires marker-first ordering" 'marker-first' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks cannot continue" 'cannot continue' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks do not proceed" 'do not proceed' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent example rejects contraction blocker" "can't continue, track this" "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent keeps rejected-by-user semantics" 'rejected-by-user' "$mapping_block"
+done
 
 # --------------------------------------------------------------------------
 # Check 5: /vbw:list-todos intentional plain-text/freeform handoff

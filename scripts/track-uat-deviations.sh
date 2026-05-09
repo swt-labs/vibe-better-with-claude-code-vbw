@@ -340,7 +340,7 @@ extract_requested_uat_deviation() {
 
 insert_todo_line() {
   local state_path="$1" todo_line="$2" ref="$3"
-  local tmp_file has_todos=false anchor stop_pattern
+  local tmp_file has_todos=false anchor stop_pattern flat_todos
 
   if grep -qF "(ref:${ref})" "$state_path"; then
     return 2
@@ -348,14 +348,25 @@ insert_todo_line() {
 
   tmp_file=$(mktemp "${state_path}.tmp.XXXXXX")
 
-  if grep -Eq '^## Todos$' "$state_path"; then
+  flat_todos=$(awk '
+    /^## Todos$/ { found=1; next }
+    found && /^## / { exit }
+    found && /^### / { exit }
+    found && /^- / { print }
+  ' "$state_path")
+
+  if [ -n "$flat_todos" ]; then
     has_todos=true
     anchor='^## Todos$'
-    stop_pattern='^## '
+    stop_pattern='(^### )|(^## )'
   elif grep -Eq '^### Pending Todos$' "$state_path"; then
     has_todos=true
     anchor='^### Pending Todos$'
     stop_pattern='(^### Completed Todos$)|(^## )'
+  elif grep -Eq '^## Todos$' "$state_path"; then
+    has_todos=true
+    anchor='^## Todos$'
+    stop_pattern='(^### )|(^## )'
   fi
 
   if [ "$has_todos" != true ]; then
