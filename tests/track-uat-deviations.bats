@@ -338,6 +338,32 @@ EOF
   [ ! -e "$TEST_TEMP_DIR/.vbw-planning/todo-details.json" ]
 }
 
+@test "track-uat-deviations: todo-from-uat fails open when STATE update fails" {
+  local sig shim_dir tmp_leftovers
+  write_state_with_empty_todos
+  sig=$(bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable")
+  write_accepted_uat "$sig"
+  shim_dir="$TEST_TEMP_DIR/mv-fail-bin"
+  mkdir -p "$shim_dir"
+  cat > "$shim_dir/mv" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+  chmod +x "$shim_dir/mv"
+
+  run env PATH="$shim_dir:$PATH" bash "$SCRIPT" todo-from-uat "$PHASE_DIR" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" D01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"todo_status=state_update_failed"* ]]
+  [[ "$output" != *"todo_status=already_tracked"* ]]
+  [[ "$output" != *"todo_status=added"* ]]
+  [[ "$output" == *"detail_status=skipped"* ]]
+  [[ "$output" == *"todo_warning=STATE.md todo update failed; todo not persisted"* ]]
+  ! grep -Fq '[UAT-DEVIATION]' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  [ ! -e "$TEST_TEMP_DIR/.vbw-planning/todo-details.json" ]
+  tmp_leftovers=$(find "$TEST_TEMP_DIR/.vbw-planning" -name 'STATE.md.tmp.*' -print -quit)
+  [ -z "$tmp_leftovers" ]
+}
+
 @test "track-uat-deviations: todo-from-uat reports missing metadata for malformed D entries" {
   local sig
   write_state_with_empty_todos

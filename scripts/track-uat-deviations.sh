@@ -283,12 +283,13 @@ deviation_todo_ref() {
 }
 
 emit_todo_from_uat_status() {
-  local status="$1" ref="${2:-}" line="${3:-}" detail_status="${4:-skipped}" detail_warning="${5:-}"
+  local status="$1" ref="${2:-}" line="${3:-}" detail_status="${4:-skipped}" detail_warning="${5:-}" todo_warning="${6:-}"
   printf 'todo_status=%s\n' "$status"
   [ -n "$ref" ] && printf 'todo_ref=%s\n' "$ref"
   [ -n "$line" ] && printf 'todo_line=%s\n' "$line"
   [ -n "$detail_status" ] && printf 'detail_status=%s\n' "$detail_status"
   [ -n "$detail_warning" ] && printf 'detail_warning=%s\n' "$detail_warning"
+  [ -n "$todo_warning" ] && printf 'todo_warning=%s\n' "$todo_warning"
   return 0
 }
 
@@ -340,43 +341,77 @@ extract_requested_uat_deviation() {
 
 insert_todo_line() {
   local state_path="$1" todo_line="$2" ref="$3"
-  local tmp_file has_todos=false anchor stop_pattern flat_todos
+  local tmp_file has_todos=false anchor stop_pattern flat_todos grep_status
 
-  if grep -qF "(ref:${ref})" "$state_path"; then
+  grep -qF "(ref:${ref})" "$state_path"
+  grep_status=$?
+  if [ "$grep_status" -eq 0 ]; then
     return 2
+  elif [ "$grep_status" -gt 1 ]; then
+    return 1
   fi
 
-  tmp_file=$(mktemp "${state_path}.tmp.XXXXXX")
+  tmp_file=$(mktemp "${state_path}.tmp.XXXXXX") || return 1
 
-  flat_todos=$(awk '
+  if ! flat_todos=$(awk '
     /^## Todos$/ { found=1; next }
     found && /^## / { exit }
     found && /^### / { exit }
     found && /^- / { print }
-  ' "$state_path")
+  ' "$state_path"); then
+    rm -f "$tmp_file"
+    return 1
+  fi
 
   if [ -n "$flat_todos" ]; then
     has_todos=true
     anchor='^## Todos$'
     stop_pattern='(^### )|(^## )'
-  elif grep -Eq '^### Pending Todos$' "$state_path"; then
-    has_todos=true
-    anchor='^### Pending Todos$'
-    stop_pattern='(^### Completed Todos$)|(^## )'
-  elif grep -Eq '^## Todos$' "$state_path"; then
-    has_todos=true
-    anchor='^## Todos$'
-    stop_pattern='(^### )|(^## )'
+  else
+    grep -Eq '^### Pending Todos$' "$state_path"
+    grep_status=$?
+    if [ "$grep_status" -eq 0 ]; then
+      has_todos=true
+      anchor='^### Pending Todos$'
+      stop_pattern='(^### Completed Todos$)|(^## )'
+    elif [ "$grep_status" -gt 1 ]; then
+      rm -f "$tmp_file"
+      return 1
+    else
+      grep -Eq '^## Todos$' "$state_path"
+      grep_status=$?
+      if [ "$grep_status" -eq 0 ]; then
+        has_todos=true
+        anchor='^## Todos$'
+        stop_pattern='(^### )|(^## )'
+      elif [ "$grep_status" -gt 1 ]; then
+        rm -f "$tmp_file"
+        return 1
+      fi
+    fi
   fi
 
   if [ "$has_todos" != true ]; then
-    cat "$state_path" > "$tmp_file"
-    printf '\n## Todos\n%s\n' "$todo_line" >> "$tmp_file"
-    mv "$tmp_file" "$state_path"
+    if ! cat "$state_path" > "$tmp_file"; then
+      rm -f "$tmp_file"
+      return 1
+    fi
+    if ! printf '\n## Todos\n%s\n' "$todo_line" >> "$tmp_file"; then
+      rm -f "$tmp_file"
+      return 1
+    fi
+    if ! grep -qF "(ref:${ref})" "$tmp_file"; then
+      rm -f "$tmp_file"
+      return 1
+    fi
+    if ! mv "$tmp_file" "$state_path"; then
+      rm -f "$tmp_file"
+      return 1
+    fi
     return 0
   fi
 
-  awk -v todo_line="$todo_line" -v anchor="$anchor" -v stop_re="$stop_pattern" '
+  if ! awk -v todo_line="$todo_line" -v anchor="$anchor" -v stop_re="$stop_pattern" '
     $0 ~ anchor {
       in_todos = 1
       print
@@ -405,8 +440,18 @@ insert_todo_line() {
         print todo_line
       }
     }
-  ' "$state_path" > "$tmp_file"
-  mv "$tmp_file" "$state_path"
+  ' "$state_path" > "$tmp_file"; then
+    rm -f "$tmp_file"
+    return 1
+  fi
+  if ! grep -qF "(ref:${ref})" "$tmp_file"; then
+    rm -f "$tmp_file"
+    return 1
+  fi
+  if ! mv "$tmp_file" "$state_path"; then
+    rm -f "$tmp_file"
+    return 1
+  fi
   return 0
 }
 
@@ -466,7 +511,7 @@ upsert_uat_deviation_detail() {
 }
 
 todo_from_uat() {
-  local phase_dir uat_file checkpoint_id planning_root state_path ref phase_num today summary todo_line insert_status detail_result detail_status detail_warning
+  local phase_dir uat_file checkpoint_id planning_root state_path ref phase_num today summary todo_line insert_status insert_rc detail_result detail_status detail_warning
   phase_dir="${1:-}"
   uat_file="${2:-}"
   checkpoint_id="${3:-}"
@@ -506,11 +551,16 @@ todo_from_uat() {
   summary=$(truncate_for_todo "$TODO_UAT_DEVIATION" 110)
   todo_line="- [UAT-DEVIATION] ${TODO_UAT_SOURCE_PLAN}: ${summary} (phase ${phase_num}, see ${TODO_UAT_SOURCE_PATH}) (added ${today}) (ref:${ref})"
 
-  if insert_todo_line "$state_path" "$todo_line" "$ref"; then
-    insert_status="added"
-  else
-    insert_status="already_tracked"
-  fi
+  insert_rc=0
+  insert_todo_line "$state_path" "$todo_line" "$ref" || insert_rc=$?
+  case "$insert_rc" in
+    0) insert_status="added" ;;
+    2) insert_status="already_tracked" ;;
+    *)
+      emit_todo_from_uat_status "state_update_failed" "" "" "skipped" "" "STATE.md todo update failed; todo not persisted"
+      return 0
+      ;;
+  esac
 
   detail_result=$(upsert_uat_deviation_detail "$planning_root" "$phase_dir" "$uat_file" "$checkpoint_id" "$ref" "$todo_line" "$TODO_UAT_SIGNATURE" "$TODO_UAT_SOURCE_PLAN" "$TODO_UAT_SOURCE_PATH" "$TODO_UAT_DEVIATION")
   detail_status="${detail_result%%$'\t'*}"
