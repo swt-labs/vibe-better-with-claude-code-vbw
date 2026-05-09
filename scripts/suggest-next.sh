@@ -92,6 +92,7 @@ current_uat_issues_slug=""
 current_uat_issues_label=""
 current_uat_major_or_higher=false
 current_uat_round_count=0
+current_uat_blocking_phase=""
 cfg_require_phase_discussion=false
 next_undiscussed=""
 next_preseeded=""
@@ -160,11 +161,15 @@ if [ -d "$PLANNING_DIR" ]; then
     _pd_uat_slug=$(echo "$_pd_out" | grep -m1 '^uat_issues_slug=' | sed 's/^[^=]*=//' || true)
     _pd_uat_major=$(echo "$_pd_out" | grep -m1 '^uat_issues_major_or_higher=' | sed 's/^[^=]*=//' || true)
     _pd_uat_round_count=$(echo "$_pd_out" | grep -m1 '^uat_round_count=' | sed 's/^[^=]*=//' || true)
+    _pd_uat_blocking_phase=$(echo "$_pd_out" | grep -m1 '^uat_blocking_phase=' | sed 's/^[^=]*=//' || true)
     if [ -n "${_pd_uat_phase:-}" ] && [ "$_pd_uat_phase" != "none" ]; then
       current_uat_issues_phase="$_pd_uat_phase"
       current_uat_issues_slug="${_pd_uat_slug:-}"
       [ "${_pd_uat_major:-}" = "true" ] && current_uat_major_or_higher=true
       [ -n "${_pd_uat_round_count:-}" ] && current_uat_round_count="$_pd_uat_round_count"
+    fi
+    if [ -n "${_pd_uat_blocking_phase:-}" ] && [ "$_pd_uat_blocking_phase" != "none" ]; then
+      current_uat_blocking_phase="$_pd_uat_blocking_phase"
     fi
 
     # Build human-readable phase label: "Phase N (slug-name)" or just "Phase N"
@@ -513,9 +518,11 @@ case "$CMD" in
             suggest "/vbw:vibe -- Verify completed work before continuing"
           fi
         fi
-        if [ "$all_done" = true ] || [ "$next_phase_state" = "needs_reverification" ]; then
+        if [ "$all_done" = true ] || [ "$next_phase_state" = "needs_reverification" ] || { [ "$next_phase_state" = "needs_verification" ] && [ -n "$current_uat_blocking_phase" ]; }; then
           if [ "$next_phase_state" = "needs_reverification" ]; then
             suggest "/vbw:vibe -- Re-verify Phase ${pd_next_phase:-} after remediation"
+          elif [ "$next_phase_state" = "needs_verification" ] && [ -n "$current_uat_blocking_phase" ]; then
+            suggest "/vbw:vibe -- Verify Phase ${pd_next_phase:-} before archiving"
           elif ! suggest_milestone_recovery; then
             if [ "$deviation_count" -eq 0 ]; then
               suggest "/vbw:vibe --archive -- All phases complete, zero deviations"
@@ -652,9 +659,11 @@ case "$CMD" in
             suggest "/vbw:vibe -- Verify completed work"
           fi
         fi
-        if [ "$all_done" = true ] || [ "$next_phase_state" = "needs_reverification" ]; then
+        if [ "$all_done" = true ] || [ "$next_phase_state" = "needs_reverification" ] || { [ "$next_phase_state" = "needs_verification" ] && [ -n "$current_uat_blocking_phase" ]; }; then
           if [ "$next_phase_state" = "needs_reverification" ]; then
             suggest "/vbw:vibe -- Re-verify Phase ${pd_next_phase:-} after remediation"
+          elif [ "$next_phase_state" = "needs_verification" ] && [ -n "$current_uat_blocking_phase" ]; then
+            suggest "/vbw:vibe -- Verify Phase ${pd_next_phase:-} before archiving"
           elif ! suggest_milestone_recovery; then
             if [ "$deviation_count" -eq 0 ]; then
               suggest "/vbw:vibe --archive -- All phases complete, zero deviations"

@@ -362,6 +362,23 @@ EOF
   [[ "$output" != *"/vbw:vibe --archive"* ]]
 }
 
+@test "suggest-next vibe with active round-dir UAT in progress does not suggest archive" {
+  cd "$TEST_TEMP_DIR"
+
+  local active_dir="$TEST_TEMP_DIR/.vbw-planning/phases/01-core"
+  mkdir -p "$active_dir/remediation/uat/round-06"
+  printf -- '---\nphase: 01\nplan: 01-01\n---\n' > "${active_dir}/01-01-PLAN.md"
+  printf -- '---\nstatus: complete\ndeviations: 0\n---\nDone.\n' > "${active_dir}/01-01-SUMMARY.md"
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > "${active_dir}/remediation/uat/.uat-remediation-stage"
+  printf -- '---\nphase: 01\nstatus: in_progress\n---\nUAT is still running.\n' > "${active_dir}/remediation/uat/round-06/R06-UAT.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Re-verify Phase 01 after remediation"* ]]
+  [[ "$output" != *"/vbw:vibe --archive"* ]]
+}
+
 @test "suggest-next milestone recovery includes affected phase count when multiple phases unresolved" {
   cd "$TEST_TEMP_DIR"
 

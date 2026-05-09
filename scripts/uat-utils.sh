@@ -8,6 +8,12 @@
 #   extract_status_value <file>   — Extract status value from YAML frontmatter
 #                                   with body-level fallback for brownfield files.
 #                                   Applies normalize_uat_status automatically.
+#   uat_file_status_class <file>  — Classify a UAT file as complete,
+#                                   issues_found, active, or none.
+#   current_uat_status_class <dir> — Classify the active UAT for a phase dir.
+#   current_uat_blocks_phase_completion <dir>
+#                                — True when the active UAT prevents phase
+#                                  completion/archive.
 #   latest_non_source_uat <dir>   — Find the latest canonical UAT file in a phase
 #                                   directory, excluding SOURCE-UAT.md copies.
 #   current_uat <dir>             — Find the active UAT file (round-dir first,
@@ -52,7 +58,7 @@ normalize_uat_status() {
 # map LLM synonyms (all_pass, passed, verified, failed, etc.) to canonical
 # values. SUMMARY files use their own extraction path in summary-utils.sh
 # which never calls normalize_uat_status(), so these mappings are UAT-only.
-extract_status_value() {
+_extract_uat_status_value() {
   local file="$1"
   local result
   # Try frontmatter first
@@ -86,9 +92,68 @@ extract_status_value() {
       }
     ' "$file" 2>/dev/null || true)
   fi
-  # Normalize LLM synonyms to canonical values
+  printf '%s' "$result"
+}
+
+extract_status_value() {
+  local file="$1" result
+  result=$(_extract_uat_status_value "$file")
   result=$(normalize_uat_status "$result")
   printf '%s' "$result"
+}
+
+# uat_status_class — Classify a normalized or raw UAT status.
+#
+# Completion/archive is allowed only for explicit passing terminal statuses.
+# `issues_found` is a terminal UAT result that requires remediation. Missing
+# status means no authoritative UAT status was found and preserves the legacy
+# contract that ignored body/prose status mentions do not block completion.
+# Unrecognized and non-terminal statuses mean active verification is still
+# authoritative and must block phase completion.
+uat_status_class() {
+  local status
+  status=$(normalize_uat_status "${1:-}")
+  case "$status" in
+    "")
+      printf '%s\n' "none"
+      ;;
+    complete)
+      printf '%s\n' "complete"
+      ;;
+    issues_found)
+      printf '%s\n' "issues_found"
+      ;;
+    *)
+      printf '%s\n' "active"
+      ;;
+  esac
+}
+
+# uat_file_status_value — Extract and normalize UAT status directly.
+#
+# This intentionally does not call extract_status_value(), because some callers
+# validate behavior when that legacy function is degraded or locally overridden.
+# The classification contract must remain tied to the artifact content itself.
+uat_file_status_value() {
+  local file="$1" result
+  [ -f "$file" ] || return 1
+  result=$(_extract_uat_status_value "$file")
+  result=$(normalize_uat_status "$result")
+  printf '%s' "$result"
+}
+
+uat_file_status_class() {
+  local file="$1" status
+  [ -f "$file" ] || { printf '%s\n' "none"; return 0; }
+  status=$(uat_file_status_value "$file")
+  uat_status_class "$status"
+}
+
+uat_status_class_blocks_completion() {
+  case "${1:-none}" in
+    issues_found|active) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 # latest_non_source_uat — Find the latest [0-9]*-UAT.md file in a directory,
@@ -347,4 +412,25 @@ current_uat() {
 
   # Fall back to phase-root UAT
   latest_non_source_uat "${dir%/}"
+}
+
+current_uat_status_class() {
+  local dir="$1" uat_file
+  uat_file=$(current_uat "$dir")
+  [ -n "$uat_file" ] && [ -f "$uat_file" ] || { printf '%s\n' "none"; return 0; }
+  uat_file_status_class "$uat_file"
+}
+
+current_uat_blocks_phase_completion() {
+  local class
+  class=$(current_uat_status_class "$1" 2>/dev/null || printf '%s\n' "none")
+  uat_status_class_blocks_completion "$class"
+}
+
+current_uat_needs_remediation() {
+  [ "$(current_uat_status_class "$1" 2>/dev/null || printf '%s\n' "none")" = "issues_found" ]
+}
+
+current_uat_needs_verification() {
+  [ "$(current_uat_status_class "$1" 2>/dev/null || printf '%s\n' "none")" = "active" ]
 }

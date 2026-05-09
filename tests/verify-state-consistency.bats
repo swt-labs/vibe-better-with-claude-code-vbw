@@ -2604,6 +2604,43 @@ EOF
   [ "$c2_pass" = "true" ]
 }
 
+@test "active round-dir UAT in progress keeps complete-summary phase active without drift" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# State
+**Project:** My Test Project
+**Milestone:** MVP
+Phase: 1 of 3 (Setup)
+Plans: 1/1
+Progress: 100%
+Status: needs_verification
+EOF
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [ ] Phase 1: Setup
+- [ ] Phase 2: Backend API
+- [ ] Phase 3: Frontend
+
+### Phase 1: Setup
+### Phase 2: Backend API
+### Phase 3: Frontend
+EOF
+
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/remediation/uat/round-06"
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > "$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/remediation/uat/.uat-remediation-stage"
+  printf '%s\n' '---' 'status: in_progress' '---' '# UAT' > "$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/remediation/uat/round-06/R06-UAT.md"
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  echo "$output" | jq -e '.failed_checks | index("state_vs_filesystem") | not' >/dev/null
+  echo "$output" | jq -e '.failed_checks | index("roadmap_vs_summaries") | not' >/dev/null
+}
+
 @test "roadmap_vs_summaries: checked phase with UAT issues is flagged as drift" {
   cd "$TEST_TEMP_DIR"
   scaffold_consistent_workspace

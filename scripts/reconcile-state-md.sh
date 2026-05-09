@@ -58,6 +58,7 @@ REQUIRED_FUNCTIONS=(
   count_terminal_summaries
   current_uat
   extract_status_value
+  current_uat_status_class
   phase_dir_display_name
   normalize_roadmap_phase_num
   roadmap_checklist_phase_num_from_line
@@ -134,19 +135,26 @@ resolve_planning_root() {
 
 phase_has_unresolved_uat() {
   local phase_dir="$1"
-  local uat_file status_val
+  local status_class
 
-  uat_file=$(current_uat "$phase_dir")
-  [ -n "$uat_file" ] && [ -f "$uat_file" ] || return 1
-  status_val=$(extract_status_value "$uat_file")
-  [ "$status_val" = "issues_found" ]
+  status_class=$(current_uat_status_class "$phase_dir" 2>/dev/null || printf '%s\n' "none")
+  case "$status_class" in
+    issues_found|active) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+phase_uat_status_class() {
+  current_uat_status_class "$1" 2>/dev/null || printf '%s\n' "none"
 }
 
 status_label_for_phase() {
-  local idx="$1" plan_count="$2" terminal_count="$3" complete_count="$4" unresolved="$5"
+  local idx="$1" plan_count="$2" terminal_count="$3" complete_count="$4" uat_class="$5"
 
-  if [ "$unresolved" = true ]; then
+  if [ "$uat_class" = "issues_found" ]; then
     printf '%s\n' "Needs remediation"
+  elif [ "$uat_class" = "active" ]; then
+    printf '%s\n' "Needs verification"
   elif [ "$plan_count" -gt 0 ] && [ "$complete_count" -ge "$plan_count" ]; then
     printf '%s\n' "Complete"
   elif [ "$terminal_count" -gt 0 ]; then
@@ -326,9 +334,10 @@ complete_counts=()
 unresolved_flags=()
 names=()
 labels=()
+uat_classes=()
 
 active_idx=0
-active_unresolved=false
+active_uat_class="none"
 all_done=true
 idx=0
 for phase_dir in "${phase_dirs[@]}"; do
@@ -337,7 +346,8 @@ for phase_dir in "${phase_dirs[@]}"; do
   terminal_count=$(count_terminal_summaries "$phase_dir")
   complete_count=$(count_complete_summaries "$phase_dir")
   unresolved=false
-  if phase_has_unresolved_uat "$phase_dir"; then
+  uat_class=$(phase_uat_status_class "$phase_dir")
+  if [ "$uat_class" = "issues_found" ] || [ "$uat_class" = "active" ]; then
     unresolved=true
   fi
 
@@ -346,12 +356,13 @@ for phase_dir in "${phase_dirs[@]}"; do
   complete_counts+=("$complete_count")
   unresolved_flags+=("$unresolved")
   names+=("$(phase_dir_display_name "$phase_dir")")
-  labels+=("$(status_label_for_phase "$idx" "$plan_count" "$terminal_count" "$complete_count" "$unresolved")")
+  uat_classes+=("$uat_class")
+  labels+=("$(status_label_for_phase "$idx" "$plan_count" "$terminal_count" "$complete_count" "$uat_class")")
 
   if [ "$active_idx" -eq 0 ]; then
     if [ "$plan_count" -eq 0 ] || [ "$complete_count" -lt "$plan_count" ] || [ "$unresolved" = true ]; then
       active_idx="$idx"
-      active_unresolved="$unresolved"
+      active_uat_class="$uat_class"
       all_done=false
     fi
   fi
@@ -360,7 +371,7 @@ done
 if [ "$active_idx" -eq 0 ]; then
   active_idx="$TOTAL"
   all_done=true
-  active_unresolved=false
+  active_uat_class="none"
 fi
 
 array_idx=$((active_idx - 1))
@@ -377,8 +388,10 @@ fi
 
 if [ "$all_done" = true ]; then
   active_status="complete"
-elif [ "$active_unresolved" = true ]; then
+elif [ "$active_uat_class" = "issues_found" ]; then
   active_status="needs_remediation"
+elif [ "$active_uat_class" = "active" ]; then
+  active_status="needs_verification"
 elif [ "$active_plan_count" -eq 0 ]; then
   active_status="ready"
 elif [ "$active_terminal_count" -gt 0 ] && [ "$active_complete_count" -lt "$active_plan_count" ]; then

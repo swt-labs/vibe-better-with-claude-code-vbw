@@ -492,11 +492,17 @@ rewrite_roadmap_checkboxes_for_phase() {
 # Uses shared extract_status_value() + current_uat() from uat-utils.sh
 phase_has_uat_issues() {
   local phase_dir="$1"
-  local uat_file status_val
-  uat_file=$(current_uat "$phase_dir")
-  [ -f "$uat_file" ] || return 1
-  status_val=$(extract_status_value "$uat_file")
-  [ "$status_val" = "issues_found" ]
+  local status_class
+  status_class=$(phase_uat_status_class "$phase_dir")
+  [ "$status_class" = "issues_found" ] || [ "$status_class" = "active" ]
+}
+
+phase_uat_status_class() {
+  if type current_uat_status_class >/dev/null 2>&1; then
+    current_uat_status_class "$1" 2>/dev/null || printf '%s\n' "none"
+  else
+    printf '%s\n' "none"
+  fi
 }
 
 update_roadmap() {
@@ -508,7 +514,7 @@ update_roadmap() {
 
   [ -f "$roadmap" ] || return 0
 
-  local dirname table_phase_num checkbox_phase_num numbering_scheme display_numbering_scheme roadmap_total prefix_phase_num plan_count summary_count status date_str
+  local dirname table_phase_num checkbox_phase_num numbering_scheme display_numbering_scheme roadmap_total prefix_phase_num plan_count summary_count status date_str uat_class
   dirname=$(basename "$phase_dir")
   prefix_phase_num=$(echo "$dirname" | sed 's/^\([0-9]*\).*/\1/' | sed 's/^0*//')
   numbering_scheme=$(roadmap_numbering_scheme "$roadmap" "$(dirname "$phase_dir")")
@@ -523,12 +529,16 @@ update_roadmap() {
   plan_count=$(count_phase_plans "$phase_dir")
   summary_count=$(count_terminal_summaries "$phase_dir")
   complete_count=$(count_complete_summaries "$phase_dir")
+  uat_class=$(phase_uat_status_class "$phase_dir")
 
   [ "$plan_count" -eq 0 ] && return 0
 
   if [ "$complete_count" -eq "$plan_count" ]; then
-    if phase_has_uat_issues "$phase_dir"; then
+    if [ "$uat_class" = "issues_found" ]; then
       status="uat issues"
+      date_str="-"
+    elif [ "$uat_class" = "active" ]; then
+      status="needs verification"
       date_str="-"
     else
       status="complete"
@@ -567,6 +577,7 @@ update_roadmap() {
     case "$status" in
       complete)      simple_status="● Done" ;;
       "uat issues")  simple_status="⚠ UAT Issues" ;;
+      "needs verification") simple_status="◐ Needs Verification" ;;
       "in progress") simple_status="◐ In Progress" ;;
       planned)       simple_status="○ Planned" ;;
       *)             simple_status="$status" ;;
@@ -582,7 +593,7 @@ update_roadmap() {
   if [ -n "$checkbox_phase_num" ]; then
     if [ "$status" = "complete" ]; then
       rewrite_roadmap_checkboxes_for_phase "$tmp" "x" "$checkbox_phase_num"
-    elif [ "$status" = "uat issues" ]; then
+    elif [ "$status" = "uat issues" ] || [ "$status" = "needs verification" ]; then
       rewrite_roadmap_checkboxes_for_phase "$tmp" " " "$checkbox_phase_num"
     fi
   fi

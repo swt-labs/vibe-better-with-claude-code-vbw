@@ -496,6 +496,10 @@ else
   echo "uat_issues_major_or_higher=false"
   echo "uat_issues_phases="
   echo "uat_issues_count=0"
+  echo "uat_blocking_phase=none"
+  echo "uat_blocking_slug=none"
+  echo "uat_blocking_status=none"
+  echo "uat_blocking_file=none"
   echo "uat_file=none"
   echo "uat_round_count=0"
   echo "has_shipped_milestones=false"
@@ -620,8 +624,60 @@ UAT_ISSUES_COUNT=0
 UAT_ROUND_COUNT=0
 UAT_ISSUES_FILE=""
 UAT_ISSUES_RELATIVE_FILE="none"
+UAT_BLOCKING_PHASE="none"
+UAT_BLOCKING_SLUG="none"
+UAT_BLOCKING_STATUS="none"
+UAT_BLOCKING_FILE=""
+UAT_BLOCKING_RELATIVE_FILE="none"
 UAT_LANE_BLOCKS_QA=false
 PHASE_DIRS=()
+
+route_earlier_incomplete_before_phase() {
+  local boundary_phase="$1"
+  local _ei_dir _ei_name _ei_num _ei_plans _ei_summaries _ei_contexts
+
+  [ -n "$boundary_phase" ] && echo "$boundary_phase" | grep -qE '^[0-9]+$' || return 1
+
+  for _ei_dir in "${PHASE_DIRS[@]}"; do
+    _ei_name=$(basename "$_ei_dir")
+    _ei_num=$(echo "$_ei_name" | sed 's/^\([0-9]*\).*/\1/')
+    [ -n "$_ei_num" ] && echo "$_ei_num" | grep -qE '^[0-9]+$' || continue
+    if [ "$_ei_num" -ge "$boundary_phase" ] 2>/dev/null; then
+      break
+    fi
+
+    _ei_plans=$(count_phase_plans "$_ei_dir")
+    _ei_summaries=$(count_complete_summaries "$_ei_dir")
+    if [ "$_ei_plans" -eq 0 ]; then
+      if [ "$CFG_REQUIRE_PHASE_DISCUSSION" = true ]; then
+        _ei_contexts=$(find "$_ei_dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$_ei_contexts" -eq 0 ]; then
+          NEXT_PHASE="$_ei_num"
+          NEXT_PHASE_SLUG="$_ei_name"
+          NEXT_PHASE_STATE="needs_discussion"
+          NEXT_PHASE_PLANS="$_ei_plans"
+          NEXT_PHASE_SUMMARIES="$_ei_summaries"
+          return 0
+        fi
+      fi
+      NEXT_PHASE="$_ei_num"
+      NEXT_PHASE_SLUG="$_ei_name"
+      NEXT_PHASE_STATE="needs_plan_and_execute"
+      NEXT_PHASE_PLANS="$_ei_plans"
+      NEXT_PHASE_SUMMARIES="$_ei_summaries"
+      return 0
+    elif [ "$_ei_summaries" -lt "$_ei_plans" ]; then
+      NEXT_PHASE="$_ei_num"
+      NEXT_PHASE_SLUG="$_ei_name"
+      NEXT_PHASE_STATE="needs_execute"
+      NEXT_PHASE_PLANS="$_ei_plans"
+      NEXT_PHASE_SUMMARIES="$_ei_summaries"
+      return 0
+    fi
+  done
+
+  return 1
+}
 
 if [ -d "$PHASES_DIR" ]; then
   # Collect phase directories in numeric order (prevents 100 sorting before 11)
@@ -666,8 +722,18 @@ if [ -d "$PHASES_DIR" ]; then
 
       UAT_FILE=$(current_uat "$DIR")
       if [ -f "$UAT_FILE" ]; then
-        UAT_STATUS=$(extract_status_value "$UAT_FILE")
-        if [ "$UAT_STATUS" = "issues_found" ]; then
+        UAT_STATUS_CLASS=$(uat_file_status_class "$UAT_FILE" 2>/dev/null || printf '%s\n' "none")
+        case "$UAT_STATUS_CLASS" in
+          issues_found|active)
+            if [ "$UAT_BLOCKING_PHASE" = "none" ]; then
+              UAT_BLOCKING_PHASE="$NUM"
+              UAT_BLOCKING_SLUG="$DIRNAME"
+              UAT_BLOCKING_STATUS="$UAT_STATUS_CLASS"
+              UAT_BLOCKING_FILE="$UAT_FILE"
+            fi
+            ;;
+        esac
+        if [ "$UAT_STATUS_CLASS" = "issues_found" ]; then
           # First match becomes the priority routing target
           if [ "$UAT_ISSUES_PHASE" = "none" ]; then
             UAT_ISSUES_PHASE="$NUM"
@@ -698,50 +764,7 @@ if [ -d "$PHASES_DIR" ]; then
       # are skipped by the UAT scan (SUMMARIES < PLANS), so they become
       # invisible when a later phase has UAT issues. Fix: scan for the first
       # incomplete phase before the UAT issues phase and route there instead.
-      _EARLIER_INCOMPLETE=false
-      for _ei_dir in "${PHASE_DIRS[@]}"; do
-        _ei_name=$(basename "$_ei_dir")
-        _ei_num=$(echo "$_ei_name" | sed 's/^\([0-9]*\).*/\1/')
-        [ -n "$_ei_num" ] && echo "$_ei_num" | grep -qE '^[0-9]+$' || continue
-        # Stop once we reach or pass the UAT issues phase
-        if [ "$_ei_num" -ge "$UAT_ISSUES_PHASE" ] 2>/dev/null; then
-          break
-        fi
-        _ei_plans=$(count_phase_plans "$_ei_dir")
-        _ei_summaries=$(count_complete_summaries "$_ei_dir")
-        if [ "$_ei_plans" -eq 0 ]; then
-          # Mirror the discussion gate from the normal scan
-          if [ "$CFG_REQUIRE_PHASE_DISCUSSION" = true ]; then
-            _ei_contexts=$(find "$_ei_dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | wc -l | tr -d ' ')
-            if [ "$_ei_contexts" -eq 0 ]; then
-              NEXT_PHASE="$_ei_num"
-              NEXT_PHASE_SLUG="$_ei_name"
-              NEXT_PHASE_STATE="needs_discussion"
-              NEXT_PHASE_PLANS="$_ei_plans"
-              NEXT_PHASE_SUMMARIES="$_ei_summaries"
-              _EARLIER_INCOMPLETE=true
-              break
-            fi
-          fi
-          NEXT_PHASE="$_ei_num"
-          NEXT_PHASE_SLUG="$_ei_name"
-          NEXT_PHASE_STATE="needs_plan_and_execute"
-          NEXT_PHASE_PLANS="$_ei_plans"
-          NEXT_PHASE_SUMMARIES="$_ei_summaries"
-          _EARLIER_INCOMPLETE=true
-          break
-        elif [ "$_ei_summaries" -lt "$_ei_plans" ]; then
-          NEXT_PHASE="$_ei_num"
-          NEXT_PHASE_SLUG="$_ei_name"
-          NEXT_PHASE_STATE="needs_execute"
-          NEXT_PHASE_PLANS="$_ei_plans"
-          NEXT_PHASE_SUMMARIES="$_ei_summaries"
-          _EARLIER_INCOMPLETE=true
-          break
-        fi
-      done
-
-      if [ "$_EARLIER_INCOMPLETE" = false ]; then
+      if ! route_earlier_incomplete_before_phase "$UAT_ISSUES_PHASE"; then
         TARGET_DIR="$PHASES_DIR/$UAT_ISSUES_SLUG/"
         NEXT_PHASE="$UAT_ISSUES_PHASE"
         NEXT_PHASE_SLUG="$UAT_ISSUES_SLUG"
@@ -827,7 +850,7 @@ if [ -d "$PHASES_DIR" ]; then
             _round_uat="${TARGET_DIR}remediation/round-${_cur_rr}/R${_cur_rr}-UAT.md"
           fi
           if [ -n "$_round_uat" ]; then
-            _round_uat_status=$(extract_status_value "$_round_uat")
+            _round_uat_status=$(uat_file_status_class "$_round_uat" 2>/dev/null || printf '%s\n' "none")
           fi
           # Read layout before the routing decision — apply the same path-based
           # default as the execute→done transition above.
@@ -862,6 +885,45 @@ if [ -d "$PHASES_DIR" ]; then
         else
           NEXT_PHASE_STATE="needs_uat_remediation"
         fi
+      fi
+    elif [ "$UAT_BLOCKING_PHASE" != "none" ]; then
+      if ! route_earlier_incomplete_before_phase "$UAT_BLOCKING_PHASE"; then
+        TARGET_DIR="$PHASES_DIR/$UAT_BLOCKING_SLUG/"
+        NEXT_PHASE="$UAT_BLOCKING_PHASE"
+        NEXT_PHASE_SLUG="$UAT_BLOCKING_SLUG"
+        UAT_ROUND_COUNT=$(count_uat_rounds "$TARGET_DIR" "$UAT_BLOCKING_PHASE")
+
+        _block_stage="none"
+        _block_state_file=""
+        if [ -f "${TARGET_DIR}remediation/uat/.uat-remediation-stage" ]; then
+          _block_state_file="${TARGET_DIR}remediation/uat/.uat-remediation-stage"
+          _block_stage=$(state_file_kv_value "$_block_state_file" stage)
+        elif [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
+          _block_state_file="${TARGET_DIR}remediation/.uat-remediation-stage"
+          _block_stage=$(state_file_kv_value "$_block_state_file" stage)
+          [ -n "$_block_stage" ] || _block_stage=$(state_file_scalar_value "$_block_state_file")
+        elif [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
+          _block_state_file="${TARGET_DIR}.uat-remediation-stage"
+          _block_stage=$(state_file_kv_value "$_block_state_file" stage)
+          [ -n "$_block_stage" ] || _block_stage=$(state_file_scalar_value "$_block_state_file")
+        fi
+        _block_stage="${_block_stage:-none}"
+
+        NEXT_PHASE_PLANS=$(count_phase_plans "$TARGET_DIR")
+        NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$TARGET_DIR")
+        case "$_block_stage" in
+          research|plan|execute)
+            NEXT_PHASE_STATE="needs_uat_remediation"
+            ;;
+          verify|done)
+            NEXT_PHASE_STATE="needs_reverification"
+            UAT_LANE_BLOCKS_QA=true
+            ;;
+          *)
+            NEXT_PHASE_STATE="needs_verification"
+            UAT_LANE_BLOCKS_QA=true
+            ;;
+        esac
       fi
     else
       ALL_DONE=true
@@ -1057,9 +1119,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
       _uv_is_unverified=true
     else
       # UAT file exists — check if it has a terminal status
-      _uv_uat_status=$(extract_status_value "$_uv_uat")
+      _uv_uat_status=$(uat_file_status_class "$_uv_uat" 2>/dev/null || printf '%s\n' "none")
       case "$_uv_uat_status" in
-        complete|passed|issues_found) ;;  # terminal — phase is verified
+        complete|issues_found) ;;  # terminal — phase is verified
         *) _uv_is_unverified=true ;;
       esac
     fi
@@ -1248,11 +1310,11 @@ if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; t
         _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
         _QA_ATT_UAT_STATUS=""
         if [ -f "$_QA_ATT_UAT" ]; then
-          _QA_ATT_UAT_STATUS=$(extract_status_value "$_QA_ATT_UAT")
+          _QA_ATT_UAT_STATUS=$(uat_file_status_class "$_QA_ATT_UAT" 2>/dev/null || printf '%s\n' "none")
         fi
 
         case "$_QA_ATT_UAT_STATUS" in
-          complete|passed)
+          complete)
             NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
             NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
             if [ -d "$_QA_ATT_DIR" ]; then
@@ -1278,7 +1340,7 @@ if [ "$NEXT_PHASE_STATE" = "needs_qa_remediation" ]; then
     _pd_guard_uat=$(current_uat "$_pd_qa_guard_dir")
     _pd_guard_uat_status=""
     if [ -f "$_pd_guard_uat" ]; then
-      _pd_guard_uat_status=$(extract_status_value "$_pd_guard_uat")
+      _pd_guard_uat_status=$(uat_file_status_class "$_pd_guard_uat" 2>/dev/null || printf '%s\n' "none")
     fi
     QA_AFTER_UAT_DORMANT=true
     QA_STATUS="none"
@@ -1288,7 +1350,7 @@ if [ "$NEXT_PHASE_STATE" = "needs_qa_remediation" ]; then
       issues_found)
         NEXT_PHASE_STATE="needs_uat_remediation"
         ;;
-      complete|passed)
+      complete)
         NEXT_PHASE="none"
         NEXT_PHASE_SLUG="none"
         NEXT_PHASE_PLANS=0
@@ -1308,6 +1370,15 @@ if [ "$UAT_ISSUES_PHASE" != "none" ] && [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_
     UAT_ISSUES_RELATIVE_FILE=$(phase_relative_path "$_pd_active_phase_dir" "$UAT_ISSUES_FILE")
   else
     UAT_ISSUES_RELATIVE_FILE=$(basename "$UAT_ISSUES_FILE")
+  fi
+fi
+
+if [ "$UAT_BLOCKING_PHASE" != "none" ] && [ -n "$UAT_BLOCKING_FILE" ] && [ -f "$UAT_BLOCKING_FILE" ]; then
+  _pd_blocking_phase_dir="${PHASES_DIR}/${UAT_BLOCKING_SLUG}"
+  if [ -d "$_pd_blocking_phase_dir" ]; then
+    UAT_BLOCKING_RELATIVE_FILE=$(phase_relative_path "$_pd_blocking_phase_dir" "$UAT_BLOCKING_FILE")
+  else
+    UAT_BLOCKING_RELATIVE_FILE=$(basename "$UAT_BLOCKING_FILE")
   fi
 fi
 
@@ -1333,6 +1404,10 @@ echo "uat_issues_slug=$UAT_ISSUES_SLUG"
 echo "uat_issues_major_or_higher=$UAT_ISSUES_MAJOR_OR_HIGHER"
 echo "uat_issues_phases=$UAT_ISSUES_PHASES"
 echo "uat_issues_count=$UAT_ISSUES_COUNT"
+echo "uat_blocking_phase=$UAT_BLOCKING_PHASE"
+echo "uat_blocking_slug=$UAT_BLOCKING_SLUG"
+echo "uat_blocking_status=$UAT_BLOCKING_STATUS"
+echo "uat_blocking_file=$UAT_BLOCKING_RELATIVE_FILE"
 echo "uat_file=$UAT_ISSUES_RELATIVE_FILE"
 echo "uat_round_count=$UAT_ROUND_COUNT"
 
@@ -1437,7 +1512,7 @@ if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] ||
 
       _ms_uat=$(current_uat "$_ms_phase_dir")
       if [ -f "$_ms_uat" ]; then
-        _ms_uat_status=$(extract_status_value "$_ms_uat")
+        _ms_uat_status=$(uat_file_status_class "$_ms_uat" 2>/dev/null || printf '%s\n' "none")
         if [ "$_ms_uat_status" = "issues_found" ]; then
           _ms_issue_count=$((_ms_issue_count + 1))
           # First match becomes the primary (for backward compat)

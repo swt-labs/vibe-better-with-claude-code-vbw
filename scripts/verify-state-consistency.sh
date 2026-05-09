@@ -53,6 +53,7 @@ REQUIRED_FUNCTIONS=(
   is_valid_summary_status
   current_uat
   extract_status_value
+  current_uat_status_class
   normalize_roadmap_phase_num
   roadmap_checklist_phase_num_from_line
   roadmap_phase_dir_prefix_num
@@ -253,19 +254,18 @@ parse_state_project_name() {
   STATE_PROJECT_NAME=$(grep -m1 '^\*\*Project:\*\*' "$state_file" 2>/dev/null | sed 's/.*\*\*Project:\*\*[[:space:]]*//' || true)
 }
 
-# --- Helper: check if a phase has unresolved UAT issues ---------------------
-# Mirrors the logic in state-updater.sh so the verifier's notion of "active"
-# matches what STATE.md/ROADMAP.md are actually driven by.
+# --- Helper: check if a phase has blocking UAT ------------------------------
+# Mirrors the logic in state-updater.sh/reconcile-state-md.sh so the verifier's
+# notion of "active" matches what STATE.md/ROADMAP.md are actually driven by.
 phase_has_uat_issues() {
   local phase_dir="$1"
-  # Requires uat-utils.sh (current_uat, extract_status_value)
-  type current_uat >/dev/null 2>&1 || return 1
-  type extract_status_value >/dev/null 2>&1 || return 1
-  local uat_file status_val
-  uat_file=$(current_uat "$phase_dir")
-  [ -f "$uat_file" ] || return 1
-  status_val=$(extract_status_value "$uat_file")
-  [ "$status_val" = "issues_found" ]
+  local status_class
+  type current_uat_status_class >/dev/null 2>&1 || return 1
+  status_class=$(current_uat_status_class "$phase_dir" 2>/dev/null || printf '%s\n' "none")
+  case "$status_class" in
+    issues_found|active) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 # --- Helper: find active phase dir (first incomplete phase) ------------------
