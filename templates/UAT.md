@@ -23,6 +23,8 @@ Prefilled summary-deviation reviews are not blocking issues until the human reje
 Only entries whose final `Result` is `issue` are blocking UAT issues; empty, `pass`, and `skip` `DNN` review entries are non-blocking.
 Accepted summary deviations may include an optional `Tracking:` line when the human accepts the deviation as non-blocking and asks VBW to add a follow-up todo. `Result: pass` plus `Disposition: accepted-process-exception` plus `Tracking: accepted deviation added to todos (ref:{8hex})` is non-blocking; only final `Result: issue` entries block UAT.
 
+Issue `Description` values are synthesized, remediation-ready text, not raw user responses. Fold any visible attachment/image evidence into the description while it is available. Do not persist `image attached`, `(Image attached)`, `screenshot attached`, raw screenshots, raw attachment blobs, or base64 data in this artifact.
+
 Tracked non-blocking example: `D01` with `Result: pass`, `Disposition: accepted-process-exception`, and `Tracking: accepted deviation added to todos (ref:1a2b3c4d)`.
 
 ### D{NN}: Review summary deviation
@@ -59,7 +61,7 @@ Tracked non-blocking example: `D01` with `Result: pass`, `Disposition: accepted-
 - **Expected:** (not applicable — discovered issue)
 - **Result:** issue
 - **Issue:**
-  - Description: {observation text}
+  - Description: {synthesized remediation-ready description}
   - Severity: {critical|major|minor}
 
 ## Summary
