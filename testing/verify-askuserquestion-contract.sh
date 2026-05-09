@@ -138,6 +138,27 @@ extract_regex_block() {
   ' "$file"
 }
 
+extract_bullet_block_from_text() {
+  local text="$1"
+  local start_regex="$2"
+
+  awk -v start_re="$start_regex" '
+    $0 ~ start_re {
+      found=1
+      print
+      next
+    }
+
+    found && $0 ~ /^[[:space:]]*-[[:space:]]+/ {
+      exit
+    }
+
+    found {
+      print
+    }
+  ' <<< "$text"
+}
+
 count_text_occurrences() {
   local text="$1"
   local needle="$2"
@@ -477,11 +498,27 @@ for prompt_target in \
   "execute-protocol:$EXECUTE_DEVIATION_PROMPT_BLOCK"; do
   prompt_label="${prompt_target%%:*}"
   prompt_block="${prompt_target#*:}"
+  checkpoint_display_block="$(extract_bullet_block_from_text "$prompt_block" 'CHECKPOINT display must be self-contained' || true)"
+  modal_question_block="$(extract_bullet_block_from_text "$prompt_block" 'AskUserQuestion `question` value MUST also be self-contained' || true)"
 
-  require_text_literal "$prompt_label: DNN modal question includes deviation line" 'Deviation: {text}' "$prompt_block"
-  require_text_literal "$prompt_label: DNN modal question includes source metadata" 'Source: {source_path} ({source_plan})' "$prompt_block"
-  require_text_literal "$prompt_label: DNN modal question names AskUserQuestion question value" 'AskUserQuestion `question` value MUST also be self-contained' "$prompt_block"
-  require_text_literal "$prompt_label: DNN modal asks non-blocking acceptance question" 'Accept this documented deviation as non-blocking for this phase?' "$prompt_block"
+  if [ -n "$checkpoint_display_block" ]; then
+    pass "$prompt_label: DNN checkpoint display sub-block extracted"
+  else
+    fail "$prompt_label: DNN checkpoint display sub-block extracted"
+  fi
+
+  if [ -n "$modal_question_block" ]; then
+    pass "$prompt_label: DNN modal question sub-block extracted"
+  else
+    fail "$prompt_label: DNN modal question sub-block extracted"
+  fi
+
+  require_text_literal "$prompt_label: DNN checkpoint display includes deviation line" 'Deviation: {text}' "$checkpoint_display_block"
+  require_text_literal "$prompt_label: DNN checkpoint display includes source metadata" 'Source: {source_path} ({source_plan})' "$checkpoint_display_block"
+  require_text_literal "$prompt_label: DNN modal question names AskUserQuestion question value" 'AskUserQuestion `question` value MUST also be self-contained' "$modal_question_block"
+  require_text_literal "$prompt_label: DNN modal question includes deviation line" 'Deviation: {text}' "$modal_question_block"
+  require_text_literal "$prompt_label: DNN modal question includes source metadata" 'Source: {source_path} ({source_plan})' "$modal_question_block"
+  require_text_literal "$prompt_label: DNN modal asks non-blocking acceptance question" 'Accept this documented deviation as non-blocking for this phase?' "$modal_question_block"
   require_text_literal "$prompt_label: DNN modal forbids generic expected-only question" 'must not be the only visible AskUserQuestion question' "$prompt_block"
   require_text_literal "$prompt_label: DNN Pass option accepts non-blocking deviation" 'Accept this deviation as non-blocking for this phase' "$prompt_block"
   require_text_literal "$prompt_label: DNN Skip option leaves deviation unaccepted" 'Leave this deviation unaccepted for now' "$prompt_block"
