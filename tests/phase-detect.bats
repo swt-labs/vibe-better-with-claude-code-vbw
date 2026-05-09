@@ -622,6 +622,56 @@ EOF
   ! echo "$output" | grep -q "next_phase_state=all_done"
 }
 
+@test "active round-dir UAT boundary 08 does not route to later unplanned phase" {
+  mkdir -p .vbw-planning/phases/08-active-uat/remediation/uat/round-06
+  touch .vbw-planning/phases/08-active-uat/08-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/08-active-uat/08-01-SUMMARY.md
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > .vbw-planning/phases/08-active-uat/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/08-active-uat/remediation/uat/round-06/R06-UAT.md <<'EOF'
+---
+phase: 08
+status: in_progress
+---
+UAT is still running.
+EOF
+  mkdir -p .vbw-planning/phases/09-next
+
+  run_phase_detect
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase=08"
+  echo "$output" | grep -q "next_phase_slug=08-active-uat"
+  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  echo "$output" | grep -q "uat_blocking_phase=08"
+  echo "$output" | grep -q "uat_blocking_status=active"
+  ! echo "$output" | grep -q "next_phase=09"
+}
+
+@test "active round-dir UAT boundary 09 does not route to later unplanned phase" {
+  mkdir -p .vbw-planning/phases/09-active-uat/remediation/uat/round-06
+  touch .vbw-planning/phases/09-active-uat/09-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/09-active-uat/09-01-SUMMARY.md
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > .vbw-planning/phases/09-active-uat/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/09-active-uat/remediation/uat/round-06/R06-UAT.md <<'EOF'
+---
+phase: 09
+status: in_progress
+---
+UAT is still running.
+EOF
+  mkdir -p .vbw-planning/phases/10-next
+
+  run_phase_detect
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase=09"
+  echo "$output" | grep -q "next_phase_slug=09-active-uat"
+  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  echo "$output" | grep -q "uat_blocking_phase=09"
+  echo "$output" | grep -q "uat_blocking_status=active"
+  ! echo "$output" | grep -q "next_phase=10"
+}
+
 @test "orphan UAT without PLAN or SUMMARY is ignored" {
   mkdir -p .vbw-planning/phases/01-test/
   # No PLAN or SUMMARY — just an orphan UAT file

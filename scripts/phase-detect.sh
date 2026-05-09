@@ -634,15 +634,19 @@ PHASE_DIRS=()
 
 route_earlier_incomplete_before_phase() {
   local boundary_phase="$1"
-  local _ei_dir _ei_name _ei_num _ei_plans _ei_summaries _ei_contexts
+  local _ei_dir _ei_name _ei_num _ei_num_cmp _ei_plans _ei_summaries _ei_contexts _boundary_phase_cmp
 
   [ -n "$boundary_phase" ] && echo "$boundary_phase" | grep -qE '^[0-9]+$' || return 1
+  _boundary_phase_cmp=$(printf '%s' "$boundary_phase" | sed 's/^0*//')
+  _boundary_phase_cmp=${_boundary_phase_cmp:-0}
 
   for _ei_dir in "${PHASE_DIRS[@]}"; do
     _ei_name=$(basename "$_ei_dir")
     _ei_num=$(echo "$_ei_name" | sed 's/^\([0-9]*\).*/\1/')
     [ -n "$_ei_num" ] && echo "$_ei_num" | grep -qE '^[0-9]+$' || continue
-    if [ "$_ei_num" -ge "$boundary_phase" ] 2>/dev/null; then
+    _ei_num_cmp=$(printf '%s' "$_ei_num" | sed 's/^0*//')
+    _ei_num_cmp=${_ei_num_cmp:-0}
+    if [ "$_ei_num_cmp" -ge "$_boundary_phase_cmp" ] 2>/dev/null; then
       break
     fi
 
