@@ -597,9 +597,13 @@ options:
 
 The tool automatically provides a freeform "Other" option for the user to describe issues.
 
-**Summary-deviation checkpoint prompt:** When the current checkpoint is a prefilled `D{NN}` summary-deviation review, present the deviation text and source metadata instead of a product scenario. Ask whether the documented deviation is acceptable for this phase. Use the same two visible options, but interpret them as:
-- `Pass` → accept the deviation as a non-blocking process exception for this phase.
-- `Skip` → skip review for now without recording acceptance.
+**Summary-deviation checkpoint prompt:** When the current checkpoint is a prefilled `D{NN}` summary-deviation review, present the deviation text and source metadata instead of a product scenario.
+- The CHECKPOINT display must be self-contained: include a compact `Deviation: {text}` line from the entry's `**Deviation:**` field and `Source: {source_path} ({source_plan})` from `**Source Summary:**` and `**Source Plan:**`. Include `Deviation Signature: {signature}` only when it helps distinguish similar deviations.
+- The AskUserQuestion `question` value MUST also be self-contained. Include the same compact `Deviation: {text}` and `Source: {source_path} ({source_plan})` lines in the tool question, then ask: `Accept this documented deviation as non-blocking for this phase?`
+- The generic artifact expectation, `Expected: Human confirms whether this documented deviation is acceptable for this phase.`, is not enough by itself. It must not be the only visible AskUserQuestion question for a prefilled `D{NN}` summary-deviation checkpoint.
+- Use the same two visible option labels, but override their descriptions for this checkpoint type:
+  - `Pass` → `Accept this deviation as non-blocking for this phase`
+  - `Skip` → `Leave this deviation unaccepted for now`
 - freeform/Other → record the text as a real UAT issue if it describes why the deviation is unacceptable or exposes a product defect.
 
 **AskUserQuestion is a tool call (NON-NEGOTIABLE):** You MUST invoke AskUserQuestion via the tool_use mechanism — never emit the question parameters as text, JSON, or any other inline format in your response body. If AskUserQuestion appears in your text output instead of as a tool call, the checkpoint will not be presented to the user and the session will end prematurely.

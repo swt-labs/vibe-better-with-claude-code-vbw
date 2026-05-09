@@ -25,10 +25,12 @@ REFERENCES_DIR="$ROOT/references"
 
 ASK_USER_QUESTION_REF="$REFERENCES_DIR/ask-user-question.md"
 VIBE_COMMAND_FILE="$COMMANDS_DIR/vibe.md"
+VERIFY_COMMAND_FILE="$COMMANDS_DIR/verify.md"
 INIT_COMMAND_FILE="$COMMANDS_DIR/init.md"
 LIST_TODOS_COMMAND_FILE="$COMMANDS_DIR/list-todos.md"
 CONFIG_COMMAND_FILE="$COMMANDS_DIR/config.md"
 SKILLS_COMMAND_FILE="$COMMANDS_DIR/skills.md"
+EXECUTE_PROTOCOL_FILE="$REFERENCES_DIR/execute-protocol.md"
 
 tracked_command_markdown_files() {
   local rel
@@ -447,6 +449,43 @@ if grep -Eq '2[-–]4 options|1[-–]4 questions|high-cardinality' <<< "$VIBE_CO
 else
   pass "vibe: confirmation gate does not duplicate generic AskUserQuestion guidance"
 fi
+
+# --------------------------------------------------------------------------
+# Check 4b: Summary-deviation UAT prompts are self-contained in AskUserQuestion
+# --------------------------------------------------------------------------
+
+echo ""
+echo "--- Check 4b: Summary-deviation UAT prompt context ---"
+
+VERIFY_DEVIATION_PROMPT_BLOCK="$(extract_regex_block "$VERIFY_COMMAND_FILE" 'Summary-deviation checkpoint prompt' 'AskUserQuestion is a tool call' || true)"
+EXECUTE_DEVIATION_PROMPT_BLOCK="$(extract_regex_block "$EXECUTE_PROTOCOL_FILE" 'Summary-deviation checkpoint prompt' 'STOP HERE' || true)"
+
+if [ -n "$VERIFY_DEVIATION_PROMPT_BLOCK" ]; then
+  pass "verify: summary-deviation prompt block extracted"
+else
+  fail "verify: summary-deviation prompt block extracted"
+fi
+
+if [ -n "$EXECUTE_DEVIATION_PROMPT_BLOCK" ]; then
+  pass "execute-protocol: summary-deviation prompt block extracted"
+else
+  fail "execute-protocol: summary-deviation prompt block extracted"
+fi
+
+for prompt_target in \
+  "verify:$VERIFY_DEVIATION_PROMPT_BLOCK" \
+  "execute-protocol:$EXECUTE_DEVIATION_PROMPT_BLOCK"; do
+  prompt_label="${prompt_target%%:*}"
+  prompt_block="${prompt_target#*:}"
+
+  require_text_literal "$prompt_label: DNN modal question includes deviation line" 'Deviation: {text}' "$prompt_block"
+  require_text_literal "$prompt_label: DNN modal question includes source metadata" 'Source: {source_path} ({source_plan})' "$prompt_block"
+  require_text_literal "$prompt_label: DNN modal question names AskUserQuestion question value" 'AskUserQuestion `question` value MUST also be self-contained' "$prompt_block"
+  require_text_literal "$prompt_label: DNN modal asks non-blocking acceptance question" 'Accept this documented deviation as non-blocking for this phase?' "$prompt_block"
+  require_text_literal "$prompt_label: DNN modal forbids generic expected-only question" 'must not be the only visible AskUserQuestion question' "$prompt_block"
+  require_text_literal "$prompt_label: DNN Pass option accepts non-blocking deviation" 'Accept this deviation as non-blocking for this phase' "$prompt_block"
+  require_text_literal "$prompt_label: DNN Skip option leaves deviation unaccepted" 'Leave this deviation unaccepted for now' "$prompt_block"
+done
 
 # --------------------------------------------------------------------------
 # Check 5: /vbw:list-todos intentional plain-text/freeform handoff
