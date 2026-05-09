@@ -618,11 +618,11 @@ The tool automatically provides a freeform "Other" option for the user to descri
 
 Map the AskUserQuestion response:
 
-**"Pass" selected:** Record as passed. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** accepted-process-exception` and preserve the deviation metadata fields. Do not add a todo for plain `Pass`; it means the deviation is accepted as non-blocking without follow-up tracking. **However**, if the user's response also mentions a separate bug/issue (e.g., "Pass, but I noticed X is broken"), record the test as passed AND capture the separate observation as a discovered issue (see Step 6a).
+**"Pass" selected:** Record as passed. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** accepted-process-exception` and preserve the deviation metadata fields. Do not add a todo for plain `Pass`; it means the deviation is accepted as non-blocking without follow-up tracking. **However**, if the user's response also mentions a separate bug/issue (e.g., "Pass, but I noticed X is broken"), record the test as passed AND capture the separate observation as a discovered issue (see Step 7a).
 
 **"Track Todo" selected:** Valid only for a prefilled summary-deviation `D{NN}` checkpoint. Record `**Result:** pass`, write `**Disposition:** accepted-process-exception`, preserve all deviation identity metadata, and mark this checkpoint as accepted-and-tracked for Step 8. Do not introduce a fourth `Result` value. The todo ref comes only from `track-uat-deviations.sh todo-from-uat` after the UAT result is written; never invent it in prose.
 
-**"Skip" selected:** Record as skipped. For a prefilled summary-deviation `D{NN}` checkpoint, write `**Disposition:** skipped-by-user` and do not add it to the accepted-deviation registry. **However**, if the user selected "Skip" but also typed additional text describing a bug/issue (e.g., the response body contains "but the sidebar is broken" alongside the Skip selection), record the test as skipped AND capture the additional text as a discovered issue (see Step 6a). The additional text is the response content beyond the option selection itself.
+**"Skip" selected:** Record as skipped. For a prefilled summary-deviation `D{NN}` checkpoint, write `**Disposition:** skipped-by-user` and do not add it to the accepted-deviation registry. **However**, if the user selected "Skip" but also typed additional text describing a bug/issue (e.g., the response body contains "but the sidebar is broken" alongside the Skip selection), record the test as skipped AND capture the additional text as a discovered issue (see Step 7a). The additional text is the response content beyond the option selection itself.
 
 **Freeform text (via "Other"):** Apply case-insensitive matching in this order after normalization.
 
@@ -650,17 +650,48 @@ Map the AskUserQuestion response:
 - Otherwise, use the first intent word left-to-right as fallback.
 
 Evaluate in this order:
-- **Skip-intent with issue observation:** If the text contains a skip-intent whole word (skip, skipped, next, n/a, na, later, defer) AND contains post-separator text with an issue signal, then: record the test as **skipped** AND capture the post-separator observation text as a discovered issue (Step 6a). Separators: but, however, also, although, though, comma, semicolon, period, dash, colon, em dash, newline. Example: "skip, but the sidebar is completely broken" → skipped + discovered issue.
+- **Skip-intent with issue observation:** If the text contains a skip-intent whole word (skip, skipped, next, n/a, na, later, defer) AND contains post-separator text with an issue signal, then: record the test as **skipped** AND capture the post-separator observation text as a discovered issue (Step 7a). Separators: but, however, also, although, though, comma, semicolon, period, dash, colon, em dash, newline. Example: "skip, but the sidebar is completely broken" → skipped + discovered issue.
 - **Skip-intent only:** If skip-intent is present but no issue observation in post-separator text → record as skipped.
-- **Pass-intent with issue observation:** If the text contains pass-intent as whole words/phrases (pass, passed, looks good, works, correct, confirmed, yes, good, fine, ok, okay, not bad, can't complain, cant complain, cannot complain), is not negated by the expanded negation guard, and has post-separator issue text, then: record the test as **passed** AND capture the post-separator observation text as a discovered issue (Step 6a). Example: "pass, but I noticed the stats section still shows for positions with no covered calls" → passed + discovered issue.
+- **Pass-intent with issue observation:** If the text contains pass-intent as whole words/phrases (pass, passed, looks good, works, correct, confirmed, yes, good, fine, ok, okay, not bad, can't complain, cant complain, cannot complain), is not negated by the expanded negation guard, and has post-separator issue text, then: record the test as **passed** AND capture the post-separator observation text as a discovered issue (Step 7a). Example: "pass, but I noticed the stats section still shows for positions with no covered calls" → passed + discovered issue.
 - **Pass-intent only:** Pass-intent present, not negated, and no issue observation in post-separator text → record as passed.
-- **Anything else:** treat the entire response text as an issue description (Step 6).
+- **Anything else:** classify the response as an issue. Use the issue capture rules in Step 7 to synthesize the persisted `Description`; do not treat the raw response text as the final artifact text.
 
-For a prefilled summary-deviation `D{NN}` checkpoint, "anything else" means the user rejected or challenged the deviation. Record it as `**Result:** issue` with the user's text as the issue description, infer severity as usual, and write `**Disposition:** rejected-by-user`.
+For a prefilled summary-deviation `D{NN}` checkpoint, "anything else" means the user rejected or challenged the deviation. Record it as `**Result:** issue`, synthesize the issue `Description` from the user's challenge plus the deviation metadata, infer severity as usual, and write `**Disposition:** rejected-by-user`.
 
 ### 7. Issue handling (when response = issue)
 
-The user's response text IS the issue description. Infer severity from keywords (never ask the user):
+Create a synthesized, remediation-ready issue description. Infer severity from keywords (never ask the user):
+
+<issue_capture_rules>
+
+- Inputs: the current checkpoint `Scenario` and `Expected` text, the user's response, and any visible attachment/image content available in the current conversation turn.
+- Synthesize an actionable persisted `Description` that corrects typos, removes filler/hedging, preserves user intent, identifies the violated expectation, and states the observed actual behavior.
+- Keep the description concise enough for a later remediation session to use without the original chat transcript or attachment payload.
+- If the user includes or references an image/attachment and the content is visible and interpretable, inspect it immediately and fold the relevant facts into durable text in `Description`.
+- If an image/attachment is not visible or not interpretable, do not persist `image attached`, `(Image attached)`, `screenshot attached`, `attachment attached`, or similar placeholders as evidence. Record the limitation only if it matters to remediation.
+- Never persist raw screenshots, raw attachment blobs, or base64 data in the UAT artifact.
+- Do not invent facts that are not present in the checkpoint, user response, or visible attachment/image evidence.
+- Preserve the human-only UAT boundary: synthesize the issue text only from current UAT evidence; do not debug, inspect project files, run commands, or implement fixes during UAT capture.
+
+</issue_capture_rules>
+
+<examples>
+
+<example>
+Raw response: "LCID still wrong after resync (Image attached)"
+Checkpoint expectation: "After resync, the wheel preview should only show the LCID wheel history for sell-to-open puts, the 100-share assignment, and the active sell-to-open call."
+Visible attachment evidence: "Screenshot shows LCID still missing or incorrect after resync, and the wheel preview realized value appears to include non-wheel LCID stock trades."
+Expected persisted `Description`: "LCID remains missing or incorrect after resync; the wheel preview realized value appears to include non-wheel LCID stock trades instead of only the intended wheel history: sell-to-open puts, the 100-share assignment, and the active sell-to-open call."
+</example>
+
+<example>
+Raw response: "Fail (Image attached)"
+Checkpoint expectation: "The import preview should group rejected rows under the matching account."
+Attachment state: "Attachment was referenced but is not visible to the model in this turn."
+Expected persisted `Description`: "Import preview does not satisfy the checkpoint expectation that rejected rows are grouped under the matching account. The referenced attachment was not visible in this turn, so no screenshot-specific evidence was available."
+</example>
+
+</examples>
 
 | Keywords | Severity |
 | --- | --- |
@@ -669,7 +700,7 @@ The user's response text IS the issue description. Infer severity from keywords 
 | minor, cosmetic, nitpick, small, typo, polish | minor |
 | (no keyword match) | major |
 
-Record: description, inferred severity.
+Record: synthesized description, inferred severity.
 
 Display:
 ```text
@@ -682,9 +713,11 @@ When a user passes or skips a test but also mentions a separate bug, issue, or o
 
 Assign a discovered-issue ID: `D{NN}` (D01, D02, ...) — sequential across the UAT session. Before appending any discovered issue, scan the current UAT file at `{phase-dir}/{uat_path}` in both initial and resumed sessions for existing `D[0-9]+` headings. Include prefilled summary-deviation review entries and discovered issues already appended earlier in the same session; those IDs are reserved. Allocate the next zero-padded `D{NN}` from highest existing + 1, or `D01` when none exist. Example: if prefilled `D01` and `D02` already exist, the next discovered issue is `D03`. Never renumber existing `D{NN}` entries.
 
-Infer severity using the same keyword table from Step 6. Infer category from context:
+Infer severity using the same keyword table from Step 7. Infer category from context:
 - If the user identifies a specific view/screen/component: use that as the description prefix
-- If vague: use the verbatim observation
+- If vague: use the checkpoint context and user observation to synthesize a concise remediation-ready description instead of persisting filler or transient attachment placeholders
+
+The captured observation is source material for Step 7 issue capture rules; the persisted `Description` is synthesized, not copied verbatim.
 
 Append a new test entry to the UAT.md `## Tests` section:
 
@@ -696,7 +729,7 @@ Append a new test entry to the UAT.md `## Tests` section:
 - **Expected:** (not applicable — discovered issue)
 - **Result:** issue
 - **Issue:**
-  - Description: {observation text}
+  - Description: {synthesized remediation-ready description}
   - Severity: {inferred severity}
 ```
 
