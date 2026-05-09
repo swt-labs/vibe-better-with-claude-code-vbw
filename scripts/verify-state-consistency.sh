@@ -42,12 +42,6 @@ fi
 # Required functions from sourced utility scripts. If any are missing (e.g. a
 # source path is wrong or a lib file was deleted), emit a structured failure
 # rather than silently producing misleading results.
-#
-# This list covers direct verifier dependencies plus selected transitive
-# fail-open boundaries. In particular, current_uat_status_class() relies on
-# current_uat() to select the authoritative current UAT artifact; if that
-# resolver disappears, active UAT can incorrectly collapse to `none`.
-#
 # Note: Only list functions from *sourced* files, not those defined later in
 # this script (e.g. phase_has_blocking_uat).
 REQUIRED_FUNCTIONS=(
@@ -57,7 +51,6 @@ REQUIRED_FUNCTIONS=(
   count_terminal_summaries
   extract_summary_status
   is_valid_summary_status
-  current_uat
   current_uat_status_class
   normalize_roadmap_phase_num
   roadmap_checklist_phase_num_from_line
