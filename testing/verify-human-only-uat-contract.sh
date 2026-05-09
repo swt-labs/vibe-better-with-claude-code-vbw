@@ -196,6 +196,17 @@ require_all "$ROOT/templates/UAT.md" \
   'Do not persist `image attached`, `(Image attached)`' \
   "raw attachment blobs, or base64 data"
 
+require_all "$VERIFY_FILE" \
+  "verify: discovered issues synthesize Description text" \
+  "The captured observation is source material for Step 7 issue capture rules" \
+  'Description: {synthesized remediation-ready description}' \
+  "Severity: {inferred severity}"
+
+require_all "$ROOT/templates/UAT.md" \
+  "UAT template: discovered issues preserve synthesized Description shape" \
+  'Description: {synthesized remediation-ready description}' \
+  "Severity: {critical|major|minor}"
+
 require_absent "$VERIFY_FILE" \
   "verify: removes raw-response persistence contract" \
   "The user's response text IS the issue description" \
@@ -204,6 +215,14 @@ require_absent "$VERIFY_FILE" \
 require_absent "$EXEC_PROTO" \
   "execute-protocol: removes raw-response persistence contract" \
   "treat the entire response text as an issue description"
+
+require_absent "$VERIFY_FILE" \
+  "verify: removes raw discovered-issue Description placeholder" \
+  "Description: {observation text}"
+
+require_absent "$ROOT/templates/UAT.md" \
+  "UAT template: removes raw discovered-issue Description placeholder" \
+  "Description: {observation text}"
 
 echo ""
 echo "==============================="

@@ -566,6 +566,18 @@ path_b_debug_block() {
   grep -q 'Severity: {critical|major|minor}' "$PROJECT_ROOT/templates/UAT.md"
   grep -q 'Do not persist `image attached`, `(Image attached)`' "$PROJECT_ROOT/templates/UAT.md"
   grep -q 'raw attachment blobs, or base64 data' "$PROJECT_ROOT/templates/UAT.md"
+  grep -q 'Description: {synthesized remediation-ready description}' "$PROJECT_ROOT/templates/UAT.md"
+  ! grep -q 'Description: {observation text}' "$PROJECT_ROOT/templates/UAT.md"
+}
+
+@test "verify command discovered issue snippet uses synthesized Description" {
+  local section
+  section=$(sed -n '/### 7a\. Discovered issue handling/,/### 8\. After each response/p' "$PROJECT_ROOT/commands/verify.md")
+
+  grep -q 'captured observation is source material' <<< "$section"
+  grep -q 'Description: {synthesized remediation-ready description}' <<< "$section"
+  grep -q 'Severity: {inferred severity}' <<< "$section"
+  ! grep -q 'Description: {observation text}' <<< "$section"
 }
 
 @test "verify command discovered issues uses D{NN} IDs" {

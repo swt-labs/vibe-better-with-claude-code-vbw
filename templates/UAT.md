@@ -61,7 +61,7 @@ Tracked non-blocking example: `D01` with `Result: pass`, `Disposition: accepted-
 - **Expected:** (not applicable — discovered issue)
 - **Result:** issue
 - **Issue:**
-  - Description: {observation text}
+  - Description: {synthesized remediation-ready description}
   - Severity: {critical|major|minor}
 
 ## Summary

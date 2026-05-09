@@ -717,6 +717,8 @@ Infer severity using the same keyword table from Step 6. Infer category from con
 - If the user identifies a specific view/screen/component: use that as the description prefix
 - If vague: use the checkpoint context and user observation to synthesize a concise remediation-ready description instead of persisting filler or transient attachment placeholders
 
+The captured observation is source material for Step 7 issue capture rules; the persisted `Description` is synthesized, not copied verbatim.
+
 Append a new test entry to the UAT.md `## Tests` section:
 
 ```markdown
@@ -727,7 +729,7 @@ Append a new test entry to the UAT.md `## Tests` section:
 - **Expected:** (not applicable — discovered issue)
 - **Result:** issue
 - **Issue:**
-  - Description: {observation text}
+  - Description: {synthesized remediation-ready description}
   - Severity: {inferred severity}
 ```
 
