@@ -799,6 +799,90 @@ STATE
   grep -q '^Status: complete$' .vbw-planning/STATE.md
 }
 
+@test "round-dir current in-progress UAT blocks phase completion" {
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 1 of 1 (Setup)
+Plans: 1/1
+Progress: 100%
+Status: complete
+
+## Phase Status
+- **Phase 1:** Complete
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+- [x] Phase 1: Setup
+
+## Phase 1: Setup
+ROADMAP
+
+  mkdir -p .vbw-planning/phases/01-setup/remediation/uat/round-06
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > .vbw-planning/phases/01-setup/remediation/uat/.uat-remediation-stage
+  printf '%s\n' '---' 'status: in_progress' '---' 'Round verification still running.' > .vbw-planning/phases/01-setup/remediation/uat/round-06/R06-UAT.md
+
+  run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+
+  grep -q '^Phase: 1 of 1 (Setup)$' .vbw-planning/STATE.md
+  grep -q '^Plans: 1/1$' .vbw-planning/STATE.md
+  grep -q '^Progress: 100%$' .vbw-planning/STATE.md
+  grep -q '^Status: needs_verification$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 1 (Setup):\*\* Needs verification$' .vbw-planning/STATE.md
+  grep -q '^- \[ \] Phase 1: Setup$' .vbw-planning/ROADMAP.md
+}
+
+@test "round-dir current UAT with missing status blocks phase completion" {
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 1 of 1 (Setup)
+Plans: 1/1
+Progress: 100%
+Status: complete
+
+## Phase Status
+- **Phase 1:** Complete
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+- [x] Phase 1: Setup
+
+## Phase 1: Setup
+ROADMAP
+
+  mkdir -p .vbw-planning/phases/01-setup/remediation/uat/round-06
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > .vbw-planning/phases/01-setup/remediation/uat/.uat-remediation-stage
+  printf '%s\n' '---' 'phase: 01' '---' 'Round verification exists but status is absent.' > .vbw-planning/phases/01-setup/remediation/uat/round-06/R06-UAT.md
+
+  run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+
+  grep -q '^Phase: 1 of 1 (Setup)$' .vbw-planning/STATE.md
+  grep -q '^Plans: 1/1$' .vbw-planning/STATE.md
+  grep -q '^Progress: 100%$' .vbw-planning/STATE.md
+  grep -q '^Status: needs_verification$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 1 (Setup):\*\* Needs verification$' .vbw-planning/STATE.md
+  grep -q '^- \[ \] Phase 1: Setup$' .vbw-planning/ROADMAP.md
+}
+
 @test "legacy remediation current UAT affects STATE" {
   cat > .vbw-planning/STATE.md <<'STATE'
 # State

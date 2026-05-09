@@ -122,6 +122,78 @@ teardown() {
   [[ "$result" == *"remediation/round-01/R01-UAT.md" ]]
 }
 
+# --- status classification tests ---
+
+@test "uat_file_status_class: missing file returns none" {
+  result=$(uat_file_status_class "$PHASE_DIR/missing-UAT.md")
+  [ "$result" = "none" ]
+}
+
+@test "uat_file_status_class: remediation round UAT with missing status is active" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-06"
+  printf '%s\n' '---' 'phase: 03' '---' 'Round exists without status.' > "$PHASE_DIR/remediation/uat/round-06/R06-UAT.md"
+
+  result=$(uat_file_status_class "$PHASE_DIR/remediation/uat/round-06/R06-UAT.md")
+  [ "$result" = "active" ]
+}
+
+@test "uat_file_status_class: remediation round UAT with blank frontmatter status is active" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-06"
+  printf '%s\n' '---' 'status:' '---' 'Round status is blank.' > "$PHASE_DIR/remediation/uat/round-06/R06-UAT.md"
+
+  result=$(uat_file_status_class "$PHASE_DIR/remediation/uat/round-06/R06-UAT.md")
+  [ "$result" = "active" ]
+}
+
+@test "uat_file_status_class: legacy phase-root indented body status remains none" {
+  cat > "$PHASE_DIR/03-UAT.md" <<'EOF'
+---
+phase: 03
+---
+Some UAT notes.
+  status: issues_found
+EOF
+
+  result=$(uat_file_status_class "$PHASE_DIR/03-UAT.md")
+  [ "$result" = "none" ]
+}
+
+@test "uat_file_status_class: phase-root blank frontmatter status is active" {
+  printf '%s\n' '---' 'phase: 03' 'status:' '---' 'Blank status is authoritative.' > "$PHASE_DIR/03-UAT.md"
+
+  result=$(uat_file_status_class "$PHASE_DIR/03-UAT.md")
+  [ "$result" = "active" ]
+}
+
+@test "uat_file_status_class: terminal and remediation statuses classify correctly" {
+  local status expected file
+  for case_data in \
+    "complete complete" \
+    "passed complete" \
+    "all_pass complete" \
+    "verified complete" \
+    "no_issues complete" \
+    "issues_found issues_found" \
+    "failed issues_found" \
+    "in_progress active" \
+    "pending active"; do
+    status="${case_data% *}"
+    expected="${case_data#* }"
+    file="$PHASE_DIR/${status}-UAT.md"
+    printf '%s\n' '---' "status: $status" '---' > "$file"
+    result=$(uat_file_status_class "$file")
+    [ "$result" = "$expected" ]
+  done
+}
+
+@test "uat_file_status_class: reads artifact directly when extract_status_value is overridden" {
+  printf '%s\n' '---' 'status: complete' '---' 'Passed.' > "$PHASE_DIR/03-UAT.md"
+  extract_status_value() { printf '%s' 'in_progress'; }
+
+  result=$(uat_file_status_class "$PHASE_DIR/03-UAT.md")
+  [ "$result" = "complete" ]
+}
+
 # --- normalize_uat_status tests ---
 
 @test "normalize_uat_status: all_pass maps to complete" {

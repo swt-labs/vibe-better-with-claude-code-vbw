@@ -43,7 +43,7 @@ fi
 # source path is wrong or a lib file was deleted), emit a structured failure
 # rather than silently producing misleading results.
 # Note: Only list functions from *sourced* files, not those defined later in
-# this script (e.g. phase_has_uat_issues).
+# this script (e.g. phase_has_blocking_uat).
 REQUIRED_FUNCTIONS=(
   list_canonical_phase_dirs
   count_phase_plans
@@ -51,8 +51,7 @@ REQUIRED_FUNCTIONS=(
   count_terminal_summaries
   extract_summary_status
   is_valid_summary_status
-  current_uat
-  extract_status_value
+  current_uat_status_class
   normalize_roadmap_phase_num
   roadmap_checklist_phase_num_from_line
   roadmap_phase_dir_prefix_num
@@ -253,19 +252,27 @@ parse_state_project_name() {
   STATE_PROJECT_NAME=$(grep -m1 '^\*\*Project:\*\*' "$state_file" 2>/dev/null | sed 's/.*\*\*Project:\*\*[[:space:]]*//' || true)
 }
 
-# --- Helper: check if a phase has unresolved UAT issues ---------------------
-# Mirrors the logic in state-updater.sh so the verifier's notion of "active"
-# matches what STATE.md/ROADMAP.md are actually driven by.
-phase_has_uat_issues() {
+# --- Helper: classify whether a phase has blocking UAT ----------------------
+# Mirrors the logic in state-updater.sh/reconcile-state-md.sh so the verifier's
+# notion of "active" matches what STATE.md/ROADMAP.md are actually driven by.
+phase_blocking_uat_class() {
   local phase_dir="$1"
-  # Requires uat-utils.sh (current_uat, extract_status_value)
-  type current_uat >/dev/null 2>&1 || return 1
-  type extract_status_value >/dev/null 2>&1 || return 1
-  local uat_file status_val
-  uat_file=$(current_uat "$phase_dir")
-  [ -f "$uat_file" ] || return 1
-  status_val=$(extract_status_value "$uat_file")
-  [ "$status_val" = "issues_found" ]
+  local status_class
+  type current_uat_status_class >/dev/null 2>&1 || { printf '%s\n' "none"; return 0; }
+  status_class=$(current_uat_status_class "$phase_dir" 2>/dev/null || printf '%s\n' "none")
+  case "$status_class" in
+    issues_found|active) printf '%s\n' "$status_class" ;;
+    *) printf '%s\n' "none" ;;
+  esac
+}
+
+phase_has_blocking_uat() {
+  local status_class
+  status_class=$(phase_blocking_uat_class "$1")
+  case "$status_class" in
+    issues_found|active) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 # --- Helper: find active phase dir (first incomplete phase) ------------------
@@ -292,7 +299,7 @@ find_active_phase_num() {
     prefix_num=${prefix_num:-0}
     plans=$(count_phase_plans "$dir")
     complete=$(count_complete_summaries "$dir")
-    if [ -z "$active_ordinal" ] && { [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ] || phase_has_uat_issues "$dir"; }; then
+    if [ -z "$active_ordinal" ] && { [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ] || phase_has_blocking_uat "$dir"; }; then
       active_ordinal="$phase_idx"
       active_prefix="$prefix_num"
     fi
@@ -404,7 +411,7 @@ run_check_roadmap_vs_summaries() {
   fi
 
   local mismatches=""
-  local phase_num checked plans complete phase_dir scheme display_scheme roadmap_total
+  local phase_num checked plans complete phase_dir scheme display_scheme roadmap_total blocking_uat_class
   local seen_phases=""
 
   scheme=$(roadmap_numbering_scheme "$ROADMAP_FILE" "$PHASES_DIR")
@@ -468,15 +475,23 @@ run_check_roadmap_vs_summaries() {
       mismatches="${mismatches:+$mismatches, }phase $phase_num marked [x] but incomplete ($complete/$plans done)"
     fi
 
-    # Marked complete in roadmap but phase has unresolved UAT issues
-    if [ "$checked" = "true" ] && [ -n "$phase_dir" ] && phase_has_uat_issues "$phase_dir"; then
-      mismatches="${mismatches:+$mismatches, }phase $phase_num marked [x] but has unresolved UAT issues"
+    # Marked complete in roadmap but phase has blocking UAT state.
+    if [ "$checked" = "true" ] && [ -n "$phase_dir" ]; then
+      blocking_uat_class=$(phase_blocking_uat_class "$phase_dir" 2>/dev/null)
+      case "$blocking_uat_class" in
+        issues_found)
+          mismatches="${mismatches:+$mismatches, }phase $phase_num marked [x] but has unresolved UAT issues"
+          ;;
+        active)
+          mismatches="${mismatches:+$mismatches, }phase $phase_num marked [x] but has active UAT still in progress"
+          ;;
+      esac
     fi
 
     # Not marked complete but all plans are done
     if [ "$checked" = "false" ] && [ "$plans" -gt 0 ] && [ "$complete" -ge "$plans" ]; then
-      # UAT issues keep the phase unchecked even when all plans are complete
-      if ! phase_has_uat_issues "$phase_dir"; then
+      # Blocking UAT keeps the phase unchecked even when all plans are complete.
+      if ! phase_has_blocking_uat "$phase_dir"; then
         mismatches="${mismatches:+$mismatches, }phase $phase_num marked [ ] but all plans complete ($complete/$plans)"
       fi
     fi
