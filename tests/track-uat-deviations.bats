@@ -325,6 +325,19 @@ EOF
   ! grep -Fq '[UAT-DEVIATION]' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
+@test "track-uat-deviations: todo-from-uat reports missing metadata for absent D entry" {
+  local sig
+  write_state_with_empty_todos
+  sig=$(bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable")
+  write_accepted_uat "$sig"
+
+  run bash "$SCRIPT" todo-from-uat "$PHASE_DIR" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" D02
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"todo_status=missing_metadata"* ]]
+  ! grep -Fq '[UAT-DEVIATION]' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  [ ! -e "$TEST_TEMP_DIR/.vbw-planning/todo-details.json" ]
+}
+
 @test "track-uat-deviations: todo-from-uat reports missing metadata for malformed D entries" {
   local sig
   write_state_with_empty_todos
