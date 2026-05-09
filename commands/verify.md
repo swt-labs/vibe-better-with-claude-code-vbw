@@ -618,11 +618,11 @@ The tool automatically provides a freeform "Other" option for the user to descri
 
 Map the AskUserQuestion response:
 
-**"Pass" selected:** Record as passed. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** accepted-process-exception` and preserve the deviation metadata fields. Do not add a todo for plain `Pass`; it means the deviation is accepted as non-blocking without follow-up tracking. **However**, if the user's response also mentions a separate bug/issue (e.g., "Pass, but I noticed X is broken"), record the test as passed AND capture the separate observation as a discovered issue (see Step 6a).
+**"Pass" selected:** Record as passed. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** accepted-process-exception` and preserve the deviation metadata fields. Do not add a todo for plain `Pass`; it means the deviation is accepted as non-blocking without follow-up tracking. **However**, if the user's response also mentions a separate bug/issue (e.g., "Pass, but I noticed X is broken"), record the test as passed AND capture the separate observation as a discovered issue (see Step 7a).
 
 **"Track Todo" selected:** Valid only for a prefilled summary-deviation `D{NN}` checkpoint. Record `**Result:** pass`, write `**Disposition:** accepted-process-exception`, preserve all deviation identity metadata, and mark this checkpoint as accepted-and-tracked for Step 8. Do not introduce a fourth `Result` value. The todo ref comes only from `track-uat-deviations.sh todo-from-uat` after the UAT result is written; never invent it in prose.
 
-**"Skip" selected:** Record as skipped. For a prefilled summary-deviation `D{NN}` checkpoint, write `**Disposition:** skipped-by-user` and do not add it to the accepted-deviation registry. **However**, if the user selected "Skip" but also typed additional text describing a bug/issue (e.g., the response body contains "but the sidebar is broken" alongside the Skip selection), record the test as skipped AND capture the additional text as a discovered issue (see Step 6a). The additional text is the response content beyond the option selection itself.
+**"Skip" selected:** Record as skipped. For a prefilled summary-deviation `D{NN}` checkpoint, write `**Disposition:** skipped-by-user` and do not add it to the accepted-deviation registry. **However**, if the user selected "Skip" but also typed additional text describing a bug/issue (e.g., the response body contains "but the sidebar is broken" alongside the Skip selection), record the test as skipped AND capture the additional text as a discovered issue (see Step 7a). The additional text is the response content beyond the option selection itself.
 
 **Freeform text (via "Other"):** Apply case-insensitive matching in this order after normalization.
 
@@ -650,9 +650,9 @@ Map the AskUserQuestion response:
 - Otherwise, use the first intent word left-to-right as fallback.
 
 Evaluate in this order:
-- **Skip-intent with issue observation:** If the text contains a skip-intent whole word (skip, skipped, next, n/a, na, later, defer) AND contains post-separator text with an issue signal, then: record the test as **skipped** AND capture the post-separator observation text as a discovered issue (Step 6a). Separators: but, however, also, although, though, comma, semicolon, period, dash, colon, em dash, newline. Example: "skip, but the sidebar is completely broken" → skipped + discovered issue.
+- **Skip-intent with issue observation:** If the text contains a skip-intent whole word (skip, skipped, next, n/a, na, later, defer) AND contains post-separator text with an issue signal, then: record the test as **skipped** AND capture the post-separator observation text as a discovered issue (Step 7a). Separators: but, however, also, although, though, comma, semicolon, period, dash, colon, em dash, newline. Example: "skip, but the sidebar is completely broken" → skipped + discovered issue.
 - **Skip-intent only:** If skip-intent is present but no issue observation in post-separator text → record as skipped.
-- **Pass-intent with issue observation:** If the text contains pass-intent as whole words/phrases (pass, passed, looks good, works, correct, confirmed, yes, good, fine, ok, okay, not bad, can't complain, cant complain, cannot complain), is not negated by the expanded negation guard, and has post-separator issue text, then: record the test as **passed** AND capture the post-separator observation text as a discovered issue (Step 6a). Example: "pass, but I noticed the stats section still shows for positions with no covered calls" → passed + discovered issue.
+- **Pass-intent with issue observation:** If the text contains pass-intent as whole words/phrases (pass, passed, looks good, works, correct, confirmed, yes, good, fine, ok, okay, not bad, can't complain, cant complain, cannot complain), is not negated by the expanded negation guard, and has post-separator issue text, then: record the test as **passed** AND capture the post-separator observation text as a discovered issue (Step 7a). Example: "pass, but I noticed the stats section still shows for positions with no covered calls" → passed + discovered issue.
 - **Pass-intent only:** Pass-intent present, not negated, and no issue observation in post-separator text → record as passed.
 - **Anything else:** classify the response as an issue. Use the issue capture rules in Step 7 to synthesize the persisted `Description`; do not treat the raw response text as the final artifact text.
 
@@ -713,7 +713,7 @@ When a user passes or skips a test but also mentions a separate bug, issue, or o
 
 Assign a discovered-issue ID: `D{NN}` (D01, D02, ...) — sequential across the UAT session. Before appending any discovered issue, scan the current UAT file at `{phase-dir}/{uat_path}` in both initial and resumed sessions for existing `D[0-9]+` headings. Include prefilled summary-deviation review entries and discovered issues already appended earlier in the same session; those IDs are reserved. Allocate the next zero-padded `D{NN}` from highest existing + 1, or `D01` when none exist. Example: if prefilled `D01` and `D02` already exist, the next discovered issue is `D03`. Never renumber existing `D{NN}` entries.
 
-Infer severity using the same keyword table from Step 6. Infer category from context:
+Infer severity using the same keyword table from Step 7. Infer category from context:
 - If the user identifies a specific view/screen/component: use that as the description prefix
 - If vague: use the checkpoint context and user observation to synthesize a concise remediation-ready description instead of persisting filler or transient attachment placeholders
 

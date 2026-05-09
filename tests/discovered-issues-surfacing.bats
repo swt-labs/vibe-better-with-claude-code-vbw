@@ -590,6 +590,17 @@ path_b_debug_block() {
   ! grep -q 'Description: {observation text}' <<< "$section"
 }
 
+@test "verify command discovered issue cross-references match Step 7a" {
+  local response_mapping discovered_section
+  response_mapping=$(sed -n '/### 6\. Response mapping/,/### 7\. Issue handling/p' "$PROJECT_ROOT/commands/verify.md")
+  discovered_section=$(sed -n '/### 7a\. Discovered issue handling/,/### 8\. After each response/p' "$PROJECT_ROOT/commands/verify.md")
+
+  grep -q 'Step 7a' <<< "$response_mapping"
+  ! grep -q 'Step 6a' <<< "$response_mapping"
+  grep -q 'keyword table from Step 7' <<< "$discovered_section"
+  ! grep -q 'keyword table from Step 6' <<< "$discovered_section"
+}
+
 @test "verify command discovered issues uses D{NN} IDs" {
   grep -q 'D{NN}' "$PROJECT_ROOT/commands/verify.md"
 }
@@ -753,8 +764,8 @@ path_b_debug_block() {
 }
 
 @test "verify command skip button-selected captures observations" {
-  # Step 5 skip path should mention discovered issue / Step 6a
-  sed -n '/\*\*"Skip" selected:\*\*/,/\*\*Freeform/p' "$PROJECT_ROOT/commands/verify.md" | grep -qi 'discovered issue\|Step 6a\|observation'
+  # Step 6 skip path should mention discovered issue handling / Step 7a
+  sed -n '/\*\*"Skip" selected:\*\*/,/\*\*Freeform/p' "$PROJECT_ROOT/commands/verify.md" | grep -qi 'discovered issue\|Step 7a\|observation'
 }
 
 @test "verify command D{NN} allocation scans current file for every append" {

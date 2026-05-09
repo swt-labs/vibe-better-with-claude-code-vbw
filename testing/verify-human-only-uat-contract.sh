@@ -209,6 +209,18 @@ require_all "$VERIFY_FILE" \
   'Description: {synthesized remediation-ready description}' \
   "Severity: {inferred severity}"
 
+require_all "$VERIFY_FILE" \
+  "verify: discovered issue cross-references target Step 7a" \
+  "capture the separate observation as a discovered issue (see Step 7a)" \
+  "capture the additional text as a discovered issue (see Step 7a)" \
+  "capture the post-separator observation text as a discovered issue (Step 7a)" \
+  "Infer severity using the same keyword table from Step 7"
+
+require_absent "$VERIFY_FILE" \
+  "verify: removes stale discovered-issue cross-references" \
+  "Step 6a" \
+  "keyword table from Step 6"
+
 require_all "$ROOT/templates/UAT.md" \
   "UAT template: discovered issues preserve synthesized Description shape" \
   'Description: {synthesized remediation-ready description}' \
