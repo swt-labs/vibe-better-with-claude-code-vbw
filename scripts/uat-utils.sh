@@ -102,14 +102,18 @@ extract_status_value() {
   printf '%s' "$result"
 }
 
-# uat_status_class — Classify a normalized or raw UAT status.
+# uat_status_class — Classify a normalized or raw UAT status value.
 #
 # Completion/archive is allowed only for explicit passing terminal statuses.
-# `issues_found` is a terminal UAT result that requires remediation. Missing
-# status means no authoritative UAT status was found and preserves the legacy
-# contract that ignored body/prose status mentions do not block completion.
-# Unrecognized and non-terminal statuses mean active verification is still
-# authoritative and must block phase completion.
+# `issues_found` is a terminal UAT result that requires remediation.
+# Empty raw input maps to `none`; callers deciding phase completion/archive from
+# an artifact must use uat_file_status_class(), current_uat_status_class(), or
+# current_uat_blocks_phase_completion() instead. Those file-aware helpers treat
+# remediation round UAT files and artifacts with a blank frontmatter `status:`
+# key as `active`, while preserving legacy `none` for phase-root files with no
+# authoritative status key.
+# Unrecognized and non-terminal raw statuses mean active verification is still
+# authoritative and must block phase completion when used by file-aware callers.
 uat_status_class() {
   local status
   status=$(normalize_uat_status "${1:-}")
@@ -168,6 +172,14 @@ uat_file_is_remediation_round_uat() {
   esac
 }
 
+# uat_file_status_class — Classify a concrete UAT artifact.
+#
+# Existing remediation round UAT artifacts are authoritative blockers even when
+# their status is missing or blank, so they classify as `active`. A blank
+# frontmatter `status:` key is also an explicit active blocker. Brownfield
+# phase-root UAT files with no authoritative status key remain `none`, preserving
+# degraded legacy behavior where ignored prose/body status mentions do not block
+# completion by themselves.
 uat_file_status_class() {
   local file="$1" status
   [ -f "$file" ] || { printf '%s\n' "none"; return 0; }

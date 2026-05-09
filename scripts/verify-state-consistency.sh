@@ -43,7 +43,7 @@ fi
 # source path is wrong or a lib file was deleted), emit a structured failure
 # rather than silently producing misleading results.
 # Note: Only list functions from *sourced* files, not those defined later in
-# this script (e.g. phase_has_uat_issues).
+# this script (e.g. phase_has_blocking_uat).
 REQUIRED_FUNCTIONS=(
   list_canonical_phase_dirs
   count_phase_plans
@@ -257,15 +257,25 @@ parse_state_project_name() {
 # --- Helper: check if a phase has blocking UAT ------------------------------
 # Mirrors the logic in state-updater.sh/reconcile-state-md.sh so the verifier's
 # notion of "active" matches what STATE.md/ROADMAP.md are actually driven by.
-phase_has_uat_issues() {
+phase_blocking_uat_class() {
   local phase_dir="$1"
   local status_class
   type current_uat_status_class >/dev/null 2>&1 || return 1
   status_class=$(current_uat_status_class "$phase_dir" 2>/dev/null || printf '%s\n' "none")
   case "$status_class" in
-    issues_found|active) return 0 ;;
-    *) return 1 ;;
+    issues_found|active)
+      printf '%s\n' "$status_class"
+      return 0
+      ;;
+    *)
+      printf '%s\n' "none"
+      return 1
+      ;;
   esac
+}
+
+phase_has_blocking_uat() {
+  phase_blocking_uat_class "$1" >/dev/null
 }
 
 # --- Helper: find active phase dir (first incomplete phase) ------------------
@@ -292,7 +302,7 @@ find_active_phase_num() {
     prefix_num=${prefix_num:-0}
     plans=$(count_phase_plans "$dir")
     complete=$(count_complete_summaries "$dir")
-    if [ -z "$active_ordinal" ] && { [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ] || phase_has_uat_issues "$dir"; }; then
+    if [ -z "$active_ordinal" ] && { [ "$plans" -eq 0 ] || [ "$complete" -lt "$plans" ] || phase_has_blocking_uat "$dir"; }; then
       active_ordinal="$phase_idx"
       active_prefix="$prefix_num"
     fi
@@ -404,7 +414,7 @@ run_check_roadmap_vs_summaries() {
   fi
 
   local mismatches=""
-  local phase_num checked plans complete phase_dir scheme display_scheme roadmap_total
+  local phase_num checked plans complete phase_dir scheme display_scheme roadmap_total blocking_uat_class
   local seen_phases=""
 
   scheme=$(roadmap_numbering_scheme "$ROADMAP_FILE" "$PHASES_DIR")
@@ -468,15 +478,23 @@ run_check_roadmap_vs_summaries() {
       mismatches="${mismatches:+$mismatches, }phase $phase_num marked [x] but incomplete ($complete/$plans done)"
     fi
 
-    # Marked complete in roadmap but phase has unresolved UAT issues
-    if [ "$checked" = "true" ] && [ -n "$phase_dir" ] && phase_has_uat_issues "$phase_dir"; then
-      mismatches="${mismatches:+$mismatches, }phase $phase_num marked [x] but has unresolved UAT issues"
+    # Marked complete in roadmap but phase has blocking UAT state.
+    if [ "$checked" = "true" ] && [ -n "$phase_dir" ]; then
+      blocking_uat_class=$(phase_blocking_uat_class "$phase_dir" 2>/dev/null || printf '%s\n' "none")
+      case "$blocking_uat_class" in
+        issues_found)
+          mismatches="${mismatches:+$mismatches, }phase $phase_num marked [x] but has unresolved UAT issues"
+          ;;
+        active)
+          mismatches="${mismatches:+$mismatches, }phase $phase_num marked [x] but has active UAT still in progress"
+          ;;
+      esac
     fi
 
     # Not marked complete but all plans are done
     if [ "$checked" = "false" ] && [ "$plans" -gt 0 ] && [ "$complete" -ge "$plans" ]; then
-      # UAT issues keep the phase unchecked even when all plans are complete
-      if ! phase_has_uat_issues "$phase_dir"; then
+      # Blocking UAT keeps the phase unchecked even when all plans are complete.
+      if ! phase_has_blocking_uat "$phase_dir"; then
         mismatches="${mismatches:+$mismatches, }phase $phase_num marked [ ] but all plans complete ($complete/$plans)"
       fi
     fi
