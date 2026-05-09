@@ -63,8 +63,11 @@ REQUIRED_FUNCTIONS=(
   roadmap_checklist_phase_num_from_line
   roadmap_phase_dir_prefix_num
   roadmap_numbering_scheme
+  roadmap_display_numbering_scheme
   roadmap_phase_num_for_dir
   roadmap_phase_dir_for_num
+  roadmap_checklist_phase_nums
+  roadmap_checklist_count
   roadmap_checklist_has_duplicate_phase_nums
 )
 for fn in "${REQUIRED_FUNCTIONS[@]}"; do
@@ -260,6 +263,47 @@ rewrite_roadmap_checklist_projection() {
   [ -s "$tmp" ] && mv "$tmp" "$roadmap_file" 2>/dev/null || rm -f "$tmp" 2>/dev/null
 }
 
+phase_dir_array_index() {
+  local wanted="$1" idx=0 candidate
+
+  for candidate in "${phase_dirs[@]}"; do
+    if [ "${candidate%/}" = "${wanted%/}" ]; then
+      printf '%s\n' "$idx"
+      return 0
+    fi
+    idx=$((idx + 1))
+  done
+
+  return 1
+}
+
+existing_phase_status_line() {
+  local state_file="$1" phase_num="$2"
+
+  grep -E "^- \*\*Phase 0*${phase_num}([ :]|\()" "$state_file" 2>/dev/null | head -1
+}
+
+append_phase_status_for_dir_index() {
+  local out_file="$1" display_num="$2" dir_index="$3"
+  local name label
+
+  name=${names[$dir_index]}
+  label=${labels[$dir_index]}
+  printf -- '- **Phase %s (%s):** %s\n' "$display_num" "$name" "$label" >> "$out_file" 2>/dev/null || true
+}
+
+append_missing_phase_status() {
+  local out_file="$1" phase_num="$2"
+  local existing
+
+  existing=$(existing_phase_status_line "$STATE_FILE" "$phase_num" || true)
+  if [ -n "$existing" ]; then
+    printf '%s\n' "$existing" >> "$out_file" 2>/dev/null || true
+  else
+    printf -- '- **Phase %s (Missing phase directory):** Unknown (missing phase directory)\n' "$phase_num" >> "$out_file" 2>/dev/null || true
+  fi
+}
+
 PLANNING_DIR=$(resolve_planning_root "$TARGET")
 [ -n "$PLANNING_DIR" ] || { quiet_json "skipped" "planning root not found"; exit 0; }
 
@@ -343,20 +387,64 @@ else
   active_status="ready"
 fi
 
-phase_line="Phase: ${active_idx} of ${TOTAL} (${active_name})"
+ROADMAP_FILE="$PLANNING_DIR/ROADMAP.md"
+numbering_scheme="ordinal"
+display_numbering_scheme="ordinal"
+roadmap_total=0
+if [ -f "$ROADMAP_FILE" ]; then
+  numbering_scheme=$(roadmap_numbering_scheme "$ROADMAP_FILE" "$PHASES_DIR")
+  if type phase_state_log_numbering_warnings >/dev/null 2>&1; then
+    phase_state_log_numbering_warnings "$PLANNING_DIR" "$ROADMAP_FILE" "$PHASES_DIR" "$numbering_scheme"
+  fi
+  if [ "$numbering_scheme" = "unknown" ]; then
+    quiet_json "skipped" "ROADMAP checklist numbering scheme is mixed or unresolvable"
+    exit 0
+  fi
+  roadmap_total=$(roadmap_checklist_count "$ROADMAP_FILE")
+  display_numbering_scheme=$(roadmap_display_numbering_scheme "$numbering_scheme" "$roadmap_total")
+fi
+
+active_display_idx="$active_idx"
+display_total="$TOTAL"
+if [ "$display_numbering_scheme" = "prefix" ]; then
+  active_display_idx=$(roadmap_phase_num_for_dir "prefix" "${phase_dirs[$array_idx]}" "$PHASES_DIR")
+  [ -n "$active_display_idx" ] || active_display_idx="$active_idx"
+  display_total="$roadmap_total"
+fi
+
+phase_line="Phase: ${active_display_idx} of ${display_total} (${active_name})"
 plans_line="Plans: ${active_terminal_count}/${active_plan_count}"
 progress_line="Progress: ${progress}%"
 status_line="Status: ${active_status}"
 
 status_lines_file="${STATE_FILE}.phase-status.$$.${RANDOM:-0}"
 : > "$status_lines_file" 2>/dev/null || exit 0
-idx=0
-for phase_dir in "${phase_dirs[@]}"; do
-  idx=$((idx + 1))
-  name=${names[$((idx - 1))]}
-  label=${labels[$((idx - 1))]}
-  printf -- '- **Phase %s (%s):** %s\n' "$idx" "$name" "$label" >> "$status_lines_file" 2>/dev/null || true
-done
+if [ "$display_numbering_scheme" = "prefix" ]; then
+  while IFS= read -r roadmap_phase_num; do
+    [ -n "$roadmap_phase_num" ] || continue
+    roadmap_phase_dir=$(roadmap_phase_dir_for_num "prefix" "$PHASES_DIR" "$roadmap_phase_num" 2>/dev/null || true)
+    if [ -n "$roadmap_phase_dir" ] && dir_index=$(phase_dir_array_index "$roadmap_phase_dir"); then
+      append_phase_status_for_dir_index "$status_lines_file" "$roadmap_phase_num" "$dir_index"
+    else
+      append_missing_phase_status "$status_lines_file" "$roadmap_phase_num"
+    fi
+  done < <(roadmap_checklist_phase_nums "$ROADMAP_FILE")
+else
+  idx=0
+  for phase_dir in "${phase_dirs[@]}"; do
+    idx=$((idx + 1))
+    case "$display_numbering_scheme" in
+      prefix)
+        display_num=$(roadmap_phase_num_for_dir "prefix" "$phase_dir" "$PHASES_DIR")
+        [ -n "$display_num" ] || display_num="$idx"
+        ;;
+      *)
+        display_num="$idx"
+        ;;
+    esac
+    append_phase_status_for_dir_index "$status_lines_file" "$display_num" "$((idx - 1))"
+  done
+fi
 
 rewrite_current_phase_section "$STATE_FILE" "$phase_line" "$plans_line" "$progress_line" "$status_line"
 rewrite_phase_status_section "$STATE_FILE" "$status_lines_file"

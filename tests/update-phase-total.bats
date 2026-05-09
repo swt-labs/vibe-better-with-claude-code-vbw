@@ -519,6 +519,12 @@ Status: active
 - **Phase 2:** Pending
 - **Phase 3:** Pending
 EOF
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 3: Deploy
+EOF
   # Create dirs with a gap: 01, 03, 04 (no 02)
   mkdir -p .vbw-planning/phases/01-setup
   mkdir -p .vbw-planning/phases/03-build
@@ -529,6 +535,137 @@ EOF
   grep -q '^Phase: 2 of 3 (Build)' .vbw-planning/STATE.md
   # Bullet 2 should also say Build
   grep -q '^\- \*\*Phase 2 (Build):\*\*' .vbw-planning/STATE.md
+  grep -q 'legacy ordinal ROADMAP numbering' .vbw-planning/.hook-errors.log
+  grep -q 'position 2 -> 03-build (prefix 3)' .vbw-planning/.hook-errors.log
+}
+
+@test "update-phase-total: preserves ROADMAP prefix numbers with missing phase dir" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+## Current Phase
+Phase: 3 of 4 (Build)
+Plans: 0/0
+Progress: 0%
+Status: active
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Out Of Band):** Complete
+- **Phase 3 (Build):** Pending
+- **Phase 4 (Deploy):** Pending
+EOF
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+- [x] Phase 2: Out Of Band
+- [ ] Phase 3: Build
+- [ ] Phase 4: Deploy
+EOF
+  mkdir -p .vbw-planning/phases/01-setup
+  mkdir -p .vbw-planning/phases/03-build
+  mkdir -p .vbw-planning/phases/04-deploy
+  touch .vbw-planning/phases/01-setup/01-PLAN.md
+  printf -- '---\nstatus: complete\n---\n' > .vbw-planning/phases/01-setup/01-SUMMARY.md
+  touch .vbw-planning/phases/03-build/03-PLAN.md
+  touch .vbw-planning/phases/04-deploy/04-PLAN.md
+
+  run bash "$SCRIPTS_DIR/update-phase-total.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+  grep -q '^Phase: 3 of 4 (Build)' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 2 (Out Of Band):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 3 (Build):\*\* Planned$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 4 (Deploy):\*\* Planned$' .vbw-planning/STATE.md
+  ! grep -q '^- \*\*Phase 2 (Build):\*\*' .vbw-planning/STATE.md
+  grep -q 'ROADMAP phase 2 has no matching 2-\* phase directory' .vbw-planning/.hook-errors.log
+}
+
+@test "update-phase-total: uses ordinal name when ROADMAP checklist is empty" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+## Current Phase
+Phase: 2 of 3 (Old Name)
+Plans: 0/0
+Progress: 0%
+Status: active
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Old Name):** Pending
+- **Phase 3 (Deploy):** Pending
+EOF
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+
+## Phase 1: Setup
+## Phase 2: Build
+## Phase 3: Deploy
+EOF
+  mkdir -p .vbw-planning/phases/01-setup
+  mkdir -p .vbw-planning/phases/03-build
+  mkdir -p .vbw-planning/phases/04-deploy
+  touch .vbw-planning/phases/01-setup/01-PLAN.md
+  printf -- '---\nstatus: complete\n---\n' > .vbw-planning/phases/01-setup/01-SUMMARY.md
+  touch .vbw-planning/phases/03-build/03-PLAN.md
+  touch .vbw-planning/phases/04-deploy/04-PLAN.md
+
+  run bash "$SCRIPTS_DIR/update-phase-total.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+
+  grep -q '^Phase: 2 of 3 (Build)' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 1 (Setup):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 2 (Build):\*\* Planned$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 3 (Deploy):\*\* Planned$' .vbw-planning/STATE.md
+  ! grep -q '^- \*\*Phase 4 ' .vbw-planning/STATE.md
+  ! ls .vbw-planning/STATE.md.* >/dev/null 2>&1
+  grep -q 'ROADMAP has no Phase checklist entries; using ordinal display numbering' .vbw-planning/.hook-errors.log
+}
+
+@test "update-phase-total: treats duplicate phase directory prefixes as unknown" {
+  cd "$TEST_TEMP_DIR"
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+
+## Current Phase
+Phase: 2 of 3 (Build)
+Plans: 0/0
+Progress: 0%
+Status: active
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Build):** Planned
+- **Phase 3 (Deploy):** Pending
+EOF
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 3: Deploy
+EOF
+  mkdir -p .vbw-planning/phases/01-setup
+  mkdir -p .vbw-planning/phases/02-build-a
+  mkdir -p .vbw-planning/phases/02-build-b
+  mkdir -p .vbw-planning/phases/03-deploy
+  touch .vbw-planning/phases/01-setup/01-PLAN.md
+  printf -- '---\nstatus: complete\n---\n' > .vbw-planning/phases/01-setup/01-SUMMARY.md
+  touch .vbw-planning/phases/02-build-a/02-PLAN.md
+  touch .vbw-planning/phases/02-build-b/02-PLAN.md
+  touch .vbw-planning/phases/03-deploy/03-PLAN.md
+  cp .vbw-planning/STATE.md "$TEST_TEMP_DIR/state-before.md"
+
+  run bash "$SCRIPTS_DIR/update-phase-total.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+
+  cmp -s "$TEST_TEMP_DIR/state-before.md" .vbw-planning/STATE.md
+  ! ls .vbw-planning/STATE.md.* >/dev/null 2>&1
+  grep -q 'state-numbering-warning' .vbw-planning/.hook-errors.log
+  grep -q 'duplicate phase directory prefix 2' .vbw-planning/.hook-errors.log
+  grep -q '02-build-a' .vbw-planning/.hook-errors.log
+  grep -q '02-build-b' .vbw-planning/.hook-errors.log
 }
 
 # --- F-12: blank line before next heading after empty Phase Status ---
