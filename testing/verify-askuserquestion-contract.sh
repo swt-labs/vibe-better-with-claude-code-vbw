@@ -546,12 +546,15 @@ for mapping_target in \
   fi
 
   require_text_literal "$mapping_label: DNN todo intent canonicalizes can't" "can't\`/\`cant\` → \`cannot" "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent normalizes curly apostrophes" 'curly apostrophes as straight apostrophes' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent requires marker-first ordering" 'marker-first' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent blocks cannot continue" 'cannot continue' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent blocks do not proceed" 'do not proceed' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent example rejects contraction blocker" "can't continue, track this" "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent keeps rejected-by-user semantics" 'rejected-by-user' "$mapping_block"
 done
+
+require_text_literal "execute-protocol: DNN todo intent rejects smart-apostrophe contraction blocker" "can’t continue, track this" "$EXECUTE_RESPONSE_MAPPING_BLOCK"
 
 # --------------------------------------------------------------------------
 # Check 5: /vbw:list-todos intentional plain-text/freeform handoff

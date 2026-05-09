@@ -769,6 +769,8 @@ else
 fi
 
 if grep -Fq "can't\`/\`cant\` → \`cannot" "$VERIFY_FILE" \
+  && grep -Fq 'curly apostrophes as straight apostrophes' "$VERIFY_FILE" \
+  && grep -Fq 'can’t' "$VERIFY_FILE" \
   && grep -Fq 'marker-first ordering' "$VERIFY_FILE" \
   && grep -Fq "can't continue, track this" "$VERIFY_FILE" \
   && grep -Fq 'rejected-by-user' "$VERIFY_FILE"; then
@@ -778,6 +780,8 @@ else
 fi
 
 if grep -Fq "can't\`/\`cant\` → \`cannot" "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'curly apostrophes as straight apostrophes' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'can’t continue, track this' "$ROOT/references/execute-protocol.md" \
   && grep -Fq 'marker-first ordering' "$ROOT/references/execute-protocol.md" \
   && grep -Fq "can't continue, track this" "$ROOT/references/execute-protocol.md" \
   && grep -Fq 'rejected-by-user' "$ROOT/references/execute-protocol.md"; then
