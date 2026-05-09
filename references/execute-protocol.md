@@ -979,6 +979,7 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
      - If an image/attachment is not visible or not interpretable, do not persist `image attached`, `(Image attached)`, `screenshot attached`, `attachment attached`, or similar placeholders as evidence. Record the limitation only if it matters to remediation.
      - Never persist raw screenshots, raw attachment blobs, or base64 data in the UAT artifact.
      - Do not add a required raw-response field; keep the existing `Description` and `Severity` issue shape for downstream extraction.
+     - Do not invent facts that are not present in the checkpoint, user response, or visible attachment/image evidence.
      - Preserve the human-only UAT boundary: synthesize issue text only from current UAT evidence; do not debug, inspect project files, run commands, or implement fixes during UAT capture.
    - If a pass/skip response includes a separate defect observation unrelated to the current checkpoint, append it as a discovered UAT issue. Before choosing the ID, scan the current UAT file at `{phase-dir}/{uat_path}` in both initial and resumed sessions for existing `D[0-9]+` headings, including prefilled summary-deviation review entries and issues appended earlier in the same session; allocate highest existing + 1 (`D03` after prefilled `D01`/`D02`) and never renumber existing entries.
    - Update `{phase-dir}/{uat_path}` immediately (persist to disk)

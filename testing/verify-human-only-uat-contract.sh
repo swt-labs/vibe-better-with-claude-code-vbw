@@ -42,6 +42,11 @@ require_absent() {
   local label="$2"
   shift 2
 
+  if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+    fail "$label (missing or unreadable file: $file)"
+    return
+  fi
+
   local needle=""
   for needle in "$@"; do
     if grep -Fq "$needle" "$file"; then
@@ -153,7 +158,8 @@ require_all "$EXEC_PROTO" \
   "visible attachment/image content" \
   "Correct typos" \
   "preserve user intent" \
-  "state the observed actual behavior"
+  "state the observed actual behavior" \
+  "Do not invent facts that are not present in the checkpoint, user response, or visible attachment/image evidence"
 
 require_all "$VERIFY_FILE" \
   "verify: synthesizes UAT issue descriptions" \
@@ -163,7 +169,8 @@ require_all "$VERIFY_FILE" \
   "visible attachment/image content" \
   "corrects typos" \
   "preserves user intent" \
-  "states the observed actual behavior"
+  "states the observed actual behavior" \
+  "Do not invent facts that are not present in the checkpoint, user response, or visible attachment/image evidence"
 
 require_all "$EXEC_PROTO" \
   "execute-protocol: avoids non-durable attachment placeholders" \

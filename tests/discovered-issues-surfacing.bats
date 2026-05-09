@@ -558,7 +558,17 @@ path_b_debug_block() {
   grep -q 'visible attachment/image content' <<< "$section"
   grep -q 'do not persist `image attached`, `(Image attached)`' <<< "$section"
   grep -q 'Never persist raw screenshots, raw attachment blobs, or base64 data' <<< "$section"
+  grep -q 'Do not invent facts that are not present in the checkpoint, user response, or visible attachment/image evidence' <<< "$section"
   ! grep -q 'treat the entire response text as an issue description' <<< "$section"
+}
+
+@test "human-only UAT require_absent fails closed for unreadable targets" {
+  local section
+  section=$(sed -n '/^require_absent()/,/^}/p' "$PROJECT_ROOT/testing/verify-human-only-uat-contract.sh")
+
+  grep -Fq '[ ! -f "$file" ]' <<< "$section"
+  grep -Fq '[ ! -r "$file" ]' <<< "$section"
+  grep -Fq 'fail "$label (missing or unreadable file: $file)"' <<< "$section"
 }
 
 @test "UAT template preserves Description and Severity while forbidding placeholders" {
