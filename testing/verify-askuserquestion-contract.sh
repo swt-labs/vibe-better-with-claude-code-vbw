@@ -550,7 +550,9 @@ for mapping_target in \
   require_text_literal "$mapping_label: DNN todo intent requires marker-first ordering" 'marker-first' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent blocks cannot continue" 'cannot continue' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent blocks do not proceed" 'do not proceed' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks not ok" 'not ok' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent example rejects contraction blocker" "can't continue, track this" "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent example rejects not-ok blocker" 'not ok, track this' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent keeps rejected-by-user semantics" 'rejected-by-user' "$mapping_block"
 done
 

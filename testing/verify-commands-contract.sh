@@ -772,7 +772,9 @@ if grep -Fq "can't\`/\`cant\` → \`cannot" "$VERIFY_FILE" \
   && grep -Fq 'curly apostrophes as straight apostrophes' "$VERIFY_FILE" \
   && grep -Fq 'can’t' "$VERIFY_FILE" \
   && grep -Fq 'marker-first ordering' "$VERIFY_FILE" \
+  && grep -Fq 'not ok' "$VERIFY_FILE" \
   && grep -Fq "can't continue, track this" "$VERIFY_FILE" \
+  && grep -Fq 'not ok, track this' "$VERIFY_FILE" \
   && grep -Fq 'rejected-by-user' "$VERIFY_FILE"; then
   pass "verify: summary-deviation todo intent handles contraction blockers before tracking"
 else
@@ -783,7 +785,9 @@ if grep -Fq "can't\`/\`cant\` → \`cannot" "$ROOT/references/execute-protocol.m
   && grep -Fq 'curly apostrophes as straight apostrophes' "$ROOT/references/execute-protocol.md" \
   && grep -Fq 'can’t continue, track this' "$ROOT/references/execute-protocol.md" \
   && grep -Fq 'marker-first ordering' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'not ok' "$ROOT/references/execute-protocol.md" \
   && grep -Fq "can't continue, track this" "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'not ok, track this' "$ROOT/references/execute-protocol.md" \
   && grep -Fq 'rejected-by-user' "$ROOT/references/execute-protocol.md"; then
   pass "execute-protocol: summary-deviation todo intent handles contraction blockers before tracking"
 else
