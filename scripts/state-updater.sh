@@ -488,15 +488,6 @@ rewrite_roadmap_checkboxes_for_phase() {
   [ -s "$tmp" ] && mv "$tmp" "$roadmap" 2>/dev/null || rm -f "$tmp" 2>/dev/null
 }
 
-# Check if a phase has unresolved UAT issues
-# Uses shared extract_status_value() + current_uat() from uat-utils.sh
-phase_has_uat_issues() {
-  local phase_dir="$1"
-  local status_class
-  status_class=$(phase_uat_status_class "$phase_dir")
-  [ "$status_class" = "issues_found" ] || [ "$status_class" = "active" ]
-}
-
 phase_uat_status_class() {
   if type current_uat_status_class >/dev/null 2>&1; then
     current_uat_status_class "$1" 2>/dev/null || printf '%s\n' "none"

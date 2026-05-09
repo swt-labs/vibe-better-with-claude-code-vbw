@@ -56,8 +56,6 @@ REQUIRED_FUNCTIONS=(
   count_phase_plans
   count_complete_summaries
   count_terminal_summaries
-  current_uat
-  extract_status_value
   current_uat_status_class
   phase_dir_display_name
   normalize_roadmap_phase_num
@@ -131,17 +129,6 @@ resolve_planning_root() {
   else
     printf '%s\n' "$target"
   fi
-}
-
-phase_has_unresolved_uat() {
-  local phase_dir="$1"
-  local status_class
-
-  status_class=$(current_uat_status_class "$phase_dir" 2>/dev/null || printf '%s\n' "none")
-  case "$status_class" in
-    issues_found|active) return 0 ;;
-    *) return 1 ;;
-  esac
 }
 
 phase_uat_status_class() {
@@ -334,7 +321,6 @@ complete_counts=()
 unresolved_flags=()
 names=()
 labels=()
-uat_classes=()
 
 active_idx=0
 active_uat_class="none"
@@ -356,7 +342,6 @@ for phase_dir in "${phase_dirs[@]}"; do
   complete_counts+=("$complete_count")
   unresolved_flags+=("$unresolved")
   names+=("$(phase_dir_display_name "$phase_dir")")
-  uat_classes+=("$uat_class")
   labels+=("$(status_label_for_phase "$idx" "$plan_count" "$terminal_count" "$complete_count" "$uat_class")")
 
   if [ "$active_idx" -eq 0 ]; then
