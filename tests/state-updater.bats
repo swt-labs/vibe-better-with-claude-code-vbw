@@ -753,6 +753,67 @@ EOF
   grep -q 'ROADMAP phase 2 has no matching 2-\* phase directory' .vbw-planning/.hook-errors.log
 }
 
+@test "summary update uses ordinal display when ROADMAP checklist is empty" {
+  cd "$TEST_TEMP_DIR"
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/03-build .vbw-planning/phases/04-deploy
+
+  cat > .vbw-planning/PROJECT.md <<'EOF'
+# Test Project
+EOF
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 2 of 3 (Build)
+Plans: 0/1
+Progress: 0%
+Status: ready
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Build):** Planned
+- **Phase 3 (Deploy):** Pending
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+
+| Phase | Progress | Status | Completed |
+|------|----------|--------|-----------|
+| 1 - Setup | 1/1 | complete | 2026-01-01 |
+| 2 - Build | 0/1 | pending | - |
+| 3 - Deploy | 0/1 | pending | - |
+EOF
+
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/03-build/03-01-PLAN.md
+  printf '%s\n' '---' 'phase: 3' 'plan: 1' 'status: complete' '---' 'Done.' > .vbw-planning/phases/03-build/03-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/04-deploy/04-01-PLAN.md
+
+  local summary_path input
+  summary_path="$TEST_TEMP_DIR/.vbw-planning/phases/03-build/03-01-SUMMARY.md"
+  input=$(jq -nc --arg p "$summary_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^Phase: 3 of 3 (Deploy)$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 1 (Setup):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 2 (Build):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 3 (Deploy):\*\* Planned$' .vbw-planning/STATE.md
+  ! grep -q '^- \*\*Phase 4 ' .vbw-planning/STATE.md
+
+  grep -Eq '^\| 2 - Build \| 1/1 \| complete \| [0-9]{4}-[0-9]{2}-[0-9]{2} \|$' .vbw-planning/ROADMAP.md
+  grep -q '^| 3 - Deploy | 0/1 | pending | - |$' .vbw-planning/ROADMAP.md
+  ! grep -Eq '^\| 4 - ' .vbw-planning/ROADMAP.md
+  grep -q 'ROADMAP has no Phase checklist entries; using ordinal display numbering' .vbw-planning/.hook-errors.log
+}
+
 @test "summary update leaves unknown ROADMAP checklist scheme untouched" {
   cd "$TEST_TEMP_DIR"
 

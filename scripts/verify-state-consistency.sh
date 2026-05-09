@@ -57,6 +57,7 @@ REQUIRED_FUNCTIONS=(
   roadmap_checklist_phase_num_from_line
   roadmap_phase_dir_prefix_num
   roadmap_numbering_scheme
+  roadmap_display_numbering_scheme
   roadmap_phase_num_for_dir
   roadmap_phase_dir_for_num
   roadmap_checklist_count
@@ -278,7 +279,7 @@ find_active_phase_num() {
   ACTIVE_PHASE_PREFIX=""
   ACTIVE_PHASE_TOTAL=""
   [ -d "$phases_dir" ] || return 1
-  local plans complete phase_idx prefix_num active_ordinal active_prefix total_dirs scheme roadmap_total
+  local plans complete phase_idx prefix_num active_ordinal active_prefix total_dirs scheme display_scheme roadmap_total
   local dir=""
   phase_idx=0
   active_ordinal=""
@@ -309,11 +310,12 @@ find_active_phase_num() {
 
   if [ -f "$roadmap_file" ]; then
     scheme=$(roadmap_numbering_scheme "$roadmap_file" "$phases_dir")
-    case "$scheme" in
+    roadmap_total=$(roadmap_checklist_count "$roadmap_file")
+    display_scheme=$(roadmap_display_numbering_scheme "$scheme" "$roadmap_total")
+    case "$display_scheme" in
       prefix)
         if [ -n "$active_prefix" ]; then
           ACTIVE_PHASE_NUM="$active_prefix"
-          roadmap_total=$(roadmap_checklist_count "$roadmap_file")
           [ "${roadmap_total:-0}" -gt 0 ] && ACTIVE_PHASE_TOTAL="$roadmap_total"
         fi
         ;;
@@ -402,10 +404,12 @@ run_check_roadmap_vs_summaries() {
   fi
 
   local mismatches=""
-  local phase_num checked plans complete phase_dir scheme
+  local phase_num checked plans complete phase_dir scheme display_scheme roadmap_total
   local seen_phases=""
 
   scheme=$(roadmap_numbering_scheme "$ROADMAP_FILE" "$PHASES_DIR")
+  roadmap_total=$(roadmap_checklist_count "$ROADMAP_FILE")
+  display_scheme=$(roadmap_display_numbering_scheme "$scheme" "$roadmap_total")
   if [ "$scheme" = "unknown" ]; then
     if type roadmap_numbering_mismatch_details >/dev/null 2>&1; then
       while IFS= read -r detail; do
@@ -484,7 +488,7 @@ run_check_roadmap_vs_summaries() {
   while IFS= read -r rd; do
     [ -n "$rd" ] || continue
     rd_idx=$((rd_idx + 1))
-    case "$scheme" in
+    case "$display_scheme" in
       ordinal)
         rd_num="$rd_idx"
         ;;
@@ -498,7 +502,7 @@ run_check_roadmap_vs_summaries() {
     case " $seen_phases " in
       *" $rd_num "*) ;; # found in roadmap
       *)
-        case "$scheme" in
+        case "$display_scheme" in
           ordinal)
             rd_base=$(basename "$rd")
             rd_prefix=$(roadmap_phase_dir_prefix_num "$rd")

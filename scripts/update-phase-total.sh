@@ -144,6 +144,7 @@ list_canonical_phase_dirs "$phases_dir" > "$sorted_dirs_file"
 total=$(wc -l < "$sorted_dirs_file" | tr -d ' ')
 roadmap_md="${planning_root}/ROADMAP.md"
 numbering_scheme="ordinal"
+display_numbering_scheme="ordinal"
 roadmap_total=0
 display_total="$total"
 if [ -f "$roadmap_md" ] && type roadmap_numbering_scheme >/dev/null 2>&1 && type roadmap_checklist_count >/dev/null 2>&1; then
@@ -153,10 +154,15 @@ if [ -f "$roadmap_md" ] && type roadmap_numbering_scheme >/dev/null 2>&1 && type
   fi
   if [ "$numbering_scheme" = "prefix" ]; then
     roadmap_total=$(roadmap_checklist_count "$roadmap_md")
-    [ "${roadmap_total:-0}" -gt 0 ] && display_total="$roadmap_total"
   elif [ "$numbering_scheme" = "unknown" ]; then
     rm -f "$sorted_dirs_file" 2>/dev/null
     exit 0
+  fi
+  if type roadmap_display_numbering_scheme >/dev/null 2>&1; then
+    display_numbering_scheme=$(roadmap_display_numbering_scheme "$numbering_scheme" "$roadmap_total")
+  fi
+  if [ "$display_numbering_scheme" = "prefix" ]; then
+    display_total="$roadmap_total"
   fi
 fi
 
@@ -223,7 +229,7 @@ esac
 # F-11: Resolve phase name using the selected display-numbering scheme so
 # the Phase: line and Phase Status bullets always agree on numbering.
 phase_name=""
-case "$numbering_scheme" in
+case "$display_numbering_scheme" in
   prefix)
     phase_dir=""
     if type roadmap_phase_dir_for_num >/dev/null 2>&1; then
@@ -254,7 +260,7 @@ sed "s/^Phase: .*/${replacement}/" "$state_md" > "$tmp" 2>/dev/null && \
 new_status_file="${state_md}.newstatus.$$"
 phase_idx=0
 : > "$new_status_file"
-if [ "$numbering_scheme" = "prefix" ] && [ "${roadmap_total:-0}" -gt 0 ] && type roadmap_checklist_phase_nums >/dev/null 2>&1 && type roadmap_phase_dir_for_num >/dev/null 2>&1; then
+if [ "$display_numbering_scheme" = "prefix" ] && type roadmap_checklist_phase_nums >/dev/null 2>&1 && type roadmap_phase_dir_for_num >/dev/null 2>&1; then
   while IFS= read -r roadmap_phase_num; do
     [ -n "$roadmap_phase_num" ] || continue
     dir=$(roadmap_phase_dir_for_num "prefix" "$phases_dir" "$roadmap_phase_num" 2>/dev/null || true)

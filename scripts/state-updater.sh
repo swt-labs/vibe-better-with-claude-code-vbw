@@ -244,6 +244,43 @@ if ! type _roadmap_sequence_is_exact_ordinal >/dev/null 2>&1; then
   }
 fi
 
+if ! type roadmap_checklist_count >/dev/null 2>&1; then
+  roadmap_checklist_count() {
+    local roadmap_file="$1" count=0 line
+
+    [ -f "$roadmap_file" ] || { printf '%s\n' "0"; return 0; }
+    while IFS= read -r line || [ -n "$line" ]; do
+      if roadmap_checklist_phase_num_from_line "$line" >/dev/null 2>&1; then
+        count=$((count + 1))
+      fi
+    done < "$roadmap_file"
+
+    printf '%s\n' "$count"
+  }
+fi
+
+if ! type roadmap_display_numbering_scheme >/dev/null 2>&1; then
+  roadmap_display_numbering_scheme() {
+    local raw_scheme="$1" roadmap_total="${2:-0}"
+
+    case "$raw_scheme" in
+      unknown)
+        printf '%s\n' "unknown"
+        ;;
+      prefix)
+        if [ "${roadmap_total:-0}" -gt 0 ] 2>/dev/null; then
+          printf '%s\n' "prefix"
+        else
+          printf '%s\n' "ordinal"
+        fi
+        ;;
+      *)
+        printf '%s\n' "ordinal"
+        ;;
+    esac
+  }
+fi
+
 if ! type roadmap_numbering_scheme >/dev/null 2>&1; then
   roadmap_numbering_scheme() {
     local roadmap_file="$1" phases_dir="$2"
@@ -471,14 +508,16 @@ update_roadmap() {
 
   [ -f "$roadmap" ] || return 0
 
-  local dirname table_phase_num checkbox_phase_num numbering_scheme prefix_phase_num plan_count summary_count status date_str
+  local dirname table_phase_num checkbox_phase_num numbering_scheme display_numbering_scheme roadmap_total prefix_phase_num plan_count summary_count status date_str
   dirname=$(basename "$phase_dir")
   prefix_phase_num=$(echo "$dirname" | sed 's/^\([0-9]*\).*/\1/' | sed 's/^0*//')
   numbering_scheme=$(roadmap_numbering_scheme "$roadmap" "$(dirname "$phase_dir")")
   if type phase_state_log_numbering_warnings >/dev/null 2>&1; then
     phase_state_log_numbering_warnings "$planning_root" "$roadmap" "$(dirname "$phase_dir")" "$numbering_scheme"
   fi
-  table_phase_num=$(roadmap_phase_num_for_dir "$numbering_scheme" "$phase_dir" "$(dirname "$phase_dir")")
+  roadmap_total=$(roadmap_checklist_count "$roadmap")
+  display_numbering_scheme=$(roadmap_display_numbering_scheme "$numbering_scheme" "$roadmap_total")
+  table_phase_num=$(roadmap_phase_num_for_dir "$display_numbering_scheme" "$phase_dir" "$(dirname "$phase_dir")")
   [ -z "$table_phase_num" ] && return 0
 
   plan_count=$(count_phase_plans "$phase_dir")
@@ -510,7 +549,7 @@ update_roadmap() {
   # Update extended progress table row (| num - name | done | status | date |)
   local existing_name
   existing_name=$(grep -E "^\| *${table_phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
-  if [ -z "$existing_name" ] && [ "$numbering_scheme" != "unknown" ] && [ -n "$prefix_phase_num" ] && [ "$prefix_phase_num" != "$table_phase_num" ]; then
+  if [ -z "$existing_name" ] && [ "$display_numbering_scheme" = "prefix" ] && [ -n "$prefix_phase_num" ] && [ "$prefix_phase_num" != "$table_phase_num" ]; then
     table_phase_num="$prefix_phase_num"
     existing_name=$(grep -E "^\| *${table_phase_num} - " "$roadmap" | head -1 | sed 's/^| *[0-9]* - //' | sed 's/ *|.*//')
   fi
@@ -537,7 +576,7 @@ update_roadmap() {
       [ -s "$tmp_simple" ] && mv "$tmp_simple" "$tmp" 2>/dev/null || rm -f "$tmp_simple" 2>/dev/null
   fi
 
-  checkbox_phase_num=$(roadmap_phase_num_for_dir "$numbering_scheme" "$phase_dir" "$(dirname "$phase_dir")")
+  checkbox_phase_num=$(roadmap_phase_num_for_dir "$display_numbering_scheme" "$phase_dir" "$(dirname "$phase_dir")")
 
   # Check/uncheck checkbox based on status
   if [ -n "$checkbox_phase_num" ]; then

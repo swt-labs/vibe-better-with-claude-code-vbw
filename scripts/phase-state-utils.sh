@@ -260,6 +260,26 @@ roadmap_checklist_count() {
   printf '%s\n' "$count"
 }
 
+roadmap_display_numbering_scheme() {
+  local raw_scheme="$1" roadmap_total="${2:-0}"
+
+  case "$raw_scheme" in
+    unknown)
+      printf '%s\n' "unknown"
+      ;;
+    prefix)
+      if [ "${roadmap_total:-0}" -gt 0 ] 2>/dev/null; then
+        printf '%s\n' "prefix"
+      else
+        printf '%s\n' "ordinal"
+      fi
+      ;;
+    *)
+      printf '%s\n' "ordinal"
+      ;;
+  esac
+}
+
 roadmap_numbering_scheme() {
   local roadmap_file="$1" phases_dir="$2"
   local checklist_nums=() prefix_nums=()
@@ -347,6 +367,11 @@ roadmap_numbering_mismatch_details() {
         printf 'legacy ordinal ROADMAP numbering is in use because phase directory prefixes diverge from the Phase 1..N checklist; position %s -> %s (prefix %s)\n' "$first_position" "$first_base" "$first_prefix"
       fi
     fi
+    return 0
+  fi
+
+  if [ "$scheme" = "prefix" ] && [ "$(roadmap_checklist_count "$roadmap_file")" -eq 0 ]; then
+    printf '%s\n' "ROADMAP has no Phase checklist entries; using ordinal display numbering"
     return 0
   fi
 

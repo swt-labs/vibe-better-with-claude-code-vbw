@@ -63,6 +63,7 @@ REQUIRED_FUNCTIONS=(
   roadmap_checklist_phase_num_from_line
   roadmap_phase_dir_prefix_num
   roadmap_numbering_scheme
+  roadmap_display_numbering_scheme
   roadmap_phase_num_for_dir
   roadmap_phase_dir_for_num
   roadmap_checklist_phase_nums
@@ -388,6 +389,7 @@ fi
 
 ROADMAP_FILE="$PLANNING_DIR/ROADMAP.md"
 numbering_scheme="ordinal"
+display_numbering_scheme="ordinal"
 roadmap_total=0
 if [ -f "$ROADMAP_FILE" ]; then
   numbering_scheme=$(roadmap_numbering_scheme "$ROADMAP_FILE" "$PHASES_DIR")
@@ -399,11 +401,12 @@ if [ -f "$ROADMAP_FILE" ]; then
     exit 0
   fi
   roadmap_total=$(roadmap_checklist_count "$ROADMAP_FILE")
+  display_numbering_scheme=$(roadmap_display_numbering_scheme "$numbering_scheme" "$roadmap_total")
 fi
 
 active_display_idx="$active_idx"
 display_total="$TOTAL"
-if [ "$numbering_scheme" = "prefix" ] && [ "${roadmap_total:-0}" -gt 0 ]; then
+if [ "$display_numbering_scheme" = "prefix" ]; then
   active_display_idx=$(roadmap_phase_num_for_dir "prefix" "${phase_dirs[$array_idx]}" "$PHASES_DIR")
   [ -n "$active_display_idx" ] || active_display_idx="$active_idx"
   display_total="$roadmap_total"
@@ -416,7 +419,7 @@ status_line="Status: ${active_status}"
 
 status_lines_file="${STATE_FILE}.phase-status.$$.${RANDOM:-0}"
 : > "$status_lines_file" 2>/dev/null || exit 0
-if [ "$numbering_scheme" = "prefix" ] && [ "${roadmap_total:-0}" -gt 0 ]; then
+if [ "$display_numbering_scheme" = "prefix" ]; then
   while IFS= read -r roadmap_phase_num; do
     [ -n "$roadmap_phase_num" ] || continue
     roadmap_phase_dir=$(roadmap_phase_dir_for_num "prefix" "$PHASES_DIR" "$roadmap_phase_num" 2>/dev/null || true)
@@ -430,7 +433,7 @@ else
   idx=0
   for phase_dir in "${phase_dirs[@]}"; do
     idx=$((idx + 1))
-    case "$numbering_scheme" in
+    case "$display_numbering_scheme" in
       prefix)
         display_num=$(roadmap_phase_num_for_dir "prefix" "$phase_dir" "$PHASES_DIR")
         [ -n "$display_num" ] || display_num="$idx"

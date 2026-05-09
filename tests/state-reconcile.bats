@@ -326,6 +326,56 @@ ROADMAP
   echo "$output" | jq -r '.checks.state_vs_filesystem.detail' | grep -q '^ok$'
 }
 
+@test "reconcile-state uses ordinal display when ROADMAP checklist is empty" {
+  cat > .vbw-planning/PROJECT.md <<'PROJECT'
+# Test Project
+PROJECT
+
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 2 of 3 (Build)
+Plans: 0/1
+Progress: 0%
+Status: ready
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Build):** Planned
+- **Phase 3 (Deploy):** Pending
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+## Phase 1: Setup
+## Phase 2: Build
+## Phase 3: Deploy
+ROADMAP
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/03-build .vbw-planning/phases/04-deploy
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/03-build/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/03-build/03-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/04-deploy/04-01-PLAN.md
+
+  run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  grep -q '^Phase: 3 of 3 (Deploy)$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 1 (Setup):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 2 (Build):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 3 (Deploy):\*\* Planned$' .vbw-planning/STATE.md
+  ! grep -q '^- \*\*Phase 4 ' .vbw-planning/STATE.md
+  grep -q 'ROADMAP has no Phase checklist entries; using ordinal display numbering' .vbw-planning/.hook-errors.log
+}
+
 @test "reconcile-state repairs ordinal ROADMAP checklist drift by sorted phase position" {
   cat > .vbw-planning/PROJECT.md <<'PROJECT'
 # Test Project
