@@ -599,6 +599,29 @@ EOF
   ! echo "$output" | grep -q "next_phase_state=all_done"
 }
 
+@test "active round-dir UAT with missing status blocks all_done archive routing" {
+  mkdir -p .vbw-planning/phases/01-test/remediation/uat/round-06
+  touch .vbw-planning/phases/01-test/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-test/01-01-SUMMARY.md
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > .vbw-planning/phases/01-test/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-test/remediation/uat/round-06/R06-UAT.md <<'EOF'
+---
+phase: 01
+---
+UAT exists but has no authoritative status yet.
+EOF
+
+  run_phase_detect
+
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "next_phase=01"
+  echo "$output" | grep -q "next_phase_slug=01-test"
+  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  echo "$output" | grep -q "uat_blocking_phase=01"
+  echo "$output" | grep -q "uat_blocking_status=active"
+  ! echo "$output" | grep -q "next_phase_state=all_done"
+}
+
 @test "orphan UAT without PLAN or SUMMARY is ignored" {
   mkdir -p .vbw-planning/phases/01-test/
   # No PLAN or SUMMARY — just an orphan UAT file

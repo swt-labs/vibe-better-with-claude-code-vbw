@@ -142,11 +142,43 @@ uat_file_status_value() {
   printf '%s' "$result"
 }
 
+uat_file_has_frontmatter_status_key() {
+  local file="$1"
+  [ -f "$file" ] || return 1
+  awk '
+    BEGIN { in_fm = 0; found = 0 }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && tolower($0) ~ /^[[:space:]]*status[[:space:]]*:/ {
+      found = 1
+      exit
+    }
+    END { exit(found ? 0 : 1) }
+  ' "$file" 2>/dev/null
+}
+
+uat_file_is_remediation_round_uat() {
+  case "$1" in
+    */remediation/uat/round-*/R*-UAT.md|*/remediation/round-*/R*-UAT.md)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 uat_file_status_class() {
   local file="$1" status
   [ -f "$file" ] || { printf '%s\n' "none"; return 0; }
   status=$(uat_file_status_value "$file")
-  uat_status_class "$status"
+  if [ -n "$status" ]; then
+    uat_status_class "$status"
+  elif uat_file_has_frontmatter_status_key "$file" || uat_file_is_remediation_round_uat "$file"; then
+    printf '%s\n' "active"
+  else
+    printf '%s\n' "none"
+  fi
 }
 
 uat_status_class_blocks_completion() {

@@ -1182,6 +1182,50 @@ EOF
   grep -q '^- \[ \] Phase 1: Setup$' .vbw-planning/ROADMAP.md
 }
 
+@test "remediation round-dir missing-status UAT write keeps ROADMAP unchecked" {
+  cd "$TEST_TEMP_DIR"
+
+  cat > .vbw-planning/STATE.md <<'EOF'
+# State
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 1 of 1 (Setup)
+Plans: 1/1
+Progress: 100%
+Status: complete
+
+## Phase Status
+- **Phase 1:** Complete
+EOF
+
+  cat > .vbw-planning/ROADMAP.md <<'EOF'
+# Roadmap
+- [x] Phase 1: Setup
+
+| Phase | Progress | Status | Completed |
+|------|----------|--------|-----------|
+| 1 - Setup | 1/1 | complete | 2026-01-01 |
+EOF
+
+  mkdir -p .vbw-planning/phases/01-setup/remediation/uat/round-06
+  echo "# plan" > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > .vbw-planning/phases/01-setup/remediation/uat/.uat-remediation-stage
+  printf '%s\n' '---' 'phase: 01' '---' 'Round status has not been written yet.' > .vbw-planning/phases/01-setup/remediation/uat/round-06/R06-UAT.md
+
+  local uat_path input
+  uat_path="$TEST_TEMP_DIR/.vbw-planning/phases/01-setup/remediation/uat/round-06/R06-UAT.md"
+  input=$(jq -nc --arg p "$uat_path" '{tool_input:{file_path:$p}}')
+
+  run bash -c "cd '$TEST_TEMP_DIR' && printf '%s' '$input' | bash '$SCRIPTS_DIR/state-updater.sh'"
+  [ "$status" -eq 0 ]
+
+  grep -q '^Status: needs_verification$' .vbw-planning/STATE.md
+  grep -q '^- \[ \] Phase 1: Setup$' .vbw-planning/ROADMAP.md
+}
+
 @test "legacy remediation round UAT write triggers STATE reconciliation" {
   cd "$TEST_TEMP_DIR"
 

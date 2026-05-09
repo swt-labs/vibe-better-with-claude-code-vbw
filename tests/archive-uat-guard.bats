@@ -447,6 +447,24 @@ EOF
   [[ "$output" == *"active-phase UAT"* ]]
 }
 
+@test "archive-uat-guard blocks on active round-dir UAT with missing status" {
+  echo "# Project" > .vbw-planning/PROJECT.md
+  mkdir -p .vbw-planning/phases/01-core/remediation/uat/round-06
+  touch .vbw-planning/phases/01-core/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-core/01-01-SUMMARY.md
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > .vbw-planning/phases/01-core/remediation/uat/.uat-remediation-stage
+  cat > .vbw-planning/phases/01-core/remediation/uat/round-06/R06-UAT.md <<'EOF'
+---
+phase: 01
+---
+UAT exists but status is absent.
+EOF
+
+  run bash "$SCRIPTS_DIR/archive-uat-guard.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"active-phase UAT"* ]]
+}
+
 @test "prompt-preflight blocks archive even with --skip-audit --force when milestone UAT unresolved" {
   echo "# Project" > .vbw-planning/PROJECT.md
   mkdir -p .vbw-planning/phases
