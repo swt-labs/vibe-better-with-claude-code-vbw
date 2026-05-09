@@ -364,6 +364,23 @@ EOF
   [ -z "$tmp_leftovers" ]
 }
 
+@test "track-uat-deviations: insert_todo_line guards quiet grep status checks" {
+  run awk '
+    /^insert_todo_line\(\) \{/ { in_function=1 }
+    in_function && /^[[:space:]]*(grep -qF|grep -Eq)/ {
+      pending_standalone_grep = NR
+      next
+    }
+    in_function && pending_standalone_grep && /grep_status=\$\?/ {
+      printf "standalone quiet grep before grep_status at line %d\n", pending_standalone_grep
+      exit 1
+    }
+    in_function { pending_standalone_grep = 0 }
+    in_function && /^}/ { exit 0 }
+  ' "$SCRIPT"
+  [ "$status" -eq 0 ]
+}
+
 @test "track-uat-deviations: todo-from-uat reports missing metadata for malformed D entries" {
   local sig
   write_state_with_empty_todos

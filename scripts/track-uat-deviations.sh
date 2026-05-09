@@ -343,12 +343,13 @@ insert_todo_line() {
   local state_path="$1" todo_line="$2" ref="$3"
   local tmp_file has_todos=false anchor stop_pattern flat_todos grep_status
 
-  grep -qF "(ref:${ref})" "$state_path"
-  grep_status=$?
-  if [ "$grep_status" -eq 0 ]; then
+  if grep -qF "(ref:${ref})" "$state_path"; then
     return 2
-  elif [ "$grep_status" -gt 1 ]; then
-    return 1
+  else
+    grep_status=$?
+    if [ "$grep_status" -gt 1 ]; then
+      return 1
+    fi
   fi
 
   tmp_file=$(mktemp "${state_path}.tmp.XXXXXX") || return 1
@@ -367,24 +368,23 @@ insert_todo_line() {
     has_todos=true
     anchor='^## Todos$'
     stop_pattern='(^### )|(^## )'
+  elif grep -Eq '^### Pending Todos$' "$state_path"; then
+    has_todos=true
+    anchor='^### Pending Todos$'
+    stop_pattern='(^### Completed Todos$)|(^## )'
   else
-    grep -Eq '^### Pending Todos$' "$state_path"
     grep_status=$?
-    if [ "$grep_status" -eq 0 ]; then
-      has_todos=true
-      anchor='^### Pending Todos$'
-      stop_pattern='(^### Completed Todos$)|(^## )'
-    elif [ "$grep_status" -gt 1 ]; then
+    if [ "$grep_status" -gt 1 ]; then
       rm -f "$tmp_file"
       return 1
+    fi
+    if grep -Eq '^## Todos$' "$state_path"; then
+      has_todos=true
+      anchor='^## Todos$'
+      stop_pattern='(^### )|(^## )'
     else
-      grep -Eq '^## Todos$' "$state_path"
       grep_status=$?
-      if [ "$grep_status" -eq 0 ]; then
-        has_todos=true
-        anchor='^## Todos$'
-        stop_pattern='(^### )|(^## )'
-      elif [ "$grep_status" -gt 1 ]; then
+      if [ "$grep_status" -gt 1 ]; then
         rm -f "$tmp_file"
         return 1
       fi
