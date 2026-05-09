@@ -57,6 +57,32 @@ EOF
   fi
 }
 
+create_completed_phase() {
+  local phase="$1"
+  local slug="$2"
+  local phase_dir="$TEST_TEMP_DIR/.vbw-planning/phases/${phase}-${slug}"
+
+  mkdir -p "$phase_dir"
+
+  cat > "$phase_dir/${phase}-01-PLAN.md" <<EOF
+---
+phase: $phase
+plan: ${phase}-01
+title: Sample plan
+---
+EOF
+
+  cat > "$phase_dir/${phase}-01-SUMMARY.md" <<'EOF'
+---
+status: complete
+deviations: 0
+---
+Done.
+EOF
+
+  printf '%s\n' "$phase_dir"
+}
+
 @test "suggest-next verify issues_found escalates major issues to plain vibe remediation" {
   cd "$TEST_TEMP_DIR"
   create_phase_with_uat "08" "cost-basis-integrity-warnings" "major"
@@ -394,6 +420,66 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"Re-verify Phase 01 after remediation"* ]]
   [[ "$output" != *"/vbw:vibe --archive"* ]]
+}
+
+@test "suggest-next verify pass with active round-dir UAT in progress does not suggest archive" {
+  cd "$TEST_TEMP_DIR"
+
+  local active_dir
+  active_dir=$(create_completed_phase "01" "core")
+  mkdir -p "$active_dir/remediation/uat/round-06"
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > "$active_dir/remediation/uat/.uat-remediation-stage"
+  printf -- '---\nphase: 01\nstatus: in_progress\n---\nUAT is still running.\n' > "$active_dir/remediation/uat/round-06/R06-UAT.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" verify pass
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Re-verify Phase 01 after remediation"* ]]
+  [[ "$output" != *"/vbw:vibe --archive"* ]]
+  [[ "$output" != *"Continue to next phase"* ]]
+}
+
+@test "suggest-next verify pass with active round-dir UAT missing status does not suggest archive" {
+  cd "$TEST_TEMP_DIR"
+
+  local active_dir
+  active_dir=$(create_completed_phase "01" "core")
+  mkdir -p "$active_dir/remediation/uat/round-06"
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > "$active_dir/remediation/uat/.uat-remediation-stage"
+  printf -- '---\nphase: 01\n---\nUAT exists but status is absent.\n' > "$active_dir/remediation/uat/round-06/R06-UAT.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" verify pass
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Re-verify Phase 01 after remediation"* ]]
+  [[ "$output" != *"/vbw:vibe --archive"* ]]
+  [[ "$output" != *"Continue to next phase"* ]]
+}
+
+@test "suggest-next verify pass with terminal complete UAT still suggests archive" {
+  cd "$TEST_TEMP_DIR"
+
+  local active_dir
+  active_dir=$(create_completed_phase "01" "core")
+  printf -- '---\nphase: 01\nstatus: complete\n---\nAll tests passed.\n' > "$active_dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" verify pass
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:vibe --archive -- All verified, ready to ship"* ]]
+}
+
+@test "suggest-next verify pass with terminal passed UAT still suggests archive" {
+  cd "$TEST_TEMP_DIR"
+
+  local active_dir
+  active_dir=$(create_completed_phase "01" "core")
+  printf -- '---\nphase: 01\nstatus: passed\n---\nAll tests passed.\n' > "$active_dir/01-UAT.md"
+
+  run bash "$SCRIPTS_DIR/suggest-next.sh" verify pass
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/vbw:vibe --archive -- All verified, ready to ship"* ]]
 }
 
 @test "suggest-next milestone recovery includes affected phase count when multiple phases unresolved" {

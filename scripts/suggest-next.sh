@@ -291,8 +291,8 @@ if [ -d "$PLANNING_DIR" ]; then
       active_phase_plans="$last_phase_plans"
     fi
 
-    # All done if phases exist, nothing is unplanned/unbuilt, and no current-phase UAT issues
-    if [ "$phase_count" -gt 0 ] && [ -z "$next_unplanned" ] && [ -z "$next_unbuilt" ] && [ -z "$current_uat_issues_phase" ]; then
+    # All done if phases exist, nothing is unplanned/unbuilt, and no current-phase UAT blocker exists
+    if [ "$phase_count" -gt 0 ] && [ -z "$next_unplanned" ] && [ -z "$next_unbuilt" ] && [ -z "$current_uat_issues_phase" ] && [ -z "$current_uat_blocking_phase" ]; then
       all_done=true
     fi
 
@@ -809,7 +809,11 @@ case "$CMD" in
     if [ "$_verify_debug_handled" = false ]; then
     case "$effective_result" in
       pass)
-        if [ "$all_done" = true ]; then
+        if [ "$next_phase_state" = "needs_reverification" ]; then
+          suggest "/vbw:vibe -- Re-verify Phase ${pd_next_phase:-} after remediation"
+        elif [ "$next_phase_state" = "needs_verification" ] && [ -n "$current_uat_blocking_phase" ]; then
+          suggest "/vbw:vibe -- Verify Phase ${pd_next_phase:-} before archiving"
+        elif [ "$all_done" = true ]; then
           if ! suggest_milestone_recovery; then
             suggest "/vbw:vibe --archive -- All verified, ready to ship"
           fi
