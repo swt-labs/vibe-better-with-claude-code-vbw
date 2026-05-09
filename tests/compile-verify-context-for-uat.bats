@@ -138,6 +138,48 @@ EOF
   [[ "$output" != *"Original feature"* ]]
 }
 
+@test "compile-verify-context-for-uat: active UAT round 06 keeps current round uat_path" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Original feature
+must_haves:
+  - Feature works
+---
+EOF
+  mkdir -p "$PHASE_DIR/remediation/uat/round-06"
+  printf 'stage=verify\nround=06\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-06/R06-PLAN.md" <<'EOF'
+---
+round: 06
+title: UAT remediation round six
+must_haves:
+  - Sixth UAT issue fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-06/R06-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Fixed the sixth UAT issue
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-06/R06-UAT.md" <<'EOF'
+---
+phase: 03
+status: in_progress
+---
+EOF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=06"* ]]
+  [[ "$output" == *"uat_path=remediation/uat/round-06/R06-UAT.md"* ]]
+  [[ "$output" == *"=== PLAN R06: UAT remediation round six ==="* ]]
+  [[ "$output" != *"Original feature"* ]]
+}
+
 @test "compile-verify-context-for-uat: legacy UAT remediation marker uses remediation-only scope" {
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
 ---

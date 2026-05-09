@@ -401,7 +401,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Re-verify Phase 01 after remediation"* ]]
+  [[ "$output" == *"Resume Verify for Phase 01"* ]]
   [[ "$output" != *"/vbw:vibe --archive"* ]]
 }
 
@@ -418,7 +418,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" vibe pass
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Re-verify Phase 01 after remediation"* ]]
+  [[ "$output" == *"Resume Verify for Phase 01"* ]]
   [[ "$output" != *"/vbw:vibe --archive"* ]]
 }
 
@@ -434,7 +434,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" verify pass
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Re-verify Phase 01 after remediation"* ]]
+  [[ "$output" == *"Resume Verify for Phase 01"* ]]
   [[ "$output" != *"/vbw:vibe --archive"* ]]
   [[ "$output" != *"Continue to next phase"* ]]
 }
@@ -451,7 +451,7 @@ EOF
   run bash "$SCRIPTS_DIR/suggest-next.sh" verify pass
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Re-verify Phase 01 after remediation"* ]]
+  [[ "$output" == *"Resume Verify for Phase 01"* ]]
   [[ "$output" != *"/vbw:vibe --archive"* ]]
   [[ "$output" != *"Continue to next phase"* ]]
 }

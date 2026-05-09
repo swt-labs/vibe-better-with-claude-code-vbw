@@ -402,6 +402,41 @@ EOF
   [[ "$output" == "uat_resume=P01-T2 uat_completed=1 uat_total=3" ]]
 }
 
+@test "extract-uat-resume: active round 06 resumes at first blank remediation checkpoint" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-06"
+  printf 'stage=verify\nround=06\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/uat/round-06/R06-UAT.md" <<'EOF'
+---
+phase: 03
+status: in_progress
+total_tests: 3
+---
+
+## Tests
+
+### PR06-T01: First remediation checkpoint
+
+- **Result:** pass
+
+### PR06-T02: Second remediation checkpoint
+
+- **Result:** issue
+
+### PR06-T03: Third remediation checkpoint
+
+- **Result:**
+
+## Summary
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-resume.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == "uat_resume=PR06-T03 uat_completed=2 uat_total=3" ]]
+}
+
 @test "extract-uat-resume: round-dir current round UAT all_done returns correct counts" {
   # Round 02 UAT has all tests completed.
   mkdir -p "$PHASE_DIR/remediation/uat/round-02"

@@ -2,7 +2,7 @@
 name: qa-investigator-gpt-54
 description: "Read-only edge-case investigator for PR changes. Use when: QA review, edge case analysis, PR investigation, devil's advocate review of code changes."
 model: GPT-5.4 (copilot)
-tools: [execute, read, agent, search, web, github/get_commit, github/issue_read, github/list_issues, github/list_pull_requests, github/search_issues, github/search_pull_requests, github/list_commits, github.vscode-pull-request-github/issue_fetch, github.vscode-pull-request-github/activePullRequest, todo]
+tools: [execute, read, agent, search, web, 'context7/*', 'gitnexus/*', 'mcp-omnisearch/*', github/get_commit, github/issue_read, github/list_issues, github/list_pull_requests, github/search_issues, github/search_pull_requests, github/list_commits, github.vscode-pull-request-github/issue_fetch, github.vscode-pull-request-github/activePullRequest, todo]
 agents: ['Explore']
 user-invocable: false
 disable-model-invocation: false

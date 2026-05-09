@@ -881,6 +881,14 @@ if [ -d "$PHASES_DIR" ]; then
                 UAT_LANE_BLOCKS_QA=true
               fi
               ;;
+            active)
+              # A current round UAT exists and is still in progress. Resume
+              # Verify mode instead of preparing a fresh re-verification
+              # artifact; preparation would try to archive live human test
+              # state and correctly refuse the active artifact.
+              NEXT_PHASE_STATE="needs_verification"
+              UAT_LANE_BLOCKS_QA=true
+              ;;
             *)
               # No round UAT yet, or UAT passed — needs re-verification
               NEXT_PHASE_STATE="needs_reverification"
@@ -920,7 +928,11 @@ if [ -d "$PHASES_DIR" ]; then
             NEXT_PHASE_STATE="needs_uat_remediation"
             ;;
           verify|done)
-            NEXT_PHASE_STATE="needs_reverification"
+            if [ "$UAT_BLOCKING_STATUS" = "active" ]; then
+              NEXT_PHASE_STATE="needs_verification"
+            else
+              NEXT_PHASE_STATE="needs_reverification"
+            fi
             UAT_LANE_BLOCKS_QA=true
             ;;
           *)
