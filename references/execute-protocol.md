@@ -949,9 +949,13 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
 
    The tool automatically provides a freeform "Other" option for the user to describe issues.
 
-  **Summary-deviation checkpoint prompt:** If the current checkpoint is a prefilled `D{NN}` summary-deviation review, show the deviation text and source metadata instead of a product scenario. Ask whether the documented deviation is acceptable for this phase. Interpret responses as:
-  - `Pass` → accept the deviation as a non-blocking process exception for this phase.
-  - `Skip` → skip review for now; do not record acceptance.
+  **Summary-deviation checkpoint prompt:** If the current checkpoint is a prefilled `D{NN}` summary-deviation review, show the deviation text and source metadata instead of a product scenario.
+  - The CHECKPOINT display must be self-contained: include a compact `Deviation: {text}` line from the entry's `**Deviation:**` field and `Source: {source_path} ({source_plan})` from `**Source Summary:**` and `**Source Plan:**`. Include `Deviation Signature: {signature}` only when it helps distinguish similar deviations.
+  - The AskUserQuestion `question` value MUST also be self-contained. Include the same compact `Deviation: {text}` and `Source: {source_path} ({source_plan})` lines in the tool question, then ask: `Accept this documented deviation as non-blocking for this phase?`
+  - The generic artifact expectation, `Expected: Human confirms whether this documented deviation is acceptable for this phase.`, is not enough by itself. It must not be the only visible AskUserQuestion question for a prefilled `D{NN}` summary-deviation checkpoint.
+  - Use the same two visible option labels, but override their descriptions for this checkpoint type:
+    - `Pass` → `Accept this deviation as non-blocking for this phase`
+    - `Skip` → `Leave this deviation unaccepted for now`
   - Freeform/Other → record the response as a UAT issue if it explains why the deviation is unacceptable or reveals a product defect.
 
    **STOP HERE.** Wait for the AskUserQuestion response. Do NOT continue to the next test or to Step 5.
