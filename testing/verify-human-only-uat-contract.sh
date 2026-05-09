@@ -37,6 +37,22 @@ require_all() {
   pass "$label"
 }
 
+require_absent() {
+  local file="$1"
+  local label="$2"
+  shift 2
+
+  local needle=""
+  for needle in "$@"; do
+    if grep -Fq "$needle" "$file"; then
+      fail "$label (unexpected: $needle)"
+      return
+    fi
+  done
+
+  pass "$label"
+}
+
 echo "=== Human-Only UAT Contract Verification ==="
 
 require_all "$EXEC_PROTO" \
@@ -128,6 +144,66 @@ require_all "$VERIFY_FILE" \
   "verify: internal-only plans avoid asking users to run automation" \
   "If a plan's work is purely internal (refactor, test infrastructure, script changes) with no user-facing behavior" \
   "rather than asking them to run automated checks"
+
+require_all "$EXEC_PROTO" \
+  "execute-protocol: synthesizes UAT issue descriptions" \
+  'synthesize an actionable persisted `Description`' \
+  "checkpoint expectation" \
+  "current user response" \
+  "visible attachment/image content" \
+  "Correct typos" \
+  "preserve user intent" \
+  "state the observed actual behavior"
+
+require_all "$VERIFY_FILE" \
+  "verify: synthesizes UAT issue descriptions" \
+  'Synthesize an actionable persisted `Description`' \
+  'current checkpoint `Scenario` and `Expected` text' \
+  "the user's response" \
+  "visible attachment/image content" \
+  "corrects typos" \
+  "preserves user intent" \
+  "states the observed actual behavior"
+
+require_all "$EXEC_PROTO" \
+  "execute-protocol: avoids non-durable attachment placeholders" \
+  'do not persist `image attached`, `(Image attached)`' \
+  "similar placeholders as evidence" \
+  "Never persist raw screenshots, raw attachment blobs, or base64 data" \
+  'keep the existing `Description` and `Severity` issue shape'
+
+require_all "$VERIFY_FILE" \
+  "verify: avoids non-durable attachment placeholders" \
+  'do not persist `image attached`, `(Image attached)`' \
+  "similar placeholders as evidence" \
+  "Never persist raw screenshots, raw attachment blobs, or base64 data" \
+  "Record the limitation only if it matters to remediation"
+
+require_all "$VERIFY_FILE" \
+  "verify: preserves human-only boundary during issue synthesis" \
+  "Preserve the human-only UAT boundary" \
+  "do not debug, inspect project files, run commands, or implement fixes during UAT capture"
+
+require_all "$EXEC_PROTO" \
+  "execute-protocol: preserves human-only boundary during issue synthesis" \
+  "Preserve the human-only UAT boundary" \
+  "do not debug, inspect project files, run commands, or implement fixes during UAT capture"
+
+require_all "$ROOT/templates/UAT.md" \
+  "UAT template: preserves synthesized Description schema" \
+  'Issue `Description` values are synthesized, remediation-ready text' \
+  "not raw user responses" \
+  'Do not persist `image attached`, `(Image attached)`' \
+  "raw attachment blobs, or base64 data"
+
+require_absent "$VERIFY_FILE" \
+  "verify: removes raw-response persistence contract" \
+  "The user's response text IS the issue description" \
+  "use the verbatim observation"
+
+require_absent "$EXEC_PROTO" \
+  "execute-protocol: removes raw-response persistence contract" \
+  "treat the entire response text as an issue description"
 
 echo ""
 echo "==============================="

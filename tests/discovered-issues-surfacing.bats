@@ -538,6 +538,36 @@ path_b_debug_block() {
   grep -qi 'recorded in the UAT.md' "$PROJECT_ROOT/commands/verify.md"
 }
 
+@test "verify command synthesizes issue descriptions instead of raw responses" {
+  local section
+  section=$(sed -n '/### 7\. Issue handling/,/### 7a\. Discovered issue handling/p' "$PROJECT_ROOT/commands/verify.md")
+
+  grep -q 'Create a synthesized, remediation-ready issue description' <<< "$section"
+  grep -q 'visible attachment/image content' <<< "$section"
+  grep -q 'do not persist `image attached`, `(Image attached)`' <<< "$section"
+  grep -q 'Never persist raw screenshots, raw attachment blobs, or base64 data' <<< "$section"
+  ! grep -q "The user's response text IS the issue description" <<< "$section"
+}
+
+@test "execute-protocol mirrors synthesized UAT issue description contract" {
+  local section
+  section=$(sed -n '/### Step 4\.5: Human acceptance testing (UAT)/,/### Step 5:/p' "$PROJECT_ROOT/references/execute-protocol.md")
+
+  grep -q 'Issue description capture' <<< "$section"
+  grep -q 'synthesize an actionable persisted `Description`' <<< "$section"
+  grep -q 'visible attachment/image content' <<< "$section"
+  grep -q 'do not persist `image attached`, `(Image attached)`' <<< "$section"
+  grep -q 'Never persist raw screenshots, raw attachment blobs, or base64 data' <<< "$section"
+  ! grep -q 'treat the entire response text as an issue description' <<< "$section"
+}
+
+@test "UAT template preserves Description and Severity while forbidding placeholders" {
+  grep -q 'Issue `Description` values are synthesized, remediation-ready text' "$PROJECT_ROOT/templates/UAT.md"
+  grep -q 'Severity: {critical|major|minor}' "$PROJECT_ROOT/templates/UAT.md"
+  grep -q 'Do not persist `image attached`, `(Image attached)`' "$PROJECT_ROOT/templates/UAT.md"
+  grep -q 'raw attachment blobs, or base64 data' "$PROJECT_ROOT/templates/UAT.md"
+}
+
 @test "verify command discovered issues uses D{NN} IDs" {
   grep -q 'D{NN}' "$PROJECT_ROOT/commands/verify.md"
 }
