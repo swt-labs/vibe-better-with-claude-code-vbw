@@ -551,8 +551,17 @@ for mapping_target in \
   require_text_literal "$mapping_label: DNN todo intent blocks cannot continue" 'cannot continue' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent blocks do not proceed" 'do not proceed' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent blocks not ok" 'not ok' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks cannot accept" 'cannot accept' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks do not accept" 'do not accept' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks will not accept" 'will not accept' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks unable to accept" 'unable to accept' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks refuse to accept" 'refuse to accept' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks not acceptable" 'not acceptable' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent example rejects contraction blocker" "can't continue, track this" "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent example rejects not-ok blocker" 'not ok, track this' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent example rejects acceptance-refusal blocker" "can't accept this, track this" "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent example rejects smart-apostrophe acceptance-refusal blocker" "can’t accept this, track this" "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent example rejects not-acceptable blocker" 'not acceptable, add to todo' "$mapping_block"
   require_text_literal "$mapping_label: DNN todo intent keeps rejected-by-user semantics" 'rejected-by-user' "$mapping_block"
 done
 
