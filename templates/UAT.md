@@ -21,6 +21,9 @@ Supported checkpoint IDs:
 
 Prefilled summary-deviation reviews are not blocking issues until the human rejects them. They start with an empty `Result`, include deterministic identity metadata, and are written before generated plan checkpoints.
 Only entries whose final `Result` is `issue` are blocking UAT issues; empty, `pass`, and `skip` `DNN` review entries are non-blocking.
+Accepted summary deviations may include an optional `Tracking:` line when the human accepts the deviation as non-blocking and asks VBW to add a follow-up todo. `Result: pass` plus `Disposition: accepted-process-exception` plus `Tracking: accepted deviation added to todos (ref:{8hex})` is non-blocking; only final `Result: issue` entries block UAT.
+
+Tracked non-blocking example: `D01` with `Result: pass`, `Disposition: accepted-process-exception`, and `Tracking: accepted deviation added to todos (ref:1a2b3c4d)`.
 
 ### D{NN}: Review summary deviation
 
@@ -34,6 +37,7 @@ Only entries whose final `Result` is `issue` are blocking UAT issues; empty, `pa
 - **Expected:** Human confirms whether this documented deviation is acceptable for this phase.
 - **Result:** {pass|skip|issue}
 - **Disposition:** {accepted-process-exception|skipped-by-user|rejected-by-user}
+- **Tracking:** {accepted deviation added to todos (ref:{8hex})|accepted deviation already tracked in todos (ref:{8hex})|accepted deviation todo tracking unavailable ({status})} # optional for accepted tracked deviations
 - **Issue:** {only when result=issue}
   - Description: {why the deviation is unacceptable or what bug it exposes}
   - Severity: {critical|major|minor}

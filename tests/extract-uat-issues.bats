@@ -144,6 +144,42 @@ issues: 1
   [[ "${lines[1]}" == "PR03-T01|major|Remediation did not fix LCID fallback|1" ]]
 }
 
+@test "extract-uat-issues: tracked accepted summary deviation is not blocking" {
+  create_uat_file '---
+phase: 03
+status: issues_found
+issues: 1
+---
+
+## Tests
+
+### D01: Accepted tracked summary deviation
+
+- **Source:** Summary deviation review
+- **Deviation Signature:** abc123
+- **Source Plan:** R03
+- **Source Summary:** remediation/uat/round-03/R03-SUMMARY.md
+- **Deviation:** Full-project SwiftLint unavailable
+- **Result:** pass
+- **Disposition:** accepted-process-exception
+- **Tracking:** accepted deviation added to todos (ref:1a2b3c4d)
+
+### P01-T1: Real issue
+
+- **Result:** issue
+- **Issue:** Real UAT failure
+  - Description: Real UAT failure
+  - Severity: major'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-issues.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"uat_issues_total=1"* ]]
+  [[ "${lines[1]}" == "P01-T1|major|Real UAT failure|1" ]]
+  [[ "$output" != *"D01|"* ]]
+}
+
 @test "extract-uat-issues: long description is preserved in full" {
   local long_desc
   long_desc=$(printf 'x%.0s' {1..250})

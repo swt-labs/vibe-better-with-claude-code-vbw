@@ -331,6 +331,41 @@ EOF
   [[ "$output" == *"total=3"* ]]
 }
 
+@test "finalize-uat-status: tracked accepted summary deviation is non-blocking" {
+  local uat="$TEST_TEMP_DIR/03-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 03
+status: in_progress
+completed:
+total_tests: 2
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### D01: Review accepted tracked summary deviation
+
+- **Result:** pass
+- **Disposition:** accepted-process-exception
+- **Tracking:** accepted deviation added to todos (ref:1a2b3c4d)
+
+### P01-T01: Verify normal checkpoint
+
+- **Result:** pass
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=complete"* ]]
+  [[ "$output" == *"passed=2"* ]]
+  [[ "$output" == *"issues=0"* ]]
+  grep -q '^status: complete' "$uat"
+  grep -q '^issues: 0' "$uat"
+}
+
 @test "finalize-uat-status: legacy P checkpoints remain supported" {
   local uat="$TEST_TEMP_DIR/01-UAT.md"
   create_uat_file "$uat" <<'EOF'

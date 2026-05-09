@@ -751,6 +751,65 @@ else
   fail "verify: missing promote-todos after known-issues restore in verify recovery path"
 fi
 
+if grep -Fq 'Track Todo' "$VERIFY_FILE" \
+  && grep -Fq 'track-uat-deviations.sh" todo-from-uat' "$VERIFY_FILE" \
+  && grep -Fq 'accepted deviation added to todos (ref:{TODO_REF})' "$VERIFY_FILE" \
+  && grep -Fq 'Never invent a todo ref' "$VERIFY_FILE"; then
+  pass "verify: summary-deviation Track Todo path uses deterministic helper output"
+else
+  fail "verify: summary-deviation Track Todo path missing deterministic helper/ref contract"
+fi
+
+if grep -Fq 'Track Todo' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'track-uat-deviations.sh" todo-from-uat' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'accepted deviation added to todos (ref:{todo_ref})' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: summary-deviation Track Todo path mirrors helper output contract"
+else
+  fail "execute-protocol: summary-deviation Track Todo path missing helper output contract"
+fi
+
+if grep -Fq "can't\`/\`cant\` → \`cannot" "$VERIFY_FILE" \
+  && grep -Fq 'curly apostrophes as straight apostrophes' "$VERIFY_FILE" \
+  && grep -Fq 'can’t' "$VERIFY_FILE" \
+  && grep -Fq 'marker-first ordering' "$VERIFY_FILE" \
+  && grep -Fq 'not ok' "$VERIFY_FILE" \
+  && grep -Fq 'cannot accept' "$VERIFY_FILE" \
+  && grep -Fq 'do not accept' "$VERIFY_FILE" \
+  && grep -Fq 'will not accept' "$VERIFY_FILE" \
+  && grep -Fq 'unable to accept' "$VERIFY_FILE" \
+  && grep -Fq 'refuse to accept' "$VERIFY_FILE" \
+  && grep -Fq 'not acceptable' "$VERIFY_FILE" \
+  && grep -Fq "can't continue, track this" "$VERIFY_FILE" \
+  && grep -Fq 'not ok, track this' "$VERIFY_FILE" \
+  && grep -Fq "can't accept this, track this" "$VERIFY_FILE" \
+  && grep -Fq 'not acceptable, add to todo' "$VERIFY_FILE" \
+  && grep -Fq 'rejected-by-user' "$VERIFY_FILE"; then
+  pass "verify: summary-deviation todo intent handles contraction blockers before tracking"
+else
+  fail "verify: summary-deviation todo intent missing contraction blocker guard"
+fi
+
+if grep -Fq "can't\`/\`cant\` → \`cannot" "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'curly apostrophes as straight apostrophes' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'can’t continue, track this' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'marker-first ordering' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'not ok' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'cannot accept' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'do not accept' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'will not accept' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'unable to accept' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'refuse to accept' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'not acceptable' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq "can't continue, track this" "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'not ok, track this' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq "can't accept this, track this" "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'not acceptable, add to todo' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'rejected-by-user' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: summary-deviation todo intent handles contraction blockers before tracking"
+else
+  fail "execute-protocol: summary-deviation todo intent missing contraction blocker guard"
+fi
+
 if grep -Eq 'qa-remediation-state\.sh"? advance' "$QA_FILE"; then
   pass "qa: round-scoped PROCEED_TO_UAT persists remediation advance"
 else

@@ -601,10 +601,12 @@ The tool automatically provides a freeform "Other" option for the user to descri
 - The CHECKPOINT display must be self-contained: include a compact `Deviation: {text}` line from the entry's `**Deviation:**` field and `Source: {source_path} ({source_plan})` from `**Source Summary:**` and `**Source Plan:**`. Include `Deviation Signature: {signature}` only when it helps distinguish similar deviations.
 - The AskUserQuestion `question` value MUST also be self-contained. Include the same compact `Deviation: {text}` and `Source: {source_path} ({source_plan})` lines in the tool question, then ask: `Accept this documented deviation as non-blocking for this phase?`
 - The generic artifact expectation, `Expected: Human confirms whether this documented deviation is acceptable for this phase.`, is not enough by itself. It must not be the only visible AskUserQuestion question for a prefilled `D{NN}` summary-deviation checkpoint.
-- Use the same two visible option labels, but override their descriptions for this checkpoint type:
+- Use three visible option labels for this checkpoint type only:
   - `Pass` → `Accept this deviation as non-blocking for this phase`
+  - `Track Todo` → `Accept this deviation and add a VBW todo`
   - `Skip` → `Leave this deviation unaccepted for now`
-- freeform/Other → record the text as a real UAT issue if it describes why the deviation is unacceptable or exposes a product defect.
+- This stays within the AskUserQuestion four-option limit. Normal product checkpoints keep only the `Pass` and `Skip` visible labels.
+- freeform/Other → record the text as a real UAT issue if it describes why the deviation is unacceptable or exposes a product defect, except for the summary-deviation todo-intent path in Step 6.
 
 **AskUserQuestion is a tool call (NON-NEGOTIABLE):** You MUST invoke AskUserQuestion via the tool_use mechanism — never emit the question parameters as text, JSON, or any other inline format in your response body. If AskUserQuestion appears in your text output instead of as a tool call, the checkpoint will not be presented to the user and the session will end prematurely.
 
@@ -616,7 +618,9 @@ The tool automatically provides a freeform "Other" option for the user to descri
 
 Map the AskUserQuestion response:
 
-**"Pass" selected:** Record as passed. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** accepted-process-exception` and preserve the deviation metadata fields. **However**, if the user's response also mentions a separate bug/issue (e.g., "Pass, but I noticed X is broken"), record the test as passed AND capture the separate observation as a discovered issue (see Step 6a).
+**"Pass" selected:** Record as passed. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** accepted-process-exception` and preserve the deviation metadata fields. Do not add a todo for plain `Pass`; it means the deviation is accepted as non-blocking without follow-up tracking. **However**, if the user's response also mentions a separate bug/issue (e.g., "Pass, but I noticed X is broken"), record the test as passed AND capture the separate observation as a discovered issue (see Step 6a).
+
+**"Track Todo" selected:** Valid only for a prefilled summary-deviation `D{NN}` checkpoint. Record `**Result:** pass`, write `**Disposition:** accepted-process-exception`, preserve all deviation identity metadata, and mark this checkpoint as accepted-and-tracked for Step 8. Do not introduce a fourth `Result` value. The todo ref comes only from `track-uat-deviations.sh todo-from-uat` after the UAT result is written; never invent it in prose.
 
 **"Skip" selected:** Record as skipped. For a prefilled summary-deviation `D{NN}` checkpoint, write `**Disposition:** skipped-by-user` and do not add it to the accepted-deviation registry. **However**, if the user selected "Skip" but also typed additional text describing a bug/issue (e.g., the response body contains "but the sidebar is broken" alongside the Skip selection), record the test as skipped AND capture the additional text as a discovered issue (see Step 6a). The additional text is the response content beyond the option selection itself.
 
@@ -627,6 +631,7 @@ Map the AskUserQuestion response:
 - Lowercase.
 - Treat curly apostrophes as straight apostrophes (`can’t` == `can't`).
 - Treat em/en dashes as dash separators.
+- Canonicalize common contraction forms before intent matching: `can't`/`cant` → `cannot`, `don't`/`dont` → `do not`, and `won't`/`wont` → `will not`.
 
 **Word-boundary rule:** Match intent keywords as whole words only — a keyword matches when it is surrounded by whitespace, punctuation, or string boundaries (equivalent to regex `\b`). Examples: "pass" matches in "pass, but..." and "Pass." but NOT in "passport"; "works" matches in "it works" but NOT in "worksmanship"; "good" matches in "looks good" but NOT in "goodness".
 
@@ -635,6 +640,8 @@ Map the AskUserQuestion response:
 **Uncertainty exclusion (NON-NEGOTIABLE):** Hedging/uncertainty phrases are NOT pass-intent — they indicate the user is unsure and needs investigation, not rubber-stamping. If the response contains any of these phrases WITHOUT a clear pass-intent keyword (pass, passed, looks good, works, correct, confirmed, yes, good, fine, ok, okay), fall through to "anything else" → issue. Uncertainty phrases: `I think`, `I think so`, `I guess`, `maybe`, `not sure`, `possibly`, `I believe so`, `probably`, `hard to tell`, `I suppose`. Examples: "I think so? ORCX still shows cost basis" → issue (no pass keyword, uncertainty + observation); "pass, I think it works" → passed (explicit pass keyword present). When uncertainty is present, the agent MUST investigate before recording — never assume the user means pass.
 
 **Negation guard (expanded scope):** Before classifying as pass-intent, detect negation in the same clause even when not immediately adjacent. If a negation term appears up to a few words before pass-intent (or in patterns like "I don't think it works"), treat as issue (Step 6), unless the text matches an idiomatic-positive exception above. Negation terms: not, don't, doesn't, didn't, isn't, wasn't, no, never, neither, nor, hardly, barely, cannot, can't, won't, wouldn't, shouldn't. Examples: "not good, still broken" → issue; "I don't think it works" → issue; "it works" → pass.
+
+**Summary-deviation todo intent:** Before generic skip/pass matching, apply this shortcut only for a prefilled summary-deviation `D{NN}` checkpoint. Use marker-first ordering after normalization and contraction canonicalization: if the text contains explicit rejection/blocking/acceptance-refusal markers (`unacceptable`, `reject`, `blocking`, `blocker`, `do not continue`, `cannot continue`, `will not continue`, `do not proceed`, `cannot proceed`, `not ok`, `not okay`, `cannot accept`, `do not accept`, `will not accept`, `unable to accept`, `refuse to accept`, or `not acceptable`), record `**Result:** issue` with `**Disposition:** rejected-by-user` even when todo words are also present. Treat `not ok` and `not okay` as equivalent rejection markers because `ok` and `okay` are equivalent pass-intent words elsewhere. Examples: `can't continue, track this` canonicalizes to `cannot continue, track this`; `not ok, track this` remains rejected; `can't accept this, track this` and `can’t accept this, track this` canonicalize to `cannot accept this, track this`; and `not acceptable, add to todo` remains a rejected UAT issue. Only when no rejection/blocking/acceptance-refusal marker is present should high-confidence follow-up intent (`/vbw:todo`, `todo`, `to-do`, `add to todo`, `add to to-do`, `track this`, `track it`, `backlog`, or `follow up later`) record `**Result:** pass`, `**Disposition:** accepted-process-exception`, preserve deviation metadata, and mark the checkpoint as accepted-and-tracked for Step 8.
 
 **Observation extraction guard:** Only create a discovered issue when text after a separator includes a defect/issue signal (e.g., broken, bug, error, wrong, missing, not working, fails, crash, exception, regression, problem, still). The word "still" is a defect signal because in UAT context it means an expected fix was not applied (e.g., "X still shows Y" = the behavior persists unchanged = issue). **Exception:** "still" followed by a positive word (works, working, fine, good, correct, properly, functioning, responsive, loads, launches, runs, ok, okay, passes, functions, operates, running) is temporal (meaning "continues to work"), NOT a defect signal — do NOT create a discovered issue. Examples: "pass, it still works fine" → pass (no discovered issue); "pass, but it still shows the old value" → pass + discovered issue. If trailing text is neutral/positive only (e.g., "pass: looks great"), do NOT create a discovered issue.
 
@@ -703,7 +710,17 @@ Discovered issue D{NN} recorded (severity: {level}).
 ### 8. After each response: persist immediately
 
 - Update the UAT file at `{phase-dir}/{uat_path}` with the result for this test. The `**Result:**` value MUST be exactly `pass`, `skip`, or `issue` (lowercase). Map user responses: Pass→`pass`, Skip→`skip`, any issue/fail/problem→`issue`. Never write FAIL, PARTIAL, or any other value.
-- When the response accepts a prefilled summary-deviation checkpoint (`D{NN}` with `**Deviation Signature:** ...` and `**Disposition:** accepted-process-exception`), run the accepted-deviation registry helper after writing the UAT file:
+- When the response accepts and tracks a prefilled summary-deviation checkpoint (`Track Todo` or the summary-deviation todo-intent freeform path), run todo promotion after writing the UAT file and before accepted-deviation registry sync:
+  ```bash
+  TODO_META=$(bash "{plugin-root}/scripts/track-uat-deviations.sh" todo-from-uat "{phase-dir}" "{phase-dir}/{uat_path}" "{test-id}" 2>/dev/null || true)
+  TODO_STATUS=$(printf '%s\n' "$TODO_META" | awk -F= '/^todo_status=/{print $2; exit}')
+  TODO_REF=$(printf '%s\n' "$TODO_META" | awk -F= '/^todo_ref=/{print $2; exit}')
+  ```
+  - If `TODO_STATUS=added` and `TODO_REF` is non-empty, write or update the checkpoint line to `**Tracking:** accepted deviation added to todos (ref:{TODO_REF})`.
+  - If `TODO_STATUS=already_tracked` and `TODO_REF` is non-empty, write or update the checkpoint line to `**Tracking:** accepted deviation already tracked in todos (ref:{TODO_REF})`.
+  - If `TODO_STATUS` is `no_state_file`, `missing_metadata`, `not_accepted`, empty, or any other value, keep `**Result:** pass` and write `**Tracking:** accepted deviation todo tracking unavailable ({TODO_STATUS:-helper_failed})`. The human acceptance controls whether the deviation blocks the phase; helper failure only affects follow-up tracking.
+  - Never invent a todo ref. Only use `TODO_REF` emitted by the helper.
+- When the response accepts a prefilled summary-deviation checkpoint (`D{NN}` with `**Deviation Signature:** ...` and `**Disposition:** accepted-process-exception`), run the accepted-deviation registry helper after any todo tracking update:
   ```bash
   bash "{plugin-root}/scripts/track-uat-deviations.sh" record-from-uat "{phase-dir}" "{phase-dir}/{uat_path}"
   ```

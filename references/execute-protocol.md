@@ -953,10 +953,12 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
   - The CHECKPOINT display must be self-contained: include a compact `Deviation: {text}` line from the entry's `**Deviation:**` field and `Source: {source_path} ({source_plan})` from `**Source Summary:**` and `**Source Plan:**`. Include `Deviation Signature: {signature}` only when it helps distinguish similar deviations.
   - The AskUserQuestion `question` value MUST also be self-contained. Include the same compact `Deviation: {text}` and `Source: {source_path} ({source_plan})` lines in the tool question, then ask: `Accept this documented deviation as non-blocking for this phase?`
   - The generic artifact expectation, `Expected: Human confirms whether this documented deviation is acceptable for this phase.`, is not enough by itself. It must not be the only visible AskUserQuestion question for a prefilled `D{NN}` summary-deviation checkpoint.
-  - Use the same two visible option labels, but override their descriptions for this checkpoint type:
+  - Use three visible option labels for this checkpoint type only:
     - `Pass` → `Accept this deviation as non-blocking for this phase`
+    - `Track Todo` → `Accept this deviation and add a VBW todo`
     - `Skip` → `Leave this deviation unaccepted for now`
-  - Freeform/Other → record the response as a UAT issue if it explains why the deviation is unacceptable or reveals a product defect.
+  - This stays within the AskUserQuestion four-option limit. Normal product checkpoints keep only `Pass` and `Skip`.
+  - Freeform/Other → record the response as a UAT issue if it explains why the deviation is unacceptable or reveals a product defect, except for high-confidence todo intent handled below.
 
    **STOP HERE.** Wait for the AskUserQuestion response. Do NOT continue to the next test or to Step 5.
 
@@ -964,14 +966,17 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
 
    Map the AskUserQuestion response:
 
-  - **"Pass" selected:** record pass. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** accepted-process-exception` and preserve its deviation metadata.
+  - **"Pass" selected:** record pass. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** accepted-process-exception` and preserve its deviation metadata. Plain `Pass` accepts the deviation without adding a todo.
+  - **"Track Todo" selected:** for a prefilled summary-deviation `D{NN}` checkpoint only, record `**Result:** pass`, write `**Disposition:** accepted-process-exception`, preserve deviation metadata, and mark the checkpoint as accepted-and-tracked for the persistence step. Do not introduce a new `Result` value.
   - **"Skip" selected:** record skip. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** skipped-by-user` and do not record acceptance.
-   - **Freeform text (via "Other"):** Apply case-insensitive, trimmed string matching:
+  - **Freeform text (via "Other"):** Apply case-insensitive, trimmed string matching:
+    - For a prefilled summary-deviation `D{NN}` checkpoint, normalize before intent matching: trim, lowercase, treat curly apostrophes as straight apostrophes (`can’t` == `can't`), treat em/en dashes as separators, and canonicalize contractions (`can't`/`cant` → `cannot`, `don't`/`dont` → `do not`, `won't`/`wont` → `will not`). Then apply marker-first ordering: explicit rejection/blocking/acceptance-refusal markers (`unacceptable`, `reject`, `blocking`, `blocker`, `do not continue`, `cannot continue`, `will not continue`, `do not proceed`, `cannot proceed`, `not ok`, `not okay`, `cannot accept`, `do not accept`, `will not accept`, `unable to accept`, `refuse to accept`, `not acceptable`) record `Result: issue` and `Disposition: rejected-by-user` even when todo words are also present; `not ok` and `not okay` are equivalent because `ok` and `okay` are equivalent pass-intent words elsewhere. Examples: `can't continue, track this` and `can’t continue, track this` both canonicalize to `cannot continue, track this`; `not ok, track this` remains rejected; `can't accept this, track this` and `can’t accept this, track this` both canonicalize to `cannot accept this, track this`; and `not acceptable, add to todo` remains a rejected UAT issue. Only otherwise should high-confidence todo intent (`/vbw:todo`, `todo`, `to-do`, `add to todo`, `add to to-do`, `track this`, `track it`, `backlog`, or `follow up later`) map to the accepted-and-tracked path.
      - **Skip words** (skip, skipped, next, n/a, na, later, defer): record skip
      - **Anything else**: treat the entire response text as an issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major). For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** rejected-by-user`.
    - If a pass/skip response includes a separate defect observation unrelated to the current checkpoint, append it as a discovered UAT issue. Before choosing the ID, scan the current UAT file at `{phase-dir}/{uat_path}` in both initial and resumed sessions for existing `D[0-9]+` headings, including prefilled summary-deviation review entries and issues appended earlier in the same session; allocate highest existing + 1 (`D03` after prefilled `D01`/`D02`) and never renumber existing entries.
    - Update `{phase-dir}/{uat_path}` immediately (persist to disk)
-   - If the response accepts a prefilled summary-deviation checkpoint, run `bash "${VBW_PLUGIN_ROOT}/scripts/track-uat-deviations.sh" record-from-uat "{phase-dir}" "{phase-dir}/{uat_path}"` after writing the UAT file. The helper is idempotent; never hand-edit `accepted-deviations.json`.
+  - If the response accepts and tracks a prefilled summary-deviation checkpoint (`Track Todo` or high-confidence todo-intent freeform), run `bash "${VBW_PLUGIN_ROOT}/scripts/track-uat-deviations.sh" todo-from-uat "{phase-dir}" "{phase-dir}/{uat_path}" "{test-id}"` after writing the UAT file. Use only the helper-emitted `todo_ref` to write or update `**Tracking:** accepted deviation added to todos (ref:{todo_ref})` or `**Tracking:** accepted deviation already tracked in todos (ref:{todo_ref})`. If the helper reports `no_state_file`, `missing_metadata`, `not_accepted`, empty output, or any other failure status, keep the UAT `Result: pass` and write `**Tracking:** accepted deviation todo tracking unavailable ({status})` rather than claiming a todo was added.
+  - If the response accepts a prefilled summary-deviation checkpoint, run `bash "${VBW_PLUGIN_ROOT}/scripts/track-uat-deviations.sh" record-from-uat "{phase-dir}" "{phase-dir}/{uat_path}"` after any todo tracking update. The helper is idempotent; never hand-edit `accepted-deviations.json`.
    - Display progress: `✓ {completed}/{total} tests`
    - If more tests remain: present the NEXT test using the same CHECKPOINT format with AskUserQuestion, then **STOP and wait again**
    - If all tests done: go to step 4
