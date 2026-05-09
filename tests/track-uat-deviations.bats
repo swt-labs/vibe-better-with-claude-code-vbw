@@ -27,6 +27,52 @@ make_no_jq_path() {
   printf '%s' "$shim_dir"
 }
 
+write_state_with_empty_todos() {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# Test Project
+
+## Current
+
+Phase 03
+
+## Todos
+
+None.
+
+## Done
+EOF
+}
+
+write_accepted_uat() {
+  local sig="$1"
+  local result="${2:-pass}"
+  local disposition="${3:-accepted-process-exception}"
+  local include_metadata="${4:-yes}"
+  local uat_path="$PHASE_DIR/remediation/uat/round-03/R03-UAT.md"
+
+  {
+    printf '%s\n' '---'
+    printf '%s\n' 'status: in_progress'
+    printf '%s\n' '---'
+    printf '\n%s\n\n' '## Tests'
+    printf '%s\n\n' '### D01: Review summary deviation'
+    printf '%s\n' '- **Source:** Summary deviation review'
+    if [ "$include_metadata" = yes ]; then
+      printf -- '- **Deviation Signature:** %s\n' "$sig"
+      printf '%s\n' '- **Source Plan:** R03'
+      printf '%s\n' '- **Source Summary:** remediation/uat/round-03/R03-SUMMARY.md'
+      printf '%s\n' '- **Deviation:** Full-project SwiftLint unavailable'
+    fi
+    printf -- '- **Result:** %s\n' "$result"
+    printf -- '- **Disposition:** %s\n' "$disposition"
+  } > "$uat_path"
+}
+
+extract_output_value() {
+  local key="$1"
+  printf '%s\n' "$output" | awk -F= -v k="$key" '$1 == k {print substr($0, length(k) + 2); exit}'
+}
+
 @test "track-uat-deviations: signature is stable for source identity and text" {
   run bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable"
   [ "$status" -eq 0 ]
@@ -174,4 +220,102 @@ EOF
   [[ "$stderr" == *"jq not available"* ]]
   [[ "$stderr" == *"skipping accepted deviation registry sync"* ]]
   [ ! -e "$registry" ]
+}
+
+@test "track-uat-deviations: todo-from-uat adds UAT deviation todo and detail from phase root" {
+  local sig today ref details unrelated_dir
+  write_state_with_empty_todos
+  sig=$(bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable")
+  write_accepted_uat "$sig"
+  today=$(date +%Y-%m-%d)
+  unrelated_dir="$TEST_TEMP_DIR/unrelated-cwd"
+  mkdir -p "$unrelated_dir"
+
+  run env VBW_PLANNING_DIR="$TEST_TEMP_DIR/bogus-planning" bash -c 'cd "$1" && bash "$2" todo-from-uat "$3" "$4" D01' _ \
+    "$unrelated_dir" \
+    "$SCRIPT" \
+    "$PHASE_DIR" \
+    "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"todo_status=added"* ]]
+  [[ "$output" == *"detail_status=ok"* ]]
+  ref=$(extract_output_value todo_ref)
+  [[ "$ref" =~ ^[a-f0-9]{8}$ ]]
+
+  grep -Fq -- "- [UAT-DEVIATION] R03: Full-project SwiftLint unavailable" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  grep -Fq -- "(added $today) (ref:$ref)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  ! grep -Fxq 'None.' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+
+  details="$TEST_TEMP_DIR/.vbw-planning/todo-details.json"
+  [ -f "$details" ]
+  [ "$(jq -r --arg ref "$ref" '.items[$ref].source' "$details")" = "uat-deviation" ]
+  [ "$(jq -r --arg ref "$ref" '.items[$ref].uat_deviation.signature' "$details")" = "$sig" ]
+  [ ! -e "$TEST_TEMP_DIR/bogus-planning/todo-details.json" ]
+}
+
+@test "track-uat-deviations: todo-from-uat dedupes repeated accepted deviation by ref" {
+  local sig ref
+  write_state_with_empty_todos
+  sig=$(bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable")
+  write_accepted_uat "$sig"
+
+  run bash "$SCRIPT" todo-from-uat "$PHASE_DIR" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" D01
+  [ "$status" -eq 0 ]
+  ref=$(extract_output_value todo_ref)
+
+  run bash "$SCRIPT" todo-from-uat "$PHASE_DIR" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" D01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"todo_status=already_tracked"* ]]
+  [ "$(grep -cF "(ref:$ref)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md")" = "1" ]
+}
+
+@test "track-uat-deviations: todo-from-uat does not promote non-accepted D entries" {
+  local sig
+  write_state_with_empty_todos
+  sig=$(bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable")
+  write_accepted_uat "$sig" "issue" "rejected-by-user"
+
+  run bash "$SCRIPT" todo-from-uat "$PHASE_DIR" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" D01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"todo_status=not_accepted"* ]]
+  ! grep -Fq '[UAT-DEVIATION]' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-uat-deviations: todo-from-uat reports missing metadata for malformed D entries" {
+  local sig
+  write_state_with_empty_todos
+  sig=$(bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable")
+  write_accepted_uat "$sig" "pass" "accepted-process-exception" "no"
+
+  run bash "$SCRIPT" todo-from-uat "$PHASE_DIR" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" D01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"todo_status=missing_metadata"* ]]
+  ! grep -Fq '[UAT-DEVIATION]' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
+@test "track-uat-deviations: todo-from-uat fails open when STATE.md is missing" {
+  local sig
+  rm -f "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  sig=$(bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable")
+  write_accepted_uat "$sig"
+
+  run bash "$SCRIPT" todo-from-uat "$PHASE_DIR" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" D01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"todo_status=no_state_file"* ]]
+  [ ! -e "$TEST_TEMP_DIR/.vbw-planning/todo-details.json" ]
+}
+
+@test "track-uat-deviations: todo-from-uat keeps STATE todo when detail registry update fails" {
+  local sig ref
+  write_state_with_empty_todos
+  mkdir -p "$TEST_TEMP_DIR/.vbw-planning/todo-details.json"
+  sig=$(bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable")
+  write_accepted_uat "$sig"
+
+  run bash "$SCRIPT" todo-from-uat "$PHASE_DIR" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" D01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"todo_status=added"* ]]
+  [[ "$output" == *"detail_status=warning"* ]]
+  ref=$(extract_output_value todo_ref)
+  grep -Fq -- "(ref:$ref)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }

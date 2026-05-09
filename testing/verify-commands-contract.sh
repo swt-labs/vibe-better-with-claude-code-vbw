@@ -751,6 +751,23 @@ else
   fail "verify: missing promote-todos after known-issues restore in verify recovery path"
 fi
 
+if grep -Fq 'Track Todo' "$VERIFY_FILE" \
+  && grep -Fq 'track-uat-deviations.sh" todo-from-uat' "$VERIFY_FILE" \
+  && grep -Fq 'accepted deviation added to todos (ref:{TODO_REF})' "$VERIFY_FILE" \
+  && grep -Fq 'Never invent a todo ref' "$VERIFY_FILE"; then
+  pass "verify: summary-deviation Track Todo path uses deterministic helper output"
+else
+  fail "verify: summary-deviation Track Todo path missing deterministic helper/ref contract"
+fi
+
+if grep -Fq 'Track Todo' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'track-uat-deviations.sh" todo-from-uat' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'accepted deviation added to todos (ref:{todo_ref})' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: summary-deviation Track Todo path mirrors helper output contract"
+else
+  fail "execute-protocol: summary-deviation Track Todo path missing helper output contract"
+fi
+
 if grep -Eq 'qa-remediation-state\.sh"? advance' "$QA_FILE"; then
   pass "qa: round-scoped PROCEED_TO_UAT persists remediation advance"
 else

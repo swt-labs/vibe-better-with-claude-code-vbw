@@ -521,8 +521,15 @@ for prompt_target in \
   require_text_literal "$prompt_label: DNN modal asks non-blocking acceptance question" 'Accept this documented deviation as non-blocking for this phase?' "$modal_question_block"
   require_text_literal "$prompt_label: DNN modal forbids generic expected-only question" 'must not be the only visible AskUserQuestion question' "$prompt_block"
   require_text_literal "$prompt_label: DNN Pass option accepts non-blocking deviation" 'Accept this deviation as non-blocking for this phase' "$prompt_block"
+  require_text_literal "$prompt_label: DNN Track Todo option exists" 'Track Todo' "$prompt_block"
+  require_text_literal "$prompt_label: DNN Track Todo option adds VBW todo" 'Accept this deviation and add a VBW todo' "$prompt_block"
   require_text_literal "$prompt_label: DNN Skip option leaves deviation unaccepted" 'Leave this deviation unaccepted for now' "$prompt_block"
 done
+
+require_file_literal "verify: accepted tracked DNN invokes todo-from-uat helper" 'track-uat-deviations.sh" todo-from-uat' "$VERIFY_COMMAND_FILE"
+require_file_literal "verify: tracked DNN uses helper-emitted todo ref" 'accepted deviation added to todos (ref:{TODO_REF})' "$VERIFY_COMMAND_FILE"
+require_file_literal "execute-protocol: accepted tracked DNN invokes todo-from-uat helper" 'track-uat-deviations.sh" todo-from-uat' "$EXECUTE_PROTOCOL_FILE"
+require_file_literal "execute-protocol: tracked DNN uses helper-emitted todo ref" 'accepted deviation added to todos (ref:{todo_ref})' "$EXECUTE_PROTOCOL_FILE"
 
 # --------------------------------------------------------------------------
 # Check 5: /vbw:list-todos intentional plain-text/freeform handoff
