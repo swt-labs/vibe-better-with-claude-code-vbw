@@ -254,28 +254,27 @@ parse_state_project_name() {
   STATE_PROJECT_NAME=$(grep -m1 '^\*\*Project:\*\*' "$state_file" 2>/dev/null | sed 's/.*\*\*Project:\*\*[[:space:]]*//' || true)
 }
 
-# --- Helper: check if a phase has blocking UAT ------------------------------
+# --- Helper: classify whether a phase has blocking UAT ----------------------
 # Mirrors the logic in state-updater.sh/reconcile-state-md.sh so the verifier's
 # notion of "active" matches what STATE.md/ROADMAP.md are actually driven by.
 phase_blocking_uat_class() {
   local phase_dir="$1"
   local status_class
-  type current_uat_status_class >/dev/null 2>&1 || return 1
+  type current_uat_status_class >/dev/null 2>&1 || { printf '%s\n' "none"; return 0; }
   status_class=$(current_uat_status_class "$phase_dir" 2>/dev/null || printf '%s\n' "none")
   case "$status_class" in
-    issues_found|active)
-      printf '%s\n' "$status_class"
-      return 0
-      ;;
-    *)
-      printf '%s\n' "none"
-      return 1
-      ;;
+    issues_found|active) printf '%s\n' "$status_class" ;;
+    *) printf '%s\n' "none" ;;
   esac
 }
 
 phase_has_blocking_uat() {
-  phase_blocking_uat_class "$1" >/dev/null
+  local status_class
+  status_class=$(phase_blocking_uat_class "$1")
+  case "$status_class" in
+    issues_found|active) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 # --- Helper: find active phase dir (first incomplete phase) ------------------
@@ -480,7 +479,7 @@ run_check_roadmap_vs_summaries() {
 
     # Marked complete in roadmap but phase has blocking UAT state.
     if [ "$checked" = "true" ] && [ -n "$phase_dir" ]; then
-      blocking_uat_class=$(phase_blocking_uat_class "$phase_dir" 2>/dev/null || printf '%s\n' "none")
+      blocking_uat_class=$(phase_blocking_uat_class "$phase_dir" 2>/dev/null)
       case "$blocking_uat_class" in
         issues_found)
           mismatches="${mismatches:+$mismatches, }phase $phase_num marked [x] but has unresolved UAT issues"

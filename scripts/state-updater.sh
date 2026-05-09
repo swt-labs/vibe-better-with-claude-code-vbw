@@ -505,7 +505,7 @@ update_roadmap() {
 
   [ -f "$roadmap" ] || return 0
 
-  local dirname table_phase_num checkbox_phase_num numbering_scheme display_numbering_scheme roadmap_total prefix_phase_num plan_count summary_count status date_str uat_class
+  local dirname table_phase_num checkbox_phase_num numbering_scheme display_numbering_scheme roadmap_total prefix_phase_num plan_count summary_count complete_count status date_str uat_class
   dirname=$(basename "$phase_dir")
   prefix_phase_num=$(echo "$dirname" | sed 's/^\([0-9]*\).*/\1/' | sed 's/^0*//')
   numbering_scheme=$(roadmap_numbering_scheme "$roadmap" "$(dirname "$phase_dir")")
