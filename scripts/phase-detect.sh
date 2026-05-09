@@ -845,7 +845,7 @@ if [ -d "$PHASES_DIR" ]; then
           # If a round-scoped UAT exists with issues, skip re-verification
           # and route directly to the next remediation round.
           _round_uat=""
-          _round_uat_status=""
+          _round_uat_class=""
           # Round-dir layout
           if [ -f "${TARGET_DIR}remediation/uat/round-${_cur_rr}/R${_cur_rr}-UAT.md" ]; then
             _round_uat="${TARGET_DIR}remediation/uat/round-${_cur_rr}/R${_cur_rr}-UAT.md"
@@ -854,7 +854,7 @@ if [ -d "$PHASES_DIR" ]; then
             _round_uat="${TARGET_DIR}remediation/round-${_cur_rr}/R${_cur_rr}-UAT.md"
           fi
           if [ -n "$_round_uat" ]; then
-            _round_uat_status=$(uat_file_status_class "$_round_uat" 2>/dev/null || printf '%s\n' "none")
+            _round_uat_class=$(uat_file_status_class "$_round_uat" 2>/dev/null || printf '%s\n' "none")
           fi
           # Read layout before the routing decision — apply the same path-based
           # default as the execute→done transition above.
@@ -871,7 +871,7 @@ if [ -d "$PHASES_DIR" ]; then
           else
             _cur_layout="round-dir"
           fi
-          case "$_round_uat_status" in
+          case "$_round_uat_class" in
             issues_found)
               # Re-verification already happened and found issues.
               # Auto-advance to next round's research stage when the cap allows.
