@@ -522,7 +522,7 @@ case "$CMD" in
           if [ "$next_phase_state" = "needs_reverification" ]; then
             suggest "/vbw:vibe -- Re-verify Phase ${pd_next_phase:-} after remediation"
           elif [ "$next_phase_state" = "needs_verification" ] && [ -n "$current_uat_blocking_phase" ]; then
-            suggest "/vbw:vibe -- Verify Phase ${pd_next_phase:-} before archiving"
+            suggest "/vbw:vibe -- Resume Verify for Phase ${pd_next_phase:-}"
           elif ! suggest_milestone_recovery; then
             if [ "$deviation_count" -eq 0 ]; then
               suggest "/vbw:vibe --archive -- All phases complete, zero deviations"
@@ -663,7 +663,7 @@ case "$CMD" in
           if [ "$next_phase_state" = "needs_reverification" ]; then
             suggest "/vbw:vibe -- Re-verify Phase ${pd_next_phase:-} after remediation"
           elif [ "$next_phase_state" = "needs_verification" ] && [ -n "$current_uat_blocking_phase" ]; then
-            suggest "/vbw:vibe -- Verify Phase ${pd_next_phase:-} before archiving"
+            suggest "/vbw:vibe -- Resume Verify for Phase ${pd_next_phase:-}"
           elif ! suggest_milestone_recovery; then
             if [ "$deviation_count" -eq 0 ]; then
               suggest "/vbw:vibe --archive -- All phases complete, zero deviations"
@@ -812,7 +812,7 @@ case "$CMD" in
         if [ "$next_phase_state" = "needs_reverification" ]; then
           suggest "/vbw:vibe -- Re-verify Phase ${pd_next_phase:-} after remediation"
         elif [ "$next_phase_state" = "needs_verification" ] && [ -n "$current_uat_blocking_phase" ]; then
-          suggest "/vbw:vibe -- Verify Phase ${pd_next_phase:-} before archiving"
+          suggest "/vbw:vibe -- Resume Verify for Phase ${pd_next_phase:-}"
         elif [ "$all_done" = true ]; then
           if ! suggest_milestone_recovery; then
             suggest "/vbw:vibe --archive -- All verified, ready to ship"

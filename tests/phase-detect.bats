@@ -585,7 +585,15 @@ EOF
 phase: 01
 status: in_progress
 ---
-UAT is still running.
+## Tests
+
+### PR06-T01: Completed checkpoint
+
+- **Result:** pass
+
+### PR06-T02: Next incomplete checkpoint
+
+- **Result:**
 EOF
 
   run_phase_detect
@@ -593,9 +601,10 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "next_phase_slug=01-test"
-  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  echo "$output" | grep -q "next_phase_state=needs_verification"
   echo "$output" | grep -q "uat_blocking_phase=01"
   echo "$output" | grep -q "uat_blocking_status=active"
+  echo "$output" | grep -q "uat_blocking_file=remediation/uat/round-06/R06-UAT.md"
   ! echo "$output" | grep -q "next_phase_state=all_done"
 }
 
@@ -616,9 +625,10 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase=01"
   echo "$output" | grep -q "next_phase_slug=01-test"
-  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  echo "$output" | grep -q "next_phase_state=needs_verification"
   echo "$output" | grep -q "uat_blocking_phase=01"
   echo "$output" | grep -q "uat_blocking_status=active"
+  echo "$output" | grep -q "uat_blocking_file=remediation/uat/round-06/R06-UAT.md"
   ! echo "$output" | grep -q "next_phase_state=all_done"
 }
 
@@ -641,9 +651,10 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase=08"
   echo "$output" | grep -q "next_phase_slug=08-active-uat"
-  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  echo "$output" | grep -q "next_phase_state=needs_verification"
   echo "$output" | grep -q "uat_blocking_phase=08"
   echo "$output" | grep -q "uat_blocking_status=active"
+  echo "$output" | grep -q "uat_blocking_file=remediation/uat/round-06/R06-UAT.md"
   ! echo "$output" | grep -q "next_phase=09"
 }
 
@@ -666,9 +677,10 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "next_phase=09"
   echo "$output" | grep -q "next_phase_slug=09-active-uat"
-  echo "$output" | grep -q "next_phase_state=needs_reverification"
+  echo "$output" | grep -q "next_phase_state=needs_verification"
   echo "$output" | grep -q "uat_blocking_phase=09"
   echo "$output" | grep -q "uat_blocking_status=active"
+  echo "$output" | grep -q "uat_blocking_file=remediation/uat/round-06/R06-UAT.md"
   ! echo "$output" | grep -q "next_phase=10"
 }
 
