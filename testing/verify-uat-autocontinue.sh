@@ -72,11 +72,14 @@ else
   fail "defaults.json missing max_uat_remediation_rounds=false"
 fi
 
-# 8. vibe.md and verify.md both handle cap_reached explicitly
-if grep -q 'skipped=cap_reached' "$ROOT/commands/vibe.md" && grep -q 'skipped=cap_reached' "$ROOT/commands/verify.md"; then
-  pass "vibe.md and verify.md both handle cap_reached"
+# 8. vibe.md Verify Step 4 and verify.md both handle cap_reached explicitly
+if echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q '_skipped=cap_reached' \
+  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'Reached maximum UAT remediation rounds' \
+  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'Do NOT re-enter remediation' \
+  && grep -q 'skipped=cap_reached' "$ROOT/commands/verify.md"; then
+  pass "vibe.md Step 4 and verify.md both handle cap_reached"
 else
-  fail "vibe.md or verify.md missing cap_reached handling"
+  fail "vibe.md Step 4 or verify.md missing cap_reached handling"
 fi
 
 # 9. verify.md standalone mode uses the shared helper before needs-round
