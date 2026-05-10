@@ -934,17 +934,17 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
    {scenario description}
    ```
 
-  Then use AskUserQuestion. Keep the modal question self-contained because it may cover the surrounding checkpoint prose:
+    Then use AskUserQuestion. Keep the modal question self-contained because it may cover the surrounding checkpoint prose:
 
    ```yaml
-  question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"
-   header: "UAT"
-   multiSelect: false
-   options:
-     - label: "Pass"
-       description: "Behavior matches expected result"
-     - label: "Skip"
-       description: "Cannot test right now — skip this checkpoint"
+    question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"
+    header: "UAT"
+    multiSelect: false
+    options:
+      - label: "Pass"
+        description: "Behavior matches expected result"
+      - label: "Skip"
+        description: "Cannot test right now — skip this checkpoint"
    ```
 
    The tool automatically provides a freeform "Other" option for the user to describe issues.
