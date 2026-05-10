@@ -595,9 +595,9 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
    {scenario description}
    ```
 
-   Then call AskUserQuestion:
+  Then call AskUserQuestion. Keep the modal question self-contained because it may cover the surrounding checkpoint prose:
    ```yaml
-   question: "Expected: {expected result}"
+  question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"
    header: "UAT"
    multiSelect: false
    options:

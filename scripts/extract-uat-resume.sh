@@ -9,6 +9,12 @@
 #   uat_resume=none                           — no UAT file exists
 #   uat_resume=all_done uat_completed=N uat_total=N — all tests have results
 #   uat_resume=<test-id> uat_completed=N uat_total=N — resume at <test-id>
+#     uat_resume_scenario=...                 — active product checkpoint scenario, when present
+#     uat_resume_expected=...                 — active product checkpoint expected result, when present
+#     uat_resume_deviation=...                — active summary-deviation review text, when present
+#     uat_resume_source_plan=...              — active summary-deviation source plan, when present
+#     uat_resume_source_summary=...           — active summary-deviation source summary, when present
+#     uat_resume_deviation_signature=...      — active summary-deviation identity, when present
 
 set -euo pipefail
 
@@ -90,13 +96,72 @@ if [ -z "$UAT_FILE" ] || [ ! -f "$UAT_FILE" ]; then
   exit 0
 fi
 
-# Parse all test entries: count total, find first without a result
+# Parse all test entries: count total, find first without a result, and emit
+# deterministic prompt-critical context for the active checkpoint.
 awk '
-  BEGIN { total=0; completed=0; first_incomplete=""; cur_id=""; cur_has_result=0 }
+  BEGIN {
+    total=0
+    completed=0
+    first_incomplete=""
+    cur_id=""
+    cur_has_result=0
+    last_field=""
+  }
+
+  function trim(v) {
+    gsub(/\r/, "", v)
+    sub(/^[[:space:]]+/, "", v)
+    sub(/[[:space:]]+$/, "", v)
+    return v
+  }
+
+  function flatten(v) {
+    v = trim(v)
+    gsub(/[[:space:]][[:space:]]+/, " ", v)
+    return v
+  }
+
+  function field_value(line) {
+    sub(/^- \*\*[^*]+:\*\*[[:space:]]*/, "", line)
+    return flatten(line)
+  }
+
+  function reset_current() {
+    cur_scenario=""
+    cur_expected=""
+    cur_deviation=""
+    cur_source_plan=""
+    cur_source_summary=""
+    cur_deviation_signature=""
+    last_field=""
+  }
+
+  function append_to_last(line) {
+    line = flatten(line)
+    if (line == "" || last_field == "") {
+      return
+    }
+    if (last_field == "scenario") cur_scenario = flatten(cur_scenario " " line)
+    else if (last_field == "expected") cur_expected = flatten(cur_expected " " line)
+    else if (last_field == "deviation") cur_deviation = flatten(cur_deviation " " line)
+    else if (last_field == "source_plan") cur_source_plan = flatten(cur_source_plan " " line)
+    else if (last_field == "source_summary") cur_source_summary = flatten(cur_source_summary " " line)
+    else if (last_field == "deviation_signature") cur_deviation_signature = flatten(cur_deviation_signature " " line)
+  }
+
+  function snapshot_first_incomplete() {
+    first_scenario = cur_scenario
+    first_expected = cur_expected
+    first_deviation = cur_deviation
+    first_source_plan = cur_source_plan
+    first_source_summary = cur_source_summary
+    first_deviation_signature = cur_deviation_signature
+  }
 
   function check_prev() {
     if (cur_id != "" && cur_has_result == 0 && first_incomplete == "") {
       first_incomplete = cur_id
+      snapshot_first_incomplete()
     }
   }
 
@@ -108,6 +173,37 @@ awk '
     sub(/:$/, "", cur_id)
     total++
     cur_has_result = 0
+    reset_current()
+    next
+  }
+  /^- \*\*Scenario:\*\*/ {
+    cur_scenario = field_value($0)
+    last_field = "scenario"
+    next
+  }
+  /^- \*\*Expected:\*\*/ {
+    cur_expected = field_value($0)
+    last_field = "expected"
+    next
+  }
+  /^- \*\*Deviation:\*\*/ {
+    cur_deviation = field_value($0)
+    last_field = "deviation"
+    next
+  }
+  /^- \*\*Source Plan:\*\*/ {
+    cur_source_plan = field_value($0)
+    last_field = "source_plan"
+    next
+  }
+  /^- \*\*Source Summary:\*\*/ {
+    cur_source_summary = field_value($0)
+    last_field = "source_summary"
+    next
+  }
+  /^- \*\*Deviation Signature:\*\*/ {
+    cur_deviation_signature = field_value($0)
+    last_field = "deviation_signature"
     next
   }
   /^- \*\*Result:\*\*/ {
@@ -118,11 +214,25 @@ awk '
       cur_has_result = 1
       completed++
     }
+    last_field = ""
+    next
+  }
+  /^- \*\*/ {
+    last_field = ""
     next
   }
   /^## / {
     # End of tests section — check last test
     check_prev()
+    last_field = ""
+    next
+  }
+  /^[[:space:]]*$/ {
+    last_field = ""
+    next
+  }
+  {
+    append_to_last($0)
   }
   END {
     # Check last test if file ends without ## section
@@ -133,6 +243,15 @@ awk '
       printf "uat_resume=all_done uat_completed=%d uat_total=%d\n", completed, total
     } else if (first_incomplete != "") {
       printf "uat_resume=%s uat_completed=%d uat_total=%d\n", first_incomplete, completed, total
+      if (first_deviation != "" || first_source_plan != "" || first_source_summary != "" || first_deviation_signature != "") {
+        if (first_deviation != "") printf "uat_resume_deviation=%s\n", first_deviation
+        if (first_source_plan != "") printf "uat_resume_source_plan=%s\n", first_source_plan
+        if (first_source_summary != "") printf "uat_resume_source_summary=%s\n", first_source_summary
+        if (first_deviation_signature != "") printf "uat_resume_deviation_signature=%s\n", first_deviation_signature
+      } else {
+        if (first_scenario != "") printf "uat_resume_scenario=%s\n", first_scenario
+        if (first_expected != "") printf "uat_resume_expected=%s\n", first_expected
+      }
     } else {
       printf "uat_resume=all_done uat_completed=%d uat_total=%d\n", completed, total
     }

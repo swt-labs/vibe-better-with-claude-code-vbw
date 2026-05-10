@@ -12,6 +12,7 @@ Last reviewed: 2026-04-18
 - When options exist, Claude Code still exposes an `Other` path. Treat it as the built-in escape hatch instead of pretending freeform input does not exist.
 - Mark the preferred option with `isRecommended` when one option is genuinely better.
 - Leave 3–4 blank lines before the tool call so the dialog does not cover the last line of prose.
+- When a modal choice depends on nearby explanatory context, include the minimal answer-critical context in the `question` itself; the modal may cover or displace preceding prose.
 
 ### Batch vs. sequence
 

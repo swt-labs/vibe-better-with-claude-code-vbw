@@ -664,6 +664,18 @@ else
   fail "debug.md frontmatter missing AskUserQuestion tool"
 fi
 
+if grep -Fq 'question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"' "$ROOT/commands/debug.md" 2>/dev/null; then
+  pass "debug.md inline UAT modal question includes Scenario and Expected"
+else
+  fail "debug.md inline UAT modal question missing Scenario and Expected"
+fi
+
+if grep -Fq 'question: "Expected: {expected result}"' "$ROOT/commands/debug.md" 2>/dev/null; then
+  fail "debug.md inline UAT modal still uses expected-only question"
+else
+  pass "debug.md inline UAT modal avoids expected-only question"
+fi
+
 if grep -q '\-\-session.*Run UAT on the debug fix' "$ROOT/commands/qa.md" 2>/dev/null; then
   pass "qa.md next-step for PASS includes --session"
 else

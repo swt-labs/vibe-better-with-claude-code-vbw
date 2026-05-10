@@ -901,6 +901,15 @@ else
   fail "vibe: needs_reverification missing refreshed round-scoped uat_path validation"
 fi
 
+if grep -q 'uat_resume_scenario' "$VIBE_FILE" \
+  && grep -q 'uat_resume_expected' "$VIBE_FILE" \
+  && grep -q 'bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=error"' "$VIBE_FILE" \
+  && grep -q 'echo "uat_resume=unavailable"' "$VIBE_FILE"; then
+  pass "vibe: Verify mode passes deterministic UAT resume fields and preserves wrapper sentinels"
+else
+  fail "vibe: Verify mode missing deterministic UAT resume fields or wrapper sentinels"
+fi
+
 if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$ROOT/references/execute-protocol.md"; then
   pass "execute-protocol: QA remediation verify uses remediation-only verify context"
 else
@@ -946,6 +955,15 @@ if grep -Eq 'uat-remediation-state\.sh"? get-or-init "{phase-dir}" major' "$VERI
   pass "verify: remediation re-verification refreshes and validates round-scoped uat_path for round-dir and legacy layouts"
 else
   fail "verify: remediation re-verification missing refreshed round-scoped uat_path validation"
+fi
+
+if grep -q 'uat_resume_scenario' "$VERIFY_FILE" \
+  && grep -q 'uat_resume_expected' "$VERIFY_FILE" \
+  && grep -q 'summary-deviation checkpoints use `uat_resume_deviation`' "$VERIFY_FILE" \
+  && grep -q 're-run `bash "{plugin-root}/scripts/extract-uat-resume.sh" "{phase-dir}"`' "$VERIFY_FILE"; then
+  pass "verify: resumed UAT uses deterministic checkpoint fields and refreshes after each answer"
+else
+  fail "verify: resumed UAT missing deterministic checkpoint field usage or refresh loop"
 fi
 
 if grep -q 'ignore the pre-computed verify context, `next_phase_state`, `qa_status`, and UAT resume metadata' "$VERIFY_FILE" \

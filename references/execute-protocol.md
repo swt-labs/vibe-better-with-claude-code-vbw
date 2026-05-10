@@ -934,10 +934,10 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
    {scenario description}
    ```
 
-   Then use AskUserQuestion:
+  Then use AskUserQuestion. Keep the modal question self-contained because it may cover the surrounding checkpoint prose:
 
    ```yaml
-   question: "Expected: {expected result}"
+  question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"
    header: "UAT"
    multiSelect: false
    options:
