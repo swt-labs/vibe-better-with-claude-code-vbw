@@ -271,10 +271,18 @@ fi
 if contains_literal "$DEBUG_PATH_B_BLOCK" '<accepted_exception_debug_semantics>' \
   && contains_literal "$DEBUG_PATH_B_BLOCK" 'immediately after the Path B payload prefix' \
   && contains_literal "$DEBUG_PATH_B_BLOCK" 'accepted-process-exception/backlog metadata alone is not enough for `already_fixed`' \
-  && contains_literal "$DEBUG_PATH_B_BLOCK" 'fresh current evidence that the current branch already contains a real fix'; then
+  && contains_literal "$DEBUG_PATH_B_BLOCK" 'fresh current evidence that the current branch already contains a real fix' \
+  && contains_literal "$DEBUG_PATH_B_BLOCK" 'Paste only the inner contents of the shared accepted-exception debug semantics block from Step 1 here' \
+  && contains_literal "$DEBUG_PATH_B_BLOCK" 'do not include the outer <accepted_exception_debug_semantics> tags here'; then
   pass "debug.md Path B injects accepted-exception semantics and fresh-evidence already_fixed rule"
 else
   fail "debug.md Path B missing accepted-exception semantics or fresh-evidence already_fixed rule"
+fi
+
+if contains_literal "$DEBUG_PATH_B_BLOCK" 'Paste the shared accepted-exception debug semantics block from Step 1 here'; then
+  fail "debug.md Path B accepted-exception template can nest duplicate XML tags"
+else
+  pass "debug.md Path B accepted-exception template avoids nested XML tags"
 fi
 
 if contains_literal "$DEBUG_STEP5_BLOCK" 'Before mapping `RESOLUTION_OBSERVATION=already_fixed` to `INVESTIGATION_OUTCOME=already_fixed`' \
@@ -282,10 +290,18 @@ if contains_literal "$DEBUG_STEP5_BLOCK" 'Before mapping `RESOLUTION_OBSERVATION
   && contains_literal "$DEBUG_STEP5_BLOCK" 'accepted disposition only' \
   && contains_literal "$DEBUG_STEP5_BLOCK" 'normalize away from `already_fixed`' \
   && contains_literal "$DEBUG_STEP5_BLOCK" 'use `needs_change` when actionable remediation remains' \
-  && contains_literal "$DEBUG_STEP5_BLOCK" 'use `inconclusive` / `no_fix_yet` when the blocker is genuine'; then
+  && contains_literal "$DEBUG_STEP5_BLOCK" 'use `inconclusive` when the blocker is genuine' \
+  && contains_literal "$DEBUG_STEP5_BLOCK" 'RESOLUTION_OBSERVATION=needs_change|inconclusive` → `INVESTIGATION_OUTCOME=no_fix_yet`'; then
   pass "debug.md Step 5 validates already_fixed against fresh evidence for accepted exceptions"
 else
   fail "debug.md Step 5 missing accepted-exception already_fixed normalization"
+fi
+
+if contains_literal "$DEBUG_STEP5_BLOCK" 'use `inconclusive` / `no_fix_yet`' \
+  || contains_literal "$DEBUG_STEP5_BLOCK" 'RESOLUTION_OBSERVATION=no_fix_yet'; then
+  fail "debug.md Step 5 treats no_fix_yet as a resolution_observation value"
+else
+  pass "debug.md Step 5 keeps no_fix_yet as an investigation outcome only"
 fi
 
 if grep -q 'start-with-selected-todo' "$DEBUG_CMD" 2>/dev/null; then
