@@ -126,6 +126,31 @@ awk '
     return flatten(line)
   }
 
+  function normalize_result(raw,    val, upper, lower, i, c, pos, lval) {
+    val = trim(raw)
+    # Strip common decorators while preserving the literal template placeholder
+    # {pass|skip|issue}, which must remain incomplete.
+    gsub(/^[^a-zA-Z{]+/, "", val)
+    gsub(/[^a-zA-Z}]+$/, "", val)
+
+    upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    lower = "abcdefghijklmnopqrstuvwxyz"
+    lval = ""
+    for (i = 1; i <= length(val); i++) {
+      c = substr(val, i, 1)
+      pos = index(upper, c)
+      if (pos > 0) c = substr(lower, pos, 1)
+      lval = lval c
+    }
+    val = lval
+
+    if (val == "" || val == "{pass|skip|issue}") return ""
+    if (val ~ /^pass/) return "pass"
+    if (val ~ /^skip/) return "skip"
+    if (val ~ /^issue/ || val ~ /^fail/ || val ~ /^partial/) return "issue"
+    return ""
+  }
+
   function reset_current() {
     cur_scenario=""
     cur_expected=""
@@ -177,40 +202,46 @@ awk '
     next
   }
   /^- \*\*Scenario:\*\*/ {
+    if (cur_id == "") next
     cur_scenario = field_value($0)
     last_field = "scenario"
     next
   }
   /^- \*\*Expected:\*\*/ {
+    if (cur_id == "") next
     cur_expected = field_value($0)
     last_field = "expected"
     next
   }
   /^- \*\*Deviation:\*\*/ {
+    if (cur_id == "") next
     cur_deviation = field_value($0)
     last_field = "deviation"
     next
   }
   /^- \*\*Source Plan:\*\*/ {
+    if (cur_id == "") next
     cur_source_plan = field_value($0)
     last_field = "source_plan"
     next
   }
   /^- \*\*Source Summary:\*\*/ {
+    if (cur_id == "") next
     cur_source_summary = field_value($0)
     last_field = "source_summary"
     next
   }
   /^- \*\*Deviation Signature:\*\*/ {
+    if (cur_id == "") next
     cur_deviation_signature = field_value($0)
     last_field = "deviation_signature"
     next
   }
   /^- \*\*Result:\*\*/ {
+    if (cur_id == "") next
     val = $0
     sub(/^- \*\*Result:\*\*[[:space:]]*/, "", val)
-    gsub(/[[:space:]]+$/, "", val)
-    if (val != "") {
+    if (normalize_result(val) != "") {
       cur_has_result = 1
       completed++
     }
@@ -224,6 +255,9 @@ awk '
   /^## / {
     # End of tests section — check last test
     check_prev()
+    cur_id = ""
+    cur_has_result = 0
+    reset_current()
     last_field = ""
     next
   }
@@ -232,6 +266,7 @@ awk '
     next
   }
   {
+    if (cur_id == "") next
     append_to_last($0)
   }
   END {

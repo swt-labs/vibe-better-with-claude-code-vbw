@@ -99,6 +99,118 @@ passed: 3
   [[ "$output" == "uat_resume=all_done uat_completed=3 uat_total=3" ]]
 }
 
+@test "extract-uat-resume: template result placeholder remains incomplete" {
+  create_uat_file '---
+phase: 03
+status: in_progress
+total_tests: 1
+---
+
+## Tests
+
+### P01-T1: Placeholder test
+
+- **Scenario:** Check placeholder
+- **Expected:** Result placeholder does not count
+- **Result:** {pass|skip|issue}
+
+## Summary'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-resume.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  assert_output_has_line "uat_resume=P01-T1 uat_completed=0 uat_total=1"
+  assert_output_has_line "uat_resume_scenario=Check placeholder"
+  assert_output_has_line "uat_resume_expected=Result placeholder does not count"
+}
+
+@test "extract-uat-resume: unrecognized non-empty result remains incomplete" {
+  create_uat_file '---
+phase: 03
+status: in_progress
+total_tests: 1
+---
+
+## Tests
+
+### P01-T1: Unrecognized result
+
+- **Scenario:** Check freeform value
+- **Expected:** Freeform value does not count
+- **Result:** not checked yet
+
+## Summary'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-resume.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  assert_output_has_line "uat_resume=P01-T1 uat_completed=0 uat_total=1"
+}
+
+@test "extract-uat-resume: result outside checkpoint does not complete test" {
+  create_uat_file '---
+phase: 03
+status: in_progress
+total_tests: 1
+---
+
+## Tests
+
+### P01-T1: Blank result
+
+- **Scenario:** Check summary leakage
+- **Expected:** Summary result does not count
+- **Result:**
+
+## Summary
+
+- **Result:** pass'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-resume.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  assert_output_has_line "uat_resume=P01-T1 uat_completed=0 uat_total=1"
+}
+
+@test "extract-uat-resume: decorated canonical results count complete" {
+  create_uat_file '---
+phase: 03
+status: complete
+total_tests: 3
+---
+
+## Tests
+
+### P01-T1: Decorated pass
+
+- **Scenario:** Check pass
+- **Expected:** Decorated pass counts
+- **Result:** ✅ PASS
+
+### P01-T2: Decorated skip
+
+- **Scenario:** Check skip
+- **Expected:** Decorated skip counts
+- **Result:** **Skipped**
+
+### P01-T3: Decorated issue
+
+- **Scenario:** Check issue
+- **Expected:** Decorated issue counts
+- **Result:** Partial — user found an issue
+
+## Summary'
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/extract-uat-resume.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == "uat_resume=all_done uat_completed=3 uat_total=3" ]]
+}
+
 @test "extract-uat-resume: partial completion returns resume ID" {
   create_uat_file '---
 phase: 03
