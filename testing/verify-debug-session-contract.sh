@@ -223,11 +223,98 @@ fi
 DEBUG_CMD="$ROOT/commands/debug.md"
 DEBUG_PATH_A_BLOCK="$(sed -n '/^[[:space:]]*\*\*Path A:/,/^[[:space:]]*\*\*Path B:/p' "$DEBUG_CMD" 2>/dev/null || true)"
 DEBUG_PATH_B_BLOCK="$(sed -n '/^[[:space:]]*\*\*Path B:/,/^5\./p' "$DEBUG_CMD" 2>/dev/null || true)"
+DEBUG_ACCEPTED_EXCEPTION_BLOCK="$(sed -n '/^[[:space:]]*<accepted_exception_debug_semantics>[[:space:]]*$/,/^[[:space:]]*<\/accepted_exception_debug_semantics>[[:space:]]*$/p' "$DEBUG_CMD" 2>/dev/null || true)"
+DEBUG_STEP5_BLOCK="$(sed -n '/^5\. \*\*Persist to debug session/,/^If `INVESTIGATION_OUTCOME=fixed_now`/p' "$DEBUG_CMD" 2>/dev/null || true)"
 
 if grep -q "debug_session_routing" "$DEBUG_CMD" 2>/dev/null; then
   pass "debug.md has debug_session_routing section"
 else
   fail "debug.md missing debug_session_routing section"
+fi
+
+if contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" '<accepted_exception_debug_semantics>' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'historical phase/round waivers and backlog pointers' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" '[KNOWN-ISSUE]' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'Disposition: accepted-process-exception' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'known_issue_signature.disposition' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" '[UAT-DEVIATION]' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'source: "uat-deviation"' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'uat_deviation' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'Accepted UAT summary deviation' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'active remediation request' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'fresh current evidence' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'needs_change' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'inconclusive' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'no_fix_yet'; then
+  pass "debug.md defines shared accepted-exception debug semantics"
+else
+  fail "debug.md missing shared accepted-exception debug semantics"
+fi
+
+if contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'resolution_observation=needs_change' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'resolution_observation=inconclusive'; then
+  pass "debug.md shared accepted-exception block uses debugger-facing resolution_observation field names"
+else
+  fail "debug.md shared accepted-exception block missing debugger-facing resolution_observation field names"
+fi
+
+if contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'RESOLUTION_OBSERVATION'; then
+  fail "debug.md shared accepted-exception block leaks orchestrator RESOLUTION_OBSERVATION variable"
+else
+  pass "debug.md shared accepted-exception block avoids orchestrator RESOLUTION_OBSERVATION variable"
+fi
+
+if contains_literal "$DEBUG_PATH_A_BLOCK" '<accepted_exception_debug_semantics>' \
+  && contains_literal "$DEBUG_PATH_A_BLOCK" 'hypothesis investigator prompts' \
+  && contains_literal "$DEBUG_PATH_A_BLOCK" 'post-synthesis implementation owner prompt' \
+  && contains_literal "$DEBUG_PATH_A_BLOCK" 'immediately after the Path A payload prefix'; then
+  pass "debug.md Path A injects accepted-exception semantics into investigator and implementation-owner prompts"
+else
+  fail "debug.md Path A missing accepted-exception semantics injection"
+fi
+
+if contains_literal "$DEBUG_PATH_A_BLOCK" 'accepted-process-exception/backlog metadata alone is not enough for `already_fixed`' \
+  && contains_literal "$DEBUG_PATH_A_BLOCK" 'fresh current evidence that the underlying issue no longer reproduces or the branch contains a real fix' \
+  && contains_literal "$DEBUG_PATH_A_BLOCK" 'If any teammate finds the selected item still reproducible or actionable, choose `needs_change`'; then
+  pass "debug.md Path A synthesis protects accepted exceptions from already_fixed closure"
+else
+  fail "debug.md Path A synthesis can still treat accepted exceptions as already_fixed"
+fi
+
+if contains_literal "$DEBUG_PATH_B_BLOCK" '<accepted_exception_debug_semantics>' \
+  && contains_literal "$DEBUG_PATH_B_BLOCK" 'immediately after the Path B payload prefix' \
+  && contains_literal "$DEBUG_PATH_B_BLOCK" 'accepted-process-exception/backlog metadata alone is not enough for `already_fixed`' \
+  && contains_literal "$DEBUG_PATH_B_BLOCK" 'fresh current evidence that the current branch already contains a real fix' \
+  && contains_literal "$DEBUG_PATH_B_BLOCK" 'Paste only the inner contents of the shared accepted-exception debug semantics block from Step 1 here' \
+  && contains_literal "$DEBUG_PATH_B_BLOCK" 'do not include the outer <accepted_exception_debug_semantics> tags here'; then
+  pass "debug.md Path B injects accepted-exception semantics and fresh-evidence already_fixed rule"
+else
+  fail "debug.md Path B missing accepted-exception semantics or fresh-evidence already_fixed rule"
+fi
+
+if contains_literal "$DEBUG_PATH_B_BLOCK" 'Paste the shared accepted-exception debug semantics block from Step 1 here'; then
+  fail "debug.md Path B accepted-exception template can nest duplicate XML tags"
+else
+  pass "debug.md Path B accepted-exception template avoids nested XML tags"
+fi
+
+if contains_literal "$DEBUG_STEP5_BLOCK" 'Before mapping `RESOLUTION_OBSERVATION=already_fixed` to `INVESTIGATION_OUTCOME=already_fixed`' \
+  && contains_literal "$DEBUG_STEP5_BLOCK" 'fresh current evidence of actual resolution' \
+  && contains_literal "$DEBUG_STEP5_BLOCK" 'accepted disposition only' \
+  && contains_literal "$DEBUG_STEP5_BLOCK" 'normalize away from `already_fixed`' \
+  && contains_literal "$DEBUG_STEP5_BLOCK" 'use `needs_change` when actionable remediation remains' \
+  && contains_literal "$DEBUG_STEP5_BLOCK" 'use `inconclusive` when the blocker is genuine' \
+  && contains_literal "$DEBUG_STEP5_BLOCK" 'RESOLUTION_OBSERVATION=needs_change|inconclusive` → `INVESTIGATION_OUTCOME=no_fix_yet`'; then
+  pass "debug.md Step 5 validates already_fixed against fresh evidence for accepted exceptions"
+else
+  fail "debug.md Step 5 missing accepted-exception already_fixed normalization"
+fi
+
+if contains_literal "$DEBUG_STEP5_BLOCK" 'use `inconclusive` / `no_fix_yet`' \
+  || contains_literal "$DEBUG_STEP5_BLOCK" 'RESOLUTION_OBSERVATION=no_fix_yet'; then
+  fail "debug.md Step 5 treats no_fix_yet as a resolution_observation value"
+else
+  pass "debug.md Step 5 keeps no_fix_yet as an investigation outcome only"
 fi
 
 if grep -q 'start-with-selected-todo' "$DEBUG_CMD" 2>/dev/null; then
@@ -448,7 +535,16 @@ else
   fail "vbw-debugger.md missing standalone debug session section"
 fi
 
+DEBUGGER_PROTOCOL_BLOCK="$(sed -n '/## Investigation Protocol/,/^## /p' "$DEBUGGER_AGENT" 2>/dev/null || true)"
 DEBUGGER_TEAMMATE_BLOCK="$(sed -n '/## Teammate Mode/,/^## /p' "$DEBUGGER_AGENT" 2>/dev/null || true)"
+
+if contains_literal "$DEBUGGER_PROTOCOL_BLOCK" 'Historical accepted process-exception or backlog/UAT-deviation metadata is not an `already_fixed` signal.' \
+  && contains_literal "$DEBUGGER_PROTOCOL_BLOCK" 'Use `already_fixed` only with fresh current evidence.' \
+  && contains_literal "$DEBUGGER_PROTOCOL_BLOCK" 'Report an explicit blocker instead of claiming completion when remediation is impossible.'; then
+  pass "vbw-debugger.md Investigation Protocol rejects historical accepted metadata as already_fixed evidence"
+else
+  fail "vbw-debugger.md Investigation Protocol missing accepted-exception already_fixed invariant"
+fi
 
 if grep -Fq 'When `/vbw:debug` Path A spawns you as a hypothesis investigator' <<< "$DEBUGGER_TEAMMATE_BLOCK" \
   && grep -Fq 'overrides any conflicting implementation language' <<< "$DEBUGGER_TEAMMATE_BLOCK"; then
@@ -462,6 +558,12 @@ if grep -Fq 'Teammate mode ends at diagnosis plus `debugger_report`.' <<< "$DEBU
   pass "vbw-debugger.md teammate mode ends at diagnosis and keeps resolution observations analysis-only"
 else
   fail "vbw-debugger.md teammate mode missing diagnosis-only boundary or analysis-only resolution language"
+fi
+
+if grep -Fq 'Historical `accepted-process-exception` or backlog/UAT-deviation metadata alone is not fresh evidence for `already_fixed`.' <<< "$DEBUGGER_TEAMMATE_BLOCK"; then
+  pass "vbw-debugger.md teammate mode rejects accepted metadata alone as already_fixed evidence"
+else
+  fail "vbw-debugger.md teammate mode missing accepted-metadata already_fixed guard"
 fi
 
 if grep -Fq '`/vbw:debug` owns synthesis, session status, teardown, and any later implementation handoff.' <<< "$DEBUGGER_TEAMMATE_BLOCK" \
