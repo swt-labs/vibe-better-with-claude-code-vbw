@@ -163,6 +163,35 @@ EOF
   ! pending_todos_contains 'Already completed bug'
 }
 
+@test "debug-start-selected-todo: legacy flat completed session repairs stale root todo" {
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- Legacy completed bug (added 2026-04-04) (ref:deadbeef)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+  source_json=$(jq -cn --arg mode source-todo --arg text 'Legacy completed bug' --arg raw_line '- Legacy completed bug (added 2026-04-04) (ref:deadbeef)' --arg ref deadbeef --arg detail_status not_found '{mode:$mode,text:$text,raw_line:$raw_line,ref:$ref,detail_status:$detail_status,related_files:[],detail_context:""}')
+  eval "$(printf '%s' "$source_json" | bash "$SCRIPTS_DIR/debug-session-state.sh" start-with-source-todo "$VBW_PLANNING_DIR" legacy-completed-bug)"
+  bash "$SCRIPTS_DIR/debug-session-state.sh" set-status "$VBW_PLANNING_DIR" complete >/dev/null
+  legacy_file="$VBW_PLANNING_DIR/debugging/${session_id}.md"
+  mv "$VBW_PLANNING_DIR/debugging/completed/${session_id}.md" "$legacy_file"
+  rmdir "$VBW_PLANNING_DIR/debugging/completed"
+  [ -f "$legacy_file" ]
+  save_snapshot
+
+  run bash "$SCRIPT" "$VBW_PLANNING_DIR" 1
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.status')" = "already_complete" ]
+  [ "$(printf '%s' "$output" | jq -r '.session.status')" = "complete" ]
+  [ "$(active_session_count)" = "0" ]
+  [ "$(completed_session_count)" = "1" ]
+  [ ! -f "$legacy_file" ]
+  ! pending_todos_contains 'Legacy completed bug'
+}
+
 @test "debug-start-selected-todo: ref-less duplicate raw lines do not use completed proof" {
   cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
 # Project State
@@ -184,6 +213,36 @@ EOF
   [ "$(printf '%s' "$output" | jq -r '.status')" = "ok" ]
   [ "$(active_session_count)" = "1" ]
   [ "$(completed_session_count)" = "1" ]
+}
+
+@test "debug-start-selected-todo: pickup failure after session creation returns partial lifecycle state" {
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- Pickup failure bug (added 2026-04-01)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+  save_snapshot
+  mkdir -p "$VBW_PLANNING_DIR/debugging/active"
+  chmod u-w "$VBW_PLANNING_DIR"
+
+  run bash "$SCRIPT" "$VBW_PLANNING_DIR" 1
+  chmod u+w "$VBW_PLANNING_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.status')" = "error" ]
+  [ "$(printf '%s' "$output" | jq -r '.code')" = "pickup_failed_after_session" ]
+  [ "$(printf '%s' "$output" | jq -r '.session.id | length > 0')" = "true" ]
+  session_file=$(session_file_from_output "$output")
+  [ -f "$session_file" ]
+  [ "$(printf '%s' "$output" | jq -r '.session.status')" = "investigating" ]
+  [ "$(active_session_count)" = "1" ]
+  [ "$(printf '%s' "$output" | jq -r '.pickup.status')" = "error" ]
+  [ "$(printf '%s' "$output" | jq -r '((.pickup.message // .message // "") | length > 0)')" = "true" ]
+  pending_todos_contains 'Pickup failure bug'
 }
 
 @test "debug-start-selected-todo: resolver errors do not create sessions or mutate state" {

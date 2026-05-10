@@ -156,9 +156,13 @@ MATCH_SESSION_ID=""
 MATCH_SESSION_FILE=""
 MATCH_SESSION_STATUS=""
 
+canonicalize_debug_sessions() {
+  VBW_PLANNING_DIR="$PLANNING_DIR" bash "$SCRIPT_DIR/debug-session-state.sh" list "$PLANNING_DIR" >/dev/null 2>&1 || true
+}
+
 find_completed_source_todo_match() {
   local selected_json="$1"
-  local selected_ref selected_raw_line selected_identity_total completed_dir file
+  local selected_ref selected_raw_line selected_identity_total completed_dir debugging_dir file
   local source_ref source_raw_line session_status ref_count
 
   MATCH_FOUND=false
@@ -169,11 +173,14 @@ find_completed_source_todo_match() {
   selected_ref=$(printf '%s' "$selected_json" | jq -r '.ref // empty')
   selected_raw_line=$(printf '%s' "$selected_json" | jq -r '.line // .raw_line // .text // empty')
   selected_identity_total=$(printf '%s' "$selected_json" | jq -r '.identity_total // 0')
+  debugging_dir="${PLANNING_DIR%/}/debugging"
   completed_dir="${PLANNING_DIR%/}/debugging/completed"
 
-  [ -d "$completed_dir" ] || return 0
+  [ -d "$debugging_dir" ] || return 0
 
-  for file in "$completed_dir"/*.md; do
+  canonicalize_debug_sessions
+
+  for file in "$completed_dir"/*.md "$debugging_dir"/*.md; do
     [ -f "$file" ] && [ ! -L "$file" ] || continue
     session_status=$(read_frontmatter_field "$file" "status")
     [ "$session_status" = "complete" ] || continue
