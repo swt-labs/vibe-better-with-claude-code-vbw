@@ -212,8 +212,41 @@ reconcile_uat_state() {
   fi
 }
 
-# Auto-migrate: if old-location state file exists but new doesn't, migrate
-if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_REMED_STATE_FILE" ]; then
+read_state_stage_value() {
+  local file="$1" _val=""
+
+  if grep -q '^stage=' "$file" 2>/dev/null; then
+    _val=$(grep '^stage=' "$file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]')
+  else
+    _val=$(tr -d '[:space:]' < "$file")
+  fi
+  printf '%s\n' "${_val:-none}"
+}
+
+read_state_round_value() {
+  local file="$1" _val=""
+
+  _val=$(grep '^round=' "$file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+  printf '%s\n' "${_val:-01}"
+}
+
+normalize_round_padded_value() {
+  local raw="$1" num
+
+  num=$(printf '%s\n' "$raw" | sed 's/^0*//')
+  num="${num:-0}"
+  case "$num" in
+    *[!0-9]*|"")
+      echo "Error: invalid UAT remediation round value: $raw" >&2
+      return 1
+      ;;
+  esac
+  printf '%02d\n' "$num"
+}
+
+migrate_legacy_remediation_state_if_needed() {
+  [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_REMED_STATE_FILE" ] || return 0
+
   mkdir -p "$PHASE_DIR/remediation/uat"
   cp "$LEGACY_REMED_STATE_FILE" "$STATE_FILE"
   # Migrate existing round dirs
@@ -226,6 +259,44 @@ if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_REMED_STATE_FILE" ]; then
   done
   rm -f "$LEGACY_REMED_STATE_FILE"
   reconcile_uat_state "$STATE_FILE"
+}
+
+preflight_legacy_remediation_needs_round() {
+  local legacy_stage legacy_round legacy_round_padded legacy_uat legacy_uat_class
+
+  [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_REMED_STATE_FILE" ] || return 0
+
+  legacy_stage=$(read_state_stage_value "$LEGACY_REMED_STATE_FILE")
+  case "$legacy_stage" in
+    verify|done) ;;
+    *)
+      echo "Error: needs-round requires stage verify or done, got: $legacy_stage" >&2
+      exit 1
+      ;;
+  esac
+
+  legacy_round=$(read_state_round_value "$LEGACY_REMED_STATE_FILE")
+  legacy_round_padded=$(normalize_round_padded_value "$legacy_round") || exit 1
+  legacy_uat="$PHASE_DIR/remediation/round-${legacy_round_padded}/R${legacy_round_padded}-UAT.md"
+  if [ ! -f "$legacy_uat" ]; then
+    echo "Error: needs-round current round UAT evidence is missing for round $legacy_round_padded" >&2
+    exit 1
+  fi
+
+  if type uat_file_status_class >/dev/null 2>&1; then
+    legacy_uat_class=$(uat_file_status_class "$legacy_uat")
+    if [ "$legacy_uat_class" != "issues_found" ]; then
+      echo "Error: needs-round requires a finalized 'issues_found' UAT; current UAT is '$legacy_uat_class': $legacy_uat" >&2
+      exit 1
+    fi
+  fi
+}
+
+# Auto-migrate: if old-location state file exists but new doesn't, migrate.
+# `needs-round` defers this until after read-only validation so rejected calls
+# remain side-effect-free for brownfield old-location remediation layouts.
+if [ "$CMD" != "needs-round" ]; then
+  migrate_legacy_remediation_state_if_needed
 fi
 
 # Major/critical chain order (UAT report serves as discussion — no separate discuss step)
@@ -594,6 +665,10 @@ case "$CMD" in
     # Guard: requires an existing state file — can't advance to "next round" if
     # remediation was never initialized. Without this guard, get_round() defaults
     # to "01" and start_new_round() creates round-02 from a phantom round-01.
+    if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_REMED_STATE_FILE" ]; then
+      preflight_legacy_remediation_needs_round
+      migrate_legacy_remediation_state_if_needed
+    fi
     if [ ! -f "$STATE_FILE" ] && [ ! -f "$LEGACY_STATE_FILE" ]; then
       echo "Error: no UAT remediation state exists for $PHASE_DIR — cannot advance to next round without prior init" >&2
       exit 1
@@ -610,15 +685,7 @@ case "$CMD" in
       current_layout=$(get_layout)
       if [ "$current_layout" = "round-dir" ]; then
         current_round=$(get_round)
-        current_round_num=$(printf '%s\n' "$current_round" | sed 's/^0*//')
-        current_round_num="${current_round_num:-0}"
-        case "$current_round_num" in
-          *[!0-9]*|"")
-            echo "Error: needs-round could not resolve numeric current round: $current_round" >&2
-            exit 1
-            ;;
-        esac
-        current_round_padded=$(printf '%02d' "$current_round_num")
+        current_round_padded=$(normalize_round_padded_value "$current_round") || exit 1
         phase_num=$(extract_phase_num)
         current_round_uat="$PHASE_DIR/remediation/uat/round-${current_round_padded}/R${current_round_padded}-UAT.md"
         current_flat_uat="$PHASE_DIR/${phase_num}-UAT-round-${current_round_padded}.md"

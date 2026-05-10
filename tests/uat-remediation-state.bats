@@ -996,6 +996,76 @@ EOF
   [ -d "$PHASE_DIR/remediation/uat/round-03" ]
 }
 
+@test "needs-round refuses old remediation state before migration when stage is not terminal" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=research\nround=01\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"needs-round requires stage verify or done, got: research"* ]]
+  [ -f "$PHASE_DIR/remediation/.uat-remediation-stage" ]
+  [ -d "$PHASE_DIR/remediation/round-01" ]
+  [ ! -d "$PHASE_DIR/remediation/uat" ]
+  [ ! -d "$PHASE_DIR/remediation/round-02" ]
+}
+
+@test "needs-round refuses old remediation state before migration when current UAT is active" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+---
+status: in_progress
+---
+# Active old-location UAT
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"requires a finalized 'issues_found' UAT"* ]]
+  [ -f "$PHASE_DIR/remediation/.uat-remediation-stage" ]
+  [ -f "$PHASE_DIR/remediation/round-01/R01-UAT.md" ]
+  [ ! -d "$PHASE_DIR/remediation/uat" ]
+}
+
+@test "needs-round refuses old remediation state before migration when current UAT evidence is missing" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"current round UAT evidence is missing"* ]]
+  [ -f "$PHASE_DIR/remediation/.uat-remediation-stage" ]
+  [ -d "$PHASE_DIR/remediation/round-01" ]
+  [ ! -d "$PHASE_DIR/remediation/uat" ]
+  [ ! -d "$PHASE_DIR/remediation/round-02" ]
+}
+
+@test "needs-round migrates old remediation state after finalized current UAT preflight" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+---
+status: issues_found
+---
+# Finalized old-location UAT
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "research" ]
+  [ ! -f "$PHASE_DIR/remediation/.uat-remediation-stage" ]
+  [ ! -d "$PHASE_DIR/remediation/round-01" ]
+  [ -f "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" ]
+  [ -d "$PHASE_DIR/remediation/uat/round-02" ]
+  grep -q '^stage=research$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^round=02$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^layout=round-dir$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+}
+
 @test "needs-round refuses when current round UAT is active" {
   mkdir -p "$PHASE_DIR/remediation/uat/round-03"
   printf 'stage=verify\nround=03\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
