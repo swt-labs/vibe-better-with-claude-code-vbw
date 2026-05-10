@@ -223,7 +223,7 @@ fi
 DEBUG_CMD="$ROOT/commands/debug.md"
 DEBUG_PATH_A_BLOCK="$(sed -n '/^[[:space:]]*\*\*Path A:/,/^[[:space:]]*\*\*Path B:/p' "$DEBUG_CMD" 2>/dev/null || true)"
 DEBUG_PATH_B_BLOCK="$(sed -n '/^[[:space:]]*\*\*Path B:/,/^5\./p' "$DEBUG_CMD" 2>/dev/null || true)"
-DEBUG_ACCEPTED_EXCEPTION_BLOCK="$(sed -n '/<accepted_exception_debug_semantics>/,/<\/accepted_exception_debug_semantics>/p' "$DEBUG_CMD" 2>/dev/null || true)"
+DEBUG_ACCEPTED_EXCEPTION_BLOCK="$(sed -n '/^[[:space:]]*<accepted_exception_debug_semantics>[[:space:]]*$/,/^[[:space:]]*<\/accepted_exception_debug_semantics>[[:space:]]*$/p' "$DEBUG_CMD" 2>/dev/null || true)"
 DEBUG_STEP5_BLOCK="$(sed -n '/^5\. \*\*Persist to debug session/,/^If `INVESTIGATION_OUTCOME=fixed_now`/p' "$DEBUG_CMD" 2>/dev/null || true)"
 
 if grep -q "debug_session_routing" "$DEBUG_CMD" 2>/dev/null; then
@@ -249,6 +249,19 @@ if contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" '<accepted_exception_debug
   pass "debug.md defines shared accepted-exception debug semantics"
 else
   fail "debug.md missing shared accepted-exception debug semantics"
+fi
+
+if contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'resolution_observation=needs_change' \
+  && contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'resolution_observation=inconclusive'; then
+  pass "debug.md shared accepted-exception block uses debugger-facing resolution_observation field names"
+else
+  fail "debug.md shared accepted-exception block missing debugger-facing resolution_observation field names"
+fi
+
+if contains_literal "$DEBUG_ACCEPTED_EXCEPTION_BLOCK" 'RESOLUTION_OBSERVATION'; then
+  fail "debug.md shared accepted-exception block leaks orchestrator RESOLUTION_OBSERVATION variable"
+else
+  pass "debug.md shared accepted-exception block avoids orchestrator RESOLUTION_OBSERVATION variable"
 fi
 
 if contains_literal "$DEBUG_PATH_A_BLOCK" '<accepted_exception_debug_semantics>' \
