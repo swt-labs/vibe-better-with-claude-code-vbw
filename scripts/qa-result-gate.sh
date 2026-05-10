@@ -1092,45 +1092,16 @@ extract_frontmatter_json_object_array() {
   local file_path="${1:-}"
   local key_name="${2:-}"
   local kind="${3:-issue}"
-  local item=""
   local tmp_file=""
   [ -f "$file_path" ] || { echo '[]'; return 0; }
   [ -n "$key_name" ] || { echo '[]'; return 0; }
 
-  tmp_file=$(mktemp)
-  while IFS= read -r item; do
-    item=$(printf '%s' "$item" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    [ -n "$item" ] || continue
-    case "$kind" in
-      issue)
-        printf '%s' "$item" | jq -ce '
-          select(
-            type == "object"
-            and (.test | type == "string")
-            and (.file | type == "string")
-            and (.error | type == "string")
-          )
-        ' >> "$tmp_file" 2>/dev/null || true
-        ;;
-      resolution|outcome)
-        printf '%s' "$item" | jq -ce '
-          select(
-            type == "object"
-            and (.test | type == "string")
-            and (.file | type == "string")
-            and (.error | type == "string")
-            and (.disposition | type == "string")
-            and (.rationale | type == "string")
-            and (
-              .disposition == "resolved"
-              or .disposition == "accepted-process-exception"
-              or .disposition == "unresolved"
-            )
-          )
-        ' >> "$tmp_file" 2>/dev/null || true
-        ;;
-    esac
-  done < <(extract_frontmatter_array_items "$file_path" "$key_name")
+  tmp_file=$(mktemp) || { echo '[]'; return 0; }
+  if ! extract_frontmatter_array_items "$file_path" "$key_name" > "$tmp_file" 2>/dev/null; then
+    rm -f "$tmp_file"
+    echo '[]'
+    return 0
+  fi
 
   if [ ! -s "$tmp_file" ]; then
     rm -f "$tmp_file"
@@ -1138,7 +1109,34 @@ extract_frontmatter_json_object_array() {
     return 0
   fi
 
-  jq -sc 'unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_file"
+  jq -Rsc --arg kind "$kind" '
+    def trim: gsub("^[[:space:]]+|[[:space:]]+$"; "");
+    def valid_issue:
+      type == "object"
+      and (.test | type == "string")
+      and (.file | type == "string")
+      and (.error | type == "string");
+    def valid_resolution:
+      valid_issue
+      and (.disposition | type == "string")
+      and (.rationale | type == "string")
+      and (
+        .disposition == "resolved"
+        or .disposition == "accepted-process-exception"
+        or .disposition == "unresolved"
+      );
+    split("\n")
+    | map(trim | select(length > 0) | (try fromjson catch empty))
+    | if $kind == "issue" then
+        map(select(valid_issue))
+      elif $kind == "resolution" or $kind == "outcome" then
+        map(select(valid_resolution))
+      else
+        []
+      end
+    | unique_by(.test, .file, .error)
+    | sort_by(.test, .file, .error)
+  ' "$tmp_file"
   rm -f "$tmp_file"
 }
 
@@ -1207,12 +1205,18 @@ json_object_array_covers_full_issue_objects() {
   if jq -e -n \
     --slurpfile required "$required_file" \
     --slurpfile candidate "$candidate_file" '
+      def issue_key: [.test, .file, .error] | @json;
       ($required[0] // empty) as $required_array |
       ($candidate[0] // empty) as $candidate_array |
       if (($required_array | type) != "array") or (($candidate_array | type) != "array") then
         false
       else
-        [$candidate_array[] | select(type == "object") | {test: .test, file: .file, error: .error}] as $candidate_identities |
+        (reduce ($candidate_array[] | select(
+          type == "object"
+          and (.test | type == "string")
+          and (.file | type == "string")
+          and (.error | type == "string")
+        )) as $candidate ({}; .[$candidate | issue_key] = true)) as $candidate_index |
         all($required_array[];
           if type != "object" then
             false
@@ -1221,9 +1225,7 @@ json_object_array_covers_full_issue_objects() {
           elif ((.test | type) != "string") or ((.file | type) != "string") or ((.error | type) != "string") then
             false
           else
-            {test: .test, file: .file, error: .error} as $required_identity
-            | $candidate_identities
-            | any(. == $required_identity)
+            ($candidate_index[issue_key] // false) == true
           end
         )
       end
@@ -1267,18 +1269,29 @@ json_object_array_dispositions_match() {
   if jq -e -n \
     --slurpfile expected "$expected_file" \
     --slurpfile actual "$actual_file" '
+      def disposition_key: [.test, .file, .error, .disposition] | @json;
       ($expected[0] // empty) as $expected_array |
       ($actual[0] // empty) as $actual_array |
       if (($expected_array | type) != "array") or (($actual_array | type) != "array") then
         false
       else
-        [$actual_array[] | select(type == "object") | {test: .test, file: .file, error: .error, disposition: .disposition}] as $actual_dispositions |
+        (reduce ($actual_array[] | select(
+          type == "object"
+          and (.test | type == "string")
+          and (.file | type == "string")
+          and (.error | type == "string")
+          and (.disposition | type == "string")
+        )) as $actual_disposition ({}; .[$actual_disposition | disposition_key] = true)) as $actual_disposition_index |
         all($expected_array[];
-          (type != "object")
-          or ((.test // "") == "")
-          or ({test: .test, file: .file, error: .error, disposition: .disposition} as $expected_disposition
-            | $actual_dispositions
-            | any(. == $expected_disposition))
+          if type != "object" then
+            true
+          elif ((.test // "") == "") then
+            true
+          elif ((.test | type) != "string") or ((.file | type) != "string") or ((.error | type) != "string") or ((.disposition | type) != "string") then
+            false
+          else
+            ($actual_disposition_index[disposition_key] // false) == true
+          end
         )
       end
     ' >/dev/null 2>&1; then

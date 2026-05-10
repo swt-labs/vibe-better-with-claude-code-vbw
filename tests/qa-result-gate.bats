@@ -4593,13 +4593,15 @@ VERIF
 }
 
 @test "known-issue structural helpers avoid delimiter and large-array argv regressions" {
+  gate_extract_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "extract_frontmatter_json_object_array" "collect_frontmatter_json_object_array_in_dir") || false
   gate_cover_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "json_object_array_covers_full_issue_objects" "load_known_issue_registry_json") || false
   gate_disposition_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "json_object_array_dispositions_match" "json_object_array_has_disposition") || false
   snapshot_body=$(extract_function_span "$REPO_ROOT/scripts/qa-remediation-state.sh" "write_known_issue_snapshot" "materialize_round_known_issues_snapshot") || false
+  [ -n "$gate_extract_body" ]
   [ -n "$gate_cover_body" ]
   [ -n "$gate_disposition_body" ]
   [ -n "$snapshot_body" ]
-  combined_body=$(printf '%s\n%s\n%s\n' "$gate_cover_body" "$gate_disposition_body" "$snapshot_body")
+  combined_body=$(printf '%s\n%s\n%s\n%s\n' "$gate_extract_body" "$gate_cover_body" "$gate_disposition_body" "$snapshot_body")
 
   [[ "$combined_body" != *"--argjson issues"* ]]
   [[ "$combined_body" != *"--argjson required"* ]]
@@ -4612,6 +4614,11 @@ VERIF
   [[ "$combined_body" != *"--arg file"* ]]
   [[ "$combined_body" != *"--arg error"* ]]
   [[ "$combined_body" != *"--arg disposition"* ]]
+  [[ "$gate_extract_body" != *"while IFS= read -r item"* ]]
+  [[ "$gate_extract_body" != *"printf '%s' \"\$item\" | jq"* ]]
+  [[ "$gate_extract_body" == *"jq -Rsc"* ]]
+  [[ "$gate_cover_body" == *"@json"* ]]
+  [[ "$gate_disposition_body" == *"@json"* ]]
 }
 
 @test "large Pest namespace known-issue registry avoids argv limits and proceeds" {
