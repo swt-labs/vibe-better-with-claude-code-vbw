@@ -704,8 +704,8 @@ EOF
 
   run_phase_detect
   [ "$status" -eq 0 ]
-  [[ "$output" == *"first_unverified_phase=02"* ]]
-  [[ "$output" == *"first_unverified_slug=02-polish"* ]]
+  [[ "$output" == *"first_unverified_phase=02"* ]] || { printf '%s\n' "$output" >&3; false; }
+  [[ "$output" == *"first_unverified_slug=02-polish"* ]] || { printf '%s\n' "$output" >&3; false; }
 }
 
 @test "phase-detect first_unverified_phase empty when all verified" {

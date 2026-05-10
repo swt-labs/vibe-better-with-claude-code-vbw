@@ -1935,6 +1935,42 @@ CONF
   echo "$output" | grep -q "has_unverified_phases=false"
 }
 
+@test "phase-detect skips verified phase and routes next unverified phase" {
+  cat > .vbw-planning/config.json <<'CONF'
+{
+  "effort": "balanced",
+  "auto_uat": true,
+  "auto_commit": true,
+  "planning_tracking": "manual",
+  "auto_push": "never"
+}
+CONF
+  echo "# My Project" > .vbw-planning/PROJECT.md
+
+  mkdir -p .vbw-planning/phases/01-setup
+  touch .vbw-planning/phases/01-setup/01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-SUMMARY.md
+  cat > .vbw-planning/phases/01-setup/01-UAT.md <<'EOF'
+---
+phase: 01
+status: passed
+---
+All tests passed.
+EOF
+
+  mkdir -p .vbw-planning/phases/02-polish
+  touch .vbw-planning/phases/02-polish/02-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/02-polish/02-SUMMARY.md
+
+  run_phase_detect
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"has_unverified_phases=true"* ]] || { printf '%s\n' "$output" >&3; false; }
+  [[ "$output" == *"first_unverified_phase=02"* ]] || { printf '%s\n' "$output" >&3; false; }
+  [[ "$output" == *"first_unverified_slug=02-polish"* ]] || { printf '%s\n' "$output" >&3; false; }
+  [[ "$output" == *"next_phase=02"* ]] || { printf '%s\n' "$output" >&3; false; }
+  [[ "$output" == *"next_phase_state=needs_verification"* ]] || { printf '%s\n' "$output" >&3; false; }
+}
+
 # --- QA status detection tests ---
 
 @test "qa_status defaults to none when no phases" {

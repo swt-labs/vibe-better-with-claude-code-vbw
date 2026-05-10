@@ -165,6 +165,42 @@ EOF
   [ "$result" = "active" ]
 }
 
+@test "uat_file_status_class: blank frontmatter status suppresses stale body fallback" {
+  cat > "$PHASE_DIR/03-UAT.md" <<'EOF'
+---
+phase: 03
+status:
+---
+status: passed
+EOF
+
+  result=$(uat_file_status_class "$PHASE_DIR/03-UAT.md")
+  [ "$result" = "active" ]
+}
+
+@test "uat_file_status_class: terminal frontmatter status is complete when awk is unavailable" {
+  local fake_bin old_path
+  fake_bin="$TEST_TEMP_DIR/fake-bin"
+  mkdir -p "$fake_bin"
+  printf '%s\n' '#!/usr/bin/env bash' 'exit 127' > "$fake_bin/awk"
+  chmod +x "$fake_bin/awk"
+  printf '%s\n' '---' 'phase: 03' 'status: passed' '---' 'All good.' > "$PHASE_DIR/03-UAT.md"
+
+  old_path="$PATH"
+  PATH="$fake_bin:$PATH"
+  result=$(uat_file_status_class "$PHASE_DIR/03-UAT.md")
+  PATH="$old_path"
+
+  [ "$result" = "complete" ]
+}
+
+@test "uat_file_status_class: body-only unindented terminal status is complete" {
+  printf '%s\n' '# UAT' 'status: passed' 'All good.' > "$PHASE_DIR/03-UAT.md"
+
+  result=$(uat_file_status_class "$PHASE_DIR/03-UAT.md")
+  [ "$result" = "complete" ]
+}
+
 @test "uat_file_status_class: terminal and remediation statuses classify correctly" {
   local status expected file
   for case_data in \
