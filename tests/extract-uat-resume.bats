@@ -25,7 +25,22 @@ assert_output_has_line() {
 
 assert_output_lacks_prefix() {
   local prefix="$1"
-  ! grep -Eq "^${prefix}" <<< "$output"
+  local line
+
+  while IFS= read -r line; do
+    case "$line" in
+      "$prefix"*) return 1 ;;
+    esac
+  done <<< "$output"
+
+  return 0
+}
+
+@test "assert_output_lacks_prefix treats regex metacharacters literally" {
+  output='uat_resume_scenario=Literal scenario field'
+
+  assert_output_lacks_prefix 'uat_resume.scenario'
+  ! assert_output_lacks_prefix 'uat_resume_scenario'
 }
 
 @test "extract-uat-resume: no UAT file returns none" {
