@@ -29,6 +29,22 @@ if [ ! -f "$UAT_FILE" ]; then
   exit 1
 fi
 
+# The rewrite below only operates inside an existing YAML frontmatter block.
+# Fail closed before parsing/reporting status so callers are not told a
+# frontmatter-less UAT was finalized when no file mutation can occur.
+if ! awk '
+  NR == 1 {
+    if ($0 !~ /^---[[:space:]]*$/) exit 1
+    in_fm = 1
+    next
+  }
+  in_fm && /^---[[:space:]]*$/ { found = 1; exit 0 }
+  END { if (!found) exit 1 }
+' "$UAT_FILE"; then
+  echo "finalize-uat-status: missing YAML frontmatter block" >&2
+  exit 1
+fi
+
 # Parse all **Result:** values from test entries.
 # Returns one token per line: pass, skip, issue, empty, __missing__, or
 # __unknown__:<raw>.
@@ -139,29 +155,57 @@ fi
 # Preserves all other frontmatter fields, only updates the target fields
 awk -v status="$STATUS" -v completed="$TODAY" -v passed="$PASSED" \
     -v skipped="$SKIPPED" -v issues="$ISSUES" -v total="$TOTAL" '
-  BEGIN { in_fm = 0; fm_done = 0; saw_completed = 0 }
+  BEGIN {
+    in_fm = 0; fm_done = 0
+    saw_status = 0; saw_completed = 0; saw_passed = 0
+    saw_skipped = 0; saw_issues = 0; saw_total = 0
+  }
   NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; print; next }
   in_fm && /^---[[:space:]]*$/ {
-    # Inject completed field if it was missing from frontmatter
+    # Inject canonical UAT status/count fields if missing. A successful
+    # finalizer rewrite must leave downstream readers with a complete schema,
+    # even for brownfield UAT files that omitted count keys.
+    if (!saw_status) {
+      printf "status: %s\n", status
+    }
     if (!saw_completed && completed != "") {
       printf "completed: %s\n", completed
+    } else if (!saw_completed) {
+      printf "completed:\n"
+    }
+    if (!saw_passed) {
+      printf "passed: %s\n", passed
+    }
+    if (!saw_skipped) {
+      printf "skipped: %s\n", skipped
+    }
+    if (!saw_issues) {
+      printf "issues: %s\n", issues
+    }
+    if (!saw_total) {
+      printf "total_tests: %s\n", total
     }
     in_fm = 0; fm_done = 1; print; next
   }
   in_fm {
     if ($0 ~ /^status[[:space:]]*:/) {
+      saw_status = 1
       printf "status: %s\n", status
     } else if ($0 ~ /^completed[[:space:]]*:/) {
       saw_completed = 1
       if (completed != "") printf "completed: %s\n", completed
       else printf "completed:\n"  # clear stale date for in_progress
     } else if ($0 ~ /^passed[[:space:]]*:/) {
+      saw_passed = 1
       printf "passed: %s\n", passed
     } else if ($0 ~ /^skipped[[:space:]]*:/) {
+      saw_skipped = 1
       printf "skipped: %s\n", skipped
     } else if ($0 ~ /^issues[[:space:]]*:/) {
+      saw_issues = 1
       printf "issues: %s\n", issues
     } else if ($0 ~ /^total_tests[[:space:]]*:/) {
+      saw_total = 1
       printf "total_tests: %s\n", total
     } else {
       print

@@ -433,6 +433,25 @@ EOF
   [[ "$output" == *"Error"* ]]
 }
 
+@test "finalize-uat-status: missing frontmatter fails closed without rewriting body" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+# UAT without frontmatter
+
+## Tests
+
+### P01-T1: Test one
+
+- **Result:** pass
+EOF
+  cp "$uat" "$uat.before"
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing YAML frontmatter block"* ]]
+  cmp -s "$uat.before" "$uat"
+}
+
 # --- finalize-uat-status.sh robustness: edge-case Result values ---
 
 @test "finalize-uat-status: Result with leading whitespace → pass" {
@@ -644,6 +663,51 @@ EOF
   local today
   today=$(date +%Y-%m-%d)
   grep -q "^completed: $today" "$uat"
+}
+
+@test "finalize-uat-status: injects missing canonical count fields" {
+  local uat="$TEST_TEMP_DIR/R05-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 03
+round: 05
+status: in_progress
+---
+
+## Tests
+
+### D01: Review accepted deviation
+
+- **Result:** pass
+
+### PR05-T01: Verify recurring remediation behavior
+
+- **Result:** issue
+- **Issue:** Re-verification still finds the problem
+  - Description: Re-verification still finds the problem
+  - Severity: major
+
+### PR05-T02: Optional follow-up
+
+- **Result:** skip
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=issues_found"* ]]
+  [[ "$output" == *"passed=1"* ]]
+  [[ "$output" == *"skipped=1"* ]]
+  [[ "$output" == *"issues=1"* ]]
+  [[ "$output" == *"total=3"* ]]
+
+  local today
+  today=$(date +%Y-%m-%d)
+  grep -q '^status: issues_found$' "$uat"
+  grep -q "^completed: $today$" "$uat"
+  grep -q '^passed: 1$' "$uat"
+  grep -q '^skipped: 1$' "$uat"
+  grep -q '^issues: 1$' "$uat"
+  grep -q '^total_tests: 3$' "$uat"
 }
 
 # --- extract-uat-issues.sh lenient parsing tests ---

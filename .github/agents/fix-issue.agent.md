@@ -322,11 +322,20 @@ Start with cross-model round M = 1. **Repeat the following steps, incrementing M
 
 <main_sync_procedure>
 **Standard main-sync procedure.** Used at designated merge points (steps 22, 24):
-1. `cd <worktree-absolute-path> && git fetch origin && git merge origin/main`
-2. If merge produced conflicts, resolve them first
-3. Run `cd <worktree-absolute-path> && bash testing/run-all.sh` to verify
-4. Push normally (no `--force`)
-5. If conflicts are too complex, abort (`git merge --abort`) and report to the user
+1. `cd <worktree-absolute-path> && git fetch origin`
+2. Check whether `origin/main` has commits not in the branch:
+    ```bash
+    NEW_COMMITS=$(git rev-list HEAD..origin/main --count)
+    echo "Commits behind main: $NEW_COMMITS"
+    ```
+3. If `NEW_COMMITS` is `0`, skip the merge, tests, and push. No code changed at this sync checkpoint, so a full `testing/run-all.sh` run would be redundant; continue to the next workflow step.
+4. If `NEW_COMMITS` is greater than `0`, merge `origin/main`.
+5. If merge produced conflicts, resolve them first.
+6. Run `cd <worktree-absolute-path> && bash testing/run-all.sh` only after the merge, conflict resolution, or another sync step changed the branch/worktree.
+7. Push normally (no `--force`) only when there is a merge commit or other sync change to publish.
+8. If conflicts are too complex, abort (`git merge --abort`) and report to the user.
+
+This no-op skip applies only to main-sync checkpoints. After implementation, QA remediation, conflict resolution, or CI fixes, keep the explicit test requirements for the step that changed code.
 
 **Do NOT merge main outside these designated sync points.** In particular, do not merge main mid-round (between spawning a QA sub-agent and processing its findings), and do not merge main after a Copilot review request is already being processed until that review's findings have been handled — merging changes the code under review and can invalidate findings.
 </main_sync_procedure>

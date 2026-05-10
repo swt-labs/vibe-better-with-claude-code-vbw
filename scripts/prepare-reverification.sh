@@ -65,6 +65,27 @@ resolve_config_path() {
   esac
 }
 
+uat_has_required_finalized_frontmatter() {
+  local file="$1"
+
+  awk '
+    BEGIN {
+      in_fm = 0; saw_fm = 0
+      status = 0; completed = 0; passed = 0
+      skipped = 0; issues = 0; total = 0
+    }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; saw_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { in_fm = 0; next }
+    in_fm && /^status[[:space:]]*:[[:space:]]*issues_found[[:space:]]*$/ { status = 1; next }
+    in_fm && /^completed[[:space:]]*:[[:space:]]*[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][[:space:]]*$/ { completed = 1; next }
+    in_fm && /^passed[[:space:]]*:[[:space:]]*[0-9][0-9]*[[:space:]]*$/ { passed = 1; next }
+    in_fm && /^skipped[[:space:]]*:[[:space:]]*[0-9][0-9]*[[:space:]]*$/ { skipped = 1; next }
+    in_fm && /^issues[[:space:]]*:[[:space:]]*[0-9][0-9]*[[:space:]]*$/ { issues = 1; next }
+    in_fm && /^total_tests[[:space:]]*:[[:space:]]*[0-9][0-9]*[[:space:]]*$/ { total = 1; next }
+    END { exit !(saw_fm && status && completed && passed && skipped && issues && total) }
+  ' "$file"
+}
+
 # Find the UAT file
 UAT_FILE=$(current_uat "$PHASE_DIR")
 
@@ -75,10 +96,31 @@ if [ -z "$UAT_FILE" ] || [ ! -f "$UAT_FILE" ]; then
   exit 0
 fi
 
-# Check UAT status — only archive issues_found
+# Check and, when safe, finalize UAT status before any stage/round mutation.
+# Active UAT artifacts are often fully answered while frontmatter still says
+# in_progress; the deterministic finalizer is the source of truth for counts.
 UAT_STATUS=$(extract_status_value "$UAT_FILE")
-if [ "$UAT_STATUS" != "issues_found" ]; then
-  echo "Error: UAT status is '${UAT_STATUS:-empty}', not 'issues_found' — refusing to archive" >&2
+UAT_CLASS=$(uat_file_status_class "$UAT_FILE")
+_finalized_active_uat=false
+if [ "$UAT_CLASS" = "active" ]; then
+  _finalize_output=""
+  if ! _finalize_output=$(bash "$_SCRIPT_DIR_PR/finalize-uat-status.sh" "$UAT_FILE" 2>&1); then
+    printf '%s\n' "$_finalize_output" >&2
+    echo "Error: current UAT is not finalized as 'issues_found' — refusing to advance" >&2
+    exit 1
+  fi
+  UAT_STATUS=$(extract_status_value "$UAT_FILE")
+  UAT_CLASS=$(uat_file_status_class "$UAT_FILE")
+  _finalized_active_uat=true
+fi
+
+if [ "$UAT_CLASS" != "issues_found" ]; then
+  echo "Error: current UAT is not 'issues_found' and not finalized as 'issues_found' (status='${UAT_STATUS:-empty}', class='${UAT_CLASS:-none}') — refusing to advance" >&2
+  exit 1
+fi
+
+if [ "$_finalized_active_uat" = true ] && ! uat_has_required_finalized_frontmatter "$UAT_FILE"; then
+  echo "Error: current UAT finalization did not produce required 'issues_found' frontmatter keys — refusing to advance" >&2
   exit 1
 fi
 
@@ -183,6 +225,7 @@ case "$UAT_FILE" in
       echo "round_file=$UAT_BASENAME"
       echo "phase=$PHASE_NUM"
       echo "layout=$_LAYOUT"
+      bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" current-round "${PHASE_DIR%/}" 2>/dev/null | awk '{ print "round=" $0; exit }' || true
     else
       # Stale UAT from a previous round — current round has no UAT yet.
       # Don't archive or advance rounds; move stage to verify so the
@@ -282,5 +325,6 @@ echo "archived=$UAT_BASENAME"
 echo "round_file=$ROUND_FILE"
 echo "phase=$PHASE_NUM"
 echo "layout=$_LAYOUT"
+bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" current-round "${PHASE_DIR%/}" 2>/dev/null | awk '{ print "round=" $0; exit }' || true
 
 exit 0
