@@ -926,26 +926,26 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
 
    For the FIRST test without a result, display a CHECKPOINT followed by AskUserQuestion:
 
-   ```text
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   CHECKPOINT {NN}/{total} — {plan-id}: {plan-title}
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ```text
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    CHECKPOINT {NN}/{total} — {plan-id}: {plan-title}
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-   {scenario description}
-   ```
+    {scenario description}
+    ```
 
-   Then use AskUserQuestion:
+    Then use AskUserQuestion. Keep the modal question self-contained because it may cover the surrounding checkpoint prose:
 
-   ```yaml
-   question: "Expected: {expected result}"
-   header: "UAT"
-   multiSelect: false
-   options:
-     - label: "Pass"
-       description: "Behavior matches expected result"
-     - label: "Skip"
-       description: "Cannot test right now — skip this checkpoint"
-   ```
+    ```yaml
+    question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"
+    header: "UAT"
+    multiSelect: false
+    options:
+      - label: "Pass"
+        description: "Behavior matches expected result"
+      - label: "Skip"
+        description: "Cannot test right now — skip this checkpoint"
+    ```
 
    The tool automatically provides a freeform "Other" option for the user to describe issues.
 

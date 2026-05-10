@@ -587,25 +587,25 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
 2. Present checkpoints one at a time using CHECKPOINT + AskUserQuestion:
 
    Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
-   ```text
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     CHECKPOINT {NN}/{total} — Debug Fix Verification
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ```text
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      CHECKPOINT {NN}/{total} — Debug Fix Verification
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-   {scenario description}
-   ```
+    {scenario description}
+    ```
 
-   Then call AskUserQuestion:
-   ```yaml
-   question: "Expected: {expected result}"
-   header: "UAT"
-   multiSelect: false
-   options:
-     - label: "Pass"
-       description: "Behavior matches expected result"
-     - label: "Skip"
-       description: "Cannot test right now — skip this checkpoint"
-   ```
+    Then call AskUserQuestion. Keep the modal question self-contained because it may cover the surrounding checkpoint prose:
+    ```yaml
+    question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"
+    header: "UAT"
+    multiSelect: false
+    options:
+      - label: "Pass"
+        description: "Behavior matches expected result"
+      - label: "Skip"
+        description: "Cannot test right now — skip this checkpoint"
+    ```
 
    **AskUserQuestion is a tool call (NON-NEGOTIABLE):** You MUST invoke AskUserQuestion via the tool_use mechanism — never emit the question parameters as text, YAML, or any other inline format in your response body. If AskUserQuestion appears in your text output instead of as a tool call, the checkpoint will not be presented to the user and the session will end prematurely. **STOP HERE and wait for the user to respond.** Process one checkpoint at a time.
 

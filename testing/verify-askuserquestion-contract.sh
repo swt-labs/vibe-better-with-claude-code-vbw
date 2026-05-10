@@ -423,6 +423,7 @@ require_file_literal "ask-user-question: documents short-header guidance" "Keep 
 require_file_regex "ask-user-question: documents 2-4 option sweet spot" '2[-–]4 options' "$ASK_USER_QUESTION_REF"
 require_file_regex "ask-user-question: documents 1-4 question guidance" '1[-–]4 questions' "$ASK_USER_QUESTION_REF"
 require_file_literal "ask-user-question: documents built-in Other path" '`Other` path' "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: documents self-contained modal context" 'minimal answer-critical context in the `question` itself' "$ASK_USER_QUESTION_REF"
 require_file_literal "ask-user-question: documents intentional freeform boundary" "high-cardinality or unbounded" "$ASK_USER_QUESTION_REF"
 require_file_literal "ask-user-question: documents freeform handoff heading" "### Freeform handoff" "$ASK_USER_QUESTION_REF"
 require_file_literal "ask-user-question: documents freeform handoff behavior" "stop using AskUserQuestion" "$ASK_USER_QUESTION_REF"
@@ -566,6 +567,45 @@ for mapping_target in \
 done
 
 require_text_literal "execute-protocol: DNN todo intent rejects smart-apostrophe contraction blocker" "can’t continue, track this" "$EXECUTE_RESPONSE_MAPPING_BLOCK"
+
+# --------------------------------------------------------------------------
+# Check 4c: Normal product UAT prompts are self-contained in AskUserQuestion
+# --------------------------------------------------------------------------
+
+echo ""
+echo "--- Check 4c: Product UAT prompt context ---"
+
+PRODUCT_UAT_MODAL='question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"'
+EXPECTED_ONLY_MODAL='question: "Expected: {expected result}"'
+
+require_file_literal "verify: product UAT modal includes Scenario and Expected" "$PRODUCT_UAT_MODAL" "$VERIFY_COMMAND_FILE"
+require_file_literal "execute-protocol: product UAT modal includes Scenario and Expected" "$PRODUCT_UAT_MODAL" "$EXECUTE_PROTOCOL_FILE"
+require_file_literal "debug: product UAT modal includes Scenario and Expected" "$PRODUCT_UAT_MODAL" "$COMMANDS_DIR/debug.md"
+
+if grep -Fq "$EXPECTED_ONLY_MODAL" "$VERIFY_COMMAND_FILE"; then
+  fail "verify: product UAT modal no longer uses expected-only question"
+else
+  pass "verify: product UAT modal no longer uses expected-only question"
+fi
+
+if grep -Fq "$EXPECTED_ONLY_MODAL" "$EXECUTE_PROTOCOL_FILE"; then
+  fail "execute-protocol: product UAT modal no longer uses expected-only question"
+else
+  pass "execute-protocol: product UAT modal no longer uses expected-only question"
+fi
+
+if grep -Fq "$EXPECTED_ONLY_MODAL" "$COMMANDS_DIR/debug.md"; then
+  fail "debug: product UAT modal no longer uses expected-only question"
+else
+  pass "debug: product UAT modal no longer uses expected-only question"
+fi
+
+require_file_literal "verify: resumed product UAT consumes uat_resume_scenario" 'uat_resume_scenario' "$VERIFY_COMMAND_FILE"
+require_file_literal "verify: resumed product UAT consumes uat_resume_expected" 'uat_resume_expected' "$VERIFY_COMMAND_FILE"
+require_file_literal "vibe: passes resumed product UAT scenario field" 'uat_resume_scenario' "$VIBE_COMMAND_FILE"
+require_file_literal "vibe: passes resumed product UAT expected field" 'uat_resume_expected' "$VIBE_COMMAND_FILE"
+require_file_literal "vibe: extractor failure uses error sentinel" '|| echo "uat_resume=error"' "$VIBE_COMMAND_FILE"
+require_file_literal "vibe: extractor unavailable uses unavailable sentinel" 'echo "uat_resume=unavailable"' "$VIBE_COMMAND_FILE"
 
 # --------------------------------------------------------------------------
 # Check 5: /vbw:list-todos intentional plain-text/freeform handoff

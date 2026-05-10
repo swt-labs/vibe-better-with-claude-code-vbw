@@ -151,6 +151,24 @@ require_all "$VERIFY_FILE" \
   "rather than asking them to run automated checks"
 
 require_all "$EXEC_PROTO" \
+  "execute-protocol: product UAT modal is self-contained" \
+  'question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"' \
+  "Keep the modal question self-contained"
+
+require_all "$VERIFY_FILE" \
+  "verify: product UAT modal is self-contained" \
+  'question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"' \
+  "The modal question must be self-contained"
+
+require_absent "$EXEC_PROTO" \
+  "execute-protocol: product UAT modal avoids expected-only anti-pattern" \
+  'question: "Expected: {expected result}"'
+
+require_absent "$VERIFY_FILE" \
+  "verify: product UAT modal avoids expected-only anti-pattern" \
+  'question: "Expected: {expected result}"'
+
+require_all "$EXEC_PROTO" \
   "execute-protocol: synthesizes UAT issue descriptions" \
   'synthesize an actionable persisted `Description`' \
   "checkpoint expectation" \

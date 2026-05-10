@@ -493,8 +493,9 @@ When routed here, skip the standard phase-resolution Steps entirely. Instead:
 - Use UAT resume metadata for the active target phase (the pre-computed auto-detected block, the target-specific refresh from Step 1, or the refreshed metadata from Step 2 for re-verification):
   - `uat_resume=none`: no existing UAT session — proceed to Step 4 (generate tests)
   - `uat_resume=all_done uat_completed=N uat_total=N`: all tests already have results — display the summary, STOP
-  - `uat_resume=<test-id> uat_completed=N uat_total=N`: resume at `<test-id>`. Display: `Resuming UAT session -- {completed}/{total} tests done`. Read the UAT.md once to load checkpoint text, then jump to the CHECKPOINT loop at the resume point.
-- Do NOT scan-parse the UAT file to find the resume point — the pre-computed metadata already identifies it.
+  - `uat_resume=<test-id> uat_completed=N uat_total=N`: resume at `<test-id>` only when `<test-id>` is a valid checkpoint ID (`P...`, `PR...`, or `D...`). Display: `Resuming UAT session -- {completed}/{total} tests done`. Use the following `uat_resume_*` lines as the authoritative prompt context for the first resumed checkpoint: normal product checkpoints use `uat_resume_scenario` + `uat_resume_expected`; summary-deviation checkpoints use `uat_resume_deviation`, `uat_resume_source_plan`, `uat_resume_source_summary`, and `uat_resume_deviation_signature`.
+- Treat `uat_resume=unavailable`, `uat_resume=error`, and `uat_resume=pending_archive` as compact wrapper sentinels, not checkpoint IDs.
+- Do NOT scan-parse the UAT file to find the resume point — the pre-computed metadata already identifies it. If the required `uat_resume_*` fields for the active checkpoint type are absent or incomplete, read the UAT.md once as a recoverable legacy/malformed-artifact fallback, then jump to the CHECKPOINT loop at the resume point.
 
 ### 4. Generate test scenarios from pre-computed verify context
 
@@ -582,10 +583,10 @@ For the FIRST test without a result, display a CHECKPOINT followed by AskUserQue
 {scenario description}
 ```
 
-Then call the `AskUserQuestion` tool (this MUST be a tool_use call, NOT text output):
+Then call the `AskUserQuestion` tool (this MUST be a tool_use call, NOT text output). The modal question must be self-contained because it may cover the surrounding prose:
 
 ```yaml
-question: "Expected: {expected result}"
+question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"
 header: "UAT"
 multiSelect: false
 options:
@@ -612,7 +613,7 @@ The tool automatically provides a freeform "Other" option for the user to descri
 
 **STOP HERE.** Wait for the AskUserQuestion response. Do NOT continue to the next test, do NOT skip to Step 6, and do NOT end the turn. The tool call blocks until the user responds.
 
-**After the user responds:** process the response (Step 6), persist to disk (Step 8), then present the NEXT test using the same CHECKPOINT + AskUserQuestion format. **STOP and wait again.** Repeat until all tests are done, then go to Step 9.
+**After the user responds:** process the response (Step 6), persist to disk (Step 8), then re-run `bash "{plugin-root}/scripts/extract-uat-resume.sh" "{phase-dir}"` to fetch the next incomplete checkpoint and its deterministic `uat_resume_*` prompt context. If the refreshed output is `uat_resume=all_done`, proceed to Step 9. If it returns another valid product checkpoint with `uat_resume_scenario` + `uat_resume_expected`, present that next checkpoint using those emitted fields. If it returns a valid summary-deviation checkpoint, use the emitted deviation/source fields. If required fields are missing for the checkpoint type, read the UAT file once as a fallback for that next checkpoint instead of guessing. **STOP and wait again.** Repeat until all tests are done, then go to Step 9.
 
 ### 6. Response mapping
 
