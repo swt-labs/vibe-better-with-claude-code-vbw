@@ -861,6 +861,12 @@ EOF
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
+---
+status: issues_found
+---
+# UAT
+EOF
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
   [ "$status" -eq 0 ]
@@ -938,12 +944,56 @@ EOF
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
+---
+status: issues_found
+---
+# UAT
+EOF
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
   [ "$status" -eq 0 ]
   [ "$(echo "$output" | head -1)" = "research" ]
   echo "$output" | grep -q "^round=02$"
   [ -d "$PHASE_DIR/remediation/uat/round-02" ]
+}
+
+@test "needs-round refuses previous-round fallback when current round UAT is missing" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01" "$PHASE_DIR/remediation/uat/round-02"
+  printf 'stage=done\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
+---
+status: issues_found
+---
+# Previous round UAT
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"current round UAT evidence is missing"* ]]
+  grep -q '^stage=done$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^round=02$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ ! -d "$PHASE_DIR/remediation/uat/round-03" ]
+}
+
+@test "needs-round accepts exact current flat archive during migration bridge" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-02"
+  printf 'stage=done\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/01-UAT-round-02.md" <<'EOF'
+---
+status: issues_found
+---
+# Flat archive for current round
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "research" ]
+  grep -q '^stage=research$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^round=03$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ -d "$PHASE_DIR/remediation/uat/round-03" ]
 }
 
 @test "needs-round refuses when current round UAT is active" {

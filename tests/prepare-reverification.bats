@@ -442,6 +442,49 @@ EOF
   [[ "$output" == *"archived=in-round-dir"* ]]
 }
 
+@test "round-dir layout: finalized active UAT injects missing count fields before advancing" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-05"
+  printf 'stage=verify\nround=05\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-05/R05-UAT.md" <<'EOF'
+---
+phase: "03"
+round: "05"
+status: in_progress
+---
+# UAT — Remediation Round 05
+
+## Tests
+
+### D01: Review accepted deviation
+
+- **Result:** pass
+
+### PR05-T01: Verify remediation behavior
+
+- **Result:** PARTIAL — still blocked
+- **Issue:** Reverification still finds the bug
+  - Description: Reverification still finds the bug
+  - Severity: major
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  grep -q '^status: issues_found$' "$PHASE_DIR/remediation/uat/round-05/R05-UAT.md"
+  grep -q '^passed: 1$' "$PHASE_DIR/remediation/uat/round-05/R05-UAT.md"
+  grep -q '^skipped: 0$' "$PHASE_DIR/remediation/uat/round-05/R05-UAT.md"
+  grep -q '^issues: 1$' "$PHASE_DIR/remediation/uat/round-05/R05-UAT.md"
+  grep -q '^total_tests: 2$' "$PHASE_DIR/remediation/uat/round-05/R05-UAT.md"
+  grep -q '^completed: 20' "$PHASE_DIR/remediation/uat/round-05/R05-UAT.md"
+
+  grep -q '^stage=research$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^round=06$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ -d "$PHASE_DIR/remediation/uat/round-06" ]
+  [[ "$output" == *"archived=in-round-dir"* ]]
+  [[ "$output" == *"round=06"* ]]
+}
+
 @test "round-dir layout: refuses active current-round UAT with incomplete Result before mutation" {
   mkdir -p "$PHASE_DIR/remediation/uat/round-12"
   printf 'stage=verify\nround=12\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"

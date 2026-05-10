@@ -606,13 +606,44 @@ case "$CMD" in
         exit 1
         ;;
     esac
-    if type current_uat >/dev/null 2>&1 && type uat_file_status_class >/dev/null 2>&1; then
-      current_uat_file=$(current_uat "$PHASE_DIR")
-      if [ -n "$current_uat_file" ] && [ -f "$current_uat_file" ]; then
+    if type uat_file_status_class >/dev/null 2>&1; then
+      current_layout=$(get_layout)
+      if [ "$current_layout" = "round-dir" ]; then
+        current_round=$(get_round)
+        current_round_num=$(printf '%s\n' "$current_round" | sed 's/^0*//')
+        current_round_num="${current_round_num:-0}"
+        case "$current_round_num" in
+          *[!0-9]*|"")
+            echo "Error: needs-round could not resolve numeric current round: $current_round" >&2
+            exit 1
+            ;;
+        esac
+        current_round_padded=$(printf '%02d' "$current_round_num")
+        phase_num=$(extract_phase_num)
+        current_round_uat="$PHASE_DIR/remediation/uat/round-${current_round_padded}/R${current_round_padded}-UAT.md"
+        current_flat_uat="$PHASE_DIR/${phase_num}-UAT-round-${current_round_padded}.md"
+        current_uat_file=""
+        if [ -f "$current_round_uat" ]; then
+          current_uat_file="$current_round_uat"
+        elif [ -n "$phase_num" ] && [ -f "$current_flat_uat" ]; then
+          current_uat_file="$current_flat_uat"
+        else
+          echo "Error: needs-round current round UAT evidence is missing for round $current_round_padded" >&2
+          exit 1
+        fi
         current_uat_class=$(uat_file_status_class "$current_uat_file")
         if [ "$current_uat_class" != "issues_found" ]; then
           echo "Error: needs-round requires a finalized 'issues_found' UAT; current UAT is '$current_uat_class': $current_uat_file" >&2
           exit 1
+        fi
+      elif type current_uat >/dev/null 2>&1; then
+        current_uat_file=$(current_uat "$PHASE_DIR")
+        if [ -n "$current_uat_file" ] && [ -f "$current_uat_file" ]; then
+          current_uat_class=$(uat_file_status_class "$current_uat_file")
+          if [ "$current_uat_class" != "issues_found" ]; then
+            echo "Error: needs-round requires a finalized 'issues_found' UAT; current UAT is '$current_uat_class': $current_uat_file" >&2
+            exit 1
+          fi
         fi
       fi
     fi
