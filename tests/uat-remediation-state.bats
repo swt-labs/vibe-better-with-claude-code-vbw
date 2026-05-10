@@ -945,3 +945,39 @@ EOF
   echo "$output" | grep -q "^round=02$"
   [ -d "$PHASE_DIR/remediation/uat/round-02" ]
 }
+
+@test "needs-round refuses when current round UAT is active" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-03"
+  printf 'stage=verify\nround=03\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" <<'EOF'
+---
+status: in_progress
+---
+# UAT
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"requires a finalized 'issues_found' UAT"* ]]
+  grep -q '^stage=verify$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^round=03$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ ! -d "$PHASE_DIR/remediation/uat/round-04" ]
+}
+
+@test "needs-round refuses lifecycle stages before verify or done" {
+  local stage
+  for stage in research plan execute fix; do
+    rm -rf "$PHASE_DIR/remediation"
+    mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+    printf 'stage=%s\nround=01\nlayout=round-dir\n' "$stage" > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+
+    run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"needs-round requires stage verify or done, got: $stage"* ]]
+    grep -q "^stage=$stage$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+    grep -q '^round=01$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+    [ ! -d "$PHASE_DIR/remediation/uat/round-02" ]
+  done
+}

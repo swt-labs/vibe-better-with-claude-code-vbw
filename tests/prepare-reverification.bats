@@ -396,3 +396,85 @@ EOF
   grep -q "^round=01$" "$nested_phase/remediation/uat/.uat-remediation-stage"
   [ ! -d "$nested_phase/remediation/uat/round-02" ]
 }
+
+@test "round-dir layout: finalizes active current-round UAT before advancing generically" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-03"
+  printf 'stage=verify\nround=03\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" <<'EOF'
+---
+phase: "03"
+status: in_progress
+completed:
+total_tests: 2
+passed: 0
+skipped: 0
+issues: 0
+---
+# UAT — Remediation Round 03
+
+## Tests
+
+### D01: Review accepted deviation
+
+- **Result:** pass
+
+### PR03-T01: Verify remediation behavior
+
+- **Result:** issue
+- **Issue:** Reverification still finds the bug
+  - Description: Reverification still finds the bug
+  - Severity: major
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  grep -q '^status: issues_found$' "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md"
+  grep -q '^passed: 1$' "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md"
+  grep -q '^issues: 1$' "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md"
+  grep -q '^total_tests: 2$' "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md"
+  grep -q '^completed: 20' "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md"
+
+  grep -q '^stage=research$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^round=04$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ -d "$PHASE_DIR/remediation/uat/round-04" ]
+  [[ "$output" == *"archived=in-round-dir"* ]]
+}
+
+@test "round-dir layout: refuses active current-round UAT with incomplete Result before mutation" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-12"
+  printf 'stage=verify\nround=12\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-12/R12-UAT.md" <<'EOF'
+---
+phase: "03"
+status: in_progress
+completed:
+total_tests: 2
+passed: 0
+skipped: 0
+issues: 0
+---
+# UAT — Remediation Round 12
+
+## Tests
+
+### D01: Review accepted deviation
+
+- **Result:** pass
+
+### PR12-T01: Verify remediation behavior
+
+- **Result:**
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/prepare-reverification.sh" "$PHASE_DIR"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"not finalized as 'issues_found'"* ]]
+  grep -q '^status: in_progress$' "$PHASE_DIR/remediation/uat/round-12/R12-UAT.md"
+  grep -q '^stage=verify$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^round=12$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ ! -d "$PHASE_DIR/remediation/uat/round-13" ]
+}

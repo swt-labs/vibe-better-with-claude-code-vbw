@@ -75,10 +75,24 @@ if [ -z "$UAT_FILE" ] || [ ! -f "$UAT_FILE" ]; then
   exit 0
 fi
 
-# Check UAT status — only archive issues_found
+# Check and, when safe, finalize UAT status before any stage/round mutation.
+# Active UAT artifacts are often fully answered while frontmatter still says
+# in_progress; the deterministic finalizer is the source of truth for counts.
 UAT_STATUS=$(extract_status_value "$UAT_FILE")
-if [ "$UAT_STATUS" != "issues_found" ]; then
-  echo "Error: UAT status is '${UAT_STATUS:-empty}', not 'issues_found' — refusing to archive" >&2
+UAT_CLASS=$(uat_file_status_class "$UAT_FILE")
+if [ "$UAT_CLASS" = "active" ]; then
+  _finalize_output=""
+  if ! _finalize_output=$(bash "$_SCRIPT_DIR_PR/finalize-uat-status.sh" "$UAT_FILE" 2>&1); then
+    printf '%s\n' "$_finalize_output" >&2
+    echo "Error: current UAT is not finalized as 'issues_found' — refusing to advance" >&2
+    exit 1
+  fi
+  UAT_STATUS=$(extract_status_value "$UAT_FILE")
+  UAT_CLASS=$(uat_file_status_class "$UAT_FILE")
+fi
+
+if [ "$UAT_CLASS" != "issues_found" ]; then
+  echo "Error: current UAT is not 'issues_found' and not finalized as 'issues_found' (status='${UAT_STATUS:-empty}', class='${UAT_CLASS:-none}') — refusing to advance" >&2
   exit 1
 fi
 
@@ -183,6 +197,7 @@ case "$UAT_FILE" in
       echo "round_file=$UAT_BASENAME"
       echo "phase=$PHASE_NUM"
       echo "layout=$_LAYOUT"
+      bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" current-round "${PHASE_DIR%/}" 2>/dev/null | awk '{ print "round=" $0; exit }' || true
     else
       # Stale UAT from a previous round — current round has no UAT yet.
       # Don't archive or advance rounds; move stage to verify so the
@@ -282,5 +297,6 @@ echo "archived=$UAT_BASENAME"
 echo "round_file=$ROUND_FILE"
 echo "phase=$PHASE_NUM"
 echo "layout=$_LAYOUT"
+bash "$_SCRIPT_DIR_PR/uat-remediation-state.sh" current-round "${PHASE_DIR%/}" 2>/dev/null | awk '{ print "round=" $0; exit }' || true
 
 exit 0

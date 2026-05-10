@@ -1526,19 +1526,26 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 3. Display results per verify.md output format.
 4. **UAT Remediation Auto-Continuation:** This step only applies when verify.md emitted `remediation_continue=true` (which happens when `verify_scope=remediation` AND `status=issues_found` AND running in orchestrated mode from vibe.md). If `remediation_continue` was not set (first-time UAT, complete result, or standalone verify), skip this step entirely — the command ends after step 3.
 
-   **Check the UAT remediation round cap, then advance state:** Read the current round number (read-only, no state mutation) and compare against the configured maximum before advancing:
+   **Prepare the next remediation round through the safe transition helper:** Run `prepare-reverification.sh` exactly once for this transition. This helper finalizes and validates the active UAT before state mutation, applies the UAT remediation round cap, and then performs the next-round transition when allowed. A direct `needs-round` call is not the transition path here because it can mutate `.uat-remediation-stage` before the current UAT is terminal.
 
    ```bash
-   _current_round=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh current-round "{phase-dir}")
-   _cap_decision=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-uat-remediation-round-limit.sh --next-round-decision .vbw-planning/config.json "${_current_round}" 2>/dev/null)
-   _next_round=$(printf '%s\n' "$_cap_decision" | awk -F= '/^next_round=/{print $2; exit}')
-   _max_rounds=$(printf '%s\n' "$_cap_decision" | awk -F= '/^max_rounds=/{print $2; exit}')
-   _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
+   _prepare_output=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/prepare-reverification.sh "{phase-dir}" 2>&1)
+   _prepare_status=$?
    ```
 
-   **If `_cap_reached` is empty or `_cap_decision` is empty:** The round-cap helper failed or returned malformed output. Display: "⚠ Could not determine UAT remediation round cap. Re-run the same verify command for this phase (for example, `/vbw:vibe --verify {N}`) to retry." STOP. Do NOT call `needs-round` — no state mutation on error paths.
+   **If `prepare-reverification.sh` exits nonzero:** Display the helper output and STOP. Do not re-enter remediation with stale state.
 
-   **If `_cap_reached=true`:** Display the cap-reached banner and STOP. Do NOT call `needs-round` — no state mutation occurs:
+   **If `_prepare_output` is empty or malformed:** STOP. Required recognized keys are one of `archived=...` or `skipped=...`; valid `skipped` values are `already_archived`, `ready_for_verify`, or `cap_reached`. Malformed prepare output means the transition could not be proven safe.
+
+   Parse the helper output:
+   ```bash
+   _archived=$(printf '%s\n' "$_prepare_output" | awk -F= '/^archived=/{print $2; exit}')
+   _skipped=$(printf '%s\n' "$_prepare_output" | awk -F= '/^skipped=/{print $2; exit}')
+   _round=$(printf '%s\n' "$_prepare_output" | awk -F= '/^round=/{print $2; exit}')
+   _max_rounds=$(printf '%s\n' "$_prepare_output" | awk -F= '/^max_rounds=/{print $2; exit}')
+   ```
+
+   **If `_skipped=cap_reached`:** Display the cap-reached banner and STOP. Use `max_rounds={N}` from the helper output:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      Reached maximum UAT remediation rounds ({_max_rounds}).
@@ -1548,20 +1555,22 @@ No SUMMARY.md: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
    ```
    Do NOT re-enter remediation. STOP.
 
-   **If `_cap_reached` is not true:** The UAT remediation round cap is either unlimited or still under the configured limit. Advance state by calling `needs-round`:
+   **Resolve the new round:** Prefer `round=` from `prepare-reverification.sh` when present. If `round=` is absent after a successful prepare, read the current round as a read-only fallback:
    ```bash
-   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh needs-round "{phase-dir}"
+   if [ -z "$_round" ]; then
+     _round=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/uat-remediation-state.sh current-round "{phase-dir}" 2>/dev/null)
+   fi
    ```
-   Parse `round={next-round}` from the script output (the script outputs `research`, `round={next-round}`, `round_dir={path}` on separate lines — match by key name, not line position).
+   If `_round` is empty after both attempts, treat the prepare output as malformed and STOP.
 
    Display the transition banner and re-enter UAT Remediation mode inline:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     Re-verification found {N} issue(s). Continuing to Round {next-round}.
+     Re-verification found {N} issue(s). Continuing to Round {_round}.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
    Where `{N}` is the issue count from the `remediation_continue` signal (`issues={N}`).
-   Re-enter UAT Remediation mode (above) for the same `PHASE_DIR`. The `needs-round` call above set the remediation state to `research` for the new round. The UAT Remediation mode's step 4 (`get-or-init`) will resume correctly from the `research` stage.
+   Re-enter UAT Remediation mode (above) for the same `PHASE_DIR`. The prepare helper set the remediation state to `research` for the new round. The UAT Remediation mode's step 4 (`get-or-init`) will resume correctly from the `research` stage.
 
   **Continuation loop behavior:** The re-entered UAT Remediation mode chains into Verify mode after its execute stage completes (existing behavior). If that verification again finds issues, verify.md emits `remediation_continue=true` again, and this step 4 re-checks the UAT remediation round cap. This creates the auto-continuation loop, bounded only when `max_uat_remediation_rounds` resolves to a positive integer. The fallback remediation summary section remains the escape hatch when context window limits prevent continuation mid-loop.
 

@@ -598,6 +598,24 @@ case "$CMD" in
       echo "Error: no UAT remediation state exists for $PHASE_DIR — cannot advance to next round without prior init" >&2
       exit 1
     fi
+    current_stage=$(get_stage)
+    case "$current_stage" in
+      verify|done) ;;
+      *)
+        echo "Error: needs-round requires stage verify or done, got: $current_stage" >&2
+        exit 1
+        ;;
+    esac
+    if type current_uat >/dev/null 2>&1 && type uat_file_status_class >/dev/null 2>&1; then
+      current_uat_file=$(current_uat "$PHASE_DIR")
+      if [ -n "$current_uat_file" ] && [ -f "$current_uat_file" ]; then
+        current_uat_class=$(uat_file_status_class "$current_uat_file")
+        if [ "$current_uat_class" != "issues_found" ]; then
+          echo "Error: needs-round requires a finalized 'issues_found' UAT; current UAT is '$current_uat_class': $current_uat_file" >&2
+          exit 1
+        fi
+      fi
+    fi
     start_new_round
     ;;
 
