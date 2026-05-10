@@ -29,6 +29,22 @@ if [ ! -f "$UAT_FILE" ]; then
   exit 1
 fi
 
+# The rewrite below only operates inside an existing YAML frontmatter block.
+# Fail closed before parsing/reporting status so callers are not told a
+# frontmatter-less UAT was finalized when no file mutation can occur.
+if ! awk '
+  NR == 1 {
+    if ($0 !~ /^---[[:space:]]*$/) exit 1
+    in_fm = 1
+    next
+  }
+  in_fm && /^---[[:space:]]*$/ { found = 1; exit 0 }
+  END { if (!found) exit 1 }
+' "$UAT_FILE"; then
+  echo "finalize-uat-status: missing YAML frontmatter block" >&2
+  exit 1
+fi
+
 # Parse all **Result:** values from test entries.
 # Returns one token per line: pass, skip, issue, empty, __missing__, or
 # __unknown__:<raw>.

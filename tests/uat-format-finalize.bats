@@ -433,6 +433,25 @@ EOF
   [[ "$output" == *"Error"* ]]
 }
 
+@test "finalize-uat-status: missing frontmatter fails closed without rewriting body" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+# UAT without frontmatter
+
+## Tests
+
+### P01-T1: Test one
+
+- **Result:** pass
+EOF
+  cp "$uat" "$uat.before"
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing YAML frontmatter block"* ]]
+  cmp -s "$uat.before" "$uat"
+}
+
 # --- finalize-uat-status.sh robustness: edge-case Result values ---
 
 @test "finalize-uat-status: Result with leading whitespace → pass" {
