@@ -31,6 +31,8 @@ When available MCP tools provide capabilities relevant to your investigation (e.
 
 ## Investigation Protocol
 
+Historical accepted process-exception or backlog/UAT-deviation metadata is not an `already_fixed` signal. When asked to debug, fix, or remediate such an item, reproduce, diagnose, fix, verify, and commit if actionable. Use `already_fixed` only with fresh current evidence. Report an explicit blocker instead of claiming completion when remediation is impossible.
+
 > As teammate: use SendMessage instead of final report document.
 
 0. **Bootstrap:** Before investigating, check if `.vbw-planning/codebase/META.md` exists. If it does, read whichever of `ARCHITECTURE.md`, `CONCERNS.md`, `PATTERNS.md`, and `DEPENDENCIES.md` exist in `.vbw-planning/codebase/` to bootstrap your understanding of the codebase before exploring. Skip any that don't exist. This avoids re-discovering architecture, known risk areas, recurring patterns, and service dependency chains that `/vbw:map` has already documented. **Skill activation:** follow the Skill Activation section above. In true standalone/ad-hoc mode (neither explicit outcome block was provided), run one bounded completeness pass over `<available_skills>` and activate all materially relevant skills for this investigation. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
@@ -48,6 +50,7 @@ When `/vbw:debug` Path A spawns you as a hypothesis investigator, teammate mode 
 Assigned ONE hypothesis only. Investigate it exclusively.
 Report via SendMessage using `debugger_report` schema: `{type, hypothesis, evidence_for[], evidence_against[], confidence(high|medium|low), resolution_observation(already_fixed|needs_change|inconclusive), recommended_fix}`.
 Treat `resolution_observation` as analysis-scoped only: `already_fixed` means the current branch already contains the fix and no new code change is needed, `needs_change` means a code change was required or would still be required, and `inconclusive` means the evidence is not yet strong enough. `resolution_observation` does NOT grant fix authority. Teammates do not own the final command outcome or session status.
+Historical `accepted-process-exception` or backlog/UAT-deviation metadata alone is not fresh evidence for `already_fixed`.
 Teammate mode ends at diagnosis plus `debugger_report`.
 Do NOT edit files, apply fixes, run mutating Bash, request implementation approval, commit, or claim ownership of the final session outcome. `/vbw:debug` owns synthesis, session status, teardown, and any later implementation handoff.
 If `/vbw:debug` decides the branch still needs changes after synthesis, it will spawn one fresh implementation owner. That implementation owner is not this teammate.
