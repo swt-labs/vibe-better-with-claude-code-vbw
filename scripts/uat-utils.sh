@@ -58,41 +58,149 @@ normalize_uat_status() {
 # map LLM synonyms (all_pass, passed, verified, failed, etc.) to canonical
 # values. SUMMARY files use their own extraction path in summary-utils.sh
 # which never calls normalize_uat_status(), so these mappings are UAT-only.
+_uat_ascii_lower() {
+  local input="${1:-}"
+  local output=""
+  local idx=0
+  local char
+
+  while [ "$idx" -lt "${#input}" ]; do
+    char="${input:$idx:1}"
+    case "$char" in
+      A) char=a ;;
+      B) char=b ;;
+      C) char=c ;;
+      D) char=d ;;
+      E) char=e ;;
+      F) char=f ;;
+      G) char=g ;;
+      H) char=h ;;
+      I) char=i ;;
+      J) char=j ;;
+      K) char=k ;;
+      L) char=l ;;
+      M) char=m ;;
+      N) char=n ;;
+      O) char=o ;;
+      P) char=p ;;
+      Q) char=q ;;
+      R) char=r ;;
+      S) char=s ;;
+      T) char=t ;;
+      U) char=u ;;
+      V) char=v ;;
+      W) char=w ;;
+      X) char=x ;;
+      Y) char=y ;;
+      Z) char=z ;;
+    esac
+    output="${output}${char}"
+    idx=$((idx + 1))
+  done
+
+  printf '%s' "$output"
+}
+
+_uat_trim_ws() {
+  local value="${1:-}"
+  value="${value%$'\r'}"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+_uat_strip_matching_quotes() {
+  local value="${1:-}"
+  case "$value" in
+    \"*\")
+      value="${value#\"}"
+      value="${value%\"}"
+      ;;
+    \'*\')
+      value="${value#\'}"
+      value="${value%\'}"
+      ;;
+  esac
+  printf '%s' "$value"
+}
+
+_uat_is_frontmatter_delimiter() {
+  local line
+  line="${1:-}"
+  line="${line%$'\r'}"
+  line="${line%"${line##*[![:space:]]}"}"
+  [ "$line" = "---" ]
+}
+
+_uat_status_value_from_line() {
+  local line="${1:-}"
+  local key value
+
+  case "$line" in
+    *:*) ;;
+    *) return 1 ;;
+  esac
+
+  key=${line%%:*}
+  key=$(_uat_trim_ws "$key")
+  key=$(_uat_ascii_lower "$key")
+  [ "$key" = "status" ] || return 1
+
+  value=${line#*:}
+  value=$(_uat_trim_ws "$value")
+  value=$(_uat_strip_matching_quotes "$value")
+  value=$(_uat_ascii_lower "$value")
+  printf '%s' "$value"
+  return 0
+}
+
+_uat_status_value_known_for_body_fallback() {
+  case "${1:-}" in
+    issues_found|complete|passed|in_progress|pending|failed|aborted|all_pass|all_passed|pass|verified|no_issues)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 _extract_uat_status_value() {
   local file="$1"
-  local result
-  # Try frontmatter first
-  result=$(awk '
-    BEGIN { in_fm = 0 }
-    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
-    in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && tolower($0) ~ /^[[:space:]]*status[[:space:]]*:/ {
-      value = $0
-      sub(/^[^:]*:[[:space:]]*/, "", value)
-      gsub(/[[:space:]]+$/, "", value)
-      gsub(/^[\"]/,  "", value); gsub(/[\"]/,  "", value)
-      gsub(/^'"'"'/, "", value); gsub(/'"'"'$/, "", value)
-      print tolower(value)
-      exit
-    }
-  ' "$file" 2>/dev/null || true)
-  # Fallback: scan body for unindented status: line (brownfield/manual UATs)
-  # Only accept known status values to avoid matching prose like "Status: The system works"
-  if [ -z "$result" ]; then
-    result=$(awk '
-      tolower($0) ~ /^status[[:space:]]*:/ {
-        value = $0
-        sub(/^[^:]*:[[:space:]]*/, "", value)
-        gsub(/[[:space:]]+$/, "", value)
-        v = tolower(value)
-        if (v == "issues_found" || v == "complete" || v == "passed" || v == "in_progress" || v == "pending" || v == "failed" || v == "aborted" || v == "all_pass" || v == "all_passed" || v == "pass" || v == "verified" || v == "no_issues") {
-          print v
-          exit
-        }
-      }
-    ' "$file" 2>/dev/null || true)
-  fi
-  printf '%s' "$result"
+  local line line_num=0 result
+
+  # Try frontmatter first. A blank frontmatter status key is authoritative;
+  # callers that need class semantics use uat_file_has_frontmatter_status_key()
+  # to classify that artifact as active instead of falling through to body prose.
+  while IFS= read -r line || [ -n "$line" ]; do
+    line_num=$((line_num + 1))
+    line="${line%$'\r'}"
+    if [ "$line_num" -eq 1 ]; then
+      _uat_is_frontmatter_delimiter "$line" || break
+      continue
+    fi
+    _uat_is_frontmatter_delimiter "$line" && break
+    if result=$(_uat_status_value_from_line "$line"); then
+      printf '%s' "$result"
+      return 0
+    fi
+  done < "$file"
+
+  # Fallback: scan body for unindented status: line (brownfield/manual UATs).
+  # Only accept known status values to avoid matching prose like
+  # "Status: The system works".
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    case "$line" in
+      [[:space:]]*) continue ;;
+    esac
+    if result=$(_uat_status_value_from_line "$line") && _uat_status_value_known_for_body_fallback "$result"; then
+      printf '%s' "$result"
+      return 0
+    fi
+  done < "$file"
+
+  printf '%s' ""
 }
 
 extract_status_value() {
@@ -148,17 +256,23 @@ uat_file_status_value() {
 
 uat_file_has_frontmatter_status_key() {
   local file="$1"
+  local line line_num=0
   [ -f "$file" ] || return 1
-  awk '
-    BEGIN { in_fm = 0; found = 0 }
-    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
-    in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && tolower($0) ~ /^[[:space:]]*status[[:space:]]*:/ {
-      found = 1
-      exit
-    }
-    END { exit(found ? 0 : 1) }
-  ' "$file" 2>/dev/null
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line_num=$((line_num + 1))
+    line="${line%$'\r'}"
+    if [ "$line_num" -eq 1 ]; then
+      _uat_is_frontmatter_delimiter "$line" || return 1
+      continue
+    fi
+    _uat_is_frontmatter_delimiter "$line" && return 1
+    if _uat_status_value_from_line "$line" >/dev/null; then
+      return 0
+    fi
+  done < "$file"
+
+  return 1
 }
 
 uat_file_is_remediation_round_uat() {
