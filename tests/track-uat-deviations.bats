@@ -81,16 +81,6 @@ Phase 03
 EOF
 }
 
-assert_no_blank_lines_in_state_section() {
-  local start_re="$1"
-  local stop_re="$2"
-  awk -v start_re="$start_re" -v stop_re="$stop_re" '
-    $0 ~ start_re { in_section=1; next }
-    in_section && $0 ~ stop_re { exit 0 }
-    in_section && /^[[:space:]]*$/ { exit 1 }
-  ' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
-}
-
 write_accepted_uat() {
   local sig="$1"
   local result="${2:-pass}"
@@ -119,6 +109,40 @@ write_accepted_uat() {
 extract_output_value() {
   local key="$1"
   printf '%s\n' "$output" | awk -F= -v k="$key" '$1 == k {print substr($0, length(k) + 2); exit}'
+}
+
+@test "shared todo section assertion fails closed for malformed STATE fixtures" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# Test Project
+
+## Current
+Phase 03
+
+## Done
+EOF
+  run assert_no_blank_lines_in_state_section '^## Todos$' '^## '
+  [ "$status" -ne 0 ]
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# Test Project
+
+## Todos
+- Existing todo
+EOF
+  run assert_no_blank_lines_in_state_section '^## Todos$' '^## '
+  [ "$status" -ne 0 ]
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# Test Project
+
+## Todos
+- Existing todo
+
+- Another todo
+## Done
+EOF
+  run assert_no_blank_lines_in_state_section '^## Todos$' '^## '
+  [ "$status" -ne 0 ]
 }
 
 @test "track-uat-deviations: signature is stable for source identity and text" {

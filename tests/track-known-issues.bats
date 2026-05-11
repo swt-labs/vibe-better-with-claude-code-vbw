@@ -347,16 +347,6 @@ write_legacy_state_md_with_todos() {
   } > "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
-assert_no_blank_lines_in_state_section() {
-  local start_re="$1"
-  local stop_re="$2"
-  awk -v start_re="$start_re" -v stop_re="$stop_re" '
-    $0 ~ start_re { in_section=1; next }
-    in_section && $0 ~ stop_re { exit 0 }
-    in_section && /^[[:space:]]*$/ { exit 1 }
-  ' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
-}
-
 write_known_issues_registry() {
   local phase_num="$1"
   shift
