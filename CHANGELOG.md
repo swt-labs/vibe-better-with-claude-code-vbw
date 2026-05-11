@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.37.1] - 2026-05-11
+
+### Fixed
+
+- **`hooks`** -- guarded the pre-push hook's `--verify` invocation with a plugin-name check, mirroring `validate-commit.sh`'s existing guard. Without this, third-party repos shipping their own `scripts/bump-version.sh` (e.g., SWT v2.3.5's in-tree version bumper) had every `package.json` `version` field silently overwritten with the literal string `"--verify"` on every push. The new guard verifies `.claude-plugin/plugin.json` exists and reports `name == "vbw"` before invoking `--verify`; non-VBW repos now skip the check silently. (Issue #635, PR #636)
+
 ## [1.37.0] - 2026-05-11
 
 ### Added
