@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.37.0] - 2026-05-11
+
+### Added
+
+- **`debug`** -- added deterministic selected-todo startup, duplicate completed-session repair, and named foreground non-team subagent support for debug/fix routing. (PR #627, PR #633)
+
+### Changed
+
+- **`uat`** -- strengthened remediation and verification lifecycle routing: active current UAT now resumes Verify, archive is blocked by non-terminal UAT, round 08/09 parsing is safe, re-verification transitions finalize through the deterministic owner, and accepted summary deviations can be tracked as VBW todos without reopening remediation loops. (PR #596, PR #600, PR #601, PR #606, PR #608, PR #611, PR #612, PR #615, PR #618, PR #620)
+- **`state`** -- preserved ROADMAP phase numbering across prefix gaps and compacted machine-managed TODO insertion for accepted UAT deviations and known-issue promotion. (PR #604, PR #632)
+- **`qa`** -- optimized known-issue comparisons for large registries and kept active QA remediation dormant after UAT cutover. (PR #622, PR #624)
+- **`docs`** -- clarified contributor PR automation gates plus README debug routing, command coverage, and hook-handler counts. (PR #603, PR #623)
+
+### Fixed
+
+- **`guards`** -- scoped active-agent guard state by session and allowed foreground non-team agent `name` labels without treating them as team membership. (PR #594, PR #633)
+- **`debug`** -- honored accepted exception remediation requests, enforced inline UAT AskUserQuestion boundaries, and kept active UAT prompts self-contained. (PR #618, PR #622, PR #631)
+- **`uat`** -- made issue capture synthesize durable remediation descriptions, kept product checkpoint modals self-contained, and made status parsing robust under parallel test load. (PR #611, PR #618, PR #625)
+
 ## [1.36.2] - 2026-05-06
 
 ### Added
