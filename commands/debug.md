@@ -42,21 +42,11 @@ bash "{plugin-root}/scripts/debug-start-selected-todo.sh" .vbw-planning <N> [--c
 
 Treat the helper stdout as `helper_output`, the single source of truth for selected-todo startup. The helper owns numbered selection resolution, optional detail loading, completed-session stale-state repair, debug session creation, `## Source Todo` persistence, and selected-todo pickup from writable root `STATE.md`. Do not reimplement those state transitions in command markdown.
 
-Helper output schema:
-- `status`: `ok`, `already_complete`, or `error`
-- `mode`: `selected_todo`
-- `todo_selected`: `true`
-- `bug_desc`: selected todo command text for parse/effort and research context
-- `routing_flags`: supported flags passed through from the original arguments
-- `selected`: selected todo metadata from the validated unfiltered snapshot
-- `ref`: selected todo ref, or `null`
-- `detail_status`: `ok`, `not_found`, `error`, or `none`
-- `detail`: compact detail object, or `null`
-- `detail_has_signal`: `true` only when detail context is non-empty or detail files are present
-- `accepted_exception_markers`: compact marker labels detected from selected/detail metadata
-- `session`: `{id,file,status}` for the created or matching completed debug session
-- `pickup`: `{status,warning,auto_note,result}` for selected-todo pickup
-- `message`: user-facing helper message for `already_complete` or errors
+Helper output schema is status-variant. Always parse `.status` before reading branch-specific fields.
+- Common discriminator: `status` is `ok`, `already_complete`, or `error`.
+- Success-like payloads (`ok` and `already_complete`) include the full selected-todo payload: `mode`, `todo_selected`, `bug_desc`, `routing_flags`, `selected`, `ref`, `detail_status`, `detail`, `detail_has_signal`, `accepted_exception_markers`, `detail_warning`, `session`, `pickup`, and `message` when applicable. `pickup` contains `status`, `warning`, `auto_note`, and `result`.
+- No-session errors may carry only `status`, `code`, and `message`, plus any resolver-owned error fields. Do not assume `mode`, `bug_desc`, `routing_flags`, `selected`, `ref`, `detail_*`, `accepted_exception_markers`, `session`, or `pickup` exists on this branch.
+- Session-bearing errors carry `status`, `code`, `message`, `mode`, `todo_selected`, `session`, and usually `pickup` so the command can expose partial lifecycle state. Do not require success-only selected/detail fields on this branch.
 
 Parse `.status` first and branch explicitly:
 - If `.status == "ok"`: store `SELECTED_TODO_MODE=true`, store `SELECTED_TODO_START_JSON=helper_output`, replace `$ARGUMENTS` with `.bug_desc`, set `session_id=.session.id`, `session_file=.session.file`, and `session_status=.session.status`, then continue the workflow using helper-provided fields.
