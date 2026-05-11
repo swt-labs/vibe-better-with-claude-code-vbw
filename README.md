@@ -99,7 +99,7 @@ Most Claude Code plugins were built for the subagent era, one main session spawn
 
 - **Agent Teams for real parallelism.** `/vbw:vibe` uses dependency-aware routing: true Dev teams are created when plans have real parallel delegate work, while linear dependency chains use serialized Dev subagents to avoid fake coordination overhead. `/vbw:map` runs 4 Scout teammates in parallel to analyze your codebase. When teams are used, this isn't "spawn a subagent and wait" -- it's coordinated teamwork with a shared task list and direct inter-agent communication. Agent health monitoring tracks lifecycle events, detects orphaned teammates, and recovers stuck agents via circuit breakers.
 
-- **Native hooks for continuous verification.** 24 hooks across 11 event types run automatically -- validating SUMMARY.md structure, checking commit format, validating frontmatter descriptions, gating task completion, blocking sensitive file access, enforcing plan file boundaries, managing session lifecycle, tracking agent health and cost attribution, tracking session metrics, pre-flight prompt validation, and post-compaction context verification. No more spawning a QA agent after every task. The platform enforces it, not the prompt.
+- **Native hooks for continuous verification.** 30 hooks across 11 event types run automatically -- validating SUMMARY.md structure, checking commit format, validating frontmatter descriptions, gating task completion, blocking sensitive file access, enforcing plan file boundaries, managing session lifecycle, tracking agent health and cost attribution, tracking session metrics, pre-flight prompt validation, and post-compaction context verification. No more spawning a QA agent after every task. The platform enforces it, not the prompt.
 
 - **Platform-enforced tool permissions.** Each agent has `tools`/`disallowedTools` in YAML frontmatter. Dev uses a `disallowedTools` denylist that explicitly bans recursive subagent, team, and user-question tools (`Task`, `TaskCreate`, `Agent`, `TeamCreate`, `TeamDelete`, `AskUserQuestion`) while leaving every other built-in and MCP tool available; Scout can write research files to `.vbw-planning/` and run read-only Bash for live validation, but cannot edit existing code or spawn subagents/teams (Edit, NotebookEdit, Task, TaskCreate, Agent, TeamCreate, TeamDelete are platform-denied); QA is read-only via `permissionMode: plan` and can only persist VERIFICATION.md through the deterministic `write-verification.sh` script via Bash. Sensitive file access (`.env`, credentials) is intercepted by the `security-filter` hook. Claude Code enforces these frontmatter permissions directly, not through instructions an agent might ignore during compaction.
 
@@ -408,6 +408,8 @@ These are the commands you'll use every day. This is the job now.
 | Command | Description |
 | :--- | :--- |
 | `/vbw:status` | Progress dashboard showing all phases, completion bars, velocity metrics, and suggested next action. Add `--metrics` for token consumption breakdown per agent. |
+| `/vbw:qa [phase]` | Run read-only QA verification for the active or specified phase and persist findings to VERIFICATION.md through the deterministic verification writer. |
+| `/vbw:verify [phase]` | Run human UAT verification for the active or specified phase, including remediation-round resume, self-contained checkpoint prompts, and accepted-deviation tracking. |
 
 ### Supporting -- The Safety Net
 
@@ -492,7 +494,7 @@ Here's when each one shows up to work:
   │(subagt)  │   (scope creep is for amateurs)                         │ verify
   └──────────┘                                                         │
                                                                        ▼
-  HOOKS (11 event types, 24 handlers)                              VERIFICATION.md
+  HOOKS (11 event types, 30 handlers)                              VERIFICATION.md
   ┌───────────────────────────────────────────────────────────────────────────────┐
   │  Verification                                                                 │
   │    PostToolUse ──── Validates SUMMARY.md on write, checks commit format,      │
