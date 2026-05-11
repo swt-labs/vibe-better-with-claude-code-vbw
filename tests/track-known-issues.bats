@@ -347,6 +347,16 @@ write_legacy_state_md_with_todos() {
   } > "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
 }
 
+assert_no_blank_lines_in_state_section() {
+  local start_re="$1"
+  local stop_re="$2"
+  awk -v start_re="$start_re" -v stop_re="$stop_re" '
+    $0 ~ start_re { in_section=1; next }
+    in_section && $0 ~ stop_re { exit 0 }
+    in_section && /^[[:space:]]*$/ { exit 1 }
+  ' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+}
+
 write_known_issues_registry() {
   local phase_num="$1"
   shift
@@ -389,6 +399,7 @@ write_known_issues_registry() {
   grep -q "CrashTests.swift" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   # Source traceability from last_seen_in field
   grep -q "(see 03-02)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  assert_no_blank_lines_in_state_section '^## Todos$' '^## '
 }
 
 @test "track-known-issues: promote-todos deduplicates existing entries" {
@@ -421,6 +432,7 @@ write_known_issues_registry() {
   run bash -c 'awk "/^## Todos?$/{f=1;next} f&&/^##/{exit} f" "$1" | grep -q "^None\\.$"' -- "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   [ "$status" -ne 0 ]
   grep -q "\[KNOWN-ISSUE\] TestA (A.swift)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  assert_no_blank_lines_in_state_section '^## Todos$' '^## '
 }
 
 @test "track-known-issues: promote-todos handles multiple issues" {
@@ -438,6 +450,7 @@ write_known_issues_registry() {
   # Both new entries present
   grep -q "TestA" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "TestB" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  assert_no_blank_lines_in_state_section '^## Todos$' '^## '
 }
 
 @test "track-known-issues: promote-todos works with legacy Pending Todos layout" {
@@ -456,6 +469,7 @@ write_known_issues_registry() {
   # Legacy section structure preserved
   grep -q "### Pending Todos" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -q "### Completed Todos" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  assert_no_blank_lines_in_state_section '^### Pending Todos$' '(^### Completed Todos$)|(^## )'
 }
 
 @test "track-known-issues: promote-todos appends to non-empty legacy Pending Todos" {
@@ -476,6 +490,7 @@ write_known_issues_registry() {
   # Known issue appears before Completed Todos, not after
   run bash -c 'awk "/^### Completed Todos/{exit} /KNOWN-ISSUE/{found=1} END{exit !found}" "$1"' -- "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   [ "$status" -eq 0 ]
+  assert_no_blank_lines_in_state_section '^### Pending Todos$' '(^### Completed Todos$)|(^## )'
 }
 
 @test "track-known-issues: promote-todos dedup uses exact key not substring" {

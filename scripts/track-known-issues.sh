@@ -1223,14 +1223,16 @@ promote_todos() {
       printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
         $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
         in_todos && $0 ~ ENVIRON["AWK_STOP"] { in_todos=0; print; next }
-        in_todos && /^[[:space:]]*None\.?[[:space:]]*$/ { print ENVIRON["ENTRIES"]; in_todos=0; next }
+        in_todos && /^[[:space:]]*None\.?[[:space:]]*$/ { if (!inserted) { print ENVIRON["ENTRIES"]; inserted=1 } next }
+        in_todos && /^[[:space:]]*$/ { next }
         { print }
       ' > "$tmp_file"
     else
       # Append new entries before the next section heading after the anchor
       printf '%s\n' "$state_content" | ENTRIES="${new_entries%$'\n'}" AWK_ANCHOR="$awk_anchor" AWK_STOP="$awk_stop_pattern" awk '
         $0 ~ ENVIRON["AWK_ANCHOR"] { in_todos=1; print; next }
-        in_todos && $0 ~ ENVIRON["AWK_STOP"] { print ENVIRON["ENTRIES"]; print ""; in_todos=0; print; next }
+        in_todos && $0 ~ ENVIRON["AWK_STOP"] { print ENVIRON["ENTRIES"]; in_todos=0; print; next }
+        in_todos && /^[[:space:]]*$/ { next }
         { print }
         END { if (in_todos) { print ENVIRON["ENTRIES"] } }
       ' > "$tmp_file"
