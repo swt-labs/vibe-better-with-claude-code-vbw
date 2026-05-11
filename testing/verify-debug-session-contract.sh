@@ -225,6 +225,7 @@ DEBUG_PATH_A_BLOCK="$(sed -n '/^[[:space:]]*\*\*Path A:/,/^[[:space:]]*\*\*Path 
 DEBUG_PATH_B_BLOCK="$(sed -n '/^[[:space:]]*\*\*Path B:/,/^5\./p' "$DEBUG_CMD" 2>/dev/null || true)"
 DEBUG_ACCEPTED_EXCEPTION_BLOCK="$(sed -n '/^[[:space:]]*<accepted_exception_debug_semantics>[[:space:]]*$/,/^[[:space:]]*<\/accepted_exception_debug_semantics>[[:space:]]*$/p' "$DEBUG_CMD" 2>/dev/null || true)"
 DEBUG_STEP5_BLOCK="$(sed -n '/^5\. \*\*Persist to debug session/,/^If `INVESTIGATION_OUTCOME=fixed_now`/p' "$DEBUG_CMD" 2>/dev/null || true)"
+DEBUG_INLINE_UAT_BLOCK="$(sed -n '/^[[:space:]]*<debug_inline_uat>[[:space:]]*$/,/^[[:space:]]*<\/debug_inline_uat>[[:space:]]*$/p' "$DEBUG_CMD" 2>/dev/null || true)"
 
 if grep -q "debug_session_routing" "$DEBUG_CMD" 2>/dev/null; then
   pass "debug.md has debug_session_routing section"
@@ -754,6 +755,44 @@ else
   fail "debug.md missing inline UAT section (debug_inline_uat)"
 fi
 
+if [ -n "$DEBUG_INLINE_UAT_BLOCK" ]; then
+  pass "debug.md inline UAT block extracted for scoped contract checks"
+else
+  fail "debug.md inline UAT block extracted for scoped contract checks"
+fi
+
+if contains_literal "$DEBUG_INLINE_UAT_BLOCK" 'CHECKPOINT display plus the `AskUserQuestion` tool_use MUST be emitted in the same assistant response'; then
+  pass "debug.md inline UAT requires checkpoint display and AskUserQuestion in the same assistant response"
+else
+  fail "debug.md inline UAT missing same-response checkpoint + AskUserQuestion contract"
+fi
+
+if contains_literal "$DEBUG_INLINE_UAT_BLOCK" 'one atomic presentation step' \
+  && contains_literal "$DEBUG_INLINE_UAT_BLOCK" 'never split them across turns'; then
+  pass "debug.md inline UAT treats checkpoint display and tool call as atomic and unsplittable"
+else
+  fail "debug.md inline UAT missing atomic unsplittable presentation contract"
+fi
+
+if contains_literal "$DEBUG_INLINE_UAT_BLOCK" 'A text-only checkpoint is invalid'; then
+  pass "debug.md inline UAT invalidates text-only checkpoints"
+else
+  fail "debug.md inline UAT missing text-only checkpoint invalidation"
+fi
+
+if contains_literal "$DEBUG_INLINE_UAT_BLOCK" 'Do NOT end the turn after displaying checkpoint text' \
+  && contains_literal "$DEBUG_INLINE_UAT_BLOCK" 'only valid pause is waiting for the blocking `AskUserQuestion` response'; then
+  pass "debug.md inline UAT forbids ending the turn after checkpoint text"
+else
+  fail "debug.md inline UAT missing no-end-turn/blocking-tool boundary"
+fi
+
+if contains_literal "$DEBUG_INLINE_UAT_BLOCK" 'Do not process an answer, advance to later checkpoints, persist UAT state, or finalize the session until that tool response is available'; then
+  pass "debug.md inline UAT blocks answer processing and persistence until tool response"
+else
+  fail "debug.md inline UAT missing blocking response-before-advance contract"
+fi
+
 if contains_literal "$(awk '
   BEGIN { delim=0 }
   /^---$/ {
@@ -772,6 +811,12 @@ if grep -Fq 'question: "Scenario: {scenario description}\n\nExpected: {expected 
   pass "debug.md inline UAT modal question includes Scenario and Expected"
 else
   fail "debug.md inline UAT modal question missing Scenario and Expected"
+fi
+
+if contains_literal "$DEBUG_INLINE_UAT_BLOCK" 'question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"'; then
+  pass "debug.md inline UAT scoped block keeps Scenario and Expected in modal question"
+else
+  fail "debug.md inline UAT scoped block missing Scenario and Expected modal question"
 fi
 
 if grep -Fq 'question: "Expected: {expected result}"' "$ROOT/commands/debug.md" 2>/dev/null; then
