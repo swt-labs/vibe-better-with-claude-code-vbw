@@ -65,6 +65,22 @@ Phase 03
 EOF
 }
 
+write_state_with_existing_flat_todos() {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# Test Project
+
+## Current
+
+Phase 03
+
+## Todos
+
+- Existing manual todo (added 2026-04-01) (ref:11111111)
+
+## Done
+EOF
+}
+
 write_accepted_uat() {
   local sig="$1"
   local result="${2:-pass}"
@@ -93,6 +109,40 @@ write_accepted_uat() {
 extract_output_value() {
   local key="$1"
   printf '%s\n' "$output" | awk -F= -v k="$key" '$1 == k {print substr($0, length(k) + 2); exit}'
+}
+
+@test "shared todo section assertion fails closed for malformed STATE fixtures" {
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# Test Project
+
+## Current
+Phase 03
+
+## Done
+EOF
+  run assert_no_blank_lines_in_state_section '^## Todos$' '^## '
+  [ "$status" -ne 0 ]
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# Test Project
+
+## Todos
+- Existing todo
+EOF
+  run assert_no_blank_lines_in_state_section '^## Todos$' '^## '
+  [ "$status" -ne 0 ]
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/STATE.md" <<'EOF'
+# Test Project
+
+## Todos
+- Existing todo
+
+- Another todo
+## Done
+EOF
+  run assert_no_blank_lines_in_state_section '^## Todos$' '^## '
+  [ "$status" -ne 0 ]
 }
 
 @test "track-uat-deviations: signature is stable for source identity and text" {
@@ -267,6 +317,7 @@ EOF
   grep -Fq -- "- [UAT-DEVIATION] R03: Full-project SwiftLint unavailable" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   grep -Fq -- "(added $today) (ref:$ref)" "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
   ! grep -Fxq 'None.' "$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+  assert_no_blank_lines_in_state_section '^## Todos$' '^## '
 
   details="$TEST_TEMP_DIR/.vbw-planning/todo-details.json"
   [ -f "$details" ]
@@ -293,6 +344,25 @@ EOF
   [ "$(jq -r --arg ref "$ref" '.items[$ref].files | index("remediation/uat/round-03/R03-SUMMARY.md") != null' "$details")" = "true" ]
   [ "$(jq -r --arg ref "$ref" '.items[$ref].files | index("remediation/uat/round-03/R03-UAT.md") != null' "$details")" = "true" ]
   [ "$(jq -r --arg ref "$ref" '.items[$ref].files | index("R03-UAT.md") == null' "$details")" = "true" ]
+}
+
+@test "track-uat-deviations: todo-from-uat appends flat todo without blank separators" {
+  local sig ref today todos_block expected_block
+  write_state_with_existing_flat_todos
+  sig=$(bash "$SCRIPT" signature "R03" "remediation/uat/round-03/R03-SUMMARY.md" "Full-project SwiftLint unavailable")
+  write_accepted_uat "$sig"
+  today=$(date +%Y-%m-%d)
+
+  run bash "$SCRIPT" todo-from-uat "$PHASE_DIR" "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" D01
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"todo_status=added"* ]]
+  ref=$(extract_output_value todo_ref)
+
+  todos_block=$(awk '/^## Todos$/ { found=1; next } found && /^## / { exit } found { print }' "$TEST_TEMP_DIR/.vbw-planning/STATE.md")
+  expected_block=$'- Existing manual todo (added 2026-04-01) (ref:11111111)\n'
+  expected_block+="- [UAT-DEVIATION] R03: Full-project SwiftLint unavailable (phase 03, see remediation/uat/round-03/R03-SUMMARY.md) (added ${today}) (ref:${ref})"
+  [ "$todos_block" = "$expected_block" ]
+  assert_no_blank_lines_in_state_section '^## Todos$' '^## '
 }
 
 @test "track-uat-deviations: todo-from-uat dedupes repeated accepted deviation by ref" {
@@ -327,6 +397,7 @@ EOF
   [[ "$pending_block" == *"[UAT-DEVIATION]"* ]]
   [[ "$pending_block" == *"(ref:$ref)"* ]]
   [[ "$completed_block" != *"[UAT-DEVIATION]"* ]]
+  assert_no_blank_lines_in_state_section '^### Pending Todos$' '(^### Completed Todos$)|(^## )'
 
   list_output=$(cd "$TEST_TEMP_DIR" && bash "$SCRIPTS_DIR/list-todos.sh")
   [ "$(printf '%s' "$list_output" | jq -r '.section')" = "### Pending Todos" ]
