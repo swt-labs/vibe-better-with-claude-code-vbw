@@ -601,6 +601,8 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
 
 2. Present checkpoints one at a time using CHECKPOINT + AskUserQuestion:
 
+    **Checkpoint presentation boundary (NON-NEGOTIABLE):** The debug UAT checkpoint loop is conversational and blocking. Each cycle presents exactly one checkpoint, and the CHECKPOINT display plus the `AskUserQuestion` tool_use MUST be emitted in the same assistant response. Treat the checkpoint display and tool call as one atomic presentation step: never split them across turns. A text-only checkpoint is invalid because it gives the user no structured response path and can let the turn end prematurely. Do NOT end the turn after displaying checkpoint text; the only valid pause is waiting for the blocking `AskUserQuestion` response. Do not process an answer, advance to later checkpoints, persist UAT state, or finalize the session until that tool response is available.
+
    Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
     ```text
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
