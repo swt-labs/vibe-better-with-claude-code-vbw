@@ -166,6 +166,7 @@ UAT_EXECUTE_BLOCK=$(extract_uat_subsection execute)
 SPAWN_ARG_ISOLATION_RE='(^|[^[:alnum:]_])"?isolation"?([[:space:]]*[:=][[:space:]]*"?[^"[:space:]]+"?|[[:space:]]+(worktree|"?\{[A-Za-z0-9_:-]+\}"?|"?\$[A-Za-z_][A-Za-z0-9_]*"?|"?\$\{[A-Za-z_][A-Za-z0-9_]*\}"?))([^[:alnum:]_]|$)'
 SPAWN_ARG_BACKGROUND_RE='(^|[^[:alnum:]_])"?run_in_background"?([[:space:]]*[:=][[:space:]]*"?[^"[:space:]]+"?|[[:space:]]+(true|false|"?\{[A-Za-z0-9_:-]+\}"?|"?\$[A-Za-z_][A-Za-z0-9_]*"?|"?\$\{[A-Za-z_][A-Za-z0-9_]*\}"?))([^[:alnum:]_]|$)'
 SPAWN_ARG_TEAM_NAME_RE='(^|[^[:alnum:]_])"?team_name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
+SPAWN_ARG_NAME_RE='(^|[^[:alnum:]_])"?name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
 SPAWN_ARG_CWD_RE='(^|[^[:alnum:]_])"?(cwd|working_dir|workingDirectory|workdir)"?([[:space:]]*[:=][[:space:]]*"?([^"[:space:]]+|\{[A-Za-z0-9_:-]+\}|\$[A-Za-z_][A-Za-z0-9_]*|\$\{[A-Za-z_][A-Za-z0-9_]*\})"?|[[:space:]]+"?([./~][^"[:space:]]*|[[:alnum:]_-]+/[^"[:space:]]*|\{[A-Za-z0-9_:-]+\}|\$[A-Za-z_][A-Za-z0-9_]*|\$\{[A-Za-z_][A-Za-z0-9_]*\})"?)'
 
 if [ -z "$UAT_BLOCK" ]; then
@@ -241,6 +242,7 @@ check_not_contains "UAT block no longer relies on project-root workaround" "$UAT
 check_not_regex "UAT block does not include isolation argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_ISOLATION_RE"
 check_not_regex "UAT block does not include background argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_BACKGROUND_RE"
 check_not_regex "UAT block does not include team_name argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_TEAM_NAME_RE"
+check_not_regex "UAT block does not include per-agent name argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_NAME_RE"
 check_not_regex "UAT block does not include worktree cwd argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches isolation equals syntax" 'Agent isolation=worktree' "$SPAWN_ARG_ISOLATION_RE"
 check_regex "spawn argument matcher catches isolation JSON syntax" 'Agent "isolation": "worktree"' "$SPAWN_ARG_ISOLATION_RE"
@@ -252,6 +254,7 @@ check_regex "spawn argument matcher catches run_in_background variable syntax" '
 check_regex "spawn argument matcher catches run_in_background braced variable equals syntax" 'Agent run_in_background=${FLAG}' "$SPAWN_ARG_BACKGROUND_RE"
 check_regex "spawn argument matcher catches run_in_background braced variable bare syntax" 'Agent run_in_background ${FLAG}' "$SPAWN_ARG_BACKGROUND_RE"
 check_regex "spawn argument matcher catches team_name bare syntax" 'Agent team_name vbw-phase-03' "$SPAWN_ARG_TEAM_NAME_RE"
+check_regex "spawn argument matcher catches per-agent name bare syntax" 'Agent name dev-1' "$SPAWN_ARG_NAME_RE"
 check_regex "spawn argument matcher catches generic cwd syntax" 'Agent cwd=/repo' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches cwd braced variable equals syntax" 'Agent cwd=${PHASE_DIR}' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches cwd braced variable bare syntax" 'Agent cwd ${PHASE_DIR}' "$SPAWN_ARG_CWD_RE"
@@ -269,6 +272,8 @@ check_regex "spawn argument matcher catches cwd sidechain syntax" 'Agent cwd=.cl
 check_regex "spawn argument matcher catches working_dir vbw-worktree syntax" 'Agent "working_dir": ".vbw-worktrees/dev-01"' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches workingDirectory sidechain syntax" 'Agent workingDirectory=/repo/.claude/worktrees/agent-1' "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches workdir vbw-worktree syntax" 'Agent workdir .vbw-worktrees/dev-01' "$SPAWN_ARG_CWD_RE"
+check_not_regex "per-agent name matcher ignores filename keys" 'filename: R01-PLAN.md' "$SPAWN_ARG_NAME_RE"
+check_not_regex "per-agent name matcher ignores team_name keys" 'team_name: vbw-phase-03' "$SPAWN_ARG_NAME_RE"
 check_not_regex "isolation matcher ignores benign prose" 'Spawn one Dev with no isolation parameter.' "$SPAWN_ARG_ISOLATION_RE"
 check_not_regex "cwd matcher ignores field-list prose" 'worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' "$SPAWN_ARG_CWD_RE"
 check_not_regex "cwd matcher ignores generic prohibition prose" 'Do not pass cwd fields.' "$SPAWN_ARG_CWD_RE"
