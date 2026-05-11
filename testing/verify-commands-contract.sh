@@ -378,6 +378,8 @@ STALE_NON_TEAM_NAME_PATTERNS=(
   'omit `team_name`, `name`'
   'Do not pass `team_name`, per-agent `name`'
   'do not pass `team_name`, per-agent `name`'
+  'Do not pass team metadata (`team_name`), per-agent names (`name`)'
+  'do not pass team metadata (`team_name`), per-agent names (`name`)'
 )
 NON_TEAM_NAME_SCAN_FILES=("${TRACKED_COMMAND_MARKDOWN_FILES[@]}" "$ROOT/references/execute-protocol.md")
 stale_non_team_name_found=false
