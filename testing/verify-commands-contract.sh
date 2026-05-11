@@ -371,6 +371,30 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
 done
 
 echo ""
+echo "=== Non-Team Name Contract Verification ==="
+
+STALE_NON_TEAM_NAME_PATTERNS=(
+  'no `team_name`, `name`'
+  'omit `team_name`, `name`'
+  'Do not pass `team_name`, per-agent `name`'
+  'do not pass `team_name`, per-agent `name`'
+)
+NON_TEAM_NAME_SCAN_FILES=("${TRACKED_COMMAND_MARKDOWN_FILES[@]}" "$ROOT/references/execute-protocol.md")
+stale_non_team_name_found=false
+for file in "${NON_TEAM_NAME_SCAN_FILES[@]}"; do
+  [ -f "$file" ] || continue
+  for pattern in "${STALE_NON_TEAM_NAME_PATTERNS[@]}"; do
+    if grep -Fq -- "$pattern" "$file"; then
+      fail "non-team name contract: stale name-ban phrase in ${file#"$ROOT/"}: $pattern"
+      stale_non_team_name_found=true
+    fi
+  done
+done
+if [ "$stale_non_team_name_found" = false ]; then
+  pass "non-team name contract: command/reference prose has no stale name-ban phrases"
+fi
+
+echo ""
 echo "=== AskUserQuestion Contract Verification ==="
 
 ASK_USER_QUESTION_REF="$ROOT/references/ask-user-question.md"

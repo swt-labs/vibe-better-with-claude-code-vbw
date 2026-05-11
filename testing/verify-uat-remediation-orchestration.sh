@@ -168,6 +168,8 @@ SPAWN_ARG_BACKGROUND_RE='(^|[^[:alnum:]_])"?run_in_background"?([[:space:]]*[:=]
 SPAWN_ARG_TEAM_NAME_RE='(^|[^[:alnum:]_])"?team_name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
 SPAWN_ARG_NAME_RE='(^|[^[:alnum:]_])"?name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
 SPAWN_ARG_CWD_RE='(^|[^[:alnum:]_])"?(cwd|working_dir|workingDirectory|workdir)"?([[:space:]]*[:=][[:space:]]*"?([^"[:space:]]+|\{[A-Za-z0-9_:-]+\}|\$[A-Za-z_][A-Za-z0-9_]*|\$\{[A-Za-z_][A-Za-z0-9_]*\})"?|[[:space:]]+"?([./~][^"[:space:]]*|[[:alnum:]_-]+/[^"[:space:]]*|\{[A-Za-z0-9_:-]+\}|\$[A-Za-z_][A-Za-z0-9_]*|\$\{[A-Za-z_][A-Za-z0-9_]*\})"?)'
+NON_TEAM_SPAWN_SHAPE_TEXT='Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)'
+LABEL_ONLY_NAME_TEXT='`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics'
 
 if [ -z "$UAT_BLOCK" ]; then
   fail "vibe.md exposes a UAT Remediation block"
@@ -195,8 +197,14 @@ check_contains "artifact contract validates legacy metadata paths directly" "$UA
 check_contains "spawn contract uses TodoWrite as sole stage progress tracker" "$UAT_BLOCK" 'TodoWrite is the only progress tracker for these stages'
 check_contains "spawn contract distinguishes work-unit delegation from stage tracking" "$UAT_BLOCK" 'TaskCreate/Agent is allowed only for real Scout/Lead/Dev work-unit delegation inside the current stage'
 check_contains "spawn contract requires plain sequential subagent calls" "$UAT_BLOCK" 'UAT remediation spawns are plain sequential subagent calls'
-check_contains "spawn contract omits team/background/isolation/cwd fields" "$UAT_BLOCK" 'Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)'
-check_contains "spawn contract treats name as label-only metadata" "$UAT_BLOCK" '`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics'
+check_contains "spawn contract omits team/background/isolation/cwd fields" "$UAT_BLOCK" "$NON_TEAM_SPAWN_SHAPE_TEXT"
+check_contains "spawn contract treats name as label-only metadata" "$UAT_BLOCK" "$LABEL_ONLY_NAME_TEXT"
+check_contains "plan spawn contract omits team/background/isolation/cwd fields" "$UAT_PLAN_BLOCK" "$NON_TEAM_SPAWN_SHAPE_TEXT"
+check_contains "plan spawn contract treats name as label-only metadata" "$UAT_PLAN_BLOCK" "$LABEL_ONLY_NAME_TEXT"
+check_contains "execute spawn contract omits team/background/isolation/cwd fields" "$UAT_EXECUTE_BLOCK" "$NON_TEAM_SPAWN_SHAPE_TEXT"
+check_contains "execute spawn contract treats name as label-only metadata" "$UAT_EXECUTE_BLOCK" "$LABEL_ONLY_NAME_TEXT"
+check_not_contains "spawn contract rejects stale no team/name ban" "$UAT_BLOCK" 'no `team_name`, `name`'
+check_not_contains "spawn contract rejects stale omit team/name ban" "$UAT_BLOCK" 'omit `team_name`, `name`'
 check_contains "spawn contract explains unreliable worktree isolation" "$UAT_BLOCK" 'Claude Code worktree isolation and spawn cwd handoffs are not reliable for this path'
 check_contains "spawn contract explains unreliable cwd handoffs" "$UAT_BLOCK" 'spawn cwd handoffs are not reliable for this path'
 check_contains "round metadata prohibition includes summary_path" "$UAT_BLOCK" 'round_dir`, `research_path`, `plan_path`, and `summary_path`'
