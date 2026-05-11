@@ -1,7 +1,7 @@
 ---
 name: fix-issue-vbw
 description: "End-to-end issue fix workflow with automated QA. Use when: fixing a bug, implementing an issue, fix workflow, issue-driven change. Creates a flat-named worktree and branch, plans the fix, implements it, runs iterative QA review cycles via sub-agent until clean, then opens draft PR."
-tools: [vscode, execute, read, agent, edit, search, web, browser, 'context7/*', 'mcp-omnisearch/*', 'gitnexus/*', todo]
+tools: [vscode, execute, read, agent, edit, search, web, browser, 'context7/*', 'gitnexus/*', 'mcp-omnisearch/*', github/request_copilot_review, todo]
 agents: [fix-planner-vbw, qa-investigator, qa-investigator-gpt-54, 'Explore']
 argument-hint: "Issue number or description of the bug to fix"
 hooks:
