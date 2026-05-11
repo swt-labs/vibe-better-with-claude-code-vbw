@@ -317,10 +317,12 @@ else
   pass "debug.md Step 5 keeps no_fix_yet as an investigation outcome only"
 fi
 
-if grep -q 'start-with-selected-todo' "$DEBUG_CMD" 2>/dev/null; then
-  pass "debug.md uses start-with-selected-todo for numbered todo sessions"
+DEBUG_START_SCRIPT="$ROOT/scripts/debug-start-selected-todo.sh"
+if grep -q 'debug-start-selected-todo\.sh' "$DEBUG_CMD" 2>/dev/null \
+  && grep -q 'start-with-selected-todo' "$DEBUG_START_SCRIPT" 2>/dev/null; then
+  pass "debug.md uses debug-start-selected-todo helper and helper uses start-with-selected-todo"
 else
-  fail "debug.md missing start-with-selected-todo numbered todo integration"
+  fail "debug selected-todo integration missing helper boundary or helper session creation"
 fi
 
 if grep -q 'HEAD_BEFORE' "$DEBUG_CMD" 2>/dev/null && grep -q 'HEAD_AFTER' "$DEBUG_CMD" 2>/dev/null; then
