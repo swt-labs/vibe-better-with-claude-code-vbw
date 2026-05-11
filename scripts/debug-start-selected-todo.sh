@@ -163,7 +163,7 @@ canonicalize_debug_sessions() {
 find_completed_source_todo_match() {
   local selected_json="$1"
   local selected_ref selected_raw_line selected_identity_total completed_dir debugging_dir file
-  local source_ref source_raw_line session_status ref_count
+  local source_ref source_raw_line session_status ref_count_loaded ref_count_cached
 
   MATCH_FOUND=false
   MATCH_SESSION_ID=""
@@ -175,6 +175,8 @@ find_completed_source_todo_match() {
   selected_identity_total=$(printf '%s' "$selected_json" | jq -r '.identity_total // 0')
   debugging_dir="${PLANNING_DIR%/}/debugging"
   completed_dir="${PLANNING_DIR%/}/debugging/completed"
+  ref_count_loaded=false
+  ref_count_cached=0
 
   [ -d "$debugging_dir" ] || return 0
 
@@ -193,8 +195,18 @@ find_completed_source_todo_match() {
 
     if [ -n "$selected_ref" ] && [ "$selected_ref" != "null" ]; then
       [ "$source_ref" = "$selected_ref" ] || continue
-      ref_count=$(live_ref_count "$selected_ref")
-      if [ "$source_raw_line" = "$selected_raw_line" ] || [ "${ref_count:-0}" = "1" ]; then
+      if [ "$source_raw_line" = "$selected_raw_line" ]; then
+        MATCH_FOUND=true
+      else
+        if [ "$ref_count_loaded" != "true" ]; then
+          ref_count_cached=$(live_ref_count "$selected_ref")
+          case "$ref_count_cached" in
+            ''|*[!0-9]*) ref_count_cached=0 ;;
+          esac
+          ref_count_loaded=true
+        fi
+      fi
+      if [ "$ref_count_cached" = "1" ]; then
         MATCH_FOUND=true
       fi
     else

@@ -215,6 +215,92 @@ EOF
   [ "$(completed_session_count)" = "1" ]
 }
 
+@test "debug-start-selected-todo: same-ref completed-session scan caches live ref count" {
+  local instrumented_dir="$TEST_TEMP_DIR/instrumented-scripts"
+  local count_file="$TEST_TEMP_DIR/list-count.txt"
+  local script_path
+
+  mkdir -p "$instrumented_dir"
+  for script_path in "$SCRIPTS_DIR"/*.sh; do
+    ln -s "$script_path" "$instrumented_dir/$(basename "$script_path")"
+  done
+  ln -s "$SCRIPTS_DIR/lib" "$instrumented_dir/lib"
+  rm -f "$instrumented_dir/list-todos.sh"
+  cat > "$instrumented_dir/list-todos.sh" <<EOF
+#!/usr/bin/env bash
+printf '1\n' >> "$count_file"
+exec "$SCRIPTS_DIR/list-todos.sh" "\$@"
+EOF
+  chmod +x "$instrumented_dir/list-todos.sh"
+
+  cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
+# Project State
+
+## Todos
+- Selected same-ref bug (added 2026-04-01) (ref:cafebabe)
+- Sibling same-ref bug (added 2026-04-02) (ref:cafebabe)
+
+## Activity Log
+- 2026-04-01: Existing note
+EOF
+  mkdir -p "$VBW_PLANNING_DIR/debugging/completed"
+  cat > "$VBW_PLANNING_DIR/debugging/completed/20260401-010101-old-one.md" <<'EOF'
+---
+session_id: 20260401-010101-old-one
+title: old-one
+status: complete
+created: 2026-04-01 01:01:01
+updated: 2026-04-01 01:01:01
+qa_round: 0
+qa_last_result: skipped_no_fix_required
+uat_round: 0
+uat_last_result: skipped_no_fix_required
+---
+
+# Debug Session: old-one
+
+## Source Todo
+
+- **Text:** Old same-ref bug one
+- **Raw Line:** - Old same-ref bug one (added 2026-03-01) (ref:cafebabe)
+- **Ref:** cafebabe
+- **Detail Status:** none
+EOF
+  cat > "$VBW_PLANNING_DIR/debugging/completed/20260401-020202-old-two.md" <<'EOF'
+---
+session_id: 20260401-020202-old-two
+title: old-two
+status: complete
+created: 2026-04-01 02:02:02
+updated: 2026-04-01 02:02:02
+qa_round: 0
+qa_last_result: skipped_no_fix_required
+uat_round: 0
+uat_last_result: skipped_no_fix_required
+---
+
+# Debug Session: old-two
+
+## Source Todo
+
+- **Text:** Old same-ref bug two
+- **Raw Line:** - Old same-ref bug two (added 2026-03-02) (ref:cafebabe)
+- **Ref:** cafebabe
+- **Detail Status:** none
+EOF
+  save_snapshot
+  : > "$count_file"
+
+  run bash "$instrumented_dir/debug-start-selected-todo.sh" "$VBW_PLANNING_DIR" 1
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.status')" = "ok" ]
+  [ "$(active_session_count)" = "1" ]
+  [ "$(completed_session_count)" = "2" ]
+  ! pending_todos_contains 'Selected same-ref bug'
+  pending_todos_contains 'Sibling same-ref bug'
+  [ "$(wc -l < "$count_file" | tr -d ' ')" = "1" ]
+}
+
 @test "debug-start-selected-todo: pickup failure after session creation returns partial lifecycle state" {
   cat > "$VBW_PLANNING_DIR/STATE.md" <<'EOF'
 # Project State
