@@ -396,6 +396,75 @@ if [ "$stale_non_team_name_found" = false ]; then
   pass "non-team name contract: command/reference prose has no stale name-ban phrases"
 fi
 
+DEBUG_COMMAND_FILE="$COMMANDS_DIR/debug.md"
+NON_TEAM_SPAWN_SHAPE_TEXT='Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)'
+LABEL_ONLY_NAME_TEXT='`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics'
+
+debug_path_a_block="$(awk '
+  /\*\*Path A: Competing Hypotheses\*\*/ { in_block = 1 }
+  in_block && /\*\*Path B: Standard\*\*/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_path_a_investigator_block="$(awk '
+  /Spawn 3 vbw-debugger teammates/ { in_block = 1 }
+  in_block && /\*\*Investigation phase:\*\*/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_path_a_implementation_block="$(awk '
+  /\*\*Implementation phase:\*\*/ { in_block = 1 }
+  in_block && /\*\*Path B: Standard\*\*/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_path_b_block="$(awk '
+  /\*\*Path B: Standard\*\*/ { in_block = 1 }
+  in_block && /^5\. \*\*Persist to debug session \+ Clear delegation marker \+ Present:/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_inline_qa_spawn_line="$(grep -F 'Spawn vbw-qa as subagent via Task tool for debug-session verification' "$DEBUG_COMMAND_FILE" || true)"
+
+if contains_literal "$debug_path_a_block" 'Create team via TeamCreate' \
+  && contains_literal "$debug_path_a_investigator_block" 'True-team spawn shape' \
+  && contains_literal "$debug_path_a_investigator_block" 'pass the exact TeamCreate `team_name`' \
+  && contains_literal "$debug_path_a_investigator_block" 'unique per-teammate `name`' \
+  && contains_literal "$debug_path_a_investigator_block" 'debug-hypothesis-1' \
+  && contains_literal "$debug_path_a_investigator_block" 'Do not pass `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`'; then
+  pass "debug: Path A hypothesis investigators use true-team spawn metadata"
+else
+  fail "debug: Path A hypothesis investigators must pass TeamCreate team_name and per-teammate names"
+fi
+
+if contains_literal "$debug_path_a_investigator_block" 'Non-team spawn shape' \
+  || contains_literal "$debug_path_a_investigator_block" "$LABEL_ONLY_NAME_TEXT"; then
+  fail "debug: Path A hypothesis investigators must not use non-team label wording"
+else
+  pass "debug: Path A hypothesis investigators avoid non-team label wording"
+fi
+
+if contains_literal "$debug_path_a_implementation_block" "$NON_TEAM_SPAWN_SHAPE_TEXT" \
+  && contains_literal "$debug_path_a_implementation_block" "$LABEL_ONLY_NAME_TEXT"; then
+  pass "debug: Path A post-TeamDelete implementation owner remains non-team"
+else
+  fail "debug: Path A post-TeamDelete implementation owner must remain non-team"
+fi
+
+if contains_literal "$debug_path_b_block" "$NON_TEAM_SPAWN_SHAPE_TEXT" \
+  && contains_literal "$debug_path_b_block" "$LABEL_ONLY_NAME_TEXT"; then
+  pass "debug: Path B debugger remains non-team"
+else
+  fail "debug: Path B debugger must retain non-team label wording"
+fi
+
+if contains_literal "$debug_inline_qa_spawn_line" "$NON_TEAM_SPAWN_SHAPE_TEXT" \
+  && contains_literal "$debug_inline_qa_spawn_line" "$LABEL_ONLY_NAME_TEXT"; then
+  pass "debug: inline QA spawn remains non-team"
+else
+  fail "debug: inline QA spawn must retain non-team label wording"
+fi
+
 echo ""
 echo "=== AskUserQuestion Contract Verification ==="
 
