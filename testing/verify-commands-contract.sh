@@ -1232,7 +1232,8 @@ fi
 
 if grep -Fq '<qa_remediation_spawn_contract>' <<< "$qa_remediation_block" \
   && grep -Fq 'QA remediation spawns are plain sequential subagent calls' <<< "$qa_remediation_block" \
-  && grep -Fq 'Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' <<< "$qa_remediation_block"; then
+  && grep -Fq 'Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' <<< "$qa_remediation_block" \
+  && grep -Fq '`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics' <<< "$qa_remediation_block"; then
   pass "vibe: QA remediation has non-team spawn-shape contract"
 else
   fail "vibe: QA remediation missing non-team spawn-shape contract"
@@ -1303,7 +1304,8 @@ if grep -Fq 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.m
   && grep -Fq 'model: "${LEAD_MODEL}"' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'maxTurns: ${LEAD_MAX_TURNS}' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'omit `maxTurns` because the resolved profile is unlimited' <<< "$qa_remediation_plan_block" \
-  && grep -Fq 'Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' <<< "$qa_remediation_plan_block" \
+  && grep -Fq '`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md' <<< "$qa_remediation_plan_block"; then
   pass "vibe: QA remediation plan stage resolves Lead settings and spawns with safe shape"
 else
