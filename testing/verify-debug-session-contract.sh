@@ -758,7 +758,7 @@ fi
 if [ -n "$DEBUG_INLINE_UAT_BLOCK" ]; then
   pass "debug.md inline UAT block extracted for scoped contract checks"
 else
-  fail "debug.md inline UAT block extracted for scoped contract checks"
+  fail "debug.md inline UAT block missing; scoped contract checks cannot run"
 fi
 
 if contains_literal "$DEBUG_INLINE_UAT_BLOCK" 'CHECKPOINT display plus the `AskUserQuestion` tool_use MUST be emitted in the same assistant response'; then
