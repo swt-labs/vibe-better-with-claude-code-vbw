@@ -579,7 +579,8 @@ if grep -Fq '**Spawn-shape rule (applies to both non-team and true-team spawns):
   && grep -Fq 'whether the live tool is `Agent` or `TaskCreate`' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'never set Claude-side `isolation:"worktree"` or pass a `cwd` pointing into `.claude/worktrees/...` or `.vbw-worktrees/...`' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'agent-spawn-guard.sh` validates these isolation/cwd fields before it branches on delegation mode' "$EXECUTE_PROTOCOL" \
-  && grep -Fq 'on non-team spawns omit `team_name`, per-agent `name`, and `run_in_background`' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'non-team spawns must omit `team_name` and `run_in_background`; `name` is optional label-only metadata' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'must never be used for routing, lifecycle state, or team semantics' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'Prepared VBW worktree targeting means the `Working directory:` and `Worktree targeting:` lines in the task description' "$EXECUTE_PROTOCOL" \
   && grep -Fq '`.execution-state.json` `worktree_path` and `scripts/worktree-target.sh`' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'it is not an `isolation` or `cwd` field on the spawn call' "$EXECUTE_PROTOCOL" \
@@ -607,7 +608,8 @@ fi
 
 if grep -Fq '<qa_remediation_spawn_contract>' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'QA remediation uses plain sequential subagent calls' "$EXECUTE_PROTOCOL" \
-  && grep -Fq 'Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' "$EXECUTE_PROTOCOL" \
+  && grep -Fq 'Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' "$EXECUTE_PROTOCOL" \
+  && grep -Fq '`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics' "$EXECUTE_PROTOCOL" \
   && grep -Fq 'VBW worktree targeting is task prompt/state metadata, not a spawn isolation or cwd handoff' "$EXECUTE_PROTOCOL"; then
   pass "execute-protocol documents QA remediation non-team spawn shape"
 else
@@ -647,7 +649,8 @@ if grep -Fq 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.m
   && grep -Fq 'model: "${LEAD_MODEL}"' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
   && grep -Fq 'maxTurns: ${LEAD_MAX_TURNS}' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
   && grep -Fq 'omit `maxTurns` because the resolved profile is unlimited' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
-  && grep -Fq 'Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq 'Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
+  && grep -Fq '`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics' <<< "$QA_REMEDIATION_PLAN_BLOCK" \
   && grep -Fq 'Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md' <<< "$QA_REMEDIATION_PLAN_BLOCK"; then
   pass "execute-protocol QA remediation plan stage resolves Lead settings and spawns with safe shape"
 else

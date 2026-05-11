@@ -783,23 +783,62 @@ test_non_team_mode_blocks_team_name() {
 }
 test_non_team_mode_blocks_team_name
 
-test_non_team_mode_blocks_named_non_team_spawns() {
-  setup_project
-  write_execution_state "corr-123"
-  write_marker execute subagent "" "corr-123"
+test_non_team_modes_allow_named_foreground_spawns() {
+  local delegation_mode tool output rc
+  for delegation_mode in subagent direct; do
+    setup_project
+    write_execution_state "corr-123"
+    write_marker execute "$delegation_mode" "" "corr-123"
 
-  local tool output rc
-  for tool in Agent TaskCreate; do
-    output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'named non-team teammate spawns are unsupported'; then
-      pass "Execute subagent mode blocks named non-team ${tool}"
-    else
-      fail "Execute subagent mode should block named non-team ${tool} (rc=$rc, output=$output)"
-    fi
+    for tool in Agent TaskCreate; do
+      output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "0" 2>&1) && rc=$? || rc=$?
+      if [ "$rc" -eq 0 ]; then
+        pass "Execute ${delegation_mode} mode allows named non-team foreground ${tool}"
+      else
+        fail "Execute ${delegation_mode} mode should allow named non-team foreground ${tool} (rc=$rc, output=$output)"
+      fi
+    done
+    cleanup
   done
+}
+test_non_team_modes_allow_named_foreground_spawns
+
+test_debug_marker_allows_named_foreground_agent() {
+  setup_project
+  write_marker debug "" "" "debug-corr"
+
+  local output rc
+  output=$(run_guard "$PROJECT" "" false "debugger" "$PROJECT" "Agent" 2>&1) && rc=$? || rc=$?
+  if [ "$rc" -eq 0 ] && ! echo "$output" | grep -Eq 'Blocked: .*non-team.*name'; then
+    pass "Debug marker allows named non-team foreground Agent"
+  else
+    fail "Debug marker should allow named non-team foreground Agent (rc=$rc, output=$output)"
+  fi
   cleanup
 }
-test_non_team_mode_blocks_named_non_team_spawns
+test_debug_marker_allows_named_foreground_agent
+
+test_debug_and_fix_markers_strip_isolation_on_named_foreground_agent() {
+  local mode output rc json_line
+  for mode in debug fix; do
+    setup_project
+    write_marker "$mode" "" "" "${mode}-corr"
+
+    output=$(run_guard "$PROJECT" "" false "debugger" "$PROJECT" "Agent" "" "worktree" 2>&1) && rc=$? || rc=$?
+    json_line=$(extract_json "$output")
+    if [ "$rc" -eq 0 ] \
+      && [ -n "$json_line" ] \
+      && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput.name == "debugger"' >/dev/null 2>&1 \
+      && ! echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput.isolation' >/dev/null 2>&1 \
+      && echo "$output" | grep -q 'VBW stripped isolation:worktree'; then
+      pass "${mode} marker strips isolation while preserving named non-team Agent label"
+    else
+      fail "${mode} marker should strip isolation and preserve named non-team Agent label (rc=$rc, output=$output)"
+    fi
+    cleanup
+  done
+}
+test_debug_and_fix_markers_strip_isolation_on_named_foreground_agent
 
 test_stale_team_marker_allows_named_spawns() {
   setup_project

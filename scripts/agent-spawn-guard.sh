@@ -65,10 +65,6 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null) || exit 0
 TEAM_NAME=$(echo "$INPUT" | jq -r '.tool_input.team_name // ""' 2>/dev/null) || exit 0
 AGENT_NAME=$(echo "$INPUT" | jq -r '.tool_input.name // ""' 2>/dev/null) || exit 0
 RUN_IN_BACKGROUND=$(echo "$INPUT" | jq -r '.tool_input.run_in_background // false' 2>/dev/null) || exit 0
-TRUE_LIVE_TEAM_MODE=false
-if [ "$MARKER_LIVE" = "true" ] && [ "$MODE" = "execute" ] && [ "$DELEGATION_MODE" = "team" ]; then
-  TRUE_LIVE_TEAM_MODE=true
-fi
 
 is_teammate_spawn_tool() {
   [ "$TOOL_NAME" = "Agent" ] || [ "$TOOL_NAME" = "TaskCreate" ]
@@ -126,13 +122,11 @@ emit_strip_json() {
 }
 
 if is_teammate_spawn_tool; then
+  # Non-team .tool_input.name is platform label metadata; VBW routing and
+  # lifecycle state must come from delegation markers and team_name only.
   # Hard blocks first — VBW-internal invariants must reject before strip paths
   if requested_vbw_worktree_cwd; then
     echo "Blocked: teammate spawn requested a VBW worktree path as a spawn working directory. Omit cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
-    exit 2
-  fi
-  if [ -n "$AGENT_NAME" ] && [ "$TRUE_LIVE_TEAM_MODE" != "true" ] && { [ "$MARKER_LIVE" = "true" ] || [ "$EXEC_ACTIVE" = "true" ]; }; then
-    echo "Blocked: named non-team teammate spawns are unsupported. Omit name for sequential non-team calls; name is only valid with team_name in true team mode." >&2
     exit 2
   fi
   # Strip paths — record fields to strip but do NOT exit yet.

@@ -371,6 +371,101 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
 done
 
 echo ""
+echo "=== Non-Team Name Contract Verification ==="
+
+STALE_NON_TEAM_NAME_PATTERNS=(
+  'no `team_name`, `name`'
+  'omit `team_name`, `name`'
+  'Do not pass `team_name`, per-agent `name`'
+  'do not pass `team_name`, per-agent `name`'
+  'Do not pass team metadata (`team_name`), per-agent names (`name`)'
+  'do not pass team metadata (`team_name`), per-agent names (`name`)'
+)
+NON_TEAM_NAME_SCAN_FILES=("${TRACKED_COMMAND_MARKDOWN_FILES[@]}" "$ROOT/references/execute-protocol.md")
+stale_non_team_name_found=false
+for file in "${NON_TEAM_NAME_SCAN_FILES[@]}"; do
+  [ -f "$file" ] || continue
+  for pattern in "${STALE_NON_TEAM_NAME_PATTERNS[@]}"; do
+    if grep -Fq -- "$pattern" "$file"; then
+      fail "non-team name contract: stale name-ban phrase in ${file#"$ROOT/"}: $pattern"
+      stale_non_team_name_found=true
+    fi
+  done
+done
+if [ "$stale_non_team_name_found" = false ]; then
+  pass "non-team name contract: command/reference prose has no stale name-ban phrases"
+fi
+
+DEBUG_COMMAND_FILE="$COMMANDS_DIR/debug.md"
+NON_TEAM_SPAWN_SHAPE_TEXT='Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)'
+LABEL_ONLY_NAME_TEXT='`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics'
+
+debug_path_a_block="$(awk '
+  /\*\*Path A: Competing Hypotheses\*\*/ { in_block = 1 }
+  in_block && /\*\*Path B: Standard\*\*/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_path_a_investigator_block="$(awk '
+  /Spawn 3 vbw-debugger teammates/ { in_block = 1 }
+  in_block && /\*\*Investigation phase:\*\*/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_path_a_implementation_block="$(awk '
+  /\*\*Implementation phase:\*\*/ { in_block = 1 }
+  in_block && /\*\*Path B: Standard\*\*/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_path_b_block="$(awk '
+  /\*\*Path B: Standard\*\*/ { in_block = 1 }
+  in_block && /^5\. \*\*Persist to debug session \+ Clear delegation marker \+ Present:/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_inline_qa_spawn_line="$(grep -F 'Spawn vbw-qa as subagent via Task tool for debug-session verification' "$DEBUG_COMMAND_FILE" || true)"
+
+if contains_literal "$debug_path_a_block" 'Create team via TeamCreate' \
+  && contains_literal "$debug_path_a_investigator_block" 'True-team spawn shape' \
+  && contains_literal "$debug_path_a_investigator_block" 'pass the exact TeamCreate `team_name`' \
+  && contains_literal "$debug_path_a_investigator_block" 'unique per-teammate `name`' \
+  && contains_literal "$debug_path_a_investigator_block" 'debug-hypothesis-1' \
+  && contains_literal "$debug_path_a_investigator_block" 'Do not pass `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`'; then
+  pass "debug: Path A hypothesis investigators use true-team spawn metadata"
+else
+  fail "debug: Path A hypothesis investigators must pass TeamCreate team_name and per-teammate names"
+fi
+
+if contains_literal "$debug_path_a_investigator_block" 'Non-team spawn shape' \
+  || contains_literal "$debug_path_a_investigator_block" "$LABEL_ONLY_NAME_TEXT"; then
+  fail "debug: Path A hypothesis investigators must not use non-team label wording"
+else
+  pass "debug: Path A hypothesis investigators avoid non-team label wording"
+fi
+
+if contains_literal "$debug_path_a_implementation_block" "$NON_TEAM_SPAWN_SHAPE_TEXT" \
+  && contains_literal "$debug_path_a_implementation_block" "$LABEL_ONLY_NAME_TEXT"; then
+  pass "debug: Path A post-TeamDelete implementation owner remains non-team"
+else
+  fail "debug: Path A post-TeamDelete implementation owner must remain non-team"
+fi
+
+if contains_literal "$debug_path_b_block" "$NON_TEAM_SPAWN_SHAPE_TEXT" \
+  && contains_literal "$debug_path_b_block" "$LABEL_ONLY_NAME_TEXT"; then
+  pass "debug: Path B debugger remains non-team"
+else
+  fail "debug: Path B debugger must retain non-team label wording"
+fi
+
+if contains_literal "$debug_inline_qa_spawn_line" "$NON_TEAM_SPAWN_SHAPE_TEXT" \
+  && contains_literal "$debug_inline_qa_spawn_line" "$LABEL_ONLY_NAME_TEXT"; then
+  pass "debug: inline QA spawn remains non-team"
+else
+  fail "debug: inline QA spawn must retain non-team label wording"
+fi
+
+echo ""
 echo "=== AskUserQuestion Contract Verification ==="
 
 ASK_USER_QUESTION_REF="$ROOT/references/ask-user-question.md"
@@ -1232,7 +1327,8 @@ fi
 
 if grep -Fq '<qa_remediation_spawn_contract>' <<< "$qa_remediation_block" \
   && grep -Fq 'QA remediation spawns are plain sequential subagent calls' <<< "$qa_remediation_block" \
-  && grep -Fq 'Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, `isolation`, or worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' <<< "$qa_remediation_block"; then
+  && grep -Fq 'Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' <<< "$qa_remediation_block" \
+  && grep -Fq '`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics' <<< "$qa_remediation_block"; then
   pass "vibe: QA remediation has non-team spawn-shape contract"
 else
   fail "vibe: QA remediation missing non-team spawn-shape contract"
@@ -1303,7 +1399,8 @@ if grep -Fq 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.m
   && grep -Fq 'model: "${LEAD_MODEL}"' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'maxTurns: ${LEAD_MAX_TURNS}' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'omit `maxTurns` because the resolved profile is unlimited' <<< "$qa_remediation_plan_block" \
-  && grep -Fq 'Do not pass `team_name`, per-agent `name`, `run_in_background`, `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' <<< "$qa_remediation_plan_block" \
+  && grep -Fq '`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md' <<< "$qa_remediation_plan_block"; then
   pass "vibe: QA remediation plan stage resolves Lead settings and spawns with safe shape"
 else
