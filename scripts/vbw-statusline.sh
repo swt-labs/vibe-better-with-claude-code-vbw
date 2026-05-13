@@ -395,6 +395,7 @@ for _floor_sdir in "${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.
   [ -n "$_S_FLOOR" ] && break
 done
 _AC_FLOOR="${CLAUDE_CODE_CONTEXT_WINDOW_FLOOR:-${_S_FLOOR:-}}"
+unset _floor_sdir _S_FLOOR
 
 # Match Claude Code's truthiness check: "1", "true", "yes", "on" all disable
 # Uses case-insensitive patterns for bash 3.2 compatibility (macOS default)
@@ -406,16 +407,19 @@ esac
 # Strip leading zeros to prevent bash octal interpretation (e.g., "08000" → "8000")
 _ac_dec() { local v="${1#"${1%%[!0]*}"}"; echo "${v:-0}"; }
 
-if [ "$_AC_SKIP" = "false" ] && [ "${CTX_SIZE:-0}" -gt 0 ] 2>/dev/null; then
-  # Apply context window floor before cap: raises CTX_SIZE when Claude Code
-  # under-reports context_window_size (set CLAUDE_CODE_CONTEXT_WINDOW_FLOOR to
-  # your actual window, e.g. 1000000 for Sonnet 4.6 + extra usage on Max plan).
-  if [ -n "$_AC_FLOOR" ]; then
-    _FL="$(_ac_dec "${_AC_FLOOR%%.*}")"
-    if [ "${_FL:-0}" -gt "${CTX_SIZE:-0}" ] 2>/dev/null; then
-      CTX_SIZE="$_FL"
-    fi
+# Apply context window floor unconditionally (display correction, independent of
+# whether autocompact normalization is active). Raises CTX_SIZE when Claude Code
+# under-reports context_window_size for the user's subscription window.
+# Set CLAUDE_CODE_CONTEXT_WINDOW_FLOOR to your actual window (e.g. 1000000 for
+# Sonnet 4.6 + extra usage on a Max plan).
+if [ -n "$_AC_FLOOR" ] && [ "${CTX_SIZE:-0}" -gt 0 ] 2>/dev/null; then
+  _FL="$(_ac_dec "${_AC_FLOOR%%.*}")"
+  if [ "${_FL:-0}" -gt "${CTX_SIZE:-0}" ] 2>/dev/null; then
+    CTX_SIZE="$_FL"
   fi
+fi
+
+if [ "$_AC_SKIP" = "false" ] && [ "${CTX_SIZE:-0}" -gt 0 ] 2>/dev/null; then
   # Apply AUTO_COMPACT_WINDOW cap (if set, use the smaller of window and cap)
   _AC_CTX="$CTX_SIZE"
   if [ -n "$_AC_WINDOW_CAP" ]; then
