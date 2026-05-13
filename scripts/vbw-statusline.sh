@@ -321,6 +321,20 @@ CACHE_W=${CACHE_W:-0}; CACHE_R=${CACHE_R:-0}; COST=${COST:-0}
 DUR_MS=${DUR_MS:-0}; API_MS=${API_MS:-0}; ADDED=${ADDED:-0}; REMOVED=${REMOVED:-0}
 MODEL=${MODEL:-Claude}; VER=${VER:-?}
 
+# Correct under-reported context_window_size for large-context models.
+# Claude Code may report 200K (or omit the field) for models with 1M context windows,
+# causing the trigger threshold to be computed against 200K instead of 1M.
+# Use a lookup table to ensure CTX_SIZE reflects the actual model window before
+# the compaction trigger is calculated.
+_MODEL_ID=$(printf '%s' "$input" | jq -r '.model.id // ""' 2>/dev/null || echo "")
+_WIN_CFG="$_SL_SCRIPT_DIR/../config/model-context-windows.json"
+if [ -n "$_MODEL_ID" ] && [ -f "$_WIN_CFG" ]; then
+  _KNOWN_WIN=$(jq -r --arg m "$_MODEL_ID" '.windows[$m] // 0' "$_WIN_CFG" 2>/dev/null || echo "0")
+  if [ "${_KNOWN_WIN:-0}" -gt "${CTX_SIZE:-0}" ] 2>/dev/null; then
+    CTX_SIZE="$_KNOWN_WIN"
+  fi
+fi
+
 # --- Autocompact buffer normalization (#237) ---
 # Claude Code reserves context for autocompact that's never usable. Raw percentages
 # make users think they have more headroom than they do. Normalize so 100% = trigger.

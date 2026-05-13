@@ -1,5 +1,5 @@
 {
-  "_comment_context_windows": "All Claude 4.x models have ~200K token context windows (~800K chars at 4:1 ratio)",
+  "_comment_context_windows": "Claude 4.x context windows vary by model: Sonnet 4.6, Opus 4.7, and Haiku 4.5 have 1M token windows; older Claude 4 models had ~200K. Budgets are sized as a conservative percentage of 200K to stay safe across all models.",
   "_comment_scaling_rationale": "Budgets are set at 1-4% of model context windows to leave headroom for instructions, codebase context, and prior conversation. Character budgets used instead of tokens for cross-model consistency and simpler enforcement.",
   "_comment_percentage_breakdown": {
     "scout": "1% of 800K = 8K chars (Sonnet/Haiku - research queries)",
