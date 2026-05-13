@@ -326,6 +326,7 @@ MODEL=${MODEL:-Claude}; VER=${VER:-?}
 # make users think they have more headroom than they do. Normalize so 100% = trigger.
 #
 # Algorithm (reverse-engineered from cli.js v2.1.76):
+#   context_window   = max(reported, CONTEXT_WINDOW_FLOOR)  [if floor set]
 #   effective_window = context_window - min(max_output_tokens, 20000)
 #   default_trigger  = effective_window - 13000
 #   override_trigger = floor(effective_window * pct / 100)   [if override set]
@@ -346,6 +347,10 @@ MODEL=${MODEL:-Claude}; VER=${VER:-?}
 #     Older models (3.5 Sonnet=8K, Claude 3=4K) use smaller deductions internally,
 #     making our buffer estimate ~12K too large (pessimistic/safe direction).
 #     Users on older models can set CLAUDE_CODE_MAX_OUTPUT_TOKENS for accuracy.
+#   - FLOOR and CAP interact: floor raises the raw window; cap then clamps the
+#     trigger-math reference. Setting FLOOR > CAP produces no benefit — the cap
+#     still governs the trigger and the floor has no effect on the displayed window.
+#     Avoid combining them. If both are set and FLOOR > CAP, use only FLOOR.
 
 _AC_DISABLED=""
 _AC_OVERRIDE=""
