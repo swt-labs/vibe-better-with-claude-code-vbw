@@ -1,9 +1,0 @@
-{
-  "_comment": "Known context window sizes by model ID. Used to correct under-reported or missing context_window_size values from Claude Code hook events. Update when new large-context models are released.",
-  "windows": {
-    "claude-opus-4-7": 1000000,
-    "claude-sonnet-4-6": 1000000,
-    "claude-haiku-4-5": 1000000,
-    "claude-haiku-4-5-20251001": 1000000
-  }
-}

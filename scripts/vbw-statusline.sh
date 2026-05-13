@@ -321,20 +321,6 @@ CACHE_W=${CACHE_W:-0}; CACHE_R=${CACHE_R:-0}; COST=${COST:-0}
 DUR_MS=${DUR_MS:-0}; API_MS=${API_MS:-0}; ADDED=${ADDED:-0}; REMOVED=${REMOVED:-0}
 MODEL=${MODEL:-Claude}; VER=${VER:-?}
 
-# Correct under-reported context_window_size for large-context models.
-# Claude Code may report 200K (or omit the field) for models with 1M context windows,
-# causing the trigger threshold to be computed against 200K instead of 1M.
-# Use a lookup table to ensure CTX_SIZE reflects the actual model window before
-# the compaction trigger is calculated.
-_MODEL_ID=$(printf '%s' "$input" | jq -r '.model.id // ""' 2>/dev/null || echo "")
-_WIN_CFG="$_SL_SCRIPT_DIR/../config/model-context-windows.json"
-if [ -n "$_MODEL_ID" ] && [ -f "$_WIN_CFG" ]; then
-  _KNOWN_WIN=$(jq -r --arg m "$_MODEL_ID" '.windows[$m] // 0' "$_WIN_CFG" 2>/dev/null || echo "0")
-  if [ "${_KNOWN_WIN:-0}" -gt "${CTX_SIZE:-0}" ] 2>/dev/null; then
-    CTX_SIZE="$_KNOWN_WIN"
-  fi
-fi
-
 # --- Autocompact buffer normalization (#237) ---
 # Claude Code reserves context for autocompact that's never usable. Raw percentages
 # make users think they have more headroom than they do. Normalize so 100% = trigger.
@@ -351,8 +337,9 @@ fi
 #            1M + override=95 → buffer=69K (6.9%)
 #
 # Also respects:
-#   CLAUDE_CODE_AUTO_COMPACT_WINDOW — caps context window for compact math
-#   CLAUDE_CODE_MAX_OUTPUT_TOKENS   — min(value, 20000) for output deduction
+#   CLAUDE_CODE_CONTEXT_WINDOW_FLOOR — raises CTX_SIZE when CC under-reports (e.g. 1000000)
+#   CLAUDE_CODE_AUTO_COMPACT_WINDOW  — caps context window for compact math
+#   CLAUDE_CODE_MAX_OUTPUT_TOKENS    — min(value, 20000) for output deduction
 # Notes:
 #   - Override decimals (e.g., 95.5) handled via fixed-point x10 math.
 #   - Output token deduction defaults to 20K (correct for Claude 4 family).
@@ -364,6 +351,7 @@ _AC_DISABLED=""
 _AC_OVERRIDE=""
 _AC_WINDOW_CAP=""
 _AC_MAX_OUTPUT=""
+_AC_FLOOR=""
 
 # Resolve env vars: real env > settings.json env block (single jq call for all 4)
 # Note: first settings.json with any env value wins — values are NOT merged across files.
@@ -389,6 +377,20 @@ _AC_OVERRIDE="${CLAUDE_AUTOCOMPACT_PCT_OVERRIDE:-$_S_OVERRIDE}"
 _AC_WINDOW_CAP="${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-$_S_WINDOW}"
 _AC_MAX_OUTPUT="${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-$_S_OUTPUT}"
 
+# CLAUDE_CODE_CONTEXT_WINDOW_FLOOR: read separately to avoid changing the 4-field
+# join sentinel ("|||") and IFS read above. Raises CTX_SIZE when Claude Code
+# under-reports context_window_size for a user's actual subscription window.
+# Example: Sonnet 4.6 on Max with extra usage enabled has 1M, but CC may report 200K.
+# Set to your actual window: e.g. 1000000 or 500000.
+_S_FLOOR=""
+for _floor_sdir in "${CLAUDE_CONFIG_DIR:-}" "$HOME/.config/claude-code" "$HOME/.claude"; do
+  [ -z "$_floor_sdir" ] && continue
+  [ -f "$_floor_sdir/settings.json" ] || continue
+  _S_FLOOR=$(jq -r '.env.CLAUDE_CODE_CONTEXT_WINDOW_FLOOR // ""' "$_floor_sdir/settings.json" 2>/dev/null)
+  [ -n "$_S_FLOOR" ] && break
+done
+_AC_FLOOR="${CLAUDE_CODE_CONTEXT_WINDOW_FLOOR:-${_S_FLOOR:-}}"
+
 # Match Claude Code's truthiness check: "1", "true", "yes", "on" all disable
 # Uses case-insensitive patterns for bash 3.2 compatibility (macOS default)
 _AC_SKIP=false
@@ -400,6 +402,15 @@ esac
 _ac_dec() { local v="${1#"${1%%[!0]*}"}"; echo "${v:-0}"; }
 
 if [ "$_AC_SKIP" = "false" ] && [ "${CTX_SIZE:-0}" -gt 0 ] 2>/dev/null; then
+  # Apply context window floor before cap: raises CTX_SIZE when Claude Code
+  # under-reports context_window_size (set CLAUDE_CODE_CONTEXT_WINDOW_FLOOR to
+  # your actual window, e.g. 1000000 for Sonnet 4.6 + extra usage on Max plan).
+  if [ -n "$_AC_FLOOR" ]; then
+    _FL="$(_ac_dec "${_AC_FLOOR%%.*}")"
+    if [ "${_FL:-0}" -gt "${CTX_SIZE:-0}" ] 2>/dev/null; then
+      CTX_SIZE="$_FL"
+    fi
+  fi
   # Apply AUTO_COMPACT_WINDOW cap (if set, use the smaller of window and cap)
   _AC_CTX="$CTX_SIZE"
   if [ -n "$_AC_WINDOW_CAP" ]; then
