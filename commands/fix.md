@@ -23,7 +23,12 @@ Store the plugin root path output above as `{plugin-root}` for use in script inv
 Config: Pre-injected by SessionStart hook.
 
 ## Guard
-- Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+
+Bind `PLANNING_ROOT=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+
+- `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 - No $ARGUMENTS: STOP "Usage: /vbw:fix \"description of what to fix\""
 
 ## Steps
@@ -60,7 +65,7 @@ Config: Pre-injected by SessionStart hook.
 
 5. **Spawn Dev:** Resolve model first:
     ```bash
-  if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" turbo); then
+  if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" dev "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json" turbo); then
     echo "$AGENT_SETTINGS" >&2
     exit 1
   fi
@@ -75,7 +80,7 @@ Config: Pre-injected by SessionStart hook.
 
     **Discover research context** (optional, from prior `/vbw:research`):
     ```bash
-    RESEARCH_CONTEXT=$(bash "{plugin-root}/scripts/compile-research-context.sh" .vbw-planning "{fix description from Step 1}" 2>/dev/null || echo "")
+    RESEARCH_CONTEXT=$(bash "{plugin-root}/scripts/compile-research-context.sh" "$PLANNING_ROOT" "{fix description from Step 1}" 2>/dev/null || echo "")
     ```
     Replace `{fix description from Step 1}` with the actual parsed fix description. If `RESEARCH_CONTEXT` is non-empty, include it in the Dev task prompt below. If empty, omit the `<standalone_research_context>` block entirely — the fix workflow proceeds as today.
 

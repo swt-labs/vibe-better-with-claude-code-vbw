@@ -84,12 +84,17 @@ fi`
 
 ## Guard
 
-1. **Not initialized** (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+
+1. **Guard:**
+   - `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+   - `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+   - `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 2. **Brownfield normalization:** If Pre-computed state (from Context above) contains `misnamed_plans=true`, normalize all phase directories before proceeding:
    ```bash
    NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
    if [ -f "$NORM_SCRIPT" ]; then
-     for pdir in .vbw-planning/phases/*/; do
+     for pdir in "$PLANNING_ROOT"/phases/*/; do
        [ -d "$pdir" ] && bash "$NORM_SCRIPT" "$pdir"
      done
    fi

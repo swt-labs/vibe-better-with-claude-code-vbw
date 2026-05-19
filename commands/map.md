@@ -45,7 +45,12 @@ Agent Teams:
 
 ## Guard
 
-1. **Not initialized** (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+Bind `PLANNING_ROOT=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+
+1. **Guard:**
+   - `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+   - `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+   - `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 2. **No git:** WARN "Not a git repo -- incremental mapping disabled." Continue in full mode.
 3. **Empty project:** No source files → STOP: "No source code found to map."
 
@@ -74,7 +79,7 @@ Display: `◆ Sizing: {SOURCE_FILE_COUNT} source files → {tier} mode`
 
 Read `prefer_teams` before applying tier:
 ```bash
-PREFER_TEAMS=$(bash "{plugin-root}/scripts/normalize-prefer-teams.sh" .vbw-planning/config.json 2>/dev/null || echo "auto")
+PREFER_TEAMS=$(bash "{plugin-root}/scripts/normalize-prefer-teams.sh" "$PLANNING_ROOT/config.json" 2>/dev/null || echo "auto")
 ```
 If `PREFER_TEAMS` is `never`, force solo regardless of file count or --tier flag.
 
@@ -123,7 +128,7 @@ Scout B (Quality + Concerns): analyze quality, conventions, testing, debt, risks
 Mode: {MAPPING_MODE}. After writing all 3 files, send a `scout_findings` message (domain: "quality-and-concerns") with `cross_cutting` findings only. Schema ref: `{plugin-root}/references/handoff-schemas.md`
 
 **Scout model (effort-gated):** Fast/Turbo: `Model: haiku`. Thorough/Balanced: inherit session model.
-**Scout turn budget (effort-gated):** Resolve with `bash "{plugin-root}/scripts/resolve-agent-max-turns.sh" scout .vbw-planning/config.json "{effort}"`. If `SCOUT_MAX_TURNS` is non-empty, pass `maxTurns: ${SCOUT_MAX_TURNS}` to each Scout TaskCreate. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
+**Scout turn budget (effort-gated):** Resolve with `bash "{plugin-root}/scripts/resolve-agent-max-turns.sh" scout "$PLANNING_ROOT/config.json" "{effort}"`. If `SCOUT_MAX_TURNS` is non-empty, pass `maxTurns: ${SCOUT_MAX_TURNS}` to each Scout TaskCreate. If `SCOUT_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).
 **Skill pre-evaluation:** Before composing Scout task descriptions, evaluate installed skills visible in your system context — read each skill's description and select all materially helpful installed skills for codebase mapping, including adjacent/supporting domain skills surfaced by the prompt, logs, error text, related files, or stack context — not just the single most direct skill. The spawned prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. Example: if the prompt or error mentions SwiftData, include `swiftdata` alongside relevant test/build/debug skills. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
 
 If one or more skills were preselected, run `bash "{plugin-root}/scripts/extract-skill-follow-up-files.sh" "{all preselected skill names from the activation block}" 2>/dev/null || true` before spawning each duo-mode Scout. If the helper prints a `<skill_follow_up_files>` block, paste it immediately after the follow-up-read sentence in the spawned payload. Otherwise omit that block.
