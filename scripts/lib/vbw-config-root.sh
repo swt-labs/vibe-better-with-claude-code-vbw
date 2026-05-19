@@ -73,6 +73,21 @@ _prefer_claude_sidechain_host_root() {
   return 1
 }
 
+_emit_vbw_auto_resolve_banner() {
+  # One-line stderr banner emitted exactly once per shell process when CWD
+  # is below the resolved planning root. Guarded by _VBW_BANNER_EMITTED.
+  local _root="$1" _cwd="$2"
+  [ -n "${_VBW_BANNER_EMITTED:-}" ] && return 0
+  [ "$_root" = "$_cwd" ] && return 0
+  case "$_cwd/" in
+    "$_root"/*) ;;
+    *) return 0 ;;
+  esac
+  printf 'VBW: planning found at %s — paths resolved from there.\n' "$_root" >&2
+  _VBW_BANNER_EMITTED=1
+  export _VBW_BANNER_EMITTED
+}
+
 find_vbw_root() {
   # Cache hit: already resolved in this shell or by a parent script
   if [ -n "${VBW_CONFIG_ROOT:-}" ]; then
@@ -81,8 +96,32 @@ find_vbw_root() {
     return 0
   fi
 
-  local _start_dir _cwd_dir
+  local _start_dir _cwd_dir _ptr_file _ptr_root
   _cwd_dir=$(pwd -P 2>/dev/null || pwd)
+
+  # Step 1: honor VBW_PLANNING_ROOT env var (workspace root, not planning dir)
+  if [ -n "${VBW_PLANNING_ROOT:-}" ]; then
+    export VBW_CONFIG_ROOT="$VBW_PLANNING_ROOT"
+    export VBW_PLANNING_DIR="$VBW_PLANNING_ROOT/.vbw-planning"
+    _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"
+    return 0
+  fi
+
+  # Step 2: git-common-dir pointer file (shared across worktrees of the same clone)
+  if _ptr_file=$(git rev-parse --git-common-dir 2>/dev/null); then
+    _ptr_file="$_ptr_file/info/vbw-planning-root.txt"
+    if [ -f "$_ptr_file" ]; then
+      _ptr_root=$(grep -vE '^[[:space:]]*(#|$)' "$_ptr_file" 2>/dev/null \
+        | head -n 1 \
+        | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+      if [ -n "$_ptr_root" ] && [ -d "$_ptr_root" ]; then
+        export VBW_CONFIG_ROOT="$_ptr_root"
+        export VBW_PLANNING_DIR="$_ptr_root/.vbw-planning"
+        _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"
+        return 0
+      fi
+    fi
+  fi
 
   if [ -n "${1:-}" ]; then
     # Claude Code can run subagents inside unmanaged internal sidechains at
@@ -90,21 +129,33 @@ find_vbw_root() {
     # workspace before nearest-ancestor walking can select the copied sidechain
     # .vbw-planning tree. VBW-managed .vbw-worktrees/* are intentionally not
     # covered by this exception.
-    _prefer_claude_sidechain_host_root "$_cwd_dir" && return 0
+    if _prefer_claude_sidechain_host_root "$_cwd_dir"; then
+      _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"; return 0
+    fi
     # Prefer the active workspace when CWD is already inside a VBW project.
-    _walk_up_for_vbw_root "$_cwd_dir" && return 0
+    if _walk_up_for_vbw_root "$_cwd_dir"; then
+      _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"; return 0
+    fi
     # Resolve start_dir to an absolute path; suppress cd stderr so bad paths
     # don't leak error messages into hook/statusline output (#267)
     if _start_dir=$(cd "$1" 2>/dev/null && pwd -P 2>/dev/null); then
       # Fall back to start_dir when CWD is outside any VBW workspace.
-      _walk_up_for_vbw_root "$_start_dir" && return 0
+      if _walk_up_for_vbw_root "$_start_dir"; then
+        _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"; return 0
+      fi
     else
       # Failed to resolve start_dir; fall back to walking from CWD only
-      _walk_up_for_vbw_root "$_cwd_dir" && return 0
+      if _walk_up_for_vbw_root "$_cwd_dir"; then
+        _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"; return 0
+      fi
     fi
   else
-    _prefer_claude_sidechain_host_root "$_cwd_dir" && return 0
-    _walk_up_for_vbw_root "$_cwd_dir" && return 0
+    if _prefer_claude_sidechain_host_root "$_cwd_dir"; then
+      _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"; return 0
+    fi
+    if _walk_up_for_vbw_root "$_cwd_dir"; then
+      _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"; return 0
+    fi
   fi
 
   # Not found anywhere — fall back to CWD (backwards-compatible)
