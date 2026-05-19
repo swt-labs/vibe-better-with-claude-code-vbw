@@ -22,8 +22,6 @@ set -u
 # The marker file is transient (gitignored via planning-git.sh).
 
 _DW_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=lib/vbw-config-root.sh
-[ -f "$_DW_SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$_DW_SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$_DW_SCRIPT_DIR" >/dev/null 2>&1 || true
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 MARKER_FILE="$PLANNING_DIR/.delegated-workflow.json"
 EXEC_STATE_FILE="$PLANNING_DIR/.execution-state.json"
