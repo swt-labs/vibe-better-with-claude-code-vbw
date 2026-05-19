@@ -23,6 +23,10 @@
 
 set -eo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/vbw-config-root.sh
+[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
+
 PHASE_DIR="${1:-}"
 
 if [ -z "$PHASE_DIR" ]; then
@@ -57,10 +61,10 @@ resolve_config_path() {
       printf '%s/config.json\n' "$planning_dir"
       ;;
     .vbw-planning/phases/*)
-      printf '.vbw-planning/config.json\n'
+      printf '%s/config.json\n' "${VBW_PLANNING_DIR:-.vbw-planning}"
       ;;
     *)
-      printf '.vbw-planning/config.json\n'
+      printf '%s/config.json\n' "${VBW_PLANNING_DIR:-.vbw-planning}"
       ;;
   esac
 }

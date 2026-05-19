@@ -11,9 +11,11 @@ set -euo pipefail
 # entries may explicitly set route=delegate|turbo|direct.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/vbw-config-root.sh
+[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
 PHASE_DIR=""
-CONFIG_PATH=".vbw-planning/config.json"
-EXEC_STATE_PATH=".vbw-planning/.execution-state.json"
+CONFIG_PATH="${VBW_PLANNING_DIR:-.vbw-planning}/config.json"
+EXEC_STATE_PATH="${VBW_PLANNING_DIR:-.vbw-planning}/.execution-state.json"
 ROUTE_MAP_PATH=""
 SEGMENTS_MODE=false
 

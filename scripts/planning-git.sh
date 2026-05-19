@@ -8,6 +8,10 @@ set -euo pipefail
 #   planning-git.sh commit-boundary <action> [CONFIG_FILE]
 #   planning-git.sh push-after-phase [CONFIG_FILE]
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/vbw-config-root.sh
+[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
+
 COMMAND="${1:-}"
 ARG2="${2:-}"
 ARG3="${3:-}"
@@ -29,7 +33,7 @@ read_config() {
 }
 
 ensure_transient_ignore() {
-  local planning_dir=".vbw-planning"
+  local planning_dir="${VBW_PLANNING_DIR:-.vbw-planning}"
   local ignore_file="$planning_dir/.gitignore"
 
   [ -d "$planning_dir" ] || return 0
@@ -136,7 +140,7 @@ fi
 
 case "$COMMAND" in
   sync-ignore)
-    CONFIG_FILE="${ARG2:-.vbw-planning/config.json}"
+    CONFIG_FILE="${ARG2:-${VBW_PLANNING_DIR:-.vbw-planning}/config.json}"
 
     if ! is_git_repo; then
       exit 0
@@ -149,7 +153,7 @@ case "$COMMAND" in
 
   commit-boundary)
     ACTION="${ARG2:-}"
-    CONFIG_FILE="${ARG3:-.vbw-planning/config.json}"
+    CONFIG_FILE="${ARG3:-${VBW_PLANNING_DIR:-.vbw-planning}/config.json}"
 
     if [ -z "$ACTION" ]; then
       echo "Usage: planning-git.sh commit-boundary <action> [CONFIG_FILE]" >&2
@@ -168,8 +172,9 @@ case "$COMMAND" in
 
     ensure_transient_ignore
 
-    if [ -d ".vbw-planning" ]; then
-      git add .vbw-planning
+    _pg_planning_dir="${VBW_PLANNING_DIR:-.vbw-planning}"
+    if [ -d "$_pg_planning_dir" ]; then
+      git add "$_pg_planning_dir"
     fi
 
     if [ -f "CLAUDE.md" ]; then
@@ -185,7 +190,7 @@ case "$COMMAND" in
     ;;
 
   push-after-phase)
-    CONFIG_FILE="${ARG2:-.vbw-planning/config.json}"
+    CONFIG_FILE="${ARG2:-${VBW_PLANNING_DIR:-.vbw-planning}/config.json}"
 
     if ! is_git_repo; then
       exit 0

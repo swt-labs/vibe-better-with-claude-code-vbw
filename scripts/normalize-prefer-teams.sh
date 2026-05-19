@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -u
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/vbw-config-root.sh
+[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
+
 # normalize-prefer-teams.sh — emit canonical prefer_teams values.
 #
 # Usage:
@@ -51,4 +55,4 @@ if [ "${1:-}" = "--value" ]; then
   exit 0
 fi
 
-normalize_prefer_teams "$(read_raw_value "${1:-.vbw-planning/config.json}")"
+normalize_prefer_teams "$(read_raw_value "${1:-${VBW_PLANNING_DIR:-.vbw-planning}/config.json}")"

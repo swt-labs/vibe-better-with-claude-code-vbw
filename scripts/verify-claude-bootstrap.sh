@@ -7,6 +7,9 @@ set -euo pipefail
 # Exit: 0 if all pass, 1 if any fail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/vbw-config-root.sh
+[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
 BOOTSTRAP="$ROOT/scripts/bootstrap/bootstrap-claude.sh"
 
 PASS=0

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -u
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/vbw-config-root.sh
+[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
+
 # route-monorepo.sh <phase-dir>
 # Detect monorepo structure and output relevant package paths for a phase.
 # Scans PLAN.md Files: entries, maps file paths to package roots.
@@ -19,7 +23,7 @@ command -v jq &>/dev/null || { echo "[]"; exit 0; }
 [ ! -d "$PHASE_DIR" ] && { echo "[]"; exit 0; }
 
 # Check monorepo_routing flag — if disabled, skip
-CONFIG_PATH=".vbw-planning/config.json"
+CONFIG_PATH="${VBW_PLANNING_DIR:-.vbw-planning}/config.json"
 if [ -f "$CONFIG_PATH" ]; then
   MONOREPO_ROUTING=$(jq -r 'if .monorepo_routing != null then .monorepo_routing elif .v3_monorepo_routing != null then .v3_monorepo_routing else true end' "$CONFIG_PATH" 2>/dev/null || echo "true")
   if [ "$MONOREPO_ROUTING" != "true" ]; then

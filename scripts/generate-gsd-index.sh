@@ -6,8 +6,12 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/vbw-config-root.sh
+[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
+
 # Check if archive exists
-ARCHIVE_DIR=".vbw-planning/gsd-archive"
+ARCHIVE_DIR="${VBW_PLANNING_DIR:-.vbw-planning}/gsd-archive"
 if [[ ! -d "$ARCHIVE_DIR" ]]; then
   exit 0
 fi

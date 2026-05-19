@@ -4,6 +4,8 @@ set -u
 # Non-blocking, fail-open (always exit 0)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/vbw-config-root.sh
+[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
 if [ -f "$SCRIPT_DIR/uat-utils.sh" ]; then
   source "$SCRIPT_DIR/uat-utils.sh"
 fi
@@ -602,7 +604,7 @@ update_model_profile() {
   [ -f "$state_md" ] || return 0
 
   config_file="${planning_root}/config.json"
-  [ -f "$config_file" ] || config_file=".vbw-planning/config.json"
+  [ -f "$config_file" ] || config_file="${VBW_PLANNING_DIR:-.vbw-planning}/config.json"
 
   # Read active model profile from config
   local model_profile

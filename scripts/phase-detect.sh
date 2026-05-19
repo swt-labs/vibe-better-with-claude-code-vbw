@@ -29,6 +29,8 @@ trap '
 
 _SCRIPT_DIR_PD="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT_DIR="$_SCRIPT_DIR_PD"
+# shellcheck source=lib/vbw-config-root.sh
+[ -f "$_SCRIPT_DIR_PD/lib/vbw-config-root.sh" ] && . "$_SCRIPT_DIR_PD/lib/vbw-config-root.sh" && find_vbw_root "$_SCRIPT_DIR_PD" >/dev/null 2>&1 || true
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 if [ -f "$_SCRIPT_DIR_PD/summary-utils.sh" ]; then
   . "$_SCRIPT_DIR_PD/summary-utils.sh"
