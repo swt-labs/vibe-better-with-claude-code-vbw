@@ -17,7 +17,7 @@ Settings:
 ```
 Planning dir:
 ```text
-!`ls -d .vbw-planning 2>/dev/null && echo "EXISTS" || echo "NONE"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls -d "$P" 2>/dev/null && echo "EXISTS" || echo "NONE"`
 ```
 CLAUDE.md:
 ```text

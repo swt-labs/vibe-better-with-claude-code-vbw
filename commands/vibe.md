@@ -123,7 +123,7 @@ fi`
 
 Config:
 ```
-!`cat .vbw-planning/config.json 2>/dev/null || echo "No config found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); CWD=$(pwd -P 2>/dev/null || pwd); if [ -f "$P/config.json" ]; then echo "planning_dir_exists=true"; echo "planning_root=$P"; if [ "$CWD" != "$(dirname "$P")" ]; then echo "planning_root_is_ancestor=true"; else echo "planning_root_is_ancestor=false"; fi; cat "$P/config.json"; else echo "planning_dir_exists=false"; echo "planning_root="; echo "planning_root_is_ancestor=false"; echo "No config found"; fi`
 ```
 
 Milestone UAT issues (milestone recovery only):

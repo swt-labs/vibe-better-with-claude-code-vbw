@@ -22,19 +22,19 @@ Plugin root:
 
 Current state:
 ```
-!`head -40 .vbw-planning/STATE.md 2>/dev/null || echo "No state found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); head -40 "$P/STATE.md" 2>/dev/null || echo "No state found"`
 ```
 
 Roadmap:
 ```
-!`head -50 .vbw-planning/ROADMAP.md 2>/dev/null || echo "No roadmap found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); head -50 "$P/ROADMAP.md" 2>/dev/null || echo "No roadmap found"`
 ```
 
 Config: Pre-injected by SessionStart hook. Read .vbw-planning/config.json only if --verbose.
 
 Phase directories:
 ```
-!`ls .vbw-planning/phases/ 2>/dev/null || echo "No phases directory"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls "$P/phases/" 2>/dev/null || echo "No phases directory"`
 ```
 
 Phase state:
@@ -101,7 +101,7 @@ fi`
 
 Shipped milestones:
 ```
-!`ls -d .vbw-planning/milestones/*/SHIPPED.md 2>/dev/null || echo "No shipped milestones"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls -d "$P"/milestones/*/SHIPPED.md 2>/dev/null || echo "No shipped milestones"`
 ```
 
 ## Guard

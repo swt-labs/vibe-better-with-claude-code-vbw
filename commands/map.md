@@ -24,11 +24,11 @@ Store the plugin root path output above as `{plugin-root}` for use in script inv
 
 Existing mapping:
 ```text
-!`ls .vbw-planning/codebase/ 2>/dev/null || echo "No codebase mapping found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls "$P/codebase/" 2>/dev/null || echo "No codebase mapping found"`
 ```
 META.md:
 ```
-!`cat .vbw-planning/codebase/META.md 2>/dev/null || echo "No META.md found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); cat "$P/codebase/META.md" 2>/dev/null || echo "No META.md found"`
 ```
 Project files:
 ```text

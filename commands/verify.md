@@ -25,14 +25,14 @@ Store the plugin root path output above as `{plugin-root}` for use in script inv
 
 Current state:
 ```bash
-!`head -40 .vbw-planning/STATE.md 2>/dev/null || echo "No state found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); head -40 "$P/STATE.md" 2>/dev/null || echo "No state found"`
 ```
 
 Config: Pre-injected by SessionStart hook.
 
 Phase directories:
 ```bash
-!`ls .vbw-planning/phases/ 2>/dev/null || echo "No phases directory"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls "$P/phases/" 2>/dev/null || echo "No phases directory"`
 ```
 
 Phase state:
@@ -245,7 +245,7 @@ fi`
 
 QA verification summary (pre-extracted from VERIFICATION.md):
 ```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; if [ -L "$L" ] && [ -f "$L/scripts/extract-verified-items.sh" ]; then for d in .vbw-planning/phases/*/; do bash "$L/scripts/extract-verified-items.sh" "$d" 2>/dev/null; done; fi`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; if [ -L "$L" ] && [ -f "$L/scripts/extract-verified-items.sh" ]; then for d in "$P"/phases/*/; do bash "$L/scripts/extract-verified-items.sh" "$d" 2>/dev/null; done; fi`
 ```
 
 ## Guard

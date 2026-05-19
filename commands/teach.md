@@ -18,11 +18,11 @@ Working directory:
 Plugin root: `${CLAUDE_PLUGIN_ROOT}`
 Conventions:
 ```
-!`cat .vbw-planning/conventions.json 2>/dev/null || echo "No conventions found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); cat "$P/conventions.json" 2>/dev/null || echo "No conventions found"`
 ```
 Codebase map:
 ```text
-!`ls .vbw-planning/codebase/INDEX.md 2>/dev/null && echo "EXISTS" || echo "NONE"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls "$P/codebase/INDEX.md" 2>/dev/null && echo "EXISTS" || echo "NONE"`
 ```
 
 ## Guard

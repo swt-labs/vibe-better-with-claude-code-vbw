@@ -20,7 +20,7 @@ Store the plugin root path output above as `{plugin-root}` for use in script and
 
 Config:
 ```
-!`cat .vbw-planning/config.json 2>/dev/null || echo "No config found -- run /vbw:init first"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); cat "$P/config.json" 2>/dev/null || echo "No config found -- run /vbw:init first"`
 ```
 
 ## Guard
