@@ -22,8 +22,6 @@ if ! command -v jq &>/dev/null; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=lib/vbw-config-root.sh
-[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
 DEFAULTS_FILE="$SCRIPT_DIR/../config/defaults.json"
 CONFIG_FILE="${1:-${VBW_PLANNING_DIR:-.vbw-planning}/config.json}"
 

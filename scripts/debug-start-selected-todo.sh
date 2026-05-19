@@ -11,8 +11,6 @@ set -euo pipefail
 # and returns one compact JSON payload for commands/debug.md to consume.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/vbw-config-root.sh
-[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
 ARCHIVED_STATE_MESSAGE="This todo came from archived milestone state. Restore the writable root STATE.md first by restarting so session-start.sh can run migration, or run 'bash scripts/migrate-orphaned-state.sh .vbw-planning'."
 AUTO_PICKUP_NOTE="Selected todo was already picked up automatically."
 

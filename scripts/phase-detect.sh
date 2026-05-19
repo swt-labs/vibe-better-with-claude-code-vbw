@@ -29,11 +29,6 @@ trap '
 
 _SCRIPT_DIR_PD="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT_DIR="$_SCRIPT_DIR_PD"
-# shellcheck source=lib/vbw-config-root.sh
-# CWD-only walk-up: phase-detect treats CWD as the workspace root, so do not
-# pass start_dir (would let the resolver fall back to script_dir and pick up an
-# unrelated workspace when CWD is a test fixture without a config.json).
-[ -f "$_SCRIPT_DIR_PD/lib/vbw-config-root.sh" ] && . "$_SCRIPT_DIR_PD/lib/vbw-config-root.sh" && find_vbw_root >/dev/null 2>&1 || true
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 if [ -f "$_SCRIPT_DIR_PD/summary-utils.sh" ]; then
   . "$_SCRIPT_DIR_PD/summary-utils.sh"

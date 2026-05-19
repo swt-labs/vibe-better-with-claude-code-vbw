@@ -14,8 +14,6 @@ INPUT=$(cat 2>/dev/null) || exit 2
 [ -z "$INPUT" ] && exit 2
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=lib/vbw-config-root.sh
-[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
 if [ -f "$SCRIPT_DIR/lib/active-agent-state.sh" ]; then
   # shellcheck source=lib/active-agent-state.sh
   . "$SCRIPT_DIR/lib/active-agent-state.sh"

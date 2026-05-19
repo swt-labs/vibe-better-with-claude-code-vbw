@@ -39,8 +39,6 @@ if [ -n "$VERIF_NAME" ]; then
   EXPLICIT_VERIF_NAME=true
 fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=lib/vbw-config-root.sh
-[ -f "$SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$SCRIPT_DIR" >/dev/null 2>&1 || true
 RESOLVE_VERIF_SCRIPT="$SCRIPT_DIR/resolve-verification-path.sh"
 if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
   # shellcheck source=summary-utils.sh
