@@ -29,6 +29,36 @@ trap '
 
 _SCRIPT_DIR_PD="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT_DIR="$_SCRIPT_DIR_PD"
+# Phase 11 (submodule-aware planning): source the canonical resolver and call
+# find_vbw_root with $SCRIPT_DIR so the helper can locate the workspace root
+# even when CWD is below an ancestor .vbw-planning/ (e.g. when invoked from a
+# submodule or a sibling package). Best-effort — failures are non-fatal because
+# phase-detect.sh always emits a result envelope on EXIT.
+#
+# Preserve relative `.vbw-planning` output when CWD already contains a
+# .vbw-planning/ directory — many consumers (BATS test fixtures, downstream
+# greps in commands) pin on the relative form. Only honor the resolver's
+# absolute VBW_PLANNING_DIR when CWD itself is not the workspace root (e.g.
+# when invoked from a submodule below the ancestor planning root).
+if [ -f "$_SCRIPT_DIR_PD/lib/vbw-config-root.sh" ]; then
+  # shellcheck source=lib/vbw-config-root.sh
+  . "$_SCRIPT_DIR_PD/lib/vbw-config-root.sh"
+  # Snapshot VBW_PLANNING_DIR before the call so we can restore CWD-as-workspace
+  # semantics afterward — phase-detect.sh output (planning_dir_exists, phases_dir,
+  # etc.) must remain CWD-anchored for BATS fixtures and runtime callers that
+  # pin on the relative `.vbw-planning/...` form.
+  _pd_saved_vbw_planning_dir="${VBW_PLANNING_DIR-}"
+  find_vbw_root "$SCRIPT_DIR" 2>/dev/null || true
+  # Restore the pre-call value so PLANNING_DIR below resolves to the same
+  # `.vbw-planning` literal it used pre-Phase-11. The find_vbw_root call still
+  # serves its purpose by exporting VBW_CONFIG_ROOT for sub-scripts that source
+  # vbw-config-root.sh themselves and by emitting the auto-resolve banner.
+  if [ -n "${_pd_saved_vbw_planning_dir+set}" ] && [ -z "$_pd_saved_vbw_planning_dir" ]; then
+    unset VBW_PLANNING_DIR
+  elif [ -n "${_pd_saved_vbw_planning_dir+set}" ]; then
+    export VBW_PLANNING_DIR="$_pd_saved_vbw_planning_dir"
+  fi
+fi
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 if [ -f "$_SCRIPT_DIR_PD/summary-utils.sh" ]; then
   . "$_SCRIPT_DIR_PD/summary-utils.sh"

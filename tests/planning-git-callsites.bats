@@ -20,9 +20,13 @@ load test_helper
 }
 
 @test "todo command is the sanctioned non-preamble PLUGIN_ROOT planning-git callsite" {
-  run bash -c "grep -cF 'bash \"\${PLUGIN_ROOT}/scripts/planning-git.sh\" commit-boundary \"add todo item\" .vbw-planning/config.json' \"$PROJECT_ROOT/commands/todo.md\""
-  [ "$status" -eq 0 ]
-  [ "$output" -eq 1 ]
+  # Phase 11 (submodule-aware planning): accept either the legacy bare
+  # `.vbw-planning/config.json` form or the migrated `"$PLANNING_ROOT/config.json"` form.
+  local legacy migrated total
+  legacy=$(grep -cF 'bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json' "$PROJECT_ROOT/commands/todo.md" || true)
+  migrated=$(grep -cF 'bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" "$PLANNING_ROOT/config.json"' "$PROJECT_ROOT/commands/todo.md" || true)
+  total=$((legacy + migrated))
+  [ "$total" -eq 1 ]
 }
 
 @test "planning-git callsites support VBW_PLUGIN_ROOT fallback" {

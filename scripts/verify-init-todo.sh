@@ -20,8 +20,6 @@ TODO_HARDCODED_PLANNING_GIT_NEEDLE='/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_
 # form. The TODO-12 check (below) uses an alternation grep that matches either.
 TODO_PLANNING_GIT_CMD_LEGACY='bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json'
 TODO_PLANNING_GIT_CMD_PLANNING_ROOT='bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" "$PLANNING_ROOT/config.json"'
-# Back-compat alias retained for the TODO-12 grep below (one of the two forms must match).
-TODO_PLANNING_GIT_CMD="$TODO_PLANNING_GIT_CMD_LEGACY"
 
 TOTAL_PASS=0
 TOTAL_FAIL=0
