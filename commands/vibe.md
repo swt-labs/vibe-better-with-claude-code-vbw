@@ -635,7 +635,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
   - The orchestrator coordinates the remediation loop and spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md` (QA says what's wrong, planning says how to fix).
   - Resolve Lead settings before composing the Lead task:
     ```bash
-    if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh lead .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
+    if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh lead "$PLANNING_ROOT/config.json" /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
       echo "$AGENT_SETTINGS" >&2
       exit 1
     fi
