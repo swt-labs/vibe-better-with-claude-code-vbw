@@ -56,7 +56,7 @@ Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-defa
    - **If not triggered** (simple one-liner with no structural context): skip — no ref tag, no detail storage. Brief bullets keep STATE.md scannable and token-efficient for context compilation. The detail file preserves context that would otherwise be lost when the todo is executed in a later session.
 6. **Run planning git boundary.** This step only happens after the plain `STATE.md` write from step 3 succeeded. For simple one-line todos, run it after step 3 using the shared `PLUGIN_ROOT` from step 4. For rich-detail todos, run it only after step 5 completes — after the `(ref:HASH)` update on detail-save success, or after the failed-detail/no-ref branch on helper failure. If `PLUGIN_ROOT` is non-empty and `${PLUGIN_ROOT}/scripts/planning-git.sh` exists, run:
    ```bash
-   bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json
+   bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" "$PLANNING_ROOT/config.json"
    ```
    If `PLUGIN_ROOT` is empty or the helper is unavailable, keep the todo write intact and warn with the literal existing message:
    ```text
