@@ -21,6 +21,9 @@ set -u
 #
 # The marker file is transient (gitignored via planning-git.sh).
 
+_DW_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/vbw-config-root.sh
+[ -f "$_DW_SCRIPT_DIR/lib/vbw-config-root.sh" ] && . "$_DW_SCRIPT_DIR/lib/vbw-config-root.sh" && find_vbw_root "$_DW_SCRIPT_DIR" >/dev/null 2>&1 || true
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 MARKER_FILE="$PLANNING_DIR/.delegated-workflow.json"
 EXEC_STATE_FILE="$PLANNING_DIR/.execution-state.json"
@@ -215,7 +218,16 @@ case "$ACTION" in
       echo "Usage: delegated-workflow.sh set <mode> [effort] [delegation_mode] [team_name]" >&2
       exit 1
     fi
-    [ -d "$PLANNING_DIR" ] || { echo "No .vbw-planning/ directory" >&2; exit 1; }
+    if [ ! -d "$PLANNING_DIR" ]; then
+      _DW_CWD=$(pwd -P 2>/dev/null || pwd)
+      _DW_PARENT=$(dirname "$PLANNING_DIR" 2>/dev/null)
+      if [ -n "$_DW_PARENT" ] && [ "$_DW_PARENT" != "$_DW_CWD" ] && [ "$_DW_PARENT" != "." ]; then
+        echo "No VBW planning directory at $PLANNING_DIR (resolved from ancestor walk). Run /vbw:init first or rerun from $_DW_PARENT." >&2
+      else
+        echo "No VBW planning directory. Run /vbw:init first to set up your project." >&2
+      fi
+      exit 1
+    fi
     STARTED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +%s)
     SESSION_ID="${CLAUDE_SESSION_ID:-}"
     CORRELATION_ID=""

@@ -50,7 +50,7 @@ Bind `PLANNING_ROOT=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/d
     In all cases, continue without detail.
     **Post-parse validation:** If the fix description is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the fix context. If no ref was found, or the ref detail failed to load, STOP: `"Usage: /vbw:fix \"description of what to fix\""`.
 
-3. **State:** Use `.vbw-planning/STATE.md`.
+3. **State:** Use `"$PLANNING_ROOT/STATE.md"`.
 
 4. **Set delegation marker:** Before spawning Dev, activate the delegation guard so the orchestrator cannot accidentally write product files directly:
     ```bash
