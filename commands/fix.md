@@ -65,7 +65,7 @@ Bind `PLANNING_ROOT=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/d
 
 5. **Spawn Dev:** Resolve model first:
     ```bash
-  if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" dev "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json" turbo); then
+  if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" turbo); then
     echo "$AGENT_SETTINGS" >&2
     exit 1
   fi

@@ -18,7 +18,7 @@ Working directory:
 
 ## Guard
 
-Bind `PLANNING_ROOT=$(bash "${CLAUDE_PLUGIN_ROOT:-/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
 
 1. **Guard:**
    - `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."

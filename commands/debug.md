@@ -373,7 +373,7 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
    bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning complete
    PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "complete debug session" "$PLANNING_ROOT/config.json"
+     bash "$PG_SCRIPT" commit-boundary "complete debug session" .vbw-planning/config.json
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi
@@ -661,7 +661,7 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
      bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning complete
      PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
      if [ -f "$PG_SCRIPT" ]; then
-       bash "$PG_SCRIPT" commit-boundary "complete debug session" "$PLANNING_ROOT/config.json"
+       bash "$PG_SCRIPT" commit-boundary "complete debug session" .vbw-planning/config.json
      else
        echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
      fi

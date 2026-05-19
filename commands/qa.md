@@ -171,7 +171,7 @@ When routed here, skip the standard phase-resolution Steps entirely. Instead:
 
 4. Resolve QA model:
    ```bash
-  if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" qa "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json" "$QA_EFFORT_PROFILE"); then
+  if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$QA_EFFORT_PROFILE"); then
     echo "$AGENT_SETTINGS" >&2
     exit 1
   fi
@@ -285,7 +285,7 @@ Note: Continuous verification handled by hooks. This command is for deep, on-dem
     - Resolve QA model:
 
         ```bash
-        if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" qa "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json" "$QA_EFFORT_PROFILE"); then
+        if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$QA_EFFORT_PROFILE"); then
           echo "$AGENT_SETTINGS" >&2
           exit 1
         fi
