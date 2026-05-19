@@ -417,6 +417,38 @@ JSON
   [ "$result" = "$target_real" ]
 }
 
+# --- Library-layer pointer-file regression (Phase 11) ---
+
+@test "find_vbw_root: honors git-common-dir pointer file when present" {
+  local main_repo="$TEST_TEMP_DIR/ptr-main"
+  local worktree="$TEST_TEMP_DIR/ptr-worktree"
+  setup_workspace "$main_repo"
+  local main_real; main_real=$(cd "$main_repo" && pwd -P 2>/dev/null || echo "$main_repo")
+
+  git -C "$main_repo" worktree add -q -b ptr-branch "$worktree"
+
+  local common_dir
+  common_dir=$(git -C "$main_repo" rev-parse --git-common-dir)
+  case "$common_dir" in
+    /*) ;;
+    *) common_dir="$main_repo/$common_dir" ;;
+  esac
+  mkdir -p "$common_dir/info"
+  printf '%s\n' "$main_real" > "$common_dir/info/vbw-planning-root.txt"
+
+  local result
+  result=$(
+    cd "$worktree"
+    unset VBW_CONFIG_ROOT VBW_PLANNING_DIR VBW_PLANNING_ROOT 2>/dev/null || true
+    . "$LIB"
+    find_vbw_root
+    echo "$VBW_PLANNING_DIR"
+  )
+  cd "$PROJECT_ROOT"
+
+  [ "$result" = "$main_real/.vbw-planning" ]
+}
+
 # --- Test 11: statusline reads config from subdirectory (end-to-end) ---
 # Hermetic: copies the statusline script + deps into the test workspace so
 # $_SL_SCRIPT_DIR resolves inside the workspace, preventing find_vbw_root
