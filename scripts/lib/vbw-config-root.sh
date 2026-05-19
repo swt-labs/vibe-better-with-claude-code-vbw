@@ -73,6 +73,18 @@ _prefer_claude_sidechain_host_root() {
   return 1
 }
 
+_emit_vbw_fallback_banner() {
+  # One-line stderr banner emitted exactly once per shell process when
+  # find_vbw_root falls through every cascade step and resorts to the
+  # cwd-relative fallback. Uses a SEPARATE sentinel from the auto-resolve
+  # banner so a single process can legitimately surface both signals.
+  local _planning_dir="$1"
+  [ -n "${_VBW_FALLBACK_BANNER_EMITTED:-}" ] && return 0
+  printf 'VBW: warning: no .vbw-planning/ ancestor found; using cwd-relative fallback (%s).\n' "$_planning_dir" >&2
+  _VBW_FALLBACK_BANNER_EMITTED=1
+  export _VBW_FALLBACK_BANNER_EMITTED
+}
+
 _emit_vbw_auto_resolve_banner() {
   # One-line stderr banner emitted exactly once per shell process when CWD
   # is below the resolved planning root. Guarded by _VBW_BANNER_EMITTED.
@@ -161,4 +173,5 @@ find_vbw_root() {
   # Not found anywhere — fall back to CWD (backwards-compatible)
   export VBW_CONFIG_ROOT="$_cwd_dir"
   export VBW_PLANNING_DIR="$_cwd_dir/.vbw-planning"
+  _emit_vbw_fallback_banner "$VBW_PLANNING_DIR"
 }
