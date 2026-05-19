@@ -15,7 +15,13 @@ LIST_CMD="$ROOT/commands/list-todos.md"
 BOOTSTRAP="$ROOT/scripts/bootstrap/bootstrap-state.sh"
 TODO_HARDCODED_HELPER_NEEDLE='/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/todo-details.sh'
 TODO_HARDCODED_PLANNING_GIT_NEEDLE='/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh'
-TODO_PLANNING_GIT_CMD='bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json'
+# Phase 11 (submodule-aware planning): accept either the legacy bare
+# `.vbw-planning/config.json` literal or the migrated `"$PLANNING_ROOT/config.json"`
+# form. The TODO-12 check (below) uses an alternation grep that matches either.
+TODO_PLANNING_GIT_CMD_LEGACY='bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json'
+TODO_PLANNING_GIT_CMD_PLANNING_ROOT='bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" "$PLANNING_ROOT/config.json"'
+# Back-compat alias retained for the TODO-12 grep below (one of the two forms must match).
+TODO_PLANNING_GIT_CMD="$TODO_PLANNING_GIT_CMD_LEGACY"
 
 TOTAL_PASS=0
 TOTAL_FAIL=0
@@ -58,7 +64,7 @@ check "TODO-10" "todo command requires status ok before Extended detail saved co
 check "TODO-11" "todo command forbids direct per-file fallback writes" \
   grep -Fq '.vbw-planning/todo-details/HASH.json' "$TODO_CMD"
 check "TODO-12" "todo command uses planning git boundary helper via PLUGIN_ROOT" \
-  grep -Fq "$TODO_PLANNING_GIT_CMD" "$TODO_CMD"
+  bash -c 'grep -Fq "$2" "$1" || grep -Fq "$3" "$1"' _ "$TODO_CMD" "$TODO_PLANNING_GIT_CMD_LEGACY" "$TODO_PLANNING_GIT_CMD_PLANNING_ROOT"
 check "TODO-13" "todo command never hard-codes the session symlink planning-git path" \
   bash -c '! grep -Fq "$2" "$1"' _ "$TODO_CMD" "$TODO_HARDCODED_PLANNING_GIT_NEEDLE"
 check "TODO-14" "todo command forbids bespoke git staging or commit instructions" \
@@ -69,7 +75,8 @@ check "TODO-15" "todo command reuses the planning-git unavailable warning" \
 write_line=$(grep -nF '3. **Add plain todo to STATE.md:**' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
 ref_line=$(grep -nF 'edit the exact todo line you just added in `STATE.md` to append `(ref:HASH)`' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
 detail_failure_line=$(grep -nF "If the helper's stdout is not valid JSON or the parsed \`status\` is anything other than \`ok\`" "$TODO_CMD" | head -1 | cut -d: -f1 || true)
-planning_line=$(grep -nF "$TODO_PLANNING_GIT_CMD" "$TODO_CMD" | head -1 | cut -d: -f1 || true)
+planning_line=$(grep -nF "$TODO_PLANNING_GIT_CMD_LEGACY" "$TODO_CMD" | head -1 | cut -d: -f1 || true)
+[ -z "$planning_line" ] && planning_line=$(grep -nF "$TODO_PLANNING_GIT_CMD_PLANNING_ROOT" "$TODO_CMD" | head -1 | cut -d: -f1 || true)
 confirm_line=$(grep -nF '7. **Confirm:**' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
 
 check "TODO-16" "planning boundary step appears after the plain todo write step" \
