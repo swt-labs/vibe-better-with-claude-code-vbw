@@ -27,7 +27,12 @@ Recent commits:
 Store the plugin root path output above as `{plugin-root}` for use in script invocations below. Replace `{plugin-root}` with the literal `Plugin root` value from Context whenever a step below references a script or reference file.
 
 ## Guard
-- Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+
+Bind `PLANNING_ROOT=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+
+- `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 - No $ARGUMENTS and no `--resume` flag and no `--session` flag: STOP "Usage: `/vbw:debug \"description of the bug or error message\" [--competing|--parallel|--serial]` | `/vbw:debug <todo-number> [--competing|--parallel|--serial]` | `/vbw:debug --resume` | `/vbw:debug --session <id>`"
 
 ## Resolve selected todo number
@@ -178,7 +183,7 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
 
 3. **Routing decision + delegation marker:** Read prefer_teams config:
    ```bash
-   PREFER_TEAMS=$(bash "{plugin-root}/scripts/normalize-prefer-teams.sh" .vbw-planning/config.json 2>/dev/null || echo "auto")
+   PREFER_TEAMS=$(bash "{plugin-root}/scripts/normalize-prefer-teams.sh" "$PLANNING_ROOT/config.json" 2>/dev/null || echo "auto")
    ```
 
    Before spawning any agent, activate the delegation guard:
@@ -203,7 +208,7 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
     - Generate 3 hypotheses (cause, codebase area, confirming evidence)
     - Resolve Debugger model:
         ```bash
-        if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$EFFORT_PROFILE"); then
+        if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" debugger "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json" "$EFFORT_PROFILE"); then
           echo "$AGENT_SETTINGS" >&2
           exit 1
         fi
@@ -255,7 +260,7 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
   **Path B: Standard** (all other cases):
     - Resolve Debugger model:
         ```bash
-        if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$EFFORT_PROFILE"); then
+        if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" debugger "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json" "$EFFORT_PROFILE"); then
           echo "$AGENT_SETTINGS" >&2
           exit 1
         fi
@@ -368,7 +373,7 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
    bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning complete
    PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "complete debug session" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "complete debug session" "$PLANNING_ROOT/config.json"
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi
@@ -417,13 +422,13 @@ If `INVESTIGATION_OUTCOME=fixed_now` and session status is `qa_pending`: proceed
 
 Read the `auto_uat` config:
 ```bash
-AUTO_UAT=$(jq -r '.auto_uat // "false"' .vbw-planning/config.json 2>/dev/null || echo "false")
+AUTO_UAT=$(jq -r '.auto_uat // "false"' "$PLANNING_ROOT/config.json" 2>/dev/null || echo "false")
 ```
 
 Resolve effort profile if not already set (needed for tier resolution and max-turns):
 ```bash
 if [ -z "${EFFORT_PROFILE:-}" ]; then
-  EFFORT_PROFILE=$(jq -r '.effort // "balanced"' .vbw-planning/config.json 2>/dev/null || echo "balanced")
+  EFFORT_PROFILE=$(jq -r '.effort // "balanced"' "$PLANNING_ROOT/config.json" 2>/dev/null || echo "balanced")
 fi
 ```
 
@@ -447,7 +452,7 @@ fi
 
 1. Resolve QA model and max turns:
   ```bash
-  if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json" "$EFFORT_PROFILE"); then
+  if ! AGENT_SETTINGS=$(bash "{plugin-root}/scripts/resolve-agent-settings.sh" qa "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json" "$EFFORT_PROFILE"); then
     echo "$AGENT_SETTINGS" >&2
     exit 1
   fi
@@ -557,7 +562,7 @@ fi
 Resolve `AUTO_UAT` if not already set (needed when entering via `--resume` from `uat_pending`):
 ```bash
 if [ -z "${AUTO_UAT:-}" ]; then
-  AUTO_UAT=$(jq -r '.auto_uat // "false"' .vbw-planning/config.json 2>/dev/null || echo "false")
+  AUTO_UAT=$(jq -r '.auto_uat // "false"' "$PLANNING_ROOT/config.json" 2>/dev/null || echo "false")
 fi
 ```
 
@@ -656,7 +661,7 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
      bash "{plugin-root}/scripts/debug-session-state.sh" set-status .vbw-planning complete
      PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
      if [ -f "$PG_SCRIPT" ]; then
-       bash "$PG_SCRIPT" commit-boundary "complete debug session" .vbw-planning/config.json
+       bash "$PG_SCRIPT" commit-boundary "complete debug session" "$PLANNING_ROOT/config.json"
      else
        echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
      fi
