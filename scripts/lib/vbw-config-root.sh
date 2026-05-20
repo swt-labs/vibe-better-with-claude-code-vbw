@@ -79,6 +79,10 @@ _emit_vbw_fallback_banner() {
   # cwd-relative fallback. Uses a SEPARATE sentinel from the auto-resolve
   # banner so a single process can legitimately surface both signals.
   local _planning_dir="$1"
+  # Suppress when caller opts out — high-frequency renderers like
+  # vbw-statusline.sh emit user-visible output and must not splash stderr
+  # noise into terminal panes or bats `2>&1` captures (#640).
+  [ "${VBW_SUPPRESS_BANNERS:-0}" = "1" ] && return 0
   [ -n "${_VBW_FALLBACK_BANNER_EMITTED:-}" ] && return 0
   printf 'VBW: warning: no .vbw-planning/ ancestor found; using cwd-relative fallback (%s).\n' "$_planning_dir" >&2
   _VBW_FALLBACK_BANNER_EMITTED=1
@@ -89,6 +93,8 @@ _emit_vbw_auto_resolve_banner() {
   # One-line stderr banner emitted exactly once per shell process when CWD
   # is below the resolved planning root. Guarded by _VBW_BANNER_EMITTED.
   local _root="$1" _cwd="$2"
+  # Suppress when caller opts out (see _emit_vbw_fallback_banner #640).
+  [ "${VBW_SUPPRESS_BANNERS:-0}" = "1" ] && return 0
   [ -n "${_VBW_BANNER_EMITTED:-}" ] && return 0
   [ "$_root" = "$_cwd" ] && return 0
   case "$_cwd/" in
@@ -119,7 +125,8 @@ find_vbw_root() {
     # Diagnose env-var pointing at a non-VBW workspace (no .vbw-planning/).
     # The override is still honored (user may be bootstrapping), but we tell
     # them upfront so the eventual "Run /vbw:init first" guard makes sense.
-    if [ ! -d "$VBW_PLANNING_ROOT/.vbw-planning" ] && [ -z "${_VBW_ENV_VAR_WARNED:-}" ]; then
+    if [ ! -d "$VBW_PLANNING_ROOT/.vbw-planning" ] && [ -z "${_VBW_ENV_VAR_WARNED:-}" ] \
+        && [ "${VBW_SUPPRESS_BANNERS:-0}" != "1" ]; then
       printf 'VBW: VBW_PLANNING_ROOT=%s honored but no .vbw-planning/ exists under it.\n' \
         "$VBW_PLANNING_ROOT" >&2
       _VBW_ENV_VAR_WARNED=1
@@ -148,7 +155,8 @@ find_vbw_root() {
       case "$_ptr_root" in
         /*) ;;
         *)
-          if [ -n "$_ptr_root" ] && [ -z "${_VBW_PTR_RELATIVE_WARNED:-}" ]; then
+          if [ -n "$_ptr_root" ] && [ -z "${_VBW_PTR_RELATIVE_WARNED:-}" ] \
+              && [ "${VBW_SUPPRESS_BANNERS:-0}" != "1" ]; then
             printf 'VBW: pointer file %s contains non-absolute path %s — skipped.\n' \
               "$_ptr_file" "$_ptr_root" >&2
             _VBW_PTR_RELATIVE_WARNED=1

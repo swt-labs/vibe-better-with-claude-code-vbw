@@ -38,6 +38,11 @@ _VER=$(cat "$_SL_SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
 . "$_SL_SCRIPT_DIR/lib/vbw-config-root.sh"
 # shellcheck source=lib/vbw-cache-key.sh
 . "$_SL_SCRIPT_DIR/lib/vbw-cache-key.sh"
+# Suppress find_vbw_root's user-facing banners — the statusline renders to a
+# terminal pane every few seconds, and any stderr it emits is visible to the
+# user (and captured by `2>&1` in bats tests). Banners belong in interactive
+# CLI flows, not in continuously-rendered status output (#640).
+export VBW_SUPPRESS_BANNERS=1
 find_vbw_root "$_SL_SCRIPT_DIR"
 
 # _REPO_ROOT is still used for GitHub link rendering and bare-directory labels.
