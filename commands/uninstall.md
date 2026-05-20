@@ -28,6 +28,8 @@ CLAUDE.md:
 
 **Resolve config directory:** Try in order: env var `CLAUDE_CONFIG_DIR` (if set and directory exists), `~/.config/claude-code` (if exists), otherwise `~/.claude`. Store result as `CLAUDE_DIR`.
 
+**Resolve planning root (NON-NEGOTIABLE before any destructive op):** Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)`. This MUST be done before Step 4 — the precompute block above runs in an isolated shell scope and the `P=` variable inside that block does NOT survive. All subsequent destructive operations target `"$PLANNING_ROOT"`, never a bare `.vbw-planning/` literal.
+
 ### Step 1: Confirm intent
 
 Display Phase Banner "VBW Uninstall" explaining system-level config removal. Project files handled separately. Ask confirmation.

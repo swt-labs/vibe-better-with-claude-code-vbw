@@ -125,8 +125,12 @@ find_vbw_root() {
       _VBW_ENV_VAR_WARNED=1
       export _VBW_ENV_VAR_WARNED
     fi
-    export VBW_CONFIG_ROOT="$VBW_PLANNING_ROOT"
-    export VBW_PLANNING_DIR="$VBW_PLANNING_ROOT/.vbw-planning"
+    # Realpath-normalize so symlinked overrides match downstream `pwd -P` cwds
+    # (e.g. phase-detect.sh ancestor case-match). Fall back to the raw value
+    # if realpath resolution fails.
+    _vbw_env_root_canon=$(cd "$VBW_PLANNING_ROOT" 2>/dev/null && pwd -P 2>/dev/null) || _vbw_env_root_canon="$VBW_PLANNING_ROOT"
+    export VBW_CONFIG_ROOT="$_vbw_env_root_canon"
+    export VBW_PLANNING_DIR="$_vbw_env_root_canon/.vbw-planning"
     _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"
     return 0
   fi
@@ -154,8 +158,11 @@ find_vbw_root() {
           ;;
       esac
       if [ -n "$_ptr_root" ] && [ -d "$_ptr_root" ]; then
-        export VBW_CONFIG_ROOT="$_ptr_root"
-        export VBW_PLANNING_DIR="$_ptr_root/.vbw-planning"
+        # Realpath-normalize so symlinked pointer-file values match downstream
+        # `pwd -P` cwds.
+        _vbw_ptr_root_canon=$(cd "$_ptr_root" 2>/dev/null && pwd -P 2>/dev/null) || _vbw_ptr_root_canon="$_ptr_root"
+        export VBW_CONFIG_ROOT="$_vbw_ptr_root_canon"
+        export VBW_PLANNING_DIR="$_vbw_ptr_root_canon/.vbw-planning"
         _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"
         return 0
       fi
