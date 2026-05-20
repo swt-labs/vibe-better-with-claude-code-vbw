@@ -116,6 +116,15 @@ find_vbw_root() {
   # through to the rest of the cascade instead of silently routing consumers
   # to a non-existent path.
   if [ -n "${VBW_PLANNING_ROOT:-}" ] && [ -d "$VBW_PLANNING_ROOT" ]; then
+    # Diagnose env-var pointing at a non-VBW workspace (no .vbw-planning/).
+    # The override is still honored (user may be bootstrapping), but we tell
+    # them upfront so the eventual "Run /vbw:init first" guard makes sense.
+    if [ ! -d "$VBW_PLANNING_ROOT/.vbw-planning" ] && [ -z "${_VBW_ENV_VAR_WARNED:-}" ]; then
+      printf 'VBW: VBW_PLANNING_ROOT=%s honored but no .vbw-planning/ exists under it.\n' \
+        "$VBW_PLANNING_ROOT" >&2
+      _VBW_ENV_VAR_WARNED=1
+      export _VBW_ENV_VAR_WARNED
+    fi
     export VBW_CONFIG_ROOT="$VBW_PLANNING_ROOT"
     export VBW_PLANNING_DIR="$VBW_PLANNING_ROOT/.vbw-planning"
     _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"
@@ -134,7 +143,15 @@ find_vbw_root() {
       # relative or empty values so the cascade falls through cleanly.
       case "$_ptr_root" in
         /*) ;;
-        *) _ptr_root="" ;;
+        *)
+          if [ -n "$_ptr_root" ] && [ -z "${_VBW_PTR_RELATIVE_WARNED:-}" ]; then
+            printf 'VBW: pointer file %s contains non-absolute path %s — skipped.\n' \
+              "$_ptr_file" "$_ptr_root" >&2
+            _VBW_PTR_RELATIVE_WARNED=1
+            export _VBW_PTR_RELATIVE_WARNED
+          fi
+          _ptr_root=""
+          ;;
       esac
       if [ -n "$_ptr_root" ] && [ -d "$_ptr_root" ]; then
         export VBW_CONFIG_ROOT="$_ptr_root"

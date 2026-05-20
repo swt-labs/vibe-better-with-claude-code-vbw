@@ -57,10 +57,22 @@ if [ -f "$_SCRIPT_DIR_PD/lib/vbw-config-root.sh" ]; then
   # "no real ancestor" branch and retain the pre-call value, preserving the
   # relative `.vbw-planning/...` form they pin on.
   _pd_cwd_now=$(pwd -P 2>/dev/null || pwd)
+  _pd_keep_resolver=0
   if [ -n "${VBW_PLANNING_DIR:-}" ] \
-     && [ -f "${VBW_PLANNING_DIR}/config.json" ] \
+     && [ -d "${VBW_PLANNING_DIR}" ] \
      && [ "${VBW_CONFIG_ROOT:-}" != "$_pd_cwd_now" ]; then
+    # Require the resolver to have picked an ACTUAL ancestor of CWD, not a
+    # lateral hit via SCRIPT_DIR (which would leak the plugin dev clone's own
+    # .vbw-planning/ when phase-detect runs from an orphan directory).
+    case "$_pd_cwd_now/" in
+      "${VBW_CONFIG_ROOT:-}"/*) _pd_keep_resolver=1 ;;
+    esac
+  fi
+  if [ "$_pd_keep_resolver" -eq 1 ]; then
     : # keep resolver result — real ancestor planning root found
+       # (use [ -d ] not [ -f config.json ] so the bootstrap window —
+       # workspace where /vbw:init created .vbw-planning/ but config.json
+       # is not yet written — still preserves the ancestor)
   elif [ -n "${_pd_saved_vbw_planning_dir+set}" ] && [ -z "$_pd_saved_vbw_planning_dir" ]; then
     unset VBW_PLANNING_DIR
   elif [ -n "${_pd_saved_vbw_planning_dir+set}" ]; then

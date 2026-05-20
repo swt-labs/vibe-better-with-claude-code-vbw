@@ -28,6 +28,15 @@ set -u
 # stale/typo env var falls through to the rest of the cascade instead of
 # silently routing consumers to a non-existent path.
 if [ -n "${VBW_PLANNING_ROOT:-}" ] && [ -d "$VBW_PLANNING_ROOT" ]; then
+  # Diagnose env-var pointing at a non-VBW workspace (no .vbw-planning/).
+  # The override is still honored (user may be bootstrapping), but we tell
+  # them upfront so the eventual "Run /vbw:init first" guard makes sense.
+  if [ ! -d "$VBW_PLANNING_ROOT/.vbw-planning" ] && [ -z "${_VBW_ENV_VAR_WARNED:-}" ]; then
+    printf 'VBW: VBW_PLANNING_ROOT=%s honored but no .vbw-planning/ exists under it.\n' \
+      "$VBW_PLANNING_ROOT" >&2
+    _VBW_ENV_VAR_WARNED=1
+    export _VBW_ENV_VAR_WARNED
+  fi
   printf '%s\n' "$VBW_PLANNING_ROOT/.vbw-planning"
   exit 0
 fi
