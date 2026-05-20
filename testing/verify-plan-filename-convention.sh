@@ -740,7 +740,10 @@ bash "$NORM_SCRIPT" "$TDIR/.vbw-planning/phases/01-setup" >/dev/null 2>&1
 OUTPUT_AFTER=$(cd "$TDIR" && bash "$SCRIPT_DIR/scripts/phase-detect.sh" 2>/dev/null)
 BEFORE=$(grep misnamed <<<"$OUTPUT_BEFORE" || true)
 AFTER=$(grep misnamed <<<"$OUTPUT_AFTER" || true)
-if echo "$OUTPUT_BEFORE" | grep -q "misnamed_plans=true" && echo "$OUTPUT_AFTER" | grep -q "misnamed_plans=false"; then
+# Use here-strings instead of `echo | grep -q` — under pipefail, GNU grep on
+# Linux exits non-zero via SIGPIPE when -q closes the pipe early, causing
+# false failures. Same pattern fixed at line ~828 for test 49.
+if grep -q "misnamed_plans=true" <<<"$OUTPUT_BEFORE" && grep -q "misnamed_plans=false" <<<"$OUTPUT_AFTER"; then
   pass "end-to-end: misnamed_plans true → normalize → false"
 else
   fail "end-to-end — before: $BEFORE, after: $AFTER"
