@@ -17,7 +17,12 @@ allowed-tools: Read, Edit, Bash
 
 ## Guard
 
-1. **Not initialized** (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+
+1. **Not initialized:** Apply the three-branch pattern:
+   - `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+   - `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+   - `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 2. **Restricted mode:** If the current permission mode does not allow Bash execution, STOP: "`/vbw:list-todos` needs Bash access to run helper scripts. If you're in read-only or another restricted mode, switch to a write-enabled mode (for example bypass permissions) and rerun the command."
 
 ## Steps

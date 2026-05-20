@@ -5,7 +5,8 @@
 #   bash resolve-planning-root.sh [start_dir]
 #
 # Resolution cascade (matches scripts/lib/vbw-config-root.sh):
-#   1. VBW_PLANNING_ROOT env var (if set and non-empty) — printed verbatim
+#   1. VBW_PLANNING_ROOT env var (if set, non-empty, and an existing directory)
+#      — prints "$VBW_PLANNING_ROOT/.vbw-planning"
 #   2. $(git rev-parse --git-common-dir)/info/vbw-planning-root.txt pointer file
 #   3. Filesystem walk-up from CWD (and explicit start_dir when supplied)
 #   4. Fallback: $PWD/.vbw-planning (backwards-compatible)
@@ -15,12 +16,19 @@
 # mode that would resolve to the plugin clone's own .vbw-planning/ when the
 # caller is outside any real workspace.
 #
-# Exit contract: always exits 0. Prints exactly one absolute path on stdout.
+# Exit contract: always exits 0. Prints exactly one absolute path to the
+# .vbw-planning DIRECTORY on stdout (NOT the workspace root above it). Consumers
+# build "$PLANNING_ROOT/config.json", "$PLANNING_ROOT/ROADMAP.md", etc.
 # stderr may carry a one-line auto-resolve banner (emitted by find_vbw_root).
 set -u
 
-if [ -n "${VBW_PLANNING_ROOT:-}" ]; then
-  printf '%s\n' "$VBW_PLANNING_ROOT"
+# Step 1 contract: print the .vbw-planning DIR (matching post-walk-up output),
+# not the raw workspace root. The env var names the workspace; the script's
+# output names the planning DIR inside it. Validate the workspace exists so a
+# stale/typo env var falls through to the rest of the cascade instead of
+# silently routing consumers to a non-existent path.
+if [ -n "${VBW_PLANNING_ROOT:-}" ] && [ -d "$VBW_PLANNING_ROOT" ]; then
+  printf '%s\n' "$VBW_PLANNING_ROOT/.vbw-planning"
   exit 0
 fi
 

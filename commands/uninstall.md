@@ -42,7 +42,7 @@ If `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` exists: ask user (it's a Claude Co
 
 ### Step 4: Project data
 
-If `.vbw-planning/` exists: ask keep (recommended) or delete. Delete: `rm -rf .vbw-planning/`.
+If `"$PLANNING_ROOT"` (resolved via the precompute above) exists: ask keep (recommended) or delete. Delete: `rm -rf "$PLANNING_ROOT"`. Never substitute a bare `.vbw-planning/` literal — uninstall is destructive and must target the resolved planning root, never the literal CWD-relative path (which may belong to a submodule's parent workspace).
 
 ### Step 5: CLAUDE.md cleanup
 

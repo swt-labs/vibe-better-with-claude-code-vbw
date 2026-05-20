@@ -44,16 +44,24 @@ if [ -f "$_SCRIPT_DIR_PD/lib/vbw-config-root.sh" ]; then
   # shellcheck source=lib/vbw-config-root.sh
   . "$_SCRIPT_DIR_PD/lib/vbw-config-root.sh"
   # Snapshot VBW_PLANNING_DIR before the call so we can restore CWD-as-workspace
-  # semantics afterward — phase-detect.sh output (planning_dir_exists, phases_dir,
-  # etc.) must remain CWD-anchored for BATS fixtures and runtime callers that
-  # pin on the relative `.vbw-planning/...` form.
+  # semantics when find_vbw_root could NOT locate a real ancestor planning root.
+  # When it DOES find one (submodule-aware discovery from issue #640), we keep
+  # the absolute VBW_PLANNING_DIR it exported so phase-detect.sh emits the
+  # correct workspace paths instead of the CWD-relative literal.
   _pd_saved_vbw_planning_dir="${VBW_PLANNING_DIR-}"
   find_vbw_root "$SCRIPT_DIR" 2>/dev/null || true
-  # Restore the pre-call value so PLANNING_DIR below resolves to the same
-  # `.vbw-planning` literal it used pre-Phase-11. The find_vbw_root call still
-  # serves its purpose by exporting VBW_CONFIG_ROOT for sub-scripts that source
-  # vbw-config-root.sh themselves and by emitting the auto-resolve banner.
-  if [ -n "${_pd_saved_vbw_planning_dir+set}" ] && [ -z "$_pd_saved_vbw_planning_dir" ]; then
+  # Restore only when the resolver fell back to CWD (no real ancestor found).
+  # Real-ancestor detection: a resolved VBW_PLANNING_DIR with an existing
+  # config.json that is NOT the original CWD's .vbw-planning. BATS fixtures
+  # (TDIRs without config.json) and CWD-as-workspace callers fall into the
+  # "no real ancestor" branch and retain the pre-call value, preserving the
+  # relative `.vbw-planning/...` form they pin on.
+  _pd_cwd_now=$(pwd -P 2>/dev/null || pwd)
+  if [ -n "${VBW_PLANNING_DIR:-}" ] \
+     && [ -f "${VBW_PLANNING_DIR}/config.json" ] \
+     && [ "${VBW_CONFIG_ROOT:-}" != "$_pd_cwd_now" ]; then
+    : # keep resolver result — real ancestor planning root found
+  elif [ -n "${_pd_saved_vbw_planning_dir+set}" ] && [ -z "$_pd_saved_vbw_planning_dir" ]; then
     unset VBW_PLANNING_DIR
   elif [ -n "${_pd_saved_vbw_planning_dir+set}" ]; then
     export VBW_PLANNING_DIR="$_pd_saved_vbw_planning_dir"

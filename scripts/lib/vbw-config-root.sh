@@ -111,8 +111,11 @@ find_vbw_root() {
   local _start_dir _cwd_dir _ptr_file _ptr_root
   _cwd_dir=$(pwd -P 2>/dev/null || pwd)
 
-  # Step 1: honor VBW_PLANNING_ROOT env var (workspace root, not planning dir)
-  if [ -n "${VBW_PLANNING_ROOT:-}" ]; then
+  # Step 1: honor VBW_PLANNING_ROOT env var (workspace root, not planning dir).
+  # Validate it points to an existing directory; a stale/typo override falls
+  # through to the rest of the cascade instead of silently routing consumers
+  # to a non-existent path.
+  if [ -n "${VBW_PLANNING_ROOT:-}" ] && [ -d "$VBW_PLANNING_ROOT" ]; then
     export VBW_CONFIG_ROOT="$VBW_PLANNING_ROOT"
     export VBW_PLANNING_DIR="$VBW_PLANNING_ROOT/.vbw-planning"
     _emit_vbw_auto_resolve_banner "$VBW_CONFIG_ROOT" "$_cwd_dir"
@@ -126,6 +129,13 @@ find_vbw_root() {
       _ptr_root=$(grep -vE '^[[:space:]]*(#|$)' "$_ptr_file" 2>/dev/null \
         | head -n 1 \
         | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+      # Pointer-file values must be absolute paths so resolution stays
+      # CWD-independent (matches CLAUDE.md's documented contract). Reject
+      # relative or empty values so the cascade falls through cleanly.
+      case "$_ptr_root" in
+        /*) ;;
+        *) _ptr_root="" ;;
+      esac
       if [ -n "$_ptr_root" ] && [ -d "$_ptr_root" ]; then
         export VBW_CONFIG_ROOT="$_ptr_root"
         export VBW_PLANNING_DIR="$_ptr_root/.vbw-planning"
