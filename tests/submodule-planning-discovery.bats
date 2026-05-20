@@ -284,6 +284,58 @@ canon() {
   grep -qE "phases_dir=${root_real}/\.vbw-planning/phases" "$stdout_file"
 }
 
+@test "vbw-config-root: VBW_PLANNING_ROOT symlinked path is realpath-normalized in VBW_CONFIG_ROOT" {
+  local real="$TEST_TEMP_DIR/t12-real"
+  local link="$TEST_TEMP_DIR/t12-link"
+  seed_workspace "$real"
+  ln -s "$real" "$link"
+  local real_canon; real_canon=$(canon "$real")
+
+  # Source the lib in a subshell so we can inspect the exported var.
+  local result
+  result=$(
+    cd "$TEST_TEMP_DIR"
+    unset VBW_CONFIG_ROOT VBW_PLANNING_DIR 2>/dev/null || true
+    VBW_PLANNING_ROOT="$link"
+    export VBW_PLANNING_ROOT
+    . "$SCRIPTS_DIR/lib/vbw-config-root.sh"
+    find_vbw_root >/dev/null 2>&1
+    echo "$VBW_CONFIG_ROOT"
+  )
+
+  # R3-2 contract: VBW_CONFIG_ROOT realpath-resolved so downstream `pwd -P`
+  # consumers (e.g. phase-detect.sh ancestor case-match) match correctly
+  # when user supplies a symlinked workspace.
+  [ "$result" = "$real_canon" ]
+}
+
+@test "vbw-config-root: pointer-file symlinked target is realpath-normalized in VBW_CONFIG_ROOT" {
+  local real="$TEST_TEMP_DIR/t13-real"
+  local link="$TEST_TEMP_DIR/t13-link"
+  local clone="$TEST_TEMP_DIR/t13-clone"
+  seed_workspace "$real"
+  ln -s "$real" "$link"
+
+  # Create a separate git clone whose pointer file points at the symlink.
+  mkdir -p "$clone"
+  git -C "$clone" init -q
+  mkdir -p "$clone/.git/info"
+  printf '%s\n' "$link" > "$clone/.git/info/vbw-planning-root.txt"
+  local real_canon; real_canon=$(canon "$real")
+
+  local result
+  result=$(
+    cd "$clone"
+    unset VBW_CONFIG_ROOT VBW_PLANNING_DIR VBW_PLANNING_ROOT 2>/dev/null || true
+    . "$SCRIPTS_DIR/lib/vbw-config-root.sh"
+    find_vbw_root >/dev/null 2>&1
+    echo "$VBW_CONFIG_ROOT"
+  )
+
+  # Same R3-2 contract for the pointer-file branch.
+  [ "$result" = "$real_canon" ]
+}
+
 @test "phase-detect.sh: orphan cwd does NOT leak plugin dev clone planning root" {
   local orphan="$TEST_TEMP_DIR/t11-orphan"
   mkdir -p "$orphan"
