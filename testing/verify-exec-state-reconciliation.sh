@@ -559,7 +559,7 @@ fi
 
 # Test: recover-state COMPLETE count uses strict-complete JQ (excludes partial)
 _rstate_complete_jq=$(grep 'COMPLETE=.*jq.*select.*status.*complete' "$ROOT/scripts/recover-state.sh" | head -1)
-if echo "$_rstate_complete_jq" | grep -q 'partial'; then
+if grep -q 'partial' <<<"$_rstate_complete_jq"; then
   fail "recover-state COMPLETE count should exclude partial from JQ query"
 else
   pass "recover-state COMPLETE count excludes partial from JQ query"
@@ -636,7 +636,7 @@ printf '%s\n' '---' 'status: complete' '---' 'Done' > "$_srd/.vbw-planning/phase
 echo "execute" > "$_srd/.vbw-planning/phases/01-test/.uat-remediation-stage"
 # Run phase-detect
 _srd_out=$(cd "$_srd" && bash "$ROOT/scripts/phase-detect.sh" 2>/dev/null)
-_srd_state=$(echo "$_srd_out" | grep '^next_phase_state=' | head -1 | cut -d= -f2)
+_srd_state=$(grep '^next_phase_state=' <<<"$_srd_out" | head -1 | cut -d= -f2)
 _srd_stage=$(cat "$_srd/.vbw-planning/phases/01-test/.uat-remediation-stage" 2>/dev/null | tr -d '[:space:]')
 if [ "$_srd_state" = "needs_reverification" ] && [ "$_srd_stage" = "done" ]; then
   pass "phase-detect: stale 'execute' stage auto-advanced to 'done' when all plans complete"
@@ -662,7 +662,7 @@ printf '%s\n' '---' 'phase: "01"' 'plan: "02"' 'title: Test2' 'wave: 1' '---' > 
 printf '%s\n' '---' 'status: complete' '---' 'Done' > "$_srd2/.vbw-planning/phases/01-test/01-01-SUMMARY.md"
 echo "execute" > "$_srd2/.vbw-planning/phases/01-test/.uat-remediation-stage"
 _srd2_out=$(cd "$_srd2" && bash "$ROOT/scripts/phase-detect.sh" 2>/dev/null)
-_srd2_state=$(echo "$_srd2_out" | grep '^next_phase_state=' | head -1 | cut -d= -f2)
+_srd2_state=$(grep '^next_phase_state=' <<<"$_srd2_out" | head -1 | cut -d= -f2)
 _srd2_stage=$(cat "$_srd2/.vbw-planning/phases/01-test/.uat-remediation-stage" 2>/dev/null | tr -d '[:space:]')
 if [ "$_srd2_state" = "needs_uat_remediation" ] || [ "$_srd2_state" = "needs_execute" ]; then
   # When plans are incomplete, phase-detect may route to needs_execute (skipping

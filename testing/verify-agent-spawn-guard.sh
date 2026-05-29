@@ -307,7 +307,7 @@ test_sidechain_cwd_strip_emits_json_for_all_tools() {
   for tool in Agent TaskCreate; do
     output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "workingDirectory" 2>&1) && rc=$? || rc=$?
     json_line=$(extract_json "$output")
-    if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && echo "$output" | grep -q 'stripped sidechain cwd'; then
+    if [ "$rc" -eq 0 ] && [ -n "$json_line" ] && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput' >/dev/null 2>&1 && grep -q 'stripped sidechain cwd' <<<"$output"; then
       pass "Sidechain cwd strip emits JSON and warning for ${tool}"
     else
       fail "Sidechain cwd strip should emit JSON and warning for ${tool} (rc=$rc, output=$output)"
@@ -386,7 +386,7 @@ test_named_non_team_with_isolation_strips_when_no_active_workflow() {
   local tool output rc
   for tool in Agent TaskCreate; do
     output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "worktree" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 0 ] && echo "$output" | grep -q 'VBW stripped isolation:worktree'; then
+    if [ "$rc" -eq 0 ] && grep -q 'VBW stripped isolation:worktree' <<<"$output"; then
       pass "Named non-team + isolation: ${tool} stripped (no active workflow)"
     else
       fail "Named non-team + isolation should strip for ${tool} when no active workflow (rc=$rc, output=$output)"
@@ -402,7 +402,7 @@ test_named_non_team_with_sidechain_cwd_strips_when_no_active_workflow() {
   local tool output rc
   for tool in Agent TaskCreate; do
     output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.claude/worktrees/agent-123" "cwd" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 0 ] && echo "$output" | grep -q 'VBW stripped sidechain cwd fields'; then
+    if [ "$rc" -eq 0 ] && grep -q 'VBW stripped sidechain cwd fields' <<<"$output"; then
       pass "Named non-team + sidechain cwd: ${tool} stripped (no active workflow)"
     else
       fail "Named non-team + sidechain cwd should strip for ${tool} when no active workflow (rc=$rc, output=$output)"
@@ -495,7 +495,7 @@ test_no_marker_blocks_vbw_worktree_cwd_aliases() {
     for tool in Agent TaskCreate; do
       for field in cwd working_dir workingDirectory workdir; do
         output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "$tool" "" "" "$PROJECT/.vbw-worktrees/dev-01" "$field" 2>&1) && rc=$? || rc=$?
-        if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'prompt/state metadata, not a spawn cwd'; then
+        if [ "$rc" -eq 2 ] && grep -q 'prompt/state metadata, not a spawn cwd' <<<"$output"; then
           pass "No marker with config ${config_value}: ${tool} .vbw-worktrees ${field} blocked"
         else
           fail "No-marker ${tool} .vbw-worktrees ${field} should block when worktree_isolation ${config_value} (rc=$rc, output=$output)"
@@ -514,7 +514,7 @@ test_vbw_worktree_cwd_diagnostic_names_all_aliases() {
   local tool output rc
   for tool in Agent TaskCreate; do
     output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "$tool" "" "" "$PROJECT/.vbw-worktrees/dev-01" "workdir" 2>&1) && rc=$? || rc=$?
-    if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'prompt/state metadata, not a spawn cwd' && diagnostic_mentions_all_cwd_aliases "$output"; then
+    if [ "$rc" -eq 2 ] && grep -q 'prompt/state metadata, not a spawn cwd' <<<"$output" && diagnostic_mentions_all_cwd_aliases "$output"; then
       pass "VBW worktree cwd diagnostic names all aliases for ${tool}"
     else
       fail "VBW worktree cwd diagnostic should name all aliases for ${tool} (rc=$rc, output=$output)"
@@ -532,7 +532,7 @@ test_no_marker_blocks_vbw_worktree_cwd_before_isolation() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "Agent" "" "worktree" "$PROJECT/.vbw-worktrees/dev-01" "cwd" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'prompt/state metadata, not a spawn cwd'; then
+  if [ "$rc" -eq 2 ] && grep -q 'prompt/state metadata, not a spawn cwd' <<<"$output"; then
     pass "No marker with config on: .vbw-worktrees cwd blocked before isolation"
   else
     fail "No-marker .vbw-worktrees cwd should block before isolation when both are present (rc=$rc, output=$output)"
@@ -547,7 +547,7 @@ test_active_execute_without_live_marker_blocks() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" true "dev-01" "$PROJECT" "Agent" "" "worktree" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'missing live runtime delegation state'; then
+  if [ "$rc" -eq 2 ] && grep -q 'missing live runtime delegation state' <<<"$output"; then
     pass "Active execute without live marker: blocked"
   else
     fail "Active execute without live marker should block (rc=$rc, output=$output)"
@@ -562,7 +562,7 @@ test_active_execute_without_live_marker_blocks_from_nested_cwd() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" true "dev-01" "$PROJECT/src/nested" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'missing live runtime delegation state'; then
+  if [ "$rc" -eq 2 ] && grep -q 'missing live runtime delegation state' <<<"$output"; then
     pass "Active execute without live marker blocks from nested working directory"
   else
     fail "Nested-CWD active execute should block missing live marker (rc=$rc, output=$output)"
@@ -578,7 +578,7 @@ test_team_mode_requires_team_name() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'requires team-scoped agent spawns'; then
+  if [ "$rc" -eq 2 ] && grep -q 'requires team-scoped agent spawns' <<<"$output"; then
     pass "Execute team mode blocks spawn without team_name"
   else
     fail "Execute team mode should block missing team_name (rc=$rc, output=$output)"
@@ -608,7 +608,7 @@ test_team_mode_requires_agent_name() {
 
   local output rc
   output=$(run_guard "$PROJECT" "vbw-phase-01" true "" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'requires teammate name metadata'; then
+  if [ "$rc" -eq 2 ] && grep -q 'requires teammate name metadata' <<<"$output"; then
     pass "Execute team mode blocks spawn without teammate name"
   else
     fail "Execute team mode should block missing teammate name (rc=$rc, output=$output)"
@@ -624,7 +624,7 @@ test_team_mode_requires_matching_team_name() {
 
   local output rc
   output=$(run_guard "$PROJECT" "vbw-phase-99" true "dev-01" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q "requires team_name 'vbw-phase-01'"; then
+  if [ "$rc" -eq 2 ] && grep -q "requires team_name 'vbw-phase-01'" <<<"$output"; then
     pass "Execute team mode blocks mismatched team_name"
   else
     fail "Execute team mode should block mismatched team_name (rc=$rc, output=$output)"
@@ -640,7 +640,7 @@ test_non_team_mode_blocks_background_spawn() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'cannot simulate team mode with background Agent spawns'; then
+  if [ "$rc" -eq 2 ] && grep -q 'cannot simulate team mode with background Agent spawns' <<<"$output"; then
     pass "Execute subagent mode blocks faux-team background spawn"
   else
     fail "Execute subagent mode should block background spawn (rc=$rc, output=$output)"
@@ -656,7 +656,7 @@ test_direct_mode_blocks_background_spawn() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'cannot simulate team mode with background Agent spawns'; then
+  if [ "$rc" -eq 2 ] && grep -q 'cannot simulate team mode with background Agent spawns' <<<"$output"; then
     pass "Execute direct mode blocks faux-team background spawn"
   else
     fail "Execute direct mode should block background spawn (rc=$rc, output=$output)"
@@ -700,7 +700,7 @@ test_non_team_mode_blocks_overlapping_taskcreate() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "TaskCreate" "1" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'must serialize non-team TaskCreate spawns'; then
+  if [ "$rc" -eq 2 ] && grep -q 'must serialize non-team TaskCreate spawns' <<<"$output"; then
     pass "Execute subagent mode blocks overlapping TaskCreate spawns"
   else
     fail "Execute subagent mode should block overlapping TaskCreate (rc=$rc, output=$output)"
@@ -726,7 +726,7 @@ test_non_team_mode_uses_current_session_active_count() {
   fi
 
   output=$(run_guard_preserving_active_state "$PROJECT" "session-A" "$PROJECT" "TaskCreate" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'must serialize non-team TaskCreate spawns'; then
+  if [ "$rc" -eq 2 ] && grep -q 'must serialize non-team TaskCreate spawns' <<<"$output"; then
     pass "Execute subagent mode blocks current session overlapping TaskCreate"
   else
     fail "Execute subagent mode should block current session overlapping TaskCreate (rc=$rc, output=$output)"
@@ -742,7 +742,7 @@ test_direct_mode_blocks_overlapping_taskcreate() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" false "" "$PROJECT" "TaskCreate" "1" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'must serialize non-team TaskCreate spawns'; then
+  if [ "$rc" -eq 2 ] && grep -q 'must serialize non-team TaskCreate spawns' <<<"$output"; then
     pass "Execute direct mode blocks overlapping TaskCreate spawns"
   else
     fail "Execute direct mode should block overlapping TaskCreate (rc=$rc, output=$output)"
@@ -758,7 +758,7 @@ test_team_mode_taskcreate_still_requires_team_metadata() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" false "dev-01" "$PROJECT" "TaskCreate" "0" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'requires team-scoped agent spawns'; then
+  if [ "$rc" -eq 2 ] && grep -q 'requires team-scoped agent spawns' <<<"$output"; then
     pass "Team mode TaskCreate still requires team metadata"
   else
     fail "Team mode TaskCreate should still require team metadata (rc=$rc, output=$output)"
@@ -774,7 +774,7 @@ test_non_team_mode_blocks_team_name() {
 
   local output rc
   output=$(run_guard "$PROJECT" "vbw-phase-01" false 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'cannot attach team_name'; then
+  if [ "$rc" -eq 2 ] && grep -q 'cannot attach team_name' <<<"$output"; then
     pass "Execute non-team mode blocks stray team_name"
   else
     fail "Execute non-team mode should block stray team_name (rc=$rc, output=$output)"
@@ -809,7 +809,7 @@ test_debug_marker_allows_named_foreground_agent() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" false "debugger" "$PROJECT" "Agent" 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 0 ] && ! echo "$output" | grep -Eq 'Blocked: .*non-team.*name'; then
+  if [ "$rc" -eq 0 ] && ! grep -Eq 'Blocked: .*non-team.*name' <<<"$output"; then
     pass "Debug marker allows named non-team foreground Agent"
   else
     fail "Debug marker should allow named non-team foreground Agent (rc=$rc, output=$output)"
@@ -830,7 +830,7 @@ test_debug_and_fix_markers_strip_isolation_on_named_foreground_agent() {
       && [ -n "$json_line" ] \
       && echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput.name == "debugger"' >/dev/null 2>&1 \
       && ! echo "$json_line" | jq -e '.hookSpecificOutput.updatedInput.isolation' >/dev/null 2>&1 \
-      && echo "$output" | grep -q 'VBW stripped isolation:worktree'; then
+      && grep -q 'VBW stripped isolation:worktree' <<<"$output"; then
       pass "${mode} marker strips isolation while preserving named non-team Agent label"
     else
       fail "${mode} marker should strip isolation and preserve named non-team Agent label (rc=$rc, output=$output)"
@@ -880,7 +880,7 @@ test_correlation_mismatch_blocks_during_active_execute() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'missing live runtime delegation state'; then
+  if [ "$rc" -eq 2 ] && grep -q 'missing live runtime delegation state' <<<"$output"; then
     pass "Mismatched execute marker blocks during active execute"
   else
     fail "Mismatched execute marker should block during active execute (rc=$rc, output=$output)"
@@ -897,7 +897,7 @@ test_aged_live_execute_marker_still_enforces_team_rules() {
 
   local output rc
   output=$(run_guard "$PROJECT" "" true 2>&1) && rc=$? || rc=$?
-  if [ "$rc" -eq 2 ] && echo "$output" | grep -q 'requires team-scoped agent spawns'; then
+  if [ "$rc" -eq 2 ] && grep -q 'requires team-scoped agent spawns' <<<"$output"; then
     pass "Aged but correlated execute team marker still enforces team metadata"
   else
     fail "Aged live execute marker should still be enforced (rc=$rc, output=$output)"
