@@ -190,7 +190,7 @@ After calling `Skill(...)`, if the loaded skill's instructions reference additio
 
 Use targeted `message` not `broadcast`. Wait for all findings. Display ✓ per scout.
 
-**Teammate shutdown handler (duo/quad only — append to each Scout task body):** Because these Scouts run inside a real team and the teardown gate above waits for a tool-call response, include this in each Scout's task prompt: "When you receive a message containing `\"type\":\"shutdown_request\"` (or `shutdown_request` in the text), finish any in-progress tool call, then **call the `SendMessage` tool** with `{\"type\": \"shutdown_response\", \"approved\": true, \"request_id\": \"<id from shutdown_request>\", \"final_status\": \"complete|idle|in_progress\"}`, then STOP. Plain text acknowledgement does NOT satisfy the handshake — you MUST call `SendMessage`." Solo mode spawns no team, so omit it there.
+**Teammate shutdown handler (duo/quad only — append to each Scout task body):** Because these Scouts run inside a real team and the teardown gate above waits for a tool-call response, include this in each Scout's task prompt: "When you receive a message containing `"type":"shutdown_request"` (or `shutdown_request` in the text), finish any in-progress tool call, then **call the `SendMessage` tool** with `{"type": "shutdown_response", "approved": true, "request_id": "<id from shutdown_request>", "final_status": "complete|idle|in_progress"}`, then STOP. Plain text acknowledgement does NOT satisfy the handshake — you MUST call `SendMessage`." Solo mode spawns no team, so omit it there.
 
 ### Step 3.5: Verify mapping documents written by Scouts
 
