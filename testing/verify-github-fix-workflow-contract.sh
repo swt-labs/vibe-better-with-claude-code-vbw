@@ -52,7 +52,7 @@ test_copilot_tool_guard_allows_wait_github() {
     }')
 
   output=$(bash "$TOOL_GUARD" <<< "$input" 2>&1) && rc=0 || rc=$?
-  if [ "$rc" -eq 0 ] && ! printf '%s' "$output" | grep -q 'permissionDecision'; then
+  if [ "$rc" -eq 0 ] && ! grep -q 'permissionDecision' <<<"$output"; then
     pass "copilot tool guard allows wait-github helper"
   else
     fail "copilot tool guard should allow wait-github helper (rc=$rc, output=$output)"
@@ -73,14 +73,14 @@ test_review_contributor_agent_avoids_heredoc
 test_fix_issue_record_state_validates_numeric_args() {
   local output rc
   output=$(bash "$RECORD_STATE" abc branch /tmp 123 2>&1) && rc=0 || rc=$?
-  if [ "$rc" -eq 1 ] && printf '%s' "$output" | grep -q 'pr_number must be a non-negative integer'; then
+  if [ "$rc" -eq 1 ] && grep -q 'pr_number must be a non-negative integer' <<<"$output"; then
     pass "fix-issue-record-state rejects non-numeric PR numbers"
   else
     fail "fix-issue-record-state should reject non-numeric PR numbers (rc=$rc, output=$output)"
   fi
 
   output=$(bash "$RECORD_STATE" 123 branch /tmp xyz 2>&1) && rc=0 || rc=$?
-  if [ "$rc" -eq 1 ] && printf '%s' "$output" | grep -q 'issue_number must be a non-negative integer'; then
+  if [ "$rc" -eq 1 ] && grep -q 'issue_number must be a non-negative integer' <<<"$output"; then
     pass "fix-issue-record-state rejects non-numeric issue numbers"
   else
     fail "fix-issue-record-state should reject non-numeric issue numbers (rc=$rc, output=$output)"
@@ -290,8 +290,8 @@ EOF
   local output rc
   output=$(PATH="$TMPDIR_BASE:$PATH" python3 "$WAIT_GITHUB" wait-ci --repo swt-labs/vibe-better-with-claude-code-vbw --sha deadbeef 2>&1) && rc=0 || rc=$?
   if [ "$rc" -eq 3 ] \
-    && printf '%s' "$output" | grep -q 'GH_API_ERROR' \
-    && printf '%s' "$output" | grep -q 'authentication failed'; then
+    && grep -q 'GH_API_ERROR' <<<"$output" \
+    && grep -q 'authentication failed' <<<"$output"; then
     pass "wait-github fails fast with actionable gh api errors"
   else
     fail "wait-github should fail fast on gh api errors (rc=$rc, output=$output)"
@@ -318,8 +318,8 @@ EOF
   local output rc
   output=$(PATH="$TMPDIR_BASE:$PATH" python3 "$WAIT_GITHUB" wait-ci --repo swt-labs/vibe-better-with-claude-code-vbw --sha deadbeef 2>&1) && rc=0 || rc=$?
   if [ "$rc" -eq 2 ] \
-    && printf '%s' "$output" | grep -q 'CI_FAILURE' \
-    && printf '%s' "$output" | grep -q 'FAILED: ci'; then
+    && grep -q 'CI_FAILURE' <<<"$output" \
+    && grep -q 'FAILED: ci' <<<"$output"; then
     pass "wait-github treats timed_out check runs as failures"
   else
     fail "wait-github should treat timed_out check runs as failures (rc=$rc, output=$output)"

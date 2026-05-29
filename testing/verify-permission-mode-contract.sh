@@ -165,7 +165,7 @@ else
 fi
 
 for required_denied in Task TaskCreate Agent TeamCreate TeamDelete AskUserQuestion; do
-  if printf '%s\n' "$DEV_DENIED_NORMALIZED" | grep -Fxq "$required_denied"; then
+  if grep -Fxq "$required_denied" <<<"$DEV_DENIED_NORMALIZED"; then
     pass "vbw-dev.md: disallowedTools bans $required_denied"
   else
     fail "vbw-dev.md: disallowedTools must ban $required_denied"
@@ -173,7 +173,7 @@ for required_denied in Task TaskCreate Agent TeamCreate TeamDelete AskUserQuesti
 done
 
 for must_not_deny in Bash Read Edit Write Glob Grep LSP Skill WebFetch WebSearch SendMessage TaskGet; do
-  if printf '%s\n' "$DEV_DENIED_NORMALIZED" | grep -Fxq "$must_not_deny"; then
+  if grep -Fxq "$must_not_deny" <<<"$DEV_DENIED_NORMALIZED"; then
     fail "vbw-dev.md: disallowedTools must not ban $must_not_deny (Dev relies on it)"
   else
     pass "vbw-dev.md: disallowedTools does not ban $must_not_deny"
@@ -186,7 +186,7 @@ check_contains "README: Dev row uses inherited tools language" "$README_DEV_ROW"
 compare_tool_lists "README: Dev denied tokens exactly match disallowedTools frontmatter" "$README_DENIED_NORMALIZED" "$DEV_DENIED_NORMALIZED"
 
 for required_denied in Edit NotebookEdit Task TaskCreate Agent TeamCreate TeamDelete; do
-  if printf '%s\n' "$SCOUT_DENIED_NORMALIZED" | grep -Fxq "$required_denied"; then
+  if grep -Fxq "$required_denied" <<<"$SCOUT_DENIED_NORMALIZED"; then
     pass "vbw-scout.md: disallowedTools bans $required_denied"
   else
     fail "vbw-scout.md: disallowedTools must ban $required_denied"
@@ -194,7 +194,7 @@ for required_denied in Edit NotebookEdit Task TaskCreate Agent TeamCreate TeamDe
 done
 
 for must_not_deny in Bash Read Write Glob Grep LSP Skill WebFetch WebSearch; do
-  if printf '%s\n' "$SCOUT_DENIED_NORMALIZED" | grep -Fxq "$must_not_deny"; then
+  if grep -Fxq "$must_not_deny" <<<"$SCOUT_DENIED_NORMALIZED"; then
     fail "vbw-scout.md: disallowedTools must not ban $must_not_deny (Scout relies on it)"
   else
     pass "vbw-scout.md: disallowedTools does not ban $must_not_deny"
