@@ -1022,7 +1022,7 @@ Regardless of whether a real team was created, clear the execute delegation mark
 bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" clear 2>/dev/null || true
 ```
 
-> **Runtime enforcement limitation:** Claude Code does not expose agent-team message tool calls (e.g., `SendMessage`) to `PreToolUse`/`PostToolUse` hooks with stable `tool_name` values. Therefore VBW cannot hook-validate malformed shutdown responses at runtime. Enforcement relies on: (1) mechanical SendMessage instructions in all 6 agent prompts, (2) compaction-instructions.sh reminders that survive context compaction, (3) orchestrator retry (re-send if teammate responds in plain text), and (4) `/vbw:doctor --cleanup` as a recovery path for stuck teams.
+> **Runtime enforcement limitation:** Claude Code does not expose agent-team message tool calls (e.g., `SendMessage`) to `PreToolUse`/`PostToolUse` hooks with stable `tool_name` values. Therefore VBW cannot hook-validate malformed shutdown responses at runtime. Enforcement relies on: (1) the mechanical SendMessage handshake the orchestrator appends to each teammate's spawn prompt in true team mode (delivered only when a real team exists — also mirrored in the team-spawn prompts of `/vbw:map` and `/vbw:debug`), (2) compaction-instructions.sh reminders that survive context compaction (gated on a live team marker), (3) orchestrator retry (re-send if teammate responds in plain text), and (4) `/vbw:doctor --cleanup` as a recovery path for stuck teams.
 
 **Worktree merge and cleanup (post-TeamDelete):** If `worktree_isolation` is not `"off"` in config:
 For each plan that has a `worktree_path` entry in execution-state.json (completed or failed):
