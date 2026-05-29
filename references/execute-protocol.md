@@ -166,6 +166,7 @@ Team request policy from helper output:
 - Unknown normalized values preserve the raw value, use `delegation_mode=subagent`, and report `unknown_prefer_teams:<value>`.
 
 Determine whether **real team semantics** are available in the live tool set before spawning anything:
+- **Hard precondition — harness feature flag:** agent teams (and the `SendMessage`/`TeamCreate`/`TeamDelete` tools) only exist when the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` environment variable equals `1` (it is `0` or unset by default). Confirm it before considering team mode. If it is not `1`, real team semantics are **NOT** available regardless of any segment's requested `delegation_mode` — go directly to the team-tooling-unavailable fallback and do not attempt `TeamCreate`. Only when the flag is `1` does it make sense to inspect the live tool set:
 - Real team semantics are available when either:
   1. `TeamCreate` + teammate task spawning are available, **or**
   2. the live teammate spawn tool accepts both `team_name` and per-teammate `name` parameters (for example `Agent(...)` with `team_name:` and `name:`)
@@ -190,6 +191,10 @@ Branch each segment into exactly one runtime path and persist that segment's act
      bash "${VBW_PLUGIN_ROOT}/scripts/delegated-workflow.sh" set execute {segment_effort} team "$TEAM_NAME"
      ```
    - All Dev and QA teammates below MUST carry `team_name: "$TEAM_NAME"` plus `name: "dev-{MM}"` (from plan number) or `name: "qa"` / `name: "qa-wave{W}"` on the live spawn call. No plain task-management `TaskCreate` may happen after the team marker is set unless it carries the selected `TEAM_NAME` and teammate `name`.
+   - **Teammate shutdown-response protocol (team mode only):** Because `SendMessage` exists only inside a live agent team, the teammate-side shutdown handler is NOT baked into the static agent prompts — it is delivered here, at spawn time, only when a real team is created. Append the following block verbatim to every teammate's spawn task description (Dev, QA, Scout, Lead, Debugger, Docs):
+     > Team shutdown: when you receive a message containing `"type":"shutdown_request"` (or `shutdown_request` in the text), (1) finish any in-progress tool call, (2) **call the `SendMessage` tool** with body `{"type": "shutdown_response", "approved": true, "request_id": "<id from shutdown_request>", "final_status": "complete|idle|in_progress"}` using the `final_status` that matches your state, then (3) STOP — take no further action. Plain text acknowledgement does NOT satisfy the handshake; you MUST call `SendMessage`.
+
+     Do NOT append this block in explicit non-team or team-tooling-unavailable runs — `SendMessage` does not exist there and the orchestrator never sends `shutdown_request`, so the instruction would be an un-followable no-op.
 
 2. **Explicit non-team mode**
    - Use this path when `prefer_teams='never'`, `prefer_teams='auto'` with `max_parallel_width <= 1`, unknown `prefer_teams`, no delegate-eligible plans, segment route `turbo`/internal `direct`, or team-tooling-unavailable fallback.

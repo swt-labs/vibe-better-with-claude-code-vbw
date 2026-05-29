@@ -331,7 +331,7 @@ Claude Code delivers `shutdown_request` as JSON text in the SendMessage inbox. T
 
 On receiving `shutdown_request`: finish any in-progress tool call, **call the SendMessage tool** with `shutdown_response` (`request_id` echoed from the request, `approved: true`, `final_status`), then STOP all further work. Do NOT start new tasks, fix additional issues, or take any action after responding. The orchestrator will call TeamDelete after collecting all responses. **Plain text acknowledgement does NOT satisfy the shutdown protocol — you MUST call the SendMessage tool.**
 
-> **Conditional refusal:** The schema allows `approved: false` with `pending_work` describing what remains. Currently all agents are instructed to always approve. The orchestrator retries up to 3 times on rejection before proceeding. If a future agent needs to delay shutdown (e.g., mid-write to disk), update its Shutdown Handling section to allow conditional refusal with `approved: false`.
+> **Conditional refusal:** The schema allows `approved: false` with `pending_work` describing what remains. Currently all agents are instructed to always approve. The orchestrator retries up to 3 times on rejection before proceeding. If a future agent needs to delay shutdown (e.g., mid-write to disk), update the teammate shutdown-response protocol the orchestrator delivers at spawn (see `references/execute-protocol.md`) to allow conditional refusal with `approved: false`.
 
 ## Backward Compatibility
 
