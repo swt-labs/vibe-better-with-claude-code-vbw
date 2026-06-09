@@ -42,9 +42,10 @@ mk_super() {
 }
 
 # Write VERIFICATION.md whose verified_at_commit == the current product commit.
+# Mirrors the pathspec in write-verification.sh / verification-freshness.sh.
 write_verif() {
   local d="$1" f="$1/.vbw-planning/V.md" c
-  c=$( cd "$d" && git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' )
+  c=$( cd "$d" && git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' ':!.claude/settings.local.json' ':!.claude/settings.json' )
   printf -- '---\nverified_at_commit: %s\n---\nok\n' "$c" > "$f"
   echo "$f"
 }
@@ -93,5 +94,25 @@ verdict() {
   v=$(write_verif "$TEST_TEMP_DIR/s")
   echo dirty >> "$TEST_TEMP_DIR/s/sub/s.txt"   # tracked, uncommitted
   run verdict "$TEST_TEMP_DIR/s" "$v"
+  [ "$output" = "STALE:working_tree_changed" ]
+}
+
+@test "single repo: .claude/settings.local.json churn does NOT mark stale" {
+  mk_single "$TEST_TEMP_DIR/r"
+  ( cd "$TEST_TEMP_DIR/r" && mkdir -p .claude && echo '{}' > .claude/settings.local.json \
+    && _git add .claude/settings.local.json && _git commit -qm settings )
+  v=$(write_verif "$TEST_TEMP_DIR/r")
+  echo '{"permissions":"changed"}' > "$TEST_TEMP_DIR/r/.claude/settings.local.json"  # session churn, uncommitted
+  run verdict "$TEST_TEMP_DIR/r" "$v"
+  [[ "$output" == fresh:* ]]
+}
+
+@test "single repo: a deliverable under .claude/ (commands) STILL marks stale" {
+  mk_single "$TEST_TEMP_DIR/r"
+  ( cd "$TEST_TEMP_DIR/r" && mkdir -p .claude/commands && echo 'cmd' > .claude/commands/foo.md \
+    && _git add .claude/commands/foo.md && _git commit -qm cmd )
+  v=$(write_verif "$TEST_TEMP_DIR/r")
+  echo 'cmd changed' > "$TEST_TEMP_DIR/r/.claude/commands/foo.md"  # real deliverable change, uncommitted
+  run verdict "$TEST_TEMP_DIR/r" "$v"
   [ "$output" = "STALE:working_tree_changed" ]
 }

@@ -73,9 +73,13 @@ fi
 
 date_val=$(date -u +%Y-%m-%d)
 
-# Capture current product-code commit for staleness detection
-# Excludes .vbw-planning/ and CLAUDE.md so planning commits don't invalidate QA
-verified_at_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null || echo "")
+# Capture current product-code commit for staleness detection.
+# Excludes .vbw-planning/, CLAUDE.md, and Claude Code's own local config
+# (.claude/settings.local.json, .claude/settings.json) so planning commits and
+# session config churn don't invalidate QA. MUST stay in sync with the identical
+# pathspec in verification-freshness.sh (read side) or verified_at_commit will
+# never match.
+verified_at_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' ':!.claude/settings.local.json' ':!.claude/settings.json' 2>/dev/null || echo "")
 
 # Check if checks_detail exists and is a valid array
 has_checks_detail="false"

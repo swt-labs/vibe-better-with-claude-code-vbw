@@ -15,6 +15,12 @@
 #   content inside submodules (or in non-submodule top-level files) counts. This
 #   prevents perpetual `working_tree_changed` QA loops where pointer drift keeps
 #   the parent tree dirty even when all real code is committed.
+# - Claude Code's own local config (`.claude/settings.local.json`,
+#   `.claude/settings.json`) is excluded everywhere alongside `.vbw-planning` and
+#   `CLAUDE.md`: those files churn during a session (permission grants, etc.) and
+#   are never the verified product. NOTE: only the settings files are excluded --
+#   project deliverables under `.claude/` (commands, hooks, agents, skills) still
+#   count toward freshness, so Claude-tooling projects are not silently skipped.
 
 extract_verified_at_commit() {
   local verif_file="$1"
@@ -46,7 +52,7 @@ verification_is_stale() {
   # projects (no .gitmodules) keep the original whole-tree check unchanged.
   _toplevel=$(git rev-parse --show-toplevel 2>/dev/null || true)
   if [ -n "$_toplevel" ] && [ -f "$_toplevel/.gitmodules" ]; then
-    if ! _top_dirty=$(git status --porcelain --untracked-files=no --ignore-submodules=all -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null); then
+    if ! _top_dirty=$(git status --porcelain --untracked-files=no --ignore-submodules=all -- . ':!.vbw-planning' ':!CLAUDE.md' ':!.claude/settings.local.json' ':!.claude/settings.json' 2>/dev/null); then
       VERIFICATION_FRESHNESS_REASON="git_status_failed"
       return 0
     fi
@@ -61,7 +67,7 @@ verification_is_stale() {
       return 0
     fi
   else
-    if ! _dirty=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null); then
+    if ! _dirty=$(git status --porcelain --untracked-files=normal -- . ':!.vbw-planning' ':!CLAUDE.md' ':!.claude/settings.local.json' ':!.claude/settings.json' 2>/dev/null); then
       VERIFICATION_FRESHNESS_REASON="git_status_failed"
       return 0
     fi
@@ -73,7 +79,7 @@ verification_is_stale() {
 
   _vac=$(extract_verified_at_commit "$verif_file")
   if [ -n "$_vac" ]; then
-    if ! _cur_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null); then
+    if ! _cur_commit=$(git log -1 --format='%H' -- . ':!.vbw-planning' ':!CLAUDE.md' ':!.claude/settings.local.json' ':!.claude/settings.json' 2>/dev/null); then
       VERIFICATION_FRESHNESS_REASON="git_log_failed"
       return 0
     fi
@@ -89,7 +95,7 @@ verification_is_stale() {
     return 1
   fi
 
-  if ! _cur_commit_ts=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' 2>/dev/null); then
+  if ! _cur_commit_ts=$(git log -1 --format='%ct' -- . ':!.vbw-planning' ':!CLAUDE.md' ':!.claude/settings.local.json' ':!.claude/settings.json' 2>/dev/null); then
     VERIFICATION_FRESHNESS_REASON="git_log_failed"
     return 0
   fi
