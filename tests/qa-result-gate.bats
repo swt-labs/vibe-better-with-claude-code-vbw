@@ -997,6 +997,33 @@ VERIF
   [[ "$output" == *"qa_gate_writer=write-verification.sh"* ]]
 }
 
+@test "single-plan phase with only a per-plan {NN}-{MM}-VERIFICATION.md → PROCEED_TO_UAT (issue #653)" {
+  # Regression: a passing single-plan phase whose verification artifact was
+  # written with the per-plan name must not be read as missing and forced to
+  # re-run. Before the fix the gate auto-resolved the (absent) phase-level
+  # 01-VERIFICATION.md and reported qa_gate_writer=missing → QA_RERUN_REQUIRED.
+  : > "$PHASE_DIR/01-01-PLAN.md"
+  {
+    echo "---"
+    echo "phase: 01"
+    echo "result: PASS"
+    echo "passed: 33"
+    echo "failed: 0"
+    echo "total: 33"
+    echo "plans_verified: [01-01]"
+    echo "writer: write-verification.sh"
+    echo "---"
+  } > "$PHASE_DIR/01-01-VERIFICATION.md"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  # Confirm the per-plan artifact was actually read (not a missing-file false pass)
+  [[ "$output" == *"qa_gate_writer=write-verification.sh"* ]]
+  [[ "$output" == *"qa_gate_result=PASS"* ]]
+}
+
 @test "brownfield fallback to plain VERIFICATION.md" {
   # Create a phase dir WITHOUT numbered prefix
   BROWNFIELD_DIR="$TEST_DIR/legacy-phase"

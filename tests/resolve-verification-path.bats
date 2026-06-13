@@ -308,3 +308,74 @@ EOF
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
+
+# Issue #653: single-plan phase where the writer produced a per-plan
+# {NN}-{MM}-VERIFICATION.md must resolve to that artifact, not a synthetic
+# phase-level name the gate would read as missing.
+@test "resolve-verification-path phase adopts the sole per-plan verification (issue #653 single-plan phase)" {
+  cat > "$PHASE_DIR/01-01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+plans_verified: [01-01]
+---
+EOF
+
+  run bash "$SCRIPTS_DIR/resolve-verification-path.sh" phase "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$PHASE_DIR/01-01-VERIFICATION.md" ]
+}
+
+@test "resolve-verification-path phase does NOT adopt per-plan files when more than one exists (ambiguous -> phase-level)" {
+  cat > "$PHASE_DIR/01-01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+EOF
+  cat > "$PHASE_DIR/01-02-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+EOF
+
+  run bash "$SCRIPTS_DIR/resolve-verification-path.sh" phase "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$PHASE_DIR/01-VERIFICATION.md" ]
+}
+
+@test "resolve-verification-path phase prefers an on-disk phase-level artifact over a per-plan one" {
+  cat > "$PHASE_DIR/01-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+EOF
+  cat > "$PHASE_DIR/01-01-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+EOF
+
+  run bash "$SCRIPTS_DIR/resolve-verification-path.sh" phase "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$PHASE_DIR/01-VERIFICATION.md" ]
+}
+
+@test "resolve-verification-path phase prefers wave files over a per-plan one" {
+  cat > "$PHASE_DIR/01-VERIFICATION-wave1.md" <<'EOF'
+---
+result: PASS
+---
+EOF
+  cat > "$PHASE_DIR/01-01-VERIFICATION.md" <<'EOF'
+---
+result: FAIL
+---
+EOF
+
+  run bash "$SCRIPTS_DIR/resolve-verification-path.sh" phase "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$PHASE_DIR/01-VERIFICATION-wave1.md" ]
+}

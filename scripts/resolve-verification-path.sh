@@ -46,7 +46,7 @@ if [ ! -d "$PHASE_DIR" ]; then
 fi
 
 phase_level_path() {
-  local canonical_name canonical_path base phase_num phase_prefix wave_files
+  local canonical_name canonical_path base phase_num phase_prefix wave_files plan_files plan_count
 
   canonical_name=$(bash "$SCRIPT_DIR/resolve-artifact-path.sh" verification "$PHASE_DIR" 2>/dev/null || true)
   if [ -n "$canonical_name" ]; then
@@ -78,6 +78,23 @@ phase_level_path() {
     if [ -n "$wave_files" ]; then
       printf '%s\n' "$wave_files" | tail -1
       return 0
+    fi
+  fi
+
+  # Per-plan single-plan-phase fallback (issue #653): when no phase-level, plain,
+  # or wave-level artifact exists on disk but the writer produced exactly one
+  # per-plan {NN}-{MM}-VERIFICATION.md (the single-plan-phase case), adopt it so
+  # the QA gate does not see the phase as unverified and force a spurious re-run.
+  # Only a single match is adopted — multiple per-plan files are ambiguous and
+  # fall through to the canonical phase-level name (the integration artifact).
+  if [ -n "$phase_prefix" ]; then
+    plan_files=$(ls -1 "$PHASE_DIR/${phase_prefix}-"[0-9][0-9]"-VERIFICATION.md" 2>/dev/null | (sort -V 2>/dev/null || sort) || true)
+    if [ -n "$plan_files" ]; then
+      plan_count=$(printf '%s\n' "$plan_files" | grep -c . || true)
+      if [ "${plan_count:-0}" -eq 1 ]; then
+        printf '%s\n' "$plan_files" | head -1
+        return 0
+      fi
     fi
   fi
 
