@@ -143,6 +143,19 @@ verdict() {
   [ "$output" = "STALE:working_tree_changed" ]
 }
 
+# QA round 2: a declared-but-uninitialized submodule (clone without
+# --recurse-submodules) enters the monorepo path (git submodule status lists it),
+# but `git submodule foreach` silently skips uninitialized submodules, so a clean
+# clone reports fresh rather than spuriously failing closed to stale.
+@test "submodule monorepo: uninitialized submodule does not spuriously mark stale" {
+  mk_super "$TEST_TEMP_DIR/s"
+  _git clone -q "$TEST_TEMP_DIR/s" "$TEST_TEMP_DIR/clone"   # no --recurse-submodules: 'sub' uninitialized
+  ( cd "$TEST_TEMP_DIR/clone" && mkdir -p .vbw-planning )
+  v=$(write_verif "$TEST_TEMP_DIR/clone")
+  run verdict "$TEST_TEMP_DIR/clone" "$v"
+  [[ "$output" == fresh:* ]]
+}
+
 @test "single repo: .claude/settings.local.json churn does NOT mark stale" {
   mk_single "$TEST_TEMP_DIR/r"
   ( cd "$TEST_TEMP_DIR/r" && mkdir -p .claude && echo '{}' > .claude/settings.local.json \
