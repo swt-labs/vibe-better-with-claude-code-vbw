@@ -4,9 +4,11 @@
 # Builds REAL git repos (and a real submodule) so the dirty-tree logic is
 # exercised end-to-end, not asserted by string-presence.
 #
-# Submodule-monorepo contract (the QA-loop fix): parent gitlink pointers and
-# untracked files do NOT mark a verification stale; only uncommitted tracked
-# CONTENT (top-level or inside a submodule) does. Single-repo behavior unchanged.
+# Submodule-monorepo contract (the QA-loop fix): the parent repo's gitlink pointers
+# and untracked noise do NOT mark a verification stale; uncommitted work INSIDE a
+# submodule does -- tracked changes plus non-ignored untracked files (a new source
+# file is real work), while each submodule's .gitignore and .claude/settings* local
+# config are excluded as noise. Single-repo behavior unchanged.
 
 load test_helper
 
@@ -94,6 +96,50 @@ verdict() {
   v=$(write_verif "$TEST_TEMP_DIR/s")
   echo dirty >> "$TEST_TEMP_DIR/s/sub/s.txt"   # tracked, uncommitted
   run verdict "$TEST_TEMP_DIR/s" "$v"
+  [ "$output" = "STALE:working_tree_changed" ]
+}
+
+# QA round 1, finding #1: a brand-new uncommitted (untracked) source file inside a
+# submodule is real work the verification never covered -> must mark stale.
+@test "submodule monorepo: untracked NEW file inside submodule marks stale" {
+  mk_super "$TEST_TEMP_DIR/s"
+  v=$(write_verif "$TEST_TEMP_DIR/s")
+  echo 'package x' > "$TEST_TEMP_DIR/s/sub/newcode.go"   # untracked, not ignored
+  run verdict "$TEST_TEMP_DIR/s" "$v"
+  [ "$output" = "STALE:working_tree_changed" ]
+}
+
+# The untracked check inside a submodule still honors that submodule's .gitignore
+# (git status --exclude-standard), so gitignored build noise does NOT mark stale.
+@test "submodule monorepo: gitignored untracked inside submodule does NOT mark stale" {
+  mk_super "$TEST_TEMP_DIR/s"
+  ( cd "$TEST_TEMP_DIR/s/sub" && echo '*.log' > .gitignore && _git add .gitignore && _git commit -qm ignore )
+  v=$(write_verif "$TEST_TEMP_DIR/s")
+  echo noise > "$TEST_TEMP_DIR/s/sub/build.log"   # untracked but gitignored in the submodule
+  run verdict "$TEST_TEMP_DIR/s" "$v"
+  [[ "$output" == fresh:* ]]
+}
+
+# Local-config churn (.claude/settings*.json) inside a submodule is session noise,
+# excluded the same way as in the parent/single-repo branches.
+@test "submodule monorepo: .claude/settings.local.json churn inside submodule does NOT mark stale" {
+  mk_super "$TEST_TEMP_DIR/s"
+  v=$(write_verif "$TEST_TEMP_DIR/s")
+  mkdir -p "$TEST_TEMP_DIR/s/sub/.claude"
+  echo '{"permissions":"changed"}' > "$TEST_TEMP_DIR/s/sub/.claude/settings.local.json"  # untracked session churn
+  run verdict "$TEST_TEMP_DIR/s" "$v"
+  [[ "$output" == fresh:* ]]
+}
+
+# QA round 1, finding #2: the monorepo branch is gated on real submodules
+# (`git submodule status` non-empty), not merely on .gitmodules existing -- so an
+# empty/stale .gitmodules keeps single-repo behavior (untracked top-level -> stale).
+@test "single repo with empty .gitmodules keeps single-repo behavior (untracked marks stale)" {
+  mk_single "$TEST_TEMP_DIR/r"
+  ( cd "$TEST_TEMP_DIR/r" && : > .gitmodules && _git add .gitmodules && _git commit -qm "empty gitmodules" )
+  v=$(write_verif "$TEST_TEMP_DIR/r")
+  echo x > "$TEST_TEMP_DIR/r/new.txt"   # untracked top-level product file
+  run verdict "$TEST_TEMP_DIR/r" "$v"
   [ "$output" = "STALE:working_tree_changed" ]
 }
 

@@ -35,7 +35,7 @@ extract_verified_at_commit() {
 
 verification_is_stale() {
   local verif_file="$1"
-  local _dirty _vac _cur_commit _cur_commit_ts _verif_mtime _toplevel _top_dirty _sub_dirty
+  local _dirty _vac _cur_commit _cur_commit_ts _verif_mtime _toplevel _top_dirty _sub_dirty _submodules
 
   VERIFICATION_FRESHNESS_REASON=""
   if [ -z "$verif_file" ] || [ ! -f "$verif_file" ]; then
@@ -44,21 +44,33 @@ verification_is_stale() {
   fi
 
   # Dirty-tree check. In a submodule monorepo the parent repo's gitlink *pointers*
-  # and untracked files are NOT "the verified work" -- the real code lives inside
-  # the submodules. So when .gitmodules is present, ignore parent pointer drift and
-  # untracked noise (which otherwise keep the tree perpetually dirty and loop QA),
-  # and instead treat uncommitted tracked content INSIDE any submodule -- or in
-  # non-submodule top-level tracked files -- as the dirty signal. Single-repo
-  # projects (no .gitmodules) keep the original whole-tree check unchanged.
+  # and untracked noise are NOT "the verified work" -- the real code lives inside
+  # the submodules. So when the repo actually has submodules, ignore parent pointer
+  # drift and parent untracked noise (which otherwise keep the tree perpetually
+  # dirty and loop QA), and instead treat uncommitted content INSIDE any submodule
+  # as the dirty signal: tracked changes PLUS non-ignored untracked files, since a
+  # brand-new uncommitted source file inside a submodule is real work the
+  # verification did not cover (--untracked-files=normal still honors each
+  # submodule's .gitignore via --exclude-standard, and the same .claude/settings*
+  # local-config noise is excluded as in the parent/single-repo branches).
+  # The branch is gated on `git submodule status` returning at least one entry, not
+  # merely on .gitmodules existing, so an empty or stale .gitmodules cannot silently
+  # flip a single repo onto the monorepo path. Single-repo projects keep the
+  # original whole-tree check unchanged.
   _toplevel=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  _submodules=""
   if [ -n "$_toplevel" ] && [ -f "$_toplevel/.gitmodules" ]; then
+    _submodules=$(git submodule status 2>/dev/null || true)
+  fi
+  if [ -n "$_submodules" ]; then
     if ! _top_dirty=$(git status --porcelain --untracked-files=no --ignore-submodules=all -- . ':!.vbw-planning' ':!CLAUDE.md' ':!.claude/settings.local.json' ':!.claude/settings.json' 2>/dev/null); then
       VERIFICATION_FRESHNESS_REASON="git_status_failed"
       return 0
     fi
-    # Uncommitted tracked content inside any submodule (recursive). Fail closed to
-    # stale on any foreach/git error -- never misread a transient failure as clean.
-    if ! _sub_dirty=$(git submodule foreach --quiet --recursive 'git status --porcelain --untracked-files=no' 2>/dev/null); then
+    # Uncommitted content inside any submodule (recursive): tracked changes plus
+    # non-ignored untracked files. Fail closed to stale on any foreach/git error --
+    # never misread a transient failure as clean.
+    if ! _sub_dirty=$(git submodule foreach --quiet --recursive 'git status --porcelain --untracked-files=normal -- . ":!.claude/settings.local.json" ":!.claude/settings.json"' 2>/dev/null); then
       VERIFICATION_FRESHNESS_REASON="git_status_failed"
       return 0
     fi
