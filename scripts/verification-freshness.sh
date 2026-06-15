@@ -57,6 +57,14 @@ verification_is_stale() {
   # merely on .gitmodules existing, so an empty or stale .gitmodules cannot silently
   # flip a single repo onto the monorepo path. Single-repo projects keep the
   # original whole-tree check unchanged.
+  #
+  # Known boundary (deliberate): work COMMITTED inside a submodule but whose parent
+  # gitlink pointer has not yet been bumped reads as fresh -- the submodule tree is
+  # clean and parent pointer drift is intentionally ignored to break the QA loop.
+  # Once the pointer-bump commit lands in the parent, the product commit changes and
+  # the verified_at_commit baseline correctly reports stale. Treating drift as stale
+  # here would reintroduce the #652 loop, so this re-verify-after-bump boundary is
+  # accepted rather than "fixed".
   _toplevel=$(git rev-parse --show-toplevel 2>/dev/null || true)
   _submodules=""
   if [ -n "$_toplevel" ] && [ -f "$_toplevel/.gitmodules" ]; then
