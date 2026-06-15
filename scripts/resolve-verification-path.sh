@@ -88,16 +88,25 @@ phase_level_path() {
   # Only a single match is adopted — multiple per-plan files are ambiguous and
   # fall through to the canonical phase-level name (the integration artifact).
   if [ -n "$phase_prefix" ]; then
-    # Match per-plan names with a >=2-digit MM component to mirror the writer's
-    # `printf %02d` plan numbering (resolve-artifact-path.sh), so 3-digit plan
-    # numbers (100+) are not silently missed. A nullglob array gives an exact
-    # entry count with no `ls` parsing and no newline-in-filename ambiguity.
-    local -a plan_files=()
-    local _nullglob_restore
+    # Match per-plan names with a >=2-digit, all-numeric MM component to mirror
+    # the writer's `printf %02d` plan numbering (resolve-artifact-path.sh): so
+    # 3-digit plan numbers (100+) are matched, but non-canonical names such as
+    # `{NN}-01a-VERIFICATION.md` or `{NN}-01-extra-VERIFICATION.md` are not.
+    # A nullglob array gives an exact entry count with no `ls` parsing and no
+    # newline-in-filename ambiguity; the glob's `*` is greedy, so a strict regex
+    # re-filter rejects its over-matches before the single-match decision.
+    local -a plan_files=() _plan_matches=()
+    local _nullglob_restore _pf _pf_base
     _nullglob_restore=$(shopt -p nullglob 2>/dev/null || true)
     shopt -s nullglob
-    plan_files=( "$PHASE_DIR/${phase_prefix}-"[0-9][0-9]*"-VERIFICATION.md" )
+    _plan_matches=( "$PHASE_DIR/${phase_prefix}-"[0-9][0-9]*"-VERIFICATION.md" )
     eval "$_nullglob_restore" 2>/dev/null || true
+    for _pf in "${_plan_matches[@]}"; do
+      _pf_base=$(basename "$_pf")
+      if [[ "$_pf_base" =~ ^${phase_prefix}-[0-9][0-9]+-VERIFICATION\.md$ ]]; then
+        plan_files+=("$_pf")
+      fi
+    done
     if [ "${#plan_files[@]}" -eq 1 ]; then
       printf '%s\n' "${plan_files[0]}"
       return 0

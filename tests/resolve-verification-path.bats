@@ -406,3 +406,25 @@ EOF
   [ "$status" -eq 0 ]
   [ "$output" = "$PHASE_DIR/01-100-VERIFICATION.md" ]
 }
+
+# Issue #653 (QA round 2): the per-plan glob is greedy; a strict regex re-filter
+# must reject non-canonical names whose MM segment is not purely numeric (e.g. a
+# trailing letter or an extra `-segment-`), so they are NOT mistaken for the sole
+# per-plan artifact. Such names fall through to the canonical phase-level name.
+@test "resolve-verification-path phase does NOT adopt a non-canonical per-plan name (over-match guard)" {
+  cat > "$PHASE_DIR/01-01a-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+EOF
+  cat > "$PHASE_DIR/01-01-extra-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+---
+EOF
+
+  run bash "$SCRIPTS_DIR/resolve-verification-path.sh" phase "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$PHASE_DIR/01-VERIFICATION.md" ]
+}
