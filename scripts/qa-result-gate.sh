@@ -1117,6 +1117,13 @@ phase_baseline_is_clean() {
       # The first non-separator table row is the column header, whatever its
       # column titles are; every subsequent row is a counted data row.
       if (!header_done) { header_done=1; next }
+      # Skip placeholder rows (e.g. "| None | - | - |") so a clean phase that
+      # renders an explicit empty pre-existing table still reads as clean.
+      split($0, _cells, "|")
+      _c = _cells[2]
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", _c)
+      _lc = tolower(_c)
+      if (_lc == "" || _lc == "none" || _lc == "n/a" || _lc == "na" || _lc ~ /^none[.,; ]/ || _lc ~ /^no .*(issue|pre-existing)/) next
       count++
     }
     END { print count+0 }
