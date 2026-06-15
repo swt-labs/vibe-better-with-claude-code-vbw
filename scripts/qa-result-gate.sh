@@ -1100,21 +1100,23 @@ phase_baseline_is_clean() {
   [ -n "$phase_dir" ] || return 1
   phase_v=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" phase "$phase_dir" 2>/dev/null || true)
   [ -n "$phase_v" ] && [ -r "$phase_v" ] || return 1
+  # Normalize like the gate's authoritative RESULT parser: case-insensitive,
+  # with a fallback to the legacy `status:` frontmatter field when `result:` is
+  # absent, so the same on-disk verification is judged consistently here.
   result=$(extract_frontmatter_scalar_value "$phase_v" result)
-  case "$result" in
-    PASS|pass|Pass) ;;
-    *) return 1 ;;
-  esac
+  [ -n "$result" ] || result=$(extract_frontmatter_scalar_value "$phase_v" status)
+  result=$(printf '%s' "$result" | tr '[:lower:]' '[:upper:]')
+  [ "$result" = "PASS" ] || return 1
   [ "$(count_fail_rows_in_verification "$phase_v")" -eq 0 ] 2>/dev/null || return 1
-  preexist=$(awk -F'|' '
-    function trim(v){ gsub(/^[[:space:]]+|[[:space:]]+$/,"",v); return v }
-    /^## Pre-existing Issues/ { found=1; next }
+  preexist=$(awk '
+    /^## Pre-existing Issues/ { found=1; header_done=0; next }
     found && /^## / { exit }
     found && /^\|/ {
-      if ($0 ~ /^\|[[:space:]-]+(\|[[:space:]-]+)+\|?[[:space:]]*$/) next
-      t=trim($2); f=trim($3)
-      if (tolower(t)=="test" && tolower(f)=="file") next
-      if (t=="") next
+      # Skip GitHub-style alignment separator rows (dashes, optional colons).
+      if ($0 ~ /^\|[[:space:]:|-]+$/) next
+      # The first non-separator table row is the column header, whatever its
+      # column titles are; every subsequent row is a counted data row.
+      if (!header_done) { header_done=1; next }
       count++
     }
     END { print count+0 }

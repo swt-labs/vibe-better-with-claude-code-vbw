@@ -2275,13 +2275,17 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
-# Issue #655 (sub-defect B) — fail-closed companions: the source-missing exemption
-# above must NOT fire when the phase baseline is not clean. Two guards:
-#   1. no phase-level verification on disk (a continuation round that lost its source)
-#   2. the phase verification carries pre-existing/known issues
-# are covered by the round-02 and known-issues fail-closed tests below; here we pin
-# that a round which records a NON-metadata edit still fails closed even on a clean
-# baseline (it claims real work with no source verification to anchor it).
+# Issue #655 (sub-defect B) — fail-closed companions. The source-missing
+# exemption must fire ONLY when every guard passes; the tests below each satisfy
+# the earlier guards (input_mode=none, 0 classifications, 0 known issues) and
+# then trip exactly one remaining guard, so each branch is exercised live:
+#   - this test: a recorded NON-metadata edit (claims real work, no source)
+#   - the three tests after it: the reachable false-return branches of
+#     phase_baseline_is_clean (absent phase verification, non-PASS result,
+#     pre-existing issues). Its count_fail==0 guard is defense-in-depth and is
+#     not independently reachable through the gate: a phase verification with
+#     FAIL rows makes qa-remediation-state derive input_mode=verification, so the
+#     exemption's input_mode=none precondition already excludes that case.
 @test "no-classification round recording a non-metadata edit still fails closed (issue #655)" {
   create_verif "write-verification.sh" "PASS"
 
@@ -2309,6 +2313,69 @@ plans_verified:
 |----|----------|-------------|--------|----------|
 | MH-01 | must_have | Code edited | PASS | Done |
 VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+# Helper: a metadata-only, no-classification round that clears every guard up to
+# phase_baseline_is_clean. Callers set the phase verification to vary the baseline.
+_seed_clean_guard_round() {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: No-FAIL documentation disposition
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documented | PASS | Done |
+VERIF
+}
+
+@test "phase_baseline_is_clean branch: no phase verification on disk → fails closed (issue #655)" {
+  _seed_clean_guard_round
+  # No phase-level VERIFICATION.md exists (a continuation round that lost its source).
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "phase_baseline_is_clean branch: phase verification result is not PASS → fails closed (issue #655)" {
+  create_verif "write-verification.sh" "FAIL"
+  _seed_clean_guard_round
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "phase_baseline_is_clean branch: phase verification carries a pre-existing issue → fails closed (issue #655)" {
+  create_verif "write-verification.sh" "PASS" "## Pre-existing Issues
+| Test | File | Error |
+|------|------|-------|
+| SomeTest | src/foo.swift | flaky boundary case |"
+  _seed_clean_guard_round
 
   run bash "$SCRIPT" "$PHASE_DIR"
 
