@@ -2231,7 +2231,15 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
-@test "metadata-only round with missing fail_classifications → REMEDIATION_REQUIRED" {
+# Issue #655 (sub-defect B): a no-classification, metadata-only round on a phase
+# whose authoritative verification is a clean PASS (0 FAIL, 0 pre-existing) has
+# genuinely nothing to remediate, so it must terminate (PROCEED_TO_UAT) rather
+# than deadlock at the verify stage on source_verification_missing. A historical
+# phase-root SUMMARY deviation does not force remediation — phase-root deviations
+# are already treated as historical during remediation (they are not counted in
+# the round-scoped deviation override). Previously this routed REMEDIATION_REQUIRED
+# via the stage-asymmetric source-missing check; that was the #655 loop.
+@test "no-classification metadata-only round on a clean-baseline phase → PROCEED_TO_UAT (issue #655)" {
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "Historical orchestration issue"
 
@@ -2244,7 +2252,7 @@ VERIF
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
 round: 01
-title: Missing classifications should fail closed
+title: No-FAIL documentation disposition
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -2263,6 +2271,49 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+# Issue #655 (sub-defect B) — fail-closed companions: the source-missing exemption
+# above must NOT fire when the phase baseline is not clean. Two guards:
+#   1. no phase-level verification on disk (a continuation round that lost its source)
+#   2. the phase verification carries pre-existing/known issues
+# are covered by the round-02 and known-issues fail-closed tests below; here we pin
+# that a round which records a NON-metadata edit still fails closed even on a clean
+# baseline (it claims real work with no source verification to anchor it).
+@test "no-classification round recording a non-metadata edit still fails closed (issue #655)" {
+  create_verif "write-verification.sh" "PASS"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "src/Feature.swift"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Non-metadata edit without a source must fail closed
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Code edited | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_source_verification_missing=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
 }
 
