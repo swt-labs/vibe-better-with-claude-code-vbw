@@ -379,3 +379,30 @@ EOF
   [ "$status" -eq 0 ]
   [ "$output" = "$PHASE_DIR/01-VERIFICATION-wave1.md" ]
 }
+
+# Regression guard: a numbered phase with NO verification artifact of any kind
+# must fall through the per-plan block and return the synthetic phase-level
+# name (the pre-existing behavior the #653 block must not disturb).
+@test "resolve-verification-path phase returns the synthetic phase-level name when no artifact exists" {
+  run bash "$SCRIPTS_DIR/resolve-verification-path.sh" phase "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$PHASE_DIR/01-VERIFICATION.md" ]
+}
+
+# Issue #653 (round 1 hardening): the writer's `printf %02d` plan numbering
+# yields 3-digit names for the 100th+ plan, so the per-plan fallback must adopt
+# a sole {NN}-{MMM}-VERIFICATION.md, not just 2-digit MM.
+@test "resolve-verification-path phase adopts a sole 3-digit per-plan verification (100+ plan numbers)" {
+  cat > "$PHASE_DIR/01-100-VERIFICATION.md" <<'EOF'
+---
+result: PASS
+plans_verified: [01-100]
+---
+EOF
+
+  run bash "$SCRIPTS_DIR/resolve-verification-path.sh" phase "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$PHASE_DIR/01-100-VERIFICATION.md" ]
+}
