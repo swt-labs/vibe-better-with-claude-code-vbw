@@ -2607,6 +2607,31 @@ EOF
   [ "$status" -ne 0 ]
 }
 
+@test "archive mode exits 0 on a markdown-bold ROADMAP (#651 blocking path)" {
+  # #651's user-visible breakage is `--mode archive` hard-blocking (exit 2) on
+  # a bold ROADMAP. Assert the archive gate now passes for the emphasized form.
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] **Phase 1: Setup**
+- [ ] **Phase 2: Backend API**
+- [ ] **Phase 3: Frontend**
+
+## Phase 1: Setup
+## Phase 2: Backend API
+## Phase 3: Frontend
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 0 ]
+  local verdict
+  verdict=$(echo "$output" | jq -r '.verdict')
+  [ "$verdict" = "pass" ]
+}
+
 # ============================================================
 # UAT-awareness tests
 # ============================================================
