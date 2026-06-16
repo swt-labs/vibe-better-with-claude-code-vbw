@@ -28,6 +28,31 @@ teardown() {
   teardown_temp_dir
 }
 
+# Build a mock `uname` that reports Darwin. The script's `security`-based
+# keychain discovery (the #576 code path) is gated on `_OS=$(uname)` == "Darwin"
+# because `security` is a macOS-only binary. CI runs on Linux, where that branch
+# would otherwise be skipped and the mocked `security` never invoked — making the
+# suffixed-discovery tests impossible to exercise. Faking `uname` (just like the
+# mocked `security`/`curl`) lets the macOS path run on Linux runners. The script
+# only ever calls bare `uname`; any other flags delegate to the real binary so
+# unrelated callers are unaffected.
+_install_mock_uname_darwin() {
+  local fake_bin="$1"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/uname" <<'SH'
+#!/usr/bin/env bash
+if [ "$#" -eq 0 ] || [ "$1" = "-s" ]; then
+  echo "Darwin"
+  exit 0
+fi
+for _d in /usr/bin /bin /usr/local/bin; do
+  [ -x "$_d/uname" ] && exec "$_d/uname" "$@"
+done
+echo "Darwin"
+SH
+  chmod +x "$fake_bin/uname"
+}
+
 # Build a mock `security` binary that responds to find-generic-password and
 # dump-keychain based on a fixture spec. Args:
 #   $1 = fake_bin dir
@@ -40,6 +65,7 @@ _install_mock_security() {
   local suffixed_name="$3"
   local token_value="$4"
   mkdir -p "$fake_bin"
+  _install_mock_uname_darwin "$fake_bin"
   cat > "$fake_bin/security" <<SH
 #!/usr/bin/env bash
 LITERAL_PRESENT="$literal_present"
@@ -139,6 +165,7 @@ _install_mock_security_multi() {
   local names="$2"   # newline-separated suffixed service names
   local tokens="$3"  # newline-separated tokens, parallel to names
   mkdir -p "$fake_bin"
+  _install_mock_uname_darwin "$fake_bin"
   cat > "$fake_bin/security" <<SH
 #!/usr/bin/env bash
 NAMES_RAW=\$(cat <<'NAMES_EOF'
