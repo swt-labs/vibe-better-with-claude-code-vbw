@@ -904,7 +904,8 @@ run_check_state_vs_roadmap() {
   fi
 
   local roadmap_checklist_count roadmap_section_count
-  # Accept both plain "- [ ] Phase N:" and bootstrap link "- [ ] [Phase N:"
+  # Accept plain "- [ ] Phase N:", bootstrap link "- [ ] [Phase N:", and
+  # markdown-emphasis "- [ ] **Phase N:**" (bold/italic markers around the optional link bracket)
   roadmap_checklist_count=0
   while IFS= read -r line || [ -n "$line" ]; do
     if roadmap_checklist_phase_num_from_line "$line" >/dev/null 2>&1; then

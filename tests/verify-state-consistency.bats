@@ -2537,6 +2537,77 @@ EOF
 }
 
 # ============================================================
+# Markdown-emphasis ROADMAP checklist (#651)
+# ROADMAP checklists are frequently authored or edited with emphasis, e.g.
+# "- [ ] **Phase N: Name**". (The in-repo bootstrap-roadmap.sh emits the link
+# form "- [ ] [Phase N: Name](#anchor)"; emphasized checklists come from LLM-
+# or hand-authored ROADMAPs.) The verifier must parse the emphasized form too,
+# not count 0 entries and hard-block archive.
+# ============================================================
+
+@test "roadmap_vs_summaries parses markdown-bold ROADMAP correctly (#651)" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] **Phase 1: Setup**
+- [ ] **Phase 2: Backend API**
+- [ ] **Phase 3: Frontend**
+
+## Phase 1: Setup
+## Phase 2: Backend API
+## Phase 3: Frontend
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c2_pass
+  c2_pass=$(echo "$output" | jq -r '.checks.roadmap_vs_summaries.pass')
+  [ "$c2_pass" = "true" ]
+}
+
+@test "state_vs_roadmap phase count matches with markdown-bold ROADMAP (#651)" {
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] **Phase 1: Setup**
+- [ ] **Phase 2: Backend API**
+- [ ] **Phase 3: Frontend**
+
+## Phase 1: Setup
+## Phase 2: Backend API
+## Phase 3: Frontend
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode advisory
+  [ "$status" -eq 0 ]
+
+  local c4_pass
+  c4_pass=$(echo "$output" | jq -r '.checks.state_vs_roadmap.pass')
+  [ "$c4_pass" = "true" ]
+}
+
+@test "roadmap_checklist_phase_num_from_line parses plain, link, and emphasis forms (#651)" {
+  # Unit guard for the parser the verifier depends on. Bootstrap emits the bold
+  # form; legacy plain and link forms must keep working; non-phase lines must not match.
+  source "$SCRIPTS_DIR/phase-state-utils.sh"
+  [ "$(roadmap_checklist_phase_num_from_line '- [ ] Phase 1: plain')" = "1" ]
+  [ "$(roadmap_checklist_phase_num_from_line '- [x] [Phase 2: link](#x)')" = "2" ]
+  [ "$(roadmap_checklist_phase_num_from_line '- [ ] **Phase 3: bold**')" = "3" ]
+  [ "$(roadmap_checklist_phase_num_from_line '- [ ] *Phase 4: italic*')" = "4" ]
+  [ "$(roadmap_checklist_phase_num_from_line '- [ ] **[Phase 5: bold link](#y)**')" = "5" ]
+  [ "$(roadmap_checklist_phase_num_from_line '- [ ] [**Phase 6: link bold**](#z)')" = "6" ]
+  run roadmap_checklist_phase_num_from_line '- [ ] not a phase line'
+  [ "$status" -ne 0 ]
+}
+
+# ============================================================
 # UAT-awareness tests
 # ============================================================
 
