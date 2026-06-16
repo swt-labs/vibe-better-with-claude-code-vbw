@@ -2632,6 +2632,32 @@ EOF
   [ "$verdict" = "pass" ]
 }
 
+@test "state_vs_roadmap reconciles when BOTH checklist and ## headings are emphasized (#651)" {
+  # Asymmetry regression: if an author bolds both the checklist items and the
+  # ## Phase headings, the checklist count and section count must still agree
+  # (both parse emphasis), so state_vs_roadmap does not falsely fail.
+  cd "$TEST_TEMP_DIR"
+  scaffold_consistent_workspace
+
+  cat > "$TEST_TEMP_DIR/.vbw-planning/ROADMAP.md" <<'EOF'
+# Roadmap
+
+- [x] **Phase 1: Setup**
+- [ ] **Phase 2: Backend API**
+- [ ] **Phase 3: Frontend**
+
+## **Phase 1: Setup**
+## **Phase 2: Backend API**
+## **Phase 3: Frontend**
+EOF
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" "$TEST_TEMP_DIR/.vbw-planning" --mode archive
+  [ "$status" -eq 0 ]
+  local c4_pass
+  c4_pass=$(echo "$output" | jq -r '.checks.state_vs_roadmap.pass')
+  [ "$c4_pass" = "true" ]
+}
+
 # ============================================================
 # UAT-awareness tests
 # ============================================================
